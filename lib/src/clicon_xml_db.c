@@ -615,19 +615,20 @@ xml_default(cxobj *x,
 		continue;
 	    assert(y->ys_cv);
 	    if (!cv_flag(y->ys_cv, V_UNSET)){  /* Default value exists */
-		if (!xml_find(x, y->ys_argument))
+		if (!xml_find(x, y->ys_argument)){
 		    if ((xc = xml_new_spec(y->ys_argument, x, y)) == NULL)
 			goto done;
-		if ((xb = xml_new("body", xc)) == NULL)
-		    goto done;
-		xml_type_set(xb, CX_BODY);
-		if ((str = cv2str_dup(y->ys_cv)) == NULL){
-		    clicon_err(OE_UNIX, errno, "cv2str_dup");
-		    goto done;
+		    if ((xb = xml_new("body", xc)) == NULL)
+			goto done;
+		    xml_type_set(xb, CX_BODY);
+		    if ((str = cv2str_dup(y->ys_cv)) == NULL){
+			clicon_err(OE_UNIX, errno, "cv2str_dup");
+			goto done;
+		    }
+		    if (xml_value_set(xb, str) < 0)
+			goto done;
+		    free(str);
 		}
-		if (xml_value_set(xb, str) < 0)
-		    goto done;
-		free(str);
 	    }
 	}
     }

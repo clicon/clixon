@@ -395,6 +395,8 @@ ys_cv_validate(cg_var *cv, yang_stmt *ys, char **reason)
     uint8_t         fraction; 
     yang_stmt      *yi = NULL;
 
+    if (reason)
+	*reason = NULL;
     if (ys->ys_keyword != Y_LEAF && ys->ys_keyword != Y_LEAF_LIST)
 	return 0;
     ycv = ys->ys_cv;
