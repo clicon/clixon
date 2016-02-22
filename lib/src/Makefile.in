@@ -1,0 +1,173 @@
+# 
+# Makefile 
+#
+# Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+#
+# This file is part of CLICON.
+#
+# CLICON is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# CLICON is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with CLICON; see the file COPYING.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#
+prefix 		= @prefix@
+datarootdir	= @datarootdir@
+srcdir  	= @srcdir@
+top_srcdir  	= @top_srcdir@
+exec_prefix 	= @exec_prefix@
+bindir 		= @bindir@
+libdir		= @libdir@
+dbdir		= @prefix@/db
+mandir		= @mandir@
+libexecdir	= @libexecdir@
+localstatedir	= @localstatedir@
+sysconfdir	= @sysconfdir@
+
+SH_SUFFIX	= @SH_SUFFIX@
+CLICON_VERSION  = @CLICON_VERSION@
+CLICON_MAJOR    = @CLICON_VERSION_MAJOR@
+CLICON_MINOR    = @CLICON_VERSION_MINOR@
+
+VPATH       	= @srcdir@
+CC		= @CC@
+CFLAGS  	= -fPIC @CFLAGS@ 
+LDFLAGS 	= @LDFLAGS@
+LIBS    	= @LIBS@ 
+
+YACC		= @YACC@
+LEX		= @LEX@
+
+CPPFLAGS  	= @CPPFLAGS@
+
+INCLUDES = -I. @INCLUDES@ -I$(top_srcdir)/lib/clicon -I$(top_srcdir)/include -I$(top_srcdir)
+
+SRC     = clicon_sig.c clicon_qdb.c clicon_log.c clicon_err.c clicon_event.c \
+	  clicon_chunk.c clicon_proc.c \
+	  clicon_string.c clicon_handle.c  \
+	  clicon_xml.c clicon_xml_map.c clicon_file.c \
+	  clicon_yang.c clicon_yang_type.c \
+	  clicon_hash.c clicon_options.c clicon_plugin.c \
+	  clicon_proto.c clicon_proto_encode.c clicon_proto_client.c \
+	  clicon_xsl.c clicon_sha1.c clicon_xml_db.c
+
+YACCOBJS := lex.clicon_xml_parse.o clicon_xml_parse.tab.o \
+	    lex.clicon_yang_parse.o  clicon_yang_parse.tab.o 
+# Logically, the below 4 should be in YACCOBJS?
+
+
+# Generated src 
+GENSRC  = build.c 
+
+OBJS    = $(YACCOBJS) $(SRC:.c=.o) 
+GENOBJS  = $(GENSRC:.c=.o) 
+
+# Linker-name: libclicon.so
+# so-name: libclicon.so.2
+# real-name: libclicon.so.2.0
+MYLIB        = libclicon$(SH_SUFFIX).$(CLICON_MAJOR).$(CLICON_MINOR)
+MYLIBSO      = libclicon$(SH_SUFFIX).$(CLICON_MAJOR)
+MYLIBLINK    = libclicon$(SH_SUFFIX)
+
+all:	 $(MYLIB) $(MYLIBLINK)
+
+clean:
+	rm -f $(OBJS) $(MYLIB) $(MYLIBLINK) $(GENOBJS) $(GENSRC) *.core
+	rm -f clicon_xml_parse.tab.[ch] clicon_xml_parse.yy.[co]
+	rm -f clicon_yang_parse.tab.[ch] clicon_yang_parse.[co]
+	rm -f lex.clicon_yang_parse.c
+	rm -f lex.clicon_xml_parse.c
+# disabled when USE_DBSPEC_PT is disabled in clicon_config.h.in
+#	rm -f clicon_dbspec.tab.[ch] clicon_dbspec.[co]
+#	rm -f lex.clicon_dbspec.c
+
+#############################################################################
+# Implicit rules for lex and yacc.
+#
+# lex files *.l -> *.yy.c
+# yacc files *.y -> *.tab.c and *.tab.h
+#
+# Lex forces yacc include file *.tab.h to be built.
+#############################################################################
+
+%.c : %.y  # cancel implicit yacc rule
+%.c : %.l  # cancel implicit lex rule
+
+# xml parser
+lex.clicon_xml_parse.c : clicon_xml_parse.l clicon_xml_parse.tab.h
+	$(LEX) -Pclicon_xml_parse clicon_xml_parse.l # -d is debug
+
+clicon_xml_parse.tab.c clicon_xml_parse.tab.h: clicon_xml_parse.y
+	$(YACC) -l -d -p clicon_xml_parse clicon_xml_parse.y # -t is debug
+	mv y.tab.c clicon_xml_parse.tab.c
+	mv y.tab.h clicon_xml_parse.tab.h
+
+lex.clicon_xml_parse.o : lex.clicon_xml_parse.c clicon_xml_parse.tab.h # special rule to for make clean to work
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
+
+# clicon_yang parser
+lex.clicon_yang_parse.c : clicon_yang_parse.l clicon_yang_parse.tab.h
+	$(LEX) -Pclicon_yang_parse clicon_yang_parse.l # -d is debug
+
+clicon_yang_parse.tab.c clicon_yang_parse.tab.h: clicon_yang_parse.y
+	$(YACC) -l -d -p clicon_yang_parse clicon_yang_parse.y # -t is debug
+	mv y.tab.c clicon_yang_parse.tab.c
+	mv y.tab.h clicon_yang_parse.tab.h
+
+lex.clicon_yang_parse.o : lex.clicon_yang_parse.c clicon_yang_parse.tab.h
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
+
+distclean: clean
+	rm -f Makefile *~ .depend
+
+.SUFFIXES:
+.SUFFIXES: .c .o
+
+.c.o: $(GENSRC)
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
+
+.PHONY: build.c
+build.c:	
+	date +"const char CLICON_BUILDSTR[64]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; > build.c;
+	echo "const char CLICON_VERSION[64]=\"$(CLICON_VERSION)\""\; >> build.c;
+
+
+$(MYLIB) : $(GENOBJS) $(OBJS) 
+	$(CC) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(GENOBJS) $(OBJS) $(LIBS) -Wl,-soname=$(MYLIBSO) 
+# link-name is needed for application linking, eg for clicon_cli and clicon_config
+$(MYLIBLINK) : $(MYLIB)
+#	ln -sf $(MYLIB) $@
+
+#	ar cru $@ $^
+#	ranlib $@
+
+install: install-lib
+
+install-include:
+
+install-lib: $(MYLIB)
+	install -m 755 -d $(DESTDIR)$(libdir) 
+	install -m 755 $(MYLIB) $(DESTDIR)$(libdir) 
+	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclicon.so.2
+	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclicon.so
+
+uninstall: 
+	rm -f $(libdir)/$(MYLIB)
+
+TAGS:
+	find . -name '*.[chyl]' -print | etags -
+
+depend:
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(SRC) > .depend
+
+#include .depend
+

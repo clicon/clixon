@@ -1,0 +1,27 @@
+# Main YANG module first parsed by parser (in CLICON_YANG_DIR). eg clicon.yang.
+
+# Save values as XML in database instead of lvec:s.
+# This is optimized for yang specified applications 
+# But not compatible with key-based application (eg Rost)
+CLICON_DB_XML            1
+
+# Startup CLI mode. This should match the CLICON_MODE in your startup clispec file
+CLICON_CLI_MODE         routing
+
+# Option used to construct initial yang file:
+#     <module>[@<revision>]
+# This option is only relevant if CLICON_DBSPEC_TYPE is YANG
+CLICON_YANG_MODULE_MAIN ietf-ip
+
+# Option used to construct initial yang file:
+#     <module>[@<revision>]
+# This option is only relevant if CLICON_DBSPEC_TYPE is YANG
+CLICON_YANG_MODULE_REVISION 2014-06-16
+
+# Generate code for CLI completion of existing db symbols
+# CLICON_CLI_GENMODEL_COMPLETION 0
+CLICON_CLI_GENMODEL_COMPLETION 1
+
+# How to generate and show CLI syntax: VARS|ALL
+# CLICON_CLI_GENMODEL_TYPE VARS
+CLICON_CLI_GENMODEL_TYPE   VARS

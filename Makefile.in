@@ -1,0 +1,112 @@
+# 
+# Makefile 
+#
+#
+# Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+#
+# This file is part of CLICON.
+#
+# CLICON is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+#  CLICON is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with CLICON; see the file COPYING.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+
+prefix		= @prefix@
+exec_prefix 	= @exec_prefix@
+# abs_top_builddir is by default the absolute path of the builddir.
+includedir	= @includedir@
+datadir 	= @datarootdir@
+localstatedir	= @localstatedir@
+sysconfdir	= @sysconfdir@
+
+VPATH       	= @srcdir@
+srcdir  	= @srcdir@
+libdir		= @libdir@
+top_srcdir  	= @top_srcdir@
+CC		= @CC@
+CFLAGS  	= @CFLAGS@ 
+LDFLAGS 	= @LDFLAGS@
+LIBS    	= @LIBS@
+#INSTALL		= @INSTALL@
+
+INCLUDES 	= -I. -I@srcdir@ @INCLUDES@
+SHELL		= /bin/sh
+
+SUBDIRS = lib apps include doc etc 
+
+.PHONY:	doc all clean depend $(SUBDIRS) install loc TAGS .config.status
+
+all:	$(SUBDIRS) clicon.conf.cpp clicon.mk
+
+$(SUBDIRS):
+	(cd $@ && $(MAKE) $(MFLAGS) all)
+
+depend:
+	for i in $(SUBDIRS) example; \
+		do (cd $$i && $(MAKE) $(MFLAGS) depend); done
+
+# template clicon.conf file
+clicon.conf.cpp:  clicon.conf.cpp.cpp
+	$(CPP) -P -x assembler-with-cpp -Dprefix=$(prefix) -Dlocalstatedir=$(localstatedir) -Dsysconfdir=$(sysconfdir) -Ddatadir=$(datadir) -Dlibdir=$(libdir) $< > $@
+
+clicon.mk:  clicon.mk.cpp
+	$(CPP) -P -traditional-cpp -x assembler-with-cpp -Dprefix=$(prefix) -Dlocalstatedir=$(localstatedir) -Dsysconfdir=$(sysconfdir) -Ddatadir=$(datadir) -Dlibdir=$(libdir) $< > $@
+
+install:	clicon.conf.cpp clicon.mk
+	for i in $(SUBDIRS); \
+		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; \
+	install -d -m 755 $(DESTDIR)$(datadir)/clicon
+	install -m 755 clicon.conf.cpp $(DESTDIR)$(datadir)/clicon
+	install -m 755 clicon.mk $(DESTDIR)$(datadir)/clicon
+	echo "Install for compilation by: make install-include"
+
+install-include:
+	for i in $(SUBDIRS); \
+		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; \
+	echo "To install example app: cd example; make; make install"
+
+uninstall:
+	for i in $(SUBDIRS) example; \
+	do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
+	rm -f $(datadir)/clicon/clicon.conf.cpp
+	rm -f $(datadir)/clicon/clicon.mk
+
+# Overrides SUBDIRS above
+#doc:	
+#	cd $@; $(MAKE) $(MFLAGS) $@
+
+config.status:	configure
+	$(SHELL) config.status --recheck
+
+configure:	configure.ac
+	cd $(srcdir) && autoconf
+
+clean:
+	for i in $(SUBDIRS) example; \
+		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
+
+distclean:
+	rm -f Makefile TAGS config.status config.log *~ .depend
+	rm -rf Makefile autom4te.cache 
+	rm -rf clicon.conf.cpp clicon.mk
+	for i in $(SUBDIRS) example; \
+		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
+
+# Lines of code
+loc:
+	find . -name '*.[chyl]' -type f | xargs wc -l | tail -1 2> /dev/null
+
+TAGS:
+	find $(srcdir) -name '*.[chyl]' -type f | grep -v \.tab\.[ch] | grep -v lex.*.c | grep -v .yy.c | etags -
+
+

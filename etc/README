@@ -1,0 +1,14 @@
+This directory contains etc files. cliconrc is a script file that can be used to
+setup a shell environment if clicon is installed in a non-standard place.
+It sets up path and dynamic library links.
+Example:
+> tar xzf clicon.tgz
+> cd clicon
+> ./configure --prefix=/hello
+> make
+> make install
+> make install-include
+> cd 
+> source /hello/etc/cliconrc
+> clicon_config
+> clicon_cli

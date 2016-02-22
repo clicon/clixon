@@ -1,0 +1,73 @@
+# 
+# Makefile 
+#
+# Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+#
+# This file is part of CLICON.
+#
+# CLICON is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# CLICON is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with CLICON; see the file COPYING.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#
+VPATH       	= @srcdir@
+srcdir  	= @srcdir@
+top_srcdir  	= @top_srcdir@
+CC		= @CC@
+CFLAGS  	= @CFLAGS@ 
+LDFLAGS 	= @LDFLAGS@
+LIBS    	= @LIBS@
+
+SHELL	= /bin/sh
+
+SUBDIRS = src clicon
+
+.PHONY: all clean depend $(SUBDIRS) install 
+
+all:		$(SUBDIRS)
+
+depend:
+		for i in $(SUBDIRS); \
+		do (cd $$i; $(MAKE) $(MFLAGS) depend); done
+
+$(SUBDIRS):
+		(cd $@; $(MAKE) $(MFLAGS) all)
+
+install:
+		for i in $(SUBDIRS); \
+		do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+
+install-include:
+		for i in $(SUBDIRS); \
+		do (cd $$i; $(MAKE) $(MFLAGS) $@); done; \
+		(cd clicon; $(MAKE) $(MFLAGS) $@)
+
+uninstall:
+		for i in $(SUBDIRS); \
+		do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+
+config.status:	configure
+		$(SHELL) config.status --recheck
+
+clean:
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) clean); done
+
+distclean:	clean
+	rm -f Makefile *~ .depend
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) distclean); done; \
+	(cd clicon; $(MAKE) $(MFLAGS) $@)
+
+tags:
+	find $(srcdir) -name '*.[chyl]' -print | etags -

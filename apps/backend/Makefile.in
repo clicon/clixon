@@ -1,0 +1,137 @@
+# 
+# Makefile 
+#
+# Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+#
+# This file is part of CLICON.
+#
+# CLICON is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# CLICON is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with CLICON; see the file COPYING.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#
+VPATH       	= @srcdir@
+srcdir  	= @srcdir@
+top_srcdir  	= @top_srcdir@
+CC		= @CC@
+CFLAGS  	= @CFLAGS@ 
+LDFLAGS 	= @LDFLAGS@
+
+prefix 		= @prefix@
+exec_prefix 	= @exec_prefix@
+bindir 		= @bindir@
+libdir		= @libdir@
+sbindir 	= @sbindir@
+libexecdir	= @libexecdir@
+localstatedir	= @localstatedir@
+sysconfdir	= @sysconfdir@
+includedir	= @includedir@
+
+SH_SUFFIX	= @SH_SUFFIX@
+CLICON_MAJOR    = @CLICON_VERSION_MAJOR@
+CLICON_MINOR    = @CLICON_VERSION_MINOR@
+
+# Use this clicon lib for linking
+CLICON_LIB	= libclicon.so.$(CLICON_MAJOR).$(CLICON_MINOR)
+# Location of system plugins
+CLICON_BACKEND_SYSDIR = $(libdir)/clicon/plugins/backend
+
+# For dependency. A little strange that we rely on it being built in the src dir
+# even though it may exist in $(libdir). But the new version may not have been installed yet.
+LIBDEPS		= $(top_srcdir)/lib/src/$(CLICON_LIB) 
+
+LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ -l:$(CLICON_LIB) -lpthread
+CPPFLAGS  	= @CPPFLAGS@ -fPIC
+INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
+
+# Not accessible from plugin
+APPSRC  = backend_main.c backend_socket.c backend_client.c \
+	  backend_lock.c backend_commit.c backend_plugin.c 
+
+APPOBJ  = $(APPSRC:.c=.o)
+APPL	= clicon_backend
+
+#SHLIB	= clicon_backend
+MYNAME		= clicon_backend
+MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
+MYLIB           = $(MYLIBLINK).$(CLICON_MAJOR).$(CLICON_MINOR)
+MYLIBSO         = $(MYLIBLINK).$(CLICON_MAJOR)
+
+# Accessible from plugin
+LIBSRC	= clicon_backend_transaction.c clicon_backend_handle.c
+LIBOBJ	= $(LIBSRC:.c=.o)
+
+all:	  $(MYLIB) $(APPL) test
+
+clean:
+	rm -f *.core $(APPL) $(APPOBJ) $(LIBOBJ) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
+
+distclean: clean
+	rm -f Makefile *~ .depend
+
+# Put demon in bin 
+# Put other executables in libexec/
+# Also create a libexec/ directory for writeable/temporary files.
+# Put config file in etc/
+install:	install-lib	$(APPL)
+	install -d $(DESTDIR)$(sbindir)
+	install $(APPL) $(DESTDIR)$(sbindir)
+
+install-lib:	$(MYLIB)
+	install -d $(DESTDIR)$(libdir)
+	install $(MYLIB) $(DESTDIR)$(libdir)
+	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)	   # -l:libclicon_config.so.2
+	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclicon_config.so
+	install -d $(DESTDIR)$(libdir)/clicon/plugins/backend
+
+uninstall:
+	rm -f $(sbindir)/$(APPL)
+	rm -f $(libdir)/$(MYLIB)
+	rm -f $(includedir)/clicon/*
+
+install-include: clicon_backend.h clicon_backend_api.h
+	install -d $(DESTDIR)$(includedir)/clicon
+	install -m 644 $^ $(DESTDIR)$(includedir)/clicon
+
+.SUFFIXES:
+.SUFFIXES: .c .o
+
+.c.o:
+	$(CC) $(INCLUDES) -D__PROGRAM__=\"$(APPL)\" -DCLICON_BACKEND_SYSDIR=\"$(CLICON_BACKEND_SYSDIR)\" $(CPPFLAGS) $(CFLAGS) -c $<
+
+# Just link test programs
+test.c	:
+	echo "main(){}" > $@
+
+test: 	test.c $(LIBOBJ) 
+	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. -l:$(MYLIB) $(LIBS) -o $@
+
+$(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
+	$(CC) $(LDFLAGS) $(APPOBJ) $(OBJS) -L. -l:$(MYLIB) $(LIBS) -o $@
+
+$(MYLIB): $(LIBOBJ)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ -lc $(LIBOBJ) -Wl,-soname=$(MYLIBSO)
+
+# link-name is needed for application linking, eg for clicon_cli and clicon_backend
+$(MYLIBLINK) : $(MYLIB)
+#	ln -sf $(MYLIB) $(MYLIBSO)
+#	ln -sf $(MYLIB) $@
+
+TAGS:
+	find . -name '*.[chyl]' -print | etags -
+
+depend:
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(SRC) $(APPSRC) > .depend
+
+#include .depend
+

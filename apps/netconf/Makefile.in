@@ -1,0 +1,122 @@
+# 
+# Makefile 
+#
+# Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+#
+# This file is part of CLICON.
+#
+# CLICON is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# CLICON is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with CLICON; see the file COPYING.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#
+VPATH       	= @srcdir@
+srcdir  	= @srcdir@
+top_srcdir  	= @top_srcdir@
+CC		= @CC@
+CFLAGS  	= @CFLAGS@ 
+LDFLAGS 	= @LDFLAGS@
+
+prefix 		= @prefix@
+datarootdir	= @datarootdir@
+exec_prefix 	= @exec_prefix@
+bindir 		= @bindir@
+libdir		= @libdir@
+mandir		= @mandir@
+libexecdir	= @libexecdir@
+localstatedir	= @localstatedir@
+sysconfdir	= @sysconfdir@
+includedir	= @includedir@
+
+SH_SUFFIX	= @SH_SUFFIX@
+CLICON_MAJOR    = @CLICON_VERSION_MAJOR@
+CLICON_MINOR    = @CLICON_VERSION_MINOR@
+
+# Use this clicon lib for linking
+CLICON_LIB	= libclicon.so.$(CLICON_MAJOR).$(CLICON_MINOR)
+
+# For dependency
+LIBDEPS		= $(top_srcdir)/lib/src/$(CLICON_LIB) 
+
+LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ -l:$(CLICON_LIB)
+CPPFLAGS  	= @CPPFLAGS@ -fPIC
+INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
+
+APPL	= clicon_netconf
+SRC     = netconf_main.c
+OBJS    = $(SRC:.c=.o)
+
+MYNAME		= clicon_netconf
+MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
+MYLIB           = $(MYLIBLINK).$(CLICON_MAJOR).$(CLICON_MINOR)
+MYLIBSO         = $(MYLIBLINK).$(CLICON_MAJOR)
+
+LIBSRC     = netconf_hello.c netconf_rpc.c netconf_filter.c netconf_lib.c netconf_plugin.c
+LIBOBJS    = $(LIBSRC:.c=.o)
+
+all:	 $(MYLIB) $(APPL)
+
+clean: 
+	rm -f $(OBJS) $(LIBOBJS) *.core $(APPL) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
+
+distclean: clean
+	rm -f Makefile *~ .depend
+
+# Put demon in bin 
+# Put other executables in libexec/
+# Also create a libexec/ directory for writeable/temporary files.
+# Put config file in etc/
+install:	install-lib $(APPL)
+	install -d $(DESTDIR)$(bindir)
+	install $(APPL) $(DESTDIR)$(bindir)
+
+install-lib: $(MYLIB)
+	install -d $(DESTDIR)$(libdir) 
+	install $(MYLIB) $(DESTDIR)$(libdir) 
+	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclicon_netconf.so.2
+	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclicon_netconf.so
+
+install-include:	clicon_netconf.h
+	install -d $(DESTDIR)$(includedir)/clicon
+	install -m 644 $^ $(DESTDIR)$(includedir)/clicon
+
+uninstall:
+	rm -f $(bindir)/$(APPL)
+	rm -f $(libdir)/$(MYLIB)
+	rm -f $(includedir)/clicon/*
+
+.SUFFIXES:
+.SUFFIXES: .c .o
+
+.c.o:
+	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" $(CFLAGS) -c $<
+
+$(APPL) : $(OBJS) $(MYLIBLINK) $(LIBDEPS)
+	$(CC) $(LDFLAGS) $(OBJS) -L. -l:$(MYLIB) $(LIBS) -o $@
+
+$(MYLIB) : $(LIBOBJS)
+	$(CC) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJS) $(LIBS) -Wl,-soname=$(MYLIBSO)
+
+# link-name is needed for application linking, eg for clicon_cli and clicon_config
+$(MYLIBLINK) : $(MYLIB)
+#	ln -sf $(MYLIB) $(MYLIBSO)
+#	ln -sf $(MYLIB) $@
+
+TAGS:
+	find . -name '*.[chyl]' -print | etags -
+
+depend:
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(SRC) $(APPSRC) > .depend
+
+#include .depend
+

@@ -1,0 +1,13 @@
+# local variables may be needed below
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+
+# Path to binaries
+export PATH=$PATH:@bindir@
+
+# Path to config daemon
+export PATH=$PATH:@sbindir@
+
+# Path to dynamic libraries
+export LD_LIBRARY_PATH=@libdir@:$LD_LIBRARY_PATH
+
