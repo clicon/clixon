@@ -25,8 +25,8 @@
 
 #include <sys/types.h>
 
-#/* Common code (API and clicon_cli) */
-include <clicon/clicon_cli_api.h>
+/* Common code (API and clicon_cli) */
+#include <clicon/clicon_cli_api.h>
 
 /*! Clicon Cli plugin callbacks: use these in your cli plugin code 
  */

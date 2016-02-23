@@ -48,7 +48,7 @@ all:	$(PLUGINS) $(APPNAME).conf
 
 CLISPECS = routing_cli.cli
 
-YANGSPECS	 = $(APPNAME).yang
+#YANGSPECS	 = $(APPNAME).yang
 YANGSPECS	+= ietf-yang-types@2013-07-15.yang
 YANGSPECS	+= ietf-inet-types@2013-07-15.yang
 YANGSPECS	+= ietf-interfaces@2014-05-08.yang

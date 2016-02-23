@@ -50,7 +50,10 @@ typedef int (xml_applyfn_t)(cxobj *yn, void *arg);
 /*
  * xml_flag() flags:
  */
-#define XML_FLAG_MARK 0x01  /* Marker for dynamic algorithms, eg expand */
+#define XML_FLAG_MARK   0x01  /* Marker for dynamic algorithms, eg expand */
+#define XML_FLAG_ADD    0x02  /* Node is added (commits) */
+#define XML_FLAG_DEL    0x04  /* Node is deleted (commits) */
+#define XML_FLAG_CHANGE 0x08  /* Node is changed (commits) */
 
 /*
  * Prototypes

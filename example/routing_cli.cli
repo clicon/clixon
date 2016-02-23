@@ -2,6 +2,7 @@
 # Common CLI syntax for both server and PMNode operatio mode
 CLICON_MODE="routing";
 CLICON_PROMPT="%U@%H> ";
+CLICON_PLUGIN="routing_cli";
 
 # Note, when switching to PT, change datamodel to only @datamodel
 #set @datamodel:ietf-routing, cli_merge();
@@ -43,3 +44,4 @@ load("Load configuration from XML file") <filename:string>("Filename (local file
     replace("Replace candidate with file contents"), load_config_file("filename replace");
     merge("Merge file with existent candidate"), load_config_file("filename merge");
 }
+example("This is a comment") <var:int32>("Just a random number"), mycallback("myarg");

@@ -32,8 +32,7 @@ SUBDIRS =
 
 .PHONY: clean all $(SUBDIRS)
 
-all:  $(SUBDIRS)
-	echo "Build doxygen docs: make doc"
+all:  $(SUBDIRS) doc
 	echo "Build doxygen doc and graphs: make graphs"
 
 # Regular doxygen documentation
