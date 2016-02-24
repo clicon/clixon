@@ -36,6 +36,7 @@
 
 /* clicon */
 #include "clicon_err.h"
+#include "clicon_log.h"
 #include "clicon_queue.h"
 #include "clicon_chunk.h"
 #include "clicon_xml.h"
@@ -998,7 +999,7 @@ cxvec_append(cxobj   *x,
     return retval;
 }
 
-/*! Apply a function call recursively on all xml node recursively
+/*! Apply a function call recursively on all xml node children recursively
  * Recursively traverse all xml nodes in a parse-tree and apply fn(arg) for 
  * each object found. The function is called with the xml node and an 
  * argument as args.
@@ -1031,6 +1032,43 @@ xml_apply(cxobj          *xn,
 	if (fn(x, arg) < 0)
 	    goto done;
 	if (xml_apply(x, type, fn, arg) < 0)
+	    goto done;
+    }
+    retval = 0;
+  done:
+    return retval;   
+}
+
+/*! Apply a function call recursively on all ancestors
+ * Recursively traverse upwards to all ancestor nodes in a parse-tree and apply fn(arg) for 
+ * each object found. The function is called with the xml node and an 
+ * argument as args.
+ * @param[in]  xn   XML node
+ * @param[in]  fn   Callback
+ * @param[in]  arg  Argument
+ * @code
+ * int x_fn(cxobj *x, void *arg)
+ * {
+ *   return 0;
+ * }
+ * xml_apply_ancestor(xn, x_fn, NULL);
+ * @endcode
+ * @see xml_apply
+ * @note do not delete or move around any children during this function
+ * @note It does not apply fn to the root node,..
+ */
+int
+xml_apply_ancestor(cxobj          *xn, 
+		   xml_applyfn_t   fn, 
+		   void           *arg)
+{
+    int        retval = -1;
+    cxobj     *xp = NULL;
+
+    while ((xp = xml_parent(xn)) != NULL) {
+	if (fn(xp, arg) < 0)
+	    goto done;
+	if (xml_apply_ancestor(xp, fn, arg) < 0)
 	    goto done;
     }
     retval = 0;

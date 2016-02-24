@@ -126,8 +126,8 @@ candidate_commit(clicon_handle h,
 		 char         *running)
 {
     int                retval = -1;
-    //    int                i, j;
-    //    int                failed = 0;
+    int                i;
+    cxobj             *xn;
     struct stat        sb;
     void              *firsterr = NULL;
     yang_spec         *yspec;
@@ -171,6 +171,25 @@ candidate_commit(clicon_handle h,
 	 goto done;
     if (debug)
 	transaction_print(stderr, td);
+    /* Mark as changed in tree */
+    for (i=0; i<td->td_dlen; i++){ /* Also down */
+	xn = td->td_dvec[i];
+	xml_flag_set(xn, XML_FLAG_DEL);
+	xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_DEL);
+    }    
+    for (i=0; i<td->td_alen; i++){ /* Also down */
+	xn = td->td_avec[i];
+	xml_flag_set(xn, XML_FLAG_ADD);
+	xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD);
+    }    
+    for (i=0; i<td->td_clen; i++){ /* Also up */
+	xn = td->td_scvec[i];
+	xml_flag(xn, XML_FLAG_CHANGE);
+	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+	xn = td->td_tcvec[i];
+	xml_flag_set(xn, XML_FLAG_CHANGE);
+	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    }    
 
     /* 4. Call plugin transaction start callbacks */
     if (plugin_transaction_begin(h, td) < 0)
@@ -236,6 +255,8 @@ candidate_validate(clicon_handle h,
      struct stat         sb;
      yang_spec          *yspec;
      transaction_data_t *td = NULL;
+     int                i;
+     cxobj             *xn;
 
      if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -276,6 +297,22 @@ candidate_validate(clicon_handle h,
 
      if (debug)
 	transaction_print(stderr, td);
+     
+     /* Mark as changed in tree */
+     for (i=0; i<td->td_dlen; i++){ /* Also down */
+	 xn = td->td_dvec[i];
+	 xml_flag_set(xn, XML_FLAG_DEL);
+     }    
+     for (i=0; i<td->td_alen; i++){ /* Also down */
+	 xn = td->td_avec[i];
+	 xml_flag_set(xn, XML_FLAG_ADD);
+     }    
+     for (i=0; i<td->td_clen; i++){ /* Also up */
+	 xn = td->td_scvec[i];
+	 xml_flag_set(xn, XML_FLAG_CHANGE);
+	 xn = td->td_tcvec[i];
+	 xml_flag(xn, XML_FLAG_CHANGE);
+     }    
 
     /* 4. Call plugin start transaction callbacks */
     if (plugin_transaction_begin(h, td) < 0)

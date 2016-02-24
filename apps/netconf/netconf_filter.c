@@ -219,11 +219,11 @@ netconf_xpath(cxobj *xsearch,
 	      cxobj *xorig)
 {
     cxobj  *x;
-    int               retval = -1;
-    char             *selector;
+    int     retval = -1;
+    char   *selector;
     cxobj **xv;
-    int               xlen;
-    int               i;
+    size_t  xlen;
+    int     i;
 
     if ((selector = xml_find_value(xfilter, "select")) == NULL){
 	netconf_create_rpc_error(cb_err, xorig, 

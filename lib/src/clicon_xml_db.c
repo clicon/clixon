@@ -667,7 +667,7 @@ xmldb_get(char      *dbname,
     struct db_pair *pairs;
     cxobj          *xt = NULL;
     cxobj         **xvec=NULL;
-    int             len;
+    size_t          len;
 
     /* Read in complete database (this can be optimized) */
     if ((npairs = db_regexp(dbname, "", __FUNCTION__, &pairs, 0)) < 0)
@@ -735,10 +735,10 @@ xmldb_get(char      *dbname,
  * @code
  *   cxobj   *xt;
  *   cxobj  **xvec;
- *   int      xlen;
+ *   size_t   xlen;
  *   yang_spec *yspec = clicon_dbspec_yang(h);
- *   if (xmldb_get_xpath(dbname, "/interfaces/interface[name="eth*"]", yspec, 
- *                       &xt, &xvec, &xlen) < 0)
+ *   if (xmldb_get_vec(dbname, "/interfaces/interface[name="eth*"]", yspec, 
+ *                     &xt, &xvec, &xlen) < 0)
  *      err;
  *   for (i=0; i<xlen; i++){
  *      xn = xv[i];
@@ -751,12 +751,12 @@ xmldb_get(char      *dbname,
  * @see xmldb_get
  */
 int
-xmldb_get_xpath(char      *dbname, 
-		char      *xpath,
-		yang_spec *yspec,
-		cxobj    **xtop,
-		cxobj   ***xvec,
-		int       *xlen)
+xmldb_get_vec(char      *dbname, 
+	      char      *xpath,
+	      yang_spec *yspec,
+	      cxobj    **xtop,
+	      cxobj   ***xvec,
+	      size_t    *xlen)
 {
     int             retval = -1;
     int             i;

@@ -30,13 +30,13 @@ pdflatex	= @PDFLATEX@
 
 SUBDIRS = 
 
-.PHONY: clean all $(SUBDIRS)
+.PHONY: clean all doc $(SUBDIRS)
 
 all:  $(SUBDIRS) doc
-	echo "Build doxygen doc and graphs: make graphs"
+	echo "Build doxygen doc: make doc"
 
 # Regular doxygen documentation
-doc:
+doc:	
 	doxygen Doxyfile # generates html dir
 	echo "Build doxygen graphs: make graphs"
 

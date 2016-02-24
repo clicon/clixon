@@ -1492,7 +1492,7 @@ show_conf_xpath(clicon_handle h, cvec *cvv, cg_var *arg)
     cg_var          *cv;
     cxobj           *xt = NULL;
     cxobj          **xv = NULL;
-    int              xlen;
+    size_t           xlen;
     int              i;
 
     if (arg == NULL || (str = cv_string_get(arg)) == NULL){
@@ -1516,7 +1516,7 @@ show_conf_xpath(clicon_handle h, cvec *cvv, cg_var *arg)
     cv = cvec_find_var(cvv, "xpath");
     xpath = cv_string_get(cv);
     yspec = clicon_dbspec_yang(h);
-    if (xmldb_get_xpath(dbname, xpath, yspec, &xt, &xv, &xlen) < 0)
+    if (xmldb_get_vec(dbname, xpath, yspec, &xt, &xv, &xlen) < 0)
 	goto done;
     for (i=0; i<xlen; i++)
 	clicon_xml2file(stdout, xv[i], 0, 1);

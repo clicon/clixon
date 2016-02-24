@@ -74,6 +74,7 @@ to the xml standards:
 
 /* clicon */
 #include "clicon_err.h"
+#include "clicon_log.h"
 #include "clicon_xml.h"
 #include "clicon_xsl.h"
 
@@ -304,6 +305,7 @@ static int
 recursive_find(cxobj   *xn, 
 	       char    *pattern, 
 	       int      node_type,
+	       uint16_t flags,
 	       cxobj ***vec0,
 	       size_t  *vec0len)
 {
@@ -315,11 +317,13 @@ recursive_find(cxobj   *xn,
     xsub = NULL;
     while ((xsub = xml_child_each(xn, xsub, node_type)) != NULL) {
 	if (fnmatch(pattern, xml_name(xsub), 0) == 0){
-	    if (cxvec_append(xsub, &vec, &veclen) < 0)
-		goto done;
+	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xsub, flags));
+	    if (flags==0x0 || xml_flag(xsub, flags))
+		if (cxvec_append(xsub, &vec, &veclen) < 0)
+		    goto done;
 	    //	    continue; /* Dont go deeper */
 	}
-	if (recursive_find(xsub, pattern, node_type, &vec, &veclen) < 0)
+	if (recursive_find(xsub, pattern, node_type, flags, &vec, &veclen) < 0)
 	    goto done;
     }
     retval = 0;
@@ -331,8 +335,9 @@ recursive_find(cxobj   *xn,
 
 static int
 xpath_expr(char     *e, 	   
-	    cxobj  ***vec0,
-	    size_t   *vec0len)
+	   uint16_t  flags,
+	   cxobj  ***vec0,
+	   size_t   *vec0len)
 {
     char      *e_a;
     char      *e_v;
@@ -359,9 +364,12 @@ xpath_expr(char     *e,
 	    xv = (*vec0)[i];
 	    if ((x = xml_find(xv, e_a)) != NULL &&
 		(xml_type(x) == CX_ATTR)){
-		if (!e_v || strcmp(xml_value(x), e_v) == 0)
-		    if (cxvec_append(xv, &vec, &veclen) < 0)
-			goto done;
+		if (!e_v || strcmp(xml_value(x), e_v) == 0){
+	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
+		    if (flags==0x0 || xml_flag(xv, flags))
+			if (cxvec_append(xv, &vec, &veclen) < 0)
+			    goto done;
+		}
 	    }
 	}
     }
@@ -371,8 +379,10 @@ xpath_expr(char     *e,
 	    if (sscanf(e, "%d", &i) == 1){ /* number */
 		if (i < *vec0len){
 		    xv = (*vec0)[i]; /* XXX: cant compress: gcc breaks */
-		    if (cxvec_append(xv, &vec, &veclen) < 0)
-			goto done;
+	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
+		    if (flags==0x0 || xml_flag(xv, flags))
+			if (cxvec_append(xv, &vec, &veclen) < 0)
+			    goto done;
 		}
 	    }
 	    else{
@@ -393,8 +403,10 @@ xpath_expr(char     *e,
 		    (xml_type(x) == CX_ELMNT)){
 		    if ((val = xml_body(x)) != NULL &&
 			strcmp(val, e) == 0){
-			if (cxvec_append(xv, &vec, &veclen) < 0)
-			    goto done;
+	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
+			if (flags==0x0 || xml_flag(xv, flags))
+			    if (cxvec_append(xv, &vec, &veclen) < 0)
+				goto done;
 		    }
 		}
 	    }
@@ -428,6 +440,7 @@ xpath_find(struct xpath_element *xe,
 	   int                   descendants0,
 	   cxobj               **vec0,
 	   size_t                vec0len,
+	   uint16_t              flags,
 	   cxobj              ***vec2,
 	   size_t               *vec2len
 	   )
@@ -442,10 +455,12 @@ xpath_find(struct xpath_element *xe,
     size_t         vec1len = 0;
 
     if (xe == NULL){
-	// append
+	/* append */
 	for (i=0; i<vec0len; i++){
 	    xv = vec0[i];
-	    cxvec_append(xv, vec2, vec2len);
+	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
+	    if (flags==0x0 || xml_flag(xv, flags))
+		cxvec_append(xv, vec2, vec2len);
 	}
 	free(vec0);
 	return 0;
@@ -480,7 +495,7 @@ xpath_find(struct xpath_element *xe,
 	if (descendants0){
 	    for (i=0; i<vec0len; i++){
 		xv = vec0[i];
-		if (recursive_find(xv, xe->xe_str, CX_ELMNT, &vec1, &vec1len) < 0)
+		if (recursive_find(xv, xe->xe_str, CX_ELMNT, flags, &vec1, &vec1len) < 0)
 		    goto done;
 	    }
 	}
@@ -490,8 +505,10 @@ xpath_find(struct xpath_element *xe,
 		x = NULL;
 		while ((x = xml_child_each(xv, x, -1)) != NULL) {
 		    if (fnmatch(xe->xe_str, xml_name(x), 0) == 0){ 
-			if (cxvec_append(x, &vec1, &vec1len) < 0)
-			    goto done;
+	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(x, flags));
+			if (flags==0x0 || xml_flag(x, flags))
+			    if (cxvec_append(x, &vec1, &vec1len) < 0)
+				goto done;
 		    }
 		}	    
 	    }
@@ -517,10 +534,10 @@ xpath_find(struct xpath_element *xe,
 	}
     }
     if (xe->xe_predicate)
-	if (xpath_expr(xe->xe_predicate, &vec0, &vec0len) < 0)
+	if (xpath_expr(xe->xe_predicate, flags, &vec0, &vec0len) < 0)
 	    goto done;
     if (xpath_find(xe->xe_next, descendants, 
-		   vec0, vec0len, 
+		   vec0, vec0len, flags,
 		   vec2, vec2len) < 0)
 	goto done;
     retval = 0;
@@ -574,6 +591,7 @@ static int
 xpath_exec(char         *xpath, 
 	   cxobj       **vec0, 
 	   size_t        vec0len,
+	   uint16_t      flags,
 	   cxobj      ***vec2, 
 	   size_t       *vec2len)
 {
@@ -587,7 +605,7 @@ xpath_exec(char         *xpath,
 	goto done;
     if (0)
 	xpath_print(stderr, xplist);
-    if (xpath_find(xplist, 0, vec1, vec1len, vec2, vec2len) < 0)
+    if (xpath_find(xplist, 0, vec1, vec1len, flags, vec2, vec2len) < 0)
 	goto done;
     if (xpath_free(xplist) < 0)
 	goto done;
@@ -607,6 +625,7 @@ xpath_exec(char         *xpath,
 static int
 xpath_choice(cxobj   *xtop, 
 	     char    *xpath0, 
+	     uint16_t flags,
 	     cxobj ***vec1, 
 	     size_t  *vec1len)
 {
@@ -637,7 +656,7 @@ xpath_choice(cxobj   *xtop,
 	}
 	xpath = s1;
 	s1 = s2;
-	if (xpath_exec(xpath, vec0, vec0len, vec1, vec1len) < 0)
+	if (xpath_exec(xpath, vec0, vec0len, flags, vec1, vec1len) < 0)
 	    goto done;
     }
     retval = 0;
@@ -667,13 +686,14 @@ xpath_choice(cxobj   *xtop,
  * @see also xpath_vec.
  */
 cxobj *
-xpath_first(cxobj *cxtop, char *xpath)
+xpath_first(cxobj *cxtop, 
+	    char  *xpath)
 {
     cxobj **vec0 = NULL;
     size_t  vec0len = 0;
     cxobj  *xn = NULL;
 
-    if (xpath_choice(cxtop, xpath, &vec0, &vec0len) < 0)
+    if (xpath_choice(cxtop, xpath, 0, &vec0, &vec0len) < 0)
 	goto done;
     if (vec0len)
 	xn = vec0[0];
@@ -707,7 +727,9 @@ xpath_first(cxobj *cxtop, char *xpath)
  * NOTE: uses a static variable: consider replacing with xpath_vec() instead
  */
 cxobj *
-xpath_each(cxobj *cxtop, char *xpath, cxobj *xprev)
+xpath_each(cxobj *cxtop, 
+	   char  *xpath, 
+	   cxobj *xprev)
 {
     static cxobj    **vec0 = NULL; /* XXX */
     static size_t     vec0len = 0;
@@ -718,7 +740,7 @@ xpath_each(cxobj *cxtop, char *xpath, cxobj *xprev)
 	if (vec0) // XXX
 	    free(vec0); // XXX
 	vec0len = 0;
-	if (xpath_choice(cxtop, xpath, &vec0, &vec0len) < 0)
+	if (xpath_choice(cxtop, xpath, 0, &vec0, &vec0len) < 0)
 	    goto done;
     }
     if (vec0len){
@@ -765,14 +787,31 @@ xpath_each(cxobj *cxtop, char *xpath, cxobj *xprev)
  * @see also xpath_first, xpath_each.
  */
 cxobj **
-xpath_vec(cxobj *cxtop, 
-	  char  *xpath, 
-	  int   *veclen)
+xpath_vec(cxobj  *cxtop, 
+	  char   *xpath, 
+	  size_t *veclen)
 {
     cxobj **vec=NULL;
 
     *veclen = 0;
-    if (xpath_choice(cxtop, xpath, &vec, (size_t*)veclen) < 0)
+    if (xpath_choice(cxtop, xpath, 0, &vec, (size_t*)veclen) < 0)
+	return NULL;
+    return vec;
+}
+
+/* A restricted xpath that returns a vector of matches (only nodes marked with flags)
+ * @param[in]  flags   Set of flags that return nodes must match (0 if all)
+ */
+cxobj **
+xpath_vec_flag(cxobj   *cxtop, 
+	       char    *xpath, 
+	       uint16_t flags,
+	       size_t  *veclen)
+{
+    cxobj **vec=NULL;
+
+    *veclen = 0;
+    if (xpath_choice(cxtop, xpath, flags, &vec, (size_t*)veclen) < 0)
 	return NULL;
     return vec;
 }

@@ -32,8 +32,8 @@ int xmlkeyfmt2key2(char *xkfmt, cvec *cvv, char **xk);
 int xmlkey2xml(char *xkey, yang_spec *yspec, char **xml);
 int xmldb_get(char *dbname, char *xpath, 
 	      yang_spec *yspec, cxobj **xtop);
-int xmldb_get_xpath(char *dbname, char *xpath, yang_spec *yspec,
-		    cxobj **xtop, cxobj ***xvec, int *xlen);
+int xmldb_get_vec(char *dbname, char *xpath, yang_spec *yspec,
+		  cxobj **xtop, cxobj ***xvec, size_t *xlen);
 int xmldb_put( char *dbname, cxobj *xt, 
 	      yang_spec *yspec, enum operation_type op);
 int xmldb_put_xkey(char *dbname, char *xkey, char *val, yang_spec *yspec, 

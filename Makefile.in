@@ -42,7 +42,7 @@ LIBS    	= @LIBS@
 INCLUDES 	= -I. -I@srcdir@ @INCLUDES@
 SHELL		= /bin/sh
 
-SUBDIRS = lib apps include doc etc 
+SUBDIRS = lib apps include etc 
 
 .PHONY:	doc all clean depend $(SUBDIRS) install loc TAGS .config.status
 
@@ -52,7 +52,7 @@ $(SUBDIRS):
 	(cd $@ && $(MAKE) $(MFLAGS) all)
 
 depend:
-	for i in $(SUBDIRS) example; \
+	for i in $(SUBDIRS) doc example; \
 		do (cd $$i && $(MAKE) $(MFLAGS) depend); done
 
 # template clicon.conf file
@@ -63,7 +63,7 @@ clicon.mk:  clicon.mk.cpp
 	$(CPP) -P -traditional-cpp -x assembler-with-cpp -Dprefix=$(prefix) -Dlocalstatedir=$(localstatedir) -Dsysconfdir=$(sysconfdir) -Ddatadir=$(datadir) -Dlibdir=$(libdir) $< > $@
 
 install:	clicon.conf.cpp clicon.mk
-	for i in $(SUBDIRS); \
+	for i in $(SUBDIRS) doc; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; \
 	install -d -m 755 $(DESTDIR)$(datadir)/clicon
 	install -m 755 clicon.conf.cpp $(DESTDIR)$(datadir)/clicon
@@ -71,19 +71,18 @@ install:	clicon.conf.cpp clicon.mk
 	echo "Install for compilation by: make install-include"
 
 install-include:
-	for i in $(SUBDIRS); \
+	for i in $(SUBDIRS) doc; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; \
 	echo "To install example app: cd example; make; make install"
 
 uninstall:
-	for i in $(SUBDIRS) example; \
+	for i in $(SUBDIRS) doc example; \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
 	rm -f $(datadir)/clicon/clicon.conf.cpp
 	rm -f $(datadir)/clicon/clicon.mk
 
-# Overrides SUBDIRS above
-#doc:	
-#	cd $@; $(MAKE) $(MFLAGS) $@
+doc:	
+	cd $@; $(MAKE) $(MFLAGS) $@
 
 config.status:	configure
 	$(SHELL) config.status --recheck
@@ -92,14 +91,14 @@ configure:	configure.ac
 	cd $(srcdir) && autoconf
 
 clean:
-	for i in $(SUBDIRS) example; \
+	for i in $(SUBDIRS) doc example; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
 
 distclean:
 	rm -f Makefile TAGS config.status config.log *~ .depend
 	rm -rf Makefile autom4te.cache 
 	rm -rf clicon.conf.cpp clicon.mk
-	for i in $(SUBDIRS) example; \
+	for i in $(SUBDIRS) doc example; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
 
 # Lines of code

@@ -40,28 +40,36 @@
 /* These include signatures for plugin and transaction callbacks. */
 #include <clicon/clicon_backend.h> 
 
-/*
- * Commit callback. 
- * We do nothing here but simply create the config based on the current 
- * db once everything is done as if will then contain the new config.
+/*! This is called on validate (and commit). Check validity of candidate
+ */
+int
+transaction_validate(clicon_handle    h, 
+		     transaction_data td)
+{
+    if (debug)
+	transaction_print(stderr, td);
+    return 0;
+}
+
+/*! This is called on commit. Identify modifications and adjust machine state
  */
 int
 transaction_commit(clicon_handle    h, 
 		   transaction_data td)
 {
-    fprintf(stderr, "%s\n", __FUNCTION__);
-    transaction_print(stderr, td);
+    cxobj  *target = transaction_target(td); /* wanted XML tree */
+    cxobj **vec;
+    int     i;
+    size_t  len;
+
+    /* Get all added i/fs */
+    vec = xpath_vec_flag(target, "//interface", XML_FLAG_ADD, &len);
+    for (i=0; i<len; i++)             /* Loop over added i/fs */
+	clicon_xml2file(stdout, vec[i], 0, 1); /* Print the added interface */
+	    
     return 0;
 }
 
-int
-transaction_validate(clicon_handle    h, 
-		     transaction_data td)
-{
-    fprintf(stderr, "%s\n", __FUNCTION__);
-    transaction_print(stderr, td);
-    return 0;
-}
 
 /*
  * Plugin initialization

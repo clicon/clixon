@@ -1,86 +1,140 @@
-Frequently Asked Questions - Clixon
+Frequently Asked Questions - CliXon
 ===================================
 
-Q: What is the best way of understanding Clixon?
-A: Run the ietf yang routing example. 
+Q: What is CliXon?
+------------------
+CliXon is a configuration management tool including CLI generation,
+Yang parser, netconf interface and an embedded databases.
 
-Q: How do you build and install Clixon (and the example)?
-A: Clixon: ./configure; make; sudo make install; sudo make install-include
-Example: cd example; make; sudo make install
+Q: Why should you use CliXon?
+-----------------------------
+If you want an easy-to-use config frontend based on yang with an open-source license.
+Typically for embedded devices requiring a config interface such as routers and switches.
 
-Q: Is there any reference documentation?
-A: Clixon uses Doxygen for reference documentation.
+Q: What license is available?
+-----------------------------
+The basic license is open-source, GPLv3. Contact authors for commercial license.
+
+Q: Is CliXon extendible?
+------------------------
+Yes. All application semantics is defined in plugins with well-defined APIs. There are currently three types of plugins: for CLI, for Netconf and for the backend. 
+
+Q: Which language is CliXon implemented in?
+-------------------------------------------
+CliXon is written in C. The plugins are written in C. The CLI
+specification uses cligen.
+
+There is a project for writing plugins in Python. It is reasonable
+simple to spawn an external script from a backend.
+
+Q: Is CliXon different from Clicon?
+-----------------------------------
+Yes, but CliXon is a fork of Clicon focussing on Yang specification and XML
+database.  The yang support in clicon was grown out of a key-based
+scheme that became more and more complex since it had to translate
+between many different formats. CliXon uses only XML internally.
+
+The commit transaction mechanism has been simplified too. But CliXon
+is not backward compliant with key-based Clicon applications, such as
+Rost.
+
+Q: How to best understand CliXon?
+---------------------------------
+Run the ietf yang routing example. It is used in many of the answers below.
+
+Q: How do you build and install CliXon (and the example)?
+---------------------------------------------------------
+CliXon: 
+	./configure; 
+	make; 
+	sudo make install; 
+	sudo make install-include
+
+The example: 
+	 cd example; 
+	 make; 
+	 sudo make install
+
+Q: What about reference documentation?
+--------------------------------------
+CliXon uses Doxygen for reference documentation.
 Build using 'make doc' and aim your browser at doc/html/index.html
 
 Q: How do you run the example?
-A: Start a backend server: 'clicon_backend -Ff /usr/local/etc/routing.conf'
-Start a cli session: clicon_cli -f /usr/local/etc/routing.conf
-Start a netconf session: clicon_netconf -f /usr/local/etc/routing.conf
+------------------------------
+- Start a backend server: 'clicon_backend -Ff /usr/local/etc/routing.conf'
+- Start a cli session: clicon_cli -f /usr/local/etc/routing.conf
+- Start a netconf session: clicon_netconf -f /usr/local/etc/routing.conf
 
-Q: How does Clixon differ from Clicon?
-A: Clixon is a fork of Clicon focussing on Yang specification and XML
-database.  The yang support in clicon was grown out of a key-based
-scheme that was complex since it had to translate between
-formats. Clixon uses only XML. A simplified commit transaction
-mechanism has been added to. But Clixon is not backward compliant with
-key-based Clicon applications, such as ROST.
-
-Q: In the example, how can you alter its semantics?
+Q: How do you change the example?
+---------------------------------
 - routing.conf.local - Override default settings
-- The yang specifications - Alter accepted XML, database format and the configuration part of the CLI commands that are generated.
+- The yang specifications - This is the central part. It changes the XML, database and the config cli.
 - routing_cli.cli - Change the fixed part of the CLI commands 
-- routing_cli.c - New cli commands may need to write a new C-funtion.
-- routing_backend.c - What happens at commit.
+- routing_cli.c - Cli C-commands are placed here.
+- routing_backend.c - Commit and validate functions.
 - routing_netconf.c - Modify semantics of netconf commands.
 
 Q: How do you check what is in a database?
-clicon_dbctrl -d <database> -p
-The name of the running or candidate databases are found in the
-configuration file, eg  /usr/local/var/routing/candidate_db
+------------------------------------------
+Use clicon_dbctrl. The name of the running or candidate databases are found in the
+configuration file.
 Example:
-  /interfaces/interface/eth0/ipv4 
-  /interfaces/interface/eth0/type bgp
-  /interfaces/interface/eth0 
-  /interfaces/interface/eth0/name eth0
-Each line corresponds to a database entry (node in an XML tree). If
-the node is a leaf, the value appears as the second entry.
+	> clicon_dbctrl -d /usr/local/var/routing/candidate_db / -p
+	/interfaces/interface/eth0/ipv4 
+	/interfaces/interface/eth0/type bgp
+	/interfaces/interface/eth0 
+	/interfaces/interface/eth0/name eth0
+Each line corresponds to a database entry (node in an XML tree). 
+If the node is a leaf, the value appears as the second entry ('bgp' and 'eth0').
 
-Q: How do you write a commit rule in the example?
-A: You write a commit function in routing_backend.c.
+Q: How do you write a commit function?
+--------------------------------------
+You write a commit function in routing_backend.c.
 Every time a commit is made, transaction_commit() is called in the
 backend.  It has a 'transaction_data td' argument which is used to fetch
 information on added, deleted and changed entries. You access this
 information using access functions as defined in clicon_backend_transaction.h
 
 Q: How do you check what has changed on commit?
-A: You use XPATHs on the XML trees in the transaction commit callback.
+-----------------------------------------------
+You use XPATHs on the XML trees in the transaction commit callback.
 Suppose you want to print all added interfaces:
-  cxobj *target = transaction_target(td); # wanted XML tree
-  # Get all added i/fs
-  cxobj **vec = xpath_vec_flag(target, "//interface", &len, XML_FLAG_ADD); 
-  for (i=0; i<len; i++)             # Loop over added i/fs
-    clicon_xml2file(stdout, vec[i]) # Print the added interface
-The flags you can check for are: XML_FLAG_ADD, _DEL and _CHANGE, and their combinations.
+	cxobj *target = transaction_target(td); # wanted XML tree
+	vec = xpath_vec_flag(target, "//interface", &len, XML_FLAG_ADD); /* Get added i/fs */
+	for (i=0; i<len; i++)             /* Loop over added i/fs */
+	  clicon_xml2file(stdout, vec[i], 0, 1); /* Print the added interface */
+You can look for added, deleted and changed entries in this way.
 
-Q How do I access the XML tree?
-A: Using XPATH, find and iteration functions defined in the XML library. Example
+Q: How do I access the XML tree?
+--------------------------------
+Using XPATH, find and iteration functions defined in the XML library. Example library functions:
+      xml_child_each(), 
+      xml_find(), 
+      xml_body(), 
+      clicon_xml2file(), 
+      xml_apply()
+More are found in the doxygen reference.
 
 Q: How do you write a CLI callback function?
-You add an entry in routing_cli.cli
+--------------------------------------------
+(1) You add an entry in routing_cli.cli
    example("This is a comment") <var:int32>("This is a variable"), mycallback("myarg");
-Then define a function in routing_cli.c
+(2) Then define a function in routing_cli.c
    mycallback(clicon_handle h, cvec *cvv, cg_var *arg)
 where 'cvv' contains the value of the variable and 'arg' contains the
 function parameter 'myarg'.
 
 Q: What are cg_var and cvec used in CLI callbacks?
-Those are 'CLIgen variables' and vector of CLOgen
-variables. Documented in CLIgen documentation. Some examples on usage is found in the
+--------------------------------------------------
+Those are 'CLIgen variables' and vector of CLIgen variables. 
+They are documented in CLIgen documentation. Some examples on usage is found in the
 routing_cli.c
 
-Q: How do you write a validation rule?
-Similar to a commit rule, but instead write the transaction_validate() function.
-Check for consitencies in the XML trees and if they fail, make an clicon_err() call.
+Q: How do you write a validation function?
+------------------------------------------
+Similar to a commit function, but instead write the transaction_validate() function.
+Check for inconsistencies in the XML trees and if they fail, make an clicon_err() call.
     clicon_err(OE_PLUGIN, 0, "Route %s lacks ipv4 addr", name);
     return -1;
 The validation or commit will then be aborted.
