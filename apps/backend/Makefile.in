@@ -97,7 +97,7 @@ uninstall:
 	rm -f $(libdir)/$(MYLIB)
 	rm -f $(includedir)/clicon/*
 
-install-include: clicon_backend.h clicon_backend_api.h
+install-include: clicon_backend.h clicon_backend_handle.h clicon_backend_transaction.h
 	install -d $(DESTDIR)$(includedir)/clicon
 	install -m 644 $^ $(DESTDIR)$(includedir)/clicon
 

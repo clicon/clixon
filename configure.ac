@@ -168,8 +168,12 @@ AC_OUTPUT(Makefile
 	  etc/Makefile
 	  etc/cliconrc
 	  example/Makefile
+	  example/docker/Makefile
 	  docker/Makefile 
+	  docker/cli/Makefile 
+	  docker/cli/Dockerfile
+	  docker/backend/Makefile 
+	  docker/backend/Dockerfile
 	  doc/Makefile 
-	  docker/Dockerfile
 )
 

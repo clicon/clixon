@@ -31,3 +31,8 @@ Clixon yang routing example
 <rpc><get-config><source><candidate/></source><filter type="subtree"><configuration><interfaces><interface><ipv4/></interface></interfaces></configuration></filter></get-config></rpc>]]>]]>
 
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface/ipv4"/></get-config></rpc>]]>]]>
+
+3. Run as docker container
+--------------------------
+cd docker
+# look in README

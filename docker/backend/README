@@ -1,0 +1,6 @@
+Ensure that cligen and clicon has been built and installed. 
+sudo make docker
+make push
+
+Then go to example and run the example as a docker container
+

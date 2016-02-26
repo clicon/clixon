@@ -41,7 +41,7 @@ SHELL		= /bin/sh
 
 SUBDIRS = lib apps include etc 
 
-.PHONY:	doc all clean depend $(SUBDIRS) install loc TAGS .config.status
+.PHONY:	doc all clean depend $(SUBDIRS) install loc TAGS .config.status docker
 
 all:	$(SUBDIRS) clicon.conf.cpp clicon.mk
 
@@ -96,6 +96,10 @@ distclean:
 	rm -rf Makefile autom4te.cache 
 	rm -rf clicon.conf.cpp clicon.mk
 	for i in $(SUBDIRS) doc example; \
+		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
+
+docker:
+	for i in docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
 
 # Lines of code

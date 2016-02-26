@@ -1,0 +1,20 @@
+FROM ubuntu:14.04
+# 12.04
+MAINTAINER Olof Hagsand <olof@hagsand.se>
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update && apt-get install -y libqdbm-dev    
+COPY libcligen.so.@CLIGEN_VERSION@ /usr/lib/
+COPY libclicon.so.@CLICON_VERSION_MAJOR@ /usr/lib/
+COPY libclicon_backend.so.@CLICON_VERSION_MAJOR@ /usr/lib/
+COPY clicon_backend /usr/sbin/
+RUN ldconfig
+RUN sudo groupadd clicon
+CMD ["/usr/sbin/clicon_backend", "-D", "1", "-F", "-f", "/data/clicon.conf"]
+
+EXPOSE 7878 7878/udp
+
+
+
+
+
+

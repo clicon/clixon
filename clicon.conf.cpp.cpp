@@ -32,9 +32,6 @@
 # Location of configuration-file for default values (this file)
 CLICON_CONFIGFILE      sysconfdir/APPNAME.conf
 
-# Database (yang) specification file. 
-CLICON_DBSPEC_FILE     prefix/share/APPNAME/datamodel.spec
-
 # Location of YANG module and submodule files. Only if CLICON_DBSPEC_TYPE is YANG
 CLICON_YANG_DIR        prefix/share/APPNAME/yang
 
