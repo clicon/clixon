@@ -29,7 +29,7 @@ libdir		= @libdir@
 includedir	= @includedir@
 datarootdir	= @datarootdir@
 # This is my dockerhub account
-image           = olofhagsand/clicon_cli:v1.0
+image           = olofhagsand/clicon_cli
 
 all:
 	@echo "Run make docker to build docker image"

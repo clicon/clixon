@@ -28,7 +28,7 @@ sbindir 	= @sbindir@
 libdir		= @libdir@
 includedir	= @includedir@
 datarootdir	= @datarootdir@
-image           = olofhagsand/clicon_backend:v1.0
+image           = olofhagsand/clicon_backend
 
 all:
 	@echo "Run make docker to build docker image"
