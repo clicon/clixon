@@ -30,7 +30,7 @@ to build and install CLIgen:
 
 CLIXON is covered by GPLv3, and is also available with commercial license.
 
-See COPYING for license, CHANGELOG for recent changes.
+See LICENSE for license, CHANGELOG for recent changes.
 
 
 

@@ -15,8 +15,9 @@
   GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with CLICON; see the file COPYING.  If not, see
+  along with CLICON; see the file LICENSE.  If not, see
   <http://www.gnu.org/licenses/>.
+
 
  * Meta-include file that includes all sub-files in control-lib
  * Note: this include files is for external purposes. Do not include this

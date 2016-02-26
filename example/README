@@ -1,4 +1,8 @@
-Examples using netconf
+Clixon yang routing example
++++++++++++++++++++++++++++
+
+1. Setting data example using netconf
+-------------------------------------
 
 <rpc><edit-config><target><candidate/></target><config>
       <interfaces>
@@ -15,13 +19,15 @@ Examples using netconf
       </interfaces>
 </config></edit-config></rpc>]]>]]>
 
- * no filter + no config
-     <rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
- * filter subnet + no config:
-     <rpc><get-config><source><candidate/></source><filter/></get-config></rpc>]]>]]>
- * filter xpath + no select:
-     <rpc><get-config><source><candidate/></source><filter type="xpath"/></get-config></rpc>]]>]]>
- * filter subnet + config:
-     <rpc><get-config><source><candidate/></source><filter type="subtree"><configuration><interfaces><interface><ipv4/></interface></interfaces></configuration></filter></get-config></rpc>]]>]]>
- * filter xpath + select:
-     <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface/ipv4"/></get-config></rpc>]]>]]>
+2. Getting data using netconf
+-----------------------------
+
+<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
+
+<rpc><get-config><source><candidate/></source><filter/></get-config></rpc>]]>]]>
+
+<rpc><get-config><source><candidate/></source><filter type="xpath"/></get-config></rpc>]]>]]>
+
+<rpc><get-config><source><candidate/></source><filter type="subtree"><configuration><interfaces><interface><ipv4/></interface></interfaces></configuration></filter></get-config></rpc>]]>]]>
+
+<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface/ipv4"/></get-config></rpc>]]>]]>

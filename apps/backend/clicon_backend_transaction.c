@@ -15,7 +15,7 @@
   GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with CLICON; see the file COPYING.  If not, see
+  along with CLICON; see the file LICENSE.  If not, see
   <http://www.gnu.org/licenses/>.
 
  */
@@ -184,7 +184,7 @@ transaction_print(FILE               *f,
 
     td = (transaction_data_t *)th;
 
-    fprintf(f, "Transaction id: 0x%llx\n", td->td_id);
+    fprintf(f, "Transaction id: 0x%" PRIu64 "\n", td->td_id);
     fprintf(f, "Removed\n=========\n");
     for (i=0; i<td->td_dlen; i++){
 	xn = td->td_dvec[i];

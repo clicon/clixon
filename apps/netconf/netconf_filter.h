@@ -15,7 +15,7 @@
   GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with CLICON; see the file COPYING.  If not, see
+  along with CLICON; see the file LICENSE.  If not, see
   <http://www.gnu.org/licenses/>.
 
  *
@@ -28,9 +28,5 @@
  * Prototypes
  */ 
 int xml_filter(cxobj *xf, cxobj *xn);
-int netconf_xpath(cxobj *xsearch,
-		  cxobj *xfilter, 
-		  cbuf *xf, cbuf *xf_err, 
-		  cxobj *xt);
 
 #endif  /* _NETCONF_FILTER_H_ */

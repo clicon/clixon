@@ -138,3 +138,12 @@ Check for inconsistencies in the XML trees and if they fail, make an clicon_err(
     clicon_err(OE_PLUGIN, 0, "Route %s lacks ipv4 addr", name);
     return -1;
 The validation or commit will then be aborted.
+
+Q: How do you use netconf?
+--------------------------
+
+As an alternative to cli configuration, you can use netconf
+directly. Easiesty is to just pipe netconf commands to the
+clicon_netconf application.
+Example:
+	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clicon_netconf -f /usr/local/etc/routing.conf

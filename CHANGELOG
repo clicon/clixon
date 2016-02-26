@@ -1,6 +1,6 @@
 # Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
 #
-# This file is part of CLICON.
+# This file is part of CLIXON.
 #
 # CLICON is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,39 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with CLICON; see the file COPYING.  If not, see
+# along with CLIXON; see the file LICENSE.  If not, see
 # <http://www.gnu.org/licenses/>.
 
-- New option: CLICON_DB_XML with new xml-based database. This makes more efficient
-	implementation of yang-based applications. 
-- Changed yang type lookup to be lexically instead of dynamically scoped (as
-  they should) by using a cache (yang_type_cache).
-- Added support for yang 'max' range keyword
-- Added option:  CLICON_YANG_MODULE_REVISION
-- Cleaned up xml translation functions in clicon_xml_map.c	
-- Extended client/backend protocol with dumping a database config: CLICON_MSG_DBITEMS
-- Removed -a (appdir) config options. Use only -f <config-file>.
-- Added INET (IPv4) communication between client and backend. Not only UNIX. Experimental.
-- Removed clicon_dbmatch.[ch]. Replaced with clicon_dbitems_match().
-- Replaced internal clicon_proto_ messaging API with clicon_rpc_.
-- Extended tree-based access functions: clicon_dbget_parent/children/descendents/xpath.
-- clicon_dbctrl: Renamed brief option from -P to -b and made it work with -m 
-- Reference documentation using doxygen: make doc, make graphs
-- When entering CLI commands, they appear in the same order in xml and reload.
-- yang parse error using '+' in strings
-- New example: clicon_yang for stateless yang experiments (no backend)
-- Event subscription API: add/delete/each
-- Long-term mem-leak in chunk-code
-- xml parser did not support "<a></a>" only "</a>"
-- fixed error in event-loop if timers are used: events before now caused hanging
-
-R3.0.0 23 February 2015
-=======================
-This is a new major CLICON release. 
-The changes from previous versions are too numerous to document.
-Major recent additions are:
-- Added python API
-- YANG modeling support
-- Updated commit callback API
-- Asynchronous notifications
-- db2txt
+Feb 2016: Forked new clixon repository from clicon
