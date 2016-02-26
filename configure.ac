@@ -33,7 +33,7 @@ CLICON_VERSION_MINOR="2"
 CLICON_VERSION_PATCH="0"
 CLICON_VERSION="\"${CLICON_VERSION_MAJOR}.${CLICON_VERSION_MINOR}.${CLICON_VERSION_PATCH}\""
 # Fix to specific version (eg 3.5) or head (3) 
-CLIGEN_VERSION="3.5" 
+CLIGEN_VERSION="3" 
 
 AC_CONFIG_HEADERS([include/clicon_config.h lib/clicon/clicon.h])
 
@@ -170,5 +170,6 @@ AC_OUTPUT(Makefile
 	  example/Makefile
 	  docker/Makefile 
 	  doc/Makefile 
+	  docker/Dockerfile
 )
 

@@ -2133,7 +2133,7 @@ CLICON_VERSION_MINOR="2"
 CLICON_VERSION_PATCH="0"
 CLICON_VERSION="\"${CLICON_VERSION_MAJOR}.${CLICON_VERSION_MINOR}.${CLICON_VERSION_PATCH}\""
 # Fix to specific version (eg 3.5) or head (3)
-CLIGEN_VERSION="3.5"
+CLIGEN_VERSION="3"
 
 ac_config_headers="$ac_config_headers include/clicon_config.h lib/clicon/clicon.h"
 
@@ -4191,7 +4191,7 @@ fi
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clicon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/dbctrl/Makefile include/Makefile etc/Makefile etc/cliconrc example/Makefile docker/Makefile doc/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clicon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/dbctrl/Makefile include/Makefile etc/Makefile etc/cliconrc example/Makefile docker/Makefile doc/Makefile docker/Dockerfile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4899,6 +4899,7 @@ do
     "example/Makefile") CONFIG_FILES="$CONFIG_FILES example/Makefile" ;;
     "docker/Makefile") CONFIG_FILES="$CONFIG_FILES docker/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
+    "docker/Dockerfile") CONFIG_FILES="$CONFIG_FILES docker/Dockerfile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

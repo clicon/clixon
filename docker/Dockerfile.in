@@ -1,0 +1,24 @@
+FROM ubuntu:14.04
+# 12.04
+MAINTAINER Olof Hagsand <olof@hagsand.se>
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update && apt-get install -y \
+    libqdbm-dev     \
+    curl
+COPY libcligen.so.@CLIGEN_VERSION@ /usr/lib/
+COPY libclicon.so.@CLICON_VERSION_MAJOR@ /usr/lib/
+COPY libclicon_cli.so.@CLIGEN_VERSION@ /usr/lib/
+COPY clicon_cli /usr/bin/
+COPY nullfile /usr/local/var/clicon_yang/
+COPY start.sh /usr/bin/
+RUN ldconfig
+#CMD ["clicon_cli", "-c", "-f", "/usr/local/etc/clicon_yang.conf"]
+CMD ["start.sh"]
+
+EXPOSE 7878 7878/udp
+
+
+
+
+
+

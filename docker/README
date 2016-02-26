@@ -1,0 +1,80 @@
+You can skip directly to (3)
+
+1. Building it yourself
++++++++++++++++++++++++
+Ensure that cligen and clicon has been built and installed.
+make docker
+
+2. Building a docker and publishing it
+++++++++++++++++++++++++++++++++++++++
+This example pushes it to my (Olof Hagsand)s docker hub repository
+
+sudo docker build --no-cache=true -t olofhagsand/clicon_cli:v1.0 .
+sudo docker push olofhagsand/clicon_yang
+
+3. From docker
+++++++++++++++
+The easiest is just to run it from docker hub:
+> sudo docker run -i -t -P olofhagsand/clicon_yang:v1.0
+
+Either just try out the default yang specification or try out your own.
+
+3.1 Enter your own spec
+-----------------------
+$ sudo docker run -i -t -P olofhagsand/clicon_yang:v1.0
+input yang spec(end with ^d). Or just ^d for default spec>
+container hello{
+  leaf world{
+    type string;                                                                 }
+}
+^d
+clicon_yang> hello world !
+clicon_yang> show 
+hello {
+    world !;
+}
+clicon_yang> 
+
+3.2 Run the default
+-------------------
+> sudo docker run -i -t -P olofhagsand/clicon_yang:v1.0
+input yang spec(end with ^d). Or just ^d for default spec> ^d
+clicon_yang> a 43 b y 88
+clicon_yang> a 43 c z 12
+clicon_yang> show 
+a {
+    x 43;
+    b {
+        y 88;
+    }
+    c {
+        z 12;
+    }
+}
+
+3.3 Show options
+----------------
+
+There are several show commands where you can display your
+specification as CLI, JSON or XML. You can also display the YANG specification.
+
+clicon_yang> show cli 
+hello world !
+clicon_yang> show json 
+{
+    "hello": {
+      "world": "!"
+    }
+}
+clicon_yang> show xml 
+<hello>
+   <world>!</world>
+</hello>
+clicon_yang> show yang 
+container hello {
+   leaf world {
+      type string;
+   }
+}
+
+
