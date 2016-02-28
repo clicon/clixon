@@ -22,20 +22,20 @@ Yes. All application semantics is defined in plugins with well-defined APIs. The
 Q: Which language is CliXon implemented in?
 -------------------------------------------
 CliXon is written in C. The plugins are written in C. The CLI
-specification uses cligen.
+specification uses cligen (http://cligen.se)
 
 There is a project for writing plugins in Python. It is reasonable
 simple to spawn an external script from a backend.
 
 Q: Is CliXon different from Clicon?
 -----------------------------------
-Yes, but CliXon is a fork of Clicon focussing on Yang specification and XML
+CliXon is a fork of Clicon focussing on Yang specification and XML
 database.  The yang support in clicon was grown out of a key-based
 scheme that became more and more complex since it had to translate
 between many different formats. CliXon uses only XML internally.
 
 The commit transaction mechanism has been simplified too. But CliXon
-is not backward compliant with key-based Clicon applications, such as
+is not backward compliant with key-based Clixon applications, such as
 Rost.
 
 Q: How to best understand CliXon?
@@ -58,26 +58,29 @@ The example:
 Q: What about reference documentation?
 --------------------------------------
 CliXon uses Doxygen for reference documentation.
-Build using 'make doc' and aim your browser at doc/html/index.html
+Build using 'make doc' and aim your browser at doc/html/index.html or
+use the web resource: http://clicon.org/ref/index.html
 
 Q: How do you run the example?
 ------------------------------
-- Start a backend server: 'clicon_backend -Ff /usr/local/etc/routing.conf'
-- Start a cli session: clicon_cli -f /usr/local/etc/routing.conf
-- Start a netconf session: clicon_netconf -f /usr/local/etc/routing.conf
+- Start a backend server: 'clixon_backend -Ff /usr/local/etc/routing.conf'
+- Start a cli session: clixon_cli -f /usr/local/etc/routing.conf
+- Start a netconf session: clixon_netconf -f /usr/local/etc/routing.conf
 
-Q: Can you run clicon as docker containers?
+Q: Can you run CliXon as docker containers?
 -------------------------------------------
 Yes, the example works as docker containers as well. backend and cli needs a 
 common file-system so they need to run as a composed pair.
 	cd example/docker
 	make docker # Prepares /data as shared file-system mount
 	run.sh      # Starts an example backend and a cli
-Futhermore, you build the clicon docker containers as follows:
+
+The containers are by default downloaded from dockerhib, but you may
+build the containers locally: 
 	cd docker
 	make docker
-You may also push the containers with 'make push' but you may then consider changing the image
-name in the makefile.
+
+You may also push the containers with 'make push' but you may then consider changing the image name in the makefile.
 
 Q: How do you change the example?
 ---------------------------------
@@ -90,10 +93,10 @@ Q: How do you change the example?
 
 Q: How do you check what is in a database?
 ------------------------------------------
-Use clicon_dbctrl. The name of the running or candidate databases are found in the
+Use clixon_dbctrl. The name of the running or candidate databases are found in the
 configuration file.
 Example:
-	> clicon_dbctrl -d /usr/local/var/routing/candidate_db / -p
+	> clixon_dbctrl -d /usr/local/var/routing/candidate_db / -p
 	/interfaces/interface/eth0/ipv4 
 	/interfaces/interface/eth0/type bgp
 	/interfaces/interface/eth0 
@@ -118,7 +121,7 @@ You write a commit function in routing_backend.c.
 Every time a commit is made, transaction_commit() is called in the
 backend.  It has a 'transaction_data td' argument which is used to fetch
 information on added, deleted and changed entries. You access this
-information using access functions as defined in clicon_backend_transaction.h
+information using access functions as defined in clixon_backend_transaction.h
 
 Q: How do you check what has changed on commit?
 -----------------------------------------------
@@ -168,6 +171,6 @@ Q: How do you use netconf?
 
 As an alternative to cli configuration, you can use netconf
 directly. Easiesty is to just pipe netconf commands to the
-clicon_netconf application.
+clixon_netconf application.
 Example:
-	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clicon_netconf -f /usr/local/etc/routing.conf
+	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/routing.conf
