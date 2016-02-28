@@ -23,13 +23,14 @@ FROM ubuntu:14.04
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install -y libqdbm-dev    
+RUN groupadd clicon
 COPY libcligen.so.@CLIGEN_VERSION@ /usr/lib/
 COPY libclixon.so.@CLIXON_VERSION_MAJOR@ /usr/lib/
 COPY libclixon_backend.so.@CLIXON_VERSION_MAJOR@ /usr/lib/
 COPY clixon_backend /usr/sbin/
 RUN ldconfig
 RUN sudo groupadd clixon
-CMD ["/usr/sbin/clixon_backend", "-D", "1", "-F", "-f", "/data/clixon.conf"]
+CMD ["/usr/sbin/clixon_backend", "-F", "-f", "/data/clixon.conf"]
 
 
 
