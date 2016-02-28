@@ -29,7 +29,7 @@ APPNAME	        = routing
 
 all:	$(APPNAME).conf
 
--include $(DESTDIR)$(datarootdir)/clicon/clicon.mk
+-include $(DESTDIR)$(datarootdir)/clixon/clixon.mk
 
 # Kind of reverse install, could have copied from src dir,...
 .PHONY: docker push
@@ -40,7 +40,7 @@ docker:	$(APPNAME).conf
 	install -d data/cli
 	install -d data/netconf
 	install -d data/clispec
-	install $(APPNAME).conf data/clicon.conf # docker image assumes /data/clicon.conf
+	install $(APPNAME).conf data/clixon.conf # docker image assumes /data/clixon.conf
 	install ../*.yang data/yang/
 	install ../routing_cli.so data/cli/
 	install ../routing_backend.so data/backend/
