@@ -2,7 +2,5 @@ Run the ietf routing example as docker container.
 Use the dockerhub container, or alternatively, build clicon as docker images
 by doing make docker in the top builddir.
 
-data_dir="$(pwd)/data"
-sudo docker run -ti --rm --net host -v "$data_dir":/data olofhagsand/clicon_backend:v1.0
-
-sudo docker run -ti --rm --net host -v "$data_dir":/data olofhagsand/clicon_cli:v1.0
+   make docker   # Create shared file system
+   run.sh        # Run a backend and a cli

@@ -49,7 +49,7 @@ $(SUBDIRS):
 	(cd $@ && $(MAKE) $(MFLAGS) all)
 
 depend:
-	for i in $(SUBDIRS) doc example; \
+	for i in $(SUBDIRS) doc example docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) depend); done
 
 # template clixon.conf file
@@ -73,7 +73,7 @@ install-include:
 	echo "To install example app: cd example; make; make install"
 
 uninstall:
-	for i in $(SUBDIRS) doc example; \
+	for i in $(SUBDIRS) doc example docker; \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
 	rm -f $(datadir)/clixon/clixon.conf.cpp
 	rm -f $(datadir)/clixon/clixon.mk
@@ -88,14 +88,14 @@ configure:	configure.ac
 	cd $(srcdir) && autoconf
 
 clean:
-	for i in $(SUBDIRS) doc example; \
+	for i in $(SUBDIRS) doc example docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
 
 distclean:
 	rm -f Makefile TAGS config.status config.log *~ .depend
 	rm -rf Makefile autom4te.cache 
 	rm -rf clixon.conf.cpp clixon.mk
-	for i in $(SUBDIRS) doc example; \
+	for i in $(SUBDIRS) doc example docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
 
 docker:

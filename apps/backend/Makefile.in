@@ -75,7 +75,7 @@ clean:
 	rm -f *.core $(APPL) $(APPOBJ) $(LIBOBJ) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
 
 distclean: clean
-	rm -f Makefile *~ .depend
+	rm -f Makefile *~ .depend test test.c
 
 # Put demon in bin 
 # Put other executables in libexec/

@@ -77,9 +77,11 @@ OBJS    = $(BE_OBJ) $(CLI_OBJ) $(NETCONF_OBJ)
 
 clean:
 	rm -f $(PLUGINS) $(OBJS) $(APPNAME).conf
+	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 distclean: clean
 	rm -f Makefile *~ .depend
+	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(APPNAME).conf
 	install -d $(DESTDIR)$(clixon_SYSCONFDIR)
@@ -95,17 +97,20 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $
 	install -d $(DESTDIR)$(clixon_LIBDIR)/clispec
 	install $(CLISPECS) $(DESTDIR)$(clixon_LIBDIR)/clispec; 
 	install -d $(DESTDIR)$(clixon_LOCALSTATEDIR)
+	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 uninstall: 
 	rm -rf $(DESTDIR)$(clixon_SYSCONFDIR)/$(APPNAME).conf
 	rm -rf $(DESTDIR)$(clixon_DBSPECDIR)
 	rm -rf $(DESTDIR)$(clixon_LOCALSTATEDIR)
 	rm -rf $(DESTDIR)$(clixon_LIBDIR)
+	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 install-include:	
 
 depend:
 	$(CC) $(DEPENDFLAGS) $(INCLUDES) $(CFLAGS) -MM $(SRC) > .depend
+	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 #include .depend
 
