@@ -66,6 +66,19 @@ Q: How do you run the example?
 - Start a cli session: clicon_cli -f /usr/local/etc/routing.conf
 - Start a netconf session: clicon_netconf -f /usr/local/etc/routing.conf
 
+Q: Can you run clicon as docker containers?
+-------------------------------------------
+Yes, the example works as docker containers as well. backend and cli needs a 
+common file-system so they need to run as a composed pair.
+	cd example/docker
+	make docker # Prepares /data as shared file-system mount
+	run.sh      # Starts an example backend and a cli
+Futhermore, you build the clicon docker containers as follows:
+	cd docker
+	make docker
+You may also push the containers with 'make push' but you may then consider changing the image
+name in the makefile.
+
 Q: How do you change the example?
 ---------------------------------
 - routing.conf.local - Override default settings
@@ -87,6 +100,17 @@ Example:
 	/interfaces/interface/eth0/name eth0
 Each line corresponds to a database entry (node in an XML tree). 
 If the node is a leaf, the value appears as the second entry ('bgp' and 'eth0').
+
+Q: What is validate and commit?
+-------------------------------
+Clixon follows netconf in its validate and commit semantics.
+In short, you edit a 'candidate' configuration, which is first
+'validated' for consistency and then 'committed' to the 'running' 
+configuration.
+
+A clixon developer writes commit functions to incrementaly upgrade a
+system state based on configuration changes. Writing commit callbacks
+is the core functionality of a clixon system.
 
 Q: How do you write a commit function?
 --------------------------------------
