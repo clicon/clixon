@@ -31,9 +31,9 @@ localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 
 SH_SUFFIX	= @SH_SUFFIX@
-CLICON_VERSION  = @CLICON_VERSION@
-CLICON_MAJOR    = @CLICON_VERSION_MAJOR@
-CLICON_MINOR    = @CLICON_VERSION_MINOR@
+CLIXON_VERSION  = @CLIXON_VERSION@
+CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
+CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 VPATH       	= @srcdir@
 CC		= @CC@
@@ -46,19 +46,19 @@ LEX		= @LEX@
 
 CPPFLAGS  	= @CPPFLAGS@
 
-INCLUDES = -I. @INCLUDES@ -I$(top_srcdir)/lib/clicon -I$(top_srcdir)/include -I$(top_srcdir)
+INCLUDES = -I. @INCLUDES@ -I$(top_srcdir)/lib/clixon -I$(top_srcdir)/include -I$(top_srcdir)
 
-SRC     = clicon_sig.c clicon_qdb.c clicon_log.c clicon_err.c clicon_event.c \
-	  clicon_chunk.c clicon_proc.c \
-	  clicon_string.c clicon_handle.c  \
-	  clicon_xml.c clicon_xml_map.c clicon_file.c \
-	  clicon_yang.c clicon_yang_type.c \
-	  clicon_hash.c clicon_options.c clicon_plugin.c \
-	  clicon_proto.c clicon_proto_encode.c clicon_proto_client.c \
-	  clicon_xsl.c clicon_sha1.c clicon_xml_db.c
+SRC     = clixon_sig.c clixon_qdb.c clixon_log.c clixon_err.c clixon_event.c \
+	  clixon_chunk.c clixon_proc.c \
+	  clixon_string.c clixon_handle.c  \
+	  clixon_xml.c clixon_xml_map.c clixon_file.c \
+	  clixon_yang.c clixon_yang_type.c \
+	  clixon_hash.c clixon_options.c clixon_plugin.c \
+	  clixon_proto.c clixon_proto_encode.c clixon_proto_client.c \
+	  clixon_xsl.c clixon_sha1.c clixon_xml_db.c
 
-YACCOBJS := lex.clicon_xml_parse.o clicon_xml_parse.tab.o \
-	    lex.clicon_yang_parse.o  clicon_yang_parse.tab.o 
+YACCOBJS := lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
+	    lex.clixon_yang_parse.o  clixon_yang_parse.tab.o 
 # Logically, the below 4 should be in YACCOBJS?
 
 
@@ -68,24 +68,24 @@ GENSRC  = build.c
 OBJS    = $(YACCOBJS) $(SRC:.c=.o) 
 GENOBJS  = $(GENSRC:.c=.o) 
 
-# Linker-name: libclicon.so
-# so-name: libclicon.so.2
-# real-name: libclicon.so.2.0
-MYLIB        = libclicon$(SH_SUFFIX).$(CLICON_MAJOR).$(CLICON_MINOR)
-MYLIBSO      = libclicon$(SH_SUFFIX).$(CLICON_MAJOR)
-MYLIBLINK    = libclicon$(SH_SUFFIX)
+# Linker-name: libclixon.so
+# so-name: libclixon.so.2
+# real-name: libclixon.so.2.0
+MYLIB        = libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+MYLIBSO      = libclixon$(SH_SUFFIX).$(CLIXON_MAJOR)
+MYLIBLINK    = libclixon$(SH_SUFFIX)
 
 all:	 $(MYLIB) $(MYLIBLINK)
 
 clean:
 	rm -f $(OBJS) $(MYLIB) $(MYLIBLINK) $(GENOBJS) $(GENSRC) *.core
-	rm -f clicon_xml_parse.tab.[ch] clicon_xml_parse.yy.[co]
-	rm -f clicon_yang_parse.tab.[ch] clicon_yang_parse.[co]
-	rm -f lex.clicon_yang_parse.c
-	rm -f lex.clicon_xml_parse.c
-# disabled when USE_DBSPEC_PT is disabled in clicon_config.h.in
-#	rm -f clicon_dbspec.tab.[ch] clicon_dbspec.[co]
-#	rm -f lex.clicon_dbspec.c
+	rm -f clixon_xml_parse.tab.[ch] clixon_xml_parse.yy.[co]
+	rm -f clixon_yang_parse.tab.[ch] clixon_yang_parse.[co]
+	rm -f lex.clixon_yang_parse.c
+	rm -f lex.clixon_xml_parse.c
+# disabled when USE_DBSPEC_PT is disabled in clixon_config.h.in
+#	rm -f clixon_dbspec.tab.[ch] clixon_dbspec.[co]
+#	rm -f lex.clixon_dbspec.c
 
 #############################################################################
 # Implicit rules for lex and yacc.
@@ -100,27 +100,27 @@ clean:
 %.c : %.l  # cancel implicit lex rule
 
 # xml parser
-lex.clicon_xml_parse.c : clicon_xml_parse.l clicon_xml_parse.tab.h
-	$(LEX) -Pclicon_xml_parse clicon_xml_parse.l # -d is debug
+lex.clixon_xml_parse.c : clixon_xml_parse.l clixon_xml_parse.tab.h
+	$(LEX) -Pclixon_xml_parse clixon_xml_parse.l # -d is debug
 
-clicon_xml_parse.tab.c clicon_xml_parse.tab.h: clicon_xml_parse.y
-	$(YACC) -l -d -p clicon_xml_parse clicon_xml_parse.y # -t is debug
-	mv y.tab.c clicon_xml_parse.tab.c
-	mv y.tab.h clicon_xml_parse.tab.h
+clixon_xml_parse.tab.c clixon_xml_parse.tab.h: clixon_xml_parse.y
+	$(YACC) -l -d -p clixon_xml_parse clixon_xml_parse.y # -t is debug
+	mv y.tab.c clixon_xml_parse.tab.c
+	mv y.tab.h clixon_xml_parse.tab.h
 
-lex.clicon_xml_parse.o : lex.clicon_xml_parse.c clicon_xml_parse.tab.h # special rule to for make clean to work
+lex.clixon_xml_parse.o : lex.clixon_xml_parse.c clixon_xml_parse.tab.h # special rule to for make clean to work
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
 
-# clicon_yang parser
-lex.clicon_yang_parse.c : clicon_yang_parse.l clicon_yang_parse.tab.h
-	$(LEX) -Pclicon_yang_parse clicon_yang_parse.l # -d is debug
+# clixon_yang parser
+lex.clixon_yang_parse.c : clixon_yang_parse.l clixon_yang_parse.tab.h
+	$(LEX) -Pclixon_yang_parse clixon_yang_parse.l # -d is debug
 
-clicon_yang_parse.tab.c clicon_yang_parse.tab.h: clicon_yang_parse.y
-	$(YACC) -l -d -p clicon_yang_parse clicon_yang_parse.y # -t is debug
-	mv y.tab.c clicon_yang_parse.tab.c
-	mv y.tab.h clicon_yang_parse.tab.h
+clixon_yang_parse.tab.c clixon_yang_parse.tab.h: clixon_yang_parse.y
+	$(YACC) -l -d -p clixon_yang_parse clixon_yang_parse.y # -t is debug
+	mv y.tab.c clixon_yang_parse.tab.c
+	mv y.tab.h clixon_yang_parse.tab.h
 
-lex.clicon_yang_parse.o : lex.clicon_yang_parse.c clicon_yang_parse.tab.h
+lex.clixon_yang_parse.o : lex.clixon_yang_parse.c clixon_yang_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
 
 distclean: clean
@@ -134,13 +134,13 @@ distclean: clean
 
 .PHONY: build.c
 build.c:	
-	date +"const char CLICON_BUILDSTR[64]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; > build.c;
-	echo "const char CLICON_VERSION[64]=\"$(CLICON_VERSION)\""\; >> build.c;
+	date +"const char CLIXON_BUILDSTR[64]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; > build.c;
+	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> build.c;
 
 
 $(MYLIB) : $(GENOBJS) $(OBJS) 
 	$(CC) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(GENOBJS) $(OBJS) $(LIBS) -Wl,-soname=$(MYLIBSO) 
-# link-name is needed for application linking, eg for clicon_cli and clicon_config
+# link-name is needed for application linking, eg for clixon_cli and clixon_config
 $(MYLIBLINK) : $(MYLIB)
 #	ln -sf $(MYLIB) $@
 
@@ -154,8 +154,8 @@ install-include:
 install-lib: $(MYLIB)
 	install -m 755 -d $(DESTDIR)$(libdir) 
 	install -m 755 $(MYLIB) $(DESTDIR)$(libdir) 
-	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclicon.so.2
-	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclicon.so
+	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon.so.3
+	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon.so
 
 uninstall: 
 	rm -f $(libdir)/$(MYLIB)

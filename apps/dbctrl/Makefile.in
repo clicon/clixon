@@ -32,16 +32,16 @@ localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 
 SH_SUFFIX	= @SH_SUFFIX@
-CLICON_MAJOR    = @CLICON_VERSION_MAJOR@
-CLICON_MINOR    = @CLICON_VERSION_MINOR@
+CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
+CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
-# Use this clicon lib for linking
-CLICON_LIB	= libclicon.so.$(CLICON_MAJOR).$(CLICON_MINOR)
+# Use this clixon lib for linking
+CLIXON_LIB	= libclixon.so.$(CLIXON_MAJOR).$(CLIXON_MINOR)
 
 # For dependency
-LIBDEPS		= $(top_srcdir)/lib/src/$(CLICON_LIB) 
+LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
-LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ -l:$(CLICON_LIB)
+LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ -l:$(CLIXON_LIB)
 
 CPPFLAGS  	= @CPPFLAGS@
 
@@ -53,7 +53,7 @@ OBJS    = $(SRC:.c=.o)
 
 APPSRC  = dbctrl_main.c
 APPOBJ  = $(APPSRC:.c=.o)
-APPL	= clicon_dbctrl
+APPL	= clixon_dbctrl
 
 all:	 $(APPL)
 

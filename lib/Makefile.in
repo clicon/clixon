@@ -28,7 +28,7 @@ LIBS    	= @LIBS@
 
 SHELL	= /bin/sh
 
-SUBDIRS = src clicon
+SUBDIRS = src clixon
 
 .PHONY: all clean depend $(SUBDIRS) install 
 
@@ -48,7 +48,7 @@ install:
 install-include:
 		for i in $(SUBDIRS); \
 		do (cd $$i; $(MAKE) $(MFLAGS) $@); done; \
-		(cd clicon; $(MAKE) $(MFLAGS) $@)
+		(cd clixon; $(MAKE) $(MFLAGS) $@)
 
 uninstall:
 		for i in $(SUBDIRS); \
@@ -65,7 +65,7 @@ distclean:	clean
 	rm -f Makefile *~ .depend
 	for i in $(SUBDIRS); \
 	do (cd $$i; $(MAKE) $(MFLAGS) distclean); done; \
-	(cd clicon; $(MAKE) $(MFLAGS) $@)
+	(cd clixon; $(MAKE) $(MFLAGS) $@)
 
 tags:
 	find $(srcdir) -name '*.[chyl]' -print | etags -

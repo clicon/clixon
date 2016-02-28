@@ -1,4 +1,4 @@
-Ensure that cligen and clicon has been built and installed. 
+Ensure that cligen and clixon has been built and installed. 
 sudo make docker
 make push
 

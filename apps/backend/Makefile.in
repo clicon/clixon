@@ -36,19 +36,19 @@ sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 
 SH_SUFFIX	= @SH_SUFFIX@
-CLICON_MAJOR    = @CLICON_VERSION_MAJOR@
-CLICON_MINOR    = @CLICON_VERSION_MINOR@
+CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
+CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
-# Use this clicon lib for linking
-CLICON_LIB	= libclicon.so.$(CLICON_MAJOR).$(CLICON_MINOR)
+# Use this clixon lib for linking
+CLIXON_LIB	= libclixon.so.$(CLIXON_MAJOR).$(CLIXON_MINOR)
 # Location of system plugins
-CLICON_BACKEND_SYSDIR = $(libdir)/clicon/plugins/backend
+CLIXON_BACKEND_SYSDIR = $(libdir)/clixon/plugins/backend
 
 # For dependency. A little strange that we rely on it being built in the src dir
 # even though it may exist in $(libdir). But the new version may not have been installed yet.
-LIBDEPS		= $(top_srcdir)/lib/src/$(CLICON_LIB) 
+LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
-LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ -l:$(CLICON_LIB) -lpthread
+LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ -l:$(CLIXON_LIB) -lpthread
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
@@ -57,16 +57,16 @@ APPSRC  = backend_main.c backend_socket.c backend_client.c \
 	  backend_lock.c backend_commit.c backend_plugin.c 
 
 APPOBJ  = $(APPSRC:.c=.o)
-APPL	= clicon_backend
+APPL	= clixon_backend
 
-#SHLIB	= clicon_backend
-MYNAME		= clicon_backend
+#SHLIB	= clixon_backend
+MYNAME		= clixon_backend
 MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
-MYLIB           = $(MYLIBLINK).$(CLICON_MAJOR).$(CLICON_MINOR)
-MYLIBSO         = $(MYLIBLINK).$(CLICON_MAJOR)
+MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
 
 # Accessible from plugin
-LIBSRC	= clicon_backend_transaction.c clicon_backend_handle.c
+LIBSRC	= clixon_backend_transaction.c clixon_backend_handle.c
 LIBOBJ	= $(LIBSRC:.c=.o)
 
 all:	  $(MYLIB) $(APPL) test
@@ -88,24 +88,24 @@ install:	install-lib	$(APPL)
 install-lib:	$(MYLIB)
 	install -d $(DESTDIR)$(libdir)
 	install $(MYLIB) $(DESTDIR)$(libdir)
-	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)	   # -l:libclicon_config.so.2
-	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclicon_config.so
-	install -d $(DESTDIR)$(libdir)/clicon/plugins/backend
+	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)	   # -l:libclixon_config.so.2
+	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_config.so
+	install -d $(DESTDIR)$(libdir)/clixon/plugins/backend
 
 uninstall:
 	rm -f $(sbindir)/$(APPL)
 	rm -f $(libdir)/$(MYLIB)
-	rm -f $(includedir)/clicon/*
+	rm -f $(includedir)/clixon/*
 
-install-include: clicon_backend.h clicon_backend_handle.h clicon_backend_transaction.h
-	install -d $(DESTDIR)$(includedir)/clicon
-	install -m 644 $^ $(DESTDIR)$(includedir)/clicon
+install-include: clixon_backend.h clixon_backend_handle.h clixon_backend_transaction.h
+	install -d $(DESTDIR)$(includedir)/clixon
+	install -m 644 $^ $(DESTDIR)$(includedir)/clixon
 
 .SUFFIXES:
 .SUFFIXES: .c .o
 
 .c.o:
-	$(CC) $(INCLUDES) -D__PROGRAM__=\"$(APPL)\" -DCLICON_BACKEND_SYSDIR=\"$(CLICON_BACKEND_SYSDIR)\" $(CPPFLAGS) $(CFLAGS) -c $<
+	$(CC) $(INCLUDES) -D__PROGRAM__=\"$(APPL)\" -DCLIXON_BACKEND_SYSDIR=\"$(CLIXON_BACKEND_SYSDIR)\" $(CPPFLAGS) $(CFLAGS) -c $<
 
 # Just link test programs
 test.c	:
@@ -120,7 +120,7 @@ $(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
 $(MYLIB): $(LIBOBJ)
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ -lc $(LIBOBJ) -Wl,-soname=$(MYLIBSO)
 
-# link-name is needed for application linking, eg for clicon_cli and clicon_backend
+# link-name is needed for application linking, eg for clixon_cli and clixon_backend
 $(MYLIBLINK) : $(MYLIB)
 #	ln -sf $(MYLIB) $(MYLIBSO)
 #	ln -sf $(MYLIB) $@

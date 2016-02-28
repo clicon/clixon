@@ -32,11 +32,11 @@ all:
 clean:
 
 distclean: clean
-	rm -f Makefile *~ .depend cliconrc
+	rm -f Makefile *~ .depend clixonrc
 
-install:	 cliconrc
+install:	 clixonrc
 	install -m 755 -d $(DESTDIR)$(sysconfdir) 
-	install -m 755 cliconrc $(DESTDIR)$(sysconfdir)
+	install -m 755 clixonrc $(DESTDIR)$(sysconfdir)
 
 install-include:	
 

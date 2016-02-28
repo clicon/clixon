@@ -30,8 +30,8 @@
 #include <sys/param.h>
 
 #include <cligen/cligen.h>
-#include <clicon/clicon.h>
-#include <clicon/clicon_netconf.h>
+#include <clixon/clixon.h>
+#include <clixon/clixon_netconf.h>
 
 
 /*

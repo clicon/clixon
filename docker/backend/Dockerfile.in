@@ -1,15 +1,35 @@
+#
+# Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+#
+# This file is part of CLIXON.
+#
+# CLIXON is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# CLIXON is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with CLIXON; see the file LICENSE.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+
 FROM ubuntu:14.04
 # 12.04
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install -y libqdbm-dev    
 COPY libcligen.so.@CLIGEN_VERSION@ /usr/lib/
-COPY libclicon.so.@CLICON_VERSION_MAJOR@ /usr/lib/
-COPY libclicon_backend.so.@CLICON_VERSION_MAJOR@ /usr/lib/
-COPY clicon_backend /usr/sbin/
+COPY libclixon.so.@CLIXON_VERSION_MAJOR@ /usr/lib/
+COPY libclixon_backend.so.@CLIXON_VERSION_MAJOR@ /usr/lib/
+COPY clixon_backend /usr/sbin/
 RUN ldconfig
-RUN sudo groupadd clicon
-CMD ["/usr/sbin/clicon_backend", "-D", "1", "-F", "-f", "/data/clicon.conf"]
+RUN sudo groupadd clixon
+CMD ["/usr/sbin/clixon_backend", "-D", "1", "-F", "-f", "/data/clixon.conf"]
 
 
 

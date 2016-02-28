@@ -43,7 +43,7 @@ SUBDIRS = lib apps include etc
 
 .PHONY:	doc all clean depend $(SUBDIRS) install loc TAGS .config.status docker
 
-all:	$(SUBDIRS) clicon.conf.cpp clicon.mk
+all:	$(SUBDIRS) clixon.conf.cpp clixon.mk
 
 $(SUBDIRS):
 	(cd $@ && $(MAKE) $(MFLAGS) all)
@@ -52,19 +52,19 @@ depend:
 	for i in $(SUBDIRS) doc example; \
 		do (cd $$i && $(MAKE) $(MFLAGS) depend); done
 
-# template clicon.conf file
-clicon.conf.cpp:  clicon.conf.cpp.cpp
+# template clixon.conf file
+clixon.conf.cpp:  clixon.conf.cpp.cpp
 	$(CPP) -P -x assembler-with-cpp -Dprefix=$(prefix) -Dlocalstatedir=$(localstatedir) -Dsysconfdir=$(sysconfdir) -Ddatadir=$(datadir) -Dlibdir=$(libdir) $< > $@
 
-clicon.mk:  clicon.mk.cpp
+clixon.mk:  clixon.mk.cpp
 	$(CPP) -P -traditional-cpp -x assembler-with-cpp -Dprefix=$(prefix) -Dlocalstatedir=$(localstatedir) -Dsysconfdir=$(sysconfdir) -Ddatadir=$(datadir) -Dlibdir=$(libdir) $< > $@
 
-install:	clicon.conf.cpp clicon.mk
+install:	clixon.conf.cpp clixon.mk
 	for i in $(SUBDIRS) doc; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; \
-	install -d -m 755 $(DESTDIR)$(datadir)/clicon
-	install -m 755 clicon.conf.cpp $(DESTDIR)$(datadir)/clicon
-	install -m 755 clicon.mk $(DESTDIR)$(datadir)/clicon
+	install -d -m 755 $(DESTDIR)$(datadir)/clixon
+	install -m 755 clixon.conf.cpp $(DESTDIR)$(datadir)/clixon
+	install -m 755 clixon.mk $(DESTDIR)$(datadir)/clixon
 	echo "Install for compilation by: make install-include"
 
 install-include:
@@ -75,8 +75,8 @@ install-include:
 uninstall:
 	for i in $(SUBDIRS) doc example; \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
-	rm -f $(datadir)/clicon/clicon.conf.cpp
-	rm -f $(datadir)/clicon/clicon.mk
+	rm -f $(datadir)/clixon/clixon.conf.cpp
+	rm -f $(datadir)/clixon/clixon.mk
 
 doc:	
 	cd $@; $(MAKE) $(MFLAGS) $@
@@ -94,7 +94,7 @@ clean:
 distclean:
 	rm -f Makefile TAGS config.status config.log *~ .depend
 	rm -rf Makefile autom4te.cache 
-	rm -rf clicon.conf.cpp clicon.mk
+	rm -rf clixon.conf.cpp clixon.mk
 	for i in $(SUBDIRS) doc example; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
 

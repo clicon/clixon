@@ -34,7 +34,7 @@ all:
 clean:
 
 distclean: clean
-	rm -f clicon_config.h Makefile *~ .depend
+	rm -f clixon_config.h Makefile *~ .depend
 
 install:	
 

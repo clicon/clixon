@@ -35,10 +35,10 @@
 #include <cligen/cligen.h>
 
 /* Clicon library functions. */
-#include <clicon/clicon.h>
+#include <clixon/clixon.h>
 
 /* These include signatures for plugin and transaction callbacks. */
-#include <clicon/clicon_backend.h> 
+#include <clixon/clixon_backend.h> 
 
 /*! This is called on validate (and commit). Check validity of candidate
  */

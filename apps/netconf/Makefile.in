@@ -36,27 +36,27 @@ sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 
 SH_SUFFIX	= @SH_SUFFIX@
-CLICON_MAJOR    = @CLICON_VERSION_MAJOR@
-CLICON_MINOR    = @CLICON_VERSION_MINOR@
+CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
+CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
-# Use this clicon lib for linking
-CLICON_LIB	= libclicon.so.$(CLICON_MAJOR).$(CLICON_MINOR)
+# Use this clixon lib for linking
+CLIXON_LIB	= libclixon.so.$(CLIXON_MAJOR).$(CLIXON_MINOR)
 
 # For dependency
-LIBDEPS		= $(top_srcdir)/lib/src/$(CLICON_LIB) 
+LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
-LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ -l:$(CLICON_LIB)
+LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ -l:$(CLIXON_LIB)
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
-APPL	= clicon_netconf
+APPL	= clixon_netconf
 SRC     = netconf_main.c
 OBJS    = $(SRC:.c=.o)
 
-MYNAME		= clicon_netconf
+MYNAME		= clixon_netconf
 MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
-MYLIB           = $(MYLIBLINK).$(CLICON_MAJOR).$(CLICON_MINOR)
-MYLIBSO         = $(MYLIBLINK).$(CLICON_MAJOR)
+MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
 
 LIBSRC     = netconf_hello.c netconf_rpc.c netconf_filter.c netconf_lib.c netconf_plugin.c
 LIBOBJS    = $(LIBSRC:.c=.o)
@@ -80,17 +80,17 @@ install:	install-lib $(APPL)
 install-lib: $(MYLIB)
 	install -d $(DESTDIR)$(libdir) 
 	install $(MYLIB) $(DESTDIR)$(libdir) 
-	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclicon_netconf.so.2
-	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclicon_netconf.so
+	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon_netconf.so.2
+	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_netconf.so
 
-install-include:	clicon_netconf.h
-	install -d $(DESTDIR)$(includedir)/clicon
-	install -m 644 $^ $(DESTDIR)$(includedir)/clicon
+install-include:	clixon_netconf.h
+	install -d $(DESTDIR)$(includedir)/clixon
+	install -m 644 $^ $(DESTDIR)$(includedir)/clixon
 
 uninstall:
 	rm -f $(bindir)/$(APPL)
 	rm -f $(libdir)/$(MYLIB)
-	rm -f $(includedir)/clicon/*
+	rm -f $(includedir)/clixon/*
 
 .SUFFIXES:
 .SUFFIXES: .c .o
@@ -104,7 +104,7 @@ $(APPL) : $(OBJS) $(MYLIBLINK) $(LIBDEPS)
 $(MYLIB) : $(LIBOBJS)
 	$(CC) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJS) $(LIBS) -Wl,-soname=$(MYLIBSO)
 
-# link-name is needed for application linking, eg for clicon_cli and clicon_config
+# link-name is needed for application linking, eg for clixon_cli and clixon_config
 $(MYLIBLINK) : $(MYLIB)
 #	ln -sf $(MYLIB) $(MYLIBSO)
 #	ln -sf $(MYLIB) $@

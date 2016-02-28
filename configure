@@ -582,7 +582,7 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
-ac_unique_file="lib/clicon/clicon.h.in"
+ac_unique_file="lib/clixon/clixon.h.in"
 # Factoring default headers for most tests.
 ac_includes_default="\
 #include <stdio.h>
@@ -632,7 +632,6 @@ CPP
 OBJEXT
 EXEEXT
 ac_ct_CC
-CLICON__LIBDIR
 RANLIB
 AR
 EXE_SUFFIX
@@ -657,10 +656,10 @@ build_vendor
 build_cpu
 build
 CLIGEN_VERSION
-CLICON_VERSION_MINOR
-CLICON_VERSION_MAJOR
-CLICON_VERSION_STRING
-CLICON_VERSION
+CLIXON_VERSION_MINOR
+CLIXON_VERSION_MAJOR
+CLIXON_VERSION_STRING
+CLIXON_VERSION
 target_alias
 host_alias
 build_alias
@@ -2128,34 +2127,38 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 # Default CFLAGS unless set by environment.
 : ${CFLAGS="-O2"}
 
-CLICON_VERSION_MAJOR="3"
-CLICON_VERSION_MINOR="2"
-CLICON_VERSION_PATCH="0"
-CLICON_VERSION="\"${CLICON_VERSION_MAJOR}.${CLICON_VERSION_MINOR}.${CLICON_VERSION_PATCH}\""
+CLIXON_VERSION_MAJOR="3"
+CLIXON_VERSION_MINOR="2"
+CLIXON_VERSION_PATCH="0"
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 # Fix to specific version (eg 3.5) or head (3)
 CLIGEN_VERSION="3"
 
-ac_config_headers="$ac_config_headers include/clicon_config.h lib/clicon/clicon.h"
+ac_config_headers="$ac_config_headers include/clixon_config.h lib/clixon/clixon.h"
 
 
-cat >>confdefs.h <<_ACEOF
-#define CLICON_VERSION_STRING $CLICON_VERSION
-_ACEOF
 
 cat >>confdefs.h <<_ACEOF
-#define CLICON_VERSION_MAJOR $CLICON_VERSION_MAJOR
-_ACEOF
-
-cat >>confdefs.h <<_ACEOF
-#define CLICON_VERSION_MINOR $CLICON_VERSION_MINOR
-_ACEOF
-
-cat >>confdefs.h <<_ACEOF
-#define CLICON_VERSION_PATCH $CLICON_VERSION_PATCH
+#define CLIXON_VERSION_STRING $CLIXON_VERSION
 _ACEOF
 
 
-# clicon versions spread to Makefile's (.so files) and variable in build.c
+cat >>confdefs.h <<_ACEOF
+#define CLIXON_VERSION_MAJOR $CLIXON_VERSION_MAJOR
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define CLIXON_VERSION_MINOR $CLIXON_VERSION_MINOR
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define CLIXON_VERSION_PATCH $CLIXON_VERSION_PATCH
+_ACEOF
+
+
+# clixon versions spread to Makefile's (.so files) and variable in build.c
 
 
 
@@ -2163,8 +2166,8 @@ _ACEOF
  # Bind to specific CLIgen version
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: CLICON version is ${CLICON_VERSION}_PRE1" >&5
-$as_echo "CLICON version is ${CLICON_VERSION}_PRE1" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: CLIXON version is ${CLIXON_VERSION}_PRE1" >&5
+$as_echo "CLIXON version is ${CLIXON_VERSION}_PRE1" >&6; }
 
 ac_aux_dir=
 for ac_dir in "$srcdir" "$srcdir/.." "$srcdir/../.."; do
@@ -2317,7 +2320,6 @@ test -n "$target_alias" &&
 
 
 
- # Clicon application director. Eg /hello.
 
 # Some stuff installed in /usr/local/. Such as qdbm
 LIBS="-L /usr/local/lib"
@@ -3466,10 +3468,10 @@ rm -f conftest.l $LEX_OUTPUT_ROOT.c
 
 fi
 if test "$LEX" = ":"; then
-   as_fn_error $? "CLICON does not find lex or flex." "$LINENO" 5
+   as_fn_error $? "CLIXON does not find lex or flex." "$LINENO" 5
 fi
 if test "$YACC" != "bison -y"; then
-   as_fn_error $? "CLICON does not find bison.  There are several problems with yacc and byacc. Please install bison." "$LINENO" 5
+   as_fn_error $? "CLIXON does not find bison.  There are several problems with yacc and byacc. Please install bison." "$LINENO" 5
 fi
 
 if test "$prefix" = "NONE"; then
@@ -4191,7 +4193,7 @@ fi
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clicon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/dbctrl/Makefile include/Makefile etc/Makefile etc/cliconrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile doc/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/dbctrl/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4882,12 +4884,12 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
-    "include/clicon_config.h") CONFIG_HEADERS="$CONFIG_HEADERS include/clicon_config.h" ;;
-    "lib/clicon/clicon.h") CONFIG_HEADERS="$CONFIG_HEADERS lib/clicon/clicon.h" ;;
+    "include/clixon_config.h") CONFIG_HEADERS="$CONFIG_HEADERS include/clixon_config.h" ;;
+    "lib/clixon/clixon.h") CONFIG_HEADERS="$CONFIG_HEADERS lib/clixon/clixon.h" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "lib/Makefile") CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
     "lib/src/Makefile") CONFIG_FILES="$CONFIG_FILES lib/src/Makefile" ;;
-    "lib/clicon/Makefile") CONFIG_FILES="$CONFIG_FILES lib/clicon/Makefile" ;;
+    "lib/clixon/Makefile") CONFIG_FILES="$CONFIG_FILES lib/clixon/Makefile" ;;
     "apps/Makefile") CONFIG_FILES="$CONFIG_FILES apps/Makefile" ;;
     "apps/cli/Makefile") CONFIG_FILES="$CONFIG_FILES apps/cli/Makefile" ;;
     "apps/backend/Makefile") CONFIG_FILES="$CONFIG_FILES apps/backend/Makefile" ;;
@@ -4895,7 +4897,7 @@ do
     "apps/dbctrl/Makefile") CONFIG_FILES="$CONFIG_FILES apps/dbctrl/Makefile" ;;
     "include/Makefile") CONFIG_FILES="$CONFIG_FILES include/Makefile" ;;
     "etc/Makefile") CONFIG_FILES="$CONFIG_FILES etc/Makefile" ;;
-    "etc/cliconrc") CONFIG_FILES="$CONFIG_FILES etc/cliconrc" ;;
+    "etc/clixonrc") CONFIG_FILES="$CONFIG_FILES etc/clixonrc" ;;
     "example/Makefile") CONFIG_FILES="$CONFIG_FILES example/Makefile" ;;
     "example/docker/Makefile") CONFIG_FILES="$CONFIG_FILES example/docker/Makefile" ;;
     "docker/Makefile") CONFIG_FILES="$CONFIG_FILES docker/Makefile" ;;

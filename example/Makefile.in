@@ -39,9 +39,9 @@ PLUGINS = $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN)
 
 all:	$(PLUGINS) $(APPNAME).conf
 
-# Note: clicon.mk has a rule for:
+# Note: clixon.mk has a rule for:
 # $(APPNAME.conf)
--include $(DESTDIR)$(datarootdir)/clicon/clicon.mk
+-include $(DESTDIR)$(datarootdir)/clixon/clixon.mk
 
 CLISPECS = routing_cli.cli
 
@@ -82,25 +82,25 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(APPNAME).conf
-	install -d $(DESTDIR)$(clicon_SYSCONFDIR)
-	install $(APPNAME).conf $(DESTDIR)$(clicon_SYSCONFDIR)
-	install -d $(DESTDIR)$(clicon_DBSPECDIR)/yang
-	install $(YANGSPECS) $(DESTDIR)$(clicon_DBSPECDIR)/yang
-	install -d $(DESTDIR)$(clicon_LIBDIR)/cli
-	install $(CLI_PLUGIN) $(DESTDIR)$(clicon_LIBDIR)/cli; 
-	install -d $(DESTDIR)$(clicon_LIBDIR)/backend
-	install $(BE_PLUGIN) $(DESTDIR)$(clicon_LIBDIR)/backend; 
-	install -d $(DESTDIR)$(clicon_LIBDIR)/netconf
-	install $(NETCONF_PLUGIN) $(DESTDIR)$(clicon_LIBDIR)/netconf; 
-	install -d $(DESTDIR)$(clicon_LIBDIR)/clispec
-	install $(CLISPECS) $(DESTDIR)$(clicon_LIBDIR)/clispec; 
-	install -d $(DESTDIR)$(clicon_LOCALSTATEDIR)
+	install -d $(DESTDIR)$(clixon_SYSCONFDIR)
+	install $(APPNAME).conf $(DESTDIR)$(clixon_SYSCONFDIR)
+	install -d $(DESTDIR)$(clixon_DBSPECDIR)/yang
+	install $(YANGSPECS) $(DESTDIR)$(clixon_DBSPECDIR)/yang
+	install -d $(DESTDIR)$(clixon_LIBDIR)/cli
+	install $(CLI_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/cli; 
+	install -d $(DESTDIR)$(clixon_LIBDIR)/backend
+	install $(BE_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/backend; 
+	install -d $(DESTDIR)$(clixon_LIBDIR)/netconf
+	install $(NETCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/netconf; 
+	install -d $(DESTDIR)$(clixon_LIBDIR)/clispec
+	install $(CLISPECS) $(DESTDIR)$(clixon_LIBDIR)/clispec; 
+	install -d $(DESTDIR)$(clixon_LOCALSTATEDIR)
 
 uninstall: 
-	rm -rf $(DESTDIR)$(clicon_SYSCONFDIR)/$(APPNAME).conf
-	rm -rf $(DESTDIR)$(clicon_DBSPECDIR)
-	rm -rf $(DESTDIR)$(clicon_LOCALSTATEDIR)
-	rm -rf $(DESTDIR)$(clicon_LIBDIR)
+	rm -rf $(DESTDIR)$(clixon_SYSCONFDIR)/$(APPNAME).conf
+	rm -rf $(DESTDIR)$(clixon_DBSPECDIR)
+	rm -rf $(DESTDIR)$(clixon_LOCALSTATEDIR)
+	rm -rf $(DESTDIR)$(clixon_LIBDIR)
 
 install-include:	
 

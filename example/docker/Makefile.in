@@ -48,6 +48,7 @@ docker:	$(APPNAME).conf
 	install ../*.cli data/clispec
 
 clean:
+	rm -f $(APPNAME).conf
 
 distclean: clean
 	rm -f Makefile *~ .depend

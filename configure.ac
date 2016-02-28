@@ -23,34 +23,34 @@
 # in the directory containing this script.
 #
 
-AC_INIT(lib/clicon/clicon.h.in)
+AC_INIT(lib/clixon/clixon.h.in)
 
 # Default CFLAGS unless set by environment.
 : ${CFLAGS="-O2"}
 
-CLICON_VERSION_MAJOR="3"
-CLICON_VERSION_MINOR="2"
-CLICON_VERSION_PATCH="0"
-CLICON_VERSION="\"${CLICON_VERSION_MAJOR}.${CLICON_VERSION_MINOR}.${CLICON_VERSION_PATCH}\""
+CLIXON_VERSION_MAJOR="3"
+CLIXON_VERSION_MINOR="2"
+CLIXON_VERSION_PATCH="0"
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 # Fix to specific version (eg 3.5) or head (3) 
 CLIGEN_VERSION="3" 
 
-AC_CONFIG_HEADERS([include/clicon_config.h lib/clicon/clicon.h])
+AC_CONFIG_HEADERS([include/clixon_config.h lib/clixon/clixon.h])
 
-AC_DEFINE_UNQUOTED(CLICON_VERSION_STRING, $CLICON_VERSION)
-AC_DEFINE_UNQUOTED(CLICON_VERSION_MAJOR, $CLICON_VERSION_MAJOR)
-AC_DEFINE_UNQUOTED(CLICON_VERSION_MINOR, $CLICON_VERSION_MINOR)
-AC_DEFINE_UNQUOTED(CLICON_VERSION_PATCH, $CLICON_VERSION_PATCH)
+AC_DEFINE_UNQUOTED(CLIXON_VERSION_STRING, $CLIXON_VERSION, [Clixon version string])
+AC_DEFINE_UNQUOTED(CLIXON_VERSION_MAJOR, $CLIXON_VERSION_MAJOR, [Clixon major release])
+AC_DEFINE_UNQUOTED(CLIXON_VERSION_MINOR, $CLIXON_VERSION_MINOR, [Clixon minor release])
+AC_DEFINE_UNQUOTED(CLIXON_VERSION_PATCH, $CLIXON_VERSION_PATCH, [Clixon path version])
 
-# clicon versions spread to Makefile's (.so files) and variable in build.c
-AC_SUBST(CLICON_VERSION)
-AC_SUBST(CLICON_VERSION_STRING)
-AC_SUBST(CLICON_VERSION_MAJOR)
-AC_SUBST(CLICON_VERSION_MINOR)
+# clixon versions spread to Makefile's (.so files) and variable in build.c
+AC_SUBST(CLIXON_VERSION)
+AC_SUBST(CLIXON_VERSION_STRING)
+AC_SUBST(CLIXON_VERSION_MAJOR)
+AC_SUBST(CLIXON_VERSION_MINOR)
 AC_SUBST(CLIGEN_VERSION) # Bind to specific CLIgen version
 
 
-AC_MSG_RESULT(CLICON version is ${CLICON_VERSION}_PRE1)
+AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION}_PRE1)
 
 AC_CANONICAL_TARGET
 AC_SUBST(CC)
@@ -65,7 +65,6 @@ AC_SUBST(SH_SUFFIX)
 AC_SUBST(EXE_SUFFIX)
 AC_SUBST(AR)
 AC_SUBST(RANLIB)
-AC_SUBST(CLICON__LIBDIR) # Clicon application director. Eg /hello. 
 
 # Some stuff installed in /usr/local/. Such as qdbm
 LIBS="-L /usr/local/lib"
@@ -86,10 +85,10 @@ AC_MSG_RESULT(CFLAGS is $CFLAGS)
 AC_PROG_YACC
 AC_PROG_LEX
 if test "$LEX" = ":"; then
-   AC_MSG_ERROR(CLICON does not find lex or flex.)
+   AC_MSG_ERROR(CLIXON does not find lex or flex.)
 fi
 if test "$YACC" != "bison -y"; then
-   AC_MSG_ERROR(CLICON does not find bison.  There are several problems with yacc and byacc. Please install bison.)
+   AC_MSG_ERROR(CLIXON does not find bison.  There are several problems with yacc and byacc. Please install bison.)
 fi
 
 if test "$prefix" = "NONE"; then
@@ -153,12 +152,12 @@ if test "$ac_enable_keycontent" = "yes"; then
    AC_DEFINE(DB_KEYCONTENT)
 fi
 
-AH_BOTTOM([#include <clicon_custom.h>])
+AH_BOTTOM([#include <clixon_custom.h>])
 
 AC_OUTPUT(Makefile
 	  lib/Makefile
 	  lib/src/Makefile 
-	  lib/clicon/Makefile 
+	  lib/clixon/Makefile 
 	  apps/Makefile 
 	  apps/cli/Makefile 
 	  apps/backend/Makefile 
@@ -166,7 +165,7 @@ AC_OUTPUT(Makefile
 	  apps/dbctrl/Makefile
 	  include/Makefile
 	  etc/Makefile
-	  etc/cliconrc
+	  etc/clixonrc
 	  example/Makefile
 	  example/docker/Makefile
 	  docker/Makefile 

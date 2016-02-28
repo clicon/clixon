@@ -1,7 +1,7 @@
 # Main YANG module first parsed by parser (in CLICON_YANG_DIR). eg clicon.yang.
 
 # Location of configuration-file for default values (this file)
-CLICON_CONFIGFILE /data/clicon.conf
+CLICON_CONFIGFILE /data/clixon.conf
 # Location of YANG module and submodule files. Only if CLICON_DBSPEC_TYPE is YANG
 CLICON_YANG_DIR /data/yang
 # Option used to construct initial yang file:
@@ -29,16 +29,15 @@ CLICON_CLISPEC_DIR /data/clispec
 CLICON_ARCHIVE_DIR /data
 # XXX Name of startup configuration file (in XML)
 CLICON_STARTUP_CONFIG /data/startup-config
-# Address family for communicating with clicon_backend (UNIX|IPv4|IPv6)
+# Address family for communicating with clixon_backend (UNIX|IPv4|IPv6)
 CLICON_SOCK_FAMILY UNIX
-# If family above is AF_UNIX: Unix socket for communicating with clicon_backend
+# If family above is AF_UNIX: Unix socket for communicating with clixon_backend
 # If family above is AF_INET: IPv4 address
 CLICON_SOCK /data/routing.sock
-# Inet socket port for communicating with clicon_backend (only IPv4|IPv6)
+# Inet socket port for communicating with clixon_backend (only IPv4|IPv6)
 CLICON_SOCK_PORT 4535
 # Process-id file
 CLICON_BACKEND_PIDFILE /data/routing.pidfile
-
 
 # Save values as XML in database instead of lvec:s.
 # This is optimized for yang specified applications 
