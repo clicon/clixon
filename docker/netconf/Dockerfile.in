@@ -5,10 +5,10 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install -y libqdbm-dev
 COPY libcligen.so.@CLIGEN_VERSION@ /usr/lib/
 COPY libclicon.so.@CLICON_VERSION_MAJOR@ /usr/lib/
-COPY libclicon_cli.so.@CLIGEN_VERSION@ /usr/lib/
-COPY clicon_cli /usr/bin/
+COPY libclicon_netconf.so.@CLIGEN_VERSION@ /usr/lib/
+COPY clicon_netconf /usr/bin/
 RUN ldconfig
-CMD ["/usr/bin/clicon_cli", "-f", "/data/clicon.conf"]
+CMD ["/usr/bin/clicon_netconf", "-f", "/data/clicon.conf"]
 
 
 

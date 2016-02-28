@@ -28,6 +28,7 @@ sbindir 	= @sbindir@
 libdir		= @libdir@
 includedir	= @includedir@
 datarootdir	= @datarootdir@
+# You may consider changing this
 image           = olofhagsand/clicon_backend
 
 all:
@@ -35,7 +36,7 @@ all:
 clean:
 
 distclean: clean
-	rm -f Makefile *~ .depend libcli* clicon_cli clicon_backend Dockerfile
+	rm -f Makefile *~ .depend libcligen* libclicon* clicon_backend Dockerfile
 
 # Kind of reverse install, could have copied from src dir,...
 .PHONY: docker push

@@ -174,6 +174,8 @@ AC_OUTPUT(Makefile
 	  docker/cli/Dockerfile
 	  docker/backend/Makefile 
 	  docker/backend/Dockerfile
+	  docker/netconf/Makefile 
+	  docker/netconf/Dockerfile
 	  doc/Makefile 
 )
 

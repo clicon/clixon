@@ -27,7 +27,7 @@ LIBS    	= @LIBS@
 
 SHELL	= /bin/sh
 
-SUBDIRS = cli backend
+SUBDIRS = cli backend netconf
 
 .PHONY: all clean depend install $(SUBDIRS) docker push
 

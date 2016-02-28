@@ -29,22 +29,22 @@ libdir		= @libdir@
 includedir	= @includedir@
 datarootdir	= @datarootdir@
 # You may consider changing this
-image           = olofhagsand/clicon_cli
+image           = olofhagsand/clicon_netconf
 
 all:
 	@echo "Run make docker to build docker image"
 clean:
 
 distclean: clean
-	rm -f Makefile *~ .depend libcligen* libclicon* clicon_cli Dockerfile
+	rm -f Makefile *~ .depend libcligen* libclicon* clicon_netconf Dockerfile
 
 # Kind of reverse install, could have copied from src dir,...
 .PHONY: docker push
 docker:	
 	cp $(DESTDIR)$(libdir)/libcligen.so.@CLIGEN_VERSION@ .
 	cp $(DESTDIR)$(libdir)/libclicon.so.@CLICON_VERSION_MAJOR@ .
-	cp $(DESTDIR)$(libdir)/libclicon_cli.so.@CLICON_VERSION_MAJOR@ .
-	cp $(DESTDIR)$(bindir)/clicon_cli .
+	cp $(DESTDIR)$(libdir)/libclicon_netconf.so.@CLICON_VERSION_MAJOR@ .
+	cp $(DESTDIR)$(bindir)/clicon_netconf .
 	sudo docker build -t $(image) .
 
 push:	
