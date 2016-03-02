@@ -23,6 +23,7 @@ FROM ubuntu:14.04
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install -y libqdbm-dev
+RUN groupadd clicon
 COPY libcligen.so.@CLIGEN_VERSION@ /usr/lib/
 COPY libclixon.so.@CLIXON_VERSION_MAJOR@ /usr/lib/
 COPY libclixon_netconf.so.@CLIXON_VERSION_MAJOR@ /usr/lib/
