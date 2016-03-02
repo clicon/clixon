@@ -404,9 +404,6 @@ cli_validate(clicon_handle h, cvec *vars, cg_var *arg)
     return retval;
 }
 
-
-
-
 /*! Completion callback primarily intended for automatically generated data model
  *
  * Returns an expand-type list of commands as used by cligen 'expand' 
@@ -434,7 +431,7 @@ cli_validate(clicon_handle h, cvec *vars, cg_var *arg)
  * Assume callback given in a cligen spec: a <x:int expand_dbvar_auto("arg")
  * @param[in]   h        clicon handle 
  * @param[in]   name     Name of this function (eg "expand_dbvar-auto")
- * @param[in]   cvec     The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
+ * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   arg      Argument given at the callback "<db> <xmlkeyfmt>"
  * @param[out]  len      len of return commands & helptxt 
  * @param[out]  commands vector of function pointers to callback functions
@@ -459,10 +456,11 @@ expand_dbvar_dbxml(void   *h,
     char            *dbstr;    
     cxobj           *xt = NULL;
     char            *xk = NULL;
+    cxobj          **xvec = NULL;
     int              i;
     int              i0;
-    struct db_pair *pairs;
-    int             npairs;
+    size_t           xlen;
+    yang_spec       *yspec;
 
     if (arg == NULL || (str = cv_string_get(arg)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
@@ -488,23 +486,28 @@ expand_dbvar_dbxml(void   *h,
 	goto done;
     }
     xkfmt = vec[1];
-    /* xkfmt = "/test/kalle/%s/lasse" --> "^/test/kalle/.* /lasse$" */
-    if (xmlkeyfmt2key2(xkfmt, cvv, &xk) < 0)
-	goto done;  
-    if ((npairs = db_regexp(dbname, xk, __FUNCTION__, &pairs, 0)) < 0)
+    /* xkfmt = /interface/%s/address/%s
+       --> ^/interface/eth0/address/.*$
+       --> /interface/[name=eth0]/address
+    */
+    if (xmlkeyfmt2xpath(xkfmt, cvv, &xk) < 0)
+	goto done; 
+    yspec = clicon_dbspec_yang(h);
+    if (xmldb_get_vec(dbname, xk, yspec, &xt, &xvec, &xlen) < 0)
 	goto done;
     i0 = *nr;
-    *nr += npairs;
+    *nr += xlen;
     if ((*commands = realloc(*commands, sizeof(char *) * (*nr))) == NULL) {
 	clicon_err(OE_UNDEF, errno, "realloc: %s", strerror (errno));	
 	goto done;
     }
-    for (i = 0; i < npairs; i++) 
-	(*commands)[i0+i] = strdup(pairs[i].dp_val);
-
+    for (i = 0; i < xlen; i++) 
+	(*commands)[i0+i] = strdup(xml_body(xvec[i]));
     retval = 0;
   done:
     unchunk_group(__FUNCTION__);
+    if (xvec)
+	free(xvec);
     if (xt)
 	xml_free(xt);
     if (xk)
@@ -512,221 +515,6 @@ expand_dbvar_dbxml(void   *h,
     return retval;
 
 }
-#ifdef  NOTUSED
-
-/*! Expand based on database key and variable value (of that key)
- *
- * Return an expand-type list of commands as used by cligen 'expand' 
- * functionality.
- * arg is a string: "<dbname> <keypattern> <variable>". 
- *   <dbname> is either running or candidate
- *   <keypattern> matches a set of database keys
- *   <variable>   is name of a variable occuring in the cli command string
- * Example: "candidate ^Create.*$" GroupName"
- * (See also expand_db_variable(). 
- *
- * Assume callback given in a cligen spec: a <x:int expand_dbvar_auto("arg")
- * @param[in]   h        clicon handle 
- * @param[in]   name     Name of this function (eg "expand_dbvar")
- * @param[in]   vars     The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
- * @param[in]   arg      Argument given at the callback ("arg")
- * @param[out]  nr       len of return commands & helptxt 
- * @param[out]  commands vector of function pointers to callback functions
- * @param[out]  helptexts vector of pointers to helptexts
- * @see  expand_db_variable    But this function is more generic and can be called
- *                             as cligen callback
- */
-int
-expand_dbvar(void   *h, 
-	     char   *name, 
-	     cvec   *vars, 
-	     cg_var *arg, 
-	     int    *nr, 
-	     char  ***commands, 
-	     char  ***helptexts)
-{
-    char  *dbname;
-    int    nvec;
-    char **vec = NULL;
-    int    retval = -1;
-    char  *str;
-    char  *dbstr, *keystr, *varstr;  
-
-    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
-	goto done;
-    }
-    if ((vec = clicon_strsplit(cv_string_get(arg), " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
-	goto done;
-    }
-    if (nvec != 3){
-	clicon_err(OE_PLUGIN, 0, "format error \"%s\" - expected <dbname> <key> <variable>",
-	    str);	
-	goto done;
-    }
-    dbstr  = vec[0];
-    keystr = vec[1];
-    varstr = vec[2];
-    if (strcmp(dbstr, "running") == 0) 
-	dbname = clicon_running_db(h);
-    else
-    if (strcmp(dbstr, "candidate") == 0) 
-	dbname = clicon_candidate_db(h);
-    else{
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
-	goto done;
-    }
-    if (dbname == NULL){
-	clicon_err(OE_FATAL, 0, "dbname not set");
-	goto done;
-    }
-    if ((retval = expand_db_variable(h, dbname, keystr, varstr, nr, commands)) < 0)
-	goto done;
-    retval = 0;
-  done:
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
-/*! Expand database variable
- * Given a database, a basekey (pattern) and a variable, return an expand-type
- * list of commands as used by cligen 'expand' functionality.
- * @see expand_dbvar
- */
-int
-expand_db_variable(clicon_handle h, 
-		   char         *dbname,
-		   char         *basekey, 
-		   char         *variable, 
-		   int          *nr, 
-		   char       ***commands)
-{
-    char           *key;
-    int             i;
-    int             j;
-    int             retval = -1;
-    cvec           *cvv;
-    cg_var         *cv = NULL;
-    char          **tmp;
-    char           *val = NULL;
-    cvec          **cvvp = NULL;
-    size_t          len = 0;
-
-    /* adhoc to detect regexp keys. If so, dont call db_gen_rxkey */
-    if (index(basekey, '^') == NULL){
-	if ((key = db_gen_rxkey(basekey, __FUNCTION__)) == NULL)
-	    goto quit;
-    }
-    else
-	key = chunkdup(basekey, strlen(basekey)+1, __FUNCTION__);
-    
-    if (clicon_dbitems(dbname, key, &cvvp, &len) < 0)
-	goto quit;
-    for (i = 0; i < len; i++) {
-	cvv = cvvp[i];
-	cv = NULL;
-	while ((cv = cvec_each(cvv, cv)) != NULL) {
-	    if (strcmp(cv_name_get(cv), variable) != 0)
-		continue;
-	    if ((val = cv2str_dup(cv)) == NULL)
-		goto quit;
-	    /* Check if value already in vector? No duplicates */
-	    for (j=0; j<*nr; j++)
-		if (strcmp(val, (*commands)[j]) == 0)
-		    break;
-	    if (j<*nr){
-		free(val);
-		val = NULL;
-		continue;
-	    }
-	    if ((tmp = realloc(*commands, sizeof(char *) * ((*nr)+1))) == NULL) {
-		clicon_err(OE_UNDEF, errno, "realloc: %s", strerror (errno));	
-		goto quit;
-	    }
-	    *commands = tmp;
-	    (*commands)[*nr] = val;
-	    val = NULL;
-	    (*nr)++;
-	    break;
-	}
-    }
-    retval = 0;
-quit:
-    if (cvvp)
-	clicon_dbitems_free(cvvp, len);
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
-/*! Pattern match in candidate_db
- */
-int
-expand_db_symbol(clicon_handle h, 
-		 char *symbol, 
-		 int element, 
-		 int *nr, 
-		 char ***commands)
-{
-    int             retval = -1;
-    char          **tmp;
-    cvec          **cvvp = NULL;
-    cvec           *cvv;
-    size_t          len = 0;
-    int             i;
-    char           *key;
-    int             nvec;
-    int             n;
-    char          **vec = NULL;
-    char            str[128];
-    char           *dbname;
-
-    if ((dbname = clicon_running_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "running db not set");
-	goto done;
-    }
-    snprintf(str, sizeof(str), "^%s\\..", symbol);
-    if (clicon_rpc_dbitems(h, dbname, str, NULL, NULL, &cvvp, &len) < 0)
-	goto done;
-    for (i = 0; i < len; i++) {
-	cvv = cvvp[i];
-	key = cvec_name_get(cvv);
-	if ((vec = clicon_strsplit(key, ".", &nvec, __FUNCTION__)) == NULL){
-	    clicon_err(OE_UNDEF, errno, "clicon_strsplit");	
-	    goto done;
-	}
-	/* Check if already exists */
-	for (n=0; n<*nr; n++)
-	    if (strcmp((*commands)[n], vec[element]) == 0)
-		break; /* Already exists */
-	if (n<*nr)
-	    continue;
-	/* Allocate new pointer */
-	if ((tmp = realloc(*commands, sizeof(char *) * ((*nr)+1))) == NULL) {
-	    clicon_err(OE_UNDEF, errno, "realloc: %s", strerror (errno));	
-	    goto done;
-	}
-	*commands = tmp;
-	/* Duplicate string */
-	if (((*commands)[*nr] = strdup(vec[element])) == NULL) {
-	    clicon_err(OE_UNDEF, errno, "strdup: %s", strerror (errno));	
-	    goto done;
-	}
-	(*nr)++;
-    }
-    retval = 0;
- done:
-    unchunk_group(__FUNCTION__) ;
-    if (cvvp)
-	clicon_dbitems_free(cvvp, len);
-    if (retval < 0 && *commands){
-	while ((*nr) >= 0)
-	    free((*commands)[(*nr)--]);
-	free (*commands);
-    }
-  return retval;
-}
-#endif /* NOTUSED */
 
 /*
  * expand_dir
@@ -1165,7 +953,7 @@ load_config_file(clicon_handle h, cvec *cvv, cg_var *arg)
 		clicon_err(OE_UNIX, 0, "rm %s %s", filename, strerror(errno));
 		goto done;
 	    }
-	    if (db_init(dbname) < 0) 
+	    if (xmldb_init(dbname) < 0) 
 		goto done;
 	}
 	if ((fd = open(filename, O_RDONLY)) < 0){
@@ -1316,7 +1104,7 @@ delete_all(clicon_handle h, cvec *cvv, cg_var *arg)
 	    clicon_err(OE_FATAL, errno, "unlink(%s)", dbname);
 	    goto done;
 	}
-	if (db_init(dbname) < 0) 
+	if (xmldb_init(dbname) < 0) 
 	    goto done;
     }
     retval = 0;

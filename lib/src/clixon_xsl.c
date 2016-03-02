@@ -149,8 +149,9 @@ xpath_print(FILE *f, struct xpath_element *xplist)
     struct xpath_element *xe;
 
     for (xe=xplist; xe; xe=xe->xe_next)
-	fprintf(f, "\t:%s %s\n", axis_type2str(xe->xe_type),
-		xe->xe_str?xe->xe_str:"");
+	fprintf(f, "\t:%s %s %s\n", axis_type2str(xe->xe_type),
+		xe->xe_str?xe->xe_str:"", 
+		xe->xe_predicate?xe->xe_predicate:"");
     return 0;
 }
 
@@ -334,7 +335,7 @@ recursive_find(cxobj   *xn,
 }
 
 static int
-xpath_expr(char     *e, 	   
+xpath_expr(char     *e00, 	   
 	   uint16_t  flags,
 	   cxobj  ***vec0,
 	   size_t   *vec0len)
@@ -350,7 +351,14 @@ xpath_expr(char     *e,
     int        oplen;
     char      *tag;
     char      *val;
+    char      *e0;
+    char      *e;
 
+    if ((e0 = strdup(e00)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    e = e0;
     if (*e == '@'){ /* @ attribute */
 	e++;
 	e_v=e;
@@ -418,6 +426,8 @@ xpath_expr(char     *e,
     *vec0len = veclen;
     retval = 0;
   done:
+    if (e0)
+	free(e0);
     return retval;
 }
 
@@ -603,7 +613,7 @@ xpath_exec(char         *xpath,
 	goto done;
     if (xpath_parse(xpath, &xplist) < 0)
 	goto done;
-    if (0)
+    if (debug > 1)
 	xpath_print(stderr, xplist);
     if (xpath_find(xplist, 0, vec1, vec1len, flags, vec2, vec2len) < 0)
 	goto done;
@@ -767,9 +777,10 @@ xpath_each(cxobj *cxtop,
  * See xpath1() on details for subset.
  * @param[in]  cxtop  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
+ * @param[out] vec     vector of xml-trees. Vector must be free():d after use
  * @param[out] xv_len  returns length of vector in return value
- * @retval     vec     vector of xml-trees. Vector must be free():d after use
- * @retval     NULL     NULL on error.
+ * @retval     0       OK
+ * @retval     -1      error.
  *
  * @code
  *   cxobj **xv;
@@ -786,34 +797,30 @@ xpath_each(cxobj *cxtop,
  * trees need not be.
  * @see also xpath_first, xpath_each.
  */
-cxobj **
-xpath_vec(cxobj  *cxtop, 
-	  char   *xpath, 
-	  size_t *veclen)
+int
+xpath_vec(cxobj   *cxtop, 
+	  char    *xpath, 
+	  cxobj ***vec, 
+	  size_t  *veclen)
 {
-    cxobj **vec=NULL;
-
+    *vec = NULL;
     *veclen = 0;
-    if (xpath_choice(cxtop, xpath, 0, &vec, (size_t*)veclen) < 0)
-	return NULL;
-    return vec;
+    return xpath_choice(cxtop, xpath, 0, vec, veclen);
 }
 
 /* A restricted xpath that returns a vector of matches (only nodes marked with flags)
  * @param[in]  flags   Set of flags that return nodes must match (0 if all)
  */
-cxobj **
+int
 xpath_vec_flag(cxobj   *cxtop, 
 	       char    *xpath, 
 	       uint16_t flags,
+	       cxobj ***vec, 
 	       size_t  *veclen)
 {
-    cxobj **vec=NULL;
-
+    *vec=NULL;
     *veclen = 0;
-    if (xpath_choice(cxtop, xpath, flags, &vec, (size_t*)veclen) < 0)
-	return NULL;
-    return vec;
+    return xpath_choice(cxtop, xpath, flags, vec, veclen);
 }
 
 /*
@@ -852,7 +859,9 @@ main(int argc, char **argv)
     }
     printf("\n");
 
-    if ((xv = xpath_vec(x, argv[1], &xlen)) != NULL) {
+    if (xpath_vec(x, argv[1], &xv, &xlen) < 0)
+	goto done;
+    if (xv)
 	for (i=0; i<xlen; i++){
 	    xn = xv[i];
 	    fprintf(stdout, "[%d]:\n", i);

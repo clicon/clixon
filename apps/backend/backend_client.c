@@ -486,7 +486,7 @@ from_client_load(clicon_handle      h,
 	    send_msg_err(s, OE_UNIX, 0, "rm %s %s", filename, strerror(errno));
 	    goto done;
 	}
-	if (db_init(dbname) < 0) 
+	if (xmldb_init(dbname) < 0) 
 	    goto done;
     }
 
@@ -559,7 +559,7 @@ from_client_initdb(clicon_handle      h,
 	goto done;
     }
 
-    if (db_init(filename1) < 0) 
+    if (xmldb_init(filename1) < 0) 
 	goto done;
     /* Change mode if shared candidate. XXXX full rights for all is no good */
     if (strcmp(filename1, candidate_db) == 0)

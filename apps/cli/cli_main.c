@@ -58,6 +58,7 @@
 /* Command line options to be passed to getopt(3) */
 #define CLI_OPTS "hD:f:F:1u:d:m:cP:qpGLl:"
 
+/*! terminate cli application */
 static int
 cli_terminate(clicon_handle h)
 {
@@ -71,9 +72,7 @@ cli_terminate(clicon_handle h)
     return 0;
 }
 
-/*
- * cli_sig_term
- * Unlink pidfile and quit
+/*! Unlink pidfile and quit
 */
 static void
 cli_sig_term(int arg)
@@ -83,8 +82,7 @@ cli_sig_term(int arg)
     exit(1);
 }
 
-/*
- * Setup signal handlers
+/*! Setup signal handlers
  */
 static void
 cli_signal_init (clicon_handle h)
@@ -93,6 +91,9 @@ cli_signal_init (clicon_handle h)
 	set_signal(SIGTERM, cli_sig_term, NULL);
 }
 
+/*! Interactive CLI command loop
+ * @see cligen_loop
+ */
 static void
 cli_interactive(clicon_handle h)
 {
@@ -366,7 +367,7 @@ main(int argc, char **argv)
 	clicon_option_str_set(h, "CLICON_CANDIDATE_DB", private_db);
 
     if (!cli_send2backend(h)) 
-      if (db_init(running_db) < 0){
+      if (xmldb_init(running_db) < 0){
 	fprintf (stderr, "FATAL: Could not init running_db. (Run as root?)\n");
 	  goto done;
       }

@@ -148,7 +148,7 @@ rundb_init(clicon_handle h, char *running_db)
 	clicon_err(OE_UNIX, errno, "unlink");
 	return -1;
     }
-    if (db_init(running_db) < 0)
+    if (xmldb_init(running_db) < 0)
 	return -1;
     
     return 0;

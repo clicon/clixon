@@ -86,13 +86,9 @@ int cli_start_shell(clicon_handle h, cvec *vars, cg_var *argv);
 int cli_quit(clicon_handle h, cvec *vars, cg_var *arg);
 int cli_commit(clicon_handle h, cvec *vars, cg_var *arg);
 int cli_validate(clicon_handle h, cvec *vars, cg_var *arg);
-int expand_dbvar(void *h, char *name, cvec *vars, cg_var *arg, 
-		 int *nr, char ***commands, char ***helptexts);
-int expand_dbvar_auto(void *h, char *name, cvec *vars, cg_var *arg, 
-		  int *nr, char ***commands, char ***helptexts);
-int expand_db_variable(clicon_handle h, char *dbname, char *basekey, char *variable, int *nr, char ***commands);
-int expand_db_symbol(clicon_handle h, char *symbol, int element, int *nr, char ***commands);
 int expand_dir(char *dir, int *nr, char ***commands, mode_t flags, int detail);
+int expand_dbvar_dbxml(void *h, char *name, cvec *cvv, cg_var *arg, 
+		       int *nr, char ***commands, char ***helptexts);
 int compare_dbs(clicon_handle h, cvec *vars, cg_var *arg);
 
 int load_config_file(clicon_handle h, cvec *vars, cg_var *arg);

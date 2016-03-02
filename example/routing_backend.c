@@ -63,7 +63,8 @@ transaction_commit(clicon_handle    h,
     size_t  len;
 
     /* Get all added i/fs */
-    vec = xpath_vec_flag(target, "//interface", XML_FLAG_ADD, &len);
+    if (xpath_vec_flag(target, "//interface", XML_FLAG_ADD, &vec, &len) < 0)
+	return -1;
     for (i=0; i<len; i++)             /* Loop over added i/fs */
 	clicon_xml2file(stdout, vec[i], 0, 1); /* Print the added interface */
 	    

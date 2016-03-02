@@ -28,7 +28,8 @@
  */
 cxobj *xpath_first(cxobj *xn_top, char *xpath);
 cxobj *xpath_each(cxobj *xn_top, char *xpath, cxobj *prev);
-cxobj **xpath_vec(cxobj *xn_top, char *xpath, size_t *xv_len);
-cxobj **xpath_vec_flag(cxobj *cxtop, char *xpath, uint16_t flags, size_t *veclen);
+int xpath_vec(cxobj *xn_top, char *xpath, cxobj ***vec, size_t *xv_len);
+int xpath_vec_flag(cxobj *cxtop, char *xpath, uint16_t flags, 
+		   cxobj ***vec, size_t *veclen);
 
 #endif /* _CLIXON_XSL_H */

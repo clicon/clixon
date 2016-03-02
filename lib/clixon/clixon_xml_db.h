@@ -28,7 +28,7 @@
  */
 int yang2xmlkeyfmt(yang_stmt *ys, char **xkfmt);
 int xmlkeyfmt2key(char *xkfmt, cvec *cvv, char **xk);
-int xmlkeyfmt2key2(char *xkfmt, cvec *cvv, char **xk);
+int xmlkeyfmt2xpath(char *xkfmt, cvec *cvv, char **xk);
 int xmlkey2xml(char *xkey, yang_spec *yspec, char **xml);
 int xmldb_get(char *dbname, char *xpath, 
 	      yang_spec *yspec, cxobj **xtop);
@@ -38,5 +38,7 @@ int xmldb_put( char *dbname, cxobj *xt,
 	      yang_spec *yspec, enum operation_type op);
 int xmldb_put_xkey(char *dbname, char *xkey, char *val, yang_spec *yspec, 
 		   enum operation_type op);
+int xmldb_dump(FILE *f, char *dbname, char *rxkey);
+int xmldb_init(char *file);
 
 #endif /* _CLIXON_XML_DB_H */

@@ -54,7 +54,6 @@
 #define GENERATE_CALLBACK "cli_set"
 
 /* variable expand function */
-#define GENERATE_EXPAND_LVEC "expand_dbvar_auto"
 #define GENERATE_EXPAND_XMLDB "expand_dbvar_dbxml"
 
 /*=====================================================================

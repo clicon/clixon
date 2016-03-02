@@ -165,6 +165,7 @@ yang2xmlkeyfmt(yang_stmt *ys, char **xkfmt)
 }
 
 /*! Transform an xml key format and a vector of values to an XML key
+ * Used for actual key, eg in clicon_rpc_change(), xmldb_put_xkey()
  * Example: 
  *   xmlkeyfmt:  /aaa/%s
  *   cvv:        key=17
@@ -188,6 +189,7 @@ xmlkeyfmt2key(char  *xkfmt,
     char *str;
 
     /* Sanity check */
+#if 1
     j = 0; /* Count % */
     for (i=0; i<strlen(xkfmt); i++)
 	if (xkfmt[i] == '%')
@@ -200,6 +202,7 @@ xmlkeyfmt2key(char  *xkfmt,
 		   cv_string_get(cvec_i(cvv, 0)));
 	//	goto done;
     }
+#endif
     if ((cb = cbuf_new()) == NULL)
 	goto done;
     j = 1; /* j==0 is cli string */
@@ -233,20 +236,33 @@ xmlkeyfmt2key(char  *xkfmt,
     return retval;
 }
 
+/*! Transform an xml key format and a vector of values to an XML key
+ * Used to input xmldb_get() or xmldb_get_vec
+ * Add .* in last %s position.
+ * Example: 
+ *   xmlkeyfmt:  /interface/%s/address/%s
+ *   cvv:        name=eth0
+ *   xmlkey:     /interface/[name=eth0]/address
+ * @param[in]  xkfmt  XML key format
+ * @param[in]  cvv    cligen variable vector, one for every wildchar in xkfmt
+ * @param[out] xk     XPATH
+ */ 
 int
-xmlkeyfmt2key2(char  *xkfmt, 
-	      cvec  *cvv, 
-	      char **xk)
+xmlkeyfmt2xpath(char  *xkfmt, 
+		cvec  *cvv, 
+		char **xk)
 {
-    int   retval = -1;
-    char  c;
-    int   esc=0;
-    cbuf *cb = NULL;
-    int   i;
-    int   j;
-    char *str;
+    int     retval = -1;
+    char    c;
+    int     esc=0;
+    cbuf   *cb = NULL;
+    int     i;
+    int     j;
+    char   *str;
+    cg_var *cv;
+    int     skip = 0;
 
-    /* Sanity check */
+    /* Sanity check: count '%' */
 #if 1
     j = 0; /* Count % */
     for (i=0; i<strlen(xkfmt); i++)
@@ -263,7 +279,6 @@ xmlkeyfmt2key2(char  *xkfmt,
 #endif
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "^");
     j = 1; /* j==0 is cli string */
     for (i=0; i<strlen(xkfmt); i++){
 	c = xkfmt[i];
@@ -271,27 +286,40 @@ xmlkeyfmt2key2(char  *xkfmt,
 	    esc = 0;
 	    if (c!='s')
 		continue;
-	    if (j == cvec_len(cvv)){
-		if ((str = strdup(".*")) == NULL){
+	    if (j == cvec_len(cvv)){ /* last element */
+		skip++;
+	    }
+	    else{
+		/* XXX: remove preceding '/' :
+		 a/[x=y] -> a[x=y] */
+		if ((str = strdup(cbuf_get(cb))) == NULL){
 		    clicon_err(OE_UNIX, errno, "strdup");
 		    goto done;
 		}
-	    }
-	    else
-		if ((str = cv2str_dup(cvec_i(cvv, j++))) == NULL){
+		str[strlen(str)-1] = '\0';
+		cbuf_reset(cb);
+		cprintf(cb, "%s", str);
+		free(str);
+
+		cv = cvec_i(cvv, j++);
+		if ((str = cv2str_dup(cv)) == NULL){
 		    clicon_err(OE_UNIX, errno, "cv2str_dup");
 		    goto done;
 		}
-	    cprintf(cb, "%s", str);
-	    free(str);
+		cprintf(cb, "[%s=%s]", cv_name_get(cv), str);
+		free(str);
+	    }
 	}
-	else
+	else /* regular char */
 	    if (c == '%')
 		esc++;
-	    else
-		cprintf(cb, "%c", c);
+	    else{
+		if (skip)
+		    skip=0;
+		else
+		    cprintf(cb, "%c", c);
+	    }
     }
-    cprintf(cb, "$");
     if ((*xk = strdup(cbuf_get(cb))) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
@@ -435,6 +463,7 @@ xml_tree_prune_unmarked(cxobj *xt,
 /*!
  * @param[in]   xkey xmlkey
  * @param[out]  xt   XML tree as result
+ * XXX cannot handle top-level list
  */
 static int
 get(char      *dbname,
@@ -637,7 +666,6 @@ xml_default(cxobj *x,
     return retval;
 }
 
-
 /*! Get content of database using xpath. return a single tree
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
@@ -691,7 +719,9 @@ xmldb_get(char      *dbname,
      * 2. only read necessary parts,...?
      */
     if (xpath){
-	if ((xvec = xpath_vec(xt, xpath, &len)) != NULL){
+	if (xpath_vec(xt, xpath, &xvec, &len) < 0)
+	    goto done;
+	if (xvec != NULL){
 	    /* Prune everything except nodes in xvec and how to get there
 	     * Alt: Create a new subtree from xt with that property,...(no)
 	     */
@@ -737,7 +767,7 @@ xmldb_get(char      *dbname,
  *   cxobj  **xvec;
  *   size_t   xlen;
  *   yang_spec *yspec = clicon_dbspec_yang(h);
- *   if (xmldb_get_vec(dbname, "/interfaces/interface[name="eth*"]", yspec, 
+ *   if (xmldb_get_vec(dbname, "/interfaces/interface[name="eth"]", yspec, 
  *                     &xt, &xvec, &xlen) < 0)
  *      err;
  *   for (i=0; i<xlen; i++){
@@ -781,7 +811,7 @@ xmldb_get_vec(char      *dbname,
 		xt) < 0)
 	    goto done;
     }
-    if ((*xvec = xpath_vec(xt, xpath, xlen)) == NULL)
+    if (xpath_vec(xt, xpath, xvec, xlen) < 0)
 	goto done;
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
@@ -796,6 +826,8 @@ xmldb_get_vec(char      *dbname,
     unchunk_group(__FUNCTION__);
     return retval;
 }
+
+
 
 /*! Get value of the "operation" attribute and change op if given
  * @param[in]   xn  XML node
@@ -1126,7 +1158,6 @@ xmldb_put_xkey(char               *dbname,
 	    if (db_del(dbname, pairs[i].dp_key) < 0)
 		goto done;
 	}
-
 	break;
     default:
 	break;
@@ -1141,6 +1172,41 @@ xmldb_put_xkey(char               *dbname,
 	cbuf_free(crx);
     unchunk_group(__FUNCTION__);  
     return retval;
+}
+
+/*! Raw dump of database, just keys and values, no xml interpretation 
+ * param[in]  f       File
+ * param[in]  dbname  Name of database
+ * param[in]  rxkey   Key regexp, eg "^.*$"
+ */
+int
+xmldb_dump(FILE *f,
+	   char *dbname, 
+	   char *rxkey)
+{
+    int             retval = 0;
+    int             npairs;
+    struct db_pair *pairs;
+
+    /* Default is match all */
+    if (rxkey == NULL)
+	rxkey = "^.*$";
+
+    /* Get all keys/values for vector */
+    if ((npairs = db_regexp(dbname, rxkey, __FUNCTION__, &pairs, 0)) < 0)
+        return -1;
+    
+    for (npairs--; npairs >= 0; npairs--) 
+	fprintf(f, "%s %s\n", pairs[npairs].dp_key,
+		pairs[npairs].dp_val?pairs[npairs].dp_val:"");
+    unchunk_group(__FUNCTION__);
+    return retval;
+}
+
+int 
+xmldb_init(char *file)
+{
+    return db_init(file);
 }
 
 #if 1 /* Test program */

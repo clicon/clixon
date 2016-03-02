@@ -402,31 +402,6 @@ get_edit_opts(cxobj               *xn,
  *
  * @note delete/remove not implemented
  *
- * Call graph, client to backend and formats
- * netconf_input_cb # client
- *   read
- *   process_incoming_packet             # (char*)
- *     clicon_xml_parse_string           # (xml)
- *     netconf_rpc_dispatch
- *       netconf_edit_config             # client
- *         clicon_xml2file               # (file)
- *         clicon_rpc_load
- *           from_client                 # backend
- *             from_client_load
- *               db_init                 # replace?
- *               load_xml_to_db
- *                 clicon_xml_parse_file #(xml)
- *                 xml2db
- *                   xml2cvec_key        #(cvec)
- *                   clicon_dbput
- *                     cvec2lvec         #(lvec)
- *                     db_set
- *                       dpopen
- *                       dpput           #(db)
- *                       dpclose
- * Which means that for a single edit, the following format conversions are made:
- * char*->xml->file->xml->cvec->lvec->db
- *         
  */
 int
 netconf_edit_config(clicon_handle h,

@@ -52,41 +52,17 @@
 /* Command line options to be passed to getopt(3) */
 #define DBCTRL_OPTS "hDd:pbn:r:m:Zi"
 
-/*! Write database contents to file, xml database variant
- * @param[in]  dbspec  If set make a sanity check if key dont match (just)
- */
-static int
-dump_database(FILE       *f,
-	      char       *dbname, 
-	      char       *rxkey)
-{
-    int             retval = 0;
-    int             npairs;
-    struct db_pair *pairs;
-
-    /* Default is match all */
-    if (rxkey == NULL)
-	rxkey = "^.*$";
-
-    /* Get all keys/values for vector */
-    if ((npairs = db_regexp(dbname, rxkey, __FUNCTION__, &pairs, 0)) < 0)
-        return -1;
-    
-    for (npairs--; npairs >= 0; npairs--) 
-	fprintf(f, "%s %s\n", pairs[npairs].dp_key,
-		pairs[npairs].dp_val?pairs[npairs].dp_val:"");
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
-
 /*
  * remove_entry
  */
 static int
 remove_entry(char *dbname, char *key)
 {
-  return db_del(dbname, key);
+#ifdef NOTYET /* This assumes direct access to database */
+    return db_del(dbname, key);
+#else
+    return 0;
+#endif
 }
 
 /*
@@ -219,7 +195,7 @@ main(int argc, char **argv)
     }
     yspec = clicon_dbspec_yang(h);
     if (dumpdb){
-	if (dump_database(stdout, dbname, matchkey)) {
+	if (xmldb_dump(stdout, dbname, matchkey)) {
 	    fprintf(stderr, "Match error\n");
 	    goto done;
 	}
@@ -230,10 +206,14 @@ main(int argc, char **argv)
     if (rment)
         if (remove_entry(dbname, rmkey) < 0)
 	    goto done;
-    if (zapdb) /* remove databases */
-	unlink(dbname);
+    if (zapdb) /* remove databases */ 
+	/* XXX This assumes direct access to database */
+	if (unlink(dbname) < 0){
+	    clicon_err(OE_FATAL, errno, "unlink %s", dbname);
+	    goto done;
+	}
     if (initdb)
-	if (db_init(dbname) < 0)
+	if (xmldb_init(dbname) < 0)
 	    goto done;
 
   done:
