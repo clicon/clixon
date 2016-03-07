@@ -59,9 +59,9 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc::rg:pt"
+#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc::rg:ptx:"
 
-/* Cannot use h after this */
+/*! Terminate. Cannot use h after this */
 static int
 config_terminate(clicon_handle h)
 {
@@ -85,10 +85,8 @@ config_terminate(clicon_handle h)
     return 0;
 }
 
-/*
-  config_sig_term
-  Unlink pidfile and quit
-*/
+/*! Unlink pidfile and quit
+ */
 static void
 config_sig_term(int arg)
 {
@@ -130,7 +128,8 @@ usage(char *argv0, clicon_handle h)
 	    "    -r\t\tReload running database\n"
 	    "    -p \t\tPrint database yang specification\n"
 	    "    -t \t\tPrint alternate spec translation (eg if YANG print KEY, if KEY print YANG)\n"
-	    "    -g <group>\tClient membership required to this group (default: %s)\n",
+	    "    -g <group>\tClient membership required to this group (default: %s)\n"
+	    "    -x <status>\tSet CLICON_XMLDB_RPC to 0 or 1.\n",
 	    argv0,
 	    plgdir ? plgdir : "none",
 	    confsock ? confsock : "none",
@@ -138,19 +137,16 @@ usage(char *argv0, clicon_handle h)
 	    startup ? startup : "none",
 	    group ? group : "none"
 	    );
-    exit(0);
+    exit(-1);
 }
 
 static int
-rundb_init(clicon_handle h, char *running_db)
+rundb_init(clicon_handle h)
 {
-    if (unlink(running_db) != 0 && errno != ENOENT) {
-	clicon_err(OE_UNIX, errno, "unlink");
+    if (xmldb_delete(h, "running") != 0 && errno != ENOENT) 
 	return -1;
-    }
-    if (xmldb_init(running_db) < 0)
+    if (xmldb_init(h, "running") < 0)
 	return -1;
-    
     return 0;
 }
 
@@ -164,19 +160,16 @@ rundb_init(clicon_handle h, char *running_db)
  */
 static int
 rundb_main(clicon_handle h, 
-	   char         *app_config_file, 
-	   char         *running_db)
+	   char         *app_config_file)
 {
-    char      *tmp = NULL;
     int        retval = -1;
     int        fd = -1;
-    yang_spec *yspec;
     cxobj     *xt = NULL;
     cxobj     *xn;
 
-    if ((tmp = clicon_tmpfile(__FUNCTION__)) == NULL)
+    if (xmldb_init(h, "tmp") < 0)
 	goto done;
-    if (file_cp(running_db, tmp) < 0){
+    if (xmldb_copy(h, "running", "tmp") < 0){
 	clicon_err(OE_UNIX, errno, "file copy");
 	goto done;
     }
@@ -186,16 +179,15 @@ rundb_main(clicon_handle h,
     }
     if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
 	goto done;
-    yspec = clicon_dbspec_yang(h);
     if ((xn = xml_child_i(xt, 0)) != NULL)
-	if (xmldb_put(tmp, xn, yspec, OP_MERGE) < 0)
+	if (xmldb_put(h, "tmp", xn, OP_MERGE) < 0)
 	    goto done;
-    if (candidate_commit(h, tmp, running_db) < 0)
+    if (candidate_commit(h, "tmp") < 0)
+	goto done;
+    if (xmldb_delete(h, "tmp") < 0)
 	goto done;
     retval = 0;
 done:
-    if (tmp)
-	unlink(tmp);
     if (xt)
 	xml_free(xt);
     if (fd != -1)
@@ -204,31 +196,24 @@ done:
     return retval;
 }
 
-
 static int
-candb_reset(clicon_handle h, char *running_db)
+candb_reset(clicon_handle h)
 {
     int retval = -1;
-    char *tmp = NULL;
 
-    if ((tmp = clicon_tmpfile(__FUNCTION__)) == NULL)
-	goto done;
-    if (file_cp(running_db, tmp) < 0){
+    if (xmldb_copy(h, "running", "tmp") < 0){
 	clicon_err(OE_UNIX, errno, "file copy");
 	goto done;
     }
     /* Request plugins to reset system state, eg initiate running from system 
      * -R
      */
-    if (plugin_reset_state(h, tmp) < 0)  
+    if (plugin_reset_state(h, "tmp") < 0)  
 	goto done;
-    if (candidate_commit(h, tmp, running_db) < 0)
+    if (candidate_commit(h, "tmp") < 0)
 	goto done;
     retval = 0;
   done:
-    if (tmp)
-	unlink(tmp);
-    unchunk_group(__FUNCTION__);
     return retval;
 }
 
@@ -299,8 +284,6 @@ main(int argc, char **argv)
     int           foreground;
     int           once;
     int           init_rundb;
-    char         *running_db;
-    char         *candidate_db;
     int           reload_running;
     int           reset_state_running;
     int           reset_state_candidate;
@@ -431,6 +414,14 @@ main(int argc, char **argv)
 	case 't' : /* Print alternative dbspec format (eg if YANG, print KEY) */
 	    printalt++;
 	    break;
+	case 'x' : /* set xmldb rpc on */
+	    {
+		int i;
+		if (sscanf(optarg, "%d", &i) != 1)
+		    usage(argv[0], h);
+		clicon_option_int_set(h, "CLICON_XMLDB_RPC", i);
+	    }
+	    break;
 	default:
 	    usage(argv[0], h);
 	    break;
@@ -462,7 +453,7 @@ main(int argc, char **argv)
 	    unlink(pidfile);   
 	if (sockfamily==AF_UNIX && lstat(sock, &st) == 0)
 	    unlink(sock);   
-	exit(0);
+	exit(0); /* OK */
     }
     else
 	if (pid){
@@ -500,31 +491,21 @@ main(int argc, char **argv)
     if (yang_spec_main(h, stdout, printspec) < 0)
 	goto done;
 
-    if ((running_db = clicon_running_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "running db not set");
-	goto done;
-    }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "candidate db not set");
-	goto done;
-    }
     /* If running exists and reload_running set, make a copy to candidate */
     if (reload_running){
-	if (stat(running_db, &st) && errno == ENOENT){
+	if (xmldb_exists(h, "running") != 1){
 	    clicon_log(LOG_NOTICE, "%s: -r (reload running) option given but no running_db found, proceeding without", __PROGRAM__);
 	    reload_running = 0; /* void it, so we dont commit candidate below */
 	}
 	else
-	    if (file_cp(running_db, candidate_db) < 0){
-		clicon_err(OE_UNIX, errno, "FATAL: file_cp");
+	    if (xmldb_copy(h, "running", "candidate") < 0)
 		goto done;
-	    }
     }
     /* Init running db 
-     * -I
+     * -I or if it isnt there
      */
-    if (init_rundb || (stat(running_db, &st) && errno == ENOENT))
-	if (rundb_init(h, running_db) < 0)
+    if (init_rundb || xmldb_exists(h, "running") != 1)
+	if (rundb_init(h) < 0)
 	    goto done;
 
     /* Initialize plugins 
@@ -533,12 +514,12 @@ main(int argc, char **argv)
 	goto done;
     
     if (reset_state_candidate){
-	if (candb_reset(h, running_db) < 0) 
+	if (candb_reset(h) < 0) 
 	    goto done;
     }
     else
 	if (reset_state_running){
-	    if (plugin_reset_state(h, running_db) < 0) 
+	    if (plugin_reset_state(h, "running") < 0) 
 		goto done;
 	}
     /* Call plugin_start */
@@ -549,7 +530,7 @@ main(int argc, char **argv)
     *(argv-1) = tmp;
 
     if (reload_running){
-	if (candidate_commit(h, candidate_db, running_db) < 0)
+	if (candidate_commit(h, "candidate") < 0)
 	    goto done;
     }
 
@@ -558,17 +539,16 @@ main(int argc, char **argv)
        -r replace running (obsolete)
     */
     if (app_config_file)
-	if (rundb_main(h, app_config_file, running_db) < 0)
+	if (rundb_main(h, app_config_file) < 0)
 	    goto done;
 
     /* Initiate the shared candidate. Maybe we should not do this? */
-    if (file_cp(running_db, candidate_db) < 0){
-	clicon_err(OE_UNIX, errno, "FATAL: file_cp");
+    if (xmldb_copy(h, "running", "candidate") < 0)
 	goto done;
-    }
+#ifdef OBSOLETE
     /* XXX Hack for now. Change mode so that we all can write. Security issue*/
     chmod(candidate_db, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-
+#endif
     if (once)
 	goto done;
 
@@ -579,7 +559,7 @@ main(int argc, char **argv)
 	clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_SYSLOG); 
 	if (daemon(0, 0) < 0){
 	    fprintf(stderr, "config: daemon");
-	    exit(0);
+	    exit(-1);
 	}
     }
     /* Write pid-file */

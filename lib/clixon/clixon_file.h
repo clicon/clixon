@@ -31,6 +31,6 @@ int clicon_file_dirent(const char *dir, struct dirent **ent,
 
 char *clicon_tmpfile(const char *label);
 
-int file_cp(char *src, char *target);
+int clicon_file_copy(char *src, char *target);
 
 #endif /* _CLIXON_FILE_H_ */

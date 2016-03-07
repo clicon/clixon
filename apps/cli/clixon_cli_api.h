@@ -31,18 +31,6 @@
 #define CLI_PROMPT_LEN 64
 #define CLI_DEFAULT_PROMPT	">"
 
-/*
- * Types
- */
-//typedef void *cli_handle; /* clicon cli handle, see struct cli_handle */
-enum candidate_db_type{
-    CANDIDATE_DB_NONE,    /* No candidate */
-    CANDIDATE_DB_PRIVATE, /* Create a private candidate_db */
-    CANDIDATE_DB_SHARED,  /* Share the candidate with everyone else */
-    CANDIDATE_DB_CURRENT  /* Dont create candidate, use current directly */
-};
-
-
 /* 
  * Function Declarations 
  */
@@ -62,16 +50,12 @@ char cli_set_comment(clicon_handle h, char c);
 char cli_comment(clicon_handle h);
 int cli_set_exiting(clicon_handle h, int exiting);
 int cli_exiting(clicon_handle h);
-int cli_set_send2backend(clicon_handle h, int send2backend);
-int cli_send2backend(clicon_handle h);
 clicon_handle cli_handle_init(void);
 int cli_handle_exit(clicon_handle h);
 cligen_handle cli_cligen(clicon_handle h);
-enum candidate_db_type cli_candidate_type(clicon_handle h);
-int cli_set_candidate_type(clicon_handle h, enum candidate_db_type type);
 
 /* cli_common.c */
-int init_candidate_db(clicon_handle h, enum candidate_db_type type);
+int init_candidate_db(clicon_handle h);
 int exit_candidate_db(clicon_handle h);
 #define cli_output cligen_output
 int cli_set (clicon_handle h, cvec *vars, cg_var *arg);

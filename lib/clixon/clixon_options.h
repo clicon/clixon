@@ -76,8 +76,6 @@ char *clicon_configfile(clicon_handle h);
 char *clicon_yang_dir(clicon_handle h);
 char *clicon_yang_module_main(clicon_handle h);
 char *clicon_yang_module_revision(clicon_handle h);
-char *clicon_running_db(clicon_handle h);
-char *clicon_candidate_db(clicon_handle h);
 char *clicon_backend_dir(clicon_handle h);
 char *clicon_cli_dir(clicon_handle h);
 char *clicon_clispec_dir(clicon_handle h);
@@ -96,6 +94,11 @@ int   clicon_cli_genmodel(clicon_handle h);
 int   clicon_cli_varonly(clicon_handle h);
 int   clicon_cli_varonly_set(clicon_handle h, int val);
 int   clicon_cli_genmodel_completion(clicon_handle h);
+
+char *clicon_xmldb_dir(clicon_handle h);
+int      clicon_xmldb_rpc(clicon_handle h);
+char    *clicon_xmldb_addr(clicon_handle h);
+uint16_t clicon_xmldb_port(clicon_handle h);
 
 char *clicon_quiet_mode(clicon_handle h);
 enum genmodel_type clicon_cli_genmodel_type(clicon_handle h);

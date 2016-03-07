@@ -588,7 +588,9 @@ xml_find_body(cxobj *xn, char *name)
  *     (otherwise it will not)
  */
 int
-xml_prune(cxobj *xparent, cxobj *xchild, int purge)
+xml_prune(cxobj *xparent, 
+	  cxobj *xchild, 
+	  int    purge)
 {
     int       i;
     cxobj *xc = NULL;
@@ -648,10 +650,13 @@ xml_free(cxobj *x)
  * @param[in]   xn          clicon xml tree
  * @param[in]   level       how many spaces to insert before each line
  * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
- * See also clicon_xml2cbuf
+ * @see clicon_xml2cbuf
  */
 int
-clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint)
+clicon_xml2file(FILE  *f, 
+		cxobj *xn, 
+		int    level, 
+		int    prettyprint)
 {
     cbuf  *cb;
     int    retval = -1;
@@ -689,7 +694,10 @@ clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint)
  * See also clicon_xml2file
  */
 int
-clicon_xml2cbuf(cbuf *cb, cxobj *cx, int level, int prettyprint)
+clicon_xml2cbuf(cbuf  *cb, 
+		cxobj *cx, 
+		int    level, 
+		int    prettyprint)
 {
     cxobj *xc;
 
@@ -797,7 +805,9 @@ FSM(char *tag, char ch, int state)
  * May block
  */
 int 
-clicon_xml_parse_file(int fd, cxobj **cx, char *endtag)
+clicon_xml_parse_file(int     fd, 
+		      cxobj **cx, 
+		      char   *endtag)
 {
     int   len = 0;
     char  ch;
@@ -869,7 +879,8 @@ clicon_xml_parse_file(int fd, cxobj **cx, char *endtag)
  *  cxobj *cx = NULL;
  *  str = strdup(...);
  *  str0 = str;
- *  clicon_xml_parse_string(&str0, &cx)
+ *  if (clicon_xml_parse_string(&str0, &cx) < 0)
+ *    err;
  *  free(str0);
  *  xml_free(cx);
  * @endcode

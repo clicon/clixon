@@ -45,19 +45,23 @@
  * The given string is split into a vector where the delimiter can be
  * any of the characters in the specified delimiter string. 
  *
- * See also clicon_strsplit() which is similar by operates on a full string
- * delimiter rather than individual character delimiters.
- *
  * The vector returned is one single memory chunk that must be unchunked 
  * by the caller
  *
- * @param   string     String to be split
- * @param   delim      String of delimiter characters
- * @param   nvec       Number of entries in returned vector
- * @param   label      Chunk label for returned vector
+ * @param[in]   string     String to be split
+ * @param[in]   delim      String of delimiter characters
+ * @param[out]  nvec       Number of entries in returned vector
+ * @param[in]   label      Chunk label for returned vector
+ * @retval      vec        Vector of strings. Free with unchunk
+ * @retval      NULL       Error
+ * @see clicon_strsplit    Operates on full string delimiters rather than
+ *                         individual character delimiters.
  */
 char **
-clicon_sepsplit (char *string, char *delim, int *nvec, const char *label)
+clicon_sepsplit (char       *string, 
+		 char       *delim, 
+		 int        *nvec, 
+		 const char *label)
 {
     int idx;
     size_t siz;
@@ -94,19 +98,25 @@ clicon_sepsplit (char *string, char *delim, int *nvec, const char *label)
  * the full delimiter string. The matched delimiters are not part of the
  * resulting vector.
  *
- * See also clicon_sepsplit() which is similar by operates on individual
- * character delimiters rather then a full string delimiter.
+ * See also clicon_sepsplit() which is similar 
  *
  * The vector returned is one single memory chunk that must be unchunked 
  * by the caller
  *
- * @param   string     String to be split
- * @param   delim      String of delimiter characters
- * @param   nvec       Number of entries in returned vector
- * @param   label      Chunk label for returned vector
+ * @param[in]   string     String to be split
+ * @param[in]   delim      String of delimiter characters
+ * @param[out]  nvec       Number of entries in returned vector
+ * @param[in]   label      Chunk label for returned vector
+ * @retval      vec        Vector of strings. Free with unchunk
+ * @retval      NULL       Error
+ * @see clicon_sepsplit    Operates on individual character delimiters rather 
+ *                         than full string delimiter.
  */
 char **
-clicon_strsplit (char *string, char *delim, int *nvec, const char *label)
+clicon_strsplit (char       *string, 
+		 char       *delim, 
+		 int        *nvec, 
+		 const char *label)
 {
     int idx;
     size_t siz;
@@ -142,15 +152,18 @@ clicon_strsplit (char *string, char *delim, int *nvec, const char *label)
     return vec;
 }
 
-
-/*
- * Concatenate elements of a string array into a string. An optiona delimiter
- * string can be specified which will be inserted betwen each element. 
- * Resulting string is chunk:ed using the specified group label and need to be 
- * unchunked by the caller
+/*! Concatenate elements of a string array into a string. 
+ * An optional delimiter string can be specified which will be inserted betwen 
+ * each element. 
+ * @param[in]   label      Chunk label for returned vector
+ * @retval  str   Joined string. Free with unchunk()
+ * @retval  NULL  Failure
  */
 char *
-clicon_strjoin (int argc, char **argv, char *delim, const char *label)
+clicon_strjoin (int         argc, 
+		char      **argv, 
+		char       *delim, 
+		const char *label)
 {
   int i;
   int len;
@@ -176,12 +189,15 @@ clicon_strjoin (int argc, char **argv, char *delim, const char *label)
   return str;
 }
 
-/*
- * Trim of whitespace in beginning and end of string.
- * A new string is returned, chunked with specified label
+/*! Trim whitespace in beginning and end of string.
+ *
+ * @param[in]   label      Chunk label for returned vector
+ * @retval  str   Trimmed string. Free with unchunk()
+ * @retval  NULL  Failure
  */
 char *
-clicon_strtrim(char *str, const char *label)
+clicon_strtrim(char       *str, 
+	       const char *label)
 {
     char *start, *end, *new;
     
@@ -200,15 +216,18 @@ clicon_strtrim(char *str, const char *label)
     return new;
 }
 
-/*
- * clicon_sep
- * given a string s, on format: a[b], separate it into two parts: a and b
+/*! Given a string s, on format: a[b], separate it into two parts: a and b
  * [] are separators.
  * alterative use:
  * a/b -> a and b (where sep = "/")
+ * @param[in]   label      Chunk label for returned vector
  */
 int
-clicon_sep(char *s, const char sep[2], const char *label, char**a0, char **b0)
+clicon_sep(char       *s, 
+	   const char  sep[2], 
+	   const char *label, 
+	   char      **a0, 
+	   char      **b0)
 {
     char *a = NULL;
     char *b = NULL;    
@@ -246,12 +265,12 @@ clicon_sep(char *s, const char sep[2], const char *label, char**a0, char **b0)
 }
 
 
-/*
- * strndup() for systems without it, such as xBSD
+/*! strndup() for systems without it, such as xBSD
  */
 #ifndef HAVE_STRNDUP
 char *
-clicon_strndup (const char *str, size_t len)
+clicon_strndup (const char *str, 
+		size_t      len)
 {
   char *new;
   size_t slen;
@@ -270,16 +289,19 @@ clicon_strndup (const char *str, size_t len)
 }
 #endif /* ! HAVE_STRNDUP */
 
-/*
- * clicon_strmatch - Match string against regexp. 
+/*! Match string against regexp. 
  *
- * Returns -1 on failure, 0 on no matach or >0 (length of matching substring)
- * in case of a match. If a match pointer is given, the matching substring 
+ * If a match pointer is given, the matching substring 
  * will be allocated 'match' will be pointing to it. The match string must
  * be free:ed by the application.
+ * @retval  -1   Failure
+ * @retval   0   No match
+ * @retval  >0   Match: Length of matching substring
  */
 int
-clicon_strmatch(const char *str, const char *regexp, char **match)
+clicon_strmatch(const char *str, 
+		const char *regexp, 
+		char      **match)
 {
     size_t len;
     int status;
@@ -316,12 +338,14 @@ clicon_strmatch(const char *str, const char *regexp, char **match)
     return len;
 }
 
-/*
- * clicon_strsub - substitute pattern in string.
- * Returns new malloc:ed string on success or NULL on failure.
+/*! Substitute pattern in string.
+ * @retval  str  Malloc:ed string on success, use free to deallocate
+ * @retval  NULL Failure.
  */
 char *
-clicon_strsub(char *str, char *from, char *to)
+clicon_strsub(char *str, 
+	      char *from, 
+	      char *to)
 {
     char **vec;
     int nvec;

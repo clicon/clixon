@@ -1910,7 +1910,6 @@ yang_config(yang_stmt *ys)
  * @param f          file to print to (if one of print options are enabled)
  * @param printspec  print database (YANG) specification as read from file
  */
-
 int
 yang_spec_main(clicon_handle h, 
 	       FILE         *f, 

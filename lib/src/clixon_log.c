@@ -65,8 +65,11 @@ static FILE *_debugfile = NULL;
  * @param[in]  ident   prefix that appears on syslog (eg 'cli')
  * @param[in]  upto    log priority, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG (see syslog(3)).
  * @param[in]  flags   bitmask: if CLICON_LOG_STDERR, then print logs to stderr
-                                if CLICON_LOG_SYSLOG, then print logs to syslog
-				You can do a combination of both
+ *                              if CLICON_LOG_SYSLOG, then print logs to syslog
+ *				You can do a combination of both
+ * @code
+ *  clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
+ * @endcode
  */
 int
 clicon_log_init(char *ident, int upto, int flags)

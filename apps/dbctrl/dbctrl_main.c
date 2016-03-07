@@ -50,7 +50,7 @@
 #include <clixon/clixon.h>
 
 /* Command line options to be passed to getopt(3) */
-#define DBCTRL_OPTS "hDd:pbn:r:m:Zi"
+#define DBCTRL_OPTS "hDSd:pbn:r:m:Zi"
 
 /*
  * remove_entry
@@ -65,8 +65,7 @@ remove_entry(char *dbname, char *key)
 #endif
 }
 
-/*
- * usage
+/*! usage
  */
 static void
 usage(char *argv0)
@@ -75,7 +74,8 @@ usage(char *argv0)
 	    "where options are\n"
             "\t-h\t\tHelp\n"
             "\t-D\t\tDebug\n"
-            "\t-d <dbname>\tDatabase name (default: running_db)\n"
+            "\t-S\t\tLog on syslog\n"
+            "\t-d <db>\tDatabase name (default: running)\n"
     	    "\t-p\t\tDump database on stdout\n"
     	    "\t-b\t\tBrief output, just print keys. Combine with -p or -m\n"
 	    "\t-n \"<key> <val>\" Add database entry\n"
@@ -101,9 +101,8 @@ main(int argc, char **argv)
     char            *addstr;
     char             rmkey[MAXPATHLEN];
     int              brief;
-    char             dbname[MAXPATHLEN] = {0,};
+    char             db[MAXPATHLEN] = {0,};
     int              use_syslog;
-    yang_spec       *yspec;
     clicon_handle    h;
 
     /* In the startup, logs to stderr & debug flag set later */
@@ -118,6 +117,7 @@ main(int argc, char **argv)
     brief      = 0;
     use_syslog = 0;
     addstr     = NULL;
+    memcpy(db, "running", strlen("running")+1);
     memset(rmkey, '\0', sizeof(rmkey));
 
     if ((h = clicon_handle_init()) == NULL)
@@ -143,6 +143,7 @@ main(int argc, char **argv)
 		    use_syslog?CLICON_LOG_SYSLOG:CLICON_LOG_STDERR); 
     clicon_debug_init(debug, NULL); 
 
+
     /* Now rest of options */   
     optind = 1;
     while ((c = getopt(argc, argv, DBCTRL_OPTS)) != -1)
@@ -159,8 +160,8 @@ main(int argc, char **argv)
 	case 'b': /* Dump/print/match database  brief (combone w -p or -m) */
 	    brief++;
 	    break;
-	case 'd': /* dbname */
-	    if (!optarg || sscanf(optarg, "%s", dbname) != 1)
+	case 'd': /* db either db filename or symbolic: running|candidate */
+	    if (!optarg || sscanf(optarg, "%s", db) != 1)
 	        usage(argv[0]);
 	    break;
 	case 'n': /* add database entry */
@@ -189,33 +190,32 @@ main(int argc, char **argv)
     argc -= optind;
     argv += optind;
 
-    if (*dbname == '\0'){
+    if (*db == '\0'){
 	clicon_err(OE_FATAL, 0, "database not specified (with -d <db>): %s");
 	goto done;
     }
-    yspec = clicon_dbspec_yang(h);
     if (dumpdb){
-	if (xmldb_dump(stdout, dbname, matchkey)) {
+	/* Here db must be local file-path */
+	if (xmldb_dump(stdout, db, matchkey)) {
 	    fprintf(stderr, "Match error\n");
 	    goto done;
 	}
     }
     if (addent) /* add entry */
-	if (xmldb_put_xkey(dbname, addstr, NULL, yspec, OP_REPLACE) < 0)
+	if (xmldb_put_xkey(h, db, addstr, NULL, OP_REPLACE) < 0)
 	    goto done;
     if (rment)
-        if (remove_entry(dbname, rmkey) < 0)
+        if (remove_entry(db, rmkey) < 0)
 	    goto done;
     if (zapdb) /* remove databases */ 
 	/* XXX This assumes direct access to database */
-	if (unlink(dbname) < 0){
-	    clicon_err(OE_FATAL, errno, "unlink %s", dbname);
+	if (xmldb_delete(h, db) < 0){
+	    clicon_err(OE_FATAL, errno, "xmldb_delete %s", db);
 	    goto done;
 	}
     if (initdb)
-	if (xmldb_init(dbname) < 0)
+	if (xmldb_init(h, db) < 0)
 	    goto done;
-
   done:
     return 0;
 }

@@ -212,14 +212,6 @@ clicon_option_sanity(clicon_hash_t *copt)
 	clicon_err(OE_UNIX, 0, "CLICON_NETCONF_DIR not defined in config file");
 	goto done;
     }
-    if (!hash_lookup(copt, "CLICON_RUNNING_DB")){
-	clicon_err(OE_UNIX, 0, "CLICON_RUNNING_DB not defined in config file");
-	goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_CANDIDATE_DB")){
-	clicon_err(OE_UNIX, 0, "CLICON_CANDIDATE_DB not defined in config file");
-	goto done;
-    }
     if (!hash_lookup(copt, "CLICON_YANG_DIR")){
 	clicon_err(OE_UNIX, 0, "CLICON_YANG_DIR not defined in config file");
 	goto done;
@@ -404,20 +396,6 @@ clicon_yang_module_revision(clicon_handle h)
     return clicon_option_str(h, "CLICON_YANG_MODULE_REVISION");
 }
 
-/* candidate database: get name */
-char *
-clicon_candidate_db(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_CANDIDATE_DB");
-}
-
-/* running database: get name */
-char *
-clicon_running_db(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_RUNNING_DB");
-}
-
 char *
 clicon_backend_dir(clicon_handle h)
 {
@@ -472,14 +450,14 @@ clicon_sock_family(clicon_handle h)
 	return AF_UNIX; /* default */
 }
 
-/* get information about socket: unix domain filepath, or addr:path */
+/*! Get information about socket: unix domain filepath, or addr:path */
 char *
 clicon_sock(clicon_handle h)
 {
     return clicon_option_str(h, "CLICON_SOCK");
 }
 
-/* get port for backend socket in case of AF_INET or AF_INET6 */
+/*! Get port for backend socket in case of AF_INET or AF_INET6 */
 int
 clicon_sock_port(clicon_handle h)
 {
@@ -608,8 +586,43 @@ clicon_cli_genmodel_completion(clicon_handle h)
 	return 0;
 }
 
-/* 
- * Get dbspec (YANG variant)
+/* Where are "running" and "candidate" databases? */
+char *
+clicon_xmldb_dir(clicon_handle h)
+{
+    return clicon_option_str(h, "CLICON_XMLDB_DIR");
+}
+
+/*! Set if xmldb runs in a separate process (clixon_xmldb). */
+int
+clicon_xmldb_rpc(clicon_handle h)
+{
+    char *s;
+
+    if ((s = clicon_option_str(h, "CLICON_XMLDB_RPC")) == NULL)
+	return -1;
+    return atoi(s);
+}
+
+/*! Get xmldb inet address */
+char *
+clicon_xmldb_addr(clicon_handle h)
+{
+    return clicon_option_str(h, "CLICON_XMLDB_ADDR");
+}
+
+/*! Get port for xmldb address in case of AF_INET or AF_INET6 */
+uint16_t
+clicon_xmldb_port(clicon_handle h)
+{
+    char *s;
+
+    if ((s = clicon_option_str(h, "CLICON_XMLDB_PORT")) == NULL)
+	return -1;
+    return atoi(s);
+}
+
+/*! Get YANG specification
  * Must use hash functions directly since they are not strings.
  */
 yang_spec *

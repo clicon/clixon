@@ -40,6 +40,8 @@ struct db_pair {
  */ 
 int db_init(char *file);
 
+int db_delete(char *file);
+
 int db_set(char *file, char *key, void *data, size_t datalen);
 
 int db_get(char *file, char *key, void *data, size_t *datalen);

@@ -54,7 +54,7 @@ INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/inclu
 
 # Not accessible from plugin
 APPSRC  = backend_main.c backend_socket.c backend_client.c \
-	  backend_lock.c backend_commit.c backend_plugin.c 
+	backend_commit.c backend_plugin.c 
 
 APPOBJ  = $(APPSRC:.c=.o)
 APPL	= clixon_backend

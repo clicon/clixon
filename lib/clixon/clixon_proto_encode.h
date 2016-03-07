@@ -100,40 +100,6 @@ int
 clicon_msg_load_decode(struct clicon_msg *msg, 
 		       int *replace, char **db, char **filename, 
 		       const char *label);
-struct clicon_msg *
-clicon_msg_initdb_encode(char *filename_src, const char *label);
-
-int
-clicon_msg_initdb_decode(struct clicon_msg *msg, char **filename_src,
-		    const char *label);
-
-struct clicon_msg *
-clicon_msg_rm_encode(char *filename_src, const char *label);
-
-int
-clicon_msg_rm_decode(struct clicon_msg *msg, char **filename_src,
-		    const char *label);
-
-struct clicon_msg *
-clicon_msg_copy_encode(char *filename_src, char *filename_dst,
-		      const char *label);
-
-int
-clicon_msg_copy_decode(struct clicon_msg *msg, 
-		      char **filename_src, char **filename_dst, 
-		      const char *label);
-
-struct clicon_msg *
-clicon_msg_lock_encode(char *db, const char *label);
-
-int
-clicon_msg_lock_decode(struct clicon_msg *msg, char **db, const char *label);
-
-struct clicon_msg *
-clicon_msg_unlock_encode(char *db, const char *label);
-
-int
-clicon_msg_unlock_decode(struct clicon_msg *msg, char **db, const char *label);
 
 struct clicon_msg *
 clicon_msg_kill_encode(uint32_t session_id, const char *label);

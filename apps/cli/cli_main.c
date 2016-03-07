@@ -56,7 +56,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:F:1u:d:m:cP:qpGLl:"
+#define CLI_OPTS "hD:f:F:1u:d:m:qpGLl:"
 
 /*! terminate cli application */
 static int
@@ -92,6 +92,7 @@ cli_signal_init (clicon_handle h)
 }
 
 /*! Interactive CLI command loop
+ * @param[in]  h    CLICON handle
  * @see cligen_loop
  */
 static void
@@ -132,8 +133,6 @@ usage(char *argv0, clicon_handle h)
     	    "\t-u <sockpath>\tconfig UNIX domain path (default: %s)\n"
 	    "\t-d <dir>\tSpecify plugin directory (default: %s)\n"
             "\t-m <mode>\tSpecify plugin syntax mode\n"
-    	    "\t-c \t\tWrite to candidate db directly, not via config backend\n"
-    	    "\t-P <dbname> \tWrite to private database\n"
 	    "\t-q \t\tQuiet mode, dont print greetings or prompt, terminate on ctrl-C\n"
 	    "\t-p \t\tPrint database yang specification\n"
 	    "\t-G \t\tPrint CLI syntax generated from dbspec (if CLICON_CLI_GENMODEL enabled)\n"
@@ -152,8 +151,6 @@ int
 main(int argc, char **argv)
 {
     char         c;    
-    enum candidate_db_type dbtype;
-    char         private_db[MAXPATHLEN];
     int          once;
     char	*tmp;
     char	*argv0 = argv[0];
@@ -163,8 +160,8 @@ main(int argc, char **argv)
     int          logclisyntax  = 0;
     int          help = 0;
     char        *treename;
-    char        *running_db;
     int          logdst = CLICON_LOG_STDERR;
+    char        *restarg; /* what remains after options */
 
     /* Defaults */
 
@@ -175,10 +172,7 @@ main(int argc, char **argv)
 	goto done;
     if (cli_plugin_init(h) != 0) 
 	goto done;
-    dbtype = CANDIDATE_DB_SHARED;
     once = 0;
-    private_db[0] = '\0';
-    cli_set_send2backend(h, 1); /* send changes to config daemon */
     cli_set_comment(h, '#'); /* Default to handle #! clicon_cli scripts */
 
     /*
@@ -269,13 +263,6 @@ main(int argc, char **argv)
 		usage(argv[0], h);
 	    clicon_option_str_set(h, "CLICON_CLI_MODE", optarg);
 	    break;
-	case 'c' : /* No config daemon (used in bootstrapping and file load) */
-	    cli_set_send2backend(h, 0);
-	    break;
-	case 'P' : /* load to private database with given name */
-	    dbtype = CANDIDATE_DB_PRIVATE;
-	    clicon_option_str_set(h, "CLICON_CANDIDATE_DB", optarg); /* override default */
-	    break;
 	case 'q' : /* Quiet mode */
 	    clicon_option_str_set(h, "CLICON_QUIET", "on"); 
 	    break;
@@ -359,25 +346,12 @@ main(int argc, char **argv)
 	goto done;
     }
 
-    /* Initialize databases */    
-    if ((running_db = clicon_running_db(h)) == NULL)
-	goto done;
-
-    if (strlen(private_db))
-	clicon_option_str_set(h, "CLICON_CANDIDATE_DB", private_db);
-
-    if (!cli_send2backend(h)) 
-      if (xmldb_init(running_db) < 0){
-	fprintf (stderr, "FATAL: Could not init running_db. (Run as root?)\n");
-	  goto done;
-      }
     /* A client does not have access to the candidate (and running) 
        databases if both these conditions are true:
          1. clicon_sock_family(h) == AF_INET[6]
-         2. cli_send2backend(h) == 1
     */
-    if (clicon_sock_family(h) == AF_UNIX || cli_send2backend(h)==0)
-	if (init_candidate_db(h, dbtype) < 0)
+    if (clicon_sock_family(h) == AF_UNIX)
+	if (init_candidate_db(h) < 0)
 	    return -1;
     
     if (logclisyntax)
@@ -386,19 +360,29 @@ main(int argc, char **argv)
     if (debug)
 	clicon_option_dump(h, debug);
 
+
+    /* Join rest of argv to a single command */
+    restarg = clicon_strjoin(argc, argv, " ", __FUNCTION__);
+
     /* Call start function in all plugins before we go interactive 
        Pass all args after the standard options to plugin_start
      */
-
     tmp = *(argv-1);
     *(argv-1) = argv0;
     cli_plugin_start(h, argc+1, argv-1);
     *(argv-1) = tmp;
 
     /* Launch interfactive event loop, unless -1 */
-    if (once == 0)
+    if (restarg != NULL && strlen(restarg)){
+	char *mode = cli_syntax_mode(h);
+	int result;
+	clicon_parse(h, restarg, &mode, &result);
+    }
+    /* Go into event-loop unless -1 command-line */
+    if (!once)
 	cli_interactive(h);
   done:
+    unchunk_group(__FUNCTION__);
     // Gets in your face if we log on stderr
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clicon_log(LOG_NOTICE, "%s: %u Terminated\n", __PROGRAM__, getpid());

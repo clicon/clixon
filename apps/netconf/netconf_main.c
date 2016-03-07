@@ -61,11 +61,11 @@
 
 /*! Process incoming packet 
  * @param[in]   h    Clicon handle
- * @param[in]   xf   Packet buffer
+ * @param[in]   cb   Packet buffer
  */
 static int
 process_incoming_packet(clicon_handle h, 
-			cbuf         *xf)
+			cbuf         *cb)
 {
     char  *str;
     char  *str0;
@@ -76,23 +76,23 @@ process_incoming_packet(clicon_handle h,
     cbuf  *xf1;
 
     clicon_debug(1, "RECV");
-    clicon_debug(2, "%s: RCV: \"%s\"", __FUNCTION__, cbuf_get(xf));
-    if ((str0 = strdup(cbuf_get(xf))) == NULL){
+    clicon_debug(2, "%s: RCV: \"%s\"", __FUNCTION__, cbuf_get(cb));
+    if ((str0 = strdup(cbuf_get(cb))) == NULL){
 	clicon_log(LOG_ERR, "%s: strdup: %s", __FUNCTION__, strerror(errno));
 	return -1;
     }
     str = str0;
     /* Parse incoming XML message */
     if (clicon_xml_parse_string(&str, &xml_req) < 0){
-	if ((xf = cbuf_new()) == NULL){
-	    netconf_create_rpc_error(xf, NULL, 
+	if ((cb = cbuf_new()) == NULL){
+	    netconf_create_rpc_error(cb, NULL, 
 				     "operation-failed", 
 				     "rpc", "error",
 				     NULL,
 				     NULL);
 
-	    netconf_output(1, xf, "rpc-error");
-	    cbuf_free(xf);
+	    netconf_output(1, cb, "rpc-error");
+	    cbuf_free(cb);
 	}
 	else
 	    clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
@@ -181,12 +181,12 @@ netconf_input_cb(int   s,
     unsigned char buf[BUFSIZ];
     int           i;
     int           len;
-    static cbuf  *xf; /* XXX: should use ce state? */
+    static cbuf  *cb; /* XXX: should use ce state? */
     int           xml_state = 0;
     int           retval = -1;
 
-    if (xf == NULL)
-	if ((xf = cbuf_new()) == NULL){
+    if (cb == NULL)
+	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_XML, errno, "%s: cbuf_new", __FUNCTION__);
 	    return retval;
 	}
@@ -209,22 +209,22 @@ netconf_input_cb(int   s,
     for (i=0; i<len; i++){
 	if (buf[i] == 0)
 	    continue; /* Skip NULL chars (eg from terminals) */
-	cprintf(xf, "%c", buf[i]);
+	cprintf(cb, "%c", buf[i]);
 	if (detect_endtag("]]>]]>",
 			  buf[i],
 			  &xml_state)) {
 	    /* OK, we have an xml string from a client */
-	    if (process_incoming_packet(h, xf) < 0){
+	    if (process_incoming_packet(h, cb) < 0){
 		goto done;
 	    }
 	    if (cc_closed)
 		break;
-	    cbuf_reset(xf);
+	    cbuf_reset(cb);
 	}
     }
     retval = 0;
   done:
-    //    cbuf_free(xf);
+    //    cbuf_free(cb);
     if (cc_closed) 
 	retval = -1;
     return retval;
@@ -255,16 +255,15 @@ send_hello(int s)
     return retval;
 }
 
-/* from init_candidate_db() and clicon_rpc_copy() */
+/*! Initialize candidate database */
 static int
-init_candidate_db(clicon_handle h, char *running_db, char *candidate_db)
+init_candidate_db(clicon_handle h)
 {
-    struct stat      sb;
     int                retval = -1;
 
     /* init shared candidate */
-    if (lstat(candidate_db, &sb) < 0){
-	if (clicon_rpc_copy(h, running_db, candidate_db) < 0)
+    if (xmldb_exists(h, "candidate") != 1){
+	if (xmldb_copy(h, "running", "candidate") < 0)
 	    goto done;
     }
     retval = 0;
@@ -316,8 +315,6 @@ main(int argc, char **argv)
     int              quiet = 0;
     clicon_handle    h;
     int              use_syslog;
-    char              *running_db;
-    char              *candidate_db;
 
     /* Defaults */
     use_syslog = 0;
@@ -390,15 +387,7 @@ main(int argc, char **argv)
     if (netconf_plugin_load(h) < 0)
 	return -1;
 
-    if ((running_db = clicon_running_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "running db not set");
-	goto done;
-    }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "candidate db not set");
-	goto done;
-    }
-    if (init_candidate_db(h, running_db, candidate_db) < 0)
+    if (init_candidate_db(h) < 0)
 	return -1;
     /* Call start function is all plugins before we go interactive */
     tmp = *(argv-1);

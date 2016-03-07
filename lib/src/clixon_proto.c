@@ -72,11 +72,6 @@ static const struct map_type2str msgmap[] = {
     {CLICON_MSG_CHANGE,       "change"},
     {CLICON_MSG_SAVE,         "save"},
     {CLICON_MSG_LOAD,         "load"},
-    {CLICON_MSG_COPY,         "copy"},
-    {CLICON_MSG_RM,           "rm"},
-    {CLICON_MSG_INITDB,       "initdb"},
-    {CLICON_MSG_LOCK,         "lock"},
-    {CLICON_MSG_UNLOCK,       "unlock"},
     {CLICON_MSG_KILL,         "kill"},
     {CLICON_MSG_DEBUG,        "debug"},
     {CLICON_MSG_CALL,         "call"},
@@ -193,7 +188,8 @@ msg_dump(struct clicon_msg *msg)
 }
 
 int
-clicon_msg_send(int s, struct clicon_msg *msg)
+clicon_msg_send(int                s, 
+		struct clicon_msg *msg)
 { 
     int retval = -1;
 
@@ -337,8 +333,8 @@ clicon_rpc_connect_inet(struct clicon_msg *msg,
 			int               *sock0, 
 			const char        *label)
 {
-    int retval = -1;
-    int s = -1;
+    int                retval = -1;
+    int                s = -1;
     struct sockaddr_in addr;
 
     clicon_debug(1, "Send %s msg to %s:%hu", 

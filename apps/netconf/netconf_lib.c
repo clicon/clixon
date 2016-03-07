@@ -173,56 +173,25 @@ detect_endtag(char *tag, char ch, int *state)
     return retval;
 }
 
-/*
- * target_locked
- * return 1 if locked, 0 if not.
- * return clientid if locked.
- */
-int
-target_locked(enum target_type target, int *client)
-{
-    return 0;
-}
-
-/*
- * unlock_target
- */
-int
-unlock_target(enum target_type target)
-{
-    return 0;
-}
-
-int
-lock_target(enum target_type target)
-{
-    return 0;
-}
-
 /*! Get "target" attribute, return actual database given candidate or running
  * Caller must do error handling
  * @retval  dbname   Actual database file name
  */
 char *
-netconf_get_target(clicon_handle h, cxobj *xn, char *path)
+netconf_get_target(clicon_handle h, 
+		   cxobj        *xn, 
+		   char         *path)
 {
     cxobj *x;    
     char  *target = NULL;
-    char  *running_db;
-    char  *candidate_db;
 
-    if ((running_db = clicon_running_db(h)) == NULL)
-	goto done;
-    if ((candidate_db = clicon_candidate_db(h)) == NULL)
-	goto done;
     if ((x = xpath_first(xn, path)) != NULL){
 	if (xpath_first(x, "candidate") != NULL)
-	    target = candidate_db;
+	    target = "candidate";
 	else
-	if (xpath_first(x, "running") != NULL)
-	    target = running_db;
+	    if (xpath_first(x, "running") != NULL)
+		target = "running";
     }
-  done:
     return target;
     
 }

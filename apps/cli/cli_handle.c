@@ -70,8 +70,6 @@ struct cli_handle {
     /* ------ end of common handle ------ */
     cligen_handle            cl_cligen;   /* cligen handle */
 
-    int                      cl_send2backend; /* Send changes to configuration daemon */
-    enum candidate_db_type   cl_candidate_type;
     cli_syntax_t *cl_stx;	           /* syntax structure */
 
 };
@@ -96,7 +94,6 @@ cli_handle_init(void)
     }
     cligen_userhandle_set(clih, cl);
     cl->cl_cligen = clih;
-    cl->cl_candidate_type = CANDIDATE_DB_SHARED;
     h = (clicon_handle)cl;
   done:
     return h;
@@ -120,43 +117,8 @@ cli_handle_exit(clicon_handle h)
 /*----------------------------------------------------------
  * cli-specific handle access functions
  *----------------------------------------------------------*/
-/*! Send changes to configuration daemon or let client handle it itself. Default is 1 */
-int 
-cli_set_send2backend(clicon_handle h, int send2backend)
-{
-    struct cli_handle *cl = handle(h);
 
-    cl->cl_send2backend = send2backend;
-    return 0;
-}
-
-/*! Get status of whether to send changes to configuration daemon. */
-int 
-cli_send2backend(clicon_handle h)
-{
-    struct cli_handle *cl = handle(h);
-
-    return cl->cl_send2backend;
-}
-
-enum candidate_db_type
-cli_candidate_type(clicon_handle h)
-{
-    struct cli_handle *cl = handle(h);
-
-    return cl->cl_candidate_type;
-}
-
-int
-cli_set_candidate_type(clicon_handle h, enum candidate_db_type type)
-{
-    struct cli_handle *cl = handle(h);
-
-    cl->cl_candidate_type = type;
-    return 0;
-}
-
-/* Current syntax-group */
+/*! Get current syntax-group */
 cli_syntax_t *
 cli_syntax(clicon_handle h)
 {
@@ -164,8 +126,10 @@ cli_syntax(clicon_handle h)
     return cl->cl_stx;
 }
 
+/*! Set current syntax-group */
 int
-cli_syntax_set(clicon_handle h, cli_syntax_t *stx)
+cli_syntax_set(clicon_handle h, 
+	       cli_syntax_t *stx)
 {
     struct cli_handle *cl = handle(h);
     cl->cl_stx = stx;

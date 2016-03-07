@@ -29,6 +29,6 @@
  */ 
 int from_client_validate(clicon_handle h, int s, struct clicon_msg *msg, const char *label);
 int from_client_commit(clicon_handle h, int s, struct clicon_msg *msg, const char *label);
-int candidate_commit(clicon_handle h, char *candidate, char *running);
+int candidate_commit(clicon_handle h, char *candidate);
 
 #endif  /* _BACKEND_COMMIT_H_ */

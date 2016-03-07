@@ -108,14 +108,13 @@ netconf_filter_xmldb(clicon_handle      h,
     cxobj      *xc; 
     cxobj      *xfilterconf = NULL; 
     int         retval = -1;
-    yang_spec  *ys = clicon_dbspec_yang(h);
     char       *selector;
 
     /* Default subtree filter */
     switch (foption){
     case FILTER_SUBTREE:
 	/* Get the whole database as xml */
-	if (xmldb_get(source, NULL, ys, &xdb) < 0){
+	if (xmldb_get(h, source, NULL, 0, &xdb, NULL, NULL) < 0){
 	    netconf_create_rpc_error(cb_err, xorig, 
 				     "operation-failed", 
 				     "application", 
@@ -154,7 +153,7 @@ netconf_filter_xmldb(clicon_handle      h,
 	break;
     case FILTER_XPATH:
 	selector = xml_find_value(xfilter, "select");
-	if (xmldb_get(source, selector, ys, &xdb) < 0){
+	if (xmldb_get(h, source, selector, 0, &xdb, NULL, NULL) < 0){
 	    netconf_create_rpc_error(cb_err, xorig, 
 				     "operation-failed", 
 				     "application", 
@@ -202,13 +201,13 @@ netconf_filter_xmldb(clicon_handle      h,
 
     <get-config> 
         <source> 
-            <( candidate | running )/> 
+          <candidate/> | <running/> 
         </source> 
     </get-config> 
     
     <get-config> 
         <source> 
-            <( candidate | running )/> 
+          <candidate/> | <running/> 
         </source> 
         <filter type="subtree"> 
             <configuration> 
@@ -220,24 +219,6 @@ netconf_filter_xmldb(clicon_handle      h,
    <rpc><get-config><source><running /></source>
      <filter type="xpath" select="//SenderTwampIpv4"/>
    </get-config></rpc>]]>]]>
- * Call graph, client to backend and formats
- * netconf_input_cb                      # client
- *   read
- *   process_incoming_packet             # 
- *     clicon_xml_parse_string           # 
- *     netconf_rpc_dispatch
- *       netconf_get_config              # 
- *         xpath_first
- *         netconf_filter                #
- *           db2xml_key                  # "^.*$"
- *             clicon_dbitems            # (db)
- *               db_regexp               # (lvec)
- *               lvec2cvec               # (cvec)
- *             cvec2xml                  # (xml)
- *           clicon_xml2cbuf             # (xml->char*)
- * wanted:
- *     netconf_get_config
- *       xpath(db, filter)
  */
 int
 netconf_get_config(clicon_handle h, 
@@ -276,7 +257,7 @@ netconf_get_config(clicon_handle h,
 
 /*! Get options from netconf edit-config
  *  <edit-config>
- *     <config>XXX</config>
+ *     <config>...</config>
  *     <default-operation>(merge | none | replace)</default-operation> 
  *     <error-option>(stop-on-error | continue-on-error )</error-option> 
  *     <test-option>(set | test-then-set | test-only)</test-option> 
@@ -418,20 +399,12 @@ netconf_edit_config(clicon_handle h,
     cxobj              *xc;       /* config */
     cxobj              *xcc;      /* child of config */
     char               *target;  /* db */
-    char               *candidate_db;
     cbuf               *cbxml = NULL;
     char               *xmlstr;
 
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	   netconf_create_rpc_error(cb_err, xorig, 
-				    "operation-failed", 
-				    "protocol", "error", 
-				    NULL, "Internal error"); 
-	goto done;
-    }
     /* must have target, and it should be candidate */
     if ((target = netconf_get_target(h, xn, "target")) == NULL ||
-	strcmp(target, candidate_db)){
+	strcmp(target, "candidate")){
 	netconf_create_rpc_error(cb_err, xorig, 
 				 "missing-element", 
 				 "protocol", 
@@ -532,7 +505,7 @@ netconf_copy_config(clicon_handle h,
 	goto done;
     }
 #endif
-    if (clicon_rpc_copy(h, source, target) < 0){
+    if (xmldb_copy(h, source, target) < 0){
 	netconf_create_rpc_error(cb_err, xorig, 
 				 "operation-failed", 
 				 "protocol", "error", 
@@ -546,7 +519,7 @@ netconf_copy_config(clicon_handle h,
     return retval;
 }
 
-/*
+/*! Delete configuration
   <delete-config> 
         <target> 
             <candidate/> 
@@ -564,15 +537,6 @@ netconf_delete_config(clicon_handle h,
 {
     char              *target; /* filenames */
     int                retval = -1;
-    char              *candidate_db;
-
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	   netconf_create_rpc_error(cb_err, xorig, 
-				    "operation-failed", 
-				    "protocol", "error", 
-				    NULL, "Internal error"); 
-	goto done;
-    }
 
     if ((target = netconf_get_target(h, xn, "target")) == NULL){
 	netconf_create_rpc_error(cb_err, xorig, 
@@ -583,7 +547,7 @@ netconf_delete_config(clicon_handle h,
 				 "<bad-element>target</bad-element>");
 	goto done;
     }
-    if (strcmp(target, candidate_db)){
+    if (strcmp(target, "candidate")){
 	netconf_create_rpc_error(cb_err, xorig, 
 				 "bad-element", 
 				 "protocol", 
@@ -592,14 +556,14 @@ netconf_delete_config(clicon_handle h,
 				 "<bad-element>target</bad-element>");
 	goto done;
     }
-    if (clicon_rpc_rm(h, target) < 0){
+    if (xmldb_delete(h, target) < 0){
 	netconf_create_rpc_error(cb_err, xorig, 
 				 "operation-failed", 
 				 "protocol", "error", 
 				 NULL, "Internal error"); 
 	goto done;
     }
-    if (clicon_rpc_initdb(h, target) < 0){
+    if (xmldb_init(h, target) < 0){
 	netconf_create_rpc_error(cb_err, xorig, 
 				 "operation-failed", 
 				 "protocol", "error", 
@@ -612,7 +576,7 @@ netconf_delete_config(clicon_handle h,
     return retval;
 }
 
-/*
+/*! Close a (user) session
     <close-session/> 
 */
 int
@@ -626,12 +590,13 @@ netconf_close_session(cxobj *xn,
     return 0;
 }
 
-/*
+/*! Lock a database
     <lock> 
         <target> 
             <candidate/> 
         </target> 
     </lock> 
+    XXX
  */
 int
 netconf_lock(clicon_handle h,
@@ -652,40 +617,20 @@ netconf_lock(clicon_handle h,
 				 "<bad-element>source</bad-element>");
 	goto done;
     }
-#ifdef notyet
-    if (target_locked(&client) > 0){
-	snprintf(info, 64, "<session-id>%d</session-id>", client);
-	netconf_create_rpc_error(cb_err, xorig, 
-				 "lock-denied", 
-				 "protocol", 
-				 "error", 
-				 "Lock failed, lock is already held",
-				 info);
-	return -1;
-    }
 
-    if (lock_target(target) < 0){
-	netconf_create_rpc_error(cb_err, xorig, 
-				 "lock-denied", 
-				 "protocol", 
-				 "error", 
-				 "Lock failed, lock is already held",
-				 NULL);
-	return -1;
-    }
-#endif
     netconf_ok_set(1);
     retval = 0;
   done:
     return retval;
 }
 
-/*
+/*! Unlock a database
    <unlock> 
         <target> 
             <candidate/> 
         </target> 
     </unlock> 
+    XXX
  */
 int
 netconf_unlock(clicon_handle h, 
@@ -705,47 +650,18 @@ netconf_unlock(clicon_handle h,
 				 "<bad-element>target</bad-element>");
 	goto done;
     }
-#ifdef notyet
-    if (target_locked(&client) == 0){
-	netconf_create_rpc_error(cb_err, xorig, 
-				 "lock-denied", 
-				 "protocol", 
-				 "error", 
-				 "Unlock failed, lock is not held",
-				 NULL);
-	return -1;
-    }
-
-    if (client != ce_nr){
-	snprintf(info, 64, "<session-id>%d</session-id>", client);
-	netconf_create_rpc_error(cb_err, xorig, 
-				 "lock-denied", 
-				 "protocol", 
-				 "error", 
-				 "Unlock failed, lock is held by other entity",
-				 info);
-	return -1;
-    }
-    if (unlock_target(target) < 0){
-	netconf_create_rpc_error(cb_err, xorig, 
-				 "lock-denied", 
-				 "protocol", 
-				 "error", 
-				 "Unlock failed, unkown reason",
-				 NULL);
-	return -1;
-    }
-#endif /* notyet */
+    /* XXX notyet */
     netconf_ok_set(1);
     retval = 0;
   done:
     return retval;
 }
 
-/*
+/*! Kill other user sessions
   <kill-session> 
         <session-id>PID</session-id> 
   </kill-session> 
+  XXX
  */
 int
 netconf_kill_session(cxobj *xn, cbuf *cb, cbuf *cb_err, cxobj *xorig)
@@ -793,7 +709,7 @@ netconf_kill_session(cxobj *xn, cbuf *cb, cbuf *cb_err, cxobj *xorig)
     return 0;
 }
 
-/*
+/*! Commit candidate -> running
     <commit/> 
     :candidate
  */
@@ -805,25 +721,8 @@ netconf_commit(clicon_handle h,
 	       cxobj        *xorig)
 {
     int                retval = -1;
-    char              *candidate_db;
-    char              *running_db;
 
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	netconf_create_rpc_error(cb_err, xorig, 
-				 "operation-failed", 
-				 "protocol", "error", 
-				 NULL, "Internal error: candidate not set"); 
-	goto done;
-    }
-    if ((running_db = clicon_running_db(h)) == NULL){
-	netconf_create_rpc_error(cb_err, xorig, 
-				 "operation-failed", 
-				 "protocol", "error", 
-				 NULL, "Internal error: running not set"); 
-	goto done;
-    }
-    if (clicon_rpc_commit(h, candidate_db,
-			  running_db, 
+    if (clicon_rpc_commit(h, "candidate", "running", 
 			  1, 1) < 0){
 	   netconf_create_rpc_error(cb_err, xorig, 
 				    "operation-failed", 
@@ -838,7 +737,7 @@ netconf_commit(clicon_handle h,
     return retval;
 }
 
-/*
+/*! Discard all changes in candidate / revert to running
     <discard-changes/> 
     :candidate
  */
@@ -850,24 +749,8 @@ netconf_discard_changes(clicon_handle h,
 			cxobj        *xorig)
 {
     int                retval = -1;
-    char              *running_db;
-    char              *candidate_db;
 
-    if ((running_db = clicon_running_db(h)) == NULL){
-	netconf_create_rpc_error(cb_err, xorig, 
-				 "operation-failed", 
-				 "protocol", "error", 
-				 NULL, "Internal error: running not set"); 
-	goto done;
-    }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	   netconf_create_rpc_error(cb_err, xorig, 
-				    "operation-failed", 
-				    "protocol", "error", 
-				    NULL, "Internal error"); 
-	goto done;
-    }
-    if (clicon_rpc_copy(h, running_db, candidate_db) < 0){
+    if (xmldb_copy(h, "running", "candidate") < 0){
 	netconf_create_rpc_error(cb_err, xorig, 
 				 "operation-failed", 
 				 "protocol", "error", 
@@ -881,7 +764,7 @@ netconf_discard_changes(clicon_handle h,
     return retval;
 }
 
-/*
+/*! Check the semantic consistency of candidate
     <validate/> 
     :validate
  */

@@ -18,6 +18,25 @@
   along with CLIXON; see the file LICENSE.  If not, see
   <http://www.gnu.org/licenses/>.
 
+ * @note Some unclarities with locking. man dpopen defines the following flags
+ *       with dpopen:
+ *       `DP_ONOLCK', which means it opens a database file without 
+ *                    file locking,  
+ *       `DP_OLCKNB', which means locking is performed without blocking.
+ *
+ *        While connecting as  a  writer, an  exclusive  lock is invoked to 
+ *        the database file.  While connecting as a reader, a shared lock is
+ *        invoked to the database file. The thread blocks until the lock is 
+ *        achieved.  If `DP_ONOLCK' is used, the application is responsible  
+ *        for  exclusion control.
+ *        The code below uses for 
+ *          write, delete:  DP_OLCKNB
+ *          read:           DP_OLCKNB
+ *        This means that a write fails if one or many reads are occurring, and
+ *        a read or write fails if a write is occurring, and
+ *        QDBM allows a single write _or_ multiple readers, but
+ *	  not both. This is obviously extremely limiting.
+ *        NOTE, the locking in netconf and xmldb is a write lock.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -33,10 +52,10 @@
 #include <sys/types.h>
 #include <limits.h>
 #include <regex.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 
-#if defined(HAVE_DEPOT_H) || defined(HAVE_QDBM_DEPOT_H)
 #ifdef HAVE_DEPOT_H
 #include <depot.h> /* qdb api */
 #else /* HAVE_QDBM_DEPOT_H */
@@ -57,7 +76,8 @@
  * @param[in]  omode   see man dpopen
  */
 static int 
-db_init_mode(char *file, int omode)
+db_init_mode(char *file, 
+	     int   omode)
 {
     DEPOT *dp;
 
@@ -85,6 +105,16 @@ db_init(char *file)
     return db_init_mode(file, DP_OWRITER | DP_OCREAT ); /* DP_OTRUNC? */
 }
 
+int 
+db_delete(char *file)
+{
+    if (unlink(file) < 0){
+	clicon_err(OE_DB, errno, "unlink %s", file);
+	return -1;
+    }
+    return 0;
+}
+
 /*! Write data to database 
  * @param[in]  file    database file
  * @param[in]  key     database key
@@ -99,7 +129,7 @@ db_set(char *file, char *key, void *data, size_t datalen)
     DEPOT *dp;
 
     /* Open database for writing */
-    if ((dp = dpopen(file, DP_OWRITER | DP_OLCKNB, 0)) == NULL){
+    if ((dp = dpopen(file, DP_OWRITER|DP_OLCKNB , 0)) == NULL){
 	clicon_err(OE_DB, 0, "db_set: dpopen(%s): %s", 
 		file,
 		dperrmsg(dpecode));
@@ -262,7 +292,6 @@ db_del(char *file, char *key)
     }
     return retval;
 }
-
 
 /*! Check if entry in database exists
  * @param[in]  file    database file
@@ -457,6 +486,78 @@ db_sanitize(char *rx, const char *label)
   return NULL;
 }
 
+#if 0 /* Test program */
+/*
+ * Turn this on to get an xpath test program 
+ * Usage: clicon_xpath [<xpath>] 
+ * read xml from input
+ * Example compile:
+ gcc -g -o qdb -I. -I../clixon ./clixon_qdb.c -lclixon -lcligen -lqdbm
+*/
 
-#endif /* DEPOT */
+static int
+usage(char *argv0)
+{
+    fprintf(stderr, "usage:\n");
+    fprintf(stderr, "\t%s init <filename>\n", argv0);
+    fprintf(stderr, "\t%s read <filename> <key>\n", argv0);
+    fprintf(stderr, "\t%s write <filename> <key> <val>\n", argv0);
+    fprintf(stderr, "\t%s openread <filename>\n", argv0);
+    fprintf(stderr, "\t%s openwrite <filename>\n", argv0);
+    exit(0);
+}
+
+int
+main(int argc, char **argv)
+{
+    char  *verb;
+    char  *filename;
+    char  *key;
+    char  *val;
+    size_t len;
+    DEPOT *dp;
+
+    if (argc < 3)
+	usage(argv[0]);
+    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR);
+    verb = argv[1];
+    filename = argv[2];
+    if (strcmp(verb, "init")==0){
+	db_init(filename);
+    }
+    else if (strcmp(verb, "read")==0){
+	if (argc < 4)
+	    usage(argv[0]);
+	key = argv[3];
+	db_get_alloc(filename, key, (void**)&val, &len);
+	fprintf(stdout, "%s\n", val);
+    }
+    else if (strcmp(verb, "write")==0){
+	if (argc < 5)
+	    usage(argv[0]);
+	key = argv[3];
+	val = argv[4];
+	db_set(filename, key, val, strlen(val)+1);
+    }
+    else if (strcmp(verb, "openread")==0){
+	if ((dp = dpopen(filename, DP_OREADER | DP_OLCKNB, 0)) == NULL){
+	    clicon_err(OE_DB, dpecode, "dbopen: %s", 
+		       dperrmsg(dpecode));
+	    return -1;
+	}
+	sleep(1000000);
+    }
+    else if (strcmp(verb, "openwrite")==0){
+	if ((dp = dpopen(filename, DP_OWRITER | DP_OLCKNB, 0)) == NULL){
+	    clicon_err(OE_DB, dpecode, "dbopen: %s", 
+		       dperrmsg(dpecode));
+	    return -1;
+	}
+	sleep(1000000);
+    }
+    return 0;
+}
+
+#endif /* Test program */
+
 

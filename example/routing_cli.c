@@ -61,7 +61,6 @@ mycallback(clicon_handle h, cvec *cvv, cg_var *arg)
 {
     int        retval = -1;
     cxobj     *xt = NULL;
-    yang_spec *yspec;
     cg_var    *myvar;
 
     /* Access cligen callback variables */
@@ -70,11 +69,10 @@ mycallback(clicon_handle h, cvec *cvv, cg_var *arg)
     cli_output(stderr, "arg = %s\n", cv_string_get(arg)); /* get string value */
 
     /* Show eth0 interfaces config using XPATH */
-    yspec = clicon_dbspec_yang(h);
-    if (xmldb_get(clicon_candidate_db(h), 
+    if (xmldb_get(h, "candidate",
 		  "/interfaces/interface[name=eth0]", 
-		  yspec, 
-		  &xt) < 0)
+		  0,
+		  &xt, NULL, NULL) < 0)
 	goto done;
     clicon_xml2file(stdout, xt, 0, 1);
     retval = 0;

@@ -39,16 +39,16 @@ enum clicon_msg_type{
 			    current state, set running_db. Body is:
 			    1. uint32: (1)snapshot while doing commit, (0) dont
 			    2. uint32: (1)save to startup-config, (0) dont
-			    3. string: name of 'from' database (eg candidate)
-			    4. string: name of 'to' database (eg current)
+			    3. string: name of 'from' database (eg "candidate")
+			    4. string: name of 'to' database (eg "running")
 			 */
-    CLICON_MSG_VALIDATE,	/* Validate settings in a database. Body is:
-			   1. string: name of database
+    CLICON_MSG_VALIDATE, /* Validate settings in a database. Body is:
+			   1. string: name of database (eg "candidate")
 			*/
     CLICON_MSG_CHANGE,   /* Change a (single) database entry:
 			  1. uint32: operation: OP_MERGE/OP_REPLACE/OP_REMOVE
 			  2. uint32: length of value string
-			  3. string: name of database to change (eg current)
+			  3. string: name of database to change (eg "running")
 			  4. string: key
 			  5. string: value
 			 */
@@ -70,26 +70,6 @@ enum clicon_msg_type{
 			  2. string: name of database to load into (eg running)
 			  3. string: filename to load from
 
-		       */
-    CLICON_MSG_COPY,    /* Copy from file to file in backend. Body is:
-			  1. string: filename to copy from
-			  2. string: filename to copy to
-		       */
-    CLICON_MSG_RM ,    /* Delete file. Body is:
-			  1. string: filename to delete
-		       */
-
-    CLICON_MSG_INITDB ,  /* (Re-)Initialize a database. Body is:
-			  1. string: filename of db to initialize
-		       */
-    CLICON_MSG_LOCK ,   /* Lock a database. Body is
-			  1. name of db
-			  The reply will be OK, or ERROR. If error is
-			  lock-denied, the session-id of the locking
-			  entity is returned (cf netconf)
-		       */
-    CLICON_MSG_UNLOCK , /* Unlock a database. Body is:
-			  1. name of db *
 		       */
     CLICON_MSG_KILL, /* Kill (other) session:
 			  1. session-id

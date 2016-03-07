@@ -234,7 +234,7 @@ clicon_file_dirent(const char     *dir,
 	       clicon_err(OE_UNIX, 0, "chunk: %s", strerror(errno));
 	       goto quit;
 	   }	
-	   res = lstat (filename, &st);
+	   res = lstat(filename, &st);
 	   unchunk (filename);
 	   if (res != 0) {
 	       clicon_err(OE_UNIX, 0, "lstat: %s", strerror(errno));
@@ -287,12 +287,13 @@ clicon_tmpfile(const char *label)
   return (char *)chunkdup(file, strlen(file)+1, label);
 }
 
-/*
- * Make a copy of file src
- * On error returns -1 and sets errno.
+/*! Make a copy of file src
+ * @retval 0   OK
+ * @retval -1  Error
  */
 int
-file_cp(char *src, char *target)
+clicon_file_copy(char *src, 
+		 char *target)
 {
     int inF = 0, ouF = 0;
     int err = 0;
@@ -301,16 +302,22 @@ file_cp(char *src, char *target)
     struct stat st;
     int retval = -1;
 
-    if (stat(src, &st) != 0)
+    if (stat(src, &st) != 0){
+	clicon_err(OE_UNIX, errno, "stat");
 	return -1;
-    if((inF = open(src, O_RDONLY)) == -1) 
+    }
+    if((inF = open(src, O_RDONLY)) == -1) {
+	clicon_err(OE_UNIX, errno, "open");
 	return -1;
+    }
     if((ouF = open(target, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode)) == -1) {
+	clicon_err(OE_UNIX, errno, "open");
 	err = errno;
 	goto error;
     }
     while((bytes = read(inF, line, sizeof(line))) > 0)
 	if (write(ouF, line, bytes) < 0){
+	    clicon_err(OE_UNIX, errno, "write");
 	    err = errno;
 	    goto error;
 	}

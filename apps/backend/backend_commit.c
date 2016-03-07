@@ -117,18 +117,14 @@ generic_validate(yang_spec          *yspec,
  * fails, we just ignore the errors and proceed. Maybe we should
  * do something more drastic?
  * @param[in] h         Clicon handle
- * @param[in] running   The current database. The original backend state
- * @param[in] candidate: The candidate database. The wanted backend state
 */
 int
 candidate_commit(clicon_handle h, 
-		 char         *candidate, 
-		 char         *running)
+		 char         *candidate)
 {
     int                retval = -1;
     int                i;
     cxobj             *xn;
-    struct stat        sb;
     void              *firsterr = NULL;
     yang_spec         *yspec;
     transaction_data_t *td = NULL;
@@ -137,24 +133,15 @@ candidate_commit(clicon_handle h,
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }	
-    /* Sanity checks that databases exists. */
-    if (stat(running, &sb) < 0){
-	clicon_err(OE_DB, errno, "%s", running);
-	goto done;
-    }
-    if (stat(candidate, &sb) < 0){
-	clicon_err(OE_DB, errno, "%s", candidate);
-	goto done;
-    }
 
      /* 1. Start transaction */
     if ((td = transaction_new()) == NULL)
 	goto done;
 
      /* 2. Parse xml trees */
-    if (xmldb_get(running, "/", yspec, &td->td_src) < 0)
+    if (xmldb_get(h, "running", "/", 0, &td->td_src, NULL, NULL) < 0)
 	goto done;
-    if (xmldb_get(candidate, "/", yspec, &td->td_target) < 0)
+    if (xmldb_get(h, candidate, "/", 0, &td->td_target, NULL, NULL) < 0)
 	goto done;
 
      /* 3. Compute differences */
@@ -212,18 +199,15 @@ candidate_commit(clicon_handle h,
 	 goto done;
 
      /* 8. Success: Copy candidate to running */
-     if (file_cp(candidate, running) < 0){
-	 clicon_err(OE_UNIX, errno, "file_cp(candidate; running)");
+     if (xmldb_copy(h, candidate, "running") < 0)
 	 goto done;
-     }
 
     /* 9. Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);
 
-    /* 8. Copy running back to running in case end functions updated running */
-    if (file_cp(running, candidate) < 0){
+    /* 8. Copy running back to candidate in case end functions updated running */
+    if (xmldb_copy(h, "running", candidate) < 0){
 	/* ignore errors or signal major setback ? */
-	clicon_err(OE_UNIX, errno, "file_cp(running, candidate)");
 	clicon_log(LOG_NOTICE, "Error in rollback, trying to continue");
 	goto done;
     } 
@@ -243,16 +227,13 @@ candidate_commit(clicon_handle h,
 /*! Do a diff between candidate and running, then start a validate transaction
  *
  * @param[in] h         Clicon handle
- * @param[in] running   The current database. The original backend state
  * @param[in] candidate: The candidate database. The wanted backend state
 */
 int
 candidate_validate(clicon_handle h, 
-		   char         *candidate, 
-		   char         *running)
- {
+		   char         *candidate)
+{
      int                 retval = -1;
-     struct stat         sb;
      yang_spec          *yspec;
      transaction_data_t *td = NULL;
      int                i;
@@ -262,24 +243,15 @@ candidate_validate(clicon_handle h,
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }	
-     /* Sanity checks that databases exists. */
-     if (stat(running, &sb) < 0){
-	 clicon_err(OE_DB, errno, "%s", running);
-	 goto done;
-     }
-     if (stat(candidate, &sb) < 0){
-	 clicon_err(OE_DB, errno, "%s", candidate);
-	 goto done;
-     }
 
      /* 1. Start transaction */
     if ((td = transaction_new()) == NULL)
 	goto done;
 
      /* 2. Parse xml trees */
-    if (xmldb_get(running, "/", yspec, &td->td_src) < 0)
+    if (xmldb_get(h, "running", "/", 0, &td->td_src, NULL, NULL) < 0)
 	goto done;
-    if (xmldb_get(candidate, "/", yspec, &td->td_target) < 0)
+    if (xmldb_get(h, "candidate", "/", 0, &td->td_target, NULL, NULL) < 0)
 	goto done;
 
      /* 3. Compute differences */
@@ -346,25 +318,36 @@ candidate_validate(clicon_handle h,
  *   the commit has succeeded but an error message is returned.
  */
 int
-from_client_commit(clicon_handle h,
-		   int s,
+from_client_commit(clicon_handle      h,
+		   int                s,
 		   struct clicon_msg *msg,
-		   const char *label)
+		   const char        *label)
 {
     int        retval = -1;
     char      *candidate;
     char      *running;
     uint32_t   snapshot;
     uint32_t   startup;
-    char      *snapshot_0;
     char      *archive_dir;
     char      *startup_config;
 
-    if (clicon_msg_commit_decode(msg, &candidate, &running,
-				&snapshot, &startup, label) < 0)
+    if (clicon_msg_commit_decode(msg, 
+				 &candidate, 
+				 &running,
+				 &snapshot, 
+				 &startup, 
+				 label) < 0)
 	goto err;
 
-    if (candidate_commit(h, candidate, running) < 0){
+    if (strcmp(candidate, "candidate") && strcmp(candidate, "tmp")){
+	clicon_err(OE_PLUGIN, 0, "candidate is not \"candidate\" or tmp");
+	goto err;
+    }
+    if (strcmp(running, "running")){
+	clicon_err(OE_PLUGIN, 0, "running db is not \"running\"");
+	goto err;
+    }
+    if (candidate_commit(h, "candidate") < 0){
 	clicon_debug(1, "Commit %s failed",  candidate);
 	retval = 0; /* We ignore errors from commit, but maybe
 		       we should fail on fatal errors? */
@@ -389,8 +372,7 @@ from_client_commit(clicon_handle h,
 	    clicon_err(OE_PLUGIN, 0, "startup set but startup_config not defined");
 	    goto err;
 	}
-	snapshot_0 = chunk_sprintf(__FUNCTION__, "%s/0", archive_dir);
-	if (file_cp(snapshot_0, startup_config) < 0){
+	if (clicon_file_copy("snapshot", "startup") < 0){
 	    clicon_err(OE_PROTO, errno, "%s: Error when creating startup",
 		    __FUNCTION__);
 		goto err;
@@ -412,32 +394,31 @@ from_client_commit(clicon_handle h,
 
 
 
-/*
- * Call backend plugin
+/*! Handle an incoming validate message from a client.
  */
 int
-from_client_validate(clicon_handle h,
-		     int s,
+from_client_validate(clicon_handle      h,
+		     int                s,
 		     struct clicon_msg *msg,
-		     const char *label)
+		     const char        *label)
 {
-    char *dbname;
-    char *running_db;
-    int retval = -1;
+    int   retval = -1;
+    char *candidate;
 
-    if (clicon_msg_validate_decode(msg, &dbname, label) < 0){
+    if (clicon_msg_validate_decode(msg, 
+				   &candidate, 
+				   label) < 0){
 	send_msg_err(s, clicon_errno, clicon_suberrno,
 		     clicon_err_reason);
 	goto err;
     }
-
-    clicon_debug(1, "Validate %s",  dbname);
-    if ((running_db = clicon_running_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "running db not set");
-	goto err;
+    if (strcmp(candidate, "candidate") != 0 && strcmp(candidate, "tmp") != 0){
+	    clicon_err(OE_PLUGIN, 0, "candidate is not \"candidate\" or tmp");
+	    goto err;
     }
-    if (candidate_validate(h, dbname, running_db) < 0){
-	clicon_debug(1, "Validate %s failed",  dbname);
+    clicon_debug(1, "Validate %s",  candidate);
+    if (candidate_validate(h, candidate) < 0){
+	clicon_debug(1, "Validate %s failed",  candidate);
 	retval = 0; /* We ignore errors from commit, but maybe
 		       we should fail on fatal errors? */
 	goto err;

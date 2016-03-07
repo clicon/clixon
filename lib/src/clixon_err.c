@@ -119,7 +119,7 @@ clicon_err_reset(void)
  * - Logs to syslog with LOG_ERR
  * - Set global error variable name clicon_errno
  * - Set global reason string clicon_err_reason
- * NOTE: err direction (syslog and/or stderr) controlled by clicon_log_init()
+ * @note: err direction (syslog and/or stderr) controlled by clicon_log_init()
  *
  * @param    fn       Inline function name (when called from clicon_err() macro)
  * @param    line     Inline file line number (when called from clicon_err() macro)

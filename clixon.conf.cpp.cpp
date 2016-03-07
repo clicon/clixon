@@ -45,12 +45,6 @@ CLICON_YANG_DIR        prefix/share/APPNAME/yang
 # This option is only relevant if CLICON_DBSPEC_TYPE is YANG
 CLICON_YANG_MODULE_REVISION
 
-# Candidate qdbm database
-CLICON_CANDIDATE_DB    localstatedir/APPNAME/candidate_db
-
-# Running qdbm database
-CLICON_RUNNING_DB      localstatedir/APPNAME/running_db
-
 # Location of backend .so plugins
 CLICON_BACKEND_DIR     libdir/APPNAME/backend
 
@@ -108,8 +102,18 @@ CLICON_BACKEND_PIDFILE  localstatedir/APPNAME/APPNAME.pidfile
 # How to generate and show CLI syntax: VARS|ALL
 # CLICON_CLI_GENMODEL_TYPE   VARS
 
-# Comment character in CLI
-# CLICON_CLI_COMMENT      #
+# Directory where "running" and "candidate" are placed
+CLICON_XMLDB_DIR      localstatedir/APPNAME
+
+# Set if xmldb runs in a separate process (clixon_xmldb). 
+# If set, also set xmldb_addr and xmldb_port below
+# CLICON_XMLDB_RPC 0
+
+# xmldb inet address (if CLICON_XMLDB_RPC)
+# CLICON_XMLDB_ADDR
+
+# xmldb tcp port (if CLICON_XMLDB_RPC)
+# CLICON_XMLDB_PORT
 
 # Dont include keys in cvec in cli vars callbacks, ie a & k in 'a <b> k <c>' ignored
 # CLICON_CLI_VARONLY      1

@@ -69,57 +69,17 @@ static int xml2csv(FILE *f, cxobj *x, cvec *cvv);
  * shared - all users share a common candidate db
  */
 int 
-init_candidate_db(clicon_handle h, enum candidate_db_type type)
+init_candidate_db(clicon_handle h)
 {
-    int retval = -1;
-    struct stat  sb;
-    char *running_db; 
-    char *candidate_db;
+    int          retval = -1;
 
-    if ((running_db = clicon_running_db(h)) == NULL){
-    	clicon_err(OE_PLUGIN, 0, "%s: RUNNING_CANDIDATE_DB option not set", __FUNCTION__); 
+    if (xmldb_exists(h, "running") != 1){
+	clicon_err(OE_FATAL, 0, "Running db does not exist");
 	goto err;
     }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-    	clicon_err(OE_PLUGIN, 0, "%s: CLICON_CANDIDATE_DB option not set", __FUNCTION__); 
-	goto err;
-    }
-    cli_set_candidate_type(h, type);
-    switch(type){
-    case CANDIDATE_DB_NONE:
-	break;
-    case CANDIDATE_DB_PRIVATE:
-	if (lstat(candidate_db, &sb) < 0){
-	    if (file_cp(running_db, candidate_db) < 0){
-		clicon_err(OE_UNIX, errno, "Error when copying %s to %s", 
-			   running_db, candidate_db);
-		unlink(candidate_db);
-		goto err;
-	    }
-	}
-	break;
-    case CANDIDATE_DB_SHARED:
-	if (lstat(running_db, &sb) < 0){
-	    clicon_err(OE_FATAL, 0, "Running db (%s) does not exist", 
-		       running_db);
+    if (xmldb_exists(h, "candidate") != 1)
+	if (xmldb_copy(h, "running", "candidate") < 0)
 	    goto err;
-	}
-	if (lstat(candidate_db, &sb) < 0){
-	    if (cli_send2backend(h)) {
-		clicon_rpc_copy(h, running_db, candidate_db);
-	    }
-	    else
-		if (file_cp(running_db, candidate_db) < 0){
-		    clicon_err(OE_UNIX, errno, "Error when copying %s to %s", 
-			       running_db, candidate_db);
-		    goto err;
-		}
-	}
-	break;
-    case CANDIDATE_DB_CURRENT:
-	clicon_option_str_set(h, "CLICON_CANDIDATE_DB",  running_db);
-	break;
-    }
     retval = 0;
   err:
     return retval;
@@ -132,18 +92,6 @@ init_candidate_db(clicon_handle h, enum candidate_db_type type)
 int 
 exit_candidate_db(clicon_handle h)
 {
-//    struct stat  sb;
-
-    switch(cli_candidate_type(h)){
-    case CANDIDATE_DB_PRIVATE:
-#if 0 /* XXX: maybe we should remove it, but I want several cli:s to edit it */
-	if (lstat(clicon_candidate_db(h), &sb) == 0)
-	    unlink(clicon_candidate_db(h));
-#endif
-	break;
-    default:
-	break;
-    }
     return 0;
 }
 
@@ -165,10 +113,8 @@ cli_debug(clicon_handle h, cvec *vars, cg_var *arg)
     /* cli */
     clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
     /* config daemon */
-    if (cli_send2backend(h)) {
-	if (clicon_rpc_debug(h, level) < 0)
-	    goto done;
-    }
+    if (clicon_rpc_debug(h, level) < 0)
+	goto done;
   done:
     return 0;
 }
@@ -351,29 +297,20 @@ cli_quit(clicon_handle h, cvec *vars, cg_var *arg)
     return 0;
 }
 
-/*
- * Generic commit callback
- * if arg is 1, then snapshot and copy to startup config
+/*! Generic commit callback
+ * @param[in]  arg   If 1, then snapshot and copy to startup config
  */
 int
-cli_commit(clicon_handle h, cvec *vars, cg_var *arg)
+cli_commit(clicon_handle h, 
+	   cvec         *vars, 
+	   cg_var       *arg)
 {
     int            retval = -1;
     int            snapshot = arg?cv_int32_get(arg):0;
-    char          *candidate;
-    char          *running;
 
-    if ((running = clicon_running_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "running db not set");
-	goto done;
-    }
-    if ((candidate = clicon_candidate_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "candidate db not set");
-	goto done;
-    }
     if ((retval = clicon_rpc_commit(h, 
-				    running, 
-				    candidate, 
+				    "running", 
+				    "candidate", 
 				    snapshot, /* snapshot */
 				    snapshot)) < 0){ /* startup */
 	cli_output(stderr, "Commit failed. Edit and try again or discard changes\n");
@@ -390,17 +327,10 @@ cli_commit(clicon_handle h, cvec *vars, cg_var *arg)
 int
 cli_validate(clicon_handle h, cvec *vars, cg_var *arg)
 {
-    char          *candidate_db;
     int            retval = -1;
 
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "candidate db not set");
-	return -1;
-    }
-    if (cli_send2backend(h)) {
-	if ((retval = clicon_rpc_validate(h, candidate_db)) < 0)
-	    cli_output(stderr, "Validate failed. Edit and try again or discard changes\n");
-    }
+    if ((retval = clicon_rpc_validate(h, "candidate")) < 0)
+	cli_output(stderr, "Validate failed. Edit and try again or discard changes\n");
     return retval;
 }
 
@@ -447,7 +377,6 @@ expand_dbvar_dbxml(void   *h,
 		   char ***commands, 
 		   char ***helptexts)
 {
-    char            *dbname;
     int              nvec;
     char           **vec = NULL;
     int              retval = -1;
@@ -457,10 +386,11 @@ expand_dbvar_dbxml(void   *h,
     cxobj           *xt = NULL;
     char            *xk = NULL;
     cxobj          **xvec = NULL;
+    size_t           xlen = 0;
+    cxobj           *x;
+    char            *bodystr;
     int              i;
     int              i0;
-    size_t           xlen;
-    yang_spec       *yspec;
 
     if (arg == NULL || (str = cv_string_get(arg)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
@@ -472,17 +402,9 @@ expand_dbvar_dbxml(void   *h,
 	goto done;
     }
     dbstr  = vec[0];
-    if (strcmp(dbstr, "running") == 0) 
-	dbname = clicon_running_db(h);
-    else
-    if (strcmp(dbstr, "candidate") == 0) 
-	dbname = clicon_candidate_db(h);
-    else{
+    if (strcmp(dbstr, "running") != 0 &&
+	strcmp(dbstr, "candidate") != 0){
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
-	goto done;
-    }
-    if (dbname == NULL){
-	clicon_err(OE_FATAL, 0, "db not set");
 	goto done;
     }
     xkfmt = vec[1];
@@ -491,18 +413,23 @@ expand_dbvar_dbxml(void   *h,
        --> /interface/[name=eth0]/address
     */
     if (xmlkeyfmt2xpath(xkfmt, cvv, &xk) < 0)
-	goto done; 
-    yspec = clicon_dbspec_yang(h);
-    if (xmldb_get_vec(dbname, xk, yspec, &xt, &xvec, &xlen) < 0)
+	goto done;   
+    if (xmldb_get(h, dbstr, xk, 1, &xt, &xvec, &xlen) < 0)
 	goto done;
     i0 = *nr;
     *nr += xlen;
     if ((*commands = realloc(*commands, sizeof(char *) * (*nr))) == NULL) {
-	clicon_err(OE_UNDEF, errno, "realloc: %s", strerror (errno));	
+	clicon_err(OE_UNIX, errno, "realloc: %s", strerror (errno));	
 	goto done;
     }
-    for (i = 0; i < xlen; i++) 
-	(*commands)[i0+i] = strdup(xml_body(xvec[i]));
+    for (i = 0; i < xlen; i++) {
+	x = xvec[i];
+	if ((bodystr = xml_body(x)) == NULL){
+	    clicon_err(OE_CFG, 0, "No xml body");
+	    goto done;
+	}
+	(*commands)[i0+i] = strdup(bodystr);
+    }
     retval = 0;
   done:
     unchunk_group(__FUNCTION__);
@@ -634,14 +561,16 @@ expand_dir(char *dir, int *nr, char ***commands, mode_t flags, int detail)
 /*! Compare two dbs using XML. Write to file and run diff
  */
 static int
-compare_xmls(cxobj *xc1, cxobj *xc2, int astext)
+compare_xmls(cxobj *xc1, 
+	     cxobj *xc2, 
+	     int    astext)
 {
-    int fd;
-    FILE *f;
-    char filename1[MAXPATHLEN];
-    char filename2[MAXPATHLEN];
-    char cmd[MAXPATHLEN];
-    int retval = -1;
+    int    fd;
+    FILE  *f;
+    char   filename1[MAXPATHLEN];
+    char   filename2[MAXPATHLEN];
+    char   cmd[MAXPATHLEN];
+    int    retval = -1;
     cxobj *xc;
 
     snprintf(filename1, sizeof(filename1), "/tmp/cliconXXXXXX");
@@ -701,20 +630,10 @@ compare_dbs(clicon_handle h, cvec *cvv, cg_var *arg)
     cxobj *xc1 = NULL; /* running xml */
     cxobj *xc2 = NULL; /* candidate xml */
     int    retval = -1;
-    char  *running;
-    char  *candidate;
 
-    if ((running = clicon_running_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "running db not set");
+    if (xmldb_get(h, "running", "/", 0, &xc1, NULL, NULL) < 0)
 	goto done;
-    }
-    if ((candidate = clicon_candidate_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "candidate db not set");
-	goto done;
-    }
-    if (xmldb_get(running, "/", clicon_dbspec_yang(h), &xc1) < 0)
-	goto done;
-    if (xmldb_get(candidate, "/", clicon_dbspec_yang(h), &xc2) < 0)
+    if (xmldb_get(h, "candidate", "/", 0, &xc2, NULL, NULL) < 0)
 	goto done;
     if (compare_xmls(xc1, xc2, arg?cv_int32_get(arg):0) < 0) /* astext? */
 	goto done;
@@ -752,13 +671,10 @@ cli_dbxml(clicon_handle       h,
 {
     int        retval = -1;
     char      *str = NULL;
-    char      *candidate;
-    char      *running;
     char      *xkfmt;  /* xml key format */
     char      *xk = NULL; /* xml key */
     cg_var    *cval;
     char      *val = NULL;
-    yang_spec *yspec;
 
     /* 
      * clicon_rpc_xmlput(h, db, MERGE,"<interfaces><interface><name>eth0</name><type>hej</type></interface><interfaces>");
@@ -772,14 +688,6 @@ cli_dbxml(clicon_handle       h,
      * Where is arg computed? In eg yang2cli_leaf, otherwise in yang_parse,..
      * Create string using cbuf and save that. 
      */
-    if ((candidate = clicon_candidate_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "candidate db not set");
-	return -1;
-    }
-    if ((running = clicon_candidate_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "running db not set");
-	return -1;
-    }
     xkfmt = cv_string_get(arg);
     if (xmlkeyfmt2key(xkfmt, cvv, &xk) < 0)
 	goto done;
@@ -788,20 +696,11 @@ cli_dbxml(clicon_handle       h,
 	clicon_err(OE_UNIX, errno, "cv2str_dup");
 	goto done;
     }
-    if (cli_send2backend(h)) {
-	if (clicon_rpc_change(h, candidate, op, xk, val) < 0)
+    if (clicon_rpc_change(h, "candidate", op, xk, val) < 0)
+	goto done;
+    if (clicon_autocommit(h)) {
+	if (clicon_rpc_commit(h, "running", "candidate", 0, 0) < 0) 
 	    goto done;
-	if (clicon_autocommit(h)) {
-	    if (clicon_rpc_commit(h, running, candidate, 0, 0) < 0) 
-		goto done;
-	}
-    }
-    else{
-	yspec = clicon_dbspec_yang(h);
-	if (xmldb_put_xkey(candidate, xk, val, yspec, op) < 0)
-	    goto done;
-	if (clicon_autocommit(h)) 
-	    clicon_log(LOG_WARNING, "Cant combine no backend and autocommit");
     }
     retval = 0;
  done:
@@ -863,7 +762,9 @@ cli_del(clicon_handle h, cvec *cvv, cg_var *arg)
  * @see save_config_file
  */
 int 
-load_config_file(clicon_handle h, cvec *cvv, cg_var *arg)
+load_config_file(clicon_handle h, 
+		 cvec         *cvv, 
+		 cg_var       *arg)
 {
     int         ret = -1;
     struct stat st;
@@ -871,7 +772,6 @@ load_config_file(clicon_handle h, cvec *cvv, cg_var *arg)
     char      **vecp;
     char       *filename;
     int         replace;
-    char       *dbname;
     char       *str;
     cg_var     *cv;
     int         nvec;
@@ -882,7 +782,6 @@ load_config_file(clicon_handle h, cvec *cvv, cg_var *arg)
     cxobj      *xn;
     cxobj      *x;
     cbuf       *cbxml;
-    yang_spec  *yspec;
 
     if (arg == NULL || (str = cv_string_get(arg)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
@@ -916,57 +815,30 @@ load_config_file(clicon_handle h, cvec *cvv, cg_var *arg)
 	goto done;
     }
     filename = vecp[0];
-    if ((dbname = clicon_candidate_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "candidate db not set");
-	goto done;
-    }
     if (stat(filename, &st) < 0){
  	clicon_err(OE_UNIX, 0, "load_config: stat(%s): %s\n", 
  		filename, strerror(errno));
 	goto done;
     }
-    if (cli_send2backend(h)) {
-	/* Open and parse local file into xml */
-	if ((fd = open(filename, O_RDONLY)) < 0){
-	    clicon_err(OE_UNIX, errno, "%s: open(%s)", __FUNCTION__, filename);
-	    goto done;
-	}
-	if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
-	    goto done;
-	if ((xn = xml_child_i(xt, 0)) != NULL){
-	    if ((cbxml = cbuf_new()) == NULL)
-		goto done;
-	    x = NULL;
-	    while ((x = xml_child_each(xn, x, -1)) != NULL) 
-		if (clicon_xml2cbuf(cbxml, x, 0, 0) < 0)
-		    goto done;
-	    if (clicon_rpc_xmlput(h, dbname, 
-				  replace?OP_REPLACE:OP_MERGE, 
-				  cbuf_get(cbxml)) < 0)
-		goto done;
-	    cbuf_free(cbxml);
-	}
+    /* Open and parse local file into xml */
+    if ((fd = open(filename, O_RDONLY)) < 0){
+	clicon_err(OE_UNIX, errno, "%s: open(%s)", __FUNCTION__, filename);
+	goto done;
     }
-    else{
-	if (replace){
-	    if (unlink(dbname) < 0){
-		clicon_err(OE_UNIX, 0, "rm %s %s", filename, strerror(errno));
-		goto done;
-	    }
-	    if (xmldb_init(dbname) < 0) 
-		goto done;
-	}
-	if ((fd = open(filename, O_RDONLY)) < 0){
-	    clicon_err(OE_UNIX, errno, "%s: open(%s)", __FUNCTION__, filename);
+    if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
+	goto done;
+    if ((xn = xml_child_i(xt, 0)) != NULL){
+	if ((cbxml = cbuf_new()) == NULL)
 	    goto done;
-	}
-	if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
-	    goto done;
-	yspec = clicon_dbspec_yang(h);
-	if ((xn = xml_child_i(xt, 0)) != NULL){
-	    if (xmldb_put(dbname, xn, yspec, replace?OP_REPLACE:OP_MERGE) < 0)
+	x = NULL;
+	while ((x = xml_child_each(xn, x, -1)) != NULL) 
+	    if (clicon_xml2cbuf(cbxml, x, 0, 0) < 0)
 		goto done;
-	}
+	if (clicon_rpc_xmlput(h, "candidate",
+			      replace?OP_REPLACE:OP_MERGE, 
+			      cbuf_get(cbxml)) < 0)
+	    goto done;
+	cbuf_free(cbxml);
     }
     ret = 0;
   done:
@@ -1001,7 +873,6 @@ save_config_file(clicon_handle h,
     char     **vec;
     char     **vecp;
     char      *filename;
-    char      *dbname;
     cg_var    *cv;
     int        nvec;
     char      *str;
@@ -1009,7 +880,6 @@ save_config_file(clicon_handle h,
     char      *varstr;
     cxobj     *xt = NULL;
     FILE      *f = NULL;
-    yang_spec  *yspec;
 
     if (arg == NULL || (str = cv_string_get(arg)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
@@ -1025,20 +895,10 @@ save_config_file(clicon_handle h,
     }
     dbstr  = vec[0];
     varstr = vec[1];
-    if (strcmp(dbstr, "running") == 0) 
-	dbname = clicon_running_db(h);
-    else
-    if (strcmp(dbstr, "candidate") == 0) 
-	dbname = clicon_candidate_db(h);
-    else{
+    if (strcmp(dbstr, "running") != 0 && strcmp(dbstr, "candidate") != 0) {
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
     }
-    if (dbname == NULL){
-	clicon_err(OE_FATAL, 0, "dbname not set");
-	goto done;
-    }
-
     if ((cv = cvec_find_var(cvv, varstr)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
 	goto done;
@@ -1048,8 +908,7 @@ save_config_file(clicon_handle h,
 	goto done;
     }
     filename = vecp[0];
-    yspec = clicon_dbspec_yang(h);
-    if (xmldb_get(dbname, "/", yspec, &xt) < 0)
+    if (xmldb_get(h, dbstr, "/", 0, &xt, NULL, NULL) < 0)
 	goto done;
     if ((f = fopen(filename, "wb")) == NULL){
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
@@ -1074,7 +933,6 @@ save_config_file(clicon_handle h,
 int
 delete_all(clicon_handle h, cvec *cvv, cg_var *arg)
 {
-    char            *dbname;
     char            *dbstr;
     int              retval = -1;
 
@@ -1082,31 +940,14 @@ delete_all(clicon_handle h, cvec *cvv, cg_var *arg)
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
 	goto done;
     }
-    if (strcmp(dbstr, "running") == 0) 
-	dbname = clicon_running_db(h);
-    else
-    if (strcmp(dbstr, "candidate") == 0) 
-	dbname = clicon_candidate_db(h);
-    else{
+    if (strcmp(dbstr, "running") != 0 && strcmp(dbstr, "candidate") != 0){
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
     }
-    if (dbname == NULL){
-	clicon_err(OE_FATAL, 0, "dbname not set");
+    if (xmldb_delete(h, dbstr) < 0)
 	goto done;
-    }
-    if (cli_send2backend(h)) {
-	clicon_rpc_rm(h, dbname);
-	clicon_rpc_initdb(h, dbname);
-    }
-    else{
-	if (unlink(dbname) < 0){
-	    clicon_err(OE_FATAL, errno, "unlink(%s)", dbname);
-	    goto done;
-	}
-	if (xmldb_init(dbname) < 0) 
-	    goto done;
-    }
+    if (xmldb_init(h, dbstr) < 0) 
+	goto done;
     retval = 0;
   done:
     return retval;
@@ -1118,22 +959,7 @@ delete_all(clicon_handle h, cvec *cvv, cg_var *arg)
 int
 discard_changes(clicon_handle h, cvec *cvv, cg_var *arg)
 {
-    char *running_db;
-    char *candidate_db;
-    int   retval = -1;
-
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "candidate db not set");
-	goto done;
-    }
-    if ((running_db = clicon_running_db(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "running db not set");
-	goto done;
-    }
-    clicon_rpc_copy(h, running_db, candidate_db);
-    retval = 0;
-  done:
-    return retval;
+    return xmldb_copy(h, "running", "candidate");
 }
 
 /*! Generic function for showing configurations.
@@ -1157,12 +983,11 @@ show_conf_xmldb_as(clicon_handle h,
 		   cxobj       **xt) /* top xml */
 {
     int              retval = -1;
-    char            *dbname;
+    char            *db;
     char           **vec = NULL;
     int              nvec;
     char            *str;
     char            *xpath;
-    yang_spec       *yspec;
 
     if (arg == NULL || (str = cv_string_get(arg)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
@@ -1177,22 +1002,13 @@ show_conf_xmldb_as(clicon_handle h,
 	goto done;
     }
     /* Dont get attr here, take it from arg instead */
-    if (strcmp(vec[0], "running") == 0) /* XXX: hardcoded */
-	dbname = clicon_running_db(h);
-    else
-    if (strcmp(vec[0], "candidate") == 0) /* XXX: hardcoded */
-	dbname = clicon_candidate_db(h);
-    else{
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", vec[0]);	
-	goto done;
-    }
-    if (dbname == NULL){
-	clicon_err(OE_FATAL, 0, "dbname not set");
+    db = vec[0];
+    if (strcmp(db, "running") != 0 && strcmp(db, "candidate") != 0) {
+	clicon_err(OE_PLUGIN, 0, "No such db name: %s", db);	
 	goto done;
     }
     xpath = vec[1];
-    yspec = clicon_dbspec_yang(h);
-    if (xmldb_get(dbname, xpath, yspec, xt) < 0)
+    if (xmldb_get(h, db, xpath, 0, xt, NULL, NULL) < 0)
 	goto done;
     retval = 0;
 done:
@@ -1272,11 +1088,8 @@ int
 show_conf_xpath(clicon_handle h, cvec *cvv, cg_var *arg)
 {
     int              retval = -1;
-    char            *dbname;
-    char           **vec = NULL;
     char            *str;
     char            *xpath;
-    yang_spec       *yspec;
     cg_var          *cv;
     cxobj           *xt = NULL;
     cxobj          **xv = NULL;
@@ -1288,23 +1101,13 @@ show_conf_xpath(clicon_handle h, cvec *cvv, cg_var *arg)
 	goto done;
     }
     /* Dont get attr here, take it from arg instead */
-    if (strcmp(str, "running") == 0) /* XXX: hardcoded */
-	dbname = clicon_running_db(h);
-    else
-    if (strcmp(str, "candidate") == 0) /* XXX: hardcoded */
-	dbname = clicon_candidate_db(h);
-    else{
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", vec[0]);	
-	goto done;
-    }
-    if (dbname == NULL){
-	clicon_err(OE_FATAL, 0, "dbname not set");
+    if (strcmp(str, "running") != 0 && strcmp(str, "candidate") != 0){
+	clicon_err(OE_PLUGIN, 0, "No such db name: %s", str);	
 	goto done;
     }
     cv = cvec_find_var(cvv, "xpath");
     xpath = cv_string_get(cv);
-    yspec = clicon_dbspec_yang(h);
-    if (xmldb_get_vec(dbname, xpath, yspec, &xt, &xv, &xlen) < 0)
+    if (xmldb_get(h, str, xpath, 1, &xt, &xv, &xlen) < 0)
 	goto done;
     for (i=0; i<xlen; i++)
 	clicon_xml2file(stdout, xv[i], 0, 1);

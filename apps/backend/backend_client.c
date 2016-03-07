@@ -51,7 +51,6 @@
 #include <clixon/clixon.h>
 
 #include "backend_commit.h"
-#include "backend_lock.h"
 #include "backend_plugin.h"
 #include "backend_client.h"
 #include "backend_handle.h"
@@ -163,7 +162,6 @@ backend_client_rm(clicon_handle        h,
     return backend_client_delete(h, ce); /* actually purge it */
 }
 
-
 /*! Internal message: Change entry set/delete in database xmldb variant
  * @param[in]   h     Clicon handle
  * @param[in]   s     Socket where request arrived, and where replies are sent
@@ -183,15 +181,14 @@ from_client_change(clicon_handle      h,
     int         retval = -1;
     uint32_t    len;
     char       *xk;
-    char       *dbname;
+    char       *db;
     enum operation_type op;
     char       *str = NULL;
-    char       *candidate_db;
     char       *val=NULL;
-    yang_spec  *yspec;
+    int         piddb;
 
     if (clicon_msg_change_decode(msg, 
-				 &dbname, 
+				 &db, 
 				 &op,
 				 &xk, 
 				 &val, 
@@ -201,25 +198,17 @@ from_client_change(clicon_handle      h,
 		     clicon_err_reason);
 	goto done;
     }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	send_msg_err(s, 0, 0, "candidate db not set");
-	goto done;
-    }
     /* candidate is locked by other client */
-    if (strcmp(dbname, candidate_db) == 0 &&
-	db_islocked(h) &&
-	pid != db_islocked(h)){
-	send_msg_err(s, OE_DB, 0,
-		     "lock failed: locked by %d", db_islocked(h));
-	goto done;
+    if (strcmp(db, "candidate") == 0){
+	piddb = xmldb_islocked(h, db);
+	if (piddb && pid != piddb){
+	    send_msg_err(s, OE_DB, 0,
+			 "lock failed: locked by %d", piddb);
+	    goto done;
+	}
     }
-
     /* Update database */
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_XML, 0, "yang spec not found");
-	goto done;
-    }
-    if (xmldb_put_xkey(dbname, xk, val, yspec, op) < 0){
+    if (xmldb_put_xkey(h, db, xk, val, op) < 0){
 	send_msg_err(s, clicon_errno, clicon_suberrno,
 		     clicon_err_reason);
 	goto done;
@@ -232,8 +221,6 @@ from_client_change(clicon_handle      h,
 	free(str);
     return retval;
 }
-
-
 
 /*! Internal message: Change entries as XML 
  * @param[in]   h     Clicon handle
@@ -252,19 +239,16 @@ from_client_xmlput(clicon_handle      h,
 		   const char        *label)
 {
     int         retval = -1;
-    char       *dbname;
+    char       *db;
     enum operation_type op;
     cvec       *cvv = NULL;
     char       *str = NULL;
     char       *xml = NULL;
-    yang_spec  *ys;
-    char       *candidate_db;
     cxobj      *xt;
+    int         piddb;
 
-    if ((ys = clicon_dbspec_yang(h)) == NULL)
-	goto done;
     if (clicon_msg_xmlput_decode(msg, 
-				 &dbname, 
+				 &db, 
 				 &op,
 				 &xml, 
 				 label) < 0){
@@ -272,24 +256,21 @@ from_client_xmlput(clicon_handle      h,
 		     clicon_err_reason);
 	goto done;
     }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	send_msg_err(s, 0, 0, "candidate db not set");
-	goto done;
-    }
     /* candidate is locked by other client */
-    if (strcmp(dbname, candidate_db) == 0 &&
-	db_islocked(h) &&
-	pid != db_islocked(h)){
-	send_msg_err(s, OE_DB, 0,
-		     "lock failed: locked by %d", db_islocked(h));
-	goto done;
+    if (strcmp(db, "candidate") == 0){
+	piddb = xmldb_islocked(h, db);
+	if (piddb && pid != piddb){
+	    send_msg_err(s, OE_DB, 0,
+			 "lock failed: locked by %d", piddb);
+	    goto done;
+	}
     }
     if (clicon_xml_parse_string(&xml, &xt) < 0){
 	send_msg_err(s, clicon_errno, clicon_suberrno,
 		     clicon_err_reason);
 	goto done;
     }
-    if (xmldb_put(dbname, xt, ys, op) < 0){
+    if (xmldb_put(h, db, xt, op) < 0){
 	send_msg_err(s, clicon_errno, clicon_suberrno,
 		     clicon_err_reason);
 	goto done;
@@ -312,7 +293,7 @@ from_client_xmlput(clicon_handle      h,
  */
 int
 config_snapshot(clicon_handle h,
-		char *dbname, 
+		char *db, 
 		char *dir)
 {
     int         retval = -1;
@@ -322,7 +303,6 @@ config_snapshot(clicon_handle h,
     int         i;
     FILE       *f = NULL;
     cxobj      *xn;
-    yang_spec  *yspec = clicon_dbspec_yang(h);
 
     if (stat(dir, &st) < 0){
 	clicon_err(OE_CFG, errno, "%s: stat(%s): %s\n", 
@@ -354,7 +334,7 @@ config_snapshot(clicon_handle h,
 	clicon_err(OE_CFG, errno, "Creating file %s", filename0);
 	return -1;
     } 
-    if (xmldb_get(dbname, "/", yspec, &xn) < 0)
+    if (xmldb_get(h, db, "/", 0, &xn, NULL, NULL) < 0)
 	goto done;
     if (clicon_xml2file(f, xn, 0, 1) < 0)
 	goto done;
@@ -389,7 +369,6 @@ from_client_save(clicon_handle      h,
     uint32_t snapshot;
     FILE    *f = NULL;
     cxobj   *xn = NULL;
-    yang_spec *yspec;
 
     if (clicon_msg_save_decode(msg, 
 			      &db, 
@@ -398,6 +377,10 @@ from_client_save(clicon_handle      h,
 			      label) < 0){
 	send_msg_err(s, clicon_errno, clicon_suberrno,
 		     clicon_err_reason);
+	goto done;
+    }
+    if (strcmp(db, "running") != 0 && strcmp(db, "candidate") != 0){
+	clicon_err(OE_XML, 0, "Expected running or candidate, got %s", db);
 	goto done;
     }
     if (snapshot){
@@ -417,8 +400,7 @@ from_client_save(clicon_handle      h,
 	    clicon_err(OE_CFG, errno, "Creating file %s", filename);
 	    return -1;
 	} 
-	yspec = clicon_dbspec_yang(h);
-	if (xmldb_get(db, "/", yspec, &xn) < 0)
+	if (xmldb_get(h, db, "/", 0, &xn, NULL, NULL) < 0)
 	    goto done;
 	if (clicon_xml2file(f, xn, 0, 1) < 0)
 	    goto done; 
@@ -453,40 +435,41 @@ from_client_load(clicon_handle      h,
 {
     char      *filename = NULL;
     int        retval = -1;
-    char      *dbname = NULL;
+    char      *db = NULL;
     int        replace = 0;
-    char      *candidate_db;
     int        fd = -1;
     cxobj     *xt = NULL;
     cxobj     *xn;
-    yang_spec *yspec;
+    int        piddb;
 
     if (clicon_msg_load_decode(msg, 
 			       &replace,
-			       &dbname, 
+			       &db, 
 			       &filename,
 			       label) < 0){
 	send_msg_err(s, clicon_errno, clicon_suberrno,
 		     clicon_err_reason);
 	goto done;
     }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	send_msg_err(s, 0, 0, "candidate db not set");
+    if (strcmp(db, "running") != 0 && strcmp(db, "candidate") != 0){
+	clicon_err(OE_XML, 0, "Expected running or candidate, got %s", db);
 	goto done;
     }
     /* candidate is locked by other client */
-    if (strcmp(dbname, candidate_db) == 0 &&
-	db_islocked(h) &&
-	pid != db_islocked(h)){
-	send_msg_err(s, OE_DB, 0, "lock failed: locked by %d", db_islocked(h));
-	goto done;
+    if (strcmp(db, "candidate") == 0){
+	piddb = xmldb_islocked(h, db);
+	if (piddb && pid != piddb){
+	    send_msg_err(s, OE_DB, 0,
+			 "lock failed: locked by %d", piddb);
+	    goto done;
+	}
     }
     if (replace){
-	if (unlink(dbname) < 0){
+	if (xmldb_delete(h, db) < 0){
 	    send_msg_err(s, OE_UNIX, 0, "rm %s %s", filename, strerror(errno));
 	    goto done;
 	}
-	if (xmldb_init(dbname) < 0) 
+	if (xmldb_init(h, db) < 0) 
 	    goto done;
     }
 
@@ -501,9 +484,8 @@ from_client_load(clicon_handle      h,
 		     clicon_err_reason);
 	goto done;
     }
-    yspec = clicon_dbspec_yang(h);
     if ((xn = xml_child_i(xt, 0)) != NULL){
-	if (xmldb_put(dbname, xn, yspec, replace?OP_REPLACE:OP_MERGE) < 0){
+	if (xmldb_put(h, db, xn, replace?OP_REPLACE:OP_MERGE) < 0){
 	    send_msg_err(s, clicon_errno, clicon_suberrno,
 			 clicon_err_reason);
 	    goto done;
@@ -517,270 +499,6 @@ from_client_load(clicon_handle      h,
 	close(fd);
     if (xt)
 	xml_free(xt);
-    return retval;
-}
-
-/*! Internal message: Initialize database
- * @param[in]   h     Clicon handle
- * @param[in]   s     Socket where request arrived, and where replies are sent
- * @param[in]   pid   Unix process id
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
- */
-static int
-from_client_initdb(clicon_handle      h,
-		   int                s, 
-		   int                pid, 
-		   struct clicon_msg *msg, 
-		   const char        *label)
-{
-    char  *filename1;
-    int    retval = -1;
-    char  *candidate_db;
-
-    if (clicon_msg_initdb_decode(msg, 
-			      &filename1,
-			      label) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto done;
-    }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	send_msg_err(s, 0, 0, "candidate db not set");
-	goto done;
-    }
-    /* candidate is locked by other client */
-    if (strcmp(filename1, candidate_db) == 0 &&
-	db_islocked(h) &&
-	pid != db_islocked(h)){
-	send_msg_err(s, OE_DB, 0, "lock failed: locked by %d", db_islocked(h));
-	goto done;
-    }
-
-    if (xmldb_init(filename1) < 0) 
-	goto done;
-    /* Change mode if shared candidate. XXXX full rights for all is no good */
-    if (strcmp(filename1, candidate_db) == 0)
-	chmod(filename1, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-
-    if (send_msg_ok(s) < 0)
-	goto done;
-    retval = 0;
-  done:
-    return retval;
-}
-
-/*! Internal message: Remove file
- * @param[in]   h     Clicon handle
- * @param[in]   s     Socket where request arrived, and where replies are sent
- * @param[in]   pid   Unix process id
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
- */
-static int
-from_client_rm(clicon_handle      h,
-	       int                s, 
-	       int                pid, 
-	       struct clicon_msg *msg, 
-	       const char        *label)
-{
-    char *filename1;
-    int   retval = -1;
-    char *candidate_db;
-
-    if (clicon_msg_rm_decode(msg, 
-			      &filename1,
-			      label) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto done;
-    }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	send_msg_err(s, 0, 0, "candidate db not set");
-	goto done;
-    }
-    /* candidate is locked by other client */
-    if (strcmp(filename1, candidate_db) == 0 &&
-	db_islocked(h) &&
-	pid != db_islocked(h)){
-	send_msg_err(s, OE_DB, 0, "lock failed: locked by %d", db_islocked(h));
-	goto done;
-    }
-
-    if (unlink(filename1) < 0){
-	send_msg_err(s, OE_UNIX, 0, "rm %s %s", filename1, strerror(errno));
-	goto done;
-    }
-    if (send_msg_ok(s) < 0)
-	goto done;
-    retval = 0;
-  done:
-    return retval;
-}
-
-/*! Internal message: Copy file from file1 to file2
- * @param[in]   h     Clicon handle
- * @param[in]   s     Socket where request arrived, and where replies are sent
- * @param[in]   pid   Unix process id
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
- */
-static int
-from_client_copy(clicon_handle      h,
-		 int                s, 
-		 int                pid, 
-		 struct clicon_msg *msg, 
-		 const char        *label)
-{
-    char *filename1;
-    char *filename2;
-    int   retval = -1;
-    char *candidate_db;
-
-    if (clicon_msg_copy_decode(msg, 
-			      &filename1,
-			      &filename2,
-			      label) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto done;
-    }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	send_msg_err(s, 0, 0, "candidate db not set");
-	goto done;
-    }
-
-    /* candidate is locked by other client */
-    if (strcmp(filename2, candidate_db) == 0 &&
-	db_islocked(h) &&
-	pid != db_islocked(h)){
-	send_msg_err(s, OE_DB, 0, "lock failed: locked by %d", db_islocked(h));
-	goto done;
-    }
-
-    if (file_cp(filename1, filename2) < 0){
-	send_msg_err(s, OE_UNIX, errno, "copy %s to %s", filename1, filename2);
-	goto done;
-    }
-    /* Change mode if shared candidate. XXXX full rights for all is no good */
-    if (strcmp(filename2, candidate_db) == 0)
-	chmod(filename2, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-    if (send_msg_ok(s) < 0)
-	goto done;
-    retval = 0;
-  done:
-    return retval;
-}
-
-/*! Internal message: Lock database
- * @param[in]   h     Clicon handle
- * @param[in]   s     Client socket where request arrived, and where replies are sent
- * @param[in]   pid   Client unix process id
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
- */
-static int
-from_client_lock(clicon_handle      h,
-		 int                s, 
-		 int                pid, 
-		 struct clicon_msg *msg, 
-		 const char        *label)
-{
-    char *db;
-    int   retval = -1;
-    char *candidate_db;
-
-
-    if (clicon_msg_lock_decode(msg, 
-			      &db,
-			      label) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto done;
-    }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	send_msg_err(s, 0, 0, "candidate db not set");
-	goto done;
-    }
-    if (strcmp(db, candidate_db)){
-	send_msg_err(s, OE_DB, 0, "can not lock %s, only %s", 
-		     db, candidate_db);
-	goto done;
-    }
-    if (db_islocked(h)){
-	if (pid == db_islocked(h))
-	    ;
-	else{
-	    send_msg_err(s, OE_DB, 0, "lock failed: locked by %d", db_islocked(h));
-	    goto done;
-	}
-    }
-    else
-	db_lock(h, pid);
-    if (send_msg_ok(s) < 0)
-	goto done;
-    retval = 0;
-  done:
-    return retval;
-}
-
-/*! Internal message: Unlock database
- * @param[in]   h     Clicon handle
- * @param[in]   s     Client socket where request arrived, and where replies are sent
- * @param[in]   pid   Client unix process id
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
- */
-static int
-from_client_unlock(clicon_handle      h,
-		   int                s, 
-		   int                pid, 
-		   struct clicon_msg *msg, 
-		   const char        *label)
-{
-    char *db;
-    int   retval = -1;
-    char *candidate_db;
-
-    if (clicon_msg_unlock_decode(msg, 
-			      &db,
-			      label) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto done;
-    }
-    if ((candidate_db = clicon_candidate_db(h)) == NULL){
-	send_msg_err(s, 0, 0, "candidate db not set");
-	goto done;
-    }
-
-    if (strcmp(db, candidate_db)){
-	send_msg_err(s, OE_DB, 0, "can not unlock %s, only %s", 
-		     db, clicon_candidate_db(h));
-	goto done;
-    }
-    if (db_islocked(h)){
-	if (pid == db_islocked(h))
-	    db_unlock(h);
-	else{
-	    send_msg_err(s, OE_DB, 0, "unlock failed: locked by %d", db_islocked(h));
-	    goto done;
-	}
-    }
-    if (send_msg_ok(s) < 0)
-	goto done;
-    retval = 0;
-  done:
     return retval;
 }
 
@@ -798,9 +516,10 @@ from_client_kill(clicon_handle      h,
 		 struct clicon_msg *msg, 
 		 const char        *label)
 {
-    uint32_t pid; /* other pid */
-    int retval = -1;
+    int                  retval = -1;
+    uint32_t             pid; /* other pid */
     struct client_entry *ce;
+    char                *db = "running"; /* XXX */
 
     if (clicon_msg_kill_decode(msg, 
 			      &pid,
@@ -823,8 +542,8 @@ from_client_kill(clicon_handle      h,
     }
     if (1 || (kill (pid, 0) != 0 && errno == ESRCH)){ /* Nothing there */
 	/* clear from locks */
-	if (db_islocked(h) == pid)
-	    db_unlock(h);
+	if (xmldb_islocked(h, db) == pid)
+	    xmldb_unlock(h, db, pid);
     }
     else{ /* failed to kill client */
 	send_msg_err(s, OE_DB, 0, "failed to kill %d", pid);
@@ -1015,26 +734,6 @@ from_client(int s, void* arg)
 	break;
     case CLICON_MSG_LOAD:
 	if (from_client_load(h, ce->ce_s, ce->ce_pid, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_RM:
-	if (from_client_rm(h, ce->ce_s, ce->ce_pid, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_INITDB:
-	if (from_client_initdb(h, ce->ce_s, ce->ce_pid, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_COPY:
-	if (from_client_copy(h, ce->ce_s, ce->ce_pid, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_LOCK:
-	if (from_client_lock(h, ce->ce_s, ce->ce_pid, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_UNLOCK:
-	if (from_client_unlock(h, ce->ce_s, ce->ce_pid, msg, __FUNCTION__) < 0)
 	    goto done;
 	break;
     case CLICON_MSG_KILL:
