@@ -143,9 +143,8 @@ xmldb_put_rpc(clicon_handle h,
 	    opstr = "merge";
 	    break;
 	case OP_NONE:
-	    opstr = "none";
-	    break;
 	default:
+	    opstr = "none";
 	    break;
 	}
 	cprintf(cb, "<default-operation>%s</default-operation>", opstr);
@@ -199,9 +198,8 @@ xmldb_put_xkey_rpc(clicon_handle h,
 	    opstr = "merge";
 	    break;
 	case OP_NONE:
-	    opstr = "none";
-	    break;
 	default:
+	    opstr = "none";
 	    break;
 	}
 	cprintf(cb, "<default-operation>%s</default-operation>", opstr);
