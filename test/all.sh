@@ -1,4 +1,8 @@
 #!/bin/sh
+
+# include err() and new() functions
+. ./lib.sh
+
 for test in test*.sh; do
     echo "Running $test"
     ./$test
@@ -8,4 +12,4 @@ for test in test*.sh; do
 	exit $errcode
     fi
 done
-
+echo OK

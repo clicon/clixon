@@ -21,7 +21,7 @@ clifn "clixon_cli -1f $clixon_cf set interfaces interface eth0" ""
 
 new "cli show configuration"
 clifn "clixon_cli -1f $clixon_cf show conf cli" "interfaces interface name eth0
-interfaces interface enabled htrue"
+interfaces interface enabled true"
 
 new "Kill backend"
 # kill backend
