@@ -309,8 +309,8 @@ cli_commit(clicon_handle h,
     int            snapshot = arg?cv_int32_get(arg):0;
 
     if ((retval = clicon_rpc_commit(h, 
-				    "running", 
 				    "candidate", 
+				    "running", 
 				    snapshot, /* snapshot */
 				    snapshot)) < 0){ /* startup */
 	cli_output(stderr, "Commit failed. Edit and try again or discard changes\n");
@@ -330,7 +330,7 @@ cli_validate(clicon_handle h, cvec *vars, cg_var *arg)
     int            retval = -1;
 
     if ((retval = clicon_rpc_validate(h, "candidate")) < 0)
-	cli_output(stderr, "Validate failed. Edit and try again or discard changes\n");
+	clicon_err(OE_CFG, 0, "Validate failed. Edit and try again or discard changes\n");
     return retval;
 }
 
@@ -699,7 +699,7 @@ cli_dbxml(clicon_handle       h,
     if (clicon_rpc_change(h, "candidate", op, xk, val) < 0)
 	goto done;
     if (clicon_autocommit(h)) {
-	if (clicon_rpc_commit(h, "running", "candidate", 0, 0) < 0) 
+	if (clicon_rpc_commit(h, "candidate", "running", 0, 0) < 0) 
 	    goto done;
     }
     retval = 0;

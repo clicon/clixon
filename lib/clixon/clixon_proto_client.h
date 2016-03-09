@@ -27,7 +27,7 @@
 #ifndef _CLIXON_PROTO_CLIENT_H_
 #define _CLIXON_PROTO_CLIENT_H_
 
-int clicon_rpc_commit(clicon_handle h, char *running_db, char *db, 
+int clicon_rpc_commit(clicon_handle h, char *from, char *to, 
 		     int snapshot, int startup);
 int clicon_rpc_validate(clicon_handle h, char *db);
 int clicon_rpc_change(clicon_handle h, char *db, 

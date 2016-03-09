@@ -100,7 +100,8 @@ generic_validate(yang_spec          *yspec,
     /* added entries */
     for (i=0; i<td->td_alen; i++){
 	x2 = td->td_avec[i];
-	if (xml_yang_validate(x2, xml_spec(x2)) < 0)
+	ys = xml_spec(x2);
+	if (xml_yang_validate(x2, ys) < 0)
 	    goto done;
 	if (xml_apply(x2, CX_ELMNT, 
 		      (xml_applyfn_t*)xml_yang_validate, NULL) < 0)

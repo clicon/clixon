@@ -225,7 +225,7 @@ static int
 yang2cli_var_sub(clicon_handle h,
 		 yang_stmt    *ys, 
 		 cbuf         *cb0,    
-		 char         *description,
+		 char         *helptext,
 		 enum cv_type  cvtype,
 		 yang_stmt    *ytype,  /* resolved type */
 		 int           options,
@@ -324,13 +324,13 @@ yang2cli_var_sub(clicon_handle h,
 	cprintf(cb0, " regexp:\"%s\"", pattern);
 
     cprintf(cb0, ">");
-    if (description)
-	cprintf(cb0, "(\"%s\")", description);
+    if (helptext)
+	cprintf(cb0, "(\"%s\")", helptext);
     if (completion){
 	if (cli_expand_var_generate(h, ys, cvtype, cb0) < 0)
 	    goto done;
-	if (description)
-	    cprintf(cb0, "(\"%s\")", description);
+	if (helptext)
+	    cprintf(cb0, "(\"%s\")", helptext);
 	cprintf(cb0, ")");
     }
     retval = 0;
@@ -347,7 +347,7 @@ static int
 yang2cli_var(clicon_handle h,
 	     yang_stmt    *ys, 
 	     cbuf         *cb0,    
-	     char         *description)
+	     char         *helptext)
 {
     int retval = -1;
     char         *type;  /* orig type */
@@ -386,7 +386,7 @@ yang2cli_var(clicon_handle h,
 	    restype = yrt?yrt->ys_argument:NULL;
 	    if (clicon_type2cv(type, restype, &cvtype) < 0)
 		goto done;
-	    if ((retval = yang2cli_var_sub(h, ys, cb0, description, cvtype, yrt,
+	    if ((retval = yang2cli_var_sub(h, ys, cb0, helptext, cvtype, yrt,
 					   options, mincv, maxcv, pattern, fraction_digits)) < 0)
 
 		goto done;
@@ -395,7 +395,7 @@ yang2cli_var(clicon_handle h,
 	cprintf(cb0, ")");
     }
     else
-	if ((retval = yang2cli_var_sub(h, ys, cb0, description, cvtype, yrestype,
+	if ((retval = yang2cli_var_sub(h, ys, cb0, helptext, cvtype, yrestype,
 				    options, mincv, maxcv, pattern, fraction_digits)) < 0)
 	    goto done;
 
@@ -418,21 +418,28 @@ yang2cli_leaf(clicon_handle h,
 {
     yang_stmt    *yd;  /* description */
     int           retval = -1;
-    char         *description = NULL;
+    char         *helptext = NULL;
+    char         *s;
 
     /* description */
-    if ((yd = yang_find((yang_node*)ys, Y_DESCRIPTION, NULL)) != NULL)
-	description = yd->ys_argument;
+    if ((yd = yang_find((yang_node*)ys, Y_DESCRIPTION, NULL)) != NULL){
+	if ((helptext = strdup(yd->ys_argument)) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+	if ((s = strstr(helptext, "\n\n")) != NULL)
+	    *s = '\0';
+    }
     cprintf(cbuf, "%*s", level*3, "");
     if (gt == GT_VARS|| gt == GT_ALL){
 	cprintf(cbuf, "%s", ys->ys_argument);
-	if (yd != NULL)
-	    cprintf(cbuf, "(\"%s\")", yd->ys_argument);
+	if (helptext)
+	    cprintf(cbuf, "(\"%s\")", helptext);
 	cprintf(cbuf, " ");
-	yang2cli_var(h, ys, cbuf, description);
+	yang2cli_var(h, ys, cbuf, helptext);
     }
     else
-	yang2cli_var(h, ys, cbuf, description);
+	yang2cli_var(h, ys, cbuf, helptext);
     if (callback){
 	if (cli_callback_generate(h, ys, cbuf) < 0)
 	    goto done;
@@ -441,6 +448,8 @@ yang2cli_leaf(clicon_handle h,
 
     retval = 0;
   done:
+    if (helptext)
+	free(helptext);
     return retval;
 }
 
@@ -456,10 +465,19 @@ yang2cli_container(clicon_handle h,
     yang_stmt    *yd;
     int           i;
     int           retval = -1;
+    char         *helptext = NULL;
+    char         *s;
 
     cprintf(cbuf, "%*s%s", level*3, "", ys->ys_argument);
-    if ((yd = yang_find((yang_node*)ys, Y_DESCRIPTION, NULL)) != NULL)
-	cprintf(cbuf, "(\"%s\")", yd->ys_argument);
+    if ((yd = yang_find((yang_node*)ys, Y_DESCRIPTION, NULL)) != NULL){
+	if ((helptext = strdup(yd->ys_argument)) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+	if ((s = strstr(helptext, "\n\n")) != NULL)
+	    *s = '\0';
+	cprintf(cbuf, "(\"%s\")", helptext);
+    }
     if (cli_callback_generate(h, ys, cbuf) < 0)
 	goto done;
     cprintf(cbuf, ";{\n");
@@ -470,6 +488,8 @@ yang2cli_container(clicon_handle h,
     cprintf(cbuf, "%*s}\n", level*3, "");
     retval = 0;
   done:
+    if (helptext)
+	free(helptext);
     return retval;
 }
 
@@ -489,10 +509,19 @@ yang2cli_list(clicon_handle h,
     char         *keyname;
     cvec         *cvk = NULL; /* vector of index keys */
     int           retval = -1;
+    char         *helptext = NULL;
+    char         *s;
 
     cprintf(cbuf, "%*s%s", level*3, "", ys->ys_argument);
-    if ((yd = yang_find((yang_node*)ys, Y_DESCRIPTION, NULL)) != NULL)
-	cprintf(cbuf, "(\"%s\")", yd->ys_argument);
+    if ((yd = yang_find((yang_node*)ys, Y_DESCRIPTION, NULL)) != NULL){
+	if ((helptext = strdup(yd->ys_argument)) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+	if ((s = strstr(helptext, "\n\n")) != NULL)
+	    *s = '\0';
+	cprintf(cbuf, "(\"%s\")", helptext);
+    }
     /* Loop over all key variables */
     if ((ykey = yang_find((yang_node*)ys, Y_KEY, NULL)) == NULL){
 	clicon_err(OE_XML, 0, "List statement \"%s\" has no key", ys->ys_argument);
@@ -538,6 +567,8 @@ yang2cli_list(clicon_handle h,
     cprintf(cbuf, "%*s}\n", level*3, "");
     retval = 0;
   done:
+    if (helptext)
+	free(helptext);
     if (cvk)
 	cvec_free(cvk);
     return retval;

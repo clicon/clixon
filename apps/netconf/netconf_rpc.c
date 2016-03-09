@@ -723,7 +723,7 @@ netconf_commit(clicon_handle h,
     int                retval = -1;
 
     if (clicon_rpc_commit(h, "candidate", "running", 
-			  1, 1) < 0){
+			  0, 0) < 0){
 	   netconf_create_rpc_error(cb_err, xorig, 
 				    "operation-failed", 
 				    "protocol", "error", 

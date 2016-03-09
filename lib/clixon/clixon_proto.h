@@ -156,8 +156,4 @@ int send_msg_ok(int s);
 
 int send_msg_err(int s, int err, int suberr, char *format, ...);
 
-
-
-
-
 #endif  /* _CLIXON_PROTO_H_ */
