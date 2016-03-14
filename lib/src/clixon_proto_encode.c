@@ -499,6 +499,64 @@ clicon_msg_load_decode(struct clicon_msg *msg,
 }
 
 struct clicon_msg *
+clicon_msg_copy_encode(char *db_src, char *db_dst, 
+		      const char *label)
+{
+    struct clicon_msg *msg;
+    int                hdrlen = sizeof(*msg);
+    uint16_t           len;
+    int                p;
+
+    clicon_debug(2, "%s: db_src: %s db_dst: %s", 
+	    __FUNCTION__, 
+	    db_src, db_dst);
+    p = 0;
+    len = hdrlen + strlen(db_src) + 1 + strlen(db_dst) + 1;
+    if ((msg = (struct clicon_msg *)chunk(len, label)) == NULL){
+	clicon_err(OE_PROTO, errno, "%s: chunk", __FUNCTION__);
+	return NULL;
+    }
+    memset(msg, 0, len);
+    /* hdr */
+    msg->op_type = htons(CLICON_MSG_COPY);
+    msg->op_len = htons(len);
+    /* body */
+    strncpy(msg->op_body+p, db_src, len-p-hdrlen);
+    p += strlen(db_src)+1;
+    strncpy(msg->op_body+p, db_dst, len-p-hdrlen);
+    p += strlen(db_dst)+1;
+    return msg;
+}
+
+int
+clicon_msg_copy_decode(struct clicon_msg *msg, 
+		      char **db_src, char **db_dst, 
+		      const char *label)
+{
+    int p;
+
+    p = 0;
+    /* body */
+    if ((*db_src = chunk_sprintf(label, "%s", msg->op_body+p)) == NULL){
+	clicon_err(OE_PROTO, errno, "%s: chunk_sprintf", 
+		__FUNCTION__);
+	return -1;
+    }
+    p += strlen(*db_src)+1;
+
+    if ((*db_dst = chunk_sprintf(label, "%s", msg->op_body+p)) == NULL){
+	clicon_err(OE_PROTO, errno, "%s: chunk_sprintf", 
+		__FUNCTION__);
+	return -1;
+    }
+    p += strlen(*db_dst)+1;
+    clicon_debug(2, "%s: db_src: %s db_dst: %s", 
+	    __FUNCTION__, 
+	    *db_src, *db_dst);
+    return 0;
+}
+
+struct clicon_msg *
 clicon_msg_kill_encode(uint32_t session_id, const char *label)
 {
     struct clicon_msg *msg;

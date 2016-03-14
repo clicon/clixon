@@ -196,7 +196,7 @@ main(int argc, char **argv)
     }
     if (dumpdb){
 	/* Here db must be local file-path */
-	if (xmldb_dump(stdout, db, matchkey)) {
+	if (xmldb_dump_local(stdout, db, matchkey)) {
 	    fprintf(stderr, "Match error\n");
 	    goto done;
 	}

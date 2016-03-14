@@ -542,13 +542,11 @@ main(int argc, char **argv)
 	if (rundb_main(h, app_config_file) < 0)
 	    goto done;
 
-    /* Initiate the shared candidate. Maybe we should not do this? */
+    /* Initiate the shared candidate. Maybe we should not do this? 
+     * Too strict access
+     */
     if (xmldb_copy(h, "running", "candidate") < 0)
 	goto done;
-#ifdef OBSOLETE
-    /* XXX Hack for now. Change mode so that we all can write. Security issue*/
-    chmod(candidate_db, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-#endif
     if (once)
 	goto done;
 

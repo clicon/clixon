@@ -505,7 +505,7 @@ netconf_copy_config(clicon_handle h,
 	goto done;
     }
 #endif
-    if (xmldb_copy(h, source, target) < 0){
+    if (clicon_rpc_copy(h, source, target) < 0){
 	netconf_create_rpc_error(cb_err, xorig, 
 				 "operation-failed", 
 				 "protocol", "error", 
@@ -556,7 +556,9 @@ netconf_delete_config(clicon_handle h,
 				 "<bad-element>target</bad-element>");
 	goto done;
     }
-    if (xmldb_delete(h, target) < 0){
+    if (clicon_rpc_change(h, "candidate",
+			  OP_REMOVE, 
+			  "/", "") < 0){
 	netconf_create_rpc_error(cb_err, xorig, 
 				 "operation-failed", 
 				 "protocol", "error", 
@@ -750,7 +752,7 @@ netconf_discard_changes(clicon_handle h,
 {
     int                retval = -1;
 
-    if (xmldb_copy(h, "running", "candidate") < 0){
+    if (clicon_rpc_copy(h, "running", "candidate") < 0){
 	netconf_create_rpc_error(cb_err, xorig, 
 				 "operation-failed", 
 				 "protocol", "error", 

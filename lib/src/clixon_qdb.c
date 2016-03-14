@@ -105,9 +105,17 @@ db_init(char *file)
     return db_init_mode(file, DP_OWRITER | DP_OCREAT ); /* DP_OTRUNC? */
 }
 
+/*! Remove database by removing file, if it exists *
+ * @param[in]  file    database file
+ */
 int 
 db_delete(char *file)
 {
+    struct stat  sb;
+
+    if (stat(file, &sb) < 0){
+	return 0;
+    }
     if (unlink(file) < 0){
 	clicon_err(OE_DB, errno, "unlink %s", file);
 	return -1;

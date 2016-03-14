@@ -307,17 +307,17 @@ clicon_file_copy(char *src,
 	return -1;
     }
     if((inF = open(src, O_RDONLY)) == -1) {
-	clicon_err(OE_UNIX, errno, "open");
+	clicon_err(OE_UNIX, errno, "open(%s) for read", src);
 	return -1;
     }
     if((ouF = open(target, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode)) == -1) {
-	clicon_err(OE_UNIX, errno, "open");
+	clicon_err(OE_UNIX, errno, "open(%s) for write", target);
 	err = errno;
 	goto error;
     }
     while((bytes = read(inF, line, sizeof(line))) > 0)
 	if (write(ouF, line, bytes) < 0){
-	    clicon_err(OE_UNIX, errno, "write");
+	    clicon_err(OE_UNIX, errno, "write(%s)", src);
 	    err = errno;
 	    goto error;
 	}

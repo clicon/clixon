@@ -39,6 +39,7 @@ int clicon_rpc_dbitems(clicon_handle h, char *db, char *rx,
 		       cvec ***cvv, size_t *cvvlen);
 int clicon_rpc_save(clicon_handle h, char *dbname, int snapshot, char *filename);
 int clicon_rpc_load(clicon_handle h, int replace, char *db, char *filename);
+int clicon_rpc_copy(clicon_handle h, char *db1, char *db2);
 int clicon_rpc_kill(clicon_handle h, int session_id);
 int clicon_rpc_debug(clicon_handle h, int level);
 int clicon_rpc_call(clicon_handle h, uint16_t op, char *plugin, char *func,

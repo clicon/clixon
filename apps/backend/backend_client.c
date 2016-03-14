@@ -502,6 +502,44 @@ from_client_load(clicon_handle      h,
     return retval;
 }
 
+/*! Internal message: Copy file from file1 to file2
+ * @param[in]   h     Clicon handle
+ * @param[in]   s     Socket where request arrived, and where replies are sent
+ * @param[in]   pid   Unix process id
+ * @param[in]   msg   Message
+ * @param[in]   label Memory chunk
+ * @retval      0     OK
+ * @retval      -1    Error. Send error message back to client.
+ */
+static int
+from_client_copy(clicon_handle      h,
+		 int                s, 
+		 int                pid, 
+		 struct clicon_msg *msg, 
+		 const char        *label)
+{
+    char *db1;
+    char *db2;
+    int   retval = -1;
+
+    if (clicon_msg_copy_decode(msg, 
+			      &db1,
+			      &db2,
+			      label) < 0){
+	send_msg_err(s, clicon_errno, clicon_suberrno,
+		     clicon_err_reason);
+	goto done;
+    }
+    if (xmldb_copy(h, db1, db2) < 0)
+	goto done;
+    if (send_msg_ok(s) < 0)
+	goto done;
+    retval = 0;
+  done:
+    return retval;
+}
+
+
 /*! Internal message:  Kill session (Kill the process)
  * @param[in]   h     Clicon handle
  * @param[in]   s     Client socket where request arrived, and where replies are sent
@@ -734,6 +772,10 @@ from_client(int s, void* arg)
 	break;
     case CLICON_MSG_LOAD:
 	if (from_client_load(h, ce->ce_s, ce->ce_pid, msg, __FUNCTION__) < 0)
+	    goto done;
+	break;
+    case CLICON_MSG_COPY:
+	if (from_client_copy(h, ce->ce_s, ce->ce_pid, msg, __FUNCTION__) < 0)
 	    goto done;
 	break;
     case CLICON_MSG_KILL:

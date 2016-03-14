@@ -594,22 +594,20 @@ get(char      *dbname,
 	clicon_err(OE_XML, 0, "Malformed key: %s", xk);
 	goto done;
     }
-    name = vec[1];
-    if ((y = yang_find_topnode(ys, name)) == NULL){
-	clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
-	goto done;
-    }
-    if ((xc = xml_find(x, name))==NULL)
-	if ((xc = xml_new_spec(name, x, y)) == NULL)
-	    goto done;
-    x = xc;
-    i = 2;
+    i = 1;
     while (i<nvec){
 	name = vec[i];
-	if ((y = yang_find_syntax((yang_node*)y, name)) == NULL){
-	    clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
-	    goto done;
+	if (i == 1){ /* spec->module->node */
+	    if ((y = yang_find_topnode(ys, name)) == NULL){
+		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
+		goto done;
+	    }
 	}
+	else
+	    if ((y = yang_find_syntax((yang_node*)y, name)) == NULL){
+		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
+		goto done;
+	    }
 	switch (y->ys_keyword){
 	case Y_LEAF_LIST:
 	    /* 
@@ -664,7 +662,9 @@ get(char      *dbname,
 		x = xc;
 	    } /* while */
 	    break;
-	default:
+	case Y_LEAF:
+	case Y_CONTAINER:
+	default: 
 	    if ((xc = xml_find(x, name))==NULL)
 		if ((xc = xml_new_spec(name, x, y)) == NULL)
 		    goto done;
@@ -1158,7 +1158,6 @@ xmldb_put_local(clicon_handle       h,
     return retval;
 }
 
-
 /*! Modify database provided an xml tree and an operation
  * @param[in]  dbname Name of database to search in (filename including dir path)
  * @param[in]  h      CLICON handle
@@ -1239,8 +1238,14 @@ xmldb_put_xkey_local(clicon_handle       h,
     while (i<nvec){
 	name = vec[i];
 	if (i==1){
+	    if (!strlen(name) && (op==OP_DELETE || op == OP_REMOVE)){
+		/* Special handling of "/" */
+		cprintf(ckey, "/%s", name);
+		break;
+	    }
+	    else
 	    if ((y = yang_find_topnode(yspec, name)) == NULL){
-		clicon_err(OE_UNIX, errno, "No yang node found: %s", xml_name(x));
+		clicon_err(OE_UNIX, errno, "No yang node found: %s", x?xml_name(x):"");
 		goto done;
 	    }
 	}
@@ -1281,7 +1286,7 @@ xmldb_put_xkey_local(clicon_handle       h,
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 		keyname = cv_string_get(cvi);
 		val2 = vec[i++];
-		if (i>=nvec){
+		if (i>nvec){ /* XXX >= ? */
 		    clicon_err(OE_XML, errno, "List %s without argument", name);
 		    goto done;
 		}
@@ -1291,8 +1296,8 @@ xmldb_put_xkey_local(clicon_handle       h,
 		if (op == OP_MERGE || op == OP_REPLACE || op == OP_CREATE)
 		    if (db_set(filename, cbuf_get(csubkey), val2, strlen(val2)+1) < 0)
 			goto done;
-		break;
 	    }
+	    break;
 	default:
 	    if (op == OP_MERGE || op == OP_REPLACE || op == OP_CREATE)
 		if (db_set(filename, cbuf_get(ckey), NULL, 0) < 0)
@@ -1390,9 +1395,9 @@ xmldb_put_xkey(clicon_handle       h,
  * @note This function can only be called locally.
  */
 int
-xmldb_dump(FILE         *f,
-	   char         *dbfilename, 
-	   char         *rxkey)
+xmldb_dump_local(FILE         *f,
+		 char         *dbfilename, 
+		 char         *rxkey)
 {
     int             retval = -1;
     int             npairs;
@@ -1414,6 +1419,7 @@ xmldb_dump(FILE         *f,
     unchunk_group(__FUNCTION__);
     return retval;
 }
+
 
 /*! Local variant of xmldb_copy */
 static int 
@@ -1619,7 +1625,9 @@ xmldb_delete_local(clicon_handle h,
     return retval;
 }
 
-/*! Delete database. Remove file */
+/*! Delete database. Remove file 
+ * Should not be called from client. Use change("/", OP_REMOVE) instead.
+ */
 int 
 xmldb_delete(clicon_handle h, 
 	     char         *db)

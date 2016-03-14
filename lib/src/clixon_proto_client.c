@@ -171,6 +171,7 @@ clicon_rpc_validate(clicon_handle h,
  * @param[in] value      value as string
  * @retval    0          OK
  * @retval   -1          Error
+ * @note special case: remove all: key:"/" op:OP_REMOVE
  */
 int
 clicon_rpc_change(clicon_handle h, 
@@ -283,6 +284,32 @@ clicon_rpc_load(clicon_handle h,
     unchunk_group(__FUNCTION__);
     return retval;
 }
+
+/*! Send a request to backend to copy a file from one location to another 
+ * Note this assumes the backend can access these files and (usually) assumes
+ * clients and servers have the access to the same filesystem.
+ * @param[in] h          CLICON handle
+ * @param[in] db1        src database, eg "candidate"
+ * @param[in] db2        dst database, eg "running"
+ */
+int
+clicon_rpc_copy(clicon_handle h, 
+		char         *db1, 
+		char         *db2)
+{
+    int                retval = -1;
+    struct clicon_msg *msg;
+
+    if ((msg=clicon_msg_copy_encode(db1, db2, __FUNCTION__)) == NULL)
+	goto done;
+    if (clicon_rpc_msg(h, msg, NULL, NULL, NULL, __FUNCTION__) < 0)
+	goto done;
+    retval = 0;
+ done:
+    unchunk_group(__FUNCTION__);
+    return retval;
+}
+
 
 /*! Send a kill session request to backend server
  * @param[in] h            CLICON handle

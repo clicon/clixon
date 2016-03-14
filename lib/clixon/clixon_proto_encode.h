@@ -102,6 +102,15 @@ clicon_msg_load_decode(struct clicon_msg *msg,
 		       const char *label);
 
 struct clicon_msg *
+clicon_msg_copy_encode(char *db_src, char *db_dst, 
+		       const char *label);
+
+int
+clicon_msg_copy_decode(struct clicon_msg *msg, 
+		      char **db_src, char **db_dst, 
+		       const char *label);
+
+struct clicon_msg *
 clicon_msg_kill_encode(uint32_t session_id, const char *label);
 
 int

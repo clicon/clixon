@@ -71,6 +71,10 @@ enum clicon_msg_type{
 			  3. string: filename to load from
 
 		       */
+    CLICON_MSG_COPY,    /* Copy from file to file in backend. Body is:
+			  1. string: filename to copy from
+			  2. string: filename to copy to
+		       */
     CLICON_MSG_KILL, /* Kill (other) session:
 			  1. session-id
 		       */

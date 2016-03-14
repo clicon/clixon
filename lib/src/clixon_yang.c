@@ -448,9 +448,9 @@ yang_find_syntax(yang_node *yn, char *argument)
     return ysmatch;
 }
 
-/*! Help function to check find 'top-node', eg first 'syntax node in a spec 
+/*! Help function to check find 'top-node', eg first 'syntax' node in a spec 
  * A yang specification has modules as children which in turn can have 
- * syntax-nodes as children. This function goes through all the modulers to
+ * syntax-nodes as children. This function goes through all the modules to
  * look for syntax-nodes. Note that if a child to a module is a choice, 
  * the search is made recursively made to the choice's children.
  */

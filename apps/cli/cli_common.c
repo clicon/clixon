@@ -78,7 +78,7 @@ init_candidate_db(clicon_handle h)
 	goto err;
     }
     if (xmldb_exists(h, "candidate") != 1)
-	if (xmldb_copy(h, "running", "candidate") < 0)
+	if (clicon_rpc_copy(h, "running", "candidate") < 0)
 	    goto err;
     retval = 0;
   err:
@@ -648,7 +648,7 @@ compare_dbs(clicon_handle h, cvec *cvv, cg_var *arg)
 }
 
 
-/*! Modify xml database frm a callback using xml key format strings
+/*! Modify xml database from a callback using xml key format strings
  * @param[in]  h    Clicon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
  * @param[in]  arg  An xml key format string, eg /aaa/%s 
@@ -676,18 +676,6 @@ cli_dbxml(clicon_handle       h,
     cg_var    *cval;
     char      *val = NULL;
 
-    /* 
-     * clicon_rpc_xmlput(h, db, MERGE,"<interfaces><interface><name>eth0</name><type>hej</type></interface><interfaces>");
-     * Wanted database content:
-     * /interfaces 
-     * /interfaces/interface/eth0
-     * /interfaces/interface/eth0/name eth0
-     * /interfaces/interface/eth0/type hej
-     * Algorithm alt1:
-     * arg = "<interfaces><interface><name>$1</name><type>$2</type></interface><interfaces>"
-     * Where is arg computed? In eg yang2cli_leaf, otherwise in yang_parse,..
-     * Create string using cbuf and save that. 
-     */
     xkfmt = cv_string_get(arg);
     if (xmlkeyfmt2key(xkfmt, cvv, &xk) < 0)
 	goto done;
@@ -944,22 +932,21 @@ delete_all(clicon_handle h, cvec *cvv, cg_var *arg)
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
     }
-    if (xmldb_delete(h, dbstr) < 0)
-	goto done;
-    if (xmldb_init(h, dbstr) < 0) 
-	goto done;
+    if (clicon_rpc_change(h, "candidate",
+			  OP_REMOVE, 
+			  "/", "") < 0)
+	    goto done;
     retval = 0;
   done:
     return retval;
 }
 
 /*! Discard all changes in candidate and replace with running
- * Utility function used by cligen spec file
  */
 int
 discard_changes(clicon_handle h, cvec *cvv, cg_var *arg)
 {
-    return xmldb_copy(h, "running", "candidate");
+    return clicon_rpc_copy(h, "running", "candidate");
 }
 
 /*! Generic function for showing configurations.
