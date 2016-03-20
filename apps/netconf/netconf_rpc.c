@@ -114,7 +114,7 @@ netconf_filter_xmldb(clicon_handle      h,
     switch (foption){
     case FILTER_SUBTREE:
 	/* Get the whole database as xml */
-	if (xmldb_get(h, source, NULL, 0, &xdb, NULL, NULL) < 0){
+	if (xmldb_get(h, source, "/", 0, &xdb, NULL, NULL) < 0){
 	    netconf_create_rpc_error(cb_err, xorig, 
 				     "operation-failed", 
 				     "application", 

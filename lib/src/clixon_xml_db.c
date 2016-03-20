@@ -389,6 +389,9 @@ db_islocked(char *db)
  * @param[out]  filename Filename. Unallocate after use with free()
  * @retval      0        OK
  * @retval     -1        Error
+ * @note Could need a way to extend which databases exists, eg to register new.
+ * The currently allowed databases are: 
+ *   candidate, tmp, running, result
  * The filename reside in CLICON_XMLDB_DIR option
  */
 static int
@@ -410,6 +413,7 @@ db2file(clicon_handle h,
     }
     if (strcmp(db, "running") != 0 && 
 	strcmp(db, "candidate") != 0 && 
+	strcmp(db, "result") != 0 && 
 	strcmp(db, "tmp") != 0){
 	clicon_err(OE_XML, 0, "Unexpected database: %s", db);
 	goto done;
@@ -539,7 +543,7 @@ xml_tree_prune_unmarked(cxobj *xt,
 	if (submark)
 	    mark++;
 	else{ /* Safe with xml_child_each if last */
-	    if (xml_prune(xt, x, 1) < 0)
+	    if (xml_purge(x) < 0)
 		goto done;
 	    x = xprev;
 	}
@@ -816,14 +820,16 @@ xmldb_get_tree(char      *dbname,
 	}
 	if (xml_tree_prune_unmarked(xt, NULL) < 0)
 	    goto done;
+	if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	    goto done;
     }
     *xtop = xt;
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
-    if (1)
+    if (1) /* sanity */
 	if (xml_apply(xt, CX_ELMNT, xml_sanity, NULL) < 0)
 	    goto done;
-    if (0)
+    if (debug)
 	clicon_xml2file(stdout, xt, 0, 1);
     retval = 0;
  done:
@@ -841,7 +847,7 @@ xmldb_get_tree(char      *dbname,
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
  * @param[in]  dbname Name of database to search in (filename including dir path
- * @param[in]  xpath  String with XPATH syntax (or NULL for all)
+ * @param[in]  xpath  String with XPATH syntax
  * @param[in]  yspec  Yang specification
  * @param[out] xtop   Single XML tree which xvec points to. Free with xml_free()
  * @param[out] xvec   Vector of xml trees. Free after use
@@ -955,9 +961,9 @@ xmldb_get_local(clicon_handle h,
  * xpath.
  * @param[in]  h      Clicon handle
  * @param[in]  db     running | candidate
- * @param[in]  xpath  String with XPATH syntax (or NULL for all)
+ * @param[in]  xpath  String with XPATH syntax
  * @param[in]  vector If set, return list of results in xvec, else single tree.
- * @param[out] xtop   XML tree. Freed by xml_free()
+ * @param[out] xtop   XML tree. Freed by xml_free()p
  * @param[out] xvec   Vector of xml trees. Free after use
  * @param[out] xlen   Length of vector.
  * @retval     0      OK
@@ -967,7 +973,7 @@ xmldb_get_local(clicon_handle h,
  *   cxobj  **xvec;
  *   size_t   xlen;
  *   yang_spec *yspec = clicon_dbspec_yang(h);
- *   if (xmldb_get(dbname, "/interfaces/interface[name="eth"]", yspec, 
+ *   if (xmldb_get("running", "/interfaces/interface[name="eth"]", 
  *                 1, &xt, &xvec, &xlen) < 0)
  *      err;
  *   for (i=0; i<xlen; i++){
@@ -989,6 +995,7 @@ xmldb_get(clicon_handle h,
 	  cxobj      ***xvec,
 	  size_t       *xlen)
 {
+    assert(xpath);
     if (clicon_xmldb_rpc(h))
 	return xmldb_get_rpc(h, db, xpath, vector, xtop, xvec, xlen);
     else
@@ -1729,10 +1736,8 @@ main(int argc, char **argv)
 	    usage(argv[0]);
 	if (clicon_xml_parse_file(0, &xt, "</clicon>") < 0)
 	    goto done;
-	xn = xml_child_i(xt, 0);
-	xml_prune(xt, xn, 0); /* kludge to remove top-level tag (eg top/clicon) */
-	xml_parent_set(xn, NULL);
-	xml_free(xt);
+	if (xml_rootchild(xt, 0, &xn) < 0)
+	    goto done;
 	if (strcmp(argv[5], "set") == 0)
 	    op = OP_REPLACE;
 	else 	

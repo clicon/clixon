@@ -153,7 +153,7 @@ xml_filter2(cxobj *xfilter,
     sprev = s = NULL;
     while ((s = xml_child_each(xparent, s, CX_ELMNT)) != NULL) {
 	if ((f = xml_find(xfilter, xml_name(s))) == NULL){
-	    xml_prune(xparent, s, 1);
+	    xml_purge(s);
 	    s = sprev;
 	    continue;
 	}
@@ -166,7 +166,7 @@ xml_filter2(cxobj *xfilter,
 	if (xml_filter2(f, s, &remove_s) < 0)
 	    return -1;
 	if (remove_s){
-	    xml_prune(xparent, s, 1);
+	    xml_purge(s);
 	    s = sprev;
 	}
 	sprev = s;

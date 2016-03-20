@@ -62,7 +62,7 @@ transaction_id(transaction_data td)
     return ((transaction_data_t *)td)->td_id;
 }
 
-/*! Get plugin/application specific callbackargument
+/*! Get plugin/application specific callback argument
  * @param[in]  td   transaction_data
  * @retval     arg  callback argument
  * @note NYI
@@ -73,7 +73,7 @@ transaction_arg(transaction_data td)
   return ((transaction_data_t *)td)->td_arg;
 }
 
-/*! Get Source database xml tree
+/*! Get source database xml tree
  * @param[in]  td   transaction_data
  * @retval     src  source xml tree containing original state
  */
@@ -160,7 +160,7 @@ transaction_scvec(transaction_data td)
 cxobj **
 transaction_tcvec(transaction_data td)
 {
-  return ((transaction_data_t *)td)->td_dvec;
+  return ((transaction_data_t *)td)->td_tcvec;
 }
 
 /*! Get length of changed xml vector

@@ -174,11 +174,11 @@ clicon_rpc_validate(clicon_handle h,
  * @note special case: remove all: key:"/" op:OP_REMOVE
  */
 int
-clicon_rpc_change(clicon_handle h, 
-		  char         *db, 
+clicon_rpc_change(clicon_handle       h, 
+		  char               *db, 
 		  enum operation_type op,
-		  char         *key, 
-		  char         *val)
+		  char               *key, 
+		  char               *val)
 {
     int               retval = -1;
     struct clicon_msg *msg;

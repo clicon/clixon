@@ -784,14 +784,14 @@ xpath_each(cxobj *cxtop,
  *
  * @code
  *   cxobj **xv;
- *   int     xlen;
- *   if ((xv = xpath_vec(cxtop, "//symbol/foo", &xlen)) != NULL) {
- *      for (i=0; i<xlen; i++){
- *         xn = xv[i];
+ *   size_t  xlen;
+ *   if (xpath_vec(cxtop, "//symbol/foo", &xv, &xlen) < 0) 
+ *      got err;
+ *   for (i=0; i<xlen; i++){
+ *      xn = xv[i];
  *         ...
- *      }
- *      free(xv);
  *   }
+ *   free(xv);
  * @endcode
  * Note that although the returned vector must be freed after use, the returned xml
  * trees need not be.

@@ -72,10 +72,10 @@ clicon_proc_sigint(int sig)
 	kill (_clicon_proc_child, SIGINT);
 }
 
-/*
- * Fork a child process, setup a pipe between parent and child, allowing 
- * parent to read the output of the child. If 'doerr' is non-zero, stderr
- * will be directed to the pipe as well. The pipe for the parent to write
+/*! Fork a child process, setup a pipe between parent and child.
+ * Allowing parent to read the output of the child. 
+ * @param[in]   doerr   If non-zero, stderr will be directed to the pipe as well. 
+ * The pipe for the parent to write
  * to the child is closed and cannot be used.
  *
  * When child process is done with the pipe setup, execute the specified
@@ -85,10 +85,13 @@ clicon_proc_sigint(int sig)
  * until eof. The read output will be sent to the specified output callback,
  * 'outcb' function.
  *
- * Return number of matches (processes affected). -1 on error.
+ * @retval  number    Matches (processes affected). 
+ * @retval  -1        Error.
  */
 int
-clicon_proc_run (char *cmd, void (outcb)(char *), int doerr)
+clicon_proc_run (char  *cmd, 
+		 void (outcb)(char *), 
+		 int   doerr)
 {
     char 
 	**argv,
@@ -182,9 +185,7 @@ clicon_proc_run (char *cmd, void (outcb)(char *), int doerr)
     return retval;
 }
 
-
-/*
- * Spawm command and report exit status
+/*! Spawn command and report exit status
  */
 int
 clicon_proc_daemon (char *cmd)
@@ -250,81 +251,6 @@ clicon_proc_daemon (char *cmd)
     return (retval);
 }
 
-
-#ifdef moved_to_osr
-#ifdef linux
-/*
- * Send 'sig' (if not 0) to all processes matching 'name'.
- * Return the number of matches.
- */
-int
-clicon_proc_killbyname (const char *name, int sig)
-{
-  /* XXXX FIXME. Should scan /proc/<pid>/status */
-  char buf[512];
-  snprintf (buf, sizeof (buf)-1, "pkill -%d %s", sig, name);
-
-  return clicon_proc_run (buf, NULL, 0);
-}
-#endif /* Linux */
-
-
-#ifdef BSD
-/*
- * Send 'sig' (if not 0) to all processes matching 'name'.
- * Return the number of matches.
- */
-int
-clicon_proc_killbyname (const char *name, int sig)
-{
-	int
-		i,
-		nproc,
-		nmatch,
-		mib[3];
-	size_t
-		size;
-	struct proc
-		*p;
-	struct kinfo_proc
-		*kp = NULL;
-
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_NPROCS; /* KERN_MACPROC, KERN_PROC */
-	size = sizeof (nproc);
-	if (sysctl(mib, 2, &nproc, &size, NULL, 0) < 0)
-		return -1;
-
-	size = nproc * sizeof(struct kinfo_proc);
-	kp = chunk(size * sizeof(char), "bsdkill");
-	if (kp == NULL)
-		goto error;
-
-	mib[1] = KERN_PROC;
-	mib[2] = KERN_PROC_ALL;
-	
-	if (sysctl(mib, 3, kp, &size, NULL, 0) < 0)
-		goto error;
-	
-	nproc = size / sizeof(struct kinfo_proc);
-	for (nmatch = i = 0; i < nproc; i++) {
-		p = (struct proc *)&kp[i].kp_proc;
-		if (!strcmp (name, p->p_comm)) {
-			nmatch++;
-			kill (p->p_pid, sig);
-		}
-	}
-
-	unchunk (kp);
-	return nmatch;
-
- error:
-	if (kp)
-		unchunk (kp);
-	return -1;
-}
-#endif /* BSD */
-#endif
 
 /*! Translate group name to gid. Return -1 if error or not found.
  */

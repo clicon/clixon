@@ -70,15 +70,22 @@ int cli_start_shell(clicon_handle h, cvec *vars, cg_var *argv);
 int cli_quit(clicon_handle h, cvec *vars, cg_var *arg);
 int cli_commit(clicon_handle h, cvec *vars, cg_var *arg);
 int cli_validate(clicon_handle h, cvec *vars, cg_var *arg);
-int expand_dir(char *dir, int *nr, char ***commands, mode_t flags, int detail);
-int expand_dbvar_dbxml(void *h, char *name, cvec *cvv, cg_var *arg, 
-		       int *nr, char ***commands, char ***helptexts);
 int compare_dbs(clicon_handle h, cvec *vars, cg_var *arg);
 
 int load_config_file(clicon_handle h, cvec *vars, cg_var *arg);
 int save_config_file(clicon_handle h, cvec *vars, cg_var *arg);
 int delete_all(clicon_handle h, cvec *vars, cg_var *arg);
 int discard_changes(clicon_handle h, cvec *vars, cg_var *arg);
+int cli_notify(clicon_handle h, cvec *cvv, cg_var *arg);
+int cli_notification_register(clicon_handle h, char *stream, enum format_enum format,
+			      char *filter, int status, 
+			      int (*fn)(int, void*), void *arg);
+
+/* In cli_show.c */
+int expand_dir(char *dir, int *nr, char ***commands, mode_t flags, int detail);
+int expand_dbvar(void *h, char *name, cvec *cvv, cg_var *arg, 
+		 int *nr, char ***commands, char ***helptexts);
+
 int show_conf_as_xml(clicon_handle h, cvec *vars, cg_var *arg);
 int show_conf_as_netconf(clicon_handle h, cvec *vars, cg_var *arg);
 int show_conf_as_json(clicon_handle h, cvec *vars, cg_var *arg);
@@ -86,8 +93,5 @@ int show_conf_as_text(clicon_handle h, cvec *vars, cg_var *arg);
 int show_conf_as_cli(clicon_handle h, cvec *vars, cg_var *arg);
 int show_conf_as_csv(clicon_handle h, cvec *vars, cg_var *arg);
 int show_yang(clicon_handle h, cvec *vars, cg_var *arg);
-int cli_notification_register(clicon_handle h, char *stream, enum format_enum format,
-			      char *filter, int status, 
-			      int (*fn)(int, void*), void *arg);
 
 #endif /* _CLIXON_CLI_API_H_ */

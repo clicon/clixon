@@ -464,7 +464,9 @@ send_msg_ok(int s)
 }
 
 int
-send_msg_notify(int s, int level, char *event)
+send_msg_notify(int   s, 
+		int   level, 
+		char *event)
 {
     int retval = -1;
     struct clicon_msg *msg;

@@ -108,7 +108,10 @@ backend_handle_exit(clicon_handle h)
  * @see also backend_notify_xml()
  */
 int
-backend_notify(clicon_handle h, char *stream, int level, char *event)
+backend_notify(clicon_handle h, 
+	       char         *stream, 
+	       int           level, 
+	       char         *event)
 {
     struct client_entry        *ce;
     struct client_subscription *su;
@@ -144,7 +147,7 @@ backend_notify(clicon_handle h, char *stream, int level, char *event)
  * @param[in]  h       Clicon handle
  * @param[in]  stream  Name of event stream. CLICON is predefined as LOG stream
  * @param[in]  level   Event level (not used yet)
- * @param[in]  event   Actual message as xml tree
+ * @param[in]  x       Actual message as xml tree
  *
  * Stream is a string used to qualify the event-stream. Distribute the
  * event to all clients registered to this backend.  
@@ -153,7 +156,10 @@ backend_notify(clicon_handle h, char *stream, int level, char *event)
  * @see also backend_notify()
  */
 int
-backend_notify_xml(clicon_handle h, char *stream, int level, cxobj *x)
+backend_notify_xml(clicon_handle h, 
+		   char         *stream, 
+		   int           level, 
+		   cxobj        *x)
 {
     struct client_entry *ce;
     struct client_subscription *su;

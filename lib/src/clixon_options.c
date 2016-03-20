@@ -183,6 +183,10 @@ clicon_option_default(clicon_hash_t  *copt)
 	if (hash_add(copt, "CLICON_CLI_GENMODEL_COMPLETION", "0", strlen("0")+1) < 0)
 	    goto catch;
     }
+    if (!hash_lookup(copt, "CLICON_XMLDB_RPC")){
+	if (hash_add(copt, "CLICON_XMLDB_RPC", "0", strlen("0")+1) < 0)
+	    goto catch;
+    }
     retval = 0;
   catch:
     unchunk_group(__FUNCTION__);
@@ -600,7 +604,7 @@ clicon_xmldb_rpc(clicon_handle h)
     char *s;
 
     if ((s = clicon_option_str(h, "CLICON_XMLDB_RPC")) == NULL)
-	return -1;
+	return 0; /* default 0 */
     return atoi(s);
 }
 

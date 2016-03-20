@@ -59,6 +59,8 @@
 #include "clixon_xml_db.h"
 #include "clixon_xml_db_rpc.h"
 
+/*! Make an rpc call to xmldb daemon
+ */
 static int
 xmldb_rpc(clicon_handle      h,
 	  char              *data, 
@@ -273,13 +275,9 @@ xmldb_get_rpc(clicon_handle h,
 	xt = NULL;
     }
     else{
-	if ((xc = xml_child_i(xt, 0)) != NULL){
-	    xml_prune(xt, xc, 0); /* kludge to remove top-level tag (eg top/clicon) */
-	    xml_parent_set(xc, NULL);
-	    if (debug > 1)
-		clicon_xml2file(stderr, xc, 0, 1);
-	}
-	*xtop = xc;
+	if (xml_rootchild(xt, 0, xtop) < 0)
+	    goto done;
+	xt = NULL;
     }
 
     retval = 0;

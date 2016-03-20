@@ -770,7 +770,8 @@ yang_type_resolve(yang_stmt   *ys,
     *yrestype    = NULL; /* Initialization of resolved type that may not be necessary */
     type      = ytype_id(ytype);     /* This is the type to resolve */
     prefix    = ytype_prefix(ytype); /* And this its prefix */
-    if (ytype->ys_typecache != NULL){
+    /* Cache does not work for eg string length 32 */
+    if (!yang_builtin(type) && ytype->ys_typecache != NULL){
 	if (yang_type_cache_get(ytype->ys_typecache, 
 				yrestype, options, mincv, maxcv, pattern, fraction) < 0)
 	    goto done;
@@ -803,7 +804,7 @@ yang_type_resolve(yang_stmt   *ys,
     }
     else
 	while (1){
-	    /* Check upwards in hierarchy for matcing typedefs */
+	    /* Check upwards in hierarchy for matching typedefs */
 	    if ((ys = ys_typedef_up(ys)) == NULL){ /* If reach top */
 		*yrestype = NULL;
 		break;

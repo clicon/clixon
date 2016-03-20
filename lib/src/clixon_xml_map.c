@@ -520,7 +520,9 @@ xml2cvec(cxobj      *xt,
  * @see cvec2xml   This does more but has an internal xml2cvec translation
 */
 int
-cvec2xml_1(cvec *cvv, char *toptag, cxobj **xt0)
+cvec2xml_1(cvec   *cvv, 
+	   char   *toptag, 
+	   cxobj **xt0)
 {
     int               retval = -1;
     cxobj            *xt = NULL;

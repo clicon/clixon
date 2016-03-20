@@ -51,9 +51,9 @@ typedef int (xml_applyfn_t)(cxobj *yn, void *arg);
  * xml_flag() flags:
  */
 #define XML_FLAG_MARK   0x01  /* Marker for dynamic algorithms, eg expand */
-#define XML_FLAG_ADD    0x02  /* Node is added (commits) */
-#define XML_FLAG_DEL    0x04  /* Node is deleted (commits) */
-#define XML_FLAG_CHANGE 0x08  /* Node is changed (commits) */
+#define XML_FLAG_ADD    0x02  /* Node is added (commits) or parent added rec*/
+#define XML_FLAG_DEL    0x04  /* Node is deleted (commits) or parent deleted rec */
+#define XML_FLAG_CHANGE 0x08  /* Node is changed (commits) or child changed rec */
 
 /*
  * Prototypes
@@ -88,12 +88,18 @@ cxobj    *xml_new_spec(char *name, cxobj *xn_parent, void *spec);
 void     *xml_spec(cxobj *x);
 cxobj    *xml_find(cxobj *xn_parent, char *name);
 
+int       xml_addsub(cxobj *xp, cxobj *xc);
+cxobj    *xml_insert(cxobj *xt, char *tag);
+int       xml_purge(cxobj *xc);
+int       xml_child_rm(cxobj *xp, int i);
+int       xml_rootchild(cxobj  *xp, int i, cxobj **xcp);
+
 char     *xml_body(cxobj *xn);
 char     *xml_find_value(cxobj *xn_parent, char *name);
 char     *xml_find_body(cxobj *xn, char *name);
 
 int       xml_free(cxobj *xn);
-int       xml_prune(cxobj *xp, cxobj *xc, int freeit);
+
 int       clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint);
 int       clicon_xml2cbuf(cbuf *xf, cxobj *xn, int level, int prettyprint);
 int       clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag);
@@ -101,8 +107,7 @@ int       clicon_xml_parse_string(char **str, cxobj **xml_top);
 
 int       xml_copy(cxobj *x0, cxobj *x1);
 cxobj    *xml_dup(cxobj *x0);
-int       xml_addsub(cxobj *xp, cxobj *xc);
-cxobj    *xml_insert(cxobj *xt, char *tag);
+
 int       cxvec_dup(cxobj **vec0, size_t len0, cxobj ***vec1, size_t *len1);
 int       cxvec_append(cxobj *x, cxobj ***vec, size_t  *len);
 int       xml_apply(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg);

@@ -54,7 +54,7 @@
 #define GENERATE_CALLBACK "cli_set"
 
 /* variable expand function */
-#define GENERATE_EXPAND_XMLDB "expand_dbvar_dbxml"
+#define GENERATE_EXPAND_XMLDB "expand_dbvar"
 
 /*=====================================================================
  * YANG generate CLI
@@ -163,7 +163,7 @@ cvtype_max2str_dup(enum cv_type type)
  * @param[in]  ys     yang_stmt of the node at hand
  * @param[in]  cvtype Type of the cligen variable
  * @param[in]  cb0    The string where the result format string is inserted.
- * @see expand_dbvar_dbxml  This is where the expand string is used
+ * @see expand_dbvar  This is where the expand string is used
  */
 static int
 cli_expand_var_generate(clicon_handle h, 

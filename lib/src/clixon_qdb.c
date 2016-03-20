@@ -83,14 +83,15 @@ db_init_mode(char *file,
 
     /* Open database for writing */
     if ((dp = dpopen(file, omode | DP_OLCKNB, 0)) == NULL){
-	clicon_err(OE_DB, 0, "db_init: dpopen(%s): %s", 
-		file,
-		dperrmsg(dpecode));
+	clicon_err(OE_DB, errno, "dpopen(%s): %s", 
+		   file, 
+		   dperrmsg(dpecode));
 	return -1;
     }
     clicon_debug(1, "db_init(%s)", file);
     if (dpclose(dp) == 0){
-	clicon_err(OE_DB, 0, "db_set: dpclose: %s", dperrmsg(dpecode));
+	clicon_err(OE_DB, errno, "db_set: dpclose: %s", 
+		   dperrmsg(dpecode));
 	return -1;
     }
     return 0;
@@ -138,7 +139,7 @@ db_set(char *file, char *key, void *data, size_t datalen)
 
     /* Open database for writing */
     if ((dp = dpopen(file, DP_OWRITER|DP_OLCKNB , 0)) == NULL){
-	clicon_err(OE_DB, 0, "db_set: dpopen(%s): %s", 
+	clicon_err(OE_DB, errno, "db_set: dpopen(%s): %s", 
 		file,
 		dperrmsg(dpecode));
 	return -1;
@@ -146,7 +147,7 @@ db_set(char *file, char *key, void *data, size_t datalen)
     clicon_debug(2, "%s: db_put(%s, len:%d)", 
 		file, key, (int)datalen);
     if (dpput(dp, key, -1, data, datalen, DP_DOVER) == 0){
-	clicon_err(OE_DB, 0, "%s: db_set: dpput(%s, %d): %s", 
+	clicon_err(OE_DB, errno, "%s: db_set: dpput(%s, %d): %s", 
 		file,
 		key,
 		datalen,
@@ -181,7 +182,7 @@ db_get(char   *file,
 
     /* Open database for readinf */
     if ((dp = dpopen(file, DP_OREADER | DP_OLCKNB, 0)) == NULL){
-	clicon_err(OE_DB, dpecode, "%s: db_get(%s, %d): dpopen: %s", 
+	clicon_err(OE_DB, errno, "%s: db_get(%s, %d): dpopen: %s", 
 		file,
 		key,
 		datalen,
@@ -195,7 +196,7 @@ db_get(char   *file,
 	    *datalen = 0;
 	}
 	else{
-	    clicon_err(OE_DB, 0, "db_get: dpgetwb: %s (%d)", 
+	    clicon_err(OE_DB, errno, "db_get: dpgetwb: %s (%d)", 
 		    dperrmsg(dpecode), dpecode);
 	    dpclose(dp);
 	    return -1;
@@ -205,7 +206,7 @@ db_get(char   *file,
 	*datalen = len;	
     clicon_debug(2, "db_get(%s, %s)=%s", file, key, (char*)data);
     if (dpclose(dp) == 0){
-	clicon_err(OE_DB, 0, "db_get: dpclose: %s", dperrmsg(dpecode));
+	clicon_err(OE_DB, errno, "db_get: dpclose: %s", dperrmsg(dpecode));
 	return -1;
     }
     return 0;
@@ -243,7 +244,7 @@ db_get_alloc(char   *file,
 
     /* Open database for writing */
     if ((dp = dpopen(file, DP_OREADER | DP_OLCKNB, 0)) == NULL){
-	clicon_err(OE_DB, 0, "%s: dpopen(%s): %s", 
+	clicon_err(OE_DB, errno, "%s: dpopen(%s): %s", 
 		   __FUNCTION__,
 		   file,
 		   dperrmsg(dpecode));
@@ -257,7 +258,7 @@ db_get_alloc(char   *file,
 	}
 	else{
 	    /* No entry vs error? */
-	    clicon_err(OE_DB, 0, "db_get_alloc: dpgetwb: %s (%d)", 
+	    clicon_err(OE_DB, errno, "db_get_alloc: dpgetwb: %s (%d)", 
 		    dperrmsg(dpecode), dpecode);
 	    dpclose(dp);
 	    return -1;
@@ -265,7 +266,7 @@ db_get_alloc(char   *file,
     }
     *datalen = len;
     if (dpclose(dp) == 0){
-	clicon_err(OE_DB, 0, "db_get_alloc: dpclose: %s", dperrmsg(dpecode));
+	clicon_err(OE_DB, errno, "db_get_alloc: dpclose: %s", dperrmsg(dpecode));
 	return -1;
     }
     return 0;
@@ -286,7 +287,7 @@ db_del(char *file, char *key)
 
     /* Open database for writing */
     if ((dp = dpopen(file, DP_OWRITER | DP_OLCKNB, 0)) == NULL){
-	clicon_err(OE_DB, 0, "db_del: dpopen(%s): %s", 
+	clicon_err(OE_DB, errno, "db_del: dpopen(%s): %s", 
 		file,
 		dperrmsg(dpecode));
 	return -1;
@@ -295,7 +296,7 @@ db_del(char *file, char *key)
         retval = 1;
     }
     if (dpclose(dp) == 0){
-	clicon_err(OE_DB, 0, "db_del: dpclose: %s", dperrmsg(dpecode));
+	clicon_err(OE_DB, errno, "db_del: dpclose: %s", dperrmsg(dpecode));
 	return -1;
     }
     return retval;
@@ -316,18 +317,18 @@ db_exists(char *file, char *key)
 
     /* Open database for reading */
     if ((dp = dpopen(file, DP_OREADER | DP_OLCKNB, 0)) == NULL){
-	clicon_err(OE_DB, dpecode, "%s: dpopen: %s", 
+	clicon_err(OE_DB, errno, "%s: dpopen: %s", 
 		   __FUNCTION__, dperrmsg(dpecode));
 	return -1;
     }
 
     len = dpvsiz(dp, key, -1);
     if (len < 0 && dpecode != DP_ENOITEM)
-	clicon_err(OE_DB, 0, "^s: dpvsiz: %s (%d)", 
+	clicon_err(OE_DB, errno, "^s: dpvsiz: %s (%d)", 
 		   __FUNCTION__, dperrmsg(dpecode), dpecode);
 
     if (dpclose(dp) == 0) {
-	clicon_err(OE_DB, 0, "%s: dpclose: %s", dperrmsg(dpecode),__FUNCTION__);
+	clicon_err(OE_DB, errno, "%s: dpclose: %s", dperrmsg(dpecode),__FUNCTION__);
 	return -1;
     }
 
@@ -378,7 +379,7 @@ db_regexp(char            *file,
     if (regexp) {
 	if ((status = regcomp(&iterre, regexp, REG_EXTENDED)) != 0) {
 	    regerror(status, &iterre, errbuf, sizeof(errbuf));
-	    clicon_err(OE_DB, 0, "%s: regcomp: %s", __FUNCTION__, errbuf);
+	    clicon_err(OE_DB, errno, "%s: regcomp: %s", __FUNCTION__, errbuf);
 	    return -1;
 	}
     }
@@ -392,7 +393,7 @@ db_regexp(char            *file,
     
     /* Initiate iterator */
     if(dpiterinit(iterdp) == 0) {
-	clicon_err(OE_DB, 0, "%s: dpiterinit: %s", __FUNCTION__, dperrmsg(dpecode));
+	clicon_err(OE_DB, errno, "%s: dpiterinit: %s", __FUNCTION__, dperrmsg(dpecode));
 	goto quit;
     }
     
@@ -549,7 +550,7 @@ main(int argc, char **argv)
     }
     else if (strcmp(verb, "openread")==0){
 	if ((dp = dpopen(filename, DP_OREADER | DP_OLCKNB, 0)) == NULL){
-	    clicon_err(OE_DB, dpecode, "dbopen: %s", 
+	    clicon_err(OE_DB, errno, "dbopen: %s", 
 		       dperrmsg(dpecode));
 	    return -1;
 	}
@@ -557,7 +558,7 @@ main(int argc, char **argv)
     }
     else if (strcmp(verb, "openwrite")==0){
 	if ((dp = dpopen(filename, DP_OWRITER | DP_OLCKNB, 0)) == NULL){
-	    clicon_err(OE_DB, dpecode, "dbopen: %s", 
+	    clicon_err(OE_DB, errno, "dbopen: %s", 
 		       dperrmsg(dpecode));
 	    return -1;
 	}

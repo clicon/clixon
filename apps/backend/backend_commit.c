@@ -154,7 +154,7 @@ candidate_commit(clicon_handle h,
 		  &td->td_avec,      /* added: only in candidate */
 		  &td->td_alen,
 		  &td->td_scvec,     /* changed: original values */
-		  &td->td_tcvec,        /* changed: wanted values */
+		  &td->td_tcvec,     /* changed: wanted values */
 		  &td->td_clen) < 0)
 	 goto done;
     if (debug)
@@ -164,15 +164,17 @@ candidate_commit(clicon_handle h,
 	xn = td->td_dvec[i];
 	xml_flag_set(xn, XML_FLAG_DEL);
 	xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_DEL);
+	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }    
     for (i=0; i<td->td_alen; i++){ /* Also down */
 	xn = td->td_avec[i];
 	xml_flag_set(xn, XML_FLAG_ADD);
 	xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD);
+	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }    
     for (i=0; i<td->td_clen; i++){ /* Also up */
 	xn = td->td_scvec[i];
-	xml_flag(xn, XML_FLAG_CHANGE);
+	xml_flag_set(xn, XML_FLAG_CHANGE);
 	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
 	xn = td->td_tcvec[i];
 	xml_flag_set(xn, XML_FLAG_CHANGE);

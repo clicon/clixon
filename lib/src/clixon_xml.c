@@ -201,7 +201,7 @@ xml_value(cxobj *xn)
     return xn->x_value;
 }
 
-/*! Set value of xnode, value is copied
+/*! Set value of xml node, value is copied
  * @param[in]  xn    xml node
  * @param[in]  val  new value, null-terminated string, copied by function
  * @retval     -1    on error with clicon-err set
@@ -230,7 +230,8 @@ xml_value_set(cxobj *xn, char *val)
  * @retval     new value
  */
 char *
-xml_value_append(cxobj *xn, char *val)
+xml_value_append(cxobj *xn, 
+		 char  *val)
 {
     int len0;
     int len;
@@ -263,7 +264,8 @@ xml_type(cxobj *xn)
  * @retval     type  old type
  */
 enum cxobj_type 
-xml_type_set(cxobj *xn, enum cxobj_type type)
+xml_type_set(cxobj          *xn, 
+	     enum cxobj_type type)
 {
     enum cxobj_type old = xn->x_type;
 
@@ -289,7 +291,8 @@ xml_index(cxobj *xn)
  * index/key is used in case of yang list constructs where one element is key
  */
 int
-xml_index_set(cxobj *xn, int index)
+xml_index_set(cxobj *xn, 
+	      int    index)
 {
     int old = xn->x_index;
 
@@ -313,7 +316,8 @@ xml_child_nr(cxobj *xn)
  * @retval     child in XML tree, or NULL if no such child, or empty child
  */
 cxobj *
-xml_child_i(cxobj *xn, int i)
+xml_child_i(cxobj *xn, 
+	    int    i)
 {
     if (i < xn->x_childvec_len)
 	return xn->x_childvec[i];
@@ -321,7 +325,9 @@ xml_child_i(cxobj *xn, int i)
 }
 
 cxobj *
-xml_child_i_set(cxobj *xt, int i, cxobj *xc)
+xml_child_i_set(cxobj *xt, 
+		int    i, 
+		cxobj *xc)
 {
     if (i < xt->x_childvec_len)
 	xt->x_childvec[i] = xc;
@@ -460,7 +466,8 @@ xml_spec(cxobj *x)
  * @retval NULL       if no such node found.
  */
 cxobj *
-xml_find(cxobj *x_up, char *name)
+xml_find(cxobj *x_up, 
+	 char  *name)
 {
     cxobj *x = NULL;
 
@@ -478,14 +485,25 @@ xml_find(cxobj *x_up, char *name)
  * @see xml_insert
  */
 int
-xml_addsub(cxobj *xp, cxobj *xc)
+xml_addsub(cxobj *xp, 
+	   cxobj *xc)
 {
     cxobj *oldp;
+    int    i;
 
-    if ((oldp = xml_parent(xc)) != NULL)
-	xml_prune(oldp, xc, 0);
+    if ((oldp = xml_parent(xc)) != NULL){
+	/* Find child order i in old parent*/
+	for (i=0; i<xml_child_nr(oldp); i++)
+	    if (xml_child_i(oldp, i) == xc)
+		break;
+	/* Remove xc from old parent */
+	if (i < xml_child_nr(oldp))
+	    xml_child_rm(oldp, i);
+    }
+    /* Add xc to new parent */
     if (xml_child_append(xp, xc) < 0)
 	return -1;
+    /* Set new parent in child */
     xml_parent_set(xc, xp); 
     return 0;
 }
@@ -515,6 +533,110 @@ xml_insert(cxobj *xp, char *tag)
     return xc;
 }
 
+/*! Remove and free an xml node child from xml parent
+ * @param[in]   xparent     xml parent node
+ * @param[in]   xchild      xml child node (to be renmoved and freed)
+ * @retval      0           OK
+ * @retval      -1
+ * @note you cannot remove xchild in the loop (unless yoy keep track of xprev)
+ *
+ * @see xml_free   Free, dont remove from parent
+ * @see xml_child_rm  Only remove dont free
+ * Differs from xml_free it is removed from parent.
+ */
+int
+xml_purge(cxobj *xc)
+{
+    int       retval = -1;
+    int       i;
+    cxobj    *xp;
+
+    if ((xp = xml_parent(xc)) != NULL){
+	/* Find child order i in parent*/
+	for (i=0; i<xml_child_nr(xp); i++)
+	    if (xml_child_i(xp, i) == xc)
+		break;
+	/* Remove xc from parent */
+	if (i < xml_child_nr(xp))
+	    if (xml_child_rm(xp, i) < 0)
+		goto done;
+    }
+    xml_free(xc);	    
+    retval = 0;
+ done:
+    return retval; 
+}
+
+/*! Remove xml node from parent xml node. No freeing and child is new own root
+ * @param[in]   xp     xml parent node
+ * @param[in]   i      Number of xml child node (to remove)
+ * @retval      0      OK
+ * @retval      -1
+ * @note you should not remove xchild in loop (unless yoy keep track of xprev)
+ *
+ * @see xml_rootchild
+ */
+int
+xml_child_rm(cxobj *xp, 
+	  int    i)
+{
+    int    retval = -1;
+    cxobj *xc = NULL;
+
+    if ((xc = xml_child_i(xp, i)) == NULL){
+	clicon_err(OE_XML, 0, "Child not found");
+	goto done;
+    }
+    xp->x_childvec[i] = NULL;
+    xml_parent_set(xc, NULL);
+    xp->x_childvec_len--;
+    /* shift up, note same index i used but ok since we break */
+    for (; i<xp->x_childvec_len; i++)
+	xp->x_childvec[i] = xp->x_childvec[i+1];
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Return a child sub-tree, while removing parent and all other children
+ * Given a root xml node, and the i:th child, remove the child from its parent
+ * and return it, remove the parent and all other children.
+ * Before: xp-->[..xc..]
+ * After: xc
+ * @param[in]  xp   xml parent node. Will be deleted
+ * @param[in]  i    Child nr in parent child vector
+ * @param[out] xcp  xml child node. New root
+ * @code
+ * @endcode
+ * @see xml_child_rm
+ */
+int
+xml_rootchild(cxobj  *xp, 
+	      int     i,
+	      cxobj **xcp)
+{
+    int    retval = -1;
+    cxobj *xc;
+
+    if (xml_parent(xp) != NULL){
+	clicon_err(OE_XML, 0, "Parent is not root");
+	goto done;
+    }
+    if ((xc = xml_child_i(xp, i)) == NULL){
+	clicon_err(OE_XML, 0, "Child not found");
+	goto done;
+    }
+    if (xml_child_rm(xp, i) < 0)
+	goto done;
+    if (xml_free(xp) < 0)
+	goto done;
+    *xcp = xc;
+    retval = 0;
+ done:
+    return retval;
+}
+
+
 /*! Get the first sub-node which is an XML body.
  * @param[in]   xn          xml tree node
  * @retval  The returned body as a pointer to the name string
@@ -531,7 +653,6 @@ xml_body(cxobj *xn)
 	return xml_value(xb);
     return NULL;
 }
-
 
 /*! Find and return the value of a sub xml node
  *
@@ -554,14 +675,13 @@ xml_find_value(cxobj *x_up, char *name)
     return NULL;
 }
 
-
 /*! Find and return a body (string) of a sub xml node
  * @param[in]   xn          xml tree node
  * @param[in]   name        name of xml tree node
  * @retval  The returned body as a pointer to the name string
  * @retval  NULL if no such node or no body in found node
- * Note, make a copy of the return value to use it properly
- * See also xml_find_value
+ * @note, make a copy of the return value to use it properly
+ * @see xml_find_value
  */
 char *
 xml_find_body(cxobj *xn, char *name)
@@ -573,51 +693,9 @@ xml_find_body(cxobj *xn, char *name)
     return NULL;
 }
 
-/*! Remove an xml node from a parent xml node.
- * @param[in]   xparent     xml parent node
- * @param[in]   xchild      xml child node (to remove)
- * @param[in]   purge       if 1, free the child node, not just remove from parent
- * @retval      0           OK
- * @retval      -1
- * @note you cannot remove xchild in the loop (unless yoy keep track of xprev)
- *
- * @see xml_free
- * Differs from xml_free in two ways:
- *  1. It is removed from parent.
- *  2. If you set the purge flag to 1, the child tree will be freed 
- *     (otherwise it will not)
- */
-int
-xml_prune(cxobj *xparent, 
-	  cxobj *xchild, 
-	  int    purge)
-{
-    int       i;
-    cxobj *xc = NULL;
-
-    for (i=0; i<xml_child_nr(xparent); i++){
-	xc = xml_child_i(xparent, i);
-	if (xc != xchild)
-	    continue;
-	/* matching child */
-	xparent->x_childvec[i] = NULL;
-	xml_parent_set(xc, NULL);
-	if (purge)
-	    xml_free(xchild);	    
-	xparent->x_childvec_len--;
-	/* shift up, note same index i used but ok since we break */
-	for (;i<xparent->x_childvec_len; i++)
-	    xparent->x_childvec[i] = xparent->x_childvec[i+1];
-	return 0;
-    }
-    clicon_err(OE_XML, 0, "%s: child not found", __FUNCTION__);
-    return -1; 
-}
-
 /*! Free an xl sub-tree recursively, but do not remove it from parent
  * @param[in]  x  the xml tree to be freed.
- * @see xml_prune
- * Differs from xml_prune in that it is _not_ removed from parent.
+ * @see xml_purge where x is also removed from parent
  */
 int
 xml_free(cxobj *x)
@@ -662,7 +740,7 @@ clicon_xml2file(FILE  *f,
     int    retval = -1;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "%s: cbuf_new", __FUNCTION__);
+	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
     if (clicon_xml2cbuf(cb, xn, level, prettyprint) < 0)
@@ -863,7 +941,6 @@ clicon_xml_parse_file(int     fd,
     free(xmlbuf);
     return (*cx)?0:-1;
 }
-
 
 /*! Read an XML definition from string and parse it into a parse-tree. 
  *
@@ -1081,6 +1158,7 @@ xml_apply_ancestor(cxobj          *xn,
 	    goto done;
 	if (xml_apply_ancestor(xp, fn, arg) < 0)
 	    goto done;
+	xn = xp;
     }
     retval = 0;
   done:
