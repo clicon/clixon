@@ -310,7 +310,7 @@ cli_commit(clicon_handle h,
 				    "running", 
 				    snapshot, /* snapshot */
 				    snapshot)) < 0){ /* startup */
-	cli_output(stderr, "Commit failed. Edit and try again or discard changes\n");
+	cli_output(stderr, "Commit failed. Edit and try again or discard changes");
 	goto done;
     }
     retval = 0;
@@ -327,7 +327,7 @@ cli_validate(clicon_handle h, cvec *vars, cg_var *arg)
     int            retval = -1;
 
     if ((retval = clicon_rpc_validate(h, "candidate")) < 0)
-	clicon_err(OE_CFG, 0, "Validate failed. Edit and try again or discard changes\n");
+	clicon_err(OE_CFG, 0, "Validate failed. Edit and try again or discard changes");
     return retval;
 }
 
@@ -578,7 +578,7 @@ load_config_file(clicon_handle h,
     }
     filename = vecp[0];
     if (stat(filename, &st) < 0){
- 	clicon_err(OE_UNIX, 0, "load_config: stat(%s): %s\n", 
+ 	clicon_err(OE_UNIX, 0, "load_config: stat(%s): %s", 
  		filename, strerror(errno));
 	goto done;
     }
@@ -901,7 +901,7 @@ cli_notification_register(clicon_handle h,
     if ((p = hash_value(cdat, logname, &len)) != NULL)
 	s_exist = *(int*)p;
 
-    if (status){
+    if (status){ /* start */
 	if (s_exist!=-1){
 	    clicon_err(OE_PLUGIN, 0, "%s: result log socket already exists", __FUNCTION__);
 	    goto done;
@@ -913,7 +913,7 @@ cli_notification_register(clicon_handle h,
 	if (hash_add(cdat, logname, &s, sizeof(s)) == NULL)
 	    goto done;
     }
-    else{
+    else{ /* stop */
 	if (s_exist != -1){
 	    cligen_unregfd(s_exist);
 	}

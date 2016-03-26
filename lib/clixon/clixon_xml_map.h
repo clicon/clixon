@@ -44,7 +44,7 @@ int xml2cli(FILE *f, cxobj *x, char *prepend, enum genmodel_type gt, const char 
 int xml2json(FILE *f, cxobj *x, int level);
 int xml_yang_validate(cxobj *xt, yang_stmt *ys) ;
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
-int cvec2xml_1(cvec *cvv, char *toptag, cxobj **xt0);
+int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
 int xml_diff(yang_spec *yspec, cxobj *xt1, cxobj *xt2, 	 
 	     cxobj ***first, size_t *firstlen, 
 	     cxobj ***second, size_t *secondlen, 

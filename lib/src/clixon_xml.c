@@ -90,7 +90,8 @@ xml_name(cxobj *xn)
  * @retval     0     OK
  */
 int
-xml_name_set(cxobj *xn, char *name)
+xml_name_set(cxobj *xn, 
+	     char  *name)
 {
     if (xn->x_name){
 	free(xn->x_name);
@@ -122,7 +123,8 @@ xml_namespace(cxobj *xn)
  * @retval     0          OK
  */
 int
-xml_namespace_set(cxobj *xn, char *namespace)
+xml_namespace_set(cxobj *xn, 
+		  char  *namespace)
 {
     if (xn->x_namespace){
 	free(xn->x_namespace);
@@ -153,7 +155,8 @@ xml_parent(cxobj *xn)
  * @retval     0       OK
  */
 int
-xml_parent_set(cxobj *xn, cxobj *parent)
+xml_parent_set(cxobj *xn, 
+	       cxobj *parent)
 {
     xn->x_up = parent;
     return 0;
@@ -164,7 +167,8 @@ xml_parent_set(cxobj *xn, cxobj *parent)
  * @retval     flag  Flags value, see XML_FLAG_*
  */
 uint16_t
-xml_flag(cxobj *xn, uint16_t flag)
+xml_flag(cxobj   *xn, 
+	 uint16_t flag)
 {
     return xn->x_flags&flag;
 }
@@ -174,7 +178,8 @@ xml_flag(cxobj *xn, uint16_t flag)
  * @param[in]  flag    Flags value to set, see XML_FLAG_*
  */
 int
-xml_flag_set(cxobj *xn, uint16_t flag)
+xml_flag_set(cxobj   *xn, 
+	     uint16_t flag)
 {
     xn->x_flags |= flag;
     return 0;
@@ -185,7 +190,8 @@ xml_flag_set(cxobj *xn, uint16_t flag)
  * @param[in]  flag    Flags value to reset, see XML_FLAG_*
  */
 int
-xml_flag_reset(cxobj *xn, uint16_t flag)
+xml_flag_reset(cxobj   *xn, 
+	       uint16_t flag)
 {
     xn->x_flags &= ~flag;
     return 0;
@@ -208,7 +214,8 @@ xml_value(cxobj *xn)
  * @retval     0     OK
  */
 int
-xml_value_set(cxobj *xn, char *val)
+xml_value_set(cxobj *xn, 
+	      char  *val)
 {
     if (xn->x_value){
 	free(xn->x_value);
@@ -377,7 +384,8 @@ xml_child_each(cxobj           *xparent,
  * Note: does not do anything with child, you may need to set its parent, etc
  */
 static int
-xml_child_append(cxobj *x, cxobj *xc)
+xml_child_append(cxobj *x, 
+		 cxobj *xc)
 {
     x->x_childvec_len++;
     x->x_childvec = realloc(x->x_childvec, x->x_childvec_len*sizeof(cxobj*));
@@ -397,7 +405,8 @@ xml_child_append(cxobj *x, cxobj *xc)
  * @endcode
  */
 int
-xml_childvec_set(cxobj *x, int len)
+xml_childvec_set(cxobj *x, 
+		 int    len)
 {
     x->x_childvec_len = len;
     if ((x->x_childvec = calloc(len, sizeof(cxobj*))) == NULL){
@@ -416,7 +425,8 @@ xml_childvec_set(cxobj *x, int len)
  * @retval NULL          if error and clicon_err() called
  */
 cxobj *
-xml_new(char *name, cxobj *xp)
+xml_new(char *name, 
+	cxobj *xp)
 {
     cxobj *xn;
 
@@ -438,7 +448,9 @@ xml_new(char *name, cxobj *xp)
 /*! Create new xml node given a name, parent and spec. Free it with xml_free().
  */
 cxobj *
-xml_new_spec(char *name, cxobj *xp, void *spec)
+xml_new_spec(char  *name, 
+	     cxobj *xp, 
+	     void  *spec)
 {
     cxobj *x;
     
@@ -518,7 +530,8 @@ xml_addsub(cxobj *xp,
  * The name of the function is somewhat misleading
  */
 cxobj *
-xml_insert(cxobj *xp, char *tag)
+xml_insert(cxobj *xp, 
+	   char  *tag)
 {
     cxobj *xc; /* new child */
 
@@ -578,7 +591,7 @@ xml_purge(cxobj *xc)
  */
 int
 xml_child_rm(cxobj *xp, 
-	  int    i)
+	     int    i)
 {
     int    retval = -1;
     cxobj *xc = NULL;
@@ -666,7 +679,8 @@ xml_body(cxobj *xn)
  * See also xml_find_body
  */
 char *
-xml_find_value(cxobj *x_up, char *name)
+xml_find_value(cxobj *x_up, 
+	       char  *name)
 {
     cxobj *x;
     
@@ -684,7 +698,8 @@ xml_find_value(cxobj *x_up, char *name)
  * @see xml_find_value
  */
 char *
-xml_find_body(cxobj *xn, char *name)
+xml_find_body(cxobj *xn, 
+	      char  *name)
 {
     cxobj *x;
 
@@ -826,7 +841,8 @@ clicon_xml2cbuf(cbuf  *cb,
  * @see clicon_xml_parse_file clicon_xml_parse_string
  */
 static int 
-xml_parse(char **str, cxobj *x_up)
+xml_parse(char **str, 
+	  cxobj *x_up)
 {
     int                       retval = -1;
     struct xml_parse_yacc_arg ya = {0,};
@@ -853,7 +869,9 @@ xml_parse(char **str, cxobj *x_up)
  * FSM to detect a substring
  */
 static inline int
-FSM(char *tag, char ch, int state)
+FSM(char *tag, 
+    char  ch, 
+    int   state)
 {
     if (tag[state] == ch)
 	return state+1;
@@ -977,7 +995,8 @@ clicon_xml_parse_string(char  **str,
 /*! Copy single xml node without copying children
  */
 static int
-copy_one(cxobj *xn0, cxobj *xn1)
+copy_one(cxobj *xn0, 
+	 cxobj *xn1)
 {
     xml_type_set(xn1, xml_type(xn0));
     if (xml_value(xn0)){ /* malloced string */
@@ -1002,7 +1021,8 @@ copy_one(cxobj *xn0, cxobj *xn1)
  * @endcode
  */
 int
-xml_copy(cxobj *x0, cxobj *x1)
+xml_copy(cxobj *x0, 
+	 cxobj *x1)
 {
     int retval = -1;
     cxobj *x;
@@ -1163,4 +1183,94 @@ xml_apply_ancestor(cxobj          *xn,
     retval = 0;
   done:
     return retval;   
+}
+
+/*! Generic parse function for xml values
+ * @param[in]   xb       xml tree body node, ie containing a value to be parsed
+ * @param[in]   type     Type of value to be parsed in value
+ * @param[out]  cvp      CLIgen variable containing the parsed value
+ * @note free cv with cv_free after use.
+ * @see xml_body_int32   etc, for type-specific parse functions
+ */
+int
+xml_body_parse(cxobj       *xb,
+	       enum cv_type type,
+	       cg_var     **cvp)
+{
+    int     retval = -1;
+    cg_var *cv = NULL;
+    int     cvret;
+    char   *bstr;
+    char   *reason = NULL;
+
+    if ((bstr = xml_body(xb)) == NULL){
+	clicon_err(OE_XML, 0, "No body found");
+	goto done;
+    }
+    if ((cv = cv_new(type)) == NULL){
+	clicon_err(OE_XML, errno, "cv_new");
+	goto done;
+    }
+    if ((cvret = cv_parse1(bstr, cv, &reason)) < 0){
+	clicon_err(OE_XML, errno, "cv_parse");
+	goto done;
+    }
+    if (cvret == 0){  /* parsing failed */
+	clicon_err(OE_XML, errno, "Parsing CV: %s", &reason);
+	if (reason)
+	    free(reason);
+    }
+    *cvp = cv;
+    retval = 0;
+ done:
+    if (retval < 0 && cv != NULL)
+	cv_free(cv);
+    return retval;
+
+}
+
+/*! Parse an xml body as int32
+ * The real parsing functions are in the cligen code
+ * @param[in]   xb          xml tree body node, ie containing a value to be parsed
+ * @param[out]  val         Value after parsing
+ * @retval      0           OK, parsed value in 'val'
+ * @retval     -1           Error, one of: body not found, parse error, 
+ *                          alloc error.
+ * @note extend to all other cligen var types and generalize
+ * @note use yang type info?
+ */
+int
+xml_body_int32(cxobj    *xb,
+	       int32_t *val)
+{
+    cg_var *cv = NULL;
+
+    if (xml_body_parse(xb, CGV_INT32, &cv) < 0)
+	return -1;
+    *val = cv_int32_get(cv);
+    cv_free(cv);
+    return 0;
+}
+
+/*! Parse an xml body as uint32
+ * The real parsing functions are in the cligen code
+ * @param[in]   xb          xml tree body node, ie containing a value to be parsed
+ * @param[out]  val         Value after parsing
+ * @retval      0           OK, parsed value in 'val'
+ * @retval     -1           Error, one of: body not found, parse error, 
+ *                          alloc error.
+ * @note extend to all other cligen var types and generalize
+ * @note use yang type info?
+ */
+int
+xml_body_uint32(cxobj    *xb,
+		uint32_t *val)
+{
+    cg_var *cv = NULL;
+
+    if (xml_body_parse(xb, CGV_UINT32, &cv) < 0)
+	return -1;
+    *val = cv_uint32_get(cv);
+    cv_free(cv);
+    return 0;
 }

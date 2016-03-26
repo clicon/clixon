@@ -1947,7 +1947,7 @@ yang_spec_main(clicon_handle h,
  * @param[in]  ys         Yang statement 
  * @param[in]  delimiter  Delimiter character (eg ' ' or ',')
  * @retval     NULL  Error
- * @retval     cvec  Vector of strings
+ * @retval     cvec  Vector of strings. Free with cvec_free()
  * @code
  *    cvec   *cvv;
  *    cg_var *cv = NULL;
@@ -1960,7 +1960,8 @@ yang_spec_main(clicon_handle h,
  * Note: must free return value after use w cvec_free
  */
 cvec *
-yang_arg2cvec(yang_stmt *ys, char *delim)
+yang_arg2cvec(yang_stmt *ys, 
+	      char      *delim)
 {
     char  **vec;
     int     i;

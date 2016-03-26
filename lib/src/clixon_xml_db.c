@@ -137,6 +137,8 @@ yang2xmlkeyfmt_1(yang_stmt *ys, cbuf *cb)
     } /* switch */
     retval = 0;
  done:
+    if (cvk)
+	cvec_free(cvk);
     return retval;
 }
 
@@ -154,8 +156,10 @@ yang2xmlkeyfmt(yang_stmt *ys, char **xkfmt)
     int   retval = -1;
     cbuf *cb = NULL;
 
-    if ((cb = cbuf_new()) == NULL)
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
+    }
     if (yang2xmlkeyfmt_1(ys, cb) < 0)
 	goto done;
     if ((*xkfmt = strdup(cbuf_get(cb))) == NULL){
@@ -208,8 +212,10 @@ xmlkeyfmt2key(char  *xkfmt,
 	//	goto done;
     }
 #endif
-    if ((cb = cbuf_new()) == NULL)
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
+    }
     j = 1; /* j==0 is cli string */
     for (i=0; i<strlen(xkfmt); i++){
 	c = xkfmt[i];
@@ -282,8 +288,10 @@ xmlkeyfmt2xpath(char  *xkfmt,
 	//	goto done;
     }
 #endif
-    if ((cb = cbuf_new()) == NULL)
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
+    }
     j = 1; /* j==0 is cli string */
     for (i=0; i<strlen(xkfmt); i++){
 	c = xkfmt[i];
@@ -325,7 +333,7 @@ xmlkeyfmt2xpath(char  *xkfmt,
 		    cprintf(cb, "%c", c);
 	    }
     }
-    if ((*xk = strdup(cbuf_get(cb))) == NULL){
+    if ((*xk = strdup4(cbuf_get(cb))) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
     }
@@ -419,7 +427,7 @@ db2file(clicon_handle h,
 	goto done;
     }
     cprintf(cb, "%s/%s_db", dir, db);
-    if ((*filename = strdup(cbuf_get(cb))) == NULL){
+    if ((*filename = strdup4(cbuf_get(cb))) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
     }
@@ -472,43 +480,29 @@ append_listkeys(cbuf      *ckey,
 }
 
 /*! Help function to create xml key values 
- * @param[in]  x
+ * @param[in]  x   Parent
+ * @param[in]  xc0
  * @param[in]  y
  * @param[in]  keyname  yang key name
  */
 static int
 create_keyvalues(cxobj     *x, 
-		 yang_stmt *y, 
 		 yang_stmt *ykey, 
-		 char      *name, 
 		 char      *arg, 
-		 char      *keyname,
-		 cxobj    **xcp)
+		 char      *keyname)
 {
     int        retval = -1;
-    cbuf      *cpath = NULL;
     cxobj     *xb;
-    cxobj     *xc = NULL;
 
-    if ((cpath = cbuf_new()) == NULL)
-	goto done;
-    cprintf(cpath, "%s[%s=%s]", name, keyname, arg);
     /* Check if key node exists */
-    if ((xc = xpath_first(x, cbuf_get(cpath)))==NULL){
-	if ((xc = xml_new_spec(name, x, y)) == NULL)
-	    goto done;
-	if ((xb = xml_new_spec(keyname, xc, ykey)) == NULL)
-	    goto done;
-	if ((xb = xml_new("body", xb)) == NULL)
-	    goto done;
-	xml_type_set(xb, CX_BODY);
-	xml_value_set(xb, arg);
-    }
+    if ((xb = xml_new_spec(keyname, x, ykey)) == NULL)
+	goto done;
+    if ((xb = xml_new("body", xb)) == NULL)
+	goto done;
+    xml_type_set(xb, CX_BODY);
+    xml_value_set(xb, arg);
     retval = 0;
  done:
-    *xcp = xc;
-    if (cpath)
-	cbuf_free(cpath);
     return retval;
 }
 
@@ -582,6 +576,7 @@ get(char      *dbname,
     cvec      *cvk = NULL; /* vector of index keys */
     char      *keyname;
     char      *arg;
+    cbuf      *cb;
     
     x = xt;
     if (xk == NULL || *xk!='/'){
@@ -593,7 +588,7 @@ get(char      *dbname,
     /* Element 0 is NULL '/', 
        Element 1 is top symbol and needs to find subs in all modules:
        spec->module->syntaxnode
-     */
+    */
     if (nvec < 2){
 	clicon_err(OE_XML, 0, "Malformed key: %s", xk);
 	goto done;
@@ -645,26 +640,47 @@ get(char      *dbname,
 	    /* The value is a list of keys: <key>[ <key>]*  */
 	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
 		goto done;
+	    if ((cb = cbuf_new()) == NULL){
+		clicon_err(OE_XML, errno, "cbuf_new");
+		goto done;
+	    }
 	    cvi = NULL;
 	    /* Iterate over individual yang keys  */
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		keyname = cv_string_get(cvi);
+	    cprintf(cb, "%s", name);
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
 		i++;
 		if (i>=nvec){
 		    clicon_err(OE_XML, errno, "List %s without argument", name);
 		    goto done;
 		}
 		arg = vec[i];
-		if (create_keyvalues(x, 
-				     y, 
-				     ykey,
-				     name, 
-				     arg, 
-				     keyname, 
-				     &xc) < 0)
+		cprintf(cb, "[%s=%s]", cv_string_get(cvi), arg);
+	    }
+	    if ((xc = xpath_first(x, cbuf_get(cb))) == NULL){
+		if ((xc = xml_new_spec(name, x, y)) == NULL)
 		    goto done;
-		x = xc;
-	    } /* while */
+		cvi = NULL;
+		i -= cvec_len(cvk);
+		/* Iterate over individual yang keys  */
+		while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+		    keyname = cv_string_get(cvi);
+		    i++;
+		    arg = vec[i];
+		    if (create_keyvalues(xc,
+					 ykey,
+					 arg, 
+					 keyname) < 0)
+			goto done;
+		} /* while */
+	    }
+	    if (cb){
+		cbuf_free(cb);
+		cb = NULL;
+	    }
+	    if (cvk){
+		cvec_free(cvk);
+		cvk = NULL;
+	    }
 	    break;
 	case Y_LEAF:
 	case Y_CONTAINER:
@@ -690,6 +706,8 @@ get(char      *dbname,
     retval = 0;
  done:
     unchunk_group(__FUNCTION__);  
+    if (cvk)
+	cvec_free(cvk);
     return retval;
 }
 
@@ -705,15 +723,15 @@ xml_sanity(cxobj *x,
     ys = (yang_stmt*)xml_spec(x);
     if (ys==NULL){
 	clicon_err(OE_XML, 0, "No spec for xml node %s", xml_name(x));
-	return -1;
+	goto done;
     }
-    if (strcmp(xml_name(x), ys->ys_argument)){
+    if (strstr(ys->ys_argument, xml_name(x))==NULL){
 	clicon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'", 
 		   xml_name(x), ys->ys_argument);
-	return -1;
+	goto done;
     }
     retval = 0;
-    // done:
+ done:
     return retval;
 }
 
@@ -1063,8 +1081,10 @@ put(char               *dbname,
     if (get_operation(xt, &op) < 0)
 	goto done;
     body = xml_body(xt);
-    if ((cbxk = cbuf_new()) == NULL)
+    if ((cbxk = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
+    }
     cprintf(cbxk, "%s/%s", xk0, xml_name(xt));
     switch (ys->ys_keyword){
     case Y_LIST: /* Note: can have many keys */
@@ -1231,10 +1251,14 @@ xmldb_put_xkey_local(clicon_handle       h,
 	clicon_err(OE_DB, 0, "Invalid key: %s", xk);
 	goto done;
     }
-    if ((ckey = cbuf_new()) == NULL)
+    if ((ckey = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
-    if ((csubkey = cbuf_new()) == NULL)
+    }
+    if ((csubkey = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
+    }
     if ((vec = clicon_strsplit(xk, "/", &nvec, __FUNCTION__)) == NULL)
 	goto done;
     if (nvec < 2){
@@ -1304,6 +1328,10 @@ xmldb_put_xkey_local(clicon_handle       h,
 		    if (db_set(filename, cbuf_get(csubkey), val2, strlen(val2)+1) < 0)
 			goto done;
 	    }
+	    if (cvk){
+		cvec_free(cvk);
+		cvk = NULL;
+	    }
 	    break;
 	default:
 	    if (op == OP_MERGE || op == OP_REPLACE || op == OP_CREATE)
@@ -1341,8 +1369,10 @@ xmldb_put_xkey_local(clicon_handle       h,
 	}
     case OP_REMOVE:
 	/* Read in complete database (this can be optimized) */
-	if ((crx = cbuf_new()) == NULL)
+	if ((crx = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
+	}
 	cprintf(crx, "^%s.*$", xk);
 	if ((npairs = db_regexp(filename, cbuf_get(crx), __FUNCTION__, &pairs, 0)) < 0)
 	    goto done;
@@ -1364,16 +1394,18 @@ xmldb_put_xkey_local(clicon_handle       h,
 	cbuf_free(csubkey);
     if (crx)
 	cbuf_free(crx);
+    if (cvk)
+	cvec_free(cvk);
     unchunk_group(__FUNCTION__);  
     return retval;
 }
 
 
 /*! Modify database provided an XML database key and an operation
- * @param[in]  dbname Name of database to search in (filename including dir path)
+ * @param[in]  h      CLICON handle
+ * @param[in]  db     Database name
  * @param[in]  xk     XML Key, eg /aa/bb/17/name
  * @param[in]  val    Key value, eg "17"
- * @param[in]  yspec  Yang specification
  * @param[in]  op     OP_MERGE, OP_REPLACE, OP_REMOVE, etc
  * @retval     0      OK
  * @retval     -1     Error
@@ -1719,7 +1751,7 @@ main(int argc, char **argv)
     yangmod = argv[4];
     db_init(db);
     if ((yspec = yspec_new()) == NULL)
-	goto done;
+	goto done
     if (yang_parse(h, yangdir, yangmod, NULL, yspec) < 0)
 	goto done;
     if (strcmp(cmd, "get")==0){

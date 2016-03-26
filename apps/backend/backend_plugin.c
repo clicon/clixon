@@ -632,6 +632,15 @@ plugin_transaction_complete(clicon_handle       h,
     return retval;
 }
 
+/*! Revert a commit
+ * @param[in]  h   CLICON handle
+ * @param[in]  td  Transaction data
+ * @param[in]  nr  The plugin where an error occured. 
+ * @retval     0       OK
+ * @retval    -1       Error
+ * The revert is made in plugin before this one. Eg if error occurred in
+ * plugin 2, then the revert will be made in plugins 1 and 0.
+ */
 int
 plugin_transaction_revert(clicon_handle       h, 
 			  transaction_data_t *td,
@@ -651,10 +660,11 @@ plugin_transaction_revert(clicon_handle       h,
     tr.td_dvec  = td->td_avec;
     tr.td_alen  = td->td_dlen;
     tr.td_avec  = td->td_dvec;
+    tr.td_clen  = td->td_clen;
     tr.td_scvec = td->td_tcvec;
     tr.td_tcvec = td->td_scvec;
 
-    for (i = nr-1; i; i--){
+    for (i = nr-1; i>=0; i--){
 	p = &plugins[i];
 	if (p->p_trans_commit) 
 	    if ((p->p_trans_commit)(h, (transaction_data)&tr) < 0){

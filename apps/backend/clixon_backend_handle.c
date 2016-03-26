@@ -167,6 +167,7 @@ backend_notify_xml(clicon_handle h,
     cbuf                *cb = NULL;
     struct handle_subscription *hs;
 
+    clicon_debug(1, "%s %s", __FUNCTION__, stream);
     /* Now go thru all clients(sessions), and all subscriptions and find matches */
     for (ce = backend_client_list(h); ce; ce = ce->ce_next)
 	for (su = ce->ce_subscription; su; su = su->su_next)
@@ -185,8 +186,6 @@ backend_notify_xml(clicon_handle h,
 		}
 	    }
     /* Then go thru all global (handle) subscriptions and find matches */
-    /* XXX: x contains name==dk-ore, but filter is 
-       id==/[userid=d2d5e46c-c6f9-42f3-9a69-fb52fe60940d] */
     hs = NULL;
     while ((hs = subscription_each(h, hs)) != NULL){
 	if (hs->hs_format != MSG_NOTIFY_XML)

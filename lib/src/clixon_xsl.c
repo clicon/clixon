@@ -23,6 +23,8 @@
  * different xpath expressions.
  */
 /*
+https://www.w3.org/TR/xpath/
+
 Implementation of a limited xslt xpath syntax. Some examples. Given the following
 xml tree:
 <aaa>
@@ -58,6 +60,15 @@ to the xml standards:
 		        <ddd><ccc>22</ccc></ddd> (NB spaces)
 	etc
  For xpath v1.0 see http://www.w3.org/TR/xpath/
+record[name=c][time=d]
+in
+<record>
+   <name>c</name>
+   <time>d</time>
+   <userid>45654df4-2292-45d3-9ca5-ee72452568a8</userid>
+</record>
+
+
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -121,11 +132,16 @@ static const struct map_str2int atmap[] = {
     {NULL,               -1}
 };
 
+struct xpath_predicate{
+    struct xpath_predicate *xp_next;
+    char                   *xp_expr;
+};
+
 struct xpath_element{
-    struct xpath_element *xe_next;
-    enum axis_type        xe_type;
-    char                 *xe_str; /* eg for child */
-    char                 *xe_predicate; /* eg within [] */
+    struct xpath_element   *xe_next;
+    enum axis_type          xe_type;
+    char                   *xe_str; /* eg for child */
+    struct xpath_predicate *xe_predicate; /* eg within [] */
 };
 
 static int xpath_split(char *xpathstr, char **pathexpr);
@@ -146,13 +162,53 @@ axis_type2str(enum axis_type type)
 static int 
 xpath_print(FILE *f, struct xpath_element *xplist)
 {
-    struct xpath_element *xe;
+    struct xpath_element   *xe;
+    struct xpath_predicate *xp;
 
-    for (xe=xplist; xe; xe=xe->xe_next)
-	fprintf(f, "\t:%s %s %s\n", axis_type2str(xe->xe_type),
-		xe->xe_str?xe->xe_str:"", 
-		xe->xe_predicate?xe->xe_predicate:"");
+    for (xe=xplist; xe; xe=xe->xe_next){
+	fprintf(f, "\t:%s %s ", axis_type2str(xe->xe_type),
+		xe->xe_str?xe->xe_str:"");
+        for (xp=xe->xe_predicate; xp; xp=xp->xp_next)
+	    fprintf(f, "[%s]", xp->xp_expr);
+    }
     return 0;
+}
+
+static int
+xpath_parse_predicate(struct xpath_element *xe,
+		      char                 *pred)
+{
+    int                     retval = -1;
+    struct xpath_predicate *xp;
+    char                   *s;
+    int                     i;
+    int                     len;
+
+    len = strlen(pred);
+    for (i=len-2; i>=0; i--){ /* -2 since we search for ][ */
+	s = &pred[i];
+	if (i==0 || 
+	    (*(s)==']' && *(s+1)=='[')){
+	    if (i) {
+		*(s)= '\0';
+		s += 2;
+	    }
+	    if ((xp = malloc(sizeof(*xp))) == NULL){
+		clicon_err(OE_UNIX, errno, "malloc");
+		goto done;
+	    }	
+	    memset(xp, 0, sizeof(*xp));    
+	    if ((xp->xp_expr = strdup(s)) == NULL){	    
+		clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+		goto done;
+	    }
+	    xp->xp_next = xe->xe_predicate;
+	    xe->xe_predicate = xp;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 static int
@@ -160,10 +216,10 @@ xpath_element_new(enum axis_type          atype,
 		  char                   *str,
 		  struct xpath_element ***xpnext)
 {
-    int                   retval = -1;
-    struct xpath_element *xe;
-    char                 *str1 = NULL;
-    char                 *pred;
+    int                     retval = -1;
+    struct xpath_element   *xe;
+    char                   *str1 = NULL;
+    char                   *pred;
 
     if ((xe = malloc(sizeof(*xe))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
@@ -176,7 +232,7 @@ xpath_element_new(enum axis_type          atype,
 	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
 	    goto done;
 	}
-	if (xpath_split(str1, &pred) < 0)
+	if (xpath_split(str1, &pred) < 0) /* Can be more predicates */
 	    goto done;
 	if (strlen(str1)){
 	    if ((xe->xe_str = strdup(str1)) == NULL){
@@ -190,9 +246,9 @@ xpath_element_new(enum axis_type          atype,
 		goto done;
 	    }
 	}
-	if (pred && strlen(pred) && (xe->xe_predicate = strdup(pred)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
-	    goto done;
+	if (pred && strlen(pred)){
+	    if (xpath_parse_predicate(xe, pred) < 0)
+		goto done;
 	}
     }
     (**xpnext) = xe;
@@ -207,10 +263,16 @@ xpath_element_new(enum axis_type          atype,
 static int
 xpath_element_free(struct xpath_element *xe)
 {
+    struct xpath_predicate *xp;
+
     if (xe->xe_str)
 	free(xe->xe_str);
-    if (xe->xe_predicate)
-	free(xe->xe_predicate);
+    while ((xp = xe->xe_predicate) != NULL){
+	xe->xe_predicate = xp->xp_next;
+	if (xp->xp_expr)
+	    free(xp->xp_expr);
+	free(xp);
+    }
     free(xe);
     return 0;
 }
@@ -231,7 +293,8 @@ xpath_free(struct xpath_element *xplist)
  * // is short for /descendant-or-self::node()/
  */
 static int
-xpath_parse(char *xpath, struct xpath_element **xplist0)
+xpath_parse(char                  *xpath, 
+	    struct xpath_element **xplist0)
 {
     int                    retval = -1;
     int                    nvec = 0;
@@ -295,10 +358,10 @@ xpath_parse(char *xpath, struct xpath_element **xplist0)
  *  @param[in]    xn_parent  Base XML object
  *  @param[in]    name       shell wildcard pattern to match with node name
  *  @param[in]    node_type  CX_ELMNT, CX_ATTR or CX_BODY
- *  @param[in,out] vec1        internal buffers with results
- *  @param[in,out] vec0        internal buffers with results
- *  @param[in,out] vec_len     internal buffers with length of vec0,vec1
- *  @param[in,out] vec_max     internal buffers with max of vec0,vec1
+ *  @param[in,out] vec1      internal buffers with results
+ *  @param[in,out] vec0      internal buffers with results
+ *  @param[in,out] vec_len   internal buffers with length of vec0,vec1
+ *  @param[in,out] vec_max   internal buffers with max of vec0,vec1
  * returns:
  *  0 on OK, -1 on error
  */
@@ -334,8 +397,21 @@ recursive_find(cxobj   *xn,
     return retval;
 }
 
+/*! XPath predicate expression check
+ * @param[in]     predicate_expression     xpath expression as a string
+ * @param[in]     flags   Extra xml flag checks that must match (apart from predicate)
+ * @param[in,out] vec0    Vector or xml nodes that are checked. Not matched are filtered
+ * @param[in,out] vec0len Length of vector or matches
+ * On input, vec0 contains a list of xml nodes to match. 
+ * On output, vec0 contains only the subset that matched the epxression.
+ * The predicate expression is a subset of the standard, namely:
+ *  - @<attr>=<value>
+ *  - <number>
+ *  - <name>=<value>
+ * @see https://www.w3.org/TR/xpath/#predicates
+ */
 static int
-xpath_expr(char     *e00, 	   
+xpath_expr(char     *predicate_expression, 	   
 	   uint16_t  flags,
 	   cxobj  ***vec0,
 	   size_t   *vec0len)
@@ -354,7 +430,7 @@ xpath_expr(char     *e00,
     char      *e0;
     char      *e;
 
-    if ((e0 = strdup(e00)) == NULL){
+    if ((e0 = strdup(predicate_expression)) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
     }
@@ -436,6 +512,7 @@ xpath_expr(char     *e00,
  * @param[in]   descendants0
  * @param[in]   vec0
  * @param[in]   vec0len
+ * @param[in]   flags
  * @param[out]  vec1
  * @param[out]  vec1len
  * XXX: Kommer in i funktionen med vec0, resultatet appendas i vec1
@@ -463,6 +540,7 @@ xpath_find(struct xpath_element *xe,
     int            descendants = 0;
     cxobj        **vec1 = NULL;
     size_t         vec1len = 0;
+    struct xpath_predicate *xp;
 
     if (xe == NULL){
 	/* append */
@@ -543,9 +621,11 @@ xpath_find(struct xpath_element *xe,
 	    }
 	}
     }
-    if (xe->xe_predicate)
-	if (xpath_expr(xe->xe_predicate, flags, &vec0, &vec0len) < 0)
+
+    for (xp = xe->xe_predicate; xp; xp = xp->xp_next){
+	if (xpath_expr(xp->xp_expr, flags, &vec0, &vec0len) < 0)
 	    goto done;
+    }
     if (xpath_find(xe->xe_next, descendants, 
 		   vec0, vec0len, flags,
 		   vec2, vec2len) < 0)
@@ -555,13 +635,19 @@ xpath_find(struct xpath_element *xe,
     return retval;
 }
 
-/*! Transform eg "a/b[kalle]" -> "a/b" e="kalle" */
+/*! Transform eg "a/b[kalle]" -> "a/b" e="kalle" 
+ * @param[in,out] xpathstr  Eg "a/b[kalle]" -> "a/b"
+ * @param[out]    pathexpr  Eg "kalle"
+ * Which also means:
+ *  "a/b[foo][bar]" -> pathexpr: "foo][bar" 
+ * @note destructively modify xpathstr, no new strings allocated
+ */
 static int
-xpath_split(char *xpathstr, char **pathexpr)
+xpath_split(char  *xpathstr, 
+	    char **pathexpr)
 {
     int   retval = -1;
     int   last;
-    int   i;
     char *pe = NULL;
 
     if (strlen(xpathstr)){
@@ -569,18 +655,14 @@ xpath_split(char *xpathstr, char **pathexpr)
 	if (xpathstr[last] == ']'){
 	    xpathstr[last] = '\0';
 	    if (strlen(xpathstr)){
-		last = strlen(xpathstr) - 1; /* recompute due to null */
-		for (i=last; i>=0; i--){
-		    if (xpathstr[i] == '['){
-			xpathstr[i] = '\0';
-			pe = &xpathstr[i+1];
-			break;
-		    }
+		if ((pe = index(xpathstr,'[')) != NULL){
+		    *pe = '\0';
+		    pe++;
 		}
-		if (pe==NULL){
-		    clicon_err(OE_XML, errno, "%s: mismatched []: %s", __FUNCTION__, xpathstr);
-		    goto done;
-		}
+	    }
+	    if (pe==NULL){
+		clicon_err(OE_XML, errno, "%s: mismatched []: %s", __FUNCTION__, xpathstr);
+		goto done;
 	    }
 	}
     }
@@ -594,6 +676,7 @@ xpath_split(char *xpathstr, char **pathexpr)
  * @param[in]  xpath 
  * @param[in]  vec0
  * @param[in]  vec0len
+ * @param[in]  flags
  * @param[out] vec
  * @param[out] veclen
  */
@@ -778,20 +861,20 @@ xpath_each(cxobj *cxtop,
  * @param[in]  cxtop  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
  * @param[out] vec     vector of xml-trees. Vector must be free():d after use
- * @param[out] xv_len  returns length of vector in return value
+ * @param[out] veclen  returns length of vector in return value
  * @retval     0       OK
  * @retval     -1      error.
  *
  * @code
- *   cxobj **xv;
- *   size_t  xlen;
- *   if (xpath_vec(cxtop, "//symbol/foo", &xv, &xlen) < 0) 
+ *   cxobj **vec;
+ *   size_t  veclen;
+ *   if (xpath_vec(cxtop, "//symbol/foo", &vec, &veclen) < 0) 
  *      got err;
- *   for (i=0; i<xlen; i++){
- *      xn = xv[i];
+ *   for (i=0; i<veclen; i++){
+ *      xn = vec[i];
  *         ...
  *   }
- *   free(xv);
+ *   free(vec);
  * @endcode
  * Note that although the returned vector must be freed after use, the returned xml
  * trees need not be.
@@ -825,10 +908,12 @@ xpath_vec_flag(cxobj   *cxtop,
 
 /*
  * Turn this on to get an xpath test program 
- * Usage: clicon_xpath [<xpath>] 
+ * Usage: xpath [<xpath>] 
  * read xml from input
  * Example compile:
- gcc -g -o xpath -I. -I../clicon ./clicon_xsl.c -lclicon -lcligen
+ gcc -g -o xpath -I. -I../clixon ./clixon_xsl.c -lclixon -lcligen
+ * Example run:
+ echo "<a><b/></a>" | xpath "a"
 */
 #if 0 /* Test program */
 
@@ -847,7 +932,7 @@ main(int argc, char **argv)
     cxobj     **xv;
     cxobj      *x;
     cxobj      *xn;
-    int         xlen = 0;
+    size_t         xlen = 0;
 
     if (argc != 2){
 	usage(argv[0]);
@@ -860,8 +945,8 @@ main(int argc, char **argv)
     printf("\n");
 
     if (xpath_vec(x, argv[1], &xv, &xlen) < 0)
-	goto done;
-    if (xv)
+	return -1;
+    if (xv){
 	for (i=0; i<xlen; i++){
 	    xn = xv[i];
 	    fprintf(stdout, "[%d]:\n", i);

@@ -430,10 +430,11 @@ clicon_rpc_subscription(clicon_handle    h,
 	goto done;
     if (clicon_rpc_msg(h, msg, NULL, NULL, s0, __FUNCTION__) < 0)
 	goto done;
-    if (status == 0){
+    if (status == 0 && s0){
 	close(*s0);
 	*s0 = -1;
     }
+    retval = 0;
   done:
     unchunk_group(__FUNCTION__);
     return retval;

@@ -112,51 +112,41 @@ generic_validate(yang_spec          *yspec,
     return retval;
 }
 
-/*! Do a diff between candidate and running, then start a commit transaction
- *
- * The code reverts changes if the commit fails. But if the revert
- * fails, we just ignore the errors and proceed. Maybe we should
- * do something more drastic?
- * @param[in] h         Clicon handle
-*/
-int
-candidate_commit(clicon_handle h, 
-		 char         *candidate)
+/*! Common code of candidate_validate and candidate_commit 
+ */
+static int
+validate_common(clicon_handle       h, 
+		char               *candidate,
+	        transaction_data_t *td)
 {
-    int                retval = -1;
-    int                i;
-    cxobj             *xn;
-    void              *firsterr = NULL;
-    yang_spec         *yspec;
-    transaction_data_t *td = NULL;
+    int         retval = -1;
+    yang_spec  *yspec;
+    int         i;
+    cxobj      *xn;
+
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }	
-
-     /* 1. Start transaction */
-    if ((td = transaction_new()) == NULL)
-	goto done;
-
-     /* 2. Parse xml trees */
+    /* 2. Parse xml trees */
     if (xmldb_get(h, "running", "/", 0, &td->td_src, NULL, NULL) < 0)
 	goto done;
     if (xmldb_get(h, candidate, "/", 0, &td->td_target, NULL, NULL) < 0)
 	goto done;
 
-     /* 3. Compute differences */
-     if (xml_diff(yspec, 
-		  td->td_src,
-		  td->td_target,
-		  &td->td_dvec,      /* removed: only in running */
-		  &td->td_dlen,
-		  &td->td_avec,      /* added: only in candidate */
-		  &td->td_alen,
-		  &td->td_scvec,     /* changed: original values */
-		  &td->td_tcvec,     /* changed: wanted values */
-		  &td->td_clen) < 0)
-	 goto done;
+    /* 3. Compute differences */
+    if (xml_diff(yspec, 
+		 td->td_src,
+		 td->td_target,
+		 &td->td_dvec,      /* removed: only in running */
+		 &td->td_dlen,
+		 &td->td_avec,      /* added: only in candidate */
+		 &td->td_alen,
+		 &td->td_scvec,     /* changed: original values */
+		 &td->td_tcvec,     /* changed: wanted values */
+		 &td->td_clen) < 0)
+	goto done;
     if (debug)
 	transaction_print(stderr, td);
     /* Mark as changed in tree */
@@ -183,19 +173,45 @@ candidate_commit(clicon_handle h,
 
     /* 4. Call plugin transaction start callbacks */
     if (plugin_transaction_begin(h, td) < 0)
-	 goto done;
+	goto done;
 
     /* 5. Make generic validation on all new or changed data. */
     if (generic_validate(yspec, td) < 0)
-	 goto done;
+	goto done;
 
     /* 6. Call plugin transaction validate callbacks */
-     if (plugin_transaction_validate(h, td) < 0)
-	 goto done;
+    if (plugin_transaction_validate(h, td) < 0)
+	goto done;
 
-     /* 7. Call plugin transaction complete callbacks */
-     if (plugin_transaction_complete(h, td) < 0)
-	 goto done;
+    /* 7. Call plugin transaction complete callbacks */
+    if (plugin_transaction_complete(h, td) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Do a diff between candidate and running, then start a commit transaction
+ *
+ * The code reverts changes if the commit fails. But if the revert
+ * fails, we just ignore the errors and proceed. Maybe we should
+ * do something more drastic?
+ * @param[in] h         Clicon handle
+*/
+int
+candidate_commit(clicon_handle h, 
+		 char         *candidate)
+{
+    int                retval = -1;
+    transaction_data_t *td = NULL;
+
+     /* 1. Start transaction */
+    if ((td = transaction_new()) == NULL)
+	goto done;
+
+    /* Common steps (with validate) */
+    if (validate_common(h, candidate, td) < 0)
+	goto done;
 
      /* 7. Call plugin transaction commit callbacks */
      if (plugin_transaction_commit(h, td) < 0)
@@ -214,7 +230,6 @@ candidate_commit(clicon_handle h,
 	clicon_log(LOG_NOTICE, "Error in rollback, trying to continue");
 	goto done;
     } 
-    
     retval = 0;
  done:
      /* In case of failure, call plugin transaction termination callbacks */
@@ -222,8 +237,6 @@ candidate_commit(clicon_handle h,
 	 plugin_transaction_abort(h, td);
      if (td)
 	 transaction_free(td);
-    if (firsterr)
-	clicon_err_restore(firsterr);
     return retval;
 }
 
@@ -237,73 +250,15 @@ candidate_validate(clicon_handle h,
 		   char         *candidate)
 {
      int                 retval = -1;
-     yang_spec          *yspec;
      transaction_data_t *td = NULL;
-     int                i;
-     cxobj             *xn;
-
-     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
-    }	
 
      /* 1. Start transaction */
     if ((td = transaction_new()) == NULL)
 	goto done;
 
-     /* 2. Parse xml trees */
-    if (xmldb_get(h, "running", "/", 0, &td->td_src, NULL, NULL) < 0)
+    /* Common steps (with commit) */
+    if (validate_common(h, candidate, td) < 0)
 	goto done;
-    if (xmldb_get(h, "candidate", "/", 0, &td->td_target, NULL, NULL) < 0)
-	goto done;
-
-     /* 3. Compute differences */
-     if (xml_diff(yspec, 
-		  td->td_src,
-		  td->td_target,
-		  &td->td_dvec,      /* removed: only in running */
-		  &td->td_dlen,
-		  &td->td_avec,      /* added: only in candidate */
-		  &td->td_alen,
-		  &td->td_scvec,     /* changed: original values */
-		  &td->td_tcvec,        /* changed: wanted values */
-		  &td->td_clen) < 0)
-	 goto done;
-
-     if (debug)
-	transaction_print(stderr, td);
-     
-     /* Mark as changed in tree */
-     for (i=0; i<td->td_dlen; i++){ /* Also down */
-	 xn = td->td_dvec[i];
-	 xml_flag_set(xn, XML_FLAG_DEL);
-     }    
-     for (i=0; i<td->td_alen; i++){ /* Also down */
-	 xn = td->td_avec[i];
-	 xml_flag_set(xn, XML_FLAG_ADD);
-     }    
-     for (i=0; i<td->td_clen; i++){ /* Also up */
-	 xn = td->td_scvec[i];
-	 xml_flag_set(xn, XML_FLAG_CHANGE);
-	 xn = td->td_tcvec[i];
-	 xml_flag(xn, XML_FLAG_CHANGE);
-     }    
-
-    /* 4. Call plugin start transaction callbacks */
-    if (plugin_transaction_begin(h, td) < 0)
-	 goto done;
-
-    /* 5. Make generic validation on all new or changed data. */
-    if (generic_validate(yspec, td) < 0)
-	 goto done;
-
-    /* 6. Call plugin validate transaction callbacks */
-     if (plugin_transaction_validate(h, td) < 0)
-	 goto done;
-
-     /* 7. Call plugin complete transaction callbacks */
-     if (plugin_transaction_complete(h, td) < 0)
-	 goto done;
 
      retval = 0;
    done:

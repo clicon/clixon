@@ -513,6 +513,7 @@ xml2cvec(cxobj      *xt,
 /*! Translate a cligen variable vector to an XML tree with depth one 
  * @param[in]   cvv  CLIgen variable vector. Should be freed by cvec_free()
  * @param[in]   toptag    The XML tree in xt will have this XML tag
+ * @param[in]   xt   Parent, or NULL
  * @param[out]  xt   Pointer to XML tree containing one top node. Should be freed with xml_free
  * @retval      0    Everything OK, cvv allocated and set
  * @retval     -1    Something wrong, clicon_err() called to set error. No xt returned
@@ -522,6 +523,7 @@ xml2cvec(cxobj      *xt,
 int
 cvec2xml_1(cvec   *cvv, 
 	   char   *toptag, 
+	   cxobj  *xp,
 	   cxobj **xt0)
 {
     int               retval = -1;
@@ -536,7 +538,7 @@ cvec2xml_1(cvec   *cvv,
     cv = NULL;
     while ((cv = cvec_each(cvv, cv)) != NULL) 
 	len++;
-    if ((xt = xml_new(toptag, NULL)) == NULL)
+    if ((xt = xml_new(toptag, xp)) == NULL)
 	goto err;
     if (xml_childvec_set(xt, len) < 0)
 	goto err;
@@ -672,6 +674,10 @@ xml_diff1(yang_stmt *ys,
 	    else
 		if (cxvec_append(x1, first, firstlen) < 0) 
 		    goto done;
+	    if (cvk){
+		cvec_free(cvk);
+		cvk = NULL;
+	    }
 	    break;
 	case Y_CONTAINER:
 	    /* Equal regardless */
@@ -764,6 +770,10 @@ xml_diff1(yang_stmt *ys,
 	    if (!equal)
 		if (cxvec_append(x2, second, secondlen) < 0) 
 		    goto done;
+	    if (cvk){
+		cvec_free(cvk);
+		cvk = NULL;
+	    }
 	    break;
 	case Y_CONTAINER:
 	    /* Equal regardless */
@@ -788,6 +798,8 @@ xml_diff1(yang_stmt *ys,
     } /* while xt1 */
     retval = 0;
  done:
+    if (cvk)
+	cvec_free(cvk);
     return retval;
 }
 

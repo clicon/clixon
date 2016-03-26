@@ -244,7 +244,7 @@ from_client_xmlput(clicon_handle      h,
     cvec       *cvv = NULL;
     char       *str = NULL;
     char       *xml = NULL;
-    cxobj      *xt;
+    cxobj      *xt = NULL;
     int         piddb;
 
     if (clicon_msg_xmlput_decode(msg, 
@@ -283,6 +283,8 @@ from_client_xmlput(clicon_handle      h,
 	free(str);
     if (cvv)
 	cvec_free (cvv);
+    if (xt)
+	xml_free(xt);
     return retval;
 }
 
