@@ -1683,7 +1683,7 @@ clicon_strsplit_malloc(char *string, char *delim, int *nvec0)
 	    nvec++;
     /* alloc vector and append copy of string */
     if ((vec = (char**)malloc(nvec* sizeof(char*) + strlen(string)+1)) == NULL){
-	clicon_err(OE_YANG, errno, "calloc"); 
+	clicon_err(OE_YANG, errno, "malloc"); 
 	goto err;
     } 
     ptr = (char*)vec + nvec* sizeof(char*); /* this is where ptr starts */

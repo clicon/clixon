@@ -77,6 +77,9 @@ int       xml_type_set(cxobj *xn, enum cxobj_type type);
 int       xml_index(cxobj *xn);
 int       xml_index_set(cxobj *xn, int index);
 
+cg_var *xml_cv_get(cxobj *xn);
+int     xml_cv_set(cxobj  *xn, cg_var *cv);
+
 int       xml_child_nr(cxobj *xn);
 cxobj    *xml_child_i(cxobj *xn, int i);
 cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);

@@ -19,7 +19,7 @@
   <http://www.gnu.org/licenses/>.
 
  *
- * Protocol to communicate between clients (eg clicon_cli, clicon_netconf) 
+ * Protocol to communicate between clients (eg clixon_cli, clixon_netconf) 
  * and server (clicon_backend)
  */
 
