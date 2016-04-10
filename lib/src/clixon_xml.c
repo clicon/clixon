@@ -68,6 +68,7 @@ struct xml{
     int               x_flags;      /* Flags according to XML_FLAG_* above */
     void             *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
+    cg_var           *x_cv;           /* If body this contains the typed value */
 };
 
 /*
@@ -307,6 +308,35 @@ xml_index_set(cxobj *xn,
     return old;
 }
 
+/*! Get cligen variable associated with node
+ * @param[in]  xn    xml node
+ * @retval     cv    Cligen variable if set
+ * @retval     NULL  If not set, or not applicable
+ */
+cg_var *
+xml_cv_get(cxobj *xn)
+{
+  if (xn->x_cv)
+    return xn->x_cv;
+  else
+    return NULL;
+}
+
+/*! Set cligen variable associated with node
+ * @param[in]  xn    xml node
+ * @param[in]  cv    Cligen variable or NULL
+ * @retval     0     if OK
+ */
+int
+xml_cv_set(cxobj  *xn, 
+	   cg_var *cv)
+{
+  if (xn->x_cv)
+    free(xn->x_cv);
+  xn->x_cv = cv;
+  return 0;
+}
+
 /*! Get number of children
  * @param[in]  xn    xml node
  * @retval     number of children in XML tree
@@ -425,7 +455,7 @@ xml_childvec_set(cxobj *x,
  * @retval NULL          if error and clicon_err() called
  */
 cxobj *
-xml_new(char *name, 
+xml_new(char  *name, 
 	cxobj *xp)
 {
     cxobj *xn;
@@ -547,13 +577,12 @@ xml_insert(cxobj *xp,
 }
 
 /*! Remove and free an xml node child from xml parent
- * @param[in]   xparent     xml parent node
- * @param[in]   xchild      xml child node (to be renmoved and freed)
+ * @param[in]   xch         xml child node (to be removed and freed)
  * @retval      0           OK
  * @retval      -1
  * @note you cannot remove xchild in the loop (unless yoy keep track of xprev)
  *
- * @see xml_free   Free, dont remove from parent
+ * @see xml_free      Free, dont remove from parent
  * @see xml_child_rm  Only remove dont free
  * Differs from xml_free it is removed from parent.
  */
@@ -724,6 +753,8 @@ xml_free(cxobj *x)
 	free(x->x_value);
     if (x->x_namespace)
 	free(x->x_namespace);
+    if (x->x_cv)
+	cv_free(x->x_cv);
     for (i=0; i<x->x_childvec_len; i++){
 	xc = x->x_childvec[i];
 	xml_free(xc);
@@ -998,6 +1029,8 @@ static int
 copy_one(cxobj *xn0, 
 	 cxobj *xn1)
 {
+    cg_var *cv1;
+
     xml_type_set(xn1, xml_type(xn0));
     if (xml_value(xn0)){ /* malloced string */
 	if ((xn1->x_value = strdup(xn0->x_value)) == NULL){
@@ -1008,10 +1041,18 @@ copy_one(cxobj *xn0,
     if (xml_name(xn0)) /* malloced string */
 	if ((xml_name_set(xn1, xml_name(xn0))) < 0)
 	    return -1;
+    if (xml_cv_get(xn0)){
+      if ((cv1 = cv_dup(xml_cv_get(xn0))) == NULL){
+	clicon_err(OE_XML, errno, "%s: cv_dup", __FUNCTION__);
+	return -1;
+      }
+      if ((xml_cv_set(xn1, cv1)) < 0)
+	return -1;
+    }
     return 0;
 }
 
-/*! Copy xml tree to other existing tree
+/*! Copy xml tree x0 to other existing tree x1
  *
  * x1 should be a created placeholder. If x1 is non-empty,
  * the copied tree is appended to the existing tree.

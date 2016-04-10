@@ -421,7 +421,6 @@ db2file(clicon_handle h,
     }
     if (strcmp(db, "running") != 0 && 
 	strcmp(db, "candidate") != 0 && 
-	strcmp(db, "result") != 0 && 
 	strcmp(db, "tmp") != 0){
 	clicon_err(OE_XML, 0, "Unexpected database: %s", db);
 	goto done;
