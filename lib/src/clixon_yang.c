@@ -248,7 +248,8 @@ yn_realloc(yang_node *yn)
 /*! Copy yang statement recursively from old to new 
  */
 int        
-ys_cp(yang_stmt *ynew, yang_stmt *yold)
+ys_cp(yang_stmt *ynew, 
+      yang_stmt *yold)
 {
     int        retval = -1;
     int        i;
@@ -324,7 +325,8 @@ ys_dup(yang_stmt *old)
  * Also add parent to child as up-pointer
  */
 int
-yn_insert(yang_node *yn_parent, yang_stmt *ys_child)
+yn_insert(yang_node *yn_parent, 
+	  yang_stmt *ys_child)
 {
     int pos = yn_parent->yn_len;
 
@@ -346,7 +348,8 @@ yn_insert(yang_node *yn_parent, yang_stmt *ys_child)
  * @endcode
  */
 yang_stmt *
-yn_each(yang_node *yn, yang_stmt *ys)
+yn_each(yang_node *yn, 
+	yang_stmt *ys)
 {
     yang_stmt *yc = NULL;
     int i;
@@ -371,7 +374,9 @@ yn_each(yang_node *yn, yang_stmt *ys)
  * @see yang_find_syntax
  */
 yang_stmt *
-yang_find(yang_node *yn, int keyword, char *argument)
+yang_find(yang_node *yn, 
+	  int        keyword, 
+	  char      *argument)
 {
     yang_stmt *ys = NULL;
     int i;
@@ -388,7 +393,6 @@ yang_find(yang_node *yn, int keyword, char *argument)
 	    if (match)
 		break;
 	    }
-
     }
     return match ? ys : NULL;
 }
@@ -407,7 +411,8 @@ yang_find(yang_node *yn, int keyword, char *argument)
 #define yang_is_syntax(y) ((y)->ys_keyword == Y_CONTAINER || (y)->ys_keyword == Y_LEAF || (y)->ys_keyword == Y_LIST || (y)->ys_keyword == Y_LEAF_LIST)
 
 yang_stmt *
-yang_find_syntax(yang_node *yn, char *argument)
+yang_find_syntax(yang_node *yn, 
+		 char      *argument)
 {
     yang_stmt *ys = NULL;
     yang_stmt *yc = NULL;
@@ -470,7 +475,6 @@ yang_find_topnode(yang_spec *ysp,
     return NULL;
 }
 
-
 /*! Find a child spec-node yang_stmt with matching argument for xpath
  *
  * See also yang_find() but this looks only for the yang specification nodes with
@@ -481,7 +485,8 @@ yang_find_topnode(yang_spec *ysp,
  * @see xpath_vec
  */
 static yang_stmt *
-yang_find_xpath_stmt(yang_node *yn, char *argument)
+yang_find_xpath_stmt(yang_node *yn, 
+		     char      *argument)
 {
     yang_stmt *ys = NULL;
     int i;
@@ -512,7 +517,8 @@ yang_find_xpath_stmt(yang_node *yn, char *argument)
 
 /*! Reset flag in complete tree, arg contains flag */
 static int
-ys_flag_reset(yang_stmt *ys, void *arg)
+ys_flag_reset(yang_stmt *ys, 
+	      void      *arg)
 {
     int flags = (intptr_t)arg;
 
@@ -608,13 +614,13 @@ ytype_prefix(yang_stmt *ys)
     return prefix;
 }
 
-
 /*! Given a module and a prefix, find the import statement fo that prefix
  * Note, not the other module but the proxy import statement only
  * @param[in]  ytop  yang module
  */
 yang_stmt *
-ys_module_import(yang_stmt *ymod, char *prefix)
+ys_module_import(yang_stmt *ymod, 
+		 char      *prefix)
 {
     yang_stmt *yimport = NULL;
     yang_stmt *yprefix;
@@ -645,7 +651,9 @@ quotedstring(char *s)
 }
 
 int
-yang_print(FILE *f, yang_node *yn, int marginal)
+yang_print(FILE      *f, 
+	   yang_node *yn, 
+	   int        marginal)
 {
     yang_stmt *ys = NULL;
 
@@ -684,7 +692,8 @@ yang_print(FILE *f, yang_node *yn, int marginal)
  * @retval    -1   Error with clicon_err called
  */
 static int
-ys_populate_leaf(yang_stmt *ys, void *arg)
+ys_populate_leaf(yang_stmt *ys, 
+		 void      *arg)
 {
     int             retval = -1;
     cg_var         *cv = NULL;
@@ -761,7 +770,8 @@ ys_populate_leaf(yang_stmt *ys, void *arg)
  * We only allow one range, ie not 1..2|4..5
  */
 static int
-ys_populate_range(yang_stmt *ys, void *arg)
+ys_populate_range(yang_stmt *ys, 
+		  void      *arg)
 {
     int             retval = -1;
     yang_node      *yparent;        /* type */
@@ -864,7 +874,8 @@ ys_populate_range(yang_stmt *ys, void *arg)
  * XXX: Replace with generic parent/child type-check
  */
 static int
-ys_populate_type(yang_stmt *ys, void *arg)
+ys_populate_type(yang_stmt *ys, 
+		 void      *arg)
 {
     int             retval = -1;
     yang_stmt      *ybase;
@@ -910,7 +921,8 @@ ys_populate_type(yang_stmt *ys, void *arg)
 /*! Sanity check yang type statement
  */
 static int
-ys_populate_identity(yang_stmt *ys, void *arg)
+ys_populate_identity(yang_stmt *ys, 
+		     void      *arg)
 {
     int             retval = -1;
     yang_stmt      *ybase;
@@ -935,7 +947,8 @@ ys_populate_identity(yang_stmt *ys, void *arg)
  * After this pass, cv:s are set for LEAFs and LEAF-LISTs
  */
 static int
-ys_populate(yang_stmt *ys, void *arg)
+ys_populate(yang_stmt *ys, 
+	    void      *arg)
 {
     int retval = -1;
 
@@ -1025,7 +1038,8 @@ ys_grouping_resolve(yang_stmt  *ys,
   XXX: Destructively changing a datamodel may affect outlying loop?
  */
 static int
-yang_augment_node(yang_stmt *ys, yang_spec *ysp)
+yang_augment_node(yang_stmt *ys, 
+		  yang_spec *ysp)
 {
     int        retval = -1;
     char      *path;
@@ -1083,7 +1097,6 @@ yang_augment_spec(yang_spec *ysp)
  done:
     return retval;
 }
-
 
 /*! Macro expansion of grouping/uses done in step 2 of yang parsing 
   NOTE
@@ -1572,7 +1585,9 @@ yang_apply(yang_node     *yn,
 }
 
 static yang_stmt *
-yang_dbkey_vec(yang_node *yn, char **vec, int nvec)
+yang_dbkey_vec(yang_node *yn, 
+	       char     **vec, 
+	       int        nvec)
 {
     char            *key;
     yang_stmt       *ys;
@@ -1612,7 +1627,8 @@ yang_dbkey_vec(yang_node *yn, char **vec, int nvec)
  * @see yang_dbkey_get
  */
 yang_stmt *
-dbkey2yang(yang_node *yn, char *dbkey)
+dbkey2yang(yang_node *yn, 
+	   char      *dbkey)
 {
     char           **vec;
     int              nvec;
@@ -1631,7 +1647,9 @@ dbkey2yang(yang_node *yn, char *dbkey)
 /*! All the work for yang_xpath. 
   Ignore prefixes, see _abs */
 static yang_node *
-yang_xpath_vec(yang_node *yn, char **vec, int nvec)
+yang_xpath_vec(yang_node *yn,
+	       char     **vec, 
+	       int        nvec)
 {
     char            *arg;
     yang_stmt       *ys;
@@ -1670,7 +1688,9 @@ yang_xpath_vec(yang_node *yn, char **vec, int nvec)
  * Free return value after use
  */
 static char **
-clicon_strsplit_malloc(char *string, char *delim, int *nvec0)
+clicon_strsplit_malloc(char *string, 
+		       char *delim, 
+		       int  *nvec0)
 {
     char **vec = NULL;
     char  *ptr;
@@ -1696,9 +1716,13 @@ clicon_strsplit_malloc(char *string, char *delim, int *nvec0)
     return vec;
 }
 
-/*! Given an absolute xpath (eg /a/b/c) find matching yang specification  */
+/*! Given an absolute xpath (eg /a/b/c) find matching yang specification  
+ * @param[in]  yn    Yang node
+ * @param[in]  xpath Absolute xpath, ie /a/b
+ */
 yang_node *
-yang_xpath_abs(yang_node *yn, char *xpath)
+yang_xpath_abs(yang_node *yn, 
+	       char      *xpath)
 {
     char           **vec = NULL;
     int              nvec;
@@ -1756,7 +1780,6 @@ yang_xpath_abs(yang_node *yn, char *xpath)
     return ys;
 }
 
-
 /*! Given an xpath (eg /a/b/c or a/b/c) find matching yang specification
  * Note that xpath is defined for xml, and for instances of data, this is 
  * for specifications, sp expect some differences.
@@ -1764,8 +1787,8 @@ yang_xpath_abs(yang_node *yn, char *xpath)
  * @param[in]  xpath  A limited xpath expression on the type a/b/c
  * @retval     NULL   Error, with clicon_err called
  * @retval     ys     First yang node matching xpath
- * Note: the identifiers in the xpath (eg a, b in a/b) can match the nodes defined in
- * yang_xpath: container, leaf,list,leaf-list, modules, sub-modules
+ * @note: the identifiers in the xpath (eg a, b in a/b) can match the nodes 
+ *        defined in yang_xpath: container, leaf,list,leaf-list, modules, sub-modules
  * Example:
  * yn : module m { prefix b; container b { list c { key d; leaf d; }} }
  * xpath = m/b/c, returns the list 'c'.
@@ -1773,7 +1796,8 @@ yang_xpath_abs(yang_node *yn, char *xpath)
  * @see clicon_dbget_xpath
  */
 yang_node *
-yang_xpath(yang_node *yn, char *xpath)
+yang_xpath(yang_node *yn, 
+	   char      *xpath)
 {
     char           **vec = NULL;
     yang_node       *ys = NULL;
@@ -1801,7 +1825,8 @@ yang_xpath(yang_node *yn, char *xpath)
  * available in the first pass. Prefer to do stuff in ys_populate
  */
 cg_var *
-ys_parse(yang_stmt *ys, enum cv_type cvtype)
+ys_parse(yang_stmt   *ys, 
+	 enum cv_type cvtype)
 {
     int             cvret;
     char           *reason = NULL;
@@ -1903,7 +1928,6 @@ yang_config(yang_stmt *ys)
     }
     return 1;
 }
-
 
 /*! Utility function for handling yang parsing and translation to key format
  * @param h          clicon handle

@@ -1130,7 +1130,7 @@ put(char               *dbname,
     /* For every node, create a key with values */
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
 	if ((y = yang_find_syntax((yang_node*)ys, xml_name(x))) == NULL){
-	    clicon_err(OE_UNIX, errno, "No yang node found: %s", xml_name(x));
+	    clicon_err(OE_UNIX, 0, "No yang node found: %s", xml_name(x));
 	    goto done;
 	}
 	if (put(dbname, x, y, op, xk) < 0)
