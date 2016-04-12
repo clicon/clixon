@@ -104,7 +104,10 @@ clicon_exit_get(void)
  * @endcode 
  */
 int
-event_reg_fd(int fd, int (*fn)(int, void*), void *arg, char *str)
+event_reg_fd(int   fd, 
+	     int (*fn)(int, void*), 
+	     void *arg, 
+	     char *str)
 {
     struct event_data *e;
 
@@ -132,7 +135,8 @@ event_reg_fd(int fd, int (*fn)(int, void*), void *arg, char *str)
  * @see event_unreg_timeout
  */
 int
-event_unreg_fd(int s, int (*fn)(int, void*))
+event_unreg_fd(int   s, 
+	       int (*fn)(int, void*))
 {
     struct event_data *e, **e_prev;
     int found = 0;
@@ -175,8 +179,10 @@ event_unreg_fd(int s, int (*fn)(int, void*))
  * @see event_unreg_timeout
  */
 int
-event_reg_timeout(struct timeval t,  int (*fn)(int, void*), 
-		  void *arg, char *str)
+event_reg_timeout(struct timeval t,  
+		  int          (*fn)(int, void*), 
+		  void          *arg, 
+		  char          *str)
 {
     struct event_data *e, *e1, **e_prev;
 
@@ -213,7 +219,8 @@ event_reg_timeout(struct timeval t,  int (*fn)(int, void*),
  * @see event_unreg_fd
  */
 int
-event_unreg_timeout(int (*fn)(int, void*), void *arg)
+event_unreg_timeout(int (*fn)(int, void*), 
+		    void *arg)
 {
     struct event_data *e, **e_prev;
     int found = 0;
