@@ -134,7 +134,11 @@ expand_dbvar(void   *h,
     }
     for (i = 0; i < xlen; i++) {
 	x = xvec[i];
-	if ((bodystr = xml_body(x)) == NULL){
+	if (xml_type(x) == CX_BODY)
+	    bodystr = xml_value(x);
+	else
+	    bodystr = xml_body(x);
+	if (bodystr == NULL){
 	    clicon_err(OE_CFG, 0, "No xml body");
 	    goto done;
 	}
