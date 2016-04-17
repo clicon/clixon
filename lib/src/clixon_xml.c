@@ -799,6 +799,22 @@ clicon_xml2file(FILE  *f,
     return retval;
 }
 
+/*! Print an XML tree structure to an output stream
+ *
+ * Uses clicon_xml2file internally
+ *
+ * @param[in]   f           UNIX output stream
+ * @param[in]   xn          clicon xml tree
+ * @see clicon_xml2cbuf
+ * @see clicon_xml2file
+ */
+int
+xml_print(FILE  *f, 
+	  cxobj *xn)
+{
+    return clicon_xml2file(f, xn, 0, 1);
+}
+
 #define XML_INDENT 3 /* maybve we should set this programmatically? */
 
 /*! Print an XML tree structure to a clicon buffer

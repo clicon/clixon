@@ -103,6 +103,7 @@ char     *xml_find_body(cxobj *xn, char *name);
 
 int       xml_free(cxobj *xn);
 
+int       xml_print(FILE  *f, cxobj *xn);
 int       clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint);
 int       clicon_xml2cbuf(cbuf *xf, cxobj *xn, int level, int prettyprint);
 int       clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag);

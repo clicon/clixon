@@ -829,7 +829,7 @@ netconf_notification_cb(int   s,
 
     if (0){
 	fprintf(stderr, "%s\n", __FUNCTION__); /* debug */
-	clicon_xml2file(stderr, xfilter, 0, 1); /* debug */
+	xml_print(stderr, xfilter); /* debug */
     }
     /* get msg (this is the reason this function is called) */
     if (clicon_msg_rcv(s, &reply, &eof, __FUNCTION__) < 0)

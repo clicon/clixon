@@ -133,7 +133,9 @@ client_subscription_find(struct client_entry *ce, char *stream)
 /*! Remove client entry state
  * Close down everything wrt clients (eg sockets, subscriptions)
  * Finally actually remove client struct in handle
- * @see backend_client_delete
+ * @param[in]  h   Clicon handle
+ * @param[in]  ce  Client hadnle
+ * @see backend_client_delete for actual deallocation of client entry struct
  */
 int
 backend_client_rm(clicon_handle        h, 
@@ -338,7 +340,7 @@ config_snapshot(clicon_handle h,
     } 
     if (xmldb_get(h, db, "/", 0, &xn, NULL, NULL) < 0)
 	goto done;
-    if (clicon_xml2file(f, xn, 0, 1) < 0)
+    if (xml_print(f, xn) < 0)
 	goto done;
     retval = 0;
  done:
@@ -404,7 +406,7 @@ from_client_save(clicon_handle      h,
 	} 
 	if (xmldb_get(h, db, "/", 0, &xn, NULL, NULL) < 0)
 	    goto done;
-	if (clicon_xml2file(f, xn, 0, 1) < 0)
+	if (xml_print(f, xn) < 0)
 	    goto done; 
     }
     if (send_msg_ok(s) < 0)

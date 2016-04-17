@@ -489,7 +489,7 @@ show_conf_xpath(clicon_handle h,
     if (xmldb_get(h, str, xpath, 1, &xt, &xv, &xlen) < 0)
 	goto done;
     for (i=0; i<xlen; i++)
-	clicon_xml2file(stdout, xv[i], 0, 1);
+	xml_print(stdout, xv[i]);
 
     retval = 0;
 done:

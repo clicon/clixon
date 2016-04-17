@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <regex.h>
+#include <syslog.h>
 #include <netinet/in.h>
 
 /* cligen */
@@ -114,18 +115,35 @@ backend_notify(clicon_handle h,
 	       char         *event)
 {
     struct client_entry        *ce;
+    struct client_entry        *ce_next;
     struct client_subscription *su;
     struct handle_subscription *hs;
     int                  retval = -1;
 
     /* First thru all clients(sessions), and all subscriptions and find matches */
-    for (ce = backend_client_list(h); ce; ce = ce->ce_next)
+    for (ce = backend_client_list(h); ce; ce = ce_next){
+	ce_next = ce->ce_next;
 	for (su = ce->ce_subscription; su; su = su->su_next)
 	    if (strcmp(su->su_stream, stream) == 0){
 		if (fnmatch(su->su_filter, event, 0) == 0)
-		    if (send_msg_notify(ce->ce_s, level, event) < 0)
+		    if (send_msg_notify(ce->ce_s, level, event) < 0){
+			if (errno == ECONNRESET){
+			    clicon_log(LOG_WARNING, "client %s reset", ce->ce_nr);
+#if 0
+			    /* We should remove here but removal is not possible
+			       from a client since backend_client is not linked.
+			       Maybe we should add it to the plugin, but it feels
+			       "safe" that you cant remove a client.
+			       Instead, the client is (hopefully) removed elsewhere?
+			    */
+			    backend_client_rm(h, ce);
+#endif
+			    break;
+			}
 			goto done;
+		    }
 	    }
+    }
     /* Then go thru all global (handle) subscriptions and find matches */
     hs = NULL;
     while ((hs = subscription_each(h, hs)) != NULL){
@@ -162,6 +180,7 @@ backend_notify_xml(clicon_handle h,
 		   cxobj        *x)
 {
     struct client_entry *ce;
+    struct client_entry *ce_next;
     struct client_subscription *su;
     int                  retval = -1;
     cbuf                *cb = NULL;
@@ -169,7 +188,8 @@ backend_notify_xml(clicon_handle h,
 
     clicon_debug(1, "%s %s", __FUNCTION__, stream);
     /* Now go thru all clients(sessions), and all subscriptions and find matches */
-    for (ce = backend_client_list(h); ce; ce = ce->ce_next)
+    for (ce = backend_client_list(h); ce; ce = ce_next){
+	ce_next = ce->ce_next;
 	for (su = ce->ce_subscription; su; su = su->su_next)
 	    if (strcmp(su->su_stream, stream) == 0){
 		if (strlen(su->su_filter)==0 || xpath_first(x, su->su_filter) != NULL){
@@ -181,10 +201,25 @@ backend_notify_xml(clicon_handle h,
 			if (clicon_xml2cbuf(cb, x, 0, 0) < 0)
 			    goto done;
 		    }
-		    if (send_msg_notify(ce->ce_s, level, cbuf_get(cb)) < 0)
+		    if (send_msg_notify(ce->ce_s, level, cbuf_get(cb)) < 0){
+			if (errno == ECONNRESET){
+			    clicon_log(LOG_WARNING, "client %s reset", ce->ce_nr);
+#if 0
+			    /* We should remove here but removal is not possible
+			       from a client since backend_client is not linked.
+			       Maybe we should add it to the plugin, but it feels
+			       "safe" that you cant remove a client.
+			       Instead, the client is (hopefully) removed elsewhere?
+			    */
+			    backend_client_rm(h, ce);
+#endif
+			    break;
+			}
 			goto done;
+		    }
 		}
 	    }
+    }
     /* Then go thru all global (handle) subscriptions and find matches */
     hs = NULL;
     while ((hs = subscription_each(h, hs)) != NULL){
@@ -230,11 +265,14 @@ backend_client_list(clicon_handle h)
     return cb->cb_ce_list;
 }
 
-/*! Actually remove client from list
- * See also backend_client_rm()
+/*! Actually remove client from client list
+ * @param[in]  h   Clicon handle
+ * @param[in]  ce  Client hadnle
+ * @see backend_client_rm which is more high-level
  */
 int
-backend_client_delete(clicon_handle h, struct client_entry *ce)
+backend_client_delete(clicon_handle        h,
+		      struct client_entry *ce)
 {
     struct client_entry   *c;
     struct client_entry  **ce_prev;

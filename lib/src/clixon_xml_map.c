@@ -461,6 +461,7 @@ xml2cvec(cxobj      *xt,
     int               ret;
     int               i = 0;
     int               len = 0;
+    char             *name;
 
     xc = NULL;
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
@@ -472,11 +473,27 @@ xml2cvec(cxobj      *xt,
     xc = NULL;
     /* Go through all children of the xml tree */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
-	if ((ys = yang_find_syntax((yang_node*)yt, xml_name(xc))) == NULL){
-	    clicon_debug(1, "%s: yang sanity problem: %s in xml but not present in yang under %s",
-			 __FUNCTION__, xml_name(xc), yt->ys_argument);
-	    continue;
+	name = xml_name(xc);
+	if ((ys = yang_find_syntax((yang_node*)yt, name)) == NULL){
+	    clicon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
+			 __FUNCTION__, name, yt->ys_argument);
+	    if ((body = xml_body(xc)) != NULL){
+		cv = cvec_i(cvv, i++);
+		cv_type_set(cv, CGV_STRING);
+		cv_name_set(cv, name);
+		if ((ret = cv_parse1(body, cv, &reason)) < 0){
+		    clicon_err(OE_PLUGIN, errno, "cv_parse");
+		    goto err;
+		}
+		if (ret == 0){
+		    clicon_err(OE_PLUGIN, errno, "cv_parse: %s", reason);
+		    if (reason)
+			free(reason);
+		    goto err;
+		}
+	    }
 	}
+	else
 	if ((ycv = ys->ys_cv) != NULL){
 	    if ((body = xml_body(xc)) != NULL){
 		/* XXX: cvec_add uses realloc, can we avoid that? */

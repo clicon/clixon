@@ -361,7 +361,7 @@ compare_xmls(cxobj *xc1,
 	    xml2txt(f, xc, 0);
     else
 	while ((xc = xml_child_each(xc1, xc, -1)) != NULL)
-	    clicon_xml2file(f, xc, 0, 1);
+	    xml_print(f, xc);
 
     fclose(f);
     close(fd);
@@ -378,7 +378,7 @@ compare_xmls(cxobj *xc1,
 	    xml2txt(f, xc, 0);
     else
 	while ((xc = xml_child_each(xc2, xc, -1)) != NULL)
-	    clicon_xml2file(f, xc, 0, 1);
+	    xml_print(f, xc);
     fclose(f);
     close(fd);
 
@@ -676,7 +676,7 @@ save_config_file(clicon_handle h,
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
 	goto done;
     } 
-    if (clicon_xml2file(f, xt, 0, 1) < 0)
+    if (xml_print(f, xt) < 0)
 	goto done;
     retval = 0;
     /* Fall through */
@@ -771,7 +771,7 @@ cli_notification_cb(int s, void *arg)
 	    if (clicon_xml_parse_string(&eventstr, &xt) < 0)
 		goto done;
 	    if ((xn = xml_child_i(xt, 0)) != NULL)
-		if (clicon_xml2file(stdout, xn, 0, 1) < 0)
+		if (xml_print(stdout, xn) < 0)
 		    goto done;
 	}
 	else

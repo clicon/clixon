@@ -188,19 +188,19 @@ transaction_print(FILE               *f,
     fprintf(f, "Removed\n=========\n");
     for (i=0; i<td->td_dlen; i++){
 	xn = td->td_dvec[i];
-	clicon_xml2file(f, xn, 0, 1);
+	xml_print(f, xn);
     }
     fprintf(f, "Added\n=========\n");
     for (i=0; i<td->td_alen; i++){
 	xn = td->td_avec[i];
-	clicon_xml2file(f, xn, 0, 1);
+	xml_print(f, xn);
     }
     fprintf(stderr, "Changed\n=========\n");
     for (i=0; i<td->td_clen; i++){
 	xn = td->td_scvec[i];
-	clicon_xml2file(f, xn, 0, 1);
+	xml_print(f, xn);
 	xn = td->td_tcvec[i];
-	clicon_xml2file(f, xn, 0, 1);
+	xml_print(f, xn);
     }
     return 0;
 }

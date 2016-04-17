@@ -636,7 +636,7 @@ xmldb_from_client(clicon_handle h,
     if (clicon_xml_parse_string(&str, &xrq) < 0)
 	goto done;
     if (debug)
-	clicon_xml2file(stderr, xrq, 0, 1);
+	xml_print(stderr, xrq);
     if ((xr = xpath_first(xrq, "rpc")) != NULL){
 	if ((x = xpath_first(xr, "get")) != NULL){
 	    if (xmldb_from_get(h, s, x) < 0)

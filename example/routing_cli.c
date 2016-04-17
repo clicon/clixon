@@ -74,7 +74,7 @@ mycallback(clicon_handle h, cvec *cvv, cg_var *arg)
 		  0,
 		  &xt, NULL, NULL) < 0)
 	goto done;
-    clicon_xml2file(stdout, xt, 0, 1);
+    xml_print(stdout, xt);
     retval = 0;
  done:
     if (xt)
