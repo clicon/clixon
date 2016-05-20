@@ -86,8 +86,8 @@
      <rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
  * filter subnet + no config:
      <rpc><get-config><source><candidate/></source><filter/></get-config></rpc>]]>]]>
- * filter xpath + no select:
-     <rpc><get-config><source><candidate/></source><filter type="xpath"/></get-config></rpc>]]>]]>
+ * filter xpath + select all:
+     <rpc><get-config><source><candidate/></source><filter type="xpath" select="/"/></get-config></rpc>]]>]]>
  * filter subnet + config:
      <rpc><get-config><source><candidate/></source><filter type="subtree"><configuration><interfaces><interface><ipv4/></interface></interfaces></configuration></filter></get-config></rpc>]]>]]>
  * filter xpath + select:
@@ -152,7 +152,15 @@ netconf_filter_xmldb(clicon_handle      h,
 	    clicon_xml2cbuf(cb, xc, 0, 1);
 	break;
     case FILTER_XPATH:
-	selector = xml_find_value(xfilter, "select");
+	if ((selector = xml_find_value(xfilter, "select")) == NULL){
+	    netconf_create_rpc_error(cb_err, xorig, 
+				     "missing-attribute", 
+				     "protocol", 
+				     "error", 
+				     NULL,
+				     "<bad-attribute>select</bad-attribute>");
+	    goto done;
+	}
 	if (xmldb_get(h, source, selector, 0, &xdb, NULL, NULL) < 0){
 	    netconf_create_rpc_error(cb_err, xorig, 
 				     "operation-failed", 

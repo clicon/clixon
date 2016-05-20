@@ -163,24 +163,35 @@ cvtype_max2str_dup(enum cv_type type)
  * @param[in]  ys     yang_stmt of the node at hand
  * @param[in]  cvtype Type of the cligen variable
  * @param[in]  cb0    The string where the result format string is inserted.
+ * @param[in]  options 
+ * @param[in]  fraction_digits
+
  * @see expand_dbvar  This is where the expand string is used
+ * @note XXX only fraction_digits handled,should also have mincv, maxcv, pattern
  */
 static int
 cli_expand_var_generate(clicon_handle h, 
 			yang_stmt    *ys, 
 			enum cv_type  cvtype,
-			cbuf         *cb0)
+			cbuf         *cb0,
+			int           options,
+			uint8_t       fraction_digits
+			)
 {
     int   retval = -1;
     char *xkfmt = NULL;
 
     if (yang2xmlkeyfmt(ys, &xkfmt) < 0)
 	goto done;
-    cprintf(cb0, "|<%s:%s %s(\"candidate %s\")>",
-	    ys->ys_argument, 
-	    cv_type2str(cvtype),
+    cprintf(cb0, "|<%s:%s",  ys->ys_argument, 
+	    cv_type2str(cvtype));
+    if (options & YANG_OPTIONS_FRACTION_DIGITS)
+	cprintf(cb0, " fraction-digits:%u", fraction_digits);
+    cprintf(cb0, " %s(\"candidate %s\")>",
 	    GENERATE_EXPAND_XMLDB,
 	    xkfmt);
+
+
     retval = 0;
  done:
     if (xkfmt)
@@ -327,7 +338,8 @@ yang2cli_var_sub(clicon_handle h,
     if (helptext)
 	cprintf(cb0, "(\"%s\")", helptext);
     if (completion){
-	if (cli_expand_var_generate(h, ys, cvtype, cb0) < 0)
+	if (cli_expand_var_generate(h, ys, cvtype, cb0, 
+				    options, fraction_digits) < 0)
 	    goto done;
 	if (helptext)
 	    cprintf(cb0, "(\"%s\")", helptext);
