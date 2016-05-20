@@ -290,8 +290,7 @@ terminate(clicon_handle h)
  */
 static void
 usage(clicon_handle h,
-      char         *argv0, 
-
+      char         *argv0)
 {
     char *netconfdir = clicon_netconf_dir(h);
 
