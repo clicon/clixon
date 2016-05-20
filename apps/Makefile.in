@@ -27,7 +27,7 @@ LIBS    	= @LIBS@
 
 SHELL	= /bin/sh
 
-SUBDIRS = cli backend dbctrl netconf xmldb
+SUBDIRS = cli backend dbctrl netconf xmldb restconf
 
 .PHONY: all clean depend install $(SUBDIRS)
 

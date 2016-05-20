@@ -82,8 +82,7 @@
 
 #define HASH_SIZE	1031	/* Number of hash buckets. Should be a prime */ 
 
-/*
- * A very simplistic algorithm to calculate a hash bucket index
+/*! A very simplistic algorithm to calculate a hash bucket index
  */
 static uint32_t
 hash_bucket(const char *str)
@@ -96,12 +95,9 @@ hash_bucket(const char *str)
     return n % HASH_SIZE;
 }
 
-/*
- * Initialize hash table.
+/*! Initialize hash table.
  *
- * Arguments:	none
- *
- * Returns: new pointer to hash table.
+ * @retval Pointer to new hash table.
  */
 clicon_hash_t *
 hash_init (void)
@@ -116,16 +112,13 @@ hash_init (void)
   return hash;
 }
 
-/*
- * Free hash table.
+/*! Free hash table.
  *
- * Arguments:
- *	hash	  	- Hash table
- *
- * Returns: void
+ * @param[in] hash	  Hash table
+ * @retval    void
  */
 void
-hash_free (clicon_hash_t *hash)
+hash_free(clicon_hash_t *hash)
 {
     int i;
     clicon_hash_t tmp;
@@ -142,15 +135,16 @@ hash_free (clicon_hash_t *hash)
 }
 
 
-/*
- * Find keys.
+/*! Find hash key.
  *
- *	key		- Variable name
- *
- * Returns: variable structure on success, NULL on failure
+ * @param[in] hash     Hash table
+ * @param[in] key      Variable name
+ * @retval    variable Hash variable structure on success
+ * @retval    NULL     Error
  */
 clicon_hash_t
-hash_lookup (clicon_hash_t *hash, const char *key)
+hash_lookup(clicon_hash_t *hash, 
+	    const char    *key)
 {
     uint32_t bkt;
     clicon_hash_t h;
@@ -164,15 +158,20 @@ hash_lookup (clicon_hash_t *hash, const char *key)
 	    h = NEXTQ(clicon_hash_t, h);
 	} while (h != hash[bkt]);
     }
-    
     return NULL;
 }
 
-/*
- * Get value of hash
+/*! Get value of hash
+ * @param[in]  hash Hash table
+ * @param[in]  key  Variable name
+ * @param[out] vlen Length of value (as returned by function)
+ * @retval value    Hash value, length given in vlen
+ * @retval NULL     Error
  */
 void *
-hash_value(clicon_hash_t *hash, const char *key, size_t *vlen)
+hash_value(clicon_hash_t *hash, 
+	   const char    *key, 
+	   size_t        *vlen)
 {
     clicon_hash_t h;
 
@@ -185,19 +184,20 @@ hash_value(clicon_hash_t *hash, const char *key, size_t *vlen)
     return h->h_val;
 }
 
-
-/*
- * Copy value and add hash entry.
+/*! Copy value and add hash entry.
  *
- * Arguments:
- *	hash	  	- Hash structure
- *	key		- New variable name
- *	val		- New variable value
- *
- * Returns: new variable on success, NULL on failure
+ * @param[in] hash   Hash table
+ * @param[in] key    New variable name
+ * @param[in] val    New variable value
+ * @param[in] vlen   Length of variable value
+ * @retval variable  New hash structure on success
+ * @retval NULL      Failure
  */
 clicon_hash_t
-hash_add (clicon_hash_t *hash, const char *key, void *val, size_t vlen)
+hash_add(clicon_hash_t *hash, 
+	 const char    *key, 
+	 void          *val, 
+	 size_t         vlen)
 {
     void *newval;
     clicon_hash_t h, new = NULL;
@@ -250,17 +250,17 @@ catch:
     return NULL;
 }
 
-/*
- * Delete entry.
+/*! Delete hash entry.
  *
- * Arguments:
- *	hash	  	- Hash structure
- *	key		- Variable name
+ * @param[in] hash    Hash table
+ * @param[in] key     Variable name
  *
- * Returns: 0 on success, -1 on failure
+ * @retval   0  success
+ * @retval  -1  failure
  */
 int
-hash_del (clicon_hash_t *hash, const char *key)
+hash_del(clicon_hash_t *hash, 
+	 const char    *key)
 {
     clicon_hash_t h;
 
@@ -277,8 +277,16 @@ hash_del (clicon_hash_t *hash, const char *key)
     return 0;
 }
 
+/*! Return vector of keys in has table
+ *
+ * @param[in]   hash  	Hash table
+ * @param[out]	nkeys   Size of key vector
+ * @retval      vector  Vector of keys
+ * @retval      NULL    Error
+ */
 char **
-hash_keys(clicon_hash_t *hash, size_t *nkeys)
+hash_keys(clicon_hash_t *hash, 
+	  size_t        *nkeys)
 {
     int bkt;
     clicon_hash_t h;
@@ -311,17 +319,15 @@ catch:
     return NULL;
 }
 
-/*
- * Dump contents of hash to FILE pointer.
+/*! Dump contents of hash to FILE pointer.
  *
- * Arguments:
- *	f		- FILE pointer for print output
- *	hash	  	- Hash structure
- *
- * Returns: void
+ * @param[in]   hash  	Hash structure
+ * @param[in]	f	FILE pointer for print output
+ * @retval      void
  */
 void
-hash_dump(clicon_hash_t *hash, FILE *f)
+hash_dump(clicon_hash_t *hash, 
+	  FILE          *f)
 {
     int i;
     char **keys;

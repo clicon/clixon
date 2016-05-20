@@ -4155,6 +4155,55 @@ _ACEOF
 fi
 
 
+# restconf uses libcurl (I think?)
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for curl_global_init in -lcurl" >&5
+$as_echo_n "checking for curl_global_init in -lcurl... " >&6; }
+if ${ac_cv_lib_curl_curl_global_init+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcurl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char curl_global_init ();
+int
+main ()
+{
+return curl_global_init ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_curl_curl_global_init=yes
+else
+  ac_cv_lib_curl_curl_global_init=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_curl_curl_global_init" >&5
+$as_echo "$ac_cv_lib_curl_curl_global_init" >&6; }
+if test "x$ac_cv_lib_curl_curl_global_init" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBCURL 1
+_ACEOF
+
+  LIBS="-lcurl $LIBS"
+
+else
+  as_fn_error $? "libcurl missing" "$LINENO" 5
+fi
+
+
 for ac_func in inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
@@ -4166,6 +4215,55 @@ _ACEOF
 
 fi
 done
+
+
+# Lives in libfcgi-dev
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for FCGX_Init in -lfcgi" >&5
+$as_echo_n "checking for FCGX_Init in -lfcgi... " >&6; }
+if ${ac_cv_lib_fcgi_FCGX_Init+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lfcgi  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char FCGX_Init ();
+int
+main ()
+{
+return FCGX_Init ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_fcgi_FCGX_Init=yes
+else
+  ac_cv_lib_fcgi_FCGX_Init=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_fcgi_FCGX_Init" >&5
+$as_echo "$ac_cv_lib_fcgi_FCGX_Init" >&6; }
+if test "x$ac_cv_lib_fcgi_FCGX_Init" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBFCGI 1
+_ACEOF
+
+  LIBS="-lfcgi $LIBS"
+
+else
+  as_fn_error $? "libfcgi-dev missing" "$LINENO" 5
+fi
 
 
 # Check if extra keys inserted for database lists containing content. Eg A.n.foo = 3
@@ -4193,7 +4291,7 @@ fi
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/dbctrl/Makefile apps/xmldb/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile doc/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/dbctrl/Makefile apps/xmldb/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4894,6 +4992,7 @@ do
     "apps/cli/Makefile") CONFIG_FILES="$CONFIG_FILES apps/cli/Makefile" ;;
     "apps/backend/Makefile") CONFIG_FILES="$CONFIG_FILES apps/backend/Makefile" ;;
     "apps/netconf/Makefile") CONFIG_FILES="$CONFIG_FILES apps/netconf/Makefile" ;;
+    "apps/restconf/Makefile") CONFIG_FILES="$CONFIG_FILES apps/restconf/Makefile" ;;
     "apps/dbctrl/Makefile") CONFIG_FILES="$CONFIG_FILES apps/dbctrl/Makefile" ;;
     "apps/xmldb/Makefile") CONFIG_FILES="$CONFIG_FILES apps/xmldb/Makefile" ;;
     "include/Makefile") CONFIG_FILES="$CONFIG_FILES include/Makefile" ;;

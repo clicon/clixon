@@ -284,11 +284,14 @@ terminate(clicon_handle h)
 }
 
 
-/*
- * usage
+/*! Usage help routine
+ * @param[in]  h      Clicon handle
+ * @param[in]  argv0  command line
  */
 static void
-usage(char *argv0, clicon_handle h)
+usage(clicon_handle h,
+      char         *argv0, 
+
 {
     char *netconfdir = clicon_netconf_dir(h);
 
@@ -328,14 +331,14 @@ main(int argc, char **argv)
     while ((c = getopt(argc, argv, NETCONF_OPTS)) != -1)
 	switch (c) {
 	case 'h' : /* help */
-	    usage(argv[0], h);
+	    usage(h, argv[0]);
 	    break;
 	case 'D' : /* debug */
 	    debug = 1;
 	    break;
 	 case 'f': /* override config file */
 	    if (!strlen(optarg))
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
 	 case 'S': /* Log on syslog */
@@ -369,11 +372,11 @@ main(int argc, char **argv)
 	    break;
 	case 'd':  /* Plugin directory */
 	    if (!strlen(optarg))
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_NETCONF_DIR", optarg);
 	    break;
 	default:
-	    usage(argv[0], h);
+	    usage(h, argv[0]);
 	    break;
 	}
     argc -= optind;

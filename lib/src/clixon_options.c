@@ -296,11 +296,12 @@ clicon_option_exists(clicon_handle h, const char *name)
  * @retval    NULL    If option not found, or value of option is NULL
  * @retval    string  value of option if found
  * clicon options should be strings.
- * To differentiate the two reasons why NULL may be returned, use function 
+ * @note To differentiate the two reasons why NULL may be returned, use function 
  * clicon_option_exists() before the call
  */
 char *
-clicon_option_str(clicon_handle h, const char *name)
+clicon_option_str(clicon_handle h, 
+		  const char   *name)
 {
     clicon_hash_t *copt = clicon_options(h);
 
@@ -310,9 +311,14 @@ clicon_option_str(clicon_handle h, const char *name)
 }
 
 /*! Set a single string option via handle 
+ * @param[in] h       clicon_handle
+ * @param[in] name    option name
+ * @param[in] val     option value, must be null-terminated string
  */
 int
-clicon_option_str_set(clicon_handle h, const char *name, char *val)
+clicon_option_str_set(clicon_handle h, 
+		      const char   *name, 
+		      char         *val)
 {
     clicon_hash_t *copt = clicon_options(h);
 

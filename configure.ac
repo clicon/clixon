@@ -132,7 +132,13 @@ AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(nsl, xdr_char)
 AC_CHECK_LIB(dl, dlopen)
 
+# restconf uses libcurl (I think?)
+AC_CHECK_LIB(curl, curl_global_init,, AC_MSG_ERROR([libcurl missing]))
+
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp)
+
+# Lives in libfcgi-dev
+AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
 
 # Check if extra keys inserted for database lists containing content. Eg A.n.foo = 3
 # means A.3 $!a=foo exists
@@ -162,6 +168,7 @@ AC_OUTPUT(Makefile
 	  apps/cli/Makefile 
 	  apps/backend/Makefile 
 	  apps/netconf/Makefile
+	  apps/restconf/Makefile
 	  apps/dbctrl/Makefile
 	  apps/xmldb/Makefile
 	  include/Makefile
