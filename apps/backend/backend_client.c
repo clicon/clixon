@@ -65,12 +65,13 @@
  */
 static struct client_subscription *
 client_subscription_add(struct client_entry *ce, 
-		 char                *stream, 
-		 enum format_enum     format,
-		 char                *filter)
+			char                *stream, 
+			enum format_enum     format,
+			char                *filter)
 {
     struct client_subscription *su = NULL;
 
+    clicon_debug(1, "%s stream:%s filter:%s", __FUNCTION__, stream, filter);
     if ((su = malloc(sizeof(*su))) == NULL){
 	clicon_err(OE_PLUGIN, errno, "malloc");
 	goto done;

@@ -72,7 +72,9 @@ static FILE *_debugfile = NULL;
  * @endcode
  */
 int
-clicon_log_init(char *ident, int upto, int flags)
+clicon_log_init(char *ident, 
+		int    upto, 
+		int    flags)
 {
     if (setlogmask(LOG_UPTO(upto)) < 0)
 	/* Cant syslog here */
@@ -85,7 +87,8 @@ clicon_log_init(char *ident, int upto, int flags)
 /*! Register log callback, return old setting
  */
 clicon_log_notify_t *
-clicon_log_register_callback(clicon_log_notify_t *cb, void *arg)
+clicon_log_register_callback(clicon_log_notify_t *cb, 
+			     void                *arg)
 {
     clicon_log_notify_t *old = _log_notify_cb;
     _log_notify_cb  = cb;
@@ -144,7 +147,8 @@ slogtime(void)
  * @param[in]   msg   Message to print as argv.
  */
 int
-clicon_log_str(int level, char *msg)
+clicon_log_str(int   level, 
+	       char *msg)
 {
     if (_logflags & CLICON_LOG_SYSLOG)
 	syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg);
@@ -194,7 +198,8 @@ clicon_log_str(int level, char *msg)
  * @param[in]   format   Message to print as argv.
  */
 int
-clicon_log(int level, char *format, ...)
+clicon_log(int   level, 
+	   char *format, ...)
 {
     va_list args;
     int     len;
@@ -248,7 +253,8 @@ clicon_log(int level, char *format, ...)
 			debug messages are directed.
  */
 int
-clicon_debug_init(int dbglevel, FILE *f)
+clicon_debug_init(int   dbglevel,
+		  FILE *f)
 {
     debug = dbglevel; /* Global variable */
     return 0;
@@ -268,7 +274,8 @@ clicon_debug_init(int dbglevel, FILE *f)
  * @param[in] format     Message to print as argv.
  */
 int
-clicon_debug(int dbglevel, char *format, ...)
+clicon_debug(int   dbglevel, 
+	     char *format, ...)
 {
     va_list args;
     int     len;
@@ -310,6 +317,7 @@ clicon_debug(int dbglevel, char *format, ...)
 }
 
 /*! Translate month number (0..11) to a three letter month name
+ * @param[in] md  month number, where 0 is january
  */
 char *
 mon2name(int md)
