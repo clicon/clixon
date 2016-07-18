@@ -646,9 +646,9 @@ from_client_call(clicon_handle      h,
 		 struct clicon_msg *msg, 
 		 const char        *label)
 {
-    int retval = -1;
-    void *reply_data = NULL;
-    uint16_t reply_data_len = 0;
+    int                         retval = -1;
+    void                       *reply_data = NULL;
+    uint16_t                    reply_data_len = 0;
     struct clicon_msg_call_req *req;
 
     if (clicon_msg_call_decode(msg, &req, label) < 0) {
@@ -667,10 +667,17 @@ from_client_call(clicon_handle      h,
 	    goto done;
 	}
     
-    retval = send_msg_reply(s,CLICON_MSG_OK, (char *)reply_data, reply_data_len);
-    free(reply_data);
-
+    if ((retval = send_msg_reply(s, CLICON_MSG_OK, (char *)reply_data, reply_data_len)) < 0){
+	if (errno == ECONNRESET){ /* If cli/netconf dies during plugin downcall */
+	    clicon_log(LOG_WARNING, "client downcall reset");
+	    retval = 0;
+	}
+	else
+	    goto done;
+    }
  done:
+    if (reply_data)
+	free(reply_data);
     return retval;
 }
 

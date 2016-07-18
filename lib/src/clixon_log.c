@@ -138,10 +138,11 @@ slogtime(void)
 }
 
 
-/*! Make a logging call to syslog.
+/*! Make a logging call to syslog (or stderr).
  *
  * This is the _only_ place the actual syslog (or stderr) logging is made in clicon,..
- * See also clicon_log()
+ * @note yslog makes itw own filtering, but if log to stderr we do it here
+ * @see  clicon_debug()
  *
  * @param[in]   level log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. Thisis OR:d with facility == LOG_USER
  * @param[in]   msg   Message to print as argv.
@@ -152,6 +153,11 @@ clicon_log_str(int   level,
 {
     if (_logflags & CLICON_LOG_SYSLOG)
 	syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg);
+   /* syslog makes own filtering, we do it here:
+    * if normal (not debug) then filter loglevels >= debug
+    */
+    if (debug == 0 && level >= LOG_DEBUG)
+	goto done;
     if (_logflags & CLICON_LOG_STDERR){
 	flogtime(stderr);
 	fprintf(stderr, "%s\n", msg);
@@ -184,6 +190,7 @@ clicon_log_str(int   level,
 	}
 	cb--;
     }
+ done:
     return 0;
 }
 

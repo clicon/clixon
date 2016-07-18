@@ -388,10 +388,15 @@ downcall(clicon_handle h, uint16_t op, uint16_t len, void *arg,
  *                       unchunk_group(label) to deallocate
  */
 int
-clicon_rpc_call(clicon_handle h, uint16_t op, char *plugin, char *func,
-		void *param, uint16_t paramlen, 
-		char **ret, uint16_t *retlen,
-		const void *label)
+clicon_rpc_call(clicon_handle h, 
+		uint16_t      op, 
+		char         *plugin, 
+		char         *func,
+		void         *param, 
+		uint16_t      paramlen, 
+		char        **ret, 
+		uint16_t     *retlen,
+		const void   *label)
 {
     int                retval = -1;
     struct clicon_msg *msg;

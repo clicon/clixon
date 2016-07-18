@@ -92,14 +92,16 @@ exit_candidate_db(clicon_handle h)
     return 0;
 }
 
-/*
- * cli_debug
- * set debug level on stderr (not syslog).
+#if 1 /* OBSOLETE */
+/*! Set debug level 
  * The level is either what is specified in arg as int argument.
  * _or_ if a 'level' variable is present in vars use that value instead.
+ * OBSOLETE
  */
 int
-cli_debug(clicon_handle h, cvec *vars, cg_var *arg)
+cli_debug(clicon_handle h, 
+	  cvec         *vars, 
+	  cg_var       *arg)
 {
     cg_var *cv;
     int     level;
@@ -115,7 +117,52 @@ cli_debug(clicon_handle h, cvec *vars, cg_var *arg)
   done:
     return 0;
 }
+#endif
 
+/*! Set debug level on CLI client (not backend daemon)
+ * @param[in] h     Clicon handle
+ * @param[in] vars  If variable "level" exists, its integer value is used
+ * @param[in] arg   Else use the integer value of argument
+ * @note The level is either what is specified in arg as int argument.
+ *       _or_ if a 'level' variable is present in vars use that value instead.
+ */
+int
+cli_debug_cli(clicon_handle h, 
+	      cvec         *vars, 
+	      cg_var       *arg)
+{
+    cg_var *cv;
+    int     level;
+
+    if ((cv = cvec_find_var(vars, "level")) == NULL)
+	cv = arg;
+    level = cv_int32_get(cv);
+    /* cli */
+    clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
+    return 0;
+}
+
+/*! Set debug level on backend daemon (not CLI)
+ * @param[in] h     Clicon handle
+ * @param[in] vars  If variable "level" exists, its integer value is used
+ * @param[in] arg   Else use the integer value of argument
+ * @note The level is either what is specified in arg as int argument.
+ *       _or_ if a 'level' variable is present in vars use that value instead.
+ */
+int
+cli_debug_backend(clicon_handle h, 
+		  cvec         *vars, 
+		  cg_var       *arg)
+{
+    cg_var *cv;
+    int     level;
+
+    if ((cv = cvec_find_var(vars, "level")) == NULL)
+	cv = arg;
+    level = cv_int32_get(cv);
+    /* config daemon */
+    return clicon_rpc_debug(h, level);
+}
 
 void
 cli_signal_block(clicon_handle h)
