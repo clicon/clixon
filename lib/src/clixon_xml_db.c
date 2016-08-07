@@ -1001,7 +1001,6 @@ xmldb_get_local(clicon_handle h,
  *   free(xvec);
  * @endcode
  * @see xpath_vec
- * @endcode
  */
 int
 xmldb_get(clicon_handle h,

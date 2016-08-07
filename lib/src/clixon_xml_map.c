@@ -262,11 +262,22 @@ xml2cli(FILE              *f,
     return retval;
 }
 
-/*! Translate from xml tree to JSON 
+/*! Internal function to translate from xml tree to JSON 
+ * @param[in,out] cb     Cligen buffer to write to
+ * @param[in]     x      XML tree to translate from
+ * @param[in]     level  Indentation level
+ * @param[in]     eq
+ * @param[in]     comma
+ * @retval        0      OK
+ * @retval       -1      Error
  * XXX ugly code could be cleaned up
  */
-int 
-xml2json1(FILE *f, cxobj *x, int level, int eq, int comma)
+static int 
+xml2json1_cbuf(cbuf  *cb,
+	       cxobj *x, 
+	       int    level, 
+	       int    eq, 
+	       int    comma)
 {
     cxobj           *xe = NULL;
     cxobj           *x1;
@@ -279,23 +290,23 @@ xml2json1(FILE *f, cxobj *x, int level, int eq, int comma)
 
     switch(xml_type(x)){
     case CX_BODY:
-	fprintf(f, "\"%s\"", xml_value(x));
+	cprintf(cb, "\"%s\"", xml_value(x));
 	break;
     case CX_ELMNT:
 	if (eq == 2)
-	    fprintf(f, "%*s", 2*level2, "");
+	    cprintf(cb, "%*s", 2*level2, "");
 	else{
-	    fprintf(f, "%*s", 2*level1, "");
-	    fprintf(f, "\"%s\": ", xml_name(x));
+	    cprintf(cb, "%*s", 2*level1, "");
+	    cprintf(cb, "\"%s\": ", xml_name(x));
 	}
 	if (xml_body(x)!=NULL){
 	    if (eq==1){
-		fprintf(f, "[\n");
-		fprintf(f, "%*s", 2*level2, "");
+		cprintf(cb, "[\n");
+		cprintf(cb, "%*s", 2*level2, "");
 	    }
 	}
 	else {
-	    fprintf(f, "{\n");
+	    cprintf(cb, "{\n");
 	}
 	xe = NULL;     
 	n = xml_child_nr(x);
@@ -313,17 +324,17 @@ xml2json1(FILE *f, cxobj *x, int level, int eq, int comma)
 			    eq1 = 2; /* last */
 		}
 	    }
-	    if (xml2json1(f, xe, level1, eq1, (i+1<n)) < 0)
+	    if (xml2json1_cbuf(cb, xe, level1, eq1, (i+1<n)) < 0)
 		goto done;
 	    if (xml_body(xe)!=NULL){
 		if (eq1 == 2){
-		    fprintf(f, "\n");
-		    fprintf(f, "%*s", 2*level2, "");
-		    fprintf(f, "]");
+		    cprintf(cb, "\n");
+		    cprintf(cb, "%*s", 2*level2, "");
+		    cprintf(cb, "]");
 		}
 		if (i+1<n)
-		    fprintf(f, ",");
-		fprintf(f, "\n");
+		    cprintf(cb, ",");
+		cprintf(cb, "\n");
 	    }
 	    if (eq1==2)
 		eq1 = 0;
@@ -331,31 +342,80 @@ xml2json1(FILE *f, cxobj *x, int level, int eq, int comma)
 	if (tleaf(x)){
 	}
 	else{
-	    fprintf(f, "%*s}", 2*level1, "");
+	    cprintf(cb, "%*s}", 2*level1, "");
 	    if (comma)
-		fprintf(f, ",");
-	    fprintf(f, "\n");
+		cprintf(cb, ",");
+	    cprintf(cb, "\n");
 	}
 	break;
     default:
 	break;
     }
-
-    //    fprintf(f, "%*s", 2*level, "");
+    //    cprintf(cb, "%*s", 2*level, "");
     retval = 0;
  done:
     return retval;
 }
 
+/*! Translate an XML tree to JSON in a CLIgen buffer
+ *
+ * @param[in,out] cb     Cligen buffer to write to
+ * @param[in]     x      XML tree to translate from
+ * @param[in]     level  Indentation level
+ * @retval        0      OK
+ * @retval       -1      Error
+ *
+ * @code
+ * cbuf *cb;
+ * cb = cbuf_new();
+ * if (xml2json_cbuf(cb, xn, 0, 1) < 0)
+ *   goto err;
+ * cbuf_free(cb);
+ * @endcode
+ * See also xml2json
+ */
 int 
-xml2json(FILE *f, cxobj *x, int level)
+xml2json_cbuf(cbuf  *cb, 
+	      cxobj *x, 
+	      int    level)
 {
     int retval = 1;
 
-    fprintf(f, "{\n");
-    if (xml2json1(f, x, level, 0, 0) < 0)
+    cprintf(cb, "{\n");
+    if (xml2json1_cbuf(cb, x, level, 0, 0) < 0)
 	goto done;
-    fprintf(f, "}\n");
+    cprintf(cb, "}\n");
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Translate from xml tree to JSON and print to file
+ * @param[in]  f     File to print to
+ * @param[in]  x     XML tree to translate from
+ * @param[in]  level Indentation level
+ * @retval     0     OK
+ * @retval    -1     Error
+ *
+ * @code
+ * if (xml2json(stderr, xn, 0) < 0)
+ *   goto err;
+ * @endcode
+ */
+int 
+xml2json(FILE  *f, 
+	 cxobj *x, 
+	 int    level)
+{
+    int   retval = 1;
+    cbuf *cb;
+
+    if ((cb = cbuf_new()) ==NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (xml2json_cbuf(cb, x, level) < 0)
+	goto done;
     retval = 0;
  done:
     return retval;

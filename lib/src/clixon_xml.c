@@ -609,7 +609,7 @@ xml_purge(cxobj *xc)
     return retval; 
 }
 
-/*! Remove xml node from parent xml node. No freeing and child is new own root
+/*! Remove child xml node from parent xml node. No free and child is root
  * @param[in]   xp     xml parent node
  * @param[in]   i      Number of xml child node (to remove)
  * @retval      0      OK
@@ -617,6 +617,7 @@ xml_purge(cxobj *xc)
  * @note you should not remove xchild in loop (unless yoy keep track of xprev)
  *
  * @see xml_rootchild
+ * @see xml_rm     Remove the node itself from parent
  */
 int
 xml_child_rm(cxobj *xp, 
@@ -636,6 +637,38 @@ xml_child_rm(cxobj *xp,
     for (; i<xp->x_childvec_len; i++)
 	xp->x_childvec[i] = xp->x_childvec[i+1];
     retval = 0;
+ done:
+    return retval;
+}
+
+/*! Remove this xml node from parent xml node. No freeing and node is new root
+ * @param[in]   xc     xml child node to be removed
+ * @retval      0      OK
+ * @retval      -1
+ * @note you should not remove xchild in loop (unless yoy keep track of xprev)
+ *
+ * @see xml_child_rm  Remove a child of a node
+ */
+int
+xml_rm(cxobj *xc)
+{
+    int    retval = 0;
+    cxobj *xp;
+    cxobj *x;
+    int    i;
+
+    if ((xp = xml_parent(xc)) == NULL)
+	goto done;
+    retval = -1;
+    /* Find child in parent */
+    x = NULL; i = 0;
+    while ((x = xml_child_each(xp, x, -1)) != NULL) {
+	if (x == xc)
+	    break;
+	i++;
+    }
+    if (x != NULL)
+	retval = xml_child_rm(xp, i);
  done:
     return retval;
 }
@@ -678,13 +711,12 @@ xml_rootchild(cxobj  *xp,
     return retval;
 }
 
-
 /*! Get the first sub-node which is an XML body.
  * @param[in]   xn          xml tree node
  * @retval  The returned body as a pointer to the name string
  * @retval  NULL if no such node or no body in found node
  * Note, make a copy of the return value to use it properly
- * See also xml_find_body
+ * @see xml_find_body
  */
 char *
 xml_body(cxobj *xn)
@@ -817,9 +849,9 @@ xml_print(FILE  *f,
 
 #define XML_INDENT 3 /* maybve we should set this programmatically? */
 
-/*! Print an XML tree structure to a clicon buffer
+/*! Print an XML tree structure to a cligen buffer
  *
- * @param[in,out] cb          Clicon buffer to write to
+ * @param[in,out] cb          Cligen buffer to write to
  * @param[in]     xn          clicon xml tree
  * @param[in]     level       how many spaces to insert before each line
  * @param[in]     prettyprint insert \n and spaces tomake the xml more readable.
@@ -1027,7 +1059,7 @@ clicon_xml_parse_file(int     fd,
  *  xml_free(cx);
  * @endcode
  * @see clicon_xml_parse_file
- * Note, you need to free the xml parse tree after use, using xml_free()
+ * @note  you need to free the xml parse tree after use, using xml_free()
  * Update: with yacc parser I dont think it changes,....
  */
 int 

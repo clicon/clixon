@@ -96,8 +96,7 @@ clicon_log_register_callback(clicon_log_notify_t *cb,
     return old;
 }
 
-/*
- * Mimic syslog and print a time on file f
+/*! Mimic syslog and print a time on file f
  */
 static int
 flogtime(FILE *f)

@@ -41,6 +41,7 @@ enum {
  */
 int xml2txt(FILE *f, cxobj *x, int level);
 int xml2cli(FILE *f, cxobj *x, char *prepend, enum genmodel_type gt, const char *label);
+int xml2json_cbuf(cbuf *cb, cxobj *x, int level);
 int xml2json(FILE *f, cxobj *x, int level);
 int xml_yang_validate(cxobj *xt, yang_stmt *ys) ;
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);

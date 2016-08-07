@@ -624,11 +624,14 @@ from_client_debug(clicon_handle      h,
 	goto done;
     }
     clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
+    setlogmask(LOG_UPTO(level?LOG_DEBUG:LOG_INFO)); /* for syslog */
 
     if (send_msg_ok(s) < 0)
 	goto done;
+    clicon_log(LOG_NOTICE, "%s debug:%d", __FUNCTION__, debug);
     retval = 0;
   done:
+
     return retval;
 }
 

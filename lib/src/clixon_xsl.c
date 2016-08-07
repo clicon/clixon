@@ -403,7 +403,7 @@ recursive_find(cxobj   *xn,
  * @param[in,out] vec0    Vector or xml nodes that are checked. Not matched are filtered
  * @param[in,out] vec0len Length of vector or matches
  * On input, vec0 contains a list of xml nodes to match. 
- * On output, vec0 contains only the subset that matched the epxression.
+ * On output, vec0 contains only the subset that matched the expression.
  * The predicate expression is a subset of the standard, namely:
  *  - @<attr>=<value>
  *  - <number>

@@ -125,7 +125,7 @@ backend_notify(clicon_handle h,
 	ce_next = ce->ce_next;
 	for (su = ce->ce_subscription; su; su = su->su_next)
 	    if (strcmp(su->su_stream, stream) == 0){
-		if (fnmatch(su->su_filter, event, 0) == 0)
+		if (strlen(su->su_filter)==0 || fnmatch(su->su_filter, event, 0) == 0){
 		    if (send_msg_notify(ce->ce_s, level, event) < 0){
 			if (errno == ECONNRESET){
 			    clicon_log(LOG_WARNING, "client %s reset", ce->ce_nr);
@@ -142,6 +142,7 @@ backend_notify(clicon_handle h,
 			}
 			goto done;
 		    }
+		}
 	    }
     }
     /* Then go thru all global (handle) subscriptions and find matches */
@@ -151,7 +152,9 @@ backend_notify(clicon_handle h,
 	    continue;
 	if (strcmp(hs->hs_stream, stream))
 	    continue;
-	if (fnmatch(hs->hs_filter, event, 0) == 0)
+	if (hs->hs_filter==NULL ||
+	    strlen(hs->hs_filter)==0 || 
+	    fnmatch(hs->hs_filter, event, 0) == 0)
 	    if ((*hs->hs_fn)(h, event, hs->hs_arg) < 0)
 		goto done;
     }
@@ -227,9 +230,10 @@ backend_notify_xml(clicon_handle h,
 	    continue;
 	if (strcmp(hs->hs_stream, stream))
 	    continue;
-	if (strlen(hs->hs_filter)==0 || xpath_first(x, hs->hs_filter) != NULL)
+	if (strlen(hs->hs_filter)==0 || xpath_first(x, hs->hs_filter) != NULL){
 	    if ((*hs->hs_fn)(h, x, hs->hs_arg) < 0)
 		goto done;
+	}
     }
     retval = 0;
   done:
@@ -319,7 +323,7 @@ subscription_add(clicon_handle        h,
     memset(hs, 0, sizeof(*hs));
     hs->hs_stream = strdup(stream);
     hs->hs_format = format;
-    hs->hs_filter = strdup(filter);
+    hs->hs_filter = filter?strdup(filter):NULL;
     hs->hs_next   = cb->cb_subscription;
     hs->hs_fn     = fn;
     hs->hs_arg    = arg;
