@@ -68,6 +68,7 @@
 #include <clixon/clixon_xml_map.h>
 #include <clixon/clixon_xml_db.h>
 #include <clixon/clixon_xsl.h>
+#include <clixon/clixon_json.h>
 #include <clixon/clixon_plugin.h>
 #include <clixon/clixon_plugin.h>
 

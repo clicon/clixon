@@ -1,6 +1,12 @@
 Clixon yang routing example
 +++++++++++++++++++++++++++
 
+0. Compile and run
+------------------
+cd example
+make && sudo make install
+clixon_cli -f /usr/local/etc/routing.conf
+
 1. Setting data example using netconf
 -------------------------------------
 

@@ -258,7 +258,7 @@ xmldb_get_rpc(clicon_handle h,
 		  cbuf_len(cb)+1,
 		  rb, &retlen) < 0)
 	goto done;
-    if (clicon_xml_parse_string(&rb, &xt)  < 0)
+    if (clicon_xml_parse_str(rb, &xt)  < 0)
 	goto done;
     if (vector){
 	i=0;
@@ -319,7 +319,7 @@ xmldb_copy_rpc(clicon_handle h,
 		  cbuf_len(cb)+1,
 		  rb, &retlen) < 0)
 	goto done;
-    if (clicon_xml_parse_string(&rb, &xt)  < 0)
+    if (clicon_xml_parse_str(rb, &xt)  < 0)
 	goto done;
     if (xpath_first(xt, "//ok"))
 	retval = 0;
@@ -361,7 +361,7 @@ xmldb_lock_rpc(clicon_handle h,
 		  cbuf_len(cb)+1,
 		  rb, &retlen) < 0)
 	goto done;
-    if (clicon_xml_parse_string(&rb, &xt)  < 0)
+    if (clicon_xml_parse_str(rb, &xt)  < 0)
 	goto done;
     if (xpath_first(xt, "//ok"))
 	retval = 0;
@@ -403,7 +403,7 @@ xmldb_unlock_rpc(clicon_handle h,
 		  cbuf_len(cb)+1,
 		  rb, &retlen) < 0)
 	goto done;
-    if (clicon_xml_parse_string(&rb, &xt)  < 0)
+    if (clicon_xml_parse_str(rb, &xt)  < 0)
 	goto done;
     if (xpath_first(xt, "//ok"))
 	retval = 0;
@@ -443,7 +443,7 @@ xmldb_islocked_rpc(clicon_handle h,
 		  cbuf_len(cb)+1,
 		  rb, &retlen) < 0)
 	goto done;
-    if (clicon_xml_parse_string(&rb, &xt)  < 0)
+    if (clicon_xml_parse_str(rb, &xt)  < 0)
 	goto done;
     if (xpath_first(xt, "//unlocked"))
 	retval = 0;
@@ -486,7 +486,7 @@ xmldb_exists_rpc(clicon_handle h,
 		  cbuf_len(cb)+1,
 		  rb, &retlen) < 0)
 	goto done;
-    if (clicon_xml_parse_string(&rb, &xt)  < 0)
+    if (clicon_xml_parse_str(rb, &xt)  < 0)
 	goto done;
     if (xpath_first(xt, "//ok"))
 	retval = 1;

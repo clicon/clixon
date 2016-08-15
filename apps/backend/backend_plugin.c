@@ -190,7 +190,7 @@ plugin_load (clicon_handle h,
     
     initfun = dlsym(handle, PLUGIN_INIT);
     if ((error = (char*)dlerror()) != NULL) {
-	clicon_err(OE_UNIX, 0, "dlsym: %s", error);
+	clicon_err(OE_UNIX, 0, "dlsym: %s: %s", file, error);
         return NULL;
     }
 

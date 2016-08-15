@@ -681,8 +681,6 @@ xml_rm(cxobj *xc)
  * @param[in]  xp   xml parent node. Will be deleted
  * @param[in]  i    Child nr in parent child vector
  * @param[out] xcp  xml child node. New root
- * @code
- * @endcode
  * @see xml_child_rm
  */
 int
@@ -920,13 +918,13 @@ clicon_xml2cbuf(cbuf  *cb,
  * @see clicon_xml_parse_file clicon_xml_parse_string
  */
 static int 
-xml_parse(char **str, 
+xml_parse(char  *str, 
 	  cxobj *x_up)
 {
     int                       retval = -1;
     struct xml_parse_yacc_arg ya = {0,};
 
-    if ((ya.ya_parse_string = strdup(*str)) == NULL){
+    if ((ya.ya_parse_string = strdup(str)) == NULL){
 	clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
 	return -1;
     }
@@ -972,7 +970,7 @@ FSM(char *tag,
  *  clicon_xml_parse_file(0, &xt, "</clicon>");
  *  xml_free(xt);
  * @endcode
- *  * @see clicon_xml_parse_string
+ *  * @see clicon_xml_parse_str
  * Note, you need to free the xml parse tree after use, using xml_free()
  * Note, xt will add a top-level symbol called "top" meaning that <tree../> will look as:
  *  <top><tree.../></tree>
@@ -1019,7 +1017,7 @@ clicon_xml_parse_file(int     fd,
 	    state = 0;
 	    if ((*cx = xml_new("top", NULL)) == NULL)
 		break;
-	    if (xml_parse(&ptr, *cx) < 0)
+	    if (xml_parse(ptr, *cx) < 0)
 		return -1;
 	    break;
 	}
@@ -1041,21 +1039,16 @@ clicon_xml_parse_file(int     fd,
 
 /*! Read an XML definition from string and parse it into a parse-tree. 
  *
- * @param[in] str   Pointer to string containing XML definition. NOTE: destructively
- *          modified. This means if str is malloced, you need to make a copy
- *          of str before use and free that. 
- * @param[out]  xml_top  Top of XML parse tree. Will add extra top element called 'top'.
+ * @param[in]  str   Pointer to string containing XML definition. 
+ * @param[out] xml_top  Top of XML parse tree. Will add extra top element called 'top'.
  *                       you must free it after use, using xml_free()
  * @retval  0  OK
  * @retval -1  Error with clicon_err called
  *
  * @code
  *  cxobj *cx = NULL;
- *  str = strdup(...);
- *  str0 = str;
- *  if (clicon_xml_parse_string(&str0, &cx) < 0)
+ *  if (clicon_xml_parse_str(str, &cx) < 0)
  *    err;
- *  free(str0);
  *  xml_free(cx);
  * @endcode
  * @see clicon_xml_parse_file
@@ -1063,8 +1056,8 @@ clicon_xml_parse_file(int     fd,
  * Update: with yacc parser I dont think it changes,....
  */
 int 
-clicon_xml_parse_string(char  **str, 
-			cxobj **cxtop)
+clicon_xml_parse_str(char   *str, 
+		     cxobj **cxtop)
 {
   if ((*cxtop = xml_new("top", NULL)) == NULL)
     return -1;

@@ -63,24 +63,6 @@ clixon_yang_parsewrap(void)
   return 1;
 }
 
-#ifdef notused
-/* like strdup but strip \:s */
-static char *
-stripdup(char *s0)
-{
-  char *s1;
-  char *s;
-
-  if ((s1 = strdup(s0)) == NULL){
-    fprintf(stderr, "%s: strdup: %s\n", __FUNCTION__, strerror(errno));
-    return NULL;
-  }
-  while ((s = index(s1, '\\')) != NULL)
-    memmove(s, s+1, strlen(s)); 
-  return s1;
-}
-#endif /* notused */
-
 /*
    statement = keyword [argument] (";" / "{" *statement "}") 
    The argument is a string

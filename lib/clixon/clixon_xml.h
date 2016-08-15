@@ -108,7 +108,9 @@ int       xml_print(FILE  *f, cxobj *xn);
 int       clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint);
 int       clicon_xml2cbuf(cbuf *xf, cxobj *xn, int level, int prettyprint);
 int       clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag);
-int       clicon_xml_parse_string(char **str, cxobj **xml_top);
+/* XXX obsolete */
+#define clicon_xml_parse_string(str, x) clicon_xml_parse_str((*str), x) 
+int       clicon_xml_parse_str(char *str, cxobj **xml_top);
 
 int       xml_copy(cxobj *x0, cxobj *x1);
 cxobj    *xml_dup(cxobj *x0);

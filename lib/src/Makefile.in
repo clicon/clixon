@@ -52,14 +52,15 @@ SRC     = clixon_sig.c clixon_qdb.c clixon_log.c clixon_err.c clixon_event.c \
 	  clixon_chunk.c clixon_proc.c \
 	  clixon_string.c clixon_handle.c  \
 	  clixon_xml.c clixon_xml_map.c clixon_file.c \
+	  clixon_json.c \
 	  clixon_yang.c clixon_yang_type.c \
 	  clixon_hash.c clixon_options.c clixon_plugin.c \
 	  clixon_proto.c clixon_proto_encode.c clixon_proto_client.c \
 	  clixon_xsl.c clixon_sha1.c clixon_xml_db.c clixon_xml_db_rpc.c
 
 YACCOBJS := lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
-	    lex.clixon_yang_parse.o  clixon_yang_parse.tab.o 
-# Logically, the below 4 should be in YACCOBJS?
+	    lex.clixon_yang_parse.o  clixon_yang_parse.tab.o \
+	    lex.clixon_json_parse.o  clixon_json_parse.tab.o 
 
 
 # Generated src 
@@ -81,11 +82,10 @@ clean:
 	rm -f $(OBJS) $(MYLIB) $(MYLIBLINK) $(GENOBJS) $(GENSRC) *.core
 	rm -f clixon_xml_parse.tab.[ch] clixon_xml_parse.yy.[co]
 	rm -f clixon_yang_parse.tab.[ch] clixon_yang_parse.[co]
-	rm -f lex.clixon_yang_parse.c
+	rm -f clixon_json_parse.tab.[ch] clixon_json_parse.[co]
 	rm -f lex.clixon_xml_parse.c
-# disabled when USE_DBSPEC_PT is disabled in clixon_config.h.in
-#	rm -f clixon_dbspec.tab.[ch] clixon_dbspec.[co]
-#	rm -f lex.clixon_dbspec.c
+	rm -f lex.clixon_yang_parse.c
+	rm -f lex.clixon_json_parse.c
 
 #############################################################################
 # Implicit rules for lex and yacc.
@@ -111,7 +111,7 @@ clixon_xml_parse.tab.c clixon_xml_parse.tab.h: clixon_xml_parse.y
 lex.clixon_xml_parse.o : lex.clixon_xml_parse.c clixon_xml_parse.tab.h # special rule to for make clean to work
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
 
-# clixon_yang parser
+# yang parser
 lex.clixon_yang_parse.c : clixon_yang_parse.l clixon_yang_parse.tab.h
 	$(LEX) -Pclixon_yang_parse clixon_yang_parse.l # -d is debug
 
@@ -121,6 +121,18 @@ clixon_yang_parse.tab.c clixon_yang_parse.tab.h: clixon_yang_parse.y
 	mv y.tab.h clixon_yang_parse.tab.h
 
 lex.clixon_yang_parse.o : lex.clixon_yang_parse.c clixon_yang_parse.tab.h
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
+
+# json parser
+lex.clixon_json_parse.c : clixon_json_parse.l clixon_json_parse.tab.h
+	$(LEX) -Pclixon_json_parse clixon_json_parse.l # -d is debug
+
+clixon_json_parse.tab.c clixon_json_parse.tab.h: clixon_json_parse.y
+	$(YACC) -l -d -p clixon_json_parse clixon_json_parse.y # -t is debug
+	mv y.tab.c clixon_json_parse.tab.c
+	mv y.tab.h clixon_json_parse.tab.h
+
+lex.clixon_json_parse.o : lex.clixon_json_parse.c clixon_json_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
 
 distclean: clean
