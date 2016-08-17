@@ -22,6 +22,72 @@
   * 
  * JSON support functions.
 
+curl -G http://localhost/api/data/sender/userid=a4315f60-e890-4f8f-9a0b-eb53d4da2d3a
+
+[{
+  "sender": {
+    "name": "dk-ore",
+    "userid": "a4315f60-e890-4f8f-9a0b-eb53d4da2d3a",
+    "ipv4_daddr": "109.105.110.78",
+    "template": "nordunet",
+    "version": "0",
+    "description": "Nutanix ORE",
+    "start": "true",
+    "udp_dport": "43713",
+    "debug": "0",
+    "proto": "udp"
+  }
+
+is translated into this:
+[
+    {"sender":
+     ["name":"dk-ore",
+      "userid":"a4315f60-e890-4f8f-9a0b-eb53d4da2d3a",
+      "ipv4_daddr":"109.105.110.78",
+      "template":"nordunet",
+      "version":"0",
+      "description":"Nutanix ORE",
+      "start":"true",
+      "udp_dport":"43713",
+      "debug":"0",
+      "proto":"udp"}
+     ,
+     {"name":"dk-uni",
+
+
+-------------------------
+
+<t>
+  <sender>
+    <name>hunerik</name>
+  </sender>
+  <sender>
+    <name>foo</name>
+  </sender>
+</t>
+
+{ "t":
+ {
+  "sender": {
+    "name": "hunerik"
+   },
+  "sender": {
+    "name": "foo"
+   }
+ }
+}
+
+{
+  "t": {
+    "sender": [
+      { "name": "hunerik" },
+      { "name": "foo" }
+    ]
+  }
+}
+
+OK, still something wrong with grafana plots
+
  */
 
 #include <stdio.h>
@@ -47,6 +113,7 @@
 #include "clixon_json.h"
 #include "clixon_json_parse.h"
 
+#define INDENT 2 /* maybe we should set this programmatically? */
 
 /*! x is element and has eactly one child which in turn has none 
  * Clone from clixon_xml_map.c
@@ -113,6 +180,7 @@ list_eval(cxobj *x)
     return list;
 }
 
+
 /*!
  * List only if adjacent,
  * ie <a>1</a><a>2</a><b>3</b> -> {"a":[1,2],"b":3}
@@ -120,7 +188,9 @@ list_eval(cxobj *x)
  */
 static int 
 xml2json1_cbuf(cbuf  *cb,
-	       cxobj *x)
+	       cxobj *x,
+	       int    level,
+	       int    pretty)
 {
     int                    retval = -1;
     int                    i;
@@ -129,7 +199,6 @@ xml2json1_cbuf(cbuf  *cb,
 
     switch(xml_type(x)){
     case CX_BODY:
-	fprintf(stderr, "%s body %s\n", __FUNCTION__, xml_value(x));
 	if (xml_value(x))
 	    cprintf(cb, "\"%s\"", xml_value(x));
 	else
@@ -137,33 +206,44 @@ xml2json1_cbuf(cbuf  *cb,
 	break;
     case CX_ELMNT:
 	list = list_eval(x);
-	fprintf(stderr, "%s element %s\n", __FUNCTION__, xml_name(x));
 	switch (list){
 	case LIST_NO:
-	    cprintf(cb, "\"%s\":", xml_name(x));
+	    cprintf(cb, "%*s\"%s\": ", pretty?(level*INDENT):0, "",xml_name(x));
 	    if (!tleaf(x))
-		cprintf(cb, "{");
+		cprintf(cb, "{%s", pretty?"\n":"");
 	    break;
 	case LIST_FIRST:
-	    cprintf(cb, "\"%s\":[", xml_name(x));
+	    cprintf(cb, "\"%*s\":[", pretty?(level*INDENT):0, xml_name(x));
+	    if (!tleaf(x))
+		cprintf(cb, "{%s", pretty?"\n":"");
 	    break;
 	default:
 	    break;
 	}
 	for (i=0; i<xml_child_nr(x); i++){
 	    xc = xml_child_i(x, i);
-	    if (xml2json1_cbuf(cb, xc) < 0)
+	    if (xml2json1_cbuf(cb, xc, level+1, pretty) < 0)
 		goto done;
-	    if (i<xml_child_nr(x)-1)
+	    if (i<xml_child_nr(x)-1){
 		cprintf(cb, ",");
+		cprintf(cb, "%s", pretty?"\n":"");
+	    }
 	}
 	switch (list){
 	case LIST_NO:
 	    if (!tleaf(x))
-		cprintf(cb, "}");
+		cprintf(cb, "%s%*s}%s", 
+			pretty?"\n":"",
+			pretty?(level*INDENT):0,"",
+			pretty?"\n":"");
 	    break;
 	case LIST_LAST:
-	    cprintf(cb, "]");
+	    if (!tleaf(x))
+		cprintf(cb, "%s%*s}%s", 
+			pretty?"\n":"",
+			pretty?(level*INDENT):0,"",
+			pretty?"\n":"");
+	    cprintf(cb, "]%s",pretty?"\n":"");
 	    break;
 	default:
 	    break;
@@ -176,7 +256,6 @@ xml2json1_cbuf(cbuf  *cb,
  done:
     return retval;
 }
-
 
 /*! Translate an XML tree to JSON in a CLIgen buffer
  *
@@ -198,14 +277,19 @@ xml2json1_cbuf(cbuf  *cb,
 int 
 xml2json_cbuf(cbuf  *cb, 
 	      cxobj *x, 
-	      int    level)
+	      int    pretty)
 {
     int retval = 1;
+    int level = 1;
 
-    cprintf(cb, "{");
-    if (xml2json1_cbuf(cb, x) < 0)
+    cprintf(cb, "%*s{%s",
+	    pretty?(level*INDENT):0,"",
+	    pretty?"\n":"");
+    if (xml2json1_cbuf(cb, x, level+1, pretty) < 0)
 	goto done;
-    cprintf(cb, "}\n");
+    cprintf(cb, "%*s}%s", 
+	    pretty?(level*INDENT):0,"",
+	    pretty?"\n":"");
     retval = 0;
  done:
     return retval;
@@ -226,7 +310,7 @@ xml2json_cbuf(cbuf  *cb,
 int 
 xml2json(FILE  *f, 
 	 cxobj *x, 
-	 int    level)
+	 int    pretty)
 {
     int   retval = 1;
     cbuf *cb;
@@ -235,7 +319,7 @@ xml2json(FILE  *f,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (xml2json_cbuf(cb, x, level) < 0)
+    if (xml2json_cbuf(cb, x, pretty) < 0)
 	goto done;
     retval = 0;
  done:
