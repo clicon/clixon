@@ -1,36 +1,58 @@
-Work-in-progress restconf server
-================================
 
-See draft-ietf-netconf-restconf-13.txt
-
-Example nginx-default file:
-server {
-	listen 80 default_server;
-	listen [::]:80 default_server ipv6only=on;
-
-	index index.html index.htm;
-
-	# Make site accessible from http://localhost/
-	server_name localhost;
-
-	location / {
-		root /usr/share/nginx/html;
-	
-		# First attempt to serve request as file, then
-		# as directory, then fall back to displaying a 404.
-		try_files $uri $uri/ =404;
-		# Uncomment to enable naxsi on this location
-		# include /etc/nginx/naxsi.rules
-
-	}
-
-	# pass the REST API to FastCGI server 
-	location /restconf {
-		 root /usr/share/nginx/html/restconf;
-		 fastcgi_pass unix:/www-data/clicon_restconf.sock;
-		 include fastcgi_params;
-	}
+# Existing clixon installation. Using CLI:
+olof@vandal> clixon_cli -f /usr/local/etc/routing.conf
+olof@vandal> show configuration
+interfaces {
+  interface {
+    name eth0;
+    type eth;
+    enabled true;
+  }
+  interface {
+    name eth9;
+    type eth;
+    enabled true;
+  }
 }
+# Define nginx config file/etc/nginx/sites-available/default
+server {
+  ...
+  location /restconf {
+    root /usr/share/nginx/html/restconf;
+    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+    include fastcgi_params;
+  }
+}
+# Start nginx daemon
+sudo /etc/init.d nginx start
+
+# Start clixon restconf daemon
+olof@vandal> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/routing.conf " -s /bin/sh www-data
+
+# Make restconf calls with curl
+olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces
+[
+  {
+    "interfaces": {
+      "interface":[
+        {
+          "name": "eth0",
+          "type": "eth",
+          "enabled": "true",
+          "name": "eth9",
+          "type": "eth",
+          "enabled": "true"
+         }
+      ]
+    }
+  }
+]
+olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=eth9/type
+[
+  {
+    "type": "eth" 
+  }
+]
 
 Debugging
 ---------
@@ -41,5 +63,5 @@ Look at syslog:
 tail -f /var/log/syslog | grep clixon_restconf
 
 Send command:
-curl -G http://127.0.0.1/restconf/data/foo
+curl -G http://127.0.0.1/restconf/data/*
 
