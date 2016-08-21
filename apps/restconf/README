@@ -1,4 +1,5 @@
 Work-in-progress restconf server
+================================
 
 See draft-ietf-netconf-restconf-13.txt
 
@@ -26,7 +27,19 @@ server {
 	# pass the REST API to FastCGI server 
 	location /restconf {
 		 root /usr/share/nginx/html/restconf;
-		 fastcgi_pass unix:/www-data/fastcgi_api.sock;
+		 fastcgi_pass unix:/www-data/clicon_restconf.sock;
 		 include fastcgi_params;
 	}
 }
+
+Debugging
+---------
+Start the fastcgi programs with debug flag:
+sudo su -c "/www-data/clixon_restconf -D" -s /bin/sh www-data
+
+Look at syslog:
+tail -f /var/log/syslog | grep clixon_restconf
+
+Send command:
+curl -G http://127.0.0.1/restconf/data/foo
+

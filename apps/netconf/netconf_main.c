@@ -381,7 +381,7 @@ main(int argc, char **argv)
     argc -= optind;
     argv += optind;
 
-    /* Parse db spec file */
+    /* Parse yang database spec file */
     if (yang_spec_main(h, stdout, 0) < 0)
 	goto done;
 

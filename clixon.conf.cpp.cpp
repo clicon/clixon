@@ -120,6 +120,6 @@ CLICON_XMLDB_DIR      localstatedir/APPNAME
 
 # FastCGI unix socket. Should be specified in webserver
 # Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock;
-CLICON_RESTCONF_PATH "/www-data/clicon_restconf.sock"
+CLICON_RESTCONF_PATH /www-data/fastcgi_restconf.sock
 
 

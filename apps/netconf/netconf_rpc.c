@@ -61,7 +61,7 @@
     </rpc> 
  */
 
-/* get-config help function
+/*! get-config help function
  * xfilter is a filter expression starting with <filter>
  * only <filter type="xpath"/> supported
  * needs refactoring: move the lower part (after xfilter) up to get-config or 
@@ -88,7 +88,7 @@
      <rpc><get-config><source><candidate/></source><filter/></get-config></rpc>]]>]]>
  * filter xpath + select all:
      <rpc><get-config><source><candidate/></source><filter type="xpath" select="/"/></get-config></rpc>]]>]]>
- * filter subnet + config:
+ * filter subtree + config:
      <rpc><get-config><source><candidate/></source><filter type="subtree"><configuration><interfaces><interface><ipv4/></interface></interfaces></configuration></filter></get-config></rpc>]]>]]>
  * filter xpath + select:
      <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface/ipv4"/></get-config></rpc>]]>]]>
@@ -158,7 +158,7 @@ netconf_filter_xmldb(clicon_handle      h,
 				     "protocol", 
 				     "error", 
 				     NULL,
-				     "<bad-attribute>select</bad-attribute>");
+			     "<bad-attribute>select</bad-attribute>");
 	    goto done;
 	}
 	if (xmldb_get(h, source, selector, 0, &xdb, NULL, NULL) < 0){

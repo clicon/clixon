@@ -957,7 +957,10 @@ xmldb_get_local(clicon_handle h,
 	clicon_err(OE_XML, 0, "dbname NULL");
 	goto done;
     }
-    yspec =  clicon_dbspec_yang(h);
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
     if (vector){
 	if (xmldb_get_vec(dbname, xpath, yspec, xtop, xvec, xlen) < 0)
 	    goto done;
@@ -989,7 +992,7 @@ xmldb_get_local(clicon_handle h,
  *   cxobj   *xt;
  *   cxobj  **xvec;
  *   size_t   xlen;
- *   yang_spec *yspec = clicon_dbspec_yang(h);
+ *
  *   if (xmldb_get("running", "/interfaces/interface[name="eth"]", 
  *                 1, &xt, &xvec, &xlen) < 0)
  *      err;
@@ -1011,11 +1014,13 @@ xmldb_get(clicon_handle h,
 	  cxobj      ***xvec,
 	  size_t       *xlen)
 {
-    assert(xpath);
+    int retval = -1;
+
     if (clicon_xmldb_rpc(h))
-	return xmldb_get_rpc(h, db, xpath, vector, xtop, xvec, xlen);
+	retval = xmldb_get_rpc(h, db, xpath, vector, xtop, xvec, xlen);
     else
-	return xmldb_get_local(h, db, xpath, vector, xtop, xvec, xlen);
+	retval = xmldb_get_local(h, db, xpath, vector, xtop, xvec, xlen);
+    return retval;
 }
 
 /*! Get value of the "operation" attribute and change op if given
