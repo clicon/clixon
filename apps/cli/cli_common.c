@@ -645,6 +645,7 @@ load_config_file(clicon_handle h,
 		goto done;
 	if (clicon_rpc_xmlput(h, "candidate",
 			      replace?OP_REPLACE:OP_MERGE, 
+			      "",
 			      cbuf_get(cbxml)) < 0)
 	    goto done;
 	cbuf_free(cbxml);

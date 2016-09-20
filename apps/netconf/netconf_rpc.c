@@ -198,7 +198,6 @@ netconf_filter_xmldb(clicon_handle      h,
     return retval; 
 }
 
-
 /*! Get configuration
  * @param[in]  h       Clicon handle
  * @param[in]  xorig      Sub-tree (under xorig) at <get-config>...</> level.
@@ -441,6 +440,7 @@ netconf_edit_config(clicon_handle h,
 	xmlstr = cbuf_get(cbxml);
 	if (clicon_rpc_xmlput(h, target, 
 			      operation,
+			      "", /* api-path */
 			      xmlstr) < 0){
 	    netconf_create_rpc_error(cb_err, xorig, 
 				     "access-denied", 

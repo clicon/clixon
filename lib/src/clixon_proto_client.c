@@ -204,6 +204,7 @@ clicon_rpc_change(clicon_handle       h,
  * @param[in] h          CLICON handle
  * @param[in] db         Name of database
  * @param[in] op         Operation on database item: OP_MERGE, OP_REPLACE
+ * @param[in] api_path   restconf API Path (or "")
  * @param[in] xml        XML string. Ex: <a>..</a><b>...</b>
  * @retval    0          OK
  * @retval   -1          Error
@@ -212,6 +213,7 @@ int
 clicon_rpc_xmlput(clicon_handle       h, 
 		  char               *db, 
 		  enum operation_type op,
+		  char               *api_path,
 		  char               *xml)
 {
     int                retval = -1;
@@ -219,6 +221,7 @@ clicon_rpc_xmlput(clicon_handle       h,
 
     if ((msg = clicon_msg_xmlput_encode(db, 
 					(uint32_t)op, 
+					api_path,
 					xml,
 				       __FUNCTION__)) == NULL)
 	goto done;

@@ -132,7 +132,7 @@ clixon_json_parseerror(void *_jy, char *s)
 int
 json_parse_init(struct clicon_json_yacc_arg *jy)
 {
-    //    clicon_debug_init(2, NULL);
+    //        clicon_debug_init(2, NULL);
     return 0;
 }
 
@@ -208,7 +208,7 @@ json_current_body(struct clicon_json_yacc_arg *jy,
 */
 
  /* top: json -> value is also possible */
-json          : object J_EOF { clicon_debug(2,"json->object"); YYACCEPT; } 
+json          : object J_EOF { clicon_debug(1,"json->object"); YYACCEPT; } 
               ;
 
 value         : J_TRUE  { json_current_body(_JY, "true");}
@@ -221,16 +221,16 @@ value         : J_TRUE  { json_current_body(_JY, "true");}
 
               ;
 
-object        : '{' '}'
-              | '{' objlist '}'
+object        : '{' '}' { clicon_debug(2,"object->{}");}
+              | '{' objlist '}' { clicon_debug(2,"object->{ objlist }");}
               ;
 
-objlist       : pair 
-              | objlist ',' pair 
+objlist       : pair  { clicon_debug(2,"objlist->pair");}
+              | objlist ',' pair { clicon_debug(2,"objlist->objlist , pair");}
               ;
 
 pair          : string { json_current_new(_JY, $1);free($1);} ':' 
-                value { json_current_pop(_JY);}
+                value { json_current_pop(_JY);}{ clicon_debug(2,"pair->string : value");}
               ;
 
 array         : '[' ']'
@@ -242,7 +242,7 @@ valuelist     : value
               ;
 
 /* quoted string */
-string        : J_DQ ustring J_DQ { $$=$2; }
+string        : J_DQ ustring J_DQ {  clicon_debug(2,"string->\" ustring \"");$$=$2; }
               ;
 
 /* unquoted string */

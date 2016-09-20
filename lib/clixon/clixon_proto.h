@@ -55,7 +55,8 @@ enum clicon_msg_type{
     CLICON_MSG_XMLPUT, /* Send database entries as XML to backend daemon
 			  1. uint32: operation: LV_SET/LV_DELETE
 			  2. string: name of database to change (eg current)
-			  3. string: XML data
+			  3. string: restconf api path
+			  4. string: XML data
 			*/
 
     CLICON_MSG_SAVE,    /* Save config state from db to a file in backend. Body is:

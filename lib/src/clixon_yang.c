@@ -550,6 +550,8 @@ ys_module(yang_stmt *ys)
 {
     yang_node *yn;
 
+    if (ys==NULL || ys->ys_keyword==Y_SPEC)
+	return ys;
     while (ys != NULL && ys->ys_keyword != Y_MODULE && ys->ys_keyword != Y_SUBMODULE){
 	yn = ys->ys_parent;
 	/* Some extra stuff to ensure ys is a stmt */
@@ -650,6 +652,9 @@ quotedstring(char *s)
     return i < len;
 }
 
+/*! Print yang specification to file
+ * @see yang_print_cbuf
+ */
 int
 yang_print(FILE      *f, 
 	   yang_node *yn, 
@@ -659,6 +664,7 @@ yang_print(FILE      *f,
 
     while ((ys = yn_each(yn, ys)) != NULL) {
 	fprintf(f, "%*s%s", marginal, "", yang_key2str(ys->ys_keyword));
+	fflush(f);
 	if (ys->ys_argument){
 	    if (quotedstring(ys->ys_argument))
 		fprintf(f, " \"%s\"", ys->ys_argument);
@@ -672,6 +678,41 @@ yang_print(FILE      *f,
 	}
 	else
 	    fprintf(f, ";\n");
+    }
+    return 0;
+}
+
+/*! Print yang specification to cligen buf
+ * @code
+ *  cbuf *cb = cbuf_new();
+ *  yang_print_cbuf(cb, yn, 0);
+ *  // output is in cbuf_buf(cb);
+ *  cbuf_free(cb);
+ * @endcode
+ * @see yang_print
+ */
+int
+yang_print_cbuf(cbuf      *cb,
+		yang_node *yn,
+		int        marginal)
+{
+    yang_stmt *ys = NULL;
+
+    while ((ys = yn_each(yn, ys)) != NULL) {
+	cprintf(cb, "%*s%s", marginal, "", yang_key2str(ys->ys_keyword));
+	if (ys->ys_argument){
+	    if (quotedstring(ys->ys_argument))
+		cprintf(cb, " \"%s\"", ys->ys_argument);
+	    else
+		cprintf(cb, " %s", ys->ys_argument);
+	}
+	if (ys->ys_len){
+	    cprintf(cb, " {\n");
+	    yang_print_cbuf(cb, (yang_node*)ys, marginal+3);
+	    cprintf(cb, "%*s%s\n", marginal, "", "}");
+	}
+	else
+	    cprintf(cb, ";\n");
     }
     return 0;
 }
@@ -1671,7 +1712,7 @@ yang_xpath_vec(yang_node *yn,
 	else
 	    id++;
 	if ((ys = yang_find_xpath_stmt(yn, id)) == NULL){
-	    clicon_debug(0, "%s %s not found", __FUNCTION__, id);
+	    clicon_debug(1, "%s %s not found", __FUNCTION__, id);
 	    goto done;
 	}
     }
@@ -1737,12 +1778,15 @@ yang_xpath_abs(yang_node *yn,
 	clicon_err(OE_YANG, errno, "%s: strsplit", __FUNCTION__); 
 	return NULL;
     }
+
+
     /* Assume path looks like: "/prefix:id[/prefix:id]*" */
     if (nvec < 2){
 	clicon_err(OE_YANG, 0, "%s: NULL or truncated path: %s", 
 		   __FUNCTION__, xpath);
 	goto done;
     }
+
     /* Check for absolute path */
     if (strcmp(vec[0], "") != 0){
 	clicon_err(OE_YANG, errno, "%s: %s: expected absolute path",
@@ -1750,10 +1794,14 @@ yang_xpath_abs(yang_node *yn,
 	goto done;
     }
     /* Find correct module */
-    ymod = ys_module((yang_stmt*)yn); /* This is current module */
+    if ((ymod = ys_module((yang_stmt*)yn)) == NULL){
+	clicon_err(OE_YANG, 0, "Could not find top-level");
+	goto done;
+    }
     /* split <prefix>:<id> */
-    if ((id = strchr(vec[1], ':')) == NULL)
+    if ((id = strchr(vec[1], ':')) == NULL){
 	id = vec[1];
+    }
     else{ /* other module - peek into first element to find module */
 	if ((prefix = strdup(vec[1])) == NULL){
 	    clicon_err(OE_UNIX, errno, "%s: strdup", __FUNCTION__); 
@@ -1931,7 +1979,7 @@ yang_config(yang_stmt *ys)
 
 /*! Utility function for handling yang parsing and translation to key format
  * @param h          clicon handle
- * @param f          file to print to (if one of print options are enabled)
+ * @param f          file to print to (if printspec enabled)
  * @param printspec  print database (YANG) specification as read from file
  */
 int

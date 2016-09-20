@@ -105,15 +105,14 @@ OK, still something wrong with grafana plots
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_xml.h"
-
 #include "clixon_json.h"
 #include "clixon_json_parse.h"
 
-#define INDENT 2 /* maybe we should set this programmatically? */
+#define JSON_INDENT 3 /* maybe we should set this programmatically? */
 
 /*! x is element and has eactly one child which in turn has none 
  * Clone from clixon_xml_map.c
@@ -182,6 +181,9 @@ list_eval(cxobj *x)
 
 
 /*!
+ * @param[in]     pretty set if the output should be pretty-printed
+
+
  * List only if adjacent,
  * ie <a>1</a><a>2</a><b>3</b> -> {"a":[1,2],"b":3}
  * ie <a>1</a><b>3</b><a>2</a> -> {"a":1,"b":3,"a":2}
@@ -208,14 +210,33 @@ xml2json1_cbuf(cbuf  *cb,
 	list = list_eval(x);
 	switch (list){
 	case LIST_NO:
-	    cprintf(cb, "%*s\"%s\": ", pretty?(level*INDENT):0, "",xml_name(x));
+	    cprintf(cb, "%*s\"%s\": ", 
+		    pretty?(level*JSON_INDENT):0, "", 
+		    xml_name(x));
 	    if (!tleaf(x))
-		cprintf(cb, "{%s", pretty?"\n":"");
+		cprintf(cb, "{%s", 
+			pretty?"\n":"");
 	    break;
 	case LIST_FIRST:
-	    cprintf(cb, "\"%*s\":[", pretty?(level*INDENT):0, xml_name(x));
+	    cprintf(cb, "%*s\"%s\": [%s", 
+		    pretty?(level*JSON_INDENT):0, "", 
+		    xml_name(x),
+		    pretty?"\n":"");
+	    if (!tleaf(x)){
+		level++;
+		cprintf(cb, "%*s{%s", 
+			pretty?(level*JSON_INDENT):0, "",
+			pretty?"\n":"");
+	    }
+	    break;
+	case LIST_MIDDLE:
+	case LIST_LAST:
+	    level++;
+	    cprintf(cb, "%*s", 
+		    pretty?(level*JSON_INDENT):0, "");
 	    if (!tleaf(x))
-		cprintf(cb, "{%s", pretty?"\n":"");
+		cprintf(cb, "{%s", 
+			pretty?"\n":"");
 	    break;
 	default:
 	    break;
@@ -225,25 +246,33 @@ xml2json1_cbuf(cbuf  *cb,
 	    if (xml2json1_cbuf(cb, xc, level+1, pretty) < 0)
 		goto done;
 	    if (i<xml_child_nr(x)-1){
-		cprintf(cb, ",");
+		cprintf(cb, ",", list);
 		cprintf(cb, "%s", pretty?"\n":"");
 	    }
 	}
 	switch (list){
 	case LIST_NO:
 	    if (!tleaf(x))
-		cprintf(cb, "%s%*s}%s", 
-			pretty?"\n":"",
-			pretty?(level*INDENT):0,"",
-			pretty?"\n":"");
+		if (pretty)
+		    cprintf(cb, "%*s}\n", 
+			    (level*JSON_INDENT), "");
+	    break;
+	case LIST_MIDDLE:
+	case LIST_FIRST:
+	    if (pretty)
+		cprintf(cb, "\n%*s}", 
+			(level*JSON_INDENT), "");
 	    break;
 	case LIST_LAST:
-	    if (!tleaf(x))
-		cprintf(cb, "%s%*s}%s", 
-			pretty?"\n":"",
-			pretty?(level*INDENT):0,"",
-			pretty?"\n":"");
-	    cprintf(cb, "]%s",pretty?"\n":"");
+	    if (!tleaf(x)){
+		if (pretty)
+		    cprintf(cb, "\n%*s}\n", 
+			    (level*JSON_INDENT), "");
+		level--;
+	    }
+	    cprintf(cb, "%*s]%s",
+		    pretty?(level*JSON_INDENT):0,"",
+		    pretty?"\n":"");
 	    break;
 	default:
 	    break;
@@ -261,7 +290,7 @@ xml2json1_cbuf(cbuf  *cb,
  *
  * @param[in,out] cb     Cligen buffer to write to
  * @param[in]     x      XML tree to translate from
- * @param[in]     level  Indentation level
+ * @param[in]     pretty set if the output should be pretty-printed
  * @retval        0      OK
  * @retval       -1      Error
  *
@@ -280,16 +309,15 @@ xml2json_cbuf(cbuf  *cb,
 	      int    pretty)
 {
     int retval = 1;
-    int level = 1;
+    int level = 0;
+    int i;
+    cxobj *xc;
 
-    cprintf(cb, "%*s{%s",
-	    pretty?(level*INDENT):0,"",
-	    pretty?"\n":"");
-    if (xml2json1_cbuf(cb, x, level+1, pretty) < 0)
-	goto done;
-    cprintf(cb, "%*s}%s", 
-	    pretty?(level*INDENT):0,"",
-	    pretty?"\n":"");
+    for (i=0; i<xml_child_nr(x); i++){
+	xc = xml_child_i(x, i);
+	if (xml2json1_cbuf(cb, xc, level, pretty) < 0)
+	    goto done;
+    }
     retval = 0;
  done:
     return retval;
@@ -313,7 +341,7 @@ xml2json(FILE  *f,
 	 int    pretty)
 {
     int   retval = 1;
-    cbuf *cb;
+    cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) ==NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
@@ -321,8 +349,11 @@ xml2json(FILE  *f,
     }
     if (xml2json_cbuf(cb, x, pretty) < 0)
 	goto done;
+    fprintf(f, "%s", cbuf_get(cb));
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
@@ -339,11 +370,11 @@ json_parse(char       *str,
     int                         retval = -1;
     struct clicon_json_yacc_arg jy = {0,};
 
+    //    clicon_debug(1, "%s", __FUNCTION__);
     jy.jy_parse_string = str;
     jy.jy_name = name;
     jy.jy_linenum = 1;
     jy.jy_current = xt;
-
     if (json_scan_init(&jy) < 0)
 	goto done;
     if (json_parse_init(&jy) < 0)
@@ -354,9 +385,9 @@ json_parse(char       *str,
 	    clicon_err(OE_XML, 0, "JSON parser error with no error code (should not happen)");
 	goto done;
     }
-    if (jy.jy_current)
-	xml_print(stdout, jy.jy_current);
+    retval = 0;
  done:
+    //    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     json_parse_exit(&jy);
     json_scan_exit(&jy);
     return retval; 

@@ -34,7 +34,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_queue.h"
@@ -577,7 +577,7 @@ xml_insert(cxobj *xp,
 }
 
 /*! Remove and free an xml node child from xml parent
- * @param[in]   xch         xml child node (to be removed and freed)
+ * @param[in]   xc          xml child node (to be removed and freed)
  * @retval      0           OK
  * @retval      -1
  * @note you cannot remove xchild in the loop (unless yoy keep track of xprev)
@@ -681,6 +681,8 @@ xml_rm(cxobj *xc)
  * @param[in]  xp   xml parent node. Will be deleted
  * @param[in]  i    Child nr in parent child vector
  * @param[out] xcp  xml child node. New root
+ * @retval     0    OK
+ * @retval    -1    Error
  * @see xml_child_rm
  */
 int
@@ -845,7 +847,7 @@ xml_print(FILE  *f,
     return clicon_xml2file(f, xn, 0, 1);
 }
 
-#define XML_INDENT 3 /* maybve we should set this programmatically? */
+#define XML_INDENT 3 /* maybe we should set this programmatically? */
 
 /*! Print an XML tree structure to a cligen buffer
  *

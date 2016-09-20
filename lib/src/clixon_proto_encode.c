@@ -266,16 +266,18 @@ clicon_msg_change_decode(struct clicon_msg *msg,
 }
 
 /*! Encode xmlput / edit of database content
- * @param[in]  db    Name of database
- * @param[in]  op    set|merge|delete. See lv_op_t
- * @param[in]  xml   XML data string
- * @param[in]  label Memory chunk label
- * @retval     msg   Encoded message
- * @retval     NULL  Error
+ * @param[in]  db       Name of database
+ * @param[in]  op       set|merge|delete. See lv_op_t
+ * @param[in]  api_path restconf api path
+ * @param[in]  xml      XML data string
+ * @param[in]  label    Memory chunk label
+ * @retval     msg      Encoded message
+ * @retval     NULL     Error
  */
 struct clicon_msg *
 clicon_msg_xmlput_encode(char       *db, 
 			 uint32_t    op, 
+			 char       *api_path, 
 			 char       *xml, 
 			 const char *label)
 {
@@ -285,12 +287,12 @@ clicon_msg_xmlput_encode(char       *db,
     int                p;
     uint32_t           tmp;
 
-    clicon_debug(2, "%s: op: %d db: %s xml: %s", 
-	    __FUNCTION__, 
-	    op, db, xml);
+    clicon_debug(2, "%s: op: %d db: %s api_path: %s xml: %s", 
+		 __FUNCTION__, 
+		 op, db, api_path, xml);
     p = 0;
     hdrlen = sizeof(*msg);
-    len = sizeof(*msg) + sizeof(uint32_t) + strlen(db) + 1 + strlen(xml) + 1;
+    len = sizeof(*msg) + sizeof(uint32_t) + strlen(db) + 1 + strlen(api_path) + 1 +strlen(xml) + 1;
     if ((msg = (struct clicon_msg *)chunk(len, label)) == NULL){
 	clicon_err(OE_PROTO, errno, "%s: chunk", __FUNCTION__);
 	return NULL;
@@ -306,6 +308,8 @@ clicon_msg_xmlput_encode(char       *db,
 
     strncpy(msg->op_body+p, db, len-p-hdrlen);
     p += strlen(db)+1;
+    strncpy(msg->op_body+p, api_path, len-p-hdrlen);
+    p += strlen(api_path)+1;
     strncpy(msg->op_body+p, xml, len-p-hdrlen);
     p += strlen(xml)+1;
     return msg;
@@ -315,6 +319,7 @@ clicon_msg_xmlput_encode(char       *db,
  * @param[in]  msg   Incoming message to be decoded
  * @param[out] db    Name of database
  * @param[out] op    set|merge|delete. See lv_op_t
+ * @param[out] api_path restconf api path
  * @param[out] xml   XML data string
  * @param[in]  label Memory chunk label
  * @retval     0     OK
@@ -324,6 +329,7 @@ int
 clicon_msg_xmlput_decode(struct clicon_msg *msg, 
 			 char             **db, 
 			 uint32_t          *op, 
+			 char             **api_path, 
 			 char             **xml, 
 			 const char        *label)
 {
@@ -342,19 +348,23 @@ clicon_msg_xmlput_decode(struct clicon_msg *msg,
 	return -1;
     }
     p += strlen(*db)+1;
+    if ((*api_path = chunk_sprintf(label, "%s", msg->op_body+p)) == NULL){
+	clicon_err(OE_PROTO, errno, "%s: chunk_sprintf", 
+		   __FUNCTION__);
+	return -1;
+    }
+    p += strlen(*api_path)+1;
     if ((*xml = chunk_sprintf(label, "%s", msg->op_body+p)) == NULL){
 	clicon_err(OE_PROTO, errno, "%s: chunk_sprintf", 
 		   __FUNCTION__);
 	return -1;
     }
     p += strlen(*xml)+1;
-    clicon_debug(2, "%s: op: %d db: %s xml: %s", 
-	    __FUNCTION__, 
-	    *op, *db, *xml);
+    clicon_debug(2, "%s: op: %d db: %s api_path: %s xml: %s", 
+		 __FUNCTION__, 
+		 *op, *db, *api_path, *xml);
     return 0;
 }
-
-
 
 struct clicon_msg *
 clicon_msg_save_encode(char *db, uint32_t snapshot, char *filename, 

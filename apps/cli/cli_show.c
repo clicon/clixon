@@ -445,8 +445,7 @@ show_conf_as_json(clicon_handle h,
     if (show_conf_as(h, cvv, arg, &xt) < 0)
 	goto done;
     xc = NULL; /* Dont print xt itself */
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	xml2json(stdout, xc, 1);
+    xml2json(stdout, xt, 1);
     retval = 0;
   done:
     if (xt)

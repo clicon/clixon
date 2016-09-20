@@ -246,13 +246,16 @@ from_client_xmlput(clicon_handle      h,
     enum operation_type op;
     cvec       *cvv = NULL;
     char       *str = NULL;
+    char       *api_path = NULL;
     char       *xml = NULL;
     cxobj      *xt = NULL;
     int         piddb;
+    cxobj      *x;
 
     if (clicon_msg_xmlput_decode(msg, 
 				 &db, 
 				 &op,
+				 &api_path, 
 				 &xml, 
 				 label) < 0){
 	send_msg_err(s, clicon_errno, clicon_suberrno,
@@ -273,7 +276,25 @@ from_client_xmlput(clicon_handle      h,
 		     clicon_err_reason);
 	goto done;
     }
-    if (xmldb_put(h, db, xt, op) < 0){
+    if (strlen(api_path)){
+	if (xt && xml_child_nr(xt)){
+	    x = NULL;
+	    while ((x = xml_child_each(xt, x, -1)) != NULL) {
+		if (xmldb_put_tree(h, db, api_path, x, op) < 0){
+		    send_msg_err(s, clicon_errno, clicon_suberrno,
+				 clicon_err_reason);
+		    goto done;
+		}
+	    }
+	}
+	else
+	    if (xmldb_put_tree(h, db, api_path, NULL, op) < 0){
+		send_msg_err(s, clicon_errno, clicon_suberrno,
+			     clicon_err_reason);
+		goto done;
+	    }
+    }
+    else if (xmldb_put(h, db, xt, op) < 0){
 	send_msg_err(s, clicon_errno, clicon_suberrno,
 		     clicon_err_reason);
 	goto done;

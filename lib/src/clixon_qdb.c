@@ -133,7 +133,10 @@ db_delete(char *file)
  * @retval -1 on error   
  */
 int 
-db_set(char *file, char *key, void *data, size_t datalen)
+db_set(char  *file, 
+       char  *key, 
+       void  *data, 
+       size_t datalen)
 {
     DEPOT *dp;
 
@@ -310,7 +313,8 @@ db_del(char *file, char *key)
  * @retval -1  error
  */
 int 
-db_exists(char *file, char *key)
+db_exists(char *file, 
+	  char *key)
 {
     DEPOT *dp;
     int len;
