@@ -108,7 +108,10 @@ object.
 #include <net/if.h>
 
 #include <cligen/cligen.h>
-#include <clixon/clixon.h>
+
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_xml.h"
 
 #include "clixon_json_parse.h"
 
