@@ -38,11 +38,15 @@
 #include "clixon_log.h"
 #include "clixon_sig.h"
 
-/*
- * Set a signal handler.
+/*! Set a signal handler.
+ * @param[in]  signo      Signal number 
+ * @param[in]  handler    Function to call when signal occurs
+ * @param[out] oldhandler Pointer to old handler
  */
 int
-set_signal(int signo, void (*handler)(int), void (**oldhandler)(int))
+set_signal(int     signo, 
+	   void  (*handler)(int), 
+	   void (**oldhandler)(int))
 {
 #if defined(HAVE_SIGACTION)
     struct sigaction sold, snew;
@@ -64,8 +68,8 @@ set_signal(int signo, void (*handler)(int), void (**oldhandler)(int))
 }
 
 
-/* 
- * Block signal. If 'sig' is 0, block all signals
+/*! Block signal. 
+ * @param[in] sig   Signal number to block, If 0, block all signals
  */
 void
 clicon_signal_block (int sig)
@@ -82,8 +86,8 @@ clicon_signal_block (int sig)
 	sigprocmask (SIG_BLOCK, &set, NULL);
 }
 
-/* 
- * Unblock signal. If 'sig' is 0, unblock all signals
+/*! Unblock signal. 
+ * @param[in] sig   Signal number to unblock. If 0, unblock all signals
  */
 void
 clicon_signal_unblock (int sig)
@@ -108,7 +112,8 @@ clicon_signal_unblock (int sig)
  * @retval    -1        Error, and clicon_err() called
  */
 int
-pidfile_get(char *pidfile, pid_t *pid0)
+pidfile_get(char  *pidfile, 
+	    pid_t *pid0)
 {
     FILE   *f;
     char   *ptr;
@@ -156,7 +161,6 @@ pidfile_zapold(pid_t pid)
 /*! Write a pid-file
  *
  * @param[in] pidfile   Name of pidfile
- * @param[in] kill_it   If set, kill existing process otherwise return pid
  */
 int
 pidfile_write(char *pidfile)

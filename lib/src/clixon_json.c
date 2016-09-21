@@ -137,6 +137,7 @@ enum list_element_type{
     LIST_MIDDLE,
     LIST_LAST
 };
+
 static enum list_element_type
 list_eval(cxobj *x)
 {
@@ -179,11 +180,8 @@ list_eval(cxobj *x)
     return list;
 }
 
-
 /*!
  * @param[in]     pretty set if the output should be pretty-printed
-
-
  * List only if adjacent,
  * ie <a>1</a><a>2</a><b>3</b> -> {"a":[1,2],"b":3}
  * ie <a>1</a><b>3</b><a>2</a> -> {"a":1,"b":3,"a":2}
@@ -252,22 +250,29 @@ xml2json1_cbuf(cbuf  *cb,
 	}
 	switch (list){
 	case LIST_NO:
-	    if (!tleaf(x))
+	    if (!tleaf(x)){
 		if (pretty)
 		    cprintf(cb, "%*s}\n", 
 			    (level*JSON_INDENT), "");
+		else
+		    cprintf(cb, "}");
+	    }
 	    break;
 	case LIST_MIDDLE:
 	case LIST_FIRST:
 	    if (pretty)
 		cprintf(cb, "\n%*s}", 
 			(level*JSON_INDENT), "");
+	    else
+		cprintf(cb, "}");
 	    break;
 	case LIST_LAST:
 	    if (!tleaf(x)){
 		if (pretty)
 		    cprintf(cb, "\n%*s}\n", 
 			    (level*JSON_INDENT), "");
+		else
+		    cprintf(cb, "}");
 		level--;
 	    }
 	    cprintf(cb, "%*s]%s",
@@ -309,15 +314,16 @@ xml2json_cbuf(cbuf  *cb,
 	      int    pretty)
 {
     int retval = 1;
-    int level = 0;
-    int i;
-    cxobj *xc;
+    int level = 1;
 
-    for (i=0; i<xml_child_nr(x); i++){
-	xc = xml_child_i(x, i);
-	if (xml2json1_cbuf(cb, xc, level, pretty) < 0)
-	    goto done;
-    }
+    cprintf(cb, "%*s{%s",
+	    pretty?(level*JSON_INDENT):0,"",
+	    pretty?"\n":"");
+    if (xml2json1_cbuf(cb, x, level+1, pretty) < 0)
+	goto done;
+    cprintf(cb, "%*s}%s", 
+	    pretty?(level*JSON_INDENT):0,"",
+	    pretty?"\n":"");
     retval = 0;
  done:
     return retval;

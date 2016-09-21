@@ -62,22 +62,23 @@
    resource ([RFC6415]) */
 #define RESTCONF_API_ROOT    "/restconf/"
 
-/*! Generic REST GET method                                                     
- * @param[in]  r        Fastcgi request handle                                  
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element                   
+/*! Generic REST GET method
+ * According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  h        Clixon handle
+ * @param[in]  r        Fastcgi request handle
+ * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
- * @param[in]  qvec   Vector of query string (QUERY_STRING)                     
- * @code                                                                        
+ * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
- * @endcode                                                                     
- * XXX: cant find a way to use Accept request field to choose Content-Type      
- *      I would like to support both xml and json.                              
- * Request may contain                                                          
- *     Accept: application/yang.data+json,application/yang.data+xml             
- * Response contains one of:                                                    
- *     Content-Type: application/yang.data+xml                                  
- *     Content-Type: application/yang.data+json                                 
+ * @endcode                                     
+ * XXX: cant find a way to use Accept request field to choose Content-Type  
+ *      I would like to support both xml and json.           
+ * Request may contain                                        
+ *     Accept: application/yang.data+json,application/yang.data+xml   
+ * Response contains one of:                           
+ *     Content-Type: application/yang.data+xml    
+ *     Content-Type: application/yang.data+json  
  * NOTE: If a retrieval request for a data resource representing a YANG leaf-
  * list or list object identifies more than one instance, and XML
  * encoding is used in the response, then an error response containing a
