@@ -439,13 +439,11 @@ show_conf_as_json(clicon_handle h,
 		  cg_var       *arg)
 {
     cxobj *xt = NULL;
-    cxobj *xc;
     int    retval = -1;
 
     if (show_conf_as(h, cvv, arg, &xt) < 0)
 	goto done;
-    xc = NULL; /* Dont print xt itself */
-    xml2json(stdout, xt, 1);
+    xml2json(stdout, xt, 1, 0);
     retval = 0;
   done:
     if (xt)

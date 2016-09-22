@@ -180,17 +180,10 @@ api_data_get(clicon_handle h,
 
     FCGX_FPrintF(r->out, "Content-Type: application/yang.data+xml\r\n");
     FCGX_FPrintF(r->out, "\r\n");
-#if 0
-    /* Iterate over result */
-    if (xpath_vec(xt, cbuf_get(path1), &vec, &veclen) < 0)
-            goto done;
-#endif
     if ((cbx = cbuf_new()) == NULL)
         goto done;
-    cprintf(cbx, "{\n");
-    if (xml2json_cbuf(cbx, xt, 1) < 0)
+    if (xml2json_cbuf(cbx, xt, 1, 0) < 0)
 	goto done;
-    cprintf(cbx, "}");
     FCGX_FPrintF(r->out, "%s\r\n", cbuf_get(cbx));
     retval = 0;
  done:

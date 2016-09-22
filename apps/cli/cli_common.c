@@ -835,7 +835,7 @@ cli_notification_cb(int s, void *arg)
 	    if (clicon_xml_parse_string(&eventstr, &xt) < 0)
 		goto done;
 	    if ((xn = xml_child_i(xt, 0)) != NULL){
-		if (xml2json(stdout, xn, 0) < 0)
+		if (xml2json(stdout, xn, 0, 1) < 0)
 		    goto done;
 	    }
 	}

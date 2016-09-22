@@ -295,7 +295,8 @@ xml2json1_cbuf(cbuf  *cb,
  *
  * @param[in,out] cb     Cligen buffer to write to
  * @param[in]     x      XML tree to translate from
- * @param[in]     pretty set if the output should be pretty-printed
+ * @param[in]     pretty Set if output is pretty-printed
+ * @param[in]  top    By default only children are printed, set if include top
  * @retval        0      OK
  * @retval       -1      Error
  *
@@ -311,16 +312,28 @@ xml2json1_cbuf(cbuf  *cb,
 int 
 xml2json_cbuf(cbuf  *cb, 
 	      cxobj *x, 
-	      int    pretty)
+	      int    pretty,
+	      int    top)
 {
-    int retval = 1;
-    int level = 1;
+    int    retval = 1;
+    int    level = 0;
+    int    i;
+    cxobj *xc;
 
     cprintf(cb, "%*s{%s",
 	    pretty?(level*JSON_INDENT):0,"",
 	    pretty?"\n":"");
-    if (xml2json1_cbuf(cb, x, level+1, pretty) < 0)
-	goto done;
+    if (top){
+	if (xml2json1_cbuf(cb, x, level+1, pretty) < 0)
+	    goto done;
+    }
+    else{
+	for (i=0; i<xml_child_nr(x); i++){
+	    xc = xml_child_i(x, i);
+	    if (xml2json1_cbuf(cb, xc, level+1, pretty) < 0)
+		goto done;
+	}
+    }
     cprintf(cb, "%*s}%s", 
 	    pretty?(level*JSON_INDENT):0,"",
 	    pretty?"\n":"");
@@ -330,11 +343,12 @@ xml2json_cbuf(cbuf  *cb,
 }
 
 /*! Translate from xml tree to JSON and print to file
- * @param[in]  f     File to print to
- * @param[in]  x     XML tree to translate from
- * @param[in]  level Indentation level
- * @retval     0     OK
- * @retval    -1     Error
+ * @param[in]  f      File to print to
+ * @param[in]  x      XML tree to translate from
+ * @param[in]  pretty Set if output is pretty-printed
+ * @param[in]  top    By default only children are printed, set if include top
+ * @retval     0      OK
+ * @retval    -1      Error
  *
  * @code
  * if (xml2json(stderr, xn, 0) < 0)
@@ -344,7 +358,8 @@ xml2json_cbuf(cbuf  *cb,
 int 
 xml2json(FILE  *f, 
 	 cxobj *x, 
-	 int    pretty)
+	 int    pretty,
+	 int    top)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -353,7 +368,7 @@ xml2json(FILE  *f,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (xml2json_cbuf(cb, x, pretty) < 0)
+    if (xml2json_cbuf(cb, x, pretty, top) < 0)
 	goto done;
     fprintf(f, "%s", cbuf_get(cb));
     retval = 0;
