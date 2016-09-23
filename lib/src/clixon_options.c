@@ -216,6 +216,10 @@ clicon_option_sanity(clicon_hash_t *copt)
 	clicon_err(OE_UNIX, 0, "CLICON_NETCONF_DIR not defined in config file");
 	goto done;
     }
+    if (!hash_lookup(copt, "CLICON_RESTCONF_DIR")){
+	clicon_err(OE_UNIX, 0, "CLICON_RESTCONF_DIR not defined in config file");
+	goto done;
+    }
     if (!hash_lookup(copt, "CLICON_YANG_DIR")){
 	clicon_err(OE_UNIX, 0, "CLICON_YANG_DIR not defined in config file");
 	goto done;
@@ -430,6 +434,12 @@ char *
 clicon_netconf_dir(clicon_handle h)
 {
     return clicon_option_str(h, "CLICON_NETCONF_DIR");
+}
+
+char *
+clicon_restconf_dir(clicon_handle h)
+{
+    return clicon_option_str(h, "CLICON_RESTCONF_DIR");
 }
 
 char *

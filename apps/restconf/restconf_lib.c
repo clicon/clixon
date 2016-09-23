@@ -12,6 +12,7 @@
 #include <time.h>
 #include <fcgi_stdio.h>
 #include <signal.h>
+#include <dlfcn.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <curl/curl.h>
@@ -228,5 +229,145 @@ readdata(FCGX_Request *r)
     while ((c = FCGX_GetChar(r->in)) != -1)
 	cprintf(cb, "%c", c);
     return cb;
+}
+
+static int nplugins = 0;
+static plghndl_t *plugins = NULL;
+
+/*! Load a dynamic plugin object and call it's init-function
+ * Note 'file' may be destructively modified
+ */
+static plghndl_t 
+plugin_load (clicon_handle h, 
+	     char         *file, 
+	     int           dlflags, 
+	     const char   *cnklbl)
+{
+    char      *error;
+    void      *handle = NULL;
+    plginit_t *initfn;
+
+    dlerror();    /* Clear any existing error */
+    if ((handle = dlopen (file, dlflags)) == NULL) {
+        error = (char*)dlerror();
+	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
+	goto quit;
+    }
+    /* call plugin_init() if defined */
+    if ((initfn = dlsym(handle, PLUGIN_INIT)) != NULL) {
+	if (initfn(h) != 0) {
+	    clicon_err(OE_PLUGIN, errno, "Failed to initiate %s\n", strrchr(file,'/')?strchr(file, '/'):file);
+	    goto quit;
+	}
+    }
+quit:
+
+    return handle;
+}
+
+
+/*! Load all plugins you can find in CLICON_RESTCONF_DIR
+ */
+int 
+restconf_plugin_load(clicon_handle h)
+{
+    int            retval = -1;
+    char          *dir;
+    int            ndp;
+    struct dirent *dp;
+    int            i;
+    char          *filename;
+    plghndl_t     *handle;
+
+    if ((dir = clicon_restconf_dir(h)) == NULL){
+	clicon_err(OE_PLUGIN, 0, "clicon_restconf_dir not defined");
+	goto quit;
+    }
+    /* Get plugin objects names from plugin directory */
+    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG, __FUNCTION__))<0)
+	goto quit;
+
+    /* Load all plugins */
+    for (i = 0; i < ndp; i++) {
+	filename = chunk_sprintf(__FUNCTION__, "%s/%s", dir, dp[i].d_name);
+	clicon_debug(1, "DEBUG: Loading plugin '%.*s' ...", 
+		     (int)strlen(filename), filename);
+	if (filename == NULL) {
+	    clicon_err(OE_UNIX, errno, "chunk");
+	    goto quit;
+	}
+	if ((handle = plugin_load (h, filename, RTLD_NOW, __FUNCTION__)) == NULL)
+	    goto quit;
+	if ((plugins = rechunk(plugins, (nplugins+1) * sizeof (*plugins), NULL)) == NULL) {
+	    clicon_err(OE_UNIX, errno, "chunk");
+	    goto quit;
+	}
+	plugins[nplugins++] = handle;
+	unchunk (filename);
+    }
+    retval = 0;
+quit:
+    unchunk_group(__FUNCTION__);
+    return retval;
+}
+
+/*! Unload a plugin
+ */
+static int
+plugin_unload(clicon_handle h, void *handle)
+{
+    int retval = 0;
+    char *error;
+    plgexit_t *exitfn;
+
+    /* Call exit function is it exists */
+    exitfn = dlsym(handle, PLUGIN_EXIT);
+    if (dlerror() == NULL)
+	exitfn(h);
+
+    dlerror();    /* Clear any existing error */
+    if (dlclose(handle) != 0) {
+	error = (char*)dlerror();
+	clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
+	/* Just report */
+    }
+    return retval;
+}
+
+/*! Unload all restconf plugins */
+int
+restconf_plugin_unload(clicon_handle h)
+{
+    int i;
+
+    for (i = 0; i < nplugins; i++) 
+	plugin_unload(h, plugins[i]);
+    if (plugins)
+	unchunk(plugins);
+    nplugins = 0;
+    return 0;
+}
+
+/*! Call plugin_start in all plugins
+ */
+int
+restconf_plugin_start(clicon_handle h, 
+		      int           argc, 
+		      char        **argv)
+{
+    int i;
+    plgstart_t *startfn;
+
+    for (i = 0; i < nplugins; i++) {
+	/* Call exit function is it exists */
+	if ((startfn = dlsym(plugins[i], PLUGIN_START)) == NULL)
+	    break;
+	optind = 0;
+	if (startfn(h, argc, argv) < 0) {
+	    clicon_debug(1, "plugin_start() failed\n");
+	    return -1;
+	}
+    }
+    return 0;
 }
 

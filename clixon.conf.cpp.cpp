@@ -51,6 +51,9 @@ CLICON_BACKEND_DIR     libdir/APPNAME/backend
 # Location of netconf (frontend) .so plugins
 CLICON_NETCONF_DIR    libdir/APPNAME/netconf 
 
+# Location of restconf (frontend) .so plugins
+CLICON_RESTCONF_DIR    libdir/APPNAME/restconf 
+
 # Location of cli frontend .so plugins
 CLICON_CLI_DIR        libdir/APPNAME/cli
 

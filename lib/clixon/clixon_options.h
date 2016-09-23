@@ -80,6 +80,7 @@ char *clicon_backend_dir(clicon_handle h);
 char *clicon_cli_dir(clicon_handle h);
 char *clicon_clispec_dir(clicon_handle h);
 char *clicon_netconf_dir(clicon_handle h);
+char *clicon_restconf_dir(clicon_handle h);
 char *clicon_archive_dir(clicon_handle h);
 char *clicon_startup_config(clicon_handle h);
 int   clicon_sock_family(clicon_handle h);

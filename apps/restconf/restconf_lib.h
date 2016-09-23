@@ -30,4 +30,10 @@ int str2cvec(char *string, char delim1, char delim2, cvec **cvp);
 int test(FCGX_Request *r, int dbg);
 cbuf *readdata(FCGX_Request *r);
 
+
+int restconf_plugin_load(clicon_handle h);
+int restconf_plugin_start(clicon_handle h, int argc, char **argv);
+int restconf_plugin_unload(clicon_handle h);
+
+
 #endif /* _RESTCONF_LIB_H_ */

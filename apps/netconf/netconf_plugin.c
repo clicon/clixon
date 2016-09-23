@@ -53,8 +53,7 @@
 #include "netconf_lib.h"
 #include "netconf_plugin.h"
 
-/* 
- * Unload a plugin
+/*! Unload a plugin
  */
 static int
 plugin_unload(clicon_handle h, void *handle)
@@ -112,9 +111,7 @@ static int nplugins = 0;
 static plghndl_t *plugins = NULL;
 static netconf_reg_t *deps = NULL;
 
-/*
- * netconf_plugin_load
- * Load allplugins you can find in CLICON_NETCONF_DIR
+/*! Load all plugins you can find in CLICON_NETCONF_DIR
  */
 int 
 netconf_plugin_load(clicon_handle h)
@@ -160,6 +157,7 @@ quit:
     return retval;
 }
 
+/*! Unload all netconf plugins */
 int
 netconf_plugin_unload(clicon_handle h)
 {
@@ -180,8 +178,7 @@ netconf_plugin_unload(clicon_handle h)
     return 0;
 }
 
-/*
- * Call plugin_start in all plugins
+/*! Call plugin_start in all plugins
  */
 int
 netconf_plugin_start(clicon_handle h, int argc, char **argv)
@@ -203,8 +200,7 @@ netconf_plugin_start(clicon_handle h, int argc, char **argv)
 }
 
 
-/*
- * netconf_register_callback
+/*! Register netconf callback
  * Called from plugin to register a callback for a specific netconf XML tag.
  */
 int

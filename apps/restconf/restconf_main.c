@@ -56,17 +56,47 @@
 #include "restconf_lib.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hDf:"
+#define RESTCONF_OPTS "hDf:p:"
 
 /* Should be discovered via  "/.well-known/host-meta"
    resource ([RFC6415]) */
 #define RESTCONF_API_ROOT    "/restconf/"
 
+/*! REST OPTIONS method
+ * According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  h      Clixon handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
+ * @param[in]  pi     Offset, where path starts  
+ * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  head   Set if HEAD request instead of GET
+ * @code
+ *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
+ * @endcode                                     
+ */
+static int
+api_data_options(clicon_handle h,
+		 FCGX_Request *r,
+		 cvec         *pcvec,
+		 int           pi,
+		 cvec         *qvec,
+		 int           head)
+{
+    int        retval = -1;
+
+    FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
+    FCGX_FPrintF(r->out, "\r\n");
+    FCGX_FPrintF(r->out, "GET, HEAD, OPTIONS, PUT, POST, DELETE\r\n");
+    retval = 0;
+    return retval;
+}
+
 /*! Generic REST GET method
  * According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  h        Clixon handle
- * @param[in]  r        Fastcgi request handle
- * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element 
+ * @param[in]  h      Clixon handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @code
@@ -172,19 +202,17 @@ api_data_get(clicon_handle h,
             cprintf(path1, "/%s", name);
         }
     }
-    clicon_debug(1, "path:%s", cbuf_get(path));
-    clicon_debug(1, "path1:%s", cbuf_get(path1));
     if (xmldb_get(h, "running", cbuf_get(path), 0, &xt,  &vec, &veclen) < 0)
 	goto done;
     FCGX_SetExitStatus(200, r->out); /* OK */
-
-    FCGX_FPrintF(r->out, "Content-Type: application/yang.data+xml\r\n");
+    FCGX_FPrintF(r->out, "Content-Type: application/yang.data+json\r\n");
     FCGX_FPrintF(r->out, "\r\n");
     if ((cbx = cbuf_new()) == NULL)
-        goto done;
+	goto done;
     if (xml2json_cbuf(cbx, xt, 1, 0) < 0)
 	goto done;
-    FCGX_FPrintF(r->out, "%s\r\n", cbuf_get(cbx));
+    FCGX_FPrintF(r->out, "%s", cbuf_get(cbx));
+    FCGX_FPrintF(r->out, "hej\r\n\r\n");
     retval = 0;
  done:
     if (vec)
@@ -241,7 +269,7 @@ api_data_delete(clicon_handle h,
    return retval;
 }
 
-/*! Generic REST PUT method 
+/*! Generic REST PUT  method 
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
  * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
@@ -249,17 +277,23 @@ api_data_delete(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  dvec   Stream input data
+ * @param[in]  post   POST instead of PUT
  * Example:
       curl -X PUT -d {\"enabled\":\"false\"} http://127.0.0.1/restconf/data/interfaces/interface=eth1
+ *
+ PUT:
+  if the PUT request creates a new resource,
+   a "201 Created" status-line is returned.  If an existing resource is
+   modified, a "204 No Content" status-line is returned.
 
- * Problem: we have URI that defines a path (eg "interface/name=eth1") and data
- *          which defines a tree from that point.
- *          But, xmldb api can only do either
- *            - xmldb_put() with a complete xml-tree, or
- *            - xmldb_put_xkey for path and key value
- *          What we need is path and sub-xml tree.
- * Alt1: parse URI to XML and  and call xmldb_put()
- * Alt2: Extend xmldb API with path + xml-tree.
+ POST:
+   If the POST method succeeds, a "201 Created" status-line is returned
+   and there is no response message-body.  A "Location" header
+   identifying the child resource that was created MUST be present in
+   the response in this case.
+
+   If the data resource already exists, then the POST request MUST fail
+   and a "409 Conflict" status-line MUST be returned.
  */
 static int
 api_data_put(clicon_handle h,
@@ -268,7 +302,8 @@ api_data_put(clicon_handle h,
 	     cvec         *pcvec, 
 	     int           pi,
 	     cvec         *qvec, 
-	     char         *data)
+	     char         *data,
+	     int           post)
 {
     int        retval = -1;
     int        i;
@@ -304,7 +339,7 @@ api_data_put(clicon_handle h,
     if (clicon_rpc_commit(h, "candidate", "running", 
 			  0, 0) < 0)
 	goto done;
-    FCGX_SetExitStatus(201, r->out);
+    FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");
  done:
@@ -339,10 +374,14 @@ api_data(clicon_handle h,
 
     clicon_debug(1, "%s", __FUNCTION__);
     request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
-    if (strcmp(request_method, "GET")==0)
+    if (strcmp(request_method, "OPTIONS")==0)
+	retval = api_data_options(h, r, pcvec, pi, qvec, 0);
+    else if (strcmp(request_method, "GET")==0)
 	retval = api_data_get(h, r, pcvec, pi, qvec);
     else if (strcmp(request_method, "PUT")==0)
-	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data);
+	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, 0);
+    else if (strcmp(request_method, "POST")==0)
+	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, 1);
     else if (strcmp(request_method, "DELETE")==0)
 	retval = api_data_delete(h, r, api_path, pi);
     else
@@ -389,6 +428,7 @@ request_process(clicon_handle h,
     method = pvec[2];
     retval = 0;
     test(r, 1);
+    /* XXX Credentials */
     if (strcmp(method, "data") == 0) /* restconf, skip /api/data */
 	retval = api_data(h, r, path, pcvec, 2, qvec, data);
     else if (strcmp(method, "test") == 0)
@@ -405,6 +445,7 @@ request_process(clicon_handle h,
     if (cb)
 	cbuf_free(cb);
     unchunk_group(__FUNCTION__);
+    clicon_debug(1, "%s end", __FUNCTION__);
     return retval;
 }
 
@@ -417,13 +458,18 @@ usage(clicon_handle h,
       char         *argv0)
 
 {
+    char *restconfdir = clicon_restconf_dir(h);
+
     fprintf(stderr, "usage:%s [options]\n"
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D \t\tDebug. Log to syslog\n"
-    	    "\t-f <file>\tConfiguration file (mandatory)\n",
-	    argv0
+    	    "\t-f <file>\tConfiguration file (mandatory)\n"
+	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n",
+	    argv0,
+	    restconfdir
 	    );
+    exit(0);
 }
 
 /*! Main routine for grideye fastcgi API
@@ -460,6 +506,11 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
+	case 'd':  /* Plugin directory */
+	    if (!strlen(optarg))
+		usage(h, argv[0]);
+	    clicon_option_str_set(h, "CLICON_RESTCONF_DIR", optarg);
+	    break;
 	default:
 	    usage(h, argv[0]);
 	     break;
@@ -473,6 +524,10 @@ main(int    argc,
     /* Find and read configfile */
     if (clicon_options_main(h) < 0)
 	goto done;
+
+    /* Initialize plugins group */
+    if (restconf_plugin_load(h) < 0)
+	return -1;
 
     /* Parse yang database spec file */
     if (yang_spec_main(h, NULL, 0) < 0)
@@ -516,5 +571,6 @@ main(int    argc,
     }
     retval = 0;
  done:
+    restconf_plugin_unload(h);
     return retval;
 }
