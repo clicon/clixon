@@ -231,8 +231,11 @@ readdata(FCGX_Request *r)
     return cb;
 }
 
+typedef int (credentials_t)(clicon_handle h, FCGX_Request *r); 
+
 static int nplugins = 0;
 static plghndl_t *plugins = NULL;
+static credentials_t *p_credentials = NULL; /* Credentials callback */
 
 /*! Load a dynamic plugin object and call it's init-function
  * Note 'file' may be destructively modified
@@ -247,22 +250,29 @@ plugin_load (clicon_handle h,
     void      *handle = NULL;
     plginit_t *initfn;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen (file, dlflags)) == NULL) {
         error = (char*)dlerror();
 	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
-	goto quit;
+	goto done;
     }
     /* call plugin_init() if defined */
-    if ((initfn = dlsym(handle, PLUGIN_INIT)) != NULL) {
-	if (initfn(h) != 0) {
-	    clicon_err(OE_PLUGIN, errno, "Failed to initiate %s\n", strrchr(file,'/')?strchr(file, '/'):file);
-	    goto quit;
-	}
+    if ((initfn = dlsym(handle, PLUGIN_INIT)) == NULL){
+	clicon_err(OE_PLUGIN, errno, "Failed to find plugin_init when loading restconf plugin %s", file);
+	goto err;
     }
-quit:
-
+    if (initfn(h) != 0) {
+	clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
+	goto err;
+    }
+    p_credentials    = dlsym(handle, "restconf_credentials");
+ done:
     return handle;
+ err:
+    if (handle)
+	dlclose(handle);
+    return NULL;
 }
 
 
@@ -371,3 +381,25 @@ restconf_plugin_start(clicon_handle h,
     return 0;
 }
 
+int 
+plugin_credentials(clicon_handle h,     
+		   FCGX_Request *r,
+		   int          *auth)
+{
+    int retval = -1;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    /* If no authentication callback then allow anything. Is this OK? */
+    if (p_credentials == 0){
+	*auth = 1;
+	retval = 0;
+	goto done;
+    }
+    if (p_credentials(h, r) < 0) 
+	*auth = 0;
+    else
+	*auth = 1;
+    retval = 0;
+ done:
+    return retval;
+}

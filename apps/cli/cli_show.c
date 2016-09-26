@@ -443,7 +443,7 @@ show_conf_as_json(clicon_handle h,
 
     if (show_conf_as(h, cvv, arg, &xt) < 0)
 	goto done;
-    xml2json(stdout, xt, 1, 0);
+    xml2json(stdout, xt, 1);
     retval = 0;
   done:
     if (xt)

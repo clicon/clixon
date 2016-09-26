@@ -34,6 +34,6 @@ cbuf *readdata(FCGX_Request *r);
 int restconf_plugin_load(clicon_handle h);
 int restconf_plugin_start(clicon_handle h, int argc, char **argv);
 int restconf_plugin_unload(clicon_handle h);
-
+int plugin_credentials(clicon_handle h, FCGX_Request *r, int *auth);
 
 #endif /* _RESTCONF_LIB_H_ */

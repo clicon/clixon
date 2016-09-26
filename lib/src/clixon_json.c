@@ -244,7 +244,7 @@ xml2json1_cbuf(cbuf  *cb,
 	    if (xml2json1_cbuf(cb, xc, level+1, pretty) < 0)
 		goto done;
 	    if (i<xml_child_nr(x)-1){
-		cprintf(cb, ",", list);
+		cprintf(cb, ",");
 		cprintf(cb, "%s", pretty?"\n":"");
 	    }
 	}
@@ -312,8 +312,32 @@ xml2json1_cbuf(cbuf  *cb,
 int 
 xml2json_cbuf(cbuf  *cb, 
 	      cxobj *x, 
-	      int    pretty,
-	      int    top)
+	      int    pretty)
+{
+    int    retval = 1;
+    int    level = 0;
+
+    cprintf(cb, "%*s{%s",
+	    pretty?(level*JSON_INDENT):0,"",
+	    pretty?"\n":"");
+    if (xml2json1_cbuf(cb, x, level+1, pretty) < 0)
+	goto done;
+    cprintf(cb, "%*s}%s", 
+	    pretty?(level*JSON_INDENT):0,"",
+	    pretty?"\n":"");
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*!
+ * @note can be a problem with vector since xml2json1_cbuf checks parents
+ */
+int 
+xml2json_cbuf_vec(cbuf   *cb, 
+		  cxobj **vec,
+		  size_t  veclen,
+		  int     pretty)
 {
     int    retval = 1;
     int    level = 0;
@@ -323,15 +347,16 @@ xml2json_cbuf(cbuf  *cb,
     cprintf(cb, "%*s{%s",
 	    pretty?(level*JSON_INDENT):0,"",
 	    pretty?"\n":"");
-    if (top){
-	if (xml2json1_cbuf(cb, x, level+1, pretty) < 0)
+    for (i=0; i<veclen; i++){
+	xc = vec[i];
+	if (xml2json1_cbuf(cb, xc, level, pretty) < 0)
 	    goto done;
-    }
-    else{
-	for (i=0; i<xml_child_nr(x); i++){
-	    xc = xml_child_i(x, i);
-	    if (xml2json1_cbuf(cb, xc, level+1, pretty) < 0)
-		goto done;
+	if (i<veclen-1){
+	    if (xml_type(xc)==CX_BODY)
+		cprintf(cb, "},{");
+	    else
+		cprintf(cb, ",");
+	    cprintf(cb, "%s", pretty?"\n":"");
 	}
     }
     cprintf(cb, "%*s}%s", 
@@ -358,8 +383,7 @@ xml2json_cbuf(cbuf  *cb,
 int 
 xml2json(FILE  *f, 
 	 cxobj *x, 
-	 int    pretty,
-	 int    top)
+	 int    pretty)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -368,7 +392,7 @@ xml2json(FILE  *f,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (xml2json_cbuf(cb, x, pretty, top) < 0)
+    if (xml2json_cbuf(cb, x, pretty) < 0)
 	goto done;
     fprintf(f, "%s", cbuf_get(cb));
     retval = 0;

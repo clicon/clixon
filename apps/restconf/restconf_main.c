@@ -139,8 +139,8 @@ api_data_get(clicon_handle h,
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
 
-    yspec = clicon_dbspec_yang(h);
     clicon_debug(1, "%s", __FUNCTION__);
+    yspec = clicon_dbspec_yang(h);
     if ((path = cbuf_new()) == NULL)
         goto done;
     if ((path1 = cbuf_new()) == NULL) /* without [] qualifiers */
@@ -179,6 +179,7 @@ api_data_get(clicon_handle h,
 	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
 		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
 			   __FUNCTION__, y->ys_argument);
+		notfound(r);
 		goto done;
 	    }
 	    clicon_debug(1, "ykey:%s", ykey->ys_argument);
@@ -202,21 +203,25 @@ api_data_get(clicon_handle h,
             cprintf(path1, "/%s", name);
         }
     }
-    if (xmldb_get(h, "running", cbuf_get(path), 0, &xt,  &vec, &veclen) < 0)
+    clicon_debug(1, "%s path:%s", __FUNCTION__, cbuf_get(path));
+    if (xmldb_get(h, "running", cbuf_get(path), 1, &xt,  &vec, &veclen) < 0)
 	goto done;
+
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
+    if (veclen==0){
+	notfound(r);
+	goto done;
+    }
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "Content-Type: application/yang.data+json\r\n");
     FCGX_FPrintF(r->out, "\r\n");
-    if ((cbx = cbuf_new()) == NULL)
+    if (xml2json_cbuf_vec(cbx, vec, veclen, 0) < 0)
 	goto done;
-    if (xml2json_cbuf(cbx, xt, 1, 0) < 0)
-	goto done;
-    FCGX_FPrintF(r->out, "%s", cbuf_get(cbx));
-    FCGX_FPrintF(r->out, "hej\r\n\r\n");
+    FCGX_FPrintF(r->out, "[%s]", cbuf_get(cbx));
+    FCGX_FPrintF(r->out, "\r\n\r\n");
     retval = 0;
  done:
-    if (vec)
-        free(vec);
     if (cbx)
         cbuf_free(cbx);
     if (xt)
@@ -248,7 +253,6 @@ api_data_delete(clicon_handle h,
     clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
-    clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
     /* Parse input data as json into xml */
 
     if (clicon_rpc_xmlput(h, "candidate", 
@@ -256,7 +260,6 @@ api_data_delete(clicon_handle h,
 			  api_path,
 			  "") < 0)
 	goto done;
-    clicon_debug(1, "%s xmldb_put ok", __FUNCTION__);
     if (clicon_rpc_commit(h, "candidate", "running", 
 			  0, 0) < 0)
 	goto done;
@@ -316,26 +319,22 @@ api_data_put(clicon_handle h,
 		 api_path, data);
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
-    clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
     /* Parse input data as json into xml */
     if (json_parse_str(data, &xdata) < 0){
 	clicon_debug(1, "%s json fail", __FUNCTION__);
 	goto done;
     }
-    clicon_debug_xml(1, "json xml:", xdata);
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     x = NULL;
     while ((x = xml_child_each(xdata, x, -1)) != NULL) 
 	if (clicon_xml2cbuf(cbx, x, 0, 0) < 0)
 	    goto done;	
-    clicon_debug(1, "xml:%s", cbuf_get(cbx));
     if (clicon_rpc_xmlput(h, "candidate", 
 			  OP_MERGE, 
 			  api_path,
 			  cbuf_get(cbx)) < 0)
 	goto done;
-    clicon_debug(1, "%s xmldb_put ok", __FUNCTION__);
     if (clicon_rpc_commit(h, "candidate", "running", 
 			  0, 0) < 0)
 	goto done;
@@ -407,6 +406,7 @@ request_process(clicon_handle h,
     cvec  *pcvec = NULL; /* for rest api */
     cbuf  *cb = NULL;
     char  *data;
+    int    auth = 0;
 
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
@@ -428,7 +428,14 @@ request_process(clicon_handle h,
     method = pvec[2];
     retval = 0;
     test(r, 1);
-    /* XXX Credentials */
+    /* If present, check credentials */
+    if (plugin_credentials(h, r, &auth) < 0)
+	goto done;
+    clicon_debug(1, "%s credentials ok 1", __FUNCTION__);
+    if (auth == 0)
+	goto done;
+    clicon_debug(1, "%s credentials ok 2", __FUNCTION__);
+
     if (strcmp(method, "data") == 0) /* restconf, skip /api/data */
 	retval = api_data(h, r, path, pcvec, 2, qvec, data);
     else if (strcmp(method, "test") == 0)
@@ -436,6 +443,7 @@ request_process(clicon_handle h,
     else
 	retval = notfound(r);
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (dvec)
 	cvec_free(dvec);
     if (qvec)
@@ -445,7 +453,6 @@ request_process(clicon_handle h,
     if (cb)
 	cbuf_free(cb);
     unchunk_group(__FUNCTION__);
-    clicon_debug(1, "%s end", __FUNCTION__);
     return retval;
 }
 

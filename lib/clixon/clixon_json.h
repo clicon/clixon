@@ -27,7 +27,8 @@
  * Prototypes
  */
 int json_parse_str(char *str, cxobj **xt);
-int xml2json_cbuf(cbuf *cb, cxobj *x, int pretty, int top);
-int xml2json(FILE *f, cxobj *x, int pretty, int top);
+int xml2json_cbuf(cbuf *cb, cxobj *x, int pretty);
+int xml2json_cbuf_vec(cbuf *cb, cxobj **vec, size_t  veclen, int pretty);
+int xml2json(FILE *f, cxobj *x, int pretty);
 
 #endif /* _CLIXON_JSON_H */

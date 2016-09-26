@@ -56,7 +56,7 @@ olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=et
 
 Debugging
 ---------
-Start the fastcgi programs with debug flag:
+Start the restconf programs with debug flag:
 sudo su -c "/www-data/clixon_restconf -D" -s /bin/sh www-data
 
 Look at syslog:

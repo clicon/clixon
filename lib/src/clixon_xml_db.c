@@ -579,6 +579,7 @@ get(char      *dbname,
     char      *arg;
     cbuf      *cb;
     
+    //    clicon_debug(1, "%s xkey:%s val:%s", __FUNCTION__, xk, val);
     x = xt;
     if (xk == NULL || *xk!='/'){
 	clicon_err(OE_DB, 0, "Invalid key: %s", xk);
@@ -700,7 +701,7 @@ get(char      *dbname,
 	xml_type_set(x, CX_BODY);
 	xml_value_set(x, val);
     }
-    if(debug){
+    if(debug>1){
 	fprintf(stderr, "%s %s\n", __FUNCTION__, xk);
 	clicon_xml2file(stderr, xt, 0, 1);
     }
@@ -811,10 +812,9 @@ xmldb_get_tree(char      *dbname,
 	goto done;
     if ((xt = xml_new("clicon", NULL)) == NULL)
 	goto done;
-    if (debug) /* debug */
-	for (i = 0; i < npairs; i++) 
-	    fprintf(stderr, "%s %s\n", pairs[i].dp_key, pairs[i].dp_val?pairs[i].dp_val:"");
-
+    for (i = 0; i < npairs; i++) 
+	clicon_debug(2, "%s %s", pairs[i].dp_key, pairs[i].dp_val?pairs[i].dp_val:"");
+    //    clicon_debug(1, "%s npairs:%d", __FUNCTION__, npairs);
     for (i = 0; i < npairs; i++) {
 	if (get(dbname, 
 		yspec, 
@@ -953,6 +953,7 @@ xmldb_get_local(clicon_handle h,
     yang_spec    *yspec;
     char         *dbname = NULL;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if (db2file(h, db, &dbname) < 0)
 	goto done;
     if (dbname==NULL){
@@ -1019,6 +1020,7 @@ xmldb_get(clicon_handle h,
 {
     int retval = -1;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if (clicon_xmldb_rpc(h))
 	retval = xmldb_get_rpc(h, db, xpath, vector, xtop, xvec, xlen);
     else
@@ -1422,7 +1424,7 @@ xmldb_put_tree_local(clicon_handle       h,
     }
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    //    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (filename)
 	free(filename);
     if (ckey)
