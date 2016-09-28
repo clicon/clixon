@@ -139,35 +139,23 @@ enum list_element_type{
 };
 
 static enum list_element_type
-list_eval(cxobj *x)
+list_eval(cxobj *xprev, 
+	  cxobj *x, 
+	  cxobj *xnext)
 {
     enum list_element_type list = LIST_NO;
-    cxobj                 *xp;
-    cxobj                 *xprev=NULL;
-    cxobj                 *xnext=NULL;
-    int                    i;
     int                    eqprev=0;
     int                    eqnext=0;
 
     assert(xml_type(x)==CX_ELMNT);
-    if ((xp = xml_parent(x)) == NULL)
-	goto done;
-    for (i=0; i<xml_child_nr(xp); i++)
-	if (x == xml_child_i(xp, i))
-	    break;
-    assert(i<xml_child_nr(xp));
-    if (i < xml_child_nr(xp)-1){
-	xnext = xml_child_i(xp, i+1);
-	if (xml_type(xnext)==CX_ELMNT &&
-	    strcmp(xml_name(x),xml_name(xnext))==0)
+    if (xnext && 
+	xml_type(xnext)==CX_ELMNT &&
+	strcmp(xml_name(x),xml_name(xnext))==0)
 	    eqnext++;
-    }
-    if (i){
-	xprev = xml_child_i(xp, i-1);
-	if (xml_type(xprev)==CX_ELMNT &&
-	    strcmp(xml_name(x),xml_name(xprev))==0)
-	    eqprev++;
-    }
+    if (xprev &&
+	xml_type(xprev)==CX_ELMNT &&
+	strcmp(xml_name(x),xml_name(xprev))==0)
+	eqprev++;
     if (eqprev && eqnext)
 	list = LIST_MIDDLE;
     else if (eqprev)
@@ -176,7 +164,7 @@ list_eval(cxobj *x)
 	list = LIST_FIRST;
     else
 	list = LIST_NO;
- done:
+    // done:
     return list;
 }
 
@@ -188,7 +176,9 @@ list_eval(cxobj *x)
  */
 static int 
 xml2json1_cbuf(cbuf  *cb,
+	       cxobj *xprev,
 	       cxobj *x,
+	       cxobj *xnext,
 	       int    level,
 	       int    pretty)
 {
@@ -205,25 +195,29 @@ xml2json1_cbuf(cbuf  *cb,
 	    cprintf(cb, "null");
 	break;
     case CX_ELMNT:
-	list = list_eval(x);
+	list = list_eval(xprev, x, xnext);
 	switch (list){
 	case LIST_NO:
 	    cprintf(cb, "%*s\"%s\": ", 
 		    pretty?(level*JSON_INDENT):0, "", 
 		    xml_name(x));
-	    if (!tleaf(x))
-		cprintf(cb, "{%s", 
-			pretty?"\n":"");
+	    if (!tleaf(x)){
+		if (xml_child_nr(x))
+		    cprintf(cb, "{%s", 
+			    pretty?"\n":"");
+		else
+		    cprintf(cb, "null");
+	    }
 	    break;
 	case LIST_FIRST:
-	    cprintf(cb, "%*s\"%s\": [%s", 
+	    cprintf(cb, "%*s\"%s\": [%s%*s", 
 		    pretty?(level*JSON_INDENT):0, "", 
 		    xml_name(x),
-		    pretty?"\n":"");
+		    pretty?"\n":"",
+		    pretty?((level+1)*JSON_INDENT):0, "");
+	    level++;
 	    if (!tleaf(x)){
-		level++;
-		cprintf(cb, "%*s{%s", 
-			pretty?(level*JSON_INDENT):0, "",
+		cprintf(cb, "{%s", 
 			pretty?"\n":"");
 	    }
 	    break;
@@ -233,38 +227,51 @@ xml2json1_cbuf(cbuf  *cb,
 	    cprintf(cb, "%*s", 
 		    pretty?(level*JSON_INDENT):0, "");
 	    if (!tleaf(x))
-		cprintf(cb, "{%s", 
-			pretty?"\n":"");
+		cprintf(cb, "{ %s", pretty?"\n":"");
 	    break;
 	default:
 	    break;
 	}
 	for (i=0; i<xml_child_nr(x); i++){
 	    xc = xml_child_i(x, i);
-	    if (xml2json1_cbuf(cb, xc, level+1, pretty) < 0)
+	    if (xml2json1_cbuf(cb, 
+			       i?xml_child_i(x,i-1):NULL,
+			       xc, 
+			       xml_child_i(x, i+1),
+			       level+1, pretty) < 0)
 		goto done;
 	    if (i<xml_child_nr(x)-1){
 		cprintf(cb, ",");
-		cprintf(cb, "%s", pretty?"\n":"");
+		if (pretty)
+		    cprintf(cb, "\n");
 	    }
 	}
 	switch (list){
 	case LIST_NO:
 	    if (!tleaf(x)){
-		if (pretty)
-		    cprintf(cb, "%*s}\n", 
-			    (level*JSON_INDENT), "");
-		else
-		    cprintf(cb, "}");
+		if (xml_child_nr(x)){
+		    if (pretty)
+			cprintf(cb, "\n%*s}", 
+				(level*JSON_INDENT), "");
+		    else
+			cprintf(cb, "}");
+		}
+	    }
+	    break;
+	case LIST_FIRST:
+	    if (!tleaf(x)){
+		cprintf(cb, "%s%*s}", 
+			pretty?"\n":"",
+			pretty?(level*JSON_INDENT):0, "");
 	    }
 	    break;
 	case LIST_MIDDLE:
-	case LIST_FIRST:
-	    if (pretty)
-		cprintf(cb, "\n%*s}", 
-			(level*JSON_INDENT), "");
-	    else
-		cprintf(cb, "}");
+	    if (!tleaf(x))
+		cprintf(cb, "%s%*s}%s%*s", 
+			pretty?"\n":"",
+			pretty?(level*JSON_INDENT):0, "",
+			pretty?"\n":"",
+			pretty?(level*JSON_INDENT):0, "");
 	    break;
 	case LIST_LAST:
 	    if (!tleaf(x)){
@@ -275,9 +282,11 @@ xml2json1_cbuf(cbuf  *cb,
 		    cprintf(cb, "}");
 		level--;
 	    }
-	    cprintf(cb, "%*s]%s",
-		    pretty?(level*JSON_INDENT):0,"",
-		    pretty?"\n":"");
+	    else
+		if (pretty)
+		    cprintf(cb, "\n");
+	    cprintf(cb, "%*s]",
+		    pretty?((level-1)*JSON_INDENT):0,"");
 	    break;
 	default:
 	    break;
@@ -317,14 +326,20 @@ xml2json_cbuf(cbuf  *cb,
     int    retval = 1;
     int    level = 0;
 
-    cprintf(cb, "%*s{%s",
-	    pretty?(level*JSON_INDENT):0,"",
-	    pretty?"\n":"");
-    if (xml2json1_cbuf(cb, x, level+1, pretty) < 0)
+    if (pretty)
+	cprintf(cb, "%*s{\n", level*JSON_INDENT,"");
+    else
+	cprintf(cb, "{");
+    if (xml2json1_cbuf(cb, 
+		       NULL,
+		       x, 
+		       NULL,
+		       level+1, pretty) < 0)
 	goto done;
-    cprintf(cb, "%*s}%s", 
-	    pretty?(level*JSON_INDENT):0,"",
-	    pretty?"\n":"");
+    if (pretty)
+	cprintf(cb, "\n%*s}\n", level*JSON_INDENT,"");
+    else
+	cprintf(cb, "}"); 
     retval = 0;
  done:
     return retval;
@@ -339,32 +354,41 @@ xml2json_cbuf_vec(cbuf   *cb,
 		  size_t  veclen,
 		  int     pretty)
 {
-    int    retval = 1;
+    int    retval = -1;
     int    level = 0;
     int    i;
     cxobj *xc;
 
-    cprintf(cb, "%*s{%s",
-	    pretty?(level*JSON_INDENT):0,"",
-	    pretty?"\n":"");
+    if (pretty)
+	cprintf(cb, "%*s[\n", 
+		level*JSON_INDENT,"");
+    else
+	cprintf(cb, "[");
+    level++;
     for (i=0; i<veclen; i++){
 	xc = vec[i];
-	if (xml2json1_cbuf(cb, xc, level, pretty) < 0)
+	if (xml2json1_cbuf(cb, 
+			   i?vec[i-1]:NULL,
+			   xc, 
+			   i<veclen-1?vec[i+1]:NULL,
+			   level, pretty) < 0)
 	    goto done;
 	if (i<veclen-1){
-	    if (xml_type(xc)==CX_BODY)
-		cprintf(cb, "},{");
-	    else
-		cprintf(cb, ",");
-	    cprintf(cb, "%s", pretty?"\n":"");
+	    cprintf(cb, ",");
+	    if (pretty)
+		cprintf(cb, "\n");
 	}
     }
-    cprintf(cb, "%*s}%s", 
-	    pretty?(level*JSON_INDENT):0,"",
-	    pretty?"\n":"");
+    level--;
+    if (pretty)
+	cprintf(cb, "\n%*s]\n", 
+		level*JSON_INDENT,"");
+    else
+	cprintf(cb, "]");
     retval = 0;
  done:
     return retval;
+
 }
 
 /*! Translate from xml tree to JSON and print to file
@@ -381,9 +405,9 @@ xml2json_cbuf_vec(cbuf   *cb,
  * @endcode
  */
 int 
-xml2json(FILE  *f, 
-	 cxobj *x, 
-	 int    pretty)
+xml2json(FILE   *f, 
+	     cxobj *x, 
+	 int     pretty)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -393,6 +417,29 @@ xml2json(FILE  *f,
 	goto done;
     }
     if (xml2json_cbuf(cb, x, pretty) < 0)
+	goto done;
+    fprintf(f, "%s", cbuf_get(cb));
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
+int 
+xml2json_vec(FILE  *f, 
+	     cxobj **vec,
+	     size_t  veclen,
+	     int    pretty)
+{
+    int   retval = 1;
+    cbuf *cb = NULL;
+
+    if ((cb = cbuf_new()) ==NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (xml2json_cbuf_vec(cb, vec, veclen, pretty) < 0)
 	goto done;
     fprintf(f, "%s", cbuf_get(cb));
     retval = 0;
