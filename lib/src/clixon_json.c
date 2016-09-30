@@ -18,75 +18,7 @@
   along with CLIXON; see the file LICENSE.  If not, see
   <http://www.gnu.org/licenses/>.
 
-  * For unit testing compile with -_MAIN:
-  * 
- * JSON support functions.
-
-curl -G http://localhost/api/data/sender/userid=a4315f60-e890-4f8f-9a0b-eb53d4da2d3a
-
-[{
-  "sender": {
-    "name": "dk-ore",
-    "userid": "a4315f60-e890-4f8f-9a0b-eb53d4da2d3a",
-    "ipv4_daddr": "109.105.110.78",
-    "template": "nordunet",
-    "version": "0",
-    "description": "Nutanix ORE",
-    "start": "true",
-    "udp_dport": "43713",
-    "debug": "0",
-    "proto": "udp"
-  }
-
-is translated into this:
-[
-    {"sender":
-     ["name":"dk-ore",
-      "userid":"a4315f60-e890-4f8f-9a0b-eb53d4da2d3a",
-      "ipv4_daddr":"109.105.110.78",
-      "template":"nordunet",
-      "version":"0",
-      "description":"Nutanix ORE",
-      "start":"true",
-      "udp_dport":"43713",
-      "debug":"0",
-      "proto":"udp"}
-     ,
-     {"name":"dk-uni",
-
-
--------------------------
-
-<t>
-  <sender>
-    <name>hunerik</name>
-  </sender>
-  <sender>
-    <name>foo</name>
-  </sender>
-</t>
-
-{ "t":
- {
-  "sender": {
-    "name": "hunerik"
-   },
-  "sender": {
-    "name": "foo"
-   }
- }
-}
-
-{
-  "t": {
-    "sender": [
-      { "name": "hunerik" },
-      { "name": "foo" }
-    ]
-  }
-}
-
-OK, still something wrong with grafana plots
+  * JSON support functions.
 
  */
 
@@ -112,42 +44,96 @@ OK, still something wrong with grafana plots
 #include "clixon_json.h"
 #include "clixon_json_parse.h"
 
-#define JSON_INDENT 3 /* maybe we should set this programmatically? */
-
-/*! x is element and has eactly one child which in turn has none 
- * Clone from clixon_xml_map.c
- */
-static int
-tleaf(cxobj *x)
-{
-    cxobj *c;
-
-    if (xml_type(x) != CX_ELMNT)
-	return 0;
-    if (xml_child_nr(x) != 1)
-	return 0;
-    c = xml_child_i(x, 0);
-    return (xml_child_nr(c) == 0);
-}
-
+#define JSON_INDENT 2 /* maybe we should set this programmatically? */
 
 enum list_element_type{
-    LIST_NO,
-    LIST_FIRST,
-    LIST_MIDDLE,
-    LIST_LAST
+    NO_LIST=0,
+    FIRST_LIST,
+    MIDDLE_LIST,
+    LAST_LIST,
+    BODY_LIST
 };
+
+enum childtype{
+    NULL_CHILD=0, /* eg <a/> no children */
+    BODY_CHILD,   /* eg one child which is a body, eg <a>1</a> */
+    ANY_CHILD,    /* eg <a><b/></a> or <a><b/><c/></a> */
+};
+
+/*! x is element and has exactly one child which in turn has none 
+ * Clone from clixon_xml_map.c
+ */
+static enum childtype
+childtype(cxobj *x)
+{
+    cxobj *xc1; /* the only child of x */
+
+    if (xml_type(x) != CX_ELMNT)
+	return -1; /* n/a */
+    if (xml_child_nr(x) == 0)
+    	return NULL_CHILD;
+    if (xml_child_nr(x) > 1)
+	return ANY_CHILD;
+    xc1 = xml_child_i(x, 0); /* From here exactly one child */
+    if (xml_child_nr(xc1) == 0 && xml_type(xc1)==CX_BODY)
+	return BODY_CHILD;
+    else
+	return ANY_CHILD;
+}
+
+static char*
+childtype2str(enum childtype lt)
+{
+    switch(lt){
+    case NULL_CHILD:
+	return "null";
+	break;
+    case BODY_CHILD:
+	return "body";
+	break;
+    case ANY_CHILD:
+	return "any";
+	break;
+    }
+    return "";
+}
+
+static char*
+listtype2str(enum list_element_type lt)
+{
+    switch(lt){
+    case NO_LIST:
+	return "no";
+	break;
+    case FIRST_LIST:
+	return "first";
+	break;
+    case MIDDLE_LIST:
+	return "middle";
+	break;
+    case LAST_LIST:
+	return "last";
+	break;
+    case BODY_LIST:
+	return "body";
+	break;
+    }
+    return "";
+}
 
 static enum list_element_type
 list_eval(cxobj *xprev, 
 	  cxobj *x, 
 	  cxobj *xnext)
 {
-    enum list_element_type list = LIST_NO;
+    enum list_element_type list = NO_LIST;
     int                    eqprev=0;
     int                    eqnext=0;
 
-    assert(xml_type(x)==CX_ELMNT);
+    if (xml_type(x)!=CX_ELMNT){
+	list=BODY_LIST;
+	goto done;
+    }
     if (xnext && 
 	xml_type(xnext)==CX_ELMNT &&
 	strcmp(xml_name(x),xml_name(xnext))==0)
@@ -157,140 +143,198 @@ list_eval(cxobj *xprev,
 	strcmp(xml_name(x),xml_name(xprev))==0)
 	eqprev++;
     if (eqprev && eqnext)
-	list = LIST_MIDDLE;
+	list = MIDDLE_LIST;
     else if (eqprev)
-	list = LIST_LAST;
+	list = LAST_LIST;
     else if (eqnext)
-	list = LIST_FIRST;
+	list = FIRST_LIST;
     else
-	list = LIST_NO;
-    // done:
+	list = NO_LIST;
+ done:
     return list;
 }
 
-/*!
- * @param[in]     pretty set if the output should be pretty-printed
- * List only if adjacent,
- * ie <a>1</a><a>2</a><b>3</b> -> {"a":[1,2],"b":3}
- * ie <a>1</a><b>3</b><a>2</a> -> {"a":1,"b":3,"a":2}
+/*! Do the actual work of translating XML to JSON 
+ * @param[out]   cb       Cligen text buffer containing json on exit
+ * @param[in]    x        XML tree structure containing XML to translate
+ * @param[in]    listtype Does x occur in a list (of its parent) and how?
+ * @param[in]    level    Indentation level
+ * @param[in]    pretty   Pretty-print output (2 means debug)
+ *
+ * The following matrix explains how the mapping is done.
+ * You need to understand what listtype means (no/first/middle/last)
+ * and what childtype is (null,body,any)
++---------+--------------+--------------+--------------+
+|list,leaf| null         | body         | any          |
++---------+--------------+--------------+--------------+
+|no       | <a/>         |<a>1</a>      |<a><b/></a>   |
+|         |              |              |              |
+|  json:  |\ta:null      |\ta:          |\ta:{\n       |
+|         |              |              |\n}           |
++---------+--------------+--------------+--------------+
+|first    |<a/><a..      |<a>1</a><a..  |<a><b/></a><a.|
+|         |              |              |              |
+|  json:  |\ta:[\n\tnull |\ta:[\n\t     |\ta:[\n\t{\n  |
+|         |              |              |\n\t}         |
++---------+--------------+--------------+--------------+
+|middle   |..a><a/><a..  |.a><a>1</a><a.|              |
+|         |              |              |              |
+|  json:  |\tnull        |\t            |\t{a          |
+|         |              |              |\n\t}         |
++---------+--------------+--------------+--------------+
+|last     |..a></a>      |..a><a>1</a>  |              |
+|         |              |              |              |
+|  json:  |\tnull        |\t            |\t{a          |
+|         |\n\t]         |\n\t]         |\n\t}\t]      |
++---------+--------------+--------------+--------------+
  */
 static int 
-xml2json1_cbuf(cbuf  *cb,
-	       cxobj *xprev,
-	       cxobj *x,
-	       cxobj *xnext,
-	       int    level,
-	       int    pretty)
+xml2json1_cbuf(cbuf                  *cb,
+	       cxobj                 *x,
+	       enum list_element_type listtype,
+	       int                    level,
+	       int                    pretty)
 {
-    int                    retval = -1;
-    int                    i;
-    cxobj                 *xc;
-    enum list_element_type list;
+    int             retval = -1;
+    int             i;
+    cxobj          *xc;
+    enum childtype   childt;
 
-    switch(xml_type(x)){
-    case CX_BODY:
-	if (xml_value(x))
-	    cprintf(cb, "\"%s\"", xml_value(x));
-	else
-	    cprintf(cb, "null");
+    childt = childtype(x);
+    if (pretty==2)
+	cprintf(cb, "#%s_list, %s_child ", 
+		listtype2str(listtype),
+		childtype2str(childt));
+    switch(listtype){
+    case BODY_LIST:
+	assert(xml_value(x));
+	cprintf(cb, "\"%s\"", xml_value(x));
 	break;
-    case CX_ELMNT:
-	list = list_eval(xprev, x, xnext);
-	switch (list){
-	case LIST_NO:
-	    cprintf(cb, "%*s\"%s\": ", 
-		    pretty?(level*JSON_INDENT):0, "", 
-		    xml_name(x));
-	    if (!tleaf(x)){
-		if (xml_child_nr(x))
-		    cprintf(cb, "{%s", 
-			    pretty?"\n":"");
-		else
-		    cprintf(cb, "null");
-	    }
+    case NO_LIST:
+	cprintf(cb, "%*s\"%s\": ", 
+		pretty?(level*JSON_INDENT):0, "", 
+		xml_name(x));
+	switch (childt){
+	case NULL_CHILD:
+	    cprintf(cb, "null");
 	    break;
-	case LIST_FIRST:
-	    cprintf(cb, "%*s\"%s\": [%s%*s", 
-		    pretty?(level*JSON_INDENT):0, "", 
-		    xml_name(x),
+	case BODY_CHILD:
+	    break;
+	case ANY_CHILD:
+	    cprintf(cb, "{%s", pretty?"\n":"");
+	    break;
+	default:
+	    break;
+	}
+	break;
+    case FIRST_LIST:
+	cprintf(cb, "%*s\"%s\": ", 
+		pretty?(level*JSON_INDENT):0, "", 
+		xml_name(x));
+	level++;
+	cprintf(cb, "[%s%*s", 
+		pretty?"\n":"",
+		pretty?(level*JSON_INDENT):0, "");
+	switch (childt){
+	case NULL_CHILD:
+	    cprintf(cb, "null");
+	    break;
+	case BODY_CHILD:
+	    break;
+	case ANY_CHILD:
+	    cprintf(cb, "{%s", pretty?"\n":"");
+	    break;
+	default:
+	    break;
+	}
+	break;
+    case MIDDLE_LIST:
+    case LAST_LIST:
+	level++;
+	cprintf(cb, "%*s", 
+		pretty?(level*JSON_INDENT):0, "");
+	switch (childt){
+	case NULL_CHILD:
+	    cprintf(cb, "null");
+	    break;
+	case BODY_CHILD:
+	    break;
+	case ANY_CHILD:
+	    cprintf(cb, "{ %s", pretty?"\n":"");
+	    break;
+	default:
+	    break;
+	}
+	break;
+    default:
+	break;
+    }
+    for (i=0; i<xml_child_nr(x); i++){
+	enum list_element_type xc_listtype;
+	xc = xml_child_i(x, i);
+	xc_listtype = list_eval(i?xml_child_i(x,i-1):NULL, 
+				xc, 
+				xml_child_i(x, i+1));
+	if (xml2json1_cbuf(cb, 
+			   xc, 
+			   xc_listtype,
+			   level+1, pretty) < 0)
+	    goto done;
+	if (i<xml_child_nr(x)-1)
+	    cprintf(cb, ",%s", pretty?"\n":"");
+    }
+    switch (listtype){
+    case BODY_LIST:
+	break;
+    case NO_LIST:
+	switch (childt){
+	case NULL_CHILD:
+	case BODY_CHILD:
+	    break;
+	case ANY_CHILD:
+	    cprintf(cb, "%s%*s}", 
 		    pretty?"\n":"",
-		    pretty?((level+1)*JSON_INDENT):0, "");
-	    level++;
-	    if (!tleaf(x)){
-		cprintf(cb, "{%s", 
-			pretty?"\n":"");
-	    }
-	    break;
-	case LIST_MIDDLE:
-	case LIST_LAST:
-	    level++;
-	    cprintf(cb, "%*s", 
 		    pretty?(level*JSON_INDENT):0, "");
-	    if (!tleaf(x))
-		cprintf(cb, "{ %s", pretty?"\n":"");
 	    break;
 	default:
 	    break;
 	}
-	for (i=0; i<xml_child_nr(x); i++){
-	    xc = xml_child_i(x, i);
-	    if (xml2json1_cbuf(cb, 
-			       i?xml_child_i(x,i-1):NULL,
-			       xc, 
-			       xml_child_i(x, i+1),
-			       level+1, pretty) < 0)
-		goto done;
-	    if (i<xml_child_nr(x)-1){
-		cprintf(cb, ",");
-		if (pretty)
-		    cprintf(cb, "\n");
-	    }
-	}
-	switch (list){
-	case LIST_NO:
-	    if (!tleaf(x)){
-		if (xml_child_nr(x)){
-		    if (pretty)
-			cprintf(cb, "\n%*s}", 
-				(level*JSON_INDENT), "");
-		    else
-			cprintf(cb, "}");
-		}
-	    }
+	level--;
+	break;
+    case FIRST_LIST:
+    case MIDDLE_LIST:
+	switch (childt){
+	case NULL_CHILD:
+	case BODY_CHILD:
 	    break;
-	case LIST_FIRST:
-	    if (!tleaf(x)){
-		cprintf(cb, "%s%*s}", 
-			pretty?"\n":"",
-			pretty?(level*JSON_INDENT):0, "");
-	    }
-	    break;
-	case LIST_MIDDLE:
-	    if (!tleaf(x))
-		cprintf(cb, "%s%*s}%s%*s", 
-			pretty?"\n":"",
-			pretty?(level*JSON_INDENT):0, "",
-			pretty?"\n":"",
-			pretty?(level*JSON_INDENT):0, "");
-	    break;
-	case LIST_LAST:
-	    if (!tleaf(x)){
-		if (pretty)
-		    cprintf(cb, "\n%*s}\n", 
-			    (level*JSON_INDENT), "");
-		else
-		    cprintf(cb, "}");
-		level--;
-	    }
-	    else
-		if (pretty)
-		    cprintf(cb, "\n");
-	    cprintf(cb, "%*s]",
-		    pretty?((level-1)*JSON_INDENT):0,"");
+	case ANY_CHILD:
+	    cprintf(cb, "%s%*s}", 
+		    pretty?"\n":"",
+		    pretty?(level*JSON_INDENT):0, "");
+	    level--;
 	    break;
 	default:
 	    break;
 	}
+	break;
+    case LAST_LIST:
+	switch (childt){
+	case NULL_CHILD:
+	case BODY_CHILD:
+	    cprintf(cb, "%s",pretty?"\n":"");
+	    break;
+	case ANY_CHILD:
+	    cprintf(cb, "%s%*s}", 
+		    pretty?"\n":"",
+		    pretty?(level*JSON_INDENT):0, "");
+	    cprintf(cb, "%s",pretty?"\n":"");
+	    level--;
+	    break;
+	default:
+	    break;
+	}
+	cprintf(cb, "%*s]",
+		pretty?(level*JSON_INDENT):0,"");
 	break;
     default:
 	break;
@@ -331,9 +375,8 @@ xml2json_cbuf(cbuf  *cb,
     else
 	cprintf(cb, "{");
     if (xml2json1_cbuf(cb, 
-		       NULL,
 		       x, 
-		       NULL,
+		       NO_LIST,
 		       level+1, pretty) < 0)
 	goto done;
     if (pretty)
@@ -345,8 +388,8 @@ xml2json_cbuf(cbuf  *cb,
     return retval;
 }
 
-/*!
- * @note can be a problem with vector since xml2json1_cbuf checks parents
+/*! Translate a vectro of xml objects to xml by adding a top pseudo-object.
+ * example: <b/><c/> --> <a><b/><c/></a> --> {"a" : {"b" : null,"c" : null}}
  */
 int 
 xml2json_cbuf_vec(cbuf   *cb, 
@@ -358,19 +401,26 @@ xml2json_cbuf_vec(cbuf   *cb,
     int    level = 0;
     int    i;
     cxobj *xc;
+    enum list_element_type listtype;
 
-    if (pretty)
-	cprintf(cb, "%*s[\n", 
-		level*JSON_INDENT,"");
-    else
-	cprintf(cb, "[");
+    /* Note: We add a pseudo-object on top of the vector.
+     * This object is list_element_type == NO_LIST in xml2json1_cbuf 
+     * and child_type == ANY_CHILD
+     */
+    cprintf(cb, "{%s", 
+	    pretty?"\n":" ");
     level++;
+    cprintf(cb, "%*s\"top\": ", /* NO_LIST */
+	    pretty?(level*JSON_INDENT):0, "");
+    cprintf(cb, "{%s", pretty?"\n":"");  /* ANY_CHILD */
     for (i=0; i<veclen; i++){
 	xc = vec[i];
+	listtype = list_eval(i?vec[i-1]:NULL,
+			     xc,
+			     i<veclen-1?vec[i+1]:NULL);
 	if (xml2json1_cbuf(cb, 
-			   i?vec[i-1]:NULL,
 			   xc, 
-			   i<veclen-1?vec[i+1]:NULL,
+			   listtype,
 			   level, pretty) < 0)
 	    goto done;
 	if (i<veclen-1){
@@ -380,11 +430,12 @@ xml2json_cbuf_vec(cbuf   *cb,
 	}
     }
     level--;
-    if (pretty)
-	cprintf(cb, "\n%*s]\n", 
-		level*JSON_INDENT,"");
-    else
-	cprintf(cb, "]");
+    cprintf(cb, "%s%*s}", 
+	    pretty?"\n":"",
+	    pretty?(level*JSON_INDENT):0, "");
+    cprintf(cb, "%s}%s", 
+	    pretty?"\n":"",
+	    pretty?"\n":""); /* top object */
     retval = 0;
  done:
     return retval;
