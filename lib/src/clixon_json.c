@@ -18,8 +18,9 @@
   along with CLIXON; see the file LICENSE.  If not, see
   <http://www.gnu.org/licenses/>.
 
-  * JSON support functions.
-
+ * JSON support functions.
+ * JSON syntax is according to:
+ * http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
  */
 
 #include <stdio.h>
@@ -46,12 +47,17 @@
 
 #define JSON_INDENT 2 /* maybe we should set this programmatically? */
 
-enum list_element_type{
-    NO_LIST=0,
-    FIRST_LIST,
-    MIDDLE_LIST,
-    LAST_LIST,
-    BODY_LIST
+/* Let xml2json_cbuf_vec() return json array: [a,b].
+   ALternative is to create a pseudo-object and return that: {top:{a,b}}
+*/
+#define VEC_ARRAY 1
+
+enum array_element_type{
+    NO_ARRAY=0,
+    FIRST_ARRAY,
+    MIDDLE_ARRAY,
+    LAST_ARRAY,
+    BODY_ARRAY
 };
 
 enum childtype{
@@ -99,39 +105,39 @@ childtype2str(enum childtype lt)
 }
 
 static char*
-listtype2str(enum list_element_type lt)
+arraytype2str(enum array_element_type lt)
 {
     switch(lt){
-    case NO_LIST:
+    case NO_ARRAY:
 	return "no";
 	break;
-    case FIRST_LIST:
+    case FIRST_ARRAY:
 	return "first";
 	break;
-    case MIDDLE_LIST:
+    case MIDDLE_ARRAY:
 	return "middle";
 	break;
-    case LAST_LIST:
+    case LAST_ARRAY:
 	return "last";
 	break;
-    case BODY_LIST:
+    case BODY_ARRAY:
 	return "body";
 	break;
     }
     return "";
 }
 
-static enum list_element_type
-list_eval(cxobj *xprev, 
+static enum array_element_type
+array_eval(cxobj *xprev, 
 	  cxobj *x, 
 	  cxobj *xnext)
 {
-    enum list_element_type list = NO_LIST;
+    enum array_element_type array = NO_ARRAY;
     int                    eqprev=0;
     int                    eqnext=0;
 
     if (xml_type(x)!=CX_ELMNT){
-	list=BODY_LIST;
+	array=BODY_ARRAY;
 	goto done;
     }
     if (xnext && 
@@ -143,29 +149,29 @@ list_eval(cxobj *xprev,
 	strcmp(xml_name(x),xml_name(xprev))==0)
 	eqprev++;
     if (eqprev && eqnext)
-	list = MIDDLE_LIST;
+	array = MIDDLE_ARRAY;
     else if (eqprev)
-	list = LAST_LIST;
+	array = LAST_ARRAY;
     else if (eqnext)
-	list = FIRST_LIST;
+	array = FIRST_ARRAY;
     else
-	list = NO_LIST;
+	array = NO_ARRAY;
  done:
-    return list;
+    return array;
 }
 
 /*! Do the actual work of translating XML to JSON 
  * @param[out]   cb       Cligen text buffer containing json on exit
  * @param[in]    x        XML tree structure containing XML to translate
- * @param[in]    listtype Does x occur in a list (of its parent) and how?
+ * @param[in]    arraytype Does x occur in a array (of its parent) and how?
  * @param[in]    level    Indentation level
  * @param[in]    pretty   Pretty-print output (2 means debug)
  *
  * The following matrix explains how the mapping is done.
- * You need to understand what listtype means (no/first/middle/last)
+ * You need to understand what arraytype means (no/first/middle/last)
  * and what childtype is (null,body,any)
 +---------+--------------+--------------+--------------+
-|list,leaf| null         | body         | any          |
+|array,leaf| null         | body         | any          |
 +---------+--------------+--------------+--------------+
 |no       | <a/>         |<a>1</a>      |<a><b/></a>   |
 |         |              |              |              |
@@ -191,7 +197,7 @@ list_eval(cxobj *xprev,
 static int 
 xml2json1_cbuf(cbuf                  *cb,
 	       cxobj                 *x,
-	       enum list_element_type listtype,
+	       enum array_element_type arraytype,
 	       int                    level,
 	       int                    pretty)
 {
@@ -202,15 +208,15 @@ xml2json1_cbuf(cbuf                  *cb,
 
     childt = childtype(x);
     if (pretty==2)
-	cprintf(cb, "#%s_list, %s_child ", 
-		listtype2str(listtype),
+	cprintf(cb, "#%s_array, %s_child ", 
+		arraytype2str(arraytype),
 		childtype2str(childt));
-    switch(listtype){
-    case BODY_LIST:
+    switch(arraytype){
+    case BODY_ARRAY:
 	assert(xml_value(x));
 	cprintf(cb, "\"%s\"", xml_value(x));
 	break;
-    case NO_LIST:
+    case NO_ARRAY:
 	cprintf(cb, "%*s\"%s\": ", 
 		pretty?(level*JSON_INDENT):0, "", 
 		xml_name(x));
@@ -227,7 +233,7 @@ xml2json1_cbuf(cbuf                  *cb,
 	    break;
 	}
 	break;
-    case FIRST_LIST:
+    case FIRST_ARRAY:
 	cprintf(cb, "%*s\"%s\": ", 
 		pretty?(level*JSON_INDENT):0, "", 
 		xml_name(x));
@@ -248,8 +254,8 @@ xml2json1_cbuf(cbuf                  *cb,
 	    break;
 	}
 	break;
-    case MIDDLE_LIST:
-    case LAST_LIST:
+    case MIDDLE_ARRAY:
+    case LAST_ARRAY:
 	level++;
 	cprintf(cb, "%*s", 
 		pretty?(level*JSON_INDENT):0, "");
@@ -270,23 +276,23 @@ xml2json1_cbuf(cbuf                  *cb,
 	break;
     }
     for (i=0; i<xml_child_nr(x); i++){
-	enum list_element_type xc_listtype;
+	enum array_element_type xc_arraytype;
 	xc = xml_child_i(x, i);
-	xc_listtype = list_eval(i?xml_child_i(x,i-1):NULL, 
+	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
 				xc, 
 				xml_child_i(x, i+1));
 	if (xml2json1_cbuf(cb, 
 			   xc, 
-			   xc_listtype,
+			   xc_arraytype,
 			   level+1, pretty) < 0)
 	    goto done;
 	if (i<xml_child_nr(x)-1)
 	    cprintf(cb, ",%s", pretty?"\n":"");
     }
-    switch (listtype){
-    case BODY_LIST:
+    switch (arraytype){
+    case BODY_ARRAY:
 	break;
-    case NO_LIST:
+    case NO_ARRAY:
 	switch (childt){
 	case NULL_CHILD:
 	case BODY_CHILD:
@@ -301,8 +307,8 @@ xml2json1_cbuf(cbuf                  *cb,
 	}
 	level--;
 	break;
-    case FIRST_LIST:
-    case MIDDLE_LIST:
+    case FIRST_ARRAY:
+    case MIDDLE_ARRAY:
 	switch (childt){
 	case NULL_CHILD:
 	case BODY_CHILD:
@@ -317,7 +323,7 @@ xml2json1_cbuf(cbuf                  *cb,
 	    break;
 	}
 	break;
-    case LAST_LIST:
+    case LAST_ARRAY:
 	switch (childt){
 	case NULL_CHILD:
 	case BODY_CHILD:
@@ -376,7 +382,7 @@ xml2json_cbuf(cbuf  *cb,
 	cprintf(cb, "{");
     if (xml2json1_cbuf(cb, 
 		       x, 
-		       NO_LIST,
+		       NO_ARRAY,
 		       level+1, pretty) < 0)
 	goto done;
     if (pretty)
@@ -401,26 +407,31 @@ xml2json_cbuf_vec(cbuf   *cb,
     int    level = 0;
     int    i;
     cxobj *xc;
-    enum list_element_type listtype;
+    enum array_element_type arraytype;
 
+#ifdef VEC_ARRAY
+    cprintf(cb, "[%s", pretty?"\n":" ");
+    level++;
+#else /* pseudo object */
     /* Note: We add a pseudo-object on top of the vector.
-     * This object is list_element_type == NO_LIST in xml2json1_cbuf 
+     * This object is array_element_type == NO_ARRAY in xml2json1_cbuf 
      * and child_type == ANY_CHILD
      */
     cprintf(cb, "{%s", 
 	    pretty?"\n":" ");
     level++;
-    cprintf(cb, "%*s\"top\": ", /* NO_LIST */
+    cprintf(cb, "%*s\"top\": ", /* NO_ARRAY */
 	    pretty?(level*JSON_INDENT):0, "");
     cprintf(cb, "{%s", pretty?"\n":"");  /* ANY_CHILD */
+#endif
     for (i=0; i<veclen; i++){
 	xc = vec[i];
-	listtype = list_eval(i?vec[i-1]:NULL,
+	arraytype = array_eval(i?vec[i-1]:NULL,
 			     xc,
 			     i<veclen-1?vec[i+1]:NULL);
 	if (xml2json1_cbuf(cb, 
 			   xc, 
-			   listtype,
+			   arraytype,
 			   level, pretty) < 0)
 	    goto done;
 	if (i<veclen-1){
@@ -430,12 +441,18 @@ xml2json_cbuf_vec(cbuf   *cb,
 	}
     }
     level--;
+#ifdef VEC_ARRAY
+    cprintf(cb, "%s]%s", 
+	    pretty?"\n":"",
+	    pretty?"\n":""); /* top object */
+#else /* pseudo object */
     cprintf(cb, "%s%*s}", 
 	    pretty?"\n":"",
 	    pretty?(level*JSON_INDENT):0, "");
     cprintf(cb, "%s}%s", 
 	    pretty?"\n":"",
 	    pretty?"\n":""); /* top object */
+#endif
     retval = 0;
  done:
     return retval;
