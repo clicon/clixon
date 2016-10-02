@@ -164,42 +164,44 @@ array_eval(cxobj *xprev,
  * @param[out]   cb       Cligen text buffer containing json on exit
  * @param[in]    x        XML tree structure containing XML to translate
  * @param[in]    arraytype Does x occur in a array (of its parent) and how?
- * @param[in]    level    Indentation level
- * @param[in]    pretty   Pretty-print output (2 means debug)
+ * @param[in]    level     Indentation level
+ * @param[in]    pretty    Pretty-print output (2 means debug)
+ * @param[in]    flat      Dont print NO_ARRAY object name (for _vec call)
  *
  * The following matrix explains how the mapping is done.
  * You need to understand what arraytype means (no/first/middle/last)
  * and what childtype is (null,body,any)
-+---------+--------------+--------------+--------------+
-|array,leaf| null         | body         | any          |
-+---------+--------------+--------------+--------------+
-|no       | <a/>         |<a>1</a>      |<a><b/></a>   |
-|         |              |              |              |
-|  json:  |\ta:null      |\ta:          |\ta:{\n       |
-|         |              |              |\n}           |
-+---------+--------------+--------------+--------------+
-|first    |<a/><a..      |<a>1</a><a..  |<a><b/></a><a.|
-|         |              |              |              |
-|  json:  |\ta:[\n\tnull |\ta:[\n\t     |\ta:[\n\t{\n  |
-|         |              |              |\n\t}         |
-+---------+--------------+--------------+--------------+
-|middle   |..a><a/><a..  |.a><a>1</a><a.|              |
-|         |              |              |              |
-|  json:  |\tnull        |\t            |\t{a          |
-|         |              |              |\n\t}         |
-+---------+--------------+--------------+--------------+
-|last     |..a></a>      |..a><a>1</a>  |              |
-|         |              |              |              |
-|  json:  |\tnull        |\t            |\t{a          |
-|         |\n\t]         |\n\t]         |\n\t}\t]      |
-+---------+--------------+--------------+--------------+
+  +---------+--------------+--------------+--------------+
+  |array,leaf| null         | body         | any          |
+  +---------+--------------+--------------+--------------+
+  |no       | <a/>         |<a>1</a>      |<a><b/></a>   |
+  |         |              |              |              |
+  |  json:  |\ta:null      |\ta:          |\ta:{\n       |
+  |         |              |              |\n}           |
+  +---------+--------------+--------------+--------------+
+  |first    |<a/><a..      |<a>1</a><a..  |<a><b/></a><a.|
+  |         |              |              |              |
+  |  json:  |\ta:[\n\tnull |\ta:[\n\t     |\ta:[\n\t{\n  |
+  |         |              |              |\n\t}         |
+  +---------+--------------+--------------+--------------+
+  |middle   |..a><a/><a..  |.a><a>1</a><a.|              |
+  |         |              |              |              |
+  |  json:  |\tnull        |\t            |\t{a          |
+  |         |              |              |\n\t}         |
+  +---------+--------------+--------------+--------------+
+  |last     |..a></a>      |..a><a>1</a>  |              |
+  |         |              |              |              |
+  |  json:  |\tnull        |\t            |\t{a          |
+  |         |\n\t]         |\n\t]         |\n\t}\t]      |
+  +---------+--------------+--------------+--------------+
  */
 static int 
 xml2json1_cbuf(cbuf                  *cb,
 	       cxobj                 *x,
 	       enum array_element_type arraytype,
 	       int                    level,
-	       int                    pretty)
+	       int                    pretty,
+	       int                    flat)
 {
     int             retval = -1;
     int             i;
@@ -217,9 +219,10 @@ xml2json1_cbuf(cbuf                  *cb,
 	cprintf(cb, "\"%s\"", xml_value(x));
 	break;
     case NO_ARRAY:
-	cprintf(cb, "%*s\"%s\": ", 
-		pretty?(level*JSON_INDENT):0, "", 
-		xml_name(x));
+	if (!flat)
+	    cprintf(cb, "%*s\"%s\": ", 
+		    pretty?(level*JSON_INDENT):0, "", 
+		    xml_name(x));
 	switch (childt){
 	case NULL_CHILD:
 	    cprintf(cb, "null");
@@ -284,7 +287,7 @@ xml2json1_cbuf(cbuf                  *cb,
 	if (xml2json1_cbuf(cb, 
 			   xc, 
 			   xc_arraytype,
-			   level+1, pretty) < 0)
+			   level+1, pretty,0) < 0)
 	    goto done;
 	if (i<xml_child_nr(x)-1)
 	    cprintf(cb, ",%s", pretty?"\n":"");
@@ -376,26 +379,36 @@ xml2json_cbuf(cbuf  *cb,
     int    retval = 1;
     int    level = 0;
 
-    if (pretty)
-	cprintf(cb, "%*s{\n", level*JSON_INDENT,"");
-    else
-	cprintf(cb, "{");
+    cprintf(cb, "%*s{%s", 
+	    pretty?level*JSON_INDENT:0,"", 
+	    pretty?"\n":"");
     if (xml2json1_cbuf(cb, 
 		       x, 
 		       NO_ARRAY,
-		       level+1, pretty) < 0)
+		       level+1, pretty,0) < 0)
 	goto done;
-    if (pretty)
-	cprintf(cb, "\n%*s}\n", level*JSON_INDENT,"");
-    else
-	cprintf(cb, "}"); 
+    cprintf(cb, "%s%*s}%s", 
+	    pretty?"\n":"",
+	    pretty?level*JSON_INDENT:0,"",
+	    pretty?"\n":"");
+
     retval = 0;
  done:
     return retval;
 }
 
-/*! Translate a vectro of xml objects to xml by adding a top pseudo-object.
- * example: <b/><c/> --> <a><b/><c/></a> --> {"a" : {"b" : null,"c" : null}}
+/*! Translate a vector of xml objects to JSON CLigen buffer.
+ * This is done by adding a top pseudo-object, and add the vector as subs,
+ * and then not pritning the top pseudo-.object using the 'flat' option.
+ * @param[out] cb     Cligen buffer to write to
+ * @param[in]  vec    Vector of xml objecst
+ * @param[in]  veclen Length of vector
+ * @param[in]  pretty Set if output is pretty-printed (2 for debug)
+ * @retval     0      OK
+ * @retval    -1      Error
+ * @note This only works if the vector is uniform, ie same object name.
+ * Example: <b/><c/> --> <a><b/><c/></a> --> {"b" : null,"c" : null}
+ * @see xml2json1_cbuf
  */
 int 
 xml2json_cbuf_vec(cbuf   *cb, 
@@ -406,64 +419,42 @@ xml2json_cbuf_vec(cbuf   *cb,
     int    retval = -1;
     int    level = 0;
     int    i;
+    cxobj *xp = NULL;
     cxobj *xc;
-    enum array_element_type arraytype;
 
-#ifdef VEC_ARRAY
-    cprintf(cb, "[%s", pretty?"\n":" ");
-    level++;
-#else /* pseudo object */
-    /* Note: We add a pseudo-object on top of the vector.
-     * This object is array_element_type == NO_ARRAY in xml2json1_cbuf 
-     * and child_type == ANY_CHILD
-     */
-    cprintf(cb, "{%s", 
-	    pretty?"\n":" ");
-    level++;
-    cprintf(cb, "%*s\"top\": ", /* NO_ARRAY */
-	    pretty?(level*JSON_INDENT):0, "");
-    cprintf(cb, "{%s", pretty?"\n":"");  /* ANY_CHILD */
-#endif
+    if ((xp = xml_new("", NULL)) == NULL)
+	goto done;
     for (i=0; i<veclen; i++){
-	xc = vec[i];
-	arraytype = array_eval(i?vec[i-1]:NULL,
-			     xc,
-			     i<veclen-1?vec[i+1]:NULL);
-	if (xml2json1_cbuf(cb, 
-			   xc, 
-			   arraytype,
-			   level, pretty) < 0)
-	    goto done;
-	if (i<veclen-1){
-	    cprintf(cb, ",");
-	    if (pretty)
-		cprintf(cb, "\n");
-	}
+	xc = xml_dup(vec[i]);
+	xml_addsub(xp, xc);
     }
-    level--;
-#ifdef VEC_ARRAY
-    cprintf(cb, "%s]%s", 
+    if (0){
+	cprintf(cb, "[%s", pretty?"\n":" ");
+	level++;
+    }
+    if (xml2json1_cbuf(cb, 
+		       xp, 
+		       NO_ARRAY,
+		       level+1, pretty,1) < 0)
+	goto done;
+
+    if (0){
+	level--;
+	cprintf(cb, "%s]%s", 
 	    pretty?"\n":"",
 	    pretty?"\n":""); /* top object */
-#else /* pseudo object */
-    cprintf(cb, "%s%*s}", 
-	    pretty?"\n":"",
-	    pretty?(level*JSON_INDENT):0, "");
-    cprintf(cb, "%s}%s", 
-	    pretty?"\n":"",
-	    pretty?"\n":""); /* top object */
-#endif
+    }
     retval = 0;
  done:
+    if (xp)
+	xml_free(xp);
     return retval;
-
 }
 
 /*! Translate from xml tree to JSON and print to file
  * @param[in]  f      File to print to
  * @param[in]  x      XML tree to translate from
  * @param[in]  pretty Set if output is pretty-printed
- * @param[in]  top    By default only children are printed, set if include top
  * @retval     0      OK
  * @retval    -1      Error
  *
@@ -474,7 +465,7 @@ xml2json_cbuf_vec(cbuf   *cb,
  */
 int 
 xml2json(FILE   *f, 
-	     cxobj *x, 
+	 cxobj  *x, 
 	 int     pretty)
 {
     int   retval = 1;
@@ -494,6 +485,19 @@ xml2json(FILE   *f,
     return retval;
 }
 
+/*! Translate a vector of xml objects to JSON File.
+ * This is done by adding a top pseudo-object, and add the vector as subs,
+ * and then not pritning the top pseudo-.object using the 'flat' option.
+ * @param[out] cb     Cligen buffer to write to
+ * @param[in]  vec    Vector of xml objecst
+ * @param[in]  veclen Length of vector
+ * @param[in]  pretty Set if output is pretty-printed (2 for debug)
+ * @retval     0      OK
+ * @retval    -1      Error
+ * @note This only works if the vector is uniform, ie same object name.
+ * Example: <b/><c/> --> <a><b/><c/></a> --> {"b" : null,"c" : null}
+ * @see xml2json1_cbuf
+ */
 int 
 xml2json_vec(FILE  *f, 
 	     cxobj **vec,

@@ -519,7 +519,7 @@ xml_find(cxobj *x_up,
     return NULL;
 }
 
-/*! Add xc as child to xp. Remove xc from previous parent.
+/*! Append xc as child to xp. Remove xc from previous parent.
  * @param[in] xp  Parent xml node
  * @param[in] xc  Child xml node to insert under xp
  * @retval    0   OK
