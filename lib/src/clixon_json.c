@@ -160,6 +160,32 @@ array_eval(cxobj *xprev,
     return array;
 }
 
+char *
+json_escape(char *str)
+{
+    int   i, j;
+    char *snew;
+
+    j = 0;
+    for (i=0;i<strlen(str);i++)
+	if (str[i]=='\n')
+	    j++;
+    if ((snew = malloc(strlen(str)+1+j))==NULL){
+	clicon_err(OE_XML, errno, "malloc");
+	return NULL;
+    }
+    j = 0;
+    for (i=0;i<strlen(str);i++)
+	if (str[i]=='\n'){
+	    snew[j++]='\\';
+	    snew[j++]='n';
+	}
+	else
+	    snew[j++]=str[i];
+    snew[j++]='\0';
+    return snew;
+}
+
 /*! Do the actual work of translating XML to JSON 
  * @param[out]   cb       Cligen text buffer containing json on exit
  * @param[in]    x        XML tree structure containing XML to translate
@@ -214,10 +240,14 @@ xml2json1_cbuf(cbuf                  *cb,
 		arraytype2str(arraytype),
 		childtype2str(childt));
     switch(arraytype){
-    case BODY_ARRAY:
-	assert(xml_value(x));
-	cprintf(cb, "\"%s\"", xml_value(x));
+    case BODY_ARRAY:{
+	char *str;
+	if ((str = json_escape(xml_value(x))) == NULL)
+	    goto done;
+	cprintf(cb, "\"%s\"", str);
+	free(str);
 	break;
+    }
     case NO_ARRAY:
 	if (!flat)
 	    cprintf(cb, "%*s\"%s\": ", 

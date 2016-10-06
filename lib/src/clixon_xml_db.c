@@ -1269,7 +1269,6 @@ xmldb_put_tree_local(clicon_handle       h,
     char      *key;
     char      *keys;
 
-    clicon_debug(1, "%s db:%s, api_path:%s", __FUNCTION__, db, api_path);
     yspec = clicon_dbspec_yang(h);
     if (db2file(h, db, &filename) < 0)
 	goto done;
@@ -1292,7 +1291,7 @@ xmldb_put_tree_local(clicon_handle       h,
 	goto done;
     }
     i = 1;
-    while (i<nvec){
+   while (i<nvec){
 	name = vec[i];
 	if ((keys = index(name, '=')) != NULL){
 	    *keys = '\0';
@@ -1325,14 +1324,9 @@ xmldb_put_tree_local(clicon_handle       h,
 	i++;
 	switch (y->ys_keyword){
 	case Y_LEAF_LIST:
-	    //	    val2 = vec[i]; /* No */
+	    /* For leaf-list 'keys' is value, see 3.5.1 in restconf draft */
 	    val2 = keys;
-	    if (i>=nvec){
-		clicon_err(OE_XML, errno, "Leaf-list %s without argument", name);
-		goto done;
-	    }
-	    //	    i++;
-	    cprintf(ckey, "/%s", val2);
+	    cprintf(ckey, "/%s", keys);
 	    break;
 	case Y_LIST:
 	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){

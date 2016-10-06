@@ -218,7 +218,7 @@ api_data_get(clicon_handle h,
     FCGX_FPrintF(r->out, "\r\n");
     if (xml2json_cbuf_vec(cbx, vec, veclen, 0) < 0)
 	goto done;
-    FCGX_FPrintF(r->out, "[%s]", cbuf_get(cbx));
+    FCGX_FPrintF(r->out, "%s", cbuf_get(cbx));
     FCGX_FPrintF(r->out, "\r\n\r\n");
     retval = 0;
  done:
@@ -341,6 +341,7 @@ api_data_put(clicon_handle h,
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");
+    retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xdata)
