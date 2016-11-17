@@ -21,6 +21,7 @@
  * Limited XML XPATH and XSLT functions.
  * NOTE: there is a main function at the end of this file where you can test out
  * different xpath expressions.
+ * Look at the end of the file for a test unit program
  */
 /*
 https://www.w3.org/TR/xpath/
@@ -449,10 +450,12 @@ xpath_expr(char     *predicate_expression,
 	    if ((x = xml_find(xv, e_a)) != NULL &&
 		(xml_type(x) == CX_ATTR)){
 		if (!e_v || strcmp(xml_value(x), e_v) == 0){
-	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
-		    if (flags==0x0 || xml_flag(xv, flags))
+		    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
+		    if (flags==0x0 || xml_flag(xv, flags)){
 			if (cxvec_append(xv, &vec, &veclen) < 0)
 			    goto done;
+			break; /* xv added */
+		    }
 		}
 	    }
 	}
@@ -483,11 +486,14 @@ xpath_expr(char     *predicate_expression,
 	    }
 	    for (i=0; i<*vec0len; i++){
 		xv = (*vec0)[i];
-		if ((x = xml_find(xv, tag)) != NULL &&
-		    (xml_type(x) == CX_ELMNT)){
+		/* Check if more may match,... */
+		x = NULL;
+		while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
+		    if (strcmp(tag, xml_name(x)) != 0)
+			continue;
 		    if ((val = xml_body(x)) != NULL &&
 			strcmp(val, e) == 0){
-	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
+			clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
 			if (flags==0x0 || xml_flag(xv, flags))
 			    if (cxvec_append(xv, &vec, &veclen) < 0)
 				goto done;
@@ -508,13 +514,13 @@ xpath_expr(char     *predicate_expression,
 }
 
 /*! Given vec0, add matches to vec1
- * @param[in]   xe 
+ * @param[in]   xe      XPATH in structured (parsed) form
  * @param[in]   descendants0
- * @param[in]   vec0
- * @param[in]   vec0len
- * @param[in]   flags
- * @param[out]  vec1
- * @param[out]  vec1len
+ * @param[in]   vec0    vector of XML trees
+ * @param[in]   vec0len length of XML trees
+ * @param[in]   flags   if != 0, only match xml nodes matching flags
+ * @param[out]  vec2    Result XML node vector
+ * @param[out]  vec2len Length of result vector.
  * XXX: Kommer in i funktionen med vec0, resultatet appendas i vec1
  * vec0 --> vec
  * Det är nog bra om vec0 inte ändras, är input parameter
@@ -673,12 +679,12 @@ xpath_split(char  *xpathstr,
 }
 
 /*! Process single xpath expression on xml tree
- * @param[in]  xpath 
- * @param[in]  vec0
- * @param[in]  vec0len
- * @param[in]  flags
- * @param[out] vec
- * @param[out] veclen
+ * @param[in]  xpath   string with XPATH syntax
+ * @param[in]  vec0    vector of XML trees
+ * @param[in]  vec0len length of XML trees
+ * @param[in]  flags   if != 0, only match xml nodes matching flags
+ * @param[out] vec2    Result XML node vector
+ * @param[out] vec2len Length of result vector.
  */
 static int
 xpath_exec(char         *xpath, 

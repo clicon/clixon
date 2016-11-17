@@ -105,7 +105,7 @@ uninstall:
 
 # Just link test programs
 test.c	:
-	echo "main(){}" > $@
+	echo "int main(){}" > $@
 
 test: 	test.c $(LIBOBJ) 
 	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. -l:$(MYLIB) $(LIBS) -o $@

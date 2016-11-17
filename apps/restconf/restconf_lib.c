@@ -138,6 +138,8 @@ str2cvec(char  *string,
 		clicon_debug(1, "error cvec_add %s", strerror(errno));
 		goto err;
 	    }
+	    while ((strlen(s) > 0) && isblank(*s))
+		s++;
 	    cv_name_set(cv, s);
 	    cv_string_set(cv, valu);
 	    free(valu);

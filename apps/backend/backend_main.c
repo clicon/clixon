@@ -302,7 +302,8 @@ main(int argc, char **argv)
     int           sockfamily;
 
     /* In the startup, logs to stderr & syslog and debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR|CLICON_LOG_SYSLOG); 
+
+    clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR|CLICON_LOG_SYSLOG);
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
 	return -1;
@@ -343,10 +344,13 @@ main(int argc, char **argv)
 	    break;
 	}
     /* 
+     * Here we have the debug flag settings, use that.
      * Syslogs also to stderr, but later turn stderr off in daemon mode. 
      * error only to syslog. debug to syslog
+     * XXX: if started in a start-daemon script, there will be irritating
+     * double syslogs until fork below. 
      */
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR|CLICON_LOG_SYSLOG); 
+    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_SYSLOG); 
     clicon_debug_init(debug, NULL);
 
     /* Find and read configfile */
@@ -554,7 +558,7 @@ main(int argc, char **argv)
        demonized errors OK. Before this stage, errors are logged on stderr 
        also */
     if (foreground==0){
-	clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_SYSLOG); 
+	clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_SYSLOG);
 	if (daemon(0, 0) < 0){
 	    fprintf(stderr, "config: daemon");
 	    exit(-1);

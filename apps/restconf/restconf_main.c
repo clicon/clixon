@@ -432,7 +432,8 @@ request_process(clicon_handle h,
     /* If present, check credentials */
     if (plugin_credentials(h, r, &auth) < 0)
 	goto done;
-    clicon_debug(1, "%s credentials ok 1", __FUNCTION__);
+    clicon_debug(1, "%s credentials ok auth:%d (should be 1)",
+		 __FUNCTION__, auth);
     if (auth == 0)
 	goto done;
     clicon_debug(1, "%s credentials ok 2", __FUNCTION__);
