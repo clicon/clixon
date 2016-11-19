@@ -419,11 +419,11 @@ clicon_rpc(int                s,
     case CLICON_MSG_ERR:
 	if (clicon_msg_err_decode(reply, &err, &suberr, &reason, label) < 0) 
 	    goto done;
-	clicon_err(err, suberr, "%s", reason);
+	clicon_err(err, suberr, "%s msgtype:%hu", reason, ntohs(msg->op_type));
 	goto done;
 	break;
     default:
-	clicon_err(OE_PROTO, 0, "%s: unexpected reply: %d", 
+	clicon_err(OE_PROTO, 0, "%s: unexpected reply: %hu", 
 		__FUNCTION__, type);
 	goto done;
 	break;

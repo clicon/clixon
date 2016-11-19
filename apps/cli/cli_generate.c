@@ -181,7 +181,7 @@ cli_expand_var_generate(clicon_handle h,
     int   retval = -1;
     char *xkfmt = NULL;
 
-    if (yang2xmlkeyfmt(ys, &xkfmt) < 0)
+    if (yang2xmlkeyfmt(ys, 1, &xkfmt) < 0)
 	goto done;
     cprintf(cb0, "|<%s:%s",  ys->ys_argument, 
 	    cv_type2str(cvtype));
@@ -190,8 +190,6 @@ cli_expand_var_generate(clicon_handle h,
     cprintf(cb0, " %s(\"candidate %s\")>",
 	    GENERATE_EXPAND_XMLDB,
 	    xkfmt);
-
-
     retval = 0;
  done:
     if (xkfmt)
@@ -213,7 +211,7 @@ cli_callback_generate(clicon_handle h,
     int        retval = -1;
     char      *xkfmt = NULL;
 
-    if (yang2xmlkeyfmt(ys, &xkfmt) < 0)
+    if (yang2xmlkeyfmt(ys, 0, &xkfmt) < 0)
 	goto done;
     cprintf(cb0, ",%s(\"%s\")", GENERATE_CALLBACK, xkfmt);
     retval = 0;

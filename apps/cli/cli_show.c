@@ -94,12 +94,14 @@ expand_dbvar(void   *h,
     char            *str;
     char            *dbstr;    
     cxobj           *xt = NULL;
-    char            *xk = NULL;
+    char            *xkpath = NULL;
     cxobj          **xvec = NULL;
     size_t           xlen = 0;
     cxobj           *x;
     char            *bodystr;
     int              i;
+    int              j;
+    int              k;
     int              i0;
 
     if (arg == NULL || (str = cv_string_get(arg)) == NULL){
@@ -122,10 +124,38 @@ expand_dbvar(void   *h,
        --> ^/interface/eth0/address/.*$
        --> /interface/[name=eth0]/address
     */
-    if (xmlkeyfmt2xpath(xkfmt, cvv, &xk) < 0)
+    if (xmlkeyfmt2xpath(xkfmt, cvv, &xkpath) < 0)
 	goto done;   
-    if (xmldb_get(h, dbstr, xk, 1, &xt, &xvec, &xlen) < 0)
+    if (xmldb_get(h, dbstr, xkpath, 1, &xt, &xvec, &xlen) < 0)
 	goto done;
+    /* One round to detect duplicates 
+     * XXX The code below would benefit from some cleanup
+     */
+    j = 0;
+    for (i = 0; i < xlen; i++) {
+	char *str;
+	x = xvec[i];
+	if (xml_type(x) == CX_BODY)
+	    bodystr = xml_value(x);
+	else
+	    bodystr = xml_body(x);
+	if (bodystr == NULL){
+	    clicon_err(OE_CFG, 0, "No xml body");
+	    goto done;
+	}
+	/* detect duplicates */
+	for (k=0; k<j; k++){
+	    if (xml_type(xvec[k]) == CX_BODY)
+		str = xml_value(xvec[k]);
+	    else
+		str = xml_body(xvec[k]);
+	    if (strcmp(str, bodystr)==0)
+		break;
+	}
+	if (k==j) /* not duplicate */
+	    xvec[j++] = x;
+    }
+    xlen = j;
     i0 = *nr;
     *nr += xlen;
     if ((*commands = realloc(*commands, sizeof(char *) * (*nr))) == NULL) {
@@ -151,8 +181,8 @@ expand_dbvar(void   *h,
 	free(xvec);
     if (xt)
 	xml_free(xt);
-    if (xk)
-	free(xk);
+    if (xkpath) 
+	free(xkpath);
     return retval;
 
 }

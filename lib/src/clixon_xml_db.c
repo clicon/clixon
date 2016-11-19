@@ -96,9 +96,18 @@
  * instead of    /interfaces/interface/%s/ipv4/address/ip/%s
  * you can have: /interfaces/interface[name=%s]/ipv4/address/[ip=%s]
  */
-/*! Recursive help function */
+/*! Construct an xml key format from yang statement using wildcards for keys
+ * Recursively construct it to the top.
+ * Example: 
+ *   yang:  container a -> list b -> key c -> leaf d
+ *   xpath: /a/b/%s/d
+ * @param[in]  ys      Yang statement
+ * @param[in]  inclkey If !inclkey then dont include key leaf
+ * @param[out] cbuf    keyfmt
+ */ 
 static int
 yang2xmlkeyfmt_1(yang_stmt *ys, 
+		 int        inclkey,
 		 cbuf      *cb)
 {
     yang_node *yn;
@@ -111,11 +120,23 @@ yang2xmlkeyfmt_1(yang_stmt *ys,
     if (yn != NULL && 
 	yn->yn_keyword != Y_MODULE && 
 	yn->yn_keyword != Y_SUBMODULE){
-	if (yang2xmlkeyfmt_1((yang_stmt *)yn, cb) < 0)
+	if (yang2xmlkeyfmt_1((yang_stmt *)yn, 1, cb) < 0)
 	    goto done;
     }
-    if (ys->ys_keyword != Y_CHOICE && ys->ys_keyword != Y_CASE)
-	cprintf(cb, "/%s", ys->ys_argument);
+    if (inclkey){
+	if (ys->ys_keyword != Y_CHOICE && ys->ys_keyword != Y_CASE)
+	    cprintf(cb, "/%s", ys->ys_argument);
+    }
+    else{
+	if (ys->ys_keyword == Y_LEAF && yn && yn->yn_keyword == Y_LIST){
+	    if (yang_key_match(yn, ys->ys_argument) == 0)
+		cprintf(cb, "/%s", ys->ys_argument); /* Not if leaf and key */
+	}
+	else
+	    if (ys->ys_keyword != Y_CHOICE && ys->ys_keyword != Y_CASE)
+		cprintf(cb, "/%s", ys->ys_argument);
+    }
+
     switch (ys->ys_keyword){
     case Y_LIST:
 	if ((ykey = yang_find((yang_node*)ys, Y_KEY, NULL)) == NULL){
@@ -144,15 +165,17 @@ yang2xmlkeyfmt_1(yang_stmt *ys,
 }
 
 /*! Construct an xml key format from yang statement using wildcards for keys
- * Recursively contruct it to the top.
+ * Recursively construct it to the top.
  * Example: 
  *   yang:  container a -> list b -> key c -> leaf d
  *   xpath: /a/b/%s/d
- * @param[in]  ys     Yang statement
- * @param[out] xpath  String, needs to be freed after use
+ * @param[in]  ys       Yang statement
+ * @param[in]  inclkey If !inclkey then dont include key leaf
+ * @param[out] xkfmt    XML key format. Needs to be freed after use.
  */ 
 int
 yang2xmlkeyfmt(yang_stmt *ys, 
+	       int        inclkey,
 	       char     **xkfmt)
 {
     int   retval = -1;
@@ -162,7 +185,7 @@ yang2xmlkeyfmt(yang_stmt *ys,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if (yang2xmlkeyfmt_1(ys, cb) < 0)
+    if (yang2xmlkeyfmt_1(ys, inclkey, cb) < 0)
 	goto done;
     if ((*xkfmt = strdup(cbuf_get(cb))) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
@@ -249,13 +272,17 @@ xmlkeyfmt2key(char  *xkfmt,
     return retval;
 }
 
-/*! Transform an xml key format and a vector of values to an XML key
+/*! Transform an xml key format and a vector of values to an XML path
  * Used to input xmldb_get() or xmldb_get_vec
  * Add .* in last %s position.
  * Example: 
  *   xmlkeyfmt:  /interface/%s/address/%s
  *   cvv:        name=eth0
  *   xmlkey:     /interface/[name=eth0]/address
+ * Example2:
+ *   xmlkeyfmt:  /ip/me/%s (if key)
+ *   cvv:        -
+ *   xmlkey:     /ipv4/me/a
  * @param[in]  xkfmt  XML key format
  * @param[in]  cvv    cligen variable vector, one for every wildchar in xkfmt
  * @param[out] xk     XPATH
@@ -301,9 +328,8 @@ xmlkeyfmt2xpath(char  *xkfmt,
 	    esc = 0;
 	    if (c!='s')
 		continue;
-	    if (j == cvec_len(cvv)){ /* last element */
+	    if (j == cvec_len(cvv)) /* last element */
 		skip++;
-	    }
 	    else{
 		/* XXX: remove preceding '/' :
 		 a/[x=y] -> a[x=y] */
@@ -481,10 +507,10 @@ append_listkeys(cbuf      *ckey,
 }
 
 /*! Help function to create xml key values 
- * @param[in]  x   Parent
- * @param[in]  xc0
- * @param[in]  y
- * @param[in]  keyname  yang key name
+ * @param[in,out] x   Parent
+ * @param[in]     ykey
+ * @param[in]     arg
+ * @param[in]     keyname  yang key name
  */
 static int
 create_keyvalues(cxobj     *x, 
@@ -649,6 +675,10 @@ get(char      *dbname,
 	    cvi = NULL;
 	    /* Iterate over individual yang keys  */
 	    cprintf(cb, "%s", name);
+	    if (cvec_len(cvk) > 1 && i+cvec_len(cvk) >= nvec-1){
+		retval = 0;
+		goto done;
+	    }
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
 		i++;
 		if (i>=nvec){

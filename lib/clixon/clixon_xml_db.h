@@ -26,7 +26,7 @@
 /*
  * Prototypes
  */
-int yang2xmlkeyfmt(yang_stmt *ys, char **xkfmt);
+int yang2xmlkeyfmt(yang_stmt *ys, int inclkey, char **xkfmt);
 int xmlkeyfmt2key(char *xkfmt, cvec *cvv, char **xk);
 int xmlkeyfmt2xpath(char *xkfmt, cvec *cvv, char **xk);
 int xmldb_get(clicon_handle h, char *db, char *xpath, int vector, 
