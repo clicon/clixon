@@ -582,6 +582,10 @@ xml_diff1(yang_stmt *ys,
 			      for other x2 */
 		    break;
 	    }
+	    if (cvk){
+		cvec_free(cvk);
+		cvk = NULL;
+	    }
 	    if (equal){ 
 		if (xml_diff1(y, x1, x2,   
 			      first, firstlen, 
@@ -593,10 +597,7 @@ xml_diff1(yang_stmt *ys,
 	    else
 		if (cxvec_append(x1, first, firstlen) < 0) 
 		    goto done;
-	    if (cvk){
-		cvec_free(cvk);
-		cvk = NULL;
-	    }
+
 	    break;
 	case Y_CONTAINER:
 	    /* Equal regardless */
@@ -686,13 +687,13 @@ xml_diff1(yang_stmt *ys,
 			      for other x2 */
 		    break;
 	    }
-	    if (!equal)
-		if (cxvec_append(x2, second, secondlen) < 0) 
-		    goto done;
 	    if (cvk){
 		cvec_free(cvk);
 		cvk = NULL;
 	    }
+	    if (!equal)
+		if (cxvec_append(x2, second, secondlen) < 0) 
+		    goto done;
 	    break;
 	case Y_CONTAINER:
 	    /* Equal regardless */
