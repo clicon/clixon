@@ -767,6 +767,26 @@ xpath_choice(cxobj   *xtop,
     return retval;
 }
 
+static cxobj *
+xpath_first0(cxobj *cxtop, 
+	    char  *xpath)
+{
+    cxobj **vec0 = NULL;
+    size_t  vec0len = 0;
+    cxobj  *xn = NULL;
+
+    if (xpath_choice(cxtop, xpath, 0, &vec0, &vec0len) < 0)
+	goto done;
+    if (vec0len)
+	xn = vec0[0];
+    else
+	xn = NULL;
+  done:
+    if (vec0)
+	free(vec0);
+    return xn;
+}
+
 /*! A restricted xpath function where the first matching entry is returned
  * See xpath1() on details for subset.
  * args:
@@ -785,24 +805,36 @@ xpath_choice(cxobj   *xtop,
  * @see also xpath_vec.
  */
 cxobj *
-xpath_first(cxobj *cxtop, 
-	    char  *xpath)
+xpath_first(cxobj   *cxtop, 
+	    char    *format, 
+	    ...)
 {
-    cxobj **vec0 = NULL;
-    size_t  vec0len = 0;
-    cxobj  *xn = NULL;
+    cxobj  *retval = NULL;
+    va_list ap;
+    size_t  len;
+    char   *xpath;
 
-    if (xpath_choice(cxtop, xpath, 0, &vec0, &vec0len) < 0)
+    va_start(ap, format);    
+    len = vsnprintf(NULL, 0, format, ap);
+    va_end(ap);
+    /* allocate a message string exactly fitting the message length */
+    if ((xpath = malloc(len+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
-    if (vec0len)
-	xn = vec0[0];
-    else
-	xn = NULL;
-  done:
-    if (vec0)
-	free(vec0);
-    return xn;
-
+    }
+    /* second round: compute write message from reason and args */
+    va_start(ap, format);    
+    if (vsnprintf(xpath, len+1, format, ap) < 0){
+	clicon_err(OE_UNIX, errno, "vsnprintf");
+	va_end(ap);
+	goto done;
+    }
+    va_end(ap);
+    retval = xpath_first0(cxtop, xpath);
+ done:
+    if (xpath)
+	free(xpath);
+    return retval;
 }
 
 /*! A restricted xpath iterator that loops over all matching entries. Dont use.
@@ -888,13 +920,39 @@ xpath_each(cxobj *cxtop,
  */
 int
 xpath_vec(cxobj   *cxtop, 
-	  char    *xpath, 
-	  cxobj ***vec, 
-	  size_t  *veclen)
+	   char    *format, 
+	   cxobj ***vec, 
+	   size_t  *veclen,
+	   ...)
 {
+    int retval = -1;
+    va_list ap;
+    size_t  len;
+    char   *xpath;
+
+    va_start(ap, veclen);    
+    len = vsnprintf(NULL, 0, format, ap);
+    va_end(ap);
+    /* allocate a message string exactly fitting the message length */
+    if ((xpath = malloc(len+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    /* second round: compute write message from reason and args */
+    va_start(ap, veclen);    
+    if (vsnprintf(xpath, len+1, format, ap) < 0){
+	clicon_err(OE_UNIX, errno, "vsnprintf");
+	va_end(ap);
+	goto done;
+    }
+    va_end(ap);
     *vec = NULL;
     *veclen = 0;
-    return xpath_choice(cxtop, xpath, 0, vec, veclen);
+    retval = xpath_choice(cxtop, xpath, 0x0, vec, veclen);
+ done:
+    if (xpath)
+	free(xpath);
+    return retval;
 }
 
 /* A restricted xpath that returns a vector of matches (only nodes marked with flags)
@@ -902,14 +960,40 @@ xpath_vec(cxobj   *cxtop,
  */
 int
 xpath_vec_flag(cxobj   *cxtop, 
-	       char    *xpath, 
+	       char    *format, 
 	       uint16_t flags,
 	       cxobj ***vec, 
-	       size_t  *veclen)
+	       size_t  *veclen,
+	       ...)
 {
+    int retval = -1;
+    va_list ap;
+    size_t  len;
+    char   *xpath;
+
+    va_start(ap, veclen);    
+    len = vsnprintf(NULL, 0, format, ap);
+    va_end(ap);
+    /* allocate a message string exactly fitting the message length */
+    if ((xpath = malloc(len+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    /* second round: compute write message from reason and args */
+    va_start(ap, veclen);    
+    if (vsnprintf(xpath, len+1, format, ap) < 0){
+	clicon_err(OE_UNIX, errno, "vsnprintf");
+	va_end(ap);
+	goto done;
+    }
+    va_end(ap);
     *vec=NULL;
     *veclen = 0;
-    return xpath_choice(cxtop, xpath, flags, vec, veclen);
+    retval = xpath_choice(cxtop, xpath, flags, vec, veclen);
+ done:
+    if (xpath)
+	free(xpath);
+    return retval;
 }
 
 /*
