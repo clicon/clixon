@@ -361,6 +361,12 @@ xml_child_i(cxobj *xn,
     return NULL;
 }
 
+/*! Set specific child
+ * @param[in]  xn    xml node
+ * @param[in]  i     the number of the child, eg order in children vector
+ * @param[in]  xc    The child to set at position i
+ * @retval     0     OK
+ */
 cxobj *
 xml_child_i_set(cxobj *xt, 
 		int    i, 

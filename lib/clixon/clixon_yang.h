@@ -111,6 +111,9 @@ enum rfc_6020{
 
 #define YANG_FLAG_MARK 0x01  /* Marker for dynamic algorithms, eg expand */
 
+/* Yang syntz nodes */
+#define yang_is_syntax(y) ((y)->ys_keyword == Y_CONTAINER || (y)->ys_keyword == Y_LEAF || (y)->ys_keyword == Y_LIST || (y)->ys_keyword == Y_LEAF_LIST)
+
 typedef struct yang_stmt yang_stmt; /* forward */
 
 /*! Yang type cache. Yang type statements can cache all typedef info here

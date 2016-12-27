@@ -408,7 +408,7 @@ yang_find(yang_node *yn,
  * @note check if argument==NULL really required?
  */
 /*! Is this yang-stmt a container, list, leaf or leaf-list? */
-#define yang_is_syntax(y) ((y)->ys_keyword == Y_CONTAINER || (y)->ys_keyword == Y_LEAF || (y)->ys_keyword == Y_LIST || (y)->ys_keyword == Y_LEAF_LIST)
+
 
 yang_stmt *
 yang_find_syntax(yang_node *yn, 

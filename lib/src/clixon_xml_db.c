@@ -812,6 +812,60 @@ xml_default(cxobj *x,
     return retval;
 }
 
+/*! Order XML children according to YANG
+ */
+static int
+xml_order(cxobj *x, 
+	  void  *arg)
+{
+    int        retval = -1;
+    yang_stmt *y;
+    yang_stmt *yc;
+    int        i;
+    int        j0;
+    int        j;
+    cxobj     *xc;
+    cxobj     *xj;
+    char      *yname; /* yang child name */
+    char      *xname; /* xml child name */
+
+    y = (yang_stmt*)xml_spec(x);
+    j0 = 0;
+ /* Go through xml children and ensure they are same order as yspec children */
+    for (i=0; i<y->ys_len; i++){
+	yc = y->ys_stmt[i];
+	if (!yang_is_syntax(yc))
+	    continue;
+	yname = yc->ys_argument;
+	/* First go thru xml children with same name */
+	for (;j0<xml_child_nr(x); j0++){
+	    xc = xml_child_i(x, j0);
+	    if (xml_type(xc) != CX_ELMNT)
+		continue;
+	    xname = xml_name(xc);
+	    if (strcmp(xname, yname))
+		break;
+	}
+	/* Now we have children not with same name */
+	for (j=j0; j<xml_child_nr(x); j++){
+	    xc = xml_child_i(x, j);
+	    if (xml_type(xc) != CX_ELMNT)
+		continue;
+	    xname = xml_name(xc);
+	    if (strcmp(xname, yname))
+		continue;
+	    /* reorder */
+	    xj = xml_child_i(x, j0);
+	    xml_child_i_set(x, j0, xc);
+	    xml_child_i_set(x, j, xj);
+	    j0++;
+	}
+    }
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /*! Get content of database using xpath. return a single tree
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
@@ -874,6 +928,8 @@ xmldb_get_tree(char      *dbname,
     }
     *xtop = xt;
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
+	goto done;
+    if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
 	goto done;
     if (1) /* sanity */
 	if (xml_apply(xt, CX_ELMNT, xml_sanity, NULL) < 0)
@@ -956,6 +1012,8 @@ xmldb_get_vec(char      *dbname,
     if (xpath_vec(xt, xpath, xvec, xlen) < 0)
 	goto done;
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
+	goto done;
+    if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
 	goto done;
     if (1)
 	if (xml_apply(xt, CX_ELMNT, xml_sanity, NULL) < 0)
