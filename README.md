@@ -2,7 +2,7 @@ CLIXON
 ======
 
 CLIXON is an automatic configuration manager where you from a YANG
-specification generate interactive CLI, NETCONF and embedded
+specification generate interactive CLI, NETCONF, RESTCONF and embedded
 databases with transaction support.
 
 CLIXON is a fork of CLICON where legacy key specification has been
@@ -28,9 +28,10 @@ to build and install CLIgen:
     git clone https://github.com/olofhagsand/cligen.git
     cd cligen; configure; make; make install
 
-CLIXON is covered by GPLv3, and is also available with commercial license.
+CLIXON is dual license. Either Apache License, Version 2.0 or GNU
+General Public License Version 2. You choose.
 
-See LICENSE for license, CHANGELOG for recent changes.
+See LICENSE.md for license, CHANGELOG for recent changes.
 
 
 
