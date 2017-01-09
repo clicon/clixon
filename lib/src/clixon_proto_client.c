@@ -200,7 +200,7 @@ clicon_rpc_change(clicon_handle       h,
 					op, 
 					key, 
 					val, 
-					strlen(val)+1,
+					val?strlen(val)+1:0,
 				       __FUNCTION__)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, NULL, NULL, NULL, __FUNCTION__) < 0)

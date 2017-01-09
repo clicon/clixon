@@ -221,6 +221,7 @@ yang2xmlkeyfmt(yang_stmt *ys,
  * @param[in]  cvv    cligen variable vector, one for every wildchar in xkfmt
  * @param[out] xk     XML key, eg /aaa/17. Free after use
  * @note first and last elements of cvv are not used,..
+ * @see cli_dbxml where this function is called
  */ 
 int
 xmlkeyfmt2key(char  *xkfmt, 
@@ -247,7 +248,7 @@ xmlkeyfmt2key(char  *xkfmt,
 		   j,
 		   cvec_len(cvv), 
 		   cv_string_get(cvec_i(cvv, 0)));
-	//	goto done;
+	goto done;
     }
 #endif
     if ((cb = cbuf_new()) == NULL){
@@ -1689,7 +1690,7 @@ xmldb_put_xkey_local(clicon_handle       h,
     case OP_MERGE:
     case OP_REPLACE:
 	if (y->ys_keyword == Y_LEAF || y->ys_keyword == Y_LEAF_LIST){
-	    if (db_set(filename, xk, val, strlen(val)+1) < 0)
+	    if (db_set(filename, xk, val, val?strlen(val)+1:0) < 0)
 		goto done;
 	}
 	else

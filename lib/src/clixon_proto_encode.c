@@ -199,7 +199,9 @@ clicon_msg_change_encode(char       *db,
 	    op, str_len, db, key);
     p = 0;
     len = sizeof(*msg) + 2*sizeof(uint32_t) + strlen(db) + 1 + 
-	strlen(key) + 1 + str_len;
+	strlen(key) + str_len;
+    if (str_len)
+	len++; /* if str not null add end of string */
     if ((msg = (struct clicon_msg *)chunk(len, label)) == NULL){
 	clicon_err(OE_PROTO, errno, "%s: chunk", __FUNCTION__);
 	return NULL;
@@ -221,8 +223,10 @@ clicon_msg_change_encode(char       *db,
     p += strlen(db)+1;
     strncpy(msg->op_body+p, key, len-p-hdrlen);
     p += strlen(key)+1;
-    memcpy(msg->op_body+p, str, str_len);
-    p += str_len;
+    if (str_len){
+	memcpy(msg->op_body+p, str, str_len);
+	p += str_len;
+    }
     return msg;
 }
 

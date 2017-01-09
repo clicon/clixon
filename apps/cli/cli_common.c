@@ -495,7 +495,7 @@ compare_dbs(clicon_handle h, cvec *cvv, cg_var *arg)
  * cvv[2] = "bgp"
  * arg = "/interfaces/interface/%s/type"
  * op: OP_MERGE
- * @see cli_callback_xmlkeyfmt_generate where arg is generated
+ * @see cli_callback_generate where arg is generated
  */
 static int
 cli_dbxml(clicon_handle       h, 
@@ -508,17 +508,20 @@ cli_dbxml(clicon_handle       h,
     char      *xkfmt;  /* xml key format */
     char      *xk = NULL; /* xml key */
     cg_var    *cval;
-    char      *val = NULL;
+    int        len;
 
     xkfmt = cv_string_get(arg);
     if (xmlkeyfmt2key(xkfmt, cvv, &xk) < 0)
 	goto done;
-    cval = cvec_i(cvv, cvec_len(cvv)-1);
-    if ((val = cv2str_dup(cval)) == NULL){
-	clicon_err(OE_UNIX, errno, "cv2str_dup");
-	goto done;
+    len = cvec_len(cvv);
+    if (len > 1){
+	cval = cvec_i(cvv, len-1); 
+	if ((str = cv2str_dup(cval)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cv2str_dup");
+	    goto done;
+	}
     }
-    if (clicon_rpc_change(h, "candidate", op, xk, val) < 0)
+    if (clicon_rpc_change(h, "candidate", op, xk, str) < 0)
 	goto done;
     if (clicon_autocommit(h)) {
 	if (clicon_rpc_commit(h, "candidate", "running", 0, 0) < 0) 

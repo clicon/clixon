@@ -170,7 +170,8 @@ Q: How do you use netconf?
 --------------------------
 
 As an alternative to cli configuration, you can use netconf
-directly. Easiesty is to just pipe netconf commands to the
+directly. Easiest is to just pipe netconf commands to the
 clixon_netconf application.
 Example:
 	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/routing.conf
+

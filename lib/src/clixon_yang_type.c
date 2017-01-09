@@ -104,7 +104,7 @@ static const struct map_str2int ytmap[] = {
     {"uint16",      CGV_UINT16},
     {"uint32",      CGV_UINT32},
     {"uint64",      CGV_UINT64},
-    {"union",       CGV_VOID},  /* Is replaced by actual type */
+    {"union",       CGV_REST},  /* Is replaced by actual type */
     {NULL, -1}
 };
 
@@ -912,6 +912,7 @@ yang_type_get(yang_stmt    *ys,
 	clicon_err(OE_DB, 0, "%s: mandatory type object is not found", __FUNCTION__);
 	goto done;
     }
+    /* XXX: here we seem to have some problems if type is union */
     type = ytype_id(ytype);
     if (origtype)
 	*origtype = type;

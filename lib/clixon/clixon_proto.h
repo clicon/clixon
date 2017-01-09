@@ -63,7 +63,7 @@ enum clicon_msg_type{
 			  2. uint32: length of value string
 			  3. string: name of database to change (eg "running")
 			  4. string: key
-			  5. string: value
+			  5. string: value (can be NULL)
 			 */
     CLICON_MSG_XMLPUT, /* Send database entries as XML to backend daemon
 			  1. uint32: operation: LV_SET/LV_DELETE

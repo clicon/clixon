@@ -377,6 +377,9 @@ main(int argc, char **argv)
     /* Join rest of argv to a single command */
     restarg = clicon_strjoin(argc, argv, " ", __FUNCTION__);
 
+    /* If several cligen object variables match same preference, select first */
+    cligen_match_cgvar_same(1);
+
     /* Call start function in all plugins before we go interactive 
        Pass all args after the standard options to plugin_start
      */

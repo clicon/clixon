@@ -29,6 +29,8 @@
 #
 # ***** END LICENSE BLOCK *****
 
+- Empty yang type. Relaxed yang types for unions, eg two strings with different length.
+	
 Dec 2016: Dual license: both GPLv3 and APLv2
 	
 Feb 2016: Forked new clixon repository from clicon

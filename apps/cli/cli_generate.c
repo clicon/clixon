@@ -72,104 +72,31 @@
 /*=====================================================================
  * YANG generate CLI
  *=====================================================================*/
-#if 0 /* examples/ntp */
- ntp("Network Time Protocol"),cli_set("ntp");{ 
-     logging("Configure NTP message logging"),cli_set("ntp.logging");{ 
-	 status (<status:bool>),cli_set("ntp.logging $status:bool");
-     } 
-     server("Configure NTP Server") (<ipv4addr:ipv4addr>("IPv4 address of peer")),cli_set("ntp.server[] $!ipv4addr:ipv4addr");
- }
-#endif
-#if 0 /* examples/datamodel */
-
-WITH COMPLETION:
- a (<x:number>|<x:number expand_dbvar_auto("candidate a[] $!x")>),cli_set("a[] $!x");{
-     b,cli_set("a[].b $!x");{ 
-	 y (<y:string>|<y:string expand_dbvar_auto("candidate a[].b $!x $y")>),cli_set("a[].b $!x $y");
-     } 
-     z (<z:string>|<z:string expand_dbvar_auto("candidate a[] $!x $z")>),cli_set("a[] $!x $z");
- }
-
-#endif
-
-#ifndef HAVE_CLIGEN_MAX2STR /* XXX cligen 3.6 feature */
-
-/*! Print max value of a CLIgen variable type as string
- * @param[in]   type  CLIgen variable type
- * @param[out]  str   Max value printed in this string
- * @param[in]   size  Length of 'str'
- * @retval len  How many bytes printed
- * @see cvtype_max2str_dup
- * You can use str=NULL to get the expected length.
- * The number of (potentially if str=NULL) written bytes is returned.
- */
-static int
-cvtype_max2str(enum cv_type type, char *str, size_t size)
-{
-    int  len = 0;
-
-    switch (type){
-    case CGV_INT8:
-	len = snprintf(str, size, "%" PRId8, INT8_MAX);
-	break;
-    case CGV_INT16:
-	len = snprintf(str, size, "%" PRId16, INT16_MAX);
-	break;
-    case CGV_INT32:
-	len = snprintf(str, size, "%" PRId32, INT32_MAX);
-	break;
-    case CGV_INT64:
-	len = snprintf(str, size, "%" PRId64, INT64_MAX);
-	break;
-    case CGV_UINT8:
-	len = snprintf(str, size, "%" PRIu8, UINT8_MAX);
-	break;
-    case CGV_UINT16:
-	len = snprintf(str, size, "%" PRIu16, UINT16_MAX);
-	break;
-    case CGV_UINT32:
-	len = snprintf(str, size, "%" PRIu32, UINT32_MAX);
-	break;
-    case CGV_UINT64:
-        len = snprintf(str, size, "%" PRIu64, UINT64_MAX);
-        break;
-    case CGV_DEC64:
-	len = snprintf(str, size, "%" PRId64 ".0", INT64_MAX);
-	break;
-    case CGV_BOOL:
-	len = snprintf(str, size, "true");
-	break;
-    default:
-	break;
+/*
+ This is an example yang module:
+module m {
+  container x {
+    list m1 {
+      key "a";
+      leaf a {
+        type string;
+      }
+      leaf b {
+        type string;
+      }
     }
-    return len;
+  }
 }
 
-/*! Print max value of a CLIgen variable type as string
- *
- * The string should be freed after use.
- * @param[in]   type  CLIgen variable type
- * @retval      str   Malloced string containing value. Should be freed after use.
- * @see cvtype_max2str
- */
-static char *
-cvtype_max2str_dup(enum cv_type type)
+You can see which CLISPEC it generates via clixon_cli -D 1:
+Jan  2 11:17:58: yang2cli: buf
+}   x,cli_set("/x");{
+      m1         (<a:string>|<a:string expand_dbvar("candidate /x/m1/%s/a")>),cli_set("/x/m1/%s");
 {
-    int   len;
-    char *str;
-
-    if ((len = cvtype_max2str(type, NULL, 0)) < 0)
-	return NULL;
-    if ((str = (char *)malloc (len+1)) == NULL)
-	return NULL;
-    memset (str, '\0', len+1);
-    if ((cvtype_max2str(type, str, len+1)) < 0){
-	free(str);
-	return NULL;
-    }
-    return str;
-}
-#endif /* HAVE_CLIGEN_MAX2STR */
+         b (<b:string>|<b:string expand_dbvar("candidate /x/m1/%s/b")>),cli_set("/x/m1/%s/b");
+      }
+   }
+*/
 
 /*! Create cligen variable expand entry with xmlkey format string as argument
  * @param[in]  h      clicon handle

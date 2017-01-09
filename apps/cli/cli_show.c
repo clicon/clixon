@@ -81,9 +81,9 @@ static int xml2csv(FILE *f, cxobj *x, cvec *cvv);
  * Returns an expand-type list of commands as used by cligen 'expand' 
  * functionality.
  *
- * Assume callback given in a cligen spec: a <x:int expand_dbvar_auto("arg")
+ * Assume callback given in a cligen spec: a <x:int expand_dbvar("arg")
  * @param[in]   h        clicon handle 
- * @param[in]   name     Name of this function (eg "expand_dbvar-auto")
+ * @param[in]   name     Name of this function (eg "expand_dbvar")
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   arg      Argument given at the callback "<db> <xmlkeyfmt>"
  * @param[out]  len      len of return commands & helptxt 
@@ -121,7 +121,7 @@ expand_dbvar(void   *h,
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
 	goto done;
     }
-    /* In the example, str = "candidate a[].b[] $!x $!y" */
+    /* In the example, str = "candidate /x/m1/%s/b" */
     if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
 	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
 	goto done;
