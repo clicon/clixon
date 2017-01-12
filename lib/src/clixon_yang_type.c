@@ -377,59 +377,32 @@ clicon_type2cv(char *origtype, char *restype, enum cv_type *cvtype)
      (rmax && (i) > cv_##type##_get(rmax)))
 
 
-/*! Validate cligen variable cv using yang statement as spec
- *
- * @param [in]  cv      A cligen variable to validate. This is a correctly parsed cv.
- * @param [in]  ys      A yang statement, must be leaf of leaf-list.
- * @param [out] reason  If given, and if return value is 0, contains a malloced string
- *                      describing the reason why the validation failed. Must be freed.
+/*!
  * @retval -1  Error (fatal), with errno set to indicate error
  * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
  * @retval 1   Validation OK
- * See also cv_validate - the code is similar.
  */
-int
-ys_cv_validate(cg_var *cv, yang_stmt *ys, char **reason)
+static int
+cv_validate1(cg_var      *cv,
+	     enum cv_type cvtype, 
+	     int          options, 
+	     cg_var      *range_min,
+	     cg_var      *range_max, 
+	     char        *pattern,
+	     yang_stmt   *yrestype,
+	     char        *restype,
+	     char       **reason)
 {
     int             retval = 1; /* OK */
-    cg_var         *ycv;        /* cv of yang-statement */  
-    int64_t         i = 0;
-    uint64_t        u = 0;
-    char           *str;
-    int             options;
-    cg_var         *range_min; 
-    cg_var         *range_max; 
-    char           *pattern;
     int             retval2;
-    enum cv_type    cvtype;
-    char           *type;  /* orig type */
-    yang_stmt      *yrestype; /* resolved type */
-    char           *restype;
-    uint8_t         fraction; 
     yang_stmt      *yi = NULL;
+    uint64_t        u = 0;
+    int64_t         i = 0;
+    char           *str;
 
-    if (reason)
+    if (reason && *reason){
+	free(*reason);
 	*reason = NULL;
-    if (ys->ys_keyword != Y_LEAF && ys->ys_keyword != Y_LEAF_LIST)
-	return 0;
-    ycv = ys->ys_cv;
-    if (yang_type_get(ys, &type, &yrestype, 
-		      &options, &range_min, &range_max, &pattern,
-		      &fraction) < 0)
-	goto err;
-    restype = yrestype?yrestype->ys_argument:NULL;
-    if (clicon_type2cv(type, restype, &cvtype) < 0)
-	goto err;
-
-    if (cv_type_get(ycv) != cvtype){
-	/* special case: dbkey has rest syntax-> cv but yang cant have that */
-	if (cvtype == CGV_STRING && cv_type_get(ycv) == CGV_REST)
-	    ;
-	else {
-	    clicon_err(OE_DB, 0, "%s: Type mismatch data:%s != yang:%s", 
-		       __FUNCTION__, cv_type2str(cvtype), cv_type2str(cv_type_get(ycv)));
-	    goto err;
-	}
     }
     switch (cvtype){
     case CGV_INT8:
@@ -597,10 +570,112 @@ ys_cv_validate(cg_var *cv, yang_stmt *ys, char **reason)
     }
 
     if (reason && *reason)
-	assert(retval == 0);
+	assert(retval == 0); /* validation failed with error reason */
     return retval;
-  err:
-    return -1;
+}
+
+/*! Validate cligen variable cv using yang statement as spec
+ *
+ * @param[in]  cv      A cligen variable to validate. This is a correctly parsed cv.
+ * @param[in]  ys      A yang statement, must be leaf of leaf-list.
+ * @param[out] reason  If given, and if return value is 0, contains a malloced string
+ *                      describing the reason why the validation failed. Must be freed.
+ * @retval -1  Error (fatal), with errno set to indicate error
+ * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval 1   Validation OK
+ * See also cv_validate - the code is similar.
+ */
+int
+ys_cv_validate(cg_var    *cv, 
+	       yang_stmt *ys, 
+	       char     **reason)
+{
+    int             retval = -1; 
+    cg_var         *ycv;        /* cv of yang-statement */  
+    int             options;
+    cg_var         *range_min; 
+    cg_var         *range_max; 
+    char           *pattern;
+    enum cv_type    cvtype;
+    char           *type;  /* orig type */
+    yang_stmt      *yrestype; /* resolved type */
+    yang_stmt      *yrt;      /* union subtype */
+    char           *restype;
+    uint8_t         fraction; 
+    yang_stmt      *yt = NULL;
+    int             retval2;
+    char           *val;
+    cg_var         *cvt=NULL;
+
+    if (reason)
+	*reason=NULL;
+    if (ys->ys_keyword != Y_LEAF && ys->ys_keyword != Y_LEAF_LIST){
+	retval = 1;
+	goto done;
+    }
+    ycv = ys->ys_cv;
+    if (yang_type_get(ys, &type, &yrestype, 
+		      &options, &range_min, &range_max, &pattern,
+		      &fraction) < 0)
+	goto done;
+    restype = yrestype?yrestype->ys_argument:NULL;
+    if (clicon_type2cv(type, restype, &cvtype) < 0)
+	goto done;
+
+    if (cv_type_get(ycv) != cvtype){
+	/* special case: dbkey has rest syntax-> cv but yang cant have that */
+	if (cvtype == CGV_STRING && cv_type_get(ycv) == CGV_REST)
+	    ;
+	else {
+	    clicon_err(OE_DB, 0, "%s: Type mismatch data:%s != yang:%s", 
+		       __FUNCTION__, cv_type2str(cvtype), cv_type2str(cv_type_get(ycv)));
+	    goto done;
+	}
+    }
+    /* Note restype can be NULL here for example with unresolved hardcoded uuid */
+    if (restype && strcmp(restype, "union") == 0){ 
+	yt = NULL;
+	retval2 = 1; /* valid */
+	assert(cvtype == CGV_REST);
+	val = cv_string_get(cv);
+	while ((yt = yn_each((yang_node*)yrestype, yt)) != NULL){
+	    if (yt->ys_keyword != Y_TYPE)
+		continue;
+	    if (yang_type_resolve(ys, yt, &yrt, 
+				  &options, &range_min, &range_max, &pattern, 
+				  &fraction) < 0)
+		goto done;
+	    restype = yrestype?yrt->ys_argument:NULL;
+	    if (clicon_type2cv(type, restype, &cvtype) < 0)
+		goto done;
+	    /* reparse value with the new type */
+	    if ((cvt = cv_new(cvtype)) == NULL){
+		clicon_err(OE_UNIX, errno, "cv_new");
+		goto done;
+	    }
+	    if (cv_parse(val, cvt) <0){
+		clicon_err(OE_UNIX, errno, "cv_parse");
+		goto done;
+	    }
+	    if ((retval2 = cv_validate1(cvt, cvtype, options, range_min, range_max, 
+				     pattern, yrt, restype, reason)) < 0)
+		goto done;
+	    if (retval2 == 1) /* done */
+		break;
+	    /* Here retval == 0, validation failed */
+	    cv_free(cvt);
+	    cvt=NULL;
+	}
+	retval = retval2; /* invalid (0) with latest reason or valid 1 */
+    }
+    else
+	if ((retval = cv_validate1(cv, cvtype, options, range_min, range_max, pattern,
+				yrestype, restype, reason)) < 0)
+	    goto done;
+  done:
+    if (cvt)
+	cv_free(cvt);
+    return retval;
 }
 
 /*

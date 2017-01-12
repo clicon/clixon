@@ -701,6 +701,8 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_cligen
+with_qdbm
 enable_keycontent
 '
       ac_precious_vars='build_alias
@@ -1327,6 +1329,12 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-keycontent    Disable reverse lookup content keys
+
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-cligen=dir       Use CLIGEN here
+  --with-qdbm=dir         Use QDBM here
 
 Some influential environment variables:
   CC          C compiler command
@@ -2165,7 +2173,6 @@ _ACEOF
 
  # Bind to specific CLIgen version
 
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: CLIXON version is ${CLIXON_VERSION}_PRE1" >&5
 $as_echo "CLIXON version is ${CLIXON_VERSION}_PRE1" >&6; }
 
@@ -2322,7 +2329,6 @@ test -n "$target_alias" &&
 
 
 # Some stuff installed in /usr/local/. Such as qdbm
-LIBS="-L /usr/local/lib"
 
 #
 ac_ext=c
@@ -3475,14 +3481,9 @@ if test "$YACC" != "bison -y"; then
 fi
 
 if test "$prefix" = "NONE"; then
-  CPPFLAGS="-I${ac_default_prefix}/include ${CPPFLAGS}"
-  LDFLAGS="-L${ac_default_prefix}/lib ${LDFLAGS}"
-else
-  CPPFLAGS="-I${prefix}/include ${CPPFLAGS}"
-  LDFLAGS="-L${prefix}/lib ${LDFLAGS}"
+     prefix=${ac_default_prefix}
 fi
 
-LDFLAGS=""
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lm" >&5
 $as_echo_n "checking for main in -lm... " >&6; }
 if ${ac_cv_lib_m_main+:} false; then :
@@ -3528,7 +3529,23 @@ AR_SUFFIX=".a"
 SH_SUFFIX=".so"
 AR="ar"
 
+CPPFLAGS="-I${prefix}/include ${CPPFLAGS}"
+LDFLAGS="-L${prefix}/lib ${LDFLAGS}"
+
 # This is for cligen
+
+# Check whether --with-cligen was given.
+if test "${with_cligen+set}" = set; then :
+  withval=$with_cligen;
+fi
+
+if test "${with_cligen}"; then
+  echo "Using CLIGEN here: ${with_cligen}"
+  CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
+  LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
+fi
+
+
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
 $as_echo_n "checking for grep that handles long lines and -e... " >&6; }
@@ -3854,7 +3871,21 @@ else
 fi
 
 
-# This is for qdbm.
+# This is for qdbm
+
+# Check whether --with-qdbm was given.
+if test "${with_qdbm+set}" = set; then :
+  withval=$with_qdbm;
+fi
+
+if test "${with_qdbm}"; then
+  echo "Using QDBM here: ${with_qdbm}"
+  CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
+  LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
+fi
+
+LIBS="${LIBS} ${LDFLAGS}"
+
 # Problem: depot.h may be in qdbm/depot.h.
 for ac_header in depot.h
 do :

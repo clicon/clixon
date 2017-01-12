@@ -62,7 +62,6 @@ AC_SUBST(CLIXON_VERSION_MAJOR)
 AC_SUBST(CLIXON_VERSION_MINOR)
 AC_SUBST(CLIGEN_VERSION) # Bind to specific CLIgen version
 
-
 AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION}_PRE1)
 
 AC_CANONICAL_TARGET
@@ -80,7 +79,6 @@ AC_SUBST(AR)
 AC_SUBST(RANLIB)
 
 # Some stuff installed in /usr/local/. Such as qdbm
-LIBS="-L /usr/local/lib"
 
 #
 AC_PROG_CC()
@@ -105,14 +103,9 @@ if test "$YACC" != "bison -y"; then
 fi
 
 if test "$prefix" = "NONE"; then
-  CPPFLAGS="-I${ac_default_prefix}/include ${CPPFLAGS}"
-  LDFLAGS="-L${ac_default_prefix}/lib ${LDFLAGS}"
-else
-  CPPFLAGS="-I${prefix}/include ${CPPFLAGS}"
-  LDFLAGS="-L${prefix}/lib ${LDFLAGS}"
+     prefix=${ac_default_prefix}
 fi
 
-LDFLAGS=""
 AC_CHECK_LIB(m, main)
 EXE_SUFFIX=""
 OBJ_SUFFIX=".o"
@@ -120,12 +113,32 @@ AR_SUFFIX=".a"
 SH_SUFFIX=".so"
 AR="ar"
 
+CPPFLAGS="-I${prefix}/include ${CPPFLAGS}"
+LDFLAGS="-L${prefix}/lib ${LDFLAGS}"
+
 # This is for cligen
+AC_ARG_WITH(cligen,  [  --with-cligen=dir       Use CLIGEN here ] )
+if test "${with_cligen}"; then
+  echo "Using CLIGEN here: ${with_cligen}"
+  CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
+  LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
+fi
+
+
 AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR(cligen missing. Try: git clone https://github.com/olofhagsand/cligen.git))
 
 AC_CHECK_LIB(:libcligen.so.${CLIGEN_VERSION}, cligen_init,, AC_MSG_ERROR([CLIgen${CLIGEN_VERSION} missing. Try: git clone https://github.com/olofhagsand/cligen.git]))
 
-# This is for qdbm.
+# This is for qdbm
+AC_ARG_WITH(qdbm,  [  --with-qdbm=dir         Use QDBM here ] )
+if test "${with_qdbm}"; then
+  echo "Using QDBM here: ${with_qdbm}"
+  CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
+  LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
+fi
+
+LIBS="${LIBS} ${LDFLAGS}"
+
 # Problem: depot.h may be in qdbm/depot.h. 
 AC_CHECK_HEADERS(depot.h,,[AC_CHECK_HEADERS(qdbm/depot.h,,AC_MSG_ERROR(libqdbm-dev required))])
 AC_CHECK_LIB(qdbm, dpopen,, AC_MSG_ERROR(libqdbm-dev required))

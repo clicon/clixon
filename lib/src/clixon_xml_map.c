@@ -288,7 +288,7 @@ xml_yang_validate(cxobj     *xt,
 {
     int        retval = -1;
     cg_var    *cv = NULL;
-    char      *reason;
+    char      *reason = NULL;
     yang_stmt *yc;
     int        i;
     yang_stmt *ys;
@@ -318,6 +318,9 @@ xml_yang_validate(cxobj     *xt,
 	    clicon_err(OE_UNIX, errno, "cv_dup");
 	    goto done;
 	}
+	/* In the union case, value is parsed as generic REST type,
+	 * needs to be reparsed when concrete type is selected
+	 */
 	if (cv_parse(xml_body(xt), cv) <0){
 	    clicon_err(OE_UNIX, errno, "cv_parse");
 	    goto done;

@@ -29,6 +29,8 @@
 #
 # ***** END LICENSE BLOCK *****
 
+- Added --with-cligen and --with-qdbm configure options
+- Added union type check for non-cli (eg xml) input 
 - Empty yang type. Relaxed yang types for unions, eg two strings with different length.
 	
 Dec 2016: Dual license: both GPLv3 and APLv2

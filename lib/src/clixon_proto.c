@@ -432,7 +432,10 @@ clicon_rpc(int                s,
     case CLICON_MSG_ERR:
 	if (clicon_msg_err_decode(reply, &err, &suberr, &reason, label) < 0) 
 	    goto done;
-	clicon_err(err, suberr, "%s msgtype:%hu", reason, ntohs(msg->op_type));
+	if (debug)
+	    clicon_err(err, suberr, "%s msgtype:%hu", reason, ntohs(msg->op_type));
+	else
+	    clicon_err(err, suberr, "%s", reason);
 	goto done;
 	break;
     default:

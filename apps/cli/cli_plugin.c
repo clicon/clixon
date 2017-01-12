@@ -410,7 +410,8 @@ cli_load_syntax(clicon_handle h, const char *filename, const char *clispec_dir)
 	}
     }
 
-    /* Resolve callback names to function pointers */
+    /* Resolve callback names to function pointers. 
+     *  XXX: consider using cligen_callback_str2fnv instead */
     if (cligen_callback_str2fn(pt, load_str2fn, handle) < 0){     
 	clicon_err(OE_PLUGIN, 0, "Mismatch between CLIgen file '%s' and CLI plugin file '%s'. Some possible errors:\n\t1. A function given in the CLIgen file does not exist in the plugin (ie link error)\n\t2. The CLIgen spec does not point to the correct plugin .so file (CLICON_PLUGIN=\"%s\" is wrong)", 
 		   filename, plgnam, plgnam);
