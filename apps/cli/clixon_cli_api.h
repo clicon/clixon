@@ -71,10 +71,15 @@ cligen_handle cli_cligen(clicon_handle h);
 int init_candidate_db(clicon_handle h);
 int exit_candidate_db(clicon_handle h);
 #define cli_output cligen_output
-int cli_set (clicon_handle h, cvec *vars, cg_var *arg);
-int cli_merge (clicon_handle h, cvec *vars, cg_var *arg);
-int cli_del(clicon_handle h, cvec *vars, cg_var *argv);
-int cli_debug_cli(clicon_handle h, cvec *vars, cg_var *argv);
+int cli_setv(clicon_handle h, cvec *vars, cvec *argv);
+int cli_mergev(clicon_handle h, cvec *vars, cvec *argv);
+int cli_delv(clicon_handle h, cvec *vars, cvec *argv);
+
+int cli_set(clicon_handle h, cvec *vars, cg_var *arg);
+int cli_merge(clicon_handle h, cvec *vars, cg_var *arg);
+int cli_del(clicon_handle h, cvec *vars, cg_var *arg);
+
+int cli_debug_cli(clicon_handle h, cvec *vars, cg_var *arg);
 int cli_debug_backend(clicon_handle h, cvec *vars, cg_var *argv);
 int cli_record(clicon_handle h, cvec *vars, cg_var *argv);
 int isrecording(void);
@@ -97,8 +102,8 @@ int cli_notification_register(clicon_handle h, char *stream, enum format_enum fo
 
 /* In cli_show.c */
 int expand_dir(char *dir, int *nr, char ***commands, mode_t flags, int detail);
-int expand_dbvar(void *h, char *name, cvec *cvv, cg_var *arg, 
-		 int *nr, char ***commands, char ***helptexts);
+int expandv_dbvar(void *h, char *name, cvec *cvv, cvec *argv, 
+		  cvec *commands, cvec *helptexts);
 
 int show_conf_as_xml(clicon_handle h, cvec *vars, cg_var *arg);
 int show_conf_as_netconf(clicon_handle h, cvec *vars, cg_var *arg);

@@ -29,6 +29,12 @@
 #
 # ***** END LICENSE BLOCK *****
 
+- Added cli multiple callback and expand support. Use options 
+  CLICON_CLIGEN_CALLBACK_SINGLE_ARG and CLICON_CLIGEN_EXPAND_SINGLE_ARG 
+  to control these.
+  The multiple support for expand callbacks is enabled but not for callbacks
+  since this causes problems for legacy applications.
+
 - Added --with-cligen and --with-qdbm configure options
 - Added union type check for non-cli (eg xml) input 
 - Empty yang type. Relaxed yang types for unions, eg two strings with different length.

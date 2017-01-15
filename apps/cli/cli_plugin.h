@@ -86,7 +86,7 @@ typedef struct  {
 } cli_syntax_t;
 
 
-expand_cb *expand_str2fn(char *name, void *handle, char **error);
+void *clixon_str2fn(char *name, void *handle, char **error);
 
 int cli_plugin_start(clicon_handle, int argc, char **argv);
 

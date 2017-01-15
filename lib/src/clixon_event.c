@@ -327,3 +327,22 @@ event_loop(void)
     return retval;
 }
 
+int
+event_exit(void)
+{
+    struct event_data *e, *e_next;
+    
+    e_next = ee;
+    while ((e = e_next) != NULL){
+	e_next = e->e_next;
+	free(e);
+    }
+    ee = NULL;
+    e_next = ee_timers;
+    while ((e = e_next) != NULL){
+	e_next = e->e_next;
+	free(e);
+    }
+    ee_timers = NULL;
+    return 0;
+}

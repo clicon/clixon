@@ -216,24 +216,27 @@ syntax_unload(clicon_handle h)
     return 0;
 }
 
-
-/*! Dynamic string to function mapper
+/*! Dynamic linking loader string to function mapper
  *
- * The cli load function uses this function to map from strings to names.
- * handle is the dlopen handle, so it only looks in the current plugin being
- * loaded. It should also look in libraries?
- *
- * Returns a function pointer to the callback. Beware that this pointer
- * can theoretically be NULL depending on where the callback is loaded
- * into memory. Caller must check the error string which is non-NULL is
- * an error occured
- *
- * Compare with expand_str2fn - essentially identical.
+ * Maps strings from the CLI specification file to real funtions using dlopen 
+ * mapping. 
+ * First look for function name in local namespace if handle given (given plugin)
+ * Then check global namespace, i.e.m lib*.so
+ * 
+ * @param[in]  name    Name of function
+ * @param[in]  handle  Handle to plugin .so module  as returned by dlopen
+ * @param[out] error   Static error string, if set indicates error
+ * @retval     fn      Function pointer
+ * @retval     NULL    FUnction not found or symbol NULL (check error for proper handling)
+ * @see see cli_plugin_load where (optional) handle opened
+ * @note the returned function is not type-checked which may result in segv at runtime
  */
-cg_fnstype_t *
-load_str2fn(char *name, void *handle, char **error)
+void *
+clixon_str2fn(char  *name, 
+	      void  *handle, 
+	      char **error)
 {
-    cg_fnstype_t *fn = NULL;
+    void *fn = NULL;
 
     /* Reset error */
     *error = NULL;
@@ -261,48 +264,6 @@ load_str2fn(char *name, void *handle, char **error)
      */
    return NULL; 
 }
-
-/*
- * expand_str2fn
- * maps strings from the CLI specification file to real funtions using dlopen 
- * mapping. One could do something more elaborate with namespaces and plugins:
- * x::a, x->a, but this is not done yet.
- * Compare with load_str2fn - essentially identical.
- * @param[in] name    Name of function
- * @param[in] handle  Handle to plugin .so module  as returned by dlopen, see cli_plugin_load
- */
-expand_cb *
-expand_str2fn(char *name, void *handle, char **error)
-{
-    expand_cb *fn = NULL;
-
-    /* Reset error */
-    *error = NULL;
-
-    /* First check given plugin if any */
-    if (handle) {
-	dlerror();	/* Clear any existing error */
-	fn = dlsym(handle, name);
-	if ((*error = (char*)dlerror()) == NULL)
-	    return fn;  /* If no error we found the address of the callback */
-    }
-
-    /* Now check global namespace which includes any shared object loaded
-     * into the global namespace. I.e. all lib*.so as well as the 
-     * master plugin if it exists 
-     */
-    dlerror();	/* Clear any existing error */
-    fn = dlsym(NULL, name);
-    if ((*error = (char*)dlerror()) == NULL)
-	return fn;  /* If no error we found the address of the callback */
-
-    /* Return value not really relevant here as the error string is set to
-     * signal an error. However, just checking the function pointer for NULL
-     * should work in most cases, although it's not 100% correct. 
-     */
-   return NULL; 
-}
-
 
 /*
  * Load a dynamic plugin object and call it's init-function
@@ -410,16 +371,27 @@ cli_load_syntax(clicon_handle h, const char *filename, const char *clispec_dir)
 	}
     }
 
-    /* Resolve callback names to function pointers. 
-     *  XXX: consider using cligen_callback_str2fnv instead */
-    if (cligen_callback_str2fn(pt, load_str2fn, handle) < 0){     
-	clicon_err(OE_PLUGIN, 0, "Mismatch between CLIgen file '%s' and CLI plugin file '%s'. Some possible errors:\n\t1. A function given in the CLIgen file does not exist in the plugin (ie link error)\n\t2. The CLIgen spec does not point to the correct plugin .so file (CLICON_PLUGIN=\"%s\" is wrong)", 
-		   filename, plgnam, plgnam);
-	goto done;
+    /* Resolve callback names to function pointers. */
+     if (clicon_option_int(h, "CLICON_CLIGEN_CALLBACK_SINGLE_ARG")==1){     
+	 if (cligen_callback_str2fn(pt, (cg_str2fn_t*)clixon_str2fn, handle) < 0){     
+	     clicon_err(OE_PLUGIN, 0, "Mismatch between CLIgen file '%s' and CLI plugin file '%s'. Some possible errors:\n\t1. A function given in the CLIgen file does not exist in the plugin (ie link error)\n\t2. The CLIgen spec does not point to the correct plugin .so file (CLICON_PLUGIN=\"%s\" is wrong)", 
+			filename, plgnam, plgnam);
+	     goto done;
+	 }
+     }
+     else
+	 if (cligen_callbackv_str2fn(pt, (cgv_str2fn_t*)clixon_str2fn, handle) < 0){     
+	     clicon_err(OE_PLUGIN, 0, "Mismatch between CLIgen file '%s' and CLI plugin file '%s'. Some possible errors:\n\t1. A function given in the CLIgen file does not exist in the plugin (ie link error)\n\t2. The CLIgen spec does not point to the correct plugin .so file (CLICON_PLUGIN=\"%s\" is wrong)", 
+			filename, plgnam, plgnam);
+	     goto done;
+	 }
+    if (clicon_option_int(h, "CLICON_CLIGEN_EXPAND_SINGLE_ARG")==1){     
+	if (cligen_expand_str2fn(pt, (expand_str2fn_t*)clixon_str2fn, handle) < 0)     
+	    goto done;
     }
-    if (cligen_expand_str2fn(pt, expand_str2fn, handle) < 0)     
-	goto done;
-
+    else
+	if (cligen_expandv_str2fn(pt, (expandv_str2fn_t*)clixon_str2fn, handle) < 0)     
+	    goto done;
 
     /* Make sure we have a syntax mode specified */
     if (mode == NULL || strlen(mode) < 1) { /* may be null if not given in file */

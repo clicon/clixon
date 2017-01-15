@@ -85,12 +85,120 @@ static int xml2csv(FILE *f, cxobj *x, cvec *cvv);
  * @param[in]   h        clicon handle 
  * @param[in]   name     Name of this function (eg "expand_dbvar")
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
- * @param[in]   arg      Argument given at the callback "<db> <xmlkeyfmt>"
+ * @param[in]   argv     Arguments given at the callback ("<db>" "<xmlkeyfmt>")
  * @param[out]  len      len of return commands & helptxt 
  * @param[out]  commands vector of function pointers to callback functions
  * @param[out]  helptxt  vector of pointers to helptexts
  * @see cli_expand_var_generate  This is where arg is generated
+ * XXX: helptexts?
  */
+int
+expandv_dbvar(void   *h, 
+	      char   *name, 
+	      cvec   *cvv, 
+	      cvec   *argv, 
+	      cvec  *commands,
+	      cvec  *helptexts)
+{
+    int              retval = -1;
+    char            *xkfmt;
+    char            *dbstr;    
+    cxobj           *xt = NULL;
+    char            *xkpath = NULL;
+    cxobj          **xvec = NULL;
+    size_t           xlen = 0;
+    cxobj           *x;
+    char            *bodystr;
+    int              i;
+    int              j;
+    int              k;
+    cg_var          *cv;
+
+    if (argv == NULL || cvec_len(argv) != 2){
+	clicon_err(OE_PLUGIN, 0, "%s: requires arguments: <db> <xmlkeyfmt>",
+		   __FUNCTION__);
+	goto done;
+    }
+    if ((cv = cvec_i(argv, 0)) == NULL){
+	clicon_err(OE_PLUGIN, 0, "%s: Error when accessing argument <db>");
+	goto done;
+    }
+    dbstr  = cv_string_get(cv);
+    if (strcmp(dbstr, "running") != 0 &&
+	strcmp(dbstr, "candidate") != 0){
+	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
+	goto done;
+    }
+    if ((cv = cvec_i(argv, 1)) == NULL){
+	clicon_err(OE_PLUGIN, 0, "%s: Error when accessing argument <xkfmt>");
+	goto done;
+    }
+    xkfmt = cv_string_get(cv);
+    /* xkfmt = /interface/%s/address/%s
+       --> ^/interface/eth0/address/.*$
+       --> /interface/[name=eth0]/address
+    */
+    if (xmlkeyfmt2xpath(xkfmt, cvv, &xkpath) < 0)
+	goto done;   
+    if (xmldb_get(h, dbstr, xkpath, 1, &xt, &xvec, &xlen) < 0)
+	goto done;
+    /* One round to detect duplicates 
+     * XXX The code below would benefit from some cleanup
+     */
+    j = 0;
+    for (i = 0; i < xlen; i++) {
+	char *str;
+	x = xvec[i];
+	if (xml_type(x) == CX_BODY)
+	    bodystr = xml_value(x);
+	else
+	    bodystr = xml_body(x);
+	if (bodystr == NULL){
+	    clicon_err(OE_CFG, 0, "No xml body");
+	    goto done;
+	}
+	/* detect duplicates */
+	for (k=0; k<j; k++){
+	    if (xml_type(xvec[k]) == CX_BODY)
+		str = xml_value(xvec[k]);
+	    else
+		str = xml_body(xvec[k]);
+	    if (strcmp(str, bodystr)==0)
+		break;
+	}
+	if (k==j) /* not duplicate */
+	    xvec[j++] = x;
+    }
+    xlen = j;
+    for (i = 0; i < xlen; i++) {
+	x = xvec[i];
+	if (xml_type(x) == CX_BODY)
+	    bodystr = xml_value(x);
+	else
+	    bodystr = xml_body(x);
+	if (bodystr == NULL){
+	    clicon_err(OE_CFG, 0, "No xml body");
+	    goto done;
+	}
+	/* XXX RFC3986 decode */
+	cvec_add_string(commands, NULL, bodystr);
+    }
+    retval = 0;
+  done:
+    unchunk_group(__FUNCTION__);
+    if (xvec)
+	free(xvec);
+    if (xt)
+	xml_free(xt);
+    if (xkpath) 
+	free(xkpath);
+    return retval;
+}
+
+
+/*! This is obsolete version of expandv_dbvar
+ * If CLICON_CLIGEN_EXPAND_SINGLE_ARG is set
+*/
 int
 expand_dbvar(void   *h, 
 	     char   *name, 
@@ -197,7 +305,6 @@ expand_dbvar(void   *h,
     if (xkpath) 
 	free(xkpath);
     return retval;
-
 }
 
 /*! List files in a directory

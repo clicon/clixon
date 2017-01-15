@@ -56,4 +56,6 @@ int event_unreg_timeout(int (*fn)(int, void*), void *arg);
 
 int event_loop(void);
 
+int event_exit(void);
+
 #endif  /* _CLIXON_EVENT_H_ */

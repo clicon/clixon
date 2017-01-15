@@ -56,7 +56,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* Clicon */
 #include <clixon/clixon.h>
 
 #include "clixon_cli_api.h"
@@ -65,9 +65,10 @@
 
 /* This is the default callback function. But this is typically overwritten */
 #define GENERATE_CALLBACK "cli_set"
+#define GENERATE_CALLBACKV "cli_setv"
 
 /* variable expand function */
-#define GENERATE_EXPAND_XMLDB "expand_dbvar"
+#define GENERATE_EXPAND_XMLDB "expandv_dbvar"
 
 /*=====================================================================
  * YANG generate CLI
@@ -127,7 +128,7 @@ cli_expand_var_generate(clicon_handle h,
 	    cv_type2str(cvtype));
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
 	cprintf(cb0, " fraction-digits:%u", fraction_digits);
-    cprintf(cb0, " %s(\"candidate %s\")>",
+    cprintf(cb0, " %s(\"candidate\",\"%s\")>",
 	    GENERATE_EXPAND_XMLDB,
 	    xkfmt);
     retval = 0;
@@ -153,7 +154,10 @@ cli_callback_generate(clicon_handle h,
 
     if (yang2xmlkeyfmt(ys, 0, &xkfmt) < 0)
 	goto done;
-    cprintf(cb0, ",%s(\"%s\")", GENERATE_CALLBACK, xkfmt);
+    if (clicon_option_int(h, "CLICON_CLIGEN_CALLBACK_SINGLE_ARG")==1)
+	cprintf(cb0, ",%s(\"%s\")", GENERATE_CALLBACK, xkfmt);
+    else
+	cprintf(cb0, ",%s(\"%s\")", GENERATE_CALLBACKV, xkfmt);
     retval = 0;
  done:
     if (xkfmt)
@@ -658,10 +662,14 @@ yang2cli(clicon_handle h,
 			 "yang2cli", ptnew, globals) < 0)
 	goto done;
     cvec_free(globals);
-    /* handle=NULL for global namespace, this means expand callbacks must be in
-       CLICON namespace, not in a cli frontend plugin. */
-    if (cligen_expand_str2fn(*ptnew, expand_str2fn, NULL) < 0)     
+    /* Resolve the expand callback functions in the generated syntax.
+       This "should" only be GENERATE_EXPAND_XMLDB
+       handle=NULL for global namespace, this means expand callbacks must be in
+       CLICON namespace, not in a cli frontend plugin.
+    */
+    if (cligen_expandv_str2fn(*ptnew, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)     
 	goto done;
+
     retval = 0;
   done:
     cbuf_free(cbuf);

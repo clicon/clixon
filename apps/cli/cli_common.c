@@ -485,18 +485,99 @@ compare_dbs(clicon_handle h, cvec *cvv, cg_var *arg)
 /*! Modify xml database from a callback using xml key format strings
  * @param[in]  h    Clicon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
- * @param[in]  arg  An xml key format string, eg /aaa/%s 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
  * @param[in]  op   Operation to perform on database
  * Cvv will contain forst the complete cli string, and then a set of optional
  * instantiated variables.
  * Example:
- * cvv[0] = "set interfaces interface eth0 type bgp"
- * cvv[1] = "eth0"
- * cvv[2] = "bgp"
- * arg = "/interfaces/interface/%s/type"
+ * cvv[0]  = "set interfaces interface eth0 type bgp"
+ * cvv[1]  = "eth0"
+ * cvv[2]  = "bgp"
+ * argv[0] = "/interfaces/interface/%s/type"
  * op: OP_MERGE
  * @see cli_callback_generate where arg is generated
  */
+static int
+cli_dbxmlv(clicon_handle       h, 
+	   cvec               *cvv, 
+	   cvec               *argv, 
+	   enum operation_type op)
+{
+    int        retval = -1;
+    char      *str = NULL;
+    char      *xkfmt;  /* xml key format */
+    char      *xk = NULL; /* xml key */
+    cg_var    *cval;
+    int        len;
+    cg_var    *arg;
+
+    if (cvec_len(argv) == 1){
+	clicon_err(OE_PLUGIN, 0, "Requires one element to be xml key format stringf");
+	goto done;
+    }
+    arg = cvec_i(argv, 0);
+    xkfmt = cv_string_get(arg);
+    if (xmlkeyfmt2key(xkfmt, cvv, &xk) < 0)
+	goto done;
+    len = cvec_len(cvv);
+    if (len > 1){
+	cval = cvec_i(cvv, len-1); 
+	if ((str = cv2str_dup(cval)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cv2str_dup");
+	    goto done;
+	}
+    }
+    if (clicon_rpc_change(h, "candidate", op, xk, str) < 0)
+	goto done;
+    if (clicon_autocommit(h)) {
+	if (clicon_rpc_commit(h, "candidate", "running", 0, 0) < 0) 
+	    goto done;
+    }
+    retval = 0;
+ done:
+    if (str)
+	free(str);
+    if (xk)
+	free(xk);
+    return retval;
+}
+
+int 
+cli_setv(clicon_handle h, cvec *cvv, cvec *argv)
+{
+    int retval = 1;
+
+    if (cli_dbxmlv(h, cvv, argv, OP_REPLACE) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+int 
+cli_mergev(clicon_handle h, cvec *cvv, cvec *argv)
+{
+    int retval = -1;
+
+    if (cli_dbxmlv(h, cvv, argv, OP_MERGE) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+int 
+cli_delv(clicon_handle h, cvec *cvv, cvec *argv)
+{
+    int   retval = -1;
+
+    if (cli_dbxmlv(h, cvv, argv, OP_REMOVE) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
 static int
 cli_dbxml(clicon_handle       h, 
 	  cvec               *cvv, 
@@ -571,6 +652,7 @@ cli_del(clicon_handle h, cvec *cvv, cg_var *arg)
  done:
     return retval;
 }
+
 
 /*! Load a configuration file to candidate database
  * Utility function used by cligen spec file

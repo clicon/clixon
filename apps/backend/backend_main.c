@@ -91,6 +91,7 @@ config_terminate(clicon_handle h)
     if (sockpath)
 	unlink(sockpath);   
     backend_handle_exit(h); /* Cannot use h after this */
+    event_exit();
     clicon_log_register_callback(NULL, NULL);
     clicon_debug(1, "%s done", __FUNCTION__); 
     if (debug)
@@ -104,6 +105,7 @@ static void
 config_sig_term(int arg)
 {
     static int i=0;
+
     if (i++ == 0)
 	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
