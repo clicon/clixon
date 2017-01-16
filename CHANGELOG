@@ -29,6 +29,7 @@
 #
 # ***** END LICENSE BLOCK *****
 
+- List keys with special characters are RFC 3986 encoded.	
 - Added cli multiple callback and expand support. Use options 
   CLICON_CLIGEN_CALLBACK_SINGLE_ARG and CLICON_CLIGEN_EXPAND_SINGLE_ARG 
   to control these.

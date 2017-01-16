@@ -312,12 +312,12 @@ xpath_parse(char                  *xpath,
 {
     int                    retval = -1;
     int                    nvec = 0;
-    char                  *p;
     char                  *s;
     char                  *s0;
     int                    i;
     struct xpath_element  *xplist = NULL;
     struct xpath_element **xpnext = &xplist;
+    int                    esc = 0;
 
     if ((s0 = strdup(xpath)) == NULL){
 	clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
@@ -326,10 +326,28 @@ xpath_parse(char                  *xpath,
     s = s0;
     if (strlen(s))
 	nvec = 1;
-    while ((p = index(s, '/')) != NULL){
-	nvec++;
-	*p = '\0';
-	s = p+1;
+    /* Chop up LocatoinPath in Steps delimited by '/' (unless [] predicate) 
+     * Eg, "/a/b[/c]/d" -> "a" "b[/c]" "d"
+     */
+    esc = 0;
+    while (*s != '\0'){
+	switch (*s){
+	case '/':
+	    if (esc)
+		break;
+	    nvec++;
+	    *s = '\0';
+	    break;
+	case '[':
+	    esc++;
+	    break;
+	case ']':
+	    esc--;
+	    break;
+	default:
+	    break;
+	}
+	s++;
     }
     s = s0;
     for (i=0; i<nvec; i++){
@@ -421,7 +439,7 @@ recursive_find(cxobj   *xn,
  * The predicate expression is a subset of the standard, namely:
  *  - @<attr>=<value>
  *  - <number>
- *  - <name>=<value>
+ *  - <name>=<value> # RelationalExpr '=' RelationalExpr
  * @see https://www.w3.org/TR/xpath/#predicates
  */
 static int

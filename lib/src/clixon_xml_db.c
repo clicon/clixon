@@ -51,6 +51,7 @@
 #include <dirent.h>
 #include <assert.h>
 #include <syslog.h>
+#include <curl/curl.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -95,14 +96,16 @@
  * +-----------------+                   +-----------------+
  * | yang-stmt       |    yang2xmlkeyfmt |   xmlkeyfmt     |
  * | list aa,leaf k  | ----------------->|     /aa/%s      |
+ * |                 |                   | XXX: /aa=%s     |
  * +-----------------+                   +-----------------+
  *                                               |
  *                                               | xmlkeyfmt2key
  *                                               | k=17
  *                                               v
  * +-------------------+                +-----------------+
- * | xml-tree/cxobj    |   xmlkey2xml   |  xmlkey         |
+ * | xml-tree/cxobj    |   xmlkey2xml   |  xmlkey  RFC3986|
  * | <aa><k>17</k></aa>| <------------- |   /aa/17        |
+ * |                   |                | XXX:  /aa=17    |
  * +-------------------+                +-----------------+
  *
  * Alternative for xmlkeyfmt would be xpath: eg 
@@ -235,6 +238,8 @@ xmlkeyfmt2key(char  *xkfmt,
     int   i;
     int   j;
     char *str;
+    char *strenc=NULL;
+
 
     /* Sanity check */
 #if 1
@@ -266,7 +271,12 @@ xmlkeyfmt2key(char  *xkfmt,
 		clicon_err(OE_UNIX, errno, "strdup");
 		goto done;
 	    }
-	    cprintf(cb, "%s", str);
+	    if ((strenc = curl_easy_escape(NULL, str, 0)) == NULL){
+		clicon_err(OE_UNIX, errno, "curl_easy_escape");
+		goto done;
+	    }
+	    cprintf(cb, "%s", strenc); 
+	    curl_free(strenc);
 	    free(str);
 	}
 	else
@@ -493,6 +503,7 @@ append_listkeys(cbuf      *ckey,
     cg_var    *cvi;
     cvec      *cvk = NULL; /* vector of index keys */
     char      *keyname;
+    char      *bodyenc;
 
     if ((ykey = yang_find((yang_node*)ys, Y_KEY, NULL)) == NULL){
 	clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
@@ -511,7 +522,12 @@ append_listkeys(cbuf      *ckey,
 		       xml_name(xt), keyname);
 	    goto done;
 	}
-	cprintf(ckey, "/%s", xml_body(xkey));
+	if ((bodyenc = curl_easy_escape(NULL, xml_body(xkey), 0)) == NULL){
+	    clicon_err(OE_UNIX, errno, "curl_easy_escape");
+	    goto done;
+	}
+	cprintf(ckey, "/%s", bodyenc);
+	free(bodyenc); bodyenc = NULL;
     }
     retval = 0;
  done:
@@ -617,6 +633,7 @@ get(char      *dbname,
     cvec      *cvk = NULL; /* vector of index keys */
     char      *keyname;
     char      *arg;
+    char      *argdec;
     cbuf      *cb;
     
     //    clicon_debug(1, "%s xkey:%s val:%s", __FUNCTION__, xk, val);
@@ -700,7 +717,13 @@ get(char      *dbname,
 		    goto done;
 		}
 		arg = vec[i];
-		cprintf(cb, "[%s=%s]", cv_string_get(cvi), arg);
+		if ((argdec = curl_easy_unescape(NULL, arg, 0, NULL)) == NULL){
+		    clicon_err(OE_UNIX, errno, "curl_easy_escape");
+		    goto done;
+		}
+		cprintf(cb, "[%s=%s]", cv_string_get(cvi), argdec);
+		free(argdec);
+		argdec=NULL;
 	    }
 	    if ((xc = xpath_first(x, cbuf_get(cb))) == NULL){
 		if ((xc = xml_new_spec(name, x, y)) == NULL)
@@ -712,11 +735,16 @@ get(char      *dbname,
 		    keyname = cv_string_get(cvi);
 		    i++;
 		    arg = vec[i];
+		    if ((argdec = curl_easy_unescape(NULL, arg, 0, NULL)) == NULL){
+			clicon_err(OE_UNIX, errno, "curl_easy_escape");
+			goto done;
+		    }
 		    if (create_keyvalues(xc,
 					 ykey,
-					 arg, 
+					 argdec, 
 					 keyname) < 0)
 			goto done;
+		    free(argdec); argdec = NULL;
 		} /* while */
 	    }
 	    if (cb){
@@ -1570,7 +1598,7 @@ xmldb_put_xkey_local(clicon_handle       h,
     char      *name;
     cg_var    *cvi;
     cvec      *cvk = NULL; /* vector of index keys */
-    char      *val2;
+    char      *val2 = NULL;
     cbuf      *ckey=NULL; /* partial keys */
     cbuf      *csubkey=NULL; /* partial keys */
     cbuf      *crx=NULL; /* partial keys */
