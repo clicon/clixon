@@ -938,7 +938,7 @@ xpath_each(cxobj *cxtop,
  *   cxobj **vec;
  *   size_t  veclen;
  *   if (xpath_vec(cxtop, "//symbol/foo", &vec, &veclen) < 0) 
- *      got err;
+ *      goto err;
  *   for (i=0; i<veclen; i++){
  *      xn = vec[i];
  *         ...

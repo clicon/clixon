@@ -660,10 +660,6 @@ int
 clicon_eval(clicon_handle h, char *cmd, cg_obj *match_obj, cvec *vr)
 {
     cli_output_reset();
-#ifdef notyet
-    if (isrecording())
-	record_command(cmd);
-#endif
     if (!cli_exiting(h)) {	
 	clicon_err_reset();
 	if (cligen_eval(cli_cligen(h), match_obj, vr) < 0) {

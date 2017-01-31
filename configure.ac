@@ -78,8 +78,6 @@ AC_SUBST(EXE_SUFFIX)
 AC_SUBST(AR)
 AC_SUBST(RANLIB)
 
-# Some stuff installed in /usr/local/. Such as qdbm
-
 #
 AC_PROG_CC()
 AC_PROG_CPP
@@ -113,9 +111,6 @@ AR_SUFFIX=".a"
 SH_SUFFIX=".so"
 AR="ar"
 
-CPPFLAGS="-I${prefix}/include ${CPPFLAGS}"
-LDFLAGS="-L${prefix}/lib ${LDFLAGS}"
-
 # This is for cligen
 AC_ARG_WITH(cligen,  [  --with-cligen=dir       Use CLIGEN here ] )
 if test "${with_cligen}"; then
@@ -136,8 +131,6 @@ if test "${with_qdbm}"; then
   CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
   LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
 fi
-
-LIBS="${LIBS} ${LDFLAGS}"
 
 # Problem: depot.h may be in qdbm/depot.h. 
 AC_CHECK_HEADERS(depot.h,,[AC_CHECK_HEADERS(qdbm/depot.h,,AC_MSG_ERROR(libqdbm-dev required))])

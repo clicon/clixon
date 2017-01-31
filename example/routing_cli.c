@@ -68,7 +68,7 @@ plugin_init(clicon_handle h)
 
 /*! Example cli function */
 int
-mycallback(clicon_handle h, cvec *cvv, cg_var *arg)
+mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 {
     int        retval = -1;
     cxobj     *xt = NULL;
@@ -77,12 +77,11 @@ mycallback(clicon_handle h, cvec *cvv, cg_var *arg)
     /* Access cligen callback variables */
     myvar = cvec_find(cvv, "var"); /* get a cligen variable from vector */
     cli_output(stderr, "%s: %d\n", __FUNCTION__, cv_int32_get(myvar)); /* get int value */
-    cli_output(stderr, "arg = %s\n", cv_string_get(arg)); /* get string value */
+    cli_output(stderr, "arg = %s\n", cv_string_get(cvec_i(argv,0))); /* get string value */
 
     /* Show eth0 interfaces config using XPATH */
     if (xmldb_get(h, "candidate",
 		  "/interfaces/interface[name=eth0]", 
-		  0,
 		  &xt, NULL, NULL) < 0)
 	goto done;
     xml_print(stdout, xt);

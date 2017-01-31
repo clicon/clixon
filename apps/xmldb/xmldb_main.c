@@ -117,7 +117,6 @@ xmldb_from_get(clicon_handle h,
     cxobj     *x;
     cbuf      *cb = NULL; /* Outgoing return message */
     char      *db;
-    int        vector = 0;
     char      *xpath = "/";
     cxobj     *xt = NULL;   /* Top of return tree */
     cxobj     *xc;   /* Child */
@@ -135,17 +134,15 @@ xmldb_from_get(clicon_handle h,
     }
     if ((x = xpath_first(xr, "xpath")) != NULL)
 	xpath = xml_body(x);
-    if (xpath_first(xr, "vector") != NULL)
-	vector++;
     /* Actual get call */
-    if (xmldb_get(h, db, xpath, vector, &xt, &xvec, &xlen) < 0)
+    if (xmldb_get(h, db, xpath, &xt, &xvec, &xlen) < 0)
 	goto done;
     xml_name_set(xt, "config");
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if (vector){
+    if (xvec){
 	 for (i=0; i<xlen; i++){
 	     xc = xvec[i];
 	     if (clicon_xml2cbuf(cb, xc, 0, 0) < 0)

@@ -95,9 +95,8 @@ init_candidate_db(clicon_handle h)
     return retval;
 }
 
-/*
- * exit_candidate_db
- * private canddidates should be removed
+/*! Exit candidate db
+ * (private canddidates should be removed?)
  */
 int 
 exit_candidate_db(clicon_handle h)
@@ -105,78 +104,66 @@ exit_candidate_db(clicon_handle h)
     return 0;
 }
 
-#if 1 /* OBSOLETE */
-/*! Set debug level 
- * The level is either what is specified in arg as int argument.
- * _or_ if a 'level' variable is present in vars use that value instead.
- * OBSOLETE
+/*! Register log notification stream
+ * @param[in] h       Clicon handle
+ * @param[in] stream  Event stream. CLICON is predefined, others are application-defined
+ * @param[in] filter  Filter. For xml notification ie xpath: .[name=kalle]
+ * @param[in] status  0 for stop, 1 to start
+ * @param[in] fn      Callback function called when notification occurs
+ * @param[in] arg     Argumnent to function
  */
 int
-cli_debug(clicon_handle h, 
-	  cvec         *vars, 
-	  cg_var       *arg)
+cli_notification_register(clicon_handle h, 
+			  char         *stream, 
+			  enum format_enum format,
+			  char         *filter, 
+			  int           status, 
+			  int         (*fn)(int, void*),
+			  void         *arg)
 {
-    cg_var *cv;
-    int     level;
+    int              retval = -1;
+    char            *logname;
+    void            *p;
+    int              s;
+    clicon_hash_t   *cdat = clicon_data(h);
+    size_t           len;
+    int              s_exist = -1;
 
-    if ((cv = cvec_find_var(vars, "level")) == NULL)
-	cv = arg;
-    level = cv_int32_get(cv);
-    /* cli */
-    clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
-    /* config daemon */
-    if (clicon_rpc_debug(h, level) < 0)
+    if ((logname = chunk_sprintf(__FUNCTION__, "log_socket_%s", stream)) == NULL){
+	clicon_err(OE_PLUGIN, errno, "%s: chunk_sprintf", __FUNCTION__);
 	goto done;
+    }
+    if ((p = hash_value(cdat, logname, &len)) != NULL)
+	s_exist = *(int*)p;
+
+    if (status){ /* start */
+	if (s_exist!=-1){
+	    clicon_err(OE_PLUGIN, 0, "%s: result log socket already exists", __FUNCTION__);
+	    goto done;
+	}
+	if (clicon_rpc_subscription(h, status, stream, format, filter, &s) < 0)
+	    goto done;
+	if (cligen_regfd(s, fn, arg) < 0)
+	    goto done;
+	if (hash_add(cdat, logname, &s, sizeof(s)) == NULL)
+	    goto done;
+    }
+    else{ /* stop */
+	if (s_exist != -1){
+	    cligen_unregfd(s_exist);
+	}
+	hash_del(cdat, logname);
+	if (clicon_rpc_subscription(h, status, stream, format, filter, NULL) < 0)
+	    goto done;
+
+    }
+    retval = 0;
   done:
-    return 0;
-}
-#endif
-
-/*! Set debug level on CLI client (not backend daemon)
- * @param[in] h     Clicon handle
- * @param[in] vars  If variable "level" exists, its integer value is used
- * @param[in] arg   Else use the integer value of argument
- * @note The level is either what is specified in arg as int argument.
- *       _or_ if a 'level' variable is present in vars use that value instead.
- */
-int
-cli_debug_cli(clicon_handle h, 
-	      cvec         *vars, 
-	      cg_var       *arg)
-{
-    cg_var *cv;
-    int     level;
-
-    if ((cv = cvec_find_var(vars, "level")) == NULL)
-	cv = arg;
-    level = cv_int32_get(cv);
-    /* cli */
-    clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
-    return 0;
+    unchunk_group(__FUNCTION__);
+    return retval;
 }
 
-/*! Set debug level on backend daemon (not CLI)
- * @param[in] h     Clicon handle
- * @param[in] vars  If variable "level" exists, its integer value is used
- * @param[in] arg   Else use the integer value of argument
- * @note The level is either what is specified in arg as int argument.
- *       _or_ if a 'level' variable is present in vars use that value instead.
- */
-int
-cli_debug_backend(clicon_handle h, 
-		  cvec         *vars, 
-		  cg_var       *arg)
-{
-    cg_var *cv;
-    int     level;
-
-    if ((cv = cvec_find_var(vars, "level")) == NULL)
-	cv = arg;
-    level = cv_int32_get(cv);
-    /* config daemon */
-    return clicon_rpc_debug(h, level);
-}
-
+/* Signal functions, not exported to API */
 void
 cli_signal_block(clicon_handle h)
 {
@@ -221,79 +208,191 @@ cli_signal_flush(clicon_handle h)
     cli_signal_block (h);
 }
 
-
-/* Code for recording which CLI commands have been issued */
-
-static FILE *_recordf = NULL;
-static int _isrecording = 0;
-
-int
-isrecording(void)
-{
-    return _isrecording;
-}
-
-int
-cli_record(clicon_handle h, cvec *vars, cg_var *arg)
-{
-    _isrecording = cv_int32_get(arg);
-    return 0;
-}
-
+/*! Modify xml database from a callback using xml key format strings
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ * @param[in]  op   Operation to perform on database
+ * Cvv will contain forst the complete cli string, and then a set of optional
+ * instantiated variables.
+ * Example:
+ * cvv[0]  = "set interfaces interface eth0 type bgp"
+ * cvv[1]  = "eth0"
+ * cvv[2]  = "bgp"
+ * argv[0] = "/interfaces/interface/%s/type"
+ * op: OP_MERGE
+ * @see cli_callback_generate where arg is generated
+ */
 static int
-record_open(void)
+cli_dbxmlv(clicon_handle       h, 
+	   cvec               *cvv, 
+	   cvec               *argv, 
+	   enum operation_type op)
 {
-    char file[] = "/tmp/cli.record.XXXXXX";
-    int fd;
+    int        retval = -1;
+    char      *str = NULL;
+    char      *xkfmt;  /* xml key format */
+    char      *xk = NULL; /* xml key */
+    cg_var    *cval;
+    int        len;
+    cg_var    *arg;
 
-    if ((fd = mkstemp(file)) < 0 || (_recordf = fdopen(fd, "w")) < 0) {
-	clicon_err(OE_UNIX, errno, "mkstemp/fdopen");
-	return -1;
+    if (cvec_len(argv) != 1){
+	clicon_err(OE_PLUGIN, 0, "%s: Requires one element to be xml key format string", __FUNCTION__);
+	goto done;
     }
-    return 0;
+    arg = cvec_i(argv, 0);
+    xkfmt = cv_string_get(arg);
+    if (xmlkeyfmt2key(xkfmt, cvv, &xk) < 0)
+	goto done;
+    len = cvec_len(cvv);
+    if (len > 1){
+	cval = cvec_i(cvv, len-1); 
+	if ((str = cv2str_dup(cval)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cv2str_dup");
+	    goto done;
+	}
+    }
+    if (clicon_rpc_change(h, "candidate", op, xk, str) < 0)
+	goto done;
+    if (clicon_autocommit(h)) {
+	if (clicon_rpc_commit(h, "candidate", "running", 0, 0) < 0) 
+	    goto done;
+    }
+    retval = 0;
+ done:
+    if (str)
+	free(str);
+    if (xk)
+	free(xk);
+    return retval;
 }
 
-/*
- * record commands in file
- */
-int
-record_command(char *str)
+int 
+cli_setv(clicon_handle h, cvec *cvv, cvec *argv)
 {
-    if (_recordf==NULL)
-	if (record_open() < 0)
-	    return -1;
-    fprintf(_recordf, "%s\n", str);
-    fflush(_recordf);
-    return 0;
+    int retval = 1;
+
+    if (cli_dbxmlv(h, cvv, argv, OP_REPLACE) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
 }
 
+int 
+cli_mergev(clicon_handle h, cvec *cvv, cvec *argv)
+{
+    int retval = -1;
 
-/*
- * Callback to set syntax mode
+    if (cli_dbxmlv(h, cvv, argv, OP_MERGE) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+int 
+cli_delv(clicon_handle h, cvec *cvv, cvec *argv)
+{
+    int   retval = -1;
+
+    if (cli_dbxmlv(h, cvv, argv, OP_REMOVE) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Set debug level on CLI client (not backend daemon)
+ * @param[in] h     Clicon handle
+ * @param[in] vars  If variable "level" exists, its integer value is used
+ * @param[in] arg   Else use the integer value of argument
+ * @note The level is either what is specified in arg as int argument.
+ *       _or_ if a 'level' variable is present in vars use that value instead.
  */
 int
-cli_set_mode(clicon_handle h, cvec *vars, cg_var *arg)
+cli_debug_cliv(clicon_handle h, 
+	       cvec         *vars, 
+	       cvec         *argv)
+{
+    int     retval = -1;
+    cg_var *cv;
+    int     level;
+
+    if ((cv = cvec_find_var(vars, "level")) == NULL){
+	if (cvec_len(argv) != 1){
+	    clicon_err(OE_PLUGIN, 0, "%s: Requires either label var or single arg: 0|1", __FUNCTION__);
+	    goto done;
+	}
+	cv = cvec_i(argv, 0);
+    }
+    level = cv_int32_get(cv);
+    /* cli */
+    clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Set debug level on backend daemon (not CLI)
+ * @param[in] h     Clicon handle
+ * @param[in] vars  If variable "level" exists, its integer value is used
+ * @param[in] arg   Else use the integer value of argument
+ * @note The level is either what is specified in arg as int argument.
+ *       _or_ if a 'level' variable is present in vars use that value instead.
+ */
+int
+cli_debug_backendv(clicon_handle h, 
+		   cvec         *vars, 
+		   cvec         *argv)
+{
+    int     retval = -1;
+    cg_var *cv;
+    int     level;
+
+    if ((cv = cvec_find_var(vars, "level")) == NULL){
+	if (cvec_len(argv) != 1){
+	    clicon_err(OE_PLUGIN, 0, "%s: Requires either label var or single arg: 0|1", __FUNCTION__);
+	    goto done;
+	}
+	cv = cvec_i(argv, 0);
+    }
+    level = cv_int32_get(cv);
+    /* config daemon */
+    retval = clicon_rpc_debug(h, level);
+ done:
+    return retval;
+}
+
+/*! Set syntax mode
+ */
+int
+cli_set_modev(clicon_handle h, 
+	      cvec         *vars, 
+	      cvec         *argv)
 {
     int     retval = -1;
     char   *str = NULL;
 
-    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
+    if (cvec_len(argv) != 1){
+	clicon_err(OE_PLUGIN, 0, "%s: Requires one element to be cli mode", __FUNCTION__);
 	goto done;
     }
+    str = cv_string_get(cvec_i(argv, 0));
     cli_set_syntax_mode(h, str);
     retval = 0;
   done:
     return retval;
 }
 
-/*
+/*! Start bash from cli callback
  * XXX Application specific??
- * cli_start_shell
- * Start bash from cli callback
  */ 
 int
-cli_start_shell(clicon_handle h, cvec *vars, cg_var *arg)
+cli_start_shellv(clicon_handle h, 
+		 cvec         *vars, 
+		 cvec         *argv)
 {
     char *cmd;
     struct passwd *pw;
@@ -344,11 +443,12 @@ cli_start_shell(clicon_handle h, cvec *vars, cg_var *arg)
     return 0;
 }
 
-/*
- * Generic quit callback
+/*! Generic quit callback
  */
 int 
-cli_quit(clicon_handle h, cvec *vars, cg_var *arg)
+cli_quitv(clicon_handle h, 
+	  cvec         *vars, 
+	  cvec         *argv)
 {
     cli_set_exiting(h, 1);
     return 0;
@@ -358,13 +458,21 @@ cli_quit(clicon_handle h, cvec *vars, cg_var *arg)
  * @param[in]  arg   If 1, then snapshot and copy to startup config
  */
 int
-cli_commit(clicon_handle h, 
-	   cvec         *vars, 
-	   cg_var       *arg)
+cli_commitv(clicon_handle h, 
+	    cvec         *vars, 
+	    cvec         *argv)
 {
     int            retval = -1;
-    int            snapshot = arg?cv_int32_get(arg):0;
-
+    int            snapshot;
+    
+    if (cvec_len(argv) > 1){
+	clicon_err(OE_PLUGIN, 0, "%s: Requires 0 or 1 element. If given: snapshot flag 0|1", __FUNCTION__);
+	goto done;
+    }
+    if (cvec_len(argv))
+	snapshot = cv_int32_get(cvec_i(argv, 0));
+    else
+	snapshot = 0;
     if ((retval = clicon_rpc_commit(h, 
 				    "candidate", 
 				    "running", 
@@ -378,11 +486,12 @@ cli_commit(clicon_handle h,
     return retval;
 }
 
-/*
- * Generic validatecallback
+/*! Generic validate callback
  */
 int
-cli_validate(clicon_handle h, cvec *vars, cg_var *arg)
+cli_validatev(clicon_handle h, 
+	      cvec         *vars, 
+	      cvec         *argv)
 {
     int            retval = -1;
 
@@ -459,17 +568,28 @@ compare_xmls(cxobj *xc1,
  * @param[in]   arg   arg: 0 as xml, 1: as text
  */
 int
-compare_dbs(clicon_handle h, cvec *cvv, cg_var *arg)
+compare_dbsv(clicon_handle h, 
+	    cvec         *cvv, 
+	    cvec         *argv)
 {
     cxobj *xc1 = NULL; /* running xml */
     cxobj *xc2 = NULL; /* candidate xml */
     int    retval = -1;
+    int    astext;
 
-    if (xmldb_get(h, "running", "/", 0, &xc1, NULL, NULL) < 0)
+    if (cvec_len(argv) > 1){
+	clicon_err(OE_PLUGIN, 0, "%s: Requires 0 or 1 element. If given: astext flag 0|1", __FUNCTION__);
 	goto done;
-    if (xmldb_get(h, "candidate", "/", 0, &xc2, NULL, NULL) < 0)
+    }
+    if (cvec_len(argv))
+	astext = cv_int32_get(cvec_i(argv, 0));
+    else
+	astext = 0;
+    if (xmldb_get(h, "running", "/", &xc1, NULL, NULL) < 0)
 	goto done;
-    if (compare_xmls(xc1, xc2, arg?cv_int32_get(arg):0) < 0) /* astext? */
+    if (xmldb_get(h, "candidate", "/", &xc2, NULL, NULL) < 0)
+	goto done;
+    if (compare_xmls(xc1, xc2, astext) < 0) /* astext? */
 	goto done;
     retval = 0;
   done:
@@ -481,207 +601,31 @@ compare_dbs(clicon_handle h, cvec *cvv, cg_var *arg)
     return retval;
 }
 
-
-/*! Modify xml database from a callback using xml key format strings
- * @param[in]  h    Clicon handle
- * @param[in]  cvv  Vector of cli string and instantiated variables 
- * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
- * @param[in]  op   Operation to perform on database
- * Cvv will contain forst the complete cli string, and then a set of optional
- * instantiated variables.
- * Example:
- * cvv[0]  = "set interfaces interface eth0 type bgp"
- * cvv[1]  = "eth0"
- * cvv[2]  = "bgp"
- * argv[0] = "/interfaces/interface/%s/type"
- * op: OP_MERGE
- * @see cli_callback_generate where arg is generated
- */
-static int
-cli_dbxmlv(clicon_handle       h, 
-	   cvec               *cvv, 
-	   cvec               *argv, 
-	   enum operation_type op)
-{
-    int        retval = -1;
-    char      *str = NULL;
-    char      *xkfmt;  /* xml key format */
-    char      *xk = NULL; /* xml key */
-    cg_var    *cval;
-    int        len;
-    cg_var    *arg;
-
-    if (cvec_len(argv) == 1){
-	clicon_err(OE_PLUGIN, 0, "Requires one element to be xml key format stringf");
-	goto done;
-    }
-    arg = cvec_i(argv, 0);
-    xkfmt = cv_string_get(arg);
-    if (xmlkeyfmt2key(xkfmt, cvv, &xk) < 0)
-	goto done;
-    len = cvec_len(cvv);
-    if (len > 1){
-	cval = cvec_i(cvv, len-1); 
-	if ((str = cv2str_dup(cval)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cv2str_dup");
-	    goto done;
-	}
-    }
-    if (clicon_rpc_change(h, "candidate", op, xk, str) < 0)
-	goto done;
-    if (clicon_autocommit(h)) {
-	if (clicon_rpc_commit(h, "candidate", "running", 0, 0) < 0) 
-	    goto done;
-    }
-    retval = 0;
- done:
-    if (str)
-	free(str);
-    if (xk)
-	free(xk);
-    return retval;
-}
-
-int 
-cli_setv(clicon_handle h, cvec *cvv, cvec *argv)
-{
-    int retval = 1;
-
-    if (cli_dbxmlv(h, cvv, argv, OP_REPLACE) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
-int 
-cli_mergev(clicon_handle h, cvec *cvv, cvec *argv)
-{
-    int retval = -1;
-
-    if (cli_dbxmlv(h, cvv, argv, OP_MERGE) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
-int 
-cli_delv(clicon_handle h, cvec *cvv, cvec *argv)
-{
-    int   retval = -1;
-
-    if (cli_dbxmlv(h, cvv, argv, OP_REMOVE) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
-static int
-cli_dbxml(clicon_handle       h, 
-	  cvec               *cvv, 
-	  cg_var             *arg, 
-	  enum operation_type op)
-{
-    int        retval = -1;
-    char      *str = NULL;
-    char      *xkfmt;  /* xml key format */
-    char      *xk = NULL; /* xml key */
-    cg_var    *cval;
-    int        len;
-
-    xkfmt = cv_string_get(arg);
-    if (xmlkeyfmt2key(xkfmt, cvv, &xk) < 0)
-	goto done;
-    len = cvec_len(cvv);
-    if (len > 1){
-	cval = cvec_i(cvv, len-1); 
-	if ((str = cv2str_dup(cval)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cv2str_dup");
-	    goto done;
-	}
-    }
-    if (clicon_rpc_change(h, "candidate", op, xk, str) < 0)
-	goto done;
-    if (clicon_autocommit(h)) {
-	if (clicon_rpc_commit(h, "candidate", "running", 0, 0) < 0) 
-	    goto done;
-    }
-    retval = 0;
- done:
-    if (str)
-	free(str);
-    if (xk)
-	free(xk);
-    return retval;
-}
-
-int 
-cli_set(clicon_handle h, cvec *cvv, cg_var *arg)
-{
-    int retval = 1;
-
-    if (cli_dbxml(h, cvv, arg, OP_REPLACE) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
-int 
-cli_merge(clicon_handle h, cvec *cvv, cg_var *arg)
-{
-    int retval = -1;
-
-    if (cli_dbxml(h, cvv, arg, OP_MERGE) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
-int 
-cli_del(clicon_handle h, cvec *cvv, cg_var *arg)
-{
-    int   retval = -1;
-
-    if (cli_dbxml(h, cvv, arg, OP_REMOVE) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
-
 /*! Load a configuration file to candidate database
  * Utility function used by cligen spec file
  * @param[in] h     CLICON handle
- * @param[in] cvv  Vector of variables (where <varname> is found)
- * @param[in] arg   A string: "<varname> (merge|replace)" 
+ * @param[in] cvv   Vector of variables (where <varname> is found)
+ * @param[in] argv  A string: "<varname> (merge|replace)" 
  *   <varname> is name of a variable occuring in "cvv" containing filename
  * @note that "filename" is local on client filesystem not backend. 
  * @note file is assumed to have a dummy top-tag, eg <clicon></clicon>
  * @code
  *   # cligen spec
- *   load file <name2:string>, load_config_file("name2 merge");
+ *   load file <name2:string>, load_config_filev("name2","merge");
  * @endcode
  * @see save_config_file
  */
 int 
-load_config_file(clicon_handle h, 
-		 cvec         *cvv, 
-		 cg_var       *arg)
+load_config_filev(clicon_handle h, 
+		  cvec         *cvv, 
+		  cvec         *argv)
 {
     int         ret = -1;
     struct stat st;
-    char      **vec;
     char      **vecp;
     char       *filename;
     int         replace;
-    char       *str;
     cg_var     *cv;
-    int         nvec;
     char       *opstr;
     char       *varstr;
     int         fd = -1;
@@ -690,20 +634,15 @@ load_config_file(clicon_handle h,
     cxobj      *x;
     cbuf       *cbxml;
 
-    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
+    if (cvec_len(argv) != 2){
+	if (cvec_len(argv)==1)
+	    clicon_err(OE_PLUGIN, 0, "Got single argument:\"%s\". Expected \"<varname>,<op>\"", cv_string_get(cvec_i(argv,0)));
+	else
+	    clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <varname>,<op>", cvec_len(argv));
 	goto done;
     }
-    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
-	goto done;
-    }
-    if (nvec != 2){
-	clicon_err(OE_PLUGIN, 0, "Arg syntax is <varname> <replace|merge>");	
-	goto done;
-    }
-    varstr = vec[0];
-    opstr  = vec[1];
+    varstr = cv_string_get(cvec_i(argv, 0));
+    opstr  = cv_string_get(cvec_i(argv, 1));
     if (strcmp(opstr, "merge") == 0) 
 	replace = 0;
     else
@@ -750,6 +689,7 @@ load_config_file(clicon_handle h,
     }
     ret = 0;
   done:
+    unchunk_group(__FUNCTION__);
     if (xt)
 	xml_free(xt);
     if (fd != -1)
@@ -773,22 +713,28 @@ load_config_file(clicon_handle h,
  * @see load_config_file
  */
 int
-save_config_file(clicon_handle h, 
-		 cvec         *cvv, 
-		 cg_var       *arg)
+save_config_filev(clicon_handle h, 
+		  cvec         *cvv, 
+		  cvec         *argv)
 {
     int        retval = -1;
-    char     **vec;
     char     **vecp;
     char      *filename;
     cg_var    *cv;
-    int        nvec;
-    char      *str;
     char      *dbstr;
     char      *varstr;
     cxobj     *xt = NULL;
     FILE      *f = NULL;
 
+    if (cvec_len(argv) != 2){
+	if (cvec_len(argv)==1)
+	    clicon_err(OE_PLUGIN, 0, "%s: Got single argument:\"%s\". Expected \"<dbname>,<varname>\"", cv_string_get(cvec_i(argv,0)));
+	else
+	    clicon_err(OE_PLUGIN, 0, "%s: Got %d arguments. Expected: <dbname>,<varname>", cvec_len(argv));
+
+	goto done;
+    }
+#if 0
     if (arg == NULL || (str = cv_string_get(arg)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
 	goto done;
@@ -801,8 +747,9 @@ save_config_file(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "Arg syntax is <dbname> <varname>");	
 	goto done;
     }
-    dbstr  = vec[0];
-    varstr = vec[1];
+#endif
+    dbstr = cv_string_get(cvec_i(argv, 0));
+    varstr  = cv_string_get(cvec_i(argv, 1));
     if (strcmp(dbstr, "running") != 0 && strcmp(dbstr, "candidate") != 0) {
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
@@ -816,7 +763,7 @@ save_config_file(clicon_handle h,
 	goto done;
     }
     filename = vecp[0];
-    if (xmldb_get(h, dbstr, "/", 0, &xt, NULL, NULL) < 0)
+    if (xmldb_get(h, dbstr, "/", &xt, NULL, NULL) < 0)
 	goto done;
     if ((f = fopen(filename, "wb")) == NULL){
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
@@ -839,15 +786,18 @@ save_config_file(clicon_handle h,
  * Utility function used by cligen spec file
  */
 int
-delete_all(clicon_handle h, cvec *cvv, cg_var *arg)
+delete_allv(clicon_handle h, 
+	    cvec         *cvv, 
+	    cvec         *argv)
 {
     char            *dbstr;
     int              retval = -1;
 
-    if (arg == NULL || (dbstr = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
+    if (cvec_len(argv) != 1){
+	clicon_err(OE_PLUGIN, 0, "%s: Requires one element: dbname", __FUNCTION__);
 	goto done;
     }
+    dbstr = cv_string_get(cvec_i(argv, 0));
     if (strcmp(dbstr, "running") != 0 && strcmp(dbstr, "candidate") != 0){
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
@@ -864,7 +814,9 @@ delete_all(clicon_handle h, cvec *cvv, cg_var *arg)
 /*! Discard all changes in candidate and replace with running
  */
 int
-discard_changes(clicon_handle h, cvec *cvv, cg_var *arg)
+discard_changesv(clicon_handle h, 
+		 cvec         *cvv, 
+		 cvec         *argv)
 {
     return clicon_rpc_copy(h, "running", "candidate");
 }
@@ -880,7 +832,8 @@ static const char *SHOWAS_XML2JSON = "xml2json";
  * param[in]  arg  format: txt, xml, xml2txt, xml2json
  */
 static int
-cli_notification_cb(int s, void *arg)
+cli_notification_cb(int   s, 
+		    void *arg)
 {
     struct clicon_msg *reply;
     enum clicon_msg_type type;
@@ -953,7 +906,6 @@ cli_notification_cb(int s, void *arg)
 
 }
 
-
 /*! Make a notify subscription to backend and un/register callback for return messages.
  * 
  * @param[in] h      Clicon handle
@@ -963,40 +915,29 @@ cli_notification_cb(int s, void *arg)
  * and   <format> is XXX
  * Example code: Start logging of mystream and show logs as xml
  * @code
- * cmd("comment"), cli_notify("mystream 1 xml"); 
+ * cmd("comment"), cli_notifyv("mystream","1","xml"); 
  * @endcode
  * XXX: format is a memory leak
  */
 int
-cli_notify(clicon_handle h, 
-	   cvec *cvv, 
-	   cg_var *arg)
+cli_notifyv(clicon_handle h, 
+	    cvec         *cvv, 
+	    cvec         *argv)
 {
     char            *stream = NULL;
     int              retval = -1;
-    char           **vec = NULL;
-    int              nvec;
-    char            *str;
     int              status;
     char            *formatstr = NULL;
     enum format_enum format = MSG_NOTIFY_TXT;
 
-    if (arg==NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
+    if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
+	clicon_err(OE_PLUGIN, 0, "%s Requires arguments: <logstream> <status> [<format>]", __FUNCTION__);
 	goto done;
     }
-    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
-	goto done;
-    }
-    if (nvec < 2){
-	clicon_err(OE_PLUGIN, 0, "format error \"%s\" - expected <stream> <status>", str);	
-	goto done;
-    }
-    stream = vec[0];
-    status = atoi(vec[1]);
-    if (nvec > 2){
-	formatstr = strdup(vec[2]); /* memory leak */
+    stream = cv_string_get(cvec_i(argv, 0));
+    status  = atoi(cv_string_get(cvec_i(argv, 1)));
+    if (cvec_len(argv) > 2){
+	formatstr = cv_string_get(cvec_i(argv, 2));
 	if (strcmp(formatstr, "SHOWAS_TXT") != 0)
 	    format = MSG_NOTIFY_XML;
     }
@@ -1011,65 +952,205 @@ cli_notify(clicon_handle h,
 
     retval = 0;
   done:
+    return retval;
+}
+
+/* Here are backward compatible cligen callback functions used when 
+ * the option: CLICON_CLIGEN_CALLBACK_SINGLE_ARG is set.
+ */
+
+cb_single_arg(cli_set)
+cb_single_arg(cli_merge)
+cb_single_arg(cli_del)
+cb_single_arg(cli_debug_cli)
+cb_single_arg(cli_debug_backend)
+cb_single_arg(cli_set_mode)
+cb_single_arg(cli_start_shell)
+cb_single_arg(cli_quit)
+//cb_single_arg(cli_commit)
+int cli_commit(clicon_handle h, cvec *cvv, cg_var *arg)      
+{						     
+    int   retval=-1;
+    cvec *argv = NULL;				     
+						     
+    if (arg){
+	if (cv_type_get(arg) > CGV_EMPTY){
+	    cligen_output(stderr, "%s: Illegal cvtype. This is most probably a single-argument cligen callback being used in a multi-argument setting. This can happen if option CLICON_CLIGEN_CALLBACK_SINGLE_ARG is 0 but you call a single argument callback (eg %s) from a .cli file. Please change to a multi-argument callback\n", __FUNCTION__, __FUNCTION__);
+	    goto done;
+	}
+	if ((argv = cvec_from_var(arg)) == NULL){ 
+	    clicon_err(OE_UNIX, errno, "cvec_from_var"); 
+	    goto done;				     
+	}		
+    }				     
+    retval = cli_commitv(h, cvv, argv);		     
+ done:						     
+    if (argv) cvec_free(argv);			     
+      return retval;				     
+} 
+
+cb_single_arg(cli_validate)
+cb_single_arg(compare_dbs)
+cb_single_arg(delete_all)
+cb_single_arg(discard_changes)
+
+/* Follows some functions not covered by translation macro */
+int 
+load_config_file(clicon_handle h, 
+		 cvec         *cvv, 
+		 cg_var       *arg)    
+{						     
+    int    retval=-1;
+    cvec  *argv;
+    cg_var *cv;
+    char   *str;
+    char  **vec;
+    int     nvec;
+
+    /* Split string into two parts and build a cvec of it and supply that to
+       the multi-arg callback */
+    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
+	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
+	goto done;
+    }
+    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
+	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
+	goto done;
+    }
+    if (nvec != 2){
+	clicon_err(OE_PLUGIN, 0, "Arg syntax is <varname> <replace|merge>");	
+	goto done;
+    }
+    if ((argv = cvec_new(nvec)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_from_var"); 
+	goto done;
+    }
+    cv = cvec_i(argv, 0);
+    cv_type_set(cv, CGV_STRING);
+    cv_string_set(cv, vec[0]);
+    cv = cvec_i(argv, 1);
+    cv_type_set(cv, CGV_STRING);
+    cv_string_set(cv, vec[1]);
+    
+    retval = load_config_filev(h, cvv, argv);
+ done:
+    unchunk_group(__FUNCTION__);
+    return retval;
+}
+int 
+save_config_file(clicon_handle h, 
+		 cvec         *cvv, 
+		 cg_var       *arg)    
+{						     
+    int    retval=-1;
+    cvec  *argv;
+    cg_var *cv;
+    char   *str;
+    char  **vec;
+    int     nvec;
+
+    /* Split string into two parts and build a cvec of it and supply that to
+       the multi-arg callback */
+    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
+	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
+	goto done;
+    }
+    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
+	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
+	goto done;
+    }
+    if (nvec != 2){
+	clicon_err(OE_PLUGIN, 0, "Arg syntax is <dbname> <varname>");	
+	goto done;
+    }
+    if ((argv = cvec_new(nvec)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_from_var"); 
+	goto done;
+    }
+    cv = cvec_i(argv, 0);
+    cv_type_set(cv, CGV_STRING);
+    cv_string_set(cv, vec[0]);
+    cv = cvec_i(argv, 1);
+    cv_type_set(cv, CGV_STRING);
+    cv_string_set(cv, vec[1]);
+    
+    retval = save_config_filev(h, cvv, argv);
+ done:
     unchunk_group(__FUNCTION__);
     return retval;
 }
 
-/*! Register log notification stream
- * @param[in] h       Clicon handle
- * @param[in] stream  Event stream. CLICON is predefined, others are application-defined
- * @param[in] filter  Filter. For xml notification ie xpath: .[name=kalle]
- * @param[in] status  0 for stop, 1 to start
- * @param[in] fn      Callback function called when notification occurs
- * @param[in] arg     Argumnent to function
- */
-int
-cli_notification_register(clicon_handle h, 
-			  char         *stream, 
-			  enum format_enum format,
-			  char         *filter, 
-			  int           status, 
-			  int         (*fn)(int, void*),
-			  void         *arg)
-{
-    int              retval = -1;
-    char            *logname;
-    void            *p;
-    int              s;
-    clicon_hash_t   *cdat = clicon_data(h);
-    size_t           len;
-    int              s_exist = -1;
 
-    if ((logname = chunk_sprintf(__FUNCTION__, "log_socket_%s", stream)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "%s: chunk_sprintf", __FUNCTION__);
+
+int 
+cli_notify(clicon_handle h, 
+	   cvec         *cvv, 
+	   cg_var       *arg)    
+{						     
+    int    retval=-1;
+    cvec  *argv;
+    cg_var *cv;
+    char   *str;
+    char  **vec;
+    int     nvec;
+
+    /* Split string into two parts and build a cvec of it and supply that to
+       the multi-arg callback */
+    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
+	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
 	goto done;
     }
-    if ((p = hash_value(cdat, logname, &len)) != NULL)
-	s_exist = *(int*)p;
-
-    if (status){ /* start */
-	if (s_exist!=-1){
-	    clicon_err(OE_PLUGIN, 0, "%s: result log socket already exists", __FUNCTION__);
-	    goto done;
-	}
-	if (clicon_rpc_subscription(h, status, stream, format, filter, &s) < 0)
-	    goto done;
-	if (cligen_regfd(s, fn, arg) < 0)
-	    goto done;
-	if (hash_add(cdat, logname, &s, sizeof(s)) == NULL)
-	    goto done;
+    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
+	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
+	goto done;
     }
-    else{ /* stop */
-	if (s_exist != -1){
-	    cligen_unregfd(s_exist);
-	}
-	hash_del(cdat, logname);
-	if (clicon_rpc_subscription(h, status, stream, format, filter, NULL) < 0)
-	    goto done;
-
+    if (nvec != 2 && nvec != 3){
+	clicon_err(OE_PLUGIN, 0, "Arg syntax is <logstream> <status> [<format>]");	
+	goto done;
     }
-    retval = 0;
-  done:
+    if ((argv = cvec_new(nvec)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_from_var"); 
+	goto done;
+    }
+    cv = cvec_i(argv, 0);
+    cv_type_set(cv, CGV_STRING);
+    cv_string_set(cv, vec[0]);
+
+    cv = cvec_i(argv, 1);
+    cv_type_set(cv, CGV_STRING);
+    cv_string_set(cv, vec[1]);
+    if (nvec > 2){
+	cv = cvec_i(argv, 2);
+	cv_type_set(cv, CGV_STRING);
+	cv_string_set(cv, vec[2]);
+    }
+    retval = cli_notifyv(h, cvv, argv);
+ done:
     unchunk_group(__FUNCTION__);
     return retval;
+}
+
+/*
+ * cli_debug
+ * set debug level on stderr (not syslog).
+ * The level is either what is specified in arg as int argument.
+ * _or_ if a 'level' variable is present in vars use that value instead.
+ * XXX obsolete. Use cli_debug_cliv or cli_debug_backendv instead
+ */
+int
+cli_debug(clicon_handle h, cvec *vars, cg_var *arg)
+{
+    cg_var *cv;
+    int     level;
+
+    if ((cv = cvec_find_var(vars, "level")) == NULL)
+	cv = arg;
+    level = cv_int32_get(cv);
+    /* cli */
+    clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
+    /* config daemon */
+    if (clicon_rpc_debug(h, level) < 0)
+	goto done;
+  done:
+    return 0;
 }

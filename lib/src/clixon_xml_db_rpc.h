@@ -39,7 +39,7 @@
  * Prototypes
  */
 int xmldb_get_rpc(clicon_handle h, char *db,
-		  char *xpath, int vector,
+		  char *xpath, 
 		  cxobj **xtop, cxobj ***xvec, size_t *xlen);
 int xmldb_put_rpc(clicon_handle h, char *db, cxobj *xt, enum operation_type op);
 int xmldb_put_xkey_rpc(clicon_handle h, char *db, char *xk, char *val, 

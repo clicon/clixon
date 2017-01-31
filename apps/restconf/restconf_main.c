@@ -217,7 +217,7 @@ api_data_get(clicon_handle h,
         }
     }
     clicon_debug(1, "%s path:%s", __FUNCTION__, cbuf_get(path));
-    if (xmldb_get(h, "running", cbuf_get(path), 1, &xt,  &vec, &veclen) < 0)
+    if (xmldb_get(h, "running", cbuf_get(path), &xt,  &vec, &veclen) < 0)
 	goto done;
 
     if ((cbx = cbuf_new()) == NULL)

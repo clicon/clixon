@@ -146,7 +146,6 @@ CLICON_CLIGEN_EXPAND_SINGLE_ARG 0
 # Set if you want to use old obsolete cligen callback variable syntax 
 # Migration: Set to 0 and change all user-defined cli callbacks in your cli spec files
 # E.g cmd, callback("single arg"); -> cmd, callback("two" "args");
-# But there are still many pre-defined in callbacks, eg in cli_common.c that are not made 
-# for this.
+# And change predefined callbacks, eg cli_commit -> cli_commitv in all cli files
 CLICON_CLIGEN_CALLBACK_SINGLE_ARG 1
 

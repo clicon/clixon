@@ -131,6 +131,7 @@ cxobj    *xml_dup(cxobj *x0);
 int       cxvec_dup(cxobj **vec0, size_t len0, cxobj ***vec1, size_t *len1);
 int       cxvec_append(cxobj *x, cxobj ***vec, size_t  *len);
 int       xml_apply(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg);
+int       xml_apply0(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg);
 int       xml_apply_ancestor(cxobj *xn, xml_applyfn_t fn, void *arg);
 
 int       xml_body_parse(cxobj *xb, enum cv_type type, cg_var **cvp);

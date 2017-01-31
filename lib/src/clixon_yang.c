@@ -419,10 +419,8 @@ yang_find(yang_node *yn,
  *                  the following keyword: container, leaf, list, leaf-list
  *                  That is, basic syntax nodes.
  * @note check if argument==NULL really required?
+ * Is this yang-stmt a container, list, leaf or leaf-list? 
  */
-/*! Is this yang-stmt a container, list, leaf or leaf-list? */
-
-
 yang_stmt *
 yang_find_syntax(yang_node *yn, 
 		 char      *argument)
@@ -1636,66 +1634,6 @@ yang_apply(yang_node     *yn,
     retval = 0;
   done:
     return retval;
-}
-
-static yang_stmt *
-yang_dbkey_vec(yang_node *yn, 
-	       char     **vec, 
-	       int        nvec)
-{
-    char            *key;
-    yang_stmt       *ys;
-    int64_t          i;
-    int              ret;
-
-    if (nvec <= 0)
-	return NULL;
-    key = vec[0];
-    if (yn->yn_keyword == Y_LIST){
-	ret = parse_int64(key, &i, NULL);
-	if (ret != 1){
-	    clicon_err(OE_YANG, errno, "strtol");
-	    goto done;
-	}
-	if (nvec == 1)
-	    return (yang_stmt*)yn;
-	vec++;
-	nvec--;
-	key = vec[0];
-    }
-    if ((ys = yang_find_syntax(yn, key)) == NULL)
-	goto done;
-    if (nvec == 1)
-	return ys;
-    return yang_dbkey_vec((yang_node*)ys, vec+1, nvec-1);
-  done:
-    return NULL;
-}
-
-/*! Given a dbkey (eg a.b.0) recursively find matching yang specification
- *
- * e.g. a.0 matches the db_spec corresponding to a[].
- * Input args:
- * @param[in] yn     top-of yang tree where to start finding
- * @param[in] dbkey  database key to match in yang spec tree
- * @see yang_dbkey_get
- */
-yang_stmt *
-dbkey2yang(yang_node *yn, 
-	   char      *dbkey)
-{
-    char           **vec;
-    int              nvec;
-    yang_stmt       *ys;
-
-    /* Split key into parts, eg "a.0.b" -> "a" "0" "b" */
-    if ((vec = clicon_strsplit(dbkey, ".", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_YANG, errno, "%s: strsplit", __FUNCTION__); 
-	return NULL;
-    }
-    ys = yang_dbkey_vec(yn, vec, nvec);
-    unchunk_group(__FUNCTION__);
-    return ys;
 }
 
 /*! All the work for yang_xpath. 

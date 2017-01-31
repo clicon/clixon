@@ -2328,8 +2328,6 @@ test -n "$target_alias" &&
 
 
 
-# Some stuff installed in /usr/local/. Such as qdbm
-
 #
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -3529,9 +3527,6 @@ AR_SUFFIX=".a"
 SH_SUFFIX=".so"
 AR="ar"
 
-CPPFLAGS="-I${prefix}/include ${CPPFLAGS}"
-LDFLAGS="-L${prefix}/lib ${LDFLAGS}"
-
 # This is for cligen
 
 # Check whether --with-cligen was given.
@@ -3883,8 +3878,6 @@ if test "${with_qdbm}"; then
   CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
   LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
 fi
-
-LIBS="${LIBS} ${LDFLAGS}"
 
 # Problem: depot.h may be in qdbm/depot.h.
 for ac_header in depot.h

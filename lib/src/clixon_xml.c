@@ -494,7 +494,12 @@ xml_new(char  *name,
     return xn;
 }
 
-/*! Create new xml node given a name, parent and spec. Free it with xml_free().
+/*! Create new xml node given a name, parent and spec. 
+ * @param[in] name Name of new xml node
+ * @param[in] xp   XML parent
+ * @param[in] spec Yang spec
+ * @retval    NULL Error
+ * @retval    x    XML tree. Free with xml_free().
  */
 cxobj *
 xml_new_spec(char  *name, 
@@ -1229,6 +1234,7 @@ cxvec_append(cxobj   *x,
  * @endcode
  * @note do not delete or move around any children during this function
  * @note It does not apply fn to the root node,..
+ * @see xml_apply0 including top object
  */
 int
 xml_apply(cxobj          *xn, 
@@ -1249,6 +1255,25 @@ xml_apply(cxobj          *xn,
   done:
     return retval;   
 }
+
+/*! Apply a function call on top object and all xml node children recursively 
+ * @see xml_apply not including top object
+ */
+int
+xml_apply0(cxobj          *xn, 
+	  enum cxobj_type type, 
+	  xml_applyfn_t   fn, 
+	  void           *arg)
+{
+    int        retval = -1;
+
+    if (fn(xn, arg) < 0)
+	goto done;
+    retval = xml_apply(xn, type, fn, arg);
+  done:
+    return retval;   
+}
+
 
 /*! Apply a function call recursively on all ancestors
  * Recursively traverse upwards to all ancestor nodes in a parse-tree and apply fn(arg) for 

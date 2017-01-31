@@ -5,7 +5,12 @@ Clixon yang routing example
 ------------------
 cd example
 make && sudo make install
+# Start backend
+clixon_backend -f /usr/local/etc/routing.conf -I
+# Edit cli
 clixon_cli -f /usr/local/etc/routing.conf
+# Send netconf command
+clixon_netconf -f /usr/local/etc/routing.conf
 
 1. Setting data example using netconf
 -------------------------------------

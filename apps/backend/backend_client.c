@@ -373,7 +373,7 @@ config_snapshot(clicon_handle h,
 	clicon_err(OE_CFG, errno, "Creating file %s", filename0);
 	return -1;
     } 
-    if (xmldb_get(h, db, "/", 0, &xn, NULL, NULL) < 0)
+    if (xmldb_get(h, db, "/", &xn, NULL, NULL) < 0)
 	goto done;
     if (xml_print(f, xn) < 0)
 	goto done;
@@ -439,7 +439,7 @@ from_client_save(clicon_handle      h,
 	    clicon_err(OE_CFG, errno, "Creating file %s", filename);
 	    return -1;
 	} 
-	if (xmldb_get(h, db, "/", 0, &xn, NULL, NULL) < 0)
+	if (xmldb_get(h, db, "/", &xn, NULL, NULL) < 0)
 	    goto done;
 	if (xml_print(f, xn) < 0)
 	    goto done; 

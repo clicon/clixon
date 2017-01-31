@@ -209,7 +209,6 @@ int        yang_print(FILE *f, yang_node *yn, int marginal);
 int        yang_parse(clicon_handle h, const char *yang_dir, 
 		      const char *module, const char *revision, yang_spec *ysp);
 int        yang_apply(yang_node *yn, yang_applyfn_t fn, void *arg);
-yang_stmt *dbkey2yang(yang_node *yn, char *dbkey);
 yang_node *yang_xpath_abs(yang_node *yn, char *xpath);
 yang_node *yang_xpath(yang_node *yn, char *xpath);
 cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);

@@ -37,6 +37,24 @@
 #ifndef _CLI_COMMON_H_
 #define _CLI_COMMON_H_
 
+/*! macro to create a single-argument callback from multiple */
+#define cb_single_arg(fn) \
+int fn(clicon_handle h, cvec *cvv, cg_var *arg)      \
+{						     \
+    int   retval=-1;				     \
+    cvec *argv = NULL;				     \
+						     \
+    if (arg && (argv = cvec_from_var(arg)) == NULL){ \
+	clicon_err(OE_UNIX, errno, "cvec_from_var"); \
+	goto done;				     \
+    }						     \
+    retval = fn##v(h, cvv, argv);		     \
+ done:						     \
+    if (argv) cvec_free(argv);			     \
+      return retval;				     \
+} 
+
+
 void cli_signal_block(clicon_handle h);
 void cli_signal_unblock(clicon_handle h);
 

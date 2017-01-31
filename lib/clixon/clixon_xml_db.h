@@ -42,7 +42,7 @@
 int yang2xmlkeyfmt(yang_stmt *ys, int inclkey, char **xkfmt);
 int xmlkeyfmt2key(char *xkfmt, cvec *cvv, char **xk);
 int xmlkeyfmt2xpath(char *xkfmt, cvec *cvv, char **xk);
-int xmldb_get(clicon_handle h, char *db, char *xpath, int vector, 
+int xmldb_get(clicon_handle h, char *db, char *xpath,
 	      cxobj **xtop, cxobj ***xvec, size_t *xlen);
 int xmldb_put(clicon_handle h, char *db, cxobj *xt, enum operation_type op);
 int xmldb_put_tree(clicon_handle h, char *db, char *api_path,

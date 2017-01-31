@@ -243,7 +243,6 @@ int
 xmldb_get_rpc(clicon_handle h,
 	      char         *db,
 	      char         *xpath,
-	      int           vector,
 	      cxobj       **xtop, 
 	      cxobj      ***xvec, 
 	      size_t       *xlen)
@@ -263,8 +262,6 @@ xmldb_get_rpc(clicon_handle h,
     cprintf(cb, "<source><%s/></source>", db);
     if (xpath)
 	cprintf(cb, "<xpath>%s</xpath>", xpath);
-    if (vector)
-	cprintf(cb, "<vector/>");
     cprintf(cb, "</get></rpc>]]>]]>");
     if (xmldb_rpc(h,
 		  cbuf_get(cb), 
@@ -273,7 +270,7 @@ xmldb_get_rpc(clicon_handle h,
 	goto done;
     if (clicon_xml_parse_str(rb, &xt)  < 0)
 	goto done;
-    if (vector){
+    if (xvec){
 	i=0;
 	if ((*xvec = calloc(xml_child_nr(xt), sizeof(cxobj*))) ==NULL){
 	    clicon_err(OE_UNIX, errno, "calloc");
