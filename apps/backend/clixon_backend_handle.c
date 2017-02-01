@@ -141,7 +141,7 @@ backend_notify(clicon_handle h,
 		if (strlen(su->su_filter)==0 || fnmatch(su->su_filter, event, 0) == 0){
 		    if (send_msg_notify(ce->ce_s, level, event) < 0){
 			if (errno == ECONNRESET){
-			    clicon_log(LOG_WARNING, "client %s reset", ce->ce_nr);
+			    clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
 #if 0
 			    /* We should remove here but removal is not possible
 			       from a client since backend_client is not linked.
@@ -219,7 +219,7 @@ backend_notify_xml(clicon_handle h,
 		    }
 		    if (send_msg_notify(ce->ce_s, level, cbuf_get(cb)) < 0){
 			if (errno == ECONNRESET){
-			    clicon_log(LOG_WARNING, "client %s reset", ce->ce_nr);
+			    clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
 #if 0
 			    /* We should remove here but removal is not possible
 			       from a client since backend_client is not linked.

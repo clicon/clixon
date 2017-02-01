@@ -110,7 +110,8 @@ exit_candidate_db(clicon_handle h)
  * @param[in] filter  Filter. For xml notification ie xpath: .[name=kalle]
  * @param[in] status  0 for stop, 1 to start
  * @param[in] fn      Callback function called when notification occurs
- * @param[in] arg     Argumnent to function
+ * @param[in] arg     Argument to function note
+ * Note this calls cligen_regfd which may callback on cli command interpretator
  */
 int
 cli_notification_register(clicon_handle h, 
