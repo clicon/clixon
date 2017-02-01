@@ -1011,7 +1011,7 @@ xmldb_get_local(clicon_handle h,
     /* If vectors are specified then filter out everything else,
      * otherwise return complete tree.
      */
-    if (xvec0 && xlen0){
+
 	if (xvec != NULL)
 	    for (i=0; i<xlen; i++)
 		xml_flag_set(xvec[i], XML_FLAG_MARK);
@@ -1019,6 +1019,7 @@ xmldb_get_local(clicon_handle h,
 	    goto done;
 	if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	    goto done;
+    if (xvec0 && xlen0){
 	*xvec0 = xvec; 
 	xvec = NULL;
 	*xlen0 = xlen; 
@@ -1618,6 +1619,10 @@ xmldb_put_xkey_local(clicon_handle       h,
 	i++;
 	switch (y->ys_keyword){
 	case Y_LEAF_LIST:
+	    if (restval==NULL){
+		clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
+		goto done;
+	    }
 	    cprintf(ckey, "=%s", restval);
 	    break;
 	case Y_LIST:
@@ -1629,6 +1634,10 @@ xmldb_put_xkey_local(clicon_handle       h,
 	    /* The value is a list of keys: <key>[ <key>]*  */
 	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
 		goto done;
+	    if (restval==NULL){
+		clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
+		goto done;
+	    }
 	    if ((valvec = clicon_strsplit(restval, ",", &nvalvec, __FUNCTION__)) == NULL)
 		goto done;
 
