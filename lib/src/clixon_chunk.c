@@ -710,18 +710,13 @@ chunk_check(FILE *fout, const char *name)
 	chunk_group_t  *grp = NULL;
 	chunk_grpent_t *ent;
 
-
 	if (!chunk_initialized)
 		return;
-
-
 	/* No name given, walk through everything
 	 */
 	if (name == (const char *)NULL) {
-	    
 		for (idx = 0; idx < CHUNK_HEADS; idx++) {
 			chunk_head_t *chead = &chunk_heads[idx];
-
 			cnk = chead->ch_cnks;
 			if (cnk == (chunk_t *)NULL)
 			    continue;
@@ -730,7 +725,7 @@ chunk_check(FILE *fout, const char *name)
 			    
 				/* If no file name it's an internal chunk */
 				if (cnk->c_diag.cd_file) 
-					fprintf(fout ? fout : stdout,
+				    clicon_debug(0,
 						"%s:%d,\t%zu bytes (%p), group \"%s\"\n", 
 						cnk->c_diag.cd_file,
 						cnk->c_diag.cd_line,
@@ -785,5 +780,10 @@ chunk_check(FILE *fout, const char *name)
 			ent = NEXTQ(chunk_grpent_t *, ent);
 		} while (ent != grp->cg_ent);	    
 	}
+}
+#else /* CHUNK_DIAG */
+void
+chunk_check(FILE *fout, const char *name)
+{
 }
 #endif /* CHUNK_DIAG */

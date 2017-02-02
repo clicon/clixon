@@ -39,10 +39,9 @@
 
 
 /*
-
  * Compile with chunk diagnostics. XXX Should be in Makefile.in ??
  */
-#define CHUNK_DIAG
+#undef CHUNK_DIAG
 
 /*
  * Base number of bits to shift getting the size of a chunk_head.
@@ -165,7 +164,7 @@ char   *_chunk_sprintf (const char *, const char *, int, const char *, ...);
 #else /* CHUNK_DIAG */
 void   *chunk (size_t, const char *);
 void   *rechunk (void *, size_t, const char *);
-void   *chunkdup (void *, size_t, const char *);
+void   *chunkdup (const void *, size_t, const char *);
 char   *chunk_strncat (const char *, const char *, size_t, const char *);
 char   *chunk_sprintf (const char *, char *, ...);
 #endif /* CHUNK_DIAG */

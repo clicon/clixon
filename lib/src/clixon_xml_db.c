@@ -707,6 +707,8 @@ get(char      *dbname,
 		    goto done;
 		/* Assume body is created at end of function */
 	    }
+	    free(argdec);
+	    argdec = NULL;
 	    break;
 	case Y_LIST:
 	    /* 
@@ -1011,14 +1013,13 @@ xmldb_get_local(clicon_handle h,
     /* If vectors are specified then filter out everything else,
      * otherwise return complete tree.
      */
-
-	if (xvec != NULL)
-	    for (i=0; i<xlen; i++)
-		xml_flag_set(xvec[i], XML_FLAG_MARK);
-	if (xml_tree_prune_unmarked(xt, NULL) < 0)
-	    goto done;
-	if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-	    goto done;
+    if (xvec != NULL)
+	for (i=0; i<xlen; i++)
+	    xml_flag_set(xvec[i], XML_FLAG_MARK);
+    if (xml_tree_prune_unmarked(xt, NULL) < 0)
+	goto done;
+    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	goto done;
     if (xvec0 && xlen0){
 	*xvec0 = xvec; 
 	xvec = NULL;
@@ -1041,6 +1042,7 @@ xmldb_get_local(clicon_handle h,
 	free(dbname);
     if (xvec)
 	free(xvec);
+    unchunk_group(__FUNCTION__);  
     return retval;
 
 }
