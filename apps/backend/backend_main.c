@@ -72,7 +72,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc::rg:ptx:"
+#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc:rg:ptx:"
 
 /*! Terminate. Cannot use h after this */
 static int
@@ -121,7 +121,6 @@ usage(char *argv0, clicon_handle h)
     char *plgdir   = clicon_backend_dir(h);
     char *confsock = clicon_sock(h);
     char *confpid  = clicon_backend_pidfile(h);
-    char *startup  = clicon_startup_config(h);
     char *group    = clicon_sock_group(h);
 
     fprintf(stderr, "usage:%s\n"
@@ -138,8 +137,7 @@ usage(char *argv0, clicon_handle h)
     	    "    -I\t\tInitialize running state database\n"
     	    "    -R\t\tCall plugin_reset() in plugins to reset system state in running db (use with -I)\n"
 	    "    -C\t\tCall plugin_reset() in plugins to reset system state in candidate db (use with -I)\n"
-	    "    -c [<file>]\tLoad specified application config. Default is\n"
-	    "              \t\"CLICON_STARTUP_CONFIG\" = %s\n"
+	    "    -c <file>\tLoad specified application config.\n"
 	    "    -r\t\tReload running database\n"
 	    "    -p \t\tPrint database yang specification\n"
 	    "    -t \t\tPrint alternate spec translation (eg if YANG print KEY, if KEY print YANG)\n"
@@ -149,7 +147,6 @@ usage(char *argv0, clicon_handle h)
 	    plgdir ? plgdir : "none",
 	    confsock ? confsock : "none",
 	    confpid ? confpid : "none",
-	    startup ? startup : "none",
 	    group ? group : "none"
 	    );
     exit(-1);
@@ -415,11 +412,7 @@ main(int argc, char **argv)
 	     reset_state_candidate++;
 	     break;
 	 case 'c': /* Load application config */
-	     app_config_file = optarg ? optarg : clicon_startup_config(h);
-	     if (app_config_file == NULL) {
-		 fprintf(stderr, "Option \"CLICON_STARTUP_CONFIG\" not set\n");
-		 return -1;
-	     }
+	     app_config_file = optarg;
 	     break;
 	 case 'r': /* Reload running */
 	     reload_running++;
@@ -510,6 +503,19 @@ main(int argc, char **argv)
     if (yang_spec_main(h, stdout, printspec) < 0)
 	goto done;
 
+    /* First check for starup config 
+       XXX the options below have become out-of-hand. 
+       Too complex, need to simplify*/
+    if (clicon_option_int(h, "CLICON_USE_STARTUP_CONFIG") > 0){
+	if (xmldb_exists(h, "startup") == 1){
+	    /* copy startup config -> running */
+	    if (xmldb_copy(h, "startup", "running") < 0)
+		goto done;
+	}
+	else
+	    if (rundb_init(h) < 0)
+		goto done;
+    }
     /* If running exists and reload_running set, make a copy to candidate */
     if (reload_running){
 	if (xmldb_exists(h, "running") != 1){
@@ -549,14 +555,13 @@ main(int argc, char **argv)
     *(argv-1) = tmp;
 
     if (reload_running){
-	if (candidate_commit(h, "candidate") < 0)
-	    goto done;
+	/* This could be afailed validation, and we should not fail for that */
+	(void)candidate_commit(h, "candidate");
     }
 
     /* Have we specified a config file to load? eg 
-       -c <file>  
-       -r replace running (obsolete)
-    */
+     * -c [<file>]
+     */
     if (app_config_file)
 	if (rundb_main(h, app_config_file) < 0)
 	    goto done;

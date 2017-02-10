@@ -247,11 +247,11 @@ netconf_get_config(clicon_handle h,
 		   cbuf         *cb_err, 
 		   cxobj        *xorig)
 {
-    cxobj *xfilter; /* filter */
-    int    retval = -1;
-    char  *source;
+    cxobj             *xfilter; /* filter */
+    int                retval = -1;
+    char              *source;
     enum filter_option foption = FILTER_SUBTREE;
-    char       *ftype = NULL;
+    char              *ftype = NULL;
 
     if ((source = netconf_get_target(h, xn, "source")) == NULL){
 	netconf_create_rpc_error(cb_err, xorig, 
@@ -568,7 +568,7 @@ netconf_delete_config(clicon_handle h,
 				 "<bad-element>target</bad-element>");
 	goto done;
     }
-    if (strcmp(target, "candidate")){
+    if (strcmp(target, "running") == 0){
 	netconf_create_rpc_error(cb_err, xorig, 
 				 "bad-element", 
 				 "protocol", 
@@ -577,7 +577,7 @@ netconf_delete_config(clicon_handle h,
 				 "<bad-element>target</bad-element>");
 	goto done;
     }
-    if (clicon_rpc_change(h, "candidate",
+    if (clicon_rpc_change(h, target,
 			  OP_REMOVE, 
 			  "/", "") < 0){
 	netconf_create_rpc_error(cb_err, xorig, 
@@ -745,8 +745,7 @@ netconf_commit(clicon_handle h,
 {
     int                retval = -1;
 
-    if (clicon_rpc_commit(h, "candidate", "running", 
-			  0, 0) < 0){
+    if (clicon_rpc_commit(h, "candidate", "running") < 0){
 	   netconf_create_rpc_error(cb_err, xorig, 
 				    "operation-failed", 
 				    "protocol", "error", 

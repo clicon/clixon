@@ -88,7 +88,7 @@ usage(char *argv0)
             "\t-h\t\tHelp\n"
             "\t-D\t\tDebug\n"
             "\t-S\t\tLog on syslog\n"
-            "\t-d <db>\tDatabase name (default: running)\n"
+            "\t-d <db>\t\tDatabase name (default: running)\n"
     	    "\t-p\t\tDump database on stdout\n"
     	    "\t-b\t\tBrief output, just print keys. Combine with -p or -m\n"
 	    "\t-n \"<key> <val>\" Add database entry\n"

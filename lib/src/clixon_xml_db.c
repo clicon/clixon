@@ -414,6 +414,7 @@ xmlkeyfmt2xpath(char  *xkfmt,
  */
 static int _running_locked = 0;
 static int _candidate_locked = 0;
+static int _startup_locked = 0;
 
 /*! Lock database
  */
@@ -425,6 +426,8 @@ db_lock(char *db,
 	_running_locked = pid;
     else if (strcmp("candidate", db) == 0)
 	_candidate_locked = pid;
+    else if (strcmp("startup", db) == 0)
+	_startup_locked = pid;
     clicon_debug(1, "%s: locked by %u",  db, pid);
     return 0;
 }
@@ -438,6 +441,8 @@ db_unlock(char *db)
 	_running_locked = 0;
     else if (strcmp("candidate", db) == 0)
 	_candidate_locked = 0;
+    else if (strcmp("startup", db) == 0)
+	_startup_locked = 0;
     return 0;
 }
 
@@ -452,6 +457,8 @@ db_islocked(char *db)
 	return (_running_locked);
     else if (strcmp("candidate", db) == 0)
 	return(_candidate_locked);
+    else if (strcmp("startup", db) == 0)
+	return(_startup_locked);
     return 0;
 }
 
@@ -485,6 +492,7 @@ db2file(clicon_handle h,
     }
     if (strcmp(db, "running") != 0 && 
 	strcmp(db, "candidate") != 0 && 
+	strcmp(db, "startup") != 0 && 
 	strcmp(db, "tmp") != 0){
 	clicon_err(OE_XML, 0, "Unexpected database: %s", db);
 	goto done;
@@ -1016,8 +1024,10 @@ xmldb_get_local(clicon_handle h,
     if (xvec != NULL)
 	for (i=0; i<xlen; i++)
 	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-    if (xml_tree_prune_unmarked(xt, NULL) < 0)
-	goto done;
+    /* Top is special case */
+    if (!xml_flag(xt, XML_FLAG_MARK))
+	if (xml_tree_prune_unmarked(xt, NULL) < 0)
+	    goto done;
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
     if (xvec0 && xlen0){
@@ -1741,7 +1751,7 @@ xmldb_put_xkey_local(clicon_handle       h,
 /*! Modify database provided an XML database key and an operation
  * @param[in]  h      CLICON handle
  * @param[in]  db     Database name
- * @param[in]  xk     XML Key, eg /aa/bb/17/name
+ * @param[in]  xk     XML Key, eg /aa/bb=17/name
  * @param[in]  val    Key value, eg "17"
  * @param[in]  op     OP_MERGE, OP_REPLACE, OP_REMOVE, etc
  * @retval     0      OK

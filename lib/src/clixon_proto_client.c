@@ -128,22 +128,17 @@ clicon_rpc_msg(clicon_handle      h,
  * @param[in] h          CLICON handle
  * @param[in] from       name of 'from' database (eg "candidate")
  * @param[in] db         name of 'to' database (eg "running")
- * @param[in] snapshot   Make a snapshot copy of db state
- * @param[in] startup    Make a copy to startup.
  * @retval 0             Copy current->candidate
  */
 int
 clicon_rpc_commit(clicon_handle h, 
 		  char         *from,  
-		  char         *to,    
-		  int           snapshot, 
-		  int           startup)
+		  char         *to)
 {
     int                retval = -1;
     struct clicon_msg *msg;
 
-    if ((msg=clicon_msg_commit_encode(from, to, snapshot, startup, 
-					  __FUNCTION__)) == NULL)
+    if ((msg=clicon_msg_commit_encode(from, to, __FUNCTION__)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, NULL, NULL, NULL, __FUNCTION__) < 0)
 	goto done;

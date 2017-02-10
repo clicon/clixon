@@ -241,10 +241,6 @@ clicon_option_sanity(clicon_hash_t *copt)
 	clicon_err(OE_UNIX, 0, "CLICON_ARCHIVE_DIR not defined in config file");
 	goto done;
     }
-    if (!hash_lookup(copt, "CLICON_STARTUP_CONFIG")){
-	clicon_err(OE_UNIX, 0, "CLICON_STARTUP_CONFIG not defined in config file");
-	goto done;
-    }
     if (!hash_lookup(copt, "CLICON_SOCK")){
 	clicon_err(OE_UNIX, 0, "CLICON_SOCK not defined in config file");
 	goto done;
@@ -459,12 +455,6 @@ char *
 clicon_archive_dir(clicon_handle h)
 {
     return clicon_option_str(h, "CLICON_ARCHIVE_DIR");
-}
-
-char *
-clicon_startup_config(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_STARTUP_CONFIG");
 }
 
 /* get family of backend socket: AF_UNIX, AF_INET or AF_INET6 */

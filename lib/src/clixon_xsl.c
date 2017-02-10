@@ -326,7 +326,7 @@ xpath_parse(char                  *xpath,
     s = s0;
     if (strlen(s))
 	nvec = 1;
-    /* Chop up LocatoinPath in Steps delimited by '/' (unless [] predicate) 
+    /* Chop up LocationPath in Steps delimited by '/' (unless [] predicate) 
      * Eg, "/a/b[/c]/d" -> "a" "b[/c]" "d"
      */
     esc = 0;
@@ -358,12 +358,12 @@ xpath_parse(char                  *xpath,
 	else if (strncmp(s,"descendant-or-self::", strlen("descendant-or-self::"))==0){ 
 	    xpath_element_new(A_DESCENDANT_OR_SELF, s+strlen("descendant-or-self::"), &xpnext);
 	}
-	else if (strncmp(s,".", strlen("."))==0)
-	    xpath_element_new(A_SELF, s+strlen("."), &xpnext);
+	else if (strncmp(s,".", strlen(s))==0) /* abbreviatedstep */
+	    xpath_element_new(A_SELF, NULL, &xpnext);
 	else if (strncmp(s,"self::", strlen("self::"))==0)
 	    xpath_element_new(A_SELF, s+strlen("self::"), &xpnext);
-	else if (strncmp(s,"..", strlen(".."))==0)
-	    xpath_element_new(A_PARENT, s+strlen(".."), &xpnext);
+	else if (strncmp(s,"..", strlen(s))==0) /* abbreviatedstep */
+	    xpath_element_new(A_PARENT, NULL, &xpnext);
 	else if (strncmp(s,"parent::", strlen("parent::"))==0)
 	    xpath_element_new(A_PARENT, s+strlen("parent::"), &xpnext);
 	else if (strncmp(s,"ancestor::", strlen("ancestor::"))==0)

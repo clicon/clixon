@@ -120,9 +120,7 @@ netconf_create_hello(cbuf *xf,            /* msg buffer */
     cprintf(xf, "<capability>urn:ietf:params:xml:ns:netconf:capability:validate:1.0</capability>\n");
    cprintf(xf, "<capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>\n");
    cprintf(xf, "<capability>urn:ietf:params:netconf:capability:notification:1.0</capability>\n");
-
-
-//    cprintf(xf, "<capability>urn:rnr:rnrapi:1:0</capability>");
+   cprintf(xf, "<capability>urn:ietf:params:netconf:capability:startup:1.0</capability>\n");
     cprintf(xf, "</capabilities>");
     cprintf(xf, "<session-id>%lu</session-id>", 42+session_id);
     cprintf(xf, "</hello>");

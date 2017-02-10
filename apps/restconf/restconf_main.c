@@ -273,8 +273,7 @@ api_data_delete(clicon_handle h,
 			  api_path,
 			  "") < 0)
 	goto done;
-    if (clicon_rpc_commit(h, "candidate", "running", 
-			  0, 0) < 0)
+    if (clicon_rpc_commit(h, "candidate", "running") < 0)
 	goto done;
     FCGX_SetExitStatus(201, r->out);
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
@@ -348,8 +347,7 @@ api_data_put(clicon_handle h,
 			  api_path,
 			  cbuf_get(cbx)) < 0)
 	goto done;
-    if (clicon_rpc_commit(h, "candidate", "running", 
-			  0, 0) < 0)
+    if (clicon_rpc_commit(h, "candidate", "running") < 0)
 	goto done;
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");

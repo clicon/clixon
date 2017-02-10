@@ -73,18 +73,16 @@
 
 struct clicon_msg *
 clicon_msg_commit_encode(char *dbsrc, char *dbdst, 
-			uint32_t snapshot, uint32_t startup,
 			const char *label)
 {
     struct clicon_msg *msg;
     uint16_t           len;
     int                hdrlen = sizeof(*msg);
     int                p;
-    uint32_t           tmp;
 
-    clicon_debug(2, "%s: snapshot: %d startup: %d dbsrc: %s dbdst: %s", 
+    clicon_debug(2, "%s: dbsrc: %s dbdst: %s", 
 	    __FUNCTION__, 
-	    snapshot, startup, dbsrc, dbdst);
+	    dbsrc, dbdst);
     p = 0;
     len = sizeof(*msg) + 2*sizeof(uint32_t) + strlen(dbsrc) + 1 + 
 	strlen(dbdst) + 1;
@@ -97,12 +95,6 @@ clicon_msg_commit_encode(char *dbsrc, char *dbdst,
     msg->op_type = htons(CLICON_MSG_COMMIT);
     msg->op_len = htons(len);
     /* body */
-    tmp = htonl(snapshot);
-    memcpy(msg->op_body+p, &tmp, sizeof(uint32_t));
-    p += sizeof(uint32_t);
-    tmp = htonl(startup);
-    memcpy(msg->op_body+p, &tmp, sizeof(uint32_t));
-    p += sizeof(uint32_t);
     strncpy(msg->op_body+p, dbsrc, len-p-hdrlen);
     p += strlen(dbsrc)+1;
     strncpy(msg->op_body+p, dbdst, len-p-hdrlen);
@@ -113,20 +105,12 @@ clicon_msg_commit_encode(char *dbsrc, char *dbdst,
 int
 clicon_msg_commit_decode(struct clicon_msg *msg, 
 			char **dbsrc, char **dbdst, 
-			uint32_t *snapshot, uint32_t *startup,
 			const char *label)
 {
     int p;
-    uint32_t tmp;
 
     p = 0;
     /* body */
-    memcpy(&tmp, msg->op_body+p, sizeof(uint32_t));
-    *snapshot = ntohl(tmp);
-    p += sizeof(uint32_t);
-    memcpy(&tmp, msg->op_body+p, sizeof(uint32_t));
-    *startup = ntohl(tmp);
-    p += sizeof(uint32_t);
     if ((*dbsrc = chunk_sprintf(label, "%s", msg->op_body+p)) == NULL){
 	clicon_err(OE_PROTO, errno, "%s: chunk_sprintf", 
 		__FUNCTION__);
@@ -139,9 +123,7 @@ clicon_msg_commit_decode(struct clicon_msg *msg,
 	return -1;
     }
     p += strlen(*dbdst)+1;
-    clicon_debug(2, "%s: snapshot: %d startup: %d dbsrc: %s dbdst: %s", 
-	    __FUNCTION__, 
-	    *snapshot, *startup, *dbsrc, *dbdst);
+    clicon_debug(2, "%s: dbsrc: %s dbdst: %s", __FUNCTION__, *dbsrc, *dbdst);
     return 0;
 }
 

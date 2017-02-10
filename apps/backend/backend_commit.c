@@ -297,16 +297,10 @@ from_client_commit(clicon_handle      h,
     int        retval = -1;
     char      *candidate;
     char      *running;
-    uint32_t   snapshot;
-    uint32_t   startup;
-    char      *archive_dir;
-    char      *startup_config;
 
     if (clicon_msg_commit_decode(msg, 
 				 &candidate, 
 				 &running,
-				 &snapshot, 
-				 &startup, 
 				 label) < 0)
 	goto err;
 
@@ -325,30 +319,6 @@ from_client_commit(clicon_handle      h,
 	goto err;
     }
     clicon_debug(1, "Commit %s",  candidate);
-    if (snapshot){
-	if ((archive_dir = clicon_archive_dir(h)) == NULL){
-	    clicon_err(OE_PLUGIN, 0, "snapshot set and clicon_archive_dir not defined");
-	    goto err;
-	}
-	if (config_snapshot(h, running, archive_dir) < 0)
-	    goto err;
-    }
-
-    if (startup){
-	if ((archive_dir = clicon_archive_dir(h)) == NULL){
-	    clicon_err(OE_PLUGIN, 0, "startup set but clicon_archive_dir not defined");
-	    goto err;
-	}
-	if ((startup_config = clicon_startup_config(h)) == NULL){
-	    clicon_err(OE_PLUGIN, 0, "startup set but startup_config not defined");
-	    goto err;
-	}
-	if (clicon_file_copy("snapshot", "startup") < 0){
-	    clicon_err(OE_PROTO, errno, "%s: Error when creating startup",
-		    __FUNCTION__);
-		goto err;
-	}
-    }
     retval = 0;
     if (send_msg_ok(s) < 0)
 	goto done;

@@ -257,7 +257,7 @@ cli_dbxmlv(clicon_handle       h,
     if (clicon_rpc_change(h, "candidate", op, xk, str) < 0)
 	goto done;
     if (clicon_autocommit(h)) {
-	if (clicon_rpc_commit(h, "candidate", "running", 0, 0) < 0) 
+	if (clicon_rpc_commit(h, "candidate", "running") < 0) 
 	    goto done;
     }
     retval = 0;
@@ -456,7 +456,7 @@ cli_quitv(clicon_handle h,
 }
 
 /*! Generic commit callback
- * @param[in]  arg   If 1, then snapshot and copy to startup config
+ * @param[in]  argv No arguments expected
  */
 int
 cli_commitv(clicon_handle h, 
@@ -464,21 +464,10 @@ cli_commitv(clicon_handle h,
 	    cvec         *argv)
 {
     int            retval = -1;
-    int            snapshot;
     
-    if (cvec_len(argv) > 1){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires 0 or 1 element. If given: snapshot flag 0|1", __FUNCTION__);
-	goto done;
-    }
-    if (cvec_len(argv))
-	snapshot = cv_int32_get(cvec_i(argv, 0));
-    else
-	snapshot = 0;
     if ((retval = clicon_rpc_commit(h, 
 				    "candidate", 
-				    "running", 
-				    snapshot, /* snapshot */
-				    snapshot)) < 0){ /* startup */
+				    "running")) < 0){ /* startup */
 	cli_output(stderr, "Commit failed. Edit and try again or discard changes");
 	goto done;
     }
@@ -702,8 +691,8 @@ load_config_filev(clicon_handle h,
  * Utility function used by cligen spec file
  * @param[in] h     CLICON handle
  * @param[in] cvv  variable vector (containing <varname>)
- * @param[in] arg   a string: "<dbname> <varname>" 
- *   <dbname>  is running or candidate
+ * @param[in] argv  a string: "<dbname> <varname>" 
+ *   <dbname>  is running, candidate, or startup
  *   <varname> is name of cligen variable in the "cvv" vector containing file name
  * Note that "filename" is local on client filesystem not backend.
  * The function can run without a local database
@@ -735,23 +724,11 @@ save_config_filev(clicon_handle h,
 
 	goto done;
     }
-#if 0
-    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
-	goto done;
-    }
-    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
-	goto done;
-    }
-    if (nvec != 2){
-	clicon_err(OE_PLUGIN, 0, "Arg syntax is <dbname> <varname>");	
-	goto done;
-    }
-#endif
     dbstr = cv_string_get(cvec_i(argv, 0));
     varstr  = cv_string_get(cvec_i(argv, 1));
-    if (strcmp(dbstr, "running") != 0 && strcmp(dbstr, "candidate") != 0) {
+    if (strcmp(dbstr, "running") != 0 && 
+	strcmp(dbstr, "candidate") != 0 &&
+	strcmp(dbstr, "startup") != 0) {
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
     }
@@ -799,7 +776,9 @@ delete_allv(clicon_handle h,
 	goto done;
     }
     dbstr = cv_string_get(cvec_i(argv, 0));
-    if (strcmp(dbstr, "running") != 0 && strcmp(dbstr, "candidate") != 0){
+    if (strcmp(dbstr, "running") != 0 && 
+	strcmp(dbstr, "candidate") != 0 &&
+	strcmp(dbstr, "startup") != 0){
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
     }
@@ -820,6 +799,22 @@ discard_changesv(clicon_handle h,
 		 cvec         *argv)
 {
     return clicon_rpc_copy(h, "running", "candidate");
+}
+
+/*! Copy from one database to another, eg running->startup
+ * @param[in] argv  a string: "<db1> <db2>" Copy from db1 to db2
+ */
+int
+db_copy(clicon_handle h, 
+	cvec         *cvv, 
+	cvec         *argv)
+{
+    char *db1;
+    char *db2;
+
+    db1 = cv_string_get(cvec_i(argv, 0));
+    db2 = cv_string_get(cvec_i(argv, 1));
+    return clicon_rpc_copy(h, db1, db2);
 }
 
 /* These are strings that can be used as 3rd argument to cli_setlog */

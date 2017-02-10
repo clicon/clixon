@@ -44,13 +44,11 @@
  */ 
 struct clicon_msg *
 clicon_msg_commit_encode(char *dbsrc, char *dbdst, 
-			uint32_t snapshot, uint32_t startup,
 			const char *label); 
 
 int
 clicon_msg_commit_decode(struct clicon_msg *msg, 
 			char **dbsrc, char **dbdst, 
-			uint32_t *snapshot, uint32_t *startup,
 			const char *label);
 
 struct clicon_msg *

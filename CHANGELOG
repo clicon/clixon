@@ -29,6 +29,10 @@
 #
 # ***** END LICENSE BLOCK *****
 
+- Netconf startup configuration support. Set CLICON_USE_STARTUP_CONFIG to 1 to
+  enable. Eg, if backend_main is started with -CIr startup will be copied to
+  running.
+- Added ".." as valid step in xpath
 - Use restconf format for internal xmldb keys. Eg /a/b=3,4
 - List keys with special characters are RFC 3986 encoded.	
 - Changed example to use multiple cli callbacks

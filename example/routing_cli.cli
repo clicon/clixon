@@ -10,10 +10,11 @@ set @datamodel:ietf-ip, cli_mergev();
 delete("Delete a configuration item") @datamodel:ietf-ip, cli_delv();
 
 validate("Validate changes"), cli_validatev();
-commit("Commit the changes"), cli_commitv((int32)0); # snapshot
+commit("Commit the changes"), cli_commitv();
 quit("Quit Hello"), cli_quitv();
 delete("Delete a configuration item")  all("Delete whole candidate configuration"), delete_allv("candidate");
 
+startup("Store running as startup config"), db_copy("running","startup");
 no("Negate or remove") debug("Debugging parts of the system"), cli_debug_cliv((int32)0);
 debug("Debugging parts of the system"), cli_debug_cliv((int32)1);{
     level("Set debug level: 1..n") <level:int32>("Set debug level (0..n)"), cli_debug_cliv();
@@ -22,7 +23,7 @@ debug("Debugging parts of the system"), cli_debug_cliv((int32)1);{
 discard("Discard edits (rollback 0)"), discard_changesv();
 
 show("Show a particular state of the system"){
-    xpath("Show configuration") <xpath:string>("XPATH expression"), show_confv_xpath("candidate");
+    xpath("Show configuration") <xpath:string>("XPATH expression"), show_confv_xpath("candidate","/");
     compare("Compare candidate and running databases"), compare_dbsv((int32)0);{
     		     xml("Show comparison in xml"), compare_dbsv((int32)0);
 		     text("Show comparison in text"), compare_dbsv((int32)1);

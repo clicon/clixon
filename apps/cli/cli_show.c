@@ -126,7 +126,8 @@ expandv_dbvar(void   *h,
     }
     dbstr  = cv_string_get(cv);
     if (strcmp(dbstr, "running") != 0 &&
-	strcmp(dbstr, "candidate") != 0){
+	strcmp(dbstr, "candidate") != 0 &&
+	strcmp(dbstr, "startup") != 0){
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
     }
@@ -407,7 +408,7 @@ xml2csv(FILE *f, cxobj *x, cvec *cvv)
  * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
  * @param[out] xt    Configuration as xml tree.
  * Format of arg:
- *   <dbname>  "running", "candidate"
+ *   <dbname>  "running", "candidate", "startup"
  *   <xpath>   xpath expression 
  *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
  * @code
@@ -440,7 +441,9 @@ show_confv_as(clicon_handle h,
     }
     /* Dont get attr here, take it from arg instead */
     db = cv_string_get(cvec_i(argv, 0));
-    if (strcmp(db, "running") != 0 && strcmp(db, "candidate") != 0) {
+    if (strcmp(db, "running") != 0 && 
+	strcmp(db, "candidate") != 0 && 
+	strcmp(db, "startup") != 0)	{
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", db);	
 	goto done;
     }
@@ -703,8 +706,8 @@ show_confv_as_csv(clicon_handle h,
  */
 int
 show_confv_xpath(clicon_handle h, 
-		cvec         *cvv, 
-		cvec         *argv)
+		 cvec         *cvv, 
+		 cvec         *argv)
 {
     int              retval = -1;
     char            *str;
@@ -721,7 +724,9 @@ show_confv_xpath(clicon_handle h,
     }
     str = cv_string_get(cvec_i(argv, 0));
     /* Dont get attr here, take it from arg instead */
-    if (strcmp(str, "running") != 0 && strcmp(str, "candidate") != 0){
+    if (strcmp(str, "running") != 0 && 
+	strcmp(str, "candidate") != 0 && 
+	strcmp(str, "startup") != 0){
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", str);	
 	goto done;
     }
@@ -790,7 +795,8 @@ expand_dbvar(void   *h,
     }
     dbstr  = vec[0];
     if (strcmp(dbstr, "running") != 0 &&
-	strcmp(dbstr, "candidate") != 0){
+	strcmp(dbstr, "candidate") != 0 &&
+	strcmp(dbstr, "startup") != 0){
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
     }
@@ -869,7 +875,7 @@ expand_dbvar(void   *h,
  * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
  * @param[out] xt    Configuration as xml tree.
  * Format of arg:
- *   <dbname>  "running", "candidate"
+ *   <dbname>  "running", "candidate", "startup"
  *   <xpath>   xpath expression 
  *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
  * @code
@@ -909,7 +915,9 @@ show_conf_as(clicon_handle h,
     }
     /* Dont get attr here, take it from arg instead */
     db = vec[0];
-    if (strcmp(db, "running") != 0 && strcmp(db, "candidate") != 0) {
+    if (strcmp(db, "running") != 0 && 
+	strcmp(db, "candidate") != 0 && 
+	strcmp(db, "startup") != 0) {
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", db);	
 	goto done;
     }
@@ -1178,7 +1186,9 @@ show_conf_xpath(clicon_handle h,
 	goto done;
     }
     /* Dont get attr here, take it from arg instead */
-    if (strcmp(str, "running") != 0 && strcmp(str, "candidate") != 0){
+    if (strcmp(str, "running") != 0 && 
+	strcmp(str, "candidate") != 0 && 
+	strcmp(str, "startup") != 0){
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", str);	
 	goto done;
     }

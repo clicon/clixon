@@ -204,6 +204,9 @@ netconf_get_target(clicon_handle h,
 	else
 	    if (xpath_first(x, "running") != NULL)
 		target = "running";
+	else
+	    if (xpath_first(x, "startup") != NULL)
+		target = "startup";
     }
     return target;
     

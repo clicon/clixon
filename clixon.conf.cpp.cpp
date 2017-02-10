@@ -77,8 +77,8 @@ CLICON_CLISPEC_DIR    libdir/APPNAME/clispec
 # are saved chronologically
 CLICON_ARCHIVE_DIR      localstatedir/APPNAME/archive
 
-# XXX Name of startup configuration file (in XML)
-CLICON_STARTUP_CONFIG   localstatedir/APPNAME/startup-config
+# Enabled uses "startup" configuration on boot
+CLICON_USE_STARTUP_CONFIG    0
 
 # Address family for communicating with clixon_backend (UNIX|IPv4|IPv6)
 CLICON_SOCK_FAMILY  UNIX
@@ -118,7 +118,7 @@ CLICON_BACKEND_PIDFILE  localstatedir/APPNAME/APPNAME.pidfile
 # How to generate and show CLI syntax: VARS|ALL
 # CLICON_CLI_GENMODEL_TYPE   VARS
 
-# Directory where "running" and "candidate" are placed
+# Directory where "running", "candidate" and "startup" are placed
 CLICON_XMLDB_DIR      localstatedir/APPNAME
 
 # Set if xmldb runs in a separate process (clixon_xmldb). 
@@ -148,4 +148,5 @@ CLICON_CLIGEN_EXPAND_SINGLE_ARG 0
 # E.g cmd, callback("single arg"); -> cmd, callback("two" "args");
 # And change predefined callbacks, eg cli_commit -> cli_commitv in all cli files
 CLICON_CLIGEN_CALLBACK_SINGLE_ARG 1
+
 
