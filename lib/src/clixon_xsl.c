@@ -199,7 +199,7 @@ xpath_parse_predicate(struct xpath_element *xe,
     int                     len;
 
     len = strlen(pred);
-    for (i=len-2; i>=0; i--){ /* -2 since we search for ][ */
+    for (i=len-1; i>=0; i--){ /* -2 since we search for ][ */
 	s = &pred[i];
 	if (i==0 || 
 	    (*(s)==']' && *(s+1)=='[')){
