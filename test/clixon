@@ -10,17 +10,32 @@ err(){
 }
 
 # cd to working dir
-cd /tmp
+cd /var/tmp
 if [ $# -ne 0 ]; then
     err "usage: $0" 0
 fi
+rm -rf cligen
 rm -rf clixon
+git clone https://github.com/olofhagsand/cligen.git
+if [ $? -ne 0 ]; then
+    err "git clone cligen" 1
+fi
+cd cligen
+CFLAGS=-Werror ./configure
+if [ $? -ne 0 ]; then
+    err "configure" 2
+fi
+make
+if [ $? -ne 0 ]; then
+    err "make" 3
+fi
+cd ..
 git clone https://github.com/clicon/clixon.git
 if [ $? -ne 0 ]; then
-    err "git clone" 1
+    err "git clone clixon" 1
 fi
 cd clixon
-CFLAGS=-Werror ./configure
+CFLAGS=-Werror ./configure --with-cligen=../cligen
 if [ $? -ne 0 ]; then
     err "configure" 2
 fi
@@ -54,5 +69,5 @@ if [ $errcode -ne 0 ]; then
     err "test" $errcode
 fi
 cd ../..
-rm -rf clixon
+rm -rf clixon cligen
 logger "CLIXON: tests OK"
