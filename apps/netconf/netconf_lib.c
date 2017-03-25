@@ -68,22 +68,8 @@
 /*
  * Exported variables
  */
-enum transport_type    transport = NETCONF_SSH; 
-int cc_closed = 0;
-
-static int cc_ok = 0;
-
-void
-netconf_ok_set(int ok)
-{
-    cc_ok = ok;
-}
-
-int
-netconf_ok_get(void)
-{
-    return cc_ok;
-}
+enum transport_type    transport = NETCONF_SSH; /* XXX Remove SOAP support */
+int cc_closed = 0; /* XXX Please remove (or at least hide in handle) this global variable */
 
 int
 add_preamble(cbuf *xf)
@@ -191,8 +177,7 @@ detect_endtag(char *tag, char ch, int *state)
  * @retval  dbname   Actual database file name
  */
 char *
-netconf_get_target(clicon_handle h, 
-		   cxobj        *xn, 
+netconf_get_target(cxobj        *xn, 
 		   char         *path)
 {
     cxobj *x;    
@@ -218,11 +203,13 @@ netconf_get_target(clicon_handle h,
  * @param[in]   msg  Only for debug
  */
 int 
-netconf_output(int s, cbuf *xf, char *msg)
+netconf_output(int   s, 
+	       cbuf *xf, 
+	       char *msg)
 {
     char *buf = cbuf_get(xf);
-    int len = cbuf_len(xf);
-    int retval = -1;
+    int   len = cbuf_len(xf);
+    int   retval = -1;
 
     clicon_debug(1, "SEND %s", msg);
     if (debug > 1){ /* XXX: below only works to stderr, clicon_debug may log to syslog */

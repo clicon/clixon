@@ -42,27 +42,14 @@
 /*
  * Prototypes
  */ 
-struct clicon_msg *
-clicon_msg_commit_encode(char *dbsrc, char *dbdst, 
-			const char *label); 
+struct clicon_msg *clicon_msg_netconf_encode(char *format, ...);
+struct clicon_msg *clicon_msg_netconf_encode_xml(cxobj *xml);
 
-int
-clicon_msg_commit_decode(struct clicon_msg *msg, 
-			char **dbsrc, char **dbdst, 
-			const char *label);
-
-struct clicon_msg *
-clicon_msg_validate_encode(char *db,
-			  const char *label);
-
-int
-clicon_msg_validate_decode(struct clicon_msg *msg, char **db,
-			const char *label);
+int clicon_msg_netconf_decode(struct clicon_msg *msg, cxobj **xml);
 
 struct clicon_msg *
 clicon_msg_change_encode(char *db, uint32_t op, char *key, 
-			char *lvec, uint32_t lvec_len, 
-			const char *label);
+			 char *lvec, uint32_t lvec_len);
 
 int
 clicon_msg_change_decode(struct clicon_msg *msg, 
@@ -71,107 +58,13 @@ clicon_msg_change_decode(struct clicon_msg *msg,
 			const char *label);
 
 struct clicon_msg *
-clicon_msg_xmlput_encode(char       *db, 
-			 uint32_t    op, 
-			 char       *api_path, 
-			 char       *xml, 
-			 const char *label);
-
-int
-clicon_msg_xmlput_decode(struct clicon_msg *msg, 
-			 char             **db, 
-			 uint32_t          *op, 
-			 char             **api_path, 
-			 char             **xml, 
-			 const char        *label);
-
-struct clicon_msg *
 clicon_msg_dbitems_get_reply_encode(cvec          **cvecv,
-				int             cveclen,
-				const char     *label);
+				    int             cveclen);
 int 
 clicon_msg_dbitems_get_reply_decode(char              *data,
 				uint16_t           datalen,
 				cvec            ***cvecv,
 				size_t            *cveclen,
 				const char        *label);
-
-struct clicon_msg *
-clicon_msg_save_encode(char *db, uint32_t snapshot, char *filename, 
-		      const char *label);
-
-int
-clicon_msg_save_decode(struct clicon_msg *msg, 
-		      char **db, uint32_t *snapshot, char **filename, 
-		      const char *label);
-
-struct clicon_msg *
-clicon_msg_load_encode(int replace, char *db, char *filename, 
-		       const char *label);
-
-int
-clicon_msg_load_decode(struct clicon_msg *msg, 
-		       int *replace, char **db, char **filename, 
-		       const char *label);
-
-struct clicon_msg *
-clicon_msg_copy_encode(char *db_src, char *db_dst, 
-		       const char *label);
-
-int
-clicon_msg_copy_decode(struct clicon_msg *msg, 
-		      char **db_src, char **db_dst, 
-		       const char *label);
-
-struct clicon_msg *
-clicon_msg_kill_encode(uint32_t session_id, const char *label);
-
-int
-clicon_msg_kill_decode(struct clicon_msg *msg, uint32_t *session_id, 
-		      const char *label);
-
-struct clicon_msg *
-clicon_msg_debug_encode(uint32_t level, const char *label);
-
-int
-clicon_msg_debug_decode(struct clicon_msg *msg, uint32_t *level, 
-		      const char *label);
-
-struct clicon_msg *
-clicon_msg_call_encode(uint16_t op, char *plugin, char *func,
-		      uint16_t arglen, void *arg,
-		      const char *label);
-
-int
-clicon_msg_call_decode(struct clicon_msg *msg, 
-		      struct clicon_msg_call_req **req,
-		      const char *label);
-
-struct clicon_msg *
-clicon_msg_subscription_encode(int status, 
-			       char *stream, 
-			       enum format_enum format,
-			       char *filter, 
-			       const char *label);
-
-int clicon_msg_subscription_decode(struct clicon_msg *msg, 
-				   int               *status, 
-				   char             **stream, 
-				   enum format_enum  *format,
-				   char             **filter, 
-				   const char        *label);
-
-struct clicon_msg *
-clicon_msg_notify_encode(int level, char *event, const char *label);
-
-int 
-clicon_msg_notify_decode(struct clicon_msg *msg, int *level,
-			 char **event, const char *label);
-
-struct clicon_msg *clicon_msg_err_encode(uint32_t err, uint32_t suberr, 
-					 char *reason, const char *label);
-
-int clicon_msg_err_decode(struct clicon_msg *msg, uint32_t *err, uint32_t *suberr,
-			  char **reason, const char *label);
 
 #endif  /* _CLIXON_PROTO_ENCODE_H_ */

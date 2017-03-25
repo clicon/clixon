@@ -77,10 +77,10 @@ cli_terminate(clicon_handle h)
 {
     yang_spec      *yspec;
 
+    clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
     cli_plugin_finish(h);    
-    exit_candidate_db(h);
     cli_handle_exit(h);
     return 0;
 }
@@ -359,20 +359,11 @@ main(int argc, char **argv)
 	goto done;
     }
 
-    /* A client does not have access to the candidate (and running) 
-       databases if both these conditions are true:
-         1. clicon_sock_family(h) == AF_INET[6]
-    */
-    if (clicon_sock_family(h) == AF_UNIX)
-	if (init_candidate_db(h) < 0)
-	    return -1;
-    
     if (logclisyntax)
 	cli_logsyntax_set(h, logclisyntax);
 
     if (debug)
 	clicon_option_dump(h, debug);
-
 
     /* Join rest of argv to a single command */
     restarg = clicon_strjoin(argc, argv, " ", __FUNCTION__);

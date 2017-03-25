@@ -209,21 +209,20 @@ main(int argc, char **argv)
     }
     if (dumpdb){
 	/* Here db must be local file-path */
-	if (xmldb_dump_local(stdout, db, matchkey)) {
+	if (xmldb_dump(stdout, db, matchkey)) {
 	    fprintf(stderr, "Match error\n");
 	    goto done;
 	}
     }
     if (addent) /* add entry */
-	if (xmldb_put_xkey(h, db, addstr, NULL, OP_REPLACE) < 0)
+	if (xmldb_put_xkey(h, db, OP_REPLACE, NULL, addstr) < 0)
 	    goto done;
     if (rment)
         if (remove_entry(db, rmkey) < 0)
 	    goto done;
     if (zapdb) /* remove databases */ 
-	/* XXX This assumes direct access to database */
 	if (xmldb_delete(h, db) < 0){
-	    clicon_err(OE_FATAL, errno, "xmldb_delete %s", db);
+	    clicon_err(OE_FATAL, errno, "delete %s", db);
 	    goto done;
 	}
     if (initdb)

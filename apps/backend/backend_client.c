@@ -63,6 +63,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
+#include "clixon_backend_handle.h"
 #include "backend_commit.h"
 #include "backend_plugin.h"
 #include "backend_client.h"
@@ -84,7 +85,7 @@ client_subscription_add(struct client_entry *ce,
 {
     struct client_subscription *su = NULL;
 
-    clicon_debug(1, "%s stream:%s filter:%s", __FUNCTION__, stream, filter);
+    fprintf(stderr, "%s stream:%s filter:%s\n", __FUNCTION__, stream, filter);
     if ((su = malloc(sizeof(*su))) == NULL){
 	clicon_err(OE_PLUGIN, errno, "malloc");
 	goto done;
@@ -92,7 +93,7 @@ client_subscription_add(struct client_entry *ce,
     memset(su, 0, sizeof(*su));
     su->su_stream = strdup(stream);
     su->su_format = format;
-    su->su_filter = strdup(filter);
+    su->su_filter = filter?strdup(filter):strdup("");
     su->su_next   = ce->ce_subscription;
     ce->ce_subscription = su;
   done:
@@ -117,6 +118,7 @@ client_subscription_delete(struct client_entry *ce,
     struct client_subscription   *su;
     struct client_subscription  **su_prev;
 
+    fprintf(stderr, "%s stream:%s\n", __FUNCTION__, su0->su_stream);
     su_prev = &ce->ce_subscription; /* this points to stack and is not real backpointer */
     for (su = *su_prev; su; su = su->su_next){
 	if (su == su0){
@@ -132,6 +134,7 @@ client_subscription_delete(struct client_entry *ce,
     return 0;
 }
 
+#ifdef notused /* xxx */
 static struct client_subscription *
 client_subscription_find(struct client_entry *ce, char *stream)
 {
@@ -143,6 +146,7 @@ client_subscription_find(struct client_entry *ce, char *stream)
 
     return su;
 }
+#endif 
 
 /*! Remove client entry state
  * Close down everything wrt clients (eg sockets, subscriptions)
@@ -158,7 +162,7 @@ backend_client_rm(clicon_handle        h,
     struct client_entry   *c;
     struct client_entry   *c0;
     struct client_entry  **ce_prev;
-    struct client_subscription   *su;
+    struct client_subscription *su;
 
     c0 = backend_client_list(h);
     ce_prev = &c0; /* this points to stack and is not real backpointer */
@@ -178,66 +182,78 @@ backend_client_rm(clicon_handle        h,
     return backend_client_delete(h, ce); /* actually purge it */
 }
 
-/*! Internal message: Change entry set/delete in database xmldb variant
- * @param[in]   h     Clicon handle
- * @param[in]   s     Socket where request arrived, and where replies are sent
- * @param[in]   pid   Unix process id
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
+/*! FInd target/source in netconf request. Assume sanity made so not finding is error */
+static char*
+netconf_db_find(cxobj *xn, 
+		char  *name)
+{
+    cxobj *xs; /* source */
+    cxobj *xi;
+    char  *db = NULL;
+
+    if ((xs = xml_find(xn, name)) == NULL)
+	goto done;
+    if ((xi = xml_child_i(xs, 0)) == NULL)
+	goto done;
+    db = xml_name(xi);
+ done:
+    return db;
+}
+
+/*! Internal message: get-config
+ * 
+ * @param[in]  h     Clicon handle
+ * @param[in]  xe    Netconf request xml tree   
+ * @param[out] cbret Return xml value cligen buffer
  */
 static int
-from_client_change(clicon_handle      h,
-		   int                s, 
-		   int                pid, 
-		   struct clicon_msg *msg, 
-		   const char        *label)
+from_client_get_config(clicon_handle h,
+		       cxobj        *xe,
+		       cbuf         *cbret)
 {
-    int         retval = -1;
-    uint32_t    len;
-    char       *xk;
-    char       *db;
-    enum operation_type op;
-    char       *str = NULL;
-    char       *val=NULL;
-    int         piddb;
-
-    if (clicon_msg_change_decode(msg, 
-				 &db, 
-				 &op,
-				 &xk, 
-				 &val, 
-				 &len, 
-				 label) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
+    int    retval = -1;
+    char  *db;
+    cxobj *xfilter;
+    char  *selector = "/";
+    cxobj *xret = NULL;
+    
+    if ((db = netconf_db_find(xe, "source")) == NULL){
+	clicon_err(OE_XML, 0, "db not found");
 	goto done;
     }
-    /* candidate is locked by other client */
-    if (strcmp(db, "candidate") == 0){
-	piddb = xmldb_islocked(h, db);
-	if (piddb && pid != piddb){
-	    send_msg_err(s, OE_DB, 0,
-			 "lock failed: locked by %d", piddb);
-	    goto done;
+    if ((xfilter = xml_find(xe, "filter")) != NULL)
+	if ((selector = xml_find_value(xfilter, "select"))==NULL)
+	    selector="/";
+    if (xmldb_get(h, db, selector, &xret, NULL, NULL) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>application</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info>read-registry</error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    cprintf(cbret, "<rpc-reply><data>");
+    /* if empty only <data/>, if any data then <data><config>..</config></data> */
+    if (xret!=NULL){
+	if (xml_child_nr(xret)){
+	    if (xml_name_set(xret, "config") < 0)
+		goto done;
+	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+		goto done;
 	}
     }
-    /* Update database */
-    if (xmldb_put_xkey(h, db, xk, val, op) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto done;
-    }
-    if (send_msg_ok(s) < 0)
-	goto done;
+    cprintf(cbret, "</data></rpc-reply>");
+ ok:
     retval = 0;
-  done:
-    if (str)
-	free(str);
+ done:
+    if (xret)
+	xml_free(xret);
     return retval;
 }
 
+
+#ifdef notused
 /*! Internal message: Change entries as XML 
  * @param[in]   h     Clicon handle
  * @param[in]   s     Socket where request arrived, and where replies are sent
@@ -293,7 +309,7 @@ from_client_xmlput(clicon_handle      h,
 	if (xt && xml_child_nr(xt)){
 	    x = NULL;
 	    while ((x = xml_child_each(xt, x, -1)) != NULL) {
-		if (xmldb_put_tree(h, db, api_path, x, op) < 0){
+		if (xmldb_put(h, db, op, api_path, x) < 0){
 		    send_msg_err(s, clicon_errno, clicon_suberrno,
 				 clicon_err_reason);
 		    goto done;
@@ -301,18 +317,18 @@ from_client_xmlput(clicon_handle      h,
 	    }
 	}
 	else
-	    if (xmldb_put_tree(h, db, api_path, NULL, op) < 0){
+	    if (xmldb_put(h, db, op, api_path, NULL) < 0){
 		send_msg_err(s, clicon_errno, clicon_suberrno,
 			     clicon_err_reason);
 		goto done;
 	    }
     }
-    else if (xmldb_put(h, db, xt, op) < 0){
+    else if (xmldb_put(h, db, op, NULL, xt) < 0){
 	send_msg_err(s, clicon_errno, clicon_suberrno,
 		     clicon_err_reason);
 	goto done;
     }
-    if (send_msg_ok(s) < 0)
+    if (send_msg_netconf_reply(s, "<rpc-reply><ok/></rpc-reply>") < 0)
 	goto done;
     retval = 0;
   done:
@@ -324,290 +340,249 @@ from_client_xmlput(clicon_handle      h,
 	xml_free(xt);
     return retval;
 }
-
-/* Nr of snapshots. Can be made into a dynamic option */
-#define SNAPSHOTS_NR 30
-/*! dump old running_db to snapshot file #0. move all other checkpoints
- * one step up
- */
-int
-config_snapshot(clicon_handle h,
-		char *db, 
-		char *dir)
-{
-    int         retval = -1;
-    char        filename0[MAXPATHLEN];
-    char        filename1[MAXPATHLEN];
-    struct stat st;
-    int         i;
-    FILE       *f = NULL;
-    cxobj      *xn;
-
-    if (stat(dir, &st) < 0){
-	clicon_err(OE_CFG, errno, "%s: stat(%s): %s\n", 
-		__FUNCTION__, dir, strerror(errno));
-	return -1;
-    }
-    if (!S_ISDIR(st.st_mode)){
-	clicon_err(OE_CFG, 0, "%s: %s: not directory\n", 
-		__FUNCTION__, dir);
-	return -1;
-    }
-    for (i=SNAPSHOTS_NR-1; i>0; i--){
-	snprintf(filename0, MAXPATHLEN, "%s/%d", 
-		 dir,
-		 i-1);
-	snprintf(filename1, MAXPATHLEN, "%s/%d", 
-		 dir,
-		 i);
-	if (stat(filename0, &st) == 0)
-	    if (rename(filename0, filename1) < 0){
-		clicon_err(OE_CFG, errno, "%s: rename(%s, %s): %s\n", 
-			__FUNCTION__, filename0, filename1, strerror(errno));
-		return -1;
-	    }
-    }
-    /* Make the most current snapshot */
-    snprintf(filename0, MAXPATHLEN, "%s/0", dir);
-    if ((f = fopen(filename0, "wb")) == NULL){
-	clicon_err(OE_CFG, errno, "Creating file %s", filename0);
-	return -1;
-    } 
-    if (xmldb_get(h, db, "/", &xn, NULL, NULL) < 0)
-	goto done;
-    if (xml_print(f, xn) < 0)
-	goto done;
-    retval = 0;
- done:
-    if (f != NULL)
-	fclose(f);
-    if (xn)
-	xml_free(xn);
-    return retval;
-}
+#endif
 
 
-/*! Internal message: Dump/print database to file
- * @param[in]   h     Clicon handle
- * @param[in]   s     Socket where request arrived, and where replies are sent
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
+/*! Internal message: edit-config
+ * 
+
+ * @param[in]  h    Clicon handle
+ * @param[in]  xe   Netconf request xml tree   
+ * @param[out] cbret Return xml value cligen buffer
+ * @see from_client_xmlput
+ * CLIXON addition:
+ *   <filter type="restconf" select="/data/profile=a" />
  */
 static int
-from_client_save(clicon_handle      h,
-		 int                s, 
-		 struct clicon_msg *msg, 
-		 const char        *label)
+from_client_edit_config(clicon_handle h,
+			cxobj        *xn,
+			cbuf         *cbret)
 {
-    int      retval = -1;
-    char    *filename;
-    char    *archive_dir;
-    char    *db;
-    uint32_t snapshot;
-    FILE    *f = NULL;
-    cxobj   *xn = NULL;
+    int    retval = -1;
+    char  *target;
+    cbuf  *cb = NULL;
+    cxobj *xret = NULL;
+    cxobj *xc;
+    cxobj *xfilter;
+    cxobj *x;
+    enum operation_type operation = OP_MERGE;
+    char  *api_path = NULL;
 
-    if (clicon_msg_save_decode(msg, 
-			      &db, 
-			      &snapshot,
-			      &filename,
-			      label) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
+    if ((target = netconf_db_find(xn, "target")) == NULL){
+	clicon_err(OE_XML, 0, "db not found");
 	goto done;
     }
-    if (strcmp(db, "running") != 0 && strcmp(db, "candidate") != 0){
-	clicon_err(OE_XML, 0, "Expected running or candidate, got %s", db);
-	goto done;
-    }
-    if (snapshot){
-	if ((archive_dir = clicon_archive_dir(h)) == NULL){
-	    clicon_err(OE_PLUGIN, 0, "snapshot set and clicon_archive_dir not defined");
-	    goto done;
+    /* ie <filter type="restconf" select=<api-path> /> */
+    if ((xfilter = xpath_first(xn, "filter")) != NULL) 
+	 api_path = xml_find_value(xfilter, "select");
+    if ((x = xpath_first(xn, "default-operation")) != NULL){
+	if (xml_operation(xml_body(x), &operation) < 0){
+	    cprintf(cbret, "<rpc-reply><rpc-error>"
+		    "<error-tag>invalid-value</error-tag>"
+		    "<error-type>protocol</error-type>"
+		    "<error-severity>error</error-severity>"
+		    "</rpc-error></rpc-reply>");
+	    goto ok;
 	}
-	if (config_snapshot(h, db, archive_dir) < 0){
-	    send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-
-	    goto done;
+    }
+    if ((xc  = xpath_first(xn, "config")) != NULL){
+	/* XXX see from_client_xmlput() */
+	if (api_path){
+	    cbuf *cb;
+	    cb=cbuf_new();
+	    clicon_xml2cbuf(cb, xc, 0, 1);
+	    fprintf(stderr, "%s: api_path:%s xml:%s\n", 
+		    __FUNCTION__, api_path, cbuf_get(cb));
+	    cbuf_free(cb);
+	}
+        if (xml_body(xc)!= NULL){
+	    if (xmldb_put_xkey(h, target, operation, api_path, xml_body(xc)) < 0){
+		cprintf(cbret, "<rpc-reply><rpc-error>"
+			"<error-tag>operation-failed</error-tag>"
+			"<error-type>protocol</error-type>"
+			"<error-severity>error</error-severity>"
+			"<error-message>%s</error-message>"
+			"</rpc-error></rpc-reply>", clicon_err_reason);
+		goto ok;
+	    }
+	}
+	else
+	if (xmldb_put(h, target, operation, api_path, xc) < 0){
+	    cprintf(cbret, "<rpc-reply><rpc-error>"
+		    "<error-tag>operation-failed</error-tag>"
+		    "<error-type>protocol</error-type>"
+		    "<error-severity>error</error-severity>"
+		    "<error-message>%s</error-message>"
+		    "</rpc-error></rpc-reply>", clicon_err_reason);
+	    goto ok;
 	}
     }
     else{
-	if ((f = fopen(filename, "wb")) == NULL){
-	    clicon_err(OE_CFG, errno, "Creating file %s", filename);
-	    return -1;
-	} 
-	if (xmldb_get(h, db, "/", &xn, NULL, NULL) < 0)
-	    goto done;
-	if (xml_print(f, xn) < 0)
-	    goto done; 
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>missing-element</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info><bad-element>config</bad-element></error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
     }
-    if (send_msg_ok(s) < 0)
-	goto done;
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+ ok:
     retval = 0;
-  done:
-    if (f != NULL)
-	fclose(f);
-    if (xn)
-	xml_free(xn);
+ done:
+    if (xret)
+	xml_free(xret);
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
-/*! Internal message: Load file into database
- * @param[in]   h     Clicon handle
- * @param[in]   s     Socket where request arrived, and where replies are sent
- * @param[in]   pid   Unix process id
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
+/*! Internal message: Lock database
+ * 
+ * @param[in]  h    Clicon handle
+ * @param[in]  pid  Unix process id
+ * @param[in]  xe   Netconf request xml tree   
+ * @param[out] cbret Return xml value cligen buffer
  */
 static int
-from_client_load(clicon_handle      h,
-		 int                s, 
-		 int                pid, 
-		 struct clicon_msg *msg,
-		 const char        *label)
-
+from_client_lock(clicon_handle h,
+		 int           pid,
+		 cxobj        *xe,
+		 cbuf         *cbret)
 {
-    char      *filename = NULL;
-    int        retval = -1;
-    char      *db = NULL;
-    int        replace = 0;
-    int        fd = -1;
-    cxobj     *xt = NULL;
-    cxobj     *xn;
-    int        piddb;
-
-    if (clicon_msg_load_decode(msg, 
-			       &replace,
-			       &db, 
-			       &filename,
-			       label) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto done;
+    int    retval = -1;
+    char  *db;
+    int    piddb;
+    
+    if ((db = netconf_db_find(xe, "target")) == NULL){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>missing-element</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info><bad-element>target</bad-element></error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
     }
-    if (strcmp(db, "running") != 0 && strcmp(db, "candidate") != 0){
-	clicon_err(OE_XML, 0, "Expected running or candidate, got %s", db);
-	goto done;
+    /*
+     * A lock MUST not be granted if either of the following conditions is true:
+     * 1) A lock is already held by any NETCONF session or another entity.
+     * 2) The target configuration is <candidate>, it has already been modified, and 
+     *    these changes have not been committed or rolled back.
+     */
+    piddb = xmldb_islocked(h, db);
+    if (piddb){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>lock-denied</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>Lock failed, lock is already held</error-message>"
+		"<error-info><session-id>%d</session-id></error-info>"
+		"</rpc-error></rpc-reply>",
+		piddb);
+	goto ok;
     }
-    /* candidate is locked by other client */
-    if (strcmp(db, "candidate") == 0){
-	piddb = xmldb_islocked(h, db);
-	if (piddb && pid != piddb){
-	    send_msg_err(s, OE_DB, 0,
-			 "lock failed: locked by %d", piddb);
-	    goto done;
-	}
+    else{
+	xmldb_lock(h, db, pid);
+	cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     }
-    if (replace){
-	if (xmldb_delete(h, db) < 0){
-	    send_msg_err(s, OE_UNIX, 0, "rm %s %s", filename, strerror(errno));
-	    goto done;
-	}
-	if (xmldb_init(h, db) < 0) 
-	    goto done;
-    }
-
-    if ((fd = open(filename, O_RDONLY)) < 0){
-	clicon_err(OE_UNIX, errno, "%s: open(%s)", __FUNCTION__, filename);
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto done;
-    }
-    if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto done;
-    }
-    if ((xn = xml_child_i(xt, 0)) != NULL){
-	if (xmldb_put(h, db, xn, replace?OP_REPLACE:OP_MERGE) < 0){
-	    send_msg_err(s, clicon_errno, clicon_suberrno,
-			 clicon_err_reason);
-	    goto done;
-	}
-    }
-    if (send_msg_ok(s) < 0)
-	goto done;
+ ok:
     retval = 0;
-  done:
-    if (fd != -1)
-	close(fd);
-    if (xt)
-	xml_free(xt);
+    // done:
     return retval;
 }
 
-/*! Internal message: Copy file from file1 to file2
- * @param[in]   h     Clicon handle
- * @param[in]   s     Socket where request arrived, and where replies are sent
- * @param[in]   pid   Unix process id
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
+/*! Internal message: Unlock database
+ * 
+ * @param[in]  h    Clicon handle
+ * @param[in]  pid  Unix process id
+ * @param[in]  xe   Netconf request xml tree   
+ * @param[out] cbret Return xml value cligen buffer
  */
 static int
-from_client_copy(clicon_handle      h,
-		 int                s, 
-		 int                pid, 
-		 struct clicon_msg *msg, 
-		 const char        *label)
+from_client_unlock(clicon_handle h,
+		   int           pid,
+		   cxobj        *xe,
+		   cbuf         *cbret)
 {
-    char *db1;
-    char *db2;
-    int   retval = -1;
+    int    retval = -1;
+    char  *db;
+    int    piddb;
 
-    if (clicon_msg_copy_decode(msg, 
-			      &db1,
-			      &db2,
-			      label) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto done;
+    if ((db = netconf_db_find(xe, "target")) == NULL){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>missing-element</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info><bad-element>target</bad-element></error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
     }
-    if (xmldb_copy(h, db1, db2) < 0)
-	goto done;
-    if (send_msg_ok(s) < 0)
-	goto done;
+    piddb = xmldb_islocked(h, db);
+    /* 
+     * An unlock operation will not succeed if any of the following
+     * conditions are true:
+     * 1) the specified lock is not currently active
+     * 2) the session issuing the <unlock> operation is not the same
+     *    session that obtained the lock
+     */
+    if (piddb==0 || piddb != pid){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>lock-denied</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>Unlock failed, lock is already held</error-message>"
+		"<error-info><session-id>pid=%d piddb=%d</session-id></error-info>"
+		"</rpc-error></rpc-reply>",
+		pid, piddb);
+	goto ok;
+    }
+    else{
+	xmldb_unlock(h, db, pid);
+	if (cprintf(cbret, "<rpc-reply><ok/></rpc-reply>") < 0)
+	    goto done;
+    }
+ ok:
     retval = 0;
-  done:
+ done:
     return retval;
 }
-
 
 /*! Internal message:  Kill session (Kill the process)
- * @param[in]   h     Clicon handle
- * @param[in]   s     Client socket where request arrived, and where replies are sent
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
+ * @param[in]  h     Clicon handle
+ * @param[in]  xe    Netconf request xml tree   
+ * @param[out] cbret Return xml value cligen buffer
+ * @retval     0     OK
+ * @retval    -1    Error. Send error message back to client.
  */
 static int
-from_client_kill(clicon_handle      h,
-		 int                s, 
-		 struct clicon_msg *msg, 
-		 const char        *label)
+from_client_kill_session(clicon_handle h,
+			 cxobj        *xe,
+			 cbuf         *cbret)
 {
     int                  retval = -1;
     uint32_t             pid; /* other pid */
+    char                *str;
     struct client_entry *ce;
     char                *db = "running"; /* XXX */
+    cxobj               *x;
 
-    if (clicon_msg_kill_decode(msg, 
-			      &pid,
-			      label) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto done;
+    if ((x = xml_find(xe, "session-id")) == NULL ||
+	(str = xml_find_value(x, "body")) == NULL){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>missing-element</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info><bad-element>session-id</bad-element></error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
     }
+    pid = atoi(str);
     /* may or may not be in active client list, probably not */
-    if ((ce = ce_find_bypid(backend_client_list(h), pid)) != NULL)
+    if ((ce = ce_find_bypid(backend_client_list(h), pid)) != NULL){
+	xmldb_unlock_all(h, pid);	    
 	backend_client_rm(h, ce);
+    }
+    
     if (kill (pid, 0) != 0 && errno == ESRCH) /* Nothing there */
 	;
     else{
@@ -623,11 +598,173 @@ from_client_kill(clicon_handle      h,
 	    xmldb_unlock(h, db, pid);
     }
     else{ /* failed to kill client */
-	send_msg_err(s, OE_DB, 0, "failed to kill %d", pid);
-	goto done;
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>application</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>Faile to kill session</error-message>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
     }
-    if (send_msg_ok(s) < 0)
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+ ok:
+    retval = 0;
+    //  done:
+    return retval;
+}
+
+/*! Internal message: Copy database from db1 to db2
+ * @param[in]   h     Clicon handle
+ * @param[in]  xe     Netconf request xml tree   
+ * @param[out] cbret Return xml value cligen buffer
+
+ * @retval      0     OK
+ * @retval      -1    Error. Send error message back to client.
+ */
+static int
+from_client_copy_config(clicon_handle h,
+			cxobj        *xe,
+			cbuf         *cbret)
+{
+    char *db1;
+    char *db2;
+    int   retval = -1;
+
+    if ((db1 = netconf_db_find(xe, "source")) == NULL){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>missing-element</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info><bad-element>source</bad-element></error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    if ((db2 = netconf_db_find(xe, "target")) == NULL){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>missing-element</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info><bad-element>target</bad-element></error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    if (xmldb_copy(h, db1, db2) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>application</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info>read-registry</error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+ ok:
+    retval = 0;
+    //  done:
+    return retval;
+}
+
+/*! Internal message: Delete database
+ * @param[in]   h     Clicon handle
+ * @param[in]   xe    Netconf request xml tree   
+ * @param[out]  cbret Return xml value cligen buffer
+
+ * @retval      0     OK
+ * @retval      -1    Error. Send error message back to client.
+ */
+static int
+from_client_delete_config(clicon_handle h,
+			  cxobj        *xe,
+			  cbuf         *cbret)
+{
+    char *target;
+    int   retval = -1;
+
+    if ((target = netconf_db_find(xe, "target")) == NULL||
+	strcmp(target, "running")==0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>missing-element</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info><bad-element>target</bad-element></error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    if (xmldb_delete(h, target) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info>Internal error</error-info>"
+		"<error-message>%s</error-message>"
+		"</rpc-error></rpc-reply>", clicon_err_reason);
+	goto ok;
+    }
+    if (xmldb_init(h, target) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info>Internal error</error-info>"
+		"<error-message>%s</error-message>"
+		"</rpc-error></rpc-reply>", clicon_err_reason);
+	goto ok;
+    }
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+ ok:
+    retval = 0;
+    //  done:
+    return retval;
+}
+
+/*! Internal message: Create subscription for notifications see RFC 5277
+ * @param[in]   h     Clicon handle
+ * @param[in]   xe    Netconf request xml tree   
+ * @param[in]   ce    Client entry
+ * @param[out]  cbret Return xml value cligen buffer
+ * @retval      0    OK
+ * @retval      -1   Error. Send error message back to client.
+ * @example:
+ *    <create-subscription> 
+ *       <stream>RESULT</stream> # If not present, events in the default NETCONF stream will be sent.
+ *       <filter>XPATH-EXPR<(filter>
+ *       <startTime/> # only for replay (NYI)
+ *       <stopTime/>  # only for replay (NYI)
+ *    </create-subscription> 
+ */
+static int
+from_client_create_subscription(clicon_handle        h,
+				cxobj               *xe,
+				struct client_entry *ce,
+				cbuf                *cbret)
+{
+    char   *stream = "NETCONF";
+    char   *filter = NULL;
+    int     retval = -1;
+    cxobj  *x; /* Genereic xml tree */
+    char   *ftype;
+
+    if ((x = xpath_first(xe, "//stream")) != NULL)
+	stream = xml_find_value(x, "body");
+    if ((x = xpath_first(xe, "//filter")) != NULL){
+	if ((ftype = xml_find_value(x, "type")) != NULL){
+	    /* Only accept xpath as filter type */
+	    if (strcmp(ftype, "xpath") != 0){
+		cprintf(cbret, "<rpc-reply><rpc-error>"
+			"<error-tag>operation-failed</error-tag>"
+			"<error-type>application</error-type>"
+			"<error-severity>error</error-severity>"
+			"<error-message>only xpath filter type supported</error-message>"
+			"<error-info>type</error-info>"
+			"</rpc-error></rpc-reply>");
+		goto ok;
+	    }
+	}
+    }
+    if (client_subscription_add(ce, stream, MSG_NOTIFY_XML, filter) == NULL)
 	goto done;
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+ ok:
     retval = 0;
   done:
     return retval;
@@ -635,140 +772,246 @@ from_client_kill(clicon_handle      h,
 
 /*! Internal message: Set debug level. This is global, not just for the session.
  * @param[in]   h     Clicon handle
- * @param[in]   s     Client socket where request arrived, and where replies are sent
+ * @param[in]   xe    Netconf request xml tree   
+ * @param[out]  cbret Return xml value cligen buffer
+ * @retval      0     OK
+ * @retval      -1    Error. Send error message back to client.
+ */
+static int
+from_client_debug(clicon_handle      h,
+		  cxobj             *xe,
+		  cbuf              *cbret)
+{
+    int      retval = -1;
+    uint32_t level;
+    char    *valstr;
+    
+    if ((valstr = xml_find_body(xe, "level")) == NULL){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>missing-element</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info><bad-element>level</bad-element></error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    level = atoi(valstr);
+
+    clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
+    setlogmask(LOG_UPTO(level?LOG_DEBUG:LOG_INFO)); /* for syslog */
+    clicon_log(LOG_NOTICE, "%s debug:%d", __FUNCTION__, debug);
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+ ok:
+    retval = 0;
+    //done:
+    return retval;
+}
+
+/*! Internal clicon netconf message has arrived from a client. 
+ * @param[in]   h    Socket where message arrived. read from this.
+ * @param[in]   ce   Client session entry
+ * @param[in]   msg  Clicon message. Contains internal netconf xml message.
+ * @retval      0    OK. May be ok or error netconf reply
+ * @retval      -1   Error 
+ */
+static int
+from_client_netconf(clicon_handle        h,
+		    struct client_entry *ce,
+		    struct clicon_msg   *msg)
+{
+    int    retval = -1;
+    cxobj *xt = NULL;
+    cxobj *x;
+    cxobj *xe;
+    char  *name;
+    char  *db;
+    cbuf  *cbret; /* Return cligen buffer */
+    int    s;
+    int    pid;
+    int    ret;
+
+    s = ce->ce_s;
+    pid = ce->ce_pid;
+    /* Return netconf message. Should be filled in by the dispatch(sub) functions 
+     * as wither rpc-error or by positive response.
+     */
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (clicon_msg_netconf_decode(msg, &xt) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>rpc</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>rpc expected</error-message>"
+		"<error-info>Not recognized</error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    if ((x = xpath_first(xt, "/rpc")) == NULL){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>rpc</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>rpc expected</error-message>"
+		"<error-info>Not recognized</error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    xe = NULL;
+    while ((xe = xml_child_each(x, xe, CX_ELMNT)) != NULL) {
+	name = xml_name(xe);
+	if (strcmp(name, "get-config") == 0){
+	    if (from_client_get_config(h, xe, cbret) <0)
+		goto done;
+	}
+	else if (strcmp(name, "edit-config") == 0){
+	    if (from_client_edit_config(h, xe, cbret) <0)
+		goto done;
+	}
+	else if (strcmp(name, "copy-config") == 0){
+	    if (from_client_copy_config(h, xe, cbret) <0)
+		goto done;
+	}
+	else if (strcmp(name, "delete-config") == 0){
+	    if (from_client_delete_config(h, xe, cbret) <0)
+		goto done;
+	}
+	else if (strcmp(name, "lock") == 0){
+	    if (from_client_lock(h, pid, xe, cbret) < 0)
+		goto done;
+	}
+	else if (strcmp(name, "unlock") == 0){
+	    if (from_client_unlock(h, pid, xe, cbret) < 0)
+		goto done;
+	}
+	else if (strcmp(name, "close-session") == 0){
+	    xmldb_unlock_all(h, pid);
+	    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+	}
+	else if (strcmp(name, "kill-session") == 0){
+	    if (from_client_kill_session(h, xe, cbret) < 0)
+		goto done;
+	}
+	else if (strcmp(name, "validate") == 0){
+	    if ((db = netconf_db_find(xe, "source")) == NULL){
+		cprintf(cbret, "<rpc-reply><rpc-error>"
+			"<error-tag>missing-element</error-tag>"
+			"<error-type>protocol</error-type>"
+			"<error-severity>error</error-severity>"
+			"<error-info><bad-element>source</bad-element></error-info>"
+			"</rpc-error></rpc-reply>");
+		goto ok;
+	    }
+	    if (from_client_validate(h, db, cbret) < 0)
+		goto done;
+	}
+	else if (strcmp(name, "commit") == 0){
+	    if (from_client_commit(h, cbret) < 0)
+		goto done;
+	}
+	else if (strcmp(name, "discard-changes") == 0){
+	    if (from_client_discard_changes(h, cbret) < 0)
+		goto done;
+	}
+	else if (strcmp(name, "create-subscription") == 0){
+	    if (from_client_create_subscription(h, xe, ce, cbret) < 0)
+		goto done;
+	}
+	else if (strcmp(name, "debug") == 0){
+	    if (from_client_debug(h, xe, cbret) < 0)
+		goto done;
+	}
+	else{
+	    if ((ret = backend_netconf_plugin_callbacks(h, xe, ce, cbret)) < 0)
+		goto done;
+	    if (ret == 0) /* not handled by callback */
+		cprintf(cbret, "<rpc-reply><rpc-error>"
+			"<error-tag>operation-failed</error-tag>"
+			"<error-type>rpc</error-type>"
+			"<error-severity>error</error-severity>"
+			"<error-message>%s</error-message>"
+			"<error-info>Not recognized</error-info>"
+			"</rpc-error></rpc-reply>",
+			name);
+	}
+    }
+ ok:    
+    assert(cbuf_len(cbret));
+    if (send_msg_reply(s, CLICON_MSG_NETCONF, 
+		       cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
+	if (errno == ECONNRESET)
+	    clicon_log(LOG_WARNING, "client rpc reset");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (xt)
+	xml_free(xt);
+    if (cbret)
+	cbuf_free(cbret);
+    return retval;
+}
+
+/*! Internal message: Change entry set/delete in database xmldb variant
+ * @param[in]   h     Clicon handle
+ * @param[in]   s     Socket where request arrived, and where replies are sent
+ * @param[in]   pid   Unix process id
  * @param[in]   msg   Message
  * @param[in]   label Memory chunk
  * @retval      0     OK
  * @retval      -1    Error. Send error message back to client.
  */
 static int
-from_client_debug(clicon_handle      h,
-		  int                s, 
-		  struct clicon_msg *msg, 
-		  const char        *label)
+from_client_change(clicon_handle      h,
+		   int                s, 
+		   int                pid, 
+		   struct clicon_msg *msg, 
+		   const char        *label)
 {
-    int retval = -1;
-    uint32_t level;
+    int         retval = -1;
+    uint32_t    len;
+    char       *xk;
+    char       *db;
+    enum operation_type op;
+    char       *str = NULL;
+    char       *val=NULL;
+    int         piddb;
 
-    if (clicon_msg_debug_decode(msg, 
-				&level,
-				label) < 0){
+    if (clicon_msg_change_decode(msg, 
+				 &db, 
+				 &op,
+				 &xk, 
+				 &val, 
+				 &len, 
+				 label) < 0){
 	send_msg_err(s, clicon_errno, clicon_suberrno,
 		     clicon_err_reason);
 	goto done;
     }
-    clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
-    setlogmask(LOG_UPTO(level?LOG_DEBUG:LOG_INFO)); /* for syslog */
-
-    if (send_msg_ok(s) < 0)
-	goto done;
-    clicon_log(LOG_NOTICE, "%s debug:%d", __FUNCTION__, debug);
-    retval = 0;
-  done:
-
-    return retval;
-}
-
-/*! Internal message: downcall backend plugin
- * @param[in]   h     Clicon handle
- * @param[in]   s     Client socket where request arrived, and where replies are sent
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0    OK
- * @retval      -1   Error. Send error message back to client.
- */
-static int
-from_client_call(clicon_handle      h,
-		 int                s, 
-		 struct clicon_msg *msg, 
-		 const char        *label)
-{
-    int                         retval = -1;
-    void                       *reply_data = NULL;
-    uint16_t                    reply_data_len = 0;
-    struct clicon_msg_call_req *req;
-
-    if (clicon_msg_call_decode(msg, &req, label) < 0) {
+    fprintf(stderr, "%s api_path:%s val:%s\n", __FUNCTION__, xk, val);
+    /* candidate is locked by other client */
+    if (strcmp(db, "candidate") == 0){
+	piddb = xmldb_islocked(h, db);
+	if (piddb && pid != piddb){
+	    send_msg_err(s, OE_DB, 0,
+			 "lock failed: locked by %d", piddb);
+	    goto done;
+	}
+    }
+    /* Update database */
+    if (xmldb_put_xkey(h, db, op, xk, val) < 0){
 	send_msg_err(s, clicon_errno, clicon_suberrno,
 		     clicon_err_reason);
 	goto done;
     }
-#ifdef notyet
-    if (!strlen(req->cr_plugin)) /* internal */
-	internal_function(req, &reply_data_len, &reply_data);
-    else
-#endif
-	if (plugin_downcall(h, req, &reply_data_len, &reply_data) < 0)  {
-	    send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	    goto done;
-	}
-    
-    if ((retval = send_msg_reply(s, CLICON_MSG_OK, (char *)reply_data, reply_data_len)) < 0){
-	if (errno == ECONNRESET){ /* If cli/netconf dies during plugin downcall */
-	    clicon_log(LOG_WARNING, "client downcall reset");
-	    retval = 0;
-	}
-	else
-	    goto done;
-    }
- done:
-    if (reply_data)
-	free(reply_data);
-    return retval;
-}
-
-/*! Internal message: Create subscription for notifications
- * @param[in]   h     Clicon handle
- * @param[in]   ce    Client entry (from).
- * @param[in]   msg   Message
- * @param[in]   label Memory chunk
- * @retval      0    OK
- * @retval      -1   Error. Send error message back to client.
- */
-static int
-from_client_subscription(clicon_handle        h,
-			 struct client_entry *ce,
-			 struct clicon_msg   *msg, 
-			 const char          *label)
-{
-    int                  status;
-    enum format_enum     format;
-    char                *stream;
-    char                *filter;
-    int                  retval = -1;
-    struct client_subscription *su;
-    clicon_log_notify_t *old;
-
-    if (clicon_msg_subscription_decode(msg, 
-				       &status,
-				       &stream,
-				       &format,
-				       &filter,
-				       label) < 0){
-	send_msg_err(ce->ce_s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
+    if (send_msg_ok(s, NULL) < 0)
 	goto done;
-    }
-
-    if (status){
-	if ((su = client_subscription_add(ce, stream, format, filter)) == NULL){
-	    send_msg_err(ce->ce_s, clicon_errno, clicon_suberrno,
-			 clicon_err_reason);
-	    goto done;
-	}
-    }
-    else{
-	if ((su = client_subscription_find(ce, stream)) != NULL)
-	    client_subscription_delete(ce, su);
-    }
-    /* Avoid recursion when sending logs */
-    old = clicon_log_register_callback(NULL, NULL);
-    if (send_msg_ok(ce->ce_s) < 0)
-	goto done;
-    clicon_log_register_callback(old, h); /* XXX: old h */
     retval = 0;
   done:
+    if (str)
+	free(str);
     return retval;
 }
 
@@ -780,29 +1023,28 @@ from_client_subscription(clicon_handle        h,
  *                   propagated back to client.
  */
 int
-from_client(int s, void* arg)
+from_client(int   s, 
+	    void* arg)
 {
+    int                  retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
     clicon_handle        h = ce->ce_handle;
-    struct clicon_msg   *msg;
+    struct clicon_msg   *msg = NULL;
     enum clicon_msg_type type;
     int                  eof;
 
     assert(s == ce->ce_s);
-    if (clicon_msg_rcv(ce->ce_s, &msg, &eof, __FUNCTION__) < 0)
+    if (clicon_msg_rcv(ce->ce_s, &msg, &eof) < 0)
 	goto done;
     if (eof){ 
+	//	xmldb_unlock_all(h, ce->ce_pid);
 	backend_client_rm(h, ce); 
-	goto done;
+	goto ok;
     }
     type = ntohs(msg->op_type);
     switch (type){
-    case CLICON_MSG_COMMIT:
-	if (from_client_commit(h, ce->ce_s, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_VALIDATE:
-	if (from_client_validate(h, ce->ce_s, msg, __FUNCTION__) < 0)
+    case CLICON_MSG_NETCONF:
+	if (from_client_netconf(h, ce, msg) < 0)
 	    goto done;
 	break;
     case CLICON_MSG_CHANGE:
@@ -810,47 +1052,17 @@ from_client(int s, void* arg)
 				     (char *)__FUNCTION__) < 0)
 	    goto done;
 	break;
-    case CLICON_MSG_XMLPUT:
-	if (from_client_xmlput(h, ce->ce_s, ce->ce_pid, msg, 
-			    (char *)__FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_SAVE:
-	if (from_client_save(h, ce->ce_s, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_LOAD:
-	if (from_client_load(h, ce->ce_s, ce->ce_pid, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_COPY:
-	if (from_client_copy(h, ce->ce_s, ce->ce_pid, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_KILL:
-	if (from_client_kill(h, ce->ce_s, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_DEBUG:
-	if (from_client_debug(h, ce->ce_s, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_CALL:
-	if (from_client_call(h, ce->ce_s, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
-    case CLICON_MSG_SUBSCRIPTION:
-	if (from_client_subscription(h, ce, msg, __FUNCTION__) < 0)
-	    goto done;
-	break;
     default:
 	send_msg_err(s, OE_PROTO, 0, "Unexpected message: %d", type);
 	goto done;
     }
-//    retval = 0;
+ ok:
+    retval = 0;
   done:
+    if (msg)
+	free(msg);
     unchunk_group(__FUNCTION__);
-//    return retval;
+    if (0) return retval;
     return 0; // -1 here terminates
 }
 

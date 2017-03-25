@@ -74,36 +74,6 @@
 
 #include "cli_common.h"
 
-/*! Initialize candidate database
- * We have implemented these:
- * shared - all users share a common candidate db
- */
-int 
-init_candidate_db(clicon_handle h)
-{
-    int          retval = -1;
-
-    if (xmldb_exists(h, "running") != 1){
-	clicon_err(OE_FATAL, 0, "Running db does not exist");
-	goto err;
-    }
-    if (xmldb_exists(h, "candidate") != 1)
-	if (clicon_rpc_copy(h, "running", "candidate") < 0)
-	    goto err;
-    retval = 0;
-  err:
-    return retval;
-}
-
-/*! Exit candidate db
- * (private canddidates should be removed?)
- */
-int 
-exit_candidate_db(clicon_handle h)
-{
-    return 0;
-}
-
 /*! Register log notification stream
  * @param[in] h       Clicon handle
  * @param[in] stream  Event stream. CLICON is predefined, others are application-defined
@@ -114,13 +84,13 @@ exit_candidate_db(clicon_handle h)
  * Note this calls cligen_regfd which may callback on cli command interpretator
  */
 int
-cli_notification_register(clicon_handle h, 
-			  char         *stream, 
+cli_notification_register(clicon_handle    h, 
+			  char            *stream, 
 			  enum format_enum format,
-			  char         *filter, 
-			  int           status, 
-			  int         (*fn)(int, void*),
-			  void         *arg)
+			  char            *filter, 
+			  int              status, 
+			  int            (*fn)(int, void*),
+			  void            *arg)
 {
     int              retval = -1;
     char            *logname;
@@ -139,10 +109,10 @@ cli_notification_register(clicon_handle h,
 
     if (status){ /* start */
 	if (s_exist!=-1){
-	    clicon_err(OE_PLUGIN, 0, "%s: result log socket already exists", __FUNCTION__);
+	    clicon_err(OE_PLUGIN, 0, "Result log socket already exists");
 	    goto done;
 	}
-	if (clicon_rpc_subscription(h, status, stream, format, filter, &s) < 0)
+	if (clicon_rpc_create_subscription(h, stream, filter, &s) < 0)
 	    goto done;
 	if (cligen_regfd(s, fn, arg) < 0)
 	    goto done;
@@ -154,9 +124,10 @@ cli_notification_register(clicon_handle h,
 	    cligen_unregfd(s_exist);
 	}
 	hash_del(cdat, logname);
-	if (clicon_rpc_subscription(h, status, stream, format, filter, NULL) < 0)
+#if 0 /* cant turn off */
+	if (clicon_rpc_create_subscription(h, status, stream, format, filter, NULL) < 0)
 	    goto done;
-
+#endif
     }
     retval = 0;
   done:
@@ -214,7 +185,7 @@ cli_signal_flush(clicon_handle h)
  * @param[in]  cvv  Vector of cli string and instantiated variables 
  * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
  * @param[in]  op   Operation to perform on database
- * Cvv will contain forst the complete cli string, and then a set of optional
+ * Cvv will contain first the complete cli string, and then a set of optional
  * instantiated variables.
  * Example:
  * cvv[0]  = "set interfaces interface eth0 type bgp"
@@ -257,7 +228,7 @@ cli_dbxmlv(clicon_handle       h,
     if (clicon_rpc_change(h, "candidate", op, xk, str) < 0)
 	goto done;
     if (clicon_autocommit(h)) {
-	if (clicon_rpc_commit(h, "candidate", "running") < 0) 
+	if (clicon_rpc_commit(h) < 0) 
 	    goto done;
     }
     retval = 0;
@@ -465,9 +436,7 @@ cli_commitv(clicon_handle h,
 {
     int            retval = -1;
     
-    if ((retval = clicon_rpc_commit(h, 
-				    "candidate", 
-				    "running")) < 0){ /* startup */
+    if ((retval = clicon_rpc_commit(h)) < 0){ /* startup */
 	cli_output(stderr, "Commit failed. Edit and try again or discard changes");
 	goto done;
     }
@@ -483,10 +452,12 @@ cli_validatev(clicon_handle h,
 	      cvec         *vars, 
 	      cvec         *argv)
 {
-    int            retval = -1;
+    int     retval = -1;
 
     if ((retval = clicon_rpc_validate(h, "candidate")) < 0)
-	clicon_err(OE_CFG, 0, "Validate failed. Edit and try again or discard changes");
+	goto done;
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -575,9 +546,9 @@ compare_dbsv(clicon_handle h,
 	astext = cv_int32_get(cvec_i(argv, 0));
     else
 	astext = 0;
-    if (xmldb_get(h, "running", "/", &xc1, NULL, NULL) < 0)
+    if (clicon_rpc_get_config(h, "running", "/", &xc1) < 0)
 	goto done;
-    if (xmldb_get(h, "candidate", "/", &xc2, NULL, NULL) < 0)
+    if (clicon_rpc_get_config(h, "candidate", "/", &xc2) < 0)
 	goto done;
     if (compare_xmls(xc1, xc2, astext) < 0) /* astext? */
 	goto done;
@@ -620,7 +591,6 @@ load_config_filev(clicon_handle h,
     char       *varstr;
     int         fd = -1;
     cxobj      *xt = NULL;
-    cxobj      *xn;
     cxobj      *x;
     cbuf       *cbxml;
 
@@ -663,20 +633,25 @@ load_config_filev(clicon_handle h,
     }
     if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
 	goto done;
-    if ((xn = xml_child_i(xt, 0)) != NULL){
+    if (xt == NULL)
+	goto done;
+    /* Ensure top-level is "config", maybe this is too rough? */
+    xml_name_set(xt, "config");
+    //    if ((xn = xml_child_i(xt, 0)) != NULL){
+    
 	if ((cbxml = cbuf_new()) == NULL)
 	    goto done;
 	x = NULL;
-	while ((x = xml_child_each(xn, x, -1)) != NULL) 
+	while ((x = xml_child_each(xt, x, -1)) != NULL) 
 	    if (clicon_xml2cbuf(cbxml, x, 0, 0) < 0)
 		goto done;
-	if (clicon_rpc_xmlput(h, "candidate",
-			      replace?OP_REPLACE:OP_MERGE, 
-			      "",
-			      cbuf_get(cbxml)) < 0)
+	if (clicon_rpc_edit_config(h, "candidate",
+				   replace?OP_REPLACE:OP_MERGE, 
+				   "",
+				   cbuf_get(cbxml)) < 0)
 	    goto done;
 	cbuf_free(cbxml);
-    }
+	//    }
     ret = 0;
   done:
     unchunk_group(__FUNCTION__);
@@ -741,13 +716,13 @@ save_config_filev(clicon_handle h,
 	goto done;
     }
     filename = vecp[0];
-    if (xmldb_get(h, dbstr, "/", &xt, NULL, NULL) < 0)
+    if (clicon_rpc_get_config(h, dbstr,"/", &xt) < 0)
 	goto done;
     if ((f = fopen(filename, "wb")) == NULL){
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
 	goto done;
     } 
-    if (xml_print(f, xt) < 0)
+    if (clicon_xml2file(f, xt, 0, 0) < 0)
 	goto done;
     retval = 0;
     /* Fall through */
@@ -782,10 +757,8 @@ delete_allv(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
     }
-    if (clicon_rpc_change(h, "candidate",
-			  OP_REMOVE, 
-			  "/", "") < 0)
-	    goto done;
+    if (clicon_rpc_delete_config(h, dbstr) < 0)
+	goto done;
     retval = 0;
   done:
     return retval;
@@ -798,7 +771,7 @@ discard_changesv(clicon_handle h,
 		 cvec         *cvv, 
 		 cvec         *argv)
 {
-    return clicon_rpc_copy(h, "running", "candidate");
+    return clicon_rpc_copy_config(h, "running", "candidate");
 }
 
 /*! Copy from one database to another, eg running->startup
@@ -814,7 +787,7 @@ db_copy(clicon_handle h,
 
     db1 = cv_string_get(cvec_i(argv, 0));
     db2 = cv_string_get(cvec_i(argv, 1));
-    return clicon_rpc_copy(h, db1, db2);
+    return clicon_rpc_copy_config(h, db1, db2);
 }
 
 /* These are strings that can be used as 3rd argument to cli_setlog */
@@ -831,18 +804,18 @@ static int
 cli_notification_cb(int   s, 
 		    void *arg)
 {
-    struct clicon_msg *reply;
+    struct clicon_msg *reply = NULL;
     enum clicon_msg_type type;
     int                eof;
     int                retval = -1;
     char              *eventstr = NULL;
-    int                level;
     cxobj             *xt = NULL;
     cxobj             *xn;
+    cxobj             *xe;
     char              *format = (char*)arg;
 
     /* get msg (this is the reason this function is called) */
-    if (clicon_msg_rcv(s, &reply, &eof, __FUNCTION__) < 0)
+    if (clicon_msg_rcv(s, &reply, &eof) < 0)
 	goto done;
     if (eof){
 	clicon_err(OE_PROTO, ESHUTDOWN, "%s: Socket unexpected close", __FUNCTION__);
@@ -855,11 +828,13 @@ cli_notification_cb(int   s,
 	goto done;
     type = ntohs(reply->op_type);
     switch (type){
-    case CLICON_MSG_NOTIFY:
-	if (clicon_msg_notify_decode(reply, &level, &eventstr, __FUNCTION__) < 0) 
+    case CLICON_MSG_NETCONF:
+	if (clicon_msg_netconf_decode(reply, &xt) < 0) 
 	    goto done;
+	if ((xe = xpath_first(xt, "//event")) != NULL)
+	    eventstr = xml_body(xe);
 	if (strcmp(format, SHOWAS_TXT) == 0){
-	    fprintf(stdout, "%s", eventstr);
+	    fprintf(stdout, "%s\n", eventstr);
 	}
 	else
 	if (strcmp(format, SHOWAS_XML) == 0){
@@ -871,25 +846,20 @@ cli_notification_cb(int   s,
 	}
 	else
 	if (strcmp(format, SHOWAS_XML2TXT) == 0){
-	    if (clicon_xml_parse_string(&eventstr, &xt) < 0)
-		goto done;
-	    if ((xn = xml_child_i(xt, 0)) != NULL)
+	    if ((xn = xml_child_i(xe, 0)) != NULL)
 		if (xml2txt(stdout, xn, 0) < 0)
 		    goto done;
 	}
 	else
         if (strcmp(format, SHOWAS_XML2JSON) == 0){
-	    if (clicon_xml_parse_string(&eventstr, &xt) < 0)
-		goto done;
-	    if ((xn = xml_child_i(xt, 0)) != NULL){
+	    if ((xn = xml_child_i(xe, 0)) != NULL){
 		if (xml2json(stdout, xn, 0) < 0)
 		    goto done;
 	    }
 	}
 	break;
     default:
-	clicon_err(OE_PROTO, 0, "%s: unexpected reply: %d", 
-		__FUNCTION__, type);
+	clicon_err(OE_PROTO, 0, "unexpected reply: %d", type);
 	goto done;
 	break;
     }
@@ -897,15 +867,15 @@ cli_notification_cb(int   s,
   done:
     if (xt)
 	xml_free(xt);
-    unchunk_group(__FUNCTION__); /* event allocated by chunk */
+    if (reply)
+	free(reply);
     return retval;
-
 }
 
 /*! Make a notify subscription to backend and un/register callback for return messages.
  * 
  * @param[in] h      Clicon handle
- * @param[in] cvv   Not used
+ * @param[in] cvv    Not used
  * @param[in] arg    A string with <log stream name> <stream status> [<format>]
  * where <status> is "0" or "1"
  * and   <format> is XXX
@@ -943,13 +913,74 @@ cli_notifyv(clicon_handle h,
 				  "", 
 				  status, 
 				  cli_notification_cb, 
-				  (void*)formatstr) < 0)
+				  (void*)strdup(formatstr)) < 0)
 	goto done;
 
     retval = 0;
   done:
     return retval;
 }
+
+/*! Lock database
+ * 
+ * @param[in] h      Clicon handle
+ * @param[in] cvv    Not used
+ * @param[in] arg    A string with <database> 
+ * @code
+ * lock("comment"), cli_lock("running"); 
+ * @endcode
+ * XXX: format is a memory leak
+ */
+int
+cli_lock(clicon_handle h, 
+	 cvec         *cvv, 
+	 cvec         *argv)
+{
+    char            *db;
+    int              retval = -1;
+
+    if (cvec_len(argv) != 1){
+	clicon_err(OE_PLUGIN, 0, "Requires arguments: <db>");
+	goto done;
+    }
+    db = cv_string_get(cvec_i(argv, 0));
+    if (clicon_rpc_lock(h, db) < 0) 
+	goto done;
+    retval = 0;
+  done:
+    return retval;
+}
+
+/*! Unlock database
+ * 
+ * @param[in] h      Clicon handle
+ * @param[in] cvv    Not used
+ * @param[in] arg    A string with <database> 
+ * @code
+ * lock("comment"), cli_lock("running"); 
+ * @endcode
+ * XXX: format is a memory leak
+ */
+int
+cli_unlock(clicon_handle h, 
+	   cvec         *cvv, 
+	   cvec         *argv)
+{
+    char            *db;
+    int              retval = -1;
+
+    if (cvec_len(argv) != 1){
+	clicon_err(OE_PLUGIN, 0, "Requires arguments: <db>");
+	goto done;
+    }
+    db = cv_string_get(cvec_i(argv, 0));
+    if (clicon_rpc_unlock(h, db) < 0) 
+	goto done;
+    retval = 0;
+  done:
+    return retval;
+}
+
 
 /* Here are backward compatible cligen callback functions used when 
  * the option: CLICON_CLIGEN_CALLBACK_SINGLE_ARG is set.
@@ -1076,8 +1107,6 @@ save_config_file(clicon_handle h,
     return retval;
 }
 
-
-
 int 
 cli_notify(clicon_handle h, 
 	   cvec         *cvv, 
@@ -1126,15 +1155,15 @@ cli_notify(clicon_handle h,
     return retval;
 }
 
-/*
- * cli_debug
- * set debug level on stderr (not syslog).
+/*! set debug level on stderr (not syslog).
  * The level is either what is specified in arg as int argument.
  * _or_ if a 'level' variable is present in vars use that value instead.
  * XXX obsolete. Use cli_debug_cliv or cli_debug_backendv instead
  */
 int
-cli_debug(clicon_handle h, cvec *vars, cg_var *arg)
+cli_debug(clicon_handle h, 
+	  cvec         *vars, 
+	  cg_var       *arg)
 {
     cg_var *cv;
     int     level;

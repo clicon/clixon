@@ -465,6 +465,12 @@ xml_childvec_set(cxobj *x,
     return 0;
 }
 
+cxobj **
+xml_childvec_get(cxobj *x)
+{
+    return x->x_childvec;
+}
+
 /*! Create new xml node given a name and parent. Free it with xml_free().
  *
  * @param[in]  name      Name of new 
@@ -913,24 +919,26 @@ clicon_xml2cbuf(cbuf  *cb,
 	    cprintf(cb, "%s:", xml_namespace(cx));
 	cprintf(cb, "%s", xml_name(cx));
 	xc = NULL;
-	while ((xc = xml_child_each(cx, xc, -1)) != NULL) {
-	    if (xml_type(xc) != CX_ATTR)
-		continue;
+	while ((xc = xml_child_each(cx, xc, CX_ATTR)) != NULL) 
 	    clicon_xml2cbuf(cb, xc, level+1, prettyprint);
+	/* Check for special case <a/> instead of <a></a> */
+	if (xml_body(cx)==NULL && xml_child_nr(cx)==0) 
+	    cprintf(cb, "/>");
+	else{
+	    cprintf(cb, ">");
+	    if (prettyprint && xml_body(cx)==NULL)
+		cprintf(cb, "\n");
+	    xc = NULL;
+	    while ((xc = xml_child_each(cx, xc, -1)) != NULL) {
+		if (xml_type(xc) == CX_ATTR)
+		    continue;
+		else
+		    clicon_xml2cbuf(cb, xc, level+1, prettyprint);
+	    }
+	    if (prettyprint && xml_body(cx)==NULL)
+		cprintf(cb, "%*s", level*XML_INDENT, "");
+	    cprintf(cb, "</%s>", xml_name(cx));
 	}
-	cprintf(cb, ">");
-	if (prettyprint && xml_body(cx)==NULL)
-	    cprintf(cb, "\n");
-	xc = NULL;
-	while ((xc = xml_child_each(cx, xc, -1)) != NULL) {
-	    if (xml_type(xc) == CX_ATTR)
-		continue;
-	    else
-		clicon_xml2cbuf(cb, xc, level+1, prettyprint);
-	}
-	if (prettyprint && xml_body(cx)==NULL)
-	    cprintf(cb, "%*s", level*XML_INDENT, "");
-	cprintf(cb, "</%s>", xml_name(cx));
 	if (prettyprint)
 	    cprintf(cb, "\n");
 	break;
@@ -956,7 +964,7 @@ xml_parse(char  *str,
     }
     ya.ya_xparent = x_up;
     if (clixon_xml_parsel_init(&ya) < 0)
-	goto done;
+	goto done;    
     if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
 	goto done;
 
@@ -1079,7 +1087,6 @@ clicon_xml_parse_file(int     fd,
  * @endcode
  * @see clicon_xml_parse_file
  * @note  you need to free the xml parse tree after use, using xml_free()
- * Update: with yacc parser I dont think it changes,....
  */
 int 
 clicon_xml_parse_str(char   *str, 
@@ -1088,6 +1095,57 @@ clicon_xml_parse_str(char   *str,
   if ((*cxtop = xml_new("top", NULL)) == NULL)
     return -1;
   return xml_parse(str, *cxtop);
+}
+
+
+/*! Read XML definition from variable argument string and parse it into parse-tree. 
+ *
+ * Utility function using stdarg instead of static string.
+ * @param[out] xml_top  Top of XML parse tree. Will add extra top element called 'top'.
+ *                      you must free it after use, using xml_free()
+ * @param[in]  format   Pointer to string containing XML definition. 
+
+ * @retval  0  OK
+ * @retval -1  Error with clicon_err called
+ *
+ * @code
+ *  cxobj *cx = NULL;
+ *  if (clicon_xml_parse(&cx, "<xml>%s</xml", 22) < 0)
+ *    err;
+ *  xml_free(cx);
+ * @endcode
+ * @see clicon_xml_parse_str
+ * @note  you need to free the xml parse tree after use, using xml_free()
+ */
+int 
+clicon_xml_parse(cxobj **cxtop,
+		 char *format, ...)
+{
+    int     retval = -1;
+    va_list args;
+    char   *str = NULL;
+    int     len;
+
+    va_start(args, format);
+    len = vsnprintf(NULL, 0, format, args) + 1;
+    va_end(args);
+    if ((str = malloc(len)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(str, 0, len);
+    va_start(args, format);
+    len = vsnprintf(str, len, format, args) + 1;
+    va_end(args);
+    if ((*cxtop = xml_new("top", NULL)) == NULL)
+	return -1;
+    if (xml_parse(str, *cxtop) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (str)
+	free(str);
+    return retval;
 }
 
 /*! Copy single xml node without copying children
@@ -1401,4 +1459,53 @@ xml_body_uint32(cxobj    *xb,
     *val = cv_uint32_get(cv);
     cv_free(cv);
     return 0;
+}
+
+/*! Map xml operation from string to enumeration
+ * @param[in]   xn  XML node
+ * @param[out]  op  "operation" attribute may change operation
+ */
+int
+xml_operation(char                *opstr, 
+	      enum operation_type *op)
+{
+    if (strcmp("merge", opstr) == 0)
+	*op = OP_MERGE;
+    else if (strcmp("replace", opstr) == 0)
+	*op = OP_REPLACE;
+    else if (strcmp("create", opstr) == 0)
+	*op = OP_CREATE;
+    else if (strcmp("delete", opstr) == 0)
+	*op = OP_DELETE;
+    else if (strcmp("remove", opstr) == 0)
+	*op = OP_REMOVE;
+    else{
+	clicon_err(OE_XML, 0, "Bad-attribute operation: %s", opstr);
+	return -1;
+    }
+    return 0;
+}
+
+char *
+xml_operation2str(enum operation_type op)
+{
+    switch (op){
+    case OP_MERGE:
+	return "merge";
+	break;
+    case OP_REPLACE:
+	return "replace";
+	break;
+    case OP_CREATE:
+	return "create";
+	break;
+    case OP_DELETE:
+	return "delete";
+	break;
+    case OP_REMOVE:
+	return "remove";
+	break;
+    default:
+	return "none";
+    }
 }

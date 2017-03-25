@@ -65,9 +65,7 @@
 #include "netconf_lib.h"
 #include "netconf_filter.h"
 
-/*
- * xml_filter
- * xf specifices a filter, and xn is an xml tree.
+/* xf specifices a filter, and xn is an xml tree.
  * Select the part of xn that matches xf and return it.
  * Change xn destructively by removing the parts of the sub-tree that does 
  * not match.
@@ -107,9 +105,9 @@ leafstring(cxobj *x)
  * @retval -1  Error
  */
 static int
-xml_filter2(cxobj *xfilter, 
-	    cxobj *xparent, 
-	    int   *remove_me)
+xml_filter_recursive(cxobj *xfilter, 
+		     cxobj *xparent, 
+		     int   *remove_me)
 {
     cxobj *s;
     cxobj *sprev;
@@ -176,7 +174,7 @@ xml_filter2(cxobj *xfilter,
 	}
 	// XXX: s can be removed itself in the recursive call !
 	remove_s = 0;
-	if (xml_filter2(f, s, &remove_s) < 0)
+	if (xml_filter_recursive(f, s, &remove_s) < 0)
 	    return -1;
 	if (remove_s){
 	    xml_purge(s);
@@ -207,9 +205,9 @@ xml_filter(cxobj *xfilter,
     int remove_s;
 
     /* Call recursive variant */
-    retval = xml_filter2(xfilter, 
-			 xconfig, 
-			 &remove_s);
+    retval = xml_filter_recursive(xfilter, 
+				  xconfig, 
+				  &remove_s);
     return retval;
 }
 

@@ -42,7 +42,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <unistd.h>
-
+#include <sys/time.h>
 
 /* clicon */
 #include <cligen/cligen.h>
@@ -52,6 +52,9 @@
 
 /* These include signatures for plugin and transaction callbacks. */
 #include <clixon/clixon_backend.h> 
+
+/* forward */
+static int notification_timer_setup(clicon_handle h);
 
 /*! This is called on validate (and commit). Check validity of candidate
  */
@@ -83,7 +86,47 @@ transaction_commit(clicon_handle    h,
     return 0;
 }
 
+/*! Routing example notifcation timer handler. Here is where the periodic action is 
+ */
+static int
+notification_timer(int   fd, 
+		   void *arg)
+{
+    int                    retval = -1;
+    clicon_handle          h = (clicon_handle)arg;
 
+    if (backend_notify(h, "ROUTING", 0, "Routing notification") < 0)
+	goto done;
+    if (notification_timer_setup(h) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Set up routing notifcation timer 
+ */
+static int
+notification_timer_setup(clicon_handle h)
+{
+    struct timeval t, t1;
+
+    gettimeofday(&t, NULL);
+    t1.tv_sec = 10; t1.tv_usec = 0;
+    timeradd(&t, &t1, &t);
+    return event_reg_timeout(t, notification_timer, h, "notification timer");
+}
+
+static int 
+routing_downcall(clicon_handle h, 
+		 cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+		 struct client_entry *ce,    /* Client session */
+		 cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+		 void         *arg)          /* Argument given at register */
+{
+    cprintf(cbret, "<rpc-reply><ok>%s</ok></rpc-reply>", xml_body(xe));    
+    return 0;
+}
 /*
  * Plugin initialization
  */
@@ -92,8 +135,15 @@ plugin_init(clicon_handle h)
 {
     int retval = -1;
 
+    if (notification_timer_setup(h) < 0)
+	goto done;
+    if (backend_netconf_register_callback(h, routing_downcall, 
+				  NULL, 
+				  "myrouting"/* Xml tag when callback is made */
+				  ) < 0)
+	goto done;
     retval = 0;
-    //  done:
+ done:
     return retval;
 }
 

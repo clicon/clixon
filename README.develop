@@ -26,11 +26,10 @@ This README contains information for developers:
 
 2. How to work in git (branching)
 +++++++++++++++++++++++++++++++++
-Baically follows: http://nvie.com/posts/a-successful-git-branching-model/
+Basically follows: http://nvie.com/posts/a-successful-git-branching-model/
 only somewhat simplified:
 
 Do commits in develop branch. When done, merge with master.
-
 
 $ git checkout develop
 Switch to branch develop

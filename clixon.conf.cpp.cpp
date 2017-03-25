@@ -121,11 +121,6 @@ CLICON_BACKEND_PIDFILE  localstatedir/APPNAME/APPNAME.pidfile
 # Directory where "running", "candidate" and "startup" are placed
 CLICON_XMLDB_DIR      localstatedir/APPNAME
 
-# Set if xmldb runs in a separate process (clixon_xmldb). 
-# If set, also set xmldb_addr and xmldb_port below
-# CLICON_XMLDB_RPC 0
-
-# xmldb inet address (if CLICON_XMLDB_RPC)
 # CLICON_XMLDB_ADDR
 
 # xmldb tcp port (if CLICON_XMLDB_RPC)

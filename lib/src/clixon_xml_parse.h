@@ -46,6 +46,7 @@ struct xml_parse_yacc_arg{
 
     cxobj      *ya_xelement;     /* xml active element */
     cxobj      *ya_xparent;      /* xml parent element*/
+    int         ya_skipspace;    /* If set, translate successive space, \t \n with single space */
 };
 
 extern char *clixon_xml_parsetext;

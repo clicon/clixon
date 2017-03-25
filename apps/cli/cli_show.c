@@ -142,12 +142,14 @@ expandv_dbvar(void   *h,
     */
     if (xmlkeyfmt2xpath(xkfmt, cvv, &xkpath) < 0)
 	goto done;   
-    if (xmldb_get(h, dbstr, xkpath, &xt, &xvec, &xlen) < 0)
-	goto done;
+    if (clicon_rpc_get_config(h, dbstr, "/", &xt) < 0)
+    	goto done;
     /* One round to detect duplicates 
      * XXX The code below would benefit from some cleanup
      */
     j = 0;
+    if (xpath_vec(xt, xkpath, &xvec, &xlen) < 0) 
+	goto done;
     for (i = 0; i < xlen; i++) {
 	char *str;
 	x = xvec[i];
@@ -187,7 +189,6 @@ expandv_dbvar(void   *h,
     }
     retval = 0;
   done:
-    unchunk_group(__FUNCTION__);
     if (xvec)
 	free(xvec);
     if (xt)
@@ -474,7 +475,7 @@ show_confv_as(clicon_handle h,
     }
     else
 	cprintf(cbx, "%s", xpath);	
-    if (xmldb_get(h, db, cbuf_get(cbx), xt, NULL, NULL) < 0)
+    if (clicon_rpc_get_config(h, db, cbuf_get(cbx), xt) < 0)
 	goto done;
     retval = 0;
 done:
@@ -482,7 +483,6 @@ done:
 	free(val);
     if (cbx)
 	cbuf_free(cbx);
-    unchunk_group(__FUNCTION__);
     return retval;
 }
 
@@ -597,7 +597,6 @@ show_confv_as_text1(clicon_handle h,
   done:
     if (xt)
 	xml_free(xt);
-    unchunk_group(__FUNCTION__);
     return retval;
 }
 
@@ -732,7 +731,9 @@ show_confv_xpath(clicon_handle h,
     }
     cv = cvec_find_var(cvv, "xpath");
     xpath = cv_string_get(cv);
-    if (xmldb_get(h, str, xpath, &xt, &xv, &xlen) < 0)
+    if (clicon_rpc_get_config(h, str, xpath, &xt) < 0)
+    	goto done;
+    if (xpath_vec(xt, xpath, &xv, &xlen) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)
 	xml_print(stdout, xv[i]);
@@ -743,7 +744,6 @@ done:
 	free(xv);
     if (xt)
 	xml_free(xt);
-    unchunk_group(__FUNCTION__);
     return retval;
 }
 
@@ -806,7 +806,9 @@ expand_dbvar(void   *h,
     */
     if (xmlkeyfmt2xpath(xkfmt, cvv, &xkpath) < 0)
 	goto done;   
-    if (xmldb_get(h, dbstr, xkpath, &xt, &xvec, &xlen) < 0)
+    if (clicon_rpc_get_config(h, dbstr, "/", &xt) < 0)
+    	goto done;
+    if (xpath_vec(xt, xkpath, &xvec, &xlen) < 0) 
 	goto done;
     /* One round to detect duplicates 
      * XXX The code below would benefit from some cleanup
@@ -948,7 +950,7 @@ show_conf_as(clicon_handle h,
     }
     else
 	cprintf(cbx, "%s", xpath);	
-    if (xmldb_get(h, db, cbuf_get(cbx), xt, NULL, NULL) < 0)
+    if (clicon_rpc_get_config(h, db, cbuf_get(cbx), xt) < 0)
 	goto done;
     retval = 0;
 done:
@@ -1160,51 +1162,3 @@ show_conf_as_csv(clicon_handle h, cvec *cvv, cg_var *arg)
     return show_conf_as_csv1(h, cvv, arg);
 }
 
-/*! Show configuration as text given an xpath
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath>
- * @note Hardcoded that a variable in cvv is named "xpath"
- */
-int
-show_conf_xpath(clicon_handle h, 
-		cvec         *cvv, 
-		cg_var       *arg)
-{
-    int              retval = -1;
-    char            *str;
-    char            *xpath;
-    cg_var          *cv;
-    cxobj           *xt = NULL;
-    cxobj          **xv = NULL;
-    size_t           xlen;
-    int              i;
-
-    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
-	goto done;
-    }
-    /* Dont get attr here, take it from arg instead */
-    if (strcmp(str, "running") != 0 && 
-	strcmp(str, "candidate") != 0 && 
-	strcmp(str, "startup") != 0){
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", str);	
-	goto done;
-    }
-    cv = cvec_find_var(cvv, "xpath");
-    xpath = cv_string_get(cv);
-    if (xmldb_get(h, str, xpath, &xt, &xv, &xlen) < 0)
-	goto done;
-    for (i=0; i<xlen; i++)
-	xml_print(stdout, xv[i]);
-
-    retval = 0;
-done:
-    if (xv)
-	free(xv);
-    if (xt)
-	xml_free(xt);
-    unchunk_group(__FUNCTION__);
-    return retval;
-}

@@ -42,18 +42,19 @@
 int yang2xmlkeyfmt(yang_stmt *ys, int inclkey, char **xkfmt);
 int xmlkeyfmt2key(char *xkfmt, cvec *cvv, char **xk);
 int xmlkeyfmt2xpath(char *xkfmt, cvec *cvv, char **xk);
+
 int xmldb_get(clicon_handle h, char *db, char *xpath,
 	      cxobj **xtop, cxobj ***xvec, size_t *xlen);
-int xmldb_put(clicon_handle h, char *db, cxobj *xt, enum operation_type op);
-int xmldb_put_tree(clicon_handle h, char *db, char *api_path,
-		   cxobj *xt, enum operation_type op);
-int xmldb_put_xkey(clicon_handle h, char *db, 
-		   char *xkey, char *val,
-		   enum operation_type op);
-int xmldb_dump_local(FILE *f, char *dbfilename, char *rxkey);
+int xmldb_put(clicon_handle h, char *db, enum operation_type op, 
+	      char *api_path,  cxobj *xt);
+int xmldb_put_xkey(clicon_handle h, char *db, enum operation_type op,
+		   char *xkey, char *val);
+
+int xmldb_dump(FILE *f, char *dbfilename, char *rxkey);
 int xmldb_copy(clicon_handle h, char *from, char *to);
 int xmldb_lock(clicon_handle h, char *db, int pid);
 int xmldb_unlock(clicon_handle h, char *db, int pid);
+int xmldb_unlock_all(clicon_handle h, int pid);
 int xmldb_islocked(clicon_handle h, char *db);
 int xmldb_exists(clicon_handle h, char *db);
 int xmldb_delete(clicon_handle h, char *db);

@@ -40,7 +40,7 @@
  * Types
  */
 /* Netconf operation type */
-enum operation_type{ /* edit-config */
+enum operation_type{ /* edit-configo */
     OP_MERGE,  /* merge config-data */
     OP_REPLACE,/* replace or create config-data */
     OP_CREATE, /* create config data, error if exist */
@@ -98,6 +98,7 @@ cxobj    *xml_child_i(cxobj *xn, int i);
 cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);
 cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 
+cxobj   **xml_childvec_get(cxobj *x);
 int       xml_childvec_set(cxobj *x, int len);
 cxobj    *xml_new(char *name, cxobj *xn_parent);
 cxobj    *xml_new_spec(char *name, cxobj *xn_parent, void *spec);
@@ -124,6 +125,7 @@ int       clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag);
 /* XXX obsolete */
 #define clicon_xml_parse_string(str, x) clicon_xml_parse_str((*str), x) 
 int       clicon_xml_parse_str(char *str, cxobj **xml_top);
+int       clicon_xml_parse(cxobj **cxtop, char *format, ...);
 
 int       xml_copy(cxobj *x0, cxobj *x1);
 cxobj    *xml_dup(cxobj *x0);
@@ -137,5 +139,7 @@ int       xml_apply_ancestor(cxobj *xn, xml_applyfn_t fn, void *arg);
 int       xml_body_parse(cxobj *xb, enum cv_type type, cg_var **cvp);
 int       xml_body_int32(cxobj *xb, int32_t *val);
 int       xml_body_uint32(cxobj *xb, uint32_t *val);
+int       xml_operation(char *opstr, enum operation_type *op);
+char     *xml_operation2str(enum operation_type op);
 
 #endif /* _CLIXON_XML_H */

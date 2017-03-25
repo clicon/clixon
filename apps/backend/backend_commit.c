@@ -126,6 +126,10 @@ generic_validate(yang_spec          *yspec,
 }
 
 /*! Common code of candidate_validate and candidate_commit 
+ * @param[in] h         Clicon handle
+ * @param[in] candidate The candidate database. The wanted backend state
+ * @retval    0         OK  
+ * @retval   -1         Fatal error or netconf error XXX Differentiate
  */
 static int
 validate_common(clicon_handle       h, 
@@ -136,7 +140,6 @@ validate_common(clicon_handle       h,
     yang_spec  *yspec;
     int         i;
     cxobj      *xn;
-
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -253,126 +256,117 @@ candidate_commit(clicon_handle h,
     return retval;
 }
 
-/*! Do a diff between candidate and running, then start a validate transaction
- *
- * @param[in] h         Clicon handle
- * @param[in] candidate: The candidate database. The wanted backend state
-*/
-int
-candidate_validate(clicon_handle h, 
-		   char         *candidate)
-{
-     int                 retval = -1;
-     transaction_data_t *td = NULL;
-
-     /* 1. Start transaction */
-    if ((td = transaction_new()) == NULL)
-	goto done;
-
-    /* Common steps (with commit) */
-    if (validate_common(h, candidate, td) < 0)
-	goto done;
-
-     retval = 0;
-   done:
-     /* In case of failure, call plugin transaction termination callbacks */
-     if (retval < 0 && td)
-	 plugin_transaction_abort(h, td);
-     if (td)
-	 transaction_free(td);
-     return retval;
- }
-
-
-/*! Handle an incoming commit message from a client.
- * XXX: If commit succeeds and snapshot/startup fails, we have strange state:
- *   the commit has succeeded but an error message is returned.
+/*! Discard all changes in candidate / revert to running
+ * @param[in]  h     Clicon handle
+ * @param[out] cbret Return xml value cligen buffer
+ * @retval  0   OK. This may indicate both ok and err msg back to client
+ * @retval  -1  (Local) Error
  */
 int
-from_client_commit(clicon_handle      h,
-		   int                s,
-		   struct clicon_msg *msg,
-		   const char        *label)
+from_client_commit(clicon_handle h,
+		   cbuf         *cbret)
+
 {
     int        retval = -1;
-    char      *candidate;
-    char      *running;
 
-    if (clicon_msg_commit_decode(msg, 
-				 &candidate, 
-				 &running,
-				 label) < 0)
-	goto err;
-
-    if (strcmp(candidate, "candidate") && strcmp(candidate, "tmp")){
-	clicon_err(OE_PLUGIN, 0, "candidate is not \"candidate\" or tmp");
-	goto err;
-    }
-    if (strcmp(running, "running")){
-	clicon_err(OE_PLUGIN, 0, "running db is not \"running\"");
-	goto err;
-    }
     if (candidate_commit(h, "candidate") < 0){
-	clicon_debug(1, "Commit %s failed",  candidate);
-	retval = 0; /* We ignore errors from commit, but maybe
-		       we should fail on fatal errors? */
-	goto err;
+	clicon_debug(1, "Commit candidate failed");
+	/* XXX: candidate_validate should have proper error handling */
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>missing-attribute</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>%s</error-message>"
+		"</rpc-error></rpc-reply>",
+		clicon_err_reason);
+	goto ok;
     }
-    clicon_debug(1, "Commit %s",  candidate);
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+ ok:
     retval = 0;
-    if (send_msg_ok(s) < 0)
-	goto done;
-    goto done;
-  err:
-    /* XXX: more elaborate errstring? */
-    if (send_msg_err(s, clicon_errno, clicon_suberrno, "%s", clicon_err_reason) < 0)
-	retval = -1;  
- done:
-    unchunk_group(__FUNCTION__);
-
+    // done:
     return retval; /* may be zero if we ignoring errors from commit */
 } /* from_client_commit */
+
+/*! Discard all changes in candidate / revert to running
+ * @param[in]  h     Clicon handle
+ * @param[out] cbret Return xml value cligen buffer
+ * @retval  0   OK. This may indicate both ok and err msg back to client
+ * @retval  -1  (Local) Error
+ */
+int
+from_client_discard_changes(clicon_handle h,
+			    cbuf         *cbret)
+
+{
+    int        retval = -1;
+
+    if (xmldb_copy(h, "running", "candidate") < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>application</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info>read-registry</error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+ ok:
+    retval = 0;
+    // done:
+    return retval; /* may be zero if we ignoring errors from commit */
+}
 
 
 
 /*! Handle an incoming validate message from a client.
+ * @param[in]  h     Clicon handle
+ * @param[in]  db    Database name
+ * @param[out] cbret Return xml value cligen buffer
+ * @retval  0   OK. This may indicate both ok and err msg back to client (eg invalid)
+ * @retval  -1  (Local) Error
  */
 int
-from_client_validate(clicon_handle      h,
-		     int                s,
-		     struct clicon_msg *msg,
-		     const char        *label)
+from_client_validate(clicon_handle h,
+		     char         *db,
+		     cbuf         *cbret)
 {
-    int   retval = -1;
-    char *candidate;
+    int                 retval = -1;
+    transaction_data_t *td = NULL;
 
-    if (clicon_msg_validate_decode(msg, 
-				   &candidate, 
-				   label) < 0){
-	send_msg_err(s, clicon_errno, clicon_suberrno,
-		     clicon_err_reason);
-	goto err;
+    if (strcmp(db, "candidate") != 0 && strcmp(db, "tmp") != 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>invalid-value</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
     }
-    if (strcmp(candidate, "candidate") != 0 && strcmp(candidate, "tmp") != 0){
-	    clicon_err(OE_PLUGIN, 0, "candidate is not \"candidate\" or tmp");
-	    goto err;
-    }
-    clicon_debug(1, "Validate %s",  candidate);
-    if (candidate_validate(h, candidate) < 0){
-	clicon_debug(1, "Validate %s failed",  candidate);
-	retval = 0; /* We ignore errors from commit, but maybe
-		       we should fail on fatal errors? */
-	goto err;
-    }
-    retval = 0;
-    if (send_msg_ok(s) < 0)
+    clicon_debug(1, "Validate %s",  db);
+
+     /* 1. Start transaction */
+    if ((td = transaction_new()) == NULL)
 	goto done;
-    goto done;
-  err:
-    /* XXX: more elaborate errstring? */
-    if (send_msg_err(s, clicon_errno, clicon_suberrno, "%s", clicon_err_reason) < 0)
-	retval = -1;
-  done:
-    unchunk_group(__FUNCTION__);
+    /* Common steps (with commit) */
+    if (validate_common(h, db, td) < 0){
+	clicon_debug(1, "Validate %s failed",  db);
+	/* XXX: candidate_validate should have proper error handling */
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>missing-attribute</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>%s</error-message>"
+		"</rpc-error></rpc-reply>",
+		clicon_err_reason);
+	goto ok;
+    }
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+ ok:
+    retval = 0;
+ done:
+     if (retval < 0 && td)
+	 plugin_transaction_abort(h, td);
+     if (td)
+	 transaction_free(td);
     return retval;
 } /* from_client_validate */

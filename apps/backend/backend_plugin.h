@@ -40,7 +40,6 @@
  * Types
  */
 
-
 /*! Transaction data
  * Clicon internal, presented as void* to app's callback in the 'transaction_data'
  * type in clicon_backend_api.h
@@ -69,8 +68,6 @@ int  plugin_finish(clicon_handle h);
 
 int  plugin_reset_state(clicon_handle h, char *dbname);
 int  plugin_start_hooks(clicon_handle h, int argc, char **argv);
-int  plugin_downcall(clicon_handle h, struct clicon_msg_call_req *req,
-		    uint16_t *retlen,  void **retarg);
 
 transaction_data_t * transaction_new(void);
 int transaction_free(transaction_data_t *);

@@ -29,6 +29,7 @@
 #
 # ***** END LICENSE BLOCK *****
 
+- Change internal protocol from clicon_proto.h to netconf.
 - Netconf startup configuration support. Set CLICON_USE_STARTUP_CONFIG to 1 to
   enable. Eg, if backend_main is started with -CIr startup will be copied to
   running.

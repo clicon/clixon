@@ -17,13 +17,14 @@ delete("Delete a configuration item")  all("Delete whole candidate configuration
 startup("Store running as startup config"), db_copy("running","startup");
 no("Negate or remove") debug("Debugging parts of the system"), cli_debug_cliv((int32)0);
 debug("Debugging parts of the system"), cli_debug_cliv((int32)1);{
-    level("Set debug level: 1..n") <level:int32>("Set debug level (0..n)"), cli_debug_cliv();
+    level("Set debug level: 1..n") <level:int32>("Set debug level (0..n)"), cli_debug_backendv();
 }
 
 discard("Discard edits (rollback 0)"), discard_changesv();
+compare("Compare running and candidate"), compare_dbsv((int32)1);
 
 show("Show a particular state of the system"){
-    xpath("Show configuration") <xpath:string>("XPATH expression"), show_confv_xpath("candidate","/");
+    xpath("Show configuration") <xpath:string>("XPATH expression"), show_confv_xpath("candidate");
     compare("Compare candidate and running databases"), compare_dbsv((int32)0);{
     		     xml("Show comparison in xml"), compare_dbsv((int32)0);
 		     text("Show comparison in text"), compare_dbsv((int32)1);
@@ -43,3 +44,8 @@ load("Load configuration from XML file") <filename:string>("Filename (local file
     merge("Merge file with existent candidate"), load_config_filev("filename","merge");
 }
 example("This is a comment") <var:int32>("Just a random number"), mycallback("myarg");
+downcall("This is a downcall") <str:rest>, downcall();
+notify("Get notifications from backend"), cli_notifyv("ROUTING","1","txt");
+no("Negate") notify("Get notifications from backend"), cli_notifyv("ROUTING","0","xml");
+lock,cli_lock("candidate");
+unlock,cli_unlock("candidate");

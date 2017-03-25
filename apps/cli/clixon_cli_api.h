@@ -68,8 +68,6 @@ int cli_handle_exit(clicon_handle h);
 cligen_handle cli_cligen(clicon_handle h);
 
 /* cli_common.c */
-int init_candidate_db(clicon_handle h);
-int exit_candidate_db(clicon_handle h);
 int cli_notification_register(clicon_handle h, char *stream, enum format_enum format,
 			      char *filter, int status, 
 			      int (*fn)(int, void*), void *arg);
@@ -92,6 +90,8 @@ int save_config_filev(clicon_handle h, cvec *vars, cvec *argv);
 int delete_allv(clicon_handle h, cvec *vars, cvec *argv);
 int discard_changesv(clicon_handle h, cvec *vars, cvec *argv);
 int cli_notifyv(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_lock(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_unlock(clicon_handle h, cvec *cvv, cvec *argv);
 
 /* cli_common.c: CLIgen old single arg callbacks */
 int cli_set(clicon_handle h, cvec *vars, cg_var *arg);

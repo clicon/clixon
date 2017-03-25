@@ -82,11 +82,12 @@ process_incoming_packet(clicon_handle h,
 {
     char  *str;
     char  *str0;
-    cxobj *xml_req = NULL; /* Request (in) */
+    cxobj *xreq = NULL; /* Request (in) */
     int    isrpc = 0;   /* either hello or rpc */
-    cbuf  *xf_out;
-    cbuf  *xf_err;
-    cbuf  *xf1;
+    cbuf  *cbret = NULL;
+    cxobj *xret = NULL; /* Return (out) */
+    cxobj *xrpc;
+    cxobj *xc;
 
     clicon_debug(1, "RECV");
     clicon_debug(2, "%s: RCV: \"%s\"", __FUNCTION__, cbuf_get(cb));
@@ -96,16 +97,15 @@ process_incoming_packet(clicon_handle h,
     }
     str = str0;
     /* Parse incoming XML message */
-    if (clicon_xml_parse_string(&str, &xml_req) < 0){
-	if ((cb = cbuf_new()) == NULL){
-	    netconf_create_rpc_error(cb, NULL, 
-				     "operation-failed", 
-				     "rpc", "error",
-				     NULL,
-				     NULL);
-
+    if (clicon_xml_parse_string(&str, &xreq) < 0){
+	if ((cbret = cbuf_new()) == NULL){
+	    cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>rpc</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>internal error</error-message>"
+		"</rpc-error></rpc-reply>");
 	    netconf_output(1, cb, "rpc-error");
-	    cbuf_free(cb);
 	}
 	else
 	    clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
@@ -113,72 +113,56 @@ process_incoming_packet(clicon_handle h,
 	goto done;
     }
     free(str0);
-    if (xpath_first(xml_req, "//rpc") != NULL){
+    if ((xrpc=xpath_first(xreq, "//rpc")) != NULL){
         isrpc++;
     }
     else
-        if (xpath_first(xml_req, "//hello") != NULL)
+        if (xpath_first(xreq, "//hello") != NULL)
 	    ;
         else{
             clicon_log(LOG_WARNING, "Invalid netconf msg: neither rpc or hello: dropp\
 ed");
             goto done;
         }
-    /* Initialize response buffers */
-    if ((xf_out = cbuf_new()) == NULL){
-	clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
-	goto done;
+    if (!isrpc){ /* hello */
+	if (netconf_hello_dispatch(xreq) < 0)
+	    goto done;
     }
+    else  /* rpc */
+	if (netconf_rpc_dispatch(h, xrpc, &xret) < 0){
+	    goto done;
+	}
+	else{ /* there is a return message in xret */
+	    cxobj *xa, *xa2;
+	    assert(xret);
 
-    /* Create error buf */
-    if ((xf_err = cbuf_new()) == NULL){
-	clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
-	goto done;
-    }
-    netconf_ok_set(0);
-    if (isrpc){
-	if (netconf_rpc_dispatch(h, 
-				 xml_req, 
-				 xpath_first(xml_req, "//rpc"), 
-				 xf_out, xf_err) < 0){
-	    assert(cbuf_len(xf_err));
-	    clicon_debug(1, "%s", cbuf_get(xf_err));
-	    if (isrpc){
-		if (netconf_output(1, xf_err, "rpc-error") < 0)
-		    goto done;
+	    if ((cbret = cbuf_new()) != NULL){
+		if ((xc = xml_child_i(xret,0))!=NULL){
+		    xa=NULL;
+		    while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
+			if ((xa2 = xml_dup(xa)) ==NULL)
+			    goto done;
+			if (xml_addsub(xc, xa2) < 0)
+			    goto done;
+		    }
+		    add_preamble(cbret);
+
+		    clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0);
+		    add_postamble(cbret);
+		    if (netconf_output(1, cbret, "rpc-reply") < 0){
+			cbuf_free(cbret);
+			goto done;
+		    }
+		}
 	    }
 	}
-	else{
-	    if ((xf1 = cbuf_new()) != NULL){
-		if (netconf_create_rpc_reply(xf1, xml_req, cbuf_get(xf_out), netconf_ok_get()) < 0){
-		    cbuf_free(xf_out);
-		    cbuf_free(xf_err);
-		    cbuf_free(xf1);
-		    goto done;
-		}
-		if (netconf_output(1, xf1, "rpc-reply") < 0){
-		    cbuf_reset(xf1);
-		    netconf_create_rpc_error(xf1, xml_req, "operation-failed", 
-					     "protocol", "error", 
-					     NULL, cbuf_get(xf_err));
-		    netconf_output(1, xf1, "rpc-error");
-		    cbuf_free(xf_out);
-		    cbuf_free(xf_err);
-		    cbuf_free(xf1);
-		    goto done;
-		}
-		cbuf_free(xf1);
-	    }
-	}
-    }
-    else{
-	netconf_hello_dispatch(xml_req); /* XXX: return-value */
-    }
-    cbuf_free(xf_out);
-    cbuf_free(xf_err);
   done:
-    if (xml_req)
-	xml_free(xml_req);
+    if (xreq)
+	xml_free(xreq);
+    if (xret)
+	xml_free(xret);
+    if (cbret)
+	cbuf_free(cbret);
     return 0;
 }
 
@@ -268,28 +252,12 @@ send_hello(int s)
     return retval;
 }
 
-/*! Initialize candidate database */
 static int
-init_candidate_db(clicon_handle h)
-{
-    int                retval = -1;
-
-    /* init shared candidate */
-    if (xmldb_exists(h, "candidate") != 1){
-	if (xmldb_copy(h, "running", "candidate") < 0)
-	    goto done;
-    }
-    retval = 0;
-  done:
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
-static int
-terminate(clicon_handle h)
+netconf_terminate(clicon_handle h)
 {
     yang_spec      *yspec;
 
+    clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
     clicon_handle_exit(h);
@@ -402,8 +370,6 @@ main(int argc, char **argv)
     if (netconf_plugin_load(h) < 0)
 	return -1;
 
-    if (init_candidate_db(h) < 0)
-	return -1;
     /* Call start function is all plugins before we go interactive */
     tmp = *(argv-1);
     *(argv-1) = argv0;
@@ -416,13 +382,11 @@ main(int argc, char **argv)
 	goto done;
     if (debug)
 	clicon_option_dump(h, debug);
-
     if (event_loop() < 0)
 	goto done;
   done:
-
     netconf_plugin_unload(h);
-    terminate(h);
+    netconf_terminate(h);
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clicon_log(LOG_NOTICE, "%s: %u Terminated\n", __PROGRAM__, getpid());
     return 0;

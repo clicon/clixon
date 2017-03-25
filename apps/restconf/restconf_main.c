@@ -141,16 +141,15 @@ api_data_get(clicon_handle h,
     int        i;
     cbuf      *path = NULL;
     cbuf      *path1 = NULL;
-    cxobj     *xt = NULL;
     cbuf      *cbx = NULL;
     cxobj    **vec = NULL;
-    size_t     veclen;
     yang_spec *yspec;
     yang_stmt *y;
     yang_stmt *ykey;
     char      *name;
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
+    cxobj     *xret = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h);
@@ -217,32 +216,34 @@ api_data_get(clicon_handle h,
         }
     }
     clicon_debug(1, "%s path:%s", __FUNCTION__, cbuf_get(path));
-    if (xmldb_get(h, "running", cbuf_get(path), &xt,  &vec, &veclen) < 0)
-	goto done;
-
-    if ((cbx = cbuf_new()) == NULL)
-	goto done;
-    if (veclen==0){
+    if (clicon_rpc_get_config(h, "running", cbuf_get(path), &xret) < 0){
 	notfound(r);
 	goto done;
     }
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "Content-Type: application/yang.data+json\r\n");
     FCGX_FPrintF(r->out, "\r\n");
-    if (xml2json_cbuf_vec(cbx, vec, veclen, 0) < 0)
+    clicon_debug(1, "%s name:%s child:%d", __FUNCTION__, xml_name(xret), xml_child_nr(xret));
+    vec = xml_childvec_get(xret);
+    if (xml2json_cbuf_vec(cbx, vec, xml_child_nr(xret), 0) < 0)
 	goto done;
+
+    clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_FPrintF(r->out, "%s", cbuf_get(cbx));
     FCGX_FPrintF(r->out, "\r\n\r\n");
     retval = 0;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cbx)
         cbuf_free(cbx);
-    if (xt)
-        xml_free(xt);
     if (path)
 	cbuf_free(path);
     if (path1)
 	cbuf_free(path1);
+    if (xret)
+	xml_free(xret);
     return retval;
 }
 
@@ -266,14 +267,14 @@ api_data_delete(clicon_handle h,
     clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
-    /* Parse input data as json into xml */
-
-    if (clicon_rpc_xmlput(h, "candidate", 
-			  OP_REMOVE, 
-			  api_path,
-			  "") < 0)
+    if (clicon_rpc_edit_config(h, "candidate", 
+			       OP_REMOVE, 
+			       api_path,
+			       "<config/>") < 0){
+	notfound(r);
 	goto done;
-    if (clicon_rpc_commit(h, "candidate", "running") < 0)
+    }
+    if (clicon_rpc_commit(h) < 0)
 	goto done;
     FCGX_SetExitStatus(201, r->out);
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
@@ -338,16 +339,23 @@ api_data_put(clicon_handle h,
     }
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
+    cprintf(cbx, "<config>");
     x = NULL;
-    while ((x = xml_child_each(xdata, x, -1)) != NULL) 
+    while ((x = xml_child_each(xdata, x, -1)) != NULL) {
 	if (clicon_xml2cbuf(cbx, x, 0, 0) < 0)
 	    goto done;	
-    if (clicon_rpc_xmlput(h, "candidate", 
-			  OP_MERGE, 
-			  api_path,
-			  cbuf_get(cbx)) < 0)
+    }
+    cprintf(cbx, "</config>");
+    clicon_debug(1, "%s cbx: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
+    if (clicon_rpc_edit_config(h, "candidate", 
+			       OP_MERGE, 
+			       api_path,
+			       cbuf_get(cbx)) < 0){
+	notfound(r);
 	goto done;
-    if (clicon_rpc_commit(h, "candidate", "running") < 0)
+    }
+    
+    if (clicon_rpc_commit(h) < 0)
 	goto done;
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
@@ -437,7 +445,12 @@ request_process(clicon_handle h,
     clicon_debug(1, "DATA=%s", data);
     if (str2cvec(data, '&', '=', &dvec) < 0)
       goto done;
-    method = pvec[2];
+
+    if ((method = pvec[2]) == NULL){
+	retval = notfound(r);
+	goto done;
+    }
+
     retval = 0;
     test(r, 1);
     /* If present, check credentials */
@@ -448,6 +461,7 @@ request_process(clicon_handle h,
     if (auth == 0)
 	goto done;
     clicon_debug(1, "%s credentials ok 2", __FUNCTION__);
+    clicon_debug(1, "%s credentials ok 3", __FUNCTION__);
 
     if (strcmp(method, "data") == 0) /* restconf, skip /api/data */
 	retval = api_data(h, r, path, pcvec, 2, qvec, data);
@@ -467,6 +481,18 @@ request_process(clicon_handle h,
 	cbuf_free(cb);
     unchunk_group(__FUNCTION__);
     return retval;
+}
+
+static int
+restconf_terminate(clicon_handle h)
+{
+    yang_spec      *yspec;
+
+    clicon_rpc_close_session(h);
+    if ((yspec = clicon_dbspec_yang(h)) != NULL)
+	yspec_free(yspec);
+    clicon_handle_exit(h);
+    return 0;
 }
 
 /*! Usage help routine
@@ -592,5 +618,6 @@ main(int    argc,
     retval = 0;
  done:
     restconf_plugin_unload(h);
+    restconf_terminate(h);
     return retval;
 }

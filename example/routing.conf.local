@@ -19,18 +19,11 @@ CLICON_CLI_GENMODEL_COMPLETION 1
 # CLICON_CLI_GENMODEL_TYPE VARS
 CLICON_CLI_GENMODEL_TYPE   VARS
 
-# Set if xmldb runs in a separate process (clixon_xmldb). 
-# Also set addr and port below
-CLICON_XMLDB_RPC 0
-
-# xmldb inet address (if CLICON_XMLDB_RPC)
-CLICON_XMLDB_ADDR 127.0.0.1
-
-# xmldb tcp port (if CLICON_XMLDB_RPC)
-CLICON_XMLDB_PORT 7878
-
 # Set if you want to use old obsolete cligen callback variable syntax 
 # Migration: Set to 0 and change all user-defined cli callbacks in your cli spec files
 # E.g cmd, callback("single arg"); -> cmd, callback("two" "args");
 # And change predefined callbacks, eg cli_commit -> cli_commitv in all cli files
 CLICON_CLIGEN_CALLBACK_SINGLE_ARG 0
+
+# Enabled uses "startup" configuration on boot
+CLICON_USE_STARTUP_CONFIG    0

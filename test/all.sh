@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # include err() and new() functions
 . ./lib.sh

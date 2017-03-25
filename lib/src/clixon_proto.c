@@ -68,6 +68,8 @@
 #include "clixon_queue.h"
 #include "clixon_chunk.h"
 #include "clixon_sig.h"
+#include "clixon_xml.h"
+#include "clixon_xsl.h"
 #include "clixon_proto.h"
 #include "clixon_proto_encode.h"
 
@@ -80,20 +82,8 @@ struct map_type2str{
 
 /* Mapping between yang keyword string <--> clicon constants */
 static const struct map_type2str msgmap[] = {
-    {CLICON_MSG_COMMIT,       "commit"},
-    {CLICON_MSG_VALIDATE,     "validate"},
+    {CLICON_MSG_NETCONF,      "netconf"},
     {CLICON_MSG_CHANGE,       "change"},
-    {CLICON_MSG_XMLPUT,       "xmlput"},
-    {CLICON_MSG_SAVE,         "save"},
-    {CLICON_MSG_LOAD,         "load"},
-    {CLICON_MSG_COPY,         "copy"},
-    {CLICON_MSG_KILL,         "kill"},
-    {CLICON_MSG_DEBUG,        "debug"},
-    {CLICON_MSG_CALL,         "call"},
-    {CLICON_MSG_SUBSCRIPTION, "subscription"},
-    {CLICON_MSG_OK,           "ok"},
-    {CLICON_MSG_NOTIFY,       "notify"},
-    {CLICON_MSG_ERR,          "err"},
     {-1,                      NULL}, 
 };
 
@@ -234,17 +224,14 @@ clicon_msg_send(int                s,
  * Now, ^C will interrupt the whole process, and this may not be what you want.
  *
  * @param[in]   s      UNIX domain socket to communicate with backend
- * @param[out]  msg    CLICON msg data reply structure. allocated using CLICON chunks, 
- *                     freed by caller with unchunk*(...,label)
+ * @param[out]  msg    CLICON msg data reply structure. Free with free()
  * @param[out]  eof    Set if eof encountered
- * @param[in]   label  Label used in chunk allocation and deallocation.
  * Note: caller must ensure that s is closed if eof is set after call.
  */
 int
 clicon_msg_rcv(int                s,
-	      struct clicon_msg **msg,
-	      int                *eof,
-	      const char         *label)
+	       struct clicon_msg **msg,
+	       int                *eof)
 { 
     int       retval = -1;
     struct clicon_msg hdr;
@@ -273,8 +260,8 @@ clicon_msg_rcv(int                s,
     mlen = ntohs(hdr.op_len);
     clicon_debug(2, "%s: rcv msg seq=%d, len=%d",  
 		 __FUNCTION__, ntohs(hdr.op_type), mlen);
-    if ((*msg = (struct clicon_msg *)chunk(mlen, label)) == NULL){
-	clicon_err(OE_CFG, errno, "%s: chunk", __FUNCTION__);
+    if ((*msg = (struct clicon_msg *)malloc(mlen)) == NULL){
+	clicon_err(OE_CFG, errno, "malloc");
 	goto done;
     }
     memcpy(*msg, &hdr, hlen);
@@ -296,17 +283,21 @@ clicon_msg_rcv(int                s,
 }
 
 
-/*! Connect to server, send an clicon_msg message and wait for result.
- * Compared to clicon_rpc, this is a one-shot rpc: open, send, get reply and close.
- * NOTE: this is dependent on unix domain
+/*! Connect to server, send a clicon_msg message and wait for result using unix socket
+ *
+ * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
+ * @param[in]  sockpath Unix domain file path
+ * @param[out] retdata  Returned data as string netconf xml tree.
+ * @param[out] sock0   Return socket in case of asynchronous notify
+ * @retval     0       OK
+ * @retval     -1      Error
+ * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
 clicon_rpc_connect_unix(struct clicon_msg *msg, 
 			char              *sockpath,
-			char             **data, 
-			uint16_t          *datalen,
-			int               *sock0, 
-			const char        *label)
+			char             **retdata,
+			int               *sock0)
 {
     int retval = -1;
     int s = -1;
@@ -325,7 +316,7 @@ clicon_rpc_connect_unix(struct clicon_msg *msg,
     }
     if ((s = clicon_connect_unix(sockpath)) < 0)
 	goto done;
-    if (clicon_rpc(s, msg, data, datalen, label) < 0)
+    if (clicon_rpc(s, msg, retdata) < 0)
 	goto done;
     if (sock0 != NULL)
 	*sock0 = s;
@@ -336,17 +327,23 @@ clicon_rpc_connect_unix(struct clicon_msg *msg,
     return retval;
 }
 
-/*! Connect to server, send an clicon_msg message and wait for result using an inet socket
- * Compared to clicon_rpc, this is a one-shot rpc: open, send, get reply and close.
+/*! Connect to server, send a clicon_msg message and wait for result using an inet socket
+ * This uses unix domain socket communication
+ * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
+ * @param[in]  dst     IPv4 address
+ * @param[in]  port    TCP port
+ * @param[out] retdata  Returned data as string netconf xml tree.
+ * @param[out] sock0   Return socket in case of asynchronous notify
+ * @retval     0       OK
+ * @retval     -1      Error
+ * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
 clicon_rpc_connect_inet(struct clicon_msg *msg, 
 			char              *dst,
 			uint16_t           port,
-			char             **data, 
-			uint16_t          *datalen,
-			int               *sock0, 
-			const char        *label)
+			char             **retdata,
+			int               *sock0)
 {
     int                retval = -1;
     int                s = -1;
@@ -371,7 +368,7 @@ clicon_rpc_connect_inet(struct clicon_msg *msg,
 	close(s);
 	goto done;
     }
-    if (clicon_rpc(s, msg, data, datalen, label) < 0)
+    if (clicon_rpc(s, msg, retdata) < 0)
 	goto done;
     if (sock0 != NULL)
 	*sock0 = s;
@@ -391,29 +388,25 @@ clicon_rpc_connect_inet(struct clicon_msg *msg,
  *
  * @param[in]  s       Socket to communicate with backend
  * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
- * @param[out] data    Returned data as byte-strin exclusing header. 
- *                      Deallocate w unchunk...(..., label)
- * @param[out] datalen Length of returned data
- * @param[in]  label   Label used in chunk allocation.
+ * @param[out] xret    Returned data as netconf xml tree.
+ * @retval     0       OK
+ * @retval     -1      Error
  */
 int
-clicon_rpc(int                s, 
-	   struct clicon_msg *msg, 
-	   char             **data, 
-	   uint16_t          *datalen,
-	   const char        *label)
+clicon_rpc(int                   s, 
+	   struct clicon_msg    *msg, 
+	   char                **ret)
 {
     int                retval = -1;
     struct clicon_msg *reply;
     int                eof;
-    uint32_t           err;
-    uint32_t           suberr;
-    char              *reason;
     enum clicon_msg_type type;
+    char              *data = NULL;
+    cxobj             *cx = NULL;
 
     if (clicon_msg_send(s, msg) < 0)
 	goto done;
-    if (clicon_msg_rcv(s, &reply, &eof, label) < 0)
+    if (clicon_msg_rcv(s, &reply, &eof) < 0)
 	goto done;
     if (eof){
 	clicon_err(OE_PROTO, ESHUTDOWN, "%s: Socket unexpected close", __FUNCTION__);
@@ -423,32 +416,38 @@ clicon_rpc(int                s,
     }
     type = ntohs(reply->op_type);
     switch (type){
-    case CLICON_MSG_OK:
-        if (data != NULL) {
-	    *data = reply->op_body;
-	    *datalen = ntohs(reply->op_len) - sizeof(*reply);
-	}
-	break;
-    case CLICON_MSG_ERR:
-	if (clicon_msg_err_decode(reply, &err, &suberr, &reason, label) < 0) 
-	    goto done;
-	if (debug)
-	    clicon_err(err, suberr, "%s msgtype:%hu", reason, ntohs(msg->op_type));
-	else
-	    clicon_err(err, suberr, "%s", reason);
-	goto done;
+    case CLICON_MSG_NETCONF: /* ok or rpc-error expected */
+	data = reply->op_body; /* assume string */
 	break;
     default:
-	clicon_err(OE_PROTO, 0, "%s: unexpected reply: %hu", 
-		__FUNCTION__, type);
+	clicon_err(OE_PROTO, 0, "%s: unexpected reply: %s", 
+		   __FUNCTION__, msg_type2str(type));
 	goto done;
 	break;
     }
+    if (ret && data)
+	if ((*ret = strdup(data)) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
     retval = 0;
   done:
+    if (cx)
+	xml_free(cx);
+    if (reply)
+	free(reply);
     return retval;
 }
 
+/*! Send a clicon_msg message as reply to a clicon rpc request
+ *
+ * @param[in]  s       Socket to communicate with client
+ * @param[in]  type    Clicon msg operation, see enum clicon_msg_type
+ * @param[in]  data    Returned data as byte-string.
+ * @param[in]  datalen Length of returned data XXX  may be unecessary if always string?
+ * @retval     0       OK
+ * @retval     -1      Error
+ */
 int 
 send_msg_reply(int      s, 
 	       uint16_t type, 
@@ -475,57 +474,160 @@ send_msg_reply(int      s,
     return retval;
 }
 
-int
-send_msg_ok(int s)
-{
-    return send_msg_reply(s, CLICON_MSG_OK, NULL, 0);
-}
-
+/*! Send a clicon_msg NOTIFY message asynchronously to client
+ *
+ * @param[in]  s       Socket to communicate with client
+ * @param[in]  level
+ * @param[in]  event
+ * @retval     0       OK
+ * @retval     -1      Error
+ */
 int
 send_msg_notify(int   s, 
 		int   level, 
 		char *event)
 {
-    int retval = -1;
-    struct clicon_msg *msg;
+    int                retval = -1;
+    struct clicon_msg *msg = NULL;
 
-    if ((msg=clicon_msg_notify_encode(level, event, __FUNCTION__)) == NULL)
+    if ((msg=clicon_msg_netconf_encode("<notification><event>%s</event></notification>", event)) == NULL)
 	goto done;
     if (clicon_msg_send(s, msg) < 0)
 	goto done;
     retval = 0;
   done:
-    unchunk_group(__FUNCTION__);
+    if (msg)
+	free(msg);
     return retval;
 }
 
+/*! Send a clicon_msg OK message as reply to a clicon rpc request
+ *
+ * @param[in]  s       Socket to communicate with client
+ * @param[in]  data    Returned data as byte-string.
+ * @retval     0       OK
+ * @retval     -1      Error
+ * @note send as netconf message XXX remove clicon header
+ */
 int
-send_msg_err(int s, int err, int suberr, char *format, ...)
+send_msg_ok(int      s,
+	    char    *data)
+{
+    int     retval = -1;
+    cbuf   *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL)
+	goto done;
+    if (data)
+	cprintf(cb, "<rpc-reply><ok>%s</ok></rpc-reply>", data);
+    else
+	cprintf(cb, "<rpc-reply><ok/></rpc-reply>");
+    if (send_msg_reply(s, CLICON_MSG_NETCONF, cbuf_get(cb), cbuf_len(cb)+1) < 0){
+	if (errno == ECONNRESET)
+	    clicon_log(LOG_WARNING, "client rpc reset");
+	goto done;
+    }
+    retval=0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
+/*! Send a clicon_msg Error message as reply to a clicon rpc request
+ *
+ * @param[in]  s       Socket to communicate with client
+ * @param[in]  data    Returned data as byte-string.
+ * @param[in]  datalen Length of returned data
+ * @retval     0       OK
+ * @retval     -1      Error
+ * @note send as netconf message XXX remove clicon header
+ */
+int
+send_msg_err(int   s, 
+	     int   err, 
+	     int   suberr, 
+	     char *format, ...)
 {
     va_list args;
-    char *reason;
-    int len;
-    int retval = -1;
-    struct clicon_msg *msg;
+    char   *info = NULL;
+    int     len;
+    int     retval = -1;
+    cbuf   *cb = NULL;
 
     va_start(args, format);
     len = vsnprintf(NULL, 0, format, args) + 1;
     va_end(args);
-    if ((reason = (char *)chunk(len, __FUNCTION__)) == NULL)
-	return -1;
-    memset(reason, 0, len);
+    if ((info = malloc(len)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(info, 0, len);
     va_start(args, format);
-    vsnprintf(reason, len, format, args);
+    vsnprintf(info, len, format, args);
     va_end(args);
-    if ((msg=clicon_msg_err_encode(clicon_errno, clicon_suberrno, 
-				   reason, __FUNCTION__)) == NULL)
+    if ((cb = cbuf_new()) == NULL)
 	goto done;
-    if (clicon_msg_send(s, msg) < 0)
+    cprintf(cb, "<rpc-reply><rpc-error>"
+	    "<error-type>clixon</error-type>"
+	    "<error-tag>%d</error-tag>"
+	    "<error-message>%d</error-message>"
+	    "<error-info>%s</error-info>"
+	    "</rpc-error></rpc-reply>", 
+	    err, suberr, info);
+    if (send_msg_reply(s, CLICON_MSG_NETCONF, cbuf_get(cb), cbuf_len(cb)+1) < 0){
+	if (errno == ECONNRESET)
+	    clicon_log(LOG_WARNING, "client rpc reset");
 	goto done;
+    }
 
     retval = 0;
   done:
-    unchunk_group(__FUNCTION__);
+    if (cb)
+	cbuf_free(cb);
+    if (info)
+	free(info);
     return retval;
 }
 
+/*! Send a clicon_msg Error message as reply to a clicon rpc request
+ *
+ * @param[in]  s       Socket to communicate with client
+ * @param[in]  data    Returned data as byte-string.
+ * @param[in]  datalen Length of returned data
+ * @retval     0       OK
+ * @retval     -1      Error
+ * @note send as netconf message XXX remove clicon header
+ * XXX: see clicon_xml_parse
+ */
+int
+send_msg_netconf_reply(int   s, 
+		       char *format, ...)
+{
+    va_list args;
+    char   *str = NULL;
+    int     len;
+    int     retval = -1;
+
+    va_start(args, format);
+    len = vsnprintf(NULL, 0, format, args) + 1;
+    va_end(args);
+    if ((str = malloc(len)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(str, 0, len);
+    va_start(args, format);
+    len = vsnprintf(str, len, format, args);
+    va_end(args);
+    if (send_msg_reply(s, CLICON_MSG_NETCONF, str, len) < 0){
+	if (errno == ECONNRESET)
+	    clicon_log(LOG_WARNING, "client rpc reset");
+	goto done;
+    }
+    retval = 0;
+  done:
+    if (str)
+	free(str);
+    return retval;
+}

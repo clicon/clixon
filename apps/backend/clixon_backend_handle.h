@@ -43,6 +43,14 @@
 /*
  * Types
  */
+struct client_entry;
+typedef int (*backend_netconf_cb_t)(
+    clicon_handle h, 
+    cxobj  *xe,              /* Request: <rpc><xn></rpc> */
+    struct client_entry *ce, /* Client session */
+    cbuf  *cbret,            /* Reply eg <rpc-reply>... */
+    void   *arg              /* Argument given at register */
+);  
 
 /*! Generic downcall registration. 
  * Enables any function to be called from (cli) frontend
@@ -81,4 +89,13 @@ int subscription_delete(clicon_handle h, char *stream,
 
 struct handle_subscription *subscription_each(clicon_handle h,
 					      struct handle_subscription *hprev);
+
+int backend_netconf_register_callback(clicon_handle h,
+			      backend_netconf_cb_t cb,   /* Callback called */
+			      void *arg,       /* Arg to send to callback */
+			      char *tag);      /* Xml tag when callback is made */
+
+int backend_netconf_plugin_callbacks(clicon_handle h, cxobj *xe, 
+				     struct client_entry *ce, cbuf *cbret);
+
 #endif /* _CLIXON_BACKEND_HANDLE_H_ */

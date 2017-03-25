@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Test1: backend and cli basic functionality
 # Start backend server
 # Add an ethernet interface and an address
@@ -18,7 +18,7 @@ if [ $? -ne 0 ]; then
 fi
 new "start backend"
 # start new backend
-sudo clixon_backend -If $clixon_cf -x 0 # -x 1 with xmldb proxy
+sudo clixon_backend -If $clixon_cf 
 if [ $? -ne 0 ]; then
     err
 fi
@@ -30,7 +30,7 @@ expectfn "clixon_cli -1f $clixon_cf show conf cli" "^interfaces interface name e
 interfaces interface enabled true$"
 
 new "cli failed validate"
-expectfn "clixon_cli -1f $clixon_cf -l o validate" "Validate failed"
+expectfn "clixon_cli -1f $clixon_cf -l o validate" "Missing mandatory variable"
 
 new "cli configure more"
 expectfn "clixon_cli -1f $clixon_cf set interfaces interface eth0 ipv4 address 1.2.3.4 prefix-length 24" ""
@@ -38,6 +38,25 @@ expectfn "clixon_cli -1f $clixon_cf set interfaces interface eth0 type bgp" ""
 
 new "cli commit"
 expectfn "clixon_cli -1f $clixon_cf -l o commit" ""
+
+new "cli save"
+expectfn "clixon_cli -1f $clixon_cf -l o save /tmp/foo" ""
+
+new "cli delete all"
+expectfn "clixon_cli -1f $clixon_cf -l o delete all" ""
+
+new "cli load"
+expectfn "clixon_cli -1f $clixon_cf -l o load /tmp/foo" ""
+
+new "cli check load"
+expectfn "clixon_cli -1f $clixon_cf -l o show conf cli" "^interfaces interface name eth0
+interfaces interface enabled true$"
+
+new "cli debug"
+expectfn "clixon_cli -1f $clixon_cf -l o debug level 1" ""
+
+new "cli downcall"
+expectfn "clixon_cli -1f $clixon_cf -l o downcall \"This is a test =====\"" "^\"This is a test =====\"$"
 
 new "Kill backend"
 # Check if still alive

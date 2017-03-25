@@ -121,7 +121,6 @@
 #include "clixon_options.h"
 #include "clixon_xsl.h"
 #include "clixon_xml_parse.h"
-#include "clixon_xml_db_rpc.h"
 #include "clixon_xml_db.h"
 
 /*! Construct an xml key format from yang statement using wildcards for keys
@@ -417,6 +416,8 @@ static int _candidate_locked = 0;
 static int _startup_locked = 0;
 
 /*! Lock database
+ * @param[in]  db   Database name
+ * @param[in]  pid  process/session-id
  */
 static int
 db_lock(char *db, 
@@ -433,6 +434,7 @@ db_lock(char *db,
 }
 
 /*! Unlock database
+ * @param[in]  db   Database name
  */
 static int
 db_unlock(char *db)
@@ -442,6 +444,21 @@ db_unlock(char *db)
     else if (strcmp("candidate", db) == 0)
 	_candidate_locked = 0;
     else if (strcmp("startup", db) == 0)
+	_startup_locked = 0;
+    return 0;
+}
+
+/*! Unlock all databases locked by pid (eg process dies) 
+ * @param[in]  pid  process/session-id
+ */
+static int
+db_unlock_all(int pid)
+{
+    if (_running_locked == pid)
+	_running_locked = 0;
+    if (_candidate_locked == pid)
+	_candidate_locked = 0;
+    if (_startup_locked == pid)
 	_startup_locked = 0;
     return 0;
 }
@@ -461,6 +478,8 @@ db_islocked(char *db)
 	return(_startup_locked);
     return 0;
 }
+
+
 
 /*! Translate from symbolic database name to actual filename in file-system
  * @param[in]   h        Clicon handle
@@ -959,8 +978,8 @@ xml_order(cxobj *x,
  *   cxobj  **xvec;
  *   size_t   xlen;
  *   yang_spec *yspec = clicon_dbspec_yang(h);
- *   if (xmldb_get_vec(dbname, "/interfaces/interface[name="eth"]", yspec, 
- *                     &xt, &xvec, &xlen) < 0)
+ *   if (xmldb_get("running", "/interfaces/interface[name="eth"]", 
+ *                 &xt, &xvec, &xlen) < 0)
  *      err;
  *   for (i=0; i<xlen; i++){
  *      xn = xv[i];
@@ -973,13 +992,13 @@ xml_order(cxobj *x,
  * @see xpath_vec
  * @see xmldb_get
  */
-static int
-xmldb_get_local(clicon_handle h,
-		char         *db, 
-		char         *xpath,
-		cxobj       **xtop,
-		cxobj      ***xvec0,
-		size_t       *xlen0)
+int
+xmldb_get(clicon_handle h,
+	  char         *db, 
+	  char         *xpath,
+	  cxobj       **xtop,
+	  cxobj      ***xvec0,
+	  size_t       *xlen0)
 {
     int             retval = -1;
     yang_spec      *yspec;
@@ -1021,9 +1040,10 @@ xmldb_get_local(clicon_handle h,
     /* If vectors are specified then filter out everything else,
      * otherwise return complete tree.
      */
-    if (xvec != NULL)
+    if (xvec != NULL){
 	for (i=0; i<xlen; i++)
 	    xml_flag_set(xvec[i], XML_FLAG_MARK);
+    }
     /* Top is special case */
     if (!xml_flag(xt, XML_FLAG_MARK))
 	if (xml_tree_prune_unmarked(xt, NULL) < 0)
@@ -1036,6 +1056,7 @@ xmldb_get_local(clicon_handle h,
 	*xlen0 = xlen; 
 	xlen = 0;
     }
+
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
     /* XXX does not work for top-level */
@@ -1045,6 +1066,7 @@ xmldb_get_local(clicon_handle h,
 	goto done;
     if (debug)
 	clicon_xml2file(stdout, xt, 0, 1);
+
     *xtop = xt;
     retval = 0;
  done:
@@ -1055,87 +1077,6 @@ xmldb_get_local(clicon_handle h,
     unchunk_group(__FUNCTION__);  
     return retval;
 
-}
-
-/*! Get content of database using path. 
-
- * The function returns a minimal tree that includes all sub-trees that match
- * xpath.
- * @param[in]  h      Clicon handle
- * @param[in]  db     running | candidate
- * @param[in]  xpath  String with XPATH syntax
- * @param[in]  vector If set, return list of results in xvec, else single tree.
- * @param[out] xtop   XML tree. Freed by xml_free()
- * @param[out] xvec   Vector of xml trees. Free after use
- * @param[out] xlen   Length of vector.
- * @retval     0      OK
- * @retval     -1     Error
- * @code
- *   cxobj   *xt;
- *   cxobj  **xvec;
- *   size_t   xlen;
- *
- *   if (xmldb_get("running", "/interfaces/interface[name="eth"]", 
- *                 &xt, &xvec, &xlen) < 0)
- *      err;
- *   for (i=0; i<xlen; i++){
- *      xn = xv[i];
- *      ...
- *   }
- *   xml_free(xt);
- *   free(xvec);
- * @endcode
- * @see xpath_vec
- */
-int
-xmldb_get(clicon_handle h,
-	  char         *db, 
-	  char         *xpath,
-	  cxobj       **xtop,
-	  cxobj      ***xvec,
-	  size_t       *xlen)
-{
-    int retval = -1;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (clicon_xmldb_rpc(h))
-	retval = xmldb_get_rpc(h, db, xpath, xtop, xvec, xlen);
-    else
-	retval = xmldb_get_local(h, db, xpath, xtop, xvec, xlen);
-    return retval;
-}
-
-/*! Get value of the "operation" attribute and change op if given
- * @param[in]   xn  XML node
- * @param[out]  op  "operation" attribute may change operation
- */
-static int
-get_operation(cxobj               *xn, 
-	      enum operation_type *op)
-{
-    char *opstr;
-
-    if ((opstr = xml_find_value(xn, "operation")) != NULL){
-	if (strcmp("merge", opstr) == 0)
-	    *op = OP_MERGE;
-	else
-	if (strcmp("replace", opstr) == 0)
-	    *op = OP_REPLACE;
-	else
-	if (strcmp("create", opstr) == 0)
-	    *op = OP_CREATE;
-	else
-	if (strcmp("delete", opstr) == 0)
-	    *op = OP_DELETE;
-	else
-	if (strcmp("remove", opstr) == 0)
-	    *op = OP_REMOVE;
-	else{
-	    clicon_err(OE_XML, 0, "Bad-attribute operation: %s", opstr);
-	    return -1;
-	}
-    }
-    return 0;
 }
 
 /*! Add data to database internal recursive function
@@ -1163,14 +1104,16 @@ put(char               *dbname,
     yang_stmt *y;
     int        exists;
     char      *bodyenc=NULL;
+    char      *opstr;
 
     clicon_debug(1, "%s xk0:%s ys:%s", __FUNCTION__, xk0, ys->ys_argument);
     if (debug){
 	xml_print(stderr, xt);
 	//	yang_print(stderr, (yang_node*)ys, 0);
     }
-    if (get_operation(xt, &op) < 0)
-	goto done;
+    if ((opstr = xml_find_value(xt, "operation")) != NULL)
+	if (xml_operation(opstr, &op) < 0)
+	    goto done;
     body = xml_body(xt);
     if ((cbxk = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -1240,95 +1183,31 @@ put(char               *dbname,
     return retval;
 }
 
-
-/*! Local variant of xmldb_put */
-static int
-xmldb_put_local(clicon_handle       h,
-		char               *db, 
-		cxobj              *xt,
-		enum operation_type op) 
-{
-    int        retval = -1;
-    cxobj     *x = NULL;
-    yang_stmt *ys;
-    yang_spec *yspec;
-    char      *dbfilename = NULL;
-
-    yspec = clicon_dbspec_yang(h);
-    if (db2file(h, db, &dbfilename) < 0)
-	goto done;
-    if (op == OP_REPLACE){
-	if (db_delete(dbfilename) < 0) 
-	    goto done;
-	if (db_init(dbfilename) < 0) 
-	    goto done;
-    }
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-	if ((ys = yang_find_topnode(yspec, xml_name(x))) == NULL){
-	    clicon_err(OE_UNIX, errno, "No yang node found: %s", xml_name(x));
-	    goto done;
-	}
-    	if (put(dbfilename, /* database name */
-		x,          /* xml root node */
-		ys,         /* yang statement of xml node */
-		op,         /* operation, eg merge/delete */
-		""          /* aggregate xml key */
-		) < 0)
-    	    goto done;
-    }
-    retval = 0;
- done:
-    if (dbfilename)
-	free(dbfilename);
-    return retval;
-}
-
-/*! Modify database provided an xml tree and an operation
- * @param[in]  dbname Name of database to search in (filename including dir path)
+/*! Modify database provided an xml tree, a restconf api_path and an operation
+ *
  * @param[in]  h      CLICON handle
  * @param[in]  db     running or candidate
- * @param[in]  xt     xml-tree. Top-level symbol is dummy
  * @param[in]  op     OP_MERGE: just add it. 
  *                    OP_REPLACE: first delete whole database
  *                    OP_NONE: operation attribute in xml determines operation
+ * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [restconf-draft 13])
+ * @param[in]  xt     xml-tree. Top-level symbol is dummy
  * @retval     0      OK
  * @retval     -1     Error
- * The xml may contain the "operation" attribute which defines the operation.
- * @code
- *   cxobj     *xt;
- *   if (clicon_xml_parse_str("<a>17</a>", &xt) < 0)
- *     err;
- *   if (xmldb_put(h, "running", xt, OP_MERGE) < 0)
- *     err;
- * @endcode
- * @see xmldb_put_xkey  for single key
- */
-int
-xmldb_put(clicon_handle       h,
-	  char               *db, 
-	  cxobj              *xt,
-	  enum operation_type op) 
-{
-    if (clicon_xmldb_rpc(h))
-	return xmldb_put_rpc(h, db, xt, op);
-    else
-	return xmldb_put_local(h, db, xt, op);
-}
-
-/*! XXX: replace xk with xt 
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [restconf-draft 13])
- * e.g  container top {
-       list list1 {
-           key "key1 key2 key3";
-* is referenced as
-   /restconf/data/top/list1=a,,foo
+ * example:
+ * container top {
+ *     list list1 {
+ *          key "key1 key2 key3";
+ * is referenced as
+ *     /restconf/data/top/list1=a,,foo
+ * @see xmldb_put
  */
 static int
-xmldb_put_tree_local(clicon_handle       h,
-		     char               *db, 
-		     char               *api_path,
-		     cxobj              *xt,
-		     enum operation_type op) 
+xmldb_put_restconf_api_path(clicon_handle       h,
+			    char               *db, 
+			    enum operation_type op,
+			    char               *api_path,
+			    cxobj              *xt)
 {
     int        retval = -1;
     yang_stmt *y = NULL;
@@ -1431,7 +1310,7 @@ xmldb_put_tree_local(clicon_handle       h,
 		    clicon_err(OE_XML, errno, "List %s without argument", name);
 		    goto done;
 		}
-		cprintf(ckey, "/%s", val2);
+		cprintf(ckey, "=%s", val2);
 		cbuf_reset(csubkey);
 		cprintf(csubkey, "%s/%s", cbuf_get(ckey), keyname);
 		if (op == OP_MERGE || op == OP_REPLACE || op == OP_CREATE)
@@ -1515,41 +1394,98 @@ xmldb_put_tree_local(clicon_handle       h,
 	cvec_free(cvk);
     unchunk_group(__FUNCTION__);  
     return retval;
-
 }
 
-/*!
+/*! Modify database provided an xml tree and an operation
+ *
+ * @param[in]  h      CLICON handle
+ * @param[in]  db     running or candidate
+ * @param[in]  xt     xml-tree. Top-level symbol is dummy
+ * @param[in]  op     OP_MERGE: just add it. 
+ *                    OP_REPLACE: first delete whole database
+ *                    OP_NONE: operation attribute in xml determines operation
  * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [restconf-draft 13])
+ * @retval     0      OK
+ * @retval     -1     Error
+ * The xml may contain the "operation" attribute which defines the operation.
+ * @code
+ *   cxobj     *xt;
+ *   if (clicon_xml_parse_str("<a>17</a>", &xt) < 0)
+ *     err;
+ *   if (xmldb_put(h, "running", OP_MERGE, NULL, xt) < 0)
+ *     err;
+ * @endcode
+ * @see xmldb_put_xkey  for single key
  */
 int
-xmldb_put_tree(clicon_handle       h,
-	       char               *db, 
-	       char               *api_path,
-	       cxobj              *xt,
-	       enum operation_type op) 
+xmldb_put(clicon_handle       h,
+	  char               *db, 
+	  enum operation_type op,
+	  char               *api_path,
+	  cxobj              *xt) 
 {
-    if (clicon_xmldb_rpc(h))
-	return -1; /* XXX */
-    else
-	return xmldb_put_tree_local(h, db, api_path, xt, op);
+    int        retval = -1;
+    cxobj     *x = NULL;
+    yang_stmt *ys;
+    yang_spec *yspec;
+    char      *dbfilename = NULL;
+
+    yspec = clicon_dbspec_yang(h);
+    if (db2file(h, db, &dbfilename) < 0)
+	goto done;
+    if (op == OP_REPLACE){
+	if (db_delete(dbfilename) < 0) 
+	    goto done;
+	if (db_init(dbfilename) < 0) 
+	    goto done;
+    }
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
+	if (api_path && strlen(api_path)){
+	    if (xmldb_put_restconf_api_path(h, db, op, api_path, x) < 0)
+		goto done;
+	    continue;
+	}
+	if ((ys = yang_find_topnode(yspec, xml_name(x))) == NULL){
+	    clicon_err(OE_UNIX, errno, "No yang node found: %s", xml_name(x));
+	    goto done;
+	}
+    	if (put(dbfilename, /* database name */
+		x,          /* xml root node */
+		ys,         /* yang statement of xml node */
+		op,         /* operation, eg merge/delete */
+		""          /* aggregate xml key */
+		) < 0)
+    	    goto done;
+    }
+    retval = 0;
+ done:
+    if (dbfilename)
+	free(dbfilename);
+    return retval;
 }
 
 /*! Modify database provided an XML database key and an operation
  * @param[in]  h      CLICON handle
  * @param[in]  db     Database name
- * @param[in]  xk     XML Key, eg /aa/bb/17/name
- * @param[in]  val    Key value, eg "17"
  * @param[in]  op     OP_MERGE, OP_REPLACE, OP_REMOVE, etc
+ * @param[in]  xk     XML Key, eg /aa/bb=17/name
+ * @param[in]  val    Key value, eg "17"
+
  * @retval     0      OK
  * @retval     -1     Error
- *   Local variant of xmldb_put_xkey 
+ * @code
+ *   if (xmldb_put_xkey(h, db, OP_MERGE, "/aa/bb=17/name", "17") < 0)
+ *     err;
+ * @endcode
+ * @see xmldb_put  with xml-tree, no path
  */
-static int
-xmldb_put_xkey_local(clicon_handle       h,
-		     char               *db, 
-		     char               *xk,
-		     char               *val,
-		     enum operation_type op) 
+int
+xmldb_put_xkey(clicon_handle       h,
+	       char               *db, 
+	       enum operation_type op,
+	       char               *xk,
+	       char               *val)
+
 {
     int        retval = -1;
     cxobj     *x = NULL;
@@ -1747,34 +1683,6 @@ xmldb_put_xkey_local(clicon_handle       h,
     return retval;
 }
 
-
-/*! Modify database provided an XML database key and an operation
- * @param[in]  h      CLICON handle
- * @param[in]  db     Database name
- * @param[in]  xk     XML Key, eg /aa/bb=17/name
- * @param[in]  val    Key value, eg "17"
- * @param[in]  op     OP_MERGE, OP_REPLACE, OP_REMOVE, etc
- * @retval     0      OK
- * @retval     -1     Error
- * @code
- *   if (xmldb_put_xkey(h, db, "/aa/bb/17/name", "17", OP_MERGE) < 0)
- *     err;
- * @endcode
- * @see xmldb_put  with xml-tree, no path
- */
-int
-xmldb_put_xkey(clicon_handle       h,
-	       char               *db, 
-	       char               *xk,
-	       char               *val,
-	       enum operation_type op) 
-{
-    if (clicon_xmldb_rpc(h))
-	return xmldb_put_xkey_rpc(h, db, xk, val, op);
-    else
-	return xmldb_put_xkey_local(h, db, xk, val, op);
-}
-
 /*! Raw dump of database, just keys and values, no xml interpretation 
  * @param[in]  f       File
  * @param[in]  dbfile  File-name of database. This is a local file
@@ -1782,7 +1690,7 @@ xmldb_put_xkey(clicon_handle       h,
  * @note This function can only be called locally.
  */
 int
-xmldb_dump_local(FILE         *f,
+xmldb_dump(FILE         *f,
 		 char         *dbfilename, 
 		 char         *rxkey)
 {
@@ -1807,10 +1715,15 @@ xmldb_dump_local(FILE         *f,
     return retval;
 }
 
-
-/*! Local variant of xmldb_copy */
-static int 
-xmldb_copy_local(clicon_handle h, 
+/*! Copy database from db1 to db2
+ * @param[in]  h     Clicon handle
+ * @param[in]  from  Source database copy
+ * @param[in]  to    Destination database
+ * @retval -1  Error
+ * @retval  0  OK
+  */
+int 
+xmldb_copy(clicon_handle h, 
 		 char         *from,
 		 char         *to)
 {
@@ -1834,27 +1747,15 @@ xmldb_copy_local(clicon_handle h,
     return retval;
 }
 
-/*! Copy database
- * @param[in]  h     Clicon handle
- * @param[in]  from  Source database copy
- * @param[in]  to    Destination database
+/*! Lock database
+ * @param[in]  h    Clicon handle
+ * @param[in]  db   Database
+ * @param[in]  pid  Process id
  * @retval -1  Error
  * @retval  0  OK
   */
 int 
-xmldb_copy(clicon_handle h, 
-	   char         *from,
-	   char         *to)
-{
-    if (clicon_xmldb_rpc(h))
-	return xmldb_copy_rpc(h, from, to);
-    else
-	return xmldb_copy_local(h, from, to);
-}
-
-/* Local variant of xmldb_lock */
-static int 
-xmldb_lock_local(clicon_handle h, 
+xmldb_lock(clicon_handle h, 
 		 char         *db,
 		 int           pid)
 {
@@ -1873,27 +1774,15 @@ xmldb_lock_local(clicon_handle h,
     return retval;
 }
 
-/*! Lock database
- * @param[in]  h    Clicon handle
- * @param[in]  db   Database
+/*! Unlock database
+ * @param[in]  h   Clicon handle
+ * @param[in]  db  Database
  * @param[in]  pid  Process id
  * @retval -1  Error
  * @retval  0  OK
-  */
+ */
 int 
-xmldb_lock(clicon_handle h, 
-	   char         *db,
-	   int           pid)
-{
-    if (clicon_xmldb_rpc(h))
-	return xmldb_lock_rpc(h, db, pid);
-    else
-	return xmldb_lock_local(h, db, pid);
-}
-
-/*! Local variant of xmldb_unlock */
-static int 
-xmldb_unlock_local(clicon_handle h, 
+xmldb_unlock(clicon_handle h, 
 		   char         *db,
 		   int           pid)
 {
@@ -1914,30 +1803,13 @@ xmldb_unlock_local(clicon_handle h,
     return retval;
 }
 
-/*! Unlock database
- * @param[in]  h   Clicon handle
- * @param[in]  db  Database
- * @param[in]  pid  Process id
- * @retval -1  Error
- * @retval  0  OK
-  */
+/*! Unlock all databases locked by pid (eg process dies) 
+ */
 int 
-xmldb_unlock(clicon_handle h, 
-	     char         *db,
-	     int           pid)
+xmldb_unlock_all(clicon_handle h, 
+		 int           pid)
 {
-    if (clicon_xmldb_rpc(h))
-	return xmldb_unlock_rpc(h, db, pid);
-    else
-	return xmldb_unlock_local(h, db, pid);
-}
-
-/*! Local variant of xmldb_islocked */
-static int 
-xmldb_islocked_local(clicon_handle h, 
-		     char         *db)
-{
-    return db_islocked(db);
+    return db_unlock_all(pid);
 }
 
 /*! Check if database is locked
@@ -1951,16 +1823,19 @@ int
 xmldb_islocked(clicon_handle h, 
 	       char         *db)
 {
-    if (clicon_xmldb_rpc(h))
-	return xmldb_islocked_rpc(h, db);
-    else
-	return xmldb_islocked_local(h, db);
+    return db_islocked(db);
 }
 
-/*! Local variant of xmldb_exists */
-static int 
-xmldb_exists_local(clicon_handle h, 
-		   char         *db)
+/*! Check if db exists 
+ * @param[in]  h   Clicon handle
+ * @param[in]  db  Database
+ * @retval -1  Error
+ * @retval  0  No it does not exist
+ * @retval  1  Yes it exists
+ */
+int 
+xmldb_exists(clicon_handle h, 
+	     char         *db)
 {
     int           retval = -1;
     char         *filename = NULL;
@@ -1978,25 +1853,15 @@ xmldb_exists_local(clicon_handle h,
     return retval;
 }
 
-/*! Check if db exists 
+/*! Delete database. Remove file 
+ * @param[in]  h   Clicon handle
+ * @param[in]  db  Database
  * @retval -1  Error
- * @retval  0  No it does not exist
- * @retval  1  Yes it exists
-  */
+ * @retval  0  OK
+ */
 int 
-xmldb_exists(clicon_handle h, 
+xmldb_delete(clicon_handle h, 
 	     char         *db)
-{
-    if (clicon_xmldb_rpc(h))
-	return xmldb_exists_rpc(h, db);
-    else
-	return xmldb_exists_local(h, db);
-}
-
-/*! Local variant of xmldb_delete */
-static int 
-xmldb_delete_local(clicon_handle h, 
-		   char         *db)
 {
     int           retval = -1;
     char         *filename = NULL;
@@ -2012,23 +1877,15 @@ xmldb_delete_local(clicon_handle h,
     return retval;
 }
 
-/*! Delete database. Remove file 
- * Should not be called from client. Use change("/", OP_REMOVE) instead.
+/*! Initialize database 
+ * @param[in]  h   Clicon handle
+ * @param[in]  db  Database
+ * @retval  0  OK
+ * @retval -1  Error
  */
 int 
-xmldb_delete(clicon_handle h, 
-	     char         *db)
-{
-    if (clicon_xmldb_rpc(h))
-	return xmldb_delete_rpc(h, db);
-    else
-	return xmldb_delete_local(h, db);
-}
-
-/*! Local variant of xmldb_init */
-static int 
-xmldb_init_local(clicon_handle h, 
-		 char         *db)
+xmldb_init(clicon_handle h, 
+	   char         *db)
 {
     int           retval = -1;
     char         *filename = NULL;
@@ -2044,16 +1901,6 @@ xmldb_init_local(clicon_handle h,
     return retval;
 }
 
-/*! Initialize database */
-int 
-xmldb_init(clicon_handle h, 
-	   char         *db)
-{
-    if (clicon_xmldb_rpc(h))
-	return xmldb_init_rpc(h, db);
-    else
-	return xmldb_init_local(h, db);
-}
 
 #if 0 /* Test program */
 /*
@@ -2127,7 +1974,7 @@ main(int argc, char **argv)
 	    op = OP_REMOVE;
 	else
 	    usage(argv[0]);
-	if (xmldb_put(h, db, xn, op) < 0)
+	if (xmldb_put(h, db, op, NULL, xn) < 0)
 	    goto done;
     }
     else

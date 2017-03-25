@@ -552,12 +552,6 @@ xpath_expr(char     *predicate_expression,
  * @param[in]   flags   if != 0, only match xml nodes matching flags
  * @param[out]  vec2    Result XML node vector
  * @param[out]  vec2len Length of result vector.
- * XXX: Kommer in i funktionen med vec0, resultatet appendas i vec1
- * vec0 --> vec
- * Det är nog bra om vec0 inte ändras, är input parameter
- * Vid utgång ska vec1 innehålla resultatet.
- * Internt då?
- * XXX: hantering av (input)vec0-->vec-->vec2-->vec1 (resultat)
  */
 static int
 xpath_find(struct xpath_element *xe,
@@ -766,6 +760,7 @@ xpath_choice(cxobj   *xtop,
     char             *xpath;
     cxobj           **vec0 = NULL;
     size_t            vec0len = 0;
+
 
     if ((s0 = strdup(xpath0)) == NULL){
 	clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);

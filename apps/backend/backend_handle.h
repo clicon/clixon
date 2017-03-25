@@ -37,7 +37,6 @@
 #ifndef _BACKEND_HANDLE_H_
 #define _BACKEND_HANDLE_H_
 
-
 /*
  * Prototypes 
  * not exported.

@@ -100,7 +100,8 @@ xml_attr_new(struct xml_parse_yacc_arg *ya,
    there may also be some leakage here on NULL return
  */
 static int
-xml_parse_content(struct xml_parse_yacc_arg *ya, char *str)
+xml_parse_content(struct xml_parse_yacc_arg *ya, 
+		  char                      *str)
 {
     int   sz;
     char  s0;
@@ -112,14 +113,14 @@ xml_parse_content(struct xml_parse_yacc_arg *ya, char *str)
     s0 = str[0];
     if (xn != NULL){
 	sz = strlen(xml_value(xn));
-	if (s0 == ' ' || s0 == '\n' || s0 == '\t'){
+	if (ya->ya_skipspace && (s0 == ' ' || s0 == '\n' || s0 == '\t')){
 	    str[0] = ' ';
 	    if (xml_value(xn)[sz-1] == ' ')
 		goto ok;
 	}
     }
     else{
-	if (s0 == ' ' || s0 == '\n' || s0 == '\t')
+	if (ya->ya_skipspace && (s0 == ' ' || s0 == '\n' || s0 == '\t'))
 	    goto ok;
 	if ((xn = xml_new("body", xp)) == NULL)
 	    goto done; 

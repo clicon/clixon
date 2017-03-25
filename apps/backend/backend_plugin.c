@@ -470,55 +470,6 @@ plugin_finish(clicon_handle h)
     return 0;
 }
 	
-/*! Call from frontend to function 'func' in plugin 'plugin'. 
- * Plugin function is supposed to populate 'retlen' and 'retarg' where
- * 'retarg' is malloc:ed data if non-NULL.
- * @param[in]  h       Clicon handle
- * @param[in]  req     Clicon message containing information about the downcall
- * @param[out] retlen  Length of return value
- * @param[out] ret     Return value
- * @retval     0       OK
- * @retval    -1       Error
- */
-int
-plugin_downcall(clicon_handle               h, 
-		struct clicon_msg_call_req *req,
-		uint16_t                   *retlen,  
-		void                      **retarg)
-{
-    int            retval = -1;
-    int            i;
-    downcall_cb    funcp;
-    char           name[PATH_MAX];
-    char          *error;
-    struct plugin *p;
-
-    for (i = 0; i < nplugins; i++)  {
-	p = &plugins[i];
-	strncpy(name, p->p_name, sizeof(name)-1);
-	if (!strcmp(name+strlen(name)-3, ".so"))
-	    name[strlen(name)-3] = '\0';
-	/* If no plugin is given or the plugin-name matches */
-	if (req->cr_plugin == NULL || strlen(req->cr_plugin)==0 ||
-	    strcmp(name, req->cr_plugin) == 0) {
-	    funcp = dlsym(p->p_handle, req->cr_func);
-	    if ((error = (char*)dlerror()) != NULL) {
-		clicon_err(OE_PROTO, ENOENT,
-			"Function does not exist: %s()", req->cr_func);
-		return -1;
-	    }
-	    retval = funcp(h, req->cr_op, req->cr_arglen,  req->cr_arg, retlen, retarg);
-	    goto done;
-	}
-    }
-    clicon_err(OE_PROTO, ENOENT,"%s: %s(): Plugin does not exist: %s",
-	       __FUNCTION__, req->cr_func, req->cr_plugin);
-    return -1;
-    
-done:
-    return retval;
-}
-	
 /*! Create and initialize transaction */
 transaction_data_t *
 transaction_new(void)
@@ -770,5 +721,4 @@ plugin_transaction_abort(clicon_handle       h,
     }
     return retval;
 }
-	
 	
