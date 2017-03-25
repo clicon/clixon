@@ -256,7 +256,7 @@ candidate_commit(clicon_handle h,
     return retval;
 }
 
-/*! Discard all changes in candidate / revert to running
+/*! Commit changes from candidate to running
  * @param[in]  h     Clicon handle
  * @param[out] cbret Return xml value cligen buffer
  * @retval  0   OK. This may indicate both ok and err msg back to client
@@ -264,10 +264,25 @@ candidate_commit(clicon_handle h,
  */
 int
 from_client_commit(clicon_handle h,
+		   int           mypid,
 		   cbuf         *cbret)
-
 {
     int        retval = -1;
+    int        piddb;
+
+    /* Check if target locked by other client */
+    piddb = xmldb_islocked(h, "running");
+    if (piddb && mypid != piddb){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>lock-denied</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>Operation failed, lock is already held</error-message>"
+		"<error-info><session-id>%d</session-id></error-info>"
+		"</rpc-error></rpc-reply>",
+		piddb);
+	goto ok;
+    }
 
     if (candidate_commit(h, "candidate") < 0){
 	clicon_debug(1, "Commit candidate failed");
@@ -290,17 +305,32 @@ from_client_commit(clicon_handle h,
 
 /*! Discard all changes in candidate / revert to running
  * @param[in]  h     Clicon handle
+ * @param[in]  mypid  Process/session id of calling client
  * @param[out] cbret Return xml value cligen buffer
- * @retval  0   OK. This may indicate both ok and err msg back to client
- * @retval  -1  (Local) Error
+ * @retval  0  OK. This may indicate both ok and err msg back to client
+ * @retval  -1 (Local) Error
  */
 int
 from_client_discard_changes(clicon_handle h,
+			    int           mypid,
 			    cbuf         *cbret)
-
 {
-    int        retval = -1;
+    int   retval = -1;
+    int   piddb;
 
+    /* Check if target locked by other client */
+    piddb = xmldb_islocked(h, "candidate");
+    if (piddb && mypid != piddb){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>lock-denied</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>Operation failed, lock is already held</error-message>"
+		"<error-info><session-id>%d</session-id></error-info>"
+		"</rpc-error></rpc-reply>",
+		piddb);
+	goto ok;
+    }
     if (xmldb_copy(h, "running", "candidate") < 0){
 	cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"
@@ -316,8 +346,6 @@ from_client_discard_changes(clicon_handle h,
     // done:
     return retval; /* may be zero if we ignoring errors from commit */
 }
-
-
 
 /*! Handle an incoming validate message from a client.
  * @param[in]  h     Clicon handle

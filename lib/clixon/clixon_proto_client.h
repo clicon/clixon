@@ -42,6 +42,7 @@
 
 int clicon_rpc_msg(clicon_handle h, struct clicon_msg *msg, cxobj **xret0,
 		   int *sock0);
+int clicon_rpc_netconf(clicon_handle h, char *xmlst, cxobj **xret, int *sp);
 int clicon_rpc_netconf_xml(clicon_handle h, cxobj *xml, cxobj **xret, int *sp);
 int clicon_rpc_generate_error(cxobj *xerr);
 int clicon_rpc_get_config(clicon_handle h, char *db, char *xpath, cxobj **xret);
@@ -55,7 +56,7 @@ int clicon_rpc_close_session(clicon_handle h);
 int clicon_rpc_kill_session(clicon_handle h, int session_id);
 int clicon_rpc_validate(clicon_handle h, char *db);
 int clicon_rpc_commit(clicon_handle h);
-// discard-changes
+int clicon_rpc_discard_changes(clicon_handle h);
 int clicon_rpc_create_subscription(clicon_handle h, char *stream, char *filter, 
 				   int *s);
    

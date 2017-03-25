@@ -208,6 +208,7 @@ cli_dbxmlv(clicon_handle       h,
     cg_var    *cval;
     int        len;
     cg_var    *arg;
+    cbuf      *cb = NULL;
 
     if (cvec_len(argv) != 1){
 	clicon_err(OE_PLUGIN, 0, "%s: Requires one element to be xml key format string", __FUNCTION__);
@@ -225,7 +226,15 @@ cli_dbxmlv(clicon_handle       h,
 	    goto done;
 	}
     }
-    if (clicon_rpc_change(h, "candidate", op, xk, str) < 0)
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (str)
+	cprintf(cb, "<config>%s</config>", str);
+    else
+	cprintf(cb, "<config/>");
+    if (clicon_rpc_edit_config(h, "candidate", op, xk, cbuf_get(cb)) < 0)
 	goto done;
     if (clicon_autocommit(h)) {
 	if (clicon_rpc_commit(h) < 0) 
@@ -233,6 +242,8 @@ cli_dbxmlv(clicon_handle       h,
     }
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     if (str)
 	free(str);
     if (xk)
@@ -771,7 +782,7 @@ discard_changesv(clicon_handle h,
 		 cvec         *cvv, 
 		 cvec         *argv)
 {
-    return clicon_rpc_copy_config(h, "running", "candidate");
+    return clicon_rpc_discard_changes(h);
 }
 
 /*! Copy from one database to another, eg running->startup
@@ -805,7 +816,6 @@ cli_notification_cb(int   s,
 		    void *arg)
 {
     struct clicon_msg *reply = NULL;
-    enum clicon_msg_type type;
     int                eof;
     int                retval = -1;
     char              *eventstr = NULL;
@@ -826,17 +836,14 @@ cli_notification_cb(int   s,
     }
     if (format == NULL)
 	goto done;
-    type = ntohs(reply->op_type);
-    switch (type){
-    case CLICON_MSG_NETCONF:
-	if (clicon_msg_netconf_decode(reply, &xt) < 0) 
-	    goto done;
-	if ((xe = xpath_first(xt, "//event")) != NULL)
-	    eventstr = xml_body(xe);
-	if (strcmp(format, SHOWAS_TXT) == 0){
-	    fprintf(stdout, "%s\n", eventstr);
-	}
-	else
+    if (clicon_msg_decode(reply, &xt) < 0) 
+	goto done;
+    if ((xe = xpath_first(xt, "//event")) != NULL)
+	eventstr = xml_body(xe);
+    if (strcmp(format, SHOWAS_TXT) == 0){
+	fprintf(stdout, "%s\n", eventstr);
+    }
+    else
 	if (strcmp(format, SHOWAS_XML) == 0){
 	    if (clicon_xml_parse_string(&eventstr, &xt) < 0)
 		goto done;
@@ -857,12 +864,7 @@ cli_notification_cb(int   s,
 		    goto done;
 	    }
 	}
-	break;
-    default:
-	clicon_err(OE_PROTO, 0, "unexpected reply: %d", type);
-	goto done;
-	break;
-    }
+
     retval = 0;
   done:
     if (xt)

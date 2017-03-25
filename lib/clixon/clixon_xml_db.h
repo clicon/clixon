@@ -47,9 +47,6 @@ int xmldb_get(clicon_handle h, char *db, char *xpath,
 	      cxobj **xtop, cxobj ***xvec, size_t *xlen);
 int xmldb_put(clicon_handle h, char *db, enum operation_type op, 
 	      char *api_path,  cxobj *xt);
-int xmldb_put_xkey(clicon_handle h, char *db, enum operation_type op,
-		   char *xkey, char *val);
-
 int xmldb_dump(FILE *f, char *dbfilename, char *rxkey);
 int xmldb_copy(clicon_handle h, char *from, char *to);
 int xmldb_lock(clicon_handle h, char *db, int pid);

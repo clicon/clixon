@@ -214,9 +214,17 @@ main(int argc, char **argv)
 	    goto done;
 	}
     }
-    if (addent) /* add entry */
-	if (xmldb_put_xkey(h, db, OP_REPLACE, NULL, addstr) < 0)
+    if (addent){ /* add entry */
+	cxobj     *xml = NULL;
+
+	if (clicon_xml_parse(&xml, "<config>%s</config>", addstr) < 0)
 	    goto done;
+	if (xmldb_put(h, db, OP_REPLACE, NULL, xml) < 0)
+	    goto done;
+	if (xml)
+	    xml_free(xml);
+
+    }
     if (rment)
         if (remove_entry(db, rmkey) < 0)
 	    goto done;

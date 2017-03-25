@@ -1110,7 +1110,7 @@ clicon_xml_parse_str(char   *str,
  *
  * @code
  *  cxobj *cx = NULL;
- *  if (clicon_xml_parse(&cx, "<xml>%s</xml", 22) < 0)
+ *  if (clicon_xml_parse(&cx, "<xml>%d</xml>", 22) < 0)
  *    err;
  *  xml_free(cx);
  * @endcode

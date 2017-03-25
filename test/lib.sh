@@ -57,7 +57,7 @@ EOF
   fi
   match=`echo "$ret" | grep -Eo "$expect"`
   if [ -z "$match" ]; then
-      err "
+      err "\nExpected:\t\"$expect\"\nGot:\t\"$ret\""
   fi
 }
 

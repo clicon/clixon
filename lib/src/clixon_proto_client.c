@@ -66,10 +66,9 @@
 #include "clixon_xsl.h"
 #include "clixon_proto.h"
 #include "clixon_err.h"
-#include "clixon_proto_encode.h"
 #include "clixon_proto_client.h"
 
-/*! Internal rpc function
+/*! Send internal netconf rpc from client to backend
  * @param[in]    h      CLICON handle
  * @param[in]    msg    Encoded message. Deallocate woth free
  * @param[out]   xret   Return value from backend as netconf xml tree. Free w xml_free
@@ -88,11 +87,6 @@ clicon_rpc_msg(clicon_handle      h,
     int                port;
     char              *retdata = NULL;
     cxobj             *xret = NULL;
-    cxobj             *x;
-    uint32_t           err;
-    uint32_t           suberr;
-    char              *errmsg = NULL;
-    char              *etype = NULL;
 
     if ((sock = clicon_sock(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
@@ -124,38 +118,9 @@ clicon_rpc_msg(clicon_handle      h,
 	    goto done;
 	break;
     }
-
-#if 1 /* Parse return data and intercept clixon errors */
-    if (retdata) {
-	if (clicon_xml_parse_str(retdata, &xret) < 0)
-	    goto done;
-	if (xpath_first(xret, "/rpc-reply/ok") != NULL ||
-	    xpath_first(xret, "/rpc-reply/data") != NULL)
-	    ;
-	else if (xpath_first(xret, "/rpc-reply/rpc-error") != NULL){
-	    if ((x=xpath_first(xret, "//error-type"))!=NULL)
-		etype = xml_body(x);
-	    if (etype&&strcmp(etype, "clixon")==0){
-		if ((x=xpath_first(xret, "//error-tag"))!=NULL)
-		    err = atoi(xml_body(x));
-		if ((x=xpath_first(xret, "//error-message"))!=NULL)
-		    suberr = atoi(xml_body(x));
-		if ((x=xpath_first(xret, "//error-info"))!=NULL)
-		    errmsg = xml_body(x);
-		if (debug)
-		    clicon_err(err, suberr, "%s msgtype:%hu", errmsg, ntohs(msg->op_type));
-		else
-		    clicon_err(err, suberr, "%s", errmsg);
-		goto done;
-	    }
-	}
-	else{
-	    clicon_err(OE_PROTO, 0, "%s: unexpected reply", 
-		       __FUNCTION__);
-	}
-
-    }
-#endif
+    if (retdata &&
+	clicon_xml_parse_str(retdata, &xret) < 0)
+	goto done;
     if (xret0){
 	*xret0 = xret;
 	xret = NULL;
@@ -172,20 +137,21 @@ clicon_rpc_msg(clicon_handle      h,
 /*! Generic xml netconf clicon rpc
  * Want to go over to use netconf directly between client and server,...
  * @param[in]  h       clicon handle
- * @param[in]  xi      XML netconf tree
- * @param[out] xret    Return XML, error or OK
+ * @param[in]  xmlstr  XML netconf tree as string
+ * @param[out] xret    Return XML netconf tree, error or OK
  * @param[out] sp      Socket pointer for notification, otherwise NULL
+ * @see clicon_rpc_netconf_xml xml as tree instead of string
  */
 int
-clicon_rpc_netconf_xml(clicon_handle  h, 
-		       cxobj         *xin,
-		       cxobj        **xret,
-		       int           *sp)
+clicon_rpc_netconf(clicon_handle  h, 
+		   char          *xmlstr,
+		   cxobj        **xret,
+		   int           *sp)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;
 
-    if ((msg = clicon_msg_netconf_encode_xml(xin)) == NULL)
+    if ((msg = clicon_msg_encode("%s", xmlstr)) < 0)
 	goto done;
     if (clicon_rpc_msg(h, msg, xret, sp) < 0)
 	goto done;
@@ -196,25 +162,64 @@ clicon_rpc_netconf_xml(clicon_handle  h,
     return retval;
 }
 
+/*! Generic xml netconf clicon rpc
+ * Want to go over to use netconf directly between client and server,...
+ * @param[in]  h       clicon handle
+ * @param[in]  xml     XML netconf tree 
+ * @param[out] xret    Return XML netconf tree, error or OK
+ * @param[out] sp      Socket pointer for notification, otherwise NULL
+ * @see clicon_rpc_netconf xml as string instead of tree
+ */
+int
+clicon_rpc_netconf_xml(clicon_handle  h, 
+		       cxobj         *xml,
+		       cxobj        **xret,
+		       int           *sp)
+{
+    int                retval = -1;
+    cbuf               *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (clicon_xml2cbuf(cb, xml, 0, 0) < 0)
+	goto done;
+    if (clicon_rpc_netconf(h, cbuf_get(cb), xret, sp) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
+/*! Generate clicon error function call from Netconf error message
+ * @param[in]  xerr    Netconf error message on the level: <rpc-reply><rpc-error>
+ */
 int
 clicon_rpc_generate_error(cxobj *xerr)
 {
+    int    retval = -1;
+    cbuf  *cb = NULL;
     cxobj *x;
-    char  *etype="";
-    char  *etag="";
-    char  *emsg="";
-    char  *einfo="";
 
+    if ((cb = cbuf_new()) ==NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
     if ((x=xpath_first(xerr, "error-type"))!=NULL)
-	etype = xml_body(x);
+	cprintf(cb, "%s ", xml_body(x));
     if ((x=xpath_first(xerr, "error-tag"))!=NULL)
-	etag = xml_body(x);
+	cprintf(cb, "%s ", xml_body(x));
     if ((x=xpath_first(xerr, "error-message"))!=NULL)
-	emsg = xml_body(x);
+	cprintf(cb, "%s ", xml_body(x));
     if ((x=xpath_first(xerr, "error-info"))!=NULL)
-	einfo = xml_body(x);
-    clicon_err(OE_XML, 0, "%s %s %s %s", etype, etag, emsg, einfo);
-    return 0;
+	clicon_xml2cbuf(cb, xml_child_i(x,0), 0, 0);
+    clicon_err_fn("Clixon", 0, OE_XML, 0, "%s", cbuf_get(cb));
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Get database configuration
@@ -252,7 +257,7 @@ clicon_rpc_get_config(clicon_handle       h,
     if (xpath && strlen(xpath))
 	cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
     cprintf(cb, "</get-config></rpc>");
-    if ((msg = clicon_msg_netconf_encode(cbuf_get(cb))) == NULL)
+    if ((msg = clicon_msg_encode(cbuf_get(cb))) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -280,14 +285,14 @@ clicon_rpc_get_config(clicon_handle       h,
 }
 
 /*! Send database entries as XML to backend daemon
- * Same as clicon_proto_change just with a cvec instead of lvec
  * @param[in] h          CLICON handle
  * @param[in] db         Name of database
  * @param[in] op         Operation on database item: OP_MERGE, OP_REPLACE
  * @param[in] api_path   restconf API Path (or "")
- * @param[in] xml        XML string. Ex: <a>..</a><b>...</b>
+ * @param[in] xml        XML string. Ex: <config><a>..</a><b>...</b></config>
  * @retval    0          OK
  * @retval   -1          Error
+ * @note xml arg need to have <config> as top element
  * @code
  * if (clicon_rpc_edit_config(h, "running", OP_MERGE, "/", 
  *                            "<config><a>4</a></config>") < 0)
@@ -299,7 +304,7 @@ clicon_rpc_edit_config(clicon_handle       h,
 		       char               *db, 
 		       enum operation_type op,
 		       char               *api_path,
-		       char               *xml)
+		       char               *xmlstr)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;
@@ -314,10 +319,10 @@ clicon_rpc_edit_config(clicon_handle       h,
 	    xml_operation2str(op));
     if (api_path && strlen(api_path))
 	cprintf(cb, "<filter type=\"restconf\" select=\"%s\"/>", api_path);
-    if (xml)
-	cprintf(cb, "%s", xml);
+    if (xmlstr)
+	cprintf(cb, "%s", xmlstr);
     cprintf(cb, "</edit-config></rpc>");
-    if ((msg = clicon_msg_netconf_encode(cbuf_get(cb))) == NULL)
+    if ((msg = clicon_msg_encode(cbuf_get(cb))) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -357,7 +362,7 @@ clicon_rpc_copy_config(clicon_handle h,
     cxobj             *xret = NULL;
     cxobj             *xerr;
 
-    if ((msg = clicon_msg_netconf_encode("<rpc><copy-config><source><%s/></source><target><%s/></target></copy-config></rpc>", db1, db2)) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><copy-config><source><%s/></source><target><%s/></target></copy-config></rpc>", db1, db2)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -391,7 +396,7 @@ clicon_rpc_delete_config(clicon_handle h,
     cxobj             *xret = NULL;
     cxobj             *xerr;
 
-    if ((msg = clicon_msg_netconf_encode("<rpc><delete-config><target><%s/></target></delete-config></rpc>", db)) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><delete-config><target><%s/></target></delete-config></rpc>", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -408,6 +413,10 @@ clicon_rpc_delete_config(clicon_handle h,
     return retval;
 }
 
+/*! Lock a database
+ * @param[in] h        CLICON handle
+ * @param[in] db       database, eg "running"
+ */
 int
 clicon_rpc_lock(clicon_handle h, 
 		char         *db)
@@ -417,7 +426,7 @@ clicon_rpc_lock(clicon_handle h,
     cxobj             *xret = NULL;
     cxobj             *xerr;
 
-    if ((msg = clicon_msg_netconf_encode("<rpc><lock><target><%s/></target></lock></rpc>", db)) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><lock><target><%s/></target></lock></rpc>", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -434,6 +443,10 @@ clicon_rpc_lock(clicon_handle h,
     return retval;
 }
 
+/*! Unlock a database
+ * @param[in] h        CLICON handle
+ * @param[in] db       database, eg "running"
+ */
 int
 clicon_rpc_unlock(clicon_handle h, 
 		  char         *db)
@@ -443,7 +456,7 @@ clicon_rpc_unlock(clicon_handle h,
     cxobj             *xret = NULL;
     cxobj             *xerr;
 
-    if ((msg = clicon_msg_netconf_encode("<rpc><unlock><target><%s/></target></unlock></rpc>", db)) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><unlock><target><%s/></target></unlock></rpc>", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -460,6 +473,9 @@ clicon_rpc_unlock(clicon_handle h,
     return retval;
 }
 
+/*! Close a (user) session
+ * @param[in] h        CLICON handle
+ */
 int
 clicon_rpc_close_session(clicon_handle h)
 {
@@ -468,7 +484,7 @@ clicon_rpc_close_session(clicon_handle h)
     cxobj             *xret = NULL;
     cxobj             *xerr;
 
-    if ((msg = clicon_msg_netconf_encode("<rpc><close-session/></rpc>")) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><close-session/></rpc>")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -485,6 +501,10 @@ clicon_rpc_close_session(clicon_handle h)
     return retval;
 }
 
+/*! Kill other user sessions
+ * @param[in] h           CLICON handle
+ * @param[in] session_id  Session id of other user session
+ */
 int
 clicon_rpc_kill_session(clicon_handle h,
 			int           session_id)
@@ -494,7 +514,7 @@ clicon_rpc_kill_session(clicon_handle h,
     cxobj             *xret = NULL;
     cxobj             *xerr;
 
-    if ((msg = clicon_msg_netconf_encode("<rpc><kill-session><session-id>%d</session-id></kill-session></rpc>", session_id)) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><kill-session><session-id>%d</session-id></kill-session></rpc>", session_id)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -510,7 +530,6 @@ clicon_rpc_kill_session(clicon_handle h,
 	free(msg);
     return retval;
 }
-
 
 /*! Send validate request to backend daemon
  * @param[in] h        CLICON handle
@@ -527,7 +546,7 @@ clicon_rpc_validate(clicon_handle h,
     cxobj             *xerr;
     cxobj             *x;
 
-    if ((msg = clicon_msg_netconf_encode("<rpc><validate><source><%s/></source></validate></rpc>", db)) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><validate><source><%s/></source></validate></rpc>", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -547,8 +566,6 @@ clicon_rpc_validate(clicon_handle h,
 
 /*! Commit changes send a commit request to backend daemon
  * @param[in] h          CLICON handle
- * @param[in] from       name of 'from' database (eg "candidate")
- * @param[in] db         name of 'to' database (eg "running")
  * @retval 0             OK
  */
 int
@@ -559,7 +576,36 @@ clicon_rpc_commit(clicon_handle h)
     cxobj             *xret = NULL;
     cxobj             *xerr;
 
-    if ((msg = clicon_msg_netconf_encode("<rpc><commit/></rpc>")) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><commit/></rpc>")) == NULL)
+	goto done;
+    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+	goto done;
+    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+	clicon_rpc_generate_error(xerr);
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (xret)
+	xml_free(xret);
+    if (msg)
+	free(msg);
+    return retval;
+}
+
+/*! Discard all changes in candidate / revert to running
+ * @param[in] h          CLICON handle
+ * @retval 0             OK
+ */
+int
+clicon_rpc_discard_changes(clicon_handle h)
+{
+    int                retval = -1;
+    struct clicon_msg *msg = NULL;
+    cxobj             *xret = NULL;
+    cxobj             *xerr;
+
+    if ((msg = clicon_msg_encode("<rpc><discard_changes/></rpc>")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -594,11 +640,11 @@ clicon_rpc_create_subscription(clicon_handle    h,
     cxobj             *xret = NULL;
     cxobj             *xerr;
 
-    if ((msg = clicon_msg_netconf_encode("<rpc><create-subscription>"
-					 "<stream>%s</stream>"
-					 "<filter>%s</filter>"
-					 "</create-subscription></rpc>", 
-					 stream?stream:"", filter?filter:"")) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><create-subscription>"
+				 "<stream>%s</stream>"
+				 "<filter>%s</filter>"
+				 "</create-subscription></rpc>", 
+				 stream?stream:"", filter?filter:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, s0) < 0)
 	goto done;
@@ -615,43 +661,6 @@ clicon_rpc_create_subscription(clicon_handle    h,
     return retval;
 }
 
-/*! Send database change request to backend daemon, variant for xmldb
- * Same as clicon_proto_change just with a string
- * @param[in] h          CLICON handle
- * @param[in] db         Name of database
- * @param[in] op         Operation on database item: set, delete, (merge?)
- * @param[in] key        Database key
- * @param[in] value      value as string
- * @retval    0          OK
- * @retval   -1          Error
- * @note special case: remove all: key:"/" op:OP_REMOVE
- */
-int
-clicon_rpc_change(clicon_handle       h, 
-		  char               *db, 
-		  enum operation_type op,
-		  char               *key, 
-		  char               *val)
-{
-    int               retval = -1;
-    struct clicon_msg *msg = NULL;
-
-    if ((msg = clicon_msg_change_encode(db, 
-					op, 
-					key, 
-					val, 
-					val?strlen(val)+1:0)) == NULL)
-	goto done;
-    if (clicon_rpc_msg(h, msg, NULL, NULL) < 0)
-	goto done;
-    retval = 0;
-  done:
-    if (msg)
-	free(msg);
-    return retval;
-}
-
-
 /*! Send a debug request to backend server
  * @param[in] h          CLICON handle
  * @param[in] level      Debug level
@@ -665,7 +674,7 @@ clicon_rpc_debug(clicon_handle h,
     cxobj             *xret = NULL;
     cxobj             *xerr;
 
-    if ((msg = clicon_msg_netconf_encode("<rpc><debug><level>%d</level></debug></rpc>", level)) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><debug><level>%d</level></debug></rpc>", level)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;

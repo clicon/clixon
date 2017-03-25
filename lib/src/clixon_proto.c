@@ -71,31 +71,59 @@
 #include "clixon_xml.h"
 #include "clixon_xsl.h"
 #include "clixon_proto.h"
-#include "clixon_proto_encode.h"
 
 static int _atomicio_sig = 0;
 
-struct map_type2str{
-    enum clicon_msg_type mt_type;
-    char                *mt_str; /* string as in 4.2.4 in RFC 6020 */
-};
-
-/* Mapping between yang keyword string <--> clicon constants */
-static const struct map_type2str msgmap[] = {
-    {CLICON_MSG_NETCONF,      "netconf"},
-    {CLICON_MSG_CHANGE,       "change"},
-    {-1,                      NULL}, 
-};
-
-static char *
-msg_type2str(enum clicon_msg_type type)
+/*! Encode a clicon netconf message
+ * @param[in] param  Variable agrument list format an XML netconf string
+ * @retval msg  Clicon message to send to eg clicon_msg_send()
+ */
+struct clicon_msg *
+clicon_msg_encode(char *format, ...)
 {
-    const struct map_type2str *mt;
+    va_list            args;
+    int                xmllen;
+    int                len;
+    struct clicon_msg *msg = NULL;
+    int                hdrlen = sizeof(*msg);
 
-    for (mt = &msgmap[0]; mt->mt_str; mt++)
-	if (mt->mt_type == type)
-	    return mt->mt_str;
-    return NULL;
+    va_start(args, format);
+    xmllen = vsnprintf(NULL, 0, format, args) + 1;
+    va_end(args);
+
+    len = hdrlen + xmllen;
+    if ((msg = (struct clicon_msg *)malloc(len)) == NULL){
+	clicon_err(OE_PROTO, errno, "malloc");
+	return NULL;
+    }
+    memset(msg, 0, len);
+    /* hdr */
+    msg->op_len = htons(len);
+
+    /* body */
+    va_start(args, format);
+    vsnprintf(msg->op_body, xmllen, format, args);
+    va_end(args);
+
+    return msg;
+}
+
+/*! Decode a clicon netconf message
+ */
+int
+clicon_msg_decode(struct clicon_msg *msg, 
+			  cxobj            **xml)
+{
+    int   retval = -1;
+    char *xmlstr;
+
+    /* body */
+    xmlstr = msg->op_body;
+    if (clicon_xml_parse_str(xmlstr, xml) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Open local connection using unix domain sockets
@@ -198,8 +226,8 @@ clicon_msg_send(int                s,
 { 
     int retval = -1;
 
-    clicon_debug(2, "%s: send msg seq=%d len=%d", 
-		 __FUNCTION__, ntohs(msg->op_type), ntohs(msg->op_len));
+    clicon_debug(2, "%s: send msg len=%d", 
+		 __FUNCTION__, ntohs(msg->op_len));
     if (debug > 2)
 	msg_dump(msg);
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
@@ -258,8 +286,8 @@ clicon_msg_rcv(int                s,
 	goto done;
     }
     mlen = ntohs(hdr.op_len);
-    clicon_debug(2, "%s: rcv msg seq=%d, len=%d",  
-		 __FUNCTION__, ntohs(hdr.op_type), mlen);
+    clicon_debug(2, "%s: rcv msg len=%d",  
+		 __FUNCTION__, mlen);
     if ((*msg = (struct clicon_msg *)malloc(mlen)) == NULL){
 	clicon_err(OE_CFG, errno, "malloc");
 	goto done;
@@ -303,8 +331,7 @@ clicon_rpc_connect_unix(struct clicon_msg *msg,
     int s = -1;
     struct stat sb;
 
-    clicon_debug(1, "Send %s msg on %s", 
-		 msg_type2str(ntohs(msg->op_type)), sockpath);
+    clicon_debug(1, "Send msg on %s", sockpath);
     /* special error handling to get understandable messages (otherwise ENOENT) */
     if (stat(sockpath, &sb) < 0){
 	clicon_err(OE_PROTO, errno, "%s: config daemon not running?", sockpath);
@@ -349,8 +376,7 @@ clicon_rpc_connect_inet(struct clicon_msg *msg,
     int                s = -1;
     struct sockaddr_in addr;
 
-    clicon_debug(1, "Send %s msg to %s:%hu", 
-		 msg_type2str(ntohs(msg->op_type)), dst, port);
+    clicon_debug(1, "Send msg to %s:%hu", dst, port);
 
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -400,7 +426,6 @@ clicon_rpc(int                   s,
     int                retval = -1;
     struct clicon_msg *reply;
     int                eof;
-    enum clicon_msg_type type;
     char              *data = NULL;
     cxobj             *cx = NULL;
 
@@ -414,17 +439,7 @@ clicon_rpc(int                   s,
 	errno = ESHUTDOWN;
 	goto done;
     }
-    type = ntohs(reply->op_type);
-    switch (type){
-    case CLICON_MSG_NETCONF: /* ok or rpc-error expected */
-	data = reply->op_body; /* assume string */
-	break;
-    default:
-	clicon_err(OE_PROTO, 0, "%s: unexpected reply: %s", 
-		   __FUNCTION__, msg_type2str(type));
-	goto done;
-	break;
-    }
+    data = reply->op_body; /* assume string */
     if (ret && data)
 	if ((*ret = strdup(data)) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
@@ -442,7 +457,6 @@ clicon_rpc(int                   s,
 /*! Send a clicon_msg message as reply to a clicon rpc request
  *
  * @param[in]  s       Socket to communicate with client
- * @param[in]  type    Clicon msg operation, see enum clicon_msg_type
  * @param[in]  data    Returned data as byte-string.
  * @param[in]  datalen Length of returned data XXX  may be unecessary if always string?
  * @retval     0       OK
@@ -450,7 +464,6 @@ clicon_rpc(int                   s,
  */
 int 
 send_msg_reply(int      s, 
-	       uint16_t type, 
 	       char    *data, 
 	       uint16_t datalen)
 {
@@ -462,7 +475,6 @@ send_msg_reply(int      s,
     if ((reply = (struct clicon_msg *)chunk(len, __FUNCTION__)) == NULL)
 	goto done;
     memset(reply, 0, len);
-    reply->op_type = htons(type);
     reply->op_len = htons(len);
     if (datalen > 0)
       memcpy(reply->op_body, data, datalen);
@@ -490,7 +502,7 @@ send_msg_notify(int   s,
     int                retval = -1;
     struct clicon_msg *msg = NULL;
 
-    if ((msg=clicon_msg_netconf_encode("<notification><event>%s</event></notification>", event)) == NULL)
+    if ((msg=clicon_msg_encode("<notification><event>%s</event></notification>", event)) == NULL)
 	goto done;
     if (clicon_msg_send(s, msg) < 0)
 	goto done;
@@ -498,136 +510,5 @@ send_msg_notify(int   s,
   done:
     if (msg)
 	free(msg);
-    return retval;
-}
-
-/*! Send a clicon_msg OK message as reply to a clicon rpc request
- *
- * @param[in]  s       Socket to communicate with client
- * @param[in]  data    Returned data as byte-string.
- * @retval     0       OK
- * @retval     -1      Error
- * @note send as netconf message XXX remove clicon header
- */
-int
-send_msg_ok(int      s,
-	    char    *data)
-{
-    int     retval = -1;
-    cbuf   *cb = NULL;
-
-    if ((cb = cbuf_new()) == NULL)
-	goto done;
-    if (data)
-	cprintf(cb, "<rpc-reply><ok>%s</ok></rpc-reply>", data);
-    else
-	cprintf(cb, "<rpc-reply><ok/></rpc-reply>");
-    if (send_msg_reply(s, CLICON_MSG_NETCONF, cbuf_get(cb), cbuf_len(cb)+1) < 0){
-	if (errno == ECONNRESET)
-	    clicon_log(LOG_WARNING, "client rpc reset");
-	goto done;
-    }
-    retval=0;
- done:
-    if (cb)
-	cbuf_free(cb);
-    return retval;
-}
-
-/*! Send a clicon_msg Error message as reply to a clicon rpc request
- *
- * @param[in]  s       Socket to communicate with client
- * @param[in]  data    Returned data as byte-string.
- * @param[in]  datalen Length of returned data
- * @retval     0       OK
- * @retval     -1      Error
- * @note send as netconf message XXX remove clicon header
- */
-int
-send_msg_err(int   s, 
-	     int   err, 
-	     int   suberr, 
-	     char *format, ...)
-{
-    va_list args;
-    char   *info = NULL;
-    int     len;
-    int     retval = -1;
-    cbuf   *cb = NULL;
-
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args) + 1;
-    va_end(args);
-    if ((info = malloc(len)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }
-    memset(info, 0, len);
-    va_start(args, format);
-    vsnprintf(info, len, format, args);
-    va_end(args);
-    if ((cb = cbuf_new()) == NULL)
-	goto done;
-    cprintf(cb, "<rpc-reply><rpc-error>"
-	    "<error-type>clixon</error-type>"
-	    "<error-tag>%d</error-tag>"
-	    "<error-message>%d</error-message>"
-	    "<error-info>%s</error-info>"
-	    "</rpc-error></rpc-reply>", 
-	    err, suberr, info);
-    if (send_msg_reply(s, CLICON_MSG_NETCONF, cbuf_get(cb), cbuf_len(cb)+1) < 0){
-	if (errno == ECONNRESET)
-	    clicon_log(LOG_WARNING, "client rpc reset");
-	goto done;
-    }
-
-    retval = 0;
-  done:
-    if (cb)
-	cbuf_free(cb);
-    if (info)
-	free(info);
-    return retval;
-}
-
-/*! Send a clicon_msg Error message as reply to a clicon rpc request
- *
- * @param[in]  s       Socket to communicate with client
- * @param[in]  data    Returned data as byte-string.
- * @param[in]  datalen Length of returned data
- * @retval     0       OK
- * @retval     -1      Error
- * @note send as netconf message XXX remove clicon header
- * XXX: see clicon_xml_parse
- */
-int
-send_msg_netconf_reply(int   s, 
-		       char *format, ...)
-{
-    va_list args;
-    char   *str = NULL;
-    int     len;
-    int     retval = -1;
-
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args) + 1;
-    va_end(args);
-    if ((str = malloc(len)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }
-    memset(str, 0, len);
-    va_start(args, format);
-    len = vsnprintf(str, len, format, args);
-    va_end(args);
-    if (send_msg_reply(s, CLICON_MSG_NETCONF, str, len) < 0){
-	if (errno == ECONNRESET)
-	    clicon_log(LOG_WARNING, "client rpc reset");
-	goto done;
-    }
-    retval = 0;
-  done:
-    if (str)
-	free(str);
     return retval;
 }

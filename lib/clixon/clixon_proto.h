@@ -46,31 +46,18 @@ enum format_enum{
     MSG_NOTIFY_XML, /* means filter works on xml */
 };
 
-/* See also map_type2str in clicon_proto.c */
-enum clicon_msg_type{
-    CLICON_MSG_NETCONF = 1, /* Generic netconf message (lock/unlock/..) can all
-			   msgs go to this?
-			  1. string: netconf message
-			 */
-    CLICON_MSG_CHANGE,   /* Change a (single) database entry:
-			  1. uint32: operation: OP_MERGE/OP_REPLACE/OP_REMOVE
-			  2. uint32: length of value string
-			  3. string: name of database to change (eg "running")
-			  4. string: key
-			  5. string: value (can be NULL)
-			 */
-};
-
 /* Protocol message header */
 struct clicon_msg {
     uint16_t    op_len;      /* length of message. */
-    uint16_t    op_type;     /* message type, see enum clicon_msg_type */
     char        op_body[0];  /* rest of message, actual data */
 };
 
 /*
  * Prototypes
  */ 
+struct clicon_msg *clicon_msg_encode(char *format, ...);
+int clicon_msg_decode(struct clicon_msg *msg, cxobj **xml);
+
 int clicon_connect_unix(char *sockpath);
 
 int clicon_rpc_connect_unix(struct clicon_msg    *msg, 
@@ -92,13 +79,6 @@ int clicon_msg_rcv(int s, struct clicon_msg **msg, int *eof);
 
 int send_msg_notify(int s, int level, char *event);
 
-int send_msg_reply(int s, uint16_t type, char *data, uint16_t datalen);
-
-int send_msg_ok(int s, char *data);
-
-int send_msg_err(int s, int err, int suberr, char *format, ...);
-
-int send_msg_netconf_reply(int s, char *format, ...);
-
+int send_msg_reply(int s, char *data, uint16_t datalen);
 
 #endif  /* _CLIXON_PROTO_H_ */

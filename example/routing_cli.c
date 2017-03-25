@@ -110,7 +110,7 @@ downcall(clicon_handle h,
 	if ((cv = cvec_i(vars, 1)) != NULL)
 	    str = cv_string_get(cv);
     }
-    if ((msg = clicon_msg_netconf_encode("<rpc><myrouting>%s</myrouting></rpc>", str)) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><myrouting>%s</myrouting></rpc>", str)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;

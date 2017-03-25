@@ -684,7 +684,6 @@ netconf_notification_cb(int   s,
     cbuf              *cb;
     cxobj             *xe = NULL; /* event xml */
     cxobj             *xt = NULL; /* top xml */
-    enum clicon_msg_type type;
 
     if (0){
 	fprintf(stderr, "%s\n", __FUNCTION__); /* debug */
@@ -703,47 +702,35 @@ netconf_notification_cb(int   s,
 	    xml_free(xfilter);
 	goto done;
     }
-    /* multiplex on message type: we only expect notify */
-    type = ntohs(reply->op_type);
-    switch (type){
-    case CLICON_MSG_NETCONF:
-	if (clicon_msg_netconf_decode(reply, &xt) < 0) 
-	    goto done;
-	if ((xe = xpath_first(xt, "//event")) != NULL)
-	    event = xml_body(xe);
-	
-	/* parse event */
-	if (0){ /* XXX CLICON events are not xml */
-	    /* find and apply filter */
-	    if ((selector = xml_find_value(xfilter, "select")) == NULL)
-		goto done;
-	    if (xpath_first(xe, selector) == NULL) {
-		fprintf(stderr, "%s no match\n", __FUNCTION__); /* debug */
-		break;
-	    }
-	}
-	/* create netconf message */
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_PLUGIN, errno, "%s: cbuf_new", __FUNCTION__);
-	    goto done;
-	}
-	add_preamble(cb); /* Make it well-formed netconf xml */
-	cprintf(cb, "<notification><event>%s</event></notification>", event); 
-	add_postamble(cb);
-	/* Send it to listening client on stdout */
-	if (netconf_output(1, cb, "notification") < 0){
-	    cbuf_free(cb);
-	    goto done;
-	}
-	fflush(stdout);
-	cbuf_free(cb);
-	break;
-    default:
-	clicon_err(OE_PROTO, 0, "%s: unexpected reply: %d", 
-		__FUNCTION__, type);
+    if (clicon_msg_decode(reply, &xt) < 0) 
 	goto done;
-	break;
+    if ((xe = xpath_first(xt, "//event")) != NULL)
+	event = xml_body(xe);
+    
+    /* parse event */
+    if (0){ /* XXX CLICON events are not xml */
+	    /* find and apply filter */
+	if ((selector = xml_find_value(xfilter, "select")) == NULL)
+	    goto done;
+	if (xpath_first(xe, selector) == NULL) {
+	    fprintf(stderr, "%s no match\n", __FUNCTION__); /* debug */
+	}
     }
+    /* create netconf message */
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_PLUGIN, errno, "%s: cbuf_new", __FUNCTION__);
+	goto done;
+    }
+    add_preamble(cb); /* Make it well-formed netconf xml */
+    cprintf(cb, "<notification><event>%s</event></notification>", event); 
+    add_postamble(cb);
+    /* Send it to listening client on stdout */
+    if (netconf_output(1, cb, "notification") < 0){
+	cbuf_free(cb);
+	goto done;
+    }
+    fflush(stdout);
+    cbuf_free(cb);
     retval = 0;
   done:
     if (xt != NULL)
