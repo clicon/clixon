@@ -1431,7 +1431,7 @@ xmldb_put_tree_local(clicon_handle       h,
 		    clicon_err(OE_XML, errno, "List %s without argument", name);
 		    goto done;
 		}
-		cprintf(ckey, "/%s", val2);
+		cprintf(ckey, "=%s", val2);
 		cbuf_reset(csubkey);
 		cprintf(csubkey, "%s/%s", cbuf_get(ckey), keyname);
 		if (op == OP_MERGE || op == OP_REPLACE || op == OP_CREATE)
