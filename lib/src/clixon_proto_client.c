@@ -118,6 +118,7 @@ clicon_rpc_msg(clicon_handle      h,
 	    goto done;
 	break;
     }
+    clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
     if (retdata &&
 	clicon_xml_parse_str(retdata, &xret) < 0)
 	goto done;

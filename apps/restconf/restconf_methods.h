@@ -33,34 +33,31 @@
   
  */
 
-#ifndef _RESTCONF_LIB_H_
-#define _RESTCONF_LIB_H_
+
+#ifndef _RESTCONF_METHODS_H_
+#define _RESTCONF_METHODS_H_
 
 /*
  * Constants
  */
-#define USER_COOKIE  "c-user" /* connected user cookie */
-#define WWW_USER "root"
-#define WWW_PASSWD "9rundpaj" // XXX
-#define DEFAULT_TEMPLATE "nordunet" /* XXX Default sender template must be in conf */
-#define CONFIG_FILE  "/usr/local/etc/grideye.conf"
-#define NETCONF_BIN  "/usr/local/bin/clixon_netconf"
-#define NETCONF_OPTS "-qS"
 
 /*
  * Prototypes
  */
-int notfound(FCGX_Request *r);
-int badrequest(FCGX_Request *r);
-int clicon_debug_xml(int dbglevel, char *str, cxobj *cx);
-int str2cvec(char *string, char delim1, char delim2, cvec **cvp);
-int test(FCGX_Request *r, int dbg);
-cbuf *readdata(FCGX_Request *r);
+int api_data_options(clicon_handle h, FCGX_Request *r);
+int api_data_head(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
+		  cvec *qvec);
+int api_data_get(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
+		 cvec *qvec);
+int api_data_post(clicon_handle h, FCGX_Request *r, char *api_path,
+		  cvec *pcvec, int pi, 
+		  cvec *qvec, char *data);
+int api_data_put(clicon_handle h, FCGX_Request *r, char *api_path, 
+		 cvec *pcvec, int pi, 
+		 cvec *qvec, char *data);
+int api_data_patch(clicon_handle h, FCGX_Request *r, char *api_path, 
+		   cvec *pcvec, int pi, 
+		   cvec *qvec, char *data);
+int api_data_delete(clicon_handle h, FCGX_Request *r, char *api_path, int pi);
 
-
-int restconf_plugin_load(clicon_handle h);
-int restconf_plugin_start(clicon_handle h, int argc, char **argv);
-int restconf_plugin_unload(clicon_handle h);
-int plugin_credentials(clicon_handle h, FCGX_Request *r, int *auth);
-
-#endif /* _RESTCONF_LIB_H_ */
+#endif /* _RESTCONF_METHODS_H_ */

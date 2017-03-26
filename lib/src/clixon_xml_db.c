@@ -1067,7 +1067,6 @@ xmldb_get(clicon_handle h,
 	goto done;
     if (debug)
 	clicon_xml2file(stdout, xt, 0, 1);
-
     *xtop = xt;
     retval = 0;
  done:

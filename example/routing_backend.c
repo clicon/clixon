@@ -62,7 +62,7 @@ int
 transaction_validate(clicon_handle    h, 
 		     transaction_data td)
 {
-    transaction_print(stderr, td);
+    //    transaction_print(stderr, td);
     return 0;
 }
 
@@ -73,16 +73,18 @@ transaction_commit(clicon_handle    h,
 		   transaction_data td)
 {
     cxobj  *target = transaction_target(td); /* wanted XML tree */
-    cxobj **vec;
+    cxobj **vec = NULL;
     int     i;
     size_t  len;
 
     /* Get all added i/fs */
     if (xpath_vec_flag(target, "//interface", XML_FLAG_ADD, &vec, &len) < 0)
 	return -1;
-    for (i=0; i<len; i++)             /* Loop over added i/fs */
-	xml_print(stdout, vec[i]); /* Print the added interface */
-	    
+    if (debug)
+	for (i=0; i<len; i++)             /* Loop over added i/fs */
+	    xml_print(stdout, vec[i]); /* Print the added interface */
+    if (vec)
+	free(vec);
     return 0;
 }
 

@@ -62,6 +62,7 @@ CPPFLAGS  	= @CPPFLAGS@
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
 SRC     = restconf_lib.c
+SRC    += restconf_methods.c
 
 OBJS    = $(SRC:.c=.o)
 

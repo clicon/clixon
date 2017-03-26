@@ -85,7 +85,6 @@ client_subscription_add(struct client_entry *ce,
 {
     struct client_subscription *su = NULL;
 
-    fprintf(stderr, "%s stream:%s filter:%s\n", __FUNCTION__, stream, filter);
     if ((su = malloc(sizeof(*su))) == NULL){
 	clicon_err(OE_PLUGIN, errno, "malloc");
 	goto done;
@@ -118,7 +117,6 @@ client_subscription_delete(struct client_entry *ce,
     struct client_subscription   *su;
     struct client_subscription  **su_prev;
 
-    fprintf(stderr, "%s stream:%s\n", __FUNCTION__, su0->su_stream);
     su_prev = &ce->ce_subscription; /* this points to stack and is not real backpointer */
     for (su = *su_prev; su; su = su->su_next){
 	if (su == su0){

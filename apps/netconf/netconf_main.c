@@ -178,7 +178,8 @@ netconf_input_cb(int   s,
     unsigned char buf[BUFSIZ];
     int           i;
     int           len;
-    static cbuf  *cb; /* XXX: should use ce state? */
+    //    static cbuf  *cb; /* XXX: should use ce state? */
+    cbuf  *cb=NULL; /* XXX: should use ce state? */
     int           xml_state = 0;
     int           retval = -1;
 
@@ -221,7 +222,8 @@ netconf_input_cb(int   s,
     }
     retval = 0;
   done:
-    //    cbuf_free(cb);
+    if (cb)
+	cbuf_free(cb);
     if (cc_closed) 
 	retval = -1;
     return retval;
@@ -257,9 +259,11 @@ netconf_terminate(clicon_handle h)
 {
     yang_spec      *yspec;
 
+
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
+    event_exit();
     clicon_handle_exit(h);
     return 0;
 }

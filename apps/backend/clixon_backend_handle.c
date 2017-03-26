@@ -441,7 +441,7 @@ backend_netconf_register_callback(clicon_handle h,
     memset (nr, 0, sizeof (*nr));
     nr->nr_callback = cb;
     nr->nr_arg  = arg;
-    nr->nr_tag  = strdup(tag); /* strdup */
+    nr->nr_tag  = strdup(tag); /* XXX strdup memleak */
     INSQ(nr, deps);
     return 0;
 catch:

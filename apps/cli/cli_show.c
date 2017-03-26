@@ -614,8 +614,6 @@ show_confv_as_command(clicon_handle h,
     enum genmodel_type gt;
     int                retval = -1;
 
-    if ((xt = xml_new("tmp", NULL)) == NULL)
-	goto done;
     if (show_confv_as(h, cvv, argv, &xt) < 0)
 	goto done;
     xc = NULL; /* Dont print xt itself */

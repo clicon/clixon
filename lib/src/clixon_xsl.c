@@ -921,8 +921,8 @@ xpath_each(cxobj *cxtop,
 
 /*! A restricted xpath that returns a vector of matches
  *
- * See xpath1() on details for subset.
- * @param[in]  cxtop  xml-tree where to search
+ * See xpath1() on details for subset
+. * @param[in]  cxtop  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
  * @param[out] vec     vector of xml-trees. Vector must be free():d after use
  * @param[out] veclen  returns length of vector in return value
@@ -940,7 +940,7 @@ xpath_each(cxobj *cxtop,
  *   }
  *   free(vec);
  * @endcode
- * Note that although the returned vector must be freed after use, the returned xml
+ * @Note that although the returned vector must be freed after use, the returned xml
  * trees need not be.
  * @see also xpath_first, xpath_each.
  */
@@ -982,7 +982,27 @@ xpath_vec(cxobj   *cxtop,
 }
 
 /* A restricted xpath that returns a vector of matches (only nodes marked with flags)
+ * @param[in]  cxtop  xml-tree where to search
+ * @param[in]  xpath   string with XPATH syntax
  * @param[in]  flags   Set of flags that return nodes must match (0 if all)
+ * @param[out] vec     vector of xml-trees. Vector must be free():d after use
+ * @param[out] veclen  returns length of vector in return value
+ * @retval     0       OK
+ * @retval     -1      error.
+ * @code
+ *   cxobj **vec;
+ *   size_t  veclen;
+ *   if (xpath_vec_flag(cxtop, "//symbol/foo", XML_FLAG_ADD, &vec, &veclen) < 0) 
+ *      goto err;
+ *   for (i=0; i<veclen; i++){
+ *      xn = vec[i];
+ *         ...
+ *   }
+ *   free(vec);
+ * @endcode
+ * @Note that although the returned vector must be freed after use, the returned xml
+ * trees need not be.
+ * @see also xpath_vec This is a specialized version.
  */
 int
 xpath_vec_flag(cxobj   *cxtop, 
