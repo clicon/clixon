@@ -39,13 +39,6 @@
 /*
  * Constants
  */
-#define USER_COOKIE  "c-user" /* connected user cookie */
-#define WWW_USER "root"
-#define WWW_PASSWD "9rundpaj" // XXX
-#define DEFAULT_TEMPLATE "nordunet" /* XXX Default sender template must be in conf */
-#define CONFIG_FILE  "/usr/local/etc/grideye.conf"
-#define NETCONF_BIN  "/usr/local/bin/clixon_netconf"
-#define NETCONF_OPTS "-qS"
 
 /*
  * Prototypes
