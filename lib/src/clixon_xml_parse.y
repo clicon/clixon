@@ -103,34 +103,19 @@ static int
 xml_parse_content(struct xml_parse_yacc_arg *ya, 
 		  char                      *str)
 {
-    int   sz;
-    char  s0;
     cxobj *xn = ya->ya_xelement;
     cxobj *xp = ya->ya_xparent;
     int    retval = -1;
 
     ya->ya_xelement = NULL; /* init */
-    s0 = str[0];
-    if (xn != NULL){
-	sz = strlen(xml_value(xn));
-	if (ya->ya_skipspace && (s0 == ' ' || s0 == '\n' || s0 == '\t')){
-	    str[0] = ' ';
-	    if (xml_value(xn)[sz-1] == ' ')
-		goto ok;
-	}
-    }
-    else{
-	if (ya->ya_skipspace && (s0 == ' ' || s0 == '\n' || s0 == '\t'))
-	    goto ok;
+    if (xn == NULL){
 	if ((xn = xml_new("body", xp)) == NULL)
 	    goto done; 
 	xml_type_set(xn, CX_BODY);
-	sz = 0;
     }
     if (xml_value_append(xn, str)==NULL)
 	goto done; 
     ya->ya_xelement = xn;
-  ok:
     retval = 0;
   done:
     return retval;
@@ -147,7 +132,6 @@ xml_parse_version(struct xml_parse_yacc_arg *ya, char *ver)
     free(ver);
     return 0;
 }
-
 
 static int
 xml_parse_id(struct xml_parse_yacc_arg *ya, char *name, char *namespace)
@@ -194,17 +178,30 @@ xml_parse_endslash_post(struct xml_parse_yacc_arg *ya)
 static int
 xml_parse_bslash1(struct xml_parse_yacc_arg *ya, char *name)
 {
-    int retval = -1;
+    int    retval = -1;
+    cxobj *x = ya->ya_xelement;
+    cxobj *xc;
 
-    if (strcmp(xml_name(ya->ya_xelement), name)){
+    if (strcmp(xml_name(x), name)){
 	clicon_err(OE_XML, 0, "Sanity check failed: %s vs %s", 
-		xml_name(ya->ya_xelement), name);
+		xml_name(x), name);
 	goto done;
     }
-    if (xml_namespace(ya->ya_xelement)!=NULL){
+    if (xml_namespace(x)!=NULL){
 	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s\n", 
-		xml_namespace(ya->ya_xelement), xml_name(ya->ya_xelement), name);
+		xml_namespace(x), xml_name(x), name);
 	goto done;
+    }
+
+    /* remove all non-terminal bodies (strip pretty-print) */
+    if (ya->ya_skipspace){
+	if (xml_child_nr(x) == 1 && (xml_type(xml_child_i(x, 0))==CX_BODY))
+	    ;
+	else{
+	    xc = NULL;
+	    while ((xc = xml_child_each(x, xc, CX_BODY)) != NULL) 
+		xml_value_set(xc, ""); /* XXX remove */
+	}
     }
     retval = 0;
   done:
@@ -215,24 +212,36 @@ xml_parse_bslash1(struct xml_parse_yacc_arg *ya, char *name)
 static int
 xml_parse_bslash2(struct xml_parse_yacc_arg *ya, char *namespace, char *name)
 {
-    int retval = -1;
+    int    retval = -1;
+    cxobj *x = ya->ya_xelement;
+    cxobj *xc;
 
-    if (strcmp(xml_name(ya->ya_xelement), name)){
+    if (strcmp(xml_name(x), name)){
 	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s\n", 
-		xml_namespace(ya->ya_xelement), 
-		xml_name(ya->ya_xelement), 
+		xml_namespace(x), 
+		xml_name(x), 
 		namespace, 
 		name);
 	goto done;
     }
-    if (xml_namespace(ya->ya_xelement)==NULL ||
-	strcmp(xml_namespace(ya->ya_xelement), namespace)){
+    if (xml_namespace(x)==NULL ||
+	strcmp(xml_namespace(x), namespace)){
 	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s\n", 
-		xml_namespace(ya->ya_xelement), 
-		xml_name(ya->ya_xelement), 
+		xml_namespace(x), 
+		xml_name(x), 
 		namespace, 
 		name);
 	goto done;
+    }
+    /* remove all non-terminal bodies (strip pretty-print) */
+    if (ya->ya_skipspace){
+	if (xml_child_nr(x) == 1 && (xml_type(xml_child_i(x, 0))==CX_BODY))
+	    ;
+	else{
+	    xc = NULL;
+	    while ((xc = xml_child_each(x, xc, CX_BODY)) != NULL) 
+		xml_value_set(xc, ""); /* XXX remove */
+	}
     }
     retval = 0;
   done:
@@ -301,7 +310,7 @@ emnt     : '<' id  attrs emnt1
 	      ;
 
 id          : NAME            { if (xml_parse_id(_YA, $1, NULL) < 0) YYABORT; 
-                                clicon_debug(3, "id -> NAME");}
+                                clicon_debug(3, "id -> NAME %s", $1);}
             | NAME ':' NAME   { if (xml_parse_id(_YA, $3, $1) < 0) YYABORT; 
                                 clicon_debug(3, "id -> NAME : NAME");}
             ;
@@ -315,8 +324,8 @@ emnt1    :  ESLASH          {_YA->ya_xelement = NULL;
             ;
 
 etg         : BSLASH NAME '>'          
-                       { if (xml_parse_bslash1(_YA, $2) < 0) YYABORT; 
-                         clicon_debug(3, "etg -> < </ NAME >"); }
+{ 			   clicon_debug(3, "etg -> < </ NAME %s>", $2); if (xml_parse_bslash1(_YA, $2) < 0) YYABORT; }
+
             | BSLASH NAME ':' NAME '>' 
                        { if (xml_parse_bslash2(_YA, $2, $4) < 0) YYABORT; 
 			 clicon_debug(3, "etg -> < </ NAME:NAME >"); }
@@ -329,7 +338,7 @@ list        : list content { clicon_debug(3, "list -> list content"); }
 content     : emnt         { clicon_debug(3, "content -> emnt"); }
             | comment      { clicon_debug(3, "content -> comment"); }
             | CHAR         { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
-                             clicon_debug(3, "content -> CHAR", $1); }
+                             clicon_debug(3, "content -> CHAR %s", $1); }
             |              { clicon_debug(3, "content -> "); }
             ;
 

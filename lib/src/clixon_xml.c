@@ -963,11 +963,11 @@ xml_parse(char  *str,
 	return -1;
     }
     ya.ya_xparent = x_up;
+    ya.ya_skipspace = 1;  /* remove all non-terminal bodies (strip pretty-print) */
     if (clixon_xml_parsel_init(&ya) < 0)
 	goto done;    
     if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
 	goto done;
-
     retval = 0;
   done:
     clixon_xml_parsel_exit(&ya);

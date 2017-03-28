@@ -103,6 +103,7 @@ Mapping netconf error-tag -> status code
 #include <signal.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <assert.h>
 #include <time.h>
 #include <fcgi_stdio.h>
 #include <signal.h>
@@ -161,7 +162,7 @@ api_data_get_gen(clicon_handle h,
     cbuf      *cbx = NULL;
     cxobj    **vec = NULL;
     yang_spec *yspec;
-    yang_stmt *y;
+    yang_stmt *y = NULL;
     yang_stmt *ykey;
     char      *name;
     cvec      *cvk = NULL; /* vector of index keys */
@@ -189,6 +190,7 @@ api_data_get_gen(clicon_handle h,
 	    }
 	}
 	else{
+	    assert(y!=NULL);
 	    if ((y = yang_find_syntax((yang_node*)y, name)) == NULL){
 		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 		goto done;

@@ -29,7 +29,34 @@
 #
 # ***** END LICENSE BLOCK *****
 
+- The netconf support has been extended with lock/unlock
+- clicon_rpc_call() has been removed and should be replaced by extending the
+  internal netconf protocol. 
+  See downcall() function in example/routing_cli.c and 
+  routing_downcall() in example/routing_backend.c
+- Replace clicon_rpc_xmlput with clicon_rpc_edit_config
+- Removed xmldb daemon. All xmldb acceses is made backend daemon. 
+  No direct accesses by clients to xmldb API.
+  Instead use the rpc calls in clixon_proto_client.[ch]
+  In clients (eg cli/netconf) replace xmldb_get() in client code with 
+  clicon_rpc_get_config().
+  If you use the vector arguments of xmldb_get(), replace as follows:
+    xmldb_get(h, db, api_path, &xt, &xvec, &xlen);
+  with
+    clicon_rpc_get_config(h, dbstr, api_path, &xt);
+    xpath_vec(xt, api_path, &xvec, &xlen)
+
+- xmdlb_put_xkey() and xmldb_put_tree() have been folded into xmldb_put()
+  Replace xmldb_put_xkey with xmldb_put as follows:
+     xmldb_put_xkey(h, "candidate", cbuf_get(cb), str, OP_REPLACE);
+  with
+     clicon_xml_parse(&xml, "<config>%s</config>", str);
+     xmldb_put(h, "candidate", OP_REPLACE, cbuf_get(cb), xml);
+     xml_free(xml);
+
 - Change internal protocol from clicon_proto.h to netconf.
+  This means that the internal protocol defined in clixon_proto.[ch] is removed
+
 - Netconf startup configuration support. Set CLICON_USE_STARTUP_CONFIG to 1 to
   enable. Eg, if backend_main is started with -CIr startup will be copied to
   running.

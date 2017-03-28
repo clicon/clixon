@@ -733,7 +733,7 @@ save_config_filev(clicon_handle h,
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
 	goto done;
     } 
-    if (clicon_xml2file(f, xt, 0, 0) < 0)
+    if (clicon_xml2file(f, xt, 0, 1) < 0)
 	goto done;
     retval = 0;
     /* Fall through */

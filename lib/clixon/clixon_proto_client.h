@@ -59,10 +59,6 @@ int clicon_rpc_commit(clicon_handle h);
 int clicon_rpc_discard_changes(clicon_handle h);
 int clicon_rpc_create_subscription(clicon_handle h, char *stream, char *filter, 
 				   int *s);
-   
-int clicon_rpc_change(clicon_handle h, char *db, 
-		      enum operation_type op, char *key, char *val);
-
 int clicon_rpc_debug(clicon_handle h, int level);
 
 #endif  /* _CLIXON_PROTO_CLIENT_H_ */

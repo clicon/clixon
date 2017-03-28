@@ -121,11 +121,6 @@ CLICON_BACKEND_PIDFILE  localstatedir/APPNAME/APPNAME.pidfile
 # Directory where "running", "candidate" and "startup" are placed
 CLICON_XMLDB_DIR      localstatedir/APPNAME
 
-# CLICON_XMLDB_ADDR
-
-# xmldb tcp port (if CLICON_XMLDB_RPC)
-# CLICON_XMLDB_PORT
-
 # Dont include keys in cvec in cli vars callbacks, ie a & k in 'a <b> k <c>' ignored
 # CLICON_CLI_VARONLY      1
 
