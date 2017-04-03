@@ -133,7 +133,7 @@ backend_notify(clicon_handle h,
     struct handle_subscription *hs;
     int                  retval = -1;
 
-    clicon_debug(1, "%s %s", __FUNCTION__, stream);
+    clicon_debug(2, "%s %s", __FUNCTION__, stream);
     /* First thru all clients(sessions), and all subscriptions and find matches */
     for (ce = backend_client_list(h); ce; ce = ce_next){
 	ce_next = ce->ce_next;

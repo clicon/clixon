@@ -606,7 +606,7 @@ clicon_rpc_discard_changes(clicon_handle h)
     cxobj             *xret = NULL;
     cxobj             *xerr;
 
-    if ((msg = clicon_msg_encode("<rpc><discard_changes/></rpc>")) == NULL)
+    if ((msg = clicon_msg_encode("<rpc><discard-changes/></rpc>")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
