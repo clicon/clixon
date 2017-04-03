@@ -1011,7 +1011,7 @@ xmldb_get(clicon_handle h,
     struct db_pair *pairs;
     cxobj          *xt = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(2, "%s", __FUNCTION__);
     if (db2file(h, db, &dbname) < 0)
 	goto done;
     if (dbname==NULL){
@@ -1065,8 +1065,8 @@ xmldb_get(clicon_handle h,
 	goto done;
     if (xml_apply(xt, CX_ELMNT, xml_sanity, NULL) < 0)
 	goto done;
-    if (debug)
-	clicon_xml2file(stdout, xt, 0, 1);
+    if (debug>1)
+    	clicon_xml2file(stderr, xt, 0, 1);
     *xtop = xt;
     retval = 0;
  done:

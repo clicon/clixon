@@ -646,16 +646,18 @@ load_config_filev(clicon_handle h,
 	goto done;
     if (xt == NULL)
 	goto done;
-    /* Ensure top-level is "config", maybe this is too rough? */
-    xml_name_set(xt, "config");
+
     //    if ((xn = xml_child_i(xt, 0)) != NULL){
     
 	if ((cbxml = cbuf_new()) == NULL)
 	    goto done;
 	x = NULL;
-	while ((x = xml_child_each(xt, x, -1)) != NULL) 
+	while ((x = xml_child_each(xt, x, -1)) != NULL) {
+	    /* Ensure top-level is "config", maybe this is too rough? */
+	    xml_name_set(x, "config");
 	    if (clicon_xml2cbuf(cbxml, x, 0, 0) < 0)
 		goto done;
+	}
 	if (clicon_rpc_edit_config(h, "candidate",
 				   replace?OP_REPLACE:OP_MERGE, 
 				   "",
@@ -802,10 +804,12 @@ db_copy(clicon_handle h,
 }
 
 /* These are strings that can be used as 3rd argument to cli_setlog */
+#ifdef notused // broke in new version
 static const char *SHOWAS_TXT     = "txt";
 static const char *SHOWAS_XML     = "xml";
 static const char *SHOWAS_XML2TXT = "xml2txt";
 static const char *SHOWAS_XML2JSON = "xml2json";
+#endif
 
 /*! This is the callback used by cli_setlog to print log message in CLI
  * param[in]  s    UNIX socket from backend  where message should be read
@@ -818,12 +822,14 @@ cli_notification_cb(int   s,
     struct clicon_msg *reply = NULL;
     int                eof;
     int                retval = -1;
-    char              *eventstr = NULL;
     cxobj             *xt = NULL;
-    cxobj             *xn;
     cxobj             *xe;
     char              *format = (char*)arg;
-
+#if 0
+    char              *eventstr = NULL;
+    cxobj             *xn;
+#endif
+    
     /* get msg (this is the reason this function is called) */
     if (clicon_msg_rcv(s, &reply, &eof) < 0)
 	goto done;
@@ -838,8 +844,11 @@ cli_notification_cb(int   s,
 	goto done;
     if (clicon_msg_decode(reply, &xt) < 0) 
 	goto done;
-    if ((xe = xpath_first(xt, "//event")) != NULL)
-	eventstr = xml_body(xe);
+    if ((xe = xpath_first(xt, "//event")) != NULL){
+	if (xml_print(stdout, xe) < 0)
+	    goto done;
+    }
+#ifdef notyet /* Broke in new version */
     if (strcmp(format, SHOWAS_TXT) == 0){
 	fprintf(stdout, "%s\n", eventstr);
     }
@@ -864,7 +873,7 @@ cli_notification_cb(int   s,
 		    goto done;
 	    }
 	}
-
+#endif
     retval = 0;
   done:
     if (xt)
@@ -908,6 +917,10 @@ cli_notifyv(clicon_handle h,
 	formatstr = cv_string_get(cvec_i(argv, 2));
 	if (strcmp(formatstr, "SHOWAS_TXT") != 0)
 	    format = MSG_NOTIFY_XML;
+	if ((formatstr = strdup(formatstr)) == NULL){ /* XXX */
+	    clicon_err(OE_PLUGIN, 0, "%s Requires arguments: <logstream> <status> [<format>]", __FUNCTION__);
+	    goto done;
+	}
     }
     if (cli_notification_register(h, 
 				  stream, 
@@ -915,7 +928,7 @@ cli_notifyv(clicon_handle h,
 				  "", 
 				  status, 
 				  cli_notification_cb, 
-				  (void*)strdup(formatstr)) < 0)
+				  formatstr) < 0)
 	goto done;
 
     retval = 0;

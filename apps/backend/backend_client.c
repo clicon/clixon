@@ -870,6 +870,7 @@ from_client_msg(clicon_handle        h,
     }
  reply:
     assert(cbuf_len(cbret));
+    clicon_debug(1, "%s %s", __FUNCTION__, cbuf_get(cbret));
     if (send_msg_reply(ce->ce_s, cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
 	if (errno == ECONNRESET)
 	    clicon_log(LOG_WARNING, "client rpc reset");
