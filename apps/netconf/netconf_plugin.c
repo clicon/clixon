@@ -256,8 +256,6 @@ catch:
  *
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
- * @param[out] cb      Output xml stream. For reply
- * @param[out] cb_err  Error xml stream. For error reply
  * @param[out] xret    Return XML, error or OK
  *
  * @retval -1   Error

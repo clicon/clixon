@@ -69,6 +69,7 @@
  * @retval      NULL       Error
  * @see clicon_strsplit    Operates on full string delimiters rather than
  *                         individual character delimiters.
+ * @see clicon_strsep      Use malloc instead of chunk
  */
 char **
 clicon_sepsplit (char       *string, 
@@ -111,8 +112,6 @@ clicon_sepsplit (char       *string,
  * the full delimiter string. The matched delimiters are not part of the
  * resulting vector.
  *
- * See also clicon_sepsplit() which is similar 
- *
  * The vector returned is one single memory chunk that must be unchunked 
  * by the caller
  *
@@ -124,6 +123,7 @@ clicon_sepsplit (char       *string,
  * @retval      NULL       Error
  * @see clicon_sepsplit    Operates on individual character delimiters rather 
  *                         than full string delimiter.
+ * @see clicon_strsep      Use malloc instead of chunk
  */
 char **
 clicon_strsplit (char       *string, 
@@ -164,6 +164,50 @@ clicon_strsplit (char       *string,
 
     return vec;
 }
+
+/*! Split string into a vector based on character delimiters. Using malloc
+ *
+ * The given string is split into a vector where the delimiter can be
+ * any of the characters in the specified delimiter string. 
+ *
+ * The vector returned is one single memory block that must be freed
+ * by the caller
+ *
+ * @param[in]   string     String to be split
+ * @param[in]   delim      String of delimiter characters
+ * @param[out]  nvec       Number of entries in returned vector
+ * @retval      vec        Vector of strings. Free after use
+ * @retval      NULL       Error * 
+ */
+char **
+clicon_strsep(char *string, 
+	      char *delim, 
+	      int  *nvec0)
+{
+    char **vec = NULL;
+    char  *ptr;
+    char  *p;
+    int   nvec = 1;
+    int   i;
+
+    for (i=0; i<strlen(string); i++)
+	if (index(delim, string[i]))
+	    nvec++;
+    /* alloc vector and append copy of string */
+    if ((vec = (char**)malloc(nvec* sizeof(char*) + strlen(string)+1)) == NULL){
+	clicon_err(OE_YANG, errno, "malloc"); 
+	goto err;
+    } 
+    ptr = (char*)vec + nvec* sizeof(char*); /* this is where ptr starts */
+    strncpy(ptr, string, strlen(string)+1);
+    i = 0;
+    while ((p = strsep(&ptr, delim)) != NULL)
+	vec[i++] = p;
+    *nvec0 = nvec;
+ err:
+    return vec;
+}
+
 
 /*! Concatenate elements of a string array into a string. 
  * An optional delimiter string can be specified which will be inserted betwen 

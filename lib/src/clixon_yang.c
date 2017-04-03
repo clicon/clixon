@@ -1676,37 +1676,6 @@ yang_xpath_vec(yang_node *yn,
     return yret;
 }
 
-/* Alternative to clicon_strsplit using malloc. Note delim can only be one char 
- * Free return value after use
- */
-static char **
-clicon_strsplit_malloc(char *string, 
-		       char *delim, 
-		       int  *nvec0)
-{
-    char **vec = NULL;
-    char  *ptr;
-    char  *p;
-    int   nvec = 1;
-    int   i;
-
-    for (i=0; i<strlen(string); i++)
-	if (string[i]==*delim)
-	    nvec++;
-    /* alloc vector and append copy of string */
-    if ((vec = (char**)malloc(nvec* sizeof(char*) + strlen(string)+1)) == NULL){
-	clicon_err(OE_YANG, errno, "malloc"); 
-	goto err;
-    } 
-    ptr = (char*)vec + nvec* sizeof(char*); /* this is where ptr starts */
-    strncpy(ptr, string, strlen(string)+1);
-    i = 0;
-    while ((p = strsep(&ptr, delim)) != NULL)
-	vec[i++] = p;
-    *nvec0 = nvec;
- err:
-    return vec;
-}
 
 /*! Given an absolute xpath (eg /a/b/c) find matching yang specification  
  * @param[in]  yn    Yang node
@@ -1725,7 +1694,7 @@ yang_xpath_abs(yang_node *yn,
     char            *id;
     char            *prefix = NULL;
 
-    if ((vec = clicon_strsplit_malloc(xpath, "/", &nvec)) == NULL){
+    if ((vec = clicon_strsep(xpath, "/", &nvec)) == NULL){
 	clicon_err(OE_YANG, errno, "%s: strsplit", __FUNCTION__); 
 	return NULL;
     }
@@ -1807,7 +1776,7 @@ yang_xpath(yang_node *yn,
     /* check absolute path */
     if (xpath[0] == '/')
 	return yang_xpath_abs(yn, xpath);
-    if ((vec = clicon_strsplit_malloc(xpath, "/", &nvec)) == NULL)
+    if ((vec = clicon_strsep(xpath, "/", &nvec)) == NULL)
 	goto err;
     ys = yang_xpath_vec((yang_node*)yn, vec, nvec);
  err:

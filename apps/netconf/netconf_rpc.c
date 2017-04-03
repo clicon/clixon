@@ -77,8 +77,6 @@
 /*! Get configuration
  * @param[in]  h       Clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
- * @param[out] cb      Output xml stream. For reply
- * @param[out] cb_err  Error xml stream. For error reply
  * @param[out] xret    Return XML, error or OK
  * @note filter type subtree and xpath is supported, but xpath is preferred, and
  *              better performance and tested. Please use xpath.

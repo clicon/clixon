@@ -56,6 +56,7 @@ static inline char * strdup4(char *str)
  */ 
 char **clicon_sepsplit (char *string, char *delim, int *nvec, const char *label);
 char **clicon_strsplit (char *string, char *delim, int *nvec, const char *label);
+char **clicon_strsep(char *string, char *delim, int  *nvec0);
 char *clicon_strjoin (int argc, char **argv, char *delim, const char *label);
 char *clicon_strtrim(char *str, const char *label);
 int clicon_sep(char *s, const char sep[2], const char *label, char**a0, char **b0);

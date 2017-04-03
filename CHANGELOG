@@ -29,6 +29,7 @@
 #
 # ***** END LICENSE BLOCK *****
 
+
 - The netconf support has been extended with lock/unlock
 - clicon_rpc_call() has been removed and should be replaced by extending the
   internal netconf protocol. 
@@ -45,6 +46,12 @@
   with
     clicon_rpc_get_config(h, dbstr, api_path, &xt);
     xpath_vec(xt, api_path, &xvec, &xlen)
+
+- clicon_rpc_change() is replaced with clicon_rpc_edit_config().
+  Note modify argument 5:
+     clicon_rpc_change(h, db, op, apipath, "value") 
+  to:
+     clicon_rpc_edit_config(h, db, op, apipath, "<config>value</config>") 
 
 - xmdlb_put_xkey() and xmldb_put_tree() have been folded into xmldb_put()
   Replace xmldb_put_xkey with xmldb_put as follows:
