@@ -694,7 +694,7 @@ from_client_create_subscription(clicon_handle        h,
 	    }
 	}
     }
-    if (client_subscription_add(ce, stream, MSG_NOTIFY_XML, filter) == NULL)
+    if (client_subscription_add(ce, stream, FORMAT_XML, filter) == NULL)
 	goto done;
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:

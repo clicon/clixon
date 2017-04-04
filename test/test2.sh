@@ -21,7 +21,7 @@ if [ $? -ne 0 ]; then
     err
 fi
 new "netconf get empty config"
-expecteof "valgrind $clixon_netconf -qf $clixon_cf" "<rpc message-id=\"101\"><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply message-id=\"101\"><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc message-id=\"101\"><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply message-id=\"101\"><data/></rpc-reply>]]>]]>$"
 
 new "netconf edit config"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth0</name></interface><interface><name>eth1</name><enabled>true</enabled><ipv4><address><ip>9.2.3.4</ip><prefix-length>24</prefix-length></address></ipv4></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

@@ -665,9 +665,9 @@ get(char      *dbname,
     cxobj     *xt)
 {
     int         retval = -1;
-    char      **vec;
+    char      **vec = NULL;
     int         nvec;
-    char      **valvec;
+    char      **valvec = NULL;
     int         nvalvec;
     int         i;
     int         j;
@@ -691,7 +691,7 @@ get(char      *dbname,
 	clicon_err(OE_DB, 0, "Invalid key: %s", xk);
 	goto done;
     }
-    if ((vec = clicon_strsplit(xk, "/", &nvec, __FUNCTION__)) == NULL)
+    if ((vec = clicon_strsep(xk, "/", &nvec)) == NULL)
 	goto done;
     /* Element 0 is NULL '/', 
        Element 1 is top symbol and needs to find subs in all modules:
@@ -759,7 +759,9 @@ get(char      *dbname,
 	    cvi = NULL;
 	    /* Iterate over individual yang keys  */
 	    cprintf(cb, "%s", name);
-	    if ((valvec = clicon_strsplit(restval, ",", &nvalvec, __FUNCTION__)) == NULL)
+	    if (valvec)
+		free(valvec);
+	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
 		goto done;
 	    if (cvec_len(cvk)!=nvalvec){
 		retval = 0;
@@ -834,7 +836,10 @@ get(char      *dbname,
     }
     retval = 0;
  done:
-    unchunk_group(__FUNCTION__);  
+    if (vec)
+	free(vec);
+    if (valvec)
+	free(valvec);
     if (cvk)
 	cvec_free(cvk);
     return retval;
@@ -1210,9 +1215,9 @@ xmldb_put_xkey(clicon_handle       h,
     cxobj     *x = NULL;
     yang_stmt *y = NULL;
     yang_stmt *ykey;
-    char     **vec;
+    char     **vec = NULL;
     int        nvec;
-    char     **valvec;
+    char     **valvec = NULL;
     int        nvalvec;
     int        i;
     int        j;
@@ -1246,7 +1251,7 @@ xmldb_put_xkey(clicon_handle       h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if ((vec = clicon_strsplit(xk, "/", &nvec, __FUNCTION__)) == NULL)
+    if ((vec = clicon_strsep(xk, "/", &nvec)) == NULL)
 	goto done;
     if (nvec < 2){
 	clicon_err(OE_XML, 0, "Malformed key: %s", xk);
@@ -1305,7 +1310,9 @@ xmldb_put_xkey(clicon_handle       h,
 		clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
 		goto done;
 	    }
-	    if ((valvec = clicon_strsplit(restval, ",", &nvalvec, __FUNCTION__)) == NULL)
+	    if (valvec)
+		free(valvec);
+	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
 		goto done;
 
 	    if (cvec_len(cvk) != nvalvec){ 	    
@@ -1398,6 +1405,11 @@ xmldb_put_xkey(clicon_handle       h,
 	cbuf_free(crx);
     if (cvk)
 	cvec_free(cvk);
+    if (vec)
+	free(vec);
+    if (valvec)
+	free(valvec);
+
     unchunk_group(__FUNCTION__);  
     return retval;
 }
@@ -1431,7 +1443,7 @@ xmldb_put_restconf_api_path(clicon_handle       h,
     int        retval = -1;
     yang_stmt *y = NULL;
     yang_stmt *ykey;
-    char     **vec;
+    char     **vec = NULL;
     int        nvec;
     int        i;
     char      *name;
@@ -1466,7 +1478,7 @@ xmldb_put_restconf_api_path(clicon_handle       h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if ((vec = clicon_strsplit(api_path, "/", &nvec, __FUNCTION__)) == NULL)
+    if ((vec = clicon_strsep(api_path, "/", &nvec)) == NULL)
 	goto done;
     if (nvec < 2){
 	clicon_err(OE_XML, 0, "Malformed key: %s", api_path);
@@ -1611,6 +1623,8 @@ xmldb_put_restconf_api_path(clicon_handle       h,
 	cbuf_free(crx);
     if (cvk)
 	cvec_free(cvk);
+    if (vec)
+	free(vec);
     unchunk_group(__FUNCTION__);  
     return retval;
 }

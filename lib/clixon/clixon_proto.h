@@ -42,8 +42,11 @@
  * Types
  */
 enum format_enum{
-    MSG_NOTIFY_TXT, /* means filter works on strings */
-    MSG_NOTIFY_XML, /* means filter works on xml */
+    FORMAT_XML,  
+    FORMAT_JSON,  
+    FORMAT_TEXT,  
+    FORMAT_CLI,
+    FORMAT_NETCONF
 };
 
 /* Protocol message header */
@@ -55,6 +58,9 @@ struct clicon_msg {
 /*
  * Prototypes
  */ 
+char *format_int2str(enum format_enum showas);
+enum format_enum format_str2int(char *str);
+
 struct clicon_msg *clicon_msg_encode(char *format, ...);
 int clicon_msg_decode(struct clicon_msg *msg, cxobj **xml);
 

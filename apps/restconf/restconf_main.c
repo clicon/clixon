@@ -129,7 +129,7 @@ request_process(clicon_handle h,
     char  *path;
     char  *query;
     char  *method;
-    char **pvec;
+    char **pvec = NULL;
     int    pn;
     cvec  *qvec = NULL;
     cvec  *dvec = NULL;
@@ -141,7 +141,7 @@ request_process(clicon_handle h,
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
-    if ((pvec = clicon_strsplit(path, "/", &pn, __FUNCTION__)) == NULL)
+    if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
 
     if (str2cvec(query, '&', '=', &qvec) < 0)
@@ -171,7 +171,6 @@ request_process(clicon_handle h,
     if (auth == 0)
 	goto done;
     clicon_debug(1, "%s credentials ok 2", __FUNCTION__);
-    clicon_debug(1, "%s credentials ok 3", __FUNCTION__);
 
     if (strcmp(method, "data") == 0) /* restconf, skip /api/data */
 	retval = api_data(h, r, path, pcvec, 2, qvec, data);
@@ -181,6 +180,8 @@ request_process(clicon_handle h,
 	retval = notfound(r);
  done:
     clicon_debug(1, "%s retval:%d K", __FUNCTION__, retval);
+    if (pvec)
+	free(pvec);
     if (dvec)
 	cvec_free(dvec);
     if (qvec)
@@ -189,7 +190,6 @@ request_process(clicon_handle h,
 	cvec_free(pcvec);
     if (cb)
 	cbuf_free(cb);
-    unchunk_group(__FUNCTION__);
     return retval;
 }
 

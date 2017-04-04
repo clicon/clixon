@@ -174,7 +174,7 @@ main(int argc, char **argv)
     int          help = 0;
     char        *treename;
     int          logdst = CLICON_LOG_STDERR;
-    char        *restarg; /* what remains after options */
+    char        *restarg = NULL; /* what remains after options */
 
     /* Defaults */
 
@@ -366,7 +366,7 @@ main(int argc, char **argv)
 	clicon_option_dump(h, debug);
 
     /* Join rest of argv to a single command */
-    restarg = clicon_strjoin(argc, argv, " ", __FUNCTION__);
+    restarg = clicon_strjoin(argc, argv, " ");
 
     /* If several cligen object variables match same preference, select first */
     cligen_match_cgvar_same(1);
@@ -389,6 +389,8 @@ main(int argc, char **argv)
     if (!once)
 	cli_interactive(h);
   done:
+    if (restarg)
+	free(restarg);
     unchunk_group(__FUNCTION__);
     // Gets in your face if we log on stderr
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */

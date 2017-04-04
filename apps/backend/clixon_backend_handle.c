@@ -162,7 +162,7 @@ backend_notify(clicon_handle h,
     /* Then go thru all global (handle) subscriptions and find matches */
     hs = NULL;
     while ((hs = subscription_each(h, hs)) != NULL){
-	if (hs->hs_format != MSG_NOTIFY_TXT)
+	if (hs->hs_format != FORMAT_TEXT)
 	    continue;
 	if (strcmp(hs->hs_stream, stream))
 	    continue;
@@ -240,7 +240,7 @@ backend_notify_xml(clicon_handle h,
     /* Then go thru all global (handle) subscriptions and find matches */
     hs = NULL;
     while ((hs = subscription_each(h, hs)) != NULL){
-	if (hs->hs_format != MSG_NOTIFY_XML)
+	if (hs->hs_format != FORMAT_XML)
 	    continue;
 	if (strcmp(hs->hs_stream, stream))
 	    continue;

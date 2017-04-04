@@ -72,7 +72,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc:rg:pt"
+#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc:rg:pty:"
 
 /*! Terminate. Cannot use h after this */
 static int
@@ -425,6 +425,9 @@ main(int argc, char **argv)
 	    break;
 	case 't' : /* Print alternative dbspec format (eg if YANG, print KEY) */
 	    printalt++;
+	    break;
+	case 'y' : /* yang module */
+	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
 	    break;
 	default:
 	    usage(argv[0], h);

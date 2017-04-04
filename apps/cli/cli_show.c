@@ -787,10 +787,8 @@ expand_dbvar(void   *h,
 	goto done;
     }
     /* In the example, str = "candidate /x/m1/%s/b" */
-    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
+    if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)
 	goto done;
-    }
     dbstr  = vec[0];
     if (strcmp(dbstr, "running") != 0 &&
 	strcmp(dbstr, "candidate") != 0 &&
@@ -856,7 +854,8 @@ expand_dbvar(void   *h,
     }
     retval = 0;
   done:
-    unchunk_group(__FUNCTION__);
+    if (vec)
+	free(vec);
     if (xvec)
 	free(xvec);
     if (xt)
@@ -905,10 +904,8 @@ show_conf_as(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
 	goto done;
     }
-    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
+    if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)
 	goto done;
-    }
     if (nvec != 2 && nvec != 3){
 	clicon_err(OE_PLUGIN, 0, "format error \"%s\" - expected <dbname> <xpath> [<attr>] got %d arg", str, nvec);	
 	goto done;
@@ -956,7 +953,8 @@ done:
 	free(val);
     if (cbx)
 	cbuf_free(cbx);
-    unchunk_group(__FUNCTION__);
+    if (vec)
+	free(vec);
     return retval;
 }
 

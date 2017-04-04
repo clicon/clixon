@@ -1695,11 +1695,9 @@ yang_xpath_abs(yang_node *yn,
     char            *prefix = NULL;
 
     if ((vec = clicon_strsep(xpath, "/", &nvec)) == NULL){
-	clicon_err(OE_YANG, errno, "%s: strsplit", __FUNCTION__); 
+	clicon_err(OE_YANG, errno, "%s: strsep", __FUNCTION__); 
 	return NULL;
     }
-
-
     /* Assume path looks like: "/prefix:id[/prefix:id]*" */
     if (nvec < 2){
 	clicon_err(OE_YANG, 0, "%s: NULL or truncated path: %s", 
@@ -1955,16 +1953,14 @@ cvec *
 yang_arg2cvec(yang_stmt *ys, 
 	      char      *delim)
 {
-    char  **vec;
+    char  **vec = NULL;
     int     i;
     int     nvec;
     cvec   *cvv = NULL;
     cg_var *cv;
 
-    if ((vec = clicon_strsplit(ys->ys_argument, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_YANG, errno, "clicon_strsplit");	
+    if ((vec = clicon_strsep(ys->ys_argument, " ", &nvec)) == NULL)
 	goto done;
-    }
     if ((cvv = cvec_new(nvec)) == NULL){
 	clicon_err(OE_YANG, errno, "cvec_new");	
 	goto done;
@@ -1979,7 +1975,8 @@ yang_arg2cvec(yang_stmt *ys,
 	}
     }
  done:
-    unchunk_group(__FUNCTION__);
+    if (vec)
+	free(vec);
     return cvv;
 }
 

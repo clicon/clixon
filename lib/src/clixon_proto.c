@@ -74,6 +74,46 @@
 
 static int _atomicio_sig = 0;
 
+/*! Formats (showas) derived from XML
+ */
+struct formatvec{
+    char *fv_str;
+    int   fv_int;
+};
+
+static struct formatvec _FORMATS[] = {
+    {"xml",     FORMAT_XML},
+    {"text",    FORMAT_TEXT},
+    {"json",    FORMAT_JSON},
+    {"cli",     FORMAT_CLI},
+    {"netconf", FORMAT_NETCONF},
+    {NULL,   -1}
+};
+
+/*! Translate from numeric error to string representation
+ */
+char *
+format_int2str(enum format_enum showas)
+{
+    struct formatvec *fv;
+
+    for (fv=_FORMATS; fv->fv_int != -1; fv++)
+	if (fv->fv_int == showas)
+	    break;
+    return fv?(fv->fv_str?fv->fv_str:"unknown"):"unknown";
+}
+
+enum format_enum
+format_str2int(char *str)
+{
+    struct formatvec *fv;
+
+    for (fv=_FORMATS; fv->fv_int != -1; fv++)
+	if (strcmp(fv->fv_str, str) == 0)
+	    break;
+    return fv?fv->fv_int:-1;
+}
+
 /*! Encode a clicon netconf message
  * @param[in] param  Variable agrument list format an XML netconf string
  * @retval msg  Clicon message to send to eg clicon_msg_send()

@@ -398,9 +398,8 @@ cli_load_syntax(clicon_handle h, const char *filename, const char *clispec_dir)
 	clicon_err(OE_PLUGIN, 0, "No syntax mode specified in %s", filepath);
 	goto done;
     }
-    if ((vec = clicon_strsplit(mode, ":", &nvec, __FUNCTION__)) == NULL) {
+    if ((vec = clicon_strsep(mode, ":", &nvec)) == NULL) 
 	goto done;
-    }
     for (i = 0; i < nvec; i++) {
 	if (syntax_append(h, cli_syntax(h), vec[i], pt) < 0) { 
 	    goto done;
@@ -415,6 +414,8 @@ cli_load_syntax(clicon_handle h, const char *filename, const char *clispec_dir)
 done:
     if (vr)
 	cvec_free(vr);
+    if (vec)
+	free(vec);
     unchunk_group(__FUNCTION__);
     return retval;
 }
@@ -1020,7 +1021,7 @@ cli_ptpush(clicon_handle h, char *mode, char *string, char *op)
 	return 0;
     pt = &co_cmd->co_pt;
     /* vec is the command, eg 'edit policy_option' */
-    if ((vec = clicon_strsplit(string, " ", &nvec, __FUNCTION__)) == NULL)
+    if ((vec = clicon_strsep(string, " ", &nvec)) == NULL)
 	goto catch;
     co = NULL;
     found = 0;
@@ -1050,7 +1051,8 @@ cli_ptpush(clicon_handle h, char *mode, char *string, char *op)
 		co_up_set(cc, co_cmd);
     }
   catch:
-    unchunk_group(__FUNCTION__) ;
+    if (vec)
+	free(vec);
     return 0;
 }
 

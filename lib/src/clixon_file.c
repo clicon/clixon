@@ -62,19 +62,22 @@
 #include "clixon_string.h"
 #include "clixon_file.h"
 
-/*
- * Resolve the real path of a given 'path', following symbolic links and '../'.
+/*! Resolve the real path of a given 'path', following symbolic links and '../'.
  * If 'path' relative, it will be resolved based on the currnt working 
  * directory 'cwd'. The response is a 2 entry vector of strings. The first 
  * entry is the resolved path and the second is the part of the path which 
  * actually exist.
+ * @retval vec
  */
 char **
-clicon_realpath(const char *cwd, char *path, const char *label)
+clicon_realpath(const char *cwd, 
+		char       *path, 
+		const char *label)
 {
     char **ret = NULL;
     char *rest;
-    char **vec, **vec2;
+    char **vec = NULL;
+    char **vec2;
     int nvec, nvec2;
     char *p;
     char *rp = NULL;
@@ -122,8 +125,10 @@ clicon_realpath(const char *cwd, char *path, const char *label)
     /* Split path based on '/'. Loop through vector from the end and copy
        each  entry into a new vector, skipping '..' and it's previous directory
        as well as all '.' */
-    vec = clicon_strsplit (p, "/", &nvec, __FUNCTION__);
-    vec2 = chunk(nvec * sizeof(char *), __FUNCTION__);
+    if ((vec = clicon_strsep(p, "/", &nvec)) == NULL)
+	goto catch;
+    if ((vec2 = malloc(nvec * sizeof(char *))) == NULL)
+	goto catch;
     nvec2 = i = nvec;
     while(--i >= 0) {
 	if(strcmp(vec[i], "..") == 0)
@@ -135,14 +140,14 @@ clicon_realpath(const char *cwd, char *path, const char *label)
     }
 
     /* Create resulting vector */
-    if ((ret = chunk(sizeof(char *) * 2, label)) != NULL) {
-	if((ret[0] = clicon_strjoin(nvec-nvec2, &vec2[nvec2], "/", label)) == NULL) {
-	    unchunk(ret); 
+    if ((ret = malloc(sizeof(char *) * 2)) != NULL) {
+	if((ret[0] = clicon_strjoin(nvec-nvec2, &vec2[nvec2], "/")) == NULL) {
+	    free(ret); 
 	    ret = NULL;
 	}
-	if ((ret[1] = chunkdup(rp, strlen(rp)+1, label)) == NULL) {
-	    unchunk(ret[0]); 
-	    unchunk(ret); 
+	if ((ret[1] = strdup(rp)) == NULL) {
+	    free(ret[0]); 
+	    free(ret); 
 	    ret = NULL;
 	}
     }
@@ -150,6 +155,10 @@ clicon_realpath(const char *cwd, char *path, const char *label)
 catch:
     if(rp)
 	free(rp);
+    if(vec)
+	free(vec);
+    if(vec2)
+	free(vec2);
     unchunk_group(__FUNCTION__);
     return ret;
 }

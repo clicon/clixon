@@ -45,7 +45,7 @@ load("Load configuration from XML file") <filename:string>("Filename (local file
 }
 example("This is a comment") <var:int32>("Just a random number"), mycallback("myarg");
 downcall("This is a downcall") <str:rest>, downcall();
-notify("Get notifications from backend"), cli_notifyv("ROUTING", "1", "txt");
+notify("Get notifications from backend"), cli_notifyv("ROUTING", "1", "text");
 no("Negate") notify("Get notifications from backend"), cli_notifyv("ROUTING", "0", "xml");
 lock,cli_lock("candidate");
 unlock,cli_unlock("candidate");

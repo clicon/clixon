@@ -74,6 +74,7 @@
 
 #include "cli_common.h"
 
+
 /*! Register log notification stream
  * @param[in] h       Clicon handle
  * @param[in] stream  Event stream. CLICON is predefined, others are application-defined
@@ -594,7 +595,7 @@ load_config_filev(clicon_handle h,
 {
     int         ret = -1;
     struct stat st;
-    char      **vecp;
+    char      **vecp = NULL;
     char       *filename;
     int         replace;
     cg_var     *cv;
@@ -668,6 +669,13 @@ load_config_filev(clicon_handle h,
     ret = 0;
   done:
     unchunk_group(__FUNCTION__);
+    if (vecp){
+	if (vecp[0])
+	    free(vecp[0]);
+	if (vecp[1])
+	    free(vecp[1]);
+	free(vecp);
+    }
     if (xt)
 	xml_free(xt);
     if (fd != -1)
@@ -803,14 +811,6 @@ db_copy(clicon_handle h,
     return clicon_rpc_copy_config(h, db1, db2);
 }
 
-/* These are strings that can be used as 3rd argument to cli_setlog */
-#ifdef notused // broke in new version
-static const char *SHOWAS_TXT     = "txt";
-static const char *SHOWAS_XML     = "xml";
-static const char *SHOWAS_XML2TXT = "xml2txt";
-static const char *SHOWAS_XML2JSON = "xml2json";
-#endif
-
 /*! This is the callback used by cli_setlog to print log message in CLI
  * param[in]  s    UNIX socket from backend  where message should be read
  * param[in]  arg  format: txt, xml, xml2txt, xml2json
@@ -824,11 +824,7 @@ cli_notification_cb(int   s,
     int                retval = -1;
     cxobj             *xt = NULL;
     cxobj             *xe;
-    char              *format = (char*)arg;
-#if 0
-    char              *eventstr = NULL;
-    cxobj             *xn;
-#endif
+    enum format_enum format = (enum format_enum)arg;
     
     /* get msg (this is the reason this function is called) */
     if (clicon_msg_rcv(s, &reply, &eof) < 0)
@@ -840,40 +836,25 @@ cli_notification_cb(int   s,
 	event_unreg_fd(s, cli_notification_cb);
 	goto done;
     }
-    if (format == NULL)
-	goto done;
     if (clicon_msg_decode(reply, &xt) < 0) 
 	goto done;
-    if ((xe = xpath_first(xt, "//event")) != NULL){
+    xe = xpath_first(xt, "//event");
+    switch (format){
+    case FORMAT_XML:
 	if (xml_print(stdout, xe) < 0)
 	    goto done;
+	break;
+    case FORMAT_TEXT:
+	if (xml2txt(stdout, xe, 0) < 0)
+	    goto done;
+	break;
+    case FORMAT_JSON:
+	if (xml2json(stdout, xe, 0) < 0)
+	    goto done;
+	break;
+    default:
+	break;
     }
-#ifdef notyet /* Broke in new version */
-    if (strcmp(format, SHOWAS_TXT) == 0){
-	fprintf(stdout, "%s\n", eventstr);
-    }
-    else
-	if (strcmp(format, SHOWAS_XML) == 0){
-	    if (clicon_xml_parse_string(&eventstr, &xt) < 0)
-		goto done;
-	    if ((xn = xml_child_i(xt, 0)) != NULL)
-		if (xml_print(stdout, xn) < 0)
-		    goto done;
-	}
-	else
-	if (strcmp(format, SHOWAS_XML2TXT) == 0){
-	    if ((xn = xml_child_i(xe, 0)) != NULL)
-		if (xml2txt(stdout, xn, 0) < 0)
-		    goto done;
-	}
-	else
-        if (strcmp(format, SHOWAS_XML2JSON) == 0){
-	    if ((xn = xml_child_i(xe, 0)) != NULL){
-		if (xml2json(stdout, xn, 0) < 0)
-		    goto done;
-	    }
-	}
-#endif
     retval = 0;
   done:
     if (xt)
@@ -905,7 +886,7 @@ cli_notifyv(clicon_handle h,
     int              retval = -1;
     int              status;
     char            *formatstr = NULL;
-    enum format_enum format = MSG_NOTIFY_TXT;
+    enum format_enum format = FORMAT_TEXT;
 
     if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
 	clicon_err(OE_PLUGIN, 0, "%s Requires arguments: <logstream> <status> [<format>]", __FUNCTION__);
@@ -915,12 +896,7 @@ cli_notifyv(clicon_handle h,
     status  = atoi(cv_string_get(cvec_i(argv, 1)));
     if (cvec_len(argv) > 2){
 	formatstr = cv_string_get(cvec_i(argv, 2));
-	if (strcmp(formatstr, "SHOWAS_TXT") != 0)
-	    format = MSG_NOTIFY_XML;
-	if ((formatstr = strdup(formatstr)) == NULL){ /* XXX */
-	    clicon_err(OE_PLUGIN, 0, "%s Requires arguments: <logstream> <status> [<format>]", __FUNCTION__);
-	    goto done;
-	}
+	format = format_str2int(formatstr);
     }
     if (cli_notification_register(h, 
 				  stream, 
@@ -928,7 +904,7 @@ cli_notifyv(clicon_handle h,
 				  "", 
 				  status, 
 				  cli_notification_cb, 
-				  formatstr) < 0)
+				  (void*)format) < 0)
 	goto done;
 
     retval = 0;
@@ -1046,7 +1022,7 @@ load_config_file(clicon_handle h,
     cvec  *argv;
     cg_var *cv;
     char   *str;
-    char  **vec;
+    char  **vec = NULL;
     int     nvec;
 
     /* Split string into two parts and build a cvec of it and supply that to
@@ -1055,10 +1031,8 @@ load_config_file(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
 	goto done;
     }
-    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
+    if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)
 	goto done;
-    }
     if (nvec != 2){
 	clicon_err(OE_PLUGIN, 0, "Arg syntax is <varname> <replace|merge>");	
 	goto done;
@@ -1076,7 +1050,8 @@ load_config_file(clicon_handle h,
     
     retval = load_config_filev(h, cvv, argv);
  done:
-    unchunk_group(__FUNCTION__);
+    if (vec)
+	free(vec);
     return retval;
 }
 int 
@@ -1088,7 +1063,7 @@ save_config_file(clicon_handle h,
     cvec  *argv;
     cg_var *cv;
     char   *str;
-    char  **vec;
+    char  **vec = NULL;
     int     nvec;
 
     /* Split string into two parts and build a cvec of it and supply that to
@@ -1097,10 +1072,8 @@ save_config_file(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
 	goto done;
     }
-    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
+    if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)
 	goto done;
-    }
     if (nvec != 2){
 	clicon_err(OE_PLUGIN, 0, "Arg syntax is <dbname> <varname>");	
 	goto done;
@@ -1118,7 +1091,8 @@ save_config_file(clicon_handle h,
     
     retval = save_config_filev(h, cvv, argv);
  done:
-    unchunk_group(__FUNCTION__);
+    if (vec)
+	free(vec);
     return retval;
 }
 
@@ -1131,7 +1105,7 @@ cli_notify(clicon_handle h,
     cvec  *argv;
     cg_var *cv;
     char   *str;
-    char  **vec;
+    char  **vec = NULL;
     int     nvec;
 
     /* Split string into two parts and build a cvec of it and supply that to
@@ -1140,10 +1114,8 @@ cli_notify(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
 	goto done;
     }
-    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
+    if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)
 	goto done;
-    }
     if (nvec != 2 && nvec != 3){
 	clicon_err(OE_PLUGIN, 0, "Arg syntax is <logstream> <status> [<format>]");	
 	goto done;
@@ -1166,7 +1138,8 @@ cli_notify(clicon_handle h,
     }
     retval = cli_notifyv(h, cvv, argv);
  done:
-    unchunk_group(__FUNCTION__);
+    if (vec)
+	free(vec);
     return retval;
 }
 
