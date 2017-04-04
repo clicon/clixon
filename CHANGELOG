@@ -30,6 +30,8 @@
 # ***** END LICENSE BLOCK *****
 
 
+- Alternative yang spec option -y added to all applications
+- Many clicon special string functions have been removed
 - The netconf support has been extended with lock/unlock
 - clicon_rpc_call() has been removed and should be replaced by extending the
   internal netconf protocol. 

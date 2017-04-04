@@ -595,8 +595,7 @@ load_config_filev(clicon_handle h,
 {
     int         ret = -1;
     struct stat st;
-    char      **vecp = NULL;
-    char       *filename;
+    char       *filename = NULL;
     int         replace;
     cg_var     *cv;
     char       *opstr;
@@ -628,11 +627,10 @@ load_config_filev(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
 	goto done;
     }
-    if ((vecp = clicon_realpath(NULL, cv_string_get(cv), __FUNCTION__)) == NULL){
+    if ((filename = realpath(cv_string_get(cv), NULL)) == NULL){
 	cli_output(stderr, "Failed to resolve filename\n");
 	goto done;
     }
-    filename = vecp[0];
     if (stat(filename, &st) < 0){
  	clicon_err(OE_UNIX, 0, "load_config: stat(%s): %s", 
  		filename, strerror(errno));
@@ -668,14 +666,8 @@ load_config_filev(clicon_handle h,
 	//    }
     ret = 0;
   done:
-    unchunk_group(__FUNCTION__);
-    if (vecp){
-	if (vecp[0])
-	    free(vecp[0]);
-	if (vecp[1])
-	    free(vecp[1]);
-	free(vecp);
-    }
+    if (filename)
+	free(filename);
     if (xt)
 	xml_free(xt);
     if (fd != -1)
@@ -704,8 +696,7 @@ save_config_filev(clicon_handle h,
 		  cvec         *argv)
 {
     int        retval = -1;
-    char     **vecp;
-    char      *filename;
+    char      *filename = NULL;
     cg_var    *cv;
     char      *dbstr;
     char      *varstr;
@@ -732,11 +723,10 @@ save_config_filev(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
 	goto done;
     }
-    if ((vecp = clicon_realpath(NULL, cv_string_get(cv), __FUNCTION__)) == NULL){
+    if ((filename = realpath(cv_string_get(cv), NULL)) == NULL){
 	cli_output(stderr, "Failed to resolve filename\n");
 	goto done;
     }
-    filename = vecp[0];
     if (clicon_rpc_get_config(h, dbstr,"/", &xt) < 0)
 	goto done;
     if ((f = fopen(filename, "wb")) == NULL){
@@ -748,7 +738,8 @@ save_config_filev(clicon_handle h,
     retval = 0;
     /* Fall through */
   done:
-    unchunk_group(__FUNCTION__);
+    if (filename)
+	free(filename);
     if (xt)
 	xml_free(xt);
     if (f != NULL)

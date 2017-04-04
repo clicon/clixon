@@ -56,6 +56,7 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <netinet/in.h>
+#include <libgen.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -70,7 +71,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hDqf:d:S"
+#define NETCONF_OPTS "hDqf:d:Sy:"
 
 /*! Process incoming packet 
  * @param[in]   h    Clicon handle
@@ -286,7 +287,8 @@ usage(clicon_handle h,
             "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
-	    "\t-S\t\tLog on syslog\n",
+	    "\t-S\t\tLog on syslog\n"
+	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
 	    argv0,
 	    netconfdir
 	    );
@@ -359,6 +361,15 @@ main(int argc, char **argv)
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_NETCONF_DIR", optarg);
 	    break;
+	case 'y' :{ /* yang module */
+	    /* Set revision to NULL, extract dir and module */
+	    char *str = strdup(optarg);
+	    char *dir = dirname(str);
+	    hash_del(clicon_options(h), (char*)"CLICON_YANG_MODULE_REVISION");
+	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", basename(optarg));
+	    clicon_option_str_set(h, "CLICON_YANG_DIR", strdup(dir));
+	    break;
+	}
 	default:
 	    usage(h, argv[0]);
 	    break;

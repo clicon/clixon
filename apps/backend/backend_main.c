@@ -57,6 +57,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <libgen.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -141,7 +142,8 @@ usage(char *argv0, clicon_handle h)
 	    "    -r\t\tReload running database\n"
 	    "    -p \t\tPrint database yang specification\n"
 	    "    -t \t\tPrint alternate spec translation (eg if YANG print KEY, if KEY print YANG)\n"
-	    "    -g <group>\tClient membership required to this group (default: %s)\n",
+	    "    -g <group>\tClient membership required to this group (default: %s)\n"
+	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
 	    argv0,
 	    plgdir ? plgdir : "none",
 	    confsock ? confsock : "none",
@@ -426,9 +428,15 @@ main(int argc, char **argv)
 	case 't' : /* Print alternative dbspec format (eg if YANG, print KEY) */
 	    printalt++;
 	    break;
-	case 'y' : /* yang module */
-	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
+	case 'y' :{ /* yang module */
+	    /* Set revision to NULL, extract dir and module */
+	    char *str = strdup(optarg);
+	    char *dir = dirname(str);
+	    hash_del(clicon_options(h), (char*)"CLICON_YANG_MODULE_REVISION");
+	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", basename(optarg));
+	    clicon_option_str_set(h, "CLICON_YANG_DIR", strdup(dir));
 	    break;
+	}
 	default:
 	    usage(argv[0], h);
 	    break;

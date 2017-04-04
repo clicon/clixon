@@ -54,6 +54,7 @@
 #include <sys/param.h>
 #include <netinet/in.h>
 #include <assert.h>
+#include <libgen.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -69,7 +70,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:F:1u:d:m:qpGLl:"
+#define CLI_OPTS "hD:f:F:1u:d:m:qpGLl:y:"
 
 /*! terminate cli application */
 static int
@@ -150,7 +151,8 @@ usage(char *argv0, clicon_handle h)
 	    "\t-p \t\tPrint database yang specification\n"
 	    "\t-G \t\tPrint CLI syntax generated from dbspec (if CLICON_CLI_GENMODEL enabled)\n"
 	    "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
-	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default)\n",
+	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default)\n"
+	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
 	    argv0,
 	    confsock ? confsock : "none",
 	    plgdir ? plgdir : "none"
@@ -288,6 +290,15 @@ main(int argc, char **argv)
 	case 'L' : /* Debug print dynamic CLI syntax */
 	    logclisyntax++;
 	    break;
+	case 'y' :{ /* yang module */
+	    /* Set revision to NULL, extract dir and module */
+	    char *str = strdup(optarg);
+	    char *dir = dirname(str);
+	    hash_del(clicon_options(h), (char*)"CLICON_YANG_MODULE_REVISION");
+	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", basename(optarg));
+	    clicon_option_str_set(h, "CLICON_YANG_DIR", strdup(dir));
+	    break;
+	}
 	default:
 	    usage(argv[0], h);
 	    break;

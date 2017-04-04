@@ -292,6 +292,7 @@ xml_yang_validate(cxobj     *xt,
     yang_stmt *yc;
     int        i;
     yang_stmt *ys;
+    char      *body;
     
     /* if not given by argument (overide) use default link */
     ys = ys0?ys0:xml_spec(xt);
@@ -321,17 +322,19 @@ xml_yang_validate(cxobj     *xt,
 	/* In the union case, value is parsed as generic REST type,
 	 * needs to be reparsed when concrete type is selected
 	 */
-	if (cv_parse(xml_body(xt), cv) <0){
-	    clicon_err(OE_UNIX, errno, "cv_parse");
-	    goto done;
-	}
-	if ((ys_cv_validate(cv, ys, &reason)) != 1){
-	    clicon_err(OE_DB, 0,
-		       "validation of %s failed %s",
-		        ys->ys_argument, reason?reason:"");
-	    if (reason)
-		free(reason);
-	    goto done;
+	if ((body = xml_body(xt)) != NULL){
+	    if (cv_parse(body, cv) <0){
+		clicon_err(OE_UNIX, errno, "cv_parse");
+		goto done;
+	    }
+	    if ((ys_cv_validate(cv, ys, &reason)) != 1){
+		clicon_err(OE_DB, 0,
+			   "validation of %s failed %s",
+			   ys->ys_argument, reason?reason:"");
+		if (reason)
+		    free(reason);
+		goto done;
+	    }
 	}
 	break;
     default:

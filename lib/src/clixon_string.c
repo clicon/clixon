@@ -65,7 +65,7 @@
  * @param[in]   string     String to be split
  * @param[in]   delim      String of delimiter characters
  * @param[out]  nvec       Number of entries in returned vector
- * @retval      vec        Vector of strings. Free after use
+ * @retval      vec        Vector of strings. NULL terminated. Free after use
  * @retval      NULL       Error * 
  */
 char **
@@ -78,6 +78,7 @@ clicon_strsep(char *string,
     char  *p;
     int   nvec = 1;
     int   i;
+    size_t siz;
     char *s;
     char *d;
     
@@ -89,11 +90,13 @@ clicon_strsep(char *string,
 	s++;
     }
     /* alloc vector and append copy of string */
-    if ((vec = (char**)malloc(nvec* sizeof(char*) + strlen(string)+1)) == NULL){
+    siz = (nvec+1)* sizeof(char*) + strlen(string)+1;
+    if ((vec = (char**)malloc(siz)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc"); 
 	goto done;
     } 
-    ptr = (char*)vec + nvec* sizeof(char*); /* this is where ptr starts */
+    memset(vec, 0, siz);
+    ptr = (char*)vec + (nvec+1)* sizeof(char*); /* this is where ptr starts */
     strncpy(ptr, string, strlen(string)+1);
     i = 0;
     while ((p = strsep(&ptr, delim)) != NULL)
@@ -190,10 +193,10 @@ main(int argc, char **argv)
 	return 0;
     }
     str0 = argv[1];
-    if ((vec = clicon_strsep("a b\tc", " \t", &nvec)) == NULL)
+    if ((vec = clicon_strsep(str0, " \t", &nvec)) == NULL)
 	return -1;
     fprintf(stderr, "nvec: %d\n", nvec);
-    for (i=0; i<nvec; i++)
+    for (i=0; i<nvec+1; i++)
 	fprintf(stderr, "vec[%d]: %s\n", i, vec[i]);
     if ((str1 = clicon_strjoin(nvec, vec, " ")) == NULL)
 	return -1;

@@ -59,6 +59,7 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <curl/curl.h>
+#include <libgen.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -71,7 +72,7 @@
 #include "restconf_methods.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hDf:p:"
+#define RESTCONF_OPTS "hDf:p:y:"
 
 /* Should be discovered via  "/.well-known/host-meta"
    resource ([RFC6415]) */
@@ -243,7 +244,8 @@ usage(clicon_handle h,
             "\t-h \t\tHelp\n"
     	    "\t-D \t\tDebug. Log to syslog\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
-	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n",
+	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
+	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
 	    argv0,
 	    restconfdir
 	    );
@@ -264,6 +266,7 @@ main(int    argc,
     char         *sockpath;
     char         *path;
     clicon_handle h;
+    char         *yangspec=NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_SYSLOG); 
@@ -289,6 +292,9 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_RESTCONF_DIR", optarg);
 	    break;
+	case 'y' : /* yang module */
+	    yangspec = optarg;
+	    break;
 	default:
 	    usage(h, argv[0]);
 	     break;
@@ -312,6 +318,15 @@ main(int    argc,
     if (clicon_options_main(h) < 0)
 	goto done;
 
+    /* Overwrite yang module with -y option */
+    if (yangspec){
+	/* Set revision to NULL, extract dir and module */
+	char *str = strdup(yangspec);
+	char *dir = dirname(str);
+	hash_del(clicon_options(h), (char*)"CLICON_YANG_MODULE_REVISION");
+	clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", basename(yangspec));
+	clicon_option_str_set(h, "CLICON_YANG_DIR", strdup(dir));
+    }
     /* Initialize plugins group */
     if (restconf_plugin_load(h) < 0)
 	return -1;
