@@ -406,9 +406,9 @@ xml2csv(FILE *f, cxobj *x, cvec *cvv)
  * Utility function used by cligen spec file
  * @param[in]  h     CLICON handle
  * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
+ * @param[in]  argv  A string: <dbname> <xpath> [<varname>]
  * @param[out] xt    Configuration as xml tree.
- * Format of arg:
+ * Format of argv:
  *   <dbname>  "running", "candidate", "startup"
  *   <xpath>   xpath expression 
  *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
@@ -620,13 +620,12 @@ show_confv_as_command(clicon_handle h,
     while ((xc = xml_child_each(xt, xc, -1)) != NULL){
 	if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
 	    goto done;
-	xml2cli(stdout, xc, prepend, gt, __FUNCTION__); /* cli syntax */
+	xml2cli(stdout, xc, prepend, gt); /* cli syntax */
     }
     retval = 0;
   done:
     if (xt)
 	xml_free(xt);
-    unchunk_group(__FUNCTION__);
     return retval;
 }
 
@@ -692,6 +691,129 @@ show_confv_as_csv(clicon_handle h,
 		  cvec         *argv)
 {
     return show_confv_as_csv1(h, cvv, argv);
+}
+
+/*! Generic show configuration CLIGEN callback
+ * Utility function used by cligen spec file
+ * @param[in]  h     CLICON handle
+ * @param[in]  cvv   Vector of variables from CLIgen command-line
+ * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
+ * Format of argv:
+ *   <dbname>  "running"|"candidate"|"startup"
+ *   <dbname>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
+ *   <xpath>   xpath expression, that may contain one %, eg "/sender[name=%s]"
+ *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
+ * @code
+ *   show config id <n:string>, show_conf_as("running","xml","iface[name=%s]","n");
+ * @endcode
+ */
+int
+show_configuration(clicon_handle h, 
+		   cvec         *cvv, 
+		   cvec         *argv)
+{
+    int              retval = -1;
+    char            *db;
+    char            *formatstr;
+    char            *xpath;
+    enum format_enum format;
+    cbuf            *cbxpath = NULL;
+    char            *attr = NULL;
+    int              i;
+    int              j;
+    cg_var          *cvattr;
+    char            *val = NULL;
+    cxobj           *xt = NULL;
+    cxobj           *xc;
+    enum genmodel_type gt;
+    
+    if (cvec_len(argv) != 3 && cvec_len(argv) != 4){
+	clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <dbname>,<format>,<xpath>[,<attr>]", cvec_len(argv));
+
+	goto done;
+    }
+    /* First argv argument: Database */
+    db = cv_string_get(cvec_i(argv, 0));
+    /* Second argv argument: Format */
+    formatstr = cv_string_get(cvec_i(argv, 1));
+    if ((format = format_str2int(formatstr)) < 0){
+	clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+	goto done;
+    }
+    /* Third argv argument: xpath */
+    xpath = cv_string_get(cvec_i(argv, 2));
+
+    /* Create XPATH variable string */
+    if ((cbxpath = cbuf_new()) == NULL){
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
+	goto done;
+    }
+    /* Fourth argument is stdarg to xpath format string */
+    if (cvec_len(argv) == 4){
+	attr = cv_string_get(cvec_i(argv, 3));
+	j = 0;
+	for (i=0; i<strlen(xpath); i++)
+	    if (xpath[i] == '%')
+		j++;
+	if (j != 1){
+	    clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have a single '%%'");	
+	    goto done;
+	}
+	if ((cvattr = cvec_find_var(cvv, attr)) == NULL){
+	    clicon_err(OE_PLUGIN, 0, "attr '%s' not found in cligen var list", attr);	
+	    goto done;
+	}
+	if ((val = cv2str_dup(cvattr)) == NULL){
+	    clicon_err(OE_PLUGIN, errno, "cv2str_dup");	
+	    goto done;
+	}
+	cprintf(cbxpath, xpath, val);	
+    }
+    else
+	cprintf(cbxpath, "%s", xpath);	
+    /* Get configuration from database */
+    if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), &xt) < 0)
+	goto done;
+    /* Print configuration according to format */
+    switch (format){
+    case FORMAT_XML:
+	xc = NULL; /* Dont print xt itself */
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
+	    clicon_xml2file(stdout, xc, 0, 1);
+	break;
+    case FORMAT_JSON:
+	xml2json(stdout, xt, 1);
+	break;
+    case FORMAT_TEXT:
+	xc = NULL; /* Dont print xt itself */
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
+	    xml2txt(stdout, xc, 0); /* tree-formed text */
+	break;
+    case FORMAT_CLI:
+	xc = NULL; /* Dont print xt itself */
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL){
+	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
+		goto done;
+	    xml2cli(stdout, xc, NULL, gt); /* cli syntax */
+	}
+	break;
+    case FORMAT_NETCONF:
+	fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
+	xc = NULL; /* Dont print xt itself */
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
+	    clicon_xml2file(stdout, xc, 2, 1);
+	fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
+	break;
+    }
+    retval = 0;
+done:
+    if (xt)
+	xml_free(xt);
+    if (val)
+	free(val);
+    if (cbxpath)
+	cbuf_free(cbxpath);
+    return retval;
 }
 
 /*! Show configuration as text given an xpath
@@ -1092,7 +1214,7 @@ show_conf_as_command(clicon_handle h, cvec *cvv, cg_var *arg, char *prepend)
     while ((xc = xml_child_each(xt, xc, -1)) != NULL){
 	if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
 	    goto done;
-	xml2cli(stdout, xc, prepend, gt, __FUNCTION__); /* cli syntax */
+	xml2cli(stdout, xc, prepend, gt); /* cli syntax */
     }
     retval = 0;
   done:

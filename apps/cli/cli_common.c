@@ -627,10 +627,7 @@ load_config_filev(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
 	goto done;
     }
-    if ((filename = realpath(cv_string_get(cv), NULL)) == NULL){
-	cli_output(stderr, "Failed to resolve filename\n");
-	goto done;
-    }
+    filename = cv_string_get(cv);
     if (stat(filename, &st) < 0){
  	clicon_err(OE_UNIX, 0, "load_config: stat(%s): %s", 
  		filename, strerror(errno));
@@ -666,8 +663,6 @@ load_config_filev(clicon_handle h,
 	//    }
     ret = 0;
   done:
-    if (filename)
-	free(filename);
     if (xt)
 	xml_free(xt);
     if (fd != -1)
@@ -723,10 +718,7 @@ save_config_filev(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
 	goto done;
     }
-    if ((filename = realpath(cv_string_get(cv), NULL)) == NULL){
-	cli_output(stderr, "Failed to resolve filename\n");
-	goto done;
-    }
+    filename = cv_string_get(cv);
     if (clicon_rpc_get_config(h, dbstr,"/", &xt) < 0)
 	goto done;
     if ((f = fopen(filename, "wb")) == NULL){
@@ -738,8 +730,6 @@ save_config_filev(clicon_handle h,
     retval = 0;
     /* Fall through */
   done:
-    if (filename)
-	free(filename);
     if (xt)
 	xml_free(xt);
     if (f != NULL)
@@ -815,6 +805,7 @@ cli_notification_cb(int   s,
     int                retval = -1;
     cxobj             *xt = NULL;
     cxobj             *xe;
+    cxobj             *x;
     enum format_enum format = (enum format_enum)arg;
     
     /* get msg (this is the reason this function is called) */
@@ -829,22 +820,26 @@ cli_notification_cb(int   s,
     }
     if (clicon_msg_decode(reply, &xt) < 0) 
 	goto done;
-    xe = xpath_first(xt, "//event");
-    switch (format){
-    case FORMAT_XML:
-	if (xml_print(stdout, xe) < 0)
-	    goto done;
-	break;
-    case FORMAT_TEXT:
-	if (xml2txt(stdout, xe, 0) < 0)
-	    goto done;
-	break;
-    case FORMAT_JSON:
-	if (xml2json(stdout, xe, 0) < 0)
-	    goto done;
-	break;
-    default:
-	break;
+    if ((xe = xpath_first(xt, "//event")) != NULL){
+	x = NULL;
+	while ((x = xml_child_each(xe, x, -1)) != NULL) {
+	    switch (format){
+	    case FORMAT_XML:
+		if (clicon_xml2file(stdout, x, 0, 1) < 0)
+		    goto done;
+		break;
+	    case FORMAT_TEXT:
+		if (xml2txt(stdout, x, 0) < 0)
+		    goto done;
+		break;
+	    case FORMAT_JSON:
+		if (xml2json(stdout, x, 1) < 0)
+		    goto done;
+		break;
+	    default:
+		break;
+	    }
+	}
     }
     retval = 0;
   done:
@@ -963,6 +958,127 @@ cli_unlock(clicon_handle h,
     return retval;
 }
 
+/*! Copy one configuration object to antother
+ *
+ * Works for objects that are items ina yang list with a keyname, eg as:
+ *   list sender{ 
+ *      key name;	
+ *	leaf name{...
+ *
+ * @param[in]  h    CLICON handle
+ * @param[in]  cvv  Vector of variables from CLIgen command-line
+ * @param[in]  argv Vector: <db>, <xpath>, <field>, <fromvar>, <tovar>
+ * Explanation of argv fields:
+ *  db:     Database name, eg candidate|tmp|startup
+ *  xpath:  XPATH expression with exactly two %s pointing to field and from name
+ *  field:  Name of list key, eg name
+ *  fromvar:Name of variable containing name of object to copy from (given by xpath)
+ *  tovar:  Name of variable containing name of object to copy to.
+ * @code
+ * cli spec:
+ *  copy snd <n1:string> to <n2:string>, copy_object("candidate", "/sender[%s=%s]", "from", "n1", "n2");
+ * cli command:
+ *  copy snd from to to
+ * @endcode
+ */
+int
+cli_copy_object(clicon_handle h, 
+		cvec         *cvv, 
+		cvec         *argv)
+{
+    int          retval = -1;
+    char        *db;
+    cxobj       *x1 = NULL; 
+    cxobj       *x2 = NULL; 
+    cxobj       *x;
+    char        *xpath;
+    int          i;
+    int          j;
+    cbuf        *cb = NULL;
+    char        *keyname;
+    char        *fromvar;
+    cg_var      *fromcv;
+    char        *fromname = NULL;
+    char        *tovar;
+    cg_var      *tocv;
+    char        *toname;
+
+    if (cvec_len(argv) != 5){
+	clicon_err(OE_PLUGIN, 0, "%s: Requires four elements: <db> <xpath> <keyname> <from> <to>", __FUNCTION__);
+	goto done;
+    }
+    /* First argv argument: Database */
+    db = cv_string_get(cvec_i(argv, 0));
+    /* Second argv argument: xpath */
+    xpath = cv_string_get(cvec_i(argv, 1));
+    /* Third argv argument: name of keyname */
+    keyname = cv_string_get(cvec_i(argv, 2));
+    /* Fourth argv argument: from variable */
+    fromvar = cv_string_get(cvec_i(argv, 3));
+    /* Fifth argv argument: to variable */
+    tovar = cv_string_get(cvec_i(argv, 4));
+    
+    /* Get from variable -> cv -> from name */
+    if ((fromcv = cvec_find_var(cvv, fromvar)) == NULL){
+	clicon_err(OE_PLUGIN, 0, "fromvar '%s' not found in cligen var list", fromvar);	
+	goto done;
+    }
+    /* Get from name from cv */
+    fromname = cv_string_get(fromcv);
+    /* Create xpath */
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
+	goto done;
+    }
+    /* Sanity check that xpath contains exactly one %s */
+    j = 0;
+    for (i=0; i<strlen(xpath); i++)
+	if (xpath[i] == '%')
+	    j++;
+    if (j != 2){
+	clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have two '%%'");	
+	goto done;
+    }
+    cprintf(cb, xpath, keyname, fromname);	
+
+    /* Get from object configuration and store in x1 */
+    if (clicon_rpc_get_config(h, db, cbuf_get(cb), &x1) < 0)
+	goto done;
+
+    /* Get to variable -> cv -> to name */
+    if ((tocv = cvec_find_var(cvv, tovar)) == NULL){
+	clicon_err(OE_PLUGIN, 0, "tovar '%s' not found in cligen var list", tovar);
+	goto done;
+    }
+    toname = cv_string_get(tocv);
+    /* Create copy xml tree x2 */
+    if ((x2 = xml_new("new", NULL)) == NULL)
+	goto done;
+    if (xml_copy(x1, x2) < 0)
+	goto done;
+    cprintf(cb, "/%s", keyname);	
+    if ((x = xpath_first(x2, cbuf_get(cb))) == NULL){
+	clicon_err(OE_PLUGIN, 0, "Field %s not found in copy tree", keyname);
+	goto done;
+    }
+    x = xml_find(x, "body");
+    xml_value_set(x, toname);
+    /* resuse cb */
+    cbuf_reset(cb);
+    /* create xml copy tree and merge it with database configuration */
+    clicon_xml2cbuf(cb, x2, 0, 0);
+    if (clicon_rpc_edit_config(h, db, OP_MERGE, NULL, cbuf_get(cb)) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    if (x1 != NULL)
+	xml_free(x1);
+    if (x2 != NULL)
+	xml_free(x2);
+    return retval;
+}
 
 /* Here are backward compatible cligen callback functions used when 
  * the option: CLICON_CLIGEN_CALLBACK_SINGLE_ARG is set.
@@ -1045,6 +1161,7 @@ load_config_file(clicon_handle h,
 	free(vec);
     return retval;
 }
+
 int 
 save_config_file(clicon_handle h, 
 		 cvec         *cvv, 

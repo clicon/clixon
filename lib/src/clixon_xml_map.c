@@ -197,23 +197,26 @@ xml2txt(FILE *f, cxobj *x, int level)
  *  @param[in] x        XML Parse-tree (to translate)
  *  @param[in] prepend0 Print this text in front of all commands.
  *  @param[in] gt       option to steer cli syntax
- *  @param[in] label    Memory chunk allocation label
  */
 int 
 xml2cli(FILE              *f, 
 	cxobj             *x, 
 	char              *prepend0, 
-	enum genmodel_type gt,
-	const char        *label)
+	enum genmodel_type gt)
 {
     int              retval = -1;
     cxobj           *xe = NULL;
     char            *term;
-    char            *prepend;
     int              bool;
     int              nr;
     int              i;
+    cbuf            *cbpre;
 
+    /* Create prepend variable string */
+    if ((cbpre = cbuf_new()) == NULL){
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
+	goto done;
+    }
     nr = xml_child_nr(x);
     if (!nr){
 	if (xml_type(x) == CX_BODY)
@@ -226,10 +229,8 @@ xml2cli(FILE              *f,
 	retval = 0;
 	goto done;
     }
-    prepend = "";
     if (prepend0)
-	if ((prepend = chunk_sprintf(label, "%s%s", prepend, prepend0)) == NULL)
-	    goto done;
+	cprintf(cbpre, "%s", prepend0);
 /* bool determines when to print a variable keyword:
    !leaf           T for all (ie parameter)
    index GT_NONE   F
@@ -241,12 +242,11 @@ xml2cli(FILE              *f,
  */
     bool = !leaf(x) || gt == GT_ALL || (gt == GT_VARS && !xml_index(x));
 //    bool = (!x->xn_index || gt == GT_ALL);
-    if (bool &&
-	(prepend = chunk_sprintf(label, "%s%s%s", 
-					prepend, 
-					strlen(prepend)?" ":"",
-				 xml_name(x))) == NULL)
-	goto done;
+    if (bool){
+	if (cbuf_len(cbpre))
+	    cprintf(cbpre, " ");
+	cprintf(cbpre, "%s", xml_name(x));
+    }
     xe = NULL;
     /* First child is unique, then add that, before looping. */
     i = 0;
@@ -255,23 +255,19 @@ xml2cli(FILE              *f,
 	if (xml_index(xe) && i < nr-1) 
 	    ;
 	else
-	    if (xml2cli(f, xe, prepend, gt, label) < 0)
+	    if (xml2cli(f, xe, cbuf_get(cbpre), gt) < 0)
 		goto done;
 	if (xml_index(xe)){ /* assume index is first, otherwise need one more while */
-	    if (gt ==GT_ALL && (prepend = chunk_sprintf(label, "%s %s", 
-							prepend, 
-							xml_name(xe))) == NULL)
-
-		goto done;
-	    if ((prepend = chunk_sprintf(label, "%s %s", 
-					 prepend, 
-					 xml_value(xml_child_i(xe, 0)))) == NULL)
-		goto done;
+	    if (gt == GT_ALL)
+		cprintf(cbpre, " %s", xml_name(xe));
+	    cprintf(cbpre, " %s", xml_value(xml_child_i(xe, 0)));
 	}
 	i++;
     }
     retval = 0;
   done:
+    if (cbpre)
+	cbuf_free(cbpre);
     return retval;
 }
 

@@ -29,7 +29,7 @@
 #
 # ***** END LICENSE BLOCK *****
 
-
+- show_configuration and cli_copy_object added as generic cli commands
 - Alternative yang spec option -y added to all applications
 - Many clicon special string functions have been removed
 - The netconf support has been extended with lock/unlock

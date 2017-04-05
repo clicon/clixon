@@ -50,9 +50,7 @@
  * Types
  */
 
-/*
- * enum gensyntx
- * Controls how keywords a generated in CLI syntax / prints from obhect model
+/*! Controls how keywords a generated in CLI syntax / prints from object model
  * Example syntax a.b[] $!x $y:
  * NONE: a b <x> <y>;
  * VARS: a b <x> y <y>;

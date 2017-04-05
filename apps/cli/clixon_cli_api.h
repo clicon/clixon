@@ -92,6 +92,7 @@ int discard_changesv(clicon_handle h, cvec *vars, cvec *argv);
 int cli_notifyv(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_lock(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_unlock(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_copy_object(clicon_handle h, cvec *cvv, cvec *argv);
 
 /* cli_common.c: CLIgen old single arg callbacks */
 int cli_set(clicon_handle h, cvec *vars, cg_var *arg);
@@ -124,6 +125,8 @@ int show_confv_as_cli(clicon_handle h, cvec *vars, cvec *argv);
 int show_confv_as_csv(clicon_handle h, cvec *vars, cvec *argv);
 int show_yangv(clicon_handle h, cvec *vars, cvec *argv);
 int show_confv_xpath(clicon_handle h, cvec *cvv, cvec *argv);
+
+int show_configuration(clicon_handle h, cvec *cvv, cvec *argv);
 
 /* cli_show.c: CLIgen old single arg callbacks */
 int show_conf_as_xml(clicon_handle h, cvec *vars, cg_var *arg);
