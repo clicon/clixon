@@ -47,6 +47,27 @@ expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><validate><source><candidate/><
 new "netconf commit"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
+new "netconf edit config replace"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth2</name><type>eth</type></interface></interfaces></config><default-operation>merge</default-operation> </edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf get replaced config"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><config><interfaces><interface><name>eth1</name><type>eth</type><enabled>true</enabled></interface><interface><name>eth2</name><type>eth</type><enabled>true</enabled></interface></interfaces></config></data></rpc-reply>]]>]]>$"
+
+new "netconf edit config create"
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="create"><name>eth3</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf edit config create 2nd"
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="create"><name>eth3</name><type>eth</type></interface></interfaces></config><default-operation>merge</default-operation> </edit-config></rpc>]]>]]>' "^<rpc-reply><rpc-error>"
+
+new "netconf edit config delete"
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="delete"><name>eth3</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf get delete config"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><config><interfaces><interface><name>eth1</name><type>eth</type><enabled>true</enabled></interface><interface><name>eth2</name><type>eth</type><enabled>true</enabled></interface></interfaces></config></data></rpc-reply>]]>]]>$"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
 new "netconf lock/unlock"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]><rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><rpc-reply><ok/></rpc-reply>]]>]]>$"
 

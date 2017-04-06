@@ -220,6 +220,8 @@ clicon_rpc_generate_error(cxobj *xerr)
     clicon_err_fn("Clixon", 0, OE_XML, 0, "%s", cbuf_get(cb));
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 

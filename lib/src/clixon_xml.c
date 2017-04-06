@@ -1479,6 +1479,8 @@ xml_operation(char                *opstr,
 	*op = OP_DELETE;
     else if (strcmp("remove", opstr) == 0)
 	*op = OP_REMOVE;
+    else if (strcmp("none", opstr) == 0)
+	*op = OP_NONE;
     else{
 	clicon_err(OE_XML, 0, "Bad-attribute operation: %s", opstr);
 	return -1;

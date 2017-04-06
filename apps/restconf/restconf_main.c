@@ -112,6 +112,8 @@ api_data(clicon_handle h,
 	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data);
     else if (strcmp(request_method, "PUT")==0)
 	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data);
+    else if (strcmp(request_method, "PATCH")==0)
+	retval = api_data_patch(h, r, api_path, pcvec, pi, qvec, data);
     else if (strcmp(request_method, "DELETE")==0)
 	retval = api_data_delete(h, r, api_path, pi);
     else
@@ -180,7 +182,7 @@ request_process(clicon_handle h,
     else
 	retval = notfound(r);
  done:
-    clicon_debug(1, "%s retval:%d K", __FUNCTION__, retval);
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (pvec)
 	free(pvec);
     if (dvec)

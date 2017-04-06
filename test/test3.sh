@@ -6,7 +6,7 @@
 
 # kill old backend (if any)
 new "kill old backend"
-#sudo clixon_backend -zf $clixon_cf
+sudo clixon_backend -zf $clixon_cf
 if [ $? -ne 0 ]; then
     err
 fi
@@ -40,16 +40,21 @@ $'
 new "restconf head"
 expectfn "curl -s -I http://localhost/restconf/data" "Content-Type: application/yang.data\+json"
 
-new "restconf patch config"
+new "restconf POST config"
 expectfn 'curl -sX POST -d {"type":"eth"} http://localhost/restconf/data/interfaces/interface=eth4' ""
-# XXX POST/PUT/PATCH
 
-new "restconf delete config"
+new "restconf DELETE config"
 expectfn 'curl -sX DELETE  http://localhost/restconf/data/interfaces/interface=eth0' ""
 
 new "restconf get config"
 expectfn "curl -sG http://localhost/restconf/data" '{"interfaces": {"interface": \[{"name": "eth1","type": "eth","enabled": "true"},{ "name": "eth4","type": "eth","enabled": "true"}\]}}
 $'
+
+new "restconf PATCH config"
+expectfn 'curl -sX PATCH -d {"type":"eth"} http://localhost/restconf/data/interfaces/interface=eth4' ""
+
+new "restconf PUT"
+expectfn 'curl -sX PUT -d {"type":"eth"} http://localhost/restconf/data/interfaces/interface=eth5' ""
 
 new "Kill restconf daemon"
 #sudo pkill -u www-data clixon_restconf

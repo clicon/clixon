@@ -197,10 +197,10 @@ cli_signal_flush(clicon_handle h)
  * @see cli_callback_generate where arg is generated
  */
 static int
-cli_dbxmlv(clicon_handle       h, 
-	   cvec               *cvv, 
-	   cvec               *argv, 
-	   enum operation_type op)
+cli_dbxml(clicon_handle       h, 
+	  cvec               *cvv, 
+	  cvec               *argv, 
+	  enum operation_type op)
 {
     int        retval = -1;
     char      *str = NULL;
@@ -253,40 +253,54 @@ cli_dbxmlv(clicon_handle       h,
 }
 
 int 
-cli_setv(clicon_handle h, cvec *cvv, cvec *argv)
+cli_set(clicon_handle h, cvec *cvv, cvec *argv)
 {
     int retval = 1;
 
-    if (cli_dbxmlv(h, cvv, argv, OP_REPLACE) < 0)
+    if (cli_dbxml(h, cvv, argv, OP_REPLACE) < 0)
 	goto done;
     retval = 0;
  done:
     return retval;
 }
+int cli_setv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_set(h, vars, argv);
+}
 
 int 
-cli_mergev(clicon_handle h, cvec *cvv, cvec *argv)
+cli_merge(clicon_handle h, cvec *cvv, cvec *argv)
 {
     int retval = -1;
 
-    if (cli_dbxmlv(h, cvv, argv, OP_MERGE) < 0)
+    if (cli_dbxml(h, cvv, argv, OP_MERGE) < 0)
 	goto done;
     retval = 0;
  done:
     return retval;
 }
+int cli_mergev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_merge(h, vars, argv);
+}
+
 
 int 
-cli_delv(clicon_handle h, cvec *cvv, cvec *argv)
+cli_del(clicon_handle h, cvec *cvv, cvec *argv)
 {
     int   retval = -1;
 
-    if (cli_dbxmlv(h, cvv, argv, OP_REMOVE) < 0)
+    if (cli_dbxml(h, cvv, argv, OP_REMOVE) < 0)
 	goto done;
     retval = 0;
  done:
     return retval;
 }
+int cli_delv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_del(h, vars, argv);
+}
+
 
 /*! Set debug level on CLI client (not backend daemon)
  * @param[in] h     Clicon handle
@@ -296,7 +310,7 @@ cli_delv(clicon_handle h, cvec *cvv, cvec *argv)
  *       _or_ if a 'level' variable is present in vars use that value instead.
  */
 int
-cli_debug_cliv(clicon_handle h, 
+cli_debug_cli(clicon_handle h, 
 	       cvec         *vars, 
 	       cvec         *argv)
 {
@@ -318,6 +332,10 @@ cli_debug_cliv(clicon_handle h,
  done:
     return retval;
 }
+int cli_debug_cliv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_debug_cli(h, vars, argv);
+}
 
 /*! Set debug level on backend daemon (not CLI)
  * @param[in] h     Clicon handle
@@ -327,9 +345,9 @@ cli_debug_cliv(clicon_handle h,
  *       _or_ if a 'level' variable is present in vars use that value instead.
  */
 int
-cli_debug_backendv(clicon_handle h, 
-		   cvec         *vars, 
-		   cvec         *argv)
+cli_debug_backend(clicon_handle h, 
+		  cvec         *vars, 
+		  cvec         *argv)
 {
     int     retval = -1;
     cg_var *cv;
@@ -348,11 +366,15 @@ cli_debug_backendv(clicon_handle h,
  done:
     return retval;
 }
+int cli_debug_backendv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_debug_backend(h, vars, argv);
+}
 
 /*! Set syntax mode
  */
 int
-cli_set_modev(clicon_handle h, 
+cli_set_mode(clicon_handle h, 
 	      cvec         *vars, 
 	      cvec         *argv)
 {
@@ -369,14 +391,18 @@ cli_set_modev(clicon_handle h,
   done:
     return retval;
 }
+int cli_set_modev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_set_mode(h, vars, argv);
+}
 
 /*! Start bash from cli callback
  * XXX Application specific??
  */ 
 int
-cli_start_shellv(clicon_handle h, 
-		 cvec         *vars, 
-		 cvec         *argv)
+cli_start_shell(clicon_handle h, 
+		cvec         *vars, 
+		cvec         *argv)
 {
     char *cmd;
     struct passwd *pw;
@@ -426,23 +452,31 @@ cli_start_shellv(clicon_handle h,
 
     return 0;
 }
+int cli_start_shellv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_start_shell(h, vars, argv);
+}
 
 /*! Generic quit callback
  */
 int 
-cli_quitv(clicon_handle h, 
+cli_quit(clicon_handle h, 
 	  cvec         *vars, 
 	  cvec         *argv)
 {
     cli_set_exiting(h, 1);
     return 0;
 }
+int cli_quitv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_quit(h, vars, argv);
+}
 
 /*! Generic commit callback
  * @param[in]  argv No arguments expected
  */
 int
-cli_commitv(clicon_handle h, 
+cli_commit(clicon_handle h, 
 	    cvec         *vars, 
 	    cvec         *argv)
 {
@@ -456,11 +490,15 @@ cli_commitv(clicon_handle h,
   done:
     return retval;
 }
+int cli_commitv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_commit(h, vars, argv);
+}
 
 /*! Generic validate callback
  */
 int
-cli_validatev(clicon_handle h, 
+cli_validate(clicon_handle h, 
 	      cvec         *vars, 
 	      cvec         *argv)
 {
@@ -472,7 +510,10 @@ cli_validatev(clicon_handle h,
  done:
     return retval;
 }
-
+int cli_validatev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_validate(h, vars, argv);
+}
 
 /*! Compare two dbs using XML. Write to file and run diff
  */
@@ -541,7 +582,7 @@ compare_xmls(cxobj *xc1,
  * @param[in]   arg   arg: 0 as xml, 1: as text
  */
 int
-compare_dbsv(clicon_handle h, 
+compare_dbs(clicon_handle h, 
 	    cvec         *cvv, 
 	    cvec         *argv)
 {
@@ -573,6 +614,10 @@ compare_dbsv(clicon_handle h,
 
     return retval;
 }
+int compare_dbsv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return compare_dbs(h, vars, argv);
+}
 
 /*! Load a configuration file to candidate database
  * Utility function used by cligen spec file
@@ -589,9 +634,9 @@ compare_dbsv(clicon_handle h,
  * @see save_config_file
  */
 int 
-load_config_filev(clicon_handle h, 
-		  cvec         *cvv, 
-		  cvec         *argv)
+load_config_file(clicon_handle h, 
+		 cvec         *cvv, 
+		 cvec         *argv)
 {
     int         ret = -1;
     struct stat st;
@@ -669,6 +714,10 @@ load_config_filev(clicon_handle h,
 	close(fd);
     return ret;
 }
+int load_config_filev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return load_config_file(h, vars, argv);
+}
 
 /*! Copy database to local file 
  * Utility function used by cligen spec file
@@ -686,9 +735,9 @@ load_config_filev(clicon_handle h,
  * @see load_config_file
  */
 int
-save_config_filev(clicon_handle h, 
-		  cvec         *cvv, 
-		  cvec         *argv)
+save_config_file(clicon_handle h, 
+		 cvec         *cvv, 
+		 cvec         *argv)
 {
     int        retval = -1;
     char      *filename = NULL;
@@ -736,14 +785,18 @@ save_config_filev(clicon_handle h,
 	fclose(f);
     return retval;
 }
+int save_config_filev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return save_config_file(h, vars, argv);
+}
 
 /*! Delete all elements in a database 
  * Utility function used by cligen spec file
  */
 int
-delete_allv(clicon_handle h, 
-	    cvec         *cvv, 
-	    cvec         *argv)
+delete_all(clicon_handle h, 
+	   cvec         *cvv, 
+	   cvec         *argv)
 {
     char            *dbstr;
     int              retval = -1;
@@ -765,15 +818,23 @@ delete_allv(clicon_handle h,
   done:
     return retval;
 }
+int delete_allv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return delete_all(h, vars, argv);
+}
 
 /*! Discard all changes in candidate and replace with running
  */
 int
-discard_changesv(clicon_handle h, 
-		 cvec         *cvv, 
-		 cvec         *argv)
+discard_changes(clicon_handle h, 
+		cvec         *cvv, 
+		cvec         *argv)
 {
     return clicon_rpc_discard_changes(h);
+}
+int discard_changesv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return discard_changes(h, vars, argv);
 }
 
 /*! Copy from one database to another, eg running->startup
@@ -864,9 +925,9 @@ cli_notification_cb(int   s,
  * XXX: format is a memory leak
  */
 int
-cli_notifyv(clicon_handle h, 
-	    cvec         *cvv, 
-	    cvec         *argv)
+cli_notify(clicon_handle h, 
+	   cvec         *cvv, 
+	   cvec         *argv)
 {
     char            *stream = NULL;
     int              retval = -1;
@@ -896,6 +957,10 @@ cli_notifyv(clicon_handle h,
     retval = 0;
   done:
     return retval;
+}
+int cli_notifyv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_notify(h, vars, argv);
 }
 
 /*! Lock database
@@ -976,13 +1041,13 @@ cli_unlock(clicon_handle h,
  *  tovar:  Name of variable containing name of object to copy to.
  * @code
  * cli spec:
- *  copy snd <n1:string> to <n2:string>, copy_object("candidate", "/sender[%s=%s]", "from", "n1", "n2");
+ *  copy snd <n1:string> to <n2:string>, cli_copy_config("candidate", "/sender[%s=%s]", "from", "n1", "n2");
  * cli command:
  *  copy snd from to to
  * @endcode
  */
 int
-cli_copy_object(clicon_handle h, 
+cli_copy_config(clicon_handle h, 
 		cvec         *cvv, 
 		cvec         *argv)
 {
@@ -1080,176 +1145,6 @@ cli_copy_object(clicon_handle h,
     return retval;
 }
 
-/* Here are backward compatible cligen callback functions used when 
- * the option: CLICON_CLIGEN_CALLBACK_SINGLE_ARG is set.
- */
-
-cb_single_arg(cli_set)
-cb_single_arg(cli_merge)
-cb_single_arg(cli_del)
-cb_single_arg(cli_debug_cli)
-cb_single_arg(cli_debug_backend)
-cb_single_arg(cli_set_mode)
-cb_single_arg(cli_start_shell)
-cb_single_arg(cli_quit)
-//cb_single_arg(cli_commit)
-int cli_commit(clicon_handle h, cvec *cvv, cg_var *arg)      
-{						     
-    int   retval=-1;
-    cvec *argv = NULL;				     
-						     
-    if (arg){
-	if (cv_type_get(arg) > CGV_EMPTY){
-	    cligen_output(stderr, "%s: Illegal cvtype. This is most probably a single-argument cligen callback being used in a multi-argument setting. This can happen if option CLICON_CLIGEN_CALLBACK_SINGLE_ARG is 0 but you call a single argument callback (eg %s) from a .cli file. Please change to a multi-argument callback\n", __FUNCTION__, __FUNCTION__);
-	    goto done;
-	}
-	if ((argv = cvec_from_var(arg)) == NULL){ 
-	    clicon_err(OE_UNIX, errno, "cvec_from_var"); 
-	    goto done;				     
-	}		
-    }				     
-    retval = cli_commitv(h, cvv, argv);		     
- done:						     
-    if (argv) cvec_free(argv);			     
-      return retval;				     
-} 
-
-cb_single_arg(cli_validate)
-cb_single_arg(compare_dbs)
-cb_single_arg(delete_all)
-cb_single_arg(discard_changes)
-
-/* Follows some functions not covered by translation macro */
-int 
-load_config_file(clicon_handle h, 
-		 cvec         *cvv, 
-		 cg_var       *arg)    
-{						     
-    int    retval=-1;
-    cvec  *argv;
-    cg_var *cv;
-    char   *str;
-    char  **vec = NULL;
-    int     nvec;
-
-    /* Split string into two parts and build a cvec of it and supply that to
-       the multi-arg callback */
-    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
-	goto done;
-    }
-    if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)
-	goto done;
-    if (nvec != 2){
-	clicon_err(OE_PLUGIN, 0, "Arg syntax is <varname> <replace|merge>");	
-	goto done;
-    }
-    if ((argv = cvec_new(nvec)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_from_var"); 
-	goto done;
-    }
-    cv = cvec_i(argv, 0);
-    cv_type_set(cv, CGV_STRING);
-    cv_string_set(cv, vec[0]);
-    cv = cvec_i(argv, 1);
-    cv_type_set(cv, CGV_STRING);
-    cv_string_set(cv, vec[1]);
-    
-    retval = load_config_filev(h, cvv, argv);
- done:
-    if (vec)
-	free(vec);
-    return retval;
-}
-
-int 
-save_config_file(clicon_handle h, 
-		 cvec         *cvv, 
-		 cg_var       *arg)    
-{						     
-    int    retval=-1;
-    cvec  *argv;
-    cg_var *cv;
-    char   *str;
-    char  **vec = NULL;
-    int     nvec;
-
-    /* Split string into two parts and build a cvec of it and supply that to
-       the multi-arg callback */
-    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
-	goto done;
-    }
-    if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)
-	goto done;
-    if (nvec != 2){
-	clicon_err(OE_PLUGIN, 0, "Arg syntax is <dbname> <varname>");	
-	goto done;
-    }
-    if ((argv = cvec_new(nvec)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_from_var"); 
-	goto done;
-    }
-    cv = cvec_i(argv, 0);
-    cv_type_set(cv, CGV_STRING);
-    cv_string_set(cv, vec[0]);
-    cv = cvec_i(argv, 1);
-    cv_type_set(cv, CGV_STRING);
-    cv_string_set(cv, vec[1]);
-    
-    retval = save_config_filev(h, cvv, argv);
- done:
-    if (vec)
-	free(vec);
-    return retval;
-}
-
-int 
-cli_notify(clicon_handle h, 
-	   cvec         *cvv, 
-	   cg_var       *arg)    
-{						     
-    int    retval=-1;
-    cvec  *argv;
-    cg_var *cv;
-    char   *str;
-    char  **vec = NULL;
-    int     nvec;
-
-    /* Split string into two parts and build a cvec of it and supply that to
-       the multi-arg callback */
-    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
-	goto done;
-    }
-    if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)
-	goto done;
-    if (nvec != 2 && nvec != 3){
-	clicon_err(OE_PLUGIN, 0, "Arg syntax is <logstream> <status> [<format>]");	
-	goto done;
-    }
-    if ((argv = cvec_new(nvec)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_from_var"); 
-	goto done;
-    }
-    cv = cvec_i(argv, 0);
-    cv_type_set(cv, CGV_STRING);
-    cv_string_set(cv, vec[0]);
-
-    cv = cvec_i(argv, 1);
-    cv_type_set(cv, CGV_STRING);
-    cv_string_set(cv, vec[1]);
-    if (nvec > 2){
-	cv = cvec_i(argv, 2);
-	cv_type_set(cv, CGV_STRING);
-	cv_string_set(cv, vec[2]);
-    }
-    retval = cli_notifyv(h, cvv, argv);
- done:
-    if (vec)
-	free(vec);
-    return retval;
-}
 
 /*! set debug level on stderr (not syslog).
  * The level is either what is specified in arg as int argument.

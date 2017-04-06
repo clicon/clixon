@@ -372,26 +372,13 @@ cli_load_syntax(clicon_handle h, const char *filename, const char *clispec_dir)
     }
 
     /* Resolve callback names to function pointers. */
-     if (clicon_option_int(h, "CLICON_CLIGEN_CALLBACK_SINGLE_ARG")==1){     
-	 if (cligen_callback_str2fn(pt, (cg_str2fn_t*)clixon_str2fn, handle) < 0){     
-	     clicon_err(OE_PLUGIN, 0, "Mismatch between CLIgen file '%s' and CLI plugin file '%s'. Some possible errors:\n\t1. A function given in the CLIgen file does not exist in the plugin (ie link error)\n\t2. The CLIgen spec does not point to the correct plugin .so file (CLICON_PLUGIN=\"%s\" is wrong)", 
-			filename, plgnam, plgnam);
-	     goto done;
-	 }
-     }
-     else
-	 if (cligen_callbackv_str2fn(pt, (cgv_str2fn_t*)clixon_str2fn, handle) < 0){     
-	     clicon_err(OE_PLUGIN, 0, "Mismatch between CLIgen file '%s' and CLI plugin file '%s'. Some possible errors:\n\t1. A function given in the CLIgen file does not exist in the plugin (ie link error)\n\t2. The CLIgen spec does not point to the correct plugin .so file (CLICON_PLUGIN=\"%s\" is wrong)", 
-			filename, plgnam, plgnam);
-	     goto done;
-	 }
-    if (clicon_option_int(h, "CLICON_CLIGEN_EXPAND_SINGLE_ARG")==1){     
-	if (cligen_expand_str2fn(pt, (expand_str2fn_t*)clixon_str2fn, handle) < 0)     
-	    goto done;
+    if (cligen_callbackv_str2fn(pt, (cgv_str2fn_t*)clixon_str2fn, handle) < 0){     
+	clicon_err(OE_PLUGIN, 0, "Mismatch between CLIgen file '%s' and CLI plugin file '%s'. Some possible errors:\n\t1. A function given in the CLIgen file does not exist in the plugin (ie link error)\n\t2. The CLIgen spec does not point to the correct plugin .so file (CLICON_PLUGIN=\"%s\" is wrong)", 
+		   filename, plgnam, plgnam);
+	goto done;
     }
-    else
-	if (cligen_expandv_str2fn(pt, (expandv_str2fn_t*)clixon_str2fn, handle) < 0)     
-	    goto done;
+     if (cligen_expandv_str2fn(pt, (expandv_str2fn_t*)clixon_str2fn, handle) < 0)     
+	 goto done;
 
     /* Make sure we have a syntax mode specified */
     if (mode == NULL || strlen(mode) < 1) { /* may be null if not given in file */

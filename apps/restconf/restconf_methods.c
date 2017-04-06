@@ -347,14 +347,14 @@ api_data_edit(clicon_handle h,
     cbuf      *cbx = NULL;
     cxobj     *x;
 
-    clicon_debug(1, "%s api_path:%s json:%s",
+    clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
 		 __FUNCTION__, 
 		 api_path, data);
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
     /* Parse input data as json into xml */
     if (json_parse_str(data, &xdata) < 0){
-	clicon_debug(1, "%s json fail", __FUNCTION__);
+	clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
 	goto done;
     }
     if ((cbx = cbuf_new()) == NULL)
