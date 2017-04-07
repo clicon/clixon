@@ -1,19 +1,26 @@
+Clixon Restconf
+===============
 
-# Existing clixon installation. Using CLI:
-olof@vandal> clixon_cli -f /usr/local/etc/routing.conf
-olof@vandal> show configuration
-interfaces {
-  interface {
-    name eth0;
-    type eth;
-    enabled true;
-  }
-  interface {
-    name eth9;
-    type eth;
-    enabled true;
-  }
-}
+Contents:
+1. Features
+2. Installation using NGINX
+3. Debugging
+
+1. FEATURES
++++++++++++
+Clixon restconf is a daemon based on FASTCGI. Instructions are available to
+run with NGINX. 
+The implementatation supports plain OPTIONS, HEAD, GET, POST, PUT, PATCH, DELETE.
+and is based on draft-ietf-netconf-restconf-13. 
+There is currently (2017) a RFC 8040, many of those features are _not_ implemented,
+including:
+- query parameters (section 4.9)
+- notifications (sec 6)
+- only rudimentary error reporting exists (sec 7)
+
+2. INSTALLATION using NGINX
++++++++++++++++++++++++++++
+
 # Define nginx config file/etc/nginx/sites-available/default
 server {
   ...
@@ -57,8 +64,8 @@ olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=et
 curl -sX POST -d '{"clicon":{"interfaces":{"interface":{"name":"eth1","type":"eth","enabled":"true"}}}}' http://localhost/restconf/data
 
 
-Debugging
----------
+3. DEBUGGING
+++++++++++++
 Start the restconf programs with debug flag:
 sudo su -c "/www-data/clixon_restconf -D" -s /bin/sh www-data
 

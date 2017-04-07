@@ -248,11 +248,7 @@ int
 yang_scan_exit(struct clicon_yang_yacc_arg *yy)
 {
     yy_delete_buffer(yy->yy_lexbuf);
-#if defined(YY_FLEX_SUBMINOR_VERSION) && YY_FLEX_SUBMINOR_VERSION >= 9
     clixon_yang_parselex_destroy();  /* modern */
-#else
-    yy_init = 1;      /* This does not quite free all buffers */
-#endif
     return 0;
 }
 

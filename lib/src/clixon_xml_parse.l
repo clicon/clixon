@@ -141,11 +141,7 @@ int
 clixon_xml_parsel_exit(struct xml_parse_yacc_arg *ya)
 {
    yy_delete_buffer(ya->ya_lexbuf);
-#if defined(YY_FLEX_SUBMINOR_VERSION) && YY_FLEX_SUBMINOR_VERSION >= 9
    clixon_xml_parselex_destroy();  /* modern */
-#else
-    yy_init = 1;      /* This does not quite free all buffers */
-#endif
 
   return 0;
 }

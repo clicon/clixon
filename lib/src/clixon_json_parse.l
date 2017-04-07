@@ -131,11 +131,7 @@ int
 json_scan_exit(struct clicon_json_yacc_arg *jy)
 {
     yy_delete_buffer(jy->jy_lexbuf);
-#if defined(YY_FLEX_SUBMINOR_VERSION) && YY_FLEX_SUBMINOR_VERSION >= 9
     clixon_json_parselex_destroy();  /* modern */
-#else
-    yy_init = 1;      /* This does not quite free all buffers */
-#endif
     return 0;
 }
 
