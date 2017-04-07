@@ -66,6 +66,15 @@
 #include "netconf_lib.h"
 #include "netconf_plugin.h"
 
+/* Database dependency description */
+struct netconf_reg {
+    qelem_t 	 nr_qelem;	/* List header */
+    netconf_cb_t nr_callback;	/* Validation/Commit Callback */
+    void	*nr_arg;	/* Application specific argument to cb */
+    char        *nr_tag;	/* Xml tag when matched, callback called */
+};
+typedef struct netconf_reg netconf_reg_t;
+
 /*! Unload a plugin
  */
 static int
@@ -245,10 +254,9 @@ catch:
     
 /*! See if there is any callback registered for this tag
  *
- * @param  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
- * @param  xf      Output xml stream. For reply
- * @param  xf_err  Error xml stream. For error reply
- * @param  xorig   Original request.
+ * @param[in]  h       clicon handle
+ * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
+ * @param[out] xret    Return XML, error or OK
  *
  * @retval -1   Error
  * @retval  0   OK, not found handler.
@@ -256,31 +264,24 @@ catch:
  */
 int
 netconf_plugin_callbacks(clicon_handle h,
-			 cxobj *xn, 
-			 cbuf *xf, 
-			 cbuf *xf_err, 
-			 cxobj *xorig)
+			 cxobj        *xn, 
+			 cxobj       **xret)
 {
-    netconf_reg_t *nr;
+    netconf_reg_t *nreg;
     int            retval;
 
     if (deps == NULL)
 	return 0;
-    nr = deps;
+    nreg = deps;
     do {
-	if (strcmp(nr->nr_tag, xml_name(xn)) == 0){
-	    if ((retval = nr->nr_callback(h, 
-					  xorig, 
-					  xn, 
-					  xf,
-					  xf_err,
-					  nr->nr_arg)) < 0)
+	if (strcmp(nreg->nr_tag, xml_name(xn)) == 0){
+	    if ((retval = nreg->nr_callback(h, xn, xret, nreg->nr_arg)) < 0)
 		return -1;
 	    else
 		return 1; /* handled */
 	}
-	nr = NEXTQ(netconf_reg_t *, nr);
-    } while (nr != deps);
+	nreg = NEXTQ(netconf_reg_t *, nreg);
+    } while (nreg != deps);
     return 0;
 }
     

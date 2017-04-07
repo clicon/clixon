@@ -4,42 +4,53 @@ CLICON_PROMPT="%U@%H> ";
 CLICON_PLUGIN="routing_cli";
 
 # Note, when switching to PT, change datamodel to only @datamodel
-set @datamodel:ietf-ip, cli_mergev();
+set @datamodel:ietf-ip, cli_merge();
 
 #delete("Delete a configuration item") @datamodel:ietf-ipv4-unicast-routing, cli_del();
-delete("Delete a configuration item") @datamodel:ietf-ip, cli_delv();
+delete("Delete a configuration item") @datamodel:ietf-ip, cli_del();
 
-validate("Validate changes"), cli_validatev();
-commit("Commit the changes"), cli_commitv();
-quit("Quit Hello"), cli_quitv();
-delete("Delete a configuration item")  all("Delete whole candidate configuration"), delete_allv("candidate");
+validate("Validate changes"), cli_validate();
+commit("Commit the changes"), cli_commit();
+quit("Quit Hello"), cli_quit();
+delete("Delete a configuration item")  all("Delete whole candidate configuration"), delete_all("candidate");
 
-startup("Store running as startup config"), db_copy("running","startup");
-no("Negate or remove") debug("Debugging parts of the system"), cli_debug_cliv((int32)0);
-debug("Debugging parts of the system"), cli_debug_cliv((int32)1);{
-    level("Set debug level: 1..n") <level:int32>("Set debug level (0..n)"), cli_debug_cliv();
+startup("Store running as startup config"), db_copy("running", "startup");
+no("Negate or remove") debug("Debugging parts of the system"), cli_debug_cli((int32)0);
+debug("Debugging parts of the system"), cli_debug_cli((int32)1);{
+    level("Set debug level: 1..n") <level:int32>("Set debug level (0..n)"), cli_debug_backend();
 }
-
-discard("Discard edits (rollback 0)"), discard_changesv();
+copy("Copy and create a new object") {
+    interface("Copy interface"){
+	<name:string expand_dbvar("candidate","/interfaces/interface/name")>("name of interface to copy from") to("Copy to interface") <toname:string>("Name of interface to copy to"), cli_copy_config("candidate","//interface[%s=%s]","name","name","toname");
+    }
+}
+discard("Discard edits (rollback 0)"), discard_changes();
+compare("Compare running and candidate"), compare_dbs((int32)1);
+compare("Compare running and candidate"), compare_dbs((int32)1);
 
 show("Show a particular state of the system"){
-    xpath("Show configuration") <xpath:string>("XPATH expression"), show_confv_xpath("candidate","/");
-    compare("Compare candidate and running databases"), compare_dbsv((int32)0);{
-    		     xml("Show comparison in xml"), compare_dbsv((int32)0);
-		     text("Show comparison in text"), compare_dbsv((int32)1);
+    xpath("Show configuration") <xpath:string>("XPATH expression"), show_conf_xpath("candidate");
+    compare("Compare candidate and running databases"), compare_dbs((int32)0);{
+    		     xml("Show comparison in xml"), compare_dbs((int32)0);
+		     text("Show comparison in text"), compare_dbs((int32)1);
     }
-    configuration("Show configuration"), show_confv_as_text("candidate","/");{
-	    xml("Show configuration as XML"), show_confv_as_xml("candidate","/");
-	    netconf("Show configuration as netconf edit-config operation"), show_confv_as_netconf("candidate","/");
-	    text("Show configuration as text"), show_confv_as_text("candidate","/");
-	    cli("Show configuration as cli commands"), show_confv_as_cli("candidate","/");
-	    json("Show configuration as cli commands"), show_confv_as_json("candidate","/");
+    configuration("Show configuration"), cli_show_config("candidate", "text", "/");{
+	    xml("Show configuration as XML"), cli_show_config("candidate", "xml", "/");
+	    netconf("Show configuration as netconf edit-config operation"), cli_show_config("candidate", "netconf", "/");
+	    text("Show configuration as text"), cli_show_config("candidate","text","/");
+	    cli("Show configuration as cli commands"), cli_show_config("candidate", "cli", "/");
+	    json("Show configuration as cli commands"), cli_show_config("candidate", "json", "/");
     }
 }
 
-save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_filev("candidate","filename");
-load("Load configuration from XML file") <filename:string>("Filename (local filename)"),load_config_filev("filename","replace");{
-    replace("Replace candidate with file contents"), load_config_filev("filename","replace");
-    merge("Merge file with existent candidate"), load_config_filev("filename","merge");
+save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename");
+load("Load configuration from XML file") <filename:string>("Filename (local filename)"),load_config_file("filename", "replace");{
+    replace("Replace candidate with file contents"), load_config_file("filename", "replace");
+    merge("Merge file with existent candidate"), load_config_file("filename", "merge");
 }
 example("This is a comment") <var:int32>("Just a random number"), mycallback("myarg");
+downcall("This is a downcall") <str:rest>, downcall();
+notify("Get notifications from backend"), cli_notify("ROUTING", "1", "text");
+no("Negate") notify("Get notifications from backend"), cli_notify("ROUTING", "0", "xml");
+lock,cli_lock("candidate");
+unlock,cli_unlock("candidate");

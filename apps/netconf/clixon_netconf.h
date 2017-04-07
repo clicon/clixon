@@ -44,11 +44,9 @@
  */
 typedef int (*netconf_cb_t)(
     clicon_handle h, 
-    cxobj *xorig, /* Original request. */
-    cxobj *xn,    /* Sub-tree (under xorig) at child: <rpc><xn></rpc> */
-    cbuf  *cb,		    /* Output xml stream. For reply */
-    cbuf  *cb_err,	    /* Error xml stream. For error reply */
-    void  *arg               /* Argument given at netconf_register_callback() */
+    cxobj  *xn,              /* Request: <rpc><xn></rpc> */
+    cxobj **xret,            /* Return xml tree, eg <rpc-reply>... */
+    void   *arg              /* Argument given at netconf_register_callback() */
     );  
 
 /*
@@ -57,25 +55,10 @@ typedef int (*netconf_cb_t)(
  */
 int netconf_output(int s, cbuf *xf, char *msg);
 
-int netconf_create_rpc_reply(cbuf *cb,            /* msg buffer */
-			 cxobj *xr, /* orig request */
-			 char *body,
-			 int ok);
-
 int netconf_register_callback(clicon_handle h,
 			      netconf_cb_t cb,   /* Callback called */
 			      void *arg,       /* Arg to send to callback */
 			      char *tag);      /* Xml tag when callback is made */
-int netconf_create_rpc_error(cbuf *xf,            /* msg buffer */
-			     cxobj *xr, /* orig request */
-			     char *tag, 
-			     char *type,
-			     char *severity, 
-			     char *message, 
-			     char *info);
-
-void netconf_ok_set(int ok);
-int netconf_ok_get(void);
 
 int netconf_xpath(cxobj *xsearch,
 		  cxobj *xfilter, 

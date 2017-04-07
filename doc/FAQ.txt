@@ -91,6 +91,7 @@ Q: How do you change the example?
 - routing_backend.c - Commit and validate functions.
 - routing_netconf.c - Modify semantics of netconf commands.
 
+
 Q: How do you check what is in a database?
 ------------------------------------------
 Use clixon_dbctrl. The name of the running or candidate databases are found in the
@@ -169,9 +170,31 @@ The validation or commit will then be aborted.
 Q: How do you use netconf?
 --------------------------
 
-As an alternative to cli configuration, you can use netconf
-directly. Easiest is to just pipe netconf commands to the
-clixon_netconf application.
+As an alternative to cli configuration, you can use netconf. Easiest is to just pipe netconf commands to the clixon_netconf application.
 Example:
 	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/routing.conf
+
+However, more useful is to run clixon_netconf as an SSH
+subsystem. Register the subsystem in /etc/sshd_config:
+
+	Subsystem netconf /usr/local/bin/clixon_netconf
+
+and then invoke it from a client using
+	ssh -s netconf <host>
+
+Q: How do you use notifications?
+--------------------------------
+The example has a prebuilt notification stream called "ROUTING" that triggers every 10s.
+You enable the notification either via the cli or via netconf:
+cli> notify 
+cli> Routing notification
+Routing notification
+...
+
+> clixon_netconf -qf /usr/local/etc/routing.conf 
+<rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>
+<rpc-reply><ok/></rpc-reply>]]>]]>
+<notification><event>Routing notification</event></notification>]]>]]>
+<notification><event>Routing notification</event></notification>]]>]]>
+...
 

@@ -74,9 +74,6 @@
 #include "clixon_cli_api.h"
 #include "cli_common.h" /* internal functions */
 
-static int xml2csv(FILE *f, cxobj *x, cvec *cvv);
-//static int xml2csv_raw(FILE *f, cxobj *x);
-
 /*! Completion callback intended for automatically generated data model
  *
  * Returns an expand-type list of commands as used by cligen 'expand' 
@@ -94,12 +91,12 @@ static int xml2csv(FILE *f, cxobj *x, cvec *cvv);
  * XXX: helptexts?
  */
 int
-expandv_dbvar(void   *h, 
-	      char   *name, 
-	      cvec   *cvv, 
-	      cvec   *argv, 
-	      cvec  *commands,
-	      cvec  *helptexts)
+expand_dbvar(void   *h, 
+	     char   *name, 
+	     cvec   *cvv, 
+	     cvec   *argv, 
+	     cvec  *commands,
+	     cvec  *helptexts)
 {
     int              retval = -1;
     char            *xkfmt;
@@ -142,12 +139,14 @@ expandv_dbvar(void   *h,
     */
     if (xmlkeyfmt2xpath(xkfmt, cvv, &xkpath) < 0)
 	goto done;   
-    if (xmldb_get(h, dbstr, xkpath, &xt, &xvec, &xlen) < 0)
-	goto done;
+    if (clicon_rpc_get_config(h, dbstr, "/", &xt) < 0)
+    	goto done;
     /* One round to detect duplicates 
      * XXX The code below would benefit from some cleanup
      */
     j = 0;
+    if (xpath_vec(xt, xkpath, &xvec, &xlen) < 0) 
+	goto done;
     for (i = 0; i < xlen; i++) {
 	char *str;
 	x = xvec[i];
@@ -187,7 +186,6 @@ expandv_dbvar(void   *h,
     }
     retval = 0;
   done:
-    unchunk_group(__FUNCTION__);
     if (xvec)
 	free(xvec);
     if (xt)
@@ -196,13 +194,24 @@ expandv_dbvar(void   *h,
 	free(xkpath);
     return retval;
 }
-
-
-
+int
+expandv_dbvar(void   *h, 
+	      char   *name, 
+	      cvec   *cvv, 
+	      cvec   *argv, 
+	      cvec  *commands,
+	      cvec  *helptexts)
+{
+    return expand_dbvar(h, name, cvv, argv, commands, helptexts);
+}
 /*! List files in a directory
  */
 int
-expand_dir(char *dir, int *nr, char ***commands, mode_t flags, int detail)
+expand_dir(char *dir, 
+	   int *nr, 
+	   char ***commands, 
+	   mode_t flags, 
+	   int detail)
 {
     DIR	*dirp;
     struct dirent *dp;
@@ -312,13 +321,11 @@ expand_dir(char *dir, int *nr, char ***commands, mode_t flags, int detail)
     return retval;
 }
 
-
-
 /*! CLI callback show yang spec. If arg given matches yang argument string */
 int
-show_yangv(clicon_handle h, 
-	   cvec         *cvv, 
-	   cvec         *argv)
+show_yang(clicon_handle h, 
+	  cvec         *cvv, 
+	  cvec         *argv)
 {
   yang_node *yn;
   char      *str = NULL;
@@ -334,126 +341,69 @@ show_yangv(clicon_handle h,
   yang_print(stdout, yn, 0);
   return 0;
 }
-
-
-#ifdef notused
-/*! XML to CSV raw variant 
- * @see xml2csv
- */
-static int 
-xml2csv_raw(FILE *f, cxobj *x)
+int show_yangv(clicon_handle h, cvec *vars, cvec *argv)
 {
-    cxobj           *xc;
-    cxobj           *xb;
-    int              retval = -1;
-    int              i = 0;
-
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
-	if (xml_child_nr(xc)){
-	    xb = xml_child_i(xc, 0);
-	    if (xml_type(xb) == CX_BODY){
-		if (i++)
-		    fprintf(f, ";");
-		fprintf(f, "%s", xml_value(xb));
-	    }
-	}
-    }
-    fprintf(f, "\n");
-    retval = 0;
-    return retval;
-}
-#endif
-
-/*! Translate XML -> CSV commands
- * Can only be made in a 'flat tree', ie on the form:
- * <X><A>B</A></X> --> 
- * Type, A
- * X,  B
- * @param[in]  f     Output file
- * @param[in]  x     XML tree
- * @param[in]  cvv   A vector of field names present in XML
- * This means that only fields in x that are listed in cvv will be printed.
- */
-static int 
-xml2csv(FILE *f, cxobj *x, cvec *cvv)
-{
-    cxobj *xe, *xb;
-    int              retval = -1;
-    cg_var          *vs;
-
-    fprintf(f, "%s", xml_name(x));
-    xe = NULL;
-
-    vs = NULL;
-    while ((vs = cvec_each(cvv, vs))) {
-	if ((xe = xml_find(x, cv_name_get(vs))) == NULL){
-	    fprintf(f, ";");
-	    continue;
-	}
-	if (xml_child_nr(xe)){
-	    xb = xml_child_i(xe, 0);
-	    fprintf(f, ";%s", xml_value(xb));
-	}
-    }
-    fprintf(f, "\n");
-    retval = 0;
-    return retval;
+    return show_yang(h, vars, argv);
 }
 
-/*! Generic function for showing configurations.
+/*! Generic show configuration CLIGEN callback
  * Utility function used by cligen spec file
  * @param[in]  h     CLICON handle
  * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
- * @param[out] xt    Configuration as xml tree.
- * Format of arg:
- *   <dbname>  "running", "candidate", "startup"
- *   <xpath>   xpath expression 
+ * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
+ * Format of argv:
+ *   <dbname>  "running"|"candidate"|"startup"
+ *   <dbname>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
+ *   <xpath>   xpath expression, that may contain one %, eg "/sender[name=%s]"
  *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
  * @code
- *   show config id <n:string>, show_conf_as("running interfaces/interface[name=%s] n");
+ *   show config id <n:string>, cli_show_config("running","xml","iface[name=%s]","n");
  * @endcode
  */
-static int
-show_confv_as(clicon_handle h, 
-	      cvec         *cvv, 
-	      cvec        *argv, 
-	      cxobj       **xt) /* top xml */
+int
+cli_show_config(clicon_handle h, 
+		cvec         *cvv, 
+		cvec         *argv)
 {
     int              retval = -1;
     char            *db;
+    char            *formatstr;
     char            *xpath;
+    enum format_enum format;
+    cbuf            *cbxpath = NULL;
     char            *attr = NULL;
-    cbuf            *cbx = NULL;
     int              i;
     int              j;
     cg_var          *cvattr;
     char            *val = NULL;
+    cxobj           *xt = NULL;
+    cxobj           *xc;
+    enum genmodel_type gt;
     
-    if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
-	if (cvec_len(argv)==1)
-	    clicon_err(OE_PLUGIN, 0, "Got single argument:\"%s\". Expected \"<dbname>,<xpath>[,<attr>]\"", cv_string_get(cvec_i(argv,0)));
-	else
-	    clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <dbname>,<xpath>[,<attr>]", cvec_len(argv));
+    if (cvec_len(argv) != 3 && cvec_len(argv) != 4){
+	clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <dbname>,<format>,<xpath>[,<attr>]", cvec_len(argv));
 
 	goto done;
     }
-    /* Dont get attr here, take it from arg instead */
+    /* First argv argument: Database */
     db = cv_string_get(cvec_i(argv, 0));
-    if (strcmp(db, "running") != 0 && 
-	strcmp(db, "candidate") != 0 && 
-	strcmp(db, "startup") != 0)	{
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", db);	
+    /* Second argv argument: Format */
+    formatstr = cv_string_get(cvec_i(argv, 1));
+    if ((format = format_str2int(formatstr)) < 0){
+	clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
 	goto done;
     }
-    xpath = cv_string_get(cvec_i(argv, 1));
-    if ((cbx = cbuf_new()) == NULL){
+    /* Third argv argument: xpath */
+    xpath = cv_string_get(cvec_i(argv, 2));
+
+    /* Create XPATH variable string */
+    if ((cbxpath = cbuf_new()) == NULL){
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
 	goto done;
     }
-    if (cvec_len(argv) == 3){
-	attr = cv_string_get(cvec_i(argv, 2));
+    /* Fourth argument is stdarg to xpath format string */
+    if (cvec_len(argv) == 4){
+	attr = cv_string_get(cvec_i(argv, 3));
 	j = 0;
 	for (i=0; i<strlen(xpath); i++)
 	    if (xpath[i] == '%')
@@ -470,231 +420,53 @@ show_confv_as(clicon_handle h,
 	    clicon_err(OE_PLUGIN, errno, "cv2str_dup");	
 	    goto done;
 	}
-	cprintf(cbx, xpath, val);	
+	cprintf(cbxpath, xpath, val);	
     }
     else
-	cprintf(cbx, "%s", xpath);	
-    if (xmldb_get(h, db, cbuf_get(cbx), xt, NULL, NULL) < 0)
+	cprintf(cbxpath, "%s", xpath);	
+    /* Get configuration from database */
+    if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), &xt) < 0)
 	goto done;
+    /* Print configuration according to format */
+    switch (format){
+    case FORMAT_XML:
+	xc = NULL; /* Dont print xt itself */
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
+	    clicon_xml2file(stdout, xc, 0, 1);
+	break;
+    case FORMAT_JSON:
+	xml2json(stdout, xt, 1);
+	break;
+    case FORMAT_TEXT:
+	xc = NULL; /* Dont print xt itself */
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
+	    xml2txt(stdout, xc, 0); /* tree-formed text */
+	break;
+    case FORMAT_CLI:
+	xc = NULL; /* Dont print xt itself */
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL){
+	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
+		goto done;
+	    xml2cli(stdout, xc, NULL, gt); /* cli syntax */
+	}
+	break;
+    case FORMAT_NETCONF:
+	fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
+	xc = NULL; /* Dont print xt itself */
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
+	    clicon_xml2file(stdout, xc, 2, 1);
+	fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
+	break;
+    }
     retval = 0;
 done:
+    if (xt)
+	xml_free(xt);
     if (val)
 	free(val);
-    if (cbx)
-	cbuf_free(cbx);
-    unchunk_group(__FUNCTION__);
+    if (cbxpath)
+	cbuf_free(cbxpath);
     return retval;
-}
-
-/*! Show a configuration database on stdout using XML format
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
- * @param[in]  netconf If set print as netconf edit-config, otherwise just xml
- * @see show_conf_as  the main function
- */
-static int
-show_confv_as_xml1(clicon_handle h, 
-		  cvec         *cvv, 
-		   cvec         *argv,
-		  int           netconf)
-{
-    cxobj *xt = NULL;
-    cxobj *xc;
-    int    retval = -1;
-
-    if (show_confv_as(h, cvv, argv, &xt) < 0)
-	goto done;
-    if (netconf) /* netconf prefix */
-	fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
-    xc = NULL; /* Dont print xt itself */
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	clicon_xml2file(stdout, xc, netconf?2:0, 1);
-    if (netconf) /* netconf postfix */
-	fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
-    retval = 0;
-  done:
-    if (xt)
-	xml_free(xt);
-    return retval;
-}
-
-/*! Show configuration as prettyprinted xml 
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
- * @see show_conf_as  the main function
- */
-int
-show_confv_as_xml(clicon_handle h, 
-		  cvec         *cvv, 
-		  cvec         *argv)
-{
-    return show_confv_as_xml1(h, cvv, argv, 0);
-}
-
-/*! Show configuration as prettyprinted xml with netconf hdr/tail
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
- * @see show_conf_as  the main function
- */
-int
-show_confv_as_netconf(clicon_handle h, 
-		     cvec         *cvv, 
-		     cvec         *argv)
-{
-    return show_confv_as_xml1(h, cvv, argv, 1);
-}
-
-/*! Show configuration as JSON
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
- * @see show_conf_as  the main function
- */
-int
-show_confv_as_json(clicon_handle h, 
-		  cvec         *cvv, 
-		  cvec         *argv)
-{
-    cxobj *xt = NULL;
-    int    retval = -1;
-
-    if (show_confv_as(h, cvv, argv, &xt) < 0)
-	goto done;
-    xml2json(stdout, xt, 1);
-    retval = 0;
-  done:
-    if (xt)
-	xml_free(xt);
-    return retval;
-}
-
-
-/*! Show configuration as text
- * Utility function used by cligen spec file
- */
-static int
-show_confv_as_text1(clicon_handle h, 
-		    cvec         *cvv, 
-		    cvec         *argv)
-{
-    cxobj       *xt = NULL;
-    cxobj       *xc;
-    int          retval = -1;
-
-    if (show_confv_as(h, cvv, argv, &xt) < 0)
-	goto done;
-    xc = NULL; /* Dont print xt itself */
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	xml2txt(stdout, xc, 0); /* tree-formed text */
-    retval = 0;
-  done:
-    if (xt)
-	xml_free(xt);
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
-
-/* Show configuration as commands, ie not tree format but as one-line commands
- */
-static int
-show_confv_as_command(clicon_handle h, 
-		      cvec         *cvv, 
-		      cvec         *argv,
-		      char         *prepend)
-{
-    cxobj             *xt = NULL;
-    cxobj             *xc;
-    enum genmodel_type gt;
-    int                retval = -1;
-
-    if ((xt = xml_new("tmp", NULL)) == NULL)
-	goto done;
-    if (show_confv_as(h, cvv, argv, &xt) < 0)
-	goto done;
-    xc = NULL; /* Dont print xt itself */
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL){
-	if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
-	    goto done;
-	xml2cli(stdout, xc, prepend, gt, __FUNCTION__); /* cli syntax */
-    }
-    retval = 0;
-  done:
-    if (xt)
-	xml_free(xt);
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
-int
-show_confv_as_text(clicon_handle h, 
-		   cvec         *cvv, 
-		   cvec         *argv)
-{
-    return show_confv_as_text1(h, cvv, argv);
-}
-
-int
-show_confv_as_cli(clicon_handle h, 
-		  cvec         *cvv, 
-		  cvec         *argv)
-{
-    return show_confv_as_command(h, cvv, argv, NULL); /* XXX: how to set prepend? */
-}
-
-static int
-show_confv_as_csv1(clicon_handle h, 
-		   cvec         *cvv0, 
-		   cvec         *argv)
-{
-    cxobj      *xt = NULL;
-    cxobj      *xc;
-    int         retval = -1;
-    cvec       *cvv=NULL;
-    char       *str;
-
-    if (show_confv_as(h, cvv0, argv, &xt) < 0)
-	goto done;
-    xc = NULL; /* Dont print xt itself */
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL){
-	if ((str = chunk_sprintf(__FUNCTION__, "%s[]", xml_name(xc))) == NULL)
-	    goto done;
-#ifdef NOTYET /* yang-spec? */
-	if (ds==NULL && (ds = key2spec_key(dbspec, str)) != NULL){
-	    cg_var     *vs;
-	    fprintf(stdout, "Type");
-	    cvv = db_spec2cvec(ds);
-	    vs = NULL;
-	    while ((vs = cvec_each(cvv, vs))) 
-		fprintf(stdout, ";%s",	cv_name_get(vs));
-	    fprintf(stdout, "\n");
-	} /* Now values just need to follow,... */
-#endif /* yang-spec? */
-	if (cvv== NULL)
-	    goto done;
-	xml2csv(stdout, xc, cvv); /* csv syntax */
-    }
-    retval = 0;
-  done:
-    if (xt)
-	xml_free(xt);
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
-int
-show_confv_as_csv(clicon_handle h, 
-		  cvec         *cvv, 
-		  cvec         *argv)
-{
-    return show_confv_as_csv1(h, cvv, argv);
 }
 
 /*! Show configuration as text given an xpath
@@ -705,9 +477,9 @@ show_confv_as_csv(clicon_handle h,
  * @note Hardcoded that a variable in cvv is named "xpath"
  */
 int
-show_confv_xpath(clicon_handle h, 
-		 cvec         *cvv, 
-		 cvec         *argv)
+show_conf_xpath(clicon_handle h, 
+		cvec         *cvv, 
+		cvec         *argv)
 {
     int              retval = -1;
     char            *str;
@@ -732,7 +504,9 @@ show_confv_xpath(clicon_handle h,
     }
     cv = cvec_find_var(cvv, "xpath");
     xpath = cv_string_get(cv);
-    if (xmldb_get(h, str, xpath, &xt, &xv, &xlen) < 0)
+    if (clicon_rpc_get_config(h, str, xpath, &xt) < 0)
+    	goto done;
+    if (xpath_vec(xt, xpath, &xv, &xlen) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)
 	xml_print(stdout, xv[i]);
@@ -743,468 +517,9 @@ done:
 	free(xv);
     if (xt)
 	xml_free(xt);
-    unchunk_group(__FUNCTION__);
     return retval;
 }
-
-
-/*=================================================================
- * Here are backward compatible cligen callback functions used when 
- * the option: CLICON_CLIGEN_CALLBACK_SINGLE_ARG is set.
- */
-
-cb_single_arg(show_yang)
-
-/*! This is obsolete version of expandv_dbvar
- * If CLICON_CLIGEN_EXPAND_SINGLE_ARG is set
-*/
-int
-expand_dbvar(void   *h, 
-	     char   *name, 
-	     cvec   *cvv, 
-	     cg_var *arg, 
-	     int    *nr, 
-	     char ***commands, 
-	     char ***helptexts)
+int show_confv_xpath(clicon_handle h, cvec *vars, cvec *argv)
 {
-    int              nvec;
-    char           **vec = NULL;
-    int              retval = -1;
-    char            *xkfmt;
-    char            *str;
-    char            *dbstr;    
-    cxobj           *xt = NULL;
-    char            *xkpath = NULL;
-    cxobj          **xvec = NULL;
-    size_t           xlen = 0;
-    cxobj           *x;
-    char            *bodystr;
-    int              i;
-    int              j;
-    int              k;
-    int              i0;
-
-    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
-	goto done;
-    }
-    /* In the example, str = "candidate /x/m1/%s/b" */
-    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
-	goto done;
-    }
-    dbstr  = vec[0];
-    if (strcmp(dbstr, "running") != 0 &&
-	strcmp(dbstr, "candidate") != 0 &&
-	strcmp(dbstr, "startup") != 0){
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
-	goto done;
-    }
-    xkfmt = vec[1];
-    /* xkfmt = /interface=%s/address=%s
-       --> /interface=eth0/address=1.2.3.4
-    */
-    if (xmlkeyfmt2xpath(xkfmt, cvv, &xkpath) < 0)
-	goto done;   
-    if (xmldb_get(h, dbstr, xkpath, &xt, &xvec, &xlen) < 0)
-	goto done;
-    /* One round to detect duplicates 
-     * XXX The code below would benefit from some cleanup
-     */
-    j = 0;
-    for (i = 0; i < xlen; i++) {
-	char *str;
-	x = xvec[i];
-	if (xml_type(x) == CX_BODY)
-	    bodystr = xml_value(x);
-	else
-	    bodystr = xml_body(x);
-	if (bodystr == NULL){
-	    clicon_err(OE_CFG, 0, "No xml body");
-	    goto done;
-	}
-	/* detect duplicates */
-	for (k=0; k<j; k++){
-	    if (xml_type(xvec[k]) == CX_BODY)
-		str = xml_value(xvec[k]);
-	    else
-		str = xml_body(xvec[k]);
-	    if (strcmp(str, bodystr)==0)
-		break;
-	}
-	if (k==j) /* not duplicate */
-	    xvec[j++] = x;
-    }
-    xlen = j;
-    i0 = *nr;
-    *nr += xlen;
-    if ((*commands = realloc(*commands, sizeof(char *) * (*nr))) == NULL) {
-	clicon_err(OE_UNIX, errno, "realloc: %s", strerror (errno));	
-	goto done;
-    }
-    for (i = 0; i < xlen; i++) {
-	x = xvec[i];
-	if (xml_type(x) == CX_BODY)
-	    bodystr = xml_value(x);
-	else
-	    bodystr = xml_body(x);
-	if (bodystr == NULL){
-	    clicon_err(OE_CFG, 0, "No xml body");
-	    goto done;
-	}
-	(*commands)[i0+i] = strdup(bodystr);
-    }
-    retval = 0;
-  done:
-    unchunk_group(__FUNCTION__);
-    if (xvec)
-	free(xvec);
-    if (xt)
-	xml_free(xt);
-    if (xkpath) 
-	free(xkpath);
-    return retval;
-}
-
-
-
-/*! Generic function for showing configurations.
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
- * @param[out] xt    Configuration as xml tree.
- * Format of arg:
- *   <dbname>  "running", "candidate", "startup"
- *   <xpath>   xpath expression 
- *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
- * @code
- *   show config id <n:string>, show_conf_as("running interfaces/interface[name=%s] n");
- * @endcode
- */
-static int
-show_conf_as(clicon_handle h, 
-	     cvec         *cvv, 
-	     cg_var       *arg, 
-	     cxobj       **xt) /* top xml */
-{
-    int              retval = -1;
-    char            *db;
-    char           **vec = NULL;
-    int              nvec;
-    char            *str;
-    char            *xpath;
-    char            *attr = NULL;
-    cbuf            *cbx = NULL;
-    int              i;
-    int              j;
-    cg_var          *cvattr;
-    char            *val = NULL;
-    
-    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
-	goto done;
-    }
-    if ((vec = clicon_strsplit(str, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "clicon_strsplit");	
-	goto done;
-    }
-    if (nvec != 2 && nvec != 3){
-	clicon_err(OE_PLUGIN, 0, "format error \"%s\" - expected <dbname> <xpath> [<attr>] got %d arg", str, nvec);	
-	goto done;
-    }
-    /* Dont get attr here, take it from arg instead */
-    db = vec[0];
-    if (strcmp(db, "running") != 0 && 
-	strcmp(db, "candidate") != 0 && 
-	strcmp(db, "startup") != 0) {
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", db);	
-	goto done;
-    }
-    xpath = vec[1];
-    if ((cbx = cbuf_new()) == NULL){
-	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
-	goto done;
-    }
-    if (nvec == 3){
-	attr = vec[2];
-	j = 0;
-	for (i=0; i<strlen(xpath); i++)
-	    if (xpath[i] == '%')
-		j++;
-	if (j != 1){
-	    clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have a single '%%'");	
-	    goto done;
-	}
-	if ((cvattr = cvec_find_var(cvv, attr)) == NULL){
-	    clicon_err(OE_PLUGIN, 0, "attr '%s' not found in cligen var list", attr);	
-	    goto done;
-	}
-	if ((val = cv2str_dup(cvattr)) == NULL){
-	    clicon_err(OE_PLUGIN, errno, "cv2str_dup");	
-	    goto done;
-	}
-	cprintf(cbx, xpath, val);	
-    }
-    else
-	cprintf(cbx, "%s", xpath);	
-    if (xmldb_get(h, db, cbuf_get(cbx), xt, NULL, NULL) < 0)
-	goto done;
-    retval = 0;
-done:
-    if (val)
-	free(val);
-    if (cbx)
-	cbuf_free(cbx);
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
-
-/*! Show a configuration database on stdout using XML format
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
- * @param[in]  netconf If set print as netconf edit-config, otherwise just xml
- * @see show_conf_as  the main function
- */
-static int
-show_conf_as_xml1(clicon_handle h, 
-		  cvec         *cvv, 
-		  cg_var       *arg, 
-		  int           netconf)
-{
-    cxobj *xt = NULL;
-    cxobj *xc;
-    int    retval = -1;
-
-    if (show_conf_as(h, cvv, arg, &xt) < 0)
-	goto done;
-    if (netconf) /* netconf prefix */
-	fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
-    xc = NULL; /* Dont print xt itself */
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	clicon_xml2file(stdout, xc, netconf?2:0, 1);
-    if (netconf) /* netconf postfix */
-	fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
-    retval = 0;
-  done:
-    if (xt)
-	xml_free(xt);
-    return retval;
-
-}
-
-/*! Show configuration as prettyprinted xml 
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
- * @see show_conf_as  the main function
- */
-int
-show_conf_as_xml(clicon_handle h, 
-		 cvec *cvv, 
-		 cg_var *arg)
-{
-    return show_conf_as_xml1(h, cvv, arg, 0);
-}
-
-/*! Show configuration as prettyprinted xml with netconf hdr/tail
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
- * @see show_conf_as  the main function
- */
-int
-show_conf_as_netconf(clicon_handle h, 
-		     cvec         *cvv, 
-		     cg_var       *arg)
-{
-    return show_conf_as_xml1(h, cvv, arg, 1);
-}
-
-/*! Show configuration as JSON
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath> [<varname>]
- * @see show_conf_as  the main function
- */
-int
-show_conf_as_json(clicon_handle h, 
-		  cvec         *cvv, 
-		  cg_var       *arg)
-{
-    cxobj *xt = NULL;
-    int    retval = -1;
-
-    if (show_conf_as(h, cvv, arg, &xt) < 0)
-	goto done;
-    xml2json(stdout, xt, 1);
-    retval = 0;
-  done:
-    if (xt)
-	xml_free(xt);
-    return retval;
-}
-
-
-/*! Show configuration as text
- * Utility function used by cligen spec file
- */
-static int
-show_conf_as_text1(clicon_handle h, cvec *cvv, cg_var *arg)
-{
-    cxobj       *xt = NULL;
-    cxobj       *xc;
-    int          retval = -1;
-
-    if (show_conf_as(h, cvv, arg, &xt) < 0)
-	goto done;
-    xc = NULL; /* Dont print xt itself */
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	xml2txt(stdout, xc, 0); /* tree-formed text */
-    retval = 0;
-  done:
-    if (xt)
-	xml_free(xt);
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
-
-/* Show configuration as commands, ie not tree format but as one-line commands
- */
-static int
-show_conf_as_command(clicon_handle h, cvec *cvv, cg_var *arg, char *prepend)
-{
-    cxobj             *xt = NULL;
-    cxobj             *xc;
-    enum genmodel_type gt;
-    int                retval = -1;
-
-    if ((xt = xml_new("tmp", NULL)) == NULL)
-	goto done;
-    if (show_conf_as(h, cvv, arg, &xt) < 0)
-	goto done;
-    xc = NULL; /* Dont print xt itself */
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL){
-	if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
-	    goto done;
-	xml2cli(stdout, xc, prepend, gt, __FUNCTION__); /* cli syntax */
-    }
-    retval = 0;
-  done:
-    if (xt)
-	xml_free(xt);
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
-int
-show_conf_as_text(clicon_handle h, cvec *cvv, cg_var *arg)
-{
-    return show_conf_as_text1(h, cvv, arg);
-}
-
-int
-show_conf_as_cli(clicon_handle h, cvec *cvv, cg_var *arg)
-{
-    return show_conf_as_command(h, cvv, arg, NULL); /* XXX: how to set prepend? */
-}
-
-static int
-show_conf_as_csv1(clicon_handle h, cvec *cvv0, cg_var *arg)
-{
-    cxobj      *xt = NULL;
-    cxobj      *xc;
-    int         retval = -1;
-    cvec       *cvv=NULL;
-    char       *str;
-
-    if (show_conf_as(h, cvv0, arg, &xt) < 0)
-	goto done;
-    xc = NULL; /* Dont print xt itself */
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL){
-	if ((str = chunk_sprintf(__FUNCTION__, "%s[]", xml_name(xc))) == NULL)
-	    goto done;
-#ifdef NOTYET /* yang-spec? */
-	if (ds==NULL && (ds = key2spec_key(dbspec, str)) != NULL){
-	    cg_var     *vs;
-	    fprintf(stdout, "Type");
-	    cvv = db_spec2cvec(ds);
-	    vs = NULL;
-	    while ((vs = cvec_each(cvv, vs))) 
-		fprintf(stdout, ";%s",	cv_name_get(vs));
-	    fprintf(stdout, "\n");
-	} /* Now values just need to follow,... */
-#endif /* yang-spec? */
-	if (cvv== NULL)
-	    goto done;
-	xml2csv(stdout, xc, cvv); /* csv syntax */
-    }
-    retval = 0;
-  done:
-    if (xt)
-	xml_free(xt);
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
-int
-show_conf_as_csv(clicon_handle h, cvec *cvv, cg_var *arg)
-{
-    return show_conf_as_csv1(h, cvv, arg);
-}
-
-/*! Show configuration as text given an xpath
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath>
- * @note Hardcoded that a variable in cvv is named "xpath"
- */
-int
-show_conf_xpath(clicon_handle h, 
-		cvec         *cvv, 
-		cg_var       *arg)
-{
-    int              retval = -1;
-    char            *str;
-    char            *xpath;
-    cg_var          *cv;
-    cxobj           *xt = NULL;
-    cxobj          **xv = NULL;
-    size_t           xlen;
-    int              i;
-
-    if (arg == NULL || (str = cv_string_get(arg)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: requires string argument", __FUNCTION__);
-	goto done;
-    }
-    /* Dont get attr here, take it from arg instead */
-    if (strcmp(str, "running") != 0 && 
-	strcmp(str, "candidate") != 0 && 
-	strcmp(str, "startup") != 0){
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", str);	
-	goto done;
-    }
-    cv = cvec_find_var(cvv, "xpath");
-    xpath = cv_string_get(cv);
-    if (xmldb_get(h, str, xpath, &xt, &xv, &xlen) < 0)
-	goto done;
-    for (i=0; i<xlen; i++)
-	xml_print(stdout, xv[i]);
-
-    retval = 0;
-done:
-    if (xv)
-	free(xv);
-    if (xt)
-	xml_free(xt);
-    unchunk_group(__FUNCTION__);
-    return retval;
+    return show_conf_xpath(h, vars, argv);
 }

@@ -59,6 +59,7 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <curl/curl.h>
+#include <libgen.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -66,301 +67,16 @@
 /* clicon */
 #include <clixon/clixon.h>
 
+/* restconf */
 #include "restconf_lib.h"
+#include "restconf_methods.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hDf:p:"
+#define RESTCONF_OPTS "hDf:p:y:"
 
 /* Should be discovered via  "/.well-known/host-meta"
    resource ([RFC6415]) */
 #define RESTCONF_API_ROOT    "/restconf/"
-
-/*! REST OPTIONS method
- * According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
- * @param[in]  pi     Offset, where path starts  
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  head   Set if HEAD request instead of GET
- * @code
- *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
- * @endcode                                     
- */
-static int
-api_data_options(clicon_handle h,
-		 FCGX_Request *r,
-		 cvec         *pcvec,
-		 int           pi,
-		 cvec         *qvec,
-		 int           head)
-{
-    int        retval = -1;
-
-    FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
-    FCGX_FPrintF(r->out, "GET, HEAD, OPTIONS, PUT, POST, DELETE\r\n");
-    retval = 0;
-    return retval;
-}
-
-/*! Generic REST GET method
- * According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
- * @param[in]  pi     Offset, where path starts  
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @code
- *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
- * @endcode                                     
- * XXX: cant find a way to use Accept request field to choose Content-Type  
- *      I would like to support both xml and json.           
- * Request may contain                                        
- *     Accept: application/yang.data+json,application/yang.data+xml   
- * Response contains one of:                           
- *     Content-Type: application/yang.data+xml    
- *     Content-Type: application/yang.data+json  
- * NOTE: If a retrieval request for a data resource representing a YANG leaf-
- * list or list object identifies more than one instance, and XML
- * encoding is used in the response, then an error response containing a
- * "400 Bad Request" status-line MUST be returned by the server.
- */
-static int
-api_data_get(clicon_handle h,
-	     FCGX_Request *r,
-             cvec         *pcvec,
-             int           pi,
-             cvec         *qvec)
-{
-    int        retval = -1;
-    cg_var    *cv;
-    char      *val;
-    char      *v;
-    int        i;
-    cbuf      *path = NULL;
-    cbuf      *path1 = NULL;
-    cxobj     *xt = NULL;
-    cbuf      *cbx = NULL;
-    cxobj    **vec = NULL;
-    size_t     veclen;
-    yang_spec *yspec;
-    yang_stmt *y;
-    yang_stmt *ykey;
-    char      *name;
-    cvec      *cvk = NULL; /* vector of index keys */
-    cg_var    *cvi;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    yspec = clicon_dbspec_yang(h);
-    if ((path = cbuf_new()) == NULL)
-        goto done;
-    if ((path1 = cbuf_new()) == NULL) /* without [] qualifiers */
-        goto done;
-    cv = NULL;
-    cprintf(path1, "/");
-    /* translate eg a/b=c -> a/[b=c] */
-    for (i=pi; i<cvec_len(pcvec); i++){
-        cv = cvec_i(pcvec, i);
-	name = cv_name_get(cv);
-	clicon_debug(1, "[%d] cvname:%s", i, name);
-	clicon_debug(1, "cv2str%d", cv2str(cv, NULL, 0));
-	if (i == pi){
-	    if ((y = yang_find_topnode(yspec, name)) == NULL){
-		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
-		goto done;
-	    }
-	}
-	else{
-	    if ((y = yang_find_syntax((yang_node*)y, name)) == NULL){
-		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
-		goto done;
-	    }
-	}
-	/* Check if has value, means '=' */
-        if (cv2str(cv, NULL, 0) > 0){
-            if ((val = cv2str_dup(cv)) == NULL)
-                goto done;
-	    v = val;
-	    /* XXX sync with yang */
-	    while((v=index(v, ',')) != NULL){
-		*v = '\0';
-		v++;
-	    }
-	    /* Find keys */
-	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
-		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-			   __FUNCTION__, y->ys_argument);
-		notfound(r);
-		goto done;
-	    }
-	    clicon_debug(1, "ykey:%s", ykey->ys_argument);
-
-	    /* The value is a list of keys: <key>[ <key>]*  */
-	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-		goto done;
-	    cvi = NULL;
-	    /* Iterate over individual yang keys  */
-	    cprintf(path, "/%s", name);
-	    v = val;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
-		cprintf(path, "[%s=%s]", cv_string_get(cvi), v);
-		v += strlen(v)+1;
-	    }
-	    if (val)
-		free(val);
-        }
-        else{
-            cprintf(path, "%s%s", (i==pi?"":"/"), name);
-            cprintf(path1, "/%s", name);
-        }
-    }
-    clicon_debug(1, "%s path:%s", __FUNCTION__, cbuf_get(path));
-    if (xmldb_get(h, "running", cbuf_get(path), &xt,  &vec, &veclen) < 0)
-	goto done;
-
-    if ((cbx = cbuf_new()) == NULL)
-	goto done;
-    if (veclen==0){
-	notfound(r);
-	goto done;
-    }
-    FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Content-Type: application/yang.data+json\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
-    if (xml2json_cbuf_vec(cbx, vec, veclen, 0) < 0)
-	goto done;
-    FCGX_FPrintF(r->out, "%s", cbuf_get(cbx));
-    FCGX_FPrintF(r->out, "\r\n\r\n");
-    retval = 0;
- done:
-    if (cbx)
-        cbuf_free(cbx);
-    if (xt)
-        xml_free(xt);
-    if (path)
-	cbuf_free(path);
-    if (path1)
-	cbuf_free(path1);
-    return retval;
-}
-
-/*! Generic REST DELETE method 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  pi     Offset, where path starts
- * Example:
- *  curl -X DELETE http://127.0.0.1/restconf/data/interfaces/interface=eth0
- */
-static int
-api_data_delete(clicon_handle h,
-		FCGX_Request *r, 
-		char         *api_path,
-		int           pi)
-{
-    int        retval = -1;
-    int        i;
-
-    clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
-    for (i=0; i<pi; i++)
-	api_path = index(api_path+1, '/');
-    /* Parse input data as json into xml */
-
-    if (clicon_rpc_xmlput(h, "candidate", 
-			  OP_REMOVE, 
-			  api_path,
-			  "") < 0)
-	goto done;
-    if (clicon_rpc_commit(h, "candidate", "running") < 0)
-	goto done;
-    FCGX_SetExitStatus(201, r->out);
-    FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-   return retval;
-}
-
-/*! Generic REST PUT  method 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
- * @param[in]  pi     Offset, where to start pcvec
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  dvec   Stream input data
- * @param[in]  post   POST instead of PUT
- * Example:
-      curl -X PUT -d {\"enabled\":\"false\"} http://127.0.0.1/restconf/data/interfaces/interface=eth1
- *
- PUT:
-  if the PUT request creates a new resource,
-   a "201 Created" status-line is returned.  If an existing resource is
-   modified, a "204 No Content" status-line is returned.
-
- POST:
-   If the POST method succeeds, a "201 Created" status-line is returned
-   and there is no response message-body.  A "Location" header
-   identifying the child resource that was created MUST be present in
-   the response in this case.
-
-   If the data resource already exists, then the POST request MUST fail
-   and a "409 Conflict" status-line MUST be returned.
- */
-static int
-api_data_put(clicon_handle h,
-	     FCGX_Request *r, 
-	     char         *api_path, 
-	     cvec         *pcvec, 
-	     int           pi,
-	     cvec         *qvec, 
-	     char         *data,
-	     int           post)
-{
-    int        retval = -1;
-    int        i;
-    cxobj     *xdata = NULL;
-    cbuf      *cbx = NULL;
-    cxobj     *x;
-
-    clicon_debug(1, "%s api_path:%s json:%s",
-		 __FUNCTION__, 
-		 api_path, data);
-    for (i=0; i<pi; i++)
-	api_path = index(api_path+1, '/');
-    /* Parse input data as json into xml */
-    if (json_parse_str(data, &xdata) < 0){
-	clicon_debug(1, "%s json fail", __FUNCTION__);
-	goto done;
-    }
-    if ((cbx = cbuf_new()) == NULL)
-	goto done;
-    x = NULL;
-    while ((x = xml_child_each(xdata, x, -1)) != NULL) 
-	if (clicon_xml2cbuf(cbx, x, 0, 0) < 0)
-	    goto done;	
-    if (clicon_rpc_xmlput(h, "candidate", 
-			  OP_MERGE, 
-			  api_path,
-			  cbuf_get(cbx)) < 0)
-	goto done;
-    if (clicon_rpc_commit(h, "candidate", "running") < 0)
-	goto done;
-    FCGX_SetExitStatus(201, r->out); /* Created */
-    FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (xdata)
-	xml_free(xdata);
-     if (cbx)
-	cbuf_free(cbx); 
-   return retval;
-}
 
 /*! Generic REST method, GET, PUT, DELETE
  * @param[in]  h      CLIXON handle
@@ -385,14 +101,19 @@ api_data(clicon_handle h,
 
     clicon_debug(1, "%s", __FUNCTION__);
     request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
+    clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
     if (strcmp(request_method, "OPTIONS")==0)
-	retval = api_data_options(h, r, pcvec, pi, qvec, 0);
+	retval = api_data_options(h, r);
+    else if (strcmp(request_method, "HEAD")==0)
+	retval = api_data_head(h, r, pcvec, pi, qvec);
     else if (strcmp(request_method, "GET")==0)
 	retval = api_data_get(h, r, pcvec, pi, qvec);
-    else if (strcmp(request_method, "PUT")==0)
-	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, 0);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, 1);
+	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data);
+    else if (strcmp(request_method, "PUT")==0)
+	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data);
+    else if (strcmp(request_method, "PATCH")==0)
+	retval = api_data_patch(h, r, api_path, pcvec, pi, qvec, data);
     else if (strcmp(request_method, "DELETE")==0)
 	retval = api_data_delete(h, r, api_path, pi);
     else
@@ -411,7 +132,7 @@ request_process(clicon_handle h,
     char  *path;
     char  *query;
     char  *method;
-    char **pvec;
+    char **pvec = NULL;
     int    pn;
     cvec  *qvec = NULL;
     cvec  *dvec = NULL;
@@ -423,7 +144,7 @@ request_process(clicon_handle h,
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
-    if ((pvec = clicon_strsplit(path, "/", &pn, __FUNCTION__)) == NULL)
+    if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
 
     if (str2cvec(query, '&', '=', &qvec) < 0)
@@ -437,7 +158,12 @@ request_process(clicon_handle h,
     clicon_debug(1, "DATA=%s", data);
     if (str2cvec(data, '&', '=', &dvec) < 0)
       goto done;
-    method = pvec[2];
+
+    if ((method = pvec[2]) == NULL){
+	retval = notfound(r);
+	goto done;
+    }
+
     retval = 0;
     test(r, 1);
     /* If present, check credentials */
@@ -457,6 +183,8 @@ request_process(clicon_handle h,
 	retval = notfound(r);
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (pvec)
+	free(pvec);
     if (dvec)
 	cvec_free(dvec);
     if (qvec)
@@ -465,8 +193,41 @@ request_process(clicon_handle h,
 	cvec_free(pcvec);
     if (cb)
 	cbuf_free(cb);
-    unchunk_group(__FUNCTION__);
     return retval;
+}
+
+static int
+restconf_terminate(clicon_handle h)
+{
+    yang_spec      *yspec;
+
+    clicon_debug(0, "%s", __FUNCTION__);
+    clicon_rpc_close_session(h);
+    if ((yspec = clicon_dbspec_yang(h)) != NULL)
+	yspec_free(yspec);
+    clicon_handle_exit(h);
+    return 0;
+}
+
+/* Need global variable to for signal handler */
+static clicon_handle _CLICON_HANDLE = NULL;
+
+/*! Signall terminates process
+ */
+static void
+restconf_sig_term(int arg)
+{
+    static int i=0;
+
+    if (i++ == 0)
+	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
+		   __PROGRAM__, __FUNCTION__, getpid(), arg);
+    else
+	exit(-1);
+    if (_CLICON_HANDLE)
+	restconf_terminate(_CLICON_HANDLE);
+    clicon_exit_set(); /* checked in event_loop() */
+    exit(-1);
 }
 
 /*! Usage help routine
@@ -485,7 +246,8 @@ usage(clicon_handle h,
             "\t-h \t\tHelp\n"
     	    "\t-D \t\tDebug. Log to syslog\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
-	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n",
+	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
+	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
 	    argv0,
 	    restconfdir
 	    );
@@ -506,13 +268,14 @@ main(int    argc,
     char         *sockpath;
     char         *path;
     clicon_handle h;
+    char         *yangspec=NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_SYSLOG); 
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
-
+    _CLICON_HANDLE = h; /* for termination handling */
     while ((c = getopt(argc, argv, RESTCONF_OPTS)) != -1)
 	switch (c) {
 	case 'h':
@@ -531,6 +294,9 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_RESTCONF_DIR", optarg);
 	    break;
+	case 'y' : /* yang module */
+	    yangspec = optarg;
+	    break;
 	default:
 	    usage(h, argv[0]);
 	     break;
@@ -540,11 +306,29 @@ main(int    argc,
 
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_SYSLOG); 
     clicon_debug_init(debug, NULL); 
+    clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
+    if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
+	clicon_err(OE_DEMON, errno, "Setting signal");
+	goto done;
+    }
+    if (set_signal(SIGINT, restconf_sig_term, NULL) < 0){
+	clicon_err(OE_DEMON, errno, "Setting signal");
+	goto done;
+    }
 
     /* Find and read configfile */
     if (clicon_options_main(h) < 0)
 	goto done;
 
+    /* Overwrite yang module with -y option */
+    if (yangspec){
+	/* Set revision to NULL, extract dir and module */
+	char *str = strdup(yangspec);
+	char *dir = dirname(str);
+	hash_del(clicon_options(h), (char*)"CLICON_YANG_MODULE_REVISION");
+	clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", basename(yangspec));
+	clicon_option_str_set(h, "CLICON_YANG_DIR", strdup(dir));
+    }
     /* Initialize plugins group */
     if (restconf_plugin_load(h) < 0)
 	return -1;
@@ -592,5 +376,6 @@ main(int    argc,
     retval = 0;
  done:
     restconf_plugin_unload(h);
+    restconf_terminate(h);
     return retval;
 }

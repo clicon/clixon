@@ -121,13 +121,12 @@ clicon_proc_run (char  *cmd,
     sigfn_t   oldhandler = NULL;
     sigset_t  oset;
     
-    argv = clicon_sepsplit (cmd, " \t", &argc, __FUNCTION__);
+    argv = clicon_strsep(cmd, " \t", &argc);
     if (!argv)
 	return -1;
 
     if (pipe (outfd) == -1)
       goto done;
-    
 
     signal_get_mask(&oset);
     set_signal(SIGINT, clicon_proc_sigint, &oldhandler);
@@ -194,7 +193,8 @@ clicon_proc_run (char  *cmd,
     signal_set_mask (&oset);
     set_signal(SIGINT, oldhandler, NULL);
 
-    unchunk_group (__FUNCTION__);
+    if(argv)
+	free(argv);
     return retval;
 }
 
@@ -216,7 +216,7 @@ clicon_proc_daemon (char *cmd)
     struct rlimit 
 	rlim;
 
-    argv = clicon_sepsplit (cmd, " \t", &argc, NULL);
+    argv = clicon_strsep(cmd, " \t", &argc);
     if (!argv)
 	return -1;
 
@@ -260,7 +260,8 @@ clicon_proc_daemon (char *cmd)
 	retval = 0;
 
  done:
-    unchunk_group(__FUNCTION__);
+    if (argv)
+	free(argv);
     return (retval);
 }
 

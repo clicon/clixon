@@ -196,10 +196,6 @@ clicon_option_default(clicon_hash_t  *copt)
 	if (hash_add(copt, "CLICON_CLI_GENMODEL_COMPLETION", "0", strlen("0")+1) < 0)
 	    goto catch;
     }
-    if (!hash_lookup(copt, "CLICON_XMLDB_RPC")){
-	if (hash_add(copt, "CLICON_XMLDB_RPC", "0", strlen("0")+1) < 0)
-	    goto catch;
-    }
     retval = 0;
   catch:
     unchunk_group(__FUNCTION__);
@@ -614,35 +610,6 @@ char *
 clicon_xmldb_dir(clicon_handle h)
 {
     return clicon_option_str(h, "CLICON_XMLDB_DIR");
-}
-
-/*! Set if xmldb runs in a separate process (clixon_xmldb). */
-int
-clicon_xmldb_rpc(clicon_handle h)
-{
-    char *s;
-
-    if ((s = clicon_option_str(h, "CLICON_XMLDB_RPC")) == NULL)
-	return 0; /* default 0 */
-    return atoi(s);
-}
-
-/*! Get xmldb inet address */
-char *
-clicon_xmldb_addr(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_XMLDB_ADDR");
-}
-
-/*! Get port for xmldb address in case of AF_INET or AF_INET6 */
-uint16_t
-clicon_xmldb_port(clicon_handle h)
-{
-    char *s;
-
-    if ((s = clicon_option_str(h, "CLICON_XMLDB_PORT")) == NULL)
-	return -1;
-    return atoi(s);
 }
 
 /*! Get YANG specification

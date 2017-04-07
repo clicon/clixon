@@ -121,32 +121,10 @@ CLICON_BACKEND_PIDFILE  localstatedir/APPNAME/APPNAME.pidfile
 # Directory where "running", "candidate" and "startup" are placed
 CLICON_XMLDB_DIR      localstatedir/APPNAME
 
-# Set if xmldb runs in a separate process (clixon_xmldb). 
-# If set, also set xmldb_addr and xmldb_port below
-# CLICON_XMLDB_RPC 0
-
-# xmldb inet address (if CLICON_XMLDB_RPC)
-# CLICON_XMLDB_ADDR
-
-# xmldb tcp port (if CLICON_XMLDB_RPC)
-# CLICON_XMLDB_PORT
-
 # Dont include keys in cvec in cli vars callbacks, ie a & k in 'a <b> k <c>' ignored
 # CLICON_CLI_VARONLY      1
 
 # FastCGI unix socket. Should be specified in webserver
 # Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock;
 CLICON_RESTCONF_PATH /www-data/fastcgi_restconf.sock
-
-# Set if you want to use old obsolete cligen expand variable syntax 
-# Migration: Set to 0 and change all user-defined cli completion callbacks
-# E.g. expand_dbvar("db fmt") ->expandv_dbvar("db","fmt") in all your cli spec files
-CLICON_CLIGEN_EXPAND_SINGLE_ARG 0
-
-# Set if you want to use old obsolete cligen callback variable syntax 
-# Migration: Set to 0 and change all user-defined cli callbacks in your cli spec files
-# E.g cmd, callback("single arg"); -> cmd, callback("two" "args");
-# And change predefined callbacks, eg cli_commit -> cli_commitv in all cli files
-CLICON_CLIGEN_CALLBACK_SINGLE_ARG 1
-
 

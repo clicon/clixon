@@ -60,11 +60,6 @@ enum error_option{ /* edit-config */
     CONTINUE_ON_ERROR
 };
 
-enum filter_option{ /* get-config/filter */
-    FILTER_SUBTREE,
-    FILTER_XPATH
-};
-
 /*
  * Variables
  */ 
@@ -74,14 +69,10 @@ extern int cc_closed;
 /*
  * Prototypes
  */ 
-void netconf_ok_set(int ok);
-int netconf_ok_get(void);
-
 int add_preamble(cbuf *xf);
 int add_postamble(cbuf *xf);
 int add_error_preamble(cbuf *xf, char *reason);
-int detect_endtag(char *tag, char ch, int *state);
-char *netconf_get_target(clicon_handle h, cxobj *xn, char *path);
+char *netconf_get_target(cxobj *xn, char *path);
 int add_error_postamble(cbuf *xf);
 int netconf_output(int s, cbuf *xf, char *msg);
 

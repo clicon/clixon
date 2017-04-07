@@ -71,7 +71,7 @@ int
 mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 {
     int        retval = -1;
-    cxobj     *xt = NULL;
+    cxobj     *xret = NULL;
     cg_var    *myvar;
 
     /* Access cligen callback variables */
@@ -80,14 +80,51 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
     cli_output(stderr, "arg = %s\n", cv_string_get(cvec_i(argv,0))); /* get string value */
 
     /* Show eth0 interfaces config using XPATH */
-    if (xmldb_get(h, "candidate",
-		  "/interfaces/interface[name=eth0]", 
-		  &xt, NULL, NULL) < 0)
+    if (clicon_rpc_get_config(h, "running","/interfaces/interface[name=eth0]",
+			      &xret) < 0)
 	goto done;
-    xml_print(stdout, xt);
+    xml_print(stdout, xret);
     retval = 0;
  done:
-    if (xt)
-	xml_free(xt);
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
+/*! get argument and send as string to backend as RPC (which returns the string) 
+ */
+int
+downcall(clicon_handle h, 
+	 cvec         *vars, 
+	 cvec         *argv)
+{
+    int      retval = -1;
+    struct clicon_msg *msg = NULL;
+    char    *str="";
+    cg_var  *cv;
+    cxobj   *xret=NULL;
+    cxobj   *xerr;
+    cxobj   *xdata;
+
+    if (cvec_len(vars)==2){
+	if ((cv = cvec_i(vars, 1)) != NULL)
+	    str = cv_string_get(cv);
+    }
+    if ((msg = clicon_msg_encode("<rpc><myrouting>%s</myrouting></rpc>", str)) == NULL)
+	goto done;
+    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+	goto done;
+    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+	clicon_rpc_generate_error(xerr);
+	goto done;
+    }
+    if ((xdata = xpath_first(xret, "//ok")) != NULL)
+	cli_output(stdout, "%s\n", xml_body(xdata));
+    retval = 0; 
+  done:
+    if (xret)
+    	xml_free(xret);
+    if (msg)
+	free(msg);
     return retval;
 }

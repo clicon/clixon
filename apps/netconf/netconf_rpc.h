@@ -42,20 +42,7 @@
  */ 
 int 
 netconf_rpc_dispatch(clicon_handle h,
-		     cxobj *xorig, 
-		     cxobj *xn, 
-		     cbuf *xf, 
-		     cbuf *xf_err);
-
-int netconf_create_rpc_reply(cbuf *xf,            /* msg buffer */
-			     cxobj *xr, /* orig request */
-			     char *body, int ok);
-int netconf_create_rpc_error(cbuf *xf,            /* msg buffer */
-			     cxobj *xr, /* orig request */
-			     char *tag, 
-			     char *type,
-			     char *severity, 
-			     char *message, 
-			     char *info);
+		     cxobj        *xn, 
+		     cxobj       **xret);
 
 #endif  /* _NETCONF_RPC_H_ */

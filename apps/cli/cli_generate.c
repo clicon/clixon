@@ -65,10 +65,9 @@
 
 /* This is the default callback function. But this is typically overwritten */
 #define GENERATE_CALLBACK "cli_set"
-#define GENERATE_CALLBACKV "cli_setv"
 
 /* variable expand function */
-#define GENERATE_EXPAND_XMLDB "expandv_dbvar"
+#define GENERATE_EXPAND_XMLDB "expand_dbvar"
 
 /*=====================================================================
  * YANG generate CLI
@@ -154,10 +153,7 @@ cli_callback_generate(clicon_handle h,
 
     if (yang2xmlkeyfmt(ys, 0, &xkfmt) < 0)
 	goto done;
-    if (clicon_option_int(h, "CLICON_CLIGEN_CALLBACK_SINGLE_ARG")==1)
-	cprintf(cb0, ",%s(\"%s\")", GENERATE_CALLBACK, xkfmt);
-    else
-	cprintf(cb0, ",%s(\"%s\")", GENERATE_CALLBACKV, xkfmt);
+    cprintf(cb0, ",%s(\"%s\")", GENERATE_CALLBACK, xkfmt);
     retval = 0;
  done:
     if (xkfmt)

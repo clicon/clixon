@@ -41,14 +41,6 @@
  * Types
  */
 
-/* Database dependency description */
-struct netconf_reg {
-    qelem_t 	 nr_qelem;	/* List header */
-    netconf_cb_t nr_callback;	/* Validation/Commit Callback */
-    void	*nr_arg;	/* Application specific argument to cb */
-    char        *nr_tag;	/* Xml tag when matched, callback called */
-};
-typedef struct netconf_reg netconf_reg_t;
 
 /*
  * Prototypes
@@ -59,12 +51,6 @@ int netconf_plugin_start(clicon_handle h, int argc, char **argv);
 
 int netconf_plugin_unload(clicon_handle h);
 
-
-int netconf_plugin_callbacks(clicon_handle h,
-//			 dbspec_key *dbspec,
-			cxobj *xn, 
-			 cbuf *xf, 
-			 cbuf *xf_err, 
-			 cxobj *xt);
+int netconf_plugin_callbacks(clicon_handle h, cxobj *xn, cxobj **xret);
 
 #endif  /* _NETCONF_PLUGIN_H_ */

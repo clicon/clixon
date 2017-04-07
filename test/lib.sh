@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 testnr=0
 testnname=
@@ -32,7 +32,7 @@ expectfn(){
   fi
   # grep extended grep 
   match=`echo "$ret" | grep -Eo "$expect"`
-#  echo "ret:$ret"
+#  echo "ret:<$ret>"
 #  echo "expect:$expect"
 #  echo "match:$match"
   if [ -z "$match" ]; then
@@ -59,5 +59,23 @@ EOF
   if [ -z "$match" ]; then
       err "\nExpected:\t\"$expect\"\nGot:\t\"$ret\""
   fi
+}
+
+# clicon_cli tester. First arg is command and second is expected outcome
+expectwait(){
+  cmd=$1
+  input=$2
+  expect=$3
+  wait=$4
+
+# Do while read stuff
+  sleep 10|cat <(echo $input) -| $cmd | while [ 1 ] ; do
+    read ret
+    match=$(echo "$ret" | grep -Eo "$expect");
+    if [ -z "$match" ]; then
+	err "\nExpected:\t\"$expect\"\nGot:\t\"$ret\""
+    fi
+    break
+  done
 }
 

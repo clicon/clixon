@@ -50,9 +50,7 @@
  * Types
  */
 
-/*
- * enum gensyntx
- * Controls how keywords a generated in CLI syntax / prints from obhect model
+/*! Controls how keywords a generated in CLI syntax / prints from object model
  * Example syntax a.b[] $!x $y:
  * NONE: a b <x> <y>;
  * VARS: a b <x> y <y>;
@@ -109,9 +107,6 @@ int   clicon_cli_varonly_set(clicon_handle h, int val);
 int   clicon_cli_genmodel_completion(clicon_handle h);
 
 char *clicon_xmldb_dir(clicon_handle h);
-int      clicon_xmldb_rpc(clicon_handle h);
-char    *clicon_xmldb_addr(clicon_handle h);
-uint16_t clicon_xmldb_port(clicon_handle h);
 
 char *clicon_quiet_mode(clicon_handle h);
 enum genmodel_type clicon_cli_genmodel_type(clicon_handle h);

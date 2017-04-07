@@ -37,8 +37,6 @@
 #define _CLIXON_FILE_H_
 
 
-char **clicon_realpath(const char *cwd, char *path, const char *label);
-
 int clicon_file_dirent(const char *dir, struct dirent **ent, 
 		    const char *regexp, mode_t type, const char *label);
 

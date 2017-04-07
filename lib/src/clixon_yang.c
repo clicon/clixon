@@ -1676,37 +1676,6 @@ yang_xpath_vec(yang_node *yn,
     return yret;
 }
 
-/* Alternative to clicon_strsplit using malloc. Note delim can only be one char 
- * Free return value after use
- */
-static char **
-clicon_strsplit_malloc(char *string, 
-		       char *delim, 
-		       int  *nvec0)
-{
-    char **vec = NULL;
-    char  *ptr;
-    char  *p;
-    int   nvec = 1;
-    int   i;
-
-    for (i=0; i<strlen(string); i++)
-	if (string[i]==*delim)
-	    nvec++;
-    /* alloc vector and append copy of string */
-    if ((vec = (char**)malloc(nvec* sizeof(char*) + strlen(string)+1)) == NULL){
-	clicon_err(OE_YANG, errno, "malloc"); 
-	goto err;
-    } 
-    ptr = (char*)vec + nvec* sizeof(char*); /* this is where ptr starts */
-    strncpy(ptr, string, strlen(string)+1);
-    i = 0;
-    while ((p = strsep(&ptr, delim)) != NULL)
-	vec[i++] = p;
-    *nvec0 = nvec;
- err:
-    return vec;
-}
 
 /*! Given an absolute xpath (eg /a/b/c) find matching yang specification  
  * @param[in]  yn    Yang node
@@ -1725,12 +1694,10 @@ yang_xpath_abs(yang_node *yn,
     char            *id;
     char            *prefix = NULL;
 
-    if ((vec = clicon_strsplit_malloc(xpath, "/", &nvec)) == NULL){
-	clicon_err(OE_YANG, errno, "%s: strsplit", __FUNCTION__); 
+    if ((vec = clicon_strsep(xpath, "/", &nvec)) == NULL){
+	clicon_err(OE_YANG, errno, "%s: strsep", __FUNCTION__); 
 	return NULL;
     }
-
-
     /* Assume path looks like: "/prefix:id[/prefix:id]*" */
     if (nvec < 2){
 	clicon_err(OE_YANG, 0, "%s: NULL or truncated path: %s", 
@@ -1807,7 +1774,7 @@ yang_xpath(yang_node *yn,
     /* check absolute path */
     if (xpath[0] == '/')
 	return yang_xpath_abs(yn, xpath);
-    if ((vec = clicon_strsplit_malloc(xpath, "/", &nvec)) == NULL)
+    if ((vec = clicon_strsep(xpath, "/", &nvec)) == NULL)
 	goto err;
     ys = yang_xpath_vec((yang_node*)yn, vec, nvec);
  err:
@@ -1986,16 +1953,14 @@ cvec *
 yang_arg2cvec(yang_stmt *ys, 
 	      char      *delim)
 {
-    char  **vec;
+    char  **vec = NULL;
     int     i;
     int     nvec;
     cvec   *cvv = NULL;
     cg_var *cv;
 
-    if ((vec = clicon_strsplit(ys->ys_argument, " ", &nvec, __FUNCTION__)) == NULL){
-	clicon_err(OE_YANG, errno, "clicon_strsplit");	
+    if ((vec = clicon_strsep(ys->ys_argument, " ", &nvec)) == NULL)
 	goto done;
-    }
     if ((cvv = cvec_new(nvec)) == NULL){
 	clicon_err(OE_YANG, errno, "cvec_new");	
 	goto done;
@@ -2010,7 +1975,8 @@ yang_arg2cvec(yang_stmt *ys,
 	}
     }
  done:
-    unchunk_group(__FUNCTION__);
+    if (vec)
+	free(vec);
     return cvv;
 }
 

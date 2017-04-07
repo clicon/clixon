@@ -29,21 +29,86 @@
 #
 # ***** END LICENSE BLOCK *****
 
+- cli_copy_config added as generic cli command
+- cli_show_config added as generic cli command
+  Replace all show_confv*() and show_conf*() with cli_show_config()
+  Example: replace:
+     show_confv_as_json("candidate","/sender");
+  with:
+     cli_show_config("candidate","json","/sender");
+- Alternative yang spec option -y added to all applications
+- Many clicon special string functions have been removed
+- The netconf support has been extended with lock/unlock
+- clicon_rpc_call() has been removed and should be replaced by extending the
+  internal netconf protocol. 
+  See downcall() function in example/routing_cli.c and 
+  routing_downcall() in example/routing_backend.c
+- Replace clicon_rpc_xmlput with clicon_rpc_edit_config
+- Removed xmldb daemon. All xmldb acceses is made backend daemon. 
+  No direct accesses by clients to xmldb API.
+  Instead use the rpc calls in clixon_proto_client.[ch]
+  In clients (eg cli/netconf) replace xmldb_get() in client code with 
+  clicon_rpc_get_config().
+  If you use the vector arguments of xmldb_get(), replace as follows:
+    xmldb_get(h, db, api_path, &xt, &xvec, &xlen);
+  with
+    clicon_rpc_get_config(h, dbstr, api_path, &xt);
+    xpath_vec(xt, api_path, &xvec, &xlen)
+
+- clicon_rpc_change() is replaced with clicon_rpc_edit_config().
+  Note modify argument 5:
+     clicon_rpc_change(h, db, op, apipath, "value") 
+  to:
+     clicon_rpc_edit_config(h, db, op, apipath, "<config>value</config>") 
+
+- xmdlb_put_xkey() and xmldb_put_tree() have been folded into xmldb_put()
+  Replace xmldb_put_xkey with xmldb_put as follows:
+     xmldb_put_xkey(h, "candidate", cbuf_get(cb), str, OP_REPLACE);
+  with
+     clicon_xml_parse(&xml, "<config>%s</config>", str);
+     xmldb_put(h, "candidate", OP_REPLACE, cbuf_get(cb), xml);
+     xml_free(xml);
+
+- Change internal protocol from clicon_proto.h to netconf.
+  This means that the internal protocol defined in clixon_proto.[ch] is removed
+
 - Netconf startup configuration support. Set CLICON_USE_STARTUP_CONFIG to 1 to
   enable. Eg, if backend_main is started with -CIr startup will be copied to
   running.
+
 - Added ".." as valid step in xpath
+
 - Use restconf format for internal xmldb keys. Eg /a/b=3,4
-- List keys with special characters are RFC 3986 encoded.	
-- Changed example to use multiple cli callbacks
-- Added cli multiple callback and expand support. Use options 
-  CLICON_CLIGEN_CALLBACK_SINGLE_ARG and CLICON_CLIGEN_EXPAND_SINGLE_ARG 
-  to control these.
-  The multiple support for expand callbacks is enabled but not for callbacks
-  since this causes problems for legacy applications.
-  If you change to multiple argument callbacks change all cli callback functions.
-  Library functions in clixon_cli_api.h (e.g cli_commit) is rewritten in new
-  for (eg cli_commitv). See clixon_cli_api.h for new names.
+
+- List keys with special characters RFC 3986 encoded.	
+
+- Replaced cli expand functions with single to multiple args
+  This change is _not_ backward compatible
+  This effects all calls to expand_dbvar() or user-defined
+  expand callbacks
+
+- Replaced cli callback functions with single arg to multiple args
+  This change is _not_ backward compatible.
+  You are affected if you 
+  (1) use system callbacks (i.e. in clixon_cli_api.h)
+  (2) write your own cli callbacks
+
+  If you use cli callbacks, you need to rewrite cli callbacks from eg:
+     load("Comment") <filename:string>,load_config_file("filename replace");
+  to:
+     load("Comment") <filename:string>,load_config_file("filename", "replace");
+
+  If you write your own, you need to change the callback signature from;
+    int cli_callback(clicon_handle h, cvec *vars, cg_var *arg)
+  to:
+    int cli_callback(clicon_handle h, cvec *vars, cvec *argv)
+  and rewrite the code to handle argv instead of arg.
+  These are the system functions affected:
+  cli_set, cli_merge, cli_del, cli_debug_backend, cli_set_mode, 
+  cli_start_shell, cli_quit, cli_commit, cli_validate, compare_dbs, 
+  load_config_file, save_config_file, delete_all, discard_changes, cli_notify,
+  show_yang, show_conf_xpath
+
 - Added --with-cligen and --with-qdbm configure options
 - Added union type check for non-cli (eg xml) input 
 - Empty yang type. Relaxed yang types for unions, eg two strings with different length.

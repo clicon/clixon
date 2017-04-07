@@ -40,27 +40,25 @@
 #ifndef _CLIXON_PROTO_CLIENT_H_
 #define _CLIXON_PROTO_CLIENT_H_
 
-int clicon_rpc_commit(clicon_handle h, char *from, char *to);
+int clicon_rpc_msg(clicon_handle h, struct clicon_msg *msg, cxobj **xret0,
+		   int *sock0);
+int clicon_rpc_netconf(clicon_handle h, char *xmlst, cxobj **xret, int *sp);
+int clicon_rpc_netconf_xml(clicon_handle h, cxobj *xml, cxobj **xret, int *sp);
+int clicon_rpc_generate_error(cxobj *xerr);
+int clicon_rpc_get_config(clicon_handle h, char *db, char *xpath, cxobj **xret);
+int clicon_rpc_edit_config(clicon_handle h, char *db, enum operation_type op, 
+			   char *api_path, char *xml);
+int clicon_rpc_copy_config(clicon_handle h, char *db1, char *db2);
+int clicon_rpc_delete_config(clicon_handle h, char *db);
+int clicon_rpc_lock(clicon_handle h, char *db);
+int clicon_rpc_unlock(clicon_handle h, char *db);
+int clicon_rpc_close_session(clicon_handle h);
+int clicon_rpc_kill_session(clicon_handle h, int session_id);
 int clicon_rpc_validate(clicon_handle h, char *db);
-int clicon_rpc_change(clicon_handle h, char *db, 
-		      enum operation_type op, char *key, char *val);
-
-int clicon_rpc_xmlput(clicon_handle h, char *db, enum operation_type op, 
-		      char *api_path, char *xml);
-int clicon_rpc_dbitems(clicon_handle h, char *db, char *rx, 
-		       char *attr, char *val, 
-		       cvec ***cvv, size_t *cvvlen);
-int clicon_rpc_save(clicon_handle h, char *dbname, int snapshot, char *filename);
-int clicon_rpc_load(clicon_handle h, int replace, char *db, char *filename);
-int clicon_rpc_copy(clicon_handle h, char *db1, char *db2);
-int clicon_rpc_kill(clicon_handle h, int session_id);
+int clicon_rpc_commit(clicon_handle h);
+int clicon_rpc_discard_changes(clicon_handle h);
+int clicon_rpc_create_subscription(clicon_handle h, char *stream, char *filter, 
+				   int *s);
 int clicon_rpc_debug(clicon_handle h, int level);
-int clicon_rpc_call(clicon_handle h, uint16_t op, char *plugin, char *func,
-		    void *param, uint16_t paramlen, 
-		    char **ret, uint16_t *retlen,
-		    const void *label);
-int clicon_rpc_subscription(clicon_handle h, int status, char *stream, 
-			    enum format_enum format, char *filter, int *s);
-
 
 #endif  /* _CLIXON_PROTO_CLIENT_H_ */

@@ -57,6 +57,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <libgen.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -72,7 +73,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc:rg:ptx:"
+#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc:rg:pty:"
 
 /*! Terminate. Cannot use h after this */
 static int
@@ -142,7 +143,7 @@ usage(char *argv0, clicon_handle h)
 	    "    -p \t\tPrint database yang specification\n"
 	    "    -t \t\tPrint alternate spec translation (eg if YANG print KEY, if KEY print YANG)\n"
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
-	    "    -x <status>\tSet CLICON_XMLDB_RPC to 0 or 1.\n",
+	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
 	    argv0,
 	    plgdir ? plgdir : "none",
 	    confsock ? confsock : "none",
@@ -153,11 +154,12 @@ usage(char *argv0, clicon_handle h)
 }
 
 static int
-rundb_init(clicon_handle h)
+db_reset(clicon_handle h, 
+	 char         *db)
 {
-    if (xmldb_delete(h, "running") != 0 && errno != ENOENT) 
+    if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
 	return -1;
-    if (xmldb_init(h, "running") < 0)
+    if (xmldb_init(h, db) < 0)
 	return -1;
     return 0;
 }
@@ -192,7 +194,7 @@ rundb_main(clicon_handle h,
     if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
 	goto done;
     if ((xn = xml_child_i(xt, 0)) != NULL)
-	if (xmldb_put(h, "tmp", xn, OP_MERGE) < 0)
+	if (xmldb_put(h, "tmp", OP_MERGE, NULL, xn) < 0)
 	    goto done;
     if (candidate_commit(h, "tmp") < 0)
 	goto done;
@@ -426,14 +428,15 @@ main(int argc, char **argv)
 	case 't' : /* Print alternative dbspec format (eg if YANG, print KEY) */
 	    printalt++;
 	    break;
-	case 'x' : /* set xmldb rpc on */
-	    {
-		int i;
-		if (sscanf(optarg, "%d", &i) != 1)
-		    usage(argv[0], h);
-		clicon_option_int_set(h, "CLICON_XMLDB_RPC", i);
-	    }
+	case 'y' :{ /* yang module */
+	    /* Set revision to NULL, extract dir and module */
+	    char *str = strdup(optarg);
+	    char *dir = dirname(str);
+	    hash_del(clicon_options(h), (char*)"CLICON_YANG_MODULE_REVISION");
+	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", basename(optarg));
+	    clicon_option_str_set(h, "CLICON_YANG_DIR", strdup(dir));
 	    break;
+	}
 	default:
 	    usage(argv[0], h);
 	    break;
@@ -503,7 +506,7 @@ main(int argc, char **argv)
     if (yang_spec_main(h, stdout, printspec) < 0)
 	goto done;
 
-    /* First check for starup config 
+    /* First check for startup config 
        XXX the options below have become out-of-hand. 
        Too complex, need to simplify*/
     if (clicon_option_int(h, "CLICON_USE_STARTUP_CONFIG") > 0){
@@ -513,8 +516,12 @@ main(int argc, char **argv)
 		goto done;
 	}
 	else
-	    if (rundb_init(h) < 0)
+	    if (db_reset(h, "running") < 0)
 		goto done;
+	if (xmldb_init(h, "candidate") < 0)
+	    goto done;
+	if (xmldb_copy(h, "running", "candidate") < 0)
+	    goto done;
     }
     /* If running exists and reload_running set, make a copy to candidate */
     if (reload_running){
@@ -529,9 +536,17 @@ main(int argc, char **argv)
     /* Init running db 
      * -I or if it isnt there
      */
-    if (init_rundb || xmldb_exists(h, "running") != 1)
-	if (rundb_init(h) < 0)
+    if (init_rundb || xmldb_exists(h, "running") != 1){
+	if (db_reset(h, "running") < 0)
 	    goto done;
+    }
+    /* If candidate does not exist, create it from running */
+    if (xmldb_exists(h, "candidate") != 1){
+	if (xmldb_init(h, "candidate") < 0)
+	    goto done;
+	if (xmldb_copy(h, "running", "candidate") < 0)
+	    goto done;
+    }
 
     /* Initialize plugins 
        (also calls plugin_init() and plugin_start(argc,argv) in each plugin */

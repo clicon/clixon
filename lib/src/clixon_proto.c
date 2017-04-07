@@ -68,47 +68,117 @@
 #include "clixon_queue.h"
 #include "clixon_chunk.h"
 #include "clixon_sig.h"
+#include "clixon_xml.h"
+#include "clixon_xsl.h"
 #include "clixon_proto.h"
-#include "clixon_proto_encode.h"
 
 static int _atomicio_sig = 0;
 
-struct map_type2str{
-    enum clicon_msg_type mt_type;
-    char                *mt_str; /* string as in 4.2.4 in RFC 6020 */
+/*! Formats (showas) derived from XML
+ */
+struct formatvec{
+    char *fv_str;
+    int   fv_int;
 };
 
-/* Mapping between yang keyword string <--> clicon constants */
-static const struct map_type2str msgmap[] = {
-    {CLICON_MSG_COMMIT,       "commit"},
-    {CLICON_MSG_VALIDATE,     "validate"},
-    {CLICON_MSG_CHANGE,       "change"},
-    {CLICON_MSG_XMLPUT,       "xmlput"},
-    {CLICON_MSG_SAVE,         "save"},
-    {CLICON_MSG_LOAD,         "load"},
-    {CLICON_MSG_COPY,         "copy"},
-    {CLICON_MSG_KILL,         "kill"},
-    {CLICON_MSG_DEBUG,        "debug"},
-    {CLICON_MSG_CALL,         "call"},
-    {CLICON_MSG_SUBSCRIPTION, "subscription"},
-    {CLICON_MSG_OK,           "ok"},
-    {CLICON_MSG_NOTIFY,       "notify"},
-    {CLICON_MSG_ERR,          "err"},
-    {-1,                      NULL}, 
+static struct formatvec _FORMATS[] = {
+    {"xml",     FORMAT_XML},
+    {"text",    FORMAT_TEXT},
+    {"json",    FORMAT_JSON},
+    {"cli",     FORMAT_CLI},
+    {"netconf", FORMAT_NETCONF},
+    {NULL,   -1}
 };
 
-static char *
-msg_type2str(enum clicon_msg_type type)
+/*! Translate from numeric format to string representation
+ * @param[in]  showas   Format value (see enum format_enum)
+ * @retval     str      String value
+ */
+char *
+format_int2str(enum format_enum showas)
 {
-    const struct map_type2str *mt;
+    struct formatvec *fv;
 
-    for (mt = &msgmap[0]; mt->mt_str; mt++)
-	if (mt->mt_type == type)
-	    return mt->mt_str;
-    return NULL;
+    for (fv=_FORMATS; fv->fv_int != -1; fv++)
+	if (fv->fv_int == showas)
+	    break;
+    return fv?(fv->fv_str?fv->fv_str:"unknown"):"unknown";
+}
+
+/*! Translate from string to numeric format representation
+ * @param[in]  str       String value
+ * @retval     enum      Format value (see enum format_enum)
+ */
+enum format_enum
+format_str2int(char *str)
+{
+    struct formatvec *fv;
+
+    for (fv=_FORMATS; fv->fv_int != -1; fv++)
+	if (strcmp(fv->fv_str, str) == 0)
+	    break;
+    return fv?fv->fv_int:-1;
+}
+
+/*! Encode a clicon netconf message
+ * @param[in] format  Variable agrument list format an XML netconf string
+ * @retval    msg  Clicon message to send to eg clicon_msg_send()
+ */
+struct clicon_msg *
+clicon_msg_encode(char *format, ...)
+{
+    va_list            args;
+    int                xmllen;
+    int                len;
+    struct clicon_msg *msg = NULL;
+    int                hdrlen = sizeof(*msg);
+
+    va_start(args, format);
+    xmllen = vsnprintf(NULL, 0, format, args) + 1;
+    va_end(args);
+
+    len = hdrlen + xmllen;
+    if ((msg = (struct clicon_msg *)malloc(len)) == NULL){
+	clicon_err(OE_PROTO, errno, "malloc");
+	return NULL;
+    }
+    memset(msg, 0, len);
+    /* hdr */
+    msg->op_len = htons(len);
+
+    /* body */
+    va_start(args, format);
+    vsnprintf(msg->op_body, xmllen, format, args);
+    va_end(args);
+
+    return msg;
+}
+
+/*! Decode a clicon netconf message
+ * @param[in]  msg    CLICON msg
+ * @param[out] xml    XML parse tree
+ */
+int
+clicon_msg_decode(struct clicon_msg *msg, 
+		  cxobj            **xml)
+{
+    int   retval = -1;
+    char *xmlstr;
+
+    /* body */
+    xmlstr = msg->op_body;
+    clicon_debug(1, "%s %s", __FUNCTION__, xmlstr);
+    if (clicon_xml_parse_str(xmlstr, xml) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Open local connection using unix domain sockets
+ * @param[in]  sockpath Unix domain file path
+ * @retval     s       socket
+ * @retval     -1      error
  */
 int
 clicon_connect_unix(char *sockpath)
@@ -147,13 +217,19 @@ atomicio_sig_handler(int arg)
     _atomicio_sig++;
 }
 
-
 /*! Ensure all of data on socket comes through. fn is either read or write
+ * @param[in]  fn  I/O function, ie read/write
+ * @param[in]  fd  File descriptor, eg socket
+ * @param[in]  s0  Buffer to read to or write from
+ * @param[in]  n   Number of bytes to read/write, loop until done
  */
 static ssize_t
-atomicio(ssize_t (*fn) (int, void *, size_t), int fd, void *_s, size_t n)
+atomicio(ssize_t (*fn) (int, void *, size_t), 
+	 int       fd, 
+	 void     *s0, 
+	 size_t    n)
 {
-    char *s = _s;
+    char *s = s0;
     ssize_t res, pos = 0;
 
     while (n > pos) {
@@ -177,6 +253,9 @@ atomicio(ssize_t (*fn) (int, void *, size_t), int fd, void *_s, size_t n)
     return (pos);
 }
 
+/*! Print message on debug. Log if syslog, stderr if not
+ * @param[in]  msg    CLICON msg
+ */
 static int
 msg_dump(struct clicon_msg *msg)
 {
@@ -202,14 +281,18 @@ msg_dump(struct clicon_msg *msg)
     return 0;
 }
 
+/*! Send a CLICON netconf message
+ * @param[in]   s      socket (unix or inet) to communicate with backend
+ * @param[out]  msg    CLICON msg data reply structure. Free with free()
+ */
 int
 clicon_msg_send(int                s, 
 		struct clicon_msg *msg)
 { 
     int retval = -1;
 
-    clicon_debug(2, "%s: send msg seq=%d len=%d", 
-		 __FUNCTION__, ntohs(msg->op_type), ntohs(msg->op_len));
+    clicon_debug(2, "%s: send msg len=%d", 
+		 __FUNCTION__, ntohs(msg->op_len));
     if (debug > 2)
 	msg_dump(msg);
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
@@ -223,7 +306,7 @@ clicon_msg_send(int                s,
 }
 
 
-/*! Receive a CLICON message on a UNIX domain socket
+/*! Receive a CLICON message
  *
  * XXX: timeout? and signals?
  * There is rudimentary code for turning on signals and handling them 
@@ -233,18 +316,15 @@ clicon_msg_send(int                s,
  * behaviour.
  * Now, ^C will interrupt the whole process, and this may not be what you want.
  *
- * @param[in]   s      UNIX domain socket to communicate with backend
- * @param[out]  msg    CLICON msg data reply structure. allocated using CLICON chunks, 
- *                     freed by caller with unchunk*(...,label)
+ * @param[in]   s      socket (unix or inet) to communicate with backend
+ * @param[out]  msg    CLICON msg data reply structure. Free with free()
  * @param[out]  eof    Set if eof encountered
- * @param[in]   label  Label used in chunk allocation and deallocation.
  * Note: caller must ensure that s is closed if eof is set after call.
  */
 int
 clicon_msg_rcv(int                s,
-	      struct clicon_msg **msg,
-	      int                *eof,
-	      const char         *label)
+	       struct clicon_msg **msg,
+	       int                *eof)
 { 
     int       retval = -1;
     struct clicon_msg hdr;
@@ -271,10 +351,10 @@ clicon_msg_rcv(int                s,
 	goto done;
     }
     mlen = ntohs(hdr.op_len);
-    clicon_debug(2, "%s: rcv msg seq=%d, len=%d",  
-		 __FUNCTION__, ntohs(hdr.op_type), mlen);
-    if ((*msg = (struct clicon_msg *)chunk(mlen, label)) == NULL){
-	clicon_err(OE_CFG, errno, "%s: chunk", __FUNCTION__);
+    clicon_debug(2, "%s: rcv msg len=%d",  
+		 __FUNCTION__, mlen);
+    if ((*msg = (struct clicon_msg *)malloc(mlen)) == NULL){
+	clicon_err(OE_CFG, errno, "malloc");
 	goto done;
     }
     memcpy(*msg, &hdr, hlen);
@@ -295,25 +375,27 @@ clicon_msg_rcv(int                s,
     return retval;
 }
 
-
-/*! Connect to server, send an clicon_msg message and wait for result.
- * Compared to clicon_rpc, this is a one-shot rpc: open, send, get reply and close.
- * NOTE: this is dependent on unix domain
+/*! Connect to server, send a clicon_msg message and wait for result using unix socket
+ *
+ * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
+ * @param[in]  sockpath Unix domain file path
+ * @param[out] retdata  Returned data as string netconf xml tree.
+ * @param[out] sock0   Return socket in case of asynchronous notify
+ * @retval     0       OK
+ * @retval     -1      Error
+ * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
 clicon_rpc_connect_unix(struct clicon_msg *msg, 
 			char              *sockpath,
-			char             **data, 
-			uint16_t          *datalen,
-			int               *sock0, 
-			const char        *label)
+			char             **retdata,
+			int               *sock0)
 {
     int retval = -1;
     int s = -1;
     struct stat sb;
 
-    clicon_debug(1, "Send %s msg on %s", 
-		 msg_type2str(ntohs(msg->op_type)), sockpath);
+    clicon_debug(1, "Send msg on %s", sockpath);
     /* special error handling to get understandable messages (otherwise ENOENT) */
     if (stat(sockpath, &sb) < 0){
 	clicon_err(OE_PROTO, errno, "%s: config daemon not running?", sockpath);
@@ -325,7 +407,7 @@ clicon_rpc_connect_unix(struct clicon_msg *msg,
     }
     if ((s = clicon_connect_unix(sockpath)) < 0)
 	goto done;
-    if (clicon_rpc(s, msg, data, datalen, label) < 0)
+    if (clicon_rpc(s, msg, retdata) < 0)
 	goto done;
     if (sock0 != NULL)
 	*sock0 = s;
@@ -336,24 +418,29 @@ clicon_rpc_connect_unix(struct clicon_msg *msg,
     return retval;
 }
 
-/*! Connect to server, send an clicon_msg message and wait for result using an inet socket
- * Compared to clicon_rpc, this is a one-shot rpc: open, send, get reply and close.
+/*! Connect to server, send a clicon_msg message and wait for result using an inet socket
+ * This uses unix domain socket communication
+ * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
+ * @param[in]  dst     IPv4 address
+ * @param[in]  port    TCP port
+ * @param[out] retdata  Returned data as string netconf xml tree.
+ * @param[out] sock0   Return socket in case of asynchronous notify
+ * @retval     0       OK
+ * @retval     -1      Error
+ * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
 clicon_rpc_connect_inet(struct clicon_msg *msg, 
 			char              *dst,
 			uint16_t           port,
-			char             **data, 
-			uint16_t          *datalen,
-			int               *sock0, 
-			const char        *label)
+			char             **retdata,
+			int               *sock0)
 {
     int                retval = -1;
     int                s = -1;
     struct sockaddr_in addr;
 
-    clicon_debug(1, "Send %s msg to %s:%hu", 
-		 msg_type2str(ntohs(msg->op_type)), dst, port);
+    clicon_debug(1, "Send msg to %s:%hu", dst, port);
 
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -371,7 +458,7 @@ clicon_rpc_connect_inet(struct clicon_msg *msg,
 	close(s);
 	goto done;
     }
-    if (clicon_rpc(s, msg, data, datalen, label) < 0)
+    if (clicon_rpc(s, msg, retdata) < 0)
 	goto done;
     if (sock0 != NULL)
 	*sock0 = s;
@@ -391,29 +478,24 @@ clicon_rpc_connect_inet(struct clicon_msg *msg,
  *
  * @param[in]  s       Socket to communicate with backend
  * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
- * @param[out] data    Returned data as byte-strin exclusing header. 
- *                      Deallocate w unchunk...(..., label)
- * @param[out] datalen Length of returned data
- * @param[in]  label   Label used in chunk allocation.
+ * @param[out] xret    Returned data as netconf xml tree.
+ * @retval     0       OK
+ * @retval     -1      Error
  */
 int
-clicon_rpc(int                s, 
-	   struct clicon_msg *msg, 
-	   char             **data, 
-	   uint16_t          *datalen,
-	   const char        *label)
+clicon_rpc(int                   s, 
+	   struct clicon_msg    *msg, 
+	   char                **ret)
 {
     int                retval = -1;
     struct clicon_msg *reply;
     int                eof;
-    uint32_t           err;
-    uint32_t           suberr;
-    char              *reason;
-    enum clicon_msg_type type;
+    char              *data = NULL;
+    cxobj             *cx = NULL;
 
     if (clicon_msg_send(s, msg) < 0)
 	goto done;
-    if (clicon_msg_rcv(s, &reply, &eof, label) < 0)
+    if (clicon_msg_rcv(s, &reply, &eof) < 0)
 	goto done;
     if (eof){
 	clicon_err(OE_PROTO, ESHUTDOWN, "%s: Socket unexpected close", __FUNCTION__);
@@ -421,37 +503,31 @@ clicon_rpc(int                s,
 	errno = ESHUTDOWN;
 	goto done;
     }
-    type = ntohs(reply->op_type);
-    switch (type){
-    case CLICON_MSG_OK:
-        if (data != NULL) {
-	    *data = reply->op_body;
-	    *datalen = ntohs(reply->op_len) - sizeof(*reply);
-	}
-	break;
-    case CLICON_MSG_ERR:
-	if (clicon_msg_err_decode(reply, &err, &suberr, &reason, label) < 0) 
+    data = reply->op_body; /* assume string */
+    if (ret && data)
+	if ((*ret = strdup(data)) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
 	    goto done;
-	if (debug)
-	    clicon_err(err, suberr, "%s msgtype:%hu", reason, ntohs(msg->op_type));
-	else
-	    clicon_err(err, suberr, "%s", reason);
-	goto done;
-	break;
-    default:
-	clicon_err(OE_PROTO, 0, "%s: unexpected reply: %hu", 
-		__FUNCTION__, type);
-	goto done;
-	break;
-    }
+	}
     retval = 0;
   done:
+    if (cx)
+	xml_free(cx);
+    if (reply)
+	free(reply);
     return retval;
 }
 
+/*! Send a clicon_msg message as reply to a clicon rpc request
+ *
+ * @param[in]  s       Socket to communicate with client
+ * @param[in]  data    Returned data as byte-string.
+ * @param[in]  datalen Length of returned data XXX  may be unecessary if always string?
+ * @retval     0       OK
+ * @retval     -1      Error
+ */
 int 
 send_msg_reply(int      s, 
-	       uint16_t type, 
 	       char    *data, 
 	       uint16_t datalen)
 {
@@ -463,7 +539,6 @@ send_msg_reply(int      s,
     if ((reply = (struct clicon_msg *)chunk(len, __FUNCTION__)) == NULL)
 	goto done;
     memset(reply, 0, len);
-    reply->op_type = htons(type);
     reply->op_len = htons(len);
     if (datalen > 0)
       memcpy(reply->op_body, data, datalen);
@@ -475,57 +550,55 @@ send_msg_reply(int      s,
     return retval;
 }
 
-int
-send_msg_ok(int s)
-{
-    return send_msg_reply(s, CLICON_MSG_OK, NULL, 0);
-}
-
+/*! Send a clicon_msg NOTIFY message asynchronously to client
+ *
+ * @param[in]  s       Socket to communicate with client
+ * @param[in]  level
+ * @param[in]  event
+ * @retval     0       OK
+ * @retval     -1      Error
+ */
 int
 send_msg_notify(int   s, 
 		int   level, 
 		char *event)
 {
-    int retval = -1;
-    struct clicon_msg *msg;
+    int                retval = -1;
+    struct clicon_msg *msg = NULL;
 
-    if ((msg=clicon_msg_notify_encode(level, event, __FUNCTION__)) == NULL)
+    if ((msg=clicon_msg_encode("<notification><event>%s</event></notification>", event)) == NULL)
 	goto done;
     if (clicon_msg_send(s, msg) < 0)
 	goto done;
     retval = 0;
   done:
-    unchunk_group(__FUNCTION__);
+    if (msg)
+	free(msg);
     return retval;
 }
 
+/*! Look for a text pattern in an input string, one char at a time
+ *  @param[in]     tag     What to look for
+ *  @param[in]     ch      New input character
+ *  @param[in,out] state   A state integer holding how far we have parsed.
+ *  @retval        0       No, we havent detected end tag
+ *  @retval        1       Yes, we have detected end tag!
+ */
 int
-send_msg_err(int s, int err, int suberr, char *format, ...)
+detect_endtag(char *tag, 
+	      char  ch, 
+	      int  *state)
 {
-    va_list args;
-    char *reason;
-    int len;
-    int retval = -1;
-    struct clicon_msg *msg;
+    int retval = 0;
 
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args) + 1;
-    va_end(args);
-    if ((reason = (char *)chunk(len, __FUNCTION__)) == NULL)
-	return -1;
-    memset(reason, 0, len);
-    va_start(args, format);
-    vsnprintf(reason, len, format, args);
-    va_end(args);
-    if ((msg=clicon_msg_err_encode(clicon_errno, clicon_suberrno, 
-				   reason, __FUNCTION__)) == NULL)
-	goto done;
-    if (clicon_msg_send(s, msg) < 0)
-	goto done;
-
-    retval = 0;
-  done:
-    unchunk_group(__FUNCTION__);
+    if (tag[*state] == ch){
+	(*state)++;
+	if (*state == strlen(tag)){
+	    *state = 0;
+	    retval = 1;
+	}
+    }
+    else
+	*state = 0;
     return retval;
 }
-

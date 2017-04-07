@@ -30,27 +30,34 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
+  
  */
-#ifndef _CLIXON_XML_DB_RPC_H_
-#define _CLIXON_XML_DB_RPC_H_
+
+
+#ifndef _RESTCONF_METHODS_H_
+#define _RESTCONF_METHODS_H_
+
+/*
+ * Constants
+ */
 
 /*
  * Prototypes
  */
-int xmldb_get_rpc(clicon_handle h, char *db,
-		  char *xpath, 
-		  cxobj **xtop, cxobj ***xvec, size_t *xlen);
-int xmldb_put_rpc(clicon_handle h, char *db, cxobj *xt, enum operation_type op);
-int xmldb_put_xkey_rpc(clicon_handle h, char *db, char *xk, char *val, 
-		       enum operation_type op);
-int xmldb_copy_rpc(clicon_handle h, char *from, char *to);
-int xmldb_lock_rpc(clicon_handle h, char *db, int pid);
-int xmldb_unlock_rpc(clicon_handle h, char *db, int pid);
-int xmldb_islocked_rpc(clicon_handle h, char *db);
+int api_data_options(clicon_handle h, FCGX_Request *r);
+int api_data_head(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
+		  cvec *qvec);
+int api_data_get(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
+		 cvec *qvec);
+int api_data_post(clicon_handle h, FCGX_Request *r, char *api_path,
+		  cvec *pcvec, int pi, 
+		  cvec *qvec, char *data);
+int api_data_put(clicon_handle h, FCGX_Request *r, char *api_path, 
+		 cvec *pcvec, int pi, 
+		 cvec *qvec, char *data);
+int api_data_patch(clicon_handle h, FCGX_Request *r, char *api_path, 
+		   cvec *pcvec, int pi, 
+		   cvec *qvec, char *data);
+int api_data_delete(clicon_handle h, FCGX_Request *r, char *api_path, int pi);
 
-int xmldb_exists_rpc(clicon_handle h, char *db);
-int xmldb_delete_rpc(clicon_handle h, char *db);
-int xmldb_init_rpc(clicon_handle h, char *db);
-
-#endif /* _CLIXON_XML_DB_RPC_H_ */
+#endif /* _RESTCONF_METHODS_H_ */

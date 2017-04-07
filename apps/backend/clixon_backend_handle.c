@@ -133,6 +133,7 @@ backend_notify(clicon_handle h,
     struct handle_subscription *hs;
     int                  retval = -1;
 
+    clicon_debug(2, "%s %s", __FUNCTION__, stream);
     /* First thru all clients(sessions), and all subscriptions and find matches */
     for (ce = backend_client_list(h); ce; ce = ce_next){
 	ce_next = ce->ce_next;
@@ -161,7 +162,7 @@ backend_notify(clicon_handle h,
     /* Then go thru all global (handle) subscriptions and find matches */
     hs = NULL;
     while ((hs = subscription_each(h, hs)) != NULL){
-	if (hs->hs_format != MSG_NOTIFY_TXT)
+	if (hs->hs_format != FORMAT_TEXT)
 	    continue;
 	if (strcmp(hs->hs_stream, stream))
 	    continue;
@@ -239,7 +240,7 @@ backend_notify_xml(clicon_handle h,
     /* Then go thru all global (handle) subscriptions and find matches */
     hs = NULL;
     while ((hs = subscription_each(h, hs)) != NULL){
-	if (hs->hs_format != MSG_NOTIFY_XML)
+	if (hs->hs_format != FORMAT_XML)
 	    continue;
 	if (strcmp(hs->hs_stream, stream))
 	    continue;
@@ -257,7 +258,8 @@ backend_notify_xml(clicon_handle h,
 }
 
 struct client_entry *
-backend_client_add(clicon_handle h, struct sockaddr *addr)
+backend_client_add(clicon_handle    h, 
+		   struct sockaddr *addr)
 {
     struct backend_handle *cb = handle(h);
     struct client_entry   *ce;
@@ -411,3 +413,79 @@ subscription_each(clicon_handle               h,
 	hs = cb->cb_subscription;
     return hs;
 }
+/* Database dependency description */
+struct backend_netconf_reg {
+    qelem_t 	 nr_qelem;	/* List header */
+    backend_netconf_cb_t nr_callback;	/* Validation/Commit Callback */
+    void	*nr_arg;	/* Application specific argument to cb */
+    char        *nr_tag;	/* Xml tag when matched, callback called */
+};
+typedef struct backend_netconf_reg backend_netconf_reg_t;
+
+static backend_netconf_reg_t *deps = NULL;
+/*! Register netconf callback
+ * Called from plugin to register a callback for a specific netconf XML tag.
+ */
+int
+backend_netconf_register_callback(clicon_handle h,
+				  backend_netconf_cb_t cb,      /* Callback called */
+				  void *arg,        /* Arg to send to callback */
+				  char *tag)        /* Xml tag when callback is made */
+{
+    backend_netconf_reg_t *nr;
+
+    if ((nr = malloc(sizeof(backend_netconf_reg_t))) == NULL) {
+	clicon_err(OE_DB, errno, "malloc: %s", strerror(errno));
+	goto catch;
+    }
+    memset (nr, 0, sizeof (*nr));
+    nr->nr_callback = cb;
+    nr->nr_arg  = arg;
+    nr->nr_tag  = strdup(tag); /* XXX strdup memleak */
+    INSQ(nr, deps);
+    return 0;
+catch:
+    if (nr){
+	if (nr->nr_tag)
+	    free(nr->nr_tag);
+	free(nr);
+    }
+    return -1;
+}
+
+/*! See if there is any callback registered for this tag
+ *
+ * @param[in]  h       clicon handle
+ * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
+ * @param[out] cb      Output xml stream. For reply
+ * @param[out] cb_err  Error xml stream. For error reply
+ * @param[out] xret    Return XML, error or OK
+ *
+ * @retval -1   Error
+ * @retval  0   OK, not found handler.
+ * @retval  1   OK, handler called
+ */
+int
+backend_netconf_plugin_callbacks(clicon_handle        h,
+				 cxobj               *xe,
+				 struct client_entry *ce,
+				 cbuf                *cbret)
+{
+    backend_netconf_reg_t *nreg;
+    int            retval;
+
+    if (deps == NULL)
+	return 0;
+    nreg = deps;
+    do {
+	if (strcmp(nreg->nr_tag, xml_name(xe)) == 0){
+	    if ((retval = nreg->nr_callback(h, xe, ce, cbret, nreg->nr_arg)) < 0)
+		return -1;
+	    else
+		return 1; /* handled */
+	}
+	nreg = NEXTQ(backend_netconf_reg_t *, nreg);
+    } while (nreg != deps);
+    return 0;
+}
+

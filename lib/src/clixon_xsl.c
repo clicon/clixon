@@ -199,7 +199,7 @@ xpath_parse_predicate(struct xpath_element *xe,
     int                     len;
 
     len = strlen(pred);
-    for (i=len-1; i>=0; i--){ /* -2 since we search for ][ */
+    for (i=len-1; i>=0; i--){ /* -1 since we search for ][ */
 	s = &pred[i];
 	if (i==0 || 
 	    (*(s)==']' && *(s+1)=='[')){
@@ -358,12 +358,23 @@ xpath_parse(char                  *xpath,
 	else if (strncmp(s,"descendant-or-self::", strlen("descendant-or-self::"))==0){ 
 	    xpath_element_new(A_DESCENDANT_OR_SELF, s+strlen("descendant-or-self::"), &xpnext);
 	}
+#if 1 /* Problems with .[userid=1321] */
+	else if (strncmp(s,".", strlen("."))==0)
+	    xpath_element_new(A_SELF, s+strlen("."), &xpnext);
+#else
 	else if (strncmp(s,".", strlen(s))==0) /* abbreviatedstep */
 	    xpath_element_new(A_SELF, NULL, &xpnext);
+#endif
+
 	else if (strncmp(s,"self::", strlen("self::"))==0)
 	    xpath_element_new(A_SELF, s+strlen("self::"), &xpnext);
+#if 1
+	else if (strncmp(s,"..", strlen(".."))==0) /* abbreviatedstep */
+	    xpath_element_new(A_PARENT, s+strlen(".."), &xpnext);
+#else
 	else if (strncmp(s,"..", strlen(s))==0) /* abbreviatedstep */
 	    xpath_element_new(A_PARENT, NULL, &xpnext);
+#endif
 	else if (strncmp(s,"parent::", strlen("parent::"))==0)
 	    xpath_element_new(A_PARENT, s+strlen("parent::"), &xpnext);
 	else if (strncmp(s,"ancestor::", strlen("ancestor::"))==0)
@@ -552,12 +563,6 @@ xpath_expr(char     *predicate_expression,
  * @param[in]   flags   if != 0, only match xml nodes matching flags
  * @param[out]  vec2    Result XML node vector
  * @param[out]  vec2len Length of result vector.
- * XXX: Kommer in i funktionen med vec0, resultatet appendas i vec1
- * vec0 --> vec
- * Det är nog bra om vec0 inte ändras, är input parameter
- * Vid utgång ska vec1 innehålla resultatet.
- * Internt då?
- * XXX: hantering av (input)vec0-->vec-->vec2-->vec1 (resultat)
  */
 static int
 xpath_find(struct xpath_element *xe,
@@ -767,6 +772,7 @@ xpath_choice(cxobj   *xtop,
     cxobj           **vec0 = NULL;
     size_t            vec0len = 0;
 
+
     if ((s0 = strdup(xpath0)) == NULL){
 	clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
 	goto done;
@@ -926,8 +932,8 @@ xpath_each(cxobj *cxtop,
 
 /*! A restricted xpath that returns a vector of matches
  *
- * See xpath1() on details for subset.
- * @param[in]  cxtop  xml-tree where to search
+ * See xpath1() on details for subset
+. * @param[in]  cxtop  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
  * @param[out] vec     vector of xml-trees. Vector must be free():d after use
  * @param[out] veclen  returns length of vector in return value
@@ -945,7 +951,7 @@ xpath_each(cxobj *cxtop,
  *   }
  *   free(vec);
  * @endcode
- * Note that although the returned vector must be freed after use, the returned xml
+ * @Note that although the returned vector must be freed after use, the returned xml
  * trees need not be.
  * @see also xpath_first, xpath_each.
  */
@@ -987,7 +993,27 @@ xpath_vec(cxobj   *cxtop,
 }
 
 /* A restricted xpath that returns a vector of matches (only nodes marked with flags)
+ * @param[in]  cxtop  xml-tree where to search
+ * @param[in]  xpath   string with XPATH syntax
  * @param[in]  flags   Set of flags that return nodes must match (0 if all)
+ * @param[out] vec     vector of xml-trees. Vector must be free():d after use
+ * @param[out] veclen  returns length of vector in return value
+ * @retval     0       OK
+ * @retval     -1      error.
+ * @code
+ *   cxobj **vec;
+ *   size_t  veclen;
+ *   if (xpath_vec_flag(cxtop, "//symbol/foo", XML_FLAG_ADD, &vec, &veclen) < 0) 
+ *      goto err;
+ *   for (i=0; i<veclen; i++){
+ *      xn = vec[i];
+ *         ...
+ *   }
+ *   free(vec);
+ * @endcode
+ * @Note that although the returned vector must be freed after use, the returned xml
+ * trees need not be.
+ * @see also xpath_vec This is a specialized version.
  */
 int
 xpath_vec_flag(cxobj   *cxtop, 

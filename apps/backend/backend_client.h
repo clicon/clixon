@@ -70,8 +70,6 @@ struct client_subscription{
  * Prototypes
  */ 
 int backend_client_rm(clicon_handle h, struct client_entry *ce);
-int config_snapshot(clicon_handle h, char *dbname, char *dir);
-
 int from_client(int fd, void *arg);
 
 #endif  /* _BACKEND_CLIENT_H_ */

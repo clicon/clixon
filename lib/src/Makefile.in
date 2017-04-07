@@ -68,8 +68,8 @@ SRC     = clixon_sig.c clixon_qdb.c clixon_log.c clixon_err.c clixon_event.c \
 	  clixon_json.c \
 	  clixon_yang.c clixon_yang_type.c \
 	  clixon_hash.c clixon_options.c clixon_plugin.c \
-	  clixon_proto.c clixon_proto_encode.c clixon_proto_client.c \
-	  clixon_xsl.c clixon_sha1.c clixon_xml_db.c clixon_xml_db_rpc.c
+	  clixon_proto.c clixon_proto_client.c \
+	  clixon_xsl.c clixon_sha1.c clixon_xml_db.c 
 
 YACCOBJS := lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
 	    lex.clixon_yang_parse.o  clixon_yang_parse.tab.o \

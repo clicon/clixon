@@ -193,12 +193,12 @@ config_socket_init(clicon_handle h)
     return 0;
 }
 
-/*
- * config_accept_client
+/*! Accept new socket client
  * XXX: credentials not properly implemented
  */
 int
-config_accept_client(int fd, void *arg)
+config_accept_client(int   fd,
+		     void *arg)
 {
     int           retval = -1;
     clicon_handle h = (clicon_handle)arg;
@@ -218,7 +218,7 @@ config_accept_client(int fd, void *arg)
     char         *mem;
     int           i;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(2, "%s", __FUNCTION__);
     len = sizeof(from);
     if ((s = accept(fd, (struct sockaddr*)&from, &len)) < 0){
 	clicon_err(OE_UNIX, errno, "%s: accept", __FUNCTION__);
@@ -265,7 +265,7 @@ config_accept_client(int fd, void *arg)
     /*
      * Here we register callbacks for actual data socket 
      */
-    if (event_reg_fd(s, from_client, (void*)ce, "client socket") < 0)
+    if (event_reg_fd(s, from_client, (void*)ce, "local netconf client socket") < 0)
 	goto done;
     retval = 0;
  done:

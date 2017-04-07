@@ -14,7 +14,6 @@ clixon_netconf -f /usr/local/etc/routing.conf
 
 1. Setting data example using netconf
 -------------------------------------
-
 <rpc><edit-config><target><candidate/></target><config>
       <interfaces>
          <interface>
@@ -45,7 +44,38 @@ clixon_netconf -f /usr/local/etc/routing.conf
 
 <rpc><validate><source><candidate/></source></validate></rpc>]]>]]>
 
-3. Run as docker container
+3. Creating notification
+------------------------
+The example has an example notification triggering every 10s. To start a notification 
+stream in the session, create a subscription:
+<rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>
+<rpc-reply><ok/></rpc-reply>]]>]]>
+<notification><event>Routing notification</event></notification>]]>]]>
+<notification><event>Routing notification</event></notification>]]>]]>
+...
+
+This can also be triggered via the CLI:
+cli> notify 
+cli> Routing notification
+Routing notification
+...
+
+4. Downcall
+-----------
+Clixon has an extension mechanism which can be used to make extended internal
+netconf messages to the backend configuration engine. You may need this to
+make some special operation that is not covered by standard
+netconf functions. The example has a simple "echo" downcall
+mechanism that simply echoes what is sent down and is included for
+reference. A more realistic downcall would perform some action, such as
+reading some status.
+
+Example:
+cli> downcall "This is a  string"
+This is a string
+cli>p
+
+5. Run as docker container
 --------------------------
 cd docker
 # look in README
