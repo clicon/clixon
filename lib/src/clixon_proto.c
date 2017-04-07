@@ -90,7 +90,9 @@ static struct formatvec _FORMATS[] = {
     {NULL,   -1}
 };
 
-/*! Translate from numeric error to string representation
+/*! Translate from numeric format to string representation
+ * @param[in]  showas   Format value (see enum format_enum)
+ * @retval     str      String value
  */
 char *
 format_int2str(enum format_enum showas)
@@ -103,6 +105,10 @@ format_int2str(enum format_enum showas)
     return fv?(fv->fv_str?fv->fv_str:"unknown"):"unknown";
 }
 
+/*! Translate from string to numeric format representation
+ * @param[in]  str       String value
+ * @retval     enum      Format value (see enum format_enum)
+ */
 enum format_enum
 format_str2int(char *str)
 {
@@ -115,8 +121,8 @@ format_str2int(char *str)
 }
 
 /*! Encode a clicon netconf message
- * @param[in] param  Variable agrument list format an XML netconf string
- * @retval msg  Clicon message to send to eg clicon_msg_send()
+ * @param[in] format  Variable agrument list format an XML netconf string
+ * @retval    msg  Clicon message to send to eg clicon_msg_send()
  */
 struct clicon_msg *
 clicon_msg_encode(char *format, ...)
@@ -149,10 +155,12 @@ clicon_msg_encode(char *format, ...)
 }
 
 /*! Decode a clicon netconf message
+ * @param[in]  msg    CLICON msg
+ * @param[out] xml    XML parse tree
  */
 int
 clicon_msg_decode(struct clicon_msg *msg, 
-			  cxobj            **xml)
+		  cxobj            **xml)
 {
     int   retval = -1;
     char *xmlstr;
@@ -168,6 +176,9 @@ clicon_msg_decode(struct clicon_msg *msg,
 }
 
 /*! Open local connection using unix domain sockets
+ * @param[in]  sockpath Unix domain file path
+ * @retval     s       socket
+ * @retval     -1      error
  */
 int
 clicon_connect_unix(char *sockpath)
@@ -206,13 +217,19 @@ atomicio_sig_handler(int arg)
     _atomicio_sig++;
 }
 
-
 /*! Ensure all of data on socket comes through. fn is either read or write
+ * @param[in]  fn  I/O function, ie read/write
+ * @param[in]  fd  File descriptor, eg socket
+ * @param[in]  s0  Buffer to read to or write from
+ * @param[in]  n   Number of bytes to read/write, loop until done
  */
 static ssize_t
-atomicio(ssize_t (*fn) (int, void *, size_t), int fd, void *_s, size_t n)
+atomicio(ssize_t (*fn) (int, void *, size_t), 
+	 int       fd, 
+	 void     *s0, 
+	 size_t    n)
 {
-    char *s = _s;
+    char *s = s0;
     ssize_t res, pos = 0;
 
     while (n > pos) {
@@ -236,6 +253,9 @@ atomicio(ssize_t (*fn) (int, void *, size_t), int fd, void *_s, size_t n)
     return (pos);
 }
 
+/*! Print message on debug. Log if syslog, stderr if not
+ * @param[in]  msg    CLICON msg
+ */
 static int
 msg_dump(struct clicon_msg *msg)
 {
@@ -261,6 +281,10 @@ msg_dump(struct clicon_msg *msg)
     return 0;
 }
 
+/*! Send a CLICON netconf message
+ * @param[in]   s      socket (unix or inet) to communicate with backend
+ * @param[out]  msg    CLICON msg data reply structure. Free with free()
+ */
 int
 clicon_msg_send(int                s, 
 		struct clicon_msg *msg)
@@ -282,7 +306,7 @@ clicon_msg_send(int                s,
 }
 
 
-/*! Receive a CLICON message on a UNIX domain socket
+/*! Receive a CLICON message
  *
  * XXX: timeout? and signals?
  * There is rudimentary code for turning on signals and handling them 
@@ -292,7 +316,7 @@ clicon_msg_send(int                s,
  * behaviour.
  * Now, ^C will interrupt the whole process, and this may not be what you want.
  *
- * @param[in]   s      UNIX domain socket to communicate with backend
+ * @param[in]   s      socket (unix or inet) to communicate with backend
  * @param[out]  msg    CLICON msg data reply structure. Free with free()
  * @param[out]  eof    Set if eof encountered
  * Note: caller must ensure that s is closed if eof is set after call.
@@ -350,7 +374,6 @@ clicon_msg_rcv(int                s,
 	set_signal(SIGINT, oldhandler, NULL);
     return retval;
 }
-
 
 /*! Connect to server, send a clicon_msg message and wait for result using unix socket
  *
@@ -551,5 +574,31 @@ send_msg_notify(int   s,
   done:
     if (msg)
 	free(msg);
+    return retval;
+}
+
+/*! Look for a text pattern in an input string, one char at a time
+ *  @param[in]     tag     What to look for
+ *  @param[in]     ch      New input character
+ *  @param[in,out] state   A state integer holding how far we have parsed.
+ *  @retval        0       No, we havent detected end tag
+ *  @retval        1       Yes, we have detected end tag!
+ */
+int
+detect_endtag(char *tag, 
+	      char  ch, 
+	      int  *state)
+{
+    int retval = 0;
+
+    if (tag[*state] == ch){
+	(*state)++;
+	if (*state == strlen(tag)){
+	    *state = 0;
+	    retval = 1;
+	}
+    }
+    else
+	*state = 0;
     return retval;
 }

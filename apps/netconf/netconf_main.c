@@ -175,20 +175,18 @@ static int
 netconf_input_cb(int   s, 
 		 void *arg)
 {
+    int           retval = -1;
     clicon_handle h = arg;
     unsigned char buf[BUFSIZ];
     int           i;
     int           len;
-    //    static cbuf  *cb; /* XXX: should use ce state? */
-    cbuf  *cb=NULL; /* XXX: should use ce state? */
+    cbuf         *cb=NULL;
     int           xml_state = 0;
-    int           retval = -1;
 
-    if (cb == NULL)
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_XML, errno, "%s: cbuf_new", __FUNCTION__);
-	    return retval;
-	}
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "%s: cbuf_new", __FUNCTION__);
+	return retval;
+    }
     memset(buf, 0, sizeof(buf));
     if ((len = read(s, buf, sizeof(buf))) < 0){
 	if (errno == ECONNRESET)

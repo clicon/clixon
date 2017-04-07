@@ -72,7 +72,6 @@ extern int cc_closed;
 int add_preamble(cbuf *xf);
 int add_postamble(cbuf *xf);
 int add_error_preamble(cbuf *xf, char *reason);
-int detect_endtag(char *tag, char ch, int *state);
 char *netconf_get_target(cxobj *xn, char *path);
 int add_error_postamble(cbuf *xf);
 int netconf_output(int s, cbuf *xf, char *msg);

@@ -87,4 +87,6 @@ int send_msg_notify(int s, int level, char *event);
 
 int send_msg_reply(int s, char *data, uint16_t datalen);
 
+int detect_endtag(char *tag, char  ch, int  *state);
+
 #endif  /* _CLIXON_PROTO_H_ */
