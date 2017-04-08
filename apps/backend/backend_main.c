@@ -73,7 +73,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc:rg:pty:"
+#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc:rg:pty:x:"
 
 /*! Terminate. Cannot use h after this */
 static int
@@ -143,7 +143,8 @@ usage(char *argv0, clicon_handle h)
 	    "    -p \t\tPrint database yang specification\n"
 	    "    -t \t\tPrint alternate spec translation (eg if YANG print KEY, if KEY print YANG)\n"
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
-	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
+	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
+	    "\t-x <plugin>\tXMLDB plugin\n",
 	    argv0,
 	    plgdir ? plgdir : "none",
 	    confsock ? confsock : "none",
@@ -314,6 +315,7 @@ main(int argc, char **argv)
     char         *pidfile;
     char         *sock;
     int           sockfamily;
+    char         *xmldb_plugin;
 
     /* In the startup, logs to stderr & syslog and debug flag set later */
 
@@ -437,6 +439,10 @@ main(int argc, char **argv)
 	    clicon_option_str_set(h, "CLICON_YANG_DIR", strdup(dir));
 	    break;
 	}
+	case 'x' :{ /* xmldb plugin */
+	    clicon_option_str_set(h, "CLICON_XMLDB_PLUGIN", optarg);
+	    break;
+	}
 	default:
 	    usage(argv[0], h);
 	    break;
@@ -501,6 +507,13 @@ main(int argc, char **argv)
 		   config_group, clicon_configfile(h), config_group, config_group);
 	return -1;
     }
+
+    if ((xmldb_plugin = clicon_xmldb_plugin(h)) == NULL){
+	clicon_log(LOG_ERR, "No xmldb plugin given (specify option CLICON_XMLDB_PLUGIN).\n"); 
+	goto done;
+    }
+    if (xmldb_plugin_load(xmldb_plugin) < 0)
+	goto done;
 
     /* Parse db spec file */
     if (yang_spec_main(h, stdout, printspec) < 0)

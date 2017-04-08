@@ -66,6 +66,7 @@
 #include <syslog.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <curl/curl.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -88,9 +89,6 @@
 
 /* Something to do with reverse engineering of junos syntax? */
 #undef SPECIAL_TREATMENT_OF_NAME  
-
-
-
 
 /*
  * A node is a leaf if it contains a body.
@@ -789,5 +787,290 @@ xml_diff(yang_spec *yspec,
  ok:
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Construct an xml key format from yang statement using wildcards for keys
+ * Recursively construct it to the top.
+ * Example: 
+ *   yang:  container a -> list b -> key c -> leaf d
+ *   xpath: /a/b/%s/d
+ * @param[in]  ys      Yang statement
+ * @param[in]  inclkey If inclkey then include key leaf (eg last leaf d in ex)
+ * @param[out] cbuf    keyfmt
+ */ 
+static int
+yang2xmlkeyfmt_1(yang_stmt *ys, 
+		 int        inclkey,
+		 cbuf      *cb)
+{
+    yang_node *yp; /* parent */
+    yang_stmt *ykey;
+    int        i;
+    cvec      *cvk = NULL; /* vector of index keys */
+    int        retval = -1;
+
+    yp = ys->ys_parent;
+    if (yp != NULL && 
+	yp->yn_keyword != Y_MODULE && 
+	yp->yn_keyword != Y_SUBMODULE){
+	if (yang2xmlkeyfmt_1((yang_stmt *)yp, 1, cb) < 0)
+	    goto done;
+    }
+    if (inclkey){
+	if (ys->ys_keyword != Y_CHOICE && ys->ys_keyword != Y_CASE)
+	    cprintf(cb, "/%s", ys->ys_argument);
+    }
+    else{
+	if (ys->ys_keyword == Y_LEAF && yp && yp->yn_keyword == Y_LIST){
+	    if (yang_key_match(yp, ys->ys_argument) == 0)
+		cprintf(cb, "/%s", ys->ys_argument); /* Not if leaf and key */
+	}
+	else
+	    if (ys->ys_keyword != Y_CHOICE && ys->ys_keyword != Y_CASE)
+		cprintf(cb, "/%s", ys->ys_argument);
+    }
+
+    switch (ys->ys_keyword){
+    case Y_LIST:
+	if ((ykey = yang_find((yang_node*)ys, Y_KEY, NULL)) == NULL){
+	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
+		       __FUNCTION__, ys->ys_argument);
+	    goto done;
+	}
+	/* The value is a list of keys: <key>[ <key>]*  */
+	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
+	    goto done;
+	if (cvec_len(cvk))
+	    cprintf(cb, "=");
+	/* Iterate over individual keys  */
+	for (i=0; i<cvec_len(cvk); i++){
+	    if (i)
+		cprintf(cb, ",");
+	    cprintf(cb, "%%s");
+	}
+	break;
+    case Y_LEAF_LIST:
+	cprintf(cb, "=%%s");
+	break;
+    default:
+	break;
+    } /* switch */
+    retval = 0;
+ done:
+    if (cvk)
+	cvec_free(cvk);
+    return retval;
+}
+
+/*! Construct an xml key format from yang statement using wildcards for keys
+ * Recursively construct it to the top.
+ * Example: 
+ *   yang:  container a -> list b -> key c -> leaf d
+ *   xpath: /a/b=%s/d
+ * @param[in]  ys       Yang statement
+ * @param[in]  inclkey If !inclkey then dont include key leaf
+ * @param[out] xkfmt    XML key format. Needs to be freed after use.
+ */ 
+int
+yang2xmlkeyfmt(yang_stmt *ys, 
+	       int        inclkey,
+	       char     **xkfmt)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    if (yang2xmlkeyfmt_1(ys, inclkey, cb) < 0)
+	goto done;
+    if ((*xkfmt = strdup(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
+
+/*! Transform an xml key format and a vector of values to an XML key
+ * Used for actual key, eg in clicon_rpc_change(), xmldb_put_xkey()
+ * Example: 
+ *   xmlkeyfmt:  /aaa/%s
+ *   cvv:        key=17
+ *   xmlkey:     /aaa/17
+ * @param[in]  xkfmt  XML key format, eg /aaa/%s
+ * @param[in]  cvv    cligen variable vector, one for every wildchar in xkfmt
+ * @param[out] xk     XML key, eg /aaa/17. Free after use
+ * @note first and last elements of cvv are not used,..
+ * @see cli_dbxml where this function is called
+ */ 
+int
+xmlkeyfmt2key(char  *xkfmt, 
+	      cvec  *cvv, 
+	      char **xk)
+{
+    int   retval = -1;
+    char  c;
+    int   esc=0;
+    cbuf *cb = NULL;
+    int   i;
+    int   j;
+    char *str;
+    char *strenc=NULL;
+
+
+    /* Sanity check */
+#if 1
+    j = 0; /* Count % */
+    for (i=0; i<strlen(xkfmt); i++)
+	if (xkfmt[i] == '%')
+	    j++;
+    if (j+2 < cvec_len(cvv)) {
+	clicon_log(LOG_WARNING, "%s xmlkey format string mismatch(j=%d, cvec_len=%d): %s", 
+		   xkfmt, 
+		   j,
+		   cvec_len(cvv), 
+		   cv_string_get(cvec_i(cvv, 0)));
+	goto done;
+    }
+#endif
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    j = 1; /* j==0 is cli string */
+    for (i=0; i<strlen(xkfmt); i++){
+	c = xkfmt[i];
+	if (esc){
+	    esc = 0;
+	    if (c!='s')
+		continue;
+	    if ((str = cv2str_dup(cvec_i(cvv, j++))) == NULL){
+		clicon_err(OE_UNIX, errno, "strdup");
+		goto done;
+	    }
+	    if ((strenc = curl_easy_escape(NULL, str, 0)) == NULL){
+		clicon_err(OE_UNIX, errno, "curl_easy_escape");
+		goto done;
+	    }
+	    cprintf(cb, "%s", strenc); 
+	    curl_free(strenc);
+	    free(str);
+	}
+	else
+	    if (c == '%')
+		esc++;
+	    else
+		cprintf(cb, "%c", c);
+    }
+    if ((*xk = strdup(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
+/*! Transform an xml key format and a vector of values to an XML path
+ * Used to input xmldb_get() or xmldb_get_vec
+ * Add .* in last %s position.
+ * Example: 
+ *   xmlkeyfmt:  /interface/%s/address/%s OLDXXX
+ *   xmlkeyfmt:  /interface=%s/address=%s
+ *   cvv:        name=eth0
+ *   xmlkey:     /interface/[name=eth0]/address
+ * Example2:
+ *   xmlkeyfmt:  /ip/me/%s (if key)
+ *   cvv:        -
+ *   xmlkey:     /ipv4/me/a
+ * @param[in]  xkfmt  XML key format
+ * @param[in]  cvv    cligen variable vector, one for every wildchar in xkfmt
+ * @param[out] xk     XPATH
+ */ 
+int
+xmlkeyfmt2xpath(char  *xkfmt, 
+		cvec  *cvv, 
+		char **xk)
+{
+    int     retval = -1;
+    char    c;
+    int     esc=0;
+    cbuf   *cb = NULL;
+    int     i;
+    int     j;
+    char   *str;
+    cg_var *cv;
+    int     skip = 0;
+
+    /* Sanity check: count '%' */
+#if 1
+    j = 0; /* Count % */
+    for (i=0; i<strlen(xkfmt); i++)
+	if (xkfmt[i] == '%')
+	    j++;
+    if (j < cvec_len(cvv)-1) {
+	clicon_log(LOG_WARNING, "%s xmlkey format string mismatch(j=%d, cvec_len=%d): %s", 
+		   xkfmt, 
+		   j,
+		   cvec_len(cvv), 
+		   cv_string_get(cvec_i(cvv, 0)));
+	//	goto done;
+    }
+#endif
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    j = 1; /* j==0 is cli string */
+    for (i=0; i<strlen(xkfmt); i++){
+	c = xkfmt[i];
+	if (esc){
+	    esc = 0;
+	    if (c!='s')
+		continue;
+
+	    if (j == cvec_len(cvv)) /* last element */
+		//skip++;
+		;
+	    else{
+		cv = cvec_i(cvv, j++);
+		if ((str = cv2str_dup(cv)) == NULL){
+		    clicon_err(OE_UNIX, errno, "cv2str_dup");
+		    goto done;
+		}
+		cprintf(cb, "[%s=%s]", cv_name_get(cv), str);
+		free(str);
+	    }
+	}
+	else /* regular char */
+	    if (c == '%')
+		esc++;
+	    else{
+		if (skip)
+		    skip=0;
+		else
+		    if ((c == '=' || c == ',') && xkfmt[i+1]=='%')
+			; /* skip */
+		    else
+			cprintf(cb, "%c", c);
+	    }
+    }
+    if ((*xk = strdup4(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }

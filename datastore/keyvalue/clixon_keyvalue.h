@@ -31,38 +31,26 @@
 
   ***** END LICENSE BLOCK *****
 
- *
- * XML code
+  Key-value store
  */
-
-#ifndef _CLIXON_XML_MAP_H_
-#define _CLIXON_XML_MAP_H_
-
-/*
- * lvmap_xml op codes
- */
-enum {
-    LVXML,       /* a.b{x=1} -> <a><b>1 */
-    LVXML_VAL,       /* a.b{x=1} -> <a><b><x>1 */
-    LVXML_VECVAL,   /* key: a.b.0{x=1} -> <a><b><x>1</x></b></a> och */
-    LVXML_VECVAL2,  /* key: a.b.0{x=1} -> <a><x>1</x></a> och */
-};
-
+#ifndef _CLIXON_KEYVALUE_H
+#define _CLIXON_KEYVALUE_H
 
 /*
  * Prototypes
  */
-int xml2txt(FILE *f, cxobj *x, int level);
-int xml2cli(FILE *f, cxobj *x, char *prepend, enum genmodel_type gt);
-int xml_yang_validate(cxobj *xt, yang_stmt *ys) ;
-int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
-int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
-int xml_diff(yang_spec *yspec, cxobj *xt1, cxobj *xt2, 	 
-	     cxobj ***first, size_t *firstlen, 
-	     cxobj ***second, size_t *secondlen, 
-	     cxobj ***changed1, cxobj ***changed2, size_t *changedlen);
-int yang2xmlkeyfmt(yang_stmt *ys, int inclkey, char **xkfmt);
-int xmlkeyfmt2key(char *xkfmt, cvec *cvv, char **xk);
-int xmlkeyfmt2xpath(char *xkfmt, cvec *cvv, char **xk);
+int kv_get(clicon_handle h, char *db, char *xpath,
+	   cxobj **xtop, cxobj ***xvec, size_t *xlen);
+int kv_put(clicon_handle h, char *db, enum operation_type op, 
+	   char *api_path,  cxobj *xt);
+int kv_dump(FILE *f, char *dbfilename, char *rxkey);
+int kv_copy(clicon_handle h, char *from, char *to);
+int kv_lock(clicon_handle h, char *db, int pid);
+int kv_unlock(clicon_handle h, char *db, int pid);
+int kv_unlock_all(clicon_handle h, int pid);
+int kv_islocked(clicon_handle h, char *db);
+int kv_exists(clicon_handle h, char *db);
+int kv_delete(clicon_handle h, char *db);
+int kv_init(clicon_handle h, char *db);
 
-#endif  /* _CLIXON_XML_MAP_H_ */
+#endif /* _CLIXON_KEYVALUE_H */

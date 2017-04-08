@@ -201,6 +201,8 @@ AC_OUTPUT(Makefile
 	  docker/backend/Dockerfile
 	  docker/netconf/Makefile 
 	  docker/netconf/Dockerfile
+	  datastore/Makefile
+	  datastore/keyvalue/Makefile
 	  doc/Makefile 
 )
 

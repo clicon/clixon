@@ -29,6 +29,8 @@
 #
 # ***** END LICENSE BLOCK *****
 
+- Ongoiing: xmldb datastore plugin framework
+	
 - cli_copy_config added as generic cli command
 - cli_show_config added as generic cli command
   Replace all show_confv*() and show_conf*() with cli_show_config()

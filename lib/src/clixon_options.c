@@ -237,6 +237,10 @@ clicon_option_sanity(clicon_hash_t *copt)
 	clicon_err(OE_UNIX, 0, "CLICON_ARCHIVE_DIR not defined in config file");
 	goto done;
     }
+    if (!hash_lookup(copt, "CLICON_XMLDB_DIR")){
+	clicon_err(OE_UNIX, 0, "CLICON_XMLDB_DIR not defined in config file");
+	goto done;
+    }
     if (!hash_lookup(copt, "CLICON_SOCK")){
 	clicon_err(OE_UNIX, 0, "CLICON_SOCK not defined in config file");
 	goto done;
@@ -451,6 +455,12 @@ char *
 clicon_archive_dir(clicon_handle h)
 {
     return clicon_option_str(h, "CLICON_ARCHIVE_DIR");
+}
+
+char *
+clicon_xmldb_plugin(clicon_handle h)
+{
+    return clicon_option_str(h, "CLICON_XMLDB_PLUGIN");
 }
 
 /* get family of backend socket: AF_UNIX, AF_INET or AF_INET6 */
