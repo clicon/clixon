@@ -159,24 +159,6 @@ AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versi
 # Lives in libfcgi-dev
 AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
 
-# Check if extra keys inserted for database lists containing content. Eg A.n.foo = 3
-# means A.3 $!a=foo exists
-
-AC_ARG_ENABLE(keycontent, [  --disable-keycontent    Disable reverse lookup content keys],[
-  if test "$enableval" = no; then
-    ac_enable_keycontent=no
-  else
-    ac_enable_keycontent=yes
-  fi
-  ],[ ac_enable_keycontent=yes])
-
-AH_TEMPLATE([DB_KEYCONTENT], 
-[ Check if extra keys inserted for database lists containing content. 
-  Eg A.n.foo = 3 means A.3 $!a=foo exists])
-if test "$ac_enable_keycontent" = "yes"; then
-   AC_DEFINE(DB_KEYCONTENT)
-fi
-
 AH_BOTTOM([#include <clixon_custom.h>])
 
 AC_OUTPUT(Makefile

@@ -38,9 +38,7 @@
 
 
 int clicon_file_dirent(const char *dir, struct dirent **ent, 
-		    const char *regexp, mode_t type, const char *label);
-
-char *clicon_tmpfile(const char *label);
+		       const char *regexp, mode_t type);
 
 int clicon_file_copy(char *src, char *target);
 

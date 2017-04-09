@@ -213,15 +213,15 @@ expand_dir(char *dir,
 	   mode_t flags, 
 	   int detail)
 {
-    DIR	*dirp;
+    DIR	          *dirp;
     struct dirent *dp;
-    struct stat st;
-    char *str;
-    char *cmd;
-    int len;
-    int retval = -1;
+    struct stat    st;
+    char          *str;
+    char          *cmd;
+    int            len;
+    int            retval = -1;
     struct passwd *pw;
-    char filename[MAXPATHLEN];
+    char           filename[MAXPATHLEN];
 
     if ((dirp = opendir(dir)) == 0){
 	fprintf(stderr, "expand_dir: opendir(%s) %s\n", 

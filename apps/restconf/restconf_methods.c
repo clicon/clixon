@@ -109,7 +109,6 @@ Mapping netconf error-tag -> status code
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#include <curl/curl.h>
 
 /* cligen */
 #include <cligen/cligen.h>

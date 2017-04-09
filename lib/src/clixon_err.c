@@ -57,7 +57,6 @@
 
 #include "clixon_log.h"
 #include "clixon_queue.h"
-#include "clixon_chunk.h"
 #include "clixon_err.h"
 
 /*
@@ -217,7 +216,7 @@ clicon_err_save(void)
 {
     struct err_state *es;
 
-    if ((es = chunk(sizeof(*es), NULL)) == NULL)
+    if ((es = malloc(sizeof(*es))) == NULL)
 	return NULL;
     es->es_errno = clicon_errno;
     es->es_suberrno = clicon_suberrno;
@@ -232,10 +231,11 @@ clicon_err_restore(void* handle)
 {
     struct err_state *es;
 
-    es = (struct err_state *)handle;
-    clicon_errno = es->es_errno;
-    clicon_suberrno = es->es_suberrno;
-    strncpy(clicon_err_reason, es->es_reason, ERR_STRLEN-1);
-    unchunk(es);
+    if ((es = (struct err_state *)handle) != NULL){
+	clicon_errno = es->es_errno;
+	clicon_suberrno = es->es_suberrno;
+	strncpy(clicon_err_reason, es->es_reason, ERR_STRLEN-1);
+	free(es);
+    }
     return 0;
 }

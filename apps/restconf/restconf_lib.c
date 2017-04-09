@@ -33,7 +33,6 @@
   
  */
 
-
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -46,6 +45,7 @@
 #include <fcgi_stdio.h>
 #include <signal.h>
 #include <dlfcn.h>
+#include <sys/param.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <curl/curl.h>
@@ -175,7 +175,7 @@ str2cvec(char  *string,
 		s++;
 	    cv_name_set(cv, s);
 	    cv_string_set(cv, valu);
-	    free(valu);
+	    curl_free(valu);
 	}
 	else{
 	    if (strlen(s)){
@@ -278,8 +278,7 @@ static credentials_t *p_credentials = NULL; /* Credentials callback */
 static plghndl_t 
 plugin_load (clicon_handle h, 
 	     char         *file, 
-	     int           dlflags, 
-	     const char   *cnklbl)
+	     int           dlflags)
 {
     char      *error;
     void      *handle = NULL;
@@ -319,40 +318,36 @@ restconf_plugin_load(clicon_handle h)
     int            retval = -1;
     char          *dir;
     int            ndp;
-    struct dirent *dp;
+    struct dirent *dp = NULL;
     int            i;
-    char          *filename;
     plghndl_t     *handle;
+    char           filename[MAXPATHLEN];
 
     if ((dir = clicon_restconf_dir(h)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "clicon_restconf_dir not defined");
 	goto quit;
     }
     /* Get plugin objects names from plugin directory */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG, __FUNCTION__))<0)
+    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG))<0)
 	goto quit;
 
     /* Load all plugins */
     for (i = 0; i < ndp; i++) {
-	filename = chunk_sprintf(__FUNCTION__, "%s/%s", dir, dp[i].d_name);
+	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
 	clicon_debug(1, "DEBUG: Loading plugin '%.*s' ...", 
 		     (int)strlen(filename), filename);
-	if (filename == NULL) {
-	    clicon_err(OE_UNIX, errno, "chunk");
+	if ((handle = plugin_load(h, filename, RTLD_NOW)) == NULL)
 	    goto quit;
-	}
-	if ((handle = plugin_load (h, filename, RTLD_NOW, __FUNCTION__)) == NULL)
-	    goto quit;
-	if ((plugins = rechunk(plugins, (nplugins+1) * sizeof (*plugins), NULL)) == NULL) {
-	    clicon_err(OE_UNIX, errno, "chunk");
+	if ((plugins = realloc(plugins, (nplugins+1) * sizeof (*plugins))) == NULL) {
+	    clicon_err(OE_UNIX, errno, "realloc");
 	    goto quit;
 	}
 	plugins[nplugins++] = handle;
-	unchunk (filename);
     }
     retval = 0;
 quit:
-    unchunk_group(__FUNCTION__);
+    if (dp)
+	free(dp);
     return retval;
 }
 
@@ -387,8 +382,10 @@ restconf_plugin_unload(clicon_handle h)
 
     for (i = 0; i < nplugins; i++) 
 	plugin_unload(h, plugins[i]);
-    if (plugins)
-	unchunk(plugins);
+    if (plugins){
+	free(plugins);
+	plugins = NULL;
+    }
     nplugins = 0;
     return 0;
 }

@@ -61,7 +61,6 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
-#include "clixon_chunk.h"
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_options.h"
@@ -198,7 +197,6 @@ clicon_option_default(clicon_hash_t  *copt)
     }
     retval = 0;
   catch:
-    unchunk_group(__FUNCTION__);
     return retval;
 }
 
@@ -231,10 +229,6 @@ clicon_option_sanity(clicon_hash_t *copt)
     }
     if (!hash_lookup(copt, "CLICON_YANG_DIR")){
 	clicon_err(OE_UNIX, 0, "CLICON_YANG_DIR not defined in config file");
-	goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_ARCHIVE_DIR")){
-	clicon_err(OE_UNIX, 0, "CLICON_ARCHIVE_DIR not defined in config file");
 	goto done;
     }
     if (!hash_lookup(copt, "CLICON_XMLDB_DIR")){
@@ -449,12 +443,6 @@ char *
 clicon_restconf_dir(clicon_handle h)
 {
     return clicon_option_str(h, "CLICON_RESTCONF_DIR");
-}
-
-char *
-clicon_archive_dir(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_ARCHIVE_DIR");
 }
 
 char *

@@ -174,7 +174,8 @@ main(int argc, char **argv)
     int          printgen  = 0;
     int          logclisyntax  = 0;
     int          help = 0;
-    char        *treename;
+    char        *treename = NULL;
+    int          len;
     int          logdst = CLICON_LOG_STDERR;
     char        *restarg = NULL; /* what remains after options */
 
@@ -343,8 +344,14 @@ main(int argc, char **argv)
 	if (yang2cli(h, yspec, &pt, clicon_cli_genmodel_type(h)) < 0)
 	    goto done;
 
-	treename = chunk_sprintf(__FUNCTION__, "datamodel:%s", clicon_dbspec_name(h));
+	len = strlen("datamodel:") + strlen(clicon_dbspec_name(h)) + 1;
+	if ((treename = malloc(len)) == NULL){
+	    clicon_err(OE_UNIX, errno, "malloc");
+	    goto done;
+	}	
+	snprintf(treename, len, "datamodel:%s",  clicon_dbspec_name(h));
 	cli_tree_add(h, treename, pt);
+
 	if (printgen)
 	    cligen_print(stdout, pt, 1);
     }
@@ -400,9 +407,10 @@ main(int argc, char **argv)
     if (!once)
 	cli_interactive(h);
   done:
+    if (treename)
+	free(treename);
     if (restarg)
 	free(restarg);
-    unchunk_group(__FUNCTION__);
     // Gets in your face if we log on stderr
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clicon_log(LOG_NOTICE, "%s: %u Terminated\n", __PROGRAM__, getpid());

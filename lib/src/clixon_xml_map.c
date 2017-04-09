@@ -76,7 +76,6 @@
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
-#include "clixon_chunk.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_yang_type.h"
@@ -125,8 +124,9 @@ xml2txt(FILE *f, cxobj *x, int level)
 {
     cxobj *xe = NULL;
     int    children=0;
-    char  *term;
+    char  *term = NULL;
     int    retval = -1;
+    int    encr=0;
 #ifdef SPECIAL_TREATMENT_OF_NAME  
     cxobj *xname;
 #endif
@@ -138,15 +138,17 @@ xml2txt(FILE *f, cxobj *x, int level)
 	if (xml_type(x) == CX_BODY){
 	    /* Kludge for escaping encrypted passwords */
 	    if (strcmp(xml_name(xml_parent(x)), "encrypted-password")==0)
-		term = chunk_sprintf(__FUNCTION__, "\"%s\"", xml_value(x));
-	    else
-		term = xml_value(x);
+		encr++;
+	    term = xml_value(x);
 	}
 	else{
 	    fprintf(f, "%*s", 4*level, "");
 	    term = xml_name(x);
 	}
-	fprintf(f, "%s;\n", term);
+	if (encr)
+	    fprintf(f, "\"%s\";\n", term);
+	else
+	    fprintf(f, "%s;\n", term);
 	retval = 0;
 	goto done;
     }

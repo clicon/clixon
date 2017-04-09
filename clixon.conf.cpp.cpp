@@ -73,10 +73,6 @@ CLICON_CLI_DIR        libdir/APPNAME/cli
 # Location of frontend .cli cligen spec files
 CLICON_CLISPEC_DIR    libdir/APPNAME/clispec
 
-# Directory where to save configuration commit history (in XML). Snapshots
-# are saved chronologically
-CLICON_ARCHIVE_DIR      localstatedir/APPNAME/archive
-
 # Enabled uses "startup" configuration on boot
 CLICON_USE_STARTUP_CONFIG    0
 
@@ -120,6 +116,9 @@ CLICON_BACKEND_PIDFILE  localstatedir/APPNAME/APPNAME.pidfile
 
 # Directory where "running", "candidate" and "startup" are placed
 CLICON_XMLDB_DIR      localstatedir/APPNAME
+
+# XMLDB datastore plugin filename (see datastore/ and clixon_xml_db.[ch])
+CLICON_XMLDB_PLUGIN libdir/xmldb/keyvalue.so
 
 # Dont include keys in cvec in cli vars callbacks, ie a & k in 'a <b> k <c>' ignored
 # CLICON_CLI_VARONLY      1

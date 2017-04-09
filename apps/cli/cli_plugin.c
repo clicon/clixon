@@ -81,8 +81,7 @@
  *
  */
 
-/*
- * Find syntax mode named 'mode'. Create if specified
+/*! Find syntax mode named 'mode'. Create if specified
  */
 static cli_syntaxmode_t *
 syntax_mode_find(cli_syntax_t *stx, const char *mode, int create)
@@ -101,8 +100,8 @@ syntax_mode_find(cli_syntax_t *stx, const char *mode, int create)
     if (create == 0)
 	return  NULL;
 
-    if ((m = chunk(sizeof(cli_syntaxmode_t), stx->stx_cnklbl)) == NULL) {
-	perror("chunk");
+   if ((m = malloc(sizeof(cli_syntaxmode_t))) == NULL) {
+	perror("malloc");
 	return NULL;
     }
     memset (m, 0, sizeof (*m));
@@ -195,7 +194,7 @@ static int
 syntax_unload(clicon_handle h)
 {
     struct cli_plugin *p;
-    cli_syntax_t *stx = cli_syntax(h);
+    cli_syntax_t      *stx = cli_syntax(h);
     
     if (stx == NULL)
 	return 0;
@@ -205,14 +204,16 @@ syntax_unload(clicon_handle h)
 	plugin_unload(h, p->cp_handle);
 	clicon_debug(1, "DEBUG: Plugin '%s' unloaded.", p->cp_name);
 	DELQ(stx->stx_plugins, stx->stx_plugins, struct cli_plugin *);
+	if (stx->stx_plugins)
+	    free(stx->stx_plugins);
 	stx->stx_nplugins--;
     }
     while (stx->stx_nmodes > 0) {
 	DELQ(stx->stx_modes, stx->stx_modes, cli_syntaxmode_t *);
+	if (stx->stx_modes)
+	    free(stx->stx_modes);
 	stx->stx_nmodes--;
     }
-
-    unchunk_group(stx->stx_cnklbl);
     return 0;
 }
 
@@ -265,12 +266,14 @@ clixon_str2fn(char  *name,
    return NULL; 
 }
 
-/*
- * Load a dynamic plugin object and call it's init-function
+/*! Load a dynamic plugin object and call it's init-function
  * Note 'file' may be destructively modified
+ * @retval plugin-handle should be freed after use
  */
 static plghndl_t 
-cli_plugin_load (clicon_handle h, char *file, int dlflags, const char *cnklbl)
+cli_plugin_load(clicon_handle h, 
+		char         *file, 
+		int           dlflags)
 {
     char              *error;
     char              *name;
@@ -292,8 +295,8 @@ cli_plugin_load (clicon_handle h, char *file, int dlflags, const char *cnklbl)
 	}
     }
     
-    if ((cp = chunk(sizeof (struct cli_plugin), cnklbl)) == NULL) {
-	perror("chunk");
+    if ((cp = malloc(sizeof (struct cli_plugin))) == NULL) {
+	perror("malloc");
 	goto quit;
     }
     memset (cp, 0, sizeof(*cp));
@@ -323,7 +326,7 @@ cli_load_syntax(clicon_handle h, const char *filename, const char *clispec_dir)
     parse_tree pt = {0,};
     int        retval = -1;
     FILE      *f;
-    char      *filepath;
+    char       filepath[MAXPATHLEN];
     cvec      *vr = NULL;
     char      *prompt = NULL;
     char     **vec = NULL;
@@ -331,12 +334,7 @@ cli_load_syntax(clicon_handle h, const char *filename, const char *clispec_dir)
     char      *plgnam;
     struct cli_plugin *p;
 
-    if ((filepath = chunk_sprintf(__FUNCTION__, "%s/%s", 
-				  clispec_dir,
-				  filename)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "chunk");
-	goto done;
-    }
+    snprintf(filepath, MAXPATHLEN-1, "%s/%s", clispec_dir, filename);
     if ((vr = cvec_new(0)) == NULL){
 	clicon_err(OE_PLUGIN, errno, "cvec_new");
 	goto done;
@@ -403,7 +401,6 @@ done:
 	cvec_free(vr);
     if (vec)
 	free(vec);
-    unchunk_group(__FUNCTION__);
     return retval;
 }
 
@@ -415,10 +412,10 @@ cli_plugin_load_dir(clicon_handle h, char *dir, cli_syntax_t *stx)
 {
     int                i;
     int	               ndp;
-    struct dirent     *dp;
-    char              *file;
+    struct dirent     *dp = NULL;
     char              *master_plugin;
-    char              *master;
+    char               master[MAXPATHLEN];
+    char               filename[MAXPATHLEN];
     struct cli_plugin *cp;
     struct stat        st;
     int                retval = -1;
@@ -429,24 +426,18 @@ cli_plugin_load_dir(clicon_handle h, char *dir, cli_syntax_t *stx)
 	clicon_err(OE_PLUGIN, 0, "clicon_master_plugin option not set");
 	goto quit;
     }
-    if ((master = chunk_sprintf(__FUNCTION__, "%s.so", master_plugin)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "chunk_sprintf master plugin");
-	goto quit;
-    }
+    snprintf(master, MAXPATHLEN-1, "%s.so", master_plugin);
+
     /* Get plugin objects names from plugin directory */
-    ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG, __FUNCTION__);
+    ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG);
     if (ndp < 0)
         goto quit;
 
     /* Load master plugin first */
-    file = chunk_sprintf(__FUNCTION__, "%s/%s", dir, master);
-    if (file == NULL) {
-	clicon_err(OE_UNIX, errno, "chunk_sprintf dir");
-	goto quit;
-    }
-    if (stat(file, &st) == 0) {
+    snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, master);
+    if (stat(filename, &st) == 0) {
 	clicon_debug(1, "DEBUG: Loading master plugin '%s'", master);
-	cp = cli_plugin_load(h, file, RTLD_NOW|RTLD_GLOBAL, stx->stx_cnklbl);
+	cp = cli_plugin_load(h, filename, RTLD_NOW|RTLD_GLOBAL);
 	if (cp == NULL)
 	    goto quit;
 	/* Look up certain call-backs in master plugin */
@@ -459,33 +450,25 @@ cli_plugin_load_dir(clicon_handle h, char *dir, cli_syntax_t *stx)
 	INSQ(cp, stx->stx_plugins);
 	stx->stx_nplugins++;
     }
-    unchunk (file);
 
     /* Load the rest */
     for (i = 0; i < ndp; i++) {
 	if (strcmp (dp[i].d_name, master) == 0)
 	    continue; /* Skip master now */
-	file = chunk_sprintf(__FUNCTION__, "%s/%s", dir, dp[i].d_name);
-	if (file == NULL) {
-	    clicon_err(OE_UNIX, errno, "chunk_sprintf dir");
-	    goto quit;
-	}
+	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
 	clicon_debug(1, "DEBUG: Loading plugin '%s'", dp[i].d_name);
 
-	if ((cp = cli_plugin_load (h, file, RTLD_NOW, stx->stx_cnklbl)) == NULL)
+	if ((cp = cli_plugin_load (h, filename, RTLD_NOW)) == NULL)
 	    goto quit;
 	INSQ(cp, stx->stx_plugins);
 	stx->stx_nplugins++;
-	unchunk (file);
     }
-    if (dp)
-	unchunk(dp);
 
     retval = 0;
 
  quit:
-    unchunk_group(__FUNCTION__);
-
+    if (dp)
+	free(dp);
     return retval;
 }
 
@@ -501,8 +484,7 @@ cli_syntax_load (clicon_handle h)
     char              *clispec_dir = NULL;
     int                ndp;
     int                i;
-    char              *cnklbl = "__CLICON_CLI_SYNTAX_CNK_LABEL__";
-    struct dirent     *dp;
+    struct dirent     *dp = NULL;
     cli_syntax_t      *stx;
     cli_syntaxmode_t  *m;
 
@@ -521,13 +503,11 @@ cli_syntax_load (clicon_handle h)
     }
 
     /* Allocate plugin group object */
-    if ((stx = chunk(sizeof(*stx), cnklbl)) == NULL) {
-	clicon_err(OE_UNIX, errno, "chunk");
+    if ((stx = malloc(sizeof(*stx))) == NULL) {
+	clicon_err(OE_UNIX, errno, "malloc");
 	goto quit;
     }
     memset (stx, 0, sizeof (*stx));	/* Zero out all */
-    /* populate name and chunk label */
-    strncpy (stx->stx_cnklbl, cnklbl, sizeof(stx->stx_cnklbl)-1);
 
     cli_syntax_set(h, stx);
 
@@ -541,7 +521,7 @@ cli_syntax_load (clicon_handle h)
         goto quit;
     
     /* load syntaxfiles */
-    if ((ndp = clicon_file_dirent(clispec_dir, &dp, "(.cli)$", S_IFREG, __FUNCTION__)) < 0)
+    if ((ndp = clicon_file_dirent(clispec_dir, &dp, "(.cli)$", S_IFREG)) < 0)
 	goto quit;
     /* Load the rest */
     for (i = 0; i < ndp; i++) {
@@ -550,9 +530,6 @@ cli_syntax_load (clicon_handle h)
 	if (cli_load_syntax(h, dp[i].d_name, clispec_dir) < 0)
 	    goto quit;
     }
-    if (dp)
-	unchunk(dp);
-
 
     /* Did we successfully load any syntax modes? */
     if (stx->stx_nmodes <= 0) {
@@ -577,10 +554,10 @@ cli_syntax_load (clicon_handle h)
 quit:
     if (retval != 0) {
 	syntax_unload(h);
-	unchunk_group(cnklbl);
 	cli_syntax_set(h, NULL);
     }
-    unchunk_group(__FUNCTION__);
+    if (dp)
+	free(dp);
     return retval;
 }
 
@@ -663,39 +640,36 @@ clicon_eval(clicon_handle h, char *cmd, cg_obj *match_obj, cvec *vr)
 }
 
 
-/*
- * clicon_parse
- * Given a command string, parse and evaluate the string according to
+/*! Given a command string, parse and evaluate.
+ * Parse and evaluate the string according to
  * the syntax parse tree of the syntax mode specified by *mode.
  * If there is no match in the tree for the command, the parse hook 
  * will be called to see if another mode should be evaluated. If a
  * match is found in another mode, the mode variable is updated to point at 
  * the new mode string.
  *
- * INPUT:
- *   cmd	The command string
- *   match_obj  Pointer to CLIgen match object
- *   mode	A pointer to the mode string pointer
- * OUTPUT:
- *   kr         Keyword vector
- *   vr         Variable vector
- * RETURNS:
- *   -2	      : on eof (shouldnt happen)
- *   -1	      : In parse error
- *   >=0      : Number of matches
+ * @param[in]     h         Clicon handle
+ * @param[in]     cmd	  The command string
+ * @param[in,out] mode	  A pointer to the mode string pointer
+ * @param[out]    result     -2	  On eof (shouldnt happen)
+ *                         -1	  On parse error
+ *                        >=0       Number of matches
  */
 int
-clicon_parse(clicon_handle h, char *cmd, char **mode, int *result)
+clicon_parse(clicon_handle h, 
+	     char         *cmd, 
+	     char        **mode, 
+	     int          *result)
 {
-    char *m, *msav;
-    int res = -1;
-    int r;
-    cli_syntax_t *stx;
+    char       *m, *msav;
+    int        res = -1;
+    int        r;
+    cli_syntax_t *stx = NULL;
     cli_syntaxmode_t *smode;
     char       *treename;
     parse_tree *pt;     /* Orig */
     cg_obj     *match_obj;
-    cvec       *vr = NULL;
+    cvec       *cvv = NULL;
     
     stx = cli_syntax(h);
     m = *mode;
@@ -719,11 +693,11 @@ clicon_parse(clicon_handle h, char *cmd, char **mode, int *result)
 	    fprintf(stderr, "No such parse-tree registered: %s\n", treename);
 	    goto done;;
 	}
-	if ((vr = cvec_new(0)) == NULL){
-	    fprintf(stderr, "%s: cvec_new: %s\n", __FUNCTION__, strerror(errno));
+	if ((cvv = cvec_new(0)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cvec_new");
 	    goto done;;
 	}
-	res = cliread_parse(cli_cligen(h), cmd, pt, &match_obj, vr);
+	res = cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv);
 	if (res != CG_MATCH)
 	    pt_expand_cleanup_1(pt);
 	if (msav){
@@ -755,7 +729,7 @@ clicon_parse(clicon_handle h, char *cmd, char **mode, int *result)
 		*mode = m;
 		cli_set_syntax_mode(h, m);
 	    }
-	    if ((r = clicon_eval(h, cmd, match_obj, vr)) < 0)
+	    if ((r = clicon_eval(h, cmd, match_obj, cvv)) < 0)
 		cli_handler_err(stdout);
 	    pt_expand_cleanup_1(pt);
 	    if (result)
@@ -769,8 +743,8 @@ clicon_parse(clicon_handle h, char *cmd, char **mode, int *result)
 	}
     }
 done:
-    if (vr)
-	cvec_free(vr);
+    if (cvv)
+	cvec_free(cvv);
     return res;
 }
 
@@ -891,9 +865,7 @@ cli_set_prompt(clicon_handle h, const char *name, const char *prompt)
     return 0;
 }
 
-/* 
- * Format prompt 
- * XXX: HOST_NAME_MAX from sysconf()
+/*! Format prompt 
  */
 static int
 prompt_fmt (char *prompt, size_t plen, char *fmt, ...)
@@ -902,65 +874,56 @@ prompt_fmt (char *prompt, size_t plen, char *fmt, ...)
   char   *s = fmt;
   char    hname[1024];
   char    tty[32];
-  char   *new;
   char   *tmp;
   int     ret = -1;
+  cbuf   *cb = NULL;
+
+  if ((cb = cbuf_new()) == NULL){
+      clicon_err(OE_XML, errno, "cbuf_new");
+      goto done;
+  }
   
   /* Start with empty string */
-  if((new = chunk_sprintf(__FUNCTION__, "%s", ""))==NULL)
-      goto done;
-  
+  cprintf(cb, "");
   while(*s) {
       if (*s == '%' && *++s) {
 	  switch(*s) {
-	      
 	  case 'H': /* Hostname */
 	      if (gethostname (hname, sizeof (hname)) != 0)
 		  strncpy(hname, "unknown", sizeof(hname)-1);
-	      if((new = chunk_strncat(new, hname, 0, __FUNCTION__))==NULL)
-		  goto done;
+	      cprintf(cb, "%s", hname);
 	      break;
-	      
 	  case 'U': /* Username */
 	      tmp = getenv("USER");
-	      if((new = chunk_strncat(new, (tmp ? tmp : "nobody"), 0, __FUNCTION__))==NULL)
-		  goto done;
+	      cprintf(cb, "%s", tmp?tmp:"nobody");
 	      break;
-	      
 	  case 'T': /* TTY */
 	      if(ttyname_r(fileno(stdin), tty, sizeof(tty)-1) < 0)
 		  strcpy(tty, "notty");
-	      if((new = chunk_strncat(new, tty, strlen(tty), __FUNCTION__))==NULL)
-		  goto done;
+	      cprintf(cb, "%s", tty);
 	      break;
-	      
 	  default:
-	      if((new = chunk_strncat(new, "%", 1, __FUNCTION__))==NULL ||
-		 (new = chunk_strncat(new, s, 1, __FUNCTION__)))
-		  goto done;
+	      cprintf(cb, "%%");
+	      cprintf(cb, "%c", *s);
 	  }
       } 
-      else {
-	  if ((new = chunk_strncat(new, s, 1, __FUNCTION__))==NULL)
-	      goto done;
-      }
+      else 
+	  cprintf(cb, "%c", *s);
       s++;
   }
   
 done:
-  if (new)
-      fmt = new;
+  if (cb)
+      fmt = cbuf_get(cb);
   va_start(ap, fmt);
   ret = vsnprintf(prompt, plen, fmt, ap);
   va_end(ap);
-  
-  unchunk_group(__FUNCTION__);
-  
+  if (cb)
+      cbuf_free(cb);
   return ret;
 }
 
-/*
- * Return a formatted prompt string
+/*! Return a formatted prompt string
  */
 char *
 cli_prompt(char *fmt)
@@ -1069,11 +1032,10 @@ cli_ptpop(clicon_handle h, char *mode, char *op)
 }
 
 
-/*
- * clicon_valcb
+/*! Find a cli plugin based on name and resolve a function pointer in it.
  * Callback from clicon_dbvars_parse() 
- * Find a cli plugin based on name if given and
- * use dlsym to resolve a function pointer in it.
+ * Find a cli plugin based on name if given and use dlsym to resolve a 
+ * function pointer in it.
  * Call the resolved function to get the cgv populated
  */
 int

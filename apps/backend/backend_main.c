@@ -95,8 +95,6 @@ config_terminate(clicon_handle h)
     event_exit();
     clicon_log_register_callback(NULL, NULL);
     clicon_debug(1, "%s done", __FUNCTION__); 
-    if (debug)
-	chunk_check(stderr, NULL);
     return 0;
 }
 
@@ -207,7 +205,6 @@ done:
 	xml_free(xt);
     if (fd != -1)
 	close(fd);
-    unchunk_group(__FUNCTION__);
     return retval;
 }
 

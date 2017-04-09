@@ -178,15 +178,13 @@ plugin_unload(clicon_handle  h,
  * @param[in]  h       Clicon handle
  * @param[in]  file    The plugin (.so) to load
  * @param[in]  dlflags Arguments to dlopen(3)
- * @param[in]  label   Chunk label
  * @retval     plugin  Plugin struct
  * @retval     NULL    Error
  */
 static struct plugin *
 plugin_load (clicon_handle h, 
 	     char         *file, 
-	     int           dlflags, 
-	     const char   *label)
+	     int           dlflags)
 {
     char          *error;
     void          *handle;
@@ -215,7 +213,7 @@ plugin_load (clicon_handle h,
         return NULL;
     }
 
-    if ((new = chunk(sizeof(*new), label)) == NULL) {
+    if ((new = malloc(sizeof(*new))) == NULL) {
 	clicon_err(OE_UNIX, errno, "dhunk: %s", strerror(errno));
 	dlclose(handle);
 	return NULL;
@@ -319,8 +317,8 @@ plugin_append(struct plugin *p)
 {
     struct plugin *new;
     
-    if ((new = rechunk(plugins, (nplugins+1) * sizeof (*p), NULL)) == NULL) {
-	clicon_err(OE_UNIX, errno, "chunk");
+    if ((new = realloc(plugins, (nplugins+1) * sizeof (*p))) == NULL) {
+	clicon_err(OE_UNIX, errno, "realloc");
 	return -1;
     }
     
@@ -348,11 +346,11 @@ config_plugin_load_dir(clicon_handle h,
     int            np = 0;
     int            ndp;
     struct stat    st;
-    char          *filename;
-    struct dirent *dp;
+    char           filename[MAXPATHLEN];
+    struct dirent *dp = NULL;
     struct plugin *new;
     struct plugin *p = NULL;
-    char          *master;
+    char           master[MAXPATHLEN];
     char          *master_plugin;
 
     /* Format master plugin path */
@@ -360,50 +358,39 @@ config_plugin_load_dir(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "clicon_master_plugin option not set");
 	goto quit;
     }
-    master = chunk_sprintf(__FUNCTION__, "%s.so",  master_plugin);
-    if (master == NULL) {
-	clicon_err(OE_PLUGIN, errno, "chunk_sprintf master plugin");
-	goto quit;
-    }
+    snprintf(master, MAXPATHLEN-1, "%s.so", master_plugin);
 
     /* Allocate plugin group object */
     /* Get plugin objects names from plugin directory */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG, __FUNCTION__))<0)
+    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG))<0)
 	goto quit;
     
     /* reset num plugins */
     np = 0;
 
     /* Master plugin must be loaded first if it exists. */
-    filename = chunk_sprintf(__FUNCTION__, "%s/%s", dir, master);
-    if (filename == NULL) {
-	clicon_err(OE_UNIX, errno, "chunk");
-	goto quit;
-    }
+    snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, master);
     if (stat(filename, &st) == 0) {
 	clicon_debug(1, "Loading master plugin '%.*s' ...", 
 		     (int)strlen(filename), filename);
 
-	new = plugin_load(h, filename, RTLD_NOW|RTLD_GLOBAL, __FUNCTION__);
+	new = plugin_load(h, filename, RTLD_NOW|RTLD_GLOBAL);
 	if (new == NULL)
 	    goto quit;
 	if (plugin_append(new) < 0)
 	    goto quit;
     }  
 
-    /* Now load the rest */
+    /* Now load the rest. Note plugins is the global variable */
     for (i = 0; i < ndp; i++) {
 	if (strcmp(dp[i].d_name, master) == 0)
 	    continue; /* Skip master now */
-	filename = chunk_sprintf(__FUNCTION__, "%s/%s", dir, dp[i].d_name);
+	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
 	clicon_debug(1, "Loading plugin '%.*s' ...",  (int)strlen(filename), filename);
-	if (filename == NULL) {
-	    clicon_err(OE_UNIX, errno, "chunk");
-	    goto quit;
-	}
-	new = plugin_load (h, filename, RTLD_NOW, __FUNCTION__);
+	new = plugin_load(h, filename, RTLD_NOW);
 	if (new == NULL) 
 	    goto quit;
+	/* Append to 'plugins' */
 	if (plugin_append(new) < 0)
 	    goto quit;
     }
@@ -413,13 +400,19 @@ config_plugin_load_dir(clicon_handle h,
     
 quit:
     if (retval != 0) {
-	if (p) {
-	    while (--np >= 0)
-		plugin_unload (h, &p[np]);
-	    unchunk(p);
+	/* XXX p is always NULL */
+	if (plugins) {
+	    while (--np >= 0){
+		if ((p = &plugins[np]) == NULL)
+		    continue;
+		plugin_unload(h, p);
+		free(p);
+	    }
+	    free(plugins);
 	}
     }
-    unchunk_group(__FUNCTION__);
+    if (dp)
+	free(dp);
     return retval;
 }
 
@@ -464,8 +457,10 @@ plugin_finish(clicon_handle h)
 	p = &plugins[i];
 	plugin_unload(h, p);
     }
-    if (plugins)
-	unchunk(plugins);
+    if (plugins){
+	free(plugins);
+	plugins = NULL;
+    }
     nplugins = 0;
     return 0;
 }

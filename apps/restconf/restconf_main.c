@@ -58,7 +58,6 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#include <curl/curl.h>
 #include <libgen.h>
 
 /* cligen */

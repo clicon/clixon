@@ -60,7 +60,6 @@
 #include "clixon_sig.h"
 #include "clixon_string.h"
 #include "clixon_queue.h"
-#include "clixon_chunk.h"
 #include "clixon_proc.h"
 
 /*

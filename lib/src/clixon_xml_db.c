@@ -46,7 +46,6 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#include <curl/curl.h>
 #include <libgen.h>
 
 /* cligen */
@@ -128,14 +127,36 @@ xmldb_get(clicon_handle h, char *db, char *xpath,
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_get_fn &&
-	_xa_api->xa_get_fn(h, db, xpath, xtop, xvec, xlen) < 0)
+    if (_xa_api->xa_get_fn == NULL){
+	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
-    retval = 0;
+    }
+    retval = _xa_api->xa_get_fn(h, db, xpath, xtop, xvec, xlen);
  done:
     return retval;
 }
 
+/*! Modify database provided an xml tree and an operation
+ *
+ * @param[in]  h      CLICON handle
+ * @param[in]  db     running or candidate
+ * @param[in]  xt     xml-tree. Top-level symbol is dummy
+ * @param[in]  op     OP_MERGE: just add it. 
+ *                    OP_REPLACE: first delete whole database
+ *                    OP_NONE: operation attribute in xml determines operation
+ * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [restconf-draft 13])
+ * @retval     0      OK
+ * @retval     -1     Error
+ * The xml may contain the "operation" attribute which defines the operation.
+ * @code
+ *   cxobj     *xt;
+ *   if (clicon_xml_parse_str("<a>17</a>", &xt) < 0)
+ *     err;
+ *   if (xmldb_put(h, "running", OP_MERGE, NULL, xt) < 0)
+ *     err;
+ * @endcode
+ * @see xmldb_put_xkey  for single key
+ */
 int 
 xmldb_put(clicon_handle h, char *db, enum operation_type op, 
 	      char *api_path, cxobj *xt)
@@ -146,16 +167,24 @@ xmldb_put(clicon_handle h, char *db, enum operation_type op,
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_put_fn &&
-	_xa_api->xa_put_fn(h, db, op, api_path, xt) < 0)
+    if (_xa_api->xa_put_fn == NULL){
+	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
-    retval = 0;
+    }
+    retval = _xa_api->xa_put_fn(h, db, op, api_path, xt);
  done:
     return retval;
 }
 
+/*! Raw dump of database, in internal format (depends on datastore)
+ * @param[in]  f       File
+ * @param[in]  dbfile  File-name of database. This is a local file
+ * @param[in]  pattern   Key regexp, eg "^.*$"
+ */
 int 
-xmldb_dump(FILE *f, char *dbfilename, char *rxkey)
+xmldb_dump(FILE *f, 
+	   char *dbfilename, 
+	   char *pattern)
 {
     int retval = -1;
 
@@ -163,14 +192,22 @@ xmldb_dump(FILE *f, char *dbfilename, char *rxkey)
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_dump_fn &&
-	_xa_api->xa_dump_fn(f, dbfilename, rxkey) < 0)
+    if (_xa_api->xa_dump_fn == NULL){
+	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
-    retval = 0;
+    }
+    retval = _xa_api->xa_dump_fn(f, dbfilename, pattern);
  done:
     return retval;
 }
 
+/*! Copy database from db1 to db2
+ * @param[in]  h     Clicon handle
+ * @param[in]  from  Source database copy
+ * @param[in]  to    Destination database
+ * @retval -1  Error
+ * @retval  0  OK
+  */
 int 
 xmldb_copy(clicon_handle h, char *from, char *to)
 {
@@ -180,14 +217,22 @@ xmldb_copy(clicon_handle h, char *from, char *to)
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_copy_fn &&
-	_xa_api->xa_copy_fn(h, from, to) < 0)
+    if (_xa_api->xa_copy_fn == NULL){
+	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
-    retval = 0;
+    }
+    retval = _xa_api->xa_copy_fn(h, from, to);
  done:
     return retval;
 }
 
+/*! Lock database
+ * @param[in]  h    Clicon handle
+ * @param[in]  db   Database
+ * @param[in]  pid  Process id
+ * @retval -1  Error
+ * @retval  0  OK
+  */
 int 
 xmldb_lock(clicon_handle h, char *db, int pid)
 {
@@ -197,14 +242,23 @@ xmldb_lock(clicon_handle h, char *db, int pid)
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_lock_fn &&
-	_xa_api->xa_lock_fn(h, db, pid) < 0)
+    if (_xa_api->xa_lock_fn == NULL){
+	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
-    retval = 0;
+    }
+    retval = _xa_api->xa_lock_fn(h, db, pid);
  done:
     return retval;
 }
 
+/*! Unlock database
+ * @param[in]  h   Clicon handle
+ * @param[in]  db  Database
+ * @param[in]  pid  Process id
+ * @retval -1  Error
+ * @retval  0  OK
+ * Assume all sanity checks have been made
+ */
 int 
 xmldb_unlock(clicon_handle h, char *db, int pid)
 {
@@ -214,14 +268,21 @@ xmldb_unlock(clicon_handle h, char *db, int pid)
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_unlock_fn &&
-	_xa_api->xa_unlock_fn(h, db, pid) < 0)
+    if (_xa_api->xa_unlock_fn == NULL){
+	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
-    retval = 0;
+    }
+    retval = _xa_api->xa_unlock_fn(h, db, pid);
  done:
     return retval;
 }
 
+/*! Unlock all databases locked by pid (eg process dies) 
+ * @param[in]    h   Clicon handle
+ * @param[in]    pid Process / Session id
+ * @retval -1    Error
+ * @retval  0   OK
+ */
 int
 xmldb_unlock_all(clicon_handle h, int pid)
 {
@@ -231,14 +292,22 @@ xmldb_unlock_all(clicon_handle h, int pid)
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_unlock_all_fn &&
-	_xa_api->xa_unlock_all_fn(h, pid) < 0)
+    if (_xa_api->xa_unlock_all_fn == NULL){
+	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
-    retval = 0;
+    }
+    retval =_xa_api->xa_unlock_all_fn(h, pid);
  done:
     return retval;
 }
 
+/*! Check if database is locked
+ * @param[in]    h   Clicon handle
+ * @param[in]    db  Database
+ * @retval -1    Error
+ * @retval   0   Not locked
+ * @retval  >0   Id of locker
+  */
 int 
 xmldb_islocked(clicon_handle h, char *db)
 {
@@ -248,14 +317,22 @@ xmldb_islocked(clicon_handle h, char *db)
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_islocked_fn &&
-	_xa_api->xa_islocked_fn(h, db) < 0)
+    if (_xa_api->xa_islocked_fn == NULL){
+	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
-    retval = 0;
+    }
+    retval =_xa_api->xa_islocked_fn(h, db);
  done:
     return retval;
 }
 
+/*! Check if db exists 
+ * @param[in]  h   Clicon handle
+ * @param[in]  db  Database
+ * @retval -1  Error
+ * @retval  0  No it does not exist
+ * @retval  1  Yes it exists
+ */
 int 
 xmldb_exists(clicon_handle h, char *db)
 {
@@ -265,14 +342,21 @@ xmldb_exists(clicon_handle h, char *db)
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_exists_fn &&
-	_xa_api->xa_exists_fn(h, db) < 0)
+    if (_xa_api->xa_exists_fn == NULL){
+	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
-    retval = 0;
+    }
+    retval = _xa_api->xa_exists_fn(h, db);
  done:
     return retval;
 }
 
+/*! Delete database. Remove file 
+ * @param[in]  h   Clicon handle
+ * @param[in]  db  Database
+ * @retval -1  Error
+ * @retval  0  OK
+ */
 int 
 xmldb_delete(clicon_handle h, char *db)
 {
@@ -282,14 +366,21 @@ xmldb_delete(clicon_handle h, char *db)
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_delete_fn &&
-	_xa_api->xa_delete_fn(h, db) < 0)
+    if (_xa_api->xa_delete_fn == NULL){
+	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
-    retval = 0;
+    }
+    retval = _xa_api->xa_delete_fn(h, db);
  done:
     return retval;
 }
 
+/*! Initialize database 
+ * @param[in]  h   Clicon handle
+ * @param[in]  db  Database
+ * @retval  0  OK
+ * @retval -1  Error
+ */
 int 
 xmldb_init(clicon_handle h, char *db)
 {
@@ -299,10 +390,11 @@ xmldb_init(clicon_handle h, char *db)
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_init_fn &&
-	_xa_api->xa_init_fn(h, db) < 0)
+    if (_xa_api->xa_init_fn == NULL){
+	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
-    retval = 0;
+    }
+    retval = _xa_api->xa_init_fn(h, db);
  done:
     return retval;
 }

@@ -94,17 +94,19 @@ cli_notification_register(clicon_handle    h,
 			  void            *arg)
 {
     int              retval = -1;
-    char            *logname;
+    char            *logname = NULL;
     void            *p;
     int              s;
     clicon_hash_t   *cdat = clicon_data(h);
     size_t           len;
     int              s_exist = -1;
 
-    if ((logname = chunk_sprintf(__FUNCTION__, "log_socket_%s", stream)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "%s: chunk_sprintf", __FUNCTION__);
+    len = strlen("log_socket_") + strlen(stream) + 1;
+    if ((logname = malloc(len)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
-    }
+    }	
+    snprintf(logname, len, "log_socket_%s", stream);
     if ((p = hash_value(cdat, logname, &len)) != NULL)
 	s_exist = *(int*)p;
 
@@ -132,7 +134,8 @@ cli_notification_register(clicon_handle    h,
     }
     retval = 0;
   done:
-    unchunk_group(__FUNCTION__);
+    if (logname)
+	free(logname);
     return retval;
 }
 

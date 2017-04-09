@@ -29,7 +29,9 @@
 #
 # ***** END LICENSE BLOCK *****
 
-- Ongoiing: xmldb datastore plugin framework
+- Moved qdbm, chunk and  xmldb to datastore keyvalue directories
+  Created xmldb plugin api
+  Removed all other clixon dependency on chunk code
 	
 - cli_copy_config added as generic cli command
 - cli_show_config added as generic cli command

@@ -55,7 +55,7 @@ INCLUDES = -I. @INCLUDES@ -I$(top_srcdir)/lib/clixon -I$(top_srcdir)/include -I$
 
 PLUGIN       = $(DATASTORE).so
 
-SRC     = clixon_keyvalue.c clixon_qdb.c 
+SRC     = clixon_keyvalue.c clixon_qdb.c clixon_chunk.c 
 
 OBJS    = $(SRC:.c=.o) 
 

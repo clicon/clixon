@@ -66,7 +66,6 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_queue.h"
-#include "clixon_chunk.h"
 #include "clixon_sig.h"
 #include "clixon_xml.h"
 #include "clixon_xsl.h"
@@ -532,11 +531,11 @@ send_msg_reply(int      s,
 	       uint16_t datalen)
 {
     int                retval = -1;
-    struct clicon_msg *reply;
+    struct clicon_msg *reply = NULL;
     uint16_t           len;
 
     len = sizeof(*reply) + datalen;
-    if ((reply = (struct clicon_msg *)chunk(len, __FUNCTION__)) == NULL)
+    if ((reply = (struct clicon_msg *)malloc(len)) == NULL)
 	goto done;
     memset(reply, 0, len);
     reply->op_len = htons(len);
@@ -546,7 +545,8 @@ send_msg_reply(int      s,
 	goto done;
     retval = 0;
   done:
-    unchunk_group(__FUNCTION__);
+    if (reply)
+	free(reply);
     return retval;
 }
 

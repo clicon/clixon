@@ -119,70 +119,6 @@ static int _running_locked = 0;
 static int _candidate_locked = 0;
 static int _startup_locked = 0;
 
-/*! Lock database
- * @param[in]  db   Database name
- * @param[in]  pid  process/session-id
- */
-static int
-db_lock(char *db, 
-	int   pid)
-{
-    if (strcmp("running", db) == 0)
-	_running_locked = pid;
-    else if (strcmp("candidate", db) == 0)
-	_candidate_locked = pid;
-    else if (strcmp("startup", db) == 0)
-	_startup_locked = pid;
-    clicon_debug(1, "%s: locked by %u",  db, pid);
-    return 0;
-}
-
-/*! Unlock database
- * @param[in]  db   Database name
- */
-static int
-db_unlock(char *db)
-{
-    if (strcmp("running", db) == 0)
-	_running_locked = 0;
-    else if (strcmp("candidate", db) == 0)
-	_candidate_locked = 0;
-    else if (strcmp("startup", db) == 0)
-	_startup_locked = 0;
-    return 0;
-}
-
-/*! Unlock all databases locked by pid (eg process dies) 
- * @param[in]  pid  process/session-id
- */
-static int
-db_unlock_all(int pid)
-{
-    if (_running_locked == pid)
-	_running_locked = 0;
-    if (_candidate_locked == pid)
-	_candidate_locked = 0;
-    if (_startup_locked == pid)
-	_startup_locked = 0;
-    return 0;
-}
-
-/*! returns id of locker
- * @retval   0   Not locked
- * @retval  >0   Id of locker
- */
-static int
-db_islocked(char *db)
-{
-    if (strcmp("running", db) == 0)
-	return (_running_locked);
-    else if (strcmp("candidate", db) == 0)
-	return(_candidate_locked);
-    else if (strcmp("startup", db) == 0)
-	return(_startup_locked);
-    return 0;
-}
-
 /*! Translate from symbolic database name to actual filename in file-system
  * @param[in]   h        Clicon handle
  * @param[in]   db       Symbolic database name, eg "candidate", "running"
@@ -273,7 +209,7 @@ append_listkeys(cbuf      *ckey,
 	else
 	    cprintf(ckey, "=");
 	cprintf(ckey, "%s", bodyenc);
-	free(bodyenc); bodyenc = NULL;
+	curl_free(bodyenc); bodyenc = NULL;
     }
     retval = 0;
  done:
@@ -436,7 +372,7 @@ get(char      *dbname,
 		    goto done;
 		/* Assume body is created at end of function */
 	    }
-	    free(argdec);
+	    curl_free(argdec);
 	    argdec = NULL;
 	    break;
 	case Y_LIST:
@@ -478,7 +414,7 @@ get(char      *dbname,
 		    goto done;
 		}
 		cprintf(cb, "[%s=%s]", cv_string_get(cvi), argdec);
-		free(argdec);
+		curl_free(argdec);
 		argdec=NULL;
 	    }
 	    if ((xc = xpath_first(x, cbuf_get(cb))) == NULL){
@@ -502,7 +438,7 @@ get(char      *dbname,
 					 argdec, 
 					 keyname) < 0)
 			goto done;
-		    free(argdec); argdec = NULL;
+		    curl_free(argdec); argdec = NULL;
 		} /* while */
 	    }
 	    if (cb){
@@ -710,7 +646,7 @@ kv_get(clicon_handle h,
     int             retval = -1;
     yang_spec      *yspec;
     char           *dbname = NULL;
-    cxobj         **xvec;
+    cxobj         **xvec = NULL;
     size_t          xlen;
     int             i;
     int             npairs;
@@ -885,7 +821,7 @@ put(char               *dbname,
     if (cbxk)
 	cbuf_free(cbxk);
     if (bodyenc)
-	free(bodyenc);
+	curl_free(bodyenc);
     return retval;
 }
 
@@ -1400,7 +1336,6 @@ kv_put(clicon_handle       h,
     return retval;
 }
 
-
 /*! Raw dump of database, just keys and values, no xml interpretation 
  * @param[in]  f       File
  * @param[in]  dbfile  File-name of database. This is a local file
@@ -1477,19 +1412,14 @@ kv_lock(clicon_handle h,
 	char         *db,
 	int           pid)
 {
-    int           retval = -1;
-
-    if (db_islocked(db)){
-	if (pid != db_islocked(db)){
-	    clicon_err(OE_DB, 0, "lock failed: locked by %d", db_islocked(db));
-	    goto done;
-	}
-    }
-    else
-	db_lock(db, pid);
-    retval = 0;
- done:
-    return retval;
+    if (strcmp("running", db) == 0)
+	_running_locked = pid;
+    else if (strcmp("candidate", db) == 0)
+	_candidate_locked = pid;
+    else if (strcmp("startup", db) == 0)
+	_startup_locked = pid;
+    clicon_debug(1, "%s: locked by %u",  db, pid);
+    return 0;
 }
 
 /*! Unlock database
@@ -1498,36 +1428,39 @@ kv_lock(clicon_handle h,
  * @param[in]  pid  Process id
  * @retval -1  Error
  * @retval  0  OK
+ * Assume all sanity checks have been made
  */
 int 
 kv_unlock(clicon_handle h, 
 	  char         *db,
 	  int           pid)
 {
-    int retval = -1;
-    int pid1;
-
-    pid1 = db_islocked(db);
-    if (pid1){
-	if (pid == pid1)
-	    db_unlock(db);
-	else{
-	    clicon_err(OE_DB, 0, "unlock failed: locked by %d", pid1);
-	    goto done;
-	}
-    }
-    retval = 0;
- done:
-    return retval;
+    if (strcmp("running", db) == 0)
+	_running_locked = 0;
+    else if (strcmp("candidate", db) == 0)
+	_candidate_locked = 0;
+    else if (strcmp("startup", db) == 0)
+	_startup_locked = 0;
+    return 0;
 }
 
 /*! Unlock all databases locked by pid (eg process dies) 
+ * @param[in]    h   Clicon handle
+ * @param[in]    pid Process / Session id
+ * @retval -1    Error
+ * @retval   0   Ok
  */
 int 
 kv_unlock_all(clicon_handle h, 
 	      int           pid)
 {
-    return db_unlock_all(pid);
+    if (_running_locked == pid)
+	_running_locked = 0;
+    if (_candidate_locked == pid)
+	_candidate_locked = 0;
+    if (_startup_locked == pid)
+	_startup_locked = 0;
+    return 0;
 }
 
 /*! Check if database is locked
@@ -1541,7 +1474,13 @@ int
 kv_islocked(clicon_handle h, 
 	    char         *db)
 {
-    return db_islocked(db);
+    if (strcmp("running", db) == 0)
+	return (_running_locked);
+    else if (strcmp("candidate", db) == 0)
+	return(_candidate_locked);
+    else if (strcmp("startup", db) == 0)
+	return(_startup_locked);
+    return 0;
 }
 
 /*! Check if db exists 

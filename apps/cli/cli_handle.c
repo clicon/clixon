@@ -112,20 +112,22 @@ cli_handle_init(void)
     return h;
 }
 
-/*
- * cli_handle_exit
- * frees clicon handle
+/*! Free clicon handle
  */
 int
 cli_handle_exit(clicon_handle h)
 {
     cligen_handle ch = cligen(h);
+    struct cli_handle *cl = handle(h);
 
+    if (cl->cl_stx)
+	free(cl->cl_stx);
     clicon_handle_exit(h); /* frees h and options */
+
     cligen_exit(ch);
+
     return 0;
 }
-
 
 /*----------------------------------------------------------
  * cli-specific handle access functions
