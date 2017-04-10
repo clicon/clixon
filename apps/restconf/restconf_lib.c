@@ -48,7 +48,6 @@
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#include <curl/curl.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -163,10 +162,8 @@ str2cvec(char  *string,
 	    *(snext++) = '\0';
 	if ((val = index(s, delim2)) != NULL){
 	    *(val++) = '\0';
-	    if ((valu = curl_easy_unescape(NULL, val, 0, NULL)) == NULL){
-		clicon_debug(1, "curl_easy_unescape %s", strerror(errno));
+	    if (percent_decode(val, &valu) < 0)
 		goto err;
-	    }
 	    if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
 		clicon_debug(1, "error cvec_add %s", strerror(errno));
 		goto err;
@@ -175,7 +172,7 @@ str2cvec(char  *string,
 		s++;
 	    cv_name_set(cv, s);
 	    cv_string_set(cv, valu);
-	    curl_free(valu);
+	    free(valu); valu = NULL;
 	}
 	else{
 	    if (strlen(s)){

@@ -66,7 +66,6 @@
 #include <syslog.h>
 #include <fcntl.h>
 #include <netinet/in.h>
-#include <curl/curl.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -77,6 +76,7 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_yang_type.h"
 #include "clixon_options.h"
@@ -957,13 +957,11 @@ xmlkeyfmt2key(char  *xkfmt,
 		clicon_err(OE_UNIX, errno, "strdup");
 		goto done;
 	    }
-	    if ((strenc = curl_easy_escape(NULL, str, 0)) == NULL){
-		clicon_err(OE_UNIX, errno, "curl_easy_escape");
+	    if (percent_encode(str, &strenc) < 0)
 		goto done;
-	    }
 	    cprintf(cb, "%s", strenc); 
-	    curl_free(strenc);
-	    free(str);
+	    free(strenc); strenc = NULL;
+	    free(str); str = NULL;
 	}
 	else
 	    if (c == '%')

@@ -151,9 +151,6 @@ AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(nsl, xdr_char)
 AC_CHECK_LIB(dl, dlopen)
 
-# restconf uses libcurl (I think?)
-AC_CHECK_LIB(curl, curl_global_init,, AC_MSG_ERROR([libcurl missing]))
-
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp)
 
 # Lives in libfcgi-dev

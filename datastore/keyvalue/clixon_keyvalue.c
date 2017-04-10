@@ -100,7 +100,6 @@
 #include <dirent.h>
 #include <assert.h>
 #include <syslog.h>
-#include <curl/curl.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -108,6 +107,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
+#include "clixon_chunk.h"
 #include "clixon_qdb.h"
 #include "clixon_keyvalue.h"
 
@@ -200,16 +200,15 @@ append_listkeys(cbuf      *ckey,
 		       xml_name(xt), keyname);
 	    goto done;
 	}
-	if ((bodyenc = curl_easy_escape(NULL, xml_body(xkey), 0)) == NULL){
-	    clicon_err(OE_UNIX, errno, "curl_easy_escape");
+	if (percent_encode(xml_body(xkey), &bodyenc) < 0)
 	    goto done;
-	}
 	if (i++)
 	    cprintf(ckey, ",");
 	else
 	    cprintf(ckey, "=");
 	cprintf(ckey, "%s", bodyenc);
-	curl_free(bodyenc); bodyenc = NULL;
+	free(bodyenc); 
+	bodyenc = NULL;
     }
     retval = 0;
  done:
@@ -362,17 +361,15 @@ get(char      *dbname,
 	     * If xml element is a leaf-list, then the next element is expected to
 	     * be a value
 	     */
-	    if ((argdec = curl_easy_unescape(NULL, restval, 0, NULL)) == NULL){
-		clicon_err(OE_UNIX, errno, "curl_easy_escape");
+	    if (percent_decode(restval, &argdec) < 0)
 		goto done;
-	    }
 	    if ((xc = xml_find(x, name))==NULL ||
 		(xb = xml_find(xc, argdec))==NULL){
 		if ((xc = xml_new_spec(name, x, y)) == NULL)
 		    goto done;
 		/* Assume body is created at end of function */
 	    }
-	    curl_free(argdec);
+	    free(argdec);
 	    argdec = NULL;
 	    break;
 	case Y_LIST:
@@ -409,12 +406,10 @@ get(char      *dbname,
 		if (j>=nvalvec)
 		    break;
 		arg = valvec[j++];
-		if ((argdec = curl_easy_unescape(NULL, arg, 0, NULL)) == NULL){
-		    clicon_err(OE_UNIX, errno, "curl_easy_escape");
+		if (percent_decode(arg, &argdec) < 0)
 		    goto done;
-		}
 		cprintf(cb, "[%s=%s]", cv_string_get(cvi), argdec);
-		curl_free(argdec);
+		free(argdec);
 		argdec=NULL;
 	    }
 	    if ((xc = xpath_first(x, cbuf_get(cb))) == NULL){
@@ -429,16 +424,15 @@ get(char      *dbname,
 			break;
 		    arg = valvec[j++];
 		    keyname = cv_string_get(cvi);
-		    if ((argdec = curl_easy_unescape(NULL, arg, 0, NULL)) == NULL){
-			clicon_err(OE_UNIX, errno, "curl_easy_escape");
+		    if (percent_decode(arg, &argdec) < 0)
 			goto done;
-		    }
 		    if (create_keyvalues(xc,
 					 ykey,
 					 argdec, 
 					 keyname) < 0)
 			goto done;
-		    curl_free(argdec); argdec = NULL;
+		    free(argdec); 
+		    argdec = NULL;
 		} /* while */
 	    }
 	    if (cb){
@@ -768,10 +762,8 @@ put(char               *dbname,
 	    goto done;
 	break;
     case Y_LEAF_LIST:
-	if ((bodyenc = curl_easy_escape(NULL, body, 0)) == NULL){
-	    clicon_err(OE_UNIX, errno, "curl_easy_escape");
+	if (percent_encode(body, &bodyenc) < 0)
 	    goto done;
-	}
 	cprintf(cbxk, "=%s", bodyenc);
 	break;
     default:
@@ -821,7 +813,7 @@ put(char               *dbname,
     if (cbxk)
 	cbuf_free(cbxk);
     if (bodyenc)
-	curl_free(bodyenc);
+	free(bodyenc);
     return retval;
 }
 

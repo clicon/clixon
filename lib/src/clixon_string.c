@@ -137,6 +137,102 @@ clicon_strjoin(int         argc,
     return str;
 }
 
+static int
+unreserved(unsigned char in)
+{
+    switch(in) {
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+    case 'a': case 'b': case 'c': case 'd': case 'e':
+    case 'f': case 'g': case 'h': case 'i': case 'j':
+    case 'k': case 'l': case 'm': case 'n': case 'o':
+    case 'p': case 'q': case 'r': case 's': case 't':
+    case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
+    case 'A': case 'B': case 'C': case 'D': case 'E':
+    case 'F': case 'G': case 'H': case 'I': case 'J':
+    case 'K': case 'L': case 'M': case 'N': case 'O':
+    case 'P': case 'Q': case 'R': case 'S': case 'T':
+    case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
+    case '-': case '.': case '_': case '~':
+	return 1;
+    default:
+	break;
+    }
+    return 0;
+}
+
+/*! Percent encoding according to RFC 3896 
+ * @param[out]  esc   Deallocate with free()
+ */
+int
+percent_encode(char  *str, 
+	       char **escp)
+{
+    int   retval = -1;
+    char *esc = NULL;
+    int   i, j;
+    
+    /* This is max */
+    if ((esc = malloc(strlen(str)*3+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc"); 
+	goto done;
+    }
+    j = 0;
+    for (i=0; i<strlen(str); i++){
+	if (unreserved(str[i]))
+	    esc[j++] = str[i];
+	else{
+	    snprintf(&esc[j], 4, "%%%02X", str[i]&0xff);
+	    j += 3;
+	}
+    }
+    *escp = esc;
+    retval = 0;
+ done:
+    if (retval < 0 && esc)
+	free(esc);
+    return retval;
+}
+
+/*! Percent decoding according to RFC 3896 
+ * @param[out]  str   Deallocate with free()
+ */
+int
+percent_decode(char  *esc, 
+	       char **strp)
+{
+    int   retval = -1;
+    char *str = NULL;
+    int   i, j;
+    char  hstr[3];
+    char *ptr;
+    
+    /* This is max */
+    if ((str = malloc(strlen(esc)+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc"); 
+	goto done;
+    }
+    j = 0;
+    for (i=0; i<strlen(esc); i++){
+	if (esc[i] == '%' && strlen(esc)-i > 2 && 
+	    isxdigit(esc[i+1]) && isxdigit(esc[i+2])){
+	    hstr[0] = esc[i+1];
+	    hstr[1] = esc[i+2];
+	    hstr[2] = 0;
+	    str[j] = strtoul(hstr, &ptr, 16);
+	    i += 2;
+	}
+	else
+	    str[j] = esc[i];
+	j++;
+    }
+    *strp = str;
+    retval = 0;
+ done:
+    if (retval < 0 && str)
+	free(str);
+    return retval;
+}
 
 /*! strndup() for systems without it, such as xBSD
  */

@@ -29,8 +29,10 @@
 #
 # ***** END LICENSE BLOCK *****
 
-- Moved qdbm, chunk and  xmldb to datastore keyvalue directories
-  Created xmldb plugin api
+- Removed curl dependency
+
+- Created xmldb plugin api
+  Moved qdbm, chunk and  xmldb to datastore keyvalue directories
   Removed all other clixon dependency on chunk code
 	
 - cli_copy_config added as generic cli command

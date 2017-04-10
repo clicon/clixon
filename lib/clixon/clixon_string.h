@@ -59,5 +59,7 @@ char *clicon_strjoin (int argc, char **argv, char *delim);
 #ifndef HAVE_STRNDUP
 char *clicon_strndup (const char *, size_t);
 #endif /* ! HAVE_STRNDUP */
+int percent_encode(char *str, char **escp);
+int percent_decode(char *esc, char **str);
 
 #endif  /* _CLIXON_STRING_H_ */
