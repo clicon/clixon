@@ -78,9 +78,8 @@
 #include <cligen/cligen.h>
 
 /* clicon */
-#include "clixon_log.h"
-#include "clixon_err.h"
-#include "clixon_queue.h"
+#include <clixon/clixon.h>
+
 #include "clixon_chunk.h"
 #include "clixon_qdb.h" 
 

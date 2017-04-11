@@ -51,7 +51,7 @@ LIBS    	= @LIBS@
 DATASTORE       = keyvalue
 CPPFLAGS  	= @CPPFLAGS@
 
-INCLUDES = -I. @INCLUDES@ -I$(top_srcdir)/lib/clixon -I$(top_srcdir)/include -I$(top_srcdir)
+INCLUDES = -I. -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
 PLUGIN       = $(DATASTORE).so
 
@@ -62,9 +62,6 @@ OBJS    = $(SRC:.c=.o)
 all:	 $(PLUGIN)
 
 -include $(DESTDIR)$(datarootdir)/clixon/clixon.mk
-
-#grideye_sysinfo.so.1: grideye_sysinfo.c
-#	$(CC) $(CFLAGS) -shared -o $@ -lc $^ -lm
 
 $(PLUGIN): $(SRC)
 	$(CC) $(CPPFLAGS) $(INCLUDES) $(CFLAGS) -shared -o $@ -lc $^ $(LIBS)

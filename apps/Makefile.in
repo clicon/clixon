@@ -37,10 +37,17 @@ CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
+with_restconf	= @with_restconf@
 
 SHELL	= /bin/sh
 
-SUBDIRS = cli backend dbctrl netconf restconf
+SUBDIRS  = backend
+SUBDIRS += cli
+SUBDIRS += dbctrl
+SUBDIRS += netconf
+ifeq ($(with_restconf),yes)
+SUBDIRS += restconf
+endif
 
 .PHONY: all clean depend install $(SUBDIRS)
 

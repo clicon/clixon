@@ -141,8 +141,8 @@ usage(char *argv0, clicon_handle h)
 	    "    -p \t\tPrint database yang specification\n"
 	    "    -t \t\tPrint alternate spec translation (eg if YANG print KEY, if KEY print YANG)\n"
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
-	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
-	    "\t-x <plugin>\tXMLDB plugin\n",
+	    "    -y <file>\tOverride yang spec file (dont include .yang suffix)\n"
+	    "    -x <plugin>\tXMLDB plugin\n",
 	    argv0,
 	    plgdir ? plgdir : "none",
 	    confsock ? confsock : "none",

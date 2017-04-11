@@ -29,7 +29,12 @@
 #
 # ***** END LICENSE BLOCK *****
 
-- Removed curl dependency
+- Added datastore 'text'
+
+- Configure (autoconf) changes
+  Removed libcurl dependency
+  Disable restconf (and fastcgi) with configure --disable-restconf
+  Disable keyvalue datastore (and qdbm) with configure --disable-keyvalue
 
 - Created xmldb plugin api
   Moved qdbm, chunk and  xmldb to datastore keyvalue directories

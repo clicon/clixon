@@ -1552,7 +1552,7 @@ kv_init(clicon_handle h,
 
 /*! plugin init function */
 int
-keyvalue_plugin_exit(void)
+kv_plugin_exit(void)
 {
     return 0;
 }
@@ -1577,7 +1577,7 @@ static const struct xmldb_api api = {
     1,
     XMLDB_API_MAGIC,
     clixon_xmldb_plugin_init,
-    keyvalue_plugin_exit,
+    kv_plugin_exit,
     kv_get,
     kv_put,
     kv_dump,
