@@ -269,44 +269,6 @@ static int nplugins = 0;
 static plghndl_t *plugins = NULL;
 static credentials_t *p_credentials = NULL; /* Credentials callback */
 
-/*! Load a dynamic plugin object and call it's init-function
- * Note 'file' may be destructively modified
- */
-static plghndl_t 
-plugin_load (clicon_handle h, 
-	     char         *file, 
-	     int           dlflags)
-{
-    char      *error;
-    void      *handle = NULL;
-    plginit_t *initfn;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    dlerror();    /* Clear any existing error */
-    if ((handle = dlopen (file, dlflags)) == NULL) {
-        error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
-	goto done;
-    }
-    /* call plugin_init() if defined */
-    if ((initfn = dlsym(handle, PLUGIN_INIT)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "Failed to find plugin_init when loading restconf plugin %s", file);
-	goto err;
-    }
-    if (initfn(h) != 0) {
-	clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
-	goto err;
-    }
-    p_credentials    = dlsym(handle, "restconf_credentials");
- done:
-    return handle;
- err:
-    if (handle)
-	dlclose(handle);
-    return NULL;
-}
-
-
 /*! Load all plugins you can find in CLICON_RESTCONF_DIR
  */
 int 
@@ -335,6 +297,7 @@ restconf_plugin_load(clicon_handle h)
 		     (int)strlen(filename), filename);
 	if ((handle = plugin_load(h, filename, RTLD_NOW)) == NULL)
 	    goto quit;
+	p_credentials    = dlsym(handle, "restconf_credentials");
 	if ((plugins = realloc(plugins, (nplugins+1) * sizeof (*plugins))) == NULL) {
 	    clicon_err(OE_UNIX, errno, "realloc");
 	    goto quit;
@@ -348,28 +311,6 @@ quit:
     return retval;
 }
 
-/*! Unload a plugin
- */
-static int
-plugin_unload(clicon_handle h, void *handle)
-{
-    int retval = 0;
-    char *error;
-    plgexit_t *exitfn;
-
-    /* Call exit function is it exists */
-    exitfn = dlsym(handle, PLUGIN_EXIT);
-    if (dlerror() == NULL)
-	exitfn(h);
-
-    dlerror();    /* Clear any existing error */
-    if (dlclose(handle) != 0) {
-	error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
-	/* Just report */
-    }
-    return retval;
-}
 
 /*! Unload all restconf plugins */
 int

@@ -51,6 +51,7 @@
 #include <sys/param.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <grp.h>
  
 /* cligen */
 #include <cligen/cligen.h>
@@ -229,3 +230,34 @@ clicon_file_copy(char *src,
 }
 
 
+/*! Translate group name to gid. Return -1 if error or not found.
+ * @param[in]   name  Name of group
+ * @param[out]  gid   Group id
+ * @retval  0   OK
+ * @retval -1   Error. or not found
+ */
+int
+group_name2gid(char *name, 
+	       gid_t *gid)
+{
+    char          buf[1024]; 
+    struct group  g0;
+    struct group *gr = &g0;
+    struct group *gtmp;
+    
+    gr = &g0; 
+    /* This leaks memory in ubuntu */
+    if (getgrnam_r(name, gr, buf, sizeof(buf), &gtmp) < 0){
+	clicon_err(OE_UNIX, errno, "%s: getgrnam_r(%s): %s", 
+		   __FUNCTION__, name, strerror(errno));
+	return -1;
+    }
+    if (gtmp == NULL){
+	clicon_err(OE_UNIX, 0, "%s: No such group: %s", __FUNCTION__, name);
+	fprintf(stderr, "No such group %s\n", name);
+	return -1;
+    }
+    if (gid)
+	*gid = gr->gr_gid;
+    return 0;
+}

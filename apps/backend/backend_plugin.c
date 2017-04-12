@@ -152,8 +152,8 @@ config_plugin_init(clicon_handle h)
  * @retval    -1       Error
  */
 static int
-plugin_unload(clicon_handle  h, 
-	      struct plugin *plg)
+backend_plugin_unload(clicon_handle  h, 
+		      struct plugin *plg)
 {
     char *error;
 
@@ -182,37 +182,16 @@ plugin_unload(clicon_handle  h,
  * @retval     NULL    Error
  */
 static struct plugin *
-plugin_load (clicon_handle h, 
-	     char         *file, 
-	     int           dlflags)
+backend_plugin_load (clicon_handle h, 
+		     char         *file, 
+		     int           dlflags)
 {
-    char          *error;
     void          *handle;
     char          *name;
-    struct plugin *new;
-    plginit_t     *initfun;
+    struct plugin *new = NULL;
 
-    dlerror();    /* Clear any existing error */
-    if ((handle = dlopen (file, dlflags)) == NULL) {
-        error = (char*)dlerror();
-	clicon_err(OE_UNIX, 0, "dlopen: %s", error?error:"Unknown error");
-        return NULL;
-    }
-    
-    initfun = dlsym(handle, PLUGIN_INIT);
-    if ((error = (char*)dlerror()) != NULL) {
-	clicon_err(OE_UNIX, 0, "dlsym: %s: %s", file, error);
-        return NULL;
-    }
-
-    if (initfun(h) != 0) {
-	dlclose(handle);
-	if (!clicon_errno) 	/* sanity: log if clicon_err() is not called ! */
-	    clicon_err(OE_DB, 0, "Unknown error: %s: plugin_init does not make clicon_err call on error",
-		       file);
-        return NULL;
-    }
-
+    if ((handle = plugin_load(h, file, dlflags)) == NULL)
+	goto done;
     if ((new = malloc(sizeof(*new))) == NULL) {
 	clicon_err(OE_UNIX, errno, "dhunk: %s", strerror(errno));
 	dlclose(handle);
@@ -224,7 +203,6 @@ plugin_load (clicon_handle h,
     snprintf(new->p_name, sizeof(new->p_name), "%*s",
 	     (int)strlen(name)-2, name);
     new->p_handle   = handle;
-    new->p_init    = initfun;
     if ((new->p_start    = dlsym(handle, PLUGIN_START)) != NULL)
 	clicon_debug(2, "%s callback registered.", PLUGIN_START);
     if ((new->p_exit     = dlsym(handle, PLUGIN_EXIT)) != NULL)
@@ -244,7 +222,7 @@ plugin_load (clicon_handle h,
     if ((new->p_trans_abort    = dlsym(handle, PLUGIN_TRANS_ABORT)) != NULL)
 	clicon_debug(2, "%s callback registered.", PLUGIN_TRANS_ABORT);
     clicon_debug(2, "Plugin '%s' loaded.\n", name);
-
+ done:
     return new;
 }
 
@@ -338,7 +316,7 @@ plugin_append(struct plugin *p)
  * @retval    -1       Error
  */
 static int
-config_plugin_load_dir(clicon_handle h, 
+backend_plugin_load_dir(clicon_handle h, 
 		       const char   *dir)
 {
     int            retval = -1;
@@ -374,7 +352,7 @@ config_plugin_load_dir(clicon_handle h,
 	clicon_debug(1, "Loading master plugin '%.*s' ...", 
 		     (int)strlen(filename), filename);
 
-	new = plugin_load(h, filename, RTLD_NOW|RTLD_GLOBAL);
+	new = backend_plugin_load(h, filename, RTLD_NOW|RTLD_GLOBAL);
 	if (new == NULL)
 	    goto quit;
 	if (plugin_append(new) < 0)
@@ -387,7 +365,7 @@ config_plugin_load_dir(clicon_handle h,
 	    continue; /* Skip master now */
 	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
 	clicon_debug(1, "Loading plugin '%.*s' ...",  (int)strlen(filename), filename);
-	new = plugin_load(h, filename, RTLD_NOW);
+	new = backend_plugin_load(h, filename, RTLD_NOW);
 	if (new == NULL) 
 	    goto quit;
 	/* Append to 'plugins' */
@@ -405,7 +383,7 @@ quit:
 	    while (--np >= 0){
 		if ((p = &plugins[np]) == NULL)
 		    continue;
-		plugin_unload(h, p);
+		backend_plugin_unload(h, p);
 		free(p);
 	    }
 	    free(plugins);
@@ -428,7 +406,7 @@ plugin_initiate(clicon_handle h)
     char *dir;
 
     /* First load CLICON system plugins */
-    if (config_plugin_load_dir(h, CLIXON_BACKEND_SYSDIR) < 0)
+    if (backend_plugin_load_dir(h, CLIXON_BACKEND_SYSDIR) < 0)
 	return -1;
 
     /* Then load application plugins */
@@ -436,7 +414,7 @@ plugin_initiate(clicon_handle h)
 	clicon_err(OE_PLUGIN, 0, "backend_dir not defined");
 	return -1;
     }
-    if (config_plugin_load_dir(h, dir) < 0)
+    if (backend_plugin_load_dir(h, dir) < 0)
 	return -1;
     
     return 0;
@@ -455,7 +433,7 @@ plugin_finish(clicon_handle h)
 
     for (i = 0; i < nplugins; i++) {
 	p = &plugins[i];
-	plugin_unload(h, p);
+	backend_plugin_unload(h, p);
     }
     if (plugins){
 	free(plugins);

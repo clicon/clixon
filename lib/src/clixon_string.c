@@ -170,13 +170,16 @@ percent_encode(char  *str,
 {
     int   retval = -1;
     char *esc = NULL;
+    int   len;
     int   i, j;
     
     /* This is max */
-    if ((esc = malloc(strlen(str)*3+1)) == NULL){
+    len = strlen(str)*3+1;
+    if ((esc = malloc(len)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc"); 
 	goto done;
     }
+    memset(esc, 0, len);
     j = 0;
     for (i=0; i<strlen(str); i++){
 	if (unreserved(str[i]))
@@ -205,13 +208,16 @@ percent_decode(char  *esc,
     char *str = NULL;
     int   i, j;
     char  hstr[3];
+    int   len;
     char *ptr;
     
     /* This is max */
-    if ((str = malloc(strlen(esc)+1)) == NULL){
+    len = strlen(esc)+1;
+    if ((str = malloc(len)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc"); 
 	goto done;
     }
+    memset(str, 0, len);
     j = 0;
     for (i=0; i<strlen(esc); i++){
 	if (esc[i] == '%' && strlen(esc)-i > 2 && 
@@ -226,6 +232,7 @@ percent_decode(char  *esc,
 	    str[j] = esc[i];
 	j++;
     }
+    str[j++] = '\0';
     *strp = str;
     retval = 0;
  done:

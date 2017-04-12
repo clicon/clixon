@@ -76,7 +76,6 @@
 #include <clixon/clixon_xml.h>
 #include <clixon/clixon_proto.h>
 #include <clixon/clixon_proto_client.h>
-#include <clixon/clixon_proc.h>
 #include <clixon/clixon_options.h>
 #include <clixon/clixon_xml_map.h>
 #include <clixon/clixon_xml_db.h>

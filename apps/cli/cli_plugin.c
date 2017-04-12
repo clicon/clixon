@@ -162,31 +162,6 @@ syntax_append(clicon_handle h,
     return 0;
 }
 
-/* 
- * Unload a plugin
- */
-static int
-plugin_unload(clicon_handle h, void *handle)
-{
-    int retval = 0;
-    char *error;
-    plgexit_t *exitfun;
-
-    /* Call exit function is it exists */
-    exitfun = dlsym(handle, PLUGIN_EXIT);
-    if (dlerror() == NULL)
-	exitfun(h);
-
-    dlerror();    /* Clear any existing error */
-    if (dlclose(handle) != 0) {
-	error = (char*)dlerror();
-	cli_output (stderr, "dlclose: %s\n", error ? error : "Unknown error");
-	/* Just report */
-    }
-
-    return retval;
-}
-
 /*
  * Unload all plugins in a group
  */
@@ -275,41 +250,22 @@ cli_plugin_load(clicon_handle h,
 		char         *file, 
 		int           dlflags)
 {
-    char              *error;
     char              *name;
-    void              *handle = NULL;
-    plginit_t         *initfun;
+    plghndl_t         handle = NULL;
     struct cli_plugin *cp = NULL;
 
-    dlerror();    /* Clear any existing error */
-    if ((handle = dlopen (file, dlflags)) == NULL) {
-        error = (char*)dlerror();
-	cli_output (stderr, "dlopen: %s\n", error ? error : "Unknown error");
+    if ((handle = plugin_load(h, file, dlflags)) == NULL)
 	goto quit;
-    }
-    /* call plugin_init() if defined */
-    if ((initfun = dlsym(handle, PLUGIN_INIT)) != NULL) {
-	if (initfun(h) != 0) { 
-	    cli_output (stderr, "Failed to initiate %s\n", strrchr(file,'/')?strchr(file, '/'):file);
-	    goto quit;
-	}
-    }
-    
     if ((cp = malloc(sizeof (struct cli_plugin))) == NULL) {
 	perror("malloc");
 	goto quit;
     }
     memset (cp, 0, sizeof(*cp));
-
     name = basename(file);
     snprintf(cp->cp_name, sizeof(cp->cp_name), "%.*s", (int)strlen(name)-3, name);
     cp->cp_handle = handle;
 
 quit:
-    if (cp == NULL) {
-	if (handle)
-	    dlclose(handle);
-    }
     return cp;
 }
 
