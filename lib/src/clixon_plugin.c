@@ -93,9 +93,9 @@ clicon_find_func(clicon_handle h, char *plugin, char *func)
  * @param[in]  dlflags See man(3) dlopen
  */
 plghndl_t 
-plugin_load (clicon_handle h, 
-	     char         *file, 
-	     int           dlflags)
+plugin_load(clicon_handle h, 
+	    char         *file, 
+	    int           dlflags)
 {
     char      *error;
     void      *handle = NULL;

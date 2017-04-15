@@ -424,7 +424,7 @@ db_regexp(char            *file,
 	/* Retrieve value if required */
 	if ( ! noval) {
 	    if((val = dpget(iterdp, key, -1, 0, -1, &vlen)) == NULL) {
-		clicon_log(OE_DB, "%s: dpget: %s", __FUNCTION__, dperrmsg(dpecode));
+		clicon_log(LOG_WARNING, "%s: dpget: %s", __FUNCTION__, dperrmsg(dpecode));
 		goto quit;
 	    }
 	}

@@ -71,10 +71,4 @@ clicon_hash_t *clicon_options(clicon_handle h);
 /* Return internal clicon data (hash-array) given a handle.*/
 clicon_hash_t *clicon_data(clicon_handle h);
 
-/* Set or reset XMLDB storage handle */
-int clicon_handle_xmldb_set(clicon_handle h, void *xh); /* ie xmldb_handle */
-
-/* Get XMLDB storage handle */
-void *clicon_handle_xmldb_get(clicon_handle h);
-
 #endif  /* _CLIXON_HANDLE_H_ */

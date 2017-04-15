@@ -132,7 +132,7 @@ config_find_plugin(clicon_handle h,
  * @retval    -1       Error
  */
 int
-config_plugin_init(clicon_handle h)
+backend_plugin_init(clicon_handle h)
 {
     find_plugin_t *fp   = config_find_plugin;
     clicon_hash_t *data = clicon_data(h);

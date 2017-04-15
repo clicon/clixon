@@ -63,6 +63,7 @@
 #include "clixon_handle.h"
 #include "clixon_log.h"
 #include "clixon_yang.h"
+#include "clixon_plugin.h"
 #include "clixon_options.h"
 
 /*
@@ -625,12 +626,12 @@ clicon_dbspec_yang(clicon_handle h)
     return NULL;
 }
 
-/* 
- * Set dbspec (YANG variant)
+/*! Set yang database specification
  * ys must be a malloced pointer
  */
 int
-clicon_dbspec_yang_set(clicon_handle h, struct yang_spec *ys)
+clicon_dbspec_yang_set(clicon_handle     h, 
+		       struct yang_spec *ys)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
@@ -642,8 +643,7 @@ clicon_dbspec_yang_set(clicon_handle h, struct yang_spec *ys)
     return 0;
 }
 
-/* 
- * Get dbspec name as read from spec. Can be used in CLI '@' syntax.
+/*! Get dbspec name as read from spec. Can be used in CLI '@' syntax.
  * XXX: this we muśt change,...
  */
 char *
@@ -654,11 +654,103 @@ clicon_dbspec_name(clicon_handle h)
     return clicon_option_str(h, "dbspec_name");
 }
 
-/* 
- * Set dbspec name as read from spec. Can be used in CLI '@' syntax.
+/*! Set dbspec name as read from spec. Can be used in CLI '@' syntax.
  */
 int
 clicon_dbspec_name_set(clicon_handle h, char *name)
 {
     return clicon_option_str_set(h, "dbspec_name", name);
+}
+
+/*! Set xmldb datastore plugin handle, as used by dlopen/dlsym/dlclose */
+int
+clicon_xmldb_plugin_set(clicon_handle h, 
+			plghndl_t     handle)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    if (hash_add(cdat, "xmldb_plugin", &handle, sizeof(void*)) == NULL)
+	return -1;
+    return 0;
+}
+
+/*! Get xmldb datastore plugin handle, as used by dlopen/dlsym/dlclose */
+plghndl_t
+clicon_xmldb_plugin_get(clicon_handle h)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    size_t          len;
+    void           *p;
+
+    if ((p = hash_value(cdat, "xmldb_plugin", &len)) != NULL)
+	return *(plghndl_t*)p;
+    return NULL;
+}
+
+/*! Set or reset XMLDB API struct pointer
+ * @param[in]  h   Clicon handle
+ * @param[in]  xa  XMLDB API struct
+ * @note xa is really of type struct xmldb_api*
+ */
+int
+clicon_xmldb_api_set(clicon_handle     h, 
+		     void             *xa)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    /* It is the pointer to xa_api that should be copied by hash,
+       so we send a ptr to the ptr to indicate what to copy.
+     */
+    if (hash_add(cdat, "xmldb_api", &xa, sizeof(void*)) == NULL)
+	return -1;
+    return 0;
+}
+
+/*! Get XMLDB API struct pointer
+ * @param[in]  h   Clicon handle
+ * @retval     xa  XMLDB API struct
+ * @note xa is really of type struct xmldb_api*
+ */
+void *
+clicon_xmldb_api_get(clicon_handle h)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    size_t          len;
+    void           *xa;
+
+    if ((xa = hash_value(cdat, "xmldb_api", &len)) != NULL)
+	return *(void**)xa;
+    return NULL;
+}
+
+/*! Set or reset XMLDB storage handle
+ * @param[in]  h   Clicon handle
+ * @param[in]  xh  XMLDB storage handle. If NULL reset it
+ * @note Just keep note of it, dont allocate it or so.
+ */
+int
+clicon_xmldb_handle_set(clicon_handle h, 
+			void         *xh)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    if (hash_add(cdat, "xmldb_handle", &xh, sizeof(void*)) == NULL)
+	return -1;
+    return 0;
+}
+
+/*! Get XMLDB storage handle
+ * @param[in]  h   Clicon handle
+ * @retval     xh  XMLDB storage handle. If not connected return NULL
+ */
+void *
+clicon_xmldb_handle_get(clicon_handle h)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    size_t          len;
+    void           *xh;
+
+    if ((xh = hash_value(cdat, "xmldb_handle", &len)) != NULL)
+	return *(void**)xh;
+    return NULL;
 }

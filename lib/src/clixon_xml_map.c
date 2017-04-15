@@ -79,6 +79,7 @@
 #include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_yang_type.h"
+#include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_xml.h"
 #include "clixon_xsl.h"

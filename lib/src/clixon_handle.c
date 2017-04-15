@@ -52,6 +52,7 @@
 #include "clixon_handle.h"
 #include "clixon_err.h"
 #include "clixon_yang.h"
+#include "clixon_plugin.h"
 #include "clixon_options.h"
 
 #define CLICON_MAGIC 0x99aafabe
@@ -66,7 +67,6 @@ struct clicon_handle {
     int                      ch_magic;    /* magic (HDR) */
     clicon_hash_t           *ch_copt;     /* clicon option list (HDR) */
     clicon_hash_t           *ch_data;     /* internal clicon data (HDR) */
-    void                    *ch_xmldb;    /* XMLDB storage handle, uie xmldb_handle */
 };
 
 /*! Internal call to allocate a CLICON handle. 
@@ -166,30 +166,3 @@ clicon_data(clicon_handle h)
     return ch->ch_data;
 }
 
-/*! Set or reset XMLDB storage handle
- * @param[in]  h   Clicon handle
- * @param[in]  xh  XMLDB storage handle. If NULL reset it
- * @note Just keep note of it, dont allocate it or so.
- */
-int
-clicon_handle_xmldb_set(clicon_handle h,
-			void         *xh)
-{
-    struct clicon_handle *ch = handle(h);
-    
-    ch->ch_xmldb = xh;
-    return 0;
-}
-
-/*! Get XMLDB storage handle
- * @param[in]  h   Clicon handle
- * @retval     xh  XMLDB storage handle. If not connected return NULL
- */
-void *
-clicon_handle_xmldb_get(clicon_handle h)
-
-{
-    struct clicon_handle *ch = handle(h);
-    
-    return ch->ch_xmldb;
-}

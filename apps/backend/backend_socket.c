@@ -174,7 +174,7 @@ config_socket_init_unix(clicon_handle h, char *sock)
 }
 
 int
-config_socket_init(clicon_handle h)
+backend_socket_init(clicon_handle h)
 {
     char *sock;
 
@@ -197,7 +197,7 @@ config_socket_init(clicon_handle h)
  * XXX: credentials not properly implemented
  */
 int
-config_accept_client(int   fd,
+backend_accept_client(int   fd,
 		     void *arg)
 {
     int           retval = -1;

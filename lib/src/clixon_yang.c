@@ -66,6 +66,7 @@
 #include "clixon_file.h"
 #include "clixon_yang.h"
 #include "clixon_hash.h"
+#include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_yang_type.h"
 #include "clixon_yang_parse.h"

@@ -31,6 +31,14 @@
 
   ***** END LICENSE BLOCK *****
 
+  * Examples: 
+
+./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip get /
+
+sudo ./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip put merge /interfaces/interface=eth0
+<config>eth66</config>
+
+  * 
  */
 
 #ifdef HAVE_CONFIG_H
@@ -221,8 +229,8 @@ main(int argc, char **argv)
 	    goto done;
 	if (xmldb_put(h, db, op, argv[2], xn) < 0)
 	    goto done;
-	if (xt)
-	    xml_free(xt);
+	if (xn)
+	    xml_free(xn);
     }
     else if (strcmp(cmd, "copy")==0){
 	if (argc < 3)

@@ -59,17 +59,15 @@
 #include "clixon_handle.h"
 #include "clixon_xml.h"
 #include "clixon_yang.h"
+#include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_xml_db.h"
 
-static struct xmldb_api *_xa_api = NULL;
-
-/*! Load a specific plugin, call its init function and add it to plugins list
+/*! Load an xmldb storage plugin according to filename
  * If init function fails (not found, wrong version, etc) print a log and dont
  * add it.
- * @param[in]  name      Filename (complete path) of plugin
+ * @param[in]  h         CLicon handle
  * @param[in]  filename  Actual filename with path
- * @param[out] plugin    Plugin data structure for invoking. Dealloc with free
  */
 int 
 xmldb_plugin_load(clicon_handle h,
@@ -78,8 +76,9 @@ xmldb_plugin_load(clicon_handle h,
     int                      retval = -1;
     char                    *dlerrcode;
     plugin_init_t           *initfun;
-    void                    *handle = NULL;
+    plghndl_t                handle = NULL;
     char                    *error;
+    struct xmldb_api        *xa = NULL;
 
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen(filename, RTLD_NOW|RTLD_GLOBAL)) == NULL) {
@@ -94,21 +93,27 @@ xmldb_plugin_load(clicon_handle h,
 		   XMLDB_PLUGIN_INIT_FN, dlerrcode); 
 	goto fail;
     }
-    if ((_xa_api = initfun(XMLDB_API_VERSION)) == NULL) {
+    if ((xa = initfun(XMLDB_API_VERSION)) == NULL) {
 	clicon_log(LOG_WARNING, "%s: failed when running init function %s: %s", 
 		   filename, XMLDB_PLUGIN_INIT_FN, errno?strerror(errno):"");
 	goto fail;
     }
-    if (_xa_api->xa_version != XMLDB_API_VERSION){
+    if (xa->xa_version != XMLDB_API_VERSION){
 	clicon_log(LOG_WARNING, "%s: Unexpected plugin version number: %d", 
-		   filename, _xa_api->xa_version);
+		   filename, xa->xa_version);
 	goto fail;
     }
-    if (_xa_api->xa_magic != XMLDB_API_MAGIC){
+    if (xa->xa_magic != XMLDB_API_MAGIC){
 	clicon_log(LOG_WARNING, "%s: Wrong plugin magic number: %x", 
-		   filename, _xa_api->xa_magic);
+		   filename, xa->xa_magic);
 	goto fail;
     }
+    /* Add plugin */
+    if (clicon_xmldb_plugin_set(h, handle) < 0)
+	goto done;
+    /* Add API */
+    if (clicon_xmldb_api_set(h, xa) < 0)
+	goto done;
     clicon_log(LOG_WARNING, "xmldb plugin %s loaded", filename);
     retval = 0;
  done:
@@ -120,11 +125,41 @@ xmldb_plugin_load(clicon_handle h,
     goto done;
 }
 
-/*! XXX: fixme */
+/*! Unload the xmldb storage plugin */
 int
 xmldb_plugin_unload(clicon_handle h)
 {
-    return 0;
+    int               retval = -1;
+    plghndl_t         handle;
+    struct xmldb_api *xa;
+    xmldb_handle      xh;
+    char             *error;
+
+    if ((handle = clicon_xmldb_plugin_get(h)) == NULL){
+	clicon_err(OE_PLUGIN, errno, "No plugin handle");
+	goto done;
+    }
+    /* If connected storage handle then disconnect */
+    if ((xh = clicon_xmldb_handle_get(h)) != NULL)
+	xmldb_disconnect(h); /* sets xmldb handle to NULL */
+    /* Deregister api */
+    if ((xa = clicon_xmldb_api_get(h)) != NULL){
+	/* Call plugin_exit */
+	if (xa->xa_plugin_exit_fn != NULL)
+	    xa->xa_plugin_exit_fn();
+	/* Deregister API (it is allocated in plugin) */
+	clicon_xmldb_api_set(h, NULL);
+    }
+    /* Unload plugin */
+    dlerror();    /* Clear any existing error */
+    if (dlclose(handle) != 0) {
+	error = (char*)dlerror();
+	clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
+	/* Just report no -1 return*/
+    }    
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Connect to a datastore plugin
@@ -139,21 +174,21 @@ xmldb_plugin_unload(clicon_handle h)
 int
 xmldb_connect(clicon_handle h)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_connect_fn == NULL){
+    if (xa->xa_connect_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = _xa_api->xa_connect_fn()) == NULL)
+    if ((xh = xa->xa_connect_fn()) == NULL)
 	goto done;
-    clicon_handle_xmldb_set(h, xh);
-
+    clicon_xmldb_handle_set(h, xh);
     retval = 0;
  done:
     return retval;
@@ -168,22 +203,23 @@ xmldb_disconnect(clicon_handle h)
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_disconnect_fn == NULL){
+    if (xa->xa_disconnect_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Already disconnected from datastore plugin");
 	goto done;
     }
-    if (_xa_api->xa_disconnect_fn(xh) < 0)
+    if (xa->xa_disconnect_fn(xh) < 0)
 	goto done;
-    clicon_handle_xmldb_set(h, NULL);
+    clicon_xmldb_handle_set(h, NULL);
     retval = 0;
  done:
     return retval;
@@ -203,20 +239,21 @@ xmldb_getopt(clicon_handle h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_getopt_fn == NULL){
+    if (xa->xa_getopt_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = _xa_api->xa_getopt_fn(xh, optname, value);
+    retval = xa->xa_getopt_fn(xh, optname, value);
  done:
     return retval;
 }
@@ -235,20 +272,21 @@ xmldb_setopt(clicon_handle h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_setopt_fn == NULL){
+    if (xa->xa_setopt_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = _xa_api->xa_setopt_fn(xh, optname, value);
+    retval = xa->xa_setopt_fn(xh, optname, value);
  done:
     return retval;
 }
@@ -293,20 +331,22 @@ xmldb_get(clicon_handle h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_get_fn == NULL){
+    if (xa->xa_get_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = _xa_api->xa_get_fn(xh, db, xpath, xtop, xvec, xlen);
+    clicon_log(LOG_WARNING, "%s: db:%s xpath:%s", __FUNCTION__, db, xpath);
+    retval = xa->xa_get_fn(xh, db, xpath, xtop, xvec, xlen);
  done:
     return retval;
 }
@@ -341,20 +381,30 @@ xmldb_put(clicon_handle       h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_put_fn == NULL){
+    if (xa->xa_put_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = _xa_api->xa_put_fn(xh, db, op, api_path, xt);
+    {
+	cbuf *cb = cbuf_new();
+	if (clicon_xml2cbuf(cb, xt, 0, 0) < 0)
+	    goto done;
+
+	clicon_log(LOG_WARNING, "%s: db:%s op:%d api_path:%s xml:%s", __FUNCTION__, 
+	       db, op, api_path, cbuf_get(cb));
+	cbuf_free(cb);
+    }
+    retval = xa->xa_put_fn(xh, db, op, api_path, xt);
  done:
     return retval;
 }
@@ -373,20 +423,21 @@ xmldb_copy(clicon_handle h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_copy_fn == NULL){
+    if (xa->xa_copy_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = _xa_api->xa_copy_fn(xh, from, to);
+    retval = xa->xa_copy_fn(xh, from, to);
  done:
     return retval;
 }
@@ -405,20 +456,21 @@ xmldb_lock(clicon_handle h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_lock_fn == NULL){
+    if (xa->xa_lock_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = _xa_api->xa_lock_fn(xh, db, pid);
+    retval = xa->xa_lock_fn(xh, db, pid);
  done:
     return retval;
 }
@@ -438,20 +490,21 @@ xmldb_unlock(clicon_handle h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_unlock_fn == NULL){
+    if (xa->xa_unlock_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = _xa_api->xa_unlock_fn(xh, db, pid);
+    retval = xa->xa_unlock_fn(xh, db, pid);
  done:
     return retval;
 }
@@ -468,20 +521,21 @@ xmldb_unlock_all(clicon_handle h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_unlock_all_fn == NULL){
+    if (xa->xa_unlock_all_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval =_xa_api->xa_unlock_all_fn(xh, pid);
+    retval =xa->xa_unlock_all_fn(xh, pid);
  done:
     return retval;
 }
@@ -499,20 +553,21 @@ xmldb_islocked(clicon_handle h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_islocked_fn == NULL){
+    if (xa->xa_islocked_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval =_xa_api->xa_islocked_fn(xh, db);
+    retval =xa->xa_islocked_fn(xh, db);
  done:
     return retval;
 }
@@ -530,20 +585,21 @@ xmldb_exists(clicon_handle h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_exists_fn == NULL){
+    if (xa->xa_exists_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = _xa_api->xa_exists_fn(xh, db);
+    retval = xa->xa_exists_fn(xh, db);
  done:
     return retval;
 }
@@ -560,20 +616,21 @@ xmldb_delete(clicon_handle h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_delete_fn == NULL){
+    if (xa->xa_delete_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = _xa_api->xa_delete_fn(xh, db);
+    retval = xa->xa_delete_fn(xh, db);
  done:
     return retval;
 }
@@ -590,20 +647,21 @@ xmldb_init(clicon_handle h,
 {
     int          retval = -1;
     xmldb_handle xh;
+    struct xmldb_api *xa;
 
-    if (_xa_api == NULL){
+    if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (_xa_api->xa_init_fn == NULL){
+    if (xa->xa_init_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
-    if ((xh = clicon_handle_xmldb_get(h)) == NULL){
+    if ((xh = clicon_xmldb_handle_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = _xa_api->xa_init_fn(xh, db);
+    retval = xa->xa_init_fn(xh, db);
  done:
     return retval;
 }

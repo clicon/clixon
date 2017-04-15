@@ -77,7 +77,7 @@
 
 /*! Terminate. Cannot use h after this */
 static int
-config_terminate(clicon_handle h)
+backend_terminate(clicon_handle h)
 {
     yang_spec      *yspec;
     char           *pidfile = clicon_backend_pidfile(h);
@@ -91,6 +91,7 @@ config_terminate(clicon_handle h)
 	unlink(pidfile);   
     if (sockpath)
 	unlink(sockpath);   
+    xmldb_plugin_unload(h); /* unload storage plugin */
     backend_handle_exit(h); /* Cannot use h after this */
     event_exit();
     clicon_log_register_callback(NULL, NULL);
@@ -101,7 +102,7 @@ config_terminate(clicon_handle h)
 /*! Unlink pidfile and quit
  */
 static void
-config_sig_term(int arg)
+backend_sig_term(int arg)
 {
     static int i=0;
 
@@ -238,11 +239,11 @@ server_socket(clicon_handle h)
     int ss;
 
     /* Open control socket */
-    if ((ss = config_socket_init(h)) < 0)
+    if ((ss = backend_socket_init(h)) < 0)
 	return -1;
     /* ss is a server socket that the clients connect to. The callback
        therefore accepts clients on ss */
-    if (event_reg_fd(ss, config_accept_client, h, "server socket") < 0) {
+    if (event_reg_fd(ss, backend_accept_client, h, "server socket") < 0) {
 	close(ss);
 	return -1;
     }
@@ -254,9 +255,9 @@ server_socket(clicon_handle h)
  * log event.
  */
 static int
-config_log_cb(int   level, 
-	      char *msg, 
-	      void *arg)
+backend_log_cb(int   level, 
+	       char *msg, 
+	       void *arg)
 {
     int    retval = -1;
     size_t n;
@@ -320,7 +321,7 @@ main(int argc, char **argv)
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
 	return -1;
-    if (config_plugin_init(h) != 0) 
+    if (backend_plugin_init(h) != 0) 
 	return -1;
     foreground = 0;
     once = 0;
@@ -623,14 +624,14 @@ main(int argc, char **argv)
 	goto done;
 
     /* Register log notifications */
-    if (clicon_log_register_callback(config_log_cb, h) < 0)
+    if (clicon_log_register_callback(backend_log_cb, h) < 0)
 	goto done;
     clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
-    if (set_signal(SIGTERM, config_sig_term, NULL) < 0){
+    if (set_signal(SIGTERM, backend_sig_term, NULL) < 0){
 	clicon_err(OE_DEMON, errno, "Setting signal");
 	goto done;
     }
-    if (set_signal(SIGINT, config_sig_term, NULL) < 0){
+    if (set_signal(SIGINT, backend_sig_term, NULL) < 0){
 	clicon_err(OE_DEMON, errno, "Setting signal");
 	goto done;
     }
@@ -646,7 +647,7 @@ main(int argc, char **argv)
 	goto done;
   done:
     clicon_log(LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
-    config_terminate(h); /* Cannot use h after this */
+    backend_terminate(h); /* Cannot use h after this */
 
     return 0;
 }
