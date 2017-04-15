@@ -1008,6 +1008,7 @@ FSM(char *tag,
  * Note, xt will add a top-level symbol called "top" meaning that <tree../> will look as:
  *  <top><tree.../></tree>
  * XXX: There is a potential leak here on some return values.
+ * XXX: What happens if endtag is different?
  * May block
  */
 int 
@@ -1023,15 +1024,16 @@ clicon_xml_parse_file(int     fd,
     int   maxbuf = BUFLEN;
     int   endtaglen = strlen(endtag);
     int   state = 0;
+    int   oldmaxbuf;
 
     if (endtag == NULL){
 	clicon_err(OE_XML, 0, "%s: endtag required\n", __FUNCTION__);
-	return -1;
+	goto done;
     }
     *cx = NULL;
     if ((xmlbuf = malloc(maxbuf)) == NULL){
 	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
-	return -1;
+	goto done;
     }
     memset(xmlbuf, 0, maxbuf);
     ptr = xmlbuf;
@@ -1050,24 +1052,33 @@ clicon_xml_parse_file(int     fd,
 	    state = 0;
 	    if ((*cx = xml_new("top", NULL)) == NULL)
 		break;
-	    if (xml_parse(ptr, *cx) < 0)
+	    if (xml_parse(ptr, *cx) < 0){
+		goto done;
 		return -1;
+	    }
 	    break;
 	}
 	if (len>=maxbuf-1){ /* Space: one for the null character */
-	    int oldmaxbuf = maxbuf;
-
+	    oldmaxbuf = maxbuf;
 	    maxbuf *= 2;
 	    if ((xmlbuf = realloc(xmlbuf, maxbuf)) == NULL){
 		clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
-		return -1;
+		goto done;
 	    }
 	    memset(xmlbuf+oldmaxbuf, 0, maxbuf-oldmaxbuf);
 	    ptr = xmlbuf;
 	}
     } /* while */
-    free(xmlbuf);
-    return (*cx)?0:-1;
+    retval = 0;
+ done:
+    if (retval < 0 && *cx){
+	free(*cx);
+	*cx = NULL;
+    }
+    if (xmlbuf)
+	free(xmlbuf);
+    return retval;
+    //    return (*cx)?0:-1;
 }
 
 /*! Read an XML definition from string and parse it into a parse-tree. 
@@ -1461,8 +1472,12 @@ xml_body_uint32(cxobj    *xb,
 }
 
 /*! Map xml operation from string to enumeration
- * @param[in]   xn  XML node
- * @param[out]  op  "operation" attribute may change operation
+ * @param[in]   opstr  String, eg "merge"
+ * @param[out]  op     Enumeration, eg OP_MERGE
+ * @code
+ *   enum operation_type op;
+ *   xml_operation("replace", &op)
+ * @endcode
  */
 int
 xml_operation(char                *opstr, 
@@ -1487,6 +1502,14 @@ xml_operation(char                *opstr,
     return 0;
 }
 
+/*! Map xml operation from enumeration to string
+ * @param[in]   op   enumeration operation, eg OP_MERGE,...
+ * @retval      str  String, eg "merge". Static string, no free necessary
+ * @code
+ *   enum operation_type op;
+ *   xml_operation("replace", &op)
+ * @endcode
+ */
 char *
 xml_operation2str(enum operation_type op)
 {
@@ -1510,3 +1533,4 @@ xml_operation2str(enum operation_type op)
 	return "none";
     }
 }
+

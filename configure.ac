@@ -183,7 +183,6 @@ AC_OUTPUT(Makefile
 	  apps/backend/Makefile 
 	  apps/netconf/Makefile
 	  apps/restconf/Makefile
-	  apps/dbctrl/Makefile
 	  include/Makefile
 	  etc/Makefile
 	  etc/clixonrc

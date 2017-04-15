@@ -254,19 +254,20 @@ server_socket(clicon_handle h)
  * log event.
  */
 static int
-config_log_cb(int level, char *msg, void *arg)
+config_log_cb(int   level, 
+	      char *msg, 
+	      void *arg)
 {
+    int    retval = -1;
     size_t n;
-    char *ptr;
-    char *nptr;
-    char *newmsg = NULL;
-    int retval = -1;
+    char  *ptr;
+    char  *nptr;
+    char  *newmsg = NULL;
 
-    /* backend_notify() will go through all clients and see if any has registered "CLICON",
-       and if so make a clicon_proto notify message to those clients.   */
-    
-
-    /* Sanitize '%' into "%%" to prevent segvfaults in vsnprintf later.
+    /* backend_notify() will go through all clients and see if any has 
+       registered "CLICON", and if so make a clicon_proto notify message to
+       those clients. 
+       Sanitize '%' into "%%" to prevent segvfaults in vsnprintf later.
        At this stage all formatting is already done */
     n = 0;
     for(ptr=msg; *ptr; ptr++)
@@ -281,7 +282,6 @@ config_log_cb(int level, char *msg, void *arg)
 	if (*ptr == '%')
 	    *nptr++ = '%';
     }
-    
     retval = backend_notify(arg, "CLICON", level, newmsg);
     free(newmsg);
 
@@ -509,11 +509,19 @@ main(int argc, char **argv)
 	clicon_log(LOG_ERR, "No xmldb plugin given (specify option CLICON_XMLDB_PLUGIN).\n"); 
 	goto done;
     }
-    if (xmldb_plugin_load(xmldb_plugin) < 0)
+    if (xmldb_plugin_load(h, xmldb_plugin) < 0)
 	goto done;
-
+    /* Connect to plugin to get a handle */
+    if (xmldb_connect(h) < 0)
+	goto done;
     /* Parse db spec file */
     if (yang_spec_main(h, stdout, printspec) < 0)
+	goto done;
+
+    /* Set options: database dir aqnd yangspec (could be hidden in connect?)*/
+    if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)
+	goto done;
+    if (xmldb_setopt(h, "yangspec", clicon_dbspec_yang(h)) < 0)
 	goto done;
 
     /* First check for startup config 

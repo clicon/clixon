@@ -1074,3 +1074,176 @@ xmlkeyfmt2xpath(char  *xkfmt,
 	cbuf_free(cb);
     return retval;
 }
+
+/*! Prune everything that has not been marked
+ * @param[in]   xt      XML tree with some node marked
+ * @param[out]  upmark  Set if a child (recursively) has marked set.
+ * The function removes all branches that does not contain a marked child
+ * XXX: maybe key leafs should not be purged if list is not purged?
+ * XXX: consider move to clicon_xml
+ */
+int
+xml_tree_prune_unmarked(cxobj *xt, 
+			int   *upmark)
+{
+    int    retval = -1;
+    int    submark;
+    int    mark;
+    cxobj *x;
+    cxobj *xprev;
+
+    mark = 0;
+    x = NULL;
+    xprev = x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if (xml_flag(x, XML_FLAG_MARK)){
+	    mark++;
+	    xprev = x;
+	    continue; /* mark and stop here */
+	}
+	if (xml_tree_prune_unmarked(x, &submark) < 0)
+	    goto done;
+	if (submark)
+	    mark++;
+	else{ /* Safe with xml_child_each if last */
+	    if (xml_purge(x) < 0)
+		goto done;
+	    x = xprev;
+	}
+	xprev = x;
+    }
+    retval = 0;
+ done:
+    if (upmark)
+	*upmark = mark;
+    return retval;
+}
+
+/*! Add default values (if not set)
+ * @param[in]   xt      XML tree with some node marked
+ */
+int
+xml_default(cxobj *xt, 
+	   void  *arg)
+{
+    int        retval = -1;
+    yang_stmt *ys;
+    yang_stmt *y;
+    int        i;
+    cxobj     *xc;
+    cxobj     *xb;
+    char      *str;
+
+    ys = (yang_stmt*)xml_spec(xt);
+    /* Check leaf defaults */
+    if (ys->ys_keyword == Y_CONTAINER || ys->ys_keyword == Y_LIST){
+	for (i=0; i<ys->ys_len; i++){
+	    y = ys->ys_stmt[i];
+	    if (y->ys_keyword != Y_LEAF)
+		continue;
+	    assert(y->ys_cv);
+	    if (!cv_flag(y->ys_cv, V_UNSET)){  /* Default value exists */
+		if (!xml_find(xt, y->ys_argument)){
+		    if ((xc = xml_new_spec(y->ys_argument, xt, y)) == NULL)
+			goto done;
+		    if ((xb = xml_new("body", xc)) == NULL)
+			goto done;
+		    xml_type_set(xb, CX_BODY);
+		    if ((str = cv2str_dup(y->ys_cv)) == NULL){
+			clicon_err(OE_UNIX, errno, "cv2str_dup");
+			goto done;
+		    }
+		    if (xml_value_set(xb, str) < 0)
+			goto done;
+		    free(str);
+		}
+	    }
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Order XML children according to YANG
+ * @param[in]   xt      XML top of tree
+ */
+int
+xml_order(cxobj *xt, 
+	  void  *arg)
+{
+    int        retval = -1;
+    yang_stmt *y;
+    yang_stmt *yc;
+    int        i;
+    int        j0;
+    int        j;
+    cxobj     *xc;
+    cxobj     *xj;
+    char      *yname; /* yang child name */
+    char      *xname; /* xml child name */
+
+    y = (yang_stmt*)xml_spec(xt);
+    j0 = 0;
+ /* Go through xml children and ensure they are same order as yspec children */
+    for (i=0; i<y->ys_len; i++){
+	yc = y->ys_stmt[i];
+	if (!yang_is_syntax(yc))
+	    continue;
+	yname = yc->ys_argument;
+	/* First go thru xml children with same name */
+	for (; j0<xml_child_nr(xt); j0++){
+	    xc = xml_child_i(xt, j0);
+	    if (xml_type(xc) != CX_ELMNT)
+		continue;
+	    xname = xml_name(xc);
+	    if (strcmp(xname, yname))
+		break;
+	}
+	/* Now we have children not with same name */
+	for (j=j0; j<xml_child_nr(xt); j++){
+	    xc = xml_child_i(xt, j);
+	    if (xml_type(xc) != CX_ELMNT)
+		continue;
+	    xname = xml_name(xc);
+	    if (strcmp(xname, yname))
+		continue;
+	    /* reorder */
+	    xj = xml_child_i(xt, j0);
+	    xml_child_i_set(xt, j0, xc);
+	    xml_child_i_set(xt, j, xj);
+	    j0++;
+	}
+    }
+    retval = 0;
+    // done:
+    return retval;
+}
+
+/*! Sanitize an xml tree: xml node has matching yang_stmt pointer 
+ * @param[in]   xt      XML top of tree
+ */
+int
+xml_sanity(cxobj *xt, 
+	   void  *arg)
+{
+    int        retval = -1;
+    yang_stmt *ys;
+    char      *name;
+
+    ys = (yang_stmt*)xml_spec(xt);
+    name = xml_name(xt);
+    if (ys==NULL){
+	clicon_err(OE_XML, 0, "No spec for xml node %s", name);
+	goto done;
+    }
+    if (strstr(ys->ys_argument, name)==NULL){
+	clicon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'", 
+		   name, ys->ys_argument);
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+

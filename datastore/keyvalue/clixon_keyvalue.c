@@ -81,6 +81,10 @@
  *  - restconf
  *  - expand_dbvar
  *  - show_conf_xpath                 
+ *
+ * dependency on clixon handle:
+ * clixon_xmldb_dir()
+ * clicon_dbspec_yang(h)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -111,6 +115,31 @@
 #include "clixon_qdb.h"
 #include "clixon_keyvalue.h"
 
+#define handle(xh) (assert(kv_handle_check(xh)==0),(struct kv_handle *)(xh))
+
+/* Magic to ensure plugin sanity. */
+#define KV_HANDLE_MAGIC 0xfa61a402
+
+/*! Internal structure of keyvalue datastore handle. 
+ */
+struct kv_handle {
+    int        kh_magic;    /* magic */
+    char      *kh_dbdir;    /* Directory of database files */
+    yang_spec *kh_yangspec;    /* Yang spec if this datastore */
+};
+
+/*! Check struct magic number for sanity checks
+ * return 0 if OK, -1 if fail.
+ */
+static int
+kv_handle_check(xmldb_handle xh)
+{
+    /* Dont use handle macro to avoid recursion */
+    struct kv_handle *kh = (struct kv_handle *)(xh);
+
+    return kh->kh_magic == KV_HANDLE_MAGIC ? 0 : -1;
+}
+
 /*! Database locking for candidate and running non-persistent
  * Store an integer for running and candidate containing
  * the session-id of the client holding the lock.
@@ -120,7 +149,7 @@ static int _candidate_locked = 0;
 static int _startup_locked = 0;
 
 /*! Translate from symbolic database name to actual filename in file-system
- * @param[in]   h        Clicon handle
+ * @param[in]   xh       XMLDB handle
  * @param[in]   db       Symbolic database name, eg "candidate", "running"
  * @param[out]  filename Filename. Unallocate after use with free()
  * @retval      0        OK
@@ -131,9 +160,9 @@ static int _startup_locked = 0;
  * The filename reside in CLICON_XMLDB_DIR option
  */
 static int
-db2file(clicon_handle h, 
-	char         *db,
-	char        **filename)
+db2file(struct kv_handle *kh, 
+	    char         *db,
+	    char        **filename)
 {
     int   retval = -1;
     cbuf *cb;
@@ -143,8 +172,8 @@ db2file(clicon_handle h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if ((dir = clicon_xmldb_dir(h)) == NULL){
-	clicon_err(OE_XML, errno, "CLICON_XMLDB_DIR not set");
+    if ((dir = kh->kh_dbdir) == NULL){
+	clicon_err(OE_XML, errno, "dbdir not set");
 	goto done;
     }
     if (strcmp(db, "running") != 0 && 
@@ -244,49 +273,6 @@ create_keyvalues(cxobj     *x,
     return retval;
 }
 
-/*! Prune everything that has not been marked
- * @param[in]   xt      XML tree with some node marked
- * @param[out]  upmark  Set if a child (recursively) has marked set.
- * The function removes all branches that does not contain a marked child
- * XXX: maybe key leafs should not be purged if list is not purged?
- * XXX: consider move to clicon_xml
- */
-static int
-xml_tree_prune_unmarked(cxobj *xt, 
-			int   *upmark)
-{
-    int    retval = -1;
-    int    submark;
-    int    mark;
-    cxobj *x;
-    cxobj *xprev;
-
-    mark = 0;
-    x = NULL;
-    xprev = x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if (xml_flag(x, XML_FLAG_MARK)){
-	    mark++;
-	    xprev = x;
-	    continue; /* mark and stop here */
-	}
-	if (xml_tree_prune_unmarked(x, &submark) < 0)
-	    goto done;
-	if (submark)
-	    mark++;
-	else{ /* Safe with xml_child_each if last */
-	    if (xml_purge(x) < 0)
-		goto done;
-	    x = xprev;
-	}
-	xprev = x;
-    }
-    retval = 0;
- done:
-    if (upmark)
-	*upmark = mark;
-    return retval;
-}
 
 /*!
  * @param[in]   xk     xmlkey
@@ -476,126 +462,108 @@ get(char      *dbname,
     return retval;
 }
 
-/*! Sanitize an xml tree: xml node has matching yang_stmt pointer 
+/*! Connect to a datastore plugin
+ * @retval  handle  Use this handle for other API calls
+ * @retval  NULL    Error
+ * @note You can do several connects, and have multiple connections to the same
+ *       datastore
  */
-static int
-xml_sanity(cxobj *x, 
-	   void  *arg)
+xmldb_handle
+kv_connect(void)
 {
-    int        retval = -1;
-    yang_stmt *ys;
+    struct kv_handle *kh;
+    xmldb_handle      xh = NULL;
+    int               size;
 
-    ys = (yang_stmt*)xml_spec(x);
-    if (ys==NULL){
-	clicon_err(OE_XML, 0, "No spec for xml node %s", xml_name(x));
+    size = sizeof(struct kv_handle);
+    if ((kh = malloc(size)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
-    if (strstr(ys->ys_argument, xml_name(x))==NULL){
-	clicon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'", 
-		   xml_name(x), ys->ys_argument);
-	goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    memset(kh, 0, size);
+    kh->kh_magic = KV_HANDLE_MAGIC;
+    xh = (xmldb_handle)kh;
+  done:
+    return xh;
 }
 
-/*! Add default values (if not set)
- */
-static int
-xml_default(cxobj *x, 
-	   void  *arg)
+/*! Disconnect from a datastore plugin and deallocate handle
+ * @param[in]  handle  Disconect and deallocate from this handle
+ * @retval     0       OK
+  */
+int
+kv_disconnect(xmldb_handle xh)
 {
-    int        retval = -1;
-    yang_stmt *ys;
-    yang_stmt *y;
-    int        i;
-    cxobj     *xc;
-    cxobj     *xb;
-    char      *str;
+    int               retval = -1;
+    struct kv_handle *kh = handle(xh);
 
-    ys = (yang_stmt*)xml_spec(x);
-    /* Check leaf defaults */
-    if (ys->ys_keyword == Y_CONTAINER || ys->ys_keyword == Y_LIST){
-	for (i=0; i<ys->ys_len; i++){
-	    y = ys->ys_stmt[i];
-	    if (y->ys_keyword != Y_LEAF)
-		continue;
-	    assert(y->ys_cv);
-	    if (!cv_flag(y->ys_cv, V_UNSET)){  /* Default value exists */
-		if (!xml_find(x, y->ys_argument)){
-		    if ((xc = xml_new_spec(y->ys_argument, x, y)) == NULL)
-			goto done;
-		    if ((xb = xml_new("body", xc)) == NULL)
-			goto done;
-		    xml_type_set(xb, CX_BODY);
-		    if ((str = cv2str_dup(y->ys_cv)) == NULL){
-			clicon_err(OE_UNIX, errno, "cv2str_dup");
-			goto done;
-		    }
-		    if (xml_value_set(xb, str) < 0)
-			goto done;
-		    free(str);
-		}
-	    }
-	}
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Order XML children according to YANG
- */
-static int
-xml_order(cxobj *x, 
-	  void  *arg)
-{
-    int        retval = -1;
-    yang_stmt *y;
-    yang_stmt *yc;
-    int        i;
-    int        j0;
-    int        j;
-    cxobj     *xc;
-    cxobj     *xj;
-    char      *yname; /* yang child name */
-    char      *xname; /* xml child name */
-
-    y = (yang_stmt*)xml_spec(x);
-    j0 = 0;
- /* Go through xml children and ensure they are same order as yspec children */
-    for (i=0; i<y->ys_len; i++){
-	yc = y->ys_stmt[i];
-	if (!yang_is_syntax(yc))
-	    continue;
-	yname = yc->ys_argument;
-	/* First go thru xml children with same name */
-	for (;j0<xml_child_nr(x); j0++){
-	    xc = xml_child_i(x, j0);
-	    if (xml_type(xc) != CX_ELMNT)
-		continue;
-	    xname = xml_name(xc);
-	    if (strcmp(xname, yname))
-		break;
-	}
-	/* Now we have children not with same name */
-	for (j=j0; j<xml_child_nr(x); j++){
-	    xc = xml_child_i(x, j);
-	    if (xml_type(xc) != CX_ELMNT)
-		continue;
-	    xname = xml_name(xc);
-	    if (strcmp(xname, yname))
-		continue;
-	    /* reorder */
-	    xj = xml_child_i(x, j0);
-	    xml_child_i_set(x, j0, xc);
-	    xml_child_i_set(x, j, xj);
-	    j0++;
-	}
+    if (kh){
+	if (kh->kh_dbdir)
+	    free(kh->kh_dbdir);
+	free(kh);
     }
     retval = 0;
     // done:
+    return retval;
+}
+
+/*! Get value of generic plugin option. Type of value is givenby context
+ * @param[in]  xh      XMLDB handle
+ * @param[in]  optname Option name
+ * @param[out] value   Pointer to Value of option
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+kv_getopt(xmldb_handle xh, 
+	  char        *optname,
+	  void       **value)
+{
+    int               retval = -1;
+    struct kv_handle *kh = handle(xh);
+
+    if (strcmp(optname, "yangspec") == 0)
+	*value = kh->kh_yangspec;
+    else if (strcmp(optname, "dbdir") == 0)
+	*value = kh->kh_dbdir;
+    else{
+	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Set value of generic plugin option. Type of value is givenby context
+ * @param[in]  xh      XMLDB handle
+ * @param[in]  optname Option name
+ * @param[in]  value   Value of option
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+kv_setopt(xmldb_handle xh, 
+	  char        *optname,
+	  void        *value)
+{
+    int               retval = -1;
+    struct kv_handle *kh = handle(xh);
+
+    if (strcmp(optname, "yangspec") == 0)
+	kh->kh_yangspec = (yang_spec*)value;
+    else if (strcmp(optname, "dbdir") == 0){
+	if (value && (kh->kh_dbdir = strdup((char*)value)) == NULL){
+	    clicon_err(OE_UNIX, 0, "strdup");
+	    goto done;
+	}
+    }
+    else{
+	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
+	goto done;
+    }
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -604,7 +572,6 @@ xml_order(cxobj *x,
  * xpath.
  * @param[in]  dbname Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
- * @param[in]  yspec  Yang specification
  * @param[out] xtop   Single XML tree which xvec points to. Free with xml_free()
  * @param[out] xvec   Vector of xml trees. Free after use.
  * @param[out] xlen   Length of vector.
@@ -614,8 +581,7 @@ xml_order(cxobj *x,
  *   cxobj   *xt;
  *   cxobj  **xvec;
  *   size_t   xlen;
- *   yang_spec *yspec = clicon_dbspec_yang(h);
- *   if (xmldb_get("running", "/interfaces/interface[name="eth"]", 
+ *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 
  *                 &xt, &xvec, &xlen) < 0)
  *      err;
  *   for (i=0; i<xlen; i++){
@@ -630,16 +596,17 @@ xml_order(cxobj *x,
  * @see xmldb_get
  */
 int
-kv_get(clicon_handle h,
-	  char         *db, 
-	  char         *xpath,
-	  cxobj       **xtop,
-	  cxobj      ***xvec0,
-	  size_t       *xlen0)
+kv_get(xmldb_handle  xh,
+       char         *db, 
+       char         *xpath,
+       cxobj       **xtop,
+       cxobj      ***xvec0,
+       size_t       *xlen0)
 {
     int             retval = -1;
+    struct kv_handle *kh = handle(xh);
     yang_spec      *yspec;
-    char           *dbname = NULL;
+    char           *dbfile = NULL;
     cxobj         **xvec = NULL;
     size_t          xlen;
     int             i;
@@ -647,25 +614,26 @@ kv_get(clicon_handle h,
     struct db_pair *pairs;
     cxobj          *xt = NULL;
 
+
     clicon_debug(2, "%s", __FUNCTION__);
-    if (db2file(h, db, &dbname) < 0)
+    if (db2file(kh, db, &dbfile) < 0)
 	goto done;
-    if (dbname==NULL){
-	clicon_err(OE_XML, 0, "dbname NULL");
+    if (dbfile==NULL){
+	clicon_err(OE_XML, 0, "dbfile NULL");
 	goto done;
     }
-    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+    if ((yspec =  kh->kh_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
     /* Read in complete database (this can be optimized) */
-    if ((npairs = db_regexp(dbname, "", __FUNCTION__, &pairs, 0)) < 0)
+    if ((npairs = db_regexp(dbfile, "", __FUNCTION__, &pairs, 0)) < 0)
 	goto done;
     if ((xt = xml_new_spec("clicon", NULL, yspec)) == NULL)
 	goto done;
     /* Translate to complete xml tree */
     for (i = 0; i < npairs; i++) {
-	if (get(dbname, 
+	if (get(dbfile, 
 		yspec, 
 		pairs[i].dp_key, /* xml key */
 		pairs[i].dp_val, /* may be NULL */
@@ -693,7 +661,6 @@ kv_get(clicon_handle h,
 	*xlen0 = xlen; 
 	xlen = 0;
     }
-
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
     /* XXX does not work for top-level */
@@ -706,8 +673,8 @@ kv_get(clicon_handle h,
     *xtop = xt;
     retval = 0;
  done:
-    if (dbname)
-	free(dbname);
+    if (dbfile)
+	free(dbfile);
     if (xvec)
 	free(xvec);
     unchunk_group(__FUNCTION__);  
@@ -716,7 +683,7 @@ kv_get(clicon_handle h,
 }
 
 /*! Add data to database internal recursive function
- * @param[in]  dbname Name of database to search in (filename incl dir path)
+ * @param[in]  dbfile Name of database to search in (filename incl dir path)
  * @param[in]  xt     xml-node.
  * @param[in]  ys     Yang statement corresponding to xml-node
  * @param[in]  op     OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
@@ -726,7 +693,7 @@ kv_get(clicon_handle h,
  * @note XXX op only supports merge
  */
 static int
-put(char               *dbname, 
+put(char               *dbfile, 
     cxobj              *xt,
     yang_stmt          *ys, 
     enum operation_type op, 
@@ -774,7 +741,7 @@ put(char               *dbname,
     /* Write to database, key and a vector of variables */
     switch (op){
     case OP_CREATE:
-	if ((exists = db_exists(dbname, xk)) < 0)
+	if ((exists = db_exists(dbfile, xk)) < 0)
 	    goto done;
 	if (exists == 1){
 	    clicon_err(OE_DB, 0, "OP_CREATE: %s already exists in database", xk);
@@ -782,18 +749,18 @@ put(char               *dbname,
 	}
     case OP_MERGE:
     case OP_REPLACE:
-	if (db_set(dbname, xk, body?body:NULL, body?strlen(body)+1:0) < 0)
+	if (db_set(dbfile, xk, body?body:NULL, body?strlen(body)+1:0) < 0)
 	    goto done;
 	break;
     case OP_DELETE:
-	if ((exists = db_exists(dbname, xk)) < 0)
+	if ((exists = db_exists(dbfile, xk)) < 0)
 	    goto done;
 	if (exists == 0){
 	    clicon_err(OE_DB, 0, "OP_DELETE: %s does not exists in database", xk);
 	    goto done;
 	}
     case OP_REMOVE:
-	if (db_del(dbname, xk) < 0)
+	if (db_del(dbfile, xk) < 0)
 	    goto done;
 	break;
     case OP_NONE:
@@ -805,7 +772,7 @@ put(char               *dbname,
 	    clicon_err(OE_UNIX, 0, "No yang node found: %s", xml_name(x));
 	    goto done;
 	}
-	if (put(dbname, x, y, op, xk) < 0)
+	if (put(dbfile, x, y, op, xk) < 0)
 	    goto done;
     }
     retval = 0;
@@ -818,7 +785,7 @@ put(char               *dbname,
 }
 
 /*! Modify database provided an XML database key and an operation
- * @param[in]  h      CLICON handle
+ * @param[in]  kh     Keyvalue handle
  * @param[in]  db     Database name
  * @param[in]  op     OP_MERGE, OP_REPLACE, OP_REMOVE, etc
  * @param[in]  xk     XML Key, eg /aa/bb=17/name
@@ -833,7 +800,7 @@ put(char               *dbname,
  * @see xmldb_put  with xml-tree, no path
  */
 static int
-xmldb_put_xkey(clicon_handle       h,
+xmldb_put_xkey(struct kv_handle   *kh,
 	       char               *db, 
 	       enum operation_type op,
 	       char               *xk,
@@ -865,8 +832,11 @@ xmldb_put_xkey(clicon_handle       h,
     yang_spec *yspec;
     char      *filename = NULL;
 
-    yspec = clicon_dbspec_yang(h);
-    if (db2file(h, db, &filename) < 0)
+    if ((yspec = kh->kh_yangspec) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    if (db2file(kh, db, &filename) < 0)
 	goto done;
     if (xk == NULL || *xk!='/'){
 	clicon_err(OE_DB, 0, "Invalid key: %s", xk);
@@ -1045,7 +1015,7 @@ xmldb_put_xkey(clicon_handle       h,
 
 /*! Modify database provided an xml tree, a restconf api_path and an operation
  *
- * @param[in]  h      CLICON handle
+ * @param[in]  kh     Keyvalue handle
  * @param[in]  db     running or candidate
  * @param[in]  op     OP_MERGE: just add it. 
  *                    OP_REPLACE: first delete whole database
@@ -1063,7 +1033,7 @@ xmldb_put_xkey(clicon_handle       h,
  * @see xmldb_put
  */
 static int
-xmldb_put_restconf_api_path(clicon_handle       h,
+xmldb_put_restconf_api_path(struct kv_handle   *kh,
 			    char               *db, 
 			    enum operation_type op,
 			    char               *api_path,
@@ -1092,8 +1062,11 @@ xmldb_put_restconf_api_path(clicon_handle       h,
     char      *key;
     char      *keys;
 
-    yspec = clicon_dbspec_yang(h);
-    if (db2file(h, db, &filename) < 0)
+    if ((yspec =  kh->kh_yangspec) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    if (db2file(kh, db, &filename) < 0)
 	goto done;
     if (api_path == NULL || *api_path!='/'){
 	clicon_err(OE_DB, 0, "Invalid api path: %s", api_path);
@@ -1260,7 +1233,7 @@ xmldb_put_restconf_api_path(clicon_handle       h,
 
 /*! Modify database provided an xml tree and an operation
  *
- * @param[in]  h      CLICON handle
+ * @param[in]  xh      XMLDB handle
  * @param[in]  db     running or candidate
  * @param[in]  xt     xml-tree. Top-level symbol is dummy
  * @param[in]  op     OP_MERGE: just add it. 
@@ -1280,22 +1253,26 @@ xmldb_put_restconf_api_path(clicon_handle       h,
  * @see xmldb_put_xkey  for single key
  */
 int
-kv_put(clicon_handle       h,
+kv_put(xmldb_handle        xh,
        char               *db, 
        enum operation_type op,
        char               *api_path,
        cxobj              *xt) 
 {
     int        retval = -1;
+    struct kv_handle *kh = handle(xh);
     cxobj     *x = NULL;
     yang_stmt *ys;
     yang_spec *yspec;
     char      *dbfilename = NULL;
 
     if (xml_child_nr(xt)==0 || xml_body(xt)!= NULL)
-	return xmldb_put_xkey(h, db, op, api_path, xml_body(xt));
-    yspec = clicon_dbspec_yang(h);
-    if (db2file(h, db, &dbfilename) < 0)
+	return xmldb_put_xkey(kh, db, op, api_path, xml_body(xt));
+    if ((yspec =  kh->kh_yangspec) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    if (db2file(kh, db, &dbfilename) < 0)
 	goto done;
     if (op == OP_REPLACE){
 	if (db_delete(dbfilename) < 0) 
@@ -1305,7 +1282,7 @@ kv_put(clicon_handle       h,
     }
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
 	if (api_path && strlen(api_path)){
-	    if (xmldb_put_restconf_api_path(h, db, op, api_path, x) < 0)
+	    if (xmldb_put_restconf_api_path(kh, db, op, api_path, x) < 0)
 		goto done;
 	    continue;
 	}
@@ -1328,58 +1305,27 @@ kv_put(clicon_handle       h,
     return retval;
 }
 
-/*! Raw dump of database, just keys and values, no xml interpretation 
- * @param[in]  f       File
- * @param[in]  dbfile  File-name of database. This is a local file
- * @param[in]  rxkey   Key regexp, eg "^.*$"
- * @note This function can only be called locally.
- */
-int
-kv_dump(FILE         *f,
-	char         *dbfilename, 
-	char         *rxkey)
-{
-    int             retval = -1;
-    int             npairs;
-    struct db_pair *pairs;
-
-    /* Default is match all */
-    if (rxkey == NULL)
-	rxkey = "^.*$";
-
-    /* Get all keys/values for vector */
-    if ((npairs = db_regexp(dbfilename, rxkey, __FUNCTION__, &pairs, 0)) < 0)
-	goto done;
-    
-    for (npairs--; npairs >= 0; npairs--) 
-	fprintf(f, "%s %s\n", pairs[npairs].dp_key,
-		pairs[npairs].dp_val?pairs[npairs].dp_val:"");
-    retval = 0;
- done:
-    unchunk_group(__FUNCTION__);
-    return retval;
-}
-
 /*! Copy database from db1 to db2
- * @param[in]  h     Clicon handle
+ * @param[in]  xh    XMLDB handle
  * @param[in]  from  Source database copy
  * @param[in]  to    Destination database
  * @retval -1  Error
  * @retval  0  OK
   */
 int 
-kv_copy(clicon_handle h, 
+kv_copy(xmldb_handle xh, 
 	char         *from,
 	char         *to)
 {
     int           retval = -1;
+    struct kv_handle *kh = handle(xh);
     char         *fromfile = NULL;
     char         *tofile = NULL;
 
     /* XXX lock */
-    if (db2file(h, from, &fromfile) < 0)
+    if (db2file(kh, from, &fromfile) < 0)
 	goto done;
-    if (db2file(h, to, &tofile) < 0)
+    if (db2file(kh, to, &tofile) < 0)
 	goto done;
     if (clicon_file_copy(fromfile, tofile) < 0)
 	goto done;
@@ -1393,17 +1339,19 @@ kv_copy(clicon_handle h,
 }
 
 /*! Lock database
- * @param[in]  h    Clicon handle
+ * @param[in]  xh      XMLDB handle
  * @param[in]  db   Database
  * @param[in]  pid  Process id
  * @retval -1  Error
  * @retval  0  OK
   */
 int 
-kv_lock(clicon_handle h, 
+kv_lock(xmldb_handle xh, 
 	char         *db,
 	int           pid)
 {
+    //    struct kv_handle *kh = handle(xh);
+
     if (strcmp("running", db) == 0)
 	_running_locked = pid;
     else if (strcmp("candidate", db) == 0)
@@ -1415,7 +1363,7 @@ kv_lock(clicon_handle h,
 }
 
 /*! Unlock database
- * @param[in]  h   Clicon handle
+ * @param[in]  xh      XMLDB handle
  * @param[in]  db  Database
  * @param[in]  pid  Process id
  * @retval -1  Error
@@ -1423,10 +1371,12 @@ kv_lock(clicon_handle h,
  * Assume all sanity checks have been made
  */
 int 
-kv_unlock(clicon_handle h, 
+kv_unlock(xmldb_handle xh, 
 	  char         *db,
 	  int           pid)
 {
+    //    struct kv_handle *kh = handle(xh);
+
     if (strcmp("running", db) == 0)
 	_running_locked = 0;
     else if (strcmp("candidate", db) == 0)
@@ -1437,15 +1387,17 @@ kv_unlock(clicon_handle h,
 }
 
 /*! Unlock all databases locked by pid (eg process dies) 
- * @param[in]    h   Clicon handle
- * @param[in]    pid Process / Session id
- * @retval -1    Error
- * @retval   0   Ok
+ * @param[in]  xh    XMLDB handle
+ * @param[in]  pid   Process / Session id
+ * @retval    -1     Error
+ * @retval     0     Ok
  */
 int 
-kv_unlock_all(clicon_handle h, 
+kv_unlock_all(xmldb_handle xh, 
 	      int           pid)
 {
+    //    struct kv_handle *kh = handle(xh);
+
     if (_running_locked == pid)
 	_running_locked = 0;
     if (_candidate_locked == pid)
@@ -1456,16 +1408,18 @@ kv_unlock_all(clicon_handle h,
 }
 
 /*! Check if database is locked
- * @param[in]    h   Clicon handle
- * @param[in]    db  Database
- * @retval -1    Error
- * @retval   0   Not locked
- * @retval  >0   Id of locker
+ * @param[in]  xh  XMLDB handle
+ * @param[in]  db  Database
+ * @retval    -1   Error
+ * @retval     0   Not locked
+ * @retval    >0   Id of locker
   */
 int 
-kv_islocked(clicon_handle h, 
+kv_islocked(xmldb_handle xh, 
 	    char         *db)
 {
+    //    struct kv_handle *kh = handle(xh);
+
     if (strcmp("running", db) == 0)
 	return (_running_locked);
     else if (strcmp("candidate", db) == 0)
@@ -1476,21 +1430,22 @@ kv_islocked(clicon_handle h,
 }
 
 /*! Check if db exists 
- * @param[in]  h   Clicon handle
+ * @param[in]  xh      XMLDB handle
  * @param[in]  db  Database
  * @retval -1  Error
  * @retval  0  No it does not exist
  * @retval  1  Yes it exists
  */
 int 
-kv_exists(clicon_handle h, 
+kv_exists(xmldb_handle xh, 
 	  char         *db)
 {
     int           retval = -1;
+    struct kv_handle *kh = handle(xh);
     char         *filename = NULL;
     struct stat  sb;
 
-    if (db2file(h, db, &filename) < 0)
+    if (db2file(kh, db, &filename) < 0)
 	goto done;
     if (lstat(filename, &sb) < 0)
 	retval = 0;
@@ -1503,19 +1458,20 @@ kv_exists(clicon_handle h,
 }
 
 /*! Delete database. Remove file 
- * @param[in]  h   Clicon handle
+ * @param[in]  xh      XMLDB handle
  * @param[in]  db  Database
  * @retval -1  Error
  * @retval  0  OK
  */
 int 
-kv_delete(clicon_handle h, 
+kv_delete(xmldb_handle xh, 
 	  char         *db)
 {
     int           retval = -1;
+    struct kv_handle *kh = handle(xh);
     char         *filename = NULL;
 
-    if (db2file(h, db, &filename) < 0)
+    if (db2file(kh, db, &filename) < 0)
 	goto done;
     if (db_delete(filename) < 0)
 	goto done;
@@ -1527,19 +1483,20 @@ kv_delete(clicon_handle h,
 }
 
 /*! Initialize database 
- * @param[in]  h   Clicon handle
+ * @param[in]  xh      XMLDB handle
  * @param[in]  db  Database
  * @retval  0  OK
  * @retval -1  Error
  */
 int 
-kv_init(clicon_handle h, 
+kv_init(xmldb_handle xh, 
 	char         *db)
 {
     int           retval = -1;
+    struct kv_handle *kh = handle(xh);
     char         *filename = NULL;
 
-    if (db2file(h, db, &filename) < 0)
+    if (db2file(kh, db, &filename) < 0)
 	goto done;
     if (db_init(filename) < 0)
 	goto done;
@@ -1578,9 +1535,12 @@ static const struct xmldb_api api = {
     XMLDB_API_MAGIC,
     clixon_xmldb_plugin_init,
     kv_plugin_exit,
+    kv_connect,
+    kv_disconnect,
+    kv_getopt,
+    kv_setopt,
     kv_get,
     kv_put,
-    kv_dump,
     kv_copy,
     kv_lock,
     kv_unlock,
@@ -1598,80 +1558,46 @@ static const struct xmldb_api api = {
  * Usage: clicon_xpath [<xpath>] 
  * read xml from input
  * Example compile:
- gcc -g -o xmldb -I. -I../clixon ./clixon_xmldb.c -lclixon -lcligen
+ gcc -g -o keyvalue -I. -I../../lib ./clixon_keyvalue.c clixon_chunk.c clixon_qdb.c -lclixon -lcligen -lqdbm
 */
 
-static int
-usage(char *argv0)
-{
-    fprintf(stderr, "usage:\n%s\tget <db> <yangdir> <yangmod> [<xpath>]\t\txml on stdin\n", argv0);
-    fprintf(stderr, "\tput <db> <yangdir> <yangmod> set|merge|delete\txml to stdout\n");
-    exit(0);
-}
-
+/*! Raw dump of database, just keys and values, no xml interpretation 
+ * @param[in]  f       File
+ * @param[in]  dbfile  File-name of database. This is a local file
+ * @param[in]  rxkey   Key regexp, eg "^.*$"
+ * @note This function can only be called locally.
+ */
 int
-main(int argc, char **argv)
+main(int    argc, 
+     char **argv)
 {
-    cxobj      *xt;
-    cxobj      *xn;
-    char       *xpath;
-    enum operation_type      op;
-    char       *cmd;
-    char       *db;
-    char       *yangdir;
-    char       *yangmod;
-    yang_spec  *yspec = NULL;
-    clicon_handle h;
+    int             retval = -1;
+    int             npairs;
+    struct db_pair *pairs;
+    char           *rxkey = NULL;
+    char           *dbfilename;
 
-    if ((h = clicon_handle_init()) == NULL)
-	goto done;
-    clicon_log_init("xmldb", LOG_DEBUG, CLICON_LOG_STDERR);
-    if (argc < 4){
-	usage(argv[0]);
+    if (argc != 2 && argc != 3){
+	fprintf(stderr, "usage: %s <dbfile> [rxkey]\n", argv[0]);
 	goto done;
     }
-    cmd = argv[1];
-    db = argv[2];
-    yangdir = argv[3];
-    yangmod = argv[4];
-    db_init(db);
-    if ((yspec = yspec_new()) == NULL)
-	goto done
-    if (yang_parse(h, yangdir, yangmod, NULL, yspec) < 0)
-	goto done;
-    if (strcmp(cmd, "get")==0){
-	if (argc < 5)
-	    usage(argv[0]);
-	xpath = argc>5?argv[5]:NULL;
-	if (xmldb_get(h, db, xpath, &xt, NULL, NULL) < 0)
-	    goto done;
-	clicon_xml2file(stdout, xt, 0, 1);	
-    }
+    dbfilename = argv[1];
+    if (argc == 3)
+	rxkey = argv[2];
     else
-    if (strcmp(cmd, "put")==0){
-	if (argc != 6)
-	    usage(argv[0]);
-	if (clicon_xml_parse_file(0, &xt, "</clicon>") < 0)
-	    goto done;
-	if (xml_rootchild(xt, 0, &xn) < 0)
-	    goto done;
-	if (strcmp(argv[5], "set") == 0)
-	    op = OP_REPLACE;
-	else 	
-	    if (strcmp(argv[4], "merge") == 0)
-	    op = OP_MERGE;
-	else 	if (strcmp(argv[5], "delete") == 0)
-	    op = OP_REMOVE;
-	else
-	    usage(argv[0]);
-	if (xmldb_put(h, db, op, NULL, xn) < 0)
-	    goto done;
-    }
-    else
-	usage(argv[0]);
-    printf("\n");
+	rxkey = "^.*$";     /* Default is match all */
+
+    /* Get all keys/values for vector */
+    if ((npairs = db_regexp(dbfilename, rxkey, __FUNCTION__, &pairs, 0)) < 0)
+	goto done;
+    
+    for (npairs--; npairs >= 0; npairs--) 
+	fprintf(stdout, "%s %s\n", pairs[npairs].dp_key,
+		pairs[npairs].dp_val?pairs[npairs].dp_val:"");
+    retval = 0;
  done:
-    return 0;
+    unchunk_group(__FUNCTION__);
+    return retval;
 }
 
 #endif /* Test program */

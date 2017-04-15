@@ -29,6 +29,10 @@
 #
 # ***** END LICENSE BLOCK *****
 
+- Moved apps/dbctrl to datastore/
+
+- Added connect/disconnect/getopt/setopt and handle to xmldb API
+
 - Added datastore 'text'
 
 - Configure (autoconf) changes

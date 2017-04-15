@@ -41,7 +41,7 @@
  * Prototypes 
  * not exported.
  */
-/* backend handles */
+/* backend handles. Defined in clixon_backend_handle.c */
 clicon_handle backend_handle_init(void);
 
 int backend_handle_exit(clicon_handle h);

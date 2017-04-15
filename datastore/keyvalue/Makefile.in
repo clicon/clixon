@@ -30,6 +30,7 @@
 #
 # ***** END LICENSE BLOCK *****
 #
+VPATH       	= @srcdir@
 prefix 		= @prefix@
 datarootdir	= @datarootdir@
 srcdir  	= @srcdir@

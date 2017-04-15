@@ -39,18 +39,18 @@
 /*
  * Prototypes
  */
-int text_get(clicon_handle h, char *db, char *xpath,
+int text_get(xmldb_handle h, char *db, char *xpath,
 	   cxobj **xtop, cxobj ***xvec, size_t *xlen);
-int text_put(clicon_handle h, char *db, enum operation_type op, 
+int text_put(xmldb_handle h, char *db, enum operation_type op, 
 	   char *api_path,  cxobj *xt);
 int text_dump(FILE *f, char *dbfilename, char *rxkey);
-int text_copy(clicon_handle h, char *from, char *to);
-int text_lock(clicon_handle h, char *db, int pid);
-int text_unlock(clicon_handle h, char *db, int pid);
-int text_unlock_all(clicon_handle h, int pid);
-int text_islocked(clicon_handle h, char *db);
-int text_exists(clicon_handle h, char *db);
-int text_delete(clicon_handle h, char *db);
-int text_init(clicon_handle h, char *db);
+int text_copy(xmldb_handle h, char *from, char *to);
+int text_lock(xmldb_handle h, char *db, int pid);
+int text_unlock(xmldb_handle h, char *db, int pid);
+int text_unlock_all(xmldb_handle h, int pid);
+int text_islocked(xmldb_handle h, char *db);
+int text_exists(xmldb_handle h, char *db);
+int text_delete(xmldb_handle h, char *db);
+int text_init(xmldb_handle h, char *db);
 
 #endif /* _CLIXON_XMLDB_TEXT_H */

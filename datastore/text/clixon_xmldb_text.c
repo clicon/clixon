@@ -44,11 +44,13 @@
 #include <limits.h>
 #include <fnmatch.h>
 #include <stdint.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <assert.h>
-#include <syslog.h>
+#include <syslog.h>       
+#include <fcntl.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -58,16 +60,42 @@
 
 #include "clixon_xmldb_text.h"
 
+#define handle(xh) (assert(text_handle_check(xh)==0),(struct text_handle *)(xh))
+
+/* Magic to ensure plugin sanity. */
+#define TEXT_HANDLE_MAGIC 0x7f54da29
+
+/*! Internal structure of text datastore handle. 
+ */
+struct text_handle {
+    int        th_magic;    /* magic */
+    char      *th_dbdir;    /* Directory of database files */
+    yang_spec *th_yangspec; /* Yang spec if this datastore */
+};
+
+/*! Check struct magic number for sanity checks
+ * return 0 if OK, -1 if fail.
+ */
+static int
+text_handle_check(xmldb_handle xh)
+{
+    /* Dont use handle macro to avoid recursion */
+    struct text_handle *th = (struct text_handle *)(xh);
+
+    return th->th_magic == TEXT_HANDLE_MAGIC ? 0 : -1;
+}
+
 /*! Database locking for candidate and running non-persistent
  * Store an integer for running and candidate containing
  * the session-id of the client holding the lock.
+ * @note This should probably be on file-system
  */
 static int _running_locked = 0;
 static int _candidate_locked = 0;
 static int _startup_locked = 0;
 
 /*! Translate from symbolic database name to actual filename in file-system
- * @param[in]   h        Clicon handle
+ * @param[in]   th       text handle handle
  * @param[in]   db       Symbolic database name, eg "candidate", "running"
  * @param[out]  filename Filename. Unallocate after use with free()
  * @retval      0        OK
@@ -78,9 +106,9 @@ static int _startup_locked = 0;
  * The filename reside in CLICON_XMLDB_DIR option
  */
 static int
-db2file(clicon_handle h, 
-	char         *db,
-	char        **filename)
+db2file(struct text_handle *th, 
+	char               *db,
+	char              **filename)
 {
     int   retval = -1;
     cbuf *cb;
@@ -90,8 +118,8 @@ db2file(clicon_handle h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if ((dir = clicon_xmldb_dir(h)) == NULL){
-	clicon_err(OE_XML, errno, "CLICON_XMLDB_DIR not set");
+    if ((dir = th->th_dbdir) == NULL){
+	clicon_err(OE_XML, errno, "dbdir not set");
 	goto done;
     }
     if (strcmp(db, "running") != 0 && 
@@ -113,12 +141,116 @@ db2file(clicon_handle h,
     return retval;
 }
 
+/*! Connect to a datastore plugin
+ * @retval  handle  Use this handle for other API calls
+ * @retval  NULL    Error
+  */
+xmldb_handle
+text_connect(void)
+{
+    struct text_handle *th;
+    xmldb_handle        xh = NULL;
+    int                 size;
+
+    size = sizeof(struct text_handle);
+    if ((th = malloc(size)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(th, 0, size);
+    th->th_magic = TEXT_HANDLE_MAGIC;
+    xh = (xmldb_handle)th;
+  done:
+    return xh;
+
+}
+
+/*! Disconnect from to a datastore plugin and deallocate handle
+ * @param[in]  xh      XMLDB handle, disconect and deallocate from this handle
+ * @retval     0       OK
+  */
+int
+text_disconnect(xmldb_handle xh)
+{
+    int                 retval = -1;
+    struct text_handle *th = handle(xh);
+
+    if (th){
+	if (th->th_dbdir)
+	    free(th->th_dbdir);
+	free(th);
+    }
+    retval = 0;
+    // done:
+    return retval;
+}
+
+/*! Get value of generic plugin option. Type of value is givenby context
+ * @param[in]  xh      XMLDB handle
+ * @param[in]  optname Option name
+ * @param[out] value   Pointer to Value of option
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+text_getopt(xmldb_handle xh, 
+	    char        *optname,
+	    void       **value)
+{
+    int               retval = -1;
+    struct text_handle *th = handle(xh);
+
+    if (strcmp(optname, "yangspec") == 0)
+	*value = th->th_yangspec;
+    else if (strcmp(optname, "dbdir") == 0)
+	*value = th->th_dbdir;
+    else{
+	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Set value of generic plugin option. Type of value is givenby context
+ * @param[in]  xh      XMLDB handle
+ * @param[in]  optname Option name
+ * @param[in]  value   Value of option
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+text_setopt(xmldb_handle xh,
+	    char        *optname,
+	    void        *value)
+{
+    int                 retval = -1;
+    struct text_handle *th = handle(xh);
+
+    if (strcmp(optname, "yangspec") == 0)
+	th->th_yangspec = (yang_spec*)value;
+    else if (strcmp(optname, "dbdir") == 0){
+	if (value && (th->th_dbdir = strdup((char*)value)) == NULL){
+	    clicon_err(OE_UNIX, 0, "strdup");
+	    goto done;
+	}
+    }
+    else{
+	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Get content of database using xpath. return a set of matching sub-trees
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
+ * @param[in]  xh     XMLDB handle
  * @param[in]  dbname Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
- * @param[in]  yspec  Yang specification
  * @param[out] xtop   Single XML tree which xvec points to. Free with xml_free()
  * @param[out] xvec   Vector of xml trees. Free after use.
  * @param[out] xlen   Length of vector.
@@ -128,8 +260,7 @@ db2file(clicon_handle h,
  *   cxobj   *xt;
  *   cxobj  **xvec;
  *   size_t   xlen;
- *   yang_spec *yspec = clicon_dbspec_yang(h);
- *   if (xmldb_get("running", "/interfaces/interface[name="eth"]", 
+ *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 
  *                 &xt, &xvec, &xlen) < 0)
  *      err;
  *   for (i=0; i<xlen; i++){
@@ -144,25 +275,85 @@ db2file(clicon_handle h,
  * @see xmldb_get
  */
 int
-text_get(clicon_handle h,
-	  char         *db, 
-	  char         *xpath,
-	  cxobj       **xtop,
-	  cxobj      ***xvec0,
-	  size_t       *xlen0)
+text_get(xmldb_handle xh,
+	 char         *db, 
+	 char         *xpath,
+	 cxobj       **xtop,
+	 cxobj      ***xvec0,
+	 size_t       *xlen0)
 {
     int             retval = -1;
+    char           *dbfile = NULL;
+    yang_spec      *yspec;
+    cxobj          *xt = NULL;
+    int             fd = -1;
+    cxobj         **xvec = NULL;
+    size_t          xlen;
+    int             i;
+    struct text_handle *th = handle(xh);
 
+    if (db2file(th, db, &dbfile) < 0)
+	goto done;
+    if (dbfile==NULL){
+	clicon_err(OE_XML, 0, "dbfile NULL");
+	goto done;
+    }
+    if ((yspec =  th->th_yangspec) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    if ((fd = open(dbfile, O_RDONLY)) < 0){
+	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
+	goto done;
+    }    
+    if ((clicon_xml_parse_file(fd, &xt, "</clicon>")) < 0)
+	goto done;
+    /* XXX Maybe the below is general function and should be moved to xmldb? */
+
+    if (xpath_vec(xt, xpath?xpath:"/", &xvec, &xlen) < 0)
+	goto done;
+
+    /* If vectors are specified then filter out everything else,
+     * otherwise return complete tree.
+     */
+    if (xvec != NULL){
+	for (i=0; i<xlen; i++)
+	    xml_flag_set(xvec[i], XML_FLAG_MARK);
+    }
+    /* Top is special case */
+    if (!xml_flag(xt, XML_FLAG_MARK))
+	if (xml_tree_prune_unmarked(xt, NULL) < 0)
+	    goto done;
+    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	goto done;
+    if (xvec0 && xlen0){
+	*xvec0 = xvec; 
+	xvec = NULL;
+	*xlen0 = xlen; 
+	xlen = 0;
+    }
+    if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
+	goto done;
+    /* XXX does not work for top-level */
+    if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
+	goto done;
+    if (xml_apply(xt, CX_ELMNT, xml_sanity, NULL) < 0)
+	goto done;
+    if (debug>1)
+    	clicon_xml2file(stderr, xt, 0, 1);
+    *xtop = xt;
     retval = 0;
-    // done:
+ done:
+    //    xml_free(xt);
+    if (fd != -1)
+	close(fd);
     return retval;
 
 }
 
-
 /*! Modify database provided an xml tree and an operation
  *
- * @param[in]  h      CLICON handle
+ * @param[in]  xh     XMLDB handle
  * @param[in]  db     running or candidate
  * @param[in]  xt     xml-tree. Top-level symbol is dummy
  * @param[in]  op     OP_MERGE: just add it. 
@@ -182,30 +373,14 @@ text_get(clicon_handle h,
  * @see xmldb_put_xkey  for single key
  */
 int
-text_put(clicon_handle       h,
+text_put(xmldb_handle      xh,
        char               *db, 
        enum operation_type op,
        char               *api_path,
        cxobj              *xt) 
 {
-    int        retval = -1;
-    retval = 0;
-    // done:
-    return retval;
-}
-
-/*! Raw dump of database, just keys and values, no xml interpretation 
- * @param[in]  f       File
- * @param[in]  dbfile  File-name of database. This is a local file
- * @param[in]  rxkey   Key regexp, eg "^.*$"
- * @note This function can only be called locally.
- */
-int
-text_dump(FILE         *f,
-	char         *dbfilename, 
-	char         *rxkey)
-{
-    int             retval = -1;
+    int                 retval = -1;
+    //    struct text_handle *th = handle(xh);
 
     retval = 0;
     // done:
@@ -213,35 +388,39 @@ text_dump(FILE         *f,
 }
 
 /*! Copy database from db1 to db2
- * @param[in]  h     Clicon handle
+ * @param[in]  xh  XMLDB handle
  * @param[in]  from  Source database copy
  * @param[in]  to    Destination database
  * @retval -1  Error
  * @retval  0  OK
   */
 int 
-text_copy(clicon_handle h, 
-	char         *from,
-	char         *to)
+text_copy(xmldb_handle xh, 
+	char          *from,
+	char          *to)
 {
-    int           retval = -1;
+    int                 retval = -1;
+    //    struct text_handle *th = handle(xh);
+
     retval = 0;
     // done:
     return retval;
 }
 
 /*! Lock database
- * @param[in]  h    Clicon handle
+ * @param[in]  xh  XMLDB handle
  * @param[in]  db   Database
  * @param[in]  pid  Process id
  * @retval -1  Error
  * @retval  0  OK
   */
 int 
-text_lock(clicon_handle h, 
-	char         *db,
-	int           pid)
+text_lock(xmldb_handle xh, 
+	char          *db,
+	int            pid)
 {
+    //    struct text_handle *th = handle(xh);
+
     if (strcmp("running", db) == 0)
 	_running_locked = pid;
     else if (strcmp("candidate", db) == 0)
@@ -253,7 +432,7 @@ text_lock(clicon_handle h,
 }
 
 /*! Unlock database
- * @param[in]  h   Clicon handle
+ * @param[in]  xh  XMLDB handle
  * @param[in]  db  Database
  * @param[in]  pid  Process id
  * @retval -1  Error
@@ -261,10 +440,12 @@ text_lock(clicon_handle h,
  * Assume all sanity checks have been made
  */
 int 
-text_unlock(clicon_handle h, 
-	  char         *db,
-	  int           pid)
+text_unlock(xmldb_handle xh, 
+	  char          *db,
+	  int            pid)
 {
+    //    struct text_handle *th = handle(xh);
+
     if (strcmp("running", db) == 0)
 	_running_locked = 0;
     else if (strcmp("candidate", db) == 0)
@@ -275,15 +456,17 @@ text_unlock(clicon_handle h,
 }
 
 /*! Unlock all databases locked by pid (eg process dies) 
- * @param[in]    h   Clicon handle
+ * @param[in]    xh  XMLDB handle
  * @param[in]    pid Process / Session id
  * @retval -1    Error
  * @retval   0   Ok
  */
 int 
-text_unlock_all(clicon_handle h, 
-	      int           pid)
+text_unlock_all(xmldb_handle xh, 
+	      int            pid)
 {
+    //    struct text_handle *th = handle(xh);
+
     if (_running_locked == pid)
 	_running_locked = 0;
     if (_candidate_locked == pid)
@@ -294,16 +477,18 @@ text_unlock_all(clicon_handle h,
 }
 
 /*! Check if database is locked
- * @param[in]    h   Clicon handle
+ * @param[in]    xh  XMLDB handle
  * @param[in]    db  Database
  * @retval -1    Error
  * @retval   0   Not locked
  * @retval  >0   Id of locker
   */
 int 
-text_islocked(clicon_handle h, 
-	    char         *db)
+text_islocked(xmldb_handle xh, 
+	    char          *db)
 {
+    //    struct text_handle *th = handle(xh);
+
     if (strcmp("running", db) == 0)
 	return (_running_locked);
     else if (strcmp("candidate", db) == 0)
@@ -314,21 +499,23 @@ text_islocked(clicon_handle h,
 }
 
 /*! Check if db exists 
- * @param[in]  h   Clicon handle
+ * @param[in]  xh  XMLDB handle
  * @param[in]  db  Database
  * @retval -1  Error
  * @retval  0  No it does not exist
  * @retval  1  Yes it exists
  */
 int 
-text_exists(clicon_handle h, 
-	  char         *db)
+text_exists(xmldb_handle xh, 
+	  char          *db)
 {
-    int           retval = -1;
-    char         *filename = NULL;
-    struct stat  sb;
 
-    if (db2file(h, db, &filename) < 0)
+    int                 retval = -1;
+    struct text_handle *th = handle(xh);
+    char               *filename = NULL;
+    struct stat         sb;
+
+    if (db2file(th, db, &filename) < 0)
 	goto done;
     if (lstat(filename, &sb) < 0)
 	retval = 0;
@@ -341,16 +528,17 @@ text_exists(clicon_handle h,
 }
 
 /*! Delete database. Remove file 
- * @param[in]  h   Clicon handle
+ * @param[in]  xh  XMLDB handle
  * @param[in]  db  Database
  * @retval -1  Error
  * @retval  0  OK
  */
 int 
-text_delete(clicon_handle h, 
-	  char         *db)
+text_delete(xmldb_handle xh, 
+	  char          *db)
 {
-    int           retval = -1;
+    int                 retval = -1;
+//    struct text_handle *th = handle(xh);
 
     retval = 0;
     // done:
@@ -358,16 +546,17 @@ text_delete(clicon_handle h,
 }
 
 /*! Initialize database 
- * @param[in]  h   Clicon handle
+ * @param[in]  xh  XMLDB handle
  * @param[in]  db  Database
  * @retval  0  OK
  * @retval -1  Error
  */
 int 
-text_init(clicon_handle h, 
+text_init(xmldb_handle xh, 
 	  char         *db)
 {
     int           retval = -1;
+    //    struct text_handle *th = handle(xh);
 
     retval = 0;
     // done:
@@ -402,9 +591,12 @@ static const struct xmldb_api api = {
     XMLDB_API_MAGIC,
     clixon_xmldb_plugin_init,
     text_plugin_exit,
+    text_connect,
+    text_disconnect,
+    text_getopt,
+    text_setopt,
     text_get,
     text_put,
-    text_dump,
     text_copy,
     text_lock,
     text_unlock,

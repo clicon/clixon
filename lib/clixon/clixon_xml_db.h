@@ -34,6 +34,19 @@
 #ifndef _CLIXON_XML_DB_H
 #define _CLIXON_XML_DB_H
 
+/* The XMLDB has a handle to keep connected state. To users of the API it is 
+ * a void* but it may have structure within a specific plugin.
+ * The handle is independent from clicon so that (in principle) the datastore
+ * can work in other contexts than clicon.
+ * The connect API call sets the handle and disconnect resets it. In principle
+ * there can be several handles at one time.
+ */
+#if 1 /* SANITY CHECK */
+typedef struct {int16_t a;} *xmldb_handle;
+#else
+typedef void *xmldb_handle;
+#endif
+
 /* Version of clixon datastore plugin API. */
 #define XMLDB_API_VERSION 1
 
@@ -49,40 +62,49 @@ typedef void * (plugin_init_t)(int version);
 /* Type of plugin exit function */
 typedef int (plugin_exit_t)(void);
 
+/* Type of xmldb connect function */
+typedef xmldb_handle (xmldb_connect_t)(void);
+
+/* Type of xmldb disconnect function */
+typedef int (xmldb_disconnect_t)(xmldb_handle xh);
+
+/* Type of xmldb getopt function */
+typedef int (xmldb_getopt_t)(xmldb_handle xh, char *optname, void **value);
+
+/* Type of xmldb setopt function */
+typedef int (xmldb_setopt_t)(xmldb_handle xh, char *optname, void *value);
+
 /* Type of xmldb get function */
-typedef int (xmldb_get_t)(clicon_handle h, char *db, char *xpath,
+typedef int (xmldb_get_t)(xmldb_handle xh, char *db, char *xpath,
 	   cxobj **xtop, cxobj ***xvec, size_t *xlen);
 
 /* Type of xmldb put function */
-typedef int (xmldb_put_t)(clicon_handle h, char *db, enum operation_type op, 
-			      char *api_path,  cxobj *xt);
-
-/* Type of xmldb dump function */
-typedef int (xmldb_dump_t)(FILE *f, char *dbfilename, char *rxkey);
+typedef int (xmldb_put_t)(xmldb_handle xh, char *db, enum operation_type op, 
+			  char *api_path,  cxobj *xt);
 
 /* Type of xmldb copy function */
-typedef int (xmldb_copy_t)(clicon_handle h, char *from, char *to);
+typedef int (xmldb_copy_t)(xmldb_handle xh, char *from, char *to);
 
 /* Type of xmldb lock function */
-typedef int (xmldb_lock_t)(clicon_handle h, char *db, int pid);
+typedef int (xmldb_lock_t)(xmldb_handle xh, char *db, int pid);
 
 /* Type of xmldb unlock function */
-typedef int (xmldb_unlock_t)(clicon_handle h, char *db, int pid);
+typedef int (xmldb_unlock_t)(xmldb_handle xh, char *db, int pid);
 
 /* Type of xmldb unlock_all function */
-typedef int (xmldb_unlock_all_t)(clicon_handle h, int pid);
+typedef int (xmldb_unlock_all_t)(xmldb_handle xh, int pid);
 
 /* Type of xmldb islocked function */
-typedef int (xmldb_islocked_t)(clicon_handle h, char *db);
+typedef int (xmldb_islocked_t)(xmldb_handle xh, char *db);
 
 /* Type of xmldb exists function */
-typedef int (xmldb_exists_t)(clicon_handle h, char *db);
+typedef int (xmldb_exists_t)(xmldb_handle xh, char *db);
 
 /* Type of xmldb delete function */
-typedef int (xmldb_delete_t)(clicon_handle h, char *db);
+typedef int (xmldb_delete_t)(xmldb_handle xh, char *db);
 
 /* Type of xmldb init function */
-typedef int (xmldb_init_t)(clicon_handle h, char *db);
+typedef int (xmldb_init_t)(xmldb_handle xh, char *db);
 
 /* grideye agent plugin init struct for the api */
 struct xmldb_api{
@@ -90,9 +112,12 @@ struct xmldb_api{
     int                 xa_magic;
     plugin_init_t      *xa_plugin_init_fn; /* XMLDB_PLUGIN_INIT_FN */
     plugin_exit_t      *xa_plugin_exit_fn;
+    xmldb_connect_t    *xa_connect_fn;
+    xmldb_disconnect_t *xa_disconnect_fn;
+    xmldb_getopt_t     *xa_getopt_fn;
+    xmldb_setopt_t     *xa_setopt_fn;
     xmldb_get_t        *xa_get_fn;
     xmldb_put_t        *xa_put_fn;
-    xmldb_dump_t       *xa_dump_fn;
     xmldb_copy_t       *xa_copy_fn;
     xmldb_lock_t       *xa_lock_fn;
     xmldb_unlock_t     *xa_unlock_fn;
@@ -105,14 +130,19 @@ struct xmldb_api{
 
 /*
  * Prototypes
+ * API
  */
-int xmldb_plugin_load(char *filename);
+int xmldb_plugin_load(clicon_handle h, char *filename);
+int xmldb_plugin_unload(clicon_handle h);
 
+int xmldb_connect(clicon_handle h);
+int xmldb_disconnect(clicon_handle h);
+int xmldb_getopt(clicon_handle h, char *optname, void **value);
+int xmldb_setopt(clicon_handle h, char *optname, void *value);
 int xmldb_get(clicon_handle h, char *db, char *xpath,
 	      cxobj **xtop, cxobj ***xvec, size_t *xlen);
 int xmldb_put(clicon_handle h, char *db, enum operation_type op, 
 	      char *api_path,  cxobj *xt);
-int xmldb_dump(FILE *f, char *dbfilename, char *rxkey);
 int xmldb_copy(clicon_handle h, char *from, char *to);
 int xmldb_lock(clicon_handle h, char *db, int pid);
 int xmldb_unlock(clicon_handle h, char *db, int pid);

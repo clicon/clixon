@@ -1333,7 +1333,7 @@ Optional Packages:
   --with-cligen=dir       Use CLIGEN here
   --without-restconf      disable support for restconf
   --without-keyvalue      disable support for key-value xmldb datastore
-  --with-qdbm=dir         Use QDBM here
+  --with-qdbm=dir         Use QDBM here, if keyvalue
 
 Some influential environment variables:
   CC          C compiler command
@@ -4266,7 +4266,7 @@ done
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/dbctrl/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/keyvalue/Makefile datastore/text/Makefile doc/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/keyvalue/Makefile datastore/text/Makefile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4968,7 +4968,6 @@ do
     "apps/backend/Makefile") CONFIG_FILES="$CONFIG_FILES apps/backend/Makefile" ;;
     "apps/netconf/Makefile") CONFIG_FILES="$CONFIG_FILES apps/netconf/Makefile" ;;
     "apps/restconf/Makefile") CONFIG_FILES="$CONFIG_FILES apps/restconf/Makefile" ;;
-    "apps/dbctrl/Makefile") CONFIG_FILES="$CONFIG_FILES apps/dbctrl/Makefile" ;;
     "include/Makefile") CONFIG_FILES="$CONFIG_FILES include/Makefile" ;;
     "etc/Makefile") CONFIG_FILES="$CONFIG_FILES etc/Makefile" ;;
     "etc/clixonrc") CONFIG_FILES="$CONFIG_FILES etc/clixonrc" ;;

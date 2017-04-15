@@ -75,14 +75,21 @@
  * This file should only contain access functions for the _specific_
  * entries in the struct below.
  */
+/*! Backend specific handle added to header CLICON handle
+ * This file should only contain access functions for the _specific_
+ * entries in the struct below.
+ * @note The top part must be equivalent to struct clicon_handle in clixon_handle.c
+ * @see struct clicon_handle, struct cli_handle
+ */
 struct backend_handle {
-    int                      cb_magic;     /* magic (HDR)*/
-    clicon_hash_t           *cb_copt;      /* clicon option list (HDR) */
-    clicon_hash_t           *cb_data;      /* internal clicon data (HDR) */
+    int                      bh_magic;     /* magic (HDR)*/
+    clicon_hash_t           *bh_copt;      /* clicon option list (HDR) */
+    clicon_hash_t           *bh_data;      /* internal clicon data (HDR) */
+    void                    *bh_xmldb;    /* XMLDB storage handle, uie xmldb_handle */
     /* ------ end of common handle ------ */
-    struct client_entry     *cb_ce_list;   /* The client list */
-    int                      cb_ce_nr;     /* Number of clients, just increment */
-    struct handle_subscription *cb_subscription; /* Event subscription list */
+    struct client_entry     *bh_ce_list;   /* The client list */
+    int                      bh_ce_nr;     /* Number of clients, just increment */
+    struct handle_subscription *bh_subscription; /* Event subscription list */
 };
 
 /*! Creates and returns a clicon config handle for other CLICON API calls
@@ -257,11 +264,17 @@ backend_notify_xml(clicon_handle h,
 
 }
 
+/*! Add new client, typically frontend such as cli, netconf, restconf
+ * @param[in]  h        Clicon handle
+ * @param[in]  addr     Address of client
+ * @retval     ce       Client entry
+ * @retval     NULL     Error
+ */
 struct client_entry *
 backend_client_add(clicon_handle    h, 
 		   struct sockaddr *addr)
 {
-    struct backend_handle *cb = handle(h);
+    struct backend_handle *bh = handle(h);
     struct client_entry   *ce;
 
     if ((ce = (struct client_entry *)malloc(sizeof(*ce))) == NULL){
@@ -269,24 +282,28 @@ backend_client_add(clicon_handle    h,
 	return NULL;
     }
     memset(ce, 0, sizeof(*ce));
-    ce->ce_nr = cb->cb_ce_nr++;
+    ce->ce_nr = bh->bh_ce_nr++;
     memcpy(&ce->ce_addr, addr, sizeof(*addr));
-    ce->ce_next = cb->cb_ce_list;
-    cb->cb_ce_list = ce;
+    ce->ce_next = bh->bh_ce_list;
+    bh->bh_ce_list = ce;
     return ce;
 }
 
+/*! Return client list
+ * @param[in]  h        Clicon handle
+ * @retval     ce_list  Client entry list (all sessions)
+ */
 struct client_entry *
 backend_client_list(clicon_handle h)
 {
-    struct backend_handle *cb = handle(h);
+    struct backend_handle *bh = handle(h);
 
-    return cb->cb_ce_list;
+    return bh->bh_ce_list;
 }
 
 /*! Actually remove client from client list
  * @param[in]  h   Clicon handle
- * @param[in]  ce  Client hadnle
+ * @param[in]  ce  Client handle
  * @see backend_client_rm which is more high-level
  */
 int
@@ -295,9 +312,9 @@ backend_client_delete(clicon_handle        h,
 {
     struct client_entry   *c;
     struct client_entry  **ce_prev;
-    struct backend_handle *cb = handle(h);
+    struct backend_handle *bh = handle(h);
 
-    ce_prev = &cb->cb_ce_list;
+    ce_prev = &bh->bh_ce_list;
     for (c = *ce_prev; c; c = c->ce_next){
 	if (c == ce){
 	    *ce_prev = c->ce_next;
@@ -328,7 +345,7 @@ subscription_add(clicon_handle        h,
 		 subscription_fn_t    fn,
 		 void                *arg)
 {
-    struct backend_handle *cb = handle(h);
+    struct backend_handle *bh = handle(h);
     struct handle_subscription *hs = NULL;
 
     if ((hs = malloc(sizeof(*hs))) == NULL){
@@ -339,10 +356,10 @@ subscription_add(clicon_handle        h,
     hs->hs_stream = strdup(stream);
     hs->hs_format = format;
     hs->hs_filter = filter?strdup(filter):NULL;
-    hs->hs_next   = cb->cb_subscription;
+    hs->hs_next   = bh->bh_subscription;
     hs->hs_fn     = fn;
     hs->hs_arg    = arg;
-    cb->cb_subscription = hs;
+    bh->bh_subscription = hs;
   done:
     return hs;
 }
@@ -362,11 +379,11 @@ subscription_delete(clicon_handle     h,
 		    subscription_fn_t fn,
 		    void             *arg)
 {
-    struct backend_handle *cb = handle(h);
+    struct backend_handle *bh = handle(h);
     struct handle_subscription   *hs;
     struct handle_subscription  **hs_prev;
 
-    hs_prev = &cb->cb_subscription; /* this points to stack and is not real backpointer */
+    hs_prev = &bh->bh_subscription; /* this points to stack and is not real backpointer */
     for (hs = *hs_prev; hs; hs = hs->hs_next){
 	/* XXX arg == hs->hs_arg */
 	if (strcmp(hs->hs_stream, stream)==0 && hs->hs_fn == fn){
@@ -404,15 +421,16 @@ struct handle_subscription *
 subscription_each(clicon_handle               h,
 		  struct handle_subscription *hprev)
 {
-    struct backend_handle      *cb = handle(h);
+    struct backend_handle      *bh = handle(h);
     struct handle_subscription *hs = NULL;
 
     if (hprev)
 	hs = hprev->hs_next;
     else
-	hs = cb->cb_subscription;
+	hs = bh->bh_subscription;
     return hs;
 }
+
 /* Database dependency description */
 struct backend_netconf_reg {
     qelem_t 	 nr_qelem;	/* List header */
@@ -456,10 +474,9 @@ catch:
 /*! See if there is any callback registered for this tag
  *
  * @param[in]  h       clicon handle
- * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
- * @param[out] cb      Output xml stream. For reply
- * @param[out] cb_err  Error xml stream. For error reply
- * @param[out] xret    Return XML, error or OK
+ * @param[in]  xe      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
+ * @param[in]  ce      Client (session) entry
+ * @param[out] cbret   Return XML, error or OK as cbuf
  *
  * @retval -1   Error
  * @retval  0   OK, not found handler.

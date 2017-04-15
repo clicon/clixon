@@ -1540,11 +1540,11 @@ yang_parse1(clicon_handle h,
 
 /*! Parse top yang module including all its sub-modules. Expand and populate yang tree
  *
- * @param h        CLICON handle
- * @param yang_dir Directory where all YANG module files reside
- * @param module   Name of main YANG module. More modules may be parsed if imported
- * @param revision Optional module revision date
- * @param ysp      Yang specification. Should ave been created by caller using yspec_new
+ * @param[in] h        CLICON handle
+ * @param[in] yang_dir Directory where all YANG module files reside
+ * @param[in] module   Name of main YANG module. More modules may be parsed if imported
+ * @param[in] revision Optional module revision date
+ * @param[out] ysp     Yang specification. Should ave been created by caller using yspec_new
  * @retval 0  Everything OK
  * @retval -1 Error encountered
  * The database symbols are inserted in alphabetical order.
