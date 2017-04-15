@@ -1016,10 +1016,11 @@ clicon_xml_parse_file(int     fd,
 		      cxobj **cx, 
 		      char   *endtag)
 {
+    int   retval = -1;
+    int   ret;
     int   len = 0;
     char  ch;
-    int   retval;
-    char *xmlbuf;
+    char *xmlbuf = NULL;
     char *ptr;
     int   maxbuf = BUFLEN;
     int   endtaglen = strlen(endtag);
@@ -1038,23 +1039,22 @@ clicon_xml_parse_file(int     fd,
     memset(xmlbuf, 0, maxbuf);
     ptr = xmlbuf;
     while (1){
-	if ((retval = read(fd, &ch, 1)) < 0){
+	if ((ret = read(fd, &ch, 1)) < 0){
 	    clicon_err(OE_XML, errno, "%s: read: [pid:%d]\n", 
 		    __FUNCTION__,
 		    (int)getpid());
 	    break;
 	}
-	if (retval != 0){
+	if (ret != 0){
 	    state = FSM(endtag, ch, state);
 	    xmlbuf[len++] = ch;
 	}
-	if (retval == 0 || state == endtaglen){
+	if (ret == 0 || state == endtaglen){
 	    state = 0;
 	    if ((*cx = xml_new("top", NULL)) == NULL)
 		break;
 	    if (xml_parse(ptr, *cx) < 0){
 		goto done;
-		return -1;
 	    }
 	    break;
 	}
