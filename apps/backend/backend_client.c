@@ -438,7 +438,7 @@ from_client_unlock(clicon_handle h,
 	goto ok;
     }
     else{
-	xmldb_unlock(h, db, pid);
+	xmldb_unlock(h, db);
 	if (cprintf(cbret, "<rpc-reply><ok/></rpc-reply>") < 0)
 	    goto done;
     }
@@ -496,7 +496,7 @@ from_client_kill_session(clicon_handle h,
     if (1 || (kill (pid, 0) != 0 && errno == ESRCH)){ /* Nothing there */
 	/* clear from locks */
 	if (xmldb_islocked(h, db) == pid)
-	    xmldb_unlock(h, db, pid);
+	    xmldb_unlock(h, db);
     }
     else{ /* failed to kill client */
 	cprintf(cbret, "<rpc-reply><rpc-error>"

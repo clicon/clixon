@@ -106,7 +106,7 @@ static int _startup_locked = 0;
  * The filename reside in CLICON_XMLDB_DIR option
  */
 static int
-db2file(struct text_handle *th, 
+text_db2file(struct text_handle *th, 
 	char               *db,
 	char              **filename)
 {
@@ -126,7 +126,7 @@ db2file(struct text_handle *th,
 	strcmp(db, "candidate") != 0 && 
 	strcmp(db, "startup") != 0 && 
 	strcmp(db, "tmp") != 0){
-	clicon_err(OE_XML, 0, "Unexpected database: %s", db);
+	clicon_err(OE_XML, 0, "No such database: %s", db);
 	goto done;
     }
     cprintf(cb, "%s/%s_db", dir, db);
@@ -292,7 +292,7 @@ text_get(xmldb_handle xh,
     int             i;
     struct text_handle *th = handle(xh);
 
-    if (db2file(th, db, &dbfile) < 0)
+    if (text_db2file(th, db, &dbfile) < 0)
 	goto done;
     if (dbfile==NULL){
 	clicon_err(OE_XML, 0, "dbfile NULL");
@@ -348,7 +348,6 @@ text_get(xmldb_handle xh,
     if (fd != -1)
 	close(fd);
     return retval;
-
 }
 
 /*! Modify database provided an xml tree and an operation
@@ -380,10 +379,37 @@ text_put(xmldb_handle      xh,
        cxobj              *xt) 
 {
     int                 retval = -1;
-    //    struct text_handle *th = handle(xh);
+    struct text_handle *th = handle(xh);
+    char               *dbfile = NULL;
+    int                 fd = -1;
+    cbuf               *cb = NULL;
 
+    if (text_db2file(th, db, &dbfile) < 0)
+	goto done;
+    if (dbfile==NULL){
+	clicon_err(OE_XML, 0, "dbfile NULL");
+	goto done;
+    }
+    if ((fd = open(dbfile, O_WRONLY | O_CREAT)) == -1) {
+	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
+	goto done;
+    }    
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (clicon_xml2cbuf(cb, xt, 0, 0) < 0)
+	goto done;
+    if (write(fd, cbuf_get(cb), cbuf_len(cb)+1) < 0){
+	clicon_err(OE_UNIX, errno, "write(%s)", dbfile);
+	goto done;
+    }
     retval = 0;
-    // done:
+ done:
+    if (fd != -1)
+	close(fd);
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
@@ -441,8 +467,7 @@ text_lock(xmldb_handle xh,
  */
 int 
 text_unlock(xmldb_handle xh, 
-	  char          *db,
-	  int            pid)
+	    char          *db)
 {
     //    struct text_handle *th = handle(xh);
 
@@ -515,7 +540,7 @@ text_exists(xmldb_handle xh,
     char               *filename = NULL;
     struct stat         sb;
 
-    if (db2file(th, db, &filename) < 0)
+    if (text_db2file(th, db, &filename) < 0)
 	goto done;
     if (lstat(filename, &sb) < 0)
 	retval = 0;

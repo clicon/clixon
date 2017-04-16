@@ -73,7 +73,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc:rg:pty:x:"
+#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1IRCc:rg:py:x:"
 
 /*! Terminate. Cannot use h after this */
 static int
@@ -129,6 +129,7 @@ usage(char *argv0, clicon_handle h)
     	    "    -D <level>\tdebug\n"
     	    "    -f <file>\tCLICON config file (mandatory)\n"
 	    "    -d <dir>\tSpecify backend plugin directory (default: %s)\n"
+	    "    -b <dir>\tSpecify XMLDB database directory\n"
     	    "    -z\t\tKill other config daemon and exit\n"
     	    "    -F\t\tforeground\n"
     	    "    -1\t\tonce (dont wait for events)\n"
@@ -140,7 +141,6 @@ usage(char *argv0, clicon_handle h)
 	    "    -c <file>\tLoad specified application config.\n"
 	    "    -r\t\tReload running database\n"
 	    "    -p \t\tPrint database yang specification\n"
-	    "    -t \t\tPrint alternate spec translation (eg if YANG print KEY, if KEY print YANG)\n"
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
 	    "    -y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "    -x <plugin>\tXMLDB plugin\n",
@@ -308,7 +308,6 @@ main(int argc, char **argv)
     clicon_handle h;
     int           help = 0;
     int           printspec = 0;
-    int           printalt = 0;
     int           pid;
     char         *pidfile;
     char         *sock;
@@ -387,6 +386,11 @@ main(int argc, char **argv)
 		usage(argv[0], h);
 	    clicon_option_str_set(h, "CLICON_BACKEND_DIR", optarg);
 	    break;
+	case 'b':  /* XMLDB database directory */
+	    if (!strlen(optarg))
+		usage(argv[0], h);
+	    clicon_option_str_set(h, "CLICON_XMLDB_DIR", optarg);
+	    break;
 	case 'F' : /* foreground */
 	    foreground = 1;
 	    break;
@@ -424,9 +428,6 @@ main(int argc, char **argv)
 	     break;
 	case 'p' : /* Print spec */
 	    printspec++;
-	    break;
-	case 't' : /* Print alternative dbspec format (eg if YANG, print KEY) */
-	    printalt++;
 	    break;
 	case 'y' :{ /* yang module */
 	    /* Set revision to NULL, extract dir and module */

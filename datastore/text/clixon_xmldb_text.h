@@ -46,7 +46,7 @@ int text_put(xmldb_handle h, char *db, enum operation_type op,
 int text_dump(FILE *f, char *dbfilename, char *rxkey);
 int text_copy(xmldb_handle h, char *from, char *to);
 int text_lock(xmldb_handle h, char *db, int pid);
-int text_unlock(xmldb_handle h, char *db, int pid);
+int text_unlock(xmldb_handle h, char *db);
 int text_unlock_all(xmldb_handle h, int pid);
 int text_islocked(xmldb_handle h, char *db);
 int text_exists(xmldb_handle h, char *db);

@@ -89,7 +89,7 @@ typedef int (xmldb_copy_t)(xmldb_handle xh, char *from, char *to);
 typedef int (xmldb_lock_t)(xmldb_handle xh, char *db, int pid);
 
 /* Type of xmldb unlock function */
-typedef int (xmldb_unlock_t)(xmldb_handle xh, char *db, int pid);
+typedef int (xmldb_unlock_t)(xmldb_handle xh, char *db);
 
 /* Type of xmldb unlock_all function */
 typedef int (xmldb_unlock_all_t)(xmldb_handle xh, int pid);
@@ -145,7 +145,7 @@ int xmldb_put(clicon_handle h, char *db, enum operation_type op,
 	      char *api_path,  cxobj *xt);
 int xmldb_copy(clicon_handle h, char *from, char *to);
 int xmldb_lock(clicon_handle h, char *db, int pid);
-int xmldb_unlock(clicon_handle h, char *db, int pid);
+int xmldb_unlock(clicon_handle h, char *db);
 int xmldb_unlock_all(clicon_handle h, int pid);
 int xmldb_islocked(clicon_handle h, char *db);
 int xmldb_exists(clicon_handle h, char *db);

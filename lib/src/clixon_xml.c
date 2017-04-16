@@ -843,7 +843,7 @@ clicon_xml2file(FILE  *f,
 		int    level, 
 		int    prettyprint)
 {
-    cbuf  *cb;
+    cbuf  *cb = NULL;
     int    retval = -1;
 
     if ((cb = cbuf_new()) == NULL){

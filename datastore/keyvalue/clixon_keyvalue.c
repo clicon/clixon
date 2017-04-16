@@ -160,7 +160,7 @@ static int _startup_locked = 0;
  * The filename reside in CLICON_XMLDB_DIR option
  */
 static int
-db2file(struct kv_handle *kh, 
+kv_db2file(struct kv_handle *kh, 
 	    char         *db,
 	    char        **filename)
 {
@@ -180,7 +180,7 @@ db2file(struct kv_handle *kh,
 	strcmp(db, "candidate") != 0 && 
 	strcmp(db, "startup") != 0 && 
 	strcmp(db, "tmp") != 0){
-	clicon_err(OE_XML, 0, "Unexpected database: %s", db);
+	clicon_err(OE_XML, 0, "No such database: %s", db);
 	goto done;
     }
     cprintf(cb, "%s/%s_db", dir, db);
@@ -616,7 +616,7 @@ kv_get(xmldb_handle  xh,
 
 
     clicon_debug(2, "%s", __FUNCTION__);
-    if (db2file(kh, db, &dbfile) < 0)
+    if (kv_db2file(kh, db, &dbfile) < 0)
 	goto done;
     if (dbfile==NULL){
 	clicon_err(OE_XML, 0, "dbfile NULL");
@@ -629,7 +629,7 @@ kv_get(xmldb_handle  xh,
     /* Read in complete database (this can be optimized) */
     if ((npairs = db_regexp(dbfile, "", __FUNCTION__, &pairs, 0)) < 0)
 	goto done;
-    if ((xt = xml_new_spec("clicon", NULL, yspec)) == NULL)
+    if ((xt = xml_new_spec("config", NULL, yspec)) == NULL)
 	goto done;
     /* Translate to complete xml tree */
     for (i = 0; i < npairs; i++) {
@@ -836,7 +836,7 @@ xmldb_put_xkey(struct kv_handle   *kh,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (db2file(kh, db, &filename) < 0)
+    if (kv_db2file(kh, db, &filename) < 0)
 	goto done;
     if (xk == NULL || *xk!='/'){
 	clicon_err(OE_DB, 0, "Invalid key: %s", xk);
@@ -852,6 +852,9 @@ xmldb_put_xkey(struct kv_handle   *kh,
     }
     if ((vec = clicon_strsep(xk, "/", &nvec)) == NULL)
 	goto done;
+    /* Remove trailing '/'. Like in /a/ -> /a */
+    if (nvec > 1 && !strlen(vec[nvec-1]))
+	nvec--;
     if (nvec < 2){
 	clicon_err(OE_XML, 0, "Malformed key: %s", xk);
 	goto done;
@@ -1066,7 +1069,7 @@ xmldb_put_restconf_api_path(struct kv_handle   *kh,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (db2file(kh, db, &filename) < 0)
+    if (kv_db2file(kh, db, &filename) < 0)
 	goto done;
     if (api_path == NULL || *api_path!='/'){
 	clicon_err(OE_DB, 0, "Invalid api path: %s", api_path);
@@ -1082,6 +1085,9 @@ xmldb_put_restconf_api_path(struct kv_handle   *kh,
     }
     if ((vec = clicon_strsep(api_path, "/", &nvec)) == NULL)
 	goto done;
+    /* Remove trailing '/'. Like in /a/ -> /a */
+    if (nvec > 1 && !strlen(vec[nvec-1]))
+	nvec--;
     if (nvec < 2){
 	clicon_err(OE_XML, 0, "Malformed key: %s", api_path);
 	goto done;
@@ -1266,13 +1272,14 @@ kv_put(xmldb_handle        xh,
     yang_spec *yspec;
     char      *dbfilename = NULL;
 
-    if (xml_child_nr(xt)==0 || xml_body(xt)!= NULL)
+    if ((xml_child_nr(xt)==0 || xml_body(xt)!= NULL) &&
+	api_path && strlen(api_path) && strcmp(api_path,"/"))
 	return xmldb_put_xkey(kh, db, op, api_path, xml_body(xt));
     if ((yspec =  kh->kh_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (db2file(kh, db, &dbfilename) < 0)
+    if (kv_db2file(kh, db, &dbfilename) < 0)
 	goto done;
     if (op == OP_REPLACE){
 	if (db_delete(dbfilename) < 0) 
@@ -1281,7 +1288,8 @@ kv_put(xmldb_handle        xh,
 	    goto done;
     }
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-	if (api_path && strlen(api_path)){
+	/* An api path that is not / */
+	if (api_path && strlen(api_path) && strcmp(api_path,"/")){
 	    if (xmldb_put_restconf_api_path(kh, db, op, api_path, x) < 0)
 		goto done;
 	    continue;
@@ -1323,9 +1331,9 @@ kv_copy(xmldb_handle xh,
     char         *tofile = NULL;
 
     /* XXX lock */
-    if (db2file(kh, from, &fromfile) < 0)
+    if (kv_db2file(kh, from, &fromfile) < 0)
 	goto done;
-    if (db2file(kh, to, &tofile) < 0)
+    if (kv_db2file(kh, to, &tofile) < 0)
 	goto done;
     if (clicon_file_copy(fromfile, tofile) < 0)
 	goto done;
@@ -1350,16 +1358,25 @@ kv_lock(xmldb_handle xh,
 	char         *db,
 	int           pid)
 {
+    int retval = -1;
     //    struct kv_handle *kh = handle(xh);
-
+    fprintf(stderr, "%s %s %d\n", __FUNCTION__, db, pid);
     if (strcmp("running", db) == 0)
 	_running_locked = pid;
     else if (strcmp("candidate", db) == 0)
 	_candidate_locked = pid;
     else if (strcmp("startup", db) == 0)
 	_startup_locked = pid;
+    else{
+	clicon_err(OE_DB, 0, "No such database: %s", db);
+	goto done;
+    }
     clicon_debug(1, "%s: locked by %u",  db, pid);
-    return 0;
+    fprintf(stderr, "running:%d candidate:%d startup:%d\n", 
+	    _running_locked, _candidate_locked, _startup_locked);
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Unlock database
@@ -1372,18 +1389,24 @@ kv_lock(xmldb_handle xh,
  */
 int 
 kv_unlock(xmldb_handle xh, 
-	  char         *db,
-	  int           pid)
+	  char         *db)
 {
+    int retval = -1;
     //    struct kv_handle *kh = handle(xh);
-
+    fprintf(stderr, "%s %s\n", __FUNCTION__, db);
     if (strcmp("running", db) == 0)
 	_running_locked = 0;
     else if (strcmp("candidate", db) == 0)
 	_candidate_locked = 0;
     else if (strcmp("startup", db) == 0)
 	_startup_locked = 0;
-    return 0;
+    else{
+	clicon_err(OE_DB, 0, "No such database: %s", db);
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Unlock all databases locked by pid (eg process dies) 
@@ -1418,15 +1441,21 @@ int
 kv_islocked(xmldb_handle xh, 
 	    char         *db)
 {
+    int retval = -1;
     //    struct kv_handle *kh = handle(xh);
 
+    fprintf(stderr, "%s %s\n", __FUNCTION__, db);
+    fprintf(stderr, "running:%d candidate:%d startup:%d\n", 
+	    _running_locked, _candidate_locked, _startup_locked);
     if (strcmp("running", db) == 0)
-	return (_running_locked);
+	retval = _running_locked;
     else if (strcmp("candidate", db) == 0)
-	return(_candidate_locked);
+	retval = _candidate_locked;
     else if (strcmp("startup", db) == 0)
-	return(_startup_locked);
-    return 0;
+	retval = _startup_locked;
+    else
+	clicon_err(OE_DB, 0, "No such database: %s", db);
+    return retval;
 }
 
 /*! Check if db exists 
@@ -1445,7 +1474,7 @@ kv_exists(xmldb_handle xh,
     char         *filename = NULL;
     struct stat  sb;
 
-    if (db2file(kh, db, &filename) < 0)
+    if (kv_db2file(kh, db, &filename) < 0)
 	goto done;
     if (lstat(filename, &sb) < 0)
 	retval = 0;
@@ -1471,7 +1500,7 @@ kv_delete(xmldb_handle xh,
     struct kv_handle *kh = handle(xh);
     char         *filename = NULL;
 
-    if (db2file(kh, db, &filename) < 0)
+    if (kv_db2file(kh, db, &filename) < 0)
 	goto done;
     if (db_delete(filename) < 0)
 	goto done;
@@ -1496,7 +1525,7 @@ kv_init(xmldb_handle xh,
     struct kv_handle *kh = handle(xh);
     char         *filename = NULL;
 
-    if (db2file(kh, db, &filename) < 0)
+    if (kv_db2file(kh, db, &filename) < 0)
 	goto done;
     if (db_init(filename) < 0)
 	goto done;

@@ -30,8 +30,8 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
- */
 
+ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -169,7 +169,6 @@ xmldb_plugin_unload(clicon_handle h)
  *       datastore. Note also that the xmldb handle is hidden in the clicon 
  *       handle, the clixon user does not need to handle it. Note also that
  *       typically only the backend invokes the datastore.
- * XXX what args does connect have?
  */
 int
 xmldb_connect(clicon_handle h)
@@ -201,8 +200,8 @@ xmldb_connect(clicon_handle h)
 int
 xmldb_disconnect(clicon_handle h)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -237,8 +236,8 @@ xmldb_getopt(clicon_handle h,
 	     char         *optname,
 	     void        **value)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -270,8 +269,8 @@ xmldb_setopt(clicon_handle h,
 	     char         *optname,
 	     void         *value)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -320,7 +319,6 @@ xmldb_setopt(clicon_handle h,
  * @see xpath_vec
  * @see xmldb_get
  */
-
 int 
 xmldb_get(clicon_handle h, 
 	  char         *db, 
@@ -329,8 +327,8 @@ xmldb_get(clicon_handle h,
 	  cxobj      ***xvec, 
 	  size_t       *xlen)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -345,8 +343,16 @@ xmldb_get(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    clicon_log(LOG_WARNING, "%s: db:%s xpath:%s", __FUNCTION__, db, xpath);
     retval = xa->xa_get_fn(xh, db, xpath, xtop, xvec, xlen);
+#if 0 /* XXX DEBUG */
+    if (retval == 0) { 
+	 cbuf *cb = cbuf_new();
+	 clicon_xml2cbuf(cb, *xtop, 0, 0);
+	 clicon_log(LOG_WARNING, "%s: db:%s xpath:%s xml:%s", 
+		    __FUNCTION__, db, xpath, cbuf_get(cb));
+	 cbuf_free(cb);
+    }
+#endif
  done:
     return retval;
 }
@@ -379,8 +385,8 @@ xmldb_put(clicon_handle       h,
 	  char               *api_path, 
 	  cxobj              *xt)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -395,6 +401,7 @@ xmldb_put(clicon_handle       h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
+#if 0 /* XXX DEBUG */
     {
 	cbuf *cb = cbuf_new();
 	if (clicon_xml2cbuf(cb, xt, 0, 0) < 0)
@@ -404,6 +411,7 @@ xmldb_put(clicon_handle       h,
 	       db, op, api_path, cbuf_get(cb));
 	cbuf_free(cb);
     }
+#endif
     retval = xa->xa_put_fn(xh, db, op, api_path, xt);
  done:
     return retval;
@@ -421,8 +429,8 @@ xmldb_copy(clicon_handle h,
 	   char         *from, 
 	   char         *to)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -454,8 +462,8 @@ xmldb_lock(clicon_handle h,
 	   char         *db, 
 	   int           pid)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -485,11 +493,10 @@ xmldb_lock(clicon_handle h,
  */
 int 
 xmldb_unlock(clicon_handle h, 
-	     char         *db, 
-	     int           pid)
+	     char         *db)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -504,7 +511,7 @@ xmldb_unlock(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = xa->xa_unlock_fn(xh, db, pid);
+    retval = xa->xa_unlock_fn(xh, db);
  done:
     return retval;
 }
@@ -519,8 +526,8 @@ int
 xmldb_unlock_all(clicon_handle h, 
 		 int           pid)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -551,8 +558,8 @@ int
 xmldb_islocked(clicon_handle h, 
 	       char         *db)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -583,8 +590,8 @@ int
 xmldb_exists(clicon_handle h, 
 	     char         *db)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -614,8 +621,8 @@ int
 xmldb_delete(clicon_handle h, 
 	     char         *db)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
@@ -645,8 +652,8 @@ int
 xmldb_init(clicon_handle h, 
 	   char         *db)
 {
-    int          retval = -1;
-    xmldb_handle xh;
+    int               retval = -1;
+    xmldb_handle      xh;
     struct xmldb_api *xa;
 
     if ((xa = clicon_xmldb_api_get(h)) == NULL){

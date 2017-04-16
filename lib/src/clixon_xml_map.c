@@ -1248,3 +1248,85 @@ xml_sanity(cxobj *xt,
     return retval;
 }
 
+/*! Translate from restconf api-path to xml xpath
+ * eg a/b=c -> a/[b=c] 
+ * @param[in]  yspec Yang spec
+ * @param[in]  pcvec api-path as cvec
+ * @param[in]  pi    Length of cvec
+ * @param[out] path  The xpath as cligen bif variable string
+ */
+int
+xml_apipath2xpath(yang_spec *yspec,
+		  cvec      *pcvec,
+		  int        pi,
+		  cbuf      *path)
+{
+    int        retval = -1;
+    int        i;
+    cg_var    *cv;
+    char      *name;
+    cvec      *cvk = NULL; /* vector of index keys */
+    yang_stmt *y = NULL;
+    char      *val;
+    char      *v;
+    yang_stmt *ykey;
+    cg_var    *cvi;
+
+    for (i=pi; i<cvec_len(pcvec); i++){
+        cv = cvec_i(pcvec, i);
+	name = cv_name_get(cv);
+	clicon_debug(1, "[%d] cvname:%s", i, name);
+	clicon_debug(1, "cv2str%d", cv2str(cv, NULL, 0));
+	if (i == pi){
+	    if ((y = yang_find_topnode(yspec, name)) == NULL){
+		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
+		goto done;
+	    }
+	}
+	else{
+	    assert(y!=NULL);
+	    if ((y = yang_find_syntax((yang_node*)y, name)) == NULL){
+		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
+		goto done;
+	    }
+	}
+	/* Check if has value, means '=' */
+        if (cv2str(cv, NULL, 0) > 0){
+            if ((val = cv2str_dup(cv)) == NULL)
+                goto done;
+	    v = val;
+	    /* XXX sync with yang */
+	    while((v=index(v, ',')) != NULL){
+		*v = '\0';
+		v++;
+	    }
+	    /* Find keys */
+	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
+		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
+			   __FUNCTION__, y->ys_argument);
+		goto done;
+	    }
+	    clicon_debug(1, "ykey:%s", ykey->ys_argument);
+
+	    /* The value is a list of keys: <key>[ <key>]*  */
+	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
+		goto done;
+	    cvi = NULL;
+	    /* Iterate over individual yang keys  */
+	    cprintf(path, "/%s", name);
+	    v = val;
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
+		cprintf(path, "[%s=%s]", cv_string_get(cvi), v);
+		v += strlen(v)+1;
+	    }
+	    if (val)
+		free(val);
+        }
+        else{
+            cprintf(path, "%s%s", (i==pi?"":"/"), name);
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+}

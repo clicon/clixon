@@ -35,8 +35,9 @@
 
 ./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip get /
 
-sudo ./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip put merge /interfaces/interface=eth0
-<config>eth66</config>
+sudo ./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip put merge /interfaces/interface=eth66 '<config>eth66</config>'
+
+sudo ./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip put merge / '<config><interfaces><interface><name>eth0</name><enabled>true</enabled></interface></interfaces></config>'
 
   * 
  */
@@ -89,10 +90,10 @@ usage(char *argv0)
 		"\t-m <module>\tYang module. Mandatory\n"
 		"and command is either:\n"
 		"\tget <xpath>\n"
-		"\tput (set|merge|delete) <api_path> \tXML on stdin\n"
-		"\tcopy <fromdb> <todb>\n"
+		"\tput (set|merge|delete) <api_path> <xml>\n"
+		"\tcopy <todb>\n"
 		"\tlock <pid>\n"
-		"\tunlock <pid>\n"
+		"\tunlock\n"
 		"\tunlock_all <pid>\n"
 		"\tislocked\n"
 		"\texists\n"
@@ -212,18 +213,18 @@ main(int argc, char **argv)
     if (xmldb_setopt(h, "yangspec", yspec) < 0)
 	goto done;
     if (strcmp(cmd, "get")==0){
-	if (argc < 2)
+	if (argc != 2)
 	    usage(argv0);
 	if (xmldb_get(h, db, argv[1], &xt, NULL, 0) < 0)
 	    goto done;
 	clicon_xml2file(stdout, xt, 0, 1);	
     }
     else if (strcmp(cmd, "put")==0){
-	if (argc < 3)
+	if (argc != 4)
 	    usage(argv0);
 	if (xml_operation(argv[1], &op) < 0)
 	    usage(argv0);
-	if (clicon_xml_parse_file(0, &xt, "</clicon>") < 0)
+	if (clicon_xml_parse_str(argv[3], &xt) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xn) < 0)
 	    goto done;
@@ -233,50 +234,59 @@ main(int argc, char **argv)
 	    xml_free(xn);
     }
     else if (strcmp(cmd, "copy")==0){
-	if (argc < 3)
+	if (argc != 2)
 	    usage(argv0);
-	if (xmldb_copy(h, argv[1], argv[2]) < 0)
+	if (xmldb_copy(h, db, argv[1]) < 0)
 	    goto done;
     }
     else if (strcmp(cmd, "lock")==0){
-	if (argc < 2)
+	if (argc != 2)
 	    usage(argv0);
 	pid = atoi(argv[1]);
 	if (xmldb_lock(h, db, pid) < 0)
 	    goto done;
     }
     else if (strcmp(cmd, "unlock")==0){
-	if (argc < 2)
+	if (argc != 1)
 	    usage(argv0);
-	pid = atoi(argv[1]);
-	if (xmldb_unlock(h, db, pid) < 0)
+	if (xmldb_unlock(h, db) < 0)
 	    goto done;
     }
     else if (strcmp(cmd, "unlock_all")==0){
-	if (argc < 2)
+	if (argc != 2)
 	    usage(argv0);
 	pid = atoi(argv[1]);
 	if (xmldb_unlock_all(h, pid) < 0)
 	    goto done;
     }
     else if (strcmp(cmd, "islocked")==0){
+	if (argc != 1)
+	    usage(argv0);
 	if ((ret = xmldb_islocked(h, db)) < 0)
 	    goto done;
 	fprintf(stdout, "islocked: %d\n", ret);
     }
     else if (strcmp(cmd, "exists")==0){
+	if (argc != 1)
+	    usage(argv0);
 	if ((ret = xmldb_exists(h, db)) < 0)
 	    goto done;
 	fprintf(stdout, "exists: %d\n", ret);
     }
     else if (strcmp(cmd, "delete")==0){
+	if (argc != 1)
+	    usage(argv0);
 	if (xmldb_delete(h, db) < 0)
 	    goto done;
     }
     else if (strcmp(cmd, "init")==0){
+	if (argc != 1)
+	    usage(argv0);
 	if (xmldb_init(h, db) < 0)
 	    goto done;
     }
+    else
+	clicon_err(OE_DB, 0, "Unrecognized command: %s", cmd);
   done:
     return 0;
 }

@@ -46,7 +46,7 @@ int kv_put(xmldb_handle h, char *db, enum operation_type op,
 int kv_dump(FILE *f, char *dbfilename, char *rxkey);
 int kv_copy(xmldb_handle h, char *from, char *to);
 int kv_lock(xmldb_handle h, char *db, int pid);
-int kv_unlock(xmldb_handle h, char *db, int pid);
+int kv_unlock(xmldb_handle h, char *db);
 int kv_unlock_all(xmldb_handle h, int pid);
 int kv_islocked(xmldb_handle h, char *db);
 int kv_exists(xmldb_handle h, char *db);
