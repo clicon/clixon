@@ -808,7 +808,6 @@ xmldb_put_xkey(struct kv_handle   *kh,
 
 {
     int        retval = -1;
-    cxobj     *x = NULL;
     yang_stmt *y = NULL;
     yang_stmt *ykey;
     char     **vec = NULL;
@@ -839,7 +838,7 @@ xmldb_put_xkey(struct kv_handle   *kh,
     if (kv_db2file(kh, db, &filename) < 0)
 	goto done;
     if (xk == NULL || *xk!='/'){
-	clicon_err(OE_DB, 0, "Invalid key: %s", xk);
+	clicon_err(OE_DB, 0, "Invalid api_path: %s", xk);
 	goto done;
     }
     if ((ckey = cbuf_new()) == NULL){
@@ -872,9 +871,8 @@ xmldb_put_xkey(struct kv_handle   *kh,
 		cprintf(ckey, "/");
 		break;
 	    }
-	    else
-	    if ((y = yang_find_topnode(yspec, name)) == NULL){
-		clicon_err(OE_UNIX, errno, "No yang node found: %s", x?xml_name(x):"");
+	    else if ((y = yang_find_topnode(yspec, name)) == NULL){
+		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 		goto done;
 	    }
 	}
@@ -916,7 +914,6 @@ xmldb_put_xkey(struct kv_handle   *kh,
 		free(valvec);
 	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
 		goto done;
-
 	    if (cvec_len(cvk) != nvalvec){ 	    
 		clicon_err(OE_XML, errno, "List %s  key length mismatch", name);
 		goto done;
@@ -931,7 +928,6 @@ xmldb_put_xkey(struct kv_handle   *kh,
 		else
 		    cprintf(ckey, "=");
 		val2 = valvec[j++];
-
 		cprintf(ckey, "%s", val2);
 		cbuf_reset(csubkey);
 		cprintf(csubkey, "%s/%s", cbuf_get(ckey), keyname);
@@ -975,7 +971,7 @@ xmldb_put_xkey(struct kv_handle   *kh,
 	if ((exists = db_exists(filename, xk)) < 0)
 	    goto done;
 	if (exists == 0){
-	    clicon_err(OE_DB, 0, "OP_DELETE: %s does not exists in database", xk);
+	    clicon_err(OE_DB, 0, "OP_DELETE: %s does not exist in database", xk);
 	    goto done;
 	}
     case OP_REMOVE:
@@ -1039,7 +1035,7 @@ static int
 xmldb_put_restconf_api_path(struct kv_handle   *kh,
 			    char               *db, 
 			    enum operation_type op,
-			    char               *api_path,
+			    char               *xk,
 			    cxobj              *xt)
 {
     int        retval = -1;
@@ -1047,6 +1043,12 @@ xmldb_put_restconf_api_path(struct kv_handle   *kh,
     yang_stmt *ykey;
     char     **vec = NULL;
     int        nvec;
+#if 0
+    char     **valvec = NULL;
+    int        nvalvec;
+    int        j;
+    char      *restval;
+#endif
     int        i;
     char      *name;
     cg_var    *cvi;
@@ -1071,8 +1073,8 @@ xmldb_put_restconf_api_path(struct kv_handle   *kh,
     }
     if (kv_db2file(kh, db, &filename) < 0)
 	goto done;
-    if (api_path == NULL || *api_path!='/'){
-	clicon_err(OE_DB, 0, "Invalid api path: %s", api_path);
+    if (xk == NULL || *xk!='/'){
+	clicon_err(OE_DB, 0, "Invalid api path: %s", xk);
 	goto done;
     }
     if ((ckey = cbuf_new()) == NULL){
@@ -1083,13 +1085,13 @@ xmldb_put_restconf_api_path(struct kv_handle   *kh,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if ((vec = clicon_strsep(api_path, "/", &nvec)) == NULL)
+    if ((vec = clicon_strsep(xk, "/", &nvec)) == NULL)
 	goto done;
     /* Remove trailing '/'. Like in /a/ -> /a */
     if (nvec > 1 && !strlen(vec[nvec-1]))
 	nvec--;
     if (nvec < 2){
-	clicon_err(OE_XML, 0, "Malformed key: %s", api_path);
+	clicon_err(OE_XML, 0, "Malformed key: %s", xk);
 	goto done;
     }
     i = 1;
@@ -1099,14 +1101,19 @@ xmldb_put_restconf_api_path(struct kv_handle   *kh,
 	    *keys = '\0';
 	    keys++;
 	}
+#if 0
+	if ((restval = index(name, '=')) != NULL){
+	    *restval = '\0';
+	    restval++;
+	}
+#endif
 	if (i==1){
-	    if (!strlen(name) && (op==OP_DELETE || op == OP_REMOVE)){
+	    if (strlen(name)==0 && (op==OP_DELETE || op == OP_REMOVE)){
 		/* Special handling of "/" */
-		cprintf(ckey, "/%s", name);
+		cprintf(ckey, "/");
 		break;
 	    }
-	    else
-	    if ((y = yang_find_topnode(yspec, name)) == NULL){
+	    else if ((y = yang_find_topnode(yspec, name)) == NULL){
 		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 		goto done;
 	    }
@@ -1139,10 +1146,33 @@ xmldb_put_restconf_api_path(struct kv_handle   *kh,
 	    /* The value is a list of keys: <key>[ <key>]*  */
 	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
 		goto done;
+#if 0
+	    if (restval==NULL){
+		clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
+		goto done;
+	    }
+	    if (valvec)
+		free(valvec);
+	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
+		goto done;
+	    if (cvec_len(cvk) != nvalvec){ 	    
+		clicon_err(OE_XML, errno, "List %s  key length mismatch", name);
+		goto done;
+	    }
+	    j = 0;
+#endif
 	    cvi = NULL;
 	    /* Iterate over individual yang keys  */
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 		keyname = cv_string_get(cvi);
+#if 0
+		if (j)
+		    cprintf(ckey, ",");
+		else
+		    cprintf(ckey, "=");
+		val2 = valvec[j++];
+		cprintf(ckey, "%s", val2);
+#else
 		//		val2 = vec[i++]; /* No */
 		val2 = keys;
 		if (i>nvec){ /* XXX >= ? */
@@ -1150,6 +1180,7 @@ xmldb_put_restconf_api_path(struct kv_handle   *kh,
 		    goto done;
 		}
 		cprintf(ckey, "=%s", val2);
+#endif
 		cbuf_reset(csubkey);
 		cprintf(csubkey, "%s/%s", cbuf_get(ckey), keyname);
 		if (op == OP_MERGE || op == OP_REPLACE || op == OP_CREATE)
@@ -1233,6 +1264,10 @@ xmldb_put_restconf_api_path(struct kv_handle   *kh,
 	cvec_free(cvk);
     if (vec)
 	free(vec);
+#if 0
+    if (valvec)
+	free(valvec);
+#endif
     unchunk_group(__FUNCTION__);  
     return retval;
 }

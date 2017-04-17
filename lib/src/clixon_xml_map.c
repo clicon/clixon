@@ -1125,7 +1125,7 @@ xml_tree_prune_unmarked(cxobj *xt,
  */
 int
 xml_default(cxobj *xt, 
-	   void  *arg)
+	   void   *arg)
 {
     int        retval = -1;
     yang_stmt *ys;
@@ -1135,7 +1135,11 @@ xml_default(cxobj *xt,
     cxobj     *xb;
     char      *str;
 
-    ys = (yang_stmt*)xml_spec(xt);
+    if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
+	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, xml_name(xt));
+	retval = 0;
+	goto done;
+    }
     /* Check leaf defaults */
     if (ys->ys_keyword == Y_CONTAINER || ys->ys_keyword == Y_LIST){
 	for (i=0; i<ys->ys_len; i++){
@@ -1184,7 +1188,11 @@ xml_order(cxobj *xt,
     char      *yname; /* yang child name */
     char      *xname; /* xml child name */
 
-    y = (yang_stmt*)xml_spec(xt);
+    if ((y = (yang_stmt*)xml_spec(xt)) == NULL){
+	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, xml_name(xt));
+	retval = 0;
+	goto done;
+    }
     j0 = 0;
  /* Go through xml children and ensure they are same order as yspec children */
     for (i=0; i<y->ys_len; i++){
@@ -1217,7 +1225,7 @@ xml_order(cxobj *xt,
 	}
     }
     retval = 0;
-    // done:
+ done:
     return retval;
 }
 
@@ -1232,7 +1240,11 @@ xml_sanity(cxobj *xt,
     yang_stmt *ys;
     char      *name;
 
-    ys = (yang_stmt*)xml_spec(xt);
+    if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
+	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, xml_name(xt));
+	retval = 0;
+	goto done;
+    }
     name = xml_name(xt);
     if (ys==NULL){
 	clicon_err(OE_XML, 0, "No spec for xml node %s", name);
@@ -1248,18 +1260,33 @@ xml_sanity(cxobj *xt,
     return retval;
 }
 
-/*! Translate from restconf api-path to xml xpath
+/*! Translate from restconf api-path in cvv form to xml xpath
  * eg a/b=c -> a/[b=c] 
  * @param[in]  yspec Yang spec
  * @param[in]  pcvec api-path as cvec
- * @param[in]  pi    Length of cvec
- * @param[out] path  The xpath as cligen bif variable string
+ * @param[in]  pi    Offset of cvec, where api-path starts
+ * @param[out] path  The xpath as cbuf variable string, must be initializeed
+ * The api-path has some wierd encoding, use api_path2xpath() if you are 
+ * confused. 
+ * It works like this:
+ * Assume origin incoming path is 
+ * "www.foo.com/restconf/a/b=c",  pi is 2 and pcvec is:
+ *   ["www.foo.com" "restconf" "a" "b=c"]
+ * which means the api-path is ["a" "b=c"] corresponding to "a/b=c"
+ * @code
+ *   cbuf *xpath = cbuf_new();
+ *   if (api_path2xpath_cvv(yspec, cvv, i, xpath)
+ *      err;
+ *   ... access xpath as cbuf_get(xpath) 
+ *   cbuf_free(xpath)
+ * @endcode
+ * @see api_path2xpath for string api-path argument
  */
 int
-xml_apipath2xpath(yang_spec *yspec,
-		  cvec      *pcvec,
-		  int        pi,
-		  cbuf      *path)
+api_path2xpath_cvv(yang_spec *yspec,
+		   cvec      *cvv,
+		   int        offset,
+		   cbuf      *xpath)
 {
     int        retval = -1;
     int        i;
@@ -1272,12 +1299,12 @@ xml_apipath2xpath(yang_spec *yspec,
     yang_stmt *ykey;
     cg_var    *cvi;
 
-    for (i=pi; i<cvec_len(pcvec); i++){
-        cv = cvec_i(pcvec, i);
+    for (i=offset; i<cvec_len(cvv); i++){
+        cv = cvec_i(cvv, i);
 	name = cv_name_get(cv);
 	clicon_debug(1, "[%d] cvname:%s", i, name);
 	clicon_debug(1, "cv2str%d", cv2str(cv, NULL, 0));
-	if (i == pi){
+	if (i == offset){
 	    if ((y = yang_find_topnode(yspec, name)) == NULL){
 		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 		goto done;
@@ -1313,20 +1340,53 @@ xml_apipath2xpath(yang_spec *yspec,
 		goto done;
 	    cvi = NULL;
 	    /* Iterate over individual yang keys  */
-	    cprintf(path, "/%s", name);
+	    cprintf(xpath, "/%s", name);
 	    v = val;
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
-		cprintf(path, "[%s=%s]", cv_string_get(cvi), v);
+		cprintf(xpath, "[%s=%s]", cv_string_get(cvi), v);
 		v += strlen(v)+1;
 	    }
 	    if (val)
 		free(val);
         }
         else{
-            cprintf(path, "%s%s", (i==pi?"":"/"), name);
+            cprintf(xpath, "%s%s", (i==offset?"":"/"), name);
         }
     }
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Translate from restconf api-path to xml xpath
+ * eg a/b=c -> a/[b=c] 
+ * @param[in]  yspec Yang spec
+ * @param[in]  str   API-path as string
+ * @param[out] path  The xpath as cbuf variable string, must be initializeed
+ * @code
+ *   cbuf *xpath = cbuf_new();
+ *   if (api_path2xpath(yspec, "a/b=c", xpath)
+ *      err;
+ *   ... access xpath as cbuf_get(xpath) 
+ *   cbuf_free(xpath)
+ * @endcode
+ */
+int
+api_path2xpath(yang_spec *yspec,
+	       char      *api_path,
+	       cbuf      *xpath)
+{
+    int   retval = -1;
+    cvec *api_path_cvv = NULL; 
+
+    /* rest url eg /album=ricky/foo */
+    if (str2cvec(api_path, '/', '=', &api_path_cvv) < 0) 
+	goto done;
+    if (api_path2xpath_cvv(yspec, api_path_cvv, 0, xpath) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (api_path_cvv)
+	cvec_free(api_path_cvv);
     return retval;
 }

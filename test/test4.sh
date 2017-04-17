@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test2: backend and netconf basic functionality
+# Test4: Yang specifics: multi-keys and empty type
 
 # include err() and new() functions
 . ./lib.sh

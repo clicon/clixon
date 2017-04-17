@@ -17,9 +17,8 @@ new(){
 #    sleep 1
 }
 
-# clicon_cli tester. First arg is command and second is expected outcome
+# clixon tester. First arg is command and second is expected outcome
 expectfn(){
-
   cmd=$1
   expect=$2
   ret=`$cmd`
@@ -40,7 +39,8 @@ expectfn(){
   fi
 }
 
-# clicon_cli tester. First arg is command and second is expected outcome
+# clixon tester. First arg is command second is stdin and
+# third is expected outcome
 expecteof(){
   cmd=$1
   input=$2
@@ -61,7 +61,8 @@ EOF
   fi
 }
 
-# clicon_cli tester. First arg is command and second is expected outcome
+# clixon tester. First arg is command second is stdin and
+# third is expected outcome, fourth is how long to wait
 expectwait(){
   cmd=$1
   input=$2

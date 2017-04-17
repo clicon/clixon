@@ -39,7 +39,6 @@ sudo ./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src
 
 sudo ./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip put merge / '<config><interfaces><interface><name>eth0</name><enabled>true</enabled></interface></interfaces></config>'
 
-  * 
  */
 
 #ifdef HAVE_CONFIG_H
@@ -217,7 +216,8 @@ main(int argc, char **argv)
 	    usage(argv0);
 	if (xmldb_get(h, db, argv[1], &xt, NULL, 0) < 0)
 	    goto done;
-	clicon_xml2file(stdout, xt, 0, 1);	
+	clicon_xml2file(stdout, xt, 0, 0);	
+	fprintf(stdout, "\n");
     }
     else if (strcmp(cmd, "put")==0){
 	if (argc != 4)

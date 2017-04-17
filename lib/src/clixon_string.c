@@ -47,6 +47,8 @@
 #include <regex.h>
 #include <ctype.h>
 
+#include <cligen/cligen.h>
+
 /* clicon */
 #include "clixon_queue.h"
 #include "clixon_string.h"
@@ -241,6 +243,97 @@ percent_decode(char  *esc,
     return retval;
 }
 
+/*! Split a string into a cligen variable vector using 1st and 2nd delimiter 
+ * Split a string first into elements delimited by delim1, then into
+ * pairs delimited by delim2.
+ * @param[in] string  String to split
+ * @param[in] delim1  First delimiter char that delimits between elements
+ * @param[in] delim2  Second delimiter char for pairs within an element
+ * @param[out] cvp    Created cligen variable vector, deallocate w cvec_free
+ * @retval    0       on OK
+ * @retval    -1      error
+ *
+ * @example, 
+ * Assuming delim1 = '&' and delim2 = '='
+ * a=b&c=d    ->  [[a,"b"][c="d"]
+ * kalle&c=d  ->  [[c="d"]]  # Discard elements with no delim2
+ * XXX differentiate between error and null cvec.
+ */
+int
+str2cvec(char  *string, 
+	 char   delim1, 
+	 char   delim2, 
+	 cvec **cvp)
+{
+    int     retval = -1;
+    char   *s;
+    char   *s0 = NULL;;
+    char   *val;     /* value */
+    char   *valu;    /* unescaped value */
+    char   *snext; /* next element in string */
+    cvec   *cvv = NULL;
+    cg_var *cv;
+
+    if ((s0 = strdup(string)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto err;
+    }
+    s = s0;
+    if ((cvv = cvec_new(0)) ==NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto err;
+    }
+    while (s != NULL) {
+	/*
+	 * In the pointer algorithm below:
+	 * name1=val1;  name2=val2;
+	 * ^     ^      ^
+	 * |     |      |
+	 * s     val    snext
+	 */
+	if ((snext = index(s, delim1)) != NULL)
+	    *(snext++) = '\0';
+	if ((val = index(s, delim2)) != NULL){
+	    *(val++) = '\0';
+	    if (percent_decode(val, &valu) < 0)
+		goto err;
+	    if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
+		clicon_err(OE_UNIX, errno, "cvec_add");
+		goto err;
+	    }
+	    while ((strlen(s) > 0) && isblank(*s))
+		s++;
+	    cv_name_set(cv, s);
+	    cv_string_set(cv, valu);
+	    free(valu); valu = NULL;
+	}
+	else{
+	    if (strlen(s)){
+		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
+		    clicon_err(OE_UNIX, errno, "cvec_add");
+		    goto err;
+		}
+		cv_name_set(cv, s);
+		cv_string_set(cv, "");
+	    }
+	}
+	s = snext;
+    }
+    retval = 0;
+ done:
+    *cvp = cvv;
+    if (s0)
+	free(s0);
+    return retval;
+ err:
+    if (cvv){
+	cvec_free(cvv);
+	cvv = NULL;
+    }
+    goto done;
+}
+
+
 /*! strndup() for systems without it, such as xBSD
  */
 #ifndef HAVE_STRNDUP
@@ -264,6 +357,8 @@ clicon_strndup (const char *str,
   return new;
 }
 #endif /* ! HAVE_STRNDUP */
+
+
 
 /*
  * Turn this on for uni-test programs

@@ -114,7 +114,7 @@ xmldb_plugin_load(clicon_handle h,
     /* Add API */
     if (clicon_xmldb_api_set(h, xa) < 0)
 	goto done;
-    clicon_log(LOG_WARNING, "xmldb plugin %s loaded", filename);
+    clicon_log(LOG_DEBUG, "xmldb plugin %s loaded", filename);
     retval = 0;
  done:
     if (retval < 0 && handle)

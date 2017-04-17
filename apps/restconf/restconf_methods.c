@@ -162,7 +162,7 @@ api_data_get_gen(clicon_handle h,
     yspec = clicon_dbspec_yang(h);
     if ((path = cbuf_new()) == NULL)
         goto done;
-    if (xml_apipath2xpath(yspec, pcvec, pi, path) < 0){
+    if (api_path2xpath_cvv(yspec, pcvec, pi, path) < 0){
 	notfound(r);
 	goto done;
     }

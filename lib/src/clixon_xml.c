@@ -843,8 +843,8 @@ clicon_xml2file(FILE  *f,
 		int    level, 
 		int    prettyprint)
 {
-    cbuf  *cb = NULL;
     int    retval = -1;
+    cbuf  *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
@@ -1192,7 +1192,7 @@ copy_one(cxobj *xn0,
  * x1 should be a created placeholder. If x1 is non-empty,
  * the copied tree is appended to the existing tree.
  * @code
- *   x1 = xml_new("new", xc);
+ *   x1 = xml_new("new", xparent);
  *   xml_copy(x0, x1);
  * @endcode
  */
@@ -1200,7 +1200,7 @@ int
 xml_copy(cxobj *x0, 
 	 cxobj *x1)
 {
-    int retval = -1;
+    int    retval = -1;
     cxobj *x;
     cxobj *xcopy;
 

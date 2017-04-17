@@ -68,6 +68,7 @@ int xml_tree_prune_unmarked(cxobj *xt, int *upmark);
 int xml_default(cxobj *x, void  *arg);
 int xml_order(cxobj *x, void  *arg);
 int xml_sanity(cxobj *x, void  *arg);
-int xml_apipath2xpath(yang_spec *yspec, cvec *pcvec, int pi, cbuf *path);
+int api_path2xpath_cvv(yang_spec *yspec, cvec *cvv, int offset, cbuf *xpath);
+int api_path2xpath(yang_spec *yspec, char *api_path, cbuf *xpath);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

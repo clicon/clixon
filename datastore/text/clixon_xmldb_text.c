@@ -306,10 +306,23 @@ text_get(xmldb_handle xh,
 	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
 	goto done;
     }    
-    if ((clicon_xml_parse_file(fd, &xt, "</clicon>")) < 0)
+    /* Parse file into XML tree */
+    if ((clicon_xml_parse_file(fd, &xt, "</config>")) < 0)
 	goto done;
+    /* Always assert a top-level called "config". 
+       To ensure that, deal with two cases:
+       1. File is empty <top/> -> rename top-level to "config" */
+    if (xml_child_nr(xt) == 0){ 
+	if (xml_name_set(xt, "config") < 0)
+	    goto done;     
+    }
+    /* 2. File is not empty <top><config>...</config></top> -> replace root */
+    else{ 
+	assert(xml_child_nr(xt)==1);
+	if (xml_rootchild(xt, 0, &xt) < 0)
+	    goto done;
+    }
     /* XXX Maybe the below is general function and should be moved to xmldb? */
-
     if (xpath_vec(xt, xpath?xpath:"/", &xvec, &xlen) < 0)
 	goto done;
 
@@ -332,13 +345,15 @@ text_get(xmldb_handle xh,
 	*xlen0 = xlen; 
 	xlen = 0;
     }
-    if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
-	goto done;
-    /* XXX does not work for top-level */
-    if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
-	goto done;
-    if (xml_apply(xt, CX_ELMNT, xml_sanity, NULL) < 0)
-	goto done;
+    if (0){ /* No xml_spec(xt) */
+	if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
+	    goto done;
+	/* XXX does not work for top-level */
+	if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
+	    goto done;
+	if (xml_apply(xt, CX_ELMNT, xml_sanity, NULL) < 0)
+	    goto done;
+    }
     if (debug>1)
     	clicon_xml2file(stderr, xt, 0, 1);
     *xtop = xt;
@@ -349,6 +364,182 @@ text_get(xmldb_handle xh,
 	close(fd);
     return retval;
 }
+
+/*! Check if child with fullmatch exists 
+ * param[in] cvk vector of index keys 
+*/
+static cxobj *
+find_keys(cxobj *xt, 
+	  char  *name, 
+	  cvec  *cvk,
+	  char **valvec)
+{
+    cxobj  *xi = NULL;
+    int     j;
+    char   *keyname;
+    char   *val;
+    cg_var *cvi;
+    char   *body;
+
+    while ((xi = xml_child_each(xt, xi, CX_ELMNT)) != NULL) 
+	if (strcmp(xml_name(xi), name) == 0){
+	    j = 0; 	    /* All keys must match. */
+	    cvi = NULL;
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+		keyname = cv_string_get(cvi);
+		val = valvec[j++];
+		if ((body = xml_find_body(xi, keyname)) == NULL)
+		    continue;
+		if (strcmp(body, val))
+		    continue;
+	    }
+	    return xi;
+	}
+    return NULL;
+}
+
+/*! Create tree from api-path, ie fill in xml tree from the path
+ */
+static int
+text_create_tree(char               *xk,
+		 cxobj              *xt,
+		 enum operation_type op,
+		 yang_spec          *yspec,
+		 cxobj             **xp)
+{
+    int        retval = -1;
+    char     **vec = NULL;
+    int        nvec;
+    int        i;
+    int        j;
+    char      *name;
+    char      *restval;
+    yang_stmt *y = NULL;
+    yang_stmt *ykey;
+    cxobj     *x = NULL;
+    cxobj     *xn = NULL; /* new */
+    cxobj     *xb;        /* body */
+    cvec      *cvk = NULL; /* vector of index keys */
+    char     **valvec = NULL;
+    int        nvalvec;
+    cg_var    *cvi;
+    char      *keyname;
+    char      *val2;
+
+    x = xt;
+    if (xk == NULL || *xk!='/'){
+	clicon_err(OE_DB, 0, "Invalid key: %s", xk);
+	goto done;
+    }
+    if ((vec = clicon_strsep(xk, "/", &nvec)) == NULL)
+	goto done;
+    /* Remove trailing '/'. Like in /a/ -> /a */
+    if (nvec > 1 && !strlen(vec[nvec-1]))
+	nvec--;
+    if (nvec < 1){
+	clicon_err(OE_XML, 0, "Malformed key: %s", xk);
+	goto done;
+    }
+    i = 1;
+    while (i<nvec){
+	name = vec[i]; /* E.g "x=1,2" -> name:x restval=1,2 */
+	if ((restval = index(name, '=')) != NULL){
+	    *restval = '\0';
+	    restval++;
+	}
+	if (y == NULL) /* top-node */
+	    y = yang_find_topnode(yspec, name);
+	else 
+	    y = yang_find_syntax((yang_node*)y, name);
+	if (y == NULL){
+	    clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
+	    goto done;
+	}
+	i++;
+	switch (y->ys_keyword){
+	case Y_LEAF_LIST:
+	    if (restval==NULL){
+		clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
+		goto done;
+	    }
+	    fprintf(stderr, "XXX create =%s\n", restval);
+	    x = xn;
+	    break;
+	case Y_LIST:
+	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
+		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
+			   __FUNCTION__, y->ys_argument);
+		goto done;
+	    }
+	    /* The value is a list of keys: <key>[ <key>]*  */
+	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
+		goto done;
+	    if (restval==NULL){
+		clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
+		goto done;
+	    }
+	    if (valvec)
+		free(valvec);
+	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
+		goto done;
+
+	    if (cvec_len(cvk) != nvalvec){ 	    
+		clicon_err(OE_XML, errno, "List %s  key length mismatch", name);
+		goto done;
+	    }
+	    cvi = NULL;
+	    /* Check if exists, if not, create  */
+	    if ((xn = find_keys(x, name, cvk, valvec)) == NULL){
+		/* create them, bit not if delete op */
+		if (op == OP_DELETE || op == OP_REMOVE){
+		    retval = 0;
+		    goto done;
+		}
+		if ((xn = xml_new(name, x)) == NULL)
+		    goto done; 
+		xml_type_set(xn, CX_ELMNT);
+		x = xn;
+		j = 0;
+		while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+		    keyname = cv_string_get(cvi);
+		    val2 = valvec[j++];
+		    if ((xn = xml_new(keyname, x)) == NULL)
+			goto done; 
+		    xml_type_set(xn, CX_ELMNT);
+		    if ((xb = xml_new(keyname, xn)) == NULL)
+			goto done; 
+		    xml_type_set(xb, CX_BODY);
+		    if (xml_value_set(xb, val2) <0)
+			goto done;
+		}
+	    }
+	    if (cvk){
+		cvec_free(cvk);
+		cvk = NULL;
+	    }
+	    break;
+	    default: /* eg Y_CONTAINER */
+		if ((xn = xml_find(x, name)) == NULL){
+		    /* Already removed */
+		    if (op == OP_DELETE || op == OP_REMOVE){
+			retval = 0;
+			goto done;
+		    }
+		    if ((xn = xml_new(name, x)) == NULL)
+			goto done; 
+		    xml_type_set(xn, CX_ELMNT);
+		}
+		x = xn;
+	    break;
+	}
+
+    }
+    *xp = x;
+    retval = 0;
+ done:
+    return retval;
+}
+
 
 /*! Modify database provided an xml tree and an operation
  *
@@ -376,30 +567,105 @@ text_put(xmldb_handle      xh,
        char               *db, 
        enum operation_type op,
        char               *api_path,
-       cxobj              *xt) 
+       cxobj              *xadd) 
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);
     char               *dbfile = NULL;
     int                 fd = -1;
     cbuf               *cb = NULL;
+    cbuf               *xpcb = NULL; /* xpath cbuf */
+    yang_spec          *yspec;
+    cxobj              *xt = NULL;
+    cxobj              *x = NULL;
+    cxobj              *xc;
+    cxobj              *xcopy = NULL;
 
+    if (xadd == NULL || strcmp(xml_name(xadd),"config")){
+	clicon_err(OE_XML, 0, "Misformed xml, should start with <config/>");
+	goto done;
+    }
     if (text_db2file(th, db, &dbfile) < 0)
 	goto done;
     if (dbfile==NULL){
 	clicon_err(OE_XML, 0, "dbfile NULL");
 	goto done;
     }
-    if ((fd = open(dbfile, O_WRONLY | O_CREAT)) == -1) {
+    if ((yspec =  th->th_yangspec) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    if ((fd = open(dbfile, O_RDONLY)) < 0) {
 	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
 	goto done;
     }    
+    /* Parse file into XML tree */
+    if ((clicon_xml_parse_file(fd, &xt, "</config>")) < 0)
+	goto done;
+    /* Always assert a top-level called "config". 
+       To ensure that, deal with two cases:
+       1. File is empty <top/> -> rename top-level to "config" */
+    if (xml_child_nr(xt) == 0){ 
+	if (xml_name_set(xt, "config") < 0)
+	    goto done;     
+    }
+    /* 2. File is not empty <top><config>...</config></top> -> replace root */
+    else{ 
+	assert(xml_child_nr(xt)==1);
+	if (xml_rootchild(xt, 0, &xt) < 0)
+	    goto done;
+    }
+    /* If xpath find first occurence or api-path (this is where we apply xml) */
+    if (api_path){
+	if (text_create_tree(api_path, xt, op, yspec, &x) < 0)
+	    goto done;
+    }
+    else
+	x = xt;
+    assert(x);
+    /* Here point of where xt is applied to xt is 'x' */
+    switch (op){
+    case OP_CREATE:
+	if (x){
+	    clicon_err(OE_DB, 0, "OP_CREATE: already exists in database");
+	    goto done;
+	}
+    case OP_REPLACE:
+	while ((xc = xml_child_i(x, 0)) != NULL)
+	    xml_purge(xc);
+    case OP_MERGE:
+	/* Loop thru xadd's children */
+	xc = NULL;
+	while ((xc = xml_child_each(xadd, xc, CX_ELMNT)) != NULL){
+	    if ((xcopy = xml_new("new", x)) == NULL)
+		goto done;	    
+	    xml_copy(xc, xcopy);
+	}
+	break;
+    case OP_DELETE:
+	if (x==NULL){
+	    clicon_err(OE_DB, 0, "OP_DELETE: does not exist in database");
+	    goto done;
+	}
+    case OP_REMOVE:
+	while ((xc = xml_child_i(x, 0)) != NULL)
+	    xml_purge(xc);
+	break;
+    case OP_NONE:
+	break;
+    }
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
     if (clicon_xml2cbuf(cb, xt, 0, 0) < 0)
 	goto done;
+    /* Reopen file in write mode */
+    close(fd);
+    if ((fd = open(dbfile, O_WRONLY | O_TRUNC, S_IRWXU)) < 0) {
+	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
+	goto done;
+    }    
     if (write(fd, cbuf_get(cb), cbuf_len(cb)+1) < 0){
 	clicon_err(OE_UNIX, errno, "write(%s)", dbfile);
 	goto done;
@@ -410,6 +676,10 @@ text_put(xmldb_handle      xh,
 	close(fd);
     if (cb)
 	cbuf_free(cb);
+    if (xpcb)
+	cbuf_free(xpcb);
+    if (xt)
+	xml_free(xt);
     return retval;
 }
 
@@ -426,10 +696,23 @@ text_copy(xmldb_handle xh,
 	char          *to)
 {
     int                 retval = -1;
-    //    struct text_handle *th = handle(xh);
+    struct text_handle *th = handle(xh);
+    char               *fromfile = NULL;
+    char               *tofile = NULL;
 
+    /* XXX lock */
+    if (text_db2file(th, from, &fromfile) < 0)
+	goto done;
+    if (text_db2file(th, to, &tofile) < 0)
+	goto done;
+    if (clicon_file_copy(fromfile, tofile) < 0)
+	goto done;
     retval = 0;
-    // done:
+ done:
+    if (fromfile)
+	free(fromfile);
+    if (tofile)
+	free(tofile);
     return retval;
 }
 
@@ -563,10 +846,17 @@ text_delete(xmldb_handle xh,
 	  char          *db)
 {
     int                 retval = -1;
-//    struct text_handle *th = handle(xh);
+    char               *filename = NULL;
+    struct text_handle *th = handle(xh);
 
+    if (text_db2file(th, db, &filename) < 0)
+	goto done;
+    if (unlink(filename) < 0){
+	clicon_err(OE_DB, errno, "unlink %s", filename);
+	goto done;
+    }
     retval = 0;
-    // done:
+ done:
     return retval;
 }
 
@@ -580,11 +870,23 @@ int
 text_init(xmldb_handle xh, 
 	  char         *db)
 {
-    int           retval = -1;
-    //    struct text_handle *th = handle(xh);
+    int                 retval = -1;
+    struct text_handle *th = handle(xh);
+    char               *filename = NULL;
+    int                 fd = -1;
 
-    retval = 0;
-    // done:
+    if (text_db2file(th, db, &filename) < 0)
+	goto done;
+    if ((fd = open(filename, O_CREAT|O_WRONLY, S_IRWXU)) == -1) {
+	clicon_err(OE_UNIX, errno, "open(%s)", filename);
+	goto done;
+    }
+   retval = 0;
+ done:
+    if (filename)
+	free(filename);
+    if (fd != -1)
+	close(fd);
     return retval;
 }
 
