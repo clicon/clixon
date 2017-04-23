@@ -89,7 +89,7 @@ usage(char *argv0)
 		"\t-m <module>\tYang module. Mandatory\n"
 		"and command is either:\n"
 		"\tget <xpath>\n"
-		"\tput (set|merge|delete) <api_path> <xml>\n"
+		"\tput (merge|replace|create|delete|remove) <api_path> <xml>\n"
 		"\tcopy <todb>\n"
 		"\tlock <pid>\n"
 		"\tunlock\n"
@@ -120,8 +120,7 @@ main(int argc, char **argv)
     int                 ret;
     int                 pid;
     enum operation_type op;
-    cxobj              *xt;
-    cxobj              *xn;
+    cxobj              *xt = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -212,26 +211,31 @@ main(int argc, char **argv)
     if (xmldb_setopt(h, "yangspec", yspec) < 0)
 	goto done;
     if (strcmp(cmd, "get")==0){
-	if (argc != 2)
+	if (argc != 1 && argc != 2)
 	    usage(argv0);
-	if (xmldb_get(h, db, argv[1], &xt, NULL, 0) < 0)
+	if (xmldb_get(h, db, argc==2?argv[1]:"/", &xt, NULL, 0) < 0)
 	    goto done;
 	clicon_xml2file(stdout, xt, 0, 0);	
+	
 	fprintf(stdout, "\n");
     }
     else if (strcmp(cmd, "put")==0){
-	if (argc != 4)
+	if (argc != 3 && argc != 4){
+	    clicon_err(OE_DB, 0, "Unexpected nr of args: %d", argc);
 	    usage(argv0);
-	if (xml_operation(argv[1], &op) < 0)
+	}
+	if (xml_operation(argv[1], &op) < 0){
+	    clicon_err(OE_DB, 0, "Unrecognized operation: %s", argv[1]);
 	    usage(argv0);
-	if (clicon_xml_parse_str(argv[3], &xt) < 0)
+	}
+	if (argc == 4){
+	    if (clicon_xml_parse_str(argv[3], &xt) < 0)
+		goto done;
+	    if (xml_rootchild(xt, 0, &xt) < 0)
+		goto done;
+	}
+	if (xmldb_put(h, db, op, argv[2], xt) < 0)
 	    goto done;
-	if (xml_rootchild(xt, 0, &xn) < 0)
-	    goto done;
-	if (xmldb_put(h, db, op, argv[2], xn) < 0)
-	    goto done;
-	if (xn)
-	    xml_free(xn);
     }
     else if (strcmp(cmd, "copy")==0){
 	if (argc != 2)
@@ -285,9 +289,21 @@ main(int argc, char **argv)
 	if (xmldb_init(h, db) < 0)
 	    goto done;
     }
-    else
+    else{
 	clicon_err(OE_DB, 0, "Unrecognized command: %s", cmd);
+	usage(argv0);
+    }
+    if (xmldb_disconnect(h) < 0)
+	goto done;
+    if (xmldb_plugin_unload(h) < 0)
+	goto done;
   done:
+    if (xt)
+	xml_free(xt);
+    if (h)
+	clicon_handle_exit(h);
+    if (yspec)
+	yspec_free(yspec);
     return 0;
 }
 

@@ -71,6 +71,7 @@ typedef int (xml_applyfn_t)(cxobj *yn, void *arg);
 /*
  * Prototypes
  */
+char     *xml_type2str(enum cxobj_type type);
 char     *xml_name(cxobj *xn);
 int       xml_name_set(cxobj *xn, char *name);
 char     *xml_namespace(cxobj *xn);
@@ -87,8 +88,6 @@ int       xml_value_set(cxobj *xn, char *val);
 char     *xml_value_append(cxobj *xn, char *val);
 enum cxobj_type xml_type(cxobj *xn);
 int       xml_type_set(cxobj *xn, enum cxobj_type type);
-int       xml_index(cxobj *xn);
-int       xml_index_set(cxobj *xn, int index);
 
 cg_var *xml_cv_get(cxobj *xn);
 int     xml_cv_set(cxobj  *xn, cg_var *cv);
@@ -113,6 +112,7 @@ int       xml_rm(cxobj *xc);
 int       xml_rootchild(cxobj  *xp, int i, cxobj **xcp);
 
 char     *xml_body(cxobj *xn);
+cxobj    *xml_body_get(cxobj *xn);
 char     *xml_find_value(cxobj *xn_parent, char *name);
 char     *xml_find_body(cxobj *xn, char *name);
 
@@ -127,6 +127,7 @@ int       clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag);
 int       clicon_xml_parse_str(char *str, cxobj **xml_top);
 int       clicon_xml_parse(cxobj **cxtop, char *format, ...);
 
+int       xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 int       xml_copy(cxobj *x0, cxobj *x1);
 cxobj    *xml_dup(cxobj *x0);
 

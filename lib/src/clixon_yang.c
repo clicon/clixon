@@ -160,6 +160,10 @@ static const struct map_str2int ykmap[] = {
     {NULL,               -1}
 };
 
+/*! Create new yang specification
+ * @retval  yspec    Free with yspec_free() 
+ * @retval  NULL     Error
+ */
 yang_spec *
 yspec_new(void)
 {
@@ -174,6 +178,10 @@ yspec_new(void)
     return yspec;
 }
 
+/*! Create new yang node/statement
+ * @retval  ys    Free with ys_free() 
+ * @retval  NULL     Error
+ */
 yang_stmt *
 ys_new(enum rfc_6020 keyw)
 {

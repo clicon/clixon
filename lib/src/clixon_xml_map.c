@@ -241,7 +241,7 @@ xml2cli(FILE              *f,
    !index GT_VARS  T
    !index GT_ALL   T
  */
-    bool = !leaf(x) || gt == GT_ALL || (gt == GT_VARS && !xml_index(x));
+    bool = !leaf(x) || gt == GT_ALL || (gt == GT_VARS);
 //    bool = (!x->xn_index || gt == GT_ALL);
     if (bool){
 	if (cbuf_len(cbpre))
@@ -253,12 +253,12 @@ xml2cli(FILE              *f,
     i = 0;
     while ((xe = xml_child_each(x, xe, -1)) != NULL){
 	/* Dont call this if it is index and there are other following */
-	if (xml_index(xe) && i < nr-1) 
+	if (0 && i < nr-1) 
 	    ;
 	else
 	    if (xml2cli(f, xe, cbuf_get(cbpre), gt) < 0)
 		goto done;
-	if (xml_index(xe)){ /* assume index is first, otherwise need one more while */
+	if (0){ /* assume index is first, otherwise need one more while */
 	    if (gt == GT_ALL)
 		cprintf(cbpre, " %s", xml_name(xe));
 	    cprintf(cbpre, " %s", xml_value(xml_child_i(xe, 0)));

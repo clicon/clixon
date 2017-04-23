@@ -6,6 +6,7 @@
 
 datastore=datastore_client
 
+
 cat <<EOF > /tmp/ietf-ip.yang
 module ietf-ip{
    container x {
@@ -24,9 +25,21 @@ module ietf-ip{
     leaf d {
         type empty;
     }
+    container f {
+      leaf-list e {
+        type string;
+      }
+    }
+    container h {
+      leaf j {
+        type string;
+      }
+    }
   }
 }
 EOF
+
+db='<config><x><y><a>1</a><b>2</b><c>first-entry</c></y><y><a>1</a><b>3</b><c>second-entry</c></y><y><a>2</a><b>3</b><c>third-entry</c></y><d/><f><e>a</e><e>b</e><e>c</e></f><g>astring</g></x></config>'
 
 run(){
     name=$1
@@ -34,12 +47,30 @@ run(){
     if [ ! -d $dir ]; then
 	mkdir $dir
     fi
-
     rm -rf $dir/*
     conf="-d candidate -b $dir -p ../datastore/$name/$name.so -y /tmp -m ietf-ip"
+    echo "conf:$conf"
     new "datastore $name init"
     expectfn "$datastore $conf init" ""
 
+    new "datastore $name put top"
+    echo "$datastore $conf put replace '/' $db"
+    expectfn "$datastore $conf put replace '/' \"$db\"" ""
+
+return
+    new "datastore $name get"
+    expectfn "$datastore $conf get /" $db
+
+    new "datastore $name put rm"
+    expectfn "$datastore $conf put remove /x/g"
+
+    new "datastore $name put top"
+    expectfn "$datastore $conf put replace / $db"
+
+    new "datastore $name put del"
+    expectfn "$datastore $conf put delete /x/g"
+
+return
     new "datastore $name get empty"
     expectfn "$datastore $conf get /" "^<config/>$"
 

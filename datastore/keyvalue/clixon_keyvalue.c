@@ -259,12 +259,13 @@ create_keyvalues(cxobj     *x,
 		 char      *keyname)
 {
     int        retval = -1;
+    cxobj     *xn;
     cxobj     *xb;
 
     /* Check if key node exists */
-    if ((xb = xml_new_spec(keyname, x, ykey)) == NULL)
+    if ((xn = xml_new_spec(keyname, x, ykey)) == NULL)
 	goto done;
-    if ((xb = xml_new("body", xb)) == NULL)
+    if ((xb = xml_new("body", xn)) == NULL)
 	goto done;
     xml_type_set(xb, CX_BODY);
     xml_value_set(xb, arg);
@@ -831,6 +832,7 @@ xmldb_put_xkey(struct kv_handle   *kh,
     yang_spec *yspec;
     char      *filename = NULL;
 
+    //    clicon_log(LOG_WARNING, "%s", __FUNCTION__);
     if ((yspec = kh->kh_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
@@ -1322,24 +1324,28 @@ kv_put(xmldb_handle        xh,
 	if (db_init(dbfilename) < 0) 
 	    goto done;
     }
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-	/* An api path that is not / */
-	if (api_path && strlen(api_path) && strcmp(api_path,"/")){
+    if (api_path && strlen(api_path) && strcmp(api_path,"/")){
+	//	clicon_log(LOG_WARNING, "xmldb_put_restconf_api_path");
+	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
 	    if (xmldb_put_restconf_api_path(kh, db, op, api_path, x) < 0)
 		goto done;
-	    continue;
 	}
-	if ((ys = yang_find_topnode(yspec, xml_name(x))) == NULL){
-	    clicon_err(OE_UNIX, errno, "No yang node found: %s", xml_name(x));
-	    goto done;
+    }
+    else{
+	//	clicon_log(LOG_WARNING, "%s", __FUNCTION__);
+	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
+	    if ((ys = yang_find_topnode(yspec, xml_name(x))) == NULL){
+		clicon_err(OE_UNIX, errno, "No yang node found: %s", xml_name(x));
+		goto done;
+	    }
+	    if (put(dbfilename, /* database name */
+		    x,          /* xml root node */
+		    ys,         /* yang statement of xml node */
+		    op,         /* operation, eg merge/delete */
+		    ""          /* aggregate xml key */
+		    ) < 0)
+		goto done;
 	}
-    	if (put(dbfilename, /* database name */
-		x,          /* xml root node */
-		ys,         /* yang statement of xml node */
-		op,         /* operation, eg merge/delete */
-		""          /* aggregate xml key */
-		) < 0)
-    	    goto done;
     }
     retval = 0;
  done:

@@ -175,8 +175,10 @@ xml_parse_endslash_post(struct xml_parse_yacc_arg *ya)
     return 0;
 }
 
+/*! Called at </name> */
 static int
-xml_parse_bslash1(struct xml_parse_yacc_arg *ya, char *name)
+xml_parse_bslash1(struct xml_parse_yacc_arg *ya, 
+		  char                      *name)
 {
     int    retval = -1;
     cxobj *x = ya->ya_xelement;
@@ -199,8 +201,10 @@ xml_parse_bslash1(struct xml_parse_yacc_arg *ya, char *name)
 	    ;
 	else{
 	    xc = NULL;
-	    while ((xc = xml_child_each(x, xc, CX_BODY)) != NULL) 
-		xml_value_set(xc, ""); /* XXX remove */
+	    while ((xc = xml_child_each(x, xc, CX_BODY)) != NULL) {
+		xml_purge(xc);
+		xc = NULL; /* reset iterator */
+	    }
 	}
     }
     retval = 0;
@@ -209,8 +213,11 @@ xml_parse_bslash1(struct xml_parse_yacc_arg *ya, char *name)
     return retval;
 }
 
+/*! Called at </namespace:name> */
 static int
-xml_parse_bslash2(struct xml_parse_yacc_arg *ya, char *namespace, char *name)
+xml_parse_bslash2(struct xml_parse_yacc_arg *ya, 
+		  char                      *namespace, 
+		  char                      *name)
 {
     int    retval = -1;
     cxobj *x = ya->ya_xelement;

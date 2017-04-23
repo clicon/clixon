@@ -67,7 +67,7 @@
  * If init function fails (not found, wrong version, etc) print a log and dont
  * add it.
  * @param[in]  h         CLicon handle
- * @param[in]  filename  Actual filename with path
+ * @param[in]  filename  Actual filename including path
  */
 int 
 xmldb_plugin_load(clicon_handle h,
@@ -125,7 +125,11 @@ xmldb_plugin_load(clicon_handle h,
     goto done;
 }
 
-/*! Unload the xmldb storage plugin */
+/*! Unload the xmldb storage plugin 
+ * @param[in]  h    Clicon handle
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
 int
 xmldb_plugin_unload(clicon_handle h)
 {
@@ -162,9 +166,10 @@ xmldb_plugin_unload(clicon_handle h)
     return retval;
 }
 
-/*! Connect to a datastore plugin
- * @retval  handle  Use this handle for other API calls
- * @retval  NULL    Error
+/*! Connect to a datastore plugin, allocate handle to be used in API calls
+ * @param[in]  h    Clicon handle
+ * @retval     0    OK
+ * @retval    -1    Error
  * @note You can do several connects, and have multiple connections to the same
  *       datastore. Note also that the xmldb handle is hidden in the clicon 
  *       handle, the clixon user does not need to handle it. Note also that
@@ -196,7 +201,8 @@ xmldb_connect(clicon_handle h)
 /*! Disconnect from a datastore plugin and deallocate handle
  * @param[in]  handle  Disconect and deallocate from this handle
  * @retval     0       OK
-  */
+ * @retval    -1    Error
+ */
 int
 xmldb_disconnect(clicon_handle h)
 {
@@ -225,7 +231,7 @@ xmldb_disconnect(clicon_handle h)
 }
 
 /*! Get value of generic plugin option. Type of value is givenby context
- * @param[in]  xh      XMLDB handle
+ * @param[in]  h       Clicon handle
  * @param[in]  optname Option name
  * @param[out] value   Pointer to Value of option
  * @retval     0       OK
@@ -258,7 +264,7 @@ xmldb_getopt(clicon_handle h,
 }
 
 /*! Set value of generic plugin option. Type of value is givenby context
- * @param[in]  xh      XMLDB handle
+ * @param[in]  h       Clicon handle
  * @param[in]  optname Option name
  * @param[in]  value   Value of option
  * @retval     0       OK
@@ -404,8 +410,9 @@ xmldb_put(clicon_handle       h,
 #if 0 /* XXX DEBUG */
     {
 	cbuf *cb = cbuf_new();
-	if (clicon_xml2cbuf(cb, xt, 0, 0) < 0)
-	    goto done;
+	if (xt)
+	    if (clicon_xml2cbuf(cb, xt, 0, 0) < 0)
+		goto done;
 
 	clicon_log(LOG_WARNING, "%s: db:%s op:%d api_path:%s xml:%s", __FUNCTION__, 
 	       db, op, api_path, cbuf_get(cb));

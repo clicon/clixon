@@ -26,6 +26,16 @@ module ietf-ip{
     leaf d {
         type empty;
     }
+    container f {
+      leaf-list e {
+        type string;
+      }
+    }
+    container h {
+      leaf j {
+        type string;
+      }
+    }
   }
 }
 EOF
@@ -51,6 +61,15 @@ expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><commit/></rpc>]]>
 
 new "netconf get config xpath"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=1][b=2]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><config><x><y><a>1</a><b>2</b><c>5</c></y></x></config></data></rpc-reply>]]>]]>$"
+
+new "netconf edit leaf-list"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><edit-config><target><candidate/></target><config><x><f><e>hej</e><e>hopp</e></f></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf get leaf-list"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f/e\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><config><x><f><e>hej</e><e>hopp</e></f></x></config></data></rpc-reply>]]>]]>$"
+
+new "netconf get leaf-list path"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f[e=hej]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><config><x><f><e>hej</e><e>hopp</e></f></x></config></data></rpc-reply>]]>]]>$"
 
 new "Kill backend"
 # Check if still alive
