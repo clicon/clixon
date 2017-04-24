@@ -31,6 +31,9 @@ module ietf-ip{
         type string;
       }
     }
+    leaf g {
+      type string;  
+    }
     container h {
       leaf j {
         type string;

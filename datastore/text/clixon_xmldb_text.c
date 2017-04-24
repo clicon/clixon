@@ -418,7 +418,7 @@ find_keys_vec(cxobj *xt,
  * @see xmldb_put_xkey for example
  */
 static int
-text_create_modtree(char               *api_path,
+text_apipath_modify(char               *api_path,
 		    cxobj              *xt,
 		    enum operation_type op,
 		    yang_spec          *yspec,
@@ -473,7 +473,7 @@ text_create_modtree(char               *api_path,
 	else 
 	    y = yang_find_syntax((yang_node*)y, name);
 	if (y == NULL){
-	    clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
+	    clicon_err(OE_YANG, errno, "No yang node found: %s", name);
 	    goto done;
 	}
 	i++;
@@ -627,13 +627,15 @@ text_create_modtree(char               *api_path,
     return retval;
 }
 
-/*! Check if child with fullmatch exists 
- * param[in] cvk vector of index keys 
+/*! Given a modification tree, check existing matching child in the base tree 
+ * param[in] x0  Base tree node
+ * param[in] x1c Modification tree child
+ * param[in] yc  Yang spec of tree child
 */
 static cxobj *
-find_match(cxobj     *x0, 
-	   cxobj     *x1c,
-	   yang_stmt *yc)
+match_base_child(cxobj     *x0, 
+		 cxobj     *x1c,
+		 yang_stmt *yc)
 {
     cxobj     *x0c = NULL;
     char      *keyname;
@@ -642,41 +644,54 @@ find_match(cxobj     *x0,
     char      *b0;
     char      *b1;
     yang_stmt *ykey;
-    char      *name;
+    char      *cname;
     int        ok;
+    char      *x1bstr; /* body string */
 
-    name = xml_name(x1c);
-    if (yc->ys_keyword != Y_LIST){
-	x0c = xml_find(x0, name);
-	goto done;
-    }
-    if ((ykey = yang_find((yang_node*)yc, Y_KEY, NULL)) == NULL){
-	clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-		   __FUNCTION__, yc->ys_argument);
-	goto done;
-    }
-    /* The value is a list of keys: <key>[ <key>]*  */
-    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-	goto done;
-    x0c = NULL;
-    while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
-	if (strcmp(xml_name(x0c), name))
-	    continue;
-	cvi = NULL;
-	ok = 0;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	    keyname = cv_string_get(cvi);
-	    ok = 1; /* if we come here */
-	    if ((b0 = xml_find_body(x0c, keyname)) == NULL)
-		break; /* error case */
-	    if ((b1 = xml_find_body(x1c, keyname)) == NULL)
-		break; /* error case */
-	    if (strcmp(b0, b1))
+    cname = xml_name(x1c);
+    switch (yc->ys_keyword){
+    case Y_LEAF_LIST: /* Match with name and value */
+	x1bstr = xml_body(x1c);
+	x0c = NULL;
+	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
+	    if (strcmp(cname, xml_name(x0c)) == 0 && 
+		strcmp(xml_body(x0c), x1bstr)==0)
 		break;
-	    ok = 2; /* and reaches here for all keynames, x0c is found. */
 	}
-	if (ok == 2)
-	    break;
+	break;
+    case Y_LIST: /* Match with key values */
+	if ((ykey = yang_find((yang_node*)yc, Y_KEY, NULL)) == NULL){
+	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
+		       __FUNCTION__, yc->ys_argument);
+	    goto done;
+	}
+	/* The value is a list of keys: <key>[ <key>]*  */
+	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
+	    goto done;
+	x0c = NULL;
+	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
+	    if (strcmp(xml_name(x0c), cname))
+		continue;
+	    cvi = NULL;
+	    ok = 0;
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+		keyname = cv_string_get(cvi);
+		ok = 1; /* if we come here */
+		if ((b0 = xml_find_body(x0c, keyname)) == NULL)
+		    break; /* error case */
+		if ((b1 = xml_find_body(x1c, keyname)) == NULL)
+		    break; /* error case */
+		if (strcmp(b0, b1))
+		    break;
+		ok = 2; /* and reaches here for all keynames, x0c is found. */
+	    }
+	    if (ok == 2)
+		break;
+	}
+	break;
+    default: /* Just match with name */
+	x0c = xml_find(x0, cname);
+	break;
     }
  done:
     if (cvk)
@@ -745,14 +760,18 @@ text_modify(cxobj              *x0,
 		if (x0==NULL){
 		    if ((x0 = xml_new_spec(name, x0p, y)) == NULL)
 			goto done;
-		    if ((x0b = xml_new("body", x0)) == NULL)
-			goto done; 
-		    xml_type_set(x0b, CX_BODY);
+		    if (x1bstr){ /* empty type does not have body */
+			if ((x0b = xml_new("body", x0)) == NULL)
+			    goto done; 
+			xml_type_set(x0b, CX_BODY);
+		    }
 		}
-		if ((x0b = xml_body_get(x0)) == NULL)
-		    goto done;
-		if (xml_value_set(x0b, x1bstr) < 0)
-		    goto done;
+		if (x1bstr){
+		    if ((x0b = xml_body_get(x0)) == NULL)
+			goto done;
+		    if (xml_value_set(x0b, x1bstr) < 0)
+			goto done;
+		}
 		break;
 	    default:
 		break;
@@ -785,16 +804,21 @@ text_modify(cxobj              *x0,
 		    if ((x0 = xml_new_spec(name, x0p, y)) == NULL)
 			goto done;
 		}
+		/* Loop through children of the modification tree */
 		x1c = NULL;
 		while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 		    cname = xml_name(x1c);
-		    /* XXX This is more than find, if a list keys must match */
-
+		    /* Get yang spec of the child */
 		    if (y == NULL)
 			yc = yang_find_topnode(yspec, cname); /* still NULL for config */
-		    else
-			yc = yang_find_syntax(y, cname);
-		    x0c = find_match(x0, x1c, yc);
+		    else{
+			if ((yc = yang_find_syntax(y, cname)) == NULL){
+			    clicon_err(OE_YANG, errno, "No yang node found: %s", cname);
+			    goto done;
+			}
+		    }
+		    /* See if there is a corresponding node in the base tree */
+		    x0c = yc?match_base_child(x0, x1c, yc):NULL;
 		    if (text_modify(x0c, x0, x1c, op, (yang_node*)yc, yspec) < 0)
 			goto done;
 		}
@@ -890,7 +914,7 @@ text_put(xmldb_handle      xh,
     /* here xt looks like: <config>...</config> */
     /* If xpath find first occurence or api-path (this is where we apply xml) */
     if (api_path){
-	if (text_create_modtree(api_path, xt, op, yspec, &xbase, &xbasep, &y) < 0)
+	if (text_apipath_modify(api_path, xt, op, yspec, &xbase, &xbasep, &y) < 0)
 	    goto done;
     }
     else{

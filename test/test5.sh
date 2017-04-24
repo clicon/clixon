@@ -30,6 +30,9 @@ module ietf-ip{
         type string;
       }
     }
+    leaf g {
+      type string;  
+    }
     container h {
       leaf j {
         type string;
@@ -53,16 +56,42 @@ run(){
     new "datastore $name init"
     expectfn "$datastore $conf init" ""
 
-    new "datastore $name put top"
-    echo "$datastore $conf put replace '/' $db"
-    expectfn "$datastore $conf put replace '/' \"$db\"" ""
+    new "datastore $name put all replace"
+    expectfn "$datastore $conf put replace / $db" ""
+
+    new "datastore $name get"
+    expectfn "$datastore $conf get /" "^$db$"
+
+    new "datastore $name put all remove"
+    expectfn "$datastore $conf put remove /"
+
+    new "datastore $name get"
+    expectfn "$datastore $conf get /" "^<config/>$"
+
+    new "datastore $name put all merge"
+    expectfn "$datastore $conf put merge / $db" ""
+
+    new "datastore $name get"
+    expectfn "$datastore $conf get /" "^$db$"
+
+    new "datastore $name put all delete"
+    expectfn "$datastore $conf put remove /"
+
+    new "datastore $name get"
+    expectfn "$datastore $conf get /" "^<config/>$"
+
+    new "datastore $name put all create"
+    expectfn "$datastore $conf put create / $db" ""
+
+    new "datastore $name get"
+    expectfn "$datastore $conf get /" "^$db$"
+
+    new "datastore $name put top create"
+    expectfn "$datastore $conf put create / <config><x/></config>" "" # error
 
 return
-    new "datastore $name get"
-    expectfn "$datastore $conf get /" $db
 
-    new "datastore $name put rm"
-    expectfn "$datastore $conf put remove /x/g"
+
 
     new "datastore $name put top"
     expectfn "$datastore $conf put replace / $db"
