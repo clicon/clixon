@@ -29,6 +29,8 @@
 #
 # ***** END LICENSE BLOCK *****
 
+- Datastore text module is now the default.
+
 - Refined netconf "none" semantics in tests and text datastore
 
 - Moved apps/dbctrl to datastore/
