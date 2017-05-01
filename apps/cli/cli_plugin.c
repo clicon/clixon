@@ -166,11 +166,12 @@ syntax_append(clicon_handle h,
  * Unload all plugins in a group
  */
 static int
-syntax_unload(clicon_handle h)
+cli_syntax_unload(clicon_handle h)
 {
-    struct cli_plugin *p;
-    cli_syntax_t      *stx = cli_syntax(h);
-    
+    cli_syntax_t            *stx = cli_syntax(h);
+    struct cli_plugin       *p;
+    cli_syntaxmode_t        *m;
+
     if (stx == NULL)
 	return 0;
 
@@ -178,15 +179,16 @@ syntax_unload(clicon_handle h)
 	p = stx->stx_plugins;
 	plugin_unload(h, p->cp_handle);
 	clicon_debug(1, "DEBUG: Plugin '%s' unloaded.", p->cp_name);
-	DELQ(stx->stx_plugins, stx->stx_plugins, struct cli_plugin *);
-	if (stx->stx_plugins)
-	    free(stx->stx_plugins);
+	DELQ(p, stx->stx_plugins, struct cli_plugin *);
+	if (p)
+	    free(p);
 	stx->stx_nplugins--;
     }
     while (stx->stx_nmodes > 0) {
-	DELQ(stx->stx_modes, stx->stx_modes, cli_syntaxmode_t *);
-	if (stx->stx_modes)
-	    free(stx->stx_modes);
+	m = stx->stx_modes;
+	DELQ(m, stx->stx_modes, cli_syntaxmode_t *);
+	if (m)
+	    free(m);
 	stx->stx_nmodes--;
     }
     return 0;
@@ -509,7 +511,7 @@ cli_syntax_load (clicon_handle h)
 
 quit:
     if (retval != 0) {
-	syntax_unload(h);
+	cli_syntax_unload(h);
 	cli_syntax_set(h, NULL);
     }
     if (dp)
@@ -547,7 +549,7 @@ cli_plugin_start(clicon_handle h, int argc, char **argv)
 int
 cli_plugin_finish(clicon_handle h)
 {
-    syntax_unload(h);
+    cli_syntax_unload(h);
     cli_syntax_set(h, NULL);
     return 0;
 }
