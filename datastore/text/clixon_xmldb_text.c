@@ -245,6 +245,32 @@ text_setopt(xmldb_handle xh,
     return retval;
 }
 
+/*! Populate with spec
+ * @param[in]   xt      XML tree with some node marked
+ */
+int
+xml_spec_populate(cxobj  *x, 
+		  void   *arg)
+{
+    int        retval = -1;
+    yang_spec *yspec = (yang_spec*)arg;
+    char      *name;
+    yang_stmt *y;  /* yang node */
+    cxobj     *xp; /* xml parent */ 
+    yang_stmt *yp; /* parent yang */
+
+    name = xml_name(x);
+    if ((xp = xml_parent(x)) != NULL &&
+	(yp = xml_spec(xp)) != NULL)
+	y = yang_find_syntax((yang_node*)yp, xml_name(x));
+    else
+	y = yang_find_topnode(yspec, name); /* still NULL for config */
+    xml_spec_set(x, y);
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /*! Get content of database using xpath. return a set of matching sub-trees
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
@@ -335,20 +361,20 @@ text_get(xmldb_handle xh,
     }
     /* Top is special case */
     if (!xml_flag(xt, XML_FLAG_MARK))
-	if (xml_tree_prune_unmarked(xt, NULL) < 0)
+	if (xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1, NULL) < 0)
 	    goto done;
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
+    if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	goto done;
+    if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
+	goto done;
+    /* XXX does not work for top-level */
+    if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
+	goto done;
+    if (xml_apply(xt, CX_ELMNT, xml_sanity, NULL) < 0)
+	goto done;
 
-    if (0){ /* No xml_spec(xt) */
-	if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
-	    goto done;
-	/* XXX does not work for top-level */
-	if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
-	    goto done;
-	if (xml_apply(xt, CX_ELMNT, xml_sanity, NULL) < 0)
-	    goto done;
-    }
     if (debug>1)
     	clicon_xml2file(stderr, xt, 0, 1);
     if (xvec0 && xlen0){
@@ -755,11 +781,14 @@ text_modify(cxobj              *x0,
 		    goto done;
 		}
 		/* Fall thru */
+	    case OP_NONE: /* XXX */
 	    case OP_MERGE:
 	    case OP_REPLACE:
 		if (x0==NULL){
 		    if ((x0 = xml_new_spec(name, x0p, y)) == NULL)
 			goto done;
+		    if (op==OP_NONE)
+			xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
 		    if (x1bstr){ /* empty type does not have body */
 			if ((x0b = xml_new("body", x0)) == NULL)
 			    goto done; 
@@ -767,11 +796,23 @@ text_modify(cxobj              *x0,
 		    }
 		}
 		if (x1bstr){
-		    if ((x0b = xml_body_get(x0)) == NULL)
-			goto done;
+		    if ((x0b = xml_body_get(x0)) == NULL){
+			if ((x0b = xml_new("body", x0)) == NULL)
+			    goto done; 
+			xml_type_set(x0b, CX_BODY);
+		    }
 		    if (xml_value_set(x0b, x1bstr) < 0)
 			goto done;
 		}
+		break;
+	    case OP_DELETE:
+		if (x0==NULL){
+		    clicon_err(OE_XML, 0, "Object to delete does not exist");
+		    goto done;
+		}
+	    case OP_REMOVE:
+		if (x0)
+		    xml_purge(x0);
 		break;
 	    default:
 		break;
@@ -799,11 +840,15 @@ text_modify(cxobj              *x0,
 		    xml_purge(x0);
 		    x0 = NULL;
 		}
+	    case OP_NONE: /* XXX */
 	    case OP_MERGE: 
 		if (x0==NULL){
 		    if ((x0 = xml_new_spec(name, x0p, y)) == NULL)
 			goto done;
+		    if (op==OP_NONE)
+			xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
 		}
+
 		/* Loop through children of the modification tree */
 		x1c = NULL;
 		while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
@@ -822,6 +867,15 @@ text_modify(cxobj              *x0,
 		    if (text_modify(x0c, x0, x1c, op, (yang_node*)yc, yspec) < 0)
 			goto done;
 		}
+		break;
+	    case OP_DELETE:
+		if (x0==NULL){
+		    clicon_err(OE_XML, 0, "Object to delete does not exist");
+		    goto done;
+		}
+	    case OP_REMOVE:
+		if (x0)
+		    xml_purge(x0);
 		break;
 	    default:
 		break;
@@ -857,7 +911,7 @@ text_modify(cxobj              *x0,
  * @endcode
  */
 int
-text_put(xmldb_handle      xh,
+text_put(xmldb_handle        xh,
 	 char               *db, 
 	 enum operation_type op,
 	 char               *api_path,
@@ -877,10 +931,12 @@ text_put(xmldb_handle      xh,
     cxobj              *xnew = NULL;
     yang_node          *y = NULL;
 
+#if 0 /* Just ignore */
     if ((op==OP_DELETE || op==OP_REMOVE) && xmod){
 	clicon_err(OE_XML, 0, "xml tree should be NULL for REMOVE/DELETE");
 	goto done;
     }
+#endif
     if (text_db2file(th, db, &dbfile) < 0)
 	goto done;
     if (dbfile==NULL){
@@ -942,6 +998,12 @@ text_put(xmldb_handle      xh,
     else 
 	if (text_modify(xbase, xbasep, xmod, op, (yang_node*)y, yspec) < 0)
 	    goto done;
+    /* Remove NONE nodes if all subs recursively are also NONE */
+    if (xml_tree_prune_flagged(xt, XML_FLAG_NONE, 0, NULL) <0)
+	goto done;
+    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
+		  (void*)XML_FLAG_NONE) < 0)
+	goto done;
     // output:
     /* Print out top-level xml tree after modification to file */
     if ((cb = cbuf_new()) == NULL){

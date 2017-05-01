@@ -296,7 +296,7 @@ api_data_edit(clicon_handle h,
 	    goto done;	
     }
     cprintf(cbx, "</config>");
-    clicon_debug(1, "%s cbx: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
+    clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
     if (clicon_rpc_edit_config(h, "candidate", 
 			       operation,
 			       api_path,
@@ -337,7 +337,8 @@ api_data_edit(clicon_handle h,
 
    If the data resource already exists, then the POST request MUST fail
    and a "409 Conflict" status-line MUST be returned.
- * Netconf:  <edit-config> (nc:operation="create") | invoke an RPC operation        
+ * Netconf:  <edit-config> (nc:operation="create") | invoke an RPC operation        * @example
+ 
  */
 int
 api_data_post(clicon_handle h,
@@ -359,8 +360,8 @@ api_data_post(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * Example:
-      curl -X PUT -d {\"enabled\":\"false\"} http://127.0.0.1/restconf/data/interfaces/interface=eth1
+ * @example
+      curl -X PUT -d '{"enabled":"false"}' http://127.0.0.1/restconf/data/interfaces/interface=eth1
  *
  PUT:
   if the PUT request creates a new resource,

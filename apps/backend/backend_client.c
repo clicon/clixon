@@ -307,7 +307,6 @@ from_client_edit_config(clicon_handle h,
 	}
     }
     if ((xc  = xpath_first(xn, "config")) != NULL){
-	/* XXX see from_client_xmlput() */
 	if (xmldb_put(h, target, operation, api_path, xc) < 0){
 	    cprintf(cbret, "<rpc-reply><rpc-error>"
 		    "<error-tag>operation-failed</error-tag>"

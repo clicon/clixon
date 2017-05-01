@@ -1076,16 +1076,23 @@ xmlkeyfmt2xpath(char  *xkfmt,
     return retval;
 }
 
-/*! Prune everything that has not been marked
+/*! Prune everything that does not pass test
  * @param[in]   xt      XML tree with some node marked
+ * @param[in]   flag    Which flag to test for
+ * @param[in]   test    1: test that flag is set, 0: test that flag is not set
  * @param[out]  upmark  Set if a child (recursively) has marked set.
- * The function removes all branches that does not contain a marked child
- * XXX: maybe key leafs should not be purged if list is not purged?
- * XXX: consider move to clicon_xml
+ * The function removes all branches that does not a child that pass the test
+ * Purge all nodes that dont have MARK flag set recursively.
+ * Save all nodes that is MARK:ed or have at least one (grand*)child that is MARKed
+ * @code
+ *    xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1, NULL);
+ * @endcode
  */
 int
-xml_tree_prune_unmarked(cxobj *xt, 
-			int   *upmark)
+xml_tree_prune_flagged(cxobj *xt, 
+		       int    flag,
+		       int    test,
+		       int   *upmark)
 {
     int    retval = -1;
     int    submark;
@@ -1097,12 +1104,12 @@ xml_tree_prune_unmarked(cxobj *xt,
     x = NULL;
     xprev = x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if (xml_flag(x, XML_FLAG_MARK)){
+	if (xml_flag(x, flag) == test?flag:0){
 	    mark++;
 	    xprev = x;
 	    continue; /* mark and stop here */
 	}
-	if (xml_tree_prune_unmarked(x, &submark) < 0)
+	if (xml_tree_prune_flagged(x, flag, test, &submark) < 0)
 	    goto done;
 	if (submark)
 	    mark++;

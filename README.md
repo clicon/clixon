@@ -1,5 +1,4 @@
-CLIXON
-======
+# CLIXON
 
 CLIXON is an automatic configuration manager where you from a YANG
 specification generate interactive CLI, NETCONF, RESTCONF and embedded
@@ -12,6 +11,8 @@ applications such as CLICON/ROST does not run on CLIXON.
 Presentations and tutorial is found on the [CLICON project
 page](http://www.clicon.org)
 
+## Installation
+
 A typical installation is as follows:
 
     > configure	       	        # Configure clixon to platform
@@ -22,17 +23,27 @@ A typical installation is as follows:
 One example applications is provided, the IETF IP YANG datamodel with generated CLI and configuration interface.  It all origins from work at
 [KTH](http://www.csc.kth.se/~olofh/10G_OSR)
 
+## Dependencies
+
 [CLIgen](http://www.cligen.se) is required for building CLIXON. If you need 
 to build and install CLIgen: 
 
     git clone https://github.com/olofhagsand/cligen.git
     cd cligen; configure; make; make install
 
+## Licenses
+
 CLIXON is dual license. Either Apache License, Version 2.0 or GNU
 General Public License Version 2. You choose.
 
 See LICENSE.md for license, CHANGELOG for recent changes.
 
+## Client code
+
+[CLI](apps/restconf).
+[Restconf](apps/restconf).
+[Netconf](apps/netconf).
+[Netconf](apps/netconf).
 
 
 

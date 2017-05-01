@@ -106,7 +106,7 @@ typedef int (xmldb_delete_t)(xmldb_handle xh, char *db);
 /* Type of xmldb init function */
 typedef int (xmldb_init_t)(xmldb_handle xh, char *db);
 
-/* grideye agent plugin init struct for the api */
+/* plugin init struct for the api */
 struct xmldb_api{
     int                 xa_version;
     int                 xa_magic;

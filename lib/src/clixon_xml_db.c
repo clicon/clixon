@@ -63,6 +63,9 @@
 #include "clixon_options.h"
 #include "clixon_xml_db.h"
 
+/* Set to log get and put requests */
+#define DEBUG 0
+
 /*! Load an xmldb storage plugin according to filename
  * If init function fails (not found, wrong version, etc) print a log and dont
  * add it.
@@ -350,7 +353,7 @@ xmldb_get(clicon_handle h,
 	goto done;
     }
     retval = xa->xa_get_fn(xh, db, xpath, xtop, xvec, xlen);
-#if 0 /* XXX DEBUG */
+#if DEBUG
     if (retval == 0) { 
 	 cbuf *cb = cbuf_new();
 	 clicon_xml2cbuf(cb, *xtop, 0, 0);
@@ -407,7 +410,7 @@ xmldb_put(clicon_handle       h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-#if 0 /* XXX DEBUG */
+#if DEBUG
     {
 	cbuf *cb = cbuf_new();
 	if (xt)

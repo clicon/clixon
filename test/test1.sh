@@ -26,6 +26,8 @@ sudo clixon_backend -If $clixon_cf
 if [ $? -ne 0 ]; then
     err
 fi
+new "cli tests"
+
 new "cli configure top"
 expectfn "$clixon_cli -1f $clixon_cf set interfaces" ""
 

@@ -358,6 +358,13 @@ xpath_parse(char                  *xpath,
 	else if (strncmp(s,"descendant-or-self::", strlen("descendant-or-self::"))==0){ 
 	    xpath_element_new(A_DESCENDANT_OR_SELF, s+strlen("descendant-or-self::"), &xpnext);
 	}
+#if 1
+	else if (strncmp(s,"..", strlen(".."))==0) /* abbreviatedstep */
+	    xpath_element_new(A_PARENT, s+strlen(".."), &xpnext);
+#else
+	else if (strncmp(s,"..", strlen(s))==0) /* abbreviatedstep */
+	    xpath_element_new(A_PARENT, NULL, &xpnext);
+#endif
 #if 1 /* Problems with .[userid=1321] */
 	else if (strncmp(s,".", strlen("."))==0)
 	    xpath_element_new(A_SELF, s+strlen("."), &xpnext);
@@ -368,13 +375,7 @@ xpath_parse(char                  *xpath,
 
 	else if (strncmp(s,"self::", strlen("self::"))==0)
 	    xpath_element_new(A_SELF, s+strlen("self::"), &xpnext);
-#if 1
-	else if (strncmp(s,"..", strlen(".."))==0) /* abbreviatedstep */
-	    xpath_element_new(A_PARENT, s+strlen(".."), &xpnext);
-#else
-	else if (strncmp(s,"..", strlen(s))==0) /* abbreviatedstep */
-	    xpath_element_new(A_PARENT, NULL, &xpnext);
-#endif
+
 	else if (strncmp(s,"parent::", strlen("parent::"))==0)
 	    xpath_element_new(A_PARENT, s+strlen("parent::"), &xpnext);
 	else if (strncmp(s,"ancestor::", strlen("ancestor::"))==0)
@@ -1076,7 +1077,7 @@ int
 main(int argc, char **argv)
 {
     int i;
-    cxobj     **xv;
+    cxobj     **xv
     cxobj      *x;
     cxobj      *xn;
     size_t         xlen = 0;

@@ -67,6 +67,7 @@ typedef int (xml_applyfn_t)(cxobj *yn, void *arg);
 #define XML_FLAG_ADD    0x02  /* Node is added (commits) or parent added rec*/
 #define XML_FLAG_DEL    0x04  /* Node is deleted (commits) or parent deleted rec */
 #define XML_FLAG_CHANGE 0x08  /* Node is changed (commits) or child changed rec */
+#define XML_FLAG_NONE   0x10  /* Node is added as NONE */
 
 /*
  * Prototypes
@@ -102,6 +103,7 @@ int       xml_childvec_set(cxobj *x, int len);
 cxobj    *xml_new(char *name, cxobj *xn_parent);
 cxobj    *xml_new_spec(char *name, cxobj *xn_parent, void *spec);
 void     *xml_spec(cxobj *x);
+void     *xml_spec_set(cxobj *x, void *spec);
 cxobj    *xml_find(cxobj *xn_parent, char *name);
 
 int       xml_addsub(cxobj *xp, cxobj *xc);

@@ -652,7 +652,7 @@ kv_get(xmldb_handle  xh,
     }
     /* Top is special case */
     if (!xml_flag(xt, XML_FLAG_MARK))
-	if (xml_tree_prune_unmarked(xt, NULL) < 0)
+	if (xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1, NULL) < 0)
 	    goto done;
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
@@ -1309,7 +1309,7 @@ kv_put(xmldb_handle        xh,
     yang_spec *yspec;
     char      *dbfilename = NULL;
 
-    if ((xml_child_nr(xt)==0 || xml_body(xt)!= NULL) &&
+    if (xt && (xml_child_nr(xt)==0 || xml_body(xt)!= NULL) &&
 	api_path && strlen(api_path) && strcmp(api_path,"/"))
 	return xmldb_put_xkey(kh, db, op, api_path, xml_body(xt));
     if ((yspec =  kh->kh_yangspec) == NULL){

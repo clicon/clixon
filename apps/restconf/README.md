@@ -66,8 +66,8 @@ curl -sX POST -d '{"clicon":{"interfaces":{"interface":{"name":"eth1","type":"et
 
 3. DEBUGGING
 ++++++++++++
-Start the restconf programs with debug flag:
-sudo su -c "/www-data/clixon_restconf -D" -s /bin/sh www-data
+Start the restconf fastcgi program with debug flag:
+sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/routing.conf" -s /bin/sh www-data
 
 Look at syslog:
 tail -f /var/log/syslog | grep clixon_restconf

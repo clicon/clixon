@@ -521,10 +521,19 @@ xml_new_spec(char  *name,
     return x;
 }
 
+
 void *
 xml_spec(cxobj *x)
 {
     return x->x_spec;
+}
+
+void *
+xml_spec_set(cxobj *x, 
+	     void  *spec)
+{
+    x->x_spec = spec;
+    return 0;
 }
 
 /*! Find an XML node matching name among a parent's children.
