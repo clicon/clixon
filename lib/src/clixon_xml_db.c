@@ -652,15 +652,15 @@ xmldb_delete(clicon_handle h,
     return retval;
 }
 
-/*! Initialize database. Open database for writing.
+/*! Create a database. Open database for writing.
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
  * @retval  0  OK
  * @retval -1  Error
  */
 int 
-xmldb_init(clicon_handle h, 
-	   char         *db)
+xmldb_create(clicon_handle h, 
+	     char         *db)
 {
     int               retval = -1;
     xmldb_handle      xh;

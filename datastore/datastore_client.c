@@ -286,7 +286,7 @@ main(int argc, char **argv)
     else if (strcmp(cmd, "init")==0){
 	if (argc != 1)
 	    usage(argv0);
-	if (xmldb_init(h, db) < 0)
+	if (xmldb_create(h, db) < 0)
 	    goto done;
     }
     else{

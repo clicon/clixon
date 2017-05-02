@@ -632,7 +632,7 @@ from_client_delete_config(clicon_handle h,
 		"</rpc-error></rpc-reply>", clicon_err_reason);
 	goto ok;
     }
-    if (xmldb_init(h, target) < 0){
+    if (xmldb_create(h, target) < 0){
 	cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"
 		"<error-type>protocol</error-type>"

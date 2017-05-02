@@ -159,7 +159,7 @@ db_reset(clicon_handle h,
 {
     if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
 	return -1;
-    if (xmldb_init(h, db) < 0)
+    if (xmldb_create(h, db) < 0)
 	return -1;
     return 0;
 }
@@ -181,7 +181,7 @@ rundb_main(clicon_handle h,
     cxobj     *xt = NULL;
     cxobj     *xn;
 
-    if (xmldb_init(h, "tmp") < 0)
+    if (xmldb_create(h, "tmp") < 0)
 	goto done;
     if (xmldb_copy(h, "running", "tmp") < 0){
 	clicon_err(OE_UNIX, errno, "file copy");
@@ -538,7 +538,7 @@ main(int argc, char **argv)
 	else
 	    if (db_reset(h, "running") < 0)
 		goto done;
-	if (xmldb_init(h, "candidate") < 0)
+	if (xmldb_create(h, "candidate") < 0)
 	    goto done;
 	if (xmldb_copy(h, "running", "candidate") < 0)
 	    goto done;
@@ -562,7 +562,7 @@ main(int argc, char **argv)
     }
     /* If candidate does not exist, create it from running */
     if (xmldb_exists(h, "candidate") != 1){
-	if (xmldb_init(h, "candidate") < 0)
+	if (xmldb_create(h, "candidate") < 0)
 	    goto done;
 	if (xmldb_copy(h, "running", "candidate") < 0)
 	    goto done;
