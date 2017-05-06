@@ -56,13 +56,14 @@ $'
 new "Re-Delete eth0 using none should generate error"
 expectfn 'curl -sX DELETE  http://localhost/restconf/data/interfaces/interface=eth0' "Not Found"
 
-return
+if false; then # XXX restconf dont support patch and put fully
 
-new "restconf PATCH config"
-expectfn 'curl -sX PATCH -d {"type":"eth"} http://localhost/restconf/data/interfaces/interface=eth4' ""
+    new "restconf PATCH config"
+    expectfn 'curl -sX PATCH -d {"type":"eth"} http://localhost/restconf/data/interfaces/interface=eth4' ""
 
-new "restconf PUT"
-expectfn 'curl -sX PUT -d {"type":"eth"} http://localhost/restconf/data/interfaces/interface=eth5' ""
+    new "restconf PUT"
+    expectfn 'curl -sX PUT -d {"type":"eth"} http://localhost/restconf/data/interfaces/interface=eth5' ""
+fi
 
 new "Kill restconf daemon"
 #sudo pkill -u www-data clixon_restconf
