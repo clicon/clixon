@@ -670,7 +670,7 @@ xmldb_create(clicon_handle h,
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (xa->xa_init_fn == NULL){
+    if (xa->xa_create_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
@@ -678,7 +678,7 @@ xmldb_create(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = xa->xa_init_fn(xh, db);
+    retval = xa->xa_create_fn(xh, db);
  done:
     return retval;
 }
