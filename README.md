@@ -51,7 +51,7 @@ to build and install CLIgen:
 - Fcgi (if restconf is enabled)
 - Qdbm key-value store (if keyvalue datastore is enabled)
 
-There is no yum/apt/ostree package for Clixon yet (please help?)
+There is no yum/apt/ostree package for Clixon (please help?)
 
 Licenses
 ========
@@ -76,7 +76,7 @@ Clicon applications do not run on Clixon.
 SDK
 ===
 
-<img src="doc/clixon_example_sdk.png" alt="clixon sdk" style="width: 300px;"/>
+<img src="doc/clixon_example_sdk.png" alt="clixon sdk" style="width: 200px;"/>
 
 The figure shows the SDK runtime of Clixon.
 
