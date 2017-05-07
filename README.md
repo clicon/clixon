@@ -1,20 +1,30 @@
 # Clixon
 
-Clixon is an automatic configuration manager where you from a YANG
-specification generate interactive CLI, NETCONF, RESTCONF and embedded
-databases with transaction support.
+Clixon is an automatic configuration manager where you generate
+interactive CLI, NETCONF, RESTCONF and embedded databases with
+transaction support from a YANG specification.
 
-Presentations and tutorial is found on the [Clicon project page](http://www.clicon.org)
+![clixon sdk](doc/clixon_example_sdk.png)
 
 Table of contents
 =================
-  * [Table of contents](#table-of-contents)
-  * [Installation](#installation)
   * [Documentation](#documentation)
+  * [Installation](#installation)
   * [Dependencies](#dependencies)
   * [Licenses](#licenses)
-  * [History](#history)
-  * [Yang](#yang)
+  * [Background](#background)
+  * [Yang and XML](#yang-and-xml)
+
+Documentation
+=============
+- [Frequently asked questions](doc/FAQ.md)
+- [XML datastore](datastore/README.md)
+- [Netconf support](apps/netconf/README.md)
+- [Restconf support](apps/restconf/README.md)
+- [Reference manual](http://www.clicon.org/doxygen/index.html) (Better: cd doc; make doc)
+- [Routing example](example/README.md)
+- [Clicon project page](http://www.clicon.org)
+- [Tests](test/README.md)
 
 Installation
 ============
@@ -25,17 +35,9 @@ A typical installation is as follows:
      sudo make install         # Install libs, binaries, and config-files
      sudo make install-include # Install include files (for compiling)
 ```
-One example applications is provided, a IETF IP YANG datamodel with generated CLI and configuration interface. 
 
-Documentation
-=============
-- [Frequently asked questions](doc/FAQ.md)
-- [XML datastore](datastore/README.md)
-- [Netconf support](apps/netconf/README.md)
-- [Restconf support](apps/restconf/README.md)
-- [Reference manual](http://www.clicon.org/doxygen/index.html) (Better: cd doc; make doc)
-- [Routing example](example/README.md)
-- [Tests](test/README.md)
+One [example application](example/README.md) is provided, a IETF IP YANG datamodel with
+generated CLI and configuration interface.
 
 Dependencies
 ============
@@ -60,7 +62,6 @@ See [LICENSE.md](LICENSE.md) for license, [CHANGELOG](CHANGELOG.md) for recent c
 
 Background
 ==========
-
 We implemented Clixon since we needed a generic configuration tool in
 several projects, including
 [KTH](http://www.csc.kth.se/~olofh/10G_OSR). Most of these projects
@@ -72,16 +73,17 @@ where the legacy key specification has been replaced completely by
 YANG and using XML as configuration data. This means that legacy
 Clicon applications do not run on Clixon.
 
-YANG
-====
+YANG and XML
+============
 
-YANG is at the heart of Clixon. RFC 6020 is implemented with some
-exceptions as noted below. A Yang specification is used to generated
-an interactive CLI client. Clixon also provides a Netconf and Restconf
-client based on Yang.
+YANG and XML is at the heart of Clixon.  Yang modules are used as a
+specification for handling XML configuration data. The spec is also
+used to generate an interactive CLI client as well as provide
+[Netconf](apps/netconf/README.md) and
+[Restconf](apps/restconf/README.md) clients.
 
-The following features are (not yet) implemented:
-- type object-references
+The [YANG RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt) is implemented with the following exceptions:
+- object-references
 - if-feature
 - unique
 - rpc
