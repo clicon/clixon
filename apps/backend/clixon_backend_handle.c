@@ -147,7 +147,7 @@ backend_notify(clicon_handle h,
 	    if (strcmp(su->su_stream, stream) == 0){
 		if (strlen(su->su_filter)==0 || fnmatch(su->su_filter, event, 0) == 0){
 		    if (send_msg_notify(ce->ce_s, level, event) < 0){
-			if (errno == ECONNRESET){
+			if (errno == ECONNRESET || errno == EPIPE){
 			    clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
 #if 0
 			    /* We should remove here but removal is not possible
@@ -225,7 +225,7 @@ backend_notify_xml(clicon_handle h,
 			    goto done;
 		    }
 		    if (send_msg_notify(ce->ce_s, level, cbuf_get(cb)) < 0){
-			if (errno == ECONNRESET){
+			if (errno == ECONNRESET || errno == EPIPE){
 			    clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
 #if 0
 			    /* We should remove here but removal is not possible

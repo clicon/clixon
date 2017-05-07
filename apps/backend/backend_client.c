@@ -871,9 +871,21 @@ from_client_msg(clicon_handle        h,
     assert(cbuf_len(cbret));
     clicon_debug(1, "%s %s", __FUNCTION__, cbuf_get(cbret));
     if (send_msg_reply(ce->ce_s, cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
-	if (errno == ECONNRESET)
+	switch (errno){
+	case EPIPE:
+	    /* man (2) write: 
+	     * EPIPE  fd is connected to a pipe or socket whose reading end is 
+	     * closed.  When this happens the writing process will also receive 
+	     * a SIGPIPE signal. 
+	     * In Clixon this means a client, eg restconf, netconf or cli closes
+	     * the (UNIX domain) socket.
+	     */
+	case ECONNRESET:
 	    clicon_log(LOG_WARNING, "client rpc reset");
-	goto done;
+	    break;
+	default:
+	    goto done;
+	}
     }
     // ok:
     retval = 0;

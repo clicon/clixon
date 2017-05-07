@@ -297,8 +297,11 @@ clicon_msg_send(int                s,
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
 		 s, msg, ntohs(msg->op_len)) < 0){
 	clicon_err(OE_CFG, errno, "%s", __FUNCTION__);
+	clicon_log(LOG_WARNING, "%s: write: %s len:%d msg:%s", __FUNCTION__,
+		   strerror(errno), ntohs(msg->op_len), msg->op_body);
 	goto done;
     }
+ ok:
     retval = 0;
   done:
     return retval;
