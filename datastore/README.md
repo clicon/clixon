@@ -2,14 +2,17 @@
 
 The Clixon datastore is a stand-alone XML based datastore used by
 Clixon. The idea is to be able to use different datastores. There is
-currently a Key-value plugin based on qdbm and a plain text-file
+currently a key-value plugin based on qdbm and a plain text-file
 datastore.
 
 The datastore is primarily designed to be used by Clixon but can be used
-separately.  See datastore_client.c for an example of how to use a
-datastore plugin for other applications
+separately.  
 
-## The functional API
+A datastore is a dynamic plugin that is loaded at runtime with a
+well-defined API. This means it is possible to create your own
+datastore and plug it in a Clixon backend at runtime. 
+
+### The functional API
 ```
 int xmldb_plugin_load(clicon_handle h, char *filename);
 int xmldb_plugin_unload(clicon_handle h);
@@ -28,40 +31,62 @@ int xmldb_unlock_all(clicon_handle h, int pid);
 int xmldb_islocked(clicon_handle h, char *db);
 int xmldb_exists(clicon_handle h, char *db);
 int xmldb_delete(clicon_handle h, char *db);
-int xmldb_init(clicon_handle h, char *db);
+int xmldb_create(clicon_handle h, char *db);
 ```
 
-## Using the API
+### Using the API
 
-This section described how the API is used. Please refer to datastore/datastore_client.c for an example of an actual implementation.
-
-### Prerequisities
 To use the API, a client needs the following:
 - A clicon handle. 
 - A datastore plugin, such as a text.so or keyvalue.so. These are normally built and installed at Clixon make.
-- A directory where to store the datastores
+- A directory where to store databases
 - A yang specification. This needs to be parsed using the Clixon yang_parse() method.
 
-### Dynamics
+A client calling the API needs to (1)load a plugin and (2)connect to a
+datastore. You can connect to several datastores, even concurrently,
+but in practice in Clixon, you connect to a single store. 
 
-A client calling the API needs to load a plugin and connect to a
-datastore. In principle, you cannot connect to several datastores,
-even concurrently, but in practice in Clixon, you connect to a single
-store.
+After connecting to a datastore, you can create and modify databases
+within the datastore, and set and get options of the datastore itself.
 
-Within a datastore, there may be 
+When done, you disconnect from the datastore and unload the plugin.
+
+Within a datastore, the following four databases may exist:
+- running
+- candidate
+- startup
+- tmp
+
+Initially, a database does not exist but is created by
+xmldb_create(). It is deleted by xmldb_delete(). You may check for
+existence with xmldb_exists(). You need to create a database before
+you can perform any data access on it.
+
+You may lock a database for exclusive modification according to
+Netconf semantics. You may also unlock a single dabase, unlock all frm
+a specific session.
+
+You can read a database with xmldb_get() and modify a database with
+xmldb_put(), and xmldb_copy().
+
+A typical datastore session can be as follows, see the source code of
+datastore_client.c for a more elaborate example.
 
 ```
   h = clicon_handle_init();
   xmldb_plugin_load(h, plugin);
-```
-The plugin is the complete path-name of a file.
-
-Thereafter, a connection is made to a specific plugin, such as a text plugin. It is possible to connect to several datastore at once, although this is not supported by CLixon:
-```
-xmldb_connect(h);
-xmldb_setopt(h, "dbdir", dbdir);
-xmldb_setopt(h, "yangspec", yspec);
+  xmldb_connect(h);
+  xmldb_setopt(h, "dbdir", dbdir);
+  xmldb_setopt(h, "yangspec", yspec);
+  /* From here databases in the datastore may be accessed */
+  xmldb_create(h, "candidate");
+  xmldb_copy(h, "running", "candidate");
+  xmldb_lock(h, "candidate", 7878);
+  xmldb_put(h, "candidate", OP_CREATE, "/interfaces/interface=eth0", xml);
+  xmldb_unlock(h, "candidate");
+  xmldb_get(h, "candidate", "/", &xml, &xvec, &xlen);
+  xmldb_disconnect(h)
+  xmdlb_plugin_unload(h);
 ```
 
 

@@ -1,16 +1,21 @@
 # Clixon yang routing example
 
-
 ## Compile and run
 ```
-cd example
-make && sudo make install
-# Start backend
-clixon_backend -f /usr/local/etc/routing.conf -I
-# Edit cli
-clixon_cli -f /usr/local/etc/routing.conf
-# Send netconf command
-clixon_netconf -f /usr/local/etc/routing.conf
+    cd example
+    make && sudo make install
+```
+Start backend:
+```
+    clixon_backend -f /usr/local/etc/routing.conf -I
+```
+Edit cli:
+```
+    clixon_cli -f /usr/local/etc/routing.conf
+```
+Send netconf command:
+```
+    clixon_netconf -f /usr/local/etc/routing.conf
 ```
 
 ## Setting data example using netconf
@@ -34,15 +39,10 @@ clixon_netconf -f /usr/local/etc/routing.conf
 ## Getting data using netconf
 ```
 <rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
-
 <rpc><get-config><source><candidate/></source><filter/></get-config></rpc>]]>]]>
-
 <rpc><get-config><source><candidate/></source><filter type="xpath"/></get-config></rpc>]]>]]>
-
 <rpc><get-config><source><candidate/></source><filter type="subtree"><configuration><interfaces><interface><ipv4/></interface></interfaces></configuration></filter></get-config></rpc>]]>]]>
-
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface/ipv4"/></get-config></rpc>]]>]]>
-
 <rpc><validate><source><candidate/></source></validate></rpc>]]>]]>
 ```
 

@@ -1,11 +1,5 @@
 # Clixon Restconf
-
-Contents:
-1. Features
-2. Installation using NGINX
-3. Debugging
-
-## 1. FEATURES
+### Features
 
 Clixon restconf is a daemon based on FASTCGI. Instructions are available to
 run with NGINX. 
@@ -17,7 +11,7 @@ including:
 - notifications (sec 6)
 - only rudimentary error reporting exists (sec 7)
 
-## 2. INSTALLATION using NGINX
+### Installation using Nginx
 
 Define nginx config file/etc/nginx/sites-available/default
 ```
@@ -69,7 +63,7 @@ olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=et
 curl -sX POST -d '{"clicon":{"interfaces":{"interface":{"name":"eth1","type":"eth","enabled":"true"}}}}' http://localhost/restconf/data
 ```
 
-## DEBUGGING
+### Debugging
 
 Start the restconf fastcgi program with debug flag:
 ```

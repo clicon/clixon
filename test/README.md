@@ -1,4 +1,4 @@
-# CLixon tests
+# Clixon tests
 
 This directory contains testing code for clixon and the example
 routing application:
