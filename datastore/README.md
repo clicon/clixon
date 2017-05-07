@@ -1,9 +1,9 @@
 # Clixon datastore
 
-The Clixon datastore is a stand-alone XML based datastore used by
-Clixon. The idea is to be able to use different datastores. There is
-currently a key-value plugin based on qdbm and a plain text-file
-datastore.
+The Clixon datastore is a stand-alone XML based datastore. The idea is
+to be able to use different datastores backends with the same
+API. There is currently a key-value plugin based on qdbm and a plain
+text-file datastore.
 
 The datastore is primarily designed to be used by Clixon but can be used
 separately.  
@@ -42,8 +42,10 @@ To use the API, a client needs the following:
 - A directory where to store databases
 - A yang specification. This needs to be parsed using the Clixon yang_parse() method.
 
-A client calling the API needs to (1)load a plugin and (2)connect to a
-datastore. You can connect to several datastores, even concurrently,
+A client calling the API needs to: 
+1. Load a plugin and 
+2. Connect to a datastore. 
+You can connect to several datastores, even concurrently,
 but in practice in Clixon, you connect to a single store. 
 
 After connecting to a datastore, you can create and modify databases
@@ -70,7 +72,7 @@ You can read a database with xmldb_get() and modify a database with
 xmldb_put(), and xmldb_copy().
 
 A typical datastore session can be as follows, see the source code of
-datastore_client.c for a more elaborate example.
+[datastore_client.c](datastore_client.c) for a more elaborate example.
 
 ```
   h = clicon_handle_init();

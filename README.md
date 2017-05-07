@@ -4,8 +4,6 @@ Clixon is an automatic configuration manager where you generate
 interactive CLI, NETCONF, RESTCONF and embedded databases with
 transaction support from a YANG specification.
 
-![clixon sdk](doc/clixon_example_sdk.png)
-
 Table of contents
 =================
   * [Documentation](#documentation)
@@ -13,7 +11,7 @@ Table of contents
   * [Dependencies](#dependencies)
   * [Licenses](#licenses)
   * [Background](#background)
-  * [Yang and XML](#yang-and-xml)
+  * [Clixon SDK](#SDK)
 
 Documentation
 =============
@@ -21,9 +19,9 @@ Documentation
 - [XML datastore](datastore/README.md)
 - [Netconf support](apps/netconf/README.md)
 - [Restconf support](apps/restconf/README.md)
-- [Reference manual](http://www.clicon.org/doxygen/index.html) (Better: cd doc; make doc)
+- [Reference manual](http://www.clicon.org/doxygen/index.html) (Note the link may not be up-to-date. It is better to build your own: cd doc; make doc)
 - [Routing example](example/README.md)
-- [Clicon project page](http://www.clicon.org)
+- [Clicon and Clixon project page](http://www.clicon.org)
 - [Tests](test/README.md)
 
 Installation
@@ -41,7 +39,7 @@ generated CLI and configuration interface.
 
 Dependencies
 ============
-Clixon is dependend on the following packages
+Clixon is dependend on the following software packages, which need to exist on the target machine.
 - [CLIgen](http://www.cligen.se) is required for building Clixon. If you need 
 to build and install CLIgen: 
 ```
@@ -52,6 +50,8 @@ to build and install CLIgen:
 - Lex/Flex
 - Fcgi (if restconf is enabled)
 - Qdbm key-value store (if keyvalue datastore is enabled)
+
+There is no yum/apt/ostree package for Clixon yet (please help?)
 
 Licenses
 ========
@@ -73,8 +73,12 @@ where the legacy key specification has been replaced completely by
 YANG and using XML as configuration data. This means that legacy
 Clicon applications do not run on Clixon.
 
-YANG and XML
-============
+SDK
+===
+
+<img src="doc/clixon_example_sdk.png" alt="clixon sdk" style="width: 300px;"/>
+
+The figure shows the SDK runtime of Clixon.
 
 YANG and XML is at the heart of Clixon.  Yang modules are used as a
 specification for handling XML configuration data. The spec is also

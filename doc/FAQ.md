@@ -124,6 +124,7 @@ clixon_netconf -qf /usr/local/etc/routing.conf
 <notification><event>Routing notification</event></notification>]]>]]>
 <notification><event>Routing notification</event></notification>]]>]]>
 ...
+```
 
 ## I want to program. How do I extend the example?
 - routing.conf.local - Override default settings
