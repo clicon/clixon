@@ -104,7 +104,7 @@ typedef int (xmldb_exists_t)(xmldb_handle xh, char *db);
 typedef int (xmldb_delete_t)(xmldb_handle xh, char *db);
 
 /* Type of xmldb init function */
-typedef int (xmldb_init_t)(xmldb_handle xh, char *db);
+typedef int (xmldb_create_t)(xmldb_handle xh, char *db);
 
 /* plugin init struct for the api */
 struct xmldb_api{
@@ -125,7 +125,7 @@ struct xmldb_api{
     xmldb_islocked_t   *xa_islocked_fn;
     xmldb_exists_t     *xa_exists_fn;
     xmldb_delete_t     *xa_delete_fn;
-    xmldb_init_t       *xa_init_fn;
+    xmldb_create_t     *xa_create_fn;
 };
 
 /*
@@ -150,6 +150,6 @@ int xmldb_unlock_all(clicon_handle h, int pid);
 int xmldb_islocked(clicon_handle h, char *db);
 int xmldb_exists(clicon_handle h, char *db);
 int xmldb_delete(clicon_handle h, char *db);
-int xmldb_init(clicon_handle h, char *db);
+int xmldb_create(clicon_handle h, char *db);
 
 #endif /* _CLIXON_XML_DB_H */

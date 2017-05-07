@@ -1,13 +1,12 @@
-Clixon Restconf
-===============
+# Clixon Restconf
 
 Contents:
 1. Features
 2. Installation using NGINX
 3. Debugging
 
-1. FEATURES
-+++++++++++
+## 1. FEATURES
+
 Clixon restconf is a daemon based on FASTCGI. Instructions are available to
 run with NGINX. 
 The implementatation supports plain OPTIONS, HEAD, GET, POST, PUT, PATCH, DELETE.
@@ -18,10 +17,10 @@ including:
 - notifications (sec 6)
 - only rudimentary error reporting exists (sec 7)
 
-2. INSTALLATION using NGINX
-+++++++++++++++++++++++++++
+## 2. INSTALLATION using NGINX
 
-# Define nginx config file/etc/nginx/sites-available/default
+Define nginx config file/etc/nginx/sites-available/default
+```
 server {
   ...
   location /restconf {
@@ -30,13 +29,19 @@ server {
     include fastcgi_params;
   }
 }
-# Start nginx daemon
+```
+Start nginx daemon
+```
 sudo /etc/init.d nginx start
+```
 
-# Start clixon restconf daemon
+Start clixon restconf daemon
+```
 olof@vandal> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/routing.conf " -s /bin/sh www-data
+```
 
-# Make restconf calls with curl
+Make restconf calls with curl
+```
 olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces
 [
   {
@@ -62,16 +67,21 @@ olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=et
 ]
 
 curl -sX POST -d '{"clicon":{"interfaces":{"interface":{"name":"eth1","type":"eth","enabled":"true"}}}}' http://localhost/restconf/data
+```
 
+## DEBUGGING
 
-3. DEBUGGING
-++++++++++++
 Start the restconf fastcgi program with debug flag:
-sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/routing.conf" -s /bin/sh www-data
-
+```
+sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/routing.conf" -s /bin/sh www-
+data
+```
 Look at syslog:
+```
 tail -f /var/log/syslog | grep clixon_restconf
+```
 
 Send command:
+```
 curl -G http://127.0.0.1/restconf/data/*
-
+```

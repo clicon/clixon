@@ -652,15 +652,15 @@ xmldb_delete(clicon_handle h,
     return retval;
 }
 
-/*! Initialize database. Open database for writing.
+/*! Create a database. Open database for writing.
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
  * @retval  0  OK
  * @retval -1  Error
  */
 int 
-xmldb_init(clicon_handle h, 
-	   char         *db)
+xmldb_create(clicon_handle h, 
+	     char         *db)
 {
     int               retval = -1;
     xmldb_handle      xh;
@@ -670,7 +670,7 @@ xmldb_init(clicon_handle h,
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;
     }
-    if (xa->xa_init_fn == NULL){
+    if (xa->xa_create_fn == NULL){
 	clicon_err(OE_DB, 0, "No xmldb function");
 	goto done;
     }
@@ -678,7 +678,7 @@ xmldb_init(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = xa->xa_init_fn(xh, db);
+    retval = xa->xa_create_fn(xh, db);
  done:
     return retval;
 }

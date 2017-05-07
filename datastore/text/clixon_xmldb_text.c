@@ -1216,14 +1216,14 @@ text_delete(xmldb_handle xh,
     return retval;
 }
 
-/*! Initialize database 
+/*! Create / init database 
  * @param[in]  xh  XMLDB handle
  * @param[in]  db  Database
  * @retval  0  OK
  * @retval -1  Error
  */
 int 
-text_init(xmldb_handle xh, 
+text_create(xmldb_handle xh, 
 	  char         *db)
 {
     int                 retval = -1;
@@ -1246,7 +1246,7 @@ text_init(xmldb_handle xh,
     return retval;
 }
 
-/*! plugin init function */
+/*! plugin exit function */
 int
 text_plugin_exit(void)
 {
@@ -1287,7 +1287,7 @@ static const struct xmldb_api api = {
     text_islocked,
     text_exists,
     text_delete,
-    text_init,
+    text_create,
 };
 
 

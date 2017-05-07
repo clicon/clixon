@@ -118,7 +118,7 @@ CLICON_BACKEND_PIDFILE  localstatedir/APPNAME/APPNAME.pidfile
 CLICON_XMLDB_DIR      localstatedir/APPNAME
 
 # XMLDB datastore plugin filename (see datastore/ and clixon_xml_db.[ch])
-CLICON_XMLDB_PLUGIN libdir/xmldb/keyvalue.so
+CLICON_XMLDB_PLUGIN libdir/xmldb/text.so
 
 # Dont include keys in cvec in cli vars callbacks, ie a & k in 'a <b> k <c>' ignored
 # CLICON_CLI_VARONLY      1

@@ -1552,14 +1552,14 @@ kv_delete(xmldb_handle xh,
     return retval;
 }
 
-/*! Initialize database 
+/*! Create / Initialize database 
  * @param[in]  xh      XMLDB handle
  * @param[in]  db  Database
  * @retval  0  OK
  * @retval -1  Error
  */
 int 
-kv_init(xmldb_handle xh, 
+kv_create(xmldb_handle xh, 
 	char         *db)
 {
     int           retval = -1;
@@ -1618,7 +1618,7 @@ static const struct xmldb_api api = {
     kv_islocked,
     kv_exists,
     kv_delete,
-    kv_init,
+    kv_create,
 };
 
 
