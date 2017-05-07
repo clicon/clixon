@@ -51,6 +51,7 @@
 #include <sys/param.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <grp.h>
  
 /* cligen */
 #include <cligen/cligen.h>
@@ -58,7 +59,6 @@
 /* clicon */
 #include "clixon_err.h"
 #include "clixon_queue.h"
-#include "clixon_chunk.h"
 #include "clixon_string.h"
 #include "clixon_file.h"
 
@@ -66,7 +66,8 @@
  * qsort function
  */
 static int
-clicon_file_dirent_sort(const void* arg1, const void* arg2)
+clicon_file_dirent_sort(const void* arg1, 
+			const void* arg2)
 {
     struct dirent *d1 = (struct dirent *)arg1;
     struct dirent *d2 = (struct dirent *)arg2;
@@ -81,10 +82,10 @@ clicon_file_dirent_sort(const void* arg1, const void* arg2)
 
 /*! Return sorted matching files from a directory
  * @param[in]  dir     Directory path 
- * @param[out] ent     Entries pointer, will be filled in with dir entries
+ * @param[out] ent     Entries pointer, will be filled in with dir entries. Free
+ *                     after use
  * @param[in]  regexp  Regexp filename matching 
  * @param[in]  type    File type matching, see stat(2) 
- * @param[in]  label   Clicon Chunk label for memory handling, unchunk after use
  *
  * @retval  n  Number of matching files in directory
  * @retval -1  Error
@@ -92,33 +93,33 @@ clicon_file_dirent_sort(const void* arg1, const void* arg2)
  * @code
  *   char          *dir = "/root/fs";
  *   struct dirent *dp;
- *   if ((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG, __FUNCTION__)) < 0)
+ *   if ((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG)) < 0)
  *       return -1;
  *   for (i = 0; i < ndp; i++) 
  *       do something with dp[i].d_name;
- *   unchunk_group(__FUNCTION__);
+ *   free(dp);
  * @endcode
 */
 int
 clicon_file_dirent(const char     *dir,
 		   struct dirent **ent,
 		   const char     *regexp,	
-		   mode_t          type, 	
-		   const char     *label)
+		   mode_t          type)
 {
-   DIR *dirp;
-   int retval = -1;
-   int res;
-   int nent;
-   char *filename;
-   regex_t re;
-   char errbuf[128];
-   struct stat st;
-   struct dirent dent;
+   int            retval = -1;
+   DIR           *dirp;
+   int            res;
+   int            nent;
+   regex_t        re;
+   char           errbuf[128];
+   char           filename[MAXPATHLEN];
+   struct stat    st;
+   struct dirent  dent;
    struct dirent *dresp;
    struct dirent *tmp;
    struct dirent *new = NULL;
    struct dirent *dvecp = NULL;
+
 
    *ent = NULL;
    nent = 0;
@@ -137,7 +138,9 @@ clicon_file_dirent(const char     *dir,
      goto quit;
    }
    
-   for (res = readdir_r (dirp, &dent, &dresp); dresp; res = readdir_r (dirp, &dent, &dresp)) {
+   for (res = readdir_r (dirp, &dent, &dresp); 
+	dresp; 
+	res = readdir_r (dirp, &dent, &dresp)) {
        if (res != 0) {
 	   clicon_err(OE_UNIX, 0, "readdir: %s", strerror(errno));
 	   goto quit;
@@ -150,12 +153,8 @@ clicon_file_dirent(const char     *dir,
        }
        /* File type matching */
        if (type) {
-	   if ((filename = chunk_sprintf(__FUNCTION__, "%s/%s", dir, dent.d_name)) == NULL) {
-	       clicon_err(OE_UNIX, 0, "chunk: %s", strerror(errno));
-	       goto quit;
-	   }	
+	   snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dent.d_name);
 	   res = lstat(filename, &st);
-	   unchunk (filename);
 	   if (res != 0) {
 	       clicon_err(OE_UNIX, 0, "lstat: %s", strerror(errno));
 	       goto quit;
@@ -164,8 +163,8 @@ clicon_file_dirent(const char     *dir,
 	       continue;
        }
        
-       if ((tmp = rechunk(new, (nent+1)*sizeof(*dvecp), label)) == NULL) {
-	   clicon_err(OE_UNIX, 0, "chunk: %s", strerror(errno));
+       if ((tmp = realloc(new, (nent+1)*sizeof(*dvecp))) == NULL) {
+	   clicon_err(OE_UNIX, errno, "realloc");
 	   goto quit;
        }
        new = tmp;
@@ -183,28 +182,7 @@ quit:
        closedir(dirp);
    if (regexp)
        regfree(&re);
-   unchunk_group(__FUNCTION__);
-
    return retval;
-}
-
-/*
- * Use mkstep() to create an empty temporary file, accessible only by this user. 
- * A chunk:ed file name is returned so that caller can overwrite file safely.
- */ 
-char *
-clicon_tmpfile(const char *label)
-{
-  int fd;
-  char file[] = "/tmp/.tmpXXXXXX";
-
-  if ((fd = mkstemp(file)) < 0){
-	clicon_err(OE_UNIX, errno, "mkstemp");
-	return NULL;
-  }
-  close(fd);
-
-  return (char *)chunkdup(file, strlen(file)+1, label);
 }
 
 /*! Make a copy of file src
@@ -252,3 +230,34 @@ clicon_file_copy(char *src,
 }
 
 
+/*! Translate group name to gid. Return -1 if error or not found.
+ * @param[in]   name  Name of group
+ * @param[out]  gid   Group id
+ * @retval  0   OK
+ * @retval -1   Error. or not found
+ */
+int
+group_name2gid(char *name, 
+	       gid_t *gid)
+{
+    char          buf[1024]; 
+    struct group  g0;
+    struct group *gr = &g0;
+    struct group *gtmp;
+    
+    gr = &g0; 
+    /* This leaks memory in ubuntu */
+    if (getgrnam_r(name, gr, buf, sizeof(buf), &gtmp) < 0){
+	clicon_err(OE_UNIX, errno, "%s: getgrnam_r(%s): %s", 
+		   __FUNCTION__, name, strerror(errno));
+	return -1;
+    }
+    if (gtmp == NULL){
+	clicon_err(OE_UNIX, 0, "%s: No such group: %s", __FUNCTION__, name);
+	fprintf(stderr, "No such group %s\n", name);
+	return -1;
+    }
+    if (gid)
+	*gid = gr->gr_gid;
+    return 0;
+}

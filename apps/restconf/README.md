@@ -1,27 +1,20 @@
-Clixon Restconf
-===============
+# Clixon Restconf
+### Features
 
-Contents:
-1. Features
-2. Installation using NGINX
-3. Debugging
-
-1. FEATURES
-+++++++++++
 Clixon restconf is a daemon based on FASTCGI. Instructions are available to
 run with NGINX. 
 The implementatation supports plain OPTIONS, HEAD, GET, POST, PUT, PATCH, DELETE.
 and is based on draft-ietf-netconf-restconf-13. 
-There is currently (2017) a RFC 8040, many of those features are _not_ implemented,
+There is currently (2017) a [RFC 8040: RESTCONF Protocol](https://tools.ietf.org/html/rfc8040), many of those features are _not_ implemented,
 including:
 - query parameters (section 4.9)
 - notifications (sec 6)
 - only rudimentary error reporting exists (sec 7)
 
-2. INSTALLATION using NGINX
-+++++++++++++++++++++++++++
+### Installation using Nginx
 
-# Define nginx config file/etc/nginx/sites-available/default
+Define nginx config file/etc/nginx/sites-available/default
+```
 server {
   ...
   location /restconf {
@@ -30,13 +23,19 @@ server {
     include fastcgi_params;
   }
 }
-# Start nginx daemon
+```
+Start nginx daemon
+```
 sudo /etc/init.d nginx start
+```
 
-# Start clixon restconf daemon
+Start clixon restconf daemon
+```
 olof@vandal> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/routing.conf " -s /bin/sh www-data
+```
 
-# Make restconf calls with curl
+Make restconf calls with curl
+```
 olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces
 [
   {
@@ -62,16 +61,21 @@ olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=et
 ]
 
 curl -sX POST -d '{"clicon":{"interfaces":{"interface":{"name":"eth1","type":"eth","enabled":"true"}}}}' http://localhost/restconf/data
+```
 
+### Debugging
 
-3. DEBUGGING
-++++++++++++
-Start the restconf programs with debug flag:
-sudo su -c "/www-data/clixon_restconf -D" -s /bin/sh www-data
-
+Start the restconf fastcgi program with debug flag:
+```
+sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/routing.conf" -s /bin/sh www-
+data
+```
 Look at syslog:
+```
 tail -f /var/log/syslog | grep clixon_restconf
+```
 
 Send command:
+```
 curl -G http://127.0.0.1/restconf/data/*
-
+```

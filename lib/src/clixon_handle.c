@@ -52,23 +52,22 @@
 #include "clixon_handle.h"
 #include "clixon_err.h"
 #include "clixon_yang.h"
+#include "clixon_plugin.h"
 #include "clixon_options.h"
 
 #define CLICON_MAGIC 0x99aafabe
 
 #define handle(h) (assert(clicon_handle_check(h)==0),(struct clicon_handle *)(h))
 
-/*
- * clicon_handle
- * Internal structire of basic handle. Also header of all other handles.
- * see struct clicon_cli_handle, struct clicon_backend_handle, etc
+/*! Internal structure of basic handle. Also header of all other handles.
+ * @note If you change here, you must also change the structs below:
+ * @see struct cli_handle, struct backend_handle
  */
 struct clicon_handle {
     int                      ch_magic;    /* magic (HDR) */
     clicon_hash_t           *ch_copt;     /* clicon option list (HDR) */
     clicon_hash_t           *ch_data;     /* internal clicon data (HDR) */
 };
-
 
 /*! Internal call to allocate a CLICON handle. 
  *
@@ -166,3 +165,4 @@ clicon_data(clicon_handle h)
 
     return ch->ch_data;
 }
+

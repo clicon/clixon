@@ -12,10 +12,6 @@
 /* Clixon version string */
 #undef CLIXON_VERSION_STRING
 
-/* Check if extra keys inserted for database lists containing content. Eg
-   A.n.foo = 3 means A.3 $!a=foo exists */
-#undef DB_KEYCONTENT
-
 /* Define to 1 if you have the `alphasort' function. */
 #undef HAVE_ALPHASORT
 
@@ -36,9 +32,6 @@
 
 /* Define to 1 if you have the `crypt' library (-lcrypt). */
 #undef HAVE_LIBCRYPT
-
-/* Define to 1 if you have the `curl' library (-lcurl). */
-#undef HAVE_LIBCURL
 
 /* Define to 1 if you have the `dl' library (-ldl). */
 #undef HAVE_LIBDL

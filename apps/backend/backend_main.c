@@ -73,11 +73,11 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:d:Fzu:P:1IRCc:rg:pty:"
+#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1IRCc:rg:py:x:"
 
 /*! Terminate. Cannot use h after this */
 static int
-config_terminate(clicon_handle h)
+backend_terminate(clicon_handle h)
 {
     yang_spec      *yspec;
     char           *pidfile = clicon_backend_pidfile(h);
@@ -91,19 +91,18 @@ config_terminate(clicon_handle h)
 	unlink(pidfile);   
     if (sockpath)
 	unlink(sockpath);   
+    xmldb_plugin_unload(h); /* unload storage plugin */
     backend_handle_exit(h); /* Cannot use h after this */
     event_exit();
     clicon_log_register_callback(NULL, NULL);
     clicon_debug(1, "%s done", __FUNCTION__); 
-    if (debug)
-	chunk_check(stderr, NULL);
     return 0;
 }
 
 /*! Unlink pidfile and quit
  */
 static void
-config_sig_term(int arg)
+backend_sig_term(int arg)
 {
     static int i=0;
 
@@ -130,6 +129,7 @@ usage(char *argv0, clicon_handle h)
     	    "    -D <level>\tdebug\n"
     	    "    -f <file>\tCLICON config file (mandatory)\n"
 	    "    -d <dir>\tSpecify backend plugin directory (default: %s)\n"
+	    "    -b <dir>\tSpecify XMLDB database directory\n"
     	    "    -z\t\tKill other config daemon and exit\n"
     	    "    -F\t\tforeground\n"
     	    "    -1\t\tonce (dont wait for events)\n"
@@ -141,9 +141,9 @@ usage(char *argv0, clicon_handle h)
 	    "    -c <file>\tLoad specified application config.\n"
 	    "    -r\t\tReload running database\n"
 	    "    -p \t\tPrint database yang specification\n"
-	    "    -t \t\tPrint alternate spec translation (eg if YANG print KEY, if KEY print YANG)\n"
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
-	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
+	    "    -y <file>\tOverride yang spec file (dont include .yang suffix)\n"
+	    "    -x <plugin>\tXMLDB plugin\n",
 	    argv0,
 	    plgdir ? plgdir : "none",
 	    confsock ? confsock : "none",
@@ -159,7 +159,7 @@ db_reset(clicon_handle h,
 {
     if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
 	return -1;
-    if (xmldb_init(h, db) < 0)
+    if (xmldb_create(h, db) < 0)
 	return -1;
     return 0;
 }
@@ -181,7 +181,7 @@ rundb_main(clicon_handle h,
     cxobj     *xt = NULL;
     cxobj     *xn;
 
-    if (xmldb_init(h, "tmp") < 0)
+    if (xmldb_create(h, "tmp") < 0)
 	goto done;
     if (xmldb_copy(h, "running", "tmp") < 0){
 	clicon_err(OE_UNIX, errno, "file copy");
@@ -206,7 +206,6 @@ done:
 	xml_free(xt);
     if (fd != -1)
 	close(fd);
-    unchunk_group(__FUNCTION__);
     return retval;
 }
 
@@ -240,11 +239,11 @@ server_socket(clicon_handle h)
     int ss;
 
     /* Open control socket */
-    if ((ss = config_socket_init(h)) < 0)
+    if ((ss = backend_socket_init(h)) < 0)
 	return -1;
     /* ss is a server socket that the clients connect to. The callback
        therefore accepts clients on ss */
-    if (event_reg_fd(ss, config_accept_client, h, "server socket") < 0) {
+    if (event_reg_fd(ss, backend_accept_client, h, "server socket") < 0) {
 	close(ss);
 	return -1;
     }
@@ -256,19 +255,20 @@ server_socket(clicon_handle h)
  * log event.
  */
 static int
-config_log_cb(int level, char *msg, void *arg)
+backend_log_cb(int   level, 
+	       char *msg, 
+	       void *arg)
 {
+    int    retval = -1;
     size_t n;
-    char *ptr;
-    char *nptr;
-    char *newmsg = NULL;
-    int retval = -1;
+    char  *ptr;
+    char  *nptr;
+    char  *newmsg = NULL;
 
-    /* backend_notify() will go through all clients and see if any has registered "CLICON",
-       and if so make a clicon_proto notify message to those clients.   */
-    
-
-    /* Sanitize '%' into "%%" to prevent segvfaults in vsnprintf later.
+    /* backend_notify() will go through all clients and see if any has 
+       registered "CLICON", and if so make a clicon_proto notify message to
+       those clients. 
+       Sanitize '%' into "%%" to prevent segvfaults in vsnprintf later.
        At this stage all formatting is already done */
     n = 0;
     for(ptr=msg; *ptr; ptr++)
@@ -283,7 +283,6 @@ config_log_cb(int level, char *msg, void *arg)
 	if (*ptr == '%')
 	    *nptr++ = '%';
     }
-    
     retval = backend_notify(arg, "CLICON", level, newmsg);
     free(newmsg);
 
@@ -309,11 +308,11 @@ main(int argc, char **argv)
     clicon_handle h;
     int           help = 0;
     int           printspec = 0;
-    int           printalt = 0;
     int           pid;
     char         *pidfile;
     char         *sock;
     int           sockfamily;
+    char         *xmldb_plugin;
 
     /* In the startup, logs to stderr & syslog and debug flag set later */
 
@@ -321,7 +320,7 @@ main(int argc, char **argv)
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
 	return -1;
-    if (config_plugin_init(h) != 0) 
+    if (backend_plugin_init(h) != 0) 
 	return -1;
     foreground = 0;
     once = 0;
@@ -387,6 +386,11 @@ main(int argc, char **argv)
 		usage(argv[0], h);
 	    clicon_option_str_set(h, "CLICON_BACKEND_DIR", optarg);
 	    break;
+	case 'b':  /* XMLDB database directory */
+	    if (!strlen(optarg))
+		usage(argv[0], h);
+	    clicon_option_str_set(h, "CLICON_XMLDB_DIR", optarg);
+	    break;
 	case 'F' : /* foreground */
 	    foreground = 1;
 	    break;
@@ -425,9 +429,6 @@ main(int argc, char **argv)
 	case 'p' : /* Print spec */
 	    printspec++;
 	    break;
-	case 't' : /* Print alternative dbspec format (eg if YANG, print KEY) */
-	    printalt++;
-	    break;
 	case 'y' :{ /* yang module */
 	    /* Set revision to NULL, extract dir and module */
 	    char *str = strdup(optarg);
@@ -435,6 +436,10 @@ main(int argc, char **argv)
 	    hash_del(clicon_options(h), (char*)"CLICON_YANG_MODULE_REVISION");
 	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", basename(optarg));
 	    clicon_option_str_set(h, "CLICON_YANG_DIR", strdup(dir));
+	    break;
+	}
+	case 'x' :{ /* xmldb plugin */
+	    clicon_option_str_set(h, "CLICON_XMLDB_PLUGIN", optarg);
 	    break;
 	}
 	default:
@@ -502,8 +507,23 @@ main(int argc, char **argv)
 	return -1;
     }
 
+    if ((xmldb_plugin = clicon_xmldb_plugin(h)) == NULL){
+	clicon_log(LOG_ERR, "No xmldb plugin given (specify option CLICON_XMLDB_PLUGIN).\n"); 
+	goto done;
+    }
+    if (xmldb_plugin_load(h, xmldb_plugin) < 0)
+	goto done;
+    /* Connect to plugin to get a handle */
+    if (xmldb_connect(h) < 0)
+	goto done;
     /* Parse db spec file */
     if (yang_spec_main(h, stdout, printspec) < 0)
+	goto done;
+
+    /* Set options: database dir aqnd yangspec (could be hidden in connect?)*/
+    if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)
+	goto done;
+    if (xmldb_setopt(h, "yangspec", clicon_dbspec_yang(h)) < 0)
 	goto done;
 
     /* First check for startup config 
@@ -518,7 +538,7 @@ main(int argc, char **argv)
 	else
 	    if (db_reset(h, "running") < 0)
 		goto done;
-	if (xmldb_init(h, "candidate") < 0)
+	if (xmldb_create(h, "candidate") < 0)
 	    goto done;
 	if (xmldb_copy(h, "running", "candidate") < 0)
 	    goto done;
@@ -542,7 +562,7 @@ main(int argc, char **argv)
     }
     /* If candidate does not exist, create it from running */
     if (xmldb_exists(h, "candidate") != 1){
-	if (xmldb_init(h, "candidate") < 0)
+	if (xmldb_create(h, "candidate") < 0)
 	    goto done;
 	if (xmldb_copy(h, "running", "candidate") < 0)
 	    goto done;
@@ -605,14 +625,14 @@ main(int argc, char **argv)
 	goto done;
 
     /* Register log notifications */
-    if (clicon_log_register_callback(config_log_cb, h) < 0)
+    if (clicon_log_register_callback(backend_log_cb, h) < 0)
 	goto done;
     clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
-    if (set_signal(SIGTERM, config_sig_term, NULL) < 0){
+    if (set_signal(SIGTERM, backend_sig_term, NULL) < 0){
 	clicon_err(OE_DEMON, errno, "Setting signal");
 	goto done;
     }
-    if (set_signal(SIGINT, config_sig_term, NULL) < 0){
+    if (set_signal(SIGINT, backend_sig_term, NULL) < 0){
 	clicon_err(OE_DEMON, errno, "Setting signal");
 	goto done;
     }
@@ -628,7 +648,7 @@ main(int argc, char **argv)
 	goto done;
   done:
     clicon_log(LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
-    config_terminate(h); /* Cannot use h after this */
+    backend_terminate(h); /* Cannot use h after this */
 
     return 0;
 }

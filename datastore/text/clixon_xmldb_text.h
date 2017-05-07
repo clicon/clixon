@@ -31,17 +31,26 @@
 
   ***** END LICENSE BLOCK *****
 
+  Key-value store
  */
+#ifndef _CLIXON_XMLDB_TEXT_H
+#define _CLIXON_XMLDB_TEXT_H
 
-#ifndef _CLIXON_FILE_H_
-#define _CLIXON_FILE_H_
+/*
+ * Prototypes
+ */
+int text_get(xmldb_handle h, char *db, char *xpath,
+	   cxobj **xtop, cxobj ***xvec, size_t *xlen);
+int text_put(xmldb_handle h, char *db, enum operation_type op, 
+	   char *api_path,  cxobj *xt);
+int text_dump(FILE *f, char *dbfilename, char *rxkey);
+int text_copy(xmldb_handle h, char *from, char *to);
+int text_lock(xmldb_handle h, char *db, int pid);
+int text_unlock(xmldb_handle h, char *db);
+int text_unlock_all(xmldb_handle h, int pid);
+int text_islocked(xmldb_handle h, char *db);
+int text_exists(xmldb_handle h, char *db);
+int text_delete(xmldb_handle h, char *db);
+int text_init(xmldb_handle h, char *db);
 
-
-int clicon_file_dirent(const char *dir, struct dirent **ent, 
-		       const char *regexp, mode_t type);
-
-int clicon_file_copy(char *src, char *target);
-
-int group_name2gid(char *name, gid_t *gid);
-
-#endif /* _CLIXON_FILE_H_ */
+#endif /* _CLIXON_XMLDB_TEXT_H */

@@ -200,8 +200,8 @@ hash_value(clicon_hash_t *hash,
 /*! Copy value and add hash entry.
  *
  * @param[in] hash   Hash table
- * @param[in] key    New variable name
- * @param[in] val    New variable value
+ * @param[in] key    Variable name
+ * @param[in] val    Variable value
  * @param[in] vlen   Length of variable value
  * @retval variable  New hash structure on success
  * @retval NULL      Failure
@@ -212,8 +212,9 @@ hash_add(clicon_hash_t *hash,
 	 void          *val, 
 	 size_t         vlen)
 {
-    void *newval;
-    clicon_hash_t h, new = NULL;
+    void         *newval;
+    clicon_hash_t h;
+    clicon_hash_t new = NULL;
     
     /* If variable exist, don't allocate a new. just replace value */
     h = hash_lookup (hash, key);

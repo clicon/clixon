@@ -42,7 +42,7 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${CFLAGS="-O2"}
 
 CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="2"
+CLIXON_VERSION_MINOR="3"
 CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 # Fix to specific version (eg 3.5) or head (3) 
@@ -77,6 +77,8 @@ AC_SUBST(SH_SUFFIX)
 AC_SUBST(EXE_SUFFIX)
 AC_SUBST(AR)
 AC_SUBST(RANLIB)
+AC_SUBST(with_restconf) # If yes, compile apps/restconf
+AC_SUBST(with_keyvalue) # If yes, compile datastore/keyvalue
 
 #
 AC_PROG_CC()
@@ -119,22 +121,39 @@ if test "${with_cligen}"; then
   LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
 fi
 
-
 AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR(cligen missing. Try: git clone https://github.com/olofhagsand/cligen.git))
 
 AC_CHECK_LIB(:libcligen.so.${CLIGEN_VERSION}, cligen_init,, AC_MSG_ERROR([CLIgen${CLIGEN_VERSION} missing. Try: git clone https://github.com/olofhagsand/cligen.git]))
 
-# This is for qdbm
-AC_ARG_WITH(qdbm,  [  --with-qdbm=dir         Use QDBM here ] )
-if test "${with_qdbm}"; then
-  echo "Using QDBM here: ${with_qdbm}"
-  CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
-  LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
+# This is for restconf (and fastcgi)
+AC_ARG_WITH([restconf],
+            [AS_HELP_STRING([--without-restconf],[disable support for restconf])],
+            [],
+            [with_restconf=yes])
+if test "x${with_restconf}" == xyes; then
+   # Lives in libfcgi-dev
+   AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
 fi
 
-# Problem: depot.h may be in qdbm/depot.h. 
-AC_CHECK_HEADERS(depot.h,,[AC_CHECK_HEADERS(qdbm/depot.h,,AC_MSG_ERROR(libqdbm-dev required))])
-AC_CHECK_LIB(qdbm, dpopen,, AC_MSG_ERROR(libqdbm-dev required))
+# This is for keyvalue datastore (and qdbm)
+AC_ARG_WITH([keyvalue],
+            [AS_HELP_STRING([--without-keyvalue],[disable support for key-value xmldb datastore])],
+            [],
+            [with_keyvalue=yes])
+
+if test "x${with_keyvalue}" == xyes; then
+   echo "yes keyvalue" 
+   # This is for qdbm
+   AC_ARG_WITH(qdbm,  [  --with-qdbm=dir         Use QDBM here, if keyvalue ] )
+   if test "${with_qdbm}"; then
+      echo "Using QDBM here: ${with_qdbm}"
+      CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
+      LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
+   fi
+   # Problem: depot.h may be in qdbm/depot.h. 
+   AC_CHECK_HEADERS(depot.h,,[AC_CHECK_HEADERS(qdbm/depot.h,,AC_MSG_ERROR(libqdbm-dev required))])
+   AC_CHECK_LIB(qdbm, dpopen,, AC_MSG_ERROR(libqdbm-dev required))
+fi
 
 AC_CHECK_LIB(crypt, crypt)
 AC_CHECK_HEADERS(crypt.h)
@@ -151,31 +170,7 @@ AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(nsl, xdr_char)
 AC_CHECK_LIB(dl, dlopen)
 
-# restconf uses libcurl (I think?)
-AC_CHECK_LIB(curl, curl_global_init,, AC_MSG_ERROR([libcurl missing]))
-
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp)
-
-# Lives in libfcgi-dev
-AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
-
-# Check if extra keys inserted for database lists containing content. Eg A.n.foo = 3
-# means A.3 $!a=foo exists
-
-AC_ARG_ENABLE(keycontent, [  --disable-keycontent    Disable reverse lookup content keys],[
-  if test "$enableval" = no; then
-    ac_enable_keycontent=no
-  else
-    ac_enable_keycontent=yes
-  fi
-  ],[ ac_enable_keycontent=yes])
-
-AH_TEMPLATE([DB_KEYCONTENT], 
-[ Check if extra keys inserted for database lists containing content. 
-  Eg A.n.foo = 3 means A.3 $!a=foo exists])
-if test "$ac_enable_keycontent" = "yes"; then
-   AC_DEFINE(DB_KEYCONTENT)
-fi
 
 AH_BOTTOM([#include <clixon_custom.h>])
 
@@ -188,7 +183,6 @@ AC_OUTPUT(Makefile
 	  apps/backend/Makefile 
 	  apps/netconf/Makefile
 	  apps/restconf/Makefile
-	  apps/dbctrl/Makefile
 	  include/Makefile
 	  etc/Makefile
 	  etc/clixonrc
@@ -201,6 +195,9 @@ AC_OUTPUT(Makefile
 	  docker/backend/Dockerfile
 	  docker/netconf/Makefile 
 	  docker/netconf/Dockerfile
+	  datastore/Makefile
+	  datastore/keyvalue/Makefile
+	  datastore/text/Makefile
 	  doc/Makefile 
 )
 

@@ -75,60 +75,6 @@ struct netconf_reg {
 };
 typedef struct netconf_reg netconf_reg_t;
 
-/*! Unload a plugin
- */
-static int
-plugin_unload(clicon_handle h, void *handle)
-{
-    int retval = 0;
-    char *error;
-    plgexit_t *exitfn;
-
-    /* Call exit function is it exists */
-    exitfn = dlsym(handle, PLUGIN_EXIT);
-    if (dlerror() == NULL)
-	exitfn(h);
-
-    dlerror();    /* Clear any existing error */
-    if (dlclose(handle) != 0) {
-	error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
-	/* Just report */
-    }
-    return retval;
-}
-
-
-
-/*
- * Load a dynamic plugin object and call it's init-function
- * Note 'file' may be destructively modified
- */
-static plghndl_t 
-plugin_load (clicon_handle h, char *file, int dlflags, const char *cnklbl)
-{
-    char      *error;
-    void      *handle = NULL;
-    plginit_t *initfn;
-
-    dlerror();    /* Clear any existing error */
-    if ((handle = dlopen (file, dlflags)) == NULL) {
-        error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
-	goto quit;
-    }
-    /* call plugin_init() if defined */
-    if ((initfn = dlsym(handle, PLUGIN_INIT)) != NULL) {
-	if (initfn(h) != 0) {
-	    clicon_err(OE_PLUGIN, errno, "Failed to initiate %s\n", strrchr(file,'/')?strchr(file, '/'):file);
-	    goto quit;
-	}
-    }
-quit:
-
-    return handle;
-}
-
 static int nplugins = 0;
 static plghndl_t *plugins = NULL;
 static netconf_reg_t *deps = NULL;
@@ -141,9 +87,9 @@ netconf_plugin_load(clicon_handle h)
     int            retval = -1;
     char          *dir;
     int            ndp;
-    struct dirent *dp;
+    struct dirent *dp = NULL;
     int            i;
-    char          *filename;
+    char           filename[MAXPATHLEN];
     plghndl_t     *handle;
 
     if ((dir = clicon_netconf_dir(h)) == NULL){
@@ -152,30 +98,26 @@ netconf_plugin_load(clicon_handle h)
     }
 
     /* Get plugin objects names from plugin directory */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG, __FUNCTION__))<0)
+    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG))<0)
 	goto quit;
 
     /* Load all plugins */
     for (i = 0; i < ndp; i++) {
-	filename = chunk_sprintf(__FUNCTION__, "%s/%s", dir, dp[i].d_name);
+	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
 	clicon_debug(1, "DEBUG: Loading plugin '%.*s' ...", 
 		     (int)strlen(filename), filename);
-	if (filename == NULL) {
-	    clicon_err(OE_UNIX, errno, "chunk");
+	if ((handle = plugin_load(h, filename, RTLD_NOW)) == NULL)
 	    goto quit;
-	}
-	if ((handle = plugin_load (h, filename, RTLD_NOW, __FUNCTION__)) == NULL)
-	    goto quit;
-	if ((plugins = rechunk(plugins, (nplugins+1) * sizeof (*plugins), NULL)) == NULL) {
-	    clicon_err(OE_UNIX, errno, "chunk");
+	if ((plugins = realloc(plugins, (nplugins+1) * sizeof (*plugins))) == NULL) {
+	    clicon_err(OE_UNIX, errno, "realloc");
 	    goto quit;
 	}
 	plugins[nplugins++] = handle;
-	unchunk (filename);
     }
     retval = 0;
 quit:
-    unchunk_group(__FUNCTION__);
+    if (dp)
+	free(dp);
     return retval;
 }
 
@@ -194,8 +136,10 @@ netconf_plugin_unload(clicon_handle h)
     }
     for (i = 0; i < nplugins; i++) 
 	plugin_unload(h, plugins[i]);
-    if (plugins)
-	unchunk(plugins);
+    if (plugins){
+	free(plugins);
+	plugins = NULL;
+    }
     nplugins = 0;
     return 0;
 }

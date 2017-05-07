@@ -47,9 +47,10 @@
 #include <regex.h>
 #include <ctype.h>
 
+#include <cligen/cligen.h>
+
 /* clicon */
 #include "clixon_queue.h"
-#include "clixon_chunk.h"
 #include "clixon_string.h"
 #include "clixon_err.h"
 
@@ -138,6 +139,200 @@ clicon_strjoin(int         argc,
     return str;
 }
 
+static int
+unreserved(unsigned char in)
+{
+    switch(in) {
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+    case 'a': case 'b': case 'c': case 'd': case 'e':
+    case 'f': case 'g': case 'h': case 'i': case 'j':
+    case 'k': case 'l': case 'm': case 'n': case 'o':
+    case 'p': case 'q': case 'r': case 's': case 't':
+    case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
+    case 'A': case 'B': case 'C': case 'D': case 'E':
+    case 'F': case 'G': case 'H': case 'I': case 'J':
+    case 'K': case 'L': case 'M': case 'N': case 'O':
+    case 'P': case 'Q': case 'R': case 'S': case 'T':
+    case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
+    case '-': case '.': case '_': case '~':
+	return 1;
+    default:
+	break;
+    }
+    return 0;
+}
+
+/*! Percent encoding according to RFC 3896 
+ * @param[out]  esc   Deallocate with free()
+ */
+int
+percent_encode(char  *str, 
+	       char **escp)
+{
+    int   retval = -1;
+    char *esc = NULL;
+    int   len;
+    int   i, j;
+    
+    /* This is max */
+    len = strlen(str)*3+1;
+    if ((esc = malloc(len)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc"); 
+	goto done;
+    }
+    memset(esc, 0, len);
+    j = 0;
+    for (i=0; i<strlen(str); i++){
+	if (unreserved(str[i]))
+	    esc[j++] = str[i];
+	else{
+	    snprintf(&esc[j], 4, "%%%02X", str[i]&0xff);
+	    j += 3;
+	}
+    }
+    *escp = esc;
+    retval = 0;
+ done:
+    if (retval < 0 && esc)
+	free(esc);
+    return retval;
+}
+
+/*! Percent decoding according to RFC 3896 
+ * @param[out]  str   Deallocate with free()
+ */
+int
+percent_decode(char  *esc, 
+	       char **strp)
+{
+    int   retval = -1;
+    char *str = NULL;
+    int   i, j;
+    char  hstr[3];
+    int   len;
+    char *ptr;
+    
+    /* This is max */
+    len = strlen(esc)+1;
+    if ((str = malloc(len)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc"); 
+	goto done;
+    }
+    memset(str, 0, len);
+    j = 0;
+    for (i=0; i<strlen(esc); i++){
+	if (esc[i] == '%' && strlen(esc)-i > 2 && 
+	    isxdigit(esc[i+1]) && isxdigit(esc[i+2])){
+	    hstr[0] = esc[i+1];
+	    hstr[1] = esc[i+2];
+	    hstr[2] = 0;
+	    str[j] = strtoul(hstr, &ptr, 16);
+	    i += 2;
+	}
+	else
+	    str[j] = esc[i];
+	j++;
+    }
+    str[j++] = '\0';
+    *strp = str;
+    retval = 0;
+ done:
+    if (retval < 0 && str)
+	free(str);
+    return retval;
+}
+
+/*! Split a string into a cligen variable vector using 1st and 2nd delimiter 
+ * Split a string first into elements delimited by delim1, then into
+ * pairs delimited by delim2.
+ * @param[in] string  String to split
+ * @param[in] delim1  First delimiter char that delimits between elements
+ * @param[in] delim2  Second delimiter char for pairs within an element
+ * @param[out] cvp    Created cligen variable vector, deallocate w cvec_free
+ * @retval    0       on OK
+ * @retval    -1      error
+ *
+ * @example, 
+ * Assuming delim1 = '&' and delim2 = '='
+ * a=b&c=d    ->  [[a,"b"][c="d"]
+ * kalle&c=d  ->  [[c="d"]]  # Discard elements with no delim2
+ * XXX differentiate between error and null cvec.
+ */
+int
+str2cvec(char  *string, 
+	 char   delim1, 
+	 char   delim2, 
+	 cvec **cvp)
+{
+    int     retval = -1;
+    char   *s;
+    char   *s0 = NULL;;
+    char   *val;     /* value */
+    char   *valu;    /* unescaped value */
+    char   *snext; /* next element in string */
+    cvec   *cvv = NULL;
+    cg_var *cv;
+
+    if ((s0 = strdup(string)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto err;
+    }
+    s = s0;
+    if ((cvv = cvec_new(0)) ==NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto err;
+    }
+    while (s != NULL) {
+	/*
+	 * In the pointer algorithm below:
+	 * name1=val1;  name2=val2;
+	 * ^     ^      ^
+	 * |     |      |
+	 * s     val    snext
+	 */
+	if ((snext = index(s, delim1)) != NULL)
+	    *(snext++) = '\0';
+	if ((val = index(s, delim2)) != NULL){
+	    *(val++) = '\0';
+	    if (percent_decode(val, &valu) < 0)
+		goto err;
+	    if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
+		clicon_err(OE_UNIX, errno, "cvec_add");
+		goto err;
+	    }
+	    while ((strlen(s) > 0) && isblank(*s))
+		s++;
+	    cv_name_set(cv, s);
+	    cv_string_set(cv, valu);
+	    free(valu); valu = NULL;
+	}
+	else{
+	    if (strlen(s)){
+		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
+		    clicon_err(OE_UNIX, errno, "cvec_add");
+		    goto err;
+		}
+		cv_name_set(cv, s);
+		cv_string_set(cv, "");
+	    }
+	}
+	s = snext;
+    }
+    retval = 0;
+ done:
+    *cvp = cvv;
+    if (s0)
+	free(s0);
+    return retval;
+ err:
+    if (cvv){
+	cvec_free(cvv);
+	cvv = NULL;
+    }
+    goto done;
+}
+
 
 /*! strndup() for systems without it, such as xBSD
  */
@@ -162,6 +357,8 @@ clicon_strndup (const char *str,
   return new;
 }
 #endif /* ! HAVE_STRNDUP */
+
+
 
 /*
  * Turn this on for uni-test programs

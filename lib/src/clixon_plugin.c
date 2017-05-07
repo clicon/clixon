@@ -45,6 +45,7 @@
 #include "clixon_err.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_log.h"
 #include "clixon_handle.h"
 #include "clixon_plugin.h"
 
@@ -83,4 +84,77 @@ clicon_find_func(clicon_handle h, char *plugin, char *func)
     }
     
     return dlsym(dlhandle, func);
+}
+
+/*! Load a dynamic plugin object and call its init-function
+ * Note 'file' may be destructively modified
+ * @param[in]  h       Clicon handle
+ * @param[in]  file    Which plugin to load
+ * @param[in]  dlflags See man(3) dlopen
+ */
+plghndl_t 
+plugin_load(clicon_handle h, 
+	    char         *file, 
+	    int           dlflags)
+{
+    char      *error;
+    void      *handle = NULL;
+    plginit_t *initfn;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    dlerror();    /* Clear any existing error */
+    if ((handle = dlopen (file, dlflags)) == NULL) {
+        error = (char*)dlerror();
+	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
+	goto done;
+    }
+    /* call plugin_init() if defined */
+    if ((initfn = dlsym(handle, PLUGIN_INIT)) == NULL){
+	clicon_err(OE_PLUGIN, errno, "Failed to find plugin_init when loading restconf plugin %s", file);
+	goto err;
+    }
+    if ((error = (char*)dlerror()) != NULL) {
+	clicon_err(OE_UNIX, 0, "dlsym: %s: %s", file, error);
+	goto done;
+    }
+    if (initfn(h) != 0) {
+	clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
+	if (!clicon_errno) 	/* sanity: log if clicon_err() is not called ! */
+	    clicon_err(OE_DB, 0, "Unknown error: %s: plugin_init does not make clicon_err call on error",
+		       file);
+	goto err;
+    }
+ done:
+    return handle;
+ err:
+    if (handle)
+	dlclose(handle);
+    return NULL;
+}
+
+
+/*! Unload a plugin
+ * @param[in]  h       Clicon handle
+ * @param[in]  handle   Clicon handle
+ */
+int
+plugin_unload(clicon_handle h, 
+	      plghndl_t    *handle)
+{
+    int        retval = 0;
+    char      *error;
+    plgexit_t *exitfn;
+
+    /* Call exit function is it exists */
+    exitfn = dlsym(handle, PLUGIN_EXIT);
+    if (dlerror() == NULL)
+	exitfn(h);
+
+    dlerror();    /* Clear any existing error */
+    if (dlclose(handle) != 0) {
+	error = (char*)dlerror();
+	clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
+	/* Just report */
+    }
+    return retval;
 }

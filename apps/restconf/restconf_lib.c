@@ -33,7 +33,6 @@
   
  */
 
-
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -46,9 +45,9 @@
 #include <fcgi_stdio.h>
 #include <signal.h>
 #include <dlfcn.h>
+#include <sys/param.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#include <curl/curl.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -109,98 +108,6 @@ clicon_debug_xml(int    dbglevel,
     if (cb!=NULL)
 	cbuf_free(cb);
     return retval;
-}
-
-/*! Split a string into a cligen variable vector using 1st and 2nd delimiter 
- * Split a string first into elements delimited by delim1, then into
- * pairs delimited by delim2.
- * @param[in] string  String to split
- * @param[in] delim1  First delimiter char that delimits between elements
- * @param[in] delim2  Second delimiter char for pairs within an element
- * @param[out] cvp    Created cligen variable vector, NOTE: can be NULL
- * @retval    0       on OK
- * @retval    -1      error
- *
- * Example, assuming delim1 = '&' and delim2 = '='
- * a=b&c=d    ->  [[a,"b"][c="d"]
- * kalle&c=d  ->  [[c="d"]]  # Discard elements with no delim2
- * XXX differentiate between error and null cvec.
- */
-int
-str2cvec(char  *string, 
-	 char   delim1, 
-	 char   delim2, 
-	 cvec **cvp)
-{
-    int     retval = -1;
-    char   *s;
-    char   *s0 = NULL;;
-    char   *val;     /* value */
-    char   *valu;    /* unescaped value */
-    char   *snext; /* next element in string */
-    cvec   *cvv = NULL;
-    cg_var *cv;
-
-    clicon_debug(1, "%s %s", __FUNCTION__, string);
-    if ((s0 = strdup(string)) == NULL){
-	clicon_debug(1, "error strdup %s", strerror(errno));
-	goto err;
-    }
-    s = s0;
-    if ((cvv = cvec_new(0)) ==NULL){
-	clicon_debug(1, "error cvec_new %s", strerror(errno));
-	goto err;
-    }
-    while (s != NULL) {
-	/*
-	 * In the pointer algorithm below:
-	 * name1=val1;  name2=val2;
-	 * ^     ^      ^
-	 * |     |      |
-	 * s     val    snext
-	 */
-	if ((snext = index(s, delim1)) != NULL)
-	    *(snext++) = '\0';
-	if ((val = index(s, delim2)) != NULL){
-	    *(val++) = '\0';
-	    if ((valu = curl_easy_unescape(NULL, val, 0, NULL)) == NULL){
-		clicon_debug(1, "curl_easy_unescape %s", strerror(errno));
-		goto err;
-	    }
-	    if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
-		clicon_debug(1, "error cvec_add %s", strerror(errno));
-		goto err;
-	    }
-	    while ((strlen(s) > 0) && isblank(*s))
-		s++;
-	    cv_name_set(cv, s);
-	    cv_string_set(cv, valu);
-	    free(valu);
-	}
-	else{
-	    if (strlen(s)){
-		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
-		    clicon_debug(1, "error cvec_add %s", strerror(errno));
-		    goto err;
-		}
-		cv_name_set(cv, s);
-		cv_string_set(cv, "");
-	    }
-	}
-	s = snext;
-    }
-    retval = 0;
- done:
-    *cvp = cvv;
-    if (s0)
-	free(s0);
-    return retval;
- err:
-    if (cvv){
-	cvec_free(cvv);
-	cvv = NULL;
-    }
-    goto done;
 }
 
 /*!
@@ -272,45 +179,6 @@ static int nplugins = 0;
 static plghndl_t *plugins = NULL;
 static credentials_t *p_credentials = NULL; /* Credentials callback */
 
-/*! Load a dynamic plugin object and call it's init-function
- * Note 'file' may be destructively modified
- */
-static plghndl_t 
-plugin_load (clicon_handle h, 
-	     char         *file, 
-	     int           dlflags, 
-	     const char   *cnklbl)
-{
-    char      *error;
-    void      *handle = NULL;
-    plginit_t *initfn;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    dlerror();    /* Clear any existing error */
-    if ((handle = dlopen (file, dlflags)) == NULL) {
-        error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
-	goto done;
-    }
-    /* call plugin_init() if defined */
-    if ((initfn = dlsym(handle, PLUGIN_INIT)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "Failed to find plugin_init when loading restconf plugin %s", file);
-	goto err;
-    }
-    if (initfn(h) != 0) {
-	clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
-	goto err;
-    }
-    p_credentials    = dlsym(handle, "restconf_credentials");
- done:
-    return handle;
- err:
-    if (handle)
-	dlclose(handle);
-    return NULL;
-}
-
-
 /*! Load all plugins you can find in CLICON_RESTCONF_DIR
  */
 int 
@@ -319,65 +187,40 @@ restconf_plugin_load(clicon_handle h)
     int            retval = -1;
     char          *dir;
     int            ndp;
-    struct dirent *dp;
+    struct dirent *dp = NULL;
     int            i;
-    char          *filename;
     plghndl_t     *handle;
+    char           filename[MAXPATHLEN];
 
     if ((dir = clicon_restconf_dir(h)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "clicon_restconf_dir not defined");
 	goto quit;
     }
     /* Get plugin objects names from plugin directory */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG, __FUNCTION__))<0)
+    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG))<0)
 	goto quit;
 
     /* Load all plugins */
     for (i = 0; i < ndp; i++) {
-	filename = chunk_sprintf(__FUNCTION__, "%s/%s", dir, dp[i].d_name);
+	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
 	clicon_debug(1, "DEBUG: Loading plugin '%.*s' ...", 
 		     (int)strlen(filename), filename);
-	if (filename == NULL) {
-	    clicon_err(OE_UNIX, errno, "chunk");
+	if ((handle = plugin_load(h, filename, RTLD_NOW)) == NULL)
 	    goto quit;
-	}
-	if ((handle = plugin_load (h, filename, RTLD_NOW, __FUNCTION__)) == NULL)
-	    goto quit;
-	if ((plugins = rechunk(plugins, (nplugins+1) * sizeof (*plugins), NULL)) == NULL) {
-	    clicon_err(OE_UNIX, errno, "chunk");
+	p_credentials    = dlsym(handle, "restconf_credentials");
+	if ((plugins = realloc(plugins, (nplugins+1) * sizeof (*plugins))) == NULL) {
+	    clicon_err(OE_UNIX, errno, "realloc");
 	    goto quit;
 	}
 	plugins[nplugins++] = handle;
-	unchunk (filename);
     }
     retval = 0;
 quit:
-    unchunk_group(__FUNCTION__);
+    if (dp)
+	free(dp);
     return retval;
 }
 
-/*! Unload a plugin
- */
-static int
-plugin_unload(clicon_handle h, void *handle)
-{
-    int retval = 0;
-    char *error;
-    plgexit_t *exitfn;
-
-    /* Call exit function is it exists */
-    exitfn = dlsym(handle, PLUGIN_EXIT);
-    if (dlerror() == NULL)
-	exitfn(h);
-
-    dlerror();    /* Clear any existing error */
-    if (dlclose(handle) != 0) {
-	error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
-	/* Just report */
-    }
-    return retval;
-}
 
 /*! Unload all restconf plugins */
 int
@@ -387,8 +230,10 @@ restconf_plugin_unload(clicon_handle h)
 
     for (i = 0; i < nplugins; i++) 
 	plugin_unload(h, plugins[i]);
-    if (plugins)
-	unchunk(plugins);
+    if (plugins){
+	free(plugins);
+	plugins = NULL;
+    }
     nplugins = 0;
     return 0;
 }

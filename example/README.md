@@ -1,19 +1,25 @@
-Clixon yang routing example
-+++++++++++++++++++++++++++
+# Clixon yang routing example
 
-0. Compile and run
-------------------
-cd example
-make && sudo make install
-# Start backend
-clixon_backend -f /usr/local/etc/routing.conf -I
-# Edit cli
-clixon_cli -f /usr/local/etc/routing.conf
-# Send netconf command
-clixon_netconf -f /usr/local/etc/routing.conf
+## Compile and run
+```
+    cd example
+    make && sudo make install
+```
+Start backend:
+```
+    clixon_backend -f /usr/local/etc/routing.conf -I
+```
+Edit cli:
+```
+    clixon_cli -f /usr/local/etc/routing.conf
+```
+Send netconf command:
+```
+    clixon_netconf -f /usr/local/etc/routing.conf
+```
 
-1. Setting data example using netconf
--------------------------------------
+## Setting data example using netconf
+```
 <rpc><edit-config><target><candidate/></target><config>
       <interfaces>
          <interface>
@@ -28,40 +34,39 @@ clixon_netconf -f /usr/local/etc/routing.conf
          </interface>
       </interfaces>
 </config></edit-config></rpc>]]>]]>
+```
 
-2. Getting data using netconf
------------------------------
-
+## Getting data using netconf
+```
 <rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
-
 <rpc><get-config><source><candidate/></source><filter/></get-config></rpc>]]>]]>
-
 <rpc><get-config><source><candidate/></source><filter type="xpath"/></get-config></rpc>]]>]]>
-
 <rpc><get-config><source><candidate/></source><filter type="subtree"><configuration><interfaces><interface><ipv4/></interface></interfaces></configuration></filter></get-config></rpc>]]>]]>
-
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface/ipv4"/></get-config></rpc>]]>]]>
-
 <rpc><validate><source><candidate/></source></validate></rpc>]]>]]>
+```
 
-3. Creating notification
-------------------------
+## Creating notification
+
 The example has an example notification triggering every 10s. To start a notification 
 stream in the session, create a subscription:
+```
 <rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
 <notification><event>Routing notification</event></notification>]]>]]>
 <notification><event>Routing notification</event></notification>]]>]]>
 ...
-
+```
 This can also be triggered via the CLI:
+```
 cli> notify 
 cli> Routing notification
 Routing notification
 ...
+```
 
-4. Downcall
------------
+## Extending
+
 Clixon has an extension mechanism which can be used to make extended internal
 netconf messages to the backend configuration engine. You may need this to
 make some special operation that is not covered by standard
@@ -71,11 +76,13 @@ reference. A more realistic downcall would perform some action, such as
 reading some status.
 
 Example:
+```
 cli> downcall "This is a  string"
 This is a string
-cli>p
+```
 
-5. Run as docker container
---------------------------
+## Run as docker container
+```
 cd docker
 # look in README
+```

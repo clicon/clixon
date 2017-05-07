@@ -1,11 +1,12 @@
-This README contains information for developers:
+# README for developers Clixon developers
+
 1. How to document the code
 2. How to work in git (branching)
 3. How the meta-configure stuff works
 
-1. How to document the code
-+++++++++++++++++++++++++++
+## How to document the code
 
+```
 /*! This is a small comment on one line
  *
  * This is a detailed description
@@ -22,36 +23,17 @@ This README contains information for developers:
  * @retval FALSE          This is a description of another return value
  * @see                   See also this function
  */
+```
 
+## How to work in git (branching)
 
-2. How to work in git (branching)
-+++++++++++++++++++++++++++++++++
 Basically follows: http://nvie.com/posts/a-successful-git-branching-model/
 only somewhat simplified:
 
 Do commits in develop branch. When done, merge with master.
 
-$ git checkout develop
-Switch to branch develop
-$ git add ..
-$ git commit ..
-$ git push origin develop
-Add/commit stuff here (and push)
-
-Ready for tagging
------------------
-(This is somewhat simplified - no release branch)
-$ ./bump-version.sh 3.6.0 
-Files modified successfully, version bumped to 3.6.0
-$ git checkout master
-Switch to master
-$ git merge --no-ff develop
-Merge made by recursive.
-(Summary of changes)
-$ git tag -a 3.6.0
-
-3. How the meta-configure stuff works
-+++++++++++++++++++++++++++++++++++++
+## How the meta-configure stuff works
+```
 configure.ac --.
                     |   .------> autoconf* -----> configure
      [aclocal.m4] --+---+
@@ -64,4 +46,4 @@ configure.ac --.
      [config.h.in] -.       v            .-> [config.h] -.
                     +--> config.status* -+               +--> make*
      Makefile.in ---'                    `-> Makefile ---'
-
+```

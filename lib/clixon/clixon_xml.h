@@ -67,10 +67,12 @@ typedef int (xml_applyfn_t)(cxobj *yn, void *arg);
 #define XML_FLAG_ADD    0x02  /* Node is added (commits) or parent added rec*/
 #define XML_FLAG_DEL    0x04  /* Node is deleted (commits) or parent deleted rec */
 #define XML_FLAG_CHANGE 0x08  /* Node is changed (commits) or child changed rec */
+#define XML_FLAG_NONE   0x10  /* Node is added as NONE */
 
 /*
  * Prototypes
  */
+char     *xml_type2str(enum cxobj_type type);
 char     *xml_name(cxobj *xn);
 int       xml_name_set(cxobj *xn, char *name);
 char     *xml_namespace(cxobj *xn);
@@ -87,8 +89,6 @@ int       xml_value_set(cxobj *xn, char *val);
 char     *xml_value_append(cxobj *xn, char *val);
 enum cxobj_type xml_type(cxobj *xn);
 int       xml_type_set(cxobj *xn, enum cxobj_type type);
-int       xml_index(cxobj *xn);
-int       xml_index_set(cxobj *xn, int index);
 
 cg_var *xml_cv_get(cxobj *xn);
 int     xml_cv_set(cxobj  *xn, cg_var *cv);
@@ -103,6 +103,7 @@ int       xml_childvec_set(cxobj *x, int len);
 cxobj    *xml_new(char *name, cxobj *xn_parent);
 cxobj    *xml_new_spec(char *name, cxobj *xn_parent, void *spec);
 void     *xml_spec(cxobj *x);
+void     *xml_spec_set(cxobj *x, void *spec);
 cxobj    *xml_find(cxobj *xn_parent, char *name);
 
 int       xml_addsub(cxobj *xp, cxobj *xc);
@@ -113,6 +114,7 @@ int       xml_rm(cxobj *xc);
 int       xml_rootchild(cxobj  *xp, int i, cxobj **xcp);
 
 char     *xml_body(cxobj *xn);
+cxobj    *xml_body_get(cxobj *xn);
 char     *xml_find_value(cxobj *xn_parent, char *name);
 char     *xml_find_body(cxobj *xn, char *name);
 
@@ -127,6 +129,7 @@ int       clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag);
 int       clicon_xml_parse_str(char *str, cxobj **xml_top);
 int       clicon_xml_parse(cxobj **cxtop, char *format, ...);
 
+int       xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 int       xml_copy(cxobj *x0, cxobj *x1);
 cxobj    *xml_dup(cxobj *x0);
 

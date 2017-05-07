@@ -75,10 +75,11 @@
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
-#include "clixon_chunk.h"
 #include "clixon_handle.h"
+#include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_yang_type.h"
+#include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_xml.h"
 #include "clixon_xsl.h"
@@ -88,9 +89,6 @@
 
 /* Something to do with reverse engineering of junos syntax? */
 #undef SPECIAL_TREATMENT_OF_NAME  
-
-
-
 
 /*
  * A node is a leaf if it contains a body.
@@ -127,8 +125,9 @@ xml2txt(FILE *f, cxobj *x, int level)
 {
     cxobj *xe = NULL;
     int    children=0;
-    char  *term;
+    char  *term = NULL;
     int    retval = -1;
+    int    encr=0;
 #ifdef SPECIAL_TREATMENT_OF_NAME  
     cxobj *xname;
 #endif
@@ -140,15 +139,17 @@ xml2txt(FILE *f, cxobj *x, int level)
 	if (xml_type(x) == CX_BODY){
 	    /* Kludge for escaping encrypted passwords */
 	    if (strcmp(xml_name(xml_parent(x)), "encrypted-password")==0)
-		term = chunk_sprintf(__FUNCTION__, "\"%s\"", xml_value(x));
-	    else
-		term = xml_value(x);
+		encr++;
+	    term = xml_value(x);
 	}
 	else{
 	    fprintf(f, "%*s", 4*level, "");
 	    term = xml_name(x);
 	}
-	fprintf(f, "%s;\n", term);
+	if (encr)
+	    fprintf(f, "\"%s\";\n", term);
+	else
+	    fprintf(f, "%s;\n", term);
 	retval = 0;
 	goto done;
     }
@@ -240,7 +241,7 @@ xml2cli(FILE              *f,
    !index GT_VARS  T
    !index GT_ALL   T
  */
-    bool = !leaf(x) || gt == GT_ALL || (gt == GT_VARS && !xml_index(x));
+    bool = !leaf(x) || gt == GT_ALL || (gt == GT_VARS);
 //    bool = (!x->xn_index || gt == GT_ALL);
     if (bool){
 	if (cbuf_len(cbpre))
@@ -252,12 +253,12 @@ xml2cli(FILE              *f,
     i = 0;
     while ((xe = xml_child_each(x, xe, -1)) != NULL){
 	/* Dont call this if it is index and there are other following */
-	if (xml_index(xe) && i < nr-1) 
+	if (0 && i < nr-1) 
 	    ;
 	else
 	    if (xml2cli(f, xe, cbuf_get(cbpre), gt) < 0)
 		goto done;
-	if (xml_index(xe)){ /* assume index is first, otherwise need one more while */
+	if (0){ /* assume index is first, otherwise need one more while */
 	    if (gt == GT_ALL)
 		cprintf(cbpre, " %s", xml_name(xe));
 	    cprintf(cbpre, " %s", xml_value(xml_child_i(xe, 0)));
@@ -789,5 +790,610 @@ xml_diff(yang_spec *yspec,
  ok:
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Construct an xml key format from yang statement using wildcards for keys
+ * Recursively construct it to the top.
+ * Example: 
+ *   yang:  container a -> list b -> key c -> leaf d
+ *   xpath: /a/b/%s/d
+ * @param[in]  ys      Yang statement
+ * @param[in]  inclkey If inclkey then include key leaf (eg last leaf d in ex)
+ * @param[out] cbuf    keyfmt
+ */ 
+static int
+yang2xmlkeyfmt_1(yang_stmt *ys, 
+		 int        inclkey,
+		 cbuf      *cb)
+{
+    yang_node *yp; /* parent */
+    yang_stmt *ykey;
+    int        i;
+    cvec      *cvk = NULL; /* vector of index keys */
+    int        retval = -1;
+
+    yp = ys->ys_parent;
+    if (yp != NULL && 
+	yp->yn_keyword != Y_MODULE && 
+	yp->yn_keyword != Y_SUBMODULE){
+	if (yang2xmlkeyfmt_1((yang_stmt *)yp, 1, cb) < 0)
+	    goto done;
+    }
+    if (inclkey){
+	if (ys->ys_keyword != Y_CHOICE && ys->ys_keyword != Y_CASE)
+	    cprintf(cb, "/%s", ys->ys_argument);
+    }
+    else{
+	if (ys->ys_keyword == Y_LEAF && yp && yp->yn_keyword == Y_LIST){
+	    if (yang_key_match(yp, ys->ys_argument) == 0)
+		cprintf(cb, "/%s", ys->ys_argument); /* Not if leaf and key */
+	}
+	else
+	    if (ys->ys_keyword != Y_CHOICE && ys->ys_keyword != Y_CASE)
+		cprintf(cb, "/%s", ys->ys_argument);
+    }
+
+    switch (ys->ys_keyword){
+    case Y_LIST:
+	if ((ykey = yang_find((yang_node*)ys, Y_KEY, NULL)) == NULL){
+	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
+		       __FUNCTION__, ys->ys_argument);
+	    goto done;
+	}
+	/* The value is a list of keys: <key>[ <key>]*  */
+	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
+	    goto done;
+	if (cvec_len(cvk))
+	    cprintf(cb, "=");
+	/* Iterate over individual keys  */
+	for (i=0; i<cvec_len(cvk); i++){
+	    if (i)
+		cprintf(cb, ",");
+	    cprintf(cb, "%%s");
+	}
+	break;
+    case Y_LEAF_LIST:
+	cprintf(cb, "=%%s");
+	break;
+    default:
+	break;
+    } /* switch */
+    retval = 0;
+ done:
+    if (cvk)
+	cvec_free(cvk);
+    return retval;
+}
+
+/*! Construct an xml key format from yang statement using wildcards for keys
+ * Recursively construct it to the top.
+ * Example: 
+ *   yang:  container a -> list b -> key c -> leaf d
+ *   xpath: /a/b=%s/d
+ * @param[in]  ys       Yang statement
+ * @param[in]  inclkey If !inclkey then dont include key leaf
+ * @param[out] xkfmt    XML key format. Needs to be freed after use.
+ */ 
+int
+yang2xmlkeyfmt(yang_stmt *ys, 
+	       int        inclkey,
+	       char     **xkfmt)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    if (yang2xmlkeyfmt_1(ys, inclkey, cb) < 0)
+	goto done;
+    if ((*xkfmt = strdup(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
+
+/*! Transform an xml key format and a vector of values to an XML key
+ * Used for actual key, eg in clicon_rpc_change(), xmldb_put_xkey()
+ * Example: 
+ *   xmlkeyfmt:  /aaa/%s
+ *   cvv:        key=17
+ *   xmlkey:     /aaa/17
+ * @param[in]  xkfmt  XML key format, eg /aaa/%s
+ * @param[in]  cvv    cligen variable vector, one for every wildchar in xkfmt
+ * @param[out] xk     XML key, eg /aaa/17. Free after use
+ * @note first and last elements of cvv are not used,..
+ * @see cli_dbxml where this function is called
+ */ 
+int
+xmlkeyfmt2key(char  *xkfmt, 
+	      cvec  *cvv, 
+	      char **xk)
+{
+    int   retval = -1;
+    char  c;
+    int   esc=0;
+    cbuf *cb = NULL;
+    int   i;
+    int   j;
+    char *str;
+    char *strenc=NULL;
+
+
+    /* Sanity check */
+#if 1
+    j = 0; /* Count % */
+    for (i=0; i<strlen(xkfmt); i++)
+	if (xkfmt[i] == '%')
+	    j++;
+    if (j+2 < cvec_len(cvv)) {
+	clicon_log(LOG_WARNING, "%s xmlkey format string mismatch(j=%d, cvec_len=%d): %s", 
+		   xkfmt, 
+		   j,
+		   cvec_len(cvv), 
+		   cv_string_get(cvec_i(cvv, 0)));
+	goto done;
+    }
+#endif
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    j = 1; /* j==0 is cli string */
+    for (i=0; i<strlen(xkfmt); i++){
+	c = xkfmt[i];
+	if (esc){
+	    esc = 0;
+	    if (c!='s')
+		continue;
+	    if ((str = cv2str_dup(cvec_i(cvv, j++))) == NULL){
+		clicon_err(OE_UNIX, errno, "strdup");
+		goto done;
+	    }
+	    if (percent_encode(str, &strenc) < 0)
+		goto done;
+	    cprintf(cb, "%s", strenc); 
+	    free(strenc); strenc = NULL;
+	    free(str); str = NULL;
+	}
+	else
+	    if (c == '%')
+		esc++;
+	    else
+		cprintf(cb, "%c", c);
+    }
+    if ((*xk = strdup(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
+/*! Transform an xml key format and a vector of values to an XML path
+ * Used to input xmldb_get() or xmldb_get_vec
+ * Add .* in last %s position.
+ * Example: 
+ *   xmlkeyfmt:  /interface/%s/address/%s OLDXXX
+ *   xmlkeyfmt:  /interface=%s/address=%s
+ *   cvv:        name=eth0
+ *   xmlkey:     /interface/[name=eth0]/address
+ * Example2:
+ *   xmlkeyfmt:  /ip/me/%s (if key)
+ *   cvv:        -
+ *   xmlkey:     /ipv4/me/a
+ * @param[in]  xkfmt  XML key format
+ * @param[in]  cvv    cligen variable vector, one for every wildchar in xkfmt
+ * @param[out] xk     XPATH
+ */ 
+int
+xmlkeyfmt2xpath(char  *xkfmt, 
+		cvec  *cvv, 
+		char **xk)
+{
+    int     retval = -1;
+    char    c;
+    int     esc=0;
+    cbuf   *cb = NULL;
+    int     i;
+    int     j;
+    char   *str;
+    cg_var *cv;
+    int     skip = 0;
+
+    /* Sanity check: count '%' */
+#if 1
+    j = 0; /* Count % */
+    for (i=0; i<strlen(xkfmt); i++)
+	if (xkfmt[i] == '%')
+	    j++;
+    if (j < cvec_len(cvv)-1) {
+	clicon_log(LOG_WARNING, "%s xmlkey format string mismatch(j=%d, cvec_len=%d): %s", 
+		   xkfmt, 
+		   j,
+		   cvec_len(cvv), 
+		   cv_string_get(cvec_i(cvv, 0)));
+	//	goto done;
+    }
+#endif
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    j = 1; /* j==0 is cli string */
+    for (i=0; i<strlen(xkfmt); i++){
+	c = xkfmt[i];
+	if (esc){
+	    esc = 0;
+	    if (c!='s')
+		continue;
+
+	    if (j == cvec_len(cvv)) /* last element */
+		//skip++;
+		;
+	    else{
+		cv = cvec_i(cvv, j++);
+		if ((str = cv2str_dup(cv)) == NULL){
+		    clicon_err(OE_UNIX, errno, "cv2str_dup");
+		    goto done;
+		}
+		cprintf(cb, "[%s=%s]", cv_name_get(cv), str);
+		free(str);
+	    }
+	}
+	else /* regular char */
+	    if (c == '%')
+		esc++;
+	    else{
+		if (skip)
+		    skip=0;
+		else
+		    if ((c == '=' || c == ',') && xkfmt[i+1]=='%')
+			; /* skip */
+		    else
+			cprintf(cb, "%c", c);
+	    }
+    }
+    if ((*xk = strdup4(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
+/*! Prune everything that does not pass test
+ * @param[in]   xt      XML tree with some node marked
+ * @param[in]   flag    Which flag to test for
+ * @param[in]   test    1: test that flag is set, 0: test that flag is not set
+ * @param[out]  upmark  Set if a child (recursively) has marked set.
+ * The function removes all branches that does not a child that pass the test
+ * Purge all nodes that dont have MARK flag set recursively.
+ * Save all nodes that is MARK:ed or have at least one (grand*)child that is MARKed
+ * @code
+ *    xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1, NULL);
+ * @endcode
+ */
+int
+xml_tree_prune_flagged(cxobj *xt, 
+		       int    flag,
+		       int    test,
+		       int   *upmark)
+{
+    int    retval = -1;
+    int    submark;
+    int    mark;
+    cxobj *x;
+    cxobj *xprev;
+
+    mark = 0;
+    x = NULL;
+    xprev = x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if (xml_flag(x, flag) == test?flag:0){
+	    mark++;
+	    xprev = x;
+	    continue; /* mark and stop here */
+	}
+	if (xml_tree_prune_flagged(x, flag, test, &submark) < 0)
+	    goto done;
+	if (submark)
+	    mark++;
+	else{ /* Safe with xml_child_each if last */
+	    if (xml_purge(x) < 0)
+		goto done;
+	    x = xprev;
+	}
+	xprev = x;
+    }
+    retval = 0;
+ done:
+    if (upmark)
+	*upmark = mark;
+    return retval;
+}
+
+/*! Add default values (if not set)
+ * @param[in]   xt      XML tree with some node marked
+ */
+int
+xml_default(cxobj *xt, 
+	   void   *arg)
+{
+    int        retval = -1;
+    yang_stmt *ys;
+    yang_stmt *y;
+    int        i;
+    cxobj     *xc;
+    cxobj     *xb;
+    char      *str;
+
+    if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
+	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, xml_name(xt));
+	retval = 0;
+	goto done;
+    }
+    /* Check leaf defaults */
+    if (ys->ys_keyword == Y_CONTAINER || ys->ys_keyword == Y_LIST){
+	for (i=0; i<ys->ys_len; i++){
+	    y = ys->ys_stmt[i];
+	    if (y->ys_keyword != Y_LEAF)
+		continue;
+	    assert(y->ys_cv);
+	    if (!cv_flag(y->ys_cv, V_UNSET)){  /* Default value exists */
+		if (!xml_find(xt, y->ys_argument)){
+		    if ((xc = xml_new_spec(y->ys_argument, xt, y)) == NULL)
+			goto done;
+		    if ((xb = xml_new("body", xc)) == NULL)
+			goto done;
+		    xml_type_set(xb, CX_BODY);
+		    if ((str = cv2str_dup(y->ys_cv)) == NULL){
+			clicon_err(OE_UNIX, errno, "cv2str_dup");
+			goto done;
+		    }
+		    if (xml_value_set(xb, str) < 0)
+			goto done;
+		    free(str);
+		}
+	    }
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Order XML children according to YANG
+ * @param[in]   xt      XML top of tree
+ */
+int
+xml_order(cxobj *xt, 
+	  void  *arg)
+{
+    int        retval = -1;
+    yang_stmt *y;
+    yang_stmt *yc;
+    int        i;
+    int        j0;
+    int        j;
+    cxobj     *xc;
+    cxobj     *xj;
+    char      *yname; /* yang child name */
+    char      *xname; /* xml child name */
+
+    if ((y = (yang_stmt*)xml_spec(xt)) == NULL){
+	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, xml_name(xt));
+	retval = 0;
+	goto done;
+    }
+    j0 = 0;
+ /* Go through xml children and ensure they are same order as yspec children */
+    for (i=0; i<y->ys_len; i++){
+	yc = y->ys_stmt[i];
+	if (!yang_is_syntax(yc))
+	    continue;
+	yname = yc->ys_argument;
+	/* First go thru xml children with same name */
+	for (; j0<xml_child_nr(xt); j0++){
+	    xc = xml_child_i(xt, j0);
+	    if (xml_type(xc) != CX_ELMNT)
+		continue;
+	    xname = xml_name(xc);
+	    if (strcmp(xname, yname))
+		break;
+	}
+	/* Now we have children not with same name */
+	for (j=j0; j<xml_child_nr(xt); j++){
+	    xc = xml_child_i(xt, j);
+	    if (xml_type(xc) != CX_ELMNT)
+		continue;
+	    xname = xml_name(xc);
+	    if (strcmp(xname, yname))
+		continue;
+	    /* reorder */
+	    xj = xml_child_i(xt, j0);
+	    xml_child_i_set(xt, j0, xc);
+	    xml_child_i_set(xt, j, xj);
+	    j0++;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Sanitize an xml tree: xml node has matching yang_stmt pointer 
+ * @param[in]   xt      XML top of tree
+ */
+int
+xml_sanity(cxobj *xt, 
+	   void  *arg)
+{
+    int        retval = -1;
+    yang_stmt *ys;
+    char      *name;
+
+    if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
+	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, xml_name(xt));
+	retval = 0;
+	goto done;
+    }
+    name = xml_name(xt);
+    if (ys==NULL){
+	clicon_err(OE_XML, 0, "No spec for xml node %s", name);
+	goto done;
+    }
+    if (strstr(ys->ys_argument, name)==NULL){
+	clicon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'", 
+		   name, ys->ys_argument);
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Translate from restconf api-path in cvv form to xml xpath
+ * eg a/b=c -> a/[b=c] 
+ * @param[in]  yspec Yang spec
+ * @param[in]  pcvec api-path as cvec
+ * @param[in]  pi    Offset of cvec, where api-path starts
+ * @param[out] path  The xpath as cbuf variable string, must be initializeed
+ * The api-path has some wierd encoding, use api_path2xpath() if you are 
+ * confused. 
+ * It works like this:
+ * Assume origin incoming path is 
+ * "www.foo.com/restconf/a/b=c",  pi is 2 and pcvec is:
+ *   ["www.foo.com" "restconf" "a" "b=c"]
+ * which means the api-path is ["a" "b=c"] corresponding to "a/b=c"
+ * @code
+ *   cbuf *xpath = cbuf_new();
+ *   if (api_path2xpath_cvv(yspec, cvv, i, xpath)
+ *      err;
+ *   ... access xpath as cbuf_get(xpath) 
+ *   cbuf_free(xpath)
+ * @endcode
+ * @see api_path2xpath for string api-path argument
+ */
+int
+api_path2xpath_cvv(yang_spec *yspec,
+		   cvec      *cvv,
+		   int        offset,
+		   cbuf      *xpath)
+{
+    int        retval = -1;
+    int        i;
+    cg_var    *cv;
+    char      *name;
+    cvec      *cvk = NULL; /* vector of index keys */
+    yang_stmt *y = NULL;
+    char      *val;
+    char      *v;
+    yang_stmt *ykey;
+    cg_var    *cvi;
+
+    for (i=offset; i<cvec_len(cvv); i++){
+        cv = cvec_i(cvv, i);
+	name = cv_name_get(cv);
+	clicon_debug(1, "[%d] cvname:%s", i, name);
+	clicon_debug(1, "cv2str%d", cv2str(cv, NULL, 0));
+	if (i == offset){
+	    if ((y = yang_find_topnode(yspec, name)) == NULL){
+		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
+		goto done;
+	    }
+	}
+	else{
+	    assert(y!=NULL);
+	    if ((y = yang_find_syntax((yang_node*)y, name)) == NULL){
+		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
+		goto done;
+	    }
+	}
+	/* Check if has value, means '=' */
+        if (cv2str(cv, NULL, 0) > 0){
+            if ((val = cv2str_dup(cv)) == NULL)
+                goto done;
+	    v = val;
+	    /* XXX sync with yang */
+	    while((v=index(v, ',')) != NULL){
+		*v = '\0';
+		v++;
+	    }
+	    /* Find keys */
+	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
+		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
+			   __FUNCTION__, y->ys_argument);
+		goto done;
+	    }
+	    clicon_debug(1, "ykey:%s", ykey->ys_argument);
+
+	    /* The value is a list of keys: <key>[ <key>]*  */
+	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
+		goto done;
+	    cvi = NULL;
+	    /* Iterate over individual yang keys  */
+	    cprintf(xpath, "/%s", name);
+	    v = val;
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
+		cprintf(xpath, "[%s=%s]", cv_string_get(cvi), v);
+		v += strlen(v)+1;
+	    }
+	    if (val)
+		free(val);
+        }
+        else{
+            cprintf(xpath, "%s%s", (i==offset?"":"/"), name);
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Translate from restconf api-path to xml xpath
+ * eg a/b=c -> a/[b=c] 
+ * @param[in]  yspec Yang spec
+ * @param[in]  str   API-path as string
+ * @param[out] path  The xpath as cbuf variable string, must be initializeed
+ * @code
+ *   cbuf *xpath = cbuf_new();
+ *   if (api_path2xpath(yspec, "a/b=c", xpath)
+ *      err;
+ *   ... access xpath as cbuf_get(xpath) 
+ *   cbuf_free(xpath)
+ * @endcode
+ */
+int
+api_path2xpath(yang_spec *yspec,
+	       char      *api_path,
+	       cbuf      *xpath)
+{
+    int   retval = -1;
+    cvec *api_path_cvv = NULL; 
+
+    /* rest url eg /album=ricky/foo */
+    if (str2cvec(api_path, '/', '=', &api_path_cvv) < 0) 
+	goto done;
+    if (api_path2xpath_cvv(yspec, api_path_cvv, 0, xpath) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (api_path_cvv)
+	cvec_free(api_path_cvv);
     return retval;
 }

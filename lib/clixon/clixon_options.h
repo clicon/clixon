@@ -92,7 +92,7 @@ char *clicon_cli_dir(clicon_handle h);
 char *clicon_clispec_dir(clicon_handle h);
 char *clicon_netconf_dir(clicon_handle h);
 char *clicon_restconf_dir(clicon_handle h);
-char *clicon_archive_dir(clicon_handle h);
+char *clicon_xmldb_plugin(clicon_handle h);
 int   clicon_sock_family(clicon_handle h);
 char *clicon_sock(clicon_handle h);
 int   clicon_sock_port(clicon_handle h);
@@ -119,5 +119,17 @@ int clicon_dbspec_yang_set(clicon_handle h, struct yang_spec *ys);
 
 char *clicon_dbspec_name(clicon_handle h);
 int clicon_dbspec_name_set(clicon_handle h, char *name);
+
+int clicon_xmldb_plugin_set(clicon_handle h, plghndl_t handle);
+
+plghndl_t clicon_xmldb_plugin_get(clicon_handle h);
+
+int clicon_xmldb_api_set(clicon_handle h, void *xa_api);
+
+void *clicon_xmldb_api_get(clicon_handle h);
+
+int clicon_xmldb_handle_set(clicon_handle h, void *xh);
+
+void *clicon_xmldb_handle_get(clicon_handle h);
 
 #endif  /* _CLIXON_OPTIONS_H_ */

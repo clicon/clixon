@@ -109,7 +109,6 @@ Mapping netconf error-tag -> status code
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#include <curl/curl.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -153,86 +152,19 @@ api_data_get_gen(clicon_handle h,
 		 int           head)
 {
     int        retval = -1;
-    cg_var    *cv;
-    char      *val;
-    char      *v;
-    int        i;
     cbuf      *path = NULL;
-    cbuf      *path1 = NULL;
     cbuf      *cbx = NULL;
     cxobj    **vec = NULL;
     yang_spec *yspec;
-    yang_stmt *y = NULL;
-    yang_stmt *ykey;
-    char      *name;
-    cvec      *cvk = NULL; /* vector of index keys */
-    cg_var    *cvi;
     cxobj     *xret = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h);
     if ((path = cbuf_new()) == NULL)
         goto done;
-    if ((path1 = cbuf_new()) == NULL) /* without [] qualifiers */
-        goto done;
-    cv = NULL;
-    cprintf(path1, "/");
-    /* translate eg a/b=c -> a/[b=c] */
-    for (i=pi; i<cvec_len(pcvec); i++){
-        cv = cvec_i(pcvec, i);
-	name = cv_name_get(cv);
-	clicon_debug(1, "[%d] cvname:%s", i, name);
-	clicon_debug(1, "cv2str%d", cv2str(cv, NULL, 0));
-	if (i == pi){
-	    if ((y = yang_find_topnode(yspec, name)) == NULL){
-		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
-		goto done;
-	    }
-	}
-	else{
-	    assert(y!=NULL);
-	    if ((y = yang_find_syntax((yang_node*)y, name)) == NULL){
-		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
-		goto done;
-	    }
-	}
-	/* Check if has value, means '=' */
-        if (cv2str(cv, NULL, 0) > 0){
-            if ((val = cv2str_dup(cv)) == NULL)
-                goto done;
-	    v = val;
-	    /* XXX sync with yang */
-	    while((v=index(v, ',')) != NULL){
-		*v = '\0';
-		v++;
-	    }
-	    /* Find keys */
-	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
-		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-			   __FUNCTION__, y->ys_argument);
-		notfound(r);
-		goto done;
-	    }
-	    clicon_debug(1, "ykey:%s", ykey->ys_argument);
-
-	    /* The value is a list of keys: <key>[ <key>]*  */
-	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-		goto done;
-	    cvi = NULL;
-	    /* Iterate over individual yang keys  */
-	    cprintf(path, "/%s", name);
-	    v = val;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
-		cprintf(path, "[%s=%s]", cv_string_get(cvi), v);
-		v += strlen(v)+1;
-	    }
-	    if (val)
-		free(val);
-        }
-        else{
-            cprintf(path, "%s%s", (i==pi?"":"/"), name);
-            cprintf(path1, "/%s", name);
-        }
+    if (api_path2xpath_cvv(yspec, pcvec, pi, path) < 0){
+	notfound(r);
+	goto done;
     }
     clicon_debug(1, "%s path:%s", __FUNCTION__, cbuf_get(path));
     if (clicon_rpc_get_config(h, "running", cbuf_get(path), &xret) < 0){
@@ -268,8 +200,6 @@ api_data_get_gen(clicon_handle h,
         cbuf_free(cbx);
     if (path)
 	cbuf_free(path);
-    if (path1)
-	cbuf_free(path1);
     if (xret)
 	xml_free(xret);
     return retval;
@@ -366,7 +296,7 @@ api_data_edit(clicon_handle h,
 	    goto done;	
     }
     cprintf(cbx, "</config>");
-    clicon_debug(1, "%s cbx: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
+    clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
     if (clicon_rpc_edit_config(h, "candidate", 
 			       operation,
 			       api_path,
@@ -407,7 +337,8 @@ api_data_edit(clicon_handle h,
 
    If the data resource already exists, then the POST request MUST fail
    and a "409 Conflict" status-line MUST be returned.
- * Netconf:  <edit-config> (nc:operation="create") | invoke an RPC operation        
+ * Netconf:  <edit-config> (nc:operation="create") | invoke an RPC operation        * @example
+ 
  */
 int
 api_data_post(clicon_handle h,
@@ -429,8 +360,8 @@ api_data_post(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * Example:
-      curl -X PUT -d {\"enabled\":\"false\"} http://127.0.0.1/restconf/data/interfaces/interface=eth1
+ * @example
+      curl -X PUT -d '{"enabled":"false"}' http://127.0.0.1/restconf/data/interfaces/interface=eth1
  *
  PUT:
   if the PUT request creates a new resource,

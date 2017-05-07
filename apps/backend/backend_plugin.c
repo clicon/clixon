@@ -132,7 +132,7 @@ config_find_plugin(clicon_handle h,
  * @retval    -1       Error
  */
 int
-config_plugin_init(clicon_handle h)
+backend_plugin_init(clicon_handle h)
 {
     find_plugin_t *fp   = config_find_plugin;
     clicon_hash_t *data = clicon_data(h);
@@ -152,8 +152,8 @@ config_plugin_init(clicon_handle h)
  * @retval    -1       Error
  */
 static int
-plugin_unload(clicon_handle  h, 
-	      struct plugin *plg)
+backend_plugin_unload(clicon_handle  h, 
+		      struct plugin *plg)
 {
     char *error;
 
@@ -178,44 +178,21 @@ plugin_unload(clicon_handle  h,
  * @param[in]  h       Clicon handle
  * @param[in]  file    The plugin (.so) to load
  * @param[in]  dlflags Arguments to dlopen(3)
- * @param[in]  label   Chunk label
  * @retval     plugin  Plugin struct
  * @retval     NULL    Error
  */
 static struct plugin *
-plugin_load (clicon_handle h, 
-	     char         *file, 
-	     int           dlflags, 
-	     const char   *label)
+backend_plugin_load (clicon_handle h, 
+		     char         *file, 
+		     int           dlflags)
 {
-    char          *error;
     void          *handle;
     char          *name;
-    struct plugin *new;
-    plginit_t     *initfun;
+    struct plugin *new = NULL;
 
-    dlerror();    /* Clear any existing error */
-    if ((handle = dlopen (file, dlflags)) == NULL) {
-        error = (char*)dlerror();
-	clicon_err(OE_UNIX, 0, "dlopen: %s", error?error:"Unknown error");
-        return NULL;
-    }
-    
-    initfun = dlsym(handle, PLUGIN_INIT);
-    if ((error = (char*)dlerror()) != NULL) {
-	clicon_err(OE_UNIX, 0, "dlsym: %s: %s", file, error);
-        return NULL;
-    }
-
-    if (initfun(h) != 0) {
-	dlclose(handle);
-	if (!clicon_errno) 	/* sanity: log if clicon_err() is not called ! */
-	    clicon_err(OE_DB, 0, "Unknown error: %s: plugin_init does not make clicon_err call on error",
-		       file);
-        return NULL;
-    }
-
-    if ((new = chunk(sizeof(*new), label)) == NULL) {
+    if ((handle = plugin_load(h, file, dlflags)) == NULL)
+	goto done;
+    if ((new = malloc(sizeof(*new))) == NULL) {
 	clicon_err(OE_UNIX, errno, "dhunk: %s", strerror(errno));
 	dlclose(handle);
 	return NULL;
@@ -226,7 +203,6 @@ plugin_load (clicon_handle h,
     snprintf(new->p_name, sizeof(new->p_name), "%*s",
 	     (int)strlen(name)-2, name);
     new->p_handle   = handle;
-    new->p_init    = initfun;
     if ((new->p_start    = dlsym(handle, PLUGIN_START)) != NULL)
 	clicon_debug(2, "%s callback registered.", PLUGIN_START);
     if ((new->p_exit     = dlsym(handle, PLUGIN_EXIT)) != NULL)
@@ -246,7 +222,7 @@ plugin_load (clicon_handle h,
     if ((new->p_trans_abort    = dlsym(handle, PLUGIN_TRANS_ABORT)) != NULL)
 	clicon_debug(2, "%s callback registered.", PLUGIN_TRANS_ABORT);
     clicon_debug(2, "Plugin '%s' loaded.\n", name);
-
+ done:
     return new;
 }
 
@@ -319,8 +295,8 @@ plugin_append(struct plugin *p)
 {
     struct plugin *new;
     
-    if ((new = rechunk(plugins, (nplugins+1) * sizeof (*p), NULL)) == NULL) {
-	clicon_err(OE_UNIX, errno, "chunk");
+    if ((new = realloc(plugins, (nplugins+1) * sizeof (*p))) == NULL) {
+	clicon_err(OE_UNIX, errno, "realloc");
 	return -1;
     }
     
@@ -340,7 +316,7 @@ plugin_append(struct plugin *p)
  * @retval    -1       Error
  */
 static int
-config_plugin_load_dir(clicon_handle h, 
+backend_plugin_load_dir(clicon_handle h, 
 		       const char   *dir)
 {
     int            retval = -1;
@@ -348,11 +324,11 @@ config_plugin_load_dir(clicon_handle h,
     int            np = 0;
     int            ndp;
     struct stat    st;
-    char          *filename;
-    struct dirent *dp;
+    char           filename[MAXPATHLEN];
+    struct dirent *dp = NULL;
     struct plugin *new;
     struct plugin *p = NULL;
-    char          *master;
+    char           master[MAXPATHLEN];
     char          *master_plugin;
 
     /* Format master plugin path */
@@ -360,50 +336,39 @@ config_plugin_load_dir(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "clicon_master_plugin option not set");
 	goto quit;
     }
-    master = chunk_sprintf(__FUNCTION__, "%s.so",  master_plugin);
-    if (master == NULL) {
-	clicon_err(OE_PLUGIN, errno, "chunk_sprintf master plugin");
-	goto quit;
-    }
+    snprintf(master, MAXPATHLEN-1, "%s.so", master_plugin);
 
     /* Allocate plugin group object */
     /* Get plugin objects names from plugin directory */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG, __FUNCTION__))<0)
+    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG))<0)
 	goto quit;
     
     /* reset num plugins */
     np = 0;
 
     /* Master plugin must be loaded first if it exists. */
-    filename = chunk_sprintf(__FUNCTION__, "%s/%s", dir, master);
-    if (filename == NULL) {
-	clicon_err(OE_UNIX, errno, "chunk");
-	goto quit;
-    }
+    snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, master);
     if (stat(filename, &st) == 0) {
 	clicon_debug(1, "Loading master plugin '%.*s' ...", 
 		     (int)strlen(filename), filename);
 
-	new = plugin_load(h, filename, RTLD_NOW|RTLD_GLOBAL, __FUNCTION__);
+	new = backend_plugin_load(h, filename, RTLD_NOW|RTLD_GLOBAL);
 	if (new == NULL)
 	    goto quit;
 	if (plugin_append(new) < 0)
 	    goto quit;
     }  
 
-    /* Now load the rest */
+    /* Now load the rest. Note plugins is the global variable */
     for (i = 0; i < ndp; i++) {
 	if (strcmp(dp[i].d_name, master) == 0)
 	    continue; /* Skip master now */
-	filename = chunk_sprintf(__FUNCTION__, "%s/%s", dir, dp[i].d_name);
+	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
 	clicon_debug(1, "Loading plugin '%.*s' ...",  (int)strlen(filename), filename);
-	if (filename == NULL) {
-	    clicon_err(OE_UNIX, errno, "chunk");
-	    goto quit;
-	}
-	new = plugin_load (h, filename, RTLD_NOW, __FUNCTION__);
+	new = backend_plugin_load(h, filename, RTLD_NOW);
 	if (new == NULL) 
 	    goto quit;
+	/* Append to 'plugins' */
 	if (plugin_append(new) < 0)
 	    goto quit;
     }
@@ -413,13 +378,19 @@ config_plugin_load_dir(clicon_handle h,
     
 quit:
     if (retval != 0) {
-	if (p) {
-	    while (--np >= 0)
-		plugin_unload (h, &p[np]);
-	    unchunk(p);
+	/* XXX p is always NULL */
+	if (plugins) {
+	    while (--np >= 0){
+		if ((p = &plugins[np]) == NULL)
+		    continue;
+		backend_plugin_unload(h, p);
+		free(p);
+	    }
+	    free(plugins);
 	}
     }
-    unchunk_group(__FUNCTION__);
+    if (dp)
+	free(dp);
     return retval;
 }
 
@@ -435,7 +406,7 @@ plugin_initiate(clicon_handle h)
     char *dir;
 
     /* First load CLICON system plugins */
-    if (config_plugin_load_dir(h, CLIXON_BACKEND_SYSDIR) < 0)
+    if (backend_plugin_load_dir(h, CLIXON_BACKEND_SYSDIR) < 0)
 	return -1;
 
     /* Then load application plugins */
@@ -443,7 +414,7 @@ plugin_initiate(clicon_handle h)
 	clicon_err(OE_PLUGIN, 0, "backend_dir not defined");
 	return -1;
     }
-    if (config_plugin_load_dir(h, dir) < 0)
+    if (backend_plugin_load_dir(h, dir) < 0)
 	return -1;
     
     return 0;
@@ -462,10 +433,12 @@ plugin_finish(clicon_handle h)
 
     for (i = 0; i < nplugins; i++) {
 	p = &plugins[i];
-	plugin_unload(h, p);
+	backend_plugin_unload(h, p);
     }
-    if (plugins)
-	unchunk(plugins);
+    if (plugins){
+	free(plugins);
+	plugins = NULL;
+    }
     nplugins = 0;
     return 0;
 }

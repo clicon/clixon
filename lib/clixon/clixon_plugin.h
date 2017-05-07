@@ -51,7 +51,7 @@ typedef void *(find_plugin_t)(clicon_handle, char *);
  * Prototypes
  */
 /* Common plugin function names, function types and signatures. 
- * This set of plugins is extended in 
+ * This plugin code is exytended by backend, cli, netconf, restconf plugins
  *   Cli     see cli_plugin.c
  *   Backend see config_plugin.c
  */
@@ -76,5 +76,9 @@ typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
 
 /* Find a function in global namespace or a plugin. XXX clicon internal */
 void *clicon_find_func(clicon_handle h, char *plugin, char *func);
+
+plghndl_t plugin_load (clicon_handle h, char *file, int dlflags);
+
+int plugin_unload(clicon_handle h, plghndl_t *handle);
 
 #endif  /* _CLIXON_PLUGIN_H_ */

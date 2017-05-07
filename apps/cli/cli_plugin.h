@@ -74,7 +74,6 @@ struct cli_plugin {
 
 /* Plugin group object */
 typedef struct  {
-    char stx_cnklbl[128];                             /* Plugin group name */
     int stx_nplugins;                                 /* Number of plugins */
     struct cli_plugin *stx_plugins;                     /* List of plugins */
     int stx_nmodes;                              /* Number of syntax modes */

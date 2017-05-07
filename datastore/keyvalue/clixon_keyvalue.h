@@ -31,16 +31,26 @@
 
   ***** END LICENSE BLOCK *****
 
+  Key-value store
  */
-
-#ifndef _CLIXON_PROC_H_
-#define _CLIXON_PROC_H_
+#ifndef _CLIXON_KEYVALUE_H
+#define _CLIXON_KEYVALUE_H
 
 /*
  * Prototypes
- */ 
-int clicon_proc_run (char *, void (outcb)(char *), int doerr);
-int clicon_proc_daemon (char *);
-int group_name2gid(char *name, gid_t *gid);
+ */
+int kv_get(xmldb_handle h, char *db, char *xpath,
+	   cxobj **xtop, cxobj ***xvec, size_t *xlen);
+int kv_put(xmldb_handle h, char *db, enum operation_type op, 
+	   char *api_path,  cxobj *xt);
+int kv_dump(FILE *f, char *dbfilename, char *rxkey);
+int kv_copy(xmldb_handle h, char *from, char *to);
+int kv_lock(xmldb_handle h, char *db, int pid);
+int kv_unlock(xmldb_handle h, char *db);
+int kv_unlock_all(xmldb_handle h, int pid);
+int kv_islocked(xmldb_handle h, char *db);
+int kv_exists(xmldb_handle h, char *db);
+int kv_delete(xmldb_handle h, char *db);
+int kv_init(xmldb_handle h, char *db);
 
-#endif  /* _CLIXON_PROC_H_ */
+#endif /* _CLIXON_KEYVALUE_H */

@@ -66,7 +66,7 @@
 #include "clixon_file.h"
 #include "clixon_yang.h"
 #include "clixon_hash.h"
-#include "clixon_chunk.h"
+#include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_yang_type.h"
 #include "clixon_yang_parse.h"
@@ -160,6 +160,10 @@ static const struct map_str2int ykmap[] = {
     {NULL,               -1}
 };
 
+/*! Create new yang specification
+ * @retval  yspec    Free with yspec_free() 
+ * @retval  NULL     Error
+ */
 yang_spec *
 yspec_new(void)
 {
@@ -174,6 +178,10 @@ yspec_new(void)
     return yspec;
 }
 
+/*! Create new yang node/statement
+ * @retval  ys    Free with ys_free() 
+ * @retval  NULL     Error
+ */
 yang_stmt *
 ys_new(enum rfc_6020 keyw)
 {
@@ -1382,20 +1390,21 @@ yang_parse_file(clicon_handle h,
  * @retval 1            Match founbd, Most recent entry returned in fbuf
  * @retval 0            No matching entry found
  * @retval -1           Error 
-*/static int
+*/
+static int
 yang_parse_find_match(clicon_handle h, 
 		      const char   *yang_dir, 
 		      const char   *module, 
 		      cbuf         *fbuf)    
 {
     int retval = -1;
-    struct dirent *dp;
+    struct dirent *dp = NULL;
     int            ndp;
     cbuf          *regex = NULL;
     char          *regexstr;
 
     if ((regex = cbuf_new()) == NULL){
-	clicon_err(OE_YANG, errno, "%s: cbuf_new", __FUNCTION__);
+	clicon_err(OE_YANG, errno, "cbuf_new");
 	goto done;
     }
     cprintf(regex, "^%s.*(.yang)$", module);
@@ -1403,8 +1412,7 @@ yang_parse_find_match(clicon_handle h,
     if ((ndp = clicon_file_dirent(yang_dir, 
 				  &dp, 
 				  regexstr, 
-				  S_IFREG, 
-				  __FUNCTION__)) < 0)
+				  S_IFREG)) < 0)
 	goto done;
     /* Entries are sorted, last entry should be most recent date */
     if (ndp != 0){
@@ -1416,7 +1424,8 @@ yang_parse_find_match(clicon_handle h,
  done:
     if (regex)
 	cbuf_free(regex);
-    unchunk_group(__FUNCTION__);
+    if (dp)
+	free(dp);
     return retval;
 }
 
@@ -1540,11 +1549,11 @@ yang_parse1(clicon_handle h,
 
 /*! Parse top yang module including all its sub-modules. Expand and populate yang tree
  *
- * @param h        CLICON handle
- * @param yang_dir Directory where all YANG module files reside
- * @param module   Name of main YANG module. More modules may be parsed if imported
- * @param revision Optional module revision date
- * @param ysp      Yang specification. Should ave been created by caller using yspec_new
+ * @param[in] h        CLICON handle
+ * @param[in] yang_dir Directory where all YANG module files reside
+ * @param[in] module   Name of main YANG module. More modules may be parsed if imported
+ * @param[in] revision Optional module revision date
+ * @param[out] ysp     Yang specification. Should ave been created by caller using yspec_new
  * @retval 0  Everything OK
  * @retval -1 Error encountered
  * The database symbols are inserted in alphabetical order.

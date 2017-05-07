@@ -307,7 +307,6 @@ from_client_edit_config(clicon_handle h,
 	}
     }
     if ((xc  = xpath_first(xn, "config")) != NULL){
-	/* XXX see from_client_xmlput() */
 	if (xmldb_put(h, target, operation, api_path, xc) < 0){
 	    cprintf(cbret, "<rpc-reply><rpc-error>"
 		    "<error-tag>operation-failed</error-tag>"
@@ -438,7 +437,7 @@ from_client_unlock(clicon_handle h,
 	goto ok;
     }
     else{
-	xmldb_unlock(h, db, pid);
+	xmldb_unlock(h, db);
 	if (cprintf(cbret, "<rpc-reply><ok/></rpc-reply>") < 0)
 	    goto done;
     }
@@ -496,7 +495,7 @@ from_client_kill_session(clicon_handle h,
     if (1 || (kill (pid, 0) != 0 && errno == ESRCH)){ /* Nothing there */
 	/* clear from locks */
 	if (xmldb_islocked(h, db) == pid)
-	    xmldb_unlock(h, db, pid);
+	    xmldb_unlock(h, db);
     }
     else{ /* failed to kill client */
 	cprintf(cbret, "<rpc-reply><rpc-error>"
@@ -622,7 +621,6 @@ from_client_delete_config(clicon_handle h,
 		piddb);
 	goto ok;
     }
-
     if (xmldb_delete(h, target) < 0){
 	cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"
@@ -633,7 +631,7 @@ from_client_delete_config(clicon_handle h,
 		"</rpc-error></rpc-reply>", clicon_err_reason);
 	goto ok;
     }
-    if (xmldb_init(h, target) < 0){
+    if (xmldb_create(h, target) < 0){
 	cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"
 		"<error-type>protocol</error-type>"
@@ -872,9 +870,21 @@ from_client_msg(clicon_handle        h,
     assert(cbuf_len(cbret));
     clicon_debug(1, "%s %s", __FUNCTION__, cbuf_get(cbret));
     if (send_msg_reply(ce->ce_s, cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
-	if (errno == ECONNRESET)
+	switch (errno){
+	case EPIPE:
+	    /* man (2) write: 
+	     * EPIPE  fd is connected to a pipe or socket whose reading end is 
+	     * closed.  When this happens the writing process will also receive 
+	     * a SIGPIPE signal. 
+	     * In Clixon this means a client, eg restconf, netconf or cli closes
+	     * the (UNIX domain) socket.
+	     */
+	case ECONNRESET:
 	    clicon_log(LOG_WARNING, "client rpc reset");
-	goto done;
+	    break;
+	default:
+	    goto done;
+	}
     }
     // ok:
     retval = 0;

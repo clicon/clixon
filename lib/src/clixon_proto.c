@@ -66,7 +66,6 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_queue.h"
-#include "clixon_chunk.h"
 #include "clixon_sig.h"
 #include "clixon_xml.h"
 #include "clixon_xsl.h"
@@ -298,6 +297,8 @@ clicon_msg_send(int                s,
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
 		 s, msg, ntohs(msg->op_len)) < 0){
 	clicon_err(OE_CFG, errno, "%s", __FUNCTION__);
+	clicon_log(LOG_WARNING, "%s: write: %s len:%d msg:%s", __FUNCTION__,
+		   strerror(errno), ntohs(msg->op_len), msg->op_body);
 	goto done;
     }
     retval = 0;
@@ -532,11 +533,11 @@ send_msg_reply(int      s,
 	       uint16_t datalen)
 {
     int                retval = -1;
-    struct clicon_msg *reply;
+    struct clicon_msg *reply = NULL;
     uint16_t           len;
 
     len = sizeof(*reply) + datalen;
-    if ((reply = (struct clicon_msg *)chunk(len, __FUNCTION__)) == NULL)
+    if ((reply = (struct clicon_msg *)malloc(len)) == NULL)
 	goto done;
     memset(reply, 0, len);
     reply->op_len = htons(len);
@@ -546,7 +547,8 @@ send_msg_reply(int      s,
 	goto done;
     retval = 0;
   done:
-    unchunk_group(__FUNCTION__);
+    if (reply)
+	free(reply);
     return retval;
 }
 

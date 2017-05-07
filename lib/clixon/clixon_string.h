@@ -56,6 +56,9 @@ static inline char * strdup4(char *str)
  */ 
 char **clicon_strsep(char *string, char *delim, int  *nvec0);
 char *clicon_strjoin (int argc, char **argv, char *delim);
+int str2cvec(char *string, char delim1, char delim2, cvec **cvp);
+int percent_encode(char *str, char **escp);
+int percent_decode(char *esc, char **str);
 #ifndef HAVE_STRNDUP
 char *clicon_strndup (const char *, size_t);
 #endif /* ! HAVE_STRNDUP */

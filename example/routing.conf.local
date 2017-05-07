@@ -27,3 +27,7 @@ CLICON_CLIGEN_CALLBACK_SINGLE_ARG 0
 
 # Enabled uses "startup" configuration on boot
 CLICON_USE_STARTUP_CONFIG    0
+
+# XMLDB datastore plugin filename (see datastore/ and clixon_xml_db.[ch])
+CLICON_XMLDB_PLUGIN /usr/local/lib/xmldb/text.so
+#CLICON_XMLDB_PLUGIN /usr/local/lib/xmldb/keyvalue.so

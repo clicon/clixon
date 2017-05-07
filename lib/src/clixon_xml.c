@@ -51,7 +51,6 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_queue.h"
-#include "clixon_chunk.h"
 #include "clixon_xml.h"
 #include "clixon_xml_parse.h"
 
@@ -76,13 +75,42 @@ struct xml{
     int               x_childvec_len; /* length of vector */
     enum cxobj_type   x_type;       /* type of node: element, attribute, body */
     char             *x_value;      /* attribute and body nodes have values */
-    int               x_index;      /* key node, cf sql index */
     int              _x_vector_i;   /* internal use: xml_child_each */
     int               x_flags;      /* Flags according to XML_FLAG_* above */
     void             *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
     cg_var           *x_cv;           /* If body this contains the typed value */
 };
+
+/* Type to string conversion */
+struct map_str2int{
+    char           *ms_str;
+    enum cxobj_type ms_type;
+};
+
+/* Mapping between xml type <--> string */
+static const struct map_str2int xsmap[] = {
+    {"error",         CX_ERROR}, 
+    {"element",       CX_ELMNT}, 
+    {"attr",          CX_ATTR}, 
+    {"body",          CX_BODY},
+    {NULL,           -1}
+};
+
+/*! Translate from xml type in enum form to string keyword
+ * @param[in] type  Xml type
+ * @retval    str   String keyword
+ */
+char *
+xml_type2str(enum cxobj_type type)
+{
+    const struct map_str2int *xs;
+
+    for (xs = &xsmap[0]; xs->ms_str; xs++)
+	if (xs->ms_type == type)
+	    return xs->ms_str;
+    return NULL;
+}
 
 /*
  * Access functions
@@ -223,7 +251,7 @@ xml_value(cxobj *xn)
 
 /*! Set value of xml node, value is copied
  * @param[in]  xn    xml node
- * @param[in]  val  new value, null-terminated string, copied by function
+ * @param[in]  val   new value, null-terminated string, copied by function
  * @retval     -1    on error with clicon-err set
  * @retval     0     OK
  */
@@ -291,33 +319,6 @@ xml_type_set(cxobj          *xn,
     enum cxobj_type old = xn->x_type;
 
     xn->x_type = type;
-    return old;
-}
-
-/*! Get index/key of xnode
- * @param[in]  xn    xml node
- * @retval     index of xml node
- * index/key is used in case of yang list constructs where one element is key
- */
-int
-xml_index(cxobj *xn)
-{
-    return xn->x_index;
-}
-
-/*! Set index of xnode
- * @param[in]  xn    xml node
- * @param[in]  index new index
- * @retval     index  old index
- * index/key is used in case of yang list constructs where one element is key
- */
-int
-xml_index_set(cxobj *xn, 
-	      int    index)
-{
-    int old = xn->x_index;
-
-    xn->x_index = index;
     return old;
 }
 
@@ -520,10 +521,19 @@ xml_new_spec(char  *name,
     return x;
 }
 
+
 void *
 xml_spec(cxobj *x)
 {
     return x->x_spec;
+}
+
+void *
+xml_spec_set(cxobj *x, 
+	     void  *spec)
+{
+    x->x_spec = spec;
+    return 0;
 }
 
 /*! Find an XML node matching name among a parent's children.
@@ -758,6 +768,16 @@ xml_body(cxobj *xn)
     return NULL;
 }
 
+cxobj *
+xml_body_get(cxobj *xn)
+{
+    cxobj *xb = NULL;
+
+    while ((xb = xml_child_each(xn, xb, CX_BODY)) != NULL) 
+	return xb;
+    return NULL;
+}
+
 /*! Find and return the value of a sub xml node
  *
  * The value can be of an attribute or body.
@@ -844,8 +864,8 @@ clicon_xml2file(FILE  *f,
 		int    level, 
 		int    prettyprint)
 {
-    cbuf  *cb;
     int    retval = -1;
+    cbuf  *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
@@ -882,8 +902,8 @@ xml_print(FILE  *f,
 /*! Print an XML tree structure to a cligen buffer
  *
  * @param[in,out] cb          Cligen buffer to write to
- * @param[in]     xn          clicon xml tree
- * @param[in]     level       how many spaces to insert before each line
+ * @param[in]     xn          Clicon xml tree
+ * @param[in]     level       Indentation level
  * @param[in]     prettyprint insert \n and spaces tomake the xml more readable.
  *
  * @code
@@ -897,47 +917,50 @@ xml_print(FILE  *f,
  */
 int
 clicon_xml2cbuf(cbuf  *cb, 
-		cxobj *cx, 
+		cxobj *x, 
 		int    level, 
 		int    prettyprint)
 {
     cxobj *xc;
+    char  *name;
 
-    switch(xml_type(cx)){
+    name = xml_name(x);
+    switch(xml_type(x)){
     case CX_BODY:
-	cprintf(cb, "%s", xml_value(cx));
+	cprintf(cb, "%s", xml_value(x));
 	break;
     case CX_ATTR:
 	cprintf(cb, " ");
-	if (xml_namespace(cx))
-	    cprintf(cb, "%s:", xml_namespace(cx));
-	cprintf(cb, "%s=\"%s\"", xml_name(cx), xml_value(cx));
+	if (xml_namespace(x))
+	    cprintf(cb, "%s:", xml_namespace(x));
+	cprintf(cb, "%s=\"%s\"", name, xml_value(x));
 	break;
     case CX_ELMNT:
 	cprintf(cb, "%*s<", prettyprint?(level*XML_INDENT):0, "");
-	if (xml_namespace(cx))
-	    cprintf(cb, "%s:", xml_namespace(cx));
-	cprintf(cb, "%s", xml_name(cx));
+	if (xml_namespace(x))
+	    cprintf(cb, "%s:", xml_namespace(x));
+	cprintf(cb, "%s", name);
 	xc = NULL;
-	while ((xc = xml_child_each(cx, xc, CX_ATTR)) != NULL) 
+	/* print attributes only */
+	while ((xc = xml_child_each(x, xc, CX_ATTR)) != NULL) 
 	    clicon_xml2cbuf(cb, xc, level+1, prettyprint);
 	/* Check for special case <a/> instead of <a></a> */
-	if (xml_body(cx)==NULL && xml_child_nr(cx)==0) 
+	if (xml_body(x)==NULL && xml_child_nr(x)==0) 
 	    cprintf(cb, "/>");
 	else{
 	    cprintf(cb, ">");
-	    if (prettyprint && xml_body(cx)==NULL)
+	    if (prettyprint && xml_body(x)==NULL)
 		cprintf(cb, "\n");
 	    xc = NULL;
-	    while ((xc = xml_child_each(cx, xc, -1)) != NULL) {
+	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
 		if (xml_type(xc) == CX_ATTR)
 		    continue;
 		else
 		    clicon_xml2cbuf(cb, xc, level+1, prettyprint);
 	    }
-	    if (prettyprint && xml_body(cx)==NULL)
+	    if (prettyprint && xml_body(x)==NULL)
 		cprintf(cb, "%*s", level*XML_INDENT, "");
-	    cprintf(cb, "</%s>", xml_name(cx));
+	    cprintf(cb, "</%s>", name);
 	}
 	if (prettyprint)
 	    cprintf(cb, "\n");
@@ -976,6 +999,44 @@ xml_parse(char  *str,
     return retval; 
 }
 
+/*! Print actual xml tree datastructures (not xml), mainly for debugging
+ * @param[in,out] cb          Cligen buffer to write to
+ * @param[in]     xn          Clicon xml tree
+ * @param[in]     level       Indentation level
+ */
+int
+xmltree2cbuf(cbuf  *cb, 
+	     cxobj *x,
+	     int    level)
+{
+    cxobj *xc;
+    int    i;
+
+    for (i=0; i<level*XML_INDENT; i++)
+	cprintf(cb, " ");
+    cprintf(cb, "%s", xml_type2str(xml_type(x)));
+    if (xml_namespace(x)==NULL)
+	cprintf(cb, " %s", xml_name(x));
+    else
+	cprintf(cb, " %s:%s", xml_namespace(x), xml_name(x));
+    if (xml_value(x))
+	cprintf(cb, " value:\"%s\"", xml_value(x));
+    if (x->x_flags)
+	cprintf(cb, " flags:0x%x", x->x_flags);
+    if (xml_child_nr(x))
+	cprintf(cb, " {");
+    cprintf(cb, "\n");
+    xc = NULL;
+    while ((xc = xml_child_each(x, xc, -1)) != NULL) 
+	xmltree2cbuf(cb, xc, level+1);
+    if (xml_child_nr(x)){
+	for (i=0; i<level*XML_INDENT; i++)
+	    cprintf(cb, " ");
+	cprintf(cb, "}\n");
+    }
+    return 0;
+}
+
 /*
  * FSM to detect a substring
  */
@@ -1009,6 +1070,7 @@ FSM(char *tag,
  * Note, xt will add a top-level symbol called "top" meaning that <tree../> will look as:
  *  <top><tree.../></tree>
  * XXX: There is a potential leak here on some return values.
+ * XXX: What happens if endtag is different?
  * May block
  */
 int 
@@ -1016,59 +1078,69 @@ clicon_xml_parse_file(int     fd,
 		      cxobj **cx, 
 		      char   *endtag)
 {
+    int   retval = -1;
+    int   ret;
     int   len = 0;
     char  ch;
-    int   retval;
-    char *xmlbuf;
+    char *xmlbuf = NULL;
     char *ptr;
     int   maxbuf = BUFLEN;
     int   endtaglen = strlen(endtag);
     int   state = 0;
+    int   oldmaxbuf;
 
     if (endtag == NULL){
 	clicon_err(OE_XML, 0, "%s: endtag required\n", __FUNCTION__);
-	return -1;
+	goto done;
     }
     *cx = NULL;
     if ((xmlbuf = malloc(maxbuf)) == NULL){
 	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
-	return -1;
+	goto done;
     }
     memset(xmlbuf, 0, maxbuf);
     ptr = xmlbuf;
     while (1){
-	if ((retval = read(fd, &ch, 1)) < 0){
+	if ((ret = read(fd, &ch, 1)) < 0){
 	    clicon_err(OE_XML, errno, "%s: read: [pid:%d]\n", 
 		    __FUNCTION__,
 		    (int)getpid());
 	    break;
 	}
-	if (retval != 0){
+	if (ret != 0){
 	    state = FSM(endtag, ch, state);
 	    xmlbuf[len++] = ch;
 	}
-	if (retval == 0 || state == endtaglen){
+	if (ret == 0 || state == endtaglen){
 	    state = 0;
 	    if ((*cx = xml_new("top", NULL)) == NULL)
 		break;
-	    if (xml_parse(ptr, *cx) < 0)
-		return -1;
+	    if (xml_parse(ptr, *cx) < 0){
+		goto done;
+	    }
 	    break;
 	}
 	if (len>=maxbuf-1){ /* Space: one for the null character */
-	    int oldmaxbuf = maxbuf;
-
+	    oldmaxbuf = maxbuf;
 	    maxbuf *= 2;
 	    if ((xmlbuf = realloc(xmlbuf, maxbuf)) == NULL){
 		clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
-		return -1;
+		goto done;
 	    }
 	    memset(xmlbuf+oldmaxbuf, 0, maxbuf-oldmaxbuf);
 	    ptr = xmlbuf;
 	}
     } /* while */
-    free(xmlbuf);
-    return (*cx)?0:-1;
+    retval = 0;
+ done:
+    if (retval < 0 && *cx){
+	free(*cx);
+	*cx = NULL;
+    }
+    if (xmlbuf)
+	free(xmlbuf);
+    return retval;
+    //    return (*cx)?0:-1;
 }
 
 /*! Read an XML definition from string and parse it into a parse-tree. 
@@ -1182,7 +1254,7 @@ copy_one(cxobj *xn0,
  * x1 should be a created placeholder. If x1 is non-empty,
  * the copied tree is appended to the existing tree.
  * @code
- *   x1 = xml_new("new", xc);
+ *   x1 = xml_new("new", xparent);
  *   xml_copy(x0, x1);
  * @endcode
  */
@@ -1190,7 +1262,7 @@ int
 xml_copy(cxobj *x0, 
 	 cxobj *x1)
 {
-    int retval = -1;
+    int    retval = -1;
     cxobj *x;
     cxobj *xcopy;
 
@@ -1462,8 +1534,12 @@ xml_body_uint32(cxobj    *xb,
 }
 
 /*! Map xml operation from string to enumeration
- * @param[in]   xn  XML node
- * @param[out]  op  "operation" attribute may change operation
+ * @param[in]   opstr  String, eg "merge"
+ * @param[out]  op     Enumeration, eg OP_MERGE
+ * @code
+ *   enum operation_type op;
+ *   xml_operation("replace", &op)
+ * @endcode
  */
 int
 xml_operation(char                *opstr, 
@@ -1488,6 +1564,14 @@ xml_operation(char                *opstr,
     return 0;
 }
 
+/*! Map xml operation from enumeration to string
+ * @param[in]   op   enumeration operation, eg OP_MERGE,...
+ * @retval      str  String, eg "merge". Static string, no free necessary
+ * @code
+ *   enum operation_type op;
+ *   xml_operation("replace", &op)
+ * @endcode
+ */
 char *
 xml_operation2str(enum operation_type op)
 {
@@ -1511,3 +1595,52 @@ xml_operation2str(enum operation_type op)
 	return "none";
     }
 }
+
+/*
+ * Turn this on to get a xml parse and pretty print test program
+ * Usage: xpath
+ * read xml from input
+ * Example compile:
+ gcc -g -o xml -I. -I../clixon ./clixon_xml.c -lclixon -lcligen
+ * Example run:
+ echo "<a><b/></a>" | xml 
+*/
+#if 0 /* Test program */
+
+static int
+usage(char *argv0)
+{
+    fprintf(stderr, "usage:%s.\n\tInput on stdin\n", argv0);
+    exit(0);
+}
+
+int
+main(int argc, char **argv)
+{
+    cxobj *xt;
+    cxobj *xc;
+    cbuf  *cb = cbuf_new();
+
+    if (argc != 1){
+	usage(argv[0]);
+	return 0;
+    }
+    if (clicon_xml_parse_file(0, &xt, "</config>") < 0){
+	fprintf(stderr, "parsing 2\n");
+	return -1;
+    }
+    xc = NULL;
+    while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
+		xmltree2cbuf(cb, xc, 0);       /* dump data structures */
+		//clicon_xml2cbuf(cb, xc, 0, 1); /* print xml */
+    }
+    fprintf(stdout, "%s", cbuf_get(cb));
+    if (xt)
+	xml_free(xt);
+    if (cb)
+	cbuf_free(cb);
+    return 0;
+}
+
+#endif /* Test program */
+

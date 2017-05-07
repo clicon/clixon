@@ -69,12 +69,11 @@
 #define handle(h) (assert(clicon_handle_check(h)==0),(struct cli_handle *)(h))
 #define cligen(h) (handle(h)->cl_cligen)
 
-/*
- * cli_handle
- * first part of this is header, same for clicon_handle and config_handle.
- * Access functions for common fields are found in clicon lib: clicon_options.[ch]
+/*! CLI specific handle added to header CLICON handle
  * This file should only contain access functions for the _specific_
  * entries in the struct below.
+ * @note The top part must be equivalent to struct clicon_handle in clixon_handle.c
+ * @see struct clicon_handle, struct backend_handle
  */
 struct cli_handle {
     int                      cl_magic;    /* magic (HDR)*/
@@ -112,20 +111,22 @@ cli_handle_init(void)
     return h;
 }
 
-/*
- * cli_handle_exit
- * frees clicon handle
+/*! Free clicon handle
  */
 int
 cli_handle_exit(clicon_handle h)
 {
     cligen_handle ch = cligen(h);
+    struct cli_handle *cl = handle(h);
 
+    if (cl->cl_stx)
+	free(cl->cl_stx);
     clicon_handle_exit(h); /* frees h and options */
+
     cligen_exit(ch);
+
     return 0;
 }
-
 
 /*----------------------------------------------------------
  * cli-specific handle access functions

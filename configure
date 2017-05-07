@@ -632,6 +632,8 @@ CPP
 OBJEXT
 EXEEXT
 ac_ct_CC
+with_keyvalue
+with_restconf
 RANLIB
 AR
 EXE_SUFFIX
@@ -702,8 +704,9 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 with_cligen
+with_restconf
+with_keyvalue
 with_qdbm
-enable_keycontent
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1324,17 +1327,13 @@ if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
 
-Optional Features:
-  --disable-option-checking  ignore unrecognized --enable/--with options
-  --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
-  --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
-  --disable-keycontent    Disable reverse lookup content keys
-
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cligen=dir       Use CLIGEN here
-  --with-qdbm=dir         Use QDBM here
+  --without-restconf      disable support for restconf
+  --without-keyvalue      disable support for key-value xmldb datastore
+  --with-qdbm=dir         Use QDBM here, if keyvalue
 
 Some influential environment variables:
   CC          C compiler command
@@ -2136,7 +2135,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 : ${CFLAGS="-O2"}
 
 CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="2"
+CLIXON_VERSION_MINOR="3"
 CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 # Fix to specific version (eg 3.5) or head (3)
@@ -2327,6 +2326,8 @@ test -n "$target_alias" &&
 
 
 
+ # If yes, compile apps/restconf
+ # If yes, compile datastore/keyvalue
 
 #
 ac_ext=c
@@ -3541,7 +3542,6 @@ if test "${with_cligen}"; then
 fi
 
 
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
 $as_echo_n "checking for grep that handles long lines and -e... " >&6; }
 if ${ac_cv_path_GREP+:} false; then :
@@ -3866,21 +3866,92 @@ else
 fi
 
 
-# This is for qdbm
+# This is for restconf (and fastcgi)
+
+# Check whether --with-restconf was given.
+if test "${with_restconf+set}" = set; then :
+  withval=$with_restconf;
+else
+  with_restconf=yes
+fi
+
+if test "x${with_restconf}" == xyes; then
+   # Lives in libfcgi-dev
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for FCGX_Init in -lfcgi" >&5
+$as_echo_n "checking for FCGX_Init in -lfcgi... " >&6; }
+if ${ac_cv_lib_fcgi_FCGX_Init+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lfcgi  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char FCGX_Init ();
+int
+main ()
+{
+return FCGX_Init ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_fcgi_FCGX_Init=yes
+else
+  ac_cv_lib_fcgi_FCGX_Init=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_fcgi_FCGX_Init" >&5
+$as_echo "$ac_cv_lib_fcgi_FCGX_Init" >&6; }
+if test "x$ac_cv_lib_fcgi_FCGX_Init" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBFCGI 1
+_ACEOF
+
+  LIBS="-lfcgi $LIBS"
+
+else
+  as_fn_error $? "libfcgi-dev missing" "$LINENO" 5
+fi
+
+fi
+
+# This is for keyvalue datastore (and qdbm)
+
+# Check whether --with-keyvalue was given.
+if test "${with_keyvalue+set}" = set; then :
+  withval=$with_keyvalue;
+else
+  with_keyvalue=yes
+fi
+
+
+if test "x${with_keyvalue}" == xyes; then
+   echo "yes keyvalue"
+   # This is for qdbm
 
 # Check whether --with-qdbm was given.
 if test "${with_qdbm+set}" = set; then :
   withval=$with_qdbm;
 fi
 
-if test "${with_qdbm}"; then
-  echo "Using QDBM here: ${with_qdbm}"
-  CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
-  LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
-fi
-
-# Problem: depot.h may be in qdbm/depot.h.
-for ac_header in depot.h
+   if test "${with_qdbm}"; then
+      echo "Using QDBM here: ${with_qdbm}"
+      CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
+      LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
+   fi
+   # Problem: depot.h may be in qdbm/depot.h.
+   for ac_header in depot.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "depot.h" "ac_cv_header_depot_h" "$ac_includes_default"
 if test "x$ac_cv_header_depot_h" = xyes; then :
@@ -3907,7 +3978,7 @@ fi
 
 done
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for dpopen in -lqdbm" >&5
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for dpopen in -lqdbm" >&5
 $as_echo_n "checking for dpopen in -lqdbm... " >&6; }
 if ${ac_cv_lib_qdbm_dpopen+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -3954,6 +4025,7 @@ else
   as_fn_error $? "libqdbm-dev required" "$LINENO" 5
 fi
 
+fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for crypt in -lcrypt" >&5
 $as_echo_n "checking for crypt in -lcrypt... " >&6; }
@@ -4179,55 +4251,6 @@ _ACEOF
 fi
 
 
-# restconf uses libcurl (I think?)
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for curl_global_init in -lcurl" >&5
-$as_echo_n "checking for curl_global_init in -lcurl... " >&6; }
-if ${ac_cv_lib_curl_curl_global_init+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcurl  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char curl_global_init ();
-int
-main ()
-{
-return curl_global_init ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_curl_curl_global_init=yes
-else
-  ac_cv_lib_curl_curl_global_init=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_curl_curl_global_init" >&5
-$as_echo "$ac_cv_lib_curl_curl_global_init" >&6; }
-if test "x$ac_cv_lib_curl_curl_global_init" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBCURL 1
-_ACEOF
-
-  LIBS="-lcurl $LIBS"
-
-else
-  as_fn_error $? "libcurl missing" "$LINENO" 5
-fi
-
-
 for ac_func in inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
@@ -4241,81 +4264,9 @@ fi
 done
 
 
-# Lives in libfcgi-dev
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for FCGX_Init in -lfcgi" >&5
-$as_echo_n "checking for FCGX_Init in -lfcgi... " >&6; }
-if ${ac_cv_lib_fcgi_FCGX_Init+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lfcgi  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char FCGX_Init ();
-int
-main ()
-{
-return FCGX_Init ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_fcgi_FCGX_Init=yes
-else
-  ac_cv_lib_fcgi_FCGX_Init=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_fcgi_FCGX_Init" >&5
-$as_echo "$ac_cv_lib_fcgi_FCGX_Init" >&6; }
-if test "x$ac_cv_lib_fcgi_FCGX_Init" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBFCGI 1
-_ACEOF
-
-  LIBS="-lfcgi $LIBS"
-
-else
-  as_fn_error $? "libfcgi-dev missing" "$LINENO" 5
-fi
 
 
-# Check if extra keys inserted for database lists containing content. Eg A.n.foo = 3
-# means A.3 $!a=foo exists
-
-# Check whether --enable-keycontent was given.
-if test "${enable_keycontent+set}" = set; then :
-  enableval=$enable_keycontent;
-  if test "$enableval" = no; then
-    ac_enable_keycontent=no
-  else
-    ac_enable_keycontent=yes
-  fi
-
-else
-   ac_enable_keycontent=yes
-fi
-
-
-
-if test "$ac_enable_keycontent" = "yes"; then
-   $as_echo "#define DB_KEYCONTENT 1" >>confdefs.h
-
-fi
-
-
-
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/dbctrl/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile doc/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/keyvalue/Makefile datastore/text/Makefile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5017,7 +4968,6 @@ do
     "apps/backend/Makefile") CONFIG_FILES="$CONFIG_FILES apps/backend/Makefile" ;;
     "apps/netconf/Makefile") CONFIG_FILES="$CONFIG_FILES apps/netconf/Makefile" ;;
     "apps/restconf/Makefile") CONFIG_FILES="$CONFIG_FILES apps/restconf/Makefile" ;;
-    "apps/dbctrl/Makefile") CONFIG_FILES="$CONFIG_FILES apps/dbctrl/Makefile" ;;
     "include/Makefile") CONFIG_FILES="$CONFIG_FILES include/Makefile" ;;
     "etc/Makefile") CONFIG_FILES="$CONFIG_FILES etc/Makefile" ;;
     "etc/clixonrc") CONFIG_FILES="$CONFIG_FILES etc/clixonrc" ;;
@@ -5030,6 +4980,9 @@ do
     "docker/backend/Dockerfile") CONFIG_FILES="$CONFIG_FILES docker/backend/Dockerfile" ;;
     "docker/netconf/Makefile") CONFIG_FILES="$CONFIG_FILES docker/netconf/Makefile" ;;
     "docker/netconf/Dockerfile") CONFIG_FILES="$CONFIG_FILES docker/netconf/Dockerfile" ;;
+    "datastore/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/Makefile" ;;
+    "datastore/keyvalue/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/keyvalue/Makefile" ;;
+    "datastore/text/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/text/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

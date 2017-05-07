@@ -36,6 +36,7 @@
    ensure errno is set and return -1/NULL */
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -45,7 +46,11 @@
 #include <sys/types.h>
 
 /* clicon */
-#include "clixon_queue.h"
+#include <cligen/cligen.h>
+
+/* clicon */
+#include <clixon/clixon.h>
+
 #include "clixon_chunk.h"
 
 /*
