@@ -301,7 +301,6 @@ clicon_msg_send(int                s,
 		   strerror(errno), ntohs(msg->op_len), msg->op_body);
 	goto done;
     }
- ok:
     retval = 0;
   done:
     return retval;

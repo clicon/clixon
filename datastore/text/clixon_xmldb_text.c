@@ -726,13 +726,14 @@ match_base_child(cxobj     *x0,
 }
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
- * @param[in]  x0  Base xml tree
+ * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
+ * @param[in]  x0p Parent of x0
  * @param[in]  x1  xml tree which modifies base
  * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
- * @param[in]  y   Yang spec corresponding to xml-node x0. NULL if no x0
+ * @param[in]  y   Yang spec corresponding to xml-node x0. NULL if x0 is NULL
+ * @param[in]  yspec Top-level yang spec (if y is NULL)
  * Assume x0 and x1 are same on entry and that y is the spec
  * @see put in clixon_keyvalue.c
- * XXX: x1 är det som är under x0
  */
 static int
 text_modify(cxobj              *x0,

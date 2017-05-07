@@ -6,8 +6,21 @@ databases with transaction support.
 
 Presentations and tutorial is found on the [CLICON project page](http://www.clicon.org)
 
-## 1. Installation
+Table of contents
+=================
+  * [Table of contents](#table-of-contents)
+  * [Installation](#installation)
+  * [Documentation](#documentation)
+  * [Dependencies](#dependencies)
+  * [Licenses](#licenses)
+  * [History](#history)
+  * [Datastore](#datastore)
+  * [Yang](#yang)
+  * [Netconf](#netconf)
+  * [Restconf](#restconf)
 
+Installation
+============
 A typical installation is as follows:
 ```
      configure	       	        # Configure clixon to platform
@@ -17,13 +30,15 @@ A typical installation is as follows:
 ```
 One example applications is provided, a IETF IP YANG datamodel with generated CLI and configuration interface. 
 
-## 2. Documentation
+Documentation
+=============
+- [Frequently asked questions](doc/FAQ.md)
+- [Reference manual](http://www.clicon.org/doxygen/index.html) (Better: cd doc; make doc)
+- [Routing example](example/README.md)
+- [Test](test/README.md)
 
-- [Frequently asked questions](http://www.clicon.org/FAQ.html)
-- [Reference manual(http://www.clicon.org/doxygen/index.html) (may not be 100%% synched)
-
-## 3. Dependencies
-
+Dependencies
+============
 Clixon is dependend on the following packages
 - [CLIgen](http://www.cligen.se) is required for building CLIXON. If you need 
 to build and install CLIgen: 
@@ -36,22 +51,23 @@ to build and install CLIgen:
 - Fcgi (if restconf is enabled)
 - Qdbm key-value store (if keyvalue datastore is enabled)
 
-## 4. Licenses
-
+Licenses
+========
 CLIXON is dual license. Either Apache License, Version 2.0 or GNU
 General Public License Version 2. You choose.
 
 See LICENSE.md for license, CHANGELOG for recent changes.
 
-## 5. History
-
+History
+=======
 CLIXON is a fork of CLICON where legacy key specification has been
 replaced completely by YANG. This means that legacy CLICON
 applications such as CLICON/ROST does not run on CLIXON.
 
 Clixon origins from work at [KTH](http://www.csc.kth.se/~olofh/10G_OSR)
 
-## 6. Clixon Datastore
+Datastore
+=========
 The Clixon datastore is a stand-alone XML based datastore used by
 Clixon. The idea is to be able to use different datastores. There is
 currently a key-value plugin based on qdbm and a plain text-file
@@ -141,8 +157,8 @@ datastore_client.c for a more elaborate example.
   xmdlb_plugin_unload(h);
 ```
 
-## 7. YANG
-
+YANG
+====
 Clixon implements YANG RFC 6020. Clixon generates an interactive CLI
 for YANG specifications. It also provides Restconf and Netconf clients.
 
@@ -152,8 +168,8 @@ Clixon YANG currently does not provide the following support:
 - unique
 - rpc
 
-## 8. Netconf
-
+Netconf
+=======
 Clixon Netconf implements the following NETCONF standards:
 - RFC 4741 (NETCONF Configuration Protocol)
 - RFC 4742 (Using the NETCONF Configuration Protocol over Secure SHell (SSH))
@@ -169,8 +185,8 @@ Clixon NETCONF currently does not support the following Netconf features:
 - edit-config erropts
 - edit-config config-text
 
-## 9. Restconf
-
+Restconf
+========
 ### Features
 
 Clixon restconf is a daemon based on FASTCGI. Instructions are available to
@@ -251,4 +267,3 @@ Send command:
 ```
 curl -G http://127.0.0.1/restconf/data/*
 ```
-

@@ -621,7 +621,6 @@ from_client_delete_config(clicon_handle h,
 		piddb);
 	goto ok;
     }
-
     if (xmldb_delete(h, target) < 0){
 	cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"
