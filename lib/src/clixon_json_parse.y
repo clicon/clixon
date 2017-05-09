@@ -259,6 +259,7 @@ valuelist     : value
 
 /* quoted string */
 string        : J_DQ ustring J_DQ {  clicon_debug(2,"string->\" ustring \"");$$=$2; }
+              | J_DQ J_DQ {  clicon_debug(2,"string->\" ustring \"");$$=strdup(""); }
               ;
 
 /* unquoted string */
