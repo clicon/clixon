@@ -458,7 +458,8 @@ text_apipath_modify(char               *api_path,
     int        i;
     int        j;
     char      *name;
-    char      *restval;
+    char      *restval_enc;
+    char      *restval = NULL;
     yang_stmt *y = NULL;
     yang_stmt *ykey;
     cxobj     *x = NULL;
@@ -490,9 +491,16 @@ text_apipath_modify(char               *api_path,
     i = 1;
     while (i<nvec){
 	name = vec[i]; /* E.g "x=1,2" -> name:x restval=1,2 */
-	if ((restval = index(name, '=')) != NULL){
-	    *restval = '\0';
-	    restval++;
+	/* restval is RFC 3896 encoded */
+	if (restval){
+	    free(restval);
+	    restval = NULL;
+	}
+	if ((restval_enc = index(name, '=')) != NULL){
+	    *restval_enc = '\0';
+	    restval_enc++;
+	    if (percent_decode(restval_enc, &restval) < 0)
+		goto done;
 	}
 	if (y == NULL) /* top-node */
 	    y = yang_find_topnode(yspec, name);
@@ -646,6 +654,8 @@ text_apipath_modify(char               *api_path,
  ok:
     retval = 0;
  done:
+    if (restval)
+	free(restval);
     if (vec)
 	free(vec);
     if (valvec)

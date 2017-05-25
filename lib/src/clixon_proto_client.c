@@ -260,7 +260,7 @@ clicon_rpc_get_config(clicon_handle       h,
     if (xpath && strlen(xpath))
 	cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
     cprintf(cb, "</get-config></rpc>");
-    if ((msg = clicon_msg_encode(cbuf_get(cb))) == NULL)
+    if ((msg = clicon_msg_encode("%s", cbuf_get(cb))) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -325,7 +325,7 @@ clicon_rpc_edit_config(clicon_handle       h,
     if (xmlstr)
 	cprintf(cb, "%s", xmlstr);
     cprintf(cb, "</edit-config></rpc>");
-    if ((msg = clicon_msg_encode(cbuf_get(cb))) == NULL)
+    if ((msg = clicon_msg_encode("%s", cbuf_get(cb))) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;

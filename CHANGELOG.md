@@ -1,5 +1,7 @@
 # Clixon CHANGELOG
 
+- Strings in xmldb_put not properly encoded, eg eth/0 became eth.00000
+	
 ## 3.3.0
 
 May 2017	
