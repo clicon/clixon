@@ -80,13 +80,13 @@ distclean: clean
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
 
 install: $(PLUGIN)
-	install -d $(DESTDIR)$(clixon_LIBDIR)/xmldb
-	install $(PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/xmldb; 
+	install -d $(DESTDIR)$(libdir)/xmldb
+	install $(PLUGIN) $(DESTDIR)$(libdir)/xmldb
 
 install-include:
 
 uninstall: 
-	rm -rf $(DESTDIR)$(clixon_LIBDIR)/xmldb/$(PLUGIN); 
+	rm -rf $(DESTDIR)$(libdir)/xmldb/$(PLUGIN)
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -

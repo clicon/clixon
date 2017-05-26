@@ -265,9 +265,52 @@ xml_spec_populate(cxobj  *x,
 	y = yang_find_syntax((yang_node*)yp, xml_name(x));
     else
 	y = yang_find_topnode(yspec, name); /* still NULL for config */
+    if (y==NULL){
+	clicon_err(OE_XML, EBADF, "yang spec not found for xml node '%s' xml parent name: '%s' yangspec:'%s']", 
+		   name, 
+		   xp?xml_name(xp):"", yp?yp->ys_argument:"");
+	goto done;
+    }
     xml_spec_set(x, y);
     retval = 0;
-    // done:
+ done:
+    return retval;
+}
+
+/*! Ensure that xt only has a single sub-element and that is "config" 
+ */
+static int
+singleconfigroot(cxobj  *xt, 
+		 cxobj **xp)
+{
+    int    retval = -1;
+    cxobj *x = NULL;
+    int    i = 0;
+
+    /* There should only be one element and called config */
+    x = NULL;
+    while ((x = xml_child_each(xt, x,  CX_ELMNT)) != NULL){
+	i++;
+	if (strcmp(xml_name(x), "config")){
+	    clicon_err(OE_DB, ENOENT, "Wrong top-element %s expected config", 
+		       xml_name(x));
+	    goto done;
+	}
+    }
+    if (i != 1){
+	clicon_err(OE_DB, ENOENT, "Top-element is not unique, expecting single  config");
+	goto done;
+    }
+    x = NULL;
+    while ((x = xml_child_each(xt, x,  CX_ELMNT)) != NULL){
+	if (xml_rm(x) < 0)
+	    goto done;
+	if (xml_free(xt) < 0)
+	    goto done;
+	*xp = x;
+    }
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -344,10 +387,15 @@ text_get(xmldb_handle xh,
     }
     /* 2. File is not empty <top><config>...</config></top> -> replace root */
     else{ 
-	assert(xml_child_nr(xt)==1);
-	if (xml_rootchild(xt, 0, &xt) < 0)
+	/* There should only be one element and called config */
+	if (singleconfigroot(xt, &xt) < 0)
 	    goto done;
     }
+    /* Here xt looks like: <config>...</config> */
+    /* Validate existing config tree */
+    if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	goto done;
+
     /* XXX Maybe the below is general function and should be moved to xmldb? */
     if (xpath_vec(xt, xpath?xpath:"/", &xvec, &xlen) < 0)
 	goto done;
@@ -974,11 +1022,14 @@ text_put(xmldb_handle        xh,
     }
     /* 2. File is not empty <top><config>...</config></top> -> replace root */
     else{ 
-	assert(xml_child_nr(xt)==1);
-	if (xml_rootchild(xt, 0, &xt) < 0)
+	/* The should only be one element and called config */
+	if (singleconfigroot(xt, &xt) < 0)
 	    goto done;
     }
-    /* here xt looks like: <config>...</config> */
+    /* Here xt looks like: <config>...</config> */
+    /* Validate existing config tree */
+    if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	goto done;
     /* If xpath find first occurence or api-path (this is where we apply xml) */
     if (api_path){
 	if (text_apipath_modify(api_path, xt, op, yspec, &xbase, &xbasep, &y) < 0)
@@ -1021,7 +1072,7 @@ text_put(xmldb_handle        xh,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_xml2cbuf(cb, xt, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xt, 0, 1) < 0)
 	goto done;
     /* Reopen file in write mode */
     close(fd);
@@ -1029,7 +1080,7 @@ text_put(xmldb_handle        xh,
 	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
 	goto done;
     }    
-    if (write(fd, cbuf_get(cb), cbuf_len(cb)+1) < 0){
+    if (write(fd, cbuf_get(cb), cbuf_len(cb)) < 0){
 	clicon_err(OE_UNIX, errno, "write(%s)", dbfile);
 	goto done;
     }
