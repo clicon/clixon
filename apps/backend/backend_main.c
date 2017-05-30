@@ -194,7 +194,7 @@ rundb_main(clicon_handle h,
     if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
 	goto done;
     if ((xn = xml_child_i(xt, 0)) != NULL)
-	if (xmldb_put(h, "tmp", OP_MERGE, NULL, xn) < 0)
+	if (xmldb_put(h, "tmp", OP_MERGE, xn) < 0)
 	    goto done;
     if (candidate_commit(h, "tmp") < 0)
 	goto done;

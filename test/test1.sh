@@ -41,25 +41,24 @@ new "cli show configuration delete top"
 expectfn "$clixon_cli -1f $clixon_cf show conf cli" ""
 
 new "cli configure"
-expectfn "$clixon_cli -1f $clixon_cf set interfaces interface eth0" ""
+expectfn "$clixon_cli -1f $clixon_cf set interfaces interface eth/0/0" ""
 
 new "cli show configuration"
-expectfn "$clixon_cli -1f $clixon_cf show conf cli" "^interfaces interface name eth0
-interfaces interface enabled true$"
+expectfn "$clixon_cli -1f $clixon_cf show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
 
 new "cli failed validate"
 expectfn "$clixon_cli -1f $clixon_cf -l o validate" "Missing mandatory variable"
 
 new "cli configure more"
-expectfn "$clixon_cli -1f $clixon_cf set interfaces interface eth0 ipv4 address 1.2.3.4 prefix-length 24" ""
-expectfn "$clixon_cli -1f $clixon_cf set interfaces interface eth0 description mydesc" ""
-expectfn "$clixon_cli -1f $clixon_cf set interfaces interface eth0 type bgp" ""
+expectfn "$clixon_cli -1f $clixon_cf set interfaces interface eth/0/0 ipv4 address 1.2.3.4 prefix-length 24" ""
+expectfn "$clixon_cli -1f $clixon_cf set interfaces interface eth/0/0 description mydesc" ""
+expectfn "$clixon_cli -1f $clixon_cf set interfaces interface eth/0/0 type bgp" ""
 
 new "cli show xpath description"
 expectfn "$clixon_cli -1f $clixon_cf -l o show xpath /interfaces/interface/description" "<description>mydesc</description>"
 
 new "cli delete description"
-expectfn "$clixon_cli -1f $clixon_cf -l o delete interfaces interface eth0 description mydesc"
+expectfn "$clixon_cli -1f $clixon_cf -l o delete interfaces interface eth/0/0 description mydesc"
 
 new "cli show xpath no description"
 expectfn "$clixon_cli -1f $clixon_cf -l o show xpath /interfaces/interface/description" ""
@@ -80,8 +79,7 @@ new "cli load"
 expectfn "$clixon_cli -1f $clixon_cf -l o load /tmp/foo" ""
 
 new "cli check load"
-expectfn "$clixon_cli -1f $clixon_cf -l o show conf cli" "^interfaces interface name eth0
-interfaces interface enabled true$"
+expectfn "$clixon_cli -1f $clixon_cf -l o show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
 
 new "cli debug"
 expectfn "$clixon_cli -1f $clixon_cf -l o debug level 1" ""

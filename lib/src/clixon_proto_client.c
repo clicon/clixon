@@ -260,7 +260,7 @@ clicon_rpc_get_config(clicon_handle       h,
     if (xpath && strlen(xpath))
 	cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
     cprintf(cb, "</get-config></rpc>");
-    if ((msg = clicon_msg_encode(cbuf_get(cb))) == NULL)
+    if ((msg = clicon_msg_encode("%s", cbuf_get(cb))) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -291,13 +291,12 @@ clicon_rpc_get_config(clicon_handle       h,
  * @param[in] h          CLICON handle
  * @param[in] db         Name of database
  * @param[in] op         Operation on database item: OP_MERGE, OP_REPLACE
- * @param[in] api_path   restconf API Path (or "")
  * @param[in] xml        XML string. Ex: <config><a>..</a><b>...</b></config>
  * @retval    0          OK
  * @retval   -1          Error
  * @note xml arg need to have <config> as top element
  * @code
- * if (clicon_rpc_edit_config(h, "running", OP_MERGE, "/", 
+ * if (clicon_rpc_edit_config(h, "running", OP_MERGE, 
  *                            "<config><a>4</a></config>") < 0)
  *    err;
  * @endcode
@@ -306,7 +305,6 @@ int
 clicon_rpc_edit_config(clicon_handle       h, 
 		       char               *db, 
 		       enum operation_type op,
-		       char               *api_path,
 		       char               *xmlstr)
 {
     int                retval = -1;
@@ -320,12 +318,10 @@ clicon_rpc_edit_config(clicon_handle       h,
     cprintf(cb, "<rpc><edit-config><target><%s/></target>", db);
     cprintf(cb, "<default-operation>%s</default-operation>", 
 	    xml_operation2str(op));
-    if (api_path && strlen(api_path))
-	cprintf(cb, "<filter type=\"restconf\" select=\"%s\"/>", api_path);
     if (xmlstr)
 	cprintf(cb, "%s", xmlstr);
     cprintf(cb, "</edit-config></rpc>");
-    if ((msg = clicon_msg_encode(cbuf_get(cb))) == NULL)
+    if ((msg = clicon_msg_encode("%s", cbuf_get(cb))) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;

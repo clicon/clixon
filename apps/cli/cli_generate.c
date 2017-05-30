@@ -64,7 +64,7 @@
 #include "cli_generate.h"
 
 /* This is the default callback function. But this is typically overwritten */
-#define GENERATE_CALLBACK "cli_set"
+#define GENERATE_CALLBACK "overwrite_me"
 
 /* variable expand function */
 #define GENERATE_EXPAND_XMLDB "expand_dbvar"
@@ -115,13 +115,12 @@ cli_expand_var_generate(clicon_handle h,
 			enum cv_type  cvtype,
 			cbuf         *cb0,
 			int           options,
-			uint8_t       fraction_digits
-			)
+			uint8_t       fraction_digits)
 {
     int   retval = -1;
-    char *xkfmt = NULL;
+    char *api_path_fmt = NULL;
 
-    if (yang2xmlkeyfmt(ys, 1, &xkfmt) < 0)
+    if (yang2api_path_fmt(ys, 1, &api_path_fmt) < 0)
 	goto done;
     cprintf(cb0, "|<%s:%s",  ys->ys_argument, 
 	    cv_type2str(cvtype));
@@ -129,15 +128,15 @@ cli_expand_var_generate(clicon_handle h,
 	cprintf(cb0, " fraction-digits:%u", fraction_digits);
     cprintf(cb0, " %s(\"candidate\",\"%s\")>",
 	    GENERATE_EXPAND_XMLDB,
-	    xkfmt);
+	    api_path_fmt);
     retval = 0;
  done:
-    if (xkfmt)
-	free(xkfmt);
+    if (api_path_fmt)
+	free(api_path_fmt);
     return retval;
 }
 
-/*! Create callback with xmlkey format string as argument
+/*! Create callback with api_path format string as argument
  * @param[in]  h   clicon handle
  * @param[in]  ys  yang_stmt of the node at hand
  * @param[in]  cb0 The string where the result format string is inserted.
@@ -149,15 +148,16 @@ cli_callback_generate(clicon_handle h,
 		      cbuf         *cb0)
 {
     int        retval = -1;
-    char      *xkfmt = NULL;
+    char      *api_path_fmt = NULL;
 
-    if (yang2xmlkeyfmt(ys, 0, &xkfmt) < 0)
+    if (yang2api_path_fmt(ys, 0, &api_path_fmt) < 0)
 	goto done;
-    cprintf(cb0, ",%s(\"%s\")", GENERATE_CALLBACK, xkfmt);
+    cprintf(cb0, ",%s(\"%s\")", GENERATE_CALLBACK, 
+	    api_path_fmt);
     retval = 0;
  done:
-    if (xkfmt)
-	free(xkfmt);
+    if (api_path_fmt)
+	free(api_path_fmt);
     return retval;
 }
 
@@ -166,8 +166,7 @@ static int yang2cli_stmt(clicon_handle h, yang_stmt    *ys,
 			 enum genmodel_type gt,
 			 int           level);
 
-/*
- * Check for completion (of already existent values), ranges (eg range[min:max]) and
+/*! Check for completion (of already existent values), ranges (eg range[min:max]) and
  * patterns, (eg regexp:"[0.9]*").
  */
 static int
@@ -402,7 +401,6 @@ yang2cli_leaf(clicon_handle h,
 	free(helptext);
     return retval;
 }
-
 
 static int
 yang2cli_container(clicon_handle h, 

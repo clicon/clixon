@@ -256,8 +256,6 @@ from_client_get_config(clicon_handle h,
  * @param[in]  xe     Netconf request xml tree   
  * @param[in]  mypid  Process/session id of calling client
  * @param[out] cbret  Return xml value cligen buffer
- * CLIXON addition:
- *   <filter type="restconf" select="/data/profile=a" />
  */
 static int
 from_client_edit_config(clicon_handle h,
@@ -270,10 +268,8 @@ from_client_edit_config(clicon_handle h,
     cbuf               *cb = NULL;
     cxobj              *xret = NULL;
     cxobj              *xc;
-    cxobj              *xfilter;
     cxobj              *x;
     enum operation_type operation = OP_MERGE;
-    char               *api_path = NULL;
     int                 piddb;
 
     if ((target = netconf_db_find(xn, "target")) == NULL){
@@ -293,9 +289,6 @@ from_client_edit_config(clicon_handle h,
 		piddb);
 	goto ok;
     }
-    /* ie <filter type="restconf" select=<api-path> /> */
-    if ((xfilter = xpath_first(xn, "filter")) != NULL) 
-	 api_path = xml_find_value(xfilter, "select");
     if ((x = xpath_first(xn, "default-operation")) != NULL){
 	if (xml_operation(xml_body(x), &operation) < 0){
 	    cprintf(cbret, "<rpc-reply><rpc-error>"
@@ -307,7 +300,7 @@ from_client_edit_config(clicon_handle h,
 	}
     }
     if ((xc  = xpath_first(xn, "config")) != NULL){
-	if (xmldb_put(h, target, operation, api_path, xc) < 0){
+	if (xmldb_put(h, target, operation, xc) < 0){
 	    cprintf(cbret, "<rpc-reply><rpc-error>"
 		    "<error-tag>operation-failed</error-tag>"
 		    "<error-type>protocol</error-type>"

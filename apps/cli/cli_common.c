@@ -207,38 +207,64 @@ cli_dbxml(clicon_handle       h,
 {
     int        retval = -1;
     char      *str = NULL;
-    char      *xkfmt;  /* xml key format */
-    char      *xk = NULL; /* xml key */
+    char      *api_path_fmt;  /* xml key format */
+    char      *api_path = NULL; /* xml key */
     cg_var    *cval;
     int        len;
     cg_var    *arg;
     cbuf      *cb = NULL;
+    yang_spec *yspec;
+    cxobj     *xbot = NULL; /* xpath, NULL if datastore */
+    yang_node *y = NULL; /* yang spec of xpath */
+    cxobj     *xtop = NULL; /* xpath root */
+    cxobj     *xa;           /* attribute */
+    cxobj     *xb;           /* body */
 
     if (cvec_len(argv) != 1){
 	clicon_err(OE_PLUGIN, 0, "%s: Requires one element to be xml key format string", __FUNCTION__);
 	goto done;
     }
-    arg = cvec_i(argv, 0);
-    xkfmt = cv_string_get(arg);
-    if (xmlkeyfmt2key(xkfmt, cvv, &xk) < 0)
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
-    len = cvec_len(cvv);
-    if (len > 1){
-	cval = cvec_i(cvv, len-1); 
-	if ((str = cv2str_dup(cval)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cv2str_dup");
-	    goto done;
+    }
+    arg = cvec_i(argv, 0);
+    api_path_fmt = cv_string_get(arg);
+    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
+	goto done;
+    /* Create config top-of-tree */
+    if ((xtop = xml_new("config", NULL)) == NULL)
+	goto done;
+    xbot = xtop;
+    if (api_path && api_path2xml(api_path, yspec, xtop, &xbot, &y) < 0)
+	goto done;
+    if ((xa = xml_new("operation", xbot)) == NULL)
+	goto done;
+    xml_type_set(xa, CX_ATTR);
+    if (xml_value_set(xa,  xml_operation2str(op)) < 0)
+	goto done;
+    if (y->yn_keyword != Y_LIST){
+	len = cvec_len(cvv);
+	if (len > 1){
+	    cval = cvec_i(cvv, len-1); 
+	    if ((str = cv2str_dup(cval)) == NULL){
+		clicon_err(OE_UNIX, errno, "cv2str_dup");
+		goto done;
+	    }
+	    if ((xb = xml_new("body", xbot)) == NULL)
+		goto done; 
+	    xml_type_set(xb, CX_BODY);
+	    if (xml_value_set(xb,  str) < 0)
+		goto done;
 	}
     }
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (str)
-	cprintf(cb, "<config>%s</config>", str);
-    else
-	cprintf(cb, "<config/>");
-    if (clicon_rpc_edit_config(h, "candidate", op, xk, cbuf_get(cb)) < 0)
+    if (clicon_xml2cbuf(cb, xtop, 0, 0) < 0)
+	goto done;
+    if (clicon_rpc_edit_config(h, "candidate", OP_NONE, cbuf_get(cb)) < 0)
 	goto done;
     if (clicon_autocommit(h)) {
 	if (clicon_rpc_commit(h) < 0) 
@@ -250,8 +276,10 @@ cli_dbxml(clicon_handle       h,
 	cbuf_free(cb);
     if (str)
 	free(str);
-    if (xk)
-	free(xk);
+    if (api_path)
+	free(api_path);  
+    if (xtop)
+	xml_free(xtop);
     return retval;
 }
 
@@ -287,6 +315,31 @@ int cli_mergev(clicon_handle h, cvec *vars, cvec *argv)
     return cli_merge(h, vars, argv);
 }
 
+int 
+cli_create(clicon_handle h, cvec *cvv, cvec *argv)
+{
+    int retval = -1;
+
+    if (cli_dbxml(h, cvv, argv, OP_CREATE) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+/*!
+ * @see cli_del
+ */
+int 
+cli_remove(clicon_handle h, cvec *cvv, cvec *argv)
+{
+    int retval = -1;
+
+    if (cli_dbxml(h, cvv, argv, OP_REMOVE) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
 
 int 
 cli_del(clicon_handle h, cvec *cvv, cvec *argv)
@@ -704,7 +757,6 @@ load_config_file(clicon_handle h,
 	}
 	if (clicon_rpc_edit_config(h, "candidate",
 				   replace?OP_REPLACE:OP_MERGE, 
-				   "",
 				   cbuf_get(cbxml)) < 0)
 	    goto done;
 	cbuf_free(cbxml);
@@ -1135,7 +1187,7 @@ cli_copy_config(clicon_handle h,
     cbuf_reset(cb);
     /* create xml copy tree and merge it with database configuration */
     clicon_xml2cbuf(cb, x2, 0, 0);
-    if (clicon_rpc_edit_config(h, db, OP_MERGE, NULL, cbuf_get(cb)) < 0)
+    if (clicon_rpc_edit_config(h, db, OP_MERGE, cbuf_get(cb)) < 0)
 	goto done;
     retval = 0;
  done:

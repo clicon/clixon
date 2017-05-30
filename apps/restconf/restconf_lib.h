@@ -45,6 +45,7 @@
  */
 int notfound(FCGX_Request *r);
 int badrequest(FCGX_Request *r);
+int conflict(FCGX_Request *r);
 int clicon_debug_xml(int dbglevel, char *str, cxobj *cx);
 int test(FCGX_Request *r, int dbg);
 cbuf *readdata(FCGX_Request *r);

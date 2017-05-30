@@ -21,6 +21,11 @@ new(){
 expectfn(){
   cmd=$1
   expect=$2
+  if [ $# = 3 ]; then
+      expect2=$3
+  else
+      expect2=
+  fi
   ret=`$cmd`
   if [ $? -ne 0 ]; then
     err
@@ -30,12 +35,18 @@ expectfn(){
       return
   fi
   # grep extended grep 
-  match=`echo "$ret" | grep -Eo "$expect"`
-#  echo "ret:<$ret>"
-#  echo "expect:$expect"
-#  echo "match:$match"
+  match=`echo "$ret" | grep -EZo "$expect"`
+#  echo "ret:\"$ret\""
+#  echo "expect:\"$expect\""
+#  echo "match:\"$match\""
   if [ -z "$match" ]; then
-      err "\nExpected:\t\"$expect\"\nGot:\t\"$ret\""
+      err "Expected:\"$expect\" Got:\"$ret\""
+  fi
+  if [ -n "$expect2" ]; then
+      match=`echo "$ret" | grep -EZo "$expect2"`
+      if [ -z "$match" ]; then
+	  err "Expected:\"$expect\" Got: \"$ret\""
+      fi
   fi
 }
 
@@ -56,8 +67,11 @@ EOF
       return
   fi
   match=`echo "$ret" | grep -Eo "$expect"`
+#  echo "ret:\"$ret\""
+#  echo "expect:\"$expect\""
+#  echo "match:\"$match\""
   if [ -z "$match" ]; then
-      err "\nExpected:\t\"$expect\"\nGot:\t\"$ret\""
+      err "Expected:\"$expect\" Got: \"$ret\""
   fi
 }
 

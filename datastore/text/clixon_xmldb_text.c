@@ -265,9 +265,52 @@ xml_spec_populate(cxobj  *x,
 	y = yang_find_syntax((yang_node*)yp, xml_name(x));
     else
 	y = yang_find_topnode(yspec, name); /* still NULL for config */
+    if (y==NULL){
+	clicon_err(OE_XML, EBADF, "yang spec not found for xml node '%s' xml parent name: '%s' yangspec:'",
+                  name, 
+                  xp?xml_name(xp):"", yp?yp->ys_argument:"");
+       goto done;
+    }
     xml_spec_set(x, y);
     retval = 0;
-    // done:
+ done:
+    return retval;
+}
+
+/*! Ensure that xt only has a single sub-element and that is "config" 
+ */
+static int
+singleconfigroot(cxobj  *xt, 
+		 cxobj **xp)
+{
+    int    retval = -1;
+    cxobj *x = NULL;
+    int    i = 0;
+
+    /* There should only be one element and called config */
+    x = NULL;
+    while ((x = xml_child_each(xt, x,  CX_ELMNT)) != NULL){
+	i++;
+	if (strcmp(xml_name(x), "config")){
+	    clicon_err(OE_DB, ENOENT, "Wrong top-element %s expected config", 
+		       xml_name(x));
+	    goto done;
+	}
+    }
+    if (i != 1){
+	clicon_err(OE_DB, ENOENT, "Top-element is not unique, expecting single  config");
+	goto done;
+    }
+    x = NULL;
+    while ((x = xml_child_each(xt, x,  CX_ELMNT)) != NULL){
+	if (xml_rm(x) < 0)
+	    goto done;
+	if (xml_free(xt) < 0)
+	    goto done;
+	*xp = x;
+    }
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -344,10 +387,15 @@ text_get(xmldb_handle xh,
     }
     /* 2. File is not empty <top><config>...</config></top> -> replace root */
     else{ 
-	assert(xml_child_nr(xt)==1);
-	if (xml_rootchild(xt, 0, &xt) < 0)
+	/* There should only be one element and called config */
+	if (singleconfigroot(xt, &xt) < 0)
 	    goto done;
     }
+    /* Here xt looks like: <config>...</config> */
+    /* Validate existing config tree */
+    if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+       goto done;
+
     /* XXX Maybe the below is general function and should be moved to xmldb? */
     if (xpath_vec(xt, xpath?xpath:"/", &xvec, &xlen) < 0)
 	goto done;
@@ -398,271 +446,19 @@ text_get(xmldb_handle xh,
     return retval;
 }
 
-/*! Check if child with fullmatch exists 
- * param[in] cvk vector of index keys 
-*/
-static cxobj *
-find_keys_vec(cxobj *xt, 
-	      char  *name, 
-	      cvec  *cvk,
-	      char **valvec)
-{
-    cxobj  *xi = NULL;
-    int     j;
-    char   *keyname;
-    char   *val;
-    cg_var *cvi;
-    char   *body;
-
-    while ((xi = xml_child_each(xt, xi, CX_ELMNT)) != NULL) 
-	if (strcmp(xml_name(xi), name) == 0){
-	    j = 0; 	    
-	    cvi = NULL;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		keyname = cv_string_get(cvi);
-		val = valvec[j++];
-		if ((body = xml_find_body(xi, keyname)) == NULL)
-		    break;
-		if (strcmp(body, val))
-		    break;
-	    }
-	    /* All keys must match: loop terminates. */
-	    if (cvi==NULL)
-		return xi;
-	}
-    return NULL;
-}
-
-/*! Create 'modification' tree from api-path, ie fill in xml tree from the path
- * @param[in]   api_path  api-path expression
- * @param[in]   xt        XML tree. Find api-path (or create) in this tree
- * @param[in]   op        OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
- * @param[in]   yspec     Yang spec
- * @param[out]  xp        Resulting xml tree corresponding to xt
- * @param[out]  xparp     Parent of xp (xp can be NULL)
- * @param[out]  yp        Yang spec matching xp
- * @see xmldb_put_xkey for example
- */
-static int
-text_apipath_modify(char               *api_path,
-		    cxobj              *xt,
-		    enum operation_type op,
-		    yang_spec          *yspec,
-		    cxobj             **xp,
-		    cxobj             **xparp,
-		    yang_node         **yp)
-{
-    int        retval = -1;
-    char     **vec = NULL;
-    int        nvec;
-    int        i;
-    int        j;
-    char      *name;
-    char      *restval;
-    yang_stmt *y = NULL;
-    yang_stmt *ykey;
-    cxobj     *x = NULL;
-    cxobj     *xpar = NULL;
-    cxobj     *xn = NULL; /* new */
-    cxobj     *xb;        /* body */
-    cvec      *cvk = NULL; /* vector of index keys */
-    char     **valvec = NULL;
-    int        nvalvec;
-    cg_var    *cvi;
-    char      *keyname;
-    char      *val2;
-
-    x = xt;
-    xpar = xml_parent(xt);
-    if (api_path == NULL || *api_path!='/'){
-	clicon_err(OE_DB, 0, "Invalid key: %s", api_path);
-	goto done;
-    }
-    if ((vec = clicon_strsep(api_path, "/", &nvec)) == NULL)
-	goto done;
-    /* Remove trailing '/'. Like in /a/ -> /a */
-    if (nvec > 1 && !strlen(vec[nvec-1]))
-	nvec--;
-    if (nvec < 1){
-	clicon_err(OE_XML, 0, "Malformed key: %s", api_path);
-	goto done;
-    }
-    i = 1;
-    while (i<nvec){
-	name = vec[i]; /* E.g "x=1,2" -> name:x restval=1,2 */
-	if ((restval = index(name, '=')) != NULL){
-	    *restval = '\0';
-	    restval++;
-	}
-	if (y == NULL) /* top-node */
-	    y = yang_find_topnode(yspec, name);
-	else 
-	    y = yang_find_syntax((yang_node*)y, name);
-	if (y == NULL){
-	    clicon_err(OE_YANG, errno, "No yang node found: %s", name);
-	    goto done;
-	}
-	i++;
-	switch (y->ys_keyword){
-	case Y_LEAF_LIST:
-	    if (restval==NULL){
-		clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
-		goto done;
-	    }
-	    /* See if it exists */
-	    xn = NULL;
-	    while ((xn = xml_child_each(x, xn, CX_ELMNT)) != NULL) 
-		if (strcmp(name, xml_name(xn)) == 0 && 
-		    strcmp(xml_body(xn),restval)==0)
-		    break;
-	    if (xn == NULL){ /* Not found, does not exist */
-		switch (op){
-		case OP_DELETE: /* not here, should be here */
-		    clicon_err(OE_XML, 0, "Object to delete does not exist");
-		    goto done;
-		    break;
-		case OP_REMOVE:
-		    goto ok; /* not here, no need to remove */
-		    break;
-		case OP_CREATE:
-		    if (i==nvec) /* Last, dont create here */
-			break;
-		default:
-		    //XXX create_keyvalues(cxobj     *x, 
-		    if ((xn = xml_new_spec(y->ys_argument, x, y)) == NULL)
-			goto done;
-		    //		    xml_type_set(xn, CX_ELMNT);
-		    if ((xb = xml_new("body", xn)) == NULL)
-			goto done; 
-		    xml_type_set(xb, CX_BODY);
-		    if (xml_value_set(xb, restval) < 0)
-			goto done;
-		    break;
-		}
-	    }
-	    xpar = x;
-	    x = xn;
-	    break;
-	case Y_LIST:
-	    /* Get the yang list key */
-	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
-		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-			   __FUNCTION__, y->ys_argument);
-		goto done;
-	    }
-	    /* The value is a list of keys: <key>[ <key>]*  */
-	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-		goto done;
-	    if (restval==NULL){
-		clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
-		goto done;
-	    }
-	    if (valvec)
-		free(valvec);
-	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
-		goto done;
-
-	    if (cvec_len(cvk) != nvalvec){ 	    
-		clicon_err(OE_XML, errno, "List %s  key length mismatch", name);
-		goto done;
-	    }
-	    cvi = NULL;
-	    /* Check if exists, if not, create  */
-	    if ((xn = find_keys_vec(x, name, cvk, valvec)) == NULL){
-		/* create them, but not if delete op */
-		switch (op){
-		case OP_DELETE: /* not here, should be here */
-		    clicon_err(OE_XML, 0, "Object to delete does not exist");
-		    goto done;
-		    break;
-		case OP_REMOVE:
-		    goto ok; /* not here, no need to remove */
-		    break;
-		default:
-		    if ((xn = xml_new(name, x)) == NULL)
-			goto done; 
-		    xml_type_set(xn, CX_ELMNT);
-		    break;
-		}
-		xpar = x;
-		x = xn;
-		j = 0;
-		while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		    keyname = cv_string_get(cvi);
-		    val2 = valvec[j++];
-		    if ((xn = xml_new(keyname, x)) == NULL)
-			goto done; 
-		    xml_type_set(xn, CX_ELMNT);
-		    if ((xb = xml_new("body", xn)) == NULL)
-			goto done; 
-		    xml_type_set(xb, CX_BODY);
-		    if (xml_value_set(xb, val2) <0)
-			goto done;
-		}
-	    }
-	    else{
-		xpar = x;
-		x = xn;
-	    }
-	    if (cvk){
-		cvec_free(cvk);
-		cvk = NULL;
-	    }
-	    break;
-	default: /* eg Y_CONTAINER, Y_LEAF */
-	    if ((xn = xml_find(x, name)) == NULL){
-		switch (op){
-		case OP_DELETE: /* not here, should be here */
-		    clicon_err(OE_XML, 0, "Object to delete does not exist");
-		    goto done;
-		    break;
-		case OP_REMOVE:
-		    goto ok; /* not here, no need to remove */
-		    break;
-		case OP_CREATE:
-		    if (i==nvec) /* Last, dont create here */
-			break;
-		default:
-		    if ((xn = xml_new(name, x)) == NULL)
-			goto done; 
-		    xml_type_set(xn, CX_ELMNT);
-		    break;
-		}
-	    }
-	    else{
-		if (op==OP_CREATE && i==nvec){ /* here, should not be here */
-		    clicon_err(OE_XML, 0, "Object to create already exists");
-		    goto done;
-		}
-	    }
-	    xpar = x;
-	    x = xn;
-	    break;
-	}
-    }
-    *xp = x;
-    *xparp = xpar;
-    *yp = (yang_node*)y;
- ok:
-    retval = 0;
- done:
-    if (vec)
-	free(vec);
-    if (valvec)
-	free(valvec);
-    return retval;
-}
-
 /*! Given a modification tree, check existing matching child in the base tree 
- * param[in] x0  Base tree node
- * param[in] x1c Modification tree child
- * param[in] yc  Yang spec of tree child
+ * param[in] x0    Base tree node
+ * param[in] x1c   Modification tree child
+ * param[in] yc    Yang spec of tree child
+ * param[out] x0cp Matching base tree child (if any)
 */
-static cxobj *
+static int
 match_base_child(cxobj     *x0, 
 		 cxobj     *x1c,
-		 yang_stmt *yc)
+		 yang_stmt *yc,
+		 cxobj    **x0cp)
 {
+    int        retval = -1;
     cxobj     *x0c = NULL;
     char      *keyname;
     cvec      *cvk = NULL;
@@ -719,10 +515,12 @@ match_base_child(cxobj     *x0,
 	x0c = xml_find(x0, cname);
 	break;
     }
+    *x0cp = x0c;
+    retval = 0;
  done:
     if (cvk)
 	cvec_free(cvk);
-    return x0c;
+    return retval;
 }
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
@@ -730,164 +528,210 @@ match_base_child(cxobj     *x0,
  * @param[in]  x0p Parent of x0
  * @param[in]  x1  xml tree which modifies base
  * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
- * @param[in]  y   Yang spec corresponding to xml-node x0. NULL if x0 is NULL
+ * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  yspec Top-level yang spec (if y is NULL)
  * Assume x0 and x1 are same on entry and that y is the spec
  * @see put in clixon_keyvalue.c
  */
 static int
 text_modify(cxobj              *x0,
+	    yang_node          *y0,
 	    cxobj              *x0p,
 	    cxobj              *x1,
-	    enum operation_type op, 
-	    yang_node          *y,
-	    yang_spec          *yspec)
+	    enum operation_type op)
 {
     int        retval = -1;
     char      *opstr;
-    char      *name;
-    char      *cname; /* child name */
+    char      *x1name;
+    char      *x1cname; /* child name */
     cxobj     *x0c; /* base child */
     cxobj     *x0b; /* base body */
     cxobj     *x1c; /* mod child */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
 
-    clicon_debug(1, "%s %s", __FUNCTION__, x0?xml_name(x0):"");
+    assert(x1 && xml_type(x1) == CX_ELMNT);
+    assert(y0);
     /* Check for operations embedded in tree according to netconf */
-    if (x1 && (opstr = xml_find_value(x1, "operation")) != NULL)
+    if ((opstr = xml_find_value(x1, "operation")) != NULL)
 	if (xml_operation(opstr, &op) < 0)
 	    goto done;
-    if (x1 == NULL){
+    x1name = xml_name(x1);
+    if (y0->yn_keyword == Y_LEAF_LIST || y0->yn_keyword == Y_LEAF){
+	x1bstr = xml_body(x1);
 	switch(op){ 
-	    case OP_REPLACE:
-		if (x0)
-		    xml_purge(x0);
-	    case OP_CREATE:
-	    case OP_MERGE:
-		break;
+	case OP_CREATE:
+	    if (x0){
+		clicon_err(OE_XML, 0, "Object to create already exists");
+		goto done;
+	    }
+	case OP_NONE: /* fall thru */
+	case OP_MERGE:
+	case OP_REPLACE:
+	    if (x0==NULL){
+		//		int iamkey=0;
+		if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
+		    goto done;
+#if 0
+		/* If it is key I dont want to mark it */
+		if ((iamkey=yang_key_match(y0->yn_parent, x1name)) < 0)
+		    goto done;
+		if (!iamkey && op==OP_NONE)
+#else
+		if (op==OP_NONE)
+#endif
+		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
+		if (x1bstr){ /* empty type does not have body */
+		    if ((x0b = xml_new("body", x0)) == NULL)
+			goto done; 
+		    xml_type_set(x0b, CX_BODY);
+		}
+	    }
+	    if (x1bstr){
+		if ((x0b = xml_body_get(x0)) == NULL){
+		    if ((x0b = xml_new("body", x0)) == NULL)
+			goto done; 
+		    xml_type_set(x0b, CX_BODY);
+		}
+		if (xml_value_set(x0b, x1bstr) < 0)
+		    goto done;
+	    }
+	    break;
+	case OP_DELETE:
+	    if (x0==NULL){
+		clicon_err(OE_XML, 0, "Object to delete does not exist");
+		goto done;
+	    }
+	case OP_REMOVE: /* fall thru */
+	    if (x0)
+		xml_purge(x0);
+	    break;
 	default:
 	    break;
-	}
-    }
-    else {
-	assert(xml_type(x1) == CX_ELMNT);
-	name = xml_name(x1);
-	if (y && (y->yn_keyword == Y_LEAF_LIST || y->yn_keyword == Y_LEAF)){
-	    x1bstr = xml_body(x1);
-	    switch(op){ 
-	    case OP_CREATE:
-		if (x0){
-		    clicon_err(OE_XML, 0, "Object to create already exists");
+	} /* switch op */
+    } /* if LEAF|LEAF_LIST */
+    else { /* eg Y_CONTAINER, Y_LIST  */
+	switch(op){ 
+	case OP_CREATE:
+	    if (x0){
+		clicon_err(OE_XML, 0, "Object to create already exists");
+		goto done;
+	    }
+	case OP_REPLACE: /* fall thru */
+	    if (x0){
+		xml_purge(x0);
+		x0 = NULL;
+	    }
+	case OP_NONE: /* fall thru */
+	case OP_MERGE: 
+	    if (x0==NULL){
+		if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
+		    goto done;
+		if (op==OP_NONE)
+		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
+	    }
+	    /* Loop through children of the modification tree */
+	    x1c = NULL;
+	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+		x1cname = xml_name(x1c);
+		/* Get yang spec of the child */
+		if ((yc = yang_find_syntax(y0, x1cname)) == NULL){
+		    clicon_err(OE_YANG, errno, "No yang node found: %s", x1cname);
 		    goto done;
 		}
-		/* Fall thru */
-	    case OP_NONE: /* XXX */
-	    case OP_MERGE:
-	    case OP_REPLACE:
-		if (x0==NULL){
-		    if ((x0 = xml_new_spec(name, x0p, y)) == NULL)
-			goto done;
-		    if (op==OP_NONE)
-			xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
-		    if (x1bstr){ /* empty type does not have body */
-			if ((x0b = xml_new("body", x0)) == NULL)
-			    goto done; 
-			xml_type_set(x0b, CX_BODY);
-		    }
-		}
-		if (x1bstr){
-		    if ((x0b = xml_body_get(x0)) == NULL){
-			if ((x0b = xml_new("body", x0)) == NULL)
-			    goto done; 
-			xml_type_set(x0b, CX_BODY);
-		    }
-		    if (xml_value_set(x0b, x1bstr) < 0)
-			goto done;
-		}
-		break;
-	    case OP_DELETE:
-		if (x0==NULL){
-		    clicon_err(OE_XML, 0, "Object to delete does not exist");
+		/* See if there is a corresponding node in the base tree */
+		x0c = NULL;
+		if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
 		    goto done;
-		}
-	    case OP_REMOVE:
-		if (x0)
-		    xml_purge(x0);
-		break;
-	    default:
-		break;
-	    } /* switch op */
-	} /* if LEAF|LEAF_LIST */
-	else { /* eg Y_CONTAINER  */
-	    switch(op){ 
-	    case OP_CREATE:
-		/* top-level object <config/> is a special case, ie when 
-		 * x0 parent is NULL
-		 * or x1 is empty
-		 */
-		if ((x0p && x0) || 
-		    (x0p==NULL && xml_child_nr(x1) == 0)){
-		    clicon_err(OE_XML, 0, "Object to create already exists");
+		if (text_modify(x0c, (yang_node*)yc, x0, x1c, op) < 0)
 		    goto done;
-		}
-	    case OP_REPLACE:
-		/* top-level object <config/> is a special case, ie when 
-		 * x0 parent is NULL, 
-		 * or x1 is empty
-		 */
-		if ((x0p && x0) || 
-		    (x0p==NULL && xml_child_nr(x1) == 0)){
-		    xml_purge(x0);
-		    x0 = NULL;
-		}
-	    case OP_NONE: /* XXX */
-	    case OP_MERGE: 
-		if (x0==NULL){
-		    if ((x0 = xml_new_spec(name, x0p, y)) == NULL)
-			goto done;
-		    if (op==OP_NONE)
-			xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
-		}
-
-		/* Loop through children of the modification tree */
-		x1c = NULL;
-		while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
-		    cname = xml_name(x1c);
-		    /* Get yang spec of the child */
-		    if (y == NULL)
-			yc = yang_find_topnode(yspec, cname); /* still NULL for config */
-		    else{
-			if ((yc = yang_find_syntax(y, cname)) == NULL){
-			    clicon_err(OE_YANG, errno, "No yang node found: %s", cname);
-			    goto done;
-			}
-		    }
-		    /* See if there is a corresponding node in the base tree */
-		    x0c = yc?match_base_child(x0, x1c, yc):NULL;
-		    if (text_modify(x0c, x0, x1c, op, (yang_node*)yc, yspec) < 0)
-			goto done;
-		}
-		break;
-	    case OP_DELETE:
-		if (x0==NULL){
-		    clicon_err(OE_XML, 0, "Object to delete does not exist");
-		    goto done;
-		}
-	    case OP_REMOVE:
-		if (x0)
-		    xml_purge(x0);
-		break;
-	    default:
-		break;
-	    } /* CONTAINER switch op */
-	} /* else Y_CONTAINER  */
-    } /* x1 != NULL */
+	    }
+	    break;
+	case OP_DELETE:
+	    if (x0==NULL){
+		clicon_err(OE_XML, 0, "Object to delete does not exist");
+		goto done;
+	    }
+	case OP_REMOVE: /* fall thru */
+	    if (x0)
+		xml_purge(x0);
+	    break;
+	default:
+	    break;
+	} /* CONTAINER switch op */
+    } /* else Y_CONTAINER  */
     // ok:
     retval = 0;
  done:
     return retval;
 }
+
+/*! Modify a top-level base tree x0 with modification tree x1
+ * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
+ * @param[in]  x1  xml tree which modifies base
+ * @param[in]  yspec Top-level yang spec (if y is NULL)
+ * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
+ * @see text_modify
+ */
+static int
+text_modify_top(cxobj              *x0,
+		cxobj              *x1,
+		yang_spec          *yspec,
+		enum operation_type op)
+{
+    int        retval = -1;
+    char      *x1cname; /* child name */
+    cxobj     *x0c; /* base child */
+    cxobj     *x1c; /* mod child */
+    yang_stmt *yc;  /* yang child */
+
+    /* Assure top-levels are 'config' */
+    assert(x0 && strcmp(xml_name(x0),"config")==0);
+    assert(x1 && strcmp(xml_name(x1),"config")==0);
+
+    /* Special case if x1 is empty, top-level only <config/> */
+    if (!xml_child_nr(x1)){ /* base tree not empty */
+	if (xml_child_nr(x0))
+	    switch(op){ 
+	    case OP_DELETE:
+	    case OP_REMOVE:
+	    case OP_REPLACE:
+		x0c = NULL;
+		while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) 
+		    xml_purge(x0c);
+		break;
+	    default:
+		break;
+	    }
+	else /* base tree empty */
+	    switch(op){ 
+	    case OP_DELETE:
+		clicon_err(OE_XML, 0, "Object to delete does not exist");
+		break;
+	    default:
+		break;
+	    }
+    }
+    /* Loop through children of the modification tree */
+    x1c = NULL;
+    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+	x1cname = xml_name(x1c);
+	/* Get yang spec of the child */
+	if ((yc = yang_find_topnode(yspec, x1cname)) == NULL){
+	    clicon_err(OE_YANG, ENOENT, "No yang spec");
+	    goto done;
+	}
+	/* See if there is a corresponding node in the base tree */
+	if (match_base_child(x0, x1c, yc, &x0c) < 0)
+	    goto done;
+	if (text_modify(x0c, (yang_node*)yc, x0, x1c, op) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 
 /*! Modify database provided an xml tree and an operation
  *
@@ -896,9 +740,7 @@ text_modify(cxobj              *x0,
  * @param[in]  op     OP_MERGE: just add it. 
  *                    OP_REPLACE: first delete whole database
  *                    OP_NONE: operation attribute in xml determines operation
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [restconf-draft 13
-])
- * @param[in]  xadd   xml-tree to merge/replace. Top-level symbol is 'config'.
+ * @param[in]  x1     xml-tree to merge/replace. Top-level symbol is 'config'.
  *                    Should be empty or '<config/>' if delete?
  * @retval     0      OK
  * @retval     -1     Error
@@ -910,34 +752,21 @@ text_modify(cxobj              *x0,
  *   if (xmldb_put(h, "running", OP_MERGE, "/", xt) < 0)
  *     err;
  * @endcode
- */
+y */
 int
 text_put(xmldb_handle        xh,
 	 char               *db, 
 	 enum operation_type op,
-	 char               *api_path,
-	 cxobj              *xmod) 
+	 cxobj              *x1) 
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);
     char               *dbfile = NULL;
     int                 fd = -1;
     cbuf               *cb = NULL;
-    cbuf               *xpcb = NULL; /* xpath cbuf */
     yang_spec          *yspec;
-    cxobj              *xt = NULL;
-    cxobj              *xbase = NULL;
-    cxobj              *xbasep = NULL; /* parent */
-    cxobj              *xc;
-    cxobj              *xnew = NULL;
-    yang_node          *y = NULL;
+    cxobj              *x0 = NULL;
 
-#if 0 /* Just ignore */
-    if ((op==OP_DELETE || op==OP_REMOVE) && xmod){
-	clicon_err(OE_XML, 0, "xml tree should be NULL for REMOVE/DELETE");
-	goto done;
-    }
-#endif
     if (text_db2file(th, db, &dbfile) < 0)
 	goto done;
     if (dbfile==NULL){
@@ -953,56 +782,41 @@ text_put(xmldb_handle        xh,
 	goto done;
     }    
     /* Parse file into XML tree */
-    if ((clicon_xml_parse_file(fd, &xt, "</config>")) < 0)
+    if ((clicon_xml_parse_file(fd, &x0, "</config>")) < 0)
 	goto done;
     /* Always assert a top-level called "config". 
        To ensure that, deal with two cases:
        1. File is empty <top/> -> rename top-level to "config" */
-    if (xml_child_nr(xt) == 0){ 
-	if (xml_name_set(xt, "config") < 0)
+    if (xml_child_nr(x0) == 0){ 
+	if (xml_name_set(x0, "config") < 0)
 	    goto done;     
     }
     /* 2. File is not empty <top><config>...</config></top> -> replace root */
     else{ 
-	assert(xml_child_nr(xt)==1);
-	if (xml_rootchild(xt, 0, &xt) < 0)
+	/* There should only be one element and called config */
+	if (singleconfigroot(x0, &x0) < 0)
 	    goto done;
     }
-    /* here xt looks like: <config>...</config> */
-    /* If xpath find first occurence or api-path (this is where we apply xml) */
-    if (api_path){
-	if (text_apipath_modify(api_path, xt, op, yspec, &xbase, &xbasep, &y) < 0)
-	    goto done;
-    }
-    else{
-	xbase = xt; /* defer y since x points to config */
-	xbasep = xml_parent(xt); /* NULL */
-	assert(strcmp(xml_name(xbase),"config")==0);
-    }
+    assert(strcmp(xml_name(x0),"config")==0);
+    /* Here x0 looks like: <config>...</config> */
+    /* Validate existing config tree */
+    if (xml_apply(x0, CX_ELMNT, xml_spec_populate, yspec) < 0)
+       goto done;
+
+    /* Validate modification tree */
+    if (xml_apply(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
+       goto done;
 
     /* 
-     * Modify base tree x with modification xmod
+     * Modify base tree x with modification x1
      */
-    if (op == OP_DELETE || op == OP_REMOVE){
-	/* special case if top-level, dont purge top-level */
-	if (xt == xbase){
-	    xc = NULL;
-	    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
-		xml_purge(xc);
-		xc = NULL; /* reset iterator */
-	    }
-	}
-	else
-	    if (xbase)
-		xml_purge(xbase);
-    }
-    else 
-	if (text_modify(xbase, xbasep, xmod, op, (yang_node*)y, yspec) < 0)
-	    goto done;
-    /* Remove NONE nodes if all subs recursively are also NONE */
-    if (xml_tree_prune_flagged(xt, XML_FLAG_NONE, 0, NULL) <0)
+    if (text_modify_top(x0, x1, yspec, op) < 0)
 	goto done;
-    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
+
+    /* Remove NONE nodes if all subs recursively are also NONE */
+    if (xml_tree_prune_flagged(x0, XML_FLAG_NONE, 0, NULL) <0)
+	goto done;
+    if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
 		  (void*)XML_FLAG_NONE) < 0)
 	goto done;
     // output:
@@ -1011,7 +825,7 @@ text_put(xmldb_handle        xh,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_xml2cbuf(cb, xt, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, x0, 0, 1) < 0)
 	goto done;
     /* Reopen file in write mode */
     close(fd);
@@ -1019,7 +833,7 @@ text_put(xmldb_handle        xh,
 	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
 	goto done;
     }    
-    if (write(fd, cbuf_get(cb), cbuf_len(cb)+1) < 0){
+    if (write(fd, cbuf_get(cb), cbuf_len(cb)) < 0){
 	clicon_err(OE_UNIX, errno, "write(%s)", dbfile);
 	goto done;
     }
@@ -1031,12 +845,8 @@ text_put(xmldb_handle        xh,
 	close(fd);
     if (cb)
 	cbuf_free(cb);
-    if (xpcb)
-	cbuf_free(xpcb);
-    if (xt)
-	xml_free(xt);
-    if (xnew)
-	xml_free(xnew);
+    if (x0)
+	xml_free(x0);
     return retval;
 }
 

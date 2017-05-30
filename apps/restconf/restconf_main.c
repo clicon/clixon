@@ -141,7 +141,7 @@ request_process(clicon_handle h,
     int    auth = 0;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    path = FCGX_GetParam("DOCUMENT_URI", r->envp);
+    path = FCGX_GetParam("REQUEST_URI", r->envp);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
@@ -359,7 +359,7 @@ main(int    argc,
 	    goto done;
 	}
 	clicon_debug(1, "------------");
-	if ((path = FCGX_GetParam("DOCUMENT_URI", r->envp)) != NULL){
+	if ((path = FCGX_GetParam("REQUEST_URI", r->envp)) != NULL){
 	    if (strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)) == 0 ||
 		strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)-1) == 0)
 		request_process(h, r);

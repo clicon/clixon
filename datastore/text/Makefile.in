@@ -64,7 +64,7 @@ all:	 $(PLUGIN)
 -include $(DESTDIR)$(datarootdir)/clixon/clixon.mk
 
 $(PLUGIN): $(SRC)
-	$(CC) $(CPPFLAGS) $(INCLUDES) $(CFLAGS) -shared -o $@ -lc $^ $(LIBS)
+	$(CC) $(CPPFLAGS) $(INCLUDES) $(CFLAGS) $(LDFLAGS) -shared -o $@ -lc $^ $(LIBS)
 
 clean:
 	rm -f $(PLUGIN) $(OBJS) *.core
@@ -80,12 +80,12 @@ distclean: clean
 
 install: $(PLUGIN)
 	install -d $(DESTDIR)$(clixon_LIBDIR)/xmldb
-	install $(PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/xmldb; 
+	install $(PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/xmldb
 
 install-include:
 
 uninstall: 
-	rm -rf $(DESTDIR)$(clixon_LIBDIR)/xmldb/$(PLUGIN); 
+	rm -rf $(DESTDIR)$(clixon_LIBDIR)/xmldb/$(PLUGIN)
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -

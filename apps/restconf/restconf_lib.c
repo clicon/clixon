@@ -69,11 +69,12 @@ notfound(FCGX_Request *r)
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
     FCGX_FPrintF(r->out, "Status: 404\r\n"); /* 404 not found */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Clixon Not Found</h1>\n");
+    FCGX_FPrintF(r->out, "<h1>Not Found</h1>\n");
     FCGX_FPrintF(r->out, "The requested URL %s was not found on this server.\n",
 		 path);
     return 0;
 }
+
 int
 badrequest(FCGX_Request *r)
 {
@@ -86,6 +87,16 @@ badrequest(FCGX_Request *r)
     FCGX_FPrintF(r->out, "<h1>Clixon Bad request/h1>\n");
     FCGX_FPrintF(r->out, "The requested URL %s or data is in some way badly formed.\n",
 		 path);
+    return 0;
+}
+
+int
+conflict(FCGX_Request *r)
+{
+    clicon_debug(1, "%s", __FUNCTION__);
+    FCGX_FPrintF(r->out, "Status: 409\r\n"); /* 409 Conflict */
+    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(r->out, "<h1>Data resource already exists</h1>\n");
     return 0;
 }
 

@@ -119,9 +119,12 @@ format_str2int(char *str)
     return fv?fv->fv_int:-1;
 }
 
-/*! Encode a clicon netconf message
+/*! Encode a clicon netconf message using variable argument lists
  * @param[in] format  Variable agrument list format an XML netconf string
  * @retval    msg  Clicon message to send to eg clicon_msg_send()
+ * @note if format includes %, they will be expanded according to printf rules.
+ *       if this is a problem, use ("%s", xml) instaead of (xml)
+ *       Notaly this may an issue of RFC 3896 encoded strings
  */
 struct clicon_msg *
 clicon_msg_encode(char *format, ...)

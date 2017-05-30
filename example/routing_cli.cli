@@ -4,9 +4,9 @@ CLICON_PROMPT="%U@%H> ";
 CLICON_PLUGIN="routing_cli";
 
 # Note, when switching to PT, change datamodel to only @datamodel
-set @datamodel:ietf-ip, cli_merge();
-
-#delete("Delete a configuration item") @datamodel:ietf-ipv4-unicast-routing, cli_del();
+set @datamodel:ietf-ip, cli_set();
+merge @datamodel:ietf-ip, cli_merge();
+create @datamodel:ietf-ip, cli_create();
 delete("Delete a configuration item") @datamodel:ietf-ip, cli_del();
 
 validate("Validate changes"), cli_validate();

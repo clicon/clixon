@@ -1,4 +1,7 @@
 # Clixon CHANGELOG
+	
+- removed api_path extension from internal netconf	
+- Strings in xmldb_put not properly encoded, eg eth/0 became eth.00000
 
 ## 3.3.0
 

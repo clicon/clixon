@@ -82,6 +82,9 @@ int cli_setv(clicon_handle h, cvec *vars, cvec *argv);
 int cli_merge(clicon_handle h, cvec *vars, cvec *argv);
 int cli_mergev(clicon_handle h, cvec *vars, cvec *argv);
 
+int cli_create(clicon_handle h, cvec *vars, cvec *argv);
+int cli_remove(clicon_handle h, cvec *vars, cvec *argv);
+
 int cli_del(clicon_handle h, cvec *vars, cvec *argv);
 int cli_delv(clicon_handle h, cvec *vars, cvec *argv);
 

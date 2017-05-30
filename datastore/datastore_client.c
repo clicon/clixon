@@ -89,7 +89,7 @@ usage(char *argv0)
 		"\t-m <module>\tYang module. Mandatory\n"
 		"and command is either:\n"
 		"\tget <xpath>\n"
-		"\tput (merge|replace|create|delete|remove) <api_path> <xml>\n"
+		"\tput (merge|replace|create|delete|remove) <xml>\n"
 		"\tcopy <todb>\n"
 		"\tlock <pid>\n"
 		"\tunlock\n"
@@ -220,7 +220,7 @@ main(int argc, char **argv)
 	fprintf(stdout, "\n");
     }
     else if (strcmp(cmd, "put")==0){
-	if (argc != 3 && argc != 4){
+	if (argc != 3){
 	    clicon_err(OE_DB, 0, "Unexpected nr of args: %d", argc);
 	    usage(argv0);
 	}
@@ -228,13 +228,11 @@ main(int argc, char **argv)
 	    clicon_err(OE_DB, 0, "Unrecognized operation: %s", argv[1]);
 	    usage(argv0);
 	}
-	if (argc == 4){
-	    if (clicon_xml_parse_str(argv[3], &xt) < 0)
-		goto done;
-	    if (xml_rootchild(xt, 0, &xt) < 0)
-		goto done;
-	}
-	if (xmldb_put(h, db, op, argv[2], xt) < 0)
+	if (clicon_xml_parse_str(argv[2], &xt) < 0)
+	    goto done;
+	if (xml_rootchild(xt, 0, &xt) < 0)
+	    goto done;
+	if (xmldb_put(h, db, op, xt) < 0)
 	    goto done;
     }
     else if (strcmp(cmd, "copy")==0){
