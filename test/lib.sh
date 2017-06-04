@@ -5,7 +5,9 @@ testnname=
 clixon_cf=/usr/local/etc/routing.conf
 # error and exit, arg is optional extra errmsg
 err(){
-  echo "Error in Test$testnr [$testname] $1"
+  echo "Error in Test$testnr [$testname]:"
+  echo "Expected: $1"
+  echo "Received: $2"
   exit $testnr
 }
 
@@ -28,7 +30,7 @@ expectfn(){
   fi
   ret=`$cmd`
   if [ $? -ne 0 ]; then
-    err
+    err "wrong args"
   fi
   # Match if both are empty string
   if [ -z "$ret" -a -z "$expect" ]; then
@@ -40,12 +42,12 @@ expectfn(){
 #  echo "expect:\"$expect\""
 #  echo "match:\"$match\""
   if [ -z "$match" ]; then
-      err "Expected:\"$expect\" Got:\"$ret\""
+      err $expect "$ret"
   fi
   if [ -n "$expect2" ]; then
       match=`echo "$ret" | grep -EZo "$expect2"`
       if [ -z "$match" ]; then
-	  err "Expected:\"$expect\" Got: \"$ret\""
+	  err $expect "$ret"
       fi
   fi
 }
@@ -71,7 +73,7 @@ EOF
 #  echo "expect:\"$expect\""
 #  echo "match:\"$match\""
   if [ -z "$match" ]; then
-      err "Expected:\"$expect\" Got: \"$ret\""
+      err "$expect" "$ret"
   fi
 }
 
@@ -88,7 +90,7 @@ expectwait(){
     read ret
     match=$(echo "$ret" | grep -Eo "$expect");
     if [ -z "$match" ]; then
-	err "\nExpected:\t\"$expect\"\nGot:\t\"$ret\""
+	err $expect "$ret"
     fi
     break
   done

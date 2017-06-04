@@ -900,7 +900,6 @@ kv_lock(xmldb_handle xh,
 {
     int retval = -1;
     //    struct kv_handle *kh = handle(xh);
-    fprintf(stderr, "%s %s %d\n", __FUNCTION__, db, pid);
     if (strcmp("running", db) == 0)
 	_running_locked = pid;
     else if (strcmp("candidate", db) == 0)
@@ -912,8 +911,6 @@ kv_lock(xmldb_handle xh,
 	goto done;
     }
     clicon_debug(1, "%s: locked by %u",  db, pid);
-    fprintf(stderr, "running:%d candidate:%d startup:%d\n", 
-	    _running_locked, _candidate_locked, _startup_locked);
     retval = 0;
  done:
     return retval;
@@ -933,7 +930,6 @@ kv_unlock(xmldb_handle xh,
 {
     int retval = -1;
     //    struct kv_handle *kh = handle(xh);
-    fprintf(stderr, "%s %s\n", __FUNCTION__, db);
     if (strcmp("running", db) == 0)
 	_running_locked = 0;
     else if (strcmp("candidate", db) == 0)
@@ -984,9 +980,6 @@ kv_islocked(xmldb_handle xh,
     int retval = -1;
     //    struct kv_handle *kh = handle(xh);
 
-    fprintf(stderr, "%s %s\n", __FUNCTION__, db);
-    fprintf(stderr, "running:%d candidate:%d startup:%d\n", 
-	    _running_locked, _candidate_locked, _startup_locked);
     if (strcmp("running", db) == 0)
 	retval = _running_locked;
     else if (strcmp("candidate", db) == 0)
