@@ -168,12 +168,12 @@ xml_parse_bslash1(struct xml_parse_yacc_arg *ya,
     cxobj *xc;
 
     if (strcmp(xml_name(x), name)){
-	clicon_err(OE_XML, 0, "Sanity check failed: %s vs %s", 
+	clicon_err(OE_XML, 0, "XML parse sanity check failed: %s vs %s", 
 		xml_name(x), name);
 	goto done;
     }
     if (xml_namespace(x)!=NULL){
-	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s\n", 
+	clicon_err(OE_XML, 0, "XML parse sanity check failed: %s:%s vs %s\n", 
 		xml_namespace(x), xml_name(x), name);
 	goto done;
     }

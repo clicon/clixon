@@ -1473,8 +1473,10 @@ api_path2xml_vec(char              **vec,
     yang_stmt *y = NULL;
 
     if ((name = vec[0]) == NULL){
-	*xpathp = x0;
-	*ypathp = y0;
+	if (xpathp)
+	    *xpathp = x0;
+	if (ypathp)
+	    *ypathp = y0;
 	return 0;
     } /* E.g "x=1,2" -> name:x restval=1,2 */
     /* restval is RFC 3896 encoded */

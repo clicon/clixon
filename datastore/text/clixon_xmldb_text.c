@@ -773,6 +773,11 @@ text_put(xmldb_handle        xh,
 	clicon_err(OE_XML, 0, "dbfile NULL");
 	goto done;
     }
+    if (x1 && strcmp(xml_name(x1),"config")!=0){
+	clicon_err(OE_XML, 0, "Top-level symbol of modification tree is %s, expected \"config\"",
+		   xml_name(x1));
+	goto done;
+    }
     if ((yspec =  th->th_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
@@ -797,8 +802,13 @@ text_put(xmldb_handle        xh,
 	if (singleconfigroot(x0, &x0) < 0)
 	    goto done;
     }
-    assert(strcmp(xml_name(x0),"config")==0);
     /* Here x0 looks like: <config>...</config> */
+    if (strcmp(xml_name(x0),"config")!=0){
+	clicon_err(OE_XML, 0, "Top-level symbol is %s, expected \"config\"",
+		   xml_name(x0));
+	goto done;
+    }
+
     /* Validate existing config tree */
     if (xml_apply(x0, CX_ELMNT, xml_spec_populate, yspec) < 0)
        goto done;

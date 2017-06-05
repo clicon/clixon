@@ -408,7 +408,7 @@ api_data_put(clicon_handle h,
     cbuf      *cbx = NULL;
     cxobj     *x;
     cxobj     *xbot = NULL;
-    cxobj     *xtop;
+    cxobj     *xtop = NULL;
     cxobj     *xp;
     yang_node *y = NULL;
     yang_spec *yspec;
