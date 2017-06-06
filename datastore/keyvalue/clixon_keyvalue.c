@@ -615,7 +615,6 @@ kv_get(xmldb_handle  xh,
     struct db_pair *pairs;
     cxobj          *xt = NULL;
 
-
     clicon_debug(2, "%s", __FUNCTION__);
     if (kv_db2file(kh, db, &dbfile) < 0)
 	goto done;
@@ -761,8 +760,39 @@ put(char               *dbfile,
 	    goto done;
 	}
     case OP_REMOVE:
-	if (db_del(dbfile, xk) < 0)
+	switch (ys->ys_keyword){
+	case Y_LIST:
+	case Y_CONTAINER:{
+	    struct db_pair *pairs;
+	    int             npairs;
+	    cbuf           *cbrx;
+	    int             i;
+
+	    if ((cbrx = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cbrx, "^%s.*$", xk);
+	    if ((npairs = db_regexp(dbfile, cbuf_get(cbrx), __FUNCTION__, 
+				    &pairs, 0)) < 0)
+		goto done;
+	    /* Translate to complete xml tree */
+	    for (i = 0; i < npairs; i++) 
+		if (db_del(dbfile, pairs[i].dp_key) < 0)
+		    goto done;
+	    if (cbrx)
+		cbuf_free(cbrx);
+	    /* Skip recursion, we have deleted whole subtree */
+	    retval = 0;
 	    goto done;
+	    break;
+	}
+	default:
+	    if (db_del(dbfile, xk) < 0)
+		goto done;
+	    break;
+	}
+
 	break;
     case OP_NONE:
 	break;
@@ -782,6 +812,7 @@ put(char               *dbfile,
 	cbuf_free(cbxk);
     if (bodyenc)
 	free(bodyenc);
+    unchunk_group(__FUNCTION__);
     return retval;
 }
 

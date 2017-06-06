@@ -44,8 +44,8 @@ expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate
 new "Delete eth/0/0 using none config"
 expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="delete"><name>eth/0/0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>'  "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "Check deleted eth/0/0"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data><config><interfaces/></config></data></rpc-reply>]]>]]>$'
+#new "Check deleted eth/0/0"
+#expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data><config><interfaces/></config></data></rpc-reply>]]>]]>$'
 
 new "Re-Delete eth/0/0 using none should generate error"
 expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="delete"><name>eth/0/0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>'  "^<rpc-reply><rpc-error>"

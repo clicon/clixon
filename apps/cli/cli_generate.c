@@ -275,9 +275,24 @@ yang2cli_var_sub(clicon_handle h,
     if (helptext)
 	cprintf(cb0, "(\"%s\")", helptext);
     if (completion){
-	if (cli_expand_var_generate(h, ys, cvtype, cb0, 
-				    options, fraction_digits) < 0)
-	    goto done;
+	if (type && (strcmp(type, "leafref") == 0)){
+	    yang_stmt *ypath;
+
+	    if ((ypath = yang_find((yang_node*)ytype, Y_PATH, NULL)) == NULL){
+		clicon_err(OE_XML, 0, "leafref should have path sub");
+		goto done;
+	    }
+	    clicon_debug(1, "%s ypath:%s\n", __FUNCTION__, ypath->ys_argument);
+	    cprintf(cb0, "|<%s:%s",  ys->ys_argument, 
+		    cv_type2str(cvtype));
+	    cprintf(cb0, " %s(\"candidate\",\"%s\")>",
+		    GENERATE_EXPAND_XMLDB,
+		    ypath->ys_argument);
+	}
+	else
+	    if (cli_expand_var_generate(h, ys, cvtype, cb0, 
+					options, fraction_digits) < 0)
+		goto done;
 	if (helptext)
 	    cprintf(cb0, "(\"%s\")", helptext);
 	cprintf(cb0, ")");

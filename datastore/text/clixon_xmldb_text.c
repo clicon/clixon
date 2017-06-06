@@ -308,6 +308,7 @@ singleconfigroot(cxobj  *xt,
 	if (xml_free(xt) < 0)
 	    goto done;
 	*xp = x;
+	break;
     }
     retval = 0;
  done:
@@ -1034,6 +1035,8 @@ text_delete(xmldb_handle xh,
     }
     retval = 0;
  done:
+    if (filename)
+	free(filename);
     return retval;
 }
 

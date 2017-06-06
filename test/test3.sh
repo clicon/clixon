@@ -49,6 +49,8 @@ expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces' ""
 new "Check empty config"
 expectfn "curl -sSG http://localhost/restconf/data" "^null$"
 
+
+
 new "Add interfaces subtree eth/0/0 using POST"
 expectfn 'curl -sS -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' ""
 
@@ -69,9 +71,9 @@ $'
 new "delete eth/0/0"
 expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
-new "Check deleted eth/0/0"
-expectfn 'curl -sS -G http://localhost/restconf/data' '{"interfaces": null}
-$'
+#new "Check deleted eth/0/0"
+#expectfn 'curl -sS -G http://localhost/restconf/data' '{"interfaces": null}
+#$'
 
 new "Re-Delete eth/0/0 using none should generate error"
 expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "Not Found"

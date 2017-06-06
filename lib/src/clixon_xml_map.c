@@ -934,7 +934,7 @@ api_path_fmt2api_path(char  *api_path_fmt,
     char *strenc=NULL;
 
     /* Sanity check */
-#if 1
+#if 0
     j = 0; /* Count % */
     for (i=0; i<strlen(api_path_fmt); i++)
 	if (api_path_fmt[i] == '%')
@@ -1021,7 +1021,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
     int     skip = 0;
 
     /* Sanity check: count '%' */
-#if 1
+#if 0
     j = 0; /* Count % */
     for (i=0; i<strlen(api_path_fmt); i++)
 	if (api_path_fmt[i] == '%')
