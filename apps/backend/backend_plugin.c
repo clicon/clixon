@@ -155,6 +155,7 @@ static int
 backend_plugin_unload(clicon_handle  h, 
 		      struct plugin *plg)
 {
+    int   retval=-1;
     char *error;
 
     /* Call exit function is it exists */
@@ -165,12 +166,14 @@ backend_plugin_unload(clicon_handle  h,
     if (dlclose(plg->p_handle) != 0) {
 	error = (char*)dlerror();
 	clicon_err(OE_UNIX, 0, "dlclose: %s", error?error:"Unknown error");
-	return -1;
+	goto done;
 	/* Just report */
     }
     else 
 	clicon_debug(1, "Plugin '%s' unloaded.", plg->p_name);
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 
@@ -357,6 +360,7 @@ backend_plugin_load_dir(clicon_handle h,
 	    goto quit;
 	if (plugin_append(new) < 0)
 	    goto quit;
+	free(new);
     }  
 
     /* Now load the rest. Note plugins is the global variable */
@@ -371,6 +375,7 @@ backend_plugin_load_dir(clicon_handle h,
 	/* Append to 'plugins' */
 	if (plugin_append(new) < 0)
 	    goto quit;
+	free(new);
     }
     
     /* All good. */

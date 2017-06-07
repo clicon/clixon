@@ -60,37 +60,37 @@ run(){
 
     # Whole tree operations
     new "datastore $name put all replace"
-    expectfn "$datastore $conf put replace / $db" ""
+    expectfn "$datastore $conf put replace $db" ""
 
     new "datastore $name get"
     expectfn "$datastore $conf get /" "^$db$"
 
     new "datastore $name put all remove"
-    expectfn "$datastore $conf put remove /"
+    expectfn "$datastore $conf put remove <config/>"
 
     new "datastore $name get"
     expectfn "$datastore $conf get /" "^<config/>$"
 
     new "datastore $name put all merge"
-    expectfn "$datastore $conf put merge / $db" ""
+    expectfn "$datastore $conf put merge $db" ""
 
     new "datastore $name get"
     expectfn "$datastore $conf get /" "^$db$"
 
     new "datastore $name put all delete"
-    expectfn "$datastore $conf put remove /"
+    expectfn "$datastore $conf put remove <config/>"
 
     new "datastore $name get"
     expectfn "$datastore $conf get /" "^<config/>$"
 
     new "datastore $name put all create"
-    expectfn "$datastore $conf put create / $db" ""
+    expectfn "$datastore $conf put create $db" ""
 
     new "datastore $name get"
     expectfn "$datastore $conf get /" "^$db$"
 
     new "datastore $name put top create"
-    expectfn "$datastore $conf put create / <config><x/></config>" "" # error
+    expectfn "$datastore $conf put create <config><x/></config>" "" # error
 
     # Single key operations
     # leaf
@@ -101,43 +101,43 @@ run(){
     expectfn "$datastore $conf init" ""
 
     new "datastore $name create leaf"
-    expectfn "$datastore $conf put create /x/y=1,3/c <c>newentry</c>"
+    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
 
     new "datastore $name create leaf"
-    expectfn "$datastore $conf put create /x/y=1,3/c <c>newentry</c>"
+    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
 
     new "datastore $name delete leaf"
-    expectfn "$datastore $conf put delete /x/y=1,3"
+    expectfn "$datastore $conf put delete <config><x><y><a>1</a><b>3</b></y></x></config>"
 
     new "datastore $name replace leaf"
-    expectfn "$datastore $conf put create /x/y=1,3/c <c>newentry</c>"
+    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
 
     new "datastore $name remove leaf"
-    expectfn "$datastore $conf put remove /x/g"
+    expectfn "$datastore $conf put remove <config><x><g/></x></config>"
 
     new "datastore $name remove leaf"
-    expectfn "$datastore $conf put remove /x/y=1,3/c"
+    expectfn "$datastore $conf put remove <config><x><y><a>1</a><b>3</b><c/></y></x></config>"
 
     new "datastore $name delete leaf"
-    expectfn "$datastore $conf put delete /x/g"
+    expectfn "$datastore $conf put delete <config><x><g/></x></config>"
 
     new "datastore $name merge leaf"
-    expectfn "$datastore $conf put merge /x/g <g>nalle</g>"
+    expectfn "$datastore $conf put merge <config><x><g>nalle</g></x></config>"
 
     new "datastore $name replace leaf"
-    expectfn "$datastore $conf put replace /x/g <g>nalle</g>"
+    expectfn "$datastore $conf put replace <config><x><g>nalle</g></x></config>"
 
     new "datastore $name merge leaf"
-    expectfn "$datastore $conf put merge /x/y=1,3/c <c>newentry</c>"
+    expectfn "$datastore $conf put merge <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
 
     new "datastore $name replace leaf"
-    expectfn "$datastore $conf put replace /x/y=1,3/c <c>newentry</c>"
+    expectfn "$datastore $conf put replace <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
 
     new "datastore $name create leaf"
-    expectfn "$datastore $conf put create /x/h <h><j>aaa</j></h>"
+    expectfn "$datastore $conf put create <config><x><h><j>aaa</j></h></x></config>"
 
     new "datastore $name create leaf"
-    expectfn "$datastore $conf put create /x/y=1,3/c <c>newentry</c>"
+    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
 
 #leaf-list
     

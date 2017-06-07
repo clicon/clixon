@@ -34,8 +34,7 @@
  */
 
 /*
- * See draft-ietf-netconf-restconf-13.txt [draft]
- * See draft-ietf-netconf-restconf-17.txt [draft]
+ * See rfc8040
 
  * sudo apt-get install libfcgi-dev
  * gcc -o fastcgi fastcgi.c -lfcgi
@@ -120,7 +119,7 @@ Mapping netconf error-tag -> status code
 #include "restconf_methods.h"
 
 /*! REST OPTIONS method
- * According to restconf (Sec 3.5.1.1 in [draft])
+ * According to restconf
  * @param[in]  h      Clixon handle
  * @param[in]  r      Fastcgi request handle
  * @code
@@ -227,7 +226,7 @@ api_data_head(clicon_handle h,
 }
 
 /*! REST GET method
- * According to restconf (Sec 3.5.1.1 in [draft])
+ * According to restconf 
  * @param[in]  h      Clixon handle
  * @param[in]  r      Fastcgi request handle
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
@@ -259,77 +258,23 @@ api_data_get(clicon_handle h,
     return api_data_get_gen(h, r, pcvec, pi, qvec, 0);
 }
 
-/*! Generic edit-config method: PUT/POST/PATCH
- */
-static int
-api_data_edit(clicon_handle h,
-	      FCGX_Request *r, 
-	      char         *api_path, 
-	      cvec         *pcvec, 
-	      int           pi,
-	      cvec         *qvec, 
-	      char         *data,
-	      enum operation_type operation)
-{
-    int        retval = -1;
-    int        i;
-    cxobj     *xdata = NULL;
-    cbuf      *cbx = NULL;
-    cxobj     *x;
-
-    clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
-		 __FUNCTION__, 
-		 api_path, data);
-    for (i=0; i<pi; i++)
-	api_path = index(api_path+1, '/');
-    /* Parse input data as json into xml */
-    if (json_parse_str(data, &xdata) < 0){
-	clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
-	goto done;
-    }
-    if ((cbx = cbuf_new()) == NULL)
-	goto done;
-    cprintf(cbx, "<config>");
-    x = NULL;
-    while ((x = xml_child_each(xdata, x, -1)) != NULL) {
-	if (clicon_xml2cbuf(cbx, x, 0, 0) < 0)
-	    goto done;	
-    }
-    cprintf(cbx, "</config>");
-    clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
-    if (clicon_rpc_edit_config(h, "candidate", 
-			       operation,
-			       api_path,
-			       cbuf_get(cbx)) < 0){
-	notfound(r);
-	goto done;
-    }
-    
-    if (clicon_rpc_commit(h) < 0)
-	goto done;
-    FCGX_SetExitStatus(201, r->out); /* Created */
-    FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (xdata)
-	xml_free(xdata);
-     if (cbx)
-	cbuf_free(cbx); 
-   return retval;
-}
-
-
 /*! REST POST  method 
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
+ * @note We map post to edit-config create. 
  POST:
+   target resource type is datastore --> create a top-level resource
+   target resource type is  data resource --> create child resource
+
+   The message-body MUST contain exactly one instance of the
+   expected data resource.  The data model for the child tree is the
+   subtree, as defined by YANG for the child resource.
+
    If the POST method succeeds, a "201 Created" status-line is returned
    and there is no response message-body.  A "Location" header
    identifying the child resource that was created MUST be present in
@@ -338,7 +283,6 @@ api_data_edit(clicon_handle h,
    If the data resource already exists, then the POST request MUST fail
    and a "409 Conflict" status-line MUST be returned.
  * Netconf:  <edit-config> (nc:operation="create") | invoke an RPC operation        * @example
- 
  */
 int
 api_data_post(clicon_handle h,
@@ -349,13 +293,90 @@ api_data_post(clicon_handle h,
 	      cvec         *qvec, 
 	      char         *data)
 {
-    return api_data_edit(h, r, api_path, pcvec, pi, qvec, data, OP_CREATE);
+    enum operation_type op = OP_CREATE;
+    int        retval = -1;
+    int        i;
+    cxobj     *xdata = NULL;
+    cxobj     *xtop = NULL; /* xpath root */
+    cbuf      *cbx = NULL;
+    cxobj     *xbot = NULL;
+    cxobj     *x;
+    yang_node *y = NULL;
+    yang_spec *yspec;
+    cxobj     *xa;
+
+    clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
+		 __FUNCTION__, 
+		 api_path, data);
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    for (i=0; i<pi; i++)
+	api_path = index(api_path+1, '/');
+    /* Create config top-of-tree */
+    if ((xtop = xml_new("config", NULL)) == NULL)
+	goto done;
+    xbot = xtop;
+    if (api_path && api_path2xml(api_path, yspec, xtop, &xbot, &y) < 0)
+	goto done;
+    /* Parse input data as json into xml */
+    if (json_parse_str(data, &xdata) < 0){
+	clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
+	goto done;
+    }
+    /* Add xdata to xbot */
+    x = NULL;
+    while ((x = xml_child_each(xdata, x, CX_ELMNT)) != NULL) {
+	if ((xa = xml_new("operation", x)) == NULL)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (xml_value_set(xa,  xml_operation2str(op)) < 0)
+	    goto done;
+	if (xml_addsub(xbot, x) < 0)
+	    goto done;
+    }
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
+    if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
+	goto done;
+    clicon_debug(1, "%s xml: %s",__FUNCTION__, cbuf_get(cbx));
+    if (clicon_rpc_edit_config(h, "candidate", 
+			       OP_NONE,
+			       cbuf_get(cbx)) < 0){
+	//	notfound(r); /* XXX */
+	conflict(r);
+	goto done;
+    }
+    if (clicon_rpc_validate(h, "candidate") < 0){
+	if (clicon_rpc_discard_changes(h) < 0)
+	    goto done;
+	badrequest(r);
+	retval = 0;
+	goto done;
+    }
+    if (clicon_rpc_commit(h) < 0)
+	goto done;
+    FCGX_SetExitStatus(201, r->out); /* Created */
+    FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
+    // XXX api_path can be null    FCGX_FPrintF(r->out, "Location: %s\r\n", api_path);
+    FCGX_FPrintF(r->out, "\r\n");
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xtop)
+	xml_free(xtop);
+    if (xdata)
+	xml_free(xdata);
+     if (cbx)
+	cbuf_free(cbx); 
+   return retval;
 }
 
 /*! Generic REST PUT  method 
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
@@ -379,14 +400,96 @@ api_data_put(clicon_handle h,
 	     cvec         *qvec, 
 	     char         *data)
 {
-    /* XXX: OP_CREATE? */
-    return api_data_edit(h, r, api_path, pcvec, pi, qvec, data, OP_REPLACE);
+    int        retval = -1;
+    enum operation_type op = OP_REPLACE;
+    int        i;
+    cxobj     *xdata = NULL;
+    cbuf      *cbx = NULL;
+    cxobj     *x;
+    cxobj     *xbot = NULL;
+    cxobj     *xtop = NULL;
+    cxobj     *xp;
+    yang_node *y = NULL;
+    yang_spec *yspec;
+    cxobj     *xa;
+
+    clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
+		 __FUNCTION__, 
+		 api_path, data);
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    for (i=0; i<pi; i++)
+	api_path = index(api_path+1, '/');
+    /* Create config top-of-tree */
+    if ((xtop = xml_new("config", NULL)) == NULL)
+	goto done;
+    xbot = xtop;
+    if (api_path && api_path2xml(api_path, yspec, xtop, &xbot, &y) < 0)
+	goto done;
+    /* Parse input data as json into xml */
+    if (json_parse_str(data, &xdata) < 0){
+	clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
+	goto done;
+    }
+    if (xml_child_nr(xdata) != 1){
+	badrequest(r);
+	retval = 0;
+	goto done;
+    }
+    x = xml_child_i(xdata,0);
+    if ((xa = xml_new("operation", x)) == NULL)
+	goto done;
+    xml_type_set(xa, CX_ATTR);
+    if (xml_value_set(xa,  xml_operation2str(op)) < 0)
+	goto done;
+    /* Replace xbot with x */    
+    xp = xml_parent(xbot);
+    xml_purge(xbot);
+    if (xml_addsub(xp, x) < 0) 	
+	goto done;
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
+    if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
+	goto done;
+    clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
+    if (clicon_rpc_edit_config(h, "candidate", 
+			       OP_NONE,
+			       cbuf_get(cbx)) < 0){
+	notfound(r);
+	goto done;
+    }
+    
+    if (clicon_rpc_validate(h, "candidate") < 0){
+	if (clicon_rpc_discard_changes(h) < 0)
+	    goto done;
+	badrequest(r);
+	retval = 0;
+	goto done;
+    }
+    if (clicon_rpc_commit(h) < 0)
+	goto done;
+    FCGX_SetExitStatus(201, r->out); /* Created */
+    FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
+    FCGX_FPrintF(r->out, "\r\n");
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xtop)
+	xml_free(xtop);
+    if (xdata)
+	xml_free(xdata);
+     if (cbx)
+	cbuf_free(cbx); 
+   return retval;
+
 }
 
 /*! Generic REST PATCH  method 
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
@@ -402,13 +505,15 @@ api_data_patch(clicon_handle h,
 	      cvec         *qvec, 
 	      char         *data)
 {
-    return api_data_edit(h, r, api_path, pcvec, pi, qvec, data, OP_MERGE);
+    badrequest(r);
+    //    return api_data_edit(h, r, api_path, pcvec, pi, qvec, data, OP_MERGE);
+    return 0;
 }
 
 /*! Generic REST DELETE method 
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
  * @param[in]  pi     Offset, where path starts
  * Example:
  *  curl -X DELETE http://127.0.0.1/restconf/data/interfaces/interface=eth0
@@ -422,14 +527,39 @@ api_data_delete(clicon_handle h,
 {
     int        retval = -1;
     int        i;
+    cxobj     *xtop = NULL; /* xpath root */
+    cxobj     *xbot = NULL;
+    cxobj     *xa;
+    cbuf      *cbx = NULL;
+    yang_node *y = NULL;
+    yang_spec *yspec;
+    enum operation_type op = OP_DELETE;
 
     clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
+    /* Create config top-of-tree */
+    if ((xtop = xml_new("config", NULL)) == NULL)
+	goto done;
+    xbot = xtop;
+    if (api_path && api_path2xml(api_path, yspec, xtop, &xbot, &y) < 0)
+	goto done;
+    if ((xa = xml_new("operation", xbot)) == NULL)
+	goto done;
+    xml_type_set(xa, CX_ATTR);
+    if (xml_value_set(xa,  xml_operation2str(op)) < 0)
+	goto done;
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
+    if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
+	goto done;
     if (clicon_rpc_edit_config(h, "candidate", 
-			       OP_DELETE, 
-			       api_path,
-			       "<config/>") < 0){
+			       OP_NONE, 
+			       cbuf_get(cbx)) < 0){
 	notfound(r);
 	goto done;
     }
@@ -440,6 +570,10 @@ api_data_delete(clicon_handle h,
     FCGX_FPrintF(r->out, "\r\n");
     retval = 0;
  done:
+     if (cbx)
+	cbuf_free(cbx); 
+    if (xtop)
+	xml_free(xtop);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
    return retval;
 }

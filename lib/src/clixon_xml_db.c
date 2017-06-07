@@ -374,7 +374,6 @@ xmldb_get(clicon_handle h,
  * @param[in]  op     OP_MERGE: just add it. 
  *                    OP_REPLACE: first delete whole database
  *                    OP_NONE: operation attribute in xml determines operation
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [restconf-draft 13])
  * @retval     0      OK
  * @retval     -1     Error
  * The xml may contain the "operation" attribute which defines the operation.
@@ -382,16 +381,14 @@ xmldb_get(clicon_handle h,
  *   cxobj     *xt;
  *   if (clicon_xml_parse_str("<a>17</a>", &xt) < 0)
  *     err;
- *   if (xmldb_put(xh, "running", OP_MERGE, NULL, xt) < 0)
+ *   if (xmldb_put(xh, "running", OP_MERGE, xt) < 0)
  *     err;
  * @endcode
- * @see xmldb_put_xkey  for single key
  */
 int 
 xmldb_put(clicon_handle       h, 
 	  char               *db, 
 	  enum operation_type op, 
-	  char               *api_path, 
 	  cxobj              *xt)
 {
     int               retval = -1;
@@ -417,12 +414,12 @@ xmldb_put(clicon_handle       h,
 	    if (clicon_xml2cbuf(cb, xt, 0, 0) < 0)
 		goto done;
 
-	clicon_log(LOG_WARNING, "%s: db:%s op:%d api_path:%s xml:%s", __FUNCTION__, 
-	       db, op, api_path, cbuf_get(cb));
+	clicon_log(LOG_WARNING, "%s: db:%s op:%d xml:%s", __FUNCTION__, 
+	       db, op, cbuf_get(cb));
 	cbuf_free(cb);
     }
 #endif
-    retval = xa->xa_put_fn(xh, db, op, api_path, xt);
+    retval = xa->xa_put_fn(xh, db, op, xt);
  done:
     return retval;
 }

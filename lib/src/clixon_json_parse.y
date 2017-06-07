@@ -224,7 +224,7 @@ json_current_body(struct clicon_json_yacc_arg *jy,
 */
 
  /* top: json -> value is also possible */
-json          : value J_EOF { clicon_debug(1,"json->object"); YYACCEPT; } 
+json          : value J_EOF { clicon_debug(2,"json->object"); YYACCEPT; } 
               ;
 
 value         : J_TRUE  { json_current_body(_JY, "true");}
@@ -259,6 +259,7 @@ valuelist     : value
 
 /* quoted string */
 string        : J_DQ ustring J_DQ {  clicon_debug(2,"string->\" ustring \"");$$=$2; }
+              | J_DQ J_DQ {  clicon_debug(2,"string->\" ustring \"");$$=strdup(""); }
               ;
 
 /* unquoted string */

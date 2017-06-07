@@ -99,10 +99,10 @@ expand_dbvar(void   *h,
 	     cvec  *helptexts)
 {
     int              retval = -1;
-    char            *xkfmt;
+    char            *api_path;
     char            *dbstr;    
     cxobj           *xt = NULL;
-    char            *xkpath = NULL;
+    char            *xpath = NULL;
     cxobj          **xvec = NULL;
     size_t           xlen = 0;
     cxobj           *x;
@@ -129,23 +129,24 @@ expand_dbvar(void   *h,
 	goto done;
     }
     if ((cv = cvec_i(argv, 1)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: Error when accessing argument <xkfmt>");
+	clicon_err(OE_PLUGIN, 0, "%s: Error when accessing argument <api_path>");
 	goto done;
     }
-    xkfmt = cv_string_get(cv);
-    /* xkfmt = /interface/%s/address/%s
+    api_path = cv_string_get(cv);
+    /* api_path = /interface/%s/address/%s
        --> ^/interface/eth0/address/.*$
        --> /interface/[name=eth0]/address
     */
-    if (xmlkeyfmt2xpath(xkfmt, cvv, &xkpath) < 0)
+    if (api_path_fmt2xpath(api_path, cvv, &xpath) < 0)
 	goto done;   
+    /* XXX read whole configuration, why not send xpath? */
     if (clicon_rpc_get_config(h, dbstr, "/", &xt) < 0)
     	goto done;
     /* One round to detect duplicates 
      * XXX The code below would benefit from some cleanup
      */
     j = 0;
-    if (xpath_vec(xt, xkpath, &xvec, &xlen) < 0) 
+    if (xpath_vec(xt, xpath, &xvec, &xlen) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	char *str;
@@ -190,8 +191,8 @@ expand_dbvar(void   *h,
 	free(xvec);
     if (xt)
 	xml_free(xt);
-    if (xkpath) 
-	free(xkpath);
+    if (xpath) 
+	free(xpath);
     return retval;
 }
 int

@@ -1,4 +1,10 @@
 # Clixon CHANGELOG
+	
+## 3.3.1
+
+- Fixed yang leafref cli completion.
+
+- Removed non-standard api_path extension from internal netconf so that the internal com.
 
 - Strings in xmldb_put not properly encoded, eg eth/0 became eth.00000
 	

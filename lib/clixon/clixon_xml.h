@@ -45,7 +45,7 @@ enum operation_type{ /* edit-configo */
     OP_REPLACE,/* replace or create config-data */
     OP_CREATE, /* create config data, error if exist */
     OP_DELETE, /* delete config data, error if it does not exist */
-    OP_REMOVE, /* delete config data */
+    OP_REMOVE, /* delete config data (not a netconf feature) */
     OP_NONE
 };
 

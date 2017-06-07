@@ -61,14 +61,15 @@ int xml_diff(yang_spec *yspec, cxobj *xt1, cxobj *xt2,
 	     cxobj ***first, size_t *firstlen, 
 	     cxobj ***second, size_t *secondlen, 
 	     cxobj ***changed1, cxobj ***changed2, size_t *changedlen);
-int yang2xmlkeyfmt(yang_stmt *ys, int inclkey, char **xkfmt);
-int xmlkeyfmt2key(char *xkfmt, cvec *cvv, char **xk);
-int xmlkeyfmt2xpath(char *xkfmt, cvec *cvv, char **xk);
+int yang2api_path_fmt(yang_stmt *ys, int inclkey, char **api_path_fmt);
+int api_path_fmt2api_path(char *api_path_fmt, cvec *cvv, char **api_path);
+int api_path_fmt2xpath(char *api_path_fmt, cvec *cvv, char **xpath);
 int xml_tree_prune_flagged(cxobj *xt, int flag, int test, int *upmark);
 int xml_default(cxobj *x, void  *arg);
 int xml_order(cxobj *x, void  *arg);
 int xml_sanity(cxobj *x, void  *arg);
 int api_path2xpath_cvv(yang_spec *yspec, cvec *cvv, int offset, cbuf *xpath);
 int api_path2xpath(yang_spec *yspec, char *api_path, cbuf *xpath);
+int api_path2xml(char *api_path, yang_spec *yspec, cxobj *xtop, cxobj **xpathp, yang_node **ypathp);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

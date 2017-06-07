@@ -50,15 +50,15 @@
  * The relations between the functions and formats are as follows:
  *
  * +-----------------+                   +-----------------+
- * | yang-stmt       |    yang2xmlkeyfmt |   xmlkeyfmt     | xmlkeyfmt2xpath
+ * | yang-stmt       | yang2api_path_fmt |   api_path_fmt  | api_path_fmt2xpath
  * | list aa,leaf k  | ----------------->|     /aa=%s      |---------------->
  * +-----------------+                   +-----------------+
  *                                               |
- *                                               | xmlkeyfmt2key
+ *                                               | api_path_fmt2api_path
  *                                               | k=17
  *                                               v
  * +-------------------+                +-----------------+
- * | xml-tree/cxobj    |   xmlkey2xml   |  xmlkey  RFC3986|
+ * | xml-tree/cxobj    |   xmlkey2xml   |api_path  RFC3986|
  * | <aa><k>17</k></aa>| <------------- |   /aa=17        |
  * +-------------------+                +-----------------+
  *
@@ -68,7 +68,7 @@
  *
  * Paths through the code (for coverage)
  *   cli_callback_generate       +----------------+
- *   cli_expand_var_generate     | yang2xmlkeyfmt |
+ *   cli_expand_var_generate     | yang2api_path_fmt |
  *  yang  ------------->         |                |
  *                               +----------------+
  * xmldb_get_tree
@@ -615,7 +615,6 @@ kv_get(xmldb_handle  xh,
     struct db_pair *pairs;
     cxobj          *xt = NULL;
 
-
     clicon_debug(2, "%s", __FUNCTION__);
     if (kv_db2file(kh, db, &dbfile) < 0)
 	goto done;
@@ -761,8 +760,39 @@ put(char               *dbfile,
 	    goto done;
 	}
     case OP_REMOVE:
-	if (db_del(dbfile, xk) < 0)
+	switch (ys->ys_keyword){
+	case Y_LIST:
+	case Y_CONTAINER:{
+	    struct db_pair *pairs;
+	    int             npairs;
+	    cbuf           *cbrx;
+	    int             i;
+
+	    if ((cbrx = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cbrx, "^%s.*$", xk);
+	    if ((npairs = db_regexp(dbfile, cbuf_get(cbrx), __FUNCTION__, 
+				    &pairs, 0)) < 0)
+		goto done;
+	    /* Translate to complete xml tree */
+	    for (i = 0; i < npairs; i++) 
+		if (db_del(dbfile, pairs[i].dp_key) < 0)
+		    goto done;
+	    if (cbrx)
+		cbuf_free(cbrx);
+	    /* Skip recursion, we have deleted whole subtree */
+	    retval = 0;
 	    goto done;
+	    break;
+	}
+	default:
+	    if (db_del(dbfile, xk) < 0)
+		goto done;
+	    break;
+	}
+
 	break;
     case OP_NONE:
 	break;
@@ -782,497 +812,10 @@ put(char               *dbfile,
 	cbuf_free(cbxk);
     if (bodyenc)
 	free(bodyenc);
+    unchunk_group(__FUNCTION__);
     return retval;
 }
 
-/*! Modify database provided an XML database key and an operation
- * @param[in]  kh     Keyvalue handle
- * @param[in]  db     Database name
- * @param[in]  op     OP_MERGE, OP_REPLACE, OP_REMOVE, etc
- * @param[in]  xk     XML Key, eg /aa/bb=17/name
- * @param[in]  val    Key value, eg "17"
-
- * @retval     0      OK
- * @retval     -1     Error
- * @code
- *   if (xmldb_put_xkey(h, db, OP_MERGE, "/aa/bb=17/name", "17") < 0)
- *     err;
- * @endcode
- * @see xmldb_put  with xml-tree, no path
- */
-static int
-xmldb_put_xkey(struct kv_handle   *kh,
-	       char               *db, 
-	       enum operation_type op,
-	       char               *xk,
-	       char               *val)
-
-{
-    int        retval = -1;
-    yang_stmt *y = NULL;
-    yang_stmt *ykey;
-    char     **vec = NULL;
-    int        nvec;
-    char     **valvec = NULL;
-    int        nvalvec;
-    int        i;
-    int        j;
-    char      *name;
-    char      *restval;
-    cg_var    *cvi;
-    cvec      *cvk = NULL; /* vector of index keys */
-    char      *val2 = NULL;
-    cbuf      *ckey=NULL; /* partial keys */
-    cbuf      *csubkey=NULL; /* partial keys */
-    cbuf      *crx=NULL; /* partial keys */
-    char      *keyname;
-    int        exists;
-    int        npairs;
-    struct db_pair *pairs;
-    yang_spec *yspec;
-    char      *filename = NULL;
-
-    //    clicon_log(LOG_WARNING, "%s", __FUNCTION__);
-    if ((yspec = kh->kh_yangspec) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
-	goto done;
-    }
-    if (kv_db2file(kh, db, &filename) < 0)
-	goto done;
-    if (xk == NULL || *xk!='/'){
-	clicon_err(OE_DB, 0, "Invalid api_path: %s", xk);
-	goto done;
-    }
-    if ((ckey = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    if ((csubkey = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    if ((vec = clicon_strsep(xk, "/", &nvec)) == NULL)
-	goto done;
-    /* Remove trailing '/'. Like in /a/ -> /a */
-    if (nvec > 1 && !strlen(vec[nvec-1]))
-	nvec--;
-    if (nvec < 2){
-	clicon_err(OE_XML, 0, "Malformed key: %s", xk);
-	goto done;
-    }
-    i = 1;
-    while (i<nvec){
-	name = vec[i]; /* E.g "x=1,2" -> name:x restval=1,2 */
-	if ((restval = index(name, '=')) != NULL){
-	    *restval = '\0';
-	    restval++;
-	}
-	if (i==1){
-	    if (strlen(name)==0 && (op==OP_DELETE || op == OP_REMOVE)){
-		/* Special handling of "/" */
-		cprintf(ckey, "/");
-		break;
-	    }
-	    else if ((y = yang_find_topnode(yspec, name)) == NULL){
-		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
-		goto done;
-	    }
-	}
-	else
-	    if ((y = yang_find_syntax((yang_node*)y, name)) == NULL){
-		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
-		goto done;
-	    }
-	if ((op==OP_DELETE || op == OP_REMOVE) &&
-	    y->ys_keyword == Y_LEAF && 
-	    y->ys_parent->yn_keyword == Y_LIST &&
-	    yang_key_match(y->ys_parent, y->ys_argument))
-	    /* Special rule if key, dont write last key-name, rm whole*/;
-	else
-	    cprintf(ckey, "/%s", name);
-	i++;
-	switch (y->ys_keyword){
-	case Y_LEAF_LIST:
-	    if (restval==NULL){
-		clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
-		goto done;
-	    }
-	    cprintf(ckey, "=%s", restval);
-	    break;
-	case Y_LIST:
-	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
-		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-			   __FUNCTION__, y->ys_argument);
-		goto done;
-	    }
-	    /* The value is a list of keys: <key>[ <key>]*  */
-	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-		goto done;
-	    if (restval==NULL){
-		clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
-		goto done;
-	    }
-	    if (valvec)
-		free(valvec);
-	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
-		goto done;
-	    if (cvec_len(cvk) != nvalvec){ 	    
-		clicon_err(OE_XML, errno, "List %s  key length mismatch", name);
-		goto done;
-	    }
-	    cvi = NULL;
-	    /* Iterate over individual yang keys  */
-	    j = 0;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		keyname = cv_string_get(cvi);
-		if (j)
-		    cprintf(ckey, ",");
-		else
-		    cprintf(ckey, "=");
-		val2 = valvec[j++];
-		cprintf(ckey, "%s", val2);
-		cbuf_reset(csubkey);
-		cprintf(csubkey, "%s/%s", cbuf_get(ckey), keyname);
-		if (op == OP_MERGE || op == OP_REPLACE || op == OP_CREATE)
-		    if (db_set(filename, cbuf_get(csubkey), val2, strlen(val2)+1) < 0)
-			goto done;
-	    }
-	    if (cvk){
-		cvec_free(cvk);
-		cvk = NULL;
-	    }
-	    break;
-	default:
-	    if (op == OP_MERGE || op == OP_REPLACE || op == OP_CREATE)
-		if (db_set(filename, cbuf_get(ckey), NULL, 0) < 0)
-		    goto done;
-	    break;
-	}
-    }
-    xk = cbuf_get(ckey);
-    /* final key */
-    switch (op){
-    case OP_CREATE:
-	if ((exists = db_exists(filename, xk)) < 0)
-	    goto done;
-	if (exists == 1){
-	    clicon_err(OE_DB, 0, "OP_CREATE: %s already exists in database", xk);
-	    goto done;
-	}
-    case OP_MERGE:
-    case OP_REPLACE:
-	if (y->ys_keyword == Y_LEAF || y->ys_keyword == Y_LEAF_LIST){
-	    if (db_set(filename, xk, val, val?strlen(val)+1:0) < 0)
-		goto done;
-	}
-	else
-	    if (db_set(filename, xk, NULL, 0) < 0)
-		goto done;
-	break;
-    case OP_DELETE:
-	if ((exists = db_exists(filename, xk)) < 0)
-	    goto done;
-	if (exists == 0){
-	    clicon_err(OE_DB, 0, "OP_DELETE: %s does not exist in database", xk);
-	    goto done;
-	}
-    case OP_REMOVE:
-	/* Read in complete database (this can be optimized) */
-	if ((crx = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	cprintf(crx, "^%s.*$", xk);
-	if ((npairs = db_regexp(filename, cbuf_get(crx), __FUNCTION__, &pairs, 0)) < 0)
-	    goto done;
-	for (i = 0; i < npairs; i++) {
-	    if (db_del(filename, pairs[i].dp_key) < 0)
-		goto done;
-	}
-	break;
-    default:
-	break;
-    }
-    retval = 0;
- done:
-    if (filename)
-	free(filename);
-    if (ckey)
-	cbuf_free(ckey);
-    if (csubkey)
-	cbuf_free(csubkey);
-    if (crx)
-	cbuf_free(crx);
-    if (cvk)
-	cvec_free(cvk);
-    if (vec)
-	free(vec);
-    if (valvec)
-	free(valvec);
-
-    unchunk_group(__FUNCTION__);  
-    return retval;
-}
-
-/*! Modify database provided an xml tree, a restconf api_path and an operation
- *
- * @param[in]  kh     Keyvalue handle
- * @param[in]  db     running or candidate
- * @param[in]  op     OP_MERGE: just add it. 
- *                    OP_REPLACE: first delete whole database
- *                    OP_NONE: operation attribute in xml determines operation
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [restconf-draft 13])
- * @param[in]  xt     xml-tree. Top-level symbol is dummy
- * @retval     0      OK
- * @retval     -1     Error
- * example:
- * container top {
- *     list list1 {
- *          key "key1 key2 key3";
- * is referenced as
- *     /restconf/data/top/list1=a,,foo
- * @see xmldb_put
- */
-static int
-xmldb_put_restconf_api_path(struct kv_handle   *kh,
-			    char               *db, 
-			    enum operation_type op,
-			    char               *xk,
-			    cxobj              *xt)
-{
-    int        retval = -1;
-    yang_stmt *y = NULL;
-    yang_stmt *ykey;
-    char     **vec = NULL;
-    int        nvec;
-#if 0
-    char     **valvec = NULL;
-    int        nvalvec;
-    int        j;
-    char      *restval;
-#endif
-    int        i;
-    char      *name;
-    cg_var    *cvi;
-    cvec      *cvk = NULL; /* vector of index keys */
-    char      *val2;
-    cbuf      *ckey=NULL; /* partial keys */
-    cbuf      *csubkey=NULL; /* partial keys */
-    cbuf      *crx=NULL; /* partial keys */
-    char      *keyname;
-    int        exists;
-    int        npairs;
-    struct db_pair *pairs;
-    yang_spec *yspec;
-    yang_stmt *ys;
-    char      *filename = NULL;
-    char      *key;
-    char      *keys;
-
-    if ((yspec =  kh->kh_yangspec) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
-	goto done;
-    }
-    if (kv_db2file(kh, db, &filename) < 0)
-	goto done;
-    if (xk == NULL || *xk!='/'){
-	clicon_err(OE_DB, 0, "Invalid api path: %s", xk);
-	goto done;
-    }
-    if ((ckey = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    if ((csubkey = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    if ((vec = clicon_strsep(xk, "/", &nvec)) == NULL)
-	goto done;
-    /* Remove trailing '/'. Like in /a/ -> /a */
-    if (nvec > 1 && !strlen(vec[nvec-1]))
-	nvec--;
-    if (nvec < 2){
-	clicon_err(OE_XML, 0, "Malformed key: %s", xk);
-	goto done;
-    }
-    i = 1;
-   while (i<nvec){
-	name = vec[i];
-	if ((keys = index(name, '=')) != NULL){
-	    *keys = '\0';
-	    keys++;
-	}
-#if 0
-	if ((restval = index(name, '=')) != NULL){
-	    *restval = '\0';
-	    restval++;
-	}
-#endif
-	if (i==1){
-	    if (strlen(name)==0 && (op==OP_DELETE || op == OP_REMOVE)){
-		/* Special handling of "/" */
-		cprintf(ckey, "/");
-		break;
-	    }
-	    else if ((y = yang_find_topnode(yspec, name)) == NULL){
-		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
-		goto done;
-	    }
-	}
-	else
-	    if ((y = yang_find_syntax((yang_node*)y, name)) == NULL){
-		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
-		goto done;
-	    }
-	if ((op==OP_DELETE || op == OP_REMOVE) &&
-	    y->ys_keyword == Y_LEAF && 
-	    y->ys_parent->yn_keyword == Y_LIST &&
-	    yang_key_match(y->ys_parent, y->ys_argument))
-	    /* Special rule if key, dont write last key-name, rm whole*/;
-	else
-	    cprintf(ckey, "/%s", name);
-	i++;
-	switch (y->ys_keyword){
-	case Y_LEAF_LIST:
-	    /* For leaf-list 'keys' is value, see 3.5.1 in restconf draft */
-	    val2 = keys;
-	    cprintf(ckey, "/%s", keys);
-	    break;
-	case Y_LIST:
-	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
-		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-			   __FUNCTION__, y->ys_argument);
-		goto done;
-	    }
-	    /* The value is a list of keys: <key>[ <key>]*  */
-	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-		goto done;
-#if 0
-	    if (restval==NULL){
-		clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
-		goto done;
-	    }
-	    if (valvec)
-		free(valvec);
-	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
-		goto done;
-	    if (cvec_len(cvk) != nvalvec){ 	    
-		clicon_err(OE_XML, errno, "List %s  key length mismatch", name);
-		goto done;
-	    }
-	    j = 0;
-#endif
-	    cvi = NULL;
-	    /* Iterate over individual yang keys  */
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		keyname = cv_string_get(cvi);
-#if 0
-		if (j)
-		    cprintf(ckey, ",");
-		else
-		    cprintf(ckey, "=");
-		val2 = valvec[j++];
-		cprintf(ckey, "%s", val2);
-#else
-		//		val2 = vec[i++]; /* No */
-		val2 = keys;
-		if (i>nvec){ /* XXX >= ? */
-		    clicon_err(OE_XML, errno, "List %s without argument", name);
-		    goto done;
-		}
-		cprintf(ckey, "=%s", val2);
-#endif
-		cbuf_reset(csubkey);
-		cprintf(csubkey, "%s/%s", cbuf_get(ckey), keyname);
-		if (op == OP_MERGE || op == OP_REPLACE || op == OP_CREATE)
-		    if (db_set(filename, cbuf_get(csubkey), val2, strlen(val2)+1) < 0)
-			goto done;
-	    }
-	    if (cvk){
-		cvec_free(cvk);
-		cvk = NULL;
-	    }
-	    break;
-	default:
-	    if (op == OP_MERGE || op == OP_REPLACE || op == OP_CREATE)
-		if (db_set(filename, cbuf_get(ckey), NULL, 0) < 0)
-		    goto done;
-	    break;
-	}
-    }
-    key = cbuf_get(ckey);
-    /* final key */
-    switch (op){
-    case OP_CREATE:
-	if ((exists = db_exists(filename, key)) < 0)
-	    goto done;
-	if (exists == 1){
-	    clicon_err(OE_DB, 0, "OP_CREATE: %s already exists in database", key);
-	    goto done;
-	}
-    case OP_MERGE:
-    case OP_REPLACE:
-	if (xt==NULL){
-	    clicon_err(OE_DB, 0, "%s: no xml when yang node %s required", 
-		       __FUNCTION__, y->ys_argument);
-	    goto done;
-	}
-	if ((ys = yang_find_syntax((yang_node*)y, xml_name(xt))) == NULL){
-	    clicon_err(OE_DB, 0, "%s: child %s not found under node %s", 
-		       __FUNCTION__, xml_name(xt), y->ys_argument);
-	    goto done;
-	}
-	y = ys;
-	if (put(filename, xt, y, op, key) < 0)
-	    goto done;
-	break;
-    case OP_DELETE:
-	if ((exists = db_exists(filename, key)) < 0)
-	    goto done;
-	if (exists == 0){
-	    clicon_err(OE_DB, 0, "OP_DELETE: %s does not exists in database", key);
-	    goto done;
-	}
-    case OP_REMOVE:
-	/* Read in complete database (this can be optimized) */
-	if ((crx = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	cprintf(crx, "^%s.*$", key);
-	if ((npairs = db_regexp(filename, cbuf_get(crx), __FUNCTION__, &pairs, 0)) < 0)
-	    goto done;
-	for (i = 0; i < npairs; i++) {
-	    if (db_del(filename, pairs[i].dp_key) < 0)
-		goto done;
-	}
-	break;
-    default:
-	break;
-    }
-    retval = 0;
- done:
-    //    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (filename)
-	free(filename);
-    if (ckey)
-	cbuf_free(ckey);
-    if (csubkey)
-	cbuf_free(csubkey);
-    if (crx)
-	cbuf_free(crx);
-    if (cvk)
-	cvec_free(cvk);
-    if (vec)
-	free(vec);
-#if 0
-    if (valvec)
-	free(valvec);
-#endif
-    unchunk_group(__FUNCTION__);  
-    return retval;
-}
 
 /*! Modify database provided an xml tree and an operation
  *
@@ -1299,7 +842,6 @@ int
 kv_put(xmldb_handle        xh,
        char               *db, 
        enum operation_type op,
-       char               *api_path,
        cxobj              *xt) 
 {
     int        retval = -1;
@@ -1309,9 +851,6 @@ kv_put(xmldb_handle        xh,
     yang_spec *yspec;
     char      *dbfilename = NULL;
 
-    if (xt && (xml_child_nr(xt)==0 || xml_body(xt)!= NULL) &&
-	api_path && strlen(api_path) && strcmp(api_path,"/"))
-	return xmldb_put_xkey(kh, db, op, api_path, xml_body(xt));
     if ((yspec =  kh->kh_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
@@ -1324,28 +863,19 @@ kv_put(xmldb_handle        xh,
 	if (db_init(dbfilename) < 0) 
 	    goto done;
     }
-    if (api_path && strlen(api_path) && strcmp(api_path,"/")){
-	//	clicon_log(LOG_WARNING, "xmldb_put_restconf_api_path");
-	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-	    if (xmldb_put_restconf_api_path(kh, db, op, api_path, x) < 0)
-		goto done;
+    //	clicon_log(LOG_WARNING, "%s", __FUNCTION__);
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
+	if ((ys = yang_find_topnode(yspec, xml_name(x))) == NULL){
+	    clicon_err(OE_UNIX, errno, "No yang node found: %s", xml_name(x));
+	    goto done;
 	}
-    }
-    else{
-	//	clicon_log(LOG_WARNING, "%s", __FUNCTION__);
-	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-	    if ((ys = yang_find_topnode(yspec, xml_name(x))) == NULL){
-		clicon_err(OE_UNIX, errno, "No yang node found: %s", xml_name(x));
-		goto done;
-	    }
-	    if (put(dbfilename, /* database name */
-		    x,          /* xml root node */
-		    ys,         /* yang statement of xml node */
-		    op,         /* operation, eg merge/delete */
-		    ""          /* aggregate xml key */
-		    ) < 0)
-		goto done;
-	}
+	if (put(dbfilename, /* database name */
+		x,          /* xml root node */
+		ys,         /* yang statement of xml node */
+		op,         /* operation, eg merge/delete */
+		""          /* aggregate xml key */
+		) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -1401,7 +931,6 @@ kv_lock(xmldb_handle xh,
 {
     int retval = -1;
     //    struct kv_handle *kh = handle(xh);
-    fprintf(stderr, "%s %s %d\n", __FUNCTION__, db, pid);
     if (strcmp("running", db) == 0)
 	_running_locked = pid;
     else if (strcmp("candidate", db) == 0)
@@ -1413,8 +942,6 @@ kv_lock(xmldb_handle xh,
 	goto done;
     }
     clicon_debug(1, "%s: locked by %u",  db, pid);
-    fprintf(stderr, "running:%d candidate:%d startup:%d\n", 
-	    _running_locked, _candidate_locked, _startup_locked);
     retval = 0;
  done:
     return retval;
@@ -1434,7 +961,6 @@ kv_unlock(xmldb_handle xh,
 {
     int retval = -1;
     //    struct kv_handle *kh = handle(xh);
-    fprintf(stderr, "%s %s\n", __FUNCTION__, db);
     if (strcmp("running", db) == 0)
 	_running_locked = 0;
     else if (strcmp("candidate", db) == 0)
@@ -1485,9 +1011,6 @@ kv_islocked(xmldb_handle xh,
     int retval = -1;
     //    struct kv_handle *kh = handle(xh);
 
-    fprintf(stderr, "%s %s\n", __FUNCTION__, db);
-    fprintf(stderr, "running:%d candidate:%d startup:%d\n", 
-	    _running_locked, _candidate_locked, _startup_locked);
     if (strcmp("running", db) == 0)
 	retval = _running_locked;
     else if (strcmp("candidate", db) == 0)

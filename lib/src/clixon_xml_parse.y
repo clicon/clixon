@@ -79,23 +79,6 @@ clixon_xml_parseerror(void *_ya, char *s)
   return;
 }
 
-
-static int
-xml_attr_new(struct xml_parse_yacc_arg *ya, 
-	     cxobj *xn, 
-	     char *name, 
-	     char *val)
-{
-    cxobj *xa; 
-
-    if ((xa = xml_new(name, xn)) == NULL)
-	return -1;
-    xml_type_set(xa, CX_ATTR);
-    if (xml_value_set(xa, val) < 0)
-	return -1;
-    return 0;
-}
-
 /* note that we dont handle escaped characters correctly 
    there may also be some leakage here on NULL return
  */
@@ -185,26 +168,30 @@ xml_parse_bslash1(struct xml_parse_yacc_arg *ya,
     cxobj *xc;
 
     if (strcmp(xml_name(x), name)){
-	clicon_err(OE_XML, 0, "Sanity check failed: %s vs %s", 
+	clicon_err(OE_XML, 0, "XML parse sanity check failed: %s vs %s", 
 		xml_name(x), name);
 	goto done;
     }
     if (xml_namespace(x)!=NULL){
-	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s\n", 
+	clicon_err(OE_XML, 0, "XML parse sanity check failed: %s:%s vs %s\n", 
 		xml_namespace(x), xml_name(x), name);
 	goto done;
     }
-
-    /* remove all non-terminal bodies (strip pretty-print) */
+    /* Strip pretty-print. Ad-hoc algorithm
+     * It ok with x:[body], but not with x:[ex,body]
+     * It is also ok with x:[attr,body]
+     * So the rule is: if there is at least on element, then remove all bodies?
+     */
     if (ya->ya_skipspace){
-	if (xml_child_nr(x) == 1 && (xml_type(xml_child_i(x, 0))==CX_BODY))
-	    ;
-	else{
+	xc = NULL;
+	while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
+	    break;
+	if (xc != NULL){ /* at least one element */
 	    xc = NULL;
 	    while ((xc = xml_child_each(x, xc, CX_BODY)) != NULL) {
 		xml_purge(xc);
 		xc = NULL; /* reset iterator */
-	    }
+	    }	    
 	}
     }
     retval = 0;
@@ -240,14 +227,20 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
 		name);
 	goto done;
     }
-    /* remove all non-terminal bodies (strip pretty-print) */
+    /* Strip pretty-print. Ad-hoc algorithm
+     * It ok with x:[body], but not with x:[ex,body]
+     * It is also ok with x:[attr,body]
+     * So the rule is: if there is at least on element, then remove all bodies?
+     */
     if (ya->ya_skipspace){
-	if (xml_child_nr(x) == 1 && (xml_type(xml_child_i(x, 0))==CX_BODY))
-	    ;
-	else{
+	xc = NULL;
+	while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
+	    break;
+	if (xc != NULL){ /* at least one element */
 	    xc = NULL;
-	    while ((xc = xml_child_each(x, xc, CX_BODY)) != NULL) 
+	    while ((xc = xml_child_each(x, xc, CX_BODY)) != NULL) {
 		xml_value_set(xc, ""); /* XXX remove */
+	    }	    
 	}
     }
     retval = 0;
@@ -276,8 +269,12 @@ static int
 xml_parse_attr(struct xml_parse_yacc_arg *ya, char *id, char *val)
 {
     int retval = -1;
+    cxobj *xa; 
 
-    if (xml_attr_new(ya, ya->ya_xelement, id, val) < 0) 
+    if ((xa = xml_new(id, ya->ya_xelement)) == NULL)
+	goto done;
+    xml_type_set(xa, CX_ATTR);
+    if (xml_value_set(xa, val) < 0)
 	goto done;
     retval = 0;
   done:

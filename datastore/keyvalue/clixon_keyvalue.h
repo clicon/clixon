@@ -41,8 +41,7 @@
  */
 int kv_get(xmldb_handle h, char *db, char *xpath,
 	   cxobj **xtop, cxobj ***xvec, size_t *xlen);
-int kv_put(xmldb_handle h, char *db, enum operation_type op, 
-	   char *api_path,  cxobj *xt);
+int kv_put(xmldb_handle h, char *db, enum operation_type op, cxobj *xt);
 int kv_dump(FILE *f, char *dbfilename, char *rxkey);
 int kv_copy(xmldb_handle h, char *from, char *to);
 int kv_lock(xmldb_handle h, char *db, int pid);

@@ -26,38 +26,38 @@ new "netconf tests"
 new "netconf get empty config"
 expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
 
-new "Add subtree eth0 using none which should not change anything"
-expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><default-operation>none</default-operation><target><candidate/></target><config><interfaces><interface><name>eth0</name></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+new "Add subtree eth/0/0 using none which should not change anything"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><default-operation>none</default-operation><target><candidate/></target><config><interfaces><interface><name>eth/0/0</name></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "Check nothing added"
 expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
 
-new "Add subtree eth0 using none and create which should add eth0"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="create"><name>eth0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+new "Add subtree eth/0/0 using none and create which should add eth/0/0"
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="create"><name>eth/0/0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "Check eth0 added using xpath"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name=eth0]"/></get-config></rpc>]]>]]>' "^<rpc-reply><data><config><interfaces><interface><name>eth0</name><type>eth</type><enabled>true</enabled></interface></interfaces></config></data></rpc-reply>]]>]]>$"
+new "Check eth/0/0 added using xpath"
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name=eth/0/0]"/></get-config></rpc>]]>]]>' "^<rpc-reply><data><config><interfaces><interface><name>eth/0/0</name><type>eth</type><enabled>true</enabled></interface></interfaces></config></data></rpc-reply>]]>]]>$"
 
-new "Re-create same eth0 which should generate error"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="create"><name>eth0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>' "^<rpc-reply><rpc-error>"
+new "Re-create same eth/0/0 which should generate error"
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="create"><name>eth/0/0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>' "^<rpc-reply><rpc-error>"
 
-new "Delete eth0 using none config"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="delete"><name>eth0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>'  "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+new "Delete eth/0/0 using none config"
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="delete"><name>eth/0/0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>'  "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "Check deleted eth0"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data><config><interfaces/></config></data></rpc-reply>]]>]]>$'
+#new "Check deleted eth/0/0"
+#expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data><config><interfaces/></config></data></rpc-reply>]]>]]>$'
 
-new "Re-Delete eth0 using none should generate error"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="delete"><name>eth0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>'  "^<rpc-reply><rpc-error>"
+new "Re-Delete eth/0/0 using none should generate error"
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="delete"><name>eth/0/0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>'  "^<rpc-reply><rpc-error>"
 
 new "netconf edit config"
-expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth0</name></interface><interface><name>eth1</name><enabled>true</enabled><ipv4><address><ip>9.2.3.4</ip><prefix-length>24</prefix-length></address></ipv4></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth/0/0</name></interface><interface><name>eth1</name><enabled>true</enabled><ipv4><address><ip>9.2.3.4</ip><prefix-length>24</prefix-length></address></ipv4></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get config xpath"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name=eth1]/enabled"/></get-config></rpc>]]>]]>' "^<rpc-reply><data><config><interfaces><interface><enabled>true</enabled></interface></interfaces></config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name=eth1]/enabled"/></get-config></rpc>]]>]]>' "^<rpc-reply><data><config><interfaces><interface><name>eth1</name><enabled>true</enabled></interface></interfaces></config></data></rpc-reply>]]>]]>$"
 
 new "netconf get config xpath parent"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name=eth1]/enabled/../.."/></get-config></rpc>]]>]]>' "^<rpc-reply><data><config><interfaces><interface><name>eth0</name><enabled>true</enabled></interface><interface><name>eth1</name><enabled>true</enabled><ipv4><enabled>true</enabled><forwarding>false</forwarding><address><ip>9.2.3.4</ip><prefix-length>24</prefix-length></address></ipv4></interface></interfaces></config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name=eth1]/enabled/../.."/></get-config></rpc>]]>]]>' "^<rpc-reply><data><config><interfaces><interface><name>eth/0/0</name><enabled>true</enabled></interface><interface><name>eth1</name><enabled>true</enabled><ipv4><enabled>true</enabled><forwarding>false</forwarding><address><ip>9.2.3.4</ip><prefix-length>24</prefix-length></address></ipv4></interface></interfaces></config></data></rpc-reply>]]>]]>$"
 
 new "netconf validate missing type"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error>"
