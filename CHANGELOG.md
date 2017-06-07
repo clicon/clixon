@@ -1,6 +1,7 @@
 # Clixon CHANGELOG
 	
-## 3.3.1
+	
+## 3.3.1 June 7 2017
 
 - Fixed yang leafref cli completion.
 
