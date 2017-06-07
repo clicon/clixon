@@ -336,7 +336,6 @@ api_data_post(clicon_handle h,
 	if (xml_addsub(xbot, x) < 0)
 	    goto done;
     }
-    xdata = NULL;
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)

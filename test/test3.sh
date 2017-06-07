@@ -49,8 +49,6 @@ expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces' ""
 new "Check empty config"
 expectfn "curl -sSG http://localhost/restconf/data" "^null$"
 
-
-
 new "Add interfaces subtree eth/0/0 using POST"
 expectfn 'curl -sS -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' ""
 
@@ -85,7 +83,7 @@ expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interfac
 $'
 
 new "Kill restconf daemon"
-#sudo pkill -u www-data clixon_restconf
+sudo pkill -u www-data clixon_restconf
 
 new "Kill backend"
 # Check if still alive
