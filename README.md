@@ -39,7 +39,7 @@ generated CLI and configuration interface.
 
 Dependencies
 ============
-Clixon is dependend on the following software packages, which need to exist on the target machine.
+Clixon depends on the following software packages, which need to exist on the target machine.
 - [CLIgen](http://www.cligen.se) is required for building Clixon. If you need 
 to build and install CLIgen: 
 ```

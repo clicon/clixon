@@ -2136,7 +2136,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 CLIXON_VERSION_MAJOR="3"
 CLIXON_VERSION_MINOR="3"
-CLIXON_VERSION_PATCH="0"
+CLIXON_VERSION_PATCH="1"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 # Fix to specific version (eg 3.5) or head (3)
 CLIGEN_VERSION="3"
@@ -2172,8 +2172,8 @@ _ACEOF
 
  # Bind to specific CLIgen version
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: CLIXON version is ${CLIXON_VERSION}_PRE1" >&5
-$as_echo "CLIXON version is ${CLIXON_VERSION}_PRE1" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: CLIXON version is ${CLIXON_VERSION}" >&5
+$as_echo "CLIXON version is ${CLIXON_VERSION}" >&6; }
 
 ac_aux_dir=
 for ac_dir in "$srcdir" "$srcdir/.." "$srcdir/../.."; do

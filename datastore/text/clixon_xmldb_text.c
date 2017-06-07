@@ -266,10 +266,10 @@ xml_spec_populate(cxobj  *x,
     else
 	y = yang_find_topnode(yspec, name); /* still NULL for config */
     if (y==NULL){
-	clicon_err(OE_XML, EBADF, "yang spec not found for xml node '%s' xml parent name: '%s' yangspec:'",
-                  name, 
-                  xp?xml_name(xp):"", yp?yp->ys_argument:"");
-       goto done;
+	clicon_err(OE_XML, EBADF, "yang spec not found for xml node '%s' xml parent name: '%s' yangspec:'%s']", 
+		   name, 
+		   xp?xml_name(xp):"", yp?yp->ys_argument:"");
+	goto done;
     }
     xml_spec_set(x, y);
     retval = 0;
@@ -395,7 +395,7 @@ text_get(xmldb_handle xh,
     /* Here xt looks like: <config>...</config> */
     /* Validate existing config tree */
     if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
-       goto done;
+	goto done;
 
     /* XXX Maybe the below is general function and should be moved to xmldb? */
     if (xpath_vec(xt, xpath?xpath:"/", &xvec, &xlen) < 0)
@@ -799,6 +799,7 @@ text_put(xmldb_handle        xh,
     }
     /* 2. File is not empty <top><config>...</config></top> -> replace root */
     else{ 
+
 	/* There should only be one element and called config */
 	if (singleconfigroot(x0, &x0) < 0)
 	    goto done;
