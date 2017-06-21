@@ -571,38 +571,14 @@ kv_setopt(xmldb_handle xh,
 /*! Get content of database using xpath. return a set of matching sub-trees
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
- * @param[in]  dbname Name of database to search in (filename including dir path
- * @param[in]  xpath  String with XPATH syntax. or NULL for all
- * @param[out] xtop   Single XML tree which xvec points to. Free with xml_free()
- * @param[out] xvec   Vector of xml trees. Free after use.
- * @param[out] xlen   Length of vector.
- * @retval     0      OK
- * @retval     -1     Error
- * @code
- *   cxobj   *xt;
- *   cxobj  **xvec;
- *   size_t   xlen;
- *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 
- *                 &xt, &xvec, &xlen) < 0)
- *      err;
- *   for (i=0; i<xlen; i++){
- *      xn = xv[i];
- *      ...
- *   }
- *   xml_free(xt);
- *   free(xvec);
- * @endcode
- * @note if xvec is given, then purge tree, if not return whole tree.
- * @see xpath_vec
+ * This is a clixon datastore plugin of the the xmldb api
  * @see xmldb_get
  */
 int
 kv_get(xmldb_handle  xh,
        char         *db, 
        char         *xpath,
-       cxobj       **xtop,
-       cxobj      ***xvec0,
-       size_t       *xlen0)
+       cxobj       **xtop)
 {
     int             retval = -1;
     struct kv_handle *kh = handle(xh);
@@ -655,12 +631,6 @@ kv_get(xmldb_handle  xh,
 	    goto done;
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
-    if (xvec0 && xlen0){
-	*xvec0 = xvec; 
-	xvec = NULL;
-	*xlen0 = xlen; 
-	xlen = 0;
-    }
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
     /* XXX does not work for top-level */
@@ -816,33 +786,15 @@ put(char               *dbfile,
     return retval;
 }
 
-
 /*! Modify database provided an xml tree and an operation
- *
- * @param[in]  xh      XMLDB handle
- * @param[in]  db     running or candidate
- * @param[in]  xt     xml-tree. Top-level symbol is dummy
- * @param[in]  op     OP_MERGE: just add it. 
- *                    OP_REPLACE: first delete whole database
- *                    OP_NONE: operation attribute in xml determines operation
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [restconf-draft 13])
- * @retval     0      OK
- * @retval     -1     Error
- * The xml may contain the "operation" attribute which defines the operation.
- * @code
- *   cxobj     *xt;
- *   if (clicon_xml_parse_str("<a>17</a>", &xt) < 0)
- *     err;
- *   if (xmldb_put(h, "running", OP_MERGE, NULL, xt) < 0)
- *     err;
- * @endcode
- * @see xmldb_put_xkey  for single key
+ * This is a clixon datastore plugin of the the xmldb api
+ * @see xmldb_put
  */
 int
 kv_put(xmldb_handle        xh,
        char               *db, 
        enum operation_type op,
-       cxobj              *xt) 
+       cxobj              *xt)
 {
     int        retval = -1;
     struct kv_handle *kh = handle(xh);

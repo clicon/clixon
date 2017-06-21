@@ -212,7 +212,7 @@ done:
 static int
 candb_reset(clicon_handle h)
 {
-    int retval = -1;
+    int   retval = -1;
 
     if (xmldb_copy(h, "running", "tmp") < 0){
 	clicon_err(OE_UNIX, errno, "file copy");
@@ -590,7 +590,7 @@ main(int argc, char **argv)
     *(argv-1) = tmp;
 
     if (reload_running){
-	/* This could be afailed validation, and we should not fail for that */
+	/* This could be a failed validation, and we should not fail for that */
 	(void)candidate_commit(h, "candidate");
     }
 

@@ -140,7 +140,7 @@ expand_dbvar(void   *h,
     if (api_path_fmt2xpath(api_path, cvv, &xpath) < 0)
 	goto done;   
     /* XXX read whole configuration, why not send xpath? */
-    if (clicon_rpc_get_config(h, dbstr, "/", &xt) < 0)
+    if (clicon_rpc_get_config(h, dbstr, "/", 0, &xt) < 0)
     	goto done;
     /* One round to detect duplicates 
      * XXX The code below would benefit from some cleanup
@@ -426,7 +426,7 @@ cli_show_config(clicon_handle h,
     else
 	cprintf(cbxpath, "%s", xpath);	
     /* Get configuration from database */
-    if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), &xt) < 0)
+    if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), 0, &xt) < 0)
 	goto done;
     /* Print configuration according to format */
     switch (format){
@@ -505,7 +505,7 @@ show_conf_xpath(clicon_handle h,
     }
     cv = cvec_find_var(cvv, "xpath");
     xpath = cv_string_get(cv);
-    if (clicon_rpc_get_config(h, str, xpath, &xt) < 0)
+    if (clicon_rpc_get_config(h, str, xpath, 0, &xt) < 0)
     	goto done;
     if (xpath_vec(xt, xpath, &xv, &xlen) < 0) 
 	goto done;

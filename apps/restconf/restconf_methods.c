@@ -156,6 +156,10 @@ api_data_get_gen(clicon_handle h,
     cxobj    **vec = NULL;
     yang_spec *yspec;
     cxobj     *xret = NULL;
+    cxobj     *xerr;
+    cbuf      *cbj = NULL;;
+    int        code;
+    char      *reason_phrase;
 
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h);
@@ -166,15 +170,44 @@ api_data_get_gen(clicon_handle h,
 	goto done;
     }
     clicon_debug(1, "%s path:%s", __FUNCTION__, cbuf_get(path));
-    if (clicon_rpc_get_config(h, "running", cbuf_get(path), &xret) < 0){
+    if (clicon_rpc_get_config(h, "running", cbuf_get(path), 1, &xret) < 0){
 	notfound(r);
 	goto done;
     }
+#if 0 /* DEBUG */
     {
 	cbuf *cb = cbuf_new();
-	clicon_xml2cbuf(cb, xret, 0, 0);
+	xml2json_cbuf(cb, xret, 1);
 	clicon_debug(1, "%s xret:%s", __FUNCTION__, cbuf_get(cb));
 	cbuf_free(cb);
+    }
+#endif
+    if (strcmp(xml_name(xret), "rpc-error") == 0){
+	if ((cbj = cbuf_new()) == NULL)
+	    goto done;
+	if ((xerr = xpath_first(xret, "/error-tag")) == NULL){
+	    notfound(r); /* bad reply? */
+	    goto done;
+	}
+	code = clicon_str2int(netconf_restconf_map, xml_body(xerr));
+	if ((reason_phrase = clicon_int2str(http_reason_phrase_map, code)) == NULL)
+	    reason_phrase="";
+	clicon_debug(1, "%s code:%d reason phrase:%s", 
+		     __FUNCTION__, code, reason_phrase);
+
+	if (xml_name_set(xret, "error") < 0)
+	    goto done;
+	if (xml2json_cbuf(cbj, xret, 1) < 0)
+	    goto done;
+	FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
+	FCGX_FPrintF(r->out, "Content-Type: application/yang-data+json\r\n\r\n");
+	FCGX_FPrintF(r->out, "\r\n");
+	FCGX_FPrintF(r->out, "{\r\n");
+	FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : {\r\n");
+	FCGX_FPrintF(r->out, "    %s", cbuf_get(cbj));
+	FCGX_FPrintF(r->out, "  }\r\n");
+	FCGX_FPrintF(r->out, "}\r\n");
+	goto ok;
     }
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
@@ -197,6 +230,8 @@ api_data_get_gen(clicon_handle h,
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cbx)
         cbuf_free(cbx);
+    if (cbj)
+        cbuf_free(cbj);
     if (path)
 	cbuf_free(path);
     if (xret)
@@ -555,6 +590,7 @@ api_data_delete(clicon_handle h,
 	goto done;
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
+
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
 	goto done;
     if (clicon_rpc_edit_config(h, "candidate", 

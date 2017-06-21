@@ -94,6 +94,7 @@ static int _running_locked = 0;
 static int _candidate_locked = 0;
 static int _startup_locked = 0;
 
+
 /*! Translate from symbolic database name to actual filename in file-system
  * @param[in]   th       text handle handle
  * @param[in]   db       Symbolic database name, eg "candidate", "running"
@@ -107,8 +108,8 @@ static int _startup_locked = 0;
  */
 static int
 text_db2file(struct text_handle *th, 
-	char               *db,
-	char              **filename)
+	     char               *db,
+	     char              **filename)
 {
     int   retval = -1;
     cbuf *cb;
@@ -120,13 +121,6 @@ text_db2file(struct text_handle *th,
     }
     if ((dir = th->th_dbdir) == NULL){
 	clicon_err(OE_XML, errno, "dbdir not set");
-	goto done;
-    }
-    if (strcmp(db, "running") != 0 && 
-	strcmp(db, "candidate") != 0 && 
-	strcmp(db, "startup") != 0 && 
-	strcmp(db, "tmp") != 0){
-	clicon_err(OE_XML, 0, "No such database: %s", db);
 	goto done;
     }
     cprintf(cb, "%s/%s_db", dir, db);
@@ -318,39 +312,14 @@ singleconfigroot(cxobj  *xt,
 /*! Get content of database using xpath. return a set of matching sub-trees
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
- * @param[in]  xh     XMLDB handle
- * @param[in]  dbname Name of database to search in (filename including dir path
- * @param[in]  xpath  String with XPATH syntax. or NULL for all
- * @param[out] xtop   Single XML tree which xvec points to. Free with xml_free()
- * @param[out] xvec   Vector of xml trees. Free after use.
- * @param[out] xlen   Length of vector.
- * @retval     0      OK
- * @retval     -1     Error
- * @code
- *   cxobj   *xt;
- *   cxobj  **xvec;
- *   size_t   xlen;
- *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 
- *                 &xt, &xvec, &xlen) < 0)
- *      err;
- *   for (i=0; i<xlen; i++){
- *      xn = xv[i];
- *      ...
- *   }
- *   xml_free(xt);
- *   free(xvec);
- * @endcode
- * @note if xvec is given, then purge tree, if not return whole tree.
- * @see xpath_vec
+ * This is a clixon datastore plugin of the the xmldb api
  * @see xmldb_get
  */
 int
 text_get(xmldb_handle xh,
 	 char         *db, 
 	 char         *xpath,
-	 cxobj       **xtop,
-	 cxobj      ***xvec0,
-	 size_t       *xlen0)
+	 cxobj       **xtop)
 {
     int             retval = -1;
     char           *dbfile = NULL;
@@ -426,12 +395,6 @@ text_get(xmldb_handle xh,
 
     if (debug>1)
     	clicon_xml2file(stderr, xt, 0, 1);
-    if (xvec0 && xlen0){
-	*xvec0 = xvec; 
-	xvec = NULL;
-	*xlen0 = xlen; 
-	xlen = 0;
-    }
     *xtop = xt;
     xt = NULL;
     retval = 0;
@@ -735,30 +698,14 @@ text_modify_top(cxobj              *x0,
 
 
 /*! Modify database provided an xml tree and an operation
- *
- * @param[in]  xh     XMLDB handle
- * @param[in]  db     running or candidate
- * @param[in]  op     OP_MERGE: just add it. 
- *                    OP_REPLACE: first delete whole database
- *                    OP_NONE: operation attribute in xml determines operation
- * @param[in]  x1     xml-tree to merge/replace. Top-level symbol is 'config'.
- *                    Should be empty or '<config/>' if delete?
- * @retval     0      OK
- * @retval     -1     Error
- * The xml may contain the "operation" attribute which defines the operation.
- * @code
- *   cxobj     *xt;
- *   if (clicon_xml_parse_str("<a>17</a>", &xt) < 0)
- *     err;
- *   if (xmldb_put(h, "running", OP_MERGE, "/", xt) < 0)
- *     err;
- * @endcode
-y */
+ * This is a clixon datastore plugin of the the xmldb api
+ * @see xmldb_put
+ */
 int
 text_put(xmldb_handle        xh,
 	 char               *db, 
 	 enum operation_type op,
-	 cxobj              *x1) 
+	 cxobj              *x1)
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);
@@ -799,7 +746,6 @@ text_put(xmldb_handle        xh,
     }
     /* 2. File is not empty <top><config>...</config></top> -> replace root */
     else{ 
-
 	/* There should only be one element and called config */
 	if (singleconfigroot(x0, &x0) < 0)
 	    goto done;
@@ -871,8 +817,8 @@ text_put(xmldb_handle        xh,
   */
 int 
 text_copy(xmldb_handle xh, 
-	char          *from,
-	char          *to)
+	  char        *from,
+	  char        *to)
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);
@@ -904,11 +850,10 @@ text_copy(xmldb_handle xh,
   */
 int 
 text_lock(xmldb_handle xh, 
-	char          *db,
-	int            pid)
+	  char        *db,
+	  int          pid)
 {
     //    struct text_handle *th = handle(xh);
-
     if (strcmp("running", db) == 0)
 	_running_locked = pid;
     else if (strcmp("candidate", db) == 0)
@@ -929,10 +874,9 @@ text_lock(xmldb_handle xh,
  */
 int 
 text_unlock(xmldb_handle xh, 
-	    char          *db)
+	    char        *db)
 {
     //    struct text_handle *th = handle(xh);
-
     if (strcmp("running", db) == 0)
 	_running_locked = 0;
     else if (strcmp("candidate", db) == 0)
@@ -993,8 +937,8 @@ text_islocked(xmldb_handle xh,
  * @retval  1  Yes it exists
  */
 int 
-text_exists(xmldb_handle xh, 
-	  char          *db)
+text_exists(xmldb_handle  xh, 
+	    char         *db)
 {
 
     int                 retval = -1;
@@ -1022,7 +966,7 @@ text_exists(xmldb_handle xh,
  */
 int 
 text_delete(xmldb_handle xh, 
-	  char          *db)
+	    char        *db)
 {
     int                 retval = -1;
     char               *filename = NULL;
@@ -1049,7 +993,7 @@ text_delete(xmldb_handle xh,
  */
 int 
 text_create(xmldb_handle xh, 
-	  char         *db)
+	    char        *db)
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);

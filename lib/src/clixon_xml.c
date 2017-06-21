@@ -50,6 +50,7 @@
 /* clixon */
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_xml.h"
 #include "clixon_xml_parse.h"
@@ -82,14 +83,8 @@ struct xml{
     cg_var           *x_cv;           /* If body this contains the typed value */
 };
 
-/* Type to string conversion */
-struct map_str2int{
-    char           *ms_str;
-    enum cxobj_type ms_type;
-};
-
 /* Mapping between xml type <--> string */
-static const struct map_str2int xsmap[] = {
+static const map_str2int xsmap[] = {
     {"error",         CX_ERROR}, 
     {"element",       CX_ELMNT}, 
     {"attr",          CX_ATTR}, 
@@ -104,12 +99,7 @@ static const struct map_str2int xsmap[] = {
 char *
 xml_type2str(enum cxobj_type type)
 {
-    const struct map_str2int *xs;
-
-    for (xs = &xsmap[0]; xs->ms_str; xs++)
-	if (xs->ms_type == type)
-	    return xs->ms_str;
-    return NULL;
+    return (char*)clicon_int2str(xsmap, type);
 }
 
 /*

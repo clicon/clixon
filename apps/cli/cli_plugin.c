@@ -657,7 +657,7 @@ clicon_parse(clicon_handle h,
 	}
 	res = cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv);
 	if (res != CG_MATCH)
-	    pt_expand_cleanup_1(pt);
+	    pt_expand_cleanup_1(pt); /* XXX change to pt_expand_treeref_cleanup */
 	if (msav){
 	    cli_tree_active_set(h, msav);
 	    free(msav);
@@ -689,7 +689,7 @@ clicon_parse(clicon_handle h,
 	    }
 	    if ((r = clicon_eval(h, cmd, match_obj, cvv)) < 0)
 		cli_handler_err(stdout);
-	    pt_expand_cleanup_1(pt);
+	    pt_expand_cleanup_1(pt); /* XXX change to pt_expand_treeref_cleanup */
 	    if (result)
 		*result = r;
 	    goto done;

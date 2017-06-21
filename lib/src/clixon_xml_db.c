@@ -169,6 +169,23 @@ xmldb_plugin_unload(clicon_handle h)
     return retval;
 }
 
+/*! Validate database name
+ * @param[in]   db     Name of database 
+ * @param[out] xret   Return value as cligen buffer containing xml netconf return
+ * @retval  0   OK
+ * @retval  -1  Failed validate, xret set to error
+ */
+int
+xmldb_validate_db(char *db)
+{
+    if (strcmp(db, "running") != 0 && 
+	strcmp(db, "candidate") != 0 && 
+	strcmp(db, "startup") != 0 && 
+	strcmp(db, "tmp") != 0)
+	return -1;
+    return 0;
+}
+
 /*! Connect to a datastore plugin, allocate handle to be used in API calls
  * @param[in]  h    Clicon handle
  * @retval     0    OK
@@ -306,23 +323,17 @@ xmldb_setopt(clicon_handle h,
  * @param[in]  dbname Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xtop   Single XML tree which xvec points to. Free with xml_free()
- * @param[out] xvec   Vector of xml trees. Free after use.
- * @param[out] xlen   Length of vector.
  * @retval     0      OK
  * @retval     -1     Error
  * @code
  *   cxobj   *xt;
- *   cxobj  **xvec;
- *   size_t   xlen;
- *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 
- *                 &xt, &xvec, &xlen) < 0)
+ *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", &xt) < 0)
  *      err;
  *   for (i=0; i<xlen; i++){
  *      xn = xv[i];
  *      ...
  *   }
  *   xml_free(xt);
- *   free(xvec);
  * @endcode
  * @note if xvec is given, then purge tree, if not return whole tree.
  * @see xpath_vec
@@ -332,9 +343,7 @@ int
 xmldb_get(clicon_handle h, 
 	  char         *db, 
 	  char         *xpath,
-	  cxobj       **xtop, 
-	  cxobj      ***xvec, 
-	  size_t       *xlen)
+	  cxobj       **xtop)
 {
     int               retval = -1;
     xmldb_handle      xh;
@@ -352,7 +361,7 @@ xmldb_get(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = xa->xa_get_fn(xh, db, xpath, xtop, xvec, xlen);
+    retval = xa->xa_get_fn(xh, db, xpath, xtop);
 #if DEBUG
     if (retval == 0) { 
 	 cbuf *cb = cbuf_new();
@@ -366,14 +375,12 @@ xmldb_get(clicon_handle h,
     return retval;
 }
 
-/*! Modify database provided an xml tree and an operation
+/*! Modify database given an xml tree and an operation
  *
  * @param[in]  h      CLICON handle
  * @param[in]  db     running or candidate
+ * @param[in]  op     Top-level operation, can be superceded by other op in tree
  * @param[in]  xt     xml-tree. Top-level symbol is dummy
- * @param[in]  op     OP_MERGE: just add it. 
- *                    OP_REPLACE: first delete whole database
- *                    OP_NONE: operation attribute in xml determines operation
  * @retval     0      OK
  * @retval     -1     Error
  * The xml may contain the "operation" attribute which defines the operation.
@@ -581,7 +588,7 @@ xmldb_islocked(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval =xa->xa_islocked_fn(xh, db);
+    retval = xa->xa_islocked_fn(xh, db);
  done:
     return retval;
 }

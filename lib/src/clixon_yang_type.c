@@ -71,19 +71,10 @@
 /* 
  * Local types and variables
  */
-/* Struct used to map between int and strings. Used  for:
- * - mapping yang types/typedefs (strings) and cligen types (ints). 
- * - mapping yang keywords (strings) and enum (clicon)
- * (same struct in clicon_yang.c)
- */
-struct map_str2int{
-    char         *ms_str; /* string as in 4.2.4 in RFC 6020 */
-    int           ms_int;
-};
 
 /* Mapping between yang types <--> cligen types
    Note, first match used wne translating from cv to yang --> order is significant */
-static const struct map_str2int ytmap[] = {
+static const map_str2int ytmap[] = {
     {"int32",       CGV_INT32},  /* NOTE, first match on right is significant, dont move */
     {"string",      CGV_STRING}, /* NOTE, first match on right is significant, dont move */
     {"string",      CGV_REST},   /* For cv -> yang translation of rest */
@@ -105,8 +96,21 @@ static const struct map_str2int ytmap[] = {
     {"uint32",      CGV_UINT32},
     {"uint64",      CGV_UINT64},
     {"union",       CGV_REST},  /* Is replaced by actual type */
-    {NULL, -1}
+    {NULL,         -1}
 };
+
+/* return 1 if built-in, 0 if not */
+static int
+yang_builtin(char *type)
+{
+    const struct map_str2int *yt;
+
+    /* built-in types */
+    for (yt = &ytmap[0]; yt->ms_str; yt++)
+       if (strcmp(yt->ms_str, type) == 0)
+           return 1;
+    return 0;
+}
 
 int
 yang_type_cache_set(yang_type_cache **ycache0,
@@ -229,20 +233,6 @@ ys_resolve_type(yang_stmt *ys, void *arg)
     return retval;
 }
 
-
-/* return 1 if built-in, 0 if not */
-static int
-yang_builtin(char *type)
-{
-    const struct map_str2int *yt;
-
-    /* built-in types */
-    for (yt = &ytmap[0]; yt->ms_str; yt++)
-	if (strcmp(yt->ms_str, type) == 0)
-	    return 1;
-    return 0;
-}
-
 /*! Translate from a yang type to a cligen variable type
  *
  * Currently many built-in types from RFC6020 and some RFC6991 types.
@@ -252,17 +242,17 @@ yang_builtin(char *type)
  * Return 0 if no match but set cv_type to CGV_ERR
  */
 int
-yang2cv_type(char *ytype, enum cv_type *cv_type)
+yang2cv_type(char         *ytype, 
+	     enum cv_type *cv_type)
 {
-    const struct map_str2int *yt;
+    int                ret;
 
     *cv_type = CGV_ERR;
     /* built-in types */
-    for (yt = &ytmap[0]; yt->ms_str; yt++)
-	if (strcmp(yt->ms_str, ytype) == 0){
-	    *cv_type = yt->ms_int;
-	    return 0;
-	}
+    if ((ret = clicon_str2int(ytmap, ytype)) != -1){
+	*cv_type = ret;
+	return 0;
+    }
     /* special derived types */
     if (strcmp("ipv4-address", ytype) == 0){ /* RFC6991 */
 	*cv_type = CGV_IPV4ADDR;
@@ -300,14 +290,13 @@ yang2cv_type(char *ytype, enum cv_type *cv_type)
 char *
 cv2yang_type(enum cv_type cv_type)
 {
-    const struct map_str2int  *yt;
     char                *ytype;
+    const char          *str;
 
     ytype = "empty";
     /* built-in types */
-    for (yt = &ytmap[0]; yt->ms_str; yt++)
-	if (yt->ms_int == cv_type)
-	    return yt->ms_str;
+    if ((str = clicon_int2str(ytmap, cv_type)) != NULL)
+	return (char*)str;
 
     /* special derived types */
     if (cv_type == CGV_IPV4ADDR) /* RFC6991 */

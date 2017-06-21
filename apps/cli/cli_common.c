@@ -655,9 +655,9 @@ compare_dbs(clicon_handle h,
 	astext = cv_int32_get(cvec_i(argv, 0));
     else
 	astext = 0;
-    if (clicon_rpc_get_config(h, "running", "/", &xc1) < 0)
+    if (clicon_rpc_get_config(h, "running", "/", 0, &xc1) < 0)
 	goto done;
-    if (clicon_rpc_get_config(h, "candidate", "/", &xc2) < 0)
+    if (clicon_rpc_get_config(h, "candidate", "/", 0, &xc2) < 0)
 	goto done;
     if (compare_xmls(xc1, xc2, astext) < 0) /* astext? */
 	goto done;
@@ -823,7 +823,7 @@ save_config_file(clicon_handle h,
 	goto done;
     }
     filename = cv_string_get(cv);
-    if (clicon_rpc_get_config(h, dbstr,"/", &xt) < 0)
+    if (clicon_rpc_get_config(h, dbstr,"/", 0, &xt) < 0)
 	goto done;
     if ((f = fopen(filename, "wb")) == NULL){
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
@@ -1162,7 +1162,7 @@ cli_copy_config(clicon_handle h,
     cprintf(cb, xpath, keyname, fromname);	
 
     /* Get from object configuration and store in x1 */
-    if (clicon_rpc_get_config(h, db, cbuf_get(cb), &x1) < 0)
+    if (clicon_rpc_get_config(h, db, cbuf_get(cb), 0, &x1) < 0)
 	goto done;
 
     /* Get to variable -> cv -> to name */

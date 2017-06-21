@@ -36,6 +36,23 @@
 #ifndef _CLIXON_STRING_H_
 #define _CLIXON_STRING_H_
 
+/* Struct used to map between int and strings. Typically used to map between
+ * values and their names. Note NULL terminated
+ * Example:
+ * @code
+static const map_str2int atmap[] = {
+    {"One",               1}, 
+    {"Two",               2}, 
+    {NULL,               -1}
+};
+ * @endcode
+ */
+struct map_str2int{
+    char         *ms_str;
+    int           ms_int;
+};
+typedef struct map_str2int map_str2int;
+
 /*! A malloc version that aligns on 4 bytes. To avoid warning from valgrind */
 #define align4(s) (((s)/4)*4 + 4)
 
@@ -59,6 +76,9 @@ char *clicon_strjoin (int argc, char **argv, char *delim);
 int str2cvec(char *string, char delim1, char delim2, cvec **cvp);
 int percent_encode(char *str, char **escp);
 int percent_decode(char *esc, char **str);
+const char *clicon_int2str(const map_str2int *mstab, int i);
+int clicon_str2int(const map_str2int *mstab, char *str);
+
 #ifndef HAVE_STRNDUP
 char *clicon_strndup (const char *, size_t);
 #endif /* ! HAVE_STRNDUP */

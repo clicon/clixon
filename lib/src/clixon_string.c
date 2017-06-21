@@ -333,6 +333,43 @@ str2cvec(char  *string,
     goto done;
 }
 
+/*! Map from int to string using str2int map
+ * @param[in] ms   String, integer map
+ * @param[in] i    Input integer
+ * @retval    str  String value
+ * @retval    NULL Error, not found
+ * @note linear search
+ */
+const char *
+clicon_int2str(const map_str2int *mstab, 
+	       int                i)
+{
+    const struct map_str2int *ms;
+
+    for (ms = &mstab[0]; ms->ms_str; ms++)
+	if (ms->ms_int == i)
+	    return ms->ms_str;
+    return NULL;
+}
+
+/*! Map from string to int using str2int map
+ * @param[in] ms   String, integer map
+ * @param[in] str  Input string
+ * @retval    int  Value
+ * @retval   -1    Error, not found
+ * @note linear search
+ */
+int
+clicon_str2int(const map_str2int *mstab, 
+	       char              *str)
+{
+    const struct map_str2int *ms;
+
+    for (ms = &mstab[0]; ms->ms_str; ms++)
+	if (strcmp(ms->ms_str, str) == 0)
+	    return ms->ms_int;
+    return -1;
+}
 
 /*! strndup() for systems without it, such as xBSD
  */

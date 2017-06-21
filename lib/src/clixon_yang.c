@@ -75,21 +75,9 @@
    for static scope type binding */
 #define YANG_TYPE_CACHE 1
 
-/*
- * Private data types
- */
-/* Struct used to map between int and strings. Used  for:
- * - mapping yang types/typedefs (strings) and cligen types (ints). 
- * - mapping yang keywords (strings) and enum (clicon)
- */
-struct map_str2int{
-    char         *ms_str; /* string as in 4.2.4 in RFC 6020 */
-    int           ms_int;
-};
-
 
 /* Mapping between yang keyword string <--> clicon constants */
-static const struct map_str2int ykmap[] = {
+static const map_str2int ykmap[] = {
     {"anyxml",           Y_ANYXML}, 
     {"argument",         Y_ARGUMENT}, 
     {"augment",          Y_AUGMENT}, 
@@ -545,18 +533,10 @@ ys_flag_reset(yang_stmt *ys,
     return 0;
 }
 
-/*! Translate from RFC 6020 keywords to printable string.
-   linear search,...
- */
 char *
 yang_key2str(int keyword)
 {
-    const struct map_str2int *yk;
-
-    for (yk = &ykmap[0]; yk->ms_str; yk++)
-	if (yk->ms_int == keyword)
-	    return yk->ms_str;
-    return NULL;
+    return (char*)clicon_int2str(ykmap, keyword);
 }
 
 /*! Find top module or sub-module. Note that ultimate top is yang spec 

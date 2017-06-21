@@ -42,7 +42,7 @@ expectfn(){
 #  echo "expect:\"$expect\""
 #  echo "match:\"$match\""
   if [ -z "$match" ]; then
-      err $expect "$ret"
+      err "$expect" "$ret"
   fi
   if [ -n "$expect2" ]; then
       match=`echo "$ret" | grep -EZo "$expect2"`

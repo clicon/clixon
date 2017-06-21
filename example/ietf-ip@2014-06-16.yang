@@ -1,4 +1,4 @@
-   module ietf-ip {
+module ietf-ip {
 
     namespace "urn:ietf:params:xml:ns:yang:ietf-ip";
     prefix ip;

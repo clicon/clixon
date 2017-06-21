@@ -1,5 +1,8 @@
 # Clixon CHANGELOG
 	
+- Generic map_str2int generic mapping tables
+
+- Removed vector return values from xmldb_get()
 	
 ## 3.3.1 June 7 2017
 

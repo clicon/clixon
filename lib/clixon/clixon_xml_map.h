@@ -47,7 +47,8 @@ enum {
     LVXML_VECVAL,   /* key: a.b.0{x=1} -> <a><b><x>1</x></b></a> och */
     LVXML_VECVAL2,  /* key: a.b.0{x=1} -> <a><x>1</x></a> och */
 };
-
+extern const map_str2int netconf_restconf_map[];
+extern const map_str2int http_reason_phrase_map[];
 
 /*
  * Prototypes
