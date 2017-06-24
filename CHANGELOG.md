@@ -1,5 +1,7 @@
 # Clixon CHANGELOG
 	
+- Genearlized yang type resolution.
+
 - Generic map_str2int generic mapping tables
 
 - Removed vector return values from xmldb_get()
