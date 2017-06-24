@@ -223,8 +223,9 @@ ys_resolve_type(yang_stmt *ys, void *arg)
  
     if (ys->ys_keyword != Y_TYPE)
         return 0;
-    yang_type_resolve((yang_stmt*)ys->ys_parent, ys, &resolved,
-		      &options, &mincv, &maxcv, &pattern, &fraction);
+    if (yang_type_resolve((yang_stmt*)ys->ys_parent, ys, &resolved,
+			  &options, &mincv, &maxcv, &pattern, &fraction) < 0)
+	goto done;
     if (yang_type_cache_set(&ys->ys_typecache, 
 			    resolved, options, mincv, maxcv, pattern, fraction) < 0)
 	goto done;
@@ -721,12 +722,9 @@ yang_find_identity(yang_stmt *ys, char *identity)
 {
     char        *id;
     char        *prefix = NULL;
-    yang_stmt   *yimport;
-    yang_spec   *yspec;
     yang_stmt   *ymodule;
     yang_stmt   *yid = NULL;
     yang_node   *yn;
-    yang_stmt   *ymod;
 
     if ((id = strchr(identity, ':')) == NULL)
 	id = identity;
@@ -737,12 +735,8 @@ yang_find_identity(yang_stmt *ys, char *identity)
     }
     /* No, now check if identityref is derived from base */
     if (prefix){ /* Go to top and find import that matches */
-	ymod = ys_module(ys);
-	if ((yimport = ys_module_import(ymod, prefix)) == NULL)
+	if ((ymodule = yang_find_module_by_prefix(ys, prefix)) == NULL)
 	    goto done;
-	yspec = ys_spec(ys);
-	if ((ymodule = yang_find((yang_node*)yspec, Y_MODULE, yimport->ys_argument)) == NULL)
-	    goto done; /* unresolved */
 	yid = yang_find((yang_node*)ymodule, Y_IDENTITY, id);
     }
     else{
@@ -834,12 +828,10 @@ yang_type_resolve(yang_stmt   *ys,
     yang_stmt   *ylength;
     yang_stmt   *ypattern;
     yang_stmt   *yfraction;
-    yang_stmt   *yimport;
     char        *type;
     char        *prefix = NULL;
     int          retval = -1;
     yang_node   *yn;
-    yang_spec   *yspec;
     yang_stmt   *ymod;
 
     if (options)
@@ -868,14 +860,8 @@ yang_type_resolve(yang_stmt   *ys,
 
     /* Not basic type. Now check if prefix which means we look in other module */
     if (prefix){ /* Go to top and find import that matches */
-	ymod = ys_module(ys);
-	if ((yimport = ys_module_import(ymod, prefix)) == NULL){
-	    clicon_err(OE_DB, 0, "Prefix %s not defined not found", prefix);
+	if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL)
 	    goto done;
-	}
-	yspec = ys_spec(ys);
-	if ((ymod = yang_find((yang_node*)yspec, Y_MODULE, yimport->ys_argument)) == NULL)
-	    goto ok; /* unresolved */
 	if ((rytypedef = yang_find((yang_node*)ymod, Y_TYPEDEF, type)) == NULL)
 	    goto ok; /* unresolved */
     }

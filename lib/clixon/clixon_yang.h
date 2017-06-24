@@ -199,7 +199,7 @@ char      *ytype_prefix(yang_stmt *ys);
 char      *ytype_id(yang_stmt *ys);
 yang_stmt *ys_module(yang_stmt *ys);
 yang_spec *ys_spec(yang_stmt *ys);
-yang_stmt *ys_module_import(yang_stmt *ymod, char *prefix);
+yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
 yang_stmt *yang_find(yang_node *yn, int keyword, char *argument);
 yang_stmt *yang_find_syntax(yang_node *yn, char *argument);
 yang_stmt *yang_find_topnode(yang_spec *ysp, char *name);

@@ -615,28 +615,62 @@ ytype_prefix(yang_stmt *ys)
     return prefix;
 }
 
-/*! Given a module and a prefix, find the import statement fo that prefix
+
+/*! Given a yang statement and a prefix, return yang module to that prefix
  * Note, not the other module but the proxy import statement only
- * @param[in]  ytop  yang module
+ * @param[in]  ys      A yang statement
+ * @param[in]  prefix  prefix
+ * @retval     ymod    Yang module statement if found
+ * @retval     NULL    not found
  */
 yang_stmt *
-ys_module_import(yang_stmt *ymod, 
-		 char      *prefix)
+yang_find_module_by_prefix(yang_stmt *ys, 
+			   char      *prefix)
 {
-    yang_stmt *yimport = NULL;
+    yang_stmt *yimport;
     yang_stmt *yprefix;
+    yang_stmt *my_ymod;
+    yang_stmt *ymod = NULL;
+    yang_spec *yspec;
 
-    assert(ymod->ys_keyword == Y_MODULE || ymod->ys_keyword == Y_SUBMODULE);
-    while ((yimport = yn_each((yang_node*)ymod, yimport)) != NULL) {
+    if ((my_ymod = ys_module(ys)) == NULL){
+	clicon_err(OE_YANG, 0, "My yang module not found");
+	goto done;
+    }
+    if ((yspec = ys_spec(my_ymod)) == NULL){
+	clicon_err(OE_YANG, 0, "My yang spec not found");
+	goto done;
+    }
+    if (my_ymod->ys_keyword != Y_MODULE && 
+	my_ymod->ys_keyword != Y_SUBMODULE){
+	clicon_err(OE_YANG, 0, "%s not module or sub-module", my_ymod->ys_argument);
+	goto done;
+    }
+    if ((yprefix = yang_find((yang_node*)my_ymod, Y_PREFIX, NULL)) != NULL &&
+	strcmp(yprefix->ys_argument, prefix) == 0){
+	ymod = my_ymod;
+	goto done;
+    }
+    yimport = NULL;
+    while ((yimport = yn_each((yang_node*)my_ymod, yimport)) != NULL) {
 	if (yimport->ys_keyword != Y_IMPORT)
 	    continue;
 	if ((yprefix = yang_find((yang_node*)yimport, Y_PREFIX, NULL)) != NULL &&
-	    strcmp(yprefix->ys_argument, prefix) == 0)
-	    return yimport;
+	    strcmp(yprefix->ys_argument, prefix) == 0){
+	    break;
+	}
     }
-    return NULL;
+    if (yimport){
+	if ((ymod = yang_find((yang_node*)yspec, Y_MODULE, yimport->ys_argument)) == NULL){
+	    clicon_err(OE_YANG, 0, "No module or sub-module found with prefix %s", 
+		       yimport->ys_argument);	
+	    yimport = NULL;
+	    goto done; /* unresolved */
+	}
+    }
+ done:
+    return ymod;
 }
-
 
 /*! string is quoted if it contains space or tab, needs double '' */
 static int inline
@@ -1036,22 +1070,13 @@ ys_grouping_resolve(yang_stmt  *ys,
 		    yang_stmt **ygrouping0)
 {
     int             retval = -1;
-    yang_stmt      *yimport;
-    yang_spec      *yspec;
     yang_stmt      *ymodule;
     yang_stmt      *ygrouping = NULL;
     yang_node      *yn;
-    yang_stmt      *ymod;
 
     /* find the grouping associated with argument and expand(?) */
     if (prefix){ /* Go to top and find import that matches */
-	ymod      = ys_module(ys);
-	if ((yimport = ys_module_import(ymod, prefix)) == NULL){
-	    clicon_err(OE_DB, 0, "Prefix %s not defined not found", prefix);
-	    goto done;
-	}
-	yspec = ys_spec(ys);
-	if ((ymodule = yang_find((yang_node*)yspec, Y_MODULE, yimport->ys_argument)) != NULL)
+	if ((ymodule = yang_find_module_by_prefix(ys, prefix)) != NULL)
 	    ygrouping = yang_find((yang_node*)ymodule, Y_GROUPING, name);
     }
     else
@@ -1067,7 +1092,7 @@ ys_grouping_resolve(yang_stmt  *ys,
 	}
     *ygrouping0 = ygrouping;
     retval = 0;
- done:
+    // done:
     return retval;
 }
 
@@ -1246,8 +1271,8 @@ yang_expand(yang_node *yn)
  * @param str      String of yang statements
  * @param name     Log string, typically filename
  * @param ysp      Yang specification. Should ave been created by caller using yspec_new
- * @retval 0       Everything OK
- * @retval -1      Error encountered
+ * @retval ymod      Top-level yang (sub)module
+ * @retval NULL    Error encountered
  * Calling order:
  *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
  *   yang_parse1            # Parse one yang module, go through its (sub)modules and parse them 
@@ -1263,7 +1288,7 @@ yang_parse_str(clicon_handle h,
 	       yang_spec    *yspec)
 {
     struct clicon_yang_yacc_arg yy = {0,};
-    yang_stmt                  *ym = NULL;
+    yang_stmt                  *ymod = NULL;
 
     yy.yy_handle       = h; 
     yy.yy_name         = (char*)name;
@@ -1292,10 +1317,10 @@ yang_parse_str(clicon_handle h,
 	if (yang_scan_exit(&yy) < 0)
 	    goto done;		
     }
-    ym = yy.yy_module;
+    ymod = yy.yy_module;
   done:
     ystack_pop(&yy);
-    return ym;
+    return ymod;  /* top-level (sub)module */
 }
 
 /*! Read an opened file into a string and call yang string parsing
@@ -1306,8 +1331,8 @@ yang_parse_str(clicon_handle h,
  * @param f        Open file handle
  * @param name     Log string, typically filename
  * @param ysp      Yang specification. Should ave been created by caller using yspec_new
- * @retval 0       Everything OK
- * @retval -1      Error encountered
+ * @retval ymod      Top-level yang (sub)module
+ * @retval NULL    Error encountered
 
  * The database symbols are inserted in alphabetical order.
  * Calling order:
@@ -1329,7 +1354,7 @@ yang_parse_file(clicon_handle h,
     int           i;
     int           c;
     int           len;
-    yang_stmt    *ymodule = NULL;
+    yang_stmt    *ymod = NULL;
 
     clicon_debug(1, "Yang parse file: %s", name);
     len = 1024; /* any number is fine */
@@ -1353,12 +1378,12 @@ yang_parse_file(clicon_handle h,
 	}
 	buf[i++] = (char)(c&0xff);
     } /* read a line */
-    if ((ymodule = yang_parse_str(h, buf, name, ysp)) < 0)
+    if ((ymod = yang_parse_str(h, buf, name, ysp)) < 0)
 	goto done;
   done:
     if (buf)
 	free(buf);
-    return ymodule;
+    return ymod; /* top-level (sub)module */
 }
 
 /*! No specific revision give. Match a yang file given dir and module 
@@ -1416,8 +1441,8 @@ yang_parse_find_match(clicon_handle h,
  * @param module   Name of main YANG module. More modules may be parsed if imported
  * @param revision Optional module revision date
  * @param ysp      Yang specification. Should ave been created by caller using yspec_new
- * @retval 0       Everything OK
- * @retval -1      Error encountered
+ * @retval ymod    Top-level yang (sub)module
+ * @retval NULL    Error encountered
  * module-or-submodule-name ['@' revision-date] ( '.yang' / '.yin' )
  * Calling order:
  *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
@@ -1437,7 +1462,7 @@ yang_parse2(clicon_handle h,
     FILE       *f = NULL;
     cbuf       *fbuf = NULL;
     char       *filename;
-    yang_stmt  *ys = NULL;
+    yang_stmt  *ymod = NULL;
     struct stat st;
     int         nr;
 
@@ -1465,14 +1490,14 @@ yang_parse2(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "fopen(%s)", filename);	
 	goto done;
     }
-    if ((ys = yang_parse_file(h, f, filename, ysp)) == NULL)
+    if ((ymod = yang_parse_file(h, f, filename, ysp)) == NULL)
 	goto done;
   done:
     if (fbuf)
 	cbuf_free(fbuf);
     if (f)
 	fclose(f);
-    return ys;
+    return ymod; /* top-level (sub)module */
 }
 
 /*! Parse one yang module then go through (sub)modules and parse them recursively
@@ -1481,9 +1506,9 @@ yang_parse2(clicon_handle h,
  * @param yang_dir Directory where all YANG module files reside
  * @param module   Name of main YANG module. More modules may be parsed if imported
  * @param revision Optional module revision date
- * @param ysp      Yang specification. Should ave been created by caller using yspec_new
- * @retval 0       Everything OK
- * @retval -1      Error encountered
+ * @param ysp      Yang specification. Should have been created by caller using yspec_new
+ * @retval ymod    Top-level yang (sub)module
+ * @retval NULL    Error encountered
  * Find a yang module file, and then recursively parse all its imported modules.
  * Calling order:
  *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
@@ -1501,15 +1526,15 @@ yang_parse1(clicon_handle h,
 	    yang_spec    *ysp)
 {
     yang_stmt  *yi = NULL; /* import */
-    yang_stmt  *ys;
+    yang_stmt  *ymod;
     yang_stmt  *yrev;
     char       *modname;
     char       *subrevision;
 
-    if ((ys = yang_parse2(h, yang_dir, module, revision, ysp)) == NULL)
+    if ((ymod = yang_parse2(h, yang_dir, module, revision, ysp)) == NULL)
 	goto done;
     /* go through all import statements of ysp (or its module) */
-    while ((yi = yn_each((yang_node*)ys, yi)) != NULL){
+    while ((yi = yn_each((yang_node*)ymod, yi)) != NULL){
 	if (yi->ys_keyword != Y_IMPORT)
 	    continue;
 	modname = yi->ys_argument;
@@ -1519,12 +1544,12 @@ yang_parse1(clicon_handle h,
 	    subrevision = NULL;
 	if (yang_find((yang_node*)ysp, Y_MODULE, modname) == NULL)
 	    if (yang_parse1(h, yang_dir, modname, subrevision, ysp) == NULL){
-		ys = NULL;
+		ymod = NULL;
 		goto done;
 	    }
     }
   done:
-    return ys;
+    return ymod; /* top-level (sub)module */
 }
 
 /*! Parse top yang module including all its sub-modules. Expand and populate yang tree
@@ -1554,22 +1579,22 @@ yang_parse(clicon_handle h,
 	   yang_spec    *ysp)
 {
     int         retval = -1;
-    yang_stmt  *ys;
+    yang_stmt  *ymod; /* Top-level yang (sub)module */
 
     /* Step 1: parse from text to yang parse-tree. */
-    if ((ys = yang_parse1(h, yang_dir, module, revision, ysp)) == NULL)
+    if ((ymod = yang_parse1(h, yang_dir, module, revision, ysp)) == NULL)
 	goto done;
     /* Add top module name as dbspec-name */
-    clicon_dbspec_name_set(h, ys->ys_argument);
+    clicon_dbspec_name_set(h, ymod->ys_argument);
 
 #ifdef YANG_TYPE_CACHE
     /* Resolve all types */
-    yang_apply((yang_node*)ys, ys_resolve_type, NULL);
+    yang_apply((yang_node*)ysp, ys_resolve_type, NULL);
 #endif
     /* Step 2: Macro expansion of all grouping/uses pairs. Expansion needs marking */
     if (yang_expand((yang_node*)ysp) < 0)
 	goto done;
-    yang_apply((yang_node*)ys, ys_flag_reset, (void*)YANG_FLAG_MARK);
+    yang_apply((yang_node*)ymod, ys_flag_reset, (void*)YANG_FLAG_MARK);
     /* Step 4: Go through parse tree and populate it with cv types */
     if (yang_apply((yang_node*)ysp, ys_populate, NULL) < 0)
 	goto done;
@@ -1678,8 +1703,6 @@ yang_xpath_abs(yang_node *yn,
     int              nvec;
     yang_node       *ys = NULL;
     yang_stmt       *ymod;
-    yang_spec       *yspec;
-    yang_stmt       *yimport;
     char            *id;
     char            *prefix = NULL;
 
@@ -1716,15 +1739,8 @@ yang_xpath_abs(yang_node *yn,
 	}
 	prefix[id-vec[1]] = '\0';
 	id++;
-	if ((yimport = ys_module_import(ymod, prefix)) == NULL){
-	    clicon_err(OE_DB, 0, "Prefix %s not defined not found", prefix);
+	if ((ymod = yang_find_module_by_prefix((yang_stmt*)yn, prefix)) == NULL)
 	    goto done;
-	}
-	yspec = ys_spec(ymod);
-	if ((ymod = yang_find((yang_node*)yspec, Y_MODULE, yimport->ys_argument)) == NULL){
-	    clicon_err(OE_DB, 0, "Module referred to with prefix %s not found", prefix);
-	    goto done;
-	}
     }
     ys = yang_xpath_vec((yang_node*)ymod, vec+1, nvec-1);
  done:

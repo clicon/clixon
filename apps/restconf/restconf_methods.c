@@ -159,7 +159,7 @@ api_data_get_gen(clicon_handle h,
     cxobj     *xerr;
     cbuf      *cbj = NULL;;
     int        code;
-    char      *reason_phrase;
+    const char *reason_phrase;
 
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h);
