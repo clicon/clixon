@@ -1,6 +1,8 @@
 # Clixon CHANGELOG
 	
-- Genearlized yang type resolution.
+- Restricted yang (sub)module file match to match RFC6020 exactly
+
+- Generalized yang type resolution to all included (sub)modules not just the topmost
 
 - Generic map_str2int generic mapping tables
 

@@ -644,6 +644,7 @@ compare_dbs(clicon_handle h,
 {
     cxobj *xc1 = NULL; /* running xml */
     cxobj *xc2 = NULL; /* candidate xml */
+    cxobj *xerr;
     int    retval = -1;
     int    astext;
 
@@ -655,10 +656,18 @@ compare_dbs(clicon_handle h,
 	astext = cv_int32_get(cvec_i(argv, 0));
     else
 	astext = 0;
-    if (clicon_rpc_get_config(h, "running", "/", 0, &xc1) < 0)
+    if (clicon_rpc_get_config(h, "running", "/", &xc1) < 0)
 	goto done;
-    if (clicon_rpc_get_config(h, "candidate", "/", 0, &xc2) < 0)
+    if ((xerr = xpath_first(xc1, "/rpc-error")) != NULL){
+	clicon_rpc_generate_error(xerr);
 	goto done;
+    }
+    if (clicon_rpc_get_config(h, "candidate", "/", &xc2) < 0)
+	goto done;
+    if ((xerr = xpath_first(xc2, "/rpc-error")) != NULL){
+	clicon_rpc_generate_error(xerr);
+	goto done;
+    }
     if (compare_xmls(xc1, xc2, astext) < 0) /* astext? */
 	goto done;
     retval = 0;
@@ -800,6 +809,7 @@ save_config_file(clicon_handle h,
     char      *dbstr;
     char      *varstr;
     cxobj     *xt = NULL;
+    cxobj     *xerr;
     FILE      *f = NULL;
 
     if (cvec_len(argv) != 2){
@@ -823,8 +833,12 @@ save_config_file(clicon_handle h,
 	goto done;
     }
     filename = cv_string_get(cv);
-    if (clicon_rpc_get_config(h, dbstr,"/", 0, &xt) < 0)
+    if (clicon_rpc_get_config(h, dbstr,"/", &xt) < 0)
 	goto done;
+    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+	clicon_rpc_generate_error(xerr);
+	goto done;
+    }
     if ((f = fopen(filename, "wb")) == NULL){
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
 	goto done;
@@ -1122,6 +1136,7 @@ cli_copy_config(clicon_handle h,
     char        *tovar;
     cg_var      *tocv;
     char        *toname;
+    cxobj       *xerr;
 
     if (cvec_len(argv) != 5){
 	clicon_err(OE_PLUGIN, 0, "%s: Requires four elements: <db> <xpath> <keyname> <from> <to>", __FUNCTION__);
@@ -1162,8 +1177,12 @@ cli_copy_config(clicon_handle h,
     cprintf(cb, xpath, keyname, fromname);	
 
     /* Get from object configuration and store in x1 */
-    if (clicon_rpc_get_config(h, db, cbuf_get(cb), 0, &x1) < 0)
+    if (clicon_rpc_get_config(h, db, cbuf_get(cb), &x1) < 0)
 	goto done;
+    if ((xerr = xpath_first(x1, "/rpc-error")) != NULL){
+	clicon_rpc_generate_error(xerr);
+	goto done;
+    }
 
     /* Get to variable -> cv -> to name */
     if ((tocv = cvec_find_var(cvv, tovar)) == NULL){

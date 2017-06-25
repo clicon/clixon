@@ -85,7 +85,7 @@ install: $(PLUGIN)
 install-include:
 
 uninstall: 
-	rm -rf $(DESTDIR)$(clixon_LIBDIR)/xmldb/$(PLUGIN)
+	rm -rf $(DESTDIR)$(libdir)/xmldb/$(PLUGIN)
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -

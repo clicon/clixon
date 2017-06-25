@@ -157,6 +157,7 @@ api_data_get_gen(clicon_handle h,
     yang_spec *yspec;
     cxobj     *xret = NULL;
     cxobj     *xerr;
+    cxobj     *xtag;
     cbuf      *cbj = NULL;;
     int        code;
     const char *reason_phrase;
@@ -170,7 +171,7 @@ api_data_get_gen(clicon_handle h,
 	goto done;
     }
     clicon_debug(1, "%s path:%s", __FUNCTION__, cbuf_get(path));
-    if (clicon_rpc_get_config(h, "running", cbuf_get(path), 1, &xret) < 0){
+    if (clicon_rpc_get_config(h, "running", cbuf_get(path), &xret) < 0){
 	notfound(r);
 	goto done;
     }
@@ -182,22 +183,22 @@ api_data_get_gen(clicon_handle h,
 	cbuf_free(cb);
     }
 #endif
-    if (strcmp(xml_name(xret), "rpc-error") == 0){
+    if ((xerr = xpath_first(xret, "/rpc-error")) != NULL){
 	if ((cbj = cbuf_new()) == NULL)
 	    goto done;
-	if ((xerr = xpath_first(xret, "/error-tag")) == NULL){
+	if ((xtag = xpath_first(xerr, "/error-tag")) == NULL){
 	    notfound(r); /* bad reply? */
 	    goto done;
 	}
-	code = clicon_str2int(netconf_restconf_map, xml_body(xerr));
+	code = clicon_str2int(netconf_restconf_map, xml_body(xtag));
 	if ((reason_phrase = clicon_int2str(http_reason_phrase_map, code)) == NULL)
 	    reason_phrase="";
 	clicon_debug(1, "%s code:%d reason phrase:%s", 
 		     __FUNCTION__, code, reason_phrase);
 
-	if (xml_name_set(xret, "error") < 0)
+	if (xml_name_set(xerr, "error") < 0)
 	    goto done;
-	if (xml2json_cbuf(cbj, xret, 1) < 0)
+	if (xml2json_cbuf(cbj, xerr, 1) < 0)
 	    goto done;
 	FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
 	FCGX_FPrintF(r->out, "Content-Type: application/yang-data+json\r\n\r\n");

@@ -230,31 +230,33 @@ clicon_rpc_generate_error(cxobj *xerr)
  * @param[in]  h        CLICON handle
  * @param[in]  db       Name of database
  * @param[in]  xpath    XPath (or "")
- * @param[in]  errmode  0 if xml errors are returned as clicon_err
- *                      1 if xml errors are in xt and return 0.
- * @param[out] xt       XML tree. must be freed by caller with xml_free
+ * @param[out] xt       XML tree. Free with xml_free. 
+ *                      Either <config> or <rpc-error>. 
  * @retval    0         OK
  * @retval   -1         Error, fatal or xml
  * @code
  *    cxobj *xt = NULL;
- *    if (clicon_rpc_get_config(h, "running", "/", 0, &xt) < 0)
+ *    if (clicon_rpc_get_config(h, "running", "/", &xt) < 0)
  *       err;
+ *   if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+ *	clicon_rpc_generate_error(xerr);
+ *      err;
+ *  }
  *    if (xt)
  *       xml_free(xt);
  * @endcode
+ * @see clicon_rpc_generate_error
  */
 int
 clicon_rpc_get_config(clicon_handle       h, 
 		      char               *db, 
 		      char               *xpath,
-		      int                 errmode,
 		      cxobj             **xt)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
-    cxobj             *xerr;
     cxobj             *xd;
 
     if ((cb = cbuf_new()) == NULL)
@@ -267,22 +269,12 @@ clicon_rpc_get_config(clicon_handle       h,
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
-    if (errmode == 0){ /* Move this to caller */
-	if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	    clicon_rpc_generate_error(xerr);
+    /* Send xml error back: first check error, then ok */
+    if ((xd = xpath_first(xret, "/rpc-reply/rpc-error")) != NULL)
+	xd = xml_parent(xd); /* point to rpc-reply */
+    else if ((xd = xpath_first(xret, "/rpc-reply/data/config")) == NULL)
+	if ((xd = xml_new("config", NULL)) == NULL)
 	    goto done;
-	}
-	if ((xd = xpath_first(xret, "//data/config")) == NULL)
-	    if ((xd = xml_new("config", NULL)) == NULL)
-		goto done;
-    }
-    else{ /* Send xml error back (this should be default behaviour) */
-	if ((xd = xpath_first(xret, "//rpc-error")) == NULL){
-	    if ((xd = xpath_first(xret, "//data/config")) == NULL)
-		if ((xd = xml_new("config", NULL)) == NULL)
-		    goto done;
-	}
-    }
     if (xt){
 	if (xml_rm(xd) < 0)
 	    goto done;

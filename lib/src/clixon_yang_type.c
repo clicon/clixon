@@ -178,7 +178,8 @@ yang_type_cache_get(yang_type_cache *ycache,
 }
 
 int
-yang_type_cache_cp(yang_type_cache **ycnew, yang_type_cache *ycold)
+yang_type_cache_cp(yang_type_cache **ycnew, 
+		   yang_type_cache  *ycold)
 {
     int        retval = -1;
     int        options;
@@ -211,7 +212,8 @@ yang_type_cache_free(yang_type_cache *ycache)
 
 /*! Resolve types: populate type caches */
 int
-ys_resolve_type(yang_stmt *ys, void *arg)
+ys_resolve_type(yang_stmt *ys, 
+		void      *arg)
 {
     int               retval = -1;
     int               options = 0x0;
@@ -333,7 +335,9 @@ cv2yang_type(enum cv_type cv_type)
  * @param[out] cvtype
  */
 int
-clicon_type2cv(char *origtype, char *restype, enum cv_type *cvtype)
+clicon_type2cv(char         *origtype, 
+	       char         *restype, 
+	       enum cv_type *cvtype)
 {
     int retval = -1;
 
@@ -700,7 +704,7 @@ ys_typedef_up(yang_stmt *ys)
   This is a sanity check of base identity of identity-ref and for identity 
   statements.
 
-Return true if node is identityref and is derived from identity_name
+  Return true if node is identityref and is derived from identity_name
   The derived-from() function returns true if the (first) node (in
    document order in the argument "nodes") is a node of type identityref,
    and its value is an identity that is derived from the identity
@@ -718,7 +722,8 @@ Return true if node is identityref and is derived from identity_name
    Så vad är det denna function ska göra? Svar: 1
 */
 yang_stmt *
-yang_find_identity(yang_stmt *ys, char *identity)
+yang_find_identity(yang_stmt *ys, 
+		   char      *identity)
 {
     char        *id;
     char        *prefix = NULL;

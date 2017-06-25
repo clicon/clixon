@@ -71,10 +71,6 @@
 #include "clixon_yang_type.h"
 #include "clixon_yang_parse.h"
 
-/* Instead of using dynamic type lookup, use a cache that is evaluated early 
-   for static scope type binding */
-#define YANG_TYPE_CACHE 1
-
 
 /* Mapping between yang keyword string <--> clicon constants */
 static const map_str2int ykmap[] = {
@@ -1392,7 +1388,7 @@ yang_parse_file(clicon_handle h,
  * @param[in]  module   Name of main YANG module. 
  * @param[out] fbuf     Buffer containing filename
  *
- * @retval 1            Match founbd, Most recent entry returned in fbuf
+ * @retval 1            Match found, Most recent entry returned in fbuf
  * @retval 0            No matching entry found
  * @retval -1           Error 
 */
@@ -1406,17 +1402,20 @@ yang_parse_find_match(clicon_handle h,
     struct dirent *dp = NULL;
     int            ndp;
     cbuf          *regex = NULL;
-    char          *regexstr;
 
     if ((regex = cbuf_new()) == NULL){
 	clicon_err(OE_YANG, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(regex, "^%s.*(.yang)$", module);
-    regexstr = cbuf_get(regex);
+    /* RFC 6020: The name of the file SHOULD be of the form:
+       module-or-submodule-name ['@' revision-date] ( '.yang' / '.yin' )
+       revision-date ::= 4DIGIT "-" 2DIGIT "-" 2DIGIT
+    */
+    cprintf(regex, "^%s(@[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])?(.yang)$", 
+	    module);
     if ((ndp = clicon_file_dirent(yang_dir, 
 				  &dp, 
-				  regexstr, 
+				  cbuf_get(regex),
 				  S_IFREG)) < 0)
 	goto done;
     /* Entries are sorted, last entry should be most recent date */
@@ -1587,10 +1586,9 @@ yang_parse(clicon_handle h,
     /* Add top module name as dbspec-name */
     clicon_dbspec_name_set(h, ymod->ys_argument);
 
-#ifdef YANG_TYPE_CACHE
     /* Resolve all types */
     yang_apply((yang_node*)ysp, ys_resolve_type, NULL);
-#endif
+
     /* Step 2: Macro expansion of all grouping/uses pairs. Expansion needs marking */
     if (yang_expand((yang_node*)ysp) < 0)
 	goto done;
