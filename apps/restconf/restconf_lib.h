@@ -43,6 +43,8 @@
 /*
  * Prototypes
  */
+int restconf_err2code(char *tag);
+const char *restconf_code2reason(int code);
 int notfound(FCGX_Request *r);
 int badrequest(FCGX_Request *r);
 int conflict(FCGX_Request *r);

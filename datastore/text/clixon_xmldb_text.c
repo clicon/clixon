@@ -68,9 +68,10 @@
 /*! Internal structure of text datastore handle. 
  */
 struct text_handle {
-    int        th_magic;    /* magic */
-    char      *th_dbdir;    /* Directory of database files */
-    yang_spec *th_yangspec; /* Yang spec if this datastore */
+    int            th_magic;    /* magic */
+    char          *th_dbdir;    /* Directory of database files */
+    yang_spec     *th_yangspec; /* Yang spec if this datastore */
+    clicon_hash_t *th_dbs;      /* Hash of databases */
 };
 
 /*! Check struct magic number for sanity checks
@@ -84,16 +85,6 @@ text_handle_check(xmldb_handle xh)
 
     return th->th_magic == TEXT_HANDLE_MAGIC ? 0 : -1;
 }
-
-/*! Database locking for candidate and running non-persistent
- * Store an integer for running and candidate containing
- * the session-id of the client holding the lock.
- * @note This should probably be on file-system
- */
-static int _running_locked = 0;
-static int _candidate_locked = 0;
-static int _startup_locked = 0;
-
 
 /*! Translate from symbolic database name to actual filename in file-system
  * @param[in]   th       text handle handle
@@ -153,6 +144,8 @@ text_connect(void)
     }
     memset(th, 0, size);
     th->th_magic = TEXT_HANDLE_MAGIC;
+    if ((th->th_dbs = hash_init()) == NULL)
+	goto done;
     xh = (xmldb_handle)th;
   done:
     return xh;
@@ -172,6 +165,8 @@ text_disconnect(xmldb_handle xh)
     if (th){
 	if (th->th_dbdir)
 	    free(th->th_dbdir);
+	if (th->th_dbs)
+	    hash_free(th->th_dbs);
 	free(th);
     }
     retval = 0;
@@ -239,37 +234,6 @@ text_setopt(xmldb_handle xh,
     return retval;
 }
 
-/*! Populate with spec
- * @param[in]   xt      XML tree with some node marked
- */
-int
-xml_spec_populate(cxobj  *x, 
-		  void   *arg)
-{
-    int        retval = -1;
-    yang_spec *yspec = (yang_spec*)arg;
-    char      *name;
-    yang_stmt *y;  /* yang node */
-    cxobj     *xp; /* xml parent */ 
-    yang_stmt *yp; /* parent yang */
-
-    name = xml_name(x);
-    if ((xp = xml_parent(x)) != NULL &&
-	(yp = xml_spec(xp)) != NULL)
-	y = yang_find_syntax((yang_node*)yp, xml_name(x));
-    else
-	y = yang_find_topnode(yspec, name); /* still NULL for config */
-    if (y==NULL){
-	clicon_err(OE_XML, EBADF, "yang spec not found for xml node '%s' xml parent name: '%s' yangspec:'%s']", 
-		   name, 
-		   xp?xml_name(xp):"", yp?yp->ys_argument:"");
-	goto done;
-    }
-    xml_spec_set(x, y);
-    retval = 0;
- done:
-    return retval;
-}
 
 /*! Ensure that xt only has a single sub-element and that is "config" 
  */
@@ -319,6 +283,7 @@ int
 text_get(xmldb_handle xh,
 	 char         *db, 
 	 char         *xpath,
+	 int           config,
 	 cxobj       **xtop)
 {
     int             retval = -1;
@@ -337,7 +302,7 @@ text_get(xmldb_handle xh,
 	clicon_err(OE_XML, 0, "dbfile NULL");
 	goto done;
     }
-    if ((yspec =  th->th_yangspec) == NULL){
+    if ((yspec = th->th_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
@@ -362,7 +327,7 @@ text_get(xmldb_handle xh,
 	    goto done;
     }
     /* Here xt looks like: <config>...</config> */
-    /* Validate existing config tree */
+    /* Add yang specification backpointer to all XML nodes */
     if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	goto done;
 
@@ -370,27 +335,33 @@ text_get(xmldb_handle xh,
     if (xpath_vec(xt, xpath?xpath:"/", &xvec, &xlen) < 0)
 	goto done;
 
-    /* If vectors are specified then filter out everything else,
+    /* If vectors are specified then mark the nodes found and
+     * then filter out everything else,
      * otherwise return complete tree.
      */
     if (xvec != NULL){
 	for (i=0; i<xlen; i++)
 	    xml_flag_set(xvec[i], XML_FLAG_MARK);
     }
-    /* Top is special case */
+    /* Remove everything that is not marked */
     if (!xml_flag(xt, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1, NULL) < 0)
+	if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
 	    goto done;
+    /* reset flag */
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
-    if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+    /* filter out state (operations) data if config not set. Mark all nodes
+     that are not config data */
+    if (config && xml_apply(xt, CX_ELMNT, xml_non_config_data, NULL) < 0)
 	goto done;
+    /* Remove (prune) nodes that are marked (that does not pass test) */
+    if (xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1) < 0)
+	goto done;
+    /* Add default values (if not set) */
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
-    /* XXX does not work for top-level */
+    /* Order XML children according to YANG */
     if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
-	goto done;
-    if (xml_apply(xt, CX_ELMNT, xml_sanity, NULL) < 0)
 	goto done;
 
     if (debug>1)
@@ -696,7 +667,6 @@ text_modify_top(cxobj              *x0,
     return retval;
 }
 
-
 /*! Modify database provided an xml tree and an operation
  * This is a clixon datastore plugin of the the xmldb api
  * @see xmldb_put
@@ -757,11 +727,11 @@ text_put(xmldb_handle        xh,
 	goto done;
     }
 
-    /* Validate existing config tree */
+    /* Add yang specification backpointer to all XML nodes */
     if (xml_apply(x0, CX_ELMNT, xml_spec_populate, yspec) < 0)
        goto done;
 
-    /* Validate modification tree */
+    /* Add yang specification backpointer to all XML nodes */
     if (xml_apply(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
        goto done;
 
@@ -772,7 +742,7 @@ text_put(xmldb_handle        xh,
 	goto done;
 
     /* Remove NONE nodes if all subs recursively are also NONE */
-    if (xml_tree_prune_flagged(x0, XML_FLAG_NONE, 0, NULL) <0)
+    if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) <0)
 	goto done;
     if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
 		  (void*)XML_FLAG_NONE) < 0)
@@ -842,7 +812,7 @@ text_copy(xmldb_handle xh,
 }
 
 /*! Lock database
- * @param[in]  xh  XMLDB handle
+ * @param[in]  xh   XMLDB handle
  * @param[in]  db   Database
  * @param[in]  pid  Process id
  * @retval -1  Error
@@ -853,13 +823,9 @@ text_lock(xmldb_handle xh,
 	  char        *db,
 	  int          pid)
 {
-    //    struct text_handle *th = handle(xh);
-    if (strcmp("running", db) == 0)
-	_running_locked = pid;
-    else if (strcmp("candidate", db) == 0)
-	_candidate_locked = pid;
-    else if (strcmp("startup", db) == 0)
-	_startup_locked = pid;
+    struct text_handle *th = handle(xh);
+
+    hash_add(th->th_dbs, db, &pid, sizeof(pid));
     clicon_debug(1, "%s: locked by %u",  db, pid);
     return 0;
 }
@@ -876,13 +842,11 @@ int
 text_unlock(xmldb_handle xh, 
 	    char        *db)
 {
-    //    struct text_handle *th = handle(xh);
-    if (strcmp("running", db) == 0)
-	_running_locked = 0;
-    else if (strcmp("candidate", db) == 0)
-	_candidate_locked = 0;
-    else if (strcmp("startup", db) == 0)
-	_startup_locked = 0;
+    struct text_handle *th = handle(xh);
+    int zero = 0;
+
+    hash_add(th->th_dbs, db, &zero, sizeof(zero));
+    //	    hash_del(th->th_dbs, db);
     return 0;
 }
 
@@ -896,14 +860,19 @@ int
 text_unlock_all(xmldb_handle xh, 
 	      int            pid)
 {
-    //    struct text_handle *th = handle(xh);
+    struct text_handle *th = handle(xh);
+    char              **keys;
+    size_t              klen;
+    int                 i;
+    int                *val;
+    size_t              vlen;
 
-    if (_running_locked == pid)
-	_running_locked = 0;
-    if (_candidate_locked == pid)
-	_candidate_locked = 0;
-    if (_startup_locked == pid)
-	_startup_locked = 0;
+    if ((keys = hash_keys(th->th_dbs, &klen)) == NULL)
+	return 0;
+    for(i = 0; i < klen; i++) 
+	if ((val = hash_value(th->th_dbs, keys[i], &vlen)) != NULL &&
+	    *val == pid)
+	    hash_del(th->th_dbs, keys[i]);
     return 0;
 }
 
@@ -918,14 +887,13 @@ int
 text_islocked(xmldb_handle xh, 
 	    char          *db)
 {
-    //    struct text_handle *th = handle(xh);
+    struct text_handle *th = handle(xh);
+    size_t              vlen;
+    int                *val;
 
-    if (strcmp("running", db) == 0)
-	return (_running_locked);
-    else if (strcmp("candidate", db) == 0)
-	return(_candidate_locked);
-    else if (strcmp("startup", db) == 0)
-	return(_startup_locked);
+    if ((val = hash_value(th->th_dbs, db, &vlen)) == NULL)
+	return 0;
+    return *val;
     return 0;
 }
 
@@ -1023,6 +991,7 @@ text_plugin_exit(void)
 }
 
 static const struct xmldb_api api;
+static const struct xmldb_api api;
 
 /*! plugin init function */
 void *
@@ -1111,7 +1080,7 @@ main(int argc, char **argv)
 	if (argc < 5)
 	    usage(argv[0]);
 	xpath = argc>5?argv[5]:NULL;
-	if (xmldb_get(h, db, xpath, &xt, NULL, NULL) < 0)
+	if (xmldb_get(h, db, xpath, &xt, NULL, 1, NULL) < 0)
 	    goto done;
 	clicon_xml2file(stdout, xt, 0, 1);	
     }

@@ -132,7 +132,7 @@ enum axis_type{
 };
 
 /* Mapping between axis type string <--> int  */
-static const map_str2int atmap[] = {
+static const map_str2int axismap[] = {
     {"self",             A_SELF}, 
     {"child",            A_CHILD}, 
     {"parent",           A_PARENT},
@@ -163,7 +163,7 @@ xpath_print(FILE *f, struct xpath_element *xplist)
     struct xpath_predicate *xp;
 
     for (xe=xplist; xe; xe=xe->xe_next){
-	fprintf(f, "\t:%s %s ", clicon_int2str(atmap, xe->xe_type),
+	fprintf(f, "\t:%s %s ", clicon_int2str(axismap, xe->xe_type),
 		xe->xe_str?xe->xe_str:"");
         for (xp=xe->xe_predicate; xp; xp=xp->xp_next)
 	    fprintf(f, "[%s]", xp->xp_expr);
@@ -581,7 +581,7 @@ xpath_find(struct xpath_element *xe,
     }
 #if 0
     fprintf(stderr, "%s: %s: \"%s\"\n", __FUNCTION__, 
-	    clicon_int2str(atmap, xe->xe_type), xe->xe_str?xe->xe_str:"");
+	    clicon_int2str(axismap, xe->xe_type), xe->xe_str?xe->xe_str:"");
 #endif
     switch (xe->xe_type){
     case A_SELF:

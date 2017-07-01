@@ -1,5 +1,10 @@
 # Clixon CHANGELOG
 	
+- Added state data: Netconf <get> operation introduced; Error when
+  adding state data in <edit-config>.
+
+- Fixed bug where cli set of leaf-list were doubled, eg cli set foo -> foofoo
+
 - Restricted yang (sub)module file match to match RFC6020 exactly
 
 - Generalized yang type resolution to all included (sub)modules not just the topmost
@@ -12,7 +17,7 @@
 
 - Fixed yang leafref cli completion.
 
-- Removed non-standard api_path extension from internal netconf so that the internal com.
+- Removed non-standard api_path extension from the internal netconf protocol so that the internal netcinf is now fully standard.
 
 - Strings in xmldb_put not properly encoded, eg eth/0 became eth.00000
 	

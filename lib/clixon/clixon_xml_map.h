@@ -47,8 +47,6 @@ enum {
     LVXML_VECVAL,   /* key: a.b.0{x=1} -> <a><b><x>1</x></b></a> och */
     LVXML_VECVAL2,  /* key: a.b.0{x=1} -> <a><x>1</x></a> och */
 };
-extern const map_str2int netconf_restconf_map[];
-extern const map_str2int http_reason_phrase_map[];
 
 /*
  * Prototypes
@@ -65,10 +63,13 @@ int xml_diff(yang_spec *yspec, cxobj *xt1, cxobj *xt2,
 int yang2api_path_fmt(yang_stmt *ys, int inclkey, char **api_path_fmt);
 int api_path_fmt2api_path(char *api_path_fmt, cvec *cvv, char **api_path);
 int api_path_fmt2xpath(char *api_path_fmt, cvec *cvv, char **xpath);
-int xml_tree_prune_flagged(cxobj *xt, int flag, int test, int *upmark);
+int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
+int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
 int xml_default(cxobj *x, void  *arg);
 int xml_order(cxobj *x, void  *arg);
 int xml_sanity(cxobj *x, void  *arg);
+int xml_non_config_data(cxobj *xt, void *arg);
+int xml_spec_populate(cxobj *x, void *arg);
 int api_path2xpath_cvv(yang_spec *yspec, cvec *cvv, int offset, cbuf *xpath);
 int api_path2xpath(yang_spec *yspec, char *api_path, cbuf *xpath);
 int api_path2xml(char *api_path, yang_spec *yspec, cxobj *xtop, cxobj **xpathp, yang_node **ypathp);

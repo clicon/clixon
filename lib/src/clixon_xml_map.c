@@ -1084,23 +1084,25 @@ api_path_fmt2xpath(char  *api_path_fmt,
     return retval;
 }
 
-/*! Prune everything that does not pass test
+/*! Prune everything that does not pass test or have at least a child* does not
  * @param[in]   xt      XML tree with some node marked
  * @param[in]   flag    Which flag to test for
  * @param[in]   test    1: test that flag is set, 0: test that flag is not set
  * @param[out]  upmark  Set if a child (recursively) has marked set.
- * The function removes all branches that does not a child that pass the test
+ * The function removes all branches that does not pass the test
  * Purge all nodes that dont have MARK flag set recursively.
  * Save all nodes that is MARK:ed or have at least one (grand*)child that is MARKed
  * @code
- *    xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1, NULL);
+ *    xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL);
  * @endcode
+ * @note This function seems a little too complex semantics
+ * @see xml_tree_prune_flagged for a simpler variant
  */
 int
-xml_tree_prune_flagged(cxobj *xt, 
-		       int    flag,
-		       int    test,
-		       int   *upmark)
+xml_tree_prune_flagged_sub(cxobj *xt, 
+			   int    flag,
+			   int    test,
+			   int   *upmark)
 {
     int        retval = -1;
     int        submark;
@@ -1117,6 +1119,7 @@ xml_tree_prune_flagged(cxobj *xt,
     xprev = x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	if (xml_flag(x, flag) == test?flag:0){
+	    /* Pass test */
 	    mark++;
 	    xprev = x;
 	    continue; /* mark and stop here */
@@ -1131,7 +1134,7 @@ xml_tree_prune_flagged(cxobj *xt,
 		continue;
 	    }
 	}
-	if (xml_tree_prune_flagged(x, flag, test, &submark) < 0)
+	if (xml_tree_prune_flagged_sub(x, flag, test, &submark) < 0)
 	    goto done;
 	/* if xt is list and submark anywhere, then key subs are also marked
 	 */
@@ -1164,6 +1167,43 @@ xml_tree_prune_flagged(cxobj *xt,
  done:
     if (upmark)
 	*upmark = mark;
+    return retval;
+}
+
+
+/*! Prune everything that passes test
+ * @param[in]   xt      XML tree with some node marked
+ * @param[in]   flag    Which flag to test for
+ * @param[in]   test    1: test that flag is set, 0: test that flag is not set
+ * The function removes all branches that does not pass test
+ * @code
+ *    xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1, NULL);
+ * @endcode
+ */
+int
+xml_tree_prune_flagged(cxobj *xt, 
+		       int    flag,
+		       int    test)
+{
+    int        retval = -1;
+    cxobj     *x;
+    cxobj     *xprev;
+
+    x = NULL;
+    xprev = x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if (xml_flag(x, flag) == test?flag:0){ 	/* Pass test means purge */
+	    if (xml_purge(x) < 0)
+		goto done;
+	    x = xprev;
+	    continue; 
+	}
+	if (xml_tree_prune_flagged(x, flag, test) < 0)
+	    goto done;
+	xprev = x;
+    }
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -1293,10 +1333,6 @@ xml_sanity(cxobj *xt,
 	goto done;
     }
     name = xml_name(xt);
-    if (ys==NULL){
-	clicon_err(OE_XML, 0, "No spec for xml node %s", name);
-	goto done;
-    }
     if (strstr(ys->ys_argument, name)==NULL){
 	clicon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'", 
 		   name, ys->ys_argument);
@@ -1306,6 +1342,69 @@ xml_sanity(cxobj *xt,
  done:
     return retval;
 }
+
+/*! Mark all nodes that are not configure data and set return
+ * @param[in]   xt      XML tree 
+ * @param[out]  arg     If set, set to 1 as int* if not config data
+ */
+int
+xml_non_config_data(cxobj *xt, 
+		    void   *arg) /* Set to 1 if state node */
+{
+    int        retval = -1;
+    yang_stmt *ys;
+
+    if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
+	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, xml_name(xt));
+	retval = 0;
+	goto done;
+    }
+    if (!yang_config(ys)){ /* config == false means state data: mark for remove */
+	xml_flag_set(xt, XML_FLAG_MARK);
+	if (arg)
+	    (*(int*)arg) = 1;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Add yang specification backpoint to XML node
+ * @param[in]   xt      XML tree node
+ * @note This should really be unnecessary since yspec should be set on creation
+ * @code
+ * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
+ * @endcode
+ */
+int
+xml_spec_populate(cxobj  *x, 
+		  void   *arg)
+{
+    int        retval = -1;
+    yang_spec *yspec = (yang_spec*)arg;
+    char      *name;
+    yang_stmt *y;  /* yang node */
+    cxobj     *xp; /* xml parent */ 
+    yang_stmt *yp; /* parent yang */
+
+    name = xml_name(x);
+    if ((xp = xml_parent(x)) != NULL &&
+	(yp = xml_spec(xp)) != NULL)
+	y = yang_find_syntax((yang_node*)yp, xml_name(x));
+    else
+	y = yang_find_topnode(yspec, name); /* still NULL for config */
+    if (y==NULL){
+	clicon_err(OE_XML, EBADF, "yang spec not found for xml node '%s' xml parent name: '%s' yangspec:'%s']", 
+		   name, 
+		   xp?xml_name(xp):"", yp?yp->ys_argument:"");
+	goto done;
+    }
+    xml_spec_set(x, y);
+    retval = 0;
+ done:
+    return retval;
+}
+
 
 /*! Translate from restconf api-path in cvv form to xml xpath
  * eg a/b=c -> a/[b=c] 
@@ -1618,83 +1717,5 @@ api_path2xml(char      *api_path,
     return retval;
 }
 
-/* See RFC 8040 Section 7:  Mapping from NETCONF<error-tag> to Status Code
- * and RFC 6241 Appendix A. NETCONF Error list
- */
-const map_str2int netconf_restconf_map[] = {
-    {"in-use",                 409},
-    {"invalid-value",          400},
-    {"invalid-value",          404},
-    {"invalid-value",          406},
-    {"too-big",                413}, /* request */
-    {"too-big",                400}, /* response */
-    {"missing-attribute",      400},
-    {"bad-attribute",          400},
-    {"unknown-attribute",      400},
-    {"bad-element",            400},
-    {"unknown-element",        400},
-    {"unknown-namespace",      400},
-    {"access-denied",          401},
-    {"access-denied",          403},
-    {"lock-denied",            409},
-    {"resource-denied",        409},
-    {"rollback-failed",        500},
-    {"data-exists",            409},
-    {"data-missing",           409},
-    {"operation-not-supported",405},
-    {"operation-not-supported",501},
-    {"operation-failed",       412},
-    {"operation-failed",       500},
-    {"partial-operation",      500},
-    {"malformed-message",      400},
-    {NULL,                     -1}
-};
-
-/* See 7231 Section 6.1
- */
-const map_str2int http_reason_phrase_map[] = {
-    {"Continue",                      100},
-    {"Switching Protocols",           101},
-    {"OK",                            200}, 
-    {"Created",                       201},
-    {"Accepted",                      202},
-    {"Non-Authoritative Information", 203},
-    {"No Content",                    204},
-    {"Reset Content",                 205},
-    {"Partial Content",               206},
-    {"Multiple Choices",              300},
-    {"Moved Permanently",             301},
-    {"Found",                         302},
-    {"See Other",                     303},
-    {"Not Modified",                  304},
-    {"Use Proxy",                     305},
-    {"Temporary Redirect",            307},
-    {"Bad Request",                   400},
-    {"Unauthorized",                  401},
-    {"Payment Required",              402},
-    {"Forbidden",                     403},
-    {"Not Found",                     404},
-    {"Method Not Allowed",            405},
-    {"Not Acceptable",                406},
-    {"Proxy Authentication Required", 407},
-    {"Request Timeout",               408},
-    {"Conflict",                      409},
-    {"Gone",                          410},
-    {"Length Required",               411},
-    {"Precondition Failed",           412},
-    {"Payload Too Large",             413},
-    {"URI Too Long",                  414},
-    {"Unsupported Media Type",        415},
-    {"Range Not Satisfiable",         416},
-    {"Expectation Failed",            417},
-    {"Upgrade Required",              426},
-    {"Internal Server Error",         500},
-    {"Not Implemented",               501},
-    {"Bad Gateway",                   502},
-    {"Service Unavailable",           503},
-    {"Gateway Timeout",               504},
-    {"HTTP Version Not Supported",    505},
-    {NULL,                            -1}
-};
 
 

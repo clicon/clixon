@@ -7,6 +7,7 @@
 # For memcheck
 # clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
 clixon_netconf=clixon_netconf
+clixon_cli=clixon_cli
 
 cat <<EOF > /tmp/test.yang
 module ietf-ip{
@@ -38,6 +39,12 @@ module ietf-ip{
       leaf j {
         type string;
       }
+    }
+  }
+  container state {
+    config false;
+    leaf-list op {
+      type string;
     }
   }
 }
@@ -73,6 +80,19 @@ expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><sourc
 
 new "netconf get leaf-list path"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f[e=hej]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><config><x><f><e>hej</e><e>hopp</e></f></x></config></data></rpc-reply>]]>]]>$"
+
+new "netconf get (state data XXX should be some)"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get><source><candidate/></source><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply><data><config><x><y><a>1</a><b>2</b><c>5</c></y><d/></x></config></data></rpc-reply>]]>]]>$"
+
+new "cli set leaf-list"
+expectfn "$clixon_cli -1f $clixon_cf -y /tmp/test set x f e foo" ""
+
+new "cli show leaf-list"
+expectfn "$clixon_cli -1f $clixon_cf -y /tmp/test show xpath /x/f/e" "<e>foo</e>"
+
+new "netconf set state data (not allowed)"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><edit-config><target><candidate/></target><config><state><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value"
+
 
 new "Kill backend"
 # Check if still alive

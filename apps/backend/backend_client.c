@@ -232,7 +232,7 @@ from_client_get_config(clicon_handle h,
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((selector = xml_find_value(xfilter, "select"))==NULL)
 	    selector="/";
-    if (xmldb_get(h, db, selector, &xret) < 0){
+    if (xmldb_get(h, db, selector, 1, &xret) < 0){
 	cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"
 		"<error-type>application</error-type>"
@@ -260,6 +260,54 @@ from_client_get_config(clicon_handle h,
     return retval;
 }
 
+/*! Internal message: get
+ * 
+ * @param[in]  h     Clicon handle
+ * @param[in]  xe    Netconf request xml tree   
+ * @param[out] cbret Return xml value cligen buffer
+ */
+static int
+from_client_get(clicon_handle h,
+		cxobj        *xe,
+		cbuf         *cbret)
+{
+    int    retval = -1;
+    cxobj *xfilter;
+    char  *selector = "/";
+    cxobj *xret = NULL;
+    
+    if ((xfilter = xml_find(xe, "filter")) != NULL)
+	if ((selector = xml_find_value(xfilter, "select"))==NULL)
+	    selector="/";
+    if (xmldb_get(h, "running", selector, 0, &xret) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>application</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info>read-registry</error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    cprintf(cbret, "<rpc-reply><data>");
+    /* if empty only <data/>, if any data then <data><config>..</config></data> */
+    if (xret!=NULL){
+	if (xml_child_nr(xret)){
+	    if (xml_name_set(xret, "config") < 0)
+		goto done;
+	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+		goto done;
+	}
+    }
+    cprintf(cbret, "</data></rpc-reply>");
+ ok:
+    retval = 0;
+ done:
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
+
 /*! Internal message: edit-config
  * 
  * @param[in]  h      Clicon handle
@@ -281,7 +329,13 @@ from_client_edit_config(clicon_handle h,
     cxobj              *x;
     enum operation_type operation = OP_MERGE;
     int                 piddb;
+    int                 non_config = 0;
+    yang_spec          *yspec;
 
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
     if ((target = netconf_db_find(xn, "target")) == NULL){
 	clicon_err(OE_XML, 0, "db not found");
 	goto done;
@@ -295,7 +349,6 @@ from_client_edit_config(clicon_handle h,
 		"</rpc-error></rpc-reply>", target);
 	goto ok;
     }
-
     /* Check if target locked by other client */
     piddb = xmldb_islocked(h, target);
     if (piddb && mypid != piddb){
@@ -320,6 +373,20 @@ from_client_edit_config(clicon_handle h,
 	}
     }
     if ((xc  = xpath_first(xn, "config")) != NULL){
+	if (xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	    goto done;
+	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
+	    goto done;
+	if (non_config){
+	    cprintf(cbret, "<rpc-reply><rpc-error>"
+		    "<error-tag>invalid-value</error-tag>"
+		    "<error-type>protocol</error-type>"
+		    "<error-severity>error</error-severity>"
+		    "<error-message>state data not allowed</error-message>"
+		    "</rpc-error></rpc-reply>");
+	    goto ok;
+	}
+
 	if (xmldb_put(h, target, operation, xc) < 0){
 	    cprintf(cbret, "<rpc-reply><rpc-error>"
 		    "<error-tag>operation-failed</error-tag>"
@@ -873,6 +940,10 @@ from_client_msg(clicon_handle        h,
 	}
 	else if (strcmp(name, "unlock") == 0){
 	    if (from_client_unlock(h, xe, pid, cbret) < 0)
+		goto done;
+	}
+	else if (strcmp(name, "get") == 0){
+	    if (from_client_get(h, xe, cbret) < 0)
 		goto done;
 	}
 	else if (strcmp(name, "close-session") == 0){

@@ -103,12 +103,14 @@ static const map_str2int ytmap[] = {
 static int
 yang_builtin(char *type)
 {
+    if (clicon_str2int(ytmap, type) != -1)
+	return 1;
+#if 0
     const struct map_str2int *yt;
-
-    /* built-in types */
     for (yt = &ytmap[0]; yt->ms_str; yt++)
        if (strcmp(yt->ms_str, type) == 0)
            return 1;
+#endif
     return 0;
 }
 

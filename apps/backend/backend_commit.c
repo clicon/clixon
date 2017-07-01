@@ -146,9 +146,9 @@ validate_common(clicon_handle       h,
 	goto done;
     }	
     /* 2. Parse xml trees */
-    if (xmldb_get(h, "running", "/", &td->td_src) < 0)
+    if (xmldb_get(h, "running", "/", 1, &td->td_src) < 0)
 	goto done;
-    if (xmldb_get(h, candidate, "/", &td->td_target) < 0)
+    if (xmldb_get(h, candidate, "/", 1, &td->td_target) < 0)
 	goto done;
 
     /* 3. Compute differences */

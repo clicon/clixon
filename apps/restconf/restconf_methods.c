@@ -190,8 +190,8 @@ api_data_get_gen(clicon_handle h,
 	    notfound(r); /* bad reply? */
 	    goto done;
 	}
-	code = clicon_str2int(netconf_restconf_map, xml_body(xtag));
-	if ((reason_phrase = clicon_int2str(http_reason_phrase_map, code)) == NULL)
+	code = restconf_err2code(xml_body(xtag));
+	if ((reason_phrase = restconf_code2reason(code)) == NULL)
 	    reason_phrase="";
 	clicon_debug(1, "%s code:%d reason phrase:%s", 
 		     __FUNCTION__, code, reason_phrase);

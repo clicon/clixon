@@ -75,7 +75,7 @@ typedef int (xmldb_getopt_t)(xmldb_handle xh, char *optname, void **value);
 typedef int (xmldb_setopt_t)(xmldb_handle xh, char *optname, void *value);
 
 /* Type of xmldb get function */
-typedef int (xmldb_get_t)(xmldb_handle xh, char *db, char *xpath, cxobj **xtop);
+typedef int (xmldb_get_t)(xmldb_handle xh, char *db, char *xpath, int config, cxobj **xtop);
 
 /* Type of xmldb put function */
 typedef int (xmldb_put_t)(xmldb_handle xh, char *db, enum operation_type op, cxobj *xt);
@@ -138,7 +138,7 @@ int xmldb_connect(clicon_handle h);
 int xmldb_disconnect(clicon_handle h);
 int xmldb_getopt(clicon_handle h, char *optname, void **value);
 int xmldb_setopt(clicon_handle h, char *optname, void *value);
-int xmldb_get(clicon_handle h, char *db, char *xpath, cxobj **xtop);
+int xmldb_get(clicon_handle h, char *db, char *xpath, int config, cxobj **xtop);
 int xmldb_put(clicon_handle h, char *db, enum operation_type op, cxobj *xt);
 int xmldb_copy(clicon_handle h, char *from, char *to);
 int xmldb_lock(clicon_handle h, char *db, int pid);

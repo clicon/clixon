@@ -71,17 +71,6 @@
  *   cli_expand_var_generate     | yang2api_path_fmt |
  *  yang  ------------->         |                |
  *                               +----------------+
- * xmldb_get_tree
- *  - compare_dbs
- *  - netconf    
- *  - validate      
- *  - from_client_save
- *
- * xmldb_get_vec
- *  - restconf
- *  - expand_dbvar
- *  - show_conf_xpath                 
- *
  * dependency on clixon handle:
  * clixon_xmldb_dir()
  * clicon_dbspec_yang(h)
@@ -578,6 +567,7 @@ int
 kv_get(xmldb_handle  xh,
        char         *db, 
        char         *xpath,
+       int           config,
        cxobj       **xtop)
 {
     int             retval = -1;
@@ -627,13 +617,14 @@ kv_get(xmldb_handle  xh,
     }
     /* Top is special case */
     if (!xml_flag(xt, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1, NULL) < 0)
+	if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
 	    goto done;
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
+    /* Add default values (if not set) */
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
-    /* XXX does not work for top-level */
+    /* Order XML children according to YANG */
     if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
 	goto done;
     if (xml_apply(xt, CX_ELMNT, xml_sanity, NULL) < 0)

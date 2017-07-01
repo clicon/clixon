@@ -57,6 +57,96 @@
 
 #include "restconf_lib.h"
 
+/* See RFC 8040 Section 7:  Mapping from NETCONF<error-tag> to Status Code
+ * and RFC 6241 Appendix A. NETCONF Error list
+ */
+static const map_str2int netconf_restconf_map[] = {
+    {"in-use",                 409},
+    {"invalid-value",          400},
+    {"invalid-value",          404},
+    {"invalid-value",          406},
+    {"too-big",                413}, /* request */
+    {"too-big",                400}, /* response */
+    {"missing-attribute",      400},
+    {"bad-attribute",          400},
+    {"unknown-attribute",      400},
+    {"bad-element",            400},
+    {"unknown-element",        400},
+    {"unknown-namespace",      400},
+    {"access-denied",          401},
+    {"access-denied",          403},
+    {"lock-denied",            409},
+    {"resource-denied",        409},
+    {"rollback-failed",        500},
+    {"data-exists",            409},
+    {"data-missing",           409},
+    {"operation-not-supported",405},
+    {"operation-not-supported",501},
+    {"operation-failed",       412},
+    {"operation-failed",       500},
+    {"partial-operation",      500},
+    {"malformed-message",      400},
+    {NULL,                     -1}
+};
+
+/* See 7231 Section 6.1
+ */
+static const map_str2int http_reason_phrase_map[] = {
+    {"Continue",                      100},
+    {"Switching Protocols",           101},
+    {"OK",                            200}, 
+    {"Created",                       201},
+    {"Accepted",                      202},
+    {"Non-Authoritative Information", 203},
+    {"No Content",                    204},
+    {"Reset Content",                 205},
+    {"Partial Content",               206},
+    {"Multiple Choices",              300},
+    {"Moved Permanently",             301},
+    {"Found",                         302},
+    {"See Other",                     303},
+    {"Not Modified",                  304},
+    {"Use Proxy",                     305},
+    {"Temporary Redirect",            307},
+    {"Bad Request",                   400},
+    {"Unauthorized",                  401},
+    {"Payment Required",              402},
+    {"Forbidden",                     403},
+    {"Not Found",                     404},
+    {"Method Not Allowed",            405},
+    {"Not Acceptable",                406},
+    {"Proxy Authentication Required", 407},
+    {"Request Timeout",               408},
+    {"Conflict",                      409},
+    {"Gone",                          410},
+    {"Length Required",               411},
+    {"Precondition Failed",           412},
+    {"Payload Too Large",             413},
+    {"URI Too Long",                  414},
+    {"Unsupported Media Type",        415},
+    {"Range Not Satisfiable",         416},
+    {"Expectation Failed",            417},
+    {"Upgrade Required",              426},
+    {"Internal Server Error",         500},
+    {"Not Implemented",               501},
+    {"Bad Gateway",                   502},
+    {"Service Unavailable",           503},
+    {"Gateway Timeout",               504},
+    {"HTTP Version Not Supported",    505},
+    {NULL,                            -1}
+};
+
+int
+restconf_err2code(char *tag)
+{
+    return clicon_str2int(netconf_restconf_map, tag);
+}
+
+const char *
+restconf_code2reason(int code)
+{
+    return clicon_int2str(http_reason_phrase_map, code);
+}
 
 /*!
  */

@@ -322,12 +322,13 @@ xmldb_setopt(clicon_handle h,
  * @param[in]  h      Clicon handle
  * @param[in]  dbname Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
+ * @param[in]  config If set only configuration data, else also state
  * @param[out] xtop   Single XML tree which xvec points to. Free with xml_free()
  * @retval     0      OK
  * @retval     -1     Error
  * @code
  *   cxobj   *xt;
- *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", &xt) < 0)
+ *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 1, &xt) < 0)
  *      err;
  *   for (i=0; i<xlen; i++){
  *      xn = xv[i];
@@ -343,6 +344,7 @@ int
 xmldb_get(clicon_handle h, 
 	  char         *db, 
 	  char         *xpath,
+	  int           config,
 	  cxobj       **xtop)
 {
     int               retval = -1;
@@ -361,7 +363,7 @@ xmldb_get(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = xa->xa_get_fn(xh, db, xpath, xtop);
+    retval = xa->xa_get_fn(xh, db, xpath, config, xtop);
 #if DEBUG
     if (retval == 0) { 
 	 cbuf *cb = cbuf_new();
@@ -391,6 +393,9 @@ xmldb_get(clicon_handle h,
  *   if (xmldb_put(xh, "running", OP_MERGE, xt) < 0)
  *     err;
  * @endcode
+ * @note that you can add both config data and state data. In comparison,
+ *  xmldb_get has a parameter to get config data only.
+ *
  */
 int 
 xmldb_put(clicon_handle       h, 
