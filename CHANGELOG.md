@@ -1,5 +1,9 @@
 # Clixon CHANGELOG
 	
+- Yang anyxml and extensions basic support added
+
+- Added yang dir with ietf-netconf and clixon-config yang specs for internal usage.
+
 - Added state data: Netconf <get> operation introduced; Error when
   adding state data in <edit-config>.
 
