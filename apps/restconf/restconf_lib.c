@@ -181,6 +181,16 @@ badrequest(FCGX_Request *r)
 }
 
 int
+notimplemented(FCGX_Request *r)
+{
+    clicon_debug(1, "%s", __FUNCTION__);
+    FCGX_FPrintF(r->out, "Status: 501\r\n"); 
+    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(r->out, "<h1>Not Implemented/h1>\n");
+    return 0;
+}
+
+int
 conflict(FCGX_Request *r)
 {
     clicon_debug(1, "%s", __FUNCTION__);

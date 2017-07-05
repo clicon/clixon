@@ -52,6 +52,7 @@ int clicon_rpc_copy_config(clicon_handle h, char *db1, char *db2);
 int clicon_rpc_delete_config(clicon_handle h, char *db);
 int clicon_rpc_lock(clicon_handle h, char *db);
 int clicon_rpc_unlock(clicon_handle h, char *db);
+int clicon_rpc_get(clicon_handle h, char *xpath, cxobj **xret);
 int clicon_rpc_close_session(clicon_handle h);
 int clicon_rpc_kill_session(clicon_handle h, int session_id);
 int clicon_rpc_validate(clicon_handle h, char *db);

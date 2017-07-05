@@ -68,10 +68,21 @@
  * Types
  */
 /* Following are specific to backend. For common see clicon_plugin.h 
- * @note  the following should match the prototypes in clicon_backend.h
+ * @note  the following should match the prototypes in clixon_backend.h
  */
 #define PLUGIN_RESET           "plugin_reset"
 typedef int (plgreset_t)(clicon_handle h, char *dbname); /* Reset system status */
+
+/*! Plugin callback, if defined called to get state data from plugin
+ * @param[in]    h      Clicon handle
+ * @param[in]    xpath  String with XPATH syntax. or NULL for all
+ * @param[in]    xtop   XML tree, <config/> on entry. 
+ * @retval       0      OK
+ * @retval      -1      Error
+ * @see xmldb_get
+ */
+#define PLUGIN_STATEDATA       "plugin_statedata"
+typedef int (plgstatedata_t)(clicon_handle h, char *xpath, cxobj *xtop);
 
 #define PLUGIN_TRANS_BEGIN     "transaction_begin"
 #define PLUGIN_TRANS_VALIDATE  "transaction_validate"
@@ -79,6 +90,7 @@ typedef int (plgreset_t)(clicon_handle h, char *dbname); /* Reset system status 
 #define PLUGIN_TRANS_COMMIT    "transaction_commit"
 #define PLUGIN_TRANS_END       "transaction_end"
 #define PLUGIN_TRANS_ABORT     "transaction_abort"
+
 
 typedef int (trans_cb_t)(clicon_handle h, transaction_data td); /* Transaction cbs */
 
@@ -90,12 +102,14 @@ struct plugin {
     plgstart_t	      *p_start;		 /* Start */
     plgexit_t         *p_exit;		 /* Exit */
     plgreset_t	      *p_reset;		 /* Reset state */
+    plgstatedata_t    *p_statedata;      /* State-data callback */
     trans_cb_t        *p_trans_begin;	 /* Transaction start */
     trans_cb_t        *p_trans_validate; /* Transaction validation */
     trans_cb_t        *p_trans_complete; /* Transaction validation complete */
     trans_cb_t        *p_trans_commit;   /* Transaction commit */
     trans_cb_t        *p_trans_end;	 /* Transaction completed  */
     trans_cb_t        *p_trans_abort;	 /* Transaction aborted */
+
 };
 
 /*
@@ -212,6 +226,8 @@ backend_plugin_load (clicon_handle h,
 	 clicon_debug(2, "%s callback registered.", PLUGIN_EXIT);
     if ((new->p_reset    = dlsym(handle, PLUGIN_RESET)) != NULL)
 	 clicon_debug(2, "%s callback registered.", PLUGIN_RESET);
+    if ((new->p_statedata    = dlsym(handle, PLUGIN_STATEDATA)) != NULL)
+	clicon_debug(2, "%s callback registered.", PLUGIN_STATEDATA);
     if ((new->p_trans_begin    = dlsym(handle, PLUGIN_TRANS_BEGIN)) != NULL)
 	clicon_debug(2, "%s callback registered.", PLUGIN_TRANS_BEGIN);
     if ((new->p_trans_validate = dlsym(handle, PLUGIN_TRANS_VALIDATE)) != NULL)
@@ -700,3 +716,82 @@ plugin_transaction_abort(clicon_handle       h,
     return retval;
 }
 	
+/*----------------------------------------------------------------------
+ * Backend state data callbacks
+ */
+
+/*! Go through all backend statedata callbacks and collect state data
+ * This is internal system call, plugin is invoked (does not call) this function
+ * Backend plugins can register 
+ * @param[in]  h       clicon handle
+ * @param[in]  xpath   String with XPATH syntax. or NULL for all
+ * @param[in,out] xml  XML tree.
+ * @retval -1   Error
+ * @retval  0   OK
+ */
+int
+backend_statedata_call(clicon_handle        h,
+		       char                *xpath,
+		       cxobj               *xtop)
+{
+    int            retval = -1;
+    struct plugin *p;
+    int            i;
+    cxobj         *x = NULL;
+    yang_spec     *yspec;
+    cxobj        **xvec = NULL;
+    size_t         xlen;
+
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    if (xtop==NULL){
+	clicon_err(OE_CFG, ENOENT, "XML tree expected");
+	goto done;
+    }
+    for (i = 0; i < nplugins; i++)  {
+	p = &plugins[i];
+	if (p->p_statedata) {
+	    if ((x = xml_new("config", NULL)) == NULL)
+		goto done;
+	    if ((p->p_statedata)(h, xpath, x) < 0)
+		goto done;
+	    if (xml_merge(xtop, x, yspec) < 0)
+		goto done;
+	    if (x){
+		xml_free(x);
+		x = NULL;
+	    }
+	}
+    }
+    {
+	/* Code complex to filter out anything that is outside of xpath */
+	if (xpath_vec(xtop, xpath?xpath:"/", &xvec, &xlen) < 0)
+	    goto done;
+
+	/* If vectors are specified then mark the nodes found and
+	 * then filter out everything else,
+	 * otherwise return complete tree.
+	 */
+	if (xvec != NULL){
+	    for (i=0; i<xlen; i++)
+		xml_flag_set(xvec[i], XML_FLAG_MARK);
+	}
+	/* Remove everything that is not marked */
+	if (!xml_flag(xtop, XML_FLAG_MARK))
+	    if (xml_tree_prune_flagged_sub(xtop, XML_FLAG_MARK, 1, NULL) < 0)
+		goto done;
+	/* reset flag */
+	if (xml_apply(xtop, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    if (x)
+	xml_free(x);
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+

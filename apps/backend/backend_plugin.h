@@ -69,6 +69,8 @@ int  plugin_finish(clicon_handle h);
 int  plugin_reset_state(clicon_handle h, char *dbname);
 int  plugin_start_hooks(clicon_handle h, int argc, char **argv);
 
+int backend_statedata_call(clicon_handle h, char *xpath, cxobj *xml);
+
 transaction_data_t * transaction_new(void);
 int transaction_free(transaction_data_t *);
 

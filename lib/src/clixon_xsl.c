@@ -925,12 +925,12 @@ xpath_each(cxobj *cxtop,
  * @retval     -1      error.
  *
  * @code
- *   cxobj **vec;
- *   size_t  veclen;
- *   if (xpath_vec(cxtop, "//symbol/foo", &vec, &veclen) < 0) 
+ *   cxobj **xvec;
+ *   size_t  xlen;
+ *   if (xpath_vec(cxtop, "//symbol/foo", &xvec, &xlen) < 0) 
  *      goto err;
- *   for (i=0; i<veclen; i++){
- *      xn = vec[i];
+ *   for (i=0; i<xlen; i++){
+ *      xn = xvec[i];
  *         ...
  *   }
  *   free(vec);

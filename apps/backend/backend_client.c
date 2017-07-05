@@ -242,7 +242,6 @@ from_client_get_config(clicon_handle h,
 	goto ok;
     }
     cprintf(cbret, "<rpc-reply><data>");
-    /* if empty only <data/>, if any data then <data><config>..</config></data> */
     if (xret!=NULL){
 	if (xml_child_nr(xret)){
 	    if (xml_name_set(xret, "config") < 0)
@@ -265,6 +264,7 @@ from_client_get_config(clicon_handle h,
  * @param[in]  h     Clicon handle
  * @param[in]  xe    Netconf request xml tree   
  * @param[out] cbret Return xml value cligen buffer
+ * @see from_client_get_config
  */
 static int
 from_client_get(clicon_handle h,
@@ -279,6 +279,7 @@ from_client_get(clicon_handle h,
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((selector = xml_find_value(xfilter, "select"))==NULL)
 	    selector="/";
+    /* Get config */
     if (xmldb_get(h, "running", selector, 0, &xret) < 0){
 	cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"
@@ -288,8 +289,12 @@ from_client_get(clicon_handle h,
 		"</rpc-error></rpc-reply>");
 	goto ok;
     }
+    /* Get state data from plugins as defined by plugin_statedata(), if any */
+    assert(xret);
+    if (backend_statedata_call(h, selector, xret) < 0)
+	goto done;
     cprintf(cbret, "<rpc-reply><data>");
-    /* if empty only <data/>, if any data then <data><config>..</config></data> */
+    /* if empty only <config/> */
     if (xret!=NULL){
 	if (xml_child_nr(xret)){
 	    if (xml_name_set(xret, "config") < 0)
@@ -984,7 +989,7 @@ from_client_msg(clicon_handle        h,
 		goto done;
 	}
 	else{
-	    if ((ret = backend_netconf_plugin_callbacks(h, xe, ce, cbret)) < 0)
+	    if ((ret = backend_rpc_cb_call(h, xe, ce, cbret)) < 0)
 		goto done;
 	    if (ret == 0) /* not handled by callback */
 		cprintf(cbret, "<rpc-reply><rpc-error>"

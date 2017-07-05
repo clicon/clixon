@@ -331,7 +331,6 @@ text_get(xmldb_handle xh,
     if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	goto done;
 
-    /* XXX Maybe the below is general function and should be moved to xmldb? */
     if (xpath_vec(xt, xpath?xpath:"/", &xvec, &xlen) < 0)
 	goto done;
 
@@ -460,11 +459,10 @@ match_base_child(cxobj     *x0,
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
  * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
+ * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  x0p Parent of x0
  * @param[in]  x1  xml tree which modifies base
  * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
- * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
- * @param[in]  yspec Top-level yang spec (if y is NULL)
  * Assume x0 and x1 are same on entry and that y is the spec
  * @see put in clixon_keyvalue.c
  */

@@ -1,6 +1,8 @@
 # Clixon CHANGELOG
 	
-- Yang anyxml and extensions basic support added
+- Added generic xml_merge() function.
+
+- Added new backend plugin callback: "plugin_statedata()" for getting state data
 
 - Added yang dir with ietf-netconf and clixon-config yang specs for internal usage.
 

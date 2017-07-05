@@ -171,7 +171,7 @@ api_data_get_gen(clicon_handle h,
 	goto done;
     }
     clicon_debug(1, "%s path:%s", __FUNCTION__, cbuf_get(path));
-    if (clicon_rpc_get_config(h, "running", cbuf_get(path), &xret) < 0){
+    if (clicon_rpc_get(h, cbuf_get(path), &xret) < 0){
 	notfound(r);
 	goto done;
     }
@@ -541,8 +541,7 @@ api_data_patch(clicon_handle h,
 	      cvec         *qvec, 
 	      char         *data)
 {
-    badrequest(r);
-    //    return api_data_edit(h, r, api_path, pcvec, pi, qvec, data, OP_MERGE);
+    notimplemented(r);
     return 0;
 }
 

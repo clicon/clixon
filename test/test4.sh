@@ -82,7 +82,7 @@ new "netconf get leaf-list path"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f[e=hej]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><config><x><f><e>hej</e><e>hopp</e></f></x></config></data></rpc-reply>]]>]]>$"
 
 new "netconf get (state data XXX should be some)"
-expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get><source><candidate/></source><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply><data><config><x><y><a>1</a><b>2</b><c>5</c></y><d/></x></config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply><data><config><x><y><a>1</a><b>2</b><c>5</c></y><d/></x></config></data></rpc-reply>]]>]]>$"
 
 new "cli set leaf-list"
 expectfn "$clixon_cli -1f $clixon_cf -y /tmp/test set x f e foo" ""

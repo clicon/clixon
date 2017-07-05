@@ -87,6 +87,8 @@ backend_terminate(clicon_handle h)
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
     plugin_finish(h);
+    /* Delete all backend plugin RPC callbacks */
+    backend_rpc_cb_delete_all(); 
     if (pidfile)
 	unlink(pidfile);   
     if (sockpath)

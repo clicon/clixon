@@ -323,22 +323,17 @@ xmldb_setopt(clicon_handle h,
  * @param[in]  dbname Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
- * @param[out] xtop   Single XML tree which xvec points to. Free with xml_free()
+ * @param[out] xtop   Single XML tree. Free with xml_free()
  * @retval     0      OK
  * @retval     -1     Error
  * @code
  *   cxobj   *xt;
  *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 1, &xt) < 0)
  *      err;
- *   for (i=0; i<xlen; i++){
- *      xn = xv[i];
- *      ...
- *   }
  *   xml_free(xt);
  * @endcode
  * @note if xvec is given, then purge tree, if not return whole tree.
  * @see xpath_vec
- * @see xmldb_get
  */
 int 
 xmldb_get(clicon_handle h, 

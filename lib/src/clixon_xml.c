@@ -466,9 +466,14 @@ xml_childvec_get(cxobj *x)
  *
  * @param[in]  name      Name of new 
  * @param[in]  xp        The parent where the new xml node should be inserted
- *
- * @retval created xml object if successful
- * @retval NULL          if error and clicon_err() called
+ * @retval     xml       Created xml object if successful
+ * @retval     NULL      Error and clicon_err() called
+ * @code
+ *   cxobj *x;
+ *   if ((x = xml_new(name, xparent)) == NULL)
+ *     err;
+ * @endcode
+ * @see xml_new_spec     Also sets yang spec.
  */
 cxobj *
 xml_new(char  *name, 
@@ -510,7 +515,6 @@ xml_new_spec(char  *name,
     x->x_spec = spec;
     return x;
 }
-
 
 void *
 xml_spec(cxobj *x)
@@ -961,10 +965,12 @@ clicon_xml2cbuf(cbuf  *cb,
     return 0;
 }
 
-/*! Internal xml parsing function.
+/*! Basic xml parsing function.
+ * @param[in]  str   Pointer to string containing XML definition. 
+ * @param[out] xtop  Top of XML parse tree. Assume created.
  * @see clicon_xml_parse_file clicon_xml_parse_string
  */
-static int 
+int 
 xml_parse(char  *str, 
 	  cxobj *x_up)
 {
@@ -1181,7 +1187,7 @@ clicon_xml_parse_str(char   *str,
  */
 int 
 clicon_xml_parse(cxobj **cxtop,
-		 char *format, ...)
+		 char   *format, ...)
 {
     int     retval = -1;
     va_list args;

@@ -1717,5 +1717,194 @@ api_path2xml(char      *api_path,
     return retval;
 }
 
+/*! Given a modification tree, check existing matching child in the base tree 
+ * param[in] x0    Base tree node
+ * param[in] x1c   Modification tree child
+ * param[in] yc    Yang spec of tree child
+ * param[out] x0cp Matching base tree child (if any)
+*/
+static int
+match_base_child(cxobj     *x0, 
+		 cxobj     *x1c,
+		 yang_stmt *yc,
+		 cxobj    **x0cp)
+{
+    int        retval = -1;
+    cxobj     *x0c = NULL;
+    char      *keyname;
+    cvec      *cvk = NULL;
+    cg_var    *cvi;
+    char      *b0;
+    char      *b1;
+    yang_stmt *ykey;
+    char      *cname;
+    int        ok;
+    char      *x1bstr; /* body string */
 
+    cname = xml_name(x1c);
+    switch (yc->ys_keyword){
+    case Y_LEAF_LIST: /* Match with name and value */
+	x1bstr = xml_body(x1c);
+	x0c = NULL;
+	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
+	    if (strcmp(cname, xml_name(x0c)) == 0 && 
+		strcmp(xml_body(x0c), x1bstr)==0)
+		break;
+	}
+	break;
+    case Y_LIST: /* Match with key values */
+	if ((ykey = yang_find((yang_node*)yc, Y_KEY, NULL)) == NULL){
+	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
+		       __FUNCTION__, yc->ys_argument);
+	    goto done;
+	}
+	/* The value is a list of keys: <key>[ <key>]*  */
+	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
+	    goto done;
+	x0c = NULL;
+	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
+	    if (strcmp(xml_name(x0c), cname))
+		continue;
+	    cvi = NULL;
+	    ok = 0;
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+		keyname = cv_string_get(cvi);
+		ok = 1; /* if we come here */
+		if ((b0 = xml_find_body(x0c, keyname)) == NULL)
+		    break; /* error case */
+		if ((b1 = xml_find_body(x1c, keyname)) == NULL)
+		    break; /* error case */
+		if (strcmp(b0, b1))
+		    break;
+		ok = 2; /* and reaches here for all keynames, x0c is found. */
+	    }
+	    if (ok == 2)
+		break;
+	}
+	break;
+    default: /* Just match with name */
+	x0c = xml_find(x0, cname);
+	break;
+    }
+    *x0cp = x0c;
+    retval = 0;
+ done:
+    if (cvk)
+	cvec_free(cvk);
+    return retval;
+}
 
+/*! Merge a base tree x0 with x1 with yang spec y
+ * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
+ * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
+ * @param[in]  x0p Parent of x0
+ * @param[in]  x1  xml tree which modifies base
+ * Assume x0 and x1 are same on entry and that y is the spec
+ * @see put in clixon_keyvalue.c
+ */
+static int
+xml_merge1(cxobj              *x0,
+	   yang_node          *y0,
+	   cxobj              *x0p,
+	   cxobj              *x1)
+{
+    int        retval = -1;
+    char      *x1name;
+    char      *x1cname; /* child name */
+    cxobj     *x0c; /* base child */
+    cxobj     *x0b; /* base body */
+    cxobj     *x1c; /* mod child */
+    char      *x1bstr; /* mod body string */
+    yang_stmt *yc;  /* yang child */
+
+    assert(x1 && xml_type(x1) == CX_ELMNT);
+    assert(y0);
+
+    x1name = xml_name(x1);
+    if (y0->yn_keyword == Y_LEAF_LIST || y0->yn_keyword == Y_LEAF){
+	x1bstr = xml_body(x1);
+	if (x0==NULL){
+	    if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
+		goto done;
+	    if (x1bstr){ /* empty type does not have body */
+		if ((x0b = xml_new("body", x0)) == NULL)
+		    goto done; 
+		xml_type_set(x0b, CX_BODY);
+	    }
+	}
+	if (x1bstr){
+	    if ((x0b = xml_body_get(x0)) == NULL){
+		if ((x0b = xml_new("body", x0)) == NULL)
+		    goto done; 
+		xml_type_set(x0b, CX_BODY);
+	    }
+	    if (xml_value_set(x0b, x1bstr) < 0)
+		goto done;
+	}
+
+    } /* if LEAF|LEAF_LIST */
+    else { /* eg Y_CONTAINER, Y_LIST  */
+	if (x0==NULL){
+	    if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
+		goto done;
+	}
+	/* Loop through children of the modification tree */
+	x1c = NULL;
+	while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+	    x1cname = xml_name(x1c);
+	    /* Get yang spec of the child */
+	    if ((yc = yang_find_syntax(y0, x1cname)) == NULL){
+		clicon_err(OE_YANG, errno, "No yang node found: %s", x1cname);
+		goto done;
+	    }
+	    /* See if there is a corresponding node in the base tree */
+	    x0c = NULL;
+	    if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
+		goto done;
+	    if (xml_merge1(x0c, (yang_node*)yc, x0, x1c) < 0)
+		goto done;
+	}
+    } /* else Y_CONTAINER  */
+    // ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Merge XML trees x1 into x0 according to yang spec yspec
+ * @note both x0 and x1 need to be top-level trees
+ * @see text_modify_top as more generic variant (in datastore text)
+ */
+int
+xml_merge(cxobj     *x0,
+	  cxobj     *x1,
+	  yang_spec *yspec)
+{
+    int        retval = -1;
+    char      *x1cname; /* child name */
+    cxobj     *x0c; /* base child */
+    cxobj     *x1c; /* mod child */
+    yang_stmt *yc;
+
+    /* Assure top-levels are 'config' */
+    assert(x0 && strcmp(xml_name(x0),"config")==0);
+    assert(x1 && strcmp(xml_name(x1),"config")==0);
+    /* Loop through children of the modification tree */
+    x1c = NULL;
+    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+	x1cname = xml_name(x1c);
+	/* Get yang spec of the child */
+	if ((yc = yang_find_topnode(yspec, x1cname)) == NULL){
+	    clicon_err(OE_YANG, ENOENT, "No yang spec");
+	    goto done;
+	}
+	/* See if there is a corresponding node in the base tree */
+	if (match_base_child(x0, x1c, yc, &x0c) < 0)
+	    goto done;
+	if (xml_merge1(x0c, (yang_node*)yc, x0, x1c) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
