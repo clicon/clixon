@@ -56,7 +56,7 @@ use the web resource: http://clicon.org/ref/index.html
 
 ## How is configuration data stored?
 Configuration data is stored in an XML datastore. The default is a
-text-based addatastore, but there also exists a key-value datastore
+text-based datastore, but there also exists a key-value datastore
 using qdbm. In the example the datastore are regular files found in
 /usr/local/var/routing/.
 
@@ -110,13 +110,33 @@ and then invoke it from a client using
 	ssh -s netconf <host>
 ```
 
+## How do I use restconf?
+
+You can access clixon via REST API using restconf, such as using
+curl. GET, PUT, POST are supported.
+
+You need a web-server, such as nginx, and start a restconf fcgi
+daemon, clixon_restconf. Read more in the restconf docs.
+
+Example:
+```
+   curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=eth9/type
+   [
+     {
+       "type": "eth" 
+     }
+   ]
+```
+
 ## How do I use notifications?
 
 The example has a prebuilt notification stream called "ROUTING" that triggers every 10s.
-You enable the notification either via the cli or via netconf:
+You enable the notification either via the cli:
+```
 cli> notify 
-cli> Routing notification
-Routing notification
+cli>
+```
+or via netconf:
 ```
 clixon_netconf -qf /usr/local/etc/routing.conf 
 <rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>
@@ -141,7 +161,7 @@ backend.  It has a 'transaction_data td' argument which is used to fetch
 information on added, deleted and changed entries. You access this
 information using access functions as defined in clixon_backend_transaction.h
 
-## How do i check what has changed on commit?
+## How do I check what has changed on commit?
 You use XPATHs on the XML trees in the transaction commit callback.
 Suppose you want to print all added interfaces:
 ```
@@ -181,3 +201,38 @@ Check for inconsistencies in the XML trees and if they fail, make an clicon_err(
     return -1;
 The validation or commit will then be aborted.
 
+## How do I write a state data callback function?
+
+Netconf <get> and restconf GET also returns state data, in contrast to
+config data. In YANG state data is specified with "config false;".
+
+To return state data, you need to write a backend state data callback
+with the name "plugin_statedata" where you return an XML tree.
+
+A static example of returning state data is as follows, although a real example would poll or get the interface counters via a system call, as well as use the "xpath" argument to identify the requested state data.
+
+```
+int 
+plugin_statedata(clicon_handle h, 
+		 char         *xpath,
+		 cxobj        *xstate)
+{
+    int     retval = -1;
+    cxobj **xvec = NULL;
+
+    if ((xml_parse("<interfaces-state><interface>"
+		   "<name>eth0</name>"
+		   "<type>eth</type>"
+		   "<admin-status>up</admin-status>"
+		   "<oper-status>up</oper-status>"
+		   "<if-index>42</if-index>"
+		   "<speed>1000000000</speed>"
+		   "</interface></interfaces-state>", xstate)) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+```

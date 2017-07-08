@@ -146,7 +146,7 @@ plugin_statedata(clicon_handle h,
     int     retval = -1;
     cxobj **xvec = NULL;
 
-    /* Example of statedata, remove 0 to enable */
+    /* Example of (static) statedata, real code would poll state */
     if (0 && (xml_parse("<interfaces-state><interface>"
 		   "<name>eth0</name>"
 		   "<type>eth</type>"
