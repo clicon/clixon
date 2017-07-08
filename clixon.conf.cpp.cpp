@@ -95,8 +95,6 @@ CLICON_BACKEND_PIDFILE  localstatedir/APPNAME/APPNAME.pidfile
 # Set if all configuration changes are committed directly, commit command unnecessary
 # CLICON_AUTOCOMMIT       0
 
-# CLICON_COMMIT_ORDER 0
-
 # Name of master plugin (both frontend and backend). Master plugin has special 
 # callbacks for frontends. See clicon user manual for more info.
 # CLICON_MASTER_PLUGIN    master

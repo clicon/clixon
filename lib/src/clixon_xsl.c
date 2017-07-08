@@ -100,6 +100,7 @@ in
 /* clicon */
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_string.h"
 #include "clixon_xml.h"
 #include "clixon_xsl.h"
 
@@ -130,13 +131,8 @@ enum axis_type{
     A_DESCENDANT_OR_SELF, /* actually descendant-or-self */
 };
 
-struct map_str2int{
-    char         *ms_str; /* string as in 4.2.4 in RFC 6020 */
-    int           ms_int;
-};
-
 /* Mapping between axis type string <--> int  */
-static const struct map_str2int atmap[] = {
+static const map_str2int axismap[] = {
     {"self",             A_SELF}, 
     {"child",            A_CHILD}, 
     {"parent",           A_PARENT},
@@ -160,19 +156,6 @@ struct xpath_element{
 
 static int xpath_split(char *xpathstr, char **pathexpr);
 
-static char *axis_type2str(enum axis_type type) __attribute__ ((unused));
-
-static char *
-axis_type2str(enum axis_type type)
-{
-    const struct map_str2int *at;
-
-    for (at = &atmap[0]; at->ms_str; at++)
-	if (at->ms_int == type)
-	    return at->ms_str;
-    return NULL;
-}
-
 static int 
 xpath_print(FILE *f, struct xpath_element *xplist)
 {
@@ -180,7 +163,7 @@ xpath_print(FILE *f, struct xpath_element *xplist)
     struct xpath_predicate *xp;
 
     for (xe=xplist; xe; xe=xe->xe_next){
-	fprintf(f, "\t:%s %s ", axis_type2str(xe->xe_type),
+	fprintf(f, "\t:%s %s ", clicon_int2str(axismap, xe->xe_type),
 		xe->xe_str?xe->xe_str:"");
         for (xp=xe->xe_predicate; xp; xp=xp->xp_next)
 	    fprintf(f, "[%s]", xp->xp_expr);
@@ -598,7 +581,7 @@ xpath_find(struct xpath_element *xe,
     }
 #if 0
     fprintf(stderr, "%s: %s: \"%s\"\n", __FUNCTION__, 
-	    axis_type2str(xe->xe_type), xe->xe_str?xe->xe_str:"");
+	    clicon_int2str(axismap, xe->xe_type), xe->xe_str?xe->xe_str:"");
 #endif
     switch (xe->xe_type){
     case A_SELF:
@@ -942,12 +925,12 @@ xpath_each(cxobj *cxtop,
  * @retval     -1      error.
  *
  * @code
- *   cxobj **vec;
- *   size_t  veclen;
- *   if (xpath_vec(cxtop, "//symbol/foo", &vec, &veclen) < 0) 
+ *   cxobj **xvec;
+ *   size_t  xlen;
+ *   if (xpath_vec(cxtop, "//symbol/foo", &xvec, &xlen) < 0) 
  *      goto err;
- *   for (i=0; i<veclen; i++){
- *      xn = vec[i];
+ *   for (i=0; i<xlen; i++){
+ *      xn = xvec[i];
  *         ...
  *   }
  *   free(vec);

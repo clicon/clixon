@@ -430,48 +430,57 @@ subscription_each(clicon_handle               h,
     return hs;
 }
 
-/* Database dependency description */
-struct backend_netconf_reg {
-    qelem_t 	 nr_qelem;	/* List header */
-    backend_netconf_cb_t nr_callback;	/* Validation/Commit Callback */
-    void	*nr_arg;	/* Application specific argument to cb */
-    char        *nr_tag;	/* Xml tag when matched, callback called */
-};
-typedef struct backend_netconf_reg backend_netconf_reg_t;
+/*--------------------------------------------------------------------
+ * Backend netconf rpc callbacks
+ */
+typedef struct {
+    qelem_t 	   rc_qelem;	/* List header */
+    backend_rpc_cb rc_callback;  /* RPC Callback */
+    void	  *rc_arg;	/* Application specific argument to cb */
+    char          *rc_tag;	/* Xml tag when matched, callback called */
+} backend_rpc_cb_entry;
 
-static backend_netconf_reg_t *deps = NULL;
-/*! Register netconf callback
+/* List of backend rpc callback entries */
+static backend_rpc_cb_entry *rpc_cb_list = NULL;
+
+/*! Register netconf backend rpc callback
  * Called from plugin to register a callback for a specific netconf XML tag.
+ *
+ * @param[in]  h       clicon handle
+ * @param[in]  cb,     Callback called 
+ * @param[in]  arg,    Arg to send to callback 
+ * @param[in]  tag     Xml tag when callback is made 
+ * @see backend_rpc_cb_call
  */
 int
-backend_netconf_register_callback(clicon_handle h,
-				  backend_netconf_cb_t cb,      /* Callback called */
-				  void *arg,        /* Arg to send to callback */
-				  char *tag)        /* Xml tag when callback is made */
+backend_rpc_cb_register(clicon_handle  h,
+			backend_rpc_cb cb,
+			void          *arg,       
+			char          *tag)
 {
-    backend_netconf_reg_t *nr;
+    backend_rpc_cb_entry *rc;
 
-    if ((nr = malloc(sizeof(backend_netconf_reg_t))) == NULL) {
+    if ((rc = malloc(sizeof(backend_rpc_cb_entry))) == NULL) {
 	clicon_err(OE_DB, errno, "malloc: %s", strerror(errno));
 	goto catch;
     }
-    memset (nr, 0, sizeof (*nr));
-    nr->nr_callback = cb;
-    nr->nr_arg  = arg;
-    nr->nr_tag  = strdup(tag); /* XXX strdup memleak */
-    INSQ(nr, deps);
+    memset (rc, 0, sizeof (*rc));
+    rc->rc_callback = cb;
+    rc->rc_arg  = arg;
+    rc->rc_tag  = strdup(tag); /* XXX strdup memleak */
+    INSQ(rc, rpc_cb_list);
     return 0;
 catch:
-    if (nr){
-	if (nr->nr_tag)
-	    free(nr->nr_tag);
-	free(nr);
+    if (rc){
+	if (rc->rc_tag)
+	    free(rc->rc_tag);
+	free(rc);
     }
     return -1;
 }
 
-/*! See if there is any callback registered for this tag
- *
+/*! Search netconf backend callbacks and invoke if match
+ * This is internal system call, plugin is invoked (does not call) this functino
  * @param[in]  h       clicon handle
  * @param[in]  xe      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
  * @param[in]  ce      Client (session) entry
@@ -480,28 +489,49 @@ catch:
  * @retval -1   Error
  * @retval  0   OK, not found handler.
  * @retval  1   OK, handler called
+ * @see backend_rpc_cb_register
  */
 int
-backend_netconf_plugin_callbacks(clicon_handle        h,
-				 cxobj               *xe,
-				 struct client_entry *ce,
-				 cbuf                *cbret)
+backend_rpc_cb_call(clicon_handle        h,
+		    cxobj               *xe,
+		    struct client_entry *ce,
+		    cbuf                *cbret)
 {
-    backend_netconf_reg_t *nreg;
-    int            retval;
+    backend_rpc_cb_entry *rc;
+    int                   retval = -1;
 
-    if (deps == NULL)
+    if (rpc_cb_list == NULL)
 	return 0;
-    nreg = deps;
+    rc = rpc_cb_list;
     do {
-	if (strcmp(nreg->nr_tag, xml_name(xe)) == 0){
-	    if ((retval = nreg->nr_callback(h, xe, ce, cbret, nreg->nr_arg)) < 0)
-		return -1;
-	    else
-		return 1; /* handled */
+	if (strcmp(rc->rc_tag, xml_name(xe)) == 0){
+	    if ((retval = rc->rc_callback(h, xe, ce, cbret, rc->rc_arg)) < 0)
+		goto done;
+	    else{
+		retval = 1; /* handled */
+		goto done;
+	    }
 	}
-	nreg = NEXTQ(backend_netconf_reg_t *, nreg);
-    } while (nreg != deps);
+	rc = NEXTQ(backend_rpc_cb_entry *, rc);
+    } while (rc != rpc_cb_list);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Delete all state data callbacks.
+ */
+int
+backend_rpc_cb_delete_all(void)
+{
+    backend_rpc_cb_entry *rc;
+
+    while((rc = rpc_cb_list) != NULL) {
+	DELQ(rc, rpc_cb_list, backend_rpc_cb_entry *);
+	if (rc->rc_tag)
+	    free(rc->rc_tag);
+	free(rc);
+    }
     return 0;
 }
 

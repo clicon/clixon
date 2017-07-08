@@ -104,6 +104,7 @@ expand_dbvar(void   *h,
     cxobj           *xt = NULL;
     char            *xpath = NULL;
     cxobj          **xvec = NULL;
+    cxobj           *xerr;
     size_t           xlen = 0;
     cxobj           *x;
     char            *bodystr;
@@ -142,6 +143,10 @@ expand_dbvar(void   *h,
     /* XXX read whole configuration, why not send xpath? */
     if (clicon_rpc_get_config(h, dbstr, "/", &xt) < 0)
     	goto done;
+    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+	clicon_rpc_generate_error(xerr);
+	goto done;
+    }
     /* One round to detect duplicates 
      * XXX The code below would benefit from some cleanup
      */
@@ -379,6 +384,7 @@ cli_show_config(clicon_handle h,
     char            *val = NULL;
     cxobj           *xt = NULL;
     cxobj           *xc;
+    cxobj           *xerr;
     enum genmodel_type gt;
     
     if (cvec_len(argv) != 3 && cvec_len(argv) != 4){
@@ -428,6 +434,10 @@ cli_show_config(clicon_handle h,
     /* Get configuration from database */
     if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), &xt) < 0)
 	goto done;
+    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+	clicon_rpc_generate_error(xerr);
+	goto done;
+    }
     /* Print configuration according to format */
     switch (format){
     case FORMAT_XML:
@@ -487,6 +497,7 @@ show_conf_xpath(clicon_handle h,
     char            *xpath;
     cg_var          *cv;
     cxobj           *xt = NULL;
+    cxobj           *xerr;
     cxobj          **xv = NULL;
     size_t           xlen;
     int              i;
@@ -507,6 +518,10 @@ show_conf_xpath(clicon_handle h,
     xpath = cv_string_get(cv);
     if (clicon_rpc_get_config(h, str, xpath, &xt) < 0)
     	goto done;
+    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+	clicon_rpc_generate_error(xerr);
+	goto done;
+    }
     if (xpath_vec(xt, xpath, &xv, &xlen) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)

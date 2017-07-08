@@ -50,6 +50,7 @@
 /* clixon */
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_xml.h"
 #include "clixon_xml_parse.h"
@@ -82,14 +83,8 @@ struct xml{
     cg_var           *x_cv;           /* If body this contains the typed value */
 };
 
-/* Type to string conversion */
-struct map_str2int{
-    char           *ms_str;
-    enum cxobj_type ms_type;
-};
-
 /* Mapping between xml type <--> string */
-static const struct map_str2int xsmap[] = {
+static const map_str2int xsmap[] = {
     {"error",         CX_ERROR}, 
     {"element",       CX_ELMNT}, 
     {"attr",          CX_ATTR}, 
@@ -104,12 +99,7 @@ static const struct map_str2int xsmap[] = {
 char *
 xml_type2str(enum cxobj_type type)
 {
-    const struct map_str2int *xs;
-
-    for (xs = &xsmap[0]; xs->ms_str; xs++)
-	if (xs->ms_type == type)
-	    return xs->ms_str;
-    return NULL;
+    return (char*)clicon_int2str(xsmap, type);
 }
 
 /*
@@ -476,9 +466,14 @@ xml_childvec_get(cxobj *x)
  *
  * @param[in]  name      Name of new 
  * @param[in]  xp        The parent where the new xml node should be inserted
- *
- * @retval created xml object if successful
- * @retval NULL          if error and clicon_err() called
+ * @retval     xml       Created xml object if successful
+ * @retval     NULL      Error and clicon_err() called
+ * @code
+ *   cxobj *x;
+ *   if ((x = xml_new(name, xparent)) == NULL)
+ *     err;
+ * @endcode
+ * @see xml_new_spec     Also sets yang spec.
  */
 cxobj *
 xml_new(char  *name, 
@@ -520,7 +515,6 @@ xml_new_spec(char  *name,
     x->x_spec = spec;
     return x;
 }
-
 
 void *
 xml_spec(cxobj *x)
@@ -971,10 +965,12 @@ clicon_xml2cbuf(cbuf  *cb,
     return 0;
 }
 
-/*! Internal xml parsing function.
+/*! Basic xml parsing function.
+ * @param[in]  str   Pointer to string containing XML definition. 
+ * @param[out] xtop  Top of XML parse tree. Assume created.
  * @see clicon_xml_parse_file clicon_xml_parse_string
  */
-static int 
+int 
 xml_parse(char  *str, 
 	  cxobj *x_up)
 {
@@ -1191,7 +1187,7 @@ clicon_xml_parse_str(char   *str,
  */
 int 
 clicon_xml_parse(cxobj **cxtop,
-		 char *format, ...)
+		 char   *format, ...)
 {
     int     retval = -1;
     va_list args;
@@ -1355,6 +1351,10 @@ cxvec_append(cxobj   *x,
  * @param[in]  type matching type or -1 for any
  * @param[in]  fn   Callback
  * @param[in]  arg  Argument
+ * @retval    -1    Error, aborted at first error encounter
+ * @retval     0    OK, all nodes traversed
+ * @retval     n    OK, aborted at first encounter of first match
+ *
  * @code
  * int x_fn(cxobj *x, void *arg)
  * {
@@ -1363,7 +1363,7 @@ cxvec_append(cxobj   *x,
  * xml_apply(xn, CX_ELMNT, x_fn, NULL);
  * @endcode
  * @note do not delete or move around any children during this function
- * @note It does not apply fn to the root node,..
+ * @note return value > 0 aborts the traversal
  * @see xml_apply0 including top object
  */
 int
@@ -1373,13 +1373,19 @@ xml_apply(cxobj          *xn,
 	  void           *arg)
 {
     int        retval = -1;
-    cxobj     *x = NULL;
+    cxobj     *x;
+    int        ret;
 
+    x = NULL;
     while ((x = xml_child_each(xn, x, type)) != NULL) {
 	if (fn(x, arg) < 0)
 	    goto done;
-	if (xml_apply(x, type, fn, arg) < 0)
+	if ((ret = xml_apply(x, type, fn, arg)) < 0)
 	    goto done;
+	if (ret > 0){
+	    retval = ret;
+	    goto done;
+	}
     }
     retval = 0;
   done:
@@ -1387,7 +1393,11 @@ xml_apply(cxobj          *xn,
 }
 
 /*! Apply a function call on top object and all xml node children recursively 
+ * @retval    -1    Error, aborted at first error encounter
+ * @retval     0    OK, all nodes traversed
+ * @retval     n    OK, aborted at first encounter of first match
  * @see xml_apply not including top object
+
  */
 int
 xml_apply0(cxobj          *xn, 
@@ -1396,10 +1406,14 @@ xml_apply0(cxobj          *xn,
 	  void           *arg)
 {
     int        retval = -1;
+    int        ret;
 
-    if (fn(xn, arg) < 0)
+    if ((ret = fn(xn, arg)) < 0)
 	goto done;
-    retval = xml_apply(xn, type, fn, arg);
+    if (ret > 0)
+	retval = ret;
+    else
+	retval = xml_apply(xn, type, fn, arg);
   done:
     return retval;   
 }
@@ -1412,6 +1426,9 @@ xml_apply0(cxobj          *xn,
  * @param[in]  xn   XML node
  * @param[in]  fn   Callback
  * @param[in]  arg  Argument
+ * @retval    -1    Error, aborted at first error encounter
+ * @retval     0    OK, all nodes traversed
+ * @retval     n    OK, aborted at first encounter of first match
  * @code
  * int x_fn(cxobj *x, void *arg)
  * {
@@ -1430,12 +1447,17 @@ xml_apply_ancestor(cxobj          *xn,
 {
     int        retval = -1;
     cxobj     *xp = NULL;
+    int        ret;
 
     while ((xp = xml_parent(xn)) != NULL) {
 	if (fn(xp, arg) < 0)
 	    goto done;
-	if (xml_apply_ancestor(xp, fn, arg) < 0)
+	if ((ret = xml_apply_ancestor(xp, fn, arg)) < 0)
 	    goto done;
+	if (ret > 0){
+	    retval = ret;
+	    goto done;
+	}
 	xn = xp;
     }
     retval = 0;

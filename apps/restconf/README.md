@@ -60,7 +60,7 @@ olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=et
   }
 ]
 
-curl -sX POST -d '{"clicon":{"interfaces":{"interface":{"name":"eth1","type":"eth","enabled":"true"}}}}' http://localhost/restconf/data
+curl -sX POST -d '{"interfaces":{"interface":{"name":"eth1","type":"eth","enabled":"true"}}}' http://localhost/restconf/data
 ```
 
 ### Debugging

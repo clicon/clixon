@@ -71,19 +71,10 @@
 /* 
  * Local types and variables
  */
-/* Struct used to map between int and strings. Used  for:
- * - mapping yang types/typedefs (strings) and cligen types (ints). 
- * - mapping yang keywords (strings) and enum (clicon)
- * (same struct in clicon_yang.c)
- */
-struct map_str2int{
-    char         *ms_str; /* string as in 4.2.4 in RFC 6020 */
-    int           ms_int;
-};
 
 /* Mapping between yang types <--> cligen types
    Note, first match used wne translating from cv to yang --> order is significant */
-static const struct map_str2int ytmap[] = {
+static const map_str2int ytmap[] = {
     {"int32",       CGV_INT32},  /* NOTE, first match on right is significant, dont move */
     {"string",      CGV_STRING}, /* NOTE, first match on right is significant, dont move */
     {"string",      CGV_REST},   /* For cv -> yang translation of rest */
@@ -105,8 +96,23 @@ static const struct map_str2int ytmap[] = {
     {"uint32",      CGV_UINT32},
     {"uint64",      CGV_UINT64},
     {"union",       CGV_REST},  /* Is replaced by actual type */
-    {NULL, -1}
+    {NULL,         -1}
 };
+
+/* return 1 if built-in, 0 if not */
+static int
+yang_builtin(char *type)
+{
+    if (clicon_str2int(ytmap, type) != -1)
+	return 1;
+#if 0
+    const struct map_str2int *yt;
+    for (yt = &ytmap[0]; yt->ms_str; yt++)
+       if (strcmp(yt->ms_str, type) == 0)
+           return 1;
+#endif
+    return 0;
+}
 
 int
 yang_type_cache_set(yang_type_cache **ycache0,
@@ -174,7 +180,8 @@ yang_type_cache_get(yang_type_cache *ycache,
 }
 
 int
-yang_type_cache_cp(yang_type_cache **ycnew, yang_type_cache *ycold)
+yang_type_cache_cp(yang_type_cache **ycnew, 
+		   yang_type_cache  *ycold)
 {
     int        retval = -1;
     int        options;
@@ -207,7 +214,8 @@ yang_type_cache_free(yang_type_cache *ycache)
 
 /*! Resolve types: populate type caches */
 int
-ys_resolve_type(yang_stmt *ys, void *arg)
+ys_resolve_type(yang_stmt *ys, 
+		void      *arg)
 {
     int               retval = -1;
     int               options = 0x0;
@@ -219,28 +227,15 @@ ys_resolve_type(yang_stmt *ys, void *arg)
  
     if (ys->ys_keyword != Y_TYPE)
         return 0;
-    yang_type_resolve((yang_stmt*)ys->ys_parent, ys, &resolved,
-		      &options, &mincv, &maxcv, &pattern, &fraction);
+    if (yang_type_resolve((yang_stmt*)ys->ys_parent, ys, &resolved,
+			  &options, &mincv, &maxcv, &pattern, &fraction) < 0)
+	goto done;
     if (yang_type_cache_set(&ys->ys_typecache, 
 			    resolved, options, mincv, maxcv, pattern, fraction) < 0)
 	goto done;
     retval = 0;
  done:
     return retval;
-}
-
-
-/* return 1 if built-in, 0 if not */
-static int
-yang_builtin(char *type)
-{
-    const struct map_str2int *yt;
-
-    /* built-in types */
-    for (yt = &ytmap[0]; yt->ms_str; yt++)
-	if (strcmp(yt->ms_str, type) == 0)
-	    return 1;
-    return 0;
 }
 
 /*! Translate from a yang type to a cligen variable type
@@ -252,17 +247,17 @@ yang_builtin(char *type)
  * Return 0 if no match but set cv_type to CGV_ERR
  */
 int
-yang2cv_type(char *ytype, enum cv_type *cv_type)
+yang2cv_type(char         *ytype, 
+	     enum cv_type *cv_type)
 {
-    const struct map_str2int *yt;
+    int                ret;
 
     *cv_type = CGV_ERR;
     /* built-in types */
-    for (yt = &ytmap[0]; yt->ms_str; yt++)
-	if (strcmp(yt->ms_str, ytype) == 0){
-	    *cv_type = yt->ms_int;
-	    return 0;
-	}
+    if ((ret = clicon_str2int(ytmap, ytype)) != -1){
+	*cv_type = ret;
+	return 0;
+    }
     /* special derived types */
     if (strcmp("ipv4-address", ytype) == 0){ /* RFC6991 */
 	*cv_type = CGV_IPV4ADDR;
@@ -300,14 +295,13 @@ yang2cv_type(char *ytype, enum cv_type *cv_type)
 char *
 cv2yang_type(enum cv_type cv_type)
 {
-    const struct map_str2int  *yt;
     char                *ytype;
+    const char          *str;
 
     ytype = "empty";
     /* built-in types */
-    for (yt = &ytmap[0]; yt->ms_str; yt++)
-	if (yt->ms_int == cv_type)
-	    return yt->ms_str;
+    if ((str = clicon_int2str(ytmap, cv_type)) != NULL)
+	return (char*)str;
 
     /* special derived types */
     if (cv_type == CGV_IPV4ADDR) /* RFC6991 */
@@ -343,7 +337,9 @@ cv2yang_type(enum cv_type cv_type)
  * @param[out] cvtype
  */
 int
-clicon_type2cv(char *origtype, char *restype, enum cv_type *cvtype)
+clicon_type2cv(char         *origtype, 
+	       char         *restype, 
+	       enum cv_type *cvtype)
 {
     int retval = -1;
 
@@ -710,7 +706,7 @@ ys_typedef_up(yang_stmt *ys)
   This is a sanity check of base identity of identity-ref and for identity 
   statements.
 
-Return true if node is identityref and is derived from identity_name
+  Return true if node is identityref and is derived from identity_name
   The derived-from() function returns true if the (first) node (in
    document order in the argument "nodes") is a node of type identityref,
    and its value is an identity that is derived from the identity
@@ -728,16 +724,14 @@ Return true if node is identityref and is derived from identity_name
    Så vad är det denna function ska göra? Svar: 1
 */
 yang_stmt *
-yang_find_identity(yang_stmt *ys, char *identity)
+yang_find_identity(yang_stmt *ys, 
+		   char      *identity)
 {
     char        *id;
     char        *prefix = NULL;
-    yang_stmt   *yimport;
-    yang_spec   *yspec;
     yang_stmt   *ymodule;
     yang_stmt   *yid = NULL;
     yang_node   *yn;
-    yang_stmt   *ymod;
 
     if ((id = strchr(identity, ':')) == NULL)
 	id = identity;
@@ -748,12 +742,8 @@ yang_find_identity(yang_stmt *ys, char *identity)
     }
     /* No, now check if identityref is derived from base */
     if (prefix){ /* Go to top and find import that matches */
-	ymod = ys_module(ys);
-	if ((yimport = ys_module_import(ymod, prefix)) == NULL)
+	if ((ymodule = yang_find_module_by_prefix(ys, prefix)) == NULL)
 	    goto done;
-	yspec = ys_spec(ys);
-	if ((ymodule = yang_find((yang_node*)yspec, Y_MODULE, yimport->ys_argument)) == NULL)
-	    goto done; /* unresolved */
 	yid = yang_find((yang_node*)ymodule, Y_IDENTITY, id);
     }
     else{
@@ -845,12 +835,10 @@ yang_type_resolve(yang_stmt   *ys,
     yang_stmt   *ylength;
     yang_stmt   *ypattern;
     yang_stmt   *yfraction;
-    yang_stmt   *yimport;
     char        *type;
     char        *prefix = NULL;
     int          retval = -1;
     yang_node   *yn;
-    yang_spec   *yspec;
     yang_stmt   *ymod;
 
     if (options)
@@ -879,14 +867,8 @@ yang_type_resolve(yang_stmt   *ys,
 
     /* Not basic type. Now check if prefix which means we look in other module */
     if (prefix){ /* Go to top and find import that matches */
-	ymod = ys_module(ys);
-	if ((yimport = ys_module_import(ymod, prefix)) == NULL){
-	    clicon_err(OE_DB, 0, "Prefix %s not defined not found", prefix);
+	if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL)
 	    goto done;
-	}
-	yspec = ys_spec(ys);
-	if ((ymod = yang_find((yang_node*)yspec, Y_MODULE, yimport->ys_argument)) == NULL)
-	    goto ok; /* unresolved */
 	if ((rytypedef = yang_find((yang_node*)ymod, Y_TYPEDEF, type)) == NULL)
 	    goto ok; /* unresolved */
     }

@@ -219,10 +219,20 @@ from_client_get_config(clicon_handle h,
 	clicon_err(OE_XML, 0, "db not found");
 	goto done;
     }
+    if (xmldb_validate_db(db) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>invalid-value</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>No such database: %s</error-message>"
+		"</rpc-error></rpc-reply>", db);
+	goto ok;
+    }
+
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((selector = xml_find_value(xfilter, "select"))==NULL)
 	    selector="/";
-    if (xmldb_get(h, db, selector, &xret, NULL, NULL) < 0){
+    if (xmldb_get(h, db, selector, 1, &xret) < 0){
 	cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"
 		"<error-type>application</error-type>"
@@ -232,7 +242,6 @@ from_client_get_config(clicon_handle h,
 	goto ok;
     }
     cprintf(cbret, "<rpc-reply><data>");
-    /* if empty only <data/>, if any data then <data><config>..</config></data> */
     if (xret!=NULL){
 	if (xml_child_nr(xret)){
 	    if (xml_name_set(xret, "config") < 0)
@@ -249,6 +258,60 @@ from_client_get_config(clicon_handle h,
 	xml_free(xret);
     return retval;
 }
+
+/*! Internal message: get
+ * 
+ * @param[in]  h     Clicon handle
+ * @param[in]  xe    Netconf request xml tree   
+ * @param[out] cbret Return xml value cligen buffer
+ * @see from_client_get_config
+ */
+static int
+from_client_get(clicon_handle h,
+		cxobj        *xe,
+		cbuf         *cbret)
+{
+    int    retval = -1;
+    cxobj *xfilter;
+    char  *selector = "/";
+    cxobj *xret = NULL;
+    
+    if ((xfilter = xml_find(xe, "filter")) != NULL)
+	if ((selector = xml_find_value(xfilter, "select"))==NULL)
+	    selector="/";
+    /* Get config */
+    if (xmldb_get(h, "running", selector, 0, &xret) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>application</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-info>read-registry</error-info>"
+		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    /* Get state data from plugins as defined by plugin_statedata(), if any */
+    assert(xret);
+    if (backend_statedata_call(h, selector, xret) < 0)
+	goto done;
+    cprintf(cbret, "<rpc-reply><data>");
+    /* if empty only <config/> */
+    if (xret!=NULL){
+	if (xml_child_nr(xret)){
+	    if (xml_name_set(xret, "config") < 0)
+		goto done;
+	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+		goto done;
+	}
+    }
+    cprintf(cbret, "</data></rpc-reply>");
+ ok:
+    retval = 0;
+ done:
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
 
 /*! Internal message: edit-config
  * 
@@ -271,10 +334,25 @@ from_client_edit_config(clicon_handle h,
     cxobj              *x;
     enum operation_type operation = OP_MERGE;
     int                 piddb;
+    int                 non_config = 0;
+    yang_spec          *yspec;
 
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
     if ((target = netconf_db_find(xn, "target")) == NULL){
 	clicon_err(OE_XML, 0, "db not found");
 	goto done;
+    }
+    if (xmldb_validate_db(target) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>invalid-value</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>No such database: %s</error-message>"
+		"</rpc-error></rpc-reply>", target);
+	goto ok;
     }
     /* Check if target locked by other client */
     piddb = xmldb_islocked(h, target);
@@ -300,6 +378,20 @@ from_client_edit_config(clicon_handle h,
 	}
     }
     if ((xc  = xpath_first(xn, "config")) != NULL){
+	if (xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	    goto done;
+	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
+	    goto done;
+	if (non_config){
+	    cprintf(cbret, "<rpc-reply><rpc-error>"
+		    "<error-tag>invalid-value</error-tag>"
+		    "<error-type>protocol</error-type>"
+		    "<error-severity>error</error-severity>"
+		    "<error-message>state data not allowed</error-message>"
+		    "</rpc-error></rpc-reply>");
+	    goto ok;
+	}
+
 	if (xmldb_put(h, target, operation, xc) < 0){
 	    cprintf(cbret, "<rpc-reply><rpc-error>"
 		    "<error-tag>operation-failed</error-tag>"
@@ -356,6 +448,16 @@ from_client_lock(clicon_handle h,
 		"</rpc-error></rpc-reply>");
 	goto ok;
     }
+    if (xmldb_validate_db(db) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>invalid-value</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>No such database: %s</error-message>"
+		"</rpc-error></rpc-reply>", db);
+	goto ok;
+    }
+
     /*
      * A lock MUST not be granted if either of the following conditions is true:
      * 1) A lock is already held by any NETCONF session or another entity.
@@ -408,6 +510,15 @@ from_client_unlock(clicon_handle h,
 		"<error-severity>error</error-severity>"
 		"<error-info><bad-element>target</bad-element></error-info>"
 		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    if (xmldb_validate_db(db) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>invalid-value</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>No such database: %s</error-message>"
+		"</rpc-error></rpc-reply>", db);
 	goto ok;
     }
     piddb = xmldb_islocked(h, db);
@@ -534,6 +645,16 @@ from_client_copy_config(clicon_handle h,
 		"</rpc-error></rpc-reply>");
 	goto ok;
     }
+    if (xmldb_validate_db(source) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>invalid-value</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>No such database: %s</error-message>"
+		"</rpc-error></rpc-reply>", source);
+	goto ok;
+    }
+
     if ((target = netconf_db_find(xe, "target")) == NULL){
 	cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>missing-element</error-tag>"
@@ -541,6 +662,15 @@ from_client_copy_config(clicon_handle h,
 		"<error-severity>error</error-severity>"
 		"<error-info><bad-element>target</bad-element></error-info>"
 		"</rpc-error></rpc-reply>");
+	goto ok;
+    }
+    if (xmldb_validate_db(target) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>invalid-value</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>No such database: %s</error-message>"
+		"</rpc-error></rpc-reply>", target);
 	goto ok;
     }
     /* Check if target locked by other client */
@@ -556,7 +686,6 @@ from_client_copy_config(clicon_handle h,
 		piddb);
 	goto ok;
     }
-
     if (xmldb_copy(h, source, target) < 0){
 	cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"
@@ -601,6 +730,16 @@ from_client_delete_config(clicon_handle h,
 		"</rpc-error></rpc-reply>");
 	goto ok;
     }
+    if (xmldb_validate_db(target) < 0){
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>invalid-value</error-tag>"
+		"<error-type>protocol</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>No such database: %s</error-message>"
+		"</rpc-error></rpc-reply>", target);
+	goto ok;
+    }
+
     /* Check if target locked by other client */
     piddb = xmldb_islocked(h, target);
     if (piddb && mypid != piddb){
@@ -808,6 +947,10 @@ from_client_msg(clicon_handle        h,
 	    if (from_client_unlock(h, xe, pid, cbret) < 0)
 		goto done;
 	}
+	else if (strcmp(name, "get") == 0){
+	    if (from_client_get(h, xe, cbret) < 0)
+		goto done;
+	}
 	else if (strcmp(name, "close-session") == 0){
 	    xmldb_unlock_all(h, pid);
 	    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
@@ -846,7 +989,7 @@ from_client_msg(clicon_handle        h,
 		goto done;
 	}
 	else{
-	    if ((ret = backend_netconf_plugin_callbacks(h, xe, ce, cbret)) < 0)
+	    if ((ret = backend_rpc_cb_call(h, xe, ce, cbret)) < 0)
 		goto done;
 	    if (ret == 0) /* not handled by callback */
 		cprintf(cbret, "<rpc-reply><rpc-error>"

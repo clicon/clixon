@@ -1,10 +1,27 @@
 # Clixon CHANGELOG
 	
-## 3.3.1
+- Added new backend plugin callback: "plugin_statedata()" for retreiving state data
+
+- Added yang dir with ietf-netconf and clixon-config yang specs for internal usage.
+
+- Added state data: Netconf <get> operation introduced; Error when
+  adding state data in <edit-config>.
+
+- Fixed bug where cli set of leaf-list were doubled, eg cli set foo -> foofoo
+
+- Restricted yang (sub)module file match to match RFC6020 exactly
+
+- Generalized yang type resolution to all included (sub)modules not just the topmost
+
+- Generic map_str2int generic mapping tables
+
+- Removed vector return values from xmldb_get()
+	
+## 3.3.1 June 7 2017
 
 - Fixed yang leafref cli completion.
 
-- Removed non-standard api_path extension from internal netconf so that the internal com.
+- Removed non-standard api_path extension from the internal netconf protocol so that the internal netcinf is now fully standard.
 
 - Strings in xmldb_put not properly encoded, eg eth/0 became eth.00000
 	

@@ -83,6 +83,7 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
     if (clicon_rpc_get_config(h, "running","/interfaces/interface[name=eth0]",
 			      &xret) < 0)
 	goto done;
+
     xml_print(stdout, xret);
     retval = 0;
  done:

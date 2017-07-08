@@ -530,6 +530,76 @@ netconf_unlock(clicon_handle h,
     return netconf_lock(h, xn, xret);
 }
 
+/*! Get running configuration and device state information
+ * 
+ *
+
+ * @param[in]  h       Clicon handle
+ * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
+ * @param[out] xret    Return XML, error or OK
+ * @note filter type subtree and xpath is supported, but xpath is preferred, and
+ *              better performance and tested. Please use xpath.
+ *
+ * @example
+ *    <rpc><get><filter type="xpath" select="//SenderTwampIpv4"/>
+ *    </get></rpc>]]>]]>
+ */
+static int
+netconf_get(clicon_handle h, 
+	    cxobj        *xn, 
+	    cxobj       **xret)
+{
+     cxobj      *xfilter; /* filter */
+     int         retval = -1;
+     char       *ftype = NULL;
+     cxobj      *xfilterconf; 
+     cxobj      *xconf;
+
+       /* ie <filter>...</filter> */
+     if ((xfilter = xpath_first(xn, "filter")) != NULL) 
+	 ftype = xml_find_value(xfilter, "type");
+     if (ftype == NULL || strcmp(ftype, "xpath")==0){
+	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
+	     goto done;	
+     }
+     else if (strcmp(ftype, "subtree")==0){
+	 /* Default rfc filter is subtree. I prefer xpath and use it internally.
+	    Get whole subtree and then filter aftwerwards. This is suboptimal.
+	    Therefore please use xpath.
+	  */
+	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
+	     goto done;	
+	 if (xfilter &&
+	     (xfilterconf = xpath_first(xfilter, "//configuration"))!= NULL &&
+	     (xconf = xpath_first(*xret, "/rpc-reply/data/configuration")) != NULL){
+	     /* xml_filter removes parts of xml tree not matching */
+	     if ((strcmp(xml_name(xfilterconf), xml_name(xconf))!=0) ||
+		 xml_filter(xfilterconf, xconf) < 0){
+		     clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+				      "<error-tag>operation-failed</error-tag>"
+				      "<error-type>applicatio</error-type>"
+				      "<error-severity>error</error-severity>"
+				      "<error-info>filtering</error-info>"
+				      "</rpc-error></rpc-reply>");
+	     }
+	 }
+     }
+     else{
+	 clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+			  "<error-tag>operation-failed</error-tag>"
+			  "<error-type>applicatio</error-type>"
+			  "<error-severity>error</error-severity>"
+			  "<error-message>filter type not supported</error-message>"
+			  "<error-info>type</error-info>"
+			  "</rpc-error></rpc-reply>");
+     }
+     // ok: /* netconf error is not fatal */
+    retval = 0;
+ done:
+    return retval;
+}
+
+
 /*! Close a (user) session
     <close-session/> 
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
@@ -818,6 +888,8 @@ netconf_rpc_dispatch(clicon_handle h,
 	    return netconf_lock(h, xe, xret);
 	else if (strcmp(xml_name(xe), "unlock") == 0)
 	    return netconf_unlock(h, xe, xret);
+	else if (strcmp(xml_name(xe), "get") == 0)
+	    return netconf_get(h, xe, xret);
 	else if (strcmp(xml_name(xe), "close-session") == 0)
 	    return netconf_close_session(h, xe, xret);
 	else if (strcmp(xml_name(xe), "kill-session") == 0) 

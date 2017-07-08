@@ -1,11 +1,11 @@
 #!/bin/bash
-# Test5: datastore
+# Test5: datastore tests. 
+# Just run a binary direct to datastore. No clixon.
 
 # include err() and new() functions
 . ./lib.sh
 
 datastore=datastore_client
-
 
 cat <<EOF > /tmp/ietf-ip.yang
 module ietf-ip{
@@ -54,7 +54,7 @@ run(){
     rm -rf $dir/*
 
     conf="-d candidate -b $dir -p ../datastore/$name/$name.so -y /tmp -m ietf-ip"
-#    echo "conf:$conf"
+    echo "conf:$conf"
     new "datastore $name init"
     expectfn "$datastore $conf init" ""
 
@@ -139,8 +139,18 @@ run(){
     new "datastore $name create leaf"
     expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
 
+    new "datastore other db init"
+    expectfn "$datastore -d kalle -b $dir -p ../datastore/$name/$name.so -y /tmp -m ietf-ip init"
+
+    new "datastore other db copy"
+    expectfn "$datastore $conf copy kalle" ""
+
+    diff $dir/kalle_db $dir/candidate_db
+
+    new "datastore lock"
+    expectfn "$datastore $conf lock 756" ""
+
 #leaf-list
-    
 
     rm -rf $dir
 }

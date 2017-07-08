@@ -129,6 +129,40 @@ routing_downcall(clicon_handle h,
     cprintf(cbret, "<rpc-reply><ok>%s</ok></rpc-reply>", xml_body(xe));    
     return 0;
 }
+
+/*! Called to get state data from plugin
+ * @param[in]    h      Clicon handle
+ * @param[in]    xpath  String with XPATH syntax. or NULL for all
+ * @param[in]    xtop   XML tree, <config/> on entry. 
+ * @retval       0      OK
+ * @retval      -1      Error
+ * @see xmldb_get
+ */
+int 
+plugin_statedata(clicon_handle h, 
+		 char         *xpath,
+		 cxobj        *xstate)
+{
+    int     retval = -1;
+    cxobj **xvec = NULL;
+
+    /* Example of (static) statedata, real code would poll state */
+    if (0 && (xml_parse("<interfaces-state><interface>"
+		   "<name>eth0</name>"
+		   "<type>eth</type>"
+		   "<admin-status>up</admin-status>"
+		   "<oper-status>up</oper-status>"
+		   "<if-index>42</if-index>"
+		   "<speed>1000000000</speed>"
+		   "</interface></interfaces-state>", xstate)) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+
 /*
  * Plugin initialization
  */
@@ -139,10 +173,11 @@ plugin_init(clicon_handle h)
 
     if (notification_timer_setup(h) < 0)
 	goto done;
-    if (backend_netconf_register_callback(h, routing_downcall, 
-				  NULL, 
-				  "myrouting"/* Xml tag when callback is made */
-				  ) < 0)
+    /* Register callback for netconf application-specific rpc call */
+    if (backend_rpc_cb_register(h, routing_downcall, 
+				NULL, 
+				"myrouting"/* Xml tag when callback is made */
+				) < 0)
 	goto done;
     retval = 0;
  done:

@@ -179,7 +179,11 @@ clixon_yang_parsewrap(void)
 <KEYWORD>yang-version     { BEGIN(ARGUMENT); return K_YANG_VERSION; }
 <KEYWORD>yin-element      { BEGIN(ARGUMENT); return K_YIN_ELEMENT; }
 
-<KEYWORD>.                { return K_UNKNOWN; }
+<KEYWORD>:                { return *yytext; }
+<KEYWORD>;                { return *yytext; }
+<KEYWORD>.                { clixon_yang_parselval.string = strdup(yytext);
+                             return CHAR;}
+
 
 <ARGUMENT>;                { BEGIN(KEYWORD); return *yytext; }
 <ARGUMENT>\{               { BEGIN(KEYWORD); return *yytext; }

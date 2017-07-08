@@ -291,7 +291,7 @@ hash_del(clicon_hash_t *hash,
     return 0;
 }
 
-/*! Return vector of keys in has table
+/*! Return vector of keys in hash table
  *
  * @param[in]   hash  	Hash table
  * @param[out]	nkeys   Size of key vector

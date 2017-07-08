@@ -86,6 +86,12 @@ expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get-config><source><candidate/
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
+new "netconf edit state operation should fail"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><interfaces-state><interface><name>eth1</name><type>eth</type></interface></interfaces-state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag>"
+
+new "netconf get state operation"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get><filter type=\"xpath\" select=\"/interfaces-state\"/></get></rpc>]]>]]>" "^<rpc-reply><data/></rpc-reply>]]>]]>$"
+
 new "netconf lock/unlock"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]><rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><rpc-reply><ok/></rpc-reply>]]>]]>$"
 

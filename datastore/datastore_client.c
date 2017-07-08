@@ -213,7 +213,7 @@ main(int argc, char **argv)
     if (strcmp(cmd, "get")==0){
 	if (argc != 1 && argc != 2)
 	    usage(argv0);
-	if (xmldb_get(h, db, argc==2?argv[1]:"/", &xt, NULL, 0) < 0)
+	if (xmldb_get(h, db, argc==2?argv[1]:"/", 0, &xt) < 0)
 	    goto done;
 	clicon_xml2file(stdout, xt, 0, 0);	
 	

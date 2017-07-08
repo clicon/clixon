@@ -72,6 +72,11 @@ int plugin_exit(clicon_handle h);
  */
 int plugin_reset(clicon_handle h, char *dbname);
 
+/*! Retreive statedata, add statedata to XML tree
+ * @see plgstatedata_ t
+ */
+int plugin_statedata(clicon_handle h, char *xpath, cxobj *xtop);
+
 /*! Called before a commit/validate sequence begins. Eg setup state before commit 
  * @see trans_cb_t
  */

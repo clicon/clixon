@@ -128,6 +128,7 @@ int       clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag);
 #define clicon_xml_parse_string(str, x) clicon_xml_parse_str((*str), x) 
 int       clicon_xml_parse_str(char *str, cxobj **xml_top);
 int       clicon_xml_parse(cxobj **cxtop, char *format, ...);
+int       xml_parse(char *str, cxobj *x_up);
 
 int       xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 int       xml_copy(cxobj *x0, cxobj *x1);

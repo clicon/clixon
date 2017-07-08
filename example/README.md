@@ -81,8 +81,28 @@ cli> downcall "This is a  string"
 This is a string
 ```
 
+## State data
+
+Netconf <get> and restconf GET also returns state data, in contrast to
+config data. 
+
+In YANG state data is specified with "config false;". In the example, interface-state is state data.
+
+To return state data, you need to write a backend state data callback
+with the name "plugin_statedata" where you return an XML tree with
+state. This is then merged with config data by the system.
+
+pA static example of returning state data is in the example. Note that
+a real example would poll or get the interface counters via a system
+call, as well as use the "xpath" argument to identify the requested
+state data.
+
+
 ## Run as docker container
 ```
 cd docker
 # look in README
 ```
+
+
+

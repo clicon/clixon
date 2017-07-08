@@ -146,9 +146,9 @@ validate_common(clicon_handle       h,
 	goto done;
     }	
     /* 2. Parse xml trees */
-    if (xmldb_get(h, "running", "/", &td->td_src, NULL, NULL) < 0)
+    if (xmldb_get(h, "running", "/", 1, &td->td_src) < 0)
 	goto done;
-    if (xmldb_get(h, candidate, "/", &td->td_target, NULL, NULL) < 0)
+    if (xmldb_get(h, candidate, "/", 1, &td->td_target) < 0)
 	goto done;
 
     /* 3. Compute differences */
@@ -212,7 +212,8 @@ validate_common(clicon_handle       h,
  * The code reverts changes if the commit fails. But if the revert
  * fails, we just ignore the errors and proceed. Maybe we should
  * do something more drastic?
- * @param[in] h         Clicon handle
+ * @param[in]  h         Clicon handle
+ * @param[in]  candidate A candidate database, not necessarily "candidate"
 */
 int
 candidate_commit(clicon_handle h, 
@@ -283,17 +284,17 @@ from_client_commit(clicon_handle h,
 		piddb);
 	goto ok;
     }
-
     if (candidate_commit(h, "candidate") < 0){
 	clicon_debug(1, "Commit candidate failed");
-	/* XXX: candidate_validate should have proper error handling */
 	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-attribute</error-tag>"
+		"<error-tag>invalid-value</error-tag>"
 		"<error-type>protocol</error-type>"
 		"<error-severity>error</error-severity>"
 		"<error-message>%s</error-message>"
 		"</rpc-error></rpc-reply>",
 		clicon_err_reason);
+        goto ok;
+
 	goto ok;
     }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
