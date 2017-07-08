@@ -207,32 +207,6 @@ Netconf <get> and restconf GET also returns state data, in contrast to
 config data. In YANG state data is specified with "config false;".
 
 To return state data, you need to write a backend state data callback
-with the name "plugin_statedata" where you return an XML tree.
+with the name "plugin_statedata()" where you return an XML tree.
 
-A static example of returning state data is as follows, although a real example would poll or get the interface counters via a system call, as well as use the "xpath" argument to identify the requested state data.
-
-```
-int 
-plugin_statedata(clicon_handle h, 
-		 char         *xpath,
-		 cxobj        *xstate)
-{
-    int     retval = -1;
-    cxobj **xvec = NULL;
-
-    if ((xml_parse("<interfaces-state><interface>"
-		   "<name>eth0</name>"
-		   "<type>eth</type>"
-		   "<admin-status>up</admin-status>"
-		   "<oper-status>up</oper-status>"
-		   "<if-index>42</if-index>"
-		   "<speed>1000000000</speed>"
-		   "</interface></interfaces-state>", xstate)) < 0)
-	goto done;
-    retval = 0;
- done:
-    if (xvec)
-	free(xvec);
-    return retval;
-}
-```
+Please look at the example for an example on how to write a state data callback.
