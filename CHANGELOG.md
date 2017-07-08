@@ -1,8 +1,6 @@
 # Clixon CHANGELOG
 	
-- Added generic xml_merge() function.
-
-- Added new backend plugin callback: "plugin_statedata()" for getting state data
+- Added new backend plugin callback: "plugin_statedata()" for retreiving state data
 
 - Added yang dir with ietf-netconf and clixon-config yang specs for internal usage.
 
