@@ -1593,11 +1593,12 @@ yang_parse(clicon_handle h,
     if (yang_expand((yang_node*)ysp) < 0)
 	goto done;
     yang_apply((yang_node*)ymod, ys_flag_reset, (void*)YANG_FLAG_MARK);
-    /* Step 4: Go through parse tree and populate it with cv types */
+
+    /* Step 3: Go through parse tree and populate it with cv types */
     if (yang_apply((yang_node*)ysp, ys_populate, NULL) < 0)
 	goto done;
 
-    /* Step 3: Top-level augmentation of all modules */
+    /* Step 4: Top-level augmentation of all modules */
     if (yang_augment_spec(ysp) < 0)
 	goto done;
 
@@ -1606,7 +1607,6 @@ yang_parse(clicon_handle h,
     return retval;
 }
 
-
 /*! Apply a function call recursively on all yang-stmt s recursively
  *
  * Recursively traverse all yang-nodes in a parse-tree and apply fn(arg) for 
@@ -1614,10 +1614,12 @@ yang_parse(clicon_handle h,
  * argument as args.
  * The tree is traversed depth-first, which at least guarantees that a parent is
  * traversed before a child.
- * @param[in]  xn   XML node
- * @param[in]  type matching type or -1 for any
+ * @param[in]  yn   yang node
  * @param[in]  fn   Callback
  * @param[in]  arg  Argument
+ * @retval    -1    Error, aborted at first error encounter
+ * @retval     0    OK, all nodes traversed
+ * @retval     n    OK, aborted at first encounter of first match
  * @code
  * int ys_fn(yang_stmt *ys, void *arg)
  * {
@@ -1635,13 +1637,18 @@ yang_apply(yang_node     *yn,
     int        retval = -1;
     yang_stmt *ys = NULL;
     int        i;
+    int        ret;
 
     for (i=0; i<yn->yn_len; i++){
 	ys = yn->yn_stmt[i];
 	if (fn(ys, arg) < 0)
 	    goto done;
-	if (yang_apply((yang_node*)ys, fn, arg) < 0)
+	if ((ret = yang_apply((yang_node*)ys, fn, arg)) < 0)
 	    goto done;
+	if (ret > 0){
+	    retval = ret;
+	    goto done;
+	}
     }
     retval = 0;
   done:

@@ -196,6 +196,26 @@ catch:
     return -1;
 }
     
+static int 
+ys_find_rpc(yang_stmt *ys, 
+	    void      *arg)
+{
+    cxobj *xn = (cxobj*)arg;
+    char  *name = xml_name(xn);
+
+    if (ys->ys_keyword == Y_RPC && strcmp(name, ys->ys_argument) == 0){
+	/* 
+	 * XXX 
+	 * 1. Check xn arguments with input statement.
+	 * 2. Send to backend as clicon_msg-encode()
+	 * 3. In backend to similar but there call actual backend
+	 */
+	return 1; /* handled */
+    }
+   return 0;
+}
+
+
 /*! See if there is any callback registered for this tag
  *
  * @param[in]  h       clicon handle
@@ -211,21 +231,28 @@ netconf_plugin_callbacks(clicon_handle h,
 			 cxobj        *xn, 
 			 cxobj       **xret)
 {
+    int            retval = -1;
     netconf_reg_t *nreg;
-    int            retval;
+    yang_spec     *yspec;
 
-    if (deps == NULL)
-	return 0;
-    nreg = deps;
-    do {
-	if (strcmp(nreg->nr_tag, xml_name(xn)) == 0){
-	    if ((retval = nreg->nr_callback(h, xn, xret, nreg->nr_arg)) < 0)
-		return -1;
-	    else
-		return 1; /* handled */
-	}
-	nreg = NEXTQ(netconf_reg_t *, nreg);
-    } while (nreg != deps);
-    return 0;
+    if (deps != NULL){
+	nreg = deps;
+	do {
+	    if (strcmp(nreg->nr_tag, xml_name(xn)) == 0){
+		retval = nreg->nr_callback(h, xn, xret, nreg->nr_arg);
+		goto done;
+	    }
+	    nreg = NEXTQ(netconf_reg_t *, nreg);
+	} while (nreg != deps);
+    }
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    if (yang_apply((yang_node*)yspec, ys_find_rpc, xn) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
 }
     

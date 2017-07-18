@@ -141,12 +141,29 @@ expand_dbvar(void   *h,
     if (api_path_fmt2xpath(api_path, cvv, &xpath) < 0)
 	goto done;   
     /* XXX read whole configuration, why not send xpath? */
-    if (clicon_rpc_get_config(h, dbstr, "/", &xt) < 0)
+    if (clicon_rpc_get_config(h, dbstr, xpath, &xt) < 0)
     	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error(xerr);
 	goto done;
     }
+#if 0
+    /* Get xpath from datastore? 
+     * 1. Get whole datastore, 
+     * 2. Add tentative my location to xpath, 
+     * 3. If leafref, compute relative xpath
+     */
+    {
+	cxobj     *xcur = NULL; /* xpath, NULL if datastore */
+	//	yang_node *y = NULL; /* yang spec of xpath */
+
+	if ((xcur = xpath_first(xt, xpath)) == NULL)
+	    goto done;
+	
+
+    }
+#endif
+
     /* One round to detect duplicates 
      * XXX The code below would benefit from some cleanup
      */

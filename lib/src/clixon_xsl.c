@@ -435,6 +435,7 @@ recursive_find(cxobj   *xn,
  *  - @<attr>=<value>
  *  - <number>
  *  - <name>=<value> # RelationalExpr '=' RelationalExpr
+ *  - <name>=current()<xpath> XXX
  * @see https://www.w3.org/TR/xpath/#predicates
  */
 static int
@@ -565,6 +566,7 @@ xpath_find(struct xpath_element *xe,
     cxobj         *xv;
     int            descendants = 0;
     cxobj        **vec1 = NULL;
+    cxobj         *xparent;
     size_t         vec1len = 0;
     struct xpath_predicate *xp;
 
@@ -587,10 +589,13 @@ xpath_find(struct xpath_element *xe,
     case A_SELF:
 	break;
     case A_PARENT:
+	j = 0;
 	for (i=0; i<vec0len; i++){
 	    xv = vec0[i];
-	    vec0[i] = xml_parent(xv);
+	    if ((xparent = xml_parent(xv)) != NULL)
+		vec0[j++] = xparent;
 	}
+	vec0len = j;
 	break;
     case A_ROOT: /* set list to NULL */
 	x = vec0[0];

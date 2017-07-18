@@ -275,9 +275,10 @@ yang2cli_var_sub(clicon_handle h,
     if (helptext)
 	cprintf(cb0, "(\"%s\")", helptext);
     if (completion){
+#if 0
 	if (type && (strcmp(type, "leafref") == 0)){
 	    yang_stmt *ypath;
-
+	    /* XXX only for absolute xpath */
 	    if ((ypath = yang_find((yang_node*)ytype, Y_PATH, NULL)) == NULL){
 		clicon_err(OE_XML, 0, "leafref should have path sub");
 		goto done;
@@ -290,6 +291,7 @@ yang2cli_var_sub(clicon_handle h,
 		    ypath->ys_argument);
 	}
 	else
+#endif
 	    if (cli_expand_var_generate(h, ys, cvtype, cb0, 
 					options, fraction_digits) < 0)
 		goto done;
