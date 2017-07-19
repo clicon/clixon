@@ -1,6 +1,8 @@
 # Clixon CHANGELOG
 
-- Added validation for leafref forward and nackward references.
+- Added completion for generated cli leafrefs for both absolute and relatve paths.
+
+- Added validation for leafref forward and backward references.
 	
 - Added new backend plugin callback: "plugin_statedata()" for retreiving state data
 

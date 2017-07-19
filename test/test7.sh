@@ -37,14 +37,14 @@ module ietf-ip{
          }
          leaf address {
              type leafref {
-                 path "../../interface[name = current()/../ifname]"
+                 path "../../interface[name=eth0]"
                     + "/address/ip";
              }
          }
     }
 }
 EOF
-
+#                 path "../../interface[name = current()/../ifname]"
 
 # kill old backend (if any)
 new "kill old backend"
