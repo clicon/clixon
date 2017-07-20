@@ -218,8 +218,6 @@ ys_resolve_type(yang_stmt *ys,
     uint8_t           fraction = 0;
     yang_stmt        *resolved = NULL;
  
-    if (ys->ys_keyword != Y_TYPE)
-        return 0;
     if (yang_type_resolve((yang_stmt*)ys->ys_parent, ys, &resolved,
 			  &options, &mincv, &maxcv, &pattern, &fraction) < 0)
 	goto done;

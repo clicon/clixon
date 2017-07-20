@@ -1,5 +1,9 @@
 # Clixon CHANGELOG
 
+- Extended ietf-ip example with ietf-routing.
+
+- Added YANG RPC support, with example rpc documentation and testcase (test7.sh).
+
 - Added completion for generated cli leafrefs for both absolute and relatve paths.
 
 - Added validation for leafref forward and backward references.

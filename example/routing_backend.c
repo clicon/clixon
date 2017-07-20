@@ -119,14 +119,27 @@ notification_timer_setup(clicon_handle h)
     return event_reg_timeout(t, notification_timer, h, "notification timer");
 }
 
+/*! IETF Routing fib-route rpc */
 static int 
-routing_downcall(clicon_handle h, 
-		 cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-		 struct client_entry *ce,    /* Client session */
-		 cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-		 void         *arg)          /* Argument given at register */
+fib_route(clicon_handle h, 
+	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	  struct client_entry *ce,    /* Client session */
+	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	  void         *arg)          /* Argument given at register */
 {
-    cprintf(cbret, "<rpc-reply><ok>%s</ok></rpc-reply>", xml_body(xe));    
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
+    return 0;
+}
+
+/*! IETF Routing route-count rpc */
+static int 
+route_count(clicon_handle h, 
+	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	    struct client_entry *ce,    /* Client session */
+	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	    void         *arg)          /* Argument given at register */
+{
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
     return 0;
 }
 
@@ -173,10 +186,15 @@ plugin_init(clicon_handle h)
 
     if (notification_timer_setup(h) < 0)
 	goto done;
-    /* Register callback for netconf application-specific rpc call */
-    if (backend_rpc_cb_register(h, routing_downcall, 
+    /* Register callback for routing rpc calls */
+    if (backend_rpc_cb_register(h, fib_route, 
 				NULL, 
-				"myrouting"/* Xml tag when callback is made */
+				"fib-route"/* Xml tag when callback is made */
+				) < 0)
+	goto done;
+    if (backend_rpc_cb_register(h, route_count, 
+				NULL, 
+				"route-count"/* Xml tag when callback is made */
 				) < 0)
 	goto done;
     retval = 0;

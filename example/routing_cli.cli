@@ -4,10 +4,10 @@ CLICON_PROMPT="%U@%H> ";
 CLICON_PLUGIN="routing_cli";
 
 # Note, when switching to PT, change datamodel to only @datamodel
-set @datamodel:ietf-ip, cli_set();
-merge @datamodel:ietf-ip, cli_merge();
-create @datamodel:ietf-ip, cli_create();
-delete("Delete a configuration item") @datamodel:ietf-ip, cli_del();
+set @datamodel:example, cli_set();
+merge @datamodel:example, cli_merge();
+create @datamodel:example, cli_create();
+delete("Delete a configuration item") @datamodel:example, cli_del();
 
 validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
@@ -49,7 +49,7 @@ load("Load configuration from XML file") <filename:string>("Filename (local file
     merge("Merge file with existent candidate"), load_config_file("filename", "merge");
 }
 example("This is a comment") <var:int32>("Just a random number"), mycallback("myarg");
-downcall("This is a downcall") <str:rest>, downcall();
+rpc("fib-route rpc") <instance:string>("routing instance"), fib_route_rpc("myarg");
 notify("Get notifications from backend"), cli_notify("ROUTING", "1", "text");
 no("Negate") notify("Get notifications from backend"), cli_notify("ROUTING", "0", "xml");
 lock,cli_lock("candidate");

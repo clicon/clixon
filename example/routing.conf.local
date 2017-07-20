@@ -5,11 +5,12 @@ CLICON_CLI_MODE         routing
 
 # Option used to construct initial yang file:
 #     <module>[@<revision>]
-CLICON_YANG_MODULE_MAIN ietf-ip
+#CLICON_YANG_MODULE_MAIN ietf-ip
+CLICON_YANG_MODULE_MAIN example
 
 # Option used to construct initial yang file:
 #     <module>[@<revision>]
-CLICON_YANG_MODULE_REVISION 2014-06-16
+#CLICON_YANG_MODULE_REVISION 2014-06-16
 
 # Generate code for CLI completion of existing db symbols
 # CLICON_CLI_GENMODEL_COMPLETION 0

@@ -373,7 +373,7 @@ yn_each(yang_node *yn,
  *
  * @param[in]  yn         Yang node, current context node.
  * @param[in]  keyword    if 0 match any keyword
- * @param[in]  argument   if NULL, match any argument.
+ * @param[in]  argument   String compare w wrgument. if NULL, match any.
  * This however means that if you actually want to match only a yang-stmt with 
  * argument==NULL you cannot, but I have not seen any such examples.
  * @see yang_find_syntax
@@ -1587,15 +1587,15 @@ yang_parse(clicon_handle h,
     clicon_dbspec_name_set(h, ymod->ys_argument);
 
     /* Resolve all types */
-    yang_apply((yang_node*)ysp, ys_resolve_type, NULL);
+    yang_apply((yang_node*)ysp, Y_TYPE, ys_resolve_type, NULL);
 
     /* Step 2: Macro expansion of all grouping/uses pairs. Expansion needs marking */
     if (yang_expand((yang_node*)ysp) < 0)
 	goto done;
-    yang_apply((yang_node*)ymod, ys_flag_reset, (void*)YANG_FLAG_MARK);
+    yang_apply((yang_node*)ymod, -1, ys_flag_reset, (void*)YANG_FLAG_MARK);
 
     /* Step 3: Go through parse tree and populate it with cv types */
-    if (yang_apply((yang_node*)ysp, ys_populate, NULL) < 0)
+    if (yang_apply((yang_node*)ysp, -1, ys_populate, NULL) < 0)
 	goto done;
 
     /* Step 4: Top-level augmentation of all modules */
@@ -1615,6 +1615,7 @@ yang_parse(clicon_handle h,
  * The tree is traversed depth-first, which at least guarantees that a parent is
  * traversed before a child.
  * @param[in]  yn   yang node
+ * @param[in]  key  yang keyword to use as filer or -1 for all
  * @param[in]  fn   Callback
  * @param[in]  arg  Argument
  * @retval    -1    Error, aborted at first error encounter
@@ -1625,12 +1626,13 @@ yang_parse(clicon_handle h,
  * {
  *   return 0;
  * }
- * yang_apply((yang_node*)ys, ys_fn, NULL);
+ * yang_apply((yang_node*)ys, Y_TYPE, ys_fn, NULL);
  * @endcode
  * @note do not delete or move around any children during this function
  */
 int
 yang_apply(yang_node     *yn, 
+	   enum rfc_6020  keyword,
 	   yang_applyfn_t fn, 
 	   void          *arg)
 {
@@ -1641,9 +1643,15 @@ yang_apply(yang_node     *yn,
 
     for (i=0; i<yn->yn_len; i++){
 	ys = yn->yn_stmt[i];
-	if (fn(ys, arg) < 0)
-	    goto done;
-	if ((ret = yang_apply((yang_node*)ys, fn, arg)) < 0)
+	if (keyword == -1 || keyword == ys->ys_keyword){
+	    if ((ret = fn(ys, arg)) < 0)
+		goto done;
+	    if (ret > 0){
+		retval = ret;
+		goto done;
+	    }
+	}
+	if ((ret = yang_apply((yang_node*)ys, keyword, fn, arg)) < 0)
 	    goto done;
 	if (ret > 0){
 	    retval = ret;

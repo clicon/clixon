@@ -90,7 +90,7 @@ The [YANG RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt) is implemented w
 - object-references
 - if-feature
 - unique
-- rpc
+
 
 
 

@@ -10,7 +10,7 @@ clixon_netconf=clixon_netconf
 clixon_cli=clixon_cli
 
 cat <<EOF > /tmp/leafref.yang
-module ietf-ip{
+module example{
      typedef admin-status{
         type string;
      }

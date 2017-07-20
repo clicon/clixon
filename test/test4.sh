@@ -10,7 +10,7 @@ clixon_netconf=clixon_netconf
 clixon_cli=clixon_cli
 
 cat <<EOF > /tmp/test.yang
-module ietf-ip{
+module example{
    container x {
     list y {
       key "a b";

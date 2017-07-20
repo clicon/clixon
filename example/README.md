@@ -65,22 +65,45 @@ Routing notification
 ...
 ```
 
-## Extending
+## Operation data
 
-Clixon has an extension mechanism which can be used to make extended internal
-netconf messages to the backend configuration engine. You may need this to
-make some special operation that is not covered by standard
-netconf functions. The example has a simple "echo" downcall
-mechanism that simply echoes what is sent down and is included for
-reference. A more realistic downcall would perform some action, such as
-reading some status.
+Clixon implements Yang RPC operations by an extension mechanism. The
+extension mechanism enables you to add application-specific
+operations. It works by adding user-defined callbacks for added
+netconf operations. It is possible to use the extension mechanism
+independent of the yang rpc construct, but it is recommended to use
+that, and the example includes such an example:
 
 Example:
 ```
-cli> downcall "This is a  string"
-This is a string
+cli> rpc ipv4
+<rpc-reply>
+   <ok/>
+</rpc-reply>
 ```
 
+The example works by creating a netconf rpc call and sending it to the backend: (see the fib_route_rpc() function).
+```
+  <rpc>
+    <fib-route>
+      <routing-instance-name>ipv4</routing-instance-name>
+    </fib-route>
+   </rpc>
+```
+
+The backend in turn registers a callback (fib_route()) which handles the RPC.
+```
+static int 
+fib_route(clicon_handle h, 
+	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	  struct client_entry *ce,    /* Client session */
+	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	  void         *arg)          /* Argument given at register */
+{
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
+    return 0;
+}
+```
 ## State data
 
 Netconf <get> and restconf GET also returns state data, in contrast to
