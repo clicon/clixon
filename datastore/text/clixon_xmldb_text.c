@@ -665,6 +665,50 @@ text_modify_top(cxobj              *x0,
     return retval;
 }
 
+/*! For containers without presence and no children, remove
+ * @param[in]   x       XML tree node
+ * @note This should really be unnecessary since yspec should be set on creation
+ * @code
+ * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
+ * @endcode
+ * See section 7.5.1 in rfc6020bis-02.txt:
+ * No presence:
+ * those that exist only for organizing the hierarchy of data nodes:
+ * the container has no meaning of its own, existing
+ * only to contain child nodes.  This is the default style.
+ * (Remove these if no children)
+ * Presence:
+ * the presence of the container itself is
+ * configuration data, representing a single bit of configuration data.
+ * The container acts as both a configuration knob and a means of
+ * organizing related configuration.  These containers are explicitly
+ * created and deleted.
+ * (Dont touch these)
+ */
+int
+xml_container_presence(cxobj  *x, 
+		       void   *arg)
+{
+    int        retval = -1;
+    char      *name;
+    yang_stmt *y;  /* yang node */
+
+    name = xml_name(x);
+    if ((y = (yang_stmt*)xml_spec(x)) == NULL){
+	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, name);
+	retval = 0;
+	goto done;
+    }
+    /* Mark node that is: container, have no children, dont have presence */
+    if (y->ys_keyword == Y_CONTAINER && 
+	xml_child_nr(x)==0 &&
+	yang_find((yang_node*)y, Y_PRESENCE, NULL) == NULL)
+	xml_flag_set(x, XML_FLAG_MARK); /* Mark, remove later */
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Modify database provided an xml tree and an operation
  * This is a clixon datastore plugin of the the xmldb api
  * @see xmldb_put
@@ -744,6 +788,12 @@ text_put(xmldb_handle        xh,
 	goto done;
     if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
 		  (void*)XML_FLAG_NONE) < 0)
+	goto done;
+    /* Mark non-presence containers that do not have children */
+    if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_container_presence, NULL) < 0)
+	goto done;
+    /* Remove (prune) nodes that are marked (non-presence containers w/o children) */
+    if (xml_tree_prune_flagged(x0, XML_FLAG_MARK, 1) < 0)
 	goto done;
     // output:
     /* Print out top-level xml tree after modification to file */

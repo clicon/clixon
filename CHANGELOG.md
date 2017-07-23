@@ -1,29 +1,23 @@
 # Clixon CHANGELOG
 
-- Extended ietf-ip example with ietf-routing.
+Major changes:
+- Added support for yang presence and no-presence containers. Previous default was "presence".
 
-- Added YANG RPC support, with example rpc documentation and testcase (test7.sh).
+- Added YANG RPC support for nentconf and CLI. With example rpc documentation and testcase. This replaces the previous "downcall" mechanism.
 
-- Added completion for generated cli leafrefs for both absolute and relatve paths.
-
-- Added validation for leafref forward and backward references.
+- Enhanced leafref functionality: (1) validation for leafref forward and backward references; (2)CLI completion for generated cli leafrefs for both absolute and relatve paths.
 	
-- Added new backend plugin callback: "plugin_statedata()" for retreiving state data
+- Added state data: Netconf <get> operation, new backend plugin callback: "plugin_statedata()" for retreiving state data.
 
+Minor changes:
+- Removed 'margin' parameter of yang_print().
+- Extended example with ietf-routing (not only ietf-ip) for rpc operations.
 - Added yang dir with ietf-netconf and clixon-config yang specs for internal usage.
-
-- Added state data: Netconf <get> operation introduced; Error when
-  adding state data in <edit-config>.
-
 - Fixed bug where cli set of leaf-list were doubled, eg cli set foo -> foofoo
-
 - Restricted yang (sub)module file match to match RFC6020 exactly
-
-- Generalized yang type resolution to all included (sub)modules not just the topmost
-
 - Generic map_str2int generic mapping tables
-
 - Removed vector return values from xmldb_get()
+- Generalized yang type resolution to all included (sub)modules not just the topmost
 	
 ## 3.3.1 June 7 2017
 

@@ -387,7 +387,7 @@ show_yang(clicon_handle h,
   }
   else
     yn = (yang_node*)yspec;
-  yang_print(stdout, yn, 0);
+  yang_print(stdout, yn);
   return 0;
 }
 int show_yangv(clicon_handle h, cvec *vars, cvec *argv)

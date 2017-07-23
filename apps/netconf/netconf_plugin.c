@@ -238,6 +238,8 @@ netconf_plugin_callbacks(clicon_handle h,
     yang_spec     *yspec;
     yang_stmt     *yrpc;
     yang_stmt     *yinput;
+    yang_stmt     *youtput;
+    cxobj         *xoutput;
     find_rpc_arg   fra = {0,0};
     int            ret;
 
@@ -279,6 +281,18 @@ netconf_plugin_callbacks(clicon_handle h,
 	 */
 	if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
 	    goto done;
+	/* Sanity check of outgoing XML */
+	if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL){
+	    xoutput=xpath_first(*xret, "/");
+	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
+	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yinput) < 0)
+		goto done;
+	    if (xml_apply(xoutput, CX_ELMNT, 
+			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+		goto done;
+	    if (xml_yang_validate_add(xoutput, NULL) < 0)
+		goto done;
+	}
 	retval = 1; /* handled by callback */
 	goto done;
     }

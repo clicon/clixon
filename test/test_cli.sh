@@ -31,8 +31,8 @@ new "cli tests"
 new "cli configure top"
 expectfn "$clixon_cli -1f $clixon_cf set interfaces" ""
 
-new "cli show configuration top"
-expectfn "$clixon_cli -1f $clixon_cf show conf cli" "^interfaces$"
+new "cli show configuration top (no presence)"
+expectfn "$clixon_cli -1f $clixon_cf show conf cli" ""
 
 new "cli configure delete top"
 expectfn "$clixon_cli -1f $clixon_cf delete interfaces" ""

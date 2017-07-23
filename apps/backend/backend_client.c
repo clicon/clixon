@@ -242,14 +242,9 @@ from_client_get_config(clicon_handle h,
 	goto ok;
     }
     cprintf(cbret, "<rpc-reply><data>");
-    if (xret!=NULL){
-	if (xml_child_nr(xret)){
-	    if (xml_name_set(xret, "config") < 0)
-		goto done;
-	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
-		goto done;
-	}
-    }
+    if (xret!=NULL && 
+	clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
     cprintf(cbret, "</data></rpc-reply>");
  ok:
     retval = 0;

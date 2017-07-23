@@ -103,6 +103,13 @@ fib_route(clicon_handle h,
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
     return 0;
 }
+int
+plugin_init(clicon_handle h)
+{
+...
+   backend_rpc_cb_register(h, fib_route, NULL, "fib-route");
+...
+}
 ```
 ## State data
 

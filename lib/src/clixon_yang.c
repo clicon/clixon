@@ -682,43 +682,41 @@ quotedstring(char *s)
 }
 
 /*! Print yang specification to file
+ * @param[in]  f         File to print to.
+ * @param[in]  yn        Yang node to print
  * @see yang_print_cbuf
  */
 int
 yang_print(FILE      *f, 
-	   yang_node *yn, 
-	   int        marginal)
+	   yang_node *yn)
 {
-    yang_stmt *ys = NULL;
+    int        retval = -1;
+    cbuf      *cb = NULL;
 
-    while ((ys = yn_each(yn, ys)) != NULL) {
-	fprintf(f, "%*s%s", marginal, "", yang_key2str(ys->ys_keyword));
-	fflush(f);
-	if (ys->ys_argument){
-	    if (quotedstring(ys->ys_argument))
-		fprintf(f, " \"%s\"", ys->ys_argument);
-	    else
-		fprintf(f, " %s", ys->ys_argument);
-	}
-	if (ys->ys_len){
-	    fprintf(f, " {\n");
-	    yang_print(f, (yang_node*)ys, marginal+3);
-	    fprintf(f, "%*s%s\n", marginal, "", "}");
-	}
-	else
-	    fprintf(f, ";\n");
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_YANG, errno, "%s: cbuf_new", __FUNCTION__);
+	goto done;
     }
-    return 0;
+    if (yang_print_cbuf(cb, yn, 0) < 0)
+	goto done;
+    fprintf(f, "%s", cbuf_get(cb));
+    if (cb)
+	cbuf_free(cb);
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Print yang specification to cligen buf
+ * @param[in]  cb        Cligen buffer. This is where the pretty print is.
+ * @param[in]  yn        Yang node to print
+ * @param[in]  marginal  Tab indentation, mainly for recursion.
  * @code
  *  cbuf *cb = cbuf_new();
  *  yang_print_cbuf(cb, yn, 0);
  *  // output is in cbuf_buf(cb);
  *  cbuf_free(cb);
  * @endcode
- * @see yang_print
  */
 int
 yang_print_cbuf(cbuf      *cb,
@@ -1944,7 +1942,7 @@ yang_spec_main(clicon_handle h,
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
     if (printspec)
-	yang_print(f, (yang_node*)yspec, 0);
+	yang_print(f, (yang_node*)yspec);
     retval = 0;
   done:
     return retval;

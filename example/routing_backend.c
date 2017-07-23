@@ -121,13 +121,16 @@ notification_timer_setup(clicon_handle h)
 
 /*! IETF Routing fib-route rpc */
 static int 
-fib_route(clicon_handle h, 
+fib_route(clicon_handle h,            /* Clicon handle */
 	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
 	  struct client_entry *ce,    /* Client session */
 	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
 	  void         *arg)          /* Argument given at register */
 {
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
+    cprintf(cbret, "<rpc-reply><route>"
+	    "<address-family>ipv4</address-family>"
+	    "<next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop>"
+	    "</route></rpc-reply>");    
     return 0;
 }
 

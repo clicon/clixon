@@ -204,8 +204,8 @@ yang_stmt *yang_find(yang_node *yn, int keyword, char *argument);
 yang_stmt *yang_find_syntax(yang_node *yn, char *argument);
 yang_stmt *yang_find_topnode(yang_spec *ysp, char *name);
 
+int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
-int        yang_print(FILE *f, yang_node *yn, int marginal);
 int        yang_parse(clicon_handle h, const char *yang_dir, 
 		      const char *module, const char *revision, yang_spec *ysp);
 int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 

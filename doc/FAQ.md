@@ -197,8 +197,10 @@ They are documented in [CLIgen tutorial](https://github.com/olofhagsand/cligen/b
 ## How do I write a validation function?
 Similar to a commit function, but instead write the transaction_validate() function.
 Check for inconsistencies in the XML trees and if they fail, make an clicon_err() call.
+```
     clicon_err(OE_PLUGIN, 0, "Route %s lacks ipv4 addr", name);
     return -1;
+```
 The validation or commit will then be aborted.
 
 ## How do I write a state data callback function?
@@ -210,3 +212,45 @@ To return state data, you need to write a backend state data callback
 with the name "plugin_statedata()" where you return an XML tree.
 
 Please look at the example for an example on how to write a state data callback.
+
+## How do I write an RPC function?
+
+A YANG RPC is an application specific operation. Example:
+```
+   rpc fib-route {
+      input {
+         leaf inarg { type string; }
+      }
+      output {
+         leaf outarg { type string; }
+      }
+   }
+```
+which defines the fib-route operation present in the example (the arguments have been changed).
+
+Clixon automatically relays the RPC to the clixon backend. To
+implement the RFC, you need to register an RPC callback in the backend plugin:
+Example:
+```
+int
+plugin_init(clicon_handle h)
+{
+...
+   backend_rpc_cb_register(h, fib_route, NULL, "fib-route");
+...
+}
+```
+And then define the callback itself:
+```
+static int 
+fib_route(clicon_handle h,            /* Clicon handle */
+	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	  struct client_entry *ce,    /* Client session */
+	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	  void         *arg)          /* Argument given at register */
+{
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
+    return 0;
+}
+```
+Here, the callback is over-simplified.

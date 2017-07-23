@@ -24,13 +24,13 @@ fi
 new "netconf tests"
 
 new "netconf get empty config"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data><config/></data></rpc-reply>]]>]]>$'
 
 new "Add subtree eth/0/0 using none which should not change anything"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><default-operation>none</default-operation><target><candidate/></target><config><interfaces><interface><name>eth/0/0</name></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "Check nothing added"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data><config/></data></rpc-reply>]]>]]>$'
 
 new "Add subtree eth/0/0 using none and create which should add eth/0/0"
 expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="create"><name>eth/0/0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -44,8 +44,8 @@ expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate
 new "Delete eth/0/0 using none config"
 expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="delete"><name>eth/0/0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>'  "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-#new "Check deleted eth/0/0"
-#expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data><config><interfaces/></config></data></rpc-reply>]]>]]>$'
+new "Check deleted eth/0/0 (non-presence container)"
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data><config/></data></rpc-reply>]]>]]>$'
 
 new "Re-Delete eth/0/0 using none should generate error"
 expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="delete"><name>eth/0/0</name><type>eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>'  "^<rpc-reply><rpc-error>"
@@ -66,7 +66,7 @@ new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get empty config2"
-expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><config/></data></rpc-reply>]]>]]>$"
 
 new "netconf edit config eth1"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth1</name><type>eth</type></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -117,7 +117,10 @@ new "netconf delete startup"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><delete-config><target><startup/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf check empty startup"
-expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><config/></data></rpc-reply>]]>]]>$"
+
+new "netconf rpc"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><fib-route><routing-instance-name>ipv4</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></fib-route></rpc>]]>]]>" "^<rpc-reply><route><address-family>ipv4</address-family><next-hop><next-hop-list>"
 
 new "netconf subscription"
 expectwait "$clixon_netconf -qf $clixon_cf" "<rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><notification><event>Routing notification</event></notification>]]>]]>$" 30
