@@ -3,7 +3,7 @@
 ## Upcoming 3.3.2
 
 ### Major changes:
-* Changed top-level netconf get-config and get to return <data>..</data> instead of <data><config>...</config></data> to comply to the RFC.
+* Changed top-level netconf get-config and get to return `<data>` instead of `<data><config>` to comply to the RFC.
   * If you use direct netconf get or get-config calls, you may need to handle the return XML differently.
   * RESTCONF and CLI is not affected.
   * Example: 
@@ -27,11 +27,9 @@
     </rpc-reply>
 ```
 
-
-
 * Added support for yang presence and no-presence containers. Previous default was "presence".
-  * This means that empty containers will be removed unless you have used the "presence" yang declaration.
-  * Example YANG: 
+  * Empty containers will be removed unless you have used the "presence" yang declaration.
+  * Example YANG without presence: 
 ```
      container 
         nopresence { 
@@ -69,11 +67,19 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
 * Enhanced leafref functionality: 
   * Validation for leafref forward and backward references; 
   * CLI completion for generated cli leafrefs for both absolute and relative paths.
+  * Example, relative path:
+```
+         leaf ifname {
+             type leafref {
+                 path "../../interface/name";
+             }
+         }
+```
 	
-* Added state data: Netconf <get> operation, new backend plugin callback: "plugin_statedata()" for retreiving state data.
-  * This means that you can use netconf: <rpc><get/></rpc> and it will return both config and state data.
-  * It also means that restconf GET will return state data also, if defined.
-  * However, you need to define state data in a backend callback. See the example and documentation for more details.
+* Added state data: Netconf `<get>` operation, new backend plugin callback: "plugin_statedata()" for retreiving state data.
+  * You can use netconf: `<rpc><get/></rpc>` and it will return both config and state data.
+  * Restconf GET will return state data also, if defined.
+  * You need to define state data in a backend callback. See the example and documentation for more details.
 
 ### Minor changes:
 * Removed 'margin' parameter of yang_print().
@@ -87,9 +93,9 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
 	
 ## 3.3.1 June 7 2017
 
-* Fixed yang leafref cli completion.
+* Fixed yang leafref cli completion for absolute paths.
 
-* Removed non-standard api_path extension from the internal netconf protocol so that the internal netcinf is now fully standard.
+* Removed non-standard api_path extension from the internal netconf protocol so that the internal netconf is now fully standard.
 
 * Strings in xmldb_put not properly encoded, eg eth/0 became eth.00000
 	
@@ -146,13 +152,13 @@ May 2017
   Note modify argument 5:
      clicon_rpc_change(h, db, op, apipath, "value") 
   to:
-     clicon_rpc_edit_config(h, db, op, apipath, "<config>value</config>") 
+     clicon_rpc_edit_config(h, db, op, apipath, `"<config>value</config>"`) 
 
 * xmdlb_put_xkey() and xmldb_put_tree() have been folded into xmldb_put()
   Replace xmldb_put_xkey with xmldb_put as follows:
      xmldb_put_xkey(h, "candidate", cbuf_get(cb), str, OP_REPLACE);
   with
-     clicon_xml_parse(&xml, "<config>%s</config>", str);
+     clicon_xml_parse(&xml, `"<config>%s</config>"`, str);
      xmldb_put(h, "candidate", OP_REPLACE, cbuf_get(cb), xml);
      xml_free(xml);
 
@@ -181,9 +187,9 @@ May 2017
   (2) write your own cli callbacks
 
   If you use cli callbacks, you need to rewrite cli callbacks from eg:
-     load("Comment") <filename:string>,load_config_file("filename replace");
+     `load("Comment") <filename:string>,load_config_file("filename replace");`
   to:
-     load("Comment") <filename:string>,load_config_file("filename", "replace");
+     `load("Comment") <filename:string>,load_config_file("filename", "replace");`
 
   If you write your own, you need to change the callback signature from;
     int cli_callback(clicon_handle h, cvec *vars, cg_var *arg)
