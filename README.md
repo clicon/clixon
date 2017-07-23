@@ -15,7 +15,8 @@ Table of contents
 
 Documentation
 =============
-- [Frequently asked questions](doc/FAQ.md)
+- [Frequently asked questions](doc/FAQ.md
+- [CHANGELOG](CHANGELOG.md) recent changes.
 - [XML datastore](datastore/README.md)
 - [Netconf support](apps/netconf/README.md)
 - [Restconf support](apps/restconf/README.md)
@@ -58,7 +59,7 @@ Licenses
 Clixon is dual license. Either Apache License, Version 2.0 or GNU
 General Public License Version 2. You choose.
 
-See [LICENSE.md](LICENSE.md) for license, [CHANGELOG](CHANGELOG.md) for recent changes.
+See [LICENSE.md](LICENSE.md) for license.
 
 Background
 ==========

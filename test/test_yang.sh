@@ -78,19 +78,19 @@ new "netconf commit"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get config xpath"
-expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=1][b=2]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><config><x><y><a>1</a><b>2</b><c>5</c></y></x></config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=1][b=2]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><y><a>1</a><b>2</b><c>5</c></y></x></data></rpc-reply>]]>]]>$"
 
 new "netconf edit leaf-list"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><edit-config><target><candidate/></target><config><x><f><e>hej</e><e>hopp</e></f></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get leaf-list"
-expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f/e\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><config><x><f><e>hej</e><e>hopp</e></f></x></config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f/e\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$"
 
 new "netconf get leaf-list path"
-expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f[e=hej]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><config><x><f><e>hej</e><e>hopp</e></f></x></config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f[e=hej]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$"
 
 new "netconf get (should be some)"
-expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply><data><config><x><y><a>1</a><b>2</b><c>5</c></y><d/></x></config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply><data><x><y><a>1</a><b>2</b><c>5</c></y><d/></x></data></rpc-reply>]]>]]>$"
 
 new "cli set leaf-list"
 expectfn "$clixon_cli -1f $clixon_cf -y /tmp/test set x f e foo" ""
@@ -104,7 +104,7 @@ new "netconf set presence and not present"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><edit-config><target><candidate/></target><config><x><nopresence/><presence/></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get"
-expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/*presence\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><config><x><presence/></x></config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/*presence\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><presence/></x></data></rpc-reply>]]>]]>$"
 
 new "Kill backend"
 # Check if still alive

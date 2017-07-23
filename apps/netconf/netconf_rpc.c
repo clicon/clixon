@@ -159,7 +159,7 @@ netconf_get_config(clicon_handle h,
 	     goto done;	
 	 if (xfilter &&
 	     (xfilterconf = xpath_first(xfilter, "//configuration"))!= NULL &&
-	     (xconf = xpath_first(*xret, "/rpc-reply/data/configuration")) != NULL){
+	     (xconf = xpath_first(*xret, "/rpc-reply/data")) != NULL){
 	     /* xml_filter removes parts of xml tree not matching */
 	     if ((strcmp(xml_name(xfilterconf), xml_name(xconf))!=0) ||
 		 xml_filter(xfilterconf, xconf) < 0){
@@ -571,7 +571,7 @@ netconf_get(clicon_handle h,
 	     goto done;	
 	 if (xfilter &&
 	     (xfilterconf = xpath_first(xfilter, "//configuration"))!= NULL &&
-	     (xconf = xpath_first(*xret, "/rpc-reply/data/configuration")) != NULL){
+	     (xconf = xpath_first(*xret, "/rpc-reply/data")) != NULL){
 	     /* xml_filter removes parts of xml tree not matching */
 	     if ((strcmp(xml_name(xfilterconf), xml_name(xconf))!=0) ||
 		 xml_filter(xfilterconf, xconf) < 0){

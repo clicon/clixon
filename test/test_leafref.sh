@@ -64,7 +64,7 @@ new "leafref base config"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/leafref" "<rpc><edit-config><target><candidate/></target><config><interface><name>eth0</name><admin-status>up</admin-status><address><ip>192.0.2.1</ip></address><address><ip>192.0.2.2</ip></address></interface><interface><name>lo</name><admin-status>up</admin-status><address><ip>127.0.0.1</ip></address></interface></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "leafref get config"
-expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><config><interface><name>eth0</name>'
+expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><interface><name>eth0</name>'
 
 new "leafref base commit"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/leafref" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
