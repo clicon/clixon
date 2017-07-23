@@ -54,7 +54,7 @@
  * - Cant use the symbols in this file because yacc needs token definitions
  */
 enum rfc_6020{
-    Y_ANYXML,
+    Y_ANYXML = 0,
     Y_ARGUMENT,
     Y_AUGMENT,
     Y_BASE,
@@ -204,11 +204,12 @@ yang_stmt *yang_find(yang_node *yn, int keyword, char *argument);
 yang_stmt *yang_find_syntax(yang_node *yn, char *argument);
 yang_stmt *yang_find_topnode(yang_spec *ysp, char *name);
 
+int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
-int        yang_print(FILE *f, yang_node *yn, int marginal);
 int        yang_parse(clicon_handle h, const char *yang_dir, 
 		      const char *module, const char *revision, yang_spec *ysp);
-int        yang_apply(yang_node *yn, yang_applyfn_t fn, void *arg);
+int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 
+		      void *arg);
 yang_node *yang_xpath_abs(yang_node *yn, char *xpath);
 yang_node *yang_xpath(yang_node *yn, char *xpath);
 cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);

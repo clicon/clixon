@@ -89,15 +89,19 @@ generic_validate(yang_spec          *yspec,
     int             retval = -1;
     cxobj          *x1;
     cxobj          *x2;
-    int             i;
     yang_stmt      *ys;
+    int             i;
+
+    /* All entries */
+    if (xml_apply(td->td_target, CX_ELMNT, 
+		  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+	goto done;
 
     /* changed entries */
     for (i=0; i<td->td_clen; i++){
 	x1 = td->td_scvec[i]; /* source changed */
 	x2 = td->td_tcvec[i]; /* target changed */
-	ys = xml_spec(x1);
-	if (xml_yang_validate(x2, ys) < 0)
+	if (xml_yang_validate_add(x2, NULL) < 0)
 	    goto done;
     }
     /* deleted entries */
@@ -113,11 +117,8 @@ generic_validate(yang_spec          *yspec,
     /* added entries */
     for (i=0; i<td->td_alen; i++){
 	x2 = td->td_avec[i];
-	ys = xml_spec(x2);
-	if (xml_yang_validate(x2, ys) < 0)
-	    goto done;
-	if (xml_apply(x2, CX_ELMNT, 
-		      (xml_applyfn_t*)xml_yang_validate, NULL) < 0)
+	if (xml_apply0(x2, CX_ELMNT, 
+		      (xml_applyfn_t*)xml_yang_validate_add, NULL) < 0)
 	    goto done;
     }
     retval = 0;

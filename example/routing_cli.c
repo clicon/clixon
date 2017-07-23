@@ -92,40 +92,36 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
     return retval;
 }
 
-/*! get argument and send as string to backend as RPC (which returns the string) 
- */
+/*! Example "downcall": ietf-routing fib-route RPC */
 int
-downcall(clicon_handle h, 
-	 cvec         *vars, 
-	 cvec         *argv)
+fib_route_rpc(clicon_handle h, 
+	      cvec         *cvv, 
+	      cvec         *argv)
 {
-    int      retval = -1;
-    struct clicon_msg *msg = NULL;
-    char    *str="";
-    cg_var  *cv;
-    cxobj   *xret=NULL;
-    cxobj   *xerr;
-    cxobj   *xdata;
+    int        retval = -1;
+    cg_var    *instance;
+    cxobj     *xtop = NULL;
+    cxobj     *xrpc;
+    cxobj     *xret = NULL;
 
-    if (cvec_len(vars)==2){
-	if ((cv = cvec_i(vars, 1)) != NULL)
-	    str = cv_string_get(cv);
-    }
-    if ((msg = clicon_msg_encode("<rpc><myrouting>%s</myrouting></rpc>", str)) == NULL)
+    /* User supplied variable in CLI command */
+    instance = cvec_find(cvv, "instance"); /* get a cligen variable from vector */
+    /* Create XML for fib-route netconf RPC */
+    if (clicon_xml_parse(&xtop, "<rpc><fib-route><routing-instance-name>%s</routing-instance-name></fib-route></rpc>", instance) < 0)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    /* Skip top-level */
+    xrpc = xml_child_i(xtop, 0);
+    /* Send to backend */
+    if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
 	goto done;
-    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
-	goto done;
-    }
-    if ((xdata = xpath_first(xret, "//ok")) != NULL)
-	cli_output(stdout, "%s\n", xml_body(xdata));
-    retval = 0; 
-  done:
+    /* Print result */
+    xml_print(stdout, xml_child_i(xret, 0));
+    retval = 0;
+ done:
     if (xret)
-    	xml_free(xret);
-    if (msg)
-	free(msg);
+	xml_free(xret);
+    if (xtop)
+	xml_free(xtop);
     return retval;
 }
+

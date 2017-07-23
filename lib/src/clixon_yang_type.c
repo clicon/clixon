@@ -90,7 +90,6 @@ static const map_str2int ytmap[] = {
     {"int16",       CGV_INT16},  
     {"int64",       CGV_INT64},
     {"leafref",     CGV_STRING},  /* XXX */
-
     {"uint8",       CGV_UINT8}, 
     {"uint16",      CGV_UINT16},
     {"uint32",      CGV_UINT32},
@@ -105,12 +104,6 @@ yang_builtin(char *type)
 {
     if (clicon_str2int(ytmap, type) != -1)
 	return 1;
-#if 0
-    const struct map_str2int *yt;
-    for (yt = &ytmap[0]; yt->ms_str; yt++)
-       if (strcmp(yt->ms_str, type) == 0)
-           return 1;
-#endif
     return 0;
 }
 
@@ -225,8 +218,6 @@ ys_resolve_type(yang_stmt *ys,
     uint8_t           fraction = 0;
     yang_stmt        *resolved = NULL;
  
-    if (ys->ys_keyword != Y_TYPE)
-        return 0;
     if (yang_type_resolve((yang_stmt*)ys->ys_parent, ys, &resolved,
 			  &options, &mincv, &maxcv, &pattern, &fraction) < 0)
 	goto done;
@@ -857,6 +848,7 @@ yang_type_resolve(yang_stmt   *ys,
     ylength   = yang_find((yang_node*)ytype, Y_LENGTH, NULL);
     ypattern  = yang_find((yang_node*)ytype, Y_PATTERN, NULL);
     yfraction = yang_find((yang_node*)ytype, Y_FRACTION_DIGITS, NULL);
+
     /* Check if type is basic type. If so, return that */
     if (prefix == NULL && yang_builtin(type)){
 	*yrestype = ytype; 
@@ -867,8 +859,10 @@ yang_type_resolve(yang_stmt   *ys,
 
     /* Not basic type. Now check if prefix which means we look in other module */
     if (prefix){ /* Go to top and find import that matches */
-	if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL)
+	if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL){
+	    clicon_err(OE_DB, 0, "Module not resolved: %s", prefix);
 	    goto done;
+	}
 	if ((rytypedef = yang_find((yang_node*)ymod, Y_TYPEDEF, type)) == NULL)
 	    goto ok; /* unresolved */
     }

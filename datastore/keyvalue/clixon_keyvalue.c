@@ -673,7 +673,7 @@ put(char               *dbfile,
     clicon_debug(1, "%s xk0:%s ys:%s", __FUNCTION__, xk0, ys->ys_argument);
     if (debug){
 	xml_print(stderr, xt);
-	//	yang_print(stderr, (yang_node*)ys, 0);
+	//	yang_print(stderr, (yang_node*)ys);
     }
     if ((opstr = xml_find_value(xt, "operation")) != NULL)
 	if (xml_operation(opstr, &op) < 0)

@@ -31,8 +31,8 @@ new "cli tests"
 new "cli configure top"
 expectfn "$clixon_cli -1f $clixon_cf set interfaces" ""
 
-new "cli show configuration top"
-expectfn "$clixon_cli -1f $clixon_cf show conf cli" "^interfaces$"
+new "cli show configuration top (no presence)"
+expectfn "$clixon_cli -1f $clixon_cf show conf cli" ""
 
 new "cli configure delete top"
 expectfn "$clixon_cli -1f $clixon_cf delete interfaces" ""
@@ -87,7 +87,7 @@ expectfn "$clixon_cli -1f $clixon_cf -l o debug level 1" ""
 expectfn "$clixon_cli -1f $clixon_cf -l o debug level 0" ""
 
 new "cli downcall"
-expectfn "$clixon_cli -1f $clixon_cf -l o downcall \"This is a test =====\"" "^\"This is a test =====\"$"
+expectfn "$clixon_cli -1f $clixon_cf -l o rpc ipv4" "^<rpc-reply>"
 
 new "Kill backend"
 # Check if still alive

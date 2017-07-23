@@ -196,6 +196,28 @@ catch:
     return -1;
 }
     
+/*! Struct to carry info into and out of ys_find_rpc callback
+ */
+typedef struct {
+    char      *name; /* name of rpc */
+    yang_stmt *yrpc; /* matching yang statement */
+} find_rpc_arg;
+
+/*! Check yang rpc statement, return yang rpc statement if found 
+ */
+static int 
+ys_find_rpc(yang_stmt *ys, 
+	    void      *arg)
+{
+    find_rpc_arg *fra = (find_rpc_arg*)arg;
+
+    if (strcmp(fra->name, ys->ys_argument) == 0){
+	fra->yrpc = ys;
+	return 1; /* handled */
+    }
+   return 0;
+}
+
 /*! See if there is any callback registered for this tag
  *
  * @param[in]  h       clicon handle
@@ -211,21 +233,73 @@ netconf_plugin_callbacks(clicon_handle h,
 			 cxobj        *xn, 
 			 cxobj       **xret)
 {
+    int            retval = -1;
     netconf_reg_t *nreg;
-    int            retval;
+    yang_spec     *yspec;
+    yang_stmt     *yrpc;
+    yang_stmt     *yinput;
+    yang_stmt     *youtput;
+    cxobj         *xoutput;
+    find_rpc_arg   fra = {0,0};
+    int            ret;
 
-    if (deps == NULL)
-	return 0;
-    nreg = deps;
-    do {
-	if (strcmp(nreg->nr_tag, xml_name(xn)) == 0){
-	    if ((retval = nreg->nr_callback(h, xn, xret, nreg->nr_arg)) < 0)
-		return -1;
-	    else
-		return 1; /* handled */
+    if (deps != NULL){
+	nreg = deps;
+	do {
+	    if (strcmp(nreg->nr_tag, xml_name(xn)) == 0){
+		if ((retval = nreg->nr_callback(h, xn, xret, nreg->nr_arg)) < 0)
+		    goto done;
+		retval = 1; /* handled */
+		goto done;
+	    }
+	    nreg = NEXTQ(netconf_reg_t *, nreg);
+	} while (nreg != deps);
+    }
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    /* Find yang rpc statement, return yang rpc statement if found */
+    fra.name = xml_name(xn);
+    if ((ret = yang_apply((yang_node*)yspec, Y_RPC, ys_find_rpc, &fra)) < 0)
+	goto done;
+    /* Check if found */
+    if (ret == 1){
+	yrpc = fra.yrpc;
+	if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
+	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
+	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yinput) < 0)
+		goto done;
+	    if (xml_apply(xn, CX_ELMNT, 
+			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+		goto done;
+	    if (xml_yang_validate_add(xn, NULL) < 0)
+		goto done;
 	}
-	nreg = NEXTQ(netconf_reg_t *, nreg);
-    } while (nreg != deps);
-    return 0;
+	/* 
+	 * 1. Check xn arguments with input statement.
+	 * 2. Send to backend as clicon_msg-encode()
+	 * 3. In backend to similar but there call actual backend
+	 */
+	if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
+	    goto done;
+	/* Sanity check of outgoing XML */
+	if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL){
+	    xoutput=xpath_first(*xret, "/");
+	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
+	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yinput) < 0)
+		goto done;
+	    if (xml_apply(xoutput, CX_ELMNT, 
+			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+		goto done;
+	    if (xml_yang_validate_add(xoutput, NULL) < 0)
+		goto done;
+	}
+	retval = 1; /* handled by callback */
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }
     

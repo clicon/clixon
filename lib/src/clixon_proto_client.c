@@ -272,8 +272,8 @@ clicon_rpc_get_config(clicon_handle       h,
     /* Send xml error back: first check error, then ok */
     if ((xd = xpath_first(xret, "/rpc-reply/rpc-error")) != NULL)
 	xd = xml_parent(xd); /* point to rpc-reply */
-    else if ((xd = xpath_first(xret, "/rpc-reply/data/config")) == NULL)
-	if ((xd = xml_new("config", NULL)) == NULL)
+    else if ((xd = xpath_first(xret, "/rpc-reply/data")) == NULL)
+	if ((xd = xml_new("data", NULL)) == NULL)
 	    goto done;
     if (xt){
 	if (xml_rm(xd) < 0)
@@ -521,8 +521,8 @@ clicon_rpc_get(clicon_handle       h,
     /* Send xml error back: first check error, then ok */
     if ((xd = xpath_first(xret, "/rpc-reply/rpc-error")) != NULL)
 	xd = xml_parent(xd); /* point to rpc-reply */
-    else if ((xd = xpath_first(xret, "/rpc-reply/data/config")) == NULL)
-	if ((xd = xml_new("config", NULL)) == NULL)
+    else if ((xd = xpath_first(xret, "/rpc-reply/data")) == NULL)
+	if ((xd = xml_new("data", NULL)) == NULL)
 	    goto done;
     if (xt){
 	if (xml_rm(xd) < 0)

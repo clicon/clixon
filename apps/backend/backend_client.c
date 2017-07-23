@@ -241,16 +241,16 @@ from_client_get_config(clicon_handle h,
 		"</rpc-error></rpc-reply>");
 	goto ok;
     }
-    cprintf(cbret, "<rpc-reply><data>");
-    if (xret!=NULL){
-	if (xml_child_nr(xret)){
-	    if (xml_name_set(xret, "config") < 0)
-		goto done;
-	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
-		goto done;
-	}
+    cprintf(cbret, "<rpc-reply>");
+    if (xret==NULL)
+	cprintf(cbret, "<data/>");
+    else{
+	if (xml_name_set(xret, "data") < 0)
+	    goto done;
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
     }
-    cprintf(cbret, "</data></rpc-reply>");
+    cprintf(cbret, "</rpc-reply>");
  ok:
     retval = 0;
  done:
@@ -293,17 +293,16 @@ from_client_get(clicon_handle h,
     assert(xret);
     if (backend_statedata_call(h, selector, xret) < 0)
 	goto done;
-    cprintf(cbret, "<rpc-reply><data>");
-    /* if empty only <config/> */
-    if (xret!=NULL){
-	if (xml_child_nr(xret)){
-	    if (xml_name_set(xret, "config") < 0)
-		goto done;
-	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
-		goto done;
-	}
+    cprintf(cbret, "<rpc-reply>");
+    if (xret==NULL)
+	cprintf(cbret, "<data/>");
+    else{
+	if (xml_name_set(xret, "data") < 0)
+	    goto done;
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
     }
-    cprintf(cbret, "</data></rpc-reply>");
+    cprintf(cbret, "</rpc-reply>");
  ok:
     retval = 0;
  done:

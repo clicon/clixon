@@ -1,0 +1,10 @@
+module example {
+    import ietf-ip {
+      prefix ip;
+    }
+    import ietf-routing {
+      prefix rt;
+    }
+    description
+      "Example code that includes ietf-ip and ietf-routing";
+}

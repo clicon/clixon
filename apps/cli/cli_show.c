@@ -112,10 +112,22 @@ expand_dbvar(void   *h,
     int              j;
     int              k;
     cg_var          *cv;
+    yang_spec       *yspec;
+    cxobj           *xtop = NULL; /* xpath root */
+    cxobj           *xbot = NULL; /* xpath, NULL if datastore */
+    yang_node       *y = NULL; /* yang spec of xpath */
+    yang_stmt       *ytype;
+    yang_stmt       *ypath;
+    cxobj           *xcur;
+    char            *xpathcur;
 
     if (argv == NULL || cvec_len(argv) != 2){
 	clicon_err(OE_PLUGIN, 0, "%s: requires arguments: <db> <xmlkeyfmt>",
 		   __FUNCTION__);
+	goto done;
+    }
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
     if ((cv = cvec_i(argv, 0)) == NULL){
@@ -147,11 +159,40 @@ expand_dbvar(void   *h,
 	clicon_rpc_generate_error(xerr);
 	goto done;
     }
+    xcur = xt; /* default top-of-tree */
+    xpathcur = xpath;
+    /* Create config top-of-tree */
+    if ((xtop = xml_new("config", NULL)) == NULL)
+	goto done;
+    xbot = xtop;
+    if (api_path && api_path2xml(api_path, yspec, xtop, &xbot, &y) < 0)
+	goto done;
+    /* Special case for leafref. Detect leafref via Yang-type, 
+     * Get Yang path element, tentatively add the new syntax to the whole
+     * tree and apply the path to that.
+     * Last, the reference point for the xpath code below is changed to 
+     * the point of the tentative new xml.
+     * Here the whole syntax tree is loaded, and it would be better to offload
+     * such operations to the datastore by a generic xpath function.
+     */
+    if ((ytype = yang_find((yang_node*)y, Y_TYPE, NULL)) != NULL)
+	if (strcmp(ytype->ys_argument, "leafref")==0){
+	    if ((ypath = yang_find((yang_node*)ytype, Y_PATH, NULL)) == NULL){
+		clicon_err(OE_DB, 0, "Leafref %s requires path statement", ytype->ys_argument);
+		goto done;
+	    }
+	    xpathcur = ypath->ys_argument;
+	    if (xml_merge(xt, xtop, yspec) < 0)
+		goto done;
+	    if ((xcur = xpath_first(xt, xpath)) == NULL){
+		clicon_err(OE_DB, 0, "xpath %s should return merged content", xpath);
+		goto done;
+	    }
+	}
     /* One round to detect duplicates 
-     * XXX The code below would benefit from some cleanup
      */
     j = 0;
-    if (xpath_vec(xt, xpath, &xvec, &xlen) < 0) 
+    if (xpath_vec(xcur, xpathcur, &xvec, &xlen) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	char *str;
@@ -194,6 +235,8 @@ expand_dbvar(void   *h,
   done:
     if (xvec)
 	free(xvec);
+    if (xtop)
+	xml_free(xtop);
     if (xt)
 	xml_free(xt);
     if (xpath) 
@@ -344,7 +387,7 @@ show_yang(clicon_handle h,
   }
   else
     yn = (yang_node*)yspec;
-  yang_print(stdout, yn, 0);
+  yang_print(stdout, yn);
   return 0;
 }
 int show_yangv(clicon_handle h, cvec *vars, cvec *argv)

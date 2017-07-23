@@ -274,16 +274,62 @@ xml2cli(FILE              *f,
     return retval;
 }
 
+/*! Validate an xml node of type leafref, ensure the value is one of that path's reference
+ * @param[in]  xt    XML leaf node of type leafref
+ * @param[in]  ytype Yang type statement belonging to the XML node
+ */
+static int
+validate_leafref(cxobj     *xt,
+		 yang_stmt *ytype)
+{
+    int          retval = -1;
+    yang_stmt   *ypath;
+    cxobj      **xvec = NULL;
+    cxobj       *x;
+    int          i;
+    size_t       xlen = 0;
+    char        *leafrefbody;
+    char        *leafbody;
 
-/*! Validate a single XML node with yang specification
- * -  If no value and mandatory flag set in spec, report error.
- * - Validate value versus spec, and report error if no match. Currently 
- *   only int ranges and string regexp checked.
- * @retval  0 OK
-  */
+
+    if ((leafrefbody = xml_body(xt)) == NULL)
+	return 0;
+    if ((ypath = yang_find((yang_node*)ytype, Y_PATH, NULL)) == NULL){
+	clicon_err(OE_DB, 0, "Leafref %s requires path statement", ytype->ys_argument);
+	goto done;
+    }
+    if (xpath_vec(xt, ypath->ys_argument, &xvec, &xlen) < 0) 
+	goto done;
+    for (i = 0; i < xlen; i++) {
+	x = xvec[i];
+	if ((leafbody = xml_body(x)) == NULL)
+	    continue;
+	if (strcmp(leafbody, leafrefbody) == 0)
+	    break;
+    }
+    if (i==xlen){
+	clicon_err(OE_DB, 0, "Leafref validation failed, no such leaf: %s",
+		   leafrefbody);
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+
+/*! Validate a single XML node with yang specification for added entry
+ * 1. Check if mandatory leafs present as subs.
+ * 2. Check leaf values, eg int ranges and string regexps.
+ * @param[in]  xt  XML node to be validated
+ * @retval     0   Valid OK
+ * @retval    -1   Validation failed
+ * @see xml_yang_validate_all
+ */
 int
-xml_yang_validate(cxobj     *xt, 
-		  yang_stmt *ys0)
+xml_yang_validate_add(cxobj   *xt, 
+		      void    *arg)
 {
     int        retval = -1;
     cg_var    *cv = NULL;
@@ -294,7 +340,7 @@ xml_yang_validate(cxobj     *xt,
     char      *body;
     
     /* if not given by argument (overide) use default link */
-    ys = ys0?ys0:xml_spec(xt);
+    ys = xml_spec(xt);
     switch (ys->ys_keyword){
     case Y_LIST:
 	/* fall thru */
@@ -343,6 +389,43 @@ xml_yang_validate(cxobj     *xt,
  done:
     if (cv)
 	cv_free(cv);
+    return retval;
+}
+
+/*! Validate a single XML node with yang specification for all (not only added) entries
+ * 1. Check leafrefs. Eg you delete a leaf and a leafref references it.
+ * @param[in]  xt  XML node to be validated
+ * @retval     0   Valid OK
+ * @retval    -1   Validation failed
+ * @see xml_yang_validate_add
+ */
+int
+xml_yang_validate_all(cxobj   *xt, 
+		      void    *arg)
+{
+    int        retval = -1;
+    yang_stmt *ys;
+    yang_stmt *ytype;
+    
+    /* if not given by argument (overide) use default link */
+    ys = xml_spec(xt);
+    switch (ys->ys_keyword){
+    case Y_LEAF:
+	/* fall thru */
+    case Y_LEAF_LIST:
+	/* Special case if leaf is leafref, then first check against
+	   current xml tree
+	 */
+	if ((ytype = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL &&
+	    strcmp(ytype->ys_argument, "leafref") == 0)
+	    if (validate_leafref(xt, ytype) < 0)
+		goto done;
+	break;
+    default:
+	break;
+    }
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -1908,3 +1991,4 @@ xml_merge(cxobj     *x0,
  done:
     return retval;
 }
+
