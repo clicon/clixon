@@ -7,8 +7,26 @@
   * If you use direct netconf get or get-config calls, you may need to handle the return XML differently.
   * RESTCONF and CLI is not affected.
   * Example: 
-    * new style: <rpc><get/></rpc> --> <rpc-reply><data><a/></data></rpc-reply>
-    * old style: <rpc><get/></rpc> --> <rpc-reply><data><config><a/></config></data></rpc-reply>
+```
+  Query: 
+    <rpc><get/></rpc>  
+  New reply: 
+    <rpc-reply>
+       <data>
+          <a/> # Example data model
+       </data>
+    </rpc-reply>
+
+  Old reply: 
+    <rpc-reply>
+       <data>
+          <config>  # Removed
+             <a/>
+          </config> # Removed
+       </data>
+    </rpc-reply>
+```
+
 
 
 * Added support for yang presence and no-presence containers. Previous default was "presence".
@@ -34,7 +52,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
   * This means you can make netconf rpc calls as defined by YANG.
   * However you need to register an RPC backend callback using the backend_rpc_cb_register() function. See documentation and example for more details.
   * Note that RESTCONF PUT for RCP calls is not yet supported.
-  * For example, the following yang rpc definition enables you to run a netconf rpc.
+  * Example, the following YANG RPC definition enables you to run a netconf rpc.
 ```
       YANG:
       rpc myrpc {
@@ -53,8 +71,8 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
   * CLI completion for generated cli leafrefs for both absolute and relative paths.
 	
 * Added state data: Netconf <get> operation, new backend plugin callback: "plugin_statedata()" for retreiving state data.
-  * This means that you can use NETCONF <rpc><get/></rpc> and it will return both config and state data.
-  * It also means that RESTCONF GET will return state data also, if defined.
+  * This means that you can use netconf: <rpc><get/></rpc> and it will return both config and state data.
+  * It also means that restconf GET will return state data also, if defined.
   * However, you need to define state data in a backend callback. See the example and documentation for more details.
 
 ### Minor changes:
