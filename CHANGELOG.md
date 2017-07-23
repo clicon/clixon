@@ -1,17 +1,19 @@
 # Clixon CHANGELOG
 
-Major changes:
-- Changed top-level netconf get-config and get to return <data>..</data> instead of <data><config>...</config></data> to comply to the RFC.
--- If you use direct netconf get or get-config calls, you may need to handle the return XML differently.
--- RESTCONF and CLI is not affected.
--- Example: 
---- new style: <rpc><get/></rpc> --> <rpc-reply><data><a/></data></rpc-reply>
---- old style: <rpc><get/></rpc> --> <rpc-reply><data><config><a/></config></data></rpc-reply>
+## Upcoming 3.3.2
+
+### Major changes:
+* Changed top-level netconf get-config and get to return <data>..</data> instead of <data><config>...</config></data> to comply to the RFC.
+  * If you use direct netconf get or get-config calls, you may need to handle the return XML differently.
+  * RESTCONF and CLI is not affected.
+  * Example: 
+    * new style: <rpc><get/></rpc> --> <rpc-reply><data><a/></data></rpc-reply>
+    * old style: <rpc><get/></rpc> --> <rpc-reply><data><config><a/></config></data></rpc-reply>
 
 
-- Added support for yang presence and no-presence containers. Previous default was "presence".
--- This means that empty containers will be removed unless you have used the "presence" yang declaration.
--- Example YANG: 
+* Added support for yang presence and no-presence containers. Previous default was "presence".
+  * This means that empty containers will be removed unless you have used the "presence" yang declaration.
+  * Example YANG: 
 ```
      container 
         nopresence { 
@@ -28,11 +30,11 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
      </nopresence>
 ```
 
-- Added YANG RPC support for netconf and CLI. With example rpc documentation and testcase. This replaces the previous "downcall" mechanism.
--- This means you can make netconf rpc calls as defined by YANG.
--- However you need to register an RPC backend callback using the backend_rpc_cb_register() function. See documentation and example for more details.
--- Note that RESTCONF PUT for RCP calls is not yet supported.
--- For example, the following yang rpc definition enables you to run a netconf rpc.
+* Added YANG RPC support for netconf and CLI. With example rpc documentation and testcase. This replaces the previous "downcall" mechanism.
+  * This means you can make netconf rpc calls as defined by YANG.
+  * However you need to register an RPC backend callback using the backend_rpc_cb_register() function. See documentation and example for more details.
+  * Note that RESTCONF PUT for RCP calls is not yet supported.
+  * For example, the following yang rpc definition enables you to run a netconf rpc.
 ```
       YANG:
       rpc myrpc {
@@ -46,70 +48,72 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
       <rpc><myrpc><name>hello</name><rpc>
 ```
 
-- Enhanced leafref functionality: (1) validation for leafref forward and backward references; (2)CLI completion for generated cli leafrefs for both absolute and relative paths.
+* Enhanced leafref functionality: 
+  * Validation for leafref forward and backward references; 
+  * CLI completion for generated cli leafrefs for both absolute and relative paths.
 	
-- Added state data: Netconf <get> operation, new backend plugin callback: "plugin_statedata()" for retreiving state data.
--- This means that you can use NETCONF <rpc><get/></rpc> and it will return both config and state data.
--- It also means that RESTCONF GET will return state data also, if defined.
--- However, you need to define state data in a backend callback. See the example and documentation for more details.
+* Added state data: Netconf <get> operation, new backend plugin callback: "plugin_statedata()" for retreiving state data.
+  * This means that you can use NETCONF <rpc><get/></rpc> and it will return both config and state data.
+  * It also means that RESTCONF GET will return state data also, if defined.
+  * However, you need to define state data in a backend callback. See the example and documentation for more details.
 
-Minor changes:
-- Removed 'margin' parameter of yang_print().
-- Extended example with ietf-routing (not only ietf-ip) for rpc operations.
-- Added yang dir with ietf-netconf and clixon-config yang specs for internal usage.
-- Fixed bug where cli set of leaf-list were doubled, eg cli set foo -> foofoo
-- Restricted yang (sub)module file match to match RFC6020 exactly
-- Generic map_str2int generic mapping tables
-- Removed vector return values from xmldb_get()
-- Generalized yang type resolution to all included (sub)modules not just the topmost
+### Minor changes:
+* Removed 'margin' parameter of yang_print().
+* Extended example with ietf-routing (not only ietf-ip) for rpc operations.
+* Added yang dir with ietf-netconf and clixon-config yang specs for internal usage.
+* Fixed bug where cli set of leaf-list were doubled, eg cli set foo -> foofoo
+* Restricted yang (sub)module file match to match RFC6020 exactly
+* Generic map_str2int generic mapping tables
+* Removed vector return values from xmldb_get()
+* Generalized yang type resolution to all included (sub)modules not just the topmost
 	
 ## 3.3.1 June 7 2017
 
-- Fixed yang leafref cli completion.
+* Fixed yang leafref cli completion.
 
-- Removed non-standard api_path extension from the internal netconf protocol so that the internal netcinf is now fully standard.
+* Removed non-standard api_path extension from the internal netconf protocol so that the internal netcinf is now fully standard.
 
-- Strings in xmldb_put not properly encoded, eg eth/0 became eth.00000
+* Strings in xmldb_put not properly encoded, eg eth/0 became eth.00000
 	
 ## 3.3.0
 
 May 2017	
 	
-- Datastore text module is now default.
+* Datastore text module is now default.
 
-- Refined netconf "none" semantics in tests and text datastore
+* Refined netconf "none" semantics in tests and text datastore
 
-- Moved apps/dbctrl to datastore/
+* Moved apps/dbctrl to datastore/
 
-- Added connect/disconnect/getopt/setopt and handle to xmldb API
+* Added connect/disconnect/getopt/setopt and handle to xmldb API
 
-- Added datastore 'text'
+* Added datastore 'text'
 
-- Configure (autoconf) changes
+* Configure (autoconf) changes
   Removed libcurl dependency
   Disable restconf (and fastcgi) with configure --disable-restconf
   Disable keyvalue datastore (and qdbm) with configure --disable-keyvalue
 
-- Created xmldb plugin api
+* Created xmldb plugin api
   Moved qdbm, chunk and  xmldb to datastore keyvalue directories
   Removed all other clixon dependency on chunk code
 	
-- cli_copy_config added as generic cli command
-- cli_show_config added as generic cli command
+* cli_copy_config added as generic cli command
+* cli_show_config added as generic cli command
   Replace all show_confv*() and show_conf*() with cli_show_config()
   Example: replace:
      show_confv_as_json("candidate","/sender");
   with:
      cli_show_config("candidate","json","/sender");
-- Alternative yang spec option -y added to all applications
-- Many clicon special string functions have been removed
-- The netconf support has been extended with lock/unlock
-- clicon_rpc_call() has been removed and should be replaced by extending the
+* Alternative yang spec option -y added to all applications
+* Many clicon special string functions have been removed
+* The netconf support has been extended with lock/unlock
+* clicon_rpc_call() has been removed and should be replaced by extending the
   internal netconf protocol. 
   See downcall() function in example/routing_cli.c and 
   routing_downcall() in example/routing_backend.c
-- Replace clicon_rpc_xmlput with clicon_rpc_edit_config
-- Removed xmldb daemon. All xmldb acceses is made backend daemon. 
+* Replace clicon_rpc_xmlput with clicon_rpc_edit_config
+* Removed xmldb daemon. All xmldb acceses is made backend daemon. 
   No direct accesses by clients to xmldb API.
   Instead use the rpc calls in clixon_proto_client.[ch]
   In clients (eg cli/netconf) replace xmldb_get() in client code with 
@@ -120,13 +124,13 @@ May 2017
     clicon_rpc_get_config(h, dbstr, api_path, &xt);
     xpath_vec(xt, api_path, &xvec, &xlen)
 
-- clicon_rpc_change() is replaced with clicon_rpc_edit_config().
+* clicon_rpc_change() is replaced with clicon_rpc_edit_config().
   Note modify argument 5:
      clicon_rpc_change(h, db, op, apipath, "value") 
   to:
      clicon_rpc_edit_config(h, db, op, apipath, "<config>value</config>") 
 
-- xmdlb_put_xkey() and xmldb_put_tree() have been folded into xmldb_put()
+* xmdlb_put_xkey() and xmldb_put_tree() have been folded into xmldb_put()
   Replace xmldb_put_xkey with xmldb_put as follows:
      xmldb_put_xkey(h, "candidate", cbuf_get(cb), str, OP_REPLACE);
   with
@@ -134,25 +138,25 @@ May 2017
      xmldb_put(h, "candidate", OP_REPLACE, cbuf_get(cb), xml);
      xml_free(xml);
 
-- Change internal protocol from clicon_proto.h to netconf.
+* Change internal protocol from clicon_proto.h to netconf.
   This means that the internal protocol defined in clixon_proto.[ch] is removed
 
-- Netconf startup configuration support. Set CLICON_USE_STARTUP_CONFIG to 1 to
+* Netconf startup configuration support. Set CLICON_USE_STARTUP_CONFIG to 1 to
   enable. Eg, if backend_main is started with -CIr startup will be copied to
   running.
 
-- Added ".." as valid step in xpath
+* Added ".." as valid step in xpath
 
-- Use restconf format for internal xmldb keys. Eg /a/b=3,4
+* Use restconf format for internal xmldb keys. Eg /a/b=3,4
 
-- List keys with special characters RFC 3986 encoded.	
+* List keys with special characters RFC 3986 encoded.	
 
-- Replaced cli expand functions with single to multiple args
+* Replaced cli expand functions with single to multiple args
   This change is _not_ backward compatible
   This effects all calls to expand_dbvar() or user-defined
   expand callbacks
 
-- Replaced cli callback functions with single arg to multiple args
+* Replaced cli callback functions with single arg to multiple args
   This change is _not_ backward compatible.
   You are affected if you 
   (1) use system callbacks (i.e. in clixon_cli_api.h)
@@ -174,9 +178,9 @@ May 2017
   load_config_file, save_config_file, delete_all, discard_changes, cli_notify,
   show_yang, show_conf_xpath
 
-- Added --with-cligen and --with-qdbm configure options
-- Added union type check for non-cli (eg xml) input 
-- Empty yang type. Relaxed yang types for unions, eg two strings with different length.
+* Added --with-cligen and --with-qdbm configure options
+* Added union type check for non-cli (eg xml) input 
+* Empty yang type. Relaxed yang types for unions, eg two strings with different length.
 	
 Dec 2016: Dual license: both GPLv3 and APLv2
 	
