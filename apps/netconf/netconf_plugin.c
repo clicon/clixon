@@ -247,7 +247,9 @@ netconf_plugin_callbacks(clicon_handle h,
 	nreg = deps;
 	do {
 	    if (strcmp(nreg->nr_tag, xml_name(xn)) == 0){
-		retval = nreg->nr_callback(h, xn, xret, nreg->nr_arg);
+		if ((retval = nreg->nr_callback(h, xn, xret, nreg->nr_arg)) < 0)
+		    goto done;
+		retval = 1; /* handled */
 		goto done;
 	    }
 	    nreg = NEXTQ(netconf_reg_t *, nreg);
