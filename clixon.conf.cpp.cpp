@@ -45,17 +45,15 @@
 # Location of configuration-file for default values (this file)
 CLICON_CONFIGFILE      sysconfdir/APPNAME.conf
 
-# Location of YANG module and submodule files. Only if CLICON_DBSPEC_TYPE is YANG
+# Location of YANG module and submodule files. 
 CLICON_YANG_DIR        prefix/share/APPNAME/yang
 
-# Option used to construct initial yang file:
-#     <module>[@<revision>]
-# This option is only relevant if CLICON_DBSPEC_TYPE is YANG
+# Main yang module or absolute filename. If module then search as follows:
+#     <yangdir>/<module>[@<revision>]
 # CLICON_YANG_MODULE_MAIN clicon                
 
 # Option used to construct initial yang file:
 #     <module>[@<revision>]
-# This option is only relevant if CLICON_DBSPEC_TYPE is YANG
 CLICON_YANG_MODULE_REVISION
 
 # Location of backend .so plugins

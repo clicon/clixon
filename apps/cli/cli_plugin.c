@@ -628,7 +628,12 @@ clicon_parse(clicon_handle h,
     parse_tree *pt;     /* Orig */
     cg_obj     *match_obj;
     cvec       *cvv = NULL;
+    FILE       *f;
     
+    if (clicon_get_logflags()&CLICON_LOG_STDOUT)
+	f = stdout;
+    else
+	f = stderr;
     stx = cli_syntax(h);
     m = *mode;
     if (m == NULL) {
@@ -637,7 +642,7 @@ clicon_parse(clicon_handle h,
     }
     else {
 	if ((smode = syntax_mode_find(stx, m, 0)) == NULL) {
-	    cli_output(stderr, "Can't find syntax mode '%s'\n", m);
+	    cli_output(f, "Can't find syntax mode '%s'\n", m);
 	    return -1;
 	}
     }
@@ -663,10 +668,11 @@ clicon_parse(clicon_handle h,
 	    free(msav);
 	}
 	msav = NULL;
+
 	switch (res) {
 	case CG_EOF: /* eof */
 	case CG_ERROR:
-	    cli_output(stderr, "CLI parse error: %s\n", cmd);
+	    cli_output(f, "CLI parse error: %s\n", cmd);
 	    goto done;
 	case CG_NOMATCH: /* no match */
 	    smode = NULL;
@@ -676,10 +682,12 @@ clicon_parse(clicon_handle h,
 		    if ((smode = syntax_mode_find(stx, m, 0)) != NULL)
 			continue;
 		    else
-			cli_output(stderr, "Can't find syntax mode '%s'\n", m);
+			cli_output(f, "Can't find syntax mode '%s'\n", m);
 		}
 	    }
-	    cli_output(stderr, "CLI syntax error: \"%s\": %s\n", 
+	    /*	    clicon_err(OE_CFG, 0, "CLI syntax error: \"%s\": %s", 
+		    cmd, cli_nomatch(h));*/
+	    cli_output(f, "CLI syntax error: \"%s\": %s\n", 
 		       cmd, cli_nomatch(h));
 	    break;
 	case CG_MATCH:
@@ -695,7 +703,7 @@ clicon_parse(clicon_handle h,
 	    goto done;
 	    break;
 	default:
-	    cli_output(stderr, "CLI syntax error: \"%s\" is ambiguous\n", cmd);
+	    cli_output(f, "CLI syntax error: \"%s\" is ambiguous\n", cmd);
 	    goto done;
 	    break;
 	}

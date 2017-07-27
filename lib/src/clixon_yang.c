@@ -376,7 +376,7 @@ yn_each(yang_node *yn,
  * @param[in]  argument   String compare w wrgument. if NULL, match any.
  * This however means that if you actually want to match only a yang-stmt with 
  * argument==NULL you cannot, but I have not seen any such examples.
- * @see yang_find_syntax
+ * @see yang_find_datanode
  */
 yang_stmt *
 yang_find(yang_node *yn, 
@@ -402,20 +402,17 @@ yang_find(yang_node *yn,
     return match ? ys : NULL;
 }
 
-/*! Find a child syntax-node yang_stmt with matching argument (container, leaf, etc)
+/*! Find child data node with matching argument (container, leaf, etc)
  *
  * @param[in]  yn         Yang node, current context node.
- * @param[in]  argument   if NULL, match any(first) argument.
+ * @param[in]  argument   if NULL, match any(first) argument. XXX is that really a case?
  *
- * @see yang_find   But this looks only for the yang specification nodes with
- *                  the following keyword: container, leaf, list, leaf-list
- *                  That is, basic syntax nodes.
- * @note check if argument==NULL really required?
- * Is this yang-stmt a container, list, leaf or leaf-list? 
+ * @see yang_find   Looks for any node
+ * @note May deviate from RFC since it explores choice/case not just return it.
  */
 yang_stmt *
-yang_find_syntax(yang_node *yn, 
-		 char      *argument)
+yang_find_datanode(yang_node *yn, 
+		   char      *argument)
 {
     yang_stmt *ys = NULL;
     yang_stmt *yc = NULL;
@@ -428,9 +425,9 @@ yang_find_syntax(yang_node *yn,
 	    for (j=0; j<ys->ys_len; j++){
 		yc = ys->ys_stmt[j];
 		if (yc->ys_keyword == Y_CASE) /* Look for its children */
-		    ysmatch = yang_find_syntax((yang_node*)yc, argument);
+		    ysmatch = yang_find_datanode((yang_node*)yc, argument);
 		else
-		    if (yang_is_syntax(yc)){
+		    if (yang_datanode(yc)){
 			if (argument == NULL)
 			    ysmatch = yc;
 			else
@@ -440,9 +437,9 @@ yang_find_syntax(yang_node *yn,
 		if (ysmatch)
 		    goto match;
 	    }
-	}
+	} /* Y_CHOICE */
 	else
-	    if (yang_is_syntax(ys)){
+	    if (yang_datanode(ys)){
 		if (argument == NULL)
 		    ysmatch = ys;
 		else
@@ -456,7 +453,10 @@ yang_find_syntax(yang_node *yn,
     return ysmatch;
 }
 
-/*! Help function to check find 'top-node', eg first 'syntax' node in a spec 
+/*! Find 'top-node', eg first data node in all (sub)modules in a yang spec
+ *
+ * @param[in]  ysp        Yang specification
+ * @param[in]  name   if NULL, match any(first) argument. XXX is that really a case?
  * A yang specification has modules as children which in turn can have 
  * syntax-nodes as children. This function goes through all the modules to
  * look for syntax-nodes. Note that if a child to a module is a choice, 
@@ -472,24 +472,23 @@ yang_find_topnode(yang_spec *ysp,
 
     for (i=0; i<ysp->yp_len; i++){
 	ys = ysp->yp_stmt[i];
-	if ((yc = yang_find_syntax((yang_node*)ys, name)) != NULL)
+	if ((yc = yang_find_datanode((yang_node*)ys, name)) != NULL)
 	    return yc;
     }
     return NULL;
 }
 
-/*! Find a child spec-node yang_stmt with matching argument for xpath
+/*! Find a child spec-node yang_stmt with matching argument for schema-nodid
  *
  * See also yang_find() but this looks only for the yang specification nodes with
  * the following keyword: container, leaf, list, leaf-list
  * That is, basic syntax nodes.
- * @see yang_find_syntax # Maybe this is the same as specnode?
+ * @see yang_find_datanode
  * @see clicon_dbget_xpath
- * @see xpath_vec
  */
 static yang_stmt *
-yang_find_xpath_stmt(yang_node *yn, 
-		     char      *argument)
+schema_nodeid_stmt(yang_node *yn, 
+		   char      *argument)
 {
     yang_stmt *ys = NULL;
     int i;
@@ -497,23 +496,19 @@ yang_find_xpath_stmt(yang_node *yn,
 
     for (i=0; i<yn->yn_len; i++){
 	ys = yn->yn_stmt[i];
+        if (!yang_schemanode(ys))
+	    continue;
 	/* some keys dont have arguments, match on key */
 	if (ys->ys_keyword == Y_INPUT || ys->ys_keyword == Y_OUTPUT){
-	    if (strcmp(argument, yang_key2str(ys->ys_keyword)) == 0)
+	    if (strcmp(argument, yang_key2str(ys->ys_keyword)) == 0){
 		match++;
-	}
-        else
-	if (ys->ys_keyword == Y_CONTAINER || ys->ys_keyword == Y_LEAF || 
-	    ys->ys_keyword == Y_LIST   || ys->ys_keyword == Y_LEAF_LIST ||
-	    ys->ys_keyword == Y_MODULE || ys->ys_keyword == Y_SUBMODULE ||
-	    ys->ys_keyword == Y_RPC    || ys->ys_keyword == Y_CHOICE ||
-	    ys->ys_keyword == Y_CASE
-	    ){
-	    if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
+		break;
+	    }
+	} else
+	    if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0){
 		match++;
-	}
-	if (match)
-	    break;
+		break;
+	    }
     }
     return match ? ys : NULL;
 }
@@ -966,21 +961,6 @@ ys_populate_type(yang_stmt *ys,
 	    goto done;
 	}
     }
-    else
-    if (strcmp(ys->ys_argument, "leafref") == 0){
-#ifdef notyet /* XXX: Do augment first */
-	yang_stmt      *ypath;
-	if ((ypath = yang_find((yang_node*)ys, Y_PATH, NULL)) == NULL){
-	    clicon_err(OE_YANG, 0, "leafref type requires path sub-statement");
-	    goto done;
-	}
-	if (yang_xpath((yang_node*)ys, ypath->ys_argument) == NULL){
-	    clicon_err(OE_YANG, 0, "Leafref path %s not found",
-		       ypath->ys_argument);
-	    goto done;
-	}
-#endif
-    }
     retval = 0;
   done:
     return retval;
@@ -1101,17 +1081,17 @@ yang_augment_node(yang_stmt *ys,
 		  yang_spec *ysp)
 {
     int        retval = -1;
-    char      *path;
+    char      *schema_nodeid;
     yang_node *yn;
     yang_stmt *yc;
     int        i;
 
-    path = ys->ys_argument;
-    clicon_debug(1, "%s %s", __FUNCTION__, path);
+    schema_nodeid = ys->ys_argument;
+    clicon_debug(1, "%s %s", __FUNCTION__, schema_nodeid);
 
     /* Find the target */
-    if ((yn = yang_xpath_abs((yang_node*)ys, path)) == NULL){
-	clicon_err(OE_YANG, 0, "Augment path %s not found",  path);
+    if ((yn = yang_abs_schema_nodeid((yang_node*)ys, schema_nodeid)) == NULL){
+	clicon_err(OE_YANG, 0, "Augment schema_nodeid %s not found",  schema_nodeid);
 	//	retval = 0; /* Ignore, continue */
 	goto done;
     }
@@ -1269,8 +1249,7 @@ yang_expand(yang_node *yn)
  * @retval NULL    Error encountered
  * Calling order:
  *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
- *   yang_parse1            # Parse one yang module, go through its (sub)modules and parse them 
- *   yang_parse2            # Find file from yang (sub)module
+ *   yang_parse_recurse   # Parse one yang module, go through its (sub)modules, parse them and then recursively parse them
  *   yang_parse_file        # Read yang file into a string
  *   yang_parse_str         # Set up yacc parser and call it given a string
  *   clixon_yang_parseparse # Actual yang parsing using yacc
@@ -1322,8 +1301,7 @@ yang_parse_str(clicon_handle h,
  * Similar to clicon_yang_str(), just read a file first
  * (cloned from cligen)
  * @param h        CLICON handle
- * @param f        Open file handle
- * @param name     Log string, typically filename
+ * @param filename Name of file
  * @param ysp      Yang specification. Should ave been created by caller using yspec_new
  * @retval ymod      Top-level yang (sub)module
  * @retval NULL    Error encountered
@@ -1331,26 +1309,35 @@ yang_parse_str(clicon_handle h,
  * The database symbols are inserted in alphabetical order.
  * Calling order:
  *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
- *   yang_parse1            # Parse one yang module, go through its (sub)modules and parse them 
- *   yang_parse2            # Find file from yang (sub)module
+ *   yang_parse_recurse   # Parse one yang module, go through its (sub)modules, parse them and then recursively parse them
  *   yang_parse_file        # Read yang file into a string
  *   yang_parse_str         # Set up yacc parser and call it given a string
  *   clixon_yang_parseparse # Actual yang parsing using yacc
  */
 static yang_stmt *
 yang_parse_file(clicon_handle h,
-		FILE         *f,
-		const char   *name, /* just for errs */
+		const char   *filename, 
 		yang_spec    *ysp
     )
 {
-    char         *buf;
+    char         *buf = NULL;
     int           i;
     int           c;
     int           len;
     yang_stmt    *ymod = NULL;
+    FILE         *f = NULL;
+    struct stat st;
 
-    clicon_debug(1, "Yang parse file: %s", name);
+    clicon_debug(1, "Yang parse file: %s", filename);
+    if (stat(filename, &st) < 0){
+	clicon_err(OE_YANG, errno, "%s not found", filename);
+	goto done;
+    }
+    if ((f = fopen(filename, "r")) == NULL){
+	clicon_err(OE_UNIX, errno, "fopen(%s)", filename);	
+	goto done;
+    }
+
     len = 1024; /* any number is fine */
     if ((buf = malloc(len)) == NULL){
 	perror("pt_file malloc");
@@ -1372,9 +1359,11 @@ yang_parse_file(clicon_handle h,
 	}
 	buf[i++] = (char)(c&0xff);
     } /* read a line */
-    if ((ymod = yang_parse_str(h, buf, name, ysp)) < 0)
+    if ((ymod = yang_parse_str(h, buf, filename, ysp)) < 0)
 	goto done;
   done:
+    if (f)
+	fclose(f);
     if (buf)
 	free(buf);
     return ymod; /* top-level (sub)module */
@@ -1431,105 +1420,62 @@ yang_parse_find_match(clicon_handle h,
     return retval;
 }
 
-/*! Find and open yang file and then parse it
- * 
- * @param h        CLICON handle
- * @param yang_dir Directory where all YANG module files reside
- * @param module   Name of main YANG module. More modules may be parsed if imported
- * @param revision Optional module revision date
- * @param ysp      Yang specification. Should ave been created by caller using yspec_new
- * @retval ymod    Top-level yang (sub)module
- * @retval NULL    Error encountered
- * module-or-submodule-name ['@' revision-date] ( '.yang' / '.yin' )
- * Calling order:
- *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
- *   yang_parse1            # Parse one yang module, go through its (sub)modules and parse them 
- *   yang_parse2            # Find file from yang (sub)module
- *   yang_parse_file        # Read yang file into a string
- *   yang_parse_str         # Set up yacc parser and call it given a string
- *   clixon_yang_parseparse # Actual yang parsing using yacc
- */
-static yang_stmt *
-yang_parse2(clicon_handle h, 
-	    const char   *yang_dir, 
-	    const char   *module, 
-	    const char   *revision, 
-	    yang_spec    *ysp)
-{
-    FILE       *f = NULL;
-    cbuf       *fbuf = NULL;
-    char       *filename;
-    yang_stmt  *ymod = NULL;
-    struct stat st;
-    int         nr;
-
-    if ((fbuf = cbuf_new()) == NULL){
-	clicon_err(OE_YANG, errno, "%s: cbuf_new", __FUNCTION__);
-	goto done;
-    }
-    if (revision)
-	cprintf(fbuf, "%s/%s@%s.yang", yang_dir, module, revision);
-    else{
-	/* No specific revision, Match a yang file */
-	if ((nr = yang_parse_find_match(h, yang_dir, module, fbuf)) < 0)
-	    goto done;
-	if (nr == 0){
-	    clicon_err(OE_YANG, errno, "No matching %s yang files found", module);
-	    goto done;
-	}
-    }
-    filename = cbuf_get(fbuf);
-    if (stat(filename, &st) < 0){
-	clicon_err(OE_YANG, errno, "%s not found", filename);
-       goto done;
-    }
-    if ((f = fopen(filename, "r")) == NULL){
-	clicon_err(OE_UNIX, errno, "fopen(%s)", filename);	
-	goto done;
-    }
-    if ((ymod = yang_parse_file(h, f, filename, ysp)) == NULL)
-	goto done;
-  done:
-    if (fbuf)
-	cbuf_free(fbuf);
-    if (f)
-	fclose(f);
-    return ymod; /* top-level (sub)module */
-}
-
 /*! Parse one yang module then go through (sub)modules and parse them recursively
  *
- * @param h        CLICON handle
- * @param yang_dir Directory where all YANG module files reside
- * @param module   Name of main YANG module. More modules may be parsed if imported
- * @param revision Optional module revision date
- * @param ysp      Yang specification. Should have been created by caller using yspec_new
- * @retval ymod    Top-level yang (sub)module
- * @retval NULL    Error encountered
+ * @param[in] h        CLICON handle
+ * @param[in] yang_dir Directory where all YANG module files reside
+ * @param[in] module   Name of main YANG module. Or absolute file name.
+ * @param[in] revision Optional module revision date
+ * @param[in] ysp      Yang specification. Should have been created by caller using yspec_new
+ * @retval    ymod    Top-level yang (sub)module
+ * @retval    NULL    Error encountered
  * Find a yang module file, and then recursively parse all its imported modules.
  * Calling order:
  *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
- *   yang_parse1            # Parse one yang module, go through its (sub)modules and parse them 
- *   yang_parse2            # Find file from yang (sub)module
+ *   yang_parse_recurse   # Parse one yang module, go through its (sub)modules, parse them and then recursively parse them
  *   yang_parse_file        # Read yang file into a string
  *   yang_parse_str         # Set up yacc parser and call it given a string
  *   clixon_yang_parseparse # Actual yang parsing using yacc
  */
 static yang_stmt *
-yang_parse1(clicon_handle h, 
-	    const char   *yang_dir, 
-	    const char   *module, 
-	    const char   *revision, 
-	    yang_spec    *ysp)
+yang_parse_recurse(clicon_handle h, 
+		   const char   *yang_dir, 
+		   const char   *module, 
+		   const char   *revision, 
+		   yang_spec    *ysp)
 {
     yang_stmt  *yi = NULL; /* import */
     yang_stmt  *ymod;
     yang_stmt  *yrev;
     char       *modname;
     char       *subrevision;
+    cbuf       *fbuf = NULL;
+    int         nr;
 
-    if ((ymod = yang_parse2(h, yang_dir, module, revision, ysp)) == NULL)
-	goto done;
+    if (module[0] == '/'){
+	if ((ymod = yang_parse_file(h, module, ysp)) == NULL)
+	    goto done;
+    }
+    else {
+	if ((fbuf = cbuf_new()) == NULL){
+	    clicon_err(OE_YANG, errno, "%s: cbuf_new", __FUNCTION__);
+	    goto done;
+	}
+	if (revision)
+	    cprintf(fbuf, "%s/%s@%s.yang", yang_dir, module, revision);
+	else{
+	    /* No specific revision, Match a yang file */
+	    if ((nr = yang_parse_find_match(h, yang_dir, module, fbuf)) < 0)
+		goto done;
+	    if (nr == 0){
+		clicon_err(OE_YANG, errno, "No matching %s yang files found", module);
+		goto done;
+	    }
+	}
+	if ((ymod = yang_parse_file(h, cbuf_get(fbuf), ysp)) == NULL)
+	    goto done;
+    }
+
     /* go through all import statements of ysp (or its module) */
     while ((yi = yn_each((yang_node*)ymod, yi)) != NULL){
 	if (yi->ys_keyword != Y_IMPORT)
@@ -1540,30 +1486,33 @@ yang_parse1(clicon_handle h,
 	else
 	    subrevision = NULL;
 	if (yang_find((yang_node*)ysp, Y_MODULE, modname) == NULL)
-	    if (yang_parse1(h, yang_dir, modname, subrevision, ysp) == NULL){
+	    /* recursive call */
+	    if (yang_parse_recurse(h, yang_dir, modname, subrevision, ysp) == NULL){
 		ymod = NULL;
 		goto done;
 	    }
     }
   done:
+    if (fbuf)
+	cbuf_free(fbuf);
     return ymod; /* top-level (sub)module */
 }
 
 /*! Parse top yang module including all its sub-modules. Expand and populate yang tree
  *
  * @param[in] h        CLICON handle
- * @param[in] yang_dir Directory where all YANG module files reside
- * @param[in] module   Name of main YANG module. More modules may be parsed if imported
- * @param[in] revision Optional module revision date
+ * @param[in] yang_dir Directory where all YANG module files reside (except mainfile)
+ * @param[in] mainmod  Name of main YANG module. Or absolute file name.
+ * @param[in] revision Optional main module revision date.
  * @param[out] ysp     Yang specification. Should ave been created by caller using yspec_new
  * @retval 0  Everything OK
  * @retval -1 Error encountered
  * The database symbols are inserted in alphabetical order.
  * Find a yang module file, and then recursively parse all its imported modules.
+ * @note if mainmod is filename, revision is not considered.
  * Calling order:
  *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
- *   yang_parse1            # Parse one yang module, go through its (sub)modules and parse them 
- *   yang_parse2            # Find file from yang (sub)module
+ *   yang_parse_recurse   # Parse one yang module, go through its (sub)modules, parse them and then recursively parse them
  *   yang_parse_file        # Read yang file into a string
  *   yang_parse_str         # Set up yacc parser and call it given a string
  *   clixon_yang_parseparse # Actual yang parsing using yacc
@@ -1571,7 +1520,7 @@ yang_parse1(clicon_handle h,
 int
 yang_parse(clicon_handle h, 
 	   const char   *yang_dir, 
-	   const char   *module, 
+	   const char   *mainmodule, 
 	   const char   *revision, 
 	   yang_spec    *ysp)
 {
@@ -1579,7 +1528,7 @@ yang_parse(clicon_handle h,
     yang_stmt  *ymod; /* Top-level yang (sub)module */
 
     /* Step 1: parse from text to yang parse-tree. */
-    if ((ymod = yang_parse1(h, yang_dir, module, revision, ysp)) == NULL)
+    if ((ymod = yang_parse_recurse(h, yang_dir, mainmodule, revision, ysp)) == NULL)
 	goto done;
     /* Add top module name as dbspec-name */
     clicon_dbspec_name_set(h, ymod->ys_argument);
@@ -1661,16 +1610,22 @@ yang_apply(yang_node     *yn,
     return retval;
 }
 
-/*! All the work for yang_xpath. 
-  Ignore prefixes, see _abs */
+/*! All the work for schema_nodeid functions both absolute and descendant
+ *  Ignore prefixes, see _abs 
+ * @param[in]  yn    Yang node
+ * @param[in]  vec   Vector of nodeid's in a schema node identifier, eg a/b
+ * @param[in]  nvec  Length of vec
+ * @retval     NULL   Error, with clicon_err called
+ * @retval     yres     First yang node matching schema nodeid
+ */
 static yang_node *
-yang_xpath_vec(yang_node *yn,
-	       char     **vec, 
-	       int        nvec)
+schema_nodeid_vec(yang_node *yn,
+		  char     **vec, 
+		  int        nvec)
 {
     char            *arg;
     yang_stmt       *ys;
-    yang_node       *yret = NULL;
+    yang_node       *yres = NULL;
     char            *id;
 
     if (nvec <= 0)
@@ -1687,44 +1642,46 @@ yang_xpath_vec(yang_node *yn,
 	    id = arg;
 	else
 	    id++;
-	if ((ys = yang_find_xpath_stmt(yn, id)) == NULL){
+	if ((ys = schema_nodeid_stmt(yn, id)) == NULL){
 	    clicon_debug(1, "%s %s not found", __FUNCTION__, id);
 	    goto done;
 	}
     }
     if (nvec == 1){
-	yret = (yang_node*)ys;
+	yres = (yang_node*)ys;
 	goto done;
     }
-    yret = yang_xpath_vec((yang_node*)ys, vec+1, nvec-1);
+    yres = schema_nodeid_vec((yang_node*)ys, vec+1, nvec-1);
  done:
-    return yret;
+    return yres;
 }
 
-
-/*! Given an absolute xpath (eg /a/b/c) find matching yang specification  
- * @param[in]  yn    Yang node
- * @param[in]  xpath Absolute xpath, ie /a/b
+/*! Given an absolute schema-nodeid (eg /a/b/c) find matching yang spec  
+ * @param[in]  yn            Yang node
+ * @param[in]  schema_nodeid Absolute schema-node-id, ie /a/b
+ * @retval     NULL          Error, with clicon_err called
+ * @retval     yres          First yang node matching schema nodeid
+ * @see yang_schema_nodeid
  */
 yang_node *
-yang_xpath_abs(yang_node *yn, 
-	       char      *xpath)
+yang_abs_schema_nodeid(yang_node *yn, 
+		       char      *schema_nodeid)
 {
     char           **vec = NULL;
     int              nvec;
-    yang_node       *ys = NULL;
+    yang_node       *yres = NULL;
     yang_stmt       *ymod;
     char            *id;
     char            *prefix = NULL;
 
-    if ((vec = clicon_strsep(xpath, "/", &nvec)) == NULL){
+    if ((vec = clicon_strsep(schema_nodeid, "/", &nvec)) == NULL){
 	clicon_err(OE_YANG, errno, "%s: strsep", __FUNCTION__); 
-	return NULL;
+	goto done;
     }
-    /* Assume path looks like: "/prefix:id[/prefix:id]*" */
+    /* Assume schame nodeid looks like: "/prefix:id[/prefix:id]*" */
     if (nvec < 2){
 	clicon_err(OE_YANG, 0, "%s: NULL or truncated path: %s", 
-		   __FUNCTION__, xpath);
+		   __FUNCTION__, schema_nodeid);
 	goto done;
     }
 
@@ -1753,52 +1710,76 @@ yang_xpath_abs(yang_node *yn,
 	if ((ymod = yang_find_module_by_prefix((yang_stmt*)yn, prefix)) == NULL)
 	    goto done;
     }
-    ys = yang_xpath_vec((yang_node*)ymod, vec+1, nvec-1);
+    yres = schema_nodeid_vec((yang_node*)ymod, vec+1, nvec-1);
  done:
     if (vec)
 	free(vec);
     if (prefix)
 	free(prefix);
-    return ys;
+    return yres;
 }
 
-/*! Given an xpath (eg /a/b/c or a/b/c) find matching yang specification
- * Note that xpath is defined for xml, and for instances of data, this is 
- * for specifications, sp expect some differences.
+/*! Given a descendant schema-nodeid (eg a/b/c) find matching yang spec  
+ * @param[in]  yn            Yang node
+ * @param[in]  schema_nodeid Descendant schema-node-id, ie a/b
+ * @retval     NULL          Error, with clicon_err called
+ * @retval     yres          First yang node matching schema nodeid
+ * @see yang_schema_nodeid
+ */
+yang_node *
+yang_desc_schema_nodeid(yang_node *yn, 
+			char      *schema_nodeid)
+{
+    yang_node       *yres = NULL;
+    char           **vec = NULL;
+    int              nvec;
+
+    if (strlen(schema_nodeid) == 0)
+	goto done;
+    /* check absolute schema_nodeid */
+    if (schema_nodeid[0] == '/'){
+	clicon_err(OE_YANG, EINVAL, "descenadant schema nodeid should not start with /");
+	goto done;
+    }
+    if ((vec = clicon_strsep(schema_nodeid, "/", &nvec)) == NULL)
+	goto done;
+    yres = schema_nodeid_vec((yang_node*)yn, vec, nvec);
+ done:
+    if (vec)
+	free(vec);
+    return yres;
+}
+
+/*! Given a schema-node-id (eg /a/b/c or a/b/c) find matching yang specification
+ *
+ * They are either absolute (start with /) or descendant (no /)
+ * Compare with XPATH for XML, this is for YANG spec
  * @param[in]  yn     Yang node tree
- * @param[in]  xpath  A limited xpath expression on the type a/b/c
+ * @param[in]  schema_nodeid schema-node-id, ie a/b or /a/b
  * @retval     NULL   Error, with clicon_err called
- * @retval     ys     First yang node matching xpath
+ * @retval     yres   First yang node matching schema nodeid
  * @note: the identifiers in the xpath (eg a, b in a/b) can match the nodes 
  *        defined in yang_xpath: container, leaf,list,leaf-list, modules, sub-modules
  * Example:
  * yn : module m { prefix b; container b { list c { key d; leaf d; }} }
- * xpath = m/b/c, returns the list 'c'.
- * @see xpath_vec
- * @see clicon_dbget_xpath
+ * schema-node-id = m/b/c, returns the list 'c'.
  */
 yang_node *
-yang_xpath(yang_node *yn, 
-	   char      *xpath)
+yang_schema_nodeid(yang_node *yn, 
+		   char      *schema_nodeid)
 {
-    char           **vec = NULL;
-    yang_node       *ys = NULL;
-    int              nvec;
+    yang_node       *yres = NULL;
 
-    if (strlen(xpath) == 0)
-	return NULL;
-    /* check absolute path */
-    if (xpath[0] == '/')
-	return yang_xpath_abs(yn, xpath);
-    if ((vec = clicon_strsep(xpath, "/", &nvec)) == NULL)
-	goto err;
-    ys = yang_xpath_vec((yang_node*)yn, vec, nvec);
- err:
-    if (vec)
-	free(vec);
-    return ys;
+    if (strlen(schema_nodeid) == 0)
+	goto done;
+    /* check absolute schema_nodeid */
+    if (schema_nodeid[0] == '/')
+	yres = yang_abs_schema_nodeid(yn, schema_nodeid);
+    else 
+	yres = yang_desc_schema_nodeid(yn, schema_nodeid);
+ done:
+    return yres;
 }
-
 
 /*! Parse argument as CV and save result in yang cv variable
  *
@@ -1933,6 +1914,7 @@ yang_spec_main(clicon_handle h,
 	clicon_err(OE_FATAL, 0, "CLICON_YANG_DIR option not set");
 	goto done;
     }
+    /* Yang module is either specific absolute filename, or main module */
     if ((yang_module = clicon_yang_module_main(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_YANG_MODULE_MAIN option not set");
 	goto done;

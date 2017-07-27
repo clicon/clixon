@@ -359,13 +359,8 @@ main(int argc, char **argv)
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_NETCONF_DIR", optarg);
 	    break;
-	case 'y' :{ /* yang module */
-	    /* Set revision to NULL, extract dir and module */
-	    char *str = strdup(optarg);
-	    char *dir = dirname(str);
-	    hash_del(clicon_options(h), (char*)"CLICON_YANG_MODULE_REVISION");
-	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", basename(optarg));
-	    clicon_option_str_set(h, "CLICON_YANG_DIR", strdup(dir));
+	case 'y' :{ /* Overwrite yang module or absolute filename */
+	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
 	    break;
 	}
 	default:

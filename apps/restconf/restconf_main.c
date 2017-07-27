@@ -320,14 +320,9 @@ main(int    argc,
 	goto done;
 
     /* Overwrite yang module with -y option */
-    if (yangspec){
-	/* Set revision to NULL, extract dir and module */
-	char *str = strdup(yangspec);
-	char *dir = dirname(str);
-	hash_del(clicon_options(h), (char*)"CLICON_YANG_MODULE_REVISION");
-	clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", basename(yangspec));
-	clicon_option_str_set(h, "CLICON_YANG_DIR", strdup(dir));
-    }
+    if (yangspec)
+	clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", yangspec);
+
     /* Initialize plugins group */
     if (restconf_plugin_load(h) < 0)
 	return -1;

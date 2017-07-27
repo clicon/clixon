@@ -36,6 +36,9 @@ expectfn(){
   if [ -z "$ret" -a -z "$expect" ]; then
       return
   fi
+  if [ -z "$ret" -a "$expect" = "^$" ]; then
+      return
+  fi
   # grep extended grep 
   match=`echo "$ret" | grep -EZo "$expect"`
 #  echo "ret:\"$ret\""

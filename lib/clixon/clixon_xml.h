@@ -90,10 +90,11 @@ char     *xml_value_append(cxobj *xn, char *val);
 enum cxobj_type xml_type(cxobj *xn);
 int       xml_type_set(cxobj *xn, enum cxobj_type type);
 
-cg_var *xml_cv_get(cxobj *xn);
-int     xml_cv_set(cxobj  *xn, cg_var *cv);
+cg_var   *xml_cv_get(cxobj *xn);
+int       xml_cv_set(cxobj  *xn, cg_var *cv);
 
 int       xml_child_nr(cxobj *xn);
+int       xml_child_nr_type(cxobj *xn, enum cxobj_type type);
 cxobj    *xml_child_i(cxobj *xn, int i);
 cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);
 cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);

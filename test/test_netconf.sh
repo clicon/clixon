@@ -68,6 +68,12 @@ expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><discard-changes/></rpc>]]>]]>"
 new "netconf get empty config2"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data/></rpc-reply>]]>]]>$"
 
+new "netconf edit extra xml"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><interfaces><extra/></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error>"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
 new "netconf edit config eth1"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth1</name><type>eth</type></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 

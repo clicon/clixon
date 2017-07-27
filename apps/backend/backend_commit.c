@@ -108,7 +108,7 @@ generic_validate(yang_spec          *yspec,
     for (i=0; i<td->td_dlen; i++){
 	x1 = td->td_dvec[i];
 	ys = xml_spec(x1);
-	if (yang_mandatory(ys)){
+	if (ys && yang_mandatory(ys)){
 	    clicon_err(OE_CFG, 0,"Removed mandatory variable: %s", 
 		       xml_name(x1));
 	    goto done;
