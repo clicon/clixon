@@ -202,14 +202,12 @@ clixon_yang_parsewrap(void)
 <STRING0>.                 { clixon_yang_parselval.string = strdup(yytext);
                             return CHAR;}
 
-
 <STRING1>\\                { _YY->yy_lex_state = STRING1; BEGIN(ESCAPE); }
 <STRING1>\"                { BEGIN(_YY->yy_lex_string_state); return DQ; }
 <STRING1>\n                { _YY->yy_linenum++; clixon_yang_parselval.string = strdup(yytext); return CHAR;}
 <STRING1>.                 { clixon_yang_parselval.string = strdup(yytext);
                             return CHAR;}
 
-<STRING2>\\                { _YY->yy_lex_state = STRING2; BEGIN(ESCAPE); }
 <STRING2>\'                { BEGIN(_YY->yy_lex_string_state); return DQ; }
 <STRING2>\n                { _YY->yy_linenum++; clixon_yang_parselval.string = strdup(yytext); return CHAR;}
 <STRING2>.                 { clixon_yang_parselval.string = strdup(yytext);

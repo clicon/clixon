@@ -351,6 +351,23 @@ xml_child_nr(cxobj *xn)
     return xn->x_childvec_len;
 }
 
+/*! Get number of children of specific type
+ * @param[in]  xn    xml node
+ * @param[in]  type  XML type or -1 for all
+ * @retval     number of typed children in XML tree
+ */
+int   
+xml_child_nr_type(cxobj          *xn, 
+		  enum cxobj_type type)
+{
+    cxobj *x = NULL;
+    int    len = 0;
+
+    while ((x = xml_child_each(xn, x, type)) != NULL) 
+	len++;
+    return len;
+}
+
 /*! Get a specific child
  * @param[in]  xn    xml node
  * @param[in]  i     the number of the child, eg order in children vector
@@ -516,6 +533,9 @@ xml_new_spec(char  *name,
     return x;
 }
 
+/*! Return yang spec of node. 
+ * Not necessarily set. Either has not been set yet (by xml_spec_set( or anyxml.
+ */
 void *
 xml_spec(cxobj *x)
 {
@@ -939,7 +959,7 @@ clicon_xml2cbuf(cbuf  *cb,
 	while ((xc = xml_child_each(x, xc, CX_ATTR)) != NULL) 
 	    clicon_xml2cbuf(cb, xc, level+1, prettyprint);
 	/* Check for special case <a/> instead of <a></a> */
-	if (xml_body(x)==NULL && xml_child_nr(x)==0) 
+	if (xml_body(x)==NULL && xml_child_nr_type(x, CX_ELMNT)==0) 
 	    cprintf(cb, "/>");
 	else{
 	    cprintf(cb, ">");

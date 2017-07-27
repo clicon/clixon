@@ -543,7 +543,7 @@ text_modify(cxobj              *x0,
 	    break;
 	} /* switch op */
     } /* if LEAF|LEAF_LIST */
-    else { /* eg Y_CONTAINER, Y_LIST  */
+    else { /* eg Y_CONTAINER, Y_LIST, Y_ANYXML  */
 	switch(op){ 
 	case OP_CREATE:
 	    if (x0){
@@ -555,8 +555,21 @@ text_modify(cxobj              *x0,
 		xml_purge(x0);
 		x0 = NULL;
 	    }
-	case OP_NONE: /* fall thru */
-	case OP_MERGE: 
+	case OP_MERGE:  /* fall thru */
+	case OP_NONE: 
+	    /* Special case: anyxml, just replace tree, 
+	       See 7.10.3 of RFC6020bis */
+	    if (y0->yn_keyword == Y_ANYXML){
+		if (op == OP_NONE)
+		    break;
+		if (x0)
+		    xml_purge(x0);
+		if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
+		    goto done;
+		if (xml_copy(x1, x0) < 0)
+		    goto done;
+		break;
+	    }
 	    if (x0==NULL){
 		if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
 		    goto done;
@@ -568,7 +581,7 @@ text_modify(cxobj              *x0,
 	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 		x1cname = xml_name(x1c);
 		/* Get yang spec of the child */
-		if ((yc = yang_find_syntax(y0, x1cname)) == NULL){
+		if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
 		    clicon_err(OE_YANG, errno, "No yang node found: %s", x1cname);
 		    goto done;
 		}
@@ -690,12 +703,9 @@ xml_container_presence(cxobj  *x,
 		       void   *arg)
 {
     int        retval = -1;
-    char      *name;
     yang_stmt *y;  /* yang node */
 
-    name = xml_name(x);
     if ((y = (yang_stmt*)xml_spec(x)) == NULL){
-	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, name);
 	retval = 0;
 	goto done;
     }

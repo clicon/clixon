@@ -492,7 +492,7 @@ clicon_rpc(int                   s,
 	   char                **ret)
 {
     int                retval = -1;
-    struct clicon_msg *reply;
+    struct clicon_msg *reply = NULL;
     int                eof;
     char              *data = NULL;
     cxobj             *cx = NULL;

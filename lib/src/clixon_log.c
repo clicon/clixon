@@ -97,6 +97,12 @@ clicon_log_init(char *ident,
     return 0;
 }
 
+int
+clicon_get_logflags(void)
+{
+    return _logflags;
+}
+
 /*! Register log callback, return old setting
  */
 clicon_log_notify_t *
@@ -153,7 +159,7 @@ slogtime(void)
 /*! Make a logging call to syslog (or stderr).
  *
  * This is the _only_ place the actual syslog (or stderr) logging is made in clicon,..
- * @note yslog makes itw own filtering, but if log to stderr we do it here
+ * @note syslog makes itw own filtering, but if log to stderr we do it here
  * @see  clicon_debug()
  *
  * @param[in]   level log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. Thisis OR:d with facility == LOG_USER

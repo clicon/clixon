@@ -2,7 +2,12 @@
 
 ## Upcoming 3.3.2
 
+### Known issues
+* Error in CLI generated code for Yang empty types
+
 ### Major changes:
+* Added support for YANG anyxml. 
+
 * Changed top-level netconf get-config and get to return `<data>` instead of `<data><config>` to comply to the RFC.
   * If you use direct netconf get or get-config calls, you may need to handle the return XML differently.
   * RESTCONF and CLI is not affected.
@@ -82,6 +87,10 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
   * You need to define state data in a backend callback. See the example and documentation for more details.
 
 ### Minor changes:
+* Corrected Yang union CLI generation and type validation. Recursive unions did not work.
+* Corrected Yang pattern type escaping problem, ie '\.' did not work properly. This requires update of cligen as well.
+* Compliance with RFC: Rename yang xpath to schema_nodeid and syntaxnode to datanode.
+* Main yang module (CLICON_YANG_MODULE_MAIN or -y) can be an absolute file name.
 * Removed 'margin' parameter of yang_print().
 * Extended example with ietf-routing (not only ietf-ip) for rpc operations.
 * Added yang dir with ietf-netconf and clixon-config yang specs for internal usage.

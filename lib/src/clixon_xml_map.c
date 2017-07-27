@@ -340,50 +340,51 @@ xml_yang_validate_add(cxobj   *xt,
     char      *body;
     
     /* if not given by argument (overide) use default link */
-    ys = xml_spec(xt);
-    switch (ys->ys_keyword){
-    case Y_LIST:
-	/* fall thru */
-    case Y_CONTAINER:
-	for (i=0; i<ys->ys_len; i++){
-	    yc = ys->ys_stmt[i];
-	    if (yc->ys_keyword != Y_LEAF)
-		continue;
-	    if (yang_mandatory(yc) && xml_find(xt, yc->ys_argument)==NULL){
-		clicon_err(OE_CFG, 0,"Missing mandatory variable: %s",
-			   yc->ys_argument);
+    if ((ys = xml_spec(xt)) != NULL){
+	switch (ys->ys_keyword){
+	case Y_LIST:
+	    /* fall thru */
+	case Y_CONTAINER:
+	    for (i=0; i<ys->ys_len; i++){
+		yc = ys->ys_stmt[i];
+		if (yc->ys_keyword != Y_LEAF)
+		    continue;
+		if (yang_mandatory(yc) && xml_find(xt, yc->ys_argument)==NULL){
+		    clicon_err(OE_CFG, 0,"Missing mandatory variable: %s",
+			       yc->ys_argument);
+		    goto done;
+		}
+	    }
+	    break;
+	case Y_LEAF:
+	    /* fall thru */
+	case Y_LEAF_LIST:
+	    /* validate value against ranges, etc */
+	    if ((cv = cv_dup(ys->ys_cv)) == NULL){
+		clicon_err(OE_UNIX, errno, "cv_dup");
 		goto done;
 	    }
-	}
-	break;
-    case Y_LEAF:
-	/* fall thru */
-    case Y_LEAF_LIST:
-	/* validate value against ranges, etc */
-	if ((cv = cv_dup(ys->ys_cv)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cv_dup");
-	    goto done;
-	}
-	/* In the union case, value is parsed as generic REST type,
-	 * needs to be reparsed when concrete type is selected
-	 */
-	if ((body = xml_body(xt)) != NULL){
-	    if (cv_parse(body, cv) <0){
-		clicon_err(OE_UNIX, errno, "cv_parse");
-		goto done;
+	    /* In the union case, value is parsed as generic REST type,
+	     * needs to be reparsed when concrete type is selected
+	     */
+	    if ((body = xml_body(xt)) != NULL){
+		if (cv_parse(body, cv) <0){
+		    clicon_err(OE_UNIX, errno, "cv_parse");
+		    goto done;
+		}
+		if ((ys_cv_validate(cv, ys, &reason)) != 1){
+		    clicon_err(OE_DB, 0,
+			       "validation of %s failed %s",
+			       ys->ys_argument, reason?reason:"");
+		    if (reason)
+			free(reason);
+		    goto done;
+		}
 	    }
-	    if ((ys_cv_validate(cv, ys, &reason)) != 1){
-		clicon_err(OE_DB, 0,
-			   "validation of %s failed %s",
-			   ys->ys_argument, reason?reason:"");
-		if (reason)
-		    free(reason);
-		goto done;
-	    }
+	    break;
+	default:
+	    break;
 	}
-	break;
-    default:
-	break;
     }
     retval = 0;
  done:
@@ -408,21 +409,22 @@ xml_yang_validate_all(cxobj   *xt,
     yang_stmt *ytype;
     
     /* if not given by argument (overide) use default link */
-    ys = xml_spec(xt);
-    switch (ys->ys_keyword){
-    case Y_LEAF:
-	/* fall thru */
-    case Y_LEAF_LIST:
-	/* Special case if leaf is leafref, then first check against
-	   current xml tree
-	 */
-	if ((ytype = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL &&
-	    strcmp(ytype->ys_argument, "leafref") == 0)
-	    if (validate_leafref(xt, ytype) < 0)
-		goto done;
-	break;
-    default:
-	break;
+    if ((ys = xml_spec(xt)) != NULL){
+	switch (ys->ys_keyword){
+	case Y_LEAF:
+	    /* fall thru */
+	case Y_LEAF_LIST:
+	    /* Special case if leaf is leafref, then first check against
+	       current xml tree
+	    */
+	    if ((ytype = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL &&
+		strcmp(ytype->ys_argument, "leafref") == 0)
+		if (validate_leafref(xt, ytype) < 0)
+		    goto done;
+	    break;
+	default:
+	    break;
+	}
     }
     retval = 0;
  done:
@@ -477,7 +479,7 @@ xml2cvec(cxobj      *xt,
     /* Go through all children of the xml tree */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
 	name = xml_name(xc);
-	if ((ys = yang_find_syntax((yang_node*)yt, name)) == NULL){
+	if ((ys = yang_find_datanode((yang_node*)yt, name)) == NULL){
 	    clicon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
 			 __FUNCTION__, name, yt->ys_argument);
 	    if ((body = xml_body(xc)) != NULL){
@@ -592,10 +594,13 @@ xml_is_body(cxobj *xt,
 	    char  *val)
 {
     cxobj *x;
+    char  *bx;
 
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	if (strcmp(name, xml_name(x)))
+	    continue;
+	if ((bx = xml_body(x)) == NULL)
 	    continue;
 	if (strcmp(xml_body(x), val) == 0)
 	    return 1;
@@ -641,7 +646,7 @@ xml_diff1(yang_stmt *ys,
 	if (ys->ys_keyword == Y_SPEC)
 	    y = yang_find_topnode((yang_spec*)ys, name);
 	else
-	    y = yang_find_syntax((yang_node*)ys, name);
+	    y = yang_find_datanode((yang_node*)ys, name);
 	if (y == NULL){
 	    clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 	    goto done;
@@ -719,6 +724,10 @@ xml_diff1(yang_stmt *ys,
 		    goto done;
 		break;
 	    }
+	    body1 = xml_body(x1);
+	    body2 = xml_body(x2);
+	    if (body1 == NULL || body2 == NULL) /* empty type */
+		break;
 	    if (strcmp(xml_body(x1), xml_body(x2))){
 		if (cxvec_append(x1, changed1, changedlen) < 0) 
 		    goto done;
@@ -728,7 +737,8 @@ xml_diff1(yang_stmt *ys,
 	    }
 	    break;
 	case Y_LEAF_LIST:
-	    body1 = xml_body(x1);
+	    if ((body1 = xml_body(x1)) == NULL)
+		continue;
 	    if (!xml_is_body(xt2, name, body1)) /* where body is */
 		if (cxvec_append(x1, first, firstlen) < 0) 
 		    goto done;
@@ -746,7 +756,7 @@ xml_diff1(yang_stmt *ys,
 	if (ys->ys_keyword == Y_SPEC)
 	    y = yang_find_topnode((yang_spec*)ys, name);
 	else
-	    y = yang_find_syntax((yang_node*)ys, name);
+	    y = yang_find_datanode((yang_node*)ys, name);
 	if (y == NULL){
 	    clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 	    goto done;
@@ -1197,7 +1207,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     yang_node *yt;
 
     mark = 0;
-    yt = xml_spec(xt);
+    yt = xml_spec(xt); /* xan be null */
     x = NULL;
     xprev = x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
@@ -1306,7 +1316,6 @@ xml_default(cxobj *xt,
     char      *str;
 
     if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
-	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, xml_name(xt));
 	retval = 0;
 	goto done;
     }
@@ -1359,7 +1368,6 @@ xml_order(cxobj *xt,
     char      *xname; /* xml child name */
 
     if ((y = (yang_stmt*)xml_spec(xt)) == NULL){
-	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, xml_name(xt));
 	retval = 0;
 	goto done;
     }
@@ -1367,7 +1375,7 @@ xml_order(cxobj *xt,
  /* Go through xml children and ensure they are same order as yspec children */
     for (i=0; i<y->ys_len; i++){
 	yc = y->ys_stmt[i];
-	if (!yang_is_syntax(yc))
+	if (!yang_datanode(yc))
 	    continue;
 	yname = yc->ys_argument;
 	/* First go thru xml children with same name */
@@ -1411,7 +1419,6 @@ xml_sanity(cxobj *xt,
     char      *name;
 
     if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
-	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, xml_name(xt));
 	retval = 0;
 	goto done;
     }
@@ -1438,7 +1445,6 @@ xml_non_config_data(cxobj *xt,
     yang_stmt *ys;
 
     if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
-	clicon_log(LOG_WARNING, "%s: no xml_spec(%s)", __FUNCTION__, xml_name(xt));
 	retval = 0;
 	goto done;
     }
@@ -1455,6 +1461,7 @@ xml_non_config_data(cxobj *xt,
 /*! Add yang specification backpoint to XML node
  * @param[in]   xt      XML tree node
  * @note This should really be unnecessary since yspec should be set on creation
+ * @note For subs to anyxml nodes will not have spec set
  * @code
  * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
  * @endcode
@@ -1466,25 +1473,28 @@ xml_spec_populate(cxobj  *x,
     int        retval = -1;
     yang_spec *yspec = (yang_spec*)arg;
     char      *name;
-    yang_stmt *y;  /* yang node */
-    cxobj     *xp; /* xml parent */ 
-    yang_stmt *yp; /* parent yang */
+    yang_stmt *y=NULL;  /* yang node */
+    cxobj     *xp;      /* xml parent */ 
+    yang_stmt *yp;      /* parent yang */
 
     name = xml_name(x);
     if ((xp = xml_parent(x)) != NULL &&
 	(yp = xml_spec(xp)) != NULL)
-	y = yang_find_syntax((yang_node*)yp, xml_name(x));
+	y = yang_find_datanode((yang_node*)yp, xml_name(x));
     else
 	y = yang_find_topnode(yspec, name); /* still NULL for config */
+#ifdef XXX_OBSOLETE /* Add validate elsewhere */
     if (y==NULL){
 	clicon_err(OE_XML, EBADF, "yang spec not found for xml node '%s' xml parent name: '%s' yangspec:'%s']", 
 		   name, 
 		   xp?xml_name(xp):"", yp?yp->ys_argument:"");
 	goto done;
     }
-    xml_spec_set(x, y);
+#endif
+    if (y)
+	xml_spec_set(x, y);
     retval = 0;
- done:
+    // done:
     return retval;
 }
 
@@ -1541,7 +1551,7 @@ api_path2xpath_cvv(yang_spec *yspec,
 	}
 	else{
 	    assert(y!=NULL);
-	    if ((y = yang_find_syntax((yang_node*)y, name)) == NULL){
+	    if ((y = yang_find_datanode((yang_node*)y, name)) == NULL){
 		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 		goto done;
 	    }
@@ -1671,7 +1681,7 @@ api_path2xml_vec(char              **vec,
     if (y0->yn_keyword == Y_SPEC) /* top-node */
 	y = yang_find_topnode((yang_spec*)y0, name);
     else 
-	y = yang_find_syntax((yang_node*)y0, name);
+	y = yang_find_datanode((yang_node*)y0, name);
     if (y == NULL){
 	clicon_err(OE_YANG, errno, "No yang node found: %s", name);
 	goto done;
@@ -1936,7 +1946,7 @@ xml_merge1(cxobj              *x0,
 	while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 	    x1cname = xml_name(x1c);
 	    /* Get yang spec of the child */
-	    if ((yc = yang_find_syntax(y0, x1cname)) == NULL){
+	    if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
 		clicon_err(OE_YANG, errno, "No yang node found: %s", x1cname);
 		goto done;
 	    }

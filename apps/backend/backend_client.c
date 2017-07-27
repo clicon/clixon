@@ -1028,6 +1028,10 @@ from_client_msg(clicon_handle        h,
 	xml_free(xt);
     if (cbret)
 	cbuf_free(cbret);
+    /* Sanity: log if clicon_err() is not called ! */
+    if (retval < 0 && clicon_errno < 0) 
+	clicon_log(LOG_NOTICE, "%s: Internal error: No clicon_err call on error (message: %s)",
+		   __FUNCTION__, name?name:"");
     return retval;// -1 here terminates backend
 }
 
@@ -1060,5 +1064,5 @@ from_client(int   s,
   done:
     if (msg)
 	free(msg);
-    return retval;
+    return retval; /* -1 here terminates backend */
 }

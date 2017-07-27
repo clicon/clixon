@@ -60,6 +60,7 @@ extern int debug;
  * Prototypes
  */
 int clicon_log_init(char *ident, int upto, int flags);
+int clicon_get_logflags(void);
 int clicon_log_str(int level, char *msg);
 int clicon_log(int level, char *format, ...);
 clicon_log_notify_t *clicon_log_register_callback(clicon_log_notify_t *cb, void *arg);

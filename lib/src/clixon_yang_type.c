@@ -221,6 +221,10 @@ ys_resolve_type(yang_stmt *ys,
     if (yang_type_resolve((yang_stmt*)ys->ys_parent, ys, &resolved,
 			  &options, &mincv, &maxcv, &pattern, &fraction) < 0)
 	goto done;
+    /* skip unions since they may have different sets of options, mincv, etc */
+    if (resolved && strcmp(resolved->ys_argument, "union")==0)
+	;
+    else
     if (yang_type_cache_set(&ys->ys_typecache, 
 			    resolved, options, mincv, maxcv, pattern, fraction) < 0)
 	goto done;
@@ -561,6 +565,91 @@ cv_validate1(cg_var      *cv,
     return retval;
 }
 
+/* Forward */
+static int ys_cv_validate_union(yang_stmt *ys, char **reason, yang_stmt *yrestype,
+				char *type, char *val);
+
+/*!
+ * @retval -1  Error (fatal), with errno set to indicate error
+ * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval 1   Validation OK
+ */
+static int
+ys_cv_validate_union_one(yang_stmt *ys,
+			 char     **reason,
+			 yang_stmt *yt,
+			 char      *type,  /* orig type */
+			 char      *val)
+{
+    int          retval = -1;
+    yang_stmt   *yrt;      /* union subtype */
+    int          options = 0;
+    cg_var      *range_min = NULL; 
+    cg_var      *range_max = NULL; 
+    char        *pattern = NULL;
+    uint8_t      fraction = 0; 
+    char        *restype;
+    enum cv_type cvtype;
+    cg_var      *cvt=NULL;
+
+    if (yang_type_resolve(ys, yt, &yrt, 
+			  &options, &range_min, &range_max, &pattern, 
+			  &fraction) < 0)
+	goto done;
+    restype = yrt?yrt->ys_argument:NULL;
+    if (restype && strcmp(restype, "union") == 0){      /* recursive union */
+	if ((retval = ys_cv_validate_union(ys, reason, yrt, type, val)) < 0)
+	    goto done;
+    }
+    else {
+	if (clicon_type2cv(type, restype, &cvtype) < 0)
+	    goto done;
+	/* reparse value with the new type */
+	if ((cvt = cv_new(cvtype)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cv_new");
+	    goto done;
+	}
+	if (cv_parse(val, cvt) <0){
+	    clicon_err(OE_UNIX, errno, "cv_parse");
+	    goto done;
+	}
+	if ((retval = cv_validate1(cvt, cvtype, options, range_min, range_max, 
+				   pattern, yrt, restype, reason)) < 0)
+	    goto done;
+    }
+ done:
+    if (cvt)
+	cv_free(cvt);
+    return retval;
+}
+
+/*!
+ * @retval -1  Error (fatal), with errno set to indicate error
+ * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval 1   Validation OK
+ */
+static int
+ys_cv_validate_union(yang_stmt *ys,
+		     char     **reason,
+		     yang_stmt *yrestype,
+		     char      *type,  /* orig type */
+		     char      *val)
+{
+    int        retval = 1; /* valid */
+    yang_stmt *yt = NULL;
+
+    while ((yt = yn_each((yang_node*)yrestype, yt)) != NULL){
+	if (yt->ys_keyword != Y_TYPE)
+	    continue;
+	if ((retval = ys_cv_validate_union_one(ys, reason, yt, type, val)) < 0)
+	    goto done;
+	if (retval == 1) /* Enough that one type validates value */
+	    break;
+    }
+ done:
+    return retval;
+}
+
 /*! Validate cligen variable cv using yang statement as spec
  *
  * @param[in]  cv      A cligen variable to validate. This is a correctly parsed cv.
@@ -579,17 +668,15 @@ ys_cv_validate(cg_var    *cv,
 {
     int             retval = -1; 
     cg_var         *ycv;        /* cv of yang-statement */  
-    int             options;
-    cg_var         *range_min; 
-    cg_var         *range_max; 
-    char           *pattern;
+    int             options = 0;
+    cg_var         *range_min = NULL; 
+    cg_var         *range_max = NULL; 
+    char           *pattern = NULL;
     enum cv_type    cvtype;
     char           *type;  /* orig type */
     yang_stmt      *yrestype; /* resolved type */
-    yang_stmt      *yrt;      /* union subtype */
     char           *restype;
-    uint8_t         fraction; 
-    yang_stmt      *yt = NULL;
+    uint8_t         fraction = 0; 
     int             retval2;
     char           *val;
     cg_var         *cvt=NULL;
@@ -621,38 +708,10 @@ ys_cv_validate(cg_var    *cv,
     }
     /* Note restype can be NULL here for example with unresolved hardcoded uuid */
     if (restype && strcmp(restype, "union") == 0){ 
-	yt = NULL;
-	retval2 = 1; /* valid */
 	assert(cvtype == CGV_REST);
 	val = cv_string_get(cv);
-	while ((yt = yn_each((yang_node*)yrestype, yt)) != NULL){
-	    if (yt->ys_keyword != Y_TYPE)
-		continue;
-	    if (yang_type_resolve(ys, yt, &yrt, 
-				  &options, &range_min, &range_max, &pattern, 
-				  &fraction) < 0)
-		goto done;
-	    restype = yrestype?yrt->ys_argument:NULL;
-	    if (clicon_type2cv(type, restype, &cvtype) < 0)
-		goto done;
-	    /* reparse value with the new type */
-	    if ((cvt = cv_new(cvtype)) == NULL){
-		clicon_err(OE_UNIX, errno, "cv_new");
-		goto done;
-	    }
-	    if (cv_parse(val, cvt) <0){
-		clicon_err(OE_UNIX, errno, "cv_parse");
-		goto done;
-	    }
-	    if ((retval2 = cv_validate1(cvt, cvtype, options, range_min, range_max, 
-				     pattern, yrt, restype, reason)) < 0)
-		goto done;
-	    if (retval2 == 1) /* done */
-		break;
-	    /* Here retval == 0, validation failed */
-	    cv_free(cvt);
-	    cvt=NULL;
-	}
+	if ((retval2 = ys_cv_validate_union(ys, reason, yrestype, type, val)) < 0)
+	    goto done;
 	retval = retval2; /* invalid (0) with latest reason or valid 1 */
     }
     else
@@ -860,7 +919,7 @@ yang_type_resolve(yang_stmt   *ys,
     /* Not basic type. Now check if prefix which means we look in other module */
     if (prefix){ /* Go to top and find import that matches */
 	if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL){
-	    clicon_err(OE_DB, 0, "Module not resolved: %s", prefix);
+	    clicon_err(OE_DB, 0, "Type not resolved: %s:%s", prefix, type);
 	    goto done;
 	}
 	if ((rytypedef = yang_find((yang_node*)ymod, Y_TYPEDEF, type)) == NULL)

@@ -124,8 +124,11 @@ enum rfc_6020{
 
 #define YANG_FLAG_MARK 0x01  /* Marker for dynamic algorithms, eg expand */
 
-/* Yang syntz nodes */
-#define yang_is_syntax(y) ((y)->ys_keyword == Y_CONTAINER || (y)->ys_keyword == Y_LEAF || (y)->ys_keyword == Y_LIST || (y)->ys_keyword == Y_LEAF_LIST)
+/* Yang data node */
+#define yang_datanode(y) ((y)->ys_keyword == Y_CONTAINER || (y)->ys_keyword == Y_LEAF || (y)->ys_keyword == Y_LIST || (y)->ys_keyword == Y_LEAF_LIST || (y)->ys_keyword == Y_ANYXML)
+
+/* Yang schema node */
+#define yang_schemanode(y) (yang_datanode(y) || (y)->ys_keyword == Y_RPC || (y)->ys_keyword == Y_CHOICE || (y)->ys_keyword == Y_CASE || (y)->ys_keyword == Y_INPUT || (y)->ys_keyword == Y_OUTPUT || (y)->ys_keyword == Y_NOTIFICATION)
 
 typedef struct yang_stmt yang_stmt; /* forward */
 
@@ -201,7 +204,7 @@ yang_stmt *ys_module(yang_stmt *ys);
 yang_spec *ys_spec(yang_stmt *ys);
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
 yang_stmt *yang_find(yang_node *yn, int keyword, char *argument);
-yang_stmt *yang_find_syntax(yang_node *yn, char *argument);
+yang_stmt *yang_find_datanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_topnode(yang_spec *ysp, char *name);
 
 int        yang_print(FILE *f, yang_node *yn);
@@ -210,8 +213,9 @@ int        yang_parse(clicon_handle h, const char *yang_dir,
 		      const char *module, const char *revision, yang_spec *ysp);
 int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
-yang_node *yang_xpath_abs(yang_node *yn, char *xpath);
-yang_node *yang_xpath(yang_node *yn, char *xpath);
+yang_node *yang_abs_schema_nodeid(yang_node *yn, char *schema_nodeid);
+yang_node *yang_desc_schema_nodeid(yang_node *yn, char *schema_nodeid);
+yang_node *yang_schema_nodeid(yang_node *yn, char *xpath);
 cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys);
 int        yang_mandatory(yang_stmt *ys);

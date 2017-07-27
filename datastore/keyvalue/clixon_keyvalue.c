@@ -327,7 +327,7 @@ get(char      *dbname,
 	    }
 	}
 	else
-	    if ((y = yang_find_syntax((yang_node*)y, name)) == NULL){
+	    if ((y = yang_find_datanode((yang_node*)y, name)) == NULL){
 		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 		goto done;
 	    }
@@ -760,7 +760,7 @@ put(char               *dbfile,
     }
     /* For every node, create a key with values */
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-	if ((y = yang_find_syntax((yang_node*)ys, xml_name(x))) == NULL){
+	if ((y = yang_find_datanode((yang_node*)ys, xml_name(x))) == NULL){
 	    clicon_err(OE_UNIX, 0, "No yang node found: %s", xml_name(x));
 	    goto done;
 	}

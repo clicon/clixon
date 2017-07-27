@@ -392,7 +392,6 @@ clicon_configfile(clicon_handle h)
     return clicon_option_str(h, "CLICON_CONFIGFILE");
 }
 
-
 /*! YANG database specification directory */
 char *
 clicon_yang_dir(clicon_handle h)
@@ -400,7 +399,7 @@ clicon_yang_dir(clicon_handle h)
     return clicon_option_str(h, "CLICON_YANG_DIR");
 }
 
-/*! YANG main module */
+/*! YANG main module or absolute file name */
 char *
 clicon_yang_module_main(clicon_handle h)
 {
