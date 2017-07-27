@@ -348,6 +348,12 @@ yang2cli_var(clicon_handle h,
 		      &options, &mincv, &maxcv, &pattern, &fraction_digits) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
+
+    if (restype && strcmp(restype, "empty") == 0){
+	retval = 0;
+	goto done;
+    }
+
     if (clicon_type2cv(type, restype, &cvtype) < 0)
 	goto done;
 
@@ -389,7 +395,6 @@ yang2cli_var(clicon_handle h,
 	    cprintf(cb0, ")");
 	}
     }
-
     retval = 0;
   done:
     return retval;

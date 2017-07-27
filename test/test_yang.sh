@@ -101,7 +101,7 @@ new "netconf get (should be some)"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test.yang" "<rpc><get><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply><data><x><y><a>1</a><b>2</b><c>5</c></y><d/></x></data></rpc-reply>]]>]]>$"
 
 new "cli set leaf-list"
-expectfn "$clixon_cli -D 1 -1f $clixon_cf -y /tmp/test.yang set x f e foo" ""
+expectfn "$clixon_cli -1f $clixon_cf -y /tmp/test.yang set x f e foo" ""
 
 new "cli show leaf-list"
 expectfn "$clixon_cli -1f $clixon_cf -y /tmp/test.yang show xpath /x/f/e" "<e>foo</e>"

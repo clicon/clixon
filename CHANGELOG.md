@@ -3,7 +3,6 @@
 ## Upcoming 3.3.2
 
 ### Known issues
-* Error in CLI generated code for Yang empty types
 
 ### Major changes:
 * Added support for YANG anyxml. 
