@@ -205,7 +205,11 @@ yang_type_cache_free(yang_type_cache *ycache)
     return 0;
 }
 
-/*! Resolve types: populate type caches */
+/*! Resolve types: populate type caches 
+ * @param[in]  ys  This is a type statement
+ * @param[in]  arg Not used
+ * Typically only called once when loading te yang type system.
+ */
 int
 ys_resolve_type(yang_stmt *ys, 
 		void      *arg)
@@ -218,6 +222,7 @@ ys_resolve_type(yang_stmt *ys,
     uint8_t           fraction = 0;
     yang_stmt        *resolved = NULL;
  
+    assert(ys->ys_keyword == Y_TYPE);
     if (yang_type_resolve((yang_stmt*)ys->ys_parent, ys, &resolved,
 			  &options, &mincv, &maxcv, &pattern, &fraction) < 0)
 	goto done;
@@ -327,9 +332,10 @@ cv2yang_type(enum cv_type cv_type)
  * handle case where yang resolve did not succedd (rtype=NULL) and then try
  * to find special cligen types such as ipv4addr.
  * not true yang types
- * @param[in]  origtype
- * @param[in]  restype
- * @param[out] cvtype
+ * @param[in]  origtype Name of original type
+ * @param[in]  restype  Resolved type. may be null, in that case origtype is used
+ * @param[out] cvtype   Translation from resolved type 
+ * @note Thereis a kludge for handling direct translations of native cligen types
  */
 int
 clicon_type2cv(char         *origtype, 
@@ -854,7 +860,7 @@ resolve_restrictions(yang_stmt   *yrange,
 /*! Recursively resolve a yang type to built-in type with optional restrictions
  * @param [in]  ys       yang-stmt from where the current search is based
  * @param [in]  ytype    yang-stmt object containing currently resolving type
- * @param [out] yrestype    resolved type. return built-in type or NULL. mandatory
+ * @param [out] yrestype resolved type. return built-in type or NULL. mandatory
  * @param [out] options  pointer to flags field of optional values. optional
  * @param [out] mincv    pointer to cv with min range or length. If options&YANG_OPTIONS_RANGE
  * @param [out] maxcv    pointer to cv with max range or length. If options&YANG_OPTIONS_RANGE

@@ -1533,17 +1533,26 @@ yang_parse(clicon_handle h,
     /* Add top module name as dbspec-name */
     clicon_dbspec_name_set(h, ymod->ys_argument);
 
-    /* Resolve all types */
+    /* Step 2: Go through parse tree and populate it with cv types */
+    if (yang_apply((yang_node*)ysp, -1, ys_populate, NULL) < 0)
+	goto done;
+
+    /* Step 3: Resolve all types: populate type caches. Requires eg length/range cvecs
+     * from ys_populate step
+     */
     yang_apply((yang_node*)ysp, Y_TYPE, ys_resolve_type, NULL);
 
-    /* Step 2: Macro expansion of all grouping/uses pairs. Expansion needs marking */
+    /* Up to here resolving is made in the context they are defined, rather than the 
+       context they are used. Like static scoping. After this we expand all 
+       grouping/uses and unfold all macros into a single tree as they are used.
+    */
+
+    /* Step 4: Macro expansion of all grouping/uses pairs. Expansion needs marking */
     if (yang_expand((yang_node*)ysp) < 0)
 	goto done;
     yang_apply((yang_node*)ymod, -1, ys_flag_reset, (void*)YANG_FLAG_MARK);
 
-    /* Step 3: Go through parse tree and populate it with cv types */
-    if (yang_apply((yang_node*)ysp, -1, ys_populate, NULL) < 0)
-	goto done;
+
 
     /* Step 4: Top-level augmentation of all modules */
     if (yang_augment_spec(ysp) < 0)
