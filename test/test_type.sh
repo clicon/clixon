@@ -27,6 +27,7 @@ module example{
        type string {
          pattern
            '(([e-f])\.){3}[e-f]';
+         length "1..253";
        }
    }
   typedef ad {
@@ -42,8 +43,8 @@ module example{
        }
    }
    list list {
-     key k;
-     leaf k {
+     key ip;
+     leaf ip {
          type af; 
      }
    }
@@ -86,19 +87,19 @@ new "cli commit"
 expectfn "$clixon_cli -1f $clixon_cf -l o -y /tmp/type.yang -l o commit" "^$"
 
 new "netconf validate ok"
-expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/type.yang" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "netconf set ab fail"
-expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><list><k>a.b&c.d</k></list></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+new "netconf set ab wrong"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/type.yang" "<rpc><edit-config><target><candidate/></target><config><list><ip>a.b&c.d</ip></list></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate"
-expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error>"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/type.yang" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error>"
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/type.yang" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/type.yang" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "Kill backend"
 # Check if still alive
