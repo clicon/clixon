@@ -885,7 +885,7 @@ from_client_msg(clicon_handle        h,
     cxobj               *xt = NULL;
     cxobj               *x;
     cxobj               *xe;
-    char                *name;
+    char                *name = NULL;
     char                *db;
     cbuf                *cbret = NULL; /* return message */
     int                  pid;

@@ -1979,9 +1979,6 @@ xml_merge(cxobj     *x0,
     cxobj     *x1c; /* mod child */
     yang_stmt *yc;
 
-    /* Assure top-levels are 'config' */
-    assert(x0 && strcmp(xml_name(x0),"config")==0);
-    assert(x1 && strcmp(xml_name(x1),"config")==0);
     /* Loop through children of the modification tree */
     x1c = NULL;
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {

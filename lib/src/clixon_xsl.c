@@ -150,6 +150,7 @@ struct xpath_predicate{
 struct xpath_element{
     struct xpath_element   *xe_next;
     enum axis_type          xe_type;
+    char                   *xe_prefix; /* eg for namespaces */
     char                   *xe_str; /* eg for child */
     struct xpath_predicate *xe_predicate; /* eg within [] */
 };
@@ -217,6 +218,7 @@ xpath_element_new(enum axis_type          atype,
     struct xpath_element   *xe;
     char                   *str1 = NULL;
     char                   *pred;
+    char                   *local;
 
     if ((xe = malloc(sizeof(*xe))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
@@ -232,7 +234,18 @@ xpath_element_new(enum axis_type          atype,
 	if (xpath_split(str1, &pred) < 0) /* Can be more predicates */
 	    goto done;
 	if (strlen(str1)){
-	    if ((xe->xe_str = strdup(str1)) == NULL){
+	    /* Split into prefix and localname */
+	    if ((local = index(str1, ':')) != NULL){
+		*local = '\0';
+		local++;
+		if ((xe->xe_prefix = strdup(str1)) == NULL){
+		    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+		    goto done;
+		}
+	    }
+	    else
+		local = str1;
+	    if ((xe->xe_str = strdup(local)) == NULL){
 		clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
 		goto done;
 	    }
@@ -264,6 +277,8 @@ xpath_element_free(struct xpath_element *xe)
 
     if (xe->xe_str)
 	free(xe->xe_str);
+    if (xe->xe_prefix)
+	free(xe->xe_prefix);
     while ((xp = xe->xe_predicate) != NULL){
 	xe->xe_predicate = xp->xp_next;
 	if (xp->xp_expr)
