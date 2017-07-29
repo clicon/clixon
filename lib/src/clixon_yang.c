@@ -496,7 +496,7 @@ schema_nodeid_stmt(yang_node *yn,
 
     for (i=0; i<yn->yn_len; i++){
 	ys = yn->yn_stmt[i];
-        if (!yang_schemanode(ys))
+        if (!(yang_schemanode(ys) || ys->ys_keyword == Y_MODULE || ys->ys_keyword == Y_SUBMODULE))
 	    continue;
 	/* some keys dont have arguments, match on key */
 	if (ys->ys_keyword == Y_INPUT || ys->ys_keyword == Y_OUTPUT){
