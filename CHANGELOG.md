@@ -86,6 +86,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
   * You need to define state data in a backend callback. See the example and documentation for more details.
 
 ### Minor changes:
+* Added xpath support for predicate: current(), eg /interface[name=current()/../name]
 * Added prefix parsing of xpath, allowing eg /p:x/p:y, but prefix ignored.
 * Corrected Yang union CLI generation and type validation. Recursive unions did not work.
 * Corrected Yang pattern type escaping problem, ie '\.' did not work properly. This requires update of cligen as well.

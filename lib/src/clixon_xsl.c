@@ -37,7 +37,7 @@
  * Look at the end of the file for a test unit program
  */
 /*
-https://www.w3.org/TR/xpath/
+See https://www.w3.org/TR/xpath/
 
 Implementation of a limited xslt xpath syntax. Some examples. Given the following
 xml tree:
@@ -172,6 +172,9 @@ xpath_print(FILE *f, struct xpath_element *xplist)
     return 0;
 }
 
+/*! Extract PredicateExpr (Expr) from a Predicate within [] 
+ * @see xpath_expr  For evaluation of predicate 
+ */
 static int
 xpath_parse_predicate(struct xpath_element *xe,
 		      char                 *pred)
@@ -439,7 +442,13 @@ recursive_find(cxobj   *xn,
     return retval;
 }
 
+/* forward */
+static int
+xpath_exec(cxobj *xcur, char *xpath, cxobj **vec0, size_t vec0len,
+	   uint16_t flags, cxobj ***vec2, size_t *vec2len);
+
 /*! XPath predicate expression check
+ * @param[in]  xcur  xml-tree where to search
  * @param[in]     predicate_expression     xpath expression as a string
  * @param[in]     flags   Extra xml flag checks that must match (apart from predicate)
  * @param[in,out] vec0    Vector or xml nodes that are checked. Not matched are filtered
@@ -454,7 +463,8 @@ recursive_find(cxobj   *xn,
  * @see https://www.w3.org/TR/xpath/#predicates
  */
 static int
-xpath_expr(char     *predicate_expression, 	   
+xpath_expr(cxobj    *xcur, 
+	   char     *predicate_expression, 	   
 	   uint16_t  flags,
 	   cxobj  ***vec0,
 	   size_t   *vec0len)
@@ -462,6 +472,7 @@ xpath_expr(char     *predicate_expression,
     char      *e_a;
     char      *e_v;
     int        i;
+    int        j;
     int        retval = -1;
     cxobj     *x;
     cxobj     *xv;
@@ -520,25 +531,72 @@ xpath_expr(char     *predicate_expression,
 		goto done;
 	    }
 	}
-	else{
+	else{ /* name = expr */
 	    if ((tag = strsep(&e, "=")) == NULL){
 		clicon_err(OE_XML, errno, "%s: malformed expression: [%s]", 
 			   __FUNCTION__, e);
 		goto done;
 	    }
-	    for (i=0; i<*vec0len; i++){
-		xv = (*vec0)[i];
-		/* Check if more may match,... */
-		x = NULL;
-		while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
-		    if (strcmp(tag, xml_name(x)) != 0)
-			continue;
-		    if ((val = xml_body(x)) != NULL &&
-			strcmp(val, e) == 0){
-			clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
-			if (flags==0x0 || xml_flag(xv, flags))
-			    if (cxvec_append(xv, &vec, &veclen) < 0)
-				goto done;
+	    /* Strip trailing spaces */
+	    while (tag[strlen(tag)-1] == ' ')
+		tag[strlen(tag)-1] = '\0';
+	    /* Strip heading spaces */
+	    while (e[0]==' ')
+		e++;
+	    if (strncmp(e, "current()", strlen("current()")) == 0){
+		/* name = current()xpath */
+		cxobj    **svec0 = NULL;
+		size_t     svec0len = 0;
+		cxobj    **svec1 = NULL;
+		size_t     svec1len = 0;
+		char      *ebody;
+
+		e += strlen("current("); /* e is path expression */
+		*e = '.';
+		if ((svec0 = calloc(1, sizeof(cxobj *))) == NULL){
+		    clicon_err(OE_UNIX, errno, "calloc");
+		    goto done;
+		}
+		svec0[0] = xcur;
+		svec0len++;
+		/* Recursive invocation */
+		if (xpath_exec(xcur, e, svec0, svec0len,
+			       flags, &svec1, &svec1len) < 0)
+		    goto done;
+		for (j=0; j<svec1len; j++){
+		    ebody = xml_body(svec1[j]);
+		    for (i=0; i<*vec0len; i++){
+			xv = (*vec0)[i];
+			x = NULL;
+			while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
+			    if (strcmp(tag, xml_name(x)) != 0)
+				continue;
+			    if ((val = xml_body(x)) != NULL &&
+				strcmp(val, ebody) == 0){	
+				clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
+				if (flags==0x0 || xml_flag(xv, flags))
+				    if (cxvec_append(xv, &vec, &veclen) < 0)
+					goto done;
+			    }
+			}
+		    }
+		}
+	    }
+	    else { /* name = value */
+		for (i=0; i<*vec0len; i++){
+		    xv = (*vec0)[i];
+		    /* Check if more may match,... */
+		    x = NULL;
+		    while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
+			if (strcmp(tag, xml_name(x)) != 0)
+			    continue;
+			if ((val = xml_body(x)) != NULL &&
+			    strcmp(val, e) == 0){
+			    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
+			    if (flags==0x0 || xml_flag(xv, flags))
+				if (cxvec_append(xv, &vec, &veclen) < 0)
+				    goto done;
+			}
 		    }
 		}
 	    }
@@ -556,6 +614,7 @@ xpath_expr(char     *predicate_expression,
 }
 
 /*! Given vec0, add matches to vec1
+ * @param[in]   xcur  xml-tree where to search
  * @param[in]   xe      XPATH in structured (parsed) form
  * @param[in]   descendants0
  * @param[in]   vec0    vector of XML trees
@@ -565,7 +624,8 @@ xpath_expr(char     *predicate_expression,
  * @param[out]  vec2len Length of result vector.
  */
 static int
-xpath_find(struct xpath_element *xe,
+xpath_find(cxobj                *xcur, 
+	   struct xpath_element *xe,
 	   int                   descendants0,
 	   cxobj               **vec0,
 	   size_t                vec0len,
@@ -669,10 +729,10 @@ xpath_find(struct xpath_element *xe,
     }
 
     for (xp = xe->xe_predicate; xp; xp = xp->xp_next){
-	if (xpath_expr(xp->xp_expr, flags, &vec0, &vec0len) < 0)
+	if (xpath_expr(xcur, xp->xp_expr, flags, &vec0, &vec0len) < 0)
 	    goto done;
     }
-    if (xpath_find(xe->xe_next, descendants, 
+    if (xpath_find(xcur, xe->xe_next, descendants, 
 		   vec0, vec0len, flags,
 		   vec2, vec2len) < 0)
 	goto done;
@@ -719,6 +779,7 @@ xpath_split(char  *xpathstr,
 }
 
 /*! Process single xpath expression on xml tree
+ * @param[in]  xcur  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
  * @param[in]  vec0    vector of XML trees
  * @param[in]  vec0len length of XML trees
@@ -727,7 +788,8 @@ xpath_split(char  *xpathstr,
  * @param[out] vec2len Length of result vector.
  */
 static int
-xpath_exec(char         *xpath, 
+xpath_exec(cxobj        *xcur, 
+	   char         *xpath, 
 	   cxobj       **vec0, 
 	   size_t        vec0len,
 	   uint16_t      flags,
@@ -744,7 +806,7 @@ xpath_exec(char         *xpath,
 	goto done;
     if (debug > 1)
 	xpath_print(stderr, xplist);
-    if (xpath_find(xplist, 0, vec1, vec1len, flags, vec2, vec2len) < 0)
+    if (xpath_find(xcur, xplist, 0, vec1, vec1len, flags, vec2, vec2len) < 0)
 	goto done;
     if (xpath_free(xplist) < 0)
 	goto done;
@@ -754,6 +816,11 @@ xpath_exec(char         *xpath,
 
 
 /*! Intermediate xpath function to handle 'conditional' cases. 
+ * @param[in]  xcur  xml-tree where to search
+ * @param[in]  xpath   string with XPATH syntax
+ * @param[in]  flags   if != 0, only match xml nodes matching flags
+ * @param[in]  vec1    vector of XML trees
+ * @param[in]  vec1len length of XML trees
  * For example: xpath = //a | //b. 
  * xpath_first+ splits xpath up in several subcalls
  * (eg xpath=//a and xpath=//b) and collects the results.
@@ -762,7 +829,7 @@ xpath_exec(char         *xpath,
  * Note, this could be 'folded' into xpath1 but I judged it too complex.
  */
 static int
-xpath_choice(cxobj   *xtop, 
+xpath_choice(cxobj   *xcur, 
 	     char    *xpath0, 
 	     uint16_t flags,
 	     cxobj ***vec1, 
@@ -776,7 +843,6 @@ xpath_choice(cxobj   *xtop,
     cxobj           **vec0 = NULL;
     size_t            vec0len = 0;
 
-
     if ((s0 = strdup(xpath0)) == NULL){
 	clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
 	goto done;
@@ -786,7 +852,7 @@ xpath_choice(cxobj   *xtop,
 	clicon_err(OE_UNIX, errno, "calloc");
 	goto done;
     }
-    vec0[0] = xtop;
+    vec0[0] = xcur;
     vec0len++;
     while (s1 != NULL){
 	s2 = strstr(s1, " | ");
@@ -796,7 +862,7 @@ xpath_choice(cxobj   *xtop,
 	}
 	xpath = s1;
 	s1 = s2;
-	if (xpath_exec(xpath, vec0, vec0len, flags, vec1, vec1len) < 0)
+	if (xpath_exec(xcur, xpath, vec0, vec0len, flags, vec1, vec1len) < 0)
 	    goto done;
     }
     retval = 0;
@@ -808,32 +874,35 @@ xpath_choice(cxobj   *xtop,
     return retval;
 }
 
+/*! Help function to  xpath_first
+ */
 static cxobj *
-xpath_first0(cxobj *cxtop, 
-	    char  *xpath)
+xpath_first0(cxobj *xcur, 
+	     char  *xpath)
 {
-    cxobj **vec0 = NULL;
-    size_t  vec0len = 0;
+    cxobj **vec1 = NULL;
+    size_t  vec1len = 0;
     cxobj  *xn = NULL;
 
-    if (xpath_choice(cxtop, xpath, 0, &vec0, &vec0len) < 0)
+    if (xpath_choice(xcur, xpath, 0, &vec1, &vec1len) < 0)
 	goto done;
-    if (vec0len)
-	xn = vec0[0];
+    if (vec1len)
+	xn = vec1[0];
     else
 	xn = NULL;
   done:
-    if (vec0)
-	free(vec0);
+    if (vec1)
+	free(vec1);
     return xn;
 }
 
 /*! A restricted xpath function where the first matching entry is returned
  * See xpath1() on details for subset.
  * args:
- * @param[in]  cxtop  xml-tree where to search
+ * @param[in]  xcur  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
- * @retval     xml-tree of first match, or NULL on error. 
+ * @retval     xml-tree of first match
+ * @retval     NULL    Error or not found
  *
  * @code
  *   cxobj *x;
@@ -846,7 +915,7 @@ xpath_first0(cxobj *cxtop,
  * @see also xpath_vec.
  */
 cxobj *
-xpath_first(cxobj   *cxtop, 
+xpath_first(cxobj   *xcur, 
 	    char    *format, 
 	    ...)
 {
@@ -871,7 +940,7 @@ xpath_first(cxobj   *cxtop,
 	goto done;
     }
     va_end(ap);
-    retval = xpath_first0(cxtop, xpath);
+    retval = xpath_first0(xcur, xpath);
  done:
     if (xpath)
 	free(xpath);
@@ -881,14 +950,14 @@ xpath_first(cxobj   *cxtop,
 /*! A restricted xpath iterator that loops over all matching entries. Dont use.
  *
  * See xpath1() on details for subset.
- * @param[in]  cxtop  xml-tree where to search
+ * @param[in]  xcur  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
  * @param[in]  xprev   iterator/result should be initiated to NULL
  * @retval     xml-tree of n:th match, or NULL on error. 
  *
  * @code
  *   cxobj *x = NULL;
- *   while ((x = xpath_each(cxtop, "//symbol/foo", x)) != NULL) {
+ *   while ((x = xpath_each(xcur, "//symbol/foo", x)) != NULL) {
  *     ...
  *   }
  * @endcode
@@ -899,33 +968,33 @@ xpath_first(cxobj   *cxtop,
  * NOTE: uses a static variable: consider replacing with xpath_vec() instead
  */
 cxobj *
-xpath_each(cxobj *cxtop, 
+xpath_each(cxobj *xcur, 
 	   char  *xpath, 
 	   cxobj *xprev)
 {
-    static cxobj    **vec0 = NULL; /* XXX */
-    static size_t     vec0len = 0;
+    static cxobj    **vec1 = NULL; /* XXX */
+    static size_t     vec1len = 0;
     cxobj            *xn = NULL;
     int i;
     
     if (xprev == NULL){
-	if (vec0) // XXX
-	    free(vec0); // XXX
-	vec0len = 0;
-	if (xpath_choice(cxtop, xpath, 0, &vec0, &vec0len) < 0)
+	if (vec1) // XXX
+	    free(vec1); // XXX
+	vec1len = 0;
+	if (xpath_choice(xcur, xpath, 0, &vec1, &vec1len) < 0)
 	    goto done;
     }
-    if (vec0len){
+    if (vec1len){
 	if (xprev==NULL)
-	    xn = vec0[0];
+	    xn = vec1[0];
 	else{
-	    for (i=0; i<vec0len; i++)
-		if (vec0[i] == xprev)
+	    for (i=0; i<vec1len; i++)
+		if (vec1[i] == xprev)
 		    break;
-	    if (i>=vec0len-1)
+	    if (i>=vec1len-1)
 		xn = NULL; 
 	    else
-		xn = vec0[i+1];
+		xn = vec1[i+1];
 	}
     }
     else
@@ -937,7 +1006,7 @@ xpath_each(cxobj *cxtop,
 /*! A restricted xpath that returns a vector of matches
  *
  * See xpath1() on details for subset
-. * @param[in]  cxtop  xml-tree where to search
+. * @param[in]  xcur  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
  * @param[out] vec     vector of xml-trees. Vector must be free():d after use
  * @param[out] veclen  returns length of vector in return value
@@ -947,7 +1016,7 @@ xpath_each(cxobj *cxtop,
  * @code
  *   cxobj **xvec;
  *   size_t  xlen;
- *   if (xpath_vec(cxtop, "//symbol/foo", &xvec, &xlen) < 0) 
+ *   if (xpath_vec(xcur, "//symbol/foo", &xvec, &xlen) < 0) 
  *      goto err;
  *   for (i=0; i<xlen; i++){
  *      xn = xvec[i];
@@ -960,7 +1029,7 @@ xpath_each(cxobj *cxtop,
  * @see also xpath_first, xpath_each.
  */
 int
-xpath_vec(cxobj   *cxtop, 
+xpath_vec(cxobj    *xcur, 
 	   char    *format, 
 	   cxobj ***vec, 
 	   size_t  *veclen,
@@ -989,7 +1058,7 @@ xpath_vec(cxobj   *cxtop,
     va_end(ap);
     *vec = NULL;
     *veclen = 0;
-    retval = xpath_choice(cxtop, xpath, 0x0, vec, veclen);
+    retval = xpath_choice(xcur, xpath, 0x0, vec, veclen);
  done:
     if (xpath)
 	free(xpath);
@@ -997,7 +1066,7 @@ xpath_vec(cxobj   *cxtop,
 }
 
 /* A restricted xpath that returns a vector of matches (only nodes marked with flags)
- * @param[in]  cxtop  xml-tree where to search
+ * @param[in]  xcur  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
  * @param[in]  flags   Set of flags that return nodes must match (0 if all)
  * @param[out] vec     vector of xml-trees. Vector must be free():d after use
@@ -1007,7 +1076,7 @@ xpath_vec(cxobj   *cxtop,
  * @code
  *   cxobj **vec;
  *   size_t  veclen;
- *   if (xpath_vec_flag(cxtop, "//symbol/foo", XML_FLAG_ADD, &vec, &veclen) < 0) 
+ *   if (xpath_vec_flag(xcur, "//symbol/foo", XML_FLAG_ADD, &vec, &veclen) < 0) 
  *      goto err;
  *   for (i=0; i<veclen; i++){
  *      xn = vec[i];
@@ -1020,7 +1089,7 @@ xpath_vec(cxobj   *cxtop,
  * @see also xpath_vec This is a specialized version.
  */
 int
-xpath_vec_flag(cxobj   *cxtop, 
+xpath_vec_flag(cxobj   *xcur, 
 	       char    *format, 
 	       uint16_t flags,
 	       cxobj ***vec, 
@@ -1050,7 +1119,7 @@ xpath_vec_flag(cxobj   *cxtop,
     va_end(ap);
     *vec=NULL;
     *veclen = 0;
-    retval = xpath_choice(cxtop, xpath, flags, vec, veclen);
+    retval = xpath_choice(xcur, xpath, flags, vec, veclen);
  done:
     if (xpath)
 	free(xpath);

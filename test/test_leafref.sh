@@ -27,14 +27,13 @@ module example{
          }
          leaf address {
              type leafref {
-                 path "../../interfaces/interface[name=eth0]"
-                    + "/address/ip";
-             }
+                 path "../../interfaces/interface[name = current()/../relname]"
+                    + "/ipv4/address/ip";
+            }
          }
     }
 }
 EOF
-# XXX not eth0                path "../../interface[name = current()/../ifname]"
 
 # kill old backend (if any)
 new "kill old backend"

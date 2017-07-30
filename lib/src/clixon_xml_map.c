@@ -1999,3 +1999,54 @@ xml_merge(cxobj     *x0,
     return retval;
 }
 
+/*! Get integer value from xml node from yang enumeration 
+ * @param[in]  node XML node in a tree
+ * @param[out] val  Integer value returned
+ * @retval     0    OK, value parsed
+ * @retval    -1    Error, value not obtained or parsed, no reason given
+ * @note assume yang spec set
+ * @note The function only returns assigned values, but according to RFC:
+   If a value is not specified, then one will be automatically assigned.
+   If the "enum" substatement is the first one defined, the assigned
+   value is zero (0); otherwise, the assigned value is one greater than
+   the current highest enum value (i.e., the highest enum value,
+   * Thanks: Matthew Smith
+ */
+int
+yang_enum_int_value(cxobj   *node, 
+		    int32_t *val)
+{
+    int retval = -1;
+    yang_spec *yspec;
+    yang_stmt *ys;
+    yang_stmt *ytype;
+    yang_stmt *yrestype;  /* resolved type */
+    yang_stmt *yenum; 
+    yang_stmt *yval; 
+    char      *reason = NULL;
+
+    if (node == NULL)
+	goto done;
+    if ((ys = (yang_stmt *) xml_spec(node)) == NULL)
+	goto done;
+    if ((yspec = ys_spec(ys)) == NULL)
+	goto done;
+    if ((ytype = yang_find((yang_node *)ys, Y_TYPE, NULL)) == NULL)
+	goto done;
+    if (yang_type_resolve(ys, ytype, &yrestype, 
+			  NULL, NULL, NULL, NULL, NULL) < 0)
+	goto done;
+    if (yrestype==NULL || strcmp(yrestype->ys_argument, "enumeration"))
+	goto done;
+    if ((yenum = yang_find((yang_node *)yrestype, Y_ENUM, xml_body(node))) == NULL)
+	goto done;
+    /* Should assign value if yval not found */
+    if ((yval = yang_find((yang_node *)yenum, Y_VALUE, NULL)) == NULL)
+	goto done;
+    /* reason is string containing why int could not be parsed */
+    if (parse_int32(yval->ys_argument, val, &reason) < 0)
+	goto done;
+    retval = 0;
+done:
+    return retval;
+}

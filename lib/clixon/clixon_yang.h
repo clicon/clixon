@@ -213,9 +213,10 @@ int        yang_parse(clicon_handle h, const char *yang_dir,
 		      const char *module, const char *revision, yang_spec *ysp);
 int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
-yang_node *yang_abs_schema_nodeid(yang_node *yn, char *schema_nodeid);
-yang_node *yang_desc_schema_nodeid(yang_node *yn, char *schema_nodeid);
-yang_node *yang_schema_nodeid(yang_node *yn, char *xpath);
+int        yang_abs_schema_nodeid(yang_spec *yspec, char *schema_nodeid, 
+				  yang_stmt **yres);
+int        yang_desc_schema_nodeid(yang_node *yn, char *schema_nodeid, 
+				   yang_stmt **yres);
 cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys);
 int        yang_mandatory(yang_stmt *ys);

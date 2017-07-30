@@ -1041,3 +1041,4 @@ yang_type_get(yang_stmt    *ys,
   done:
     return retval;
 }
+
