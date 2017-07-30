@@ -354,7 +354,7 @@ api_data_post(clicon_handle h,
     if ((xtop = xml_new("config", NULL)) == NULL)
 	goto done;
     xbot = xtop;
-    if (api_path && api_path2xml(api_path, yspec, xtop, &xbot, &y) < 0)
+    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json into xml */
     if (json_parse_str(data, &xdata) < 0){
@@ -462,7 +462,7 @@ api_data_put(clicon_handle h,
     if ((xtop = xml_new("config", NULL)) == NULL)
 	goto done;
     xbot = xtop;
-    if (api_path && api_path2xml(api_path, yspec, xtop, &xbot, &y) < 0)
+    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json into xml */
     if (json_parse_str(data, &xdata) < 0){
@@ -581,7 +581,7 @@ api_data_delete(clicon_handle h,
     if ((xtop = xml_new("config", NULL)) == NULL)
 	goto done;
     xbot = xtop;
-    if (api_path && api_path2xml(api_path, yspec, xtop, &xbot, &y) < 0)
+    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
     if ((xa = xml_new("operation", xbot)) == NULL)
 	goto done;
@@ -606,7 +606,7 @@ api_data_delete(clicon_handle h,
     FCGX_FPrintF(r->out, "\r\n");
     retval = 0;
  done:
-     if (cbx)
+    if (cbx)
 	cbuf_free(cbx); 
     if (xtop)
 	xml_free(xtop);
@@ -614,3 +614,116 @@ api_data_delete(clicon_handle h,
    return retval;
 }
 
+/*! REST operation POST method 
+ * @param[in]  h      CLIXON handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi     Offset, where to start pcvec
+ * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  data   Stream input data
+ * @note We map post to edit-config create. 
+
+      POST {+restconf}/operations/<operation>
+
+
+ */
+int
+api_operation_post(clicon_handle h,
+		   FCGX_Request *r, 
+		   char         *path, 
+		   cvec         *pcvec, 
+		   int           pi,
+		   cvec         *qvec, 
+		   char         *data)
+{
+    int        retval = -1;
+    int        i;
+    char      *oppath = path;
+    yang_stmt *yrpc = NULL;
+    yang_spec *yspec;
+    yang_stmt *yinput;
+    cxobj     *xdata = NULL;
+    cxobj     *xret = NULL;
+    cbuf      *cbx = NULL;
+    cxobj     *xtop = NULL; /* xpath root */
+    cxobj     *xbot = NULL;
+    yang_node *y = NULL;
+    cxobj     *xinput;
+    cxobj     *x;
+    cxobj    **vec = NULL;
+
+    clicon_debug(1, "%s json:\"%s\"", __FUNCTION__, data);
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    for (i=0; i<pi; i++)
+	oppath = index(oppath+1, '/');
+    /* Find yang rpc statement, return yang rpc statement if found */
+    if (yang_abs_schema_nodeid(yspec, oppath, &yrpc) < 0)
+	goto done;
+    if (yrpc == NULL){
+	retval = notfound(r); 
+	goto done;
+    }
+    /* Create an xml message: 
+     * <"rpc"><operation><input-args>...
+     * eg <rpc><fib-route><name>
+     */
+    /* Create config top-of-tree */
+    if ((xtop = xml_new("rpc", NULL)) == NULL)
+	goto done;
+    xbot = xtop;
+    if (api_path2xml(oppath, yspec, xtop, 1, &xbot, &y) < 0)
+	goto done;
+    if (data){
+	/* Parse input data as json into xml */
+	if (json_parse_str(data, &xdata) < 0){
+	    clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
+	    goto done;
+	}
+	/* xdata should have format <top><input> */
+	if ((xinput = xpath_first(xdata, "/input")) != NULL){
+	    /* Add all input under <rpc>path */
+	    x = NULL;
+	    while ((x = xml_child_each(xinput, x, -1)) != NULL) 
+		if (xml_addsub(xbot, x) < 0) 	
+		    goto done;
+	    if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
+		xml_spec_set(xinput, yinput); /* needed for xml_spec_populate */
+		if (xml_apply(xinput, CX_ELMNT, xml_spec_populate, yinput) < 0)
+		    goto done;
+		if (xml_apply(xinput, CX_ELMNT, 
+			      (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+		    goto done;
+		if (xml_yang_validate_add(xinput, NULL) < 0)
+		    goto done;
+	    }
+	}
+    }
+    if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
+	goto done;
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
+    /* Sanity check of outgoing XML */
+    FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "Content-Type: application/yang.data+json\r\n");
+    FCGX_FPrintF(r->out, "\r\n");
+    vec = xml_childvec_get(xret);
+    if (xml2json_cbuf_vec(cbx, vec, xml_child_nr(xret), 0) < 0)
+	goto done;
+    clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
+    FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
+    FCGX_FPrintF(r->out, "\r\n\r\n");
+
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xdata)
+	xml_free(xdata);
+    if (xret)
+	xml_free(xret);
+     if (cbx)
+	cbuf_free(cbx); 
+   return retval;
+}

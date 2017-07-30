@@ -3,6 +3,8 @@
 ## Upcoming 3.3.2
 
 ### Known issues
+* Please use text datastore, key-value datastore no up-to-date
+* Restconf RPC does not encode output correct
 
 ### Major changes:
 * Added support for YANG anyxml. 
@@ -50,13 +52,12 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
      </nopresence>
 ```
 
-* Added YANG RPC support for netconf and CLI. With example rpc documentation and testcase. This replaces the previous "downcall" mechanism.
-  * This means you can make netconf rpc calls as defined by YANG.
+* Added YANG RPC support for netconf, restconf and CLI. With example rpc documentation and testcase. This replaces the previous "downcall" mechanism.
+  * This means you can make netconf/restconf rpc calls
   * However you need to register an RPC backend callback using the backend_rpc_cb_register() function. See documentation and example for more details.
-  * Note that RESTCONF PUT for RCP calls is not yet supported.
   * Example, the following YANG RPC definition enables you to run a netconf rpc.
 ```
-      YANG:
+    YANG:
       rpc myrpc {
          input {
 	   leaf name {
@@ -64,8 +65,10 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
            }
          }
       }
-      NETCONF:
+    NETCONF:
       <rpc><myrpc><name>hello</name><rpc>
+    RESTCONF:
+      curl -sS -X POST -d {"input":{"name":"hello"}} http://localhost/restconf/operations/myroute'
 ```
 
 * Enhanced leafref functionality: 

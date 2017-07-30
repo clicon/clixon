@@ -453,18 +453,68 @@ yang_find_datanode(yang_node *yn,
     return ysmatch;
 }
 
-/*! Find 'top-node', eg first data node in all (sub)modules in a yang spec
+/*! Find child schema node with matching argument (container, leaf, etc)
+ * @note XXX unify code with yang_find_datanode?
+ * @see yang_find_datanode
+ */
+yang_stmt *
+yang_find_schemanode(yang_node *yn, 
+		     char      *argument)
+{
+    yang_stmt *ys = NULL;
+    yang_stmt *yc = NULL;
+    yang_stmt *ysmatch = NULL;
+    int        i, j;
+
+    for (i=0; i<yn->yn_len; i++){
+	ys = yn->yn_stmt[i];
+	if (ys->ys_keyword == Y_CHOICE){ /* Look for its children */
+	    for (j=0; j<ys->ys_len; j++){
+		yc = ys->ys_stmt[j];
+		if (yc->ys_keyword == Y_CASE) /* Look for its children */
+		    ysmatch = yang_find_schemanode((yang_node*)yc, argument);
+		else
+		    if (yang_schemanode(yc)){
+			if (argument == NULL)
+			    ysmatch = yc;
+			else
+			    if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
+				ysmatch = yc;
+		    }
+		if (ysmatch)
+		    goto match;
+	    }
+	} /* Y_CHOICE */
+	else
+	    if (yang_schemanode(ys)){
+		if (argument == NULL)
+		    ysmatch = ys;
+		else
+		    if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
+			ysmatch = ys;
+		if (ysmatch)
+		    goto match;
+	    }
+    }
+ match:
+    return ysmatch;
+}
+
+
+/*! Find first matching data node in all (sub)modules in a yang spec
  *
  * @param[in]  ysp        Yang specification
- * @param[in]  name   if NULL, match any(first) argument. XXX is that really a case?
+ * @param[in]  name       if NULL, match any(first) argument. XXX is that really a case?
+ * @param[in]  schemanode If set look for schema nodes, otherwise only data nodes
  * A yang specification has modules as children which in turn can have 
  * syntax-nodes as children. This function goes through all the modules to
- * look for syntax-nodes. Note that if a child to a module is a choice, 
+ * look for nodes. Note that if a child to a module is a choice, 
  * the search is made recursively made to the choice's children.
  */
 yang_stmt *
 yang_find_topnode(yang_spec *ysp, 
-		  char      *name)
+		  char      *name,
+		  int        schemanode)
 {
     yang_stmt *ys = NULL;
     yang_stmt *yc = NULL;
@@ -472,11 +522,42 @@ yang_find_topnode(yang_spec *ysp,
 
     for (i=0; i<ysp->yp_len; i++){
 	ys = ysp->yp_stmt[i];
-	if ((yc = yang_find_datanode((yang_node*)ys, name)) != NULL)
-	    return yc;
+	if (schemanode){
+	    if ((yc = yang_find_schemanode((yang_node*)ys, name)) != NULL)
+		return yc;
+	}
+	else
+	    if ((yc = yang_find_datanode((yang_node*)ys, name)) != NULL)
+		return yc;
     }
     return NULL;
 }
+
+/*! Given a yang statement, find the prefix associated to this module
+ * @param[in]  ys        Yang statement
+ * @retval     NULL      Not found
+ * @retval     prefix    Prefix as char* pointer into yang tree
+ */
+char *
+yang_find_myprefix(yang_stmt *ys)
+{
+    yang_stmt *ymod; /* My module */
+    yang_stmt *yprefix;
+    char      *prefix = NULL;
+
+    if ((ymod = ys_module(ys)) == NULL){
+	clicon_err(OE_YANG, 0, "My yang module not found");
+	goto done;
+    }
+    if ((yprefix = yang_find((yang_node*)ymod, Y_PREFIX, NULL)) == NULL){
+	clicon_err(OE_YANG, 0, "No prefix in my module");
+	goto done;
+    }
+    prefix = yprefix->ys_argument;
+ done:
+    return prefix;
+}
+
 
 /*! Reset flag in complete tree, arg contains flag */
 static int
@@ -505,8 +586,13 @@ ys_module(yang_stmt *ys)
 {
     yang_node *yn;
 
+#if 1
+    if (ys==NULL || ys->ys_keyword==Y_SPEC)
+	return NULL;
+#else
     if (ys==NULL || ys->ys_keyword==Y_SPEC)
 	return ys;
+#endif
     while (ys != NULL && ys->ys_keyword != Y_MODULE && ys->ys_keyword != Y_SUBMODULE){
 	yn = ys->ys_parent;
 	/* Some extra stuff to ensure ys is a stmt */
@@ -572,6 +658,7 @@ ytype_prefix(yang_stmt *ys)
 }
 
 
+
 /*! Given a yang statement and a prefix, return yang module to that prefix
  * Note, not the other module but the proxy import statement only
  * @param[in]  ys      A yang statement
@@ -588,22 +675,25 @@ yang_find_module_by_prefix(yang_stmt *ys,
     yang_stmt *my_ymod;
     yang_stmt *ymod = NULL;
     yang_spec *yspec;
+    char      *myprefix;
 
+    if ((yspec = ys_spec(ys)) == NULL){
+	clicon_err(OE_YANG, 0, "My yang spec not found");
+	goto done;
+    }
+    myprefix = yang_find_myprefix(ys);
     if ((my_ymod = ys_module(ys)) == NULL){
 	clicon_err(OE_YANG, 0, "My yang module not found");
 	goto done;
     }
-    if ((yspec = ys_spec(my_ymod)) == NULL){
-	clicon_err(OE_YANG, 0, "My yang spec not found");
-	goto done;
-    }
+#if 0
     if (my_ymod->ys_keyword != Y_MODULE && 
 	my_ymod->ys_keyword != Y_SUBMODULE){
 	clicon_err(OE_YANG, 0, "%s not module or sub-module", my_ymod->ys_argument);
 	goto done;
     }
-    if ((yprefix = yang_find((yang_node*)my_ymod, Y_PREFIX, NULL)) != NULL &&
-	strcmp(yprefix->ys_argument, prefix) == 0){
+#endif
+    if (strcmp(myprefix, prefix) == 0){
 	ymod = my_ymod;
 	goto done;
     }
@@ -1730,6 +1820,7 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
     yang_stmt       *ymod;
     char            *id;
     char            *prefix = NULL;
+
     yang_stmt       *yprefix;
 
     /* check absolute schema_nodeid */
@@ -1765,9 +1856,16 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
 	    break;
 	}
     }
-    if (ymod == NULL){
-	clicon_err(OE_YANG, 0, "Module with prefix %s not found", prefix);
-	goto done;
+    if (ymod == NULL){ /* Try with topnode */
+	yang_stmt       *ys;
+	if ((ys = yang_find_topnode(yspec, id, 1)) == NULL){
+	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found", prefix,id);
+	    goto done;
+	}
+	if ((ymod = ys_module(ys)) == NULL){
+	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found2", prefix,id);
+	    goto done;
+	}
     }
     if (schema_nodeid_vec((yang_node*)ymod, vec+1, nvec-1, yres) < 0)
 	goto done;

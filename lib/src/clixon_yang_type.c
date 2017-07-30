@@ -107,6 +107,8 @@ yang_builtin(char *type)
     return 0;
 }
 
+/*! Set type cache for yang type
+ */
 int
 yang_type_cache_set(yang_type_cache **ycache0,
 		    yang_stmt        *resolved,
@@ -142,7 +144,6 @@ yang_type_cache_set(yang_type_cache **ycache0,
     }
     ycache->yc_fraction  = fraction;
     retval = 0;
-
  done:
     return retval;
 }
@@ -209,6 +210,7 @@ yang_type_cache_free(yang_type_cache *ycache)
  * @param[in]  ys  This is a type statement
  * @param[in]  arg Not used
  * Typically only called once when loading te yang type system.
+ * @note unions not cached
  */
 int
 ys_resolve_type(yang_stmt *ys, 
@@ -226,13 +228,16 @@ ys_resolve_type(yang_stmt *ys,
     if (yang_type_resolve((yang_stmt*)ys->ys_parent, ys, &resolved,
 			  &options, &mincv, &maxcv, &pattern, &fraction) < 0)
 	goto done;
-    /* skip unions since they may have different sets of options, mincv, etc */
+
     if (resolved && strcmp(resolved->ys_argument, "union")==0)
-	;
+	; 
+    /* skip unions since they may have different sets of options, mincv, etc 
+     * You would have to resolve all sub-types also recursively
+     */
     else
-    if (yang_type_cache_set(&ys->ys_typecache, 
-			    resolved, options, mincv, maxcv, pattern, fraction) < 0)
-	goto done;
+	if (yang_type_cache_set(&ys->ys_typecache, 
+				resolved, options, mincv, maxcv, pattern, fraction) < 0)
+	    goto done;
     retval = 0;
  done:
     return retval;

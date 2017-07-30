@@ -133,6 +133,7 @@ enum rfc_6020{
 typedef struct yang_stmt yang_stmt; /* forward */
 
 /*! Yang type cache. Yang type statements can cache all typedef info here
+ * @note unions not cached
 */
 struct yang_type_cache{
     int        yc_options;
@@ -158,7 +159,7 @@ struct yang_stmt{
 				        leaf, leaf-list, mandatory, fraction-digits */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
 					Y_RANGE: range_min, range_max */
-    yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data */
+    yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
 };
 
 
@@ -205,7 +206,8 @@ yang_spec *ys_spec(yang_stmt *ys);
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
 yang_stmt *yang_find(yang_node *yn, int keyword, char *argument);
 yang_stmt *yang_find_datanode(yang_node *yn, char *argument);
-yang_stmt *yang_find_topnode(yang_spec *ysp, char *name);
+yang_stmt *yang_find_schemanode(yang_node *yn, char *argument);
+yang_stmt *yang_find_topnode(yang_spec *ysp, char *name, int schemanode);
 
 int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);

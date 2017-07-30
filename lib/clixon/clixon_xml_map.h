@@ -39,16 +39,6 @@
 #define _CLIXON_XML_MAP_H_
 
 /*
- * lvmap_xml op codes
- */
-enum {
-    LVXML,       /* a.b{x=1} -> <a><b>1 */
-    LVXML_VAL,       /* a.b{x=1} -> <a><b><x>1 */
-    LVXML_VECVAL,   /* key: a.b.0{x=1} -> <a><b><x>1</x></b></a> och */
-    LVXML_VECVAL2,  /* key: a.b.0{x=1} -> <a><x>1</x></a> och */
-};
-
-/*
  * Prototypes
  */
 int xml2txt(FILE *f, cxobj *x, int level);
@@ -73,7 +63,8 @@ int xml_non_config_data(cxobj *xt, void *arg);
 int xml_spec_populate(cxobj *x, void *arg);
 int api_path2xpath_cvv(yang_spec *yspec, cvec *cvv, int offset, cbuf *xpath);
 int api_path2xpath(yang_spec *yspec, char *api_path, cbuf *xpath);
-int api_path2xml(char *api_path, yang_spec *yspec, cxobj *xtop, cxobj **xpathp, yang_node **ypathp);
+int api_path2xml(char *api_path, yang_spec *yspec, cxobj *xtop, 
+		 int schemanode, cxobj **xpathp, yang_node **ypathp);
 int xml_merge(cxobj *x0, cxobj *x1, yang_spec *yspec);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 

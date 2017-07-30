@@ -35,52 +35,54 @@ expectfn "curl -sS -I http://localhost/restconf/data" "Content-Type: application
 new "restconf get empty config"
 expectfn "curl -sSG http://localhost/restconf/data" "^null$"
 
-# 
-new "Add subtree  to datastore using POST"
+new "restconf Add subtree  to datastore using POST"
 expectfn 'curl -sS -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}}} http://localhost/restconf/data' ""
 
-new "Check interfaces eth/0/0 added"
+new "restconf Check interfaces eth/0/0 added"
 expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}}}
 $'
 
-new "delete interfaces"
+new "restconf delete interfaces"
 expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces' ""
 
-new "Check empty config"
+new "restconf Check empty config"
 expectfn "curl -sSG http://localhost/restconf/data" "^null$"
 
-new "Add interfaces subtree eth/0/0 using POST"
+new "restconf Add interfaces subtree eth/0/0 using POST"
 expectfn 'curl -sS -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' ""
 
-new "Check eth/0/0 added"
+new "restconf Check eth/0/0 added"
 expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}}}
 $'
 
-new "Re-post eth/0/0 which should generate error"
+new "restconf Re-post eth/0/0 which should generate error"
 expectfn 'curl -sS -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' "Data resource already exists"
 
 new "Add leaf description using POST"
 expectfn 'curl -sS -X POST -d {"description":"The-first-interface"} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
-new "Check description added"
+new "restconf Check description added"
 expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","description": "The-first-interface","type": "eth","enabled": "true"}}
 $'
 
-new "delete eth/0/0"
+new "restconf delete eth/0/0"
 expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
-#new "Check deleted eth/0/0"
-#expectfn 'curl -sS -G http://localhost/restconf/data' '{"interfaces": null}
-#$'
+new "Check deleted eth/0/0"
+expectfn 'curl -sS -G http://localhost/restconf/data' "^null$"
 
-new "Re-Delete eth/0/0 using none should generate error"
+new "restconf Re-Delete eth/0/0 using none should generate error"
 expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "Not Found"
 
-new "Add subtree eth/0/0 using PUT"
+new "restconf Add subtree eth/0/0 using PUT"
 expectfn 'curl -sS -X PUT -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
+new "restconf get subtree"
 expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}}}
 $'
+
+new "restconf rpc using POST (wrong output encoding)"
+expectfn 'curl -sS -X POST -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '{"rpc-reply": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"}}}}$'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf
