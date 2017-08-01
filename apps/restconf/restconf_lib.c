@@ -264,7 +264,19 @@ test(FCGX_Request *r,
     printparam(r, "SERVER_NAME", dbg);
     printparam(r, "HTTP_COOKIE", dbg);
     printparam(r, "HTTPS", dbg);
-
+    printparam(r, "HTTP_ACCEPT", dbg);
+    printparam(r, "HTTP_CONTENT_TYPE", dbg);
+#if 0 /* For debug */
+    clicon_debug(1, "All environment vars:");
+    {
+	extern char **environ;
+	int i;
+	for (i = 0; environ[i] != NULL; i++){
+	    clicon_debug(1, "%s", environ[i]);
+	}
+    }
+    clicon_debug(1, "End environment vars:");
+#endif
     return 0;
 }
 

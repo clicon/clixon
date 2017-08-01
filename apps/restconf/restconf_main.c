@@ -77,7 +77,7 @@
    resource ([RFC6415]) */
 #define RESTCONF_API_ROOT    "/restconf/"
 
-/*! Generic REST method, GET, PUT, DELETE
+/*! Generic REST method, GET, PUT, DELETE, etc
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
  * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
@@ -120,6 +120,37 @@ api_data(clicon_handle h,
     return retval;
 }
 
+/*! Operations REST method, POST
+ * @param[in]  h      CLIXON handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi     Offset, where to start pcvec
+ * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  dvec   Stream input data
+ */
+static int
+api_operations(clicon_handle h,
+	       FCGX_Request *r, 
+	       char         *path,
+	       cvec         *pcvec, 
+	       int           pi,
+	       cvec         *qvec, 
+	       char         *data)
+{
+    int     retval = -1;
+    char   *request_method;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
+    clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
+    if (strcmp(request_method, "POST")==0)
+	retval = api_operation_post(h, r, path, pcvec, pi, qvec, data);
+    else
+	retval = notfound(r);
+    return retval;
+}
+
 /*! Process a FastCGI request
  * @param[in]  r        Fastcgi request handle
  */
@@ -157,12 +188,10 @@ request_process(clicon_handle h,
     clicon_debug(1, "DATA=%s", data);
     if (str2cvec(data, '&', '=', &dvec) < 0)
       goto done;
-
     if ((method = pvec[2]) == NULL){
 	retval = notfound(r);
 	goto done;
     }
-
     retval = 0;
     test(r, 1);
     /* If present, check credentials */
@@ -176,6 +205,9 @@ request_process(clicon_handle h,
 
     if (strcmp(method, "data") == 0) /* restconf, skip /api/data */
 	retval = api_data(h, r, path, pcvec, 2, qvec, data);
+    else
+	if (strcmp(method, "operations") == 0) /* rpc */
+	    retval = api_operations(h, r, path, pcvec, 2, qvec, data);
     else if (strcmp(method, "test") == 0)
 	retval = test(r, 0);
     else
@@ -357,7 +389,7 @@ main(int    argc,
 	if ((path = FCGX_GetParam("REQUEST_URI", r->envp)) != NULL){
 	    if (strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)) == 0 ||
 		strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)-1) == 0)
-		request_process(h, r);
+		request_process(h, r); /* This is the function */
 	    else{
 		clicon_debug(1, "top-level not found");
 		notfound(r);

@@ -88,9 +88,14 @@ used to generate an interactive CLI client as well as provide
 [Restconf](apps/restconf/README.md) clients.
 
 The [YANG RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt) is implemented with the following exceptions:
-- object-references
-- if-feature
-- unique
+- conformance: feature, if-feature, deviation
+- identy, base, identityref
+- list features: min/max-elements, unique, ordered-by
+
+There are also new features in YANG 1.1 [YANG RFC
+7950](https://www.rfc-editor.org/rfc/rfc7950.txt) most of which are
+not implemented.
+
 
 
 

@@ -126,6 +126,9 @@ new "netconf check empty startup"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data/></rpc-reply>]]>]]>$"
 
 new "netconf rpc"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><rt:fib-route><routing-instance-name>ipv4</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></rt:fib-route></rpc>]]>]]>" "^<rpc-reply><route><address-family>ipv4</address-family><next-hop><next-hop-list>"
+
+new "netconf rpc w/o namespace"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><fib-route><routing-instance-name>ipv4</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></fib-route></rpc>]]>]]>" "^<rpc-reply><route><address-family>ipv4</address-family><next-hop><next-hop-list>"
 
 new "netconf subscription"

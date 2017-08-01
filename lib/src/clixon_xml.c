@@ -974,7 +974,10 @@ clicon_xml2cbuf(cbuf  *cb,
 	    }
 	    if (prettyprint && xml_body(x)==NULL)
 		cprintf(cb, "%*s", level*XML_INDENT, "");
-	    cprintf(cb, "</%s>", name);
+	    cprintf(cb, "</");
+	    if (xml_namespace(x))
+		cprintf(cb, "%s:", xml_namespace(x));
+	    cprintf(cb, "%s>", name);
 	}
 	if (prettyprint)
 	    cprintf(cb, "\n");

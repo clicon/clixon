@@ -1,5 +1,6 @@
 #!/bin/bash
 # Advanced union types and generated code
+# and enum w values
 
 # include err() and new() functions
 . ./lib.sh
@@ -47,6 +48,14 @@ module example{
      leaf ip {
          type af; 
      }
+   }
+   leaf status {
+      type enumeration {
+         enum up {
+            value 1;
+         }
+         enum down;
+      }
    }
 }
 EOF
@@ -100,6 +109,9 @@ expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/type.yang" "<rpc><discard-chan
 
 new "netconf commit"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/type.yang" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "cli enum value"
+expectfn "$clixon_cli -1f $clixon_cf -l o -y /tmp/type.yang set status down" "^$"
 
 new "Kill backend"
 # Check if still alive

@@ -412,7 +412,7 @@ xml2json1_cbuf(cbuf                  *cb,
  *   goto err;
  * cbuf_free(cb);
  * @endcode
- * See also xml2json
+ * @see clicon_xml2cbuf
  */
 int 
 xml2json_cbuf(cbuf  *cb, 
@@ -442,7 +442,7 @@ xml2json_cbuf(cbuf  *cb,
 
 /*! Translate a vector of xml objects to JSON CLigen buffer.
  * This is done by adding a top pseudo-object, and add the vector as subs,
- * and then not pritning the top pseudo-.object using the 'flat' option.
+ * and then not printing the top pseudo-object using the 'flat' option.
  * @param[out] cb     Cligen buffer to write to
  * @param[in]  vec    Vector of xml objecst
  * @param[in]  veclen Length of vector

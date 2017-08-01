@@ -196,27 +196,6 @@ catch:
     return -1;
 }
     
-/*! Struct to carry info into and out of ys_find_rpc callback
- */
-typedef struct {
-    char      *name; /* name of rpc */
-    yang_stmt *yrpc; /* matching yang statement */
-} find_rpc_arg;
-
-/*! Check yang rpc statement, return yang rpc statement if found 
- */
-static int 
-ys_find_rpc(yang_stmt *ys, 
-	    void      *arg)
-{
-    find_rpc_arg *fra = (find_rpc_arg*)arg;
-
-    if (strcmp(fra->name, ys->ys_argument) == 0){
-	fra->yrpc = ys;
-	return 1; /* handled */
-    }
-   return 0;
-}
 
 /*! See if there is any callback registered for this tag
  *
@@ -240,8 +219,7 @@ netconf_plugin_callbacks(clicon_handle h,
     yang_stmt     *yinput;
     yang_stmt     *youtput;
     cxobj         *xoutput;
-    find_rpc_arg   fra = {0,0};
-    int            ret;
+    cbuf          *cb;
 
     if (deps != NULL){
 	nreg = deps;
@@ -259,13 +237,17 @@ netconf_plugin_callbacks(clicon_handle h,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, 0, "cbuf_new");
+	goto done;
+    }
+    /* create absolute path */
+    cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn)); 
     /* Find yang rpc statement, return yang rpc statement if found */
-    fra.name = xml_name(xn);
-    if ((ret = yang_apply((yang_node*)yspec, Y_RPC, ys_find_rpc, &fra)) < 0)
+    if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), &yrpc) < 0)
 	goto done;
     /* Check if found */
-    if (ret == 1){
-	yrpc = fra.yrpc;
+    if (yrpc != NULL){
 	if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
 	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
 	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yinput) < 0)
@@ -287,7 +269,7 @@ netconf_plugin_callbacks(clicon_handle h,
 	if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL){
 	    xoutput=xpath_first(*xret, "/");
 	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
-	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yinput) < 0)
+	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, youtput) < 0)
 		goto done;
 	    if (xml_apply(xoutput, CX_ELMNT, 
 			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
@@ -300,6 +282,8 @@ netconf_plugin_callbacks(clicon_handle h,
     }
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
     

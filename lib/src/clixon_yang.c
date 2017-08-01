@@ -453,18 +453,68 @@ yang_find_datanode(yang_node *yn,
     return ysmatch;
 }
 
-/*! Find 'top-node', eg first data node in all (sub)modules in a yang spec
+/*! Find child schema node with matching argument (container, leaf, etc)
+ * @note XXX unify code with yang_find_datanode?
+ * @see yang_find_datanode
+ */
+yang_stmt *
+yang_find_schemanode(yang_node *yn, 
+		     char      *argument)
+{
+    yang_stmt *ys = NULL;
+    yang_stmt *yc = NULL;
+    yang_stmt *ysmatch = NULL;
+    int        i, j;
+
+    for (i=0; i<yn->yn_len; i++){
+	ys = yn->yn_stmt[i];
+	if (ys->ys_keyword == Y_CHOICE){ /* Look for its children */
+	    for (j=0; j<ys->ys_len; j++){
+		yc = ys->ys_stmt[j];
+		if (yc->ys_keyword == Y_CASE) /* Look for its children */
+		    ysmatch = yang_find_schemanode((yang_node*)yc, argument);
+		else
+		    if (yang_schemanode(yc)){
+			if (argument == NULL)
+			    ysmatch = yc;
+			else
+			    if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
+				ysmatch = yc;
+		    }
+		if (ysmatch)
+		    goto match;
+	    }
+	} /* Y_CHOICE */
+	else
+	    if (yang_schemanode(ys)){
+		if (argument == NULL)
+		    ysmatch = ys;
+		else
+		    if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
+			ysmatch = ys;
+		if (ysmatch)
+		    goto match;
+	    }
+    }
+ match:
+    return ysmatch;
+}
+
+
+/*! Find first matching data node in all (sub)modules in a yang spec
  *
  * @param[in]  ysp        Yang specification
- * @param[in]  name   if NULL, match any(first) argument. XXX is that really a case?
+ * @param[in]  name       if NULL, match any(first) argument. XXX is that really a case?
+ * @param[in]  schemanode If set look for schema nodes, otherwise only data nodes
  * A yang specification has modules as children which in turn can have 
  * syntax-nodes as children. This function goes through all the modules to
- * look for syntax-nodes. Note that if a child to a module is a choice, 
+ * look for nodes. Note that if a child to a module is a choice, 
  * the search is made recursively made to the choice's children.
  */
 yang_stmt *
 yang_find_topnode(yang_spec *ysp, 
-		  char      *name)
+		  char      *name,
+		  int        schemanode)
 {
     yang_stmt *ys = NULL;
     yang_stmt *yc = NULL;
@@ -472,46 +522,42 @@ yang_find_topnode(yang_spec *ysp,
 
     for (i=0; i<ysp->yp_len; i++){
 	ys = ysp->yp_stmt[i];
-	if ((yc = yang_find_datanode((yang_node*)ys, name)) != NULL)
-	    return yc;
+	if (schemanode){
+	    if ((yc = yang_find_schemanode((yang_node*)ys, name)) != NULL)
+		return yc;
+	}
+	else
+	    if ((yc = yang_find_datanode((yang_node*)ys, name)) != NULL)
+		return yc;
     }
     return NULL;
 }
 
-/*! Find a child spec-node yang_stmt with matching argument for schema-nodid
- *
- * See also yang_find() but this looks only for the yang specification nodes with
- * the following keyword: container, leaf, list, leaf-list
- * That is, basic syntax nodes.
- * @see yang_find_datanode
- * @see clicon_dbget_xpath
+/*! Given a yang statement, find the prefix associated to this module
+ * @param[in]  ys        Yang statement
+ * @retval     NULL      Not found
+ * @retval     prefix    Prefix as char* pointer into yang tree
  */
-static yang_stmt *
-schema_nodeid_stmt(yang_node *yn, 
-		   char      *argument)
+char *
+yang_find_myprefix(yang_stmt *ys)
 {
-    yang_stmt *ys = NULL;
-    int i;
-    int match = 0;
+    yang_stmt *ymod; /* My module */
+    yang_stmt *yprefix;
+    char      *prefix = NULL;
 
-    for (i=0; i<yn->yn_len; i++){
-	ys = yn->yn_stmt[i];
-        if (!yang_schemanode(ys))
-	    continue;
-	/* some keys dont have arguments, match on key */
-	if (ys->ys_keyword == Y_INPUT || ys->ys_keyword == Y_OUTPUT){
-	    if (strcmp(argument, yang_key2str(ys->ys_keyword)) == 0){
-		match++;
-		break;
-	    }
-	} else
-	    if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0){
-		match++;
-		break;
-	    }
+    if ((ymod = ys_module(ys)) == NULL){
+	clicon_err(OE_YANG, 0, "My yang module not found");
+	goto done;
     }
-    return match ? ys : NULL;
+    if ((yprefix = yang_find((yang_node*)ymod, Y_PREFIX, NULL)) == NULL){
+	clicon_err(OE_YANG, 0, "No prefix in my module");
+	goto done;
+    }
+    prefix = yprefix->ys_argument;
+ done:
+    return prefix;
 }
+
 
 /*! Reset flag in complete tree, arg contains flag */
 static int
@@ -540,8 +586,13 @@ ys_module(yang_stmt *ys)
 {
     yang_node *yn;
 
+#if 1
+    if (ys==NULL || ys->ys_keyword==Y_SPEC)
+	return NULL;
+#else
     if (ys==NULL || ys->ys_keyword==Y_SPEC)
 	return ys;
+#endif
     while (ys != NULL && ys->ys_keyword != Y_MODULE && ys->ys_keyword != Y_SUBMODULE){
 	yn = ys->ys_parent;
 	/* Some extra stuff to ensure ys is a stmt */
@@ -607,6 +658,7 @@ ytype_prefix(yang_stmt *ys)
 }
 
 
+
 /*! Given a yang statement and a prefix, return yang module to that prefix
  * Note, not the other module but the proxy import statement only
  * @param[in]  ys      A yang statement
@@ -623,22 +675,25 @@ yang_find_module_by_prefix(yang_stmt *ys,
     yang_stmt *my_ymod;
     yang_stmt *ymod = NULL;
     yang_spec *yspec;
+    char      *myprefix;
 
+    if ((yspec = ys_spec(ys)) == NULL){
+	clicon_err(OE_YANG, 0, "My yang spec not found");
+	goto done;
+    }
+    myprefix = yang_find_myprefix(ys);
     if ((my_ymod = ys_module(ys)) == NULL){
 	clicon_err(OE_YANG, 0, "My yang module not found");
 	goto done;
     }
-    if ((yspec = ys_spec(my_ymod)) == NULL){
-	clicon_err(OE_YANG, 0, "My yang spec not found");
-	goto done;
-    }
+#if 0
     if (my_ymod->ys_keyword != Y_MODULE && 
 	my_ymod->ys_keyword != Y_SUBMODULE){
 	clicon_err(OE_YANG, 0, "%s not module or sub-module", my_ymod->ys_argument);
 	goto done;
     }
-    if ((yprefix = yang_find((yang_node*)my_ymod, Y_PREFIX, NULL)) != NULL &&
-	strcmp(yprefix->ys_argument, prefix) == 0){
+#endif
+    if (strcmp(myprefix, prefix) == 0){
 	ymod = my_ymod;
 	goto done;
     }
@@ -1074,7 +1129,7 @@ ys_grouping_resolve(yang_stmt  *ys,
   The target node MUST be either a container, list, choice, case, input,
   output, or notification node.
   If the "augment" statement is on the top level the absolute form MUST be used.
-  XXX: Destructively changing a datamodel may affect outlying loop?
+  @note Destructively changing a datamodel may affect outlying loop?
  */
 static int
 yang_augment_node(yang_stmt *ys, 
@@ -1082,7 +1137,7 @@ yang_augment_node(yang_stmt *ys,
 {
     int        retval = -1;
     char      *schema_nodeid;
-    yang_node *yn;
+    yang_stmt *yss = NULL;
     yang_stmt *yc;
     int        i;
 
@@ -1090,21 +1145,21 @@ yang_augment_node(yang_stmt *ys,
     clicon_debug(1, "%s %s", __FUNCTION__, schema_nodeid);
 
     /* Find the target */
-    if ((yn = yang_abs_schema_nodeid((yang_node*)ys, schema_nodeid)) == NULL){
-	clicon_err(OE_YANG, 0, "Augment schema_nodeid %s not found",  schema_nodeid);
-	//	retval = 0; /* Ignore, continue */
+    if (yang_abs_schema_nodeid(ysp, schema_nodeid, &yss) < 0)
 	goto done;
-    }
-    /* Extend yn with ys' children
-     * First enlarge yn vector 
+    if (yss == NULL)
+	goto ok;
+    /* Extend yss with ys' children
+     * First enlarge yss vector 
      */
     for (i=0; i<ys->ys_len; i++){
 	if ((yc = ys_dup(ys->ys_stmt[i])) == NULL)
 	    goto done;
 	/* XXX: use prefix of origin */
-	if (yn_insert(yn, yc) < 0)
+	if (yn_insert((yang_node*)yss, yc) < 0)
 	    goto done;
     }
+ ok:
     retval = 0;
  done:
     return retval;
@@ -1126,10 +1181,14 @@ yang_augment_spec(yang_spec *ysp)
 	j = 0;
 	while (j<ym->ys_len){ /* Top-level symbols in modules */
 	    ys = ym->ys_stmt[j++];
-	    if (ys->ys_keyword != Y_AUGMENT)
-		continue;
-	    if (yang_augment_node(ys, ysp) < 0)
-		goto done;
+	    switch (ys->ys_keyword){
+	    case Y_AUGMENT: /* top-level */
+		if (yang_augment_node(ys, ysp) < 0)
+		    goto done;
+		break;
+	    default:
+		break;
+	    }
 	}
     }
     retval = 0;
@@ -1498,6 +1557,49 @@ yang_parse_recurse(clicon_handle h,
     return ymod; /* top-level (sub)module */
 }
 
+int 
+ys_schemanode_check(yang_stmt *ys, 
+		    void      *arg)
+{
+    int        retval = -1;
+    yang_spec *yspec;
+    yang_stmt *yres;
+    yang_node *yp;
+
+    yp = ys->ys_parent;
+    switch (ys->ys_keyword){
+    case Y_AUGMENT:
+	if (yp->yn_keyword == Y_MODULE) /* Not top-level */
+	    break;
+	/* fallthru */
+    case Y_REFINE:
+    case Y_UNIQUE:
+	if (yang_desc_schema_nodeid(yp, ys->ys_argument, &yres) < 0)
+	    goto done;
+	if (yres == NULL){
+	    clicon_err(OE_YANG, 0, "schemanode sanity check of %d %s", 
+		       ys->ys_keyword,
+		       ys->ys_argument);
+	    goto done;
+	}
+	break;
+    case Y_DEVIATION:
+	yspec = ys_spec(ys);
+	if (yang_abs_schema_nodeid(yspec, ys->ys_argument, &yres) < 0)
+	    goto done;
+	if (yres == NULL){
+	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s", ys->ys_argument);
+	    goto done;
+	}
+	break;
+    default:
+	break;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Parse top yang module including all its sub-modules. Expand and populate yang tree
  *
  * @param[in] h        CLICON handle
@@ -1552,10 +1654,12 @@ yang_parse(clicon_handle h,
 	goto done;
     yang_apply((yang_node*)ymod, -1, ys_flag_reset, (void*)YANG_FLAG_MARK);
 
-
-
     /* Step 4: Top-level augmentation of all modules */
     if (yang_augment_spec(ysp) < 0)
+	goto done;
+
+    /* sanity check of schemanode references, need more here */
+    if (yang_apply((yang_node*)ysp, -1, ys_schemanode_check, NULL) < 0)
 	goto done;
 
     retval = 0;
@@ -1621,21 +1725,26 @@ yang_apply(yang_node     *yn,
 
 /*! All the work for schema_nodeid functions both absolute and descendant
  *  Ignore prefixes, see _abs 
- * @param[in]  yn    Yang node
+ * @param[in]  yn    Yang node. Find next yang stmt and return that if match.
  * @param[in]  vec   Vector of nodeid's in a schema node identifier, eg a/b
  * @param[in]  nvec  Length of vec
- * @retval     NULL   Error, with clicon_err called
- * @retval     yres     First yang node matching schema nodeid
+ * @param[out] yres  Result yang statement node, or NULL if not found
+ * @retval    -1     Error, with clicon_err called
+ * @retval     0     OK
  */
-static yang_node *
-schema_nodeid_vec(yang_node *yn,
-		  char     **vec, 
-		  int        nvec)
+static int
+schema_nodeid_vec(yang_node  *yn,
+		  char      **vec, 
+		  int         nvec,
+		  yang_stmt **yres)
 {
+    int              retval = -1;
     char            *arg;
+    yang_node       *ynext;
+    char            *nodeid;
+    int              i;
     yang_stmt       *ys;
-    yang_node       *yres = NULL;
-    char            *id;
+    int              match;
 
     if (nvec <= 0)
 	goto done;
@@ -1644,88 +1753,129 @@ schema_nodeid_vec(yang_node *yn,
 	    __FUNCTION__, yang_key2str(yn->yn_keyword), yn->yn_argument, 
 	    arg, yn->yn_len);
     if (strcmp(arg, "..") == 0)
-	ys = (yang_stmt*)yn->yn_parent;
+	ynext = yn->yn_parent; /* This could actually be a MODULE */
     else{
 	/* ignore prefixes */
-	if ((id = strchr(arg, ':')) == NULL)
-	    id = arg;
+	if ((nodeid = strchr(arg, ':')) == NULL)
+	    nodeid = arg;
 	else
-	    id++;
-	if ((ys = schema_nodeid_stmt(yn, id)) == NULL){
-	    clicon_debug(1, "%s %s not found", __FUNCTION__, id);
-	    goto done;
+	    nodeid++;
+	match = 0;
+	ys = NULL;
+	for (i=0; i<yn->yn_len; i++){
+	    ys = yn->yn_stmt[i];
+	    if (!yang_schemanode(ys))
+		continue;
+	    /* some keys dont have arguments, match on key */
+	    if (ys->ys_keyword == Y_INPUT || ys->ys_keyword == Y_OUTPUT){
+		if (strcmp(nodeid, yang_key2str(ys->ys_keyword)) == 0){
+		    match++;
+		    break;
+		}
+	    } else
+		if (ys->ys_argument && strcmp(nodeid, ys->ys_argument) == 0){
+		    match++;
+		    break;
+		}
 	}
+	if (!match){
+	    clicon_debug(1, "%s not found", nodeid);
+	    goto ok;
+	}
+	ynext = (yang_node*)ys;
     }
-    if (nvec == 1){
-	yres = (yang_node*)ys;
+    if (nvec == 1){ /* match */
+	if (yang_schemanode((yang_stmt*)ynext))
+	    *yres = (yang_stmt*)ynext;
+	else
+	    clicon_debug(1, "%s not schema node", nodeid);
+	goto ok;
+    }
+    /* recursive call using ynext */
+    if (schema_nodeid_vec(ynext, vec+1, nvec-1, yres) < 0)
 	goto done;
-    }
-    yres = schema_nodeid_vec((yang_node*)ys, vec+1, nvec-1);
+ ok:
+    retval = 0;
  done:
-    return yres;
+    return retval;
 }
 
 /*! Given an absolute schema-nodeid (eg /a/b/c) find matching yang spec  
- * @param[in]  yn            Yang node
+ * @param[in]  yspec         Yang specification.
  * @param[in]  schema_nodeid Absolute schema-node-id, ie /a/b
  * @retval     NULL          Error, with clicon_err called
  * @retval     yres          First yang node matching schema nodeid
- * @see yang_schema_nodeid
+ * Assume schema nodeid:s have prefixes, (actually the first).
+ * @see yang_desc_schema_nodeid
+ * Used in yang: deviation, top-level augment
  */
-yang_node *
-yang_abs_schema_nodeid(yang_node *yn, 
-		       char      *schema_nodeid)
+int
+yang_abs_schema_nodeid(yang_spec  *yspec,
+		       char       *schema_nodeid,
+		       yang_stmt **yres)
 {
+    int              retval = -1;
     char           **vec = NULL;
     int              nvec;
-    yang_node       *yres = NULL;
     yang_stmt       *ymod;
     char            *id;
     char            *prefix = NULL;
 
+    yang_stmt       *yprefix;
+
+    /* check absolute schema_nodeid */
+    if (schema_nodeid[0] != '/'){
+	clicon_err(OE_YANG, EINVAL, "absolute schema nodeid should start with /");
+	goto done;
+    }
     if ((vec = clicon_strsep(schema_nodeid, "/", &nvec)) == NULL){
 	clicon_err(OE_YANG, errno, "%s: strsep", __FUNCTION__); 
 	goto done;
     }
-    /* Assume schame nodeid looks like: "/prefix:id[/prefix:id]*" */
+    /* Assume schema nodeid looks like: "/prefix:id[/prefix:id]*" */
     if (nvec < 2){
 	clicon_err(OE_YANG, 0, "%s: NULL or truncated path: %s", 
 		   __FUNCTION__, schema_nodeid);
 	goto done;
     }
-
-    /* Check for absolute path */
-    if (strcmp(vec[0], "") != 0){
-	clicon_err(OE_YANG, errno, "%s: %s: expected absolute path",
-		   __FUNCTION__, vec[0]); 
-	goto done;
-    }
-    /* Find correct module */
-    if ((ymod = ys_module((yang_stmt*)yn)) == NULL){
-	clicon_err(OE_YANG, 0, "Could not find top-level");
-	goto done;
-    }
     /* split <prefix>:<id> */
-    if ((id = strchr(vec[1], ':')) == NULL){
-	id = vec[1];
+    if ((id = strchr(vec[1], ':')) == NULL){ /* no prefix */
+	clicon_err(OE_YANG, 0, "Absolute schema nodeid must have prefix");
+	goto done;
     }
-    else{ /* other module - peek into first element to find module */
-	if ((prefix = strdup(vec[1])) == NULL){
-	    clicon_err(OE_UNIX, errno, "%s: strdup", __FUNCTION__); 
+    if ((prefix = strdup(vec[1])) == NULL){
+	clicon_err(OE_UNIX, errno, "%s: strdup", __FUNCTION__); 
+	goto done;
+    }
+    prefix[id-vec[1]] = '\0';
+    id++;
+    ymod = NULL;
+    while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
+	if ((yprefix = yang_find((yang_node*)ymod, Y_PREFIX, NULL)) != NULL &&
+	    strcmp(yprefix->ys_argument, prefix) == 0){
+	    break;
+	}
+    }
+    if (ymod == NULL){ /* Try with topnode */
+	yang_stmt       *ys;
+	if ((ys = yang_find_topnode(yspec, id, 1)) == NULL){
+	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found", prefix,id);
 	    goto done;
 	}
-	prefix[id-vec[1]] = '\0';
-	id++;
-	if ((ymod = yang_find_module_by_prefix((yang_stmt*)yn, prefix)) == NULL)
+	if ((ymod = ys_module(ys)) == NULL){
+	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found2", prefix,id);
 	    goto done;
+	}
     }
-    yres = schema_nodeid_vec((yang_node*)ymod, vec+1, nvec-1);
+    if (schema_nodeid_vec((yang_node*)ymod, vec+1, nvec-1, yres) < 0)
+	goto done;
+    retval = 0;
  done:
     if (vec)
 	free(vec);
     if (prefix)
 	free(prefix);
-    return yres;
+    return retval;
 }
 
 /*! Given a descendant schema-nodeid (eg a/b/c) find matching yang spec  
@@ -1734,12 +1884,14 @@ yang_abs_schema_nodeid(yang_node *yn,
  * @retval     NULL          Error, with clicon_err called
  * @retval     yres          First yang node matching schema nodeid
  * @see yang_schema_nodeid
+ * Used in yang: unique, refine, uses augment
  */
-yang_node *
-yang_desc_schema_nodeid(yang_node *yn, 
-			char      *schema_nodeid)
+int
+yang_desc_schema_nodeid(yang_node  *yn, 
+			char       *schema_nodeid,
+			yang_stmt **yres)
 {
-    yang_node       *yres = NULL;
+    int              retval = -1;
     char           **vec = NULL;
     int              nvec;
 
@@ -1747,47 +1899,18 @@ yang_desc_schema_nodeid(yang_node *yn,
 	goto done;
     /* check absolute schema_nodeid */
     if (schema_nodeid[0] == '/'){
-	clicon_err(OE_YANG, EINVAL, "descenadant schema nodeid should not start with /");
+	clicon_err(OE_YANG, EINVAL, "descendant schema nodeid should not start with /");
 	goto done;
     }
     if ((vec = clicon_strsep(schema_nodeid, "/", &nvec)) == NULL)
 	goto done;
-    yres = schema_nodeid_vec((yang_node*)yn, vec, nvec);
+    if (schema_nodeid_vec(yn, vec, nvec, yres) < 0)
+	goto done;
+    retval = 0;
  done:
     if (vec)
 	free(vec);
-    return yres;
-}
-
-/*! Given a schema-node-id (eg /a/b/c or a/b/c) find matching yang specification
- *
- * They are either absolute (start with /) or descendant (no /)
- * Compare with XPATH for XML, this is for YANG spec
- * @param[in]  yn     Yang node tree
- * @param[in]  schema_nodeid schema-node-id, ie a/b or /a/b
- * @retval     NULL   Error, with clicon_err called
- * @retval     yres   First yang node matching schema nodeid
- * @note: the identifiers in the xpath (eg a, b in a/b) can match the nodes 
- *        defined in yang_xpath: container, leaf,list,leaf-list, modules, sub-modules
- * Example:
- * yn : module m { prefix b; container b { list c { key d; leaf d; }} }
- * schema-node-id = m/b/c, returns the list 'c'.
- */
-yang_node *
-yang_schema_nodeid(yang_node *yn, 
-		   char      *schema_nodeid)
-{
-    yang_node       *yres = NULL;
-
-    if (strlen(schema_nodeid) == 0)
-	goto done;
-    /* check absolute schema_nodeid */
-    if (schema_nodeid[0] == '/')
-	yres = yang_abs_schema_nodeid(yn, schema_nodeid);
-    else 
-	yres = yang_desc_schema_nodeid(yn, schema_nodeid);
- done:
-    return yres;
+    return retval;
 }
 
 /*! Parse argument as CV and save result in yang cv variable

@@ -30,57 +30,67 @@ new "restconf options"
 expectfn "curl -i -sS -X OPTIONS http://localhost/restconf/data" "Allow: OPTIONS,HEAD,GET,POST,PUT,DELETE"
 
 new "restconf head"
-expectfn "curl -sS -I http://localhost/restconf/data" "Content-Type: application/yang.data\+json"
+expectfn "curl -sS -I http://localhost/restconf/data" "HTTP/1.1 200 OK"
+#Content-Type: application/yang-data+json"
 
 new "restconf get empty config"
-expectfn "curl -sSG http://localhost/restconf/data" "^null$"
+expectfn "curl -sSG http://localhost/restconf/data" "null"
 
-# 
-new "Add subtree  to datastore using POST"
+new "restconf Add subtree  to datastore using POST"
 expectfn 'curl -sS -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}}} http://localhost/restconf/data' ""
 
-new "Check interfaces eth/0/0 added"
+new "restconf Check interfaces eth/0/0 added"
 expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}}}
 $'
 
-new "delete interfaces"
+new "restconf delete interfaces"
 expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces' ""
 
-new "Check empty config"
-expectfn "curl -sSG http://localhost/restconf/data" "^null$"
+new "restconf Check empty config"
+expectfn "curl -sSG http://localhost/restconf/data" "null"
 
-new "Add interfaces subtree eth/0/0 using POST"
+new "restconf Add interfaces subtree eth/0/0 using POST"
 expectfn 'curl -sS -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' ""
 
-new "Check eth/0/0 added"
+new "restconf Check eth/0/0 added"
 expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}}}
 $'
 
-new "Re-post eth/0/0 which should generate error"
+new "restconf Re-post eth/0/0 which should generate error"
 expectfn 'curl -sS -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' "Data resource already exists"
 
 new "Add leaf description using POST"
 expectfn 'curl -sS -X POST -d {"description":"The-first-interface"} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
-new "Check description added"
+new "restconf Check description added"
 expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","description": "The-first-interface","type": "eth","enabled": "true"}}
 $'
 
-new "delete eth/0/0"
+new "restconf delete eth/0/0"
 expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
-#new "Check deleted eth/0/0"
-#expectfn 'curl -sS -G http://localhost/restconf/data' '{"interfaces": null}
-#$'
+new "Check deleted eth/0/0"
+expectfn 'curl -sS -G http://localhost/restconf/data' "null"
 
-new "Re-Delete eth/0/0 using none should generate error"
+new "restconf Re-Delete eth/0/0 using none should generate error"
 expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "Not Found"
 
-new "Add subtree eth/0/0 using PUT"
+new "restconf Add subtree eth/0/0 using PUT"
 expectfn 'curl -sS -X PUT -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
+new "restconf get subtree"
 expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}}}
 $'
+
+new "restconf rpc using POST json"
+expectfn 'curl -sS -X POST -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '{ "output": { "route": { "address-family": "ipv4", "next-hop": { "next-hop-list": "2.3.4.5" } } } } '
+
+new "restconf rpc using POST xml"
+ret=$(curl -sS -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/rt:fib-route)
+expect="<output> <route> <address-family>ipv4</address-family> <next-hop> <next-hop-list>2.3.4.5</next-hop-li t> </next-hop> </route> </output> "
+match=`echo $ret | grep -EZo "$expect"`
+echo -n "ret:   "
+echo $ret
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

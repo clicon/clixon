@@ -644,7 +644,7 @@ xml_diff1(yang_stmt *ys,
     while ((x1 = xml_child_each(xt1, x1, CX_ELMNT)) != NULL){
 	name = xml_name(x1);
 	if (ys->ys_keyword == Y_SPEC)
-	    y = yang_find_topnode((yang_spec*)ys, name);
+	    y = yang_find_topnode((yang_spec*)ys, name, 0);
 	else
 	    y = yang_find_datanode((yang_node*)ys, name);
 	if (y == NULL){
@@ -754,7 +754,7 @@ xml_diff1(yang_stmt *ys,
     while ((x2 = xml_child_each(xt2, x2, CX_ELMNT)) != NULL){
 	name = xml_name(x2);
 	if (ys->ys_keyword == Y_SPEC)
-	    y = yang_find_topnode((yang_spec*)ys, name);
+	    y = yang_find_topnode((yang_spec*)ys, name, 0);
 	else
 	    y = yang_find_datanode((yang_node*)ys, name);
 	if (y == NULL){
@@ -1482,7 +1482,7 @@ xml_spec_populate(cxobj  *x,
 	(yp = xml_spec(xp)) != NULL)
 	y = yang_find_datanode((yang_node*)yp, xml_name(x));
     else
-	y = yang_find_topnode(yspec, name); /* still NULL for config */
+	y = yang_find_topnode(yspec, name, 0); /* still NULL for config */
 #ifdef XXX_OBSOLETE /* Add validate elsewhere */
     if (y==NULL){
 	clicon_err(OE_XML, EBADF, "yang spec not found for xml node '%s' xml parent name: '%s' yangspec:'%s']", 
@@ -1544,7 +1544,7 @@ api_path2xpath_cvv(yang_spec *yspec,
 	clicon_debug(1, "[%d] cvname:%s", i, name);
 	clicon_debug(1, "cv2str%d", cv2str(cv, NULL, 0));
 	if (i == offset){
-	    if ((y = yang_find_topnode(yspec, name)) == NULL){
+	    if ((y = yang_find_topnode(yspec, name, 0)) == NULL){
 		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 		goto done;
 	    }
@@ -1635,17 +1635,19 @@ api_path2xpath(yang_spec *yspec,
  * @param[in]   nvec      Length of vec
  * @param[in]   x0        Xpath tree so far
  * @param[in]   y0        Yang spec for x0
+ * @param[in]   schemanode If set use schema nodes otherwise data nodes.
  * @param[out]  xpathp    Resulting xml tree 
  * @param[out]  ypathp    Yang spec matching xpathp
  * @see api_path2xml
  */
 static int
-api_path2xml_vec(char              **vec,
-		int                 nvec,
-		cxobj              *x0,
-		yang_node          *y0,
-		cxobj             **xpathp,
-		yang_node         **ypathp)
+api_path2xml_vec(char             **vec,
+		 int                nvec,
+		 cxobj             *x0,
+		 yang_node         *y0,
+		 int                schemanode,
+		 cxobj            **xpathp,
+		 yang_node        **ypathp)
 {
     int        retval = -1;
     int        j;
@@ -1663,6 +1665,7 @@ api_path2xml_vec(char              **vec,
     int        nvalvec;
     cxobj     *x = NULL;
     yang_stmt *y = NULL;
+    char      *local;
 
     if ((name = vec[0]) == NULL){
 	if (xpathp)
@@ -1678,10 +1681,21 @@ api_path2xml_vec(char              **vec,
 	if (percent_decode(restval_enc, &restval) < 0)
 	    goto done;
     }
-    if (y0->yn_keyword == Y_SPEC) /* top-node */
-	y = yang_find_topnode((yang_spec*)y0, name);
-    else 
-	y = yang_find_datanode((yang_node*)y0, name);
+    /* Split into prefix and localname, ignore prefix for now */
+    if ((local = index(name, ':')) != NULL){
+	*local = '\0';
+	local++;
+	name = local;
+    }
+    if (y0->yn_keyword == Y_SPEC){ /* top-node */
+	clicon_debug(1, "%s 1 %s", __FUNCTION__, name);
+	y = yang_find_topnode((yang_spec*)y0, name, schemanode);
+    }
+    else {
+	clicon_debug(1, "%s 2 %s", __FUNCTION__, name);
+	y = schemanode?yang_find_schemanode((yang_node*)y0, name):
+	    yang_find_datanode((yang_node*)y0, name);
+    }
     if (y == NULL){
 	clicon_err(OE_YANG, errno, "No yang node found: %s", name);
 	goto done;
@@ -1756,6 +1770,7 @@ api_path2xml_vec(char              **vec,
     }
     if (api_path2xml_vec(vec+1, nvec-1, 
 			 x, (yang_node*)y, 
+			 schemanode,
 			 xpathp, ypathp) < 0)
 	goto done;
     retval = 0;
@@ -1769,14 +1784,17 @@ api_path2xml_vec(char              **vec,
 
 /*! Create xml tree from api-path
  * @param[in]   api_path  API-path as defined in RFC 8040
+ * @param[in]   yspec     Yang spec
+ * @param[in]   schemanode If set use schema nodes otherwise data nodes.
  * @param[out]  xpathp    Resulting xml tree 
  * @param[out]  ypathp    Yang spec matching xpathp
  * @see api_path2xml_vec
  */
 int
-api_path2xml(char      *api_path,
+api_path2xml(char       *api_path,
 	     yang_spec  *yspec,
 	     cxobj      *xpath,
+	     int         schemanode,
 	     cxobj     **xpathp,
 	     yang_node **ypathp)
 {
@@ -1800,7 +1818,7 @@ api_path2xml(char      *api_path,
 	}
     nvec--; /* NULL-terminated */
     if (api_path2xml_vec(vec+1, nvec, 
-			 xpath, (yang_node*)yspec,
+			 xpath, (yang_node*)yspec, schemanode,
 			 xpathp, ypathp) < 0)
 	goto done;
     retval = 0;
@@ -1984,7 +2002,7 @@ xml_merge(cxobj     *x0,
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 	x1cname = xml_name(x1c);
 	/* Get yang spec of the child */
-	if ((yc = yang_find_topnode(yspec, x1cname)) == NULL){
+	if ((yc = yang_find_topnode(yspec, x1cname, 0)) == NULL){
 	    clicon_err(OE_YANG, ENOENT, "No yang spec");
 	    goto done;
 	}
@@ -1996,6 +2014,58 @@ xml_merge(cxobj     *x0,
     }
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Get integer value from xml node from yang enumeration 
+ * @param[in]  node XML node in a tree
+ * @param[out] val  Integer value returned
+ * @retval     0    OK, value parsed
+ * @retval    -1    Error, value not obtained or parsed, no reason given
+ * @note assume yang spec set
+ * @note The function only returns assigned values, but according to RFC:
+   If a value is not specified, then one will be automatically assigned.
+   If the "enum" substatement is the first one defined, the assigned
+   value is zero (0); otherwise, the assigned value is one greater than
+   the current highest enum value (i.e., the highest enum value,
+   * Thanks: Matthew Smith
+ */
+int
+yang_enum_int_value(cxobj   *node, 
+		    int32_t *val)
+{
+    int retval = -1;
+    yang_spec *yspec;
+    yang_stmt *ys;
+    yang_stmt *ytype;
+    yang_stmt *yrestype;  /* resolved type */
+    yang_stmt *yenum; 
+    yang_stmt *yval; 
+    char      *reason = NULL;
+
+    if (node == NULL)
+	goto done;
+    if ((ys = (yang_stmt *) xml_spec(node)) == NULL)
+	goto done;
+    if ((yspec = ys_spec(ys)) == NULL)
+	goto done;
+    if ((ytype = yang_find((yang_node *)ys, Y_TYPE, NULL)) == NULL)
+	goto done;
+    if (yang_type_resolve(ys, ytype, &yrestype, 
+			  NULL, NULL, NULL, NULL, NULL) < 0)
+	goto done;
+    if (yrestype==NULL || strcmp(yrestype->ys_argument, "enumeration"))
+	goto done;
+    if ((yenum = yang_find((yang_node *)yrestype, Y_ENUM, xml_body(node))) == NULL)
+	goto done;
+    /* Should assign value if yval not found */
+    if ((yval = yang_find((yang_node *)yenum, Y_VALUE, NULL)) == NULL)
+	goto done;
+    /* reason is string containing why int could not be parsed */
+    if (parse_int32(yval->ys_argument, val, &reason) < 0)
+	goto done;
+    retval = 0;
+done:
     return retval;
 }
 
