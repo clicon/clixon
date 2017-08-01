@@ -269,7 +269,7 @@ netconf_plugin_callbacks(clicon_handle h,
 	if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL){
 	    xoutput=xpath_first(*xret, "/");
 	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
-	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yinput) < 0)
+	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, youtput) < 0)
 		goto done;
 	    if (xml_apply(xoutput, CX_ELMNT, 
 			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)

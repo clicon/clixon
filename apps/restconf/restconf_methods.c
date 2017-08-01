@@ -161,8 +161,13 @@ api_data_get_gen(clicon_handle h,
     cbuf      *cbj = NULL;;
     int        code;
     const char *reason_phrase;
+    char      *media_accept;
+    int        use_xml = 0; /* By default use JSON */
 
     clicon_debug(1, "%s", __FUNCTION__);
+    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
+    if (strcmp(media_accept, "application/yang-data+xml")==0)
+	use_xml++;
     yspec = clicon_dbspec_yang(h);
     if ((path = cbuf_new()) == NULL)
         goto done;
@@ -213,15 +218,22 @@ api_data_get_gen(clicon_handle h,
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Content-Type: application/yang.data+json\r\n");
+    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
     FCGX_FPrintF(r->out, "\r\n");
     if (head)
 	goto ok;
     clicon_debug(1, "%s name:%s child:%d", __FUNCTION__, xml_name(xret), xml_child_nr(xret));
-    vec = xml_childvec_get(xret);
+
     clicon_debug(1, "%s xretnr:%d", __FUNCTION__, xml_child_nr(xret));
-    if (xml2json_cbuf_vec(cbx, vec, xml_child_nr(xret), 0) < 0)
-	goto done;
+    if (use_xml){
+	if (clicon_xml2cbuf(cbx, xret, 0, 1) < 0) /* Dont print top object?  */
+	    goto done;
+    }
+    else{
+	vec = xml_childvec_get(xret);
+	if (xml2json_cbuf_vec(cbx, vec, xml_child_nr(xret), 0) < 0)
+	    goto done;
+    }
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
     FCGX_FPrintF(r->out, "\r\n\r\n");
@@ -276,8 +288,8 @@ api_data_head(clicon_handle h,
  * Request may contain                                        
  *     Accept: application/yang.data+json,application/yang.data+xml   
  * Response contains one of:                           
- *     Content-Type: application/yang.data+xml    
- *     Content-Type: application/yang.data+json  
+ *     Content-Type: application/yang-data+xml    
+ *     Content-Type: application/yang-data+json  
  * NOTE: If a retrieval request for a data resource representing a YANG leaf-
  * list or list object identifies more than one instance, and XML
  * encoding is used in the response, then an error response containing a
@@ -340,10 +352,15 @@ api_data_post(clicon_handle h,
     yang_node *y = NULL;
     yang_spec *yspec;
     cxobj     *xa;
+    char      *media_content_type;
+    int        parse_xml = 0; /* By default expect and parse JSON */
 
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
 		 __FUNCTION__, 
 		 api_path, data);
+    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
+    if (strcmp(media_content_type, "application/yang-data+xml")==0)
+	parse_xml++;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
@@ -356,8 +373,14 @@ api_data_post(clicon_handle h,
     xbot = xtop;
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
-    /* Parse input data as json into xml */
-    if (json_parse_str(data, &xdata) < 0){
+    /* Parse input data as json or xml into xml */
+    if (parse_xml){
+	if (clicon_xml_parse_str(data, &xdata) < 0){
+	    clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
+	    goto done;
+	}
+    }
+    else if (json_parse_str(data, &xdata) < 0){
 	clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
 	goto done;
     }
@@ -448,10 +471,15 @@ api_data_put(clicon_handle h,
     yang_node *y = NULL;
     yang_spec *yspec;
     cxobj     *xa;
+    char      *media_content_type;
+    int        parse_xml = 0; /* By default expect and parse JSON */
 
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
 		 __FUNCTION__, 
 		 api_path, data);
+    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
+    if (strcmp(media_content_type, "application/yang-data+xml")==0)
+	parse_xml++;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
@@ -464,8 +492,14 @@ api_data_put(clicon_handle h,
     xbot = xtop;
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
-    /* Parse input data as json into xml */
-    if (json_parse_str(data, &xdata) < 0){
+    /* Parse input data as json or xml into xml */
+    if (parse_xml){
+	if (clicon_xml_parse_str(data, &xdata) < 0){
+	    clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
+	    goto done;
+	}
+    }
+    else if (json_parse_str(data, &xdata) < 0){
 	clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
 	goto done;
     }
@@ -642,6 +676,7 @@ api_operation_post(clicon_handle h,
     yang_stmt *yrpc = NULL;
     yang_spec *yspec;
     yang_stmt *yinput;
+    yang_stmt *youtput;
     cxobj     *xdata = NULL;
     cxobj     *xret = NULL;
     cbuf      *cbx = NULL;
@@ -649,10 +684,23 @@ api_operation_post(clicon_handle h,
     cxobj     *xbot = NULL;
     yang_node *y = NULL;
     cxobj     *xinput;
+    cxobj     *xoutput;
     cxobj     *x;
-    cxobj    **vec = NULL;
+    char      *media_content_type;
+    int        parse_xml = 0; /* By default expect and parse JSON */
+    char      *media_accept;
+    int        use_xml = 0; /* By default return JSON */
 
     clicon_debug(1, "%s json:\"%s\"", __FUNCTION__, data);
+    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
+    if (strcmp(media_accept, "application/yang-data+xml")==0)
+	use_xml++;
+
+    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
+    if (strcmp(media_content_type, "application/yang-data+xml")==0)
+	parse_xml++;
+    clicon_debug(1, "%s accept:\"%s\" content-type:\"%s\"", 
+		 __FUNCTION__, media_accept, media_content_type);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
@@ -677,8 +725,14 @@ api_operation_post(clicon_handle h,
     if (api_path2xml(oppath, yspec, xtop, 1, &xbot, &y) < 0)
 	goto done;
     if (data){
-	/* Parse input data as json into xml */
-	if (json_parse_str(data, &xdata) < 0){
+	/* Parse input data as json or xml into xml */
+	if (parse_xml){
+	    if (clicon_xml_parse_str(data, &xdata) < 0){
+		clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
+		goto done;
+	    }
+	}
+	else if (json_parse_str(data, &xdata) < 0){
 	    clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
 	    goto done;
 	}
@@ -705,22 +759,44 @@ api_operation_post(clicon_handle h,
 	goto done;
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
+    xoutput=xpath_first(xret, "/");
+    if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL &&
+	xoutput){
+	xml_name_set(xoutput, "output");
+	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
+	cbuf_reset(cbx);
+	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
+	if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, youtput) < 0)
+	    goto done;
+	if (xml_apply(xoutput, CX_ELMNT, 
+		      (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+	    goto done;
+	if (xml_yang_validate_add(xoutput, NULL) < 0)
+	    goto done;
+    }
     /* Sanity check of outgoing XML */
     FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Content-Type: application/yang.data+json\r\n");
+    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
     FCGX_FPrintF(r->out, "\r\n");
-    vec = xml_childvec_get(xret);
-    if (xml2json_cbuf_vec(cbx, vec, xml_child_nr(xret), 0) < 0)
-	goto done;
-    clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
-    FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
-    FCGX_FPrintF(r->out, "\r\n\r\n");
-
+    if (xoutput){
+	if (use_xml){
+	    if (clicon_xml2cbuf(cbx, xoutput, 0, 1) < 0)
+		goto done;
+	}
+	else
+	    if (xml2json_cbuf(cbx, xoutput, 1) < 0)
+		goto done;
+	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
+	FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
+	FCGX_FPrintF(r->out, "\r\n\r\n");
+    }
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xdata)
 	xml_free(xdata);
+    if (xtop)
+	xml_free(xtop);
     if (xret)
 	xml_free(xret);
      if (cbx)

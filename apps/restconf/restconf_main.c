@@ -151,7 +151,6 @@ api_operations(clicon_handle h,
     return retval;
 }
 
-
 /*! Process a FastCGI request
  * @param[in]  r        Fastcgi request handle
  */
@@ -189,12 +188,10 @@ request_process(clicon_handle h,
     clicon_debug(1, "DATA=%s", data);
     if (str2cvec(data, '&', '=', &dvec) < 0)
       goto done;
-
     if ((method = pvec[2]) == NULL){
 	retval = notfound(r);
 	goto done;
     }
-
     retval = 0;
     test(r, 1);
     /* If present, check credentials */
@@ -392,7 +389,7 @@ main(int    argc,
 	if ((path = FCGX_GetParam("REQUEST_URI", r->envp)) != NULL){
 	    if (strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)) == 0 ||
 		strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)-1) == 0)
-		request_process(h, r);
+		request_process(h, r); /* This is the function */
 	    else{
 		clicon_debug(1, "top-level not found");
 		notfound(r);

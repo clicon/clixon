@@ -40,7 +40,7 @@ expectfn(){
       return
   fi
   # grep extended grep 
-  match=`echo "$ret" | grep -EZo "$expect"`
+  match=`echo $ret | grep -EZo "$expect"`
 #  echo "ret:\"$ret\""
 #  echo "expect:\"$expect\""
 #  echo "match:\"$match\""
