@@ -1725,18 +1725,22 @@ api_path2xml_vec(char             **vec,
 	/* The value is a list of keys: <key>[ <key>]*  */
 	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
 	    goto done;
-	if (restval==NULL){
-	    clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
-	    goto done;
-	}
-	if (valvec)
+	if (valvec){
 	    free(valvec);
-	if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
-	    goto done;
-
-	if (cvec_len(cvk) != nvalvec){ 	    
-	    clicon_err(OE_XML, errno, "List %s  key length mismatch", name);
-	    goto done;
+	    valvec = NULL;
+	}
+	if (restval==NULL){
+	    // XXX patch to allow for lists without restval tobe backward compat
+	    //	    clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
+	    //	    goto done;
+	}
+	else{
+	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
+		goto done;
+	    if (cvec_len(cvk) != nvalvec){ 	    
+		clicon_err(OE_XML, errno, "List %s  key length mismatch", name);
+		goto done;
+	    }
 	}
 	cvi = NULL;
 	/* create list object */
@@ -1747,13 +1751,14 @@ api_path2xml_vec(char             **vec,
 	/* Create keys */
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	    keyname = cv_string_get(cvi);
-	    val2 = valvec[j++];
+
 	    if ((xn = xml_new(keyname, x)) == NULL)
 		goto done; 
 	    xml_type_set(xn, CX_ELMNT);
 	    if ((xb = xml_new("body", xn)) == NULL)
 		goto done; 
 	    xml_type_set(xb, CX_BODY);
+	    val2 = valvec?valvec[j++]:NULL;
 	    if (xml_value_set(xb, val2) <0)
 		goto done;
 	}

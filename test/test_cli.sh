@@ -46,6 +46,8 @@ expectfn "$clixon_cli -1f $clixon_cf set interfaces interface eth/0/0" "^$"
 new "cli show configuration"
 expectfn "$clixon_cli -1f $clixon_cf show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
 
+
+
 new "cli failed validate"
 expectfn "$clixon_cli -1f $clixon_cf -l o validate" "Missing mandatory variable"
 
@@ -63,6 +65,9 @@ expectfn "$clixon_cli -1f $clixon_cf -l o delete interfaces interface eth/0/0 de
 new "cli show xpath no description"
 expectfn "$clixon_cli -1f $clixon_cf -l o show xpath /interfaces/interface/description" "^$"
 
+new "cli copy interface"
+expectfn "$clixon_cli -1f $clixon_cf copy interface eth/0/0 to eth99" "^$"
+
 new "cli success validate"
 expectfn "$clixon_cli -1f $clixon_cf -l o validate" "^$"
 
@@ -71,6 +76,8 @@ expectfn "$clixon_cli -1f $clixon_cf -l o commit" "^$"
 
 new "cli save"
 expectfn "$clixon_cli -1f $clixon_cf -l o save /tmp/foo" "^$"
+
+
 
 new "cli delete all"
 expectfn "$clixon_cli -1f $clixon_cf -l o delete all" "^$"

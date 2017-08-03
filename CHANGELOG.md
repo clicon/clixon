@@ -4,7 +4,7 @@
 
 ### Known issues
 * Please use text datastore, key-value datastore no up-to-date
-* Restconf RPC does not encode output correct
+* leafref occuring within lists: cli expansion does not work
 
 ### Major changes:
 * Added support for YANG anyxml. 
