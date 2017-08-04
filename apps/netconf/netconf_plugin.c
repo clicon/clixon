@@ -219,7 +219,7 @@ netconf_plugin_callbacks(clicon_handle h,
     yang_stmt     *yinput;
     yang_stmt     *youtput;
     cxobj         *xoutput;
-    cbuf          *cb;
+    cbuf          *cb = NULL;
 
     if (deps != NULL){
 	nreg = deps;

@@ -165,6 +165,9 @@ expand_dbvar(void   *h,
     if ((xtop = xml_new("config", NULL)) == NULL)
 	goto done;
     xbot = xtop;
+    /* This is primarily to get "y", XXX xbot can be broken (contains =%s) 
+     * xpath2xml would have worked!!
+     */
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
     /* Special case for leafref. Detect leafref via Yang-type, 
@@ -182,7 +185,7 @@ expand_dbvar(void   *h,
 		goto done;
 	    }
 	    xpathcur = ypath->ys_argument;
-	    if (xml_merge(xt, xtop, yspec) < 0)
+	    if (xml_merge(xt, xtop, yspec) < 0) /* Merge xtop into xt */
 		goto done;
 	    if ((xcur = xpath_first(xt, xpath)) == NULL){
 		clicon_err(OE_DB, 0, "xpath %s should return merged content", xpath);

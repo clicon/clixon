@@ -1195,6 +1195,7 @@ cli_copy_config(clicon_handle h,
 	goto done;
     if (xml_copy(x1, x2) < 0)
 	goto done;
+    xml_name_set(x2, "config");
     cprintf(cb, "/%s", keyname);	
     if ((x = xpath_first(x2, cbuf_get(cb))) == NULL){
 	clicon_err(OE_PLUGIN, 0, "Field %s not found in copy tree", keyname);

@@ -1741,7 +1741,7 @@ schema_nodeid_vec(yang_node  *yn,
     int              retval = -1;
     char            *arg;
     yang_node       *ynext;
-    char            *nodeid;
+    char            *nodeid = NULL;
     int              i;
     yang_stmt       *ys;
     int              match;
@@ -1788,7 +1788,7 @@ schema_nodeid_vec(yang_node  *yn,
 	if (yang_schemanode((yang_stmt*)ynext))
 	    *yres = (yang_stmt*)ynext;
 	else
-	    clicon_debug(1, "%s not schema node", nodeid);
+	    clicon_debug(1, "%s not schema node", arg);
 	goto ok;
     }
     /* recursive call using ynext */
