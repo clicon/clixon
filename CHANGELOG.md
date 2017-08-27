@@ -1,6 +1,6 @@
 # Clixon CHANGELOG
 
-## Upcoming 3.3.2
+## 3.3.2 Aug 27 2017
 
 ### Known issues
 * Please use text datastore, key-value datastore no up-to-date
