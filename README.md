@@ -15,12 +15,12 @@ Table of contents
 
 Documentation
 =============
-- [Frequently asked questions](doc/FAQ.md
+- [Frequently asked questions](doc/FAQ.md)
 - [CHANGELOG](CHANGELOG.md) recent changes.
 - [XML datastore](datastore/README.md)
 - [Netconf support](apps/netconf/README.md)
 - [Restconf support](apps/restconf/README.md)
-- [Reference manual](http://www.clicon.org/doxygen/index.html) (Note the link may not be up-to-date. It is better to build your own: cd doc; make doc)
+- [Reference manual](http://www.clicon.org/doxygen/index.html) (Note: the link may not be up-to-date. It is better to build your own: `cd doc; make doc`)
 - [Routing example](example/README.md)
 - [Clicon and Clixon project page](http://www.clicon.org)
 - [Tests](test/README.md)
@@ -50,16 +50,16 @@ to build and install CLIgen:
 - Yacc/bison
 - Lex/Flex
 - Fcgi (if restconf is enabled)
-- Qdbm key-value store (if keyvalue datastore is enabled)
+- [Qdbm](http://fallabs.com/qdbm/) key-value store (if keyvalue datastore is enabled)
 
 There is no yum/apt/ostree package for Clixon (please help?)
 
 Licenses
 ========
-Clixon is dual license. Either Apache License, Version 2.0 or GNU
-General Public License Version 2. You choose.
+Clixon is dual licensed. Either Apache License, Version 2.0 or GNU
+General Public License Version 2; you choose.
 
-See [LICENSE.md](LICENSE.md) for license.
+See [LICENSE.md](LICENSE.md) for the license.
 
 Background
 ==========
@@ -68,8 +68,8 @@ several projects, including
 [KTH](http://www.csc.kth.se/~olofh/10G_OSR). Most of these projects
 were for embedded network and measuring-probe devices. We started with
 something called Clicon which was based on a key-value specification
-and data-store. But as time passed new standards evaolved and we
-started adapting it to XML, Yang and netconf. Finally we made Clixon
+and data-store. But as time passed new standards evolved and we
+started adapting it to XML, Yang and netconf. Finally we made Clixon,
 where the legacy key specification has been replaced completely by
 YANG and using XML as configuration data. This means that legacy
 Clicon applications do not run on Clixon.
@@ -89,11 +89,11 @@ used to generate an interactive CLI client as well as provide
 
 The [YANG RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt) is implemented with the following exceptions:
 - conformance: feature, if-feature, deviation
-- identy, base, identityref
+- identity, base, identityref
 - list features: min/max-elements, unique, ordered-by
 
 There are also new features in YANG 1.1 [YANG RFC
-7950](https://www.rfc-editor.org/rfc/rfc7950.txt) most of which are
+7950](https://www.rfc-editor.org/rfc/rfc7950.txt), most of which are
 not implemented.
 
 
