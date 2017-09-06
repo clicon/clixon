@@ -217,7 +217,7 @@ clicon_option_sanity(clicon_hash_t *copt)
 	goto done;
     }
     if (!hash_lookup(copt, "CLICON_BACKEND_DIR")){
-	clicon_err(OE_UNIX, 0, "CLICON_BACKEND_PIDFILE not defined in config file");
+	clicon_err(OE_UNIX, 0, "CLICON_BACKEND_DIR not defined in config file");
 	goto done;
     }
     if (!hash_lookup(copt, "CLICON_NETCONF_DIR")){
