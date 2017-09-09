@@ -42,7 +42,6 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <time.h>
-#include <fcgi_stdio.h>
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/wait.h>
