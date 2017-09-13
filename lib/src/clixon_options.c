@@ -65,7 +65,9 @@
 #include "clixon_yang.h"
 #include "clixon_plugin.h"
 #include "clixon_options.h"
-
+#if  CONFIGFILE_XML
+#include "clixon_xml.h"
+#endif
 /*
  * clicon_option_dump
  * Print registry on file. For debugging.
@@ -107,28 +109,56 @@ static int
 clicon_option_readfile(clicon_hash_t *copt, const char *filename)
 {
     struct stat st;
-    char opt[1024], val[1024];
-    char line[1024], *cp;
-    FILE *f;
-    int retval = -1;
+#if !CONFIGFILE_XML
+    char        opt[1024];
+    char        val[1024];
+    char        line[1024];
+    char       *cp;
+#endif
+    FILE       *f = NULL;
+    int         retval = -1;
 
     if (filename == NULL || !strlen(filename)){
 	clicon_err(OE_UNIX, 0, "Not specified");
-	return -1;
+	goto done;
     }
     if (stat(filename, &st) < 0){
 	clicon_err(OE_UNIX, errno, "%s", filename);
-	return -1;
+	goto done;
     }
     if (!S_ISREG(st.st_mode)){
 	clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
-	return -1;
+	goto done;
     }
     if ((f = fopen(filename, "r")) == NULL) {
 	clicon_err(OE_UNIX, errno, "configure file: %s", filename);
 	return -1;
     }
     clicon_debug(2, "Reading config file %s", __FUNCTION__, filename);
+#if CONFIGFILE_XML
+    {
+	int    fd = fileno(f);
+	cxobj *xt = NULL;
+	cxobj *x = NULL;
+	if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
+	    goto done;
+
+	// yspec should be clicon/yang
+	//	if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	//goto done;	
+
+	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	    fprintf(stderr, "%s\n", xml_name(x));
+#if 0	    
+	    if ((hash_add(copt, 
+			  opt,
+			  val,
+			  strlen(val)+1)) == NULL)
+		goto done;
+#endif
+	}
+    }
+#else
     while (fgets(line, sizeof(line), f)) {
 	if ((cp = strchr(line, '\n')) != NULL) /* strip last \n */
 	    *cp = '\0';
@@ -141,11 +171,13 @@ clicon_option_readfile(clicon_hash_t *copt, const char *filename)
 		      opt,
 		      val,
 		      strlen(val)+1)) == NULL)
-	    goto catch;
+	    goto done;
     }
+#endif
     retval = 0;
-  catch:
-    fclose(f);
+  done:
+    if (f)
+	fclose(f);
     return retval;
 }
 
@@ -217,7 +249,7 @@ clicon_option_sanity(clicon_hash_t *copt)
 	goto done;
     }
     if (!hash_lookup(copt, "CLICON_BACKEND_DIR")){
-	clicon_err(OE_UNIX, 0, "CLICON_BACKEND_PIDFILE not defined in config file");
+	clicon_err(OE_UNIX, 0, "CLICON_BACKEND_DIR not defined in config file");
 	goto done;
     }
     if (!hash_lookup(copt, "CLICON_NETCONF_DIR")){

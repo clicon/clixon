@@ -15,7 +15,7 @@ err(){
 new(){
     testnr=`expr $testnr + 1`
     testname=$1
-    echo "Test$testnr [$1]"
+    >&2 echo "Test$testnr [$1]"
 #    sleep 1
 }
 

@@ -1080,7 +1080,7 @@ FSM(char *tag,
  * @retval -1  Error with clicon_err called
  *
  * @code
- *  cxobj *xt;
+ *  cxobj *xt = NULL;
  *  clicon_xml_parse_file(0, &xt, "</clicon>");
  *  xml_free(xt);
  * @endcode

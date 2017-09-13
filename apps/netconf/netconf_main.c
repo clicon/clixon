@@ -188,35 +188,37 @@ netconf_input_cb(int   s,
 	return retval;
     }
     memset(buf, 0, sizeof(buf));
-    if ((len = read(s, buf, sizeof(buf))) < 0){
-	if (errno == ECONNRESET)
-	    len = 0; /* emulate EOF */
-	else{
-	    clicon_log(LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
-	    goto done;
-	}
-    } /* read */
-    if (len == 0){ 	/* EOF */
-	cc_closed++;
-	close(s);
-	retval = 0;
-	goto done;
-    }
-
-    for (i=0; i<len; i++){
-	if (buf[i] == 0)
-	    continue; /* Skip NULL chars (eg from terminals) */
-	cprintf(cb, "%c", buf[i]);
-	if (detect_endtag("]]>]]>",
-			  buf[i],
-			  &xml_state)) {
-	    /* OK, we have an xml string from a client */
-	    if (process_incoming_packet(h, cb) < 0){
+    while (1){
+	if ((len = read(s, buf, sizeof(buf))) < 0){
+	    if (errno == ECONNRESET)
+		len = 0; /* emulate EOF */
+	    else{
+		clicon_log(LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
 		goto done;
 	    }
-	    if (cc_closed)
-		break;
-	    cbuf_reset(cb);
+	} /* read */
+	if (len == 0){ 	/* EOF */
+	    cc_closed++;
+	    close(s);
+	    retval = 0;
+	    goto done;
+	}
+
+	for (i=0; i<len; i++){
+	    if (buf[i] == 0)
+		continue; /* Skip NULL chars (eg from terminals) */
+	    cprintf(cb, "%c", buf[i]);
+	    if (detect_endtag("]]>]]>",
+			      buf[i],
+			      &xml_state)) {
+		/* OK, we have an xml string from a client */
+		if (process_incoming_packet(h, cb) < 0){
+		    goto done;
+		}
+		if (cc_closed)
+		    break;
+		cbuf_reset(cb);
+	    }
 	}
     }
     retval = 0;

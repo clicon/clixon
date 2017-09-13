@@ -44,6 +44,15 @@ The example:
 	 sudo make install
 ```
 
+## Do I need to setup anything?
+
+The config demon requires a valid group to create a server UNIX socket.
+Define a valid CLICON_SOCK_GROUP in the config file or via the -g option
+or create the group and add the user to it. The default group is 'clicon'.
+On linux:
+  sudo groupadd clicon
+  sudo usermod -a -G clicon user
+
 ## What about reference documentation?
 Clixon uses Doxygen for reference documentation.
 Build using 'make doc' and aim your browser at doc/html/index.html or
@@ -103,11 +112,11 @@ Example:
 However, more useful is to run clixon_netconf as an SSH
 subsystem. Register the subsystem in /etc/sshd_config:
 ```
-	Subsystem netconf /usr/local/bin/clixon_netconf
+	Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/routing.conf
 ```
 and then invoke it from a client using
 ```
-	ssh -s netconf <host>
+	ssh -s <host> netconf
 ```
 
 ## How do I use restconf?

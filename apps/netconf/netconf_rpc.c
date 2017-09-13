@@ -312,9 +312,7 @@ netconf_edit_config(clicon_handle h,
     cxobj              *x;
     cxobj              *xfilter;
     char               *ftype = NULL;
-    cxobj              *xcc;      /* child of config */
     char               *target;  /* db */
-    cbuf               *cbxml = NULL;
 
     /* must have target, and it should be candidate */
     if ((target = netconf_get_target(xn, "target")) == NULL ||
@@ -371,19 +369,12 @@ netconf_edit_config(clicon_handle h,
 	    goto ok;
 	}
 #endif
-	if ((cbxml = cbuf_new()) == NULL)
-	    goto done;
-	if ((xcc = xml_child_i(xc, 0)) != NULL)
-	    if (clicon_xml2cbuf(cbxml, xcc, 0, 0) < 0)
-		goto done;
 	if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
 	     goto done;	
     }
  ok:
     retval = 0;
  done:
-    if (cbxml)
-	cbuf_free(cbxml);
     return retval;
 }
 
