@@ -425,6 +425,13 @@ match_base_child(cxobj     *x0,
 	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
 	    goto done;
 	x0c = NULL;
+	/* XXX: room for optimization? on 1K calls we have 1M body calls and
+	   500K xml_child_each/cvec_each calls. 
+	   The outer loop is large for large lists
+	   The inner loop is small
+	   Major time in xml_find_body()
+	   Can one do a binary search in the x0 list?
+	*/
 	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
 	    if (strcmp(xml_name(x0c), cname))
 		continue;
@@ -482,6 +489,8 @@ text_modify(cxobj              *x0,
     cxobj     *x1c; /* mod child */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
+    cxobj    **x0vec = NULL;
+    int        i;
 
     assert(x1 && xml_type(x1) == CX_ELMNT);
     assert(y0);
@@ -576,6 +585,38 @@ text_modify(cxobj              *x0,
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
 	    }
+#if 0 		/* Find x1c in x0 */
+	    /* First pass: mark existing children in base */
+	    /* Loop through children of the modification tree */
+	    if ((x0vec = calloc(xml_child_nr(x1), sizeof(x1))) == NULL){
+		clicon_err(OE_UNIX, errno, "calloc");
+		goto done;
+	    }
+	    x1c = NULL; 
+	    i = 0;
+	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+		x1cname = xml_name(x1c);
+		/* Get yang spec of the child */
+		if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
+		    clicon_err(OE_YANG, errno, "No yang node found: %s", x1cname);
+		    goto done;
+		}
+		/* See if there is a corresponding node in the base tree */
+		x0c = NULL;
+		if (match_base_child(x0, x1c, yc, &x0c) < 0)
+		    goto done;
+		x0vec[i++] = x0c;
+	    }
+	    /* Second pass: modify tree */
+	    x1c = NULL;
+	    i = 0;
+	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+		yc = yang_find_datanode(y0, x1cname);
+		if (text_modify(x0vec[i++], (yang_node*)yc, x0, x1c, op) < 0)
+		    goto done;
+	    }
+#else
+	    i = 0; i = i; /* XXX */
 	    /* Loop through children of the modification tree */
 	    x1c = NULL;
 	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
@@ -587,11 +628,12 @@ text_modify(cxobj              *x0,
 		}
 		/* See if there is a corresponding node in the base tree */
 		x0c = NULL;
-		if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
+		if (match_base_child(x0, x1c, yc, &x0c) < 0)
 		    goto done;
 		if (text_modify(x0c, (yang_node*)yc, x0, x1c, op) < 0)
 		    goto done;
 	    }
+#endif
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
@@ -609,6 +651,8 @@ text_modify(cxobj              *x0,
     // ok:
     retval = 0;
  done:
+    if (x0vec)
+	free(x0vec);
     return retval;
 }
 

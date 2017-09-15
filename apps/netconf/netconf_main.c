@@ -170,6 +170,9 @@ ed");
 /*! Get netconf message: detect end-of-msg 
  * @param[in]   s    Socket where input arrived. read from this.
  * @param[in]   arg  Clicon handle.
+ * This routine continuously reads until no more data on s. There could
+ * be risk of starvation, but the netconf client does little else than
+ * read data so I do not see a danger of true starvation here.
  */
 static int
 netconf_input_cb(int   s, 
@@ -182,6 +185,7 @@ netconf_input_cb(int   s,
     int           len;
     cbuf         *cb=NULL;
     int           xml_state = 0;
+    int           poll;
 
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "%s: cbuf_new", __FUNCTION__);
@@ -200,6 +204,7 @@ netconf_input_cb(int   s,
 	if (len == 0){ 	/* EOF */
 	    cc_closed++;
 	    close(s);
+	    clicon_log(LOG_ERR, "read close", __FUNCTION__);
 	    retval = 0;
 	    goto done;
 	}
@@ -220,7 +225,12 @@ netconf_input_cb(int   s,
 		cbuf_reset(cb);
 	    }
 	}
-    }
+	/* poll==1 if more, poll==0 if none */
+	if ((poll = event_poll(s)) < 0)
+	    goto done;
+	if (poll == 0)
+	    break; /* No data to read */
+    } /* while */
     retval = 0;
   done:
     if (cb)

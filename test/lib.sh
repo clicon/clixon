@@ -80,6 +80,24 @@ EOF
   fi
 }
 
+# clixon tester read from file for large tests
+expecteof_file(){
+  cmd=$1
+  file=$2
+  expect=$3
+
+# Do while read stuff
+ret=$($cmd<$file)
+  # Match if both are empty string
+  if [ -z "$ret" -a -z "$expect" ]; then
+      return
+  fi
+  match=`echo "$ret" | grep -Eo "$expect"`
+  if [ -z "$match" ]; then
+      err "$expect" "$ret"
+  fi
+}
+
 # clixon tester. First arg is command second is stdin and
 # third is expected outcome, fourth is how long to wait
 expectwait(){
