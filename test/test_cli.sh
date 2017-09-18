@@ -46,8 +46,6 @@ expectfn "$clixon_cli -1f $clixon_cf set interfaces interface eth/0/0" "^$"
 new "cli show configuration"
 expectfn "$clixon_cli -1f $clixon_cf show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
 
-
-
 new "cli failed validate"
 expectfn "$clixon_cli -1f $clixon_cf -l o validate" "Missing mandatory variable"
 

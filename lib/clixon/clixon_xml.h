@@ -118,6 +118,7 @@ char     *xml_body(cxobj *xn);
 cxobj    *xml_body_get(cxobj *xn);
 char     *xml_find_value(cxobj *xn_parent, char *name);
 char     *xml_find_body(cxobj *xn, char *name);
+cxobj    *xml_find_body_obj(cxobj *xt, char *name, char *val);
 
 int       xml_free(cxobj *xn);
 
@@ -146,5 +147,12 @@ int       xml_body_int32(cxobj *xb, int32_t *val);
 int       xml_body_uint32(cxobj *xb, uint32_t *val);
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
+#if (XML_CHILD_HASH==1)
+clicon_hash_t *xml_hash(cxobj *x);
+int xml_hash_init(cxobj *x);
+int xml_hash_rm(cxobj *x);
+int xml_hash_key(cxobj *x, yang_stmt *y, cbuf *key);
+int xml_hash_op(cxobj *x, void *arg);
+#endif
 
 #endif /* _CLIXON_XML_H */

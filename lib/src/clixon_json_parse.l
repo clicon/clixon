@@ -47,6 +47,10 @@
 
 #include <cligen/cligen.h>
 
+#include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
+#include "clixon_yang.h"
 #include "clixon_log.h"
 #include "clixon_xml.h"
 #include "clixon_json_parse.h"

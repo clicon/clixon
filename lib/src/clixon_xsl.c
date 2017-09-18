@@ -93,6 +93,7 @@ in
 #include <fnmatch.h>
 #include <stdint.h>
 #include <assert.h>
+#include <syslog.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -106,7 +107,6 @@ in
 
 /* Constants */
 #define XPATH_VEC_START 128
-
 
 /*
  * Types 
@@ -449,8 +449,8 @@ xpath_exec(cxobj *xcur, char *xpath, cxobj **vec0, size_t vec0len,
 
 /*! XPath predicate expression check
  * @param[in]  xcur  xml-tree where to search
- * @param[in]     predicate_expression     xpath expression as a string
- * @param[in]     flags   Extra xml flag checks that must match (apart from predicate)
+ * @param[in]  predicate_expression     xpath expression as a string
+ * @param[in]  flags   Extra xml flag checks that must match (apart from predicate)
  * @param[in,out] vec0    Vector or xml nodes that are checked. Not matched are filtered
  * @param[in,out] vec0len Length of vector or matches
  * On input, vec0 contains a list of xml nodes to match. 
@@ -646,10 +646,8 @@ xpath_find(cxobj                *xcur,
     struct xpath_predicate *xp;
 
     if (xe == NULL){
-	/* append */
 	for (i=0; i<vec0len; i++){
 	    xv = vec0[i];
-	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xv, flags));
 	    if (flags==0x0 || xml_flag(xv, flags))
 		cxvec_append(xv, vec2, vec2len);
 	}
@@ -693,19 +691,21 @@ xpath_find(cxobj                *xcur,
 		    goto done;
 	    }
 	}
-	else
+	else{
 	    for (i=0; i<vec0len; i++){
 		xv = vec0[i];
 		x = NULL;
 		while ((x = xml_child_each(xv, x, -1)) != NULL) {
-		    if (fnmatch(xe->xe_str, xml_name(x), 0) == 0){ 
-	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(x, flags));
-			if (flags==0x0 || xml_flag(x, flags))
-			    if (cxvec_append(x, &vec1, &vec1len) < 0)
-				goto done;
-		    }
+		    if (fnmatch(xe->xe_str, xml_name(x), 0) == 0)
+			    {
+				clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(x, flags));
+				if (flags==0x0 || xml_flag(x, flags))
+				    if (cxvec_append(x, &vec1, &vec1len) < 0)
+					goto done;
+			    }
 		}	    
 	    }
+	}
 	free(vec0);
 	vec0 = vec1;
 	vec0len = vec1len;
@@ -718,20 +718,24 @@ xpath_find(cxobj                *xcur,
     default:
 	break;
     }
-    /* remove duplicates */
-    for (i=0; i<vec0len; i++){
-	for (j=i+1; j<vec0len; j++){
-	    if (vec0[i] == vec0[j]){
-		memmove(vec0[j], vec0[j+1], (vec0len-j)*sizeof(cxobj*));
-	        vec0len--;
+    /* remove duplicates 
+     *   This is cycle-heavy and I dont know when it is needed? 
+     */
+    if (0)
+	for (i=0; i<vec0len; i++){
+	    for (j=i+1; j<vec0len; j++){
+		if (vec0[i] == vec0[j]){
+		    memmove(vec0[j], vec0[j+1], (vec0len-j)*sizeof(cxobj*));
+		    vec0len--;
+		}
 	    }
 	}
-    }
 
     for (xp = xe->xe_predicate; xp; xp = xp->xp_next){
 	if (xpath_expr(xcur, xp->xp_expr, flags, &vec0, &vec0len) < 0)
 	    goto done;
     }
+
     if (xpath_find(xcur, xe->xe_next, descendants, 
 		   vec0, vec0len, flags,
 		   vec2, vec2len) < 0)
@@ -910,8 +914,8 @@ xpath_first0(cxobj *xcur,
  *         ...
  *   }
  * @endcode
- * Note that the returned pointer points into the original tree so should not be freed
- * after use.
+ * @note  the returned pointer points into the original tree so should not be freed after use.
+ * @note return value does not see difference between error and not found
  * @see also xpath_vec.
  */
 cxobj *
@@ -1024,8 +1028,8 @@ xpath_each(cxobj *xcur,
  *   }
  *   free(vec);
  * @endcode
- * @Note that although the returned vector must be freed after use, the returned xml
- * trees need not be.
+ * @note Although the returned vector must be freed after use, 
+ *       the returned xml trees should not.
  * @see also xpath_first, xpath_each.
  */
 int
@@ -1035,7 +1039,7 @@ xpath_vec(cxobj    *xcur,
 	   size_t  *veclen,
 	   ...)
 {
-    int retval = -1;
+    int     retval = -1;
     va_list ap;
     size_t  len;
     char   *xpath;

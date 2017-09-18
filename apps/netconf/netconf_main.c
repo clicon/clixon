@@ -121,8 +121,7 @@ process_incoming_packet(clicon_handle h,
         if (xpath_first(xreq, "//hello") != NULL)
 	    ;
         else{
-            clicon_log(LOG_WARNING, "Invalid netconf msg: neither rpc or hello: dropp\
-ed");
+            clicon_log(LOG_WARNING, "Invalid netconf msg: neither rpc or hello: dropped");
             goto done;
         }
     if (!isrpc){ /* hello */
@@ -204,7 +203,6 @@ netconf_input_cb(int   s,
 	if (len == 0){ 	/* EOF */
 	    cc_closed++;
 	    close(s);
-	    clicon_log(LOG_ERR, "read close", __FUNCTION__);
 	    retval = 0;
 	    goto done;
 	}

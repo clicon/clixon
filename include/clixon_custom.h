@@ -45,5 +45,11 @@ int strverscmp (__const char *__s1, __const char *__s2);
 
 /* Replace the current clixon.conf.cpp.cpp options with XML file with Yang
  * Why not use the config mechanisms that CLixon uses for its own config-file?
+ * Experimental
  */
 #define CONFIGFILE_XML 0
+
+/* Hash for XML trees list entries
+ * Experimental
+ */
+#define XML_CHILD_HASH 0

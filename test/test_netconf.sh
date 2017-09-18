@@ -83,7 +83,7 @@ expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><validate><source><candidate/><
 new "netconf commit"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "netconf edit config replace"
+new "netconf edit config replace XXX is merge?"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth2</name><type>eth</type></interface></interfaces></config><default-operation>merge</default-operation></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get replaced config"

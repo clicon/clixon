@@ -51,7 +51,9 @@ fi
 
 new "leafref base config"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/leafref.yang" "<rpc><edit-config><target><candidate/></target><config><interfaces>
-<interface><name>eth0</name>  <type>eth</type>  <ipv4><address><ip>192.0.2.1</ip></address></ipv4>  <ipv4><address><ip>192.0.2.2</ip></address></ipv4></interface><interface><name>lo</name><type>lo</type><ipv4><address><ip>127.0.0.1</ip></address></ipv4></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+<interface><name>eth0</name>  <type>eth</type>  <ipv4><address><ip>192.0.2.1</ip></address><address><ip>192.0.2.2</ip></address></ipv4></interface>
+<interface><name>lo</name><type>lo</type><ipv4><address><ip>127.0.0.1</ip></address></ipv4></interface>
+</interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "leafref get config"
 expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><interfaces><interface><name>eth0</name>'

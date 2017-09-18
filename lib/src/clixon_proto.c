@@ -66,6 +66,9 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
+#include "clixon_yang.h"
 #include "clixon_sig.h"
 #include "clixon_xml.h"
 #include "clixon_xsl.h"
@@ -361,8 +364,8 @@ clicon_msg_rcv(int                s,
 	goto done;
     }
     memcpy(*msg, &hdr, hlen);
-    if ((len2 = read(s, (*msg)->op_body, mlen - sizeof(hdr))) < 0){
-	clicon_err(OE_CFG, errno, "%s: read", __FUNCTION__);
+    if ((len2 = atomicio(read, s, (*msg)->op_body, mlen - sizeof(hdr))) < 0){ 
+ 	clicon_err(OE_CFG, errno, "%s: read", __FUNCTION__);
 	goto done;
     }
     if (len2 != mlen - sizeof(hdr)){

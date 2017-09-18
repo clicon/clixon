@@ -94,6 +94,7 @@
 #include "clixon_hash.h"
 
 #define HASH_SIZE	1031	/* Number of hash buckets. Should be a prime */ 
+#define align4(s) (((s)/4)*4 + 4)
 
 /*! A very simplistic algorithm to calculate a hash bucket index
  */
@@ -235,7 +236,7 @@ hash_add(clicon_hash_t *hash,
     }
     
     /* Make copy of lvalue */
-    newval = malloc (vlen+3); /* XXX: qdbm needs aligned mallocs? */
+    newval = malloc(align4(vlen+3)); /* XXX: qdbm needs aligned mallocs? */
     if (newval == NULL){
 	clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
 	goto catch;
