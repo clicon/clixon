@@ -146,6 +146,9 @@ cli_syntax_set(clicon_handle h,
 	       cli_syntax_t *stx)
 {
     struct cli_handle *cl = handle(h);
+
+    if (cl->cl_stx)
+	free(cl->cl_stx);
     cl->cl_stx = stx;
     return 0;
 }

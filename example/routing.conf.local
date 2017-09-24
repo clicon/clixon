@@ -32,3 +32,7 @@ CLICON_USE_STARTUP_CONFIG    0
 # XMLDB datastore plugin filename (see datastore/ and clixon_xml_db.[ch])
 CLICON_XMLDB_PLUGIN /usr/local/lib/xmldb/text.so
 #CLICON_XMLDB_PLUGIN /usr/local/lib/xmldb/keyvalue.so
+
+# Set to 0 if you want CLI to wrap to next line.
+# Set to 1 if you  want CLI to scroll sideways when approaching right margin
+CLICON_CLI_LINESCROLLING      0

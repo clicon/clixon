@@ -1,11 +1,13 @@
 # Clixon CHANGELOG
 
 ## 3.3.3 Upcoming
-* netconf client was limited to 8K byte messages. Now limit is 2^32, 
+* netconf client was limited to 8K byte messages. Now limit is 2^32.
 * Added event_poll function.
 * Added experimental xml hash for better performance of large lists. 
   To enable, set XML_CHILD_HASH in clixon_custom.h
-	
+* Support for non-line scrolling in CLI, eg wrap lines. Set with:
+  CLICON_CLI_LINESCROLLING 0
+
 ## 3.3.2 Aug 27 2017
 
 ### Known issues

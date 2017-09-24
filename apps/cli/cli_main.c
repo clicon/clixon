@@ -392,6 +392,7 @@ main(int argc, char **argv)
     cli_plugin_start(h, argc+1, argv-1);
     *(argv-1) = tmp;
 
+    cligen_line_scrolling_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_LINESCROLLING"));
     /* Launch interfactive event loop, unless -1 */
     if (restarg != NULL && strlen(restarg)){
 	char *mode = cli_syntax_mode(h);
