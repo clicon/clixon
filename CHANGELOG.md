@@ -1,5 +1,8 @@
 # Clixon CHANGELOG
 
+* Support for non-line scrolling in CLI, eg wrap lines. Set with:
+  CLICON_CLI_LINESCROLLING 0
+
 ## 3.3.2 Aug 27 2017
 
 ### Known issues

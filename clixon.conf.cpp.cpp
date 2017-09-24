@@ -119,6 +119,10 @@ CLICON_XMLDB_PLUGIN libdir/xmldb/text.so
 # Dont include keys in cvec in cli vars callbacks, ie a & k in 'a <b> k <c>' ignored
 # CLICON_CLI_VARONLY      1
 
+# Set to 0 if you want CLI to wrap to next line.
+# Set to 1 if you  want CLI to scroll sideways when approaching right margin
+# CLICON_CLI_LINESCROLLING      1
+
 # FastCGI unix socket. Should be specified in webserver
 # Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock;
 CLICON_RESTCONF_PATH /www-data/fastcgi_restconf.sock
