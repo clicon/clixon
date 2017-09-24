@@ -244,6 +244,11 @@ clicon_option_sanity(clicon_hash_t *copt)
 	clicon_err(OE_UNIX, 0, "CLICON_BACKEND_PIDFILE not defined in config file");
 	goto done;
     }
+    /* Default is to use line-scrolling */
+    if (!hash_lookup(copt, "CLICON_CLI_LINESCROLLING")){
+       if (hash_add(copt, "CLICON_CLI_LINESCROLLING", "1", strlen("1")+1) < 0)
+           goto done;
+    }
     retval = 0;
  done:
     return retval;
