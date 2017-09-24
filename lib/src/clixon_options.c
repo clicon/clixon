@@ -196,6 +196,11 @@ clicon_option_default(clicon_hash_t  *copt)
 	if (hash_add(copt, "CLICON_CLI_GENMODEL_COMPLETION", "0", strlen("0")+1) < 0)
 	    goto catch;
     }
+    /* Default is to use line-scrolling */
+    if (!hash_lookup(copt, "CLICON_CLI_LINESCROLLING")){
+       if (hash_add(copt, "CLICON_CLI_LINESCROLLING", "1", strlen("1")+1) < 0)
+           goto catch;
+    }
     retval = 0;
   catch:
     return retval;
@@ -243,11 +248,6 @@ clicon_option_sanity(clicon_hash_t *copt)
     if (!hash_lookup(copt, "CLICON_BACKEND_PIDFILE")){
 	clicon_err(OE_UNIX, 0, "CLICON_BACKEND_PIDFILE not defined in config file");
 	goto done;
-    }
-    /* Default is to use line-scrolling */
-    if (!hash_lookup(copt, "CLICON_CLI_LINESCROLLING")){
-       if (hash_add(copt, "CLICON_CLI_LINESCROLLING", "1", strlen("1")+1) < 0)
-           goto done;
     }
     retval = 0;
  done:
