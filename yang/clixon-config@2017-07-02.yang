@@ -170,6 +170,12 @@
        description "Dont include keys in cvec in cli vars callbacks, ie a & k in 'a <b> k <c>' ignored";
     }
 
+    leaf CLICON_CLI_LINESCROLLING {
+      type int32;
+      default 1;
+      description "Set to 0 if you want CLI to wrap to next line.
+                   Set to 1 if you  want CLI to scroll sideways when approaching right margin";
+    }
     leaf CLICON_RESTCONF_PATH {
        type string;
        default "/www-data/fastcgi_restconf.sock";

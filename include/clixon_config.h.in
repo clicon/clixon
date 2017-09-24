@@ -1,5 +1,8 @@
 /* include/clixon_config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Clixon data dir for system yang files etc */
+#undef CLIXON_DATADIR
+
 /* Clixon major release */
 #undef CLIXON_VERSION_MAJOR
 

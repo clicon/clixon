@@ -55,6 +55,7 @@ AC_DEFINE_UNQUOTED(CLIXON_VERSION_MAJOR, $CLIXON_VERSION_MAJOR, [Clixon major re
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_MINOR, $CLIXON_VERSION_MINOR, [Clixon minor release])
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_PATCH, $CLIXON_VERSION_PATCH, [Clixon path version])
 
+
 # clixon versions spread to Makefile's (.so files) and variable in build.c
 AC_SUBST(CLIXON_VERSION)
 AC_SUBST(CLIXON_VERSION_STRING)
@@ -172,6 +173,10 @@ AC_CHECK_LIB(dl, dlopen)
 
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp)
 
+# This is to find clixon system files in the source code.
+# same as clixon_DATADIR defined in clixon.mk.cpp for Makefiles
+AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${prefix}/share/clixon", [Clixon data dir for system yang files etc])
+
 AH_BOTTOM([#include <clixon_custom.h>])
 
 AC_OUTPUT(Makefile
@@ -198,6 +203,7 @@ AC_OUTPUT(Makefile
 	  datastore/Makefile
 	  datastore/keyvalue/Makefile
 	  datastore/text/Makefile
+	  yang/Makefile
 	  doc/Makefile 
 )
 

@@ -52,4 +52,4 @@ int strverscmp (__const char *__s1, __const char *__s2);
 /* Hash for XML trees list entries
  * Experimental
  */
-#define XML_CHILD_HASH 0
+#define XML_CHILD_HASH 1

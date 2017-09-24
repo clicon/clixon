@@ -2165,6 +2165,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
+
 # clixon versions spread to Makefile's (.so files) and variable in build.c
 
 
@@ -3483,6 +3484,12 @@ if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}
 fi
 
+
+cat >>confdefs.h <<_ACEOF
+#define CLIXON_DATADIR "${prefix}/share/clixon"
+_ACEOF
+
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lm" >&5
 $as_echo_n "checking for main in -lm... " >&6; }
 if ${ac_cv_lib_m_main+:} false; then :
@@ -4266,7 +4273,7 @@ done
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/keyvalue/Makefile datastore/text/Makefile doc/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/keyvalue/Makefile datastore/text/Makefile yang/Makefile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4983,6 +4990,7 @@ do
     "datastore/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/Makefile" ;;
     "datastore/keyvalue/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/keyvalue/Makefile" ;;
     "datastore/text/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/text/Makefile" ;;
+    "yang/Makefile") CONFIG_FILES="$CONFIG_FILES yang/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

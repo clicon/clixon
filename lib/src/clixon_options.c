@@ -67,6 +67,8 @@
 #include "clixon_options.h"
 #if  CONFIGFILE_XML
 #include "clixon_xml.h"
+#include "clixon_xsl.h"
+#include "clixon_xml_map.h"
 #endif
 /*
  * clicon_option_dump
@@ -106,7 +108,12 @@ clicon_option_dump(clicon_handle h, int dbglevel)
 /*! Read filename and set values to global options registry
  */
 static int 
-clicon_option_readfile(clicon_hash_t *copt, const char *filename)
+clicon_option_readfile(clicon_hash_t *copt, 
+		       const char    *filename
+#if CONFIGFILE_XML
+		       ,yang_spec     *yspec
+#endif
+		       )
 {
     struct stat st;
 #if !CONFIGFILE_XML
@@ -139,23 +146,32 @@ clicon_option_readfile(clicon_hash_t *copt, const char *filename)
     {
 	int    fd = fileno(f);
 	cxobj *xt = NULL;
+	cxobj *xc = NULL;
 	cxobj *x = NULL;
+	char  *name;
+	char  *body;
+
 	if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
 	    goto done;
-
-	// yspec should be clicon/yang
-	//	if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
-	//goto done;	
-
-	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	    fprintf(stderr, "%s\n", xml_name(x));
-#if 0	    
-	    if ((hash_add(copt, 
-			  opt,
-			  val,
-			  strlen(val)+1)) == NULL)
+	if (xml_child_nr(xt)==1 && xml_child_nr_type(xt, CX_BODY)==1){
+	    clicon_err(OE_CFG, 0, "Config file %s: Expected XML but is probably old sh style", filename);
+	    goto done;
+	}
+	if ((xc = xpath_first(xt, "config")) == NULL) {
+	    clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"config\" element", filename);
+	    goto done;	
+	}
+	if (xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	    goto done;	
+	while ((x = xml_child_each(xc, x, CX_ELMNT)) != NULL) {
+	    name = xml_name(x);
+	    body = xml_body(x);
+	    if (name && body && 
+		(hash_add(copt, 
+			  name,
+			  body,
+			  strlen(body)+1)) == NULL)
 		goto done;
-#endif
 	}
     }
 #else
@@ -181,6 +197,7 @@ clicon_option_readfile(clicon_hash_t *copt, const char *filename)
     return retval;
 }
 
+#if !CONFIGFILE_XML
 /*! Set default values of some options that may not appear in config-file
  */
 static int
@@ -191,45 +208,50 @@ clicon_option_default(clicon_hash_t  *copt)
 
     if (!hash_lookup(copt, "CLICON_YANG_MODULE_MAIN")){
 	if (hash_add(copt, "CLICON_YANG_MODULE_MAIN", "clicon", strlen("clicon")+1) < 0)
-	    goto catch;
+	    goto done;
     }
     if (!hash_lookup(copt, "CLICON_SOCK_GROUP")){
 	val = CLICON_SOCK_GROUP;
 	if (hash_add(copt, "CLICON_SOCK_GROUP", val, strlen(val)+1) < 0)
-	    goto catch;
+	    goto done;
     }
     if (!hash_lookup(copt, "CLICON_CLI_MODE")){
 	if (hash_add(copt, "CLICON_CLI_MODE", "base", strlen("base")+1) < 0)
-	    goto catch;
+	    goto done;
     }
     if (!hash_lookup(copt, "CLICON_MASTER_PLUGIN")){
 	val = CLICON_MASTER_PLUGIN;
 	if (hash_add(copt, "CLICON_MASTER_PLUGIN", val, strlen(val)+1) < 0)
-	    goto catch;
+	    goto done;
     }
     if (!hash_lookup(copt, "CLICON_CLI_GENMODEL")){
 	if (hash_add(copt, "CLICON_CLI_GENMODEL", "1", strlen("1")+1) < 0)
-	    goto catch;
+	    goto done;
     }
     if (!hash_lookup(copt, "CLICON_CLI_GENMODEL_TYPE")){
 	if (hash_add(copt, "CLICON_CLI_GENMODEL_TYPE", "VARS", strlen("VARS")+1) < 0)
-	    goto catch;
+	    goto done;
     }
     if (!hash_lookup(copt, "CLICON_AUTOCOMMIT")){
 	if (hash_add(copt, "CLICON_AUTOCOMMIT", "0", strlen("0")+1) < 0)
-	    goto catch;
+	    goto done;
     }
     /* Legacy is 1 but default should really be 0. New apps should use 0 */
     if (!hash_lookup(copt, "CLICON_CLI_VARONLY")){
 	if (hash_add(copt, "CLICON_CLI_VARONLY", "1", strlen("1")+1) < 0)
-	    goto catch;
+	    goto done;
     }
     if (!hash_lookup(copt, "CLICON_CLI_GENMODEL_COMPLETION")){
 	if (hash_add(copt, "CLICON_CLI_GENMODEL_COMPLETION", "0", strlen("0")+1) < 0)
-	    goto catch;
+	    goto done;
+    }
+    /* Default is to use line-scrolling */
+    if (!hash_lookup(copt, "CLICON_CLI_LINESCROLLING")){
+       if (hash_add(copt, "CLICON_CLI_LINESCROLLING", "1", strlen("1")+1) < 0)
+           goto done;
     }
     retval = 0;
-  catch:
+  done:
     return retval;
 }
 
@@ -276,15 +298,11 @@ clicon_option_sanity(clicon_hash_t *copt)
 	clicon_err(OE_UNIX, 0, "CLICON_BACKEND_PIDFILE not defined in config file");
 	goto done;
     }
-    /* Default is to use line-scrolling */
-    if (!hash_lookup(copt, "CLICON_CLI_LINESCROLLING")){
-       if (hash_add(copt, "CLICON_CLI_LINESCROLLING", "1", strlen("1")+1) < 0)
-           goto done;
-    }
     retval = 0;
  done:
     return retval;
 }
+#endif /* !CONFIGFILE_XML */
 
 
 /*! Initialize option values
@@ -308,16 +326,32 @@ clicon_options_main(clicon_handle h)
     }
     configfile = hash_value(copt, "CLICON_CONFIGFILE", NULL);
     clicon_debug(1, "CLICON_CONFIGFILE=%s", configfile);
+
+
+#if CONFIGFILE_XML
+    /* Read clixon yang file */
+    {
+	yang_spec      *yspec;
+
+	if ((yspec = yspec_new()) == NULL)
+	    goto done;
+	if (yang_parse(h, CLIXON_DATADIR, "clixon-config", NULL, yspec) < 0)
+	    goto done;    
+	/* Read configfile */
+	if (clicon_option_readfile(copt, configfile, yspec) < 0)
+	    goto done;
+    }
+#else
     /* Set default options */
     if (clicon_option_default(copt) < 0)  /* init registry from file */
 	goto done;
-
     /* Read configfile */
     if (clicon_option_readfile(copt, configfile) < 0)
 	goto done;
-
     if (clicon_option_sanity(copt) < 0)
 	goto done;
+#endif
+
     retval = 0;
  done:
     return retval;

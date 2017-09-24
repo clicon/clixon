@@ -1451,8 +1451,10 @@ xml_non_config_data(cxobj *xt,
 
 /*! Add yang specification backpoint to XML node
  * @param[in]   xt      XML tree node
- * @note This should really be unnecessary since yspec should be set on creation
+ * @param[in]   arg     Yang spec
+ * @note This may be unnecessary if yspec us set on creation
  * @note For subs to anyxml nodes will not have spec set
+ * @note No validation is done,... XXX
  * @code
  * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
  * @endcode
@@ -1474,11 +1476,13 @@ xml_spec_populate(cxobj  *x,
 	y = yang_find_datanode((yang_node*)yp, xml_name(x));
     else
 	y = yang_find_topnode(yspec, name, 0); /* still NULL for config */
-#ifdef XXX_OBSOLETE /* Add validate elsewhere */
+    //#ifdef XXX_OBSOLETE /* Add validate elsewhere */
+#if 0
     if (y==NULL){
 	clicon_err(OE_XML, EBADF, "yang spec not found for xml node '%s' xml parent name: '%s' yangspec:'%s']", 
 		   name, 
 		   xp?xml_name(xp):"", yp?yp->ys_argument:"");
+	return -1; // XXX
 	goto done;
     }
 #endif
