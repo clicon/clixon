@@ -98,9 +98,10 @@ distclean: clean
 	rm -f Makefile *~ .depend
 	(cd docker && $(MAKE) $(MFLAGS) $@)
 
-install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(APPNAME).conf
+install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(APPNAME).conf $(APPNAME).xml
 	install -d $(DESTDIR)$(clixon_SYSCONFDIR)
 	install $(APPNAME).conf $(DESTDIR)$(clixon_SYSCONFDIR)
+	install $(APPNAME).xml $(DESTDIR)$(clixon_SYSCONFDIR)
 	install -d $(DESTDIR)$(clixon_DBSPECDIR)/yang
 	install $(YANGSPECS) $(DESTDIR)$(clixon_DBSPECDIR)/yang
 	install -d $(DESTDIR)$(clixon_LIBDIR)/cli
@@ -116,6 +117,7 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $
 
 uninstall: 
 	rm -rf $(DESTDIR)$(clixon_SYSCONFDIR)/$(APPNAME).conf
+	rm -rf $(DESTDIR)$(clixon_SYSCONFDIR)/$(APPNAME).xml
 	rm -rf $(DESTDIR)$(clixon_DBSPECDIR)
 	rm -rf $(DESTDIR)$(clixon_LOCALSTATEDIR)
 	rm -rf $(DESTDIR)$(clixon_LIBDIR)

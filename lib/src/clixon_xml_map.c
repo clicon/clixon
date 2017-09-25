@@ -1476,16 +1476,6 @@ xml_spec_populate(cxobj  *x,
 	y = yang_find_datanode((yang_node*)yp, xml_name(x));
     else
 	y = yang_find_topnode(yspec, name, 0); /* still NULL for config */
-    //#ifdef XXX_OBSOLETE /* Add validate elsewhere */
-#if 0
-    if (y==NULL){
-	clicon_err(OE_XML, EBADF, "yang spec not found for xml node '%s' xml parent name: '%s' yangspec:'%s']", 
-		   name, 
-		   xp?xml_name(xp):"", yp?yp->ys_argument:"");
-	return -1; // XXX
-	goto done;
-    }
-#endif
     if (y)
 	xml_spec_set(x, y);
     retval = 0;

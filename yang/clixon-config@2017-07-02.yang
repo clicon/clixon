@@ -42,14 +42,14 @@
       description
         "Initial revision";
     }
+    container config {
     leaf CLICON_CONFIGFILE{
     	 type string;
-	 default "sysconfdir/$APPNAME.conf";
 	 description  "Location of configuration-file for default values (this file)";
     }
     leaf CLICON_YANG_DIR {
        type string;
-       default "prefix/share/$APPNAME/yang";
+       mandatory true;
        description "Location of YANG module and submodule files. Only if CLICON_DBSPEC_TYPE is YANG";
     }
     leaf CLICON_YANG_MODULE_MAIN {
@@ -66,27 +66,27 @@
     }
     leaf CLICON_BACKEND_DIR {
        type string;
-       default "libdir/$APPNAME/backend";
+       mandatory true;
        description "Location of backend .so plugins";
     }
     leaf CLICON_NETCONF_DIR {
        type string;
-       default "libdir/$APPNAME/netconf";
+       mandatory true;
        description "Location of netconf (frontend) .so plugins";
     }
     leaf CLICON_RESTCONF_DIR {
        type string;
-       default "libdir/$APPNAME/restconf";
+       mandatory true;
        description "Location of restconf (frontend) .so plugins";
     }
     leaf CLICON_CLI_DIR {
        type string;
-       default "libdir/$APPNAME/cli";
+       mandatory true;
        description "Location of cli frontend .so plugins";
     }
     leaf CLICON_CLISPEC_DIR {
        type string;
-       default "libdir/$APPNAME/clispec";
+       mandatory true;
        description "Location of frontend .cli cligen spec files";
     }
     leaf CLICON_USE_STARTUP_CONFIG {
@@ -101,7 +101,7 @@
     }
     leaf CLICON_SOCK {
        type string;
-       default "localstatedir/$APPNAME/$APPNAME.sock";
+       mandatory true;
        description "If family above is AF_UNIX: Unix socket for communicating with 
                     clixon_backend. If family above is AF_INET: IPv4 address";
     }
@@ -112,7 +112,7 @@
     }
     leaf CLICON_BACKEND_PIDFILE {
        type string;
-       default "localstatedir/$APPNAME/$APPNAME.pidfile";
+       mandatory true;
        description "Process-id file";
     }
     leaf CLICON_SOCK_GROUP {
@@ -156,12 +156,12 @@
     }
     leaf CLICON_XMLDB_DIR {
        type string;
-       default "localstatedir/$APPNAME";
+       mandatory true;
        description "Directory where \"running\", \"candidate\" and \"startup\" are placed";
     }
     leaf CLICON_XMLDB_PLUGIN {
        type string;
-       default "libdir/xmldb/text.so";
+       mandatory true;
        description "XMLDB datastore plugin filename (see datastore/ and clixon_xml_db.[ch])";
     }
     leaf CLICON_CLI_VARONLY {
@@ -182,4 +182,5 @@
        description "FastCGI unix socket. Should be specified in webserver
                     Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock;";
     }
+}
 }

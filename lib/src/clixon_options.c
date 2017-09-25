@@ -65,11 +65,10 @@
 #include "clixon_yang.h"
 #include "clixon_plugin.h"
 #include "clixon_options.h"
-#if  CONFIGFILE_XML
 #include "clixon_xml.h"
 #include "clixon_xsl.h"
 #include "clixon_xml_map.h"
-#endif
+
 /*
  * clicon_option_dump
  * Print registry on file. For debugging.
@@ -105,23 +104,89 @@ clicon_option_dump(clicon_handle h, int dbglevel)
 
 }
 
+/*! Read filename and set values to global options registry. XML variant.
+ * @see clicon_option_readfile
+ */
+static int 
+clicon_option_readfile_xml(clicon_hash_t *copt, 
+			   const char    *filename,
+			   yang_spec     *yspec)
+{
+    struct stat st;
+    FILE       *f = NULL;
+    int         retval = -1;
+    int         fd;
+    cxobj      *xt = NULL;
+    cxobj      *xc = NULL;
+    cxobj      *x = NULL;
+    char       *name;
+    char       *body;
+
+    if (filename == NULL || !strlen(filename)){
+	clicon_err(OE_UNIX, 0, "Not specified");
+	goto done;
+    }
+    if (stat(filename, &st) < 0){
+	clicon_err(OE_UNIX, errno, "%s", filename);
+	goto done;
+    }
+    if (!S_ISREG(st.st_mode)){
+	clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
+	goto done;
+    }
+    if ((f = fopen(filename, "r")) == NULL) {
+	clicon_err(OE_UNIX, errno, "configure file: %s", filename);
+	return -1;
+    }
+    clicon_debug(2, "Reading config file %s", __FUNCTION__, filename);
+    fd = fileno(f);
+    if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
+	goto done;
+    if (xml_child_nr(xt)==1 && xml_child_nr_type(xt, CX_BODY)==1){
+	clicon_err(OE_CFG, 0, "Config file %s: Expected XML but is probably old sh style", filename);
+	goto done;
+    }
+    if ((xc = xpath_first(xt, "config")) == NULL) {
+	clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"config\" element", filename);
+	goto done;	
+    }
+    if (xml_apply0(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	goto done;	
+    if (xml_apply0(xc, CX_ELMNT, xml_default, yspec) < 0)
+	goto done;	
+    if (xml_apply0(xc, CX_ELMNT, xml_yang_validate_add, NULL) < 0)
+	goto done;	
+    while ((x = xml_child_each(xc, x, CX_ELMNT)) != NULL) {
+	name = xml_name(x);
+	body = xml_body(x);
+	if (name && body && 
+	    (hash_add(copt, 
+		      name,
+		      body,
+		      strlen(body)+1)) == NULL)
+	    goto done;
+    }
+    retval = 0;
+  done:
+    if (f)
+	fclose(f);
+    return retval;
+}
+
+
 /*! Read filename and set values to global options registry
+ * For legacy configuration file, ie not xml
+ * @see clicon_option_readfile_xml
  */
 static int 
 clicon_option_readfile(clicon_hash_t *copt, 
-		       const char    *filename
-#if CONFIGFILE_XML
-		       ,yang_spec     *yspec
-#endif
-		       )
+		       const char    *filename)
 {
     struct stat st;
-#if !CONFIGFILE_XML
     char        opt[1024];
     char        val[1024];
     char        line[1024];
     char       *cp;
-#endif
     FILE       *f = NULL;
     int         retval = -1;
 
@@ -142,39 +207,6 @@ clicon_option_readfile(clicon_hash_t *copt,
 	return -1;
     }
     clicon_debug(2, "Reading config file %s", __FUNCTION__, filename);
-#if CONFIGFILE_XML
-    {
-	int    fd = fileno(f);
-	cxobj *xt = NULL;
-	cxobj *xc = NULL;
-	cxobj *x = NULL;
-	char  *name;
-	char  *body;
-
-	if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
-	    goto done;
-	if (xml_child_nr(xt)==1 && xml_child_nr_type(xt, CX_BODY)==1){
-	    clicon_err(OE_CFG, 0, "Config file %s: Expected XML but is probably old sh style", filename);
-	    goto done;
-	}
-	if ((xc = xpath_first(xt, "config")) == NULL) {
-	    clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"config\" element", filename);
-	    goto done;	
-	}
-	if (xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
-	    goto done;	
-	while ((x = xml_child_each(xc, x, CX_ELMNT)) != NULL) {
-	    name = xml_name(x);
-	    body = xml_body(x);
-	    if (name && body && 
-		(hash_add(copt, 
-			  name,
-			  body,
-			  strlen(body)+1)) == NULL)
-		goto done;
-	}
-    }
-#else
     while (fgets(line, sizeof(line), f)) {
 	if ((cp = strchr(line, '\n')) != NULL) /* strip last \n */
 	    *cp = '\0';
@@ -189,7 +221,6 @@ clicon_option_readfile(clicon_hash_t *copt,
 		      strlen(val)+1)) == NULL)
 	    goto done;
     }
-#endif
     retval = 0;
   done:
     if (f)
@@ -197,7 +228,6 @@ clicon_option_readfile(clicon_hash_t *copt,
     return retval;
 }
 
-#if !CONFIGFILE_XML
 /*! Set default values of some options that may not appear in config-file
  */
 static int
@@ -256,6 +286,7 @@ clicon_option_default(clicon_hash_t  *copt)
 }
 
 /*! Check that options are set
+ * XXX dont detect extra XML
  */
 static int 
 clicon_option_sanity(clicon_hash_t *copt)
@@ -302,7 +333,6 @@ clicon_option_sanity(clicon_hash_t *copt)
  done:
     return retval;
 }
-#endif /* !CONFIGFILE_XML */
 
 
 /*! Initialize option values
@@ -316,6 +346,9 @@ clicon_options_main(clicon_handle h)
     int            retval = -1;
     char          *configfile;
     clicon_hash_t *copt = clicon_options(h);
+    char          *suffix;
+    char           xml = 0; /* Configfile is xml, otherwise legacy */
+    yang_spec     *yspec;
 
     /*
      * Set configure file if not set by command-line above
@@ -326,36 +359,33 @@ clicon_options_main(clicon_handle h)
     }
     configfile = hash_value(copt, "CLICON_CONFIGFILE", NULL);
     clicon_debug(1, "CLICON_CONFIGFILE=%s", configfile);
-
-
-#if CONFIGFILE_XML
-    /* Read clixon yang file */
-    {
-	yang_spec      *yspec;
-
+    /* If file ends with .xml, assume it is new format */
+    if ((suffix = rindex(configfile, '.')) != NULL){
+	suffix++;
+	xml = strcmp(suffix,"xml") == 0;
+    }
+    if (xml){     /* Read clixon yang file */
 	if ((yspec = yspec_new()) == NULL)
 	    goto done;
 	if (yang_parse(h, CLIXON_DATADIR, "clixon-config", NULL, yspec) < 0)
 	    goto done;    
 	/* Read configfile */
-	if (clicon_option_readfile(copt, configfile, yspec) < 0)
+	if (clicon_option_readfile_xml(copt, configfile, yspec) < 0)
 	    goto done;
     }
-#else
-    /* Set default options */
-    if (clicon_option_default(copt) < 0)  /* init registry from file */
-	goto done;
-    /* Read configfile */
-    if (clicon_option_readfile(copt, configfile) < 0)
-	goto done;
-    if (clicon_option_sanity(copt) < 0)
-	goto done;
-#endif
-
+    else {
+	/* Set default options */
+	if (clicon_option_default(copt) < 0)  /* init registry from file */
+	    goto done;
+	/* Read configfile */
+	if (clicon_option_readfile(copt, configfile) < 0)
+	    goto done;
+	if (clicon_option_sanity(copt) < 0)
+	    goto done;
+    }
     retval = 0;
  done:
     return retval;
-    
 }
 
 /*! Check if a clicon option has a value

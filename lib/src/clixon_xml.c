@@ -1445,8 +1445,8 @@ cxvec_append(cxobj   *x,
  * @param[in]  fn   Callback
  * @param[in]  arg  Argument
  * @retval    -1    Error, aborted at first error encounter
- * @retval     0    OK, all nodes traversed
- * @retval     n    OK, aborted at first encounter of first match
+ * @retval     0    OK, all nodes traversed (subparts may have been skipped)
+ * @retval     1    OK, aborted on first fn returned 1
  *
  * @code
  * int x_fn(cxobj *x, void *arg)
@@ -1471,12 +1471,18 @@ xml_apply(cxobj          *xn,
 
     x = NULL;
     while ((x = xml_child_each(xn, x, type)) != NULL) {
-	if (fn(x, arg) < 0)
+	if ((ret = fn(x, arg)) < 0)
 	    goto done;
+	if (ret == 2)
+	    continue; /* Abort this node, dont recurse */
+	else if (ret == 1){
+	    retval = 1;
+	    goto done;
+	}
 	if ((ret = xml_apply(x, type, fn, arg)) < 0)
 	    goto done;
-	if (ret > 0){
-	    retval = ret;
+	if (ret == 1){
+	    retval = 1;
 	    goto done;
 	}
     }
@@ -1487,10 +1493,9 @@ xml_apply(cxobj          *xn,
 
 /*! Apply a function call on top object and all xml node children recursively 
  * @retval    -1    Error, aborted at first error encounter
- * @retval     0    OK, all nodes traversed
- * @retval     n    OK, aborted at first encounter of first match
+ * @retval     0    OK, all nodes traversed (subparts may have been skipped)
+ * @retval     1    OK, aborted on first fn returned 1
  * @see xml_apply not including top object
-
  */
 int
 xml_apply0(cxobj          *xn, 
@@ -1501,11 +1506,13 @@ xml_apply0(cxobj          *xn,
     int        retval = -1;
     int        ret;
 
-    if ((ret = fn(xn, arg)) < 0)
+    if ((ret = fn(xn, arg)) < 0) /* -1, 0, 1, 2 */
 	goto done;
-    if (ret > 0)
-	retval = ret;
-    else
+    if (ret == 1)
+	retval = 1;
+    else  if (ret > 1)
+	retval = 0;
+    else /* 0 */
 	retval = xml_apply(xn, type, fn, arg);
   done:
     return retval;   
