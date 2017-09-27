@@ -156,7 +156,7 @@ expand_dbvar(void   *h,
     if (clicon_rpc_get_config(h, dbstr, "/", &xt) < 0)
     	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
     xcur = xt; /* default top-of-tree */
@@ -481,7 +481,7 @@ cli_show_config(clicon_handle h,
     if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), &xt) < 0)
 	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
     /* Print configuration according to format */
@@ -565,7 +565,7 @@ show_conf_xpath(clicon_handle h,
     if (clicon_rpc_get_config(h, str, xpath, &xt) < 0)
     	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
     if (xpath_vec(xt, xpath, &xv, &xlen) < 0) 
