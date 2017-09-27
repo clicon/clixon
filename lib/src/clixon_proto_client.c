@@ -199,7 +199,8 @@ clicon_rpc_netconf_xml(clicon_handle  h,
  * @param[in]  xerr    Netconf error message on the level: <rpc-reply><rpc-error>
  */
 int
-clicon_rpc_generate_error(cxobj *xerr)
+clicon_rpc_generate_error(char  *format, 
+			  cxobj *xerr)
 {
     int    retval = -1;
     cbuf  *cb = NULL;
@@ -217,7 +218,7 @@ clicon_rpc_generate_error(cxobj *xerr)
 	cprintf(cb, "%s ", xml_body(x));
     if ((x=xpath_first(xerr, "error-info"))!=NULL)
 	clicon_xml2cbuf(cb, xml_child_i(x,0), 0, 0);
-    clicon_err_fn("Clixon", 0, OE_XML, 0, "%s", cbuf_get(cb));
+    clicon_log(LOG_ERR, "%s: %s", format, cbuf_get(cb));
     retval = 0;
  done:
     if (cb)
@@ -239,7 +240,7 @@ clicon_rpc_generate_error(cxobj *xerr)
  *    if (clicon_rpc_get_config(h, "running", "/", &xt) < 0)
  *       err;
  *   if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
- *	clicon_rpc_generate_error(xerr);
+ *	clicon_rpc_generate_error("", xerr);
  *      err;
  *  }
  *    if (xt)
@@ -330,7 +331,7 @@ clicon_rpc_edit_config(clicon_handle       h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Editing configuration", xerr);
 	goto done;
     }
     retval = 0;
@@ -370,7 +371,7 @@ clicon_rpc_copy_config(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Copying configuration", xerr);
 	goto done;
     }
     retval = 0;
@@ -404,7 +405,7 @@ clicon_rpc_delete_config(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Deleting configuration", xerr);
 	goto done;
     }
     retval = 0;
@@ -434,7 +435,7 @@ clicon_rpc_lock(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Locking configuration", xerr);
 	goto done;
     }
     retval = 0;
@@ -464,7 +465,7 @@ clicon_rpc_unlock(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Configuration unlock", xerr);
 	goto done;
     }
     retval = 0;
@@ -556,7 +557,7 @@ clicon_rpc_close_session(clicon_handle h)
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Close session", xerr);
 	goto done;
     }
     retval = 0;
@@ -586,7 +587,7 @@ clicon_rpc_kill_session(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Kill session", xerr);
 	goto done;
     }
     retval = 0;
@@ -611,16 +612,14 @@ clicon_rpc_validate(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
-    cxobj             *x;
 
     if ((msg = clicon_msg_encode("<rpc><validate><source><%s/></source></validate></rpc>", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	x=xpath_first(xerr, "error-message");
-	clicon_log(LOG_ERR, "Validate failed: \"%s\". Edit and try again or discard changes", x?xml_body(x):"");
-	goto done;
+	clicon_rpc_generate_error("Validate failed. Edit and try again or discard changes", xerr);
+	goto done;	
     }
     retval = 0;
  done:
@@ -648,7 +647,7 @@ clicon_rpc_commit(clicon_handle h)
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Commit failed. Edit and try again or discard changes", xerr);
 	goto done;
     }
     retval = 0;
@@ -677,7 +676,7 @@ clicon_rpc_discard_changes(clicon_handle h)
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Discard changes", xerr);
 	goto done;
     }
     retval = 0;
@@ -716,7 +715,7 @@ clicon_rpc_create_subscription(clicon_handle    h,
     if (clicon_rpc_msg(h, msg, &xret, s0) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Create subscription", xerr);
 	goto done;
     }
     retval = 0;
@@ -746,7 +745,7 @@ clicon_rpc_debug(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Debug",xerr);
 	goto done;
     }
     if (xpath_first(xret, "//rpc-reply/ok") == NULL){

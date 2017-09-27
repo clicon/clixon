@@ -538,10 +538,8 @@ cli_commit(clicon_handle h,
 {
     int            retval = -1;
     
-    if ((retval = clicon_rpc_commit(h)) < 0){ /* startup */
-	cli_output(stderr, "Commit failed. Edit and try again or discard changes");
+    if ((retval = clicon_rpc_commit(h)) < 0)
 	goto done;
-    }
     retval = 0;
   done:
     return retval;
@@ -659,13 +657,13 @@ compare_dbs(clicon_handle h,
     if (clicon_rpc_get_config(h, "running", "/", &xc1) < 0)
 	goto done;
     if ((xerr = xpath_first(xc1, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
     if (clicon_rpc_get_config(h, "candidate", "/", &xc2) < 0)
 	goto done;
     if ((xerr = xpath_first(xc2, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
     if (compare_xmls(xc1, xc2, astext) < 0) /* astext? */
@@ -836,7 +834,7 @@ save_config_file(clicon_handle h,
     if (clicon_rpc_get_config(h, dbstr,"/", &xt) < 0)
 	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
     if ((f = fopen(filename, "wb")) == NULL){
@@ -1180,7 +1178,7 @@ cli_copy_config(clicon_handle h,
     if (clicon_rpc_get_config(h, db, cbuf_get(cb), &x1) < 0)
 	goto done;
     if ((xerr = xpath_first(x1, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr);
+	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
 

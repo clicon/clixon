@@ -568,7 +568,6 @@ cli_handler_err(FILE *f)
 	if (clicon_suberrno)
 	    cli_output(f, ": %s", strerror(clicon_suberrno));
 	cli_output(f,  "\n");
-
     }
     else
 	cli_output(f, "CLI command error\n");
