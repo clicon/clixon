@@ -1,8 +1,21 @@
 # Clixon CHANGELOG
 
 ## 3.3.3 Upcoming
+* Added a format parameter to clicon_rpc_generate_error() and changed error
+  printouts for backend errors, such as commit and validate. Example of the
+  new format:
+
+```
+> commit
+Sep 27 18:11:58: Commit failed. Edit and try again or discard changes:
+protocol invalid-value Missing mandatory variable: type
+```
+
 * If clixon config file has .xml ending, yang/clixon-config.yang is used as
   model for an xml-based configuration file. Otherwise legacy format is used.
+* The clixon config file format has changed. It now uses XML and YANG.
+  Old configuration files work, but you can use the new by setting an .xml suffix.
+ The yang model is yang/clixon-config.yang.
 * netconf client was limited to 8K byte messages. Now limit is 2^32.
 * Added event_poll function.
 * Added experimental xml hash for better performance of large lists. 
@@ -23,6 +36,7 @@
   * If you use direct netconf get or get-config calls, you may need to handle the return XML differently.
   * RESTCONF and CLI is not affected.
   * Example: 
+
 ```
   Query: 
     <rpc><get/></rpc>  
@@ -46,6 +60,7 @@
 * Added support for yang presence and no-presence containers. Previous default was "presence".
   * Empty containers will be removed unless you have used the "presence" yang declaration.
   * Example YANG without presence: 
+
 ```
      container 
         nopresence { 
@@ -54,7 +69,9 @@
           } 
      }
 ```
+
 If you submit "nopresence" without a leaf, it will automatically be removed:
+
 ```
      <nopresence/> # removed
      <nopresence>  # not removed
@@ -85,6 +102,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
   * Validation for leafref forward and backward references; 
   * CLI completion for generated cli leafrefs for both absolute and relative paths.
   * Example, relative path:
+
 ```
          leaf ifname {
              type leafref {
@@ -215,9 +233,13 @@ May 2017
      `load("Comment") <filename:string>,load_config_file("filename", "replace");`
 
   If you write your own, you need to change the callback signature from;
+```
     int cli_callback(clicon_handle h, cvec *vars, cg_var *arg)
+```
   to:
+```
     int cli_callback(clicon_handle h, cvec *vars, cvec *argv)
+```
   and rewrite the code to handle argv instead of arg.
   These are the system functions affected:
   cli_set, cli_merge, cli_del, cli_debug_backend, cli_set_mode, 

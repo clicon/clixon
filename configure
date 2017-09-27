@@ -3484,12 +3484,6 @@ if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}
 fi
 
-
-cat >>confdefs.h <<_ACEOF
-#define CLIXON_DATADIR "${prefix}/share/clixon"
-_ACEOF
-
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lm" >&5
 $as_echo_n "checking for main in -lm... " >&6; }
 if ${ac_cv_lib_m_main+:} false; then :
@@ -4269,6 +4263,14 @@ _ACEOF
 
 fi
 done
+
+
+# This is to find clixon system files in the source code.
+# same as clixon_DATADIR defined in clixon.mk.cpp for Makefiles
+
+cat >>confdefs.h <<_ACEOF
+#define CLIXON_DATADIR "${prefix}/share/clixon"
+_ACEOF
 
 
 
