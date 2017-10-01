@@ -69,12 +69,11 @@
 #include "clixon_xsl.h"
 #include "clixon_xml_map.h"
 
-/*
- * clicon_option_dump
- * Print registry on file. For debugging.
+/*! Print registry on file. For debugging.
  */
 void
-clicon_option_dump(clicon_handle h, int dbglevel)
+clicon_option_dump(clicon_handle h, 
+		   int           dbglevel)
 {
     clicon_hash_t *hash = clicon_options(h);
     int            i;
@@ -272,13 +271,8 @@ clicon_option_default(clicon_hash_t  *copt)
 	    goto done;
     }
     if (!hash_lookup(copt, "CLICON_CLI_GENMODEL_COMPLETION")){
-	if (hash_add(copt, "CLICON_CLI_GENMODEL_COMPLETION", "0", strlen("0")+1) < 0)
+	if (hash_add(copt, "CLICON_CLI_GENMODEL_COMPLETION", "1", strlen("1")+1) < 0)
 	    goto done;
-    }
-    /* Default is to use line-scrolling */
-    if (!hash_lookup(copt, "CLICON_CLI_LINESCROLLING")){
-       if (hash_add(copt, "CLICON_CLI_LINESCROLLING", "1", strlen("1")+1) < 0)
-           goto done;
     }
     /* Default is to use line-scrolling */
     if (!hash_lookup(copt, "CLICON_CLI_LINESCROLLING")){
@@ -291,7 +285,6 @@ clicon_option_default(clicon_hash_t  *copt)
 }
 
 /*! Check that options are set
- * XXX dont detect extra XML
  */
 static int 
 clicon_option_sanity(clicon_hash_t *copt)
@@ -440,7 +433,7 @@ clicon_option_str_set(clicon_handle h,
 }
 
 /*! Get options as integer but stored as string
-
+ *
  * @param   h    clicon handle
  * @param   name name of option
  * @retval  int  An integer as aresult of atoi
@@ -465,7 +458,7 @@ clicon_option_int(clicon_handle h, const char *name)
     return atoi(s);
 }
 
-/*! set option given as int.
+/*! Set option given as int.
  */
 int
 clicon_option_int_set(clicon_handle h, const char *name, int val)
@@ -477,7 +470,7 @@ clicon_option_int_set(clicon_handle h, const char *name, int val)
     return clicon_option_str_set(h, name, s);
 }
 
-/*! delete option 
+/*! Delete option 
  */
 int
 clicon_option_del(clicon_handle h, const char *name)
@@ -557,7 +550,7 @@ clicon_xmldb_plugin(clicon_handle h)
     return clicon_option_str(h, "CLICON_XMLDB_PLUGIN");
 }
 
-/* get family of backend socket: AF_UNIX, AF_INET or AF_INET6 */
+/*! Get family of backend socket: AF_UNIX, AF_INET or AF_INET6 */
 int
 clicon_sock_family(clicon_handle h)
 {
@@ -609,7 +602,7 @@ clicon_master_plugin(clicon_handle h)
     return clicon_option_str(h, "CLICON_MASTER_PLUGIN");
 }
 
-/* return initial clicon cli mode */
+/*! Return initial clicon cli mode */
 char *
 clicon_cli_mode(clicon_handle h)
 {
@@ -630,7 +623,7 @@ clicon_cli_genmodel(clicon_handle h)
 	return 0;
 }
 
-/* How to generate and show CLI syntax: VARS|ALL */
+/*! How to generate and show CLI syntax: VARS|ALL */
 enum genmodel_type
 clicon_cli_genmodel_type(clicon_handle h)
 {
@@ -709,7 +702,7 @@ clicon_cli_genmodel_completion(clicon_handle h)
 	return 0;
 }
 
-/* Where are "running" and "candidate" databases? */
+/*! Where are "running" and "candidate" databases? */
 char *
 clicon_xmldb_dir(clicon_handle h)
 {

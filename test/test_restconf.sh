@@ -1,5 +1,6 @@
 #!/bin/bash
-# Test3: backend and restconf basic functionality
+# Restconf basic functionality
+# Assume http server setup, such as nginx described in apps/restconf/README.md
 
 # include err() and new() functions
 . ./lib.sh
@@ -20,7 +21,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -Df /usr/local/etc/routing.conf # -D
+sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -Df /usr/local/etc/routing.xml # -D
 
 sleep 1
 

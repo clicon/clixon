@@ -146,7 +146,7 @@
     }
     leaf CLICON_CLI_GENMODEL_COMPLETION {
        type int32;
-       default 0;
+       default 1;
        description "Generate code for CLI completion of existing db symbols";
     }
     leaf CLICON_CLI_GENMODEL_TYPE {

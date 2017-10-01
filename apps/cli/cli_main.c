@@ -70,7 +70,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:F:1u:d:m:qpGLl:y:"
+#define CLI_OPTS "hD:f:F:1u:d:m:qpGLl:y:x"
 
 /*! terminate cli application */
 static int
@@ -109,9 +109,10 @@ cli_signal_init (clicon_handle h)
  * @param[in]  h    CLICON handle
  * @see cligen_loop
  */
-static void
+static int
 cli_interactive(clicon_handle h)
 {
+    int     retval = -1;
     int     res;
     char   *cmd;
     char   *new_mode;
@@ -123,11 +124,72 @@ cli_interactive(clicon_handle h)
 	new_mode = cli_syntax_mode(h);
 	if ((cmd = clicon_cliread(h)) == NULL) {
 	    cli_set_exiting(h, 1); /* EOF */
-	    break;
+	    retval = -1;
+	    goto done;
 	}
 	if ((res = clicon_parse(h, cmd, &new_mode, &result)) < 0)
-	    break;
+	    goto done;
     }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Read file as configuration file and print xml file  for migrating to new fmt
+ * @see clicon_option_readfile_xml
+ */
+static int 
+dump_configfile_xml_fn(FILE       *fout,
+		       const char *filename)
+{
+    struct stat st;
+    char        opt[1024];
+    char        val[1024];
+    char        line[1024];
+    char       *cp;
+    FILE       *f = NULL;
+    int         retval = -1;
+    char       *suffix;
+
+    if (filename == NULL || !strlen(filename)){
+	clicon_err(OE_UNIX, 0, "Not specified");
+	goto done;
+    }
+    if ((suffix = rindex(filename, '.')) != NULL &&
+	strcmp((suffix+1), "xml") == 0){
+	clicon_err(OE_CFG, 0, "Configfile %s should not be XML", filename);
+	goto done;
+    }
+    if (stat(filename, &st) < 0){
+	clicon_err(OE_UNIX, errno, "%s", filename);
+	goto done;
+    }
+    if (!S_ISREG(st.st_mode)){
+	clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
+	goto done;
+    }
+    if ((f = fopen(filename, "r")) == NULL) {
+	clicon_err(OE_UNIX, errno, "configure file: %s", filename);
+	return -1;
+    }
+    clicon_debug(2, "Reading config file %s", __FUNCTION__, filename);
+    fprintf(fout, "<config>\n");
+    while (fgets(line, sizeof(line), f)) {
+	if ((cp = strchr(line, '\n')) != NULL) /* strip last \n */
+	    *cp = '\0';
+	/* Trim out comments, strip whitespace, and remove CR */
+	if ((cp = strchr(line, '#')) != NULL)
+	    memcpy(cp, "\n", 2);
+	if (sscanf(line, "%s %s", opt, val) < 2)
+	    continue;
+	fprintf(fout, "\t<%s>%s</%s>\n", opt, val, opt);
+    }
+    fprintf(fout, "</config>\n");
+    retval = 0;
+  done:
+    if (f)
+	fclose(f);
+    return retval;
 }
 
 static void
@@ -142,6 +204,7 @@ usage(char *argv0, clicon_handle h)
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"
 	    "\t-f <file> \tConfig-file (mandatory)\n"
+	    "\t-x\t\tDump configuration file as XML on stdout (migration utility)\n"
     	    "\t-F <file> \tRead commands from file (default stdin)\n"
 	    "\t-1\t\tDo not enter interactive mode\n"
     	    "\t-u <sockpath>\tconfig UNIX domain path (default: %s)\n"
@@ -178,6 +241,7 @@ main(int argc, char **argv)
     int          len;
     int          logdst = CLICON_LOG_STDERR;
     char        *restarg = NULL; /* what remains after options */
+    int          dump_configfile_xml = 0;
 
     /* Defaults */
 
@@ -216,6 +280,9 @@ main(int argc, char **argv)
 		usage(argv[0], h);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
+	case 'x': /* dump config file as xml */
+	    dump_configfile_xml++;
+	    break;
 	 case 'l': /* Log destination: s|e|o */
 	   switch (optarg[0]){
 	   case 's':
@@ -239,6 +306,14 @@ main(int argc, char **argv)
 
     clicon_debug_init(debug, NULL); 
 
+    /* Use cli as util tool to dump config file as xml for migration */
+    if (dump_configfile_xml) {
+	clicon_hash_t *copt = clicon_options(h);
+	char *configfile = hash_value(copt, "CLICON_CONFIGFILE", NULL);	
+	if (dump_configfile_xml_fn(stdout, configfile) < 0)
+	    goto done;
+    }
+
     /* Find and read configfile */
     if (clicon_options_main(h) < 0){
         if (help)
@@ -254,6 +329,7 @@ main(int argc, char **argv)
 	case 'D' : /* debug */
 	case 'f': /* config file */
 	case 'l': /* Log destination */
+	case 'x': /* dump config file as xml */
 	    break; /* see above */
 	case 'F': /* read commands from file */
 	    if (freopen(optarg, "r", stdin) == NULL){
@@ -326,7 +402,9 @@ main(int argc, char **argv)
 	goto done;
     }
     
-    /* Create tree generated from dataspec */
+    /* Create tree generated from dataspec. If no other trees exists, this is
+     * the only one.
+     */
     if (clicon_cli_genmodel(h)){
 	yang_spec         *yspec;      /* yang spec */
 	parse_tree         pt = {0,};  /* cli parse tree */
@@ -367,10 +445,8 @@ main(int argc, char **argv)
 	fprintf (stderr, "FATAL: No cli mode set (use -m or CLICON_CLI_MODE)\n");
 	goto done;
     }
-    if (cli_tree(h, cli_syntax_mode(h)) == NULL){
-	fprintf (stderr, "FATAL: No such cli mode: %s\n", cli_syntax_mode(h));
-	goto done;
-    }
+    if (cli_tree(h, cli_syntax_mode(h)) == NULL)
+	clicon_log(LOG_WARNING, "No such cli mode: %s (Specify cli mode with CLICON_CLI_MODE in config file or -m <mode> on command line", cli_syntax_mode(h));
 
     if (logclisyntax)
 	cli_logsyntax_set(h, logclisyntax);

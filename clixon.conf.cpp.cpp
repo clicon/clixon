@@ -105,7 +105,7 @@ CLICON_BACKEND_PIDFILE  localstatedir/APPNAME/APPNAME.pidfile
 # CLICON_CLI_GENMODEL     1
 
 # Generate code for CLI completion of existing db symbols
-# CLICON_CLI_GENMODEL_COMPLETION 0
+# CLICON_CLI_GENMODEL_COMPLETION 1
 
 # How to generate and show CLI syntax: VARS|ALL
 # CLICON_CLI_GENMODEL_TYPE   VARS

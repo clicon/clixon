@@ -713,8 +713,9 @@ done:
     return res;
 }
 
-/*
- * Read command from CLIgen's cliread() using current syntax mode.
+/*! Read command from CLIgen's cliread() using current syntax mode.
+ * @retval    string  char* buffer containing CLIgen command
+ * @retval    NULL    Fatal error
  */
 char *
 clicon_cliread(clicon_handle h)

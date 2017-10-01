@@ -11,8 +11,15 @@ Sep 27 18:11:58: Commit failed. Edit and try again or discard changes:
 protocol invalid-value Missing mandatory variable: type
 ```
 
-* If clixon config file has .xml ending, yang/clixon-config.yang is used as
+* Migrated to XML configure file.
+**  If clixon config file has .xml ending, yang/clixon-config.yang is used as
   model for an xml-based configuration file. Otherwise legacy format is used.
+** As migration utility from legacy to XML configure file, clixon_cli -x can be used to print new format, eg:
+
+```
+clixon_cli -f /usr/local/etc/routing.conf -1x
+```
+
 * The clixon config file format has changed. It now uses XML and YANG.
   Old configuration files work, but you can use the new by setting an .xml suffix.
  The yang model is yang/clixon-config.yang.
