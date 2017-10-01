@@ -1829,7 +1829,7 @@ xml_hash_op(cxobj  *x,
     clicon_hash_t *ph;
     yang_stmt     *y;
     cbuf          *key = NULL; /* cligen buffer hash key */
-    int            op = (int)arg;
+    int            op = (intptr_t)arg;
 
     if (xml_hash(x)==NULL){
 	if (op==1)
