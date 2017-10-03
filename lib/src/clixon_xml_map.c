@@ -993,16 +993,22 @@ yang2api_path_fmt(yang_stmt *ys,
 /*! Transform an xml key format and a vector of values to an XML key
  * Used for actual key, eg in clicon_rpc_change(), xmldb_put_xkey()
  * Example: 
- *   xmlkeyfmt:  /aaa/%s/name
- *   cvv:        key=17
- *   xmlkey:     /aaa/17/name
+ *   xmlkeyfmt:  /interfaces/interface=%s/ipv4/address=%s
+ *   cvv:     0 : set interfaces interface e ipv4 address 1.2.3.4
+ *            1 : name = "e"
+ *            2 : ip = "1.2.3.4"
+ *   api_path:  /interfaces/interface=e/ipv4/address=1.2.3.4
  * @param[in]  api_path_fmt  XML key format, eg /aaa/%s/name
- * @param[in]  cvv           cligen variable vector, one for every wildchar in api_path_fmt
+ * @param[in]  cvv           cligen variable vector, one for every wildchar in 
+ *                           api_path_fmt
  * @param[out] api_path      api_path, eg /aaa/17. Free after use
  * @param[out] yang_arg      yang-stmt argument name. Free after use
  * @note first and last elements of cvv are not used,..
- * @see cli_dbxml where this function is called
- */ 
+ * @see api_path_fmt2xpath
+ * 
+ * /interfaces/interface=%s/name            --> /interfaces/interface/name
+ * /interfaces/interface=%s/ipv4/address=%s --> /interfaces/interface=e/ipv4/address
+ */
 int
 api_path_fmt2api_path(char  *api_path_fmt, 
 		      cvec  *cvv, 
@@ -1016,19 +1022,19 @@ api_path_fmt2api_path(char  *api_path_fmt,
     int   j;
     char *str;
     char *strenc=NULL;
-
+    cg_var *cv;
+    
+#if 1
     /* Sanity check */
-#if 0
     j = 0; /* Count % */
     for (i=0; i<strlen(api_path_fmt); i++)
 	if (api_path_fmt[i] == '%')
 	    j++;
-    if (j+2 < cvec_len(cvv)) {
-	clicon_log(LOG_WARNING, "%s xmlkey format string mismatch(j=%d, cvec_len=%d): %s", 
+    if (j > cvec_len(cvv)) { //cvec_len can be longer
+	clicon_log(LOG_WARNING, "%s api_path_fmt number of %% is %d, does not match number of cvv entries %d", 
 		   api_path_fmt, 
 		   j,
-		   cvec_len(cvv), 
-		   cv_string_get(cvec_i(cvv, 0)));
+		   cvec_len(cvv));
 	goto done;
     }
 #endif
@@ -1043,24 +1049,30 @@ api_path_fmt2api_path(char  *api_path_fmt,
 	    esc = 0;
 	    if (c!='s')
 		continue;
-	    if ((str = cv2str_dup(cvec_i(cvv, j++))) == NULL){
-		clicon_err(OE_UNIX, errno, "strdup");
-		goto done;
+	    if (j == cvec_len(cvv)) /* last element */
+		;
+	    else{
+		cv = cvec_i(cvv, j++);
+		if ((str = cv2str_dup(cv)) == NULL){
+		    clicon_err(OE_UNIX, errno, "cv2str_dup");
+		    goto done;
+		}
+		if (percent_encode(str, &strenc) < 0)
+		    goto done;
+		cprintf(cb, "%s", strenc); 
+		free(strenc); strenc = NULL;
+		free(str); str = NULL;
 	    }
-	    if (percent_encode(str, &strenc) < 0)
-		goto done;
-	    cprintf(cb, "%s", strenc); 
-	    free(strenc); strenc = NULL;
-	    free(str); str = NULL;
 	}
 	else
 	    if (c == '%')
 		esc++;
-	    else if (c == '/'){
-		cprintf(cb, "%c", c);
+	    else{
+		if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%' && j == cvec_len(cvv))
+		    ; /* skip */
+		else
+		    cprintf(cb, "%c", c);
 	    }
-	    else
-		cprintf(cb, "%c", c);
     }
     if ((*api_path = strdup(cbuf_get(cb))) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
@@ -1073,12 +1085,12 @@ api_path_fmt2api_path(char  *api_path_fmt,
     return retval;
 }
 
+
 /*! Transform an xml key format and a vector of values to an XML path
  * Used to input xmldb_get() or xmldb_get_vec
  * Add .* in last %s position.
  * Example: 
- *   xmlkeyfmt:  /interface/%s/address/%s OLDXXX
- *   xmlkeyfmt:  /interface=%s/address=%s
+ *   api_path_fmt:  /interface/%s/address/%s 
  *   cvv:        name=eth0
  *   xmlkey:     /interface/[name=eth0]/address
  * Example2:
@@ -1102,21 +1114,20 @@ api_path_fmt2xpath(char  *api_path_fmt,
     int     j;
     char   *str;
     cg_var *cv;
-    int     skip = 0;
 
     /* Sanity check: count '%' */
-#if 0
+#if 1
     j = 0; /* Count % */
     for (i=0; i<strlen(api_path_fmt); i++)
 	if (api_path_fmt[i] == '%')
 	    j++;
-    if (j < cvec_len(cvv)-1) {
+    if (j > cvec_len(cvv)) {
 	clicon_log(LOG_WARNING, "%s xmlkey format string mismatch(j=%d, cvec_len=%d): %s", 
 		   api_path_fmt, 
 		   j,
 		   cvec_len(cvv), 
 		   cv_string_get(cvec_i(cvv, 0)));
-	//	goto done;
+	goto done;
     }
 #endif
     if ((cb = cbuf_new()) == NULL){
@@ -1130,9 +1141,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
 	    esc = 0;
 	    if (c!='s')
 		continue;
-
 	    if (j == cvec_len(cvv)) /* last element */
-		//skip++;
 		;
 	    else{
 		cv = cvec_i(cvv, j++);
@@ -1148,13 +1157,10 @@ api_path_fmt2xpath(char  *api_path_fmt,
 	    if (c == '%')
 		esc++;
 	    else{
-		if (skip)
-		    skip=0;
+		if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%')
+		    ; /* skip */
 		else
-		    if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%')
-			; /* skip */
-		    else
-			cprintf(cb, "%c", c);
+		    cprintf(cb, "%c", c);
 	    }
     }
     if ((*xpath = strdup4(cbuf_get(cb))) == NULL){
@@ -1687,7 +1693,7 @@ api_path2xml_vec(char             **vec,
     }
     switch (y->ys_keyword){
     case Y_LEAF_LIST:
-	if (restval==NULL){
+	if (0 && restval==NULL){
 	    clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
 	    goto done;
 	}
@@ -1697,7 +1703,7 @@ api_path2xml_vec(char             **vec,
 	if ((xb = xml_new("body", x)) == NULL)
 	    goto done; 
 	xml_type_set(xb, CX_BODY);
-	if (xml_value_set(xb, restval) < 0)
+	if (restval && xml_value_set(xb, restval) < 0)
 	    goto done;
 	break;
     case Y_LIST:
@@ -1773,11 +1779,11 @@ api_path2xml_vec(char             **vec,
 }
 
 /*! Create xml tree from api-path
- * @param[in]   api_path  API-path as defined in RFC 8040
- * @param[in]   yspec     Yang spec
+ * @param[in]   api_path   API-path as defined in RFC 8040
+ * @param[in]   yspec      Yang spec
  * @param[in]   schemanode If set use schema nodes otherwise data nodes.
- * @param[out]  xpathp    Resulting xml tree 
- * @param[out]  ypathp    Yang spec matching xpathp
+ * @param[out]  xpathp     Resulting xml tree 
+ * @param[out]  ypathp     Yang spec matching xpathp
  * @see api_path2xml_vec
  */
 int
@@ -1982,4 +1988,71 @@ yang_enum_int_value(cxobj   *node,
 done:
     return retval;
 }
+
+/*
+ * Turn this on for uni-test programs
+ * Usage: clixon_string join
+ * Example compile:
+ gcc -g -o clixon_xml_map -I. -I../clixon ./clixon_xml_map.c -lclixon -lcligen
+ * Example run:
+/interfaces/interface=%s/name --> interfaces/interface/name
+/interfaces/interface=%s/ipv4/address=%s e --> /interfaces/interface=e/ipv4/address
+/interfaces/interface=%s,%s/ipv4/address=%s e f --> /interfaces/interface=e,f/ipv4/address
+/interfaces/interface=%s/ipv4/address=%s,%s e f --> /interfaces/interface=e/ipv4/address=f
+
+/interfaces/interface=%s/ipv4/address=%s/prefix-length eth 1.2.3.4 -->
+/interfaces/interface=eth/ipv4/address=1.2.3.4/prefix-length
+
+*/
+#if 0 /* Test program */
+
+static int
+usage(char *argv0)
+{
+    fprintf(stderr, "usage:%s <api_path_fmt> <cv0>, <cv1>,...\n", argv0);
+    exit(0);
+}
+
+int
+main(int argc, char **argv)
+{
+    int nvec;
+    char **vec;
+    char *str0;
+    char *str1;
+    int   i;
+    char  *api_path_fmt;
+    cg_var *cv;
+    cvec  *cvv;
+    char  *api_path=NULL;
+
+    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
+    if (argc < 2){
+	usage(argv[0]);
+	return 0;
+    }
+    api_path_fmt = argv[1];
+    if ((cvv = cvec_new(0)) == NULL){
+	perror("cvec_new");
+	return -1;
+    }
+    cv = cv_new(CGV_STRING);
+    cv_string_set(cv, "CLI base command");
+    cvec_append_var(cvv, cv);
+    for (i=2; i<argc; i++){
+	cv = cv_new(CGV_STRING);
+	if (cv_parse(argv[i], cv) < 0){
+	    perror("cv_parse");
+	    return -1;
+	}
+	cvec_append_var(cvv, cv);
+    }
+    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
+	return -1;
+    printf("%s\n", api_path);
+    return 0;
+}
+
+#endif /* Test program */
+
 

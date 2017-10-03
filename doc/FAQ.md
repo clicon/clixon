@@ -59,9 +59,9 @@ Build using 'make doc' and aim your browser at doc/html/index.html or
 use the web resource: http://clicon.org/ref/index.html
 
 ## How do you run the example?
-- Start a backend server: 'clixon_backend -Ff /usr/local/etc/routing.conf'
-- Start a cli session: clixon_cli -f /usr/local/etc/routing.conf
-- Start a netconf session: clixon_netconf -f /usr/local/etc/routing.conf
+- Start a backend server: 'clixon_backend -Ff /usr/local/etc/routing.xml'
+- Start a cli session: clixon_cli -f /usr/local/etc/routing.xml
+- Start a netconf session: clixon_netconf -f /usr/local/etc/routing.xml
 
 ## How is configuration data stored?
 Configuration data is stored in an XML datastore. The default is a
@@ -82,10 +82,7 @@ is the core functionality of a clixon system.
 ## What is a Clixon configuration file?
 Clixon options are stored in a configuration file you must specify
 when you start a backend or client using -f. The example configuration
-file is /usr/local/etc/routing.conf.
-This file is generated from the base source clixon.conf.cpp.cpp and
-is merged with local configuration files, such as routing.conf.local.
-This is slightly confusing and could be improved.
+file is installed at /usr/local/etc/routing.xml.
 
 ## Can I run Clixon as docker containers?
 Yes, the example works as docker containers as well. backend and cli needs a 
@@ -107,12 +104,12 @@ You may also push the containers with 'make push' but you may then consider chan
 
 As an alternative to cli configuration, you can use netconf. Easiest is to just pipe netconf commands to the clixon_netconf application.
 Example:
-	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/routing.conf
+	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/routing.xml
 
 However, more useful is to run clixon_netconf as an SSH
 subsystem. Register the subsystem in /etc/sshd_config:
 ```
-	Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/routing.conf
+	Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/routing.xml
 ```
 and then invoke it from a client using
 ```
@@ -147,7 +144,7 @@ cli>
 ```
 or via netconf:
 ```
-clixon_netconf -qf /usr/local/etc/routing.conf 
+clixon_netconf -qf /usr/local/etc/routing.xml 
 <rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
 <notification><event>Routing notification</event></notification>]]>]]>
@@ -156,7 +153,7 @@ clixon_netconf -qf /usr/local/etc/routing.conf
 ```
 
 ## I want to program. How do I extend the example?
-- routing.conf.local - Override default settings
+- routing.xml - Change the configuration file
 - The yang specifications - This is the central part. It changes the XML, database and the config cli.
 - routing_cli.cli - Change the fixed part of the CLI commands 
 - routing_cli.c - Cli C-commands are placed here.

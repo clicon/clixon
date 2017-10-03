@@ -250,6 +250,7 @@ main(int argc, char **argv)
     /* Initiate CLICON handle */
     if ((h = cli_handle_init()) == NULL)
 	goto done;
+
     if (cli_plugin_init(h) != 0) 
 	goto done;
     once = 0;
@@ -486,7 +487,8 @@ main(int argc, char **argv)
     // Gets in your face if we log on stderr
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clicon_log(LOG_NOTICE, "%s: %u Terminated\n", __PROGRAM__, getpid());
-    cli_terminate(h);
+    if (h)
+	cli_terminate(h);
 
     return 0;
 }

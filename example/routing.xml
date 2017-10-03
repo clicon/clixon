@@ -1,5 +1,5 @@
 <config>
-  <CLICON_CONFIGFILE>/usr/local/etc/routing.conf</CLICON_CONFIGFILE>
+  <CLICON_CONFIGFILE>/usr/local/etc/routing.xml</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLI_MODE>routing</CLICON_CLI_MODE>

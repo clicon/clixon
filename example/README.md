@@ -7,15 +7,15 @@
 ```
 Start backend:
 ```
-    clixon_backend -f /usr/local/etc/routing.conf -I
+    clixon_backend -f /usr/local/etc/routing.xml -I
 ```
 Edit cli:
 ```
-    clixon_cli -f /usr/local/etc/routing.conf
+    clixon_cli -f /usr/local/etc/routing.xml
 ```
 Send netconf command:
 ```
-    clixon_netconf -f /usr/local/etc/routing.conf
+    clixon_netconf -f /usr/local/etc/routing.xml
 ```
 
 ## Setting data example using netconf

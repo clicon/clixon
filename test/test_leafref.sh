@@ -32,6 +32,17 @@ module example{
             }
          }
     }
+    list sender{
+        key name;
+        leaf name{
+            type string;
+        }
+        leaf template{
+            type leafref{
+                path "/sender/name";
+            }
+        }
+    }
 }
 EOF
 
@@ -95,6 +106,12 @@ expectfn "$clixon_cli -1f $clixon_cf -y /tmp/leafref.yang -l o set default-addre
 
 new "cli leafref validate"
 expectfn "$clixon_cli -1f $clixon_cf -y /tmp/leafref.yang -l o validate" "^$"
+
+new "cli sender"
+expectfn "$clixon_cli -1f $clixon_cf -y /tmp/leafref.yang -l o set sender a" "^$"
+
+new "cli sender template"
+expectfn "$clixon_cli -1f $clixon_cf -y /tmp/leafref.yang -l o set sender b template a" "^$"
 
 new "Kill backend"
 # Check if still alive

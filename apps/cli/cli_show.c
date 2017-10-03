@@ -99,7 +99,8 @@ expand_dbvar(void   *h,
 	     cvec  *helptexts)
 {
     int              retval = -1;
-    char            *api_path;
+    char            *api_path_fmt;
+    char            *api_path = NULL;
     char            *dbstr;    
     cxobj           *xt = NULL;
     char            *xpath = NULL;
@@ -145,13 +146,16 @@ expand_dbvar(void   *h,
 	clicon_err(OE_PLUGIN, 0, "%s: Error when accessing argument <api_path>");
 	goto done;
     }
-    api_path = cv_string_get(cv);
-    /* api_path = /interface/%s/address/%s
+    api_path_fmt = cv_string_get(cv);
+    /* api_path_fmt = /interface/%s/address/%s
        --> ^/interface/eth0/address/.*$
        --> /interface/[name=eth0]/address
     */
-    if (api_path_fmt2xpath(api_path, cvv, &xpath) < 0)
-	goto done;   
+    if (api_path_fmt2xpath(api_path_fmt, cvv, &xpath) < 0)
+	goto done;
+    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
+	goto done;
+
     /* XXX read whole configuration, why not send xpath? */
     if (clicon_rpc_get_config(h, dbstr, "/", &xt) < 0)
     	goto done;
@@ -165,7 +169,7 @@ expand_dbvar(void   *h,
     if ((xtop = xml_new("config", NULL)) == NULL)
 	goto done;
     xbot = xtop;
-    /* This is primarily to get "y", XXX xbot can be broken (contains =%s) 
+    /* This is primarily to get "y", 
      * xpath2xml would have worked!!
      */
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
@@ -236,6 +240,8 @@ expand_dbvar(void   *h,
     }
     retval = 0;
   done:
+    if (api_path)
+	free(api_path);
     if (xvec)
 	free(xvec);
     if (xtop)
