@@ -691,13 +691,12 @@ api_operation_post(clicon_handle h,
     char      *media_accept;
     int        use_xml = 0; /* By default return JSON */
 
-    clicon_debug(1, "%s json:\"%s\"", __FUNCTION__, data);
-    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
-    if (strcmp(media_accept, "application/yang-data+xml")==0)
+    clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, path);
+    if ((media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp)) &&
+	strcmp(media_accept, "application/yang-data+xml")==0)
 	use_xml++;
-
-    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
-    if (strcmp(media_content_type, "application/yang-data+xml")==0)
+    if ((media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp)) &&
+	strcmp(media_content_type, "application/yang-data+xml")==0)
 	parse_xml++;
     clicon_debug(1, "%s accept:\"%s\" content-type:\"%s\"", 
 		 __FUNCTION__, media_accept, media_content_type);

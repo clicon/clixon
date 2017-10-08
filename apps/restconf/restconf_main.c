@@ -205,9 +205,8 @@ request_process(clicon_handle h,
 
     if (strcmp(method, "data") == 0) /* restconf, skip /api/data */
 	retval = api_data(h, r, path, pcvec, 2, qvec, data);
-    else
-	if (strcmp(method, "operations") == 0) /* rpc */
-	    retval = api_operations(h, r, path, pcvec, 2, qvec, data);
+    else if (strcmp(method, "operations") == 0) /* rpc */
+	retval = api_operations(h, r, path, pcvec, 2, qvec, data);
     else if (strcmp(method, "test") == 0)
 	retval = test(r, 0);
     else

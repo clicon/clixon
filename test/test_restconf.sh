@@ -83,7 +83,7 @@ new "restconf get subtree"
 expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}}}
 $'
 
-new "restconf rpc using POST json"
+new "restconf operation rpc using POST json"
 expectfn 'curl -sS -X POST -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '{ "output": { "route": { "address-family": "ipv4", "next-hop": { "next-hop-list": "2.3.4.5" } } } } '
 
 new "restconf rpc using POST xml"

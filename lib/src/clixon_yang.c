@@ -1779,7 +1779,7 @@ schema_nodeid_vec(yang_node  *yn,
 		}
 	}
 	if (!match){
-	    clicon_debug(1, "%s not found", nodeid);
+	    clicon_debug(1, "%s: %s not found", __FUNCTION__, nodeid);
 	    goto ok;
 	}
 	ynext = (yang_node*)ys;
