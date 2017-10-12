@@ -62,7 +62,7 @@ CLIXON_BACKEND_SYSDIR = $(libdir)/clixon/plugins/backend
 # even though it may exist in $(libdir). But the new version may not have been installed yet.
 LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
-LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ -l:$(CLIXON_LIB) -lpthread
+LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ $(top_srcdir)/lib/src/$(CLIXON_LIB) -lpthread
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
@@ -126,14 +126,14 @@ test.c	:
 	echo "int main(){}" > $@
 
 test: 	test.c $(LIBOBJ) 
-	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. -l:$(MYLIB) $(LIBS) -o $@
+	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
 $(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(APPOBJ) $(OBJS) -L. -l:$(MYLIB) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(APPOBJ) $(OBJS) -L. $(MYLIB) $(LIBS) -o $@
 
 $(MYLIB): $(LIBOBJ)
 ifeq ($(HOST_VENDOR),apple)
-       $(CC) $(LDFLAGS) -shared -o $@ $(GENOBJS) $(OBJS) $(LIBS) -undefined dynamic_lookup -o $@
+	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ -lc $(LIBOBJ)
 else
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ -lc $(LIBOBJ) -Wl,-soname=$(MYLIBSO)
 endif
