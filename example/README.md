@@ -71,8 +71,7 @@ Clixon implements Yang RPC operations by an extension mechanism. The
 extension mechanism enables you to add application-specific
 operations. It works by adding user-defined callbacks for added
 netconf operations. It is possible to use the extension mechanism
-independent of the yang rpc construct, but it is recommended to use
-that, and the example includes such an example:
+independent of the yang rpc construct, but it is recommended. The example includes an example:
 
 Example:
 ```
@@ -91,7 +90,7 @@ The example works by creating a netconf rpc call and sending it to the backend: 
    </rpc>
 ```
 
-The backend in turn registers a callback (fib_route()) which handles the RPC.
+In the backend, a callback is registered (fib_route()) which handles the RPC.
 ```
 static int 
 fib_route(clicon_handle h, 
@@ -122,7 +121,7 @@ To return state data, you need to write a backend state data callback
 with the name "plugin_statedata" where you return an XML tree with
 state. This is then merged with config data by the system.
 
-pA static example of returning state data is in the example. Note that
+A static example of returning state data is in the example. Note that
 a real example would poll or get the interface counters via a system
 call, as well as use the "xpath" argument to identify the requested
 state data.
