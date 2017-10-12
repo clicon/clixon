@@ -42,6 +42,7 @@ mandir		= @mandir@
 libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
+HOST_VENDOR     = @host_vendor@
 
 VPATH       	= @srcdir@
 CC		= @CC@
@@ -64,7 +65,11 @@ all:	 $(PLUGIN)
 -include $(DESTDIR)$(datarootdir)/clixon/clixon.mk
 
 $(PLUGIN): $(SRC)
+ifeq ($(HOST_VENDOR),apple)
+	$(CC) $(CPPFLAGS) $(INCLUDES) $(CFLAGS) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ -lc $^ $(LIBS)
+else
 	$(CC) $(CPPFLAGS) $(INCLUDES) $(CFLAGS) $(LDFLAGS) -shared -o $@ -lc $^ $(LIBS)
+endif
 
 clean:
 	rm -f $(PLUGIN) $(OBJS) *.core

@@ -47,6 +47,7 @@ libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 includedir	= @includedir@
+HOST_VENDOR     = @host_vendor@
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
@@ -131,7 +132,11 @@ $(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
 	$(CC) $(LDFLAGS) $(APPOBJ) $(OBJS) -L. -l:$(MYLIB) $(LIBS) -o $@
 
 $(MYLIB): $(LIBOBJ)
+ifeq ($(HOST_VENDOR),apple)
+       $(CC) $(LDFLAGS) -shared -o $@ $(GENOBJS) $(OBJS) $(LIBS) -undefined dynamic_lookup -o $@
+else
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ -lc $(LIBOBJ) -Wl,-soname=$(MYLIBSO)
+endif
 
 # link-name is needed for application linking, eg for clixon_cli and clixon_backend
 $(MYLIBLINK) : $(MYLIB)

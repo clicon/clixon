@@ -1,6 +1,9 @@
 # Clixon CHANGELOG
 
 ## 3.3.3 Upcoming
+
+* Apple Darwin port
+
 * Added a format parameter to clicon_rpc_generate_error() and changed error
   printouts for backend errors, such as commit and validate. Example of the
   new format:

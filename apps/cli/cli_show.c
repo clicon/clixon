@@ -328,6 +328,7 @@ expand_dir(char *dir,
 			    strerror(errno));
 		    goto quit;
 		}
+#ifndef __APPLE__
 		if (0 &&detail){
 		    if ((pw = getpwuid(st.st_uid)) == NULL){
 			fprintf(stderr, "expand_dir: getpwuid(%d): %s\n",
@@ -361,6 +362,7 @@ expand_dir(char *dir,
 			);
 		    cmd = str;
 		}
+#endif /* __APPLE__ */
 		if (((*commands) =
 		     realloc(*commands, ((*nr)+1)*sizeof(char**))) == NULL){
 		    perror("expand_dir: realloc");
