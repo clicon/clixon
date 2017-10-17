@@ -100,7 +100,7 @@ clicon_rpc_msg(clicon_handle      h,
 	    if (errno == ESHUTDOWN)
 		/* Maybe could reconnect on a higher layer, but lets fail
 		   loud and proud */
-		cli_set_exiting(1);
+		cligen_exiting_set(cli_cligen(h), 1);
 #endif
 	    goto done;
 	}
@@ -478,7 +478,6 @@ clicon_rpc_unlock(clicon_handle h,
 }
 
 /*! Get database configuration and state data
- * Same as clicon_proto_change just with a cvec instead of lvec
  * @param[in]  h        CLICON handle
  * @param[in]  xpath    XPath (or "")
  * @param[out] xt       XML tree. Free with xml_free. 

@@ -70,7 +70,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:F:1u:d:m:qpGLl:y:x"
+#define CLI_OPTS "hD:f:xl:F:1u:d:m:qpGLy:c:"
 
 /*! terminate cli application */
 static int
@@ -119,11 +119,10 @@ cli_interactive(clicon_handle h)
     int     result;
     
     /* Loop through all commands */
-    while(!cli_exiting(h)) {
-//	save_mode = 
+    while(!cligen_exiting(cli_cligen(h))) {
 	new_mode = cli_syntax_mode(h);
 	if ((cmd = clicon_cliread(h)) == NULL) {
-	    cli_set_exiting(h, 1); /* EOF */
+	    cligen_exiting_set(cli_cligen(h), 1); /* EOF */
 	    retval = -1;
 	    goto done;
 	}
@@ -215,7 +214,8 @@ usage(char *argv0, clicon_handle h)
 	    "\t-G \t\tPrint CLI syntax generated from dbspec (if CLICON_CLI_GENMODEL enabled)\n"
 	    "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
 	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default)\n"
-	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
+	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
+	    "\t-c <file>\tSpecify cli spec file.\n",
 	    argv0,
 	    confsock ? confsock : "none",
 	    plgdir ? plgdir : "none"
@@ -254,7 +254,7 @@ main(int argc, char **argv)
     if (cli_plugin_init(h) != 0) 
 	goto done;
     once = 0;
-    cli_set_comment(h, '#'); /* Default to handle #! clicon_cli scripts */
+    cligen_comment_set(cli_cligen(h), '#'); /* Default to handle #! clicon_cli scripts */
 
     /*
      * First-step command-line options for help, debug, config-file and log, 
@@ -263,7 +263,6 @@ main(int argc, char **argv)
     opterr = 0;
     while ((c = getopt(argc, argv, CLI_OPTS)) != -1)
 	switch (c) {
-	case '?':
 	case 'h':
 	    /* Defer the call to usage() to later. Reason is that for helpful
 	       text messages, default dirs, etc, are not set until later.
@@ -281,7 +280,7 @@ main(int argc, char **argv)
 		usage(argv[0], h);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
-	case 'x': /* dump config file as xml */
+	case 'x': /* dump config file as xml (migration from .conf file)*/
 	    dump_configfile_xml++;
 	    break;
 	 case 'l': /* Log destination: s|e|o */
@@ -329,8 +328,8 @@ main(int argc, char **argv)
 	switch (c) {
 	case 'D' : /* debug */
 	case 'f': /* config file */
-	case 'l': /* Log destination */
 	case 'x': /* dump config file as xml */
+	case 'l': /* Log destination */
 	    break; /* see above */
 	case 'F': /* read commands from file */
 	    if (freopen(optarg, "r", stdin) == NULL){
@@ -370,6 +369,10 @@ main(int argc, char **argv)
 	    break;
 	case 'y' :{ /* Overwrite yang module or absolute filename */
 	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
+	    break;
+	}
+	case 'c' :{ /* Overwrite clispec with absolute filename */
+	    clicon_option_str_set(h, "CLICON_CLISPEC_FILE", optarg);
 	    break;
 	}
 	default:
@@ -424,7 +427,7 @@ main(int argc, char **argv)
 	    goto done;
 	}	
 	snprintf(treename, len, "datamodel:%s",  clicon_dbspec_name(h));
-	cli_tree_add(h, treename, pt);
+	cligen_tree_add(cli_cligen(h), treename, pt);
 
 	if (printgen)
 	    cligen_print(stdout, pt, 1);
@@ -446,7 +449,7 @@ main(int argc, char **argv)
 	fprintf (stderr, "FATAL: No cli mode set (use -m or CLICON_CLI_MODE)\n");
 	goto done;
     }
-    if (cli_tree(h, cli_syntax_mode(h)) == NULL)
+    if (cligen_tree_find(cli_cligen(h), cli_syntax_mode(h)) == NULL)
 	clicon_log(LOG_WARNING, "No such cli mode: %s (Specify cli mode with CLICON_CLI_MODE in config file or -m <mode> on command line", cli_syntax_mode(h));
 
     if (logclisyntax)
@@ -454,7 +457,7 @@ main(int argc, char **argv)
 
     if (debug)
 	clicon_option_dump(h, debug);
-
+    
     /* Join rest of argv to a single command */
     restarg = clicon_strjoin(argc, argv, " ");
 

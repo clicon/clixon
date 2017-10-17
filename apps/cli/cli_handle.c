@@ -86,9 +86,7 @@ struct cli_handle {
 
 };
 
-/*
- * cli_handle_init
- * returns a clicon handle for other CLICON API calls
+/*! Return a clicon handle for other CLICON API calls
  */
 clicon_handle
 cli_handle_init(void)
@@ -153,83 +151,12 @@ cli_syntax_set(clicon_handle h,
     return 0;
 }
 
-/*----------------------------------------------------------
- * cligen access functions
- *----------------------------------------------------------*/
+
+/*! Return clicon handle */
 cligen_handle
 cli_cligen(clicon_handle h)
 {
     return cligen(h);
-}
-
-/*
- * cli_interactive and clicon_eval
- */
-int
-cli_exiting(clicon_handle h)
-{
-    cligen_handle ch = cligen(h);
-
-    return cligen_exiting(ch);
-}
-/*
- * cli_common.c: cli_quit
- * cli_interactive()
- */
-int 
-cli_set_exiting(clicon_handle h, int exiting)
-{
-    cligen_handle ch = cligen(h);
-
-    return cligen_exiting_set(ch, exiting);
-}
-
-char
-cli_comment(clicon_handle h)
-{
-    cligen_handle ch = cligen(h);
-
-    return cligen_comment(ch);
-}
-
-char
-cli_set_comment(clicon_handle h, char c)
-{
-    cligen_handle ch = cligen(h);
-
-    return cligen_comment_set(ch, c);
-}
-
-char
-cli_tree_add(clicon_handle h, char *tree, parse_tree pt)
-{
-    cligen_handle ch = cligen(h);
-
-    return cligen_tree_add(ch, tree, pt);
-}
-
-char *
-cli_tree_active(clicon_handle h)
-{
-    cligen_handle ch = cligen(h);
-
-    return cligen_tree_active(ch);
-}
-
-int
-cli_tree_active_set(clicon_handle h, char *treename)
-{
-    cligen_handle ch = cligen(h);
-
-    return cligen_tree_active_set(ch, treename);
-}
-
-parse_tree *
-cli_tree(clicon_handle h, char *name)
-{
-    cligen_handle ch = cligen(h);
-
-    return cligen_tree(ch, name);
 }
 
 int

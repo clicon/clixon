@@ -50,7 +50,7 @@ NETCONF_PLUGIN  = $(APPNAME)_netconf.so
 
 PLUGINS = $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN)
 
-all:	$(PLUGINS) $(APPNAME).conf
+all:	$(PLUGINS)
 
 # Note: clixon.mk has a rule for:
 # $(APPNAME.conf)
@@ -91,16 +91,15 @@ SRC     = $(BE_SRC) $(CLI_SRC) $(NETCONF_SRC)
 OBJS    = $(BE_OBJ) $(CLI_OBJ) $(NETCONF_OBJ)
 
 clean:
-	rm -f $(PLUGINS) $(OBJS) $(APPNAME).conf
+	rm -f $(PLUGINS) $(OBJS) 
 	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 distclean: clean
 	rm -f Makefile *~ .depend
 	(cd docker && $(MAKE) $(MFLAGS) $@)
 
-install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(APPNAME).conf $(APPNAME).xml
+install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(APPNAME).xml
 	install -d $(DESTDIR)$(clixon_SYSCONFDIR)
-	install $(APPNAME).conf $(DESTDIR)$(clixon_SYSCONFDIR)
 	install $(APPNAME).xml $(DESTDIR)$(clixon_SYSCONFDIR)
 	install -d $(DESTDIR)$(clixon_DBSPECDIR)/yang
 	install $(YANGSPECS) $(DESTDIR)$(clixon_DBSPECDIR)/yang
@@ -116,7 +115,6 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $
 	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 uninstall: 
-	rm -rf $(DESTDIR)$(clixon_SYSCONFDIR)/$(APPNAME).conf
 	rm -rf $(DESTDIR)$(clixon_SYSCONFDIR)/$(APPNAME).xml
 	rm -rf $(DESTDIR)$(clixon_DBSPECDIR)
 	rm -rf $(DESTDIR)$(clixon_LOCALSTATEDIR)

@@ -59,10 +59,6 @@ int cli_ptpush(clicon_handle h, char *mode, char *string, char *op);
 int cli_ptpop(clicon_handle h, char *mode, char *op);
 
 /* cli_handle.c */
-char cli_set_comment(clicon_handle h, char c);
-char cli_comment(clicon_handle h);
-int cli_set_exiting(clicon_handle h, int exiting);
-int cli_exiting(clicon_handle h);
 clicon_handle cli_handle_init(void);
 int cli_handle_exit(clicon_handle h);
 cligen_handle cli_cligen(clicon_handle h);

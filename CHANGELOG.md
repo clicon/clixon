@@ -2,6 +2,14 @@
 
 ## 3.3.3 Upcoming
 
+* Added option CLICON_CLISPEC_FILE as complement to CLICON_CLISPEC_DIR to
+  specify single CLI specification file, not only directory containing files.
+	
+* Replaced the following cli_ functions with their original cligen_functions:
+	cli_exiting, cli_set_exiting, cli_comment,
+	cli_set_comment, cli_tree_add, cli_tree_active,
+	cli_tree_active_set, cli_tree.
+
 * Apple Darwin port
 
 * Added a format parameter to clicon_rpc_generate_error() and changed error
