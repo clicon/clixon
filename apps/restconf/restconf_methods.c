@@ -723,7 +723,7 @@ api_operation_post(clicon_handle h,
     xbot = xtop;
     if (api_path2xml(oppath, yspec, xtop, 1, &xbot, &y) < 0)
 	goto done;
-    if (data){
+    if (data && strlen(data)){
 	/* Parse input data as json or xml into xml */
 	if (parse_xml){
 	    if (clicon_xml_parse_str(data, &xdata) < 0){

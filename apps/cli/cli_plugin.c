@@ -67,9 +67,9 @@
 #include "cli_handle.h"
 
 
-/*
- * Name of plugin functions
+/*! Name of master plugin functions
  * More in clicon_plugin.h
+ * @note not really used consider documenting or remove
  */
 #define PLUGIN_PROMPT_HOOK   "plugin_prompt_hook"
 #define PLUGIN_PARSE_HOOK    "plugin_parse_hook"
@@ -658,6 +658,10 @@ clicon_parse(clicon_handle h,
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
 	}
+	if ((pt = cligen_tree_active_get(cli_cligen(h))) == NULL){
+	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
+	    goto done;
+	}
 	if ((cvv = cvec_new(0)) == NULL){
 	    clicon_err(OE_UNIX, errno, "cvec_new");
 	    goto done;;
@@ -902,102 +906,6 @@ cli_prompt(char *fmt)
     
     return prompt;
 }
-
-
-/*
- * Run command in CLI engine
- */
-int
-cli_exec(clicon_handle h, char *cmd, char **mode, int *result)
-{
-    return clicon_parse(h, cmd, mode, result);
-}
-
-
-/*
- * push_one
- * nifty code that 'pushes' a syntax one ore more levels
- * op: eg "set"
- * cmd: eg "edit policy-options"
- */
-int
-cli_ptpush(clicon_handle h, char *mode, char *string, char *op)
-{
-    cg_obj *co, *co_cmd, *cc;
-    parse_tree *pt;
-    char **vec = NULL;
-    int i, j, nvec;
-    int found;
-    parse_tree pt_top;
-    cli_syntaxmode_t *m;
-
-    if ((m = syntax_mode_find(cli_syntax(h), mode, 0)) == NULL)
-	return 0;
-    pt_top = m->csm_pt;
-    if ((co_cmd = co_find_one(pt_top, op)) == NULL)
-	return 0;
-    pt = &co_cmd->co_pt;
-    /* vec is the command, eg 'edit policy_option' */
-    if ((vec = clicon_strsep(string, " ", &nvec)) == NULL)
-	goto catch;
-    co = NULL;
-    found = 0;
-    for (i=0; i<nvec; i++){
-	found = 0;
-	for (j=0; j<pt->pt_len; j++){
-	    co = pt->pt_vec[j];
-	    if (co && co->co_type == CO_COMMAND && 
-		(strcmp(co->co_command, vec[i])==0)){
-		pt = &co->co_pt;
-		found++;
-		break;
-	    }
-	}
-	if (!found)
-	    break;//not found on this level
-    }
-    if (found){ // match all levels
-	if (!co_cmd->co_pushed){
-	    co_cmd->co_pt_push = co_cmd->co_pt;
-	    co_cmd->co_pushed++;
-	}
-	co_cmd->co_pt = co->co_pt;
-	pt = &co_cmd->co_pt;
-	for (i=0; i<pt->pt_len; i++) /* set correct parent */
-	    if ((cc = pt->pt_vec[i]) != NULL)
-		co_up_set(cc, co_cmd);
-    }
-  catch:
-    if (vec)
-	free(vec);
-    return 0;
-}
-
-int
-cli_ptpop(clicon_handle h, char *mode, char *op)
-{
-    cg_obj  *co_cmd, *cc;
-    int i;
-    parse_tree *pt;
-    parse_tree pt_top;
-    cli_syntaxmode_t *m;
-
-    if ((m = syntax_mode_find(cli_syntax(h), mode, 0)) == NULL)
-	return 0;
-    pt_top = m->csm_pt;
-    if ((co_cmd = co_find_one(pt_top, op)) == NULL) //set
-	return 0;
-    if (!co_cmd->co_pushed)
-	return 0;
-    co_cmd->co_pushed = 0;
-    co_cmd->co_pt = co_cmd->co_pt_push;
-    pt = &co_cmd->co_pt;
-    for (i=0; i<pt->pt_len; i++) /* set correct parent */	    
-	if ((cc = pt->pt_vec[i]) != NULL)
-	    co_up_set(cc, co_cmd);
-    return 0;
-}
-
 
 /*! Find a cli plugin based on name and resolve a function pointer in it.
  * Callback from clicon_dbvars_parse() 

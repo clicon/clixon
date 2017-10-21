@@ -1002,7 +1002,13 @@ from_client_msg(clicon_handle        h,
 	}
     }
  reply:
-    assert(cbuf_len(cbret));
+    if (cbuf_len(cbret) == 0)
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>rpc</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>Internal error</error-message>"
+		"</rpc-error></rpc-reply>");
     clicon_debug(1, "%s %s", __FUNCTION__, cbuf_get(cbret));
     if (send_msg_reply(ce->ce_s, cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
 	switch (errno){
