@@ -706,6 +706,8 @@ api_operation_post(clicon_handle h,
     }
     for (i=0; i<pi; i++)
 	oppath = index(oppath+1, '/');
+    clicon_debug(1, "%s oppath: %s", __FUNCTION__, oppath);
+
     /* Find yang rpc statement, return yang rpc statement if found */
     if (yang_abs_schema_nodeid(yspec, oppath, &yrpc) < 0)
 	goto done;
@@ -754,6 +756,25 @@ api_operation_post(clicon_handle h,
 	    }
 	}
     }
+    /* Non-standard: add cookie as attribute for backend
+     */
+    {
+	cxobj *xa;
+	char *cookie;
+	char *cookieval = NULL;
+	
+	if ((cookie = FCGX_GetParam("HTTP_COOKIE", r->envp)) != NULL &&
+	    get_user_cookie(cookie, "c-user", &cookieval) ==0){
+	    if ((xa = xml_new("cookie", xtop)) == NULL)
+		goto done;
+	    xml_type_set(xa, CX_ATTR);
+	    if (xml_value_set(xa,  cookieval) < 0)
+		goto done;
+	    if (cookieval)
+		free(cookieval);
+	}
+    }
+    /* Send to backend */
     if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	goto done;
     if ((cbx = cbuf_new()) == NULL)
