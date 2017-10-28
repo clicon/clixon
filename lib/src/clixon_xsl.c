@@ -422,10 +422,12 @@ recursive_find(cxobj   *xn,
     cxobj  *xsub; 
     cxobj **vec = *vec0;
     size_t  veclen = *vec0len;
+    char   *name;
 
     xsub = NULL;
     while ((xsub = xml_child_each(xn, xsub, node_type)) != NULL) {
-	if (fnmatch(pattern, xml_name(xsub), 0) == 0){
+	name = xml_name(xsub);
+	if (fnmatch(pattern, name, 0) == 0){
 	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xsub, flags));
 	    if (flags==0x0 || xml_flag(xsub, flags))
 		if (cxvec_append(xsub, &vec, &veclen) < 0)
@@ -483,6 +485,7 @@ xpath_expr(cxobj    *xcur,
     char      *val;
     char      *e0;
     char      *e;
+    char      *name;
 
     if ((e0 = strdup(predicate_expression)) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
@@ -569,7 +572,8 @@ xpath_expr(cxobj    *xcur,
 			xv = (*vec0)[i];
 			x = NULL;
 			while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
-			    if (strcmp(tag, xml_name(x)) != 0)
+			    name = xml_name(x);
+			    if (name==NULL || strcmp(tag, name) != 0)
 				continue;
 			    if ((val = xml_body(x)) != NULL &&
 				strcmp(val, ebody) == 0){	
@@ -588,7 +592,8 @@ xpath_expr(cxobj    *xcur,
 		    /* Check if more may match,... */
 		    x = NULL;
 		    while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
-			if (strcmp(tag, xml_name(x)) != 0)
+			name = xml_name(x);
+			if (name==NULL || strcmp(tag, name) != 0)
 			    continue;
 			if ((val = xml_body(x)) != NULL &&
 			    strcmp(val, e) == 0){
@@ -644,6 +649,7 @@ xpath_find(cxobj                *xcur,
     cxobj         *xparent;
     size_t         vec1len = 0;
     struct xpath_predicate *xp;
+    char          *name;
 
     if (xe == NULL){
 	for (i=0; i<vec0len; i++){
@@ -696,8 +702,8 @@ xpath_find(cxobj                *xcur,
 		xv = vec0[i];
 		x = NULL;
 		while ((x = xml_child_each(xv, x, -1)) != NULL) {
-		    if (fnmatch(xe->xe_str, xml_name(x), 0) == 0)
-			    {
+		    name = xml_name(x);
+		    if (name && fnmatch(xe->xe_str, name, 0) == 0) {
 				clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(x, flags));
 				if (flags==0x0 || xml_flag(x, flags))
 				    if (cxvec_append(x, &vec1, &vec1len) < 0)
