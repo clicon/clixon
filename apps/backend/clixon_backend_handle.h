@@ -45,7 +45,7 @@
  */
 struct client_entry;
 typedef int (*backend_rpc_cb)(
-    clicon_handle h, 
+    clicon_handle        h,    /* CLicon handle */
     cxobj               *xe,   /* Request: <rpc><xn></rpc> */
     struct client_entry *ce,   /* Client session */
     cbuf                *cbret,/* Reply eg <rpc-reply>... */

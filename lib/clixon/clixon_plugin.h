@@ -69,10 +69,15 @@ typedef int (plginit_t)(clicon_handle);	 	       /* Plugin Init */
 typedef int (plgstart_t)(clicon_handle, int, char **); /* Plugin start */
 
 /* Called just before plugin unloaded. 
- * @see plgexit_t
  */
 #define PLUGIN_EXIT            "plugin_exit"
 typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
+
+/*! Called by restconf
+ * Returns 0 if credentials OK, -1 if failed
+ */
+#define PLUGIN_CREDENTIALS      "plugin_credentials"
+typedef int (plgcredentials_t)(clicon_handle, void *); /* Plugin credentials */
 
 /* Find a function in global namespace or a plugin. XXX clicon internal */
 void *clicon_find_func(clicon_handle h, char *plugin, char *func);
