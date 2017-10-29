@@ -1032,7 +1032,7 @@ xpath_each(cxobj *xcur,
  *      xn = xvec[i];
  *         ...
  *   }
- *   free(vec);
+ *   free(xvec);
  * @endcode
  * @note Although the returned vector must be freed after use, 
  *       the returned xml trees should not.

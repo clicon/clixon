@@ -741,9 +741,11 @@ api_operation_post(clicon_handle h,
 	if ((xinput = xpath_first(xdata, "/input")) != NULL){
 	    /* Add all input under <rpc>path */
 	    x = NULL;
-	    while ((x = xml_child_each(xinput, x, -1)) != NULL) 
+	    while (xml_child_nr(xinput)){
+		x = xml_child_i(xinput, 0);
 		if (xml_addsub(xbot, x) < 0) 	
 		    goto done;
+	    }
 	    if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
 		xml_spec_set(xinput, yinput); /* needed for xml_spec_populate */
 		if (xml_apply(xinput, CX_ELMNT, xml_spec_populate, yinput) < 0)
@@ -765,7 +767,7 @@ api_operation_post(clicon_handle h,
 	
 	if ((cookie = FCGX_GetParam("HTTP_COOKIE", r->envp)) != NULL &&
 	    get_user_cookie(cookie, "c-user", &cookieval) ==0){
-	    if ((xa = xml_new("cookie", xtop)) == NULL)
+	    if ((xa = xml_new("id", xtop)) == NULL)
 		goto done;
 	    xml_type_set(xa, CX_ATTR);
 	    if (xml_value_set(xa,  cookieval) < 0)
