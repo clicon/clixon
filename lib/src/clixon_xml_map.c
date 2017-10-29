@@ -464,14 +464,11 @@ xml2cvec(cxobj      *xt,
     char             *body;
     char             *reason = NULL;
     int               ret;
-    int               i = 0;
-    int               len = 0;
     char             *name;
 
     xc = NULL;
-    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
-	len++;
-    if ((cvv = cvec_new(len)) == NULL){
+    /* Tried to allocate whole cvv here,but some cg_vars may be invalid */
+    if ((cvv = cvec_new(0)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto err;
     }
@@ -483,8 +480,10 @@ xml2cvec(cxobj      *xt,
 	    clicon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
 			 __FUNCTION__, name, yt->ys_argument);
 	    if ((body = xml_body(xc)) != NULL){
-		cv = cvec_i(cvv, i++);
-		cv_type_set(cv, CGV_STRING);
+		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
+		    clicon_err(OE_PLUGIN, errno, "cvec_add");
+		    goto err;
+		}
 		cv_name_set(cv, name);
 		if ((ret = cv_parse1(body, cv, &reason)) < 0){
 		    clicon_err(OE_PLUGIN, errno, "cv_parse");
@@ -498,11 +497,13 @@ xml2cvec(cxobj      *xt,
 		}
 	    }
 	}
-	else
-	if ((ycv = ys->ys_cv) != NULL){
+	else if ((ycv = ys->ys_cv) != NULL){
 	    if ((body = xml_body(xc)) != NULL){
 		/* XXX: cvec_add uses realloc, can we avoid that? */
-		cv = cvec_i(cvv, i++);
+		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
+		    clicon_err(OE_PLUGIN, errno, "cvec_add");
+		    goto err;
+		}
 		if (cv_cp(cv, ycv) < 0){
 		    clicon_err(OE_PLUGIN, errno, "cv_cp");
 		    goto err;
@@ -567,6 +568,8 @@ cvec2xml_1(cvec   *cvv,
     cv = NULL;
     i = 0;
     while ((cv = cvec_each(cvv, cv)) != NULL) {
+	if (cv_type_get(cv)==CGV_ERR || cv_name_get(cv) == NULL)
+	    continue;
 	if ((xn = xml_new(cv_name_get(cv), NULL)) == NULL) /* this leaks */
 	    goto err;
 	xml_parent_set(xn, xt);

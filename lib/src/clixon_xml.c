@@ -918,9 +918,10 @@ xml_free(cxobj *x)
     if (x->x_cv)
 	cv_free(x->x_cv);
     for (i=0; i<x->x_childvec_len; i++){
-	xc = x->x_childvec[i];
-	xml_free(xc);
-	x->x_childvec[i] = NULL;
+	if ((xc = x->x_childvec[i]) != NULL){
+	    xml_free(xc);
+	    x->x_childvec[i] = NULL;
+	}
     }
 #if (XML_CHILD_HASH==1)
     if (x->x_hash)
