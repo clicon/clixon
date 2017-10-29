@@ -77,6 +77,11 @@ clixon_json_parsewrap(void)
 
 %}
 
+digit [0-9]
+integer {digit}+
+real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
+exp ({integer}|{real})[eE][+-]{integer}
+
 %x START
 %s STRING
 %s ESCAPE
@@ -95,8 +100,7 @@ clixon_json_parsewrap(void)
 <START>null             { return J_NULL; }
 <START>false            { return J_FALSE; }
 <START>true             { return J_TRUE; }
-<START>[-+]?[0-9]+      { clixon_json_parselval.string = strdup(yytext); 
-                          return J_NUMBER;}
+<START>({integer}|{real}|{exp}) { clixon_json_parselval.string = strdup(yytext); return J_NUMBER;}
 <START>.                { return -1; }
 <STRING>\"              { BEGIN(START); return J_DQ; }
 <STRING>\\              { BEGIN(ESCAPE); }
