@@ -988,8 +988,17 @@ from_client_msg(clicon_handle        h,
 		goto done;
 	}
 	else{
-	    if ((ret = backend_rpc_cb_call(h, xe, ce, cbret)) < 0)
-		goto done;
+	    clicon_err_reset();
+	    if ((ret = backend_rpc_cb_call(h, xe, ce, cbret)) < 0){
+		cprintf(cbret, "<rpc-reply><rpc-error>"
+			"<error-tag>operation-failed</error-tag>"
+			"<error-type>rpc</error-type>"
+			"<error-severity>error</error-severity>"
+			"<error-message>Internal error:%s</error-message>"
+			"</rpc-error></rpc-reply>", clicon_err_reason);
+		clicon_log(LOG_NOTICE, "%s Error in backend_rpc_call:%s", __FUNCTION__, xml_name(xe));
+		goto reply; /* Dont quit here on user callbacks */
+	    }
 	    if (ret == 0) /* not handled by callback */
 		cprintf(cbret, "<rpc-reply><rpc-error>"
 			"<error-tag>operation-failed</error-tag>"

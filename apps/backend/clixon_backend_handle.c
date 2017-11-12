@@ -505,8 +505,10 @@ backend_rpc_cb_call(clicon_handle        h,
     rc = rpc_cb_list;
     do {
 	if (strcmp(rc->rc_tag, xml_name(xe)) == 0){
-	    if ((retval = rc->rc_callback(h, xe, ce, cbret, rc->rc_arg)) < 0)
+	    if ((retval = rc->rc_callback(h, xe, ce, cbret, rc->rc_arg)) < 0){
+		clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_tag);
 		goto done;
+	    }
 	    else{
 		retval = 1; /* handled */
 		goto done;
