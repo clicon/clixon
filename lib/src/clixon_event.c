@@ -309,7 +309,6 @@ event_loop(void)
 		clicon_debug(1, "%s select: %s", __FUNCTION__, strerror(errno));
 		clicon_err(OE_EVENTS, errno, "%s select1: %s", __FUNCTION__, strerror(errno));
 		retval = 0;
-		goto err;
 	    }
 	    else
 		clicon_err(OE_EVENTS, errno, "%s select2", __FUNCTION__);
@@ -334,8 +333,11 @@ event_loop(void)
 	    if(e->e_type == EVENT_FD && FD_ISSET(e->e_fd, &fdset)){
 		clicon_debug(2, "%s: FD_ISSET: %s[%x]", 
 			__FUNCTION__, e->e_string, e->e_arg);
-		if ((*e->e_fn)(e->e_fd, e->e_arg) < 0)
+		if ((*e->e_fn)(e->e_fd, e->e_arg) < 0){
+		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, e->e_string);
 		    goto err;
+
+		}
 		if (_ee_unreg){
 		    _ee_unreg = 0;
 		    break;
@@ -346,7 +348,7 @@ event_loop(void)
       err:
 	break;
     }
-    clicon_debug(1, "%s done:", __FUNCTION__);
+    clicon_debug(1, "%s done:%d", __FUNCTION__, retval);
     return retval;
 }
 

@@ -2,6 +2,8 @@
 
 ## 3.3.3 Upcoming
 
+* When user callbacks such as statedata() call returns -1, clixon_backend no
+  longer silently exits. Instead a log is printed and an RPC error is returned.
 * Added Floating point support to JSON
 * Restconf: http cookie sent as attribute in rpc restconf_post operations to backend.
 * Added option CLICON_CLISPEC_FILE as complement to CLICON_CLISPEC_DIR to
