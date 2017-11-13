@@ -632,7 +632,7 @@ json_parse_str(char   *str,
  * Example compile:
  gcc -g -o json -I. -I../clixon ./clixon_json.c -lclixon -lcligen
  * Example run:
- echo "" | xml 
+    echo '{"foo": -23}' | ./json
 */
 #if 0 /* Test program */
 
@@ -643,20 +643,17 @@ usage(char *argv0)
     exit(0);
 }
 
-#define BUFLEN 1024  /* Size of xml read buffer */
 int
 main(int argc, char **argv)
 {
     cxobj *xt;
     cxobj *xc;
     cbuf  *cb = cbuf_new();
-    int   maxbuf = BUFLEN;
-    char *xmlbuf = NULL;
-    char         *buf = NULL;
-    int           i;
-    int           c;
-    int           len;
-    FILE         *f = stdin;
+    char  *buf = NULL;
+    int    i;
+    int    c;
+    int    len;
+    FILE  *f = stdin;
     
     if (argc != 1){
 	usage(argv[0]);
@@ -689,7 +686,7 @@ main(int argc, char **argv)
 	return -1;
     xc = NULL;
     while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
-		xmltree2cbuf(cb, xc, 0);       /* dump data structures */
+	xmltree2cbuf(cb, xc, 0);       /* dump data structures */
 		//clicon_xml2cbuf(cb, xc, 0, 1); /* print xml */
     }
     fprintf(stdout, "%s", cbuf_get(cb));

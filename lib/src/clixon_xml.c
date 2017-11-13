@@ -1104,7 +1104,8 @@ xmltree2cbuf(cbuf  *cb,
 
     for (i=0; i<level*XML_INDENT; i++)
 	cprintf(cb, " ");
-    cprintf(cb, "%s", xml_type2str(xml_type(x)));
+    if (xml_type(x) != CX_BODY)
+	cprintf(cb, "%s", xml_type2str(xml_type(x)));
     if (xml_namespace(x)==NULL)
 	cprintf(cb, " %s", xml_name(x));
     else
