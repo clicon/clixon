@@ -1,7 +1,8 @@
 # Clixon CHANGELOG
-
-* When user callbacks such as statedata() call returns -1, clixon_backend no
-  longer silently exits. Instead a log is printed and an RPC error is returned.
+	
+* When user callbacks p_statedata() or rpc callback call returns -1,
+  clixon_backend nolonger silently exits. Instead a log is printed and an
+  RPC error is returned.
 
 * Support for non-line scrolling in CLI, eg wrap lines. Set with:
   CLICON_CLI_LINESCROLLING 0
