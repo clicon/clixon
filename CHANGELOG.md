@@ -3,6 +3,8 @@
 ## 3.3.3 (Upcoming)
 
 ### Known issues
+* None yet
+
 ### Major changes:
 * Clixon can now be compiled and run on Apple Darwin.
 * Performance improvements
@@ -17,21 +19,37 @@
 clixon_cli -f /usr/local/etc/routing.conf -1x
 ```
   
-* Introducing backend daemon startup modes. The flags -IRCr and option CLICON_USE_STARTUP_CONFIG are replaced with command-line option -s <mode> and option CLICON_STARTUP_MODE. You need to replace the starting of clixon_backend as follows:
+* Introducing backend daemon startup modes. 
+  * The flags -IRCr are replaced with command-line option -s <mode>
+  * You use the -s to select the mode:
+```
+clixon_backend ... -s running
+```
+  * You may also add a default method in the configuration file:
+```
+<config>
+   ...
+   <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE
+</config>
+```
+  * The option CLICON_USE_STARTUP_CONFIG is obsoleted by "startup" mode
   * -I replace with -s "init" (or use of CLICON_STARTUP_MODE option)
   * -CIr replace with -s "running" 
   * (no-option) replace with -s "none"
-  * CLICON_USE_STARTUP_CONFIG=1 replace with -s "startup"
-Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in include/clixon_custom.h
+  * Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in include/clixon_custom.h
+
+* Extra XML has been added along with the new startup modes.
+  * You can add extra XML with the -c option to the backend daemon on startup:
+```
+clixon_backend ... -c extra.xml
+```
+  * You can also add extra XML by programming the plugin_reset() in the backend
+plugin. The example application shows how.
 
 ### Minor changes:
-* When user callbacks p_statedata() or rpc callback call returns -1, clixon_backend nolonger silently exits. Instead a log is printed and an RPC error is returned.
-
 * Disabled key-value datastore. Enable with --with-keyvalue
 * Removed mandatory requirements for BACKEND, NETCONF, RESTCONF and CLI dirs.
-* When user callbacks such as statedata() call returns -1, clixon_backend no
-  longer silently exits. Instead a log is printed and an RPC error is returned.
-* Added Floating point and negative number support to JSON
+
 * Restconf: http cookie sent as attribute in rpc restconf_post operations to backend.
 * Added option CLICON_CLISPEC_FILE as complement to CLICON_CLISPEC_DIR to
   specify single CLI specification file, not only directory containing files.
@@ -55,6 +73,11 @@ protocol invalid-value Missing mandatory variable: type
 
 * Support for non-line scrolling in CLI, eg wrap lines. Set with:
   CLICON_CLI_LINESCROLLING 0
+
+### Corrected Bugs
+* Added floating point and negative number support to JSON
+* When user callbacks such as statedata() call returns -1, clixon_backend no
+  longer silently exits. Instead a log is printed and an RPC error is returned.
 
 ## 3.3.2 (Aug 27 2017)
 
