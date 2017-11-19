@@ -6,10 +6,9 @@
 * None yet
 
 ### Major changes:
-* Clixon can now be compiled and run on Apple Darwin.
 * Performance improvements
   * Added xml hash lookup instead of linear search for better performance of large lists. To disable, undefine XML_CHILD_HASH in clixon_custom.h
-  * netconf client was limited to 8K byte messages. Now limit is 2^32 bytes
+  * netconf client was limited to 8K byte messages. New limit is 2^32 bytes
 
 * XML and YANG-based configuration file.
   * New configuration files have .xml suffix, old have .conf. Old config files till work for backward compatibility.
@@ -21,30 +20,22 @@ clixon_cli -f /usr/local/etc/routing.conf -1x
   
 * Introducing backend daemon startup modes. 
   * The flags -IRCr are replaced with command-line option -s <mode>
-  * You use the -s to select the mode:
-```
-clixon_backend ... -s running
-```
-  * You may also add a default method in the configuration file:
-```
-<config>
-   ...
-   <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE
-</config>
-```
+  * You use the -s to select the mode: `clixon_backend ... -s running`
+  * You may also add a default method in the configuration file: `<CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>`
   * The option CLICON_USE_STARTUP_CONFIG is obsoleted by "startup" mode
-  * -I replace with -s "init" (or use of CLICON_STARTUP_MODE option)
-  * -CIr replace with -s "running" 
-  * (no-option) replace with -s "none"
+    * -I replace with -s "init" (or use of CLICON_STARTUP_MODE option)
+    * -CIr replace with -s "running" 
+    * (no-option) replace with -s "none"
   * Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in include/clixon_custom.h
-
 * Extra XML has been added along with the new startup modes.
   * You can add extra XML with the -c option to the backend daemon on startup:
 ```
-clixon_backend ... -c extra.xml
+      clixon_backend ... -c extra.xml
 ```
   * You can also add extra XML by programming the plugin_reset() in the backend
 plugin. The example application shows how.
+
+* Clixon can now be compiled and run on Apple Darwin.
 
 ### Minor changes:
 * Disabled key-value datastore. Enable with --with-keyvalue
