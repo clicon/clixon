@@ -5,7 +5,6 @@
 ### Known issues
 ### Major changes:
 * Clixon can now be compiled and run on Apple Darwin.
-
 * Performance improvements
   * Added xml hash lookup instead of linear search for better performance of large lists. To disable, undefine XML_CHILD_HASH in clixon_custom.h
   * netconf client was limited to 8K byte messages. Now limit is 2^32 bytes
@@ -26,6 +25,8 @@ clixon_cli -f /usr/local/etc/routing.conf -1x
 Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in include/clixon_custom.h
 
 ### Minor changes:
+* When user callbacks p_statedata() or rpc callback call returns -1, clixon_backend nolonger silently exits. Instead a log is printed and an RPC error is returned.
+
 * Disabled key-value datastore. Enable with --with-keyvalue
 * Removed mandatory requirements for BACKEND, NETCONF, RESTCONF and CLI dirs.
 * When user callbacks such as statedata() call returns -1, clixon_backend no

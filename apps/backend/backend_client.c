@@ -275,6 +275,7 @@ from_client_get(clicon_handle h,
     cxobj *xfilter;
     char  *selector = "/";
     cxobj *xret = NULL;
+    int    ret;
     
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((selector = xml_find_value(xfilter, "select"))==NULL)
@@ -291,18 +292,30 @@ from_client_get(clicon_handle h,
     }
     /* Get state data from plugins as defined by plugin_statedata(), if any */
     assert(xret);
-    if (backend_statedata_call(h, selector, xret) < 0)
+    clicon_err_reset();
+    if ((ret = backend_statedata_call(h, selector, xret)) < 0)
 	goto done;
-    cprintf(cbret, "<rpc-reply>");
-    if (xret==NULL)
-	cprintf(cbret, "<data/>");
-    else{
-	if (xml_name_set(xret, "data") < 0)
-	    goto done;
-	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
-	    goto done;
+    if (ret == 0){ /* OK */
+	cprintf(cbret, "<rpc-reply>");
+	if (xret==NULL)
+	    cprintf(cbret, "<data/>");
+	else{
+	    if (xml_name_set(xret, "data") < 0)
+		goto done;
+	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+		goto done;
+	}
+	cprintf(cbret, "</rpc-reply>");
     }
-    cprintf(cbret, "</rpc-reply>");
+    else { /* 1 Error from callback */
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>rpc</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>Internal error:%s</error-message>"
+		"</rpc-error></rpc-reply>", clicon_err_reason);
+	clicon_log(LOG_NOTICE, "%s Error in backend_statedata_call:%s", __FUNCTION__, xml_name(xe));
+    }
  ok:
     retval = 0;
  done:
