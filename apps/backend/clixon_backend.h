@@ -70,7 +70,7 @@ int plugin_exit(clicon_handle h);
 /*! Reset system state to original state. Eg at reboot before running thru config. 
  * @see plgreset_t 
  */
-int plugin_reset(clicon_handle h, char *dbname);
+int plugin_reset(clicon_handle h, const char *db);
 
 /*! Retreive statedata, add statedata to XML tree
  * @see plgstatedata_ t

@@ -22,7 +22,7 @@ if [ $? -ne 0 ]; then
 fi
 new "start backend"
 # start new backend
-sudo clixon_backend -If $clixon_cf 
+sudo clixon_backend -s init -f $clixon_cf 
 if [ $? -ne 0 ]; then
     err
 fi
@@ -45,8 +45,6 @@ expectfn "$clixon_cli -1f $clixon_cf set interfaces interface eth/0/0" "^$"
 
 new "cli show configuration"
 expectfn "$clixon_cli -1f $clixon_cf show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
-
-
 
 new "cli failed validate"
 expectfn "$clixon_cli -1f $clixon_cf -l o validate" "Missing mandatory variable"

@@ -1,8 +1,12 @@
 #!/bin/bash
-# Test3: backend and restconf basic functionality
+# Restconf basic functionality
+# Assume http server setup, such as nginx described in apps/restconf/README.md
 
 # include err() and new() functions
 . ./lib.sh
+
+# This is a fixed 'state' implemented in routing_backend. It is always there
+state='{"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}'
 
 # kill old backend (if any)
 new "kill old backend"
@@ -11,7 +15,7 @@ if [ $? -ne 0 ]; then
     err
 fi
 new "start backend"
-sudo clixon_backend -If $clixon_cf
+sudo clixon_backend -s init -f $clixon_cf
 if [ $? -ne 0 ]; then
     err
 fi
@@ -20,7 +24,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -Df /usr/local/etc/routing.conf # -D
+sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -Df /usr/local/etc/routing.xml # -D
 
 sleep 1
 
@@ -33,27 +37,30 @@ new "restconf head"
 expectfn "curl -sS -I http://localhost/restconf/data" "HTTP/1.1 200 OK"
 #Content-Type: application/yang-data+json"
 
-new "restconf get empty config"
-expectfn "curl -sSG http://localhost/restconf/data" "null"
+new "restconf get empty config + state"
+expectfn "curl -sSG http://localhost/restconf/data" $state
+
+new "restconf get state operation"
+expectfn "curl -sS -G http://localhost/restconf/data/interfaces-state" $state
 
 new "restconf Add subtree  to datastore using POST"
 expectfn 'curl -sS -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}}} http://localhost/restconf/data' ""
 
 new "restconf Check interfaces eth/0/0 added"
-expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}}}
+expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
 $'
 
 new "restconf delete interfaces"
 expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces' ""
 
 new "restconf Check empty config"
-expectfn "curl -sSG http://localhost/restconf/data" "null"
+expectfn "curl -sSG http://localhost/restconf/data" $state
 
 new "restconf Add interfaces subtree eth/0/0 using POST"
 expectfn 'curl -sS -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' ""
 
 new "restconf Check eth/0/0 added"
-expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}}}
+expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
 $'
 
 new "restconf Re-post eth/0/0 which should generate error"
@@ -70,7 +77,7 @@ new "restconf delete eth/0/0"
 expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
 new "Check deleted eth/0/0"
-expectfn 'curl -sS -G http://localhost/restconf/data' "null"
+expectfn 'curl -sS -G http://localhost/restconf/data' $state
 
 new "restconf Re-Delete eth/0/0 using none should generate error"
 expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "Not Found"
@@ -79,10 +86,10 @@ new "restconf Add subtree eth/0/0 using PUT"
 expectfn 'curl -sS -X PUT -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
 new "restconf get subtree"
-expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}}}
+expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
 $'
 
-new "restconf rpc using POST json"
+new "restconf operation rpc using POST json"
 expectfn 'curl -sS -X POST -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '{ "output": { "route": { "address-family": "ipv4", "next-hop": { "next-hop-list": "2.3.4.5" } } } } '
 
 new "restconf rpc using POST xml"

@@ -16,7 +16,7 @@ if [ $? -ne 0 ]; then
 fi
 new "start backend"
 # start new backend
-sudo clixon_backend -If $clixon_cf
+sudo clixon_backend -s init -f $clixon_cf
 if [ $? -ne 0 ]; then
     err
 fi
@@ -83,7 +83,7 @@ expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><validate><source><candidate/><
 new "netconf commit"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "netconf edit config replace"
+new "netconf edit config replace XXX is merge?"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth2</name><type>eth</type></interface></interfaces></config><default-operation>merge</default-operation></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get replaced config"
@@ -96,7 +96,7 @@ new "netconf edit state operation should fail"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><edit-config><target><candidate/></target><config><interfaces-state><interface><name>eth1</name><type>eth</type></interface></interfaces-state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag>"
 
 new "netconf get state operation"
-expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get><filter type=\"xpath\" select=\"/interfaces-state\"/></get></rpc>]]>]]>" "^<rpc-reply><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><get><filter type=\"xpath\" select=\"/interfaces-state\"/></get></rpc>]]>]]>" "^<rpc-reply><data><interfaces-state><interface><name>eth0</name><type>eth</type><if-index>42</if-index></interface></interfaces-state></data></rpc-reply>]]>]]>$"
 
 new "netconf lock/unlock"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]><rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><rpc-reply><ok/></rpc-reply>]]>]]>$"

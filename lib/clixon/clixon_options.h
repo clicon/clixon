@@ -63,6 +63,13 @@ enum genmodel_type{
     GT_ALL,     /* Keywords on all variables */
 };
 
+/*! See clixon-config.yang type startup_mode */
+enum startup_mode_t{
+    SM_NONE=0,
+    SM_STARTUP,
+    SM_RUNNING,
+    SM_INIT
+};
 
 /*
  * Prototypes
@@ -93,6 +100,7 @@ char *clicon_clispec_dir(clicon_handle h);
 char *clicon_netconf_dir(clicon_handle h);
 char *clicon_restconf_dir(clicon_handle h);
 char *clicon_xmldb_plugin(clicon_handle h);
+int   clicon_startup_mode(clicon_handle h);
 int   clicon_sock_family(clicon_handle h);
 char *clicon_sock(clicon_handle h);
 int   clicon_sock_port(clicon_handle h);

@@ -681,6 +681,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -757,6 +758,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -1009,6 +1011,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1146,7 +1157,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1299,6 +1310,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1332,7 +1344,7 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cligen=dir       Use CLIGEN here
   --without-restconf      disable support for restconf
-  --without-keyvalue      disable support for key-value xmldb datastore
+  --with-keyvalue         enable support for key-value xmldb datastore
   --with-qdbm=dir         Use QDBM here, if keyvalue
 
 Some influential environment variables:
@@ -2136,7 +2148,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 CLIXON_VERSION_MAJOR="3"
 CLIXON_VERSION_MINOR="3"
-CLIXON_VERSION_PATCH="2"
+CLIXON_VERSION_PATCH="3"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 # Fix to specific version (eg 3.5) or head (3)
 CLIGEN_VERSION="3"
@@ -2163,6 +2175,7 @@ _ACEOF
 cat >>confdefs.h <<_ACEOF
 #define CLIXON_VERSION_PATCH $CLIXON_VERSION_PATCH
 _ACEOF
+
 
 
 # clixon versions spread to Makefile's (.so files) and variable in build.c
@@ -3816,14 +3829,13 @@ fi
 done
 
 
-as_ac_Lib=`$as_echo "ac_cv_lib_:libcligen.so.${CLIGEN_VERSION}''_cligen_init" | $as_tr_sh`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for cligen_init in -l:libcligen.so.${CLIGEN_VERSION}" >&5
-$as_echo_n "checking for cligen_init in -l:libcligen.so.${CLIGEN_VERSION}... " >&6; }
-if eval \${$as_ac_Lib+:} false; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for cligen_init in -lcligen" >&5
+$as_echo_n "checking for cligen_init in -lcligen... " >&6; }
+if ${ac_cv_lib_cligen_cligen_init+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-l:libcligen.so.${CLIGEN_VERSION}  $LIBS"
+LIBS="-lcligen  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3843,23 +3855,22 @@ return cligen_init ();
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  eval "$as_ac_Lib=yes"
+  ac_cv_lib_cligen_cligen_init=yes
 else
-  eval "$as_ac_Lib=no"
+  ac_cv_lib_cligen_cligen_init=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-eval ac_res=\$$as_ac_Lib
-	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
-$as_echo "$ac_res" >&6; }
-if eval test \"x\$"$as_ac_Lib"\" = x"yes"; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_cligen_cligen_init" >&5
+$as_echo "$ac_cv_lib_cligen_cligen_init" >&6; }
+if test "x$ac_cv_lib_cligen_cligen_init" = xyes; then :
   cat >>confdefs.h <<_ACEOF
-#define `$as_echo "HAVE_LIB:libcligen.so.${CLIGEN_VERSION}" | $as_tr_cpp` 1
+#define HAVE_LIBCLIGEN 1
 _ACEOF
 
-  LIBS="-l:libcligen.so.${CLIGEN_VERSION} $LIBS"
+  LIBS="-lcligen $LIBS"
 
 else
   as_fn_error $? "CLIgen${CLIGEN_VERSION} missing. Try: git clone https://github.com/olofhagsand/cligen.git" "$LINENO" 5
@@ -3932,10 +3943,10 @@ fi
 if test "${with_keyvalue+set}" = set; then :
   withval=$with_keyvalue;
 else
-  with_keyvalue=yes
+  with_keyvalue=no
 fi
 
-
+echo "keyvalue:${with_keyvalue}"
 if test "x${with_keyvalue}" == xyes; then
    echo "yes keyvalue"
    # This is for qdbm
@@ -4264,9 +4275,17 @@ fi
 done
 
 
+# This is to find clixon system files in the source code.
+# same as clixon_DATADIR defined in clixon.mk.cpp for Makefiles
+
+cat >>confdefs.h <<_ACEOF
+#define CLIXON_DATADIR "${prefix}/share/clixon"
+_ACEOF
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/keyvalue/Makefile datastore/text/Makefile doc/Makefile"
+
+
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/keyvalue/Makefile datastore/text/Makefile yang/Makefile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4983,6 +5002,7 @@ do
     "datastore/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/Makefile" ;;
     "datastore/keyvalue/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/keyvalue/Makefile" ;;
     "datastore/text/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/text/Makefile" ;;
+    "yang/Makefile") CONFIG_FILES="$CONFIG_FILES yang/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

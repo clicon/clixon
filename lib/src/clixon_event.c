@@ -251,6 +251,26 @@ event_unreg_timeout(int (*fn)(int, void*),
     return found?0:-1;
 }
 
+/*! Poll to see if there is any data available on this file descriptor.
+ * @param[in]  fd   File descriptor
+ * @retval    -1    Error
+ * @retval     0    Nothing to read/empty fd
+ * @retval     1    Something to read on fd
+ */
+int 
+event_poll(int fd)
+{
+    int            retval = -1;
+    fd_set         fdset;
+    struct timeval tnull = {0,};
+
+    FD_ZERO(&fdset);
+    FD_SET(fd, &fdset);
+    if ((retval = select(FD_SETSIZE, &fdset, NULL, NULL, &tnull)) < 0)
+	clicon_err(OE_EVENTS, errno, "%s select1: %s", __FUNCTION__, strerror(errno));
+    return retval;
+}
+
 /*! Dispatch file descriptor events (and timeouts) by invoking callbacks.
  * There is an issue with fairness that timeouts may take over all events
  * One could try to poll the file descriptors after a timeout?
@@ -258,11 +278,14 @@ event_unreg_timeout(int (*fn)(int, void*),
 int
 event_loop(void)
 {
-    struct event_data *e, *e_next;
-    int n;
-    struct timeval t, t0, tnull={0,};
-    fd_set fdset;
-    int retval = -1;
+    struct event_data *e;
+    struct event_data *e_next;
+    int                n;
+    struct timeval     t;
+    struct timeval     t0;
+    struct timeval     tnull = {0,};
+    fd_set             fdset;
+    int                retval = -1;
 
     while (!clicon_exit_get()){
 	FD_ZERO(&fdset);
@@ -286,7 +309,6 @@ event_loop(void)
 		clicon_debug(1, "%s select: %s", __FUNCTION__, strerror(errno));
 		clicon_err(OE_EVENTS, errno, "%s select1: %s", __FUNCTION__, strerror(errno));
 		retval = 0;
-		goto err;
 	    }
 	    else
 		clicon_err(OE_EVENTS, errno, "%s select2", __FUNCTION__);
@@ -311,8 +333,11 @@ event_loop(void)
 	    if(e->e_type == EVENT_FD && FD_ISSET(e->e_fd, &fdset)){
 		clicon_debug(2, "%s: FD_ISSET: %s[%x]", 
 			__FUNCTION__, e->e_string, e->e_arg);
-		if ((*e->e_fn)(e->e_fd, e->e_arg) < 0)
+		if ((*e->e_fn)(e->e_fd, e->e_arg) < 0){
+		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, e->e_string);
 		    goto err;
+
+		}
 		if (_ee_unreg){
 		    _ee_unreg = 0;
 		    break;
@@ -323,7 +348,7 @@ event_loop(void)
       err:
 	break;
     }
-    clicon_debug(1, "%s done:", __FUNCTION__);
+    clicon_debug(1, "%s done:%d", __FUNCTION__, retval);
     return retval;
 }
 

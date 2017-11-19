@@ -2,7 +2,7 @@
 
 testnr=0
 testnname=
-clixon_cf=/usr/local/etc/routing.conf
+clixon_cf=/usr/local/etc/routing.xml
 # error and exit, arg is optional extra errmsg
 err(){
   echo "Error in Test$testnr [$testname]:"
@@ -15,7 +15,7 @@ err(){
 new(){
     testnr=`expr $testnr + 1`
     testname=$1
-    echo "Test$testnr [$1]"
+    >&2 echo "Test$testnr [$1]"
 #    sleep 1
 }
 
@@ -75,6 +75,24 @@ EOF
 #  echo "ret:\"$ret\""
 #  echo "expect:\"$expect\""
 #  echo "match:\"$match\""
+  if [ -z "$match" ]; then
+      err "$expect" "$ret"
+  fi
+}
+
+# clixon tester read from file for large tests
+expecteof_file(){
+  cmd=$1
+  file=$2
+  expect=$3
+
+# Do while read stuff
+ret=$($cmd<$file)
+  # Match if both are empty string
+  if [ -z "$ret" -a -z "$expect" ]; then
+      return
+  fi
+  match=`echo "$ret" | grep -Eo "$expect"`
   if [ -z "$match" ]; then
       err "$expect" "$ret"
   fi

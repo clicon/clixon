@@ -32,6 +32,17 @@ module example{
             }
          }
     }
+    list sender{
+        key name;
+        leaf name{
+            type string;
+        }
+        leaf template{
+            type leafref{
+                path "/sender/name";
+            }
+        }
+    }
 }
 EOF
 
@@ -44,14 +55,16 @@ fi
 
 new "start backend"
 # start new backend
-sudo clixon_backend -If $clixon_cf -y /tmp/leafref.yang
+sudo clixon_backend -s init -f $clixon_cf -y /tmp/leafref.yang
 if [ $? -ne 0 ]; then
     err
 fi
 
 new "leafref base config"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/leafref.yang" "<rpc><edit-config><target><candidate/></target><config><interfaces>
-<interface><name>eth0</name>  <type>eth</type>  <ipv4><address><ip>192.0.2.1</ip></address></ipv4>  <ipv4><address><ip>192.0.2.2</ip></address></ipv4></interface><interface><name>lo</name><type>lo</type><ipv4><address><ip>127.0.0.1</ip></address></ipv4></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+<interface><name>eth0</name>  <type>eth</type>  <ipv4><address><ip>192.0.2.1</ip></address><address><ip>192.0.2.2</ip></address></ipv4></interface>
+<interface><name>lo</name><type>lo</type><ipv4><address><ip>127.0.0.1</ip></address></ipv4></interface>
+</interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "leafref get config"
 expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><interfaces><interface><name>eth0</name>'
@@ -93,6 +106,12 @@ expectfn "$clixon_cli -1f $clixon_cf -y /tmp/leafref.yang -l o set default-addre
 
 new "cli leafref validate"
 expectfn "$clixon_cli -1f $clixon_cf -y /tmp/leafref.yang -l o validate" "^$"
+
+new "cli sender"
+expectfn "$clixon_cli -1f $clixon_cf -y /tmp/leafref.yang -l o set sender a" "^$"
+
+new "cli sender template"
+expectfn "$clixon_cli -1f $clixon_cf -y /tmp/leafref.yang -l o set sender b template a" "^$"
 
 new "Kill backend"
 # Check if still alive

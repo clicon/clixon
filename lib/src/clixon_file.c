@@ -185,7 +185,7 @@ quit:
    return retval;
 }
 
-/*! Make a copy of file src
+/*! Make a copy of file src. Overwrite existing
  * @retval 0   OK
  * @retval -1  Error
  */

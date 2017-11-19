@@ -1,12 +1,61 @@
-# Clixon CHANGELOG
+# Clixon Changelog
 
+## 3.3.3 (Upcoming)
+
+### Known issues
+### Major changes:
+* Clixon can now be compiled and run on Apple Darwin.
+
+* Performance improvements
+  * Added xml hash lookup instead of linear search for better performance of large lists. To disable, undefine XML_CHILD_HASH in clixon_custom.h
+  * netconf client was limited to 8K byte messages. Now limit is 2^32 bytes
+
+* XML and YANG-based configuration file.
+  * New configuration files have .xml suffix, old have .conf. Old config files till work for backward compatibility.
+  * The yang model is yang/clixon-config.yang.
+  * A migration utility is clixon_cli -x to print new format, eg:
+```
+clixon_cli -f /usr/local/etc/routing.conf -1x
+```
+  
+* Introducing backend daemon startup modes. The flags -IRCr and option CLICON_USE_STARTUP_CONFIG are replaced with command-line option -s <mode> and option CLICON_STARTUP_MODE. You need to replace the starting of clixon_backend as follows:
+  * -I replace with -s "init" (or use of CLICON_STARTUP_MODE option)
+  * -CIr replace with -s "running" 
+  * (no-option) replace with -s "none"
+  * CLICON_USE_STARTUP_CONFIG=1 replace with -s "startup"
+Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in include/clixon_custom.h
+
+### Minor changes:
+* Disabled key-value datastore. Enable with --with-keyvalue
+* Removed mandatory requirements for BACKEND, NETCONF, RESTCONF and CLI dirs.
 * When user callbacks such as statedata() call returns -1, clixon_backend no
   longer silently exits. Instead a log is printed and an RPC error is returned.
+* Added Floating point and negative number support to JSON
+* Restconf: http cookie sent as attribute in rpc restconf_post operations to backend.
+* Added option CLICON_CLISPEC_FILE as complement to CLICON_CLISPEC_DIR to
+  specify single CLI specification file, not only directory containing files.
+	
+* Replaced the following cli_ functions with their original cligen_functions:
+	cli_exiting, cli_set_exiting, cli_comment,
+	cli_set_comment, cli_tree_add, cli_tree_active,
+	cli_tree_active_set, cli_tree.
+
+* Added a format parameter to clicon_rpc_generate_error() and changed error
+  printouts for backend errors, such as commit and validate. Example of the
+  new format:
+
+```
+> commit
+Sep 27 18:11:58: Commit failed. Edit and try again or discard changes:
+protocol invalid-value Missing mandatory variable: type
+```
+
+* Added event_poll function.
 
 * Support for non-line scrolling in CLI, eg wrap lines. Set with:
   CLICON_CLI_LINESCROLLING 0
 
-## 3.3.2 Aug 27 2017
+## 3.3.2 (Aug 27 2017)
 
 ### Known issues
 * Please use text datastore, key-value datastore no up-to-date
@@ -19,6 +68,7 @@
   * If you use direct netconf get or get-config calls, you may need to handle the return XML differently.
   * RESTCONF and CLI is not affected.
   * Example: 
+
 ```
   Query: 
     <rpc><get/></rpc>  
@@ -42,6 +92,7 @@
 * Added support for yang presence and no-presence containers. Previous default was "presence".
   * Empty containers will be removed unless you have used the "presence" yang declaration.
   * Example YANG without presence: 
+
 ```
      container 
         nopresence { 
@@ -50,7 +101,9 @@
           } 
      }
 ```
+
 If you submit "nopresence" without a leaf, it will automatically be removed:
+
 ```
      <nopresence/> # removed
      <nopresence>  # not removed
@@ -81,6 +134,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
   * Validation for leafref forward and backward references; 
   * CLI completion for generated cli leafrefs for both absolute and relative paths.
   * Example, relative path:
+
 ```
          leaf ifname {
              type leafref {
@@ -94,7 +148,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
   * Restconf GET will return state data also, if defined.
   * You need to define state data in a backend callback. See the example and documentation for more details.
 
-### Minor changes:
+### Minor Changes
 * Added xpath support for predicate: current(), eg /interface[name=current()/../name]
 * Added prefix parsing of xpath, allowing eg /p:x/p:y, but prefix ignored.
 * Corrected Yang union CLI generation and type validation. Recursive unions did not work.
@@ -110,7 +164,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
 * Removed vector return values from xmldb_get()
 * Generalized yang type resolution to all included (sub)modules not just the topmost
 	
-## 3.3.1 June 7 2017
+## 3.3.1 (June 7 2017)
 
 * Fixed yang leafref cli completion for absolute paths.
 
@@ -118,9 +172,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
 
 * Strings in xmldb_put not properly encoded, eg eth/0 became eth.00000
 	
-## 3.3.0
-
-May 2017	
+## 3.3.0 (May 2017)
 	
 * Datastore text module is now default.
 
@@ -161,7 +213,7 @@ May 2017
   Instead use the rpc calls in clixon_proto_client.[ch]
   In clients (eg cli/netconf) replace xmldb_get() in client code with 
   clicon_rpc_get_config().
-  If you use the vector arguments of xmldb_get(), replace as follows:
+  pIf you use the vector arguments of xmldb_get(), replace as follows:
     xmldb_get(h, db, api_path, &xt, &xvec, &xlen);
   with
     clicon_rpc_get_config(h, dbstr, api_path, &xt);
@@ -211,9 +263,13 @@ May 2017
      `load("Comment") <filename:string>,load_config_file("filename", "replace");`
 
   If you write your own, you need to change the callback signature from;
+```
     int cli_callback(clicon_handle h, cvec *vars, cg_var *arg)
+```
   to:
+```
     int cli_callback(clicon_handle h, cvec *vars, cvec *argv)
+```
   and rewrite the code to handle argv instead of arg.
   These are the system functions affected:
   cli_set, cli_merge, cli_del, cli_debug_backend, cli_set_mode, 
@@ -225,7 +281,9 @@ May 2017
 * Added union type check for non-cli (eg xml) input 
 * Empty yang type. Relaxed yang types for unions, eg two strings with different length.
 	
-Dec 2016: Dual license: both GPLv3 and APLv2
+## (Dec 2016)
+* Dual license: both GPLv3 and APLv2
 	
-Feb 2016: Forked new clixon repository from clicon
+## (Feb 2016)
+* Forked new clixon repository from clicon
 

@@ -43,3 +43,14 @@
 int strverscmp (__const char *__s1, __const char *__s2);
 #endif
 
+/* Hash for XML trees list entries
+ * Experimental
+ */
+#define XML_CHILD_HASH 1
+
+/* Backward compatible clixon backend daemon startup sequences
+ * This has been replaced with -s <mode> and CLICON_STARTUP_MODE
+ * define if enable backward compatible behaviour
+ * Remove in 3.3.4
+ */
+#undef BACKEND_STARTUP_BACKWARD_COMPAT

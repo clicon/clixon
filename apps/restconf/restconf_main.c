@@ -39,7 +39,7 @@
  * sudo apt-get install libfcgi-dev
  * gcc -o fastcgi fastcgi.c -lfcgi
 
- * sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/routing.conf " -s /bin/sh www-data
+ * sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/routing.xml " -s /bin/sh www-data
 
  * This is the interface:
  * api/data/profile=<name>/metric=<name> PUT data:enable=<flag>
@@ -205,9 +205,8 @@ request_process(clicon_handle h,
 
     if (strcmp(method, "data") == 0) /* restconf, skip /api/data */
 	retval = api_data(h, r, path, pcvec, 2, qvec, data);
-    else
-	if (strcmp(method, "operations") == 0) /* rpc */
-	    retval = api_operations(h, r, path, pcvec, 2, qvec, data);
+    else if (strcmp(method, "operations") == 0) /* rpc */
+	retval = api_operations(h, r, path, pcvec, 2, qvec, data);
     else if (strcmp(method, "test") == 0)
 	retval = test(r, 0);
     else
@@ -270,8 +269,6 @@ usage(clicon_handle h,
       char         *argv0)
 
 {
-    char *restconfdir = clicon_restconf_dir(h);
-
     fprintf(stderr, "usage:%s [options]\n"
 	    "where options are\n"
             "\t-h \t\tHelp\n"
@@ -280,7 +277,7 @@ usage(clicon_handle h,
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
 	    argv0,
-	    restconfdir
+	    clicon_restconf_dir(h)
 	    );
     exit(0);
 }

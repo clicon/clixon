@@ -57,7 +57,12 @@ enum cxobj_type {CX_ERROR=-1,
 
 typedef struct xml cxobj; /* struct defined in clicon_xml.c */
 
-/*! Callback function type for xml_apply */
+/*! Callback function type for xml_apply 
+ * @retval    -1    Error, aborted at first error encounter
+ * @retval     0    OK, continue
+ * @retval     1    Abort, dont continue with others
+ * @retval     2    Locally, just abort this subtree, continue with others
+ */
 typedef int (xml_applyfn_t)(cxobj *yn, void *arg);
 
 /*
@@ -118,6 +123,7 @@ char     *xml_body(cxobj *xn);
 cxobj    *xml_body_get(cxobj *xn);
 char     *xml_find_value(cxobj *xn_parent, char *name);
 char     *xml_find_body(cxobj *xn, char *name);
+cxobj    *xml_find_body_obj(cxobj *xt, char *name, char *val);
 
 int       xml_free(cxobj *xn);
 
@@ -146,5 +152,12 @@ int       xml_body_int32(cxobj *xb, int32_t *val);
 int       xml_body_uint32(cxobj *xb, uint32_t *val);
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
+#if (XML_CHILD_HASH==1)
+clicon_hash_t *xml_hash(cxobj *x);
+int xml_hash_init(cxobj *x);
+int xml_hash_rm(cxobj *x);
+int xml_hash_key(cxobj *x, yang_stmt *y, cbuf *key);
+int xml_hash_op(cxobj *x, void *arg);
+#endif
 
 #endif /* _CLIXON_XML_H */

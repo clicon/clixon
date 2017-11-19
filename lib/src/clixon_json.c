@@ -624,3 +624,79 @@ json_parse_str(char   *str,
     return json_parse(str, "", *xt);
 }
 
+
+/*
+ * Turn this on to get a json parse and pretty print test program
+ * Usage: xpath
+ * read xml from input
+ * Example compile:
+ gcc -g -o json -I. -I../clixon ./clixon_json.c -lclixon -lcligen
+ * Example run:
+    echo '{"foo": -23}' | ./json
+*/
+#if 0 /* Test program */
+
+static int
+usage(char *argv0)
+{
+    fprintf(stderr, "usage:%s.\n\tInput on stdin\n", argv0);
+    exit(0);
+}
+
+int
+main(int argc, char **argv)
+{
+    cxobj *xt;
+    cxobj *xc;
+    cbuf  *cb = cbuf_new();
+    char  *buf = NULL;
+    int    i;
+    int    c;
+    int    len;
+    FILE  *f = stdin;
+    
+    if (argc != 1){
+	usage(argv[0]);
+	return 0;
+    }
+    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
+    len = 1024; /* any number is fine */
+    if ((buf = malloc(len)) == NULL){
+	perror("malloc");
+	return -1;
+    }
+    memset(buf, 0, len);
+
+    i = 0; /* position in buf */
+    while (1){ /* read the whole file */
+	if ((c =  fgetc(f)) == EOF)
+	    break;
+	if (len==i){
+	    if ((buf = realloc(buf, 2*len)) == NULL){
+		fprintf(stderr, "%s: realloc: %s\n", __FUNCTION__, strerror(errno));
+		goto done;
+	    }	    
+	    memset(buf+len, 0, len);
+	    len *= 2;
+	}
+	buf[i++] = (char)(c&0xff);
+    } /* read a line */
+
+    if (json_parse_str(buf, &xt) < 0)
+	return -1;
+    xc = NULL;
+    while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
+	xmltree2cbuf(cb, xc, 0);       /* dump data structures */
+		//clicon_xml2cbuf(cb, xc, 0, 1); /* print xml */
+    }
+    fprintf(stdout, "%s", cbuf_get(cb));
+    if (xt)
+	xml_free(xt);
+    if (cb)
+	cbuf_free(cb);
+ done:
+    return 0;
+}
+
+#endif /* Test program */
+

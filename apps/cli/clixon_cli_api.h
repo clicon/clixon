@@ -54,15 +54,10 @@ int cli_syntax_load(clicon_handle h);
 int cli_handler_err(FILE *fd);
 int cli_set_prompt(clicon_handle h, const char *mode, const char *prompt);
 char *cli_prompt(char *fmt);
-int cli_exec(clicon_handle h, char *cmd, char **mode, int *result);
 int cli_ptpush(clicon_handle h, char *mode, char *string, char *op);
 int cli_ptpop(clicon_handle h, char *mode, char *op);
 
 /* cli_handle.c */
-char cli_set_comment(clicon_handle h, char c);
-char cli_comment(clicon_handle h);
-int cli_set_exiting(clicon_handle h, int exiting);
-int cli_exiting(clicon_handle h);
 clicon_handle cli_handle_init(void);
 int cli_handle_exit(clicon_handle h);
 cligen_handle cli_cligen(clicon_handle h);
@@ -132,6 +127,8 @@ int db_copy(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_lock(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_unlock(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_copy_config(clicon_handle h, cvec *cvv, cvec *argv);
+
+int cli_help(clicon_handle h, cvec *vars, cvec *argv);
 
 /* In cli_show.c */
 int expand_dir(char *dir, int *nr, char ***commands, mode_t flags, int detail);

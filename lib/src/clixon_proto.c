@@ -66,6 +66,9 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
+#include "clixon_yang.h"
 #include "clixon_sig.h"
 #include "clixon_xml.h"
 #include "clixon_xsl.h"
@@ -130,8 +133,8 @@ struct clicon_msg *
 clicon_msg_encode(char *format, ...)
 {
     va_list            args;
-    int                xmllen;
-    int                len;
+    uint32_t           xmllen;
+    uint32_t           len;
     struct clicon_msg *msg = NULL;
     int                hdrlen = sizeof(*msg);
 
@@ -146,7 +149,7 @@ clicon_msg_encode(char *format, ...)
     }
     memset(msg, 0, len);
     /* hdr */
-    msg->op_len = htons(len);
+    msg->op_len = htonl(len);
 
     /* body */
     va_start(args, format);
@@ -267,7 +270,7 @@ msg_dump(struct clicon_msg *msg)
     
     memset(buf2, 0, sizeof(buf2));
     snprintf(buf2, sizeof(buf2), "%s:", __FUNCTION__);
-    for (i=0; i<ntohs(msg->op_len); i++){
+    for (i=0; i<ntohl(msg->op_len); i++){
 	snprintf(buf, sizeof(buf), "%s%02x", buf2, ((char*)msg)[i]&0xff);
 	if ((i+1)%32==0){
 	    clicon_debug(2, buf);
@@ -294,13 +297,13 @@ clicon_msg_send(int                s,
     int retval = -1;
 
     clicon_debug(2, "%s: send msg len=%d", 
-		 __FUNCTION__, ntohs(msg->op_len));
+		 __FUNCTION__, ntohl(msg->op_len));
     if (debug > 2)
 	msg_dump(msg);
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
-		 s, msg, ntohs(msg->op_len)) < 0){
+		 s, msg, ntohl(msg->op_len)) < 0){
 	clicon_err(OE_CFG, errno, "%s", __FUNCTION__);
-	clicon_log(LOG_WARNING, "%s: write: %s len:%d msg:%s", __FUNCTION__,
+	clicon_log(LOG_WARNING, "%s: write: %s len:%u msg:%s", __FUNCTION__,
 		   strerror(errno), ntohs(msg->op_len), msg->op_body);
 	goto done;
     }
@@ -308,7 +311,6 @@ clicon_msg_send(int                s,
   done:
     return retval;
 }
-
 
 /*! Receive a CLICON message
  *
@@ -333,9 +335,9 @@ clicon_msg_rcv(int                s,
     int       retval = -1;
     struct clicon_msg hdr;
     int       hlen;
-    int       len2;
+    uint32_t  len2;
     sigfn_t   oldhandler;
-    uint16_t  mlen;
+    uint32_t  mlen;
 
     *eof = 0;
     if (0)
@@ -354,7 +356,7 @@ clicon_msg_rcv(int                s,
 	clicon_err(OE_CFG, errno, "%s: header too short (%d)", __FUNCTION__, hlen);
 	goto done;
     }
-    mlen = ntohs(hdr.op_len);
+    mlen = ntohl(hdr.op_len);
     clicon_debug(2, "%s: rcv msg len=%d",  
 		 __FUNCTION__, mlen);
     if ((*msg = (struct clicon_msg *)malloc(mlen)) == NULL){
@@ -362,8 +364,8 @@ clicon_msg_rcv(int                s,
 	goto done;
     }
     memcpy(*msg, &hdr, hlen);
-    if ((len2 = read(s, (*msg)->op_body, mlen - sizeof(hdr))) < 0){
-	clicon_err(OE_CFG, errno, "%s: read", __FUNCTION__);
+    if ((len2 = atomicio(read, s, (*msg)->op_body, mlen - sizeof(hdr))) < 0){ 
+ 	clicon_err(OE_CFG, errno, "%s: read", __FUNCTION__);
 	goto done;
     }
     if (len2 != mlen - sizeof(hdr)){
@@ -533,17 +535,17 @@ clicon_rpc(int                   s,
 int 
 send_msg_reply(int      s, 
 	       char    *data, 
-	       uint16_t datalen)
+	       uint32_t datalen)
 {
     int                retval = -1;
     struct clicon_msg *reply = NULL;
-    uint16_t           len;
+    uint32_t           len;
 
     len = sizeof(*reply) + datalen;
     if ((reply = (struct clicon_msg *)malloc(len)) == NULL)
 	goto done;
     memset(reply, 0, len);
-    reply->op_len = htons(len);
+    reply->op_len = htonl(len);
     if (datalen > 0)
       memcpy(reply->op_body, data, datalen);
     if (clicon_msg_send(s, reply) < 0)

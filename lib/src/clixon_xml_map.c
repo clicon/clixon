@@ -464,14 +464,11 @@ xml2cvec(cxobj      *xt,
     char             *body;
     char             *reason = NULL;
     int               ret;
-    int               i = 0;
-    int               len = 0;
     char             *name;
 
     xc = NULL;
-    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
-	len++;
-    if ((cvv = cvec_new(len)) == NULL){
+    /* Tried to allocate whole cvv here,but some cg_vars may be invalid */
+    if ((cvv = cvec_new(0)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto err;
     }
@@ -483,8 +480,10 @@ xml2cvec(cxobj      *xt,
 	    clicon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
 			 __FUNCTION__, name, yt->ys_argument);
 	    if ((body = xml_body(xc)) != NULL){
-		cv = cvec_i(cvv, i++);
-		cv_type_set(cv, CGV_STRING);
+		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
+		    clicon_err(OE_PLUGIN, errno, "cvec_add");
+		    goto err;
+		}
 		cv_name_set(cv, name);
 		if ((ret = cv_parse1(body, cv, &reason)) < 0){
 		    clicon_err(OE_PLUGIN, errno, "cv_parse");
@@ -498,11 +497,13 @@ xml2cvec(cxobj      *xt,
 		}
 	    }
 	}
-	else
-	if ((ycv = ys->ys_cv) != NULL){
+	else if ((ycv = ys->ys_cv) != NULL){
 	    if ((body = xml_body(xc)) != NULL){
 		/* XXX: cvec_add uses realloc, can we avoid that? */
-		cv = cvec_i(cvv, i++);
+		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
+		    clicon_err(OE_PLUGIN, errno, "cvec_add");
+		    goto err;
+		}
 		if (cv_cp(cv, ycv) < 0){
 		    clicon_err(OE_PLUGIN, errno, "cv_cp");
 		    goto err;
@@ -567,6 +568,8 @@ cvec2xml_1(cvec   *cvv,
     cv = NULL;
     i = 0;
     while ((cv = cvec_each(cvv, cv)) != NULL) {
+	if (cv_type_get(cv)==CGV_ERR || cv_name_get(cv) == NULL)
+	    continue;
 	if ((xn = xml_new(cv_name_get(cv), NULL)) == NULL) /* this leaks */
 	    goto err;
 	xml_parent_set(xn, xt);
@@ -587,271 +590,262 @@ cvec2xml_1(cvec   *cvv,
     return retval;
 }
 
-/*! Return 1 if value is a body of one of the named children of xt */
-static int
-xml_is_body(cxobj *xt, 
-	    char  *name, 
-	    char  *val)
-{
-    cxobj *x;
-    char  *bx;
-
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if (strcmp(name, xml_name(x)))
-	    continue;
-	if ((bx = xml_body(x)) == NULL)
-	    continue;
-	if (strcmp(xml_body(x), val) == 0)
-	    return 1;
-    }
-    return 0;
-}
-
-/*! Recursive help function to compute differences between two xml trees
- * @see dbdiff_vector.
- */
-static int
-xml_diff1(yang_stmt *ys, 
-	  cxobj     *xt1, 
-	  cxobj     *xt2,
-	  cxobj   ***first,
-	  size_t    *firstlen,
-	  cxobj   ***second,
-	  size_t    *secondlen,
-	  cxobj   ***changed1,
-	  cxobj   ***changed2,
-	  size_t    *changedlen)
+/*! Given child tree x1c, find matching child in base tree x0
+ * param[in]  x0   Base tree node
+ * param[in]  x1c  Modification tree child
+ * param[in]  yc   Yang spec of tree child
+ * param[out] x0cp Matching base tree child (if any)
+ * @note XXX: room for optimization? on 1K calls we have 1M body calls and
+	   500K xml_child_each/cvec_each calls. 
+	   The outer loop is large for large lists
+	   The inner loop is small
+	   Major time in xml_find_body()
+	   Can one do a binary search in the x0 list?
+*/
+int
+match_base_child(cxobj     *x0, 
+		 cxobj     *x1c,
+		 cxobj    **x0cp,
+		 yang_stmt *yc)
 {
     int        retval = -1;
-    cxobj     *x1 = NULL;
-    cxobj     *x2 = NULL;
-    yang_stmt *y;
-    yang_stmt *ykey;
-    char      *name;
-    cg_var    *cvi;
+    char      *x1cname;
+    cxobj     *x0c = NULL; /* x0 child */
     cvec      *cvk = NULL; /* vector of index keys */
+    cg_var    *cvi;
+    char      *b0;
+    char      *b1;
+    yang_stmt *ykey;
     char      *keyname;
     int        equal;
-    char      *body1;
-    char      *body2;
+    char     **b1vec = NULL;
+    int        i;
+#if (XML_CHILD_HASH==1)
+    cxobj **p;
+    cbuf   *key = NULL; /* cligen buffer hash key */
+    size_t  vlen;
 
-    clicon_debug(2, "%s: %s", __FUNCTION__, ys->ys_argument?ys->ys_argument:"yspec");
-    /* Check nodes present in xt1 and xt2 + nodes only in xt1
-     * Loop over xt1
-     */
-    x1 = NULL;
-    while ((x1 = xml_child_each(xt1, x1, CX_ELMNT)) != NULL){
-	name = xml_name(x1);
-	if (ys->ys_keyword == Y_SPEC)
-	    y = yang_find_topnode((yang_spec*)ys, name, 0);
-	else
-	    y = yang_find_datanode((yang_node*)ys, name);
-	if (y == NULL){
-	    clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
+    *x0cp = NULL; /* return value */	    
+    if (xml_hash(x0) == NULL)
+	goto nohash;
+    if ((key = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done1;
+    }
+    if (xml_hash_key(x1c, yc, key) < 0)
+	goto done;
+    x0c = NULL;
+    if (cbuf_len(key))
+	if ((p = hash_value(xml_hash(x0), cbuf_get(key), &vlen)) != NULL){
+	    assert(vlen == sizeof(x0c));
+	    x0c = *p;
+	}
+    //    fprintf(stderr, "%s get %s = 0x%x\n", __FUNCTION__, cbuf_get(key), (unsigned int)x0c);
+    *x0cp = x0c;
+    retval = 0;
+ done1:
+    if (key)
+	cbuf_free(key);
+    return retval;
+ nohash:
+#endif /* XML_CHILD_HASH */
+    *x0cp = NULL; /* return value */	    
+    x1cname = xml_name(x1c);
+    switch (yc->ys_keyword){
+    case Y_CONTAINER: 	/* Equal regardless */
+    case Y_LEAF: 	/* Equal regardless */
+	x0c = xml_find(x0, x1cname);
+	break;
+    case Y_LEAF_LIST: /* Match with name and value */
+	if ((b1 = xml_body(x1c)) == NULL)
+	    goto ok;
+	x0c = xml_find_body_obj(x0, x1cname, b1);
+	break;
+    case Y_LIST: /* Match with key values */
+	if ((ykey = yang_find((yang_node*)yc, Y_KEY, NULL)) == NULL){
+	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
+		       __FUNCTION__, yc->ys_argument);
 	    goto done;
 	}
-	switch (y->ys_keyword){
-	case Y_LIST:
-	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
-		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-			   __FUNCTION__, y->ys_argument);
+	/* The value is a list of keys: <key>[ <key>]*  */
+	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
+	    goto done;
+	cvi = NULL; i = 0;
+	while ((cvi = cvec_each(cvk, cvi)) != NULL) 
+	    i++;
+	if ((b1vec = calloc(i, sizeof(b1))) == NULL){
+	    clicon_err(OE_UNIX, errno, "calloc");
+	    goto done;
+	}
+	cvi = NULL; i = 0;
+	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+	    keyname = cv_string_get(cvi);
+	    if ((b1 = xml_find_body(x1c, keyname)) == NULL){
+		clicon_err(OE_UNIX, errno, "key %s not found", keyname);
 		goto done;
 	    }
-	    /* The value is a list of keys: <key>[ <key>]*  */
-	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-		goto done;
-	    /* Iterate over xt2 tree to (1) find a child that matches name
-	       (2) that have keys that matches */
+	    b1vec[i++] = b1;
+	}
+	/* Iterate over x0 tree to (1) find a child that matches name
+	   (2) that have keys that matches */
+	x0c = NULL;
+	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL){
 	    equal = 0;
-	    x2 = NULL;
-	    while ((x2 = xml_child_each(xt2, x2, CX_ELMNT)) != NULL){
-		if (strcmp(xml_name(x2), name))
-		    continue;
-		cvi = NULL;
-		equal = 0;
-		/* (2) Match keys between x1 and x2 */
-		while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		    keyname = cv_string_get(cvi);
-		    if ((body1 = xml_find_body(x1, keyname)) == NULL)
-			continue; /* may be error */
-		    if ((body2 = xml_find_body(x2, keyname)) == NULL)
-			continue; /* may be error */
-		    if (strcmp(body1, body2)==0)
-			equal=1;
-		    else{
-			equal=0; /* stop as soon as inequal key found */
-			break;
-		    }
-		}
-		if (equal) /* found x1 and x2 equal, otherwise look 
-			      for other x2 */
-		    break;
-	    }
-	    if (cvk){
-		cvec_free(cvk);
-		cvk = NULL;
-	    }
-	    if (equal){ 
-		if (xml_diff1(y, x1, x2,   
-			      first, firstlen, 
-			      second, secondlen, 
-			      changed1, changed2, changedlen)< 0)
-		    goto done;
-		break;
-	    }
-	    else
-		if (cxvec_append(x1, first, firstlen) < 0) 
-		    goto done;
-
-	    break;
-	case Y_CONTAINER:
-	    /* Equal regardless */
-	    if ((x2 = xml_find(xt2, name)) == NULL){
-		if (cxvec_append(x1, first, firstlen) < 0) 
-		    goto done;
-		break;
-	    }
-	    if (xml_diff1(y, x1, x2,   
-			  first, firstlen, 
-			  second, secondlen, 
-			  changed1, changed2, changedlen)< 0)
-		goto done;
-	    break;
-	case Y_LEAF:
-	    if ((x2 = xml_find(xt2, name)) == NULL){
-		if (cxvec_append(x1, first, firstlen) < 0) 
-		    goto done;
-		break;
-	    }
-	    body1 = xml_body(x1);
-	    body2 = xml_body(x2);
-	    if (body1 == NULL || body2 == NULL) /* empty type */
-		break;
-	    if (strcmp(xml_body(x1), xml_body(x2))){
-		if (cxvec_append(x1, changed1, changedlen) < 0) 
-		    goto done;
-		(*changedlen)--; /* append two vectors */
-		if (cxvec_append(x2, changed2, changedlen) < 0) 
-		    goto done;
-	    }
-	    break;
-	case Y_LEAF_LIST:
-	    if ((body1 = xml_body(x1)) == NULL)
+	    if (strcmp(xml_name(x0c), x1cname))
 		continue;
-	    if (!xml_is_body(xt2, name, body1)) /* where body is */
-		if (cxvec_append(x1, first, firstlen) < 0) 
-		    goto done;
-	    break;
-	default:
-	    break;
-	}
-    } /* while xt1 */
-    /* Check nodes present only in xt2
-     * Loop over xt2
-     */
-    x2 = NULL;
-    while ((x2 = xml_child_each(xt2, x2, CX_ELMNT)) != NULL){
-	name = xml_name(x2);
-	if (ys->ys_keyword == Y_SPEC)
-	    y = yang_find_topnode((yang_spec*)ys, name, 0);
-	else
-	    y = yang_find_datanode((yang_node*)ys, name);
-	if (y == NULL){
-	    clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
-	    goto done;
-	}
-	switch (y->ys_keyword){
-	case Y_LIST:
-	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
-		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-			   __FUNCTION__, y->ys_argument);
-		goto done;
-	    }
-	    /* The value is a list of keys: <key>[ <key>]*  */
-	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-		goto done;
-	    /* Iterate over xt1 tree to (1) find a child that matches name
-	       (2) that have keys that matches */
-	    equal = 0;
-	    x1 = NULL;
-	    while ((x1 = xml_child_each(xt1, x1, CX_ELMNT)) != NULL){
-		if (strcmp(xml_name(x1), name))
-		    continue;
-		cvi = NULL;
+	    /* Must be inner loop */
+	    cvi = NULL; i = 0;
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+		b1 = b1vec[i++];
 		equal = 0;
-		/* (2) Match keys between x2 and x1 */
-		while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		    keyname = cv_string_get(cvi);
-		    if ((body2 = xml_find_body(x2, keyname)) == NULL)
-			continue; /* may be error */
-		    if ((body1 = xml_find_body(x1, keyname)) == NULL)
-			continue; /* may be error */
-		    if (strcmp(body2, body1)==0)
-			equal=1;
-		    else{
-			equal=0; /* stop as soon as inequal key found */
-			break;
-		    }
-		}
-		if (equal) /* found x1 and x2 equal, otherwise look 
-			      for other x2 */
-		    break;
+		keyname = cv_string_get(cvi);
+		if ((b0 = xml_find_body(x0c, keyname)) == NULL)
+		    break; /* error case */
+		if (strcmp(b0, b1))
+		    break; /* stop as soon as inequal key found */
+		equal=1; /* reaches here for all keynames, x0c is found. */
 	    }
-	    if (cvk){
-		cvec_free(cvk);
-		cvk = NULL;
-	    }
-	    if (!equal)
-		if (cxvec_append(x2, second, secondlen) < 0) 
-		    goto done;
-	    break;
-	case Y_CONTAINER:
-	    /* Equal regardless */
-	    if ((x1 = xml_find(xt1, name)) == NULL)
-		if (cxvec_append(x2, second, secondlen) < 0) 
-		    goto done;
-	    break;
-	case Y_LEAF:
-	    if ((x1 = xml_find(xt1, name)) == NULL)
-		if (cxvec_append(x2, second, secondlen) < 0) 
-		    goto done;
-	    break;
-	case Y_LEAF_LIST:
-	    body2 = xml_body(x2);
-	    if (!xml_is_body(xt1, name, body2)) /* where body is */
-		if (cxvec_append(x2, second, secondlen) < 0) 
-		    goto done;
-	    break;
-	default:
-	    break;
-	}
-    } /* while xt1 */
+	    if (equal) /* x0c and x1c equal, otherwise look for other */
+		break;
+	} /* while x0c */
+	break;
+    default:
+	break;
+    }
+ ok:
+    *x0cp = x0c;
     retval = 0;
  done:
+    if (b1vec)
+	free(b1vec);
     if (cvk)
 	cvec_free(cvk);
     return retval;
 }
 
+/*! Find next yang node, either start from yang_spec or some yang-node
+ * @param[in]  y    Node spec or sny yang-node
+ * @param[in]  name Name of childnode to find
+ * @retval  ys      yang statement
+ * @retval  NULL    Error: no node found
+ */
+static yang_stmt *
+yang_next(yang_node *y, 
+	  char      *name)
+{
+    yang_stmt *ys;
+
+    if (y->yn_keyword == Y_SPEC)
+	ys = yang_find_topnode((yang_spec*)y, name, 0);
+    else
+	ys = yang_find_datanode(y, name);
+    if (ys == NULL)
+	clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
+    return ys;
+}
+
+/*! Recursive help function to compute differences between two xml trees
+ * @param[in]  x1       First XML tree
+ * @param[in]  x2       Second XML tree
+ * @param[out] x1vec     Pointervector to XML nodes existing in only first tree
+ * @param[out] x1veclen  Length of first vector
+ * @param[out] x2vec    Pointervector to XML nodes existing in only second tree
+ * @param[out] x2veclen Length of x2vec vector
+ * @param[out] changed_x1  Pointervector to XML nodes changed orig value
+ * @param[out] changed_x2  Pointervector to XML nodes changed wanted value
+ * @param[out] changedlen Length of changed vector
+ */
+static int
+xml_diff1(yang_stmt *ys, 
+	  cxobj     *x1, 
+	  cxobj     *x2,
+	  cxobj   ***x1vec,
+	  size_t    *x1veclen,
+	  cxobj   ***x2vec,
+	  size_t    *x2veclen,
+	  cxobj   ***changed_x1,
+	  cxobj   ***changed_x2,
+	  size_t    *changedlen)
+{
+    int        retval = -1;
+    cxobj     *x1c = NULL; /* x1 child */
+    cxobj     *x2c = NULL; /* x2 child */
+    yang_stmt *yc;
+    char      *b1;
+    char      *b2;
+
+    clicon_debug(2, "%s: %s", __FUNCTION__, ys->ys_argument?ys->ys_argument:"yspec");
+    /* Check nodes present in x1 and x2 + nodes only in x1
+     * Loop over x1
+     * XXX: room for improvement. Compare with match_base_child()
+     */
+    x1c = NULL;
+    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL){
+	if ((yc = yang_next((yang_node*)ys, xml_name(x1c))) == NULL)
+	    goto done;
+	if (match_base_child(x2, x1c, &x2c, yc) < 0)
+	    goto done;
+	if (x2c == NULL){
+	    if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
+		goto done;
+	}
+	else{
+	    if (yc->ys_keyword == Y_LEAF){
+		if ((b1 = xml_body(x1c)) == NULL) /* empty type */
+		    break;
+		if ((b2 = xml_body(x2c)) == NULL) /* empty type */
+		    break;
+		if (strcmp(b1, b2)){
+		    if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
+			goto done;
+		    (*changedlen)--; /* append two vectors */
+		    if (cxvec_append(x2c, changed_x2, changedlen) < 0) 
+			goto done;
+		}
+	    }
+	    if (xml_diff1(yc, x1c, x2c,   
+			  x1vec, x1veclen, 
+			  x2vec, x2veclen, 
+			  changed_x1, changed_x2, changedlen)< 0)
+		goto done;
+	}
+    } /* while x1 */
+    /* Check nodes present only in x2
+     * Loop over x2
+     */
+    x2c = NULL;
+    while ((x2c = xml_child_each(x2, x2c, CX_ELMNT)) != NULL){
+	if ((yc = yang_next((yang_node*)ys, xml_name(x2c))) == NULL)
+	    goto done;
+        if (match_base_child(x1, x2c, &x1c, yc) < 0)
+	    goto done;
+	if (x1c == NULL)
+	    if (cxvec_append(x2c, x2vec, x2veclen) < 0) 
+		goto done;
+    } /* while x1 */
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Compute differences between two xml trees
  * @param[in]  yspec     Yang specification
- * @param[in]  xt1       First XML tree
- * @param[in]  xt2       Second XML tree
+ * @param[in]  x1       First XML tree
+ * @param[in]  x2       Second XML tree
  * @param[out] first     Pointervector to XML nodes existing in only first tree
  * @param[out] firstlen  Length of first vector
  * @param[out] second    Pointervector to XML nodes existing in only second tree
  * @param[out] secondlen Length of second vector
- * @param[out] changed1  Pointervector to XML nodes changed value
- * @param[out] changed2  Pointervector to XML nodes changed value
+ * @param[out] changed1  Pointervector to XML nodes changed orig value
+ * @param[out] changed2  Pointervector to XML nodes changed wanted value
  * @param[out] changedlen Length of changed vector
  * All xml vectors should be freed after use.
  * Bot xml trees should be freed with xml_free()
  */
 int
 xml_diff(yang_spec *yspec, 
-	 cxobj     *xt1, 
-	 cxobj     *xt2,
+	 cxobj     *x1, 
+	 cxobj     *x2,
 	 cxobj   ***first,
 	 size_t    *firstlen,
 	 cxobj   ***second,
@@ -865,19 +859,19 @@ xml_diff(yang_spec *yspec,
     *firstlen = 0;
     *secondlen = 0;    
     *changedlen = 0;
-    if (xt1 == NULL && xt2 == NULL)
+    if (x1 == NULL && x2 == NULL)
 	return 0;
-    if (xt2 == NULL){
-	if (cxvec_append(xt1, first, firstlen) < 0) 
+    if (x2 == NULL){
+	if (cxvec_append(x1, first, firstlen) < 0) 
 	    goto done;
 	goto ok;
     }
-    if (xt1 == NULL){
-	if (cxvec_append(xt1, second, secondlen) < 0) 
+    if (x1 == NULL){
+	if (cxvec_append(x1, second, secondlen) < 0) 
 	    goto done;
 	goto ok;
     }
-    if (xml_diff1((yang_stmt*)yspec, xt1, xt2,
+    if (xml_diff1((yang_stmt*)yspec, x1, x2,
 		  first, firstlen, 
 		  second, secondlen, 
 		  changed1, changed2, changedlen) < 0)
@@ -1002,16 +996,22 @@ yang2api_path_fmt(yang_stmt *ys,
 /*! Transform an xml key format and a vector of values to an XML key
  * Used for actual key, eg in clicon_rpc_change(), xmldb_put_xkey()
  * Example: 
- *   xmlkeyfmt:  /aaa/%s/name
- *   cvv:        key=17
- *   xmlkey:     /aaa/17/name
+ *   xmlkeyfmt:  /interfaces/interface=%s/ipv4/address=%s
+ *   cvv:     0 : set interfaces interface e ipv4 address 1.2.3.4
+ *            1 : name = "e"
+ *            2 : ip = "1.2.3.4"
+ *   api_path:  /interfaces/interface=e/ipv4/address=1.2.3.4
  * @param[in]  api_path_fmt  XML key format, eg /aaa/%s/name
- * @param[in]  cvv           cligen variable vector, one for every wildchar in api_path_fmt
+ * @param[in]  cvv           cligen variable vector, one for every wildchar in 
+ *                           api_path_fmt
  * @param[out] api_path      api_path, eg /aaa/17. Free after use
  * @param[out] yang_arg      yang-stmt argument name. Free after use
  * @note first and last elements of cvv are not used,..
- * @see cli_dbxml where this function is called
- */ 
+ * @see api_path_fmt2xpath
+ * 
+ * /interfaces/interface=%s/name            --> /interfaces/interface/name
+ * /interfaces/interface=%s/ipv4/address=%s --> /interfaces/interface=e/ipv4/address
+ */
 int
 api_path_fmt2api_path(char  *api_path_fmt, 
 		      cvec  *cvv, 
@@ -1025,19 +1025,19 @@ api_path_fmt2api_path(char  *api_path_fmt,
     int   j;
     char *str;
     char *strenc=NULL;
-
+    cg_var *cv;
+    
+#if 1
     /* Sanity check */
-#if 0
     j = 0; /* Count % */
     for (i=0; i<strlen(api_path_fmt); i++)
 	if (api_path_fmt[i] == '%')
 	    j++;
-    if (j+2 < cvec_len(cvv)) {
-	clicon_log(LOG_WARNING, "%s xmlkey format string mismatch(j=%d, cvec_len=%d): %s", 
+    if (j > cvec_len(cvv)) { //cvec_len can be longer
+	clicon_log(LOG_WARNING, "%s api_path_fmt number of %% is %d, does not match number of cvv entries %d", 
 		   api_path_fmt, 
 		   j,
-		   cvec_len(cvv), 
-		   cv_string_get(cvec_i(cvv, 0)));
+		   cvec_len(cvv));
 	goto done;
     }
 #endif
@@ -1052,24 +1052,30 @@ api_path_fmt2api_path(char  *api_path_fmt,
 	    esc = 0;
 	    if (c!='s')
 		continue;
-	    if ((str = cv2str_dup(cvec_i(cvv, j++))) == NULL){
-		clicon_err(OE_UNIX, errno, "strdup");
-		goto done;
+	    if (j == cvec_len(cvv)) /* last element */
+		;
+	    else{
+		cv = cvec_i(cvv, j++);
+		if ((str = cv2str_dup(cv)) == NULL){
+		    clicon_err(OE_UNIX, errno, "cv2str_dup");
+		    goto done;
+		}
+		if (percent_encode(str, &strenc) < 0)
+		    goto done;
+		cprintf(cb, "%s", strenc); 
+		free(strenc); strenc = NULL;
+		free(str); str = NULL;
 	    }
-	    if (percent_encode(str, &strenc) < 0)
-		goto done;
-	    cprintf(cb, "%s", strenc); 
-	    free(strenc); strenc = NULL;
-	    free(str); str = NULL;
 	}
 	else
 	    if (c == '%')
 		esc++;
-	    else if (c == '/'){
-		cprintf(cb, "%c", c);
+	    else{
+		if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%' && j == cvec_len(cvv))
+		    ; /* skip */
+		else
+		    cprintf(cb, "%c", c);
 	    }
-	    else
-		cprintf(cb, "%c", c);
     }
     if ((*api_path = strdup(cbuf_get(cb))) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
@@ -1082,12 +1088,12 @@ api_path_fmt2api_path(char  *api_path_fmt,
     return retval;
 }
 
+
 /*! Transform an xml key format and a vector of values to an XML path
  * Used to input xmldb_get() or xmldb_get_vec
  * Add .* in last %s position.
  * Example: 
- *   xmlkeyfmt:  /interface/%s/address/%s OLDXXX
- *   xmlkeyfmt:  /interface=%s/address=%s
+ *   api_path_fmt:  /interface/%s/address/%s 
  *   cvv:        name=eth0
  *   xmlkey:     /interface/[name=eth0]/address
  * Example2:
@@ -1111,21 +1117,20 @@ api_path_fmt2xpath(char  *api_path_fmt,
     int     j;
     char   *str;
     cg_var *cv;
-    int     skip = 0;
 
     /* Sanity check: count '%' */
-#if 0
+#if 1
     j = 0; /* Count % */
     for (i=0; i<strlen(api_path_fmt); i++)
 	if (api_path_fmt[i] == '%')
 	    j++;
-    if (j < cvec_len(cvv)-1) {
+    if (j > cvec_len(cvv)) {
 	clicon_log(LOG_WARNING, "%s xmlkey format string mismatch(j=%d, cvec_len=%d): %s", 
 		   api_path_fmt, 
 		   j,
 		   cvec_len(cvv), 
 		   cv_string_get(cvec_i(cvv, 0)));
-	//	goto done;
+	goto done;
     }
 #endif
     if ((cb = cbuf_new()) == NULL){
@@ -1139,9 +1144,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
 	    esc = 0;
 	    if (c!='s')
 		continue;
-
 	    if (j == cvec_len(cvv)) /* last element */
-		//skip++;
 		;
 	    else{
 		cv = cvec_i(cvv, j++);
@@ -1157,13 +1160,10 @@ api_path_fmt2xpath(char  *api_path_fmt,
 	    if (c == '%')
 		esc++;
 	    else{
-		if (skip)
-		    skip=0;
+		if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%')
+		    ; /* skip */
 		else
-		    if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%')
-			; /* skip */
-		    else
-			cprintf(cb, "%c", c);
+		    cprintf(cb, "%c", c);
 	    }
     }
     if ((*xpath = strdup4(cbuf_get(cb))) == NULL){
@@ -1460,8 +1460,10 @@ xml_non_config_data(cxobj *xt,
 
 /*! Add yang specification backpoint to XML node
  * @param[in]   xt      XML tree node
- * @note This should really be unnecessary since yspec should be set on creation
+ * @param[in]   arg     Yang spec
+ * @note This may be unnecessary if yspec us set on creation
  * @note For subs to anyxml nodes will not have spec set
+ * @note No validation is done,... XXX
  * @code
  * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
  * @endcode
@@ -1483,14 +1485,6 @@ xml_spec_populate(cxobj  *x,
 	y = yang_find_datanode((yang_node*)yp, xml_name(x));
     else
 	y = yang_find_topnode(yspec, name, 0); /* still NULL for config */
-#ifdef XXX_OBSOLETE /* Add validate elsewhere */
-    if (y==NULL){
-	clicon_err(OE_XML, EBADF, "yang spec not found for xml node '%s' xml parent name: '%s' yangspec:'%s']", 
-		   name, 
-		   xp?xml_name(xp):"", yp?yp->ys_argument:"");
-	goto done;
-    }
-#endif
     if (y)
 	xml_spec_set(x, y);
     retval = 0;
@@ -1702,7 +1696,7 @@ api_path2xml_vec(char             **vec,
     }
     switch (y->ys_keyword){
     case Y_LEAF_LIST:
-	if (restval==NULL){
+	if (0 && restval==NULL){
 	    clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
 	    goto done;
 	}
@@ -1712,7 +1706,7 @@ api_path2xml_vec(char             **vec,
 	if ((xb = xml_new("body", x)) == NULL)
 	    goto done; 
 	xml_type_set(xb, CX_BODY);
-	if (xml_value_set(xb, restval) < 0)
+	if (restval && xml_value_set(xb, restval) < 0)
 	    goto done;
 	break;
     case Y_LIST:
@@ -1788,11 +1782,11 @@ api_path2xml_vec(char             **vec,
 }
 
 /*! Create xml tree from api-path
- * @param[in]   api_path  API-path as defined in RFC 8040
- * @param[in]   yspec     Yang spec
+ * @param[in]   api_path   API-path as defined in RFC 8040
+ * @param[in]   yspec      Yang spec
  * @param[in]   schemanode If set use schema nodes otherwise data nodes.
- * @param[out]  xpathp    Resulting xml tree 
- * @param[out]  ypathp    Yang spec matching xpathp
+ * @param[out]  xpathp     Resulting xml tree 
+ * @param[out]  ypathp     Yang spec matching xpathp
  * @see api_path2xml_vec
  */
 int
@@ -1833,82 +1827,6 @@ api_path2xml(char       *api_path,
     return retval;
 }
 
-/*! Given a modification tree, check existing matching child in the base tree 
- * param[in] x0    Base tree node
- * param[in] x1c   Modification tree child
- * param[in] yc    Yang spec of tree child
- * param[out] x0cp Matching base tree child (if any)
-*/
-static int
-match_base_child(cxobj     *x0, 
-		 cxobj     *x1c,
-		 yang_stmt *yc,
-		 cxobj    **x0cp)
-{
-    int        retval = -1;
-    cxobj     *x0c = NULL;
-    char      *keyname;
-    cvec      *cvk = NULL;
-    cg_var    *cvi;
-    char      *b0;
-    char      *b1;
-    yang_stmt *ykey;
-    char      *cname;
-    int        ok;
-    char      *x1bstr; /* body string */
-
-    cname = xml_name(x1c);
-    switch (yc->ys_keyword){
-    case Y_LEAF_LIST: /* Match with name and value */
-	x1bstr = xml_body(x1c);
-	x0c = NULL;
-	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
-	    if (strcmp(cname, xml_name(x0c)) == 0 && 
-		strcmp(xml_body(x0c), x1bstr)==0)
-		break;
-	}
-	break;
-    case Y_LIST: /* Match with key values */
-	if ((ykey = yang_find((yang_node*)yc, Y_KEY, NULL)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-		       __FUNCTION__, yc->ys_argument);
-	    goto done;
-	}
-	/* The value is a list of keys: <key>[ <key>]*  */
-	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-	    goto done;
-	x0c = NULL;
-	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
-	    if (strcmp(xml_name(x0c), cname))
-		continue;
-	    cvi = NULL;
-	    ok = 0;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		keyname = cv_string_get(cvi);
-		ok = 1; /* if we come here */
-		if ((b0 = xml_find_body(x0c, keyname)) == NULL)
-		    break; /* error case */
-		if ((b1 = xml_find_body(x1c, keyname)) == NULL)
-		    break; /* error case */
-		if (strcmp(b0, b1))
-		    break;
-		ok = 2; /* and reaches here for all keynames, x0c is found. */
-	    }
-	    if (ok == 2)
-		break;
-	}
-	break;
-    default: /* Just match with name */
-	x0c = xml_find(x0, cname);
-	break;
-    }
-    *x0cp = x0c;
-    retval = 0;
- done:
-    if (cvk)
-	cvec_free(cvk);
-    return retval;
-}
 
 /*! Merge a base tree x0 with x1 with yang spec y
  * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
@@ -1975,7 +1893,7 @@ xml_merge1(cxobj              *x0,
 	    }
 	    /* See if there is a corresponding node in the base tree */
 	    x0c = NULL;
-	    if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
+	    if (yc && match_base_child(x0, x1c, &x0c, yc) < 0)
 		goto done;
 	    if (xml_merge1(x0c, (yang_node*)yc, x0, x1c) < 0)
 		goto done;
@@ -2012,7 +1930,7 @@ xml_merge(cxobj     *x0,
 	    goto done;
 	}
 	/* See if there is a corresponding node in the base tree */
-	if (match_base_child(x0, x1c, yc, &x0c) < 0)
+	if (match_base_child(x0, x1c, &x0c, yc) < 0)
 	    goto done;
 	if (xml_merge1(x0c, (yang_node*)yc, x0, x1c) < 0)
 	    goto done;
@@ -2073,4 +1991,71 @@ yang_enum_int_value(cxobj   *node,
 done:
     return retval;
 }
+
+/*
+ * Turn this on for uni-test programs
+ * Usage: clixon_string join
+ * Example compile:
+ gcc -g -o clixon_xml_map -I. -I../clixon ./clixon_xml_map.c -lclixon -lcligen
+ * Example run:
+/interfaces/interface=%s/name --> interfaces/interface/name
+/interfaces/interface=%s/ipv4/address=%s e --> /interfaces/interface=e/ipv4/address
+/interfaces/interface=%s,%s/ipv4/address=%s e f --> /interfaces/interface=e,f/ipv4/address
+/interfaces/interface=%s/ipv4/address=%s,%s e f --> /interfaces/interface=e/ipv4/address=f
+
+/interfaces/interface=%s/ipv4/address=%s/prefix-length eth 1.2.3.4 -->
+/interfaces/interface=eth/ipv4/address=1.2.3.4/prefix-length
+
+*/
+#if 0 /* Test program */
+
+static int
+usage(char *argv0)
+{
+    fprintf(stderr, "usage:%s <api_path_fmt> <cv0>, <cv1>,...\n", argv0);
+    exit(0);
+}
+
+int
+main(int argc, char **argv)
+{
+    int nvec;
+    char **vec;
+    char *str0;
+    char *str1;
+    int   i;
+    char  *api_path_fmt;
+    cg_var *cv;
+    cvec  *cvv;
+    char  *api_path=NULL;
+
+    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
+    if (argc < 2){
+	usage(argv[0]);
+	return 0;
+    }
+    api_path_fmt = argv[1];
+    if ((cvv = cvec_new(0)) == NULL){
+	perror("cvec_new");
+	return -1;
+    }
+    cv = cv_new(CGV_STRING);
+    cv_string_set(cv, "CLI base command");
+    cvec_append_var(cvv, cv);
+    for (i=2; i<argc; i++){
+	cv = cv_new(CGV_STRING);
+	if (cv_parse(argv[i], cv) < 0){
+	    perror("cv_parse");
+	    return -1;
+	}
+	cvec_append_var(cvv, cv);
+    }
+    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
+	return -1;
+    printf("%s\n", api_path);
+    return 0;
+}
+
+#endif /* Test program */
+
 

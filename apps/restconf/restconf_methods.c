@@ -39,7 +39,7 @@
  * sudo apt-get install libfcgi-dev
  * gcc -o fastcgi fastcgi.c -lfcgi
 
- * sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/routing.conf " -s /bin/sh www-data
+ * sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/routing.xml " -s /bin/sh www-data
 
  * This is the interface:
  * api/data/profile=<name>/metric=<name> PUT data:enable=<flag>
@@ -171,6 +171,7 @@ api_data_get_gen(clicon_handle h,
     yspec = clicon_dbspec_yang(h);
     if ((path = cbuf_new()) == NULL)
         goto done;
+    cprintf(path, "/");
     if (api_path2xpath_cvv(yspec, pcvec, pi, path) < 0){
 	notfound(r);
 	goto done;
@@ -691,13 +692,12 @@ api_operation_post(clicon_handle h,
     char      *media_accept;
     int        use_xml = 0; /* By default return JSON */
 
-    clicon_debug(1, "%s json:\"%s\"", __FUNCTION__, data);
-    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
-    if (strcmp(media_accept, "application/yang-data+xml")==0)
+    clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, path);
+    if ((media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp)) &&
+	strcmp(media_accept, "application/yang-data+xml")==0)
 	use_xml++;
-
-    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
-    if (strcmp(media_content_type, "application/yang-data+xml")==0)
+    if ((media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp)) &&
+	strcmp(media_content_type, "application/yang-data+xml")==0)
 	parse_xml++;
     clicon_debug(1, "%s accept:\"%s\" content-type:\"%s\"", 
 		 __FUNCTION__, media_accept, media_content_type);
@@ -707,6 +707,8 @@ api_operation_post(clicon_handle h,
     }
     for (i=0; i<pi; i++)
 	oppath = index(oppath+1, '/');
+    clicon_debug(1, "%s oppath: %s", __FUNCTION__, oppath);
+
     /* Find yang rpc statement, return yang rpc statement if found */
     if (yang_abs_schema_nodeid(yspec, oppath, &yrpc) < 0)
 	goto done;
@@ -724,7 +726,7 @@ api_operation_post(clicon_handle h,
     xbot = xtop;
     if (api_path2xml(oppath, yspec, xtop, 1, &xbot, &y) < 0)
 	goto done;
-    if (data){
+    if (data && strlen(data)){
 	/* Parse input data as json or xml into xml */
 	if (parse_xml){
 	    if (clicon_xml_parse_str(data, &xdata) < 0){
@@ -740,9 +742,11 @@ api_operation_post(clicon_handle h,
 	if ((xinput = xpath_first(xdata, "/input")) != NULL){
 	    /* Add all input under <rpc>path */
 	    x = NULL;
-	    while ((x = xml_child_each(xinput, x, -1)) != NULL) 
+	    while (xml_child_nr(xinput)){
+		x = xml_child_i(xinput, 0);
 		if (xml_addsub(xbot, x) < 0) 	
 		    goto done;
+	    }
 	    if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
 		xml_spec_set(xinput, yinput); /* needed for xml_spec_populate */
 		if (xml_apply(xinput, CX_ELMNT, xml_spec_populate, yinput) < 0)
@@ -755,6 +759,25 @@ api_operation_post(clicon_handle h,
 	    }
 	}
     }
+    /* Non-standard: add cookie as attribute for backend
+     */
+    {
+	cxobj *xa;
+	char *cookie;
+	char *cookieval = NULL;
+	
+	if ((cookie = FCGX_GetParam("HTTP_COOKIE", r->envp)) != NULL &&
+	    get_user_cookie(cookie, "c-user", &cookieval) ==0){
+	    if ((xa = xml_new("id", xtop)) == NULL)
+		goto done;
+	    xml_type_set(xa, CX_ATTR);
+	    if (xml_value_set(xa,  cookieval) < 0)
+		goto done;
+	    if (cookieval)
+		free(cookieval);
+	}
+    }
+    /* Send to backend */
     if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	goto done;
     if ((cbx = cbuf_new()) == NULL)

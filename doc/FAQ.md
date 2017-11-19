@@ -23,8 +23,8 @@ APIs. There are currently plugins for: CLI, Netconf,  Restconf, the datastore an
 Clixon is written in C. The plugins are written in C. The CLI
 specification uses cligen (http://cligen.se)
 
-There is a project for writing plugins in Python. It is reasonable
-simple to spawn an external script from a backend.
+It is possible ro write plugins in Python. It is reasonable
+simple to spawn an external script from a backend (but needs to be done).
 
 ## How to best understand Clixon?
 Run the ietf yang routing example, in the example directory.
@@ -44,20 +44,28 @@ The example:
 	 sudo make install
 ```
 
+## Do I need to setup anything?
+
+The config demon requires a valid group to create a server UNIX socket.
+Define a valid CLICON_SOCK_GROUP in the config file or via the -g option
+or create the group and add the user to it. The default group is 'clicon'.
+On linux:
+  sudo groupadd clicon
+  sudo usermod -a -G clicon user
+
 ## What about reference documentation?
 Clixon uses Doxygen for reference documentation.
 Build using 'make doc' and aim your browser at doc/html/index.html or
 use the web resource: http://clicon.org/ref/index.html
 
 ## How do you run the example?
-- Start a backend server: 'clixon_backend -Ff /usr/local/etc/routing.conf'
-- Start a cli session: clixon_cli -f /usr/local/etc/routing.conf
-- Start a netconf session: clixon_netconf -f /usr/local/etc/routing.conf
+- Start a backend server: 'clixon_backend -Ff /usr/local/etc/routing.xml'
+- Start a cli session: clixon_cli -f /usr/local/etc/routing.xml
+- Start a netconf session: clixon_netconf -f /usr/local/etc/routing.xml
 
 ## How is configuration data stored?
 Configuration data is stored in an XML datastore. The default is a
-text-based datastore, but there also exists a key-value datastore
-using qdbm. In the example the datastore are regular files found in
+text-based datastore. In the example the datastore are regular files found in
 /usr/local/var/routing/.
 
 ## What is validate and commit?
@@ -73,10 +81,7 @@ is the core functionality of a clixon system.
 ## What is a Clixon configuration file?
 Clixon options are stored in a configuration file you must specify
 when you start a backend or client using -f. The example configuration
-file is /usr/local/etc/routing.conf.
-This file is generated from the base source clixon.conf.cpp.cpp and
-is merged with local configuration files, such as routing.conf.local.
-This is slightly confusing and could be improved.
+file is installed at /usr/local/etc/routing.xml.
 
 ## Can I run Clixon as docker containers?
 Yes, the example works as docker containers as well. backend and cli needs a 
@@ -98,16 +103,16 @@ You may also push the containers with 'make push' but you may then consider chan
 
 As an alternative to cli configuration, you can use netconf. Easiest is to just pipe netconf commands to the clixon_netconf application.
 Example:
-	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/routing.conf
+	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/routing.xml
 
 However, more useful is to run clixon_netconf as an SSH
 subsystem. Register the subsystem in /etc/sshd_config:
 ```
-	Subsystem netconf /usr/local/bin/clixon_netconf
+	Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/routing.xml
 ```
 and then invoke it from a client using
 ```
-	ssh -s netconf <host>
+	ssh -s <host> netconf
 ```
 
 ## How do I use restconf?
@@ -138,7 +143,7 @@ cli>
 ```
 or via netconf:
 ```
-clixon_netconf -qf /usr/local/etc/routing.conf 
+clixon_netconf -qf /usr/local/etc/routing.xml 
 <rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
 <notification><event>Routing notification</event></notification>]]>]]>
@@ -146,8 +151,47 @@ clixon_netconf -qf /usr/local/etc/routing.conf
 ...
 ```
 
+## How should I start the backend daemon?
+
+There are four different backend startup modes. There is differences in running state treatment, ie what state the machine is when you startthe daemon and how loading the configuration affects it:
+- none - Do not touch running state. Typically after crash when running state and db are synched.
+- init - Initialize running state. Start with a completely clean running state.
+- running - Commit running db configuration into running state. Typically after reboot if a persistent running db exists.
+- startup - Commit startup configuration into running state. After reboot when no persistent running db exists.
+
+You use the -s to select the mode:
+```
+clixon_backend ... -s running
+```
+
+You may also add a default method in the configuration file:
+```
+<config>
+   ...
+   <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE
+</config>
+```
+
+## How can I add extra XML?
+
+There are two ways to add extra XML to running database  after start. Note that this XML is not "committed" into running.
+
+The first way is via a file. Assume you want to add this xml (the config tag is a necessary top-level tag):
+```
+<config>
+   <x>extra</x>
+</config>
+```
+You add this via the -c option:
+```
+clixon_backend ... -c extra.xml
+```
+
+The second way is by programming the plugin_reset() in the backend
+plugin. The example code contains an example on how to do this (see plugin_reset() in routing_backend.c).
+
 ## I want to program. How do I extend the example?
-- routing.conf.local - Override default settings
+- routing.xml - Change the configuration file
 - The yang specifications - This is the central part. It changes the XML, database and the config cli.
 - routing_cli.cli - Change the fixed part of the CLI commands 
 - routing_cli.c - Cli C-commands are placed here.

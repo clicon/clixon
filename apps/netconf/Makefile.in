@@ -47,6 +47,7 @@ libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 includedir	= @includedir@
+HOST_VENDOR     = @host_vendor@
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
@@ -58,7 +59,8 @@ CLIXON_LIB	= libclixon.so.$(CLIXON_MAJOR).$(CLIXON_MINOR)
 # For dependency
 LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
-LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ -l:$(CLIXON_LIB)
+LIBS          = -L$(top_srcdir)/lib/src @LIBS@ $(top_srcdir)/lib/src/$(CLIXON_LIB)
+
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
@@ -112,10 +114,14 @@ uninstall:
 	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" $(CFLAGS) -c $<
 
 $(APPL) : $(OBJS) $(MYLIBLINK) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(OBJS) -L. -l:$(MYLIB) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(OBJS) -L. $(MYLIB) $(LIBS) -o $@
 
 $(MYLIB) : $(LIBOBJS)
+ifeq ($(HOST_VENDOR),apple)
+	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJS) $(LIBS)
+else
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJS) $(LIBS) -Wl,-soname=$(MYLIBSO)
+endif
 
 # link-name is needed for application linking, eg for clixon_cli and clixon_config
 $(MYLIBLINK) : $(MYLIB)

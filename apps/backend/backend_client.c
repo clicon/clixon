@@ -1011,8 +1011,14 @@ from_client_msg(clicon_handle        h,
 	}
     }
  reply:
-    assert(cbuf_len(cbret));
-    clicon_debug(1, "%s %s", __FUNCTION__, cbuf_get(cbret));
+    if (cbuf_len(cbret) == 0)
+	cprintf(cbret, "<rpc-reply><rpc-error>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-type>rpc</error-type>"
+		"<error-severity>error</error-severity>"
+		"<error-message>Internal error %s</error-message>"
+		"</rpc-error></rpc-reply>",clicon_err_reason);
+    clicon_debug(1, "%s cbret:%s", __FUNCTION__, cbuf_get(cbret));
     if (send_msg_reply(ce->ce_s, cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
 	switch (errno){
 	case EPIPE:
@@ -1041,6 +1047,7 @@ from_client_msg(clicon_handle        h,
     if (retval < 0 && clicon_errno < 0) 
 	clicon_log(LOG_NOTICE, "%s: Internal error: No clicon_err call on error (message: %s)",
 		   __FUNCTION__, name?name:"");
+    //    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;// -1 here terminates backend
 }
 
@@ -1073,5 +1080,6 @@ from_client(int   s,
   done:
     if (msg)
 	free(msg);
+    clicon_debug(1, "%s retval=%d", __FUNCTION__, retval);
     return retval; /* -1 here terminates backend */
 }

@@ -520,7 +520,7 @@ cli_quit(clicon_handle h,
 	  cvec         *vars, 
 	  cvec         *argv)
 {
-    cli_set_exiting(h, 1);
+    cligen_exiting_set(cli_cligen(h), 1);
     return 0;
 }
 int cli_quitv(clicon_handle h, cvec *vars, cvec *argv)
@@ -1242,4 +1242,14 @@ cli_debug(clicon_handle h,
 	goto done;
   done:
     return 0;
+}
+
+int
+cli_help(clicon_handle h, cvec *vars, cvec *argv)
+{
+    cligen_handle ch = cli_cligen(h);
+    parse_tree   *pt;
+
+    pt = cligen_tree_active_get(ch);
+    return cligen_help(stdout, *pt);
 }

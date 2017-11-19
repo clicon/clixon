@@ -71,7 +71,7 @@
  * @note  the following should match the prototypes in clixon_backend.h
  */
 #define PLUGIN_RESET           "plugin_reset"
-typedef int (plgreset_t)(clicon_handle h, char *dbname); /* Reset system status */
+typedef int (plgreset_t)(clicon_handle h, const char *db); /* Reset system status */
 
 /*! Plugin callback, if defined called to get state data from plugin
  * @param[in]    h      Clicon handle
@@ -115,8 +115,8 @@ struct plugin {
 /*
  * Local variables
  */
-static int nplugins = 0;
-static struct plugin *plugins = NULL;
+static int _nplugins = 0;
+static struct plugin *_plugins = NULL;
 
 /*! Find a plugin by name and return the dlsym handl
  * Used by libclicon code to find callback funcctions in plugins.
@@ -132,8 +132,8 @@ config_find_plugin(clicon_handle h,
     int            i;
     struct plugin *p;
 
-    for (i = 0; i < nplugins; i++){
-	p = &plugins[i];
+    for (i = 0; i < _nplugins; i++){
+	p = &_plugins[i];
 	if (strcmp(p->p_name, name) == 0)
 	    return p->p_handle;
     }
@@ -253,19 +253,18 @@ backend_plugin_load (clicon_handle h,
  * @retval    -1       Error
  */
 int
-plugin_reset_state(clicon_handle h, 
-		   char *dbname)
+plugin_reset_state(clicon_handle h,
+		   const char   *db)
 { 
     int            i;
     struct plugin *p;
 
-
-    for (i = 0; i < nplugins; i++)  {
-	p = &plugins[i];
+    for (i = 0; i < _nplugins; i++)  {
+	p = &_plugins[i];
 	if (p->p_reset) {
 	    clicon_debug(1, "Calling plugin_reset() for %s\n",
 			 p->p_name);
-	    if (((p->p_reset)(h, dbname)) < 0) {
+	    if (((p->p_reset)(h, db)) < 0) {
 		clicon_err(OE_FATAL, 0, "plugin_reset() failed for %s\n",
 			   p->p_name);
 		return -1;
@@ -283,15 +282,15 @@ plugin_reset_state(clicon_handle h,
  * @retval    -1       Error
  */
 int
-plugin_start_hooks(clicon_handle h, 
+plugin_start_argv(clicon_handle h, 
 		   int           argc, 
 		   char        **argv)
 {
     int            i;
     struct plugin *p;
 
-    for (i = 0; i < nplugins; i++)  {
-	p = &plugins[i];
+    for (i = 0; i < _nplugins; i++)  {
+	p = &_plugins[i];
 	if (p->p_start) {
 	    optind = 0;
 	    if (((p->p_start)(h, argc, argv)) < 0) {
@@ -314,15 +313,15 @@ plugin_append(struct plugin *p)
 {
     struct plugin *new;
     
-    if ((new = realloc(plugins, (nplugins+1) * sizeof (*p))) == NULL) {
+    if ((new = realloc(_plugins, (_nplugins+1) * sizeof (*p))) == NULL) {
 	clicon_err(OE_UNIX, errno, "realloc");
 	return -1;
     }
     
-    memset (&new[nplugins], 0, sizeof(new[nplugins]));
-    memcpy (&new[nplugins], p, sizeof(new[nplugins]));
-    plugins = new;
-    nplugins++;
+    memset (&new[_nplugins], 0, sizeof(new[_nplugins]));
+    memcpy (&new[_nplugins], p, sizeof(new[_nplugins]));
+    _plugins = new;
+    _nplugins++;
 
     return 0;
 }
@@ -400,14 +399,15 @@ backend_plugin_load_dir(clicon_handle h,
 quit:
     if (retval != 0) {
 	/* XXX p is always NULL */
-	if (plugins) {
+	if (_plugins) {
 	    while (--np >= 0){
-		if ((p = &plugins[np]) == NULL)
+		if ((p = &_plugins[np]) == NULL)
 		    continue;
 		backend_plugin_unload(h, p);
 		free(p);
 	    }
-	    free(plugins);
+	    free(_plugins);
+	    _plugins=0;
 	}
     }
     if (dp)
@@ -431,11 +431,9 @@ plugin_initiate(clicon_handle h)
 	return -1;
 
     /* Then load application plugins */
-    if ((dir = clicon_backend_dir(h)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "backend_dir not defined");
-	return -1;
-    }
-    if (backend_plugin_load_dir(h, dir) < 0)
+    dir = clicon_backend_dir(h);
+    /* If backend directory, load the backend plugisn */
+    if (dir && backend_plugin_load_dir(h, dir) < 0)
 	return -1;
     
     return 0;
@@ -452,15 +450,15 @@ plugin_finish(clicon_handle h)
     int            i;
     struct plugin *p;
 
-    for (i = 0; i < nplugins; i++) {
-	p = &plugins[i];
+    for (i = 0; i < _nplugins; i++) {
+	p = &_plugins[i];
 	backend_plugin_unload(h, p);
     }
-    if (plugins){
-	free(plugins);
-	plugins = NULL;
+    if (_plugins){
+	free(_plugins);
+	_plugins = NULL;
     }
-    nplugins = 0;
+    _nplugins = 0;
     return 0;
 }
 	
@@ -516,8 +514,8 @@ plugin_transaction_begin(clicon_handle       h,
     int            retval = 0;
     struct plugin *p;
 
-    for (i = 0; i < nplugins; i++) {
-	p = &plugins[i];
+    for (i = 0; i < _nplugins; i++) {
+	p = &_plugins[i];
 	if (p->p_trans_begin) 
 	    if ((retval = (p->p_trans_begin)(h, (transaction_data)td)) < 0){
 		if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -546,8 +544,8 @@ plugin_transaction_validate(clicon_handle       h,
 
     struct plugin *p;
 
-    for (i = 0; i < nplugins; i++){
-	p = &plugins[i];
+    for (i = 0; i < _nplugins; i++){
+	p = &_plugins[i];
 	if (p->p_trans_validate) 
 	    if ((retval = (p->p_trans_validate)(h, (transaction_data)td)) < 0){
 		if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -576,8 +574,8 @@ plugin_transaction_complete(clicon_handle       h,
     int            retval = 0;
     struct plugin *p;
     
-    for (i = 0; i < nplugins; i++){
-	p = &plugins[i];
+    for (i = 0; i < _nplugins; i++){
+	p = &_plugins[i];
 	if (p->p_trans_complete) 
 	    if ((retval = (p->p_trans_complete)(h, (transaction_data)td)) < 0){
 		if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -623,7 +621,7 @@ plugin_transaction_revert(clicon_handle       h,
     tr.td_tcvec = td->td_scvec;
 
     for (i = nr-1; i>=0; i--){
-	p = &plugins[i];
+	p = &_plugins[i];
 	if (p->p_trans_commit) 
 	    if ((p->p_trans_commit)(h, (transaction_data)&tr) < 0){
 		clicon_log(LOG_NOTICE, "Plugin '%s' %s revert callback failed", 
@@ -651,8 +649,8 @@ plugin_transaction_commit(clicon_handle       h,
     int            i;
     struct plugin *p;
 
-    for (i = 0; i < nplugins; i++){
-	p = &plugins[i];
+    for (i = 0; i < _nplugins; i++){
+	p = &_plugins[i];
 	if (p->p_trans_commit) 
 	    if ((retval = (p->p_trans_commit)(h, (transaction_data)td)) < 0){
 		if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -680,8 +678,8 @@ plugin_transaction_end(clicon_handle h,
     int            i;
     struct plugin *p;
     
-    for (i = 0; i < nplugins; i++) {
-	p = &plugins[i];
+    for (i = 0; i < _nplugins; i++) {
+	p = &_plugins[i];
 	if (p->p_trans_end) 
 	    if ((retval = (p->p_trans_end)(h, (transaction_data)td)) < 0){
 		if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -708,8 +706,8 @@ plugin_transaction_abort(clicon_handle       h,
     int            i;
     struct plugin *p;
 
-    for (i = 0; i < nplugins; i++)  {
-	p = &plugins[i];
+    for (i = 0; i < _nplugins; i++)  {
+	p = &_plugins[i];
 	if (p->p_trans_abort) 
 	    (p->p_trans_abort)(h, (transaction_data)td); /* dont abort on error */
     }
@@ -750,8 +748,8 @@ backend_statedata_call(clicon_handle        h,
 	clicon_err(OE_CFG, ENOENT, "XML tree expected");
 	goto done;
     }
-    for (i = 0; i < nplugins; i++)  {
-	p = &plugins[i];
+    for (i = 0; i < _nplugins; i++)  {
+	p = &_plugins[i];
 	if (p->p_statedata) {
 	    if ((x = xml_new("config", NULL)) == NULL)
 		goto done;

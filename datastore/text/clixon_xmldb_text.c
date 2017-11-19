@@ -99,7 +99,7 @@ text_handle_check(xmldb_handle xh)
  */
 static int
 text_db2file(struct text_handle *th, 
-	     char               *db,
+	     const char         *db,
 	     char              **filename)
 {
     int   retval = -1;
@@ -281,7 +281,7 @@ singleconfigroot(cxobj  *xt,
  */
 int
 text_get(xmldb_handle xh,
-	 char         *db, 
+	 const char   *db, 
 	 char         *xpath,
 	 int           config,
 	 cxobj       **xtop)
@@ -363,6 +363,11 @@ text_get(xmldb_handle xh,
     if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
 	goto done;
 
+#if (XML_CHILD_HASH==1)
+    /* Add hash */
+    if (xml_apply0(xt, CX_ELMNT, xml_hash_op, (void*)1) < 0)
+	goto done;
+#endif
     if (debug>1)
     	clicon_xml2file(stderr, xt, 0, 1);
     *xtop = xt;
@@ -377,83 +382,6 @@ text_get(xmldb_handle xh,
 	free(xvec);
     if (fd != -1)
 	close(fd);
-    return retval;
-}
-
-/*! Given a modification tree, check existing matching child in the base tree 
- * param[in] x0    Base tree node
- * param[in] x1c   Modification tree child
- * param[in] yc    Yang spec of tree child
- * param[out] x0cp Matching base tree child (if any)
-*/
-static int
-match_base_child(cxobj     *x0, 
-		 cxobj     *x1c,
-		 yang_stmt *yc,
-		 cxobj    **x0cp)
-{
-    int        retval = -1;
-    cxobj     *x0c = NULL;
-    char      *keyname;
-    cvec      *cvk = NULL;
-    cg_var    *cvi;
-    char      *b0;
-    char      *b1;
-    yang_stmt *ykey;
-    char      *cname;
-    int        ok;
-    char      *x1bstr; /* body string */
-
-    cname = xml_name(x1c);
-    switch (yc->ys_keyword){
-    case Y_LEAF_LIST: /* Match with name and value */
-	x1bstr = xml_body(x1c);
-	x0c = NULL;
-	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
-	    if (strcmp(cname, xml_name(x0c)) == 0 && 
-		strcmp(xml_body(x0c), x1bstr)==0)
-		break;
-	}
-	break;
-    case Y_LIST: /* Match with key values */
-	if ((ykey = yang_find((yang_node*)yc, Y_KEY, NULL)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-		       __FUNCTION__, yc->ys_argument);
-	    goto done;
-	}
-	/* The value is a list of keys: <key>[ <key>]*  */
-	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-	    goto done;
-	x0c = NULL;
-	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
-	    if (strcmp(xml_name(x0c), cname))
-		continue;
-	    cvi = NULL;
-	    ok = 0;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		keyname = cv_string_get(cvi);
-		ok = 1; /* if we come here */
-		if ((b0 = xml_find_body(x0c, keyname)) == NULL)
-		    break; /* error case */
-		if ((b1 = xml_find_body(x1c, keyname)) == NULL)
-		    break; /* error case */
-		if (strcmp(b0, b1))
-		    break;
-		ok = 2; /* and reaches here for all keynames, x0c is found. */
-	    }
-	    if (ok == 2)
-		break;
-	}
-	break;
-    default: /* Just match with name */
-	x0c = xml_find(x0, cname);
-	break;
-    }
-    *x0cp = x0c;
-    retval = 0;
- done:
-    if (cvk)
-	cvec_free(cvk);
     return retval;
 }
 
@@ -482,6 +410,8 @@ text_modify(cxobj              *x0,
     cxobj     *x1c; /* mod child */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
+    cxobj    **x0vec = NULL;
+    int        i;
 
     assert(x1 && xml_type(x1) == CX_ELMNT);
     assert(y0);
@@ -529,6 +459,10 @@ text_modify(cxobj              *x0,
 		if (xml_value_set(x0b, x1bstr) < 0)
 		    goto done;
 	    }
+#if (XML_CHILD_HASH==1)
+	    if (xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
+		goto done;
+#endif
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
@@ -536,8 +470,9 @@ text_modify(cxobj              *x0,
 		goto done;
 	    }
 	case OP_REMOVE: /* fall thru */
-	    if (x0)
+	    if (x0){
 		xml_purge(x0);
+	    }
 	    break;
 	default:
 	    break;
@@ -562,8 +497,9 @@ text_modify(cxobj              *x0,
 	    if (y0->yn_keyword == Y_ANYXML){
 		if (op == OP_NONE)
 		    break;
-		if (x0)
+		if (x0){
 		    xml_purge(x0);
+		}
 		if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
 		    goto done;
 		if (xml_copy(x1, x0) < 0)
@@ -576,8 +512,18 @@ text_modify(cxobj              *x0,
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
 	    }
+#if (XML_CHILD_HASH==1)
+	    if (xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
+		goto done;
+#endif
+	    /* First pass: mark existing children in base */
 	    /* Loop through children of the modification tree */
-	    x1c = NULL;
+	    if ((x0vec = calloc(xml_child_nr(x1), sizeof(x1))) == NULL){
+		clicon_err(OE_UNIX, errno, "calloc");
+		goto done;
+	    }
+	    x1c = NULL; 
+	    i = 0;
 	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 		x1cname = xml_name(x1c);
 		/* Get yang spec of the child */
@@ -587,9 +533,17 @@ text_modify(cxobj              *x0,
 		}
 		/* See if there is a corresponding node in the base tree */
 		x0c = NULL;
-		if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
+		if (match_base_child(x0, x1c, &x0c, yc) < 0)
 		    goto done;
-		if (text_modify(x0c, (yang_node*)yc, x0, x1c, op) < 0)
+		x0vec[i++] = x0c;
+	    }
+	    /* Second pass: modify tree */
+	    x1c = NULL;
+	    i = 0;
+	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+		x1cname = xml_name(x1c);
+		yc = yang_find_datanode(y0, x1cname);
+		if (text_modify(x0vec[i++], (yang_node*)yc, x0, x1c, op) < 0)
 		    goto done;
 	    }
 	    break;
@@ -609,6 +563,8 @@ text_modify(cxobj              *x0,
     // ok:
     retval = 0;
  done:
+    if (x0vec)
+	free(x0vec);
     return retval;
 }
 
@@ -668,7 +624,7 @@ text_modify_top(cxobj              *x0,
 	    goto done;
 	}
 	/* See if there is a corresponding node in the base tree */
-	if (match_base_child(x0, x1c, yc, &x0c) < 0)
+	if (match_base_child(x0, x1c, &x0c, yc) < 0)
 	    goto done;
 	if (text_modify(x0c, (yang_node*)yc, x0, x1c, op) < 0)
 	    goto done;
@@ -725,7 +681,7 @@ xml_container_presence(cxobj  *x,
  */
 int
 text_put(xmldb_handle        xh,
-	 char               *db, 
+	 const char         *db, 
 	 enum operation_type op,
 	 cxobj              *x1)
 {
@@ -787,6 +743,12 @@ text_put(xmldb_handle        xh,
     if (xml_apply(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
        goto done;
 
+#if (XML_CHILD_HASH==1)
+	/* Add hash */
+    if (xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
+	goto done;
+#endif
+
     /* 
      * Modify base tree x with modification x1
      */
@@ -845,8 +807,8 @@ text_put(xmldb_handle        xh,
   */
 int 
 text_copy(xmldb_handle xh, 
-	  char        *from,
-	  char        *to)
+	  const char  *from,
+	  const char   *to)
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);
@@ -878,7 +840,7 @@ text_copy(xmldb_handle xh,
   */
 int 
 text_lock(xmldb_handle xh, 
-	  char        *db,
+	  const char  *db,
 	  int          pid)
 {
     struct text_handle *th = handle(xh);
@@ -898,7 +860,7 @@ text_lock(xmldb_handle xh,
  */
 int 
 text_unlock(xmldb_handle xh, 
-	    char        *db)
+	    const char  *db)
 {
     struct text_handle *th = handle(xh);
     int zero = 0;
@@ -919,7 +881,7 @@ text_unlock_all(xmldb_handle xh,
 	      int            pid)
 {
     struct text_handle *th = handle(xh);
-    char              **keys;
+    char              **keys = NULL;
     size_t              klen;
     int                 i;
     int                *val;
@@ -931,6 +893,8 @@ text_unlock_all(xmldb_handle xh,
 	if ((val = hash_value(th->th_dbs, keys[i], &vlen)) != NULL &&
 	    *val == pid)
 	    hash_del(th->th_dbs, keys[i]);
+    if (keys)
+	free(keys);
     return 0;
 }
 
@@ -943,7 +907,7 @@ text_unlock_all(xmldb_handle xh,
   */
 int 
 text_islocked(xmldb_handle xh, 
-	    char          *db)
+	      const char  *db)
 {
     struct text_handle *th = handle(xh);
     size_t              vlen;
@@ -964,7 +928,7 @@ text_islocked(xmldb_handle xh,
  */
 int 
 text_exists(xmldb_handle  xh, 
-	    char         *db)
+	    const char   *db)
 {
 
     int                 retval = -1;
@@ -992,7 +956,7 @@ text_exists(xmldb_handle  xh,
  */
 int 
 text_delete(xmldb_handle xh, 
-	    char        *db)
+	    const char  *db)
 {
     int                 retval = -1;
     char               *filename = NULL;
@@ -1012,6 +976,7 @@ text_delete(xmldb_handle xh,
 }
 
 /*! Create / init database 
+ * If it exists dont change.
  * @param[in]  xh  XMLDB handle
  * @param[in]  db  Database
  * @retval  0  OK
@@ -1019,7 +984,7 @@ text_delete(xmldb_handle xh,
  */
 int 
 text_create(xmldb_handle xh, 
-	    char        *db)
+	    const char  *db)
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);

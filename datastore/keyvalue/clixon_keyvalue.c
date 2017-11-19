@@ -150,8 +150,8 @@ static int _startup_locked = 0;
  */
 static int
 kv_db2file(struct kv_handle *kh, 
-	    char         *db,
-	    char        **filename)
+	   const char       *db,
+	   char            **filename)
 {
     int   retval = -1;
     cbuf *cb;
@@ -565,7 +565,7 @@ kv_setopt(xmldb_handle xh,
  */
 int
 kv_get(xmldb_handle  xh,
-       char         *db, 
+       const char   *db, 
        char         *xpath,
        int           config,
        cxobj       **xtop)
@@ -783,7 +783,7 @@ put(char               *dbfile,
  */
 int
 kv_put(xmldb_handle        xh,
-       char               *db, 
+       const char         *db, 
        enum operation_type op,
        cxobj              *xt)
 {
@@ -836,8 +836,8 @@ kv_put(xmldb_handle        xh,
   */
 int 
 kv_copy(xmldb_handle xh, 
-	char         *from,
-	char         *to)
+	const char  *from,
+	const char  *to)
 {
     int           retval = -1;
     struct kv_handle *kh = handle(xh);
@@ -869,8 +869,8 @@ kv_copy(xmldb_handle xh,
   */
 int 
 kv_lock(xmldb_handle xh, 
-	char         *db,
-	int           pid)
+	const char  *db,
+	int          pid)
 {
     int retval = -1;
     //    struct kv_handle *kh = handle(xh);
@@ -900,7 +900,7 @@ kv_lock(xmldb_handle xh,
  */
 int 
 kv_unlock(xmldb_handle xh, 
-	  char         *db)
+	  const char  *db)
 {
     int retval = -1;
     //    struct kv_handle *kh = handle(xh);
@@ -949,7 +949,7 @@ kv_unlock_all(xmldb_handle xh,
   */
 int 
 kv_islocked(xmldb_handle xh, 
-	    char         *db)
+	    const char  *db)
 {
     int retval = -1;
     //    struct kv_handle *kh = handle(xh);
@@ -974,7 +974,7 @@ kv_islocked(xmldb_handle xh,
  */
 int 
 kv_exists(xmldb_handle xh, 
-	  char         *db)
+	  const char  *db)
 {
     int           retval = -1;
     struct kv_handle *kh = handle(xh);
@@ -1001,7 +1001,7 @@ kv_exists(xmldb_handle xh,
  */
 int 
 kv_delete(xmldb_handle xh, 
-	  char         *db)
+	  const char  *db)
 {
     int           retval = -1;
     struct kv_handle *kh = handle(xh);
@@ -1026,7 +1026,7 @@ kv_delete(xmldb_handle xh,
  */
 int 
 kv_create(xmldb_handle xh, 
-	char         *db)
+	  const char  *db)
 {
     int           retval = -1;
     struct kv_handle *kh = handle(xh);

@@ -121,8 +121,7 @@ process_incoming_packet(clicon_handle h,
         if (xpath_first(xreq, "//hello") != NULL)
 	    ;
         else{
-            clicon_log(LOG_WARNING, "Invalid netconf msg: neither rpc or hello: dropp\
-ed");
+            clicon_log(LOG_WARNING, "Invalid netconf msg: neither rpc or hello: dropped");
             goto done;
         }
     if (!isrpc){ /* hello */
@@ -170,6 +169,9 @@ ed");
 /*! Get netconf message: detect end-of-msg 
  * @param[in]   s    Socket where input arrived. read from this.
  * @param[in]   arg  Clicon handle.
+ * This routine continuously reads until no more data on s. There could
+ * be risk of starvation, but the netconf client does little else than
+ * read data so I do not see a danger of true starvation here.
  */
 static int
 netconf_input_cb(int   s, 
@@ -182,43 +184,51 @@ netconf_input_cb(int   s,
     int           len;
     cbuf         *cb=NULL;
     int           xml_state = 0;
+    int           poll;
 
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "%s: cbuf_new", __FUNCTION__);
 	return retval;
     }
     memset(buf, 0, sizeof(buf));
-    if ((len = read(s, buf, sizeof(buf))) < 0){
-	if (errno == ECONNRESET)
-	    len = 0; /* emulate EOF */
-	else{
-	    clicon_log(LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
-	    goto done;
-	}
-    } /* read */
-    if (len == 0){ 	/* EOF */
-	cc_closed++;
-	close(s);
-	retval = 0;
-	goto done;
-    }
-
-    for (i=0; i<len; i++){
-	if (buf[i] == 0)
-	    continue; /* Skip NULL chars (eg from terminals) */
-	cprintf(cb, "%c", buf[i]);
-	if (detect_endtag("]]>]]>",
-			  buf[i],
-			  &xml_state)) {
-	    /* OK, we have an xml string from a client */
-	    if (process_incoming_packet(h, cb) < 0){
+    while (1){
+	if ((len = read(s, buf, sizeof(buf))) < 0){
+	    if (errno == ECONNRESET)
+		len = 0; /* emulate EOF */
+	    else{
+		clicon_log(LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
 		goto done;
 	    }
-	    if (cc_closed)
-		break;
-	    cbuf_reset(cb);
+	} /* read */
+	if (len == 0){ 	/* EOF */
+	    cc_closed++;
+	    close(s);
+	    retval = 0;
+	    goto done;
 	}
-    }
+
+	for (i=0; i<len; i++){
+	    if (buf[i] == 0)
+		continue; /* Skip NULL chars (eg from terminals) */
+	    cprintf(cb, "%c", buf[i]);
+	    if (detect_endtag("]]>]]>",
+			      buf[i],
+			      &xml_state)) {
+		/* OK, we have an xml string from a client */
+		if (process_incoming_packet(h, cb) < 0){
+		    goto done;
+		}
+		if (cc_closed)
+		    break;
+		cbuf_reset(cb);
+	    }
+	}
+	/* poll==1 if more, poll==0 if none */
+	if ((poll = event_poll(s)) < 0)
+	    goto done;
+	if (poll == 0)
+	    break; /* No data to read */
+    } /* while */
     retval = 0;
   done:
     if (cb)
@@ -276,8 +286,6 @@ static void
 usage(clicon_handle h,
       char         *argv0)
 {
-    char *netconfdir = clicon_netconf_dir(h);
-
     fprintf(stderr, "usage:%s\n"
 	    "where options are\n"
             "\t-h\t\tHelp\n"
@@ -288,7 +296,7 @@ usage(clicon_handle h,
 	    "\t-S\t\tLog on syslog\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
 	    argv0,
-	    netconfdir
+	    clicon_netconf_dir(h)
 	    );
     exit(0);
 }

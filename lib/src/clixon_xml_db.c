@@ -42,7 +42,6 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <time.h>
-#include <fcgi_stdio.h>
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -176,7 +175,7 @@ xmldb_plugin_unload(clicon_handle h)
  * @retval  -1  Failed validate, xret set to error
  */
 int
-xmldb_validate_db(char *db)
+xmldb_validate_db(const char *db)
 {
     if (strcmp(db, "running") != 0 && 
 	strcmp(db, "candidate") != 0 && 
@@ -337,7 +336,7 @@ xmldb_setopt(clicon_handle h,
  */
 int 
 xmldb_get(clicon_handle h, 
-	  char         *db, 
+	  const char   *db, 
 	  char         *xpath,
 	  int           config,
 	  cxobj       **xtop)
@@ -394,7 +393,7 @@ xmldb_get(clicon_handle h,
  */
 int 
 xmldb_put(clicon_handle       h, 
-	  char               *db, 
+	  const char         *db, 
 	  enum operation_type op, 
 	  cxobj              *xt)
 {
@@ -440,8 +439,8 @@ xmldb_put(clicon_handle       h,
   */
 int 
 xmldb_copy(clicon_handle h, 
-	   char         *from, 
-	   char         *to)
+	   const char   *from, 
+	   const char   *to)
 {
     int               retval = -1;
     xmldb_handle      xh;
@@ -473,7 +472,7 @@ xmldb_copy(clicon_handle h,
   */
 int 
 xmldb_lock(clicon_handle h, 
-	   char         *db, 
+	   const char   *db, 
 	   int           pid)
 {
     int               retval = -1;
@@ -507,7 +506,7 @@ xmldb_lock(clicon_handle h,
  */
 int 
 xmldb_unlock(clicon_handle h, 
-	     char         *db)
+	     const char   *db)
 {
     int               retval = -1;
     xmldb_handle      xh;
@@ -556,7 +555,7 @@ xmldb_unlock_all(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval =xa->xa_unlock_all_fn(xh, pid);
+    retval = xa->xa_unlock_all_fn(xh, pid);
  done:
     return retval;
 }
@@ -570,7 +569,7 @@ xmldb_unlock_all(clicon_handle h,
   */
 int 
 xmldb_islocked(clicon_handle h, 
-	       char         *db)
+	       const char   *db)
 {
     int               retval = -1;
     xmldb_handle      xh;
@@ -602,7 +601,7 @@ xmldb_islocked(clicon_handle h,
  */
 int 
 xmldb_exists(clicon_handle h, 
-	     char         *db)
+	     const char   *db)
 {
     int               retval = -1;
     xmldb_handle      xh;
@@ -633,7 +632,7 @@ xmldb_exists(clicon_handle h,
  */
 int 
 xmldb_delete(clicon_handle h, 
-	     char         *db)
+	     const char   *db)
 {
     int               retval = -1;
     xmldb_handle      xh;
@@ -664,7 +663,7 @@ xmldb_delete(clicon_handle h,
  */
 int 
 xmldb_create(clicon_handle h, 
-	     char         *db)
+	     const char   *db)
 {
     int               retval = -1;
     xmldb_handle      xh;

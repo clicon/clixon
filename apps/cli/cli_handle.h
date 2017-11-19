@@ -41,19 +41,11 @@
  * Prototypes 
  * Internal prototypes. For exported functions see clicon_cli_api.h
  */
-char cli_tree_add(clicon_handle h, char *tree, parse_tree pt);
-
 int cli_parse_file(clicon_handle h,
 		   FILE *f,
 		   char *name, /* just for errs */
 		   parse_tree *pt,
 		   cvec *globals);
-
-char *cli_tree_active(clicon_handle h);
-
-int cli_tree_active_set(clicon_handle h, char *treename);
-
-parse_tree *cli_tree(clicon_handle h, char *name);
 
 int cli_susp_hook(clicon_handle h, cli_susphook_t *fn);
 

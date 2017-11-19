@@ -38,18 +38,41 @@
 
        ***** END LICENSE BLOCK *****";
 
-    revision 2017-07-02 {
+    revision 2017-11-12 {
       description
-        "Initial revision";
+        "Added startup config";
     }
+    typedef startup_mode{
+	description "Which method to boot/start clicon backend.
+                     The methods differ in how they reach a running state
+                     Which source database to commit from, if any.";
+	type enumeration{
+	    enum none{
+		description "Do not touch running state
+                     Typically after crash when running state and db are synched";
+	    }
+	    enum init{
+		description "Initialize running state.
+                             Start with a completely clean running state";
+	    }
+	    enum running{
+		description "Commit running db configuration into running state
+                             After reboot if a persistent running db exists";
+	    }
+	    enum startup{
+		description "Commit startup configuration into running state
+                             After reboot when no persistent running db exists";
+	    }
+	}
+    }
+    container config {
     leaf CLICON_CONFIGFILE{
     	 type string;
-	 default "sysconfdir/$APPNAME.conf";
 	 description  "Location of configuration-file for default values (this file)";
     }
     leaf CLICON_YANG_DIR {
        type string;
-       default "prefix/share/$APPNAME/yang";
+       mandatory true;
        description "Location of YANG module and submodule files. Only if CLICON_DBSPEC_TYPE is YANG";
     }
     leaf CLICON_YANG_MODULE_MAIN {
@@ -66,34 +89,73 @@
     }
     leaf CLICON_BACKEND_DIR {
        type string;
-       default "libdir/$APPNAME/backend";
-       description "Location of backend .so plugins";
+       description "Location of backend .so plugins. Load all .so 
+                    plugins in this dir as backend plugins";
     }
     leaf CLICON_NETCONF_DIR {
        type string;
-       default "libdir/$APPNAME/netconf";
        description "Location of netconf (frontend) .so plugins";
     }
     leaf CLICON_RESTCONF_DIR {
        type string;
-       default "libdir/$APPNAME/restconf";
-       description "Location of restconf (frontend) .so plugins";
+       description "Location of restconf (frontend) .so plugins. Load all .so
+                    plugins in this dir as restconf code plugins";
+    }
+    leaf CLICON_RESTCONF_PATH {
+       type string;
+       default "/www-data/fastcgi_restconf.sock";
+       description "FastCGI unix socket. Should be specified in webserver
+                    Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock";
     }
     leaf CLICON_CLI_DIR {
        type string;
-       default "libdir/$APPNAME/cli";
-       description "Location of cli frontend .so plugins";
+       description "Location of cli frontend .so plugins. Load all .so 
+                    plugins in this dir as CLI object plugins";
     }
     leaf CLICON_CLISPEC_DIR {
        type string;
-       default "libdir/$APPNAME/clispec";
-       description "Location of frontend .cli cligen spec files";
+       description "Location of frontend .cli cligen spec files. Load all .cli 
+                    files in this dir as CLI specification files";
     }
-    leaf CLICON_USE_STARTUP_CONFIG {
+    leaf CLICON_CLISPEC_FILE {
+       type string;
+       description "Specific frontend .cli cligen spec file.";
+    }
+    leaf CLICON_CLI_MODE {
+       type string;
+       default "base";
+       description "Startup CLI mode. This should match a CLICON_MODE set in
+                    one of the clispec files";
+    }
+    leaf CLICON_CLI_GENMODEL {
        type int32;
-       default 0;
-       description "Enabled uses \"startup\" configuration on boot";
+       default 1;
+       description "Generate code for CLI completion of existing db symbols. 
+                    Example: Add name=\"myspec\" in datamodel spec and reference
+		    as @myspec";
     }
+    leaf CLICON_CLI_GENMODEL_COMPLETION {
+       type int32;
+       default 1;
+       description "Generate code for CLI completion of existing db symbols";
+    }
+    leaf CLICON_CLI_GENMODEL_TYPE {
+       type string;
+       default "VARS";
+       description "How to generate and show CLI syntax: VARS|ALL";
+    }
+    leaf CLICON_CLI_VARONLY {
+       type int32;
+       default 1;
+       description "Dont include keys in cvec in cli vars callbacks, ie a & k in 'a <b> k <c>' ignored";
+    }
+    leaf CLICON_CLI_LINESCROLLING {
+      type int32;
+      default 1;
+      description "Set to 0 if you want CLI to wrap to next line.
+                   Set to 1 if you  want CLI to scroll sideways when approaching right margin";
+    }
+
     leaf CLICON_SOCK_FAMILY {
        type string;
        default "UNIX";
@@ -101,24 +163,24 @@
     }
     leaf CLICON_SOCK {
        type string;
-       default "localstatedir/$APPNAME/$APPNAME.sock";
-       description "If family above is AF_UNIX: Unix socket for communicating with 
-                    clixon_backend. If family above is AF_INET: IPv4 address";
+       mandatory true;
+       description "If family above is AF_UNIX: Unix socket for communicating 
+       		    with clixon_backend. If family is AF_INET: IPv4 address";
     }
     leaf CLICON_SOCK_PORT {
        type int32;
        default 4535;
        description "Inet socket port for communicating with clixon_backend (only IPv4|IPv6)";
     }
-    leaf CLICON_BACKEND_PIDFILE {
-       type string;
-       default "localstatedir/$APPNAME/$APPNAME.pidfile";
-       description "Process-id file";
-    }
     leaf CLICON_SOCK_GROUP {
        type string;
        default "clicon";
        description "Group membership to access clixon_backend unix socket";
+    }
+    leaf CLICON_BACKEND_PIDFILE {
+       type string;
+       mandatory true;
+       description "Process-id file";
     }
     leaf CLICON_AUTOCOMMIT {
        type int32;
@@ -131,49 +193,28 @@
        default "master";
        description "Name of master plugin (both frontend and backend). 
                     Master plugin has special callbacks for frontends. 
-		    See clicon user manual for more info.";
-    }
-    leaf CLICON_CLI_MODE {
-       type string;
-       default "base";
-       description "Startup CLI mode. This should match the CLICON_MODE in your startup clispec file";
-    }
-    leaf CLICON_CLI_GENMODEL {
-       type int32;
-       default 1;
-       description "Generate code for CLI completion of existing db symbols. 
-                    Add name=\"myspec\" in datamodel spec and reference as @myspec";
-    }
-    leaf CLICON_CLI_GENMODEL_COMPLETION {
-       type int32;
-       default 0;
-       description "Generate code for CLI completion of existing db symbols";
-    }
-    leaf CLICON_CLI_GENMODEL_TYPE {
-       type string;
-       default "VARS";
-       description "How to generate and show CLI syntax: VARS|ALL";
+		    See clicon user manual for more info. (Obsolete)";
     }
     leaf CLICON_XMLDB_DIR {
        type string;
-       default "localstatedir/$APPNAME";
+       mandatory true;
        description "Directory where \"running\", \"candidate\" and \"startup\" are placed";
+    }
+    leaf CLICON_USE_STARTUP_CONFIG {
+       type int32;
+       default 0;
+       description "Enabled uses \"startup\" configuration on boot. It is called
+                    startup_db and exists in XMLDB_DIR. NOTE: Obsolete with CLICON_STARTUP_MODE";
     }
     leaf CLICON_XMLDB_PLUGIN {
        type string;
-       default "libdir/xmldb/text.so";
+       mandatory true;
        description "XMLDB datastore plugin filename (see datastore/ and clixon_xml_db.[ch])";
     }
-    leaf CLICON_CLI_VARONLY {
-       type int32;
-       default 1;
-       description "Dont include keys in cvec in cli vars callbacks, ie a & k in 'a <b> k <c>' ignored";
+    leaf CLICON_STARTUP_MODE {
+	type startup_mode;
+	description "Which method to boot/start clicon backend";
     }
 
-    leaf CLICON_RESTCONF_PATH {
-       type string;
-       default "/www-data/fastcgi_restconf.sock";
-       description "FastCGI unix socket. Should be specified in webserver
-                    Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock;";
-    }
+  }
 }

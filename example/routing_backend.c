@@ -153,6 +153,8 @@ route_count(clicon_handle h,
  * @retval       0      OK
  * @retval      -1      Error
  * @see xmldb_get
+ * @note this example code returns a static statedata used in testing. 
+ * Real code would poll state
  */
 int 
 plugin_statedata(clicon_handle h, 
@@ -163,14 +165,11 @@ plugin_statedata(clicon_handle h,
     cxobj **xvec = NULL;
 
     /* Example of (static) statedata, real code would poll state */
-    if (0 && (xml_parse("<interfaces-state><interface>"
+    if (xml_parse("<interfaces-state><interface>"
 		   "<name>eth0</name>"
 		   "<type>eth</type>"
-		   "<admin-status>up</admin-status>"
-		   "<oper-status>up</oper-status>"
 		   "<if-index>42</if-index>"
-		   "<speed>1000000000</speed>"
-		   "</interface></interfaces-state>", xstate)) < 0)
+		   "</interface></interfaces-state>", xstate) < 0)
 	goto done;
     retval = 0;
  done:
@@ -179,8 +178,10 @@ plugin_statedata(clicon_handle h,
     return retval;
 }
 
-/*
- * Plugin initialization
+/*! Plugin initialization. Create rpc callbacks
+ * plugin_init is called as soon as the plugin has been loaded and is 
+ * assumed initialize the plugin's internal state if any as well as register
+ * any callbacks, configuration dependencies.
  */
 int
 plugin_init(clicon_handle h)
@@ -205,3 +206,58 @@ plugin_init(clicon_handle h)
     return retval;
 }
 
+/*! Plugin state reset. Add xml or set state in backend machine.
+ * Called in each backend plugin. plugin_reset is called after all plugins
+ * have been initialized. This give the application a chance to reset
+ * system state back to a base state. 
+ * This is generally done when a system boots up to
+ * make sure the initial system state is well defined. This can be creating
+ * default configuration files for various daemons, set interface flags etc.
+ * @param[in] h   Clicon handle
+ * @param[in] db  Name of database. Not may be other than "running"
+ * In this example, a loopback interface is added
+ * @note This assumes example yang with interfaces/interface
+ */
+int
+plugin_reset(clicon_handle h,
+	     const char   *db)
+{
+    int    retval = -1;
+    cxobj *xt = NULL;
+
+    if (clicon_xml_parse_str("<config><interfaces><interface>"
+			     "<name>lo</name><type>local</type>"
+			     "</interface></interfaces></config>", &xt) < 0)
+	goto done;
+    /* Replace parent w fiorst child */
+    if (xml_rootchild(xt, 0, &xt) < 0)
+	goto done;
+    /* Merge user reset state */
+    if (xmldb_put(h, (char*)db, OP_MERGE, xt) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (xt != NULL)
+	xml_free(xt);
+    return retval;
+}
+
+/*! Plugin start.
+ * @param[in]  h     Clicon handle
+ * @param[in]  argc  Argument vector length (args after -- to backend_main)
+ * @param[in]  argv  Argument vector 
+ *
+ * plugin_start is called once everything has been initialized, right before 
+ * the main event loop is entered. Command line options can be passed to the 
+ * plugins by using "-- <args>" where <args> is any choice of 
+ * options specific to the application. These options are passed to the
+ * plugin_start function via the argc and argv arguments which
+ * can be processed with the standard getopt(3).
+ */
+int
+plugin_start(clicon_handle h,
+	     int           argc,
+	     char        **argv)
+{
+    return 0;
+}

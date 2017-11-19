@@ -316,7 +316,7 @@ restconf_plugin_load(clicon_handle h)
     char           filename[MAXPATHLEN];
 
     if ((dir = clicon_restconf_dir(h)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "clicon_restconf_dir not defined");
+	retval = 0;
 	goto quit;
     }
     /* Get plugin objects names from plugin directory */
@@ -330,7 +330,7 @@ restconf_plugin_load(clicon_handle h)
 		     (int)strlen(filename), filename);
 	if ((handle = plugin_load(h, filename, RTLD_NOW)) == NULL)
 	    goto quit;
-	p_credentials    = dlsym(handle, "restconf_credentials");
+	p_credentials    = dlsym(handle, PLUGIN_CREDENTIALS);
 	if ((plugins = realloc(plugins, (nplugins+1) * sizeof (*plugins))) == NULL) {
 	    clicon_err(OE_UNIX, errno, "realloc");
 	    goto quit;
@@ -404,5 +404,32 @@ plugin_credentials(clicon_handle h,
 	*auth = 1;
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Parse a cookie string and return value of cookie attribute
+ * @param[in]  cookiestr  cookie string according to rfc6265 (modified)
+ * @param[in]  attribute  cookie attribute
+ * @param[out] val        malloced cookie value, free with free()
+ */
+int
+get_user_cookie(char  *cookiestr, 
+		char  *attribute, 
+		char **val)
+{
+    int    retval = -1;
+    cvec  *cvv = NULL;
+    char  *c;
+
+    if (str2cvec(cookiestr, ';', '=', &cvv) < 0)
+	goto done;
+    if ((c = cvec_find_str(cvv, attribute)) != NULL){
+	if ((*val = strdup(c)) == NULL)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    if (cvv)
+	cvec_free(cvv);
     return retval;
 }

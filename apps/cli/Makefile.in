@@ -48,6 +48,7 @@ libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 includedir	= @includedir@
+HOST_VENDOR     = @host_vendor@
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
@@ -62,7 +63,8 @@ CLIXON_CLI_SYSDIR = $(libdir)/clixon/plugins/cli
 # even though it may exist in $(libdir). But the new version may not have been installed yet.
 LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
-LIBS    	= -L$(top_srcdir)/lib/src @LIBS@  -l:$(CLIXON_LIB) -lpthread
+LIBS          = -L$(top_srcdir)/lib/src @LIBS@  $(top_srcdir)/lib/src/$(CLIXON_LIB) -lpthread
+
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 INCLUDES	= -I. -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
@@ -121,13 +123,17 @@ test.c	:
 	echo "int main(){}" > $@
 
 test: 	test.c $(LIBOBJ) 
-	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. -l:$(MYLIB) $(LIBS) -o $@
+	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
 $(APPL): $(OBJS) $(MYLIBLINK) $(LIBDEPS)	
-	$(CC) $(LDFLAGS) $(OBJS) -L. -l:$(MYLIB) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(OBJS) -L. $(MYLIB) $(LIBS) -o $@
 
 $(MYLIB) : $(LIBOBJS)
+ifeq ($(HOST_VENDOR),apple)
+	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJS) $(LIBS)
+else
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJS) $(LIBS) -Wl,-soname=$(MYLIBSO)
+endif
 
 # link-name is needed for application linking, eg for clixon_cli and clixon_config
 $(MYLIBLINK) : $(MYLIB)

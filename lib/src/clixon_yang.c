@@ -1504,7 +1504,7 @@ yang_parse_recurse(clicon_handle h,
 		   yang_spec    *ysp)
 {
     yang_stmt  *yi = NULL; /* import */
-    yang_stmt  *ymod;
+    yang_stmt  *ymod = NULL;
     yang_stmt  *yrev;
     char       *modname;
     char       *subrevision;
@@ -1527,7 +1527,7 @@ yang_parse_recurse(clicon_handle h,
 	    if ((nr = yang_parse_find_match(h, yang_dir, module, fbuf)) < 0)
 		goto done;
 	    if (nr == 0){
-		clicon_err(OE_YANG, errno, "No matching %s yang files found", module);
+		clicon_err(OE_YANG, errno, "No matching %s yang files found (expected modulenameor absolute filename)", module);
 		goto done;
 	    }
 	}
@@ -1779,7 +1779,7 @@ schema_nodeid_vec(yang_node  *yn,
 		}
 	}
 	if (!match){
-	    clicon_debug(1, "%s not found", nodeid);
+	    clicon_debug(1, "%s: %s not found", __FUNCTION__, nodeid);
 	    goto ok;
 	}
 	ynext = (yang_node*)ys;

@@ -54,6 +54,8 @@ int event_reg_timeout(struct timeval t,  int (*fn)(int, void*),
 
 int event_unreg_timeout(int (*fn)(int, void*), void *arg);
 
+int event_poll(int fd);
+
 int event_loop(void);
 
 int event_exit(void);

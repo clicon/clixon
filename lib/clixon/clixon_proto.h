@@ -51,7 +51,7 @@ enum format_enum{
 
 /* Protocol message header */
 struct clicon_msg {
-    uint16_t    op_len;      /* length of message. */
+    uint32_t    op_len;      /* length of message. network byte order. */
     char        op_body[0];  /* rest of message, actual data */
 };
 
@@ -85,7 +85,7 @@ int clicon_msg_rcv(int s, struct clicon_msg **msg, int *eof);
 
 int send_msg_notify(int s, int level, char *event);
 
-int send_msg_reply(int s, char *data, uint16_t datalen);
+int send_msg_reply(int s, char *data, uint32_t datalen);
 
 int detect_endtag(char *tag, char  ch, int  *state);
 

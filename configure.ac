@@ -43,7 +43,7 @@ AC_INIT(lib/clixon/clixon.h.in)
 
 CLIXON_VERSION_MAJOR="3"
 CLIXON_VERSION_MINOR="3"
-CLIXON_VERSION_PATCH="2"
+CLIXON_VERSION_PATCH="3"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 # Fix to specific version (eg 3.5) or head (3) 
 CLIGEN_VERSION="3" 
@@ -54,6 +54,7 @@ AC_DEFINE_UNQUOTED(CLIXON_VERSION_STRING, $CLIXON_VERSION, [Clixon version strin
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_MAJOR, $CLIXON_VERSION_MAJOR, [Clixon major release])
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_MINOR, $CLIXON_VERSION_MINOR, [Clixon minor release])
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_PATCH, $CLIXON_VERSION_PATCH, [Clixon path version])
+
 
 # clixon versions spread to Makefile's (.so files) and variable in build.c
 AC_SUBST(CLIXON_VERSION)
@@ -123,7 +124,7 @@ fi
 
 AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR(cligen missing. Try: git clone https://github.com/olofhagsand/cligen.git))
 
-AC_CHECK_LIB(:libcligen.so.${CLIGEN_VERSION}, cligen_init,, AC_MSG_ERROR([CLIgen${CLIGEN_VERSION} missing. Try: git clone https://github.com/olofhagsand/cligen.git]))
+AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen${CLIGEN_VERSION} missing. Try: git clone https://github.com/olofhagsand/cligen.git]))
 
 # This is for restconf (and fastcgi)
 AC_ARG_WITH([restconf],
@@ -137,10 +138,10 @@ fi
 
 # This is for keyvalue datastore (and qdbm)
 AC_ARG_WITH([keyvalue],
-            [AS_HELP_STRING([--without-keyvalue],[disable support for key-value xmldb datastore])],
-            [],
-            [with_keyvalue=yes])
-
+            [AS_HELP_STRING([--with-keyvalue],[enable support for key-value xmldb datastore])],
+	    [],
+            [with_keyvalue=no])
+echo "keyvalue:${with_keyvalue}"
 if test "x${with_keyvalue}" == xyes; then
    echo "yes keyvalue" 
    # This is for qdbm
@@ -172,6 +173,10 @@ AC_CHECK_LIB(dl, dlopen)
 
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp)
 
+# This is to find clixon system files in the source code.
+# same as clixon_DATADIR defined in clixon.mk.cpp for Makefiles
+AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${prefix}/share/clixon", [Clixon data dir for system yang files etc])
+
 AH_BOTTOM([#include <clixon_custom.h>])
 
 AC_OUTPUT(Makefile
@@ -198,6 +203,7 @@ AC_OUTPUT(Makefile
 	  datastore/Makefile
 	  datastore/keyvalue/Makefile
 	  datastore/text/Makefile
+	  yang/Makefile
 	  doc/Makefile 
 )
 
