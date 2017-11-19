@@ -2,11 +2,25 @@
 
 ### Known issues
 ### Major changes:
+* Clixon can now be compiled and run on Apple Darwin.
+
+* Performance improvements
+  * Added xml hash lookup instead of linear search for better performance of large lists. To disable, undefine XML_CHILD_HASH in clixon_custom.h
+  * netconf client was limited to 8K byte messages. Now limit is 2^32 bytes
+
+* XML and YANG-based configuration file.
+  * New configuration files have .xml suffix, old have .conf. Old config files till work for backward compatibility.
+  * The yang model is yang/clixon-config.yang.
+  * A migration utility is clixon_cli -x to print new format, eg:
+```
+clixon_cli -f /usr/local/etc/routing.conf -1x
+```
+  
 * Introducing backend daemon startup modes. The flags -IRCr and option CLICON_USE_STARTUP_CONFIG are replaced with command-line option -s <mode> and option CLICON_STARTUP_MODE. You need to replace the starting of clixon_backend as follows:
-   -I replace with "init" (as -s command line option or CLICON_STARTUP_MODE option)
-   -CIr replace with "running"
-   null replace with "none"
-   CLICON_USE_STARTUP_CONFIG=1 replace with "startup"
+  * -I replace with -s "init" (or use of CLICON_STARTUP_MODE option)
+  * -CIr replace with -s "running" 
+  * (no-option) replace with -s "none"
+  * CLICON_USE_STARTUP_CONFIG=1 replace with -s "startup"
 Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in include/clixon_custom.h
 
 ### Minor changes:
@@ -22,8 +36,6 @@ Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in
 	cli_set_comment, cli_tree_add, cli_tree_active,
 	cli_tree_active_set, cli_tree.
 
-* Apple Darwin port
-
 * Added a format parameter to clicon_rpc_generate_error() and changed error
   printouts for backend errors, such as commit and validate. Example of the
   new format:
@@ -34,22 +46,7 @@ Sep 27 18:11:58: Commit failed. Edit and try again or discard changes:
 protocol invalid-value Missing mandatory variable: type
 ```
 
-* Migrated to XML configure file.
-**  If clixon config file has .xml ending, yang/clixon-config.yang is used as
-  model for an xml-based configuration file. Otherwise legacy format is used.
-** As migration utility from legacy to XML configure file, clixon_cli -x can be used to print new format, eg:
-
-```
-clixon_cli -f /usr/local/etc/routing.conf -1x
-```
-
-* The clixon config file format has changed. It now uses XML and YANG.
-  Old configuration files work, but you can use the new by setting an .xml suffix.
- The yang model is yang/clixon-config.yang.
-* netconf client was limited to 8K byte messages. Now limit is 2^32.
 * Added event_poll function.
-* Added experimental xml hash for better performance of large lists. 
-  To enable, set XML_CHILD_HASH in clixon_custom.h
 * Support for non-line scrolling in CLI, eg wrap lines. Set with:
   CLICON_CLI_LINESCROLLING 0
 

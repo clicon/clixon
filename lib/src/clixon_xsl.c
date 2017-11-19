@@ -988,8 +988,10 @@ xpath_each(cxobj *xcur,
     int i;
     
     if (xprev == NULL){
-	if (vec1) // XXX
-	    free(vec1); // XXX
+	if (vec1) {
+	    free(vec1);
+	    vec1 = NULL;
+	}
 	vec1len = 0;
 	if (xpath_choice(xcur, xpath, 0, &vec1, &vec1len) < 0)
 	    goto done;

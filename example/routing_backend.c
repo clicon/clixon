@@ -162,15 +162,16 @@ plugin_statedata(clicon_handle h,
     int     retval = -1;
     cxobj **xvec = NULL;
 
+    fprintf(stderr, "%s xpath:%s\n", __FUNCTION__, xpath);
     /* Example of (static) statedata, real code would poll state */
-    if (0 && (xml_parse("<interfaces-state><interface>"
+    if (xml_parse("<interfaces-state><interface>"
 		   "<name>eth0</name>"
 		   "<type>eth</type>"
 		   "<admin-status>up</admin-status>"
 		   "<oper-status>up</oper-status>"
 		   "<if-index>42</if-index>"
 		   "<speed>1000000000</speed>"
-		   "</interface></interfaces-state>", xstate)) < 0)
+		   "</interface></interfaces-state>", xstate) < 0)
 	goto done;
     retval = 0;
  done:
