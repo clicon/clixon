@@ -400,12 +400,6 @@ main(int argc, char **argv)
     if (yang_spec_main(h, stdout, printspec) < 0)
 	goto done;
 
-    /* Check plugin directory */
-    if (clicon_cli_dir(h) == NULL){
-	clicon_err(OE_PLUGIN, 0, "clicon_cli_dir not defined");
-	goto done;
-    }
-    
     /* Create tree generated from dataspec. If no other trees exists, this is
      * the only one.
      */

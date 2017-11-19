@@ -42,7 +42,6 @@ EOF
 
 # kill old backend (if any)
 new "kill old backend"
-echo "clixon_backend -zf $clixon_cf -y $fyang"
 sudo clixon_backend -zf $clixon_cf -y $fyang
 if [ $? -ne 0 ]; then
     err

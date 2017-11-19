@@ -55,20 +55,20 @@ EOF
 
     # kill old backend (if any)
     new "kill old backend"
-    sudo clixon_backend -zf $clixon_cf $yang
+    sudo clixon_backend -zf $clixon_cf 
     if [ $? -ne 0 ]; then
 	err
     fi
 
     new "start backend"
     # start new backend
-    sudo clixon_backend -f $clixon_cf $yang -s $mode -c /tmp/config
+    sudo clixon_backend -f $clixon_cf -s $mode -c /tmp/config
     if [ $? -ne 0 ]; then
 	err
     fi
 
     new "Check $mode"
-    expecteof "$clixon_netconf -qf $clixon_cf $yang" '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$expect</rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $clixon_cf" '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$expect</rpc-reply>]]>]]>$"
 
     new "Kill backend"
     # Check if still alive

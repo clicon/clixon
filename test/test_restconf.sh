@@ -6,7 +6,7 @@
 . ./lib.sh
 
 # This is a fixed 'state' implemented in routing_backend. It is always there
-state='{"interfaces-state": {"interface": {"name": "eth0","type": "eth","admin-status": "up","oper-status": "up","if-index": "42","speed": "1000000000"}}}'
+state='{"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}'
 
 # kill old backend (if any)
 new "kill old backend"
@@ -47,7 +47,7 @@ new "restconf Add subtree  to datastore using POST"
 expectfn 'curl -sS -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}}} http://localhost/restconf/data' ""
 
 new "restconf Check interfaces eth/0/0 added"
-expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","admin-status": "up","oper-status": "up","if-index": "42","speed": "1000000000"}}}
+expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
 $'
 
 new "restconf delete interfaces"
@@ -60,7 +60,7 @@ new "restconf Add interfaces subtree eth/0/0 using POST"
 expectfn 'curl -sS -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' ""
 
 new "restconf Check eth/0/0 added"
-expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","admin-status": "up","oper-status": "up","if-index": "42","speed": "1000000000"}}}
+expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
 $'
 
 new "restconf Re-post eth/0/0 which should generate error"
@@ -86,7 +86,7 @@ new "restconf Add subtree eth/0/0 using PUT"
 expectfn 'curl -sS -X PUT -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
 new "restconf get subtree"
-expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","admin-status": "up","oper-status": "up","if-index": "42","speed": "1000000000"}}}
+expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
 $'
 
 new "restconf operation rpc using POST json"

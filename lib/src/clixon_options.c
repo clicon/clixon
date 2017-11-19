@@ -178,6 +178,8 @@ clicon_option_readfile_xml(clicon_hash_t *copt,
     }
     retval = 0;
   done:
+    if (xt)
+	xml_free(xt);
     if (f)
 	fclose(f);
     return retval;
@@ -356,7 +358,7 @@ clicon_options_main(clicon_handle h)
     clicon_hash_t *copt = clicon_options(h);
     char          *suffix;
     char           xml = 0; /* Configfile is xml, otherwise legacy */
-    yang_spec     *yspec;
+    yang_spec     *yspec = NULL;
 
     /*
      * Set configure file if not set by command-line above
@@ -380,6 +382,8 @@ clicon_options_main(clicon_handle h)
 	/* Read configfile */
 	if (clicon_option_readfile_xml(copt, configfile, yspec) < 0)
 	    goto done;
+	if (yspec)
+	    yspec_free(yspec);
     }
     else {
 	/* Set default options */
@@ -529,6 +533,7 @@ clicon_yang_module_revision(clicon_handle h)
     return clicon_option_str(h, "CLICON_YANG_MODULE_REVISION");
 }
 
+/*! Directory of backend plugins. If null, no plugins are loaded */
 char *
 clicon_backend_dir(clicon_handle h)
 {

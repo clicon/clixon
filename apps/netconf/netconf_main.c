@@ -286,8 +286,6 @@ static void
 usage(clicon_handle h,
       char         *argv0)
 {
-    char *netconfdir = clicon_netconf_dir(h);
-
     fprintf(stderr, "usage:%s\n"
 	    "where options are\n"
             "\t-h\t\tHelp\n"
@@ -298,7 +296,7 @@ usage(clicon_handle h,
 	    "\t-S\t\tLog on syslog\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
 	    argv0,
-	    netconfdir
+	    clicon_netconf_dir(h)
 	    );
     exit(0);
 }

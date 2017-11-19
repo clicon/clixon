@@ -431,11 +431,9 @@ plugin_initiate(clicon_handle h)
 	return -1;
 
     /* Then load application plugins */
-    if ((dir = clicon_backend_dir(h)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "backend_dir not defined");
-	return -1;
-    }
-    if (backend_plugin_load_dir(h, dir) < 0)
+    dir = clicon_backend_dir(h);
+    /* If backend directory, load the backend plugisn */
+    if (dir && backend_plugin_load_dir(h, dir) < 0)
 	return -1;
     
     return 0;

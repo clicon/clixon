@@ -140,7 +140,7 @@ usage(char *argv0, clicon_handle h)
     	    "    -1\t\tRun once and then quit (dont wait for events)\n"
     	    "    -u <path>\tConfig UNIX domain path / ip address (default: %s)\n"
     	    "    -P <file>\tPid filename (default: %s)\n"
-	    "    -s <mode>\tSpecify backend startup mode: none|startup|running|init (replaces -IRCc:r:\n"
+	    "    -s <mode>\tSpecify backend startup mode: none|startup|running|init (replaces -IRCr\n"
 	    "    -c <file>\tLoad extra xml configuration, but don't commit.\n"
 #ifdef BACKEND_STARTUP_BACKWARD_COMPAT
     	    "    -I\t\tInitialize running state database\n"
@@ -835,7 +835,8 @@ main(int argc, char **argv)
 				    ) < 0)
 	    goto done;
 #else
-	clicon_log(LOG_ERR, "Startup mode indefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend.\n"); 
+	clicon_log(LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend.\n"); 
+	goto done;
 #endif	
     }
     else {

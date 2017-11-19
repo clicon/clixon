@@ -1344,7 +1344,7 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cligen=dir       Use CLIGEN here
   --without-restconf      disable support for restconf
-  --without-keyvalue      disable support for key-value xmldb datastore
+  --with-keyvalue         enable support for key-value xmldb datastore
   --with-qdbm=dir         Use QDBM here, if keyvalue
 
 Some influential environment variables:
@@ -3943,10 +3943,10 @@ fi
 if test "${with_keyvalue+set}" = set; then :
   withval=$with_keyvalue;
 else
-  with_keyvalue=yes
+  with_keyvalue=no
 fi
 
-
+echo "keyvalue:${with_keyvalue}"
 if test "x${with_keyvalue}" == xyes; then
    echo "yes keyvalue"
    # This is for qdbm

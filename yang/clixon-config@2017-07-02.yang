@@ -89,18 +89,15 @@
     }
     leaf CLICON_BACKEND_DIR {
        type string;
-       mandatory true;
        description "Location of backend .so plugins. Load all .so 
                     plugins in this dir as backend plugins";
     }
     leaf CLICON_NETCONF_DIR {
        type string;
-       mandatory true;
        description "Location of netconf (frontend) .so plugins";
     }
     leaf CLICON_RESTCONF_DIR {
        type string;
-       mandatory true;
        description "Location of restconf (frontend) .so plugins. Load all .so
                     plugins in this dir as restconf code plugins";
     }
@@ -112,7 +109,6 @@
     }
     leaf CLICON_CLI_DIR {
        type string;
-       mandatory true;
        description "Location of cli frontend .so plugins. Load all .so 
                     plugins in this dir as CLI object plugins";
     }

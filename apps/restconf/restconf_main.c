@@ -269,8 +269,6 @@ usage(clicon_handle h,
       char         *argv0)
 
 {
-    char *restconfdir = clicon_restconf_dir(h);
-
     fprintf(stderr, "usage:%s [options]\n"
 	    "where options are\n"
             "\t-h \t\tHelp\n"
@@ -279,7 +277,7 @@ usage(clicon_handle h,
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
 	    argv0,
-	    restconfdir
+	    clicon_restconf_dir(h)
 	    );
     exit(0);
 }

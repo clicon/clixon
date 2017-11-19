@@ -138,10 +138,10 @@ fi
 
 # This is for keyvalue datastore (and qdbm)
 AC_ARG_WITH([keyvalue],
-            [AS_HELP_STRING([--without-keyvalue],[disable support for key-value xmldb datastore])],
-            [],
-            [with_keyvalue=yes])
-
+            [AS_HELP_STRING([--with-keyvalue],[enable support for key-value xmldb datastore])],
+	    [],
+            [with_keyvalue=no])
+echo "keyvalue:${with_keyvalue}"
 if test "x${with_keyvalue}" == xyes; then
    echo "yes keyvalue" 
    # This is for qdbm

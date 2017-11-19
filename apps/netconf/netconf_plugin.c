@@ -92,8 +92,9 @@ netconf_plugin_load(clicon_handle h)
     char           filename[MAXPATHLEN];
     plghndl_t     *handle;
 
+    /* If no DIR defined, then dont load plugins */
     if ((dir = clicon_netconf_dir(h)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "clicon_netconf_dir not defined");
+	retval = 0;
 	goto quit;
     }
 

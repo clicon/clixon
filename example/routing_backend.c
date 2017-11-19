@@ -153,6 +153,8 @@ route_count(clicon_handle h,
  * @retval       0      OK
  * @retval      -1      Error
  * @see xmldb_get
+ * @note this example code returns a static statedata used in testing. 
+ * Real code would poll state
  */
 int 
 plugin_statedata(clicon_handle h, 
@@ -162,15 +164,11 @@ plugin_statedata(clicon_handle h,
     int     retval = -1;
     cxobj **xvec = NULL;
 
-    fprintf(stderr, "%s xpath:%s\n", __FUNCTION__, xpath);
     /* Example of (static) statedata, real code would poll state */
     if (xml_parse("<interfaces-state><interface>"
 		   "<name>eth0</name>"
 		   "<type>eth</type>"
-		   "<admin-status>up</admin-status>"
-		   "<oper-status>up</oper-status>"
 		   "<if-index>42</if-index>"
-		   "<speed>1000000000</speed>"
 		   "</interface></interfaces-state>", xstate) < 0)
 	goto done;
     retval = 0;
@@ -218,6 +216,7 @@ plugin_init(clicon_handle h)
  * @param[in] h   Clicon handle
  * @param[in] db  Name of database. Not may be other than "running"
  * In this example, a loopback interface is added
+ * @note This assumes example yang with interfaces/interface
  */
 int
 plugin_reset(clicon_handle h,
@@ -239,7 +238,7 @@ plugin_reset(clicon_handle h,
     retval = 0;
  done:
     if (xt != NULL)
-	free(xt);
+	xml_free(xt);
     return retval;
 }
 

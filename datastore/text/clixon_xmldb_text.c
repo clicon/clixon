@@ -881,7 +881,7 @@ text_unlock_all(xmldb_handle xh,
 	      int            pid)
 {
     struct text_handle *th = handle(xh);
-    char              **keys;
+    char              **keys = NULL;
     size_t              klen;
     int                 i;
     int                *val;
@@ -893,6 +893,8 @@ text_unlock_all(xmldb_handle xh,
 	if ((val = hash_value(th->th_dbs, keys[i], &vlen)) != NULL &&
 	    *val == pid)
 	    hash_del(th->th_dbs, keys[i]);
+    if (keys)
+	free(keys);
     return 0;
 }
 

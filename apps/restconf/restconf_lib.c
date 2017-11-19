@@ -316,7 +316,7 @@ restconf_plugin_load(clicon_handle h)
     char           filename[MAXPATHLEN];
 
     if ((dir = clicon_restconf_dir(h)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "clicon_restconf_dir not defined");
+	retval = 0;
 	goto quit;
     }
     /* Get plugin objects names from plugin directory */

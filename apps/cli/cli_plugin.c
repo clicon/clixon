@@ -366,7 +366,9 @@ done:
 /*! Load plugins within a directory
  */
 static int
-cli_plugin_load_dir(clicon_handle h, char *dir, cli_syntax_t *stx)
+cli_plugin_load_dir(clicon_handle h,
+		    char         *dir,
+		    cli_syntax_t *stx)
 {
     int                i;
     int	               ndp;
@@ -452,10 +454,7 @@ cli_syntax_load (clicon_handle h)
 	return 0;
 
     /* Format plugin directory path */
-    if ((plugin_dir = clicon_cli_dir(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "clicon_cli_dir not set");
-	goto quit;
-    }
+    plugin_dir = clicon_cli_dir(h);
     clispec_dir = clicon_clispec_dir(h);
     clispec_file = clicon_option_str(h, "CLICON_CLISPEC_FILE");
 
@@ -474,7 +473,7 @@ cli_syntax_load (clicon_handle h)
         goto quit;
     
     /* Then load application plugins */
-    if (cli_plugin_load_dir(h, plugin_dir, stx) < 0)
+    if (plugin_dir && cli_plugin_load_dir(h, plugin_dir, stx) < 0)
         goto quit;
     
     if (clispec_file){

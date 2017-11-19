@@ -26,6 +26,8 @@ clixon_cli -f /usr/local/etc/routing.conf -1x
 Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in include/clixon_custom.h
 
 ### Minor changes:
+* Disabled key-value datastore. Enable with --with-keyvalue
+* Removed mandatory requirements for BACKEND, NETCONF, RESTCONF and CLI dirs.
 * When user callbacks such as statedata() call returns -1, clixon_backend no
   longer silently exits. Instead a log is printed and an RPC error is returned.
 * Added Floating point and negative number support to JSON

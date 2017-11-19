@@ -555,7 +555,7 @@ xmldb_unlock_all(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval =xa->xa_unlock_all_fn(xh, pid);
+    retval = xa->xa_unlock_all_fn(xh, pid);
  done:
     return retval;
 }
