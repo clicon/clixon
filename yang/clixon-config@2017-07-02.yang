@@ -49,7 +49,7 @@
 	type enumeration{
 	    enum none{
 		description "Do not touch running state
-                     Typical after crash when running state and db are synched";
+                     Typically after crash when running state and db are synched";
 	    }
 	    enum init{
 		description "Initialize running state.
@@ -57,11 +57,11 @@
 	    }
 	    enum running{
 		description "Commit running db configuration into running state
-        Usecase: after reboot if a persistent running db exists";
+                             After reboot if a persistent running db exists";
 	    }
 	    enum startup{
 		description "Commit startup configuration into running state
-                Usecase: after reboot when no persistent running db exists";
+                             After reboot when no persistent running db exists";
 	    }
 	}
     }

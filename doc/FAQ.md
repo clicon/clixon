@@ -65,8 +65,7 @@ use the web resource: http://clicon.org/ref/index.html
 
 ## How is configuration data stored?
 Configuration data is stored in an XML datastore. The default is a
-text-based datastore, but there also exists a key-value datastore
-using qdbm. In the example the datastore are regular files found in
+text-based datastore. In the example the datastore are regular files found in
 /usr/local/var/routing/.
 
 ## What is validate and commit?
@@ -151,6 +150,45 @@ clixon_netconf -qf /usr/local/etc/routing.xml
 <notification><event>Routing notification</event></notification>]]>]]>
 ...
 ```
+
+## How should I start the backend daemon?
+
+There are four different backend startup modes. There is differences in running state treatment, ie what state the machine is when you startthe daemon and how loading the configuration affects it:
+- none - Do not touch running state. Typically after crash when running state and db are synched.
+- init - Initialize running state. Start with a completely clean running state.
+- running - Commit running db configuration into running state. Typically after reboot if a persistent running db exists.
+- startup - Commit startup configuration into running state. After reboot when no persistent running db exists.
+
+You use the -s to select the mode:
+```
+clixon_backend ... -s running
+```
+
+You may also add a default method in the configuration file:
+```
+<config>
+   ...
+   <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE
+</config>
+```
+
+## How can I add extra XML?
+
+There are two ways to add extra XML to running database  after start. Note that this XML is not "committed" into running.
+
+The first way is via a file. Assume you want to add this xml (the config tag is a necessary top-level tag):
+```
+<config>
+   <x>extra</x>
+</config>
+```
+You add this via the -c option:
+```
+clixon_backend ... -c extra.xml
+```
+
+The second way is by programming the plugin_reset() in the backend
+plugin. The example code contains an example on how to do this (see plugin_reset() in routing_backend.c).
 
 ## I want to program. How do I extend the example?
 - routing.xml - Change the configuration file
