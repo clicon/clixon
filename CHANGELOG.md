@@ -49,6 +49,7 @@ protocol invalid-value Missing mandatory variable: type
 ```
 
 * Added event_poll function.
+
 * Support for non-line scrolling in CLI, eg wrap lines. Set with:
   CLICON_CLI_LINESCROLLING 0
 
