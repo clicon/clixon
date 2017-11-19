@@ -99,7 +99,7 @@ text_handle_check(xmldb_handle xh)
  */
 static int
 text_db2file(struct text_handle *th, 
-	     char               *db,
+	     const char         *db,
 	     char              **filename)
 {
     int   retval = -1;
@@ -281,7 +281,7 @@ singleconfigroot(cxobj  *xt,
  */
 int
 text_get(xmldb_handle xh,
-	 char         *db, 
+	 const char   *db, 
 	 char         *xpath,
 	 int           config,
 	 cxobj       **xtop)
@@ -681,7 +681,7 @@ xml_container_presence(cxobj  *x,
  */
 int
 text_put(xmldb_handle        xh,
-	 char               *db, 
+	 const char         *db, 
 	 enum operation_type op,
 	 cxobj              *x1)
 {
@@ -807,8 +807,8 @@ text_put(xmldb_handle        xh,
   */
 int 
 text_copy(xmldb_handle xh, 
-	  char        *from,
-	  char        *to)
+	  const char  *from,
+	  const char   *to)
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);
@@ -840,7 +840,7 @@ text_copy(xmldb_handle xh,
   */
 int 
 text_lock(xmldb_handle xh, 
-	  char        *db,
+	  const char  *db,
 	  int          pid)
 {
     struct text_handle *th = handle(xh);
@@ -860,7 +860,7 @@ text_lock(xmldb_handle xh,
  */
 int 
 text_unlock(xmldb_handle xh, 
-	    char        *db)
+	    const char  *db)
 {
     struct text_handle *th = handle(xh);
     int zero = 0;
@@ -905,7 +905,7 @@ text_unlock_all(xmldb_handle xh,
   */
 int 
 text_islocked(xmldb_handle xh, 
-	    char          *db)
+	      const char  *db)
 {
     struct text_handle *th = handle(xh);
     size_t              vlen;
@@ -926,7 +926,7 @@ text_islocked(xmldb_handle xh,
  */
 int 
 text_exists(xmldb_handle  xh, 
-	    char         *db)
+	    const char   *db)
 {
 
     int                 retval = -1;
@@ -954,7 +954,7 @@ text_exists(xmldb_handle  xh,
  */
 int 
 text_delete(xmldb_handle xh, 
-	    char        *db)
+	    const char  *db)
 {
     int                 retval = -1;
     char               *filename = NULL;
@@ -974,6 +974,7 @@ text_delete(xmldb_handle xh,
 }
 
 /*! Create / init database 
+ * If it exists dont change.
  * @param[in]  xh  XMLDB handle
  * @param[in]  db  Database
  * @retval  0  OK
@@ -981,7 +982,7 @@ text_delete(xmldb_handle xh,
  */
 int 
 text_create(xmldb_handle xh, 
-	    char        *db)
+	    const char  *db)
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);

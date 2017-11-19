@@ -23,8 +23,8 @@ APIs. There are currently plugins for: CLI, Netconf,  Restconf, the datastore an
 Clixon is written in C. The plugins are written in C. The CLI
 specification uses cligen (http://cligen.se)
 
-There is a project for writing plugins in Python. It is reasonable
-simple to spawn an external script from a backend.
+It is possible ro write plugins in Python. It is reasonable
+simple to spawn an external script from a backend (but needs to be done).
 
 ## How to best understand Clixon?
 Run the ietf yang routing example, in the example directory.

@@ -12,7 +12,7 @@ if [ $? -ne 0 ]; then
     err
 fi
 new "start backend"
-sudo clixon_backend -If $clixon_cf
+sudo clixon_backend -s init -f $clixon_cf
 if [ $? -ne 0 ]; then
     err
 fi

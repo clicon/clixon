@@ -1,7 +1,15 @@
-# Clixon CHANGELOG
+# 3.3.3 (Upcoming)
 
-## 3.3.3 Upcoming
+### Known issues
+### Major changes:
+* Introducing backend daemon startup modes. The flags -IRCr and option CLICON_USE_STARTUP_CONFIG are replaced with command-line option -s <mode> and option CLICON_STARTUP_MODE. You need to replace the starting of clixon_backend as follows:
+   -I replace with "init" (as -s command line option or CLICON_STARTUP_MODE option)
+   -CIr replace with "running"
+   null replace with "none"
+   CLICON_USE_STARTUP_CONFIG=1 replace with "startup"
+Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in include/clixon_custom.h
 
+### Minor changes:
 * When user callbacks such as statedata() call returns -1, clixon_backend no
   longer silently exits. Instead a log is printed and an RPC error is returned.
 * Added Floating point and negative number support to JSON
@@ -45,7 +53,7 @@ clixon_cli -f /usr/local/etc/routing.conf -1x
 * Support for non-line scrolling in CLI, eg wrap lines. Set with:
   CLICON_CLI_LINESCROLLING 0
 
-## 3.3.2 Aug 27 2017
+# 3.3.2 (Aug 27 2017)
 
 ### Known issues
 * Please use text datastore, key-value datastore no up-to-date
@@ -138,7 +146,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
   * Restconf GET will return state data also, if defined.
   * You need to define state data in a backend callback. See the example and documentation for more details.
 
-### Minor changes:
+### Minor Changes
 * Added xpath support for predicate: current(), eg /interface[name=current()/../name]
 * Added prefix parsing of xpath, allowing eg /p:x/p:y, but prefix ignored.
 * Corrected Yang union CLI generation and type validation. Recursive unions did not work.
@@ -154,7 +162,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
 * Removed vector return values from xmldb_get()
 * Generalized yang type resolution to all included (sub)modules not just the topmost
 	
-## 3.3.1 June 7 2017
+# 3.3.1 (June 7 2017)
 
 * Fixed yang leafref cli completion for absolute paths.
 
@@ -162,9 +170,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
 
 * Strings in xmldb_put not properly encoded, eg eth/0 became eth.00000
 	
-## 3.3.0
-
-May 2017	
+# 3.3.0 (May 2017)
 	
 * Datastore text module is now default.
 
@@ -205,7 +211,7 @@ May 2017
   Instead use the rpc calls in clixon_proto_client.[ch]
   In clients (eg cli/netconf) replace xmldb_get() in client code with 
   clicon_rpc_get_config().
-  If you use the vector arguments of xmldb_get(), replace as follows:
+  pIf you use the vector arguments of xmldb_get(), replace as follows:
     xmldb_get(h, db, api_path, &xt, &xvec, &xlen);
   with
     clicon_rpc_get_config(h, dbstr, api_path, &xt);
@@ -273,7 +279,9 @@ May 2017
 * Added union type check for non-cli (eg xml) input 
 * Empty yang type. Relaxed yang types for unions, eg two strings with different length.
 	
-Dec 2016: Dual license: both GPLv3 and APLv2
+# (Dec 2016)
+* Dual license: both GPLv3 and APLv2
 	
-Feb 2016: Forked new clixon repository from clicon
+# (Feb 2016)
+* Forked new clixon repository from clicon
 

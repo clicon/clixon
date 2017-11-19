@@ -38,9 +38,32 @@
 
        ***** END LICENSE BLOCK *****";
 
-    revision 2017-07-02 {
+    revision 2017-11-12 {
       description
-        "Initial revision";
+        "Added startup config";
+    }
+    typedef startup_mode{
+	description "Which method to boot/start clicon backend.
+                     The methods differ in how they reach a running state
+                     Which source database to commit from, if any.";
+	type enumeration{
+	    enum none{
+		description "Do not touch running state
+                     Typical after crash when running state and db are synched";
+	    }
+	    enum init{
+		description "Initialize running state.
+                             Start with a completely clean running state";
+	    }
+	    enum running{
+		description "Commit running db configuration into running state
+        Usecase: after reboot if a persistent running db exists";
+	    }
+	    enum startup{
+		description "Commit startup configuration into running state
+                Usecase: after reboot when no persistent running db exists";
+	    }
+	}
     }
     container config {
     leaf CLICON_CONFIGFILE{
@@ -185,12 +208,17 @@
        type int32;
        default 0;
        description "Enabled uses \"startup\" configuration on boot. It is called
-                    startup_db and exists in XMLDB_DIR";
+                    startup_db and exists in XMLDB_DIR. NOTE: Obsolete with CLICON_STARTUP_MODE";
     }
     leaf CLICON_XMLDB_PLUGIN {
        type string;
        mandatory true;
        description "XMLDB datastore plugin filename (see datastore/ and clixon_xml_db.[ch])";
     }
+    leaf CLICON_STARTUP_MODE {
+	type startup_mode;
+	description "Which method to boot/start clicon backend";
+    }
+
   }
 }

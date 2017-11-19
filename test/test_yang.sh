@@ -70,7 +70,7 @@ fi
 
 new "start backend"
 # start new backend
-sudo clixon_backend -If $clixon_cf -y /tmp/test.yang
+sudo clixon_backend -s init -f $clixon_cf -y /tmp/test.yang
 if [ $? -ne 0 ]; then
     err
 fi

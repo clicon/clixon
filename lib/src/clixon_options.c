@@ -58,6 +58,7 @@
 
 /* clicon */
 #include "clixon_err.h"
+#include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
@@ -68,6 +69,16 @@
 #include "clixon_xml.h"
 #include "clixon_xsl.h"
 #include "clixon_xml_map.h"
+
+/* Mapping between Clicon startup modes string <--> constants, 
+   see clixon-config.yang type startup_mode */
+static const map_str2int startup_mode_map[] = {
+    {"none",     SM_NONE}, 
+    {"running",  SM_RUNNING}, 
+    {"startup",  SM_STARTUP}, 
+    {"init",     SM_INIT}, 
+    {NULL,       -1}
+};
 
 /*! Print registry on file. For debugging.
  */
@@ -332,7 +343,6 @@ clicon_option_sanity(clicon_hash_t *copt)
     return retval;
 }
 
-
 /*! Initialize option values
  *
  * Set default options, Read config-file, Check that all values are set.
@@ -387,9 +397,12 @@ clicon_options_main(clicon_handle h)
 }
 
 /*! Check if a clicon option has a value
+ * @param[in] h       clicon_handle
+ * @param[in] name    option name
  */
 int
-clicon_option_exists(clicon_handle h, const char *name)
+clicon_option_exists(clicon_handle h,
+		     const char   *name)
 {
     clicon_hash_t *copt = clicon_options(h);
 
@@ -449,7 +462,8 @@ clicon_option_str_set(clicon_handle h,
  * supply a defualt value as shown in the example.
  */
 int
-clicon_option_int(clicon_handle h, const char *name)
+clicon_option_int(clicon_handle h,
+		  const char   *name)
 {
     char *s;
 
@@ -461,7 +475,9 @@ clicon_option_int(clicon_handle h, const char *name)
 /*! Set option given as int.
  */
 int
-clicon_option_int_set(clicon_handle h, const char *name, int val)
+clicon_option_int_set(clicon_handle h,
+		      const char   *name,
+		      int           val)
 {
     char s[64];
     
@@ -473,7 +489,8 @@ clicon_option_int_set(clicon_handle h, const char *name, int val)
 /*! Delete option 
  */
 int
-clicon_option_del(clicon_handle h, const char *name)
+clicon_option_del(clicon_handle h,
+		  const char   *name)
 {
     clicon_hash_t *copt = clicon_options(h);
 
@@ -548,6 +565,15 @@ char *
 clicon_xmldb_plugin(clicon_handle h)
 {
     return clicon_option_str(h, "CLICON_XMLDB_PLUGIN");
+}
+
+int
+clicon_startup_mode(clicon_handle h)
+{
+    char *mode;
+    if ((mode = clicon_option_str(h, "CLICON_STARTUP_MODE")) == NULL)
+	return -1;
+    return clicon_str2int(startup_mode_map, mode);
 }
 
 /*! Get family of backend socket: AF_UNIX, AF_INET or AF_INET6 */

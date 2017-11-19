@@ -71,7 +71,7 @@
  * @note  the following should match the prototypes in clixon_backend.h
  */
 #define PLUGIN_RESET           "plugin_reset"
-typedef int (plgreset_t)(clicon_handle h, char *dbname); /* Reset system status */
+typedef int (plgreset_t)(clicon_handle h, const char *db); /* Reset system status */
 
 /*! Plugin callback, if defined called to get state data from plugin
  * @param[in]    h      Clicon handle
@@ -253,19 +253,18 @@ backend_plugin_load (clicon_handle h,
  * @retval    -1       Error
  */
 int
-plugin_reset_state(clicon_handle h, 
-		   char *dbname)
+plugin_reset_state(clicon_handle h,
+		   const char   *db)
 { 
     int            i;
     struct plugin *p;
-
 
     for (i = 0; i < _nplugins; i++)  {
 	p = &_plugins[i];
 	if (p->p_reset) {
 	    clicon_debug(1, "Calling plugin_reset() for %s\n",
 			 p->p_name);
-	    if (((p->p_reset)(h, dbname)) < 0) {
+	    if (((p->p_reset)(h, db)) < 0) {
 		clicon_err(OE_FATAL, 0, "plugin_reset() failed for %s\n",
 			   p->p_name);
 		return -1;
@@ -283,7 +282,7 @@ plugin_reset_state(clicon_handle h,
  * @retval    -1       Error
  */
 int
-plugin_start_hooks(clicon_handle h, 
+plugin_start_argv(clicon_handle h, 
 		   int           argc, 
 		   char        **argv)
 {
