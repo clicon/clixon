@@ -1,4 +1,6 @@
-# 3.3.3 (Upcoming)
+# Clixon Changelog
+
+## 3.3.3 (Upcoming)
 
 ### Known issues
 ### Major changes:
@@ -50,7 +52,7 @@ protocol invalid-value Missing mandatory variable: type
 * Support for non-line scrolling in CLI, eg wrap lines. Set with:
   CLICON_CLI_LINESCROLLING 0
 
-# 3.3.2 (Aug 27 2017)
+## 3.3.2 (Aug 27 2017)
 
 ### Known issues
 * Please use text datastore, key-value datastore no up-to-date
@@ -159,7 +161,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
 * Removed vector return values from xmldb_get()
 * Generalized yang type resolution to all included (sub)modules not just the topmost
 	
-# 3.3.1 (June 7 2017)
+## 3.3.1 (June 7 2017)
 
 * Fixed yang leafref cli completion for absolute paths.
 
@@ -167,7 +169,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
 
 * Strings in xmldb_put not properly encoded, eg eth/0 became eth.00000
 	
-# 3.3.0 (May 2017)
+## 3.3.0 (May 2017)
 	
 * Datastore text module is now default.
 
@@ -276,9 +278,9 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
 * Added union type check for non-cli (eg xml) input 
 * Empty yang type. Relaxed yang types for unions, eg two strings with different length.
 	
-# (Dec 2016)
+## (Dec 2016)
 * Dual license: both GPLv3 and APLv2
 	
-# (Feb 2016)
+## (Feb 2016)
 * Forked new clixon repository from clicon
 
