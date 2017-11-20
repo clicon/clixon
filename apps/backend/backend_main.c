@@ -523,6 +523,9 @@ startup_mode_running(clicon_handle h,
     /* Load plugins and call plugin_init() */
     if (plugin_initiate(h) != 0) 
 	goto done;
+    /* Clear running db */
+    if (db_reset(h, "running") < 0)
+	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
 	goto done;
@@ -564,6 +567,9 @@ startup_mode_startup(clicon_handle h,
 	    return -1;
     /* Load plugins and call plugin_init() */
     if (plugin_initiate(h) != 0) 
+	goto done;
+    /* Clear running db */
+    if (db_reset(h, "running") < 0)
 	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
