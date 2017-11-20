@@ -2,13 +2,16 @@
 
 ## 3.3.3 (Upcoming)
 
+Thanks to Matthew Smith, Joe Loeliger at Netgate; Fredrik Pettai at
+SUNET for support, requests, debugging, bugfixes and proposed solutions.
+
 ### Known issues
 * None yet
 
 ### Major changes:
 * Performance improvements
   * Added xml hash lookup instead of linear search for better performance of large lists. To disable, undefine XML_CHILD_HASH in clixon_custom.h
-  * netconf client was limited to 8K byte messages. New limit is 2^32 bytes
+  * Netconf client was limited to 8K byte messages. New limit is 2^32 bytes.
 
 * XML and YANG-based configuration file.
   * New configuration files have .xml suffix, old have .conf. Old config files till work for backward compatibility.
@@ -18,7 +21,7 @@
 clixon_cli -f /usr/local/etc/routing.conf -1x
 ```
   
-* Introducing backend daemon startup modes. 
+* Introducing backend daemon startup modes.
   * The flags -IRCr are replaced with command-line option -s <mode>
   * You use the -s to select the mode: `clixon_backend ... -s running`
   * You may also add a default method in the configuration file: `<CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>`
@@ -27,7 +30,8 @@ clixon_cli -f /usr/local/etc/routing.conf -1x
     * -CIr replace with -s "running" 
     * (no-option) replace with -s "none"
   * Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in include/clixon_custom.h
-* Extra XML has been added along with the new startup modes.
+
+* Extra XML has been added along with the new startup modes. Requested by Netgate.
   * You can add extra XML with the -c option to the backend daemon on startup:
 ```
       clixon_backend ... -c extra.xml
@@ -35,7 +39,7 @@ clixon_cli -f /usr/local/etc/routing.conf -1x
   * You can also add extra XML by programming the plugin_reset() in the backend
 plugin. The example application shows how.
 
-* Clixon can now be compiled and run on Apple Darwin.
+* Clixon can now be compiled and run on Apple Darwin. Thanks SUNET.
 
 ### Minor changes:
 * Disabled key-value datastore. Enable with --with-keyvalue
@@ -51,8 +55,8 @@ plugin. The example application shows how.
 	cli_tree_active_set, cli_tree.
 
 * Added a format parameter to clicon_rpc_generate_error() and changed error
-  printouts for backend errors, such as commit and validate. Example of the
-  new format:
+  printouts for backend errors, such as commit and validate. (Thanks netgate).
+  Example of the new format:
 
 ```
 > commit
@@ -62,13 +66,14 @@ protocol invalid-value Missing mandatory variable: type
 
 * Added event_poll function.
 
-* Support for non-line scrolling in CLI, eg wrap lines. Set with:
+* Support for non-line scrolling in CLI, eg wrap lines. Thanks to Jon Loeliger for proposed solution. Set with:
   CLICON_CLI_LINESCROLLING 0
 
 ### Corrected Bugs
 * Added floating point and negative number support to JSON
 * When user callbacks such as statedata() call returns -1, clixon_backend no
   longer silently exits. Instead a log is printed and an RPC error is returned.
+  Cred to Matt, netgate for pointing this out.
 
 ## 3.3.2 (Aug 27 2017)
 

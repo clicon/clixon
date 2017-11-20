@@ -73,11 +73,11 @@ clixon.mk:  clixon.mk.cpp
 	$(CPP) -P -traditional-cpp -x assembler-with-cpp -Dprefix=$(prefix) -Dlocalstatedir=$(localstatedir) -Dsysconfdir=$(sysconfdir) -Ddatadir=$(datadir) -Dlibdir=$(libdir) $< > $@
 
 install:	clixon.conf.cpp clixon.mk
+	install -m 755 clixon.conf.cpp $(DESTDIR)$(datadir)/clixon
+	install -m 755 clixon.mk $(DESTDIR)$(datadir)/clixon
 	for i in $(SUBDIRS) doc; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; \
 	install -d -m 755 $(DESTDIR)$(datadir)/clixon
-	install -m 755 clixon.conf.cpp $(DESTDIR)$(datadir)/clixon
-	install -m 755 clixon.mk $(DESTDIR)$(datadir)/clixon
 	echo "Install for compilation by: make install-include"
 
 install-include:
