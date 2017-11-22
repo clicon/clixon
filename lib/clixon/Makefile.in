@@ -48,7 +48,7 @@ install-include:
 	install -m 644 *.h $(DESTDIR)$(includedir)/clixon 
 
 uninstall:
-	rm -f $(includedir)/clixon
+	rm -rf $(DESTDIR)$(includedir)/clixon
 
 clean:
 

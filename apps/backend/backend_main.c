@@ -824,7 +824,7 @@ main(int argc, char **argv)
     if (yang_spec_main(h, stdout, printspec) < 0)
 	goto done;
 
-    /* Set options: database dir aqnd yangspec (could be hidden in connect?)*/
+    /* Set options: database dir and yangspec (could be hidden in connect?)*/
     if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)
 	goto done;
     if (xmldb_setopt(h, "yangspec", clicon_dbspec_yang(h)) < 0)

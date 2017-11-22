@@ -1,13 +1,17 @@
 #!/bin/bash
 
 testnr=0
-testnname=
+testname=
 clixon_cf=/usr/local/etc/routing.xml
 # error and exit, arg is optional extra errmsg
 err(){
   echo "Error in Test$testnr [$testname]:"
-  echo "Expected: $1"
-  echo "Received: $2"
+  if [ $# -gt 0 ]; then 
+      echo "Expected: $1"
+  fi
+  if [ $# -gt 1 ]; then 
+      echo "Received: $2"
+  fi
   exit $testnr
 }
 

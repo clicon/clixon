@@ -101,18 +101,18 @@ $(SUBDIRS):
 
 install-include:
 	for i in $(SUBDIRS); \
-	do (cd $$i ; $(MAKE) $(MFLAGS) $@); done; 
+	do (cd $$i ; $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 
 install: $(APPL)
 	install -d $(DESTDIR)$(bindir)
 	install $(APPL) $(DESTDIR)$(bindir)
 	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
 
 uninstall:
-	rm -f $(bindir)/$(APPL)
+	rm -f $(DESTDIR)$(bindir)/$(APPL)
 	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
 
 clean:
 	rm -f *.core $(APPL) $(APPOBJ)

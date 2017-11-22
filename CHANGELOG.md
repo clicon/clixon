@@ -42,6 +42,7 @@ plugin. The example application shows how.
 * Clixon can now be compiled and run on Apple Darwin. Thanks SUNET.
 
 ### Minor changes:
+* Fixed DESTDIR make install/uninstall and break immediately on errors
 * Disabled key-value datastore. Enable with --with-keyvalue
 * Removed mandatory requirements for BACKEND, NETCONF, RESTCONF and CLI dirs.
 

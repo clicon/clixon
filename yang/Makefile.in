@@ -54,7 +54,9 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 install: $(YANGSPECS) 
-	install -d $(DESTDIR)/yang
+	echo $(DESTDIR)$(datarootdir)/clixon/clixon.mk
+	echo $(DESTDIR)$(clixon_DATADIR)
+	install -d $(DESTDIR)$(clixon_DATADIR)
 	install $(YANGSPECS) $(DESTDIR)$(clixon_DATADIR)
 
 uninstall: 
