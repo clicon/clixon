@@ -14,22 +14,31 @@ SUNET for support, requests, debugging, bugfixes and proposed solutions.
   * Netconf client was limited to 8K byte messages. New limit is 2^32 bytes.
 
 * XML and YANG-based configuration file.
-  * New configuration files have .xml suffix, old have .conf. Old config files till work for backward compatibility.
+  * New configuration files have .xml suffix, old have .conf.
   * The yang model is yang/clixon-config.yang.
   * A migration utility is clixon_cli -x to print new format, eg:
 ```
-clixon_cli -f /usr/local/etc/routing.conf -1x
+    clixon_cli -f /usr/local/etc/routing.conf -1x
 ```
+  * Backward compatibility is enabled: 
+```
+    configure --with-config-compat
+```
+  * Both .xml and .conf works in backward compatible mode.
   
-* Introducing backend daemon startup modes.
+* Simplified backend daemon startup modes.
   * The flags -IRCr are replaced with command-line option -s <mode>
   * You use the -s to select the mode: `clixon_backend ... -s running`
   * You may also add a default method in the configuration file: `<CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>`
-  * The option CLICON_USE_STARTUP_CONFIG is obsoleted by "startup" mode
-    * -I replace with -s "init" (or use of CLICON_STARTUP_MODE option)
-    * -CIr replace with -s "running" 
-    * (no-option) replace with -s "none"
-  * Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in include/clixon_custom.h
+  * The configuration option CLICON_USE_STARTUP_CONFIG is obsolete
+  * -I replace with -s "init" (or use of CLICON_STARTUP_MODE option)
+  * -CIr replace with -s "running" 
+  * (no-option) replace with -s "none"
+  * Backward compatibility is enabled by:
+```
+    configure --with-startup-compat
+```
+  * Both -CIr and -s works in backward compatible mode.
 
 * Extra XML has been added along with the new startup modes. Requested by Netgate.
   * You can add extra XML with the -c option to the backend daemon on startup:
