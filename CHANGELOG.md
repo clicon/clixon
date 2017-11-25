@@ -5,9 +5,6 @@
 Thanks to Matthew Smith, Joe Loeliger at Netgate; Fredrik Pettai at
 SUNET for support, requests, debugging, bugfixes and proposed solutions.
 
-### Known issues
-* None yet
-
 ### Major changes:
 * Performance improvements
   * Added xml hash lookup instead of linear search for better performance of large lists. To disable, undefine XML_CHILD_HASH in clixon_custom.h
@@ -19,14 +16,15 @@ SUNET for support, requests, debugging, bugfixes and proposed solutions.
   * You can run backward compatible mode using `configure --with-config-compat`
   * In backward compatible mode both .xml and .conf works
   * For migration from old to new, a utility is clixon_cli -x to print new format. Run the command and save in configuration file with .xml suffix instead.
-```
+  ```
     > clixon_cli -f /usr/local/etc/routing.conf -1x
     <config>
-        <CLICON_CONFIGFILE>/usr/local/etc/routing.conf</CLICON_CONFIGFILE>
+        <CLICON_CONFIGFILE>/usr/local/etc/routing.xml</CLICON_CONFIGFILE>
         <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
         <CLICON_BACKEND_DIR>/usr/local/lib/routing/backend</CLICON_BACKEND_DIR>
 	...
-```
+   </config>
+  ```
   
 * Simplified backend daemon startup modes.
   * The flags -IRCr are replaced with command-line option -s <mode>
@@ -35,12 +33,12 @@ SUNET for support, requests, debugging, bugfixes and proposed solutions.
   * The configuration option CLICON_USE_STARTUP_CONFIG is obsolete
   * Command-ine option `-I` is replaced with `-s init` 
   * `-CIr` is replaced with `-s running`
-  * Use `-s none` if you request no action on startup
-  * You can run in backward compatible mode where both -IRCr and -s options works. But if -s is given, -IRCr options willbe ignored.
+  * Use `-s none` if you request no action on startu
   * Backward compatibility is enabled by:
-```
-    configure --with-startup-compat
-```
+  ```
+      configure --with-startup-compat
+  ```
+  * You can run in backward compatible mode where both -IRCr and -s options works. But if -s is given, -IRCr options willbe ignored.
 
 * Extra XML has been added along with the new startup modes. Requested by Netgate.
   * You can add extra XML with the -c option to the backend daemon on startup:
