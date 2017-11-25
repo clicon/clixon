@@ -2191,8 +2191,8 @@ _ACEOF
 
  # Bind to specific CLIgen version
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: CLIXON version is ${CLIXON_VERSION}_PRE" >&5
-$as_echo "CLIXON version is ${CLIXON_VERSION}_PRE" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: CLIXON version is ${CLIXON_VERSION}" >&5
+$as_echo "CLIXON version is ${CLIXON_VERSION}" >&6; }
 
 ac_aux_dir=
 for ac_dir in "$srcdir" "$srcdir/.." "$srcdir/../.."; do

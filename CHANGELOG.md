@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-## 3.3.3 (Upcoming)
+## 3.3.3 (25 November 2017)
 
 Thanks to Matthew Smith, Joe Loeliger at Netgate; Fredrik Pettai at
 SUNET for support, requests, debugging, bugfixes and proposed solutions.
