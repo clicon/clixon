@@ -89,7 +89,7 @@ install:	$(APPL)
 install-include:	
 
 uninstall:
-	rm -f $(wwwdir)/$(APPL)
+	rm -f $(DESTDIR)$(wwwdir)/$(APPL)
 
 .SUFFIXES:
 .SUFFIXES: .c .o

@@ -52,8 +52,10 @@ install:	 clixonrc
 	install -m 755 clixonrc $(DESTDIR)$(sysconfdir)
 
 install-include:	
+	rm -f $(DESTDIR)$(sysconfdir)/clixonrc
 
 uninstall:
+
 
 depend:
 

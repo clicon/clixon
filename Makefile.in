@@ -63,7 +63,7 @@ $(SUBDIRS):
 
 depend:
 	for i in $(SUBDIRS) doc example docker; \
-		do (cd $$i && $(MAKE) $(MFLAGS) depend); done
+	do (cd $$i && $(MAKE) $(MFLAGS) depend); done
 
 # template clixon.conf file
 clixon.conf.cpp:  clixon.conf.cpp.cpp
@@ -73,23 +73,23 @@ clixon.mk:  clixon.mk.cpp
 	$(CPP) -P -traditional-cpp -x assembler-with-cpp -Dprefix=$(prefix) -Dlocalstatedir=$(localstatedir) -Dsysconfdir=$(sysconfdir) -Ddatadir=$(datadir) -Dlibdir=$(libdir) $< > $@
 
 install:	clixon.conf.cpp clixon.mk
-	for i in $(SUBDIRS) doc; \
-		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; \
 	install -d -m 755 $(DESTDIR)$(datadir)/clixon
 	install -m 755 clixon.conf.cpp $(DESTDIR)$(datadir)/clixon
 	install -m 755 clixon.mk $(DESTDIR)$(datadir)/clixon
+	for i in $(SUBDIRS) doc; \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done; \
 	echo "Install for compilation by: make install-include"
 
 install-include:
 	for i in $(SUBDIRS) doc; \
-		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; \
+	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done; \
 	echo "To install example app: cd example; make; make install"
 
 uninstall:
 	for i in $(SUBDIRS) doc example docker; \
-	do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
-	rm -f $(datadir)/clixon/clixon.conf.cpp
-	rm -f $(datadir)/clixon/clixon.mk
+	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done; 
+	rm -f $(DESTDIR)$(datadir)/clixon/clixon.conf.cpp
+	rm -f $(DESTDIR)$(datadir)/clixon/clixon.mk
 
 doc:	
 	cd $@; $(MAKE) $(MFLAGS) $@

@@ -1,37 +1,61 @@
 # Clixon Changelog
 
-## 3.3.3 (Upcoming)
+## 3.3.3 (25 November 2017)
 
-### Known issues
+Thanks to Matthew Smith, Joe Loeliger at Netgate; Fredrik Pettai at
+SUNET for support, requests, debugging, bugfixes and proposed solutions.
+
 ### Major changes:
-* Clixon can now be compiled and run on Apple Darwin.
-
 * Performance improvements
   * Added xml hash lookup instead of linear search for better performance of large lists. To disable, undefine XML_CHILD_HASH in clixon_custom.h
-  * netconf client was limited to 8K byte messages. Now limit is 2^32 bytes
+  * Netconf client was limited to 8K byte messages. New limit is 2^32 bytes.
 
 * XML and YANG-based configuration file.
-  * New configuration files have .xml suffix, old have .conf. Old config files till work for backward compatibility.
+  * New configuration files have .xml suffix, old have .conf.
   * The yang model is yang/clixon-config.yang.
-  * A migration utility is clixon_cli -x to print new format, eg:
-```
-clixon_cli -f /usr/local/etc/routing.conf -1x
-```
+  * You can run backward compatible mode using `configure --with-config-compat`
+  * In backward compatible mode both .xml and .conf works
+  * For migration from old to new, a utility is clixon_cli -x to print new format. Run the command and save in configuration file with .xml suffix instead.
+  ```
+    > clixon_cli -f /usr/local/etc/routing.conf -1x
+    <config>
+        <CLICON_CONFIGFILE>/usr/local/etc/routing.xml</CLICON_CONFIGFILE>
+        <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
+        <CLICON_BACKEND_DIR>/usr/local/lib/routing/backend</CLICON_BACKEND_DIR>
+	...
+   </config>
+  ```
   
-* Introducing backend daemon startup modes. The flags -IRCr and option CLICON_USE_STARTUP_CONFIG are replaced with command-line option -s <mode> and option CLICON_STARTUP_MODE. You need to replace the starting of clixon_backend as follows:
-  * -I replace with -s "init" (or use of CLICON_STARTUP_MODE option)
-  * -CIr replace with -s "running" 
-  * (no-option) replace with -s "none"
-  * CLICON_USE_STARTUP_CONFIG=1 replace with -s "startup"
-Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in include/clixon_custom.h
+* Simplified backend daemon startup modes.
+  * The flags -IRCr are replaced with command-line option -s <mode>
+  * You use the -s to select the mode. Example: `clixon_backend -s running`
+  * You may also add a default method in the configuration file: `<CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>`
+  * The configuration option CLICON_USE_STARTUP_CONFIG is obsolete
+  * Command-ine option `-I` is replaced with `-s init` 
+  * `-CIr` is replaced with `-s running`
+  * Use `-s none` if you request no action on startu
+  * Backward compatibility is enabled by:
+  ```
+      configure --with-startup-compat
+  ```
+  * You can run in backward compatible mode where both -IRCr and -s options works. But if -s is given, -IRCr options willbe ignored.
+
+* Extra XML has been added along with the new startup modes. Requested by Netgate.
+  * You can add extra XML with the -c option to the backend daemon on startup:
+  ```
+      clixon_backend ... -c extra.xml
+   ```
+  * You can also add extra XML by programming the plugin_reset() in the backend
+plugin. The example application shows how.
+
+* Clixon can now be compiled and run on Apple Darwin. Thanks SUNET.
 
 ### Minor changes:
+* Fixed DESTDIR make install/uninstall and break immediately on errors
 * Disabled key-value datastore. Enable with --with-keyvalue
-* Removed mandatory requirements for BACKEND, NETCONF, RESTCONF and CLI dirs.
-* When user callbacks such as statedata() call returns -1, clixon_backend no
-  longer silently exits. Instead a log is printed and an RPC error is returned.
-* Added Floating point and negative number support to JSON
-* Restconf: http cookie sent as attribute in rpc restconf_post operations to backend.
+* Removed mandatory requirements for BACKEND, NETCONF, RESTCONF and CLI dirs in the configuration file. If these are not given, no plugins will be loaded of that type.
+
+* Restconf: http cookie sent as attribute in rpc restconf_post operations to backend as "id" XML attribute.
 * Added option CLICON_CLISPEC_FILE as complement to CLICON_CLISPEC_DIR to
   specify single CLI specification file, not only directory containing files.
 	
@@ -41,19 +65,25 @@ Backward compatibility is enabled by defining BACKEND_STARTUP_BACKWARD_COMPAT in
 	cli_tree_active_set, cli_tree.
 
 * Added a format parameter to clicon_rpc_generate_error() and changed error
-  printouts for backend errors, such as commit and validate. Example of the
-  new format:
+  printouts for backend errors, such as commit and validate. (Thanks netgate).
+  Example of the new format:
 
 ```
-> commit
-Sep 27 18:11:58: Commit failed. Edit and try again or discard changes:
-protocol invalid-value Missing mandatory variable: type
+  > commit
+  Sep 27 18:11:58: Commit failed. Edit and try again or discard changes:
+  protocol invalid-value Missing mandatory variable: type
 ```
 
-* Added event_poll function.
+* Added event_poll() function to check if data is available on specific file descriptor.
 
-* Support for non-line scrolling in CLI, eg wrap lines. Set with:
-  CLICON_CLI_LINESCROLLING 0
+* Support for non-line scrolling in CLI, eg wrap lines. Thanks to Jon Loeliger for proposed solution. Set in configuration file with:
+  <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
+
+### Corrected Bugs
+* Added floating point and negative number support to JSON
+* When user callbacks such as statedata() call returns -1, clixon_backend no
+  longer silently exits. Instead a log is printed and an RPC error is returned.
+  Cred to Matt, netgate for pointing this out.
 
 ## 3.3.2 (Aug 27 2017)
 

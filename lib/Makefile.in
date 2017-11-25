@@ -55,20 +55,20 @@ $(SUBDIRS):
 		(cd $@; $(MAKE) $(MFLAGS) all)
 
 install:
-		for i in $(SUBDIRS); \
-		do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+	for i in $(SUBDIRS); \
+	do (cd $$i && $(MAKE) $(MFLAGS) $@); done
 
 install-include:
-		for i in $(SUBDIRS); \
-		do (cd $$i; $(MAKE) $(MFLAGS) $@); done; \
-		(cd clixon; $(MAKE) $(MFLAGS) $@)
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done; \
+	(cd clixon; $(MAKE) $(MFLAGS) $@)
 
 uninstall:
-		for i in $(SUBDIRS); \
-		do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done
 
 config.status:	configure
-		$(SHELL) config.status --recheck
+	$(SHELL) config.status --recheck
 
 clean:
 	for i in $(SUBDIRS); \

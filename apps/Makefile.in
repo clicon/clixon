@@ -61,15 +61,15 @@ $(SUBDIRS):
 
 install-include:
 	for i in $(SUBDIRS); \
-	do (cd $$i ; $(MAKE) $(MFLAGS) $@); done; 
+	do (cd $$i && $(MAKE) $(MFLAGS) $@||exit 1); done; 
 
 install:
 	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
 
 uninstall:
 	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done
 
 clean:
 	for i in $(SUBDIRS); \

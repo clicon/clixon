@@ -108,9 +108,9 @@ install-include:	clixon_cli.h clixon_cli_api.h
 	install -m 644 $^ $(DESTDIR)$(includedir)/clixon
 
 uninstall:
-	rm -f $(bindir)/$(APPL)
-	rm -f $(libdir)/$(MYLIB)
-	rm -f $(includedir)/clixon/*
+	rm -f $(DESTDIR)$(bindir)/$(APPL)
+	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
+	rm -f $(DESTDIR)$(includedir)/clixon/*
 
 .SUFFIXES:
 .SUFFIXES: .c .o

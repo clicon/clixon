@@ -632,6 +632,8 @@ CPP
 OBJEXT
 EXEEXT
 ac_ct_CC
+with_config_compat
+with_startup_compat
 with_keyvalue
 with_restconf
 RANLIB
@@ -708,6 +710,8 @@ with_cligen
 with_restconf
 with_keyvalue
 with_qdbm
+with_startup_compat
+with_config_compat
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1346,6 +1350,8 @@ Optional Packages:
   --without-restconf      disable support for restconf
   --with-keyvalue         enable support for key-value xmldb datastore
   --with-qdbm=dir         Use QDBM here, if keyvalue
+  --with-startup-compat   Backward compatibility of backend startup commands
+  --with-config-compat    Backward compatibility of ocnfiguration file
 
 Some influential environment variables:
   CC          C compiler command
@@ -2185,8 +2191,8 @@ _ACEOF
 
  # Bind to specific CLIgen version
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: CLIXON version is ${CLIXON_VERSION}_PRE" >&5
-$as_echo "CLIXON version is ${CLIXON_VERSION}_PRE" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: CLIXON version is ${CLIXON_VERSION}" >&5
+$as_echo "CLIXON version is ${CLIXON_VERSION}" >&6; }
 
 ac_aux_dir=
 for ac_dir in "$srcdir" "$srcdir/.." "$srcdir/../.."; do
@@ -2341,6 +2347,8 @@ test -n "$target_alias" &&
 
  # If yes, compile apps/restconf
  # If yes, compile datastore/keyvalue
+ # If yes, backward compatible backend startup
+ # If yes, backward compatible .conf configuration
 
 #
 ac_ext=c
@@ -3946,9 +3954,7 @@ else
   with_keyvalue=no
 fi
 
-echo "keyvalue:${with_keyvalue}"
 if test "x${with_keyvalue}" == xyes; then
-   echo "yes keyvalue"
    # This is for qdbm
 
 # Check whether --with-qdbm was given.
@@ -4035,6 +4041,40 @@ _ACEOF
 else
   as_fn_error $? "libqdbm-dev required" "$LINENO" 5
 fi
+
+fi
+
+# This is for backward compatibility of backend startup commands
+
+# Check whether --with-startup_compat was given.
+if test "${with_startup_compat+set}" = set; then :
+  withval=$with_startup_compat;
+else
+  with_startup_compat=no
+fi
+
+if test "x${with_startup_compat}" == xyes; then
+
+cat >>confdefs.h <<_ACEOF
+#define BACKEND_STARTUP_COMPAT $with_startup_compat
+_ACEOF
+
+fi
+
+# This is for backward compatibility of .conf configuration file
+
+# Check whether --with-config_compat was given.
+if test "${with_config_compat+set}" = set; then :
+  withval=$with_config_compat;
+else
+  with_config_compat=no
+fi
+
+if test "x${with_config_compat}" == xyes; then
+
+cat >>confdefs.h <<_ACEOF
+#define CONFIG_COMPAT $with_config_compat
+_ACEOF
 
 fi
 

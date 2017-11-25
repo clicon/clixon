@@ -103,9 +103,9 @@ install-include:	clixon_netconf.h
 	install -m 644 $^ $(DESTDIR)$(includedir)/clixon
 
 uninstall:
-	rm -f $(bindir)/$(APPL)
-	rm -f $(libdir)/$(MYLIB)
-	rm -f $(includedir)/clixon/*
+	rm -f $(DESTDIR)$(bindir)/$(APPL)
+	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
+	rm -f $(DESTDIR)$(includedir)/clixon/*
 
 .SUFFIXES:
 .SUFFIXES: .c .o

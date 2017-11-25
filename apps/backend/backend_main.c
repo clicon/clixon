@@ -73,7 +73,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#ifdef BACKEND_STARTUP_BACKWARD_COMPAT
+#ifdef BACKEND_STARTUP_COMPAT
 #define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:IRCrg:py:x:" /* substitute s: for IRCc:r */
 #else
 #define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:g:py:x:" /* substitute s: for IRCc:r */
@@ -142,12 +142,12 @@ usage(char *argv0, clicon_handle h)
     	    "    -P <file>\tPid filename (default: %s)\n"
 	    "    -s <mode>\tSpecify backend startup mode: none|startup|running|init (replaces -IRCr\n"
 	    "    -c <file>\tLoad extra xml configuration, but don't commit.\n"
-#ifdef BACKEND_STARTUP_BACKWARD_COMPAT
+#ifdef BACKEND_STARTUP_COMPAT
     	    "    -I\t\tInitialize running state database\n"
     	    "    -R\t\tCall plugin_reset() in plugins to reset system state in running db (use with -I)\n"
 	    "    -C\t\tCall plugin_reset() in plugins to reset system state in candidate db (use with -I)\n"
 	    "    -r\t\tReload running database\n"
-#endif /* BACKEND_STARTUP_BACKWARD_COMPAT */
+#endif /* BACKEND_STARTUP_COMPAT */
 	    "    -p \t\tPrint database yang specification\n"
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
 	    "    -y <file>\tOverride yang spec file (dont include .yang suffix)\n"
@@ -271,7 +271,7 @@ plugin_start_useroptions(clicon_handle h,
     return 0;
 }
 
-#ifdef BACKEND_STARTUP_BACKWARD_COMPAT
+#ifdef BACKEND_STARTUP_COMPAT
 /*! Initialize running-config from file application configuration
  *
  * @param[in] h                clicon handle
@@ -424,7 +424,7 @@ fragmented_startup_mode(clicon_handle h,
  done:
     return retval;
 }
-#endif /* BACKEND_STARTUP_BACKWARD_COMPAT */
+#endif /* BACKEND_STARTUP_COMPAT */
 
 /*! Merge xml in filename into database
  */
@@ -523,6 +523,9 @@ startup_mode_running(clicon_handle h,
     /* Load plugins and call plugin_init() */
     if (plugin_initiate(h) != 0) 
 	goto done;
+    /* Clear running db */
+    if (db_reset(h, "running") < 0)
+	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
 	goto done;
@@ -565,6 +568,9 @@ startup_mode_startup(clicon_handle h,
     /* Load plugins and call plugin_init() */
     if (plugin_initiate(h) != 0) 
 	goto done;
+    /* Clear running db */
+    if (db_reset(h, "running") < 0)
+	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
 	goto done;
@@ -593,7 +599,7 @@ main(int argc, char **argv)
     int           foreground;
     int           once;
     enum startup_mode_t startup_mode;
-#ifdef BACKEND_STARTUP_BACKWARD_COMPAT
+#ifdef BACKEND_STARTUP_COMPAT
     int           init_rundb = 0;
     int           reset_state_running = 0;
     int           reset_state_candidate = 0;
@@ -712,7 +718,7 @@ main(int argc, char **argv)
 	case 'c': /* Load application config */
 	    extraxml_file = optarg;
 	    break;
-#ifdef BACKEND_STARTUP_BACKWARD_COMPAT
+#ifdef BACKEND_STARTUP_COMPAT
 	case 'I': /* Initiate running db */
 	    init_rundb++;
 	    break;
@@ -725,7 +731,7 @@ main(int argc, char **argv)
 	case 'r': /* Reload running */
 	    reload_running++;
 	    break;
-#endif /* BACKEND_STARTUP_BACKWARD_COMPAT */
+#endif /* BACKEND_STARTUP_COMPAT */
 	case 'g': /* config socket group */
 	    clicon_option_str_set(h, "CLICON_SOCK_GROUP", optarg);
 	    break;
@@ -818,7 +824,7 @@ main(int argc, char **argv)
     if (yang_spec_main(h, stdout, printspec) < 0)
 	goto done;
 
-    /* Set options: database dir aqnd yangspec (could be hidden in connect?)*/
+    /* Set options: database dir and yangspec (could be hidden in connect?)*/
     if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)
 	goto done;
     if (xmldb_setopt(h, "yangspec", clicon_dbspec_yang(h)) < 0)
@@ -826,7 +832,7 @@ main(int argc, char **argv)
     /* If startup mode is not defined, eg via OPTION or -s, assume old method */
     startup_mode = clicon_startup_mode(h);
     if (startup_mode == -1){ 	/* Old style, fragmented mode, phase out */
-#ifdef BACKEND_STARTUP_BACKWARD_COMPAT
+#ifdef BACKEND_STARTUP_COMPAT
 	if (fragmented_startup_mode(h,
 				    argv0, argc, argv,
 				    reload_running, init_rundb,

@@ -187,7 +187,7 @@ install-lib: $(MYLIB)
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon.so
 
 uninstall: 
-	rm -f $(libdir)/$(MYLIB)
+	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -

@@ -63,7 +63,7 @@ AC_SUBST(CLIXON_VERSION_MAJOR)
 AC_SUBST(CLIXON_VERSION_MINOR)
 AC_SUBST(CLIGEN_VERSION) # Bind to specific CLIgen version
 
-AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION}_PRE)
+AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION})
 
 AC_CANONICAL_TARGET
 AC_SUBST(CC)
@@ -80,6 +80,8 @@ AC_SUBST(AR)
 AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
 AC_SUBST(with_keyvalue) # If yes, compile datastore/keyvalue
+AC_SUBST(with_startup_compat) # If yes, backward compatible backend startup
+AC_SUBST(with_config_compat) # If yes, backward compatible .conf configuration
 
 #
 AC_PROG_CC()
@@ -141,9 +143,7 @@ AC_ARG_WITH([keyvalue],
             [AS_HELP_STRING([--with-keyvalue],[enable support for key-value xmldb datastore])],
 	    [],
             [with_keyvalue=no])
-echo "keyvalue:${with_keyvalue}"
 if test "x${with_keyvalue}" == xyes; then
-   echo "yes keyvalue" 
    # This is for qdbm
    AC_ARG_WITH(qdbm,  [  --with-qdbm=dir         Use QDBM here, if keyvalue ] )
    if test "${with_qdbm}"; then
@@ -154,6 +154,24 @@ if test "x${with_keyvalue}" == xyes; then
    # Problem: depot.h may be in qdbm/depot.h. 
    AC_CHECK_HEADERS(depot.h,,[AC_CHECK_HEADERS(qdbm/depot.h,,AC_MSG_ERROR(libqdbm-dev required))])
    AC_CHECK_LIB(qdbm, dpopen,, AC_MSG_ERROR(libqdbm-dev required))
+fi
+
+# This is for backward compatibility of backend startup commands
+AC_ARG_WITH([startup_compat],
+            [AS_HELP_STRING([--with-startup-compat],[Backward compatibility of backend startup commands])],
+	    [],
+            [with_startup_compat=no])
+if test "x${with_startup_compat}" == xyes; then
+   AC_DEFINE_UNQUOTED(BACKEND_STARTUP_COMPAT, $with_startup_compat, [Backward compatible backend startup command-line options])
+fi
+
+# This is for backward compatibility of .conf configuration file
+AC_ARG_WITH([config_compat],
+            [AS_HELP_STRING([--with-config-compat],[Backward compatibility of ocnfiguration file])],
+	    [],
+            [with_config_compat=no])
+if test "x${with_config_compat}" == xyes; then
+   AC_DEFINE_UNQUOTED(CONFIG_COMPAT, $with_config_compat, [Backward compatible of .conf configuration files])
 fi
 
 AC_CHECK_LIB(crypt, crypt)

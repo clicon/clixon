@@ -185,6 +185,7 @@ clicon_option_readfile_xml(clicon_hash_t *copt,
     return retval;
 }
 
+#ifdef CONFIG_COMPAT
 
 /*! Read filename and set values to global options registry
  * For legacy configuration file, ie not xml
@@ -344,6 +345,7 @@ clicon_option_sanity(clicon_hash_t *copt)
  done:
     return retval;
 }
+#endif /* CONFIG_COMPAT */
 
 /*! Initialize option values
  *
@@ -386,6 +388,7 @@ clicon_options_main(clicon_handle h)
 	    yspec_free(yspec);
     }
     else {
+#ifdef CONFIG_COMPAT
 	/* Set default options */
 	if (clicon_option_default(copt) < 0)  /* init registry from file */
 	    goto done;
@@ -394,6 +397,10 @@ clicon_options_main(clicon_handle h)
 	    goto done;
 	if (clicon_option_sanity(copt) < 0)
 	    goto done;
+#else /* CONFIG_COMPAT */
+	clicon_err(OE_CFG, 0, "%s: suffix %s not recognized (Run ./configure --with-config-compat?)", configfile, suffix);
+	goto done;
+#endif /* CONFIG_COMPAT */
     }
     retval = 0;
  done:

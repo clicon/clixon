@@ -726,6 +726,7 @@ plugin_transaction_abort(clicon_handle       h,
  * @param[in,out] xml  XML tree.
  * @retval -1   Error
  * @retval  0   OK
+ * @retval  1   Statedata callback failed
  */
 int
 backend_statedata_call(clicon_handle        h,
@@ -753,8 +754,10 @@ backend_statedata_call(clicon_handle        h,
 	if (p->p_statedata) {
 	    if ((x = xml_new("config", NULL)) == NULL)
 		goto done;
-	    if ((p->p_statedata)(h, xpath, x) < 0)
-		goto done;
+	    if ((p->p_statedata)(h, xpath, x) < 0){
+		retval = 1;
+		goto done; /* Dont quit here on user callbacks */
+	    }
 	    if (xml_merge(xtop, x, yspec) < 0)
 		goto done;
 	    if (x){
@@ -763,27 +766,25 @@ backend_statedata_call(clicon_handle        h,
 	    }
 	}
     }
-    {
-	/* Code complex to filter out anything that is outside of xpath */
-	if (xpath_vec(xtop, xpath?xpath:"/", &xvec, &xlen) < 0)
-	    goto done;
+    /* Code complex to filter out anything that is outside of xpath */
+    if (xpath_vec(xtop, xpath?xpath:"/", &xvec, &xlen) < 0)
+	goto done;
 
-	/* If vectors are specified then mark the nodes found and
-	 * then filter out everything else,
-	 * otherwise return complete tree.
-	 */
-	if (xvec != NULL){
-	    for (i=0; i<xlen; i++)
-		xml_flag_set(xvec[i], XML_FLAG_MARK);
-	}
-	/* Remove everything that is not marked */
-	if (!xml_flag(xtop, XML_FLAG_MARK))
-	    if (xml_tree_prune_flagged_sub(xtop, XML_FLAG_MARK, 1, NULL) < 0)
-		goto done;
-	/* reset flag */
-	if (xml_apply(xtop, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-	    goto done;
+    /* If vectors are specified then mark the nodes found and
+     * then filter out everything else,
+     * otherwise return complete tree.
+     */
+    if (xvec != NULL){
+	for (i=0; i<xlen; i++)
+	    xml_flag_set(xvec[i], XML_FLAG_MARK);
     }
+    /* Remove everything that is not marked */
+    if (!xml_flag(xtop, XML_FLAG_MARK))
+	if (xml_tree_prune_flagged_sub(xtop, XML_FLAG_MARK, 1, NULL) < 0)
+	    goto done;
+    /* reset flag */
+    if (xml_apply(xtop, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	goto done;
     retval = 0;
  done:
     if (x)
