@@ -16,35 +16,37 @@ SUNET for support, requests, debugging, bugfixes and proposed solutions.
 * XML and YANG-based configuration file.
   * New configuration files have .xml suffix, old have .conf.
   * The yang model is yang/clixon-config.yang.
-  * A migration utility is clixon_cli -x to print new format, eg:
+  * You can run backward compatible mode using `configure --with-config-compat`
+  * In backward compatible mode both .xml and .conf works
+  * For migration from old to new, a utility is clixon_cli -x to print new format. Run the command and save in configuration file with .xml suffix instead.
 ```
-    clixon_cli -f /usr/local/etc/routing.conf -1x
+    > clixon_cli -f /usr/local/etc/routing.conf -1x
+    <config>
+        <CLICON_CONFIGFILE>/usr/local/etc/routing.conf</CLICON_CONFIGFILE>
+        <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
+        <CLICON_BACKEND_DIR>/usr/local/lib/routing/backend</CLICON_BACKEND_DIR>
+	...
 ```
-  * Backward compatibility is enabled: 
-```
-    configure --with-config-compat
-```
-  * Both .xml and .conf works in backward compatible mode.
   
 * Simplified backend daemon startup modes.
   * The flags -IRCr are replaced with command-line option -s <mode>
-  * You use the -s to select the mode: `clixon_backend ... -s running`
+  * You use the -s to select the mode. Example: `clixon_backend -s running`
   * You may also add a default method in the configuration file: `<CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>`
   * The configuration option CLICON_USE_STARTUP_CONFIG is obsolete
-  * -I replace with -s "init" (or use of CLICON_STARTUP_MODE option)
-  * -CIr replace with -s "running" 
-  * (no-option) replace with -s "none"
+  * Command-ine option `-I` is replaced with `-s init` 
+  * `-CIr` is replaced with `-s running`
+  * Use `-s none` if you request no action on startup
+  * You can run in backward compatible mode where both -IRCr and -s options works. But if -s is given, -IRCr options willbe ignored.
   * Backward compatibility is enabled by:
 ```
     configure --with-startup-compat
 ```
-  * Both -CIr and -s works in backward compatible mode.
 
 * Extra XML has been added along with the new startup modes. Requested by Netgate.
   * You can add extra XML with the -c option to the backend daemon on startup:
-```
+  ```
       clixon_backend ... -c extra.xml
-```
+   ```
   * You can also add extra XML by programming the plugin_reset() in the backend
 plugin. The example application shows how.
 
@@ -53,9 +55,9 @@ plugin. The example application shows how.
 ### Minor changes:
 * Fixed DESTDIR make install/uninstall and break immediately on errors
 * Disabled key-value datastore. Enable with --with-keyvalue
-* Removed mandatory requirements for BACKEND, NETCONF, RESTCONF and CLI dirs.
+* Removed mandatory requirements for BACKEND, NETCONF, RESTCONF and CLI dirs in the configuration file. If these are not given, no plugins will be loaded of that type.
 
-* Restconf: http cookie sent as attribute in rpc restconf_post operations to backend.
+* Restconf: http cookie sent as attribute in rpc restconf_post operations to backend as "id" XML attribute.
 * Added option CLICON_CLISPEC_FILE as complement to CLICON_CLISPEC_DIR to
   specify single CLI specification file, not only directory containing files.
 	
@@ -69,15 +71,15 @@ plugin. The example application shows how.
   Example of the new format:
 
 ```
-> commit
-Sep 27 18:11:58: Commit failed. Edit and try again or discard changes:
-protocol invalid-value Missing mandatory variable: type
+  > commit
+  Sep 27 18:11:58: Commit failed. Edit and try again or discard changes:
+  protocol invalid-value Missing mandatory variable: type
 ```
 
-* Added event_poll function.
+* Added event_poll() function to check if data is available on specific file descriptor.
 
-* Support for non-line scrolling in CLI, eg wrap lines. Thanks to Jon Loeliger for proposed solution. Set with:
-  CLICON_CLI_LINESCROLLING 0
+* Support for non-line scrolling in CLI, eg wrap lines. Thanks to Jon Loeliger for proposed solution. Set in configuration file with:
+  <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
 
 ### Corrected Bugs
 * Added floating point and negative number support to JSON
