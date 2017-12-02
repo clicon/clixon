@@ -173,7 +173,7 @@ clicon_msg_decode(struct clicon_msg *msg,
     /* body */
     xmlstr = msg->op_body;
     clicon_debug(1, "%s %s", __FUNCTION__, xmlstr);
-    if (clicon_xml_parse_str(xmlstr, xml) < 0)
+    if (clicon_xml_parse_str(xmlstr, NULL, xml) < 0)
 	goto done;
     retval = 0;
  done:

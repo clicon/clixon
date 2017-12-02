@@ -88,7 +88,8 @@ usage(char *argv0)
 		"\t-y <dir>\tYang directory (where modules are stored). Mandatory\n"
 		"\t-m <module>\tYang module. Mandatory\n"
 		"and command is either:\n"
-		"\tget <xpath>\n"
+		"\tget [<xpath>]\n"
+ 	        "\tmget <nr> [<xpath>]\n"
 		"\tput (merge|replace|create|delete|remove) <xml>\n"
 		"\tcopy <todb>\n"
 		"\tlock <pid>\n"
@@ -121,6 +122,8 @@ main(int argc, char **argv)
     int                 pid;
     enum operation_type op;
     cxobj              *xt = NULL;
+    int                 i;
+    char               *xpath;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -213,10 +216,36 @@ main(int argc, char **argv)
     if (strcmp(cmd, "get")==0){
 	if (argc != 1 && argc != 2)
 	    usage(argv0);
-	if (xmldb_get(h, db, argc==2?argv[1]:"/", 0, &xt) < 0)
+	if (argc==2)
+	    xpath = argv[1];
+	else
+	    xpath = "/";
+	if (xmldb_get(h, db, xpath, 0, &xt) < 0)
 	    goto done;
 	clicon_xml2file(stdout, xt, 0, 0);	
 	
+	fprintf(stdout, "\n");
+    }
+    else if (strcmp(cmd, "mget")==0){
+	int nr;
+	if (argc != 2 && argc != 3)
+	    usage(argv0);
+	nr = atoi(argv[1]);
+	if (argc==3)
+	    xpath = argv[2];
+	else
+	    xpath = "/";
+	for (i=0;i<nr;i++){
+	    if (xmldb_get(h, db, xpath, 0, &xt) < 0)
+		goto done;
+	    if (xt == NULL){
+		clicon_err(OE_DB, 0, "xt is NULL");
+		goto done;
+	    }
+	    clicon_xml2file(stdout, xt, 0, 0);
+	    xml_free(xt);
+	    xt = NULL;
+	}
 	fprintf(stdout, "\n");
     }
     else if (strcmp(cmd, "put")==0){
@@ -228,7 +257,7 @@ main(int argc, char **argv)
 	    clicon_err(OE_DB, 0, "Unrecognized operation: %s", argv[1]);
 	    usage(argv0);
 	}
-	if (clicon_xml_parse_str(argv[2], &xt) < 0)
+	if (clicon_xml_parse_str(argv[2], NULL, &xt) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)
 	    goto done;

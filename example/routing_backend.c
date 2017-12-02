@@ -169,7 +169,7 @@ plugin_statedata(clicon_handle h,
 		   "<name>eth0</name>"
 		   "<type>eth</type>"
 		   "<if-index>42</if-index>"
-		   "</interface></interfaces-state>", xstate) < 0)
+		  "</interface></interfaces-state>", NULL, xstate) < 0)
 	goto done;
     retval = 0;
  done:
@@ -227,7 +227,7 @@ plugin_reset(clicon_handle h,
 
     if (clicon_xml_parse_str("<config><interfaces><interface>"
 			     "<name>lo</name><type>local</type>"
-			     "</interface></interfaces></config>", &xt) < 0)
+			     "</interface></interfaces></config>", NULL, &xt) < 0)
 	goto done;
     /* Replace parent w fiorst child */
     if (xml_rootchild(xt, 0, &xt) < 0)

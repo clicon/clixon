@@ -150,7 +150,7 @@ clicon_option_readfile_xml(clicon_hash_t *copt,
     }
     clicon_debug(2, "Reading config file %s", __FUNCTION__, filename);
     fd = fileno(f);
-    if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
+    if (clicon_xml_parse_file(fd, "</clicon>", yspec, &xt) < 0)
 	goto done;
     if (xml_child_nr(xt)==1 && xml_child_nr_type(xt, CX_BODY)==1){
 	clicon_err(OE_CFG, 0, "Config file %s: Expected XML but is probably old sh style", filename);
@@ -160,8 +160,6 @@ clicon_option_readfile_xml(clicon_hash_t *copt,
 	clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"config\" element", filename);
 	goto done;	
     }
-    if (xml_apply0(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
-	goto done;	
     if (xml_apply0(xc, CX_ELMNT, xml_default, yspec) < 0)
 	goto done;	
     if (xml_apply0(xc, CX_ELMNT, xml_yang_validate_add, NULL) < 0)

@@ -443,7 +443,7 @@ load_extraxml(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
     }
-    if (clicon_xml_parse_file(fd, &xt, "</config>") < 0)
+    if (clicon_xml_parse_file(fd, "</config>", NULL, &xt) < 0)
 	goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)

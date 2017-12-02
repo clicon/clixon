@@ -171,7 +171,7 @@ json_current_new(struct clicon_json_yacc_arg *jy,
     cxobj *xn;
 
     clicon_debug(2, "%s", __FUNCTION__);
-    if ((xn = xml_new(name, jy->jy_current)) == NULL)
+    if ((xn = xml_new(name, jy->jy_current, NULL)) == NULL)
 	goto done; 
     jy->jy_current = xn;
     retval = 0;
@@ -207,7 +207,7 @@ json_current_body(struct clicon_json_yacc_arg *jy,
     cxobj *xn;
 
     clicon_debug(2, "%s", __FUNCTION__);
-    if ((xn = xml_new("body", jy->jy_current)) == NULL)
+    if ((xn = xml_new("body", jy->jy_current, NULL)) == NULL)
 	goto done; 
     xml_type_set(xn, CX_BODY);
     if (value && xml_value_append(xn, value)==NULL)

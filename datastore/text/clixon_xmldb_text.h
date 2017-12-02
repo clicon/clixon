@@ -49,6 +49,5 @@ int text_unlock_all(xmldb_handle h, int pid);
 int text_islocked(xmldb_handle h, const char *db);
 int text_exists(xmldb_handle h, const char *db);
 int text_delete(xmldb_handle h, const char *db);
-int text_init(xmldb_handle h, const char *db);
 
 #endif /* _CLIXON_XMLDB_TEXT_H */

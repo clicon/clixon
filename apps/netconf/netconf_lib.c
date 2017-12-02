@@ -190,7 +190,7 @@ netconf_output(int   s,
     clicon_debug(1, "SEND %s", msg);
     if (debug > 1){ /* XXX: below only works to stderr, clicon_debug may log to syslog */
 	cxobj *xt = NULL;
-	if (clicon_xml_parse_string(&buf, &xt) == 0){
+	if (clicon_xml_parse_str(buf, NULL, &xt) == 0){
 	    clicon_xml2file(stderr, xml_child_i(xt, 0), 0, 0);
 	    fprintf(stderr, "\n");
 	    xml_free(xt);

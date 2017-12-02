@@ -233,12 +233,12 @@ cli_dbxml(clicon_handle       h,
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
 	goto done;
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL)) == NULL)
+    if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
-    if ((xa = xml_new("operation", xbot)) == NULL)
+    if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa,  xml_operation2str(op)) < 0)
@@ -251,7 +251,7 @@ cli_dbxml(clicon_handle       h,
 		clicon_err(OE_UNIX, errno, "cv2str_dup");
 		goto done;
 	    }
-	    if ((xb = xml_new("body", xbot)) == NULL)
+	    if ((xb = xml_new("body", xbot, NULL)) == NULL)
 		goto done; 
 	    xml_type_set(xb, CX_BODY);
 	    if (xml_value_set(xb,  str) < 0)
@@ -746,7 +746,7 @@ load_config_file(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "%s: open(%s)", __FUNCTION__, filename);
 	goto done;
     }
-    if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
+    if (clicon_xml_parse_file(fd, "</clicon>", NULL, &xt) < 0)
 	goto done;
     if (xt == NULL)
 	goto done;
@@ -1189,7 +1189,7 @@ cli_copy_config(clicon_handle h,
     }
     toname = cv_string_get(tocv);
     /* Create copy xml tree x2 */
-    if ((x2 = xml_new("new", NULL)) == NULL)
+    if ((x2 = xml_new("new", NULL, NULL)) == NULL)
 	goto done;
     if (xml_copy(x1, x2) < 0)
 	goto done;

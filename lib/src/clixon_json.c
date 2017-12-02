@@ -54,6 +54,10 @@
 /* clixon */
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
+#include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_json.h"
 #include "clixon_json_parse.h"
@@ -465,7 +469,7 @@ xml2json_cbuf_vec(cbuf   *cb,
     cxobj *xp = NULL;
     cxobj *xc;
 
-    if ((xp = xml_new("", NULL)) == NULL)
+    if ((xp = xml_new("", NULL, NULL)) == NULL)
 	goto done;
     for (i=0; i<veclen; i++){
 	xc = xml_dup(vec[i]);
@@ -619,7 +623,7 @@ int
 json_parse_str(char   *str, 
 	       cxobj **xt)
 {
-    if ((*xt = xml_new("top", NULL)) == NULL)
+    if ((*xt = xml_new("top", NULL, NULL)) == NULL)
 	return -1;
     return json_parse(str, "", *xt);
 }

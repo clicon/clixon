@@ -1,5 +1,21 @@
 # Clixon Changelog
 
+## 3.4.0 (Upcoming)
+
+* Datastore cache introduced: cache XML tree in memory for faster get access
+	
+* Moved XML_CHILD_HASH to variable instead of constant.
+	
+* Added yang to XML API
+
+  * xml_new(char *name, cxobj *xn_parent) --> xml_new(char *name, cxobj *xn_parent, void *spec)
+  * xml_new_spec(char *name, cxobj *xn_parent, void *spec) --> xml_new(char *name, cxobj *xn_parent, void *spec)
+  * clicon_xml_parse_string --> clicon_xml_parse_str
+  * clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag) --> clicon_xml_parse_file(int fd, char *endtag, yang_spec *yspec, cxobj **xt)
+  * clicon_xml_parse_str(char *str, cxobj **xml_top) --> clicon_xml_parse_str(char *str, yang_spec *yspec, cxobj **xml_top) 
+  * clicon_xml_parse(cxobj **cxtop, char *format, ...) --> clicon_xml_parse(cxobj **cxtop, yang_spec *yspec, char *format, ...)
+  * xml_parse(char *str, cxobj *xt) --> xml_parse(char *str, yang_spec *yspec, cxobj *xt);
+
 ## 3.3.3 (25 November 2017)
 
 Thanks to Matthew Smith, Joe Loeliger at Netgate; Fredrik Pettai at

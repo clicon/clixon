@@ -2077,7 +2077,7 @@ yang_spec_main(clicon_handle h,
  *         ...cv_string_get(cv);
  *    cvec_free(cvv);
  * @endcode
- * Note: must free return value after use w cvec_free
+ * @note must free return value after use w cvec_free
  */
 cvec *
 yang_arg2cvec(yang_stmt *ys, 

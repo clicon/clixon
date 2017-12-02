@@ -561,7 +561,7 @@ cvec2xml_1(cvec   *cvv,
     cv = NULL;
     while ((cv = cvec_each(cvv, cv)) != NULL) 
 	len++;
-    if ((xt = xml_new(toptag, xp)) == NULL)
+    if ((xt = xml_new(toptag, xp, NULL)) == NULL)
 	goto err;
     if (xml_childvec_set(xt, len) < 0)
 	goto err;
@@ -570,11 +570,11 @@ cvec2xml_1(cvec   *cvv,
     while ((cv = cvec_each(cvv, cv)) != NULL) {
 	if (cv_type_get(cv)==CGV_ERR || cv_name_get(cv) == NULL)
 	    continue;
-	if ((xn = xml_new(cv_name_get(cv), NULL)) == NULL) /* this leaks */
+	if ((xn = xml_new(cv_name_get(cv), NULL, NULL)) == NULL) /* this leaks */
 	    goto err;
 	xml_parent_set(xn, xt);
 	xml_child_i_set(xt, i++, xn);
-	if ((xb = xml_new("body", xn)) == NULL) /* this leaks */
+	if ((xb = xml_new("body", xn, NULL)) == NULL) /* this leaks */
 	    goto err;
 	xml_type_set(xb, CX_BODY);
 	val = cv2str_dup(cv);
@@ -620,35 +620,35 @@ match_base_child(cxobj     *x0,
     int        equal;
     char     **b1vec = NULL;
     int        i;
-#if (XML_CHILD_HASH==1)
     cxobj **p;
     cbuf   *key = NULL; /* cligen buffer hash key */
     size_t  vlen;
 
-    *x0cp = NULL; /* return value */	    
-    if (xml_hash(x0) == NULL)
-	goto nohash;
-    if ((key = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done1;
-    }
-    if (xml_hash_key(x1c, yc, key) < 0)
-	goto done;
-    x0c = NULL;
-    if (cbuf_len(key))
-	if ((p = hash_value(xml_hash(x0), cbuf_get(key), &vlen)) != NULL){
-	    assert(vlen == sizeof(x0c));
-	    x0c = *p;
+    if (xml_child_hash){
+	*x0cp = NULL; /* return value */	    
+	if (xml_hash(x0) == NULL)
+	    goto nohash;
+	if ((key = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done1;
 	}
-    //    fprintf(stderr, "%s get %s = 0x%x\n", __FUNCTION__, cbuf_get(key), (unsigned int)x0c);
-    *x0cp = x0c;
-    retval = 0;
- done1:
-    if (key)
-	cbuf_free(key);
-    return retval;
+	if (xml_hash_key(x1c, yc, key) < 0)
+	    goto done;
+	x0c = NULL;
+	if (cbuf_len(key))
+	    if ((p = hash_value(xml_hash(x0), cbuf_get(key), &vlen)) != NULL){
+		assert(vlen == sizeof(x0c));
+		x0c = *p;
+	    }
+	//    fprintf(stderr, "%s get %s = 0x%x\n", __FUNCTION__, cbuf_get(key), (unsigned int)x0c);
+	*x0cp = x0c;
+	retval = 0;
+    done1:
+	if (key)
+	    cbuf_free(key);
+	return retval;
+    }
  nohash:
-#endif /* XML_CHILD_HASH */
     *x0cp = NULL; /* return value */	    
     x1cname = xml_name(x1c);
     switch (yc->ys_keyword){
@@ -1328,9 +1328,9 @@ xml_default(cxobj *xt,
 	    assert(y->ys_cv);
 	    if (!cv_flag(y->ys_cv, V_UNSET)){  /* Default value exists */
 		if (!xml_find(xt, y->ys_argument)){
-		    if ((xc = xml_new_spec(y->ys_argument, xt, y)) == NULL)
+		    if ((xc = xml_new(y->ys_argument, xt, y)) == NULL)
 			goto done;
-		    if ((xb = xml_new("body", xc)) == NULL)
+		    if ((xb = xml_new("body", xc, NULL)) == NULL)
 			goto done;
 		    xml_type_set(xb, CX_BODY);
 		    if ((str = cv2str_dup(y->ys_cv)) == NULL){
@@ -1458,6 +1458,7 @@ xml_non_config_data(cxobj *xt,
     return retval;
 }
 
+
 /*! Add yang specification backpoint to XML node
  * @param[in]   xt      XML tree node
  * @param[in]   arg     Yang spec
@@ -1474,21 +1475,21 @@ xml_spec_populate(cxobj  *x,
 {
     int        retval = -1;
     yang_spec *yspec = (yang_spec*)arg;
-    char      *name;
     yang_stmt *y=NULL;  /* yang node */
-    cxobj     *xp;      /* xml parent */ 
-    yang_stmt *yp;      /* parent yang */
 
-    name = xml_name(x);
+    if (xml_child_spec(xml_name(x), xml_parent(x), yspec, &y) < 0)
+	goto done;
+#if 0
     if ((xp = xml_parent(x)) != NULL &&
 	(yp = xml_spec(xp)) != NULL)
 	y = yang_find_datanode((yang_node*)yp, xml_name(x));
     else
 	y = yang_find_topnode(yspec, name, 0); /* still NULL for config */
+#endif
     if (y)
 	xml_spec_set(x, y);
     retval = 0;
-    // done:
+ done:
     return retval;
 }
 
@@ -1700,10 +1701,10 @@ api_path2xml_vec(char             **vec,
 	    clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
 	    goto done;
 	}
-	if ((x = xml_new_spec(y->ys_argument, x0, y)) == NULL)
+	if ((x = xml_new(y->ys_argument, x0, y)) == NULL)
 	    goto done;
 	xml_type_set(x, CX_ELMNT);
-	if ((xb = xml_new("body", x)) == NULL)
+	if ((xb = xml_new("body", x, NULL)) == NULL)
 	    goto done; 
 	xml_type_set(xb, CX_BODY);
 	if (restval && xml_value_set(xb, restval) < 0)
@@ -1738,18 +1739,17 @@ api_path2xml_vec(char             **vec,
 	}
 	cvi = NULL;
 	/* create list object */
-	if ((x = xml_new_spec(name, x0, y)) == NULL)
+	if ((x = xml_new(name, x0, y)) == NULL)
 	    goto done; 
 	xml_type_set(x, CX_ELMNT);
 	j = 0;
 	/* Create keys */
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	    keyname = cv_string_get(cvi);
-
-	    if ((xn = xml_new(keyname, x)) == NULL)
+	    if ((xn = xml_new(keyname, x, NULL)) == NULL)
 		goto done; 
 	    xml_type_set(xn, CX_ELMNT);
-	    if ((xb = xml_new("body", xn)) == NULL)
+	    if ((xb = xml_new("body", xn, NULL)) == NULL)
 		goto done; 
 	    xml_type_set(xb, CX_BODY);
 	    val2 = valvec?valvec[j++]:NULL;
@@ -1762,7 +1762,7 @@ api_path2xml_vec(char             **vec,
 	}
 	break;
     default: /* eg Y_CONTAINER, Y_LEAF */
-	if ((x = xml_new_spec(name, x0, y)) == NULL)
+	if ((x = xml_new(name, x0, y)) == NULL)
 	    goto done; 
 	xml_type_set(x, CX_ELMNT);
 	break;
@@ -1858,17 +1858,17 @@ xml_merge1(cxobj              *x0,
     if (y0->yn_keyword == Y_LEAF_LIST || y0->yn_keyword == Y_LEAF){
 	x1bstr = xml_body(x1);
 	if (x0==NULL){
-	    if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
+	    if ((x0 = xml_new(x1name, x0p, y0)) == NULL)
 		goto done;
 	    if (x1bstr){ /* empty type does not have body */
-		if ((x0b = xml_new("body", x0)) == NULL)
+		if ((x0b = xml_new("body", x0, NULL)) == NULL)
 		    goto done; 
 		xml_type_set(x0b, CX_BODY);
 	    }
 	}
 	if (x1bstr){
 	    if ((x0b = xml_body_get(x0)) == NULL){
-		if ((x0b = xml_new("body", x0)) == NULL)
+		if ((x0b = xml_new("body", x0, NULL)) == NULL)
 		    goto done; 
 		xml_type_set(x0b, CX_BODY);
 	    }
@@ -1879,7 +1879,7 @@ xml_merge1(cxobj              *x0,
     } /* if LEAF|LEAF_LIST */
     else { /* eg Y_CONTAINER, Y_LIST  */
 	if (x0==NULL){
-	    if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
+	    if ((x0 = xml_new(x1name, x0p, y0)) == NULL)
 		goto done;
 	}
 	/* Loop through children of the modification tree */
@@ -1991,6 +1991,7 @@ yang_enum_int_value(cxobj   *node,
 done:
     return retval;
 }
+
 
 /*
  * Turn this on for uni-test programs

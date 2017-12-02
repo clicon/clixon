@@ -120,7 +120,7 @@ clicon_rpc_msg(clicon_handle      h,
     }
     clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
     if (retdata &&
-	clicon_xml_parse_str(retdata, &xret) < 0)
+	clicon_xml_parse_str(retdata, NULL, &xret) < 0)
 	goto done;
     if (xret0){
 	*xret0 = xret;
@@ -274,7 +274,7 @@ clicon_rpc_get_config(clicon_handle       h,
     if ((xd = xpath_first(xret, "/rpc-reply/rpc-error")) != NULL)
 	xd = xml_parent(xd); /* point to rpc-reply */
     else if ((xd = xpath_first(xret, "/rpc-reply/data")) == NULL)
-	if ((xd = xml_new("data", NULL)) == NULL)
+	if ((xd = xml_new("data", NULL, NULL)) == NULL)
 	    goto done;
     if (xt){
 	if (xml_rm(xd) < 0)
@@ -522,7 +522,7 @@ clicon_rpc_get(clicon_handle       h,
     if ((xd = xpath_first(xret, "/rpc-reply/rpc-error")) != NULL)
 	xd = xml_parent(xd); /* point to rpc-reply */
     else if ((xd = xpath_first(xret, "/rpc-reply/data")) == NULL)
-	if ((xd = xml_new("data", NULL)) == NULL)
+	if ((xd = xml_new("data", NULL, NULL)) == NULL)
 	    goto done;
     if (xt){
 	if (xml_rm(xd) < 0)

@@ -30,6 +30,16 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
+1000 entries
+valgrind --tool=callgrind datastore_client -d candidate -b /tmp/text -p ../datastore/text/text.so -y /tmp -m ietf-ip mget 300 /x/y[a=574][b=574] > /dev/null
+  xml_copy_marked 87% 200x 
+    yang_key_match 81% 600K
+      yang_arg2cvec 52% 400K
+      cvecfree      23% 400K
+
+10000 entries
+valgrind --tool=callgrind datastore_client -d candidate -b /tmp/text -p ../datastore/text/text.so -y /tmp -m ietf-ip mget 10 /x/y[a=574][b=574] > /dev/null
+
  */
 
 #ifdef HAVE_CONFIG_H
@@ -71,8 +81,21 @@ struct text_handle {
     int            th_magic;    /* magic */
     char          *th_dbdir;    /* Directory of database files */
     yang_spec     *th_yangspec; /* Yang spec if this datastore */
-    clicon_hash_t *th_dbs;      /* Hash of databases */
+    clicon_hash_t *th_dbs;      /* Hash of db_elements. key is dbname */
 };
+
+/* Struct per database in hash */
+struct db_element{
+    int    de_pid;
+    cxobj *de_xml;
+};
+
+/* Keep datastore text in memory so that get operation need only read memory.
+ * Write to file on modification or file change.
+ * Assumes single backend
+ * Experimental
+ */
+static int datastore_cache = 1;
 
 /*! Check struct magic number for sanity checks
  * return 0 if OK, -1 if fail.
@@ -161,12 +184,28 @@ text_disconnect(xmldb_handle xh)
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);
-
+    struct db_element  *de;
+    char              **keys = NULL;
+    size_t              klen;
+    int                 i;
+	
     if (th){
 	if (th->th_dbdir)
 	    free(th->th_dbdir);
-	if (th->th_dbs)
+	if (th->th_dbs){
+	    if (datastore_cache){
+		if ((keys = hash_keys(th->th_dbs, &klen)) == NULL)
+		    return 0;
+		for(i = 0; i < klen; i++) 
+		    if ((de = hash_value(th->th_dbs, keys[i], NULL)) != NULL){
+			if (de->de_xml)
+			    xml_free(de->de_xml);
+		    }
+		if (keys)
+		    free(keys);
+	    }
 	    hash_free(th->th_dbs);
+	}
 	free(th);
     }
     retval = 0;
@@ -202,7 +241,7 @@ text_getopt(xmldb_handle xh,
     return retval;
 }
 
-/*! Set value of generic plugin option. Type of value is givenby context
+/*! Set value of generic plugin option. Type of value is given by context
  * @param[in]  xh      XMLDB handle
  * @param[in]  optname Option name
  * @param[in]  value   Value of option
@@ -273,11 +312,87 @@ singleconfigroot(cxobj  *xt,
     return retval;
 }
 
+static int
+xml_copy_marked(cxobj *x0, 
+		cxobj *x1,
+		int    flag,
+		int    test,
+		int   *upmark)
+{
+    int        retval = -1;
+    int        submark;
+    int        mark;
+    cxobj     *x;
+    cxobj     *xcopy;
+    int        iskey;
+    yang_node *yt;
+    char      *name;
+
+    mark = 0;
+    yt = xml_spec(x0); /* xan be null */
+    x = NULL;
+    while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
+	name = xml_name(x);
+	if (xml_flag(x, flag) == test?flag:0){
+	    /* Pass test */
+	    mark++;
+	    if (x1){
+		if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
+		    goto done;
+		if (xml_copy(x, xcopy) < 0)
+		    goto done;
+	    }
+	    continue; /* mark and stop here */
+	}
+	/* If it is key dont remove it yet (see second round) */
+	if (yt){
+	    if ((iskey = yang_key_match(yt, name)) < 0)
+		goto done;
+	    if (iskey)
+		continue;
+	}
+	if (xml_copy_marked(x, NULL, flag, test, &submark) < 0)
+	    goto done;
+	/* if x0 is list and submark anywhere, then key subs are also marked
+	 */
+	if (submark){
+	    mark++; /* copy */
+	    if (x1){
+		if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
+		    goto done;
+		if (xml_copy_marked(x, xcopy, flag, test, &submark) < 0)
+		    goto done;
+	    }
+
+	}
+    }
+    retval = 0;
+ done:
+    if (upmark)
+	*upmark = mark;
+    return retval;
+}
+
 /*! Get content of database using xpath. return a set of matching sub-trees
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
  * This is a clixon datastore plugin of the the xmldb api
  * @see xmldb_get
+#ifdef DATASTORE_CACHE
+text_get 90%
+  clixon_xml_parse_file 74% (100x)
+    xml_parse 70% (100x)
+      clicon_xml_parseparse 70% (300x)
+        xml_value_append 13% (800K)
+        xml_new
+        xml_purge
+        clicon_xml_parselex 12% (1M)
+  clixon_tree_prune_flagged_sub 12% (100x)
+    xml_purge 12% (58000)
+    yang_key_match 7% (77000)
+      yang_arg2cvec
+#endif
+ *
  */
 int
 text_get(xmldb_handle xh,
@@ -295,57 +410,81 @@ text_get(xmldb_handle xh,
     size_t          xlen;
     int             i;
     struct text_handle *th = handle(xh);
+    struct db_element *de = NULL;
 
-    if (text_db2file(th, db, &dbfile) < 0)
-	goto done;
-    if (dbfile==NULL){
-	clicon_err(OE_XML, 0, "dbfile NULL");
-	goto done;
-    }
     if ((yspec = th->th_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if ((fd = open(dbfile, O_RDONLY)) < 0){
-	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
-	goto done;
-    }    
-    /* Parse file into XML tree */
-    if ((clicon_xml_parse_file(fd, &xt, "</config>")) < 0)
-	goto done;
-    /* Always assert a top-level called "config". 
-       To ensure that, deal with two cases:
-       1. File is empty <top/> -> rename top-level to "config" */
-    if (xml_child_nr(xt) == 0){ 
-	if (xml_name_set(xt, "config") < 0)
-	    goto done;     
+    if (datastore_cache){
+	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL)
+	    xt = de->de_xml; 
     }
-    /* 2. File is not empty <top><config>...</config></top> -> replace root */
-    else{ 
-	/* There should only be one element and called config */
-	if (singleconfigroot(xt, &xt) < 0)
+    if (xt == NULL){
+	if (text_db2file(th, db, &dbfile) < 0)
 	    goto done;
-    }
+	if (dbfile==NULL){
+	    clicon_err(OE_XML, 0, "dbfile NULL");
+	    goto done;
+	}
+	if ((fd = open(dbfile, O_RDONLY)) < 0){
+	    clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
+	    goto done;
+	}    
+	/* Parse file into XML tree */
+	if ((clicon_xml_parse_file(fd, "</config>", yspec, &xt)) < 0)
+	    goto done;
+	/* Always assert a top-level called "config". 
+	   To ensure that, deal with two cases:
+	   1. File is empty <top/> -> rename top-level to "config" */
+	if (xml_child_nr(xt) == 0){ 
+	    if (xml_name_set(xt, "config") < 0)
+		goto done;     
+	}
+	/* 2. File is not empty <top><config>...</config></top> -> replace root */
+	else{ 
+	    /* There should only be one element and called config */
+	    if (singleconfigroot(xt, &xt) < 0)
+		goto done;
+	}
+    } /* xt == NULL */
     /* Here xt looks like: <config>...</config> */
-    /* Add yang specification backpointer to all XML nodes */
-    if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
-	goto done;
 
     if (xpath_vec(xt, xpath?xpath:"/", &xvec, &xlen) < 0)
 	goto done;
 
-    /* If vectors are specified then mark the nodes found and
-     * then filter out everything else,
+    /* If vectors are specified then mark the nodes found with all ancestors
+     * and filter out everything else,
      * otherwise return complete tree.
      */
-    if (xvec != NULL){
+    if (xvec != NULL)
 	for (i=0; i<xlen; i++)
 	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-    }
-    /* Remove everything that is not marked */
-    if (!xml_flag(xt, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
+    /* Write back to datastore cache if first time */
+    if (datastore_cache){
+	cxobj *x1;
+	struct db_element de0 = {0,};
+
+	if (de != NULL)
+	    de0 = *de;
+	x1 = xml_new(xml_name(xt), NULL, xml_spec(xt));
+	/* Copy everything that is marked */
+	if (xml_copy_marked(xt, x1, XML_FLAG_MARK, 1, NULL) < 0)
 	    goto done;
+	if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	    goto done;
+	if (de0.de_xml == NULL){
+	    de0.de_xml = xt;
+	    hash_add(th->th_dbs, db, &de0, sizeof(de0));
+	}
+	xt = x1;
+    }
+    else{
+	/* Remove everything that is not marked */
+	if (!xml_flag(xt, XML_FLAG_MARK))
+	    if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
+		goto done;
+    }
     /* reset flag */
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
@@ -362,8 +501,8 @@ text_get(xmldb_handle xh,
     /* Order XML children according to YANG */
     if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
 	goto done;
-
-#if (XML_CHILD_HASH==1)
+#ifdef XXX
+    /// (XML_CHILD_HASH==1)
     /* Add hash */
     if (xml_apply0(xt, CX_ELMNT, xml_hash_op, (void*)1) < 0)
 	goto done;
@@ -433,7 +572,7 @@ text_modify(cxobj              *x0,
 	case OP_REPLACE:
 	    if (x0==NULL){
 		//		int iamkey=0;
-		if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
+		if ((x0 = xml_new(x1name, x0p, y0)) == NULL)
 		    goto done;
 #if 0
 		/* If it is key I dont want to mark it */
@@ -445,24 +584,23 @@ text_modify(cxobj              *x0,
 #endif
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
 		if (x1bstr){ /* empty type does not have body */
-		    if ((x0b = xml_new("body", x0)) == NULL)
+		    if ((x0b = xml_new("body", x0, NULL)) == NULL)
 			goto done; 
 		    xml_type_set(x0b, CX_BODY);
 		}
 	    }
 	    if (x1bstr){
 		if ((x0b = xml_body_get(x0)) == NULL){
-		    if ((x0b = xml_new("body", x0)) == NULL)
+		    if ((x0b = xml_new("body", x0, NULL)) == NULL)
 			goto done; 
 		    xml_type_set(x0b, CX_BODY);
 		}
 		if (xml_value_set(x0b, x1bstr) < 0)
 		    goto done;
 	    }
-#if (XML_CHILD_HASH==1)
-	    if (xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
+	    if (xml_child_hash &&
+		xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
 		goto done;
-#endif
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
@@ -500,22 +638,21 @@ text_modify(cxobj              *x0,
 		if (x0){
 		    xml_purge(x0);
 		}
-		if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
+		if ((x0 = xml_new(x1name, x0p, y0)) == NULL)
 		    goto done;
 		if (xml_copy(x1, x0) < 0)
 		    goto done;
 		break;
 	    }
 	    if (x0==NULL){
-		if ((x0 = xml_new_spec(x1name, x0p, y0)) == NULL)
+		if ((x0 = xml_new(x1name, x0p, y0)) == NULL)
 		    goto done;
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
 	    }
-#if (XML_CHILD_HASH==1)
-	    if (xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
+	    if (xml_child_hash &&
+		xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
 		goto done;
-#endif
 	    /* First pass: mark existing children in base */
 	    /* Loop through children of the modification tree */
 	    if ((x0vec = calloc(xml_child_nr(x1), sizeof(x1))) == NULL){
@@ -636,10 +773,6 @@ text_modify_top(cxobj              *x0,
 
 /*! For containers without presence and no children, remove
  * @param[in]   x       XML tree node
- * @note This should really be unnecessary since yspec should be set on creation
- * @code
- * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
- * @endcode
  * See section 7.5.1 in rfc6020bis-02.txt:
  * No presence:
  * those that exist only for organizing the hierarchy of data nodes:
@@ -692,11 +825,10 @@ text_put(xmldb_handle        xh,
     cbuf               *cb = NULL;
     yang_spec          *yspec;
     cxobj              *x0 = NULL;
-
-    if (text_db2file(th, db, &dbfile) < 0)
-	goto done;
-    if (dbfile==NULL){
-	clicon_err(OE_XML, 0, "dbfile NULL");
+    struct db_element  *de = NULL;
+    
+    if ((yspec =  th->th_yangspec) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
     if (x1 && strcmp(xml_name(x1),"config")!=0){
@@ -704,29 +836,37 @@ text_put(xmldb_handle        xh,
 		   xml_name(x1));
 	goto done;
     }
-    if ((yspec =  th->th_yangspec) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
-	goto done;
+    if (datastore_cache){
+	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL)
+	    x0 = de->de_xml; 
     }
-    if ((fd = open(dbfile, O_RDONLY)) < 0) {
-	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
-	goto done;
-    }    
-    /* Parse file into XML tree */
-    if ((clicon_xml_parse_file(fd, &x0, "</config>")) < 0)
-	goto done;
-    /* Always assert a top-level called "config". 
-       To ensure that, deal with two cases:
-       1. File is empty <top/> -> rename top-level to "config" */
-    if (xml_child_nr(x0) == 0){ 
-	if (xml_name_set(x0, "config") < 0)
-	    goto done;     
-    }
-    /* 2. File is not empty <top><config>...</config></top> -> replace root */
-    else{ 
-	/* There should only be one element and called config */
-	if (singleconfigroot(x0, &x0) < 0)
+    if (x0 == NULL){
+	if (text_db2file(th, db, &dbfile) < 0)
 	    goto done;
+	if (dbfile==NULL){
+	    clicon_err(OE_XML, 0, "dbfile NULL");
+	    goto done;
+	}
+	if ((fd = open(dbfile, O_RDONLY)) < 0) {
+	    clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
+	    goto done;
+	}    
+	/* Parse file into XML tree */
+	if ((clicon_xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
+	    goto done;
+	/* Always assert a top-level called "config". 
+	   To ensure that, deal with two cases:
+	   1. File is empty <top/> -> rename top-level to "config" */
+	if (xml_child_nr(x0) == 0){ 
+	    if (xml_name_set(x0, "config") < 0)
+		goto done;     
+	}
+	/* 2. File is not empty <top><config>...</config></top> -> replace root */
+	else{ 
+	    /* There should only be one element and called config */
+	    if (singleconfigroot(x0, &x0) < 0)
+		goto done;
+	}
     }
     /* Here x0 looks like: <config>...</config> */
     if (strcmp(xml_name(x0),"config")!=0){
@@ -736,18 +876,13 @@ text_put(xmldb_handle        xh,
     }
 
     /* Add yang specification backpointer to all XML nodes */
-    if (xml_apply(x0, CX_ELMNT, xml_spec_populate, yspec) < 0)
-       goto done;
-
-    /* Add yang specification backpointer to all XML nodes */
+    /* XXX: where is thiscreated? Add yspec */
     if (xml_apply(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
        goto done;
-
-#if (XML_CHILD_HASH==1)
 	/* Add hash */
-    if (xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
+    if (xml_child_hash &&
+	xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
 	goto done;
-#endif
 
     /* 
      * Modify base tree x with modification x1
@@ -767,6 +902,18 @@ text_put(xmldb_handle        xh,
     /* Remove (prune) nodes that are marked (non-presence containers w/o children) */
     if (xml_tree_prune_flagged(x0, XML_FLAG_MARK, 1) < 0)
 	goto done;
+
+    /* Write back to datastore cache if first time */
+    if (datastore_cache){
+	struct db_element de0 = {0,};
+	if (de != NULL)
+	    de0 = *de;
+	if (de0.de_xml == NULL){
+	    de0.de_xml = x0;
+	    hash_add(th->th_dbs, db, &de0, sizeof(de0));
+	}
+    }
+
     // output:
     /* Print out top-level xml tree after modification to file */
     if ((cb = cbuf_new()) == NULL){
@@ -776,7 +923,16 @@ text_put(xmldb_handle        xh,
     if (clicon_xml2cbuf(cb, x0, 0, 1) < 0)
 	goto done;
     /* Reopen file in write mode */
-    close(fd);
+    if (fd != -1)
+	close(fd);
+    if (dbfile == NULL){
+	if (text_db2file(th, db, &dbfile) < 0)
+	    goto done;
+	if (dbfile==NULL){
+	    clicon_err(OE_XML, 0, "dbfile NULL");
+	    goto done;
+	}
+    }
     if ((fd = open(dbfile, O_WRONLY | O_TRUNC, S_IRWXU)) < 0) {
 	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
 	goto done;
@@ -793,7 +949,7 @@ text_put(xmldb_handle        xh,
 	close(fd);
     if (cb)
 	cbuf_free(cb);
-    if (x0)
+    if (!datastore_cache && x0)
 	xml_free(x0);
     return retval;
 }
@@ -814,8 +970,18 @@ text_copy(xmldb_handle xh,
     struct text_handle *th = handle(xh);
     char               *fromfile = NULL;
     char               *tofile = NULL;
+    struct db_element  *de = NULL;
 
     /* XXX lock */
+    if (datastore_cache){
+	/* Just invalidate xml if exists in TO */
+	if ((de = hash_value(th->th_dbs, to, NULL)) != NULL){
+	    if (de->de_xml != NULL){
+		xml_free(de->de_xml);
+		de->de_xml = NULL;
+	    }
+	}
+    }
     if (text_db2file(th, from, &fromfile) < 0)
 	goto done;
     if (text_db2file(th, to, &tofile) < 0)
@@ -844,8 +1010,13 @@ text_lock(xmldb_handle xh,
 	  int          pid)
 {
     struct text_handle *th = handle(xh);
+    struct db_element  *de = NULL;
+    struct db_element   de0 = {0,};
 
-    hash_add(th->th_dbs, db, &pid, sizeof(pid));
+    if ((de = hash_value(th->th_dbs, db, NULL)) != NULL)
+	de0 = *de;
+    de0.de_pid = pid;
+    hash_add(th->th_dbs, db, &de0, sizeof(de0));
     clicon_debug(1, "%s: locked by %u",  db, pid);
     return 0;
 }
@@ -863,10 +1034,12 @@ text_unlock(xmldb_handle xh,
 	    const char  *db)
 {
     struct text_handle *th = handle(xh);
-    int zero = 0;
+    struct db_element  *de = NULL;
 
-    hash_add(th->th_dbs, db, &zero, sizeof(zero));
-    //	    hash_del(th->th_dbs, db);
+    if ((de = hash_value(th->th_dbs, db, NULL)) != NULL){
+	de->de_pid = 0;
+	hash_add(th->th_dbs, db, de, sizeof(*de));
+    }
     return 0;
 }
 
@@ -884,15 +1057,16 @@ text_unlock_all(xmldb_handle xh,
     char              **keys = NULL;
     size_t              klen;
     int                 i;
-    int                *val;
-    size_t              vlen;
+    struct db_element  *de;
 
     if ((keys = hash_keys(th->th_dbs, &klen)) == NULL)
 	return 0;
     for(i = 0; i < klen; i++) 
-	if ((val = hash_value(th->th_dbs, keys[i], &vlen)) != NULL &&
-	    *val == pid)
-	    hash_del(th->th_dbs, keys[i]);
+	if ((de = hash_value(th->th_dbs, keys[i], NULL)) != NULL &&
+	    de->de_pid == pid){
+	    de->de_pid = 0;
+	    hash_add(th->th_dbs, keys[i], de, sizeof(*de));
+	}
     if (keys)
 	free(keys);
     return 0;
@@ -910,13 +1084,11 @@ text_islocked(xmldb_handle xh,
 	      const char  *db)
 {
     struct text_handle *th = handle(xh);
-    size_t              vlen;
-    int                *val;
+    struct db_element  *de;
 
-    if ((val = hash_value(th->th_dbs, db, &vlen)) == NULL)
+    if ((de = hash_value(th->th_dbs, db, NULL)) == NULL)
 	return 0;
-    return *val;
-    return 0;
+    return de->de_pid;
 }
 
 /*! Check if db exists 
@@ -1111,7 +1283,7 @@ main(int argc, char **argv)
     if (strcmp(cmd, "put")==0){
 	if (argc != 6)
 	    usage(argv[0]);
-	if (clicon_xml_parse_file(0, &xt, "</clicon>") < 0)
+	if (clicon_xml_parse_file(0, "</clicon>", NULL, &xt) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xn) < 0)
 	    goto done;
