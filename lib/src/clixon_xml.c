@@ -513,9 +513,9 @@ xml_childvec_get(cxobj *x)
  *       eg for body or attribute
  */
 cxobj *
-xml_new(char  *name, 
-	cxobj *xp,
-	void  *spec)
+xml_new(char      *name, 
+	cxobj     *xp,
+	yang_stmt *spec)
 {
     cxobj *x;
 
@@ -531,7 +531,7 @@ xml_new(char  *name,
     if (xp && xml_child_append(xp, x) < 0)
 	return NULL;
     x->x_spec = spec; /* Can be NULL */
-    if (xml_child_hash && xml_hash_add(x) < 0)
+    if (xml_child_hash && spec && xml_hash_add(x) < 0)
 	return NULL;
     return x;
 }
@@ -539,15 +539,15 @@ xml_new(char  *name,
 /*! Return yang spec of node. 
  * Not necessarily set. Either has not been set yet (by xml_spec_set( or anyxml.
  */
-void *
+yang_stmt *
 xml_spec(cxobj *x)
 {
     return x->x_spec;
 }
 
-void *
-xml_spec_set(cxobj *x, 
-	     void  *spec)
+int
+xml_spec_set(cxobj     *x, 
+	     yang_stmt *spec)
 {
     x->x_spec = spec;
     return 0;
@@ -1459,6 +1459,7 @@ cxvec_append(cxobj   *x,
  * @note do not delete or move around any children during this function
  * @note return value > 0 aborts the traversal
  * @see xml_apply0 including top object
+ * @see xml_apply_ancestor for marking all parents recursively
  */
 int
 xml_apply(cxobj          *xn, 
@@ -1847,25 +1848,33 @@ xml_hash_key(cxobj     *x,
 
 /*! XML hash add. Create hash and add key/value to parent
  *
- * @param[in]  arg   0: rm entry, 1: add
+ * @param[in]  arg   add flag. If 1, else if 0 remove.
  * Typically called for a whole tree.
  */
 int
 xml_hash_op(cxobj  *x, 
 	    void   *arg)
 {
+    int            add = (intptr_t)arg;
+#if 1
+    if (add)
+	return xml_hash_add(x);
+    else
+	return xml_hash_rm_entry(x);
+#else
+    
     int            retval = -1;
     cxobj         *xp;
     clicon_hash_t *ph;
     yang_stmt     *y;
     cbuf          *key = NULL; /* cligen buffer hash key */
-    int            op = (intptr_t)arg;
+
 
     if (xml_hash(x)==NULL){
-	if (op==1)
+	if (add)
 	    xml_hash_init(x);
     }
-    else if (op==0)
+    else if (!add)
 	xml_hash_rm_only(x);
     if ((xp = xml_parent(x)) == NULL)
 	goto ok;
@@ -1881,7 +1890,7 @@ xml_hash_op(cxobj  *x,
 	goto done;
     if (cbuf_len(key)){
 	//	fprintf(stderr, "%s add %s = 0x%x\n", __FUNCTION__, cbuf_get(key), (unsigned int)x);
-	if (op == 1){
+	if (add){
 	    if (hash_add(ph, cbuf_get(key), &x, sizeof(x)) == NULL)
 		goto done;
 	}
@@ -1895,6 +1904,7 @@ xml_hash_op(cxobj  *x,
     if (key)
 	cbuf_free(key);
     return retval;
+#endif
 }
 
 /*! XML hash add. Create hash and add key/value to parent
@@ -1909,6 +1919,7 @@ xml_hash_add(cxobj  *x)
     cxobj         *xp;
     clicon_hash_t *ph;
     yang_stmt     *y;
+    yang_stmt     *yp;
     cbuf          *key = NULL; /* cligen buffer hash key */
 
     if ((ph = xml_hash(x))==NULL){
@@ -1916,6 +1927,9 @@ xml_hash_add(cxobj  *x)
 	ph = xml_hash(x);
     }
     if ((xp = xml_parent(x)) == NULL)
+	goto ok;
+    yp = xml_spec(xp);
+    if (yp && yp->ys_keyword != Y_LIST)
 	goto ok;
     if ((y = xml_spec(x)) == NULL)
 	goto ok;

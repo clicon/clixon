@@ -1,12 +1,17 @@
 #!/bin/bash
 # Scaling test
 
+number=1000
+req=100
 if [ $# = 0 ]; then
     number=1000
 elif [ $# = 1 ]; then
     number=$1
+elif [ $# = 2 ]; then
+    number=$1
+    req=$2
 else
-    echo "Usage: $0 [<number>]"
+    echo "Usage: $0 [<number> [<requests>]]"
     exit 1
 fi
 
@@ -15,6 +20,7 @@ fconfig=/tmp/config
 
 # include err() and new() functions
 . ./lib.sh
+clixon_cf=/tmp/scaling-conf.xml
 
 # For memcheck
 # clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
@@ -40,6 +46,19 @@ module ietf-ip{
 }
 EOF
 
+cat <<EOF > $clixon_cf
+<config>
+  <CLICON_CONFIGFILE>$clixon_cf</CLICON_CONFIGFILE>
+  <CLICON_YANG_DIR>$fyang</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>ietf-ip</CLICON_YANG_MODULE_MAIN>
+  <CLICON_SOCK>/usr/local/var/routing/routing.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/routing/routing.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>/usr/local/var/routing</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
+</config>
+EOF
+
+
 # kill old backend (if any)
 new "kill old backend"
 sudo clixon_backend -zf $clixon_cf -y $fyang
@@ -61,19 +80,32 @@ for (( i=0; i<$number; i++ )); do
 done
 echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig
 
+# Just for manual dbg
+echo "$clixon_netconf -qf $clixon_cf  -y $fyang"
+
 new "netconf edit large config"
-expecteof_file "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof_file "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+echo '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' | $clixon_netconf -qf $clixon_cf  -y $fyang 
 
 new "netconf edit large config again"
-expecteof_file "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof_file "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+echo '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' | $clixon_netconf -qf $clixon_cf  -y $fyang 
 
 rm $fconfig
 
 new "netconf commit large config"
 expecteof "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
-new "netconf add small config"
+new "netconf add one small config"
 expecteof "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><y><a>x</a><b>y</b></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+
+new "netconf add $req small config"
+time -p for (( i=0; i<$req; i++ )); do
+    rnd=$(( ( RANDOM % $number ) ))
+    echo "<rpc><edit-config><target><candidate/></target><config><x><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
+done | $clixon_netconf -qf $clixon_cf  -y $fyang > /dev/null
 
 new "netconf commit small config"
 expecteof "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
@@ -81,6 +113,11 @@ expecteof "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "<rpc><commit><sour
 new "netconf get large config"
 expecteof "time -p $clixon_netconf -qf $clixon_cf  -y $fyang" "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><y><a>0</a><b>0</b></y><y><a>1</a><b>1</b>"
 
+new "netconf get $req small config"
+time -p for (( i=0; i<$req; i++ )); do
+    rnd=$(( ( RANDOM % $number ) ))
+    echo "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=$rnd][b=$rnd]\" /></get-config></rpc>]]>]]>"
+done | $clixon_netconf -qf $clixon_cf  -y $fyang > /dev/null
 
 new "generate large leaf-list config"
 echo -n "<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x>" > $fconfig

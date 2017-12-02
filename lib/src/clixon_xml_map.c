@@ -620,9 +620,9 @@ match_base_child(cxobj     *x0,
     int        equal;
     char     **b1vec = NULL;
     int        i;
-    cxobj **p;
-    cbuf   *key = NULL; /* cligen buffer hash key */
-    size_t  vlen;
+    cxobj    **p;
+    cbuf      *key = NULL; /* cligen buffer hash key */
+    size_t     vlen;
 
     if (xml_child_hash){
 	*x0cp = NULL; /* return value */	    
@@ -1204,7 +1204,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     cxobj     *xprev;
     int        iskey;
     int        anykey=0;
-    yang_node *yt;
+    yang_stmt *yt;
 
     mark = 0;
     yt = xml_spec(xt); /* xan be null */
@@ -1219,7 +1219,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
 	}
 	/* If it is key dont remove it yet (see second round) */
 	if (yt){
-	    if ((iskey = yang_key_match(yt, xml_name(x))) < 0)
+	    if ((iskey = yang_key_match((yang_node*)yt, xml_name(x))) < 0)
 		goto done;
 	    if (iskey){
 		anykey++;
@@ -1247,7 +1247,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
 	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	    /* If it is key remove it here */
 	    if (yt){
-		if ((iskey = yang_key_match(yt, xml_name(x))) < 0)
+		if ((iskey = yang_key_match((yang_node*)yt, xml_name(x))) < 0)
 		    goto done;
 		if (iskey && xml_purge(x) < 0)
 		    goto done;
@@ -1858,7 +1858,7 @@ xml_merge1(cxobj              *x0,
     if (y0->yn_keyword == Y_LEAF_LIST || y0->yn_keyword == Y_LEAF){
 	x1bstr = xml_body(x1);
 	if (x0==NULL){
-	    if ((x0 = xml_new(x1name, x0p, y0)) == NULL)
+	    if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		goto done;
 	    if (x1bstr){ /* empty type does not have body */
 		if ((x0b = xml_new("body", x0, NULL)) == NULL)
@@ -1879,7 +1879,7 @@ xml_merge1(cxobj              *x0,
     } /* if LEAF|LEAF_LIST */
     else { /* eg Y_CONTAINER, Y_LIST  */
 	if (x0==NULL){
-	    if ((x0 = xml_new(x1name, x0p, y0)) == NULL)
+	    if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		goto done;
 	}
 	/* Loop through children of the modification tree */

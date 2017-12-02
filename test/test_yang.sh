@@ -128,12 +128,11 @@ expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test.yang" "<rpc><edit-config>
 new "netconf set presence and not present"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test.yang" "<rpc><edit-config><target><candidate/></target><config><x><nopresence/><presence/></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "netconf get"
-expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test.yang" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/*presence\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><presence/></x></data></rpc-reply>]]>]]>$"
+new "netconf get presence only"
+expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test.yang" '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/x/*presence"/></get-config></rpc>]]>]]>' "^<rpc-reply><data><x><presence/></x></data></rpc-reply>]]>]]>$"
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $clixon_cf" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
-
 
 new "netconf anyxml"
 expecteof "$clixon_netconf -qf $clixon_cf -y /tmp/test.yang" "<rpc><edit-config><target><candidate/></target><config><x><any><foo><bar a=\"nisse\"/></foo></any></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

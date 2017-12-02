@@ -312,64 +312,75 @@ singleconfigroot(cxobj  *xt,
     return retval;
 }
 
+/*! Given XML tree x0 with marked nodes, copy marked nodes to new tree x1
+ * Two marks are used: XML_FLAG_MARK and XML_FLAG_CHANGE
+ *
+ * The algorithm works as following:
+ * (1) Copy individual nodes marked with XML_FLAG_CHANGE 
+ * until nodes marked with XML_FLAG_MARK are reached, where 
+ * (2) the complete subtree of that node is copied. 
+ * (3) Special case: key nodes in lists are copied if any node in list is marked
+ */
 static int
 xml_copy_marked(cxobj *x0, 
-		cxobj *x1,
-		int    flag,
-		int    test,
-		int   *upmark)
+		cxobj *x1)
 {
     int        retval = -1;
-    int        submark;
     int        mark;
     cxobj     *x;
     cxobj     *xcopy;
     int        iskey;
-    yang_node *yt;
+    yang_stmt *yt;
     char      *name;
 
+    assert(x0 && x1);
+    yt = xml_spec(x0); /* can be null */
+    /* Go through children to detect any marked nodes:
+     * (3) Special case: key nodes in lists are copied if any 
+     * node in list is marked
+     */
     mark = 0;
-    yt = xml_spec(x0); /* xan be null */
+    x = NULL;
+    while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
+	if (xml_flag(x, XML_FLAG_MARK|XML_FLAG_CHANGE)){
+	    mark++;
+	    break;
+	}
+    }
     x = NULL;
     while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
 	name = xml_name(x);
-	if (xml_flag(x, flag) == test?flag:0){
-	    /* Pass test */
-	    mark++;
-	    if (x1){
-		if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
-		    goto done;
-		if (xml_copy(x, xcopy) < 0)
-		    goto done;
-	    }
-	    continue; /* mark and stop here */
-	}
-	/* If it is key dont remove it yet (see second round) */
-	if (yt){
-	    if ((iskey = yang_key_match(yt, name)) < 0)
+	if (xml_flag(x, XML_FLAG_MARK)){
+	    /* (2) the complete subtree of that node is copied. */
+	    if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
 		goto done;
-	    if (iskey)
-		continue;
+	    if (xml_copy(x, xcopy) < 0) 
+		goto done;
+	    continue; 
 	}
-	if (xml_copy_marked(x, NULL, flag, test, &submark) < 0)
-	    goto done;
-	/* if x0 is list and submark anywhere, then key subs are also marked
-	 */
-	if (submark){
-	    mark++; /* copy */
-	    if (x1){
+	if (xml_flag(x, XML_FLAG_CHANGE)){
+	    /*  Copy individual nodes marked with XML_FLAG_CHANGE */
+	    if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
+		goto done;
+	    if (xml_copy_marked(x, xcopy) < 0) /*  */
+		goto done;
+	}
+	/* (3) Special case: key nodes in lists are copied if any 
+	 * node in list is marked */
+	if (mark && yt && yt->ys_keyword == Y_LIST){
+	    /* XXX: I think yang_key_match is suboptimal here */
+	    if ((iskey = yang_key_match((yang_node*)yt, name)) < 0)
+		goto done;
+	    if (iskey){
 		if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
 		    goto done;
-		if (xml_copy_marked(x, xcopy, flag, test, &submark) < 0)
+		if (xml_copy(x, xcopy) < 0) 
 		    goto done;
 	    }
-
 	}
     }
     retval = 0;
  done:
-    if (upmark)
-	*upmark = mark;
     return retval;
 }
 
@@ -458,20 +469,29 @@ text_get(xmldb_handle xh,
      * otherwise return complete tree.
      */
     if (xvec != NULL)
-	for (i=0; i<xlen; i++)
+	for (i=0; i<xlen; i++){
 	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-    /* Write back to datastore cache if first time */
+	    if (datastore_cache)
+		xml_apply_ancestor(xvec[i], (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+	}
+
     if (datastore_cache){
+	/* Copy the matching parts of the (relevant) XML tree.
+	 * If cache was NULL, also write to datastore cache
+	 */
 	cxobj *x1;
 	struct db_element de0 = {0,};
 
 	if (de != NULL)
 	    de0 = *de;
+
 	x1 = xml_new(xml_name(xt), NULL, xml_spec(xt));
 	/* Copy everything that is marked */
-	if (xml_copy_marked(xt, x1, XML_FLAG_MARK, 1, NULL) < 0)
+	if (xml_copy_marked(xt, x1) < 0)
 	    goto done;
-	if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+	    goto done;
+	if (xml_apply(x1, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
 	    goto done;
 	if (de0.de_xml == NULL){
 	    de0.de_xml = xt;
@@ -501,12 +521,6 @@ text_get(xmldb_handle xh,
     /* Order XML children according to YANG */
     if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
 	goto done;
-#ifdef XXX
-    /// (XML_CHILD_HASH==1)
-    /* Add hash */
-    if (xml_apply0(xt, CX_ELMNT, xml_hash_op, (void*)1) < 0)
-	goto done;
-#endif
     if (debug>1)
     	clicon_xml2file(stderr, xt, 0, 1);
     *xtop = xt;
@@ -572,7 +586,7 @@ text_modify(cxobj              *x0,
 	case OP_REPLACE:
 	    if (x0==NULL){
 		//		int iamkey=0;
-		if ((x0 = xml_new(x1name, x0p, y0)) == NULL)
+		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
 #if 0
 		/* If it is key I dont want to mark it */
@@ -598,9 +612,10 @@ text_modify(cxobj              *x0,
 		if (xml_value_set(x0b, x1bstr) < 0)
 		    goto done;
 	    }
-	    if (xml_child_hash &&
-		xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
-		goto done;
+		if (xml_child_hash &&
+		    xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
+		    goto done;
+
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
@@ -638,21 +653,22 @@ text_modify(cxobj              *x0,
 		if (x0){
 		    xml_purge(x0);
 		}
-		if ((x0 = xml_new(x1name, x0p, y0)) == NULL)
+		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
 		if (xml_copy(x1, x0) < 0)
 		    goto done;
 		break;
 	    }
 	    if (x0==NULL){
-		if ((x0 = xml_new(x1name, x0p, y0)) == NULL)
+		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
+
 	    }
-	    if (xml_child_hash &&
-		xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
-		goto done;
+		if (xml_child_hash &&
+		    xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
+		    goto done;
 	    /* First pass: mark existing children in base */
 	    /* Loop through children of the modification tree */
 	    if ((x0vec = calloc(xml_child_nr(x1), sizeof(x1))) == NULL){
@@ -880,10 +896,11 @@ text_put(xmldb_handle        xh,
     if (xml_apply(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
        goto done;
 	/* Add hash */
+#if 0
     if (xml_child_hash &&
 	xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
 	goto done;
-
+#endif
     /* 
      * Modify base tree x with modification x1
      */
@@ -1133,7 +1150,17 @@ text_delete(xmldb_handle xh,
     int                 retval = -1;
     char               *filename = NULL;
     struct text_handle *th = handle(xh);
+    struct db_element  *de = NULL;
+    cxobj              *xt = NULL;
 
+    if (datastore_cache){
+	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL){
+	    if ((xt = de->de_xml) != NULL){
+		xml_free(xt);
+		de->de_xml = NULL;
+	    }
+	}
+    }
     if (text_db2file(th, db, &filename) < 0)
 	goto done;
     if (unlink(filename) < 0){
@@ -1162,7 +1189,18 @@ text_create(xmldb_handle xh,
     struct text_handle *th = handle(xh);
     char               *filename = NULL;
     int                 fd = -1;
+    struct db_element  *de = NULL;
+    cxobj              *xt = NULL;
 
+    if (datastore_cache){ /* XXX This should nt really happen? */
+	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL){
+	    if ((xt = de->de_xml) != NULL){
+		assert(xt==NULL); /* XXX */
+		xml_free(xt);
+		de->de_xml = NULL;
+	    }
+	}
+    }
     if (text_db2file(th, db, &filename) < 0)
 	goto done;
     if ((fd = open(filename, O_CREAT|O_WRONLY, S_IRWXU)) == -1) {
