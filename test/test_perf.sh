@@ -86,16 +86,19 @@ echo "$clixon_netconf -qf $clixon_cf  -y $fyang"
 new "netconf edit large config"
 expecteof_file "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-echo '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' | $clixon_netconf -qf $clixon_cf  -y $fyang 
+#echo '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' | $clixon_netconf -qf $clixon_cf  -y $fyang 
 
 new "netconf edit large config again"
 expecteof_file "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-echo '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' | $clixon_netconf -qf $clixon_cf  -y $fyang 
+#echo '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' | $clixon_netconf -qf $clixon_cf  -y $fyang 
 
 rm $fconfig
 
 new "netconf commit large config"
+expecteof "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+
+new "netconf commit same config again"
 expecteof "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf add one small config"
@@ -106,9 +109,6 @@ time -p for (( i=0; i<$req; i++ )); do
     rnd=$(( ( RANDOM % $number ) ))
     echo "<rpc><edit-config><target><candidate/></target><config><x><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $clixon_cf  -y $fyang > /dev/null
-
-new "netconf commit small config"
-expecteof "time -p $clixon_netconf -qf $clixon_cf -y $fyang" "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf get large config"
 expecteof "time -p $clixon_netconf -qf $clixon_cf  -y $fyang" "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><y><a>0</a><b>0</b></y><y><a>1</a><b>1</b>"

@@ -2,7 +2,9 @@
 
 ## 3.4.0 (Upcoming)
 
-* Datastore cache introduced: cache XML tree in memory for faster get access
+* Better semantic versioning, eg MAJOR/MINOR/PATCH, where increment in PATCH does not change API.
+
+* Datastore cache introduced: cache XML tree in memory for faster get access. Use CLICON_XMLDB_CACHE configuration option. Default is 1.
 	
 * Moved XML_CHILD_HASH to variable instead of constant.
 	

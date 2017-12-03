@@ -69,6 +69,7 @@
  * Constants
  */
 #define BUFLEN 1024  /* Size of xml read buffer */
+#define XML_INDENT 3 /* maybe we should set this programmatically? */
 
 /*
  * Types
@@ -104,7 +105,7 @@ static const map_str2int xsmap[] = {
 };
 
 /* Hash for XML trees list entries
- * Experimental
+ * Experimental XXX DOES NOT WORK
  */
 int xml_child_hash = 0;
 
@@ -442,7 +443,7 @@ xml_child_each(cxobj           *xparent,
 	xn = xparent->x_childvec[i];
 	if (xn == NULL)
 	    continue;
-	if (type != CX_ERROR && xml_type(xn) != type)
+	if (type != CX_ERROR && xn->x_type != type)
 	    continue;
 	break; /* this is next object after previous */
     }
@@ -931,27 +932,89 @@ xml_free(cxobj *x)
  * @param[in]   level       how many spaces to insert before each line
  * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
  * @see clicon_xml2cbuf
+ * One can use clicon_xml2cbuf to get common code, but using fprintf is
+ * much faster than using cbuf and then printing that,...
  */
 int
 clicon_xml2file(FILE  *f, 
-		cxobj *xn, 
+		cxobj *x, 
 		int    level, 
 		int    prettyprint)
 {
     int    retval = -1;
-    cbuf  *cb = NULL;
+    char  *name;
+    char  *namespace;
+    cxobj *xc;
+    int    hasbody;
+    int    haselement;
 
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
-    if (clicon_xml2cbuf(cb, xn, level, prettyprint) < 0)
-	goto done;
-    fprintf(f, "%s", cbuf_get(cb));
+    name = xml_name(x);
+    namespace = xml_namespace(x);
+    switch(xml_type(x)){
+    case CX_BODY:
+	fprintf(f, "%s", xml_value(x));
+	break;
+    case CX_ATTR:
+	fprintf(f, " ");
+	if (namespace)
+	    fprintf(f, "%s:", namespace);
+	fprintf(f, "%s=\"%s\"", name, xml_value(x));
+	break;
+    case CX_ELMNT:
+	fprintf(f, "%*s<", prettyprint?(level*XML_INDENT):0, "");
+	if (namespace)
+	    fprintf(f, "%s:", namespace);
+	fprintf(f, "%s", name);
+	hasbody = 0;
+	haselement = 0;
+	xc = NULL;
+	/* print attributes only */
+	while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+	    switch (xc->x_type){
+	    case CX_ATTR:
+		if (clicon_xml2file(f, xc, level+1, prettyprint) <0)
+		    goto done;
+		break;
+	    case CX_BODY:
+		hasbody=1;
+		break;
+	    case CX_ELMNT:
+		haselement=1;
+		break;
+	    default:
+		break;
+	    }
+	}
+	/* Check for special case <a/> instead of <a></a>:
+	 * Ie, no CX_BODY or CX_ELMNT child.
+	 */
+	if (hasbody==0 && haselement==0) 
+	    fprintf(f, "/>");
+	else{
+	    fprintf(f, ">");
+	    if (prettyprint && hasbody == 0)
+		    fprintf(f, "\n");
+	    xc = NULL;
+	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+		if (xml_type(xc) != CX_ATTR)
+		    if (clicon_xml2file(f, xc, level+1, prettyprint) <0)
+			goto done;
+	    }
+	    if (prettyprint && hasbody==0)
+		fprintf(f, "%*s", level*XML_INDENT, "");
+	    fprintf(f, "</");
+	    if (namespace)
+		fprintf(f, "%s:", namespace);
+	    fprintf(f, "%s>", name);
+	}
+	if (prettyprint)
+	    fprintf(f, "\n");
+	break;
+    default:
+	break;
+    }/* switch */
     retval = 0;
-  done:
-    if (cb)
-	cbuf_free(cb);
+ done:
     return retval;
 }
 
@@ -971,7 +1034,6 @@ xml_print(FILE  *f,
     return clicon_xml2file(f, xn, 0, 1);
 }
 
-#define XML_INDENT 3 /* maybe we should set this programmatically? */
 
 /*! Print an XML tree structure to a cligen buffer
  *
@@ -987,7 +1049,7 @@ xml_print(FILE  *f,
  *   goto err;
  * cbuf_free(cb);
  * @endcode
- * See also clicon_xml2file
+ * @see  clicon_xml2file
  */
 int
 clicon_xml2cbuf(cbuf  *cb, 
@@ -995,48 +1057,67 @@ clicon_xml2cbuf(cbuf  *cb,
 		int    level, 
 		int    prettyprint)
 {
+    int    retval = -1;
     cxobj *xc;
     char  *name;
+    int    hasbody;
+    int    haselement;
+    char  *namespace;
 
     name = xml_name(x);
+    namespace = xml_namespace(x);
     switch(xml_type(x)){
     case CX_BODY:
 	cprintf(cb, "%s", xml_value(x));
 	break;
     case CX_ATTR:
 	cprintf(cb, " ");
-	if (xml_namespace(x))
-	    cprintf(cb, "%s:", xml_namespace(x));
+	if (namespace)
+	    cprintf(cb, "%s:", namespace);
 	cprintf(cb, "%s=\"%s\"", name, xml_value(x));
 	break;
     case CX_ELMNT:
 	cprintf(cb, "%*s<", prettyprint?(level*XML_INDENT):0, "");
-	if (xml_namespace(x))
-	    cprintf(cb, "%s:", xml_namespace(x));
+	if (namespace)
+	    cprintf(cb, "%s:", namespace);
 	cprintf(cb, "%s", name);
+	hasbody = 0;
+	haselement = 0;
 	xc = NULL;
 	/* print attributes only */
-	while ((xc = xml_child_each(x, xc, CX_ATTR)) != NULL) 
-	    clicon_xml2cbuf(cb, xc, level+1, prettyprint);
+	while ((xc = xml_child_each(x, xc, -1)) != NULL) 
+	    switch (xc->x_type){
+	    case CX_ATTR:
+		if (clicon_xml2cbuf(cb, xc, level+1, prettyprint) < 0)
+		    goto done;
+		break;
+	    case CX_BODY:
+		hasbody=1;
+		break;
+	    case CX_ELMNT:
+		haselement=1;
+		break;
+	    default:
+		break;
+	    }
+	
 	/* Check for special case <a/> instead of <a></a> */
-	if (xml_body(x)==NULL && xml_child_nr_type(x, CX_ELMNT)==0) 
+	if (hasbody==0 && haselement==0) 
 	    cprintf(cb, "/>");
 	else{
 	    cprintf(cb, ">");
-	    if (prettyprint && xml_body(x)==NULL)
+	    if (prettyprint && hasbody == 0)
 		cprintf(cb, "\n");
 	    xc = NULL;
-	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
-		if (xml_type(xc) == CX_ATTR)
-		    continue;
-		else
-		    clicon_xml2cbuf(cb, xc, level+1, prettyprint);
-	    }
-	    if (prettyprint && xml_body(x)==NULL)
+	    while ((xc = xml_child_each(x, xc, -1)) != NULL) 
+		if (xml_type(xc) != CX_ATTR)
+		    if (clicon_xml2cbuf(cb, xc, level+1, prettyprint) < 0)
+			goto done;
+	    if (prettyprint && hasbody == 0)
 		cprintf(cb, "%*s", level*XML_INDENT, "");
 	    cprintf(cb, "</");
-	    if (xml_namespace(x))
-		cprintf(cb, "%s:", xml_namespace(x));
+	    if (namespace)
+		cprintf(cb, "%s:", namespace);
 	    cprintf(cb, "%s>", name);
 	}
 	if (prettyprint)
@@ -1045,7 +1126,9 @@ clicon_xml2cbuf(cbuf  *cb,
     default:
 	break;
     }/* switch */
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Basic xml parsing function.

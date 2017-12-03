@@ -617,6 +617,7 @@ main(int argc, char **argv)
     char         *sock;
     int           sockfamily;
     char         *xmldb_plugin;
+    int           xml_cache;
 
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR|CLICON_LOG_SYSLOG);
@@ -807,7 +808,8 @@ main(int argc, char **argv)
 		"or create the group and add the user to it. On linux for example:"
 		"  sudo groupadd %s\n" 
 		"  sudo usermod -a -G %s user\n", 
-		   config_group, clicon_configfile(h), config_group, config_group);
+		   config_group, clicon_configfile(h),
+		   config_group, config_group);
 	return -1;
     }
 
@@ -829,6 +831,9 @@ main(int argc, char **argv)
 	goto done;
     if (xmldb_setopt(h, "yangspec", clicon_dbspec_yang(h)) < 0)
 	goto done;
+    if ((xml_cache = clicon_option_bool(h, "CLICON_XMLDB_CACHE")) >= 0)
+	if (xmldb_setopt(h, "xml_cache", (void*)xml_cache) < 0)
+	    goto done;
     /* If startup mode is not defined, eg via OPTION or -s, assume old method */
     startup_mode = clicon_startup_mode(h);
     if (startup_mode == -1){ 	/* Old style, fragmented mode, phase out */

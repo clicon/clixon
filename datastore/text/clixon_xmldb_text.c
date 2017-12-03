@@ -95,7 +95,7 @@ struct db_element{
  * Assumes single backend
  * Experimental
  */
-static int datastore_cache = 1;
+static int xmltree_cache = 1;
 
 /*! Check struct magic number for sanity checks
  * return 0 if OK, -1 if fail.
@@ -193,7 +193,7 @@ text_disconnect(xmldb_handle xh)
 	if (th->th_dbdir)
 	    free(th->th_dbdir);
 	if (th->th_dbs){
-	    if (datastore_cache){
+	    if (xmltree_cache){
 		if ((keys = hash_keys(th->th_dbs, &klen)) == NULL)
 		    return 0;
 		for(i = 0; i < klen; i++) 
@@ -263,6 +263,9 @@ text_setopt(xmldb_handle xh,
 	    clicon_err(OE_UNIX, 0, "strdup");
 	    goto done;
 	}
+    }
+    else if (strcmp(optname, "xml_cache") == 0){
+	xmltree_cache = (intptr_t)value;
     }
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
@@ -389,21 +392,6 @@ xml_copy_marked(cxobj *x0,
  * xpath.
  * This is a clixon datastore plugin of the the xmldb api
  * @see xmldb_get
-#ifdef DATASTORE_CACHE
-text_get 90%
-  clixon_xml_parse_file 74% (100x)
-    xml_parse 70% (100x)
-      clicon_xml_parseparse 70% (300x)
-        xml_value_append 13% (800K)
-        xml_new
-        xml_purge
-        clicon_xml_parselex 12% (1M)
-  clixon_tree_prune_flagged_sub 12% (100x)
-    xml_purge 12% (58000)
-    yang_key_match 7% (77000)
-      yang_arg2cvec
-#endif
- *
  */
 int
 text_get(xmldb_handle xh,
@@ -427,7 +415,7 @@ text_get(xmldb_handle xh,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (datastore_cache){
+    if (xmltree_cache){
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL)
 	    xt = de->de_xml; 
     }
@@ -471,11 +459,11 @@ text_get(xmldb_handle xh,
     if (xvec != NULL)
 	for (i=0; i<xlen; i++){
 	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-	    if (datastore_cache)
+	    if (xmltree_cache)
 		xml_apply_ancestor(xvec[i], (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
 	}
 
-    if (datastore_cache){
+    if (xmltree_cache){
 	/* Copy the matching parts of the (relevant) XML tree.
 	 * If cache was NULL, also write to datastore cache
 	 */
@@ -852,7 +840,7 @@ text_put(xmldb_handle        xh,
 		   xml_name(x1));
 	goto done;
     }
-    if (datastore_cache){
+    if (xmltree_cache){
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL)
 	    x0 = de->de_xml; 
     }
@@ -921,7 +909,7 @@ text_put(xmldb_handle        xh,
 	goto done;
 
     /* Write back to datastore cache if first time */
-    if (datastore_cache){
+    if (xmltree_cache){
 	struct db_element de0 = {0,};
 	if (de != NULL)
 	    de0 = *de;
@@ -930,7 +918,28 @@ text_put(xmldb_handle        xh,
 	    hash_add(th->th_dbs, db, &de0, sizeof(de0));
 	}
     }
-
+    if (dbfile == NULL){
+	if (text_db2file(th, db, &dbfile) < 0)
+	    goto done;
+	if (dbfile==NULL){
+	    clicon_err(OE_XML, 0, "dbfile NULL");
+	    goto done;
+	}
+    }
+#if 1
+    if (fd != -1)
+	close(fd);
+    {
+	FILE *f;
+	if ((f = fopen(dbfile, "w")) == NULL){
+	    clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
+	    goto done;
+	} 
+	if (xml_print(f, x0) < 0)
+	    goto done;
+	fclose(f);
+    }
+#else
     // output:
     /* Print out top-level xml tree after modification to file */
     if ((cb = cbuf_new()) == NULL){
@@ -942,14 +951,6 @@ text_put(xmldb_handle        xh,
     /* Reopen file in write mode */
     if (fd != -1)
 	close(fd);
-    if (dbfile == NULL){
-	if (text_db2file(th, db, &dbfile) < 0)
-	    goto done;
-	if (dbfile==NULL){
-	    clicon_err(OE_XML, 0, "dbfile NULL");
-	    goto done;
-	}
-    }
     if ((fd = open(dbfile, O_WRONLY | O_TRUNC, S_IRWXU)) < 0) {
 	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
 	goto done;
@@ -958,6 +959,7 @@ text_put(xmldb_handle        xh,
 	clicon_err(OE_UNIX, errno, "write(%s)", dbfile);
 	goto done;
     }
+#endif
     retval = 0;
  done:
     if (dbfile)
@@ -966,7 +968,7 @@ text_put(xmldb_handle        xh,
 	close(fd);
     if (cb)
 	cbuf_free(cb);
-    if (!datastore_cache && x0)
+    if (!xmltree_cache && x0)
 	xml_free(x0);
     return retval;
 }
@@ -981,23 +983,45 @@ text_put(xmldb_handle        xh,
 int 
 text_copy(xmldb_handle xh, 
 	  const char  *from,
-	  const char   *to)
+	  const char  *to)
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);
     char               *fromfile = NULL;
     char               *tofile = NULL;
     struct db_element  *de = NULL;
+    struct db_element  *de2 = NULL;
 
     /* XXX lock */
-    if (datastore_cache){
-	/* Just invalidate xml if exists in TO */
+    if (xmltree_cache){
+	/* 1. Free xml tree in "to"
+
+	 */
 	if ((de = hash_value(th->th_dbs, to, NULL)) != NULL){
 	    if (de->de_xml != NULL){
 		xml_free(de->de_xml);
 		de->de_xml = NULL;
 	    }
 	}
+	/* 2. Copy xml tree from "from" to "to" 
+	 * 2a) create "to" if it does not exist
+	 */
+	if ((de2 = hash_value(th->th_dbs, from, NULL)) != NULL){
+	    if (de2->de_xml != NULL){
+		struct db_element de0 = {0,};
+		cxobj *x, *xcopy;
+		x = de2->de_xml;
+		if (de != NULL)
+		    de0 = *de;
+		if ((xcopy = xml_new(xml_name(x), NULL, xml_spec(x))) == NULL)
+		    goto done;
+		if (xml_copy(x, xcopy) < 0) 
+		    goto done;
+		de0.de_xml = xcopy;
+		hash_add(th->th_dbs, to, &de0, sizeof(de0));
+	    }
+	}
+
     }
     if (text_db2file(th, from, &fromfile) < 0)
 	goto done;
@@ -1153,7 +1177,7 @@ text_delete(xmldb_handle xh,
     struct db_element  *de = NULL;
     cxobj              *xt = NULL;
 
-    if (datastore_cache){
+    if (xmltree_cache){
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL){
 	    if ((xt = de->de_xml) != NULL){
 		xml_free(xt);
@@ -1192,7 +1216,7 @@ text_create(xmldb_handle xh,
     struct db_element  *de = NULL;
     cxobj              *xt = NULL;
 
-    if (datastore_cache){ /* XXX This should nt really happen? */
+    if (xmltree_cache){ /* XXX This should nt really happen? */
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL){
 	    if ((xt = de->de_xml) != NULL){
 		assert(xt==NULL); /* XXX */

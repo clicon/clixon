@@ -495,6 +495,49 @@ clicon_option_int_set(clicon_handle h,
     return clicon_option_str_set(h, name, s);
 }
 
+/*! Get options as bool but stored as string
+ *
+ * @param   h    clicon handle
+ * @param   name name of option
+ * @retval  0    false, or does not exist, or does not have a boolean value
+ * @retval  1    true
+ * @code
+ *  if (clicon_option_exists(h, "X")
+ *	return clicon_option_bool(h, "X");
+ *  else
+ *      return 0; # default false? 
+ * @endcode
+ * Note that 0 can be both error and false.
+ * This means that it should be used together with clicon_option_exists() and
+ * supply a default value as shown in the example.
+ */
+int
+clicon_option_bool(clicon_handle h,
+		  const char   *name)
+{
+    char *s;
+
+    if ((s = clicon_option_str(h, name)) == NULL)
+	return 0;
+    if (strcmp(s,"true")==0)
+	return 1;
+    return 0; /* Hopefully false, but anything else than "true" */
+}
+
+/*! Set option given as bool
+ */
+int
+clicon_option_bool_set(clicon_handle h,
+		      const char   *name,
+		      int           val)
+{
+    char s[64];
+    
+    if (snprintf(s, sizeof(s)-1, "%u", val) < 0)
+	return -1;
+    return clicon_option_str_set(h, name, s);
+}
+
 /*! Delete option 
  */
 int
@@ -507,146 +550,18 @@ clicon_option_del(clicon_handle h,
 }
 
 /*-----------------------------------------------------------------
- * Specific option access functions.
- * These should be commonly accessible for all users of clicon lib 
+ * Specific option access functions for YANG configuration variables.
+ * Sometimes overridden by command-line options, 
+ * such as -f for CLICON_CONFIGFILE
+ * @see yang/clixon-config@<date>.yang
+ * You can always use the basic access functions, such as
+ * clicon_option_str[_set]
+ * But sometimes there are type conversions, etc which makes it more
+ * convenient to make wrapper functions. Or not?
  *-----------------------------------------------------------------*/
-
-char *
-clicon_configfile(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_CONFIGFILE");
-}
-
-/*! YANG database specification directory */
-char *
-clicon_yang_dir(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_YANG_DIR");
-}
-
-/*! YANG main module or absolute file name */
-char *
-clicon_yang_module_main(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_YANG_MODULE_MAIN");
-}
-
-/*! YANG revision */
-char *
-clicon_yang_module_revision(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_YANG_MODULE_REVISION");
-}
-
-/*! Directory of backend plugins. If null, no plugins are loaded */
-char *
-clicon_backend_dir(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_BACKEND_DIR");
-}
-
-/* contains .so files CLICON_CLI_DIR */
-char *
-clicon_cli_dir(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_CLI_DIR");
-}
-
-/* contains .cli files - CLICON_CLISPEC_DIR */
-char *
-clicon_clispec_dir(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_CLISPEC_DIR");
-}
-
-char *
-clicon_netconf_dir(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_NETCONF_DIR");
-}
-
-char *
-clicon_restconf_dir(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_RESTCONF_DIR");
-}
-
-char *
-clicon_xmldb_plugin(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_XMLDB_PLUGIN");
-}
-
-int
-clicon_startup_mode(clicon_handle h)
-{
-    char *mode;
-    if ((mode = clicon_option_str(h, "CLICON_STARTUP_MODE")) == NULL)
-	return -1;
-    return clicon_str2int(startup_mode_map, mode);
-}
-
-/*! Get family of backend socket: AF_UNIX, AF_INET or AF_INET6 */
-int
-clicon_sock_family(clicon_handle h)
-{
-    char *s;
-
-    if ((s = clicon_option_str(h, "CLICON_SOCK_FAMILY")) == NULL)
-	return AF_UNIX;
-    else  if (strcmp(s, "IPv4")==0)
-	return AF_INET;
-    else  if (strcmp(s, "IPv6")==0)
-	return AF_INET6;
-    else
-	return AF_UNIX; /* default */
-}
-
-/*! Get information about socket: unix domain filepath, or addr:path */
-char *
-clicon_sock(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_SOCK");
-}
-
-/*! Get port for backend socket in case of AF_INET or AF_INET6 */
-int
-clicon_sock_port(clicon_handle h)
-{
-    char *s;
-
-    if ((s = clicon_option_str(h, "CLICON_SOCK_PORT")) == NULL)
-	return -1;
-    return atoi(s);
-}
-
-char *
-clicon_backend_pidfile(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_BACKEND_PIDFILE");
-}
-
-char *
-clicon_sock_group(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_SOCK_GROUP");
-}
-
-char *
-clicon_master_plugin(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_MASTER_PLUGIN");
-}
-
-/*! Return initial clicon cli mode */
-char *
-clicon_cli_mode(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_CLI_MODE");
-}
-
 /*! Whether to generate CLIgen syntax from datamodel or not (0 or 1)
  * Must be used with a previous clicon_option_exists().
+ * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL
  */
 int
 clicon_cli_genmodel(clicon_handle h)
@@ -659,7 +574,23 @@ clicon_cli_genmodel(clicon_handle h)
 	return 0;
 }
 
-/*! How to generate and show CLI syntax: VARS|ALL */
+/*! Generate code for CLI completion of existing db symbols
+ * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL_COMPLETION
+ */
+int
+clicon_cli_genmodel_completion(clicon_handle h)
+{
+    char const *opt = "CLICON_CLI_GENMODEL_COMPLETION";
+
+    if (clicon_option_exists(h, opt))
+	return clicon_option_int(h, opt);
+    else
+	return 0;
+}
+
+/*! How to generate and show CLI syntax: VARS|ALL 
+ * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL_TYPE
+ */
 enum genmodel_type
 clicon_cli_genmodel_type(clicon_handle h)
 {
@@ -683,32 +614,8 @@ clicon_cli_genmodel_type(clicon_handle h)
     return gt;
 }
 
-
-/* eg -q option, dont print notifications on stdout */
-char *
-clicon_quiet_mode(clicon_handle h)
-{
-    return clicon_option_str(h, "CLICON_QUIET");
-}
-
-int
-clicon_autocommit(clicon_handle h)
-{
-    char const *opt = "CLICON_AUTOCOMMIT";
-
-    if (clicon_option_exists(h, opt))
-	return clicon_option_int(h, opt);
-    else
-	return 0;
-}
-
-int
-clicon_autocommit_set(clicon_handle h, int val)
-{
-    return clicon_option_int_set(h, "CLICON_AUTOCOMMIT", val);
-}
-
-/*! Dont include keys in cvec in cli vars callbacks
+/*! Get Dont include keys in cvec in cli vars callbacks
+ * @see clixon-config@<date>.yang CLICON_CLI_VARONLY
  */
 int
 clicon_cli_varonly(clicon_handle h)
@@ -721,16 +628,43 @@ clicon_cli_varonly(clicon_handle h)
 	return 0;
 }
 
+/*! Get family of backend socket: AF_UNIX, AF_INET or AF_INET6 
+ * @see clixon-config@<date>.yang CLICON_SOCK_FAMILY
+ */
 int
-clicon_cli_varonly_set(clicon_handle h, int val)
+clicon_sock_family(clicon_handle h)
 {
-    return clicon_option_int_set(h, "CLICON_CLI_VARONLY", val);
+    char *s;
+
+    if ((s = clicon_option_str(h, "CLICON_SOCK_FAMILY")) == NULL)
+	return AF_UNIX;
+    else  if (strcmp(s, "IPv4")==0)
+	return AF_INET;
+    else  if (strcmp(s, "IPv6")==0)
+	return AF_INET6;
+    else
+	return AF_UNIX; /* default */
 }
 
+/*! Get port for backend socket in case of AF_INET or AF_INET6 
+ * @see clixon-config@<date>.yang CLICON_SOCK_PORT
+ */
 int
-clicon_cli_genmodel_completion(clicon_handle h)
+clicon_sock_port(clicon_handle h)
 {
-    char const *opt = "CLICON_CLI_GENMODEL_COMPLETION";
+    char *s;
+
+    if ((s = clicon_option_str(h, "CLICON_SOCK_PORT")) == NULL)
+	return -1;
+    return atoi(s);
+}
+
+/*! Set if all configuration changes are committed automatically 
+ */
+int
+clicon_autocommit(clicon_handle h)
+{
+    char const *opt = "CLICON_AUTOCOMMIT";
 
     if (clicon_option_exists(h, opt))
 	return clicon_option_int(h, opt);
@@ -738,11 +672,36 @@ clicon_cli_genmodel_completion(clicon_handle h)
 	return 0;
 }
 
-/*! Where are "running" and "candidate" databases? */
-char *
-clicon_xmldb_dir(clicon_handle h)
+/*! Which method to boot/start clicon backen
+ */
+int
+clicon_startup_mode(clicon_handle h)
 {
-    return clicon_option_str(h, "CLICON_XMLDB_DIR");
+    char *mode;
+    if ((mode = clicon_option_str(h, "CLICON_STARTUP_MODE")) == NULL)
+	return -1;
+    return clicon_str2int(startup_mode_map, mode);
+}
+
+/*---------------------------------------------------------------------
+ * Specific option access functions for non-yang options
+ * Typically dynamic values and more complex datatypes,
+ * Such as handles to plugins, API:s and parsed structures
+ *--------------------------------------------------------------------*/
+
+/* eg -q option, dont print notifications on stdout */
+int
+clicon_quiet_mode(clicon_handle h)
+{
+    char *s;
+    if ((s = clicon_option_str(h, "CLICON_QUIET")) == NULL)
+	return 0; /* default */
+    return atoi(s);
+}
+int
+clicon_quiet_mode_set(clicon_handle h, int val)
+{
+    return clicon_option_int_set(h, "CLICON_QUIET", val);
 }
 
 /*! Get YANG specification
@@ -796,6 +755,19 @@ clicon_dbspec_name_set(clicon_handle h, char *name)
     return clicon_option_str_set(h, "dbspec_name", name);
 }
 
+/*! Get xmldb datastore plugin handle, as used by dlopen/dlsym/dlclose */
+plghndl_t
+clicon_xmldb_plugin_get(clicon_handle h)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    size_t          len;
+    void           *p;
+
+    if ((p = hash_value(cdat, "xmldb_plugin", &len)) != NULL)
+	return *(plghndl_t*)p;
+    return NULL;
+}
+
 /*! Set xmldb datastore plugin handle, as used by dlopen/dlsym/dlclose */
 int
 clicon_xmldb_plugin_set(clicon_handle h, 
@@ -808,16 +780,20 @@ clicon_xmldb_plugin_set(clicon_handle h,
     return 0;
 }
 
-/*! Get xmldb datastore plugin handle, as used by dlopen/dlsym/dlclose */
-plghndl_t
-clicon_xmldb_plugin_get(clicon_handle h)
+/*! Get XMLDB API struct pointer
+ * @param[in]  h   Clicon handle
+ * @retval     xa  XMLDB API struct
+ * @note xa is really of type struct xmldb_api*
+ */
+void *
+clicon_xmldb_api_get(clicon_handle h)
 {
     clicon_hash_t  *cdat = clicon_data(h);
     size_t          len;
-    void           *p;
+    void           *xa;
 
-    if ((p = hash_value(cdat, "xmldb_plugin", &len)) != NULL)
-	return *(plghndl_t*)p;
+    if ((xa = hash_value(cdat, "xmldb_api", &len)) != NULL)
+	return *(void**)xa;
     return NULL;
 }
 
@@ -840,20 +816,19 @@ clicon_xmldb_api_set(clicon_handle     h,
     return 0;
 }
 
-/*! Get XMLDB API struct pointer
+/*! Get XMLDB storage handle
  * @param[in]  h   Clicon handle
- * @retval     xa  XMLDB API struct
- * @note xa is really of type struct xmldb_api*
+ * @retval     xh  XMLDB storage handle. If not connected return NULL
  */
 void *
-clicon_xmldb_api_get(clicon_handle h)
+clicon_xmldb_handle_get(clicon_handle h)
 {
     clicon_hash_t  *cdat = clicon_data(h);
     size_t          len;
-    void           *xa;
+    void           *xh;
 
-    if ((xa = hash_value(cdat, "xmldb_api", &len)) != NULL)
-	return *(void**)xa;
+    if ((xh = hash_value(cdat, "xmldb_handle", &len)) != NULL)
+	return *(void**)xh;
     return NULL;
 }
 
@@ -873,18 +848,4 @@ clicon_xmldb_handle_set(clicon_handle h,
     return 0;
 }
 
-/*! Get XMLDB storage handle
- * @param[in]  h   Clicon handle
- * @retval     xh  XMLDB storage handle. If not connected return NULL
- */
-void *
-clicon_xmldb_handle_get(clicon_handle h)
-{
-    clicon_hash_t  *cdat = clicon_data(h);
-    size_t          len;
-    void           *xh;
 
-    if ((xh = hash_value(cdat, "xmldb_handle", &len)) != NULL)
-	return *(void**)xh;
-    return NULL;
-}

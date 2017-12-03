@@ -837,7 +837,7 @@ save_config_file(clicon_handle h,
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
-    if ((f = fopen(filename, "wb")) == NULL){
+    if ((f = fopen(filename, "w")) == NULL){
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
 	goto done;
     } 

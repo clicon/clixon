@@ -356,7 +356,7 @@ main(int argc, char **argv)
 	    clicon_option_str_set(h, "CLICON_CLI_MODE", optarg);
 	    break;
 	case 'q' : /* Quiet mode */
-	    clicon_option_str_set(h, "CLICON_QUIET", "on"); 
+	    clicon_quiet_mode_set(h, 1);
 	    break;
 	case 'p' : /* Print spec */
 	    printspec++;

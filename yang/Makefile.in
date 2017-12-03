@@ -38,7 +38,7 @@ bindir 		= @bindir@
 includedir	= @includedir@
 datarootdir     = @datarootdir@
 
-YANGSPECS	 = clixon-config@2017-07-02.yang
+YANGSPECS	 = clixon-config@2017-12-03.yang
 YANGSPECS	+= ietf-netconf@2011-06-01.yang
 
 APPNAME	        = clixon  # subdir ehere these files are installed

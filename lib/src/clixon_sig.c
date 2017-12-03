@@ -182,7 +182,7 @@ pidfile_write(char *pidfile)
     int   retval = -1;
 
     /* Here, there should be no old agent and no pidfile */
-    if ((f = fopen(pidfile, "wb")) == NULL){
+    if ((f = fopen(pidfile, "w")) == NULL){
 	if (errno == EACCES)
 	    clicon_err(OE_DEMON, errno, "Creating pid-file %s (Try run as root?)", pidfile);
 	else
