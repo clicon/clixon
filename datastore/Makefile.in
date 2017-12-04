@@ -121,7 +121,7 @@ clean:
 
 distclean: clean
 	rm -f Makefile *~ .depend
-	for i in $(SUBDIRS); \
+	for i in $(sort $(SUBDIRS) keyvalue); \
 	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
 tags:
