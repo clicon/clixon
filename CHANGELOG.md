@@ -2,6 +2,8 @@
 
 ## 3.4.0 (Upcoming)
 
+* datastore/keyvalue/Makefile is left behind on make distclean. Fixed by conditional configure. Thanks renato@netgate.com.
+
 * Better semantic versioning, eg MAJOR/MINOR/PATCH, where increment in PATCH does not change API.
 
 * Datastore cache introduced: cache XML tree in memory for faster get access. Use CLICON_XMLDB_CACHE configuration option. Default is 1.

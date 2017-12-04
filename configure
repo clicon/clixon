@@ -3966,6 +3966,7 @@ fi
       echo "Using QDBM here: ${with_qdbm}"
       CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
       LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
+
    fi
    # Problem: depot.h may be in qdbm/depot.h.
    for ac_header in depot.h
@@ -4041,6 +4042,8 @@ _ACEOF
 else
   as_fn_error $? "libqdbm-dev required" "$LINENO" 5
 fi
+
+   ac_config_files="$ac_config_files datastore/keyvalue/Makefile"
 
 fi
 
@@ -4325,7 +4328,11 @@ _ACEOF
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/keyvalue/Makefile datastore/text/Makefile yang/Makefile doc/Makefile"
+
+
+
+# See also datastore/keyvalue/Makefile in with_keyvalue clause above
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/text/Makefile yang/Makefile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5018,6 +5025,7 @@ do
   case $ac_config_target in
     "include/clixon_config.h") CONFIG_HEADERS="$CONFIG_HEADERS include/clixon_config.h" ;;
     "lib/clixon/clixon.h") CONFIG_HEADERS="$CONFIG_HEADERS lib/clixon/clixon.h" ;;
+    "datastore/keyvalue/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/keyvalue/Makefile" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "lib/Makefile") CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
     "lib/src/Makefile") CONFIG_FILES="$CONFIG_FILES lib/src/Makefile" ;;
@@ -5040,7 +5048,6 @@ do
     "docker/netconf/Makefile") CONFIG_FILES="$CONFIG_FILES docker/netconf/Makefile" ;;
     "docker/netconf/Dockerfile") CONFIG_FILES="$CONFIG_FILES docker/netconf/Dockerfile" ;;
     "datastore/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/Makefile" ;;
-    "datastore/keyvalue/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/keyvalue/Makefile" ;;
     "datastore/text/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/text/Makefile" ;;
     "yang/Makefile") CONFIG_FILES="$CONFIG_FILES yang/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;

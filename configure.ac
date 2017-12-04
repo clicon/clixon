@@ -154,6 +154,7 @@ if test "x${with_keyvalue}" == xyes; then
    # Problem: depot.h may be in qdbm/depot.h. 
    AC_CHECK_HEADERS(depot.h,,[AC_CHECK_HEADERS(qdbm/depot.h,,AC_MSG_ERROR(libqdbm-dev required))])
    AC_CHECK_LIB(qdbm, dpopen,, AC_MSG_ERROR(libqdbm-dev required))
+   AC_CONFIG_FILES(datastore/keyvalue/Makefile)
 fi
 
 # This is for backward compatibility of backend startup commands
@@ -197,6 +198,7 @@ AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${prefix}/share/clixon", [Clixon data dir fo
 
 AH_BOTTOM([#include <clixon_custom.h>])
 
+# See also datastore/keyvalue/Makefile in with_keyvalue clause above
 AC_OUTPUT(Makefile
 	  lib/Makefile
 	  lib/src/Makefile 
@@ -219,7 +221,6 @@ AC_OUTPUT(Makefile
 	  docker/netconf/Makefile 
 	  docker/netconf/Dockerfile
 	  datastore/Makefile
-	  datastore/keyvalue/Makefile
 	  datastore/text/Makefile
 	  yang/Makefile
 	  doc/Makefile 
