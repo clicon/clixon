@@ -45,3 +45,5 @@ lib/src/build.c
 lib/clixon/clixon.h
 
 build-root/*.tar.xz
+build-root/*.rpm
+build-root/rpmbuild

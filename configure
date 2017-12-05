@@ -659,6 +659,7 @@ build_os
 build_vendor
 build_cpu
 build
+CLIGEN_PREFIX
 CLIGEN_VERSION
 CLIXON_VERSION_MINOR
 CLIXON_VERSION_MAJOR
@@ -2158,6 +2159,11 @@ CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 # Fix to specific version (eg 3.5) or head (3)
 CLIGEN_VERSION="3"
+if test "$prefix" = "NONE"; then
+	CLIGEN_PREFIX="$ac_default_prefix"
+else
+	CLIGEN_PREFIX="$prefix"
+fi
 
 ac_config_headers="$ac_config_headers include/clixon_config.h lib/clixon/clixon.h"
 
@@ -3560,6 +3566,7 @@ if test "${with_cligen}"; then
   echo "Using CLIGEN here: ${with_cligen}"
   CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
   LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
+  test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
 fi
 
 
@@ -4328,11 +4335,8 @@ _ACEOF
 
 
 
-
-
-
 # See also datastore/keyvalue/Makefile in with_keyvalue clause above
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/text/Makefile yang/Makefile doc/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile extras/rpm/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/text/Makefile yang/Makefile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5040,6 +5044,7 @@ do
     "etc/clixonrc") CONFIG_FILES="$CONFIG_FILES etc/clixonrc" ;;
     "example/Makefile") CONFIG_FILES="$CONFIG_FILES example/Makefile" ;;
     "example/docker/Makefile") CONFIG_FILES="$CONFIG_FILES example/docker/Makefile" ;;
+    "extras/rpm/Makefile") CONFIG_FILES="$CONFIG_FILES extras/rpm/Makefile" ;;
     "docker/Makefile") CONFIG_FILES="$CONFIG_FILES docker/Makefile" ;;
     "docker/cli/Makefile") CONFIG_FILES="$CONFIG_FILES docker/cli/Makefile" ;;
     "docker/cli/Dockerfile") CONFIG_FILES="$CONFIG_FILES docker/cli/Dockerfile" ;;

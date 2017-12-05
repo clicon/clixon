@@ -106,9 +106,9 @@ clean:
 
 distclean:
 	rm -f Makefile TAGS config.status config.log *~ .depend
-	rm -rf Makefile autom4te.cache 
-	rm -rf clixon.conf.cpp clixon.mk
-	rm -f build-root/*.tar.xz
+	rm -rf autom4te.cache
+	rm -rf clixon.conf.cpp clixon.mk build-root/rpmbuild
+	rm -f build-root/*.tar.xz build-root/*.rpm extras/rpm/Makefile
 	for i in $(SUBDIRS) doc example docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
 
@@ -144,6 +144,12 @@ dist:
 	@xz -v --threads=0 $(DIST_FILE)
 	@$(RM) $(BR)/clixon-latest.tar.xz
 	@ln -rs $(DIST_FILE).xz $(BR)/clixon-latest.tar.xz
+
+pkg-rpm: dist
+	make -C extras/rpm
+
+pkg-srpm: dist
+	make -C extras/rpm srpm
 
 docker:
 	for i in docker; \
