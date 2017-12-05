@@ -108,8 +108,42 @@ distclean:
 	rm -f Makefile TAGS config.status config.log *~ .depend
 	rm -rf Makefile autom4te.cache 
 	rm -rf clixon.conf.cpp clixon.mk
+	rm -f build-root/*.tar.xz
 	for i in $(SUBDIRS) doc example docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
+
+export BR=$(CURDIR)/build-root
+
+$(BR)/scripts/.version:
+ifneq ("$(wildcard /etc/redhat-release)","")
+	$(shell $(BR)/scripts/version rpm-string > $(BR)/scripts/.version)
+else
+	$(shell $(BR)/scripts/version > $(BR)/scripts/.version)
+endif
+
+DIST_FILE = $(BR)/clixon-$(shell extras/scripts/version).tar
+DIST_SUBDIR = clixon-$(shell extras/scripts/version | cut -f1 -d-)
+
+dist:
+	@if git rev-parse 2> /dev/null ; then \
+	    git archive \
+	      --prefix=$(DIST_SUBDIR)/ \
+	      --format=tar \
+	      -o $(DIST_FILE) \
+	    HEAD ; \
+	    git describe > $(BR)/.version ; \
+	else \
+	    (cd .. ; tar -cf $(DIST_FILE) $(DIST_SUBDIR) --exclude=*.tar) ; \
+	    extras/scripts/version > $(BR)/.version ; \
+	fi
+	@tar --append \
+	  --file $(DIST_FILE) \
+	  --transform='s,.*/.version,$(DIST_SUBDIR)/extras/scripts/.version,' \
+	  $(BR)/.version
+	@$(RM) $(BR)/.version $(DIST_FILE).xz
+	@xz -v --threads=0 $(DIST_FILE)
+	@$(RM) $(BR)/clixon-latest.tar.xz
+	@ln -rs $(DIST_FILE).xz $(BR)/clixon-latest.tar.xz
 
 docker:
 	for i in docker; \

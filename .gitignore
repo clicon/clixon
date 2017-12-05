@@ -43,3 +43,5 @@ include/clixon_config.h
 
 lib/src/build.c
 lib/clixon/clixon.h
+
+build-root/*.tar.xz
