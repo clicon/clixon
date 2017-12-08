@@ -242,9 +242,9 @@ main(int argc, char **argv)
     int          logdst = CLICON_LOG_STDERR;
     char        *restarg = NULL; /* what remains after options */
     int          dump_configfile_xml = 0;
-
+    yang_spec   *yspec;
+    
     /* Defaults */
-
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
     /* Initiate CLICON handle */
@@ -397,20 +397,17 @@ main(int argc, char **argv)
     cv_exclude_keys(clicon_cli_varonly(h)); 
 
     /* Parse db specification as cli*/
-    if (yang_spec_main(h, stdout, printspec) < 0)
+    if ((yspec = yang_spec_main(h)) == NULL)
 	goto done;
+    if (printspec)
+	yang_print(stdout, (yang_node*)yspec);
 
     /* Create tree generated from dataspec. If no other trees exists, this is
      * the only one.
      */
     if (clicon_cli_genmodel(h)){
-	yang_spec         *yspec;      /* yang spec */
 	parse_tree         pt = {0,};  /* cli parse tree */
 
-	if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	    clicon_err(OE_FATAL, 0, "No YANG DB_SPEC");
-	    goto done;
-	}
 	/* Create cli command tree from dbspec */
 	if (yang2cli(h, yspec, &pt, clicon_cli_genmodel_type(h)) < 0)
 	    goto done;

@@ -98,7 +98,7 @@ process_incoming_packet(clicon_handle h,
     }
     str = str0;
     /* Parse incoming XML message */
-    if (clicon_xml_parse_str(str, NULL, &xreq) < 0){
+    if (clicon_xml_parse_str(str, NULL, &xreq) < 0){ 
 	if ((cbret = cbuf_new()) == NULL){
 	    cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"
@@ -114,9 +114,8 @@ process_incoming_packet(clicon_handle h,
 	goto done;
     }
     free(str0);
-    if ((xrpc=xpath_first(xreq, "//rpc")) != NULL){
+    if ((xrpc=xpath_first(xreq, "//rpc")) != NULL)
         isrpc++;
-    }
     else
         if (xpath_first(xreq, "//hello") != NULL)
 	    ;
@@ -215,9 +214,10 @@ netconf_input_cb(int   s,
 			      buf[i],
 			      &xml_state)) {
 		/* OK, we have an xml string from a client */
-		if (process_incoming_packet(h, cb) < 0){
+		/* Remove trailer */
+		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
+		if (process_incoming_packet(h, cb) < 0)
 		    goto done;
-		}
 		if (cc_closed)
 		    break;
 		cbuf_reset(cb);
@@ -268,7 +268,6 @@ netconf_terminate(clicon_handle h)
 {
     yang_spec      *yspec;
 
-
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
@@ -302,7 +301,8 @@ usage(clicon_handle h,
 }
 
 int
-main(int argc, char **argv)
+main(int    argc,
+     char **argv)
 {
     char             c;
     char            *tmp;
@@ -337,7 +337,6 @@ main(int argc, char **argv)
 	     use_syslog = 1;
 	     break;
 	}
-
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
@@ -379,13 +378,18 @@ main(int argc, char **argv)
     argv += optind;
 
     /* Parse yang database spec file */
-    if (yang_spec_main(h, stdout, 0) < 0)
+    if (yang_spec_main(h) == NULL)
+	goto done;
+
+    /* Parse netconf yang spec file  */
+    if (yang_spec_netconf(h) == NULL)
 	goto done;
 
     /* Initialize plugins group */
     if (netconf_plugin_load(h) < 0)
-	return -1;
+	goto done;
 
+    
     /* Call start function is all plugins before we go interactive */
     tmp = *(argv-1);
     *(argv-1) = argv0;

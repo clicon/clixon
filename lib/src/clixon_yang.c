@@ -1527,7 +1527,7 @@ yang_parse_recurse(clicon_handle h,
 	    if ((nr = yang_parse_find_match(h, yang_dir, module, fbuf)) < 0)
 		goto done;
 	    if (nr == 0){
-		clicon_err(OE_YANG, errno, "No matching %s yang files found (expected modulenameor absolute filename)", module);
+		clicon_err(OE_YANG, errno, "No matching %s yang files found (expected module name or absolute filename)", module);
 		goto done;
 	    }
 	}
@@ -1820,7 +1820,6 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
     yang_stmt       *ymod;
     char            *id;
     char            *prefix = NULL;
-
     yang_stmt       *yprefix;
 
     /* check absolute schema_nodeid */
@@ -2024,24 +2023,36 @@ yang_config(yang_stmt *ys)
     return 1;
 }
 
-/*! Utility function for handling yang parsing and translation to key format
+/*! Parse netconf yang spec, used by netconf client and as internal protocol */
+yang_spec *
+yang_spec_netconf(clicon_handle h)
+{
+    yang_spec     *yspec = NULL;
+
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    if (yang_parse(h, CLIXON_DATADIR, "ietf-netconf", NULL, yspec) < 0){
+	yspec_free(yspec); yspec = NULL;
+	goto done;
+    }
+    clicon_netconf_yang_set(h, yspec);	
+ done:
+    return yspec;
+}
+
+/*! Read, parse and save application yang specification as option
  * @param h          clicon handle
  * @param f          file to print to (if printspec enabled)
  * @param printspec  print database (YANG) specification as read from file
  */
-int
-yang_spec_main(clicon_handle h, 
-	       FILE         *f, 
-	       int           printspec)
+yang_spec*
+yang_spec_main(clicon_handle h)
 {
-    yang_spec      *yspec;
+    yang_spec      *yspec = NULL;
     char           *yang_dir;
     char           *yang_module;
     char           *yang_revision;
-    int             retval = -1;
 
-    if ((yspec = yspec_new()) == NULL)
-	goto done;
     if ((yang_dir    = clicon_yang_dir(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_YANG_DIR option not set");
 	goto done;
@@ -2052,14 +2063,15 @@ yang_spec_main(clicon_handle h,
 	goto done;
     }
     yang_revision = clicon_yang_module_revision(h);
-    if (yang_parse(h, yang_dir, yang_module, yang_revision, yspec) < 0)
+    if ((yspec = yspec_new()) == NULL)
 	goto done;
+    if (yang_parse(h, yang_dir, yang_module, yang_revision, yspec) < 0){
+	yspec_free(yspec); yspec = NULL;
+	goto done;
+    }
     clicon_dbspec_yang_set(h, yspec);	
-    if (printspec)
-	yang_print(f, (yang_node*)yspec);
-    retval = 0;
   done:
-    return retval;
+    return yspec;
 }
 
 /*! Given a yang node, translate the argument string to a cv vector

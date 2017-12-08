@@ -856,51 +856,85 @@ netconf_create_subscription(clicon_handle h,
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
  * @param[out] xret    Return XML, error or OK
+ * @retval     0       OK, can also be netconf error 
+ * @retval    -1       Error, fatal
  */
 int
 netconf_rpc_dispatch(clicon_handle h,
 		     cxobj        *xn, 
 		     cxobj       **xret)
 {
+    int         retval = -1;
     cxobj      *xe;
-    int         ret = 0;
+    yang_spec  *yspec = NULL; 
     
+    /* Check incoming RPC against system / netconf RPC:s */
+    if ((yspec = clicon_netconf_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No netconf yang spec");
+	goto done;
+    }
     xe = NULL;
     while ((xe = xml_child_each(xn, xe, CX_ELMNT)) != NULL) {
-	if (strcmp(xml_name(xe), "get-config") == 0)
-	    return netconf_get_config(h, xe, xret);
-	else if (strcmp(xml_name(xe), "edit-config") == 0)
-	    return netconf_edit_config(h, xe, xret);
-        else if (strcmp(xml_name(xe), "copy-config") == 0)
-	    return netconf_copy_config(h, xe, xret);
-	else if (strcmp(xml_name(xe), "delete-config") == 0)
-	    return netconf_delete_config(h, xe, xret);
-	else if (strcmp(xml_name(xe), "lock") == 0) 
-	    return netconf_lock(h, xe, xret);
-	else if (strcmp(xml_name(xe), "unlock") == 0)
-	    return netconf_unlock(h, xe, xret);
-	else if (strcmp(xml_name(xe), "get") == 0)
-	    return netconf_get(h, xe, xret);
-	else if (strcmp(xml_name(xe), "close-session") == 0)
-	    return netconf_close_session(h, xe, xret);
-	else if (strcmp(xml_name(xe), "kill-session") == 0) 
-	    return netconf_kill_session(h, xe, xret);
+	if (strcmp(xml_name(xe), "get-config") == 0){
+	    if (netconf_get_config(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "edit-config") == 0){
+	    if (netconf_edit_config(h, xe, xret) < 0)
+		goto done;
+	}
+        else if (strcmp(xml_name(xe), "copy-config") == 0){
+	    if (netconf_copy_config(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "delete-config") == 0){
+	    if (netconf_delete_config(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "lock") == 0) {
+	    if (netconf_lock(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "unlock") == 0){
+	    if (netconf_unlock(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "get") == 0){
+	    if (netconf_get(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "close-session") == 0){
+	    if (netconf_close_session(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "kill-session") == 0) {
+	    if (netconf_kill_session(h, xe, xret) < 0)
+		goto done;
+	}
 	/* Validate capability :validate */
-	else if (strcmp(xml_name(xe), "validate") == 0)
-	   return netconf_validate(h, xe, xret);
+	else if (strcmp(xml_name(xe), "validate") == 0){
+	    if (netconf_validate(h, xe, xret) < 0)
+		goto done;
+	}
 	/* Candidate configuration capability :candidate */
-	else if (strcmp(xml_name(xe), "commit") == 0)
-	    return netconf_commit(h, xe, xret);
-	else if (strcmp(xml_name(xe), "discard-changes") == 0)
-	    return netconf_discard_changes(h, xe, xret);
+	else if (strcmp(xml_name(xe), "commit") == 0){
+	    if (netconf_commit(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "discard-changes") == 0){
+	    if (netconf_discard_changes(h, xe, xret) < 0)
+		goto done;
+	}
 	/* RFC 5277 :notification */
-	else if (strcmp(xml_name(xe), "create-subscription") == 0)
-	    return netconf_create_subscription(h, xe, xret);
+	else if (strcmp(xml_name(xe), "create-subscription") == 0){
+	    if (netconf_create_subscription(h, xe, xret) < 0)
+		goto done;
+	}
 	/* Others */
-	else{
-	    if ((ret = netconf_plugin_callbacks(h, xe, xret)) < 0)
-	       return -1;
-	   if (ret == 0){ /* not handled by callback */
+	else {
+	    if ((retval = netconf_plugin_callbacks(h, xe, xret)) < 0)
+		goto done;
+	    if (retval == 0){ /* not handled by callback */
 		clicon_xml_parse(xret, NULL, "<rpc-reply><rpc-error>"
 				 "<error-tag>operation-failed</error-tag>"
 				 "<error-type>rpc</error-type>"
@@ -908,10 +942,11 @@ netconf_rpc_dispatch(clicon_handle h,
 				 "<error-message>%s</error-message>"
 				 "<error-info>Not recognized</error-info>"
 				 "</rpc-error></rpc-reply>", xml_name(xe));
-		return 0;
-	   }
-	   
-       }
-   }
-    return ret;
+		goto done;
+	    }
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
 }

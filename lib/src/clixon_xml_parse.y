@@ -136,7 +136,7 @@ xml_parse_qname(struct xml_parse_yacc_arg *ya,
 {
     int        retval = -1;
     cxobj     *x;
-    yang_stmt *y=NULL;  /* yang node */   
+    yang_stmt *y = NULL;  /* yang node */   
     cxobj     *xp;      /* xml parent */ 
 
     xp = ya->ya_xparent;

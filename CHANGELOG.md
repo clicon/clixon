@@ -2,6 +2,8 @@
 
 ## 3.4.0 (Upcoming)
 
+* experimental netconf yang rpc 
+
 * datastore/keyvalue/Makefile is left behind on make distclean. Fixed by conditional configure. Thanks renato@netgate.com.
 
 * Better semantic versioning, eg MAJOR/MINOR/PATCH, where increment in PATCH does not change API.

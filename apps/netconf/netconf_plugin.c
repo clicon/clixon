@@ -196,7 +196,6 @@ catch:
     }
     return -1;
 }
-    
 
 /*! See if there is any callback registered for this tag
  *
@@ -215,7 +214,7 @@ netconf_plugin_callbacks(clicon_handle h,
 {
     int            retval = -1;
     netconf_reg_t *nreg;
-    yang_spec     *yspec;
+    yang_spec     *yspec = NULL; /* application yspec */
     yang_stmt     *yrpc;
     yang_stmt     *yinput;
     yang_stmt     *youtput;
@@ -234,19 +233,32 @@ netconf_plugin_callbacks(clicon_handle h,
 	    nreg = NEXTQ(netconf_reg_t *, nreg);
 	} while (nreg != deps);
     }
-    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
-	goto done;
-    }
+    /* First check system / netconf RPC:s */
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, 0, "cbuf_new");
 	goto done;
     }
     /* create absolute path */
-    cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn)); 
+    if (xml_namespace(xn))
+	cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn));
+    else
+	cprintf(cb, "/nc:%s", xml_name(xn)); /* Hardcoded for netconf */
     /* Find yang rpc statement, return yang rpc statement if found */
-    if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), &yrpc) < 0)
-	goto done;
+    if (yrpc == NULL){
+	/* Then check application RPC */
+	if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	    clicon_err(OE_YANG, ENOENT, "No yang spec");
+	    goto done;
+	}
+	cbuf_reset(cb);
+	if (xml_namespace(xn))
+	    cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn));
+	else
+	    cprintf(cb, "/%s", xml_name(xn)); /* XXX not accepdted by below */
+	/* Find yang rpc statement, return yang rpc statement if found */
+	if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), &yrpc) < 0)
+	    goto done;
+    }
     /* Check if found */
     if (yrpc != NULL){
 	if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){

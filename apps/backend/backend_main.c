@@ -74,9 +74,9 @@
 
 /* Command line options to be passed to getopt(3) */
 #ifdef BACKEND_STARTUP_COMPAT
-#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:IRCrg:py:x:" /* substitute s: for IRCc:r */
+#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:IRCrg:y:x:" /* substitute s: for IRCc:r */
 #else
-#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:g:py:x:" /* substitute s: for IRCc:r */
+#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:g:y:x:" /* substitute s: for IRCc:r */
 #endif
 
 /*! Terminate. Cannot use h after this */
@@ -148,7 +148,6 @@ usage(char *argv0, clicon_handle h)
 	    "    -C\t\tCall plugin_reset() in plugins to reset system state in candidate db (use with -I)\n"
 	    "    -r\t\tReload running database\n"
 #endif /* BACKEND_STARTUP_COMPAT */
-	    "    -p \t\tPrint database yang specification\n"
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
 	    "    -y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "    -x <plugin>\tXMLDB plugin\n",
@@ -611,7 +610,6 @@ main(int argc, char **argv)
     struct stat   st;
     clicon_handle h;
     int           help = 0;
-    int           printspec = 0;
     int           pid;
     char         *pidfile;
     char         *sock;
@@ -736,9 +734,6 @@ main(int argc, char **argv)
 	case 'g': /* config socket group */
 	    clicon_option_str_set(h, "CLICON_SOCK_GROUP", optarg);
 	    break;
-	case 'p' : /* Print spec */
-	    printspec++;
-	    break;
 	case 'y' :{ /* Override yang module or absolute filename */
 	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
 	    break;
@@ -823,7 +818,7 @@ main(int argc, char **argv)
     if (xmldb_connect(h) < 0)
 	goto done;
     /* Parse db spec file */
-    if (yang_spec_main(h, stdout, printspec) < 0)
+    if (yang_spec_main(h) == NULL)
 	goto done;
 
     /* Set options: database dir and yangspec (could be hidden in connect?)*/

@@ -12,7 +12,7 @@ clixon_cli=clixon_cli
 
 cat <<EOF > /tmp/conf_yang.xml
 <config>
-  <CLICON_CONFIGFILE>/tmp/test_yang.xml</CLICON_CONFIGFILE>
+  <CLICON_CONFIGFILE>/tmp/conf_yang.xml</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLISPEC_DIR>/usr/local/lib/routing/clispec</CLICON_CLISPEC_DIR>

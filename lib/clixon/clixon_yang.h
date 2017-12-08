@@ -223,7 +223,8 @@ cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
-int        yang_spec_main(clicon_handle h, FILE *f, int printspec);
+yang_spec *yang_spec_netconf(clicon_handle h);
+yang_spec *yang_spec_main(clicon_handle h);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_node *yn, char *name);
 

@@ -184,7 +184,8 @@ clicon_yang_debug(int d)
    also called from yacc generated code *
 */
 void 
-clixon_yang_parseerror(void *_yy, char *s) 
+clixon_yang_parseerror(void *_yy,
+		       char *s) 
 { 
     clicon_err(OE_YANG, 0, "%s on line %d: %s at or before: '%s'", 
 	       _YY->yy_name,
@@ -195,7 +196,8 @@ clixon_yang_parseerror(void *_yy, char *s)
 }
 
 int
-yang_parse_init(struct clicon_yang_yacc_arg *yy, yang_spec *ysp)
+yang_parse_init(struct clicon_yang_yacc_arg *yy,
+		yang_spec                   *ysp)
 {
     return 0;
 }
@@ -219,7 +221,8 @@ ystack_pop(struct clicon_yang_yacc_arg *yy)
 }
 
 struct ys_stack *
-ystack_push(struct clicon_yang_yacc_arg *yy, yang_node *yn)
+ystack_push(struct clicon_yang_yacc_arg *yy,
+	    yang_node                   *yn)
 {
     struct ys_stack *ystack; 
 
@@ -240,8 +243,8 @@ ystack_push(struct clicon_yang_yacc_arg *yy, yang_node *yn)
  */
 static yang_stmt *
 ysp_add(struct clicon_yang_yacc_arg *yy, 
-	enum rfc_6020 keyword, 
-	char *argument)
+	enum rfc_6020                keyword, 
+	char                        *argument)
 {
     struct ys_stack *ystack = yy->yy_stack;
     yang_stmt       *ys = NULL;
@@ -272,7 +275,9 @@ ysp_add(struct clicon_yang_yacc_arg *yy,
 
 /*! combination of ysp_add and ysp_push for sub-modules */
 static yang_stmt *
-ysp_add_push(struct clicon_yang_yacc_arg *yy, int keyword, char *argument)
+ysp_add_push(struct clicon_yang_yacc_arg *yy,
+	     int                          keyword,
+	     char                        *argument)
 {
     yang_stmt *ys;
 
@@ -286,7 +291,8 @@ ysp_add_push(struct clicon_yang_yacc_arg *yy, int keyword, char *argument)
 /* identifier-ref-arg-str has a [prefix :] id and prefix_id joins the id with an 
    optional prefix into a single string */
 static char*
-prefix_id_join(char *prefix, char *id)
+prefix_id_join(char *prefix,
+	       char *id)
 {
     char *str;
     int   len;
@@ -333,7 +339,7 @@ module_stmt   : K_MODULE id_arg_str
                         } 
                 '{' module_substmts '}' 
                         { if (ystack_pop(_yy) < 0) _YYERROR("2");
-			  clicon_debug(2,"module -> id-arg-str { module-substmts }");} 
+			  clicon_debug(2,"module_stmt -> id-arg-str { module-substmts }");} 
               ;
 
 module_substmts : module_substmts module_substmt 
@@ -693,7 +699,7 @@ anyxml_substmt  : when_stmt          { clicon_debug(2,"anyxml-substmt -> when-st
               | status_stmt          { clicon_debug(2,"anyxml-substmt -> status-stmt"); }
               | description_stmt     { clicon_debug(2,"anyxml-substmt -> description-stmt"); }
               | reference_stmt       { clicon_debug(2,"anyxml-substmt -> reference-stmt"); }
-              | ustring ':' ustring ';' { clicon_debug(2,"anyxml-substmt -> anyxml extension"); }
+              | ustring ':' ustring ';' { free($1); free($3); clicon_debug(2,"anyxml-substmt -> anyxml extension"); }
               ;
 
 /* uses */
