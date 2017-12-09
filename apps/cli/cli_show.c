@@ -209,8 +209,7 @@ expand_dbvar(void   *h,
 	else
 	    bodystr = xml_body(x);
 	if (bodystr == NULL){
-	    clicon_err(OE_CFG, 0, "No xml body");
-	    goto done;
+	    continue; /* no body, cornercase */
 	}
 	/* detect duplicates */
 	for (k=0; k<j; k++){

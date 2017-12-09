@@ -39,6 +39,10 @@
 #define _CLIXON_XML_H
 
 /*
+ * Constants
+ */
+
+/*
  * Types
  */
 /* Netconf operation type */
@@ -113,12 +117,6 @@ cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 
 cxobj   **xml_childvec_get(cxobj *x);
 int       xml_childvec_set(cxobj *x, int len);
-#ifdef OBSOLETE /* Changed in 3.3.3, see CHANGELOG */
-/* Changed: */
-cxobj    *xml_new(char *name, cxobj *xn_parent);
-/* Removed: */
-cxobj    *xml_new_spec(char *name, cxobj *xn_parent, void *spec);
-#endif
 cxobj    *xml_new(char *name, cxobj *xn_parent, yang_stmt *spec);
 yang_stmt *xml_spec(cxobj *x);
 int       xml_spec_set(cxobj *x, yang_stmt *spec);
@@ -142,15 +140,6 @@ int       xml_free(cxobj *xn);
 int       xml_print(FILE  *f, cxobj *xn);
 int       clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint);
 int       clicon_xml2cbuf(cbuf *xf, cxobj *xn, int level, int prettyprint);
-#ifdef OBSOLETE /* Changed in 3.3.3, see CHANGELOG */
-/* Changed: */
-int       clicon_xml_parse(cxobj **cxtop, char *format, ...);
-int       clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag);
-int       clicon_xml_parse_str(char *str, cxobj **xml_top);
-/* Removed: */
-int       xml_parse(char *str, yang_spec *yspec, cxobj *xt);
-int       clicon_xml_parse_string(char **str, cxobj **xml_top);
-#endif
 int       xml_parse_file(int fd, char *endtag, yang_spec *yspec, cxobj **xt);
 int       xml_parse_string(const char *str, yang_spec *yspec, cxobj **xml_top);
 int       xml_parse_va(cxobj **xt, yang_spec *yspec, const char *format, ...);
@@ -179,5 +168,17 @@ int xml_hash_op(cxobj *x, void *arg);
 int xml_hash_add(cxobj  *x);
 int xml_hash_rm_only(cxobj *x);
 int xml_hash_rm_entry(cxobj  *x);
+
+#ifdef XML_COMPAT /* See CHANGELOG */
+/* MANUAL CHANGE: xml_new(name, parent) --> xml_new(name, parent, NULL) */
+
+#define xml_new_spec(name, parent) xml_new(name, parent, NULL)
+#define clicon_xml_parse(xt, fmt, ...) xml_parse_va(xt, NULL, fmt, __VA_ARGS__)
+#define clicon_xml_parse_file(fd, xt, etag) xml_parse_file(fd, etag, NULL, xt)
+#define clicon_xml_parse_string(strp, xt) xml_parse_string(*strp, NULL, xt)
+#define clicon_xml_parse_str(str, xt) xml_parse_string(str, NULL, xt)
+#define xml_parse(str, xt) xml_parse_string(str, NULL, &xt)
+#endif
+
 
 #endif /* _CLIXON_XML_H */

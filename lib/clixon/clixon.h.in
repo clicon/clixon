@@ -56,6 +56,8 @@
 #undef CLIXON_VERSION_MINOR
 #undef CLIXON_VERSION_PATCH
 
+#undef XML_COMPAT
+
 /*
  * Use this constant to disable some prototypes that should not be visible outside the lib.
  * This is an alternative to use separate internal include files.

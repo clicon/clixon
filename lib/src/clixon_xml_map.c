@@ -680,10 +680,8 @@ match_base_child(cxobj     *x0,
 	cvi = NULL; i = 0;
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	    keyname = cv_string_get(cvi);
-	    if ((b1 = xml_find_body(x1c, keyname)) == NULL){
-		clicon_err(OE_UNIX, errno, "key %s not found", keyname);
-		goto done;
-	    }
+	    if ((b1 = xml_find_body(x1c, keyname)) == NULL)
+		goto ok; /* not found */
 	    b1vec[i++] = b1;
 	}
 	/* Iterate over x0 tree to (1) find a child that matches name

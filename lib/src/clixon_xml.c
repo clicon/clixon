@@ -955,12 +955,14 @@ clicon_xml2file(FILE  *f,
     cxobj *xc;
     int    hasbody;
     int    haselement;
+    char  *val;
 
     name = xml_name(x);
     namespace = xml_namespace(x);
     switch(xml_type(x)){
     case CX_BODY:
-	fprintf(f, "%s", xml_value(x));
+	if ((val = xml_value(x)) != NULL) /* incomplete tree */
+	    fprintf(f, "%s", xml_value(x));
 	break;
     case CX_ATTR:
 	fprintf(f, " ");
@@ -1191,7 +1193,7 @@ xmltree2cbuf(cbuf  *cb,
  * @see xml_parse_va
  */
 static int 
-xml_parse(const char *str, 
+_xml_parse(const char *str, 
 	  yang_spec  *yspec,
 	  cxobj      *xt)
 {
@@ -1297,7 +1299,7 @@ xml_parse_file(int        fd,
 	    if (*xt == NULL)
 		if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
 		    goto done;
-	    if (xml_parse(ptr, yspec, *xt) < 0)
+	    if (_xml_parse(ptr, yspec, *xt) < 0)
 		goto done;
 	    break;
 	}
@@ -1349,7 +1351,7 @@ xml_parse_string(const char *str,
     if (*xtop == NULL)
 	if ((*xtop = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
 	    return -1;
-    return xml_parse(str, yspec, *xtop);
+    return _xml_parse(str, yspec, *xtop);
 }
 
 /*! Read XML from var-arg list and parse it into xml tree
@@ -1397,7 +1399,7 @@ xml_parse_va(cxobj     **xtop,
     if (*xtop == NULL)
 	if ((*xtop = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
 	    goto done;
-    if (xml_parse(str, yspec, *xtop) < 0)
+    if (_xml_parse(str, yspec, *xtop) < 0)
 	goto done;
     retval = 0;
  done:
