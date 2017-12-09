@@ -98,7 +98,7 @@ process_incoming_packet(clicon_handle h,
     }
     str = str0;
     /* Parse incoming XML message */
-    if (clicon_xml_parse_str(str, NULL, &xreq) < 0){ 
+    if (xml_parse_string(str, NULL, &xreq) < 0){ 
 	if ((cbret = cbuf_new()) == NULL){
 	    cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"

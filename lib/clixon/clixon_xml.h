@@ -113,6 +113,12 @@ cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 
 cxobj   **xml_childvec_get(cxobj *x);
 int       xml_childvec_set(cxobj *x, int len);
+#ifdef OBSOLETE /* Changed in 3.3.3, see CHANGELOG */
+/* Changed: */
+cxobj    *xml_new(char *name, cxobj *xn_parent);
+/* Removed: */
+cxobj    *xml_new_spec(char *name, cxobj *xn_parent, void *spec);
+#endif
 cxobj    *xml_new(char *name, cxobj *xn_parent, yang_stmt *spec);
 yang_stmt *xml_spec(cxobj *x);
 int       xml_spec_set(cxobj *x, yang_stmt *spec);
@@ -136,12 +142,18 @@ int       xml_free(cxobj *xn);
 int       xml_print(FILE  *f, cxobj *xn);
 int       clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint);
 int       clicon_xml2cbuf(cbuf *xf, cxobj *xn, int level, int prettyprint);
-int       clicon_xml_parse_file(int fd, char *endtag, yang_spec *yspec, cxobj **xt);
-int       clicon_xml_parse_str(char *str, yang_spec *yspec, cxobj **xml_top);
-/* XXX obsolete */
-#define clicon_xml_parse_string(str, x) clicon_xml_parse_str((*str), NULL, x) 
-int       clicon_xml_parse(cxobj **cxtop, yang_spec *yspec, char *format, ...);
+#ifdef OBSOLETE /* Changed in 3.3.3, see CHANGELOG */
+/* Changed: */
+int       clicon_xml_parse(cxobj **cxtop, char *format, ...);
+int       clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag);
+int       clicon_xml_parse_str(char *str, cxobj **xml_top);
+/* Removed: */
 int       xml_parse(char *str, yang_spec *yspec, cxobj *xt);
+int       clicon_xml_parse_string(char **str, cxobj **xml_top);
+#endif
+int       xml_parse_file(int fd, char *endtag, yang_spec *yspec, cxobj **xt);
+int       xml_parse_string(const char *str, yang_spec *yspec, cxobj **xml_top);
+int       xml_parse_va(cxobj **xt, yang_spec *yspec, const char *format, ...);
 
 int       xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 int       xml_copy_one(cxobj *xn0, cxobj *xn1);

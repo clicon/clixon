@@ -376,7 +376,7 @@ api_data_post(clicon_handle h,
 	goto done;
     /* Parse input data as json or xml into xml */
     if (parse_xml){
-	if (clicon_xml_parse_str(data, NULL, &xdata) < 0){
+	if (xml_parse_string(data, NULL, &xdata) < 0){
 	    clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
 	    goto done;
 	}
@@ -495,7 +495,7 @@ api_data_put(clicon_handle h,
 	goto done;
     /* Parse input data as json or xml into xml */
     if (parse_xml){
-	if (clicon_xml_parse_str(data, NULL, &xdata) < 0){
+	if (xml_parse_string(data, NULL, &xdata) < 0){
 	    clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
 	    goto done;
 	}
@@ -729,7 +729,7 @@ api_operation_post(clicon_handle h,
     if (data && strlen(data)){
 	/* Parse input data as json or xml into xml */
 	if (parse_xml){
-	    if (clicon_xml_parse_str(data, NULL, &xdata) < 0){
+	    if (xml_parse_string(data, NULL, &xdata) < 0){
 		clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
 		goto done;
 	    }

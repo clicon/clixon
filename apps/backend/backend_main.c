@@ -296,7 +296,7 @@ rundb_main(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "open(%s)", extraxml_file);
 	goto done;
     }
-    if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
+    if (xml_parse_file(fd, &xt, "</clicon>") < 0)
 	goto done;
     if ((xn = xml_child_i(xt, 0)) != NULL)
 	if (xmldb_put(h, "tmp", OP_MERGE, xn) < 0)
@@ -442,7 +442,7 @@ load_extraxml(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
     }
-    if (clicon_xml_parse_file(fd, "</config>", NULL, &xt) < 0)
+    if (xml_parse_file(fd, "</config>", NULL, &xt) < 0)
 	goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)
@@ -827,7 +827,7 @@ main(int argc, char **argv)
     if (xmldb_setopt(h, "yangspec", clicon_dbspec_yang(h)) < 0)
 	goto done;
     if ((xml_cache = clicon_option_bool(h, "CLICON_XMLDB_CACHE")) >= 0)
-	if (xmldb_setopt(h, "xml_cache", (void*)xml_cache) < 0)
+	if (xmldb_setopt(h, "xml_cache", (void*)(intptr_t)xml_cache) < 0)
 	    goto done;
     /* If startup mode is not defined, eg via OPTION or -s, assume old method */
     startup_mode = clicon_startup_mode(h);

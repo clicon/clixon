@@ -120,7 +120,7 @@ clicon_rpc_msg(clicon_handle      h,
     }
     clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
     if (retdata &&
-	clicon_xml_parse_str(retdata, NULL, &xret) < 0)
+	xml_parse_string(retdata, NULL, &xret) < 0)
 	goto done;
     if (xret0){
 	*xret0 = xret;

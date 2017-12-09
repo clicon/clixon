@@ -68,8 +68,12 @@
 /*
  * Constants
  */
-#define BUFLEN 1024  /* Size of xml read buffer */
-#define XML_INDENT 3 /* maybe we should set this programmatically? */
+/* Size of xml read buffer */
+#define BUFLEN 1024  
+/* Indentation for xml pretty-print. Consider option? */
+#define XML_INDENT 3 
+/* Name of xml top object created by xml parse functions */
+#define XML_TOP_SYMBOL "top" 
 
 /*
  * Types
@@ -923,6 +927,10 @@ xml_free(cxobj *x)
     return 0;
 }
 
+/*------------------------------------------------------------------------
+ * XML printing functions. Output a parse tree to file, string cligen buf
+ *------------------------------------------------------------------------*/
+
 /*! Print an XML tree structure to an output stream
  *
  * Uses clicon_xml2cbuf internally
@@ -1130,44 +1138,6 @@ clicon_xml2cbuf(cbuf  *cb,
  done:
     return retval;
 }
-
-/*! Basic xml parsing function.
- * @param[in]  str   Pointer to string containing XML definition. 
- * @param[in]  yspec Yang specification or NULL
- * @param[out] xtop  Top of XML parse tree. Assume created.
- * @see clicon_xml_parse_file clicon_xml_parse_string
- */
-int 
-xml_parse(char      *str, 
-	  yang_spec *yspec,
-	  cxobj     *xt)
-{
-    int                       retval = -1;
-    struct xml_parse_yacc_arg ya = {0,};
-
-    if (xt == NULL){
-	clicon_err(OE_XML, errno, "Unexpected NULL XML");
-	return -1;	
-    }
-    if ((ya.ya_parse_string = strdup(str)) == NULL){
-	clicon_err(OE_XML, errno, "strdup");
-	return -1;
-    }
-    ya.ya_xparent = xt;
-    ya.ya_skipspace = 1;  /* remove all non-terminal bodies (strip pretty-print) */
-    ya.ya_yspec = yspec;
-    if (clixon_xml_parsel_init(&ya) < 0)
-	goto done;    
-    if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
-	goto done;
-    retval = 0;
-  done:
-    clixon_xml_parsel_exit(&ya);
-    if(ya.ya_parse_string != NULL)
-	free(ya.ya_parse_string);
-    return retval; 
-}
-
 /*! Print actual xml tree datastructures (not xml), mainly for debugging
  * @param[in,out] cb          Cligen buffer to write to
  * @param[in]     xn          Clicon xml tree
@@ -1207,7 +1177,51 @@ xmltree2cbuf(cbuf  *cb,
     return 0;
 }
 
-/*! FSM to detect a substring
+/*--------------------------------------------------------------------
+ * XML parsing functions. Create XML parse tree from string and file.
+ *--------------------------------------------------------------------*/
+/*! Common internal xml parsing function string to parse-tree
+ *
+ * Given a string containing XML, parse into existing XML tree and return
+ * @param[in]     str   Pointer to string containing XML definition. 
+ * @param[in]     yspec Yang specification or NULL
+ * @param[in,out] xtop  Top of XML parse tree. Assume created. Holds new tree.
+ * @see xml_parse_file
+ * @see xml_parse_string
+ * @see xml_parse_va
+ */
+static int 
+xml_parse(const char *str, 
+	  yang_spec  *yspec,
+	  cxobj      *xt)
+{
+    int                       retval = -1;
+    struct xml_parse_yacc_arg ya = {0,};
+
+    if (xt == NULL){
+	clicon_err(OE_XML, errno, "Unexpected NULL XML");
+	return -1;	
+    }
+    if ((ya.ya_parse_string = strdup(str)) == NULL){
+	clicon_err(OE_XML, errno, "strdup");
+	return -1;
+    }
+    ya.ya_xparent = xt;
+    ya.ya_skipspace = 1;  /* remove all non-terminal bodies (strip pretty-print) */
+    ya.ya_yspec = yspec;
+    if (clixon_xml_parsel_init(&ya) < 0)
+	goto done;    
+    if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
+	goto done;
+    retval = 0;
+  done:
+    clixon_xml_parsel_exit(&ya);
+    if(ya.ya_parse_string != NULL)
+	free(ya.ya_parse_string);
+    return retval; 
+}
+
+/*! FSM to detect substring
  */
 static inline int
 FSM(char *tag, 
@@ -1223,31 +1237,27 @@ FSM(char *tag,
 /*! Read an XML definition from file and parse it into a parse-tree. 
  *
  * @param[in]  fd  A file descriptor containing the XML file (as ASCII characters)
- * @param[out] xt  Pointer to an (on entry empty) pointer to an XML parse tree 
- *                 _created_ by this function.
- * @param[in]  endtag  Read until you encounter "endtag" in the stream, or NULL
+ * @param[in]  endtag  Read until encounter "endtag" in the stream, or NULL
  * @param[in]  yspec   Yang specification, or NULL
- * @retval  0  OK
- * @retval -1  Error with clicon_err called
+ * @param[in,out] xt   Pointer to XML parse tree. If empty, create.
+ * @retval        0  OK
+ * @retval       -1  Error with clicon_err called
  *
  * @code
  *  cxobj *xt = NULL;
- *  clicon_xml_parse_file(0, &xt, "</clicon>");
+ *  xml_parse_file(0, "</config>", yspec, &xt);
  *  xml_free(xt);
  * @endcode
- *  * @see clicon_xml_parse_str
- * Note, you need to free the xml parse tree after use, using xml_free()
- * Note, xt will add a top-level symbol called "top" meaning that <tree../> will look as:
- *  <top><tree.../></tree>
- * XXX: There is a potential leak here on some return values.
- * XXX: What happens if endtag is different?
- * May block
+ * @see xml_parse_string
+ * @see xml_parse_va
+ * @note, If xt empty, a top-level symbol will be added so that <tree../> will be:  <top><tree.../></tree></top>
+ * @note May block on file I/O
  */
 int 
-clicon_xml_parse_file(int        fd, 
-		      char      *endtag,
-		      yang_spec *yspec,
-		      cxobj    **xt)
+xml_parse_file(int        fd, 
+	       char      *endtag,
+	       yang_spec *yspec,
+	       cxobj    **xt)
 {
     int   retval = -1;
     int   ret;
@@ -1255,19 +1265,19 @@ clicon_xml_parse_file(int        fd,
     char  ch;
     char *xmlbuf = NULL;
     char *ptr;
-    int   maxbuf = BUFLEN;
+    int   xmlbuflen = BUFLEN; /* start size */
     int   endtaglen = 0;
     int   state = 0;
-    int   oldmaxbuf;
+    int   oldxmlbuflen;
 
     if (endtag != NULL)
 	endtaglen = strlen(endtag);
     *xt = NULL;
-    if ((xmlbuf = malloc(maxbuf)) == NULL){
+    if ((xmlbuf = malloc(xmlbuflen)) == NULL){
 	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
 	goto done;
     }
-    memset(xmlbuf, 0, maxbuf);
+    memset(xmlbuf, 0, xmlbuflen);
     ptr = xmlbuf;
     while (1){
 	if ((ret = read(fd, &ch, 1)) < 0){
@@ -1284,20 +1294,21 @@ clicon_xml_parse_file(int        fd,
 	if (ret == 0 ||
 	    (endtag && (state == endtaglen))){
 	    state = 0;
-	    if ((*xt = xml_new("top", NULL, NULL)) == NULL)
-               break;
+	    if (*xt == NULL)
+		if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
+		    goto done;
 	    if (xml_parse(ptr, yspec, *xt) < 0)
 		goto done;
 	    break;
 	}
-	if (len>=maxbuf-1){ /* Space: one for the null character */
-	    oldmaxbuf = maxbuf;
-	    maxbuf *= 2;
-	    if ((xmlbuf = realloc(xmlbuf, maxbuf)) == NULL){
+	if (len>=xmlbuflen-1){ /* Space: one for the null character */
+	    oldxmlbuflen = xmlbuflen;
+	    xmlbuflen *= 2;
+	    if ((xmlbuf = realloc(xmlbuf, xmlbuflen)) == NULL){
 		clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
 		goto done;
 	    }
-	    memset(xmlbuf+oldmaxbuf, 0, maxbuf-oldmaxbuf);
+	    memset(xmlbuf+oldxmlbuflen, 0, xmlbuflen-oldxmlbuflen);
 	    ptr = xmlbuf;
 	}
     } /* while */
@@ -1314,56 +1325,58 @@ clicon_xml_parse_file(int        fd,
 
 /*! Read an XML definition from string and parse it into a parse-tree. 
  *
- * @param[in]  str   Pointer to string containing XML definition. 
- * @param[out] xml_top  Top of XML parse tree. Will add extra top element called 'top'.
- *                       you must free it after use, using xml_free()
- * @retval  0  OK
- * @retval -1  Error with clicon_err called
+ * @param[in]     str   String containing XML definition. 
+ * @param[in]     yspec Yang specification, or NULL
+ * @param[in,out] xt    Pointer to XML parse tree. If empty will be created.
+ * @retval        0  OK
+ * @retval       -1  Error with clicon_err called
  *
  * @code
- *  cxobj *cx = NULL;
- *  if (clicon_xml_parse_str(str, &cx) < 0)
+ *  cxobj *xt = NULL;
+ *  if (xml_parse_string(str, yspec, &xt) < 0)
  *    err;
- *  xml_free(cx);
+ *  xml_free(xt);
  * @endcode
- * @see clicon_xml_parse_file
+ * @see xml_parse_file
+ * @see xml_parse_va
  * @note  you need to free the xml parse tree after use, using xml_free()
  */
 int 
-clicon_xml_parse_str(char      *str, 
-		     yang_spec *yspec,
-		     cxobj    **cxtop)
+xml_parse_string(const char *str, 
+		 yang_spec  *yspec,
+		 cxobj     **xtop)
 {
-    if ((*cxtop = xml_new("top", NULL, NULL)) == NULL)
-	return -1;
-    return xml_parse(str, yspec, *cxtop);
+    if (*xtop == NULL)
+	if ((*xtop = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
+	    return -1;
+    return xml_parse(str, yspec, *xtop);
 }
 
-
-/*! Read XML definition from variable argument string and parse it into parse-tree. 
+/*! Read XML from var-arg list and parse it into xml tree
  *
  * Utility function using stdarg instead of static string.
- * @param[out] xml_top  Top of XML parse tree. Will add extra top element called 'top'.
- *                      you must free it after use, using xml_free()
- * @param[in]  yspec   Yang specification, or NULL
- * @param[in]  format   Pointer to string containing XML definition. 
+ * @param[in,out] xtop  Top of XML parse tree. If it is NULL, top element 
+                        called 'top' will be created. Call xml_free() after use
+ * @param[in]  yspec    Yang specification, or NULL
+ * @param[in]  format   Format string for stdarg according to printf(3)
 
  * @retval  0  OK
  * @retval -1  Error with clicon_err called
  *
  * @code
- *  cxobj *cx = NULL;
- *  if (clicon_xml_parse(&cx, "<xml>%d</xml>", 22) < 0)
+ *  cxobj *xt = NULL;
+ *  if (xml_parse_va(&xt, NULL, "<xml>%d</xml>", 22) < 0)
  *    err;
- *  xml_free(cx);
+ *  xml_free(xt);
  * @endcode
- * @see clicon_xml_parse_str
- * @note  you need to free the xml parse tree after use, using xml_free()
+ * @see xml_parse_string
+ * @see xml_parse_file
+ * @note If vararg list is empty, consider using xml_parse_string()
  */
 int 
-clicon_xml_parse(cxobj    **cxtop,
-		 yang_spec *yspec,		 
-		 char      *format, ...)
+xml_parse_va(cxobj     **xtop,
+	     yang_spec  *yspec,		 
+	     const char *format, ...)
 {
     int     retval = -1;
     va_list args;
@@ -1381,9 +1394,10 @@ clicon_xml_parse(cxobj    **cxtop,
     va_start(args, format);
     len = vsnprintf(str, len, format, args) + 1;
     va_end(args);
-    if ((*cxtop = xml_new("top", NULL, NULL)) == NULL)
-	return -1;
-    if (xml_parse(str, yspec, *cxtop) < 0)
+    if (*xtop == NULL)
+	if ((*xtop = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
+	    goto done;
+    if (xml_parse(str, yspec, *xtop) < 0)
 	goto done;
     retval = 0;
  done:
@@ -2103,7 +2117,7 @@ main(int argc, char **argv)
 	usage(argv[0]);
 	return 0;
     }
-    if (clicon_xml_parse_file(0, &xt, "</config>") < 0){
+    if (xml_parse_file(0, "</config>", NULL,&xt) < 0){
 	fprintf(stderr, "parsing 2\n");
 	return -1;
     }

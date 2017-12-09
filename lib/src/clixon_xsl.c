@@ -1174,7 +1174,7 @@ main(int argc, char **argv)
 	usage(argv[0]);
 	return 0;
     }
-    if (clicon_xml_parse_file(0, &x, "</clicon>") < 0){
+    if (xml_parse_file(0, &x, "</clicon>") < 0){
 	fprintf(stderr, "parsing 2\n");
 	return -1;
     }

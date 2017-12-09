@@ -199,6 +199,9 @@ catch:
 
 /*! See if there is any callback registered for this tag
  *
+ * Look for local (client-side) netconf plugins. This feature may no 
+ * longer be necessary as generic RPC:s should be handled by backend.
+ *
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
  * @param[out] xret    Return XML, error or OK
@@ -214,13 +217,7 @@ netconf_plugin_callbacks(clicon_handle h,
 {
     int            retval = -1;
     netconf_reg_t *nreg;
-    yang_spec     *yspec = NULL; /* application yspec */
-    yang_stmt     *yrpc;
-    yang_stmt     *yinput;
-    yang_stmt     *youtput;
-    cxobj         *xoutput;
-    cbuf          *cb = NULL;
-
+  
     if (deps != NULL){
 	nreg = deps;
 	do {
@@ -233,70 +230,8 @@ netconf_plugin_callbacks(clicon_handle h,
 	    nreg = NEXTQ(netconf_reg_t *, nreg);
 	} while (nreg != deps);
     }
-    /* First check system / netconf RPC:s */
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, 0, "cbuf_new");
-	goto done;
-    }
-    /* create absolute path */
-    if (xml_namespace(xn))
-	cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn));
-    else
-	cprintf(cb, "/nc:%s", xml_name(xn)); /* Hardcoded for netconf */
-    /* Find yang rpc statement, return yang rpc statement if found */
-    if (yrpc == NULL){
-	/* Then check application RPC */
-	if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "No yang spec");
-	    goto done;
-	}
-	cbuf_reset(cb);
-	if (xml_namespace(xn))
-	    cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn));
-	else
-	    cprintf(cb, "/%s", xml_name(xn)); /* XXX not accepdted by below */
-	/* Find yang rpc statement, return yang rpc statement if found */
-	if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), &yrpc) < 0)
-	    goto done;
-    }
-    /* Check if found */
-    if (yrpc != NULL){
-	if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
-	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
-	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yinput) < 0)
-		goto done;
-	    if (xml_apply(xn, CX_ELMNT, 
-			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
-		goto done;
-	    if (xml_yang_validate_add(xn, NULL) < 0)
-		goto done;
-	}
-	/* 
-	 * 1. Check xn arguments with input statement.
-	 * 2. Send to backend as clicon_msg-encode()
-	 * 3. In backend to similar but there call actual backend
-	 */
-	if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	    goto done;
-	/* Sanity check of outgoing XML */
-	if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL){
-	    xoutput=xpath_first(*xret, "/");
-	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
-	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, youtput) < 0)
-		goto done;
-	    if (xml_apply(xoutput, CX_ELMNT, 
-			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
-		goto done;
-	    if (xml_yang_validate_add(xoutput, NULL) < 0)
-		goto done;
-	}
-	retval = 1; /* handled by callback */
-	goto done;
-    }
     retval = 0;
  done:
-    if (cb)
-	cbuf_free(cb);
     return retval;
 }
     

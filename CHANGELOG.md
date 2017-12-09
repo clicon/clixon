@@ -12,16 +12,15 @@
 	
 * Moved XML_CHILD_HASH to variable instead of constant.
 	
-* Added yang to XML API
-
-  * xml_new(char *name, cxobj *xn_parent) --> xml_new(char *name, cxobj *xn_parent, void *spec)
-  * xml_new_spec(char *name, cxobj *xn_parent, void *spec) --> xml_new(char *name, cxobj *xn_parent, void *spec)
-  * clicon_xml_parse_string --> clicon_xml_parse_str
-  * clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag) --> clicon_xml_parse_file(int fd, char *endtag, yang_spec *yspec, cxobj **xt)
-  * clicon_xml_parse_str(char *str, cxobj **xml_top) --> clicon_xml_parse_str(char *str, yang_spec *yspec, cxobj **xml_top) 
-  * clicon_xml_parse(cxobj **cxtop, char *format, ...) --> clicon_xml_parse(cxobj **cxtop, yang_spec *yspec, char *format, ...)
-  * xml_parse(char *str, cxobj *xt) --> xml_parse(char *str, yang_spec *yspec, cxobj *xt);
-
+* Changed XML creation and parse API for more coherency and closer YANG/XML integration. A new yang spec parameter has been added (default NULL) and functions have been removed and renamed. You may need to change the XML calls as follows.
+  * xml_new(name, parent) --> xml_new(name, xn_parent, yspec)
+  * xml_new_spec(name, parent, spec) --> xml_new(name, parent, spec)
+  * clicon_xml_parse_file(fd, &xt, endtag) --> xml_parse_file(fd, endtag, yspec, &xt)
+  * clicon_xml_parse_string(&str, &xt) --> xml_parse_string(str, yspec, &xt)
+  * xml_parse(str, xt) --> xml_parse_string(str, yspec, &xt)
+  * clicon_xml_parse(&xt, format, ...) --> xml_parse_va(&xt, yspec, format, ...)
+  * clicon_xml_parse_str(str, &xt) --> xml_parse_string(str, yspec, &xt)
+  
 ## 3.3.3 (25 November 2017)
 
 Thanks to Matthew Smith, Joe Loeliger at Netgate; Fredrik Pettai at

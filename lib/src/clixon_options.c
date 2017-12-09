@@ -150,7 +150,7 @@ clicon_option_readfile_xml(clicon_hash_t *copt,
     }
     clicon_debug(2, "Reading config file %s", __FUNCTION__, filename);
     fd = fileno(f);
-    if (clicon_xml_parse_file(fd, "</clicon>", yspec, &xt) < 0)
+    if (xml_parse_file(fd, "</clicon>", yspec, &xt) < 0)
 	goto done;
     if (xml_child_nr(xt)==1 && xml_child_nr_type(xt, CX_BODY)==1){
 	clicon_err(OE_CFG, 0, "Config file %s: Expected XML but is probably old sh style", filename);

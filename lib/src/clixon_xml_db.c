@@ -382,7 +382,7 @@ xmldb_get(clicon_handle h,
  * The xml may contain the "operation" attribute which defines the operation.
  * @code
  *   cxobj     *xt;
- *   if (clicon_xml_parse_str("<a>17</a>", &xt) < 0)
+ *   if (xml_parse_string("<a>17</a>", yspec, &xt) < 0)
  *     err;
  *   if (xmldb_put(xh, "running", OP_MERGE, xt) < 0)
  *     err;

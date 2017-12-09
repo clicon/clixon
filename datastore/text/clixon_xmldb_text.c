@@ -431,7 +431,7 @@ text_get(xmldb_handle xh,
 	    goto done;
 	}    
 	/* Parse file into XML tree */
-	if ((clicon_xml_parse_file(fd, "</config>", yspec, &xt)) < 0)
+	if ((xml_parse_file(fd, "</config>", yspec, &xt)) < 0)
 	    goto done;
 	/* Always assert a top-level called "config". 
 	   To ensure that, deal with two cases:
@@ -856,7 +856,7 @@ text_put(xmldb_handle        xh,
 	    goto done;
 	}    
 	/* Parse file into XML tree */
-	if ((clicon_xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
+	if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
 	    goto done;
 	/* Always assert a top-level called "config". 
 	   To ensure that, deal with two cases:
@@ -1345,7 +1345,7 @@ main(int argc, char **argv)
     if (strcmp(cmd, "put")==0){
 	if (argc != 6)
 	    usage(argv[0]);
-	if (clicon_xml_parse_file(0, "</clicon>", NULL, &xt) < 0)
+	if (xml_parse_file(0, "</clicon>", NULL, &xt) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xn) < 0)
 	    goto done;
