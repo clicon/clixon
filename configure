@@ -632,6 +632,7 @@ CPP
 OBJEXT
 EXEEXT
 ac_ct_CC
+with_xml_compat
 with_config_compat
 with_startup_compat
 with_keyvalue
@@ -713,6 +714,7 @@ with_keyvalue
 with_qdbm
 with_startup_compat
 with_config_compat
+with_xml_compat
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1352,7 +1354,8 @@ Optional Packages:
   --with-keyvalue         enable support for key-value xmldb datastore
   --with-qdbm=dir         Use QDBM here, if keyvalue
   --with-startup-compat   Backward compatibility of backend startup commands
-  --with-config-compat    Backward compatibility of ocnfiguration file
+  --with-config-compat    Backward compatibility of configuration file
+  --with-xml-compat       Backward compatibility of XML API
 
 Some influential environment variables:
   CC          C compiler command
@@ -2353,8 +2356,12 @@ test -n "$target_alias" &&
 
  # If yes, compile apps/restconf
  # If yes, compile datastore/keyvalue
- # If yes, backward compatible backend startup
- # If yes, backward compatible .conf configuration
+# If yes, backward compatible with 3.3.2 backend startup
+
+# If yes, backward compatible with 3.3.2 .conf configuration
+
+# If yes, backward compatible with 3.3.3 XML api new and parse functions
+
 
 #
 ac_ext=c
@@ -3973,7 +3980,6 @@ fi
       echo "Using QDBM here: ${with_qdbm}"
       CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
       LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
-
    fi
    # Problem: depot.h may be in qdbm/depot.h.
    for ac_header in depot.h
@@ -4054,7 +4060,8 @@ fi
 
 fi
 
-# This is for backward compatibility of backend startup commands
+# This is for backward compatibility of backend startup commands in 3.3.3
+# Will be removed in 3.4.0
 
 # Check whether --with-startup_compat was given.
 if test "${with_startup_compat+set}" = set; then :
@@ -4071,7 +4078,8 @@ _ACEOF
 
 fi
 
-# This is for backward compatibility of .conf configuration file
+# This is for backward compatibility of .conf configuration file in 3.3.3
+# Will be removed in 3.4.0
 
 # Check whether --with-config_compat was given.
 if test "${with_config_compat+set}" = set; then :
@@ -4084,6 +4092,24 @@ if test "x${with_config_compat}" == xyes; then
 
 cat >>confdefs.h <<_ACEOF
 #define CONFIG_COMPAT $with_config_compat
+_ACEOF
+
+fi
+
+# This is for backward compatibility of XML create and parse API in 3.4.0
+# Will be removed in 3.5.0
+
+# Check whether --with-xml_compat was given.
+if test "${with_xml_compat+set}" = set; then :
+  withval=$with_xml_compat;
+else
+  with_xml_compat=no
+fi
+
+if test "x${with_xml_compat}" == xyes; then
+
+cat >>confdefs.h <<_ACEOF
+#define XML_COMPAT $with_xml_compat
 _ACEOF
 
 fi

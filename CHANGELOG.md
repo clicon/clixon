@@ -15,11 +15,15 @@
 * Changed XML creation and parse API for more coherency and closer YANG/XML integration. A new yang spec parameter has been added (default NULL) and functions have been removed and renamed. You may need to change the XML calls as follows.
   * xml_new(name, parent) --> xml_new(name, xn_parent, yspec)
   * xml_new_spec(name, parent, spec) --> xml_new(name, parent, spec)
+  * clicon_xml_parse(&xt, format, ...) --> xml_parse_va(&xt, yspec, format, ...)
   * clicon_xml_parse_file(fd, &xt, endtag) --> xml_parse_file(fd, endtag, yspec, &xt)
   * clicon_xml_parse_string(&str, &xt) --> xml_parse_string(str, yspec, &xt)
-  * xml_parse(str, xt) --> xml_parse_string(str, yspec, &xt)
-  * clicon_xml_parse(&xt, format, ...) --> xml_parse_va(&xt, yspec, format, ...)
   * clicon_xml_parse_str(str, &xt) --> xml_parse_string(str, yspec, &xt)
+  * xml_parse(str, xt) --> xml_parse_string(str, yspec, &xt)
+  * Backward compatibility is enabled by (will be removed in 3.5.0:
+  ```
+      configure --with-xml-compat
+  ```
   
 ## 3.3.3 (25 November 2017)
 
