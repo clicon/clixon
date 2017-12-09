@@ -47,6 +47,11 @@ CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 # Fix to specific version (eg 3.5) or head (3) 
 CLIGEN_VERSION="3" 
+if test "$prefix" = "NONE"; then
+	CLIGEN_PREFIX="$ac_default_prefix"
+else
+	CLIGEN_PREFIX="$prefix"
+fi
 
 AC_CONFIG_HEADERS([include/clixon_config.h lib/clixon/clixon.h])
 
@@ -62,6 +67,7 @@ AC_SUBST(CLIXON_VERSION_STRING)
 AC_SUBST(CLIXON_VERSION_MAJOR)
 AC_SUBST(CLIXON_VERSION_MINOR)
 AC_SUBST(CLIGEN_VERSION) # Bind to specific CLIgen version
+AC_SUBST(CLIGEN_PREFIX)
 
 AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION})
 
@@ -122,6 +128,7 @@ if test "${with_cligen}"; then
   echo "Using CLIGEN here: ${with_cligen}"
   CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
   LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
+  test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
 fi
 
 AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR(cligen missing. Try: git clone https://github.com/olofhagsand/cligen.git))
@@ -213,6 +220,7 @@ AC_OUTPUT(Makefile
 	  etc/clixonrc
 	  example/Makefile
 	  example/docker/Makefile
+	  extras/rpm/Makefile
 	  docker/Makefile 
 	  docker/cli/Makefile 
 	  docker/cli/Dockerfile
