@@ -975,7 +975,7 @@ text_put(xmldb_handle        xh,
 
 /*! Copy database from db1 to db2
  * @param[in]  xh  XMLDB handle
- * @param[in]  from  Source database copy
+ * @param[in]  from  Source database
  * @param[in]  to    Destination database
  * @retval -1  Error
  * @retval  0  OK
@@ -995,7 +995,6 @@ text_copy(xmldb_handle xh,
     /* XXX lock */
     if (xmltree_cache){
 	/* 1. Free xml tree in "to"
-
 	 */
 	if ((de = hash_value(th->th_dbs, to, NULL)) != NULL){
 	    if (de->de_xml != NULL){

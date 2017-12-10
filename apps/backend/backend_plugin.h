@@ -40,10 +40,15 @@
  * Types
  */
 
-/*! Transaction data
+/*! Transaction data describing a system transition from a src to target state
  * Clicon internal, presented as void* to app's callback in the 'transaction_data'
  * type in clicon_backend_api.h
- * XXX: move to .c file?
+ * The struct contains source and target XML tree (e.g. candidate/running)
+ * But primarily a set of XML tree vectors (dvec, avec, cvec) and associated lengths
+ * These contain the difference between src and target XML, ie "what has changed".
+ * It is up to the validate callbacks to ensure that these changes are OK
+ * It is up to the commit callbacks to enforce these changes in the "state" of 
+ *the system.
  */
 typedef struct {
     uint64_t   td_id;       /* Transaction id */

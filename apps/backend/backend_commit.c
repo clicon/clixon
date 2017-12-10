@@ -130,7 +130,8 @@ generic_validate(yang_spec          *yspec,
  * @param[in] h         Clicon handle
  * @param[in] candidate The candidate database. The wanted backend state
  * @retval    0         OK  
- * @retval   -1         Fatal error or netconf error XXX Differentiate
+ * @retval   -1         Fatal error or validation fail
+ * @note Need to differentiate between error and validation fail
  */
 static int
 validate_common(clicon_handle       h, 
@@ -215,7 +216,10 @@ validate_common(clicon_handle       h,
  * do something more drastic?
  * @param[in]  h         Clicon handle
  * @param[in]  candidate A candidate database, not necessarily "candidate"
-*/
+ * @retval    0         OK  
+ * @retval   -1         Fatal error or validation fail
+ * @note Need to differentiate between error and validation fail
+ */
 int
 candidate_commit(clicon_handle h, 
 		 char         *candidate)
@@ -285,7 +289,7 @@ from_client_commit(clicon_handle h,
 		piddb);
 	goto ok;
     }
-    if (candidate_commit(h, "candidate") < 0){
+    if (candidate_commit(h, "candidate") < 0){ /* Assume validation fail, nofatal */
 	clicon_debug(1, "Commit candidate failed");
 	cprintf(cbret, "<rpc-reply><rpc-error>"
 		"<error-tag>invalid-value</error-tag>"
@@ -295,8 +299,6 @@ from_client_commit(clicon_handle h,
 		"</rpc-error></rpc-reply>",
 		clicon_err_reason);
         goto ok;
-
-	goto ok;
     }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:

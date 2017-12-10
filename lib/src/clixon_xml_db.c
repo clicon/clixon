@@ -432,7 +432,7 @@ xmldb_put(clicon_handle       h,
 
 /*! Copy database from db1 to db2
  * @param[in]  h     Clicon handle
- * @param[in]  from  Source database copy
+ * @param[in]  from  Source database
  * @param[in]  to    Destination database
  * @retval -1  Error
  * @retval  0  OK

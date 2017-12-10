@@ -164,7 +164,7 @@ static int
 db_reset(clicon_handle h, 
 	 char         *db)
 {
-    if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
+    if (xmldb_exists(h, db) == 1 && xmldb_delete(h, db) != 0 && errno != ENOENT) 
 	return -1;
     if (xmldb_create(h, db) < 0)
 	return -1;
@@ -502,13 +502,22 @@ startup_mode_init(clicon_handle h)
 
 /*! Clixon running startup mode: Commit running db configuration into running 
  *
-        copy   reset              commit merge
-running----+   |--------------------+-----+------>
-            \                      /     /
-candidate    +--------------------+     /
-                                       /
-tmp           |-------+-----+---------+
+OK:
+        copy   reset              commit   merge
+running----+   |--------------------+--------+------>
+            \                      /        /
+candidate    +--------------------+        /
+                                          /
+tmp           |-------+-----+------------+---|
              reset   extra  file
+
+COMMIT ERROR:
+        copy   reset              copy 
+running----+   |--------------------+------> EXIT
+            \                      /       
+candidate    +--------------------+        
+
+ * @note: if commit fails, copy candidate to running and exit
  */
 static int
 startup_mode_running(clicon_handle h,
@@ -522,9 +531,6 @@ startup_mode_running(clicon_handle h,
     /* Load plugins and call plugin_init() */
     if (plugin_initiate(h) != 0) 
 	goto done;
-    /* Clear running db */
-    if (db_reset(h, "running") < 0)
-	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
 	goto done;
@@ -534,25 +540,53 @@ startup_mode_running(clicon_handle h,
     /* Get application extra xml from file */
     if (load_extraxml(h, extraxml_file, "tmp") < 0)   
 	goto done;	    
-    /* Commit original running */
-    if (candidate_commit(h, "candidate") < 0)
+    /* Clear running db */
+    if (db_reset(h, "running") < 0)
 	goto done;
+    /* Commit original running. Assume -1 is validate fail */
+    if (candidate_commit(h, "candidate") < 0){
+	/*  (1) We cannot differentiate between fatal errors and validation
+	 *      failures
+	 *  (2) If fatal error, we should exit
+	 *  (3) If validation fails we cannot continue. How could we?
+	 *  (4) Need to restore the running db since we destroyed it above
+	 */
+	clicon_log(LOG_NOTICE, "%s: Commit of saved running failed, exiting.", __FUNCTION__);
+	/* Reinstate original */
+	if (xmldb_copy(h, "candidate", "running") < 0)
+	    goto done;
+	goto done;
+    }
     /* Merge user reset state and extra xml file (no commit) */
     if (db_merge(h, "tmp", "running") < 0)
 	goto done;
     retval = 0;
  done:
+    if (xmldb_delete(h, "tmp") < 0)
+	goto done;
     return retval;
 }
 
 /*! Clixon startup startup mode: Commit startup configuration into running state
-               reset              commit merge
-running        |--------------------+-----+------>
-                                   /     /
-startup       --------------------+     /
-                                       /
-tmp           |-------+-----+---------+
+
+
+backup         +--------------------|
+         copy / reset              commit merge
+running   |-+----|--------------------+-----+------>
+                                     /     /
+startup    -------------------------+-->  /
+                                         /
+tmp        -----|-------+-----+---------+--|
              reset   extra  file
+
+COMMIT ERROR:
+backup         +------------------------+--|
+         copy / reset               copy \
+running   |-+----|--------------------+---+------->EXIT
+                               error / 
+startup    -------------------------+--|    
+
+ * @note: if commit fails, copy backup to commit and exit
  */
 static int
 startup_mode_startup(clicon_handle h,
@@ -560,15 +594,15 @@ startup_mode_startup(clicon_handle h,
 {
     int     retval = -1;
 
+    /* Stash original running to backup */
+    if (xmldb_copy(h, "running", "backup") < 0)
+	goto done;
     /* If startup does not exist, clear it */
     if (xmldb_exists(h, "startup") != 1) /* diff */
 	if (xmldb_create(h, "startup") < 0) /* diff */
 	    return -1;
     /* Load plugins and call plugin_init() */
     if (plugin_initiate(h) != 0) 
-	goto done;
-    /* Clear running db */
-    if (db_reset(h, "running") < 0)
 	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
@@ -579,14 +613,29 @@ startup_mode_startup(clicon_handle h,
     /* Get application extra xml from file */
     if (load_extraxml(h, extraxml_file, "tmp") < 0)   
 	goto done;	    
-    /* Commit startup */
-    if (candidate_commit(h, "startup") < 0) /* diff */
+    /* Clear running db */
+    if (db_reset(h, "running") < 0)
 	goto done;
+    /* Commit startup */
+    if (candidate_commit(h, "startup") < 0){ /* diff */
+	/*  We cannot differentiate between fatal errors and validation
+	 *  failures
+	 *  In both cases we copy back the original running and quit
+	 */
+	clicon_log(LOG_NOTICE, "%s: Commit of startup failed, exiting.", __FUNCTION__);
+	if (xmldb_copy(h, "backup", "running") < 0)
+	    goto done;
+	goto done;
+    }
     /* Merge user reset state and extra xml file (no commit) */
     if (db_merge(h, "tmp", "running") < 0)
 	goto done;
     retval = 0;
  done:
+    if (xmldb_delete(h, "backup") < 0)
+	goto done;
+    if (xmldb_delete(h, "tmp") < 0)
+	goto done;
     return retval;
 }
 

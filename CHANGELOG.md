@@ -2,6 +2,11 @@
 
 ## 3.4.0 (Upcoming)
 
+* Fixed bug that deletes running on startup if backup started with -m running.
+  The error was that the running (or startup) configuration may fail when
+  clixon backend starts. 
+  The fix now makes a copy of running and copies it back on failure.
+  
 * experimental netconf yang rpc 
 
 * datastore/keyvalue/Makefile is left behind on make distclean. Fixed by conditional configure. Thanks renato@netgate.com.
