@@ -536,8 +536,13 @@ startup_mode_running(clicon_handle h,
     if (load_extraxml(h, extraxml_file, "tmp") < 0)   
 	goto done;	    
     /* Commit original running */
-    if (candidate_commit(h, "candidate") < 0)
+    if (candidate_commit(h, "candidate") < 0){
+        clicon_log(LOG_NOTICE, "%s: Commit of saved running failed, exiting.", __FUNCTION__);
+        /* Reinstate original */
+        if (xmldb_copy(h, "candidate", "running") < 0)
+            goto done;
 	goto done;
+    }
     /* Merge user reset state and extra xml file (no commit) */
     if (db_merge(h, "tmp", "running") < 0)
 	goto done;
