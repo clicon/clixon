@@ -642,6 +642,7 @@ startup_mode_startup(clicon_handle h,
 int
 main(int argc, char **argv)
 {
+    int           retval = -1;
     char          c;
     int           zap;
     int           foreground;
@@ -965,9 +966,10 @@ main(int argc, char **argv)
 
     if (event_loop() < 0)
 	goto done;
+    retval = 0;
   done:
-    clicon_log(LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
+    clicon_log(LOG_NOTICE, "%s: %u Terminated retval:%d", __PROGRAM__, getpid(), retval);
     backend_terminate(h); /* Cannot use h after this */
 
-    return 0;
+    return retval;
 }
