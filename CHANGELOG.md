@@ -2,7 +2,7 @@
 
 ## 3.4.0 (Upcoming)
 
-* Clixon_backend now returns -1/255 on error instead of NULL. Useful for systemd restarts, for example.
+* Clixon_backend now returns -1/255 on error instead of 0. Useful for systemd restarts, for example.
 
 * Fixed bug that deletes running on startup if backup started with -m running.
   When clixon starts again, running is lost.

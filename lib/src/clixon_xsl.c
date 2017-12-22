@@ -1030,7 +1030,7 @@ xpath_each(cxobj *xcur,
  * @retval     -1      error.
  *
  * @code
- *   cxobj **xvec;
+ *   cxobj **xvec = NULL;
  *   size_t  xlen;
  *   if (xpath_vec(xcur, "//symbol/foo", &xvec, &xlen) < 0) 
  *      goto err;

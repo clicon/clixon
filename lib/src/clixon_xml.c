@@ -747,6 +747,15 @@ xml_rm(cxobj *xc)
  * @param[out] xcp  xml child node. New root
  * @retval     0    OK
  * @retval    -1    Error
+ * @code
+ *   cxobj *xt = NULL; 
+ *   if (xml_parse_string("<a>2</a>", NULL, &xt) < 0)
+ *      err;
+ *  # Here xt will be: <top><a>2</a></top>
+ *   if (xml_rootchild(xt, 0, &xt) < 0)
+ *      err;
+ *  # Here xt will be: <a>2</a>
+ * @endcode
  * @see xml_child_rm
  */
 int
@@ -1057,6 +1066,7 @@ xml_print(FILE  *f,
  * cb = cbuf_new();
  * if (clicon_xml2cbuf(cb, xn, 0, 1) < 0)
  *   goto err;
+ * fprintf(stderr, "%s", cbuf_get(cb));
  * cbuf_free(cb);
  * @endcode
  * @see  clicon_xml2file
@@ -1341,7 +1351,8 @@ xml_parse_file(int        fd,
  * @endcode
  * @see xml_parse_file
  * @see xml_parse_va
- * @note  you need to free the xml parse tree after use, using xml_free()
+ * @note You need to free the xml parse tree after use, using xml_free()
+ * @note If empty on entry, a new TOP xml will be created named "top"
  */
 int 
 xml_parse_string(const char *str, 
