@@ -2,7 +2,6 @@
 
 testnr=0
 testname=
-clixon_cf=/usr/local/etc/routing.xml
 # error and exit, arg is optional extra errmsg
 err(){
   echo "Error in Test$testnr [$testname]:"

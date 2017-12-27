@@ -82,21 +82,37 @@
 /*! xml tree node, with name, type, parent, children, etc 
  * Note that this is a private type not visible from externally, use
  * access functions.
+ * A word on ordering of x_children:
+ * If there is no yang specification, xml children are ordered as they are entered.
+ * If there is a yang specification (and the appropriate functions are called) the
+ * xml children are ordered as follows:
+ * 1) After yang specification order.
+ * 2) list and leaf-list are sorted alphabetically unless ordered-by user.
+ * Example:
+ * container c{
+ *  leaf a;
+ *  leaf-list x;
+ * }
+ * then regardless in which order the xml is entered, it will be sorted as follows:
+ * <c>
+ *   <a/>
+ *   <x>a</<x>
+ *   <x>b</<x>
+ * </c>
  */
 struct xml{
     char             *x_name;       /* name of node */
     char             *x_namespace;  /* namespace, if any */
     struct xml       *x_up;         /* parent node in hierarchy if any */
     struct xml      **x_childvec;   /* vector of children nodes */
-    int               x_childvec_len; /* length of vector */
+    int               x_childvec_len;/* length of vector */
     enum cxobj_type   x_type;       /* type of node: element, attribute, body */
     char             *x_value;      /* attribute and body nodes have values */
     int              _x_vector_i;   /* internal use: xml_child_each */
     int               x_flags;      /* Flags according to XML_FLAG_* above */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
-    cg_var           *x_cv;           /* If body this contains the typed value */
-    clicon_hash_t    *x_hash;         /* Hash of children */
+    cg_var           *x_cv;         /* If body this contains the typed value */
 };
 
 /* Mapping between xml type <--> string */
@@ -108,10 +124,6 @@ static const map_str2int xsmap[] = {
     {NULL,           -1}
 };
 
-/* Hash for XML trees list entries
- * Experimental XXX DOES NOT WORK
- */
-int xml_child_hash = 0;
 
 /*! Translate from xml type in enum form to string keyword
  * @param[in] type  Xml type
@@ -475,11 +487,11 @@ xml_child_append(cxobj *x,
     return 0;
 }
 
-/*! Set a a childvec to a speciufic size, fill with children after
+/*! Set a a childvec to a specific size, fill with children after
  * @code
  *   xml_childvec_set(x, 2);
- *   xml_child_i(x, 0) = xc0;
- *   xml_child_i(x, 1) = xc1;
+ *   xml_child_i_set(x, 0, xc0)
+ *   xml_child_i_set(x, 1, xc1);
  * @endcode
  */
 int
@@ -502,9 +514,9 @@ xml_childvec_get(cxobj *x)
 
 /*! Create new xml node given a name and parent. Free with xml_free().
  *
- * @param[in]  name      Name of new 
- * @param[in]  xp        The parent where the new xml node should be inserted
- * @param[in]  spec      Yang stmt or NULL.
+ * @param[in]  name      Name of XML node
+ * @param[in]  xp        The parent where the new xml node will be appended
+ * @param[in]  spec      Yang statement of this XML or NULL.
  * @retval     xml       Created xml object if successful. Free with xml_free()
  * @retval     NULL      Error and clicon_err() called
  * @code
@@ -536,8 +548,6 @@ xml_new(char      *name,
     if (xp && xml_child_append(xp, x) < 0)
 	return NULL;
     x->x_spec = spec; /* Can be NULL */
-    if (xml_child_hash && spec && xml_hash_add(x) < 0)
-	return NULL;
     return x;
 }
 
@@ -655,8 +665,6 @@ xml_purge(cxobj *xc)
     int       i;
     cxobj    *xp;
 
-    if (xml_child_hash)
-	xml_hash_rm_entry(xc);
     if ((xp = xml_parent(xc)) != NULL){
 	/* Find child order i in parent*/
 	for (i=0; i<xml_child_nr(xp); i++)
@@ -928,8 +936,6 @@ xml_free(cxobj *x)
 	    x->x_childvec[i] = NULL;
 	}
     }
-    if (x->x_hash)
-	hash_free(x->x_hash);
     if (x->x_childvec)
 	free(x->x_childvec);
     free(x);
@@ -1830,276 +1836,93 @@ xml_operation2str(enum operation_type op)
     }
 }
 
-/*! Given an XML object and a child name, return yang stmt of child
- * If no xml parent, find root yang stmt matching name
- * @param[in]  name     Name of child
- * @param[in]  xp       XML parent, can be NULL.
- * @param[in]  yspec    Yang specification (top level)
- * @param[out] yresult  Pointer to yang stmt of result, or NULL, if not found
+/*! Help function to qsort for sorting entries in xml child vector
+ * @param[in]  arg1
+ * @param[in]  arg2
+ * @retval  0  If equal
+ * @retval <0  if arg1 is less than arg2
+ * @retval >0  if arg1 is greater than arg2
+ * @note must be in clixon_xml.c since it uses internal (hidden) struct xml
  */
-int
-xml_child_spec(char       *name,
-	       cxobj      *xp,
-	       yang_spec  *yspec,
-	       yang_stmt **yresult)
-{
-    yang_stmt *y;  /* result yang node */   
-    yang_stmt *yparent; /* parent yang */
-    
-    if (xp && (yparent = xml_spec(xp)) != NULL)
-	y = yang_find_datanode((yang_node*)yparent, name);
-    else if (yspec)
-	y = yang_find_topnode(yspec, name, 0); /* still NULL for config */
-    else
-	y = NULL;
-    *yresult = y;
-    return 0;
-}
-
-/*! Return yang hash
- * Not necessarily set. Either has not been set yet (by xml_spec_set( or anyxml.
- */
-clicon_hash_t *
-xml_hash(cxobj *x)
-{
-    return x->x_hash;
-}
-
 static int
-xml_hash_init(cxobj *x)
+xml_cmp(const void* arg1, 
+	const void* arg2)
 {
-    if ((x->x_hash = hash_init()) < 0)
-	return -1;
-    return 0;
-}
-
-/*! XML remove hash only. Not in parent.
- * @param[in]  x   XML object
- * eg same as xml_hash_op(x, -1)
- */
-int
-xml_hash_rm_only(cxobj *x)
-{
-    if (x && x->x_hash){
-	hash_free(x->x_hash);
-	x->x_hash = NULL;
-    }
-    return 0;
-}
-
-/* Compute hash key for xml entry 
- * @param[in]  x
- * @param[in]  y
- * @param[out] key
- * key: yangtype+x1name
- *      LEAFLIST: b0
- *      LIST:     b2vec+b0 -> x0c
- */
-int
-xml_hash_key(cxobj     *x,
-	     yang_stmt *y,
-	     cbuf      *key)
-{
-    int        retval = -1;
-    yang_stmt *ykey;
-    cvec      *cvk = NULL; /* vector of index keys */
-    cg_var    *cvi;
-    char      *keyname;
-    char      *b;
-    char      *str;
-
-    switch (y->ys_keyword){
-    case Y_CONTAINER:	str = "c";	break;
-    case Y_LEAF:	str = "e";	break;
-    case Y_LEAF_LIST:	str = "l";	break;
-    case Y_LIST:	str = "i";	break;
-    default:
-	str = "xx";	break;
-	break;
-    }
-    cprintf(key, "%s%s", str, xml_name(x));
-    switch (y->ys_keyword){
-    case Y_LEAF_LIST: /* Match with name and value */
-	if ((b = xml_body(x)) == NULL){
-	    cbuf_reset(key);
-	    goto ok;
-	}
-	cprintf(key, "%s", xml_body(x));
-	break;
-    case Y_LIST: /* Match with key values */
-	if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-		       __FUNCTION__, y->ys_argument);
-	    goto done;
-	}
-	/* The value is a list of keys: <key>[ <key>]*  */
-	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-	    goto done;
-	cvi = NULL;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL){
-	    keyname = cv_string_get(cvi);
-	    if ((b = xml_find_body(x, keyname)) == NULL){
-		cbuf_reset(key);
-		goto ok;
-	    }
-	    cprintf(key, "/%s", b);
-	}
-	break;
-    default: 
-	break;
-    }
- ok:
-    retval = 0;
- done:
-    if (cvk)
-	cvec_free(cvk);
-     return retval;
-}
-
-/*! XML hash add. Create hash and add key/value to parent
- *
- * @param[in]  arg   add flag. If 1, else if 0 remove.
- * Typically called for a whole tree.
- */
-int
-xml_hash_op(cxobj  *x, 
-	    void   *arg)
-{
-    int            add = (intptr_t)arg;
-#if 1
-    if (add)
-	return xml_hash_add(x);
-    else
-	return xml_hash_rm_entry(x);
-#else
+    struct xml *x1 = *(struct xml**)arg1;
+    struct xml *x2 = *(struct xml**)arg2;
+    yang_stmt  *y1;
+    yang_stmt  *y2;
+    int         yi1;
+    int         yi2;
+    cvec       *cvk = NULL; /* vector of index keys */
+    cg_var     *cvi;
+    int         equal = 0;
+    char       *b1;
+    char       *b2;
+    char       *keyname;
     
-    int            retval = -1;
-    cxobj         *xp;
-    clicon_hash_t *ph;
-    yang_stmt     *y;
-    cbuf          *key = NULL; /* cligen buffer hash key */
-
-
-    if (xml_hash(x)==NULL){
-	if (add)
-	    xml_hash_init(x);
+    if (x1 == NULL){
+	if (x2 == NULL)
+	    return 0;
+	else
+	    return -1;
     }
-    else if (!add)
-	xml_hash_rm_only(x);
-    if ((xp = xml_parent(x)) == NULL)
-	goto ok;
-    if ((ph = xml_hash(xp))==NULL)
-	goto ok;
-    if ((y = xml_spec(x)) == NULL)
-	goto ok;
-    if ((key = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
+    else if (x2 == NULL)
+	return 1;
+    y1 = xml_spec(x1);
+    y2 = xml_spec(x2);
+    if (y1==NULL || y2==NULL)
+	return 0; /* just ignore */
+    if (y1 != y2){
+	yi1 = yang_order(y1);
+	yi2 = yang_order(y2);
+	if ((equal = yi1-yi2) != 0)
+	    return equal;
     }
-    if (xml_hash_key(x, y, key) < 0)
-	goto done;
-    if (cbuf_len(key)){
-	//	fprintf(stderr, "%s add %s = 0x%x\n", __FUNCTION__, cbuf_get(key), (unsigned int)x);
-	if (add){
-	    if (hash_add(ph, cbuf_get(key), &x, sizeof(x)) == NULL)
+    /* Now y1=y2, same Yang spec, can only be list or leaf-list,
+     * sort according to key
+     */
+    if (yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL)
+	return 0; /* Ordered by user: maintain existing order */
+    switch (y1->ys_keyword){
+    case Y_LEAF_LIST: /* Match with name and value */
+	equal = strcmp(xml_body(x1), xml_body(x2));
+	break;
+    case Y_LIST: /* Match with key values 
+		  * Use Y_LIST cache (see struct yang_stmt)
+		  */
+	cvk = y1->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	cvi = NULL;
+	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+	    keyname = cv_string_get(cvi);
+	    b1 = xml_find_body(x1, keyname);
+	    b2 = xml_find_body(x2, keyname);
+	    if ((equal = strcmp(b1,b2)) != 0)
 		goto done;
 	}
-	else
-	    if (hash_del(ph, cbuf_get(key)) < 0)
-		goto done;
+	equal = 0;
+	break;
+    default:
+	break;
     }
- ok:
-    retval = 0;
  done:
-    if (key)
-	cbuf_free(key);
-    return retval;
-#endif
+    return equal;
 }
 
-/*! XML hash add. Create hash and add key/value to parent
- *
- * @param[in]  x   XML object
- * eg same as xml_hash_op(x, 1)
+/*! Sort children of an XML node
+ * Assume populated by yang spec.
+ * @param[in] x0   XML node
+ * @param[in] arg  Dummy so it can be called by xml_apply()
+ * @note must be in clixon_xml.c since it uses internal (hidden) struct xml
  */
 int
-xml_hash_add(cxobj  *x)
+xml_sort(cxobj *x,
+	 void  *arg)
 {
-    int            retval = -1;
-    cxobj         *xp;
-    clicon_hash_t *ph;
-    yang_stmt     *y;
-    yang_stmt     *yp;
-    cbuf          *key = NULL; /* cligen buffer hash key */
-
-    if ((ph = xml_hash(x))==NULL){
-	xml_hash_init(x);
-	ph = xml_hash(x);
-    }
-    if ((xp = xml_parent(x)) == NULL)
-	goto ok;
-    yp = xml_spec(xp);
-    if (yp && yp->ys_keyword != Y_LIST)
-	goto ok;
-    if ((y = xml_spec(x)) == NULL)
-	goto ok;
-    if ((key = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
-    if (xml_hash_key(x, y, key) < 0)
-	goto done;
-    if (cbuf_len(key)){
-	if (hash_add(ph, cbuf_get(key), &x, sizeof(x)) == NULL)
-	    goto done;
-    }
- ok:
-    retval = 0;
- done:
-    if (key)
-	cbuf_free(key);
-    return retval;
+    qsort(x->x_childvec, x->x_childvec_len, sizeof(struct xml*), xml_cmp);
+    return 0;
 }
 
-/*! XML hash rm. Create hash and add key/value to parent
- *
- * @param[in]  x   XML object
- * eg same as xml_hash_op(x, 0)
- */
-int
-xml_hash_rm_entry(cxobj  *x)
-{
-    int            retval = -1;
-    cxobj         *xp;
-    clicon_hash_t *ph;
-    yang_stmt     *y;
-    cbuf          *key = NULL; /* cligen buffer hash key */
-
-    if (xml_hash(x)!=NULL)
-	xml_hash_rm_only(x);
-    if ((xp = xml_parent(x)) == NULL)
-	goto ok;
-    if ((ph = xml_hash(xp))==NULL)
-	goto ok;
-    if ((y = xml_spec(x)) == NULL)
-	goto ok;
-    if ((key = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
-    if (xml_hash_key(x, y, key) < 0)
-	goto done;
-    if (cbuf_len(key)){
-	if (hash_del(ph, cbuf_get(key)) < 0)
-	    goto done;
-    }
- ok:
-    retval = 0;
- done:
-    if (key)
-	cbuf_free(key);
-    return retval;
-}
 
 /*
  * Turn this on to get a xml parse and pretty print test program

@@ -85,6 +85,7 @@
 #include "clixon_xsl.h"
 #include "clixon_log.h"
 #include "clixon_err.h"
+#include "clixon_xml_sort.h"
 #include "clixon_xml_map.h"
 
 /* Something to do with reverse engineering of junos syntax? */
@@ -590,136 +591,6 @@ cvec2xml_1(cvec   *cvv,
     return retval;
 }
 
-/*! Given child tree x1c, find matching child in base tree x0
- * param[in]  x0   Base tree node
- * param[in]  x1c  Modification tree child
- * param[in]  yc   Yang spec of tree child
- * param[out] x0cp Matching base tree child (if any)
- * @note XXX: room for optimization? on 1K calls we have 1M body calls and
-	   500K xml_child_each/cvec_each calls. 
-	   The outer loop is large for large lists
-	   The inner loop is small
-	   Major time in xml_find_body()
-	   Can one do a binary search in the x0 list?
-*/
-int
-match_base_child(cxobj     *x0, 
-		 cxobj     *x1c,
-		 cxobj    **x0cp,
-		 yang_stmt *yc)
-{
-    int        retval = -1;
-    char      *x1cname;
-    cxobj     *x0c = NULL; /* x0 child */
-    cvec      *cvk = NULL; /* vector of index keys */
-    cg_var    *cvi;
-    char      *b0;
-    char      *b1;
-    yang_stmt *ykey;
-    char      *keyname;
-    int        equal;
-    char     **b1vec = NULL;
-    int        i;
-    cxobj    **p;
-    cbuf      *key = NULL; /* cligen buffer hash key */
-    size_t     vlen;
-
-    if (xml_child_hash){
-	*x0cp = NULL; /* return value */	    
-	if (xml_hash(x0) == NULL)
-	    goto nohash;
-	if ((key = cbuf_new()) == NULL){
-	    clicon_err(OE_XML, errno, "cbuf_new");
-	    goto done1;
-	}
-	if (xml_hash_key(x1c, yc, key) < 0)
-	    goto done;
-	x0c = NULL;
-	if (cbuf_len(key))
-	    if ((p = hash_value(xml_hash(x0), cbuf_get(key), &vlen)) != NULL){
-		assert(vlen == sizeof(x0c));
-		x0c = *p;
-	    }
-	//    fprintf(stderr, "%s get %s = 0x%x\n", __FUNCTION__, cbuf_get(key), (unsigned int)x0c);
-	*x0cp = x0c;
-	retval = 0;
-    done1:
-	if (key)
-	    cbuf_free(key);
-	return retval;
-    }
- nohash:
-    *x0cp = NULL; /* return value */	    
-    x1cname = xml_name(x1c);
-    switch (yc->ys_keyword){
-    case Y_CONTAINER: 	/* Equal regardless */
-    case Y_LEAF: 	/* Equal regardless */
-	x0c = xml_find(x0, x1cname);
-	break;
-    case Y_LEAF_LIST: /* Match with name and value */
-	if ((b1 = xml_body(x1c)) == NULL)
-	    goto ok;
-	x0c = xml_find_body_obj(x0, x1cname, b1);
-	break;
-    case Y_LIST: /* Match with key values */
-	if ((ykey = yang_find((yang_node*)yc, Y_KEY, NULL)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-		       __FUNCTION__, yc->ys_argument);
-	    goto done;
-	}
-	/* The value is a list of keys: <key>[ <key>]*  */
-	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-	    goto done;
-	cvi = NULL; i = 0;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL) 
-	    i++;
-	if ((b1vec = calloc(i, sizeof(b1))) == NULL){
-	    clicon_err(OE_UNIX, errno, "calloc");
-	    goto done;
-	}
-	cvi = NULL; i = 0;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	    keyname = cv_string_get(cvi);
-	    if ((b1 = xml_find_body(x1c, keyname)) == NULL)
-		goto ok; /* not found */
-	    b1vec[i++] = b1;
-	}
-	/* Iterate over x0 tree to (1) find a child that matches name
-	   (2) that have keys that matches */
-	x0c = NULL;
-	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL){
-	    equal = 0;
-	    if (strcmp(xml_name(x0c), x1cname))
-		continue;
-	    /* Must be inner loop */
-	    cvi = NULL; i = 0;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		b1 = b1vec[i++];
-		equal = 0;
-		keyname = cv_string_get(cvi);
-		if ((b0 = xml_find_body(x0c, keyname)) == NULL)
-		    break; /* error case */
-		if (strcmp(b0, b1))
-		    break; /* stop as soon as inequal key found */
-		equal=1; /* reaches here for all keynames, x0c is found. */
-	    }
-	    if (equal) /* x0c and x1c equal, otherwise look for other */
-		break;
-	} /* while x0c */
-	break;
-    default:
-	break;
-    }
- ok:
-    *x0cp = x0c;
-    retval = 0;
- done:
-    if (b1vec)
-	free(b1vec);
-    if (cvk)
-	cvec_free(cvk);
-    return retval;
-}
 
 /*! Find next yang node, either start from yang_spec or some yang-node
  * @param[in]  y    Node spec or sny yang-node
@@ -895,7 +766,6 @@ yang2api_path_fmt_1(yang_stmt *ys,
 		    cbuf      *cb)
 {
     yang_node *yp; /* parent */
-    yang_stmt *ykey;
     int        i;
     cvec      *cvk = NULL; /* vector of index keys */
     int        retval = -1;
@@ -926,14 +796,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
 
     switch (ys->ys_keyword){
     case Y_LIST:
-	if ((ykey = yang_find((yang_node*)ys, Y_KEY, NULL)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-		       __FUNCTION__, ys->ys_argument);
-	    goto done;
-	}
-	/* The value is a list of keys: <key>[ <key>]*  */
-	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-	    goto done;
+	cvk = ys->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
 	if (cvec_len(cvk))
 	    cprintf(cb, "=");
 	/* Iterate over individual keys  */
@@ -951,8 +814,6 @@ yang2api_path_fmt_1(yang_stmt *ys,
     } /* switch */
     retval = 0;
  done:
-    if (cvk)
-	cvec_free(cvk);
     return retval;
 }
 
@@ -1370,13 +1231,16 @@ xml_order(cxobj *xt,
 	goto done;
     }
     j0 = 0;
- /* Go through xml children and ensure they are same order as yspec children */
+    /* Go through yang node's children and ensure that the 
+     * xml children follow this order.
+     * Do not order the list or leaf-list children (have same name).
+     */
     for (i=0; i<y->ys_len; i++){
 	yc = y->ys_stmt[i];
 	if (!yang_datanode(yc))
 	    continue;
 	yname = yc->ys_argument;
-	/* First go thru xml children with same name */
+	/* First go thru xml children with same name in rest of list */
 	for (; j0<xml_child_nr(xt); j0++){
 	    xc = xml_child_i(xt, j0);
 	    if (xml_type(xc) != CX_ELMNT)
@@ -1528,7 +1392,6 @@ api_path2xpath_cvv(yang_spec *yspec,
     yang_stmt *y = NULL;
     char      *val;
     char      *v;
-    yang_stmt *ykey;
     cg_var    *cvi;
 
     for (i=offset; i<cvec_len(cvv); i++){
@@ -1559,17 +1422,7 @@ api_path2xpath_cvv(yang_spec *yspec,
 		*v = '\0';
 		v++;
 	    }
-	    /* Find keys */
-	    if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
-		clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-			   __FUNCTION__, y->ys_argument);
-		goto done;
-	    }
-	    clicon_debug(1, "ykey:%s", ykey->ys_argument);
-
-	    /* The value is a list of keys: <key>[ <key>]*  */
-	    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-		goto done;
+	    cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
 	    cvi = NULL;
 	    /* Iterate over individual yang keys  */
 	    cprintf(xpath, "/%s", name);
@@ -1647,7 +1500,6 @@ api_path2xml_vec(char             **vec,
     char      *name;
     char      *restval = NULL;
     char      *restval_enc;
-    yang_stmt *ykey;
     cxobj     *xn = NULL; /* new */
     cxobj     *xb;        /* body */
     cvec      *cvk = NULL; /* vector of index keys */
@@ -1709,15 +1561,7 @@ api_path2xml_vec(char             **vec,
 	    goto done;
 	break;
     case Y_LIST:
-	/* Get the yang list key */
-	if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-		       __FUNCTION__, y->ys_argument);
-	    goto done;
-	}
-	/* The value is a list of keys: <key>[ <key>]*  */
-	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-	    goto done;
+	cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
 	if (valvec){
 	    free(valvec);
 	    valvec = NULL;
@@ -1753,10 +1597,6 @@ api_path2xml_vec(char             **vec,
 	    val2 = valvec?valvec[j++]:NULL;
 	    if (xml_value_set(xb, val2) <0)
 		goto done;
-	}
-	if (cvk){
-	    cvec_free(cvk);
-	    cvk = NULL;
 	}
 	break;
     default: /* eg Y_CONTAINER, Y_LEAF */

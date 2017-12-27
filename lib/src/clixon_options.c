@@ -382,6 +382,11 @@ clicon_options_main(clicon_handle h)
 	/* Read configfile */
 	if (clicon_option_readfile_xml(copt, configfile, yspec) < 0)
 	    goto done;
+	/* Specific option handling */
+	if (clicon_option_bool(h, "CLICON_XML_SORT") == 1)
+	    xml_child_sort = 1;
+	else
+	    xml_child_sort = 0;
     }
     else {
 #ifdef CONFIG_COMPAT
@@ -409,6 +414,7 @@ clicon_options_main(clicon_handle h)
 /*! Check if a clicon option has a value
  * @param[in] h       clicon_handle
  * @param[in] name    option name
+ * @retval
  */
 int
 clicon_option_exists(clicon_handle h,

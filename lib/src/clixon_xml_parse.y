@@ -75,6 +75,7 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xml_sort.h"
 #include "clixon_xml_parse.h"
 
 void 

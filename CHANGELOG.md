@@ -2,6 +2,15 @@
 
 ## 3.4.0 (Upcoming)
 
+* Optimized search performance for large lists by sorting and binary search.
+  * New CLICON_XML_SORT configuration option. Default is 1. Disable by setting to 0.
+  * New yang config file: clixon-config@2017-12-27.yang
+  * Added yang ordered-by user. The default (ordered-by system) will now sort lists and leaf-lists alphabetically to increase search performance.
+  * This replaces XML hash experimental code, ie xml_child_hash variables and all xml_hash_ functions have been removed.
+  
+
+* Cached keys in yang Y_LIST node as cligen vector, see ys_populate_list()
+
 * Clixon_backend now returns -1/255 on error instead of 0. Useful for systemd restarts, for example.
 
 * Fixed bug that deletes running on startup if backup started with -m running.

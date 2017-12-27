@@ -9,7 +9,7 @@
 
 # include err() and new() functions
 . ./lib.sh
-clixon_cf="-f /usr/local/etc/routing.xml"
+cfg=/usr/local/etc/routing.xml
 
 # For memcheck
 #clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
@@ -17,81 +17,81 @@ clixon_cli=clixon_cli
 
 # kill old backend (if any)
 new "kill old backend"
-sudo clixon_backend -z $clixon_cf
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err
 fi
 new "start backend"
 # start new backend
-sudo clixon_backend -s init $clixon_cf 
+sudo clixon_backend -s init -f $cfg 
 if [ $? -ne 0 ]; then
     err
 fi
 new "cli tests"
 
 new "cli configure top"
-expectfn "$clixon_cli -1 $clixon_cf set interfaces" "^$"
+expectfn "$clixon_cli -1 -f $cfg set interfaces" "^$"
 
 new "cli show configuration top (no presence)"
-expectfn "$clixon_cli -1 $clixon_cf show conf cli" "^$"
+expectfn "$clixon_cli -1 -f $cfg show conf cli" "^$"
 
 new "cli configure delete top"
-expectfn "$clixon_cli -1 $clixon_cf delete interfaces" "^$"
+expectfn "$clixon_cli -1 -f $cfg delete interfaces" "^$"
 
 new "cli show configuration delete top"
-expectfn "$clixon_cli -1 $clixon_cf show conf cli" "^$"
+expectfn "$clixon_cli -1 -f $cfg show conf cli" "^$"
 
 new "cli configure"
-expectfn "$clixon_cli -1 $clixon_cf set interfaces interface eth/0/0" "^$"
+expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0" "^$"
 
 new "cli show configuration"
-expectfn "$clixon_cli -1 $clixon_cf show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
+expectfn "$clixon_cli -1 -f $cfg show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
 
 new "cli failed validate"
-expectfn "$clixon_cli -1 $clixon_cf -l o validate" "Missing mandatory variable"
+expectfn "$clixon_cli -1 -f $cfg -l o validate" "Missing mandatory variable"
 
 new "cli configure more"
-expectfn "$clixon_cli -1 $clixon_cf set interfaces interface eth/0/0 ipv4 address 1.2.3.4 prefix-length 24" "^$"
-expectfn "$clixon_cli -1 $clixon_cf set interfaces interface eth/0/0 description mydesc" "^$"
-expectfn "$clixon_cli -1 $clixon_cf set interfaces interface eth/0/0 type bgp" "^$"
+expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 ipv4 address 1.2.3.4 prefix-length 24" "^$"
+expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 description mydesc" "^$"
+expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 type bgp" "^$"
 
 new "cli show xpath description"
-expectfn "$clixon_cli -1 $clixon_cf -l o show xpath /interfaces/interface/description" "<description>mydesc</description>"
+expectfn "$clixon_cli -1 -f $cfg -l o show xpath /interfaces/interface/description" "<description>mydesc</description>"
 
 new "cli delete description"
-expectfn "$clixon_cli -1 $clixon_cf -l o delete interfaces interface eth/0/0 description mydesc"
+expectfn "$clixon_cli -1 -f $cfg -l o delete interfaces interface eth/0/0 description mydesc"
 
 new "cli show xpath no description"
-expectfn "$clixon_cli -1 $clixon_cf -l o show xpath /interfaces/interface/description" "^$"
+expectfn "$clixon_cli -1 -f $cfg -l o show xpath /interfaces/interface/description" "^$"
 
 new "cli copy interface"
-expectfn "$clixon_cli -1 $clixon_cf copy interface eth/0/0 to eth99" "^$"
+expectfn "$clixon_cli -1 -f $cfg copy interface eth/0/0 to eth99" "^$"
 
 new "cli success validate"
-expectfn "$clixon_cli -1 $clixon_cf -l o validate" "^$"
+expectfn "$clixon_cli -1 -f $cfg -l o validate" "^$"
 
 new "cli commit"
-expectfn "$clixon_cli -1 $clixon_cf -l o commit" "^$"
+expectfn "$clixon_cli -1 -f $cfg -l o commit" "^$"
 
 new "cli save"
-expectfn "$clixon_cli -1 $clixon_cf -l o save /tmp/foo" "^$"
+expectfn "$clixon_cli -1 -f $cfg -l o save /tmp/foo" "^$"
 
 new "cli delete all"
-expectfn "$clixon_cli -1 $clixon_cf -l o delete all" "^$"
+expectfn "$clixon_cli -1 -f $cfg -l o delete all" "^$"
 
 new "cli load"
-expectfn "$clixon_cli -1 $clixon_cf -l o load /tmp/foo" "^$"
+expectfn "$clixon_cli -1 -f $cfg -l o load /tmp/foo" "^$"
 
 new "cli check load"
-expectfn "$clixon_cli -1 $clixon_cf -l o show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
+expectfn "$clixon_cli -1 -f $cfg -l o show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
 
 new "cli debug"
-expectfn "$clixon_cli -1 $clixon_cf -l o debug level 1" "^$"
+expectfn "$clixon_cli -1 -f $cfg -l o debug level 1" "^$"
 # How to test this?
-expectfn "$clixon_cli -1 $clixon_cf -l o debug level 0" "^$"
+expectfn "$clixon_cli -1 -f $cfg -l o debug level 0" "^$"
 
 new "cli rpc"
-expectfn "$clixon_cli -1 $clixon_cf -l o rpc ipv4" "^<rpc-reply>"
+expectfn "$clixon_cli -1 -f $cfg -l o rpc ipv4" "^<rpc-reply>"
 
 new "Kill backend"
 # Check if still alive
@@ -100,7 +100,7 @@ if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -z $clixon_cf
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

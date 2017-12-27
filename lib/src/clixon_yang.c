@@ -373,7 +373,7 @@ yn_each(yang_node *yn,
  *
  * @param[in]  yn         Yang node, current context node.
  * @param[in]  keyword    if 0 match any keyword
- * @param[in]  argument   String compare w wrgument. if NULL, match any.
+ * @param[in]  argument   String compare w argument. if NULL, match any.
  * This however means that if you actually want to match only a yang-stmt with 
  * argument==NULL you cannot, but I have not seen any such examples.
  * @see yang_find_datanode
@@ -384,8 +384,8 @@ yang_find(yang_node *yn,
 	  char      *argument)
 {
     yang_stmt *ys = NULL;
-    int i;
-    int match = 0;
+    int        i;
+    int        match = 0;
 
     for (i=0; i<yn->yn_len; i++){
 	ys = yn->yn_stmt[i];
@@ -558,6 +558,54 @@ yang_find_myprefix(yang_stmt *ys)
     return prefix;
 }
 
+/*! Find matching y in yp:s children, return 0 and index or -1 if not found.
+ * @retval 0 not found
+ * @retval 1 found
+ */
+static int
+order1(yang_node *yp,
+       yang_stmt *y,
+       int       *index)
+{
+    yang_stmt  *ys;
+    int         i;
+    
+    for (i=0; i<yp->yn_len; i++){
+	ys = yp->yn_stmt[i];
+	if (!yang_datanode(ys))
+	    continue;
+	if (ys==y)
+	    return 1;
+	(*index)++;
+    }
+    return 0;
+}
+
+/*! Return order of yang statement y in parents child vector
+ * @retval  i  Order of child with specified argument
+ * @retval -1  Not found
+ */
+int
+yang_order(yang_stmt *y)
+{
+    yang_node  *yp;
+    yang_node  *ypp;
+    yang_node  *yn;
+    int         i;
+    int         j=0;
+    
+    yp = y->ys_parent;
+    if (yp->yn_keyword == Y_MODULE ||yp->yn_keyword == Y_SUBMODULE){
+	ypp = yp->yn_parent;
+	for (i=0; i<ypp->yn_len; i++){
+	    yn = (yang_node*)ypp->yn_stmt[i];
+	    if (order1(yn, y, &j) == 1)
+		return j;
+	}
+    }
+    order1(yp, y, &j);
+    return j;
+}
 
 /*! Reset flag in complete tree, arg contains flag */
 static int
@@ -880,6 +928,20 @@ ys_populate_leaf(yang_stmt *ys,
     return retval;
 }
 
+static int
+ys_populate_list(yang_stmt *ys, 
+		 void      *arg)
+{
+    yang_stmt  *ykey;
+    
+    if ((ykey = yang_find((yang_node*)ys, Y_KEY, NULL)) == NULL)
+	return 0;
+    cvec_free(ys->ys_cvec);
+    if ((ys->ys_cvec = yang_arg2cvec(ykey, " ")) == NULL)
+	return -1;
+    return 0;
+}
+
 /*! Populate range and length statements
  *
  * Create cvec variables "range_min" and "range_max". Assume parent is type.
@@ -1059,6 +1121,10 @@ ys_populate(yang_stmt *ys,
     case Y_LEAF:
     case Y_LEAF_LIST:
 	if (ys_populate_leaf(ys, arg) < 0)
+	    goto done;
+	break;
+    case Y_LIST:
+	if (ys_populate_list(ys, arg) < 0)
 	    goto done;
 	break;
     case Y_RANGE: 

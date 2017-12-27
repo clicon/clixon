@@ -80,10 +80,10 @@ typedef int (xml_applyfn_t)(cxobj *yn, void *arg);
 #define XML_FLAG_CHANGE 0x08  /* Node is changed (commits) or child changed rec */
 #define XML_FLAG_NONE   0x10  /* Node is added as NONE */
 
-/* Hash for XML trees list entries
+/* Sort and binary search of XML children
  * Experimental
  */
-extern int xml_child_hash;
+extern int xml_child_sort;
 
 /*
  * Prototypes
@@ -160,14 +160,7 @@ int       xml_body_int32(cxobj *xb, int32_t *val);
 int       xml_body_uint32(cxobj *xb, uint32_t *val);
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
-int       xml_child_spec(char  *name, cxobj  *xp, yang_spec *yspec, yang_stmt **yp);
-
-clicon_hash_t *xml_hash(cxobj *x);
-int xml_hash_key(cxobj *x, yang_stmt *y, cbuf *key);
-int xml_hash_op(cxobj *x, void *arg);
-int xml_hash_add(cxobj  *x);
-int xml_hash_rm_only(cxobj *x);
-int xml_hash_rm_entry(cxobj  *x);
+int       xml_sort(cxobj *x0, void *arg);
 
 #ifdef XML_COMPAT /* See CHANGELOG */
 /* MANUAL CHANGE: xml_new(name, parent) --> xml_new(name, parent, NULL) */

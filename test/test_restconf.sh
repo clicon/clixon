@@ -4,18 +4,19 @@
 
 # include err() and new() functions
 . ./lib.sh
+cfg=/usr/local/etc/routing.xml
 
 # This is a fixed 'state' implemented in routing_backend. It is always there
 state='{"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}'
 
 # kill old backend (if any)
 new "kill old backend"
-sudo clixon_backend -zf $clixon_cf
+sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err
 fi
 new "start backend"
-sudo clixon_backend -s init -f $clixon_cf
+sudo clixon_backend -s init -f $cfg
 if [ $? -ne 0 ]; then
     err
 fi
@@ -109,7 +110,7 @@ if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -zf $clixon_cf
+sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

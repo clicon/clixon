@@ -276,7 +276,6 @@ text_setopt(xmldb_handle xh,
     return retval;
 }
 
-
 /*! Ensure that xt only has a single sub-element and that is "config" 
  */
 static int
@@ -446,6 +445,9 @@ text_get(xmldb_handle xh,
 	    if (singleconfigroot(xt, &xt) < 0)
 		goto done;
 	}
+	/* Sort XML children according to YANG and ordered-by XXX */
+	if (xml_child_sort && xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
+	    goto done;
     } /* xt == NULL */
     /* Here xt looks like: <config>...</config> */
 
@@ -507,7 +509,10 @@ text_get(xmldb_handle xh,
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
     /* Order XML children according to YANG */
-    if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
+    if (!xml_child_sort && xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
+	goto done;
+    /* XXX again just so default values are placed correctly */
+    if (xml_child_sort && xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
 	goto done;
     if (debug>1)
     	clicon_xml2file(stderr, xt, 0, 1);
@@ -600,10 +605,6 @@ text_modify(cxobj              *x0,
 		if (xml_value_set(x0b, x1bstr) < 0)
 		    goto done;
 	    }
-		if (xml_child_hash &&
-		    xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
-		    goto done;
-
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
@@ -652,11 +653,7 @@ text_modify(cxobj              *x0,
 		    goto done;
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
-
 	    }
-		if (xml_child_hash &&
-		    xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
-		    goto done;
 	    /* First pass: mark existing children in base */
 	    /* Loop through children of the modification tree */
 	    if ((x0vec = calloc(xml_child_nr(x1), sizeof(x1))) == NULL){
@@ -826,6 +823,7 @@ text_put(xmldb_handle        xh,
     struct text_handle *th = handle(xh);
     char               *dbfile = NULL;
     int                 fd = -1;
+    FILE               *f = NULL;
     cbuf               *cb = NULL;
     yang_spec          *yspec;
     cxobj              *x0 = NULL;
@@ -880,17 +878,14 @@ text_put(xmldb_handle        xh,
     }
 
     /* Add yang specification backpointer to all XML nodes */
-    /* XXX: where is thiscreated? Add yspec */
+    /* XXX: where is this created? Add yspec */
     if (xml_apply(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
        goto done;
-	/* Add hash */
-#if 0
-    if (xml_child_hash &&
-	xml_apply0(x0, CX_ELMNT, xml_hash_op, (void*)1) < 0)
+    if (xml_child_sort && xml_apply0(x1, CX_ELMNT, xml_sort, NULL) < 0)
 	goto done;
-#endif
     /* 
-     * Modify base tree x with modification x1
+     * Modify base tree x with modification x1. This is where the
+     * new tree is made.
      */
     if (text_modify_top(x0, x1, yspec, op) < 0)
 	goto done;
@@ -906,6 +901,8 @@ text_put(xmldb_handle        xh,
 	goto done;
     /* Remove (prune) nodes that are marked (non-presence containers w/o children) */
     if (xml_tree_prune_flagged(x0, XML_FLAG_MARK, 1) < 0)
+	goto done;
+    if (xml_child_sort && xml_apply0(x0, CX_ELMNT, xml_sort, NULL) < 0)
 	goto done;
 
     /* Write back to datastore cache if first time */
@@ -926,42 +923,20 @@ text_put(xmldb_handle        xh,
 	    goto done;
 	}
     }
-#if 1
-    if (fd != -1)
+    if (fd != -1){
 	close(fd);
-    {
-	FILE *f;
-	if ((f = fopen(dbfile, "w")) == NULL){
-	    clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
-	    goto done;
-	} 
-	if (xml_print(f, x0) < 0)
-	    goto done;
-	fclose(f);
+	fd = -1;
     }
-#else
-    // output:
-    /* Print out top-level xml tree after modification to file */
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
+    if ((f = fopen(dbfile, "w")) == NULL){
+	clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
 	goto done;
-    }
-    if (clicon_xml2cbuf(cb, x0, 0, 1) < 0)
+    } 
+    if (xml_print(f, x0) < 0)
 	goto done;
-    /* Reopen file in write mode */
-    if (fd != -1)
-	close(fd);
-    if ((fd = open(dbfile, O_WRONLY | O_TRUNC, S_IRWXU)) < 0) {
-	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
-	goto done;
-    }    
-    if (write(fd, cbuf_get(cb), cbuf_len(cb)) < 0){
-	clicon_err(OE_UNIX, errno, "write(%s)", dbfile);
-	goto done;
-    }
-#endif
     retval = 0;
  done:
+    if (f != NULL)
+	fclose(f);
     if (dbfile)
 	free(dbfile);
     if (fd != -1)
@@ -1020,7 +995,6 @@ text_copy(xmldb_handle xh,
 		hash_add(th->th_dbs, to, &de0, sizeof(de0));
 	    }
 	}
-
     }
     if (text_db2file(th, from, &fromfile) < 0)
 	goto done;
@@ -1175,7 +1149,8 @@ text_delete(xmldb_handle xh,
     struct text_handle *th = handle(xh);
     struct db_element  *de = NULL;
     cxobj              *xt = NULL;
-
+    struct stat         sb;
+    
     if (xmltree_cache){
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL){
 	    if ((xt = de->de_xml) != NULL){
@@ -1186,10 +1161,11 @@ text_delete(xmldb_handle xh,
     }
     if (text_db2file(th, db, &filename) < 0)
 	goto done;
-    if (unlink(filename) < 0){
-	clicon_err(OE_DB, errno, "unlink %s", filename);
-	goto done;
-    }
+    if (lstat(filename, &sb) == 0)
+	if (unlink(filename) < 0){
+	    clicon_err(OE_DB, errno, "unlink %s", filename);
+	    goto done;
+	}
     retval = 0;
  done:
     if (filename)
@@ -1303,7 +1279,8 @@ usage(char *argv0)
 }
 
 int
-main(int argc, char **argv)
+main(int    argc,
+     char **argv)
 {
     cxobj      *xt;
     cxobj      *xn;

@@ -201,14 +201,7 @@ append_listkeys(cbuf      *ckey,
     char      *bodyenc;
     int        i=0;
 
-    if ((ykey = yang_find((yang_node*)ys, Y_KEY, NULL)) == NULL){
-	clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-		   __FUNCTION__, ys->ys_argument);
-	goto done;
-    }
-    /* The value is a list of keys: <key>[ <key>]*  */
-    if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-	goto done;
+    cvk = ys->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
     /* Iterate over individual keys  */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
@@ -230,8 +223,6 @@ append_listkeys(cbuf      *ckey,
     }
     retval = 0;
  done:
-    if (cvk)
-	cvec_free(cvk);
     return retval;
 }
 
