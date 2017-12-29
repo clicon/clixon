@@ -6,15 +6,20 @@
 
 ### Major changes:
 * Optimized search performance for large lists by sorting and binary search.
-  * New CLICON_XML_SORT configuration option. Default is 1. Disable by setting to 0.
-  * New yang config file: clixon-config@2017-12-27.yang
-  * Added yang ordered-by user. The default (ordered-by system) will now sort lists and leaf-lists alphabetically to increase search performance.
+  * New CLICON_XML_SORT configuration option. Default is true. Disable by setting to false.
+  * Added yang ordered-by user. The default (ordered-by system) will now sort lists and leaf-lists alphabetically to increase search performance. Note that this may change outputs.
+  * If you need legacy order, either set CLICON_XML_SORT to false, or set that list to "ordered-by user".
   * This replaces XML hash experimental code, ie xml_child_hash variables and all xml_hash_ functions have been removed.
-  * Cached keys in yang Y_LIST node as cligen vector, see ys_populate_list()  
+  * Implementation detail: Cached keys are stored in in yang Y_LIST nodes as cligen vector, see ys_populate_list()  
 
-* Datastore cache introduced: cache XML tree in memory for faster get access. Use CLICON_XMLDB_CACHE configuration option. Default is 1. Thanks netgate for proposing this.
+* Datastore cache introduced: cache XML tree in memory for faster get access.
+  * Reads are cached. Writes are written to disk.
+  * New CLICON_XMLDB_CACHE configuration option. Default is true. To disable set to false.
+  * With cache, you cannot have multiple backends (with single datastore). You need to have a single backend.
+  * Thanks netgate for proposing this.
 
-* Changed C functional API for XML creation and parsing for more coherency and closer YANG/XML integration. A new yang spec parameter has been added (default NULL) and functions have been removed and renamed. You may need to change the XML calls as follows.
+* Changed C functional API for XML creation and parsing for better coherency and closer YANG/XML integration. This may require your action.
+  * New yang spec parameter has been added to most functions (default NULL) and functions have been removed and renamed. You may need to change the XML calls as follows.
   * xml_new(name, parent) --> xml_new(name, xn_parent, yspec)
   * xml_new_spec(name, parent, spec) --> xml_new(name, parent, spec)
   * clicon_xml_parse(&xt, format, ...) --> xml_parse_va(&xt, yspec, format, ...)
