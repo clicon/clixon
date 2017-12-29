@@ -12,7 +12,7 @@
   * This replaces XML hash experimental code, ie xml_child_hash variables and all xml_hash_ functions have been removed.
   * Cached keys in yang Y_LIST node as cligen vector, see ys_populate_list()  
 
-* Datastore cache introduced: cache XML tree in memory for faster get access. Use CLICON_XMLDB_CACHE configuration option. Default is 1.
+* Datastore cache introduced: cache XML tree in memory for faster get access. Use CLICON_XMLDB_CACHE configuration option. Default is 1. Thanks netgate for proposing this.
 
 * Changed C functional API for XML creation and parsing for more coherency and closer YANG/XML integration. A new yang spec parameter has been added (default NULL) and functions have been removed and renamed. You may need to change the XML calls as follows.
   * xml_new(name, parent) --> xml_new(name, xn_parent, yspec)
