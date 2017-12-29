@@ -93,9 +93,15 @@ struct db_element{
 /* Keep datastore text in memory so that get operation need only read memory.
  * Write to file on modification or file change.
  * Assumes single backend
- * Experimental
+ * XXX MOVE TO HANDLE all three below
  */
 static int xmltree_cache = 1;
+
+/* Format */
+static char *xml_format = "xml";
+
+/* Store xml/json pretty-printed. Or not. */
+static int xml_pretty = 1;
 
 /*! Check struct magic number for sanity checks
  * return 0 if OK, -1 if fail.
@@ -232,6 +238,12 @@ text_getopt(xmldb_handle xh,
 	*value = th->th_yangspec;
     else if (strcmp(optname, "dbdir") == 0)
 	*value = th->th_dbdir;
+    else if (strcmp(optname, "xml_cache") == 0)
+	*value = &xmltree_cache;
+    else if (strcmp(optname, "format") == 0)
+	*value = xml_format;
+    else if (strcmp(optname, "pretty") == 0)
+	*value = &xml_pretty;
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
 	goto done;
@@ -243,7 +255,7 @@ text_getopt(xmldb_handle xh,
 
 /*! Set value of generic plugin option. Type of value is given by context
  * @param[in]  xh      XMLDB handle
- * @param[in]  optname Option name
+ * @param[in]  optname Option name: yangspec, xml_cache, format, prettyprint
  * @param[in]  value   Value of option
  * @retval     0       OK
  * @retval    -1       Error
@@ -266,6 +278,19 @@ text_setopt(xmldb_handle xh,
     }
     else if (strcmp(optname, "xml_cache") == 0){
 	xmltree_cache = (intptr_t)value;
+    }
+    else if (strcmp(optname, "format") == 0){
+	if (strcmp(value,"xml")==0)
+	    xml_format = "xml";
+	else if (strcmp(value,"json")==0)
+	    xml_format = "json";
+	else{
+	    clicon_err(OE_PLUGIN, 0, "Option %s unrecognized format: %s", optname, value);
+	    goto done;
+	}
+    }
+    else if (strcmp(optname, "pretty") == 0){
+	xml_pretty = (intptr_t)value;
     }
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
@@ -430,7 +455,11 @@ text_get(xmldb_handle xh,
 	    goto done;
 	}    
 	/* Parse file into XML tree */
-	if ((xml_parse_file(fd, "</config>", yspec, &xt)) < 0)
+	if (strcmp(xml_format,"json")==0){
+	    if ((json_parse_file(fd, yspec, &xt)) < 0)
+		goto done;
+	}
+	else if ((xml_parse_file(fd, "</config>", yspec, &xt)) < 0)
 	    goto done;
 	/* Always assert a top-level called "config". 
 	   To ensure that, deal with two cases:
@@ -445,7 +474,7 @@ text_get(xmldb_handle xh,
 	    if (singleconfigroot(xt, &xt) < 0)
 		goto done;
 	}
-	/* Sort XML children according to YANG and ordered-by XXX */
+	/* Sort XML children according to YANG */
 	if (xml_child_sort && xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
 	    goto done;
     } /* xt == NULL */
@@ -511,9 +540,11 @@ text_get(xmldb_handle xh,
     /* Order XML children according to YANG */
     if (!xml_child_sort && xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
 	goto done;
-    /* XXX again just so default values are placed correctly */
+    /* Again just so default values are placed correctly */
     if (xml_child_sort && xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
 	goto done;
+    if (xml_child_sort && xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
+	clicon_log(LOG_NOTICE, "%s: verify failed #2", __FUNCTION__);
     if (debug>1)
     	clicon_xml2file(stderr, xt, 0, 1);
     *xtop = xt;
@@ -854,7 +885,11 @@ text_put(xmldb_handle        xh,
 	    goto done;
 	}    
 	/* Parse file into XML tree */
-	if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
+	if (strcmp(xml_format,"json")==0){
+	    if ((json_parse_file(fd, yspec, &x0)) < 0)
+		goto done;
+	}
+	else if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
 	    goto done;
 	/* Always assert a top-level called "config". 
 	   To ensure that, deal with two cases:
@@ -931,7 +966,11 @@ text_put(xmldb_handle        xh,
 	clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
 	goto done;
     } 
-    if (xml_print(f, x0) < 0)
+    if (strcmp(xml_format,"json")==0){
+	if (xml2json(f, x0, xml_pretty) < 0)
+	    goto done;
+    }
+    else if (clicon_xml2file(f, x0, 0, xml_pretty) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1315,7 +1354,14 @@ main(int    argc,
 	xpath = argc>5?argv[5]:NULL;
 	if (xmldb_get(h, db, xpath, &xt, NULL, 1, NULL) < 0)
 	    goto done;
-	clicon_xml2file(stdout, xt, 0, 1);	
+	if (strcmp(xml_format,"json")==0){
+	    if (xml2json(stdout, xt, xml_pretty) < 0)
+		goto done;
+	}
+	else{
+	    if (clicon_xml2file(stdout, xt, 0, xml_pretty) < 0)
+		goto done;
+	}
     }
     else
     if (strcmp(cmd, "put")==0){

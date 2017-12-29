@@ -160,7 +160,6 @@ int       xml_body_int32(cxobj *xb, int32_t *val);
 int       xml_body_uint32(cxobj *xb, uint32_t *val);
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
-int       xml_sort(cxobj *x0, void *arg);
 
 #ifdef XML_COMPAT /* See CHANGELOG */
 /* MANUAL CHANGE: xml_new(name, parent) --> xml_new(name, parent, NULL) */

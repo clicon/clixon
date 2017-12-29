@@ -1,35 +1,20 @@
 # Clixon Changelog
 
 ## 3.4.0 (Upcoming)
+### Known issues
+* Please use text datastore, key-value datastore no up-to-date
 
+### Major changes:
 * Optimized search performance for large lists by sorting and binary search.
   * New CLICON_XML_SORT configuration option. Default is 1. Disable by setting to 0.
   * New yang config file: clixon-config@2017-12-27.yang
   * Added yang ordered-by user. The default (ordered-by system) will now sort lists and leaf-lists alphabetically to increase search performance.
   * This replaces XML hash experimental code, ie xml_child_hash variables and all xml_hash_ functions have been removed.
-  
-
-* Cached keys in yang Y_LIST node as cligen vector, see ys_populate_list()
-
-* Clixon_backend now returns -1/255 on error instead of 0. Useful for systemd restarts, for example.
-
-* Fixed bug that deletes running on startup if backup started with -m running.
-  When clixon starts again, running is lost.
-  The error was that the running (or startup) configuration may fail when
-  clixon backend starts. 
-  The fix now makes a copy of running and copies it back on failure.
-  
-* experimental netconf yang rpc 
-
-* datastore/keyvalue/Makefile is left behind on make distclean. Fixed by conditional configure. Thanks renato@netgate.com.
-
-* Better semantic versioning, eg MAJOR/MINOR/PATCH, where increment in PATCH does not change API.
+  * Cached keys in yang Y_LIST node as cligen vector, see ys_populate_list()  
 
 * Datastore cache introduced: cache XML tree in memory for faster get access. Use CLICON_XMLDB_CACHE configuration option. Default is 1.
-	
-* Moved XML_CHILD_HASH to variable instead of constant.
-	
-* Changed XML creation and parse API for more coherency and closer YANG/XML integration. A new yang spec parameter has been added (default NULL) and functions have been removed and renamed. You may need to change the XML calls as follows.
+
+* Changed C functional API for XML creation and parsing for more coherency and closer YANG/XML integration. A new yang spec parameter has been added (default NULL) and functions have been removed and renamed. You may need to change the XML calls as follows.
   * xml_new(name, parent) --> xml_new(name, xn_parent, yspec)
   * xml_new_spec(name, parent, spec) --> xml_new(name, parent, spec)
   * clicon_xml_parse(&xt, format, ...) --> xml_parse_va(&xt, yspec, format, ...)
@@ -41,6 +26,24 @@
   ```
       configure --with-xml-compat
   ```
+  
+### Minor changes:
+* Better semantic versioning, eg MAJOR/MINOR/PATCH, where increment in PATCH does not change API.
+* Added CLICON_XMLDB_PRETTY option. If set to false, XML database files will be more compact.
+* Added CLICON_XMLDB_FORMAT option. Default is "xml". If set to "json", XML database files uses JSON format.
+* Clixon_backend now returns -1/255 on error instead of 0. Useful for systemd restarts, for example.
+* Experimental: netconf yang rpc. That is, using ietf-netconf@2011-06-01.yang
+  formal specification instead of hardcoded C-code.
+
+### Corrected Bugs
+
+* Fixed bug that deletes running on startup if backup started with -m running.
+  When clixon starts again, running is lost.
+  The error was that the running (or startup) configuration may fail when
+  clixon backend starts. 
+  The fix now makes a copy of running and copies it back on failure.
+* datastore/keyvalue/Makefile was left behind on make distclean. Fixed by conditional configure. Thanks renato@netgate.com.
+* Escape " in JSON names and strings and values
   
 ## 3.3.3 (25 November 2017)
 

@@ -69,6 +69,12 @@
 */
 #define VEC_ARRAY 1
 
+/* Size of json read buffer when reading from file*/
+#define BUFLEN 1024
+
+/* Name of xml top object created by xml parse functions */
+#define JSON_TOP_SYMBOL "top"
+
 enum array_element_type{
     NO_ARRAY=0,
     FIRST_ARRAY,
@@ -185,32 +191,40 @@ json_escape(char *str)
 
     j = 0;
     for (i=0;i<strlen(str);i++)
-	if (str[i]=='\n')
+	switch (str[i]){
+	case '\n':
+	case '\"':
+	case '\\':
 	    j++;
+	    break;
+	}
     if ((snew = malloc(strlen(str)+1+j))==NULL){
 	clicon_err(OE_XML, errno, "malloc");
 	return NULL;
     }
     j = 0;
     for (i=0;i<strlen(str);i++)
-	if (str[i]=='\n'){
+	switch (str[i]){
+	case '\n':
+	case '\"':
+	case '\\':
 	    snew[j++]='\\';
-	    snew[j++]='n';
-	}
-	else
+	default: /* fall thru */
 	    snew[j++]=str[i];
+	}
     snew[j++]='\0';
     return snew;
 }
 
 /*! Do the actual work of translating XML to JSON 
- * @param[out]   cb       Cligen text buffer containing json on exit
- * @param[in]    x        XML tree structure containing XML to translate
+ * @param[out]   cb        Cligen text buffer containing json on exit
+ * @param[in]    x         XML tree structure containing XML to translate
  * @param[in]    arraytype Does x occur in a array (of its parent) and how?
  * @param[in]    level     Indentation level
  * @param[in]    pretty    Pretty-print output (2 means debug)
  * @param[in]    flat      Dont print NO_ARRAY object name (for _vec call)
  *
+ * @note Does not work with XML attributes
  * The following matrix explains how the mapping is done.
  * You need to understand what arraytype means (no/first/middle/last)
  * and what childtype is (null,body,any)
@@ -246,10 +260,11 @@ xml2json1_cbuf(cbuf                  *cb,
 	       int                    pretty,
 	       int                    flat)
 {
-    int             retval = -1;
-    int             i;
-    cxobj          *xc;
+    int              retval = -1;
+    int              i;
+    cxobj           *xc;
     enum childtype   childt;
+    enum array_element_type xc_arraytype;
 
     childt = childtype(x);
     if (pretty==2)
@@ -326,7 +341,6 @@ xml2json1_cbuf(cbuf                  *cb,
 	break;
     }
     for (i=0; i<xml_child_nr(x); i++){
-	enum array_element_type xc_arraytype;
 	xc = xml_child_i(x, i);
 	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
 				xc, 
@@ -628,6 +642,82 @@ json_parse_str(char   *str,
     return json_parse(str, "", *xt);
 }
 
+/*! Read a JSON definition from file and parse it into a parse-tree. 
+ *
+ * @param[in]  fd  A file descriptor containing the JSON file (as ASCII characters)
+ * @param[in]  yspec   Yang specification, or NULL
+ * @param[in,out] xt   Pointer to (XML) parse tree. If empty, create.
+ * @retval        0  OK
+ * @retval       -1  Error with clicon_err called
+ *
+ * @code
+ *  cxobj *xt = NULL;
+ *  if (json_parse_file(0, NULL, &xt) < 0)
+ *    err;
+ *  xml_free(xt);
+ * @endcode
+ * @note  you need to free the xml parse tree after use, using xml_free()
+ * @note, If xt empty, a top-level symbol will be added so that <tree../> will be:  <top><tree.../></tree></top>
+ * @note May block on file I/O
+ */
+int 
+json_parse_file(int        fd,
+		yang_spec *yspec,
+		cxobj    **xt)
+{
+    int   retval = -1;
+    int   ret;
+    char *jsonbuf = NULL;
+    int   jsonbuflen = BUFLEN; /* start size */
+    int   oldjsonbuflen;
+    char *ptr;
+    char  ch;
+    int   len = 0;
+    
+    if ((jsonbuf = malloc(jsonbuflen)) == NULL){
+	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
+	goto done;
+    }
+    memset(jsonbuf, 0, jsonbuflen);
+    ptr = jsonbuf;
+    while (1){
+	if ((ret = read(fd, &ch, 1)) < 0){
+	    clicon_err(OE_XML, errno, "%s: read: [pid:%d]\n", 
+		    __FUNCTION__,
+		    (int)getpid());
+	    break;
+	}
+	if (ret != 0)
+	    jsonbuf[len++] = ch;
+	if (ret == 0){
+	    if (*xt == NULL)
+		if ((*xt = xml_new(JSON_TOP_SYMBOL, NULL, NULL)) == NULL)
+		    goto done;
+	    if (len && json_parse(ptr, "", *xt) < 0)
+		goto done;
+	    break;
+	}
+	if (len>=jsonbuflen-1){ /* Space: one for the null character */
+	    oldjsonbuflen = jsonbuflen;
+	    jsonbuflen *= 2;
+	    if ((jsonbuf = realloc(jsonbuf, jsonbuflen)) == NULL){
+		clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
+		goto done;
+	    }
+	    memset(jsonbuf+oldjsonbuflen, 0, jsonbuflen-oldjsonbuflen);
+	    ptr = jsonbuf;
+	}
+    }
+    retval = 0;
+ done:
+    if (retval < 0 && *xt){
+	free(*xt);
+	*xt = NULL;
+    }
+    if (jsonbuf)
+	free(jsonbuf);
+    return retval;    
+}
 
 /*
  * Turn this on to get a json parse and pretty print test program

@@ -724,8 +724,7 @@ load_config_file(clicon_handle h,
     opstr  = cv_string_get(cvec_i(argv, 1));
     if (strcmp(opstr, "merge") == 0) 
 	replace = 0;
-    else
-    if (strcmp(opstr, "replace") == 0) 
+    else if (strcmp(opstr, "replace") == 0) 
 	replace = 1;
     else{
 	clicon_err(OE_PLUGIN, 0, "No such op: %s, expected merge or replace", opstr);	
@@ -738,7 +737,7 @@ load_config_file(clicon_handle h,
     filename = cv_string_get(cv);
     if (stat(filename, &st) < 0){
  	clicon_err(OE_UNIX, 0, "load_config: stat(%s): %s", 
- 		filename, strerror(errno));
+		   filename, strerror(errno));
 	goto done;
     }
     /* Open and parse local file into xml */
@@ -750,26 +749,23 @@ load_config_file(clicon_handle h,
 	goto done;
     if (xt == NULL)
 	goto done;
-
-    //    if ((xn = xml_child_i(xt, 0)) != NULL){
-    
-	if ((cbxml = cbuf_new()) == NULL)
+    if ((cbxml = cbuf_new()) == NULL)
+	goto done;
+    x = NULL;
+    while ((x = xml_child_each(xt, x, -1)) != NULL) {
+	/* Ensure top-level is "config", maybe this is too rough? */
+	xml_name_set(x, "config");
+	if (clicon_xml2cbuf(cbxml, x, 0, 0) < 0)
 	    goto done;
-	x = NULL;
-	while ((x = xml_child_each(xt, x, -1)) != NULL) {
-	    /* Ensure top-level is "config", maybe this is too rough? */
-	    xml_name_set(x, "config");
-	    if (clicon_xml2cbuf(cbxml, x, 0, 0) < 0)
-		goto done;
-	}
-	if (clicon_rpc_edit_config(h, "candidate",
-				   replace?OP_REPLACE:OP_MERGE, 
-				   cbuf_get(cbxml)) < 0)
-	    goto done;
-	cbuf_free(cbxml);
-	//    }
+    }
+    if (clicon_rpc_edit_config(h, "candidate",
+			       replace?OP_REPLACE:OP_MERGE, 
+			       cbuf_get(cbxml)) < 0)
+	goto done;
+    cbuf_free(cbxml);
+    //    }
     ret = 0;
-  done:
+ done:
     if (xt)
 	xml_free(xt);
     if (fd != -1)

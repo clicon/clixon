@@ -229,7 +229,10 @@ xml2cli(FILE              *f,
 	    term = xml_name(x);
 	if (prepend0)
 	    fprintf(f, "%s ", prepend0);
-	fprintf(f, "%s\n", term);
+	if (index(term, ' '))
+	    fprintf(f, "\"%s\"\n", term);
+	else
+	    fprintf(f, "%s\n", term);
 	retval = 0;
 	goto done;
     }

@@ -86,7 +86,7 @@ if [ $? -ne 0 ]; then
     err
 fi
 
-new "start backend"
+new "start backend -s init -f $cfg -y $fyang"
 # start new backend
 sudo clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
@@ -147,7 +147,7 @@ if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-#sudo clixon_backend -zf $cfg
+sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

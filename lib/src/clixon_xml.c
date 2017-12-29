@@ -63,6 +63,7 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xml_sort.h"
 #include "clixon_xml_parse.h"
 
 /*
@@ -528,6 +529,7 @@ xml_childvec_get(cxobj *x)
  * @endcode
  * @note yspec may be NULL either because it is not known or it is irrelevant, 
  *       eg for body or attribute
+ * @see xml_sort_insert
  */
 cxobj *
 xml_new(char      *name, 
@@ -545,7 +547,7 @@ xml_new(char      *name,
 	return NULL;
 
     xml_parent_set(x, xp);
-    if (xp && xml_child_append(xp, x) < 0)
+    if (xp && xml_child_append(xp, x) < 0) 
 	return NULL;
     x->x_spec = spec; /* Can be NULL */
     return x;
@@ -1290,7 +1292,6 @@ xml_parse_file(int        fd,
 
     if (endtag != NULL)
 	endtaglen = strlen(endtag);
-    *xt = NULL;
     if ((xmlbuf = malloc(xmlbuflen)) == NULL){
 	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
 	goto done;
@@ -1558,7 +1559,7 @@ cxvec_append(cxobj   *x,
  * The tree is traversed depth-first, which at least guarantees that a parent is
  * traversed before a child.
  * @param[in]  xn   XML node
- * @param[in]  type matching type or -1 for any
+ * @param[in]  type Matching type or -1 for any
  * @param[in]  fn   Callback
  * @param[in]  arg  Argument
  * @retval    -1    Error, aborted at first error encounter
@@ -1610,6 +1611,10 @@ xml_apply(cxobj          *xn,
 }
 
 /*! Apply a function call on top object and all xml node children recursively 
+ * @param[in]  xn   XML node
+ * @param[in]  type Matching type or -1 for any
+ * @param[in]  fn   Callback
+ * @param[in]  arg  Argument
  * @retval    -1    Error, aborted at first error encounter
  * @retval     0    OK, all nodes traversed (subparts may have been skipped)
  * @retval     1    OK, aborted on first fn returned 1
@@ -1834,93 +1839,6 @@ xml_operation2str(enum operation_type op)
     default:
 	return "none";
     }
-}
-
-/*! Help function to qsort for sorting entries in xml child vector
- * @param[in]  arg1
- * @param[in]  arg2
- * @retval  0  If equal
- * @retval <0  if arg1 is less than arg2
- * @retval >0  if arg1 is greater than arg2
- * @note must be in clixon_xml.c since it uses internal (hidden) struct xml
- */
-static int
-xml_cmp(const void* arg1, 
-	const void* arg2)
-{
-    struct xml *x1 = *(struct xml**)arg1;
-    struct xml *x2 = *(struct xml**)arg2;
-    yang_stmt  *y1;
-    yang_stmt  *y2;
-    int         yi1;
-    int         yi2;
-    cvec       *cvk = NULL; /* vector of index keys */
-    cg_var     *cvi;
-    int         equal = 0;
-    char       *b1;
-    char       *b2;
-    char       *keyname;
-    
-    if (x1 == NULL){
-	if (x2 == NULL)
-	    return 0;
-	else
-	    return -1;
-    }
-    else if (x2 == NULL)
-	return 1;
-    y1 = xml_spec(x1);
-    y2 = xml_spec(x2);
-    if (y1==NULL || y2==NULL)
-	return 0; /* just ignore */
-    if (y1 != y2){
-	yi1 = yang_order(y1);
-	yi2 = yang_order(y2);
-	if ((equal = yi1-yi2) != 0)
-	    return equal;
-    }
-    /* Now y1=y2, same Yang spec, can only be list or leaf-list,
-     * sort according to key
-     */
-    if (yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL)
-	return 0; /* Ordered by user: maintain existing order */
-    switch (y1->ys_keyword){
-    case Y_LEAF_LIST: /* Match with name and value */
-	equal = strcmp(xml_body(x1), xml_body(x2));
-	break;
-    case Y_LIST: /* Match with key values 
-		  * Use Y_LIST cache (see struct yang_stmt)
-		  */
-	cvk = y1->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
-	cvi = NULL;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	    keyname = cv_string_get(cvi);
-	    b1 = xml_find_body(x1, keyname);
-	    b2 = xml_find_body(x2, keyname);
-	    if ((equal = strcmp(b1,b2)) != 0)
-		goto done;
-	}
-	equal = 0;
-	break;
-    default:
-	break;
-    }
- done:
-    return equal;
-}
-
-/*! Sort children of an XML node
- * Assume populated by yang spec.
- * @param[in] x0   XML node
- * @param[in] arg  Dummy so it can be called by xml_apply()
- * @note must be in clixon_xml.c since it uses internal (hidden) struct xml
- */
-int
-xml_sort(cxobj *x,
-	 void  *arg)
-{
-    qsort(x->x_childvec, x->x_childvec_len, sizeof(struct xml*), xml_cmp);
-    return 0;
 }
 
 

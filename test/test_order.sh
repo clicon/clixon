@@ -171,7 +171,7 @@ if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-#sudo clixon_backend -zf $cfg
+sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

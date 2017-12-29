@@ -666,6 +666,8 @@ main(int argc, char **argv)
     int           sockfamily;
     char         *xmldb_plugin;
     int           xml_cache;
+    int           xml_pretty;
+    char         *xml_format;
 
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR|CLICON_LOG_SYSLOG);
@@ -878,6 +880,12 @@ main(int argc, char **argv)
 	goto done;
     if ((xml_cache = clicon_option_bool(h, "CLICON_XMLDB_CACHE")) >= 0)
 	if (xmldb_setopt(h, "xml_cache", (void*)(intptr_t)xml_cache) < 0)
+	    goto done;
+    if ((xml_format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) >= 0)
+	if (xmldb_setopt(h, "format", (void*)xml_format) < 0)
+	    goto done;
+    if ((xml_pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) >= 0)
+	if (xmldb_setopt(h, "pretty", (void*)(intptr_t)xml_pretty) < 0)
 	    goto done;
     /* If startup mode is not defined, eg via OPTION or -s, assume old method */
     startup_mode = clicon_startup_mode(h);

@@ -100,6 +100,80 @@ xml_child_spec(char       *name,
     return 0;
 }
 
+/*! Help function to qsort for sorting entries in xml child vector
+ * @param[in]  arg1 - actually cxobj**
+ * @param[in]  arg2 - actually cxobj**
+ * @retval  0  If equal
+ * @retval <0  if arg1 is less than arg2
+ * @retval >0  if arg1 is greater than arg2
+ * @note args are pointer ot pointers, to fit into qsort cmp function
+ * @see xml_cmp1   Similar, but for one object
+ */
+int
+xml_cmp(const void* arg1, 
+	const void* arg2)
+{
+    cxobj *x1 = *(struct xml**)arg1;
+    cxobj *x2 = *(struct xml**)arg2;
+    yang_stmt  *y1;
+    yang_stmt  *y2;
+    int         yi1;
+    int         yi2;
+    cvec       *cvk = NULL; /* vector of index keys */
+    cg_var     *cvi;
+    int         equal = 0;
+    char       *b1;
+    char       *b2;
+    char       *keyname;
+    
+    if (x1 == NULL){
+	if (x2 == NULL)
+	    return 0;
+	else
+	    return -1;
+    }
+    else if (x2 == NULL)
+	return 1;
+    y1 = xml_spec(x1);
+    y2 = xml_spec(x2);
+    if (y1==NULL || y2==NULL)
+	return 0; /* just ignore */
+    if (y1 != y2){
+	yi1 = yang_order(y1);
+	yi2 = yang_order(y2);
+	if ((equal = yi1-yi2) != 0)
+	    return equal;
+    }
+    /* Now y1=y2, same Yang spec, can only be list or leaf-list,
+     * sort according to key
+     */
+    if (yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL)
+	return 0; /* Ordered by user: maintain existing order */
+    switch (y1->ys_keyword){
+    case Y_LEAF_LIST: /* Match with name and value */
+	equal = strcmp(xml_body(x1), xml_body(x2));
+	break;
+    case Y_LIST: /* Match with key values 
+		  * Use Y_LIST cache (see struct yang_stmt)
+		  */
+	cvk = y1->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	cvi = NULL;
+	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+	    keyname = cv_string_get(cvi);
+	    b1 = xml_find_body(x1, keyname);
+	    b2 = xml_find_body(x2, keyname);
+	    if ((equal = strcmp(b1,b2)) != 0)
+		goto done;
+	}
+	equal = 0;
+	break;
+    default:
+	break;
+    }
+ done:
+    return equal;
+}
+
 /*!
  * @param[in] yangi  Yang order
  * @param[in]  keynr    Length of keyvec/keyval vector when applicable
@@ -109,6 +183,7 @@ xml_child_spec(char       *name,
  * @retval  0  If equal (or userorder set)
  * @retval <0  if arg1 is less than arg2
  * @retval >0  if arg1 is greater than arg2
+ * @see xml_cmp   Similar, but for two objects
  */
 static int
 xml_cmp1(cxobj        *x,
@@ -155,6 +230,21 @@ xml_cmp1(cxobj        *x,
     return 0; /* should not reach here */
 }
 
+/*! Sort children of an XML node
+ * Assume populated by yang spec.
+ * @param[in] x0   XML node
+ * @param[in] arg  Dummy so it can be called by xml_apply()
+ */
+int
+xml_sort(cxobj *x,
+	 void  *arg)
+{
+    qsort(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp);
+    return 0;
+}
+
+/*! Special case search for ordered-by user where linear sort is used
+ */
 static cxobj *
 xml_search_userorder(cxobj        *x0,
 		     yang_stmt    *y,
@@ -236,7 +326,7 @@ xml_search1(cxobj        *x0,
     return NULL;
 }
 
-/*!      
+/*! Find XML children using binary search
  * @param[in] yangi  yang child order
  * @param[in]  keynr    Length of keyvec/keyval vector when applicable
  * @param[in]  keyvec   Array of of yang key identifiers
@@ -253,6 +343,63 @@ xml_search(cxobj        *x0,
 {
     return xml_search1(x0, name, yangi, keyword, keynr, keyvec, keyval,
 		       0, xml_child_nr(x0));
+}
+
+static int
+xml_insert_pos(cxobj *x0,
+		    cxobj *x,
+		    int    low, 
+		    int    upper)
+{
+    int     mid;
+    cxobj  *xc;
+    int     cmp;
+    int     i;
+
+    if (upper < low)
+	return low; /* not found */
+    mid = (low + upper) / 2;
+    if (mid >= xml_child_nr(x0))
+	return xml_child_nr(x0);
+    xc = xml_child_i(x0, mid);
+    cmp = xml_cmp(&x, &xc); 
+    if (cmp == 0){
+	/* Special case: append last of equals if ordered by user */
+	for (i=mid+1;i<xml_child_nr(x0);i++){
+	    xc = xml_child_i(x0, i);
+	    if (xml_cmp(&x, &xc) != 0)
+		break;
+	    mid=i; /* still ok */
+	}
+	return mid;
+    }
+    else if (cmp < 0)
+	return xml_insert_pos(x0, x, low, mid-1);
+    else
+	return xml_insert_pos(x0, x, mid+1, upper);
+}
+		    
+/*! Add xml object in sorted position 
+ * @param[in]  x0       XML parent node.
+ * @param[in]  x        XML node (to insert)
+ * Assume already under x0
+ * XXX WORK IN PROGRESS 
+ */
+cxobj *
+xml_sort_insert(cxobj *x0,
+		cxobj *x)
+{
+    int pos;
+    /* find closest to x, insert after pos. */
+    xml_rm(x);
+    pos = xml_insert_pos(x0, x, 0, xml_child_nr(x0));
+    fprintf(stderr, "%d\n", pos);
+#if 0
+    if (pos < xml_child_nr(x0))
+	xml_child_i_set(x0, pos);
+    xml_parent_set(x, x0);
+#endif
+    return x;
 }
 
 /*! Find matching xml child given name and optional key values
@@ -350,6 +497,34 @@ xml_match(cxobj        *x0,
  ok:
     return x;
 }
+
+/*! Verify all children of XML node are sorted according to xml_sort()
+ * @param[in]   x       XML node. Check its children
+ * @param[in]   arg     Dummy. Ensures xml_apply can be used with this fn
+ @ @retval      0       Sorted
+ @ @retval     -1       Not sorted
+ * @see xml_apply
+ */
+int
+xml_sort_verify(cxobj *x0,
+		void  *arg)
+{
+    int    retval = -1;
+    cxobj *x = NULL;
+    cxobj *xprev = NULL;
+
+    while ((x = xml_child_each(x0, x, -1)) != NULL) {
+	if (xprev != NULL){ /* Check xprev <= x */
+	    if (xml_cmp(&xprev, &x) > 0)
+		goto done;
+	}
+	xprev = x;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Given child tree x1c, find matching child in base tree x0
  * param[in]  x0   Base tree node
  * param[in]  x1c  Modification tree child
