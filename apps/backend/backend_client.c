@@ -403,7 +403,11 @@ from_client_edit_config(clicon_handle h,
 		    "</rpc-error></rpc-reply>");
 	    goto ok;
 	}
-
+	/* Cant do this earlier since we dont have a yang spec to
+	 * the upper part of the tree, until we get the "config" tree.
+	 */
+	if (xml_child_sort && xml_apply0(xc, CX_ELMNT, xml_sort, NULL) < 0)
+	    goto done;
 	if (xmldb_put(h, target, operation, xc) < 0){
 	    cprintf(cbret, "<rpc-reply><rpc-error>"
 		    "<error-tag>operation-failed</error-tag>"

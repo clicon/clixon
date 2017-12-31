@@ -474,9 +474,6 @@ text_get(xmldb_handle xh,
 	    if (singleconfigroot(xt, &xt) < 0)
 		goto done;
 	}
-	/* Sort XML children according to YANG */
-	if (xml_child_sort && xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
-	    goto done;
     } /* xt == NULL */
     /* Here xt looks like: <config>...</config> */
 
@@ -540,11 +537,10 @@ text_get(xmldb_handle xh,
     /* Order XML children according to YANG */
     if (!xml_child_sort && xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
 	goto done;
-    /* Again just so default values are placed correctly */
-    if (xml_child_sort && xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
-	goto done;
+#if 0 /* debug */
     if (xml_child_sort && xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #2", __FUNCTION__);
+#endif
     if (debug>1)
     	clicon_xml2file(stderr, xt, 0, 1);
     *xtop = xt;
@@ -730,6 +726,7 @@ text_modify(cxobj              *x0,
 	} /* CONTAINER switch op */
     } /* else Y_CONTAINER  */
     // ok:
+    xml_sort(x0p, NULL);
     retval = 0;
  done:
     if (x0vec)
@@ -916,8 +913,10 @@ text_put(xmldb_handle        xh,
     /* XXX: where is this created? Add yspec */
     if (xml_apply(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
        goto done;
-    if (xml_child_sort && xml_apply0(x1, CX_ELMNT, xml_sort, NULL) < 0)
-	goto done;
+#if 0 /* debug */
+    if (xml_child_sort && xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
+	clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
+#endif
     /* 
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
@@ -937,9 +936,10 @@ text_put(xmldb_handle        xh,
     /* Remove (prune) nodes that are marked (non-presence containers w/o children) */
     if (xml_tree_prune_flagged(x0, XML_FLAG_MARK, 1) < 0)
 	goto done;
-    if (xml_child_sort && xml_apply0(x0, CX_ELMNT, xml_sort, NULL) < 0)
-	goto done;
-
+#if 0 /* debug */
+    if (xml_child_sort && xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
+	clicon_log(LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
+#endif
     /* Write back to datastore cache if first time */
     if (xmltree_cache){
 	struct db_element de0 = {0,};

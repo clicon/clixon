@@ -18,7 +18,6 @@ cfg=/tmp/scaling-conf.xml
 fyang=/tmp/scaling.yang
 fconfig=/tmp/config
 
-
 # include err() and new() functions
 . ./lib.sh
 
@@ -67,7 +66,7 @@ if [ $? -ne 0 ]; then
     err
 fi
 
-new "start backend"
+new "start backend  -s init -f $cfg -y $fyang"
 # start new backend
 sudo clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then

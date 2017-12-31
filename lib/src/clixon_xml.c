@@ -534,10 +534,10 @@ xml_childvec_get(cxobj *x)
 cxobj *
 xml_new(char      *name, 
 	cxobj     *xp,
-	yang_stmt *spec)
+	yang_stmt *yspec)
 {
     cxobj *x;
-
+    
     if ((x = malloc(sizeof(cxobj))) == NULL){
 	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
 	return NULL;
@@ -545,11 +545,12 @@ xml_new(char      *name,
     memset(x, 0, sizeof(cxobj));
     if ((xml_name_set(x, name)) < 0)
 	return NULL;
-
-    xml_parent_set(x, xp);
-    if (xp && xml_child_append(xp, x) < 0) 
-	return NULL;
-    x->x_spec = spec; /* Can be NULL */
+    if (xp){
+	xml_parent_set(x, xp);
+	if (xml_child_append(xp, x) < 0) 
+	    return NULL;
+    }
+    x->x_spec = yspec; /* Can be NULL */
     return x;
 }
 
@@ -1212,8 +1213,8 @@ xmltree2cbuf(cbuf  *cb,
  */
 static int 
 _xml_parse(const char *str, 
-	  yang_spec  *yspec,
-	  cxobj      *xt)
+	  yang_spec   *yspec,
+	  cxobj       *xt)
 {
     int                       retval = -1;
     struct xml_parse_yacc_arg ya = {0,};
@@ -1233,6 +1234,13 @@ _xml_parse(const char *str,
 	goto done;    
     if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
 	goto done;
+    /* Sort the complete tree after parsing */
+    if (yspec){
+	if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
+	    goto done;
+	if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
+	    goto done;
+    }
     retval = 0;
   done:
     clixon_xml_parsel_exit(&ya);
