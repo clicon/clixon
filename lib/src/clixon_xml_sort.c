@@ -211,6 +211,7 @@ xml_cmp1(cxobj        *x,
 	for (i=0; i<keynr; i++){
 	    keyname = keyvec[i];
 	    key = keyval[i];
+	    /* Eg return "e0" in <if><name>e0</name></name></if> given "name" */
 	    if ((b = xml_find_body(x, keyname)) == NULL)
 		break; /* error case */
 	    return strcmp(key, b);
@@ -303,7 +304,8 @@ xml_search1(cxobj        *x0,
 	return NULL;
     xc = xml_child_i(x0, mid);
     assert(y = xml_spec(xc));
-    if ((cmp = yangi-yang_order(y)) == 0){
+    cmp = yangi-yang_order(y);
+    if (cmp == 0){
 	cmp = xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, &userorder);
 	if (userorder && cmp)	    /* Look inside this yangi order */
 	    return xml_search_userorder(x0, y, name, yangi, mid, keyword, keynr, keyvec, keyval);
@@ -338,18 +340,18 @@ xml_search(cxobj        *x0,
 		       0, xml_child_nr(x0));
 }
 
-#ifdef notyet
+
 /*! Position where to insert xml object into a list of children nodes
+ * @note EXPERIMENTAL
  * Insert after position returned
  * @param[in]  x0       XML parent node.
- * @param[in]  x        XML node (to insert)
  * @param[in]  low       Lower bound
  * @param[in]  upper     Upper bound (+1)
  * @retval     position 
- * XXX: Replace "x" with parameters in xml_search1
+ * XXX: Problem with this is that evrything must be known before insertion
  */
-static int
-xml_insert_pos(cxobj *x0,
+int
+xml_insert_pos(cxobj        *x0,
 	       char         *name,
 	       int           yangi,
 	       enum rfc_6020 keyword,   
@@ -359,57 +361,43 @@ xml_insert_pos(cxobj *x0,
 	       int           low, 
 	       int           upper)
 {
-    int     mid;
-    cxobj  *xc;
-    int     cmp;
-    int     i;
-
+    int        mid;
+    cxobj     *xc;
+    yang_stmt *y;
+    int        cmp;
+    int        i;
+    int        userorder= 0;
+    
     if (upper < low)
 	return low; /* not found */
     mid = (low + upper) / 2;
     if (mid >= xml_child_nr(x0))
-	return xml_child_nr(x0);
-    xc = xml_child_i(x0, mid);
-    cmp = xml_cmp(&x, &xc); 
+	return xml_child_nr(x0); /* upper range */
+    xc = xml_child_i(x0, mid); 
+    y = xml_spec(xc);
+    cmp = yangi-yang_order(y);
     if (cmp == 0){
-	/* Special case: append last of equals if ordered by user */
-	for (i=mid+1;i<xml_child_nr(x0);i++){
-	    xc = xml_child_i(x0, i);
-	    if (xml_cmp(&x, &xc) != 0)
-		break;
-	    mid=i; /* still ok */
+	cmp = xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, &userorder);
+	if (userorder){	    /* Look inside this yangi order */
+	    /* Special case: append last of equals if ordered by user */
+	    for (i=mid+1;i<xml_child_nr(x0);i++){
+		xc = xml_child_i(x0, i);
+		if (strcmp(xml_name(xc), name))
+		    break;
+		mid=i; /* still ok */
+	    }
+	    return mid;
 	}
-	return mid;
     }
+    if (cmp == 0)
+	return mid;
     else if (cmp < 0)
-	return xml_insert_pos(x0, x, low, mid-1);
+	return xml_insert_pos(x0, name, yangi, keyword,
+			      keynr, keyvec, keyval, low, mid-1);
     else
-	return xml_insert_pos(x0, x, mid+1, upper);
+	return xml_insert_pos(x0, name, yangi, keyword,
+			      keynr, keyvec, keyval, mid+1, upper);
 }
-		    
-/*! Add xml object in sorted position 
- * @param[in]  x0       XML parent node.
- * @param[in]  x        XML node (to insert)
- * Assume already under x0
- * XXX WORK IN PROGRESS 
- */
-cxobj *
-xml_sort_insert(cxobj *x0,
-		cxobj *x)
-{
-    int pos;
-    /* find closest to x, insert after pos. */
-    xml_rm(x);
-    pos = xml_insert_pos(x0, x, 0, xml_child_nr(x0));
-    fprintf(stderr, "%d\n", pos);
-#if 0
-    if (pos < xml_child_nr(x0))
-	xml_child_i_set(x0, pos);
-    xml_parent_set(x, x0);
-#endif
-    return x;
-}
-#endif /* notyet */
 
 /*! Find matching xml child given name and optional key values
  * container: x0, y->keyword, name
@@ -555,11 +543,11 @@ match_base_child(cxobj     *x0,
     int        retval = -1;
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
-    char      *b1;
+    char      *b;
     char      *keyname;
+    char       keynr = 0;
     char     **keyval = NULL;
     char     **keyvec = NULL;
-    char       keynr = 0;
     int        i;
 
     *x0cp = NULL; /* return value */
@@ -594,9 +582,9 @@ match_base_child(cxobj     *x0,
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	    keyname = cv_string_get(cvi);
 	    keyvec[i] = keyname;
-	    if ((b1 = xml_find_body(x1c, keyname)) == NULL)
+	    if ((b = xml_find_body(x1c, keyname)) == NULL)
 		goto ok; /* not found */
-	    keyval[i++] = b1;
+	    keyval[i++] = b;
 	}
 	break;
     default:
