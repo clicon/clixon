@@ -135,7 +135,7 @@ netconf_get_config(clicon_handle h,
      cxobj      *xconf;
 
      if ((source = netconf_get_target(xn, "source")) == NULL){
-	 clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	 xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			  "<error-tag>missing-element</error-tag>"
 			  "<error-type>protocol</error-type>"
 			  "<error-severity>error</error-severity>"
@@ -163,7 +163,7 @@ netconf_get_config(clicon_handle h,
 	     /* xml_filter removes parts of xml tree not matching */
 	     if ((strcmp(xml_name(xfilterconf), xml_name(xconf))!=0) ||
 		 xml_filter(xfilterconf, xconf) < 0){
-		     clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+		     xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 				      "<error-tag>operation-failed</error-tag>"
 				      "<error-type>applicatio</error-type>"
 				      "<error-severity>error</error-severity>"
@@ -173,7 +173,7 @@ netconf_get_config(clicon_handle h,
 	 }
      }
      else{
-	 clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	 xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			  "<error-tag>operation-failed</error-tag>"
 			  "<error-type>applicatio</error-type>"
 			  "<error-severity>error</error-severity>"
@@ -241,7 +241,7 @@ get_edit_opts(cxobj               *xn,
     retval = 1; /* hunky dory */
     return retval;
  parerr: /* parameter error, xret set */
-    clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+    xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 		     "<error-tag>invalid-value</error-tag>"
 		     "<error-type>protocol</error-type>"
 		     "<error-severity>error</error-severity>"
@@ -317,7 +317,7 @@ netconf_edit_config(clicon_handle h,
     /* must have target, and it should be candidate */
     if ((target = netconf_get_target(xn, "target")) == NULL ||
 	strcmp(target, "candidate")){
-	clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			 "<error-tag>missing-element</error-tag>"
 			 "<error-type>protocol</error-type>"
 			 "<error-severity>error</error-severity>"
@@ -329,7 +329,7 @@ netconf_edit_config(clicon_handle h,
     if ((xfilter = xpath_first(xn, "filter")) != NULL) {
 	if ((ftype = xml_find_value(xfilter, "type")) != NULL)
 	    if (strcmp(ftype,"restconf")){
-		clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+		xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 				 "<error-tag>invalid-value</error-tag>"
 				 "<error-type>protocol</error-type>"
 				 "<error-severity>error</error-severity>"
@@ -339,7 +339,7 @@ netconf_edit_config(clicon_handle h,
     }
     if ((x = xpath_first(xn, "default-operation")) != NULL){
 	if (xml_operation(xml_body(x), &operation) < 0){
-	    clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	    xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			     "<error-tag>invalid-value</error-tag>"
 			     "<error-type>protocol</error-type>"
 			     "<error-severity>error</error-severity>"
@@ -353,7 +353,7 @@ netconf_edit_config(clicon_handle h,
 	goto ok;
     /* not supported opts */
     if (testopt!=TEST_THEN_SET || erropt!=STOP_ON_ERROR){
-	clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			 "<error-tag>operation-not-supported</error-tag>"
 			 "<error-type>protocol</error-type>"
 			 "<error-severity>error</error-severity>"
@@ -403,7 +403,7 @@ netconf_copy_config(clicon_handle h,
     char     *target; /* filenames */
 
     if ((source = netconf_get_target(xn, "source")) == NULL){
-	clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			 "<error-tag>missing-element</error-tag>"
 			 "<error-type>protocol</error-type>"
 			 "<error-severity>error</error-severity>"
@@ -412,7 +412,7 @@ netconf_copy_config(clicon_handle h,
 	goto ok;
     }
     if ((target = netconf_get_target(xn, "target")) == NULL){
-	clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			 "<error-tag>missing-element</error-tag>"
 			 "<error-type>protocol</error-type>"
 			 "<error-severity>error</error-severity>"
@@ -450,7 +450,7 @@ netconf_delete_config(clicon_handle h,
 
     if ((target = netconf_get_target(xn, "target")) == NULL ||
 	strcmp(target, "running")==0){
-	clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			 "<error-tag>missing-element</error-tag>"
 			 "<error-type>protocol</error-type>"
 			 "<error-severity>error</error-severity>"
@@ -486,7 +486,7 @@ netconf_lock(clicon_handle h,
     char    *target;
 
     if ((target = netconf_get_target(xn, "target")) == NULL){
-	 clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			  "<error-tag>missing-element</error-tag>"
 			  "<error-type>protocol</error-type>"
 			  "<error-severity>error</error-severity>"
@@ -566,7 +566,7 @@ netconf_get(clicon_handle h,
 	     /* xml_filter removes parts of xml tree not matching */
 	     if ((strcmp(xml_name(xfilterconf), xml_name(xconf))!=0) ||
 		 xml_filter(xfilterconf, xconf) < 0){
-		     clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+		 xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 				      "<error-tag>operation-failed</error-tag>"
 				      "<error-type>applicatio</error-type>"
 				      "<error-severity>error</error-severity>"
@@ -576,7 +576,7 @@ netconf_get(clicon_handle h,
 	 }
      }
      else{
-	 clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	 xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			  "<error-tag>operation-failed</error-tag>"
 			  "<error-type>applicatio</error-type>"
 			  "<error-severity>error</error-severity>"
@@ -627,7 +627,7 @@ netconf_kill_session(clicon_handle h,
     cxobj *xs;
 
     if ((xs = xpath_first(xn, "//session-id")) == NULL){
-	 clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			  "<error-tag>missing-element</error-tag>"
 			  "<error-type>protocol</error-type>"
 			  "<error-severity>error</error-severity>"
@@ -658,7 +658,7 @@ netconf_validate(clicon_handle h,
     char  *target;
 
     if ((target = netconf_get_target(xn, "source")) == NULL){
-	 clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			  "<error-tag>missing-element</error-tag>"
 			  "<error-type>protocol</error-type>"
 			  "<error-severity>error</error-severity>"
@@ -826,7 +826,7 @@ netconf_create_subscription(clicon_handle h,
     if ((xfilter = xpath_first(xn, "//filter")) != NULL){
 	if ((ftype = xml_find_value(xfilter, "type")) != NULL){
 	    if (strcmp(ftype, "xpath") != 0){
-		clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+		xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 				 "<error-tag>operation-failed</error-tag>"
 				 "<error-type>application</error-type>"
 				 "<error-severity>error</error-severity>"
@@ -850,68 +850,195 @@ netconf_create_subscription(clicon_handle h,
     return retval;
 }
 
+/*! See if there is any callback registered for this tag
+ *
+ * @param[in]  h       clicon handle
+ * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
+ * @param[out] xret    Return XML, error or OK
+ *
+ * @retval -1   Error
+ * @retval  0   OK, not found handler.
+ * @retval  1   OK, handler called
+ */
+static int
+netconf_application_rpc(clicon_handle h,
+			cxobj        *xn, 
+			cxobj       **xret)
+{
+    int            retval = -1;
+    yang_spec     *yspec = NULL; /* application yspec */
+    yang_stmt     *yrpc = NULL;
+    yang_stmt     *yinput;
+    yang_stmt     *youtput;
+    cxobj         *xoutput;
+    cbuf          *cb = NULL;
+
+    /* First check system / netconf RPC:s */
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, 0, "cbuf_new");
+	goto done;
+    }
+    /* Find yang rpc statement, return yang rpc statement if found 
+       Check application RPC */
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    cbuf_reset(cb);
+    //    if (xml_namespace(xn))
+	cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn));
+	//    else
+	//	cprintf(cb, "/%s", xml_name(xn)); /* XXX not accepdted by below */
+    /* Find yang rpc statement, return yang rpc statement if found */
+    if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), &yrpc) < 0)
+	goto done;
+
+    /* Check if found */
+    if (yrpc != NULL){
+	if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
+	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
+	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yinput) < 0)
+		goto done;
+	    if (xml_apply(xn, CX_ELMNT, 
+			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+		goto done;
+	    if (xml_yang_validate_add(xn, NULL) < 0)
+		goto done;
+	}
+	/* 
+	 * 1. Check xn arguments with input statement.
+	 * 2. Send to backend as clicon_msg-encode()
+	 * 3. In backend to similar but there call actual backend
+	 */
+	if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
+	    goto done;
+	/* Sanity check of outgoing XML */
+	if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL){
+	    xoutput=xpath_first(*xret, "/");
+	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
+	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, youtput) < 0)
+		goto done;
+	    if (xml_apply(xoutput, CX_ELMNT, 
+			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+		goto done;
+	    if (xml_yang_validate_add(xoutput, NULL) < 0)
+		goto done;
+	}
+	retval = 1; /* handled by callback */
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+    
+
+
 /*! The central netconf rpc dispatcher. Look at first tag and dispach to sub-functions.
  * Call plugin handler if tag not found. If not handled by any handler, return
  * error.
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
  * @param[out] xret    Return XML, error or OK
+ * @retval     0       OK, can also be netconf error 
+ * @retval    -1       Error, fatal
  */
 int
 netconf_rpc_dispatch(clicon_handle h,
 		     cxobj        *xn, 
 		     cxobj       **xret)
 {
+    int         retval = -1;
     cxobj      *xe;
-    int         ret = 0;
+    yang_spec  *yspec = NULL; 
     
+    /* Check incoming RPC against system / netconf RPC:s */
+    if ((yspec = clicon_netconf_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No netconf yang spec");
+	goto done;
+    }
     xe = NULL;
     while ((xe = xml_child_each(xn, xe, CX_ELMNT)) != NULL) {
-	if (strcmp(xml_name(xe), "get-config") == 0)
-	    return netconf_get_config(h, xe, xret);
-	else if (strcmp(xml_name(xe), "edit-config") == 0)
-	    return netconf_edit_config(h, xe, xret);
-        else if (strcmp(xml_name(xe), "copy-config") == 0)
-	    return netconf_copy_config(h, xe, xret);
-	else if (strcmp(xml_name(xe), "delete-config") == 0)
-	    return netconf_delete_config(h, xe, xret);
-	else if (strcmp(xml_name(xe), "lock") == 0) 
-	    return netconf_lock(h, xe, xret);
-	else if (strcmp(xml_name(xe), "unlock") == 0)
-	    return netconf_unlock(h, xe, xret);
-	else if (strcmp(xml_name(xe), "get") == 0)
-	    return netconf_get(h, xe, xret);
-	else if (strcmp(xml_name(xe), "close-session") == 0)
-	    return netconf_close_session(h, xe, xret);
-	else if (strcmp(xml_name(xe), "kill-session") == 0) 
-	    return netconf_kill_session(h, xe, xret);
+	if (strcmp(xml_name(xe), "get-config") == 0){
+	    if (netconf_get_config(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "edit-config") == 0){
+	    if (netconf_edit_config(h, xe, xret) < 0)
+		goto done;
+	}
+        else if (strcmp(xml_name(xe), "copy-config") == 0){
+	    if (netconf_copy_config(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "delete-config") == 0){
+	    if (netconf_delete_config(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "lock") == 0) {
+	    if (netconf_lock(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "unlock") == 0){
+	    if (netconf_unlock(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "get") == 0){
+	    if (netconf_get(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "close-session") == 0){
+	    if (netconf_close_session(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "kill-session") == 0) {
+	    if (netconf_kill_session(h, xe, xret) < 0)
+		goto done;
+	}
 	/* Validate capability :validate */
-	else if (strcmp(xml_name(xe), "validate") == 0)
-	   return netconf_validate(h, xe, xret);
+	else if (strcmp(xml_name(xe), "validate") == 0){
+	    if (netconf_validate(h, xe, xret) < 0)
+		goto done;
+	}
 	/* Candidate configuration capability :candidate */
-	else if (strcmp(xml_name(xe), "commit") == 0)
-	    return netconf_commit(h, xe, xret);
-	else if (strcmp(xml_name(xe), "discard-changes") == 0)
-	    return netconf_discard_changes(h, xe, xret);
+	else if (strcmp(xml_name(xe), "commit") == 0){
+	    if (netconf_commit(h, xe, xret) < 0)
+		goto done;
+	}
+	else if (strcmp(xml_name(xe), "discard-changes") == 0){
+	    if (netconf_discard_changes(h, xe, xret) < 0)
+		goto done;
+	}
 	/* RFC 5277 :notification */
-	else if (strcmp(xml_name(xe), "create-subscription") == 0)
-	    return netconf_create_subscription(h, xe, xret);
+	else if (strcmp(xml_name(xe), "create-subscription") == 0){
+	    if (netconf_create_subscription(h, xe, xret) < 0)
+		goto done;
+	}
 	/* Others */
-	else{
-	    if ((ret = netconf_plugin_callbacks(h, xe, xret)) < 0)
-	       return -1;
-	   if (ret == 0){ /* not handled by callback */
-		clicon_xml_parse(xret, "<rpc-reply><rpc-error>"
+	else {
+	    /* Look for local (client-side) netconf plugins. This feature may no 
+	     * longer be necessary as generic RPC:s should be handled by backend.
+	     */
+	    if ((retval = netconf_plugin_callbacks(h, xe, xret)) < 0)
+		goto done;
+	    if (retval == 0)
+		if ((retval = netconf_application_rpc(h, xe, xret)) < 0)
+		    goto done;
+	    if (retval == 0){ /* not handled by callback */
+		xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 				 "<error-tag>operation-failed</error-tag>"
 				 "<error-type>rpc</error-type>"
 				 "<error-severity>error</error-severity>"
 				 "<error-message>%s</error-message>"
 				 "<error-info>Not recognized</error-info>"
 				 "</rpc-error></rpc-reply>", xml_name(xe));
-		return 0;
-	   }
-	   
-       }
-   }
-    return ret;
+		goto done;
+	    }
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
 }

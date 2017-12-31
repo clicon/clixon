@@ -32,6 +32,8 @@
   ***** END LICENSE BLOCK *****
 
  * XML support functions.
+ * @see https://www.w3.org/TR/2008/REC-xml-20081126
+ *      https://www.w3.org/TR/2009/REC-xml-names-20091208
  */
 
 #ifdef HAVE_CONFIG_H
@@ -61,12 +63,18 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xml_sort.h"
 #include "clixon_xml_parse.h"
 
 /*
  * Constants
  */
-#define BUFLEN 1024  /* Size of xml read buffer */
+/* Size of xml read buffer */
+#define BUFLEN 1024  
+/* Indentation for xml pretty-print. Consider option? */
+#define XML_INDENT 3 
+/* Name of xml top object created by xml parse functions */
+#define XML_TOP_SYMBOL "top" 
 
 /*
  * Types
@@ -75,23 +83,37 @@
 /*! xml tree node, with name, type, parent, children, etc 
  * Note that this is a private type not visible from externally, use
  * access functions.
+ * A word on ordering of x_children:
+ * If there is no yang specification, xml children are ordered as they are entered.
+ * If there is a yang specification (and the appropriate functions are called) the
+ * xml children are ordered as follows:
+ * 1) After yang specification order.
+ * 2) list and leaf-list are sorted alphabetically unless ordered-by user.
+ * Example:
+ * container c{
+ *  leaf a;
+ *  leaf-list x;
+ * }
+ * then regardless in which order the xml is entered, it will be sorted as follows:
+ * <c>
+ *   <a/>
+ *   <x>a</<x>
+ *   <x>b</<x>
+ * </c>
  */
 struct xml{
     char             *x_name;       /* name of node */
     char             *x_namespace;  /* namespace, if any */
     struct xml       *x_up;         /* parent node in hierarchy if any */
     struct xml      **x_childvec;   /* vector of children nodes */
-    int               x_childvec_len; /* length of vector */
+    int               x_childvec_len;/* length of vector */
     enum cxobj_type   x_type;       /* type of node: element, attribute, body */
     char             *x_value;      /* attribute and body nodes have values */
     int              _x_vector_i;   /* internal use: xml_child_each */
     int               x_flags;      /* Flags according to XML_FLAG_* above */
-    void             *x_spec;       /* Pointer to specification, eg yang, by 
+    yang_stmt        *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
-    cg_var           *x_cv;           /* If body this contains the typed value */
-#if (XML_CHILD_HASH==1)
-    clicon_hash_t    *x_hash;         /* Hash of children */
-#endif
+    cg_var           *x_cv;         /* If body this contains the typed value */
 };
 
 /* Mapping between xml type <--> string */
@@ -102,6 +124,7 @@ static const map_str2int xsmap[] = {
     {"body",          CX_BODY},
     {NULL,           -1}
 };
+
 
 /*! Translate from xml type in enum form to string keyword
  * @param[in] type  Xml type
@@ -437,7 +460,7 @@ xml_child_each(cxobj           *xparent,
 	xn = xparent->x_childvec[i];
 	if (xn == NULL)
 	    continue;
-	if (type != CX_ERROR && xml_type(xn) != type)
+	if (type != CX_ERROR && xn->x_type != type)
 	    continue;
 	break; /* this is next object after previous */
     }
@@ -465,11 +488,11 @@ xml_child_append(cxobj *x,
     return 0;
 }
 
-/*! Set a a childvec to a speciufic size, fill with children after
+/*! Set a a childvec to a specific size, fill with children after
  * @code
  *   xml_childvec_set(x, 2);
- *   xml_child_i(x, 0) = xc0;
- *   xml_child_i(x, 1) = xc1;
+ *   xml_child_i_set(x, 0, xc0)
+ *   xml_child_i_set(x, 1, xc1);
  * @endcode
  */
 int
@@ -490,72 +513,59 @@ xml_childvec_get(cxobj *x)
     return x->x_childvec;
 }
 
-/*! Create new xml node given a name and parent. Free it with xml_free().
+/*! Create new xml node given a name and parent. Free with xml_free().
  *
- * @param[in]  name      Name of new 
- * @param[in]  xp        The parent where the new xml node should be inserted
- * @retval     xml       Created xml object if successful
+ * @param[in]  name      Name of XML node
+ * @param[in]  xp        The parent where the new xml node will be appended
+ * @param[in]  spec      Yang statement of this XML or NULL.
+ * @retval     xml       Created xml object if successful. Free with xml_free()
  * @retval     NULL      Error and clicon_err() called
  * @code
  *   cxobj *x;
- *   if ((x = xml_new(name, xparent)) == NULL)
+ *   if ((x = xml_new(name, xparent, NULL)) == NULL)
  *     err;
+ *   ...
+ *   xml_free(x);
  * @endcode
- * @see xml_new_spec     Also sets yang spec.
+ * @note yspec may be NULL either because it is not known or it is irrelevant, 
+ *       eg for body or attribute
+ * @see xml_sort_insert
  */
 cxobj *
-xml_new(char  *name, 
-	cxobj *xp)
-{
-    cxobj *xn;
-
-    if ((xn=malloc(sizeof(cxobj))) == NULL){
-	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
-	return NULL;
-    }
-    memset(xn, 0, sizeof(cxobj));
-    if ((xml_name_set(xn, name)) < 0)
-	return NULL;
-
-    xml_parent_set(xn, xp);
-    if (xp)
-	if (xml_child_append(xp, xn) < 0)
-	    return NULL;
-    return xn;
-}
-
-/*! Create new xml node given a name, parent and spec. 
- * @param[in] name Name of new xml node
- * @param[in] xp   XML parent
- * @param[in] spec Yang spec
- * @retval    NULL Error
- * @retval    x    XML tree. Free with xml_free().
- */
-cxobj *
-xml_new_spec(char  *name, 
-	     cxobj *xp, 
-	     void  *spec)
+xml_new(char      *name, 
+	cxobj     *xp,
+	yang_stmt *yspec)
 {
     cxobj *x;
     
-    if ((x = xml_new(name, xp)) == NULL)
+    if ((x = malloc(sizeof(cxobj))) == NULL){
+	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
 	return NULL;
-    x->x_spec = spec;
+    }
+    memset(x, 0, sizeof(cxobj));
+    if ((xml_name_set(x, name)) < 0)
+	return NULL;
+    if (xp){
+	xml_parent_set(x, xp);
+	if (xml_child_append(xp, x) < 0) 
+	    return NULL;
+    }
+    x->x_spec = yspec; /* Can be NULL */
     return x;
 }
 
 /*! Return yang spec of node. 
  * Not necessarily set. Either has not been set yet (by xml_spec_set( or anyxml.
  */
-void *
+yang_stmt *
 xml_spec(cxobj *x)
 {
     return x->x_spec;
 }
 
-void *
-xml_spec_set(cxobj *x, 
-	     void  *spec)
+int
+xml_spec_set(cxobj     *x, 
+	     yang_stmt *spec)
 {
     x->x_spec = spec;
     return 0;
@@ -630,7 +640,7 @@ xml_insert(cxobj *xp,
 {
     cxobj *xc; /* new child */
 
-    if ((xc = xml_new(tag, NULL)) == NULL)
+    if ((xc = xml_new(tag, NULL, NULL)) == NULL)
 	goto catch;
     while (xp->x_childvec_len)
 	if (xml_addsub(xc, xml_child_i(xp, 0)) < 0)
@@ -658,9 +668,6 @@ xml_purge(cxobj *xc)
     int       i;
     cxobj    *xp;
 
-#if (XML_CHILD_HASH==1)
-    xml_hash_op(xc, 0);
-#endif
     if ((xp = xml_parent(xc)) != NULL){
 	/* Find child order i in parent*/
 	for (i=0; i<xml_child_nr(xp); i++)
@@ -751,6 +758,15 @@ xml_rm(cxobj *xc)
  * @param[out] xcp  xml child node. New root
  * @retval     0    OK
  * @retval    -1    Error
+ * @code
+ *   cxobj *xt = NULL; 
+ *   if (xml_parse_string("<a>2</a>", NULL, &xt) < 0)
+ *      err;
+ *  # Here xt will be: <top><a>2</a></top>
+ *   if (xml_rootchild(xt, 0, &xt) < 0)
+ *      err;
+ *  # Here xt will be: <a>2</a>
+ * @endcode
  * @see xml_child_rm
  */
 int
@@ -923,15 +939,15 @@ xml_free(cxobj *x)
 	    x->x_childvec[i] = NULL;
 	}
     }
-#if (XML_CHILD_HASH==1)
-    if (x->x_hash)
-	hash_free(x->x_hash);
-#endif
     if (x->x_childvec)
 	free(x->x_childvec);
     free(x);
     return 0;
 }
+
+/*------------------------------------------------------------------------
+ * XML printing functions. Output a parse tree to file, string cligen buf
+ *------------------------------------------------------------------------*/
 
 /*! Print an XML tree structure to an output stream
  *
@@ -942,27 +958,91 @@ xml_free(cxobj *x)
  * @param[in]   level       how many spaces to insert before each line
  * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
  * @see clicon_xml2cbuf
+ * One can use clicon_xml2cbuf to get common code, but using fprintf is
+ * much faster than using cbuf and then printing that,...
  */
 int
 clicon_xml2file(FILE  *f, 
-		cxobj *xn, 
+		cxobj *x, 
 		int    level, 
 		int    prettyprint)
 {
     int    retval = -1;
-    cbuf  *cb = NULL;
+    char  *name;
+    char  *namespace;
+    cxobj *xc;
+    int    hasbody;
+    int    haselement;
+    char  *val;
 
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
-    if (clicon_xml2cbuf(cb, xn, level, prettyprint) < 0)
-	goto done;
-    fprintf(f, "%s", cbuf_get(cb));
+    name = xml_name(x);
+    namespace = xml_namespace(x);
+    switch(xml_type(x)){
+    case CX_BODY:
+	if ((val = xml_value(x)) != NULL) /* incomplete tree */
+	    fprintf(f, "%s", xml_value(x));
+	break;
+    case CX_ATTR:
+	fprintf(f, " ");
+	if (namespace)
+	    fprintf(f, "%s:", namespace);
+	fprintf(f, "%s=\"%s\"", name, xml_value(x));
+	break;
+    case CX_ELMNT:
+	fprintf(f, "%*s<", prettyprint?(level*XML_INDENT):0, "");
+	if (namespace)
+	    fprintf(f, "%s:", namespace);
+	fprintf(f, "%s", name);
+	hasbody = 0;
+	haselement = 0;
+	xc = NULL;
+	/* print attributes only */
+	while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+	    switch (xc->x_type){
+	    case CX_ATTR:
+		if (clicon_xml2file(f, xc, level+1, prettyprint) <0)
+		    goto done;
+		break;
+	    case CX_BODY:
+		hasbody=1;
+		break;
+	    case CX_ELMNT:
+		haselement=1;
+		break;
+	    default:
+		break;
+	    }
+	}
+	/* Check for special case <a/> instead of <a></a>:
+	 * Ie, no CX_BODY or CX_ELMNT child.
+	 */
+	if (hasbody==0 && haselement==0) 
+	    fprintf(f, "/>");
+	else{
+	    fprintf(f, ">");
+	    if (prettyprint && hasbody == 0)
+		    fprintf(f, "\n");
+	    xc = NULL;
+	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+		if (xml_type(xc) != CX_ATTR)
+		    if (clicon_xml2file(f, xc, level+1, prettyprint) <0)
+			goto done;
+	    }
+	    if (prettyprint && hasbody==0)
+		fprintf(f, "%*s", level*XML_INDENT, "");
+	    fprintf(f, "</");
+	    if (namespace)
+		fprintf(f, "%s:", namespace);
+	    fprintf(f, "%s>", name);
+	}
+	if (prettyprint)
+	    fprintf(f, "\n");
+	break;
+    default:
+	break;
+    }/* switch */
     retval = 0;
-  done:
-    if (cb)
-	cbuf_free(cb);
+ done:
     return retval;
 }
 
@@ -982,7 +1062,6 @@ xml_print(FILE  *f,
     return clicon_xml2file(f, xn, 0, 1);
 }
 
-#define XML_INDENT 3 /* maybe we should set this programmatically? */
 
 /*! Print an XML tree structure to a cligen buffer
  *
@@ -996,9 +1075,10 @@ xml_print(FILE  *f,
  * cb = cbuf_new();
  * if (clicon_xml2cbuf(cb, xn, 0, 1) < 0)
  *   goto err;
+ * fprintf(stderr, "%s", cbuf_get(cb));
  * cbuf_free(cb);
  * @endcode
- * See also clicon_xml2file
+ * @see  clicon_xml2file
  */
 int
 clicon_xml2cbuf(cbuf  *cb, 
@@ -1006,48 +1086,67 @@ clicon_xml2cbuf(cbuf  *cb,
 		int    level, 
 		int    prettyprint)
 {
+    int    retval = -1;
     cxobj *xc;
     char  *name;
+    int    hasbody;
+    int    haselement;
+    char  *namespace;
 
     name = xml_name(x);
+    namespace = xml_namespace(x);
     switch(xml_type(x)){
     case CX_BODY:
 	cprintf(cb, "%s", xml_value(x));
 	break;
     case CX_ATTR:
 	cprintf(cb, " ");
-	if (xml_namespace(x))
-	    cprintf(cb, "%s:", xml_namespace(x));
+	if (namespace)
+	    cprintf(cb, "%s:", namespace);
 	cprintf(cb, "%s=\"%s\"", name, xml_value(x));
 	break;
     case CX_ELMNT:
 	cprintf(cb, "%*s<", prettyprint?(level*XML_INDENT):0, "");
-	if (xml_namespace(x))
-	    cprintf(cb, "%s:", xml_namespace(x));
+	if (namespace)
+	    cprintf(cb, "%s:", namespace);
 	cprintf(cb, "%s", name);
+	hasbody = 0;
+	haselement = 0;
 	xc = NULL;
 	/* print attributes only */
-	while ((xc = xml_child_each(x, xc, CX_ATTR)) != NULL) 
-	    clicon_xml2cbuf(cb, xc, level+1, prettyprint);
+	while ((xc = xml_child_each(x, xc, -1)) != NULL) 
+	    switch (xc->x_type){
+	    case CX_ATTR:
+		if (clicon_xml2cbuf(cb, xc, level+1, prettyprint) < 0)
+		    goto done;
+		break;
+	    case CX_BODY:
+		hasbody=1;
+		break;
+	    case CX_ELMNT:
+		haselement=1;
+		break;
+	    default:
+		break;
+	    }
+	
 	/* Check for special case <a/> instead of <a></a> */
-	if (xml_body(x)==NULL && xml_child_nr_type(x, CX_ELMNT)==0) 
+	if (hasbody==0 && haselement==0) 
 	    cprintf(cb, "/>");
 	else{
 	    cprintf(cb, ">");
-	    if (prettyprint && xml_body(x)==NULL)
+	    if (prettyprint && hasbody == 0)
 		cprintf(cb, "\n");
 	    xc = NULL;
-	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
-		if (xml_type(xc) == CX_ATTR)
-		    continue;
-		else
-		    clicon_xml2cbuf(cb, xc, level+1, prettyprint);
-	    }
-	    if (prettyprint && xml_body(x)==NULL)
+	    while ((xc = xml_child_each(x, xc, -1)) != NULL) 
+		if (xml_type(xc) != CX_ATTR)
+		    if (clicon_xml2cbuf(cb, xc, level+1, prettyprint) < 0)
+			goto done;
+	    if (prettyprint && hasbody == 0)
 		cprintf(cb, "%*s", level*XML_INDENT, "");
 	    cprintf(cb, "</");
-	    if (xml_namespace(x))
-		cprintf(cb, "%s:", xml_namespace(x));
+	    if (namespace)
+		cprintf(cb, "%s:", namespace);
 	    cprintf(cb, "%s>", name);
 	}
 	if (prettyprint)
@@ -1056,39 +1155,10 @@ clicon_xml2cbuf(cbuf  *cb,
     default:
 	break;
     }/* switch */
-    return 0;
-}
-
-/*! Basic xml parsing function.
- * @param[in]  str   Pointer to string containing XML definition. 
- * @param[out] xtop  Top of XML parse tree. Assume created.
- * @see clicon_xml_parse_file clicon_xml_parse_string
- */
-int 
-xml_parse(char  *str, 
-	  cxobj *xt)
-{
-    int                       retval = -1;
-    struct xml_parse_yacc_arg ya = {0,};
-
-    if ((ya.ya_parse_string = strdup(str)) == NULL){
-	clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
-	return -1;
-    }
-    ya.ya_xparent = xt;
-    ya.ya_skipspace = 1;  /* remove all non-terminal bodies (strip pretty-print) */
-    if (clixon_xml_parsel_init(&ya) < 0)
-	goto done;    
-    if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
-	goto done;
     retval = 0;
-  done:
-    clixon_xml_parsel_exit(&ya);
-    if(ya.ya_parse_string != NULL)
-	free(ya.ya_parse_string);
-    return retval; 
+ done:
+    return retval;
 }
-
 /*! Print actual xml tree datastructures (not xml), mainly for debugging
  * @param[in,out] cb          Cligen buffer to write to
  * @param[in]     xn          Clicon xml tree
@@ -1128,8 +1198,58 @@ xmltree2cbuf(cbuf  *cb,
     return 0;
 }
 
-/*
- * FSM to detect a substring
+/*--------------------------------------------------------------------
+ * XML parsing functions. Create XML parse tree from string and file.
+ *--------------------------------------------------------------------*/
+/*! Common internal xml parsing function string to parse-tree
+ *
+ * Given a string containing XML, parse into existing XML tree and return
+ * @param[in]     str   Pointer to string containing XML definition. 
+ * @param[in]     yspec Yang specification or NULL
+ * @param[in,out] xtop  Top of XML parse tree. Assume created. Holds new tree.
+ * @see xml_parse_file
+ * @see xml_parse_string
+ * @see xml_parse_va
+ */
+static int 
+_xml_parse(const char *str, 
+	  yang_spec   *yspec,
+	  cxobj       *xt)
+{
+    int                       retval = -1;
+    struct xml_parse_yacc_arg ya = {0,};
+
+    if (xt == NULL){
+	clicon_err(OE_XML, errno, "Unexpected NULL XML");
+	return -1;	
+    }
+    if ((ya.ya_parse_string = strdup(str)) == NULL){
+	clicon_err(OE_XML, errno, "strdup");
+	return -1;
+    }
+    ya.ya_xparent = xt;
+    ya.ya_skipspace = 1;  /* remove all non-terminal bodies (strip pretty-print) */
+    ya.ya_yspec = yspec;
+    if (clixon_xml_parsel_init(&ya) < 0)
+	goto done;    
+    if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
+	goto done;
+    /* Sort the complete tree after parsing */
+    if (yspec){
+	if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
+	    goto done;
+	if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
+	    goto done;
+    }
+    retval = 0;
+  done:
+    clixon_xml_parsel_exit(&ya);
+    if(ya.ya_parse_string != NULL)
+	free(ya.ya_parse_string);
+    return retval; 
+}
+
+/*! FSM to detect substring
  */
 static inline int
 FSM(char *tag, 
@@ -1145,29 +1265,27 @@ FSM(char *tag,
 /*! Read an XML definition from file and parse it into a parse-tree. 
  *
  * @param[in]  fd  A file descriptor containing the XML file (as ASCII characters)
- * @param[out] xt  Pointer to an (on entry empty) pointer to an XML parse tree 
- *                 _created_ by this function.
- * @param  endtag  Read until you encounter "endtag" in the stream
- * @retval  0  OK
- * @retval -1  Error with clicon_err called
+ * @param[in]  endtag  Read until encounter "endtag" in the stream, or NULL
+ * @param[in]  yspec   Yang specification, or NULL
+ * @param[in,out] xt   Pointer to XML parse tree. If empty, create.
+ * @retval        0  OK
+ * @retval       -1  Error with clicon_err called
  *
  * @code
  *  cxobj *xt = NULL;
- *  clicon_xml_parse_file(0, &xt, "</clicon>");
+ *  xml_parse_file(0, "</config>", yspec, &xt);
  *  xml_free(xt);
  * @endcode
- *  * @see clicon_xml_parse_str
- * Note, you need to free the xml parse tree after use, using xml_free()
- * Note, xt will add a top-level symbol called "top" meaning that <tree../> will look as:
- *  <top><tree.../></tree>
- * XXX: There is a potential leak here on some return values.
- * XXX: What happens if endtag is different?
- * May block
+ * @see xml_parse_string
+ * @see xml_parse_va
+ * @note, If xt empty, a top-level symbol will be added so that <tree../> will be:  <top><tree.../></tree></top>
+ * @note May block on file I/O
  */
 int 
-clicon_xml_parse_file(int     fd, 
-		      cxobj **cx, 
-		      char   *endtag)
+xml_parse_file(int        fd, 
+	       char      *endtag,
+	       yang_spec *yspec,
+	       cxobj    **xt)
 {
     int   retval = -1;
     int   ret;
@@ -1175,21 +1293,18 @@ clicon_xml_parse_file(int     fd,
     char  ch;
     char *xmlbuf = NULL;
     char *ptr;
-    int   maxbuf = BUFLEN;
-    int   endtaglen = strlen(endtag);
+    int   xmlbuflen = BUFLEN; /* start size */
+    int   endtaglen = 0;
     int   state = 0;
-    int   oldmaxbuf;
+    int   oldxmlbuflen;
 
-    if (endtag == NULL){
-	clicon_err(OE_XML, 0, "%s: endtag required\n", __FUNCTION__);
-	goto done;
-    }
-    *cx = NULL;
-    if ((xmlbuf = malloc(maxbuf)) == NULL){
+    if (endtag != NULL)
+	endtaglen = strlen(endtag);
+    if ((xmlbuf = malloc(xmlbuflen)) == NULL){
 	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
 	goto done;
     }
-    memset(xmlbuf, 0, maxbuf);
+    memset(xmlbuf, 0, xmlbuflen);
     ptr = xmlbuf;
     while (1){
 	if ((ret = read(fd, &ch, 1)) < 0){
@@ -1199,90 +1314,97 @@ clicon_xml_parse_file(int     fd,
 	    break;
 	}
 	if (ret != 0){
-	    state = FSM(endtag, ch, state);
+	    if (endtag)
+		state = FSM(endtag, ch, state);
 	    xmlbuf[len++] = ch;
 	}
-	if (ret == 0 || state == endtaglen){
+	if (ret == 0 ||
+	    (endtag && (state == endtaglen))){
 	    state = 0;
-	    if ((*cx = xml_new("top", NULL)) == NULL)
-		break;
-	    if (xml_parse(ptr, *cx) < 0){
+	    if (*xt == NULL)
+		if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
+		    goto done;
+	    if (_xml_parse(ptr, yspec, *xt) < 0)
 		goto done;
-	    }
 	    break;
 	}
-	if (len>=maxbuf-1){ /* Space: one for the null character */
-	    oldmaxbuf = maxbuf;
-	    maxbuf *= 2;
-	    if ((xmlbuf = realloc(xmlbuf, maxbuf)) == NULL){
+	if (len>=xmlbuflen-1){ /* Space: one for the null character */
+	    oldxmlbuflen = xmlbuflen;
+	    xmlbuflen *= 2;
+	    if ((xmlbuf = realloc(xmlbuf, xmlbuflen)) == NULL){
 		clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
 		goto done;
 	    }
-	    memset(xmlbuf+oldmaxbuf, 0, maxbuf-oldmaxbuf);
+	    memset(xmlbuf+oldxmlbuflen, 0, xmlbuflen-oldxmlbuflen);
 	    ptr = xmlbuf;
 	}
     } /* while */
     retval = 0;
  done:
-    if (retval < 0 && *cx){
-	free(*cx);
-	*cx = NULL;
+    if (retval < 0 && *xt){
+	free(*xt);
+	*xt = NULL;
     }
     if (xmlbuf)
 	free(xmlbuf);
     return retval;
-    //    return (*cx)?0:-1;
 }
 
 /*! Read an XML definition from string and parse it into a parse-tree. 
  *
- * @param[in]  str   Pointer to string containing XML definition. 
- * @param[out] xml_top  Top of XML parse tree. Will add extra top element called 'top'.
- *                       you must free it after use, using xml_free()
- * @retval  0  OK
- * @retval -1  Error with clicon_err called
+ * @param[in]     str   String containing XML definition. 
+ * @param[in]     yspec Yang specification, or NULL
+ * @param[in,out] xt    Pointer to XML parse tree. If empty will be created.
+ * @retval        0  OK
+ * @retval       -1  Error with clicon_err called
  *
  * @code
- *  cxobj *cx = NULL;
- *  if (clicon_xml_parse_str(str, &cx) < 0)
+ *  cxobj *xt = NULL;
+ *  if (xml_parse_string(str, yspec, &xt) < 0)
  *    err;
- *  xml_free(cx);
+ *  xml_free(xt);
  * @endcode
- * @see clicon_xml_parse_file
- * @note  you need to free the xml parse tree after use, using xml_free()
+ * @see xml_parse_file
+ * @see xml_parse_va
+ * @note You need to free the xml parse tree after use, using xml_free()
+ * @note If empty on entry, a new TOP xml will be created named "top"
  */
 int 
-clicon_xml_parse_str(char   *str, 
-		     cxobj **cxtop)
+xml_parse_string(const char *str, 
+		 yang_spec  *yspec,
+		 cxobj     **xtop)
 {
-  if ((*cxtop = xml_new("top", NULL)) == NULL)
-    return -1;
-  return xml_parse(str, *cxtop);
+    if (*xtop == NULL)
+	if ((*xtop = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
+	    return -1;
+    return _xml_parse(str, yspec, *xtop);
 }
 
-
-/*! Read XML definition from variable argument string and parse it into parse-tree. 
+/*! Read XML from var-arg list and parse it into xml tree
  *
  * Utility function using stdarg instead of static string.
- * @param[out] xml_top  Top of XML parse tree. Will add extra top element called 'top'.
- *                      you must free it after use, using xml_free()
- * @param[in]  format   Pointer to string containing XML definition. 
+ * @param[in,out] xtop  Top of XML parse tree. If it is NULL, top element 
+                        called 'top' will be created. Call xml_free() after use
+ * @param[in]  yspec    Yang specification, or NULL
+ * @param[in]  format   Format string for stdarg according to printf(3)
 
  * @retval  0  OK
  * @retval -1  Error with clicon_err called
  *
  * @code
- *  cxobj *cx = NULL;
- *  if (clicon_xml_parse(&cx, "<xml>%d</xml>", 22) < 0)
+ *  cxobj *xt = NULL;
+ *  if (xml_parse_va(&xt, NULL, "<xml>%d</xml>", 22) < 0)
  *    err;
- *  xml_free(cx);
+ *  xml_free(xt);
  * @endcode
- * @see clicon_xml_parse_str
- * @note  you need to free the xml parse tree after use, using xml_free()
+ * @see xml_parse_string
+ * @see xml_parse_file
+ * @note If vararg list is empty, consider using xml_parse_string()
  */
 int 
-clicon_xml_parse(cxobj **cxtop,
-		 char   *format, ...)
+xml_parse_va(cxobj     **xtop,
+	     yang_spec  *yspec,		 
+	     const char *format, ...)
 {
     int     retval = -1;
     va_list args;
@@ -1300,9 +1422,10 @@ clicon_xml_parse(cxobj **cxtop,
     va_start(args, format);
     len = vsnprintf(str, len, format, args) + 1;
     va_end(args);
-    if ((*cxtop = xml_new("top", NULL)) == NULL)
-	return -1;
-    if (xml_parse(str, *cxtop) < 0)
+    if (*xtop == NULL)
+	if ((*xtop = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
+	    goto done;
+    if (_xml_parse(str, yspec, *xtop) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1313,28 +1436,28 @@ clicon_xml_parse(cxobj **cxtop,
 
 /*! Copy single xml node without copying children
  */
-static int
-copy_one(cxobj *xn0, 
-	 cxobj *xn1)
+int
+xml_copy_one(cxobj *x0, 
+	     cxobj *x1)
 {
     cg_var *cv1;
 
-    xml_type_set(xn1, xml_type(xn0));
-    if (xml_value(xn0)){ /* malloced string */
-	if ((xn1->x_value = strdup(xn0->x_value)) == NULL){
+    xml_type_set(x1, xml_type(x0));
+    if (xml_value(x0)){ /* malloced string */
+	if ((x1->x_value = strdup(x0->x_value)) == NULL){
 	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
 	    return -1;
 	}
     }
-    if (xml_name(xn0)) /* malloced string */
-	if ((xml_name_set(xn1, xml_name(xn0))) < 0)
+    if (xml_name(x0)) /* malloced string */
+	if ((xml_name_set(x1, xml_name(x0))) < 0)
 	    return -1;
-    if (xml_cv_get(xn0)){
-      if ((cv1 = cv_dup(xml_cv_get(xn0))) == NULL){
+    if (xml_cv_get(x0)){
+      if ((cv1 = cv_dup(xml_cv_get(x0))) == NULL){
 	clicon_err(OE_XML, errno, "%s: cv_dup", __FUNCTION__);
 	return -1;
       }
-      if ((xml_cv_set(xn1, cv1)) < 0)
+      if ((xml_cv_set(x1, cv1)) < 0)
 	return -1;
     }
     return 0;
@@ -1345,8 +1468,9 @@ copy_one(cxobj *xn0,
  * x1 should be a created placeholder. If x1 is non-empty,
  * the copied tree is appended to the existing tree.
  * @code
- *   x1 = xml_new("new", xparent);
- *   xml_copy(x0, x1);
+ *   x1 = xml_new("new", xparent, NULL);
+ *   if (xml_copy(x0, x1) < 0)
+ *      err;
  * @endcode
  */
 int
@@ -1357,11 +1481,11 @@ xml_copy(cxobj *x0,
     cxobj *x;
     cxobj *xcopy;
 
-    if (copy_one(x0, x1) <0)
+    if (xml_copy_one(x0, x1) <0)
 	goto done;
     x = NULL;
     while ((x = xml_child_each(x0, x, -1)) != NULL) {
-	if ((xcopy = xml_new(xml_name(x), x1)) == NULL)
+	if ((xcopy = xml_new(xml_name(x), x1, xml_spec(x))) == NULL)
 	    goto done;
 	if (xml_copy(x, xcopy) < 0) /* recursion */
 	    goto done;
@@ -1384,7 +1508,7 @@ xml_dup(cxobj *x0)
 {
     cxobj *x1;
 
-    if ((x1 = xml_new("new", NULL)) == NULL)
+    if ((x1 = xml_new("new", NULL, xml_spec(x0))) == NULL)
 	return NULL;
     if (xml_copy(x0, x1) < 0)
 	return NULL;
@@ -1443,7 +1567,7 @@ cxvec_append(cxobj   *x,
  * The tree is traversed depth-first, which at least guarantees that a parent is
  * traversed before a child.
  * @param[in]  xn   XML node
- * @param[in]  type matching type or -1 for any
+ * @param[in]  type Matching type or -1 for any
  * @param[in]  fn   Callback
  * @param[in]  arg  Argument
  * @retval    -1    Error, aborted at first error encounter
@@ -1460,6 +1584,7 @@ cxvec_append(cxobj   *x,
  * @note do not delete or move around any children during this function
  * @note return value > 0 aborts the traversal
  * @see xml_apply0 including top object
+ * @see xml_apply_ancestor for marking all parents recursively
  */
 int
 xml_apply(cxobj          *xn, 
@@ -1494,6 +1619,10 @@ xml_apply(cxobj          *xn,
 }
 
 /*! Apply a function call on top object and all xml node children recursively 
+ * @param[in]  xn   XML node
+ * @param[in]  type Matching type or -1 for any
+ * @param[in]  fn   Callback
+ * @param[in]  arg  Argument
  * @retval    -1    Error, aborted at first error encounter
  * @retval     0    OK, all nodes traversed (subparts may have been skipped)
  * @retval     1    OK, aborted on first fn returned 1
@@ -1720,159 +1849,6 @@ xml_operation2str(enum operation_type op)
     }
 }
 
-#if (XML_CHILD_HASH==1)
-/*! Return yang hash
- * Not necessarily set. Either has not been set yet (by xml_spec_set( or anyxml.
- */
-clicon_hash_t *
-xml_hash(cxobj *x)
-{
-    return x->x_hash;
-}
-
-int
-xml_hash_init(cxobj *x)
-{
-    if ((x->x_hash = hash_init()) < 0)
-	return -1;
-    return 0;
-}
-
-int
-xml_hash_rm(cxobj *x)
-{
-    if (x && x->x_hash){
-	hash_free(x->x_hash);
-	x->x_hash = NULL;
-    }
-    return 0;
-}
-
-/* Compute hash key for xml entry 
- * @param[in]  x
- * @param[in]  y
- * @param[out] key
- * key: yangtype+x1name
- *      LEAFLIST: b0
- *      LIST:     b2vec+b0 -> x0c
- */
-int
-xml_hash_key(cxobj     *x,
-	     yang_stmt *y,
-	     cbuf      *key)
-{
-    int        retval = -1;
-    yang_stmt *ykey;
-    cvec      *cvk = NULL; /* vector of index keys */
-    cg_var    *cvi;
-    char      *keyname;
-    char      *b;
-    char      *str;
-
-    switch (y->ys_keyword){
-    case Y_CONTAINER:	str = "c";	break;
-    case Y_LEAF:	str = "e";	break;
-    case Y_LEAF_LIST:	str = "l";	break;
-    case Y_LIST:	str = "i";	break;
-    default:
-	str = "xx";	break;
-	break;
-    }
-    cprintf(key, "%s%s", str, xml_name(x));
-    switch (y->ys_keyword){
-    case Y_LEAF_LIST: /* Match with name and value */
-	if ((b = xml_body(x)) == NULL){
-	    cbuf_reset(key);
-	    goto ok;
-	}
-	cprintf(key, "%s", xml_body(x));
-	break;
-    case Y_LIST: /* Match with key values */
-	if ((ykey = yang_find((yang_node*)y, Y_KEY, NULL)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: List statement \"%s\" has no key", 
-		       __FUNCTION__, y->ys_argument);
-	    goto done;
-	}
-	/* The value is a list of keys: <key>[ <key>]*  */
-	if ((cvk = yang_arg2cvec(ykey, " ")) == NULL)
-	    goto done;
-	cvi = NULL;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL){
-	    keyname = cv_string_get(cvi);
-	    if ((b = xml_find_body(x, keyname)) == NULL){
-		cbuf_reset(key);
-		goto ok;
-	    }
-	    cprintf(key, "/%s", b);
-	}
-	break;
-    default: 
-	break;
-    }
- ok:
-    retval = 0;
- done:
-    if (cvk)
-	cvec_free(cvk);
-     return retval;
-}
-
-/*! XML hash add. Create hash and add key/value to parent
- *
- * @param[in]  arg   -1: rm only hash 0: rm entry, 1: add
- * Typically called for a whole tree.
- */
-int
-xml_hash_op(cxobj  *x, 
-	    void   *arg)
-{
-    int            retval = -1;
-    cxobj         *xp;
-    clicon_hash_t *ph;
-    yang_stmt     *y;
-    cbuf          *key = NULL; /* cligen buffer hash key */
-    int            op = (intptr_t)arg;
-
-    if (xml_hash(x)==NULL){
-	if (op==1)
-	    xml_hash_init(x);
-    }
-    else if (op==-1|| op==0)
-	xml_hash_rm(x);
-    if (op==-1)
-	goto ok;
-    if ((xp = xml_parent(x)) == NULL)
-	goto ok;
-    if ((ph = xml_hash(xp))==NULL)
-	goto ok;
-    if ((y = xml_spec(x)) == NULL)
-	goto ok;
-    if ((key = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
-    if (xml_hash_key(x, y, key) < 0)
-	goto done;
-    if (cbuf_len(key)){
-	//	fprintf(stderr, "%s add %s = 0x%x\n", __FUNCTION__, cbuf_get(key), (unsigned int)x);
-	if (op == 1){
-	    if (hash_add(ph, cbuf_get(key), &x, sizeof(x)) == NULL)
-		goto done;
-	}
-	else
-	    if (hash_del(ph, cbuf_get(key)) < 0)
-		goto done;
-    }
- ok:
-    retval = 0;
- done:
-    if (key)
-	cbuf_free(key);
-    return retval;
-}
-
-#endif
-
 
 /*
  * Turn this on to get a xml parse and pretty print test program
@@ -1903,7 +1879,7 @@ main(int argc, char **argv)
 	usage(argv[0]);
 	return 0;
     }
-    if (clicon_xml_parse_file(0, &xt, "</config>") < 0){
+    if (xml_parse_file(0, "</config>", NULL,&xt) < 0){
 	fprintf(stderr, "parsing 2\n");
 	return -1;
     }

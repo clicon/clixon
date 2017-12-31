@@ -155,10 +155,17 @@ struct yang_stmt{
 
     char              *ys_argument;  /* String / argument depending on keyword */   
     int                ys_flags;     /* Flags according to YANG_FLAG_* above */
-    cg_var            *ys_cv;        /* cligen variable. The following stmts have cvs::
-				        leaf, leaf-list, mandatory, fraction-digits */
+    cg_var            *ys_cv;        /* cligen variable. See ys_populate()
+					Following stmts have cv:s:
+				        leaf: for default value
+					leaf-list, 
+					config: boolean true or false
+					mandatory: boolean true or false
+					fraction-digits for fraction-digits */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
-					Y_RANGE: range_min, range_max */
+					Y_RANGE: range_min, range_max 
+					Y_LIST: vector of keys
+				     */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
 };
 
@@ -208,7 +215,7 @@ yang_stmt *yang_find(yang_node *yn, int keyword, char *argument);
 yang_stmt *yang_find_datanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_topnode(yang_spec *ysp, char *name, int schemanode);
-
+int        yang_order(yang_stmt *y);
 int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
 int        yang_parse(clicon_handle h, const char *yang_dir, 
@@ -223,7 +230,8 @@ cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
-int        yang_spec_main(clicon_handle h, FILE *f, int printspec);
+yang_spec *yang_spec_netconf(clicon_handle h);
+yang_spec *yang_spec_main(clicon_handle h);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_node *yn, char *name);
 

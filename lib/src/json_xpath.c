@@ -98,7 +98,7 @@ main(int argc, char **argv)
 	return -1;
     }
     else
-      if (clicon_xml_parse_str(buf, &x) < 0)
+      if (xml_parse_string(buf, &x) < 0)
 	return -1;
 
     if (xpath_vec(x, xpath, &xv, &xlen) < 0)

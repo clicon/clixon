@@ -373,7 +373,7 @@ yn_each(yang_node *yn,
  *
  * @param[in]  yn         Yang node, current context node.
  * @param[in]  keyword    if 0 match any keyword
- * @param[in]  argument   String compare w wrgument. if NULL, match any.
+ * @param[in]  argument   String compare w argument. if NULL, match any.
  * This however means that if you actually want to match only a yang-stmt with 
  * argument==NULL you cannot, but I have not seen any such examples.
  * @see yang_find_datanode
@@ -384,8 +384,8 @@ yang_find(yang_node *yn,
 	  char      *argument)
 {
     yang_stmt *ys = NULL;
-    int i;
-    int match = 0;
+    int        i;
+    int        match = 0;
 
     for (i=0; i<yn->yn_len; i++){
 	ys = yn->yn_stmt[i];
@@ -558,6 +558,54 @@ yang_find_myprefix(yang_stmt *ys)
     return prefix;
 }
 
+/*! Find matching y in yp:s children, return 0 and index or -1 if not found.
+ * @retval 0 not found
+ * @retval 1 found
+ */
+static int
+order1(yang_node *yp,
+       yang_stmt *y,
+       int       *index)
+{
+    yang_stmt  *ys;
+    int         i;
+    
+    for (i=0; i<yp->yn_len; i++){
+	ys = yp->yn_stmt[i];
+	if (!yang_datanode(ys))
+	    continue;
+	if (ys==y)
+	    return 1;
+	(*index)++;
+    }
+    return 0;
+}
+
+/*! Return order of yang statement y in parents child vector
+ * @retval  i  Order of child with specified argument
+ * @retval -1  Not found
+ */
+int
+yang_order(yang_stmt *y)
+{
+    yang_node  *yp;
+    yang_node  *ypp;
+    yang_node  *yn;
+    int         i;
+    int         j=0;
+    
+    yp = y->ys_parent;
+    if (yp->yn_keyword == Y_MODULE ||yp->yn_keyword == Y_SUBMODULE){
+	ypp = yp->yn_parent;
+	for (i=0; i<ypp->yn_len; i++){
+	    yn = (yang_node*)ypp->yn_stmt[i];
+	    if (order1(yn, y, &j) == 1)
+		return j;
+	}
+    }
+    order1(yp, y, &j);
+    return j;
+}
 
 /*! Reset flag in complete tree, arg contains flag */
 static int
@@ -880,6 +928,20 @@ ys_populate_leaf(yang_stmt *ys,
     return retval;
 }
 
+static int
+ys_populate_list(yang_stmt *ys, 
+		 void      *arg)
+{
+    yang_stmt  *ykey;
+    
+    if ((ykey = yang_find((yang_node*)ys, Y_KEY, NULL)) == NULL)
+	return 0;
+    cvec_free(ys->ys_cvec);
+    if ((ys->ys_cvec = yang_arg2cvec(ykey, " ")) == NULL)
+	return -1;
+    return 0;
+}
+
 /*! Populate range and length statements
  *
  * Create cvec variables "range_min" and "range_max". Assume parent is type.
@@ -1059,6 +1121,10 @@ ys_populate(yang_stmt *ys,
     case Y_LEAF:
     case Y_LEAF_LIST:
 	if (ys_populate_leaf(ys, arg) < 0)
+	    goto done;
+	break;
+    case Y_LIST:
+	if (ys_populate_list(ys, arg) < 0)
 	    goto done;
 	break;
     case Y_RANGE: 
@@ -1527,7 +1593,7 @@ yang_parse_recurse(clicon_handle h,
 	    if ((nr = yang_parse_find_match(h, yang_dir, module, fbuf)) < 0)
 		goto done;
 	    if (nr == 0){
-		clicon_err(OE_YANG, errno, "No matching %s yang files found (expected modulenameor absolute filename)", module);
+		clicon_err(OE_YANG, errno, "No matching %s yang files found (expected module name or absolute filename)", module);
 		goto done;
 	    }
 	}
@@ -1820,7 +1886,6 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
     yang_stmt       *ymod;
     char            *id;
     char            *prefix = NULL;
-
     yang_stmt       *yprefix;
 
     /* check absolute schema_nodeid */
@@ -2024,24 +2089,36 @@ yang_config(yang_stmt *ys)
     return 1;
 }
 
-/*! Utility function for handling yang parsing and translation to key format
+/*! Parse netconf yang spec, used by netconf client and as internal protocol */
+yang_spec *
+yang_spec_netconf(clicon_handle h)
+{
+    yang_spec     *yspec = NULL;
+
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    if (yang_parse(h, CLIXON_DATADIR, "ietf-netconf", NULL, yspec) < 0){
+	yspec_free(yspec); yspec = NULL;
+	goto done;
+    }
+    clicon_netconf_yang_set(h, yspec);	
+ done:
+    return yspec;
+}
+
+/*! Read, parse and save application yang specification as option
  * @param h          clicon handle
  * @param f          file to print to (if printspec enabled)
  * @param printspec  print database (YANG) specification as read from file
  */
-int
-yang_spec_main(clicon_handle h, 
-	       FILE         *f, 
-	       int           printspec)
+yang_spec*
+yang_spec_main(clicon_handle h)
 {
-    yang_spec      *yspec;
+    yang_spec      *yspec = NULL;
     char           *yang_dir;
     char           *yang_module;
     char           *yang_revision;
-    int             retval = -1;
 
-    if ((yspec = yspec_new()) == NULL)
-	goto done;
     if ((yang_dir    = clicon_yang_dir(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_YANG_DIR option not set");
 	goto done;
@@ -2052,14 +2129,15 @@ yang_spec_main(clicon_handle h,
 	goto done;
     }
     yang_revision = clicon_yang_module_revision(h);
-    if (yang_parse(h, yang_dir, yang_module, yang_revision, yspec) < 0)
+    if ((yspec = yspec_new()) == NULL)
 	goto done;
+    if (yang_parse(h, yang_dir, yang_module, yang_revision, yspec) < 0){
+	yspec_free(yspec); yspec = NULL;
+	goto done;
+    }
     clicon_dbspec_yang_set(h, yspec);	
-    if (printspec)
-	yang_print(f, (yang_node*)yspec);
-    retval = 0;
   done:
-    return retval;
+    return yspec;
 }
 
 /*! Given a yang node, translate the argument string to a cv vector
@@ -2077,7 +2155,7 @@ yang_spec_main(clicon_handle h,
  *         ...cv_string_get(cv);
  *    cvec_free(cvv);
  * @endcode
- * Note: must free return value after use w cvec_free
+ * @note must free return value after use w cvec_free
  */
 cvec *
 yang_arg2cvec(yang_stmt *ys, 

@@ -107,7 +107,7 @@ fib_route_rpc(clicon_handle h,
     /* User supplied variable in CLI command */
     instance = cvec_find(cvv, "instance"); /* get a cligen variable from vector */
     /* Create XML for fib-route netconf RPC */
-    if (clicon_xml_parse(&xtop, "<rpc><fib-route><routing-instance-name>%s</routing-instance-name></fib-route></rpc>", instance) < 0)
+    if (xml_parse_va(&xtop, NULL, "<rpc><fib-route><routing-instance-name>%s</routing-instance-name></fib-route></rpc>", instance) < 0)
 	goto done;
     /* Skip top-level */
     xrpc = xml_child_i(xtop, 0);

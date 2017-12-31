@@ -74,9 +74,9 @@
 
 /* Command line options to be passed to getopt(3) */
 #ifdef BACKEND_STARTUP_COMPAT
-#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:IRCrg:py:x:" /* substitute s: for IRCc:r */
+#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:IRCrg:y:x:" /* substitute s: for IRCc:r */
 #else
-#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:g:py:x:" /* substitute s: for IRCc:r */
+#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:g:y:x:" /* substitute s: for IRCc:r */
 #endif
 
 /*! Terminate. Cannot use h after this */
@@ -148,7 +148,6 @@ usage(char *argv0, clicon_handle h)
 	    "    -C\t\tCall plugin_reset() in plugins to reset system state in candidate db (use with -I)\n"
 	    "    -r\t\tReload running database\n"
 #endif /* BACKEND_STARTUP_COMPAT */
-	    "    -p \t\tPrint database yang specification\n"
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
 	    "    -y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "    -x <plugin>\tXMLDB plugin\n",
@@ -165,7 +164,7 @@ static int
 db_reset(clicon_handle h, 
 	 char         *db)
 {
-    if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
+    if (xmldb_exists(h, db) == 1 && xmldb_delete(h, db) != 0 && errno != ENOENT) 
 	return -1;
     if (xmldb_create(h, db) < 0)
 	return -1;
@@ -297,7 +296,7 @@ rundb_main(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "open(%s)", extraxml_file);
 	goto done;
     }
-    if (clicon_xml_parse_file(fd, &xt, "</clicon>") < 0)
+    if (xml_parse_file(fd, &xt, "</clicon>") < 0)
 	goto done;
     if ((xn = xml_child_i(xt, 0)) != NULL)
 	if (xmldb_put(h, "tmp", OP_MERGE, xn) < 0)
@@ -443,7 +442,7 @@ load_extraxml(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
     }
-    if (clicon_xml_parse_file(fd, &xt, "</config>") < 0)
+    if (xml_parse_file(fd, "</config>", NULL, &xt) < 0)
 	goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)
@@ -503,13 +502,22 @@ startup_mode_init(clicon_handle h)
 
 /*! Clixon running startup mode: Commit running db configuration into running 
  *
-        copy   reset              commit merge
-running----+   |--------------------+-----+------>
-            \                      /     /
-candidate    +--------------------+     /
-                                       /
-tmp           |-------+-----+---------+
+OK:
+        copy   reset              commit   merge
+running----+   |--------------------+--------+------>
+            \                      /        /
+candidate    +--------------------+        /
+                                          /
+tmp           |-------+-----+------------+---|
              reset   extra  file
+
+COMMIT ERROR:
+        copy   reset              copy 
+running----+   |--------------------+------> EXIT
+            \                      /       
+candidate    +--------------------+        
+
+ * @note: if commit fails, copy candidate to running and exit
  */
 static int
 startup_mode_running(clicon_handle h,
@@ -523,9 +531,6 @@ startup_mode_running(clicon_handle h,
     /* Load plugins and call plugin_init() */
     if (plugin_initiate(h) != 0) 
 	goto done;
-    /* Clear running db */
-    if (db_reset(h, "running") < 0)
-	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
 	goto done;
@@ -535,12 +540,21 @@ startup_mode_running(clicon_handle h,
     /* Get application extra xml from file */
     if (load_extraxml(h, extraxml_file, "tmp") < 0)   
 	goto done;	    
-    /* Commit original running */
+    /* Clear running db */
+    if (db_reset(h, "running") < 0)
+	goto done;
+    /* Commit original running. Assume -1 is validate fail */
     if (candidate_commit(h, "candidate") < 0){
-        clicon_log(LOG_NOTICE, "%s: Commit of saved running failed, exiting.", __FUNCTION__);
-        /* Reinstate original */
-        if (xmldb_copy(h, "candidate", "running") < 0)
-            goto done;
+	/*  (1) We cannot differentiate between fatal errors and validation
+	 *      failures
+	 *  (2) If fatal error, we should exit
+	 *  (3) If validation fails we cannot continue. How could we?
+	 *  (4) Need to restore the running db since we destroyed it above
+	 */
+	clicon_log(LOG_NOTICE, "%s: Commit of saved running failed, exiting.", __FUNCTION__);
+	/* Reinstate original */
+	if (xmldb_copy(h, "candidate", "running") < 0)
+	    goto done;
 	goto done;
     }
     /* Merge user reset state and extra xml file (no commit) */
@@ -548,17 +562,31 @@ startup_mode_running(clicon_handle h,
 	goto done;
     retval = 0;
  done:
+    if (xmldb_delete(h, "tmp") < 0)
+	goto done;
     return retval;
 }
 
 /*! Clixon startup startup mode: Commit startup configuration into running state
-               reset              commit merge
-running        |--------------------+-----+------>
-                                   /     /
-startup       --------------------+     /
-                                       /
-tmp           |-------+-----+---------+
+
+
+backup         +--------------------|
+         copy / reset              commit merge
+running   |-+----|--------------------+-----+------>
+                                     /     /
+startup    -------------------------+-->  /
+                                         /
+tmp        -----|-------+-----+---------+--|
              reset   extra  file
+
+COMMIT ERROR:
+backup         +------------------------+--|
+         copy / reset               copy \
+running   |-+----|--------------------+---+------->EXIT
+                               error / 
+startup    -------------------------+--|    
+
+ * @note: if commit fails, copy backup to commit and exit
  */
 static int
 startup_mode_startup(clicon_handle h,
@@ -566,15 +594,15 @@ startup_mode_startup(clicon_handle h,
 {
     int     retval = -1;
 
+    /* Stash original running to backup */
+    if (xmldb_copy(h, "running", "backup") < 0)
+	goto done;
     /* If startup does not exist, clear it */
     if (xmldb_exists(h, "startup") != 1) /* diff */
 	if (xmldb_create(h, "startup") < 0) /* diff */
 	    return -1;
     /* Load plugins and call plugin_init() */
     if (plugin_initiate(h) != 0) 
-	goto done;
-    /* Clear running db */
-    if (db_reset(h, "running") < 0)
 	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
@@ -585,20 +613,36 @@ startup_mode_startup(clicon_handle h,
     /* Get application extra xml from file */
     if (load_extraxml(h, extraxml_file, "tmp") < 0)   
 	goto done;	    
-    /* Commit startup */
-    if (candidate_commit(h, "startup") < 0) /* diff */
+    /* Clear running db */
+    if (db_reset(h, "running") < 0)
 	goto done;
+    /* Commit startup */
+    if (candidate_commit(h, "startup") < 0){ /* diff */
+	/*  We cannot differentiate between fatal errors and validation
+	 *  failures
+	 *  In both cases we copy back the original running and quit
+	 */
+	clicon_log(LOG_NOTICE, "%s: Commit of startup failed, exiting.", __FUNCTION__);
+	if (xmldb_copy(h, "backup", "running") < 0)
+	    goto done;
+	goto done;
+    }
     /* Merge user reset state and extra xml file (no commit) */
     if (db_merge(h, "tmp", "running") < 0)
 	goto done;
     retval = 0;
  done:
+    if (xmldb_delete(h, "backup") < 0)
+	goto done;
+    if (xmldb_delete(h, "tmp") < 0)
+	goto done;
     return retval;
 }
 
 int
 main(int argc, char **argv)
 {
+    int           retval = -1;
     char          c;
     int           zap;
     int           foreground;
@@ -616,12 +660,14 @@ main(int argc, char **argv)
     struct stat   st;
     clicon_handle h;
     int           help = 0;
-    int           printspec = 0;
     int           pid;
     char         *pidfile;
     char         *sock;
     int           sockfamily;
     char         *xmldb_plugin;
+    int           xml_cache;
+    int           xml_pretty;
+    char         *xml_format;
 
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR|CLICON_LOG_SYSLOG);
@@ -740,9 +786,6 @@ main(int argc, char **argv)
 	case 'g': /* config socket group */
 	    clicon_option_str_set(h, "CLICON_SOCK_GROUP", optarg);
 	    break;
-	case 'p' : /* Print spec */
-	    printspec++;
-	    break;
 	case 'y' :{ /* Override yang module or absolute filename */
 	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
 	    break;
@@ -782,6 +825,7 @@ main(int argc, char **argv)
 	    unlink(pidfile);   
 	if (sockfamily==AF_UNIX && lstat(sock, &st) == 0)
 	    unlink(sock);   
+	backend_terminate(h);
 	exit(0); /* OK */
     }
     else
@@ -812,7 +856,8 @@ main(int argc, char **argv)
 		"or create the group and add the user to it. On linux for example:"
 		"  sudo groupadd %s\n" 
 		"  sudo usermod -a -G %s user\n", 
-		   config_group, clicon_configfile(h), config_group, config_group);
+		   config_group, clicon_configfile(h),
+		   config_group, config_group);
 	return -1;
     }
 
@@ -826,7 +871,7 @@ main(int argc, char **argv)
     if (xmldb_connect(h) < 0)
 	goto done;
     /* Parse db spec file */
-    if (yang_spec_main(h, stdout, printspec) < 0)
+    if (yang_spec_main(h) == NULL)
 	goto done;
 
     /* Set options: database dir and yangspec (could be hidden in connect?)*/
@@ -834,6 +879,15 @@ main(int argc, char **argv)
 	goto done;
     if (xmldb_setopt(h, "yangspec", clicon_dbspec_yang(h)) < 0)
 	goto done;
+    if ((xml_cache = clicon_option_bool(h, "CLICON_XMLDB_CACHE")) >= 0)
+	if (xmldb_setopt(h, "xml_cache", (void*)(intptr_t)xml_cache) < 0)
+	    goto done;
+    if ((xml_format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) >= 0)
+	if (xmldb_setopt(h, "format", (void*)xml_format) < 0)
+	    goto done;
+    if ((xml_pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) >= 0)
+	if (xmldb_setopt(h, "pretty", (void*)(intptr_t)xml_pretty) < 0)
+	    goto done;
     /* If startup mode is not defined, eg via OPTION or -s, assume old method */
     startup_mode = clicon_startup_mode(h);
     if (startup_mode == -1){ 	/* Old style, fragmented mode, phase out */
@@ -921,9 +975,10 @@ main(int argc, char **argv)
 
     if (event_loop() < 0)
 	goto done;
+    retval = 0;
   done:
-    clicon_log(LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
+    clicon_log(LOG_NOTICE, "%s: %u Terminated retval:%d", __PROGRAM__, getpid(), retval);
     backend_terminate(h); /* Cannot use h after this */
 
-    return 0;
+    return retval;
 }

@@ -32,6 +32,8 @@
   ***** END LICENSE BLOCK *****
 
  * XML parser
+ * @see https://www.w3.org/TR/2008/REC-xml-20081126
+ *      https://www.w3.org/TR/2009/REC-xml-names-20091208
  */
 
 %{

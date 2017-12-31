@@ -235,8 +235,8 @@ hash_add(clicon_hash_t *hash,
 	h = new;
     }
     
-    /* Make copy of lvalue */
-    newval = malloc(align4(vlen+3)); /* XXX: qdbm needs aligned mallocs? */
+    /* Make copy of value. aligned */
+    newval = malloc(align4(vlen+3)); 
     if (newval == NULL){
 	clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
 	goto catch;

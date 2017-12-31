@@ -102,6 +102,10 @@ in
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_string.h"
+#include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
+#include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xsl.h"
 
@@ -1026,7 +1030,7 @@ xpath_each(cxobj *xcur,
  * @retval     -1      error.
  *
  * @code
- *   cxobj **xvec;
+ *   cxobj **xvec = NULL;
  *   size_t  xlen;
  *   if (xpath_vec(xcur, "//symbol/foo", &xvec, &xlen) < 0) 
  *      goto err;
@@ -1170,7 +1174,7 @@ main(int argc, char **argv)
 	usage(argv[0]);
 	return 0;
     }
-    if (clicon_xml_parse_file(0, &x, "</clicon>") < 0){
+    if (xml_parse_file(0, &x, "</clicon>") < 0){
 	fprintf(stderr, "parsing 2\n");
 	return -1;
     }

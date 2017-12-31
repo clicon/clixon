@@ -32,6 +32,8 @@
   ***** END LICENSE BLOCK *****
 
  * XML parser
+ * @see https://www.w3.org/TR/2008/REC-xml-20081126
+ *      https://www.w3.org/TR/2009/REC-xml-names-20091208
  */
 %union {
   char *string;
@@ -46,7 +48,7 @@
 %token BCOMMENT ECOMMENT 
 
 
-%type <string> val aid
+%type <string> attvalue attqname
 
 %lex-param     {void *_ya} /* Add this argument to parse() and lex() function */
 %parse-param   {void *_ya}
@@ -68,7 +70,12 @@
 /* clicon */
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
+#include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xml_sort.h"
 #include "clixon_xml_parse.h"
 
 void 
@@ -79,8 +86,9 @@ clixon_xml_parseerror(void *_ya, char *s)
   return;
 }
 
-/* note that we dont handle escaped characters correctly 
-   there may also be some leakage here on NULL return
+/*
+ * Note that we dont handle escaped characters correctly 
+ * there may also be some leakage here on NULL return
  */
 static int
 xml_parse_content(struct xml_parse_yacc_arg *ya, 
@@ -92,7 +100,7 @@ xml_parse_content(struct xml_parse_yacc_arg *ya,
 
     ya->ya_xelement = NULL; /* init */
     if (xn == NULL){
-	if ((xn = xml_new("body", xp)) == NULL)
+	if ((xn = xml_new("body", xp, NULL)) == NULL)
 	    goto done; 
 	xml_type_set(xn, CX_BODY);
     }
@@ -105,7 +113,8 @@ xml_parse_content(struct xml_parse_yacc_arg *ya,
 }
 
 static int
-xml_parse_version(struct xml_parse_yacc_arg *ya, char *ver)
+xml_parse_version(struct xml_parse_yacc_arg *ya,
+		  char                      *ver)
 {
     if(strcmp(ver, "1.0")){
 	clicon_err(OE_XML, errno, "Wrong XML version %s expected 1.0\n", ver);
@@ -116,20 +125,35 @@ xml_parse_version(struct xml_parse_yacc_arg *ya, char *ver)
     return 0;
 }
 
+/*! Parse Qualified name
+ * @param[in] ya        XML parser yacc handler struct 
+ * @param[in] prefix    Prefix, namespace, or NULL
+ * @param[in] localpart Name
+ */
 static int
-xml_parse_id(struct xml_parse_yacc_arg *ya, char *name, char *namespace)
+xml_parse_qname(struct xml_parse_yacc_arg *ya,
+		char                      *prefix,
+		char                      *name)
 {
-    if ((ya->ya_xelement=xml_new(name, ya->ya_xparent)) == NULL) {
-	if (namespace)
-	    free(namespace);
-	free(name);
-	return -1;
-    }
-    xml_namespace_set(ya->ya_xelement, namespace);
-    if (namespace)
-	free(namespace);
+    int        retval = -1;
+    cxobj     *x;
+    yang_stmt *y = NULL;  /* yang node */   
+    cxobj     *xp;      /* xml parent */ 
+
+    xp = ya->ya_xparent;
+    if (xml_child_spec(name, xp, ya->ya_yspec, &y) < 0)
+	goto done;
+    if ((x = xml_new(name, xp, y)) == NULL) 
+	goto done;
+    if (xml_namespace_set(x, prefix) < 0)
+	goto done;
+    ya->ya_xelement = x;
+    retval = 0;
+ done:
+    if (prefix)
+	free(prefix);
     free(name);
-    return 0;
+    return retval;
 }
 
 static int
@@ -250,39 +274,46 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
     return retval;
 }
 
+static int
+xml_parse_attr(struct xml_parse_yacc_arg *ya,
+	       char                      *qname,
+	       char                      *attval)
+{
+    int    retval = -1;
+    cxobj *xa; 
 
+    if ((xa = xml_new(qname, ya->ya_xelement, NULL)) == NULL)
+	goto done;
+    xml_type_set(xa, CX_ATTR);
+    if (xml_value_set(xa, attval) < 0)
+	goto done;
+    retval = 0;
+  done:
+    free(qname); 
+    free(attval);
+    return retval;
+}
+
+/*! Parse Attribue Qualified name, Just transform prefix:name into a new string
+ *
+ */
 static char*
-xml_parse_ida(struct xml_parse_yacc_arg *ya, char *namespace, char *name)
+xml_merge_attqname(struct xml_parse_yacc_arg *ya,
+		   char                      *prefix,
+		   char                      *name)
 {
     char *str;
-    int len = strlen(namespace)+strlen(name)+2;
+    int len = strlen(prefix)+strlen(name)+2;
 
     if ((str=malloc(len)) == NULL)
 	return NULL;
-    snprintf(str, len, "%s:%s", namespace, name);
-    free(namespace);
+    snprintf(str, len, "%s:%s", prefix, name);
+    free(prefix);
     free(name);
     return str;
 }
 
-static int
-xml_parse_attr(struct xml_parse_yacc_arg *ya, char *id, char *val)
-{
-    int retval = -1;
-    cxobj *xa; 
-
-    if ((xa = xml_new(id, ya->ya_xelement)) == NULL)
-	goto done;
-    xml_type_set(xa, CX_ATTR);
-    if (xml_value_set(xa, val) < 0)
-	goto done;
-    retval = 0;
-  done:
-    free(id); 
-    free(val);
-    return retval;
-}
-
+ 
 %} 
  
 %%
@@ -309,22 +340,22 @@ encode      : ENC '=' '\"' CHAR '\"' {free($4);}
             | ENC '=' '\'' CHAR '\'' {free($4);}
             ;
 
-emnt     : '<' id  attrs emnt1 
-                   { clicon_debug(3, "emnt -> < id attrs emnt1"); }
+element     : '<' qname  attrs element1 
+                   { clicon_debug(3, "element -> < qname attrs element1"); }
 	      ;
 
-id          : NAME            { if (xml_parse_id(_YA, $1, NULL) < 0) YYABORT; 
-                                clicon_debug(3, "id -> NAME %s", $1);}
-            | NAME ':' NAME   { if (xml_parse_id(_YA, $3, $1) < 0) YYABORT; 
-                                clicon_debug(3, "id -> NAME : NAME");}
+qname       : NAME           { if (xml_parse_qname(_YA, NULL, $1) < 0) YYABORT; 
+                                clicon_debug(3, "qname -> NAME %s", $1);}
+            | NAME ':' NAME  { if (xml_parse_qname(_YA, $1, $3) < 0) YYABORT; 
+                                clicon_debug(3, "qname -> NAME : NAME");}
             ;
 
-emnt1    :  ESLASH          {_YA->ya_xelement = NULL; 
-                               clicon_debug(3, "emnt1 -> />");} 
-            | '>'              { xml_parse_endslash_pre(_YA); }
-              list             { xml_parse_endslash_mid(_YA); }
+element1    :  ESLASH         {_YA->ya_xelement = NULL; 
+                               clicon_debug(3, "element1 -> />");} 
+            | '>'             { xml_parse_endslash_pre(_YA); }
+              list            { xml_parse_endslash_mid(_YA); }
               etg             { xml_parse_endslash_post(_YA); 
-                               clicon_debug(3, "emnt1 -> > list etg");} 
+                               clicon_debug(3, "element1 -> > list etg");} 
             ;
 
 etg         : BSLASH NAME '>'          
@@ -339,7 +370,7 @@ list        : list content { clicon_debug(3, "list -> list content"); }
             | content      { clicon_debug(3, "list -> content"); }
             ;
 
-content     : emnt         { clicon_debug(3, "content -> emnt"); }
+content     : element      { clicon_debug(3, "content -> element"); }
             | comment      { clicon_debug(3, "content -> comment"); }
             | CHAR         { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
                              clicon_debug(3, "content -> CHAR %s", $1); }
@@ -350,20 +381,20 @@ comment     : BCOMMENT ECOMMENT
             ;
 
 
-attrs       : attrs att
+attrs       : attrs attr
             |
             ;
 
+attr        : attqname '=' attvalue { if (xml_parse_attr(_YA, $1, $3) < 0) YYABORT; }
+            ;
 
-aid         : NAME   {$$ = $1;}
+attqname    : NAME   {$$ = $1;}
             | NAME ':' NAME  
-                     { if (($$ = xml_parse_ida(_YA, $1, $3)) == NULL) YYABORT; }
+                     { if (($$ = xml_merge_attqname(_YA, $1, $3)) == NULL) YYABORT; }
             ;
 
-att         : aid '=' val { if (xml_parse_attr(_YA, $1, $3) < 0) YYABORT; }
-            ;
 
-val         : '\"' CHAR '\"'   { $$=$2; /* $2 must be consumed */}
+attvalue    : '\"' CHAR '\"'   { $$=$2; /* $2 must be consumed */}
             | '\"'  '\"'       { $$=strdup(""); /* $2 must be consumed */}
             ;
 

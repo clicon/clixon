@@ -38,7 +38,7 @@
 
        ***** END LICENSE BLOCK *****";
 
-    revision 2017-11-12 {
+    revision 2017-07-02 {
       description
         "Added startup config";
     }

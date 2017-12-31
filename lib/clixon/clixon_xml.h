@@ -32,9 +32,15 @@
   ***** END LICENSE BLOCK *****
 
  * XML support functions.
+ * @see https://www.w3.org/TR/2008/REC-xml-20081126
+ *      https://www.w3.org/TR/2009/REC-xml-names-20091208/
  */
 #ifndef _CLIXON_XML_H
 #define _CLIXON_XML_H
+
+/*
+ * Constants
+ */
 
 /*
  * Types
@@ -74,6 +80,11 @@ typedef int (xml_applyfn_t)(cxobj *yn, void *arg);
 #define XML_FLAG_CHANGE 0x08  /* Node is changed (commits) or child changed rec */
 #define XML_FLAG_NONE   0x10  /* Node is added as NONE */
 
+/* Sort and binary search of XML children
+ * Experimental
+ */
+extern int xml_child_sort;
+
 /*
  * Prototypes
  */
@@ -106,10 +117,9 @@ cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 
 cxobj   **xml_childvec_get(cxobj *x);
 int       xml_childvec_set(cxobj *x, int len);
-cxobj    *xml_new(char *name, cxobj *xn_parent);
-cxobj    *xml_new_spec(char *name, cxobj *xn_parent, void *spec);
-void     *xml_spec(cxobj *x);
-void     *xml_spec_set(cxobj *x, void *spec);
+cxobj    *xml_new(char *name, cxobj *xn_parent, yang_stmt *spec);
+yang_stmt *xml_spec(cxobj *x);
+int       xml_spec_set(cxobj *x, yang_stmt *spec);
 cxobj    *xml_find(cxobj *xn_parent, char *name);
 
 int       xml_addsub(cxobj *xp, cxobj *xc);
@@ -130,14 +140,12 @@ int       xml_free(cxobj *xn);
 int       xml_print(FILE  *f, cxobj *xn);
 int       clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint);
 int       clicon_xml2cbuf(cbuf *xf, cxobj *xn, int level, int prettyprint);
-int       clicon_xml_parse_file(int fd, cxobj **xml_top, char *endtag);
-/* XXX obsolete */
-#define clicon_xml_parse_string(str, x) clicon_xml_parse_str((*str), x) 
-int       clicon_xml_parse_str(char *str, cxobj **xml_top);
-int       clicon_xml_parse(cxobj **cxtop, char *format, ...);
-int       xml_parse(char *str, cxobj *x_up);
+int       xml_parse_file(int fd, char *endtag, yang_spec *yspec, cxobj **xt);
+int       xml_parse_string(const char *str, yang_spec *yspec, cxobj **xml_top);
+int       xml_parse_va(cxobj **xt, yang_spec *yspec, const char *format, ...);
 
 int       xmltree2cbuf(cbuf *cb, cxobj *x, int level);
+int       xml_copy_one(cxobj *xn0, cxobj *xn1);
 int       xml_copy(cxobj *x0, cxobj *x1);
 cxobj    *xml_dup(cxobj *x0);
 
@@ -152,12 +160,17 @@ int       xml_body_int32(cxobj *xb, int32_t *val);
 int       xml_body_uint32(cxobj *xb, uint32_t *val);
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
-#if (XML_CHILD_HASH==1)
-clicon_hash_t *xml_hash(cxobj *x);
-int xml_hash_init(cxobj *x);
-int xml_hash_rm(cxobj *x);
-int xml_hash_key(cxobj *x, yang_stmt *y, cbuf *key);
-int xml_hash_op(cxobj *x, void *arg);
+
+#ifdef XML_COMPAT /* See CHANGELOG */
+/* MANUAL CHANGE: xml_new(name, parent) --> xml_new(name, parent, NULL) */
+
+#define xml_new_spec(name, parent) xml_new(name, parent, NULL)
+#define clicon_xml_parse(xt, fmt, ...) xml_parse_va(xt, NULL, fmt, __VA_ARGS__)
+#define clicon_xml_parse_file(fd, xt, etag) xml_parse_file(fd, etag, NULL, xt)
+#define clicon_xml_parse_string(strp, xt) xml_parse_string(*strp, NULL, xt)
+#define clicon_xml_parse_str(str, xt) xml_parse_string(str, NULL, xt)
+#define xml_parse(str, xt) xml_parse_string(str, NULL, &xt)
 #endif
+
 
 #endif /* _CLIXON_XML_H */

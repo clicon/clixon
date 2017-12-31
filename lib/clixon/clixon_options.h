@@ -74,53 +74,92 @@ enum startup_mode_t{
 /*
  * Prototypes
  */
+
+/* Print registry on file. For debugging. */
+void clicon_option_dump(clicon_handle h, int dblevel);
 /* Initialize options: set defaults, read config-file, etc */
 int clicon_options_main(clicon_handle h);
-
-void clicon_option_dump(clicon_handle h, int dblevel);
-
+/*! Check if a clicon option has a value */
 int clicon_option_exists(clicon_handle h, const char *name);
 
-/* Get a single option via handle */
+/* String options, default NULL */
 char *clicon_option_str(clicon_handle h, const char *name);
-int clicon_option_int(clicon_handle h, const char *name);
-/* Set a single option via handle */
 int clicon_option_str_set(clicon_handle h, const char *name, char *val);
+
+/* Option values gixen as int, default -1 */
+int clicon_option_int(clicon_handle h, const char *name);
 int clicon_option_int_set(clicon_handle h, const char *name, int val);
+
+/* Option values gixen as bool, default false */
+int clicon_option_bool(clicon_handle h, const char   *name);
+int clicon_option_bool_set(clicon_handle h, const char *name, int val);
+
 /* Delete a single option via handle */
 int clicon_option_del(clicon_handle h, const char *name);
 
-char *clicon_configfile(clicon_handle h);
-char *clicon_yang_dir(clicon_handle h);
-char *clicon_yang_module_main(clicon_handle h);
-char *clicon_yang_module_revision(clicon_handle h);
-char *clicon_backend_dir(clicon_handle h);
-char *clicon_cli_dir(clicon_handle h);
-char *clicon_clispec_dir(clicon_handle h);
-char *clicon_netconf_dir(clicon_handle h);
-char *clicon_restconf_dir(clicon_handle h);
-char *clicon_xmldb_plugin(clicon_handle h);
-int   clicon_startup_mode(clicon_handle h);
-int   clicon_sock_family(clicon_handle h);
-char *clicon_sock(clicon_handle h);
-int   clicon_sock_port(clicon_handle h);
-char *clicon_backend_pidfile(clicon_handle h);
-char *clicon_sock_group(clicon_handle h);
+/*-- Standard option access functions for YANG options --*/
+static inline char *clicon_configfile(clicon_handle h){
+    return clicon_option_str(h, "CLICON_CONFIGFILE");
+}
+static inline char *clicon_yang_dir(clicon_handle h){
+    return clicon_option_str(h, "CLICON_YANG_DIR");
+}
+static inline char *clicon_yang_module_main(clicon_handle h){
+    return clicon_option_str(h, "CLICON_YANG_MODULE_MAIN");
+}
+static inline char *clicon_yang_module_revision(clicon_handle h){
+    return clicon_option_str(h, "CLICON_YANG_MODULE_REVISION");
+}
+static inline char *clicon_backend_dir(clicon_handle h){
+    return clicon_option_str(h, "CLICON_BACKEND_DIR");
+}
+static inline char *clicon_netconf_dir(clicon_handle h){
+    return clicon_option_str(h, "CLICON_NETCONF_DIR");
+}
+static inline char *clicon_restconf_dir(clicon_handle h){
+    return clicon_option_str(h, "CLICON_RESTCONF_DIR");
+}
+static inline char *clicon_cli_dir(clicon_handle h){
+    return clicon_option_str(h, "CLICON_CLI_DIR");
+}
+static inline char *clicon_clispec_dir(clicon_handle h){
+    return clicon_option_str(h, "CLICON_CLISPEC_DIR");
+}
+static inline char *clicon_cli_mode(clicon_handle h){
+    return clicon_option_str(h, "CLICON_CLI_MODE");
+}
+static inline char *clicon_sock(clicon_handle h){
+    return clicon_option_str(h, "CLICON_SOCK");
+}
+static inline char *clicon_sock_group(clicon_handle h){
+    return clicon_option_str(h, "CLICON_SOCK_GROUP");
+}
+static inline char *clicon_backend_pidfile(clicon_handle h){
+    return clicon_option_str(h, "CLICON_BACKEND_PIDFILE");
+}
+static inline char *clicon_master_plugin(clicon_handle h){
+    return clicon_option_str(h, "CLICON_MASTER_PLUGIN");
+}
+static inline char *clicon_xmldb_dir(clicon_handle h){
+    return clicon_option_str(h, "CLICON_XMLDB_DIR");
+}
+static inline char *clicon_xmldb_plugin(clicon_handle h){
+    return clicon_option_str(h, "CLICON_XMLDB_PLUGIN");
+}
 
-char *clicon_master_plugin(clicon_handle h);
-char *clicon_cli_mode(clicon_handle h);
+/*-- Specific option access functions for YANG options w type conversion--*/
 int   clicon_cli_genmodel(clicon_handle h);
-int   clicon_cli_varonly(clicon_handle h);
-int   clicon_cli_varonly_set(clicon_handle h, int val);
 int   clicon_cli_genmodel_completion(clicon_handle h);
-
-char *clicon_xmldb_dir(clicon_handle h);
-
-char *clicon_quiet_mode(clicon_handle h);
 enum genmodel_type clicon_cli_genmodel_type(clicon_handle h);
+int   clicon_cli_varonly(clicon_handle h);
+int   clicon_sock_family(clicon_handle h);
+int   clicon_sock_port(clicon_handle h);
+int   clicon_autocommit(clicon_handle h);
+int   clicon_startup_mode(clicon_handle h);
 
-int clicon_autocommit(clicon_handle h);
-int clicon_autocommit_set(clicon_handle h, int val);
+/*-- Specific option access functions for non-yang options --*/
+int clicon_quiet_mode(clicon_handle h);
+int clicon_quiet_mode_set(clicon_handle h, int val);
 
 yang_spec * clicon_dbspec_yang(clicon_handle h);
 int clicon_dbspec_yang_set(clicon_handle h, struct yang_spec *ys);
@@ -128,16 +167,16 @@ int clicon_dbspec_yang_set(clicon_handle h, struct yang_spec *ys);
 char *clicon_dbspec_name(clicon_handle h);
 int clicon_dbspec_name_set(clicon_handle h, char *name);
 
-int clicon_xmldb_plugin_set(clicon_handle h, plghndl_t handle);
+yang_spec *clicon_netconf_yang(clicon_handle h);
+int clicon_netconf_yang_set(clicon_handle h, struct yang_spec *ys);
 
 plghndl_t clicon_xmldb_plugin_get(clicon_handle h);
-
-int clicon_xmldb_api_set(clicon_handle h, void *xa_api);
+int clicon_xmldb_plugin_set(clicon_handle h, plghndl_t handle);
 
 void *clicon_xmldb_api_get(clicon_handle h);
-
-int clicon_xmldb_handle_set(clicon_handle h, void *xh);
+int clicon_xmldb_api_set(clicon_handle h, void *xa_api);
 
 void *clicon_xmldb_handle_get(clicon_handle h);
+int clicon_xmldb_handle_set(clicon_handle h, void *xh);
 
 #endif  /* _CLIXON_OPTIONS_H_ */

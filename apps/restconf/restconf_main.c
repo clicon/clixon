@@ -357,7 +357,7 @@ main(int    argc,
 	return -1;
 
     /* Parse yang database spec file */
-    if (yang_spec_main(h, NULL, 0) < 0)
+    if (yang_spec_main(h) == NULL)
 	goto done;
 
     if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){

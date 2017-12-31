@@ -632,6 +632,7 @@ CPP
 OBJEXT
 EXEEXT
 ac_ct_CC
+with_xml_compat
 with_config_compat
 with_startup_compat
 with_keyvalue
@@ -659,6 +660,7 @@ build_os
 build_vendor
 build_cpu
 build
+CLIGEN_PREFIX
 CLIGEN_VERSION
 CLIXON_VERSION_MINOR
 CLIXON_VERSION_MAJOR
@@ -712,6 +714,7 @@ with_keyvalue
 with_qdbm
 with_startup_compat
 with_config_compat
+with_xml_compat
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1351,7 +1354,8 @@ Optional Packages:
   --with-keyvalue         enable support for key-value xmldb datastore
   --with-qdbm=dir         Use QDBM here, if keyvalue
   --with-startup-compat   Backward compatibility of backend startup commands
-  --with-config-compat    Backward compatibility of ocnfiguration file
+  --with-config-compat    Backward compatibility of configuration file
+  --with-xml-compat       Backward compatibility of XML API
 
 Some influential environment variables:
   CC          C compiler command
@@ -2153,11 +2157,16 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 : ${CFLAGS="-O2"}
 
 CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="3"
-CLIXON_VERSION_PATCH="3"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION_MINOR="4"
+CLIXON_VERSION_PATCH="0"
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 # Fix to specific version (eg 3.5) or head (3)
 CLIGEN_VERSION="3"
+if test "$prefix" = "NONE"; then
+	CLIGEN_PREFIX="$ac_default_prefix"
+else
+	CLIGEN_PREFIX="$prefix"
+fi
 
 ac_config_headers="$ac_config_headers include/clixon_config.h lib/clixon/clixon.h"
 
@@ -2347,8 +2356,12 @@ test -n "$target_alias" &&
 
  # If yes, compile apps/restconf
  # If yes, compile datastore/keyvalue
- # If yes, backward compatible backend startup
- # If yes, backward compatible .conf configuration
+# If yes, backward compatible with 3.3.2 backend startup
+
+# If yes, backward compatible with 3.3.2 .conf configuration
+
+# If yes, backward compatible with 3.3.3 XML api new and parse functions
+
 
 #
 ac_ext=c
@@ -3560,6 +3573,7 @@ if test "${with_cligen}"; then
   echo "Using CLIGEN here: ${with_cligen}"
   CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
   LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
+  test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
 fi
 
 
@@ -4042,9 +4056,12 @@ else
   as_fn_error $? "libqdbm-dev required" "$LINENO" 5
 fi
 
+   ac_config_files="$ac_config_files datastore/keyvalue/Makefile"
+
 fi
 
-# This is for backward compatibility of backend startup commands
+# This is for backward compatibility of backend startup commands in 3.3.3
+# Will be removed in 3.4.0
 
 # Check whether --with-startup_compat was given.
 if test "${with_startup_compat+set}" = set; then :
@@ -4061,7 +4078,8 @@ _ACEOF
 
 fi
 
-# This is for backward compatibility of .conf configuration file
+# This is for backward compatibility of .conf configuration file in 3.3.3
+# Will be removed in 3.4.0
 
 # Check whether --with-config_compat was given.
 if test "${with_config_compat+set}" = set; then :
@@ -4074,6 +4092,24 @@ if test "x${with_config_compat}" == xyes; then
 
 cat >>confdefs.h <<_ACEOF
 #define CONFIG_COMPAT $with_config_compat
+_ACEOF
+
+fi
+
+# This is for backward compatibility of XML create and parse API in 3.4.0
+# Will be removed in 3.5.0
+
+# Check whether --with-xml_compat was given.
+if test "${with_xml_compat+set}" = set; then :
+  withval=$with_xml_compat;
+else
+  with_xml_compat=no
+fi
+
+if test "x${with_xml_compat}" == xyes; then
+
+cat >>confdefs.h <<_ACEOF
+#define XML_COMPAT $with_xml_compat
 _ACEOF
 
 fi
@@ -4325,7 +4361,8 @@ _ACEOF
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/keyvalue/Makefile datastore/text/Makefile yang/Makefile doc/Makefile"
+# See also datastore/keyvalue/Makefile in with_keyvalue clause above
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile extras/rpm/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/text/Makefile yang/Makefile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5018,6 +5055,7 @@ do
   case $ac_config_target in
     "include/clixon_config.h") CONFIG_HEADERS="$CONFIG_HEADERS include/clixon_config.h" ;;
     "lib/clixon/clixon.h") CONFIG_HEADERS="$CONFIG_HEADERS lib/clixon/clixon.h" ;;
+    "datastore/keyvalue/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/keyvalue/Makefile" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "lib/Makefile") CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
     "lib/src/Makefile") CONFIG_FILES="$CONFIG_FILES lib/src/Makefile" ;;
@@ -5032,6 +5070,7 @@ do
     "etc/clixonrc") CONFIG_FILES="$CONFIG_FILES etc/clixonrc" ;;
     "example/Makefile") CONFIG_FILES="$CONFIG_FILES example/Makefile" ;;
     "example/docker/Makefile") CONFIG_FILES="$CONFIG_FILES example/docker/Makefile" ;;
+    "extras/rpm/Makefile") CONFIG_FILES="$CONFIG_FILES extras/rpm/Makefile" ;;
     "docker/Makefile") CONFIG_FILES="$CONFIG_FILES docker/Makefile" ;;
     "docker/cli/Makefile") CONFIG_FILES="$CONFIG_FILES docker/cli/Makefile" ;;
     "docker/cli/Dockerfile") CONFIG_FILES="$CONFIG_FILES docker/cli/Dockerfile" ;;
@@ -5040,7 +5079,6 @@ do
     "docker/netconf/Makefile") CONFIG_FILES="$CONFIG_FILES docker/netconf/Makefile" ;;
     "docker/netconf/Dockerfile") CONFIG_FILES="$CONFIG_FILES docker/netconf/Dockerfile" ;;
     "datastore/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/Makefile" ;;
-    "datastore/keyvalue/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/keyvalue/Makefile" ;;
     "datastore/text/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/text/Makefile" ;;
     "yang/Makefile") CONFIG_FILES="$CONFIG_FILES yang/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;

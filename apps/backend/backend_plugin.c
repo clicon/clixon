@@ -752,7 +752,7 @@ backend_statedata_call(clicon_handle        h,
     for (i = 0; i < _nplugins; i++)  {
 	p = &_plugins[i];
 	if (p->p_statedata) {
-	    if ((x = xml_new("config", NULL)) == NULL)
+	    if ((x = xml_new("config", NULL, NULL)) == NULL)
 		goto done;
 	    if ((p->p_statedata)(h, xpath, x) < 0){
 		retval = 1;

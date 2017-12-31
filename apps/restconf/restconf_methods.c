@@ -369,14 +369,14 @@ api_data_post(clicon_handle h,
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL)) == NULL)
+    if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
     if (parse_xml){
-	if (clicon_xml_parse_str(data, &xdata) < 0){
+	if (xml_parse_string(data, NULL, &xdata) < 0){
 	    clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
 	    goto done;
 	}
@@ -388,7 +388,7 @@ api_data_post(clicon_handle h,
     /* Add xdata to xbot */
     x = NULL;
     while ((x = xml_child_each(xdata, x, CX_ELMNT)) != NULL) {
-	if ((xa = xml_new("operation", x)) == NULL)
+	if ((xa = xml_new("operation", x, NULL)) == NULL)
 	    goto done;
 	xml_type_set(xa, CX_ATTR);
 	if (xml_value_set(xa,  xml_operation2str(op)) < 0)
@@ -488,14 +488,14 @@ api_data_put(clicon_handle h,
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL)) == NULL)
+    if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
     if (parse_xml){
-	if (clicon_xml_parse_str(data, &xdata) < 0){
+	if (xml_parse_string(data, NULL, &xdata) < 0){
 	    clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
 	    goto done;
 	}
@@ -510,7 +510,7 @@ api_data_put(clicon_handle h,
 	goto done;
     }
     x = xml_child_i(xdata,0);
-    if ((xa = xml_new("operation", x)) == NULL)
+    if ((xa = xml_new("operation", x, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa,  xml_operation2str(op)) < 0)
@@ -613,12 +613,12 @@ api_data_delete(clicon_handle h,
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL)) == NULL)
+    if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
-    if ((xa = xml_new("operation", xbot)) == NULL)
+    if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa,  xml_operation2str(op)) < 0)
@@ -721,7 +721,7 @@ api_operation_post(clicon_handle h,
      * eg <rpc><fib-route><name>
      */
     /* Create config top-of-tree */
-    if ((xtop = xml_new("rpc", NULL)) == NULL)
+    if ((xtop = xml_new("rpc", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
     if (api_path2xml(oppath, yspec, xtop, 1, &xbot, &y) < 0)
@@ -729,7 +729,7 @@ api_operation_post(clicon_handle h,
     if (data && strlen(data)){
 	/* Parse input data as json or xml into xml */
 	if (parse_xml){
-	    if (clicon_xml_parse_str(data, &xdata) < 0){
+	    if (xml_parse_string(data, NULL, &xdata) < 0){
 		clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
 		goto done;
 	    }
@@ -768,7 +768,7 @@ api_operation_post(clicon_handle h,
 	
 	if ((cookie = FCGX_GetParam("HTTP_COOKIE", r->envp)) != NULL &&
 	    get_user_cookie(cookie, "c-user", &cookieval) ==0){
-	    if ((xa = xml_new("id", xtop)) == NULL)
+	    if ((xa = xml_new("id", xtop, NULL)) == NULL)
 		goto done;
 	    xml_type_set(xa, CX_ATTR);
 	    if (xml_value_set(xa,  cookieval) < 0)

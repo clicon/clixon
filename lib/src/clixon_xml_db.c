@@ -56,8 +56,8 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
-#include "clixon_xml.h"
 #include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_xml_db.h"
@@ -382,7 +382,7 @@ xmldb_get(clicon_handle h,
  * The xml may contain the "operation" attribute which defines the operation.
  * @code
  *   cxobj     *xt;
- *   if (clicon_xml_parse_str("<a>17</a>", &xt) < 0)
+ *   if (xml_parse_string("<a>17</a>", yspec, &xt) < 0)
  *     err;
  *   if (xmldb_put(xh, "running", OP_MERGE, xt) < 0)
  *     err;
@@ -432,7 +432,7 @@ xmldb_put(clicon_handle       h,
 
 /*! Copy database from db1 to db2
  * @param[in]  h     Clicon handle
- * @param[in]  from  Source database copy
+ * @param[in]  from  Source database
  * @param[in]  to    Destination database
  * @retval -1  Error
  * @retval  0  OK

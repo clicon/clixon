@@ -32,6 +32,8 @@
   ***** END LICENSE BLOCK *****
 
  * XML parser
+ * @see https://www.w3.org/TR/2008/REC-xml-20081126
+ *      https://www.w3.org/TR/2009/REC-xml-names-20091208
  */
 #ifndef _CLIXON_XML_PARSE_H_
 #define _CLIXON_XML_PARSE_H_
@@ -39,6 +41,7 @@
 /*
  * Types
  */
+/*! XML parser yacc handler struct */
 struct xml_parse_yacc_arg{
     char       *ya_parse_string; /* original (copy of) parse string */
     int         ya_linenum;      /* Number of \n in parsed buffer */
@@ -46,7 +49,8 @@ struct xml_parse_yacc_arg{
 
     cxobj      *ya_xelement;     /* xml active element */
     cxobj      *ya_xparent;      /* xml parent element*/
-    int         ya_skipspace;    /* If set, remove all non-terminal bodies (strip prettyr-print) */
+    int         ya_skipspace;    /* If set, remove all non-terminal bodies (strip pretty-print) */
+    yang_spec  *ya_yspec;        /* If set, top-level yang-spec */
 };
 
 extern char *clixon_xml_parsetext;

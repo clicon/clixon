@@ -166,7 +166,7 @@ expand_dbvar(void   *h,
     xcur = xt; /* default top-of-tree */
     xpathcur = xpath;
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL)) == NULL)
+    if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
     /* This is primarily to get "y", 
@@ -209,8 +209,7 @@ expand_dbvar(void   *h,
 	else
 	    bodystr = xml_body(x);
 	if (bodystr == NULL){
-	    clicon_err(OE_CFG, 0, "No xml body");
-	    goto done;
+	    continue; /* no body, cornercase */
 	}
 	/* detect duplicates */
 	for (k=0; k<j; k++){

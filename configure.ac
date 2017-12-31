@@ -42,11 +42,16 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${CFLAGS="-O2"}
 
 CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="3"
-CLIXON_VERSION_PATCH="3"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION_MINOR="4"
+CLIXON_VERSION_PATCH="0"
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 # Fix to specific version (eg 3.5) or head (3) 
 CLIGEN_VERSION="3" 
+if test "$prefix" = "NONE"; then
+	CLIGEN_PREFIX="$ac_default_prefix"
+else
+	CLIGEN_PREFIX="$prefix"
+fi
 
 AC_CONFIG_HEADERS([include/clixon_config.h lib/clixon/clixon.h])
 
@@ -62,6 +67,7 @@ AC_SUBST(CLIXON_VERSION_STRING)
 AC_SUBST(CLIXON_VERSION_MAJOR)
 AC_SUBST(CLIXON_VERSION_MINOR)
 AC_SUBST(CLIGEN_VERSION) # Bind to specific CLIgen version
+AC_SUBST(CLIGEN_PREFIX)
 
 AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION})
 
@@ -80,8 +86,12 @@ AC_SUBST(AR)
 AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
 AC_SUBST(with_keyvalue) # If yes, compile datastore/keyvalue
-AC_SUBST(with_startup_compat) # If yes, backward compatible backend startup
-AC_SUBST(with_config_compat) # If yes, backward compatible .conf configuration
+# If yes, backward compatible with 3.3.2 backend startup
+AC_SUBST(with_startup_compat) 
+# If yes, backward compatible with 3.3.2 .conf configuration
+AC_SUBST(with_config_compat) 
+# If yes, backward compatible with 3.3.3 XML api new and parse functions
+AC_SUBST(with_xml_compat) 
 
 #
 AC_PROG_CC()
@@ -122,6 +132,7 @@ if test "${with_cligen}"; then
   echo "Using CLIGEN here: ${with_cligen}"
   CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
   LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
+  test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
 fi
 
 AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR(cligen missing. Try: git clone https://github.com/olofhagsand/cligen.git))
@@ -154,9 +165,11 @@ if test "x${with_keyvalue}" == xyes; then
    # Problem: depot.h may be in qdbm/depot.h. 
    AC_CHECK_HEADERS(depot.h,,[AC_CHECK_HEADERS(qdbm/depot.h,,AC_MSG_ERROR(libqdbm-dev required))])
    AC_CHECK_LIB(qdbm, dpopen,, AC_MSG_ERROR(libqdbm-dev required))
+   AC_CONFIG_FILES(datastore/keyvalue/Makefile)
 fi
 
-# This is for backward compatibility of backend startup commands
+# This is for backward compatibility of backend startup commands in 3.3.3
+# Will be removed in 3.4.0
 AC_ARG_WITH([startup_compat],
             [AS_HELP_STRING([--with-startup-compat],[Backward compatibility of backend startup commands])],
 	    [],
@@ -165,13 +178,25 @@ if test "x${with_startup_compat}" == xyes; then
    AC_DEFINE_UNQUOTED(BACKEND_STARTUP_COMPAT, $with_startup_compat, [Backward compatible backend startup command-line options])
 fi
 
-# This is for backward compatibility of .conf configuration file
+# This is for backward compatibility of .conf configuration file in 3.3.3
+# Will be removed in 3.4.0
 AC_ARG_WITH([config_compat],
-            [AS_HELP_STRING([--with-config-compat],[Backward compatibility of ocnfiguration file])],
+            [AS_HELP_STRING([--with-config-compat],[Backward compatibility of configuration file])],
 	    [],
             [with_config_compat=no])
 if test "x${with_config_compat}" == xyes; then
    AC_DEFINE_UNQUOTED(CONFIG_COMPAT, $with_config_compat, [Backward compatible of .conf configuration files])
+fi
+
+# Clixon 3.4.0 changes XML creation and parse API
+# Set this for backward compat and migration. 
+# Will be removed in 3.5.0
+AC_ARG_WITH([xml_compat],
+            [AS_HELP_STRING([--with-xml-compat],[Backward compatibility of XML API])],
+	    [],
+            [with_xml_compat=no])
+if test "x${with_xml_compat}" == xyes; then
+   AC_DEFINE_UNQUOTED(XML_COMPAT, $with_xml_compat, [Backward compatible of XML API])
 fi
 
 AC_CHECK_LIB(crypt, crypt)
@@ -197,6 +222,7 @@ AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${prefix}/share/clixon", [Clixon data dir fo
 
 AH_BOTTOM([#include <clixon_custom.h>])
 
+# See also datastore/keyvalue/Makefile in with_keyvalue clause above
 AC_OUTPUT(Makefile
 	  lib/Makefile
 	  lib/src/Makefile 
@@ -211,6 +237,7 @@ AC_OUTPUT(Makefile
 	  etc/clixonrc
 	  example/Makefile
 	  example/docker/Makefile
+	  extras/rpm/Makefile
 	  docker/Makefile 
 	  docker/cli/Makefile 
 	  docker/cli/Dockerfile
@@ -219,7 +246,6 @@ AC_OUTPUT(Makefile
 	  docker/netconf/Makefile 
 	  docker/netconf/Dockerfile
 	  datastore/Makefile
-	  datastore/keyvalue/Makefile
 	  datastore/text/Makefile
 	  yang/Makefile
 	  doc/Makefile 
