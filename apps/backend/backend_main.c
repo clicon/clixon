@@ -825,6 +825,7 @@ main(int argc, char **argv)
 	    unlink(pidfile);   
 	if (sockfamily==AF_UNIX && lstat(sock, &st) == 0)
 	    unlink(sock);   
+	backend_terminate(h);
 	exit(0); /* OK */
     }
     else

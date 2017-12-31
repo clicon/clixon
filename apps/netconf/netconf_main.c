@@ -271,6 +271,8 @@ netconf_terminate(clicon_handle h)
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((yspec = clicon_netconf_yang(h)) != NULL)
+	yspec_free(yspec);
     event_exit();
     clicon_handle_exit(h);
     return 0;
@@ -389,7 +391,6 @@ main(int    argc,
     if (netconf_plugin_load(h) < 0)
 	goto done;
 
-    
     /* Call start function is all plugins before we go interactive */
     tmp = *(argv-1);
     *(argv-1) = argv0;

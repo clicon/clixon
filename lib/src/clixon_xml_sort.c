@@ -126,14 +126,7 @@ xml_cmp(const void* arg1,
     char       *b2;
     char       *keyname;
     
-    if (x1 == NULL){
-	if (x2 == NULL)
-	    return 0;
-	else
-	    return -1;
-    }
-    else if (x2 == NULL)
-	return 1;
+    assert(x1&&x2);
     y1 = xml_spec(x1);
     y2 = xml_spec(x2);
     if (y1==NULL || y2==NULL)
@@ -345,11 +338,26 @@ xml_search(cxobj        *x0,
 		       0, xml_child_nr(x0));
 }
 
+#ifdef notyet
+/*! Position where to insert xml object into a list of children nodes
+ * Insert after position returned
+ * @param[in]  x0       XML parent node.
+ * @param[in]  x        XML node (to insert)
+ * @param[in]  low       Lower bound
+ * @param[in]  upper     Upper bound (+1)
+ * @retval     position 
+ * XXX: Replace "x" with parameters in xml_search1
+ */
 static int
 xml_insert_pos(cxobj *x0,
-		    cxobj *x,
-		    int    low, 
-		    int    upper)
+	       char         *name,
+	       int           yangi,
+	       enum rfc_6020 keyword,   
+	       int           keynr,
+	       char        **keyvec,
+	       char        **keyval,
+	       int           low, 
+	       int           upper)
 {
     int     mid;
     cxobj  *xc;
@@ -401,6 +409,7 @@ xml_sort_insert(cxobj *x0,
 #endif
     return x;
 }
+#endif /* notyet */
 
 /*! Find matching xml child given name and optional key values
  * container: x0, y->keyword, name
