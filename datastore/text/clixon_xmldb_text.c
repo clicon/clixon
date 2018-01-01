@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2017 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -82,6 +82,12 @@ struct text_handle {
     char          *th_dbdir;    /* Directory of database files */
     yang_spec     *th_yangspec; /* Yang spec if this datastore */
     clicon_hash_t *th_dbs;      /* Hash of db_elements. key is dbname */
+    int            th_cache;    /* Keep datastore text in memory so that get 
+				   operation need only read memory.
+				   Write to file on modification or file change.
+				   Assumes single backend*/
+    char          *th_format;   /* Datastroe format: xml / json */
+    int            th_pretty;   /* Store xml/json pretty-printed. */
 };
 
 /* Struct per database in hash */
@@ -89,19 +95,6 @@ struct db_element{
     int    de_pid;
     cxobj *de_xml;
 };
-
-/* Keep datastore text in memory so that get operation need only read memory.
- * Write to file on modification or file change.
- * Assumes single backend
- * XXX MOVE TO HANDLE all three below
- */
-static int xmltree_cache = 1;
-
-/* Format */
-static char *xml_format = "xml";
-
-/* Store xml/json pretty-printed. Or not. */
-static int xml_pretty = 1;
 
 /*! Check struct magic number for sanity checks
  * return 0 if OK, -1 if fail.
@@ -173,6 +166,9 @@ text_connect(void)
     }
     memset(th, 0, size);
     th->th_magic = TEXT_HANDLE_MAGIC;
+    th->th_format = "xml"; /* default */
+    th->th_pretty = 1; /* default */
+    th->th_cache = 1; /* default */
     if ((th->th_dbs = hash_init()) == NULL)
 	goto done;
     xh = (xmldb_handle)th;
@@ -199,7 +195,7 @@ text_disconnect(xmldb_handle xh)
 	if (th->th_dbdir)
 	    free(th->th_dbdir);
 	if (th->th_dbs){
-	    if (xmltree_cache){
+	    if (th->th_cache){
 		if ((keys = hash_keys(th->th_dbs, &klen)) == NULL)
 		    return 0;
 		for(i = 0; i < klen; i++) 
@@ -239,11 +235,11 @@ text_getopt(xmldb_handle xh,
     else if (strcmp(optname, "dbdir") == 0)
 	*value = th->th_dbdir;
     else if (strcmp(optname, "xml_cache") == 0)
-	*value = &xmltree_cache;
+	*value = &th->th_cache;
     else if (strcmp(optname, "format") == 0)
-	*value = xml_format;
+	*value = th->th_format;
     else if (strcmp(optname, "pretty") == 0)
-	*value = &xml_pretty;
+	*value = &th->th_pretty;
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
 	goto done;
@@ -277,20 +273,20 @@ text_setopt(xmldb_handle xh,
 	}
     }
     else if (strcmp(optname, "xml_cache") == 0){
-	xmltree_cache = (intptr_t)value;
+	th->th_cache = (intptr_t)value;
     }
     else if (strcmp(optname, "format") == 0){
 	if (strcmp(value,"xml")==0)
-	    xml_format = "xml";
+	    th->th_format = "xml";
 	else if (strcmp(value,"json")==0)
-	    xml_format = "json";
+	    th->th_format = "json";
 	else{
 	    clicon_err(OE_PLUGIN, 0, "Option %s unrecognized format: %s", optname, value);
 	    goto done;
 	}
     }
     else if (strcmp(optname, "pretty") == 0){
-	xml_pretty = (intptr_t)value;
+	th->th_pretty = (intptr_t)value;
     }
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
@@ -439,7 +435,7 @@ text_get(xmldb_handle xh,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (xmltree_cache){
+    if (th->th_cache){
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL)
 	    xt = de->de_xml; 
     }
@@ -455,7 +451,7 @@ text_get(xmldb_handle xh,
 	    goto done;
 	}    
 	/* Parse file into XML tree */
-	if (strcmp(xml_format,"json")==0){
+	if (strcmp(th->th_format,"json")==0){
 	    if ((json_parse_file(fd, yspec, &xt)) < 0)
 		goto done;
 	}
@@ -487,11 +483,11 @@ text_get(xmldb_handle xh,
     if (xvec != NULL)
 	for (i=0; i<xlen; i++){
 	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-	    if (xmltree_cache)
+	    if (th->th_cache)
 		xml_apply_ancestor(xvec[i], (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
 	}
 
-    if (xmltree_cache){
+    if (th->th_cache){
 	/* Copy the matching parts of the (relevant) XML tree.
 	 * If cache was NULL, also write to datastore cache
 	 */
@@ -866,7 +862,7 @@ text_put(xmldb_handle        xh,
 		   xml_name(x1));
 	goto done;
     }
-    if (xmltree_cache){
+    if (th->th_cache){
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL)
 	    x0 = de->de_xml; 
     }
@@ -882,7 +878,7 @@ text_put(xmldb_handle        xh,
 	    goto done;
 	}    
 	/* Parse file into XML tree */
-	if (strcmp(xml_format,"json")==0){
+	if (strcmp(th->th_format,"json")==0){
 	    if ((json_parse_file(fd, yspec, &x0)) < 0)
 		goto done;
 	}
@@ -941,7 +937,7 @@ text_put(xmldb_handle        xh,
 	clicon_log(LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
 #endif
     /* Write back to datastore cache if first time */
-    if (xmltree_cache){
+    if (th->th_cache){
 	struct db_element de0 = {0,};
 	if (de != NULL)
 	    de0 = *de;
@@ -966,11 +962,11 @@ text_put(xmldb_handle        xh,
 	clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
 	goto done;
     } 
-    if (strcmp(xml_format,"json")==0){
-	if (xml2json(f, x0, xml_pretty) < 0)
+    if (strcmp(th->th_format,"json")==0){
+	if (xml2json(f, x0, th->th_pretty) < 0)
 	    goto done;
     }
-    else if (clicon_xml2file(f, x0, 0, xml_pretty) < 0)
+    else if (clicon_xml2file(f, x0, 0, th->th_pretty) < 0)
 	goto done;
     retval = 0;
  done:
@@ -982,7 +978,7 @@ text_put(xmldb_handle        xh,
 	close(fd);
     if (cb)
 	cbuf_free(cb);
-    if (!xmltree_cache && x0)
+    if (!th->th_cache && x0)
 	xml_free(x0);
     return retval;
 }
@@ -1007,7 +1003,7 @@ text_copy(xmldb_handle xh,
     struct db_element  *de2 = NULL;
 
     /* XXX lock */
-    if (xmltree_cache){
+    if (th->th_cache){
 	/* 1. Free xml tree in "to"
 	 */
 	if ((de = hash_value(th->th_dbs, to, NULL)) != NULL){
@@ -1190,7 +1186,7 @@ text_delete(xmldb_handle xh,
     cxobj              *xt = NULL;
     struct stat         sb;
     
-    if (xmltree_cache){
+    if (th->th_cache){
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL){
 	    if ((xt = de->de_xml) != NULL){
 		xml_free(xt);
@@ -1230,7 +1226,7 @@ text_create(xmldb_handle xh,
     struct db_element  *de = NULL;
     cxobj              *xt = NULL;
 
-    if (xmltree_cache){ /* XXX This should nt really happen? */
+    if (th->th_cache){ /* XXX This should nt really happen? */
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL){
 	    if ((xt = de->de_xml) != NULL){
 		assert(xt==NULL); /* XXX */
@@ -1354,12 +1350,12 @@ main(int    argc,
 	xpath = argc>5?argv[5]:NULL;
 	if (xmldb_get(h, db, xpath, &xt, NULL, 1, NULL) < 0)
 	    goto done;
-	if (strcmp(xml_format,"json")==0){
-	    if (xml2json(stdout, xt, xml_pretty) < 0)
+	if (strcmp(th->th_format,"json")==0){
+	    if (xml2json(stdout, xt, th->th_pretty) < 0)
 		goto done;
 	}
 	else{
-	    if (clicon_xml2file(stdout, xt, 0, xml_pretty) < 0)
+	    if (clicon_xml2file(stdout, xt, 0, th->th_pretty) < 0)
 		goto done;
 	}
     }

@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2017 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
 #
 # This file is part of CLIXON
 #
@@ -44,7 +44,7 @@ AC_INIT(lib/clixon/clixon.h.in)
 CLIXON_VERSION_MAJOR="3"
 CLIXON_VERSION_MINOR="4"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 # Fix to specific version (eg 3.5) or head (3) 
 CLIGEN_VERSION="3" 
 if test "$prefix" = "NONE"; then

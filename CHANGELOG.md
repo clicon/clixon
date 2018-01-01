@@ -1,8 +1,6 @@
 # Clixon Changelog
 
-## 3.4.0 (Upcoming)
-### Known issues
-* Please use text datastore, key-value datastore no up-to-date
+## 3.4.0 (1 January 2018)
 
 ### Major changes:
 * Optimized search performance for large lists by sorting and binary search.
@@ -41,7 +39,6 @@
   formal specification instead of hardcoded C-code.
 
 ### Corrected Bugs
-
 * Fixed bug that deletes running on startup if backup started with -m running.
   When clixon starts again, running is lost.
   The error was that the running (or startup) configuration may fail when
@@ -50,6 +47,9 @@
 * datastore/keyvalue/Makefile was left behind on make distclean. Fixed by conditional configure. Thanks renato@netgate.com.
 * Escape " in JSON names and strings and values
   
+### Known issues
+* Please use text datastore, key-value datastore no up-to-date
+
 ## 3.3.3 (25 November 2017)
 
 Thanks to Matthew Smith, Joe Loeliger at Netgate; Fredrik Pettai at

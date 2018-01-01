@@ -2159,7 +2159,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 CLIXON_VERSION_MAJOR="3"
 CLIXON_VERSION_MINOR="4"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 # Fix to specific version (eg 3.5) or head (3)
 CLIGEN_VERSION="3"
 if test "$prefix" = "NONE"; then
@@ -2199,6 +2199,7 @@ _ACEOF
 
 
  # Bind to specific CLIgen version
+
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: CLIXON version is ${CLIXON_VERSION}" >&5
 $as_echo "CLIXON version is ${CLIXON_VERSION}" >&6; }
@@ -4096,7 +4097,8 @@ _ACEOF
 
 fi
 
-# This is for backward compatibility of XML create and parse API in 3.4.0
+# Clixon 3.4.0 changes XML creation and parse API
+# Set this for backward compat and migration.
 # Will be removed in 3.5.0
 
 # Check whether --with-xml_compat was given.
