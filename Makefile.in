@@ -56,7 +56,7 @@ SUBDIRS = lib apps include etc datastore yang
 
 .PHONY:	doc all clean depend $(SUBDIRS) install loc TAGS .config.status docker
 
-all:	$(SUBDIRS) clixon.conf.cpp clixon.mk
+all:	$(SUBDIRS) clixon.mk
 
 $(SUBDIRS):
 	(cd $@ && $(MAKE) $(MFLAGS) all)
@@ -65,16 +65,11 @@ depend:
 	for i in $(SUBDIRS) doc example docker; \
 	do (cd $$i && $(MAKE) $(MFLAGS) depend); done
 
-# template clixon.conf file
-clixon.conf.cpp:  clixon.conf.cpp.cpp
-	$(CPP) -P -x assembler-with-cpp -Dprefix=$(prefix) -Dlocalstatedir=$(localstatedir) -Dsysconfdir=$(sysconfdir) -Ddatadir=$(datadir) -Dlibdir=$(libdir) $< > $@
-
 clixon.mk:  clixon.mk.cpp
 	$(CPP) -P -traditional-cpp -x assembler-with-cpp -Dprefix=$(prefix) -Dlocalstatedir=$(localstatedir) -Dsysconfdir=$(sysconfdir) -Ddatadir=$(datadir) -Dlibdir=$(libdir) $< > $@
 
-install:	clixon.conf.cpp clixon.mk
+install:  clixon.mk
 	install -d -m 755 $(DESTDIR)$(datadir)/clixon
-	install -m 755 clixon.conf.cpp $(DESTDIR)$(datadir)/clixon
 	install -m 755 clixon.mk $(DESTDIR)$(datadir)/clixon
 	for i in $(SUBDIRS) doc; \
 	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done; \
@@ -88,7 +83,6 @@ install-include:
 uninstall:
 	for i in $(SUBDIRS) doc example docker; \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done; 
-	rm -f $(DESTDIR)$(datadir)/clixon/clixon.conf.cpp
 	rm -f $(DESTDIR)$(datadir)/clixon/clixon.mk
 
 doc:	
@@ -106,8 +100,7 @@ clean:
 
 distclean:
 	rm -f Makefile TAGS config.status config.log *~ .depend
-	rm -rf autom4te.cache
-	rm -rf clixon.conf.cpp clixon.mk build-root/rpmbuild
+	rm -rf autom4te.cache clixon.mk build-root/rpmbuild
 	rm -f build-root/*.tar.xz build-root/*.rpm extras/rpm/Makefile
 	for i in $(SUBDIRS) doc example docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done

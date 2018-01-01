@@ -4,6 +4,12 @@
 
 ### Major changes:
 ### Minor changes:
+
+* The following backward compatible options to configure have been obsoleted. If you havent already migrated this code you must do this now.
+  * Backend startup modes prior to 3.3.3. As enabled with `configure --with-startup-compat`. Configure option CLICON_USE_STARTUP_CONFIG is also obsoleted.
+  * Configuration files (non-XML) prior to 3.3.3. As enabled with `configure --with-config-compat`. The template clicon.conf.cpp files are also removed.
+  * Clixon XML C-lib prior to 3.4.0. As enabled with `configure --with-xml-compat`
+  
 ### Corrected Bugs
 ### Known issues
 

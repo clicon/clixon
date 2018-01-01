@@ -26,9 +26,6 @@ fi
 if [ ! -f $DIR/usr/local/share/clixon/clixon.mk ]; then
     err $DIR/usr/local/share/clixon/clixon.mk
 fi
-if [ ! -f $DIR/usr/local/share/clixon/clixon.conf.cpp ]; then
-    err $DIR/usr/local/share/clixon/clixon.conf.cpp
-fi
 if [ ! -f $DIR/usr/local/share/clixon/clixon-config* ]; then
     err $DIR/usr/local/share/clixon/clixon-config*
 fi

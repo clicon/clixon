@@ -632,9 +632,6 @@ CPP
 OBJEXT
 EXEEXT
 ac_ct_CC
-with_xml_compat
-with_config_compat
-with_startup_compat
 with_keyvalue
 with_restconf
 RANLIB
@@ -712,9 +709,6 @@ with_cligen
 with_restconf
 with_keyvalue
 with_qdbm
-with_startup_compat
-with_config_compat
-with_xml_compat
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1353,9 +1347,6 @@ Optional Packages:
   --without-restconf      disable support for restconf
   --with-keyvalue         enable support for key-value xmldb datastore
   --with-qdbm=dir         Use QDBM here, if keyvalue
-  --with-startup-compat   Backward compatibility of backend startup commands
-  --with-config-compat    Backward compatibility of configuration file
-  --with-xml-compat       Backward compatibility of XML API
 
 Some influential environment variables:
   CC          C compiler command
@@ -2357,13 +2348,6 @@ test -n "$target_alias" &&
 
  # If yes, compile apps/restconf
  # If yes, compile datastore/keyvalue
-# If yes, backward compatible with 3.3.2 backend startup
-
-# If yes, backward compatible with 3.3.2 .conf configuration
-
-# If yes, backward compatible with 3.3.3 XML api new and parse functions
-
-
 #
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -4058,61 +4042,6 @@ else
 fi
 
    ac_config_files="$ac_config_files datastore/keyvalue/Makefile"
-
-fi
-
-# This is for backward compatibility of backend startup commands in 3.3.3
-# Will be removed in 3.4.0
-
-# Check whether --with-startup_compat was given.
-if test "${with_startup_compat+set}" = set; then :
-  withval=$with_startup_compat;
-else
-  with_startup_compat=no
-fi
-
-if test "x${with_startup_compat}" == xyes; then
-
-cat >>confdefs.h <<_ACEOF
-#define BACKEND_STARTUP_COMPAT $with_startup_compat
-_ACEOF
-
-fi
-
-# This is for backward compatibility of .conf configuration file in 3.3.3
-# Will be removed in 3.4.0
-
-# Check whether --with-config_compat was given.
-if test "${with_config_compat+set}" = set; then :
-  withval=$with_config_compat;
-else
-  with_config_compat=no
-fi
-
-if test "x${with_config_compat}" == xyes; then
-
-cat >>confdefs.h <<_ACEOF
-#define CONFIG_COMPAT $with_config_compat
-_ACEOF
-
-fi
-
-# Clixon 3.4.0 changes XML creation and parse API
-# Set this for backward compat and migration.
-# Will be removed in 3.5.0
-
-# Check whether --with-xml_compat was given.
-if test "${with_xml_compat+set}" = set; then :
-  withval=$with_xml_compat;
-else
-  with_xml_compat=no
-fi
-
-if test "x${with_xml_compat}" == xyes; then
-
-cat >>confdefs.h <<_ACEOF
-#define XML_COMPAT $with_xml_compat
-_ACEOF
 
 fi
 

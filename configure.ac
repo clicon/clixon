@@ -86,13 +86,6 @@ AC_SUBST(AR)
 AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
 AC_SUBST(with_keyvalue) # If yes, compile datastore/keyvalue
-# If yes, backward compatible with 3.3.2 backend startup
-AC_SUBST(with_startup_compat) 
-# If yes, backward compatible with 3.3.2 .conf configuration
-AC_SUBST(with_config_compat) 
-# If yes, backward compatible with 3.3.3 XML api new and parse functions
-AC_SUBST(with_xml_compat) 
-
 #
 AC_PROG_CC()
 AC_PROG_CPP
@@ -166,37 +159,6 @@ if test "x${with_keyvalue}" == xyes; then
    AC_CHECK_HEADERS(depot.h,,[AC_CHECK_HEADERS(qdbm/depot.h,,AC_MSG_ERROR(libqdbm-dev required))])
    AC_CHECK_LIB(qdbm, dpopen,, AC_MSG_ERROR(libqdbm-dev required))
    AC_CONFIG_FILES(datastore/keyvalue/Makefile)
-fi
-
-# This is for backward compatibility of backend startup commands in 3.3.3
-# Will be removed in 3.4.0
-AC_ARG_WITH([startup_compat],
-            [AS_HELP_STRING([--with-startup-compat],[Backward compatibility of backend startup commands])],
-	    [],
-            [with_startup_compat=no])
-if test "x${with_startup_compat}" == xyes; then
-   AC_DEFINE_UNQUOTED(BACKEND_STARTUP_COMPAT, $with_startup_compat, [Backward compatible backend startup command-line options])
-fi
-
-# This is for backward compatibility of .conf configuration file in 3.3.3
-# Will be removed in 3.4.0
-AC_ARG_WITH([config_compat],
-            [AS_HELP_STRING([--with-config-compat],[Backward compatibility of configuration file])],
-	    [],
-            [with_config_compat=no])
-if test "x${with_config_compat}" == xyes; then
-   AC_DEFINE_UNQUOTED(CONFIG_COMPAT, $with_config_compat, [Backward compatible of .conf configuration files])
-fi
-
-# Clixon 3.4.0 changes XML creation and parse API
-# Set this for backward compat and migration. 
-# Will be removed in 3.5.0
-AC_ARG_WITH([xml_compat],
-            [AS_HELP_STRING([--with-xml-compat],[Backward compatibility of XML API])],
-	    [],
-            [with_xml_compat=no])
-if test "x${with_xml_compat}" == xyes; then
-   AC_DEFINE_UNQUOTED(XML_COMPAT, $with_xml_compat, [Backward compatible of XML API])
 fi
 
 AC_CHECK_LIB(crypt, crypt)

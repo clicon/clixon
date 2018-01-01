@@ -1,8 +1,5 @@
 /* include/clixon_config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Backward compatible backend startup command-line options */
-#undef BACKEND_STARTUP_COMPAT
-
 /* Clixon data dir for system yang files etc */
 #undef CLIXON_DATADIR
 
@@ -17,9 +14,6 @@
 
 /* Clixon version string */
 #undef CLIXON_VERSION_STRING
-
-/* Backward compatible of .conf configuration files */
-#undef CONFIG_COMPAT
 
 /* Define to 1 if you have the `alphasort' function. */
 #undef HAVE_ALPHASORT
@@ -137,9 +131,6 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
-
-/* Backward compatible of XML API */
-#undef XML_COMPAT
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */

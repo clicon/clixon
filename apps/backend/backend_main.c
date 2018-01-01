@@ -73,11 +73,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#ifdef BACKEND_STARTUP_COMPAT
-#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:IRCrg:y:x:" /* substitute s: for IRCc:r */
-#else
 #define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:g:y:x:" /* substitute s: for IRCc:r */
-#endif
 
 /*! Terminate. Cannot use h after this */
 static int
@@ -142,12 +138,6 @@ usage(char *argv0, clicon_handle h)
     	    "    -P <file>\tPid filename (default: %s)\n"
 	    "    -s <mode>\tSpecify backend startup mode: none|startup|running|init (replaces -IRCr\n"
 	    "    -c <file>\tLoad extra xml configuration, but don't commit.\n"
-#ifdef BACKEND_STARTUP_COMPAT
-    	    "    -I\t\tInitialize running state database\n"
-    	    "    -R\t\tCall plugin_reset() in plugins to reset system state in running db (use with -I)\n"
-	    "    -C\t\tCall plugin_reset() in plugins to reset system state in candidate db (use with -I)\n"
-	    "    -r\t\tReload running database\n"
-#endif /* BACKEND_STARTUP_COMPAT */
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
 	    "    -y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "    -x <plugin>\tXMLDB plugin\n",
@@ -269,161 +259,6 @@ plugin_start_useroptions(clicon_handle h,
     *(argv-1) = tmp;
     return 0;
 }
-
-#ifdef BACKEND_STARTUP_COMPAT
-/*! Initialize running-config from file application configuration
- *
- * @param[in] h                clicon handle
- * @param[in] extraxml_file  clicon application configuration file
- * @param[in] running_db       Name of running db
- * @retval    0                OK
- * @retval   -1                Error. clicon_err set
- */
-static int
-rundb_main(clicon_handle h, 
-	   char         *extraxml_file)
-{
-    int        retval = -1;
-    int        fd = -1;
-    cxobj     *xt = NULL;
-    cxobj     *xn;
-
-    if (xmldb_create(h, "tmp") < 0)
-	goto done;
-    if (xmldb_copy(h, "running", "tmp") < 0)
-	goto done;
-    if ((fd = open(extraxml_file, O_RDONLY)) < 0){
-	clicon_err(OE_UNIX, errno, "open(%s)", extraxml_file);
-	goto done;
-    }
-    if (xml_parse_file(fd, &xt, "</clicon>") < 0)
-	goto done;
-    if ((xn = xml_child_i(xt, 0)) != NULL)
-	if (xmldb_put(h, "tmp", OP_MERGE, xn) < 0)
-	    goto done;
-    if (candidate_commit(h, "tmp") < 0)
-	goto done;
-    if (xmldb_delete(h, "tmp") < 0)
-	goto done;
-    retval = 0;
-done:
-    if (xt)
-	xml_free(xt);
-    if (fd != -1)
-	close(fd);
-    return retval;
-}
-
-static int
-candb_reset(clicon_handle h)
-{
-    int   retval = -1;
-
-    if (xmldb_copy(h, "running", "tmp") < 0)
-	goto done;
-    /* Request plugins to reset system state, eg initiate running from system 
-     * -R
-     */
-    if (plugin_reset_state(h, "tmp") < 0)  
-	goto done;
-    if (candidate_commit(h, "tmp") < 0)
-	goto done;
-    retval = 0;
-  done:
-    return retval;
-}
-
-/*! Legacy (old-style) startup mode where flags -IRCcr was used
- */
-static int
-fragmented_startup_mode(clicon_handle h,
-			char         *argv0,
-			int           argc,
-			char         *argv[],
-			int           reload_running,
-			int           init_rundb,
-			int           reset_state_candidate,
-			int           reset_state_running,
-			char         *extraxml_file)
-{
-    int retval = -1;
-
-    /* First check for startup config */
-    if (clicon_option_int(h, "CLICON_USE_STARTUP_CONFIG") > 0){
-	if (xmldb_exists(h, "startup") == 1){
-	    /* copy startup config -> running */
-	    if (xmldb_copy(h, "startup", "running") < 0)
-		goto done;
-	}
-	else
-	    if (db_reset(h, "running") < 0)
-		goto done;
-	if (xmldb_create(h, "candidate") < 0)
-	    goto done;
-	if (xmldb_copy(h, "running", "candidate") < 0)
-	    goto done;
-    }
-    /* If running exists and reload_running set, make a copy to candidate */
-    if (reload_running){
-	if (xmldb_exists(h, "running") != 1){
-	    clicon_log(LOG_NOTICE, "%s: -r (reload running) option given but no running_db found, proceeding without", __PROGRAM__);
-	    reload_running = 0; /* void it, so we dont commit candidate below */
-	}
-	else
-	    if (xmldb_copy(h, "running", "candidate") < 0)
-		goto done;
-    }
-    /* Init running db 
-     * -I or if it isnt there
-     */
-    if (init_rundb || xmldb_exists(h, "running") != 1){
-	if (db_reset(h, "running") < 0)
-	    goto done;
-    }
-    /* If candidate does not exist, create it from running */
-    if (xmldb_exists(h, "candidate") != 1){
-	if (xmldb_create(h, "candidate") < 0)
-	    goto done;
-	if (xmldb_copy(h, "running", "candidate") < 0)
-	    goto done;
-    }
-
-    /* Load plugins and call plugin_init() */
-    if (plugin_initiate(h) != 0) 
-	goto done;
-
-    if (reset_state_candidate){
-	if (candb_reset(h) < 0) 
-	    goto done;
-    }
-    else
-	if (reset_state_running){
-	    if (plugin_reset_state(h, "running") < 0) 
-		goto done;
-	}
-
-    if (plugin_start_useroptions(h, argv0, argc, argv) <0)
-	goto done;
-
-    if (reload_running){
-	/* This could be a failed validation, and we should not fail for that */
-	(void)candidate_commit(h, "candidate");
-    }
-
-    /* Have we specified a config file to load? eg 
-     * -c [<file>]
-     */
-    if (extraxml_file)
-	if (rundb_main(h, extraxml_file) < 0)
-	    goto done;
-    /* Initiate the shared candidate. */
-    if (xmldb_copy(h, "running", "candidate") < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-#endif /* BACKEND_STARTUP_COMPAT */
 
 /*! Merge xml in filename into database
  */
@@ -648,12 +483,6 @@ main(int argc, char **argv)
     int           foreground;
     int           once;
     enum startup_mode_t startup_mode;
-#ifdef BACKEND_STARTUP_COMPAT
-    int           init_rundb = 0;
-    int           reset_state_running = 0;
-    int           reset_state_candidate = 0;
-    int           reload_running = 0;
-#endif
     char         *extraxml_file;
     char         *config_group;
     char         *argv0 = argv[0];
@@ -769,20 +598,6 @@ main(int argc, char **argv)
 	case 'c': /* Load application config */
 	    extraxml_file = optarg;
 	    break;
-#ifdef BACKEND_STARTUP_COMPAT
-	case 'I': /* Initiate running db */
-	    init_rundb++;
-	    break;
-	case 'R': /* Reset state directly into running */
-	    reset_state_running++;
-	    break;
-	case 'C': /* Reset state into candidate and then commit it */
-	    reset_state_candidate++;
-	    break;
-	case 'r': /* Reload running */
-	    reload_running++;
-	    break;
-#endif /* BACKEND_STARTUP_COMPAT */
 	case 'g': /* config socket group */
 	    clicon_option_str_set(h, "CLICON_SOCK_GROUP", optarg);
 	    break;
@@ -890,19 +705,9 @@ main(int argc, char **argv)
 	    goto done;
     /* If startup mode is not defined, eg via OPTION or -s, assume old method */
     startup_mode = clicon_startup_mode(h);
-    if (startup_mode == -1){ 	/* Old style, fragmented mode, phase out */
-#ifdef BACKEND_STARTUP_COMPAT
-	if (fragmented_startup_mode(h,
-				    argv0, argc, argv,
-				    reload_running, init_rundb,
-				    reset_state_candidate, reset_state_running, 
-				    extraxml_file
-				    ) < 0)
-	    goto done;
-#else
+    if (startup_mode == -1){ 	
 	clicon_log(LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend.\n"); 
 	goto done;
-#endif	
     }
     else {
 	/* Init running db if it is not there
