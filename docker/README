@@ -1,3 +1,5 @@
+This dir is not updated
+
 This dir contains docker code - how to build clixon as docker containers
      cli     Build olofhagsand/clixon_cli container
      backend Build olofhagsand/clixon_backend container
