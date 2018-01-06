@@ -592,11 +592,8 @@ match_base_child(cxobj     *x0,
     }
     /* Get match */
     {
-	yang_node *y0;
 	int        yorder;
 	    
-	if ((y0 = yc->ys_parent) == NULL)
-	    goto done;
 	/* XXX: No we cant do this. on uppermost layer it can look like this:
 	 * config 
 	 * ximport-----ymod = ietf 
@@ -613,7 +610,12 @@ match_base_child(cxobj     *x0,
 		*x0cp = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
 	    }
 	    else{
+#if 1 /* This is just a warning, but a catcher for when xml tree is not
+	 populated with yang spec. If you see this, a previous inovation of,
+	 for example  xml_spec_populate() may be missing
+      */
 		clicon_log(LOG_WARNING, "%s No yspec", __FUNCTION__);
+#endif
 		*x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
 	    }
 #else

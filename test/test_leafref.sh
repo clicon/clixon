@@ -55,7 +55,7 @@ if [ $? -ne 0 ]; then
     err
 fi
 
-new "start backend"
+new "start backend  -s init -f $cfg -y $fyang"
 # start new backend
 sudo clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
@@ -102,7 +102,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><validate><source><candidat
 
 new "leafref discard-changes"
 expecteof "$clixon_netconf -qf $cfg" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
-exit
+
 new "cli leafref lo"
 expectfn "$clixon_cli -1f $cfg -y $fyang -l o set default-address absname lo" "^$"
 

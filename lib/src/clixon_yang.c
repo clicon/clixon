@@ -549,10 +549,8 @@ yang_find_myprefix(yang_stmt *ys)
 	clicon_err(OE_YANG, 0, "My yang module not found");
 	goto done;
     }
-    if ((yprefix = yang_find((yang_node*)ymod, Y_PREFIX, NULL)) == NULL){
-	clicon_err(OE_YANG, 0, "No prefix in my module");
+    if ((yprefix = yang_find((yang_node*)ymod, Y_PREFIX, NULL)) == NULL)
 	goto done;
-    }
     prefix = yprefix->ys_argument;
  done:
     return prefix;
@@ -729,7 +727,6 @@ yang_find_module_by_prefix(yang_stmt *ys,
 	clicon_err(OE_YANG, 0, "My yang spec not found");
 	goto done;
     }
-    myprefix = yang_find_myprefix(ys);
     if ((my_ymod = ys_module(ys)) == NULL){
 	clicon_err(OE_YANG, 0, "My yang module not found");
 	goto done;
@@ -741,7 +738,8 @@ yang_find_module_by_prefix(yang_stmt *ys,
 	goto done;
     }
 #endif
-    if (strcmp(myprefix, prefix) == 0){
+    myprefix = yang_find_myprefix(ys);
+    if (myprefix && strcmp(myprefix, prefix) == 0){
 	ymod = my_ymod;
 	goto done;
     }

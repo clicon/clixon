@@ -11,6 +11,8 @@
   * Clixon XML C-lib prior to 3.4.0. As enabled with `configure --with-xml-compat`
   
 ### Corrected Bugs
+* Corrected "No yang spec" printed on tty on leafref CLI usage
+
 ### Known issues
 
 ## 3.4.0 (1 January 2018)
