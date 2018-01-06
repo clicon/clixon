@@ -84,8 +84,7 @@ EOF
 	err
     fi
 
-    new "start backend"
-    # start new backend
+    new "start backend  -f $cfg -s $mode -c /tmp/config"
     sudo clixon_backend -f $cfg -s $mode -c /tmp/config
     if [ $? -ne 0 ]; then
 	err

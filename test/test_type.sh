@@ -69,8 +69,7 @@ sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err
 fi
-new "start backend"
-# start new backend
+new "start backend -s init -f $cfg -y $fyang"
 sudo clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
     err

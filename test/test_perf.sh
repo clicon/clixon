@@ -1,7 +1,7 @@
 #!/bin/bash
 # Scaling test
 
-number=1000
+number=5000
 req=100
 if [ $# = 0 ]; then
     number=1000
@@ -58,7 +58,6 @@ cat <<EOF > $cfg
 </config>
 EOF
 
-
 # kill old backend (if any)
 new "kill old backend"
 sudo clixon_backend -zf $cfg -y $fyang
@@ -100,7 +99,7 @@ expecteof "time -p $clixon_netconf -qf $cfg -y $fyang" "<rpc><commit><source><ca
 
 new "netconf commit same config again"
 expecteof "time -p $clixon_netconf -qf $cfg -y $fyang" "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
-exit
+
 new "netconf add one small config"
 expecteof "time -p $clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><y><a>x</a><b>y</b></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
