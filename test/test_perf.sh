@@ -14,12 +14,13 @@ else
     echo "Usage: $0 [<number> [<requests>]]"
     exit 1
 fi
-cfg=/tmp/scaling-conf.xml
-fyang=/tmp/scaling.yang
-fconfig=/tmp/config
 
-# include err() and new() functions
+# include err() and new() functions and creates $dir
 . ./lib.sh
+
+cfg=$dir/scaling-conf.xml
+fyang=$dir/scaling.yang
+fconfig=$dir/config
 
 
 # For memcheck
@@ -153,3 +154,5 @@ sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi
+
+rm -rf $dir

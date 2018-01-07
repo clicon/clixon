@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Test1: backend and cli basic functionality
 # Start backend server
 # Add an ethernet interface and an address
@@ -7,9 +8,25 @@
 # Set the mandatory type
 # Commit
 
-# include err() and new() functions
+# include err() and new() functions and creates $dir
 . ./lib.sh
-cfg=/usr/local/etc/routing.xml
+cfg=$dir/conf_yang.xml
+
+cat <<EOF > $cfg
+<config>
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/routing/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/routing/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>routing</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/routing/routing.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/routing/routing.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
+  <CLICON_XMLDB_DIR>/usr/local/var/routing</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
+</config>
+EOF
 
 # For memcheck
 #clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
@@ -104,3 +121,4 @@ if [ $? -ne 0 ]; then
     err "kill backend"
 fi
 
+rm -rf $dir

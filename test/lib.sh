@@ -1,7 +1,16 @@
 #!/bin/bash
+# Define test functions.
+# Create working dir as variable "dir"
 
 testnr=0
 testname=
+
+dir=/var/tmp/$0
+if [ ! -d $dir ]; then
+    mkdir $dir
+fi
+rm -rf $dir/*
+
 # error and exit, arg is optional extra errmsg
 err(){
   echo "Error in Test$testnr [$testname]:"

@@ -2,12 +2,13 @@
 # Test5: datastore tests. 
 # Just run a binary direct to datastore. No clixon.
 
-# include err() and new() functions
+# include err() and new() functions and creates $dir
 . ./lib.sh
+fyang=$dir/ietf-ip.yang
 
 datastore=datastore_client
 
-cat <<EOF > /tmp/ietf-ip.yang
+cat <<EOF > $fyang
 module ietf-ip{
    container x {
     list y {
@@ -46,14 +47,14 @@ db='<config><x><y><a>1</a><b>2</b><c>first-entry</c></y><y><a>1</a><b>3</b><c>se
 
 run(){
     name=$1
-    dir=/tmp/$name
+    mydir=$dir/$name
 
-    if [ ! -d $dir ]; then
-	mkdir $dir
+    if [ ! -d $mydir ]; then
+	mkdir $mydir
     fi
-    rm -rf $dir/*
+    rm -rf $mydir/*
 
-    conf="-d candidate -b $dir -p ../datastore/$name/$name.so -y /tmp -m ietf-ip"
+    conf="-d candidate -b $mydir -p ../datastore/$name/$name.so -y $dir -m ietf-ip"
     echo "conf:$conf"
     new "datastore $name init"
     expectfn "$datastore $conf init" ""
@@ -140,21 +141,23 @@ run(){
     expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
 
     new "datastore other db init"
-    expectfn "$datastore -d kalle -b $dir -p ../datastore/$name/$name.so -y /tmp -m ietf-ip init"
+    expectfn "$datastore -d kalle -b $mydir -p ../datastore/$name/$name.so -y $dir -m ietf-ip init"
 
     new "datastore other db copy"
     expectfn "$datastore $conf copy kalle" ""
 
-    diff $dir/kalle_db $dir/candidate_db
+    diff $mydir/kalle_db $mydir/candidate_db
 
     new "datastore lock"
     expectfn "$datastore $conf lock 756" ""
 
 #leaf-list
 
-    rm -rf $dir
+    rm -rf $mydir
 }
 
 #run keyvalue # cant get the put to work
 run text
+
+rm -rf $dir
 
