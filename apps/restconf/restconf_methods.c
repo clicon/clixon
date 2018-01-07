@@ -140,82 +140,139 @@ api_data_options(clicon_handle h,
     return 0;
 }
 
-/*! Generic GET (both HEAD and GET)
+/*! Return error on get/head request
+ * @param[in]  h      Clixon handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  xerr   XML error message from backend
  */
 static int
-api_data_get_gen(clicon_handle h,
+api_data_get_err(clicon_handle h,
 		 FCGX_Request *r,
-		 cvec         *pcvec,
-		 int           pi,
-		 cvec         *qvec,
-		 int           head)
+		 cxobj     *xerr)
 {
     int        retval = -1;
-    cbuf      *path = NULL;
+    cbuf      *cbj = NULL;
+    cxobj     *xtag;
+    int        code;	
+    const char *reason_phrase;
+
+    if ((cbj = cbuf_new()) == NULL)
+	goto done;
+    if ((xtag = xpath_first(xerr, "/error-tag")) == NULL){
+	notfound(r); /* bad reply? */
+	goto done;
+    }
+    code = restconf_err2code(xml_body(xtag));
+    if ((reason_phrase = restconf_code2reason(code)) == NULL)
+	reason_phrase="";
+    clicon_debug(1, "%s code:%d reason phrase:%s", 
+		 __FUNCTION__, code, reason_phrase);
+
+    if (xml_name_set(xerr, "error") < 0)
+	goto done;
+    if (xml2json_cbuf(cbj, xerr, 1) < 0)
+	goto done;
+    FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
+    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+json\r\n\r\n");
+    FCGX_FPrintF(r->out, "\r\n");
+    FCGX_FPrintF(r->out, "{\r\n");
+    FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : {\r\n");
+    FCGX_FPrintF(r->out, "    %s", cbuf_get(cbj));
+    FCGX_FPrintF(r->out, "  }\r\n");
+    FCGX_FPrintF(r->out, "}\r\n");
+    retval = 0;
+ done:
+    if (cbj)
+        cbuf_free(cbj);
+    return retval;
+}
+
+/*! Generic GET (both HEAD and GET)
+ * According to restconf 
+ * @param[in]  h      Clixon handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
+ * @param[in]  pi     Offset, where path starts  
+ * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  head   If 1 is HEAD, otherwise GET
+ * @code
+ *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
+ * @endcode                                     
+ * XXX: cant find a way to use Accept request field to choose Content-Type  
+ *      I would like to support both xml and json.           
+ * Request may contain                                        
+ *     Accept: application/yang.data+json,application/yang.data+xml   
+ * Response contains one of:                           
+ *     Content-Type: application/yang-data+xml    
+ *     Content-Type: application/yang-data+json  
+ * NOTE: If a retrieval request for a data resource representing a YANG leaf-
+ * list or list object identifies more than one instance, and XML
+ * encoding is used in the response, then an error response containing a
+ * "400 Bad Request" status-line MUST be returned by the server.
+ * Netconf: <get-config>, <get>                        
+ */
+static int
+api_data_get2(clicon_handle h,
+	      FCGX_Request *r,
+	      cvec         *pcvec,
+	      int           pi,
+	      cvec         *qvec,
+	      int           head)
+{
+    int        retval = -1;
+    cbuf      *cbpath = NULL;
+    char      *path;
     cbuf      *cbx = NULL;
-    cxobj    **vec = NULL;
     yang_spec *yspec;
     cxobj     *xret = NULL;
     cxobj     *xerr;
-    cxobj     *xtag;
-    cbuf      *cbj = NULL;;
-    int        code;
-    const char *reason_phrase;
     char      *media_accept;
     int        use_xml = 0; /* By default use JSON */
+    cxobj    **xvec = NULL;
+    size_t     xlen;
+    int        pretty;
+    int        i;
+    cxobj     *x;
 
     clicon_debug(1, "%s", __FUNCTION__);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
     if (strcmp(media_accept, "application/yang-data+xml")==0)
 	use_xml++;
     yspec = clicon_dbspec_yang(h);
-    if ((path = cbuf_new()) == NULL)
+    if ((cbpath = cbuf_new()) == NULL)
         goto done;
-    cprintf(path, "/");
-    if (api_path2xpath_cvv(yspec, pcvec, pi, path) < 0){
+    cprintf(cbpath, "/");
+    clicon_debug(1, "%s pi:%d", __FUNCTION__, pi);
+    /* We know "data" is element pi-1 */
+    if (api_path2xpath_cvv(yspec, pcvec, pi, cbpath) < 0){
 	notfound(r);
 	goto done;
     }
-    clicon_debug(1, "%s path:%s", __FUNCTION__, cbuf_get(path));
-    if (clicon_rpc_get(h, cbuf_get(path), &xret) < 0){
+    path = cbuf_get(cbpath);
+    clicon_debug(1, "%s path:%s", __FUNCTION__, path);
+    if (clicon_rpc_get(h, path, &xret) < 0){
 	notfound(r);
 	goto done;
     }
-#if 0 /* DEBUG */
+    /* We get return via netconf which is complete tree from root 
+     * We need to cut that tree to only the object.
+     */
+#if 1 /* DEBUG */
     {
 	cbuf *cb = cbuf_new();
-	xml2json_cbuf(cb, xret, 1);
+	clicon_xml2cbuf(cb, xret, 0, 0);
 	clicon_debug(1, "%s xret:%s", __FUNCTION__, cbuf_get(cb));
 	cbuf_free(cb);
     }
 #endif
+    /* Check if error return */
     if ((xerr = xpath_first(xret, "/rpc-error")) != NULL){
-	if ((cbj = cbuf_new()) == NULL)
+	if (api_data_get_err(h, r, xerr) < 0)
 	    goto done;
-	if ((xtag = xpath_first(xerr, "/error-tag")) == NULL){
-	    notfound(r); /* bad reply? */
-	    goto done;
-	}
-	code = restconf_err2code(xml_body(xtag));
-	if ((reason_phrase = restconf_code2reason(code)) == NULL)
-	    reason_phrase="";
-	clicon_debug(1, "%s code:%d reason phrase:%s", 
-		     __FUNCTION__, code, reason_phrase);
-
-	if (xml_name_set(xerr, "error") < 0)
-	    goto done;
-	if (xml2json_cbuf(cbj, xerr, 1) < 0)
-	    goto done;
-	FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
-	FCGX_FPrintF(r->out, "Content-Type: application/yang-data+json\r\n\r\n");
-	FCGX_FPrintF(r->out, "\r\n");
-	FCGX_FPrintF(r->out, "{\r\n");
-	FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : {\r\n");
-	FCGX_FPrintF(r->out, "    %s", cbuf_get(cbj));
-	FCGX_FPrintF(r->out, "  }\r\n");
-	FCGX_FPrintF(r->out, "}\r\n");
 	goto ok;
     }
+    /* Normal return, no error */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     FCGX_SetExitStatus(200, r->out); /* OK */
@@ -223,17 +280,39 @@ api_data_get_gen(clicon_handle h,
     FCGX_FPrintF(r->out, "\r\n");
     if (head)
 	goto ok;
-    clicon_debug(1, "%s name:%s child:%d", __FUNCTION__, xml_name(xret), xml_child_nr(xret));
-
-    clicon_debug(1, "%s xretnr:%d", __FUNCTION__, xml_child_nr(xret));
-    if (use_xml){
-	if (clicon_xml2cbuf(cbx, xret, 0, 1) < 0) /* Dont print top object?  */
-	    goto done;
+    if (path==NULL || strcmp(path,"/")==0){ /* Special case: data root */
+	if (use_xml){
+	    if (clicon_xml2cbuf(cbx, xret, 0, pretty) < 0) /* Dont print top object?  */
+		goto done;
+	}
+	else{
+	    if (xml2json_cbuf(cbx, xret, pretty) < 0)
+		goto done;
+	}
     }
     else{
-	vec = xml_childvec_get(xret);
-	if (xml2json_cbuf_vec(cbx, vec, xml_child_nr(xret), 0) < 0)
+	if (xpath_vec(xret, path, &xvec, &xlen) < 0)
 	    goto done;
+	clicon_debug(1, "%s: xpath:%s xlen:%d", __FUNCTION__, path, xlen);
+	for (i=0; i<xlen; i++){
+	    x = xvec[i];
+#if 1 /* DEBUG */
+	    {
+		cbuf *cb = cbuf_new();
+		clicon_xml2cbuf(cb, x, 0, 0);
+		clicon_debug(1, "%s x:%s", __FUNCTION__, cbuf_get(cb));
+		cbuf_free(cb);
+	    }
+#endif
+	    if (use_xml){
+		if (clicon_xml2cbuf(cbx, x, 0, pretty) < 0) /* Dont print top object?  */
+		    goto done;
+	    }
+	    else{
+		if (xml2json_cbuf(cbx, x, pretty) < 0)
+		    goto done;
+	    }
+	}
     }
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
@@ -244,12 +323,12 @@ api_data_get_gen(clicon_handle h,
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cbx)
         cbuf_free(cbx);
-    if (cbj)
-        cbuf_free(cbj);
-    if (path)
-	cbuf_free(path);
+    if (cbpath)
+	cbuf_free(cbpath);
     if (xret)
 	xml_free(xret);
+    if (xvec)
+	free(xvec);
     return retval;
 }
 
@@ -271,7 +350,7 @@ api_data_head(clicon_handle h,
              int           pi,
              cvec         *qvec)
 {
-    return api_data_get_gen(h, r, pcvec, pi, qvec, 1);
+    return api_data_get2(h, r, pcvec, pi, qvec, 1);
 }
 
 /*! REST GET method
@@ -304,7 +383,7 @@ api_data_get(clicon_handle h,
              int           pi,
              cvec         *qvec)
 {
-    return api_data_get_gen(h, r, pcvec, pi, qvec, 0);
+    return api_data_get2(h, r, pcvec, pi, qvec, 0);
 }
 
 /*! REST POST  method 

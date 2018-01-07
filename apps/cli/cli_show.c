@@ -88,7 +88,6 @@
  * @param[out]  commands vector of function pointers to callback functions
  * @param[out]  helptxt  vector of pointers to helptexts
  * @see cli_expand_var_generate  This is where arg is generated
- * XXX: helptexts?
  */
 int
 expand_dbvar(void   *h, 

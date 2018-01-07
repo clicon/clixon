@@ -11,7 +11,7 @@ module clixon-config {
     description
       "Clixon configuration file
        ***** BEGIN LICENSE BLOCK *****
-       Copyright (C) 2009-2017 Olof Hagsand and Benny Holmgren
+       Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
        
        This file is part of CLIXON
 
@@ -129,6 +129,19 @@ module clixon-config {
 	    description
 		"FastCGI unix socket. Should be specified in webserver
          	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock";
+	}
+	leaf CLICON_RESTCONF_PRETTY {
+	    type boolean;
+	    default true;
+	    description
+		"Restconf return value pretty print. 
+                 Restconf clients may add HTTP header:
+                      Accept: application/yang-data+json, or
+                      Accept: application/yang-data+xml
+                 to get return value in XML or JSON. 
+                 RFC 8040 examples print XML and JSON in pretty-printed form.
+                 Setting this value to false makes restconf return not pretty-printed
+                 which may be desirable for performance or tests";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;

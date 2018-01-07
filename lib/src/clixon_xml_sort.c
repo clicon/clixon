@@ -549,7 +549,8 @@ match_base_child(cxobj     *x0,
     char     **keyval = NULL;
     char     **keyvec = NULL;
     int        i;
-
+    int        yorder;
+    
     *x0cp = NULL; /* return value */
     switch (yc->ys_keyword){
     case Y_CONTAINER: 	/* Equal regardless */
@@ -591,51 +592,21 @@ match_base_child(cxobj     *x0,
 	break;
     }
     /* Get match */
-    {
-	int        yorder;
-	    
-	/* XXX: No we cant do this. on uppermost layer it can look like this:
-	 * config 
-	 * ximport-----ymod = ietf 
-	 * interfaces--ymod = example
-	 * Which means yang order can be different for different children in the
-	 * same childvec.
-	 */
-	if (xml_child_sort==0)
-	    *x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
+    if (xml_child_sort==0)
+	*x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
+    else{
+	if (xml_child_nr(x0)==0 || xml_spec(xml_child_i(x0,0))!=NULL){
+	    yorder = yang_order(yc);
+	    *x0cp = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
+	}
 	else{
-#if 1
-	    if (xml_child_nr(x0)==0 || xml_spec(xml_child_i(x0,0))!=NULL){
-		yorder = yang_order(yc);
-		*x0cp = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
-	    }
-	    else{
 #if 1 /* This is just a warning, but a catcher for when xml tree is not
-	 populated with yang spec. If you see this, a previous inovation of,
+	 populated with yang spec. If you see this, a previous invacation of,
 	 for example  xml_spec_populate() may be missing
       */
-		clicon_log(LOG_WARNING, "%s No yspec", __FUNCTION__);
+	    clicon_log(LOG_WARNING, "%s No yspec", __FUNCTION__);
 #endif
-		*x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
-	    }
-#else
-	    cxobj *xx;
-
-
-
 	    *x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
-	    if (xml_child_nr(x0) && xml_spec(xml_child_i(x0,0))!=NULL){
-		xx = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
-		if (xx!=*x0cp){
-		    clicon_log(LOG_WARNING, "%s mismatch", __FUNCTION__);
-		    fprintf(stderr, "mismatch\n");
-		    xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
-		    assert(0);
-		}
-	    }
-	    else
-		clicon_log(LOG_WARNING, "%s No yspec", __FUNCTION__);
-#endif
 	}
     }
  ok:

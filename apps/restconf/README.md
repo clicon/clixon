@@ -9,6 +9,8 @@ There is currently (2017) a [RFC 8040: RESTCONF Protocol](https://tools.ietf.org
 including:
 - query parameters (section 4.9)
 - notifications (sec 6)
+- GET /restconf/ (sec 3.3)
+- GET /restconf/yang-library-version (sec 3.3.3)
 - only rudimentary error reporting exists (sec 7)
 
 ### Installation using Nginx
