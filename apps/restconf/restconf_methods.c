@@ -294,24 +294,16 @@ api_data_get2(clicon_handle h,
 	if (xpath_vec(xret, path, &xvec, &xlen) < 0)
 	    goto done;
 	clicon_debug(1, "%s: xpath:%s xlen:%d", __FUNCTION__, path, xlen);
-	for (i=0; i<xlen; i++){
-	    x = xvec[i];
-#if 1 /* DEBUG */
-	    {
-		cbuf *cb = cbuf_new();
-		clicon_xml2cbuf(cb, x, 0, 0);
-		clicon_debug(1, "%s x:%s", __FUNCTION__, cbuf_get(cb));
-		cbuf_free(cb);
-	    }
-#endif
-	    if (use_xml){
+	if (use_xml){
+	    for (i=0; i<xlen; i++){
+		x = xvec[i];
 		if (clicon_xml2cbuf(cbx, x, 0, pretty) < 0) /* Dont print top object?  */
 		    goto done;
 	    }
-	    else{
-		if (xml2json_cbuf(cbx, x, pretty) < 0)
-		    goto done;
-	    }
+	}
+	else
+	    if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
+		goto done;
 	}
     }
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
