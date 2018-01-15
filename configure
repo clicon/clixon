@@ -709,6 +709,7 @@ with_cligen
 with_restconf
 with_keyvalue
 with_qdbm
+with_configfile
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1347,6 +1348,7 @@ Optional Packages:
   --without-restconf      disable support for restconf
   --with-keyvalue         enable support for key-value xmldb datastore
   --with-qdbm=dir         Use QDBM here, if keyvalue
+  --with-configfile       set default path to config file
 
 Some influential environment variables:
   CC          C compiler command
@@ -4045,6 +4047,16 @@ fi
 
 fi
 
+# Set default config file location
+
+# Check whether --with-configfile was given.
+if test "${with_configfile+set}" = set; then :
+  withval=$with_configfile; DEFAULT_CONFIG="$withval"
+else
+  DEFAULT_CONFIG="/etc/clixon.xml"
+fi
+
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for crypt in -lcrypt" >&5
 $as_echo_n "checking for crypt in -lcrypt... " >&6; }
 if ${ac_cv_lib_crypt_crypt+:} false; then :
@@ -4287,6 +4299,13 @@ done
 
 cat >>confdefs.h <<_ACEOF
 #define CLIXON_DATADIR "${prefix}/share/clixon"
+_ACEOF
+
+
+# Default location for config file
+
+cat >>confdefs.h <<_ACEOF
+#define CLIXON_DEFAULT_CONFIG "${DEFAULT_CONFIG}"
 _ACEOF
 
 

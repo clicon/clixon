@@ -3,6 +3,9 @@
 /* Clixon data dir for system yang files etc */
 #undef CLIXON_DATADIR
 
+/* Location for apps to find default config file */
+#undef CLIXON_DEFAULT_CONFIG
+
 /* Clixon major release */
 #undef CLIXON_VERSION_MAJOR
 
