@@ -304,8 +304,8 @@ api_data_get2(clicon_handle h,
 	else
 	    if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
 		goto done;
-	}
     }
+
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
     FCGX_FPrintF(r->out, "\r\n\r\n");
