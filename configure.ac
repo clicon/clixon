@@ -161,6 +161,12 @@ if test "x${with_keyvalue}" == xyes; then
    AC_CONFIG_FILES(datastore/keyvalue/Makefile)
 fi
 
+# Set default config file location
+AC_ARG_WITH([configfile],
+	    [AS_HELP_STRING([--with-configfile],[set default path to config file])],
+	    [DEFAULT_CONFIG="$withval"],
+	    [DEFAULT_CONFIG="/etc/clixon.xml"])
+
 AC_CHECK_LIB(crypt, crypt)
 AC_CHECK_HEADERS(crypt.h)
 
@@ -181,6 +187,9 @@ AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versi
 # This is to find clixon system files in the source code.
 # same as clixon_DATADIR defined in clixon.mk.cpp for Makefiles
 AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${prefix}/share/clixon", [Clixon data dir for system yang files etc])
+
+# Default location for config file
+AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${DEFAULT_CONFIG}",[Location for apps to find default config file])
 
 AH_BOTTOM([#include <clixon_custom.h>])
 

@@ -202,8 +202,7 @@ clicon_options_main(clicon_handle h)
      * Set configure file if not set by command-line above
      */
     if (!hash_lookup(copt, "CLICON_CONFIGFILE")){ 
-	clicon_err(OE_CFG, 0, "CLICON_CONFIGFILE (-f) not set");
-	goto done;
+	clicon_option_str_set(h, "CLICON_CONFIGFILE", CLIXON_DEFAULT_CONFIG);
     }
     configfile = hash_value(copt, "CLICON_CONFIGFILE", NULL);
     clicon_debug(1, "CLICON_CONFIGFILE=%s", configfile);
