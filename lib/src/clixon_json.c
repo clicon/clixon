@@ -623,7 +623,7 @@ json_parse(char       *str,
  * @param[in]  str   String containing JSON
  * @param[out] xt    On success a top of XML parse tree is created with name 'top'
  * @retval  0  OK
- * @retval -1  Error with clicon_err called
+ * @retval -1  Error with clicon_err called. Includes parse errors
  *
  * @code
  *  cxobj *cx = NULL;

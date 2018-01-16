@@ -11,8 +11,13 @@
   * Clixon XML C-lib prior to 3.4.0. As enabled with `configure --with-xml-compat`
   
 * new configuration option: CLICON_RESTCONF_PRETTY
-* Changed RESTCONF GET to return object referenced. ie, GET /restconf/data/X returns X.
+* Changed RESTCONF GET to return object referenced. ie, GET /restconf/data/X returns X. Thanks Stephen Jones for getting this right.
 
+* Default configure file added by Matt Smith. Config file is selected in the following priority order:
+  * Provide -f option when starting a program.
+  * Provide --with-configfile=FILE when configuring
+  * /etc/clixon.xml
+	
 ### Corrected Bugs
 * Corrected "No yang spec" printed on tty on leafref CLI usage
 

@@ -160,7 +160,7 @@ api_data_get_err(clicon_handle h,
 	goto done;
     if ((xtag = xpath_first(xerr, "/error-tag")) == NULL){
 	notfound(r); /* bad reply? */
-	goto done;
+	goto ok;
     }
     code = restconf_err2code(xml_body(xtag));
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
@@ -180,6 +180,7 @@ api_data_get_err(clicon_handle h,
     FCGX_FPrintF(r->out, "    %s", cbuf_get(cbj));
     FCGX_FPrintF(r->out, "  }\r\n");
     FCGX_FPrintF(r->out, "}\r\n");
+ ok:
     retval = 0;
  done:
     if (cbj)
@@ -247,13 +248,13 @@ api_data_get2(clicon_handle h,
     /* We know "data" is element pi-1 */
     if (api_path2xpath_cvv(yspec, pcvec, pi, cbpath) < 0){
 	notfound(r);
-	goto done;
+	goto ok;
     }
     path = cbuf_get(cbpath);
     clicon_debug(1, "%s path:%s", __FUNCTION__, path);
     if (clicon_rpc_get(h, path, &xret) < 0){
 	notfound(r);
-	goto done;
+	goto ok;
     }
     /* We get return via netconf which is complete tree from root 
      * We need to cut that tree to only the object.
@@ -431,7 +432,8 @@ api_data_post(clicon_handle h,
 		 __FUNCTION__, 
 		 api_path, data);
     media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
-    if (strcmp(media_content_type, "application/yang-data+xml")==0)
+    if (media_content_type &&
+	strcmp(media_content_type, "application/yang-data+xml")==0)
 	parse_xml++;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -443,18 +445,19 @@ api_data_post(clicon_handle h,
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
+    /* xbot is resulting xml tree on exit */
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
     if (parse_xml){
 	if (xml_parse_string(data, NULL, &xdata) < 0){
-	    clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
-	    goto done;
+	    badrequest(r);
+	    goto ok;
 	}
     }
     else if (json_parse_str(data, &xdata) < 0){
-	clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
-	goto done;
+	    badrequest(r);
+	    goto ok;
     }
     /* Add xdata to xbot */
     x = NULL;
@@ -477,14 +480,13 @@ api_data_post(clicon_handle h,
 			       cbuf_get(cbx)) < 0){
 	//	notfound(r); /* XXX */
 	conflict(r);
-	goto done;
+	goto ok;
     }
     if (clicon_rpc_validate(h, "candidate") < 0){
 	if (clicon_rpc_discard_changes(h) < 0)
 	    goto done;
 	badrequest(r);
-	retval = 0;
-	goto done;
+	goto ok;
     }
     if (clicon_rpc_commit(h) < 0)
 	goto done;
@@ -492,6 +494,7 @@ api_data_post(clicon_handle h,
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     // XXX api_path can be null    FCGX_FPrintF(r->out, "Location: %s\r\n", api_path);
     FCGX_FPrintF(r->out, "\r\n");
+ ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -550,7 +553,8 @@ api_data_put(clicon_handle h,
 		 __FUNCTION__, 
 		 api_path, data);
     media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
-    if (strcmp(media_content_type, "application/yang-data+xml")==0)
+    if (media_content_type &&
+	strcmp(media_content_type, "application/yang-data+xml")==0)
 	parse_xml++;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -567,18 +571,17 @@ api_data_put(clicon_handle h,
     /* Parse input data as json or xml into xml */
     if (parse_xml){
 	if (xml_parse_string(data, NULL, &xdata) < 0){
-	    clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
-	    goto done;
+	    badrequest(r);
+	    goto ok;
 	}
     }
     else if (json_parse_str(data, &xdata) < 0){
-	clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
-	goto done;
+	badrequest(r);
+	goto ok;
     }
     if (xml_child_nr(xdata) != 1){
 	badrequest(r);
-	retval = 0;
-	goto done;
+	goto ok;
     }
     x = xml_child_i(xdata,0);
     if ((xa = xml_new("operation", x, NULL)) == NULL)
@@ -600,21 +603,21 @@ api_data_put(clicon_handle h,
 			       OP_NONE,
 			       cbuf_get(cbx)) < 0){
 	notfound(r);
-	goto done;
+	goto ok;
     }
     
     if (clicon_rpc_validate(h, "candidate") < 0){
 	if (clicon_rpc_discard_changes(h) < 0)
 	    goto done;
 	badrequest(r);
-	retval = 0;
-	goto done;
+	goto ok;
     }
     if (clicon_rpc_commit(h) < 0)
 	goto done;
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");
+ ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -703,13 +706,14 @@ api_data_delete(clicon_handle h,
 			       OP_NONE, 
 			       cbuf_get(cbx)) < 0){
 	notfound(r);
-	goto done;
+	goto ok;
     }
     if (clicon_rpc_commit(h) < 0)
 	goto done;
     FCGX_SetExitStatus(201, r->out);
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");
+ ok:
     retval = 0;
  done:
     if (cbx)
@@ -762,12 +766,15 @@ api_operation_post(clicon_handle h,
     int        parse_xml = 0; /* By default expect and parse JSON */
     char      *media_accept;
     int        use_xml = 0; /* By default return JSON */
+    int        pretty;
 
     clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, path);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     if ((media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp)) &&
 	strcmp(media_accept, "application/yang-data+xml")==0)
 	use_xml++;
-    if ((media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp)) &&
+    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
+    if (media_content_type &&
 	strcmp(media_content_type, "application/yang-data+xml")==0)
 	parse_xml++;
     clicon_debug(1, "%s accept:\"%s\" content-type:\"%s\"", 
@@ -785,7 +792,7 @@ api_operation_post(clicon_handle h,
 	goto done;
     if (yrpc == NULL){
 	retval = notfound(r); 
-	goto done;
+	goto ok;
     }
     /* Create an xml message: 
      * <"rpc"><operation><input-args>...
@@ -801,13 +808,13 @@ api_operation_post(clicon_handle h,
 	/* Parse input data as json or xml into xml */
 	if (parse_xml){
 	    if (xml_parse_string(data, NULL, &xdata) < 0){
-		clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
-		goto done;
+		badrequest(r);
+		goto ok;
 	    }
 	}
 	else if (json_parse_str(data, &xdata) < 0){
-	    clicon_debug(1, "%s json parse fail: %s", __FUNCTION__, data);
-	    goto done;
+	    badrequest(r);
+	    goto ok;
 	}
 	/* xdata should have format <top><input> */
 	if ((xinput = xpath_first(xdata, "/input")) != NULL){
@@ -854,9 +861,10 @@ api_operation_post(clicon_handle h,
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     xoutput=xpath_first(xret, "/");
+    xml_name_set(xoutput, "output");
     if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL &&
 	xoutput){
-	xml_name_set(xoutput, "output");
+
 	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
 	cbuf_reset(cbx);
 	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
@@ -874,16 +882,17 @@ api_operation_post(clicon_handle h,
     FCGX_FPrintF(r->out, "\r\n");
     if (xoutput){
 	if (use_xml){
-	    if (clicon_xml2cbuf(cbx, xoutput, 0, 1) < 0)
+	    if (clicon_xml2cbuf(cbx, xoutput, 0, pretty) < 0)
 		goto done;
 	}
 	else
-	    if (xml2json_cbuf(cbx, xoutput, 1) < 0)
+	    if (xml2json_cbuf(cbx, xoutput, pretty) < 0)
 		goto done;
 	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
 	FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
 	FCGX_FPrintF(r->out, "\r\n\r\n");
     }
+ ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);

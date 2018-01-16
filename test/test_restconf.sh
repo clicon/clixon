@@ -7,11 +7,12 @@
 cfg=$dir/conf.xml
 fyang=$dir/restconf.yang
 
+#  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MODULE_MAIN>$fyang</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLISPEC_DIR>/usr/local/lib/routing/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/routing/backend</CLICON_BACKEND_DIR>
   <CLICON_RESTCONF_DIR>/usr/local/lib/routing/restconf</CLICON_RESTCONF_DIR>
@@ -28,6 +29,7 @@ EOF
 
 cat <<EOF > $fyang
 module example{
+    prefix ex;
     import ietf-ip {
       prefix ip;
     }
@@ -37,6 +39,16 @@ module example{
     import ietf-inet-types {
        prefix "inet";
        revision-date "2013-07-15";
+    }
+    rpc empty {
+    }
+    rpc input {
+       input {
+       }
+    }
+    rpc output {
+       output {
+       }
     }
 }
 EOF
@@ -60,7 +72,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -Df $cfg # -D
+sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -Df $cfg -D
 
 sleep 1
 
@@ -76,12 +88,14 @@ expectfn "curl -sS -I http://localhost/restconf/data" "HTTP/1.1 200 OK"
 new "restconf root discovery"
 expectfn "curl  -sS -X GET http://localhost/.well-known/host-meta" "<Link rel='restconf' href='/restconf'/>"
 
+new "restconf empty rpc"
+expectfn 'curl -sS -X POST -d {"input":{"name":""}} http://localhost/restconf/operations/ex:empty' '{"output": null}'
+
 #new "restconf get restconf json XXX"
 #expectfn "curl -sSG http://localhost/restconf" "{\"restconf\" : $state }"
 
 #new "restconf get restconf/yang-library-version json XXX"
 #expectfn "curl -sSG http://localhost/restconf/yang-library-version" "{\"restconf\" : $state }"
-
 
 new "restconf get empty config + state json"
 expectfn "curl -sSG http://localhost/restconf/data" "{\"data\": $state}"
@@ -145,6 +159,9 @@ expectfn 'curl -sS -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabl
 new "Add leaf description using POST"
 expectfn 'curl -sS -X POST -d {"description":"The-first-interface"} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
+new "Add nothing using POST"
+expectfn 'curl -sS -X POST http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "data is in some way badly formed"
+
 new "restconf Check description added"
 expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","description": "The-first-interface","type": "eth","enabled": "true"}}
 $'
@@ -165,15 +182,13 @@ new "restconf get subtree"
 expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
 $'
 
-new "restconf operation rpc using POST json"
-expectfn 'curl -sS -X POST -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '{ "output": { "route": { "address-family": "ipv4", "next-hop": { "next-hop-list": "2.3.4.5" } } } } '
-
-exit # XXX
+new "restconf rpc using POST json"
+expectfn 'curl -sS -X POST -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '{"output": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"}}}}'
 
 new "restconf rpc using POST xml"
 # Cant get shell macros to work, inline matching from lib.sh
 ret=$(curl -sS -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/rt:fib-route)
-expect="<output> <route> <address-family>ipv4</address-family> <next-hop> <next-hop-list>2.3.4.5</next-hop-li t> </next-hop> </route> </output> "
+expect="<output><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop></route></output>"
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"

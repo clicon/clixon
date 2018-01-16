@@ -1750,6 +1750,7 @@ xml_merge1(cxobj              *x0,
 /*! Merge XML trees x1 into x0 according to yang spec yspec
  * @note both x0 and x1 need to be top-level trees
  * @see text_modify_top as more generic variant (in datastore text)
+ * @note returns -1 if YANG do not match, you may want to have a softer error
  */
 int
 xml_merge(cxobj     *x0,

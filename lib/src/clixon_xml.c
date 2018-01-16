@@ -1355,8 +1355,8 @@ xml_parse_file(int        fd,
  * @param[in]     str   String containing XML definition. 
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to XML parse tree. If empty will be created.
- * @retval        0  OK
- * @retval       -1  Error with clicon_err called
+ * @retval        0     OK
+ * @retval       -1     Error with clicon_err called. Includes parse error
  *
  * @code
  *  cxobj *xt = NULL;
