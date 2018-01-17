@@ -587,12 +587,13 @@ api_data_put(clicon_handle h,
     if ((xa = xml_new("operation", x, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
-    if (xml_value_set(xa,  xml_operation2str(op)) < 0)
+    if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
-    /* Replace xbot with x */    
+    /* XXX Special case path=/restconf/data xml_name(x) == data */
+    /* Replace xbot with x */
     xp = xml_parent(xbot);
     xml_purge(xbot);
-    if (xml_addsub(xp, x) < 0) 	
+    if (xml_addsub(xp, x) < 0)
 	goto done;
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
@@ -605,7 +606,6 @@ api_data_put(clicon_handle h,
 	notfound(r);
 	goto ok;
     }
-    
     if (clicon_rpc_validate(h, "candidate") < 0){
 	if (clicon_rpc_discard_changes(h) < 0)
 	    goto done;

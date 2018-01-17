@@ -595,7 +595,7 @@ xml_find(cxobj *x_up,
 }
 
 /*! Append xc as child to xp. Remove xc from previous parent.
- * @param[in] xp  Parent xml node
+ * @param[in] xp  Parent xml node. If NULL just remove from old parent.
  * @param[in] xc  Child xml node to insert under xp
  * @retval    0   OK
  * @retval    -1  Error
@@ -618,10 +618,12 @@ xml_addsub(cxobj *xp,
 	    xml_child_rm(oldp, i);
     }
     /* Add xc to new parent */
-    if (xml_child_append(xp, xc) < 0)
-	return -1;
-    /* Set new parent in child */
-    xml_parent_set(xc, xp); 
+    if (xp){
+	if (xml_child_append(xp, xc) < 0)
+	    return -1;
+	/* Set new parent in child */
+	xml_parent_set(xc, xp);
+    }
     return 0;
 }
 
