@@ -73,7 +73,7 @@ if [ $? -ne 0 ]; then
     err
 fi
 
-new "generate large list config"
+new "generate 'large' config with $number list entries"
 echo -n "<rpc><edit-config><target><candidate/></target><config><x>" > $fconfig
 for (( i=0; i<$number; i++ )); do  
     echo -n "<y><a>$i</a><b>$i</b></y>" >> $fconfig
@@ -83,12 +83,12 @@ echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig
 # Just for manual dbg
 echo "$clixon_netconf -qf $cfg  -y $fyang"
 
-new "netconf edit large config"
+new "netconf write large config"
 expecteof_file "time -p $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 #echo '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' | $clixon_netconf -qf $cfg  -y $fyang 
 
-new "netconf edit large config again"
+new "netconf write large config again"
 expecteof_file "time -p $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 #echo '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' | $clixon_netconf -qf $cfg  -y $fyang 
@@ -98,10 +98,10 @@ rm $fconfig
 new "netconf commit large config"
 expecteof "time -p $clixon_netconf -qf $cfg -y $fyang" "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
-new "netconf commit same config again"
+new "netconf commit large config again"
 expecteof "time -p $clixon_netconf -qf $cfg -y $fyang" "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
-new "netconf add one small config"
+new "netconf add small (1 entry) config"
 expecteof "time -p $clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><y><a>x</a><b>y</b></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf add $req small config"
