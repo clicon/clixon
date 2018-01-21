@@ -88,14 +88,14 @@ expectfn "curl -sS -I http://localhost/restconf/data" "HTTP/1.1 200 OK"
 new "restconf root discovery"
 expectfn "curl  -sS -X GET http://localhost/.well-known/host-meta" "<Link rel='restconf' href='/restconf'/>"
 
+new "restconf get restconf json"
+expectfn "curl -sSG http://localhost/restconf" '{"data": null,"operations": null,"yang-library-version": "2016-06-21"}}'
+
+new "restconf get restconf/yang-library-version json"
+expectfn "curl -sSG http://localhost/restconf/yang-library-version" '{"yang-library-version": "2016-06-21"}'
+
 new "restconf empty rpc"
 expectfn 'curl -sS -X POST -d {"input":{"name":""}} http://localhost/restconf/operations/ex:empty' '{"output": null}'
-
-#new "restconf get restconf json XXX"
-#expectfn "curl -sSG http://localhost/restconf" "{\"restconf\" : $state }"
-
-#new "restconf get restconf/yang-library-version json XXX"
-#expectfn "curl -sSG http://localhost/restconf/yang-library-version" "{\"restconf\" : $state }"
 
 new "restconf get empty config + state json"
 expectfn "curl -sSG http://localhost/restconf/data" "{\"data\": $state}"

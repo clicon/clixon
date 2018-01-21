@@ -1654,9 +1654,9 @@ api_path2xml(char       *api_path,
     if (nvec > 1 && !strlen(vec[nvec-1]))
 	nvec--;
     if (nvec < 1){
-	    clicon_err(OE_XML, 0, "Malformed key: %s", api_path);
-	    goto done;
-	}
+	clicon_err(OE_XML, 0, "Malformed key: %s", api_path);
+	goto done;
+    }
     nvec--; /* NULL-terminated */
     if (api_path2xml_vec(vec+1, nvec, 
 			 xpath, (yang_node*)yspec, schemanode,

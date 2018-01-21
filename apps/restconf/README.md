@@ -2,16 +2,15 @@
 ### Features
 
 Clixon restconf is a daemon based on FASTCGI. Instructions are available to
-run with NGINX. 
-The implementatation supports plain OPTIONS, HEAD, GET, POST, PUT, PATCH, DELETE.
-and is based on draft-ietf-netconf-restconf-13. 
-There is currently (2017) a [RFC 8040: RESTCONF Protocol](https://tools.ietf.org/html/rfc8040), many of those features are _not_ implemented,
-including:
+run with NGINX.
+The implementatation is based on [RFC 8040: RESTCONF Protocol](https://tools.ietf.org/html/rfc8040).
+The following featires are supported:
+- OPTIONS, HEAD, GET, POST, PUT, DELETE
+The following are not implemented
+- PATCH
 - query parameters (section 4.9)
 - notifications (sec 6)
-- GET /restconf/ (sec 3.3)
-- GET /restconf/yang-library-version (sec 3.3.3)
-- only rudimentary error reporting exists (sec 7)
+- schema resource
 
 ### Installation using Nginx
 

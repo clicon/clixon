@@ -748,14 +748,19 @@ text_modify_top(cxobj              *x0,
     cxobj     *x0c; /* base child */
     cxobj     *x1c; /* mod child */
     yang_stmt *yc;  /* yang child */
+    char      *opstr;
 
     /* Assure top-levels are 'config' */
     assert(x0 && strcmp(xml_name(x0),"config")==0);
     assert(x1 && strcmp(xml_name(x1),"config")==0);
 
+    /* Check for operations embedded in tree according to netconf */
+    if ((opstr = xml_find_value(x1, "operation")) != NULL)
+	if (xml_operation(opstr, &op) < 0)
+	    goto done;
     /* Special case if x1 is empty, top-level only <config/> */
-    if (!xml_child_nr(x1)){ /* base tree not empty */
-	if (xml_child_nr(x0))
+    if (!xml_child_nr(x1)){ 
+	if (xml_child_nr(x0)) /* base tree not empty */
 	    switch(op){ 
 	    case OP_DELETE:
 	    case OP_REMOVE:

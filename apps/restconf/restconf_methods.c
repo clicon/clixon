@@ -379,7 +379,7 @@ api_data_get(clicon_handle h,
     return api_data_get2(h, r, pcvec, pi, qvec, 0);
 }
 
-/*! REST POST  method 
+/*! Generic REST POST  method 
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
@@ -387,7 +387,7 @@ api_data_get(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * @note We map post to edit-config create. 
+ * @note restconf POST is mapped to edit-config create. 
  POST:
    target resource type is datastore --> create a top-level resource
    target resource type is  data resource --> create child resource
@@ -414,12 +414,12 @@ api_data_post(clicon_handle h,
 	      cvec         *qvec, 
 	      char         *data)
 {
-    enum operation_type op = OP_CREATE;
     int        retval = -1;
+    enum operation_type op = OP_CREATE;
     int        i;
     cxobj     *xdata = NULL;
-    cxobj     *xtop = NULL; /* xpath root */
     cbuf      *cbx = NULL;
+    cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xbot = NULL;
     cxobj     *x;
     yang_node *y = NULL;
@@ -444,8 +444,8 @@ api_data_post(clicon_handle h,
     /* Create config top-of-tree */
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
+    /* Translate api_path to xtop/xbot */
     xbot = xtop;
-    /* xbot is resulting xml tree on exit */
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
@@ -456,29 +456,35 @@ api_data_post(clicon_handle h,
 	}
     }
     else if (json_parse_str(data, &xdata) < 0){
-	    badrequest(r);
-	    goto ok;
+	badrequest(r);
+	goto ok;
     }
-    /* Add xdata to xbot */
-    x = NULL;
-    while ((x = xml_child_each(xdata, x, CX_ELMNT)) != NULL) {
-	if ((xa = xml_new("operation", x, NULL)) == NULL)
-	    goto done;
-	xml_type_set(xa, CX_ATTR);
-	if (xml_value_set(xa,  xml_operation2str(op)) < 0)
-	    goto done;
-	if (xml_addsub(xbot, x) < 0)
-	    goto done;
+    /* The message-body MUST contain exactly one instance of the
+     * expected data resource. 
+     */
+    if (xml_child_nr(xdata) != 1){
+	badrequest(r);
+	goto ok;
     }
+    x = xml_child_i(xdata,0);
+    /* Add operation (create/replace) as attribute */
+    if ((xa = xml_new("operation", x, NULL)) == NULL)
+	goto done;
+    xml_type_set(xa, CX_ATTR);
+    if (xml_value_set(xa, xml_operation2str(op)) < 0)
+	goto done;
+    /* Replace xbot with x, ie bottom of api-path with data */
+    if (xml_addsub(xbot, x) < 0)
+	goto done;
+    /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
 	goto done;
-    clicon_debug(1, "%s xml: %s",__FUNCTION__, cbuf_get(cbx));
+    clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
     if (clicon_rpc_edit_config(h, "candidate", 
 			       OP_NONE,
 			       cbuf_get(cbx)) < 0){
-	//	notfound(r); /* XXX */
 	conflict(r);
 	goto ok;
     }
@@ -492,7 +498,6 @@ api_data_post(clicon_handle h,
 	goto done;
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
-    // XXX api_path can be null    FCGX_FPrintF(r->out, "Location: %s\r\n", api_path);
     FCGX_FPrintF(r->out, "\r\n");
  ok:
     retval = 0;
@@ -505,6 +510,58 @@ api_data_post(clicon_handle h,
      if (cbx)
 	cbuf_free(cbx); 
    return retval;
+} /* api_data_post */
+
+
+/*! Check matching keys
+ *
+ * @param[in] y        Yang statement, should be list or leaf-list
+ * @param[in] xdata    XML data tree
+ * @param[in] xapipath XML api-path tree
+ * @retval    0        Yes, keys match
+ * @retval    -1        No keys do not match
+ * If the target resource represents a YANG leaf-list, then the PUT
+ * method MUST NOT change the value of the leaf-list instance.
+ *
+ * If the target resource represents a YANG list instance, then the key
+ * leaf values, in message-body representation, MUST be the same as the
+ * key leaf values in the request URI.  The PUT method MUST NOT be used
+ * to change the key leaf values for a data resource instance.
+ */
+static int
+match_list_keys(yang_stmt *y,
+		cxobj     *xdata,
+		cxobj     *xapipath)
+{
+    int        retval = -1;
+    cvec      *cvk = NULL; /* vector of index keys */
+    cg_var    *cvi;
+    char      *keyname;
+    cxobj     *xkeya; /* xml key object in api-path */
+    cxobj     *xkeyd; /* xml key object in data */
+    char      *keya;
+    char      *keyd;
+
+    if (y->ys_keyword != Y_LIST &&y->ys_keyword != Y_LEAF_LIST)
+	return -1;
+    cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+    cvi = NULL;
+    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+	keyname = cv_string_get(cvi);	    
+	if ((xkeya = xml_find(xapipath, keyname)) == NULL)
+	    goto done; /* No key in api-path */
+	    
+	keya = xml_body(xkeya);
+	if ((xkeyd = xml_find(xdata, keyname)) == NULL)
+	    goto done; /* No key in data */
+	keyd = xml_body(xkeyd);
+	if (strcmp(keya, keyd) != 0)
+	    goto done; /* keys dont match */
+    }
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    return retval;
 }
 
 /*! Generic REST PUT  method 
@@ -515,6 +572,7 @@ api_data_post(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
+ * @note restconf PUT is mapped to edit-config replace. 
  * @example
       curl -X PUT -d '{"enabled":"false"}' http://127.0.0.1/restconf/data/interfaces/interface=eth1
  *
@@ -528,7 +586,7 @@ api_data_post(clicon_handle h,
 int
 api_data_put(clicon_handle h,
 	     FCGX_Request *r, 
-	     char         *api_path, 
+	     char         *api_path0, 
 	     cvec         *pcvec, 
 	     int           pi,
 	     cvec         *qvec, 
@@ -539,19 +597,19 @@ api_data_put(clicon_handle h,
     int        i;
     cxobj     *xdata = NULL;
     cbuf      *cbx = NULL;
-    cxobj     *x;
+    cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xbot = NULL;
-    cxobj     *xtop = NULL;
-    cxobj     *xp;
+    cxobj     *xparent;
+    cxobj     *x;
     yang_node *y = NULL;
     yang_spec *yspec;
     cxobj     *xa;
     char      *media_content_type;
     int        parse_xml = 0; /* By default expect and parse JSON */
+    char      *api_path;
 
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
-		 __FUNCTION__, 
-		 api_path, data);
+		 __FUNCTION__, api_path0, data);
     media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
     if (media_content_type &&
 	strcmp(media_content_type, "application/yang-data+xml")==0)
@@ -560,11 +618,13 @@ api_data_put(clicon_handle h,
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
+    api_path=api_path0;
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
     /* Create config top-of-tree */
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
+    /* Translate api_path to xtop/xbot */
     xbot = xtop;
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
@@ -579,22 +639,48 @@ api_data_put(clicon_handle h,
 	badrequest(r);
 	goto ok;
     }
+    /* The message-body MUST contain exactly one instance of the
+     * expected data resource. 
+     */
     if (xml_child_nr(xdata) != 1){
 	badrequest(r);
 	goto ok;
     }
     x = xml_child_i(xdata,0);
+    /* Add operation (create/replace) as attribute */
     if ((xa = xml_new("operation", x, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
-    /* XXX Special case path=/restconf/data xml_name(x) == data */
-    /* Replace xbot with x */
-    xp = xml_parent(xbot);
-    xml_purge(xbot);
-    if (xml_addsub(xp, x) < 0)
-	goto done;
+#if 1 /* This is different from POST */
+    /* Replace xparent with x, ie bottom of api-path with data */	    
+    if (api_path==NULL && strcmp(xml_name(x),"data")==0){
+	if (xml_addsub(NULL, x) < 0)
+	    goto done;
+	xtop = x;
+	xml_name_set(xtop, "config");
+    }
+    else {
+	/* Check same symbol in api-path as data */	    
+	if (strcmp(xml_name(x), xml_name(xbot))){
+	    badrequest(r);
+	    goto ok;
+	}
+	/* If list or leaf-list, api-path keys must match data keys */	    
+	if (y && (y->yn_keyword == Y_LIST ||y->yn_keyword == Y_LEAF_LIST)){
+	    if (match_list_keys((yang_stmt*)y, x, xbot) < 0){
+		badrequest(r);
+		goto ok;
+	    }
+	}
+	xparent = xml_parent(xbot);
+	xml_purge(xbot);
+	if (xml_addsub(xparent, x) < 0)
+	    goto done;
+    }
+#endif
+    /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
@@ -628,8 +714,7 @@ api_data_put(clicon_handle h,
      if (cbx)
 	cbuf_free(cbx); 
    return retval;
-
-}
+} /* api_data_put */
 
 /*! Generic REST PATCH  method 
  * @param[in]  h      CLIXON handle
@@ -722,6 +807,20 @@ api_data_delete(clicon_handle h,
 	xml_free(xtop);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
    return retval;
+}
+
+/*! NYI
+ */
+int
+api_operation_get(clicon_handle h,
+		   FCGX_Request *r, 
+		   char         *path, 
+		   cvec         *pcvec, 
+		   int           pi,
+		   cvec         *qvec, 
+		   char         *data)
+{
+    return 0;
 }
 
 /*! REST operation POST method 
