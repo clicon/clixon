@@ -488,14 +488,13 @@ api_data_post(clicon_handle h,
 	conflict(r);
 	goto ok;
     }
-    if (clicon_rpc_validate(h, "candidate") < 0){
+    /* Assume this is validation failed since commit includes validate */
+    if (clicon_rpc_commit(h) < 0){
 	if (clicon_rpc_discard_changes(h) < 0)
 	    goto done;
 	badrequest(r);
-	goto ok;
-    }
-    if (clicon_rpc_commit(h) < 0)
 	goto done;
+    }
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");
@@ -692,14 +691,13 @@ api_data_put(clicon_handle h,
 	notfound(r);
 	goto ok;
     }
-    if (clicon_rpc_validate(h, "candidate") < 0){
-	if (clicon_rpc_discard_changes(h) < 0)
+    /* Assume this is validation failed since commit includes validate */
+    if (clicon_rpc_commit(h) < 0){
+	if (clicon_rpc_discard_changes(h) < 0) 
 	    goto done;
 	badrequest(r);
-	goto ok;
-    }
-    if (clicon_rpc_commit(h) < 0)
 	goto done;
+    }
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");
@@ -793,8 +791,13 @@ api_data_delete(clicon_handle h,
 	notfound(r);
 	goto ok;
     }
-    if (clicon_rpc_commit(h) < 0)
+    /* Assume this is validation failed since commit includes validate */
+    if (clicon_rpc_commit(h) < 0){
+	if (clicon_rpc_discard_changes(h) < 0) 
+	    goto done;
+	badrequest(r);
 	goto done;
+    }
     FCGX_SetExitStatus(201, r->out);
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");

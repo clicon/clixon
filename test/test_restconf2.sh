@@ -32,16 +32,8 @@ module example{
           type string;
         }
         leaf type{
+          mandatory true;
           type string;
-        }
-        leaf description{
-          type string;
-        }
-        leaf netgate-if-type{
-          type string;
-        }
-        leaf enabled{
-          type boolean;
         }
       }
    }
@@ -70,21 +62,17 @@ sleep 1
 
 new "restconf tests"
 
-new "restconf PUT change key error"
-#expectfn 'curl -s -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/interfaces-config/interface=TEST' "fail"
-#exit
-
 new "restconf POST initial tree"
-expectfn 'curl -s -X POST -d {"interfaces-config":{"interface":{"name":"local0","netgate-if-type":"regular"}}} http://localhost/restconf/data' ""
+expectfn 'curl -s -X POST -d {"interfaces-config":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' ""
 
 new "restconf GET datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data" '{"data": {"interfaces-config": {"interface": {"name": "local0","netgate-if-type": "regular"}}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data" '{"data": {"interfaces-config": {"interface": {"name": "local0","type": "regular"}}}}'
 
 new "restconf GET interface"
-expectfn "curl -s -X GET http://localhost/restconf/data/interfaces-config/interface=local0" '{"interface": {"name": "local0","netgate-if-type": "regular"}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/interfaces-config/interface=local0" '{"interface": {"name": "local0","type": "regular"}}'
 
 new "restconf GET if-type"
-expectfn "curl -s -X GET http://localhost/restconf/data/interfaces-config/interface=local0/netgate-if-type" '{"netgate-if-type": "regular"}'
+expectfn "curl -s -X GET http://localhost/restconf/data/interfaces-config/interface=local0/type" '{"type": "regular"}'
 
 new "restconf POST interface"
 expectfn 'curl -s -X POST -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/interfaces-config' ""
@@ -102,14 +90,14 @@ new "restconf GET null datastore"
 expectfn "curl -s -X GET http://localhost/restconf/data" '{"data": null}'
 
 new "restconf POST initial tree"
-expectfn 'curl -s -X POST -d {"interfaces-config":{"interface":{"name":"local0","netgate-if-type":"regular"}}} http://localhost/restconf/data' ""
+expectfn 'curl -s -X POST -d {"interfaces-config":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' ""
 
 new "restconf PUT initial datastore" 
 
-expectfn 'curl -s -X PUT -d {"data":{"interfaces-config":{"interface":{"name":"local0","netgate-if-type":"regular"}}}} http://localhost/restconf/data' ""
+expectfn 'curl -s -X PUT -d {"data":{"interfaces-config":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' ""
 
 new "restconf GET datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data" '{"data": {"interfaces-config": {"interface": {"name": "local0","netgate-if-type": "regular"}}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data" '{"data": {"interfaces-config": {"interface": {"name": "local0","type": "regular"}}}}'
 
 new "restconf PUT change interface"
 expectfn 'curl -s -X PUT -d {"interface":{"name":"local0","type":"atm0"}} http://localhost/restconf/data/interfaces-config/interface=local0' ""
@@ -122,6 +110,9 @@ expectfn 'curl -s -X PUT -d {"interface":{"name":"TEST","type":"eth0"}} http://l
 
 new "restconf PUT change key error"
 expectfn 'curl -is -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/interfaces-config/interface=TEST' "Bad request"
+
+new "restconf POST invalid no type"
+expectfn 'curl -s -X POST -d {"interface":{"name":"ALPHA"}} http://localhost/restconf/data/interfaces-config' "Bad request"
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

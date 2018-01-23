@@ -82,26 +82,26 @@ new "restconf options"
 expectfn "curl -i -sS -X OPTIONS http://localhost/restconf/data" "Allow: OPTIONS,HEAD,GET,POST,PUT,DELETE"
 
 new "restconf head"
-expectfn "curl -sS -I http://localhost/restconf/data" "HTTP/1.1 200 OK"
+expectfn "curl -s -I http://localhost/restconf/data" "HTTP/1.1 200 OK"
 #Content-Type: application/yang-data+json"
 
 new "restconf root discovery"
-expectfn "curl  -sS -X GET http://localhost/.well-known/host-meta" "<Link rel='restconf' href='/restconf'/>"
+expectfn "curl  -s -X GET http://localhost/.well-known/host-meta" "<Link rel='restconf' href='/restconf'/>"
 
 new "restconf get restconf json"
-expectfn "curl -sSG http://localhost/restconf" '{"data": null,"operations": null,"yang-library-version": "2016-06-21"}}'
+expectfn "curl -sG http://localhost/restconf" '{"data": null,"operations": null,"yang-library-version": "2016-06-21"}}'
 
 new "restconf get restconf/yang-library-version json"
-expectfn "curl -sSG http://localhost/restconf/yang-library-version" '{"yang-library-version": "2016-06-21"}'
+expectfn "curl -sG http://localhost/restconf/yang-library-version" '{"yang-library-version": "2016-06-21"}'
 
 new "restconf empty rpc"
-expectfn 'curl -sS -X POST -d {"input":{"name":""}} http://localhost/restconf/operations/ex:empty' '{"output": null}'
+expectfn 'curl -s -X POST -d {"input":{"name":""}} http://localhost/restconf/operations/ex:empty' '{"output": null}'
 
 new "restconf get empty config + state json"
 expectfn "curl -sSG http://localhost/restconf/data" "{\"data\": $state}"
 
 new "restconf get empty config + state xml"
-ret=$(curl -sS -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data)
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data)
 expect="<data><interfaces-state><interface><name>eth0</name><type>eth</type><if-index>42</if-index></interface></interfaces-state></data>"
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
@@ -109,11 +109,11 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf get data/interfaces-state/interface=eth0 json"
-expectfn "curl -sS -G http://localhost/restconf/data/interfaces-state/interface=eth0" '{"interface": {"name": "eth0","type": "eth","if-index": "42"}}'
+expectfn "curl -s -G http://localhost/restconf/data/interfaces-state/interface=eth0" '{"interface": {"name": "eth0","type": "eth","if-index": "42"}}'
 
 new "restconf get state operation eth0 xml"
 # Cant get shell macros to work, inline matching from lib.sh
-ret=$(curl -sS -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/interfaces-state/interface=eth0)
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/interfaces-state/interface=eth0)
 expect="<interface><name>eth0</name><type>eth</type><if-index>42</if-index></interface>"
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
@@ -121,12 +121,12 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf get state operation eth0 type json"
-expectfn "curl -sS -G http://localhost/restconf/data/interfaces-state/interface=eth0/type" '{"type": "eth"}
+expectfn "curl -s -G http://localhost/restconf/data/interfaces-state/interface=eth0/type" '{"type": "eth"}
 $'
 
 new "restconf get state operation eth0 type xml"
 # Cant get shell macros to work, inline matching from lib.sh
-ret=$(curl -sS -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/interfaces-state/interface=eth0/type)
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/interfaces-state/interface=eth0/type)
 expect="<type>eth</type>"
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
@@ -134,60 +134,60 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf Add subtree  to datastore using POST"
-expectfn 'curl -sS -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}}} http://localhost/restconf/data' ""
+expectfn 'curl -s -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}}} http://localhost/restconf/data' ""
 
 new "restconf Check interfaces eth/0/0 added"
-expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
+expectfn "curl -s -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
 $'
 
 new "restconf delete interfaces"
-expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces' ""
+expectfn 'curl -s -X DELETE  http://localhost/restconf/data/interfaces' ""
 
 new "restconf Check empty config"
-expectfn "curl -sSG http://localhost/restconf/data" $state
+expectfn "curl -sG http://localhost/restconf/data" $state
 
 new "restconf Add interfaces subtree eth/0/0 using POST"
-expectfn 'curl -sS -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' ""
+expectfn 'curl -s -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' ""
 
 new "restconf Check eth/0/0 added"
-expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
+expectfn "curl -s -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
 $'
 
 new "restconf Re-post eth/0/0 which should generate error"
-expectfn 'curl -sS -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' "Data resource already exists"
+expectfn 'curl -s -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces' "Data resource already exists"
 
 new "Add leaf description using POST"
-expectfn 'curl -sS -X POST -d {"description":"The-first-interface"} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
+expectfn 'curl -s -X POST -d {"description":"The-first-interface"} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
 new "Add nothing using POST"
-expectfn 'curl -sS -X POST http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "data is in some way badly formed"
+expectfn 'curl -s -X POST http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "data is in some way badly formed"
 
 new "restconf Check description added"
-expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","description": "The-first-interface","type": "eth","enabled": "true"}}
+expectfn "curl -s -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","description": "The-first-interface","type": "eth","enabled": "true"}}
 $'
 
 new "restconf delete eth/0/0"
-expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
+expectfn 'curl -s -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
 new "Check deleted eth/0/0"
-expectfn 'curl -sS -G http://localhost/restconf/data' $state
+expectfn 'curl -s -G http://localhost/restconf/data' $state
 
 new "restconf Re-Delete eth/0/0 using none should generate error"
-expectfn 'curl -sS -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "Not Found"
+expectfn 'curl -s -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "Not Found"
 
 new "restconf Add subtree eth/0/0 using PUT"
-expectfn 'curl -sS -X PUT -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
+expectfn 'curl -s -X PUT -d {"interface":{"name":"eth/0/0","type":"eth","enabled":"true"}} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
 new "restconf get subtree"
-expectfn "curl -sS -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
+expectfn "curl -s -G http://localhost/restconf/data" '{"interfaces": {"interface": {"name": "eth/0/0","type": "eth","enabled": "true"}},"interfaces-state": {"interface": {"name": "eth0","type": "eth","if-index": "42"}}}
 $'
 
 new "restconf rpc using POST json"
-expectfn 'curl -sS -X POST -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '{"output": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"}}}}'
+expectfn 'curl -s -X POST -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '{"output": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"}}}}'
 
 new "restconf rpc using POST xml"
 # Cant get shell macros to work, inline matching from lib.sh
-ret=$(curl -sS -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/rt:fib-route)
+ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/rt:fib-route)
 expect="<output><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop></route></output>"
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
