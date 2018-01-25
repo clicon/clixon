@@ -163,7 +163,7 @@ fi
 
 # Set default config file location
 AC_ARG_WITH([configfile],
-	    [AS_HELP_STRING([--with-configfile],[set default path to config file])],
+	    [AS_HELP_STRING([--with-configfile=FILE],[set default path to config file])],
 	    [DEFAULT_CONFIG="$withval"],
 	    [DEFAULT_CONFIG="/etc/clixon.xml"])
 
