@@ -889,7 +889,7 @@ api_path_fmt2api_path(char  *api_path_fmt,
     char *strenc=NULL;
     cg_var *cv;
     
-#if 1
+#if 0 /* XXX Does not work in expansion case */
     /* Sanity check */
     j = 0; /* Count % */
     for (i=0; i<strlen(api_path_fmt); i++)
@@ -981,7 +981,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
     cg_var *cv;
 
     /* Sanity check: count '%' */
-#if 1
+#if 0 /* XXX Does not work in expansion case */
     j = 0; /* Count % */
     for (i=0; i<strlen(api_path_fmt); i++)
 	if (api_path_fmt[i] == '%')
@@ -1571,14 +1571,14 @@ api_path2xml_vec(char             **vec,
 	    valvec = NULL;
 	}
 	if (restval==NULL){
-	    // XXX patch to allow for lists without restval tobe backward compat
+	    // XXX patch to allow for lists without restval to be backward compat
 	    //	    clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
 	    //	    goto done;
 	}
 	else{
 	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
 		goto done;
-	    if (cvec_len(cvk) != nvalvec){ 	    
+	    if (nvalvec > cvec_len(cvk)){ 	    
 		clicon_err(OE_XML, errno, "List %s  key length mismatch", name);
 		goto done;
 	    }
