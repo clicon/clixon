@@ -66,10 +66,10 @@ new "restconf POST initial tree"
 expectfn 'curl -s -X POST -d {"interfaces-config":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' ""
 
 new "restconf GET datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data" '{"data": {"interfaces-config": {"interface": {"name": "local0","type": "regular"}}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data" '{"data": {"interfaces-config": {"interface": \[{"name": "local0","type": "regular"}\]}}}'
 
 new "restconf GET interface"
-expectfn "curl -s -X GET http://localhost/restconf/data/interfaces-config/interface=local0" '{"interface": {"name": "local0","type": "regular"}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/interfaces-config/interface=local0" '{"interface": \[{"name": "local0","type": "regular"}\]}'
 
 new "restconf GET if-type"
 expectfn "curl -s -X GET http://localhost/restconf/data/interfaces-config/interface=local0/type" '{"type": "regular"}'
@@ -97,13 +97,13 @@ new "restconf PUT initial datastore"
 expectfn 'curl -s -X PUT -d {"data":{"interfaces-config":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' ""
 
 new "restconf GET datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data" '{"data": {"interfaces-config": {"interface": {"name": "local0","type": "regular"}}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data" '{"data": {"interfaces-config": {"interface": \[{"name": "local0","type": "regular"}\]}}}'
 
 new "restconf PUT change interface"
 expectfn 'curl -s -X PUT -d {"interface":{"name":"local0","type":"atm0"}} http://localhost/restconf/data/interfaces-config/interface=local0' ""
 
-new "restconf GET datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data" '{"data": {"interfaces-config": {"interface": {"name": "local0","type": "atm0"}}}}'
+new "restconf GET datastore atm"
+expectfn "curl -s -X GET http://localhost/restconf/data" '{"data": {"interfaces-config": {"interface": \[{"name": "local0","type": "atm0"}\]}}}'
 
 new "restconf PUT add interface"
 expectfn 'curl -s -X PUT -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/interfaces-config/interface=TEST' ""

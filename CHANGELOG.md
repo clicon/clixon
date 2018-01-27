@@ -3,6 +3,11 @@
 ## 3.5.0 (Upcoming)
 
 ### Major changes:
+* Major Restconf feature update to compy to RFC 8040. Thanks Stephen Jones for getting right.
+  * GET well-known, top-level resource, yang library version,
+  * PUT whole datastore, check for different keys in put lists.
+  * GET Single element JSON lists use {list:[element]}, not {list:element}.
+  
 ### Minor changes:
 
 	
@@ -11,9 +16,8 @@
   * Configuration files (non-XML) prior to 3.3.3. As enabled with `configure --with-config-compat`. The template clicon.conf.cpp files are also removed.
   * Clixon XML C-lib prior to 3.4.0. As enabled with `configure --with-xml-compat`
   
-* new configuration option: CLICON_RESTCONF_PRETTY
+* New configuration option: CLICON_RESTCONF_PRETTY
 * Changed restconf GET to return object referenced. ie, GET /restconf/data/X returns X. Thanks Stephen Jones for getting this right.
-* Restconf: get well-known, top-level resource, yang library version, put whole datastore, check for different keys in put lists.
 
 * Default configure file added by Matt Smith. Config file is selected in the following priority order:
   * Provide -f option when starting a program.

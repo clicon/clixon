@@ -77,9 +77,10 @@
 
 enum array_element_type{
     NO_ARRAY=0,
-    FIRST_ARRAY,
-    MIDDLE_ARRAY,
-    LAST_ARRAY,
+    FIRST_ARRAY,  /* [a, */
+    MIDDLE_ARRAY, /*  a, */
+    LAST_ARRAY,   /*  a] */
+    SINGLE_ARRAY, /* [a] */
     BODY_ARRAY
 };
 
@@ -143,6 +144,9 @@ arraytype2str(enum array_element_type lt)
     case LAST_ARRAY:
 	return "last";
 	break;
+    case SINGLE_ARRAY:
+	return "single";
+	break;
     case BODY_ARRAY:
 	return "body";
 	break;
@@ -152,21 +156,23 @@ arraytype2str(enum array_element_type lt)
 
 static enum array_element_type
 array_eval(cxobj *xprev, 
-	  cxobj *x, 
-	  cxobj *xnext)
+	   cxobj *x, 
+	   cxobj *xnext)
 {
     enum array_element_type array = NO_ARRAY;
-    int                    eqprev=0;
-    int                    eqnext=0;
+    int                     eqprev=0;
+    int                     eqnext=0;
+    yang_stmt              *ys;
 
     if (xml_type(x)!=CX_ELMNT){
 	array=BODY_ARRAY;
 	goto done;
     }
+    ys = xml_spec(x);
     if (xnext && 
 	xml_type(xnext)==CX_ELMNT &&
 	strcmp(xml_name(x),xml_name(xnext))==0)
-	    eqnext++;
+	eqnext++;
     if (xprev &&
 	xml_type(xprev)==CX_ELMNT &&
 	strcmp(xml_name(x),xml_name(xprev))==0)
@@ -177,6 +183,8 @@ array_eval(cxobj *xprev,
 	array = LAST_ARRAY;
     else if (eqnext)
 	array = FIRST_ARRAY;
+    else  if (ys && ys->ys_keyword == Y_LIST)
+	array = SINGLE_ARRAY;
     else
 	array = NO_ARRAY;
  done:
@@ -228,29 +236,29 @@ json_escape(char *str)
  * The following matrix explains how the mapping is done.
  * You need to understand what arraytype means (no/first/middle/last)
  * and what childtype is (null,body,any)
-  +---------+--------------+--------------+--------------+
+  +----------+--------------+--------------+--------------+
   |array,leaf| null         | body         | any          |
-  +---------+--------------+--------------+--------------+
-  |no       | <a/>         |<a>1</a>      |<a><b/></a>   |
-  |         |              |              |              |
-  |  json:  |\ta:null      |\ta:          |\ta:{\n       |
-  |         |              |              |\n}           |
-  +---------+--------------+--------------+--------------+
-  |first    |<a/><a..      |<a>1</a><a..  |<a><b/></a><a.|
-  |         |              |              |              |
-  |  json:  |\ta:[\n\tnull |\ta:[\n\t     |\ta:[\n\t{\n  |
-  |         |              |              |\n\t}         |
-  +---------+--------------+--------------+--------------+
-  |middle   |..a><a/><a..  |.a><a>1</a><a.|              |
-  |         |              |              |              |
-  |  json:  |\tnull        |\t            |\t{a          |
-  |         |              |              |\n\t}         |
-  +---------+--------------+--------------+--------------+
-  |last     |..a></a>      |..a><a>1</a>  |              |
-  |         |              |              |              |
-  |  json:  |\tnull        |\t            |\t{a          |
-  |         |\n\t]         |\n\t]         |\n\t}\t]      |
-  +---------+--------------+--------------+--------------+
+  +----------+--------------+--------------+--------------+
+  |no        | <a/>         |<a>1</a>      |<a><b/></a>   |
+  |          |              |              |              |
+  |  json:   |\ta:null      |\ta:          |\ta:{\n       |
+  |          |              |              |\n}           |
+  +----------+--------------+--------------+--------------+
+  |first     |<a/><a..      |<a>1</a><a..  |<a><b/></a><a.|
+  |          |              |              |              |
+  |  json:   |\ta:[\n\tnull |\ta:[\n\t     |\ta:[\n\t{\n  |
+  |          |              |              |\n\t}         |
+  +----------+--------------+--------------+--------------+
+  |middle    |..a><a/><a..  |.a><a>1</a><a.|              |
+  |          |              |              |              |
+  |  json:   |\tnull        |\t            |\t{a          |
+  |          |              |              |\n\t}         |
+  +----------+--------------+--------------+--------------+
+  |last      |..a></a>      |..a><a>1</a>  |              |
+  |          |              |              |              |
+  |  json:   |\tnull        |\t            |\t{a          |
+  |          |\n\t]         |\n\t]         |\n\t}\t]      |
+  +----------+--------------+--------------+--------------+
  */
 static int 
 xml2json1_cbuf(cbuf                  *cb,
@@ -299,6 +307,7 @@ xml2json1_cbuf(cbuf                  *cb,
 	}
 	break;
     case FIRST_ARRAY:
+    case SINGLE_ARRAY:
 	cprintf(cb, "%*s\"%s\": ", 
 		pretty?(level*JSON_INDENT):0, "", 
 		xml_name(x));
@@ -387,6 +396,7 @@ xml2json1_cbuf(cbuf                  *cb,
 	    break;
 	}
 	break;
+    case SINGLE_ARRAY:
     case LAST_ARRAY:
 	switch (childt){
 	case NULL_CHILD:
@@ -419,7 +429,7 @@ xml2json1_cbuf(cbuf                  *cb,
  * @param[in,out] cb     Cligen buffer to write to
  * @param[in]     x      XML tree to translate from
  * @param[in]     pretty Set if output is pretty-printed
- * @param[in]  top    By default only children are printed, set if include top
+ * @param[in]     top    By default only children are printed, set if include top
  * @retval        0      OK
  * @retval       -1      Error
  *
@@ -433,9 +443,9 @@ xml2json1_cbuf(cbuf                  *cb,
  * @see clicon_xml2cbuf
  */
 int 
-xml2json_cbuf(cbuf  *cb, 
-	      cxobj *x, 
-	      int    pretty)
+xml2json_cbuf(cbuf      *cb, 
+	      cxobj     *x, 
+	      int        pretty)
 {
     int    retval = 1;
     int    level = 0;
@@ -472,10 +482,10 @@ xml2json_cbuf(cbuf  *cb,
  * @see xml2json1_cbuf
  */
 int 
-xml2json_cbuf_vec(cbuf   *cb, 
-		  cxobj **vec,
-		  size_t  veclen,
-		  int     pretty)
+xml2json_cbuf_vec(cbuf      *cb, 
+		  cxobj    **vec,
+		  size_t     veclen,
+		  int        pretty)
 {
     int    retval = -1;
     int    level = 0;
@@ -519,15 +529,17 @@ xml2json_cbuf_vec(cbuf   *cb,
  * @retval     0      OK
  * @retval    -1      Error
  *
+ * @note yang is necessary to translate to one-member lists,
+ * eg if a is a yang LIST <a>0</a> -> {"a":["0"]} and not {"a":"0"}
  * @code
  * if (xml2json(stderr, xn, 0) < 0)
  *   goto err;
  * @endcode
  */
 int 
-xml2json(FILE   *f, 
-	 cxobj  *x, 
-	 int     pretty)
+xml2json(FILE      *f, 
+	 cxobj     *x, 
+	 int        pretty)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -560,10 +572,10 @@ xml2json(FILE   *f,
  * @see xml2json1_cbuf
  */
 int 
-xml2json_vec(FILE  *f, 
-	     cxobj **vec,
-	     size_t  veclen,
-	     int    pretty)
+xml2json_vec(FILE      *f, 
+	     cxobj    **vec,
+	     size_t     veclen,
+	     int        pretty)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -645,7 +657,7 @@ json_parse_str(char   *str,
 /*! Read a JSON definition from file and parse it into a parse-tree. 
  *
  * @param[in]  fd  A file descriptor containing the JSON file (as ASCII characters)
- * @param[in]  yspec   Yang specification, or NULL
+ * @param[in]  yspec   Yang specification, or NULL XXX Not yet used
  * @param[in,out] xt   Pointer to (XML) parse tree. If empty, create.
  * @retval        0  OK
  * @retval       -1  Error with clicon_err called
@@ -722,7 +734,7 @@ json_parse_file(int        fd,
 /*
  * Turn this on to get a json parse and pretty print test program
  * Usage: xpath
- * read xml from input
+ * read json from input
  * Example compile:
  gcc -g -o json -I. -I../clixon ./clixon_json.c -lclixon -lcligen
  * Example run:
