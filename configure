@@ -1348,7 +1348,7 @@ Optional Packages:
   --without-restconf      disable support for restconf
   --with-keyvalue         enable support for key-value xmldb datastore
   --with-qdbm=dir         Use QDBM here, if keyvalue
-  --with-configfile       set default path to config file
+  --with-configfile=FILE  set default path to config file
 
 Some influential environment variables:
   CC          C compiler command
