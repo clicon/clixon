@@ -88,9 +88,6 @@
 #include "clixon_xml_sort.h"
 #include "clixon_xml_map.h"
 
-/* Something to do with reverse engineering of junos syntax? */
-#undef SPECIAL_TREATMENT_OF_NAME  
-
 /*
  * A node is a leaf if it contains a body.
  */
@@ -131,9 +128,6 @@ xml2txt(FILE  *f,
     char  *term = NULL;
     int    retval = -1;
     int    encr=0;
-#ifdef SPECIAL_TREATMENT_OF_NAME  
-    cxobj *xname;
-#endif
 
     xe = NULL;     /* count children */
     while ((xe = xml_child_each(x, xe, -1)) != NULL)
@@ -157,32 +151,11 @@ xml2txt(FILE  *f,
 	goto done;
     }
     fprintf(f, "%*s", 4*level, "");
-
-#ifdef SPECIAL_TREATMENT_OF_NAME  
-    if (strcmp(xml_name(x), "name") != 0)
-	fprintf(f, "%s ", xml_name(x));
-    if ((xname = xml_find(x, "name")) != NULL){
-	if (children > 1)
-	    fprintf(f, "%s ", xml_body(xname));
-	if (!tleaf(x))
-	    fprintf(f, "{\n");
-    }
-    else
-	if (!tleaf(x))
-	    fprintf(f, "{\n");
-#else
-	fprintf(f, "%s ", xml_name(x));
-	if (!tleaf(x))
-	    fprintf(f, "{\n");
-#endif /* SPECIAL_TREATMENT_OF_NAME */
-
+    fprintf(f, "%s ", xml_name(x));
+    if (!tleaf(x))
+	fprintf(f, "{\n");
     xe = NULL;
     while ((xe = xml_child_each(x, xe, -1)) != NULL){
-#ifdef SPECIAL_TREATMENT_OF_NAME  
-	if (xml_type(xe) == CX_ELMNT &&  (strcmp(xml_name(xe), "name")==0) && 
-	    (children > 1)) /* skip if this is a name element (unless 0 children) */
-	    continue;
-#endif
 	if (xml2txt(f, xe, level+1) < 0)
 	    break;
     }
@@ -870,9 +843,18 @@ yang2api_path_fmt(yang_stmt *ys,
  * @param[out] yang_arg      yang-stmt argument name. Free after use
  * @note first and last elements of cvv are not used,..
  * @see api_path_fmt2xpath
- * 
- * /interfaces/interface=%s/name            --> /interfaces/interface/name
- * /interfaces/interface=%s/ipv4/address=%s --> /interfaces/interface=e/ipv4/address
+ * @example
+ *  api_path_fmt: /interfaces/interface=%s/name
+ *  cvv:          -
+ *  api_path:     /interfaces/interface/name
+ * @example
+ *  api_path_fmt: /interfaces/interface=%s/name
+ *  cvv:          e0
+ *  api_path:     /interfaces/interface=e0/name
+ * @example
+ *  api_path_fmt: /subif-entry=%s,%s/subid
+ *  cvv:          foo
+ *  api_path:     /subif-entry=foo/subid
  */
 int
 api_path_fmt2api_path(char  *api_path_fmt, 
@@ -889,20 +871,6 @@ api_path_fmt2api_path(char  *api_path_fmt,
     char *strenc=NULL;
     cg_var *cv;
     
-#if 0 /* XXX Does not work in expansion case */
-    /* Sanity check */
-    j = 0; /* Count % */
-    for (i=0; i<strlen(api_path_fmt); i++)
-	if (api_path_fmt[i] == '%')
-	    j++;
-    if (j > cvec_len(cvv)) { //cvec_len can be longer
-	clicon_log(LOG_WARNING, "%s api_path_fmt number of %% is %d, does not match number of cvv entries %d", 
-		   api_path_fmt, 
-		   j,
-		   cvec_len(cvv));
-	goto done;
-    }
-#endif
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
@@ -953,18 +921,22 @@ api_path_fmt2api_path(char  *api_path_fmt,
 
 /*! Transform an xml key format and a vector of values to an XML path
  * Used to input xmldb_get() or xmldb_get_vec
- * Add .* in last %s position.
- * Example: 
- *   api_path_fmt:  /interface/%s/address/%s 
- *   cvv:        name=eth0
- *   xmlkey:     /interface/[name=eth0]/address
- * Example2:
- *   xmlkeyfmt:  /ip/me/%s (if key)
- *   cvv:        -
- *   xmlkey:     /ipv4/me/a
  * @param[in]  api_path_fmt  XML key format
  * @param[in]  cvv    cligen variable vector, one for every wildchar in api_path_fmt
  * @param[out] xpath     XPATH
+ * Add .* in last %s position.
+ * @example
+ *   api_path_fmt:  /interface/%s/address/%s 
+ *   cvv:           name=eth0
+ *   xpath:         /interface/[name=eth0]/address
+ * @example
+ *   api_path_fmt:  /ip/me/%s (if key)
+ *   cvv:           -
+ *   xpath:        /ipv4/me/a
+ * @example 
+ *   api_path_fmt: /subif-entry=%s,%s/subid
+ *   cvv:          foo
+ *   xpath:        /subif-entry[if-name=foo]/subid"
  */ 
 int
 api_path_fmt2xpath(char  *api_path_fmt, 
@@ -980,21 +952,6 @@ api_path_fmt2xpath(char  *api_path_fmt,
     char   *str;
     cg_var *cv;
 
-    /* Sanity check: count '%' */
-#if 0 /* XXX Does not work in expansion case */
-    j = 0; /* Count % */
-    for (i=0; i<strlen(api_path_fmt); i++)
-	if (api_path_fmt[i] == '%')
-	    j++;
-    if (j > cvec_len(cvv)) {
-	clicon_log(LOG_WARNING, "%s xmlkey format string mismatch(j=%d, cvec_len=%d): %s", 
-		   api_path_fmt, 
-		   j,
-		   cvec_len(cvv), 
-		   cv_string_get(cvec_i(cvv, 0)));
-	goto done;
-    }
-#endif
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
@@ -1624,20 +1581,29 @@ api_path2xml_vec(char             **vec,
 }
 
 /*! Create xml tree from api-path
- * @param[in]   api_path   API-path as defined in RFC 8040
- * @param[in]   yspec      Yang spec
- * @param[in]   schemanode If set use schema nodes otherwise data nodes.
- * @param[out]  xpathp     Resulting xml tree 
- * @param[out]  ypathp     Yang spec matching xpathp
+ * @param[in]     api_path   API-path as defined in RFC 8040
+ * @param[in]     yspec      Yang spec
+ * @param[in,out] xtop       Incoming XML tree
+ * @param[in]     schemanode If set use schema nodes otherwise data nodes.
+ * @param[out]    xbotp      Resulting xml tree (end of xpath)
+ * @param[out]    ybotp      Yang spec matching xbotp
  * @see api_path2xml_vec
+ * @example
+ *   api_path: /subif-entry=foo/subid
+ *   xtop[in]  <config/> 
+ *   xtop[out]:<config/> <subif-entry>
+ *                            <if-name>foo<if-name><subid/>>
+ *                       </subif-entry></config>
+ *   xbotp:    <subid/>
+ *   ybotp:    Y_LEAF subid
  */
 int
 api_path2xml(char       *api_path,
 	     yang_spec  *yspec,
-	     cxobj      *xpath,
+	     cxobj      *xtop,
 	     int         schemanode,
-	     cxobj     **xpathp,
-	     yang_node **ypathp)
+	     cxobj     **xbotp,
+	     yang_node **ybotp)
 {
     int    retval = -1;
     char **vec = NULL;
@@ -1659,8 +1625,8 @@ api_path2xml(char       *api_path,
     }
     nvec--; /* NULL-terminated */
     if (api_path2xml_vec(vec+1, nvec, 
-			 xpath, (yang_node*)yspec, schemanode,
-			 xpathp, ypathp) < 0)
+			 xtop, (yang_node*)yspec, schemanode,
+			 xbotp, ybotp) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1668,7 +1634,6 @@ api_path2xml(char       *api_path,
 	free(vec);
     return retval;
 }
-
 
 /*! Merge a base tree x0 with x1 with yang spec y
  * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
