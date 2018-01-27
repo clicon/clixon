@@ -1,12 +1,12 @@
 #!/bin/bash
 # Transactions per second for large lists read/write plotter using gnuplot
-#
+# WORK IN PROGRESS
 . ./lib.sh
-max=200 # Nr of db entries
-step=100
-reqs=1000
-cfg=$dir/scaling-conf.xml
-fyang=$dir/scaling.yang
+max=2000 # Nr of db entries
+step=200
+reqs=500
+cfg=$dir/plot-conf.xml
+fyang=$dir/plot.yang
 fconfig=$dir/config
 
 # For memcheck
@@ -40,6 +40,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_MODULE_MAIN>ietf-ip</CLICON_YANG_MODULE_MAIN>
   <CLICON_SOCK>/usr/local/var/routing/routing.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/routing/routing.pidfile</CLICON_BACKEND_PIDFILE>
+<CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_XMLDB_DIR>/usr/local/var/routing</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
 </config>
@@ -52,9 +53,16 @@ run(){
     
     echo -n "<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x>" > $fconfig
     for (( i=0; i<$nr; i++ )); do  
-	echo -n "<c>$i</c>" >> $fconfig
-	echo -n "<y><a>$i</a><b>$i</b></y>" >> $fconfig
+	case $mode in
+	    readlist|writelist|restreadlist|restwritelist)
+		echo -n "<y><a>$i</a><b>$i</b></y>" >> $fconfig
+		;;
+	    writeleaflist)
+		echo -n "<c>$i</c>" >> $fconfig
+		;;
+	    esac
     done
+
     echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig    
 
     expecteof_file "$clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -64,42 +72,45 @@ run(){
 	time -p for (( i=0; i<$reqs; i++ )); do
     rnd=$(( ( RANDOM % $nr ) ))
     echo "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=$rnd][b=$rnd]\" /></get-config></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
+done | $clixon_netconf -qf $cfg -y $fyang > /dev/null
             ;;
 	writelist)
 	    time -p for (( i=0; i<$reqs; i++ )); do
 	rnd=$(( ( RANDOM % $nr ) ))
 	echo "<rpc><edit-config><target><candidate/></target><config><x><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
-            ;;
-	readleaflist)
+done | $clixon_netconf -qf $cfg -y $fyang > /dev/null
+    ;;
+    	restreadlist)
 	time -p for (( i=0; i<$reqs; i++ )); do
     rnd=$(( ( RANDOM % $nr ) ))
-    echo "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x[c=$rnd]\" /></get-config></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
-	    ;;
+    curl -sSG http://localhost/restconf/data/x/y=$rnd,$rnd > /dev/null
+done 
+            ;;
     writeleaflist)
 	time -p for (( i=0; i<$reqs; i++ )); do
 	rnd=$(( ( RANDOM % $nr ) ))
 	echo "<rpc><edit-config><target><candidate/></target><config><x><c>$rnd</c></x></config></edit-config></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
+done | $clixon_netconf -qf $cfg -y $fyang > /dev/null
 	    ;;
     esac
-    expecteof "$clixon_netconf -qf $cfg" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
 }
 
 step(){
     i=$1
     mode=$2
     echo -n "" > $fconfig
-    t=$(TEST=%e run $i $reqs $mode $ 2>&1 | awk '/real/ {print $2}')
-    # t is time in secs of $reqs -> transactions per second. $reqs
+    t=$(TEST=%e run $i $reqs $mode 2>&1 | awk '/real/ {print $2}')
+    #TEST=%e run $i $reqs $mode 2>&1 
+    #  t is time in secs of $reqs -> transactions per second. $reqs
     p=$(echo "$reqs/$t" | bc -lq)
     # p is transactions per second. 
     echo "$i $p" >> $dir/$mode
+#    echo "m:$mode i:$i t=$t p=$p" 
 }
 
-once()(
+once(){
     # kill old backend (if any)
     sudo clixon_backend -zf $cfg -y $fyang
     if [ $? -ne 0 ]; then
@@ -116,14 +127,14 @@ once()(
     for (( i=10; i<=$step; i=i+10 )); do  
 	step $i readlist
 	step $i writelist
-	step $i readleaflist
+	step $i restreadlist
 	step $i writeleaflist
     done
     # Actual steps
     for (( i=$step; i<=$max; i=i+$step )); do  
 	step $i readlist
-	step $i readleaflist
 	step $i writelist
+	step $i restreadlist
 	step $i writeleaflist
     done
 
@@ -137,8 +148,7 @@ once()(
     if [ $? -ne 0 ]; then
 	err "kill backend"
     fi
-
-)
+}
 
 once
 
@@ -146,10 +156,9 @@ gnuplot -persist <<EOF
 set title "Clixon transactions per second r/w large lists" font ",14" textcolor rgbcolor "royalblue"
 set xlabel "entries"
 set ylabel "transactions per second"
-set terminal wxt  enhanced title "CLixon transactions " persist raise
-plot "$dir/readlist" with linespoints title "read list", "$dir/writelist" with linespoints title "write list", "$dir/readleaflist" with linespoints title "read leaf-list", "$dir/writeleaflist" with linespoints title "write leaf-list" 
+set terminal wxt  enhanced title "Clixon transactions " persist raise
+plot "$dir/readlist" with linespoints title "read list", "$dir/writelist" with linespoints title "write list", "$dir/writeleaflist" with linespoints title "write leaf-list" , "$dir/restreadlist" with linespoints title "rest get list" 
 EOF
 
 rm -rf $dir
-
 
