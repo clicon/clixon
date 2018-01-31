@@ -41,13 +41,17 @@ localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 INSTALL		= @INSTALL@
 
-all:	
+all:	clixon_config.h
 	@echo " "
 
 clean:
 
+clixon_config.h:
+	@sed -e "s,%%sysconfdir%%,${sysconfdir},g" \
+		clixon_config.h.in > clixon_config.h
+
 distclean: clean
-	rm -f clixon_config.h Makefile *~ .depend
+	rm -f clixon_config.h clixon_config.h.in Makefile *~ .depend
 
 install:	
 
