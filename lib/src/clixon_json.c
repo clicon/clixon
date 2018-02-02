@@ -191,8 +191,10 @@ array_eval(cxobj *xprev,
     return array;
 }
 
-char *
-json_escape(char *str)
+/*! Escape a json string
+ */
+static char *
+json_str_escape(char *str)
 {
     int   i, j;
     char *snew;
@@ -231,6 +233,7 @@ json_escape(char *str)
  * @param[in]    level     Indentation level
  * @param[in]    pretty    Pretty-print output (2 means debug)
  * @param[in]    flat      Dont print NO_ARRAY object name (for _vec call)
+ * @param[in]    bodystr   Set if value is string, 0 otherwise. Only if body
  *
  * @note Does not work with XML attributes
  * The following matrix explains how the mapping is done.
@@ -266,26 +269,35 @@ xml2json1_cbuf(cbuf                  *cb,
 	       enum array_element_type arraytype,
 	       int                    level,
 	       int                    pretty,
-	       int                    flat)
+	       int                    flat,
+	       int                    bodystr)
 {
     int              retval = -1;
     int              i;
     cxobj           *xc;
     enum childtype   childt;
     enum array_element_type xc_arraytype;
+    yang_stmt       *ys;
+    int              bodystr0=1;
 
     childt = childtype(x);
+    ys = xml_spec(x);
     if (pretty==2)
 	cprintf(cb, "#%s_array, %s_child ", 
 		arraytype2str(arraytype),
 		childtype2str(childt));
     switch(arraytype){
     case BODY_ARRAY:{
-	char *str;
-	if ((str = json_escape(xml_value(x))) == NULL)
-	    goto done;
-	cprintf(cb, "\"%s\"", str);
-	free(str);
+	if (bodystr){
+	    char      *str;
+	    if ((str = json_str_escape(xml_value(x))) == NULL)
+		goto done;
+	    cprintf(cb, "\"%s\"", str);
+	    free(str);
+	}
+	else
+	    cprintf(cb, "%s", xml_value(x));
+
 	break;
     }
     case NO_ARRAY:
@@ -349,6 +361,30 @@ xml2json1_cbuf(cbuf                  *cb,
     default:
 	break;
     }
+    /* Check for typed sub-body if:
+     * arracytype=* but chilt-type is BODY_CHILD 
+     * This is code for writing <a>42</a> as "a":42 and not "a":"42"
+     */
+    if (childt == BODY_CHILD && ys!=NULL &&
+	(ys->ys_keyword == Y_LEAF || ys->ys_keyword == Y_LEAF_LIST))
+	switch (cv_type_get(ys->ys_cv)){
+	case CGV_INT8:
+	case CGV_INT16:
+	case CGV_INT32:
+	case CGV_INT64:
+	case CGV_UINT8:
+	case CGV_UINT16:
+	case CGV_UINT32:
+	case CGV_UINT64:
+	case CGV_DEC64:
+	case CGV_BOOL:
+	    bodystr0 = 0;
+	    break;
+	default:
+	    bodystr0 = 1;
+	    break;
+	}
+
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
 	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
@@ -357,7 +393,7 @@ xml2json1_cbuf(cbuf                  *cb,
 	if (xml2json1_cbuf(cb, 
 			   xc, 
 			   xc_arraytype,
-			   level+1, pretty,0) < 0)
+			   level+1, pretty, 0, bodystr0) < 0)
 	    goto done;
 	if (i<xml_child_nr(x)-1)
 	    cprintf(cb, ",%s", pretty?"\n":"");
@@ -456,7 +492,7 @@ xml2json_cbuf(cbuf      *cb,
     if (xml2json1_cbuf(cb, 
 		       x, 
 		       NO_ARRAY,
-		       level+1, pretty,0) < 0)
+		       level+1, pretty,0,1) < 0)
 	goto done;
     cprintf(cb, "%s%*s}%s", 
 	    pretty?"\n":"",
@@ -506,7 +542,7 @@ xml2json_cbuf_vec(cbuf      *cb,
     if (xml2json1_cbuf(cb, 
 		       xp, 
 		       NO_ARRAY,
-		       level+1, pretty,1) < 0)
+		       level+1, pretty,1, 1) < 0)
 	goto done;
 
     if (0){
