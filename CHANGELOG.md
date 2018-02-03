@@ -26,7 +26,8 @@
 	
 ### Corrected Bugs
 * Corrected "No yang spec" printed on tty on leafref CLI usage
-
+* xml2cvec: range error (eg 1000 for int8) is not treated as error, just log and skip.
+	
 ### Known issues
 
 ## 3.4.0 (1 January 2018)

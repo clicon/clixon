@@ -415,6 +415,8 @@ xml_yang_validate_all(cxobj   *xt,
  * @retval     0    Everything OK, cvv allocated and set
  * @retval    -1    Something wrong, clicon_err() called to set error. No cvv returned
  * 'Not recursive' means that only one level of XML bodies is translated to cvec:s.
+ * If range is wriong (eg 1000 for uint8) a warning is logged, the value is 
+ * skipped, and continues.
  * yang is needed to know which type an xml element has.
  * Example: 
     <a>
@@ -457,28 +459,30 @@ xml2cvec(cxobj      *xt,
 	    clicon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
 			 __FUNCTION__, name, yt->ys_argument);
 	    if ((body = xml_body(xc)) != NULL){
-		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
-		    clicon_err(OE_PLUGIN, errno, "cvec_add");
+		if ((cv = cv_new(CGV_STRING)) == NULL){
+		    clicon_err(OE_PLUGIN, errno, "cv_new");
 		    goto err;
 		}
 		cv_name_set(cv, name);
 		if ((ret = cv_parse1(body, cv, &reason)) < 0){
-		    clicon_err(OE_PLUGIN, errno, "cv_parse");
+		    clicon_err(OE_PLUGIN, errno, "cv_parse %s",name);
 		    goto err;
 		}
+		/* If value is out-of-range, log and skip value, and continue */
 		if (ret == 0){
-		    clicon_err(OE_PLUGIN, errno, "cv_parse: %s", reason);
+		    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason); 
 		    if (reason)
 			free(reason);
-		    goto err;
 		}
+		else
+		    cvec_append_var(cvv, cv); /* Add to variable vector */
+		cv_free(cv);
 	    }
 	}
 	else if ((ycv = ys->ys_cv) != NULL){
 	    if ((body = xml_body(xc)) != NULL){
-		/* XXX: cvec_add uses realloc, can we avoid that? */
-		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
-		    clicon_err(OE_PLUGIN, errno, "cvec_add");
+		if ((cv = cv_new(CGV_STRING)) == NULL){
+		    clicon_err(OE_PLUGIN, errno, "cv_new");
 		    goto err;
 		}
 		if (cv_cp(cv, ycv) < 0){
@@ -486,15 +490,17 @@ xml2cvec(cxobj      *xt,
 		    goto err;
 		}
 		if ((ret = cv_parse1(body, cv, &reason)) < 0){
-		    clicon_err(OE_PLUGIN, errno, "cv_parse");
+		    clicon_err(OE_PLUGIN, errno, "cv_parse: %s", name);
 		    goto err;
 		}
 		if (ret == 0){
-		    clicon_err(OE_PLUGIN, errno, "cv_parse: %s", reason);
+		    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason);
 		    if (reason)
 			free(reason);
-		    goto err;
 		}
+		else
+		    cvec_append_var(cvv, cv); /* Add to variable vector */
+		cv_free(cv);
 	    }
 	}
     }
