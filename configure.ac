@@ -53,7 +53,7 @@ else
 	CLIGEN_PREFIX="$prefix"
 fi
 
-AC_CONFIG_HEADERS([include/clixon_config.h lib/clixon/clixon.h])
+AC_CONFIG_HEADERS([include/clixon_config.h.in lib/clixon/clixon.h])
 
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_STRING, $CLIXON_VERSION, [Clixon version string])
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_MAJOR, $CLIXON_VERSION_MAJOR, [Clixon major release])
@@ -165,7 +165,7 @@ fi
 AC_ARG_WITH([configfile],
 	    [AS_HELP_STRING([--with-configfile=FILE],[set default path to config file])],
 	    [DEFAULT_CONFIG="$withval"],
-	    [DEFAULT_CONFIG="/etc/clixon.xml"])
+	    [DEFAULT_CONFIG="%%sysconfdir%%/clixon.xml"])
 
 AC_CHECK_LIB(crypt, crypt)
 AC_CHECK_HEADERS(crypt.h)
