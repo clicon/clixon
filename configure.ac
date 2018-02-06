@@ -165,7 +165,7 @@ fi
 AC_ARG_WITH([configfile],
 	    [AS_HELP_STRING([--with-configfile=FILE],[set default path to config file])],
 	    [DEFAULT_CONFIG="$withval"],
-	    [DEFAULT_CONFIG="/etc/clixon.xml"])
+	    [DEFAULT_CONFIG="$(eval echo ${sysconfdir}/clixon.xml)"])
 
 AC_CHECK_LIB(crypt, crypt)
 AC_CHECK_HEADERS(crypt.h)
