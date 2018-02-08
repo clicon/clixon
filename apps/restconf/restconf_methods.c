@@ -846,7 +846,8 @@ api_operation_post(clicon_handle h,
 		   cvec         *pcvec, 
 		   int           pi,
 		   cvec         *qvec, 
-		   char         *data)
+		   char         *data,
+		   char         *username)
 {
     int        retval = -1;
     int        i;
@@ -869,7 +870,8 @@ api_operation_post(clicon_handle h,
     char      *media_accept;
     int        use_xml = 0; /* By default return JSON */
     int        pretty;
-
+    cxobj     *xa;
+	
     clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, path);
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     if ((media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp)) &&
@@ -939,8 +941,17 @@ api_operation_post(clicon_handle h,
 	    }
 	}
     }
-    /* Non-standard: add cookie as attribute for backend
+    /* Non-standard: add username attribute for backend ACM (RFC 6536)
+     * 
      */
+    if (username){
+	if ((xa = xml_new("username", xtop, NULL)) == NULL)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (xml_value_set(xa, username) < 0)
+	    goto done;
+    }
+#ifdef obsolete
     {
 	cxobj *xa;
 	char *cookie;
@@ -957,6 +968,7 @@ api_operation_post(clicon_handle h,
 		free(cookieval);
 	}
     }
+#endif
     /* Send to backend */
     if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	goto done;

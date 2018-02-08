@@ -3,6 +3,7 @@
 ## 3.5.0 (Upcoming)
 
 ### Major changes:
+* Added a "user" parameter to plugin_credentials() restconf callback. To enable authentication and in preparation for access control a la RFC 6536.
 * Major Restconf feature update to compy to RFC 8040. Thanks Stephen Jones for getting right.
   * GET well-known, top-level resource, yang library version,
   * PUT whole datastore, check for different keys in put lists.
@@ -10,7 +11,7 @@
   
 ### Minor changes:
 
-	
+* Added RFC 6536 ietf-netconf-acm@2012-02-22.yang access control (but not implemented).
 * The following backward compatible options to configure have been obsoleted. If you havent already migrated this code you must do this now.
   * Backend startup modes prior to 3.3.3. As enabled with `configure --with-startup-compat`. Configure option CLICON_USE_STARTUP_CONFIG is also obsoleted.
   * Configuration files (non-XML) prior to 3.3.3. As enabled with `configure --with-config-compat`. The template clicon.conf.cpp files are also removed.
@@ -25,6 +26,7 @@
   * /etc/clixon.xml
 	
 ### Corrected Bugs
+* yang string length "max" keyword set to MAXPATHLEN
 * Corrected "No yang spec" printed on tty on leafref CLI usage
 * xml2cvec: range error (eg 1000 for int8) is not treated as error, just log and skip.
 	

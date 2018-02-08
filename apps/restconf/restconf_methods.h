@@ -66,6 +66,7 @@ int api_operation_get(clicon_handle h, FCGX_Request *r,
 
 int api_operation_post(clicon_handle h, FCGX_Request *r, 
 		       char *path,
-		       cvec *pcvec, int pi, cvec *qvec, char *data);
+		       cvec *pcvec, int pi, cvec *qvec, char *data,
+		       char *username);
 
 #endif /* _RESTCONF_METHODS_H_ */

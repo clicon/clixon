@@ -296,11 +296,10 @@ readdata(FCGX_Request *r)
     return cb;
 }
 
-typedef int (credentials_t)(clicon_handle h, FCGX_Request *r); 
 
 static int nplugins = 0;
 static plghndl_t *plugins = NULL;
-static credentials_t *p_credentials = NULL; /* Credentials callback */
+static plgcredentials_t *_credentials_fn = NULL; /* Credentials callback */
 
 /*! Load all plugins you can find in CLICON_RESTCONF_DIR
  */
@@ -330,7 +329,7 @@ restconf_plugin_load(clicon_handle h)
 		     (int)strlen(filename), filename);
 	if ((handle = plugin_load(h, filename, RTLD_NOW)) == NULL)
 	    goto quit;
-	p_credentials    = dlsym(handle, PLUGIN_CREDENTIALS);
+	_credentials_fn    = dlsym(handle, PLUGIN_CREDENTIALS);
 	if ((plugins = realloc(plugins, (nplugins+1) * sizeof (*plugins))) == NULL) {
 	    clicon_err(OE_UNIX, errno, "realloc");
 	    goto quit;
@@ -385,23 +384,24 @@ restconf_plugin_start(clicon_handle h,
 }
 
 int 
-plugin_credentials(clicon_handle h,     
-		   FCGX_Request *r,
-		   int          *auth)
+restconf_credentials(clicon_handle h,     
+		     FCGX_Request *r,
+		     char        **user)
 {
     int retval = -1;
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* If no authentication callback then allow anything. Is this OK? */
-    if (p_credentials == 0){
-	*auth = 1;
+    if (_credentials_fn == NULL){
+	if ((*user = strdup("none")) == NULL){
+	    clicon_err(OE_XML, errno, "strdup");
+	    goto done;
+	}
 	retval = 0;
 	goto done;
     }
-    if (p_credentials(h, r) < 0) 
-	*auth = 0;
-    else
-	*auth = 1;
+    if (_credentials_fn(h, r, user) < 0) 
+	user = NULL;
     retval = 0;
  done:
     return retval;

@@ -1704,6 +1704,7 @@ xml_apply_ancestor(cxobj          *xn,
  * @param[out]  cvp      CLIgen variable containing the parsed value
  * @note free cv with cv_free after use.
  * @see xml_body_int32   etc, for type-specific parse functions
+ * @note range check failure returns 0
  */
 int
 xml_body_parse(cxobj       *xb,
@@ -1751,6 +1752,7 @@ xml_body_parse(cxobj       *xb,
  *                          alloc error.
  * @note extend to all other cligen var types and generalize
  * @note use yang type info?
+ * @note range check failure returns 0
  */
 int
 xml_body_int32(cxobj    *xb,
@@ -1774,6 +1776,7 @@ xml_body_int32(cxobj    *xb,
  *                          alloc error.
  * @note extend to all other cligen var types and generalize
  * @note use yang type info?
+ * @note range check failure returns 0
  */
 int
 xml_body_uint32(cxobj    *xb,

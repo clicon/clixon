@@ -142,7 +142,8 @@ api_operations(clicon_handle h,
 	       cvec         *pcvec, 
 	       int           pi,
 	       cvec         *qvec, 
-	       char         *data)
+	       char         *data,
+	       char         *username)
 {
     int     retval = -1;
     char   *request_method;
@@ -153,7 +154,7 @@ api_operations(clicon_handle h,
     if (strcmp(request_method, "GET")==0)
 	retval = api_operation_get(h, r, path, pcvec, pi, qvec, data);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_operation_post(h, r, path, pcvec, pi, qvec, data);
+	retval = api_operation_post(h, r, path, pcvec, pi, qvec, data, username);
     else
 	retval = notfound(r);
     return retval;
@@ -275,7 +276,7 @@ api_restconf(clicon_handle h,
     cvec  *pcvec = NULL; /* for rest api */
     cbuf  *cb = NULL;
     char  *data;
-    int    auth = 0;
+    char  *username = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("REQUEST_URI", r->envp);
@@ -318,20 +319,21 @@ api_restconf(clicon_handle h,
 
     retval = 0;
     test(r, 1);
-    /* If present, check credentials */
-    if (plugin_credentials(h, r, &auth) < 0)
+    /* If present, check credentials. See "plugin_credentials" in plugin  
+     * See RFC 8040 section 2.5
+     */
+    if (restconf_credentials(h, r, &username) < 0)
 	goto done;
-    clicon_debug(1, "%s credentials ok auth:%d (should be 1)",
-		 __FUNCTION__, auth);
-    if (auth == 0)
+    clicon_debug(1, "%s credentials ok username:%s (should be non-NULL)",
+		 __FUNCTION__, username);
+    if (username == NULL)
 	goto done;
-    clicon_debug(1, "%s credentials ok 2", __FUNCTION__);
     if (strcmp(method, "yang-library-version")==0)
 	retval = api_yang_library_version(h, r);
     else if (strcmp(method, "data") == 0) /* restconf, skip /api/data */
 	retval = api_data(h, r, path, pcvec, 2, qvec, data);
     else if (strcmp(method, "operations") == 0) /* rpc */
-	retval = api_operations(h, r, path, pcvec, 2, qvec, data);
+	retval = api_operations(h, r, path, pcvec, 2, qvec, data, username);
     else if (strcmp(method, "test") == 0)
 	retval = test(r, 0);
     else
@@ -348,6 +350,8 @@ api_restconf(clicon_handle h,
 	cvec_free(pcvec);
     if (cb)
 	cbuf_free(cb);
+    if (username)
+	free(username);
     return retval;
 }
 
