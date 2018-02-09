@@ -906,8 +906,17 @@ api_operation_post(clicon_handle h,
     if ((xtop = xml_new("rpc", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
+    /* XXX: something strange for rpc user */
     if (api_path2xml(oppath, yspec, xtop, 1, &xbot, &y) < 0)
 	goto done;
+#if 1
+    {
+	cbuf *c = cbuf_new();
+	clicon_xml2cbuf(c, xtop, 0, 0);
+	clicon_debug(1, "%s xinput:%s", __FUNCTION__, cbuf_get(c));
+	cbuf_free(c);
+    }
+#endif
     if (data && strlen(data)){
 	/* Parse input data as json or xml into xml */
 	if (parse_xml){

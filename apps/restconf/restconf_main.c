@@ -317,27 +317,37 @@ api_restconf(clicon_handle h,
     if (str2cvec(data, '&', '=', &dvec) < 0)
       goto done;
 
-    retval = 0;
     test(r, 1);
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * See RFC 8040 section 2.5
      */
     if (restconf_credentials(h, r, &username) < 0)
 	goto done;
+    clicon_debug(1, "%s username:%s", __FUNCTION__, username);
     clicon_debug(1, "%s credentials ok username:%s (should be non-NULL)",
 		 __FUNCTION__, username);
-    if (username == NULL)
-	goto done;
-    if (strcmp(method, "yang-library-version")==0)
-	retval = api_yang_library_version(h, r);
-    else if (strcmp(method, "data") == 0) /* restconf, skip /api/data */
-	retval = api_data(h, r, path, pcvec, 2, qvec, data);
-    else if (strcmp(method, "operations") == 0) /* rpc */
-	retval = api_operations(h, r, path, pcvec, 2, qvec, data, username);
+    if (username == NULL){
+	unauthorized(r);
+	goto ok;
+    }
+    if (strcmp(method, "yang-library-version")==0){
+	if (api_yang_library_version(h, r) < 0)
+	    goto done;
+    }
+    else if (strcmp(method, "data") == 0){ /* restconf, skip /api/data */
+	if (api_data(h, r, path, pcvec, 2, qvec, data) < 0)
+	    goto done;
+    }
+    else if (strcmp(method, "operations") == 0){ /* rpc */
+	if (api_operations(h, r, path, pcvec, 2, qvec, data, username) < 0)
+	    goto done;
+    }
     else if (strcmp(method, "test") == 0)
-	retval = test(r, 0);
+	test(r, 0);
     else
-	retval = notfound(r);
+	notfound(r);
+ ok:
+    retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (pvec)

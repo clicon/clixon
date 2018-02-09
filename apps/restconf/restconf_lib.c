@@ -148,7 +148,60 @@ restconf_code2reason(int code)
     return clicon_int2str(http_reason_phrase_map, code);
 }
 
-/*!
+/*! HTTP error 400
+ * @param[in]  r        Fastcgi request handle
+ */
+int
+badrequest(FCGX_Request *r)
+{
+    char *path;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    path = FCGX_GetParam("DOCUMENT_URI", r->envp);
+    FCGX_FPrintF(r->out, "Status: 400\r\n"); /* 400 bad request */
+    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(r->out, "<h1>Clixon Bad request/h1>\n");
+    FCGX_FPrintF(r->out, "The requested URL %s or data is in some way badly formed.\n",
+		 path);
+    return 0;
+}
+
+/*! HTTP error 401
+ * @param[in]  r        Fastcgi request handle
+ */
+int
+unauthorized(FCGX_Request *r)
+{
+    char *path;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    path = FCGX_GetParam("DOCUMENT_URI", r->envp);
+    FCGX_FPrintF(r->out, "Status: 401\r\n"); /* 401 unauthorized */
+    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(r->out, "<error-tag>access-denied</error-tag>\n");
+    FCGX_FPrintF(r->out, "The requested URL %s was unauthorized.\n", path);
+   return 0;
+}
+
+/*! HTTP error 403
+ * @param[in]  r        Fastcgi request handle
+ */
+int
+forbidden(FCGX_Request *r)
+{
+    char *path;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    path = FCGX_GetParam("DOCUMENT_URI", r->envp);
+    FCGX_FPrintF(r->out, "Status: 403\r\n"); /* 403 forbidden */
+    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(r->out, "<h1>Grideye Forbidden</h1>\n");
+    FCGX_FPrintF(r->out, "The requested URL %s was forbidden.\n", path);
+   return 0;
+}
+
+/*! HTTP error 404
+ * @param[in]  r        Fastcgi request handle
  */
 int
 notfound(FCGX_Request *r)
@@ -165,31 +218,9 @@ notfound(FCGX_Request *r)
     return 0;
 }
 
-int
-badrequest(FCGX_Request *r)
-{
-    char *path;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    path = FCGX_GetParam("DOCUMENT_URI", r->envp);
-    FCGX_FPrintF(r->out, "Status: 400\r\n"); /* 400 bad request */
-    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Clixon Bad request/h1>\n");
-    FCGX_FPrintF(r->out, "The requested URL %s or data is in some way badly formed.\n",
-		 path);
-    return 0;
-}
-
-int
-notimplemented(FCGX_Request *r)
-{
-    clicon_debug(1, "%s", __FUNCTION__);
-    FCGX_FPrintF(r->out, "Status: 501\r\n"); 
-    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Not Implemented/h1>\n");
-    return 0;
-}
-
+/*! HTTP error 409
+ * @param[in]  r        Fastcgi request handle
+ */
 int
 conflict(FCGX_Request *r)
 {
@@ -197,6 +228,35 @@ conflict(FCGX_Request *r)
     FCGX_FPrintF(r->out, "Status: 409\r\n"); /* 409 Conflict */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<h1>Data resource already exists</h1>\n");
+    return 0;
+}
+
+/*! HTTP error 500
+ * @param[in]  r        Fastcgi request handle
+ */
+int
+internal_server_error(FCGX_Request *r)
+{
+    char *path;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    path = FCGX_GetParam("DOCUMENT_URI", r->envp);
+    FCGX_FPrintF(r->out, "Status: 500\r\n"); /* 500 internal server error */
+    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(r->out, "<h1>Grideye Internal server error when accessing %s</h1>\n", path);
+    return 0;
+}
+
+/*! HTTP error 501
+ * @param[in]  r        Fastcgi request handle
+ */
+int
+notimplemented(FCGX_Request *r)
+{
+    clicon_debug(1, "%s", __FUNCTION__);
+    FCGX_FPrintF(r->out, "Status: 501\r\n"); 
+    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(r->out, "<h1>Not Implemented/h1>\n");
     return 0;
 }
 
@@ -329,7 +389,10 @@ restconf_plugin_load(clicon_handle h)
 		     (int)strlen(filename), filename);
 	if ((handle = plugin_load(h, filename, RTLD_NOW)) == NULL)
 	    goto quit;
-	_credentials_fn    = dlsym(handle, PLUGIN_CREDENTIALS);
+	if ((_credentials_fn    = dlsym(handle, PLUGIN_CREDENTIALS)) == NULL)
+	    clicon_debug(1, "Failed to load %s", PLUGIN_CREDENTIALS); 
+	else
+	    clicon_debug(1, "%s callback loaded", PLUGIN_CREDENTIALS); 
 	if ((plugins = realloc(plugins, (nplugins+1) * sizeof (*plugins))) == NULL) {
 	    clicon_err(OE_UNIX, errno, "realloc");
 	    goto quit;
@@ -383,6 +446,14 @@ restconf_plugin_start(clicon_handle h,
     return 0;
 }
 
+/*! Run the restconf user-defined credentials callback if present
+ * The callback is expected to return the authenticated user, or NULL if not
+ * authenticasted.
+ * If no callback exists, return user "none"
+ * @param[in]  h    Clicon handle
+ * @param[in]  r    Fastcgi request handle
+ * @param[out] user The authenticated user (or NULL). Malloced, must be freed.
+ */
 int 
 restconf_credentials(clicon_handle h,     
 		     FCGX_Request *r,
@@ -397,13 +468,14 @@ restconf_credentials(clicon_handle h,
 	    clicon_err(OE_XML, errno, "strdup");
 	    goto done;
 	}
-	retval = 0;
-	goto done;
+	goto ok;
     }
     if (_credentials_fn(h, r, user) < 0) 
-	user = NULL;
+	*user = NULL;
+ ok:
     retval = 0;
  done:
+    clicon_debug(1, "%s retval:%d user:%s", __FUNCTION__, retval, *user);
     return retval;
 }
 

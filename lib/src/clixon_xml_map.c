@@ -1500,11 +1500,9 @@ api_path2xml_vec(char             **vec,
 	name = local;
     }
     if (y0->yn_keyword == Y_SPEC){ /* top-node */
-	clicon_debug(1, "%s 1 %s", __FUNCTION__, name);
 	y = yang_find_topnode((yang_spec*)y0, name, schemanode);
     }
     else {
-	clicon_debug(1, "%s 2 %s", __FUNCTION__, name);
 	y = schemanode?yang_find_schemanode((yang_node*)y0, name):
 	    yang_find_datanode((yang_node*)y0, name);
     }
@@ -1593,7 +1591,6 @@ api_path2xml_vec(char             **vec,
  * @param[in]     schemanode If set use schema nodes otherwise data nodes.
  * @param[out]    xbotp      Resulting xml tree (end of xpath)
  * @param[out]    ybotp      Yang spec matching xbotp
- * @see api_path2xml_vec
  * @example
  *   api_path: /subif-entry=foo/subid
  *   xtop[in]  <config/> 
@@ -1602,6 +1599,7 @@ api_path2xml_vec(char             **vec,
  *                       </subif-entry></config>
  *   xbotp:    <subid/>
  *   ybotp:    Y_LEAF subid
+ * @see api_path2xml_vec
  */
 int
 api_path2xml(char       *api_path,
@@ -1615,7 +1613,6 @@ api_path2xml(char       *api_path,
     char **vec = NULL;
     int    nvec;
 
-    clicon_debug(1, "%s 0", __FUNCTION__);
     if (*api_path!='/'){
 	clicon_err(OE_DB, 0, "Invalid key: %s", api_path);
 	goto done;

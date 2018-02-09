@@ -45,10 +45,15 @@
  */
 int restconf_err2code(char *tag);
 const char *restconf_code2reason(int code);
-int notfound(FCGX_Request *r);
+
 int badrequest(FCGX_Request *r);
-int notimplemented(FCGX_Request *r);
+int unauthorized(FCGX_Request *r);
+int forbidden(FCGX_Request *r);
+int notfound(FCGX_Request *r);
 int conflict(FCGX_Request *r);
+int internal_server_error(FCGX_Request *r);
+int notimplemented(FCGX_Request *r);
+
 int clicon_debug_xml(int dbglevel, char *str, cxobj *cx);
 int test(FCGX_Request *r, int dbg);
 cbuf *readdata(FCGX_Request *r);
