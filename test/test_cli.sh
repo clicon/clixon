@@ -28,10 +28,6 @@ cat <<EOF > $cfg
 </config>
 EOF
 
-# For memcheck
-#clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
-clixon_cli=clixon_cli
-
 # kill old backend (if any)
 new "kill old backend"
 sudo clixon_backend -z -f $cfg
@@ -39,7 +35,7 @@ if [ $? -ne 0 ]; then
     err
 fi
 new "start backend -s init -f $cfg"
-sudo clixon_backend -s init -f $cfg 
+sudo $clixon_backend -s init -f $cfg 
 if [ $? -ne 0 ]; then
     err
 fi

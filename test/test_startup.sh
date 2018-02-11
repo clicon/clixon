@@ -10,11 +10,6 @@
 . ./lib.sh
 cfg=$dir/conf_startup.xml
 
-# For memcheck
-# clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-clixon_netconf=clixon_netconf
-clixon_cli=clixon_cli
-
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>

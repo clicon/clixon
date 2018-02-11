@@ -25,11 +25,6 @@ cat <<EOF > $cfg
 </config>
 EOF
 
-
-# For memcheck
-#clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-clixon_netconf=clixon_netconf
-
 echo "clixon_backend -zf $cfg"
 # kill old backend (if any)
 new "kill old backend"

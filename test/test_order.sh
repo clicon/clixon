@@ -13,8 +13,7 @@ fyang=$dir/order.yang
 
 # For memcheck
 # clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-clixon_netconf=clixon_netconf
-clixon_cli=clixon_cli
+
 dbdir=$dir/order
 
 new "Set up $dbdir"

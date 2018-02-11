@@ -5,6 +5,18 @@
 testnr=0
 testname=
 
+# For memcheck
+#clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
+clixon_cli=clixon_cli
+
+# For memcheck / performance
+#clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
+# clixon_netconf="valgrind --tool=callgrind clixon_netconf 
+clixon_netconf=clixon_netconf
+
+#clixon_backend="valgrind --leak-check=full --show-leak-kinds=all clixon_backend"
+clixon_backend=clixon_backend
+
 dir=/var/tmp/$0
 if [ ! -d $dir ]; then
     mkdir $dir

@@ -22,12 +22,6 @@ cfg=$dir/scaling-conf.xml
 fyang=$dir/scaling.yang
 fconfig=$dir/config
 
-
-# For memcheck
-# clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-# clixon_netconf="valgrind --tool=callgrind clixon_netconf 
-clixon_netconf=clixon_netconf
-
 cat <<EOF > $fyang
 module ietf-ip{
    container x {

@@ -22,11 +22,6 @@ cat <<EOF > $cfg
 </config>
 EOF
 
-# For memcheck
-# clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-clixon_netconf=clixon_netconf
-clixon_cli=clixon_cli
-
 cat <<EOF > $fyang
 module example{
     import ietf-ip {
