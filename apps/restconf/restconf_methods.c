@@ -652,11 +652,12 @@ api_data_put(clicon_handle h,
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
-#if 1 /* This is different from POST */
     /* Replace xparent with x, ie bottom of api-path with data */	    
     if (api_path==NULL && strcmp(xml_name(x),"data")==0){
 	if (xml_addsub(NULL, x) < 0)
 	    goto done;
+	if (xtop)
+	    xml_free(xtop);
 	xtop = x;
 	xml_name_set(xtop, "config");
     }
@@ -678,7 +679,7 @@ api_data_put(clicon_handle h,
 	if (xml_addsub(xparent, x) < 0)
 	    goto done;
     }
-#endif
+
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;

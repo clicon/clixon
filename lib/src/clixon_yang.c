@@ -1451,7 +1451,7 @@ yang_parse_file(clicon_handle h,
     FILE         *f = NULL;
     struct stat st;
 
-    clicon_debug(1, "Yang parse file: %s", filename);
+    clicon_log(LOG_DEBUG, "Parsing yang file: %s", filename);
     if (stat(filename, &st) < 0){
 	clicon_err(OE_YANG, errno, "%s not found", filename);
 	goto done;

@@ -93,7 +93,6 @@ new "restconf POST initial tree"
 expectfn 'curl -s -X POST -d {"interfaces-config":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' ""
 
 new "restconf PUT initial datastore" 
-
 expectfn 'curl -s -X PUT -d {"data":{"interfaces-config":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' ""
 
 new "restconf GET datastore"
