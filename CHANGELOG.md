@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-## 3.5.0 (Upcoming)
+## 3.5.0 (12 February 2018)
 
 ### Major changes:
 * Major Restconf feature update to compy to RFC 8040. Thanks Stephen Jones for getting right.
