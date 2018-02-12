@@ -595,7 +595,7 @@ xml_find(cxobj *x_up,
 }
 
 /*! Append xc as child to xp. Remove xc from previous parent.
- * @param[in] xp  Parent xml node
+ * @param[in] xp  Parent xml node. If NULL just remove from old parent.
  * @param[in] xc  Child xml node to insert under xp
  * @retval    0   OK
  * @retval    -1  Error
@@ -618,10 +618,12 @@ xml_addsub(cxobj *xp,
 	    xml_child_rm(oldp, i);
     }
     /* Add xc to new parent */
-    if (xml_child_append(xp, xc) < 0)
-	return -1;
-    /* Set new parent in child */
-    xml_parent_set(xc, xp); 
+    if (xp){
+	if (xml_child_append(xp, xc) < 0)
+	    return -1;
+	/* Set new parent in child */
+	xml_parent_set(xc, xp);
+    }
     return 0;
 }
 
@@ -1355,8 +1357,8 @@ xml_parse_file(int        fd,
  * @param[in]     str   String containing XML definition. 
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to XML parse tree. If empty will be created.
- * @retval        0  OK
- * @retval       -1  Error with clicon_err called
+ * @retval        0     OK
+ * @retval       -1     Error with clicon_err called. Includes parse error
  *
  * @code
  *  cxobj *xt = NULL;
@@ -1702,6 +1704,7 @@ xml_apply_ancestor(cxobj          *xn,
  * @param[out]  cvp      CLIgen variable containing the parsed value
  * @note free cv with cv_free after use.
  * @see xml_body_int32   etc, for type-specific parse functions
+ * @note range check failure returns 0
  */
 int
 xml_body_parse(cxobj       *xb,
@@ -1749,6 +1752,7 @@ xml_body_parse(cxobj       *xb,
  *                          alloc error.
  * @note extend to all other cligen var types and generalize
  * @note use yang type info?
+ * @note range check failure returns 0
  */
 int
 xml_body_int32(cxobj    *xb,
@@ -1772,6 +1776,7 @@ xml_body_int32(cxobj    *xb,
  *                          alloc error.
  * @note extend to all other cligen var types and generalize
  * @note use yang type info?
+ * @note range check failure returns 0
  */
 int
 xml_body_uint32(cxobj    *xb,

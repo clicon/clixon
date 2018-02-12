@@ -134,6 +134,18 @@ fib_route(clicon_handle h,            /* Clicon handle */
     return 0;
 }
 
+/*! Smallest possible RPC declaration for test */
+static int 
+empty(clicon_handle h,            /* Clicon handle */
+	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	  struct client_entry *ce,    /* Client session */
+	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	  void         *arg)          /* Argument given at register */
+{
+    cprintf(cbret, "<rpc-reply/>");
+    return 0;
+}
+
 /*! IETF Routing route-count rpc */
 static int 
 route_count(clicon_handle h, 
@@ -199,6 +211,11 @@ plugin_init(clicon_handle h)
     if (backend_rpc_cb_register(h, route_count, 
 				NULL, 
 				"route-count"/* Xml tag when callback is made */
+				) < 0)
+	goto done;
+    if (backend_rpc_cb_register(h, empty, 
+				NULL, 
+				"empty"/* Xml tag when callback is made */
 				) < 0)
 	goto done;
     retval = 0;

@@ -73,9 +73,14 @@
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hDf:p:y:"
 
-/* Should be discovered via  "/.well-known/host-meta"
-   resource ([RFC6415]) */
-#define RESTCONF_API_ROOT    "/restconf/"
+/* RESTCONF enables deployments to specify where the RESTCONF API is 
+   located.  The client discovers this by getting the "/.well-known/host-meta"
+   resource 
+*/
+#define RESTCONF_WELL_KNOWN  "/.well-known/host-meta"
+
+#define RESTCONF_API       "restconf"
+#define RESTCONF_API_ROOT "/restconf"
 
 /*! Generic REST method, GET, PUT, DELETE, etc
  * @param[in]  h      CLIXON handle
@@ -117,6 +122,7 @@ api_data(clicon_handle h,
 	retval = api_data_delete(h, r, api_path, pi);
     else
 	retval = notfound(r);
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -136,7 +142,8 @@ api_operations(clicon_handle h,
 	       cvec         *pcvec, 
 	       int           pi,
 	       cvec         *qvec, 
-	       char         *data)
+	       char         *data,
+	       char         *username)
 {
     int     retval = -1;
     char   *request_method;
@@ -144,10 +151,110 @@ api_operations(clicon_handle h,
     clicon_debug(1, "%s", __FUNCTION__);
     request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
-    if (strcmp(request_method, "POST")==0)
-	retval = api_operation_post(h, r, path, pcvec, pi, qvec, data);
+    if (strcmp(request_method, "GET")==0)
+	retval = api_operation_get(h, r, path, pcvec, pi, qvec, data);
+    else if (strcmp(request_method, "POST")==0)
+	retval = api_operation_post(h, r, path, pcvec, pi, qvec, data, username);
     else
 	retval = notfound(r);
+    return retval;
+}
+
+/*! Retrieve the Top-Level API Resource
+ * @note Only returns null for operations and data,...
+ */
+static int
+api_root(clicon_handle h,
+	 FCGX_Request *r)
+{
+    int    retval = -1;
+    char  *media_accept;
+    int   use_xml = 0; /* By default use JSON */
+    cxobj *xt = NULL;
+    cbuf  *cb = NULL;
+    int    pretty;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
+    if (strcmp(media_accept, "application/yang-data+xml")==0)
+	use_xml++;
+    FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
+    FCGX_FPrintF(r->out, "\r\n");
+    if (xml_parse_string("<restconf><data></data><operations></operations><yang-library-version>2016-06-21</yang-library-version></restconf>", NULL, &xt) < 0)
+	goto done;
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (xml_rootchild(xt, 0, &xt) < 0)
+	goto done;
+    if (use_xml){
+	if (clicon_xml2cbuf(cb, xt, 0, pretty) < 0)
+	    goto done;
+    }
+    else
+	if (xml2json_cbuf(cb, xt, pretty) < 0)
+	    goto done;
+    FCGX_FPrintF(r->out, "%s", cb?cbuf_get(cb):"");
+    FCGX_FPrintF(r->out, "\r\n\r\n");
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (xt)
+	xml_free(xt);
+    return retval;
+}
+
+/*!
+ * See https://tools.ietf.org/html/rfc7895
+ */
+static int
+api_yang_library_version(clicon_handle h,
+			 FCGX_Request *r)
+{
+    int    retval = -1;
+    char  *media_accept;
+    int    use_xml = 0; /* By default use JSON */
+    cxobj *xt = NULL;
+    cbuf  *cb = NULL;
+    int    pretty;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
+    if (strcmp(media_accept, "application/yang-data+xml")==0)
+	use_xml++;
+    FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
+    FCGX_FPrintF(r->out, "\r\n");
+    if (xml_parse_string("<yang-library-version>2016-06-21</yang-library-version>", NULL, &xt) < 0)
+	goto done;
+    if (xml_rootchild(xt, 0, &xt) < 0)
+	goto done;
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (use_xml){
+	if (clicon_xml2cbuf(cb, xt, 0, pretty) < 0)
+	    goto done;
+    }
+    else{
+	if (xml2json_cbuf(cb, xt, pretty) < 0)
+	    goto done;
+    }
+    clicon_debug(1, "%s cb%s", __FUNCTION__, cbuf_get(cb));
+    FCGX_FPrintF(r->out, "%s\r\n", cb?cbuf_get(cb):"");
+    FCGX_FPrintF(r->out, "\r\n\r\n");
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (xt)
+	xml_free(xt);
     return retval;
 }
 
@@ -155,7 +262,7 @@ api_operations(clicon_handle h,
  * @param[in]  r        Fastcgi request handle
  */
 static int
-request_process(clicon_handle h,
+api_restconf(clicon_handle h,
 		FCGX_Request *r)
 {
     int    retval = -1;
@@ -169,14 +276,35 @@ request_process(clicon_handle h,
     cvec  *pcvec = NULL; /* for rest api */
     cbuf  *cb = NULL;
     char  *data;
-    int    auth = 0;
+    char  *username = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("REQUEST_URI", r->envp);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
-
+    /* Sanity check of path. Should be /restconf/ */
+    if (pn < 2){
+	retval = notfound(r);
+	goto done;
+    }
+    if (strlen(pvec[0]) != 0){
+	retval = notfound(r);
+	goto done;
+    }
+    if (strcmp(pvec[1], RESTCONF_API)){
+	retval = notfound(r);
+	goto done;
+    }
+    if (pn == 2){
+	retval = api_root(h, r);
+	goto done;
+    }
+    if ((method = pvec[2]) == NULL){
+	retval = notfound(r);
+	goto done;
+    }
+    clicon_debug(1, "method=%s", method);
     if (str2cvec(query, '&', '=', &qvec) < 0)
       goto done;
     if (str2cvec(path, '/', '=', &pcvec) < 0) /* rest url eg /album=ricky/foo */
@@ -188,29 +316,38 @@ request_process(clicon_handle h,
     clicon_debug(1, "DATA=%s", data);
     if (str2cvec(data, '&', '=', &dvec) < 0)
       goto done;
-    if ((method = pvec[2]) == NULL){
-	retval = notfound(r);
-	goto done;
-    }
-    retval = 0;
-    test(r, 1);
-    /* If present, check credentials */
-    if (plugin_credentials(h, r, &auth) < 0)
-	goto done;
-    clicon_debug(1, "%s credentials ok auth:%d (should be 1)",
-		 __FUNCTION__, auth);
-    if (auth == 0)
-	goto done;
-    clicon_debug(1, "%s credentials ok 2", __FUNCTION__);
 
-    if (strcmp(method, "data") == 0) /* restconf, skip /api/data */
-	retval = api_data(h, r, path, pcvec, 2, qvec, data);
-    else if (strcmp(method, "operations") == 0) /* rpc */
-	retval = api_operations(h, r, path, pcvec, 2, qvec, data);
+    test(r, 1);
+    /* If present, check credentials. See "plugin_credentials" in plugin  
+     * See RFC 8040 section 2.5
+     */
+    if (restconf_credentials(h, r, &username) < 0)
+	goto done;
+    clicon_debug(1, "%s username:%s", __FUNCTION__, username);
+    clicon_debug(1, "%s credentials ok username:%s (should be non-NULL)",
+		 __FUNCTION__, username);
+    if (username == NULL){
+	unauthorized(r);
+	goto ok;
+    }
+    if (strcmp(method, "yang-library-version")==0){
+	if (api_yang_library_version(h, r) < 0)
+	    goto done;
+    }
+    else if (strcmp(method, "data") == 0){ /* restconf, skip /api/data */
+	if (api_data(h, r, path, pcvec, 2, qvec, data) < 0)
+	    goto done;
+    }
+    else if (strcmp(method, "operations") == 0){ /* rpc */
+	if (api_operations(h, r, path, pcvec, 2, qvec, data, username) < 0)
+	    goto done;
+    }
     else if (strcmp(method, "test") == 0)
-	retval = test(r, 0);
+	test(r, 0);
     else
-	retval = notfound(r);
+	notfound(r);
+ ok:
+    retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (pvec)
@@ -223,7 +360,27 @@ request_process(clicon_handle h,
 	cvec_free(pcvec);
     if (cb)
 	cbuf_free(cb);
+    if (username)
+	free(username);
     return retval;
+}
+
+/*! Process a FastCGI request
+ * @param[in]  r        Fastcgi request handle
+ */
+static int
+api_well_known(clicon_handle h,
+	       FCGX_Request *r)
+{
+    clicon_debug(1, "%s", __FUNCTION__);
+    FCGX_FPrintF(r->out, "Content-Type: application/xrd+xml\r\n");
+    FCGX_FPrintF(r->out, "\r\n");
+    FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>\r\n");
+    FCGX_FPrintF(r->out, "   <Link rel='restconf' href='/restconf'/>\r\n");
+    FCGX_FPrintF(r->out, "</XRD>\r\n");
+
+    return 0;
 }
 
 static int
@@ -384,13 +541,17 @@ main(int    argc,
 	}
 	clicon_debug(1, "------------");
 	if ((path = FCGX_GetParam("REQUEST_URI", r->envp)) != NULL){
-	    if (strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)) == 0 ||
-		strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)-1) == 0)
-		request_process(h, r); /* This is the function */
+	    clicon_debug(1, "path:%s", path);
+	    if (strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)) == 0)
+		api_restconf(h, r); /* This is the function */
+	    else if (strncmp(path, RESTCONF_WELL_KNOWN, strlen(RESTCONF_WELL_KNOWN)) == 0) {
+		api_well_known(h, r); /* This is the function */
+	    }
 	    else{
-		clicon_debug(1, "top-level not found");
+		clicon_debug(1, "top-level %s not found", path);
 		notfound(r);
 	    }
+	    
 	}
 	else
 	    clicon_debug(1, "NULL URI");

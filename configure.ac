@@ -42,9 +42,9 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${CFLAGS="-O2"}
 
 CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="4"
+CLIXON_VERSION_MINOR="5"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 # Fix to specific version (eg 3.5) or head (3) 
 CLIGEN_VERSION="3" 
 if test "$prefix" = "NONE"; then
@@ -86,13 +86,6 @@ AC_SUBST(AR)
 AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
 AC_SUBST(with_keyvalue) # If yes, compile datastore/keyvalue
-# If yes, backward compatible with 3.3.2 backend startup
-AC_SUBST(with_startup_compat) 
-# If yes, backward compatible with 3.3.2 .conf configuration
-AC_SUBST(with_config_compat) 
-# If yes, backward compatible with 3.3.3 XML api new and parse functions
-AC_SUBST(with_xml_compat) 
-
 #
 AC_PROG_CC()
 AC_PROG_CPP
@@ -168,36 +161,11 @@ if test "x${with_keyvalue}" == xyes; then
    AC_CONFIG_FILES(datastore/keyvalue/Makefile)
 fi
 
-# This is for backward compatibility of backend startup commands in 3.3.3
-# Will be removed in 3.4.0
-AC_ARG_WITH([startup_compat],
-            [AS_HELP_STRING([--with-startup-compat],[Backward compatibility of backend startup commands])],
-	    [],
-            [with_startup_compat=no])
-if test "x${with_startup_compat}" == xyes; then
-   AC_DEFINE_UNQUOTED(BACKEND_STARTUP_COMPAT, $with_startup_compat, [Backward compatible backend startup command-line options])
-fi
-
-# This is for backward compatibility of .conf configuration file in 3.3.3
-# Will be removed in 3.4.0
-AC_ARG_WITH([config_compat],
-            [AS_HELP_STRING([--with-config-compat],[Backward compatibility of configuration file])],
-	    [],
-            [with_config_compat=no])
-if test "x${with_config_compat}" == xyes; then
-   AC_DEFINE_UNQUOTED(CONFIG_COMPAT, $with_config_compat, [Backward compatible of .conf configuration files])
-fi
-
-# Clixon 3.4.0 changes XML creation and parse API
-# Set this for backward compat and migration. 
-# Will be removed in 3.5.0
-AC_ARG_WITH([xml_compat],
-            [AS_HELP_STRING([--with-xml-compat],[Backward compatibility of XML API])],
-	    [],
-            [with_xml_compat=no])
-if test "x${with_xml_compat}" == xyes; then
-   AC_DEFINE_UNQUOTED(XML_COMPAT, $with_xml_compat, [Backward compatible of XML API])
-fi
+# Set default config file location
+AC_ARG_WITH([configfile],
+	    [AS_HELP_STRING([--with-configfile=FILE],[set default path to config file])],
+	    [DEFAULT_CONFIG="$withval"],
+	    [DEFAULT_CONFIG="$(eval echo ${sysconfdir}/clixon.xml)"])
 
 AC_CHECK_LIB(crypt, crypt)
 AC_CHECK_HEADERS(crypt.h)
@@ -219,6 +187,9 @@ AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versi
 # This is to find clixon system files in the source code.
 # same as clixon_DATADIR defined in clixon.mk.cpp for Makefiles
 AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${prefix}/share/clixon", [Clixon data dir for system yang files etc])
+
+# Default location for config file
+AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${DEFAULT_CONFIG}",[Location for apps to find default config file])
 
 AH_BOTTOM([#include <clixon_custom.h>])
 

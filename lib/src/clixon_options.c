@@ -183,168 +183,6 @@ clicon_option_readfile_xml(clicon_hash_t *copt,
     return retval;
 }
 
-#ifdef CONFIG_COMPAT
-
-/*! Read filename and set values to global options registry
- * For legacy configuration file, ie not xml
- * @see clicon_option_readfile_xml
- */
-static int 
-clicon_option_readfile(clicon_hash_t *copt, 
-		       const char    *filename)
-{
-    struct stat st;
-    char        opt[1024];
-    char        val[1024];
-    char        line[1024];
-    char       *cp;
-    FILE       *f = NULL;
-    int         retval = -1;
-
-    if (filename == NULL || !strlen(filename)){
-	clicon_err(OE_UNIX, 0, "Not specified");
-	goto done;
-    }
-    if (stat(filename, &st) < 0){
-	clicon_err(OE_UNIX, errno, "%s", filename);
-	goto done;
-    }
-    if (!S_ISREG(st.st_mode)){
-	clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
-	goto done;
-    }
-    if ((f = fopen(filename, "r")) == NULL) {
-	clicon_err(OE_UNIX, errno, "configure file: %s", filename);
-	return -1;
-    }
-    clicon_debug(2, "Reading config file %s", __FUNCTION__, filename);
-    while (fgets(line, sizeof(line), f)) {
-	if ((cp = strchr(line, '\n')) != NULL) /* strip last \n */
-	    *cp = '\0';
-	/* Trim out comments, strip whitespace, and remove CR */
-	if ((cp = strchr(line, '#')) != NULL)
-	    memcpy(cp, "\n", 2);
-	if (sscanf(line, "%s %s", opt, val) < 2)
-	    continue;
-	if ((hash_add(copt, 
-		      opt,
-		      val,
-		      strlen(val)+1)) == NULL)
-	    goto done;
-    }
-    retval = 0;
-  done:
-    if (f)
-	fclose(f);
-    return retval;
-}
-
-/*! Set default values of some options that may not appear in config-file
- */
-static int
-clicon_option_default(clicon_hash_t  *copt)
-{
-    char           *val;
-    int             retval = 0;
-
-    if (!hash_lookup(copt, "CLICON_YANG_MODULE_MAIN")){
-	if (hash_add(copt, "CLICON_YANG_MODULE_MAIN", "clicon", strlen("clicon")+1) < 0)
-	    goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_SOCK_GROUP")){
-	val = CLICON_SOCK_GROUP;
-	if (hash_add(copt, "CLICON_SOCK_GROUP", val, strlen(val)+1) < 0)
-	    goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_CLI_MODE")){
-	if (hash_add(copt, "CLICON_CLI_MODE", "base", strlen("base")+1) < 0)
-	    goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_MASTER_PLUGIN")){
-	val = CLICON_MASTER_PLUGIN;
-	if (hash_add(copt, "CLICON_MASTER_PLUGIN", val, strlen(val)+1) < 0)
-	    goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_CLI_GENMODEL")){
-	if (hash_add(copt, "CLICON_CLI_GENMODEL", "1", strlen("1")+1) < 0)
-	    goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_CLI_GENMODEL_TYPE")){
-	if (hash_add(copt, "CLICON_CLI_GENMODEL_TYPE", "VARS", strlen("VARS")+1) < 0)
-	    goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_AUTOCOMMIT")){
-	if (hash_add(copt, "CLICON_AUTOCOMMIT", "0", strlen("0")+1) < 0)
-	    goto done;
-    }
-    /* Legacy is 1 but default should really be 0. New apps should use 0 */
-    if (!hash_lookup(copt, "CLICON_CLI_VARONLY")){
-	if (hash_add(copt, "CLICON_CLI_VARONLY", "1", strlen("1")+1) < 0)
-	    goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_CLI_GENMODEL_COMPLETION")){
-	if (hash_add(copt, "CLICON_CLI_GENMODEL_COMPLETION", "1", strlen("1")+1) < 0)
-	    goto done;
-    }
-    /* Default is to use line-scrolling */
-    if (!hash_lookup(copt, "CLICON_CLI_LINESCROLLING")){
-       if (hash_add(copt, "CLICON_CLI_LINESCROLLING", "1", strlen("1")+1) < 0)
-           goto done;
-    }
-    retval = 0;
-  done:
-    return retval;
-}
-
-/*! Check that options are set
- */
-static int 
-clicon_option_sanity(clicon_hash_t *copt)
-{
-    int retval = -1;
-
-    if (!hash_lookup(copt, "CLICON_CLI_DIR")){
-	clicon_err(OE_UNIX, 0, "CLICON_CLI_DIR not defined in config file");
-	goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_CLISPEC_DIR")){
-	clicon_err(OE_UNIX, 0, "CLICON_CLISPEC_DIR not defined in config file");
-	goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_BACKEND_DIR")){
-	clicon_err(OE_UNIX, 0, "CLICON_BACKEND_DIR not defined in config file");
-	goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_NETCONF_DIR")){
-	clicon_err(OE_UNIX, 0, "CLICON_NETCONF_DIR not defined in config file");
-	goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_RESTCONF_DIR")){
-	clicon_err(OE_UNIX, 0, "CLICON_RESTCONF_DIR not defined in config file");
-	goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_YANG_DIR")){
-	clicon_err(OE_UNIX, 0, "CLICON_YANG_DIR not defined in config file");
-	goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_XMLDB_DIR")){
-	clicon_err(OE_UNIX, 0, "CLICON_XMLDB_DIR not defined in config file");
-	goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_SOCK")){
-	clicon_err(OE_UNIX, 0, "CLICON_SOCK not defined in config file");
-	goto done;
-    }
-    if (!hash_lookup(copt, "CLICON_BACKEND_PIDFILE")){
-	clicon_err(OE_UNIX, 0, "CLICON_BACKEND_PIDFILE not defined in config file");
-	goto done;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-#endif /* CONFIG_COMPAT */
-
 /*! Initialize option values
  *
  * Set default options, Read config-file, Check that all values are set.
@@ -364,8 +202,7 @@ clicon_options_main(clicon_handle h)
      * Set configure file if not set by command-line above
      */
     if (!hash_lookup(copt, "CLICON_CONFIGFILE")){ 
-	clicon_err(OE_CFG, 0, "CLICON_CONFIGFILE (-f) not set");
-	goto done;
+	clicon_option_str_set(h, "CLICON_CONFIGFILE", CLIXON_DEFAULT_CONFIG);
     }
     configfile = hash_value(copt, "CLICON_CONFIGFILE", NULL);
     clicon_debug(1, "CLICON_CONFIGFILE=%s", configfile);
@@ -389,19 +226,8 @@ clicon_options_main(clicon_handle h)
 	    xml_child_sort = 0;
     }
     else {
-#ifdef CONFIG_COMPAT
-	/* Set default options */
-	if (clicon_option_default(copt) < 0)  /* init registry from file */
-	    goto done;
-	/* Read configfile */
-	if (clicon_option_readfile(copt, configfile) < 0)
-	    goto done;
-	if (clicon_option_sanity(copt) < 0)
-	    goto done;
-#else /* CONFIG_COMPAT */
 	clicon_err(OE_CFG, 0, "%s: suffix %s not recognized (Run ./configure --with-config-compat?)", configfile, suffix);
 	goto done;
-#endif /* CONFIG_COMPAT */
     }
     retval = 0;
  done:

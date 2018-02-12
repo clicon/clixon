@@ -79,7 +79,7 @@
  * Returns an expand-type list of commands as used by cligen 'expand' 
  * functionality.
  *
- * Assume callback given in a cligen spec: a <x:int expand_dbvar("arg")
+ * Assume callback given in a cligen spec: a <x:int expand_dbvar("db" "<xmlkeyfmt>")
  * @param[in]   h        clicon handle 
  * @param[in]   name     Name of this function (eg "expand_dbvar")
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
@@ -88,7 +88,6 @@
  * @param[out]  commands vector of function pointers to callback functions
  * @param[out]  helptxt  vector of pointers to helptexts
  * @see cli_expand_var_generate  This is where arg is generated
- * XXX: helptexts?
  */
 int
 expand_dbvar(void   *h, 

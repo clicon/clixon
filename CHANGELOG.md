@@ -1,5 +1,40 @@
 # Clixon Changelog
 
+## 3.5.0 (Upcoming)
+
+### Major changes:
+* Major Restconf feature update to compy to RFC 8040. Thanks Stephen Jones for getting right.
+  * GET: Always return object referenced (and nothing else). ie, GET /restconf/data/X returns X. 
+  * GET Added support for the following resources: Well-known, top-level resource, and yang library version,
+  * GET Single element JSON lists use {list:[element]}, not {list:element}.
+  * PUT Whole datastore
+  
+### Minor changes:
+
+* Changed signature of plugin_credentials() restconf callback. Added a "user" parameter. To enable authentication and in preparation for access control a la RFC 6536.
+* Added RFC 6536 ietf-netconf-acm@2012-02-22.yang access control (but not implemented).
+* The following backward compatible options to configure have been _obsoleted_. If you havent already migrated this code you must do this now.
+  * `configure --with-startup-compat`. Configure option CLICON_USE_STARTUP_CONFIG is also obsoleted.
+  * `configure --with-config-compat`. The template clicon.conf.cpp files are also removed.
+  * `configure --with-xml-compat`
+  
+* New configuration option: CLICON_RESTCONF_PRETTY. Default true. Set to false to get more compact Restconf output.
+
+
+* Default configure file handling generalized by Renato Botelho/Matt Smith. Config file FILE is selected in the following priority order:
+  * Provide -f FILE option when starting a program (eg clixon_backend -F FILE)
+  * Provide --with-configfile=FILE when configuring
+  * Provide --with-sysconfig=<dir> when configuring, then FILE is <dir>/clixon.xml
+  * Provide --sysconfig=<dir> when configuring then FILE is <dir>/etc/clixon.xml
+  * FILE is /usr/local/etc/clixon.xml
+	
+### Corrected Bugs
+* yang max keyword was not supported for string type. Corrected by setting "max" to MAXPATHLEN
+* Corrected "No yang spec" printed on tty when using leafref in CLI.
+* Fixed error in xml2cvec. If a (for example) int8 value has range error (eg 1000), it was treated as an error and the program terminated. Now this is just logged and skipped. Reported by Fredrik Pettai.
+	
+### Known issues
+
 ## 3.4.0 (1 January 2018)
 
 ### Major changes:

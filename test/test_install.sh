@@ -1,67 +1,60 @@
 #!/bin/bash
 # Install test
 
-# include err() and new() functions
+# include err() and new() functions and creates $dir
 . ./lib.sh
 
-DIR=/tmp/clixoninstall
-
-new "Set up installdir $DIR"
-rm -rf $DIR
-mkdir $DIR
+new "Set up installdir $dir"
 
 new "Make DESTDIR install"
-(cd ..; make DESTDIR=$DIR install)
+(cd ..; make DESTDIR=$dir install)
 if [ $? -ne 0 ]; then
     err
 fi
 
 new "Check installed files"
-if [ ! -d $DIR/usr ]; then
-    err $DIR/usr
+if [ ! -d $dir/usr ]; then
+    err $dir/usr
 fi
-if [ ! -d $DIR/www-data ]; then
-    err $DIR/www-data
+if [ ! -d $dir/www-data ]; then
+    err $dir/www-data
 fi
-if [ ! -f $DIR/usr/local/share/clixon/clixon.mk ]; then
-    err $DIR/usr/local/share/clixon/clixon.mk
+if [ ! -f $dir/usr/local/share/clixon/clixon.mk ]; then
+    err $dir/usr/local/share/clixon/clixon.mk
 fi
-if [ ! -f $DIR/usr/local/share/clixon/clixon.conf.cpp ]; then
-    err $DIR/usr/local/share/clixon/clixon.conf.cpp
+if [ ! -f $dir/usr/local/share/clixon/clixon-config* ]; then
+    err $dir/usr/local/share/clixon/clixon-config*
 fi
-if [ ! -f $DIR/usr/local/share/clixon/clixon-config* ]; then
-    err $DIR/usr/local/share/clixon/clixon-config*
+if [ ! -h $dir/usr/local/lib/libclixon.so ]; then
+    err $dir/usr/local/lib/libclixon.so
 fi
-if [ ! -h $DIR/usr/local/lib/libclixon.so ]; then
-    err $DIR/usr/local/lib/libclixon.so
-fi
-if [ ! -h $DIR/usr/local/lib/libclixon_backend.so ]; then
-    err $DIR/usr/local/lib/libclixon_backend.so
+if [ ! -h $dir/usr/local/lib/libclixon_backend.so ]; then
+    err $dir/usr/local/lib/libclixon_backend.so
 fi
 
 new "Make DESTDIR install include"
-(cd ..; make DESTDIR=$DIR install-include)
+(cd ..; make DESTDIR=$dir install-include)
 if [ $? -ne 0 ]; then
     err
 fi
 new "Check installed includes"
-if [ ! -f $DIR/usr/local/include/clixon/clixon.h ]; then
-    err $DIR/usr/local/include/clixon/clixon.h
+if [ ! -f $dir/usr/local/include/clixon/clixon.h ]; then
+    err $dir/usr/local/include/clixon/clixon.h
 fi
 new "Make DESTDIR uninstall"
-(cd ..; make DESTDIR=$DIR uninstall)
+(cd ..; make DESTDIR=$dir uninstall)
 if [ $? -ne 0 ]; then
     err
 fi
 
 new "Check remaining files"
-f=$(find $DIR -type f)
+f=$(find $dir -type f)
 if [ -n "$f" ]; then
     err "$f"
 fi
 
 new "Check remaining symlinks"
-l=$(find $DIR -type l)
+l=$(find $dir -type l)
 if [ -n "$l" ]; then
     err "$l"
 fi

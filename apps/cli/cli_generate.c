@@ -238,12 +238,21 @@ yang2cli_var_sub(clicon_handle h,
 		goto done;
 	    }
 	}
+
 	else{ /* Cligen does not have 'max' keyword in range so need to find actual
-		 max value of type if yang range expression is 0..max */
-	    if ((r = cvtype_max2str_dup(cvtype)) == NULL){
-		clicon_err(OE_UNIX, errno, "cvtype_max2str");
-		goto done;
+		 max value of type if yang range expression is 0..max 
+	      */
+	    if (cvtype==CGV_STRING){
+		if ((r = malloc(512)) == NULL){
+		    clicon_err(OE_UNIX, errno, "malloc");
+		    goto done;
+		}
+		snprintf(r, 512, "%d", MAXPATHLEN);
 	    }
+	    else if ((r = cvtype_max2str_dup(cvtype)) == NULL){
+		    clicon_err(OE_UNIX, errno, "cvtype_max2str");
+		    goto done;
+		}
 	}
 	cprintf(cb, "%s]", r);
 	free(r);

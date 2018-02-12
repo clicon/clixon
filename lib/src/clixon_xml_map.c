@@ -88,9 +88,6 @@
 #include "clixon_xml_sort.h"
 #include "clixon_xml_map.h"
 
-/* Something to do with reverse engineering of junos syntax? */
-#undef SPECIAL_TREATMENT_OF_NAME  
-
 /*
  * A node is a leaf if it contains a body.
  */
@@ -131,9 +128,6 @@ xml2txt(FILE  *f,
     char  *term = NULL;
     int    retval = -1;
     int    encr=0;
-#ifdef SPECIAL_TREATMENT_OF_NAME  
-    cxobj *xname;
-#endif
 
     xe = NULL;     /* count children */
     while ((xe = xml_child_each(x, xe, -1)) != NULL)
@@ -157,32 +151,11 @@ xml2txt(FILE  *f,
 	goto done;
     }
     fprintf(f, "%*s", 4*level, "");
-
-#ifdef SPECIAL_TREATMENT_OF_NAME  
-    if (strcmp(xml_name(x), "name") != 0)
-	fprintf(f, "%s ", xml_name(x));
-    if ((xname = xml_find(x, "name")) != NULL){
-	if (children > 1)
-	    fprintf(f, "%s ", xml_body(xname));
-	if (!tleaf(x))
-	    fprintf(f, "{\n");
-    }
-    else
-	if (!tleaf(x))
-	    fprintf(f, "{\n");
-#else
-	fprintf(f, "%s ", xml_name(x));
-	if (!tleaf(x))
-	    fprintf(f, "{\n");
-#endif /* SPECIAL_TREATMENT_OF_NAME */
-
+    fprintf(f, "%s ", xml_name(x));
+    if (!tleaf(x))
+	fprintf(f, "{\n");
     xe = NULL;
     while ((xe = xml_child_each(x, xe, -1)) != NULL){
-#ifdef SPECIAL_TREATMENT_OF_NAME  
-	if (xml_type(xe) == CX_ELMNT &&  (strcmp(xml_name(xe), "name")==0) && 
-	    (children > 1)) /* skip if this is a name element (unless 0 children) */
-	    continue;
-#endif
 	if (xml2txt(f, xe, level+1) < 0)
 	    break;
     }
@@ -442,6 +415,8 @@ xml_yang_validate_all(cxobj   *xt,
  * @retval     0    Everything OK, cvv allocated and set
  * @retval    -1    Something wrong, clicon_err() called to set error. No cvv returned
  * 'Not recursive' means that only one level of XML bodies is translated to cvec:s.
+ * If range is wriong (eg 1000 for uint8) a warning is logged, the value is 
+ * skipped, and continues.
  * yang is needed to know which type an xml element has.
  * Example: 
     <a>
@@ -484,28 +459,30 @@ xml2cvec(cxobj      *xt,
 	    clicon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
 			 __FUNCTION__, name, yt->ys_argument);
 	    if ((body = xml_body(xc)) != NULL){
-		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
-		    clicon_err(OE_PLUGIN, errno, "cvec_add");
+		if ((cv = cv_new(CGV_STRING)) == NULL){
+		    clicon_err(OE_PLUGIN, errno, "cv_new");
 		    goto err;
 		}
 		cv_name_set(cv, name);
 		if ((ret = cv_parse1(body, cv, &reason)) < 0){
-		    clicon_err(OE_PLUGIN, errno, "cv_parse");
+		    clicon_err(OE_PLUGIN, errno, "cv_parse %s",name);
 		    goto err;
 		}
+		/* If value is out-of-range, log and skip value, and continue */
 		if (ret == 0){
-		    clicon_err(OE_PLUGIN, errno, "cv_parse: %s", reason);
+		    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason); 
 		    if (reason)
 			free(reason);
-		    goto err;
 		}
+		else
+		    cvec_append_var(cvv, cv); /* Add to variable vector */
+		cv_free(cv);
 	    }
 	}
 	else if ((ycv = ys->ys_cv) != NULL){
 	    if ((body = xml_body(xc)) != NULL){
-		/* XXX: cvec_add uses realloc, can we avoid that? */
-		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
-		    clicon_err(OE_PLUGIN, errno, "cvec_add");
+		if ((cv = cv_new(CGV_STRING)) == NULL){
+		    clicon_err(OE_PLUGIN, errno, "cv_new");
 		    goto err;
 		}
 		if (cv_cp(cv, ycv) < 0){
@@ -513,15 +490,17 @@ xml2cvec(cxobj      *xt,
 		    goto err;
 		}
 		if ((ret = cv_parse1(body, cv, &reason)) < 0){
-		    clicon_err(OE_PLUGIN, errno, "cv_parse");
+		    clicon_err(OE_PLUGIN, errno, "cv_parse: %s", name);
 		    goto err;
 		}
 		if (ret == 0){
-		    clicon_err(OE_PLUGIN, errno, "cv_parse: %s", reason);
+		    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason);
 		    if (reason)
 			free(reason);
-		    goto err;
 		}
+		else
+		    cvec_append_var(cvv, cv); /* Add to variable vector */
+		cv_free(cv);
 	    }
 	}
     }
@@ -870,9 +849,18 @@ yang2api_path_fmt(yang_stmt *ys,
  * @param[out] yang_arg      yang-stmt argument name. Free after use
  * @note first and last elements of cvv are not used,..
  * @see api_path_fmt2xpath
- * 
- * /interfaces/interface=%s/name            --> /interfaces/interface/name
- * /interfaces/interface=%s/ipv4/address=%s --> /interfaces/interface=e/ipv4/address
+ * @example
+ *  api_path_fmt: /interfaces/interface=%s/name
+ *  cvv:          -
+ *  api_path:     /interfaces/interface/name
+ * @example
+ *  api_path_fmt: /interfaces/interface=%s/name
+ *  cvv:          e0
+ *  api_path:     /interfaces/interface=e0/name
+ * @example
+ *  api_path_fmt: /subif-entry=%s,%s/subid
+ *  cvv:          foo
+ *  api_path:     /subif-entry=foo/subid
  */
 int
 api_path_fmt2api_path(char  *api_path_fmt, 
@@ -889,20 +877,6 @@ api_path_fmt2api_path(char  *api_path_fmt,
     char *strenc=NULL;
     cg_var *cv;
     
-#if 1
-    /* Sanity check */
-    j = 0; /* Count % */
-    for (i=0; i<strlen(api_path_fmt); i++)
-	if (api_path_fmt[i] == '%')
-	    j++;
-    if (j > cvec_len(cvv)) { //cvec_len can be longer
-	clicon_log(LOG_WARNING, "%s api_path_fmt number of %% is %d, does not match number of cvv entries %d", 
-		   api_path_fmt, 
-		   j,
-		   cvec_len(cvv));
-	goto done;
-    }
-#endif
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
@@ -953,18 +927,22 @@ api_path_fmt2api_path(char  *api_path_fmt,
 
 /*! Transform an xml key format and a vector of values to an XML path
  * Used to input xmldb_get() or xmldb_get_vec
- * Add .* in last %s position.
- * Example: 
- *   api_path_fmt:  /interface/%s/address/%s 
- *   cvv:        name=eth0
- *   xmlkey:     /interface/[name=eth0]/address
- * Example2:
- *   xmlkeyfmt:  /ip/me/%s (if key)
- *   cvv:        -
- *   xmlkey:     /ipv4/me/a
  * @param[in]  api_path_fmt  XML key format
  * @param[in]  cvv    cligen variable vector, one for every wildchar in api_path_fmt
  * @param[out] xpath     XPATH
+ * Add .* in last %s position.
+ * @example
+ *   api_path_fmt:  /interface/%s/address/%s 
+ *   cvv:           name=eth0
+ *   xpath:         /interface/[name=eth0]/address
+ * @example
+ *   api_path_fmt:  /ip/me/%s (if key)
+ *   cvv:           -
+ *   xpath:        /ipv4/me/a
+ * @example 
+ *   api_path_fmt: /subif-entry=%s,%s/subid
+ *   cvv:          foo
+ *   xpath:        /subif-entry[if-name=foo]/subid"
  */ 
 int
 api_path_fmt2xpath(char  *api_path_fmt, 
@@ -980,21 +958,6 @@ api_path_fmt2xpath(char  *api_path_fmt,
     char   *str;
     cg_var *cv;
 
-    /* Sanity check: count '%' */
-#if 1
-    j = 0; /* Count % */
-    for (i=0; i<strlen(api_path_fmt); i++)
-	if (api_path_fmt[i] == '%')
-	    j++;
-    if (j > cvec_len(cvv)) {
-	clicon_log(LOG_WARNING, "%s xmlkey format string mismatch(j=%d, cvec_len=%d): %s", 
-		   api_path_fmt, 
-		   j,
-		   cvec_len(cvv), 
-		   cv_string_get(cvec_i(cvv, 0)));
-	goto done;
-    }
-#endif
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
@@ -1537,11 +1500,9 @@ api_path2xml_vec(char             **vec,
 	name = local;
     }
     if (y0->yn_keyword == Y_SPEC){ /* top-node */
-	clicon_debug(1, "%s 1 %s", __FUNCTION__, name);
 	y = yang_find_topnode((yang_spec*)y0, name, schemanode);
     }
     else {
-	clicon_debug(1, "%s 2 %s", __FUNCTION__, name);
 	y = schemanode?yang_find_schemanode((yang_node*)y0, name):
 	    yang_find_datanode((yang_node*)y0, name);
     }
@@ -1571,14 +1532,14 @@ api_path2xml_vec(char             **vec,
 	    valvec = NULL;
 	}
 	if (restval==NULL){
-	    // XXX patch to allow for lists without restval tobe backward compat
+	    // XXX patch to allow for lists without restval to be backward compat
 	    //	    clicon_err(OE_XML, 0, "malformed key, expected '=<restval>'");
 	    //	    goto done;
 	}
 	else{
 	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
 		goto done;
-	    if (cvec_len(cvk) != nvalvec){ 	    
+	    if (nvalvec > cvec_len(cvk)){ 	    
 		clicon_err(OE_XML, errno, "List %s  key length mismatch", name);
 		goto done;
 	    }
@@ -1624,26 +1585,34 @@ api_path2xml_vec(char             **vec,
 }
 
 /*! Create xml tree from api-path
- * @param[in]   api_path   API-path as defined in RFC 8040
- * @param[in]   yspec      Yang spec
- * @param[in]   schemanode If set use schema nodes otherwise data nodes.
- * @param[out]  xpathp     Resulting xml tree 
- * @param[out]  ypathp     Yang spec matching xpathp
+ * @param[in]     api_path   API-path as defined in RFC 8040
+ * @param[in]     yspec      Yang spec
+ * @param[in,out] xtop       Incoming XML tree
+ * @param[in]     schemanode If set use schema nodes otherwise data nodes.
+ * @param[out]    xbotp      Resulting xml tree (end of xpath)
+ * @param[out]    ybotp      Yang spec matching xbotp
+ * @example
+ *   api_path: /subif-entry=foo/subid
+ *   xtop[in]  <config/> 
+ *   xtop[out]:<config/> <subif-entry>
+ *                            <if-name>foo<if-name><subid/>>
+ *                       </subif-entry></config>
+ *   xbotp:    <subid/>
+ *   ybotp:    Y_LEAF subid
  * @see api_path2xml_vec
  */
 int
 api_path2xml(char       *api_path,
 	     yang_spec  *yspec,
-	     cxobj      *xpath,
+	     cxobj      *xtop,
 	     int         schemanode,
-	     cxobj     **xpathp,
-	     yang_node **ypathp)
+	     cxobj     **xbotp,
+	     yang_node **ybotp)
 {
     int    retval = -1;
     char **vec = NULL;
     int    nvec;
 
-    clicon_debug(1, "%s 0", __FUNCTION__);
     if (*api_path!='/'){
 	clicon_err(OE_DB, 0, "Invalid key: %s", api_path);
 	goto done;
@@ -1654,13 +1623,13 @@ api_path2xml(char       *api_path,
     if (nvec > 1 && !strlen(vec[nvec-1]))
 	nvec--;
     if (nvec < 1){
-	    clicon_err(OE_XML, 0, "Malformed key: %s", api_path);
-	    goto done;
-	}
+	clicon_err(OE_XML, 0, "Malformed key: %s", api_path);
+	goto done;
+    }
     nvec--; /* NULL-terminated */
     if (api_path2xml_vec(vec+1, nvec, 
-			 xpath, (yang_node*)yspec, schemanode,
-			 xpathp, ypathp) < 0)
+			 xtop, (yang_node*)yspec, schemanode,
+			 xbotp, ybotp) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1668,7 +1637,6 @@ api_path2xml(char       *api_path,
 	free(vec);
     return retval;
 }
-
 
 /*! Merge a base tree x0 with x1 with yang spec y
  * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
@@ -1750,6 +1718,7 @@ xml_merge1(cxobj              *x0,
 /*! Merge XML trees x1 into x0 according to yang spec yspec
  * @note both x0 and x1 need to be top-level trees
  * @see text_modify_top as more generic variant (in datastore text)
+ * @note returns -1 if YANG do not match, you may want to have a softer error
  */
 int
 xml_merge(cxobj     *x0,

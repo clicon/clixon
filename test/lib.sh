@@ -1,7 +1,31 @@
 #!/bin/bash
+# Define test functions.
+# Create working dir as variable "dir"
 
 testnr=0
 testname=
+
+# For memcheck
+#clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
+clixon_cli=clixon_cli
+
+# For memcheck / performance
+#clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
+# clixon_netconf="valgrind --tool=callgrind clixon_netconf 
+clixon_netconf=clixon_netconf
+
+# How to run restconf stand-alone and using valgrind
+#sudo su -c "/www-data/clixon_restconf -f $cfg -D" -s /bin/sh www-data
+#sudo su -c "valgrind --leak-check=full --show-leak-kinds=all /www-data/clixon_restconf -f $cfg -D" -s /bin/sh www-data
+
+clixon_backend=clixon_backend
+
+dir=/var/tmp/$0
+if [ ! -d $dir ]; then
+    mkdir $dir
+fi
+rm -rf $dir/*
+
 # error and exit, arg is optional extra errmsg
 err(){
   echo "Error in Test$testnr [$testname]:"

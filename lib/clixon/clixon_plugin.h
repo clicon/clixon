@@ -77,7 +77,10 @@ typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
  * Returns 0 if credentials OK, -1 if failed
  */
 #define PLUGIN_CREDENTIALS      "plugin_credentials"
-typedef int (plgcredentials_t)(clicon_handle, void *); /* Plugin credentials */
+/* Plugin credentials 
+ * username should be freed after use
+ */
+typedef int (plgcredentials_t)(clicon_handle, void *, char **username);
 
 /* Find a function in global namespace or a plugin. XXX clicon internal */
 void *clicon_find_func(clicon_handle h, char *plugin, char *func);

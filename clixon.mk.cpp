@@ -42,19 +42,5 @@ clixon_DBSPECDIR=prefix/share/$(APPNAME)
 clixon_SYSCONFDIR=sysconfdir
 clixon_LOCALSTATEDIR=localstatedir/$(APPNAME)
 clixon_LIBDIR=libdir/$(APPNAME)
-clixon_DATADIR=datadir/clixon
+clixon_DATADIR=datadir/clixon # for system yang files
 
-# Rules for the clixon application configuration file.
-# The clixon applications should be started with this fileas its -f argument.
-# Typically installed in sysconfdir
-# Example: APPNAME=myapp --> clixon_cli -f /usr/local/etc/myapp.conf
-# The two variants are if there is a .conf.local file or not
-.PHONY: $(APPNAME).conf
-ifneq (,$(wildcard ${APPNAME}.conf.local)) 	
-${APPNAME}.conf:  ${clixon_DATADIR}/clixon.conf.cpp ${APPNAME}.conf.local
-	$(CPP) -P -x assembler-with-cpp -DAPPNAME=$(APPNAME) $< > $@
-	cat ${APPNAME}.conf.local >> $@
-else
-${APPNAME}.conf:  ${clixon_DATADIR}/clixon.conf.cpp
-	$(CPP) -P -x assembler-with-cpp -DAPPNAME=$(APPNAME) $< > $@
-endif

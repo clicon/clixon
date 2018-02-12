@@ -1,15 +1,26 @@
 #!/bin/bash
 # Test7: Yang specifics: leafref
 
-# include err() and new() functions
+# include err() and new() functions and creates $dir
 . ./lib.sh
-cfg=/usr/local/etc/routing.xml
-fyang=/tmp/leafref.yang
+cfg=$dir/conf_yang.xml
+fyang=$dir/leafref.yang
 
-# For memcheck
-# clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-clixon_netconf=clixon_netconf
-clixon_cli=clixon_cli
+cat <<EOF > $cfg
+<config>
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/routing/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/routing/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>routing</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/routing/routing.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/routing/routing.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
+  <CLICON_XMLDB_DIR>/usr/local/var/routing</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
+</config>
+EOF
 
 cat <<EOF > $fyang
 module example{
@@ -55,7 +66,7 @@ if [ $? -ne 0 ]; then
     err
 fi
 
-new "start backend"
+new "start backend  -s init -f $cfg -y $fyang"
 # start new backend
 sudo clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
@@ -102,7 +113,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><validate><source><candidat
 
 new "leafref discard-changes"
 expecteof "$clixon_netconf -qf $cfg" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
-exit
+
 new "cli leafref lo"
 expectfn "$clixon_cli -1f $cfg -y $fyang -l o set default-address absname lo" "^$"
 
@@ -126,3 +137,5 @@ sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi
+
+rm -rf $dir

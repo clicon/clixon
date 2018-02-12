@@ -6,20 +6,21 @@
 # No test of ordered-by system is done yet
 # (we may want to sort them alphabetically for better performance).
 
-# include err() and new() functions
+# include err() and new() functions and creates $dir
 . ./lib.sh
-cfg=/tmp/conf_yang.xml
-fyang=/tmp/order.yang
+cfg=$dir/conf_yang.xml
+fyang=$dir/order.yang
 
 # For memcheck
 # clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-clixon_netconf=clixon_netconf
-clixon_cli=clixon_cli
-dbdir=/tmp/order
+
+dbdir=$dir/order
 
 new "Set up $dbdir"
 rm -rf $dbdir
-mkdir $dbdir
+if [ ! -d $dbdir ]; then
+    mkdir $dbdir
+fi
 
 cat <<EOF > $cfg
 <config>
@@ -175,3 +176,5 @@ sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi
+
+rm -rf $dir

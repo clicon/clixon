@@ -71,10 +71,11 @@
 /*! Send internal netconf rpc from client to backend
  * @param[in]    h      CLICON handle
  * @param[in]    msg    Encoded message. Deallocate woth free
- * @param[out]   xret   Return value from backend as netconf xml tree. Free w xml_free
+ * @param[out]   xret   Return value from backend as xml tree. Free w xml_free
  * @param[inout] sock0  If pointer exists, do not close socket to backend on success 
  *                      and return it here. For keeping a notify socket open
- * Note: sock0 is if connection should be persistent, like a notification/subscribe api
+ * @note sock0 is if connection should be persistent, like a notification/subscribe api
+ * @note xret is populated with yangspec according to standard handle yangspec
  */
 int
 clicon_rpc_msg(clicon_handle      h, 
@@ -87,6 +88,7 @@ clicon_rpc_msg(clicon_handle      h,
     int                port;
     char              *retdata = NULL;
     cxobj             *xret = NULL;
+    yang_spec         *yspec;
 
     if ((sock = clicon_sock(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
@@ -119,9 +121,12 @@ clicon_rpc_msg(clicon_handle      h,
 	break;
     }
     clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
-    if (retdata &&
-	xml_parse_string(retdata, NULL, &xret) < 0)
-	goto done;
+
+    if (retdata){
+ 	yspec = clicon_dbspec_yang(h);
+	if (xml_parse_string(retdata, yspec, &xret) < 0)
+	    goto done;
+    }
     if (xret0){
 	*xret0 = xret;
 	xret = NULL;

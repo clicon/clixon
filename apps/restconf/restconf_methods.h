@@ -60,8 +60,13 @@ int api_data_patch(clicon_handle h, FCGX_Request *r, char *api_path,
 		   cvec *qvec, char *data);
 int api_data_delete(clicon_handle h, FCGX_Request *r, char *api_path, int pi);
 
-int api_operation_post(clicon_handle h, FCGX_Request *r, 
+int api_operation_get(clicon_handle h, FCGX_Request *r, 
 		       char *path,
 		       cvec *pcvec, int pi, cvec *qvec, char *data);
+
+int api_operation_post(clicon_handle h, FCGX_Request *r, 
+		       char *path,
+		       cvec *pcvec, int pi, cvec *qvec, char *data,
+		       char *username);
 
 #endif /* _RESTCONF_METHODS_H_ */

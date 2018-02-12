@@ -161,16 +161,4 @@ int       xml_body_uint32(cxobj *xb, uint32_t *val);
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
 
-#ifdef XML_COMPAT /* See CHANGELOG */
-/* MANUAL CHANGE: xml_new(name, parent) --> xml_new(name, parent, NULL) */
-
-#define xml_new_spec(name, parent) xml_new(name, parent, NULL)
-#define clicon_xml_parse(xt, fmt, ...) xml_parse_va(xt, NULL, fmt, __VA_ARGS__)
-#define clicon_xml_parse_file(fd, xt, etag) xml_parse_file(fd, etag, NULL, xt)
-#define clicon_xml_parse_string(strp, xt) xml_parse_string(*strp, NULL, xt)
-#define clicon_xml_parse_str(str, xt) xml_parse_string(str, NULL, xt)
-#define xml_parse(str, xt) xml_parse_string(str, NULL, &xt)
-#endif
-
-
 #endif /* _CLIXON_XML_H */

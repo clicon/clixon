@@ -1095,8 +1095,8 @@ from_client(int   s,
 	    goto done;
     retval = 0;
   done:
+    clicon_debug(1, "%s retval=%d", __FUNCTION__, retval);
     if (msg)
 	free(msg);
-    clicon_debug(1, "%s retval=%d", __FUNCTION__, retval);
     return retval; /* -1 here terminates backend */
 }

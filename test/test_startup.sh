@@ -6,14 +6,9 @@
 # - running db starts with a "run" interface
 # - startup db starts with a "start" interface
 
-# include err() and new() functions
+# include err() and new() functions and creates $dir
 . ./lib.sh
-cfg=/tmp/conf_startup.xml
-
-# For memcheck
-# clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-clixon_netconf=clixon_netconf
-clixon_cli=clixon_cli
+cfg=$dir/conf_startup.xml
 
 cat <<EOF > $cfg
 <config>
@@ -42,7 +37,8 @@ run(){
     mode=$1
     expect=$2
 
-    cat <<EOF > /tmp/db
+    dbdir=$dir/db
+    cat <<EOF > $dbdir
 <config>
    <interfaces>
       <interface>
@@ -52,9 +48,9 @@ run(){
     </interfaces>
 </config>
 EOF
-    sudo mv /tmp/db /usr/local/var/routing/running_db
+    sudo mv $dbdir /usr/local/var/routing/running_db
 
-    cat <<EOF > /tmp/db
+    cat <<EOF > $dbdir
 <config>
    <interfaces>
       <interface>
@@ -64,9 +60,9 @@ EOF
     </interfaces>
 </config>
 EOF
-    sudo mv /tmp/db /usr/local/var/routing/startup_db
+    sudo mv $dbdir /usr/local/var/routing/startup_db
 
-    cat <<EOF > /tmp/config
+    cat <<EOF > $dir/config
 <config>
    <interfaces>
       <interface>
@@ -84,9 +80,8 @@ EOF
 	err
     fi
 
-    new "start backend"
-    # start new backend
-    sudo clixon_backend -f $cfg -s $mode -c /tmp/config
+    new "start backend  -f $cfg -s $mode -c $dir/config"
+    sudo clixon_backend -f $cfg -s $mode -c $dir/config
     if [ $? -ne 0 ]; then
 	err
     fi
@@ -112,3 +107,4 @@ run none    '<data><interfaces><interface><name>run</name><type>eth</type><enabl
 run running '<data><interfaces><interface><name>extra</name><type>eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>local</type><enabled>true</enabled></interface><interface><name>run</name><type>eth</type><enabled>true</enabled></interface></interfaces></data>'
 run startup '<data><interfaces><interface><name>extra</name><type>eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>local</type><enabled>true</enabled></interface><interface><name>startup</name><type>eth</type><enabled>true</enabled></interface></interfaces></data>'
 
+rm -rf $dir

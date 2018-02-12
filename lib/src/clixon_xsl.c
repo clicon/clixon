@@ -1046,10 +1046,10 @@ xpath_each(cxobj *xcur,
  */
 int
 xpath_vec(cxobj    *xcur, 
-	   char    *format, 
-	   cxobj ***vec, 
-	   size_t  *veclen,
-	   ...)
+	  char     *format, 
+	  cxobj  ***vec, 
+	  size_t   *veclen,
+	  ...)
 {
     int     retval = -1;
     va_list ap;

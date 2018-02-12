@@ -77,9 +77,10 @@
 
 enum array_element_type{
     NO_ARRAY=0,
-    FIRST_ARRAY,
-    MIDDLE_ARRAY,
-    LAST_ARRAY,
+    FIRST_ARRAY,  /* [a, */
+    MIDDLE_ARRAY, /*  a, */
+    LAST_ARRAY,   /*  a] */
+    SINGLE_ARRAY, /* [a] */
     BODY_ARRAY
 };
 
@@ -143,6 +144,9 @@ arraytype2str(enum array_element_type lt)
     case LAST_ARRAY:
 	return "last";
 	break;
+    case SINGLE_ARRAY:
+	return "single";
+	break;
     case BODY_ARRAY:
 	return "body";
 	break;
@@ -152,21 +156,23 @@ arraytype2str(enum array_element_type lt)
 
 static enum array_element_type
 array_eval(cxobj *xprev, 
-	  cxobj *x, 
-	  cxobj *xnext)
+	   cxobj *x, 
+	   cxobj *xnext)
 {
     enum array_element_type array = NO_ARRAY;
-    int                    eqprev=0;
-    int                    eqnext=0;
+    int                     eqprev=0;
+    int                     eqnext=0;
+    yang_stmt              *ys;
 
     if (xml_type(x)!=CX_ELMNT){
 	array=BODY_ARRAY;
 	goto done;
     }
+    ys = xml_spec(x);
     if (xnext && 
 	xml_type(xnext)==CX_ELMNT &&
 	strcmp(xml_name(x),xml_name(xnext))==0)
-	    eqnext++;
+	eqnext++;
     if (xprev &&
 	xml_type(xprev)==CX_ELMNT &&
 	strcmp(xml_name(x),xml_name(xprev))==0)
@@ -177,14 +183,18 @@ array_eval(cxobj *xprev,
 	array = LAST_ARRAY;
     else if (eqnext)
 	array = FIRST_ARRAY;
+    else  if (ys && ys->ys_keyword == Y_LIST)
+	array = SINGLE_ARRAY;
     else
 	array = NO_ARRAY;
  done:
     return array;
 }
 
-char *
-json_escape(char *str)
+/*! Escape a json string
+ */
+static char *
+json_str_escape(char *str)
 {
     int   i, j;
     char *snew;
@@ -223,34 +233,35 @@ json_escape(char *str)
  * @param[in]    level     Indentation level
  * @param[in]    pretty    Pretty-print output (2 means debug)
  * @param[in]    flat      Dont print NO_ARRAY object name (for _vec call)
+ * @param[in]    bodystr   Set if value is string, 0 otherwise. Only if body
  *
  * @note Does not work with XML attributes
  * The following matrix explains how the mapping is done.
  * You need to understand what arraytype means (no/first/middle/last)
  * and what childtype is (null,body,any)
-  +---------+--------------+--------------+--------------+
+  +----------+--------------+--------------+--------------+
   |array,leaf| null         | body         | any          |
-  +---------+--------------+--------------+--------------+
-  |no       | <a/>         |<a>1</a>      |<a><b/></a>   |
-  |         |              |              |              |
-  |  json:  |\ta:null      |\ta:          |\ta:{\n       |
-  |         |              |              |\n}           |
-  +---------+--------------+--------------+--------------+
-  |first    |<a/><a..      |<a>1</a><a..  |<a><b/></a><a.|
-  |         |              |              |              |
-  |  json:  |\ta:[\n\tnull |\ta:[\n\t     |\ta:[\n\t{\n  |
-  |         |              |              |\n\t}         |
-  +---------+--------------+--------------+--------------+
-  |middle   |..a><a/><a..  |.a><a>1</a><a.|              |
-  |         |              |              |              |
-  |  json:  |\tnull        |\t            |\t{a          |
-  |         |              |              |\n\t}         |
-  +---------+--------------+--------------+--------------+
-  |last     |..a></a>      |..a><a>1</a>  |              |
-  |         |              |              |              |
-  |  json:  |\tnull        |\t            |\t{a          |
-  |         |\n\t]         |\n\t]         |\n\t}\t]      |
-  +---------+--------------+--------------+--------------+
+  +----------+--------------+--------------+--------------+
+  |no        | <a/>         |<a>1</a>      |<a><b/></a>   |
+  |          |              |              |              |
+  |  json:   |\ta:null      |\ta:          |\ta:{\n       |
+  |          |              |              |\n}           |
+  +----------+--------------+--------------+--------------+
+  |first     |<a/><a..      |<a>1</a><a..  |<a><b/></a><a.|
+  |          |              |              |              |
+  |  json:   |\ta:[\n\tnull |\ta:[\n\t     |\ta:[\n\t{\n  |
+  |          |              |              |\n\t}         |
+  +----------+--------------+--------------+--------------+
+  |middle    |..a><a/><a..  |.a><a>1</a><a.|              |
+  |          |              |              |              |
+  |  json:   |\tnull        |\t            |\t{a          |
+  |          |              |              |\n\t}         |
+  +----------+--------------+--------------+--------------+
+  |last      |..a></a>      |..a><a>1</a>  |              |
+  |          |              |              |              |
+  |  json:   |\tnull        |\t            |\t{a          |
+  |          |\n\t]         |\n\t]         |\n\t}\t]      |
+  +----------+--------------+--------------+--------------+
  */
 static int 
 xml2json1_cbuf(cbuf                  *cb,
@@ -258,26 +269,35 @@ xml2json1_cbuf(cbuf                  *cb,
 	       enum array_element_type arraytype,
 	       int                    level,
 	       int                    pretty,
-	       int                    flat)
+	       int                    flat,
+	       int                    bodystr)
 {
     int              retval = -1;
     int              i;
     cxobj           *xc;
     enum childtype   childt;
     enum array_element_type xc_arraytype;
+    yang_stmt       *ys;
+    int              bodystr0=1;
 
     childt = childtype(x);
+    ys = xml_spec(x);
     if (pretty==2)
 	cprintf(cb, "#%s_array, %s_child ", 
 		arraytype2str(arraytype),
 		childtype2str(childt));
     switch(arraytype){
     case BODY_ARRAY:{
-	char *str;
-	if ((str = json_escape(xml_value(x))) == NULL)
-	    goto done;
-	cprintf(cb, "\"%s\"", str);
-	free(str);
+	if (bodystr){
+	    char      *str;
+	    if ((str = json_str_escape(xml_value(x))) == NULL)
+		goto done;
+	    cprintf(cb, "\"%s\"", str);
+	    free(str);
+	}
+	else
+	    cprintf(cb, "%s", xml_value(x));
+
 	break;
     }
     case NO_ARRAY:
@@ -299,6 +319,7 @@ xml2json1_cbuf(cbuf                  *cb,
 	}
 	break;
     case FIRST_ARRAY:
+    case SINGLE_ARRAY:
 	cprintf(cb, "%*s\"%s\": ", 
 		pretty?(level*JSON_INDENT):0, "", 
 		xml_name(x));
@@ -340,6 +361,30 @@ xml2json1_cbuf(cbuf                  *cb,
     default:
 	break;
     }
+    /* Check for typed sub-body if:
+     * arracytype=* but chilt-type is BODY_CHILD 
+     * This is code for writing <a>42</a> as "a":42 and not "a":"42"
+     */
+    if (childt == BODY_CHILD && ys!=NULL &&
+	(ys->ys_keyword == Y_LEAF || ys->ys_keyword == Y_LEAF_LIST))
+	switch (cv_type_get(ys->ys_cv)){
+	case CGV_INT8:
+	case CGV_INT16:
+	case CGV_INT32:
+	case CGV_INT64:
+	case CGV_UINT8:
+	case CGV_UINT16:
+	case CGV_UINT32:
+	case CGV_UINT64:
+	case CGV_DEC64:
+	case CGV_BOOL:
+	    bodystr0 = 0;
+	    break;
+	default:
+	    bodystr0 = 1;
+	    break;
+	}
+
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
 	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
@@ -348,7 +393,7 @@ xml2json1_cbuf(cbuf                  *cb,
 	if (xml2json1_cbuf(cb, 
 			   xc, 
 			   xc_arraytype,
-			   level+1, pretty,0) < 0)
+			   level+1, pretty, 0, bodystr0) < 0)
 	    goto done;
 	if (i<xml_child_nr(x)-1)
 	    cprintf(cb, ",%s", pretty?"\n":"");
@@ -387,6 +432,7 @@ xml2json1_cbuf(cbuf                  *cb,
 	    break;
 	}
 	break;
+    case SINGLE_ARRAY:
     case LAST_ARRAY:
 	switch (childt){
 	case NULL_CHILD:
@@ -419,7 +465,7 @@ xml2json1_cbuf(cbuf                  *cb,
  * @param[in,out] cb     Cligen buffer to write to
  * @param[in]     x      XML tree to translate from
  * @param[in]     pretty Set if output is pretty-printed
- * @param[in]  top    By default only children are printed, set if include top
+ * @param[in]     top    By default only children are printed, set if include top
  * @retval        0      OK
  * @retval       -1      Error
  *
@@ -433,9 +479,9 @@ xml2json1_cbuf(cbuf                  *cb,
  * @see clicon_xml2cbuf
  */
 int 
-xml2json_cbuf(cbuf  *cb, 
-	      cxobj *x, 
-	      int    pretty)
+xml2json_cbuf(cbuf      *cb, 
+	      cxobj     *x, 
+	      int        pretty)
 {
     int    retval = 1;
     int    level = 0;
@@ -446,7 +492,7 @@ xml2json_cbuf(cbuf  *cb,
     if (xml2json1_cbuf(cb, 
 		       x, 
 		       NO_ARRAY,
-		       level+1, pretty,0) < 0)
+		       level+1, pretty,0,1) < 0)
 	goto done;
     cprintf(cb, "%s%*s}%s", 
 	    pretty?"\n":"",
@@ -472,10 +518,10 @@ xml2json_cbuf(cbuf  *cb,
  * @see xml2json1_cbuf
  */
 int 
-xml2json_cbuf_vec(cbuf   *cb, 
-		  cxobj **vec,
-		  size_t  veclen,
-		  int     pretty)
+xml2json_cbuf_vec(cbuf      *cb, 
+		  cxobj    **vec,
+		  size_t     veclen,
+		  int        pretty)
 {
     int    retval = -1;
     int    level = 0;
@@ -496,7 +542,7 @@ xml2json_cbuf_vec(cbuf   *cb,
     if (xml2json1_cbuf(cb, 
 		       xp, 
 		       NO_ARRAY,
-		       level+1, pretty,1) < 0)
+		       level+1, pretty,1, 1) < 0)
 	goto done;
 
     if (0){
@@ -519,15 +565,17 @@ xml2json_cbuf_vec(cbuf   *cb,
  * @retval     0      OK
  * @retval    -1      Error
  *
+ * @note yang is necessary to translate to one-member lists,
+ * eg if a is a yang LIST <a>0</a> -> {"a":["0"]} and not {"a":"0"}
  * @code
  * if (xml2json(stderr, xn, 0) < 0)
  *   goto err;
  * @endcode
  */
 int 
-xml2json(FILE   *f, 
-	 cxobj  *x, 
-	 int     pretty)
+xml2json(FILE      *f, 
+	 cxobj     *x, 
+	 int        pretty)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -560,10 +608,10 @@ xml2json(FILE   *f,
  * @see xml2json1_cbuf
  */
 int 
-xml2json_vec(FILE  *f, 
-	     cxobj **vec,
-	     size_t  veclen,
-	     int    pretty)
+xml2json_vec(FILE      *f, 
+	     cxobj    **vec,
+	     size_t     veclen,
+	     int        pretty)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -623,7 +671,7 @@ json_parse(char       *str,
  * @param[in]  str   String containing JSON
  * @param[out] xt    On success a top of XML parse tree is created with name 'top'
  * @retval  0  OK
- * @retval -1  Error with clicon_err called
+ * @retval -1  Error with clicon_err called. Includes parse errors
  *
  * @code
  *  cxobj *cx = NULL;
@@ -645,7 +693,7 @@ json_parse_str(char   *str,
 /*! Read a JSON definition from file and parse it into a parse-tree. 
  *
  * @param[in]  fd  A file descriptor containing the JSON file (as ASCII characters)
- * @param[in]  yspec   Yang specification, or NULL
+ * @param[in]  yspec   Yang specification, or NULL XXX Not yet used
  * @param[in,out] xt   Pointer to (XML) parse tree. If empty, create.
  * @retval        0  OK
  * @retval       -1  Error with clicon_err called
@@ -722,7 +770,7 @@ json_parse_file(int        fd,
 /*
  * Turn this on to get a json parse and pretty print test program
  * Usage: xpath
- * read xml from input
+ * read json from input
  * Example compile:
  gcc -g -o json -I. -I../clixon ./clixon_json.c -lclixon -lcligen
  * Example run:

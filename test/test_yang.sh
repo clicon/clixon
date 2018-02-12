@@ -1,15 +1,11 @@
 #!/bin/bash
 # Test4: Yang specifics: multi-keys and empty type
 
-# include err() and new() functions
+# include err() and new() functions and creates $dir
 . ./lib.sh
-cfg=/tmp/conf_yang.xml
-fyang=/tmp/test.yang
 
-# For memcheck
-# clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-clixon_netconf=clixon_netconf
-clixon_cli=clixon_cli
+cfg=$dir/conf_yang.xml
+fyang=$dir/test.yang
 
 cat <<EOF > $cfg
 <config>
@@ -151,3 +147,5 @@ sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi
+
+rm -rf $dir
