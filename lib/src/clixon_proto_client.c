@@ -236,6 +236,7 @@ clicon_rpc_generate_error(char  *format,
  * @param[in]  h        CLICON handle
  * @param[in]  db       Name of database
  * @param[in]  xpath    XPath (or "")
+ * @param[in]  username Authenticated user (extra attribute)
  * @param[out] xt       XML tree. Free with xml_free. 
  *                      Either <config> or <rpc-error>. 
  * @retval    0         OK
@@ -257,6 +258,7 @@ int
 clicon_rpc_get_config(clicon_handle       h, 
 		      char               *db, 
 		      char               *xpath,
+		      char               *username,
 		      cxobj             **xt)
 {
     int                retval = -1;
@@ -267,7 +269,10 @@ clicon_rpc_get_config(clicon_handle       h,
 
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "<rpc><get-config><source><%s/></source>", db);
+    cprintf(cb, "<rpc");
+    if (username)
+	cprintf(cb, " username=\"%s\"", username);
+    cprintf(cb, "><get-config><source><%s/></source>", db);
     if (xpath && strlen(xpath))
 	cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
     cprintf(cb, "</get-config></rpc>");
@@ -485,6 +490,7 @@ clicon_rpc_unlock(clicon_handle h,
 /*! Get database configuration and state data
  * @param[in]  h        CLICON handle
  * @param[in]  xpath    XPath (or "")
+ * @param[in]  username Authenticated user (extra attribute)
  * @param[out] xt       XML tree. Free with xml_free. 
  *                      Either <config> or <rpc-error>. 
  * @retval    0         OK
@@ -505,6 +511,7 @@ clicon_rpc_unlock(clicon_handle h,
 int
 clicon_rpc_get(clicon_handle       h, 
 	       char               *xpath,
+	       char               *username,
 	       cxobj             **xt)
 {
     int                retval = -1;
@@ -515,7 +522,10 @@ clicon_rpc_get(clicon_handle       h,
 
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "<rpc><get>");
+    cprintf(cb, "<rpc");
+    if (username)
+	cprintf(cb, " username=\"%s\"", username);
+    cprintf(cb, "><get>");
     if (xpath && strlen(xpath))
 	cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
     cprintf(cb, "</get></rpc>");

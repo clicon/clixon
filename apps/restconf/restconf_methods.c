@@ -218,6 +218,7 @@ api_data_get2(clicon_handle h,
 	      cvec         *pcvec,
 	      int           pi,
 	      cvec         *qvec,
+	      char         *username,
 	      int           head)
 {
     int        retval = -1;
@@ -252,7 +253,7 @@ api_data_get2(clicon_handle h,
     }
     path = cbuf_get(cbpath);
     clicon_debug(1, "%s path:%s", __FUNCTION__, path);
-    if (clicon_rpc_get(h, path, &xret) < 0){
+    if (clicon_rpc_get(h, path, username, &xret) < 0){
 	notfound(r);
 	goto ok;
     }
@@ -338,12 +339,13 @@ api_data_get2(clicon_handle h,
  */
 int
 api_data_head(clicon_handle h,
-	     FCGX_Request *r,
-             cvec         *pcvec,
-             int           pi,
-             cvec         *qvec)
+	      FCGX_Request *r,
+	      cvec         *pcvec,
+	      int           pi,
+	      cvec         *qvec,
+	      char         *username)
 {
-    return api_data_get2(h, r, pcvec, pi, qvec, 1);
+    return api_data_get2(h, r, pcvec, pi, qvec, username, 1);
 }
 
 /*! REST GET method
@@ -374,9 +376,10 @@ api_data_get(clicon_handle h,
 	     FCGX_Request *r,
              cvec         *pcvec,
              int           pi,
-             cvec         *qvec)
+             cvec         *qvec,
+	     char         *username)
 {
-    return api_data_get2(h, r, pcvec, pi, qvec, 0);
+    return api_data_get2(h, r, pcvec, pi, qvec, username, 0);
 }
 
 /*! Generic REST POST  method 
@@ -412,7 +415,8 @@ api_data_post(clicon_handle h,
 	      cvec         *pcvec, 
 	      int           pi,
 	      cvec         *qvec, 
-	      char         *data)
+	      char         *data,
+	      char         *username)
 {
     int        retval = -1;
     enum operation_type op = OP_CREATE;
@@ -425,6 +429,7 @@ api_data_post(clicon_handle h,
     yang_node *y = NULL;
     yang_spec *yspec;
     cxobj     *xa;
+    cxobj     *xu;
     char      *media_content_type;
     int        parse_xml = 0; /* By default expect and parse JSON */
 
@@ -446,6 +451,16 @@ api_data_post(clicon_handle h,
 	goto done;
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
+    /* For internal XML protocol: add username attribute for backend access control
+     */
+    if (username){
+	if ((xu = xml_new("username", xtop, NULL)) == NULL)
+	    goto done;
+	xml_type_set(xu, CX_ATTR);
+	if (xml_value_set(xu, username) < 0)
+	    goto done;
+    }
+
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
@@ -589,7 +604,8 @@ api_data_put(clicon_handle h,
 	     cvec         *pcvec, 
 	     int           pi,
 	     cvec         *qvec, 
-	     char         *data)
+	     char         *data,
+	     char         *username)
 {
     int        retval = -1;
     enum operation_type op = OP_REPLACE;
@@ -603,6 +619,7 @@ api_data_put(clicon_handle h,
     yang_node *y = NULL;
     yang_spec *yspec;
     cxobj     *xa;
+    cxobj     *xu;
     char      *media_content_type;
     int        parse_xml = 0; /* By default expect and parse JSON */
     char      *api_path;
@@ -625,6 +642,15 @@ api_data_put(clicon_handle h,
 	goto done;
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
+    /* For internal XML protocol: add username attribute for backend access control
+     */
+    if (username){
+	if ((xu = xml_new("username", xtop, NULL)) == NULL)
+	    goto done;
+	xml_type_set(xu, CX_ATTR);
+	if (xml_value_set(xu, username) < 0)
+	    goto done;
+    }
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
@@ -727,12 +753,13 @@ api_data_put(clicon_handle h,
  */
 int
 api_data_patch(clicon_handle h,
-	      FCGX_Request *r, 
-	      char         *api_path, 
-	      cvec         *pcvec, 
-	      int           pi,
-	      cvec         *qvec, 
-	      char         *data)
+	       FCGX_Request *r, 
+	       char         *api_path, 
+	       cvec         *pcvec, 
+	       int           pi,
+	       cvec         *qvec, 
+	       char         *data,
+	       char         *username)
 {
     notimplemented(r);
     return 0;
@@ -751,13 +778,15 @@ int
 api_data_delete(clicon_handle h,
 		FCGX_Request *r, 
 		char         *api_path,
-		int           pi)
+		int           pi,
+		char         *username)
 {
     int        retval = -1;
     int        i;
     cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xbot = NULL;
     cxobj     *xa;
+    cxobj     *xu;
     cbuf      *cbx = NULL;
     yang_node *y = NULL;
     yang_spec *yspec;
@@ -774,6 +803,15 @@ api_data_delete(clicon_handle h,
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
+    /* For internal XML protocol: add username attribute for backend access control
+     */
+    if (username){
+	if ((xu = xml_new("username", xtop, NULL)) == NULL)
+	    goto done;
+	xml_type_set(xu, CX_ATTR);
+	if (xml_value_set(xu, username) < 0)
+	    goto done;
+    }
     if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
 	goto done;
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
@@ -817,13 +855,15 @@ api_data_delete(clicon_handle h,
  */
 int
 api_operation_get(clicon_handle h,
-		   FCGX_Request *r, 
-		   char         *path, 
-		   cvec         *pcvec, 
-		   int           pi,
-		   cvec         *qvec, 
-		   char         *data)
+		  FCGX_Request *r, 
+		  char         *path, 
+		  cvec         *pcvec, 
+		  int           pi,
+		  cvec         *qvec, 
+		  char         *data,
+		  char         *username)
 {
+    notimplemented(r);
     return 0;
 }
 
@@ -837,8 +877,6 @@ api_operation_get(clicon_handle h,
  * @note We map post to edit-config create. 
 
       POST {+restconf}/operations/<operation>
-
-
  */
 int
 api_operation_post(clicon_handle h,
@@ -907,6 +945,16 @@ api_operation_post(clicon_handle h,
     if ((xtop = xml_new("rpc", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
+    /* For internal XML protocol: add username attribute for backend access control
+     */
+    if (username){
+	if ((xa = xml_new("username", xtop, NULL)) == NULL)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (xml_value_set(xa, username) < 0)
+	    goto done;
+    }
+
     /* XXX: something strange for rpc user */
     if (api_path2xml(oppath, yspec, xtop, 1, &xbot, &y) < 0)
 	goto done;
@@ -951,34 +999,6 @@ api_operation_post(clicon_handle h,
 	    }
 	}
     }
-    /* Non-standard: add username attribute for backend ACM (RFC 6536)
-     * 
-     */
-    if (username){
-	if ((xa = xml_new("username", xtop, NULL)) == NULL)
-	    goto done;
-	xml_type_set(xa, CX_ATTR);
-	if (xml_value_set(xa, username) < 0)
-	    goto done;
-    }
-#ifdef obsolete
-    {
-	cxobj *xa;
-	char *cookie;
-	char *cookieval = NULL;
-	
-	if ((cookie = FCGX_GetParam("HTTP_COOKIE", r->envp)) != NULL &&
-	    get_user_cookie(cookie, "c-user", &cookieval) ==0){
-	    if ((xa = xml_new("id", xtop, NULL)) == NULL)
-		goto done;
-	    xml_type_set(xa, CX_ATTR);
-	    if (xml_value_set(xa,  cookieval) < 0)
-		goto done;
-	    if (cookieval)
-		free(cookieval);
-	}
-    }
-#endif
     /* Send to backend */
     if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	goto done;

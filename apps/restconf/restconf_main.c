@@ -89,7 +89,8 @@
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  dvec   Stream input data
+ * @param[in]  dvec   Stream input daat
+ * @param[in]  username Authenticated user
  */
 static int
 api_data(clicon_handle h,
@@ -98,7 +99,8 @@ api_data(clicon_handle h,
 	 cvec         *pcvec, 
 	 int           pi,
 	 cvec         *qvec, 
-	 char         *data)
+	 char         *data,
+	 char         *username)
 {
     int     retval = -1;
     char   *request_method;
@@ -109,17 +111,17 @@ api_data(clicon_handle h,
     if (strcmp(request_method, "OPTIONS")==0)
 	retval = api_data_options(h, r);
     else if (strcmp(request_method, "HEAD")==0)
-	retval = api_data_head(h, r, pcvec, pi, qvec);
+	retval = api_data_head(h, r, pcvec, pi, qvec, username);
     else if (strcmp(request_method, "GET")==0)
-	retval = api_data_get(h, r, pcvec, pi, qvec);
+	retval = api_data_get(h, r, pcvec, pi, qvec, username);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data);
+	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data, username);
     else if (strcmp(request_method, "PUT")==0)
-	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data);
+	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, username);
     else if (strcmp(request_method, "PATCH")==0)
-	retval = api_data_patch(h, r, api_path, pcvec, pi, qvec, data);
+	retval = api_data_patch(h, r, api_path, pcvec, pi, qvec, data, username);
     else if (strcmp(request_method, "DELETE")==0)
-	retval = api_data_delete(h, r, api_path, pi);
+	retval = api_data_delete(h, r, api_path, pi, username);
     else
 	retval = notfound(r);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -152,7 +154,7 @@ api_operations(clicon_handle h,
     request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
     if (strcmp(request_method, "GET")==0)
-	retval = api_operation_get(h, r, path, pcvec, pi, qvec, data);
+	retval = api_operation_get(h, r, path, pcvec, pi, qvec, data, username);
     else if (strcmp(request_method, "POST")==0)
 	retval = api_operation_post(h, r, path, pcvec, pi, qvec, data, username);
     else
@@ -335,7 +337,7 @@ api_restconf(clicon_handle h,
 	    goto done;
     }
     else if (strcmp(method, "data") == 0){ /* restconf, skip /api/data */
-	if (api_data(h, r, path, pcvec, 2, qvec, data) < 0)
+	if (api_data(h, r, path, pcvec, 2, qvec, data, username) < 0)
 	    goto done;
     }
     else if (strcmp(method, "operations") == 0){ /* rpc */
