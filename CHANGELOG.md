@@ -24,7 +24,7 @@
 
 
 * Default configure file handling generalized by Renato Botelho/Matt Smith. Config file FILE is selected in the following priority order:
-  * Provide -f FILE option when starting a program (eg clixon_backend -F FILE)
+  * Provide -f FILE option when starting a program (eg clixon_backend -f FILE)
   * Provide --with-configfile=FILE when configuring
   * Provide --with-sysconfig=<dir> when configuring, then FILE is <dir>/clixon.xml
   * Provide --sysconfig=<dir> when configuring then FILE is <dir>/etc/clixon.xml
