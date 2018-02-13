@@ -23,9 +23,6 @@ APIs. There are currently plugins for: CLI, Netconf,  Restconf, the datastore an
 Clixon is written in C. The plugins are written in C. The CLI
 specification uses cligen (http://cligen.se)
 
-It is possible ro write plugins in Python. It is reasonable
-simple to spawn an external script from a backend (but needs to be done).
-
 ## How to best understand Clixon?
 Run the ietf yang routing example, in the example directory.
 
@@ -79,9 +76,18 @@ system state based on configuration changes. Writing commit callbacks
 is the core functionality of a clixon system.
 
 ## What is a Clixon configuration file?
-Clixon options are stored in a configuration file you must specify
-when you start a backend or client using -f. The example configuration
-file is installed at /usr/local/etc/routing.xml.
+
+Clixon options are stored in an XML configuration file. The default
+configuration file is /usr/local/etc/clixon.xml. The example
+configuration file is installed at /usr/local/etc/routing.xml. The
+YANG specification for the configuration file is clixon-config.yang.
+
+You can change where CLixon looks for the configuration FILE as follows:
+  # Provide -f FILE option when starting a program (eg clixon_backend -f FILE)
+  # Provide --with-configfile=FILE when configuring
+  # Provide --with-sysconfig=<dir> when configuring, then FILE is <dir>/clixon.xml
+  # Provide --sysconfig=<dir> when configuring then FILE is <dir>/etc/clixon.xml
+  # FILE is /usr/local/etc/clixon.xml
 
 ## Can I run Clixon as docker containers?
 Yes, the example works as docker containers as well. backend and cli needs a 
@@ -199,7 +205,7 @@ plugin. The example code contains an example on how to do this (see plugin_reset
 - routing_netconf.c - Modify semantics of netconf commands.
 
 ## How do I write a commit function?
-You write a commit function in routing_backend.c.
+In the example, you write a commit function in routing_backend.c.
 Every time a commit is made, transaction_commit() is called in the
 backend.  It has a 'transaction_data td' argument which is used to fetch
 information on added, deleted and changed entries. You access this
