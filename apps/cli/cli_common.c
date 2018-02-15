@@ -829,10 +829,19 @@ save_config_file(clicon_handle h,
     filename = cv_string_get(cv);
     if (clicon_rpc_get_config(h, dbstr,"/", NULL, &xt) < 0)
 	goto done;
+    if (xt == NULL){
+	clicon_err(OE_CFG, 0, "get config: empty tree"); /* Shouldnt happen */
+	goto done;
+    }
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
+    /* get-config returns a <data> tree. Save as <config> tree so it can be used
+     * as data-store.
+     */
+    if (xml_name_set(xt, "config") < 0)
+	goto done;
     if ((f = fopen(filename, "w")) == NULL){
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
 	goto done;
