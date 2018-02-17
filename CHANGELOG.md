@@ -1,6 +1,10 @@
 # Clixon Changelog
 
 ## 3.6.0 (Upcoming)
+### Major changes:
+### Minor changes:
+### Corrected Bugs
+* Translate xml->json \n correctly
 
 ## 3.5.0 (12 February 2018)
 
