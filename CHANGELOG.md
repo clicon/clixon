@@ -21,7 +21,7 @@ enables saved files to be used as datastore without any editing. Thanks Matt.
 * Added cli_show_version()
 
 ### Corrected Bugs
-
+* Fix issue: https://github.com/clicon/clixon/issues/15 Replace whole config
 
 ## 3.5.0 (12 February 2018)
 

@@ -781,6 +781,12 @@ text_modify_top(cxobj              *x0,
 		break;
 	    }
     }
+    /* Special case top-level replace */
+    if (op == OP_REPLACE || op == OP_DELETE){
+	x0c = NULL;
+	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) 
+	    xml_purge(x0c);
+    }
     /* Loop through children of the modification tree */
     x1c = NULL;
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
