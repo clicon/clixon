@@ -81,7 +81,7 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 
     /* Show eth0 interfaces config using XPATH */
     if (clicon_rpc_get_config(h, "running","/interfaces/interface[name=eth0]",
-			      &xret) < 0)
+			      NULL, &xret) < 0)
 	goto done;
 
     xml_print(stdout, xret);

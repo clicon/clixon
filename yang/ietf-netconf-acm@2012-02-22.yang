@@ -194,7 +194,7 @@ module ietf-netconf-acm {
      */
 
     container nacm {
-	/*	nacm:default-deny-all; XXX How is this parsed ?? */
+	nacm:default-deny-all;
 
 	description
 	    "Parameters for NETCONF Access Control Model.";

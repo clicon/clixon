@@ -6,6 +6,7 @@
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang
+fyangerr=$dir/err.yang
 
 cat <<EOF > $cfg
 <config>
@@ -25,6 +26,12 @@ EOF
 
 cat <<EOF > $fyang
 module example{
+   prefix ex;
+   extension c-define {
+      description "Example from RFC 6020";
+      argument "name";
+   }
+   ex:c-define "MY_INTERFACES";
    container x {
     list y {
       key "a b";
@@ -75,6 +82,17 @@ module example{
 }
 EOF
 
+# This yang definition uses an extension which is not defined. Error when loading
+cat <<EOF > $fyangerr
+module example{
+   prefix ex;
+   extension c-define {
+      description "Example from RFC 6020";
+      argument "name";
+   }
+   ex:not-defined ARGUMENT;
+}
+EOF
 # kill old backend (if any)
 new "kill old backend"
 sudo clixon_backend -zf $cfg -y $fyang
@@ -88,6 +106,13 @@ sudo clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
     err
 fi
+
+new "cli defined extension"
+expectfn "$clixon_cli -1f $cfg -y $fyang show version" "3."
+
+new "cli not defined extension"
+# This text yields an error, but the test cannot detect the error message yet
+#expectfn "$clixon_cli -1f $cfg -y $fyangerr show version" "Yang error: Extension ex:not-defined not found"
 
 new "netconf edit config"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><y><a>1</a><b>2</b><c>5</c></y><d/></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

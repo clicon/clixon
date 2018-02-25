@@ -101,12 +101,13 @@ clixon_yang_parsewrap(void)
 %s ESCAPE
 %s COMMENT1
 %s COMMENT2
+%s UNKNOWN
 
 %%
  /* Common tokens */
 <KEYWORD,ARGUMENT,STRING0>[ \t]            
-<KEYWORD,ARGUMENT,STRING0><<EOF>> { return MY_EOF; }
-<KEYWORD,ARGUMENT,STRING0,COMMENT1>\n   { _YY->yy_linenum++; }
+<KEYWORD,ARGUMENT,STRING0,UNKNOWN><<EOF>> { return MY_EOF; }
+<KEYWORD,ARGUMENT,STRING0,COMMENT1,UNKNOWN>\n   { _YY->yy_linenum++; }
 <KEYWORD,ARGUMENT,STRING0>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
 <KEYWORD,ARGUMENT,STRING0>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
 
@@ -182,7 +183,14 @@ clixon_yang_parsewrap(void)
 <KEYWORD>:                { return *yytext; }
 <KEYWORD>;                { return *yytext; }
 <KEYWORD>.                { clixon_yang_parselval.string = strdup(yytext);
-                             return CHAR;}
+                             BEGIN(UNKNOWN); return CHAR; }
+
+<UNKNOWN>:                { return *yytext; }
+<UNKNOWN>;                { BEGIN(KEYWORD); return *yytext; }
+<UNKNOWN>[ \t]            { return ' '; }
+<UNKNOWN>.                { clixon_yang_parselval.string = strdup(yytext);
+                            return CHAR; }
+
 
 
 <ARGUMENT>;                { BEGIN(KEYWORD); return *yytext; }

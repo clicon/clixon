@@ -133,7 +133,8 @@ static const map_str2int ykmap[] = {
     {"type",             Y_TYPE}, 
     {"typedef",          Y_TYPEDEF}, 
     {"unique",           Y_UNIQUE}, 
-    {"units",            Y_UNITS}, 
+    {"units",            Y_UNITS},
+    {"unknown",          Y_UNKNOWN}, 
     {"uses",             Y_USES}, 
     {"value",            Y_VALUE}, 
     {"when",             Y_WHEN}, 
@@ -668,13 +669,15 @@ ys_spec(yang_stmt *ys)
     return (yang_spec*)ys;
 }
 
-/* Extract id from type argument. two cases:
- * argument is prefix:id, 
- * argument is id,        
+/* Assume argument is id on the type: <[prefix:]id>, return 'id'
  * Just return string from id
+ * @param[in] ys      A yang statement
+ * @retval    NULL    No id (argument is NULL)
+ * @retval    id      Pointer to identifier
+ * @see yarg_prefix
  */
 char*
-ytype_id(yang_stmt *ys)
+yarg_id(yang_stmt *ys)
 {
     char   *id;
     
@@ -685,13 +688,14 @@ ytype_id(yang_stmt *ys)
     return id;
 }
 
-/* Extract prefix from type argument. two cases:
- * argument is prefix:id, 
- * argument is id,        
- * return either NULL or a new prefix string that needs to be freed by caller.
+/* Assume argument is id on the type: <[prefix:]id>, return 'prefix'
+ * @param[in] ys      A yang statement
+ * @retval    NULL    No prefix
+ * @retval    prefix  Malloced string that needs to be freed by caller.
+ * @see yarg_id
  */
 char*
-ytype_prefix(yang_stmt *ys)
+yarg_prefix(yang_stmt *ys)
 {
     char   *id;
     char   *prefix = NULL;
@@ -822,7 +826,11 @@ yang_print_cbuf(cbuf      *cb,
     yang_stmt *ys = NULL;
 
     while ((ys = yn_each(yn, ys)) != NULL) {
-	cprintf(cb, "%*s%s", marginal, "", yang_key2str(ys->ys_keyword));
+	if (ys->ys_keyword == Y_UNKNOWN){ /* dont print unknown - proxy for extension*/
+	    cprintf(cb, "%*s", marginal-1, "");
+	}
+	else
+	    cprintf(cb, "%*s%s", marginal, "", yang_key2str(ys->ys_keyword));
 	if (ys->ys_argument){
 	    if (quotedstring(ys->ys_argument))
 		cprintf(cb, " \"%s\"", ys->ys_argument);
@@ -974,7 +982,7 @@ ys_populate_range(yang_stmt *ys,
 			  &options, NULL, NULL, NULL, &fraction_digits) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
-    origtype = ytype_id((yang_stmt*)yparent);
+    origtype = yarg_id((yang_stmt*)yparent);
     /* This handles non-resolved also */
     if (clicon_type2cv(origtype, restype, &cvtype) < 0) 
 	goto done;
@@ -1291,8 +1299,8 @@ yang_expand(yang_node *yn)
 	switch(ys->ys_keyword){
 	case Y_USES:
 	    /* Split argument into prefix and name */
-	    name    = ytype_id(ys);     /* This is uses/grouping name to resolve */
-	    prefix  = ytype_prefix(ys); /* And this its prefix */
+	    name = yarg_id(ys);     /* This is uses/grouping name to resolve */
+	    prefix  = yarg_prefix(ys); /* And this its prefix */
 	    if (ys_grouping_resolve(ys, prefix, name, &ygrouping) < 0)
 		goto done;
 	    if (prefix)
@@ -2016,6 +2024,8 @@ ys_parse(yang_stmt   *ys,
  * Specific syntax checks  and variable creation for stand-alone yang statements.
  * That is, siblings, etc, may not be there. Complete checks are made in
  * ys_populate instead.
+ * @param[in] ys    yang statement
+ * @param[in] extra Yang extra for cornercases (unknown/extension)
  *
  * The cv:s created in parse-tree as follows:
  * fraction-digits : Create cv as uint8, check limits [1:8] (must be made in 1st pass)
@@ -2023,13 +2033,19 @@ ys_parse(yang_stmt   *ys,
  * @see ys_populate
  */
 int
-ys_parse_sub(yang_stmt *ys)
+ys_parse_sub(yang_stmt *ys,
+	     char      *extra)
 {
     int        retval = -1;
-    
+    int        cvret;
+    char      *reason = NULL;
+    yang_stmt *ymod;
+    uint8_t    fd;
+    char      *prefix = NULL;
+    char      *name;
+
     switch (ys->ys_keyword){
-    case Y_FRACTION_DIGITS:{
-	uint8_t fd;
+    case Y_FRACTION_DIGITS:
 	if (ys_parse(ys, CGV_UINT8) == NULL) 
 	    goto done;
 	fd = cv_uint8_get(ys->ys_cv);
@@ -2038,12 +2054,41 @@ ys_parse_sub(yang_stmt *ys)
 	    goto done;
 	}
 	break;
-    }
+    case Y_UNKNOWN:
+	if (extra == NULL)
+	    break;
+	/* Find extension, if found, store it as unknown, if not,
+	   break for error */
+	prefix  = yarg_prefix(ys); /* And this its prefix */
+	name    = yarg_id(ys);  /* This is the type to resolve */
+	if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL)
+	    goto ok; /* shouldnt happen */
+	if (yang_find((yang_node*)ymod, Y_EXTENSION, name) == NULL){
+	    clicon_err(OE_YANG, errno, "Extension %s:%s not found", prefix, name);
+	    goto done;
+	}
+	if ((ys->ys_cv = cv_new(CGV_STRING)) == NULL){
+	    clicon_err(OE_YANG, errno, "%s: cv_new", __FUNCTION__); 
+	    goto done;
+	}
+	if ((cvret = cv_parse1(extra, ys->ys_cv, &reason)) < 0){ /* error */
+	    clicon_err(OE_YANG, errno, "parsing cv");
+	    goto done;
+	}
+	if (cvret == 0){ /* parsing failed */
+	    clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+	    goto done;
+	}
+	free(extra);
+	break;
     default:
 	break;
     }
+    ok:
     retval = 0;
   done:
+    if (prefix)
+	free(prefix);
     return retval;
 }
 

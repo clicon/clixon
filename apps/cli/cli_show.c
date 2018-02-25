@@ -587,7 +587,14 @@ done:
 	xml_free(xt);
     return retval;
 }
+
 int show_confv_xpath(clicon_handle h, cvec *vars, cvec *argv)
 {
     return show_conf_xpath(h, vars, argv);
+}
+
+int cli_show_version(clicon_handle h, cvec *vars, cvec *argv)
+{
+    cli_output(stdout, "%s\n", CLIXON_VERSION_STRING);
+    return 0;
 }

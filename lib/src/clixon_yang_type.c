@@ -905,8 +905,8 @@ yang_type_resolve(yang_stmt   *ys,
     if (options)
 	*options = 0x0;
     *yrestype    = NULL; /* Initialization of resolved type that may not be necessary */
-    type      = ytype_id(ytype);     /* This is the type to resolve */
-    prefix    = ytype_prefix(ytype); /* And this its prefix */
+    type      = yarg_id(ytype);     /* This is the type to resolve */
+    prefix    = yarg_prefix(ytype); /* And this its prefix */
     /* Cache does not work for eg string length 32 */
     if (!yang_builtin(type) && ytype->ys_typecache != NULL){
 	if (yang_type_cache_get(ytype->ys_typecache, 
@@ -1034,7 +1034,7 @@ yang_type_get(yang_stmt    *ys,
 	goto done;
     }
     /* XXX: here we seem to have some problems if type is union */
-    type = ytype_id(ytype);
+    type = yarg_id(ytype);
     if (origtype)
 	*origtype = type;
     if (yang_type_resolve(ys, ytype, yrestype, 

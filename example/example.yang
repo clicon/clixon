@@ -1,10 +1,14 @@
 module example {
+    prefix ex;
     import ietf-ip {
-      prefix ip;
+	prefix ip;
     }
     import ietf-routing {
-      prefix rt;
+	prefix rt;
+    }
+    import ietf-netconf-acm {
+	prefix nacm; /* See RFC 6536 */
     }
     description
-      "Example code that includes ietf-ip and ietf-routing";
+	"Example code that includes ietf-ip and ietf-routing";
 }

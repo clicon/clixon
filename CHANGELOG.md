@@ -2,6 +2,23 @@
 
 ## 3.6.0 (Upcoming)
 
+### Major changes:
+### Minor changes:
+
+* Use <config> instead of <data> when save/load configuration to file. This
+enables saved files to be used as datastore without any editing. Thanks Matt.
+
+* Added Yang "extension" statement. This includes parsing unknown
+  statements and identifying them as extensions or not. However,
+  semantics for specific extensions must still be added.
+
+* Renamed ytype_id and ytype_prefix to yarg_id and yarg_prefix, respectively
+
+* Added cli_show_version()
+
+### Corrected Bugs
+
+
 ## 3.5.0 (12 February 2018)
 
 ### Major changes:

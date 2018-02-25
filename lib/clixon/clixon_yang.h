@@ -114,6 +114,7 @@ enum rfc_6020{
     Y_TYPEDEF,
     Y_UNIQUE,
     Y_UNITS,
+    Y_UNKNOWN,
     Y_USES,
     Y_VALUE,
     Y_WHEN,
@@ -161,7 +162,9 @@ struct yang_stmt{
 					leaf-list, 
 					config: boolean true or false
 					mandatory: boolean true or false
-					fraction-digits for fraction-digits */
+					fraction-digits for fraction-digits
+					unkown-stmt (argument)
+				     */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
 					Y_RANGE: range_min, range_max 
 					Y_LIST: vector of keys
@@ -206,8 +209,8 @@ yang_stmt *ys_dup(yang_stmt *old);
 int        yn_insert(yang_node *yn_parent, yang_stmt *ys_child);
 yang_stmt *yn_each(yang_node *yn, yang_stmt *ys);
 char      *yang_key2str(int keyword);
-char      *ytype_prefix(yang_stmt *ys);
-char      *ytype_id(yang_stmt *ys);
+char      *yarg_prefix(yang_stmt *ys);
+char      *yarg_id(yang_stmt *ys);
 yang_stmt *ys_module(yang_stmt *ys);
 yang_spec *ys_spec(yang_stmt *ys);
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
@@ -227,7 +230,7 @@ int        yang_abs_schema_nodeid(yang_spec *yspec, char *schema_nodeid,
 int        yang_desc_schema_nodeid(yang_node *yn, char *schema_nodeid, 
 				   yang_stmt **yres);
 cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
-int        ys_parse_sub(yang_stmt *ys);
+int        ys_parse_sub(yang_stmt *ys, char *extra);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
 yang_spec *yang_spec_netconf(clicon_handle h);
