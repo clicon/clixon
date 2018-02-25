@@ -216,6 +216,9 @@ json_str_escape(char *str)
     for (i=0;i<strlen(str);i++)
 	switch (str[i]){
 	case '\n':
+	    snew[j++]='\\';
+	    snew[j++]='n';
+	    break;
 	case '\"':
 	case '\\':
 	    snew[j++]='\\';

@@ -1,6 +1,10 @@
 # Clixon Changelog
 
 ## 3.6.0 (Upcoming)
+### Major changes:
+### Minor changes:
+### Corrected Bugs
+* Translate xml->json \n correctly
 
 ### Major changes:
 ### Minor changes:
