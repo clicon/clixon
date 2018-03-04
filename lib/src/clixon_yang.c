@@ -402,6 +402,94 @@ yang_find(yang_node *yn,
     }
     return match ? ys : NULL;
 }
+#ifdef NOTYET
+/*! Prototype more generic than yang_find_datanode and yang_find_schemanode
+ */
+yang_stmt *
+yang_find_class(yang_node *yn, 
+		char      *argument,
+		yang_class class)
+{
+    yang_stmt *ys = NULL;
+    yang_stmt *yc = NULL;
+    yang_stmt *ysmatch = NULL;
+    int        i, j;
+    int        ok;
+
+    for (i=0; i<yn->yn_len; i++){
+	ys = yn->yn_stmt[i];
+	switch(class){
+	case YC_NONE:
+	    ok = 1;
+	    break;
+	case YC_DATANODE:
+	    ok = yang_datanode(ys);
+	    break;
+	case YC_DATADEFINITION:
+	    ok = yang_datadefinition(ys);
+	    break;
+	case YC_SCHEMANODE:
+	    ok = yang_schemanode(ys);
+	    break;
+	}
+	if (!ok)
+	    continue;
+	switch(class){
+	case YC_NONE:
+	    if (argument == NULL)
+		ysmatch = ys;
+	    else
+		if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
+		    ysmatch = ys;
+	    if (ysmatch)
+		goto match;
+	    break;
+	case YC_DATANODE:
+	case YC_DATADEFINITION:
+	    if (argument == NULL)
+		ysmatch = ys;
+	    else
+		if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
+		    ysmatch = ys;
+	    if (ysmatch)
+		goto match;
+	    break;
+	case YC_SCHEMANODE:
+	    if (ys->ys_keyword == Y_CHOICE){ /* Look for its children */
+	    for (j=0; j<ys->ys_len; j++){
+		yc = ys->ys_stmt[j];
+		if (yc->ys_keyword == Y_CASE) /* Look for its children */
+		    ysmatch = yang_find_class((yang_node*)yc, argument, class);
+		else{
+		    if (yang_schemanode(yc)){
+			if (argument == NULL)
+			    ysmatch = yc;
+			else
+			    if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
+				ysmatch = yc;
+		    }
+		}
+		if (ysmatch)
+		    goto match;
+	    }
+	} /* Y_CHOICE */
+	else{
+	    if (argument == NULL)
+		ysmatch = ys;
+	    else
+		if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
+		    ysmatch = ys;
+	    if (ysmatch)
+		goto match;
+
+	}
+	break;
+	} /* switch */
+    } /* for */
+ match:
+    return ysmatch;
+}
+#endif /* NOTYET */
 
 /*! Find child data node with matching argument (container, leaf, etc)
  *
@@ -455,6 +543,8 @@ yang_find_datanode(yang_node *yn,
 }
 
 /*! Find child schema node with matching argument (container, leaf, etc)
+ * @param[in]  yn         Yang node, current context node.
+ * @param[in]  argument   if NULL, match any(first) argument.
  * @note XXX unify code with yang_find_datanode?
  * @see yang_find_datanode
  */
@@ -505,7 +595,7 @@ yang_find_schemanode(yang_node *yn,
 /*! Find first matching data node in all (sub)modules in a yang spec
  *
  * @param[in]  ysp        Yang specification
- * @param[in]  name       if NULL, match any(first) argument. XXX is that really a case?
+ * @param[in]  argument   if NULL, match any(first) argument. XXX is that really a case?
  * @param[in]  schemanode If set look for schema nodes, otherwise only data nodes
  * A yang specification has modules as children which in turn can have 
  * syntax-nodes as children. This function goes through all the modules to
@@ -514,8 +604,8 @@ yang_find_schemanode(yang_node *yn,
  */
 yang_stmt *
 yang_find_topnode(yang_spec *ysp, 
-		  char      *name,
-		  int        schemanode)
+		  char      *argument,
+		  yang_class class)
 {
     yang_stmt *ys = NULL;
     yang_stmt *yc = NULL;
@@ -523,13 +613,22 @@ yang_find_topnode(yang_spec *ysp,
 
     for (i=0; i<ysp->yp_len; i++){
 	ys = ysp->yp_stmt[i];
-	if (schemanode){
-	    if ((yc = yang_find_schemanode((yang_node*)ys, name)) != NULL)
+	switch (class){
+	case YC_NONE:
+	    if ((yc = yang_find((yang_node*)ys, 0, argument)) != NULL)
 		return yc;
+	    break;
+	case YC_DATANODE:
+	    if ((yc = yang_find_datanode((yang_node*)ys, argument)) != NULL)
+		return yc;
+	    break;
+	case YC_SCHEMANODE:
+	    if ((yc = yang_find_schemanode((yang_node*)ys, argument)) != NULL)
+		return yc;
+	    break;
+	case YC_DATADEFINITION:
+	    break; /* nyi */
 	}
-	else
-	    if ((yc = yang_find_datanode((yang_node*)ys, name)) != NULL)
-		return yc;
     }
     return NULL;
 }
@@ -1929,7 +2028,7 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
     }
     if (ymod == NULL){ /* Try with topnode */
 	yang_stmt       *ys;
-	if ((ys = yang_find_topnode(yspec, id, 1)) == NULL){
+	if ((ys = yang_find_topnode(yspec, id, YC_SCHEMANODE)) == NULL){
 	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found", prefix,id);
 	    goto done;
 	}

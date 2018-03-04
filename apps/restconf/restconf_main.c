@@ -131,11 +131,12 @@ api_data(clicon_handle h,
 /*! Operations REST method, POST
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  dvec   Stream input data
+ * @param[in]  data   Stream input data
+ * @param[in]  username Authenticated user
  */
 static int
 api_operations(clicon_handle h,
@@ -154,16 +155,42 @@ api_operations(clicon_handle h,
     request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
     if (strcmp(request_method, "GET")==0)
-	retval = api_operation_get(h, r, path, pcvec, pi, qvec, data, username);
+	retval = api_operations_get(h, r, path, pcvec, pi, qvec, data, username);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_operation_post(h, r, path, pcvec, pi, qvec, data, username);
+	retval = api_operations_post(h, r, path, pcvec, pi, qvec, data, username);
     else
 	retval = notfound(r);
     return retval;
 }
 
+/*! Determine the root of the RESTCONF API
+ * @param[in]  h        Clicon handle
+ * @param[in]  r        Fastcgi request handle
+ * @note Hardcoded to "/restconf"
+ * Return see RFC8040 3.1 and RFC7320
+ * In line with the best practices defined by [RFC7320], RESTCONF
+ * enables deployments to specify where the RESTCONF API is located.
+ */
+static int
+api_well_known(clicon_handle h,
+	       FCGX_Request *r)
+{
+    clicon_debug(1, "%s", __FUNCTION__);
+    FCGX_FPrintF(r->out, "Content-Type: application/xrd+xml\r\n");
+    FCGX_FPrintF(r->out, "\r\n");
+    FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>\r\n");
+    FCGX_FPrintF(r->out, "   <Link rel='restconf' href='/restconf'/>\r\n");
+    FCGX_FPrintF(r->out, "</XRD>\r\n");
+
+    return 0;
+}
+
 /*! Retrieve the Top-Level API Resource
+ * @param[in]  h        Clicon handle
+ * @param[in]  r        Fastcgi request handle
  * @note Only returns null for operations and data,...
+ * See RFC8040 3.3
  */
 static int
 api_root(clicon_handle h,
@@ -181,9 +208,11 @@ api_root(clicon_handle h,
     media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
     if (strcmp(media_accept, "application/yang-data+xml")==0)
 	use_xml++;
+    clicon_debug(1, "%s use-xml:%d media-accept:%s", __FUNCTION__, use_xml, media_accept);
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
     FCGX_FPrintF(r->out, "\r\n");
+
     if (xml_parse_string("<restconf><data></data><operations></operations><yang-library-version>2016-06-21</yang-library-version></restconf>", NULL, &xt) < 0)
 	goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -298,6 +327,8 @@ api_restconf(clicon_handle h,
 	retval = notfound(r);
 	goto done;
     }
+    test(r, 1);
+
     if (pn == 2){
 	retval = api_root(h, r);
 	goto done;
@@ -319,7 +350,6 @@ api_restconf(clicon_handle h,
     if (str2cvec(data, '&', '=', &dvec) < 0)
       goto done;
 
-    test(r, 1);
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * See RFC 8040 section 2.5
      */
@@ -367,23 +397,6 @@ api_restconf(clicon_handle h,
     return retval;
 }
 
-/*! Process a FastCGI request
- * @param[in]  r        Fastcgi request handle
- */
-static int
-api_well_known(clicon_handle h,
-	       FCGX_Request *r)
-{
-    clicon_debug(1, "%s", __FUNCTION__);
-    FCGX_FPrintF(r->out, "Content-Type: application/xrd+xml\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
-    FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>\r\n");
-    FCGX_FPrintF(r->out, "   <Link rel='restconf' href='/restconf'/>\r\n");
-    FCGX_FPrintF(r->out, "</XRD>\r\n");
-
-    return 0;
-}
 
 static int
 restconf_terminate(clicon_handle h)
@@ -547,7 +560,7 @@ main(int    argc,
 	    if (strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)) == 0)
 		api_restconf(h, r); /* This is the function */
 	    else if (strncmp(path, RESTCONF_WELL_KNOWN, strlen(RESTCONF_WELL_KNOWN)) == 0) {
-		api_well_known(h, r); /* This is the function */
+		api_well_known(h, r); /*  */
 	    }
 	    else{
 		clicon_debug(1, "top-level %s not found", path);

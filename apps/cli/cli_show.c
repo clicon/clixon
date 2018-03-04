@@ -171,7 +171,7 @@ expand_dbvar(void   *h,
     /* This is primarily to get "y", 
      * xpath2xml would have worked!!
      */
-    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     /* Special case for leafref. Detect leafref via Yang-type, 
      * Get Yang path element, tentatively add the new syntax to the whole

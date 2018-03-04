@@ -236,7 +236,7 @@ cli_dbxml(clicon_handle       h,
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
-    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;

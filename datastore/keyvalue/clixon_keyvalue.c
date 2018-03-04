@@ -312,7 +312,7 @@ get(char      *dbname,
 	    restval++;
 	}
 	if (i == 1){ /* spec->module->node */
-	    if ((y = yang_find_topnode(ys, name, 0)) == NULL){
+	    if ((y = yang_find_topnode(ys, name, YC_DATANODE)) == NULL){
 		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 		goto done;
 	    }
@@ -799,7 +799,7 @@ kv_put(xmldb_handle        xh,
     }
     //	clicon_log(LOG_WARNING, "%s", __FUNCTION__);
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-	if ((ys = yang_find_topnode(yspec, xml_name(x), 0)) == NULL){
+	if ((ys = yang_find_topnode(yspec, xml_name(x), YC_DATANODE)) == NULL){
 	    clicon_err(OE_UNIX, errno, "No yang node found: %s", xml_name(x));
 	    goto done;
 	}

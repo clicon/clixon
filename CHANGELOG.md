@@ -1,14 +1,13 @@
 # Clixon Changelog
 
 ## 3.6.0 (Upcoming)
-### Major changes:
-### Minor changes:
-### Corrected Bugs
-* Translate xml->json \n correctly
+
 
 ### Major changes:
 ### Minor changes:
+* yang_find_topnode() and api_path2xml() schemanode parameter replaced with yang_class. Replace as follows: 0 -> YC_DATANODE, 1 -> YC_SCHEMANODE
 
+* xml2json: include prefix in translation, so <a:b> is translated to {"a:b" ..}
 * Use <config> instead of <data> when save/load configuration to file. This
 enables saved files to be used as datastore without any editing. Thanks Matt.
 
@@ -21,6 +20,7 @@ enables saved files to be used as datastore without any editing. Thanks Matt.
 * Added cli_show_version()
 
 ### Corrected Bugs
+* Translate xml->json \n correctly
 * Fix issue: https://github.com/clicon/clixon/issues/15 Replace whole config
 
 ## 3.5.0 (12 February 2018)

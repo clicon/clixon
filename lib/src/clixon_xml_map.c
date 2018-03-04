@@ -587,7 +587,7 @@ yang_next(yang_node *y,
     yang_stmt *ys;
 
     if (y->yn_keyword == Y_SPEC)
-	ys = yang_find_topnode((yang_spec*)y, name, 0);
+	ys = yang_find_topnode((yang_spec*)y, name, YC_DATANODE);
     else
 	ys = yang_find_datanode(y, name);
     if (ys == NULL)
@@ -1313,7 +1313,7 @@ xml_spec_populate(cxobj  *x,
 	(yp = xml_spec(xp)) != NULL)
 	y = yang_find_datanode((yang_node*)yp, xml_name(x));
     else
-	y = yang_find_topnode(yspec, name, 0); /* still NULL for config */
+	y = yang_find_topnode(yspec, name, YC_DATANODE); /* still NULL for config */
 #endif
     if (y)
 	xml_spec_set(x, y);
@@ -1367,7 +1367,7 @@ api_path2xpath_cvv(yang_spec *yspec,
 	clicon_debug(1, "[%d] cvname:%s", i, name);
 	clicon_debug(1, "cv2str%d", cv2str(cv, NULL, 0));
 	if (i == offset){
-	    if ((y = yang_find_topnode(yspec, name, 0)) == NULL){
+	    if ((y = yang_find_topnode(yspec, name, YC_DATANODE)) == NULL){
 		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 		goto done;
 	    }
@@ -1448,7 +1448,7 @@ api_path2xpath(yang_spec *yspec,
  * @param[in]   nvec      Length of vec
  * @param[in]   x0        Xpath tree so far
  * @param[in]   y0        Yang spec for x0
- * @param[in]   schemanode If set use schema nodes otherwise data nodes.
+ * @param[in]   nodeclass Set to schema nodes, data nodes, etc
  * @param[out]  xpathp    Resulting xml tree 
  * @param[out]  ypathp    Yang spec matching xpathp
  * @see api_path2xml
@@ -1458,7 +1458,7 @@ api_path2xml_vec(char             **vec,
 		 int                nvec,
 		 cxobj             *x0,
 		 yang_node         *y0,
-		 int                schemanode,
+		 yang_class         nodeclass,
 		 cxobj            **xpathp,
 		 yang_node        **ypathp)
 {
@@ -1500,10 +1500,10 @@ api_path2xml_vec(char             **vec,
 	name = local;
     }
     if (y0->yn_keyword == Y_SPEC){ /* top-node */
-	y = yang_find_topnode((yang_spec*)y0, name, schemanode);
+	y = yang_find_topnode((yang_spec*)y0, name, nodeclass);
     }
     else {
-	y = schemanode?yang_find_schemanode((yang_node*)y0, name):
+	y = (nodeclass==YC_SCHEMANODE)?yang_find_schemanode((yang_node*)y0, name):
 	    yang_find_datanode((yang_node*)y0, name);
     }
     if (y == NULL){
@@ -1572,7 +1572,7 @@ api_path2xml_vec(char             **vec,
     }
     if (api_path2xml_vec(vec+1, nvec-1, 
 			 x, (yang_node*)y, 
-			 schemanode,
+			 nodeclass,
 			 xpathp, ypathp) < 0)
 	goto done;
     retval = 0;
@@ -1588,7 +1588,7 @@ api_path2xml_vec(char             **vec,
  * @param[in]     api_path   API-path as defined in RFC 8040
  * @param[in]     yspec      Yang spec
  * @param[in,out] xtop       Incoming XML tree
- * @param[in]     schemanode If set use schema nodes otherwise data nodes.
+ * @param[in]     nodeclass  Set to schema nodes, data nodes, etc
  * @param[out]    xbotp      Resulting xml tree (end of xpath)
  * @param[out]    ybotp      Yang spec matching xbotp
  * @example
@@ -1605,7 +1605,7 @@ int
 api_path2xml(char       *api_path,
 	     yang_spec  *yspec,
 	     cxobj      *xtop,
-	     int         schemanode,
+	     yang_class  nodeclass,
 	     cxobj     **xbotp,
 	     yang_node **ybotp)
 {
@@ -1628,7 +1628,7 @@ api_path2xml(char       *api_path,
     }
     nvec--; /* NULL-terminated */
     if (api_path2xml_vec(vec+1, nvec, 
-			 xtop, (yang_node*)yspec, schemanode,
+			 xtop, (yang_node*)yspec, nodeclass,
 			 xbotp, ybotp) < 0)
 	goto done;
     retval = 0;
@@ -1736,7 +1736,7 @@ xml_merge(cxobj     *x0,
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 	x1cname = xml_name(x1c);
 	/* Get yang spec of the child */
-	if ((yc = yang_find_topnode(yspec, x1cname, 0)) == NULL){
+	if ((yc = yang_find_topnode(yspec, x1cname, YC_DATANODE)) == NULL){
 	    clicon_err(OE_YANG, ENOENT, "No yang spec");
 	    goto done;
 	}

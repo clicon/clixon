@@ -792,7 +792,7 @@ text_modify_top(cxobj              *x0,
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 	x1cname = xml_name(x1c);
 	/* Get yang spec of the child */
-	if ((yc = yang_find_topnode(yspec, x1cname, 0)) == NULL){
+	if ((yc = yang_find_topnode(yspec, x1cname, YC_DATANODE)) == NULL){
 	    clicon_err(OE_YANG, ENOENT, "No yang spec");
 	    goto done;
 	}

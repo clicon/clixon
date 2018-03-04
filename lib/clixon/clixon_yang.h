@@ -123,13 +123,44 @@ enum rfc_6020{
     Y_SPEC  /* XXX: NOTE NOT YANG STATEMENT, reserved for top level spec */
 };
 
+/* Type used to group yang nodes used in some functions
+ * See RFC7950 Sec 3
+ */
+enum yang_class{
+    YC_NONE,            /* Someting else,... */
+    YC_DATANODE,        /* See yang_datanode() */
+    YC_DATADEFINITION,  /* See yang_datadefinition() */
+    YC_SCHEMANODE       /* See yang_schemanode() */
+};
+typedef enum yang_class yang_class;
+
 #define YANG_FLAG_MARK 0x01  /* Marker for dynamic algorithms, eg expand */
 
-/* Yang data node */
+/* Yang data node 
+ * See RFC7950 Sec 3:
+ *   o  data node: A node in the schema tree that can be instantiated in a
+ *      data tree.  One of container, leaf, leaf-list, list, anydata, and
+ *      anyxml.
+ */
 #define yang_datanode(y) ((y)->ys_keyword == Y_CONTAINER || (y)->ys_keyword == Y_LEAF || (y)->ys_keyword == Y_LIST || (y)->ys_keyword == Y_LEAF_LIST || (y)->ys_keyword == Y_ANYXML)
 
-/* Yang schema node */
+/* Yang data definition statement
+ * See RFC 7950 Sec 3:
+ *   o  data definition statement: A statement that defines new data
+ *      nodes.  One of "container", "leaf", "leaf-list", "list", "choice",
+ *      "case", "augment", "uses", "anydata", and "anyxml".
+ */
+#define yang_datadefinition(y) (yang_datanode(y) || (y)->ys_keyword == Y_CHOICE || (y)->ys_keyword == Y_CASE || (y)->ys_keyword == Y_AUGMENT || (y)->ys_keyword == Y_USES)
+
+
+/* Yang schema node .
+ * See RFC 7950 Sec 3:
+ *    o  schema node: A node in the schema tree.  One of action, container,
+ *       leaf, leaf-list, list, choice, case, rpc, input, output,
+ *       notification, anydata, and anyxml.
+ */
 #define yang_schemanode(y) (yang_datanode(y) || (y)->ys_keyword == Y_RPC || (y)->ys_keyword == Y_CHOICE || (y)->ys_keyword == Y_CASE || (y)->ys_keyword == Y_INPUT || (y)->ys_keyword == Y_OUTPUT || (y)->ys_keyword == Y_NOTIFICATION)
+
 
 typedef struct yang_stmt yang_stmt; /* forward */
 
@@ -217,7 +248,7 @@ yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
 yang_stmt *yang_find(yang_node *yn, int keyword, char *argument);
 yang_stmt *yang_find_datanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_node *yn, char *argument);
-yang_stmt *yang_find_topnode(yang_spec *ysp, char *name, int schemanode);
+yang_stmt *yang_find_topnode(yang_spec *ysp, char *name, yang_class class);
 int        yang_order(yang_stmt *y);
 int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);

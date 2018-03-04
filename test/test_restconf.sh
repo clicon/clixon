@@ -78,21 +78,48 @@ sleep 1
 
 new "restconf tests"
 
-new "restconf options"
-expectfn "curl -i -sS -X OPTIONS http://localhost/restconf/data" "Allow: OPTIONS,HEAD,GET,POST,PUT,DELETE"
-
-new "restconf head"
-expectfn "curl -s -I http://localhost/restconf/data" "HTTP/1.1 200 OK"
-#Content-Type: application/yang-data+json"
-
-new "restconf root discovery"
+new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
 expectfn "curl  -s -X GET http://localhost/.well-known/host-meta" "<Link rel='restconf' href='/restconf'/>"
 
-new "restconf get restconf json"
+new "restconf get restconf resource. RFC 8040 3.3 (json)"
 expectfn "curl -sG http://localhost/restconf" '{"data": null,"operations": null,"yang-library-version": "2016-06-21"}}'
 
-new "restconf get restconf/yang-library-version json"
+new "restconf get restconf resource. RFC 8040 3.3 (xml)"
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf)
+expect="<restconf><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>"
+match=`echo $ret | grep -EZo "$expect"`
+if [ -z "$match" ]; then
+    err "$expect" "$ret"
+fi
+
+new "restconf get restconf/operations. RFC8040 3.3.2"
+expectfn "curl -sG http://localhost/restconf/operations" '{"operations": {"ex:empty": null,"ex:input": null,"ex:output": null,"rt:fib-route": null,"rt:route-count": null}}'
+
+new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/operations)
+expect="<operations><ex:empty/><ex:input/><ex:output/><rt:fib-route/><rt:route-count/></operations>"
+match=`echo $ret | grep -EZo "$expect"`
+if [ -z "$match" ]; then
+    err "$expect" "$ret"
+fi
+
+new "restconf get restconf/yang-library-version. RFC8040 3.3.3"
 expectfn "curl -sG http://localhost/restconf/yang-library-version" '{"yang-library-version": "2016-06-21"}'
+
+new "restconf get restconf/yang-library-version. RFC8040 3.3.3 (xml)"
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/yang-library-version)
+expect="<yang-library-version>2016-06-21</yang-library-version>"
+match=`echo $ret | grep -EZo "$expect"`
+if [ -z "$match" ]; then
+    err "$expect" "$ret"
+fi
+
+new "restconf options. RFC 8040 4.1"
+expectfn "curl -i -s -X OPTIONS http://localhost/restconf/data" "Allow: OPTIONS,HEAD,GET,POST,PUT,DELETE"
+
+new "restconf head. RFC 8040 4.2"
+expectfn "curl -s -I http://localhost/restconf/data" "HTTP/1.1 200 OK"
+#Content-Type: application/yang-data+json"
 
 new "restconf empty rpc"
 expectfn 'curl -s -X POST -d {"input":{"name":""}} http://localhost/restconf/operations/ex:empty' '{"output": null}'
@@ -101,6 +128,7 @@ new "restconf get empty config + state json"
 expectfn "curl -sSG http://localhost/restconf/data" "{\"data\": $state}"
 
 new "restconf get empty config + state xml"
+# Cant get shell macros to work, inline matching from lib.sh
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data)
 expect="<data><interfaces-state><interface><name>eth0</name><type>eth</type><if-index>42</if-index></interface></interfaces-state></data>"
 match=`echo $ret | grep -EZo "$expect"`

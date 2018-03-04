@@ -65,7 +65,6 @@ sleep 1
 
 new "restconf tests"
 
-
 new "restconf POST initial tree"
 expectfn 'curl -s -X POST -d {"cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' ""
 

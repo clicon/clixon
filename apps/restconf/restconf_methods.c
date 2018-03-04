@@ -195,6 +195,7 @@ api_data_get_err(clicon_handle h,
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  username Authenticated user
  * @param[in]  head   If 1 is HEAD, otherwise GET
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
@@ -332,6 +333,7 @@ api_data_get2(clicon_handle h,
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  username Authenticated user
    The HEAD method is sent by the client to retrieve just the header fields 
    that would be returned for the comparable GET method, without the 
    response message-body. 
@@ -355,6 +357,7 @@ api_data_head(clicon_handle h,
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  username Authenticated user
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
  * @endcode                                     
@@ -390,6 +393,8 @@ api_data_get(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
+ * @param[in]  username Authenticated user
+
  * @note restconf POST is mapped to edit-config create. 
  POST:
    target resource type is datastore --> create a top-level resource
@@ -461,7 +466,7 @@ api_data_post(clicon_handle h,
 	    goto done;
     }
 
-    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
     if (parse_xml){
@@ -586,6 +591,7 @@ match_list_keys(yang_stmt *y,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
+ * @param[in]  username Authenticated user
  * @note restconf PUT is mapped to edit-config replace. 
  * @example
       curl -X PUT -d '{"enabled":"false"}' http://127.0.0.1/restconf/data/interfaces/interface=eth1
@@ -651,7 +657,7 @@ api_data_put(clicon_handle h,
 	if (xml_value_set(xu, username) < 0)
 	    goto done;
     }
-    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
     if (parse_xml){
@@ -749,6 +755,7 @@ api_data_put(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
+ * @param[in]  username Authenticated user
  * Netconf:  <edit-config> (nc:operation="merge")      
  */
 int
@@ -769,6 +776,7 @@ api_data_patch(clicon_handle h,
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
+ * @param[in]  username Authenticated user
  * @param[in]  pi     Offset, where path starts
  * Example:
  *  curl -X DELETE http://127.0.0.1/restconf/data/interfaces/interface=eth0
@@ -812,7 +820,7 @@ api_data_delete(clicon_handle h,
 	if (xml_value_set(xu, username) < 0)
 	    goto done;
     }
-    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;
@@ -851,10 +859,27 @@ api_data_delete(clicon_handle h,
    return retval;
 }
 
-/*! NYI
+/*! GET restconf/operations resource
+ * @param[in]  h      Clixon handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
+ * @param[in]  pi     Offset, where path starts  
+ * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  data   Stream input data
+ * @param[in]  username Authenticated user
+ *
+ * @code
+ *  curl -G http://localhost/restconf/operations
+ * @endcode                                     
+ * RFC8040 Sec 3.3.2:
+ * This optional resource is a container that provides access to the
+ * data-model-specific RPC operations supported by the server.  The
+ * server MAY omit this resource if no data-model-specific RPC
+ * operations are advertised.
  */
 int
-api_operation_get(clicon_handle h,
+api_operations_get(clicon_handle h,
 		  FCGX_Request *r, 
 		  char         *path, 
 		  cvec         *pcvec, 
@@ -863,23 +888,87 @@ api_operation_get(clicon_handle h,
 		  char         *data,
 		  char         *username)
 {
-    notimplemented(r);
-    return 0;
+    int        retval = -1;
+    int        pretty;
+    char      *media_accept;
+    int        use_xml = 0; /* By default use JSON */
+    yang_spec *yspec;
+    yang_stmt *ym;
+    yang_stmt *yc;
+    yang_stmt *yprefix;
+    char      *prefix;
+    cbuf      *cbx = NULL;
+    cxobj     *xt = NULL;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
+    if (strcmp(media_accept, "application/yang-data+xml")==0)
+	use_xml++;
+    yspec = clicon_dbspec_yang(h);
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
+    cprintf(cbx, "<operations>");
+    ym = NULL;
+    while ((ym = yn_each((yang_node*)yspec, ym)) != NULL) {
+	if ((yprefix = yang_find((yang_node*)ym, Y_PREFIX, NULL)) != NULL)
+	    prefix = yprefix->ys_argument;
+	else
+	    continue;
+	yc = NULL;
+	while ((yc = yn_each((yang_node*)ym, yc)) != NULL) {
+	    if (yc->ys_keyword != Y_RPC)
+		continue;
+	    cprintf(cbx, "<%s:%s />", prefix, yc->ys_argument);
+	}
+    }
+    cprintf(cbx, "</operations>");
+    clicon_debug(1, "%s xml:%s", __FUNCTION__, cbuf_get(cbx));
+    if (xml_parse_string(cbuf_get(cbx), yspec, &xt) < 0)
+	goto done;
+    if (xml_rootchild(xt, 0, &xt) < 0)
+	goto done;
+    cbuf_reset(cbx); /* reuse same cbuf */
+    if (use_xml){
+	if (clicon_xml2cbuf(cbx, xt, 0, pretty) < 0) /* Dont print top object?  */
+	    goto done;
+    }
+    else{
+	if (xml2json_cbuf(cbx, xt, pretty) < 0)
+	    goto done;
+    }
+    clicon_debug(1, "%s ret:%s", __FUNCTION__, cbuf_get(cbx));
+    FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
+    FCGX_FPrintF(r->out, "\r\n");
+    FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
+    FCGX_FPrintF(r->out, "\r\n\r\n");
+    // ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (cbx)
+        cbuf_free(cbx);
+    if (xt)
+	xml_free(xt);
+    return retval;
 }
 
 /*! REST operation POST method 
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
+ * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * @note We map post to edit-config create. 
+ * @param[in]  username Authenticated user
 
+ * @note We map post to edit-config create. 
       POST {+restconf}/operations/<operation>
  */
 int
-api_operation_post(clicon_handle h,
+api_operations_post(clicon_handle h,
 		   FCGX_Request *r, 
 		   char         *path, 
 		   cvec         *pcvec, 
@@ -956,7 +1045,7 @@ api_operation_post(clicon_handle h,
     }
 
     /* XXX: something strange for rpc user */
-    if (api_path2xml(oppath, yspec, xtop, 1, &xbot, &y) < 0)
+    if (api_path2xml(oppath, yspec, xtop, YC_SCHEMANODE, &xbot, &y) < 0)
 	goto done;
 #if 1
     {

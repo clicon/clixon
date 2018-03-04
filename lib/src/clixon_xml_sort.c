@@ -93,7 +93,7 @@ xml_child_spec(char       *name,
     if (xp && (yparent = xml_spec(xp)) != NULL)
 	y = yang_find_datanode((yang_node*)yparent, name);
     else if (yspec)
-	y = yang_find_topnode(yspec, name, 0); /* still NULL for config */
+	y = yang_find_topnode(yspec, name, YC_DATANODE); /* still NULL for config */
     else
 	y = NULL;
     *yresult = y;
