@@ -173,6 +173,8 @@ expand_dbvar(void   *h,
      */
     if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
+    if (y==NULL)
+	goto ok;
     /* Special case for leafref. Detect leafref via Yang-type, 
      * Get Yang path element, tentatively add the new syntax to the whole
      * tree and apply the path to that.
@@ -236,6 +238,7 @@ expand_dbvar(void   *h,
 	/* XXX RFC3986 decode */
 	cvec_add_string(commands, NULL, bodystr);
     }
+ ok:
     retval = 0;
   done:
     if (api_path)

@@ -1614,8 +1614,8 @@ api_path2xml(char       *api_path,
     int    nvec;
 
     if (*api_path!='/'){
-	clicon_err(OE_DB, 0, "Invalid key: %s", api_path);
-	goto done;
+	clicon_log(LOG_WARNING, "Invalid key: %s (must start with '/')", api_path);
+	goto ok;
     }
     if ((vec = clicon_strsep(api_path, "/", &nvec)) == NULL)
 	goto done;
@@ -1631,6 +1631,7 @@ api_path2xml(char       *api_path,
 			 xtop, (yang_node*)yspec, nodeclass,
 			 xbotp, ybotp) < 0)
 	goto done;
+ ok:
     retval = 0;
  done:
     if (vec)
