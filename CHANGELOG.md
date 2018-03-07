@@ -5,6 +5,9 @@
 
 ### Major changes:
 ### Minor changes:
+* Experimental: Added CLICON_TRANSACTION_MOD configurqation option. If set,
+  modifications in validation and commit callbacks are written back
+  into the datastore.
 * Invalid key to api_path2xml gives warning instead of error and quit.	
 * Added restconf/operations get, see RFC8040 Sec 3.3.2:
 * yang_find_topnode() and api_path2xml() schemanode parameter replaced with yang_class. Replace as follows: 0 -> YC_DATANODE, 1 -> YC_SCHEMANODE

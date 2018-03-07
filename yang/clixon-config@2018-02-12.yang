@@ -300,5 +300,11 @@ module clixon-config {
 	    type startup_mode;
 	    description "Which method to boot/start clicon backend";
 	}
+	leaf CLICON_TRANSACTION_MOD {
+	    type boolean;
+	    default false;
+	    description "If set, modifications in validation and commit 
+                         callbacks will be saved into running";
+	}
     }
 }

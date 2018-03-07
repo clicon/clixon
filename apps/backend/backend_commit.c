@@ -239,12 +239,19 @@ candidate_commit(clicon_handle h,
      if (plugin_transaction_commit(h, td) < 0)
 	 goto done;
 
-     /* 8. Success: Copy candidate to running */
+     /* Optionally write (potentially modified) tree back to candidate */
+     if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD"))
+	 if (xmldb_put(h, candidate, OP_REPLACE, td->td_target) < 0)
+	     goto done;
+     /* 8. Success: Copy candidate to running 
+      */
+
      if (xmldb_copy(h, candidate, "running") < 0)
 	 goto done;
 
     /* 9. Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);
+
 
     /* 8. Copy running back to candidate in case end functions updated running */
     if (xmldb_copy(h, "running", candidate) < 0){
@@ -392,6 +399,10 @@ from_client_validate(clicon_handle h,
 		clicon_err_reason);
 	goto ok;
     }
+    /* Optionally write (potentially modified) tree back to candidate */
+     if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD"))
+	 if (xmldb_put(h, "candidate", OP_REPLACE, td->td_target) < 0)
+	     goto done;
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
