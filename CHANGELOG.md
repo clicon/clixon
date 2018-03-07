@@ -6,6 +6,7 @@
 ### Major changes:
 ### Minor changes:
 * Invalid key to api_path2xml gives warning instead of error and quit.	
+* Added restconf/operations get, see RFC8040 Sec 3.3.2:
 * yang_find_topnode() and api_path2xml() schemanode parameter replaced with yang_class. Replace as follows: 0 -> YC_DATANODE, 1 -> YC_SCHEMANODE
 
 * xml2json: include prefix in translation, so <a:b> is translated to {"a:b" ..}
