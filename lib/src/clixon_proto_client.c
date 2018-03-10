@@ -243,7 +243,7 @@ clicon_rpc_generate_error(char  *format,
  * @retval   -1         Error, fatal or xml
  * @code
  *    cxobj *xt = NULL;
- *    if (clicon_rpc_get_config(h, "running", "/", &xt) < 0)
+ *    if (clicon_rpc_get_config(h, "running", "/", username, &xt) < 0)
  *       err;
  *   if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
  *	clicon_rpc_generate_error("", xerr);

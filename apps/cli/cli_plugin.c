@@ -854,7 +854,6 @@ prompt_fmt (char *prompt, size_t plen, char *fmt, ...)
   }
   
   /* Start with empty string */
-  cprintf(cb, "");
   while(*s) {
       if (*s == '%' && *++s) {
 	  switch(*s) {
