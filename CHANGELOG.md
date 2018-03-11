@@ -4,7 +4,7 @@
 
 
 ### Major changes:
-* (Work in progress) Restconf error handling for get and edit operations
+* (Work in progress) Restconf error handling for get, put and post. Several cornercases remain, including validate/commit. Available both as xml and json (set accept header), pretty-printed and not (set clixon config option).
 
 ### Minor changes:
 * Add username to rpc calls to prepare for authorization for backend:
