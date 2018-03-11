@@ -144,47 +144,62 @@ api_data_options(clicon_handle h,
  * @param[in]  h      Clixon handle
  * @param[in]  r      Fastcgi request handle
  * @param[in]  xerr   XML error message from backend
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML
  */
 static int
-api_data_get_err(clicon_handle h,
-		 FCGX_Request *r,
-		 cxobj     *xerr)
+api_return_err(clicon_handle h,
+	       FCGX_Request *r,
+	       cxobj        *xerr,
+	       int           pretty,
+	       int           use_xml)
 {
     int        retval = -1;
-    cbuf      *cbj = NULL;
+    cbuf      *cb = NULL;
     cxobj     *xtag;
     int        code;	
     const char *reason_phrase;
 
-    if ((cbj = cbuf_new()) == NULL)
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((cb = cbuf_new()) == NULL)
 	goto done;
-    if ((xtag = xpath_first(xerr, "/error-tag")) == NULL){
+    if ((xtag = xpath_first(xerr, "error-tag")) == NULL){
 	notfound(r); /* bad reply? */
 	goto ok;
     }
     code = restconf_err2code(xml_body(xtag));
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
 	reason_phrase="";
-    clicon_debug(1, "%s code:%d reason phrase:%s", 
-		 __FUNCTION__, code, reason_phrase);
-
     if (xml_name_set(xerr, "error") < 0)
 	goto done;
-    if (xml2json_cbuf(cbj, xerr, 1) < 0)
-	goto done;
+    if (use_xml){
+	if (clicon_xml2cbuf(cb, xerr, 2, pretty) < 0)
+	    goto done;
+    }
+    else
+	if (xml2json_cbuf(cb, xerr, pretty) < 0)
+	    goto done;
     FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
-    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+json\r\n\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
-    FCGX_FPrintF(r->out, "{\r\n");
-    FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : {\r\n");
-    FCGX_FPrintF(r->out, "    %s", cbuf_get(cbj));
-    FCGX_FPrintF(r->out, "  }\r\n");
-    FCGX_FPrintF(r->out, "}\r\n");
+    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n\r\n",
+		 use_xml?"xml":"json");
+    if (use_xml){
+	FCGX_FPrintF(r->out, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">%s", cbuf_get(cb), pretty?"\r\n":"");
+	FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
+	FCGX_FPrintF(r->out, "    </errors>\r\n");
+    }
+    else{
+	FCGX_FPrintF(r->out, "{%s", pretty?"\r\n":"");
+	FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : {%s", pretty?"\r\n":"");
+	FCGX_FPrintF(r->out, "    %s", cbuf_get(cb));
+	FCGX_FPrintF(r->out, "  }%s", pretty?"\r\n":"");
+	FCGX_FPrintF(r->out, "}\r\n");
+    }
  ok:
     retval = 0;
  done:
-    if (cbj)
-        cbuf_free(cbj);
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }
 
@@ -269,9 +284,9 @@ api_data_get2(clicon_handle h,
 	cbuf_free(cb);
     }
 #endif
-    /* Check if error return */
+    /* Check if error return XXX this needs more work */
     if ((xerr = xpath_first(xret, "/rpc-error")) != NULL){
-	if (api_data_get_err(h, r, xerr) < 0)
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
     }
@@ -425,6 +440,7 @@ api_data_post(clicon_handle h,
 {
     int        retval = -1;
     enum operation_type op = OP_CREATE;
+    int        pretty;
     int        i;
     cxobj     *xdata = NULL;
     cbuf      *cbx = NULL;
@@ -437,10 +453,18 @@ api_data_post(clicon_handle h,
     cxobj     *xu;
     char      *media_content_type;
     int        parse_xml = 0; /* By default expect and parse JSON */
-
+    cxobj     *xret = NULL;
+    cxobj     *xerr;
+    char      *media_accept;
+    int        use_xml = 0; /* By default use JSON */
+	
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
 		 __FUNCTION__, 
 		 api_path, data);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
+    if (strcmp(media_accept, "application/yang-data+xml")==0)
+	use_xml++;
     media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
     if (media_content_type &&
 	strcmp(media_content_type, "application/yang-data+xml")==0)
@@ -499,14 +523,19 @@ api_data_post(clicon_handle h,
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
+    cprintf(cbx, "<rpc><edit-config><target><candidate /></target>");
+    cprintf(cbx, "<default-operation>none</default-operation>");
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
 	goto done;
+
+    cprintf(cbx, "</edit-config></rpc>");
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
-    if (clicon_rpc_edit_config(h, "candidate", 
-			       OP_NONE,
-			       cbuf_get(cbx)) < 0){
-	conflict(r);
-	goto ok;
+    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
+	goto done;
+    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
+	goto done;
     }
     /* Assume this is validation failed since commit includes validate */
     if (clicon_rpc_commit(h) < 0){
@@ -522,6 +551,8 @@ api_data_post(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xret)
+	xml_free(xret);
     if (xtop)
 	xml_free(xtop);
     if (xdata)

@@ -304,7 +304,7 @@ module clixon-config {
 	    type boolean;
 	    default false;
 	    description "If set, modifications in validation and commit 
-                         callbacks will be saved into running";
+                         callbacks are written back into the datastore";
 	}
     }
 }

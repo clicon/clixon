@@ -238,7 +238,6 @@ yang2cli_var_sub(clicon_handle h,
 		goto done;
 	    }
 	}
-
 	else{ /* Cligen does not have 'max' keyword in range so need to find actual
 		 max value of type if yang range expression is 0..max 
 	      */

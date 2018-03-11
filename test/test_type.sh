@@ -4,8 +4,10 @@
 
 # include err() and new() functions and creates $dir
 . ./lib.sh
-fyang=$dir/type.yang
+
 cfg=$dir/conf_yang.xml
+fyang=$dir/type.yang
+
 
 cat <<EOF > $cfg
 <config>
@@ -70,6 +72,57 @@ module example{
          enum down;
       }
    }
+   leaf length1 {
+       type string {
+       length "1";
+      }
+   }
+/*   leaf length2 {
+       type string {
+         length "max";
+      }
+   }
+   leaf length3 {
+       type string {
+         length "min";
+      }
+   }*/
+   leaf length4 {
+       type string {
+         length "4..4000";
+      }
+   }
+/*   leaf length5 {
+       type string {
+         length "min..max";
+      }
+   }*/
+   leaf num1 {
+       type int32 {
+       range "1";
+      }
+   }
+/*   leaf num2 {
+       type int32 {
+         range "min";
+      }
+   }
+   leaf num3 {
+       type int32 {
+         range "max";
+      }
+   }
+*/
+   leaf num4 {
+       type int32 {
+         range "4..4000";
+      }
+   }
+/*   leaf num5 {
+       type int32 {
+         range "min..max";
+      }
+   }*/
 }
 EOF
 

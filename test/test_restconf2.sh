@@ -81,10 +81,10 @@ new "restconf POST interface"
 expectfn 'curl -s -X POST -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/cont1' ""
 
 new "restconf POST again"
-expectfn 'curl -s -X POST -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/cont1' "Data resource already exis"
+expectfn 'curl -s -X POST -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/cont1' "Object to create already exists"
 
 new "restconf POST from top"
-expectfn 'curl -s -X POST -d {"cont1":{"interface":{"name":"TEST","type":"eth0"}}} http://localhost/restconf/data' "Data resource already exists"
+expectfn 'curl -s -X POST -d {"cont1":{"interface":{"name":"TEST","type":"eth0"}}} http://localhost/restconf/data' "Object to create already exists"
 
 new "restconf DELETE"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data/cont1' ""

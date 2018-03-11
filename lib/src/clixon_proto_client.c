@@ -200,7 +200,7 @@ clicon_rpc_netconf_xml(clicon_handle  h,
     return retval;
 }
 
-/*! Generate clicon error function call from Netconf error message
+/*! Generate and log clicon error function call from Netconf error message
  * @param[in]  xerr    Netconf error message on the level: <rpc-reply><rpc-error>
  */
 int
@@ -308,7 +308,7 @@ clicon_rpc_get_config(clicon_handle       h,
  * @param[in] op         Operation on database item: OP_MERGE, OP_REPLACE
  * @param[in] xml        XML string. Ex: <config><a>..</a><b>...</b></config>
  * @retval    0          OK
- * @retval   -1          Error
+ * @retval   -1          Error and logged to syslog
  * @note xml arg need to have <config> as top element
  * @code
  * if (clicon_rpc_edit_config(h, "running", OP_MERGE, 
@@ -361,6 +361,8 @@ clicon_rpc_edit_config(clicon_handle       h,
  * @param[in] h        CLICON handle
  * @param[in] db1      src database, eg "running"
  * @param[in] db2      dst database, eg "startup"
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  * @code
  * if (clicon_rpc_copy_config(h, "running", "startup") < 0)
  *    err;
@@ -396,6 +398,8 @@ clicon_rpc_copy_config(clicon_handle h,
 /*! Send a request to backend to delete a config database
  * @param[in] h        CLICON handle
  * @param[in] db       database, eg "running"
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  * @code
  * if (clicon_rpc_delete_config(h, "startup") < 0)
  *    err;
@@ -430,6 +434,8 @@ clicon_rpc_delete_config(clicon_handle h,
 /*! Lock a database
  * @param[in] h        CLICON handle
  * @param[in] db       database, eg "running"
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_lock(clicon_handle h, 
@@ -460,6 +466,8 @@ clicon_rpc_lock(clicon_handle h,
 /*! Unlock a database
  * @param[in] h        CLICON handle
  * @param[in] db       database, eg "running"
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_unlock(clicon_handle h, 
@@ -557,6 +565,8 @@ clicon_rpc_get(clicon_handle       h,
 
 /*! Close a (user) session
  * @param[in] h        CLICON handle
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_close_session(clicon_handle h)
@@ -586,6 +596,8 @@ clicon_rpc_close_session(clicon_handle h)
 /*! Kill other user sessions
  * @param[in] h           CLICON handle
  * @param[in] session_id  Session id of other user session
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_kill_session(clicon_handle h,
@@ -616,7 +628,8 @@ clicon_rpc_kill_session(clicon_handle h,
 /*! Send validate request to backend daemon
  * @param[in] h        CLICON handle
  * @param[in] db       Name of database
- * @retval 0           OK
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_validate(clicon_handle h, 
@@ -646,7 +659,8 @@ clicon_rpc_validate(clicon_handle h,
 
 /*! Commit changes send a commit request to backend daemon
  * @param[in] h          CLICON handle
- * @retval 0             OK
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_commit(clicon_handle h)
@@ -674,8 +688,9 @@ clicon_rpc_commit(clicon_handle h)
 }
 
 /*! Discard all changes in candidate / revert to running
- * @param[in] h          CLICON handle
- * @retval 0             OK
+ * @param[in] h        CLICON handle
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_discard_changes(clicon_handle h)
@@ -707,6 +722,9 @@ clicon_rpc_discard_changes(clicon_handle h)
  * @param{in]   stream   name of notificatio/log stream (CLICON is predefined)
  * @param{in]   filter   message filter, eg xpath for xml notifications
  * @param[out]  s0       socket returned where notification mesages will appear
+ * @retval      0        OK
+ * @retval      -1       Error and logged to syslog
+
  * @note When using netconf create-subsrciption,status and format is not supported
  */
 int
@@ -742,8 +760,10 @@ clicon_rpc_create_subscription(clicon_handle    h,
 }
 
 /*! Send a debug request to backend server
- * @param[in] h          CLICON handle
- * @param[in] level      Debug level
+ * @param[in] h        CLICON handle
+ * @param[in] level    Debug level
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_debug(clicon_handle h, 

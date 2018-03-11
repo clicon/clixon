@@ -128,7 +128,6 @@ new "restconf get empty config + state json"
 expectfn "curl -sSG http://localhost/restconf/data" "{\"data\": $state}"
 
 new "restconf get empty config + state xml"
-# Cant get shell macros to work, inline matching from lib.sh
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data)
 expect="<data><interfaces-state><interface><name>eth0</name><type>eth</type><if-index>42</if-index></interface></interfaces-state></data>"
 match=`echo $ret | grep -EZo "$expect"`
@@ -161,8 +160,19 @@ if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
-new "restconf Add subtree  to datastore using POST"
-expectfn 'curl -s -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type":"eth","enabled":true}}} http://localhost/restconf/data' ""
+new "restconf GET datastore"
+expectfn "curl -s -X GET http://localhost/restconf/data" "data"
+
+new "restconf Add subtree to datastore using POST"
+ret=$(curl -s -i -X POST -H "Accept: application/yang-data+json" -d '{"interfaces":{"interface":{"name":"eth/0/0","type":"eth","enabled":true}}}' http://localhost/restconf/data)
+expect="HTTP/1.1 200 OK"
+match=`echo $ret | grep -EZo "$expect"`
+if [ -z "$match" ]; then
+    err "$expect" "$ret"
+fi
+
+new "restconf Re-add subtree which should give error"
+expectfn 'curl -s -i -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type":"eth","enabled":true}}} http://localhost/restconf/data' '{"error-tag": "operation-failed"'
 
 new "restconf Check interfaces eth/0/0 added"
 expectfn "curl -s -G http://localhost/restconf/data" '{"interfaces": {"interface": \[{"name": "eth/0/0","type": "eth","enabled": true}\]},"interfaces-state": {"interface": \[{"name": "eth0","type": "eth","if-index": 42}\]}}
@@ -182,7 +192,7 @@ expectfn "curl -s -G http://localhost/restconf/data" '{"interfaces": {"interface
 $'
 
 new "restconf Re-post eth/0/0 which should generate error"
-expectfn 'curl -s -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":true}} http://localhost/restconf/data/interfaces' "Data resource already exists"
+expectfn 'curl -s -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":true}} http://localhost/restconf/data/interfaces' 'Object to create already exists'
 
 new "Add leaf description using POST"
 expectfn 'curl -s -X POST -d {"description":"The-first-interface"} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
