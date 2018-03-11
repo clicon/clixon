@@ -77,6 +77,9 @@ expectfn "curl -s -X GET http://localhost/restconf/data/cont1/interface=local0" 
 new "restconf GET if-type"
 expectfn "curl -s -X GET http://localhost/restconf/data/cont1/interface=local0/type" '{"type": "regular"}'
 
+new "restconf POST interface without mandatory type"
+expectfn 'curl -s -X POST -d {"interface":{"name":"TEST"}} http://localhost/restconf/data/cont1' '"error-message": "Missing mandatory variable: type"'
+
 new "restconf POST interface"
 expectfn 'curl -s -X POST -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/cont1' ""
 
@@ -132,9 +135,6 @@ expectfn 'curl -s -X PUT -d {"interface":{"name":"TEST","type":"eth0"}} http://l
 
 new "restconf PUT change key error"
 expectfn 'curl -is -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/cont1/interface=TEST' "Bad request"
-
-new "restconf POST invalid no type"
-expectfn 'curl -s -X POST -d {"interface":{"name":"ALPHA"}} http://localhost/restconf/data/cont1' "Bad request"
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

@@ -104,24 +104,38 @@ api_data(clicon_handle h,
 {
     int     retval = -1;
     char   *request_method;
+    int     pretty;
+    char   *media_content_type;
+    int     parse_xml = 0; /* By default expect and parse JSON */
+    char   *media_accept;
+    int     use_xml = 0; /* By default use JSON */
 
     clicon_debug(1, "%s", __FUNCTION__);
     request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
+    if (strcmp(media_accept, "application/yang-data+xml")==0)
+	use_xml++;
+    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
+    if (media_content_type &&
+	strcmp(media_content_type, "application/yang-data+xml")==0)
+	parse_xml++;
+
     if (strcmp(request_method, "OPTIONS")==0)
 	retval = api_data_options(h, r);
     else if (strcmp(request_method, "HEAD")==0)
-	retval = api_data_head(h, r, pcvec, pi, qvec, username);
+	retval = api_data_head(h, r, pcvec, pi, qvec, username, pretty, use_xml);
     else if (strcmp(request_method, "GET")==0)
-	retval = api_data_get(h, r, pcvec, pi, qvec, username);
+	retval = api_data_get(h, r, pcvec, pi, qvec, username, pretty, use_xml);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data, username);
+	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data, username, pretty, use_xml, parse_xml);
     else if (strcmp(request_method, "PUT")==0)
-	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, username);
+	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, username, pretty, use_xml, parse_xml);
     else if (strcmp(request_method, "PATCH")==0)
 	retval = api_data_patch(h, r, api_path, pcvec, pi, qvec, data, username);
     else if (strcmp(request_method, "DELETE")==0)
-	retval = api_data_delete(h, r, api_path, pi, username);
+	retval = api_data_delete(h, r, api_path, pi, username, pretty, use_xml);
     else
 	retval = notfound(r);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -150,14 +164,29 @@ api_operations(clicon_handle h,
 {
     int     retval = -1;
     char   *request_method;
+    int     pretty;
+    char   *media_content_type;
+    int     parse_xml = 0; /* By default expect and parse JSON */
+    char   *media_accept;
+    int     use_xml = 0; /* By default use JSON */
 
     clicon_debug(1, "%s", __FUNCTION__);
     request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
+    if (strcmp(media_accept, "application/yang-data+xml")==0)
+	use_xml++;
+        media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
+    if (media_content_type &&
+	strcmp(media_content_type, "application/yang-data+xml")==0)
+	parse_xml++;
+    
     if (strcmp(request_method, "GET")==0)
-	retval = api_operations_get(h, r, path, pcvec, pi, qvec, data, username);
+	retval = api_operations_get(h, r, path, pcvec, pi, qvec, data, username, pretty, use_xml);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_operations_post(h, r, path, pcvec, pi, qvec, data, username);
+	retval = api_operations_post(h, r, path, pcvec, pi, qvec, data, username,
+				     pretty, use_xml, parse_xml);
     else
 	retval = notfound(r);
     return retval;

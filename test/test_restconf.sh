@@ -211,7 +211,7 @@ new "Check deleted eth/0/0"
 expectfn 'curl -s -G http://localhost/restconf/data' $state
 
 new "restconf Re-Delete eth/0/0 using none should generate error"
-expectfn 'curl -s -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "Not Found"
+expectfn 'curl -s -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' '"error-message": "Object to delete does not exist"'
 
 new "restconf Add subtree eth/0/0 using PUT"
 expectfn 'curl -s -X PUT -d {"interface":{"name":"eth/0/0","type":"eth","enabled":true}} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
