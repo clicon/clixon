@@ -188,11 +188,18 @@ api_return_err(clicon_handle h,
 	FCGX_FPrintF(r->out, "    </errors>\r\n");
     }
     else{
-	FCGX_FPrintF(r->out, "{%s", pretty?"\r\n":"");
-	FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : {%s", pretty?"\r\n":"");
-	FCGX_FPrintF(r->out, "    %s", cbuf_get(cb));
-	FCGX_FPrintF(r->out, "  }%s", pretty?"\r\n":"");
-	FCGX_FPrintF(r->out, "}\r\n");
+	if (pretty){
+	    FCGX_FPrintF(r->out, "{\r\n");
+	    FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : %s\r\n",
+			 cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "}\r\n");
+	}
+	else{
+	    FCGX_FPrintF(r->out, "{");
+	    FCGX_FPrintF(r->out, "\"ietf-restconf:errors\" : ");
+	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "}\r\n");
+	}
     }
  ok:
     retval = 0;

@@ -172,7 +172,7 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf Re-add subtree which should give error"
-expectfn 'curl -s -i -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type":"eth","enabled":true}}} http://localhost/restconf/data' '{"error-tag": "operation-failed"'
+expectfn 'curl -s  -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type":"eth","enabled":true}}} http://localhost/restconf/data' '{"ietf-restconf:errors" : {"error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "Object to create already exists"}}}'
 
 new "restconf Check interfaces eth/0/0 added"
 expectfn "curl -s -G http://localhost/restconf/data" '{"interfaces": {"interface": \[{"name": "eth/0/0","type": "eth","enabled": true}\]},"interfaces-state": {"interface": \[{"name": "eth0","type": "eth","if-index": 42}\]}}
