@@ -68,9 +68,6 @@ INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/inclu
 
 
 SUBDIRS = text
-ifeq ($(with_keyvalue),yes)
-SUBDIRS += keyvalue
-endif
 
 .PHONY: all clean depend install $(SUBDIRS)
 
