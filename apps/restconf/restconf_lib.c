@@ -42,7 +42,6 @@
 #include <fcntl.h>
 #include <ctype.h>
 #include <time.h>
-#include <fcgi_stdio.h>
 #include <signal.h>
 #include <dlfcn.h>
 #include <sys/param.h>
@@ -54,6 +53,8 @@
 
 /* clicon */
 #include <clixon/clixon.h>
+
+#include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
 
 #include "restconf_lib.h"
 

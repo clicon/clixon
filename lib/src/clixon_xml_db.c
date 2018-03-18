@@ -322,7 +322,7 @@ xmldb_setopt(clicon_handle h,
  * @param[in]  dbname Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
- * @param[out] xtop   Single XML tree. Free with xml_free()
+ * @param[out] xret   Single return XML tree. Free with xml_free()
  * @retval     0      OK
  * @retval     -1     Error
  * @code
@@ -339,7 +339,7 @@ xmldb_get(clicon_handle h,
 	  const char   *db, 
 	  char         *xpath,
 	  int           config,
-	  cxobj       **xtop)
+	  cxobj       **xret)
 {
     int               retval = -1;
     xmldb_handle      xh;
@@ -357,11 +357,11 @@ xmldb_get(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = xa->xa_get_fn(xh, db, xpath, config, xtop);
+    retval = xa->xa_get_fn(xh, db, xpath, config, xret);
 #if DEBUG
     if (retval == 0) { 
 	 cbuf *cb = cbuf_new();
-	 clicon_xml2cbuf(cb, *xtop, 0, 0);
+	 clicon_xml2cbuf(cb, *xret, 0, 0);
 	 clicon_log(LOG_WARNING, "%s: db:%s xpath:%s xml:%s", 
 		    __FUNCTION__, db, xpath, cbuf_get(cb));
 	 cbuf_free(cb);
@@ -377,25 +377,29 @@ xmldb_get(clicon_handle h,
  * @param[in]  db     running or candidate
  * @param[in]  op     Top-level operation, can be superceded by other op in tree
  * @param[in]  xt     xml-tree. Top-level symbol is dummy
+ * @param[out] cbret  Initialized cligen buffer or NULL. On exit contains XML or "".
  * @retval     0      OK
  * @retval     -1     Error
  * The xml may contain the "operation" attribute which defines the operation.
  * @code
  *   cxobj     *xt;
+ *   cxobj     *xret = NULL;
  *   if (xml_parse_string("<a>17</a>", yspec, &xt) < 0)
  *     err;
- *   if (xmldb_put(xh, "running", OP_MERGE, xt) < 0)
+ *   if (xmldb_put(xh, "running", OP_MERGE, xt, cbret) < 0)
  *     err;
  * @endcode
  * @note that you can add both config data and state data. In comparison,
  *  xmldb_get has a parameter to get config data only.
+ * @note if xret is non-null, it may contain error message
  *
  */
 int 
 xmldb_put(clicon_handle       h, 
 	  const char         *db, 
 	  enum operation_type op, 
-	  cxobj              *xt)
+	  cxobj              *xt,
+	  cbuf               *cbret)
 {
     int               retval = -1;
     xmldb_handle      xh;
@@ -425,7 +429,7 @@ xmldb_put(clicon_handle       h,
 	cbuf_free(cb);
     }
 #endif
-    retval = xa->xa_put_fn(xh, db, op, xt);
+    retval = xa->xa_put_fn(xh, db, op, xt, cbret);
  done:
     return retval;
 }

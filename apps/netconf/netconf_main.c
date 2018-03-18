@@ -100,13 +100,9 @@ process_incoming_packet(clicon_handle h,
     /* Parse incoming XML message */
     if (xml_parse_string(str, NULL, &xreq) < 0){ 
 	if ((cbret = cbuf_new()) == NULL){
-	    cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>rpc</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>internal error</error-message>"
-		"</rpc-error></rpc-reply>");
-	    netconf_output(1, cb, "rpc-error");
+	    if (netconf_operation_failed(cbret, "rpc", "internal error")< 0)
+		goto done;
+	    netconf_output(1, cbret, "rpc-error");
 	}
 	else
 	    clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);

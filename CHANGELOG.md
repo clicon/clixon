@@ -5,8 +5,14 @@
 
 ### Major changes:
 * Restconf error handling for get, put and post. Several cornercases remain. Available both as xml and json (set accept header), pretty-printed and not (set clixon config option).
+* Proper RFC 6241 Netconf error handling
+  * New functions added in clixon_netconf_lib.[ch]
+  * Datastore code modified for RFC 6241
+  * Remaining: validate, generic restconf and netconf code
 
 ### Minor changes:
+
+* The key-value datastore is no longer supported. Use the default text datastore.
 * Add username to rpc calls to prepare for authorization for backend:
   clicon_rpc_config_get(h, db, xpath, xt) --> clicon_rpc_config_get(h, db, xpath, username, xt)
   clicon_rpc_get(h, xpath, xt) --> clicon_rpc_get(h, xpath, username, xt)

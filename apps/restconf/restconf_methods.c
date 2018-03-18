@@ -104,7 +104,6 @@ Mapping netconf error-tag -> status code
 #include <fcntl.h>
 #include <assert.h>
 #include <time.h>
-#include <fcgi_stdio.h>
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -114,6 +113,8 @@ Mapping netconf error-tag -> status code
 
 /* clicon */
 #include <clixon/clixon.h>
+
+#include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
 
 #include "restconf_lib.h"
 #include "restconf_methods.h"
@@ -157,6 +158,7 @@ api_return_err(clicon_handle h,
     int        retval = -1;
     cbuf      *cb = NULL;
     cxobj     *xtag;
+    char      *tagstr;
     int        code;	
     const char *reason_phrase;
 
@@ -167,7 +169,8 @@ api_return_err(clicon_handle h,
 	notfound(r); /* bad reply? */
 	goto ok;
     }
-    code = restconf_err2code(xml_body(xtag));
+    tagstr = xml_body(xtag);
+    code = restconf_err2code(tagstr);
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
 	reason_phrase="";
     if (xml_name_set(xerr, "error") < 0)
@@ -183,22 +186,29 @@ api_return_err(clicon_handle h,
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n\r\n",
 		 use_xml?"xml":"json");
     if (use_xml){
-	FCGX_FPrintF(r->out, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">%s", cbuf_get(cb), pretty?"\r\n":"");
-	FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
-	FCGX_FPrintF(r->out, "    </errors>\r\n");
+	if (pretty){
+	    FCGX_FPrintF(r->out, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "    </errors>\n");
+	}
+	else {
+	    FCGX_FPrintF(r->out, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "</errors>\n");
+	}
     }
     else{
 	if (pretty){
-	    FCGX_FPrintF(r->out, "{\r\n");
-	    FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : %s\r\n",
+	    FCGX_FPrintF(r->out, "{\n");
+	    FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : %s\n",
 			 cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "}\r\n");
+	    FCGX_FPrintF(r->out, "}\n");
 	}
 	else{
 	    FCGX_FPrintF(r->out, "{");
 	    FCGX_FPrintF(r->out, "\"ietf-restconf:errors\" : ");
 	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "}\r\n");
+	    FCGX_FPrintF(r->out, "}\n");
 	}
     }
  ok:
@@ -330,7 +340,7 @@ api_data_get2(clicon_handle h,
 
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
-    FCGX_FPrintF(r->out, "\r\n\r\n");
+    FCGX_FPrintF(r->out, "\n\n");
  ok:
     retval = 0;
  done:
@@ -1010,9 +1020,9 @@ api_operations_get(clicon_handle h,
     clicon_debug(1, "%s ret:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
-    FCGX_FPrintF(r->out, "\r\n");
+    FCGX_FPrintF(r->out, "\n");
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
-    FCGX_FPrintF(r->out, "\r\n\r\n");
+    FCGX_FPrintF(r->out, "\n\n");
     // ok:
     retval = 0;
  done:
@@ -1183,7 +1193,7 @@ api_operations_post(clicon_handle h,
 		goto done;
 	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
 	FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
-	FCGX_FPrintF(r->out, "\r\n\r\n");
+	FCGX_FPrintF(r->out, "\n\n");
     }
  ok:
     retval = 0;

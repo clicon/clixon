@@ -83,6 +83,7 @@ transaction_commit(clicon_handle    h,
     if (debug)
 	for (i=0; i<len; i++)             /* Loop over added i/fs */
 	    xml_print(stdout, vec[i]); /* Print the added interface */
+  // done:
     if (vec)
 	free(vec);
     return 0;
@@ -250,7 +251,7 @@ plugin_reset(clicon_handle h,
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
     /* Merge user reset state */
-    if (xmldb_put(h, (char*)db, OP_MERGE, xt) < 0)
+    if (xmldb_put(h, (char*)db, OP_MERGE, xt, NULL) < 0)
 	goto done;
     retval = 0;
  done:

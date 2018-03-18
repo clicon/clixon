@@ -142,8 +142,11 @@ int       clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint);
 int       clicon_xml2cbuf(cbuf *xf, cxobj *xn, int level, int prettyprint);
 int       xml_parse_file(int fd, char *endtag, yang_spec *yspec, cxobj **xt);
 int       xml_parse_string(const char *str, yang_spec *yspec, cxobj **xml_top);
+#if defined(__GNUC__) && __GNUC__ >= 3
+int       xml_parse_va(cxobj **xt, yang_spec *yspec, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
+#else
 int       xml_parse_va(cxobj **xt, yang_spec *yspec, const char *format, ...);
-
+#endif
 int       xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 int       xml_copy_one(cxobj *xn0, cxobj *xn1);
 int       xml_copy(cxobj *x0, cxobj *x1);

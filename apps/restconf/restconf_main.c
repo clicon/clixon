@@ -54,7 +54,7 @@
 #include <syslog.h>
 #include <fcntl.h>
 #include <time.h>
-#include <fcgi_stdio.h>
+
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -65,6 +65,8 @@
 
 /* clicon */
 #include <clixon/clixon.h>
+
+#include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
 
 /* restconf */
 #include "restconf_lib.h"
@@ -208,9 +210,9 @@ api_well_known(clicon_handle h,
     FCGX_FPrintF(r->out, "Content-Type: application/xrd+xml\r\n");
     FCGX_FPrintF(r->out, "\r\n");
     FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>\r\n");
-    FCGX_FPrintF(r->out, "   <Link rel='restconf' href='/restconf'/>\r\n");
-    FCGX_FPrintF(r->out, "</XRD>\r\n");
+    FCGX_FPrintF(r->out, "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>\n");
+    FCGX_FPrintF(r->out, "   <Link rel='restconf' href='/restconf'/>\n");
+    FCGX_FPrintF(r->out, "</XRD>\n");
 
     return 0;
 }
@@ -258,7 +260,7 @@ api_root(clicon_handle h,
 	if (xml2json_cbuf(cb, xt, pretty) < 0)
 	    goto done;
     FCGX_FPrintF(r->out, "%s", cb?cbuf_get(cb):"");
-    FCGX_FPrintF(r->out, "\r\n\r\n");
+    FCGX_FPrintF(r->out, "\n\n");
     retval = 0;
  done:
     if (cb)
@@ -307,8 +309,8 @@ api_yang_library_version(clicon_handle h,
 	    goto done;
     }
     clicon_debug(1, "%s cb%s", __FUNCTION__, cbuf_get(cb));
-    FCGX_FPrintF(r->out, "%s\r\n", cb?cbuf_get(cb):"");
-    FCGX_FPrintF(r->out, "\r\n\r\n");
+    FCGX_FPrintF(r->out, "%s\n", cb?cbuf_get(cb):"");
+    FCGX_FPrintF(r->out, "\n\n");
     retval = 0;
  done:
     if (cb)
@@ -599,7 +601,7 @@ main(int    argc,
 	}
 	else
 	    clicon_debug(1, "NULL URI");
-        FCGX_Finish_r(r);
+	FCGX_Finish_r(r);
     }
     retval = 0;
  done:

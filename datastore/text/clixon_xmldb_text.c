@@ -560,6 +560,7 @@ text_get(xmldb_handle xh,
  * @param[in]  x0p Parent of x0
  * @param[in]  x1  xml tree which modifies base
  * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
+ * @param[out] cbret  Initialized cligen buffer. Contains return XML or "".
  * Assume x0 and x1 are same on entry and that y is the spec
  * @see put in clixon_keyvalue.c
  */
@@ -568,7 +569,8 @@ text_modify(cxobj              *x0,
 	    yang_node          *y0,
 	    cxobj              *x0p,
 	    cxobj              *x1,
-	    enum operation_type op)
+	    enum operation_type op,
+	    cbuf               *cbret)
 {
     int        retval = -1;
     char      *opstr;
@@ -594,8 +596,9 @@ text_modify(cxobj              *x0,
 	switch(op){ 
 	case OP_CREATE:
 	    if (x0){
-		clicon_err(OE_XML, 0, "Object to create already exists");
-		goto done;
+		if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
+		    goto done;
+		goto ok;
 	    }
 	case OP_NONE: /* fall thru */
 	case OP_MERGE:
@@ -631,8 +634,9 @@ text_modify(cxobj              *x0,
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
-		clicon_err(OE_XML, 0, "Object to delete does not exist");
-		goto done;
+		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+		    goto done;
+		goto ok;
 	    }
 	case OP_REMOVE: /* fall thru */
 	    if (x0){
@@ -647,8 +651,9 @@ text_modify(cxobj              *x0,
 	switch(op){ 
 	case OP_CREATE:
 	    if (x0){
-		clicon_err(OE_XML, 0, "Object to create already exists");
-		goto done;
+		if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
+		    goto done;
+		goto ok;
 	    }
 	case OP_REPLACE: /* fall thru */
 	    if (x0){
@@ -704,14 +709,18 @@ text_modify(cxobj              *x0,
 	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 		x1cname = xml_name(x1c);
 		yc = yang_find_datanode(y0, x1cname);
-		if (text_modify(x0vec[i++], (yang_node*)yc, x0, x1c, op) < 0)
+		if (text_modify(x0vec[i++], (yang_node*)yc, x0, x1c, op, cbret) < 0)
 		    goto done;
+		/* If xml return - ie netconf error xml tree, then stop and return OK */
+		if (cbuf_len(cbret))
+		    goto ok;
 	    }
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
-		clicon_err(OE_XML, 0, "Object to delete does not exist");
-		goto done;
+		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+		    goto done;
+		goto ok;
 	    }
 	case OP_REMOVE: /* fall thru */
 	    if (x0)
@@ -721,27 +730,29 @@ text_modify(cxobj              *x0,
 	    break;
 	} /* CONTAINER switch op */
     } /* else Y_CONTAINER  */
-    // ok:
     xml_sort(x0p, NULL);
+ ok:
     retval = 0;
  done:
     if (x0vec)
 	free(x0vec);
     return retval;
-}
+} /* text_modify */
 
 /*! Modify a top-level base tree x0 with modification tree x1
  * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1  xml tree which modifies base
  * @param[in]  yspec Top-level yang spec (if y is NULL)
  * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
+ * @param[out] cbret  Initialized cligen buffer. Contains return XML or "".
  * @see text_modify
  */
 static int
 text_modify_top(cxobj              *x0,
 		cxobj              *x1,
 		yang_spec          *yspec,
-		enum operation_type op)
+		enum operation_type op,
+		cbuf               *cbret)
 {
     int        retval = -1;
     char      *x1cname; /* child name */
@@ -775,7 +786,9 @@ text_modify_top(cxobj              *x0,
 	else /* base tree empty */
 	    switch(op){ 
 	    case OP_DELETE:
-		clicon_err(OE_XML, 0, "Object to delete does not exist");
+		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+		    goto done;
+		goto ok;
 		break;
 	    default:
 		break;
@@ -799,13 +812,17 @@ text_modify_top(cxobj              *x0,
 	/* See if there is a corresponding node in the base tree */
 	if (match_base_child(x0, x1c, &x0c, yc) < 0)
 	    goto done;
-	if (text_modify(x0c, (yang_node*)yc, x0, x1c, op) < 0)
+	if (text_modify(x0c, (yang_node*)yc, x0, x1c, op, cbret) < 0)
 	    goto done;
+	/* If xml return - ie netconf error xml tree, then stop and return OK */
+	if (cbuf_len(cbret))
+	    goto ok;
     }
+ ok:
     retval = 0;
  done:
     return retval;
-}
+} /* text_modify_top */
 
 /*! For containers without presence and no children, remove
  * @param[in]   x       XML tree node
@@ -852,7 +869,8 @@ int
 text_put(xmldb_handle        xh,
 	 const char         *db, 
 	 enum operation_type op,
-	 cxobj              *x1)
+	 cxobj              *x1,
+    	 cbuf               *cbret)
 {
     int                 retval = -1;
     struct text_handle *th = handle(xh);
@@ -863,7 +881,15 @@ text_put(xmldb_handle        xh,
     yang_spec          *yspec;
     cxobj              *x0 = NULL;
     struct db_element  *de = NULL;
+    int                 cbretlocal = 0; /* Set if cbret is NULL on entry */
     
+    if (cbret == NULL){
+	if ((cbret = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	cbretlocal++;
+    }
     if ((yspec =  th->th_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
@@ -928,8 +954,11 @@ text_put(xmldb_handle        xh,
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
      */
-    if (text_modify_top(x0, x1, yspec, op) < 0)
+    if (text_modify_top(x0, x1, yspec, op, cbret) < 0)
 	goto done;
+    /* If xml return - ie netconf error xml tree, then stop and return OK */
+    if (cbuf_len(cbret))
+	goto ok;
 
     /* Remove NONE nodes if all subs recursively are also NONE */
     if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) <0)
@@ -979,8 +1008,11 @@ text_put(xmldb_handle        xh,
     }
     else if (clicon_xml2file(f, x0, 0, th->th_pretty) < 0)
 	goto done;
+ ok:
     retval = 0;
  done:
+    if (cbretlocal && cbret)
+	cbuf_free(cbret);
     if (f != NULL)
 	fclose(f);
     if (dbfile)
@@ -1387,7 +1419,7 @@ main(int    argc,
 	    op = OP_REMOVE;
 	else
 	    usage(argv[0]);
-	if (xmldb_put(h, db, op, NULL, xn) < 0)
+	if (xmldb_put(h, db, op, NULL, xn, NULL) < 0)
 	    goto done;
     }
     else

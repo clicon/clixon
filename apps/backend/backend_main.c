@@ -174,8 +174,8 @@ db_merge(clicon_handle h,
     /* Get data as xml from db1 */
     if (xmldb_get(h, (char*)db1, NULL, 1, &xt) < 0)
 	goto done;
-    /* Merge xml into db2. WIthout commit */
-    if (xmldb_put(h, (char*)db2, OP_MERGE, xt) < 0)
+    /* Merge xml into db2. Without commit */
+    if (xmldb_put(h, (char*)db2, OP_MERGE, xt, NULL) < 0)
 	goto done;
     retval = 0;
  done:
@@ -283,7 +283,7 @@ load_extraxml(clicon_handle h,
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
     /* Merge user reset state */
-    if (xmldb_put(h, (char*)db, OP_MERGE, xt) < 0)
+    if (xmldb_put(h, (char*)db, OP_MERGE, xt, NULL) < 0)
 	goto done;
     retval = 0;
  done:
@@ -703,43 +703,41 @@ main(int argc, char **argv)
     if ((xml_pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) >= 0)
 	if (xmldb_setopt(h, "pretty", (void*)(intptr_t)xml_pretty) < 0)
 	    goto done;
-    /* If startup mode is not defined, eg via OPTION or -s, assume old method */
+    /* Startup mode needs to be defined,  */
     startup_mode = clicon_startup_mode(h);
     if (startup_mode == -1){ 	
 	clicon_log(LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend.\n"); 
 	goto done;
     }
-    else {
-	/* Init running db if it is not there
-	 */
-	if (xmldb_exists(h, "running") != 1)
-	    if (xmldb_create(h, "running") < 0)
-		return -1;
-	switch (startup_mode){
-	case SM_NONE:
-	    if (startup_mode_none(h) < 0)
-		goto done;
-	    break;
-	case SM_INIT: /* -I */
-	    if (startup_mode_init(h) < 0)
-		goto done;
-	    break;
-	case SM_RUNNING: /* -CIr */
-	    if (startup_mode_running(h, extraxml_file) < 0)
-		goto done;
-	    break; 
-	case SM_STARTUP: /* startup configuration */
-	    if (startup_mode_startup(h, extraxml_file) < 0)
-		goto done;
-	    break;
-	}
-	/* Initiate the shared candidate. */
-	if (xmldb_copy(h, "running", "candidate") < 0)
+    /* Init running db if it is not there
+     */
+    if (xmldb_exists(h, "running") != 1)
+	if (xmldb_create(h, "running") < 0)
+	    return -1;
+    switch (startup_mode){
+    case SM_NONE:
+	if (startup_mode_none(h) < 0)
 	    goto done;
-	/* Call plugin_start with user -- options */
-	if (plugin_start_useroptions(h, argv0, argc, argv) <0)
+	break;
+    case SM_INIT: /* -I */
+	if (startup_mode_init(h) < 0)
 	    goto done;
+	break;
+    case SM_RUNNING: /* -CIr */
+	if (startup_mode_running(h, extraxml_file) < 0)
+	    goto done;
+	break; 
+    case SM_STARTUP: /* startup configuration */
+	if (startup_mode_startup(h, extraxml_file) < 0)
+	    goto done;
+	break;
     }
+    /* Initiate the shared candidate. */
+    if (xmldb_copy(h, "running", "candidate") < 0)
+	goto done;
+    /* Call backend plugin_start with user -- options */
+    if (plugin_start_useroptions(h, argv0, argc, argv) <0)
+	goto done;
     if (once)
 	goto done;
 

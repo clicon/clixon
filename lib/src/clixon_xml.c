@@ -57,7 +57,6 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_string.h"
-
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
@@ -1215,8 +1214,8 @@ xmltree2cbuf(cbuf  *cb,
  */
 static int 
 _xml_parse(const char *str, 
-	  yang_spec   *yspec,
-	  cxobj       *xt)
+	   yang_spec   *yspec,
+	   cxobj       *xt)
 {
     int                       retval = -1;
     struct xml_parse_yacc_arg ya = {0,};
@@ -1424,10 +1423,7 @@ xml_parse_va(cxobj     **xtop,
     va_start(args, format);
     len = vsnprintf(str, len, format, args) + 1;
     va_end(args);
-    if (*xtop == NULL)
-	if ((*xtop = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
-	    goto done;
-    if (_xml_parse(str, yspec, *xtop) < 0)
+    if (xml_parse_string(str, yspec, xtop) < 0)
 	goto done;
     retval = 0;
  done:

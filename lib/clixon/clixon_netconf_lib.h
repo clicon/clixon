@@ -31,23 +31,33 @@
 
   ***** END LICENSE BLOCK *****
 
-  Key-value store
+ * Netconf library functions. See RFC6241
+ * 
  */
-#ifndef _CLIXON_XMLDB_TEXT_H
-#define _CLIXON_XMLDB_TEXT_H
+#ifndef _CLIXON_NETCONF_LIB_H
+#define _CLIXON_NETCONF_LIB_H
 
 /*
  * Prototypes
  */
-int text_get(xmldb_handle h, const char *db, char *xpath, int config, cxobj **xtop);
-int text_put(xmldb_handle h, const char *db, enum operation_type op, cxobj *xt, cbuf *cbret);
-int text_dump(FILE *f, char *dbfilename, char *rxkey);
-int text_copy(xmldb_handle h, const char *from, const char *to);
-int text_lock(xmldb_handle h, const char *db, int pid);
-int text_unlock(xmldb_handle h, const char *db);
-int text_unlock_all(xmldb_handle h, int pid);
-int text_islocked(xmldb_handle h, const char *db);
-int text_exists(xmldb_handle h, const char *db);
-int text_delete(xmldb_handle h, const char *db);
+int netconf_in_use(cbuf *cb, char *type, char *message);
+int netconf_invalid_value(cbuf *cb, char *type, char *message);
+int netconf_too_big(cbuf *cb, char *type, char *message);
+int netconf_missing_attribute(cbuf *cb,	char *type, char *info, char *message);
+int netconf_bad_attribute(cbuf *cb, char *type, char *info, char *message);
+int netconf_unknown_attribute(cbuf *cb,	char *type, char *info, char *message);
+int netconf_missing_element(cbuf *cb, char *type, char *info, char *message);
+int netconf_bad_element(cbuf *cb, char *type, char *info, char *message);
+int netconf_unknown_element(cbuf *cb, char *type, char *info, char *message);
+int netconf_unknown_namespace(cbuf *cb, char *type, char *info, char *message);
+int netconf_access_denied(cbuf *cb, char *type, char *message);
+int netconf_lock_denied(cbuf *cb, char *info, char *message);
+int netconf_resource_denied(cbuf *cb, char *type, char *message);
+int netconf_rollback_failed(cbuf *cb, char *type, char *message);
+int netconf_data_exists(cbuf *cb, char *message);
+int netconf_data_missing(cbuf *cb, char *message);
+int netconf_operation_not_supported(cbuf *cb, char *type, char *message);
+int netconf_operation_failed(cbuf *cb, char *type, char *message);
+int netconf_malformed_message(cbuf *cb, char *message);
 
-#endif /* _CLIXON_XMLDB_TEXT_H */
+#endif /* _CLIXON_NETCONF_LIB_H */

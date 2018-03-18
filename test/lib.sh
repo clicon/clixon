@@ -56,9 +56,9 @@ expectfn(){
       expect2=
   fi
   ret=`$cmd`
-  if [ $? -ne 0 ]; then
-    err "wrong args"
-  fi
+#  if [ $? -ne 0 ]; then
+#    err "wrong args"
+#  fi
   # Match if both are empty string
   if [ -z "$ret" -a -z "$expect" ]; then
       return
@@ -68,9 +68,7 @@ expectfn(){
   fi
   # grep extended grep 
   match=`echo $ret | grep -EZo "$expect"`
-#  echo "ret:\"$ret\""
-#  echo "expect:\"$expect\""
-#  echo "match:\"$match\""
+
   if [ -z "$match" ]; then
       err "$expect" "$ret"
   fi
@@ -79,6 +77,37 @@ expectfn(){
       if [ -z "$match" ]; then
 	  err $expect "$ret"
       fi
+  fi
+}
+
+# Similar to expectfn, but checks for equality and not only match
+expecteq2(){
+  ret=$1
+  expect=$2
+  # Match if both are empty string
+  if [ -z "$ret" -a -z "$expect" ]; then
+      return
+  fi
+  if [ "$ret" != "$expect" ]; then
+      err "$expect" "$ret"
+  fi
+}
+
+# Similar to expectfn, but checks for equality and not only match
+expecteq(){
+  cmd=$1
+  expect=$2
+  ret=$($cmd)
+
+  if [ $? -ne 0 ]; then
+    err "wrong args"
+  fi
+  # Match if both are empty string
+  if [ -z "$ret" -a -z "$expect" ]; then
+      return
+  fi
+  if [ "$ret" != "$expect" ]; then
+      err "$expect" "$ret"
   fi
 }
 
