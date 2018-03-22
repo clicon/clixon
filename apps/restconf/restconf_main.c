@@ -212,7 +212,7 @@ api_well_known(clicon_handle h,
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>\n");
     FCGX_FPrintF(r->out, "   <Link rel='restconf' href='/restconf'/>\n");
-    FCGX_FPrintF(r->out, "</XRD>\n");
+    FCGX_FPrintF(r->out, "</XRD>\r\n");
 
     return 0;
 }
@@ -260,7 +260,7 @@ api_root(clicon_handle h,
 	if (xml2json_cbuf(cb, xt, pretty) < 0)
 	    goto done;
     FCGX_FPrintF(r->out, "%s", cb?cbuf_get(cb):"");
-    FCGX_FPrintF(r->out, "\n\n");
+    FCGX_FPrintF(r->out, "\r\n\r\n");
     retval = 0;
  done:
     if (cb)

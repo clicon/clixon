@@ -50,12 +50,14 @@ new(){
 expectfn(){
   cmd=$1
   expect=$2
+
   if [ $# = 3 ]; then
       expect2=$3
   else
       expect2=
   fi
-  ret=`$cmd`
+  ret=$($cmd)
+
 #  if [ $? -ne 0 ]; then
 #    err "wrong args"
 #  fi
@@ -84,6 +86,7 @@ expectfn(){
 expecteq2(){
   ret=$1
   expect=$2
+
   # Match if both are empty string
   if [ -z "$ret" -a -z "$expect" ]; then
       return

@@ -83,11 +83,11 @@ configuration file is installed at /usr/local/etc/routing.xml. The
 YANG specification for the configuration file is clixon-config.yang.
 
 You can change where CLixon looks for the configuration FILE as follows:
-  # Provide -f FILE option when starting a program (eg clixon_backend -f FILE)
-  # Provide --with-configfile=FILE when configuring
-  # Provide --with-sysconfig=<dir> when configuring, then FILE is <dir>/clixon.xml
-  # Provide --sysconfig=<dir> when configuring then FILE is <dir>/etc/clixon.xml
-  # FILE is /usr/local/etc/clixon.xml
+  - Provide -f FILE option when starting a program (eg clixon_backend -f FILE)
+  - Provide --with-configfile=FILE when configuring
+  - Provide --with-sysconfig=<dir> when configuring, then FILE is <dir>/clixon.xml
+  - Provide --sysconfig=<dir> when configuring then FILE is <dir>/etc/clixon.xml
+  - FILE is /usr/local/etc/clixon.xml
 
 ## Can I run Clixon as docker containers?
 Yes, the example works as docker containers as well. backend and cli needs a 

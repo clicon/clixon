@@ -81,17 +81,20 @@ new "restconf tests"
 new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
 expecteq2 "$(curl  -s -X GET http://localhost/.well-known/host-meta)" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>
    <Link rel='restconf' href='/restconf'/>
-</XRD>"
+</XRD>"
 
 new "restconf get restconf resource. RFC 8040 3.3 (json)"
-expecteq2 "$(curl -sG http://localhost/restconf)" '{"restconf": {"data": null,"operations": null,"yang-library-version": "2016-06-21"}}'
+expecteq2 "$(curl -sG http://localhost/restconf)" '{"restconf": {"data": null,"operations": null,"yang-library-version": "2016-06-21"}}
+'
 
 new "restconf get restconf resource. RFC 8040 3.3 (xml)"
 # Get XML instead of JSON?
-expecteq2 $(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf) '<restconf><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>'
+expecteq2 "$(curl -s -H 'Accept: application/yang-data+xml' -G http://localhost/restconf)" '<restconf><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>
+'
 
-new "restconf get restconf/operations. RFC8040 3.3.2"
-expecteq2 "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"ex:empty": null,"ex:input": null,"ex:output": null,"rt:fib-route": null,"rt:route-count": null}}'
+new "restconf get restconf/operations. RFC8040 3.3.2 (json)"
+expecteq2 "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"ex:empty": null,"ex:input": null,"ex:output": null,"rt:fib-route": null,"rt:route-count": null}}
+'
 
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/operations)
@@ -120,10 +123,12 @@ expectfn "curl -s -I http://localhost/restconf/data" "HTTP/1.1 200 OK"
 #Content-Type: application/yang-data+json"
 
 new "restconf empty rpc"
-expecteq2 "$(curl -s -X POST -d {\"input\":{\"name\":\"\"}} http://localhost/restconf/operations/ex:empty)" '{"output": null}'
+expecteq2 "$(curl -s -X POST -d {\"input\":{\"name\":\"\"}} http://localhost/restconf/operations/ex:empty)" '{"output": null}
+'
 
 new "restconf get empty config + state json"
-expecteq2 "$(curl -sSG http://localhost/restconf/data)" '{"data": {"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}'
+expecteq2 "$(curl -sSG http://localhost/restconf/data)" '{"data": {"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}
+'
 
 new "restconf get empty config + state xml"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data)
@@ -134,7 +139,8 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf get data/interfaces-state/interface=eth0 json"
-expecteq2 "$(curl -s -G http://localhost/restconf/data/interfaces-state/interface=eth0)" '{"interface": [{"name": "eth0","type": "eth","if-index": 42}]}'
+expecteq2 "$(curl -s -G http://localhost/restconf/data/interfaces-state/interface=eth0)" '{"interface": [{"name": "eth0","type": "eth","if-index": 42}]}
+'
 
 new "restconf get state operation eth0 xml"
 # Cant get shell macros to work, inline matching from lib.sh
@@ -146,7 +152,8 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf get state operation eth0 type json"
-expecteq2 "$(curl -s -G http://localhost/restconf/data/interfaces-state/interface=eth0/type)" '{"type": "eth"}'
+expecteq2 "$(curl -s -G http://localhost/restconf/data/interfaces-state/interface=eth0/type)" '{"type": "eth"}
+'
 
 new "restconf get state operation eth0 type xml"
 # Cant get shell macros to work, inline matching from lib.sh
@@ -158,7 +165,8 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf GET datastore"
-expecteq2 "$(curl -s -X GET http://localhost/restconf/data)" '{"data": {"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}'
+expecteq2 "$(curl -s -X GET http://localhost/restconf/data)" '{"data": {"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}
+'
 
 # Exact match
 new "restconf Add subtree to datastore using POST"
@@ -172,7 +180,7 @@ expectfn 'curl -s -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type"
 
 new "restconf Check interfaces eth/0/0 added"
 expectfn "curl -s -G http://localhost/restconf/data" '{"interfaces": {"interface": \[{"name": "eth/0/0","type": "eth","enabled": true}\]},"interfaces-state": {"interface": \[{"name": "eth0","type": "eth","if-index": 42}\]}}
-$'
+'
 
 new "restconf delete interfaces"
 expecteq2 $(curl -s -X DELETE  http://localhost/restconf/data/interfaces) ""
@@ -186,10 +194,11 @@ expectfn 'curl -s -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enable
 #expecteq2 "$(curl -s -X POST -d '{"interface":{"name":"eth/0/0","type\":"eth","enabled":true}}' http://localhost/restconf/data/interfaces)" ""
 
 new "restconf Check eth/0/0 added"
-expecteq 'curl -s -G http://localhost/restconf/data' '{"data": {"interfaces": {"interface": [{"name": "eth/0/0","type": "eth","enabled": true}]},"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}'
+expecteq 'curl -s -G http://localhost/restconf/data' '{"data": {"interfaces": {"interface": [{"name": "eth/0/0","type": "eth","enabled": true}]},"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}
+'
 
 new "restconf Re-post eth/0/0 which should generate error"
-expecteq 'curl -s -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":true}} http://localhost/restconf/data/interfaces' '{"ietf-restconf:errors" : {"error": {"error-tag": "data-exists","error-type": "application","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+expecteq 'curl -s -X POST -d {"interface":{"name":"eth/0/0","type":"eth","enabled":true}} http://localhost/restconf/data/interfaces' '{"ietf-restconf:errors" : {"error": {"error-tag": "data-exists","error-type": "application","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 new "Add leaf description using POST"
 expecteq 'curl -s -X POST -d {"description":"The-first-interface"} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
@@ -198,7 +207,8 @@ new "Add nothing using POST"
 expectfn 'curl -s -X POST http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "data is in some way badly formed"
 
 new "restconf Check description added"
-expecteq "curl -s -G http://localhost/restconf/data" '{"data": {"interfaces": {"interface": [{"name": "eth/0/0","description": "The-first-interface","type": "eth","enabled": true}]},"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}'
+expecteq "curl -s -G http://localhost/restconf/data" '{"data": {"interfaces": {"interface": [{"name": "eth/0/0","description": "The-first-interface","type": "eth","enabled": true}]},"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}
+'
 
 new "restconf delete eth/0/0"
 expecteq 'curl -s -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
@@ -207,16 +217,18 @@ new "Check deleted eth/0/0"
 expectfn 'curl -s -G http://localhost/restconf/data' $state
 
 new "restconf Re-Delete eth/0/0 using none should generate error"
-expecteq 'curl -s -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' '{"ietf-restconf:errors" : {"error": {"error-tag": "data-missing","error-type": "application","error-severity": "error","error-message": "Data does not exist; cannot delete resource"}}}'
+expecteq 'curl -s -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' '{"ietf-restconf:errors" : {"error": {"error-tag": "data-missing","error-type": "application","error-severity": "error","error-message": "Data does not exist; cannot delete resource"}}}'
 
 new "restconf Add subtree eth/0/0 using PUT"
 expecteq 'curl -s -X PUT -d {"interface":{"name":"eth/0/0","type":"eth","enabled":true}} http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' ""
 
 new "restconf get subtree"
-expecteq 'curl -s -G http://localhost/restconf/data' '{"data": {"interfaces": {"interface": [{"name": "eth/0/0","type": "eth","enabled": true}]},"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}'
+expecteq 'curl -s -G http://localhost/restconf/data' '{"data": {"interfaces": {"interface": [{"name": "eth/0/0","type": "eth","enabled": true}]},"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}
+'
 
 new "restconf rpc using POST json"
-expecteq 'curl -s -X POST -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '{"output": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"}}}}'
+expecteq 'curl -s -X POST -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '{"output": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"}}}}
+'
 
 new "restconf rpc using POST xml"
 ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/rt:fib-route)

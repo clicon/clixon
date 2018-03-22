@@ -189,12 +189,12 @@ api_return_err(clicon_handle h,
 	if (pretty){
 	    FCGX_FPrintF(r->out, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n", cbuf_get(cb));
 	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "    </errors>\n");
+	    FCGX_FPrintF(r->out, "    </errors>\r\n");
 	}
 	else {
 	    FCGX_FPrintF(r->out, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">", cbuf_get(cb));
 	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "</errors>\n");
+	    FCGX_FPrintF(r->out, "</errors>\r\n");
 	}
     }
     else{
@@ -202,13 +202,13 @@ api_return_err(clicon_handle h,
 	    FCGX_FPrintF(r->out, "{\n");
 	    FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : %s\n",
 			 cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "}\n");
+	    FCGX_FPrintF(r->out, "}\r\n");
 	}
 	else{
 	    FCGX_FPrintF(r->out, "{");
 	    FCGX_FPrintF(r->out, "\"ietf-restconf:errors\" : ");
 	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "}\n");
+	    FCGX_FPrintF(r->out, "}\r\n");
 	}
     }
  ok:
@@ -234,6 +234,7 @@ api_return_err(clicon_handle h,
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
  * @endcode                                     
+ * See RFC8040 Sec 4.2 and 4.3
  * XXX: cant find a way to use Accept request field to choose Content-Type  
  *      I would like to support both xml and json.           
  * Request may contain                                        
@@ -337,10 +338,9 @@ api_data_get2(clicon_handle h,
 	    if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
 		goto done;
     }
-
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
-    FCGX_FPrintF(r->out, "\n\n");
+    FCGX_FPrintF(r->out, "\r\n\r\n");
  ok:
     retval = 0;
  done:
@@ -437,6 +437,8 @@ api_data_get(clicon_handle h,
  * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
 
  * @note restconf POST is mapped to edit-config create. 
+ * See RFC8040 Sec 4.4.1
+
  POST:
    target resource type is datastore --> create a top-level resource
    target resource type is  data resource --> create child resource
@@ -520,7 +522,7 @@ api_data_post(clicon_handle h,
 	badrequest(r);
 	goto ok;
     }
-    /* The message-body MUST contain exactly one instance of the
+    /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
     if (xml_child_nr(xdata) != 1){
@@ -649,6 +651,7 @@ match_list_keys(yang_stmt *y,
  * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
 
  * @note restconf PUT is mapped to edit-config replace. 
+ * See RFC8040 Sec 4.5
  * @example
       curl -X PUT -d '{"enabled":"false"}' http://127.0.0.1/restconf/data/interfaces/interface=eth1
  *
@@ -823,6 +826,7 @@ api_data_put(clicon_handle h,
  * @param[in]  data   Stream input data
  * @param[in]  username Authenticated user
  * Netconf:  <edit-config> (nc:operation="merge")      
+ * See RFC8040 Sec 4.6
  */
 int
 api_data_patch(clicon_handle h,
@@ -846,6 +850,7 @@ api_data_patch(clicon_handle h,
  * @param[in]  username Authenticated user
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ * See RFC 8040 Sec 4.7
  * Example:
  *  curl -X DELETE http://127.0.0.1/restconf/data/interfaces/interface=eth0
  * Netconf:  <edit-config> (nc:operation="delete")      
@@ -1020,9 +1025,9 @@ api_operations_get(clicon_handle h,
     clicon_debug(1, "%s ret:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
-    FCGX_FPrintF(r->out, "\n");
+    FCGX_FPrintF(r->out, "\r\n");
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
-    FCGX_FPrintF(r->out, "\n\n");
+    FCGX_FPrintF(r->out, "\r\n\r\n");
     // ok:
     retval = 0;
  done:
@@ -1046,7 +1051,7 @@ api_operations_get(clicon_handle h,
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
  * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
-
+ * See RFC 8040 Sec 3.6 / 4.4.2
  * @note We map post to edit-config create. 
       POST {+restconf}/operations/<operation>
  */
@@ -1193,7 +1198,7 @@ api_operations_post(clicon_handle h,
 		goto done;
 	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
 	FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
-	FCGX_FPrintF(r->out, "\n\n");
+	FCGX_FPrintF(r->out, "\r\n\r\n");
     }
  ok:
     retval = 0;

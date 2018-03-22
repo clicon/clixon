@@ -73,12 +73,16 @@ typedef int (plgstart_t)(clicon_handle, int, char **); /* Plugin start */
 #define PLUGIN_EXIT            "plugin_exit"
 typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
 
-/*! Called by restconf
- * Returns 0 if credentials OK, -1 if failed
+/*! Called by restconf to ceck credentials and return username
  */
 #define PLUGIN_CREDENTIALS      "plugin_credentials"
+
 /* Plugin credentials 
- * username should be freed after use
+ * @param[in]  Clicon handle
+ * @param[in]  void*, eg Fastcgihandle request restconf
+ * @param[out] username should be freed after use
+ * @retval   0 if credentials OK
+ * @retval  -1 credentials not OK
  */
 typedef int (plgcredentials_t)(clicon_handle, void *, char **username);
 
