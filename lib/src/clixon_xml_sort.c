@@ -167,7 +167,7 @@ xml_cmp(const void* arg1,
     return equal;
 }
 
-/*!
+/*! Compare xml object
  * @param[in] yangi  Yang order
  * @param[in]  keynr    Length of keyvec/keyval vector when applicable
  * @param[in]  keyvec   Array of of yang key identifiers
@@ -192,36 +192,38 @@ xml_cmp1(cxobj        *x,
     int   i;
     char *keyname;
     char *key;
+    int   match = 0;
 
     /* Check if same yang spec (order in yang stmt list) */
     switch (keyword){
     case Y_CONTAINER: /* Match with name */
     case Y_LEAF: /* Match with name */
-	return strcmp(name, xml_name(x));
+	match = strcmp(name, xml_name(x));
 	break;
     case Y_LEAF_LIST: /* Match with name and value */
 	if (userorder && yang_find((yang_node*)y, Y_ORDERED_BY, "user") != NULL)
 	    *userorder=1;
 	b=xml_body(x);
-	return strcmp(keyval[0], b);
+	match = strcmp(keyval[0], b);
 	break;
     case Y_LIST: /* Match with array of key values */
 	if (userorder && yang_find((yang_node*)y, Y_ORDERED_BY, "user") != NULL)
 	    *userorder=1;
+	/* All must match */
 	for (i=0; i<keynr; i++){
 	    keyname = keyvec[i];
 	    key = keyval[i];
 	    /* Eg return "e0" in <if><name>e0</name></name></if> given "name" */
 	    if ((b = xml_find_body(x, keyname)) == NULL)
 		break; /* error case */
-	    return strcmp(key, b);
+	    if ((match = strcmp(key, b)) != 0)
+		break;
 	}
-	return 0;
 	break;
     default:
 	break;
     }
-    return 0; /* should not reach here */
+    return match; /* should not reach here */
 }
 
 /*! Sort children of an XML node
@@ -273,12 +275,12 @@ xml_search_userorder(cxobj        *x0,
 }
 
 /*!
- * @param[in] yangi  Yang order
- * @param[in]  keynr    Length of keyvec/keyval vector when applicable
- * @param[in]  keyvec   Array of of yang key identifiers
- * @param[in]  keyval   Array of of yang key values
- * @param[in] low    Lower bound of childvec search interval 
- * @param[in] upper  Lower bound of childvec search interval 
+ * @param[in] yangi    Yang order
+ * @param[in] keynr    Length of keyvec/keyval vector when applicable
+ * @param[in] keyvec   Array of of yang key identifiers
+ * @param[in] keyval   Array of of yang key values
+ * @param[in] low      Lower bound of childvec search interval 
+ * @param[in] upper    Lower bound of childvec search interval 
  */
 static cxobj *
 xml_search1(cxobj        *x0,
@@ -522,7 +524,7 @@ xml_sort_verify(cxobj *x0,
     return retval;
 }
 
-/*! Given child tree x1c, find matching child in base tree x0
+/*! Given child tree x1c, find matching child in base tree x0 and return as x0cp
  * param[in]  x0   Base tree node
  * param[in]  x1c  Modification tree child
  * param[in]  yc   Yang spec of tree child
@@ -567,7 +569,10 @@ match_base_child(cxobj     *x0,
 	break;
     case Y_LIST: /* Match with key values */
 	cvk = yc->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
-	/* Count number of key indexes */
+	/* Count number of key indexes 
+	 * Then create two vectors one with names and one with values of x1c,
+	 * ec: keyvec: [a,b,c]  keyval: [1,2,3]
+	 */
 	cvi = NULL; keynr = 0;
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) 
 	    keynr++;
@@ -591,7 +596,7 @@ match_base_child(cxobj     *x0,
     default:
 	break;
     }
-    /* Get match */
+    /* Get match. Sorting mode(optimized) or not?*/
     if (xml_child_sort==0)
 	*x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
     else{
