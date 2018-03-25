@@ -304,3 +304,21 @@ fib_route(clicon_handle h,            /* Clicon handle */
 }
 ```
 Here, the callback is over-simplified.
+
+## How do I write an authentication callback?
+
+A restconf call may need to be authenticated. 
+You can specify an authentication callback for restconf as follows:
+```
+int
+plugin_credentials(clicon_handle h,     
+		   FCGX_Request *r,
+		   char        **username)
+```
+
+If a plugin is provided, it needs to supply a username. If not, the
+request is unauthorized. the function mallocs a username and returns
+it.
+
+See [../apps/example/routing_restconf.c] plugin_credentials() for
+an example of HTTP basic auth.

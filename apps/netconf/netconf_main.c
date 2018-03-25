@@ -201,7 +201,6 @@ netconf_input_cb(int   s,
 	    retval = 0;
 	    goto done;
 	}
-
 	for (i=0; i<len; i++){
 	    if (buf[i] == 0)
 		continue; /* Skip NULL chars (eg from terminals) */

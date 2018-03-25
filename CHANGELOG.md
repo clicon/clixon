@@ -4,6 +4,14 @@
 
 
 ### Major changes:
+* Added Clixon Restconf library
+  * Builds and installs a new restconf library: libclixon_restconf.so and clixon_restconf.h
+  * The restconf library can be included by a restconf plugin.
+  * Example code in example/Makefile.in and example/restconf_lib.c
+* Authorization
+  * Example extended with authorization
+  * Test added with http basic authorization (test/test_auth.sh)
+  * Documentation in FAQ.md
 * Restconf error handling for get, put and post. Several cornercases remain. Available both as xml and json (set accept header), pretty-printed and not (set clixon config option).
 * Proper RFC 6241 Netconf error handling
   * New functions added in clixon_netconf_lib.[ch]
@@ -12,6 +20,7 @@
 
 ### Minor changes:
 
+* README.md extended with new yang, netconf, restconf, datastore, and auth sections.
 * The key-value datastore is no longer supported. Use the default text datastore.
 * Add username to rpc calls to prepare for authorization for backend:
   clicon_rpc_config_get(h, db, xpath, xt) --> clicon_rpc_config_get(h, db, xpath, username, xt)

@@ -47,6 +47,10 @@ typedef void *plghndl_t;
 /* Find plugin by name callback.  XXX Should be clicon internal */
 typedef void *(find_plugin_t)(clicon_handle, char *); 
 
+
+
+
+
 /*
  * Prototypes
  */
@@ -60,7 +64,7 @@ typedef void *(find_plugin_t)(clicon_handle, char *);
  * @see plginit_t
  */
 #define PLUGIN_INIT            "plugin_init"
-typedef int (plginit_t)(clicon_handle);	 	       /* Plugin Init */
+typedef void * (plginit_t)(clicon_handle);    /* Clixon plugin Init */
 
 /* Called when backend started with cmd-line arguments from daemon call. 
  * @see plgstart_t
@@ -85,6 +89,18 @@ typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
  * @retval  -1 credentials not OK
  */
 typedef int (plgcredentials_t)(clicon_handle, void *, char **username);
+
+
+/* grideye agent plugin init struct for the api 
+ * Note: Implicit init function, see PLUGIN_INIT_FN_V2 
+ */
+struct clixon_plugin_api{
+    plgcredentials_t *cp_auth;
+};
+
+/*
+ * Prototypes
+ */
 
 /* Find a function in global namespace or a plugin. XXX clicon internal */
 void *clicon_find_func(clicon_handle h, char *plugin, char *func);

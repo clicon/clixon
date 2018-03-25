@@ -38,12 +38,17 @@ CFLAGS  	= @CFLAGS@
 LDFLAGS 	= @LDFLAGS@
 
 prefix 		= @prefix@
+datarootdir	= @datarootdir@
 exec_prefix 	= @exec_prefix@
 bindir 		= @bindir@
-wwwdir  	= /www-data
+libdir		= @libdir@
+mandir		= @mandir@
 libexecdir	= @libexecdir@
+wwwdir  	= /www-data
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
+includedir	= @includedir@
+HOST_VENDOR     = @host_vendor@
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
@@ -61,8 +66,7 @@ CPPFLAGS  	= @CPPFLAGS@
 
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
-SRC     = restconf_lib.c
-SRC    += restconf_methods.c
+SRC     = restconf_methods.c
 
 OBJS    = $(SRC:.c=.o)
 
@@ -70,10 +74,18 @@ APPSRC  = restconf_main.c
 APPOBJ  = $(APPSRC:.c=.o)
 APPL	= clixon_restconf
 
-all:	 $(APPL)
+MYNAME		= clixon_restconf
+MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
+MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
+
+LIBSRC     = restconf_lib.c
+LIBOBJS    = $(LIBSRC:.c=.o)
+
+all:	 $(MYLIB) $(APPL)
 
 clean:
-	rm -f $(OBJS) *.core $(APPL) $(APPOBJ)
+	rm -f $(OBJS) $(LIBOBJS) *.core $(APPL) $(APPOBJ) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
 
 distclean: clean
 	rm -f Makefile *~ .depend
@@ -82,14 +94,23 @@ distclean: clean
 # Put other executables in libexec/
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
-install:	$(APPL)
+install:	install-lib $(APPL)
 	install -d $(DESTDIR)$(wwwdir)
 	install $(APPL) $(DESTDIR)$(wwwdir)
 
-install-include:	
+install-lib: $(MYLIB)
+	install -d $(DESTDIR)$(libdir) 
+	install $(MYLIB) $(DESTDIR)$(libdir) 
+	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon_restconf.so.2
+	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_restconf.so
+
+install-include:	clixon_restconf.h
+	install -d $(DESTDIR)$(includedir)/clixon
+	install -m 644 $^ $(DESTDIR)$(includedir)/clixon
 
 uninstall:
 	rm -f $(DESTDIR)$(wwwdir)/$(APPL)
+	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
 
 .SUFFIXES:
 .SUFFIXES: .c .o
@@ -97,8 +118,18 @@ uninstall:
 .c.o:
 	$(CC) $(INCLUDES) -D__PROGRAM__=\"$(APPL)\" $(CPPFLAGS) $(CFLAGS) -c $<
 
-$(APPL) : $(APPOBJ) $(OBJS) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(APPOBJ) $(OBJS) $(LIBS) -o $@
+$(APPL) : $(APPOBJ) $(MYLIBLINK) $(OBJS) $(LIBDEPS)
+	$(CC) $(LDFLAGS) $(APPOBJ) $(OBJS) -L. $(MYLIB) $(LIBS) -o $@
+
+$(MYLIB) : $(LIBOBJS)
+ifeq ($(HOST_VENDOR),apple)
+	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJS) $(LIBS)
+else
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJS) $(LIBS) -Wl,-soname=$(MYLIBSO)
+endif
+
+# link-name is needed for application linking, eg for clixon_cli and clixon_config
+$(MYLIBLINK) : $(MYLIB)
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -

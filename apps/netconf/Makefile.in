@@ -44,6 +44,7 @@ bindir 		= @bindir@
 libdir		= @libdir@
 mandir		= @mandir@
 libexecdir	= @libexecdir@
+wwwdir  	= /www-data
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 includedir	= @includedir@

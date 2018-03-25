@@ -327,6 +327,7 @@ test(FCGX_Request *r,
     printparam(r, "HTTPS", dbg);
     printparam(r, "HTTP_ACCEPT", dbg);
     printparam(r, "HTTP_CONTENT_TYPE", dbg);
+    printparam(r, "HTTP_AUTHORIZATION", dbg);
 #if 0 /* For debug */
     clicon_debug(1, "All environment vars:");
     {
@@ -375,6 +376,7 @@ restconf_plugin_load(clicon_handle h)
     plghndl_t     *handle;
     char           filename[MAXPATHLEN];
 
+    clicon_debug(1, "%s", __FUNCTION__); 
     if ((dir = clicon_restconf_dir(h)) == NULL){
 	retval = 0;
 	goto quit;
@@ -382,7 +384,6 @@ restconf_plugin_load(clicon_handle h)
     /* Get plugin objects names from plugin directory */
     if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG))<0)
 	goto quit;
-
     /* Load all plugins */
     for (i = 0; i < ndp; i++) {
 	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);

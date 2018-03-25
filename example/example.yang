@@ -11,4 +11,21 @@ module example {
     }
     description
 	"Example code that includes ietf-ip and ietf-routing";
+    leaf basic_auth{
+	description "Basic user / password authentication as in HTTP basic auth";
+	type boolean;
+	default false;
+    }
+    list auth {
+	description "user / password entries. Valid if basic_auth=true";
+	key user;
+	leaf user{
+	    description "User name";
+	    type string;
+	}
+	leaf password{
+	    description "Password";
+	    type string;
+	}
+    }
 }

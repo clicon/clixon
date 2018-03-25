@@ -28,13 +28,17 @@ rm -rf $dir/*
 
 # error and exit, arg is optional extra errmsg
 err(){
-  echo "Error in Test$testnr [$testname]:"
+  echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
       echo "Expected: $1"
   fi
   if [ $# -gt 1 ]; then 
       echo "Received: $2"
   fi
+  echo -e "\e[0m:"
+  echo "$ret"| od -t c > $dir/clixon-ret
+  echo "$expect"| od -t c > $dir/clixon-expect
+  diff $dir/clixon-ret $dir/clixon-expect
   exit $testnr
 }
 
@@ -43,7 +47,11 @@ new(){
     testnr=`expr $testnr + 1`
     testname=$1
     >&2 echo "Test$testnr [$1]"
-#    sleep 1
+}
+new2(){
+    testnr=`expr $testnr + 1`
+    testname=$1
+    >&2 echo -n "Test$testnr [$1]"
 }
 
 # clixon tester. First arg is command and second is expected outcome
@@ -82,34 +90,15 @@ expectfn(){
   fi
 }
 
-# Similar to expectfn, but checks for equality and not only match
-expecteq2(){
+expecteq(){
   ret=$1
   expect=$2
-
-  # Match if both are empty string
   if [ -z "$ret" -a -z "$expect" ]; then
       return
   fi
-  if [ "$ret" != "$expect" ]; then
-      err "$expect" "$ret"
-  fi
-}
-
-# Similar to expectfn, but checks for equality and not only match
-expecteq(){
-  cmd=$1
-  expect=$2
-  ret=$($cmd)
-
-  if [ $? -ne 0 ]; then
-    err "wrong args"
-  fi
-  # Match if both are empty string
-  if [ -z "$ret" -a -z "$expect" ]; then
-      return
-  fi
-  if [ "$ret" != "$expect" ]; then
+  if [[ "$ret" = "$expect" ]]; then
+      echo
+  else
       err "$expect" "$ret"
   fi
 }

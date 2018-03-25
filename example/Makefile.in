@@ -47,8 +47,9 @@ INCLUDES 	= -I$(includedir) @INCLUDES@
 BE_PLUGIN       = $(APPNAME)_backend.so
 CLI_PLUGIN      = $(APPNAME)_cli.so
 NETCONF_PLUGIN  = $(APPNAME)_netconf.so
+RESTCONF_PLUGIN = $(APPNAME)_restconf.so
 
-PLUGINS = $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN)
+PLUGINS = $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN)
 
 all:	$(PLUGINS)
 
@@ -73,22 +74,28 @@ YANGSPECS	+= example.yang
 BE_SRC   = routing_backend.c
 BE_OBJ   = $(BE_SRC:%.c=%.o)
 $(BE_PLUGIN): $(BE_OBJ)
-	$(CC) -shared -o $@ -lc $<
+	$(CC) -Wall -shared -o $@ -lc $<
 
 # CLI frontend plugin
 CLI_SRC  = routing_cli.c
 CLI_OBJ  = $(CLI_SRC:%.c=%.o)
 $(CLI_PLUGIN): $(CLI_OBJ)
-	$(CC) -shared -o $@ -lc $^ 
+	$(CC) -Wall -shared -o $@ -lc $^ 
 
 # NETCONF frontend plugin
 NETCONF_SRC  = routing_netconf.c
 NETCONF_OBJ  = $(NETCONF_SRC:%.c=%.o)
 $(NETCONF_PLUGIN): $(NETCONF_OBJ)
-	$(CC) -shared -o $@ -lc $^ 
+	$(CC) -Wall -shared -o $@ -lc $^
 
-SRC     = $(BE_SRC) $(CLI_SRC) $(NETCONF_SRC)
-OBJS    = $(BE_OBJ) $(CLI_OBJ) $(NETCONF_OBJ)
+# RESTCONF frontend plugin
+RESTCONF_SRC  = routing_restconf.c
+RESTCONF_OBJ  = $(RESTCONF_SRC:%.c=%.o)
+$(RESTCONF_PLUGIN): $(RESTCONF_OBJ)
+	$(CC) -Wall -shared -o $@ -lc $^ 
+
+SRC     = $(BE_SRC) $(CLI_SRC) $(NETCONF_SRC) $(RESTCONF_SRC)
+OBJS    = $(BE_OBJ) $(CLI_OBJ) $(NETCONF_OBJ) $(RESTCONF_OBJ)
 
 clean:
 	rm -f $(PLUGINS) $(OBJS) 
@@ -98,7 +105,7 @@ distclean: clean
 	rm -f Makefile *~ .depend
 	(cd docker && $(MAKE) $(MFLAGS) $@)
 
-install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(APPNAME).xml
+install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN) $(APPNAME).xml
 	install -d $(DESTDIR)$(clixon_SYSCONFDIR)
 	install $(APPNAME).xml $(DESTDIR)$(clixon_SYSCONFDIR)
 	install -d $(DESTDIR)$(clixon_DBSPECDIR)/yang
@@ -108,7 +115,9 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $
 	install -d $(DESTDIR)$(clixon_LIBDIR)/backend
 	install $(BE_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/backend; 
 	install -d $(DESTDIR)$(clixon_LIBDIR)/netconf
-	install $(NETCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/netconf; 
+	install $(NETCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/netconf;
+	install -d $(DESTDIR)$(clixon_LIBDIR)/restconf
+	install $(RESTCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/restconf; 
 	install -d $(DESTDIR)$(clixon_LIBDIR)/clispec
 	install $(CLISPECS) $(DESTDIR)$(clixon_LIBDIR)/clispec; 
 	install -d $(DESTDIR)$(clixon_LOCALSTATEDIR)
