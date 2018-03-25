@@ -18,11 +18,11 @@ Topics
   * [Restconf](#restconf)
   * [Datastore](datastore/README.md)
   * [Authentication and Authorization](#auth)
-  * [Example](example/README.md)
-  * [Changelog](CHANGELOG.md) recent changes.
-  * [Clixon SDK](#SDK)
+  * [Example](example/)
+  * [Changelog](CHANGELOG.md)
+  * [Runtime](#runtime)
   * [Clicon and Clixon project page](http://www.clicon.org)
-  * [Tests](test/README.md)
+  * [Tests](test/)
   * [Reference manual](http://www.clicon.org/doxygen/index.html) (Note: the link may not be up-to-date. It is better to build your own: `cd doc; make doc`)
   
 Background
@@ -37,8 +37,8 @@ Users of clixon currently include:
   * [Netgate](https://www.netgate.com)
   * [CloudMon360](http://cloudmon360.com)
   * [Grideye](http://hagsand.se/grideye)	
-  * [Netclean](https://www.netclean.com/solutions/whitebox) (only CLIgen)
-  * [Prosilient's PTAnalyzer]<a href="http://www.prosilient.com"> (only CLIgen)
+  * [Netclean](https://www.netclean.com/solutions/whitebox) # only CLIgen
+  * [Prosilient's PTAnalyzer](http://www.prosilient.com) # only CLIgen
 
 See also [Clicon project page](http://clicon.org).
 
@@ -139,7 +139,7 @@ The following are not implemented
 - notifications (sec 6)
 - schema resource
 
-See [more detailed restconf instructions](apps/restconf/README.md).
+See [more detailed instructions](apps/restconf/README.md).
 
 Datastore
 =========
@@ -152,25 +152,25 @@ Update: There used to be a key-value plugin based on qdbm but isnow obsoleted. O
 The datastore is primarily designed to be used by Clixon but can be used
 separately.
 
-See [more detailed restconf instructions](datastore/README.md).
-
+See [more detailed instructions](datastore/README.md).
 
 Auth
 ====
 
-Authentication is not in-scope for Clixon, however, there is ongoing work
-to implement [NACM](https://tools.ietf.org/html/rfc8341).
+Authentication is managed outside Clixon using SSH, SSL, Oauth2, etc.
 
-There are hooks (plugin callbacks) to identify which user is accessing a
-client. That identity can then be used for authorization.
+For CLI, login is typically made via SSH. For netconf, SSH netconf subsystem can be used.
+  
+Restconf however needs credentials.  This is done by writing a credentials callback in a restconf plugin. See:
+  * [FAQ](doc/FAQ.md#how-do-i-write-an-authentication-callback).
+  * [Example](example/README.md) has an example how to do this with HTTP basic auth.
+  * It would be possible for do this for more advanced mechanisms such as Oauth2 or (https://github.com/CESNET/Netopeer2/tree/master/server/configuration)
 
-In short, authentication needs to be coupled to clixon clients:
-  * CLI - Login has already been made via SSH
-  * Netconf - SSH netconf subsystem 
-  * Restconf needs credentials. See [FAQ](doc/FAQ.md#How-do-I-write-an-authentication-callback). The [Example](example/README.md) has an example how to do this with HTTP basic auth. It is possible for do this for more advanced mechanisms such as Oauth2 or [https://github.com/CESNET/Netopeer2/tree/master/server/configuration]
+There is an ongoing effort to implement authorization for Clixon according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341), at least a subset of the functionality.
 
-SDK
-===
+
+Runtime
+=======
 
 <img src="doc/clixon_example_sdk.png" alt="clixon sdk" style="width: 180px;"/>
 

@@ -320,5 +320,5 @@ If a plugin is provided, it needs to supply a username. If not, the
 request is unauthorized. the function mallocs a username and returns
 it.
 
-See [../apps/example/routing_restconf.c] plugin_credentials() for
+See (../apps/example/routing_restconf.c) plugin_credentials() for
 an example of HTTP basic auth.
