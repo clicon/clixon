@@ -38,52 +38,130 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <dirent.h>
+
+#include <sys/stat.h>
+#include <sys/param.h>
+
+/* cligen */
+#include <cligen/cligen.h>
 
 #include "clixon_err.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_log.h"
+#include "clixon_file.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_plugin.h"
 
+/* XXX The below should be placed in clixon handle when done */
+static clixon_plugin *_clixon_plugins = NULL;  /* List of plugins (of client) */
+static int            _clixon_nplugins = 0;  /* Number of plugins */
 
-static find_plugin_t *
-clicon_find_plugin(clicon_handle h)
+/*! Load a dynamic plugin object and call its init-function
+ * @param[in]  h       Clicon handle
+ * @param[in]  file    Which plugin to load
+ * @param[in]  dlflags See man(3) dlopen
+ * @retval     cp      Clixon plugin structure
+ * @retval     NULL    Error
+ * @see clixon_plugins_load  Load all plugins
+ */
+static clixon_plugin *
+plugin_load_one(clicon_handle   h, 
+		char           *file, 
+		int             dlflags)
 {
-    void *p;
-    find_plugin_t *fp = NULL;
-    clicon_hash_t *data = clicon_data(h);
-    
-    if ((p = hash_value(data, "CLICON_FIND_PLUGIN", NULL)) != NULL)
-	memcpy(&fp, p, sizeof(fp));
+    char          *error;
+    void          *handle = NULL;
+    plginit2_t    *initfn;
+    clixon_plugin_api *api = NULL;
+    clixon_plugin *cp = NULL;
 
-    return fp;
+    clicon_debug(1, "%s", __FUNCTION__);
+    dlerror();    /* Clear any existing error */
+    if ((handle = dlopen (file, dlflags)) == NULL) {
+        error = (char*)dlerror();
+	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
+	goto done;
+    }
+    /* call plugin_init() if defined */
+    if ((initfn = dlsym(handle, CLIXON_PLUGIN_INIT)) == NULL){
+	clicon_err(OE_PLUGIN, errno, "Failed to find %s when loading clixon plugin %s", CLIXON_PLUGIN_INIT, file);
+	goto err;
+    }
+    if ((error = (char*)dlerror()) != NULL) {
+	clicon_err(OE_UNIX, 0, "dlsym: %s: %s", file, error);
+	goto done;
+    }
+    if ((api = initfn(h)) == NULL) {
+	clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
+	if (!clicon_errno) 	/* sanity: log if clicon_err() is not called ! */
+	    clicon_err(OE_DB, 0, "Unknown error: %s: plugin_init does not make clicon_err call on error",
+		       file);
+	goto err;
+    }
+    if ((cp = (clixon_plugin *)malloc(sizeof(*cp))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    cp->cp_handle = handle;
+    cp->cp_api = *api;
+    clicon_debug(1, "%s", __FUNCTION__);
+ done:
+    return cp;
+ err:
+    if (handle)
+	dlclose(handle);
+    return NULL;
 }
 
-
-/*! Return a function pointer based on name of plugin and function.
- * If plugin is specified, ask daemon registered function to return 
- * the dlsym handle of the plugin.
+/*! Load a set of plugin objects from a directory and and call their init-function
+ * @param[in]  h     Clicon handle
+ * @param[in]  dir   Directory. .so files in this dir will be loaded.
+ * @retval     0     OK
+ * @retval     -1    Error
  */
-void *
-clicon_find_func(clicon_handle h, char *plugin, char *func)
+int
+clixon_plugins_load(clicon_handle h,
+		    char         *dir)
 {
-    find_plugin_t *plgget;
-    void          *dlhandle = NULL;
+    int            retval = -1;
+    int            ndp;
+    struct dirent *dp = NULL;
+    int            i;
+    char           filename[MAXPATHLEN];
+    clixon_plugin *cp;
 
-    if (plugin) {
-	/* find clicon_plugin_get() in global namespace */
-	if ((plgget = clicon_find_plugin(h)) == NULL) {
-	    clicon_err(OE_UNIX, errno, "Specified plugin not supported");
-	    return NULL;
+    clicon_debug(1, "%s", __FUNCTION__); 
+    /* Get plugin objects names from plugin directory */
+    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG))<0)
+	goto done;
+    /* Load all plugins */
+    for (i = 0; i < ndp; i++) {
+	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
+	clicon_debug(1, "DEBUG: Loading plugin '%.*s' ...", 
+		     (int)strlen(filename), filename);
+	if ((cp = plugin_load_one(h, filename, RTLD_NOW)) == NULL)
+	    goto done;
+	_clixon_nplugins++;
+	if ((_clixon_plugins = realloc(_clixon_plugins, _clixon_nplugins*sizeof(clixon_plugin))) == NULL) {
+	    clicon_err(OE_UNIX, errno, "realloc");
+	    goto done;
 	}
-	dlhandle = plgget(h, plugin);
+	_clixon_plugins[_clixon_nplugins-1] = *cp;
+	free(cp);
     }
-    
-    return dlsym(dlhandle, func);
+    retval = 0;
+done:
+    if (dp)
+	free(dp);
+    return retval;
 }
 
 /*! Load a dynamic plugin object and call its init-function
@@ -91,6 +169,7 @@ clicon_find_func(clicon_handle h, char *plugin, char *func)
  * @param[in]  h       Clicon handle
  * @param[in]  file    Which plugin to load
  * @param[in]  dlflags See man(3) dlopen
+ * @see plugin_load_one for netxgen, this is soon OBSOLETE
  */
 plghndl_t 
 plugin_load(clicon_handle h, 
@@ -103,14 +182,14 @@ plugin_load(clicon_handle h,
 
     clicon_debug(1, "%s", __FUNCTION__);
     dlerror();    /* Clear any existing error */
-    if ((handle = dlopen (file, dlflags)) == NULL) {
+    if ((handle = dlopen(file, dlflags)) == NULL) {
         error = (char*)dlerror();
 	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
 	goto done;
     }
     /* call plugin_init() if defined */
     if ((initfn = dlsym(handle, PLUGIN_INIT)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "Failed to find plugin_init when loading restconf plugin %s", file);
+	clicon_err(OE_PLUGIN, errno, "Failed to find plugin_init when loading clixon plugin %s", file);
 	goto err;
     }
     if ((error = (char*)dlerror()) != NULL) {
@@ -155,6 +234,84 @@ plugin_unload(clicon_handle h,
 	error = (char*)dlerror();
 	clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
 	/* Just report */
+    }
+    return retval;
+}
+
+/*! Unload all plugins 
+ * @param[in]  h       Clicon handle
+ */
+int
+clixon_plugin_unload(clicon_handle h)
+{
+    clixon_plugin *cp;
+    int            i;
+
+    for (i = 0; i < _clixon_nplugins; i++) {
+	cp = &_clixon_plugins[i];
+	plugin_unload(h, cp->cp_handle);
+    }
+    if (_clixon_plugins){
+	free(_clixon_plugins);
+	_clixon_plugins = NULL;
+    }
+    _clixon_nplugins = 0;
+    return 0;
+}
+
+/*! Call plugin_start in all plugins
+ * @param[in]  h       Clicon handle
+ */
+int
+clixon_plugin_start(clicon_handle h, 
+		    int           argc, 
+		    char        **argv)
+{
+    clixon_plugin *cp;
+    int            i;
+    plgstart_t    *startfn;          /* Plugin start */
+    
+    for (i = 0; i < _clixon_nplugins; i++) {
+	cp = &_clixon_plugins[i];
+	if ((startfn = cp->cp_api.ca_start) == NULL)
+	    continue;
+	if (startfn(h, argc, argv) < 0) {
+	    clicon_debug(1, "plugin_start() failed\n");
+	    return -1;
+	}
+    }
+    return 0;
+}
+
+/*! Run the restconf user-defined credentials callback if present
+ * Find first authentication callback and call that, then return.
+ * The callback is to set the authenticated user
+ * @param[in]  h    Clicon handle
+ * @param[in]  arg  Argument, such as fastcgi handler for restconf
+ * @retval    -1    Error
+ * @retval     0    Not authenticated
+ * @retval     1    Authenticated 
+ * @note If authenticated either a callback was called and clicon_username_set() 
+ *       Or no callback was found.
+ */
+int
+clixon_plugin_auth(clicon_handle h, 
+		   void         *arg)
+{
+    clixon_plugin *cp;
+    int            i;
+    plgauth_t     *authfn;          /* Plugin auth */
+    int            retval = 1;
+    
+    for (i = 0; i < _clixon_nplugins; i++) {
+	cp = &_clixon_plugins[i];
+	if ((authfn = cp->cp_api.ca_auth) == NULL)
+	    continue;
+	if ((retval = authfn(h, arg)) < 0) {
+	    clicon_debug(1, "plugin_start() failed\n");
+	    return -1;
+	}
+	break;
     }
     return retval;
 }

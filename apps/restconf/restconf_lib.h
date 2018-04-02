@@ -57,11 +57,6 @@ int notimplemented(FCGX_Request *r);
 int clicon_debug_xml(int dbglevel, char *str, cxobj *cx);
 int test(FCGX_Request *r, int dbg);
 cbuf *readdata(FCGX_Request *r);
-
-int restconf_plugin_load(clicon_handle h);
-int restconf_plugin_start(clicon_handle h, int argc, char **argv);
-int restconf_plugin_unload(clicon_handle h);
-int restconf_credentials(clicon_handle h, FCGX_Request *r, char **user);
 int get_user_cookie(char *cookiestr, char  *attribute, char **val);
 
 

@@ -71,7 +71,7 @@
  * @note  the following should match the prototypes in clixon_backend.h
  */
 #define PLUGIN_RESET           "plugin_reset"
-typedef int (plgreset_t)(clicon_handle h, const char *db); /* Reset system status */
+
 
 /*! Plugin callback, if defined called to get state data from plugin
  * @param[in]    h      Clicon handle
@@ -82,7 +82,7 @@ typedef int (plgreset_t)(clicon_handle h, const char *db); /* Reset system statu
  * @see xmldb_get
  */
 #define PLUGIN_STATEDATA       "plugin_statedata"
-typedef int (plgstatedata_t)(clicon_handle h, char *xpath, cxobj *xtop);
+
 
 #define PLUGIN_TRANS_BEGIN     "transaction_begin"
 #define PLUGIN_TRANS_VALIDATE  "transaction_validate"
@@ -91,8 +91,6 @@ typedef int (plgstatedata_t)(clicon_handle h, char *xpath, cxobj *xtop);
 #define PLUGIN_TRANS_END       "transaction_end"
 #define PLUGIN_TRANS_ABORT     "transaction_abort"
 
-
-typedef int (trans_cb_t)(clicon_handle h, transaction_data td); /* Transaction cbs */
 
 /* Backend (config) plugins */
 struct plugin {
@@ -118,28 +116,6 @@ struct plugin {
 static int _nplugins = 0;
 static struct plugin *_plugins = NULL;
 
-/*! Find a plugin by name and return the dlsym handl
- * Used by libclicon code to find callback funcctions in plugins.
- * @param[in]  h       Clicon handle
- * @param[in]  h       Name of plugin
- * @retval     handle  Plugin handle if found
- * @retval     NULL    Not found
- */
-static void *
-config_find_plugin(clicon_handle h, 
-		   char         *name)
-{
-    int            i;
-    struct plugin *p;
-
-    for (i = 0; i < _nplugins; i++){
-	p = &_plugins[i];
-	if (strcmp(p->p_name, name) == 0)
-	    return p->p_handle;
-    }
-    return NULL;
-}
-
 /*! Initialize plugin code (not the plugins themselves)
  * @param[in]  h       Clicon handle
  * @retval     0       OK
@@ -148,14 +124,6 @@ config_find_plugin(clicon_handle h,
 int
 backend_plugin_init(clicon_handle h)
 {
-    find_plugin_t *fp   = config_find_plugin;
-    clicon_hash_t *data = clicon_data(h);
-
-    /* Register CLICON_FIND_PLUGIN in data hash */
-    if (hash_add(data, "CLICON_FIND_PLUGIN", &fp, sizeof(fp)) == NULL) {
-	clicon_err(OE_UNIX, errno, "failed to register CLICON_FIND_PLUGIN");
-	return -1;
-    }
     return 0;
 }
 

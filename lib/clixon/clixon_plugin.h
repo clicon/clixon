@@ -44,13 +44,6 @@
 /* The dynamicically loadable plugin object handle */
 typedef void *plghndl_t;
 
-/* Find plugin by name callback.  XXX Should be clicon internal */
-typedef void *(find_plugin_t)(clicon_handle, char *); 
-
-
-
-
-
 /*
  * Prototypes
  */
@@ -64,6 +57,7 @@ typedef void *(find_plugin_t)(clicon_handle, char *);
  * @see plginit_t
  */
 #define PLUGIN_INIT            "plugin_init"
+
 typedef void * (plginit_t)(clicon_handle);    /* Clixon plugin Init */
 
 /* Called when backend started with cmd-line arguments from daemon call. 
@@ -77,36 +71,86 @@ typedef int (plgstart_t)(clicon_handle, int, char **); /* Plugin start */
 #define PLUGIN_EXIT            "plugin_exit"
 typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
 
-/*! Called by restconf to ceck credentials and return username
+/*! Called by restconf to check credentials and return username
  */
 #define PLUGIN_CREDENTIALS      "plugin_credentials"
 
-/* Plugin credentials 
+/* Plugin authorization. Set username option (or not)
  * @param[in]  Clicon handle
  * @param[in]  void*, eg Fastcgihandle request restconf
- * @param[out] username should be freed after use
  * @retval   0 if credentials OK
  * @retval  -1 credentials not OK
  */
-typedef int (plgcredentials_t)(clicon_handle, void *, char **username);
+typedef int (plgauth_t)(clicon_handle, void *);
 
+typedef int (plgreset_t)(clicon_handle h, const char *db); /* Reset system status */
+typedef int (plgstatedata_t)(clicon_handle h, char *xpath, cxobj *xtop);
 
-/* grideye agent plugin init struct for the api 
- * Note: Implicit init function, see PLUGIN_INIT_FN_V2 
+typedef void *transaction_data;
+
+/* Transaction callbacks */
+typedef int (trans_cb_t)(clicon_handle h, transaction_data td); 
+
+/* plugin init struct for the api 
+ * Note: Implicit init function
  */
+struct clixon_plugin_api;
+typedef struct clixon_plugin_api* (plginit2_t)(clicon_handle);    /* Clixon plugin Init */
+
 struct clixon_plugin_api{
-    plgcredentials_t *cp_auth;
+    char              ca_name[PATH_MAX]; /* Name of plugin */
+    plginit2_t       *ca_init;           /* Clixon plugin Init (implicit) */
+    plgstart_t       *ca_start;          /* Plugin start */
+    plgexit_t        *ca_exit;	         /* Plugin exit */
+    plgauth_t        *ca_auth;           /* Auth credentials */
 };
+
+struct clixon_backend_api{
+    char              ca_name[PATH_MAX]; /* Name of plugin */
+    plginit2_t       *ca_init;           /* Clixon plugin Init (implicit) */
+    plgstart_t       *ca_start;          /* Plugin start */
+    plgexit_t        *ca_exit;	         /* Plugin exit */
+    plgauth_t        *ca_auth;           /* Auth credentials */
+    /*--Above here common fields with clixon_netconf_api, clixon_restconf_api,
+     * etc     ----------*/
+    plgreset_t       *ca_reset;          /* Reset system status (backend only) */
+
+    plgstatedata_t   *ca_statedata;      /* Get state data from plugin (backend only) */
+    trans_cb_t       *ca_trans_begin;	 /* Transaction start */
+    trans_cb_t       *ca_trans_validate; /* Transaction validation */
+    trans_cb_t       *ca_trans_complete; /* Transaction validation complete */
+    trans_cb_t       *ca_trans_commit;   /* Transaction commit */
+    trans_cb_t       *ca_trans_end;	 /* Transaction completed  */
+    trans_cb_t       *ca_trans_abort;	 /* Transaction aborted */    
+};
+typedef struct clixon_plugin_api clixon_plugin_api;
+
+#define CLIXON_PLUGIN_INIT     "clixon_plugin_init" /* Nextgen */
+/*! Called when plugin loaded. Only mandadory callback. All others optional 
+ * @see plginit_t
+ */
+
+/* Internal plugin structure with dlopen() handle and plugin_api
+ */
+struct clixon_plugin{
+    plghndl_t                cp_handle;  /* Handle to plugin using dlopen(3) */
+    struct clixon_plugin_api cp_api;
+};
+typedef struct clixon_plugin clixon_plugin;
 
 /*
  * Prototypes
  */
-
-/* Find a function in global namespace or a plugin. XXX clicon internal */
-void *clicon_find_func(clicon_handle h, char *plugin, char *func);
+int clixon_plugins_load(clicon_handle h, char *dir);
 
 plghndl_t plugin_load (clicon_handle h, char *file, int dlflags);
 
 int plugin_unload(clicon_handle h, plghndl_t *handle);
+
+int clixon_plugin_unload(clicon_handle h);
+
+int clixon_plugin_start(clicon_handle h, int argc, char **argv);
+
+int clixon_plugin_auth(clicon_handle h, void *arg);
 
 #endif  /* _CLIXON_PLUGIN_H_ */

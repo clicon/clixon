@@ -4,8 +4,6 @@ Clixon is an automatic configuration manager where you generate
 interactive CLI, NETCONF, RESTCONF and embedded databases with
 transaction support from a YANG specification.
 
-Topics
-======
   * [Background](#background)
   * [Frequently asked questions](doc/FAQ.md)
   * [Installation](#installation)
@@ -38,7 +36,7 @@ Users of clixon currently include:
   * [CloudMon360](http://cloudmon360.com)
   * [Grideye](http://hagsand.se/grideye)	
   * [Netclean](https://www.netclean.com/solutions/whitebox) # only CLIgen
-  * [Prosilient's PTAnalyzer](http://www.prosilient.com) # only CLIgen
+  * [Prosilient's PTAnalyzer](https://prosilient.com) # only CLIgen
 
 See also [Clicon project page](http://clicon.org).
 

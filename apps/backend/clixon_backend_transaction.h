@@ -55,7 +55,6 @@ typedef int (*downcall_cb)(clicon_handle h, uint16_t op, uint16_t len,
  * (defined in config_dbdep.c)
  * @see transaction_data_t  internal structure
  */
-typedef void *transaction_data;
 uint64_t transaction_id(transaction_data td);
 void   *transaction_arg(transaction_data td);
 cxobj  *transaction_src(transaction_data td);

@@ -187,15 +187,16 @@ b64_decode(const char *src,
  * @param[in]  r        Fastcgi request handle
  * @param[out] username Malloced username, or NULL.
  * @retval -1  Fatal error
- * @retval  0  OK
+ * @retval  0  Unauth
+ * @retval  1  Auth
  * For grideye, return "u" entry name if it has a valid "user" entry.
  */
 int
 plugin_credentials(clicon_handle h,     
-		   FCGX_Request *r,
-		   char        **username)
+		   void         *arg)
 {
     int     retval = -1;
+    FCGX_Request *r = (FCGX_Request *)arg;
     cxobj  *xt = NULL;
     cxobj  *x;
     char   *xbody;
@@ -208,19 +209,18 @@ plugin_credentials(clicon_handle h,
     int     ret;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    *username = NULL; /* unauthorized */
     /* Check if basic_auth set, if not return OK */
-    if (clicon_rpc_get_config(h, "running", "/", NULL, &xt) < 0)
+    if (clicon_rpc_get_config(h, "running", "/", &xt) < 0)
 	goto done;
     if ((x = xpath_first(xt, "basic_auth")) == NULL)
-	goto none;
+	goto ok;
     if ((xbody = xml_body(x)) == NULL)
-	goto none;
+	goto ok;
     if (strcmp(xbody, "true"))
-	goto none;
+	goto ok;
     /* At this point in the code we must use HTTP basic authentication */
     if ((auth = FCGX_GetParam("HTTP_AUTHORIZATION", r->envp)) == NULL)
-	goto done;
+	goto fail;
     if (strlen(auth) < strlen("Basic "))
 	goto fail;
     if (strncmp("Basic ", auth, strlen("Basic ")))
@@ -245,17 +245,15 @@ plugin_credentials(clicon_handle h,
     cprintf(cb, "auth[user=%s]", user);
     if ((x = xpath_first(xt, cbuf_get(cb))) == NULL)
 	goto fail;
-
     passwd2 = xml_find_body(x, "password");
     if (strcmp(passwd, passwd2))
 	goto fail;
-    if ((*username = strdup(user)) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
+    retval = 1;
+    if (clicon_username_set(h, user) < 0)
 	goto done;
-    }
- fail:
-    retval = 0;
- done:
+ ok:   /* authenticated */
+    retval = 1;
+ done: /* error */
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (user)
 	free(user);
@@ -264,24 +262,26 @@ plugin_credentials(clicon_handle h,
     if (xt)
         xml_free(xt);
     return retval;
- none: /* basic_auth is not enabled, harcode authenticated user "none" */
-    if ((*username = strdup("none")) == NULL){
-	clicon_err(OE_XML, errno, "strdup");
-	goto done;
-    }
-    goto fail;
+ fail:  /* unauthenticated */
+    retval = 0;
+    goto done;
 }
 
+clixon_plugin_api * clixon_plugin_init(clicon_handle h);
+
+static const struct clixon_plugin_api api = {
+    "example",
+    clixon_plugin_init,
+    NULL,
+    NULL,
+    plugin_credentials,
+};
 
 /*! Restconf plugin initialization
  */
-int
-plugin_init(clicon_handle h)
+clixon_plugin_api *
+clixon_plugin_init(clicon_handle h)
 {
-    int             retval = -1;
-
     clicon_debug(1, "%s restconf", __FUNCTION__);
-    retval = 0;
-    //  done:
-    return retval;
+    return (void*)&api;
 }

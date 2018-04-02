@@ -43,9 +43,11 @@
 #include <fcntl.h>
 #include <time.h>
 #include <signal.h>
+#include <libgen.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#include <libgen.h>
+#include <sys/param.h>
+
 
 /* cligen */
 #include <cligen/cligen.h>

@@ -92,7 +92,6 @@
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  dvec   Stream input daat
- * @param[in]  username Authenticated user
  */
 static int
 api_data(clicon_handle h,
@@ -101,8 +100,7 @@ api_data(clicon_handle h,
 	 cvec         *pcvec, 
 	 int           pi,
 	 cvec         *qvec, 
-	 char         *data,
-	 char         *username)
+	 char         *data)
 {
     int     retval = -1;
     char   *request_method;
@@ -127,17 +125,17 @@ api_data(clicon_handle h,
     if (strcmp(request_method, "OPTIONS")==0)
 	retval = api_data_options(h, r);
     else if (strcmp(request_method, "HEAD")==0)
-	retval = api_data_head(h, r, pcvec, pi, qvec, username, pretty, use_xml);
+	retval = api_data_head(h, r, pcvec, pi, qvec, pretty, use_xml);
     else if (strcmp(request_method, "GET")==0)
-	retval = api_data_get(h, r, pcvec, pi, qvec, username, pretty, use_xml);
+	retval = api_data_get(h, r, pcvec, pi, qvec, pretty, use_xml);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data, username, pretty, use_xml, parse_xml);
+	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data, pretty, use_xml, parse_xml);
     else if (strcmp(request_method, "PUT")==0)
-	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, username, pretty, use_xml, parse_xml);
+	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, pretty, use_xml, parse_xml);
     else if (strcmp(request_method, "PATCH")==0)
-	retval = api_data_patch(h, r, api_path, pcvec, pi, qvec, data, username);
+	retval = api_data_patch(h, r, api_path, pcvec, pi, qvec, data);
     else if (strcmp(request_method, "DELETE")==0)
-	retval = api_data_delete(h, r, api_path, pi, username, pretty, use_xml);
+	retval = api_data_delete(h, r, api_path, pi, pretty, use_xml);
     else
 	retval = notfound(r);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -152,7 +150,6 @@ api_data(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * @param[in]  username Authenticated user
  */
 static int
 api_operations(clicon_handle h,
@@ -161,8 +158,7 @@ api_operations(clicon_handle h,
 	       cvec         *pcvec, 
 	       int           pi,
 	       cvec         *qvec, 
-	       char         *data,
-	       char         *username)
+	       char         *data)
 {
     int     retval = -1;
     char   *request_method;
@@ -185,9 +181,9 @@ api_operations(clicon_handle h,
 	parse_xml++;
     
     if (strcmp(request_method, "GET")==0)
-	retval = api_operations_get(h, r, path, pcvec, pi, qvec, data, username, pretty, use_xml);
+	retval = api_operations_get(h, r, path, pcvec, pi, qvec, data, pretty, use_xml);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_operations_post(h, r, path, pcvec, pi, qvec, data, username,
+	retval = api_operations_post(h, r, path, pcvec, pi, qvec, data,
 				     pretty, use_xml, parse_xml);
     else
 	retval = notfound(r);
@@ -338,7 +334,7 @@ api_restconf(clicon_handle h,
     cvec  *pcvec = NULL; /* for rest api */
     cbuf  *cb = NULL;
     char  *data;
-    char  *username = NULL;
+    int    authenticated = 0;
 
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("REQUEST_URI", r->envp);
@@ -384,12 +380,14 @@ api_restconf(clicon_handle h,
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * See RFC 8040 section 2.5
      */
-    if (restconf_credentials(h, r, &username) < 0)
+    if ((authenticated = clixon_plugin_auth(h, r)) < 0)
 	goto done;
-    clicon_debug(1, "%s username:%s", __FUNCTION__, username);
-    clicon_debug(1, "%s credentials ok username:%s (should be non-NULL)",
-		 __FUNCTION__, username);
-    if (username == NULL){
+    /* If set but no user, we set a dummy user */
+    if (authenticated){
+	if (clicon_username_get(h) == NULL)
+	    clicon_username_set(h, "none");
+    }
+    else{
 	unauthorized(r);
 	goto ok;
     }
@@ -398,11 +396,11 @@ api_restconf(clicon_handle h,
 	    goto done;
     }
     else if (strcmp(method, "data") == 0){ /* restconf, skip /api/data */
-	if (api_data(h, r, path, pcvec, 2, qvec, data, username) < 0)
+	if (api_data(h, r, path, pcvec, 2, qvec, data) < 0)
 	    goto done;
     }
     else if (strcmp(method, "operations") == 0){ /* rpc */
-	if (api_operations(h, r, path, pcvec, 2, qvec, data, username) < 0)
+	if (api_operations(h, r, path, pcvec, 2, qvec, data) < 0)
 	    goto done;
     }
     else if (strcmp(method, "test") == 0)
@@ -423,8 +421,6 @@ api_restconf(clicon_handle h,
 	cvec_free(pcvec);
     if (cb)
 	cbuf_free(cb);
-    if (username)
-	free(username);
     return retval;
 }
 
@@ -500,6 +496,7 @@ main(int    argc,
     char         *path;
     clicon_handle h;
     char         *yangspec=NULL;
+    char         *dir;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_SYSLOG); 
@@ -556,8 +553,9 @@ main(int    argc,
 	clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", yangspec);
 
     /* Initialize plugins group */
-    if (restconf_plugin_load(h) < 0)
-	return -1;
+    if ((dir = clicon_restconf_dir(h)) != NULL)
+	if (clixon_plugins_load(h, clicon_restconf_dir(h)) < 0)
+	    return -1;
 
     /* Parse yang database spec file */
     if (yang_spec_main(h) == NULL)
@@ -605,7 +603,7 @@ main(int    argc,
     }
     retval = 0;
  done:
-    restconf_plugin_unload(h);
+    clixon_plugin_unload(h);
     restconf_terminate(h);
     return retval;
 }

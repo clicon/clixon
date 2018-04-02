@@ -61,10 +61,11 @@
 #include <errno.h>
 #include <ctype.h>
 #include <string.h>
-#include <arpa/inet.h>
-#include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <assert.h>
+#include <arpa/inet.h>
+#include <sys/param.h>
 #include <netinet/in.h>
 
 /* cligen */
@@ -79,9 +80,9 @@
 #include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_yang_type.h"
-#include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_xml.h"
+#include "clixon_plugin.h"
 #include "clixon_xsl.h"
 #include "clixon_log.h"
 #include "clixon_err.h"
@@ -832,7 +833,6 @@ yang2api_path_fmt(yang_stmt *ys,
 	cbuf_free(cb);
     return retval;
 }
-
 
 /*! Transform an xml key format and a vector of values to an XML key
  * Used for actual key, eg in clicon_rpc_change(), xmldb_put_xkey()

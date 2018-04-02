@@ -39,8 +39,7 @@ if [ $? -ne 0 ]; then
     err
 fi
 
-new "netconf tests"
-
+new "netconf get-config"
 expecteof "$clixon_netconf -qf $cfg" '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
 
 new "Add subtree eth/0/0 using none which should not change anything"

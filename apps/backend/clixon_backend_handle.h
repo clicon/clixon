@@ -92,8 +92,6 @@ int subscription_delete(clicon_handle h, char *stream,
 struct handle_subscription *subscription_each(clicon_handle h,
 				      struct handle_subscription *hprev);
 
-/* XXX backward compat */
-#define backend_netconf_register_callback(a,b,c,d) backend_rpc_cb_register(a,b,c,d)
 int backend_rpc_cb_register(clicon_handle h, backend_rpc_cb cb,	void *arg, 
 			    char *tag);      
 

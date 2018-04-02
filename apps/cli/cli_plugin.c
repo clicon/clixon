@@ -66,13 +66,11 @@
 #include "cli_plugin.h"
 #include "cli_handle.h"
 
-
 /*! Name of master plugin functions
  * More in clicon_plugin.h
  * @note not really used consider documenting or remove
  */
 #define PLUGIN_PROMPT_HOOK   "plugin_prompt_hook"
-#define PLUGIN_PARSE_HOOK    "plugin_parse_hook"
 #define PLUGIN_SUSP_HOOK     "plugin_susp_hook"
 
 /*
@@ -380,7 +378,6 @@ cli_plugin_load_dir(clicon_handle h,
     struct stat        st;
     int                retval = -1;
 
-
     /* Format master plugin path */
     if ((master_plugin = clicon_master_plugin(h)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "clicon_master_plugin option not set");
@@ -403,8 +400,6 @@ cli_plugin_load_dir(clicon_handle h,
 	/* Look up certain call-backs in master plugin */
 	stx->stx_prompt_hook = 
 	    dlsym(cp->cp_handle, PLUGIN_PROMPT_HOOK);
-	stx->stx_parse_hook =
-	    dlsym(cp->cp_handle, PLUGIN_PARSE_HOOK);
 	stx->stx_susp_hook =
 	    dlsym(cp->cp_handle, PLUGIN_SUSP_HOOK);
 	INSQ(cp, stx->stx_plugins);
@@ -679,15 +674,6 @@ clicon_parse(clicon_handle h,
 	    goto done;
 	case CG_NOMATCH: /* no match */
 	    smode = NULL;
-	    if (stx->stx_parse_hook) {
-		/* Try to find a match in upper  modes, a'la IOS. */
-		if ((modename = stx->stx_parse_hook(h, cmd, modename)) != NULL)  {
-		    if ((smode = syntax_mode_find(stx, modename, 0)) != NULL)
-			continue;
-		    else
-			cli_output(f, "Can't find syntax mode '%s'\n", modename);
-		}
-	    }
 	    /*	    clicon_err(OE_CFG, 0, "CLI syntax error: \"%s\": %s", 
 		    cmd, cli_nomatch(h));*/
 	    cli_output(f, "CLI syntax error: \"%s\": %s\n", 
@@ -745,41 +731,13 @@ clicon_cliread(clicon_handle h)
     return ret;
 }
 
-/*
- * cli_find_plugin
- * Find a plugin by name and return the dlsym handl
- * Used by libclicon code to find callback funcctions in plugins.
- */
-static void *
-cli_find_plugin(clicon_handle h, char *plugin)
-{
-    struct cli_plugin *p;
-    
-    p = plugin_find_cli(cli_syntax(h), plugin);
-    if (p)
-	return p->cp_handle;
-    
-    return NULL;
-}
-
-
 /*! Initialize plugin code (not the plugins themselves)
  */
 int
 cli_plugin_init(clicon_handle h)
 {
-    find_plugin_t *fp = cli_find_plugin;
-    clicon_hash_t *data = clicon_data(h);
-
-    /* Register CLICON_FIND_PLUGIN in data hash */
-    if (hash_add(data, "CLICON_FIND_PLUGIN", &fp, sizeof(fp)) == NULL) {
-	clicon_err(OE_UNIX, errno, "failed to register CLICON_FIND_PLUGIN");
-	return -1;
-    }
-	
     return 0;
 }
-
 
 /*
  *
@@ -815,7 +773,6 @@ cli_syntax_mode(clicon_handle h)
 	return NULL;
     return csm->csm_name;
 }
-
 
 /*
  * Callback from cli_set_prompt(). Set prompt format for syntax mode
@@ -880,7 +837,6 @@ prompt_fmt (char *prompt, size_t plen, char *fmt, ...)
 	  cprintf(cb, "%c", *s);
       s++;
   }
-  
 done:
   if (cb)
       fmt = cbuf_get(cb);
@@ -903,57 +859,5 @@ cli_prompt(char *fmt)
 	return CLI_DEFAULT_PROMPT;
     
     return prompt;
-}
-
-/*! Find a cli plugin based on name and resolve a function pointer in it.
- * Callback from clicon_dbvars_parse() 
- * Find a cli plugin based on name if given and use dlsym to resolve a 
- * function pointer in it.
- * Call the resolved function to get the cgv populated
- */
-int
-clicon_valcb(void *arg, cvec *vars, cg_var *cgv, char *fname, cg_var *funcarg)
-{
-    char *func;
-    char *plgnam = NULL;
-    void *handle;
-    struct cli_plugin *p;
-    cli_valcb_t *cb;
-    clicon_handle h = (clicon_handle)arg;
-
-    /* Make copy */
-    if ((fname = strdup(fname)) == NULL) {
-	clicon_err(OE_UNIX, errno, "strdup");
-	return -1;
-    }
-
-    /* Extract plugin name if any */
-    if ((func = strstr(fname, "::")) != NULL) {
-	*func = '\0';
-	func += 2;
-	plgnam = fname;
-    }
-    else
-	func = fname;
-    
-    /* If we have specified a plugin name, find the handle to be used
-     * with dlsym()
-     */
-    handle = NULL;
-    if (plgnam && (p = plugin_find_cli(cli_syntax(h), plgnam)))
-	handle = p->cp_handle;
-    
-    /* Look up function pointer */
-    if ((cb = dlsym(handle, func)) == NULL) {
-	clicon_err(OE_UNIX, errno, "unable to find %s()", func);
-	free(fname);
-	return -1;
-    }
-    free(fname);
-
-    if (cb(vars, cgv, funcarg) < 0)
-	return -1;
-
-    return 0;
 }
 

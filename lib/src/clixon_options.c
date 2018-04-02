@@ -64,9 +64,9 @@
 #include "clixon_handle.h"
 #include "clixon_log.h"
 #include "clixon_yang.h"
-#include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_xml.h"
+#include "clixon_plugin.h"
 #include "clixon_xsl.h"
 #include "clixon_xml_map.h"
 
@@ -712,6 +712,35 @@ clicon_xmldb_handle_set(clicon_handle h,
     if (hash_add(cdat, "xmldb_handle", &xh, sizeof(void*)) == NULL)
 	return -1;
     return 0;
+}
+
+
+/*! Get authorized user name
+ * @param[in]  h   Clicon handle
+ * @retval     xh  XMLDB storage handle. If not connected return NULL
+ */
+char *
+clicon_username_get(clicon_handle h)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    return (char*)hash_value(cdat, "username", NULL);
+}
+
+/*! Set authorized user name
+ * @param[in]  h   Clicon handle
+ * @param[in]  xh  XMLDB storage handle. If NULL reset it
+ * @note Just keep note of it, dont allocate it or so.
+ */
+int
+clicon_username_set(clicon_handle h, 
+		    void         *username)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    if (username == NULL)
+	return hash_del(cdat, "username");
+    return hash_add(cdat, "username", username, strlen(username)+1)==NULL?-1:0;
 }
 
 

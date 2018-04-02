@@ -241,7 +241,7 @@ module clixon-config {
 	    type string;
 	    default "master";
 	    description
-		"Name of master plugin (both frontend and backend). 
+		"Name of master plugin (cli, netconf, restconf and backend). 
                  Master plugin has special callbacks for frontends. 
 	         See clicon user manual for more info. (Obsolete?)";
 	}

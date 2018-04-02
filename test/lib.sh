@@ -11,7 +11,7 @@ clixon_cli=clixon_cli
 
 # For memcheck / performance
 #clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-# clixon_netconf="valgrind --tool=callgrind clixon_netconf 
+#clixon_netconf="valgrind --tool=callgrind clixon_netconf"
 clixon_netconf=clixon_netconf
 
 # How to run restconf stand-alone and using valgrind

@@ -227,7 +227,6 @@ api_return_err(clicon_handle h,
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  username Authenticated user
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  use_xml Set to 0 for JSON and 1 for XML
  * @param[in]  head   If 1 is HEAD, otherwise GET
@@ -254,7 +253,6 @@ api_data_get2(clicon_handle h,
 	      cvec         *pcvec,
 	      int           pi,
 	      cvec         *qvec,
-	      char         *username,
 	      int           pretty,
 	      int           use_xml,
 	      int           head)
@@ -284,7 +282,7 @@ api_data_get2(clicon_handle h,
     }
     path = cbuf_get(cbpath);
     clicon_debug(1, "%s path:%s", __FUNCTION__, path);
-    if (clicon_rpc_get(h, path, username, &xret) < 0){
+    if (clicon_rpc_get(h, path, &xret) < 0){
 	notfound(r);
 	goto ok;
     }
@@ -362,7 +360,6 @@ api_data_get2(clicon_handle h,
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  username Authenticated user
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  use_xml Set to 0 for JSON and 1 for XML
  *
@@ -377,11 +374,10 @@ api_data_head(clicon_handle h,
 	      cvec         *pcvec,
 	      int           pi,
 	      cvec         *qvec,
-	      char         *username,
 	      int           pretty,
 	      int           use_xml)
 {
-    return api_data_get2(h, r, pcvec, pi, qvec, username, pretty, use_xml, 1);
+    return api_data_get2(h, r, pcvec, pi, qvec, pretty, use_xml, 1);
 }
 
 /*! REST GET method
@@ -391,7 +387,6 @@ api_data_head(clicon_handle h,
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  username Authenticated user
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  use_xml Set to 0 for JSON and 1 for XML
  * @code
@@ -416,11 +411,10 @@ api_data_get(clicon_handle h,
              cvec         *pcvec,
              int           pi,
              cvec         *qvec,
-	     char         *username,
 	     int           pretty,
 	     int           use_xml)
 {
-    return api_data_get2(h, r, pcvec, pi, qvec, username, pretty, use_xml, 0);
+    return api_data_get2(h, r, pcvec, pi, qvec, pretty, use_xml, 0);
 }
 
 /*! Generic REST POST  method 
@@ -431,7 +425,6 @@ api_data_get(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * @param[in]  username Authenticated user
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
  * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
@@ -464,7 +457,6 @@ api_data_post(clicon_handle h,
 	      int           pi,
 	      cvec         *qvec, 
 	      char         *data,
-	      char         *username,
 	      int           pretty,
 	      int           use_xml,
     	      int           parse_xml)
@@ -484,6 +476,7 @@ api_data_post(clicon_handle h,
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL;
     cxobj     *xerr;
+    char      *username;
 	
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
 		 __FUNCTION__, 
@@ -501,7 +494,7 @@ api_data_post(clicon_handle h,
     xbot = xtop;
     /* For internal XML protocol: add username attribute for backend access control
      */
-    if (username){
+    if ((username = clicon_username_get(h)) != NULL){
 	if ((xu = xml_new("username", xtop, NULL)) == NULL)
 	    goto done;
 	xml_type_set(xu, CX_ATTR);
@@ -645,7 +638,6 @@ match_list_keys(yang_stmt *y,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * @param[in]  username Authenticated user
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
  * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
@@ -670,7 +662,6 @@ api_data_put(clicon_handle h,
 	     int           pi,
 	     cvec         *qvec, 
 	     char         *data,
-	     char         *username,
 	     int           pretty,
 	     int           use_xml,
 	     int           parse_xml)
@@ -692,6 +683,7 @@ api_data_put(clicon_handle h,
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL;
     cxobj     *xerr;
+    char      *username;
 
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
 		 __FUNCTION__, api_path0, data);
@@ -709,7 +701,7 @@ api_data_put(clicon_handle h,
     xbot = xtop;
     /* For internal XML protocol: add username attribute for backend access control
      */
-    if (username){
+    if ((username = clicon_username_get(h)) != NULL){
 	if ((xu = xml_new("username", xtop, NULL)) == NULL)
 	    goto done;
 	xml_type_set(xu, CX_ATTR);
@@ -824,7 +816,6 @@ api_data_put(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * @param[in]  username Authenticated user
  * Netconf:  <edit-config> (nc:operation="merge")      
  * See RFC8040 Sec 4.6
  */
@@ -835,8 +826,7 @@ api_data_patch(clicon_handle h,
 	       cvec         *pcvec, 
 	       int           pi,
 	       cvec         *qvec, 
-	       char         *data,
-	       char         *username)
+	       char         *data)
 {
     notimplemented(r);
     return 0;
@@ -847,7 +837,6 @@ api_data_patch(clicon_handle h,
  * @param[in]  r      Fastcgi request handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
  * @param[in]  pi     Offset, where path starts
- * @param[in]  username Authenticated user
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  use_xml Set to 0 for JSON and 1 for XML
  * See RFC 8040 Sec 4.7
@@ -860,7 +849,6 @@ api_data_delete(clicon_handle h,
 		FCGX_Request *r, 
 		char         *api_path,
 		int           pi,
-		char         *username,
 		int           pretty,
 		int           use_xml)
 {
@@ -877,6 +865,7 @@ api_data_delete(clicon_handle h,
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL;
     cxobj     *xerr;
+    char      *username;
 
     clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -891,7 +880,7 @@ api_data_delete(clicon_handle h,
     xbot = xtop;
     /* For internal XML protocol: add username attribute for backend access control
      */
-    if (username){
+    if ((username = clicon_username_get(h)) != NULL){
 	if ((xu = xml_new("username", xtop, NULL)) == NULL)
 	    goto done;
 	xml_type_set(xu, CX_ATTR);
@@ -955,7 +944,6 @@ api_data_delete(clicon_handle h,
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * @param[in]  username Authenticated user
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  use_xml Set to 0 for JSON and 1 for XML
  *
@@ -976,7 +964,6 @@ api_operations_get(clicon_handle h,
 		   int           pi,
 		   cvec         *qvec, 
 		   char         *data,
-		   char         *username,
 		   int           pretty,
 		   int           use_xml)
 {
@@ -1047,7 +1034,6 @@ api_operations_get(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * @param[in]  username Authenticated user
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
  * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
@@ -1063,7 +1049,6 @@ api_operations_post(clicon_handle h,
 		    int           pi,
 		    cvec         *qvec, 
 		    char         *data,
-		    char         *username,
 		    int           pretty,
 		    int           use_xml,
 		    int           parse_xml)
@@ -1085,7 +1070,8 @@ api_operations_post(clicon_handle h,
     cxobj     *xoutput;
     cxobj     *x;
     cxobj     *xa;
-	
+    char      *username;
+    
     clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, path);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -1112,7 +1098,7 @@ api_operations_post(clicon_handle h,
     xbot = xtop;
     /* For internal XML protocol: add username attribute for backend access control
      */
-    if (username){
+    if ((username = clicon_username_get(h)) != NULL){
 	if ((xa = xml_new("username", xtop, NULL)) == NULL)
 	    goto done;
 	xml_type_set(xa, CX_ATTR);

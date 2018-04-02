@@ -62,7 +62,7 @@ LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB)
 
 LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ -l:$(CLIXON_LIB)
 
-CPPFLAGS  	= @CPPFLAGS@
+CPPFLAGS  	= @CPPFLAGS@ -fPIC
 
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 

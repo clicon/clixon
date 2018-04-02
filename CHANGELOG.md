@@ -4,6 +4,32 @@
 
 
 ### Major changes:
+* Restructure and more generic plugin API (cli,backend,restconf,netconf)
+  * For preparation for authorization RFC8341
+  * Plugins add clixon_plugin_init() and api struct for function pointers, eg:
+```
+static const struct clixon_plugin_api api = {
+    "example",
+    clixon_plugin_init,
+    ...
+}
+clixon_plugin_api *clixon_plugin_init(clicon_handle h)
+{
+    return (void*)&api;
+}
+```
+  * Moved specific plugin functions from apps/ to generic functions in lib/
+    * New generic plugin load function: clixon_plugins_load()
+  * Removed client-local netconf plugins netconf_plugin_callbacks()
+    * This was code used before generic YANG rpc calls
+  * Added username to clixon handle:
+    * clicon_username_get() / clicon_username_set()
+  * Added authentication plugin callback
+  * Removed some obscure plugin code that seem not to be used (please report if needed!)
+    * CLI parse hook
+    * CLICON_FIND_PLUGIN
+    * clicon_valcb()
+
 * Added Clixon Restconf library
   * Builds and installs a new restconf library: libclixon_restconf.so and clixon_restconf.h
   * The restconf library can be included by a restconf plugin.
@@ -20,6 +46,7 @@
 
 ### Minor changes:
 
+* Removed username to rpc calls (added below)
 * README.md extended with new yang, netconf, restconf, datastore, and auth sections.
 * The key-value datastore is no longer supported. Use the default text datastore.
 * Add username to rpc calls to prepare for authorization for backend:
@@ -92,7 +119,7 @@ enables saved files to be used as datastore without any editing. Thanks Matt.
   * New CLICON_XML_SORT configuration option. Default is true. Disable by setting to false.
   * Added yang ordered-by user. The default (ordered-by system) will now sort lists and leaf-lists alphabetically to increase search performance. Note that this may change outputs.
   * If you need legacy order, either set CLICON_XML_SORT to false, or set that list to "ordered-by user".
-  * This replaces XML hash experimental code, ie xml_child_hash variables and all xml_hash_ functions have been removed.
+  * This replaces XML hash experimental code, ie xml_child_hash variables and all xmlv_hash_ functions have been removed.
   * Implementation detail: Cached keys are stored in in yang Y_LIST nodes as cligen vector, see ys_populate_list()  
 
 * Datastore cache introduced: cache XML tree in memory for faster get access.

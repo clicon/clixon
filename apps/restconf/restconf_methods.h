@@ -46,31 +46,31 @@
  */
 int api_data_options(clicon_handle h, FCGX_Request *r);
 int api_data_head(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
-		  cvec *qvec, char *username, int pretty, int use_xml);
+		  cvec *qvec, int pretty, int use_xml);
 int api_data_get(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
-		 cvec *qvec, char *username, int pretty, int use_xml);
+		 cvec *qvec, int pretty, int use_xml);
 int api_data_post(clicon_handle h, FCGX_Request *r, char *api_path,
 		  cvec *pcvec, int pi, 
-		  cvec *qvec, char *data, char *username,
+		  cvec *qvec, char *data,
 		  int pretty, int use_xml, int parse_xml);
 int api_data_put(clicon_handle h, FCGX_Request *r, char *api_path, 
 		 cvec *pcvec, int pi, 
-		 cvec *qvec, char *data, char *username,
+		 cvec *qvec, char *data,
 		 int pretty, int use_xml, int parse_xml);
 int api_data_patch(clicon_handle h, FCGX_Request *r, char *api_path, 
 		   cvec *pcvec, int pi, 
-		   cvec *qvec, char *data, char *username);
+		   cvec *qvec, char *data);
 int api_data_delete(clicon_handle h, FCGX_Request *r, char *api_path, int pi,
-		    char *username, int pretty, int use_xml);
+		    int pretty, int use_xml);
 
 int api_operations_get(clicon_handle h, FCGX_Request *r, 
 		       char *path,
-		       cvec *pcvec, int pi, cvec *qvec, char *data, char *username,
+		       cvec *pcvec, int pi, cvec *qvec, char *data,
 		       int pretty, int use_xml);
 
 int api_operations_post(clicon_handle h, FCGX_Request *r, 
 			char *path,
 			cvec *pcvec, int pi, cvec *qvec, char *data,
-			char *username, int pretty, int use_xml, int parse_xml);
+			int pretty, int use_xml, int parse_xml);
 
 #endif /* _RESTCONF_METHODS_H_ */

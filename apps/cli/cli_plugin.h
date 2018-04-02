@@ -77,10 +77,9 @@ typedef struct  {
     int stx_nplugins;                                 /* Number of plugins */
     struct cli_plugin *stx_plugins;                     /* List of plugins */
     int stx_nmodes;                              /* Number of syntax modes */
-    cli_syntaxmode_t *stx_active_mode; /* Current active syntax mode */
-    cli_syntaxmode_t *stx_modes;             /* List of syntax modes */
+    cli_syntaxmode_t *stx_active_mode;       /* Current active syntax mode */
+    cli_syntaxmode_t *stx_modes;                   /* List of syntax modes */
     cli_prompthook_t *stx_prompt_hook;                      /* Prompt hook */
-    cli_parsehook_t *stx_parse_hook;                    /* Parse mode hook */
     cli_susphook_t *stx_susp_hook;           /* Ctrl-Z hook from getline() */
 } cli_syntax_t;
 

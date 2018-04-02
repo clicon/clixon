@@ -46,18 +46,7 @@
 #include <clixon/clixon.h>
 #include <clixon/clixon_netconf.h>
 
-
-/*
- * Plugin initialization
- */
-int
-plugin_init(clicon_handle h)
-{
-    return 0;
-}
-
-/*
- * Plugin start
+/*! Plugin start
  * Called once everything has been initialized, right before
  * the main event loop is entered.
  */
@@ -71,5 +60,23 @@ int
 plugin_exit(clicon_handle h)
 {
     return 0;
+}
+
+clixon_plugin_api * clixon_plugin_init(clicon_handle h);
+
+static const struct clixon_plugin_api api = {
+    "example",
+    clixon_plugin_init,
+    plugin_start,
+    plugin_exit,
+    NULL
+};
+
+/*! Netconf plugin initialization
+ */
+clixon_plugin_api *
+clixon_plugin_init(clicon_handle h)
+{
+    return (void*)&api;
 }
 

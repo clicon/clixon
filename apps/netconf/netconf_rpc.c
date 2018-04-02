@@ -65,7 +65,6 @@
 #include "clixon_netconf.h"
 #include "netconf_lib.h"
 #include "netconf_filter.h"
-#include "netconf_plugin.h"
 #include "netconf_rpc.h"
 
 /*
@@ -1018,14 +1017,8 @@ netconf_rpc_dispatch(clicon_handle h,
 	}
 	/* Others */
 	else {
-	    /* Look for local (client-side) netconf plugins. This feature may no 
-	     * longer be necessary as generic RPC:s should be handled by backend.
-	     */
-	    if ((retval = netconf_plugin_callbacks(h, xe, xret)) < 0)
+	    if ((retval = netconf_application_rpc(h, xe, xret)) < 0)
 		goto done;
-	    if (retval == 0)
-		if ((retval = netconf_application_rpc(h, xe, xret)) < 0)
-		    goto done;
 	    if (retval == 0){ /* not handled by callback */
 		xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 				 "<error-tag>operation-failed</error-tag>"

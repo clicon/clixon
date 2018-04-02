@@ -74,7 +74,7 @@ MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
 MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
 
-LIBSRC     = netconf_hello.c netconf_rpc.c netconf_filter.c netconf_lib.c netconf_plugin.c
+LIBSRC     = netconf_hello.c netconf_rpc.c netconf_filter.c netconf_lib.c 
 LIBOBJS    = $(LIBSRC:.c=.o)
 
 all:	 $(MYLIB) $(APPL)

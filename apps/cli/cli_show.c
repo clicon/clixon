@@ -156,7 +156,7 @@ expand_dbvar(void   *h,
 	goto done;
 
     /* XXX read whole configuration, why not send xpath? */
-    if (clicon_rpc_get_config(h, dbstr, "/", NULL, &xt) < 0)
+    if (clicon_rpc_get_config(h, dbstr, "/", &xt) < 0)
     	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
@@ -487,7 +487,7 @@ cli_show_config(clicon_handle h,
     else
 	cprintf(cbxpath, "%s", xpath);	
     /* Get configuration from database */
-    if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), NULL, &xt) < 0)
+    if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), &xt) < 0)
 	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
@@ -571,7 +571,7 @@ show_conf_xpath(clicon_handle h,
     }
     cv = cvec_find_var(cvv, "xpath");
     xpath = cv_string_get(cv);
-    if (clicon_rpc_get_config(h, str, xpath, NULL, &xt) < 0)
+    if (clicon_rpc_get_config(h, str, xpath, &xt) < 0)
     	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);

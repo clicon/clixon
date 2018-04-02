@@ -179,4 +179,9 @@ int clicon_xmldb_api_set(clicon_handle h, void *xa_api);
 void *clicon_xmldb_handle_get(clicon_handle h);
 int clicon_xmldb_handle_set(clicon_handle h, void *xh);
 
+/**/
+/* Set and get authorized user name */
+char *clicon_username_get(clicon_handle h);
+int clicon_username_set(clicon_handle h, void *username);
+
 #endif  /* _CLIXON_OPTIONS_H_ */

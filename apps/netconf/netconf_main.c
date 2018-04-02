@@ -67,7 +67,6 @@
 #include "clixon_netconf.h"
 #include "netconf_lib.h"
 #include "netconf_hello.h"
-#include "netconf_plugin.h"
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
@@ -307,6 +306,7 @@ main(int    argc,
     int              quiet = 0;
     clicon_handle    h;
     int              use_syslog;
+    char            *dir;
 
     /* Defaults */
     use_syslog = 0;
@@ -383,13 +383,14 @@ main(int    argc,
 	goto done;
 
     /* Initialize plugins group */
-    if (netconf_plugin_load(h) < 0)
-	goto done;
+    if ((dir = clicon_netconf_dir(h)) != NULL)
+	if (clixon_plugins_load(h, dir) < 0)
+	    goto done;
 
     /* Call start function is all plugins before we go interactive */
     tmp = *(argv-1);
     *(argv-1) = argv0;
-    netconf_plugin_start(h, argc+1, argv-1);
+    clixon_plugin_start(h, argc+1, argv-1);
     *(argv-1) = tmp;
 
     if (!quiet)
@@ -401,7 +402,7 @@ main(int    argc,
     if (event_loop() < 0)
 	goto done;
   done:
-    netconf_plugin_unload(h);
+    clixon_plugin_unload(h);
     netconf_terminate(h);
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clicon_log(LOG_NOTICE, "%s: %u Terminated\n", __PROGRAM__, getpid());

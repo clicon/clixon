@@ -47,6 +47,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
@@ -60,9 +61,9 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
-#include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_xml.h"
+#include "clixon_plugin.h"
 #include "clixon_xsl.h"
 #include "clixon_proto.h"
 #include "clixon_err.h"
@@ -236,14 +237,13 @@ clicon_rpc_generate_error(char  *format,
  * @param[in]  h        CLICON handle
  * @param[in]  db       Name of database
  * @param[in]  xpath    XPath (or "")
- * @param[in]  username Authenticated user (extra attribute)
  * @param[out] xt       XML tree. Free with xml_free. 
  *                      Either <config> or <rpc-error>. 
  * @retval    0         OK
  * @retval   -1         Error, fatal or xml
  * @code
  *    cxobj *xt = NULL;
- *    if (clicon_rpc_get_config(h, "running", "/", username, &xt) < 0)
+ *    if (clicon_rpc_get_config(h, "running", "/", &xt) < 0)
  *       err;
  *   if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
  *	clicon_rpc_generate_error("", xerr);
@@ -258,7 +258,6 @@ int
 clicon_rpc_get_config(clicon_handle       h, 
 		      char               *db, 
 		      char               *xpath,
-		      char               *username,
 		      cxobj             **xt)
 {
     int                retval = -1;
@@ -266,11 +265,12 @@ clicon_rpc_get_config(clicon_handle       h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xd;
-
+    char              *username;
+    
     if ((cb = cbuf_new()) == NULL)
 	goto done;
     cprintf(cb, "<rpc");
-    if (username)
+    if ((username = clicon_username_get(h)) != NULL)
 	cprintf(cb, " username=\"%s\"", username);
     cprintf(cb, "><get-config><source><%s/></source>", db);
     if (xpath && strlen(xpath))
@@ -498,7 +498,6 @@ clicon_rpc_unlock(clicon_handle h,
 /*! Get database configuration and state data
  * @param[in]  h        CLICON handle
  * @param[in]  xpath    XPath (or "")
- * @param[in]  username Authenticated user (extra attribute)
  * @param[out] xt       XML tree. Free with xml_free. 
  *                      Either <config> or <rpc-error>. 
  * @retval    0         OK
@@ -519,7 +518,6 @@ clicon_rpc_unlock(clicon_handle h,
 int
 clicon_rpc_get(clicon_handle       h, 
 	       char               *xpath,
-	       char               *username,
 	       cxobj             **xt)
 {
     int                retval = -1;
@@ -527,11 +525,12 @@ clicon_rpc_get(clicon_handle       h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xd;
+    char              *username;
 
     if ((cb = cbuf_new()) == NULL)
 	goto done;
     cprintf(cb, "<rpc");
-    if (username)
+    if ((username = clicon_username_get(h)) != NULL)
 	cprintf(cb, " username=\"%s\"", username);
     cprintf(cb, "><get>");
     if (xpath && strlen(xpath))
