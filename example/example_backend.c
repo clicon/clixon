@@ -77,6 +77,7 @@ transaction_commit(clicon_handle    h,
     int     i;
     size_t  len;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     /* Get all added i/fs */
     if (xpath_vec_flag(target, "//interface", XML_FLAG_ADD, &vec, &len) < 0)
 	return -1;
@@ -191,39 +192,6 @@ plugin_statedata(clicon_handle h,
     return retval;
 }
 
-/*! Plugin initialization. Create rpc callbacks
- * plugin_init is called as soon as the plugin has been loaded and is 
- * assumed initialize the plugin's internal state if any as well as register
- * any callbacks, configuration dependencies.
- */
-int
-plugin_init(clicon_handle h)
-{
-    int retval = -1;
-
-    if (notification_timer_setup(h) < 0)
-	goto done;
-    /* Register callback for routing rpc calls */
-    if (backend_rpc_cb_register(h, fib_route, 
-				NULL, 
-				"fib-route"/* Xml tag when callback is made */
-				) < 0)
-	goto done;
-    if (backend_rpc_cb_register(h, route_count, 
-				NULL, 
-				"route-count"/* Xml tag when callback is made */
-				) < 0)
-	goto done;
-    if (backend_rpc_cb_register(h, empty, 
-				NULL, 
-				"empty"/* Xml tag when callback is made */
-				) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Plugin state reset. Add xml or set state in backend machine.
  * Called in each backend plugin. plugin_reset is called after all plugins
  * have been initialized. This give the application a chance to reset
@@ -279,3 +247,54 @@ plugin_start(clicon_handle h,
 {
     return 0;
 }
+
+clixon_plugin_api *clixon_plugin_init(clicon_handle h);
+
+static clixon_plugin_api api = {
+    "example",          /* name */
+    clixon_plugin_init, /* init */
+    plugin_start,       /* start */
+    NULL,               /* exit */
+    NULL,               /* auth */
+    plugin_reset,       /* reset */
+    plugin_statedata,   /* statedata */
+    NULL,               /* trans begin */
+    transaction_validate,/* trans validate */
+    NULL,               /* trans complete */
+    transaction_commit, /* trans commit */
+    NULL,               /* trans end */
+    NULL                /* trans abort */
+};
+
+/*! Backend plugin initialization
+ * @param[in]  h    Clixon handle
+ * @retval     NULL Error with clicon_err set
+ * @retval     api  Pointer to API struct
+ */
+clixon_plugin_api *
+clixon_plugin_init(clicon_handle h)
+{
+    clicon_debug(1, "%s backend", __FUNCTION__);
+    if (notification_timer_setup(h) < 0)
+	goto done;
+    /* Register callback for routing rpc calls */
+    if (backend_rpc_cb_register(h, fib_route, 
+				NULL, 
+				"fib-route"/* Xml tag when callback is made */
+				) < 0)
+	goto done;
+    if (backend_rpc_cb_register(h, route_count, 
+				NULL, 
+				"route-count"/* Xml tag when callback is made */
+				) < 0)
+	goto done;
+    if (backend_rpc_cb_register(h, empty, 
+				NULL, 
+				"empty"/* Xml tag when callback is made */
+				) < 0)
+	goto done;
+    return &api;
+ done:
+    return NULL;
+}
+

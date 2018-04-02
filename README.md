@@ -83,7 +83,7 @@ Extending
 =========
 Clixon provides a core system and can be used as-is using available
 Yang specifications.  However, an application very quickly needs to
-specialize funxtions.  Clixon is extended by (most commonly) writing
+specialize functions.  Clixon is extended by (most commonly) writing
 plugins for cli and backend. Extensions for netconf and restconf
 are also available.
 

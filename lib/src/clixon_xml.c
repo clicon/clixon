@@ -433,7 +433,7 @@ xml_child_i_set(cxobj *xt,
 
 /*! Iterator over xml children objects
  *
- * NOTE: Never manipulate the child-list during operation or using the
+ * @note Never manipulate the child-list during operation or using the
  * same object recursively, the function uses an internal field to remember the
  * index used. It works as long as the same object is not iterated concurrently. 
  *

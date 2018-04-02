@@ -86,7 +86,7 @@ backend_terminate(clicon_handle h)
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
-    plugin_finish(h);
+    clixon_plugin_exit(h);
     /* Delete all backend plugin RPC callbacks */
     backend_rpc_cb_delete_all(); 
     if (pidfile)
@@ -254,7 +254,7 @@ plugin_start_useroptions(clicon_handle h,
 
     tmp = *(argv-1);
     *(argv-1) = argv0;
-    if (plugin_start_argv(h, argc+1, argv-1) < 0) 
+    if (clixon_plugin_start(h, argc+1, argv-1) < 0) 
 	return -1;
     *(argv-1) = tmp;
     return 0;
@@ -370,7 +370,7 @@ startup_mode_running(clicon_handle h,
     if (db_reset(h, "tmp") < 0)
 	goto done;
     /* Application may define extra xml in its reset function*/
-    if (plugin_reset_state(h, "tmp") < 0)   
+    if (clixon_plugin_reset(h, "tmp") < 0)   
 	goto done;
     /* Get application extra xml from file */
     if (load_extraxml(h, extraxml_file, "tmp") < 0)   
@@ -443,7 +443,7 @@ startup_mode_startup(clicon_handle h,
     if (db_reset(h, "tmp") < 0)
 	goto done;
     /* Application may define extra xml in its reset function*/
-    if (plugin_reset_state(h, "tmp") < 0)  
+    if (clixon_plugin_reset(h, "tmp") < 0)  
 	goto done;
     /* Get application extra xml from file */
     if (load_extraxml(h, extraxml_file, "tmp") < 0)   

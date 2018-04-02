@@ -73,7 +73,6 @@ typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
 
 /*! Called by restconf to check credentials and return username
  */
-#define PLUGIN_CREDENTIALS      "plugin_credentials"
 
 /* Plugin authorization. Set username option (or not)
  * @param[in]  Clicon handle
@@ -98,21 +97,12 @@ struct clixon_plugin_api;
 typedef struct clixon_plugin_api* (plginit2_t)(clicon_handle);    /* Clixon plugin Init */
 
 struct clixon_plugin_api{
-    char              ca_name[PATH_MAX]; /* Name of plugin */
+    char              ca_name[PATH_MAX]; /* Name of plugin (given by plugin) */
     plginit2_t       *ca_init;           /* Clixon plugin Init (implicit) */
     plgstart_t       *ca_start;          /* Plugin start */
     plgexit_t        *ca_exit;	         /* Plugin exit */
     plgauth_t        *ca_auth;           /* Auth credentials */
-};
-
-struct clixon_backend_api{
-    char              ca_name[PATH_MAX]; /* Name of plugin */
-    plginit2_t       *ca_init;           /* Clixon plugin Init (implicit) */
-    plgstart_t       *ca_start;          /* Plugin start */
-    plgexit_t        *ca_exit;	         /* Plugin exit */
-    plgauth_t        *ca_auth;           /* Auth credentials */
-    /*--Above here common fields with clixon_netconf_api, clixon_restconf_api,
-     * etc     ----------*/
+    /*--Above here common fields w clixon_backend_api  ----------*/
     plgreset_t       *ca_reset;          /* Reset system status (backend only) */
 
     plgstatedata_t   *ca_statedata;      /* Get state data from plugin (backend only) */
@@ -125,7 +115,6 @@ struct clixon_backend_api{
 };
 typedef struct clixon_plugin_api clixon_plugin_api;
 
-#define CLIXON_PLUGIN_INIT     "clixon_plugin_init" /* Nextgen */
 /*! Called when plugin loaded. Only mandadory callback. All others optional 
  * @see plginit_t
  */
@@ -133,23 +122,42 @@ typedef struct clixon_plugin_api clixon_plugin_api;
 /* Internal plugin structure with dlopen() handle and plugin_api
  */
 struct clixon_plugin{
+    char                     cp_name[PATH_MAX]; /* Plugin filename. Note api ca_name is given by plugin itself */
     plghndl_t                cp_handle;  /* Handle to plugin using dlopen(3) */
     struct clixon_plugin_api cp_api;
 };
 typedef struct clixon_plugin clixon_plugin;
 
+/* 
+ * Pseudo-Prototypes 
+ * User-defineed plugins, not in library code 
+ */
+#define CLIXON_PLUGIN_INIT     "clixon_plugin_init" /* Nextgen */
+
+/*! Plugin initialization
+ * @param[in]  h    Clixon handle
+ * @retval     NULL Error with clicon_err set
+ * @retval     api  Pointer to API struct
+ */
+clixon_plugin_api *clixon_plugin_init(clicon_handle h);
+
 /*
  * Prototypes
  */
-int clixon_plugins_load(clicon_handle h, char *dir);
+clixon_plugin *plugin_each(clixon_plugin *cpprev);
+clixon_plugin *plugin_each_revert(clixon_plugin *cpprev, int nr);
 
+int clixon_plugins_load(clicon_handle h, char *function, char *dir);
+
+/* obsolete */
 plghndl_t plugin_load (clicon_handle h, char *file, int dlflags);
 
+/* obsolete */
 int plugin_unload(clicon_handle h, plghndl_t *handle);
 
-int clixon_plugin_unload(clicon_handle h);
-
 int clixon_plugin_start(clicon_handle h, int argc, char **argv);
+
+int clixon_plugin_exit(clicon_handle h);
 
 int clixon_plugin_auth(clicon_handle h, void *arg);
 

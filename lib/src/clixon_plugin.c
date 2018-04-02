@@ -64,9 +64,83 @@
 static clixon_plugin *_clixon_plugins = NULL;  /* List of plugins (of client) */
 static int            _clixon_nplugins = 0;  /* Number of plugins */
 
+/*! Iterator over clixon plugins
+ *
+ * @note Never manipulate the plugin during operation or using the
+ * same object recursively
+ *
+ * @param[in] plugin   previous plugin, or NULL on init
+ * @code
+ *   clicon_plugin *cp = NULL;
+ *   while ((cp = plugin_each(cp)) != NULL) {
+ *     ...
+ *   }
+ * @endcode
+ * @note Not optimized, alwasy iterates from the start of the list
+ */
+clixon_plugin *
+plugin_each(clixon_plugin *cpprev)
+{
+    int            i;
+    clixon_plugin *cp;
+    clixon_plugin *cpnext = NULL; 
+
+    if (cpprev == NULL)
+	cpnext = _clixon_plugins;
+    else{
+	for (i = 0; i < _clixon_nplugins; i++) {
+	    cp = &_clixon_plugins[i];
+	    if (cp == cpprev)
+		break;
+	    cp = NULL;
+	}
+	if (cp && i < _clixon_nplugins-1)
+	    cpnext = &_clixon_plugins[i+1];
+    }
+    return cpnext;
+}
+
+/*! Reverse iterator over clixon plugins, iterater from nr to 0
+ *
+ * @note Never manipulate the plugin during operation or using the
+ * same object recursively
+ *
+ * @param[in] plugin   previous plugin, or NULL on init
+ * @code
+ *   clicon_plugin *cp = NULL;
+ *   while ((cp = plugin_each_revert(cp, nr)) != NULL) {
+ *     ...
+ *   }
+ * @endcode
+ * @note Not optimized, alwasy iterates from the start of the list
+ */
+clixon_plugin *
+plugin_each_revert(clixon_plugin *cpprev,
+		   int            nr)
+{
+    int            i;
+    clixon_plugin *cp;
+    clixon_plugin *cpnext = NULL; 
+
+    if (cpprev == NULL)
+	cpnext = &_clixon_plugins[nr-1];
+    else{
+	for (i = nr-1; i >= 0; i--) {
+	    cp = &_clixon_plugins[i];
+	    if (cp == cpprev)
+		break;
+	    cp = NULL;
+	}
+	if (cp && i > 0)
+	    cpnext = &_clixon_plugins[i-1];
+    }
+    return cpnext;
+}
+
 /*! Load a dynamic plugin object and call its init-function
  * @param[in]  h       Clicon handle
  * @param[in]  file    Which plugin to load
+ * @param[in]  function Which function symbol to load and call
  * @param[in]  dlflags See man(3) dlopen
  * @retval     cp      Clixon plugin structure
  * @retval     NULL    Error
@@ -74,7 +148,8 @@ static int            _clixon_nplugins = 0;  /* Number of plugins */
  */
 static clixon_plugin *
 plugin_load_one(clicon_handle   h, 
-		char           *file, 
+		char           *file,
+		char           *function,
 		int             dlflags)
 {
     char          *error;
@@ -82,16 +157,17 @@ plugin_load_one(clicon_handle   h,
     plginit2_t    *initfn;
     clixon_plugin_api *api = NULL;
     clixon_plugin *cp = NULL;
+    char          *name;
 
     clicon_debug(1, "%s", __FUNCTION__);
     dlerror();    /* Clear any existing error */
-    if ((handle = dlopen (file, dlflags)) == NULL) {
+    if ((handle = dlopen(file, dlflags)) == NULL) {
         error = (char*)dlerror();
 	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
 	goto done;
     }
-    /* call plugin_init() if defined */
-    if ((initfn = dlsym(handle, CLIXON_PLUGIN_INIT)) == NULL){
+    /* call plugin_init() if defined, eg CLIXON_PLUGIN_INIT or CLIXON_BACKEND_INIT */
+    if ((initfn = dlsym(handle, function)) == NULL){
 	clicon_err(OE_PLUGIN, errno, "Failed to find %s when loading clixon plugin %s", CLIXON_PLUGIN_INIT, file);
 	goto err;
     }
@@ -106,11 +182,15 @@ plugin_load_one(clicon_handle   h,
 		       file);
 	goto err;
     }
-    if ((cp = (clixon_plugin *)malloc(sizeof(*cp))) == NULL){
+    /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
+    if ((cp = (clixon_plugin *)malloc(sizeof(struct clixon_plugin))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
     cp->cp_handle = handle;
+    name = strrchr(file, '/') ? strrchr(file, '/')+1 : file;
+    snprintf(cp->cp_name, sizeof(cp->cp_name), "%*s",
+	     (int)strlen(name)-2, name);
     cp->cp_api = *api;
     clicon_debug(1, "%s", __FUNCTION__);
  done:
@@ -123,12 +203,14 @@ plugin_load_one(clicon_handle   h,
 
 /*! Load a set of plugin objects from a directory and and call their init-function
  * @param[in]  h     Clicon handle
+ * @param[in]  function Which function symbol to load and call (eg CLIXON_PLUGIN_INIT)
  * @param[in]  dir   Directory. .so files in this dir will be loaded.
  * @retval     0     OK
  * @retval     -1    Error
  */
 int
 clixon_plugins_load(clicon_handle h,
+    		    char         *function,
 		    char         *dir)
 {
     int            retval = -1;
@@ -147,7 +229,7 @@ clixon_plugins_load(clicon_handle h,
 	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
 	clicon_debug(1, "DEBUG: Loading plugin '%.*s' ...", 
 		     (int)strlen(filename), filename);
-	if ((cp = plugin_load_one(h, filename, RTLD_NOW)) == NULL)
+	if ((cp = plugin_load_one(h, filename, function, RTLD_NOW)) == NULL)
 	    goto done;
 	_clixon_nplugins++;
 	if ((_clixon_plugins = realloc(_clixon_plugins, _clixon_nplugins*sizeof(clixon_plugin))) == NULL) {
@@ -169,7 +251,7 @@ done:
  * @param[in]  h       Clicon handle
  * @param[in]  file    Which plugin to load
  * @param[in]  dlflags See man(3) dlopen
- * @see plugin_load_one for netxgen, this is soon OBSOLETE
+ * @note OBSOLETE
  */
 plghndl_t 
 plugin_load(clicon_handle h, 
@@ -211,10 +293,10 @@ plugin_load(clicon_handle h,
     return NULL;
 }
 
-
 /*! Unload a plugin
  * @param[in]  h       Clicon handle
  * @param[in]  handle   Clicon handle
+ * @note OBSOLETE
  */
 int
 plugin_unload(clicon_handle h, 
@@ -238,27 +320,6 @@ plugin_unload(clicon_handle h,
     return retval;
 }
 
-/*! Unload all plugins 
- * @param[in]  h       Clicon handle
- */
-int
-clixon_plugin_unload(clicon_handle h)
-{
-    clixon_plugin *cp;
-    int            i;
-
-    for (i = 0; i < _clixon_nplugins; i++) {
-	cp = &_clixon_plugins[i];
-	plugin_unload(h, cp->cp_handle);
-    }
-    if (_clixon_plugins){
-	free(_clixon_plugins);
-	_clixon_plugins = NULL;
-    }
-    _clixon_nplugins = 0;
-    return 0;
-}
-
 /*! Call plugin_start in all plugins
  * @param[in]  h       Clicon handle
  */
@@ -275,6 +336,7 @@ clixon_plugin_start(clicon_handle h,
 	cp = &_clixon_plugins[i];
 	if ((startfn = cp->cp_api.ca_start) == NULL)
 	    continue;
+	//	optind = 0;
 	if (startfn(h, argc, argv) < 0) {
 	    clicon_debug(1, "plugin_start() failed\n");
 	    return -1;
@@ -282,6 +344,39 @@ clixon_plugin_start(clicon_handle h,
     }
     return 0;
 }
+
+/*! Unload all plugins: call exit function and close shared handle
+ * @param[in]  h       Clicon handle
+ */
+int
+clixon_plugin_exit(clicon_handle h)
+{
+    clixon_plugin *cp;
+    plgexit_t     *exitfn;
+    int            i;
+    char          *error;
+    
+    for (i = 0; i < _clixon_nplugins; i++) {
+	cp = &_clixon_plugins[i];
+	if ((exitfn = cp->cp_api.ca_exit) == NULL)
+	    continue;
+	if (exitfn(h) < 0) {
+	    clicon_debug(1, "plugin_exit() failed\n");
+	    return -1;
+	}
+	if (dlclose(cp->cp_handle) != 0) {
+	    error = (char*)dlerror();
+	    clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
+	}
+    }
+    if (_clixon_plugins){
+	free(_clixon_plugins);
+	_clixon_plugins = NULL;
+    }
+    _clixon_nplugins = 0;
+    return 0;
+}
+
 
 /*! Run the restconf user-defined credentials callback if present
  * Find first authentication callback and call that, then return.

@@ -269,19 +269,22 @@ plugin_credentials(clicon_handle h,
 
 clixon_plugin_api * clixon_plugin_init(clicon_handle h);
 
-static const struct clixon_plugin_api api = {
-    "example",
-    clixon_plugin_init,
-    NULL,
-    NULL,
-    plugin_credentials,
+static clixon_plugin_api api = {
+    "example",           /* name */
+    clixon_plugin_init,  /* init */
+    NULL,                /* start */
+    NULL,                /* exit */
+    plugin_credentials   /* auth */
 };
 
 /*! Restconf plugin initialization
+ * @param[in]  h    Clixon handle
+ * @retval     NULL Error with clicon_err set
+ * @retval     api  Pointer to API struct
  */
 clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
     clicon_debug(1, "%s restconf", __FUNCTION__);
-    return (void*)&api;
+    return &api;
 }

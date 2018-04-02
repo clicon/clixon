@@ -289,7 +289,7 @@ from_client_get(clicon_handle h,
     /* Get state data from plugins as defined by plugin_statedata(), if any */
     assert(xret);
     clicon_err_reset();
-    if ((ret = backend_statedata_call(h, selector, xret)) < 0)
+    if ((ret = clixon_plugin_statedata(h, selector, xret)) < 0)
 	goto done;
     if (ret == 0){ /* OK */
 	cprintf(cbret, "<rpc-reply>");

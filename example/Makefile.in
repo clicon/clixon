@@ -45,11 +45,12 @@ CFLAGS  	= @CFLAGS@ -rdynamic -fPIC
 INCLUDES 	= -I$(includedir) @INCLUDES@ 
 
 BE_PLUGIN       = $(APPNAME)_backend.so
+BE2_PLUGIN      = $(APPNAME)_backend_secondary.so
 CLI_PLUGIN      = $(APPNAME)_cli.so
 NETCONF_PLUGIN  = $(APPNAME)_netconf.so
 RESTCONF_PLUGIN = $(APPNAME)_restconf.so
 
-PLUGINS = $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN)
+PLUGINS = $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN)
 
 all:	$(PLUGINS)
 
@@ -74,6 +75,12 @@ BE_OBJ   = $(BE_SRC:%.c=%.o)
 $(BE_PLUGIN): $(BE_OBJ)
 	$(CC) -Wall -shared -o $@ -lc $<
 
+# Secondary backend plugin
+BE2_SRC  = $(APPNAME)_backend_secondary.c
+BE2_OBJ  = $(BE2_SRC:%.c=%.o)
+$(BE2_PLUGIN): $(BE2_OBJ)
+	$(CC) -Wall -shared -o $@ -lc $<
+
 # CLI frontend plugin
 CLI_SRC  = $(APPNAME)_cli.c
 CLI_OBJ  = $(CLI_SRC:%.c=%.o)
@@ -92,8 +99,8 @@ RESTCONF_OBJ  = $(RESTCONF_SRC:%.c=%.o)
 $(RESTCONF_PLUGIN): $(RESTCONF_OBJ)
 	$(CC) -Wall -shared -o $@ -lc $^ 
 
-SRC     = $(BE_SRC) $(CLI_SRC) $(NETCONF_SRC) $(RESTCONF_SRC)
-OBJS    = $(BE_OBJ) $(CLI_OBJ) $(NETCONF_OBJ) $(RESTCONF_OBJ)
+SRC     = $(BE_SRC) $(BE2_SRC) $(CLI_SRC) $(NETCONF_SRC) $(RESTCONF_SRC)
+OBJS    = $(BE_OBJ) $(BE2_OBJ) $(CLI_OBJ) $(NETCONF_OBJ) $(RESTCONF_OBJ)
 
 clean:
 	rm -f $(PLUGINS) $(OBJS) 
@@ -103,7 +110,7 @@ distclean: clean
 	rm -f Makefile *~ .depend
 	(cd docker && $(MAKE) $(MFLAGS) $@)
 
-install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN) $(APPNAME).xml
+install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN) $(APPNAME).xml
 	install -d $(DESTDIR)$(clixon_SYSCONFDIR)
 	install $(APPNAME).xml $(DESTDIR)$(clixon_SYSCONFDIR)
 	install -d $(DESTDIR)$(clixon_DBSPECDIR)/yang
@@ -111,7 +118,7 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $
 	install -d $(DESTDIR)$(clixon_LIBDIR)/cli
 	install $(CLI_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/cli; 
 	install -d $(DESTDIR)$(clixon_LIBDIR)/backend
-	install $(BE_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/backend; 
+	install $(BE_PLUGIN) $(BE2_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/backend; 
 	install -d $(DESTDIR)$(clixon_LIBDIR)/netconf
 	install $(NETCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/netconf;
 	install -d $(DESTDIR)$(clixon_LIBDIR)/restconf

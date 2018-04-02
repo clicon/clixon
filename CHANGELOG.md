@@ -6,28 +6,55 @@
 ### Major changes:
 * Restructure and more generic plugin API (cli,backend,restconf,netconf) as preparation for authorization RFC8341
   * New design with single `clixon_plugin_init()` returning an api struct with function pointers, see example below. This means that there are no hardcoded plugin functions, except `clixon_plugin_init()`.
+  * Master plugins have been removed. Plugins are loaded alphabetically. You can ensure plugin load order by prefixing them with an ordering number, for example.
   * Moved specific plugin functions from apps/ to generic functions in lib/
   * Added authentication plugin callback (ca_auth)
     * Added clicon_username_get() / clicon_username_set()
-  * Authorization
-    * Example extended with authorization
-    * Test added with http basic authorization (test/test_auth.sh)
-    * Documentation in FAQ.md
   * Removed some obscure plugin code that seem not to be used (please report if needed!)
     * Client-local netconf plugins netconf_plugin_callbacks()
     * CLI parse hook
     * CLICON_FIND_PLUGIN
     * clicon_valcb()
-  * Example of new plugin module:
+    * backend system plugins (CLIXON_BACKEND_SYSDIR)
+    * CLICON_MASTER_PLUGIN config variable
+  * Example of migrating a backend plugin module:
+    * Add all callbacks in a clixon_plugin_api struct
+    * Rename plugin_init() -> clixon_plugin_init() and return api as function value
 ```
-      static const struct clixon_plugin_api api = {
-          "example",
-          clixon_plugin_init,
-          ...
-      }
-      clixon_plugin_api *clixon_plugin_init(clicon_handle h){
-          return (void*)&api;
-      }
+/* This is old style with hardcoded function names (eg plugin_start) */
+int plugin_start(clicon_handle h, int argc, char **argv)
+{
+    return 0;
+}
+int
+plugin_init(clicon_handle h)
+{
+   return 0;
+}
+
+/* This is new style with all function names in api struct */
+clixon_plugin_api *clixon_plugin_init(clicon_handle h);
+
+static clixon_plugin_api api = {
+    "example",          /* name */
+    clixon_plugin_init, 
+    plugin_start,       
+    plugin_exit,        
+    NULL,               /* auth N/A for backend */
+    plugin_reset,       
+    plugin_statedata,   
+    transaction_begin,  
+    transaction_validate,
+    transaction_complete,
+    transaction_commit,
+    transaction_end,  
+    transaction_abort
+};
+
+clixon_plugin_api *clixon_plugin_init(clicon_handle h)
+{
+    return &api; /* Return NULL on error */
+}
 ```
 
 * Added Clixon Restconf library
@@ -42,8 +69,12 @@
 
 ### Minor changes:
 
+* Authentication
+  * Example extended with http basic authentication for restconf
+  * Documentation in FAQ.md
 * Updated ietf-netconf-acm to ietf-netconf-acm@2018-02-14.yang from RFC 8341
 * The Clixon example has changed name from "routing" to "example" affecting all config files, plugins, tests, etc.
+  * Secondary backend plugin added
 * Removed username to rpc calls (added below)
 * README.md extended with new yang, netconf, restconf, datastore, and auth sections.
 * The key-value datastore is no longer supported. Use the default text datastore.

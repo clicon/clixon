@@ -31,48 +31,65 @@
 
   ***** END LICENSE BLOCK *****
 
+ * 
+ * IETF yang routing example
+ * Secondary backend for testing more than one backend plugin
  */
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <syslog.h>
+#include <signal.h>
 #include <unistd.h>
-#include <assert.h>
-#include <sys/stat.h>
-#include <sys/param.h>
+#include <sys/time.h>
 
+/* clicon */
 #include <cligen/cligen.h>
+
+/* Clicon library functions. */
 #include <clixon/clixon.h>
-#include <clixon/clixon_netconf.h>
 
-/*! Plugin start
- * Called once everything has been initialized, right before
- * the main event loop is entered.
- */
+/* These include signatures for plugin and transaction callbacks. */
+#include <clixon/clixon_backend.h> 
+
+
 int
-plugin_start(clicon_handle h, int argc, char **argv)
+transaction_commit_2(clicon_handle    h, 
+		   transaction_data td)
 {
+    clicon_debug(1, "%s", __FUNCTION__);
     return 0;
 }
 
 int
-plugin_exit(clicon_handle h)
+plugin_start_2(clicon_handle h,
+	     int           argc,
+	     char        **argv)
 {
     return 0;
 }
 
-clixon_plugin_api * clixon_plugin_init(clicon_handle h);
+clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
-static struct clixon_plugin_api api = {
-    "example",          /* name */
+static clixon_plugin_api api = {
+    "secondary",        /* name */
     clixon_plugin_init, /* init */
-    plugin_start,       /* start */
-    plugin_exit,        /* exit */
-    NULL                /* auth */
+    plugin_start_2,     /* start */
+    NULL,               /* exit */
+    NULL,               /* auth */
+    NULL,               /* reset */
+    NULL,               /* statedata */
+    NULL,               /* trans begin */
+    NULL,               /* trans validate */
+    NULL,               /* trans complete */
+    transaction_commit_2,/* trans commit */
+    NULL,               /* trans end */
+    NULL                /* trans abort */
 };
 
-/*! Netconf plugin initialization
+/*! Backend plugin initialization
  * @param[in]  h    Clixon handle
  * @retval     NULL Error with clicon_err set
  * @retval     api  Pointer to API struct
@@ -80,7 +97,6 @@ static struct clixon_plugin_api api = {
 clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
-    clicon_debug(1, "%s restconf", __FUNCTION__);
+    clicon_debug(1, "%s backend secondary", __FUNCTION__);
     return &api;
 }
-

@@ -554,7 +554,7 @@ main(int    argc,
 
     /* Initialize plugins group */
     if ((dir = clicon_restconf_dir(h)) != NULL)
-	if (clixon_plugins_load(h, clicon_restconf_dir(h)) < 0)
+	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir) < 0)
 	    return -1;
 
     /* Parse yang database spec file */
@@ -603,7 +603,7 @@ main(int    argc,
     }
     retval = 0;
  done:
-    clixon_plugin_unload(h);
+    clixon_plugin_exit(h);
     restconf_terminate(h);
     return retval;
 }

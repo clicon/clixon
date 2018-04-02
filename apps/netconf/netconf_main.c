@@ -384,7 +384,7 @@ main(int    argc,
 
     /* Initialize plugins group */
     if ((dir = clicon_netconf_dir(h)) != NULL)
-	if (clixon_plugins_load(h, dir) < 0)
+	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir) < 0)
 	    goto done;
 
     /* Call start function is all plugins before we go interactive */
@@ -402,7 +402,7 @@ main(int    argc,
     if (event_loop() < 0)
 	goto done;
   done:
-    clixon_plugin_unload(h);
+    clixon_plugin_exit(h);
     netconf_terminate(h);
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clicon_log(LOG_NOTICE, "%s: %u Terminated\n", __PROGRAM__, getpid());

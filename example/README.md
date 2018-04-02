@@ -11,6 +11,7 @@ routing example. It contains the following files:
   * notification,
   * rpc handler
   * state-data handler, ie non-config data
+* example_backend_secondary.c Secondary backend plugin. Plugins are loaded alphabetically.
 * example_restconf.c Restconf callback plugin containing an HTTP basic authentication callback
 * example_netconf.c Netconf callback plugin
 * Makefile.in       Example makefile where plugins are built and installed
