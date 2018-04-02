@@ -42,6 +42,7 @@
 
 ### Minor changes:
 
+* Updated ietf-netconf-acm to ietf-netconf-acm@2018-02-14.yang from RFC 8341
 * The Clixon example has changed name from "routing" to "example" affecting all config files, plugins, tests, etc.
 * Removed username to rpc calls (added below)
 * README.md extended with new yang, netconf, restconf, datastore, and auth sections.
