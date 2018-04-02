@@ -5,7 +5,7 @@
 # The ordered-by user MUST be the order it is entered.
 # No test of ordered-by system is done yet
 # (we may want to sort them alphabetically for better performance).
-
+APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh
 cfg=$dir/conf_yang.xml
@@ -25,13 +25,13 @@ fi
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>/tmp/conf_yang.xml</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/routing/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_CLI_DIR>/usr/local/lib/routing/cli</CLICON_CLI_DIR>
-  <CLICON_CLI_MODE>routing</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/routing/routing.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/routing/routing.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>$dbdir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>

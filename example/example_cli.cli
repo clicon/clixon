@@ -1,7 +1,7 @@
 # Common CLI syntax for both server and PMNode operatio mode
-CLICON_MODE="routing";
+CLICON_MODE="example";
 CLICON_PROMPT="%U@%H> ";
-CLICON_PLUGIN="routing_cli";
+CLICON_PLUGIN="example_cli";
 
 # Note, when switching to PT, change datamodel to only @datamodel
 set @datamodel:example, cli_set();

@@ -38,7 +38,7 @@ bindir 		= @bindir@
 includedir	= @includedir@
 datarootdir     = @datarootdir@
 
-APPNAME	        = routing
+APPNAME	        = example
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ -rdynamic -fPIC 
 
@@ -53,13 +53,12 @@ PLUGINS = $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN)
 
 all:	$(PLUGINS)
 
-# Note: clixon.mk has a rule for:
-# $(APPNAME.conf)
+# Note: clixon.mk has rules for clixon_DBSPECDIR, clixon_SYSCONFDIR, etc used below
 -include $(DESTDIR)$(datarootdir)/clixon/clixon.mk
 
-CLISPECS = routing_cli.cli
+CLISPECS = $(APPNAME)_cli.cli
 
-#YANGSPECS	 = $(APPNAME).yang
+YANGSPECS	 = $(APPNAME).yang
 YANGSPECS	+= ietf-yang-types@2013-07-15.yang
 YANGSPECS	+= ietf-inet-types@2013-07-15.yang
 YANGSPECS	+= ietf-interfaces@2014-05-08.yang
@@ -68,28 +67,27 @@ YANGSPECS	+= ietf-routing@2014-10-26.yang
 YANGSPECS	+= ietf-ipv4-unicast-routing@2014-10-26.yang
 YANGSPECS	+= ietf-ipv6-unicast-routing@2014-10-26.yang
 YANGSPECS	+= ietf-ipsec@2016-03-09.yang
-YANGSPECS	+= example.yang
 
 # Backend plugin
-BE_SRC   = routing_backend.c
+BE_SRC   = $(APPNAME)_backend.c
 BE_OBJ   = $(BE_SRC:%.c=%.o)
 $(BE_PLUGIN): $(BE_OBJ)
 	$(CC) -Wall -shared -o $@ -lc $<
 
 # CLI frontend plugin
-CLI_SRC  = routing_cli.c
+CLI_SRC  = $(APPNAME)_cli.c
 CLI_OBJ  = $(CLI_SRC:%.c=%.o)
 $(CLI_PLUGIN): $(CLI_OBJ)
 	$(CC) -Wall -shared -o $@ -lc $^ 
 
 # NETCONF frontend plugin
-NETCONF_SRC  = routing_netconf.c
+NETCONF_SRC  = $(APPNAME)_netconf.c
 NETCONF_OBJ  = $(NETCONF_SRC:%.c=%.o)
 $(NETCONF_PLUGIN): $(NETCONF_OBJ)
 	$(CC) -Wall -shared -o $@ -lc $^
 
 # RESTCONF frontend plugin
-RESTCONF_SRC  = routing_restconf.c
+RESTCONF_SRC  = $(APPNAME)_restconf.c
 RESTCONF_OBJ  = $(RESTCONF_SRC:%.c=%.o)
 $(RESTCONF_PLUGIN): $(RESTCONF_OBJ)
 	$(CC) -Wall -shared -o $@ -lc $^ 

@@ -33,11 +33,11 @@
 
   * Examples: 
 
-./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip get /
+./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip get /
 
-sudo ./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip put merge /interfaces/interface=eth66 '<config>eth66</config>'
+sudo ./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip put merge /interfaces/interface=eth66 '<config>eth66</config>'
 
-sudo ./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip put merge / '<config><interfaces><interface><name>eth0</name><enabled>true</enabled></interface></interfaces></config>'
+sudo ./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip put merge / '<config><interfaces><interface><name>eth0</name><enabled>true</enabled></interface></interfaces></config>'
 
  */
 

@@ -14,7 +14,7 @@ else
     echo "Usage: $0 [<number> [<requests>]]"
     exit 1
 fi
-
+APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh
 
@@ -46,10 +46,10 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>$fyang</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>ietf-ip</CLICON_YANG_MODULE_MAIN>
-  <CLICON_SOCK>/usr/local/var/routing/routing.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/routing/routing.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
 <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
-  <CLICON_XMLDB_DIR>/usr/local/var/routing</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
 </config>
 EOF

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Restconf basic functionality
 # Assume http server setup, such as nginx described in apps/restconf/README.md
-
+APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh
 cfg=$dir/conf.xml
@@ -11,18 +11,18 @@ fyang=$dir/restconf.yang
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>$fyang</CLICON_YANG_MODULE_MAIN>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/routing/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_BACKEND_DIR>/usr/local/lib/routing/backend</CLICON_BACKEND_DIR>
-  <CLICON_RESTCONF_DIR>/usr/local/lib/routing/restconf</CLICON_RESTCONF_DIR>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
+  <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
-  <CLICON_CLI_DIR>/usr/local/lib/routing/cli</CLICON_CLI_DIR>
-  <CLICON_CLI_MODE>routing</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/routing/routing.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/routing/routing.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
-  <CLICON_XMLDB_DIR>/usr/local/var/routing</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
 </config>
 EOF

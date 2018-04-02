@@ -42,6 +42,7 @@
 
 ### Minor changes:
 
+* The Clixon example has changed name from "routing" to "example" affecting all config files, plugins, tests, etc.
 * Removed username to rpc calls (added below)
 * README.md extended with new yang, netconf, restconf, datastore, and auth sections.
 * The key-value datastore is no longer supported. Use the default text datastore.
@@ -175,11 +176,11 @@ SUNET for support, requests, debugging, bugfixes and proposed solutions.
   * In backward compatible mode both .xml and .conf works
   * For migration from old to new, a utility is clixon_cli -x to print new format. Run the command and save in configuration file with .xml suffix instead.
   ```
-    > clixon_cli -f /usr/local/etc/routing.conf -1x
+    > clixon_cli -f /usr/local/etc/example.conf -1x
     <config>
-        <CLICON_CONFIGFILE>/usr/local/etc/routing.xml</CLICON_CONFIGFILE>
-        <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
-        <CLICON_BACKEND_DIR>/usr/local/lib/routing/backend</CLICON_BACKEND_DIR>
+        <CLICON_CONFIGFILE>/usr/local/etc/example.xml</CLICON_CONFIGFILE>
+        <CLICON_YANG_DIR>/usr/local/share/example/yang</CLICON_YANG_DIR>
+        <CLICON_BACKEND_DIR>/usr/local/lib/example/backend</CLICON_BACKEND_DIR>
 	...
    </config>
   ```

@@ -39,7 +39,7 @@
  * sudo apt-get install libfcgi-dev
  * gcc -o fastcgi fastcgi.c -lfcgi
 
- * sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/routing.xml " -s /bin/sh www-data
+ * sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/example.xml " -s /bin/sh www-data
 
  * This is the interface:
  * api/data/profile=<name>/metric=<name> PUT data:enable=<flag>

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Restconf basic functionality
 # Assume http server setup, such as nginx described in apps/restconf/README.md
-
+APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh
 cfg=$dir/conf.xml
@@ -14,9 +14,9 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>/usr/local/var</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>$fyang</CLICON_YANG_MODULE_MAIN>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
-  <CLICON_SOCK>/usr/local/var/routing/routing.sock</CLICON_SOCK>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>/usr/local/var/routing</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
 </config>
 EOF

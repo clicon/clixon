@@ -24,7 +24,7 @@ Clixon is written in C. The plugins are written in C. The CLI
 specification uses cligen (http://cligen.se)
 
 ## How to best understand Clixon?
-Run the ietf yang routing example, in the example directory.
+Run the Clixon example, in the example directory.
 
 ## How do you build and install Clixon (and the example)?
 Clixon: 
@@ -56,14 +56,14 @@ Build using 'make doc' and aim your browser at doc/html/index.html or
 use the web resource: http://clicon.org/ref/index.html
 
 ## How do you run the example?
-- Start a backend server: 'clixon_backend -Ff /usr/local/etc/routing.xml'
-- Start a cli session: clixon_cli -f /usr/local/etc/routing.xml
-- Start a netconf session: clixon_netconf -f /usr/local/etc/routing.xml
+- Start a backend server: 'clixon_backend -Ff /usr/local/etc/example.xml'
+- Start a cli session: clixon_cli -f /usr/local/etc/example.xml
+- Start a netconf session: clixon_netconf -f /usr/local/etc/example.xml
 
 ## How is configuration data stored?
 Configuration data is stored in an XML datastore. The default is a
 text-based datastore. In the example the datastore are regular files found in
-/usr/local/var/routing/.
+/usr/local/var/example/.
 
 ## What is validate and commit?
 Clixon follows netconf in its validate and commit semantics.
@@ -79,7 +79,7 @@ is the core functionality of a clixon system.
 
 Clixon options are stored in an XML configuration file. The default
 configuration file is /usr/local/etc/clixon.xml. The example
-configuration file is installed at /usr/local/etc/routing.xml. The
+configuration file is installed at /usr/local/etc/example.xml. The
 YANG specification for the configuration file is clixon-config.yang.
 
 You can change where CLixon looks for the configuration FILE as follows:
@@ -109,12 +109,12 @@ You may also push the containers with 'make push' but you may then consider chan
 
 As an alternative to cli configuration, you can use netconf. Easiest is to just pipe netconf commands to the clixon_netconf application.
 Example:
-	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/routing.xml
+	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/example.xml
 
 However, more useful is to run clixon_netconf as an SSH
 subsystem. Register the subsystem in /etc/sshd_config:
 ```
-	Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/routing.xml
+	Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/example.xml
 ```
 and then invoke it from a client using
 ```
@@ -149,7 +149,7 @@ cli>
 ```
 or via netconf:
 ```
-clixon_netconf -qf /usr/local/etc/routing.xml 
+clixon_netconf -qf /usr/local/etc/example.xml 
 <rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
 <notification><event>Routing notification</event></notification>]]>]]>
@@ -194,18 +194,19 @@ clixon_backend ... -c extra.xml
 ```
 
 The second way is by programming the plugin_reset() in the backend
-plugin. The example code contains an example on how to do this (see plugin_reset() in routing_backend.c).
+plugin. The example code contains an example on how to do this (see plugin_reset() in example_backend.c).
 
 ## I want to program. How do I extend the example?
-- routing.xml - Change the configuration file
+- example.xml - Change the configuration file
 - The yang specifications - This is the central part. It changes the XML, database and the config cli.
-- routing_cli.cli - Change the fixed part of the CLI commands 
-- routing_cli.c - Cli C-commands are placed here.
-- routing_backend.c - Commit and validate functions.
-- routing_netconf.c - Modify semantics of netconf commands.
+- example_cli.cli - Change the fixed part of the CLI commands 
+- example_cli.c - Cli C-commands are placed here.
+- example_backend.c - Commit and validate functions.
+- example_netconf.c - Netconf plugin
+- example_restconf.c - Add restconf authentication, etc.
 
 ## How do I write a commit function?
-In the example, you write a commit function in routing_backend.c.
+In the example, you write a commit function in example_backend.c.
 Every time a commit is made, transaction_commit() is called in the
 backend.  It has a 'transaction_data td' argument which is used to fetch
 information on added, deleted and changed entries. You access this
@@ -235,9 +236,9 @@ More are found in the doxygen reference.
 
 ## How do I write a CLI callback function?
 
-1. You add an entry in routing_cli.cli
+1. You add an entry in example_cli.cli
 >   example("This is a comment") <var:int32>("This is a variable"), mycallback("myarg");
-2. Then define a function in routing_cli.c
+2. Then define a function in example_cli.c
 >   mycallback(clicon_handle h, cvec *cvv, cvec *arv)
 where 'cvv' contains the value of the variable 'var' and 'argv' contains the string "myarg".
 
@@ -320,5 +321,5 @@ If a plugin is provided, it needs to supply a username. If not, the
 request is unauthorized. the function mallocs a username and returns
 it.
 
-See (../apps/example/routing_restconf.c) plugin_credentials() for
+See (../apps/example/example_restconf.c) plugin_credentials() for
 an example of HTTP basic auth.

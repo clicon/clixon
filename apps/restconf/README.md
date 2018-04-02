@@ -20,7 +20,7 @@ sudo /etc/init.d nginx start
 
 Start clixon restconf daemon
 ```
-olof@vandal> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/routing.xml " -s /bin/sh www-data
+olof@vandal> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
 ```
 
 Make restconf calls with curl
@@ -56,7 +56,7 @@ curl -sX POST -d '{"interfaces":{"interface":{"name":"eth1","type":"eth","enable
 
 Start the restconf fastcgi program with debug flag:
 ```
-sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/routing.xml" -s /bin/sh www-data
+sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/example.xml" -s /bin/sh www-data
 ```
 Look at syslog:
 ```

@@ -6,9 +6,6 @@ module example {
     import ietf-routing {
 	prefix rt;
     }
-    import ietf-netconf-acm {
-	prefix nacm; /* See RFC 6536 */
-    }
     description
 	"Example code that includes ietf-ip and ietf-routing";
     leaf basic_auth{

@@ -1,4 +1,19 @@
-# Clixon yang routing example
+# Clixon example
+
+This directory contains a Clixon example which includes a simple
+routing example. It contains the following files:
+* example.xml       The configuration file. See yang/clixon-config@<date>.yang for all available fields.
+* example.yang      The yang spec of the example. It mainly includes ietf routing and IP modules.
+* example_cli.cli   CLIgen specification.
+* example_cli.c     CLI callback plugin containing functions called in the cli file above: a generic callback (`mycallback`) and an RPC (`fib_route_rpc`).
+* example_backend.c Backend callback plugin including example of:
+  * transaction callbacks (validate/commit),
+  * notification,
+  * rpc handler
+  * state-data handler, ie non-config data
+* example_restconf.c Restconf callback plugin containing an HTTP basic authentication callback
+* example_netconf.c Netconf callback plugin
+* Makefile.in       Example makefile where plugins are built and installed
 
 ## Compile and run
 ```
@@ -7,15 +22,23 @@
 ```
 Start backend:
 ```
-    clixon_backend -f /usr/local/etc/routing.xml -I
+    clixon_backend -f /usr/local/etc/example.xml -I
 ```
 Edit cli:
 ```
-    clixon_cli -f /usr/local/etc/routing.xml
+    clixon_cli -f /usr/local/etc/example.xml
 ```
 Send netconf command:
 ```
-    clixon_netconf -f /usr/local/etc/routing.xml
+    clixon_netconf -f /usr/local/etc/example.xml
+```
+Start clixon restconf daemon
+```
+> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+```
+Send restconf command
+```
+    curl -G http://127.0.0.1/restconf/data
 ```
 
 ## Setting data example using netconf
@@ -114,7 +137,7 @@ plugin_init(clicon_handle h)
 
 Netconf <get> and restconf GET also returns state data, in contrast to
 config data. 
-
+p
 In YANG state data is specified with "config false;". In the example, interface-state is state data.
 
 To return state data, you need to write a backend state data callback
