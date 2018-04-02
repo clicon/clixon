@@ -4,40 +4,36 @@
 
 
 ### Major changes:
-* Restructure and more generic plugin API (cli,backend,restconf,netconf)
-  * For preparation for authorization RFC8341
-  * Plugins add clixon_plugin_init() and api struct for function pointers, eg:
-```
-static const struct clixon_plugin_api api = {
-    "example",
-    clixon_plugin_init,
-    ...
-}
-clixon_plugin_api *clixon_plugin_init(clicon_handle h)
-{
-    return (void*)&api;
-}
-```
+* Restructure and more generic plugin API (cli,backend,restconf,netconf) as preparation for authorization RFC8341
+  * New design with single `clixon_plugin_init()` returning an api struct with function pointers, see example below. This means that there are no hardcoded plugin functions, except `clixon_plugin_init()`.
   * Moved specific plugin functions from apps/ to generic functions in lib/
-    * New generic plugin load function: clixon_plugins_load()
-  * Removed client-local netconf plugins netconf_plugin_callbacks()
-    * This was code used before generic YANG rpc calls
-  * Added username to clixon handle:
-    * clicon_username_get() / clicon_username_set()
-  * Added authentication plugin callback
+  * Added authentication plugin callback (ca_auth)
+    * Added clicon_username_get() / clicon_username_set()
+  * Authorization
+    * Example extended with authorization
+    * Test added with http basic authorization (test/test_auth.sh)
+    * Documentation in FAQ.md
   * Removed some obscure plugin code that seem not to be used (please report if needed!)
+    * Client-local netconf plugins netconf_plugin_callbacks()
     * CLI parse hook
     * CLICON_FIND_PLUGIN
     * clicon_valcb()
+  * Example of new plugin module:
+```
+      static const struct clixon_plugin_api api = {
+          "example",
+          clixon_plugin_init,
+          ...
+      }
+      clixon_plugin_api *clixon_plugin_init(clicon_handle h){
+          return (void*)&api;
+      }
+```
 
 * Added Clixon Restconf library
   * Builds and installs a new restconf library: libclixon_restconf.so and clixon_restconf.h
   * The restconf library can be included by a restconf plugin.
   * Example code in example/Makefile.in and example/restconf_lib.c
-* Authorization
-  * Example extended with authorization
-  * Test added with http basic authorization (test/test_auth.sh)
-  * Documentation in FAQ.md
 * Restconf error handling for get, put and post. Several cornercases remain. Available both as xml and json (set accept header), pretty-printed and not (set clixon config option).
 * Proper RFC 6241 Netconf error handling
   * New functions added in clixon_netconf_lib.[ch]
