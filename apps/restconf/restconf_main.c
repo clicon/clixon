@@ -321,7 +321,7 @@ api_yang_library_version(clicon_handle h,
  */
 static int
 api_restconf(clicon_handle h,
-		FCGX_Request *r)
+	     FCGX_Request *r)
 {
     int    retval = -1;
     char  *path;
@@ -374,14 +374,15 @@ api_restconf(clicon_handle h,
 	goto done;
     data = cbuf_get(cb);
     clicon_debug(1, "DATA=%s", data);
+
     if (str2cvec(data, '&', '=', &dvec) < 0)
       goto done;
-
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * See RFC 8040 section 2.5
      */
     if ((authenticated = clixon_plugin_auth(h, r)) < 0)
 	goto done;
+
     /* If set but no user, we set a dummy user */
     if (authenticated){
 	if (clicon_username_get(h) == NULL)
@@ -423,7 +424,6 @@ api_restconf(clicon_handle h,
 	cbuf_free(cb);
     return retval;
 }
-
 
 static int
 restconf_terminate(clicon_handle h)

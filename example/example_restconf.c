@@ -184,8 +184,7 @@ b64_decode(const char *src,
 /*! Process a rest request that requires (cookie) "authentication"
  * Note, this is loaded as dlsym fixed symbol in plugin
  * @param[in]  h        Clixon handle
- * @param[in]  r        Fastcgi request handle
- * @param[out] username Malloced username, or NULL.
+ * @param[in]  arg      Argument. Here: Fastcgi request handle
  * @retval -1  Fatal error
  * @retval  0  Unauth
  * @retval  1  Auth
