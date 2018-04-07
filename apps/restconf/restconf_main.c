@@ -364,7 +364,7 @@ api_restconf(clicon_handle h,
 	retval = notfound(r);
 	goto done;
     }
-    clicon_debug(1, "method=%s", method);
+    clicon_debug(1, "%s: method=%s", __FUNCTION__, method);
     if (str2cvec(query, '&', '=', &qvec) < 0)
       goto done;
     if (str2cvec(path, '/', '=', &pcvec) < 0) /* rest url eg /album=ricky/foo */
@@ -373,7 +373,7 @@ api_restconf(clicon_handle h,
     if ((cb = readdata(r)) == NULL)
 	goto done;
     data = cbuf_get(cb);
-    clicon_debug(1, "DATA=%s", data);
+    clicon_debug(1, "%s DATA=%s", __FUNCTION__, data);
 
     if (str2cvec(data, '&', '=', &dvec) < 0)
       goto done;
@@ -382,6 +382,7 @@ api_restconf(clicon_handle h,
      */
     if ((authenticated = clixon_plugin_auth(h, r)) < 0)
 	goto done;
+    clicon_debug(1, "%s auth:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
 
     /* If set but no user, we set a dummy user */
     if (authenticated){
@@ -392,6 +393,7 @@ api_restconf(clicon_handle h,
 	unauthorized(r);
 	goto ok;
     }
+    clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
     if (strcmp(method, "yang-library-version")==0){
 	if (api_yang_library_version(h, r) < 0)
 	    goto done;
