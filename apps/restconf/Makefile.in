@@ -66,26 +66,28 @@ CPPFLAGS  	= @CPPFLAGS@ -fPIC
 
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
-SRC     = restconf_methods.c
+# Name of application
+APPL	  = clixon_restconf
 
-OBJS    = $(SRC:.c=.o)
+# Not accessible from plugin
+APPSRC    = restconf_main.c
+APPSRC   += restconf_methods.c
+APPOBJ    = $(APPSRC:.c=.o)
 
-APPSRC  = restconf_main.c
-APPOBJ  = $(APPSRC:.c=.o)
-APPL	= clixon_restconf
+# Accessible from plugin
+LIBSRC    = restconf_lib.c
+LIBOBJ    = $(LIBSRC:.c=.o)
 
-MYNAME		= clixon_restconf
-MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
-MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
-MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
-
-LIBSRC     = restconf_lib.c
-LIBOBJS    = $(LIBSRC:.c=.o)
+# Name of lib
+MYNAME	  = clixon_restconf
+MYLIBLINK = lib$(MYNAME)$(SH_SUFFIX)
+MYLIB     = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+MYLIBSO   = $(MYLIBLINK).$(CLIXON_MAJOR)
 
 all:	 $(MYLIB) $(APPL)
 
 clean:
-	rm -f $(OBJS) $(LIBOBJS) *.core $(APPL) $(APPOBJ) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
+	rm -f $(LIBOBJ) *.core $(APPL) $(APPOBJ) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
 
 distclean: clean
 	rm -f Makefile *~ .depend
@@ -118,14 +120,14 @@ uninstall:
 .c.o:
 	$(CC) $(INCLUDES) -D__PROGRAM__=\"$(APPL)\" $(CPPFLAGS) $(CFLAGS) -c $<
 
-$(APPL) : $(APPOBJ) $(MYLIBLINK) $(OBJS) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(APPOBJ) $(OBJS) -L. $(MYLIB) $(LIBS) -o $@
+$(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
+	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
-$(MYLIB) : $(LIBOBJS)
+$(MYLIB) : $(LIBOBJ)
 ifeq ($(HOST_VENDOR),apple)
-	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJS) $(LIBS)
+	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJ) $(LIBS)
 else
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJS) $(LIBS) -Wl,-soname=$(MYLIBSO)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJ) $(LIBS) -Wl,-soname=$(MYLIBSO)
 endif
 
 # link-name is needed for application linking, eg for clixon_cli and clixon_config
@@ -135,7 +137,7 @@ TAGS:
 	find . -name '*.[chyl]' -print | etags -
 
 depend:
-	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(SRC) $(APPSRC) > .depend
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(LIBSRC) $(APPSRC) > .depend
 
 #include .depend
 

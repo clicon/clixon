@@ -64,22 +64,26 @@ LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ $(top_srcdir)/lib/src/$(CLIXON_LIB) -l
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
-# Not accessible from plugin
-APPSRC  = backend_main.c backend_socket.c backend_client.c \
-	backend_commit.c backend_plugin.c 
-
-APPOBJ  = $(APPSRC:.c=.o)
+# Name of application
 APPL	= clixon_backend
 
-#SHLIB	= clixon_backend
-MYNAME		= clixon_backend
-MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
-MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
-MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
+# Not accessible from plugin
+APPSRC  = backend_main.c
+APPSRC += backend_socket.c
+APPSRC += backend_client.c
+APPSRC += backend_commit.c
+APPSRC += backend_plugin.c
+APPOBJ  = $(APPSRC:.c=.o)
 
 # Accessible from plugin
 LIBSRC	= clixon_backend_transaction.c clixon_backend_handle.c
 LIBOBJ	= $(LIBSRC:.c=.o)
+
+# Name of lib
+MYNAME		= clixon_backend
+MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
+MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
 
 all:	  $(MYLIB) $(APPL) test
 
@@ -127,7 +131,7 @@ test: 	test.c $(LIBOBJ)
 	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
 $(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(APPOBJ) $(OBJS) -L. $(MYLIB) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
 $(MYLIB): $(LIBOBJ)
 ifeq ($(HOST_VENDOR),apple)
@@ -145,7 +149,7 @@ TAGS:
 	find . -name '*.[chyl]' -print | etags -
 
 depend:
-	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(SRC) $(APPSRC) > .depend
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(LIBSRC) $(APPSRC) > .depend
 
 #include .depend
 

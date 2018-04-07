@@ -68,22 +68,33 @@ LIBS          = -L$(top_srcdir)/lib/src @LIBS@  $(top_srcdir)/lib/src/$(CLIXON_L
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 INCLUDES	= -I. -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
+# Name of application
 APPL		= clixon_cli
-SRC		= cli_main.c
-OBJS    	= $(SRC:.c=.o)
 
+# Not accessible from plugin
+APPSRC		= cli_main.c
+APPSRC	       += cli_generate.c
+APPOBJ		= $(APPSRC:.c=.o)
+
+# Accessible from plugin
+LIBSRC	        = cli_common.c
+LIBSRC	       += cli_show.c
+LIBSRC	       += cli_handle.c
+LIBSRC	       += cli_plugin.c
+LIBOBJ		= $(LIBSRC:.c=.o)
+
+# Name of lib
 MYNAME		= clixon_cli
 MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
 MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
 
-LIBSRC		= cli_plugin.c cli_common.c cli_show.c cli_handle.c cli_generate.c
-LIBOBJS		= $(LIBSRC:.c=.o)
+
 
 all:	 $(MYLIB) $(APPL) test
 
 clean:
-	rm -f $(OBJS) $(LIBOBJS) *.core $(APPL) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
+	rm -f $(LIBOBJ) $(APPOBJ) *.core $(APPL) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
 
 distclean: clean
 	rm -f Makefile *~ .depend test test.c
@@ -125,14 +136,14 @@ test.c	:
 test: 	test.c $(LIBOBJ) 
 	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
-$(APPL): $(OBJS) $(MYLIBLINK) $(LIBDEPS)	
-	$(CC) $(LDFLAGS) $(OBJS) -L. $(MYLIB) $(LIBS) -o $@
+$(APPL): $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)	
+	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
-$(MYLIB) : $(LIBOBJS)
+$(MYLIB) : $(LIBOBJ)
 ifeq ($(HOST_VENDOR),apple)
-	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJS) $(LIBS)
+	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJ) $(LIBS)
 else
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJS) $(LIBS) -Wl,-soname=$(MYLIBSO)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJ) $(LIBS) -Wl,-soname=$(MYLIBSO)
 endif
 
 # link-name is needed for application linking, eg for clixon_cli and clixon_config
@@ -144,7 +155,7 @@ TAGS:
 	find . -name '*.[chyl]' -print | etags -
 
 depend:
-	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(SRC) $(APPSRC) > .depend
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(LIBSRC) $(APPSRC) > .depend
 
 #include .depend
 
