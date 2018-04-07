@@ -262,6 +262,8 @@ netconf_terminate(clicon_handle h)
 {
     yang_spec      *yspec;
 
+    clixon_plugin_exit(h);
+    rpc_callback_delete_all();
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
@@ -402,7 +404,6 @@ main(int    argc,
     if (event_loop() < 0)
 	goto done;
   done:
-    clixon_plugin_exit(h);
     netconf_terminate(h);
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clicon_log(LOG_NOTICE, "%s: %u Terminated\n", __PROGRAM__, getpid());

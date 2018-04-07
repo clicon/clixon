@@ -125,9 +125,9 @@ notification_timer_setup(clicon_handle h)
 static int 
 fib_route(clicon_handle h,            /* Clicon handle */
 	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  struct client_entry *ce,    /* Client session */
 	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg)          /* Argument given at register */
+	  void         *arg,          /* Client session */
+	  void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply><route>"
 	    "<address-family>ipv4</address-family>"
@@ -139,10 +139,10 @@ fib_route(clicon_handle h,            /* Clicon handle */
 /*! Smallest possible RPC declaration for test */
 static int 
 empty(clicon_handle h,            /* Clicon handle */
-	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  struct client_entry *ce,    /* Client session */
-	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg)          /* Argument given at register */
+      cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+      cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+      void         *arg,          /* client_entry */
+      void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply/>");
     return 0;
@@ -152,9 +152,9 @@ empty(clicon_handle h,            /* Clicon handle */
 static int 
 route_count(clicon_handle h, 
 	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	    struct client_entry *ce,    /* Client session */
 	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	    void         *arg)          /* Argument given at register */
+	    void         *arg,
+	    void         *regarg)          /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
     return 0;
@@ -278,20 +278,20 @@ clixon_plugin_init(clicon_handle h)
     if (notification_timer_setup(h) < 0)
 	goto done;
     /* Register callback for routing rpc calls */
-    if (backend_rpc_cb_register(h, fib_route, 
-				NULL, 
-				"fib-route"/* Xml tag when callback is made */
-				) < 0)
+    if (rpc_callback_register(h, fib_route, 
+			      NULL, 
+			      "fib-route"/* Xml tag when callback is made */
+			      ) < 0)
 	goto done;
-    if (backend_rpc_cb_register(h, route_count, 
-				NULL, 
-				"route-count"/* Xml tag when callback is made */
-				) < 0)
+    if (rpc_callback_register(h, route_count, 
+			      NULL, 
+			      "route-count"/* Xml tag when callback is made */
+			      ) < 0)
 	goto done;
-    if (backend_rpc_cb_register(h, empty, 
-				NULL, 
-				"empty"/* Xml tag when callback is made */
-				) < 0)
+    if (rpc_callback_register(h, empty, 
+			      NULL, 
+			      "empty"/* Xml tag when callback is made */
+			      ) < 0)
 	goto done;
     return &api;
  done:

@@ -50,6 +50,19 @@ module example{
        output {
        }
     }
+    rpc client-rpc {
+       	description "Example local client-side rpc";
+	input {
+	    leaf request {
+		type string;
+	    }
+	}
+	output {
+	    leaf result{
+		type string;
+	    }
+	}
+    }
 }
 EOF
 
@@ -72,7 +85,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg # -D
+sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -D
 
 sleep 1
 
@@ -93,12 +106,12 @@ expecteq "$(curl -s -H 'Accept: application/yang-data+xml' -G http://localhost/r
 '
 
 new2 "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"ex:empty": null,"ex:input": null,"ex:output": null,"rt:fib-route": null,"rt:route-count": null}}
+expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"ex:empty": null,"ex:input": null,"ex:output": null,"ex:client-rpc": null,"rt:fib-route": null,"rt:route-count": null}}
 '
 
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/operations)
-expect="<operations><ex:empty/><ex:input/><ex:output/><rt:fib-route/><rt:route-count/></operations>"
+expect="<operations><ex:empty/><ex:input/><ex:output/><ex:client-rpc/><rt:fib-route/><rt:route-count/></operations>"
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -237,6 +250,15 @@ match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
+
+new "restconf local client rpc using POST xml"
+ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"request":"example"}}' http://localhost/restconf/operations/ex:client-rpc)
+expect="<output><result>ok</result></output>"
+match=`echo $ret | grep -EZo "$expect"`
+if [ -z "$match" ]; then
+    err "$expect" "$ret"
+fi
+
 # XXX cant get -H to work
 #expecteq 'curl -s -X POST -H "Accept: application/yang-data+xml" -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '<output><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop></route></output>'
 

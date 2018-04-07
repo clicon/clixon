@@ -266,6 +266,21 @@ plugin_credentials(clicon_handle h,
     goto done;
 }
 
+/*! Local example restconf rpc callback 
+ */
+int restconf_client_rpc(clicon_handle h, 
+			cxobj        *xn,      
+			cbuf         *cbret,    
+			void         *arg,
+			void         *regarg)
+{
+    //    FCGX_Request *r = (FCGX_Request *)arg;
+    clicon_debug(1, "%s", __FUNCTION__);
+    cprintf(cbret, "<rpc-reply><result>ok</result></rpc-reply>");
+    return 0;
+}
+
+
 clixon_plugin_api * clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
@@ -285,5 +300,8 @@ clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
     clicon_debug(1, "%s restconf", __FUNCTION__);
+    /* Register local netconf rpc client (note not backend rpc client) */
+    if (rpc_callback_register(h, restconf_client_rpc, NULL, "client-rpc") < 0)
+	return NULL;
     return &api;
 }

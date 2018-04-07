@@ -432,7 +432,8 @@ restconf_terminate(clicon_handle h)
 {
     yang_spec      *yspec;
 
-    clicon_debug(0, "%s", __FUNCTION__);
+    clixon_plugin_exit(h);
+    rpc_callback_delete_all();
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
@@ -605,7 +606,6 @@ main(int    argc,
     }
     retval = 0;
  done:
-    clixon_plugin_exit(h);
     restconf_terminate(h);
     return retval;
 }

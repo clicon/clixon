@@ -88,7 +88,7 @@ backend_terminate(clicon_handle h)
 	yspec_free(yspec);
     clixon_plugin_exit(h);
     /* Delete all backend plugin RPC callbacks */
-    backend_rpc_cb_delete_all(); 
+    rpc_callback_delete_all(); 
     if (pidfile)
 	unlink(pidfile);   
     if (sockpath)

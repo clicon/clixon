@@ -41,16 +41,8 @@
 #define _CLIXON_BACKEND_TRANSACTION_H_
 
 /*
- * Types
+ * Prototypes
  */
-
-/*! Generic downcall registration. 
- * Enables any function to be called from (cli) frontend
- * to backend. Like an RPC on application-level.
- */
-typedef int (*downcall_cb)(clicon_handle h, uint16_t op, uint16_t len, 
-			   void *arg, uint16_t *retlen, void **retarg);
-
 /* Transaction callback data accessors for client plugins
  * (defined in config_dbdep.c)
  * @see transaction_data_t  internal structure

@@ -410,3 +410,118 @@ clixon_plugin_auth(clicon_handle h,
     }
     return retval;
 }
+
+/*--------------------------------------------------------------------
+ * RPC callbacks for both client/frontend and backend plugins.
+ * RPC callbacks are explicitly registered in the plugin_init() function
+ * with a tag and a function
+ * WHen the the tag is encountered, the callback is called.
+ * Primarily backend, but also netconf and restconf frontend plugins.
+ * CLI frontend so far have direct callbacks, ie functions in the cligen
+ * specification are directly dlsym:ed to the CLI plugin.
+ * It would be possible to use this rpc registering API for CLI plugins as well.
+ * 
+ * @note may have a problem if callbacks are of different types
+ */
+typedef struct {
+    qelem_t 	  rc_qelem;	/* List header */
+    clicon_rpc_cb rc_callback; /* RPC Callback */
+    void	  *rc_arg;	/* Application specific argument to cb */
+    char          *rc_tag;	/* Xml/json tag when matched, callback called */
+} rpc_callback_t;
+
+/* List of rpc callback entries */
+static rpc_callback_t *rpc_cb_list = NULL;
+
+/*! Register a RPC callback
+ * Called from plugin to register a callback for a specific netconf XML tag.
+ *
+ * @param[in]  h       clicon handle
+ * @param[in]  cb,     Callback called 
+ * @param[in]  arg,    Domain-specific argument to send to callback 
+ * @param[in]  tag     Xml tag when callback is made 
+ * @see rpc_callback_call
+ */
+int
+rpc_callback_register(clicon_handle  h,
+		      clicon_rpc_cb  cb,
+		      void          *arg,       
+		      char          *tag)
+{
+    rpc_callback_t *rc;
+
+    if ((rc = malloc(sizeof(rpc_callback_t))) == NULL) {
+	clicon_err(OE_DB, errno, "malloc: %s", strerror(errno));
+	goto done;
+    }
+    memset (rc, 0, sizeof (*rc));
+    rc->rc_callback = cb;
+    rc->rc_arg  = arg;
+    rc->rc_tag  = strdup(tag); /* XXX strdup memleak */
+    INSQ(rc, rpc_cb_list);
+    return 0;
+ done:
+    if (rc){
+	if (rc->rc_tag)
+	    free(rc->rc_tag);
+	free(rc);
+    }
+    return -1;
+}
+
+/*! Delete all RPC callbacks
+ */
+int
+rpc_callback_delete_all(void)
+{
+    rpc_callback_t *rc;
+
+    while((rc = rpc_cb_list) != NULL) {
+	DELQ(rc, rpc_cb_list, rpc_callback_t *);
+	if (rc->rc_tag)
+	    free(rc->rc_tag);
+	free(rc);
+    }
+    return 0;
+}
+
+/*! Search RPC callbacks and invoke if XML match with tag
+ *
+ * @param[in]  h       clicon handle
+ * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
+ * @param[out] xret    Return XML, error or OK
+ * @param[in]  arg   Domain-speific arg (eg client_entry)
+ *
+ * @retval -1   Error
+ * @retval  0   OK, not found handler.
+ * @retval  1   OK, handler called
+ */
+int
+rpc_callback_call(clicon_handle h,
+		  cxobj        *xe, 
+		  cbuf         *cbret,
+		  void         *arg)
+{
+    rpc_callback_t *rc;
+    int            retval = -1;
+
+    if (rpc_cb_list == NULL)
+	return 0;
+    rc = rpc_cb_list;
+    do {
+	if (strcmp(rc->rc_tag, xml_name(xe)) == 0){
+	    if ((retval = rc->rc_callback(h, xe, cbret, arg, rc->rc_arg)) < 0){
+		clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_tag);
+		goto done;
+	    }
+	    else{
+		retval = 1; /* handled */
+		goto done;
+	    }
+	}
+	rc = NEXTQ(rpc_callback_t *, rc);
+    } while (rc != rpc_cb_list);
+    retval = 0;
+ done:
+    return retval;
+}

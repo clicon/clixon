@@ -25,4 +25,20 @@ module example {
 	    type string;
 	}
     }
+    rpc client-rpc {
+	description "Example local client-side RPC that is processed by the
+                     the netconf/restconf and not sent to the backend.
+                     This is a clixon implementation detail: some rpc:s
+                     are better processed by the client for API or perf reasons";
+	input {
+	    leaf request {
+		type string;
+	    }
+	}
+	output {
+	    leaf result{
+		type string;
+	    }
+	}
+    }
 }

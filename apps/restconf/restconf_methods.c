@@ -1064,6 +1064,7 @@ api_operations_post(clicon_handle h,
     cxobj     *xret = NULL;
     cbuf      *cbx = NULL;
     cxobj     *xtop = NULL; /* xpath root */
+    cxobj     *xe;
     cxobj     *xbot = NULL;
     yang_node *y = NULL;
     cxobj     *xinput;
@@ -1071,6 +1072,8 @@ api_operations_post(clicon_handle h,
     cxobj     *x;
     cxobj     *xa;
     char      *username;
+    cbuf      *cbret = NULL;
+    int        ret = 0;
     
     clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, path);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -1109,7 +1112,7 @@ api_operations_post(clicon_handle h,
     /* XXX: something strange for rpc user */
     if (api_path2xml(oppath, yspec, xtop, YC_SCHEMANODE, &xbot, &y) < 0)
 	goto done;
-#if 1
+#if 0
     {
 	cbuf *c = cbuf_new();
 	clicon_xml2cbuf(c, xtop, 0, 0);
@@ -1150,9 +1153,24 @@ api_operations_post(clicon_handle h,
 	    }
 	}
     }
-    /* Send to backend */
-    if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, 0, "cbuf_new");
 	goto done;
+    }
+    xe = NULL;
+    while ((xe = xml_child_each(xtop, xe, CX_ELMNT)) != NULL) {
+	/* Look for local (client-side) restconf plugins. */
+	if ((ret = rpc_callback_call(h, xe, cbret, r)) < 0)
+	    goto done;
+	if (ret == 1){ /* Handled locally */
+	    if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)
+		goto done;
+	}
+	break; /* Just one if local */
+    }
+    if (ret == 0) /* Send to backend */
+	if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
+	    goto done;
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     xoutput=xpath_first(xret, "/");
@@ -1198,5 +1216,7 @@ api_operations_post(clicon_handle h,
 	xml_free(xret);
      if (cbx)
 	cbuf_free(cbx); 
+    if (cbret)
+	cbuf_free(cbret);
    return retval;
 }

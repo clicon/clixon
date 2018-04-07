@@ -44,6 +44,15 @@
 /* The dynamicically loadable plugin object handle */
 typedef void *plghndl_t;
 
+/* Registered RPC callback function */
+typedef int (*clicon_rpc_cb)(
+    clicon_handle h,       /* Clicon handle */
+    cxobj        *xn,      /* Request: <rpc><xn></rpc> */
+    cbuf         *cbret,   /* Return xml tree, eg <rpc-reply>..., <rpc-error.. */
+    void         *arg,     /* Domain specific arg, ec client-entry */
+    void         *regarg   /* User argument given at rpc_callback_register() */
+);  
+
 /*
  * Prototypes
  */
@@ -160,5 +169,11 @@ int clixon_plugin_start(clicon_handle h, int argc, char **argv);
 int clixon_plugin_exit(clicon_handle h);
 
 int clixon_plugin_auth(clicon_handle h, void *arg);
+
+/* rpc callback API */
+int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *tag);
+int rpc_callback_delete_all(void);
+
+int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);
 
 #endif  /* _CLIXON_PLUGIN_H_ */

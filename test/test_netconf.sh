@@ -25,7 +25,6 @@ cat <<EOF > $cfg
 </config>
 EOF
 
-echo "clixon_backend -zf $cfg"
 # kill old backend (if any)
 new "kill old backend"
 sudo clixon_backend -zf $cfg
@@ -146,6 +145,9 @@ expecteof "$clixon_netconf -qf $cfg" "<rpc><rt:fib-route><routing-instance-name>
 
 new "netconf rpc w/o namespace"
 expecteof "$clixon_netconf -qf $cfg" "<rpc><fib-route><routing-instance-name>ipv4</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></fib-route></rpc>]]>]]>" "^<rpc-reply><route><address-family>ipv4</address-family><next-hop><next-hop-list>"
+
+new "netconf client-side rpc"
+expecteof "$clixon_netconf -qf $cfg" "<rpc><ex:client-rpc><request>example</request></ex:client-rpc></rpc>]]>]]>" "^<rpc-reply><result>ok</result></rpc-reply>]]>]]>$"
 
 new "netconf subscription"
 expectwait "$clixon_netconf -qf $cfg" "<rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><notification><event>Routing notification</event></notification>]]>]]>$" 30

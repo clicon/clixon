@@ -909,10 +909,10 @@ from_client_msg(clicon_handle        h,
 	}
 	else{
 	    clicon_err_reset();
-	    if ((ret = backend_rpc_cb_call(h, xe, ce, cbret)) < 0){
+	    if ((ret = rpc_callback_call(h, xe, cbret, ce)) < 0){
 		if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 		    goto done;
-		clicon_log(LOG_NOTICE, "%s Error in backend_rpc_call:%s", __FUNCTION__, xml_name(xe));
+		clicon_log(LOG_NOTICE, "%s Error in rpc_callback_call:%s", __FUNCTION__, xml_name(xe));
 		goto reply; /* Dont quit here on user callbacks */
 	    }
 	    if (ret == 0){ /* not handled by callback */

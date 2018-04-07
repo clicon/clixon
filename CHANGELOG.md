@@ -2,16 +2,18 @@
 
 ## 3.6.0 (Upcoming)
 
-
 ### Major changes:
 * Restructure and more generic plugin API (cli,backend,restconf,netconf) as preparation for authorization RFC8341
   * New design with single `clixon_plugin_init()` returning an api struct with function pointers, see example below. This means that there are no hardcoded plugin functions, except `clixon_plugin_init()`.
+  * Plugin RPC callback interface have been unified between backend, netconf and restconf.
+    * Backend RPC register callback function (Netconf RPC or restconf operation POST) has been changed from: `backend_rpc_cb_register()` to `rpc_callback_register()`
+    * Backend RPC callback signature has been changed from: `int cb(clicon_handle h, cxobj *xe, struct client_entry *ce, cbuf *cbret, void *arg)` has been changed to : `int cb(clicon_handle h, cxobj *xe, struct client_entry *ce, cbuf *cbret, void *arg)`
+    * Frontend netconf and restconf plugins can register callbacks as well with same API as backends.
   * Master plugins have been removed. Plugins are loaded alphabetically. You can ensure plugin load order by prefixing them with an ordering number, for example.
   * Moved specific plugin functions from apps/ to generic functions in lib/
   * Added authentication plugin callback (ca_auth)
     * Added clicon_username_get() / clicon_username_set()
   * Removed some obscure plugin code that seem not to be used (please report if needed!)
-    * Client-local netconf plugins netconf_plugin_callbacks()
     * CLI parse hook
     * CLICON_FIND_PLUGIN
     * clicon_valcb()
@@ -20,6 +22,7 @@
   * Example of migrating a backend plugin module:
     * Add all callbacks in a clixon_plugin_api struct
     * Rename plugin_init() -> clixon_plugin_init() and return api as function value
+    * Rename backend_rpc_cb_register() -> rpc_callback_register() for any RPC/restconf operation POST calls
 ```
 /* This is old style with hardcoded function names (eg plugin_start) */
 int plugin_start(clicon_handle h, int argc, char **argv)
