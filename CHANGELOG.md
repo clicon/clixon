@@ -17,7 +17,8 @@
     * CLI parse hook
     * CLICON_FIND_PLUGIN
     * clicon_valcb()
-    * backend system plugins (CLIXON_BACKEND_SYSDIR)
+    * CLIXON_BACKEND_SYSDIR
+    * CLIXON_CLI_SYSDIR	
     * CLICON_MASTER_PLUGIN config variable
   * Example of migrating a backend plugin module:
     * Add all callbacks in a clixon_plugin_api struct

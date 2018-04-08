@@ -52,19 +52,6 @@
 #include <clixon/clixon.h>
 #include <clixon/clixon_cli.h>
 
-/*
- * Plugin initialization
- */
-int
-plugin_init(clicon_handle h)
-{
-    struct timeval tv;
-
-    gettimeofday(&tv, NULL);
-    srandom(tv.tv_usec);
-
-    return 0;
-}
 
 /*! Example cli function */
 int
@@ -125,3 +112,29 @@ fib_route_rpc(clicon_handle h,
     return retval;
 }
 
+static clixon_plugin_api api = {
+    "example",          /* name */
+    clixon_plugin_init, /* init */
+    NULL,               /* start */
+    NULL,               /* exit */
+    NULL,               /* auth */
+    NULL,               /* cli_prompthook_t */
+    NULL,               /* cligen_susp_cb_t */
+    NULL,               /* cligen_interrupt_cb_t */
+};
+
+/*! CLI plugin initialization
+ * @param[in]  h    Clixon handle
+ * @retval     NULL Error with clicon_err set
+ * @retval     api  Pointer to API struct
+ */
+clixon_plugin_api *
+clixon_plugin_init(clicon_handle h)
+{
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    srandom(tv.tv_usec);
+
+    return &api;
+}

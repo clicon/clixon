@@ -56,8 +56,6 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 # Use this clixon lib for linking
 CLIXON_LIB	= libclixon.so.$(CLIXON_MAJOR).$(CLIXON_MINOR)
-# Location of system plugins
-CLIXON_CLI_SYSDIR = $(libdir)/clixon/plugins/cli
 
 # For dependency. A little strange that we rely on it being built in the src dir
 # even though it may exist in $(libdir). But the new version may not have been installed yet.
@@ -127,7 +125,7 @@ uninstall:
 .SUFFIXES: .c .o
 
 .c.o:
-	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" -DCLIXON_CLI_SYSDIR=\"$(CLIXON_CLI_SYSDIR)\" $(CFLAGS) -c $<
+	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" $(CFLAGS) -c $<
 
 # Just link test programs
 test.c	:

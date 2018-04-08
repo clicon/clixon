@@ -268,11 +268,12 @@ plugin_credentials(clicon_handle h,
 
 /*! Local example restconf rpc callback 
  */
-int restconf_client_rpc(clicon_handle h, 
-			cxobj        *xn,      
-			cbuf         *cbret,    
-			void         *arg,
-			void         *regarg)
+int
+restconf_client_rpc(clicon_handle h, 
+		    cxobj        *xn,      
+		    cbuf         *cbret,    
+		    void         *arg,
+		    void         *regarg)
 {
     //    FCGX_Request *r = (FCGX_Request *)arg;
     clicon_debug(1, "%s", __FUNCTION__);

@@ -106,7 +106,7 @@ clixon_plugin_reset(clicon_handle h,
     plgreset_t    *resetfn;          /* Plugin auth */
     int            retval = 1;
     
-    while ((cp = plugin_each(cp)) != NULL) {
+    while ((cp = plugin_each(h, cp)) != NULL) {
 	if ((resetfn = cp->cp_api.ca_reset) == NULL)
 	    continue;
 	if ((retval = resetfn(h, db)) < 0) {
@@ -150,7 +150,7 @@ clixon_plugin_statedata(clicon_handle        h,
 	clicon_err(OE_CFG, ENOENT, "XML tree expected");
 	goto done;
     }
-    while ((cp = plugin_each(cp)) != NULL) {
+    while ((cp = plugin_each(h, cp)) != NULL) {
 	if ((fn = cp->cp_api.ca_statedata) == NULL)
 	    continue;
 	if ((x = xml_new("config", NULL, NULL)) == NULL)
@@ -246,7 +246,7 @@ plugin_transaction_begin(clicon_handle       h,
     clixon_plugin *cp = NULL;
     trans_cb_t    *fn;
 
-    while ((cp = plugin_each(cp)) != NULL) {
+    while ((cp = plugin_each(h, cp)) != NULL) {
 	if ((fn = cp->cp_api.ca_trans_begin) == NULL)
 	    continue;
 	if ((retval = fn(h, (transaction_data)td)) < 0){
@@ -274,7 +274,7 @@ plugin_transaction_validate(clicon_handle       h,
     clixon_plugin *cp = NULL;
     trans_cb_t    *fn;
 
-    while ((cp = plugin_each(cp)) != NULL) {
+    while ((cp = plugin_each(h, cp)) != NULL) {
 	if ((fn = cp->cp_api.ca_trans_validate) == NULL)
 	    continue;
 	if ((retval = fn(h, (transaction_data)td)) < 0){
@@ -303,7 +303,7 @@ plugin_transaction_complete(clicon_handle       h,
     clixon_plugin *cp = NULL;
     trans_cb_t    *fn;
     
-    while ((cp = plugin_each(cp)) != NULL) {
+    while ((cp = plugin_each(h, cp)) != NULL) {
 	if ((fn = cp->cp_api.ca_trans_complete) == NULL)
 	    continue;
 	if ((retval = fn(h, (transaction_data)td)) < 0){
@@ -349,7 +349,7 @@ plugin_transaction_revert(clicon_handle       h,
     tr.td_scvec = td->td_tcvec;
     tr.td_tcvec = td->td_scvec;
 
-    while ((cp = plugin_each_revert(cp, nr)) != NULL) {
+    while ((cp = plugin_each_revert(h, cp, nr)) != NULL) {
 	if ((fn = cp->cp_api.ca_trans_commit) == NULL)
 	    continue;
 	if ((retval = fn(h, (transaction_data)td)) < 0){
@@ -379,7 +379,7 @@ plugin_transaction_commit(clicon_handle       h,
     trans_cb_t    *fn;
     int            i=0;
 
-    while ((cp = plugin_each(cp)) != NULL) {
+    while ((cp = plugin_each(h, cp)) != NULL) {
 	i++;
 	if ((fn = cp->cp_api.ca_trans_commit) == NULL)
 	    continue;
@@ -409,7 +409,7 @@ plugin_transaction_end(clicon_handle h,
     clixon_plugin *cp = NULL;
     trans_cb_t    *fn;
     
-    while ((cp = plugin_each(cp)) != NULL) {
+    while ((cp = plugin_each(h, cp)) != NULL) {
 	if ((fn = cp->cp_api.ca_trans_end) == NULL)
 	    continue;
 	if ((retval = fn(h, (transaction_data)td)) < 0){
@@ -436,7 +436,7 @@ plugin_transaction_abort(clicon_handle       h,
     clixon_plugin *cp = NULL;
     trans_cb_t    *fn;
 
-    while ((cp = plugin_each(cp)) != NULL) {
+    while ((cp = plugin_each(h, cp)) != NULL) {
 	if ((fn = cp->cp_api.ca_trans_abort) == NULL)
 	    continue;
 	fn(h, (transaction_data)td); /* dont abort on error */

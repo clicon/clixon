@@ -60,7 +60,10 @@
 #include "clixon_xml.h"
 #include "clixon_plugin.h"
 
-/* XXX The below should be placed in clixon handle when done */
+/* List of plugins XXX 
+ * 1. Place in clixon handle not global variables
+ * 2. Use qelem circular lists
+ */
 static clixon_plugin *_clixon_plugins = NULL;  /* List of plugins (of client) */
 static int            _clixon_nplugins = 0;  /* Number of plugins */
 
@@ -69,17 +72,19 @@ static int            _clixon_nplugins = 0;  /* Number of plugins */
  * @note Never manipulate the plugin during operation or using the
  * same object recursively
  *
+ * @param[in]  h       Clicon handle
  * @param[in] plugin   previous plugin, or NULL on init
  * @code
  *   clicon_plugin *cp = NULL;
- *   while ((cp = plugin_each(cp)) != NULL) {
+ *   while ((cp = plugin_each(h, cp)) != NULL) {
  *     ...
  *   }
  * @endcode
  * @note Not optimized, alwasy iterates from the start of the list
  */
 clixon_plugin *
-plugin_each(clixon_plugin *cpprev)
+plugin_each(clicon_handle  h,
+	    clixon_plugin *cpprev)
 {
     int            i;
     clixon_plugin *cp;
@@ -105,17 +110,19 @@ plugin_each(clixon_plugin *cpprev)
  * @note Never manipulate the plugin during operation or using the
  * same object recursively
  *
+ * @param[in]  h       Clicon handle
  * @param[in] plugin   previous plugin, or NULL on init
  * @code
  *   clicon_plugin *cp = NULL;
- *   while ((cp = plugin_each_revert(cp, nr)) != NULL) {
+ *   while ((cp = plugin_each_revert(h, cp, nr)) != NULL) {
  *     ...
  *   }
  * @endcode
  * @note Not optimized, alwasy iterates from the start of the list
  */
 clixon_plugin *
-plugin_each_revert(clixon_plugin *cpprev,
+plugin_each_revert(clicon_handle  h,
+		   clixon_plugin *cpprev,
 		   int            nr)
 {
     int            i;
@@ -135,6 +142,27 @@ plugin_each_revert(clixon_plugin *cpprev,
 	    cpnext = &_clixon_plugins[i-1];
     }
     return cpnext;
+}
+
+/*! Find plugin by name
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Plugin name
+ * @retval     p    Plugin if found
+ * @retval     NULL Not found
+ */
+clixon_plugin *
+plugin_find(clicon_handle h,
+	    char         *name)
+{
+    int            i;
+    clixon_plugin *cp = NULL;
+
+    for (i = 0; i < _clixon_nplugins; i++) {
+	cp = &_clixon_plugins[i];
+	if (strcmp(cp->cp_name, name) == 0)
+	    return cp;
+    }
+    return NULL;
 }
 
 /*! Load a dynamic plugin object and call its init-function
@@ -158,6 +186,7 @@ plugin_load_one(clicon_handle   h,
     clixon_plugin_api *api = NULL;
     clixon_plugin *cp = NULL;
     char          *name;
+    char          *p;
 
     clicon_debug(1, "%s", __FUNCTION__);
     dlerror();    /* Clear any existing error */
@@ -187,10 +216,18 @@ plugin_load_one(clicon_handle   h,
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
+    memset(cp, 0, sizeof(struct clixon_plugin));
     cp->cp_handle = handle;
+    /* Extract string after last '/' in filename, if any */
     name = strrchr(file, '/') ? strrchr(file, '/')+1 : file;
+    /* strip extension, eg .so from name */
+    if ((p=strrchr(name, '.')) != NULL)
+	*p = '\0';
+    /* Copy name to struct */
+    memcpy(cp->cp_name, name, strlen(name)+1);
+
     snprintf(cp->cp_name, sizeof(cp->cp_name), "%*s",
-	     (int)strlen(name)-2, name);
+	     (int)strlen(name), name);
     cp->cp_api = *api;
     clicon_debug(1, "%s", __FUNCTION__);
  done:
@@ -243,80 +280,6 @@ clixon_plugins_load(clicon_handle h,
 done:
     if (dp)
 	free(dp);
-    return retval;
-}
-
-/*! Load a dynamic plugin object and call its init-function
- * Note 'file' may be destructively modified
- * @param[in]  h       Clicon handle
- * @param[in]  file    Which plugin to load
- * @param[in]  dlflags See man(3) dlopen
- * @note OBSOLETE
- */
-plghndl_t 
-plugin_load(clicon_handle h, 
-	    char         *file, 
-	    int           dlflags)
-{
-    char      *error;
-    void      *handle = NULL;
-    plginit_t *initfn;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    dlerror();    /* Clear any existing error */
-    if ((handle = dlopen(file, dlflags)) == NULL) {
-        error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
-	goto done;
-    }
-    /* call plugin_init() if defined */
-    if ((initfn = dlsym(handle, PLUGIN_INIT)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "Failed to find plugin_init when loading clixon plugin %s", file);
-	goto err;
-    }
-    if ((error = (char*)dlerror()) != NULL) {
-	clicon_err(OE_UNIX, 0, "dlsym: %s: %s", file, error);
-	goto done;
-    }
-    if (initfn(h) != 0) {
-	clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
-	if (!clicon_errno) 	/* sanity: log if clicon_err() is not called ! */
-	    clicon_err(OE_DB, 0, "Unknown error: %s: plugin_init does not make clicon_err call on error",
-		       file);
-	goto err;
-    }
- done:
-    return handle;
- err:
-    if (handle)
-	dlclose(handle);
-    return NULL;
-}
-
-/*! Unload a plugin
- * @param[in]  h       Clicon handle
- * @param[in]  handle   Clicon handle
- * @note OBSOLETE
- */
-int
-plugin_unload(clicon_handle h, 
-	      plghndl_t    *handle)
-{
-    int        retval = 0;
-    char      *error;
-    plgexit_t *exitfn;
-
-    /* Call exit function is it exists */
-    exitfn = dlsym(handle, PLUGIN_EXIT);
-    if (dlerror() == NULL)
-	exitfn(h);
-
-    dlerror();    /* Clear any existing error */
-    if (dlclose(handle) != 0) {
-	error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
-	/* Just report */
-    }
     return retval;
 }
 
@@ -425,7 +388,7 @@ clixon_plugin_auth(clicon_handle h,
  */
 typedef struct {
     qelem_t 	  rc_qelem;	/* List header */
-    clicon_rpc_cb rc_callback; /* RPC Callback */
+    clicon_rpc_cb rc_callback;  /* RPC Callback */
     void	  *rc_arg;	/* Application specific argument to cb */
     char          *rc_tag;	/* Xml/json tag when matched, callback called */
 } rpc_callback_t;

@@ -460,7 +460,7 @@ main(int argc, char **argv)
      */
     tmp = *(argv-1);
     *(argv-1) = argv0;
-    cli_plugin_start(h, argc+1, argv-1);
+    clixon_plugin_start(h, argc+1, argv-1);
     *(argv-1) = tmp;
 
     cligen_line_scrolling_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_LINESCROLLING"));

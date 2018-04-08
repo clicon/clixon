@@ -89,6 +89,43 @@ Routing notification
 ...
 ```
 
+## Initializing a plugin
+
+The example includes a restonf, netconf, CLI and two backend plugins.
+Each plugin is initiated with an API struct followed by a plugin init function.
+The content of the API struct is different depending on what kind of plugin it is. Some fields are
+meaningful only for some plugins.
+The plugin init function may also include registering RPC functions.
+```
+static clixon_plugin_api api = {
+    "example",          /* name */
+    clixon_plugin_init, 
+    plugin_start,       
+    plugin_exit,        
+    NULL,               /* cli prompt N/A for backend */
+    NULL,               /* cli suspend N/A for backend */
+    NULL,               /* cli interrupt N/A for backend */
+    NULL,               /* auth N/A for backend */
+    plugin_reset,       
+    plugin_statedata,   
+    transaction_begin,  
+    transaction_validate,
+    transaction_complete,
+    transaction_commit,
+    transaction_end,  
+    transaction_abort
+};
+
+clixon_plugin_api *
+clixon_plugin_init(clicon_handle h)
+{
+    /* Optional callback registration for RPC calls */
+    rpc_callback_register(h, fib_route, NULL, "fib-route");
+    /* Return plugin API */
+    return &api; /* Return NULL on error */
+}
+```
+
 ## Operation data
 
 Clixon implements Yang RPC operations by an extension mechanism. The
@@ -119,18 +156,18 @@ In the backend, a callback is registered (fib_route()) which handles the RPC.
 static int 
 fib_route(clicon_handle h, 
 	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  struct client_entry *ce,    /* Client session */
 	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg)          /* Argument given at register */
+	  void         *arg,          /* Client session */
+	  void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
     return 0;
 }
 int
-plugin_init(clicon_handle h)
+clixon_plugin_init(clicon_handle h)
 {
 ...
-   backend_rpc_cb_register(h, fib_route, NULL, "fib-route");
+   rpc_callback_register(h, fib_route, NULL, "fib-route");
 ...
 }
 ```

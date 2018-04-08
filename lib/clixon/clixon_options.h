@@ -43,8 +43,6 @@
  */
 /* default group membership to access config unix socket */
 #define CLICON_SOCK_GROUP "clicon"
-/* Default name of master plugin */
-#define CLICON_MASTER_PLUGIN "master"
 
 /*
  * Types
@@ -136,9 +134,6 @@ static inline char *clicon_sock_group(clicon_handle h){
 }
 static inline char *clicon_backend_pidfile(clicon_handle h){
     return clicon_option_str(h, "CLICON_BACKEND_PIDFILE");
-}
-static inline char *clicon_master_plugin(clicon_handle h){
-    return clicon_option_str(h, "CLICON_MASTER_PLUGIN");
 }
 static inline char *clicon_xmldb_dir(clicon_handle h){
     return clicon_option_str(h, "CLICON_XMLDB_DIR");

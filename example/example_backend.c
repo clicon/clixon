@@ -256,6 +256,9 @@ static clixon_plugin_api api = {
     plugin_start,       /* start */
     NULL,               /* exit */
     NULL,               /* auth */
+    NULL,               /* cli prompt */
+    NULL,               /* cli suspend */
+    NULL,               /* cli interrupt */
     plugin_reset,       /* reset */
     plugin_statedata,   /* statedata */
     NULL,               /* trans begin */
@@ -293,6 +296,7 @@ clixon_plugin_init(clicon_handle h)
 			      "empty"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
+    /* Return plugin API */
     return &api;
  done:
     return NULL;

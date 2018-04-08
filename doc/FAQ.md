@@ -1,4 +1,4 @@
-# Clixon FAQ
+i# Clixon FAQ
 
 ## What is Clixon?
 
@@ -197,6 +197,7 @@ The second way is by programming the plugin_reset() in the backend
 plugin. The example code contains an example on how to do this (see plugin_reset() in example_backend.c).
 
 ## I want to program. How do I extend the example?
+See [../apps/example] 
 - example.xml - Change the configuration file
 - The yang specifications - This is the central part. It changes the XML, database and the config cli.
 - example_cli.cli - Change the fixed part of the CLI commands 
@@ -204,6 +205,25 @@ plugin. The example code contains an example on how to do this (see plugin_reset
 - example_backend.c - Commit and validate functions.
 - example_netconf.c - Netconf plugin
 - example_restconf.c - Add restconf authentication, etc.
+
+## How is a plugin initiated?
+Each plugin is initiated with an API struct followed by a plugin init function as follows:
+```
+   static clixon_plugin_api api = {
+      "example",          /* name */
+      clixon_plugin_init, 
+      plugin_start,
+      ... /* more functions here */
+   }
+   clixon_plugin_api *
+   clixon_plugin_init(clicon_handle h)
+   {
+      ...
+      return &api; /* Return NULL on error */
+   }
+```
+For more info see [../example/README.md]
+
 
 ## How do I write a commit function?
 In the example, you write a commit function in example_backend.c.
@@ -284,10 +304,10 @@ implement the RFC, you need to register an RPC callback in the backend plugin:
 Example:
 ```
 int
-plugin_init(clicon_handle h)
+clixon_plugin_init(clicon_handle h)
 {
 ...
-   backend_rpc_cb_register(h, fib_route, NULL, "fib-route");
+   rpc_callback_register(h, fib_route, NULL, "fib-route");
 ...
 }
 ```
@@ -296,9 +316,9 @@ And then define the callback itself:
 static int 
 fib_route(clicon_handle h,            /* Clicon handle */
 	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  struct client_entry *ce,    /* Client session */
 	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg)          /* Argument given at register */
+	  void         *arg,          /* Client session */
+	  void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
     return 0;
@@ -313,13 +333,14 @@ You can specify an authentication callback for restconf as follows:
 ```
 int
 plugin_credentials(clicon_handle h,     
-		   FCGX_Request *r,
-		   char        **username)
+		   void         *arg)
+{
+    FCGX_Request *r = (FCGX_Request *)arg;
+    ...
+    clicon_username_set(h, user);
 ```
 
-If a plugin is provided, it needs to supply a username. If not, the
-request is unauthorized. the function mallocs a username and returns
-it.
+To authenticate, the callback needs to return the value 1 and supply a username.
 
-See (../apps/example/example_restconf.c) plugin_credentials() for
+See [../apps/example/example_restconf.c] plugin_credentials() for
 an example of HTTP basic auth.
