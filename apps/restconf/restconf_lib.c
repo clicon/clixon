@@ -384,3 +384,82 @@ get_user_cookie(char  *cookiestr,
 	cvec_free(cvv);
     return retval;
 }
+
+/*! Return error on get/head request
+ * @param[in]  h      Clixon handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  xerr   XML error message from backend
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ */
+int
+api_return_err(clicon_handle h,
+	       FCGX_Request *r,
+	       cxobj        *xerr,
+	       int           pretty,
+	       int           use_xml)
+{
+    int        retval = -1;
+    cbuf      *cb = NULL;
+    cxobj     *xtag;
+    char      *tagstr;
+    int        code;	
+    const char *reason_phrase;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((cb = cbuf_new()) == NULL)
+	goto done;
+    if ((xtag = xpath_first(xerr, "error-tag")) == NULL){
+	notfound(r); /* bad reply? */
+	goto ok;
+    }
+    tagstr = xml_body(xtag);
+    code = restconf_err2code(tagstr);
+    if ((reason_phrase = restconf_code2reason(code)) == NULL)
+	reason_phrase="";
+    if (xml_name_set(xerr, "error") < 0)
+	goto done;
+    if (use_xml){
+	if (clicon_xml2cbuf(cb, xerr, 2, pretty) < 0)
+	    goto done;
+    }
+    else
+	if (xml2json_cbuf(cb, xerr, pretty) < 0)
+	    goto done;
+    FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
+    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n\r\n",
+		 use_xml?"xml":"json");
+    if (use_xml){
+	if (pretty){
+	    FCGX_FPrintF(r->out, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "    </errors>\r\n");
+	}
+	else {
+	    FCGX_FPrintF(r->out, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "</errors>\r\n");
+	}
+    }
+    else{
+	if (pretty){
+	    FCGX_FPrintF(r->out, "{\n");
+	    FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : %s\n",
+			 cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "}\r\n");
+	}
+	else{
+	    FCGX_FPrintF(r->out, "{");
+	    FCGX_FPrintF(r->out, "\"ietf-restconf:errors\" : ");
+	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "}\r\n");
+	}
+    }
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}

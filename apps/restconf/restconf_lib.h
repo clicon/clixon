@@ -37,11 +37,7 @@
 #define _RESTCONF_LIB_H_
 
 /*
- * Constants
- */
-
-/*
- * Prototypes
+ * Prototypes (also in clixon_restconf.h)
  */
 int restconf_err2code(char *tag);
 const char *restconf_code2reason(int code);
@@ -58,6 +54,7 @@ int clicon_debug_xml(int dbglevel, char *str, cxobj *cx);
 int test(FCGX_Request *r, int dbg);
 cbuf *readdata(FCGX_Request *r);
 int get_user_cookie(char *cookiestr, char  *attribute, char **val);
-
+int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
+		   int pretty, int use_xml);
 
 #endif /* _RESTCONF_LIB_H_ */
