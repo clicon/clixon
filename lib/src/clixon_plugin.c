@@ -76,15 +76,15 @@ static int            _clixon_nplugins = 0;  /* Number of plugins */
  * @param[in] plugin   previous plugin, or NULL on init
  * @code
  *   clicon_plugin *cp = NULL;
- *   while ((cp = plugin_each(h, cp)) != NULL) {
+ *   while ((cp = clixon_plugin_each(h, cp)) != NULL) {
  *     ...
  *   }
  * @endcode
  * @note Not optimized, alwasy iterates from the start of the list
  */
 clixon_plugin *
-plugin_each(clicon_handle  h,
-	    clixon_plugin *cpprev)
+clixon_plugin_each(clicon_handle  h,
+		   clixon_plugin *cpprev)
 {
     int            i;
     clixon_plugin *cp;
@@ -114,16 +114,16 @@ plugin_each(clicon_handle  h,
  * @param[in] plugin   previous plugin, or NULL on init
  * @code
  *   clicon_plugin *cp = NULL;
- *   while ((cp = plugin_each_revert(h, cp, nr)) != NULL) {
+ *   while ((cp = clixon_plugin_each_revert(h, cp, nr)) != NULL) {
  *     ...
  *   }
  * @endcode
  * @note Not optimized, alwasy iterates from the start of the list
  */
 clixon_plugin *
-plugin_each_revert(clicon_handle  h,
-		   clixon_plugin *cpprev,
-		   int            nr)
+clixon_plugin_each_revert(clicon_handle  h,
+			  clixon_plugin *cpprev,
+			  int            nr)
 {
     int            i;
     clixon_plugin *cp;
@@ -151,8 +151,8 @@ plugin_each_revert(clicon_handle  h,
  * @retval     NULL Not found
  */
 clixon_plugin *
-plugin_find(clicon_handle h,
-	    char         *name)
+clixon_plugin_find(clicon_handle h,
+		   char         *name)
 {
     int            i;
     clixon_plugin *cp = NULL;

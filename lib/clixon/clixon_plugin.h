@@ -50,13 +50,19 @@
 /* Dynamicically loadable plugin object handle. @see return value of dlopen(3) */
 typedef void *plghndl_t;
 
-/* Registered RPC callback function */
+/*! Registered RPC callback function 
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xn      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     Domain specific arg, ec client-entry or FCGX_Request 
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ */
 typedef int (*clicon_rpc_cb)(
-    clicon_handle h,       /* Clicon handle */
-    cxobj        *xn,      /* Request: <rpc><xn></rpc> */
-    cbuf         *cbret,   /* Return xml tree, eg <rpc-reply>..., <rpc-error.. */
-    void         *arg,     /* Domain specific arg, ec client-entry */
-    void         *regarg   /* User argument given at rpc_callback_register() */
+    clicon_handle h,       
+    cxobj        *xn,      
+    cbuf         *cbret,   
+    void         *arg,     
+    void         *regarg   
 );  
 
 /*
@@ -155,11 +161,11 @@ typedef struct clixon_plugin clixon_plugin;
  */
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
-clixon_plugin *plugin_each(clicon_handle h, clixon_plugin *cpprev);
+clixon_plugin *clixon_plugin_each(clicon_handle h, clixon_plugin *cpprev);
 
-clixon_plugin *plugin_each_revert(clicon_handle h, clixon_plugin *cpprev, int nr);
+clixon_plugin *clixon_plugin_each_revert(clicon_handle h, clixon_plugin *cpprev, int nr);
 
-clixon_plugin *plugin_find(clicon_handle h, char *name);
+clixon_plugin *clixon_plugin_find(clicon_handle h, char *name);
 
 int clixon_plugins_load(clicon_handle h, char *function, char *dir);
 
@@ -171,6 +177,7 @@ int clixon_plugin_auth(clicon_handle h, void *arg);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *tag);
+
 int rpc_callback_delete_all(void);
 
 int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);

@@ -4,7 +4,7 @@
 
 ### Major changes:
 * Restructure and more generic plugin API (cli,backend,restconf,netconf) as preparation for authorization RFC8341
-  * New design with single `clixon_plugin_init()` returning an api struct with function pointers, see example below. This means that there are no hardcoded plugin functions, except `clixon_plugin_init()`.
+  * New design change `plugin_init()` to a single `clixon_plugin_init()` returning an api struct with function pointers, see example below. This means that there are no hardcoded plugin functions, except `clixon_plugin_init()`.
   * Plugin RPC callback interface have been unified between backend, netconf and restconf.
     * Backend RPC register callback function (Netconf RPC or restconf operation POST) has been changed from: `backend_rpc_cb_register()` to `rpc_callback_register()`
     * Backend RPC callback signature has been changed from: `int cb(clicon_handle h, cxobj *xe, struct client_entry *ce, cbuf *cbret, void *arg)` has been changed to : `int cb(clicon_handle h, cxobj *xe, struct client_entry *ce, cbuf *cbret, void *arg)`
@@ -45,6 +45,9 @@ static clixon_plugin_api api = {
     plugin_start,       
     plugin_exit,        
     NULL,               /* auth N/A for backend */
+    NULL,               /* cli_prompthook_t */
+    NULL,               /* cligen_susp_cb_t */
+    NULL,               /* cligen_interrupt_cb_t */	
     plugin_reset,       
     plugin_statedata,   
     transaction_begin,  

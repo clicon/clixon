@@ -260,7 +260,7 @@ cli_load_syntax(clicon_handle h,
     mode = cvec_find_str(cvv, "CLICON_MODE");
 
     if (plgnam != NULL) { /* Find plugin for callback resolving */
-	if ((cp = plugin_find(h, plgnam)) != NULL)
+	if ((cp = clixon_plugin_find(h, plgnam)) != NULL)
 	    handle = cp->cp_handle;
 	if (handle == NULL){
 	    clicon_err(OE_PLUGIN, 0, "CLICON_PLUGIN set to '%s' in %s but plugin %s.so not found in %s\n", 
@@ -379,7 +379,7 @@ cli_syntax_load (clicon_handle h)
 
     /* Set susp and interrupt callbacks into  CLIgen */
     cp = NULL;
-    while ((cp = plugin_each(h, cp)) != NULL) {
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (fns==NULL && (fns = cp->cp_api.ca_suspend) != NULL)
 	    if (cli_susp_hook(h, fns) < 0)
 		goto done;
@@ -589,7 +589,7 @@ clicon_cliread(clicon_handle h)
     mode = stx->stx_active_mode;
     /* Get prompt from plugin callback? */
     cp = NULL;
-    while ((cp = plugin_each(h, cp)) != NULL) {
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if ((fn = cp->cp_api.ca_prompt) == NULL)
 	    continue;
 	pfmt = fn(h, mode->csm_name);
