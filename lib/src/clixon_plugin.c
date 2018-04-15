@@ -465,8 +465,8 @@ rpc_callback_call(clicon_handle h,
 		  cbuf         *cbret,
 		  void         *arg)
 {
-    rpc_callback_t *rc;
     int            retval = -1;
+    rpc_callback_t *rc;
 
     if (rpc_cb_list == NULL)
 	return 0;
@@ -486,5 +486,6 @@ rpc_callback_call(clicon_handle h,
     } while (rc != rpc_cb_list);
     retval = 0;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }

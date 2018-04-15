@@ -385,7 +385,7 @@ get_user_cookie(char  *cookiestr,
     return retval;
 }
 
-/*! Return error on get/head request
+/*! Return restconf error on get/head request
  * @param[in]  h      Clixon handle
  * @param[in]  r      Fastcgi request handle
  * @param[in]  xerr   XML error message from backend

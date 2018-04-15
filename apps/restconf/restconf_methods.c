@@ -984,6 +984,7 @@ api_operations_post(clicon_handle h,
     yang_stmt *youtput;
     cxobj     *xdata = NULL;
     cxobj     *xret = NULL;
+    cxobj     *xerr;
     cbuf      *cbx = NULL;
     cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xe;
@@ -1080,6 +1081,7 @@ api_operations_post(clicon_handle h,
 	goto done;
     }
     xe = NULL;
+
     while ((xe = xml_child_each(xtop, xe, CX_ELMNT)) != NULL) {
 	/* Look for local (client-side) restconf plugins. */
 	if ((ret = rpc_callback_call(h, xe, cbret, r)) < 0)
@@ -1087,6 +1089,12 @@ api_operations_post(clicon_handle h,
 	if (ret == 1){ /* Handled locally */
 	    if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)
 		goto done;
+	    /* Local error: return it and quit */
+	    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+		if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		    goto done;
+		goto ok;
+	    }
 	}
 	break; /* Just one if local */
     }
@@ -1095,11 +1103,13 @@ api_operations_post(clicon_handle h,
 	    goto done;
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
-    xoutput=xpath_first(xret, "/");
-    xml_name_set(xoutput, "output");
+    if ((xoutput=xpath_first(xret, "/")) != NULL)
+	xml_name_set(xoutput, "output");	
     if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL &&
 	xoutput){
-	//	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
+#if 0
+	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
+#endif
 	cbuf_reset(cbx);
 	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
 	if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, youtput) < 0)
@@ -1122,7 +1132,9 @@ api_operations_post(clicon_handle h,
 	else
 	    if (xml2json_cbuf(cbx, xoutput, pretty) < 0)
 		goto done;
+#if 1
 	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
+#endif
 	FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
 	FCGX_FPrintF(r->out, "\r\n\r\n");
     }
