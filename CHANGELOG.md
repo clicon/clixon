@@ -89,7 +89,7 @@ clixon_plugin_api *clixon_plugin_init(clicon_handle h)
   clicon_rpc_config_get(h, db, xpath, xt) --> clicon_rpc_config_get(h, db, xpath, username, xt)
   clicon_rpc_get(h, xpath, xt) --> clicon_rpc_get(h, xpath, username, xt)
 
-* Experimental: Added CLICON_TRANSACTION_MOD configurqation option. If set,
+* Experimental: Added CLICON_TRANSACTION_MOD configuration option. If set,
   modifications in validation and commit callbacks are written back
   into the datastore.
 * Invalid key to api_path2xml gives warning instead of error and quit.	
@@ -116,7 +116,7 @@ enables saved files to be used as datastore without any editing. Thanks Matt.
 ## 3.5.0 (12 February 2018)
 
 ### Major changes:
-* Major Restconf feature update to comply to RFC 8040. Thanks Stephen Jones for getting right.
+* Major Restconf feature update to comply to RFC 8040. Thanks Stephen Jones of Netgate for getting right.
   * GET: Always return object referenced (and nothing else). ie, GET /restconf/data/X returns X. 
   * GET Added support for the following resources: Well-known, top-level resource, and yang library version,
   * GET Single element JSON lists use {list:[element]}, not {list:element}.
