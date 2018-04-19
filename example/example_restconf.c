@@ -180,7 +180,6 @@ b64_decode(const char *src,
     return (tarindex);
 }
 
-
 /*! Process a rest request that requires (cookie) "authentication"
  * Note, this is loaded as dlsym fixed symbol in plugin
  * @param[in]  h        Clixon handle
@@ -188,7 +187,7 @@ b64_decode(const char *src,
  * @retval -1  Fatal error
  * @retval  0  Unauth
  * @retval  1  Auth
- * For grideye, return "u" entry name if it has a valid "user" entry.
+ * 
  */
 int
 plugin_credentials(clicon_handle h,     
@@ -206,12 +205,17 @@ plugin_credentials(clicon_handle h,
     size_t  authlen;
     cbuf   *cb = NULL;
     int     ret;
-    
+
+    /* XXX This is a kludge to reset the user not remaining from previous */
+    if (clicon_username_set(h, "admin") < 0)
+    	goto done;
     clicon_debug(1, "%s", __FUNCTION__);
     /* Check if basic_auth set, if not return OK */
-    if (clicon_rpc_get_config(h, "running", "/", &xt) < 0)
+    if (clicon_rpc_get_config(h, "running", "authentication", &xt) < 0)
 	goto done;
-    if ((x = xpath_first(xt, "basic_auth")) == NULL)
+    if (clicon_username_set(h, "none") < 0)
+    	goto done;
+    if ((x = xpath_first(xt, "authentication/basic_auth")) == NULL)
 	goto ok;
     if ((xbody = xml_body(x)) == NULL)
 	goto ok;
@@ -219,8 +223,8 @@ plugin_credentials(clicon_handle h,
 	goto ok;
     /* At this point in the code we must use HTTP basic authentication */
     if ((auth = FCGX_GetParam("HTTP_AUTHORIZATION", r->envp)) == NULL)
-	goto fail;
-    if (strlen(auth) < strlen("Basic "))
+	goto fail; 
+   if (strlen(auth) < strlen("Basic "))
 	goto fail;
     if (strncmp("Basic ", auth, strlen("Basic ")))
 	goto fail;
@@ -239,15 +243,18 @@ plugin_credentials(clicon_handle h,
     *passwd = '\0';
     passwd++;
     clicon_debug(1, "%s user:%s passwd:%s", __FUNCTION__, user, passwd);
+    /* Here get auth sub-tree whjere all the users are */
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "auth[user=%s]", user);
+    cprintf(cb, "authentication/auth[user=%s]", user);
     if ((x = xpath_first(xt, cbuf_get(cb))) == NULL)
 	goto fail;
+
     passwd2 = xml_find_body(x, "password");
     if (strcmp(passwd, passwd2))
 	goto fail;
     retval = 1;
+    clicon_debug(1, "%s user:%s", __FUNCTION__, user);
     if (clicon_username_set(h, user) < 0)
 	goto done;
  ok:   /* authenticated */
@@ -281,7 +288,6 @@ restconf_client_rpc(clicon_handle h,
     return 0;
 }
 
-
 clixon_plugin_api * clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
@@ -289,7 +295,7 @@ static clixon_plugin_api api = {
     clixon_plugin_init,  /* init */
     NULL,                /* start */
     NULL,                /* exit */
-    plugin_credentials   /* auth */
+    .ca_auth=plugin_credentials   /* auth */
 };
 
 /*! Restconf plugin initialization

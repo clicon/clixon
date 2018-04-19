@@ -55,6 +55,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <assert.h>
+#include <pwd.h>
 #include <netinet/in.h>
 #include <libgen.h>
 
@@ -309,7 +310,8 @@ main(int    argc,
     clicon_handle    h;
     int              use_syslog;
     char            *dir;
-
+    struct passwd   *pw;
+    
     /* Defaults */
     use_syslog = 0;
 
@@ -318,6 +320,14 @@ main(int    argc,
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
 	return -1;
+
+    /* Set username to clicon handle. Use in all communication to backend */
+    if ((pw = getpwuid(getuid())) == NULL){
+	clicon_err(OE_UNIX, errno, "getpwuid");
+	goto done;
+    }
+    if (clicon_username_set(h, pw->pw_name) < 0)
+	goto done;
 
     while ((c = getopt(argc, argv, NETCONF_OPTS)) != -1)
 	switch (c) {
@@ -376,6 +386,8 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+
+
     /* Parse yang database spec file */
     if (yang_spec_main(h) == NULL)
 	goto done;
@@ -386,7 +398,7 @@ main(int    argc,
 
     /* Initialize plugins group */
     if ((dir = clicon_netconf_dir(h)) != NULL)
-	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir) < 0)
+	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
 	    goto done;
 
     /* Call start function is all plugins before we go interactive */

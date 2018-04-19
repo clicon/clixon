@@ -63,8 +63,6 @@ typedef struct  {
 
 void *clixon_str2fn(char *name, void *handle, char **error);
 
-int cli_plugin_init(clicon_handle h);
-
 int clicon_eval(clicon_handle h, char *cmd, cg_obj *match_obj, cvec *vr);
 
 int clicon_parse(clicon_handle h, char *cmd, char **mode, int *result);

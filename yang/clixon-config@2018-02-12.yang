@@ -82,6 +82,24 @@ module clixon-config {
 	    }
 	}
     }
+    typedef nacm_mode{
+	description
+	    "Mode of RFC8341 Network Configuration Access Control Model.
+             It is unclear from the RFC whether NACM rules are internal
+             in a configuration (ie embedded in regular config) or external/OOB
+             in s separate, specific NACM-config";
+	type enumeration{
+	    enum disabled{
+		description "NACM is disabled";
+	    }
+	    enum internal{
+		description "NACM is enabled and available in the regular config";
+	    }
+	    enum external{
+		description "NACM is enabled and available in a separate config";
+	    }
+	}
+    }
     container config {
 	leaf CLICON_CONFIGFILE{
 	    type string;
@@ -112,6 +130,12 @@ module clixon-config {
 	    description
 		"Location of backend .so plugins. Load all .so 
        	         plugins in this dir as backend plugins";
+	}
+	leaf CLICON_BACKEND_REGEXP {
+	    type string;
+	    description
+		"Regexp of matching backend plugins in CLICON_BACKEND_DIR";
+	    default "(.so)$";
 	}
 	leaf CLICON_NETCONF_DIR {
 	    type string;
@@ -298,5 +322,9 @@ module clixon-config {
 	    description "If set, modifications in validation and commit 
                          callbacks are written back into the datastore";
 	}
+	leaf CLICON_NACM_MODE {
+	    type nacm_mode;
+	    default disabled;
+	    description "RFC8341 network access configuration control model";	}
     }
 }

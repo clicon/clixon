@@ -57,6 +57,7 @@
 #include "clixon_err.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
+#include "clixon_log.h"
 #include "clixon_xml.h"
 #include "clixon_netconf_lib.h"
 
@@ -438,6 +439,38 @@ netconf_access_denied(cbuf *cb,
     goto done;
 }
 
+/*! Create Netconf access-denied error XML tree according to RFC 6241 App A
+ *
+ * An expected element is missing.
+ * @param[out] xret    Error XML tree 
+ * @param[in]  type    Error type: "application" or "protocol"
+ * @param[in]  message Error message
+ */
+int
+netconf_access_denied_xml(cxobj **xret,
+			  char   *type,
+			  char   *message)
+{
+    int   retval =-1;
+    cbuf *cbret = NULL;    
+
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (netconf_access_denied(cbret, type, message) < 0)
+	goto done;
+    if (xml_parse_string(cbuf_get(cbret), NULL, xret) < 0)
+	goto done;
+    if (xml_rootchild(*xret, 0, xret) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (cbret)
+	cbuf_free(cbret);
+    return retval;
+}
+
 /*! Create Netconf lock-denied error XML tree according to RFC 6241 App A
  *
  * Access to the requested lock is denied because the lock is currently held
@@ -655,7 +688,7 @@ netconf_operation_failed(cbuf  *cb,
 	goto err;
     if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
 	goto err;
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
+    if (cprintf(cb, "</rpc-error></rpc-reply>") < 0)
 	goto err;
     retval = 0;
  done:
@@ -663,6 +696,39 @@ netconf_operation_failed(cbuf  *cb,
  err:
     clicon_err(OE_XML, errno, "cprintf");
     goto done;
+}
+
+/*! Create Netconf operation-failed error XML tree according to RFC 6241 App A
+ *
+ * Request could not be completed because the requested operation failed for
+ * some reason not covered by any other error condition.
+ * @param[out] xret    Error XML tree 
+ * @param[in]  type    Error type: "rpc", "application" or "protocol"
+ * @param[in]  message Error message
+ */
+int
+netconf_operation_failed_xml(cxobj **xret,
+			     char  *type,
+			     char  *message)
+{
+    int   retval =-1;
+    cbuf *cbret = NULL;    
+
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (netconf_operation_failed(cbret, type, message) < 0)
+	goto done;
+    if (xml_parse_string(cbuf_get(cbret), NULL, xret) < 0)
+	goto done;
+    if (xml_rootchild(*xret, 0, xret) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (cbret)
+	cbuf_free(cbret);
+    return retval;
 }
 
 /*! Create Netconf malformed-message error XML tree according to RFC 6241 App A

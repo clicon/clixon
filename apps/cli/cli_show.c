@@ -120,7 +120,8 @@ expand_dbvar(void   *h,
     yang_stmt       *ypath;
     cxobj           *xcur;
     char            *xpathcur;
-
+    char            *reason = NULL;
+    
     if (argv == NULL || cvec_len(argv) != 2){
 	clicon_err(OE_PLUGIN, 0, "%s: requires arguments: <db> <xmlkeyfmt>",
 		   __FUNCTION__);
@@ -190,8 +191,12 @@ expand_dbvar(void   *h,
 		goto done;
 	    }
 	    xpathcur = ypath->ys_argument;
-	    if (xml_merge(xt, xtop, yspec) < 0) /* Merge xtop into xt */
+	    if (xml_merge(xt, xtop, yspec, &reason) < 0) /* Merge xtop into xt */
 		goto done;
+	    if (reason){
+		cli_output(stderr, "%s\n", reason);
+		goto done;
+	    }	    
 	    if ((xcur = xpath_first(xt, xpath)) == NULL){
 		clicon_err(OE_DB, 0, "xpath %s should return merged content", xpath);
 		goto done;
@@ -241,6 +246,8 @@ expand_dbvar(void   *h,
  ok:
     retval = 0;
   done:
+    if (reason)
+	free(reason);
     if (api_path)
 	free(api_path);
     if (xvec)

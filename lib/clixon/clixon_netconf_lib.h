@@ -51,6 +51,7 @@ int netconf_bad_element(cbuf *cb, char *type, char *info, char *message);
 int netconf_unknown_element(cbuf *cb, char *type, char *info, char *message);
 int netconf_unknown_namespace(cbuf *cb, char *type, char *info, char *message);
 int netconf_access_denied(cbuf *cb, char *type, char *message);
+int netconf_access_denied_xml(cxobj **xret, char *type, char *message);
 int netconf_lock_denied(cbuf *cb, char *info, char *message);
 int netconf_resource_denied(cbuf *cb, char *type, char *message);
 int netconf_rollback_failed(cbuf *cb, char *type, char *message);
@@ -58,6 +59,7 @@ int netconf_data_exists(cbuf *cb, char *message);
 int netconf_data_missing(cbuf *cb, char *message);
 int netconf_operation_not_supported(cbuf *cb, char *type, char *message);
 int netconf_operation_failed(cbuf *cb, char *type, char *message);
+int netconf_operation_failed_xml(cxobj **xret, char *type, char *message);
 int netconf_malformed_message(cbuf *cb, char *message);
 
 #endif /* _CLIXON_NETCONF_LIB_H */

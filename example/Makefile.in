@@ -45,7 +45,7 @@ CFLAGS  	= @CFLAGS@ -rdynamic -fPIC
 INCLUDES 	= -I$(includedir) @INCLUDES@ 
 
 BE_PLUGIN       = $(APPNAME)_backend.so
-BE2_PLUGIN      = $(APPNAME)_backend_secondary.so
+BE2_PLUGIN      = $(APPNAME)_backend_nacm.so
 CLI_PLUGIN      = $(APPNAME)_cli.so
 NETCONF_PLUGIN  = $(APPNAME)_netconf.so
 RESTCONF_PLUGIN = $(APPNAME)_restconf.so
@@ -75,8 +75,8 @@ BE_OBJ   = $(BE_SRC:%.c=%.o)
 $(BE_PLUGIN): $(BE_OBJ)
 	$(CC) -Wall -shared -o $@ -lc $<
 
-# Secondary backend plugin
-BE2_SRC  = $(APPNAME)_backend_secondary.c
+# Secondary NACM backend plugin
+BE2_SRC  = $(APPNAME)_backend_nacm.c
 BE2_OBJ  = $(BE2_SRC:%.c=%.o)
 $(BE2_PLUGIN): $(BE2_OBJ)
 	$(CC) -Wall -shared -o $@ -lc $<

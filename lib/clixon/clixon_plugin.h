@@ -122,23 +122,44 @@ struct clixon_plugin_api{
     plginit2_t       *ca_init;           /* Clixon plugin Init (implicit) */
     plgstart_t       *ca_start;          /* Plugin start */
     plgexit_t        *ca_exit;	         /* Plugin exit */
-    plgauth_t        *ca_auth;           /* Auth credentials */
+    union {
+	struct {
+	    cli_prompthook_t *ci_prompt;         /* Prompt hook */
+	    cligen_susp_cb_t *ci_suspend;        /* Ctrl-Z hook, see cligen getline */
+	    cligen_interrupt_cb_t *ci_interrupt; /* Ctrl-C, see cligen getline */
+	} cau_cli;
+	struct {
+	    plgauth_t        *cr_auth;           /* Auth credentials */
+	} cau_restconf;
+	struct {
+	} cau_netconf;
+	struct {
+	    plgreset_t       *cb_reset;          /* Reset system status (backend only) */
+	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
+	    trans_cb_t       *cb_trans_begin;	 /* Transaction start */
+	    trans_cb_t       *cb_trans_validate; /* Transaction validation */
+	    trans_cb_t       *cb_trans_complete; /* Transaction validation complete */
+	    trans_cb_t       *cb_trans_commit;   /* Transaction commit */
+	    trans_cb_t       *cb_trans_end;	 /* Transaction completed  */
+	    trans_cb_t       *cb_trans_abort;	 /* Transaction aborted */    
+	} cau_backend;
 
-    /*--- CLI plugin-only ---*/
-    cli_prompthook_t *ca_prompt;         /* Prompt hook */
-    cligen_susp_cb_t *ca_suspend;        /* Ctrl-Z hook, see cligen getline */
-    cligen_interrupt_cb_t *ca_interrupt; /* Ctrl-C, see cligen getline */
-
-    /*--- Backend plugin only ---*/
-    plgreset_t       *ca_reset;          /* Reset system status (backend only) */
-    plgstatedata_t   *ca_statedata;      /* Get state data from plugin (backend only) */
-    trans_cb_t       *ca_trans_begin;	 /* Transaction start */
-    trans_cb_t       *ca_trans_validate; /* Transaction validation */
-    trans_cb_t       *ca_trans_complete; /* Transaction validation complete */
-    trans_cb_t       *ca_trans_commit;   /* Transaction commit */
-    trans_cb_t       *ca_trans_end;	 /* Transaction completed  */
-    trans_cb_t       *ca_trans_abort;	 /* Transaction aborted */    
+    } u;
 };
+/* Access fields */
+#define ca_prompt         u.cau_cli.ci_prompt
+#define ca_suspend        u.cau_cli.ci_suspend
+#define ca_interrupt      u.cau_cli.ci_interrupt
+#define ca_auth           u.cau_restconf.cr_auth
+#define ca_reset          u.cau_backend.cb_reset
+#define ca_statedata      u.cau_backend.cb_statedata
+#define ca_trans_begin    u.cau_backend.cb_trans_begin
+#define ca_trans_validate u.cau_backend.cb_trans_validate
+#define ca_trans_complete u.cau_backend.cb_trans_complete
+#define ca_trans_commit   u.cau_backend.cb_trans_commit
+#define ca_trans_end      u.cau_backend.cb_trans_end
+#define ca_trans_abort    u.cau_backend.cb_trans_abort
+
 typedef struct clixon_plugin_api clixon_plugin_api;
 
 /* Internal plugin structure with dlopen() handle and plugin_api
@@ -167,7 +188,7 @@ clixon_plugin *clixon_plugin_each_revert(clicon_handle h, clixon_plugin *cpprev,
 
 clixon_plugin *clixon_plugin_find(clicon_handle h, char *name);
 
-int clixon_plugins_load(clicon_handle h, char *function, char *dir);
+int clixon_plugins_load(clicon_handle h, char *function, char *dir, char *regexp);
 
 int clixon_plugin_start(clicon_handle h, int argc, char **argv);
 

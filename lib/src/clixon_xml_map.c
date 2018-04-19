@@ -317,8 +317,9 @@ xml_yang_validate_add(cxobj   *xt,
     yang_stmt *ys;
     char      *body;
     
-    /* if not given by argument (overide) use default link */
-    if ((ys = xml_spec(xt)) != NULL){
+    /* if not given by argument (overide) use default link 
+       and !Node has a config sub-statement and it is false */
+    if ((ys = xml_spec(xt)) != NULL && yang_config(ys) != 0){
 	switch (ys->ys_keyword){
 	case Y_LIST:
 	    /* fall thru */
@@ -326,6 +327,8 @@ xml_yang_validate_add(cxobj   *xt,
 	    for (i=0; i<ys->ys_len; i++){
 		yc = ys->ys_stmt[i];
 		if (yc->ys_keyword != Y_LEAF)
+		    continue;
+		if (yang_config(yc)==0)
 		    continue;
 		if (yang_mandatory(yc) && xml_find(xt, yc->ys_argument)==NULL){
 		    clicon_err(OE_CFG, 0,"Missing mandatory variable: %s",
@@ -386,8 +389,10 @@ xml_yang_validate_all(cxobj   *xt,
     yang_stmt *ys;
     yang_stmt *ytype;
     
-    /* if not given by argument (overide) use default link */
-    if ((ys = xml_spec(xt)) != NULL){
+    /* if not given by argument (overide) use default link 
+       and !Node has a config sub-statement and it is false */
+    if ((ys = xml_spec(xt)) != NULL &&
+	yang_config(ys) != 0){
 	switch (ys->ys_keyword){
 	case Y_LEAF:
 	    /* fall thru */
@@ -1644,6 +1649,9 @@ api_path2xml(char       *api_path,
  * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  x0p Parent of x0
  * @param[in]  x1  xml tree which modifies base
+ * @param[out] reason If retval=0 a malloced string
+ * @retval     0     OK. If reason is set, Yang error
+ * @retval    -1     Error
  * Assume x0 and x1 are same on entry and that y is the spec
  * @see put in clixon_keyvalue.c
  */
@@ -1651,7 +1659,8 @@ static int
 xml_merge1(cxobj              *x0,
 	   yang_node          *y0,
 	   cxobj              *x0p,
-	   cxobj              *x1)
+	   cxobj              *x1,
+	   char              **reason)
 {
     int        retval = -1;
     char      *x1name;
@@ -1699,24 +1708,35 @@ xml_merge1(cxobj              *x0,
 	    x1cname = xml_name(x1c);
 	    /* Get yang spec of the child */
 	    if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
-		clicon_err(OE_YANG, errno, "No yang node found: %s", x1cname);
-		goto done;
+		if (reason && (*reason = strdup("XML node has no corresponding yang specification (Invalid XML or wrong Yang spec?")) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto done;
+		}
+		break;
 	    }
 	    /* See if there is a corresponding node in the base tree */
 	    x0c = NULL;
 	    if (yc && match_base_child(x0, x1c, &x0c, yc) < 0)
 		goto done;
-	    if (xml_merge1(x0c, (yang_node*)yc, x0, x1c) < 0)
+	    if (xml_merge1(x0c, (yang_node*)yc, x0, x1c, reason) < 0)
 		goto done;
+	    if (*reason != NULL)
+		goto ok;
 	}
     } /* else Y_CONTAINER  */
-    // ok:
+ ok:
     retval = 0;
  done:
     return retval;
 }
 
 /*! Merge XML trees x1 into x0 according to yang spec yspec
+ * @param[in]  x0    Base xml tree (can be NULL in add scenarios)
+ * @param[in]  x1    xml tree which modifies base
+ * @param[in]  yspec Yang spec
+ * @param[out] reason If retval=0 a malloced string. Needs to be freed by caller
+ * @retval     0     OK. If reason is set, Yang error
+ * @retval    -1     Error
  * @note both x0 and x1 need to be top-level trees
  * @see text_modify_top as more generic variant (in datastore text)
  * @note returns -1 if YANG do not match, you may want to have a softer error
@@ -1724,7 +1744,8 @@ xml_merge1(cxobj              *x0,
 int
 xml_merge(cxobj     *x0,
 	  cxobj     *x1,
-	  yang_spec *yspec)
+	  yang_spec *yspec,
+	  char     **reason)
 {
     int        retval = -1;
     char      *x1cname; /* child name */
@@ -1738,16 +1759,21 @@ xml_merge(cxobj     *x0,
 	x1cname = xml_name(x1c);
 	/* Get yang spec of the child */
 	if ((yc = yang_find_topnode(yspec, x1cname, YC_DATANODE)) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "No yang spec");
-	    goto done;
+	    if (reason && (*reason = strdup("XML node has no corresponding yang specification (Invalid XML or wrong Yang spec?")) == NULL){
+		clicon_err(OE_UNIX, errno, "strdup");
+		goto done;
+	    }
+	    break;
 	}
 	/* See if there is a corresponding node in the base tree */
 	if (match_base_child(x0, x1c, &x0c, yc) < 0)
 	    goto done;
-	if (xml_merge1(x0c, (yang_node*)yc, x0, x1c) < 0)
+	if (xml_merge1(x0c, (yang_node*)yc, x0, x1c, reason) < 0)
 	    goto done;
+	if (*reason != NULL)
+	    break;
     }
-    retval = 0;
+    retval = 0; /* OK */
  done:
     return retval;
 }

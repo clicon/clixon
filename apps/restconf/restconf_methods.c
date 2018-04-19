@@ -185,7 +185,7 @@ api_data_get2(clicon_handle h,
     cbuf      *cbx = NULL;
     yang_spec *yspec;
     cxobj     *xret = NULL;
-    cxobj     *xerr;
+    cxobj     *xerr = NULL;
     cxobj    **xvec = NULL;
     size_t     xlen;
     int        i;
@@ -199,13 +199,19 @@ api_data_get2(clicon_handle h,
     clicon_debug(1, "%s pi:%d", __FUNCTION__, pi);
     /* We know "data" is element pi-1 */
     if (api_path2xpath_cvv(yspec, pcvec, pi, cbpath) < 0){
-	notfound(r);
+	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     path = cbuf_get(cbpath);
     clicon_debug(1, "%s path:%s", __FUNCTION__, path);
     if (clicon_rpc_get(h, path, &xret) < 0){
-	notfound(r);
+	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     /* We get return via netconf which is complete tree from root 
@@ -394,10 +400,9 @@ api_data_post(clicon_handle h,
     yang_node *y = NULL;
     yang_spec *yspec;
     cxobj     *xa;
-    cxobj     *xu;
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL;
-    cxobj     *xerr;
+    cxobj     *xerr = NULL;
     char      *username;
 	
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
@@ -414,16 +419,6 @@ api_data_post(clicon_handle h,
 	goto done;
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
-    /* For internal XML protocol: add username attribute for backend access control
-     */
-    if ((username = clicon_username_get(h)) != NULL){
-	if ((xu = xml_new("username", xtop, NULL)) == NULL)
-	    goto done;
-	xml_type_set(xu, CX_ATTR);
-	if (xml_value_set(xu, username) < 0)
-	    goto done;
-    }
-
     if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
@@ -457,7 +452,11 @@ api_data_post(clicon_handle h,
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cbx, "<rpc><edit-config><target><candidate /></target>");
+    /* For internal XML protocol: add username attribute for access control
+     */
+    username = clicon_username_get(h);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<edit-config><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
 	goto done;
@@ -471,7 +470,10 @@ api_data_post(clicon_handle h,
 	goto ok;
     }
     /* Assume this is validation failed since commit includes validate */
-    if (clicon_rpc_netconf(h, "<rpc><commit/></rpc>", &xretcom, NULL) < 0)
+    cbuf_reset(cbx);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<commit/></rpc>");
+    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xretcom, "//rpc-error")) != NULL){
 	if (clicon_rpc_discard_changes(h) < 0)
@@ -600,11 +602,10 @@ api_data_put(clicon_handle h,
     yang_node *y = NULL;
     yang_spec *yspec;
     cxobj     *xa;
-    cxobj     *xu;
     char      *api_path;
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL;
-    cxobj     *xerr;
+    cxobj     *xerr = NULL;
     char      *username;
 
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
@@ -621,15 +622,7 @@ api_data_put(clicon_handle h,
 	goto done;
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
-    /* For internal XML protocol: add username attribute for backend access control
-     */
-    if ((username = clicon_username_get(h)) != NULL){
-	if ((xu = xml_new("username", xtop, NULL)) == NULL)
-	    goto done;
-	xml_type_set(xu, CX_ATTR);
-	if (xml_value_set(xu, username) < 0)
-	    goto done;
-    }
+
     if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
@@ -688,7 +681,11 @@ api_data_put(clicon_handle h,
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cbx, "<rpc><edit-config><target><candidate /></target>");
+    /* For internal XML protocol: add username attribute for access control
+     */
+    username = clicon_username_get(h);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<edit-config><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
 	goto done;
@@ -701,7 +698,10 @@ api_data_put(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if (clicon_rpc_netconf(h, "<rpc><commit/></rpc>", &xretcom, NULL) < 0)
+    cbuf_reset(cbx);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<commit/></rpc>");
+    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xretcom, "//rpc-error")) != NULL){
 	if (clicon_rpc_discard_changes(h) < 0)
@@ -779,14 +779,13 @@ api_data_delete(clicon_handle h,
     cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xbot = NULL;
     cxobj     *xa;
-    cxobj     *xu;
     cbuf      *cbx = NULL;
     yang_node *y = NULL;
     yang_spec *yspec;
     enum operation_type op = OP_DELETE;
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL;
-    cxobj     *xerr;
+    cxobj     *xerr = NULL;
     char      *username;
 
     clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
@@ -800,15 +799,7 @@ api_data_delete(clicon_handle h,
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
-    /* For internal XML protocol: add username attribute for backend access control
-     */
-    if ((username = clicon_username_get(h)) != NULL){
-	if ((xu = xml_new("username", xtop, NULL)) == NULL)
-	    goto done;
-	xml_type_set(xu, CX_ATTR);
-	if (xml_value_set(xu, username) < 0)
-	    goto done;
-    }
+
     if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
@@ -818,7 +809,11 @@ api_data_delete(clicon_handle h,
 	goto done;
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cbx, "<rpc><edit-config><target><candidate /></target>");
+    /* For internal XML protocol: add username attribute for access control
+     */
+    username = clicon_username_get(h);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<edit-config><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
 	goto done;
@@ -831,7 +826,10 @@ api_data_delete(clicon_handle h,
 	goto ok;
     }
     /* Assume this is validation failed since commit includes validate */
-    if (clicon_rpc_netconf(h, "<rpc><commit/></rpc>", &xretcom, NULL) < 0)
+    cbuf_reset(cbx);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<commit/></rpc>");
+    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xretcom, "//rpc-error")) != NULL){
 	if (clicon_rpc_discard_changes(h) < 0)
@@ -984,7 +982,7 @@ api_operations_post(clicon_handle h,
     yang_stmt *youtput;
     cxobj     *xdata = NULL;
     cxobj     *xret = NULL;
-    cxobj     *xerr;
+    cxobj     *xerr = NULL;
     cbuf      *cbx = NULL;
     cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xe;
@@ -1011,7 +1009,10 @@ api_operations_post(clicon_handle h,
     if (yang_abs_schema_nodeid(yspec, oppath, &yrpc) < 0)
 	goto done;
     if (yrpc == NULL){
-	retval = notfound(r); 
+	if (netconf_operation_failed_xml(&xerr, "protocol", "yang node not found") < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     /* Create an xml message: 

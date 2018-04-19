@@ -55,16 +55,41 @@
 #include <clixon/clixon_backend.h> 
 
 
-int
-transaction_commit_2(clicon_handle    h, 
-		   transaction_data td)
+/*! Called to get NACM state data
+ * @param[in]    h      Clicon handle
+ * @param[in]    xpath  String with XPATH syntax. or NULL for all
+ * @param[in]    xtop   XML tree, <config/> on entry. 
+ * @retval       0      OK
+ * @retval      -1      Error
+ * @see xmldb_get
+ * @note this example code returns a static statedata used in testing. 
+ * Real code would poll state
+ */
+int 
+nacm_statedata(clicon_handle h, 
+	       char         *xpath,
+	       cxobj        *xstate)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
-    return 0;
+    int     retval = -1;
+    cxobj **xvec = NULL;
+
+    /* Example of (static) statedata, real code would poll state */
+    if (xml_parse_string("<nacm>"
+			 "<denied-data-writes>0</denied-data-writes>"
+			 "<denied-operations>0</denied-operations>"
+			 "<denied-notifications>0</denied-notifications>"
+			 "</nacm>", NULL, &xstate) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    return retval;
 }
 
+
 int
-plugin_start_2(clicon_handle h,
+plugin_start(clicon_handle h,
 	     int           argc,
 	     char        **argv)
 {
@@ -74,19 +99,12 @@ plugin_start_2(clicon_handle h,
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
-    "secondary",        /* name */
+    "nacm",             /* name */           /*--- Common fields.  ---*/
     clixon_plugin_init, /* init */
-    plugin_start_2,     /* start */
+    plugin_start,       /* start */
     NULL,               /* exit */
-    NULL,               /* auth */
-    NULL,               /* reset */
-    NULL,               /* statedata */
-    NULL,               /* trans begin */
-    NULL,               /* trans validate */
-    NULL,               /* trans complete */
-    transaction_commit_2,/* trans commit */
-    NULL,               /* trans end */
-    NULL                /* trans abort */
+    .ca_reset=NULL,               /* reset */          /*--- Backend plugin only ---*/
+    .ca_statedata=nacm_statedata,     /* statedata */
 };
 
 /*! Backend plugin initialization

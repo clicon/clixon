@@ -53,6 +53,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <netinet/in.h>
+#include <pwd.h>
 #include <assert.h>
 #include <libgen.h>
 
@@ -243,17 +244,24 @@ main(int argc, char **argv)
     char        *restarg = NULL; /* what remains after options */
     int          dump_configfile_xml = 0;
     yang_spec   *yspec;
+    struct passwd *pw;
     
     /* Defaults */
+    once = 0;
+
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
     /* Initiate CLICON handle */
     if ((h = cli_handle_init()) == NULL)
 	goto done;
-
-    if (cli_plugin_init(h) != 0) 
+    /* Set username to clicon handle. Use in all communication to backend */
+    if ((pw = getpwuid(getuid())) == NULL){
+	clicon_err(OE_UNIX, errno, "getpwuid");
 	goto done;
-    once = 0;
+    }
+    if (clicon_username_set(h, pw->pw_name) < 0)
+	goto done;
+
     cligen_comment_set(cli_cligen(h), '#'); /* Default to handle #! clicon_cli scripts */
 
     /*

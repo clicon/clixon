@@ -64,31 +64,21 @@
 #include "backend_plugin.h"
 #include "backend_commit.h"
 
-/*! Initialize plugin code (not the plugins themselves)
- * @param[in]  h       Clicon handle
- * @retval     0       OK
- * @retval    -1       Error
- */
-int
-backend_plugin_init(clicon_handle h)
-{
-    return 0;
-}
-
 /*! Load a plugin group.
  * @param[in]  h       Clicon handle
  * @retval     0       OK
  * @retval    -1       Error
  */
 int
-plugin_initiate(clicon_handle h)
+backend_plugin_initiate(clicon_handle h)
 {
     char *dir;
 
     /* Load application plugins */
     if ((dir = clicon_backend_dir(h)) == NULL)
 	return 0;
-    return clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir);
+    return clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir,
+			       clicon_option_str(h, "CLICON_BACKEND_REGEXP"));
 }
 
 /*! Request plugins to reset system state
@@ -124,6 +114,7 @@ clixon_plugin_reset(clicon_handle h,
  * @param[in]  h       clicon handle
  * @param[in]  xpath   String with XPATH syntax. or NULL for all
  * @param[in,out] xml  XML tree.
+ * @param[out] cbret Return xml value cligen buffer
  * @retval -1   Error
  * @retval  0   OK
  * @retval  1   Statedata callback failed
@@ -139,8 +130,10 @@ clixon_plugin_statedata(clicon_handle        h,
     yang_spec     *yspec;
     cxobj        **xvec = NULL;
     size_t         xlen;
+    cxobj         *xc;
     clixon_plugin  *cp = NULL;
     plgstatedata_t *fn;          /* Plugin statedata fn */
+    char           *reason = NULL;
     
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -159,8 +152,23 @@ clixon_plugin_statedata(clicon_handle        h,
 	    retval = 1;
 	    goto done; /* Dont quit here on user callbacks */
 	}
-	if (xml_merge(xtop, x, yspec) < 0)
+	if (xml_merge(xtop, x, yspec, &reason) < 0)
 	    goto done;
+	if (reason){
+	    cbuf *cb;
+	    if ((cb = cbuf_new()) == NULL){
+		clicon_err(OE_XML, errno, "cbuf_new");
+		goto done;
+	    }
+	    if (netconf_operation_failed(cb, "rpc", reason)< 0)
+		goto done;
+	    while ((xc = xml_child_i(xtop, 0)) != NULL)
+		xml_purge(xc);
+	    if (xml_parse_string(cbuf_get(cb), NULL, &xtop) < 0)
+		goto done;
+	    cbuf_free(cb);
+	    break;
+	}
 	if (x){
 	    xml_free(x);
 	    x = NULL;
@@ -187,6 +195,8 @@ clixon_plugin_statedata(clicon_handle        h,
 	goto done;
     retval = 0;
  done:
+    if (reason)
+	free(reason);
     if (x)
 	xml_free(x);
     if (xvec)

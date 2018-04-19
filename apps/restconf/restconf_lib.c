@@ -212,8 +212,10 @@ notfound(FCGX_Request *r)
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
     FCGX_FPrintF(r->out, "Status: 404\r\n"); /* 404 not found */
+
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<h1>Not Found</h1>\n");
+    FCGX_FPrintF(r->out, "Not Found\n");
     FCGX_FPrintF(r->out, "The requested URL %s was not found on this server.\n",
 		 path);
     return 0;
@@ -409,8 +411,8 @@ api_return_err(clicon_handle h,
     clicon_debug(1, "%s", __FUNCTION__);
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    if ((xtag = xpath_first(xerr, "error-tag")) == NULL){
-	notfound(r); /* bad reply? */
+    if ((xtag = xpath_first(xerr, "//error-tag")) == NULL){
+	notfound(r);
 	goto ok;
     }
     tagstr = xml_body(xtag);

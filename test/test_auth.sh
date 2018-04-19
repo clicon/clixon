@@ -1,5 +1,7 @@
 #!/bin/bash
-# Authentication and authorization
+# Authentication and authorization and IETF NACM
+# See RFC 8321 A.2
+# But replaced ietf-netconf-monitoring with *
 
 APPNAME=example
 # include err() and new() functions and creates $dir
@@ -24,18 +26,25 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
+  <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
 </config>
 EOF
 
 cat <<EOF > $fyang
 module $APPNAME{
   prefix ex;
-  leaf basic_auth{
+  import ietf-netconf-acm {
+	prefix nacm;
+  }
+  container authentication {
+	description "Example code for enabling www basic auth and some example 
+                     users";
+    leaf basic_auth{
 	description "Basic user / password authentication as in HTTP basic auth";
 	type boolean;
 	default false;
-  }
-  list auth {
+    }
+    list auth {
 	description "user / password entries. Valid if basic_auth=true";
 	key user;
 	leaf user{
@@ -46,9 +55,105 @@ module $APPNAME{
 	    description "Password";
 	    type string;
 	}
+      }
     }
+  leaf x{
+    type int32;
+    description "something to edit";
+  }
 }
 EOF
+
+RULES=$(cat <<EOF
+   <authentication>
+     <basic_auth>true</basic_auth>
+     <auth>
+        <user>adm1</user><password>bar</password>
+     </auth>
+     <auth>
+        <user>wilma</user><password>bar</password>
+     </auth>
+     <auth>
+        <user>guest</user><password>bar</password>
+     </auth>
+   </authentication>
+   <nacm>
+     <enable-nacm>false</enable-nacm>
+     <read-default>deny</read-default>
+     <write-default>deny</write-default>
+     <exec-default>deny</exec-default>
+     <groups>
+       <group>
+         <name>admin</name>
+         <user-name>admin</user-name>
+         <user-name>adm1</user-name>
+         <user-name>olof</user-name>
+       </group>
+       <group>
+         <name>limited</name>
+         <user-name>wilma</user-name>
+         <user-name>bam-bam</user-name>
+       </group>
+       <group>
+         <name>guest</name>
+         <user-name>guest</user-name>
+         <user-name>guest@example.com</user-name>
+       </group>
+     </groups>
+     <rule-list>
+       <name>guest-acl</name>
+       <group>guest</group>
+       <rule>
+         <name>deny-ncm</name>
+         <module-name>*</module-name>
+         <access-operations>*</access-operations>
+         <action>deny</action>
+         <comment>
+             Do not allow guests any access to any information.
+         </comment>
+       </rule>
+     </rule-list>
+     <rule-list>
+       <name>limited-acl</name>
+       <group>limited</group>
+       <rule>
+         <name>permit-get</name>
+         <rpc-name>get</rpc-name>
+         <module-name>*</module-name>
+         <access-operations>exec</access-operations>
+         <action>permit</action>
+         <comment>
+             Allow get 
+         </comment>
+       </rule>
+       <rule>
+         <name>permit-get-config</name>
+         <rpc-name>get-config</rpc-name>
+         <module-name>*</module-name>
+         <access-operations>exec</access-operations>
+         <action>permit</action>
+         <comment>
+             Allow get-config
+         </comment>
+       </rule>
+     </rule-list>
+     <rule-list>
+       <name>admin-acl</name>
+       <group>admin</group>
+       <rule>
+         <name>permit-all</name>
+         <module-name>*</module-name>
+         <access-operations>*</access-operations>
+         <action>permit</action>
+         <comment>
+             Allow the 'admin' group complete access to all operations and data.
+         </comment>
+       </rule>
+     </rule-list>
+   </nacm>
+   <x>0</x>
+EOF
+)
 
 # kill old backend (if any)
 new "kill old backend"
@@ -66,28 +171,59 @@ fi
 
 new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
-
+sleep 1
 new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg # -D
+sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang
 
 sleep 1
 
+new "restconf DELETE whole datastore"
+expecteq "$(curl -u adm1:bar -sS -X DELETE http://localhost/restconf/data)" ""
+
 new2 "auth get"
-expecteq "$(curl -sS -X GET http://localhost/restconf/data)" '{"data": null}
+expecteq "$(curl -u adm1:bar -sS -X GET http://localhost/restconf/data)" '{"data": null}
 '
 
 new "auth set authentication config"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><basic_auth>true</basic_auth><auth><user>foo</user><password>bar</password></auth></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
+new "commit it"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new2 "auth get (access denied)"
-expecteq "$(curl -sS -X GET http://localhost/restconf/data)" "<error-tag>access-denied</error-tag>
-The requested URL /restconf/data was unauthorized."
+new2 "auth get (no user: access denied)"
+expecteq "$(curl -sS -X GET -H \"Accept:\ application/yang-data+json\" http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
+
+new2 "auth get (wrong passwd: access denied)"
+expecteq "$(curl -u adm1:foo -sS -X GET http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
 new2 "auth get (access)"
-expecteq "$(curl -u foo:bar -sS -X GET http://localhost/restconf/data)" '{"data": {"basic_auth": true,"auth": [{"user": "foo","password": "bar"}]}}
+expecteq "$(curl -u adm1:bar -sS -X GET http://localhost/restconf/data/x)" '{"x": 0}
 '
+
+#----------------Enable NACM
+
+new "enable nacm"
+expecteq "$(curl -u adm1:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/nacm/enable-nacm)" ""
+
+new2 "admin get nacm"
+expecteq "$(curl -u adm1:bar -sS -X GET http://localhost/restconf/data/x)" '{"x": 0}
+'
+
+new2 "limited get nacm"
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/x)" '{"x": 0}
+'
+
+new2 "guest get nacm"
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "access denied"}}}'
+
+new "admin edit nacm"
+expecteq "$(curl -u adm1:bar -sS -X PUT -d '{"x": 1}' http://localhost/restconf/data/x)" ""
+
+new2 "limited edit nacm"
+expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "default deny"}}}'
+
+new2 "guest edit nacm"
+expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "access denied"}}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

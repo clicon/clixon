@@ -117,10 +117,9 @@ static clixon_plugin_api api = {
     clixon_plugin_init, /* init */
     NULL,               /* start */
     NULL,               /* exit */
-    NULL,               /* auth */
-    NULL,               /* cli_prompthook_t */
-    NULL,               /* cligen_susp_cb_t */
-    NULL,               /* cligen_interrupt_cb_t */
+    .ca_prompt=NULL,    /* cli_prompthook_t */
+    .ca_suspend=NULL,   /* cligen_susp_cb_t */
+    .ca_interrupt=NULL, /* cligen_interrupt_cb_t */
 };
 
 /*! CLI plugin initialization

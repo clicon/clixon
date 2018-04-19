@@ -81,8 +81,7 @@ static struct clixon_plugin_api api = {
     "example",          /* name */
     clixon_plugin_init, /* init */
     plugin_start,       /* start */
-    plugin_exit,        /* exit */
-    NULL                /* auth */
+    plugin_exit         /* exit */
 };
 
 /*! Netconf plugin initialization

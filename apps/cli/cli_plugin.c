@@ -346,7 +346,7 @@ cli_syntax_load (clicon_handle h)
 
     /* Load cli plugins */
     if (plugin_dir &&
-	clixon_plugins_load(h, CLIXON_PLUGIN_INIT, plugin_dir)< 0)
+	clixon_plugins_load(h, CLIXON_PLUGIN_INIT, plugin_dir, NULL)< 0)
 	goto done;
     if (clispec_file){
 	if (cli_load_syntax(h, clispec_file, NULL) < 0)
@@ -604,15 +604,6 @@ clicon_cliread(clicon_handle h)
     if (pfmt)
 	free(pfmt);
     return ret;
-}
-
-/*! Initialize plugin code (not the plugins themselves)
- * @param[in]     h       Clicon handle
- */
-int
-cli_plugin_init(clicon_handle h)
-{
-    return 0;
 }
 
 /*

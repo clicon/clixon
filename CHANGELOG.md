@@ -3,7 +3,11 @@
 ## 3.6.0 (Upcoming)
 
 ### Major changes:
-* Restructure and more generic plugin API (cli,backend,restconf,netconf) as preparation for authorization RFC8341
+* Experimental NACM RFC8341 Network Configuration Access Control Model.
+  * CLICON_NACM_MODE config option, default is disabled.
+  * Added username attribute to all rpc:s from frontend to backend
+  * Added NACM backend module in example
+* Restructure and more generic plugin API (cli,backend,restconf,netconf).
   * New design change `plugin_init()` to a single `clixon_plugin_init()` returning an api struct with function pointers, see example below. This means that there are no hardcoded plugin functions, except `clixon_plugin_init()`.
   * Plugin RPC callback interface have been unified between backend, netconf and restconf.
     * Backend RPC register callback function (Netconf RPC or restconf operation POST) has been changed from: `backend_rpc_cb_register()` to `rpc_callback_register()`
@@ -11,6 +15,7 @@
     * Frontend netconf and restconf plugins can register callbacks as well with same API as backends.
   * Master plugins have been removed. Plugins are loaded alphabetically. You can ensure plugin load order by prefixing them with an ordering number, for example.
   * Moved specific plugin functions from apps/ to generic functions in lib/
+  * New config option CLICON_BACKEND_REGEXP to match backkend plugins (if you do not all loaded).
   * Added authentication plugin callback (ca_auth)
     * Added clicon_username_get() / clicon_username_set()
   * Removed some obscure plugin code that seem not to be used (please report if needed!)
@@ -40,22 +45,11 @@ plugin_init(clicon_handle h)
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
-    "example",          /* name */
-    clixon_plugin_init, 
-    plugin_start,       
-    plugin_exit,        
-    NULL,               /* auth N/A for backend */
-    NULL,               /* cli_prompthook_t */
-    NULL,               /* cligen_susp_cb_t */
-    NULL,               /* cligen_interrupt_cb_t */	
-    plugin_reset,       
-    plugin_statedata,   
-    transaction_begin,  
-    transaction_validate,
-    transaction_complete,
-    transaction_commit,
-    transaction_end,  
-    transaction_abort
+    "example",           /* name */
+    clixon_plugin_init,  /* init */
+    NULL,                /* start */
+    NULL,                /* exit */
+    .ca_auth=plugin_credentials   /* restconf specific: auth */
 };
 
 clixon_plugin_api *clixon_plugin_init(clicon_handle h)

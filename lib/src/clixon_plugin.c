@@ -242,13 +242,15 @@ plugin_load_one(clicon_handle   h,
  * @param[in]  h     Clicon handle
  * @param[in]  function Which function symbol to load and call (eg CLIXON_PLUGIN_INIT)
  * @param[in]  dir   Directory. .so files in this dir will be loaded.
+ * @param[in]  regexp Regexp for matching files in plugin directory. Default *.so.
  * @retval     0     OK
  * @retval     -1    Error
  */
 int
 clixon_plugins_load(clicon_handle h,
     		    char         *function,
-		    char         *dir)
+		    char         *dir,
+    		    char         *regexp)
 {
     int            retval = -1;
     int            ndp;
@@ -259,7 +261,8 @@ clixon_plugins_load(clicon_handle h,
 
     clicon_debug(1, "%s", __FUNCTION__); 
     /* Get plugin objects names from plugin directory */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG))<0)
+    if((ndp = clicon_file_dirent(dir, &dp,
+				 regexp?regexp:"(.so)$", S_IFREG))<0)
 	goto done;
     /* Load all plugins */
     for (i = 0; i < ndp; i++) {

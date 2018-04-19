@@ -65,7 +65,7 @@ int api_path2xpath_cvv(yang_spec *yspec, cvec *cvv, int offset, cbuf *xpath);
 int api_path2xpath(yang_spec *yspec, char *api_path, cbuf *xpath);
 int api_path2xml(char *api_path, yang_spec *yspec, cxobj *xtop, 
 		 yang_class nodeclass, cxobj **xpathp, yang_node **ypathp);
-int xml_merge(cxobj *x0, cxobj *x1, yang_spec *yspec);
+int xml_merge(cxobj *x0, cxobj *x1, yang_spec *yspec, char **reason);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

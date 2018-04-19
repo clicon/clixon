@@ -92,6 +92,9 @@
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  dvec   Stream input daat
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
  */
 static int
 api_data(clicon_handle h,
@@ -100,28 +103,17 @@ api_data(clicon_handle h,
 	 cvec         *pcvec, 
 	 int           pi,
 	 cvec         *qvec, 
-	 char         *data)
+	 char         *data,
+	 int           pretty,
+	 int           use_xml,
+	 int           parse_xml)
 {
     int     retval = -1;
     char   *request_method;
-    int     pretty;
-    char   *media_content_type;
-    int     parse_xml = 0; /* By default expect and parse JSON */
-    char   *media_accept;
-    int     use_xml = 0; /* By default use JSON */
 
     clicon_debug(1, "%s", __FUNCTION__);
     request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
-    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
-    if (strcmp(media_accept, "application/yang-data+xml")==0)
-	use_xml++;
-    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
-    if (media_content_type &&
-	strcmp(media_content_type, "application/yang-data+xml")==0)
-	parse_xml++;
-
     if (strcmp(request_method, "OPTIONS")==0)
 	retval = api_data_options(h, r);
     else if (strcmp(request_method, "HEAD")==0)
@@ -150,6 +142,7 @@ api_data(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
+ * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
  */
 static int
 api_operations(clicon_handle h,
@@ -158,28 +151,17 @@ api_operations(clicon_handle h,
 	       cvec         *pcvec, 
 	       int           pi,
 	       cvec         *qvec, 
-	       char         *data)
+	       char         *data,
+	       int           pretty,
+	       int           use_xml,
+	       int           parse_xml)
 {
     int     retval = -1;
     char   *request_method;
-    int     pretty;
-    char   *media_content_type;
-    int     parse_xml = 0; /* By default expect and parse JSON */
-    char   *media_accept;
-    int     use_xml = 0; /* By default use JSON */
 
     clicon_debug(1, "%s", __FUNCTION__);
     request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
-    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
-    if (strcmp(media_accept, "application/yang-data+xml")==0)
-	use_xml++;
-        media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
-    if (media_content_type &&
-	strcmp(media_content_type, "application/yang-data+xml")==0)
-	parse_xml++;
-    
     if (strcmp(request_method, "GET")==0)
 	retval = api_operations_get(h, r, path, pcvec, pi, qvec, data, pretty, use_xml);
     else if (strcmp(request_method, "POST")==0)
@@ -293,7 +275,6 @@ api_yang_library_version(clicon_handle h,
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
     if (use_xml){
@@ -335,16 +316,33 @@ api_restconf(clicon_handle h,
     cbuf  *cb = NULL;
     char  *data;
     int    authenticated = 0;
+    char  *media_accept;
+    char  *media_content_type;
+    int    pretty;
+    int    parse_xml = 0; /* By default expect and parse JSON */
+    int    use_xml = 0;   /* By default use JSON */
+    cbuf  *cbret = NULL;
+    cxobj *xret = NULL;
+    cxobj *xerr;
 
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("REQUEST_URI", r->envp);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    /* get xml/json in put and output */
+    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
+    if (media_accept && strcmp(media_accept, "application/yang-data+xml")==0)
+	use_xml++;
+    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
+    if (media_content_type &&
+	strcmp(media_content_type, "application/yang-data+xml")==0)
+	parse_xml++;
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
     /* Sanity check of path. Should be /restconf/ */
     if (pn < 2){
-	retval = notfound(r);
-	goto done;
+	notfound(r);
+	goto ok;
     }
     if (strlen(pvec[0]) != 0){
 	retval = notfound(r);
@@ -390,7 +388,13 @@ api_restconf(clicon_handle h,
 	    clicon_username_set(h, "none");
     }
     else{
-	unauthorized(r);
+	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
+	    goto done;
+	if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		goto done;
+	    goto ok;
+	}
 	goto ok;
     }
     clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
@@ -399,11 +403,13 @@ api_restconf(clicon_handle h,
 	    goto done;
     }
     else if (strcmp(method, "data") == 0){ /* restconf, skip /api/data */
-	if (api_data(h, r, path, pcvec, 2, qvec, data) < 0)
+	if (api_data(h, r, path, pcvec, 2, qvec, data,
+		     pretty, use_xml, parse_xml) < 0)
 	    goto done;
     }
     else if (strcmp(method, "operations") == 0){ /* rpc */
-	if (api_operations(h, r, path, pcvec, 2, qvec, data) < 0)
+	if (api_operations(h, r, path, pcvec, 2, qvec, data,
+			   pretty, use_xml, parse_xml) < 0)
 	    goto done;
     }
     else if (strcmp(method, "test") == 0)
@@ -424,6 +430,10 @@ api_restconf(clicon_handle h,
 	cvec_free(pcvec);
     if (cb)
 	cbuf_free(cb);
+    if (cbret)
+	cbuf_free(cbret);
+    if (xret)
+	xml_free(xret);
     return retval;
 }
 
@@ -557,7 +567,7 @@ main(int    argc,
 
     /* Initialize plugins group */
     if ((dir = clicon_restconf_dir(h)) != NULL)
-	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir) < 0)
+	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
 	    return -1;
 
     /* Parse yang database spec file */
@@ -598,7 +608,6 @@ main(int    argc,
 		clicon_debug(1, "top-level %s not found", path);
 		notfound(r);
 	    }
-	    
 	}
 	else
 	    clicon_debug(1, "NULL URI");

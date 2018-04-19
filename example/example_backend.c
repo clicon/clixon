@@ -251,22 +251,18 @@ plugin_start(clicon_handle h,
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
-    "example",          /* name */
+    "example",          /* name */           /*--- Common fields.  ---*/
     clixon_plugin_init, /* init */
     plugin_start,       /* start */
     NULL,               /* exit */
-    NULL,               /* auth */
-    NULL,               /* cli prompt */
-    NULL,               /* cli suspend */
-    NULL,               /* cli interrupt */
-    plugin_reset,       /* reset */
-    plugin_statedata,   /* statedata */
-    NULL,               /* trans begin */
-    transaction_validate,/* trans validate */
-    NULL,               /* trans complete */
-    transaction_commit, /* trans commit */
-    NULL,               /* trans end */
-    NULL                /* trans abort */
+    .ca_reset=plugin_reset,/* reset */          /*--- Backend plugin only ---*/
+    .ca_statedata=plugin_statedata, /* statedata */
+    .ca_trans_begin=NULL, /* trans begin */
+    .ca_trans_validate=transaction_validate,/* trans validate */
+    .ca_trans_complete=NULL,                /* trans complete */
+    .ca_trans_commit=transaction_commit,    /* trans commit */
+    .ca_trans_end=NULL,                     /* trans end */
+    .ca_trans_abort=NULL                    /* trans abort */
 };
 
 /*! Backend plugin initialization

@@ -91,6 +91,7 @@ clicon_rpc_msg(clicon_handle      h,
     cxobj             *xret = NULL;
     yang_spec         *yspec;
 
+    clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
     if ((sock = clicon_sock(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
 	goto done;
@@ -327,10 +328,14 @@ clicon_rpc_edit_config(clicon_handle       h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "<rpc><edit-config><target><%s/></target>", db);
+    cprintf(cb, "<rpc");
+    if ((username = clicon_username_get(h)) != NULL)
+	cprintf(cb, " username=\"%s\"", username);
+    cprintf(cb, "><edit-config><target><%s/></target>", db);
     cprintf(cb, "<default-operation>%s</default-operation>", 
 	    xml_operation2str(op));
     if (xmlstr)
@@ -377,8 +382,12 @@ clicon_rpc_copy_config(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><copy-config><source><%s/></source><target><%s/></target></copy-config></rpc>", db1, db2)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><copy-config><source><%s/></source><target><%s/></target></copy-config></rpc>",
+				 username?username:"",
+				 db1, db2)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -413,8 +422,11 @@ clicon_rpc_delete_config(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><delete-config><target><%s/></target></delete-config></rpc>", db)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><delete-config><target><%s/></target></delete-config></rpc>",
+				 username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -445,8 +457,11 @@ clicon_rpc_lock(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><lock><target><%s/></target></lock></rpc>", db)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><lock><target><%s/></target></lock></rpc>",
+				 username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -477,8 +492,10 @@ clicon_rpc_unlock(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><unlock><target><%s/></target></unlock></rpc>", db)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><unlock><target><%s/></target></unlock></rpc>", username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -574,8 +591,11 @@ clicon_rpc_close_session(clicon_handle h)
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><close-session/></rpc>")) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><close-session/></rpc>",
+				 username?username:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -606,8 +626,11 @@ clicon_rpc_kill_session(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><kill-session><session-id>%d</session-id></kill-session></rpc>", session_id)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><kill-session><session-id>%d</session-id></kill-session></rpc>",
+				 username?username:"", session_id)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -638,8 +661,10 @@ clicon_rpc_validate(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><validate><source><%s/></source></validate></rpc>", db)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><validate><source><%s/></source></validate></rpc>", username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -668,8 +693,10 @@ clicon_rpc_commit(clicon_handle h)
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><commit/></rpc>")) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><commit/></rpc>", username?username:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -698,8 +725,10 @@ clicon_rpc_discard_changes(clicon_handle h)
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><discard-changes/></rpc>")) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><discard-changes/></rpc>", username?username:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -736,11 +765,14 @@ clicon_rpc_create_subscription(clicon_handle    h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><create-subscription>"
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><create-subscription>"
 				 "<stream>%s</stream>"
 				 "<filter>%s</filter>"
 				 "</create-subscription></rpc>", 
+				 username?username:"",
 				 stream?stream:"", filter?filter:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, s0) < 0)
@@ -772,8 +804,10 @@ clicon_rpc_debug(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><debug><level>%d</level></debug></rpc>", level)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><debug><level>%d</level></debug></rpc>", username?username:"", level)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;

@@ -770,7 +770,7 @@ text_modify_top(cxobj              *x0,
 	if (xml_operation(opstr, &op) < 0)
 	    goto done;
     /* Special case if x1 is empty, top-level only <config/> */
-    if (!xml_child_nr(x1)){ 
+    if (xml_child_nr(x1) == 0){ 
 	if (xml_child_nr(x0)) /* base tree not empty */
 	    switch(op){ 
 	    case OP_DELETE:
@@ -797,7 +797,7 @@ text_modify_top(cxobj              *x0,
     /* Special case top-level replace */
     if (op == OP_REPLACE || op == OP_DELETE){
 	x0c = NULL;
-	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) 
+	while ((x0c = xml_child_i(x0, 0)) != 0)
 	    xml_purge(x0c);
     }
     /* Loop through children of the modification tree */
@@ -806,7 +806,7 @@ text_modify_top(cxobj              *x0,
 	x1cname = xml_name(x1c);
 	/* Get yang spec of the child */
 	if ((yc = yang_find_topnode(yspec, x1cname, YC_DATANODE)) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "No yang spec");
+	    clicon_err(OE_YANG, ENOENT, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?", x1, x1cname);
 	    goto done;
 	}
 	/* See if there is a corresponding node in the base tree */

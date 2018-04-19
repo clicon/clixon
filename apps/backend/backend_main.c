@@ -306,7 +306,7 @@ startup_mode_none(clicon_handle h)
 	if (xmldb_copy(h, "running", "candidate") < 0)
 	    goto done;
     /* Load plugins and call plugin_init() */
-    if (plugin_initiate(h) != 0) 
+    if (backend_plugin_initiate(h) != 0) 
 	goto done;
     retval = 0;
  done:
@@ -328,7 +328,7 @@ startup_mode_init(clicon_handle h)
 	if (xmldb_copy(h, "running", "candidate") < 0)
 	    goto done;
     /* Load plugins and call plugin_init() */
-    if (plugin_initiate(h) != 0) 
+    if (backend_plugin_initiate(h) != 0) 
 	goto done;
     retval = 0;
  done:
@@ -364,7 +364,7 @@ startup_mode_running(clicon_handle h,
     if (xmldb_copy(h, "running", "candidate") < 0)
 	goto done;
     /* Load plugins and call plugin_init() */
-    if (plugin_initiate(h) != 0) 
+    if (backend_plugin_initiate(h) != 0) 
 	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
@@ -437,7 +437,7 @@ startup_mode_startup(clicon_handle h,
 	if (xmldb_create(h, "startup") < 0) /* diff */
 	    return -1;
     /* Load plugins and call plugin_init() */
-    if (plugin_initiate(h) != 0) 
+    if (backend_plugin_initiate(h) != 0) 
 	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
@@ -475,7 +475,8 @@ startup_mode_startup(clicon_handle h,
 }
 
 int
-main(int argc, char **argv)
+main(int    argc,
+     char **argv)
 {
     int           retval = -1;
     char          c;
@@ -497,13 +498,11 @@ main(int argc, char **argv)
     int           xml_cache;
     int           xml_pretty;
     char         *xml_format;
-
+    
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR|CLICON_LOG_SYSLOG);
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
-	return -1;
-    if (backend_plugin_init(h) != 0) 
 	return -1;
     foreground = 0;
     once = 0;

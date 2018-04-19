@@ -67,8 +67,7 @@ typedef struct {
 /*
  * Prototypes
  */
-int  backend_plugin_init(clicon_handle h);
-int  plugin_initiate(clicon_handle h); 
+int backend_plugin_initiate(clicon_handle h); 
 
 int clixon_plugin_reset(clicon_handle h, char *db);
 

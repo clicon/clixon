@@ -125,16 +125,16 @@ clicon_file_dirent(const char     *dir,
        clicon_err(OE_DB, 0, "regcomp: %s", errbuf);
        return -1;
    }
-   if ((dirp = opendir (dir)) == NULL) {
+   if ((dirp = opendir(dir)) == NULL) {
      if (errno == ENOENT) /* Dir does not exist -> return 0 matches */
        retval = 0;
      else
        clicon_err(OE_UNIX, errno, "opendir(%s)", dir);
      goto quit;
    }
-   for (res = readdir_r (dirp, &dent, &dresp); 
+   for (res = readdir_r(dirp, &dent, &dresp); 
 	dresp; 
-	res = readdir_r (dirp, &dent, &dresp)) {
+	res = readdir_r(dirp, &dent, &dresp)) {
        if (res != 0) {
 	   clicon_err(OE_UNIX, 0, "readdir: %s", strerror(errno));
 	   goto quit;
@@ -161,7 +161,7 @@ clicon_file_dirent(const char     *dir,
 	   goto quit;
        }
        new = tmp;
-       memcpy (&new[nent], &dent, sizeof(dent));
+       memcpy(&new[nent], &dent, sizeof(dent));
        nent++;
 
    } /* while */
