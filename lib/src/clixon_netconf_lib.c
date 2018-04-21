@@ -54,6 +54,7 @@
 /* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_string.h"
 #include "clixon_err.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
@@ -73,20 +74,27 @@ netconf_in_use(cbuf *cb,
 	       char *type,
 	       char *message)
 {
-    int     retval = -1;
-
+    int   retval = -1;
+    char *encstr = NULL;
+    
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>in-use</error-tag>"
 		"<error-type>%s</error-type>"
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -105,7 +113,8 @@ netconf_invalid_value(cbuf *cb,
 		      char *type,
 		      char *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>invalid-value</error-tag>"
@@ -113,12 +122,18 @@ netconf_invalid_value(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -139,6 +154,7 @@ netconf_too_big(cbuf *cb,
 		char *message)
 {
     int     retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>too-big</error-tag>"
@@ -146,12 +162,18 @@ netconf_too_big(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -172,7 +194,8 @@ netconf_missing_attribute(cbuf *cb,
 			  char *info,
 			  char *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>missing-attribute</error-tag>"
@@ -181,8 +204,12 @@ netconf_missing_attribute(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		type, info) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
@@ -208,7 +235,8 @@ netconf_bad_attribute(cbuf *cb,
 		      char *info,
 		      char *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>bad-attribute</error-tag>"
@@ -217,12 +245,18 @@ netconf_bad_attribute(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		type, info) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -243,7 +277,8 @@ netconf_unknown_attribute(cbuf *cb,
 			  char *info,
 			  char *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>unknown-attribute</error-tag>"
@@ -252,18 +287,23 @@ netconf_unknown_attribute(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		type, info) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
     goto done;
 }
-
 
 /*! Create Netconf missing-element error XML tree according to RFC 6241 App A
  *
@@ -279,7 +319,8 @@ netconf_missing_element(cbuf      *cb,
 			char      *info,
 			char      *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>missing-element</error-tag>"
@@ -288,12 +329,18 @@ netconf_missing_element(cbuf      *cb,
 		"<error-severity>error</error-severity>",
 		type, info) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -315,7 +362,8 @@ netconf_bad_element(cbuf *cb,
 		    char *info,
 		    char *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>bad-element</error-tag>"
@@ -324,12 +372,18 @@ netconf_bad_element(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		type, info) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -350,8 +404,8 @@ netconf_unknown_element(cbuf *cb,
 			char *info,
 			char *message)
 {
-    int     retval = -1;
-
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>unknown-element</error-tag>"
@@ -360,12 +414,18 @@ netconf_unknown_element(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		type, info) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -386,7 +446,8 @@ netconf_unknown_namespace(cbuf *cb,
 			  char *info,
 			  char *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>unknown-namespace</error-tag>"
@@ -395,12 +456,18 @@ netconf_unknown_namespace(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		type, info) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -420,6 +487,7 @@ netconf_access_denied(cbuf *cb,
 		      char *message)
 {
     int retval = -1;
+    char *encstr = NULL;
     
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>access-denied</error-tag>"
@@ -427,12 +495,18 @@ netconf_access_denied(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -484,7 +558,8 @@ netconf_lock_denied(cbuf *cb,
 		    char *info,
 		    char *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>lock-denied</error-tag>"
@@ -493,12 +568,18 @@ netconf_lock_denied(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		info) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -517,20 +598,27 @@ netconf_resource_denied(cbuf *cb,
 			char *type,
 			char *message)
 {
-    int     retval = -1;
-
+    int   retval = -1;
+    char *encstr = NULL;
+    
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>resource-denied</error-tag>"
 		"<error-type>%s</error-type>"
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -550,7 +638,8 @@ netconf_rollback_failed(cbuf *cb,
 			char *type,
 			char *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>rollback-failed</error-tag>"
@@ -558,12 +647,18 @@ netconf_rollback_failed(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -582,19 +677,26 @@ int
 netconf_data_exists(cbuf      *cb, 
 		    char      *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>data-exists</error-tag>"
 		"<error-type>application</error-type>"
 		"<error-severity>error</error-severity>") <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -613,19 +715,26 @@ int
 netconf_data_missing(cbuf *cb,
 		     char *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>data-missing</error-tag>"
 		"<error-type>application</error-type>"
 		"<error-severity>error</error-severity>") <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -645,7 +754,8 @@ netconf_operation_not_supported(cbuf *cb,
 				char *type,
 				char *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-not-supported</error-tag>"
@@ -653,12 +763,18 @@ netconf_operation_not_supported(cbuf *cb,
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -678,7 +794,8 @@ netconf_operation_failed(cbuf  *cb,
 			 char  *type,
 			 char  *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>operation-failed</error-tag>"
@@ -686,12 +803,18 @@ netconf_operation_failed(cbuf  *cb,
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") < 0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");
@@ -744,19 +867,26 @@ int
 netconf_malformed_message(cbuf  *cb,
 			  char  *message)
 {
-    int     retval = -1;
+    int   retval = -1;
+    char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
 		"<error-tag>malformed-message</error-tag>"
 		"<error-type>rpc</error-type>"
 		"<error-severity>error</error-severity>") <0)
 	goto err;
-    if (message && cprintf(cb, "<error-message>%s</error-message>", message) < 0)
-	goto err;
+    if (message){
+	if (xml_chardata_encode(message, &encstr) < 0)
+	    goto done;
+	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+	    goto err;
+    }
     if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
 	goto err;
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
  err:
     clicon_err(OE_XML, errno, "cprintf");

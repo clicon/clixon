@@ -98,11 +98,17 @@ expecteof "$clixon_netconf -qf $cfg" "<rpc><validate><source><candidate/></sourc
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "netconf edit config replace XXX is merge?"
+new "netconf edit config merge"
 expecteof "$clixon_netconf -qf $cfg" "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth2</name><type>eth</type></interface></interfaces></config><default-operation>merge</default-operation></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
+new "netconf edit ampersand encoding(<&): name:'eth&' type:'t<>'"
+expecteof "$clixon_netconf -qf $cfg" "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth&amp; </name><type>t&lt; &gt; </type></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
 new "netconf get replaced config"
-expecteof "$clixon_netconf -qf $cfg" "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><interfaces><interface><name>eth1</name><type>eth</type><enabled>true</enabled></interface><interface><name>eth2</name><type>eth</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><interfaces><interface><name>eth&amp; </name><type>t&lt; &gt; </type><enabled>true</enabled></interface><interface><name>eth1</name><type>eth</type><enabled>true</enabled></interface><interface><name>eth2</name><type>eth</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$"
+
+new "cli show configuration eth& - encoding tests"
+expectfn "$clixon_cli -1 -f $cfg show conf cli" "interfaces interface name eth&"
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

@@ -140,7 +140,7 @@ clicon_strjoin(int         argc,
 }
 
 static int
-unreserved(unsigned char in)
+uri_unreserved(unsigned char in)
 {
     switch(in) {
     case '0': case '1': case '2': case '3': case '4':
@@ -163,12 +163,18 @@ unreserved(unsigned char in)
     return 0;
 }
 
-/*! Percent encoding according to RFC 3896 
- * @param[out]  esc   Deallocate with free()
+/*! Percent encoding according to RFC 3986 URI Syntax
+ * @param[in]   str    Not-encoded input string     
+ * @param[out]  escp   Encoded/escaped malloced output string
+ * @retval      0      OK
+ * @retval     -1      Error
+ * @see RFC 3986 Uniform Resource Identifier (URI): Generic Syntax
+ * @see uri_percent_decode
+ * @see xml_chardata_encode
  */
 int
-percent_encode(char  *str, 
-	       char **escp)
+uri_percent_encode(char  *str, 
+		   char **escp)
 {
     int   retval = -1;
     char *esc = NULL;
@@ -184,7 +190,7 @@ percent_encode(char  *str,
     memset(esc, 0, len);
     j = 0;
     for (i=0; i<strlen(str); i++){
-	if (unreserved(str[i]))
+	if (uri_unreserved(str[i]))
 	    esc[j++] = str[i];
 	else{
 	    snprintf(&esc[j], 4, "%%%02X", str[i]&0xff);
@@ -199,12 +205,17 @@ percent_encode(char  *str,
     return retval;
 }
 
-/*! Percent decoding according to RFC 3896 
- * @param[out]  str   Deallocate with free()
+/*! Percent decoding according to RFC 3986 URI Syntax
+ * @param[in]   esc    Escaped/encoded input string     
+ * @param[out]  strp   Decoded malloced output string. Deallocate with free()
+ * @retval      0      OK
+ * @retval     -1      Error
+ * @see RFC 3986 Uniform Resource Identifier (URI): Generic Syntax
+ * @see uri_percent_encode
  */
 int
-percent_decode(char  *esc, 
-	       char **strp)
+uri_percent_decode(char  *esc, 
+		   char **strp)
 {
     int   retval = -1;
     char *str = NULL;
@@ -240,6 +251,98 @@ percent_decode(char  *esc,
  done:
     if (retval < 0 && str)
 	free(str);
+    return retval;
+}
+
+/*! Escape characters according to XML definition
+ * @param[in]   str    Not-encoded input string     
+ * @param[out]  escp   Encoded/escaped malloced output string
+ * @retval      0      OK
+ * @retval     -1      Error
+ * @see https://www.w3.org/TR/2008/REC-xml-20081126/#syntax chapter 2.6
+ * @see uri_percent_encode
+ * @see AMPERSAND mode in clixon_xml_parse.l
+ * @code
+ *   char *encstr = NULL;
+ *   char *val = "a<>b";
+ *   if (xml_chardata_encode(str, &encstr) < 0)
+ *      err;
+ *   if (encstr)
+ *      free(encstr);
+ * @endcode
+ * Essentially encode as follows:
+ *     & -> "&amp; "   must
+ *     < -> "&lt; "    must
+ *     > -> "&gt; "    must for backward compatibility
+ *     ' -> "&apos; "  may
+ *     ' -> "&quot; "  may
+ * Optionally >
+ */
+int
+xml_chardata_encode(char  *str, 
+		    char **escp)
+{
+    int   retval = -1;
+    char *esc = NULL;
+    int   l;
+    int   len;
+    int   i, j;
+    
+    len = 0;
+    for (i=0; i<strlen(str); i++){
+	switch (str[i]){
+	case '&':
+	    len += strlen("&amp; ");
+	    break;
+	case '<':
+	    len += strlen("&lt; ");
+	    break;
+	case '>':
+	    len += strlen("&gt; ");
+	    break;
+	default:
+	    len++;
+	}
+    }
+    len++; /* trailing \0 */
+    if ((esc = malloc(len)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc"); 
+	goto done;
+    }
+    memset(esc, 0, len);
+    j = 0;
+    for (i=0; i<strlen(str); i++){
+	switch (str[i]){
+	case '&':
+	    if ((l=snprintf(&esc[j], 7, "&amp; ")) < 0){
+		clicon_err(OE_UNIX, errno, "snprintf");
+		goto done;
+	    }
+	    j += l;
+	    break;
+	case '<':
+	    if ((l=snprintf(&esc[j], 6, "&lt; ")) < 0){
+		clicon_err(OE_UNIX, errno, "snprintf");
+		goto done;
+	    }
+	    j += l;
+	    break;
+	case '>':
+	    if ((l=snprintf(&esc[j], 6, "&gt; ")) < 0){
+		clicon_err(OE_UNIX, errno, "snprintf");
+		goto done;
+	    }
+	    j += l;
+	    break;
+	default:
+	    esc[j++] = str[i];
+	}
+    }
+    *escp = esc;
+    retval = 0;
+ done:
+    if (retval < 0 && esc)
+	free(esc);
     return retval;
 }
 
@@ -295,7 +398,7 @@ str2cvec(char  *string,
 	    *(snext++) = '\0';
 	if ((val = index(s, delim2)) != NULL){
 	    *(val++) = '\0';
-	    if (percent_decode(val, &valu) < 0)
+	    if (uri_percent_decode(val, &valu) < 0)
 		goto err;
 	    if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
 		clicon_err(OE_UNIX, errno, "cvec_add");

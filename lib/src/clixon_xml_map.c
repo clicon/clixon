@@ -189,7 +189,9 @@ xml2cli(FILE              *f,
     int              nr;
     int              i;
     cbuf            *cbpre;
+    //    yang_stmt       *ys;
 
+    //    ys = yang_spec(x);
     /* Create prepend variable string */
     if ((cbpre = cbuf_new()) == NULL){
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
@@ -212,15 +214,15 @@ xml2cli(FILE              *f,
     }
     if (prepend0)
 	cprintf(cbpre, "%s", prepend0);
-/* bool determines when to print a variable keyword:
-   !leaf           T for all (ie parameter)
-   index GT_NONE   F
-   index GT_VARS   F
-   index GT_ALL    T
-   !index GT_NONE  F
-   !index GT_VARS  T
-   !index GT_ALL   T
- */
+    /* bool determines when to print a variable keyword:
+       !leaf           T for all (ie parameter)
+       index GT_NONE   F
+       index GT_VARS   F
+       index GT_ALL    T
+       !index GT_NONE  F
+       !index GT_VARS  T
+       !index GT_ALL   T
+    */
     bool = !leaf(x) || gt == GT_ALL || (gt == GT_VARS);
 //    bool = (!x->xn_index || gt == GT_ALL);
     if (bool){
@@ -268,7 +270,6 @@ validate_leafref(cxobj     *xt,
     size_t       xlen = 0;
     char        *leafrefbody;
     char        *leafbody;
-
 
     if ((leafrefbody = xml_body(xt)) == NULL)
 	return 0;
@@ -901,7 +902,7 @@ api_path_fmt2api_path(char  *api_path_fmt,
 		    clicon_err(OE_UNIX, errno, "cv2str_dup");
 		    goto done;
 		}
-		if (percent_encode(str, &strenc) < 0)
+		if (uri_percent_encode(str, &strenc) < 0)
 		    goto done;
 		cprintf(cb, "%s", strenc); 
 		free(strenc); strenc = NULL;
@@ -1495,7 +1496,7 @@ api_path2xml_vec(char             **vec,
     if ((restval_enc = index(name, '=')) != NULL){
 	*restval_enc = '\0';
 	restval_enc++;
-	if (percent_decode(restval_enc, &restval) < 0)
+	if (uri_percent_decode(restval_enc, &restval) < 0)
 	    goto done;
     }
     /* Split into prefix and localname, ignore prefix for now */

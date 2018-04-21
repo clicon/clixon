@@ -1083,12 +1083,12 @@ from_client_msg(clicon_handle        h,
 	goto done;
     }
     if (clicon_msg_decode(msg, &xt) < 0){
-	if (netconf_malformed_message(cbret, "Not recognized, rpc expected")< 0)
+	if (netconf_malformed_message(cbret, "XML parse error")< 0)
 	    goto done;
 	goto reply;
     }
     if ((x = xpath_first(xt, "/rpc")) == NULL){
-	if (netconf_malformed_message(cbret, "Not recognized, rpc expected")< 0)
+	if (netconf_malformed_message(cbret, "rpc keyword expected")< 0)
 	    goto done;
 	goto reply;
     }
@@ -1187,6 +1187,8 @@ from_client_msg(clicon_handle        h,
 	if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 	    goto done;
     clicon_debug(1, "%s cbret:%s", __FUNCTION__, cbuf_get(cbret));
+    /* XXX problem here is that cbret has not been parsed so may contain 
+       parse errors */
     if (send_msg_reply(ce->ce_s, cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
 	switch (errno){
 	case EPIPE:

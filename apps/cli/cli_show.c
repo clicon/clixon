@@ -516,12 +516,12 @@ cli_show_config(clicon_handle h,
 	    xml2txt(stdout, xc, 0); /* tree-formed text */
 	break;
     case FORMAT_CLI:
+	/* get CLI generatade mode: VARS|ALL */
+	if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
+	    goto done;
 	xc = NULL; /* Dont print xt itself */
-	while ((xc = xml_child_each(xt, xc, -1)) != NULL){
-	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
-		goto done;
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
 	    xml2cli(stdout, xc, NULL, gt); /* cli syntax */
-	}
 	break;
     case FORMAT_NETCONF:
 	fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");

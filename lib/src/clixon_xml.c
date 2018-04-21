@@ -950,7 +950,7 @@ xml_free(cxobj *x)
  * XML printing functions. Output a parse tree to file, string cligen buf
  *------------------------------------------------------------------------*/
 
-/*! Print an XML tree structure to an output stream
+/*! Print an XML tree structure to an output stream and encode chars "<>&"
  *
  * Uses clicon_xml2cbuf internally
  *
@@ -975,13 +975,17 @@ clicon_xml2file(FILE  *f,
     int    hasbody;
     int    haselement;
     char  *val;
-
+    char  *encstr = NULL; /* xml encoded string */
+    
     name = xml_name(x);
     namespace = xml_namespace(x);
     switch(xml_type(x)){
     case CX_BODY:
-	if ((val = xml_value(x)) != NULL) /* incomplete tree */
-	    fprintf(f, "%s", xml_value(x));
+	if ((val = xml_value(x)) == NULL) /* incomplete tree */
+	    break;
+	if (xml_chardata_encode(val, &encstr) < 0)
+	    goto done;
+	fprintf(f, "%s", encstr);
 	break;
     case CX_ATTR:
 	fprintf(f, " ");
@@ -1044,6 +1048,8 @@ clicon_xml2file(FILE  *f,
     }/* switch */
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
 }
 
@@ -1063,8 +1069,7 @@ xml_print(FILE  *f,
     return clicon_xml2file(f, xn, 0, 1);
 }
 
-
-/*! Print an XML tree structure to a cligen buffer
+/*! Print an XML tree structure to a cligen buffer and encode chars "<>&"
  *
  * @param[in,out] cb          Cligen buffer to write to
  * @param[in]     xn          Clicon xml tree
@@ -1093,12 +1098,18 @@ clicon_xml2cbuf(cbuf  *cb,
     int    hasbody;
     int    haselement;
     char  *namespace;
-
+    char  *encstr = NULL; /* xml encoded string */
+    char  *val;
+    
     name = xml_name(x);
     namespace = xml_namespace(x);
     switch(xml_type(x)){
     case CX_BODY:
-	cprintf(cb, "%s", xml_value(x));
+	if ((val = xml_value(x)) == NULL) /* incomplete tree */
+	    break;
+	if (xml_chardata_encode(val, &encstr) < 0)
+	    goto done;
+	cprintf(cb, "%s", encstr);
 	break;
     case CX_ATTR:
 	cprintf(cb, " ");
@@ -1130,7 +1141,6 @@ clicon_xml2cbuf(cbuf  *cb,
 	    default:
 		break;
 	    }
-	
 	/* Check for special case <a/> instead of <a></a> */
 	if (hasbody==0 && haselement==0) 
 	    cprintf(cb, "/>");
@@ -1158,6 +1168,8 @@ clicon_xml2cbuf(cbuf  *cb,
     }/* switch */
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
 }
 /*! Print actual xml tree datastructures (not xml), mainly for debugging
