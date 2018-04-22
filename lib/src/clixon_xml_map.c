@@ -89,19 +89,6 @@
 #include "clixon_xml_sort.h"
 #include "clixon_xml_map.h"
 
-/*
- * A node is a leaf if it contains a body.
- */
-static cxobj *
-leaf(cxobj *xn)
-{
-    cxobj *xc = NULL;
-
-    while ((xc = xml_child_each(xn, xc, CX_BODY)) != NULL)
-	break;
-    return xc;
-}
-
 /*! x is element and has eactly one child which in turn has none */
 static int
 tleaf(cxobj *x)
@@ -118,6 +105,7 @@ tleaf(cxobj *x)
 
 /*! Translate XML -> TEXT
  * @param[in]  level  print 4 spaces per level in front of each line
+ * XXX rewrite using YANG and remove encrypted password KLUDGE
  */
 int 
 xml2txt(FILE  *f, 
@@ -184,69 +172,60 @@ xml2cli(FILE              *f,
 {
     int              retval = -1;
     cxobj           *xe = NULL;
-    char            *term;
-    int              bool;
-    int              nr;
-    int              i;
-    cbuf            *cbpre;
-    //    yang_stmt       *ys;
+    cbuf            *cbpre = NULL;
+    yang_stmt       *ys;
+    int              match;
+    char            *body;
 
-    //    ys = yang_spec(x);
+    ys = xml_spec(x);
+    if (ys->ys_keyword == Y_LEAF || ys->ys_keyword == Y_LEAF_LIST){
+	if (prepend0)
+	    fprintf(f, "%s", prepend0);
+	body = xml_body(x);
+	if (gt == GT_ALL || gt == GT_VARS)
+	    fprintf(f, "%s ", xml_name(x));
+	if (index(body, ' '))
+	    fprintf(f, "\"%s\"", body);
+	else
+	    fprintf(f, "%s", body);
+	fprintf(f, "\n");
+	goto ok;
+    }
     /* Create prepend variable string */
     if ((cbpre = cbuf_new()) == NULL){
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
 	goto done;
     }
-    nr = xml_child_nr(x);
-    if (!nr){
-	if (xml_type(x) == CX_BODY)
-	    term = xml_value(x);
-	else
-	    term = xml_name(x);
-	if (prepend0)
-	    fprintf(f, "%s ", prepend0);
-	if (index(term, ' '))
-	    fprintf(f, "\"%s\"\n", term);
-	else
-	    fprintf(f, "%s\n", term);
-	retval = 0;
-	goto done;
-    }
     if (prepend0)
 	cprintf(cbpre, "%s", prepend0);
-    /* bool determines when to print a variable keyword:
-       !leaf           T for all (ie parameter)
-       index GT_NONE   F
-       index GT_VARS   F
-       index GT_ALL    T
-       !index GT_NONE  F
-       !index GT_VARS  T
-       !index GT_ALL   T
-    */
-    bool = !leaf(x) || gt == GT_ALL || (gt == GT_VARS);
-//    bool = (!x->xn_index || gt == GT_ALL);
-    if (bool){
-	if (cbuf_len(cbpre))
-	    cprintf(cbpre, " ");
-	cprintf(cbpre, "%s", xml_name(x));
-    }
-    xe = NULL;
-    /* First child is unique, then add that, before looping. */
-    i = 0;
-    while ((xe = xml_child_each(x, xe, -1)) != NULL){
-	/* Dont call this if it is index and there are other following */
-	if (0 && i < nr-1) 
-	    ;
-	else
-	    if (xml2cli(f, xe, cbuf_get(cbpre), gt) < 0)
+    cprintf(cbpre, "%s ", xml_name(x));
+
+    if (ys->ys_keyword == Y_LIST){
+	/* If list then first loop through keys */
+	xe = NULL;
+	while ((xe = xml_child_each(x, xe, -1)) != NULL){
+	    if ((match = yang_key_match((yang_node*)ys, xml_name(xe))) < 0)
 		goto done;
-	if (0){ /* assume index is first, otherwise need one more while */
+	    if (!match)
+		continue;
 	    if (gt == GT_ALL)
-		cprintf(cbpre, " %s", xml_name(xe));
-	    cprintf(cbpre, " %s", xml_value(xml_child_i(xe, 0)));
+		cprintf(cbpre, "%s ", xml_name(xe));
+	    cprintf(cbpre, "%s ", xml_body(xe));
 	}
-	i++;
     }
+    /* Then loop through all other (non-keys) */
+    xe = NULL;
+    while ((xe = xml_child_each(x, xe, -1)) != NULL){
+	if (ys->ys_keyword == Y_LIST){
+	    if ((match = yang_key_match((yang_node*)ys, xml_name(xe))) < 0)
+		goto done;
+	    if (match)
+		continue;
+	}
+	if (xml2cli(f, xe, cbuf_get(cbpre), gt) < 0)
+	    goto done;
+    }
+ ok:
     retval = 0;
   done:
     if (cbpre)

@@ -58,7 +58,7 @@ new "cli configure"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0" "^$"
 
 new "cli show configuration"
-expectfn "$clixon_cli -1 -f $cfg show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
+expectfn "$clixon_cli -1 -f $cfg show conf cli" "^interfaces interface eth/0/0 enabled true"
 
 new "cli configure using encoded chars data <&"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 description \"foo<&bar\"" ""
@@ -101,7 +101,8 @@ new "cli load"
 expectfn "$clixon_cli -1 -f $cfg -l o load /tmp/foo" "^$"
 
 new "cli check load"
-expectfn "$clixon_cli -1 -f $cfg -l o show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
+expectfn "$clixon_cli -1 -f $cfg -l o show conf cli" "^interfaces interface name eth/0/0 type bgp
+interfaces interface eth/0/0 ipv4 enabled true"
 
 new "cli debug"
 expectfn "$clixon_cli -1 -f $cfg -l o debug level 1" "^$"

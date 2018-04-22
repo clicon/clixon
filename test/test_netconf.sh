@@ -144,7 +144,8 @@ new "netconf get replaced config"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><interfaces><interface><name>eth&amp; </name><type>t&lt; &gt; </type><enabled>true</enabled></interface><interface><name>eth1</name><type>eth</type><enabled>true</enabled></interface><interface><name>eth2</name><type>eth</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$"
 
 new "cli show configuration eth& - encoding tests"
-expectfn "$clixon_cli -1 -f $cfg -y $fyang show conf cli" "interfaces interface name eth&"
+expectfn "$clixon_cli -1 -f $cfg -y $fyang show conf cli" "interfaces interface eth& type t<>
+interfaces interface eth& enabled true"
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

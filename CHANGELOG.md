@@ -103,6 +103,7 @@ enables saved files to be used as datastore without any editing. Thanks Matt.
 * Added cli_show_version()
 
 ### Corrected Bugs
+* Showing syntax using CLI commands was broekn and is fixed.
 * Fixed issue https://github.com/clicon/clixon/issues/18 RPC response issues reported by Stephen Jones at Netgate
 * Fixed issue https://github.com/clicon/clixon/issues/17 special character in strings can break RPCs reported by David Cornejo at Netgate.
   * This was a large rewright of XML parsing and output due to CharData not correctly encoded according to https://www.w3.org/TR/2008/REC-xml-20081126. 

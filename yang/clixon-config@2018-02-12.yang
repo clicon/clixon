@@ -82,6 +82,22 @@ module clixon-config {
 	    }
 	}
     }
+    typedef cli_genmodel_type{
+	description
+	    "How to generate CLI from YANG model, 
+             eg list a{ key x; leaf x; leaf y;}";
+	type enumeration{
+	    enum NONE{
+		description "No extra keywords: a <x> <y>";
+	    }
+	    enum VARS{
+		description "Keywords on non-key variables: a <x> y <y>";
+	    }
+	    enum ALL{
+		description "Keywords on all variables: a x <x> y <y>";
+	    }
+	}
+    }
     typedef nacm_mode{
 	description
 	    "Mode of RFC8341 Network Configuration Access Control Model.
@@ -204,7 +220,7 @@ module clixon-config {
 	    description "Generate code for CLI completion of existing db symbols";
 	}
 	leaf CLICON_CLI_GENMODEL_TYPE {
-	    type string;
+	    type cli_genmodel_type;
 	    default "VARS";
 	    description "How to generate and show CLI syntax: VARS|ALL";
 	}

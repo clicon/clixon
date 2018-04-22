@@ -50,7 +50,6 @@
 
 /*! Controls how keywords a generated in CLI syntax / prints from object model
  * Example YANG: 
- *  list a {a.b[] $!x $y:
  *  list a {
  *    key x;
  *    leaf x;   
@@ -63,7 +62,7 @@
 enum genmodel_type{
     GT_ERR =-1, /* Error  */
     GT_NONE=0,  /* No extra keywords */
-    GT_VARS,    /* Keywords on non-index variables */
+    GT_VARS,    /* Keywords on non-key variables */
     GT_ALL,     /* Keywords on all variables */
 };
 
