@@ -93,27 +93,22 @@ Routing notification
 
 The example includes a restonf, netconf, CLI and two backend plugins.
 Each plugin is initiated with an API struct followed by a plugin init function.
-The content of the API struct is different depending on what kind of plugin it is. Some fields are
-meaningful only for some plugins.
-The plugin init function may also include registering RPC functions.
+The content of the API struct is different depending on what kind of plugin it is.
+The plugin init function may also include registering RPC functions, see below is for a backend.
 ```
 static clixon_plugin_api api = {
     "example",          /* name */
     clixon_plugin_init, 
     plugin_start,       
     plugin_exit,        
-    NULL,               /* cli prompt N/A for backend */
-    NULL,               /* cli suspend N/A for backend */
-    NULL,               /* cli interrupt N/A for backend */
-    NULL,               /* auth N/A for backend */
-    plugin_reset,       
-    plugin_statedata,   
-    transaction_begin,  
-    transaction_validate,
-    transaction_complete,
-    transaction_commit,
-    transaction_end,  
-    transaction_abort
+    .ca_reset=plugin_reset,/* reset */          
+    .ca_statedata=plugin_statedata, /* statedata */
+    .ca_trans_begin=NULL, /* trans begin */
+    .ca_trans_validate=transaction_validate,/* trans validate */
+    .ca_trans_complete=NULL,                /* trans complete */
+    .ca_trans_commit=transaction_commit,    /* trans commit */
+    .ca_trans_end=NULL,                     /* trans end */
+    .ca_trans_abort=NULL                    /* trans abort */
 };
 
 clixon_plugin_api *

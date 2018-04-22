@@ -424,19 +424,28 @@ api_data_post(clicon_handle h,
     /* Parse input data as json or xml into xml */
     if (parse_xml){
 	if (xml_parse_string(data, NULL, &xdata) < 0){
-	    badrequest(r);
+	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		goto done;
+	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		goto done;
 	    goto ok;
 	}
     }
     else if (json_parse_str(data, &xdata) < 0){
-	badrequest(r);
+	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
     if (xml_child_nr(xdata) != 1){
-	badrequest(r);
+	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     x = xml_child_i(xdata,0);
@@ -628,19 +637,28 @@ api_data_put(clicon_handle h,
     /* Parse input data as json or xml into xml */
     if (parse_xml){
 	if (xml_parse_string(data, NULL, &xdata) < 0){
-	    badrequest(r);
+	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		goto done;
+	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		goto done;
 	    goto ok;
 	}
     }
     else if (json_parse_str(data, &xdata) < 0){
-	badrequest(r);
+	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     /* The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
     if (xml_child_nr(xdata) != 1){
-	badrequest(r);
+	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     x = xml_child_i(xdata,0);
@@ -662,13 +680,19 @@ api_data_put(clicon_handle h,
     else {
 	/* Check same symbol in api-path as data */	    
 	if (strcmp(xml_name(x), xml_name(xbot))){
-	    badrequest(r);
+	    if (netconf_operation_failed_xml(&xerr, "protocol", "Not same symbol in api-path as data") < 0)
+		goto done;
+	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		goto done;
 	    goto ok;
 	}
 	/* If list or leaf-list, api-path keys must match data keys */	    
 	if (y && (y->yn_keyword == Y_LIST ||y->yn_keyword == Y_LEAF_LIST)){
 	    if (match_list_keys((yang_stmt*)y, x, xbot) < 0){
-		badrequest(r);
+		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
+		    goto done;
+		if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		    goto done;
 		goto ok;
 	    }
 	}
@@ -1055,12 +1079,18 @@ api_operations_post(clicon_handle h,
 	/* Parse input data as json or xml into xml */
 	if (parse_xml){
 	    if (xml_parse_string(data, NULL, &xdata) < 0){
-		badrequest(r);
+		if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		    goto done;
+		if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		    goto done;
 		goto ok;
 	    }
 	}
 	else if (json_parse_str(data, &xdata) < 0){
-	    badrequest(r);
+	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		goto done;
+	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		goto done;
 	    goto ok;
 	}
 	yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL);

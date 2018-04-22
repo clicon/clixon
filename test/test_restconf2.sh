@@ -134,7 +134,7 @@ new "restconf PUT add interface"
 expectfn 'curl -s -X PUT -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/cont1/interface=TEST' ""
 
 new "restconf PUT change key error"
-expectfn 'curl -is -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/cont1/interface=TEST' "Bad request"
+expectfn 'curl -is -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/cont1/interface=TEST' '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "api-path keys do not match data keys"}}}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

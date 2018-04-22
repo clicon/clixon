@@ -31,6 +31,9 @@
 
   ***** END LICENSE BLOCK *****
 
+ * Yang functions
+ * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
+ * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
  */
 
 #ifndef _CLIXON_YANG_H_

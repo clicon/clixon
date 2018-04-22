@@ -137,7 +137,7 @@ expectfn "curl -s -I http://localhost/restconf/data" "HTTP/1.1 200 OK"
 #Content-Type: application/yang-data+json"
 
 new2 "restconf empty rpc"
-expecteq "$(curl -s -X POST -d {\"input\":{\"name\":\"\"}} http://localhost/restconf/operations/ex:empty)" ''
+expecteq "$(curl -s -X POST -d {\"input\":{\"name\":\"\"}} http://localhost/restconf/operations/ex:empty)" ""
 
 new2 "restconf get empty config + state json"
 expecteq "$(curl -sSG http://localhost/restconf/data)" '{"data": {"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}
@@ -213,11 +213,11 @@ expecteq "$(curl -s -G http://localhost/restconf/data)" '{"data": {"interfaces":
 new2 "restconf Re-post eth/0/0 which should generate error"
 expecteq "$(curl -s -X POST -d '{"interface":{"name":"eth/0/0","type":"eth","enabled":true}}' http://localhost/restconf/data/interfaces)" '{"ietf-restconf:errors" : {"error": {"error-tag": "data-exists","error-type": "application","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
-new2 "Add leaf description using POST"
+new "Add leaf description using POST"
 expecteq "$(curl -s -X POST -d '{"description":"The-first-interface"}' http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0)" ""
 
 new "Add nothing using POST"
-expectfn 'curl -s -X POST http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' "data is in some way badly formed"
+expectfn 'curl -s -X POST http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' '"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "malformed-message","error-type": "rpc","error-severity": "error","error-message": " on line 1: syntax error at or before:'
 
 new2 "restconf Check description added"
 expecteq "$(curl -s -G http://localhost/restconf/data)" '{"data": {"interfaces": {"interface": [{"name": "eth/0/0","description": "The-first-interface","type": "eth","enabled": true}]},"interfaces-state": {"interface": [{"name": "eth0","type": "eth","if-index": 42}]}}}
@@ -232,7 +232,7 @@ expectfn 'curl -s -G http://localhost/restconf/data' $state
 new2 "restconf Re-Delete eth/0/0 using none should generate error"
 expecteq "$(curl -s -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0)" '{"ietf-restconf:errors" : {"error": {"error-tag": "data-missing","error-type": "application","error-severity": "error","error-message": "Data does not exist; cannot delete resource"}}}'
 
-new2 "restconf Add subtree eth/0/0 using PUT"
+new "restconf Add subtree eth/0/0 using PUT"
 expecteq "$(curl -s -X PUT -d '{"interface":{"name":"eth/0/0","type":"eth","enabled":true}}' http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0)" ""
 
 new2 "restconf get subtree"
@@ -243,9 +243,12 @@ new2 "restconf rpc using POST json"
 expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/rt:fib-route)" '{"output": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"}}}}
 '
 
+# Cant get this to work due to quoting
+#new2 "restconf rpc using POST wrong JSON"
+#expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":ipv4}}' http://localhost/restconf/operations/rt:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": " on line 1: syntax error at or before: i"}}}}'
+
 new2 "restconf rpc using POST json w/o mandatory element"
 expecteq "$(curl -s -X POST -d '{"input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/rt:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "Missing mandatory variable: routing-instance-name"}}}}'
-
 new2 "restconf rpc non-existing rpc w/o namespace"
 expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/kalle)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "yang node not found"}}}}'
 

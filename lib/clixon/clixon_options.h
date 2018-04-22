@@ -49,10 +49,16 @@
  */
 
 /*! Controls how keywords a generated in CLI syntax / prints from object model
- * Example syntax a.b[] $!x $y:
- * NONE: a b <x> <y>;
- * VARS: a b <x> y <y>;
- * ALL:  a b x <x> y <y>;
+ * Example YANG: 
+ *  list a {a.b[] $!x $y:
+ *  list a {
+ *    key x;
+ *    leaf x;   
+ *    leaf y;   
+ *  }
+ * NONE: a <x> <y>;
+ * VARS: a <x> y <y>;
+ * ALL:  a x <x> y <y>;
  */
 enum genmodel_type{
     GT_ERR =-1, /* Error  */

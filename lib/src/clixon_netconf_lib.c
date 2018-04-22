@@ -526,22 +526,25 @@ netconf_access_denied_xml(cxobj **xret,
 			  char   *message)
 {
     int   retval =-1;
-    cbuf *cbret = NULL;    
-
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
+    cxobj *xerr;
+    
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	    goto done;
     }
-    if (netconf_access_denied(cbret, type, message) < 0)
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
-    if (xml_parse_string(cbuf_get(cbret), NULL, xret) < 0)
+    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
 	goto done;
-    if (xml_rootchild(*xret, 0, xret) < 0)
+    if (xml_parse_va(&xerr, NULL, "<error-tag>access-denied</error-tag>"
+		     "<error-type>%s</error-type>"
+		     "<error-severity>error</error-severity>", type) < 0)
+	goto done;
+    if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
+			 message) < 0)
 	goto done;
     retval = 0;
  done:
-    if (cbret)
-	cbuf_free(cbret);
     return retval;
 }
 
@@ -835,22 +838,25 @@ netconf_operation_failed_xml(cxobj **xret,
 			     char  *message)
 {
     int   retval =-1;
-    cbuf *cbret = NULL;    
-
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
+    cxobj *xerr;
+    
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	    goto done;
     }
-    if (netconf_operation_failed(cbret, type, message) < 0)
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
-    if (xml_parse_string(cbuf_get(cbret), NULL, xret) < 0)
+    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
 	goto done;
-    if (xml_rootchild(*xret, 0, xret) < 0)
+    if (xml_parse_va(&xerr, NULL, "<error-tag>operation-failed</error-tag>"
+		     "<error-type>%s</error-type>"
+		     "<error-severity>error</error-severity>", type) < 0)
+	goto done;
+    if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
+			 message) < 0)
 	goto done;
     retval = 0;
  done:
-    if (cbret)
-	cbuf_free(cbret);
     return retval;
 }
 
@@ -891,4 +897,40 @@ netconf_malformed_message(cbuf  *cb,
  err:
     clicon_err(OE_XML, errno, "cprintf");
     goto done;
+}
+
+/*! Create Netconf malformed-message error XML tree according to RFC 6241 App A
+ *
+ * A message could not be handled because it failed to be parsed correctly.  
+ * For example, the message is not well-formed XML or it uses an
+ * invalid character set.
+ * @param[out] xret    Error XML tree 
+ * @param[in]  message Error message
+ * @note New in :base:1.1
+ */
+int
+netconf_malformed_message_xml(cxobj **xret,
+			     char  *message)
+{
+    int   retval =-1;
+    cxobj *xerr;
+    
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	    goto done;
+    }
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+	goto done;
+    if (xml_parse_va(&xerr, NULL, "<error-tag>malformed-message</error-tag>"
+		     "<error-type>rpc</error-type>"
+		     "<error-severity>error</error-severity>") < 0)
+	goto done;
+    if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
+			 message) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
 }

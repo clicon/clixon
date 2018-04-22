@@ -1,8 +1,4 @@
 /*
- * Yang 1.0 parser according to RFC6020.
- * It is hopefully useful but not complete
- * RFC7950 defines Yang version 1.1
- *
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
@@ -34,8 +30,9 @@
 
   ***** END LICENSE BLOCK *****
 
- * Database specification parser cli syntax
- * (Cloned from cligen parser)
+ * Yang parser. Hopefully useful but not complete
+ * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
+ * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
  */
 
 %{

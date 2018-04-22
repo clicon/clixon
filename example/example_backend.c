@@ -260,13 +260,13 @@ plugin_start(clicon_handle h,
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
-    "example",          /* name */           /*--- Common fields.  ---*/
-    clixon_plugin_init, /* init */
-    plugin_start,       /* start */
-    NULL,               /* exit */
-    .ca_reset=plugin_reset,/* reset */          /*--- Backend plugin only ---*/
-    .ca_statedata=plugin_statedata, /* statedata */
-    .ca_trans_begin=NULL, /* trans begin */
+    "example",                              /* name */    
+    clixon_plugin_init,                     /* init */
+    plugin_start,                           /* start */
+    NULL,                                   /* exit */
+    .ca_reset=plugin_reset,                 /* reset */
+    .ca_statedata=plugin_statedata,         /* statedata */
+    .ca_trans_begin=NULL,                   /* trans begin */
     .ca_trans_validate=transaction_validate,/* trans validate */
     .ca_trans_complete=NULL,                /* trans complete */
     .ca_trans_commit=transaction_commit,    /* trans commit */

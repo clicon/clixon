@@ -1,7 +1,4 @@
 /*
- * Yang 1.0 parser according to RFC6020.
- * It is hopefully useful but not complete
- * RFC7950 defines Yang version 1.1
  *
   ***** BEGIN LICENSE BLOCK *****
  
@@ -34,6 +31,9 @@
 
   ***** END LICENSE BLOCK *****
 
+ * Yang parser. Hopefully useful but not complete
+ * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
+ * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
  */
 
 

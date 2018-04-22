@@ -61,5 +61,6 @@ int netconf_operation_not_supported(cbuf *cb, char *type, char *message);
 int netconf_operation_failed(cbuf *cb, char *type, char *message);
 int netconf_operation_failed_xml(cxobj **xret, char *type, char *message);
 int netconf_malformed_message(cbuf *cb, char *message);
+int netconf_malformed_message_xml(cxobj **xret, char *message);
 
 #endif /* _CLIXON_NETCONF_LIB_H */
