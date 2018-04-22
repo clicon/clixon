@@ -1003,6 +1003,13 @@ api_operations_post(clicon_handle h,
     }
     for (i=0; i<pi; i++)
 	oppath = index(oppath+1, '/');
+    if (oppath == NULL || strcmp(oppath,"/")==0){
+	if (netconf_operation_failed_xml(&xerr, "protocol", "Operation name expected") < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
+	goto ok;
+    }
     clicon_debug(1, "%s oppath: %s", __FUNCTION__, oppath);
 
     /* Find yang rpc statement, return yang rpc statement if found */
@@ -1040,7 +1047,7 @@ api_operations_post(clicon_handle h,
     {
 	cbuf *c = cbuf_new();
 	clicon_xml2cbuf(c, xtop, 0, 0);
-	clicon_debug(1, "%s xinput:%s", __FUNCTION__, cbuf_get(c));
+	clicon_debug(1, "%s xtop:%s", __FUNCTION__, cbuf_get(c));
 	cbuf_free(c);
     }
 #endif
@@ -1056,8 +1063,22 @@ api_operations_post(clicon_handle h,
 	    badrequest(r);
 	    goto ok;
 	}
+	yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL);
 	/* xdata should have format <top><input> */
-	if ((xinput = xpath_first(xdata, "/input")) != NULL){
+	if ((xinput = xpath_first(xdata, "/input")) == NULL){
+	    xml_name_set(xdata, "input");
+	    xml_spec_set(xdata, yinput); /* needed for xml_spec_populate */
+	    if (yinput){
+		if (xml_yang_validate_add(xdata, NULL) < 0){
+		    if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+			goto done;
+		    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+			goto done;
+		    goto ok;
+		}
+	    }
+	}
+	else{
 	    /* Add all input under <rpc>path */
 	    x = NULL;
 	    while (xml_child_nr(xinput)){
@@ -1065,15 +1086,20 @@ api_operations_post(clicon_handle h,
 		if (xml_addsub(xbot, x) < 0) 	
 		    goto done;
 	    }
-	    if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
-		xml_spec_set(xinput, yinput); /* needed for xml_spec_populate */
-		if (xml_apply(xinput, CX_ELMNT, xml_spec_populate, yinput) < 0)
+	    if (yinput){
+		xml_spec_set(xbot, yinput); /* needed for xml_spec_populate */
+		if (xml_apply(xbot, CX_ELMNT, xml_spec_populate, yinput) < 0)
 		    goto done;
-		if (xml_apply(xinput, CX_ELMNT, 
+		if (xml_apply(xbot, CX_ELMNT, 
 			      (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
 		    goto done;
-		if (xml_yang_validate_add(xinput, NULL) < 0)
-		    goto done;
+		if (xml_yang_validate_add(xbot, NULL) < 0){
+		    if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+			goto done;
+		    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+			goto done;
+		    goto ok;
+		}
 	    }
 	}
     }
@@ -1099,15 +1125,30 @@ api_operations_post(clicon_handle h,
 	}
 	break; /* Just one if local */
     }
-    if (ret == 0) /* Send to backend */
+    if (ret == 0){ /* Send to backend */
 	if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	    goto done;
+	if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+    /* Check if RPC output section */
+    if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) == NULL){
+	/* If the RPC operation is invoked without errors and if the "rpc" or
+	 * "action" statement has no "output" section, the response message
+	 * MUST NOT include a message-body and MUST send a "204 No Content"
+	 * status-line instead.
+	 */
+	FCGX_SetExitStatus(204, r->out); /* OK */
+	FCGX_FPrintF(r->out, "\r\n");
+	goto ok;
+    }
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
-    if ((xoutput=xpath_first(xret, "/")) != NULL)
-	xml_name_set(xoutput, "output");	
-    if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL &&
-	xoutput){
+    if ((xoutput=xpath_first(xret, "/")) != NULL){
+	xml_name_set(xoutput, "output");
 #if 0
 	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
 #endif
@@ -1134,7 +1175,7 @@ api_operations_post(clicon_handle h,
 	    if (xml2json_cbuf(cbx, xoutput, pretty) < 0)
 		goto done;
 #if 1
-	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
+	clicon_debug(1, "%s cbx:%s", __FUNCTION__, cbuf_get(cbx));
 #endif
 	FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
 	FCGX_FPrintF(r->out, "\r\n\r\n");

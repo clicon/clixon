@@ -87,7 +87,6 @@ nacm_statedata(clicon_handle h,
     return retval;
 }
 
-
 int
 plugin_start(clicon_handle h,
 	     int           argc,
@@ -103,8 +102,8 @@ static clixon_plugin_api api = {
     clixon_plugin_init, /* init */
     plugin_start,       /* start */
     NULL,               /* exit */
-    .ca_reset=NULL,               /* reset */          /*--- Backend plugin only ---*/
-    .ca_statedata=nacm_statedata,     /* statedata */
+    .ca_reset=NULL,               /* reset */
+    .ca_statedata=nacm_statedata, /* statedata */
 };
 
 /*! Backend plugin initialization
@@ -115,6 +114,6 @@ static clixon_plugin_api api = {
 clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
-    clicon_debug(1, "%s backend secondary", __FUNCTION__);
+    clicon_debug(1, "%s backend nacm", __FUNCTION__);
     return &api;
 }

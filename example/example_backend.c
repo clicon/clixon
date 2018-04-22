@@ -121,7 +121,9 @@ notification_timer_setup(clicon_handle h)
     return event_reg_timeout(t, notification_timer, h, "notification timer");
 }
 
-/*! IETF Routing fib-route rpc */
+/*! IETF Routing fib-route rpc 
+ * @see ietf-routing@2014-10-26.yang  (fib-route)
+ */
 static int 
 fib_route(clicon_handle h,            /* Clicon handle */
 	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
@@ -136,19 +138,9 @@ fib_route(clicon_handle h,            /* Clicon handle */
     return 0;
 }
 
-/*! Smallest possible RPC declaration for test */
-static int 
-empty(clicon_handle h,            /* Clicon handle */
-      cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-      cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-      void         *arg,          /* client_entry */
-      void         *regarg)       /* Argument given at register */
-{
-    cprintf(cbret, "<rpc-reply/>");
-    return 0;
-}
-
-/*! IETF Routing route-count rpc */
+/*! IETF Routing route-count rpc 
+ * @see ietf-routing@2014-10-26.yang  (route-count)
+ */
 static int 
 route_count(clicon_handle h, 
 	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
@@ -156,7 +148,24 @@ route_count(clicon_handle h,
 	    void         *arg,
 	    void         *regarg)          /* Argument given at register */
 {
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
+    cprintf(cbret, "<rpc-reply><number-of-routes>42</number-of-routes></rpc-reply>");    
+    return 0;
+}
+
+/*! Smallest possible RPC declaration for test 
+ * Yang/XML:
+ * If the RPC operation invocation succeeded and no output parameters
+ * are returned, the <rpc-reply> contains a single <ok/> element defined
+ * in [RFC6241].
+ */
+static int 
+empty(clicon_handle h,            /* Clicon handle */
+      cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+      cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+      void         *arg,          /* client_entry */
+      void         *regarg)       /* Argument given at register */
+{
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     return 0;
 }
 

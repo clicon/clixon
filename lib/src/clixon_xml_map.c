@@ -322,6 +322,7 @@ xml_yang_validate_add(cxobj   *xt,
        and !Node has a config sub-statement and it is false */
     if ((ys = xml_spec(xt)) != NULL && yang_config(ys) != 0){
 	switch (ys->ys_keyword){
+	case Y_INPUT:
 	case Y_LIST:
 	    /* fall thru */
 	case Y_CONTAINER:

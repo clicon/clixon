@@ -111,18 +111,18 @@ clixon_plugin_reset(clicon_handle h,
 /*! Go through all backend statedata callbacks and collect state data
  * This is internal system call, plugin is invoked (does not call) this function
  * Backend plugins can register 
- * @param[in]  h       clicon handle
- * @param[in]  xpath   String with XPATH syntax. or NULL for all
- * @param[in,out] xml  XML tree.
- * @param[out] cbret Return xml value cligen buffer
- * @retval -1   Error
- * @retval  0   OK
- * @retval  1   Statedata callback failed
+ * @param[in]     h       clicon handle
+ * @param[in]     xpath   String with XPATH syntax. or NULL for all
+ * @param[in,out] xtop    State XML tree is merged with existing tree.
+ * @retval       -1       Error
+ * @retval        0       OK
+ * @retval        1       Statedata callback failed
+ * @note xtop can be replaced
  */
 int
 clixon_plugin_statedata(clicon_handle        h,
 			char                *xpath,
-			cxobj               *xtop)
+			cxobj              **xtop)
 {
     int            retval = -1;
     int            i;
@@ -139,7 +139,7 @@ clixon_plugin_statedata(clicon_handle        h,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (xtop==NULL){
+    if (*xtop==NULL){
 	clicon_err(OE_CFG, ENOENT, "XML tree expected");
 	goto done;
     }
@@ -152,22 +152,14 @@ clixon_plugin_statedata(clicon_handle        h,
 	    retval = 1;
 	    goto done; /* Dont quit here on user callbacks */
 	}
-	if (xml_merge(xtop, x, yspec, &reason) < 0)
+	if (xml_merge(*xtop, x, yspec, &reason) < 0)
 	    goto done;
 	if (reason){
-	    cbuf *cb;
-	    if ((cb = cbuf_new()) == NULL){
-		clicon_err(OE_XML, errno, "cbuf_new");
+	    while ((xc = xml_child_i(*xtop, 0)) != NULL)
+		xml_purge(xc);	    
+	    if (netconf_operation_failed_xml(xtop, "rpc", reason)< 0)
 		goto done;
-	    }
-	    if (netconf_operation_failed(cb, "rpc", reason)< 0)
-		goto done;
-	    while ((xc = xml_child_i(xtop, 0)) != NULL)
-		xml_purge(xc);
-	    if (xml_parse_string(cbuf_get(cb), NULL, &xtop) < 0)
-		goto done;
-	    cbuf_free(cb);
-	    break;
+	    goto ok;
 	}
 	if (x){
 	    xml_free(x);
@@ -175,7 +167,7 @@ clixon_plugin_statedata(clicon_handle        h,
 	}
     }
     /* Code complex to filter out anything that is outside of xpath */
-    if (xpath_vec(xtop, xpath?xpath:"/", &xvec, &xlen) < 0)
+    if (xpath_vec(*xtop, xpath?xpath:"/", &xvec, &xlen) < 0)
 	goto done;
 
     /* If vectors are specified then mark the nodes found and
@@ -187,12 +179,13 @@ clixon_plugin_statedata(clicon_handle        h,
 	    xml_flag_set(xvec[i], XML_FLAG_MARK);
     }
     /* Remove everything that is not marked */
-    if (!xml_flag(xtop, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged_sub(xtop, XML_FLAG_MARK, 1, NULL) < 0)
+    if (!xml_flag(*xtop, XML_FLAG_MARK))
+	if (xml_tree_prune_flagged_sub(*xtop, XML_FLAG_MARK, 1, NULL) < 0)
 	    goto done;
     /* reset flag */
-    if (xml_apply(xtop, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+    if (xml_apply(*xtop, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
+ ok:
     retval = 0;
  done:
     if (reason)
