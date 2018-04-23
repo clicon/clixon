@@ -100,18 +100,18 @@ distclean: clean
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
 install:	install-lib $(APPL)
-	install -d $(DESTDIR)$(bindir)
-	install $(APPL) $(DESTDIR)$(bindir)
+	install -d -m 0755 $(DESTDIR)$(bindir)
+	install -m 0755 -s $(APPL) $(DESTDIR)$(bindir)
 
 install-lib: $(MYLIB)
-	install -d $(DESTDIR)$(libdir) 
-	install $(MYLIB) $(DESTDIR)$(libdir) 
+	install -d -m 0755 $(DESTDIR)$(libdir)
+	install -m 0644 -s $(MYLIB) $(DESTDIR)$(libdir)
 	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon_netconf.so.2
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_netconf.so
 
 install-include:	clixon_netconf.h
-	install -d $(DESTDIR)$(includedir)/clixon
-	install -m 644 $^ $(DESTDIR)$(includedir)/clixon
+	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
+	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
 
 uninstall:
 	rm -f $(DESTDIR)$(bindir)/$(APPL)
