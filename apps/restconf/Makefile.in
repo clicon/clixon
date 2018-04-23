@@ -97,8 +97,8 @@ distclean: clean
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
 install:	install-lib $(APPL)
-	install -d $(DESTDIR)$(wwwdir)
-	install $(APPL) $(DESTDIR)$(wwwdir)
+	install -d -m 0755 $(DESTDIR)$(wwwdir)
+	install -m 0755 -s $(APPL) $(DESTDIR)$(wwwdir)
 
 install-lib: $(MYLIB)
 	install -d $(DESTDIR)$(libdir) 

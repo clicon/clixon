@@ -58,8 +58,8 @@ distclean: clean
 install: $(YANGSPECS) 
 	echo $(DESTDIR)$(datarootdir)/clixon/clixon.mk
 	echo $(DESTDIR)$(clixon_DATADIR)
-	install -d $(DESTDIR)$(clixon_DATADIR)
-	install $(YANGSPECS) $(DESTDIR)$(clixon_DATADIR)
+	install -d -m 0755 $(DESTDIR)$(clixon_DATADIR)
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(clixon_DATADIR)
 
 uninstall: 
 	(cd $(DESTDIR)$(clixon_DATADIR); rm -rf $(YANGSPECS))

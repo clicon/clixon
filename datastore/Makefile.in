@@ -101,8 +101,8 @@ install-include:
 	do (cd $$i ; $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 
 install: $(APPL)
-	install -d $(DESTDIR)$(bindir)
-	install $(APPL) $(DESTDIR)$(bindir)
+	install -d -m 0755 $(DESTDIR)$(bindir)
+	install -m 0755 -s $(APPL) $(DESTDIR)$(bindir)
 	for i in $(SUBDIRS); \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
 

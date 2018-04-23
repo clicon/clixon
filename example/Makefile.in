@@ -111,21 +111,21 @@ distclean: clean
 	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN) $(APPNAME).xml
-	install -d $(DESTDIR)$(clixon_SYSCONFDIR)
-	install $(APPNAME).xml $(DESTDIR)$(clixon_SYSCONFDIR)
-	install -d $(DESTDIR)$(clixon_DBSPECDIR)/yang
-	install $(YANGSPECS) $(DESTDIR)$(clixon_DBSPECDIR)/yang
-	install -d $(DESTDIR)$(clixon_LIBDIR)/cli
-	install $(CLI_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/cli; 
-	install -d $(DESTDIR)$(clixon_LIBDIR)/backend
-	install $(BE_PLUGIN) $(BE2_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/backend; 
-	install -d $(DESTDIR)$(clixon_LIBDIR)/netconf
-	install $(NETCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/netconf;
-	install -d $(DESTDIR)$(clixon_LIBDIR)/restconf
-	install $(RESTCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/restconf; 
-	install -d $(DESTDIR)$(clixon_LIBDIR)/clispec
-	install $(CLISPECS) $(DESTDIR)$(clixon_LIBDIR)/clispec; 
-	install -d $(DESTDIR)$(clixon_LOCALSTATEDIR)
+	install -d -m 0755 $(DESTDIR)$(clixon_SYSCONFDIR)
+	install -m 0644 $(APPNAME).xml $(DESTDIR)$(clixon_SYSCONFDIR)
+	install -d -m 0755 $(DESTDIR)$(clixon_DBSPECDIR)/yang
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(clixon_DBSPECDIR)/yang
+	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/cli
+	install -m 0644 -s $(CLI_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/cli
+	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/backend
+	install -m 0644 -s $(BE_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/backend
+	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/netconf
+	install -m 0644 -s $(NETCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/netconf
+	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/restconf
+	install -m 0644 $(RESTCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/restconf
+	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/clispec
+	install -m 0644 $(CLISPECS) $(DESTDIR)$(clixon_LIBDIR)/clispec
+	install -d -m 0755 $(DESTDIR)$(clixon_LOCALSTATEDIR)
 	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 uninstall: 

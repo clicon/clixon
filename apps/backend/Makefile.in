@@ -98,15 +98,15 @@ distclean: clean
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
 install:	install-lib	$(APPL)
-	install -d $(DESTDIR)$(sbindir)
-	install $(APPL) $(DESTDIR)$(sbindir)
+	install -d -m 0755 $(DESTDIR)$(sbindir)
+	install -m 0755 -s $(APPL) $(DESTDIR)$(sbindir)
 
 install-lib:	$(MYLIB)
-	install -d $(DESTDIR)$(libdir)
-	install $(MYLIB) $(DESTDIR)$(libdir)
+	install -d -m 0755 $(DESTDIR)$(libdir)
+	install -m 0644 -s $(MYLIB) $(DESTDIR)$(libdir)
 	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)	   # -l:libclixon_config.so.2
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_config.so
-	install -d $(DESTDIR)$(libdir)/clixon/plugins/backend
+	install -d -m 0755 $(DESTDIR)$(libdir)/clixon/plugins/backend
 
 uninstall:
 	rm -f $(DESTDIR)$(sbindir)/$(APPL)
@@ -114,8 +114,8 @@ uninstall:
 	rm -f $(DESTDIR)$(includedir)/clixon/*
 
 install-include: clixon_backend.h clixon_backend_handle.h clixon_backend_transaction.h
-	install -d $(DESTDIR)$(includedir)/clixon
-	install -m 644 $^ $(DESTDIR)$(includedir)/clixon
+	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
+	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
 
 .SUFFIXES:
 .SUFFIXES: .c .o
