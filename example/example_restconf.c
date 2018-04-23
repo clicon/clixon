@@ -197,7 +197,6 @@ plugin_credentials(clicon_handle h,
     FCGX_Request *r = (FCGX_Request *)arg;
     cxobj  *xt = NULL;
     cxobj  *x;
-    char   *xbody;
     char   *auth;
     char   *user = NULL;
     char   *passwd;
@@ -205,11 +204,12 @@ plugin_credentials(clicon_handle h,
     size_t  authlen;
     cbuf   *cb = NULL;
     int     ret;
-
+    char   *xbody;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
     /* XXX This is a kludge to reset the user not remaining from previous */
     if (clicon_username_set(h, "admin") < 0)
     	goto done;
-    clicon_debug(1, "%s", __FUNCTION__);
     /* Check if basic_auth set, if not return OK */
     if (clicon_rpc_get_config(h, "running", "authentication", &xt) < 0)
 	goto done;
@@ -249,7 +249,6 @@ plugin_credentials(clicon_handle h,
     cprintf(cb, "authentication/auth[user=%s]", user);
     if ((x = xpath_first(xt, cbuf_get(cb))) == NULL)
 	goto fail;
-
     passwd2 = xml_find_body(x, "password");
     if (strcmp(passwd, passwd2))
 	goto fail;

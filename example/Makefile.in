@@ -118,7 +118,7 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NET
 	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/cli
 	install -m 0644 -s $(CLI_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/cli
 	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/backend
-	install -m 0644 -s $(BE_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/backend
+	install -m 0644 -s $(BE_PLUGIN) $(BE2_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/backend
 	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/netconf
 	install -m 0644 -s $(NETCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/netconf
 	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/restconf

@@ -260,6 +260,59 @@ plugin_start_useroptions(clicon_handle h,
     return 0;
 }
 
+/*! Load external NACM file
+ */
+static int
+nacm_load_external(clicon_handle h)
+{
+    int         retval = -1;
+    char       *filename; /* NACM config file */
+    yang_spec  *yspec = NULL;
+    cxobj      *xt = NULL;
+    struct stat st;
+    FILE       *f = NULL;
+    int         fd;
+
+    filename = clicon_option_str(h, "CLICON_NACM_FILE");
+    if (filename == NULL || strlen(filename)==0){
+	clicon_err(OE_UNIX, errno, "CLICON_NACM_FILE not set in NACM external mode");
+	goto done;
+    }
+    if (stat(filename, &st) < 0){
+	clicon_err(OE_UNIX, errno, "%s", filename);
+	goto done;
+    }
+    if (!S_ISREG(st.st_mode)){
+	clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
+	goto done;
+    }
+    if ((f = fopen(filename, "r")) == NULL) {
+	clicon_err(OE_UNIX, errno, "configure file: %s", filename);
+	return -1;
+    }
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    if (yang_parse(h, CLIXON_DATADIR, "ietf-netconf-acm", NULL, yspec) < 0)
+	goto done;
+    fd = fileno(f);
+    /* Read configfile */
+    if (xml_parse_file(fd, "</clicon>", yspec, &xt) < 0)
+	goto done;
+    if (xt == NULL){
+	clicon_err(OE_XML, 0, "No xml tree in %s", filename);
+	goto done;
+    }
+    if (backend_nacm_list_set(h, xt) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (yspec) /* The clixon yang-spec is not used after this */
+	yspec_free(yspec);
+    if (f)
+	fclose(f);
+    return retval;
+}
+
 /*! Merge xml in filename into database
  */
 static int
@@ -498,6 +551,7 @@ main(int    argc,
     int           xml_cache;
     int           xml_pretty;
     char         *xml_format;
+    char         *nacm_mode;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR|CLICON_LOG_SYSLOG);
@@ -551,7 +605,12 @@ main(int    argc,
 	    usage(argv[0], h);
 	return -1;
     }
-
+    /* External NACM file? */
+    nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
+    if (nacm_mode && strcmp(nacm_mode, "external") == 0)
+	if (nacm_load_external(h) < 0)
+	    goto done;
+    
     /* Now run through the operational args */
     opterr = 1;
     optind = 1;

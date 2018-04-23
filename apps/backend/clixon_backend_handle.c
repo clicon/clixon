@@ -90,6 +90,7 @@ struct backend_handle {
     struct client_entry     *bh_ce_list;   /* The client list */
     int                      bh_ce_nr;     /* Number of clients, just increment */
     struct handle_subscription *bh_subscription; /* Event subscription list */
+    cxobj                   *bh_nacm;      /* NACM external struct */
 };
 
 /*! Creates and returns a clicon config handle for other CLICON API calls
@@ -106,11 +107,14 @@ backend_handle_init(void)
 int
 backend_handle_exit(clicon_handle h)
 {
+    struct backend_handle *bh = handle(h);
     struct client_entry   *ce;
 
     /* only delete client structs, not close sockets, etc, see backend_client_rm */
     while ((ce = backend_client_list(h)) != NULL)
 	backend_client_delete(h, ce);
+    if (bh->bh_nacm)
+	xml_free(bh->bh_nacm);
     clicon_handle_exit(h); /* frees h and options */
     return 0;
 }
@@ -431,3 +435,22 @@ subscription_each(clicon_handle               h,
     return hs;
 }
 
+int
+backend_nacm_list_set(clicon_handle h,
+		      cxobj        *xnacm)
+{
+    struct backend_handle *bh = handle(h);
+
+    if (bh->bh_nacm)
+	xml_free(bh->bh_nacm);
+    bh->bh_nacm = xnacm;
+    return 0;
+}
+
+cxobj *
+backend_nacm_list_get(clicon_handle h)
+{
+    struct backend_handle *bh = handle(h);
+    
+    return bh->bh_nacm;
+}

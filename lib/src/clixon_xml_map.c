@@ -116,26 +116,19 @@ xml2txt(FILE  *f,
     int    children=0;
     char  *term = NULL;
     int    retval = -1;
-    int    encr=0;
 
     xe = NULL;     /* count children */
     while ((xe = xml_child_each(x, xe, -1)) != NULL)
 	children++;
     if (!children){ 
 	if (xml_type(x) == CX_BODY){
-	    /* Kludge for escaping encrypted passwords */
-	    if (strcmp(xml_name(xml_parent(x)), "encrypted-password")==0)
-		encr++;
 	    term = xml_value(x);
 	}
 	else{
 	    fprintf(f, "%*s", 4*level, "");
 	    term = xml_name(x);
 	}
-	if (encr)
-	    fprintf(f, "\"%s\";\n", term);
-	else
-	    fprintf(f, "%s;\n", term);
+	fprintf(f, "%s;\n", term);
 	retval = 0;
 	goto done;
     }

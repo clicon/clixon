@@ -209,7 +209,7 @@ clicon_options_main(clicon_handle h)
     /* If file ends with .xml, assume it is new format */
     if ((suffix = rindex(configfile, '.')) != NULL){
 	suffix++;
-	xml = strcmp(suffix,"xml") == 0;
+	xml = strcmp(suffix, "xml") == 0;
     }
     if (xml){     /* Read clixon yang file */
 	if ((yspec = yspec_new()) == NULL)

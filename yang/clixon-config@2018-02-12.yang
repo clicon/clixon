@@ -341,6 +341,13 @@ module clixon-config {
 	leaf CLICON_NACM_MODE {
 	    type nacm_mode;
 	    default disabled;
-	    description "RFC8341 network access configuration control model";	}
+	    description "RFC8341 network access configuration control model 
+                         (NACM) mode: disabled, in regular (internal) config
+                         or separate external file given by CLICON_NACM_FILE";
+	}
+	leaf CLICON_NACM_FILE {
+	    type string;
+	    description "RFC8341 NACM external configuration file";
+	}
     }
 }

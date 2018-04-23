@@ -5,6 +5,7 @@
 ### Major changes:
 * Experimental NACM RFC8341 Network Configuration Access Control Model.
   * CLICON_NACM_MODE config option, default is disabled.
+  * CLICON_NACM_FILE config option, if CLICON_NACM_MODE is "external"
   * Added username attribute to all rpc:s from frontend to backend
   * Added NACM backend module in example
 * Restructure and more generic plugin API (cli,backend,restconf,netconf).

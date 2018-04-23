@@ -904,7 +904,9 @@ nacm_match_rule(clicon_handle h,
 
 /*! Make nacm access control 
  * @param[in]  h     Clicon handle
+ * @param[in]  mode  NACMmode, internal or external
  * @param[in]  name  rpc name
+ * @param[in]  username
  * @param[out] cbret Cligen buffer result. Set to an error msg if retval=0.
  * @retval -1  Error
  * @retval  0  Not access and cbret set
@@ -913,6 +915,7 @@ nacm_match_rule(clicon_handle h,
  */
 static int
 nacm_access(clicon_handle h,
+	    char         *mode,
 	    char         *name,
 	    char         *username,
 	    cbuf         *cbret)
@@ -935,10 +938,26 @@ nacm_access(clicon_handle h,
     int     ret;
 
     clicon_debug(1, "%s", __FUNCTION__);
+    /* 0. If nacm-mode is external, get NACM defintion from separet tree,
+       otherwise get it from internal configuration */
+    if (strcmp(mode, "external")==0){
+	if ((xtop = backend_nacm_list_get(h)) == NULL){
+	    clicon_err(OE_XML, 0, "No nacm external tree");
+	    goto done;
+	}
+    }
+    else if (strcmp(mode, "internal")==0){
+	if (xmldb_get(h, "running", "nacm", 0, &xtop) < 0)
+	    goto done;	
+    }
+    else{
+	clicon_err(OE_UNIX, 0, "Invalid NACM mode: %s", mode);
+	goto done;
+    }
+    
     /* 1.   If the "enable-nacm" leaf is set to "false", then the protocol
        operation is permitted. (or config does not exist) */
-    if (xmldb_get(h, "running", "nacm", 0, &xtop) < 0)
-	goto done;
+
     if ((xacm = xpath_first(xtop, "nacm")) == NULL)
 	goto permit;
     exec_default = xml_find_body(xacm, "exec-default");
@@ -1033,7 +1052,7 @@ nacm_access(clicon_handle h,
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
-    if (xtop)
+    if (strcmp(mode, "internal")==0 && xtop)
 	xml_free(xtop);
     if (gvec)
 	free(gvec);
@@ -1097,15 +1116,14 @@ from_client_msg(clicon_handle        h,
     while ((xe = xml_child_each(x, xe, CX_ELMNT)) != NULL) {
 	name = xml_name(xe);
 	clicon_debug(1, "%s name:%s", __FUNCTION__, name);
-#if 1 /* NACM */
 	/* Make NACM access control if enabled as "internal"*/
 	nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
-	if (nacm_mode && strcmp(nacm_mode,"internal") == 0)
-	    if ((ret = nacm_access(h, name, username, cbret)) < 0)
+	if (nacm_mode && strcmp(nacm_mode, "disabled") != 0){
+	    if ((ret = nacm_access(h, nacm_mode, name, username, cbret)) < 0)
 		goto done;
-	if (!ret)
-	    goto reply;
-#endif
+	    if (!ret)
+		goto reply;
+	}
 	if (strcmp(name, "get-config") == 0){
 	    if (from_client_get_config(h, xe, cbret) <0)
 		goto done;

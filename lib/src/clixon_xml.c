@@ -164,7 +164,7 @@ xml_name_set(cxobj *xn,
     }
     if (name){
 	if ((xn->x_name = strdup(name)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+	    clicon_err(OE_XML, errno, "strdup");
 	    return -1;
 	}
     }
@@ -197,7 +197,7 @@ xml_namespace_set(cxobj *xn,
     }
     if (namespace){
 	if ((xn->x_namespace = strdup(namespace)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+	    clicon_err(OE_XML, errno, "strdup");
 	    return -1;
 	}
     }
@@ -288,7 +288,7 @@ xml_value_set(cxobj *xn,
     }
     if (val){
 	if ((xn->x_value = strdup(val)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+	    clicon_err(OE_XML, errno, "strdup");
 	    return -1;
 	}
     }
@@ -480,7 +480,7 @@ xml_child_append(cxobj *x,
     x->x_childvec_len++;
     x->x_childvec = realloc(x->x_childvec, x->x_childvec_len*sizeof(cxobj*));
     if (x->x_childvec == NULL){
-	clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
+	clicon_err(OE_XML, errno, "realloc");
 	return -1;
     }
     x->x_childvec[x->x_childvec_len-1] = xc;
@@ -538,7 +538,7 @@ xml_new(char      *name,
     cxobj *x;
     
     if ((x = malloc(sizeof(cxobj))) == NULL){
-	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
+	clicon_err(OE_XML, errno, "malloc");
 	return NULL;
     }
     memset(x, 0, sizeof(cxobj));
@@ -1314,15 +1314,14 @@ xml_parse_file(int        fd,
     if (endtag != NULL)
 	endtaglen = strlen(endtag);
     if ((xmlbuf = malloc(xmlbuflen)) == NULL){
-	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
+	clicon_err(OE_XML, errno, "malloc");
 	goto done;
     }
     memset(xmlbuf, 0, xmlbuflen);
     ptr = xmlbuf;
     while (1){
 	if ((ret = read(fd, &ch, 1)) < 0){
-	    clicon_err(OE_XML, errno, "%s: read: [pid:%d]\n", 
-		    __FUNCTION__,
+	    clicon_err(OE_XML, errno, "read: [pid:%d]\n", 
 		    (int)getpid());
 	    break;
 	}
@@ -1345,7 +1344,7 @@ xml_parse_file(int        fd,
 	    oldxmlbuflen = xmlbuflen;
 	    xmlbuflen *= 2;
 	    if ((xmlbuf = realloc(xmlbuf, xmlbuflen)) == NULL){
-		clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
+		clicon_err(OE_XML, errno, "realloc");
 		goto done;
 	    }
 	    memset(xmlbuf+oldxmlbuflen, 0, xmlbuflen-oldxmlbuflen);
@@ -1455,7 +1454,7 @@ xml_copy_one(cxobj *x0,
     xml_type_set(x1, xml_type(x0));
     if (xml_value(x0)){ /* malloced string */
 	if ((x1->x_value = strdup(x0->x_value)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+	    clicon_err(OE_XML, errno, "strdup");
 	    return -1;
 	}
     }
@@ -1464,7 +1463,7 @@ xml_copy_one(cxobj *x0,
 	    return -1;
     if (xml_cv_get(x0)){
       if ((cv1 = cv_dup(xml_cv_get(x0))) == NULL){
-	clicon_err(OE_XML, errno, "%s: cv_dup", __FUNCTION__);
+	clicon_err(OE_XML, errno, "cv_dup");
 	return -1;
       }
       if ((xml_cv_set(x1, cv1)) < 0)
@@ -1561,7 +1560,7 @@ cxvec_append(cxobj   *x,
     int retval = -1;
 
     if ((*vec = realloc(*vec, sizeof(cxobj *) * (*len+1))) == NULL){
-	clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
+	clicon_err(OE_XML, errno, "realloc");
 	goto done;
     }
     (*vec)[(*len)++] = x;

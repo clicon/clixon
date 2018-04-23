@@ -103,7 +103,7 @@ distclean: clean
 # Put config file in etc/
 install: install-lib $(APPL) 
 	install -d -m 0755 $(DESTDIR)$(bindir)
-	install -m 0644 -s $(APPL) $(DESTDIR)$(bindir)
+	install -m 0755 -s $(APPL) $(DESTDIR)$(bindir)
 
 install-lib: $(MYLIB)
 	install -d -m 0755 $(DESTDIR)$(libdir)
