@@ -50,6 +50,7 @@
 #include <sys/types.h>
 #include <regex.h>
 #include <netinet/in.h>
+#include <limits.h>
 
 /* cligen */
 #include <cligen/cligen.h>
