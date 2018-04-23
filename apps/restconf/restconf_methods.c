@@ -105,6 +105,7 @@ Mapping netconf error-tag -> status code
 #include <assert.h>
 #include <time.h>
 #include <signal.h>
+#include <limits.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 

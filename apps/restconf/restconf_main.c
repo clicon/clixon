@@ -54,6 +54,7 @@
 #include <syslog.h>
 #include <fcntl.h>
 #include <time.h>
+#include <limits.h>
 
 #include <signal.h>
 #include <sys/time.h>

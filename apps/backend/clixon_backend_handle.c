@@ -52,6 +52,7 @@
 #include <regex.h>
 #include <syslog.h>
 #include <netinet/in.h>
+#include <limits.h>
 
 /* cligen */
 #include <cligen/cligen.h>
