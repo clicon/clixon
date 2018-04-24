@@ -71,6 +71,7 @@ clixon_plugin_api *clixon_plugin_init(clicon_handle h)
 
 ### Minor changes:
 
+* plugin_start() callbacks added for restconf
 * Authentication
   * Example extended with http basic authentication for restconf
   * Documentation in FAQ.md

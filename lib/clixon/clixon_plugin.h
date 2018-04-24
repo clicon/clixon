@@ -75,7 +75,9 @@ typedef int (*clicon_rpc_cb)(
  */
 
 /* Called when backend started with cmd-line arguments from daemon call. 
- * @see plgstart_t
+ * Call plugin start functions with argc/argv multiple arguments.
+ * Typically the argc/argv are the ones appearing after "--", eg
+ * clicon_cli -f /etc/clicon.xml -- -a myopt
  */
 typedef int (plgstart_t)(clicon_handle, int, char **); /* Plugin start */
 

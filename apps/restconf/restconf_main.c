@@ -503,6 +503,7 @@ main(int    argc,
 {
     int           retval = -1;
     int           sock;
+    char	 *argv0 = argv[0];
     FCGX_Request  request;
     FCGX_Request *r = &request;
     char          c;
@@ -511,7 +512,8 @@ main(int    argc,
     clicon_handle h;
     char         *yangspec=NULL;
     char         *dir;
-
+    char	 *tmp;
+    
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_SYSLOG); 
     /* Create handle */
@@ -574,6 +576,14 @@ main(int    argc,
     /* Parse yang database spec file */
     if (yang_spec_main(h) == NULL)
 	goto done;
+
+    /* Call start function in all plugins before we go interactive 
+       Pass all args after the standard options to plugin_start
+     */
+    tmp = *(argv-1);
+    *(argv-1) = argv0;
+    clixon_plugin_start(h, argc+1, argv-1);
+    *(argv-1) = tmp;
 
     if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){
 	clicon_err(OE_CFG, errno, "No CLICON_RESTCONF_PATH in clixon configure file");

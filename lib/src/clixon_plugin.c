@@ -288,6 +288,16 @@ done:
 
 /*! Call plugin_start in all plugins
  * @param[in]  h       Clicon handle
+ * @param[in]  argc    
+ * @param[in]  argv
+ * Call plugin start functions (if defined) with argc/argv multiple
+ * arguments.
+ * Typically the argc/argv are the ones appearing after "--", eg
+ * clicon_cli -f /etc/clicon.xml -- -a myopt
+ * In the example above argc=3 and
+ * argv[0]: clicon_cli
+ * argv[1]: -a
+ * argv[2]: myopt
  */
 int
 clixon_plugin_start(clicon_handle h, 
@@ -369,7 +379,7 @@ clixon_plugin_auth(clicon_handle h,
 	if ((authfn = cp->cp_api.ca_auth) == NULL)
 	    continue;
 	if ((retval = authfn(h, arg)) < 0) {
-	    clicon_debug(1, "plugin_start() failed\n");
+	    clicon_debug(1, "plugin_auth() failed\n");
 	    return -1;
 	}
 	break;

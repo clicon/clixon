@@ -53,6 +53,11 @@ static const char Base64[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char Pad64 = '=';
 
+/* Use http basic auth. Set by starting restonf with:
+   clixon_restconf ... -- -a
+*/
+static int basic_auth = 0;
+
 /* skips all whitespace anywhere.
    converts characters, four at a time, starting at (or after)
    src from base - 64 numbers into three 8 bit bytes in the target area.
@@ -181,22 +186,21 @@ b64_decode(const char *src,
 }
 
 /*! Process a rest request that requires (cookie) "authentication"
- * Note, this is loaded as dlsym fixed symbol in plugin
  * @param[in]  h        Clixon handle
  * @param[in]  arg      Argument. Here: Fastcgi request handle
  * @retval -1  Fatal error
  * @retval  0  Unauth
  * @retval  1  Auth
- * 
+ * @note: Three hardwired users: adm1, wilma, guest w password "bar".
+ * Enabled by passing -- -a to the main function
  */
 int
-plugin_credentials(clicon_handle h,     
-		   void         *arg)
+example_restconf_credentials(clicon_handle h,     
+			     void         *arg)
 {
     int     retval = -1;
     FCGX_Request *r = (FCGX_Request *)arg;
     cxobj  *xt = NULL;
-    cxobj  *x;
     char   *auth;
     char   *user = NULL;
     char   *passwd;
@@ -204,22 +208,9 @@ plugin_credentials(clicon_handle h,
     size_t  authlen;
     cbuf   *cb = NULL;
     int     ret;
-    char   *xbody;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    /* XXX This is a kludge to reset the user not remaining from previous */
-    if (clicon_username_set(h, "admin") < 0)
-    	goto done;
-    /* Check if basic_auth set, if not return OK */
-    if (clicon_rpc_get_config(h, "running", "authentication", &xt) < 0)
-	goto done;
-    if (clicon_username_set(h, "none") < 0)
-    	goto done;
-    if ((x = xpath_first(xt, "authentication/basic_auth")) == NULL)
-	goto ok;
-    if ((xbody = xml_body(x)) == NULL)
-	goto ok;
-    if (strcmp(xbody, "true"))
+
+    /* HTTP basic authentication not enabled, pass with user "none" */
+    if (basic_auth==0)
 	goto ok;
     /* At this point in the code we must use HTTP basic authentication */
     if ((auth = FCGX_GetParam("HTTP_AUTHORIZATION", r->envp)) == NULL)
@@ -242,14 +233,15 @@ plugin_credentials(clicon_handle h,
 	goto fail;
     *passwd = '\0';
     passwd++;
-    clicon_debug(1, "%s user:%s passwd:%s", __FUNCTION__, user, passwd);
+    clicon_debug(1, "%s http user:%s passwd:%s", __FUNCTION__, user, passwd);
     /* Here get auth sub-tree whjere all the users are */
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "authentication/auth[user=%s]", user);
-    if ((x = xpath_first(xt, cbuf_get(cb))) == NULL)
-	goto fail;
-    passwd2 = xml_find_body(x, "password");
+    /* Hardcoded user/passwd */
+    if (strcmp(user, "wilma")==0 || strcmp(user, "adm1")==0 ||
+	strcmp(user, "quest")==0){
+	passwd2 = "bar";
+    }
     if (strcmp(passwd, passwd2))
 	goto fail;
     retval = 1;
@@ -287,14 +279,41 @@ restconf_client_rpc(clicon_handle h,
     return 0;
 }
 
+/*! Start example restonf plugin. Set authentication method
+ * Arguments are argc/argv after --
+ * Currently defined: -a  enable http basic authentication
+ * Note hardwired users adm1, wilma and guest
+ */
+int
+example_restconf_start(clicon_handle h,
+		       int           argc,
+		       char        **argv)
+{
+    char c;
+
+    clicon_debug(1, "%s argc:%d", __FUNCTION__, argc);
+    optind = 1;
+    opterr = 0;
+    while ((c = getopt(argc, argv, "a")) != -1){
+	switch (c) {
+	case 'a':
+	    basic_auth = 1;
+	    break;
+	default:
+	    break;
+	}
+    }
+    return 0;
+}
+
 clixon_plugin_api * clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
     "example",           /* name */
     clixon_plugin_init,  /* init */
-    NULL,                /* start */
+    example_restconf_start,/* start */
     NULL,                /* exit */
-    .ca_auth=plugin_credentials   /* auth */
+    .ca_auth=example_restconf_credentials   /* auth */
 };
 
 /*! Restconf plugin initialization

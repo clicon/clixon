@@ -36,27 +36,6 @@ module $APPNAME{
   import ietf-netconf-acm {
 	prefix nacm;
   }
-  container authentication {
-	description "Example code for enabling www basic auth and some example 
-                     users";
-    leaf basic_auth{
-	description "Basic user / password authentication as in HTTP basic auth";
-	type boolean;
-	default false;
-    }
-    list auth {
-	description "user / password entries. Valid if basic_auth=true";
-	key user;
-	leaf user{
-	    description "User name";
-	    type string;
-	}
-	leaf password{
-	    description "Password";
-	    type string;
-	}
-      }
-    }
   leaf x{
     type int32;
     description "something to edit";
@@ -65,18 +44,6 @@ module $APPNAME{
 EOF
 
 RULES=$(cat <<EOF
-   <authentication>
-     <basic_auth>true</basic_auth>
-     <auth>
-        <user>adm1</user><password>bar</password>
-     </auth>
-     <auth>
-        <user>wilma</user><password>bar</password>
-     </auth>
-     <auth>
-        <user>guest</user><password>bar</password>
-     </auth>
-   </authentication>
    <nacm>
      <enable-nacm>false</enable-nacm>
      <read-default>deny</read-default>
@@ -172,8 +139,8 @@ fi
 new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 sleep 1
-new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang
+new "start restconf daemon (-a is enable basic authentication)"
+sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang -- -a 
 
 sleep 1
 
@@ -214,7 +181,7 @@ expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/x)" '{"x
 '
 
 new2 "guest get nacm"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
 new "admin edit nacm"
 expecteq "$(curl -u adm1:bar -sS -X PUT -d '{"x": 1}' http://localhost/restconf/data/x)" ""
@@ -223,7 +190,7 @@ new2 "limited edit nacm"
 expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "default deny"}}}'
 
 new2 "guest edit nacm"
-expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

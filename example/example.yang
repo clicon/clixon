@@ -11,27 +11,6 @@ module example {
     }
     description
 	"Example code that includes ietf-ip and ietf-routing";
-    container authentication {
-	description "Example code for enabling www basic auth and some example 
-                     users";
-	leaf basic_auth{
-	    description "Basic user / password authentication as in HTTP basic auth";
-	    type boolean;
-	    default false;
-	}
-	list auth {
-	    description "user / password entries. Valid if basic_auth=true";
-	    key user;
-	    leaf user{
-		description "User name";
-		type string;
-	    }
-	    leaf password{
-		description "Password";
-		type string;
-	    }
-	}
-    }
     rpc client-rpc {
 	description "Example local client-side RPC that is processed by the
                      the netconf/restconf and not sent to the backend.
