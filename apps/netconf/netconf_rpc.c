@@ -893,7 +893,7 @@ netconf_application_rpc(clicon_handle h,
 	//    else
 	//	cprintf(cb, "/%s", xml_name(xn)); /* XXX not accepdted by below */
     /* Find yang rpc statement, return yang rpc statement if found */
-    if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), &yrpc) < 0)
+	if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), Y_RPC, &yrpc) < 0)
 	goto done;
     /* Check if found */
     if (yrpc != NULL){

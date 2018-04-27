@@ -1319,7 +1319,7 @@ yang_augment_node(yang_stmt *ys,
     clicon_debug(1, "%s %s", __FUNCTION__, schema_nodeid);
 
     /* Find the target */
-    if (yang_abs_schema_nodeid(ysp, schema_nodeid, &yss) < 0)
+    if (yang_abs_schema_nodeid(ysp, schema_nodeid, -1, &yss) < 0)
 	goto done;
     if (yss == NULL)
 	goto ok;
@@ -1748,7 +1748,7 @@ ys_schemanode_check(yang_stmt *ys,
 	/* fallthru */
     case Y_REFINE:
     case Y_UNIQUE:
-	if (yang_desc_schema_nodeid(yp, ys->ys_argument, &yres) < 0)
+	if (yang_desc_schema_nodeid(yp, ys->ys_argument, -1, &yres) < 0)
 	    goto done;
 	if (yres == NULL){
 	    clicon_err(OE_YANG, 0, "schemanode sanity check of %d %s", 
@@ -1759,7 +1759,7 @@ ys_schemanode_check(yang_stmt *ys,
 	break;
     case Y_DEVIATION:
 	yspec = ys_spec(ys);
-	if (yang_abs_schema_nodeid(yspec, ys->ys_argument, &yres) < 0)
+	if (yang_abs_schema_nodeid(yspec, ys->ys_argument, -1, &yres) < 0)
 	    goto done;
 	if (yres == NULL){
 	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s", ys->ys_argument);
@@ -1902,6 +1902,7 @@ yang_apply(yang_node     *yn,
  * @param[in]  yn    Yang node. Find next yang stmt and return that if match.
  * @param[in]  vec   Vector of nodeid's in a schema node identifier, eg a/b
  * @param[in]  nvec  Length of vec
+ * @param[in]  keyword       A schemode of this type, or -1 if any
  * @param[out] yres  Result yang statement node, or NULL if not found
  * @retval    -1     Error, with clicon_err called
  * @retval     0     OK
@@ -1910,6 +1911,7 @@ static int
 schema_nodeid_vec(yang_node  *yn,
 		  char      **vec, 
 		  int         nvec,
+		  enum rfc_6020 keyword,
 		  yang_stmt **yres)
 {
     int              retval = -1;
@@ -1940,6 +1942,8 @@ schema_nodeid_vec(yang_node  *yn,
 	    ys = yn->yn_stmt[i];
 	    if (!yang_schemanode(ys))
 		continue;
+	    if (keyword != -1 && keyword != ys->ys_keyword)
+		continue;
 	    /* some keys dont have arguments, match on key */
 	    if (ys->ys_keyword == Y_INPUT || ys->ys_keyword == Y_OUTPUT){
 		if (strcmp(nodeid, yang_key2str(ys->ys_keyword)) == 0){
@@ -1966,7 +1970,7 @@ schema_nodeid_vec(yang_node  *yn,
 	goto ok;
     }
     /* recursive call using ynext */
-    if (schema_nodeid_vec(ynext, vec+1, nvec-1, yres) < 0)
+    if (schema_nodeid_vec(ynext, vec+1, nvec-1, keyword, yres) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -1977,16 +1981,22 @@ schema_nodeid_vec(yang_node  *yn,
 /*! Given an absolute schema-nodeid (eg /a/b/c) find matching yang spec  
  * @param[in]  yspec         Yang specification.
  * @param[in]  schema_nodeid Absolute schema-node-id, ie /a/b
+ * @param[in]  keyword       A schemode of this type, or -1 if any
  * @param[out] yres          Result yang statement node, or NULL if not found
  * @retval    -1             Error, with clicon_err called
  * @retval     0             OK (if yres set then found, if yres=0 then not found)
  * Assume schema nodeid:s have prefixes, (actually the first).
  * @see yang_desc_schema_nodeid
+ * @see RFC7950 6.5
+   o  schema node: A node in the schema tree.  One of action, container,
+      leaf, leaf-list, list, choice, case, rpc, input, output,
+      notification, anydata, and anyxml.
  * Used in yang: deviation, top-level augment
  */
 int
 yang_abs_schema_nodeid(yang_spec  *yspec,
 		       char       *schema_nodeid,
+		       enum rfc_6020 keyword,
 		       yang_stmt **yres)
 {
     int              retval = -1;
@@ -1996,6 +2006,7 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
     char            *id;
     char            *prefix = NULL;
     yang_stmt       *yprefix;
+    yang_stmt       *ys;
 
     /* check absolute schema_nodeid */
     if (schema_nodeid[0] != '/'){
@@ -2031,7 +2042,7 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
 	}
     }
     if (ymod == NULL){ /* Try with topnode */
-	yang_stmt       *ys;
+
 	if ((ys = yang_find_topnode(yspec, id, YC_SCHEMANODE)) == NULL){
 	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found", prefix,id);
 	    goto done;
@@ -2041,7 +2052,7 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
 	    goto done;
 	}
     }
-    if (schema_nodeid_vec((yang_node*)ymod, vec+1, nvec-1, yres) < 0)
+    if (schema_nodeid_vec((yang_node*)ymod, vec+1, nvec-1, keyword, yres) < 0)
 	goto done;
  ok: /* yres may not be set */
     retval = 0;
@@ -2056,14 +2067,17 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
 /*! Given a descendant schema-nodeid (eg a/b/c) find matching yang spec  
  * @param[in]  yn            Yang node
  * @param[in]  schema_nodeid Descendant schema-node-id, ie a/b
- * @retval     NULL          Error, with clicon_err called
- * @retval     yres          First yang node matching schema nodeid
+ * @param[in]  keyword       A schemode of this type, or -1 if any
+ * @param[out] yres          First yang node matching schema nodeid
+ * @retval     0             OK
+ * @retval    -1             Error, with clicon_err called
  * @see yang_schema_nodeid
  * Used in yang: unique, refine, uses augment
  */
 int
 yang_desc_schema_nodeid(yang_node  *yn, 
 			char       *schema_nodeid,
+			enum rfc_6020 keyword,
 			yang_stmt **yres)
 {
     int              retval = -1;
@@ -2079,7 +2093,7 @@ yang_desc_schema_nodeid(yang_node  *yn,
     }
     if ((vec = clicon_strsep(schema_nodeid, "/", &nvec)) == NULL)
 	goto done;
-    if (schema_nodeid_vec(yn, vec, nvec, yres) < 0)
+    if (schema_nodeid_vec(yn, vec, nvec, keyword, yres) < 0)
 	goto done;
     retval = 0;
  done:
