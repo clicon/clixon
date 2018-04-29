@@ -94,8 +94,8 @@ expand_dbvar(void   *h,
 	     char   *name, 
 	     cvec   *cvv, 
 	     cvec   *argv, 
-	     cvec  *commands,
-	     cvec  *helptexts)
+	     cvec   *commands,
+	     cvec   *helptexts)
 {
     int              retval = -1;
     char            *api_path_fmt;

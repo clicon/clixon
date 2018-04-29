@@ -19,7 +19,7 @@ transaction support from a YANG specification.
   * [Example](example/)
   * [Changelog](CHANGELOG.md)
   * [Runtime](#runtime)
-  * [Clicon and Clixon project page](http://www.clicon.org)
+  * [Clixon project page](http://www.clicon.org)
   * [Tests](test/)
   * [Reference manual](http://www.clicon.org/doxygen/index.html) (Note: the link may not be up-to-date. It is better to build your own: `cd doc; make doc`)
   
@@ -27,9 +27,7 @@ Background
 ==========
 
 Clixon was implemented to provide an open-source generic configuration
-tool. The existing [CLIgen](http://www.cligen.se) tool was extended to
-a framework. Most of the user projects are for embedded network and
-measuring devices, but can be deployed for more general use.
+tool. The existing [CLIgen](http://www.cligen.se) tool was for command-lines only, whilke clixon is a system with config-db, xml and rest interfaces. Most of the projects using clixon are for embedded network and measuring devices. But Clixon is more generic than that.
 
 Users of clixon currently include:
   * [Netgate](https://www.netgate.com)
@@ -51,7 +49,7 @@ A typical installation is as follows:
 ```
 
 One [example application](example/README.md) is provided, a IETF IP YANG datamodel with
-generated CLI and configuration interface.
+generated CLI, Netconf and restconf interface.
 
 Licenses
 ========
@@ -63,8 +61,7 @@ See [LICENSE.md](LICENSE.md) for the license.
 Dependencies
 ============
 Clixon depends on the following software packages, which need to exist on the target machine.
-- [CLIgen](http://www.cligen.se) is required for building Clixon. If you need 
-to build and install CLIgen: 
+- [CLIgen](http://www.cligen.se) If you need to build and install CLIgen: 
 ```
     git clone https://github.com/olofhagsand/cligen.git
     cd cligen; configure; make; make install
@@ -77,7 +74,9 @@ There is no yum/apt/ostree package for Clixon (please help?)
 
 Support
 =======
-Clixon interaction is best done posting issues, pull requests, or joining the [slack channel](https://join.slack.com/t/clixondev/shared_invite/enQtMzI3OTM4MzA3Nzk3LTA3NWM4OWYwYWMxZDhiYTNhNjRkNjQ1NWI1Zjk5M2JjMDk4MTUzMTljYTZiYmNhODkwMDI2ZTkyNWU3ZWMyN2U).
+Clixon interaction is best done posting issues, pull requests, or joining the
+[slack channel](https://clixondev.slack.com).
+[Slack invite](https://join.slack.com/t/clixondev/shared_invite/enQtMzI3OTM4MzA3Nzk3LTA3NWM4OWYwYWMxZDhiYTNhNjRkNjQ1NWI1Zjk5M2JjMDk4MTUzMTljYTZiYmNhODkwMDI2ZTkyNWU3ZWMyN2U). 
 
 Extending
 =========
@@ -103,7 +102,7 @@ Clixon mainly follows [YANG 1.0 RFC 6020](https://www.rfc-editor.org/rfc/rfc6020
 - identity, base, identityref
 - list features: min/max-elements, unique
 
-The aim is also to cover new featires in YANG 1.1 [YANG RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt)
+The aim is also to cover new features in YANG 1.1 [YANG RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt)
 
 Clixon has its own XML library designed for performance.
 
@@ -111,12 +110,12 @@ Netconf
 =======
 Clixon implements the following NETCONF proposals or standards:
 - [NETCONF Configuration Protocol](http://www.rfc-base.org/txt/rfc-4741.txt)
-- [Using the NETCONF Configuration Protocol over Secure SHell (SSH)](http://www.rfc-base.org/txt/rfc-4742.txt)
+- [Using the NETCONF Configuration Protocol over Secure Shell (SSH)](http://www.rfc-base.org/txt/rfc-4742.txt)
 - [NETCONF Event Notifications](http://www.rfc-base.org/txt/rfc-5277.txt)
 
 Some updates are being made to RFC 6241 and RFC 6242. 
 
-Clixon does not support the following features:
+Clixon does not yet support the following netconf features:
 
 - :url capability
 - copy-config source config
@@ -157,14 +156,22 @@ Auth
 
 Authentication is managed outside Clixon using SSH, SSL, Oauth2, etc.
 
-For CLI, login is typically made via SSH. For netconf, SSH netconf subsystem can be used.
+For CLI, login is typically made via SSH. For netconf, SSH netconf
+subsystem can be used. 
   
 Restconf however needs credentials.  This is done by writing a credentials callback in a restconf plugin. See:
   * [FAQ](doc/FAQ.md#how-do-i-write-an-authentication-callback).
   * [Example](example/README.md) has an example how to do this with HTTP basic auth.
-  * It would be possible for do this for more advanced mechanisms such as Oauth2 or (https://github.com/CESNET/Netopeer2/tree/master/server/configuration)
+  * I have done this for another project using Oauth2 or (https://github.com/CESNET/Netopeer2/tree/master/server/configuration)
 
-There is an ongoing effort to implement authorization for Clixon according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341), at least a subset of the functionality.
+The clients send the ID of the user using a "username" attribute with
+the RPC calls to the backend. Note that the backend trusts the clients
+so the clients can in principle fake a username.
+
+There is an ongoing effort to implement authorization for Clixon
+according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341), at
+least a subset of the functionality. See more information here:
+[NACM](README_NACM.md).
 
 
 Runtime

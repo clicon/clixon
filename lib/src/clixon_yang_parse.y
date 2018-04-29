@@ -1042,8 +1042,8 @@ extension_substmt : argument_stmt    { clicon_debug(2,"extension-substmt -> argu
               |                      { clicon_debug(2,"extension-substmt -> "); }
               ;
 
-argument_stmt  : K_ARGUMENT id_arg_str ';' 
-               | K_ARGUMENT id_arg_str '{' '}'
+argument_stmt  : K_ARGUMENT id_arg_str ';'     { free($2); }
+               | K_ARGUMENT id_arg_str '{' '}' { free($2); }
                ;
 
 /* Feature */
@@ -1403,7 +1403,7 @@ qstring        : DQ ustring DQ  { $$=$2; clicon_debug(2,"string-> \" ustring \""
 ustring       : ustring CHAR 
                      {
 			 int len = strlen($1);
-			 $$ = realloc($1, len+strlen($2) + 1); 
+			 $$ = realloc($1, len+strlen($2) + 1);
 			 sprintf($$+len, "%s", $2); 
 			 free($2);
 		     }
