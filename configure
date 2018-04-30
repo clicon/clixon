@@ -639,6 +639,7 @@ EXE_SUFFIX
 SH_SUFFIX
 AR_SUFFIX
 OBJ_SUFFIX
+INSTALLFLAGS
 CPPFLAGS
 INCLUDES
 LDFLAGS
@@ -2141,8 +2142,9 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-# Default CFLAGS unless set by environment.
-: ${CFLAGS="-O2"}
+# Default CFLAGS unless set by environment
+: ${CFLAGS="-O2 -Wall"}
+: ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="3"
 CLIXON_VERSION_MINOR="6"
@@ -2331,6 +2333,7 @@ test -n "$target_alias" &&
   test "$program_prefix$program_suffix$program_transform_name" = \
     NONENONEs,x,x, &&
   program_prefix=${target_alias}-
+
 
 
 
@@ -3277,12 +3280,12 @@ CPPFLAGS="-DHAVE_CONFIG_H ${CPPFLAGS}"
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: compiler is $CC" >&5
 $as_echo "compiler is $CC" >&6; }
 
-CFLAGS="${CFLAGS} -Wall"
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: CPPFLAGS is $CPPFLAGS" >&5
 $as_echo "CPPFLAGS is $CPPFLAGS" >&6; }
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: CFLAGS is $CFLAGS" >&5
 $as_echo "CFLAGS is $CFLAGS" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: INSTALLFLAGS is $INSTALLFLAGS" >&5
+$as_echo "INSTALLFLAGS is $INSTALLFLAGS" >&6; }
 
 for ac_prog in 'bison -y' byacc
 do

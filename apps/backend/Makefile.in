@@ -36,6 +36,7 @@ srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
+INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 
 prefix 		= @prefix@
@@ -99,11 +100,11 @@ distclean: clean
 # Put config file in etc/
 install:	install-lib	$(APPL)
 	install -d -m 0755 $(DESTDIR)$(sbindir)
-	install -m 0755 -s $(APPL) $(DESTDIR)$(sbindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(sbindir)
 
 install-lib:	$(MYLIB)
 	install -d -m 0755 $(DESTDIR)$(libdir)
-	install -m 0644 -s $(MYLIB) $(DESTDIR)$(libdir)
+	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
 	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)	   # -l:libclixon_config.so.2
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_config.so
 	install -d -m 0755 $(DESTDIR)$(libdir)/clixon/plugins/backend

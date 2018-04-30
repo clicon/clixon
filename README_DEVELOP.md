@@ -1,11 +1,12 @@
-# README for developers Clixon developers
+# README for Clixon developers
 
-1. How to document the code
-2. How to work in git (branching)
-3. How the meta-configure stuff works
-4. How to debug
+  * [Code documentation](#documentation)
+  * [How to work in git (branching)](#branching)
+  * [How the meta-configure stuff works](#meta-configure)
+  * [How to debug](#debug)
 
-## How to document the code
+## Documentation
+How to document the code
 
 ```
 /*! This is a small comment on one line
@@ -26,7 +27,8 @@
  */
 ```
 
-## How to work in git (branching)
+## Branching
+How to work in git (branching)
 
 Basically follows: http://nvie.com/posts/a-successful-git-branching-model/
 only somewhat simplified:
@@ -49,11 +51,16 @@ configure.ac --.
      Makefile.in ---'                    `-> Makefile ---'
 ```
 
-## How to debug
+## Debug
+How to debug
+
+### Configure in debug mode
+```
+   CFLAGS="-g -Wall" INSTALLFLAGS="" ./configure
+```
 
 ### Make your own simplified yang and configuration file.
 ```
-
 cat <<EOF > /tmp/my.yang
 module mymodule{
    container x {

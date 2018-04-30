@@ -74,6 +74,8 @@ clixon_plugin_api *clixon_plugin_init(clicon_handle h)
 
 ### Minor changes:
 
+* INSTALLFLAGS added with default value -s(strip).
+  * For debug do: CFLAGS=-g INSTALLFLAGS= ./configure
 * plugin_start() callbacks added for restconf
 * Authentication
   * Example extended with http basic authentication for restconf
