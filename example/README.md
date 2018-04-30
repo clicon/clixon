@@ -11,7 +11,7 @@ routing example. It contains the following files:
   * notification,
   * rpc handler
   * state-data handler, ie non-config data
-* example_backend_secondary.c Secondary backend plugin. Plugins are loaded alphabetically.
+* example_backend_nacm.c Secondary backend plugin. Plugins are loaded alphabetically.
 * example_restconf.c Restconf callback plugin containing an HTTP basic authentication callback
 * example_netconf.c Netconf callback plugin
 * Makefile.in       Example makefile where plugins are built and installed
@@ -182,8 +182,15 @@ a real example would poll or get the interface counters via a system
 call, as well as use the "xpath" argument to identify the requested
 state data.
 
+## Authentication and NACM
+The example contains some stubs for authorization according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341):
+* A basic auth HTTP callback, see: example_restconf_credentials() containing three example users: adm1, wilma, and guest, according to the examples in Appendix A in the RFC.
+* A NACM backend plugin reporting the mandatory NACM state variables.
+
 
 ## Run as docker container
+
+(Note not updated)
 ```
 cd docker
 # look in README

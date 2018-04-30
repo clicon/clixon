@@ -44,7 +44,8 @@ libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 CC		= @CC@
-CFLAGS  	= @CFLAGS@ 
+CFLAGS  	= @CFLAGS@
+INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
 with_restconf	= @with_restconf@
@@ -102,7 +103,7 @@ install-include:
 
 install: $(APPL)
 	install -d -m 0755 $(DESTDIR)$(bindir)
-	install -m 0755 -s $(APPL) $(DESTDIR)$(bindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(bindir)
 	for i in $(SUBDIRS); \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
 

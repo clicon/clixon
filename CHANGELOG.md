@@ -3,20 +3,24 @@
 ## 3.6.0 (Upcoming)
 
 ### Major changes:
-* Experimental NACM RFC8341 Network Configuration Access Control Model.
-  * CLICON_NACM_MODE config option, default is disabled.
-  * CLICON_NACM_FILE config option, if CLICON_NACM_MODE is "external"
-  * Added username attribute to all rpc:s from frontend to backend
+* Experimental NACM RFC8341 Network Configuration Access Control Model, see [NACM](README_NACM.md).
+  * New CLICON_NACM_MODE config option, default is disabled.
+  * New CLICON_NACM_FILE config option, if CLICON_NACM_MODE is "external"
+  * Added username attribute to all internal RPC:s from frontend to backend
   * Added NACM backend module in example
-* Restructure and more generic plugin API (cli,backend,restconf,netconf).
-  * New design change `plugin_init()` to a single `clixon_plugin_init()` returning an api struct with function pointers, see example below. This means that there are no hardcoded plugin functions, except `clixon_plugin_init()`.
-  * Plugin RPC callback interface have been unified between backend, netconf and restconf.
-    * Backend RPC register callback function (Netconf RPC or restconf operation POST) has been changed from: `backend_rpc_cb_register()` to `rpc_callback_register()`
-    * Backend RPC callback signature has been changed from: `int cb(clicon_handle h, cxobj *xe, struct client_entry *ce, cbuf *cbret, void *arg)` has been changed to : `int cb(clicon_handle h, cxobj *xe, struct client_entry *ce, cbuf *cbret, void *arg)`
-    * Frontend netconf and restconf plugins can register callbacks as well with same API as backends.
+* Restructure and more generic plugin API for cli, backend, restconf, and netconf. See example further down and the [example](example/README.md)
+  * Changed `plugin_init()` to `clixon_plugin_init()` returning an api struct with function pointers. There are no other hardcoded plugin functions.
   * Master plugins have been removed. Plugins are loaded alphabetically. You can ensure plugin load order by prefixing them with an ordering number, for example.
+  * Plugin RPC callback interface have been unified between backend, netconf and restconf.
+    * Backend RPC register callback function (Netconf RPC or restconf operation POST) has been changed from:
+           `backend_rpc_cb_register()` to `rpc_callback_register()`
+    * Backend RPC callback signature has been changed from:
+           `int cb(clicon_handle h, cxobj *xe, struct client_entry *ce, cbuf *cbret, void *arg)`
+       to:
+            `int cb(clicon_handle h, cxobj *xe, struct client_entry *ce, cbuf *cbret, void *arg)`
+    * Frontend netconf and restconf plugins can register callbacks as well with same API as backends.
   * Moved specific plugin functions from apps/ to generic functions in lib/
-  * New config option CLICON_BACKEND_REGEXP to match backkend plugins (if you do not all loaded).
+  * New config option CLICON_BACKEND_REGEXP to match backend plugins (if you do not want to load all).
   * Added authentication plugin callback (ca_auth)
     * Added clicon_username_get() / clicon_username_set()
   * Removed some obscure plugin code that seem not to be used (please report if needed!)
@@ -59,18 +63,19 @@ clixon_plugin_api *clixon_plugin_init(clicon_handle h)
 }
 ```
 
-* Added Clixon Restconf library
-  * Builds and installs a new restconf library: libclixon_restconf.so and clixon_restconf.h
+* Builds and installs a new restconf library: `libclixon_restconf.so` and clixon_restconf.h
   * The restconf library can be included by a restconf plugin.
   * Example code in example/Makefile.in and example/restconf_lib.c
-* Restconf error handling for get, put and post. Several cornercases remain. Available both as xml and json (set accept header), pretty-printed and not (set clixon config option).
+* Restconf error handling for get, put and post. (thanks Stephen Jones, Netgate)
+  * Available both as xml and json (set accept header).
 * Proper RFC 6241 Netconf error handling
   * New functions added in clixon_netconf_lib.[ch]
   * Datastore code modified for RFC 6241
-  * Remaining: validate, generic restconf and netconf code
 
 ### Minor changes:
 
+* INSTALLFLAGS added with default value -s(strip).
+  * For debug do: CFLAGS=-g INSTALLFLAGS= ./configure
 * plugin_start() callbacks added for restconf
 * Authentication
   * Example extended with http basic authentication for restconf
@@ -81,20 +86,19 @@ clixon_plugin_api *clixon_plugin_init(clicon_handle h)
 * Removed username to rpc calls (added below)
 * README.md extended with new yang, netconf, restconf, datastore, and auth sections.
 * The key-value datastore is no longer supported. Use the default text datastore.
-* Add username to rpc calls to prepare for authorization for backend:
-  clicon_rpc_config_get(h, db, xpath, xt) --> clicon_rpc_config_get(h, db, xpath, username, xt)
-  clicon_rpc_get(h, xpath, xt) --> clicon_rpc_get(h, xpath, username, xt)
-
+* Added username to rpc calls to prepare for authorization for backend:
+  * clicon_rpc_config_get(h, db, xpath, xt) --> clicon_rpc_config_get(h, db, xpath, username, xt)
+  * clicon_rpc_get(h, xpath, xt) --> clicon_rpc_get(h, xpath, username, xt)
 * Experimental: Added CLICON_TRANSACTION_MOD configuration option. If set,
   modifications in validation and commit callbacks are written back
-  into the datastore.
+  into the datastore. Requested by Stephen Jones, Netgate.
 * Invalid key to api_path2xml gives warning instead of error and quit.	
 * Added restconf/operations get, see RFC8040 Sec 3.3.2:
 * yang_find_topnode() and api_path2xml() schemanode parameter replaced with yang_class. Replace as follows: 0 -> YC_DATANODE, 1 -> YC_SCHEMANODE
 
 * xml2json: include prefix in translation, so <a:b> is translated to {"a:b" ..}
-* Use <config> instead of <data> when save/load configuration to file. This
-enables saved files to be used as datastore without any editing. Thanks Matt.
+* Use `<config>` instead of `<data>` when save/load configuration to file. This
+enables saved files to be used as datastore without any editing. Thanks Matt, Netgate.
 
 * Added Yang "extension" statement. This includes parsing unknown
   statements and identifying them as extensions or not. However,
@@ -108,7 +112,7 @@ enables saved files to be used as datastore without any editing. Thanks Matt.
 * Showing syntax using CLI commands was broekn and is fixed.
 * Fixed issue https://github.com/clicon/clixon/issues/18 RPC response issues reported by Stephen Jones at Netgate
 * Fixed issue https://github.com/clicon/clixon/issues/17 special character in strings can break RPCs reported by David Cornejo at Netgate.
-  * This was a large rewright of XML parsing and output due to CharData not correctly encoded according to https://www.w3.org/TR/2008/REC-xml-20081126. 
+  * This was a large rewrite of XML parsing and output due to CharData not correctly encoded according to https://www.w3.org/TR/2008/REC-xml-20081126. 
 * Fixed three-key list entry problem (reported by jdl@netgate)
 * Translate xml->json \n correctly
 * Fix issue: https://github.com/clicon/clixon/issues/15 Replace whole config

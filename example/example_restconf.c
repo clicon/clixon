@@ -204,7 +204,7 @@ example_restconf_credentials(clicon_handle h,
     char   *auth;
     char   *user = NULL;
     char   *passwd;
-    char   *passwd2;
+    char   *passwd2 = "";
     size_t  authlen;
     cbuf   *cb = NULL;
     int     ret;

@@ -47,7 +47,7 @@ CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
-#INSTALL		= @INSTALL@
+INSTALL		= @INSTALL@
 
 INCLUDES 	= -I. -I@srcdir@ @INCLUDES@
 SHELL		= /bin/sh

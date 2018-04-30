@@ -186,7 +186,8 @@ api_data_get2(clicon_handle h,
     cbuf      *cbx = NULL;
     yang_spec *yspec;
     cxobj     *xret = NULL;
-    cxobj     *xerr = NULL;
+    cxobj     *xerr = NULL; /* malloced */
+    cxobj     *xe;
     cxobj    **xvec = NULL;
     size_t     xlen;
     int        i;
@@ -227,8 +228,8 @@ api_data_get2(clicon_handle h,
     }
 #endif
     /* Check if error return XXX this needs more work */
-    if ((xerr = xpath_first(xret, "/rpc-error")) != NULL){
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+    if ((xe = xpath_first(xret, "/rpc-error")) != NULL){
+	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
     }
@@ -278,6 +279,8 @@ api_data_get2(clicon_handle h,
 	cbuf_free(cbpath);
     if (xret)
 	xml_free(xret);
+    if (xerr)
+	xml_free(xerr);
     if (xvec)
 	free(xvec);
     return retval;
@@ -403,7 +406,8 @@ api_data_post(clicon_handle h,
     cxobj     *xa;
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL;
-    cxobj     *xerr = NULL;
+    cxobj     *xerr = NULL; /* malloced must be freed */
+    cxobj     *xe;
     char      *username;
 	
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
@@ -474,8 +478,8 @@ api_data_post(clicon_handle h,
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
-    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+    if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
+	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
     }
@@ -485,10 +489,10 @@ api_data_post(clicon_handle h,
     cprintf(cbx, "<commit/></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
-    if ((xerr = xpath_first(xretcom, "//rpc-error")) != NULL){
+    if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
 	if (clicon_rpc_discard_changes(h) < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
     }
@@ -501,6 +505,8 @@ api_data_post(clicon_handle h,
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xret)
 	xml_free(xret);
+    if (xerr)
+	xml_free(xerr);
     if (xretcom)
 	xml_free(xretcom);
     if (xtop)
@@ -615,7 +621,8 @@ api_data_put(clicon_handle h,
     char      *api_path;
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL;
-    cxobj     *xerr = NULL;
+    cxobj     *xerr = NULL; /* malloced must be freed */
+    cxobj     *xe;
     char      *username;
 
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
@@ -718,8 +725,8 @@ api_data_put(clicon_handle h,
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
-    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+    if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
+	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
     }
@@ -728,10 +735,10 @@ api_data_put(clicon_handle h,
     cprintf(cbx, "<commit/></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
-    if ((xerr = xpath_first(xretcom, "//rpc-error")) != NULL){
+    if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
 	if (clicon_rpc_discard_changes(h) < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
     }
@@ -744,6 +751,8 @@ api_data_put(clicon_handle h,
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xret)
 	xml_free(xret);
+    if (xerr)
+	xml_free(xerr);
     if (xretcom)
 	xml_free(xretcom);
     if (xtop)
@@ -1007,16 +1016,17 @@ api_operations_post(clicon_handle h,
     yang_stmt *youtput;
     cxobj     *xdata = NULL;
     cxobj     *xret = NULL;
-    cxobj     *xerr = NULL;
+    cxobj     *xerr = NULL; /* malloced must be freed */
+    cxobj     *xer; /* non-malloced error */
     cbuf      *cbx = NULL;
     cxobj     *xtop = NULL; /* xpath root */
-    cxobj     *xe;
     cxobj     *xbot = NULL;
     yang_node *y = NULL;
     cxobj     *xinput;
     cxobj     *xoutput;
     cxobj     *x;
     cxobj     *xa;
+    cxobj     *xe;
     char      *username;
     cbuf      *cbret = NULL;
     int        ret = 0;
@@ -1139,7 +1149,6 @@ api_operations_post(clicon_handle h,
 	goto done;
     }
     xe = NULL;
-
     while ((xe = xml_child_each(xtop, xe, CX_ELMNT)) != NULL) {
 	/* Look for local (client-side) restconf plugins. */
 	if ((ret = rpc_callback_call(h, xe, cbret, r)) < 0)
@@ -1148,8 +1157,8 @@ api_operations_post(clicon_handle h,
 	    if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)
 		goto done;
 	    /* Local error: return it and quit */
-	    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-		if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    if ((xer = xpath_first(xret, "//rpc-error")) != NULL){
+		if (api_return_err(h, r, xer, pretty, use_xml) < 0)
 		    goto done;
 		goto ok;
 	    }
@@ -1159,8 +1168,8 @@ api_operations_post(clicon_handle h,
     if (ret == 0){ /* Send to backend */
 	if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	    goto done;
-	if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	if ((xer = xpath_first(xret, "//rpc-error")) != NULL){
+	    if (api_return_err(h, r, xer, pretty, use_xml) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -1221,6 +1230,8 @@ api_operations_post(clicon_handle h,
 	xml_free(xtop);
     if (xret)
 	xml_free(xret);
+    if (xerr)
+	xml_free(xerr);
      if (cbx)
 	cbuf_free(cbx); 
     if (cbret)

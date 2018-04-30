@@ -51,7 +51,8 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 VPATH       	= @srcdir@
 CC		= @CC@
-CFLAGS  	= -fPIC @CFLAGS@ 
+CFLAGS  	= -fPIC @CFLAGS@
+INSTALLFLAGS  	= @INSTALLFLAGS@
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@ 
 
@@ -182,7 +183,7 @@ install-include:
 
 install-lib: $(MYLIB)
 	install -m 0755 -d $(DESTDIR)$(libdir)
-	install -m 0644 -s $(MYLIB) $(DESTDIR)$(libdir)
+	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
 	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon.so.3
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon.so
 

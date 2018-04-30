@@ -41,6 +41,7 @@ datarootdir     = @datarootdir@
 APPNAME	        = example
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ -rdynamic -fPIC 
+INSTALLFLAGS  	= @INSTALLFLAGS@ 
 
 INCLUDES 	= -I$(includedir) @INCLUDES@ 
 
@@ -116,13 +117,13 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NET
 	install -d -m 0755 $(DESTDIR)$(clixon_DBSPECDIR)/yang
 	install -m 0644 $(YANGSPECS) $(DESTDIR)$(clixon_DBSPECDIR)/yang
 	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/cli
-	install -m 0644 -s $(CLI_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/cli
+	install -m 0644 $(INSTALLFLAGS) $(CLI_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/cli
 	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/backend
-	install -m 0644 -s $(BE_PLUGIN) $(BE2_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/backend
+	install -m 0644 $(INSTALLFLAGS) $(BE_PLUGIN) $(BE2_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/backend
 	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/netconf
-	install -m 0644 -s $(NETCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/netconf
+	install -m 0644 $(INSTALLFLAGS) $(NETCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/netconf
 	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/restconf
-	install -m 0644 $(RESTCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/restconf
+	install -m 0644 $(INSTALLFLAGS) $(RESTCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/restconf
 	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/clispec
 	install -m 0644 $(CLISPECS) $(DESTDIR)$(clixon_LIBDIR)/clispec
 	install -d -m 0755 $(DESTDIR)$(clixon_LOCALSTATEDIR)

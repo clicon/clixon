@@ -47,6 +47,7 @@ sysconfdir	= @sysconfdir@
 VPATH       	= @srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ -rdynamic -fPIC 
+INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@ 
 DATASTORE       = keyvalue
@@ -81,7 +82,7 @@ distclean: clean
 
 install: $(PLUGIN)
 	install -d -m 0755 $(DESTDIR)$(libdir)/xmldb
-	install -m 0644 -s $(PLUGIN) $(DESTDIR)$(libdir)/xmldb
+	install -m 0644 $(INSTALLFLAGS) $(PLUGIN) $(DESTDIR)$(libdir)/xmldb
 
 install-include:
 
