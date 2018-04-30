@@ -8,6 +8,7 @@
 # Set the mandatory type
 # Commit
 
+APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh
 cfg=$dir/conf_yang.xml
@@ -15,15 +16,15 @@ cfg=$dir/conf_yang.xml
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/routing/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_CLI_DIR>/usr/local/lib/routing/cli</CLICON_CLI_DIR>
-  <CLICON_CLI_MODE>routing</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/routing/routing.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/routing/routing.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>$APPNAME</CLICON_YANG_MODULE_MAIN>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
-  <CLICON_XMLDB_DIR>/usr/local/var/routing</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
 </config>
 EOF
@@ -57,7 +58,12 @@ new "cli configure"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0" "^$"
 
 new "cli show configuration"
-expectfn "$clixon_cli -1 -f $cfg show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
+expectfn "$clixon_cli -1 -f $cfg show conf cli" "^interfaces interface eth/0/0 enabled true"
+
+new "cli configure using encoded chars data <&"
+expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 description \"foo<&bar\"" ""
+new "cli configure using encoded chars name <&"
+expectfn "$clixon_cli -1 -f $cfg set interfaces interface fddi&< type eth" ""
 
 new "cli failed validate"
 expectfn "$clixon_cli -1 -f $cfg -l o validate" "Missing mandatory variable"
@@ -95,7 +101,8 @@ new "cli load"
 expectfn "$clixon_cli -1 -f $cfg -l o load /tmp/foo" "^$"
 
 new "cli check load"
-expectfn "$clixon_cli -1 -f $cfg -l o show conf cli" "^interfaces interface name eth/0/0" "interfaces interface enabled true$"
+expectfn "$clixon_cli -1 -f $cfg -l o show conf cli" "^interfaces interface name eth/0/0 type bgp
+interfaces interface eth/0/0 ipv4 enabled true"
 
 new "cli debug"
 expectfn "$clixon_cli -1 -f $cfg -l o debug level 1" "^$"

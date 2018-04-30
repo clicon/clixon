@@ -39,7 +39,7 @@
  * sudo apt-get install libfcgi-dev
  * gcc -o fastcgi fastcgi.c -lfcgi
 
- * sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/routing.xml " -s /bin/sh www-data
+ * sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/example.xml " -s /bin/sh www-data
 
  * This is the interface:
  * api/data/profile=<name>/metric=<name> PUT data:enable=<flag>
@@ -104,8 +104,8 @@ Mapping netconf error-tag -> status code
 #include <fcntl.h>
 #include <assert.h>
 #include <time.h>
-#include <fcgi_stdio.h>
 #include <signal.h>
+#include <limits.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 
@@ -114,6 +114,8 @@ Mapping netconf error-tag -> status code
 
 /* clicon */
 #include <clixon/clixon.h>
+
+#include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
 
 #include "restconf_lib.h"
 #include "restconf_methods.h"
@@ -140,53 +142,6 @@ api_data_options(clicon_handle h,
     return 0;
 }
 
-/*! Return error on get/head request
- * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  xerr   XML error message from backend
- */
-static int
-api_data_get_err(clicon_handle h,
-		 FCGX_Request *r,
-		 cxobj     *xerr)
-{
-    int        retval = -1;
-    cbuf      *cbj = NULL;
-    cxobj     *xtag;
-    int        code;	
-    const char *reason_phrase;
-
-    if ((cbj = cbuf_new()) == NULL)
-	goto done;
-    if ((xtag = xpath_first(xerr, "/error-tag")) == NULL){
-	notfound(r); /* bad reply? */
-	goto ok;
-    }
-    code = restconf_err2code(xml_body(xtag));
-    if ((reason_phrase = restconf_code2reason(code)) == NULL)
-	reason_phrase="";
-    clicon_debug(1, "%s code:%d reason phrase:%s", 
-		 __FUNCTION__, code, reason_phrase);
-
-    if (xml_name_set(xerr, "error") < 0)
-	goto done;
-    if (xml2json_cbuf(cbj, xerr, 1) < 0)
-	goto done;
-    FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
-    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+json\r\n\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
-    FCGX_FPrintF(r->out, "{\r\n");
-    FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : {\r\n");
-    FCGX_FPrintF(r->out, "    %s", cbuf_get(cbj));
-    FCGX_FPrintF(r->out, "  }\r\n");
-    FCGX_FPrintF(r->out, "}\r\n");
- ok:
-    retval = 0;
- done:
-    if (cbj)
-        cbuf_free(cbj);
-    return retval;
-}
 
 /*! Generic GET (both HEAD and GET)
  * According to restconf 
@@ -195,10 +150,13 @@ api_data_get_err(clicon_handle h,
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML
  * @param[in]  head   If 1 is HEAD, otherwise GET
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
  * @endcode                                     
+ * See RFC8040 Sec 4.2 and 4.3
  * XXX: cant find a way to use Accept request field to choose Content-Type  
  *      I would like to support both xml and json.           
  * Request may contain                                        
@@ -218,6 +176,8 @@ api_data_get2(clicon_handle h,
 	      cvec         *pcvec,
 	      int           pi,
 	      cvec         *qvec,
+	      int           pretty,
+	      int           use_xml,
 	      int           head)
 {
     int        retval = -1;
@@ -226,20 +186,14 @@ api_data_get2(clicon_handle h,
     cbuf      *cbx = NULL;
     yang_spec *yspec;
     cxobj     *xret = NULL;
-    cxobj     *xerr;
-    char      *media_accept;
-    int        use_xml = 0; /* By default use JSON */
+    cxobj     *xerr = NULL; /* malloced */
+    cxobj     *xe;
     cxobj    **xvec = NULL;
     size_t     xlen;
-    int        pretty;
     int        i;
     cxobj     *x;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
-    if (strcmp(media_accept, "application/yang-data+xml")==0)
-	use_xml++;
     yspec = clicon_dbspec_yang(h);
     if ((cbpath = cbuf_new()) == NULL)
         goto done;
@@ -247,13 +201,19 @@ api_data_get2(clicon_handle h,
     clicon_debug(1, "%s pi:%d", __FUNCTION__, pi);
     /* We know "data" is element pi-1 */
     if (api_path2xpath_cvv(yspec, pcvec, pi, cbpath) < 0){
-	notfound(r);
+	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     path = cbuf_get(cbpath);
     clicon_debug(1, "%s path:%s", __FUNCTION__, path);
     if (clicon_rpc_get(h, path, &xret) < 0){
-	notfound(r);
+	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     /* We get return via netconf which is complete tree from root 
@@ -267,9 +227,9 @@ api_data_get2(clicon_handle h,
 	cbuf_free(cb);
     }
 #endif
-    /* Check if error return */
-    if ((xerr = xpath_first(xret, "/rpc-error")) != NULL){
-	if (api_data_get_err(h, r, xerr) < 0)
+    /* Check if error return XXX this needs more work */
+    if ((xe = xpath_first(xret, "/rpc-error")) != NULL){
+	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
     }
@@ -306,7 +266,6 @@ api_data_get2(clicon_handle h,
 	    if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
 		goto done;
     }
-
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
     FCGX_FPrintF(r->out, "\r\n\r\n");
@@ -320,6 +279,8 @@ api_data_get2(clicon_handle h,
 	cbuf_free(cbpath);
     if (xret)
 	xml_free(xret);
+    if (xerr)
+	xml_free(xerr);
     if (xvec)
 	free(xvec);
     return retval;
@@ -331,19 +292,24 @@ api_data_get2(clicon_handle h,
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
-   The HEAD method is sent by the client to retrieve just the header fields 
-   that would be returned for the comparable GET method, without the 
-   response message-body. 
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ *
+ * The HEAD method is sent by the client to retrieve just the header fields 
+ * that would be returned for the comparable GET method, without the 
+ * response message-body. 
  * Relation to netconf: none                        
  */
 int
 api_data_head(clicon_handle h,
-	     FCGX_Request *r,
-             cvec         *pcvec,
-             int           pi,
-             cvec         *qvec)
+	      FCGX_Request *r,
+	      cvec         *pcvec,
+	      int           pi,
+	      cvec         *qvec,
+	      int           pretty,
+	      int           use_xml)
 {
-    return api_data_get2(h, r, pcvec, pi, qvec, 1);
+    return api_data_get2(h, r, pcvec, pi, qvec, pretty, use_xml, 1);
 }
 
 /*! REST GET method
@@ -353,6 +319,8 @@ api_data_head(clicon_handle h,
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
  * @endcode                                     
@@ -374,9 +342,11 @@ api_data_get(clicon_handle h,
 	     FCGX_Request *r,
              cvec         *pcvec,
              int           pi,
-             cvec         *qvec)
+             cvec         *qvec,
+	     int           pretty,
+	     int           use_xml)
 {
-    return api_data_get2(h, r, pcvec, pi, qvec, 0);
+    return api_data_get2(h, r, pcvec, pi, qvec, pretty, use_xml, 0);
 }
 
 /*! Generic REST POST  method 
@@ -387,7 +357,13 @@ api_data_get(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
+ * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
+
  * @note restconf POST is mapped to edit-config create. 
+ * See RFC8040 Sec 4.4.1
+
  POST:
    target resource type is datastore --> create a top-level resource
    target resource type is  data resource --> create child resource
@@ -412,7 +388,10 @@ api_data_post(clicon_handle h,
 	      cvec         *pcvec, 
 	      int           pi,
 	      cvec         *qvec, 
-	      char         *data)
+	      char         *data,
+	      int           pretty,
+	      int           use_xml,
+    	      int           parse_xml)
 {
     int        retval = -1;
     enum operation_type op = OP_CREATE;
@@ -425,16 +404,15 @@ api_data_post(clicon_handle h,
     yang_node *y = NULL;
     yang_spec *yspec;
     cxobj     *xa;
-    char      *media_content_type;
-    int        parse_xml = 0; /* By default expect and parse JSON */
-
+    cxobj     *xret = NULL;
+    cxobj     *xretcom = NULL;
+    cxobj     *xerr = NULL; /* malloced must be freed */
+    cxobj     *xe;
+    char      *username;
+	
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
 		 __FUNCTION__, 
 		 api_path, data);
-    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
-    if (media_content_type &&
-	strcmp(media_content_type, "application/yang-data+xml")==0)
-	parse_xml++;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
@@ -446,24 +424,33 @@ api_data_post(clicon_handle h,
 	goto done;
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
-    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
     if (parse_xml){
 	if (xml_parse_string(data, NULL, &xdata) < 0){
-	    badrequest(r);
+	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		goto done;
+	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		goto done;
 	    goto ok;
 	}
     }
     else if (json_parse_str(data, &xdata) < 0){
-	badrequest(r);
+	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
-    /* The message-body MUST contain exactly one instance of the
+    /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
     if (xml_child_nr(xdata) != 1){
-	badrequest(r);
+	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     x = xml_child_i(xdata,0);
@@ -479,21 +466,35 @@ api_data_post(clicon_handle h,
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
+    /* For internal XML protocol: add username attribute for access control
+     */
+    username = clicon_username_get(h);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<edit-config><target><candidate /></target>");
+    cprintf(cbx, "<default-operation>none</default-operation>");
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
 	goto done;
+    cprintf(cbx, "</edit-config></rpc>");
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
-    if (clicon_rpc_edit_config(h, "candidate", 
-			       OP_NONE,
-			       cbuf_get(cbx)) < 0){
-	conflict(r);
+    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
+	goto done;
+    if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
+	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     /* Assume this is validation failed since commit includes validate */
-    if (clicon_rpc_commit(h) < 0){
+    cbuf_reset(cbx);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<commit/></rpc>");
+    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
+	goto done;
+    if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
 	if (clicon_rpc_discard_changes(h) < 0)
 	    goto done;
-	badrequest(r);
-	goto done;
+	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    goto done;
+	goto ok;
     }
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
@@ -502,6 +503,12 @@ api_data_post(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xret)
+	xml_free(xret);
+    if (xerr)
+	xml_free(xerr);
+    if (xretcom)
+	xml_free(xretcom);
     if (xtop)
 	xml_free(xtop);
     if (xdata)
@@ -571,7 +578,12 @@ match_list_keys(yang_stmt *y,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
+ * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
+
  * @note restconf PUT is mapped to edit-config replace. 
+ * See RFC8040 Sec 4.5
  * @example
       curl -X PUT -d '{"enabled":"false"}' http://127.0.0.1/restconf/data/interfaces/interface=eth1
  *
@@ -589,7 +601,10 @@ api_data_put(clicon_handle h,
 	     cvec         *pcvec, 
 	     int           pi,
 	     cvec         *qvec, 
-	     char         *data)
+	     char         *data,
+	     int           pretty,
+	     int           use_xml,
+	     int           parse_xml)
 {
     int        retval = -1;
     enum operation_type op = OP_REPLACE;
@@ -603,16 +618,15 @@ api_data_put(clicon_handle h,
     yang_node *y = NULL;
     yang_spec *yspec;
     cxobj     *xa;
-    char      *media_content_type;
-    int        parse_xml = 0; /* By default expect and parse JSON */
     char      *api_path;
+    cxobj     *xret = NULL;
+    cxobj     *xretcom = NULL;
+    cxobj     *xerr = NULL; /* malloced must be freed */
+    cxobj     *xe;
+    char      *username;
 
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
 		 __FUNCTION__, api_path0, data);
-    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
-    if (media_content_type &&
-	strcmp(media_content_type, "application/yang-data+xml")==0)
-	parse_xml++;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
@@ -625,24 +639,34 @@ api_data_put(clicon_handle h,
 	goto done;
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
-    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
+
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     /* Parse input data as json or xml into xml */
     if (parse_xml){
 	if (xml_parse_string(data, NULL, &xdata) < 0){
-	    badrequest(r);
+	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		goto done;
+	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		goto done;
 	    goto ok;
 	}
     }
     else if (json_parse_str(data, &xdata) < 0){
-	badrequest(r);
+	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     /* The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
     if (xml_child_nr(xdata) != 1){
-	badrequest(r);
+	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     x = xml_child_i(xdata,0);
@@ -664,13 +688,19 @@ api_data_put(clicon_handle h,
     else {
 	/* Check same symbol in api-path as data */	    
 	if (strcmp(xml_name(x), xml_name(xbot))){
-	    badrequest(r);
+	    if (netconf_operation_failed_xml(&xerr, "protocol", "Not same symbol in api-path as data") < 0)
+		goto done;
+	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		goto done;
 	    goto ok;
 	}
 	/* If list or leaf-list, api-path keys must match data keys */	    
 	if (y && (y->yn_keyword == Y_LIST ||y->yn_keyword == Y_LEAF_LIST)){
 	    if (match_list_keys((yang_stmt*)y, x, xbot) < 0){
-		badrequest(r);
+		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
+		    goto done;
+		if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		    goto done;
 		goto ok;
 	    }
 	}
@@ -683,21 +713,34 @@ api_data_put(clicon_handle h,
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
+    /* For internal XML protocol: add username attribute for access control
+     */
+    username = clicon_username_get(h);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<edit-config><target><candidate /></target>");
+    cprintf(cbx, "<default-operation>none</default-operation>");
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
 	goto done;
+    cprintf(cbx, "</edit-config></rpc>");
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
-    if (clicon_rpc_edit_config(h, "candidate", 
-			       OP_NONE,
-			       cbuf_get(cbx)) < 0){
-	notfound(r);
+    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
+	goto done;
+    if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
+	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
-    /* Assume this is validation failed since commit includes validate */
-    if (clicon_rpc_commit(h) < 0){
-	if (clicon_rpc_discard_changes(h) < 0) 
-	    goto done;
-	badrequest(r);
+    cbuf_reset(cbx);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<commit/></rpc>");
+    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
+    if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
+	if (clicon_rpc_discard_changes(h) < 0)
+	    goto done;
+	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    goto done;
+	goto ok;
     }
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
@@ -706,6 +749,12 @@ api_data_put(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xret)
+	xml_free(xret);
+    if (xerr)
+	xml_free(xerr);
+    if (xretcom)
+	xml_free(xretcom);
     if (xtop)
 	xml_free(xtop);
     if (xdata)
@@ -724,15 +773,16 @@ api_data_put(clicon_handle h,
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
  * Netconf:  <edit-config> (nc:operation="merge")      
+ * See RFC8040 Sec 4.6
  */
 int
 api_data_patch(clicon_handle h,
-	      FCGX_Request *r, 
-	      char         *api_path, 
-	      cvec         *pcvec, 
-	      int           pi,
-	      cvec         *qvec, 
-	      char         *data)
+	       FCGX_Request *r, 
+	       char         *api_path, 
+	       cvec         *pcvec, 
+	       int           pi,
+	       cvec         *qvec, 
+	       char         *data)
 {
     notimplemented(r);
     return 0;
@@ -743,6 +793,9 @@ api_data_patch(clicon_handle h,
  * @param[in]  r      Fastcgi request handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
  * @param[in]  pi     Offset, where path starts
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ * See RFC 8040 Sec 4.7
  * Example:
  *  curl -X DELETE http://127.0.0.1/restconf/data/interfaces/interface=eth0
  * Netconf:  <edit-config> (nc:operation="delete")      
@@ -751,7 +804,9 @@ int
 api_data_delete(clicon_handle h,
 		FCGX_Request *r, 
 		char         *api_path,
-		int           pi)
+		int           pi,
+		int           pretty,
+		int           use_xml)
 {
     int        retval = -1;
     int        i;
@@ -762,6 +817,10 @@ api_data_delete(clicon_handle h,
     yang_node *y = NULL;
     yang_spec *yspec;
     enum operation_type op = OP_DELETE;
+    cxobj     *xret = NULL;
+    cxobj     *xretcom = NULL;
+    cxobj     *xerr = NULL;
+    char      *username;
 
     clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -774,7 +833,8 @@ api_data_delete(clicon_handle h,
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
-    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
+
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;
@@ -783,21 +843,34 @@ api_data_delete(clicon_handle h,
 	goto done;
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
-
+    /* For internal XML protocol: add username attribute for access control
+     */
+    username = clicon_username_get(h);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<edit-config><target><candidate /></target>");
+    cprintf(cbx, "<default-operation>none</default-operation>");
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
 	goto done;
-    if (clicon_rpc_edit_config(h, "candidate", 
-			       OP_NONE, 
-			       cbuf_get(cbx)) < 0){
-	notfound(r);
+    cprintf(cbx, "</edit-config></rpc>");
+    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
+	goto done;
+    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     /* Assume this is validation failed since commit includes validate */
-    if (clicon_rpc_commit(h) < 0){
-	if (clicon_rpc_discard_changes(h) < 0) 
-	    goto done;
-	badrequest(r);
+    cbuf_reset(cbx);
+    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<commit/></rpc>");
+    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
+    if ((xerr = xpath_first(xretcom, "//rpc-error")) != NULL){
+	if (clicon_rpc_discard_changes(h) < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
+	goto ok;
     }
     FCGX_SetExitStatus(201, r->out);
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
@@ -807,48 +880,132 @@ api_data_delete(clicon_handle h,
  done:
     if (cbx)
 	cbuf_free(cbx); 
+    if (xret)
+	xml_free(xret);
+    if (xretcom)
+	xml_free(xretcom);
     if (xtop)
 	xml_free(xtop);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
    return retval;
 }
 
-/*! NYI
- */
-int
-api_operation_get(clicon_handle h,
-		   FCGX_Request *r, 
-		   char         *path, 
-		   cvec         *pcvec, 
-		   int           pi,
-		   cvec         *qvec, 
-		   char         *data)
-{
-    return 0;
-}
-
-/*! REST operation POST method 
- * @param[in]  h      CLIXON handle
+/*! GET restconf/operations resource
+ * @param[in]  h      Clixon handle
  * @param[in]  r      Fastcgi request handle
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
- * @param[in]  pi     Offset, where to start pcvec
+ * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
+ * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * @note We map post to edit-config create. 
-
-      POST {+restconf}/operations/<operation>
-
-
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ *
+ * @code
+ *  curl -G http://localhost/restconf/operations
+ * @endcode                                     
+ * RFC8040 Sec 3.3.2:
+ * This optional resource is a container that provides access to the
+ * data-model-specific RPC operations supported by the server.  The
+ * server MAY omit this resource if no data-model-specific RPC
+ * operations are advertised.
  */
 int
-api_operation_post(clicon_handle h,
+api_operations_get(clicon_handle h,
 		   FCGX_Request *r, 
 		   char         *path, 
 		   cvec         *pcvec, 
 		   int           pi,
 		   cvec         *qvec, 
 		   char         *data,
-		   char         *username)
+		   int           pretty,
+		   int           use_xml)
+{
+    int        retval = -1;
+    yang_spec *yspec;
+    yang_stmt *ym;
+    yang_stmt *yc;
+    yang_stmt *yprefix;
+    char      *prefix;
+    cbuf      *cbx = NULL;
+    cxobj     *xt = NULL;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    yspec = clicon_dbspec_yang(h);
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
+    cprintf(cbx, "<operations>");
+    ym = NULL;
+    while ((ym = yn_each((yang_node*)yspec, ym)) != NULL) {
+	if ((yprefix = yang_find((yang_node*)ym, Y_PREFIX, NULL)) != NULL)
+	    prefix = yprefix->ys_argument;
+	else
+	    continue;
+	yc = NULL;
+	while ((yc = yn_each((yang_node*)ym, yc)) != NULL) {
+	    if (yc->ys_keyword != Y_RPC)
+		continue;
+	    cprintf(cbx, "<%s:%s />", prefix, yc->ys_argument);
+	}
+    }
+    cprintf(cbx, "</operations>");
+    clicon_debug(1, "%s xml:%s", __FUNCTION__, cbuf_get(cbx));
+    if (xml_parse_string(cbuf_get(cbx), yspec, &xt) < 0)
+	goto done;
+    if (xml_rootchild(xt, 0, &xt) < 0)
+	goto done;
+    cbuf_reset(cbx); /* reuse same cbuf */
+    if (use_xml){
+	if (clicon_xml2cbuf(cbx, xt, 0, pretty) < 0) /* Dont print top object?  */
+	    goto done;
+    }
+    else{
+	if (xml2json_cbuf(cbx, xt, pretty) < 0)
+	    goto done;
+    }
+    clicon_debug(1, "%s ret:%s", __FUNCTION__, cbuf_get(cbx));
+    FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
+    FCGX_FPrintF(r->out, "\r\n");
+    FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
+    FCGX_FPrintF(r->out, "\r\n\r\n");
+    // ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (cbx)
+        cbuf_free(cbx);
+    if (xt)
+	xml_free(xt);
+    return retval;
+}
+
+/*! REST operation POST method 
+ * @param[in]  h      CLIXON handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi     Offset, where to start pcvec
+ * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  data   Stream input data
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
+ * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
+ * See RFC 8040 Sec 3.6 / 4.4.2
+ * @note We map post to edit-config create. 
+      POST {+restconf}/operations/<operation>
+ */
+int
+api_operations_post(clicon_handle h,
+		    FCGX_Request *r, 
+		    char         *path, 
+		    cvec         *pcvec, 
+		    int           pi,
+		    cvec         *qvec, 
+		    char         *data,
+		    int           pretty,
+		    int           use_xml,
+		    int           parse_xml)
 {
     int        retval = -1;
     int        i;
@@ -859,6 +1016,8 @@ api_operation_post(clicon_handle h,
     yang_stmt *youtput;
     cxobj     *xdata = NULL;
     cxobj     *xret = NULL;
+    cxobj     *xerr = NULL; /* malloced must be freed */
+    cxobj     *xer; /* non-malloced error */
     cbuf      *cbx = NULL;
     cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xbot = NULL;
@@ -866,37 +1025,36 @@ api_operation_post(clicon_handle h,
     cxobj     *xinput;
     cxobj     *xoutput;
     cxobj     *x;
-    char      *media_content_type;
-    int        parse_xml = 0; /* By default expect and parse JSON */
-    char      *media_accept;
-    int        use_xml = 0; /* By default return JSON */
-    int        pretty;
     cxobj     *xa;
-	
+    cxobj     *xe;
+    char      *username;
+    cbuf      *cbret = NULL;
+    int        ret = 0;
+    
     clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, path);
-    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    if ((media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp)) &&
-	strcmp(media_accept, "application/yang-data+xml")==0)
-	use_xml++;
-    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
-    if (media_content_type &&
-	strcmp(media_content_type, "application/yang-data+xml")==0)
-	parse_xml++;
-    clicon_debug(1, "%s accept:\"%s\" content-type:\"%s\"", 
-		 __FUNCTION__, media_accept, media_content_type);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
     for (i=0; i<pi; i++)
 	oppath = index(oppath+1, '/');
+    if (oppath == NULL || strcmp(oppath,"/")==0){
+	if (netconf_operation_failed_xml(&xerr, "protocol", "Operation name expected") < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
+	goto ok;
+    }
     clicon_debug(1, "%s oppath: %s", __FUNCTION__, oppath);
 
     /* Find yang rpc statement, return yang rpc statement if found */
-    if (yang_abs_schema_nodeid(yspec, oppath, &yrpc) < 0)
+    if (yang_abs_schema_nodeid(yspec, oppath, Y_RPC, &yrpc) < 0)
 	goto done;
     if (yrpc == NULL){
-	retval = notfound(r); 
+	if (netconf_operation_failed_xml(&xerr, "protocol", "yang node not found") < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
 	goto ok;
     }
     /* Create an xml message: 
@@ -907,14 +1065,24 @@ api_operation_post(clicon_handle h,
     if ((xtop = xml_new("rpc", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
+    /* For internal XML protocol: add username attribute for backend access control
+     */
+    if ((username = clicon_username_get(h)) != NULL){
+	if ((xa = xml_new("username", xtop, NULL)) == NULL)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (xml_value_set(xa, username) < 0)
+	    goto done;
+    }
+
     /* XXX: something strange for rpc user */
-    if (api_path2xml(oppath, yspec, xtop, 1, &xbot, &y) < 0)
+    if (api_path2xml(oppath, yspec, xtop, YC_SCHEMANODE, &xbot, &y) < 0)
 	goto done;
-#if 1
+#if 0
     {
 	cbuf *c = cbuf_new();
 	clicon_xml2cbuf(c, xtop, 0, 0);
-	clicon_debug(1, "%s xinput:%s", __FUNCTION__, cbuf_get(c));
+	clicon_debug(1, "%s xtop:%s", __FUNCTION__, cbuf_get(c));
 	cbuf_free(c);
     }
 #endif
@@ -922,16 +1090,36 @@ api_operation_post(clicon_handle h,
 	/* Parse input data as json or xml into xml */
 	if (parse_xml){
 	    if (xml_parse_string(data, NULL, &xdata) < 0){
-		badrequest(r);
+		if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		    goto done;
+		if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		    goto done;
 		goto ok;
 	    }
 	}
 	else if (json_parse_str(data, &xdata) < 0){
-	    badrequest(r);
+	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		goto done;
+	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		goto done;
 	    goto ok;
 	}
+	yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL);
 	/* xdata should have format <top><input> */
-	if ((xinput = xpath_first(xdata, "/input")) != NULL){
+	if ((xinput = xpath_first(xdata, "/input")) == NULL){
+	    xml_name_set(xdata, "input");
+	    xml_spec_set(xdata, yinput); /* needed for xml_spec_populate */
+	    if (yinput){
+		if (xml_yang_validate_add(xdata, NULL) < 0){
+		    if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+			goto done;
+		    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+			goto done;
+		    goto ok;
+		}
+	    }
+	}
+	else{
 	    /* Add all input under <rpc>path */
 	    x = NULL;
 	    while (xml_child_nr(xinput)){
@@ -939,57 +1127,71 @@ api_operation_post(clicon_handle h,
 		if (xml_addsub(xbot, x) < 0) 	
 		    goto done;
 	    }
-	    if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
-		xml_spec_set(xinput, yinput); /* needed for xml_spec_populate */
-		if (xml_apply(xinput, CX_ELMNT, xml_spec_populate, yinput) < 0)
+	    if (yinput){
+		xml_spec_set(xbot, yinput); /* needed for xml_spec_populate */
+		if (xml_apply(xbot, CX_ELMNT, xml_spec_populate, yinput) < 0)
 		    goto done;
-		if (xml_apply(xinput, CX_ELMNT, 
+		if (xml_apply(xbot, CX_ELMNT, 
 			      (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
 		    goto done;
-		if (xml_yang_validate_add(xinput, NULL) < 0)
-		    goto done;
+		if (xml_yang_validate_add(xbot, NULL) < 0){
+		    if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+			goto done;
+		    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+			goto done;
+		    goto ok;
+		}
 	    }
 	}
     }
-    /* Non-standard: add username attribute for backend ACM (RFC 6536)
-     * 
-     */
-    if (username){
-	if ((xa = xml_new("username", xtop, NULL)) == NULL)
-	    goto done;
-	xml_type_set(xa, CX_ATTR);
-	if (xml_value_set(xa, username) < 0)
-	    goto done;
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, 0, "cbuf_new");
+	goto done;
     }
-#ifdef obsolete
-    {
-	cxobj *xa;
-	char *cookie;
-	char *cookieval = NULL;
-	
-	if ((cookie = FCGX_GetParam("HTTP_COOKIE", r->envp)) != NULL &&
-	    get_user_cookie(cookie, "c-user", &cookieval) ==0){
-	    if ((xa = xml_new("id", xtop, NULL)) == NULL)
+    xe = NULL;
+    while ((xe = xml_child_each(xtop, xe, CX_ELMNT)) != NULL) {
+	/* Look for local (client-side) restconf plugins. */
+	if ((ret = rpc_callback_call(h, xe, cbret, r)) < 0)
+	    goto done;
+	if (ret == 1){ /* Handled locally */
+	    if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)
 		goto done;
-	    xml_type_set(xa, CX_ATTR);
-	    if (xml_value_set(xa,  cookieval) < 0)
+	    /* Local error: return it and quit */
+	    if ((xer = xpath_first(xret, "//rpc-error")) != NULL){
+		if (api_return_err(h, r, xer, pretty, use_xml) < 0)
+		    goto done;
+		goto ok;
+	    }
+	}
+	break; /* Just one if local */
+    }
+    if (ret == 0){ /* Send to backend */
+	if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
+	    goto done;
+	if ((xer = xpath_first(xret, "//rpc-error")) != NULL){
+	    if (api_return_err(h, r, xer, pretty, use_xml) < 0)
 		goto done;
-	    if (cookieval)
-		free(cookieval);
+	    goto ok;
 	}
     }
-#endif
-    /* Send to backend */
-    if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
-	goto done;
+    /* Check if RPC output section */
+    if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) == NULL){
+	/* If the RPC operation is invoked without errors and if the "rpc" or
+	 * "action" statement has no "output" section, the response message
+	 * MUST NOT include a message-body and MUST send a "204 No Content"
+	 * status-line instead.
+	 */
+	FCGX_SetExitStatus(204, r->out); /* OK */
+	FCGX_FPrintF(r->out, "\r\n");
+	goto ok;
+    }
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
-    xoutput=xpath_first(xret, "/");
-    xml_name_set(xoutput, "output");
-    if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL &&
-	xoutput){
-
+    if ((xoutput=xpath_first(xret, "/")) != NULL){
+	xml_name_set(xoutput, "output");
+#if 0
 	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
+#endif
 	cbuf_reset(cbx);
 	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
 	if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, youtput) < 0)
@@ -1012,7 +1214,9 @@ api_operation_post(clicon_handle h,
 	else
 	    if (xml2json_cbuf(cbx, xoutput, pretty) < 0)
 		goto done;
-	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
+#if 1
+	clicon_debug(1, "%s cbx:%s", __FUNCTION__, cbuf_get(cbx));
+#endif
 	FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
 	FCGX_FPrintF(r->out, "\r\n\r\n");
     }
@@ -1026,7 +1230,11 @@ api_operation_post(clicon_handle h,
 	xml_free(xtop);
     if (xret)
 	xml_free(xret);
+    if (xerr)
+	xml_free(xerr);
      if (cbx)
 	cbuf_free(cbx); 
+    if (cbret)
+	cbuf_free(cbret);
    return retval;
 }

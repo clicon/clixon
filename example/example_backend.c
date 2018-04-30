@@ -77,12 +77,14 @@ transaction_commit(clicon_handle    h,
     int     i;
     size_t  len;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     /* Get all added i/fs */
     if (xpath_vec_flag(target, "//interface", XML_FLAG_ADD, &vec, &len) < 0)
 	return -1;
     if (debug)
 	for (i=0; i<len; i++)             /* Loop over added i/fs */
 	    xml_print(stdout, vec[i]); /* Print the added interface */
+  // done:
     if (vec)
 	free(vec);
     return 0;
@@ -119,13 +121,15 @@ notification_timer_setup(clicon_handle h)
     return event_reg_timeout(t, notification_timer, h, "notification timer");
 }
 
-/*! IETF Routing fib-route rpc */
+/*! IETF Routing fib-route rpc 
+ * @see ietf-routing@2014-10-26.yang  (fib-route)
+ */
 static int 
 fib_route(clicon_handle h,            /* Clicon handle */
 	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  struct client_entry *ce,    /* Client session */
 	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg)          /* Argument given at register */
+	  void         *arg,          /* Client session */
+	  void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply><route>"
 	    "<address-family>ipv4</address-family>"
@@ -134,27 +138,34 @@ fib_route(clicon_handle h,            /* Clicon handle */
     return 0;
 }
 
-/*! Smallest possible RPC declaration for test */
-static int 
-empty(clicon_handle h,            /* Clicon handle */
-	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  struct client_entry *ce,    /* Client session */
-	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg)          /* Argument given at register */
-{
-    cprintf(cbret, "<rpc-reply/>");
-    return 0;
-}
-
-/*! IETF Routing route-count rpc */
+/*! IETF Routing route-count rpc 
+ * @see ietf-routing@2014-10-26.yang  (route-count)
+ */
 static int 
 route_count(clicon_handle h, 
 	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	    struct client_entry *ce,    /* Client session */
 	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	    void         *arg)          /* Argument given at register */
+	    void         *arg,
+	    void         *regarg)          /* Argument given at register */
 {
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
+    cprintf(cbret, "<rpc-reply><number-of-routes>42</number-of-routes></rpc-reply>");    
+    return 0;
+}
+
+/*! Smallest possible RPC declaration for test 
+ * Yang/XML:
+ * If the RPC operation invocation succeeded and no output parameters
+ * are returned, the <rpc-reply> contains a single <ok/> element defined
+ * in [RFC6241].
+ */
+static int 
+empty(clicon_handle h,            /* Clicon handle */
+      cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+      cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+      void         *arg,          /* client_entry */
+      void         *regarg)       /* Argument given at register */
+{
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     return 0;
 }
 
@@ -190,39 +201,6 @@ plugin_statedata(clicon_handle h,
     return retval;
 }
 
-/*! Plugin initialization. Create rpc callbacks
- * plugin_init is called as soon as the plugin has been loaded and is 
- * assumed initialize the plugin's internal state if any as well as register
- * any callbacks, configuration dependencies.
- */
-int
-plugin_init(clicon_handle h)
-{
-    int retval = -1;
-
-    if (notification_timer_setup(h) < 0)
-	goto done;
-    /* Register callback for routing rpc calls */
-    if (backend_rpc_cb_register(h, fib_route, 
-				NULL, 
-				"fib-route"/* Xml tag when callback is made */
-				) < 0)
-	goto done;
-    if (backend_rpc_cb_register(h, route_count, 
-				NULL, 
-				"route-count"/* Xml tag when callback is made */
-				) < 0)
-	goto done;
-    if (backend_rpc_cb_register(h, empty, 
-				NULL, 
-				"empty"/* Xml tag when callback is made */
-				) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Plugin state reset. Add xml or set state in backend machine.
  * Called in each backend plugin. plugin_reset is called after all plugins
  * have been initialized. This give the application a chance to reset
@@ -250,7 +228,7 @@ plugin_reset(clicon_handle h,
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
     /* Merge user reset state */
-    if (xmldb_put(h, (char*)db, OP_MERGE, xt) < 0)
+    if (xmldb_put(h, (char*)db, OP_MERGE, xt, NULL) < 0)
 	goto done;
     retval = 0;
  done:
@@ -278,3 +256,54 @@ plugin_start(clicon_handle h,
 {
     return 0;
 }
+
+clixon_plugin_api *clixon_plugin_init(clicon_handle h);
+
+static clixon_plugin_api api = {
+    "example",                              /* name */    
+    clixon_plugin_init,                     /* init */
+    plugin_start,                           /* start */
+    NULL,                                   /* exit */
+    .ca_reset=plugin_reset,                 /* reset */
+    .ca_statedata=plugin_statedata,         /* statedata */
+    .ca_trans_begin=NULL,                   /* trans begin */
+    .ca_trans_validate=transaction_validate,/* trans validate */
+    .ca_trans_complete=NULL,                /* trans complete */
+    .ca_trans_commit=transaction_commit,    /* trans commit */
+    .ca_trans_end=NULL,                     /* trans end */
+    .ca_trans_abort=NULL                    /* trans abort */
+};
+
+/*! Backend plugin initialization
+ * @param[in]  h    Clixon handle
+ * @retval     NULL Error with clicon_err set
+ * @retval     api  Pointer to API struct
+ */
+clixon_plugin_api *
+clixon_plugin_init(clicon_handle h)
+{
+    clicon_debug(1, "%s backend", __FUNCTION__);
+    if (notification_timer_setup(h) < 0)
+	goto done;
+    /* Register callback for routing rpc calls */
+    if (rpc_callback_register(h, fib_route, 
+			      NULL, 
+			      "fib-route"/* Xml tag when callback is made */
+			      ) < 0)
+	goto done;
+    if (rpc_callback_register(h, route_count, 
+			      NULL, 
+			      "route-count"/* Xml tag when callback is made */
+			      ) < 0)
+	goto done;
+    if (rpc_callback_register(h, empty, 
+			      NULL, 
+			      "empty"/* Xml tag when callback is made */
+			      ) < 0)
+	goto done;
+    /* Return plugin API */
+    return &api;
+ done:
+    return NULL;
+}
+

@@ -11,13 +11,14 @@ clixon_cli=clixon_cli
 
 # For memcheck / performance
 #clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-# clixon_netconf="valgrind --tool=callgrind clixon_netconf 
+#clixon_netconf="valgrind --tool=callgrind clixon_netconf"
 clixon_netconf=clixon_netconf
 
 # How to run restconf stand-alone and using valgrind
 #sudo su -c "/www-data/clixon_restconf -f $cfg -D" -s /bin/sh www-data
 #sudo su -c "valgrind --leak-check=full --show-leak-kinds=all /www-data/clixon_restconf -f $cfg -D" -s /bin/sh www-data
 
+#clixon_backend="valgrind --leak-check=full --show-leak-kinds=all clixon_backend"
 clixon_backend=clixon_backend
 
 dir=/var/tmp/$0
@@ -28,13 +29,17 @@ rm -rf $dir/*
 
 # error and exit, arg is optional extra errmsg
 err(){
-  echo "Error in Test$testnr [$testname]:"
+  echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
       echo "Expected: $1"
   fi
   if [ $# -gt 1 ]; then 
       echo "Received: $2"
   fi
+  echo -e "\e[0m:"
+  echo "$ret"| od -t c > $dir/clixon-ret
+  echo "$expect"| od -t c > $dir/clixon-expect
+  diff $dir/clixon-ret $dir/clixon-expect
   exit $testnr
 }
 
@@ -43,22 +48,28 @@ new(){
     testnr=`expr $testnr + 1`
     testname=$1
     >&2 echo "Test$testnr [$1]"
-#    sleep 1
+}
+new2(){
+    testnr=`expr $testnr + 1`
+    testname=$1
+    >&2 echo -n "Test$testnr [$1]"
 }
 
 # clixon tester. First arg is command and second is expected outcome
 expectfn(){
   cmd=$1
   expect=$2
+
   if [ $# = 3 ]; then
       expect2=$3
   else
       expect2=
   fi
-  ret=`$cmd`
-  if [ $? -ne 0 ]; then
-    err "wrong args"
-  fi
+  ret=$($cmd)
+
+#  if [ $? -ne 0 ]; then
+#    err "wrong args"
+#  fi
   # Match if both are empty string
   if [ -z "$ret" -a -z "$expect" ]; then
       return
@@ -68,9 +79,7 @@ expectfn(){
   fi
   # grep extended grep 
   match=`echo $ret | grep -EZo "$expect"`
-#  echo "ret:\"$ret\""
-#  echo "expect:\"$expect\""
-#  echo "match:\"$match\""
+
   if [ -z "$match" ]; then
       err "$expect" "$ret"
   fi
@@ -79,6 +88,19 @@ expectfn(){
       if [ -z "$match" ]; then
 	  err $expect "$ret"
       fi
+  fi
+}
+
+expecteq(){
+  ret=$1
+  expect=$2
+  if [ -z "$ret" -a -z "$expect" ]; then
+      return
+  fi
+  if [[ "$ret" = "$expect" ]]; then
+      echo
+  else
+      err "$expect" "$ret"
   fi
 }
 

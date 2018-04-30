@@ -632,7 +632,6 @@ CPP
 OBJEXT
 EXEEXT
 ac_ct_CC
-with_keyvalue
 with_restconf
 RANLIB
 AR
@@ -640,6 +639,7 @@ EXE_SUFFIX
 SH_SUFFIX
 AR_SUFFIX
 OBJ_SUFFIX
+INSTALLFLAGS
 CPPFLAGS
 INCLUDES
 LDFLAGS
@@ -707,8 +707,6 @@ ac_user_opts='
 enable_option_checking
 with_cligen
 with_restconf
-with_keyvalue
-with_qdbm
 with_configfile
 '
       ac_precious_vars='build_alias
@@ -1346,8 +1344,6 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cligen=dir       Use CLIGEN here
   --without-restconf      disable support for restconf
-  --with-keyvalue         enable support for key-value xmldb datastore
-  --with-qdbm=dir         Use QDBM here, if keyvalue
   --with-configfile=FILE  set default path to config file
 
 Some influential environment variables:
@@ -2146,13 +2142,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-# Default CFLAGS unless set by environment.
-: ${CFLAGS="-O2"}
+# Default CFLAGS unless set by environment
+: ${CFLAGS="-O2 -Wall"}
+: ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="5"
+CLIXON_VERSION_MINOR="6"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 # Fix to specific version (eg 3.5) or head (3)
 CLIGEN_VERSION="3"
 if test "$prefix" = "NONE"; then
@@ -2348,8 +2345,8 @@ test -n "$target_alias" &&
 
 
 
+
  # If yes, compile apps/restconf
- # If yes, compile datastore/keyvalue
 #
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -3283,12 +3280,12 @@ CPPFLAGS="-DHAVE_CONFIG_H ${CPPFLAGS}"
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: compiler is $CC" >&5
 $as_echo "compiler is $CC" >&6; }
 
-CFLAGS="${CFLAGS} -Wall"
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: CPPFLAGS is $CPPFLAGS" >&5
 $as_echo "CPPFLAGS is $CPPFLAGS" >&6; }
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: CFLAGS is $CFLAGS" >&5
 $as_echo "CFLAGS is $CFLAGS" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: INSTALLFLAGS is $INSTALLFLAGS" >&5
+$as_echo "INSTALLFLAGS is $INSTALLFLAGS" >&6; }
 
 for ac_prog in 'bison -y' byacc
 do
@@ -3946,107 +3943,6 @@ fi
 
 fi
 
-# This is for keyvalue datastore (and qdbm)
-
-# Check whether --with-keyvalue was given.
-if test "${with_keyvalue+set}" = set; then :
-  withval=$with_keyvalue;
-else
-  with_keyvalue=no
-fi
-
-if test "x${with_keyvalue}" == xyes; then
-   # This is for qdbm
-
-# Check whether --with-qdbm was given.
-if test "${with_qdbm+set}" = set; then :
-  withval=$with_qdbm;
-fi
-
-   if test "${with_qdbm}"; then
-      echo "Using QDBM here: ${with_qdbm}"
-      CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
-      LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
-   fi
-   # Problem: depot.h may be in qdbm/depot.h.
-   for ac_header in depot.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "depot.h" "ac_cv_header_depot_h" "$ac_includes_default"
-if test "x$ac_cv_header_depot_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_DEPOT_H 1
-_ACEOF
-
-else
-  for ac_header in qdbm/depot.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "qdbm/depot.h" "ac_cv_header_qdbm_depot_h" "$ac_includes_default"
-if test "x$ac_cv_header_qdbm_depot_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_QDBM_DEPOT_H 1
-_ACEOF
-
-else
-  as_fn_error $? "libqdbm-dev required" "$LINENO" 5
-fi
-
-done
-
-fi
-
-done
-
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for dpopen in -lqdbm" >&5
-$as_echo_n "checking for dpopen in -lqdbm... " >&6; }
-if ${ac_cv_lib_qdbm_dpopen+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lqdbm  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char dpopen ();
-int
-main ()
-{
-return dpopen ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_qdbm_dpopen=yes
-else
-  ac_cv_lib_qdbm_dpopen=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_qdbm_dpopen" >&5
-$as_echo "$ac_cv_lib_qdbm_dpopen" >&6; }
-if test "x$ac_cv_lib_qdbm_dpopen" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBQDBM 1
-_ACEOF
-
-  LIBS="-lqdbm $LIBS"
-
-else
-  as_fn_error $? "libqdbm-dev required" "$LINENO" 5
-fi
-
-   ac_config_files="$ac_config_files datastore/keyvalue/Makefile"
-
-fi
-
 # Set default config file location
 
 # Check whether --with-configfile was given.
@@ -4311,7 +4207,6 @@ _ACEOF
 
 
 
-# See also datastore/keyvalue/Makefile in with_keyvalue clause above
 ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile extras/rpm/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/text/Makefile yang/Makefile doc/Makefile"
 
 cat >confcache <<\_ACEOF
@@ -5005,7 +4900,6 @@ do
   case $ac_config_target in
     "include/clixon_config.h") CONFIG_HEADERS="$CONFIG_HEADERS include/clixon_config.h" ;;
     "lib/clixon/clixon.h") CONFIG_HEADERS="$CONFIG_HEADERS lib/clixon/clixon.h" ;;
-    "datastore/keyvalue/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/keyvalue/Makefile" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "lib/Makefile") CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
     "lib/src/Makefile") CONFIG_FILES="$CONFIG_FILES lib/src/Makefile" ;;

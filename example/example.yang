@@ -1,10 +1,30 @@
 module example {
+    prefix ex;
     import ietf-ip {
-      prefix ip;
+	prefix ip;
     }
     import ietf-routing {
-      prefix rt;
+	prefix rt;
+    }
+    import ietf-netconf-acm {
+	prefix nacm;
     }
     description
-      "Example code that includes ietf-ip and ietf-routing";
+	"Example code that includes ietf-ip and ietf-routing";
+    rpc client-rpc {
+	description "Example local client-side RPC that is processed by the
+                     the netconf/restconf and not sent to the backend.
+                     This is a clixon implementation detail: some rpc:s
+                     are better processed by the client for API or perf reasons";
+	input {
+	    leaf request {
+		type string;
+	    }
+	}
+	output {
+	    leaf result{
+		type string;
+	    }
+	}
+    }
 }

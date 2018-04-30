@@ -180,7 +180,7 @@ backend_client_rm(clicon_handle        h,
     return backend_client_delete(h, ce); /* actually purge it */
 }
 
-/*! FInd target/source in netconf request. Assume sanity made so not finding is error */
+/*! Find target/source in netconf request. Assume sanity- not finding is error */
 static char*
 netconf_db_find(cxobj *xn, 
 		char  *name)
@@ -214,31 +214,28 @@ from_client_get_config(clicon_handle h,
     cxobj *xfilter;
     char  *selector = "/";
     cxobj *xret = NULL;
+    cbuf  *cbx = NULL; /* Assist cbuf */
     
     if ((db = netconf_db_find(xe, "source")) == NULL){
 	clicon_err(OE_XML, 0, "db not found");
 	goto done;
     }
     if (xmldb_validate_db(db) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>invalid-value</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>No such database: %s</error-message>"
-		"</rpc-error></rpc-reply>", db);
+	if ((cbx = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}	
+	cprintf(cbx, "No such database: %s", db);
+	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
+	    goto done;
 	goto ok;
     }
-
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((selector = xml_find_value(xfilter, "select"))==NULL)
 	    selector="/";
     if (xmldb_get(h, db, selector, 1, &xret) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>application</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info>read-registry</error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+	    goto done;
 	goto ok;
     }
     cprintf(cbret, "<rpc-reply>");
@@ -254,6 +251,8 @@ from_client_get_config(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (cbx)
+	cbuf_free(cbx);
     if (xret)
 	xml_free(xret);
     return retval;
@@ -276,24 +275,21 @@ from_client_get(clicon_handle h,
     char  *selector = "/";
     cxobj *xret = NULL;
     int    ret;
+    cbuf  *cbx = NULL; /* Assist cbuf */
     
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((selector = xml_find_value(xfilter, "select"))==NULL)
 	    selector="/";
     /* Get config */
     if (xmldb_get(h, "running", selector, 0, &xret) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>application</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info>read-registry</error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+	    goto done;
 	goto ok;
     }
     /* Get state data from plugins as defined by plugin_statedata(), if any */
     assert(xret);
     clicon_err_reset();
-    if ((ret = backend_statedata_call(h, selector, xret)) < 0)
+    if ((ret = clixon_plugin_statedata(h, selector, &xret)) < 0)
 	goto done;
     if (ret == 0){ /* OK */
 	cprintf(cbret, "<rpc-reply>");
@@ -308,22 +304,24 @@ from_client_get(clicon_handle h,
 	cprintf(cbret, "</rpc-reply>");
     }
     else { /* 1 Error from callback */
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>rpc</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>Internal error:%s</error-message>"
-		"</rpc-error></rpc-reply>", clicon_err_reason);
+	if ((cbx = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}	
+	cprintf(cbx, "Internal error:%s", clicon_err_reason);
+	if (netconf_operation_failed(cbret, "rpc", cbuf_get(cbx))< 0)
+	    goto done;
 	clicon_log(LOG_NOTICE, "%s Error in backend_statedata_call:%s", __FUNCTION__, xml_name(xe));
     }
  ok:
     retval = 0;
  done:
+    if (cbx)
+	cbuf_free(cbx);
     if (xret)
 	xml_free(xret);
     return retval;
 }
-
 
 /*! Internal message: edit-config
  * 
@@ -340,67 +338,60 @@ from_client_edit_config(clicon_handle h,
 {
     int                 retval = -1;
     char               *target;
-    cbuf               *cb = NULL;
-    cxobj              *xret = NULL;
     cxobj              *xc;
     cxobj              *x;
     enum operation_type operation = OP_MERGE;
     int                 piddb;
     int                 non_config = 0;
     yang_spec          *yspec;
+    cbuf               *cbx = NULL; /* Assist cbuf */
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	clicon_err(OE_YANG, ENOENT, "No yang spec9");
 	goto done;
     }
     if ((target = netconf_db_find(xn, "target")) == NULL){
 	clicon_err(OE_XML, 0, "db not found");
 	goto done;
     }
+    if ((cbx = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }	
     if (xmldb_validate_db(target) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>invalid-value</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>No such database: %s</error-message>"
-		"</rpc-error></rpc-reply>", target);
+	cprintf(cbx, "No such database: %s", target);
+	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
+	    goto done;
 	goto ok;
     }
     /* Check if target locked by other client */
     piddb = xmldb_islocked(h, target);
     if (piddb && mypid != piddb){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>lock-denied</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>Operation failed, lock is already held</error-message>"
-		"<error-info><session-id>%d</session-id></error-info>"
-		"</rpc-error></rpc-reply>",
-		piddb);
+	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
+	    goto done;
 	goto ok;
     }
     if ((x = xpath_first(xn, "default-operation")) != NULL){
 	if (xml_operation(xml_body(x), &operation) < 0){
-	    cprintf(cbret, "<rpc-reply><rpc-error>"
-		    "<error-tag>invalid-value</error-tag>"
-		    "<error-type>protocol</error-type>"
-		    "<error-severity>error</error-severity>"
-		    "</rpc-error></rpc-reply>");
+	    if (netconf_invalid_value(cbret, "protocol", "Wrong operation")< 0)
+		goto done;
 	    goto ok;
 	}
     }
-    if ((xc  = xpath_first(xn, "config")) != NULL){
+    if ((xc  = xpath_first(xn, "config")) == NULL){
+	if (netconf_missing_element(cbret, "protocol", "<bad-element>config</bad-element>", NULL) < 0)
+	    goto done;
+	goto ok;
+    }
+    else{
 	if (xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
 	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
 	    goto done;
 	if (non_config){
-	    cprintf(cbret, "<rpc-reply><rpc-error>"
-		    "<error-tag>invalid-value</error-tag>"
-		    "<error-type>protocol</error-type>"
-		    "<error-severity>error</error-severity>"
-		    "<error-message>state data not allowed</error-message>"
-		    "</rpc-error></rpc-reply>");
+	    if (netconf_invalid_value(cbret, "protocol", "State data not allowed")< 0)
+		goto done;
 	    goto ok;
 	}
 	/* Cant do this earlier since we dont have a yang spec to
@@ -408,35 +399,23 @@ from_client_edit_config(clicon_handle h,
 	 */
 	if (xml_child_sort && xml_apply0(xc, CX_ELMNT, xml_sort, NULL) < 0)
 	    goto done;
-	if (xmldb_put(h, target, operation, xc) < 0){
-	    cprintf(cbret, "<rpc-reply><rpc-error>"
-		    "<error-tag>operation-failed</error-tag>"
-		    "<error-type>protocol</error-type>"
-		    "<error-severity>error</error-severity>"
-		    "<error-message>%s</error-message>"
-		    "</rpc-error></rpc-reply>", clicon_err_reason);
+	if (xmldb_put(h, target, operation, xc, cbret) < 0){
+	    clicon_debug(1, "%s ERROR PUT", __FUNCTION__);	
+	    if (netconf_operation_failed(cbret, "protocol", clicon_err_reason)< 0)
+		goto done;
 	    goto ok;
 	}
     }
-    else{
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-element</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info><bad-element>config</bad-element></error-info>"
-		"</rpc-error></rpc-reply>");
-	goto ok;
-    }
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
+    if (!cbuf_len(cbret))
+	cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     retval = 0;
  done:
-    if (xret)
-	xml_free(xret);
-    if (cb)
-	cbuf_free(cb);
+    if (cbx)
+	cbuf_free(cbx);
+    clicon_debug(1, "%s done cbret:%s", __FUNCTION__, cbuf_get(cbret));	
     return retval;
-}
+} /* from_client_edit_config */
 
 /*! Internal message: Lock database
  * 
@@ -454,26 +433,23 @@ from_client_lock(clicon_handle h,
     int    retval = -1;
     char  *db;
     int    piddb;
+    cbuf  *cbx = NULL; /* Assist cbuf */
     
     if ((db = netconf_db_find(xe, "target")) == NULL){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-element</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info><bad-element>target</bad-element></error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	    goto done;
 	goto ok;
     }
+    if ((cbx = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }	
     if (xmldb_validate_db(db) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>invalid-value</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>No such database: %s</error-message>"
-		"</rpc-error></rpc-reply>", db);
+	cprintf(cbx, "No such database: %s", db);
+	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
+	    goto done;
 	goto ok;
     }
-
     /*
      * A lock MUST not be granted if either of the following conditions is true:
      * 1) A lock is already held by any NETCONF session or another entity.
@@ -482,23 +458,21 @@ from_client_lock(clicon_handle h,
      */
     piddb = xmldb_islocked(h, db);
     if (piddb){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>lock-denied</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>Lock failed, lock is already held</error-message>"
-		"<error-info><session-id>%d</session-id></error-info>"
-		"</rpc-error></rpc-reply>",
-		piddb);
+	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
+	    goto done;
 	goto ok;
     }
     else{
-	xmldb_lock(h, db, pid);
+	if (xmldb_lock(h, db, pid) < 0)
+	    goto done;
 	cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     }
  ok:
     retval = 0;
-    // done:
+ done:
+    if (cbx)
+	cbuf_free(cbx);
     return retval;
 }
 
@@ -518,23 +492,21 @@ from_client_unlock(clicon_handle h,
     int    retval = -1;
     char  *db;
     int    piddb;
+    cbuf  *cbx = NULL; /* Assist cbuf */
 
     if ((db = netconf_db_find(xe, "target")) == NULL){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-element</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info><bad-element>target</bad-element></error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	    goto done;
 	goto ok;
     }
+    if ((cbx = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }	
     if (xmldb_validate_db(db) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>invalid-value</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>No such database: %s</error-message>"
-		"</rpc-error></rpc-reply>", db);
+	cprintf(cbx, "No such database: %s", db);
+	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
+	    goto done;
 	goto ok;
     }
     piddb = xmldb_islocked(h, db);
@@ -546,14 +518,9 @@ from_client_unlock(clicon_handle h,
      *    session that obtained the lock
      */
     if (piddb==0 || piddb != pid){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>lock-denied</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>Unlock failed, lock is already held</error-message>"
-		"<error-info><session-id>pid=%d piddb=%d</session-id></error-info>"
-		"</rpc-error></rpc-reply>",
-		pid, piddb);
+	cprintf(cbx, "<session-id>pid=%d piddb=%d</session-id>", pid, piddb);
+	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Unlock failed, lock is already held") < 0)
+	    goto done;
 	goto ok;
     }
     else{
@@ -585,15 +552,11 @@ from_client_kill_session(clicon_handle h,
     struct client_entry *ce;
     char                *db = "running"; /* XXX */
     cxobj               *x;
-
+    
     if ((x = xml_find(xe, "session-id")) == NULL ||
 	(str = xml_find_value(x, "body")) == NULL){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-element</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info><bad-element>session-id</bad-element></error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_missing_element(cbret, "protocol", "<bad-element>session-id</bad-element>", NULL) < 0)
+	    goto done;
 	goto ok;
     }
     pid = atoi(str);
@@ -618,18 +581,14 @@ from_client_kill_session(clicon_handle h,
 	    xmldb_unlock(h, db);
     }
     else{ /* failed to kill client */
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>application</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>Faile to kill session</error-message>"
-		"</rpc-error></rpc-reply>");
+	    if (netconf_operation_failed(cbret, "application", "Failed to kill session")< 0)
+		goto done;
 	goto ok;
     }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
-    //  done:
+ done:
     return retval;
 }
 
@@ -647,74 +606,57 @@ from_client_copy_config(clicon_handle h,
 			int           mypid,
 			cbuf         *cbret)
 {
-    char *source;
-    char *target;
-    int   retval = -1;
-    int   piddb;
-
+    char  *source;
+    char  *target;
+    int    retval = -1;
+    int    piddb;
+    cbuf  *cbx = NULL; /* Assist cbuf */
+    
     if ((source = netconf_db_find(xe, "source")) == NULL){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-element</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info><bad-element>source</bad-element></error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_missing_element(cbret, "protocol", "<bad-element>source</bad-element>", NULL) < 0)
+	    goto done;
 	goto ok;
     }
+    if ((cbx = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }	
     if (xmldb_validate_db(source) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>invalid-value</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>No such database: %s</error-message>"
-		"</rpc-error></rpc-reply>", source);
+	cprintf(cbx, "No such database: %s", source);
+	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
+	    goto done;
 	goto ok;
     }
-
     if ((target = netconf_db_find(xe, "target")) == NULL){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-element</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info><bad-element>target</bad-element></error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	    goto done;
 	goto ok;
     }
     if (xmldb_validate_db(target) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>invalid-value</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>No such database: %s</error-message>"
-		"</rpc-error></rpc-reply>", target);
+	cprintf(cbx, "No such database: %s", target);
+	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
+	    goto done;
 	goto ok;
     }
     /* Check if target locked by other client */
     piddb = xmldb_islocked(h, target);
     if (piddb && mypid != piddb){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>lock-denied</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>Operation failed, lock is already held</error-message>"
-		"<error-info><session-id>%d</session-id></error-info>"
-		"</rpc-error></rpc-reply>",
-		piddb);
+	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Copy failed, lock is already held") < 0)
+	    goto done;
 	goto ok;
     }
     if (xmldb_copy(h, source, target) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>application</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info>read-registry</error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+	    goto done;
 	goto ok;
     }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
-    //  done:
+ done:
+    if (cbx)
+	cbuf_free(cbx);
     return retval;
 }
 
@@ -732,67 +674,51 @@ from_client_delete_config(clicon_handle h,
 			  int           mypid,
 			  cbuf         *cbret)
 {
-    int   retval = -1;
-    char *target;
-    int   piddb;
+    int    retval = -1;
+    char  *target;
+    int    piddb;
+    cbuf  *cbx = NULL; /* Assist cbuf */
 
     if ((target = netconf_db_find(xe, "target")) == NULL||
 	strcmp(target, "running")==0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-element</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info><bad-element>target</bad-element></error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	    goto done;
 	goto ok;
     }
+    if ((cbx = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }	
     if (xmldb_validate_db(target) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>invalid-value</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>No such database: %s</error-message>"
-		"</rpc-error></rpc-reply>", target);
+	cprintf(cbx, "No such database: %s", target);
+	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
+	    goto done;
 	goto ok;
     }
-
     /* Check if target locked by other client */
     piddb = xmldb_islocked(h, target);
     if (piddb && mypid != piddb){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>lock-denied</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>Operation failed, lock is already held</error-message>"
-		"<error-info><session-id>%d</session-id></error-info>"
-		"</rpc-error></rpc-reply>",
-		piddb);
+	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
+	    goto done;
 	goto ok;
     }
     if (xmldb_delete(h, target) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info>Internal error</error-info>"
-		"<error-message>%s</error-message>"
-		"</rpc-error></rpc-reply>", clicon_err_reason);
+	if (netconf_operation_failed(cbret, "protocol", clicon_err_reason)< 0)
+	    goto done;
 	goto ok;
     }
     if (xmldb_create(h, target) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info>Internal error</error-info>"
-		"<error-message>%s</error-message>"
-		"</rpc-error></rpc-reply>", clicon_err_reason);
+	if (netconf_operation_failed(cbret, "protocol", clicon_err_reason)< 0)
+	    goto done;
 	goto ok;
     }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
-    //  done:
+  done:
+    if (cbx)
+	cbuf_free(cbx);
     return retval;
 }
 
@@ -829,13 +755,8 @@ from_client_create_subscription(clicon_handle        h,
 	if ((ftype = xml_find_value(x, "type")) != NULL){
 	    /* Only accept xpath as filter type */
 	    if (strcmp(ftype, "xpath") != 0){
-		cprintf(cbret, "<rpc-reply><rpc-error>"
-			"<error-tag>operation-failed</error-tag>"
-			"<error-type>application</error-type>"
-			"<error-severity>error</error-severity>"
-			"<error-message>only xpath filter type supported</error-message>"
-			"<error-info>type</error-info>"
-			"</rpc-error></rpc-reply>");
+		if (netconf_operation_failed(cbret, "application", "Only xpath filter type supported")< 0)
+		    goto done;
 		goto ok;
 	    }
 	}
@@ -866,12 +787,8 @@ from_client_debug(clicon_handle      h,
     char    *valstr;
     
     if ((valstr = xml_find_body(xe, "level")) == NULL){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-element</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info><bad-element>level</bad-element></error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_missing_element(cbret, "application", "<bad-element>level</bad-element>", NULL) < 0)
+	    goto done;
 	goto ok;
     }
     level = atoi(valstr);
@@ -882,11 +799,276 @@ from_client_debug(clicon_handle      h,
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
-    //done:
+ done:
     return retval;
 }
 
+/*! Match nacm access operations according to RFC8321 3.4.4.  
+ * Incoming RPC Message Validation Step 7 (c)
+ *  The rule's "access-operations" leaf has the "exec" bit set or
+ *  has the special value "*".
+ * @retval 0  No match
+ * @retval 1  Match
+ */
+static int
+nacm_match_access(char *access_operations,
+		  char *mode)
+{
+    if (access_operations==NULL)
+	return 0;
+    if (strcmp(access_operations,"*")==0)
+	return 1;
+    if (strstr(mode, access_operations)!=NULL)
+	return 1;
+    return 0;
+}
+
+/*! Match nacm single rule. Either match with access or deny. Or not match.
+ * @param[in]  h      Clicon handle
+ * @param[in]  name  rpc name
+ * @param[in]  xrule  NACM rule XML tree
+ * @param[out] cbret  Cligen buffer result. Set to an error msg if retval=0.
+ * @retval -1  Error
+ * @retval  0  Matching rule AND Not access and cbret set
+ * @retval  1  Matchung rule AND Access
+ * @retval  2  No matching rule Goto step 10
+ * From RFC8321 3.4.4.  Incoming RPC Message Validation
+   +---------+-----------------+---------------------+-----------------+
+   | Method  | Resource class  | NETCONF operation   | Access          |
+   |         |                 |                     | operation       |
+   +---------+-----------------+---------------------+-----------------+
+   | OPTIONS | all             | none                | none            |
+   | HEAD    | all             | <get>, <get-config> | read            |
+   | GET     | all             | <get>, <get-config> | read            |
+   | POST    | datastore, data | <edit-config>       | create          |
+   | POST    | operation       | specified operation | execute         |
+   | PUT     | data            | <edit-config>       | create, update  |
+   | PUT     | datastore       | <copy-config>       | update          |
+   | PATCH   | data, datastore | <edit-config>       | update          |
+   | DELETE  | data            | <edit-config>       | delete          |
+
+ 7.(cont) A rule matches if all of the following criteria are met: 
+        *  The rule's "module-name" leaf is "*" or equals the name of
+           the YANG module where the protocol operation is defined.
+
+        *  Either (1) the rule does not have a "rule-type" defined or
+           (2) the "rule-type" is "protocol-operation" and the
+           "rpc-name" is "*" or equals the name of the requested
+           protocol operation.
+
+        *  The rule's "access-operations" leaf has the "exec" bit set or
+           has the special value "*".
+ */
+static int
+nacm_match_rule(clicon_handle h,
+		char         *name,
+		cxobj        *xrule,
+		cbuf         *cbret)
+{
+    int    retval = -1;
+    //    cxobj *x;
+    char  *module_name;
+    char  *rpc_name;
+    char  *access_operations;
+    char  *action;
+    
+    module_name = xml_find_body(xrule, "module-name");
+    rpc_name = xml_find_body(xrule, "rpc-name");
+    access_operations = xml_find_body(xrule, "access-operations");
+    action = xml_find_body(xrule, "action");
+    clicon_debug(1, "%s: %s %s %s %s", __FUNCTION__,
+	       module_name, rpc_name, access_operations, action);
+    if (module_name && strcmp(module_name,"*")==0){
+	if (nacm_match_access(access_operations, "exec")){
+	    if (rpc_name==NULL ||
+		strcmp(rpc_name, "*")==0 || strcmp(rpc_name, name)==0){
+		/* Here is a matching rule */
+		if (action && strcmp(action, "permit")==0){
+		    retval = 1;
+		    goto done;
+		}
+		else{
+		    if (netconf_access_denied(cbret, "protocol", "access denied") < 0)
+			goto done;
+		    retval = 0;
+		    goto done;
+		}
+	    }
+	}
+    }
+    retval = 2; /* no matching rule */
+ done:
+    return retval;
+
+}
+
+/*! Make nacm access control 
+ * @param[in]  h     Clicon handle
+ * @param[in]  mode  NACMmode, internal or external
+ * @param[in]  name  rpc name
+ * @param[in]  username
+ * @param[out] cbret Cligen buffer result. Set to an error msg if retval=0.
+ * @retval -1  Error
+ * @retval  0  Not access and cbret set
+ * @retval  1  Access
+ * From RFC8321 3.4.4.  Incoming RPC Message Validation
+ */
+static int
+nacm_access(clicon_handle h,
+	    char         *mode,
+	    char         *name,
+	    char         *username,
+	    cbuf         *cbret)
+{
+    int     retval = -1;
+    cxobj  *xtop = NULL;
+    cxobj  *xacm;
+    cxobj  *x;
+    cxobj  *xrlist;
+    cxobj  *xrule;
+    char   *enabled = NULL;
+    cxobj **gvec = NULL; /* groups */
+    size_t  glen;
+    cxobj **rlistvec = NULL; /* rule-list */
+    size_t  rlistlen;
+    cxobj **rvec = NULL; /* rules */
+    size_t  rlen;
+    int     i, j;
+    char   *exec_default = NULL;
+    int     ret;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    /* 0. If nacm-mode is external, get NACM defintion from separet tree,
+       otherwise get it from internal configuration */
+    if (strcmp(mode, "external")==0){
+	if ((xtop = backend_nacm_list_get(h)) == NULL){
+	    clicon_err(OE_XML, 0, "No nacm external tree");
+	    goto done;
+	}
+    }
+    else if (strcmp(mode, "internal")==0){
+	if (xmldb_get(h, "running", "nacm", 0, &xtop) < 0)
+	    goto done;	
+    }
+    else{
+	clicon_err(OE_UNIX, 0, "Invalid NACM mode: %s", mode);
+	goto done;
+    }
+    
+    /* 1.   If the "enable-nacm" leaf is set to "false", then the protocol
+       operation is permitted. (or config does not exist) */
+
+    if ((xacm = xpath_first(xtop, "nacm")) == NULL)
+	goto permit;
+    exec_default = xml_find_body(xacm, "exec-default");
+    if ((x = xpath_first(xacm, "enable-nacm")) == NULL)
+	goto permit;
+    enabled = xml_body(x);
+    if (strcmp(enabled, "true") != 0)
+	goto permit;
+
+    /* 2.   If the requesting session is identified as a recovery session,
+       then the protocol operation is permitted. NYI */
+    
+    /* 3.   If the requested operation is the NETCONF <close-session>
+       protocol operation, then the protocol operation is permitted.
+    */
+    if (strcmp(name, "close-session") == 0)
+	goto permit;
+    /* 4.   Check all the "group" entries to see if any of them contain a
+       "user-name" entry that equals the username for the session
+       making the request.  (If the "enable-external-groups" leaf is
+       "true", add to these groups the set of groups provided by the
+       transport layer.)	       */
+    if (username == NULL)
+	goto step10;
+    /* User's group */
+    if (xpath_vec(xacm, "groups/group[user-name=%s]", &gvec, &glen, username) < 0)
+	goto done;
+    /* 5. If no groups are found, continue with step 10. */
+    if (glen == 0)
+	goto step10;
+    /* 6. Process all rule-list entries, in the order they appear in the
+        configuration.  If a rule-list's "group" leaf-list does not
+        match any of the user's groups, proceed to the next rule-list
+        entry. */
+    if (xpath_vec(xacm, "rule-list", &rlistvec, &rlistlen) < 0)
+	goto done;
+    for (i=0; i<rlistlen; i++){
+	xrlist = rlistvec[i];
+	/* Loop through user's group to find match in this rule-list */
+	for (j=0; j<glen; j++){
+	    char *gname;
+	    gname = xml_find_body(gvec[j], "name");
+	    if (xpath_first(xrlist,".[group=%s]", gname)!=NULL)
+		break; /* found */
+	}
+	if (j==glen) /* not found */
+	    continue;
+	/* 7. For each rule-list entry found, process all rules, in order,
+	   until a rule that matches the requested access operation is
+	   found. 
+	*/
+	if (xpath_vec(xrlist, "rule", &rvec, &rlen) < 0)
+	    goto done;
+	for (j=0; j<rlen; j++){
+	    xrule = rvec[j];
+	    /* -1 error, 0 deny, 1 permit, 2 continue */
+	    if ((ret = nacm_match_rule(h, name, xrule, cbret)) < 0)
+		goto done;
+	    switch(ret){
+	    case 0: /* deny */
+		goto deny;
+		break;
+	    case 1: /* permit */
+		goto permit;
+		break;
+	    case 2: /* no match, continue */
+		break;
+	    }
+	}
+    }
+ step10:
+    /*   10.  If the requested protocol operation is defined in a YANG module
+        advertised in the server capabilities and the "rpc" statement
+        contains a "nacm:default-deny-all" statement, then the protocol
+        operation is denied. */
+    /* 11.  If the requested protocol operation is the NETCONF
+        <kill-session> or <delete-config>, then the protocol operation
+        is denied. */
+    if (strcmp(name, "kill-session")==0 || strcmp(name, "delete-config")==0){
+	if (netconf_access_denied(cbret, "protocol", "default deny") < 0)
+	    goto done;
+	goto deny;
+    }
+    /*   12.  If the "exec-default" leaf is set to "permit", then permit the
+	 protocol operation; otherwise, deny the request. */
+    if (exec_default ==NULL || strcmp(exec_default, "permit")==0)
+	goto permit;
+    if (netconf_access_denied(cbret, "protocol", "default deny") < 0)
+	goto done;
+    goto deny;
+ permit:
+    retval = 1;
+ done:
+    clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    if (strcmp(mode, "internal")==0 && xtop)
+	xml_free(xtop);
+    if (gvec)
+	free(gvec);
+    if (rlistvec)
+	free(rlistvec);
+    if (rvec)
+	free(rvec);
+    return retval;
+ deny: /* Here, cbret must contain a netconf error msg */
+    assert(cbuf_len(cbret));
+    retval = 0;
+    goto done;
+}
+
 /*! An internal clicon message has arrived from a client. Receive and dispatch.
+ * @param[in]   h    Clicon handle
  * @param[in]   s    Socket where message arrived. read from this.
  * @param[in]   arg  Client entry (from).
  * @retval      0    OK
@@ -907,7 +1089,10 @@ from_client_msg(clicon_handle        h,
     cbuf                *cbret = NULL; /* return message */
     int                  pid;
     int                  ret;
+    char                *username;
+    char                *nacm_mode;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     pid = ce->ce_pid;
     /* Return netconf message. Should be filled in by the dispatch(sub) functions 
      * as wither rpc-error or by positive response.
@@ -917,28 +1102,28 @@ from_client_msg(clicon_handle        h,
 	goto done;
     }
     if (clicon_msg_decode(msg, &xt) < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>rpc</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>rpc expected</error-message>"
-		"<error-info>Not recognized</error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_malformed_message(cbret, "XML parse error")< 0)
+	    goto done;
 	goto reply;
     }
     if ((x = xpath_first(xt, "/rpc")) == NULL){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>rpc</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>rpc expected</error-message>"
-		"<error-info>Not recognized</error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_malformed_message(cbret, "rpc keyword expected")< 0)
+	    goto done;
 	goto reply;
     }
     xe = NULL;
+    username = xml_find_value(x, "username");
     while ((xe = xml_child_each(x, xe, CX_ELMNT)) != NULL) {
 	name = xml_name(xe);
+	clicon_debug(1, "%s name:%s", __FUNCTION__, name);
+	/* Make NACM access control if enabled as "internal"*/
+	nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
+	if (nacm_mode && strcmp(nacm_mode, "disabled") != 0){
+	    if ((ret = nacm_access(h, nacm_mode, name, username, cbret)) < 0)
+		goto done;
+	    if (!ret)
+		goto reply;
+	}
 	if (strcmp(name, "get-config") == 0){
 	    if (from_client_get_config(h, xe, cbret) <0)
 		goto done;
@@ -977,12 +1162,8 @@ from_client_msg(clicon_handle        h,
 	}
 	else if (strcmp(name, "validate") == 0){
 	    if ((db = netconf_db_find(xe, "source")) == NULL){
-		cprintf(cbret, "<rpc-reply><rpc-error>"
-			"<error-tag>missing-element</error-tag>"
-			"<error-type>protocol</error-type>"
-			"<error-severity>error</error-severity>"
-			"<error-info><bad-element>source</bad-element></error-info>"
-			"</rpc-error></rpc-reply>");
+		if (netconf_missing_element(cbret, "protocol", "<bad-element>source</bad-element>", NULL) < 0)
+		    goto done;
 		goto reply;
 	    }
 	    if (from_client_validate(h, db, cbret) < 0)
@@ -1006,36 +1187,26 @@ from_client_msg(clicon_handle        h,
 	}
 	else{
 	    clicon_err_reset();
-	    if ((ret = backend_rpc_cb_call(h, xe, ce, cbret)) < 0){
-		cprintf(cbret, "<rpc-reply><rpc-error>"
-			"<error-tag>operation-failed</error-tag>"
-			"<error-type>rpc</error-type>"
-			"<error-severity>error</error-severity>"
-			"<error-message>Internal error:%s</error-message>"
-			"</rpc-error></rpc-reply>", clicon_err_reason);
-		clicon_log(LOG_NOTICE, "%s Error in backend_rpc_call:%s", __FUNCTION__, xml_name(xe));
+	    if ((ret = rpc_callback_call(h, xe, cbret, ce)) < 0){
+		if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+		    goto done;
+		clicon_log(LOG_NOTICE, "%s Error in rpc_callback_call:%s", __FUNCTION__, xml_name(xe));
 		goto reply; /* Dont quit here on user callbacks */
 	    }
-	    if (ret == 0) /* not handled by callback */
-		cprintf(cbret, "<rpc-reply><rpc-error>"
-			"<error-tag>operation-failed</error-tag>"
-			"<error-type>rpc</error-type>"
-			"<error-severity>error</error-severity>"
-			"<error-message>%s</error-message>"
-			"<error-info>Not recognized</error-info>"
-			"</rpc-error></rpc-reply>",
-			name);
+	    if (ret == 0){ /* not handled by callback */
+		if (netconf_operation_failed(cbret, "application", "Callback not recognized")< 0)
+		    goto done;
+		goto reply;
+	    }
 	}
     }
  reply:
     if (cbuf_len(cbret) == 0)
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>rpc</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>Internal error %s</error-message>"
-		"</rpc-error></rpc-reply>",clicon_err_reason);
+	if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+	    goto done;
     clicon_debug(1, "%s cbret:%s", __FUNCTION__, cbuf_get(cbret));
+    /* XXX problem here is that cbret has not been parsed so may contain 
+       parse errors */
     if (send_msg_reply(ce->ce_s, cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
 	switch (errno){
 	case EPIPE:
@@ -1055,7 +1226,8 @@ from_client_msg(clicon_handle        h,
     }
     // ok:
     retval = 0;
-  done:
+  done:  
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xt)
 	xml_free(xt);
     if (cbret)
@@ -1085,6 +1257,7 @@ from_client(int   s,
     clicon_handle        h = ce->ce_handle;
     int                  eof;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     // assert(s == ce->ce_s);
     if (clicon_msg_rcv(ce->ce_s, &msg, &eof) < 0)
 	goto done;

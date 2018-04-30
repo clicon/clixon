@@ -1,4 +1,20 @@
-# Clixon yang routing example
+# Clixon example
+
+This directory contains a Clixon example which includes a simple
+routing example. It contains the following files:
+* example.xml       The configuration file. See yang/clixon-config@<date>.yang for all available fields.
+* example.yang      The yang spec of the example. It mainly includes ietf routing and IP modules.
+* example_cli.cli   CLIgen specification.
+* example_cli.c     CLI callback plugin containing functions called in the cli file above: a generic callback (`mycallback`) and an RPC (`fib_route_rpc`).
+* example_backend.c Backend callback plugin including example of:
+  * transaction callbacks (validate/commit),
+  * notification,
+  * rpc handler
+  * state-data handler, ie non-config data
+* example_backend_nacm.c Secondary backend plugin. Plugins are loaded alphabetically.
+* example_restconf.c Restconf callback plugin containing an HTTP basic authentication callback
+* example_netconf.c Netconf callback plugin
+* Makefile.in       Example makefile where plugins are built and installed
 
 ## Compile and run
 ```
@@ -7,15 +23,23 @@
 ```
 Start backend:
 ```
-    clixon_backend -f /usr/local/etc/routing.xml -I
+    clixon_backend -f /usr/local/etc/example.xml -I
 ```
 Edit cli:
 ```
-    clixon_cli -f /usr/local/etc/routing.xml
+    clixon_cli -f /usr/local/etc/example.xml
 ```
 Send netconf command:
 ```
-    clixon_netconf -f /usr/local/etc/routing.xml
+    clixon_netconf -f /usr/local/etc/example.xml
+```
+Start clixon restconf daemon
+```
+> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+```
+Send restconf command
+```
+    curl -G http://127.0.0.1/restconf/data
 ```
 
 ## Setting data example using netconf
@@ -65,6 +89,38 @@ Routing notification
 ...
 ```
 
+## Initializing a plugin
+
+The example includes a restonf, netconf, CLI and two backend plugins.
+Each plugin is initiated with an API struct followed by a plugin init function.
+The content of the API struct is different depending on what kind of plugin it is.
+The plugin init function may also include registering RPC functions, see below is for a backend.
+```
+static clixon_plugin_api api = {
+    "example",          /* name */
+    clixon_plugin_init, 
+    plugin_start,       
+    plugin_exit,        
+    .ca_reset=plugin_reset,/* reset */          
+    .ca_statedata=plugin_statedata, /* statedata */
+    .ca_trans_begin=NULL, /* trans begin */
+    .ca_trans_validate=transaction_validate,/* trans validate */
+    .ca_trans_complete=NULL,                /* trans complete */
+    .ca_trans_commit=transaction_commit,    /* trans commit */
+    .ca_trans_end=NULL,                     /* trans end */
+    .ca_trans_abort=NULL                    /* trans abort */
+};
+
+clixon_plugin_api *
+clixon_plugin_init(clicon_handle h)
+{
+    /* Optional callback registration for RPC calls */
+    rpc_callback_register(h, fib_route, NULL, "fib-route");
+    /* Return plugin API */
+    return &api; /* Return NULL on error */
+}
+```
+
 ## Operation data
 
 Clixon implements Yang RPC operations by an extension mechanism. The
@@ -95,18 +151,18 @@ In the backend, a callback is registered (fib_route()) which handles the RPC.
 static int 
 fib_route(clicon_handle h, 
 	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  struct client_entry *ce,    /* Client session */
 	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg)          /* Argument given at register */
+	  void         *arg,          /* Client session */
+	  void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
     return 0;
 }
 int
-plugin_init(clicon_handle h)
+clixon_plugin_init(clicon_handle h)
 {
 ...
-   backend_rpc_cb_register(h, fib_route, NULL, "fib-route");
+   rpc_callback_register(h, fib_route, NULL, "fib-route");
 ...
 }
 ```
@@ -114,7 +170,7 @@ plugin_init(clicon_handle h)
 
 Netconf <get> and restconf GET also returns state data, in contrast to
 config data. 
-
+p
 In YANG state data is specified with "config false;". In the example, interface-state is state data.
 
 To return state data, you need to write a backend state data callback
@@ -126,8 +182,15 @@ a real example would poll or get the interface counters via a system
 call, as well as use the "xpath" argument to identify the requested
 state data.
 
+## Authentication and NACM
+The example contains some stubs for authorization according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341):
+* A basic auth HTTP callback, see: example_restconf_credentials() containing three example users: adm1, wilma, and guest, according to the examples in Appendix A in the RFC.
+* A NACM backend plugin reporting the mandatory NACM state variables.
+
 
 ## Run as docker container
+
+(Note not updated)
 ```
 cd docker
 # look in README

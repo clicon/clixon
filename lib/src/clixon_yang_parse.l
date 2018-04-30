@@ -1,8 +1,4 @@
 /*
- * Yang 1.0 parser according to RFC6020.
- * It is hopefully useful but not complete
- * RFC7950 defines Yang version 1.1
- *
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
@@ -34,8 +30,9 @@
 
   ***** END LICENSE BLOCK *****
 
- * Database specification parser cli syntax
- * (Cloned from cligen parser)
+ * Yang parser. Hopefully useful but not complete
+ * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
+ * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
  */
 
 %{
@@ -101,12 +98,13 @@ clixon_yang_parsewrap(void)
 %s ESCAPE
 %s COMMENT1
 %s COMMENT2
+%s UNKNOWN
 
 %%
  /* Common tokens */
 <KEYWORD,ARGUMENT,STRING0>[ \t]            
-<KEYWORD,ARGUMENT,STRING0><<EOF>> { return MY_EOF; }
-<KEYWORD,ARGUMENT,STRING0,COMMENT1>\n   { _YY->yy_linenum++; }
+<KEYWORD,ARGUMENT,STRING0,UNKNOWN><<EOF>> { return MY_EOF; }
+<KEYWORD,ARGUMENT,STRING0,COMMENT1,UNKNOWN>\n   { _YY->yy_linenum++; }
 <KEYWORD,ARGUMENT,STRING0>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
 <KEYWORD,ARGUMENT,STRING0>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
 
@@ -182,7 +180,14 @@ clixon_yang_parsewrap(void)
 <KEYWORD>:                { return *yytext; }
 <KEYWORD>;                { return *yytext; }
 <KEYWORD>.                { clixon_yang_parselval.string = strdup(yytext);
-                             return CHAR;}
+                             BEGIN(UNKNOWN); return CHAR; }
+
+<UNKNOWN>:                { return *yytext; }
+<UNKNOWN>;                { BEGIN(KEYWORD); return *yytext; }
+<UNKNOWN>[ \t]            { return ' '; }
+<UNKNOWN>.                { clixon_yang_parselval.string = strdup(yytext);
+                            return CHAR; }
+
 
 
 <ARGUMENT>;                { BEGIN(KEYWORD); return *yytext; }

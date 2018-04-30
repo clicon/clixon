@@ -61,10 +61,11 @@
 #include <errno.h>
 #include <ctype.h>
 #include <string.h>
-#include <arpa/inet.h>
-#include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <assert.h>
+#include <arpa/inet.h>
+#include <sys/param.h>
 #include <netinet/in.h>
 
 /* cligen */
@@ -79,27 +80,14 @@
 #include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_yang_type.h"
-#include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_xml.h"
+#include "clixon_plugin.h"
 #include "clixon_xsl.h"
 #include "clixon_log.h"
 #include "clixon_err.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_map.h"
-
-/*
- * A node is a leaf if it contains a body.
- */
-static cxobj *
-leaf(cxobj *xn)
-{
-    cxobj *xc = NULL;
-
-    while ((xc = xml_child_each(xn, xc, CX_BODY)) != NULL)
-	break;
-    return xc;
-}
 
 /*! x is element and has eactly one child which in turn has none */
 static int
@@ -117,6 +105,7 @@ tleaf(cxobj *x)
 
 /*! Translate XML -> TEXT
  * @param[in]  level  print 4 spaces per level in front of each line
+ * XXX rewrite using YANG and remove encrypted password KLUDGE
  */
 int 
 xml2txt(FILE  *f, 
@@ -127,26 +116,19 @@ xml2txt(FILE  *f,
     int    children=0;
     char  *term = NULL;
     int    retval = -1;
-    int    encr=0;
 
     xe = NULL;     /* count children */
     while ((xe = xml_child_each(x, xe, -1)) != NULL)
 	children++;
     if (!children){ 
 	if (xml_type(x) == CX_BODY){
-	    /* Kludge for escaping encrypted passwords */
-	    if (strcmp(xml_name(xml_parent(x)), "encrypted-password")==0)
-		encr++;
 	    term = xml_value(x);
 	}
 	else{
 	    fprintf(f, "%*s", 4*level, "");
 	    term = xml_name(x);
 	}
-	if (encr)
-	    fprintf(f, "\"%s\";\n", term);
-	else
-	    fprintf(f, "%s;\n", term);
+	fprintf(f, "%s;\n", term);
 	retval = 0;
 	goto done;
     }
@@ -183,67 +165,60 @@ xml2cli(FILE              *f,
 {
     int              retval = -1;
     cxobj           *xe = NULL;
-    char            *term;
-    int              bool;
-    int              nr;
-    int              i;
-    cbuf            *cbpre;
+    cbuf            *cbpre = NULL;
+    yang_stmt       *ys;
+    int              match;
+    char            *body;
 
+    ys = xml_spec(x);
+    if (ys->ys_keyword == Y_LEAF || ys->ys_keyword == Y_LEAF_LIST){
+	if (prepend0)
+	    fprintf(f, "%s", prepend0);
+	body = xml_body(x);
+	if (gt == GT_ALL || gt == GT_VARS)
+	    fprintf(f, "%s ", xml_name(x));
+	if (index(body, ' '))
+	    fprintf(f, "\"%s\"", body);
+	else
+	    fprintf(f, "%s", body);
+	fprintf(f, "\n");
+	goto ok;
+    }
     /* Create prepend variable string */
     if ((cbpre = cbuf_new()) == NULL){
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
 	goto done;
     }
-    nr = xml_child_nr(x);
-    if (!nr){
-	if (xml_type(x) == CX_BODY)
-	    term = xml_value(x);
-	else
-	    term = xml_name(x);
-	if (prepend0)
-	    fprintf(f, "%s ", prepend0);
-	if (index(term, ' '))
-	    fprintf(f, "\"%s\"\n", term);
-	else
-	    fprintf(f, "%s\n", term);
-	retval = 0;
-	goto done;
-    }
     if (prepend0)
 	cprintf(cbpre, "%s", prepend0);
-/* bool determines when to print a variable keyword:
-   !leaf           T for all (ie parameter)
-   index GT_NONE   F
-   index GT_VARS   F
-   index GT_ALL    T
-   !index GT_NONE  F
-   !index GT_VARS  T
-   !index GT_ALL   T
- */
-    bool = !leaf(x) || gt == GT_ALL || (gt == GT_VARS);
-//    bool = (!x->xn_index || gt == GT_ALL);
-    if (bool){
-	if (cbuf_len(cbpre))
-	    cprintf(cbpre, " ");
-	cprintf(cbpre, "%s", xml_name(x));
-    }
-    xe = NULL;
-    /* First child is unique, then add that, before looping. */
-    i = 0;
-    while ((xe = xml_child_each(x, xe, -1)) != NULL){
-	/* Dont call this if it is index and there are other following */
-	if (0 && i < nr-1) 
-	    ;
-	else
-	    if (xml2cli(f, xe, cbuf_get(cbpre), gt) < 0)
+    cprintf(cbpre, "%s ", xml_name(x));
+
+    if (ys->ys_keyword == Y_LIST){
+	/* If list then first loop through keys */
+	xe = NULL;
+	while ((xe = xml_child_each(x, xe, -1)) != NULL){
+	    if ((match = yang_key_match((yang_node*)ys, xml_name(xe))) < 0)
 		goto done;
-	if (0){ /* assume index is first, otherwise need one more while */
+	    if (!match)
+		continue;
 	    if (gt == GT_ALL)
-		cprintf(cbpre, " %s", xml_name(xe));
-	    cprintf(cbpre, " %s", xml_value(xml_child_i(xe, 0)));
+		cprintf(cbpre, "%s ", xml_name(xe));
+	    cprintf(cbpre, "%s ", xml_body(xe));
 	}
-	i++;
     }
+    /* Then loop through all other (non-keys) */
+    xe = NULL;
+    while ((xe = xml_child_each(x, xe, -1)) != NULL){
+	if (ys->ys_keyword == Y_LIST){
+	    if ((match = yang_key_match((yang_node*)ys, xml_name(xe))) < 0)
+		goto done;
+	    if (match)
+		continue;
+	}
+	if (xml2cli(f, xe, cbuf_get(cbpre), gt) < 0)
+	    goto done;
+    }
+ ok:
     retval = 0;
   done:
     if (cbpre)
@@ -267,7 +242,6 @@ validate_leafref(cxobj     *xt,
     size_t       xlen = 0;
     char        *leafrefbody;
     char        *leafbody;
-
 
     if ((leafrefbody = xml_body(xt)) == NULL)
 	return 0;
@@ -316,15 +290,19 @@ xml_yang_validate_add(cxobj   *xt,
     yang_stmt *ys;
     char      *body;
     
-    /* if not given by argument (overide) use default link */
-    if ((ys = xml_spec(xt)) != NULL){
+    /* if not given by argument (overide) use default link 
+       and !Node has a config sub-statement and it is false */
+    if ((ys = xml_spec(xt)) != NULL && yang_config(ys) != 0){
 	switch (ys->ys_keyword){
+	case Y_INPUT:
 	case Y_LIST:
 	    /* fall thru */
 	case Y_CONTAINER:
 	    for (i=0; i<ys->ys_len; i++){
 		yc = ys->ys_stmt[i];
 		if (yc->ys_keyword != Y_LEAF)
+		    continue;
+		if (yang_config(yc)==0)
 		    continue;
 		if (yang_mandatory(yc) && xml_find(xt, yc->ys_argument)==NULL){
 		    clicon_err(OE_CFG, 0,"Missing mandatory variable: %s",
@@ -385,8 +363,10 @@ xml_yang_validate_all(cxobj   *xt,
     yang_stmt *ys;
     yang_stmt *ytype;
     
-    /* if not given by argument (overide) use default link */
-    if ((ys = xml_spec(xt)) != NULL){
+    /* if not given by argument (overide) use default link 
+       and !Node has a config sub-statement and it is false */
+    if ((ys = xml_spec(xt)) != NULL &&
+	yang_config(ys) != 0){
 	switch (ys->ys_keyword){
 	case Y_LEAF:
 	    /* fall thru */
@@ -587,7 +567,7 @@ yang_next(yang_node *y,
     yang_stmt *ys;
 
     if (y->yn_keyword == Y_SPEC)
-	ys = yang_find_topnode((yang_spec*)y, name, 0);
+	ys = yang_find_topnode((yang_spec*)y, name, YC_DATANODE);
     else
 	ys = yang_find_datanode(y, name);
     if (ys == NULL)
@@ -833,7 +813,6 @@ yang2api_path_fmt(yang_stmt *ys,
     return retval;
 }
 
-
 /*! Transform an xml key format and a vector of values to an XML key
  * Used for actual key, eg in clicon_rpc_change(), xmldb_put_xkey()
  * Example: 
@@ -896,7 +875,7 @@ api_path_fmt2api_path(char  *api_path_fmt,
 		    clicon_err(OE_UNIX, errno, "cv2str_dup");
 		    goto done;
 		}
-		if (percent_encode(str, &strenc) < 0)
+		if (uri_percent_encode(str, &strenc) < 0)
 		    goto done;
 		cprintf(cb, "%s", strenc); 
 		free(strenc); strenc = NULL;
@@ -1313,7 +1292,7 @@ xml_spec_populate(cxobj  *x,
 	(yp = xml_spec(xp)) != NULL)
 	y = yang_find_datanode((yang_node*)yp, xml_name(x));
     else
-	y = yang_find_topnode(yspec, name, 0); /* still NULL for config */
+	y = yang_find_topnode(yspec, name, YC_DATANODE); /* still NULL for config */
 #endif
     if (y)
 	xml_spec_set(x, y);
@@ -1367,7 +1346,7 @@ api_path2xpath_cvv(yang_spec *yspec,
 	clicon_debug(1, "[%d] cvname:%s", i, name);
 	clicon_debug(1, "cv2str%d", cv2str(cv, NULL, 0));
 	if (i == offset){
-	    if ((y = yang_find_topnode(yspec, name, 0)) == NULL){
+	    if ((y = yang_find_topnode(yspec, name, YC_DATANODE)) == NULL){
 		clicon_err(OE_UNIX, errno, "No yang node found: %s", name);
 		goto done;
 	    }
@@ -1448,7 +1427,7 @@ api_path2xpath(yang_spec *yspec,
  * @param[in]   nvec      Length of vec
  * @param[in]   x0        Xpath tree so far
  * @param[in]   y0        Yang spec for x0
- * @param[in]   schemanode If set use schema nodes otherwise data nodes.
+ * @param[in]   nodeclass Set to schema nodes, data nodes, etc
  * @param[out]  xpathp    Resulting xml tree 
  * @param[out]  ypathp    Yang spec matching xpathp
  * @see api_path2xml
@@ -1458,7 +1437,7 @@ api_path2xml_vec(char             **vec,
 		 int                nvec,
 		 cxobj             *x0,
 		 yang_node         *y0,
-		 int                schemanode,
+		 yang_class         nodeclass,
 		 cxobj            **xpathp,
 		 yang_node        **ypathp)
 {
@@ -1490,7 +1469,7 @@ api_path2xml_vec(char             **vec,
     if ((restval_enc = index(name, '=')) != NULL){
 	*restval_enc = '\0';
 	restval_enc++;
-	if (percent_decode(restval_enc, &restval) < 0)
+	if (uri_percent_decode(restval_enc, &restval) < 0)
 	    goto done;
     }
     /* Split into prefix and localname, ignore prefix for now */
@@ -1500,10 +1479,10 @@ api_path2xml_vec(char             **vec,
 	name = local;
     }
     if (y0->yn_keyword == Y_SPEC){ /* top-node */
-	y = yang_find_topnode((yang_spec*)y0, name, schemanode);
+	y = yang_find_topnode((yang_spec*)y0, name, nodeclass);
     }
     else {
-	y = schemanode?yang_find_schemanode((yang_node*)y0, name):
+	y = (nodeclass==YC_SCHEMANODE)?yang_find_schemanode((yang_node*)y0, name):
 	    yang_find_datanode((yang_node*)y0, name);
     }
     if (y == NULL){
@@ -1572,7 +1551,7 @@ api_path2xml_vec(char             **vec,
     }
     if (api_path2xml_vec(vec+1, nvec-1, 
 			 x, (yang_node*)y, 
-			 schemanode,
+			 nodeclass,
 			 xpathp, ypathp) < 0)
 	goto done;
     retval = 0;
@@ -1588,7 +1567,7 @@ api_path2xml_vec(char             **vec,
  * @param[in]     api_path   API-path as defined in RFC 8040
  * @param[in]     yspec      Yang spec
  * @param[in,out] xtop       Incoming XML tree
- * @param[in]     schemanode If set use schema nodes otherwise data nodes.
+ * @param[in]     nodeclass  Set to schema nodes, data nodes, etc
  * @param[out]    xbotp      Resulting xml tree (end of xpath)
  * @param[out]    ybotp      Yang spec matching xbotp
  * @example
@@ -1605,7 +1584,7 @@ int
 api_path2xml(char       *api_path,
 	     yang_spec  *yspec,
 	     cxobj      *xtop,
-	     int         schemanode,
+	     yang_class  nodeclass,
 	     cxobj     **xbotp,
 	     yang_node **ybotp)
 {
@@ -1614,8 +1593,8 @@ api_path2xml(char       *api_path,
     int    nvec;
 
     if (*api_path!='/'){
-	clicon_err(OE_DB, 0, "Invalid key: %s", api_path);
-	goto done;
+	clicon_log(LOG_WARNING, "Invalid key: %s (must start with '/')", api_path);
+	goto ok;
     }
     if ((vec = clicon_strsep(api_path, "/", &nvec)) == NULL)
 	goto done;
@@ -1628,9 +1607,10 @@ api_path2xml(char       *api_path,
     }
     nvec--; /* NULL-terminated */
     if (api_path2xml_vec(vec+1, nvec, 
-			 xtop, (yang_node*)yspec, schemanode,
+			 xtop, (yang_node*)yspec, nodeclass,
 			 xbotp, ybotp) < 0)
 	goto done;
+ ok:
     retval = 0;
  done:
     if (vec)
@@ -1643,6 +1623,9 @@ api_path2xml(char       *api_path,
  * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  x0p Parent of x0
  * @param[in]  x1  xml tree which modifies base
+ * @param[out] reason If retval=0 a malloced string
+ * @retval     0     OK. If reason is set, Yang error
+ * @retval    -1     Error
  * Assume x0 and x1 are same on entry and that y is the spec
  * @see put in clixon_keyvalue.c
  */
@@ -1650,7 +1633,8 @@ static int
 xml_merge1(cxobj              *x0,
 	   yang_node          *y0,
 	   cxobj              *x0p,
-	   cxobj              *x1)
+	   cxobj              *x1,
+	   char              **reason)
 {
     int        retval = -1;
     char      *x1name;
@@ -1698,24 +1682,35 @@ xml_merge1(cxobj              *x0,
 	    x1cname = xml_name(x1c);
 	    /* Get yang spec of the child */
 	    if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
-		clicon_err(OE_YANG, errno, "No yang node found: %s", x1cname);
-		goto done;
+		if (reason && (*reason = strdup("XML node has no corresponding yang specification (Invalid XML or wrong Yang spec?")) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto done;
+		}
+		break;
 	    }
 	    /* See if there is a corresponding node in the base tree */
 	    x0c = NULL;
 	    if (yc && match_base_child(x0, x1c, &x0c, yc) < 0)
 		goto done;
-	    if (xml_merge1(x0c, (yang_node*)yc, x0, x1c) < 0)
+	    if (xml_merge1(x0c, (yang_node*)yc, x0, x1c, reason) < 0)
 		goto done;
+	    if (*reason != NULL)
+		goto ok;
 	}
     } /* else Y_CONTAINER  */
-    // ok:
+ ok:
     retval = 0;
  done:
     return retval;
 }
 
 /*! Merge XML trees x1 into x0 according to yang spec yspec
+ * @param[in]  x0    Base xml tree (can be NULL in add scenarios)
+ * @param[in]  x1    xml tree which modifies base
+ * @param[in]  yspec Yang spec
+ * @param[out] reason If retval=0 a malloced string. Needs to be freed by caller
+ * @retval     0     OK. If reason is set, Yang error
+ * @retval    -1     Error
  * @note both x0 and x1 need to be top-level trees
  * @see text_modify_top as more generic variant (in datastore text)
  * @note returns -1 if YANG do not match, you may want to have a softer error
@@ -1723,7 +1718,8 @@ xml_merge1(cxobj              *x0,
 int
 xml_merge(cxobj     *x0,
 	  cxobj     *x1,
-	  yang_spec *yspec)
+	  yang_spec *yspec,
+	  char     **reason)
 {
     int        retval = -1;
     char      *x1cname; /* child name */
@@ -1736,17 +1732,22 @@ xml_merge(cxobj     *x0,
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 	x1cname = xml_name(x1c);
 	/* Get yang spec of the child */
-	if ((yc = yang_find_topnode(yspec, x1cname, 0)) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "No yang spec");
-	    goto done;
+	if ((yc = yang_find_topnode(yspec, x1cname, YC_DATANODE)) == NULL){
+	    if (reason && (*reason = strdup("XML node has no corresponding yang specification (Invalid XML or wrong Yang spec?")) == NULL){
+		clicon_err(OE_UNIX, errno, "strdup");
+		goto done;
+	    }
+	    break;
 	}
 	/* See if there is a corresponding node in the base tree */
 	if (match_base_child(x0, x1c, &x0c, yc) < 0)
 	    goto done;
-	if (xml_merge1(x0c, (yang_node*)yc, x0, x1c) < 0)
+	if (xml_merge1(x0c, (yang_node*)yc, x0, x1c, reason) < 0)
 	    goto done;
+	if (*reason != NULL)
+	    break;
     }
-    retval = 0;
+    retval = 0; /* OK */
  done:
     return retval;
 }

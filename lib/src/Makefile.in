@@ -51,7 +51,8 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 VPATH       	= @srcdir@
 CC		= @CC@
-CFLAGS  	= -fPIC @CFLAGS@ 
+CFLAGS  	= -fPIC @CFLAGS@
+INSTALLFLAGS  	= @INSTALLFLAGS@
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@ 
 
@@ -68,7 +69,7 @@ SRC     = clixon_sig.c clixon_log.c clixon_err.c clixon_event.c \
 	  clixon_json.c clixon_yang.c clixon_yang_type.c \
 	  clixon_hash.c clixon_options.c clixon_plugin.c \
 	  clixon_proto.c clixon_proto_client.c \
-	  clixon_xsl.c clixon_sha1.c clixon_xml_db.c
+	  clixon_xsl.c clixon_sha1.c clixon_xml_db.c clixon_netconf_lib.c
 
 YACCOBJS := lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
 	    lex.clixon_yang_parse.o  clixon_yang_parse.tab.o \
@@ -181,8 +182,8 @@ install: install-lib
 install-include:
 
 install-lib: $(MYLIB)
-	install -m 755 -d $(DESTDIR)$(libdir) 
-	install -m 755 $(MYLIB) $(DESTDIR)$(libdir) 
+	install -m 0755 -d $(DESTDIR)$(libdir)
+	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
 	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon.so.3
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon.so
 

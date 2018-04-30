@@ -40,25 +40,10 @@
 #define _CLIXON_NETCONF_H_
 
 /*
- * Types
- */
-typedef int (*netconf_cb_t)(
-    clicon_handle h, 
-    cxobj  *xn,              /* Request: <rpc><xn></rpc> */
-    cxobj **xret,            /* Return xml tree, eg <rpc-reply>... */
-    void   *arg              /* Argument given at netconf_register_callback() */
-    );  
-
-/*
  * Prototypes
  * (Duplicated. Also in netconf_*.h)
  */
 int netconf_output(int s, cbuf *xf, char *msg);
-
-int netconf_register_callback(clicon_handle h,
-			      netconf_cb_t cb,   /* Callback called */
-			      void *arg,       /* Arg to send to callback */
-			      char *tag);      /* Xml tag when callback is made */
 
 int netconf_xpath(cxobj *xsearch,
 		  cxobj *xfilter, 

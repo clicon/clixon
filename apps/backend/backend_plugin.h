@@ -67,14 +67,11 @@ typedef struct {
 /*
  * Prototypes
  */
-int  backend_plugin_init(clicon_handle h);
-int  plugin_initiate(clicon_handle h); 
-int  plugin_finish(clicon_handle h);
+int backend_plugin_initiate(clicon_handle h); 
 
-int  plugin_reset_state(clicon_handle h, const char *db);
-int  plugin_start_argv(clicon_handle h, int argc, char **argv);
+int clixon_plugin_reset(clicon_handle h, char *db);
 
-int backend_statedata_call(clicon_handle h, char *xpath, cxobj *xml);
+int clixon_plugin_statedata(clicon_handle h, char *xpath, cxobj **xtop);
 
 transaction_data_t * transaction_new(void);
 int transaction_free(transaction_data_t *);

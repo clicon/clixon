@@ -50,9 +50,9 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_log.h"
 #include "clixon_err.h"
 #include "clixon_yang.h"
-#include "clixon_plugin.h"
 #include "clixon_options.h"
 
 #define CLICON_MAGIC 0x99aafabe
@@ -61,15 +61,19 @@
 
 /*! Internal structure of basic handle. Also header of all other handles.
  * @note If you change here, you must also change the structs below:
- * @see struct cli_handle, struct backend_handle
+ * @see struct cli_handle
+ * @see struct backend_handle
  */
 struct clicon_handle {
-    int                      ch_magic;    /* magic (HDR) */
-    clicon_hash_t           *ch_copt;     /* clicon option list (HDR) */
-    clicon_hash_t           *ch_data;     /* internal clicon data (HDR) */
+    int                ch_magic;    /* magic (HDR) */
+    clicon_hash_t     *ch_copt;     /* clicon option list (HDR) */
+    clicon_hash_t     *ch_data;     /* internal clicon data (HDR) */
 };
 
 /*! Internal call to allocate a CLICON handle. 
+ *
+ * @param[in]  size  Size of handle (internal) struct.
+ * @retval   h   Clicon handle
  *
  * There may be different variants of handles with some common options.
  * So far the only common options is a MAGIC cookie for sanity checks and 
@@ -102,6 +106,7 @@ clicon_handle_init0(int size)
 
 /*! Basic CLICON init functions returning a handle for API access.
  *
+ * @retval   h   Clicon handle
  * This is the first call to CLICON basic API which returns a handle to be 
  * used in the API functions. There are other clicon_init functions for more 
  * elaborate applications (cli/backend/netconf). This should be used by the most
@@ -114,6 +119,7 @@ clicon_handle_init(void)
 }
 
 /*! Deallocate clicon handle, including freeing handle data.
+ * @param[in]  h   Clicon handle
  * @Note: handle 'h' cannot be used in calls after this
  */
 int
@@ -131,9 +137,10 @@ clicon_handle_exit(clicon_handle h)
     return 0;
 }
 
-/*
- * Check struct magic number for sanity checks
- * return 0 if OK, -1 if fail.
+/*! Check struct magic number for sanity checks
+ * @param[in]  h   Clicon handle
+ * @retval     0   Sanity check OK
+ * @retval    -1   Sanity check failed
  */
 int
 clicon_handle_check(clicon_handle h)
@@ -144,8 +151,8 @@ clicon_handle_check(clicon_handle h)
     return ch->ch_magic == CLICON_MAGIC ? 0 : -1;
 }
 
-/* 
- * Return clicon options (hash-array) given a handle.
+/*! Return clicon options (hash-array) given a handle.
+ * @param[in]  h        Clicon handle
  */
 clicon_hash_t *
 clicon_options(clicon_handle h)
@@ -155,8 +162,8 @@ clicon_options(clicon_handle h)
     return ch->ch_copt;
 }
 
-/* 
- * Return clicon data (hash-array) given a handle.
+/*! Return clicon data (hash-array) given a handle.
+ * @param[in]  h        Clicon handle
  */
 clicon_hash_t *
 clicon_data(clicon_handle h)
@@ -165,4 +172,3 @@ clicon_data(clicon_handle h)
 
     return ch->ch_data;
 }
-

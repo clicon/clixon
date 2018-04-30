@@ -50,6 +50,9 @@ typedef struct {float a;} *clicon_handle;
 typedef void *clicon_handle;
 #endif
 
+/* The dynamicically loadable plugin object handle (should be in clixon_plugin.h) */
+typedef void *plghndl_t;
+
 /*
  * Prototypes
  */

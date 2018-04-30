@@ -23,53 +23,41 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, indicate
-  your decision by deleting the provisions above and replace them with the 
-  notice and other provisions required by the GPL. If you do not delete
+  use your version of this file under the terms of Apache License version 2, 
+  indicate your decision by deleting the provisions above and replace them with
+  the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
 
+ * The exported interface to plugins. External apps (eg frontend restconf plugins)
+ * should only include this file (not the restconf_*.h)
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <syslog.h>
-#include <unistd.h>
-#include <assert.h>
-#include <sys/stat.h>
-#include <sys/param.h>
 
-#include <cligen/cligen.h>
-#include <clixon/clixon.h>
-#include <clixon/clixon_netconf.h>
-
+#ifndef _CLIXON_RESTCONF_H_
+#define _CLIXON_RESTCONF_H_
 
 /*
- * Plugin initialization
+ * Prototypes (also in restconf_lib.h)
  */
-int
-plugin_init(clicon_handle h)
-{
-    return 0;
-}
+int restconf_err2code(char *tag);
+const char *restconf_code2reason(int code);
 
-/*
- * Plugin start
- * Called once everything has been initialized, right before
- * the main event loop is entered.
- */
-int
-plugin_start(clicon_handle h, int argc, char **argv)
-{
-    return 0;
-}
+int badrequest(FCGX_Request *r);
+int unauthorized(FCGX_Request *r);
+int forbidden(FCGX_Request *r);
+int notfound(FCGX_Request *r);
+int conflict(FCGX_Request *r);
+int internal_server_error(FCGX_Request *r);
+int notimplemented(FCGX_Request *r);
 
-int
-plugin_exit(clicon_handle h)
-{
-    return 0;
-}
+int clicon_debug_xml(int dbglevel, char *str, cxobj *cx);
+int test(FCGX_Request *r, int dbg);
+cbuf *readdata(FCGX_Request *r);
+int get_user_cookie(char *cookiestr, char  *attribute, char **val);
+int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
+		   int pretty, int use_xml);
 
+
+#endif /* _CLIXON_RESTCONF_H_ */

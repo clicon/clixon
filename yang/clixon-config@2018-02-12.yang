@@ -82,6 +82,40 @@ module clixon-config {
 	    }
 	}
     }
+    typedef cli_genmodel_type{
+	description
+	    "How to generate CLI from YANG model, 
+             eg list a{ key x; leaf x; leaf y;}";
+	type enumeration{
+	    enum NONE{
+		description "No extra keywords: a <x> <y>";
+	    }
+	    enum VARS{
+		description "Keywords on non-key variables: a <x> y <y>";
+	    }
+	    enum ALL{
+		description "Keywords on all variables: a x <x> y <y>";
+	    }
+	}
+    }
+    typedef nacm_mode{
+	description
+	    "Mode of RFC8341 Network Configuration Access Control Model.
+             It is unclear from the RFC whether NACM rules are internal
+             in a configuration (ie embedded in regular config) or external/OOB
+             in s separate, specific NACM-config";
+	type enumeration{
+	    enum disabled{
+		description "NACM is disabled";
+	    }
+	    enum internal{
+		description "NACM is enabled and available in the regular config";
+	    }
+	    enum external{
+		description "NACM is enabled and available in a separate config";
+	    }
+	}
+    }
     container config {
 	leaf CLICON_CONFIGFILE{
 	    type string;
@@ -112,6 +146,12 @@ module clixon-config {
 	    description
 		"Location of backend .so plugins. Load all .so 
        	         plugins in this dir as backend plugins";
+	}
+	leaf CLICON_BACKEND_REGEXP {
+	    type string;
+	    description
+		"Regexp of matching backend plugins in CLICON_BACKEND_DIR";
+	    default "(.so)$";
 	}
 	leaf CLICON_NETCONF_DIR {
 	    type string;
@@ -180,7 +220,7 @@ module clixon-config {
 	    description "Generate code for CLI completion of existing db symbols";
 	}
 	leaf CLICON_CLI_GENMODEL_TYPE {
-	    type string;
+	    type cli_genmodel_type;
 	    default "VARS";
 	    description "How to generate and show CLI syntax: VARS|ALL";
 	}
@@ -237,14 +277,6 @@ module clixon-config {
 		"Set if all configuration changes are committed automatically 
                  on every edit change. Explicit commit commands unnecessary";
 	}
-	leaf CLICON_MASTER_PLUGIN {
-	    type string;
-	    default "master";
-	    description
-		"Name of master plugin (both frontend and backend). 
-                 Master plugin has special callbacks for frontends. 
-	         See clicon user manual for more info. (Obsolete?)";
-	}
 	leaf CLICON_XMLDB_DIR {
 	    type string;
 	    mandatory true;
@@ -299,6 +331,23 @@ module clixon-config {
 	leaf CLICON_STARTUP_MODE {
 	    type startup_mode;
 	    description "Which method to boot/start clicon backend";
+	}
+	leaf CLICON_TRANSACTION_MOD {
+	    type boolean;
+	    default false;
+	    description "If set, modifications in validation and commit 
+                         callbacks are written back into the datastore";
+	}
+	leaf CLICON_NACM_MODE {
+	    type nacm_mode;
+	    default disabled;
+	    description "RFC8341 network access configuration control model 
+                         (NACM) mode: disabled, in regular (internal) config
+                         or separate external file given by CLICON_NACM_FILE";
+	}
+	leaf CLICON_NACM_FILE {
+	    type string;
+	    description "RFC8341 NACM external configuration file";
 	}
     }
 }

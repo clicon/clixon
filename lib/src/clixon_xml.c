@@ -57,7 +57,6 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_string.h"
-
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
@@ -165,7 +164,7 @@ xml_name_set(cxobj *xn,
     }
     if (name){
 	if ((xn->x_name = strdup(name)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+	    clicon_err(OE_XML, errno, "strdup");
 	    return -1;
 	}
     }
@@ -198,7 +197,7 @@ xml_namespace_set(cxobj *xn,
     }
     if (namespace){
 	if ((xn->x_namespace = strdup(namespace)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+	    clicon_err(OE_XML, errno, "strdup");
 	    return -1;
 	}
     }
@@ -289,7 +288,7 @@ xml_value_set(cxobj *xn,
     }
     if (val){
 	if ((xn->x_value = strdup(val)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+	    clicon_err(OE_XML, errno, "strdup");
 	    return -1;
 	}
     }
@@ -434,7 +433,7 @@ xml_child_i_set(cxobj *xt,
 
 /*! Iterator over xml children objects
  *
- * NOTE: Never manipulate the child-list during operation or using the
+ * @note Never manipulate the child-list during operation or using the
  * same object recursively, the function uses an internal field to remember the
  * index used. It works as long as the same object is not iterated concurrently. 
  *
@@ -481,7 +480,7 @@ xml_child_append(cxobj *x,
     x->x_childvec_len++;
     x->x_childvec = realloc(x->x_childvec, x->x_childvec_len*sizeof(cxobj*));
     if (x->x_childvec == NULL){
-	clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
+	clicon_err(OE_XML, errno, "realloc");
 	return -1;
     }
     x->x_childvec[x->x_childvec_len-1] = xc;
@@ -539,7 +538,7 @@ xml_new(char      *name,
     cxobj *x;
     
     if ((x = malloc(sizeof(cxobj))) == NULL){
-	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
+	clicon_err(OE_XML, errno, "malloc");
 	return NULL;
     }
     memset(x, 0, sizeof(cxobj));
@@ -951,7 +950,7 @@ xml_free(cxobj *x)
  * XML printing functions. Output a parse tree to file, string cligen buf
  *------------------------------------------------------------------------*/
 
-/*! Print an XML tree structure to an output stream
+/*! Print an XML tree structure to an output stream and encode chars "<>&"
  *
  * Uses clicon_xml2cbuf internally
  *
@@ -976,13 +975,17 @@ clicon_xml2file(FILE  *f,
     int    hasbody;
     int    haselement;
     char  *val;
-
+    char  *encstr = NULL; /* xml encoded string */
+    
     name = xml_name(x);
     namespace = xml_namespace(x);
     switch(xml_type(x)){
     case CX_BODY:
-	if ((val = xml_value(x)) != NULL) /* incomplete tree */
-	    fprintf(f, "%s", xml_value(x));
+	if ((val = xml_value(x)) == NULL) /* incomplete tree */
+	    break;
+	if (xml_chardata_encode(val, &encstr) < 0)
+	    goto done;
+	fprintf(f, "%s", encstr);
 	break;
     case CX_ATTR:
 	fprintf(f, " ");
@@ -1045,6 +1048,8 @@ clicon_xml2file(FILE  *f,
     }/* switch */
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
 }
 
@@ -1064,8 +1069,7 @@ xml_print(FILE  *f,
     return clicon_xml2file(f, xn, 0, 1);
 }
 
-
-/*! Print an XML tree structure to a cligen buffer
+/*! Print an XML tree structure to a cligen buffer and encode chars "<>&"
  *
  * @param[in,out] cb          Cligen buffer to write to
  * @param[in]     xn          Clicon xml tree
@@ -1094,12 +1098,18 @@ clicon_xml2cbuf(cbuf  *cb,
     int    hasbody;
     int    haselement;
     char  *namespace;
-
+    char  *encstr = NULL; /* xml encoded string */
+    char  *val;
+    
     name = xml_name(x);
     namespace = xml_namespace(x);
     switch(xml_type(x)){
     case CX_BODY:
-	cprintf(cb, "%s", xml_value(x));
+	if ((val = xml_value(x)) == NULL) /* incomplete tree */
+	    break;
+	if (xml_chardata_encode(val, &encstr) < 0)
+	    goto done;
+	cprintf(cb, "%s", encstr);
 	break;
     case CX_ATTR:
 	cprintf(cb, " ");
@@ -1131,7 +1141,6 @@ clicon_xml2cbuf(cbuf  *cb,
 	    default:
 		break;
 	    }
-	
 	/* Check for special case <a/> instead of <a></a> */
 	if (hasbody==0 && haselement==0) 
 	    cprintf(cb, "/>");
@@ -1159,6 +1168,8 @@ clicon_xml2cbuf(cbuf  *cb,
     }/* switch */
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
 }
 /*! Print actual xml tree datastructures (not xml), mainly for debugging
@@ -1215,8 +1226,8 @@ xmltree2cbuf(cbuf  *cb,
  */
 static int 
 _xml_parse(const char *str, 
-	  yang_spec   *yspec,
-	  cxobj       *xt)
+	   yang_spec   *yspec,
+	   cxobj       *xt)
 {
     int                       retval = -1;
     struct xml_parse_yacc_arg ya = {0,};
@@ -1303,15 +1314,14 @@ xml_parse_file(int        fd,
     if (endtag != NULL)
 	endtaglen = strlen(endtag);
     if ((xmlbuf = malloc(xmlbuflen)) == NULL){
-	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
+	clicon_err(OE_XML, errno, "malloc");
 	goto done;
     }
     memset(xmlbuf, 0, xmlbuflen);
     ptr = xmlbuf;
     while (1){
 	if ((ret = read(fd, &ch, 1)) < 0){
-	    clicon_err(OE_XML, errno, "%s: read: [pid:%d]\n", 
-		    __FUNCTION__,
+	    clicon_err(OE_XML, errno, "read: [pid:%d]\n", 
 		    (int)getpid());
 	    break;
 	}
@@ -1334,7 +1344,7 @@ xml_parse_file(int        fd,
 	    oldxmlbuflen = xmlbuflen;
 	    xmlbuflen *= 2;
 	    if ((xmlbuf = realloc(xmlbuf, xmlbuflen)) == NULL){
-		clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
+		clicon_err(OE_XML, errno, "realloc");
 		goto done;
 	    }
 	    memset(xmlbuf+oldxmlbuflen, 0, xmlbuflen-oldxmlbuflen);
@@ -1424,10 +1434,7 @@ xml_parse_va(cxobj     **xtop,
     va_start(args, format);
     len = vsnprintf(str, len, format, args) + 1;
     va_end(args);
-    if (*xtop == NULL)
-	if ((*xtop = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
-	    goto done;
-    if (_xml_parse(str, yspec, *xtop) < 0)
+    if (xml_parse_string(str, yspec, xtop) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1447,7 +1454,7 @@ xml_copy_one(cxobj *x0,
     xml_type_set(x1, xml_type(x0));
     if (xml_value(x0)){ /* malloced string */
 	if ((x1->x_value = strdup(x0->x_value)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+	    clicon_err(OE_XML, errno, "strdup");
 	    return -1;
 	}
     }
@@ -1456,7 +1463,7 @@ xml_copy_one(cxobj *x0,
 	    return -1;
     if (xml_cv_get(x0)){
       if ((cv1 = cv_dup(xml_cv_get(x0))) == NULL){
-	clicon_err(OE_XML, errno, "%s: cv_dup", __FUNCTION__);
+	clicon_err(OE_XML, errno, "cv_dup");
 	return -1;
       }
       if ((xml_cv_set(x1, cv1)) < 0)
@@ -1553,7 +1560,7 @@ cxvec_append(cxobj   *x,
     int retval = -1;
 
     if ((*vec = realloc(*vec, sizeof(cxobj *) * (*len+1))) == NULL){
-	clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
+	clicon_err(OE_XML, errno, "realloc");
 	goto done;
     }
     (*vec)[(*len)++] = x;

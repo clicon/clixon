@@ -1,0 +1,134 @@
+/* include/clixon_config.h.  Generated from clixon_config.h.in by configure.  */
+/* include/clixon_config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* Clixon major release */
+#define CLIXON_VERSION_MAJOR 3
+
+/* Clixon minor release */
+#define CLIXON_VERSION_MINOR 3
+
+/* Clixon path version */
+#define CLIXON_VERSION_PATCH 2
+
+/* Clixon version string */
+#define CLIXON_VERSION_STRING "3.3.2"
+
+/* Define to 1 if you have the `alphasort' function. */
+#define HAVE_ALPHASORT 1
+
+/* Define to 1 if you have the <cligen/cligen.h> header file. */
+#define HAVE_CLIGEN_CLIGEN_H 1
+
+/* Define to 1 if you have the <crypt.h> header file. */
+#define HAVE_CRYPT_H 1
+
+/* Define to 1 if you have the <depot.h> header file. */
+/* #undef HAVE_DEPOT_H */
+
+/* Define to 1 if you have the `inet_aton' function. */
+#define HAVE_INET_ATON 1
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#define HAVE_INTTYPES_H 1
+
+/* Define to 1 if you have the `crypt' library (-lcrypt). */
+#define HAVE_LIBCRYPT 1
+
+/* Define to 1 if you have the `dl' library (-ldl). */
+#define HAVE_LIBDL 1
+
+/* Define to 1 if you have the `fcgi' library (-lfcgi). */
+#define HAVE_LIBFCGI 1
+
+/* Define to 1 if you have the `m' library (-lm). */
+#define HAVE_LIBM 1
+
+/* Define to 1 if you have the `nsl' library (-lnsl). */
+#define HAVE_LIBNSL 1
+
+/* Define to 1 if you have the `qdbm' library (-lqdbm). */
+#define HAVE_LIBQDBM 1
+
+/* Define to 1 if you have the `socket' library (-lsocket). */
+/* #undef HAVE_LIBSOCKET */
+
+/* Define to 1 if you have the <linux/if_vlan.h> header file. */
+#define HAVE_LINUX_IF_VLAN_H 1
+
+/* Define to 1 if you have the <memory.h> header file. */
+#define HAVE_MEMORY_H 1
+
+/* Define to 1 if you have the <qdbm/depot.h> header file. */
+#define HAVE_QDBM_DEPOT_H 1
+
+/* Define to 1 if you have the `sigaction' function. */
+#define HAVE_SIGACTION 1
+
+/* Define to 1 if you have the `sigvec' function. */
+#define HAVE_SIGVEC 1
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#define HAVE_STDINT_H 1
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#define HAVE_STDLIB_H 1
+
+/* Define to 1 if you have the <strings.h> header file. */
+#define HAVE_STRINGS_H 1
+
+/* Define to 1 if you have the <string.h> header file. */
+#define HAVE_STRING_H 1
+
+/* Define to 1 if you have the `strlcpy' function. */
+/* #undef HAVE_STRLCPY */
+
+/* Define to 1 if you have the `strndup' function. */
+#define HAVE_STRNDUP 1
+
+/* Define to 1 if you have the `strsep' function. */
+#define HAVE_STRSEP 1
+
+/* Define to 1 if you have the `strverscmp' function. */
+#define HAVE_STRVERSCMP 1
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#define HAVE_SYS_STAT_H 1
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#define HAVE_SYS_TYPES_H 1
+
+/* Define to 1 if you have the <sys/ucred.h> header file. */
+/* #undef HAVE_SYS_UCRED_H */
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#define HAVE_UNISTD_H 1
+
+/* Define to 1 if you have the `versionsort' function. */
+#define HAVE_VERSIONSORT 1
+
+/* Define to the address where bug reports for this package should be sent. */
+#define PACKAGE_BUGREPORT ""
+
+/* Define to the full name of this package. */
+#define PACKAGE_NAME ""
+
+/* Define to the full name and version of this package. */
+#define PACKAGE_STRING ""
+
+/* Define to the one symbol short name of this package. */
+#define PACKAGE_TARNAME ""
+
+/* Define to the home page for this package. */
+#define PACKAGE_URL ""
+
+/* Define to the version of this package. */
+#define PACKAGE_VERSION ""
+
+/* Define to 1 if you have the ANSI C header files. */
+#define STDC_HEADERS 1
+
+/* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
+   `char[]'. */
+#define YYTEXT_POINTER 1
+
+#include <clixon_custom.h>

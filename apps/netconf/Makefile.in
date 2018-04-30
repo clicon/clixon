@@ -35,6 +35,7 @@ srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
+INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 
 prefix 		= @prefix@
@@ -44,6 +45,7 @@ bindir 		= @bindir@
 libdir		= @libdir@
 mandir		= @mandir@
 libexecdir	= @libexecdir@
+wwwdir  	= /www-data
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 includedir	= @includedir@
@@ -64,22 +66,32 @@ LIBS          = -L$(top_srcdir)/lib/src @LIBS@ $(top_srcdir)/lib/src/$(CLIXON_LI
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
-APPL	= clixon_netconf
-SRC     = netconf_main.c
-OBJS    = $(SRC:.c=.o)
+# Name of application
+APPL	 = clixon_netconf
 
+# Not accessible from plugin
+APPSRC   = netconf_main.c
+APPSRC  += netconf_hello.c
+APPSRC  += netconf_rpc.c 
+APPSRC  += netconf_filter.c
+APPOBJ   = $(APPSRC:.c=.o)
+
+# Accessible from plugin
+LIBSRC   = netconf_lib.c 
+
+
+LIBOBJ   = $(LIBSRC:.c=.o)
+
+# Name of lib
 MYNAME		= clixon_netconf
 MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
 MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
 
-LIBSRC     = netconf_hello.c netconf_rpc.c netconf_filter.c netconf_lib.c netconf_plugin.c
-LIBOBJS    = $(LIBSRC:.c=.o)
-
 all:	 $(MYLIB) $(APPL)
 
 clean: 
-	rm -f $(OBJS) $(LIBOBJS) *.core $(APPL) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
+	rm -f $(APPL) $(APPOBJ) $(LIBOBJ) *.core  $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
 
 distclean: clean
 	rm -f Makefile *~ .depend
@@ -89,18 +101,18 @@ distclean: clean
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
 install:	install-lib $(APPL)
-	install -d $(DESTDIR)$(bindir)
-	install $(APPL) $(DESTDIR)$(bindir)
+	install -d -m 0755 $(DESTDIR)$(bindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(bindir)
 
 install-lib: $(MYLIB)
-	install -d $(DESTDIR)$(libdir) 
-	install $(MYLIB) $(DESTDIR)$(libdir) 
+	install -d -m 0755 $(DESTDIR)$(libdir)
+	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
 	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon_netconf.so.2
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_netconf.so
 
 install-include:	clixon_netconf.h
-	install -d $(DESTDIR)$(includedir)/clixon
-	install -m 644 $^ $(DESTDIR)$(includedir)/clixon
+	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
+	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
 
 uninstall:
 	rm -f $(DESTDIR)$(bindir)/$(APPL)
@@ -113,14 +125,14 @@ uninstall:
 .c.o:
 	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" $(CFLAGS) -c $<
 
-$(APPL) : $(OBJS) $(MYLIBLINK) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(OBJS) -L. $(MYLIB) $(LIBS) -o $@
+$(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
+	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
-$(MYLIB) : $(LIBOBJS)
+$(MYLIB) : $(LIBOBJ)
 ifeq ($(HOST_VENDOR),apple)
-	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJS) $(LIBS)
+	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJ) $(LIBS)
 else
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJS) $(LIBS) -Wl,-soname=$(MYLIBSO)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJ) $(LIBS) -Wl,-soname=$(MYLIBSO)
 endif
 
 # link-name is needed for application linking, eg for clixon_cli and clixon_config
@@ -132,7 +144,7 @@ TAGS:
 	find . -name '*.[chyl]' -print | etags -
 
 depend:
-	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(SRC) $(APPSRC) > .depend
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(LIBSRC) $(APPSRC) > .depend
 
 #include .depend
 

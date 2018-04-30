@@ -42,7 +42,6 @@
 #include <fcntl.h>
 #include <ctype.h>
 #include <time.h>
-#include <fcgi_stdio.h>
 #include <signal.h>
 #include <dlfcn.h>
 #include <sys/param.h>
@@ -54,6 +53,8 @@
 
 /* clicon */
 #include <clixon/clixon.h>
+
+#include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
 
 #include "restconf_lib.h"
 
@@ -211,8 +212,10 @@ notfound(FCGX_Request *r)
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
     FCGX_FPrintF(r->out, "Status: 404\r\n"); /* 404 not found */
+
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<h1>Not Found</h1>\n");
+    FCGX_FPrintF(r->out, "Not Found\n");
     FCGX_FPrintF(r->out, "The requested URL %s was not found on this server.\n",
 		 path);
     return 0;
@@ -326,6 +329,7 @@ test(FCGX_Request *r,
     printparam(r, "HTTPS", dbg);
     printparam(r, "HTTP_ACCEPT", dbg);
     printparam(r, "HTTP_CONTENT_TYPE", dbg);
+    printparam(r, "HTTP_AUTHORIZATION", dbg);
 #if 0 /* For debug */
     clicon_debug(1, "All environment vars:");
     {
@@ -356,129 +360,6 @@ readdata(FCGX_Request *r)
     return cb;
 }
 
-
-static int nplugins = 0;
-static plghndl_t *plugins = NULL;
-static plgcredentials_t *_credentials_fn = NULL; /* Credentials callback */
-
-/*! Load all plugins you can find in CLICON_RESTCONF_DIR
- */
-int 
-restconf_plugin_load(clicon_handle h)
-{
-    int            retval = -1;
-    char          *dir;
-    int            ndp;
-    struct dirent *dp = NULL;
-    int            i;
-    plghndl_t     *handle;
-    char           filename[MAXPATHLEN];
-
-    if ((dir = clicon_restconf_dir(h)) == NULL){
-	retval = 0;
-	goto quit;
-    }
-    /* Get plugin objects names from plugin directory */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG))<0)
-	goto quit;
-
-    /* Load all plugins */
-    for (i = 0; i < ndp; i++) {
-	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
-	clicon_debug(1, "DEBUG: Loading plugin '%.*s' ...", 
-		     (int)strlen(filename), filename);
-	if ((handle = plugin_load(h, filename, RTLD_NOW)) == NULL)
-	    goto quit;
-	if ((_credentials_fn    = dlsym(handle, PLUGIN_CREDENTIALS)) == NULL)
-	    clicon_debug(1, "Failed to load %s", PLUGIN_CREDENTIALS); 
-	else
-	    clicon_debug(1, "%s callback loaded", PLUGIN_CREDENTIALS); 
-	if ((plugins = realloc(plugins, (nplugins+1) * sizeof (*plugins))) == NULL) {
-	    clicon_err(OE_UNIX, errno, "realloc");
-	    goto quit;
-	}
-	plugins[nplugins++] = handle;
-    }
-    retval = 0;
-quit:
-    if (dp)
-	free(dp);
-    return retval;
-}
-
-
-/*! Unload all restconf plugins */
-int
-restconf_plugin_unload(clicon_handle h)
-{
-    int i;
-
-    for (i = 0; i < nplugins; i++) 
-	plugin_unload(h, plugins[i]);
-    if (plugins){
-	free(plugins);
-	plugins = NULL;
-    }
-    nplugins = 0;
-    return 0;
-}
-
-/*! Call plugin_start in all plugins
- */
-int
-restconf_plugin_start(clicon_handle h, 
-		      int           argc, 
-		      char        **argv)
-{
-    int i;
-    plgstart_t *startfn;
-
-    for (i = 0; i < nplugins; i++) {
-	/* Call exit function is it exists */
-	if ((startfn = dlsym(plugins[i], PLUGIN_START)) == NULL)
-	    break;
-	optind = 0;
-	if (startfn(h, argc, argv) < 0) {
-	    clicon_debug(1, "plugin_start() failed\n");
-	    return -1;
-	}
-    }
-    return 0;
-}
-
-/*! Run the restconf user-defined credentials callback if present
- * The callback is expected to return the authenticated user, or NULL if not
- * authenticasted.
- * If no callback exists, return user "none"
- * @param[in]  h    Clicon handle
- * @param[in]  r    Fastcgi request handle
- * @param[out] user The authenticated user (or NULL). Malloced, must be freed.
- */
-int 
-restconf_credentials(clicon_handle h,     
-		     FCGX_Request *r,
-		     char        **user)
-{
-    int retval = -1;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    /* If no authentication callback then allow anything. Is this OK? */
-    if (_credentials_fn == NULL){
-	if ((*user = strdup("none")) == NULL){
-	    clicon_err(OE_XML, errno, "strdup");
-	    goto done;
-	}
-	goto ok;
-    }
-    if (_credentials_fn(h, r, user) < 0) 
-	*user = NULL;
- ok:
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval:%d user:%s", __FUNCTION__, retval, *user);
-    return retval;
-}
-
 /*! Parse a cookie string and return value of cookie attribute
  * @param[in]  cookiestr  cookie string according to rfc6265 (modified)
  * @param[in]  attribute  cookie attribute
@@ -503,5 +384,84 @@ get_user_cookie(char  *cookiestr,
  done:
     if (cvv)
 	cvec_free(cvv);
+    return retval;
+}
+
+/*! Return restconf error on get/head request
+ * @param[in]  h      Clixon handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  xerr   XML error message from backend
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ */
+int
+api_return_err(clicon_handle h,
+	       FCGX_Request *r,
+	       cxobj        *xerr,
+	       int           pretty,
+	       int           use_xml)
+{
+    int        retval = -1;
+    cbuf      *cb = NULL;
+    cxobj     *xtag;
+    char      *tagstr;
+    int        code;	
+    const char *reason_phrase;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((cb = cbuf_new()) == NULL)
+	goto done;
+    if ((xtag = xpath_first(xerr, "//error-tag")) == NULL){
+	notfound(r);
+	goto ok;
+    }
+    tagstr = xml_body(xtag);
+    code = restconf_err2code(tagstr);
+    if ((reason_phrase = restconf_code2reason(code)) == NULL)
+	reason_phrase="";
+    if (xml_name_set(xerr, "error") < 0)
+	goto done;
+    if (use_xml){
+	if (clicon_xml2cbuf(cb, xerr, 2, pretty) < 0)
+	    goto done;
+    }
+    else
+	if (xml2json_cbuf(cb, xerr, pretty) < 0)
+	    goto done;
+    FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
+    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n\r\n",
+		 use_xml?"xml":"json");
+    if (use_xml){
+	if (pretty){
+	    FCGX_FPrintF(r->out, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "    </errors>\r\n");
+	}
+	else {
+	    FCGX_FPrintF(r->out, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "</errors>\r\n");
+	}
+    }
+    else{
+	if (pretty){
+	    FCGX_FPrintF(r->out, "{\n");
+	    FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : %s\n",
+			 cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "}\r\n");
+	}
+	else{
+	    FCGX_FPrintF(r->out, "{");
+	    FCGX_FPrintF(r->out, "\"ietf-restconf:errors\" : ");
+	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(r->out, "}\r\n");
+	}
+    }
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }

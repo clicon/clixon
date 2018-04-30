@@ -239,12 +239,19 @@ candidate_commit(clicon_handle h,
      if (plugin_transaction_commit(h, td) < 0)
 	 goto done;
 
-     /* 8. Success: Copy candidate to running */
+     /* Optionally write (potentially modified) tree back to candidate */
+     if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD"))
+	 if (xmldb_put(h, candidate, OP_REPLACE, td->td_target, NULL) < 0)
+	     goto done;
+     /* 8. Success: Copy candidate to running 
+      */
+
      if (xmldb_copy(h, candidate, "running") < 0)
 	 goto done;
 
     /* 9. Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);
+
 
     /* 8. Copy running back to candidate in case end functions updated running */
     if (xmldb_copy(h, "running", candidate) < 0){
@@ -275,35 +282,32 @@ from_client_commit(clicon_handle h,
 {
     int        retval = -1;
     int        piddb;
+    cbuf      *cbx = NULL; /* Assist cbuf */
 
     /* Check if target locked by other client */
     piddb = xmldb_islocked(h, "running");
     if (piddb && mypid != piddb){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>lock-denied</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>Operation failed, lock is already held</error-message>"
-		"<error-info><session-id>%d</session-id></error-info>"
-		"</rpc-error></rpc-reply>",
-		piddb);
+	if ((cbx = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}	
+	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
+	    goto done;
 	goto ok;
     }
     if (candidate_commit(h, "candidate") < 0){ /* Assume validation fail, nofatal */
 	clicon_debug(1, "Commit candidate failed");
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>invalid-value</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>%s</error-message>"
-		"</rpc-error></rpc-reply>",
-		clicon_err_reason);
+	    if (netconf_invalid_value(cbret, "protocol", clicon_err_reason)< 0)
+		goto done;
         goto ok;
     }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
-    // done:
+ done:
+    if (cbx)
+	cbuf_free(cbx);
     return retval; /* may be zero if we ignoring errors from commit */
 } /* from_client_commit */
 
@@ -321,33 +325,31 @@ from_client_discard_changes(clicon_handle h,
 {
     int   retval = -1;
     int   piddb;
-
+    cbuf *cbx = NULL; /* Assist cbuf */
+    
     /* Check if target locked by other client */
     piddb = xmldb_islocked(h, "candidate");
     if (piddb && mypid != piddb){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>lock-denied</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>Operation failed, lock is already held</error-message>"
-		"<error-info><session-id>%d</session-id></error-info>"
-		"</rpc-error></rpc-reply>",
-		piddb);
+	if ((cbx = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}	
+	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
+	    goto done;
 	goto ok;
     }
     if (xmldb_copy(h, "running", "candidate") < 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>application</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-info>read-registry</error-info>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+	    goto done;
 	goto ok;
     }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
-    // done:
+ done:
+    if (cbx)
+	cbuf_free(cbx);
     return retval; /* may be zero if we ignoring errors from commit */
 }
 
@@ -367,11 +369,8 @@ from_client_validate(clicon_handle h,
     transaction_data_t *td = NULL;
 
     if (strcmp(db, "candidate") != 0 && strcmp(db, "tmp") != 0){
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>invalid-value</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"</rpc-error></rpc-reply>");
+	if (netconf_invalid_value(cbret, "protocol", "No such database")< 0)
+	    goto done;
 	goto ok;
     }
     clicon_debug(1, "Validate %s",  db);
@@ -383,15 +382,14 @@ from_client_validate(clicon_handle h,
     if (validate_common(h, db, td) < 0){
 	clicon_debug(1, "Validate %s failed",  db);
 	/* XXX: candidate_validate should have proper error handling */
-	cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-attribute</error-tag>"
-		"<error-type>protocol</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>%s</error-message>"
-		"</rpc-error></rpc-reply>",
-		clicon_err_reason);
+	if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+	    goto done;
 	goto ok;
     }
+    /* Optionally write (potentially modified) tree back to candidate */
+     if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD"))
+	 if (xmldb_put(h, "candidate", OP_REPLACE, td->td_target, NULL) < 0)
+	     goto done;
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;

@@ -34,8 +34,9 @@
 
   ***** END LICENSE BLOCK *****
 
- * Database specification parser cli syntax
- * (Cloned from cligen parser)
+ * Yang parser. Hopefully useful but not complete
+ * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
+ * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
  */
 #ifndef _CLIXON_YANG_PARSE_H_
 #define _CLIXON_YANG_PARSE_H_

@@ -36,6 +36,7 @@ srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
+INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 
 prefix 		= @prefix@
@@ -56,8 +57,6 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 # Use this clixon lib for linking
 CLIXON_LIB	= libclixon.so.$(CLIXON_MAJOR).$(CLIXON_MINOR)
-# Location of system plugins
-CLIXON_CLI_SYSDIR = $(libdir)/clixon/plugins/cli
 
 # For dependency. A little strange that we rely on it being built in the src dir
 # even though it may exist in $(libdir). But the new version may not have been installed yet.
@@ -68,22 +67,33 @@ LIBS          = -L$(top_srcdir)/lib/src @LIBS@  $(top_srcdir)/lib/src/$(CLIXON_L
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 INCLUDES	= -I. -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
+# Name of application
 APPL		= clixon_cli
-SRC		= cli_main.c
-OBJS    	= $(SRC:.c=.o)
 
+# Not accessible from plugin
+APPSRC		= cli_main.c
+APPSRC	       += cli_generate.c
+APPOBJ		= $(APPSRC:.c=.o)
+
+# Accessible from plugin
+LIBSRC	        = cli_common.c
+LIBSRC	       += cli_show.c
+LIBSRC	       += cli_handle.c
+LIBSRC	       += cli_plugin.c
+LIBOBJ		= $(LIBSRC:.c=.o)
+
+# Name of lib
 MYNAME		= clixon_cli
 MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
 MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
 
-LIBSRC		= cli_plugin.c cli_common.c cli_show.c cli_handle.c cli_generate.c
-LIBOBJS		= $(LIBSRC:.c=.o)
+
 
 all:	 $(MYLIB) $(APPL) test
 
 clean:
-	rm -f $(OBJS) $(LIBOBJS) *.core $(APPL) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
+	rm -f $(LIBOBJ) $(APPOBJ) *.core $(APPL) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
 
 distclean: clean
 	rm -f Makefile *~ .depend test test.c
@@ -93,19 +103,19 @@ distclean: clean
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
 install: install-lib $(APPL) 
-	install -d $(DESTDIR)$(bindir) 
-	install $(APPL) $(DESTDIR)$(bindir) 
+	install -d -m 0755 $(DESTDIR)$(bindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(bindir)
 
 install-lib: $(MYLIB)
-	install -d $(DESTDIR)$(libdir) 
-	install $(MYLIB) $(DESTDIR)$(libdir) 
+	install -d -m 0755 $(DESTDIR)$(libdir)
+	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
 	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon_cli.so.2
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_cli.so
-	install -d $(DESTDIR)$(libdir)/clixon/plugins/cli
+	install -d -m 0755 $(DESTDIR)$(libdir)/clixon/plugins/cli
 
 install-include:	clixon_cli.h clixon_cli_api.h
-	install -d $(DESTDIR)$(includedir)/clixon
-	install -m 644 $^ $(DESTDIR)$(includedir)/clixon
+	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
+	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
 
 uninstall:
 	rm -f $(DESTDIR)$(bindir)/$(APPL)
@@ -116,7 +126,7 @@ uninstall:
 .SUFFIXES: .c .o
 
 .c.o:
-	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" -DCLIXON_CLI_SYSDIR=\"$(CLIXON_CLI_SYSDIR)\" $(CFLAGS) -c $<
+	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" $(CFLAGS) -c $<
 
 # Just link test programs
 test.c	:
@@ -125,14 +135,14 @@ test.c	:
 test: 	test.c $(LIBOBJ) 
 	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
-$(APPL): $(OBJS) $(MYLIBLINK) $(LIBDEPS)	
-	$(CC) $(LDFLAGS) $(OBJS) -L. $(MYLIB) $(LIBS) -o $@
+$(APPL): $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)	
+	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
-$(MYLIB) : $(LIBOBJS)
+$(MYLIB) : $(LIBOBJ)
 ifeq ($(HOST_VENDOR),apple)
-	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJS) $(LIBS)
+	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJ) $(LIBS)
 else
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJS) $(LIBS) -Wl,-soname=$(MYLIBSO)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJ) $(LIBS) -Wl,-soname=$(MYLIBSO)
 endif
 
 # link-name is needed for application linking, eg for clixon_cli and clixon_config
@@ -144,7 +154,7 @@ TAGS:
 	find . -name '*.[chyl]' -print | etags -
 
 depend:
-	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(SRC) $(APPSRC) > .depend
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(LIBSRC) $(APPSRC) > .depend
 
 #include .depend
 

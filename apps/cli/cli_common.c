@@ -236,7 +236,7 @@ cli_dbxml(clicon_handle       h,
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
-    if (api_path && api_path2xml(api_path, yspec, xtop, 0, &xbot, &y) < 0)
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;
@@ -829,10 +829,19 @@ save_config_file(clicon_handle h,
     filename = cv_string_get(cv);
     if (clicon_rpc_get_config(h, dbstr,"/", &xt) < 0)
 	goto done;
+    if (xt == NULL){
+	clicon_err(OE_CFG, 0, "get config: empty tree"); /* Shouldnt happen */
+	goto done;
+    }
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
+    /* get-config returns a <data> tree. Save as <config> tree so it can be used
+     * as data-store.
+     */
+    if (xml_name_set(xt, "config") < 0)
+	goto done;
     if ((f = fopen(filename, "w")) == NULL){
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
 	goto done;

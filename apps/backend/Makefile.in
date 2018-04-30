@@ -36,6 +36,7 @@ srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
+INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 
 prefix 		= @prefix@
@@ -55,8 +56,6 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 # Use this clixon lib for linking
 CLIXON_LIB	= libclixon.so.$(CLIXON_MAJOR).$(CLIXON_MINOR)
-# Location of system plugins
-CLIXON_BACKEND_SYSDIR = $(libdir)/clixon/plugins/backend
 
 # For dependency. A little strange that we rely on it being built in the src dir
 # even though it may exist in $(libdir). But the new version may not have been installed yet.
@@ -66,22 +65,26 @@ LIBS    	= -L$(top_srcdir)/lib/src @LIBS@ $(top_srcdir)/lib/src/$(CLIXON_LIB) -l
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
-# Not accessible from plugin
-APPSRC  = backend_main.c backend_socket.c backend_client.c \
-	backend_commit.c backend_plugin.c 
-
-APPOBJ  = $(APPSRC:.c=.o)
+# Name of application
 APPL	= clixon_backend
 
-#SHLIB	= clixon_backend
-MYNAME		= clixon_backend
-MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
-MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
-MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
+# Not accessible from plugin
+APPSRC  = backend_main.c
+APPSRC += backend_socket.c
+APPSRC += backend_client.c
+APPSRC += backend_commit.c
+APPSRC += backend_plugin.c
+APPOBJ  = $(APPSRC:.c=.o)
 
 # Accessible from plugin
 LIBSRC	= clixon_backend_transaction.c clixon_backend_handle.c
 LIBOBJ	= $(LIBSRC:.c=.o)
+
+# Name of lib
+MYNAME		= clixon_backend
+MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
+MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
 
 all:	  $(MYLIB) $(APPL) test
 
@@ -96,15 +99,15 @@ distclean: clean
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
 install:	install-lib	$(APPL)
-	install -d $(DESTDIR)$(sbindir)
-	install $(APPL) $(DESTDIR)$(sbindir)
+	install -d -m 0755 $(DESTDIR)$(sbindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(sbindir)
 
 install-lib:	$(MYLIB)
-	install -d $(DESTDIR)$(libdir)
-	install $(MYLIB) $(DESTDIR)$(libdir)
+	install -d -m 0755 $(DESTDIR)$(libdir)
+	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
 	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)	   # -l:libclixon_config.so.2
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_config.so
-	install -d $(DESTDIR)$(libdir)/clixon/plugins/backend
+	install -d -m 0755 $(DESTDIR)$(libdir)/clixon/plugins/backend
 
 uninstall:
 	rm -f $(DESTDIR)$(sbindir)/$(APPL)
@@ -112,14 +115,14 @@ uninstall:
 	rm -f $(DESTDIR)$(includedir)/clixon/*
 
 install-include: clixon_backend.h clixon_backend_handle.h clixon_backend_transaction.h
-	install -d $(DESTDIR)$(includedir)/clixon
-	install -m 644 $^ $(DESTDIR)$(includedir)/clixon
+	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
+	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
 
 .SUFFIXES:
 .SUFFIXES: .c .o
 
 .c.o:
-	$(CC) $(INCLUDES) -D__PROGRAM__=\"$(APPL)\" -DCLIXON_BACKEND_SYSDIR=\"$(CLIXON_BACKEND_SYSDIR)\" $(CPPFLAGS) $(CFLAGS) -c $<
+	$(CC) $(INCLUDES) -D__PROGRAM__=\"$(APPL)\" $(CPPFLAGS) $(CFLAGS) -c $<
 
 # Just link test programs
 test.c	:
@@ -129,7 +132,7 @@ test: 	test.c $(LIBOBJ)
 	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
 $(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(APPOBJ) $(OBJS) -L. $(MYLIB) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
 $(MYLIB): $(LIBOBJ)
 ifeq ($(HOST_VENDOR),apple)
@@ -147,7 +150,7 @@ TAGS:
 	find . -name '*.[chyl]' -print | etags -
 
 depend:
-	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(SRC) $(APPSRC) > .depend
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(LIBSRC) $(APPSRC) > .depend
 
 #include .depend
 

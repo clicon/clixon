@@ -55,7 +55,7 @@ run(){
     rm -rf $mydir/*
 
     conf="-d candidate -b $mydir -p ../datastore/$name/$name.so -y $dir -m ietf-ip"
-    echo "conf:$conf"
+  
     new "datastore $name init"
     expectfn "$datastore $conf init" ""
 

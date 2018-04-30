@@ -122,7 +122,7 @@ netconf_create_hello(cbuf *xf,            /* msg buffer */
    cprintf(xf, "<capability>urn:ietf:params:netconf:capability:notification:1.0</capability>\n");
    cprintf(xf, "<capability>urn:ietf:params:netconf:capability:startup:1.0</capability>\n");
     cprintf(xf, "</capabilities>");
-    cprintf(xf, "<session-id>%lu</session-id>", 42+session_id);
+    cprintf(xf, "<session-id>%lu</session-id>", (long unsigned int)42+session_id);
     cprintf(xf, "</hello>");
     add_postamble(xf);
     return retval;

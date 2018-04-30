@@ -41,7 +41,7 @@
 
 %start topxml
 
-%token <string> NAME CHAR 
+%token <string> NAME CHARDATA 
 %token VER ENC
 %token BSLASH ESLASH 
 %token BTEXT ETEXT
@@ -329,15 +329,15 @@ topxml      : list
 dcl         : BTEXT info encode ETEXT { clicon_debug(3, "dcl->info encode"); }
             ;
 
-info        : VER '=' '\"' CHAR '\"' 
+info        : VER '=' '\"' CHARDATA '\"' 
                  { if (xml_parse_version(_YA, $4) <0) YYABORT; }
-            | VER '=' '\'' CHAR '\'' 
+            | VER '=' '\'' CHARDATA '\'' 
          	 { if (xml_parse_version(_YA, $4) <0) YYABORT; }
             |
             ;
 
-encode      : ENC '=' '\"' CHAR '\"' {free($4);}
-            | ENC '=' '\'' CHAR '\'' {free($4);}
+encode      : ENC '=' '\"' CHARDATA '\"' {free($4);}
+            | ENC '=' '\'' CHARDATA '\'' {free($4);}
             ;
 
 element     : '<' qname  attrs element1 
@@ -372,8 +372,8 @@ list        : list content { clicon_debug(3, "list -> list content"); }
 
 content     : element      { clicon_debug(3, "content -> element"); }
             | comment      { clicon_debug(3, "content -> comment"); }
-            | CHAR         { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
-                             clicon_debug(3, "content -> CHAR %s", $1); }
+            | CHARDATA         { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
+                             clicon_debug(3, "content -> CHARDATA %s", $1); }
             |              { clicon_debug(3, "content -> "); }
             ;
 
@@ -394,7 +394,7 @@ attqname    : NAME   {$$ = $1;}
             ;
 
 
-attvalue    : '\"' CHAR '\"'   { $$=$2; /* $2 must be consumed */}
+attvalue    : '\"' CHARDATA '\"'   { $$=$2; /* $2 must be consumed */}
             | '\"'  '\"'       { $$=strdup(""); /* $2 must be consumed */}
             ;
 

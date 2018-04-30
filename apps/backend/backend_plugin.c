@@ -64,404 +64,139 @@
 #include "backend_plugin.h"
 #include "backend_commit.h"
 
-/*
- * Types
- */
-/* Following are specific to backend. For common see clicon_plugin.h 
- * @note  the following should match the prototypes in clixon_backend.h
- */
-#define PLUGIN_RESET           "plugin_reset"
-typedef int (plgreset_t)(clicon_handle h, const char *db); /* Reset system status */
-
-/*! Plugin callback, if defined called to get state data from plugin
- * @param[in]    h      Clicon handle
- * @param[in]    xpath  String with XPATH syntax. or NULL for all
- * @param[in]    xtop   XML tree, <config/> on entry. 
- * @retval       0      OK
- * @retval      -1      Error
- * @see xmldb_get
- */
-#define PLUGIN_STATEDATA       "plugin_statedata"
-typedef int (plgstatedata_t)(clicon_handle h, char *xpath, cxobj *xtop);
-
-#define PLUGIN_TRANS_BEGIN     "transaction_begin"
-#define PLUGIN_TRANS_VALIDATE  "transaction_validate"
-#define PLUGIN_TRANS_COMPLETE  "transaction_complete"
-#define PLUGIN_TRANS_COMMIT    "transaction_commit"
-#define PLUGIN_TRANS_END       "transaction_end"
-#define PLUGIN_TRANS_ABORT     "transaction_abort"
-
-
-typedef int (trans_cb_t)(clicon_handle h, transaction_data td); /* Transaction cbs */
-
-/* Backend (config) plugins */
-struct plugin {
-    char	       p_name[PATH_MAX]; /* Plugin name */
-    void	      *p_handle;	 /* Dynamic object handle */
-    plginit_t	      *p_init;		 /* Init */
-    plgstart_t	      *p_start;		 /* Start */
-    plgexit_t         *p_exit;		 /* Exit */
-    plgreset_t	      *p_reset;		 /* Reset state */
-    plgstatedata_t    *p_statedata;      /* State-data callback */
-    trans_cb_t        *p_trans_begin;	 /* Transaction start */
-    trans_cb_t        *p_trans_validate; /* Transaction validation */
-    trans_cb_t        *p_trans_complete; /* Transaction validation complete */
-    trans_cb_t        *p_trans_commit;   /* Transaction commit */
-    trans_cb_t        *p_trans_end;	 /* Transaction completed  */
-    trans_cb_t        *p_trans_abort;	 /* Transaction aborted */
-
-};
-
-/*
- * Local variables
- */
-static int _nplugins = 0;
-static struct plugin *_plugins = NULL;
-
-/*! Find a plugin by name and return the dlsym handl
- * Used by libclicon code to find callback funcctions in plugins.
- * @param[in]  h       Clicon handle
- * @param[in]  h       Name of plugin
- * @retval     handle  Plugin handle if found
- * @retval     NULL    Not found
- */
-static void *
-config_find_plugin(clicon_handle h, 
-		   char         *name)
-{
-    int            i;
-    struct plugin *p;
-
-    for (i = 0; i < _nplugins; i++){
-	p = &_plugins[i];
-	if (strcmp(p->p_name, name) == 0)
-	    return p->p_handle;
-    }
-    return NULL;
-}
-
-/*! Initialize plugin code (not the plugins themselves)
- * @param[in]  h       Clicon handle
- * @retval     0       OK
- * @retval    -1       Error
- */
-int
-backend_plugin_init(clicon_handle h)
-{
-    find_plugin_t *fp   = config_find_plugin;
-    clicon_hash_t *data = clicon_data(h);
-
-    /* Register CLICON_FIND_PLUGIN in data hash */
-    if (hash_add(data, "CLICON_FIND_PLUGIN", &fp, sizeof(fp)) == NULL) {
-	clicon_err(OE_UNIX, errno, "failed to register CLICON_FIND_PLUGIN");
-	return -1;
-    }
-    return 0;
-}
-
-/*! Unload a plugin
- * @param[in]  h       Clicon handle
- * @param[in]  plg     Plugin structure
- * @retval     0       OK
- * @retval    -1       Error
- */
-static int
-backend_plugin_unload(clicon_handle  h, 
-		      struct plugin *plg)
-{
-    int   retval=-1;
-    char *error;
-
-    /* Call exit function is it exists */
-    if (plg->p_exit)
-	plg->p_exit(h);
-    
-    dlerror();    /* Clear any existing error */
-    if (dlclose(plg->p_handle) != 0) {
-	error = (char*)dlerror();
-	clicon_err(OE_UNIX, 0, "dlclose: %s", error?error:"Unknown error");
-	goto done;
-	/* Just report */
-    }
-    else 
-	clicon_debug(1, "Plugin '%s' unloaded.", plg->p_name);
-    retval = 0;
- done:
-    return retval;
-}
-
-
-/*! Load a dynamic plugin and call its init-function
- * @param[in]  h       Clicon handle
- * @param[in]  file    The plugin (.so) to load
- * @param[in]  dlflags Arguments to dlopen(3)
- * @retval     plugin  Plugin struct
- * @retval     NULL    Error
- */
-static struct plugin *
-backend_plugin_load (clicon_handle h, 
-		     char         *file, 
-		     int           dlflags)
-{
-    void          *handle;
-    char          *name;
-    struct plugin *new = NULL;
-
-    if ((handle = plugin_load(h, file, dlflags)) == NULL)
-	goto done;
-    if ((new = malloc(sizeof(*new))) == NULL) {
-	clicon_err(OE_UNIX, errno, "dhunk: %s", strerror(errno));
-	dlclose(handle);
-	return NULL;
-    }
-    memset(new, 0, sizeof(*new));
-    name = strrchr(file, '/') ? strrchr(file, '/')+1 : file;
-    clicon_debug(2, "Loading plugin '%s'.", name);
-    snprintf(new->p_name, sizeof(new->p_name), "%*s",
-	     (int)strlen(name)-2, name);
-    new->p_handle   = handle;
-    if ((new->p_start    = dlsym(handle, PLUGIN_START)) != NULL)
-	clicon_debug(2, "%s callback registered.", PLUGIN_START);
-    if ((new->p_exit     = dlsym(handle, PLUGIN_EXIT)) != NULL)
-	 clicon_debug(2, "%s callback registered.", PLUGIN_EXIT);
-    if ((new->p_reset    = dlsym(handle, PLUGIN_RESET)) != NULL)
-	 clicon_debug(2, "%s callback registered.", PLUGIN_RESET);
-    if ((new->p_statedata    = dlsym(handle, PLUGIN_STATEDATA)) != NULL)
-	clicon_debug(2, "%s callback registered.", PLUGIN_STATEDATA);
-    if ((new->p_trans_begin    = dlsym(handle, PLUGIN_TRANS_BEGIN)) != NULL)
-	clicon_debug(2, "%s callback registered.", PLUGIN_TRANS_BEGIN);
-    if ((new->p_trans_validate = dlsym(handle, PLUGIN_TRANS_VALIDATE)) != NULL)
-	clicon_debug(2, "%s callback registered.", PLUGIN_TRANS_VALIDATE);
-    if ((new->p_trans_complete = dlsym(handle, PLUGIN_TRANS_COMPLETE)) != NULL)
-	clicon_debug(2, "%s callback registered.", PLUGIN_TRANS_COMPLETE);
-    if ((new->p_trans_commit   = dlsym(handle, PLUGIN_TRANS_COMMIT)) != NULL)
-	clicon_debug(2, "%s callback registered.", PLUGIN_TRANS_COMMIT);
-    if ((new->p_trans_end      = dlsym(handle, PLUGIN_TRANS_END)) != NULL)
-	clicon_debug(2, "%s callback registered.", PLUGIN_TRANS_END);
-    if ((new->p_trans_abort    = dlsym(handle, PLUGIN_TRANS_ABORT)) != NULL)
-	clicon_debug(2, "%s callback registered.", PLUGIN_TRANS_ABORT);
-    clicon_debug(2, "Plugin '%s' loaded.\n", name);
- done:
-    return new;
-}
-
-/*! Request plugins to reset system state
- * The system 'state' should be the same as the contents of running_db
- * @param[in]  h       Clicon handle
- * @param[in]  dbname  Name of database
- * @retval     0       OK
- * @retval    -1       Error
- */
-int
-plugin_reset_state(clicon_handle h,
-		   const char   *db)
-{ 
-    int            i;
-    struct plugin *p;
-
-    for (i = 0; i < _nplugins; i++)  {
-	p = &_plugins[i];
-	if (p->p_reset) {
-	    clicon_debug(1, "Calling plugin_reset() for %s\n",
-			 p->p_name);
-	    if (((p->p_reset)(h, db)) < 0) {
-		clicon_err(OE_FATAL, 0, "plugin_reset() failed for %s\n",
-			   p->p_name);
-		return -1;
-	    }
-	}
-    }
-    return 0;
-}
-
-/*! Call plugin_start in all plugins
- * @param[in]  h       Clicon handle
- * @param[in]  argc    Command-line arguments
- * @param[in]  argv    Command-line arguments
- * @retval     0       OK
- * @retval    -1       Error
- */
-int
-plugin_start_argv(clicon_handle h, 
-		   int           argc, 
-		   char        **argv)
-{
-    int            i;
-    struct plugin *p;
-
-    for (i = 0; i < _nplugins; i++)  {
-	p = &_plugins[i];
-	if (p->p_start) {
-	    optind = 0;
-	    if (((p->p_start)(h, argc, argv)) < 0) {
-		clicon_err(OE_FATAL, 0, "plugin_start() failed for %s\n",
-			   p->p_name);
-		return -1;
-	    }
-	}
-    }
-    return 0;
-}
-	
-/*! Append plugin to list
- * @param[in]  p       Plugin
- * @retval     0       OK
- * @retval    -1       Error
- */
-static int
-plugin_append(struct plugin *p)
-{
-    struct plugin *new;
-    
-    if ((new = realloc(_plugins, (_nplugins+1) * sizeof (*p))) == NULL) {
-	clicon_err(OE_UNIX, errno, "realloc");
-	return -1;
-    }
-    
-    memset (&new[_nplugins], 0, sizeof(new[_nplugins]));
-    memcpy (&new[_nplugins], p, sizeof(new[_nplugins]));
-    _plugins = new;
-    _nplugins++;
-
-    return 0;
-}
-
-/*! Load backend plugins found in a directory 
- * The plugins must have the '.so' suffix
- * @param[in]  h       Clicon handle
- * @param[in]  dir     Backend plugin directory
- * @retval     0       OK
- * @retval    -1       Error
- */
-static int
-backend_plugin_load_dir(clicon_handle h, 
-		       const char   *dir)
-{
-    int            retval = -1;
-    int            i;
-    int            np = 0;
-    int            ndp;
-    struct stat    st;
-    char           filename[MAXPATHLEN];
-    struct dirent *dp = NULL;
-    struct plugin *new;
-    struct plugin *p = NULL;
-    char           master[MAXPATHLEN];
-    char          *master_plugin;
-
-    /* Format master plugin path */
-    if ((master_plugin = clicon_master_plugin(h)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "clicon_master_plugin option not set");
-	goto quit;
-    }
-    snprintf(master, MAXPATHLEN-1, "%s.so", master_plugin);
-
-    /* Allocate plugin group object */
-    /* Get plugin objects names from plugin directory */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG))<0)
-	goto quit;
-    
-    /* reset num plugins */
-    np = 0;
-
-    /* Master plugin must be loaded first if it exists. */
-    snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, master);
-    if (stat(filename, &st) == 0) {
-	clicon_debug(1, "Loading master plugin '%.*s' ...", 
-		     (int)strlen(filename), filename);
-
-	new = backend_plugin_load(h, filename, RTLD_NOW|RTLD_GLOBAL);
-	if (new == NULL)
-	    goto quit;
-	if (plugin_append(new) < 0)
-	    goto quit;
-	free(new);
-    }  
-
-    /* Now load the rest. Note plugins is the global variable */
-    for (i = 0; i < ndp; i++) {
-	if (strcmp(dp[i].d_name, master) == 0)
-	    continue; /* Skip master now */
-	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
-	clicon_debug(1, "Loading plugin '%.*s' ...",  (int)strlen(filename), filename);
-	new = backend_plugin_load(h, filename, RTLD_NOW);
-	if (new == NULL) 
-	    goto quit;
-	/* Append to 'plugins' */
-	if (plugin_append(new) < 0)
-	    goto quit;
-	free(new);
-    }
-    
-    /* All good. */
-    retval = 0;
-    
-quit:
-    if (retval != 0) {
-	/* XXX p is always NULL */
-	if (_plugins) {
-	    while (--np >= 0){
-		if ((p = &_plugins[np]) == NULL)
-		    continue;
-		backend_plugin_unload(h, p);
-		free(p);
-	    }
-	    free(_plugins);
-	    _plugins=0;
-	}
-    }
-    if (dp)
-	free(dp);
-    return retval;
-}
-
-
 /*! Load a plugin group.
  * @param[in]  h       Clicon handle
  * @retval     0       OK
  * @retval    -1       Error
  */
 int
-plugin_initiate(clicon_handle h)
+backend_plugin_initiate(clicon_handle h)
 {
     char *dir;
 
-    /* First load CLICON system plugins */
-    if (backend_plugin_load_dir(h, CLIXON_BACKEND_SYSDIR) < 0)
-	return -1;
-
-    /* Then load application plugins */
-    dir = clicon_backend_dir(h);
-    /* If backend directory, load the backend plugisn */
-    if (dir && backend_plugin_load_dir(h, dir) < 0)
-	return -1;
-    
-    return 0;
+    /* Load application plugins */
+    if ((dir = clicon_backend_dir(h)) == NULL)
+	return 0;
+    return clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir,
+			       clicon_option_str(h, "CLICON_BACKEND_REGEXP"));
 }
 
-/*! Unload and deallocate all backend plugins
+/*! Request plugins to reset system state
+ * The system 'state' should be the same as the contents of running_db
  * @param[in]  h       Clicon handle
+ * @param[in]  db      Name of database
  * @retval     0       OK
  * @retval    -1       Error
  */
 int
-plugin_finish(clicon_handle h)
+clixon_plugin_reset(clicon_handle h, 
+		    char         *db)
 {
-    int            i;
-    struct plugin *p;
-
-    for (i = 0; i < _nplugins; i++) {
-	p = &_plugins[i];
-	backend_plugin_unload(h, p);
+    clixon_plugin *cp = NULL;
+    plgreset_t    *resetfn;          /* Plugin auth */
+    int            retval = 1;
+    
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	if ((resetfn = cp->cp_api.ca_reset) == NULL)
+	    continue;
+	if ((retval = resetfn(h, db)) < 0) {
+	    clicon_debug(1, "plugin_start() failed\n");
+	    return -1;
+	}
+	break;
     }
-    if (_plugins){
-	free(_plugins);
-	_plugins = NULL;
-    }
-    _nplugins = 0;
-    return 0;
+    return retval;
 }
-	
+
+/*! Go through all backend statedata callbacks and collect state data
+ * This is internal system call, plugin is invoked (does not call) this function
+ * Backend plugins can register 
+ * @param[in]     h       clicon handle
+ * @param[in]     xpath   String with XPATH syntax. or NULL for all
+ * @param[in,out] xtop    State XML tree is merged with existing tree.
+ * @retval       -1       Error
+ * @retval        0       OK
+ * @retval        1       Statedata callback failed
+ * @note xtop can be replaced
+ */
+int
+clixon_plugin_statedata(clicon_handle        h,
+			char                *xpath,
+			cxobj              **xtop)
+{
+    int            retval = -1;
+    int            i;
+    cxobj         *x = NULL;
+    yang_spec     *yspec;
+    cxobj        **xvec = NULL;
+    size_t         xlen;
+    cxobj         *xc;
+    clixon_plugin  *cp = NULL;
+    plgstatedata_t *fn;          /* Plugin statedata fn */
+    char           *reason = NULL;
+    
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    if (*xtop==NULL){
+	clicon_err(OE_CFG, ENOENT, "XML tree expected");
+	goto done;
+    }
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	if ((fn = cp->cp_api.ca_statedata) == NULL)
+	    continue;
+	if ((x = xml_new("config", NULL, NULL)) == NULL)
+	    goto done;
+	if (fn(h, xpath, x) < 0){
+	    retval = 1;
+	    goto done; /* Dont quit here on user callbacks */
+	}
+	if (xml_merge(*xtop, x, yspec, &reason) < 0)
+	    goto done;
+	if (reason){
+	    while ((xc = xml_child_i(*xtop, 0)) != NULL)
+		xml_purge(xc);	    
+	    if (netconf_operation_failed_xml(xtop, "rpc", reason)< 0)
+		goto done;
+	    goto ok;
+	}
+	if (x){
+	    xml_free(x);
+	    x = NULL;
+	}
+    }
+    /* Code complex to filter out anything that is outside of xpath */
+    if (xpath_vec(*xtop, xpath?xpath:"/", &xvec, &xlen) < 0)
+	goto done;
+
+    /* If vectors are specified then mark the nodes found and
+     * then filter out everything else,
+     * otherwise return complete tree.
+     */
+    if (xvec != NULL){
+	for (i=0; i<xlen; i++)
+	    xml_flag_set(xvec[i], XML_FLAG_MARK);
+    }
+    /* Remove everything that is not marked */
+    if (!xml_flag(*xtop, XML_FLAG_MARK))
+	if (xml_tree_prune_flagged_sub(*xtop, XML_FLAG_MARK, 1, NULL) < 0)
+	    goto done;
+    /* reset flag */
+    if (xml_apply(*xtop, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
+    if (reason)
+	free(reason);
+    if (x)
+	xml_free(x);
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+
 /*! Create and initialize transaction */
 transaction_data_t *
 transaction_new(void)
@@ -510,21 +245,20 @@ int
 plugin_transaction_begin(clicon_handle       h, 
 			  transaction_data_t *td)
 {
-    int            i;
     int            retval = 0;
-    struct plugin *p;
+    clixon_plugin *cp = NULL;
+    trans_cb_t    *fn;
 
-    for (i = 0; i < _nplugins; i++) {
-	p = &_plugins[i];
-	if (p->p_trans_begin) 
-	    if ((retval = (p->p_trans_begin)(h, (transaction_data)td)) < 0){
-		if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
-		    clicon_log(LOG_NOTICE, "%s: Plugin '%s' %s callback does not make clicon_err call on error", 
-			       __FUNCTION__, p->p_name, PLUGIN_TRANS_BEGIN);
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	if ((fn = cp->cp_api.ca_trans_begin) == NULL)
+	    continue;
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' transaction_begin callback does not make clicon_err call on error", 
+			       __FUNCTION__, cp->cp_name);
 
 		break;
-	    }
-
+	}
     }
     return retval;
 }
@@ -540,20 +274,18 @@ plugin_transaction_validate(clicon_handle       h,
 			    transaction_data_t *td)
 {
     int            retval = 0;
-    int            i;
+    clixon_plugin *cp = NULL;
+    trans_cb_t    *fn;
 
-    struct plugin *p;
-
-    for (i = 0; i < _nplugins; i++){
-	p = &_plugins[i];
-	if (p->p_trans_validate) 
-	    if ((retval = (p->p_trans_validate)(h, (transaction_data)td)) < 0){
-		if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
-		    clicon_log(LOG_NOTICE, "%s: Plugin '%s' %s callback does not make clicon_err call on error", 
-			       __FUNCTION__, p->p_name, PLUGIN_TRANS_VALIDATE);
-
-		break;
-	    }
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	if ((fn = cp->cp_api.ca_trans_validate) == NULL)
+	    continue;
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' transaction_validate callback does not make clicon_err call on error", 
+			   __FUNCTION__, cp->cp_name);
+	    break;
+	}
     }
     return retval;
 }
@@ -570,20 +302,20 @@ int
 plugin_transaction_complete(clicon_handle       h, 
 			    transaction_data_t *td)
 {
-    int            i;
     int            retval = 0;
-    struct plugin *p;
+    clixon_plugin *cp = NULL;
+    trans_cb_t    *fn;
     
-    for (i = 0; i < _nplugins; i++){
-	p = &_plugins[i];
-	if (p->p_trans_complete) 
-	    if ((retval = (p->p_trans_complete)(h, (transaction_data)td)) < 0){
-		if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
-		    clicon_log(LOG_NOTICE, "%s: Plugin '%s' %s callback does not make clicon_err call on error", 
-			       __FUNCTION__, p->p_name, PLUGIN_TRANS_COMPLETE);
-
-		break;
-	    }
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	if ((fn = cp->cp_api.ca_trans_complete) == NULL)
+	    continue;
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_complete callback does not make clicon_err call on error", 
+			   __FUNCTION__, cp->cp_name);
+	    
+	    break;
+	}
     }
     return retval;
 }
@@ -604,9 +336,9 @@ plugin_transaction_revert(clicon_handle       h,
 {
     int                retval = 0;
     transaction_data_t tr; /* revert transaction */
-    int                i;
-    struct plugin     *p;
-
+    clixon_plugin     *cp = NULL;
+    trans_cb_t        *fn;
+    
     /* Create a new reversed transaction from the original where src and target
        are swapped */
     memcpy(&tr, td, sizeof(tr));
@@ -620,14 +352,14 @@ plugin_transaction_revert(clicon_handle       h,
     tr.td_scvec = td->td_tcvec;
     tr.td_tcvec = td->td_scvec;
 
-    for (i = nr-1; i>=0; i--){
-	p = &_plugins[i];
-	if (p->p_trans_commit) 
-	    if ((p->p_trans_commit)(h, (transaction_data)&tr) < 0){
-		clicon_log(LOG_NOTICE, "Plugin '%s' %s revert callback failed", 
-			   p->p_name, PLUGIN_TRANS_COMMIT);
+    while ((cp = clixon_plugin_each_revert(h, cp, nr)) != NULL) {
+	if ((fn = cp->cp_api.ca_trans_commit) == NULL)
+	    continue;
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_commit revert callback failed", 
+			   __FUNCTION__, cp->cp_name);
 		break; 
-	    }
+	}
     }
     return retval; /* ignore errors */
 }
@@ -646,20 +378,22 @@ plugin_transaction_commit(clicon_handle       h,
 			  transaction_data_t *td)
 {
     int            retval = 0;
-    int            i;
-    struct plugin *p;
+    clixon_plugin *cp = NULL;
+    trans_cb_t    *fn;
+    int            i=0;
 
-    for (i = 0; i < _nplugins; i++){
-	p = &_plugins[i];
-	if (p->p_trans_commit) 
-	    if ((retval = (p->p_trans_commit)(h, (transaction_data)td)) < 0){
-		if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
-		    clicon_log(LOG_NOTICE, "%s: Plugin '%s' %s callback does not make clicon_err call on error", 
-			       __FUNCTION__, p->p_name, PLUGIN_TRANS_COMMIT);
-		/* Make an effort to revert transaction */
-		plugin_transaction_revert(h, td, i); 
-		break;
-	    }
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	i++;
+	if ((fn = cp->cp_api.ca_trans_commit) == NULL)
+	    continue;
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_commit callback does not make clicon_err call on error", 
+			   __FUNCTION__, cp->cp_name);
+	    /* Make an effort to revert transaction */
+	    plugin_transaction_revert(h, td, i-1); 
+	    break;
+	}
     }
     return retval;
 }
@@ -675,19 +409,18 @@ plugin_transaction_end(clicon_handle h,
 		       transaction_data_t *td)
 {
     int            retval = 0;
-    int            i;
-    struct plugin *p;
+    clixon_plugin *cp = NULL;
+    trans_cb_t    *fn;
     
-    for (i = 0; i < _nplugins; i++) {
-	p = &_plugins[i];
-	if (p->p_trans_end) 
-	    if ((retval = (p->p_trans_end)(h, (transaction_data)td)) < 0){
-		if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
-		    clicon_log(LOG_NOTICE, "%s: Plugin '%s' %s callback does not make clicon_err call on error", 
-			       __FUNCTION__, p->p_name, PLUGIN_TRANS_END);
-
-		break;
-	    }
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	if ((fn = cp->cp_api.ca_trans_end) == NULL)
+	    continue;
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_end callback does not make clicon_err call on error", 
+			   __FUNCTION__, cp->cp_name);
+	    break;
+	}
     }
     return retval;
 }
@@ -703,94 +436,14 @@ plugin_transaction_abort(clicon_handle       h,
 			 transaction_data_t *td)
 {
     int            retval = 0;
-    int            i;
-    struct plugin *p;
+    clixon_plugin *cp = NULL;
+    trans_cb_t    *fn;
 
-    for (i = 0; i < _nplugins; i++)  {
-	p = &_plugins[i];
-	if (p->p_trans_abort) 
-	    (p->p_trans_abort)(h, (transaction_data)td); /* dont abort on error */
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	if ((fn = cp->cp_api.ca_trans_abort) == NULL)
+	    continue;
+	fn(h, (transaction_data)td); /* dont abort on error */
     }
     return retval;
 }
 	
-/*----------------------------------------------------------------------
- * Backend state data callbacks
- */
-
-/*! Go through all backend statedata callbacks and collect state data
- * This is internal system call, plugin is invoked (does not call) this function
- * Backend plugins can register 
- * @param[in]  h       clicon handle
- * @param[in]  xpath   String with XPATH syntax. or NULL for all
- * @param[in,out] xml  XML tree.
- * @retval -1   Error
- * @retval  0   OK
- * @retval  1   Statedata callback failed
- */
-int
-backend_statedata_call(clicon_handle        h,
-		       char                *xpath,
-		       cxobj               *xtop)
-{
-    int            retval = -1;
-    struct plugin *p;
-    int            i;
-    cxobj         *x = NULL;
-    yang_spec     *yspec;
-    cxobj        **xvec = NULL;
-    size_t         xlen;
-
-    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
-	goto done;
-    }
-    if (xtop==NULL){
-	clicon_err(OE_CFG, ENOENT, "XML tree expected");
-	goto done;
-    }
-    for (i = 0; i < _nplugins; i++)  {
-	p = &_plugins[i];
-	if (p->p_statedata) {
-	    if ((x = xml_new("config", NULL, NULL)) == NULL)
-		goto done;
-	    if ((p->p_statedata)(h, xpath, x) < 0){
-		retval = 1;
-		goto done; /* Dont quit here on user callbacks */
-	    }
-	    if (xml_merge(xtop, x, yspec) < 0)
-		goto done;
-	    if (x){
-		xml_free(x);
-		x = NULL;
-	    }
-	}
-    }
-    /* Code complex to filter out anything that is outside of xpath */
-    if (xpath_vec(xtop, xpath?xpath:"/", &xvec, &xlen) < 0)
-	goto done;
-
-    /* If vectors are specified then mark the nodes found and
-     * then filter out everything else,
-     * otherwise return complete tree.
-     */
-    if (xvec != NULL){
-	for (i=0; i<xlen; i++)
-	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-    }
-    /* Remove everything that is not marked */
-    if (!xml_flag(xtop, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged_sub(xtop, XML_FLAG_MARK, 1, NULL) < 0)
-	    goto done;
-    /* reset flag */
-    if (xml_apply(xtop, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-	goto done;
-    retval = 0;
- done:
-    if (x)
-	xml_free(x);
-    if (xvec)
-	free(xvec);
-    return retval;
-}
-

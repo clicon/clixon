@@ -44,7 +44,8 @@ libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 CC		= @CC@
-CFLAGS  	= @CFLAGS@ 
+CFLAGS  	= @CFLAGS@
+INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
 with_restconf	= @with_restconf@
@@ -68,9 +69,6 @@ INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/inclu
 
 
 SUBDIRS = text
-ifeq ($(with_keyvalue),yes)
-SUBDIRS += keyvalue
-endif
 
 .PHONY: all clean depend install $(SUBDIRS)
 
@@ -104,8 +102,8 @@ install-include:
 	do (cd $$i ; $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 
 install: $(APPL)
-	install -d $(DESTDIR)$(bindir)
-	install $(APPL) $(DESTDIR)$(bindir)
+	install -d -m 0755 $(DESTDIR)$(bindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(bindir)
 	for i in $(SUBDIRS); \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
 

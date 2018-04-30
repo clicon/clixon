@@ -172,12 +172,22 @@ cli_parse_file(clicon_handle h,
 }
 
 int
-cli_susp_hook(clicon_handle h, cli_susphook_t *fn)
+cli_susp_hook(clicon_handle     h,
+	      cligen_susp_cb_t *fn)
 {
     cligen_handle ch = cligen(h);
 
     /* This assume first arg of fn can be treated as void* */
-    return cligen_susp_hook(ch, (cligen_susp_cb_t*)fn); 
+    return cligen_susp_hook(ch, fn); 
+}
+int
+cli_interrupt_hook(clicon_handle       h,
+		   cligen_interrupt_cb_t *fn)
+{
+    cligen_handle ch = cligen(h);
+
+    /* This assume first arg of fn can be treated as void* */
+    return cligen_interrupt_hook(ch, fn); 
 }
 
 char *

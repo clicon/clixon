@@ -86,9 +86,9 @@ backend_terminate(clicon_handle h)
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
-    plugin_finish(h);
+    clixon_plugin_exit(h);
     /* Delete all backend plugin RPC callbacks */
-    backend_rpc_cb_delete_all(); 
+    rpc_callback_delete_all(); 
     if (pidfile)
 	unlink(pidfile);   
     if (sockpath)
@@ -174,8 +174,8 @@ db_merge(clicon_handle h,
     /* Get data as xml from db1 */
     if (xmldb_get(h, (char*)db1, NULL, 1, &xt) < 0)
 	goto done;
-    /* Merge xml into db2. WIthout commit */
-    if (xmldb_put(h, (char*)db2, OP_MERGE, xt) < 0)
+    /* Merge xml into db2. Without commit */
+    if (xmldb_put(h, (char*)db2, OP_MERGE, xt, NULL) < 0)
 	goto done;
     retval = 0;
  done:
@@ -254,10 +254,63 @@ plugin_start_useroptions(clicon_handle h,
 
     tmp = *(argv-1);
     *(argv-1) = argv0;
-    if (plugin_start_argv(h, argc+1, argv-1) < 0) 
+    if (clixon_plugin_start(h, argc+1, argv-1) < 0) 
 	return -1;
     *(argv-1) = tmp;
     return 0;
+}
+
+/*! Load external NACM file
+ */
+static int
+nacm_load_external(clicon_handle h)
+{
+    int         retval = -1;
+    char       *filename; /* NACM config file */
+    yang_spec  *yspec = NULL;
+    cxobj      *xt = NULL;
+    struct stat st;
+    FILE       *f = NULL;
+    int         fd;
+
+    filename = clicon_option_str(h, "CLICON_NACM_FILE");
+    if (filename == NULL || strlen(filename)==0){
+	clicon_err(OE_UNIX, errno, "CLICON_NACM_FILE not set in NACM external mode");
+	goto done;
+    }
+    if (stat(filename, &st) < 0){
+	clicon_err(OE_UNIX, errno, "%s", filename);
+	goto done;
+    }
+    if (!S_ISREG(st.st_mode)){
+	clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
+	goto done;
+    }
+    if ((f = fopen(filename, "r")) == NULL) {
+	clicon_err(OE_UNIX, errno, "configure file: %s", filename);
+	return -1;
+    }
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    if (yang_parse(h, CLIXON_DATADIR, "ietf-netconf-acm", NULL, yspec) < 0)
+	goto done;
+    fd = fileno(f);
+    /* Read configfile */
+    if (xml_parse_file(fd, "</clicon>", yspec, &xt) < 0)
+	goto done;
+    if (xt == NULL){
+	clicon_err(OE_XML, 0, "No xml tree in %s", filename);
+	goto done;
+    }
+    if (backend_nacm_list_set(h, xt) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (yspec) /* The clixon yang-spec is not used after this */
+	yspec_free(yspec);
+    if (f)
+	fclose(f);
+    return retval;
 }
 
 /*! Merge xml in filename into database
@@ -283,7 +336,7 @@ load_extraxml(clicon_handle h,
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
     /* Merge user reset state */
-    if (xmldb_put(h, (char*)db, OP_MERGE, xt) < 0)
+    if (xmldb_put(h, (char*)db, OP_MERGE, xt, NULL) < 0)
 	goto done;
     retval = 0;
  done:
@@ -306,7 +359,7 @@ startup_mode_none(clicon_handle h)
 	if (xmldb_copy(h, "running", "candidate") < 0)
 	    goto done;
     /* Load plugins and call plugin_init() */
-    if (plugin_initiate(h) != 0) 
+    if (backend_plugin_initiate(h) != 0) 
 	goto done;
     retval = 0;
  done:
@@ -328,7 +381,7 @@ startup_mode_init(clicon_handle h)
 	if (xmldb_copy(h, "running", "candidate") < 0)
 	    goto done;
     /* Load plugins and call plugin_init() */
-    if (plugin_initiate(h) != 0) 
+    if (backend_plugin_initiate(h) != 0) 
 	goto done;
     retval = 0;
  done:
@@ -364,13 +417,13 @@ startup_mode_running(clicon_handle h,
     if (xmldb_copy(h, "running", "candidate") < 0)
 	goto done;
     /* Load plugins and call plugin_init() */
-    if (plugin_initiate(h) != 0) 
+    if (backend_plugin_initiate(h) != 0) 
 	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
 	goto done;
     /* Application may define extra xml in its reset function*/
-    if (plugin_reset_state(h, "tmp") < 0)   
+    if (clixon_plugin_reset(h, "tmp") < 0)   
 	goto done;
     /* Get application extra xml from file */
     if (load_extraxml(h, extraxml_file, "tmp") < 0)   
@@ -437,13 +490,13 @@ startup_mode_startup(clicon_handle h,
 	if (xmldb_create(h, "startup") < 0) /* diff */
 	    return -1;
     /* Load plugins and call plugin_init() */
-    if (plugin_initiate(h) != 0) 
+    if (backend_plugin_initiate(h) != 0) 
 	goto done;
     /* Clear tmp db */
     if (db_reset(h, "tmp") < 0)
 	goto done;
     /* Application may define extra xml in its reset function*/
-    if (plugin_reset_state(h, "tmp") < 0)  
+    if (clixon_plugin_reset(h, "tmp") < 0)  
 	goto done;
     /* Get application extra xml from file */
     if (load_extraxml(h, extraxml_file, "tmp") < 0)   
@@ -475,7 +528,8 @@ startup_mode_startup(clicon_handle h,
 }
 
 int
-main(int argc, char **argv)
+main(int    argc,
+     char **argv)
 {
     int           retval = -1;
     char          c;
@@ -497,13 +551,12 @@ main(int argc, char **argv)
     int           xml_cache;
     int           xml_pretty;
     char         *xml_format;
-
+    char         *nacm_mode;
+    
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR|CLICON_LOG_SYSLOG);
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
-	return -1;
-    if (backend_plugin_init(h) != 0) 
 	return -1;
     foreground = 0;
     once = 0;
@@ -552,7 +605,12 @@ main(int argc, char **argv)
 	    usage(argv[0], h);
 	return -1;
     }
-
+    /* External NACM file? */
+    nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
+    if (nacm_mode && strcmp(nacm_mode, "external") == 0)
+	if (nacm_load_external(h) < 0)
+	    goto done;
+    
     /* Now run through the operational args */
     opterr = 1;
     optind = 1;
@@ -703,43 +761,41 @@ main(int argc, char **argv)
     if ((xml_pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) >= 0)
 	if (xmldb_setopt(h, "pretty", (void*)(intptr_t)xml_pretty) < 0)
 	    goto done;
-    /* If startup mode is not defined, eg via OPTION or -s, assume old method */
+    /* Startup mode needs to be defined,  */
     startup_mode = clicon_startup_mode(h);
     if (startup_mode == -1){ 	
 	clicon_log(LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend.\n"); 
 	goto done;
     }
-    else {
-	/* Init running db if it is not there
-	 */
-	if (xmldb_exists(h, "running") != 1)
-	    if (xmldb_create(h, "running") < 0)
-		return -1;
-	switch (startup_mode){
-	case SM_NONE:
-	    if (startup_mode_none(h) < 0)
-		goto done;
-	    break;
-	case SM_INIT: /* -I */
-	    if (startup_mode_init(h) < 0)
-		goto done;
-	    break;
-	case SM_RUNNING: /* -CIr */
-	    if (startup_mode_running(h, extraxml_file) < 0)
-		goto done;
-	    break; 
-	case SM_STARTUP: /* startup configuration */
-	    if (startup_mode_startup(h, extraxml_file) < 0)
-		goto done;
-	    break;
-	}
-	/* Initiate the shared candidate. */
-	if (xmldb_copy(h, "running", "candidate") < 0)
+    /* Init running db if it is not there
+     */
+    if (xmldb_exists(h, "running") != 1)
+	if (xmldb_create(h, "running") < 0)
+	    return -1;
+    switch (startup_mode){
+    case SM_NONE:
+	if (startup_mode_none(h) < 0)
 	    goto done;
-	/* Call plugin_start with user -- options */
-	if (plugin_start_useroptions(h, argv0, argc, argv) <0)
+	break;
+    case SM_INIT: /* -I */
+	if (startup_mode_init(h) < 0)
 	    goto done;
+	break;
+    case SM_RUNNING: /* -CIr */
+	if (startup_mode_running(h, extraxml_file) < 0)
+	    goto done;
+	break; 
+    case SM_STARTUP: /* startup configuration */
+	if (startup_mode_startup(h, extraxml_file) < 0)
+	    goto done;
+	break;
     }
+    /* Initiate the shared candidate. */
+    if (xmldb_copy(h, "running", "candidate") < 0)
+	goto done;
+    /* Call backend plugin_start with user -- options */
+    if (plugin_start_useroptions(h, argv0, argc, argv) <0)
+	goto done;
     if (once)
 	goto done;
 

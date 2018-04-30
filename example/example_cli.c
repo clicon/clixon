@@ -52,19 +52,6 @@
 #include <clixon/clixon.h>
 #include <clixon/clixon_cli.h>
 
-/*
- * Plugin initialization
- */
-int
-plugin_init(clicon_handle h)
-{
-    struct timeval tv;
-
-    gettimeofday(&tv, NULL);
-    srandom(tv.tv_usec);
-
-    return 0;
-}
 
 /*! Example cli function */
 int
@@ -107,7 +94,7 @@ fib_route_rpc(clicon_handle h,
     /* User supplied variable in CLI command */
     instance = cvec_find(cvv, "instance"); /* get a cligen variable from vector */
     /* Create XML for fib-route netconf RPC */
-    if (xml_parse_va(&xtop, NULL, "<rpc><fib-route><routing-instance-name>%s</routing-instance-name></fib-route></rpc>", instance) < 0)
+    if (xml_parse_va(&xtop, NULL, "<rpc><fib-route><routing-instance-name>%s</routing-instance-name></fib-route></rpc>", cv_string_get(instance)) < 0)
 	goto done;
     /* Skip top-level */
     xrpc = xml_child_i(xtop, 0);
@@ -125,3 +112,28 @@ fib_route_rpc(clicon_handle h,
     return retval;
 }
 
+static clixon_plugin_api api = {
+    "example",          /* name */
+    clixon_plugin_init, /* init */
+    NULL,               /* start */
+    NULL,               /* exit */
+    .ca_prompt=NULL,    /* cli_prompthook_t */
+    .ca_suspend=NULL,   /* cligen_susp_cb_t */
+    .ca_interrupt=NULL, /* cligen_interrupt_cb_t */
+};
+
+/*! CLI plugin initialization
+ * @param[in]  h    Clixon handle
+ * @retval     NULL Error with clicon_err set
+ * @retval     api  Pointer to API struct
+ */
+clixon_plugin_api *
+clixon_plugin_init(clicon_handle h)
+{
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    srandom(tv.tv_usec);
+
+    return &api;
+}

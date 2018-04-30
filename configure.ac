@@ -38,13 +38,14 @@
 
 AC_INIT(lib/clixon/clixon.h.in)
 
-# Default CFLAGS unless set by environment.
-: ${CFLAGS="-O2"}
+# Default CFLAGS unless set by environment
+: ${CFLAGS="-O2 -Wall"}
+: ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="5"
+CLIXON_VERSION_MINOR="6"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 # Fix to specific version (eg 3.5) or head (3) 
 CLIGEN_VERSION="3" 
 if test "$prefix" = "NONE"; then
@@ -77,6 +78,7 @@ AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(INCLUDES)
 AC_SUBST(CPPFLAGS)
+AC_SUBST(INSTALLFLAGS)
 AC_SUBST(LIBS)
 AC_SUBST(OBJ_SUFFIX)
 AC_SUBST(AR_SUFFIX)
@@ -85,7 +87,6 @@ AC_SUBST(EXE_SUFFIX)
 AC_SUBST(AR)
 AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
-AC_SUBST(with_keyvalue) # If yes, compile datastore/keyvalue
 #
 AC_PROG_CC()
 AC_PROG_CPP
@@ -94,10 +95,9 @@ CPPFLAGS="-DHAVE_CONFIG_H ${CPPFLAGS}"
 
 AC_MSG_RESULT(compiler is $CC)	
 
-CFLAGS="${CFLAGS} -Wall" 
-
 AC_MSG_RESULT(CPPFLAGS is $CPPFLAGS)	
-AC_MSG_RESULT(CFLAGS is $CFLAGS)	
+AC_MSG_RESULT(CFLAGS is $CFLAGS)
+AC_MSG_RESULT(INSTALLFLAGS is $INSTALLFLAGS)	
 
 AC_PROG_YACC
 AC_PROG_LEX
@@ -142,25 +142,6 @@ if test "x${with_restconf}" == xyes; then
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
 fi
 
-# This is for keyvalue datastore (and qdbm)
-AC_ARG_WITH([keyvalue],
-            [AS_HELP_STRING([--with-keyvalue],[enable support for key-value xmldb datastore])],
-	    [],
-            [with_keyvalue=no])
-if test "x${with_keyvalue}" == xyes; then
-   # This is for qdbm
-   AC_ARG_WITH(qdbm,  [  --with-qdbm=dir         Use QDBM here, if keyvalue ] )
-   if test "${with_qdbm}"; then
-      echo "Using QDBM here: ${with_qdbm}"
-      CPPFLAGS="-I${with_qdbm}/include ${CPPFLAGS}"
-      LDFLAGS="-L${with_qdbm}/lib ${LDFLAGS}"
-   fi
-   # Problem: depot.h may be in qdbm/depot.h. 
-   AC_CHECK_HEADERS(depot.h,,[AC_CHECK_HEADERS(qdbm/depot.h,,AC_MSG_ERROR(libqdbm-dev required))])
-   AC_CHECK_LIB(qdbm, dpopen,, AC_MSG_ERROR(libqdbm-dev required))
-   AC_CONFIG_FILES(datastore/keyvalue/Makefile)
-fi
-
 # Set default config file location
 AC_ARG_WITH([configfile],
 	    [AS_HELP_STRING([--with-configfile=FILE],[set default path to config file])],
@@ -193,7 +174,6 @@ AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${DEFAULT_CONFIG}",[Location for apps 
 
 AH_BOTTOM([#include <clixon_custom.h>])
 
-# See also datastore/keyvalue/Makefile in with_keyvalue clause above
 AC_OUTPUT(Makefile
 	  lib/Makefile
 	  lib/src/Makefile 

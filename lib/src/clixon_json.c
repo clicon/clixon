@@ -216,6 +216,9 @@ json_str_escape(char *str)
     for (i=0;i<strlen(str);i++)
 	switch (str[i]){
 	case '\n':
+	    snew[j++]='\\';
+	    snew[j++]='n';
+	    break;
 	case '\"':
 	case '\\':
 	    snew[j++]='\\';
@@ -301,10 +304,12 @@ xml2json1_cbuf(cbuf                  *cb,
 	break;
     }
     case NO_ARRAY:
-	if (!flat)
-	    cprintf(cb, "%*s\"%s\": ", 
-		    pretty?(level*JSON_INDENT):0, "", 
-		    xml_name(x));
+	if (!flat){
+	    cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
+	    if (xml_namespace(x))
+		cprintf(cb, "%s:", xml_namespace(x));
+	    cprintf(cb, "%s\": ", xml_name(x));
+	}
 	switch (childt){
 	case NULL_CHILD:
 	    cprintf(cb, "null");
@@ -320,9 +325,10 @@ xml2json1_cbuf(cbuf                  *cb,
 	break;
     case FIRST_ARRAY:
     case SINGLE_ARRAY:
-	cprintf(cb, "%*s\"%s\": ", 
-		pretty?(level*JSON_INDENT):0, "", 
-		xml_name(x));
+	cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
+	if (xml_namespace(x))
+	    cprintf(cb, "%s:", xml_namespace(x));
+	cprintf(cb, "%s\": ", xml_name(x));
 	level++;
 	cprintf(cb, "[%s%*s", 
 		pretty?"\n":"",

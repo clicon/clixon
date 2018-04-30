@@ -47,6 +47,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
@@ -60,9 +61,9 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
-#include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_xml.h"
+#include "clixon_plugin.h"
 #include "clixon_xsl.h"
 #include "clixon_proto.h"
 #include "clixon_err.h"
@@ -90,6 +91,7 @@ clicon_rpc_msg(clicon_handle      h,
     cxobj             *xret = NULL;
     yang_spec         *yspec;
 
+    clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
     if ((sock = clicon_sock(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
 	goto done;
@@ -200,7 +202,7 @@ clicon_rpc_netconf_xml(clicon_handle  h,
     return retval;
 }
 
-/*! Generate clicon error function call from Netconf error message
+/*! Generate and log clicon error function call from Netconf error message
  * @param[in]  xerr    Netconf error message on the level: <rpc-reply><rpc-error>
  */
 int
@@ -264,10 +266,14 @@ clicon_rpc_get_config(clicon_handle       h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xd;
-
+    char              *username;
+    
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "<rpc><get-config><source><%s/></source>", db);
+    cprintf(cb, "<rpc");
+    if ((username = clicon_username_get(h)) != NULL)
+	cprintf(cb, " username=\"%s\"", username);
+    cprintf(cb, "><get-config><source><%s/></source>", db);
     if (xpath && strlen(xpath))
 	cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
     cprintf(cb, "</get-config></rpc>");
@@ -303,7 +309,7 @@ clicon_rpc_get_config(clicon_handle       h,
  * @param[in] op         Operation on database item: OP_MERGE, OP_REPLACE
  * @param[in] xml        XML string. Ex: <config><a>..</a><b>...</b></config>
  * @retval    0          OK
- * @retval   -1          Error
+ * @retval   -1          Error and logged to syslog
  * @note xml arg need to have <config> as top element
  * @code
  * if (clicon_rpc_edit_config(h, "running", OP_MERGE, 
@@ -322,10 +328,14 @@ clicon_rpc_edit_config(clicon_handle       h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "<rpc><edit-config><target><%s/></target>", db);
+    cprintf(cb, "<rpc");
+    if ((username = clicon_username_get(h)) != NULL)
+	cprintf(cb, " username=\"%s\"", username);
+    cprintf(cb, "><edit-config><target><%s/></target>", db);
     cprintf(cb, "<default-operation>%s</default-operation>", 
 	    xml_operation2str(op));
     if (xmlstr)
@@ -356,6 +366,8 @@ clicon_rpc_edit_config(clicon_handle       h,
  * @param[in] h        CLICON handle
  * @param[in] db1      src database, eg "running"
  * @param[in] db2      dst database, eg "startup"
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  * @code
  * if (clicon_rpc_copy_config(h, "running", "startup") < 0)
  *    err;
@@ -370,8 +382,12 @@ clicon_rpc_copy_config(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><copy-config><source><%s/></source><target><%s/></target></copy-config></rpc>", db1, db2)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><copy-config><source><%s/></source><target><%s/></target></copy-config></rpc>",
+				 username?username:"",
+				 db1, db2)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -391,6 +407,8 @@ clicon_rpc_copy_config(clicon_handle h,
 /*! Send a request to backend to delete a config database
  * @param[in] h        CLICON handle
  * @param[in] db       database, eg "running"
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  * @code
  * if (clicon_rpc_delete_config(h, "startup") < 0)
  *    err;
@@ -404,8 +422,11 @@ clicon_rpc_delete_config(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><delete-config><target><%s/></target></delete-config></rpc>", db)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><delete-config><target><%s/></target></delete-config></rpc>",
+				 username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -425,6 +446,8 @@ clicon_rpc_delete_config(clicon_handle h,
 /*! Lock a database
  * @param[in] h        CLICON handle
  * @param[in] db       database, eg "running"
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_lock(clicon_handle h, 
@@ -434,8 +457,11 @@ clicon_rpc_lock(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><lock><target><%s/></target></lock></rpc>", db)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><lock><target><%s/></target></lock></rpc>",
+				 username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -455,6 +481,8 @@ clicon_rpc_lock(clicon_handle h,
 /*! Unlock a database
  * @param[in] h        CLICON handle
  * @param[in] db       database, eg "running"
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_unlock(clicon_handle h, 
@@ -464,8 +492,10 @@ clicon_rpc_unlock(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><unlock><target><%s/></target></unlock></rpc>", db)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><unlock><target><%s/></target></unlock></rpc>", username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -512,10 +542,14 @@ clicon_rpc_get(clicon_handle       h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xd;
+    char              *username;
 
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "<rpc><get>");
+    cprintf(cb, "<rpc");
+    if ((username = clicon_username_get(h)) != NULL)
+	cprintf(cb, " username=\"%s\"", username);
+    cprintf(cb, "><get>");
     if (xpath && strlen(xpath))
 	cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
     cprintf(cb, "</get></rpc>");
@@ -547,6 +581,8 @@ clicon_rpc_get(clicon_handle       h,
 
 /*! Close a (user) session
  * @param[in] h        CLICON handle
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_close_session(clicon_handle h)
@@ -555,8 +591,11 @@ clicon_rpc_close_session(clicon_handle h)
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><close-session/></rpc>")) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><close-session/></rpc>",
+				 username?username:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -576,6 +615,8 @@ clicon_rpc_close_session(clicon_handle h)
 /*! Kill other user sessions
  * @param[in] h           CLICON handle
  * @param[in] session_id  Session id of other user session
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_kill_session(clicon_handle h,
@@ -585,8 +626,11 @@ clicon_rpc_kill_session(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><kill-session><session-id>%d</session-id></kill-session></rpc>", session_id)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><kill-session><session-id>%d</session-id></kill-session></rpc>",
+				 username?username:"", session_id)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -606,7 +650,8 @@ clicon_rpc_kill_session(clicon_handle h,
 /*! Send validate request to backend daemon
  * @param[in] h        CLICON handle
  * @param[in] db       Name of database
- * @retval 0           OK
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_validate(clicon_handle h, 
@@ -616,8 +661,10 @@ clicon_rpc_validate(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><validate><source><%s/></source></validate></rpc>", db)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><validate><source><%s/></source></validate></rpc>", username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -636,7 +683,8 @@ clicon_rpc_validate(clicon_handle h,
 
 /*! Commit changes send a commit request to backend daemon
  * @param[in] h          CLICON handle
- * @retval 0             OK
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_commit(clicon_handle h)
@@ -645,8 +693,10 @@ clicon_rpc_commit(clicon_handle h)
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><commit/></rpc>")) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><commit/></rpc>", username?username:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -664,8 +714,9 @@ clicon_rpc_commit(clicon_handle h)
 }
 
 /*! Discard all changes in candidate / revert to running
- * @param[in] h          CLICON handle
- * @retval 0             OK
+ * @param[in] h        CLICON handle
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_discard_changes(clicon_handle h)
@@ -674,8 +725,10 @@ clicon_rpc_discard_changes(clicon_handle h)
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><discard-changes/></rpc>")) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><discard-changes/></rpc>", username?username:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -697,6 +750,9 @@ clicon_rpc_discard_changes(clicon_handle h)
  * @param{in]   stream   name of notificatio/log stream (CLICON is predefined)
  * @param{in]   filter   message filter, eg xpath for xml notifications
  * @param[out]  s0       socket returned where notification mesages will appear
+ * @retval      0        OK
+ * @retval      -1       Error and logged to syslog
+
  * @note When using netconf create-subsrciption,status and format is not supported
  */
 int
@@ -709,11 +765,14 @@ clicon_rpc_create_subscription(clicon_handle    h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><create-subscription>"
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><create-subscription>"
 				 "<stream>%s</stream>"
 				 "<filter>%s</filter>"
 				 "</create-subscription></rpc>", 
+				 username?username:"",
 				 stream?stream:"", filter?filter:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, s0) < 0)
@@ -732,8 +791,10 @@ clicon_rpc_create_subscription(clicon_handle    h,
 }
 
 /*! Send a debug request to backend server
- * @param[in] h          CLICON handle
- * @param[in] level      Debug level
+ * @param[in] h        CLICON handle
+ * @param[in] level    Debug level
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
  */
 int
 clicon_rpc_debug(clicon_handle h, 
@@ -743,8 +804,10 @@ clicon_rpc_debug(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *username;
 
-    if ((msg = clicon_msg_encode("<rpc><debug><level>%d</level></debug></rpc>", level)) == NULL)
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><debug><level>%d</level></debug></rpc>", username?username:"", level)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;

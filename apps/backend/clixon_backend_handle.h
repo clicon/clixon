@@ -43,30 +43,6 @@
 /*
  * Types
  */
-struct client_entry;
-typedef int (*backend_rpc_cb)(
-    clicon_handle        h,    /* CLicon handle */
-    cxobj               *xe,   /* Request: <rpc><xn></rpc> */
-    struct client_entry *ce,   /* Client session */
-    cbuf                *cbret,/* Reply eg <rpc-reply>... */
-    void                *arg   /* Argument given at register */
-);  
-typedef backend_rpc_cb backend_netconf_cb_t; /* XXX backward compat */
-
-
-/*! Generic downcall registration. 
- * Enables any function to be called from (cli) frontend
- * to backend. Like an RPC on application-level.
- */
-typedef int (*downcall_cb)(clicon_handle h, uint16_t op, uint16_t len, 
-			   void *arg, uint16_t *retlen, void **retarg);
-
-/*
- * Log for netconf notify function (config_client.c)
- */
-int backend_notify(clicon_handle h, char *stream, int level, char *txt);
-int backend_notify_xml(clicon_handle h, char *stream, int level, cxobj *x);
-
 /* subscription callback */
 typedef	int (*subscription_fn_t)(clicon_handle, void *filter, void *arg);
 
@@ -82,6 +58,14 @@ struct handle_subscription{
     void                *hs_arg;    /* Callback argument */
 };
 
+/*
+ * Prototypes
+ */
+/* Log for netconf notify function (config_client.c) */
+int backend_notify(clicon_handle h, char *stream, int level, char *txt);
+int backend_notify_xml(clicon_handle h, char *stream, int level, cxobj *x);
+
+
 struct handle_subscription *subscription_add(clicon_handle h, char *stream, 
 					     enum format_enum format, char *filter, 
 					     subscription_fn_t fn, void *arg);
@@ -91,15 +75,5 @@ int subscription_delete(clicon_handle h, char *stream,
 
 struct handle_subscription *subscription_each(clicon_handle h,
 				      struct handle_subscription *hprev);
-
-/* XXX backward compat */
-#define backend_netconf_register_callback(a,b,c,d) backend_rpc_cb_register(a,b,c,d)
-int backend_rpc_cb_register(clicon_handle h, backend_rpc_cb cb,	void *arg, 
-			    char *tag);      
-
-int backend_rpc_cb_call(clicon_handle h, cxobj *xe, struct client_entry *ce, 
-			cbuf *cbret);
-
-int backend_rpc_cb_delete_all(void);
 
 #endif /* _CLIXON_BACKEND_HANDLE_H_ */

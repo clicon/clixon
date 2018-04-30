@@ -47,7 +47,7 @@ CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
-#INSTALL		= @INSTALL@
+INSTALL		= @INSTALL@
 
 INCLUDES 	= -I. -I@srcdir@ @INCLUDES@
 SHELL		= /bin/sh
@@ -69,8 +69,8 @@ clixon.mk:  clixon.mk.cpp
 	$(CPP) -P -traditional-cpp -x assembler-with-cpp -Dprefix=$(prefix) -Dlocalstatedir=$(localstatedir) -Dsysconfdir=$(sysconfdir) -Ddatadir=$(datadir) -Dlibdir=$(libdir) $< > $@
 
 install:  clixon.mk
-	install -d -m 755 $(DESTDIR)$(datadir)/clixon
-	install -m 755 clixon.mk $(DESTDIR)$(datadir)/clixon
+	install -d -m 0755 $(DESTDIR)$(datadir)/clixon
+	install -m 0644 clixon.mk $(DESTDIR)$(datadir)/clixon
 	for i in $(SUBDIRS) doc; \
 	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done; \
 	echo "Install for compilation by: make install-include"

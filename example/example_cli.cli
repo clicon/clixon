@@ -1,7 +1,7 @@
 # Common CLI syntax for both server and PMNode operatio mode
-CLICON_MODE="routing";
+CLICON_MODE="example";
 CLICON_PROMPT="%U@%H> ";
-CLICON_PLUGIN="routing_cli";
+CLICON_PLUGIN="example_cli";
 
 # Note, when switching to PT, change datamodel to only @datamodel
 set @datamodel:example, cli_set();
@@ -30,6 +30,7 @@ compare("Compare running and candidate"), compare_dbs((int32)1);
 
 show("Show a particular state of the system"){
     xpath("Show configuration") <xpath:string>("XPATH expression"), show_conf_xpath("candidate");
+    version("Show version"), cli_show_version("candidate", "text", "/");
     compare("Compare candidate and running databases"), compare_dbs((int32)0);{
     		     xml("Show comparison in xml"), compare_dbs((int32)0);
 		     text("Show comparison in text"), compare_dbs((int32)1);

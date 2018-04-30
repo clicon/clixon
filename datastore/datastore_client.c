@@ -33,11 +33,11 @@
 
   * Examples: 
 
-./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip get /
+./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip get /
 
-sudo ./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip put merge /interfaces/interface=eth66 '<config>eth66</config>'
+sudo ./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip put merge /interfaces/interface=eth66 '<config>eth66</config>'
 
-sudo ./datastore_client -d candidate -b /usr/local/var/routing -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/routing/yang -m ietf-ip put merge / '<config><interfaces><interface><name>eth0</name><enabled>true</enabled></interface></interfaces></config>'
+sudo ./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip put merge / '<config><interfaces><interface><name>eth0</name><enabled>true</enabled></interface></interfaces></config>'
 
  */
 
@@ -124,6 +124,7 @@ main(int argc, char **argv)
     cxobj              *xt = NULL;
     int                 i;
     char               *xpath;
+    cbuf               *cbret = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -261,7 +262,9 @@ main(int argc, char **argv)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)
 	    goto done;
-	if (xmldb_put(h, db, op, xt) < 0)
+	if ((cbret = cbuf_new()) == NULL)
+	    goto done;
+	if (xmldb_put(h, db, op, xt, cbret) < 0)
 	    goto done;
     }
     else if (strcmp(cmd, "copy")==0){
@@ -325,6 +328,8 @@ main(int argc, char **argv)
     if (xmldb_plugin_unload(h) < 0)
 	goto done;
   done:
+    if (cbret)
+	cbuf_free(cbret);
     if (xt)
 	xml_free(xt);
     if (h)

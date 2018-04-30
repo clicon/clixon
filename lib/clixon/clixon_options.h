@@ -43,23 +43,26 @@
  */
 /* default group membership to access config unix socket */
 #define CLICON_SOCK_GROUP "clicon"
-/* Default name of master plugin */
-#define CLICON_MASTER_PLUGIN "master"
 
 /*
  * Types
  */
 
 /*! Controls how keywords a generated in CLI syntax / prints from object model
- * Example syntax a.b[] $!x $y:
- * NONE: a b <x> <y>;
- * VARS: a b <x> y <y>;
- * ALL:  a b x <x> y <y>;
+ * Example YANG: 
+ *  list a {
+ *    key x;
+ *    leaf x;   
+ *    leaf y;   
+ *  }
+ * NONE: a <x> <y>;
+ * VARS: a <x> y <y>;
+ * ALL:  a x <x> y <y>;
  */
 enum genmodel_type{
     GT_ERR =-1, /* Error  */
     GT_NONE=0,  /* No extra keywords */
-    GT_VARS,    /* Keywords on non-index variables */
+    GT_VARS,    /* Keywords on non-key variables */
     GT_ALL,     /* Keywords on all variables */
 };
 
@@ -137,9 +140,6 @@ static inline char *clicon_sock_group(clicon_handle h){
 static inline char *clicon_backend_pidfile(clicon_handle h){
     return clicon_option_str(h, "CLICON_BACKEND_PIDFILE");
 }
-static inline char *clicon_master_plugin(clicon_handle h){
-    return clicon_option_str(h, "CLICON_MASTER_PLUGIN");
-}
 static inline char *clicon_xmldb_dir(clicon_handle h){
     return clicon_option_str(h, "CLICON_XMLDB_DIR");
 }
@@ -178,5 +178,10 @@ int clicon_xmldb_api_set(clicon_handle h, void *xa_api);
 
 void *clicon_xmldb_handle_get(clicon_handle h);
 int clicon_xmldb_handle_set(clicon_handle h, void *xh);
+
+/**/
+/* Set and get authorized user name */
+char *clicon_username_get(clicon_handle h);
+int clicon_username_set(clicon_handle h, void *username);
 
 #endif  /* _CLIXON_OPTIONS_H_ */

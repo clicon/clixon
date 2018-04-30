@@ -31,6 +31,9 @@
 
   ***** END LICENSE BLOCK *****
 
+ * Yang functions
+ * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
+ * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
  */
 
 #ifndef _CLIXON_YANG_H_
@@ -114,6 +117,7 @@ enum rfc_6020{
     Y_TYPEDEF,
     Y_UNIQUE,
     Y_UNITS,
+    Y_UNKNOWN,
     Y_USES,
     Y_VALUE,
     Y_WHEN,
@@ -122,13 +126,44 @@ enum rfc_6020{
     Y_SPEC  /* XXX: NOTE NOT YANG STATEMENT, reserved for top level spec */
 };
 
+/* Type used to group yang nodes used in some functions
+ * See RFC7950 Sec 3
+ */
+enum yang_class{
+    YC_NONE,            /* Someting else,... */
+    YC_DATANODE,        /* See yang_datanode() */
+    YC_DATADEFINITION,  /* See yang_datadefinition() */
+    YC_SCHEMANODE       /* See yang_schemanode() */
+};
+typedef enum yang_class yang_class;
+
 #define YANG_FLAG_MARK 0x01  /* Marker for dynamic algorithms, eg expand */
 
-/* Yang data node */
+/* Yang data node 
+ * See RFC7950 Sec 3:
+ *   o  data node: A node in the schema tree that can be instantiated in a
+ *      data tree.  One of container, leaf, leaf-list, list, anydata, and
+ *      anyxml.
+ */
 #define yang_datanode(y) ((y)->ys_keyword == Y_CONTAINER || (y)->ys_keyword == Y_LEAF || (y)->ys_keyword == Y_LIST || (y)->ys_keyword == Y_LEAF_LIST || (y)->ys_keyword == Y_ANYXML)
 
-/* Yang schema node */
+/* Yang data definition statement
+ * See RFC 7950 Sec 3:
+ *   o  data definition statement: A statement that defines new data
+ *      nodes.  One of "container", "leaf", "leaf-list", "list", "choice",
+ *      "case", "augment", "uses", "anydata", and "anyxml".
+ */
+#define yang_datadefinition(y) (yang_datanode(y) || (y)->ys_keyword == Y_CHOICE || (y)->ys_keyword == Y_CASE || (y)->ys_keyword == Y_AUGMENT || (y)->ys_keyword == Y_USES)
+
+
+/* Yang schema node .
+ * See RFC 7950 Sec 3:
+ *    o  schema node: A node in the schema tree.  One of action, container,
+ *       leaf, leaf-list, list, choice, case, rpc, input, output,
+ *       notification, anydata, and anyxml.
+ */
 #define yang_schemanode(y) (yang_datanode(y) || (y)->ys_keyword == Y_RPC || (y)->ys_keyword == Y_CHOICE || (y)->ys_keyword == Y_CASE || (y)->ys_keyword == Y_INPUT || (y)->ys_keyword == Y_OUTPUT || (y)->ys_keyword == Y_NOTIFICATION)
+
 
 typedef struct yang_stmt yang_stmt; /* forward */
 
@@ -161,7 +196,9 @@ struct yang_stmt{
 					leaf-list, 
 					config: boolean true or false
 					mandatory: boolean true or false
-					fraction-digits for fraction-digits */
+					fraction-digits for fraction-digits
+					unkown-stmt (argument)
+				     */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
 					Y_RANGE: range_min, range_max 
 					Y_LIST: vector of keys
@@ -206,15 +243,15 @@ yang_stmt *ys_dup(yang_stmt *old);
 int        yn_insert(yang_node *yn_parent, yang_stmt *ys_child);
 yang_stmt *yn_each(yang_node *yn, yang_stmt *ys);
 char      *yang_key2str(int keyword);
-char      *ytype_prefix(yang_stmt *ys);
-char      *ytype_id(yang_stmt *ys);
+char      *yarg_prefix(yang_stmt *ys);
+char      *yarg_id(yang_stmt *ys);
 yang_stmt *ys_module(yang_stmt *ys);
 yang_spec *ys_spec(yang_stmt *ys);
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
 yang_stmt *yang_find(yang_node *yn, int keyword, char *argument);
 yang_stmt *yang_find_datanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_node *yn, char *argument);
-yang_stmt *yang_find_topnode(yang_spec *ysp, char *name, int schemanode);
+yang_stmt *yang_find_topnode(yang_spec *ysp, char *name, yang_class class);
 int        yang_order(yang_stmt *y);
 int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
@@ -223,11 +260,11 @@ int        yang_parse(clicon_handle h, const char *yang_dir,
 int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
 int        yang_abs_schema_nodeid(yang_spec *yspec, char *schema_nodeid, 
-				  yang_stmt **yres);
+				  enum rfc_6020 keyword, yang_stmt **yres);
 int        yang_desc_schema_nodeid(yang_node *yn, char *schema_nodeid, 
-				   yang_stmt **yres);
+				   enum rfc_6020 keyword, yang_stmt **yres);
 cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
-int        ys_parse_sub(yang_stmt *ys);
+int        ys_parse_sub(yang_stmt *ys, char *extra);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
 yang_spec *yang_spec_netconf(clicon_handle h);

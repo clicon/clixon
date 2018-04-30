@@ -39,13 +39,31 @@
 #define _CLIXON_PLUGIN_H_
 
 /*
+ * Constants
+ */
+/* Hardcoded plugin symbol. Must exist in all plugins to kickstart */
+#define CLIXON_PLUGIN_INIT     "clixon_plugin_init" 
+
+/*
  * Types
  */
-/* The dynamicically loadable plugin object handle */
+/* Dynamicically loadable plugin object handle. @see return value of dlopen(3) */
 typedef void *plghndl_t;
 
-/* Find plugin by name callback.  XXX Should be clicon internal */
-typedef void *(find_plugin_t)(clicon_handle, char *); 
+/*! Registered RPC callback function 
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xn      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     Domain specific arg, ec client-entry or FCGX_Request 
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ */
+typedef int (*clicon_rpc_cb)(
+    clicon_handle h,       
+    cxobj        *xn,      
+    cbuf         *cbret,   
+    void         *arg,     
+    void         *regarg   
+);  
 
 /*
  * Prototypes
@@ -56,37 +74,135 @@ typedef void *(find_plugin_t)(clicon_handle, char *);
  *   Backend see config_plugin.c
  */
 
-/*! Called when plugin loaded. Only mandadory callback. All others optional 
- * @see plginit_t
- */
-#define PLUGIN_INIT            "plugin_init"
-typedef int (plginit_t)(clicon_handle);	 	       /* Plugin Init */
-
 /* Called when backend started with cmd-line arguments from daemon call. 
- * @see plgstart_t
+ * Call plugin start functions with argc/argv multiple arguments.
+ * Typically the argc/argv are the ones appearing after "--", eg
+ * clicon_cli -f /etc/clicon.xml -- -a myopt
  */
-#define PLUGIN_START           "plugin_start"
 typedef int (plgstart_t)(clicon_handle, int, char **); /* Plugin start */
 
 /* Called just before plugin unloaded. 
  */
-#define PLUGIN_EXIT            "plugin_exit"
 typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
 
-/*! Called by restconf
- * Returns 0 if credentials OK, -1 if failed
+/*! Called by restconf to check credentials and return username
  */
-#define PLUGIN_CREDENTIALS      "plugin_credentials"
-/* Plugin credentials 
- * username should be freed after use
+
+/* Plugin authorization. Set username option (or not)
+ * @param[in]  Clicon handle
+ * @param[in]  void*, eg Fastcgihandle request restconf
+ * @retval   0 if credentials OK
+ * @retval  -1 credentials not OK
  */
-typedef int (plgcredentials_t)(clicon_handle, void *, char **username);
+typedef int (plgauth_t)(clicon_handle, void *);
 
-/* Find a function in global namespace or a plugin. XXX clicon internal */
-void *clicon_find_func(clicon_handle h, char *plugin, char *func);
+typedef int (plgreset_t)(clicon_handle h, const char *db); /* Reset system status */
+typedef int (plgstatedata_t)(clicon_handle h, char *xpath, cxobj *xtop);
 
-plghndl_t plugin_load (clicon_handle h, char *file, int dlflags);
+typedef void *transaction_data;
 
-int plugin_unload(clicon_handle h, plghndl_t *handle);
+/* Transaction callbacks */
+typedef int (trans_cb_t)(clicon_handle h, transaction_data td); 
+
+/* Hook to override default prompt with explicit function
+ * Format prompt before each getline 
+ * @param[in] h      Clicon handle
+ * @param[in] mode   Cligen syntax mode
+ * @retval    prompt Prompt to prepend all CLigen command lines
+ */
+typedef char *(cli_prompthook_t)(clicon_handle, char *mode);
+
+/* plugin init struct for the api 
+ * Note: Implicit init function
+ */
+struct clixon_plugin_api;
+typedef struct clixon_plugin_api* (plginit2_t)(clicon_handle);    /* Clixon plugin Init */
+
+struct clixon_plugin_api{
+    /*--- Common fields.  ---*/
+    char              ca_name[PATH_MAX]; /* Name of plugin (given by plugin) */
+    plginit2_t       *ca_init;           /* Clixon plugin Init (implicit) */
+    plgstart_t       *ca_start;          /* Plugin start */
+    plgexit_t        *ca_exit;	         /* Plugin exit */
+    union {
+	struct {
+	    cli_prompthook_t *ci_prompt;         /* Prompt hook */
+	    cligen_susp_cb_t *ci_suspend;        /* Ctrl-Z hook, see cligen getline */
+	    cligen_interrupt_cb_t *ci_interrupt; /* Ctrl-C, see cligen getline */
+	} cau_cli;
+	struct {
+	    plgauth_t        *cr_auth;           /* Auth credentials */
+	} cau_restconf;
+	struct {
+	} cau_netconf;
+	struct {
+	    plgreset_t       *cb_reset;          /* Reset system status (backend only) */
+	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
+	    trans_cb_t       *cb_trans_begin;	 /* Transaction start */
+	    trans_cb_t       *cb_trans_validate; /* Transaction validation */
+	    trans_cb_t       *cb_trans_complete; /* Transaction validation complete */
+	    trans_cb_t       *cb_trans_commit;   /* Transaction commit */
+	    trans_cb_t       *cb_trans_end;	 /* Transaction completed  */
+	    trans_cb_t       *cb_trans_abort;	 /* Transaction aborted */    
+	} cau_backend;
+
+    } u;
+};
+/* Access fields */
+#define ca_prompt         u.cau_cli.ci_prompt
+#define ca_suspend        u.cau_cli.ci_suspend
+#define ca_interrupt      u.cau_cli.ci_interrupt
+#define ca_auth           u.cau_restconf.cr_auth
+#define ca_reset          u.cau_backend.cb_reset
+#define ca_statedata      u.cau_backend.cb_statedata
+#define ca_trans_begin    u.cau_backend.cb_trans_begin
+#define ca_trans_validate u.cau_backend.cb_trans_validate
+#define ca_trans_complete u.cau_backend.cb_trans_complete
+#define ca_trans_commit   u.cau_backend.cb_trans_commit
+#define ca_trans_end      u.cau_backend.cb_trans_end
+#define ca_trans_abort    u.cau_backend.cb_trans_abort
+
+typedef struct clixon_plugin_api clixon_plugin_api;
+
+/* Internal plugin structure with dlopen() handle and plugin_api
+ */
+struct clixon_plugin{
+    char              cp_name[PATH_MAX]; /* Plugin filename. Note api ca_name is given by plugin itself */
+    plghndl_t         cp_handle;  /* Handle to plugin using dlopen(3) */
+    clixon_plugin_api cp_api;
+};
+typedef struct clixon_plugin clixon_plugin;
+
+/*
+ * Prototypes
+ */
+
+/*! Plugin initialization function. Must appear in all plugins
+ * @param[in]  h    Clixon handle
+ * @retval     api  Pointer to API struct
+ * @see CLIXON_PLUGIN_INIT  default symbol 
+ */
+clixon_plugin_api *clixon_plugin_init(clicon_handle h);
+
+clixon_plugin *clixon_plugin_each(clicon_handle h, clixon_plugin *cpprev);
+
+clixon_plugin *clixon_plugin_each_revert(clicon_handle h, clixon_plugin *cpprev, int nr);
+
+clixon_plugin *clixon_plugin_find(clicon_handle h, char *name);
+
+int clixon_plugins_load(clicon_handle h, char *function, char *dir, char *regexp);
+
+int clixon_plugin_start(clicon_handle h, int argc, char **argv);
+
+int clixon_plugin_exit(clicon_handle h);
+
+int clixon_plugin_auth(clicon_handle h, void *arg);
+
+/* rpc callback API */
+int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *tag);
+
+int rpc_callback_delete_all(void);
+
+int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);
 
 #endif  /* _CLIXON_PLUGIN_H_ */

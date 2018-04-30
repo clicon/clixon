@@ -52,6 +52,7 @@
 #include <regex.h>
 #include <syslog.h>
 #include <netinet/in.h>
+#include <limits.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -89,6 +90,7 @@ struct backend_handle {
     struct client_entry     *bh_ce_list;   /* The client list */
     int                      bh_ce_nr;     /* Number of clients, just increment */
     struct handle_subscription *bh_subscription; /* Event subscription list */
+    cxobj                   *bh_nacm;      /* NACM external struct */
 };
 
 /*! Creates and returns a clicon config handle for other CLICON API calls
@@ -105,11 +107,14 @@ backend_handle_init(void)
 int
 backend_handle_exit(clicon_handle h)
 {
+    struct backend_handle *bh = handle(h);
     struct client_entry   *ce;
 
     /* only delete client structs, not close sockets, etc, see backend_client_rm */
     while ((ce = backend_client_list(h)) != NULL)
 	backend_client_delete(h, ce);
+    if (bh->bh_nacm)
+	xml_free(bh->bh_nacm);
     clicon_handle_exit(h); /* frees h and options */
     return 0;
 }
@@ -430,110 +435,22 @@ subscription_each(clicon_handle               h,
     return hs;
 }
 
-/*--------------------------------------------------------------------
- * Backend netconf rpc callbacks
- */
-typedef struct {
-    qelem_t 	   rc_qelem;	/* List header */
-    backend_rpc_cb rc_callback;  /* RPC Callback */
-    void	  *rc_arg;	/* Application specific argument to cb */
-    char          *rc_tag;	/* Xml tag when matched, callback called */
-} backend_rpc_cb_entry;
-
-/* List of backend rpc callback entries */
-static backend_rpc_cb_entry *rpc_cb_list = NULL;
-
-/*! Register netconf backend rpc callback
- * Called from plugin to register a callback for a specific netconf XML tag.
- *
- * @param[in]  h       clicon handle
- * @param[in]  cb,     Callback called 
- * @param[in]  arg,    Arg to send to callback 
- * @param[in]  tag     Xml tag when callback is made 
- * @see backend_rpc_cb_call
- */
 int
-backend_rpc_cb_register(clicon_handle  h,
-			backend_rpc_cb cb,
-			void          *arg,       
-			char          *tag)
+backend_nacm_list_set(clicon_handle h,
+		      cxobj        *xnacm)
 {
-    backend_rpc_cb_entry *rc;
+    struct backend_handle *bh = handle(h);
 
-    if ((rc = malloc(sizeof(backend_rpc_cb_entry))) == NULL) {
-	clicon_err(OE_DB, errno, "malloc: %s", strerror(errno));
-	goto catch;
-    }
-    memset (rc, 0, sizeof (*rc));
-    rc->rc_callback = cb;
-    rc->rc_arg  = arg;
-    rc->rc_tag  = strdup(tag); /* XXX strdup memleak */
-    INSQ(rc, rpc_cb_list);
-    return 0;
-catch:
-    if (rc){
-	if (rc->rc_tag)
-	    free(rc->rc_tag);
-	free(rc);
-    }
-    return -1;
-}
-
-/*! Search netconf backend callbacks and invoke if match
- * This is internal system call, plugin is invoked (does not call) this functino
- * @param[in]  h       clicon handle
- * @param[in]  xe      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
- * @param[in]  ce      Client (session) entry
- * @param[out] cbret   Return XML, error or OK as cbuf
- *
- * @retval -1   Error
- * @retval  0   OK, not found handler.
- * @retval  1   OK, handler called
- * @see backend_rpc_cb_register
- */
-int
-backend_rpc_cb_call(clicon_handle        h,
-		    cxobj               *xe,
-		    struct client_entry *ce,
-		    cbuf                *cbret)
-{
-    backend_rpc_cb_entry *rc;
-    int                   retval = -1;
-
-    if (rpc_cb_list == NULL)
-	return 0;
-    rc = rpc_cb_list;
-    do {
-	if (strcmp(rc->rc_tag, xml_name(xe)) == 0){
-	    if ((retval = rc->rc_callback(h, xe, ce, cbret, rc->rc_arg)) < 0){
-		clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_tag);
-		goto done;
-	    }
-	    else{
-		retval = 1; /* handled */
-		goto done;
-	    }
-	}
-	rc = NEXTQ(backend_rpc_cb_entry *, rc);
-    } while (rc != rpc_cb_list);
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Delete all state data callbacks.
- */
-int
-backend_rpc_cb_delete_all(void)
-{
-    backend_rpc_cb_entry *rc;
-
-    while((rc = rpc_cb_list) != NULL) {
-	DELQ(rc, rpc_cb_list, backend_rpc_cb_entry *);
-	if (rc->rc_tag)
-	    free(rc->rc_tag);
-	free(rc);
-    }
+    if (bh->bh_nacm)
+	xml_free(bh->bh_nacm);
+    bh->bh_nacm = xnacm;
     return 0;
 }
 
+cxobj *
+backend_nacm_list_get(clicon_handle h)
+{
+    struct backend_handle *bh = handle(h);
+    
+    return bh->bh_nacm;
+}

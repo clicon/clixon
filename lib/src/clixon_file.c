@@ -62,8 +62,7 @@
 #include "clixon_string.h"
 #include "clixon_file.h"
 
-/*
- * qsort function
+/*! qsort "compar" for directory alphabetically sorting, see qsort(3)
  */
 static int
 clicon_file_dirent_sort(const void* arg1, 
@@ -79,8 +78,7 @@ clicon_file_dirent_sort(const void* arg1,
 #endif /* HAVE_STRVERSCMP */
 }
 
-
-/*! Return sorted matching files from a directory
+/*! Return alphabetically sorted files from a directory matching regexp
  * @param[in]  dir     Directory path 
  * @param[out] ent     Entries pointer, will be filled in with dir entries. Free
  *                     after use
@@ -120,27 +118,23 @@ clicon_file_dirent(const char     *dir,
    struct dirent *new = NULL;
    struct dirent *dvecp = NULL;
 
-
    *ent = NULL;
    nent = 0;
-
    if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
        regerror(res, &re, errbuf, sizeof(errbuf));
        clicon_err(OE_DB, 0, "regcomp: %s", errbuf);
        return -1;
    }
-
-   if ((dirp = opendir (dir)) == NULL) {
+   if ((dirp = opendir(dir)) == NULL) {
      if (errno == ENOENT) /* Dir does not exist -> return 0 matches */
        retval = 0;
      else
        clicon_err(OE_UNIX, errno, "opendir(%s)", dir);
      goto quit;
    }
-   
-   for (res = readdir_r (dirp, &dent, &dresp); 
+   for (res = readdir_r(dirp, &dent, &dresp); 
 	dresp; 
-	res = readdir_r (dirp, &dent, &dresp)) {
+	res = readdir_r(dirp, &dent, &dresp)) {
        if (res != 0) {
 	   clicon_err(OE_UNIX, 0, "readdir: %s", strerror(errno));
 	   goto quit;
@@ -162,13 +156,12 @@ clicon_file_dirent(const char     *dir,
 	   if ((type & st.st_mode) == 0)
 	       continue;
        }
-       
        if ((tmp = realloc(new, (nent+1)*sizeof(*dvecp))) == NULL) {
 	   clicon_err(OE_UNIX, errno, "realloc");
 	   goto quit;
        }
        new = tmp;
-       memcpy (&new[nent], &dent, sizeof(dent));
+       memcpy(&new[nent], &dent, sizeof(dent));
        nent++;
 
    } /* while */

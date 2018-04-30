@@ -71,45 +71,48 @@
 enum transport_type    transport = NETCONF_SSH; /* XXX Remove SOAP support */
 int cc_closed = 0; /* XXX Please remove (or at least hide in handle) this global variable */
 
+/*! Add netconf xml postamble of message. I.e, xml after the body of the message.
+ * @param[in]  cb  Netconf packet (cligen buffer)
+ */
 int
-add_preamble(cbuf *xf)
+add_preamble(cbuf *cb)
 {
     if (transport == NETCONF_SOAP)
-	cprintf(xf, "\n<soapenv:Envelope\n xmlns:soapenv=\"http://www.w3.org/2003/05/soap-envelope\">\n"
+	cprintf(cb, "\n<soapenv:Envelope\n xmlns:soapenv=\"http://www.w3.org/2003/05/soap-envelope\">\n"
 	"<soapenv:Body>");
     return 0;
 }
 
-/* 
- * add_postamble
- * add netconf xml postamble of message. That is, xml after the body of the message.
+/*! Add netconf xml postamble of message. I.e, xml after the body of the message.
  * for soap this is the envelope stuff, for ssh this is ]]>]]>
+ * @param[in]  cb  Netconf packet (cligen buffer)
  */
 int
-add_postamble(cbuf *xf)
+add_postamble(cbuf *cb)
 {
     switch (transport){
     case NETCONF_SSH:
-	cprintf(xf, "]]>]]>");     /* Add RFC4742 end-of-message marker */
+	cprintf(cb, "]]>]]>");     /* Add RFC4742 end-of-message marker */
 	break;
     case NETCONF_SOAP:
-	cprintf(xf, "\n</soapenv:Body>" "</soapenv:Envelope>");
+	cprintf(cb, "\n</soapenv:Body>" "</soapenv:Envelope>");
 	break;
     }
     return 0;
 }
 
-/* 
- * add_error_preamble
+/*! Add error_preamble
  * compared to regular messages (see add_preamble), error message differ in some
  * protocols (eg soap) by adding a longer and deeper header.
+ * @param[in]  cb  Netconf packet (cligen buffer)
  */
 int
-add_error_preamble(cbuf *xf, char *reason)
+add_error_preamble(cbuf *cb,
+		   char *reason)
 {
     switch (transport){
     case NETCONF_SOAP:
-	cprintf(xf, "<soapenv:Envelope xmlns:soapenv=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:xml=\"http://www.w3.org/XML/1998/namespace\">"
+	cprintf(cb, "<soapenv:Envelope xmlns:soapenv=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:xml=\"http://www.w3.org/XML/1998/namespace\">"
 		"<soapenv:Body>"
 		"<soapenv:Fault>"
 		"<soapenv:Code>"
@@ -121,26 +124,26 @@ add_error_preamble(cbuf *xf, char *reason)
 		"<detail>", reason);
 	break;
     default:
-	if (add_preamble(xf) < 0)
+	if (add_preamble(cb) < 0)
 	    return -1;
 	break;
     }
     return 0;
 }
 
-/* 
- * add_error_postamble
+/*! Add error postamble
  * compared to regular messages (see add_postamble), error message differ in some
  * protocols (eg soap) by adding a longer and deeper header.
+ * @param[in]  cb  Netconf packet (cligen buffer)
  */
 int
-add_error_postamble(cbuf *xf)
+add_error_postamble(cbuf *cb)
 {
     switch (transport){
     case NETCONF_SOAP:
-	cprintf(xf, "</detail>" "</soapenv:Fault>");
+	cprintf(cb, "</detail>" "</soapenv:Fault>");
     default: /* fall through */
-	if (add_postamble(xf) < 0)
+	if (add_postamble(cb) < 0)
 	    return -1;
 	break;
     }
@@ -150,7 +153,9 @@ add_error_postamble(cbuf *xf)
 
 /*! Get "target" attribute, return actual database given candidate or running
  * Caller must do error handling
- * @retval  dbname   Actual database file name
+ * @param[in]  xn       XML tree
+ * @param[in]  path
+ * @retval     dbname   Actual database file name
  */
 char *
 netconf_get_target(cxobj        *xn, 
@@ -180,11 +185,11 @@ netconf_get_target(cxobj        *xn,
  */
 int 
 netconf_output(int   s, 
-	       cbuf *xf, 
+	       cbuf *cb, 
 	       char *msg)
 {
-    char *buf = cbuf_get(xf);
-    int   len = cbuf_len(xf);
+    char *buf = cbuf_get(cb);
+    int   len = cbuf_len(cb);
     int   retval = -1;
 
     clicon_debug(1, "SEND %s", msg);
@@ -207,3 +212,4 @@ netconf_output(int   s,
   done:
     return retval;
 }
+

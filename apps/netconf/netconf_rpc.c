@@ -65,7 +65,6 @@
 #include "clixon_netconf.h"
 #include "netconf_lib.h"
 #include "netconf_filter.h"
-#include "netconf_plugin.h"
 #include "netconf_rpc.h"
 
 /*
@@ -850,8 +849,10 @@ netconf_create_subscription(clicon_handle h,
     return retval;
 }
 
-/*! See if there is any callback registered for this tag
+/*! See if there is any application defined RPC for this tag
  *
+ * This may either be local client-side or backend. If backend send as netconf 
+ * RPC. 
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
  * @param[out] xret    Return XML, error or OK
@@ -872,6 +873,8 @@ netconf_application_rpc(clicon_handle h,
     yang_stmt     *youtput;
     cxobj         *xoutput;
     cbuf          *cb = NULL;
+    cbuf          *cbret = NULL;
+    int            ret;
 
     /* First check system / netconf RPC:s */
     if ((cb = cbuf_new()) == NULL){
@@ -890,11 +893,11 @@ netconf_application_rpc(clicon_handle h,
 	//    else
 	//	cprintf(cb, "/%s", xml_name(xn)); /* XXX not accepdted by below */
     /* Find yang rpc statement, return yang rpc statement if found */
-    if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), &yrpc) < 0)
+	if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), Y_RPC, &yrpc) < 0)
 	goto done;
-
     /* Check if found */
     if (yrpc != NULL){
+	/* 1. Check xn arguments with input statement. */
 	if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
 	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
 	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yinput) < 0)
@@ -905,13 +908,20 @@ netconf_application_rpc(clicon_handle h,
 	    if (xml_yang_validate_add(xn, NULL) < 0)
 		goto done;
 	}
-	/* 
-	 * 1. Check xn arguments with input statement.
-	 * 2. Send to backend as clicon_msg-encode()
-	 * 3. In backend to similar but there call actual backend
-	 */
-	if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
+	if ((cbret = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, 0, "cbuf_new");
 	    goto done;
+	}
+	/* Look for local (client-side) netconf plugins. */
+	if ((ret = rpc_callback_call(h, xn, cbret, NULL)) < 0)
+	    goto done;
+	if (ret == 1){ /* Handled locally */
+	    if (xml_parse_string(cbuf_get(cbret), NULL, xret) < 0)
+		goto done;
+	}
+	else /* Send to backend */
+	    if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
+		goto done;
 	/* Sanity check of outgoing XML */
 	if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL){
 	    xoutput=xpath_first(*xret, "/");
@@ -931,9 +941,10 @@ netconf_application_rpc(clicon_handle h,
  done:
     if (cb)
 	cbuf_free(cb);
+    if (cbret)
+	cbuf_free(cbret);
     return retval;
 }
-    
 
 
 /*! The central netconf rpc dispatcher. Look at first tag and dispach to sub-functions.
@@ -1018,14 +1029,10 @@ netconf_rpc_dispatch(clicon_handle h,
 	}
 	/* Others */
 	else {
-	    /* Look for local (client-side) netconf plugins. This feature may no 
-	     * longer be necessary as generic RPC:s should be handled by backend.
-	     */
-	    if ((retval = netconf_plugin_callbacks(h, xe, xret)) < 0)
+	    /* Look for application-defined RPC. This may either be local
+	       client-side or backend. If backend send as netconf RPC. */
+	    if ((retval = netconf_application_rpc(h, xe, xret)) < 0)
 		goto done;
-	    if (retval == 0)
-		if ((retval = netconf_application_rpc(h, xe, xret)) < 0)
-		    goto done;
 	    if (retval == 0){ /* not handled by callback */
 		xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 				 "<error-tag>operation-failed</error-tag>"

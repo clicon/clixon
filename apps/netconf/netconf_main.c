@@ -55,6 +55,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <assert.h>
+#include <pwd.h>
 #include <netinet/in.h>
 #include <libgen.h>
 
@@ -67,7 +68,6 @@
 #include "clixon_netconf.h"
 #include "netconf_lib.h"
 #include "netconf_hello.h"
-#include "netconf_plugin.h"
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
@@ -100,13 +100,9 @@ process_incoming_packet(clicon_handle h,
     /* Parse incoming XML message */
     if (xml_parse_string(str, NULL, &xreq) < 0){ 
 	if ((cbret = cbuf_new()) == NULL){
-	    cprintf(cbret, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-type>rpc</error-type>"
-		"<error-severity>error</error-severity>"
-		"<error-message>internal error</error-message>"
-		"</rpc-error></rpc-reply>");
-	    netconf_output(1, cb, "rpc-error");
+	    if (netconf_operation_failed(cbret, "rpc", "internal error")< 0)
+		goto done;
+	    netconf_output(1, cbret, "rpc-error");
 	}
 	else
 	    clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
@@ -205,7 +201,6 @@ netconf_input_cb(int   s,
 	    retval = 0;
 	    goto done;
 	}
-
 	for (i=0; i<len; i++){
 	    if (buf[i] == 0)
 		continue; /* Skip NULL chars (eg from terminals) */
@@ -268,6 +263,8 @@ netconf_terminate(clicon_handle h)
 {
     yang_spec      *yspec;
 
+    clixon_plugin_exit(h);
+    rpc_callback_delete_all();
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
@@ -312,7 +309,9 @@ main(int    argc,
     int              quiet = 0;
     clicon_handle    h;
     int              use_syslog;
-
+    char            *dir;
+    struct passwd   *pw;
+    
     /* Defaults */
     use_syslog = 0;
 
@@ -321,6 +320,14 @@ main(int    argc,
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
 	return -1;
+
+    /* Set username to clicon handle. Use in all communication to backend */
+    if ((pw = getpwuid(getuid())) == NULL){
+	clicon_err(OE_UNIX, errno, "getpwuid");
+	goto done;
+    }
+    if (clicon_username_set(h, pw->pw_name) < 0)
+	goto done;
 
     while ((c = getopt(argc, argv, NETCONF_OPTS)) != -1)
 	switch (c) {
@@ -379,6 +386,8 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+
+
     /* Parse yang database spec file */
     if (yang_spec_main(h) == NULL)
 	goto done;
@@ -388,13 +397,14 @@ main(int    argc,
 	goto done;
 
     /* Initialize plugins group */
-    if (netconf_plugin_load(h) < 0)
-	goto done;
+    if ((dir = clicon_netconf_dir(h)) != NULL)
+	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
+	    goto done;
 
     /* Call start function is all plugins before we go interactive */
     tmp = *(argv-1);
     *(argv-1) = argv0;
-    netconf_plugin_start(h, argc+1, argv-1);
+    clixon_plugin_start(h, argc+1, argv-1);
     *(argv-1) = tmp;
 
     if (!quiet)
@@ -406,7 +416,6 @@ main(int    argc,
     if (event_loop() < 0)
 	goto done;
   done:
-    netconf_plugin_unload(h);
     netconf_terminate(h);
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clicon_log(LOG_NOTICE, "%s: %u Terminated\n", __PROGRAM__, getpid());

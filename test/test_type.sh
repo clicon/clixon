@@ -1,24 +1,25 @@
 #!/bin/bash
 # Advanced union types and generated code
 # and enum w values
-
+APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh
-fyang=$dir/type.yang
+
 cfg=$dir/conf_yang.xml
+fyang=$dir/type.yang
 
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/routing/yang</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/routing/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_CLI_DIR>/usr/local/lib/routing/cli</CLICON_CLI_DIR>
-  <CLICON_CLI_MODE>routing</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/routing/routing.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/routing/routing.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
-  <CLICON_XMLDB_DIR>/usr/local/var/routing</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
 </config>
 EOF
@@ -70,6 +71,57 @@ module example{
          enum down;
       }
    }
+   leaf length1 {
+       type string {
+       length "1";
+      }
+   }
+/*   leaf length2 {
+       type string {
+         length "max";
+      }
+   }
+   leaf length3 {
+       type string {
+         length "min";
+      }
+   }*/
+   leaf length4 {
+       type string {
+         length "4..4000";
+      }
+   }
+/*   leaf length5 {
+       type string {
+         length "min..max";
+      }
+   }*/
+   leaf num1 {
+       type int32 {
+       range "1";
+      }
+   }
+/*   leaf num2 {
+       type int32 {
+         range "min";
+      }
+   }
+   leaf num3 {
+       type int32 {
+         range "max";
+      }
+   }
+*/
+   leaf num4 {
+       type int32 {
+         range "4..4000";
+      }
+   }
+/*   leaf num5 {
+       type int32 {
+         range "min..max";
+      }
+   }*/
 }
 EOF
 
@@ -111,7 +163,7 @@ new "netconf validate ok"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf set ab wrong"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><list><ip>a.b&c.d</ip></list></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><list><ip>a.b&amp; c.d</ip></list></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error>"
