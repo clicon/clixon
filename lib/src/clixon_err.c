@@ -102,7 +102,8 @@ static struct errvec EV[] = {
 };
 
 static char *
-clicon_strerror1(int err, struct errvec vec[])
+clicon_strerror1(int           err,
+		 struct errvec vec[])
 {
     struct errvec *ev;
 
@@ -142,10 +143,10 @@ clicon_err_reset(void)
  */
 int
 clicon_err_fn(const char *fn, 
-	      const int line, 
-	      int category, 
-	      int suberr, 
-	      char *reason, ...)
+	      const int   line, 
+	      int         category, 
+	      int         suberr, 
+	      char       *reason, ...)
 {
     va_list args;
     int     len;

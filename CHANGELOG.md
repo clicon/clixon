@@ -1,7 +1,11 @@
 # Clixon Changelog
 
 ## 3.7.0 (Upcoming)
-	
+### Major changes:
+### Minor changes:
+### Corrected Bugs
+- Fixed JSON unbalanced braces resultin assert.
+
 ## 3.6.0 (30 April 2018)
 
 ### Major changes:

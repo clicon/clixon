@@ -792,7 +792,8 @@ usage(char *argv0)
 }
 
 int
-main(int argc, char **argv)
+main(int    argc,
+     char **argv)
 {
     cxobj *xt;
     cxobj *xc;

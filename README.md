@@ -27,7 +27,7 @@ Background
 ==========
 
 Clixon was implemented to provide an open-source generic configuration
-tool. The existing [CLIgen](http://www.cligen.se) tool was for command-lines only, whilke clixon is a system with config-db, xml and rest interfaces. Most of the projects using clixon are for embedded network and measuring devices. But Clixon is more generic than that.
+tool. The existing [CLIgen](http://www.cligen.se) tool was for command-lines only, while clixon is a system with configuration database, xml and rest interfaces. Most of the projects using clixon are for embedded network and measuring devices. But Clixon is more generic than that.
 
 Users of clixon currently include:
   * [Netgate](https://www.netgate.com)
