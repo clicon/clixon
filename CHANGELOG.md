@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-## 3.6.0 (Upcoming)
+## 3.6.0 (30 April 2018)
 
 ### Major changes:
 * Experimental NACM RFC8341 Network Configuration Access Control Model, see [NACM](README_NACM.md).
