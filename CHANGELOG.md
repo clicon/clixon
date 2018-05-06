@@ -1,5 +1,7 @@
 # Clixon Changelog
 
+## 3.7.0 (Upcoming)
+	
 ## 3.6.0 (30 April 2018)
 
 ### Major changes:
