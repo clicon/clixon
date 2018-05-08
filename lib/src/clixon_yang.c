@@ -255,6 +255,13 @@ yn_realloc(yang_node *yn)
 }
 
 /*! Copy yang statement recursively from old to new 
+ * @param[in] ynew  New empty (but created) yang statement (to)
+ * @param[in] yold  Old existing yang statement (from)
+ * @code
+ * yang_stmt *new = ys_new(Y_LEAF);
+ * if (ys_cp(new, old) < 0)
+ *    err;
+ * @endcode
  */
 int        
 ys_cp(yang_stmt *ynew, 
@@ -304,8 +311,10 @@ ys_cp(yang_stmt *ynew,
     return retval;
 }
 
-/*! Create a new yang node and copy the contents recursively from the original. 
- *
+/*! Create a new yang node and copy the contents recursively from the original.  *
+ * @param[in] old  Old existing yang statement (from)
+ * @retval    NULL Error
+ * @retval    new  New created yang statement
  * This may involve duplicating strings, etc.
  * The new yang tree needs to be freed by ys_free().
  * The parent of new is NULL, it needs to be explicityl inserted somewhere
@@ -327,7 +336,6 @@ ys_dup(yang_stmt *old)
     }
     return new;
 }
-
 
 /*! Insert yang statement as child of a parent yang_statement, last in list 
  *
