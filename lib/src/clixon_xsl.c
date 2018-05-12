@@ -976,10 +976,10 @@ xpath_first(cxobj   *xcur,
  *   }
  * @endcode
  *
- * Note that the returned pointer points into the original tree so should not be freed
+ * @note The returned pointer points into the original tree so should not be freed
  * after use.
  * @see also xpath, xpath_vec.
- * NOTE: uses a static variable: consider replacing with xpath_vec() instead
+ * @note uses a static variable: consider replacing with xpath_vec() instead
  */
 cxobj *
 xpath_each(cxobj *xcur, 

@@ -126,7 +126,7 @@ clixon_plugin_each_revert(clicon_handle  h,
 			  int            nr)
 {
     int            i;
-    clixon_plugin *cp;
+    clixon_plugin *cp = NULL;
     clixon_plugin *cpnext = NULL; 
 
     if (cpprev == NULL)
@@ -466,7 +466,7 @@ rpc_callback_delete_all(void)
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
  * @param[out] xret    Return XML, error or OK
- * @param[in]  arg   Domain-speific arg (eg client_entry)
+ * @param[in]  arg     Domain-speific arg (eg client_entry)
  *
  * @retval -1   Error
  * @retval  0   OK, not found handler.

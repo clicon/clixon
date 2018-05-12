@@ -427,6 +427,38 @@ int cli_debug_backendv(clicon_handle h, cvec *vars, cvec *argv)
     return cli_debug_backend(h, vars, argv);
 }
 
+/*! Set debug level on restconf daemon
+ * @param[in] h     Clicon handle
+ * @param[in] vars  If variable "level" exists, its integer value is used
+ * @param[in] arg   Else use the integer value of argument
+ * @note The level is either what is specified in arg as int argument.
+ *       _or_ if a 'level' variable is present in vars use that value instead.
+ */
+int
+cli_debug_restconf(clicon_handle h, 
+		   cvec         *vars, 
+		   cvec         *argv)
+{
+    int     retval = -1;
+    cg_var *cv;
+    int     level;
+
+    if ((cv = cvec_find_var(vars, "level")) == NULL){
+	if (cvec_len(argv) != 1){
+	    clicon_err(OE_PLUGIN, 0, "%s: Requires either label var or single arg: 0|1", __FUNCTION__);
+	    goto done;
+	}
+	cv = cvec_i(argv, 0);
+    }
+    level = cv_int32_get(cv);
+    /* restconf daemon */
+    if (0) /* XXX notyet */
+	retval = clicon_rpc_debug(h, level);
+ done:
+    return retval;
+}
+
+
 /*! Set syntax mode
  */
 int
