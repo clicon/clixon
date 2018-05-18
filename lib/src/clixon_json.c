@@ -691,8 +691,9 @@ int
 json_parse_str(char   *str, 
 	       cxobj **xt)
 {
-    if ((*xt = xml_new("top", NULL, NULL)) == NULL)
-	return -1;
+    if (*xt == NULL)
+	if ((*xt = xml_new("top", NULL, NULL)) == NULL)
+	    return -1;
     return json_parse(str, "", *xt);
 }
 

@@ -1202,7 +1202,7 @@ from_client_msg(clicon_handle        h,
     }
  reply:
     if (cbuf_len(cbret) == 0)
-	if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+	if (netconf_operation_failed(cbret, "application", clicon_errno?clicon_err_reason:"unknown")< 0)
 	    goto done;
     clicon_debug(1, "%s cbret:%s", __FUNCTION__, cbuf_get(cbret));
     /* XXX problem here is that cbret has not been parsed so may contain 

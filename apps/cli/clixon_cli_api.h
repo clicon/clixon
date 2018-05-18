@@ -89,6 +89,8 @@ int cli_debug_cliv(clicon_handle h, cvec *vars, cvec *argv);
 int cli_debug_backend(clicon_handle h, cvec *vars, cvec *argv);
 int cli_debug_backendv(clicon_handle h, cvec *vars, cvec *argv);
 
+int cli_debug_restconf(clicon_handle h, cvec *vars, cvec *argv);
+
 int cli_set_mode(clicon_handle h, cvec *vars, cvec *argv);
 int cli_set_modev(clicon_handle h, cvec *vars, cvec *argv);
 

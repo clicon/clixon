@@ -394,6 +394,7 @@ xml_yang_validate_all(cxobj   *xt,
  * @param[out] cvv  CLIgen variable vector. Should be freed by cvec_free()
  * @retval     0    Everything OK, cvv allocated and set
  * @retval    -1    Something wrong, clicon_err() called to set error. No cvv returned
+ * @note  cvv Should be freed by cvec_free() after use.
  * 'Not recursive' means that only one level of XML bodies is translated to cvec:s.
  * If range is wriong (eg 1000 for uint8) a warning is logged, the value is 
  * skipped, and continues.
@@ -426,7 +427,7 @@ xml2cvec(cxobj      *xt,
     char             *name;
 
     xc = NULL;
-    /* Tried to allocate whole cvv here,but some cg_vars may be invalid */
+    /* Tried to allocate whole cvv here, but some cg_vars may be invalid */
     if ((cvv = cvec_new(0)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto err;
