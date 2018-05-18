@@ -1151,7 +1151,7 @@ xpath_vec_flag(cxobj   *xcur,
  * Example run:
 echo "a\n<a><b/></a>" | xpath
 */
-#if 0 /* Test program */
+#if 1 /* Test program */
 
 
 static int
@@ -1164,14 +1164,14 @@ usage(char *argv0)
 int
 main(int argc, char **argv)
 {
-    int i;
+    int         i;
     cxobj     **xv;
     cxobj      *x;
     cxobj      *xn;
-    size_t         xlen = 0;
-      int           c;
-    int           len;
-        char         *buf = NULL;
+    size_t      xlen = 0;
+    int         c;
+    int         len;
+    char       *buf = NULL;
 	
     if (argc != 1){
 	usage(argv[0]);
@@ -1184,6 +1184,7 @@ main(int argc, char **argv)
 	return -1;
     }
     memset(buf, 0, len);
+    i = 0;
     while (1){ /* read the whole file */
       if ((c =  fgetc(stdin)) == EOF)
 	return -1;
@@ -1199,6 +1200,7 @@ main(int argc, char **argv)
       }
       buf[i++] = (char)(c&0xff);
     }
+    x = NULL;
     if (xml_parse_file(0, "</clicon>", NULL, &x) < 0){
 	fprintf(stderr, "parsing 2\n");
 	return -1;
