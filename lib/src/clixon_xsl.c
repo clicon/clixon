@@ -1145,11 +1145,11 @@ xpath_vec_flag(cxobj   *xcur,
 /*
  * Turn this on to get an xpath test program 
  * Usage: xpath [<xpath>] 
- * read xml from input
+ * read xpath on first line and xml on rest of lines from input
  * Example compile:
  gcc -g -o xpath -I. -I../clixon ./clixon_xsl.c -lclixon -lcligen
  * Example run:
- echo "<a><b/></a>" | xpath "a"
+echo "a\n<a><b/></a>" | xpath
 */
 #if 0 /* Test program */
 
@@ -1165,22 +1165,47 @@ int
 main(int argc, char **argv)
 {
     int i;
-    cxobj     **xv
+    cxobj     **xv;
     cxobj      *x;
     cxobj      *xn;
     size_t         xlen = 0;
-
-    if (argc != 2){
+      int           c;
+    int           len;
+        char         *buf = NULL;
+	
+    if (argc != 1){
 	usage(argv[0]);
 	return 0;
     }
-    if (xml_parse_file(0, &x, "</clicon>") < 0){
+    /* Read xpath */
+    len = 1024; /* any number is fine */
+    if ((buf = malloc(len)) == NULL){
+	perror("pt_file malloc");
+	return -1;
+    }
+    memset(buf, 0, len);
+    while (1){ /* read the whole file */
+      if ((c =  fgetc(stdin)) == EOF)
+	return -1;
+      if (c == '\n')
+	break;
+      if (len==i){
+	if ((buf = realloc(buf, 2*len)) == NULL){
+	  fprintf(stderr, "%s: realloc: %s\n", __FUNCTION__, strerror(errno));
+	  return -1;
+	}	    
+	memset(buf+len, 0, len);
+	len *= 2;
+      }
+      buf[i++] = (char)(c&0xff);
+    }
+    if (xml_parse_file(0, "</clicon>", NULL, &x) < 0){
 	fprintf(stderr, "parsing 2\n");
 	return -1;
     }
     printf("\n");
 
-    if (xpath_vec(x, argv[1], &xv, &xlen) < 0)
+    if (xpath_vec(x, "%s", &xv, &xlen, buf) < 0)
 	return -1;
     if (xv){
 	for (i=0; i<xlen; i++){
