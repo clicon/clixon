@@ -1883,7 +1883,7 @@ usage(char *argv0)
 int
 main(int argc, char **argv)
 {
-    cxobj *xt;
+    cxobj *xt = NULL;
     cxobj *xc;
     cbuf  *cb = cbuf_new();
 
@@ -1891,7 +1891,7 @@ main(int argc, char **argv)
 	usage(argv[0]);
 	return 0;
     }
-    if (xml_parse_file(0, "</config>", NULL,&xt) < 0){
+    if (xml_parse_file(0, "</config>", NULL, &xt) < 0){
 	fprintf(stderr, "parsing 2\n");
 	return -1;
     }

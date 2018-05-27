@@ -94,6 +94,7 @@ in
 #include <stdint.h>
 #include <assert.h>
 #include <syslog.h>
+#include <fcntl.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -1151,19 +1152,20 @@ xpath_vec_flag(cxobj   *xcur,
  * Example run:
 echo "a\n<a><b/></a>" | xpath
 */
-#if 1 /* Test program */
+#if 0 /* Test program */
 
 
 static int
 usage(char *argv0)
 {
-    fprintf(stderr, "usage:%s <xpath>.\n\tInput on stdin\n", argv0);
+    fprintf(stderr, "usage:%s <xml file name>.\n\tInput on stdin\n", argv0);
     exit(0);
 }
 
 int
 main(int argc, char **argv)
 {
+    int         retval = -1;
     int         i;
     cxobj     **xv;
     cxobj      *x;
@@ -1172,11 +1174,18 @@ main(int argc, char **argv)
     int         c;
     int         len;
     char       *buf = NULL;
+    char       *filename;
+    int         fd;
 	
-    if (argc != 1){
+    if (argc != 2){
 	usage(argv[0]);
-	return 0;
+	goto done;
     }
+    filename = argv[1];
+    if ((fd = open(filename, O_RDONLY)) < 0){
+      clicon_err(OE_UNIX, errno, "open(%s)", filename);
+      goto done;
+    }    
     /* Read xpath */
     len = 1024; /* any number is fine */
     if ((buf = malloc(len)) == NULL){
@@ -1201,10 +1210,11 @@ main(int argc, char **argv)
       buf[i++] = (char)(c&0xff);
     }
     x = NULL;
-    if (xml_parse_file(0, "</clicon>", NULL, &x) < 0){
-	fprintf(stderr, "parsing 2\n");
+    if (xml_parse_file(fd, "</clicon>", NULL, &x) < 0){
+      fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
 	return -1;
     }
+    close (fd);
     printf("\n");
 
     if (xpath_vec(x, "%s", &xv, &xlen, buf) < 0)
@@ -1219,8 +1229,9 @@ main(int argc, char **argv)
     }
     if (x)
 	xml_free(x);
-
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 #endif /* Test program */
