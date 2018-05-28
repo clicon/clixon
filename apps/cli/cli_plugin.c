@@ -277,6 +277,9 @@ cli_load_syntax(clicon_handle h,
     }
      if (cligen_expandv_str2fn(pt, (expandv_str2fn_t*)clixon_str2fn, handle) < 0)     
 	 goto done;
+     /* Variable translation functions */
+     if (cligen_translate_str2fn(pt, (translate_str2fn_t*)clixon_str2fn, handle) < 0)     
+	 goto done;
 
     /* Make sure we have a syntax mode specified */
     if (mode == NULL || strlen(mode) < 1) { /* may be null if not given in file */

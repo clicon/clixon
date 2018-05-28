@@ -137,3 +137,21 @@ clixon_plugin_init(clicon_handle h)
 
     return &api;
 }
+
+/*! Translate function from an original value to a new.
+ * In this case, assume string and increment characters, eg HAL->IBM
+ */
+int
+incstr(cligen_handle h,
+       cg_var       *cv)
+{
+    char *str;
+    int i;
+    
+    if (cv_type_get(cv) != CGV_STRING)
+	return 0;
+    str = cv_string_get(cv);
+    for (i=0; i<strlen(str); i++)
+	str[i]++;
+    return 0;
+}

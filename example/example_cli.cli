@@ -3,6 +3,11 @@ CLICON_MODE="example";
 CLICON_PROMPT="%U@%H> ";
 CLICON_PLUGIN="example_cli";
 
+# Translate variable "value" by incrementing its characters
+translate value (<value:string translate:incstr()>),cli_set("/translate/value");
+
+
+
 # Note, when switching to PT, change datamodel to only @datamodel
 set @datamodel:example, cli_set();
 merge @datamodel:example, cli_merge();

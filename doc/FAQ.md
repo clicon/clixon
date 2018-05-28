@@ -344,3 +344,33 @@ To authenticate, the callback needs to return the value 1 and supply a username.
 
 See [../apps/example/example_restconf.c] plugin_credentials() for
 an example of HTTP basic auth.
+
+## How do I write a CLI translator function
+
+The CLI can perform variable translation. This is useful if you want to
+prcess the input, such as hashing, encrypting or in other way
+translate the input.
+
+Yang example:
+```
+list translate{
+    leaf value{
+        type string;
+    }
+}
+```
+
+CLI specification:
+```
+translate value (<value:string translate:incstr()>),cli_set("/translate/value");
+```
+
+If you run this example using the `incstr()` function which increments the characters in the input, you get this result:
+```
+cli> translate value HAL
+cli> show configuration
+translate {
+    value IBM;
+}
+```
+You can perform translation on any type, not only strings.

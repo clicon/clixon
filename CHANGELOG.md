@@ -3,8 +3,10 @@
 ## 3.7.0 (Upcoming)
 ### Major changes:
 ### Minor changes:
+* Added cligen variable translation.
+  * See FAQ and example 
 ### Corrected Bugs
-- Fixed JSON unbalanced braces resultin assert.
+* Fixed JSON unbalanced braces resultin assert.
 
 ## 3.6.0 (30 April 2018)
 
