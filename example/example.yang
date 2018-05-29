@@ -6,9 +6,6 @@ module example {
     import ietf-routing {
 	prefix rt;
     }
-    import ietf-netconf-acm {
-	prefix nacm;
-    }
     description
 	"Example code that includes ietf-ip and ietf-routing";
     rpc client-rpc {
