@@ -8,6 +8,13 @@
 ### Corrected Bugs
 * Fixed JSON unbalanced braces resultin assert.
 
+## 3.6.1 (29 May 2018)
+
+### Corrected Bugs
+* https://github.com/clicon/clixon/issues/23 clixon_cli failing with error
+  * The example included a reference to nacm yang file which did not exist and was not used
+* Added clixon-config@2018-04-30.yang
+
 ## 3.6.0 (30 April 2018)
 
 ### Major changes:
