@@ -43,6 +43,7 @@
 int strverscmp (__const char *__s1, __const char *__s2);
 #endif
 
-
-
-
+/* Set if you want to enable "v" cli callback functions, such as cli_setv() 
+ * This was obsoleted in 3.7
+ */
+#undef COMPAT_CLIV

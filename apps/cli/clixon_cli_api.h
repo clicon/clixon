@@ -72,57 +72,51 @@ int cli_notification_register(clicon_handle h, char *stream, enum format_enum fo
 
 
 int cli_set(clicon_handle h, cvec *vars, cvec *argv);
-int cli_setv(clicon_handle h, cvec *vars, cvec *argv);
 
 int cli_merge(clicon_handle h, cvec *vars, cvec *argv);
-int cli_mergev(clicon_handle h, cvec *vars, cvec *argv);
 
 int cli_create(clicon_handle h, cvec *vars, cvec *argv);
 int cli_remove(clicon_handle h, cvec *vars, cvec *argv);
 
 int cli_del(clicon_handle h, cvec *vars, cvec *argv);
-int cli_delv(clicon_handle h, cvec *vars, cvec *argv);
 
 int cli_debug_cli(clicon_handle h, cvec *vars, cvec *argv);
-int cli_debug_cliv(clicon_handle h, cvec *vars, cvec *argv);
+
 
 int cli_debug_backend(clicon_handle h, cvec *vars, cvec *argv);
-int cli_debug_backendv(clicon_handle h, cvec *vars, cvec *argv);
+
 
 int cli_debug_restconf(clicon_handle h, cvec *vars, cvec *argv);
 
 int cli_set_mode(clicon_handle h, cvec *vars, cvec *argv);
-int cli_set_modev(clicon_handle h, cvec *vars, cvec *argv);
+
 
 int cli_start_shell(clicon_handle h, cvec *vars, cvec *argv);
-int cli_start_shellv(clicon_handle h, cvec *vars, cvec *argv);
+
 
 int cli_quit(clicon_handle h, cvec *vars, cvec *argv);
-int cli_quitv(clicon_handle h, cvec *vars, cvec *argv);
+
 
 int cli_commit(clicon_handle h, cvec *vars, cvec *argv);
-int cli_commitv(clicon_handle h, cvec *vars, cvec *argv);
 
 int cli_validate(clicon_handle h, cvec *vars, cvec *argv);
-int cli_validatev(clicon_handle h, cvec *vars, cvec *argv);
+
 
 int compare_dbs(clicon_handle h, cvec *vars, cvec *argv);
-int compare_dbsv(clicon_handle h, cvec *vars, cvec *argv);
 
 int load_config_file(clicon_handle h, cvec *vars, cvec *argv);
-int load_config_filev(clicon_handle h, cvec *vars, cvec *argv);
 
 int save_config_file(clicon_handle h, cvec *vars, cvec *argv);
-int save_config_filev(clicon_handle h, cvec *vars, cvec *argv);
+
 
 int delete_all(clicon_handle h, cvec *vars, cvec *argv);
-int delete_allv(clicon_handle h, cvec *vars, cvec *argv);
+
 
 int discard_changes(clicon_handle h, cvec *vars, cvec *argv);
-int discard_changesv(clicon_handle h, cvec *vars, cvec *argv);
+
 
 int cli_notify(clicon_handle h, cvec *cvv, cvec *argv);
-int cli_notifyv(clicon_handle h, cvec *cvv, cvec *argv);
+
 
 int db_copy(clicon_handle h, cvec *cvv, cvec *argv);
 
@@ -141,11 +135,32 @@ int expandv_dbvar(void *h, char *name, cvec *cvv, cvec *argv,
 
 /* cli_show.c: CLIgen new vector arg callbacks */
 int show_yang(clicon_handle h, cvec *vars, cvec *argv);
-int show_yangv(clicon_handle h, cvec *vars, cvec *argv);
+
 
 int show_conf_xpath(clicon_handle h, cvec *cvv, cvec *argv);
-int show_confv_xpath(clicon_handle h, cvec *cvv, cvec *argv);
+
 
 int cli_show_config(clicon_handle h, cvec *cvv, cvec *argv);
+
+#ifdef COMPAT_CLIV
+int cli_setv(clicon_handle h, cvec *vars, cvec *argv);
+int cli_mergev(clicon_handle h, cvec *vars, cvec *argv);
+int cli_delv(clicon_handle h, cvec *vars, cvec *argv);
+int cli_debug_cliv(clicon_handle h, cvec *vars, cvec *argv);
+int cli_debug_backendv(clicon_handle h, cvec *vars, cvec *argv);
+int cli_set_modev(clicon_handle h, cvec *vars, cvec *argv);
+int cli_start_shellv(clicon_handle h, cvec *vars, cvec *argv);
+int cli_quitv(clicon_handle h, cvec *vars, cvec *argv);
+int cli_commitv(clicon_handle h, cvec *vars, cvec *argv);
+int cli_validatev(clicon_handle h, cvec *vars, cvec *argv);
+int compare_dbsv(clicon_handle h, cvec *vars, cvec *argv);
+int load_config_filev(clicon_handle h, cvec *vars, cvec *argv);
+int save_config_filev(clicon_handle h, cvec *vars, cvec *argv);
+int delete_allv(clicon_handle h, cvec *vars, cvec *argv);
+int discard_changesv(clicon_handle h, cvec *vars, cvec *argv);
+int cli_notifyv(clicon_handle h, cvec *cvv, cvec *argv);
+int show_yangv(clicon_handle h, cvec *vars, cvec *argv);
+int show_confv_xpath(clicon_handle h, cvec *cvv, cvec *argv);
+#endif /* COMPAT_CLIV */
 
 #endif /* _CLIXON_CLI_API_H_ */

@@ -342,7 +342,7 @@ plugin_credentials(clicon_handle h,
 
 To authenticate, the callback needs to return the value 1 and supply a username.
 
-See [../apps/example/example_restconf.c] plugin_credentials() for
+See [../apps/example/example_restconf.c] example_restconf_credentials() for
 an example of HTTP basic auth.
 
 ## How do I write a CLI translator function

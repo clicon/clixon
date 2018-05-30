@@ -409,10 +409,6 @@ show_yang(clicon_handle h,
   yang_print(stdout, yn);
   return 0;
 }
-int show_yangv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return show_yang(h, vars, argv);
-}
 
 /*! Generic show configuration CLIGEN callback
  * Utility function used by cligen spec file
@@ -598,13 +594,19 @@ done:
     return retval;
 }
 
-int show_confv_xpath(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return show_conf_xpath(h, vars, argv);
-}
-
 int cli_show_version(clicon_handle h, cvec *vars, cvec *argv)
 {
     cli_output(stdout, "%s\n", CLIXON_VERSION_STRING);
     return 0;
 }
+
+#ifdef COMPAT_CLIV
+int show_yangv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return show_yang(h, vars, argv);
+}
+int show_confv_xpath(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return show_conf_xpath(h, vars, argv);
+}
+#endif /* COMPAT_CLIV */

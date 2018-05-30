@@ -184,7 +184,7 @@ cli_signal_flush(clicon_handle h)
     cli_signal_block (h);
 }
 
-/*! Modify xml database from a callback using xml key format strings
+/*! Modify xml datastore from a callback using xml key format strings
  * @param[in]  h    Clicon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
  * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
@@ -283,8 +283,15 @@ cli_dbxml(clicon_handle       h,
     return retval;
 }
 
+/*! Set datastore xml entry
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ */
 int 
-cli_set(clicon_handle h, cvec *cvv, cvec *argv)
+cli_set(clicon_handle h,
+	cvec         *cvv,
+	cvec         *argv)
 {
     int retval = 1;
 
@@ -294,13 +301,16 @@ cli_set(clicon_handle h, cvec *cvv, cvec *argv)
  done:
     return retval;
 }
-int cli_setv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_set(h, vars, argv);
-}
 
+/*! Merge datastore xml entry
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ */
 int 
-cli_merge(clicon_handle h, cvec *cvv, cvec *argv)
+cli_merge(clicon_handle h,
+	  cvec         *cvv,
+	  cvec         *argv)
 {
     int retval = -1;
 
@@ -310,13 +320,16 @@ cli_merge(clicon_handle h, cvec *cvv, cvec *argv)
  done:
     return retval;
 }
-int cli_mergev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_merge(h, vars, argv);
-}
 
+/*! Create datastore xml entry
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ */
 int 
-cli_create(clicon_handle h, cvec *cvv, cvec *argv)
+cli_create(clicon_handle h,
+	   cvec         *cvv,
+	   cvec         *argv)
 {
     int retval = -1;
 
@@ -326,11 +339,16 @@ cli_create(clicon_handle h, cvec *cvv, cvec *argv)
  done:
     return retval;
 }
-/*!
+/*! Remove datastore xml entry
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
  * @see cli_del
  */
 int 
-cli_remove(clicon_handle h, cvec *cvv, cvec *argv)
+cli_remove(clicon_handle h,
+	   cvec         *cvv,
+	   cvec         *argv)
 {
     int retval = -1;
 
@@ -341,8 +359,15 @@ cli_remove(clicon_handle h, cvec *cvv, cvec *argv)
     return retval;
 }
 
+/*! Delete datastore xml
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ */
 int 
-cli_del(clicon_handle h, cvec *cvv, cvec *argv)
+cli_del(clicon_handle h,
+	cvec         *cvv,
+	cvec         *argv)
 {
     int   retval = -1;
 
@@ -352,11 +377,6 @@ cli_del(clicon_handle h, cvec *cvv, cvec *argv)
  done:
     return retval;
 }
-int cli_delv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_del(h, vars, argv);
-}
-
 
 /*! Set debug level on CLI client (not backend daemon)
  * @param[in] h     Clicon handle
@@ -388,10 +408,6 @@ cli_debug_cli(clicon_handle h,
  done:
     return retval;
 }
-int cli_debug_cliv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_debug_cli(h, vars, argv);
-}
 
 /*! Set debug level on backend daemon (not CLI)
  * @param[in] h     Clicon handle
@@ -421,10 +437,6 @@ cli_debug_backend(clicon_handle h,
     retval = clicon_rpc_debug(h, level);
  done:
     return retval;
-}
-int cli_debug_backendv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_debug_backend(h, vars, argv);
 }
 
 /*! Set debug level on restconf daemon
@@ -478,10 +490,6 @@ cli_set_mode(clicon_handle h,
     retval = 0;
   done:
     return retval;
-}
-int cli_set_modev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_set_mode(h, vars, argv);
 }
 
 /*! Start bash from cli callback
@@ -540,10 +548,6 @@ cli_start_shell(clicon_handle h,
 
     return 0;
 }
-int cli_start_shellv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_start_shell(h, vars, argv);
-}
 
 /*! Generic quit callback
  */
@@ -554,10 +558,6 @@ cli_quit(clicon_handle h,
 {
     cligen_exiting_set(cli_cligen(h), 1);
     return 0;
-}
-int cli_quitv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_quit(h, vars, argv);
 }
 
 /*! Generic commit callback
@@ -576,10 +576,6 @@ cli_commit(clicon_handle h,
   done:
     return retval;
 }
-int cli_commitv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_commit(h, vars, argv);
-}
 
 /*! Generic validate callback
  */
@@ -595,10 +591,6 @@ cli_validate(clicon_handle h,
     retval = 0;
  done:
     return retval;
-}
-int cli_validatev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_validate(h, vars, argv);
 }
 
 /*! Compare two dbs using XML. Write to file and run diff
@@ -709,10 +701,6 @@ compare_dbs(clicon_handle h,
 
     return retval;
 }
-int compare_dbsv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return compare_dbs(h, vars, argv);
-}
 
 /*! Load a configuration file to candidate database
  * Utility function used by cligen spec file
@@ -724,7 +712,7 @@ int compare_dbsv(clicon_handle h, cvec *vars, cvec *argv)
  * @note file is assumed to have a dummy top-tag, eg <clicon></clicon>
  * @code
  *   # cligen spec
- *   load file <name2:string>, load_config_filev("name2","merge");
+ *   load file <name2:string>, load_config_file("name2","merge");
  * @endcode
  * @see save_config_file
  */
@@ -803,10 +791,6 @@ load_config_file(clicon_handle h,
     if (fd != -1)
 	close(fd);
     return ret;
-}
-int load_config_filev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return load_config_file(h, vars, argv);
 }
 
 /*! Copy database to local file 
@@ -889,10 +873,6 @@ save_config_file(clicon_handle h,
 	fclose(f);
     return retval;
 }
-int save_config_filev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return save_config_file(h, vars, argv);
-}
 
 /*! Delete all elements in a database 
  * Utility function used by cligen spec file
@@ -922,10 +902,6 @@ delete_all(clicon_handle h,
   done:
     return retval;
 }
-int delete_allv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return delete_all(h, vars, argv);
-}
 
 /*! Discard all changes in candidate and replace with running
  */
@@ -935,12 +911,8 @@ discard_changes(clicon_handle h,
 		cvec         *argv)
 {
     return clicon_rpc_discard_changes(h);
-}
-int discard_changesv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return discard_changes(h, vars, argv);
-}
 
+}
 /*! Copy from one database to another, eg running->startup
  * @param[in] argv  a string: "<db1> <db2>" Copy from db1 to db2
  */
@@ -1024,7 +996,7 @@ cli_notification_cb(int   s,
  * and   <format> is XXX
  * Example code: Start logging of mystream and show logs as xml
  * @code
- * cmd("comment"), cli_notifyv("mystream","1","xml"); 
+ * cmd("comment"), cli_notify("mystream","1","xml"); 
  * @endcode
  * XXX: format is a memory leak
  */
@@ -1062,10 +1034,79 @@ cli_notify(clicon_handle h,
   done:
     return retval;
 }
+
+/* Backward compatible Set if you want to enable "v" cli callback functions, 
+ * such as cli_setv() 
+ * This was obsoleted in 3.7. 
+ * @see include/clixon_custom.h
+ */
+#ifdef COMPAT_CLIV
+int cli_setv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_set(h, vars, argv);
+}
+int cli_mergev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_merge(h, vars, argv);
+}
+int cli_delv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_del(h, vars, argv);
+}
+int cli_debug_cliv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_debug_cli(h, vars, argv);
+}
+int cli_debug_backendv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_debug_backend(h, vars, argv);
+}
+int cli_set_modev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_set_mode(h, vars, argv);
+}
+int cli_start_shellv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_start_shell(h, vars, argv);
+}
+int cli_quitv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_quit(h, vars, argv);
+}
+int cli_commitv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_commit(h, vars, argv);
+}
+int cli_validatev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_validate(h, vars, argv);
+
+}
+int compare_dbsv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return compare_dbs(h, vars, argv);
+}
+int load_config_filev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return load_config_file(h, vars, argv);
+}
+int save_config_filev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return save_config_file(h, vars, argv);
+}
+int delete_allv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return delete_all(h, vars, argv);
+}
+int discard_changesv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return discard_changes(h, vars, argv);
+}
 int cli_notifyv(clicon_handle h, cvec *vars, cvec *argv)
 {
     return cli_notify(h, vars, argv);
 }
+#endif /* COMPAT_CLIV */
 
 /*! Lock database
  * 

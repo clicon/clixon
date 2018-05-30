@@ -81,16 +81,11 @@ AC_SUBST(INCLUDES)
 AC_SUBST(CPPFLAGS)
 AC_PROG_INSTALL
 AC_SUBST(INSTALL)
-AC_SUBST(INSTALL_LIB)
 AC_SUBST(INSTALL_DATA)
 AC_SUBST(INSTALL_PROGRAM)
 AC_SUBST(INSTALLFLAGS)
 AC_SUBST(LIBS)
-AC_SUBST(OBJ_SUFFIX)
-AC_SUBST(AR_SUFFIX)
 AC_SUBST(SH_SUFFIX)
-AC_SUBST(EXE_SUFFIX)
-AC_SUBST(AR)
 AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
 #
@@ -100,6 +95,21 @@ AC_PROG_CPP
 CPPFLAGS="-DHAVE_CONFIG_H ${CPPFLAGS}"
 
 AC_MSG_RESULT(compiler is $CC)	
+# Debug flag
+AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[
+	  if test "$enableval" = no; then
+	      ac_enable_debug=no
+	  else	      
+	      ac_enable_debug=yes
+          fi
+        ],
+	[ ac_enable_debug=no])
+
+AC_MSG_RESULT(debug is $ac_enable_debug)	
+if test "$ac_enable_debug" = "yes"; then
+   CFLAGS="-g -Wall"
+   INSTALLFLAGS=""	
+fi
 
 AC_MSG_RESULT(CPPFLAGS is $CPPFLAGS)	
 AC_MSG_RESULT(CFLAGS is $CFLAGS)
@@ -119,11 +129,7 @@ if test "$prefix" = "NONE"; then
 fi
 
 AC_CHECK_LIB(m, main)
-EXE_SUFFIX=""
-OBJ_SUFFIX=".o"
-AR_SUFFIX=".a"
 SH_SUFFIX=".so"
-AR="ar"
 
 # This is for cligen
 AC_ARG_WITH(cligen,  [  --with-cligen=dir       Use CLIGEN here ] )

@@ -3,10 +3,32 @@
 ## 3.7.0 (Upcoming)
 ### Major changes:
 ### Minor changes:
+* Removed cli callback vector functions. Set COMPAT_COMPAT_CLIV if you need to keep these functions in clixon_custom.h.
+  * Replace functions as follows in CLI SPEC files:
+  * cli_setv --> cli_set
+  * cli_mergev --> cli_merge
+  * cli_delv --> cli_del
+  * cli_debug_cliv --> cli_debug_cli
+  * cli_debug_backendv --> cli_debug_backend
+  * cli_set_modev --> cli_set_mode
+  * cli_start_shellv --> cli_start_shell
+  * cli_quitv --> cli_quit
+  * cli_commitv --> cli_commit
+  * cli_validatev --> cli_validate
+  * compare_dbsv --> compare_dbs
+  * load_config_filev --> load_config_file
+  * save_config_filev --> save_config_file
+  * delete_allv --> delete_all
+  * discard_changesv --> discard_changes
+  * cli_notifyv --> cli_notify
+  * show_yangv --> show_yang
+  * show_confv_xpath --> show_conf_xpath
+
+* Added --enable-debug. 
 * Added cligen variable translation.
   * See FAQ and example 
 ### Corrected Bugs
-* Fixed JSON unbalanced braces resultin assert.
+* Fixed JSON unbalanced braces resulting in assert.
 
 ## 3.6.1 (29 May 2018)
 
@@ -460,7 +482,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
   Instead use the rpc calls in clixon_proto_client.[ch]
   In clients (eg cli/netconf) replace xmldb_get() in client code with 
   clicon_rpc_get_config().
-  pIf you use the vector arguments of xmldb_get(), replace as follows:
+  If you use the vector arguments of xmldb_get(), replace as follows:
     xmldb_get(h, db, api_path, &xt, &xvec, &xlen);
   with
     clicon_rpc_get_config(h, dbstr, api_path, &xt);
