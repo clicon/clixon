@@ -186,6 +186,7 @@ clicon_option_readfile_xml(clicon_hash_t *copt,
 /*! Initialize option values
  *
  * Set default options, Read config-file, Check that all values are set.
+ * Read clixon system config files
  * @param[in]  h  clicon handle
  */
 int

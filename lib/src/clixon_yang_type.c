@@ -380,7 +380,7 @@ clicon_type2cv(char         *origtype,
      (rmax && (i) > cv_##type##_get(rmax)))
 
 
-/*!
+/*! Validate CLIgen variable
  * @retval -1  Error (fatal), with errno set to indicate error
  * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
  * @retval 1   Validation OK
@@ -764,9 +764,9 @@ ys_typedef_up(yang_stmt *ys)
     return (yang_stmt*)ys;
 }
 
-/*! Return yang-stmt of identity
+/*! Find identity yang-stmt
   This is a sanity check of base identity of identity-ref and for identity 
-  statements.
+  statements when parsing.
 
   Return true if node is identityref and is derived from identity_name
   The derived-from() function returns true if the (first) node (in
@@ -779,12 +779,17 @@ ys_typedef_up(yang_stmt *ys)
    identityref's base identity. 
    1. (base) identity must exist (be found). This is a sanity check
      of the specification and also necessary for identity statements.
+   (This is what is dine here)
    2. Check if a given node has value derived from base identity. This is
       a run-time check necessary when validating eg netconf.
+   (This is validation)
    3. Find all valid derived identities from a identityref base identity.
-     This is for cli generation.
-   Så vad är det denna function ska göra? Svar: 1
-*/
+   (This is for cli generation)
+   * @param[in] ys        Yang spec of id statement
+   * @param[in] identity  Identity string -check if it exists
+   * @retval    0        OK
+ *  @see validate_identityref for (2) above
+ */
 yang_stmt *
 yang_find_identity(yang_stmt *ys, 
 		   char      *identity)

@@ -108,6 +108,8 @@ cli_signal_init (clicon_handle h)
 
 /*! Interactive CLI command loop
  * @param[in]  h    CLICON handle
+ * @retval     0
+ * @retval    -1
  * @see cligen_loop
  */
 static int
@@ -124,7 +126,6 @@ cli_interactive(clicon_handle h)
 	new_mode = cli_syntax_mode(h);
 	if ((cmd = clicon_cliread(h)) == NULL) {
 	    cligen_exiting_set(cli_cligen(h), 1); /* EOF */
-	    retval = -1;
 	    goto done;
 	}
 	if ((res = clicon_parse(h, cmd, &new_mode, &result)) < 0)
@@ -229,6 +230,7 @@ usage(char *argv0, clicon_handle h)
 int
 main(int argc, char **argv)
 {
+    int          retval = -1;
     char         c;    
     int          once;
     char	*tmp;
@@ -476,11 +478,19 @@ main(int argc, char **argv)
     if (restarg != NULL && strlen(restarg)){
 	char *mode = cli_syntax_mode(h);
 	int result;
-	clicon_parse(h, restarg, &mode, &result);
+
+	/* */
+	if (clicon_parse(h, restarg, &mode, &result) != 1){
+	    goto done;
+	}
+	if (result < 0)
+	    goto done;
     }
     /* Go into event-loop unless -1 command-line */
     if (!once)
-	cli_interactive(h);
+	retval = cli_interactive(h);
+    else
+	retval = 0;
   done:
     if (treename)
 	free(treename);
@@ -491,6 +501,5 @@ main(int argc, char **argv)
     clicon_log(LOG_NOTICE, "%s: %u Terminated\n", __PROGRAM__, getpid());
     if (h)
 	cli_terminate(h);
-
-    return 0;
+    return retval;
 }

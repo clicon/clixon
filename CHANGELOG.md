@@ -2,7 +2,13 @@
 
 ## 3.7.0 (Upcoming)
 ### Major changes:
+* Support for YANG identity and identityref according to RFC 7950 Sec 7.18 and 9.10
+  * Previous support did no validation of values.
+  * Validation of types and CLI expansion
+  * Example extended with inclusion of iana-if-type RFC 7224 interface identities
+
 ### Minor changes:
+* Added yang identityref runtime validation
 * Removed cli callback vector functions. Set COMPAT_COMPAT_CLIV if you need to keep these functions in clixon_custom.h.
   * Replace functions as follows in CLI SPEC files:
   * cli_setv --> cli_set
@@ -27,7 +33,9 @@
 * Added --enable-debug. 
 * Added cligen variable translation.
   * See FAQ and example 
+
 ### Corrected Bugs
+* Added cli returna value also for single commands (eg -1)
 * Fixed JSON unbalanced braces resulting in assert.
 
 ## 3.6.1 (29 May 2018)

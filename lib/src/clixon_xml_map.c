@@ -226,7 +226,7 @@ xml2cli(FILE              *f,
     return retval;
 }
 
-/*! Validate an xml node of type leafref, ensure the value is one of that path's reference
+/*! Validate xml node of type leafref, ensure the value is one of that path's reference
  * @param[in]  xt    XML leaf node of type leafref
  * @param[in]  ytype Yang type statement belonging to the XML node
  */
@@ -267,6 +267,70 @@ validate_leafref(cxobj     *xt,
  done:
     if (xvec)
 	free(xvec);
+    return retval;
+}
+
+/*! Validate xml node of type identityref, ensure value is a defined identity
+ * Check if a given node has value derived from base identity. This is
+ * a run-time check necessary when validating eg netconf.
+ * Valid values for an identityref are any identities derived from all
+ * the identityref's base identities.
+ * Example:
+ * b0 --> b1 --> b2  (b1 & b2 are derived)
+ * identityref b2
+ *   base b0;
+ * This function does: derived_from(b2, b0);
+ * @param[in]  xt    XML leaf node of type identityref
+ * @param[in]  ys    Yang spec of leaf
+ * @param[in]  ytype Yang type field of type identityref
+ * @see ys_populate_identity where the derived types are set
+ * @see RFC7950 Sec 9.10.2:
+
+ */
+static int
+validate_identityref(cxobj     *xt,
+		     yang_stmt *ys,
+		     yang_stmt *ytype)
+{
+    int         retval = -1;
+    char       *node;
+    yang_stmt  *ybaseref; /* This is the type's base reference */
+    yang_stmt  *ybaseid;
+    char       *prefix = NULL;
+    cbuf       *cb = NULL;
+
+    /* Get idref value. Then see if this value is derived from ytype.
+     * Always add default prefix because derived identifiers are stored with
+     * prefixes in the base identifiers derived-list.
+     */
+    if ((node = xml_body(xt)) == NULL)
+	return 0;
+    if (strchr(node, ':') == NULL){
+	prefix = yang_find_myprefix(ys);
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new"); 
+	    goto done;
+	}
+	cprintf(cb, "%s:%s", prefix, node);
+	node = cbuf_get(cb);
+    }
+    /* This is the type's base reference */
+    if ((ybaseref = yang_find((yang_node*)ytype, Y_BASE, NULL)) == NULL){
+	clicon_err(OE_DB, 0, "Identityref validation failed, no base");
+	goto done;
+    }
+    /* This is the actual base identity */
+    if ((ybaseid = yang_find_identity(ybaseref, ybaseref->ys_argument)) == NULL){
+	clicon_err(OE_DB, 0, "Identityref validation failed, no base identity");
+	goto done;
+    }
+    /* Here check if node is in the derived node list of the base identity */
+    if (cvec_find(ybaseid->ys_cvec, node) == NULL){
+	clicon_err(OE_DB, 0, "Identityref validation failed, %s not derived from %s", node, ybaseid->ys_argument);
+	goto done;
+    }
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -374,10 +438,16 @@ xml_yang_validate_all(cxobj   *xt,
 	    /* Special case if leaf is leafref, then first check against
 	       current xml tree
 	    */
-	    if ((ytype = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL &&
-		strcmp(ytype->ys_argument, "leafref") == 0)
-		if (validate_leafref(xt, ytype) < 0)
-		    goto done;
+	    if ((ytype = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL){
+		if (strcmp(ytype->ys_argument, "leafref") == 0){
+		    if (validate_leafref(xt, ytype) < 0)
+			goto done;
+		}
+		else if (strcmp(ytype->ys_argument, "identityref") == 0){
+		    if (validate_identityref(xt, ys, ytype) < 0)
+			goto done;
+		}
+	    }
 	    break;
 	default:
 	    break;

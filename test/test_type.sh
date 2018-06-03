@@ -139,25 +139,25 @@ if [ $? -ne 0 ]; then
 fi
 
 new "cli set ab"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.a.b" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.a.b" 0 "^$"
 
 new "cli set cd"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list c.d.c.d" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list c.d.c.d" 0 "^$"
 
 new "cli set ef"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list e.f.e.f" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list e.f.e.f" 0 "^$"
 
 new "cli set ab fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a&b&a&b" "^CLI syntax error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a&b&a&b" 255 "^CLI syntax error"
 
 new "cli set ad fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.c.d" "^CLI syntax error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.c.d" 255 "^CLI syntax error"
 
 new "cli validate"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 "^$"
 
 new "cli commit"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o commit" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o commit" 0 "^$"
 
 new "netconf validate ok"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -175,7 +175,7 @@ new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "cli enum value"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set status down" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set status down" 0 "^$"
 
 new "Kill backend"
 # Check if still alive

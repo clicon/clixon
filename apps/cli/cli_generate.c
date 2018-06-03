@@ -204,20 +204,49 @@ yang2cli_var_sub(clicon_handle h,
     }
     type = ytype?ytype->ys_argument:NULL;
     cvtypestr = cv_type2str(cvtype);
+    if (strcmp(type, "identityref") == 0)
+	cprintf(cb, "(");
     cprintf(cb, "<%s:%s", ys->ys_argument, cvtypestr);
     /* enumeration special case completion */
-    if (type && (strcmp(type, "enumeration") == 0 || strcmp(type, "bits") == 0)){
-	cprintf(cb, " choice:"); 
-	i = 0;
-	while ((yi = yn_each((yang_node*)ytype, yi)) != NULL){
-	    if (yi->ys_keyword != Y_ENUM && yi->ys_keyword != Y_BIT)
-		continue;
-	    if (i)
-		cprintf(cb, "|"); 
-	    cprintf(cb, "%s", yi->ys_argument); 
-	    i++;
+    if (type){
+	if (strcmp(type, "enumeration") == 0 || strcmp(type, "bits") == 0){
+	    cprintf(cb, " choice:"); 
+	    i = 0;
+	    while ((yi = yn_each((yang_node*)ytype, yi)) != NULL){
+		if (yi->ys_keyword != Y_ENUM && yi->ys_keyword != Y_BIT)
+		    continue;
+		if (i)
+		    cprintf(cb, "|"); 
+		cprintf(cb, "%s", yi->ys_argument); 
+		i++;
+	    }
+	}
+	else if (strcmp(type, "identityref") == 0){
+	    yang_stmt *ybaseref;
+	    yang_stmt *ybaseid;
+	    cg_var    *cv = NULL;
+	    char      *name;
+	    char      *id;
+	    /* Add a wildchar string first -let validate take it for default prefix */
+	    cprintf(cb, ">");
+	    if (helptext)
+		cprintf(cb, "(\"%s\")", helptext);
+    	    cprintf(cb, "|<%s:%s choice:", ys->ys_argument, cvtypestr);
+	    if ((ybaseref = yang_find((yang_node*)ytype, Y_BASE, NULL)) != NULL &&
+		(ybaseid = yang_find_identity(ys, ybaseref->ys_argument)) != NULL){
+		i = 0;
+		while ((cv = cvec_each(ybaseid->ys_cvec, cv)) != NULL){
+		    if (i++)
+			cprintf(cb, "|"); 
+		    name = strdup(cv_name_get(cv));
+		    if ((id=strchr(name, ':')) != NULL)
+			*id = '\0';
+		    cprintf(cb, "%s:%s", name, id+1);
+		}
+	    }
 	}
     }
+
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
 	cprintf(cb, " fraction-digits:%u", fraction_digits);
     if (options & (YANG_OPTIONS_RANGE|YANG_OPTIONS_LENGTH)){
@@ -259,10 +288,12 @@ yang2cli_var_sub(clicon_handle h,
     }
     if (options & YANG_OPTIONS_PATTERN)
 	cprintf(cb, " regexp:\"%s\"", pattern);
-
     cprintf(cb, ">");
     if (helptext)
 	cprintf(cb, "(\"%s\")", helptext);
+    if (strcmp(type, "identityref") == 0)
+	cprintf(cb, ")");
+
     retval = 0;
   done:
     return retval;
@@ -385,6 +416,7 @@ yang2cli_var(clicon_handle h,
     enum cv_type  cvtype;
     int           options = 0;
     int           completionp;
+    char         *type;
 
     if (yang_type_get(ys, &origtype, &yrestype, 
 		      &options, &mincv, &maxcv, &pattern, &fraction_digits) < 0)
@@ -413,11 +445,11 @@ yang2cli_var(clicon_handle h,
 	cprintf(cb, ")");
     }
     else{
-	char         *type;
 	type = yrestype?yrestype->ys_argument:NULL;
 	if (type)
 	    completionp = clicon_cli_genmodel_completion(h) &&
-		strcmp(type, "enumeration") != 0 && 
+		strcmp(type, "enumeration") != 0 &&
+		strcmp(type, "identityref") != 0 && 
 		strcmp(type, "bits") != 0;
 	else
 	    completionp = clicon_cli_genmodel_completion(h);

@@ -57,99 +57,99 @@ run(){
     conf="-d candidate -b $mydir -p ../datastore/$name/$name.so -y $dir -m ietf-ip"
   
     new "datastore $name init"
-    expectfn "$datastore $conf init" ""
+    expectfn "$datastore $conf init" 0 ""
 
     # Whole tree operations
     new "datastore $name put all replace"
-    expectfn "$datastore $conf put replace $db" ""
+    expectfn "$datastore $conf put replace $db" 0 ""
 
     new "datastore $name get"
-    expectfn "$datastore $conf get /" "^$db$"
+    expectfn "$datastore $conf get /" 0 "^$db$"
 
     new "datastore $name put all remove"
-    expectfn "$datastore $conf put remove <config/>"
+    expectfn "$datastore $conf put remove <config/>" 0 ""
 
     new "datastore $name get"
-    expectfn "$datastore $conf get /" "^<config/>$"
+    expectfn "$datastore $conf get /" 0 "^<config/>$" 
 
     new "datastore $name put all merge"
-    expectfn "$datastore $conf put merge $db" ""
+    expectfn "$datastore $conf put merge $db" 0 ""
 
     new "datastore $name get"
-    expectfn "$datastore $conf get /" "^$db$"
+    expectfn "$datastore $conf get /" 0 "^$db$"
 
     new "datastore $name put all delete"
-    expectfn "$datastore $conf put remove <config/>"
+    expectfn "$datastore $conf put remove <config/>" 0 ""
 
     new "datastore $name get"
-    expectfn "$datastore $conf get /" "^<config/>$"
+    expectfn "$datastore $conf get /" 0 "^<config/>$"
 
     new "datastore $name put all create"
-    expectfn "$datastore $conf put create $db" ""
+    expectfn "$datastore $conf put create $db" 0 ""
 
     new "datastore $name get"
-    expectfn "$datastore $conf get /" "^$db$"
+    expectfn "$datastore $conf get /" 0 "^$db$"
 
     new "datastore $name put top create"
-    expectfn "$datastore $conf put create <config><x/></config>" "" # error
+    expectfn "$datastore $conf put create <config><x/></config>" 0 "" # error
 
     # Single key operations
     # leaf
     new "datastore $name put all delete"
-    expectfn "$datastore $conf delete" ""
+    expectfn "$datastore $conf delete" 0 ""
 
     new "datastore $name init"
-    expectfn "$datastore $conf init" ""
+    expectfn "$datastore $conf init" 0 ""
 
     new "datastore $name create leaf"
-    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
+    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
 
     new "datastore $name create leaf"
-    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
+    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
 
     new "datastore $name delete leaf"
-    expectfn "$datastore $conf put delete <config><x><y><a>1</a><b>3</b></y></x></config>"
+    expectfn "$datastore $conf put delete <config><x><y><a>1</a><b>3</b></y></x></config>" 0 ""
 
     new "datastore $name replace leaf"
-    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
+    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
 
     new "datastore $name remove leaf"
-    expectfn "$datastore $conf put remove <config><x><g/></x></config>"
+    expectfn "$datastore $conf put remove <config><x><g/></x></config>" 0 ""
 
     new "datastore $name remove leaf"
-    expectfn "$datastore $conf put remove <config><x><y><a>1</a><b>3</b><c/></y></x></config>"
+    expectfn "$datastore $conf put remove <config><x><y><a>1</a><b>3</b><c/></y></x></config>" 0 ""
 
     new "datastore $name delete leaf"
-    expectfn "$datastore $conf put delete <config><x><g/></x></config>"
+    expectfn "$datastore $conf put delete <config><x><g/></x></config>" 0 ""
 
     new "datastore $name merge leaf"
-    expectfn "$datastore $conf put merge <config><x><g>nalle</g></x></config>"
+    expectfn "$datastore $conf put merge <config><x><g>nalle</g></x></config>" 0 ""
 
     new "datastore $name replace leaf"
-    expectfn "$datastore $conf put replace <config><x><g>nalle</g></x></config>"
+    expectfn "$datastore $conf put replace <config><x><g>nalle</g></x></config>" 0 ""
 
     new "datastore $name merge leaf"
-    expectfn "$datastore $conf put merge <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
+    expectfn "$datastore $conf put merge <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
 
     new "datastore $name replace leaf"
-    expectfn "$datastore $conf put replace <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
+    expectfn "$datastore $conf put replace <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
 
     new "datastore $name create leaf"
-    expectfn "$datastore $conf put create <config><x><h><j>aaa</j></h></x></config>"
+    expectfn "$datastore $conf put create <config><x><h><j>aaa</j></h></x></config>" 0 ""
 
     new "datastore $name create leaf"
-    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>"
+    expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
 
     new "datastore other db init"
-    expectfn "$datastore -d kalle -b $mydir -p ../datastore/$name/$name.so -y $dir -m ietf-ip init"
+    expectfn "$datastore -d kalle -b $mydir -p ../datastore/$name/$name.so -y $dir -m ietf-ip init" 0 ""
 
     new "datastore other db copy"
-    expectfn "$datastore $conf copy kalle" ""
+    expectfn "$datastore $conf copy kalle" 0 ""
 
     diff $mydir/kalle_db $mydir/candidate_db
 
     new "datastore lock"
-    expectfn "$datastore $conf lock 756" ""
+    expectfn "$datastore $conf lock 756" 0 ""
 
 #leaf-list
 

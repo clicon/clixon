@@ -24,8 +24,18 @@ EOF
 
 cat <<EOF > $fyang
 module example{
+    prefix ex;
+    import ietf-interfaces {
+	prefix if;
+    }
     import ietf-ip {
       prefix ip;
+    }
+    identity eth {
+	base if:interface-type;
+    }
+    identity lo {
+	base if:interface-type;
     }
     container default-address {
          leaf absname {
@@ -75,8 +85,8 @@ fi
 
 new "leafref base config"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><interfaces>
-<interface><name>eth0</name>  <type>eth</type>  <ipv4><address><ip>192.0.2.1</ip></address><address><ip>192.0.2.2</ip></address></ipv4></interface>
-<interface><name>lo</name><type>lo</type><ipv4><address><ip>127.0.0.1</ip></address></ipv4></interface>
+<interface><name>eth0</name><type>ex:eth</type>  <ipv4><address><ip>192.0.2.1</ip></address><address><ip>192.0.2.2</ip></address></ipv4></interface>
+<interface><name>lo</name><type>ex:lo</type><ipv4><address><ip>127.0.0.1</ip></address></ipv4></interface>
 </interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "leafref get config"
@@ -115,16 +125,16 @@ new "leafref discard-changes"
 expecteof "$clixon_netconf -qf $cfg" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "cli leafref lo"
-expectfn "$clixon_cli -1f $cfg -y $fyang -l o set default-address absname lo" "^$"
+expectfn "$clixon_cli -1f $cfg -y $fyang -l o set default-address absname lo" 0 "^$"
 
 new "cli leafref validate"
-expectfn "$clixon_cli -1f $cfg -y $fyang -l o validate" "^$"
+expectfn "$clixon_cli -1f $cfg -y $fyang -l o validate" 0 "^$"
 
 new "cli sender"
-expectfn "$clixon_cli -1f $cfg -y $fyang -l o set sender a" "^$"
+expectfn "$clixon_cli -1f $cfg -y $fyang -l o set sender a" 0 "^$"
 
 new "cli sender template"
-expectfn "$clixon_cli -1f $cfg -y $fyang -l o set sender b template a" "^$"
+expectfn "$clixon_cli -1f $cfg -y $fyang -l o set sender b template a" 0 "^$"
 
 new "Kill backend"
 # Check if still alive

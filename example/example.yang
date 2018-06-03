@@ -1,14 +1,28 @@
 module example {
     prefix ex;
+    import ietf-interfaces {
+	prefix if;
+    }
     import ietf-ip {
 	prefix ip;
     }
     import ietf-routing {
 	prefix rt;
     }
+    import iana-if-type {
+	prefix ianaift;
+    }
     description
 	"Example code that includes ietf-ip and ietf-routing";
+    /* Example interface type for tests, local callbacks, etc */
+    identity eth {
+	base if:interface-type;
+    }
+    identity loopback {
+	base if:interface-type;
+    }
     /* Translation function example - See also example_cli */
+
     list translate{
 	leaf value{
 	    type string;

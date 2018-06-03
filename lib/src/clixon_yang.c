@@ -817,8 +817,6 @@ yarg_prefix(yang_stmt *ys)
     return prefix;
 }
 
-
-
 /*! Given a yang statement and a prefix, return yang module to that prefix
  * Note, not the other module but the proxy import statement only
  * @param[in]  ys      A yang statement
@@ -1168,6 +1166,8 @@ ys_populate_range(yang_stmt *ys,
 
 /*! Sanity check yang type statement
  * XXX: Replace with generic parent/child type-check
+ * @param[in] ys   The yang statement (type) to populate.
+ * @
  */
 static int
 ys_populate_type(yang_stmt *ys, 
@@ -1199,27 +1199,81 @@ ys_populate_type(yang_stmt *ys,
     return retval;
 }
 
-/*! Sanity check yang type statement
+/*! Sanity check yang identity statement recursively
+ *
+ * Find base identities if any and add this identity to derived list.
+ * Do this recursively
+ * @param[in] ys   The yang identity to populate.
+ * @param[in] arg  If set contains a derived identifier
+ * @see validate_identityref  which in runtime validates actual valoues
  */
 static int
 ys_populate_identity(yang_stmt *ys, 
 		     void      *arg)
 {
     int             retval = -1;
-    yang_stmt      *ybase;
+    yang_stmt      *yc = NULL;
+    yang_stmt      *ybaseid;
+    cg_var         *cv;
+    char           *derid;
+    char           *baseid;
+    char           *prefix = NULL;
+    cbuf           *cb = NULL;
+    char           *idref = (char*)arg;
+    char           *p;
 
-    if ((ybase = yang_find((yang_node*)ys, Y_BASE, NULL)) == NULL)
-	return 0;
-    if ((yang_find_identity(ys, ybase->ys_argument)) == NULL){
-	clicon_err(OE_YANG, 0, "Identity %s not found (base type of %s)",
-		   ybase->ys_argument, ys->ys_argument);
-	goto done;
+    if (idref == NULL){
+	/* Create derived identity through prefix:id if not recursively called*/
+	derid = ys->ys_argument; /* derived id */
+	if ((prefix = yarg_prefix(ys)) == NULL){
+	    if ((p = yang_find_myprefix(ys)) != NULL)
+		prefix = strdup(yang_find_myprefix(ys));
+	}
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new"); 
+	    goto done;
+	}
+	if (prefix)
+	    cprintf(cb, "%s:%s", prefix, derid);
+	else
+	    cprintf(cb, "%s", derid);
+	idref = cbuf_get(cb);
+    }
+    /* Iterate through all base statements and check the base identity exists 
+     * AND populate the base identity recursively
+     */
+    while ((yc = yn_each((yang_node*)ys, yc)) != NULL) {
+	if (yc->ys_keyword != Y_BASE)
+	    continue;
+	baseid = yc->ys_argument;
+	if (((ybaseid = yang_find_identity(ys, baseid))) == NULL){
+	    clicon_err(OE_YANG, 0, "No such identity: %s", baseid); 
+	    goto done;
+	}
+	//	    continue; /* root identity */
+	/* Check if derived id is already in base identifier */
+	if (cvec_find(ybaseid->ys_cvec, idref) != NULL)
+	    continue;
+	/* Add derived id to ybaseid */
+	if ((cv = cv_new(CGV_STRING)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cv_new"); 
+	    goto done;
+	}
+	/* add prefix */
+	cv_name_set(cv, idref);
+	cvec_append_var(ybaseid->ys_cvec, cv);
+	/* Transitive to the root */
+	if (ys_populate_identity(ybaseid, idref) < 0)
+	    goto done;
     }
     retval = 0;
   done:
+    if (prefix)
+	free(prefix);
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
-
 
 /*! Populate with cligen-variables, default values, etc. Sanity checks on complete tree.
  *

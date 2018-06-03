@@ -55,21 +55,28 @@ new2(){
     >&2 echo -n "Test$testnr [$1]"
 }
 
-# clixon tester. First arg is command and second is expected outcome
+# clixon command tester.
+# Arguments:
+# - command,
+# - expected command return value (0 if OK)
+# - expected stdout outcome,
+# - expected2 stdout outcome,
 expectfn(){
   cmd=$1
-  expect=$2
+  retval=$2
+  expect="$3"
 
-  if [ $# = 3 ]; then
-      expect2=$3
+  if [ $# = 4 ]; then
+      expect2=$4
   else
       expect2=
   fi
   ret=$($cmd)
-
-#  if [ $? -ne 0 ]; then
-#    err "wrong args"
-#  fi
+  if [ $? -ne $retval ]; then
+      echo -e "\e[31m\nError in Test$testnr [$testname]:"
+      echo -e "\e[0m:"
+      exit -1
+  fi
   # Match if both are empty string
   if [ -z "$ret" -a -z "$expect" ]; then
       return
@@ -79,7 +86,6 @@ expectfn(){
   fi
   # grep extended grep 
   match=`echo $ret | grep -EZo "$expect"`
-
   if [ -z "$match" ]; then
       err "$expect" "$ret"
   fi

@@ -69,6 +69,7 @@ YANGSPECS	+= ietf-routing@2014-10-26.yang
 YANGSPECS	+= ietf-ipv4-unicast-routing@2014-10-26.yang
 YANGSPECS	+= ietf-ipv6-unicast-routing@2014-10-26.yang
 YANGSPECS	+= ietf-ipsec@2016-03-09.yang
+YANGSPECS	+= iana-if-type@2014-05-08.yang
 
 # Backend plugin
 BE_SRC   = $(APPNAME)_backend.c

@@ -202,6 +202,7 @@ struct yang_stmt{
     cvec              *ys_cvec;      /* List of stmt-specific variables 
 					Y_RANGE: range_min, range_max 
 					Y_LIST: vector of keys
+					Y_TYPE & identity: store all derived types
 				     */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
 };
@@ -252,6 +253,7 @@ yang_stmt *yang_find(yang_node *yn, int keyword, char *argument);
 yang_stmt *yang_find_datanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_topnode(yang_spec *ysp, char *name, yang_class class);
+char      *yang_find_myprefix(yang_stmt *ys);
 int        yang_order(yang_stmt *y);
 int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);

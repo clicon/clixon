@@ -91,8 +91,9 @@ typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
 /* Plugin authorization. Set username option (or not)
  * @param[in]  Clicon handle
  * @param[in]  void*, eg Fastcgihandle request restconf
- * @retval   0 if credentials OK
- * @retval  -1 credentials not OK
+ * @retval  -1 Fatal error
+ * @retval   0 Credential not OK
+ * @retval   1 Credential OK
  */
 typedef int (plgauth_t)(clicon_handle, void *);
 

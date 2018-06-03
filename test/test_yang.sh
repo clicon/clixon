@@ -111,11 +111,11 @@ if [ $? -ne 0 ]; then
 fi
 
 new "cli defined extension"
-expectfn "$clixon_cli -1f $cfg -y $fyang show version" "3."
+expectfn "$clixon_cli -1f $cfg -y $fyang show version" 0 "3."
 
 new "cli not defined extension"
 # This text yields an error, but the test cannot detect the error message yet
-#expectfn "$clixon_cli -1f $cfg -y $fyangerr show version" "Yang error: Extension ex:not-defined not found"
+#expectfn "$clixon_cli -1f $cfg -y $fyangerr show version" 0 "Yang error: Extension ex:not-defined not found"
 
 new "netconf edit config"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><y><a>1</a><b>2</b><c>5</c><val>one</val></y><d/></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -143,10 +143,10 @@ new "netconf get (should be some)"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><get><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply><data><x><y><a>1</a><b>2</b><c>5</c><val>one</val></y><d/></x></data></rpc-reply>]]>]]>$"
 
 new "cli set leaf-list"
-expectfn "$clixon_cli -1f $cfg -y $fyang set x f e foo" ""
+expectfn "$clixon_cli -1f $cfg -y $fyang set x f e foo" 0 ""
 
 new "cli show leaf-list"
-expectfn "$clixon_cli -1f $cfg -y $fyang show xpath /x/f/e" "<e>foo</e>"
+expectfn "$clixon_cli -1f $cfg -y $fyang show xpath /x/f/e" 0 "<e>foo</e>"
 new "netconf set state data (not allowed)"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><state><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value"
 

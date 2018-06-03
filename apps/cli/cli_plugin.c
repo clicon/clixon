@@ -481,6 +481,7 @@ clicon_eval(clicon_handle h,
  * @param[out]    result -2	  On eof (shouldnt happen)
  *                       -1	  On parse error
  *                      >=0       Number of matches
+ * @retval        0       XXX How does this relate to result???
  */
 int
 clicon_parse(clicon_handle h, 
@@ -490,7 +491,7 @@ clicon_parse(clicon_handle h,
 {
     char       *modename;
     char       *modename0;
-    int        res = -1;
+    int        retval = -1;
     int        r;
     cli_syntax_t *stx = NULL;
     cli_syntaxmode_t *smode;
@@ -511,10 +512,11 @@ clicon_parse(clicon_handle h,
     else {
 	if ((smode = syntax_mode_find(stx, modename, 0)) == NULL) {
 	    cli_output(f, "Can't find syntax mode '%s'\n", modename);
-	    return -1;
+	    goto done;
 	}
     }
-    while(smode) {
+    if (smode)
+    while(1) {
 	modename0 = NULL;
 	if ((pt = cligen_tree_active_get(cli_cligen(h))) != NULL)
 	    modename0 = pt->pt_name;
@@ -530,24 +532,24 @@ clicon_parse(clicon_handle h,
 	    clicon_err(OE_UNIX, errno, "cvec_new");
 	    goto done;;
 	}
-	res = cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv);
-	if (res != CG_MATCH)
+	retval = cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv);
+	if (retval != CG_MATCH)
 	    pt_expand_cleanup_1(pt); /* XXX change to pt_expand_treeref_cleanup */
 	if (modename0){
 	    cligen_tree_active_set(cli_cligen(h), modename0);
 	    modename0 = NULL;
 	}
-	switch (res) {
+	switch (retval) {
 	case CG_EOF: /* eof */
 	case CG_ERROR:
 	    cli_output(f, "CLI parse error: %s\n", cmd);
 	    goto done;
 	case CG_NOMATCH: /* no match */
-	    smode = NULL;
 	    /*	    clicon_err(OE_CFG, 0, "CLI syntax error: \"%s\": %s", 
 		    cmd, cli_nomatch(h));*/
 	    cli_output(f, "CLI syntax error: \"%s\": %s\n", 
 		       cmd, cli_nomatch(h));
+	    goto done;
 	    break;
 	case CG_MATCH:
 	    if (strcmp(modename, *modenamep)){	/* Command in different mode */
@@ -565,12 +567,12 @@ clicon_parse(clicon_handle h,
 	    cli_output(f, "CLI syntax error: \"%s\" is ambiguous\n", cmd);
 	    goto done;
 	    break;
-	}
-    }
+	} /* switch retval */
+    } /* while smode */
 done:
     if (cvv)
 	cvec_free(cvv);
-    return res;
+    return retval;
 }
 
 /*! Read command from CLIgen's cliread() using current syntax mode.

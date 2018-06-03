@@ -190,7 +190,7 @@ plugin_statedata(clicon_handle h,
     /* Example of (static) statedata, real code would poll state */
     if (xml_parse_string("<interfaces-state><interface>"
 			 "<name>eth0</name>"
-			 "<type>eth</type>"
+			 "<type>ex:eth</type>"
 			 "<if-index>42</if-index>"
 			 "</interface></interfaces-state>", NULL, &xstate) < 0)
 	goto done;
@@ -221,7 +221,7 @@ plugin_reset(clicon_handle h,
     cxobj *xt = NULL;
 
     if (xml_parse_string("<config><interfaces><interface>"
-			     "<name>lo</name><type>local</type>"
+			     "<name>lo</name><type>ex:loopback</type>"
 			     "</interface></interfaces></config>", NULL, &xt) < 0)
 	goto done;
     /* Replace parent w fiorst child */

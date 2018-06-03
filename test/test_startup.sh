@@ -43,7 +43,7 @@ run(){
    <interfaces>
       <interface>
          <name>run</name>
-         <type>eth</type>
+         <type>ex:eth</type>
       </interface>
     </interfaces>
 </config>
@@ -55,7 +55,7 @@ EOF
    <interfaces>
       <interface>
          <name>startup</name>
-         <type>eth</type>
+         <type>ex:eth</type>
       </interface>
     </interfaces>
 </config>
@@ -67,7 +67,7 @@ EOF
    <interfaces>
       <interface>
          <name>extra</name>
-         <type>eth</type>
+         <type>ex:eth</type>
       </interface>
     </interfaces>
 </config>
@@ -103,8 +103,8 @@ EOF
 }
 
 run init    '<data/>'
-run none    '<data><interfaces><interface><name>run</name><type>eth</type><enabled>true</enabled></interface></interfaces></data>'
-run running '<data><interfaces><interface><name>extra</name><type>eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>local</type><enabled>true</enabled></interface><interface><name>run</name><type>eth</type><enabled>true</enabled></interface></interfaces></data>'
-run startup '<data><interfaces><interface><name>extra</name><type>eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>local</type><enabled>true</enabled></interface><interface><name>startup</name><type>eth</type><enabled>true</enabled></interface></interfaces></data>'
+run none    '<data><interfaces><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+run running '<data><interfaces><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+run startup '<data><interfaces><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
 
 rm -rf $dir
