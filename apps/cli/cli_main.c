@@ -119,7 +119,7 @@ cli_interactive(clicon_handle h)
     int     res;
     char   *cmd;
     char   *new_mode;
-    int     result;
+    int     eval;
     
     /* Loop through all commands */
     while(!cligen_exiting(cli_cligen(h))) {
@@ -128,7 +128,7 @@ cli_interactive(clicon_handle h)
 	    cligen_exiting_set(cli_cligen(h), 1); /* EOF */
 	    goto done;
 	}
-	if ((res = clicon_parse(h, cmd, &new_mode, &result)) < 0)
+	if ((res = clicon_parse(h, cmd, &new_mode, &eval)) < 0)
 	    goto done;
     }
     retval = 0;

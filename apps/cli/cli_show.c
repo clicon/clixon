@@ -161,7 +161,7 @@ expand_dbvar(void   *h,
     	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
-	goto done;
+	goto ok; 
     }
     xcur = xt; /* default top-of-tree */
     xpathcur = xpath;

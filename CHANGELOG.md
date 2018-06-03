@@ -6,7 +6,7 @@
   * Previous support did no validation of values.
   * Validation of types and CLI expansion
   * Example extended with inclusion of iana-if-type RFC 7224 interface identities
-
+  * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
 ### Minor changes:
 * Added yang identityref runtime validation
 * Removed cli callback vector functions. Set COMPAT_COMPAT_CLIV if you need to keep these functions in clixon_custom.h.
