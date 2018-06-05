@@ -8,6 +8,8 @@
   * Example extended with inclusion of iana-if-type RFC 7224 interface identities
   * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
 ### Minor changes:
+* Added xmlns validation
+  * for eg <a xmlns:x="uri"><x:b/></a> 
 * Added yang identityref runtime validation
 * Removed cli callback vector functions. Set COMPAT_COMPAT_CLIV if you need to keep these functions in clixon_custom.h.
   * Replace functions as follows in CLI SPEC files:

@@ -69,7 +69,7 @@ typedef struct xml cxobj; /* struct defined in clicon_xml.c */
  * @retval     1    Abort, dont continue with others
  * @retval     2    Locally, just abort this subtree, continue with others
  */
-typedef int (xml_applyfn_t)(cxobj *yn, void *arg);
+typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 
 /*
  * xml_flag() flags:

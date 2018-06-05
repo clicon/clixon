@@ -430,7 +430,7 @@ rpc_callback_register(clicon_handle  h,
 	clicon_err(OE_DB, errno, "malloc: %s", strerror(errno));
 	goto done;
     }
-    memset (rc, 0, sizeof (*rc));
+    memset(rc, 0, sizeof(*rc));
     rc->rc_callback = cb;
     rc->rc_arg  = arg;
     rc->rc_tag  = strdup(tag); /* XXX strdup memleak */
