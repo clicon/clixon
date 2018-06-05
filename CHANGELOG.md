@@ -8,6 +8,10 @@
   * Example extended with inclusion of iana-if-type RFC 7224 interface identities
   * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
 ### Minor changes:
+* Added a generated CLI show command that works on the generated parse tree with auto completion.
+  * A typical call is: 	show @datamodel:example, cli_show_auto("candidate", "json");
+  * The example contains a more elaborate example.
+  * Thanks ngashok for request, see https://github.com/clicon/clixon/issues/24
 * Added xmlns validation
   * for eg <a xmlns:x="uri"><x:b/></a> 
 * Added yang identityref runtime validation

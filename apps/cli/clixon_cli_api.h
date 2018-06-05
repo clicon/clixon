@@ -142,6 +142,8 @@ int show_conf_xpath(clicon_handle h, cvec *cvv, cvec *argv);
 
 int cli_show_config(clicon_handle h, cvec *cvv, cvec *argv);
 
+int cli_show_auto(clicon_handle h, cvec *cvv, cvec *argv);
+
 #ifdef COMPAT_CLIV
 int cli_setv(clicon_handle h, cvec *vars, cvec *argv);
 int cli_mergev(clicon_handle h, cvec *vars, cvec *argv);

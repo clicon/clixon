@@ -42,13 +42,16 @@ show("Show a particular state of the system"){
 	    xml("Show configuration as XML"), cli_show_config("candidate", "xml", "/");{
 	        @datamodel:example, cli_show_auto("candidate", "text");		   
 	    }
+	    cli("Show configuration as CLI commands"), cli_show_config("candidate", "cli", "/");{
+	        @datamodel:example, cli_show_auto("candidate", "cli");
+	    }
 	    netconf("Show configuration as netconf edit-config operation"), cli_show_config("candidate", "netconf", "/");{
 	        @datamodel:example, cli_show_auto("candidate", "netconf");
 	    }
 	    text("Show configuration as text"), cli_show_config("candidate","text","/");{
 	        @datamodel:example, cli_show_auto("candidate", "text");
 	    }
-	    json("Show configuration as cli commands"), cli_show_config("candidate", "json", "/");{
+	    json("Show configuration as JSON"), cli_show_config("candidate", "json", "/");{
 	    	@datamodel:example, cli_show_auto("candidate", "json");
 	    }
     }

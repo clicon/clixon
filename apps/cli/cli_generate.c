@@ -141,6 +141,7 @@ cli_expand_var_generate(clicon_handle h,
  * @param[in]  ys  yang_stmt of the node at hand
  * @param[in]  cb0 The string where the result format string is inserted.
  * @see cli_dbxml  This is where the xmlkeyfmt string is used
+ * @see pt_callback_reference  in CLIgen where the actual callback overwrites the template
  */
 static int
 cli_callback_generate(clicon_handle h, 
