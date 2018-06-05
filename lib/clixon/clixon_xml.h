@@ -80,6 +80,9 @@ typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 #define XML_FLAG_CHANGE 0x08  /* Node is changed (commits) or child changed rec */
 #define XML_FLAG_NONE   0x10  /* Node is added as NONE */
 
+/* Full xmlns validation check is made only if XML has associated YANG spec */
+#define XMLNS_YANG_ONLY 1
+
 /* Sort and binary search of XML children
  * Experimental
  */

@@ -253,9 +253,12 @@ xml_namespace_check(cxobj *xn,
 	    return 0;
     	xn = xp;
     }
+#ifdef XMLNS_YANG_ONLY
     if (ys == NULL)
 	return 0; /* If no yang spec */
-    else{
+    else
+#endif
+	{
 	/* Check if my namespace */
 	if ((n = yang_find_myprefix(ys)) != NULL && strcmp(nsn,n)==0)
 	    return 0;

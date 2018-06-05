@@ -40,6 +40,10 @@
 * Added cli returna value also for single commands (eg -1)
 * Fixed JSON unbalanced braces resulting in assert.
 
+### Known issues
+* Namespace name relabeling is not supported.
+  * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlfns is not supported, such as: <crypto xmlns:x="urn:example:des">x:des3</crypto>
+
 ## 3.6.1 (29 May 2018)
 
 ### Corrected Bugs
