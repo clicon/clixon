@@ -143,11 +143,18 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candi
 new "netconf validate"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-#new "Set crypto to x:des3"
-#expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><crypto xmlns:x=\"urn:example:des\">x:des3</crypto></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+new "Set crypto to des:des3 using xmlns"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><crypto xmlns:des=\"urn:example:des\">des:des3</crypto></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+# XXX this is not supported
+#new "Set crypto to x:des3 using xmlns"
+#expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><crypto xmlns:x=\"urn:example:des\">x:des3</crypto></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+#new "netconf validate"
+#expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "Set crypto to foo:bar"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><crypto>foo:bar</crypto></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

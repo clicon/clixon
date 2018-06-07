@@ -157,6 +157,8 @@ clixon_plugin_statedata(clicon_handle        h,
 	if (reason){
 	    while ((xc = xml_child_i(*xtop, 0)) != NULL)
 		xml_purge(xc);	    
+	    clicon_log(LOG_NOTICE, "%s: Plugin '%s' state callback failed",
+		       __FUNCTION__, cp->cp_name);
 	    if (netconf_operation_failed_xml(xtop, "rpc", reason)< 0)
 		goto done;
 	    goto ok;

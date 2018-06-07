@@ -71,7 +71,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:xl:F:1u:d:m:qpGLy:c:"
+#define CLI_OPTS "hD:f:xl:F:1u:d:m:qpGLy:c:U:"
 
 /*! terminate cli application */
 static int
@@ -194,7 +194,8 @@ dump_configfile_xml_fn(FILE       *fout,
 }
 
 static void
-usage(char *argv0, clicon_handle h)
+usage(clicon_handle h,
+      char         *argv0)
 {
     char *confsock = clicon_sock(h);
     char *plgdir = clicon_cli_dir(h);
@@ -217,7 +218,8 @@ usage(char *argv0, clicon_handle h)
 	    "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
 	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
-	    "\t-c <file>\tSpecify cli spec file.\n",
+	    "\t-c <file>\tSpecify cli spec file.\n"
+	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n",
 	    argv0,
 	    confsock ? confsock : "none",
 	    plgdir ? plgdir : "none"
@@ -256,7 +258,9 @@ main(int argc, char **argv)
     /* Initiate CLICON handle */
     if ((h = cli_handle_init()) == NULL)
 	goto done;
-    /* Set username to clicon handle. Use in all communication to backend */
+    /* Set username to clicon handle. Use in all communication to backend 
+     * Note, can be overridden by -U
+     */
     if ((pw = getpwuid(getuid())) == NULL){
 	clicon_err(OE_UNIX, errno, "getpwuid");
 	goto done;
@@ -283,11 +287,11 @@ main(int argc, char **argv)
 	    break;
 	case 'D' : /* debug */
 	    if (sscanf(optarg, "%d", &debug) != 1)
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    break;
 	case 'f': /* config file */
 	    if (!strlen(optarg))
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
 	case 'x': /* dump config file as xml (migration from .conf file)*/
@@ -305,9 +309,9 @@ main(int argc, char **argv)
 	     logdst = CLICON_LOG_STDOUT;
 	     break;
 	   default:
-	     usage(argv[0], h);
+	       usage(h, argv[0]);
 	   }
-	     break;
+	   break;
 	}
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
@@ -327,7 +331,7 @@ main(int argc, char **argv)
     /* Find and read configfile */
     if (clicon_options_main(h) < 0){
         if (help)
-	  usage(argv[0], h);
+	    usage(h, argv[0]);
 	return -1;
     }
 
@@ -352,17 +356,17 @@ main(int argc, char **argv)
 	    break;
 	case 'u': /* config unix domain path/ ip host */
 	    if (!strlen(optarg))
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
 	case 'd':  /* Plugin directory: overrides configfile */
 	    if (!strlen(optarg))
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CLI_DIR", optarg);
 	    break;
 	case 'm': /* CLI syntax mode */
 	    if (!strlen(optarg))
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CLI_MODE", optarg);
 	    break;
 	case 'q' : /* Quiet mode */
@@ -385,8 +389,14 @@ main(int argc, char **argv)
 	    clicon_option_str_set(h, "CLICON_CLISPEC_FILE", optarg);
 	    break;
 	}
+	case 'U': /* Clixon 'pseudo' user */
+	    if (!strlen(optarg))
+		usage(h, argv[0]);
+	    if (clicon_username_set(h, optarg) < 0)
+		goto done;
+	    break;
 	default:
-	    usage(argv[0], h);
+	    usage(h, argv[0]);
 	    break;
 	}
     }
@@ -395,7 +405,7 @@ main(int argc, char **argv)
 
     /* Defer: Wait to the last minute to print help message */
     if (help)
-	usage(argv[0], h);
+	usage(h, argv[0]);
 
     /* Setup signal handlers */
     cli_signal_init(h);

@@ -47,3 +47,11 @@ int strverscmp (__const char *__s1, __const char *__s2);
  * This was obsoleted in 3.7
  */
 #undef COMPAT_CLIV
+
+/* Set if you want to assert that all rpc messages have set username
+ */
+#undef RPC_USERNAME_ASSERT
+
+/* Full xmlns validation check is made only if XML has associated YANG spec 
+*/
+#define XMLNS_YANG_ONLY 1

@@ -91,6 +91,9 @@ clicon_rpc_msg(clicon_handle      h,
     cxobj             *xret = NULL;
     yang_spec         *yspec;
 
+#ifdef RPC_USERNAME_ASSERT
+    assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
+#endif
     clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
     if ((sock = clicon_sock(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");

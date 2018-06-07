@@ -1779,7 +1779,7 @@ xml_merge1(cxobj              *x0,
  * @param[in]  x0    Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1    xml tree which modifies base
  * @param[in]  yspec Yang spec
- * @param[out] reason If retval=0 a malloced string. Needs to be freed by caller
+ * @param[out] reason If retval=0, reason is set. Malloced. Needs to be freed by caller
  * @retval     0     OK. If reason is set, Yang error
  * @retval    -1     Error
  * @note both x0 and x1 need to be top-level trees

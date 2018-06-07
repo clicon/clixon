@@ -180,7 +180,7 @@ empty(clicon_handle h,            /* Clicon handle */
  * Real code would poll state
  */
 int 
-plugin_statedata(clicon_handle h, 
+example_statedata(clicon_handle h, 
 		 char         *xpath,
 		 cxobj        *xstate)
 {
@@ -214,8 +214,8 @@ plugin_statedata(clicon_handle h,
  * @note This assumes example yang with interfaces/interface
  */
 int
-plugin_reset(clicon_handle h,
-	     const char   *db)
+example_reset(clicon_handle h,
+	      const char   *db)
 {
     int    retval = -1;
     cxobj *xt = NULL;
@@ -250,7 +250,7 @@ plugin_reset(clicon_handle h,
  * can be processed with the standard getopt(3).
  */
 int
-plugin_start(clicon_handle h,
+example_start(clicon_handle h,
 	     int           argc,
 	     char        **argv)
 {
@@ -261,11 +261,11 @@ clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
     "example",                              /* name */    
-    clixon_plugin_init,                     /* init */
-    plugin_start,                           /* start */
+    clixon_plugin_init,                     /* init - must be called clixon_plugin_init */
+    example_start,                          /* start */
     NULL,                                   /* exit */
-    .ca_reset=plugin_reset,                 /* reset */
-    .ca_statedata=plugin_statedata,         /* statedata */
+    .ca_reset=example_reset,                /* reset */
+    .ca_statedata=example_statedata,        /* statedata */
     .ca_trans_begin=NULL,                   /* trans begin */
     .ca_trans_validate=transaction_validate,/* trans validate */
     .ca_trans_complete=NULL,                /* trans complete */

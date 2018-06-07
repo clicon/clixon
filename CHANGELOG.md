@@ -8,6 +8,7 @@
   * Example extended with inclusion of iana-if-type RFC 7224 interface identities
   * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
 ### Minor changes:
+* Added -U <user> command line to clixon_cli and clixon_netconf for NACM pseudo-user tests
 * Added a generated CLI show command that works on the generated parse tree with auto completion.
   * A typical call is: 	show @datamodel:example, cli_show_auto("candidate", "json");
   * The example contains a more elaborate example.

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Authentication and authorization and IETF NACM
-# See RFC 8321 A.2
+# See RFC 8341 A.2
 # But replaced ietf-netconf-monitoring with *
 
 APPNAME=example

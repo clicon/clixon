@@ -90,17 +90,24 @@ fib_route_rpc(clicon_handle h,
     cxobj     *xtop = NULL;
     cxobj     *xrpc;
     cxobj     *xret = NULL;
+    cxobj     *xerr;
 
     /* User supplied variable in CLI command */
     instance = cvec_find(cvv, "instance"); /* get a cligen variable from vector */
     /* Create XML for fib-route netconf RPC */
-    if (xml_parse_va(&xtop, NULL, "<rpc><fib-route><routing-instance-name>%s</routing-instance-name></fib-route></rpc>", cv_string_get(instance)) < 0)
+    if (xml_parse_va(&xtop, NULL, "<rpc username=\"%s\"><fib-route><routing-instance-name>%s</routing-instance-name></fib-route></rpc>",
+		     clicon_username_get(h),
+		     cv_string_get(instance)) < 0)
 	goto done;
     /* Skip top-level */
     xrpc = xml_child_i(xtop, 0);
     /* Send to backend */
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
 	goto done;
+    if ((xerr = xpath_first(xret, "/rpc-error")) != NULL){
+	clicon_rpc_generate_error("Get configuration", xerr);
+	goto done;
+    }
     /* Print result */
     xml_print(stdout, xml_child_i(xret, 0));
     retval = 0;

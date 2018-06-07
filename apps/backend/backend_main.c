@@ -117,7 +117,8 @@ backend_sig_term(int arg)
 /*! usage
  */
 static void
-usage(char *argv0, clicon_handle h)
+usage(clicon_handle h,
+      char         *argv0)
 {
     char *plgdir   = clicon_backend_dir(h);
     char *confsock = clicon_sock(h);
@@ -581,11 +582,11 @@ main(int    argc,
 	    break;
 	case 'D' : /* debug */
 	    if (sscanf(optarg, "%d", &debug) != 1)
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    break;
 	case 'f': /* config file */
 	    if (!strlen(optarg))
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
 	}
@@ -602,7 +603,7 @@ main(int    argc,
     /* Find and read configfile */
     if (clicon_options_main(h) < 0){
 	if (help)
-	    usage(argv[0], h);
+	    usage(h, argv[0]);
 	return -1;
     }
     /* External NACM file? */
@@ -621,12 +622,12 @@ main(int    argc,
 	    break; /* see above */
 	case 'd':  /* Plugin directory */
 	    if (!strlen(optarg))
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_BACKEND_DIR", optarg);
 	    break;
 	case 'b':  /* XMLDB database directory */
 	    if (!strlen(optarg))
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_XMLDB_DIR", optarg);
 	    break;
 	case 'F' : /* foreground */
@@ -640,7 +641,7 @@ main(int    argc,
 	    break;
 	case 'u': /* config unix domain path / ip address */
 	    if (!strlen(optarg))
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
 	case 'P': /* pidfile */
@@ -650,7 +651,7 @@ main(int    argc,
 	    clicon_option_str_set(h, "CLICON_STARTUP_MODE", optarg);
 	    if (clicon_startup_mode(h) < 0){
 		fprintf(stderr, "Invalid startup mode: %s\n", optarg);
-		usage(argv[0], h);
+		usage(h, argv[0]);
 	    }
 	    break;
 	case 'c': /* Load application config */
@@ -668,7 +669,7 @@ main(int    argc,
 	    break;
 	}
 	default:
-	    usage(argv[0], h);
+	    usage(h, argv[0]);
 	    break;
 	}
 
@@ -677,7 +678,7 @@ main(int    argc,
 
     /* Defer: Wait to the last minute to print help message */
     if (help)
-	usage(argv[0], h);
+	usage(h, argv[0]);
 
     /* Check pid-file, if zap kil the old daemon, else return here */
     if ((pidfile = clicon_backend_pidfile(h)) == NULL){

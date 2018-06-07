@@ -803,7 +803,7 @@ from_client_debug(clicon_handle      h,
     return retval;
 }
 
-/*! Match nacm access operations according to RFC8321 3.4.4.  
+/*! Match nacm access operations according to RFC8341 3.4.4.  
  * Incoming RPC Message Validation Step 7 (c)
  *  The rule's "access-operations" leaf has the "exec" bit set or
  *  has the special value "*".
@@ -832,7 +832,7 @@ nacm_match_access(char *access_operations,
  * @retval  0  Matching rule AND Not access and cbret set
  * @retval  1  Matchung rule AND Access
  * @retval  2  No matching rule Goto step 10
- * From RFC8321 3.4.4.  Incoming RPC Message Validation
+ * From RFC8341 3.4.4.  Incoming RPC Message Validation
    +---------+-----------------+---------------------+-----------------+
    | Method  | Resource class  | NETCONF operation   | Access          |
    |         |                 |                     | operation       |
@@ -911,7 +911,7 @@ nacm_match_rule(clicon_handle h,
  * @retval -1  Error
  * @retval  0  Not access and cbret set
  * @retval  1  Access
- * From RFC8321 3.4.4.  Incoming RPC Message Validation
+ * From RFC8341 3.4.4.  Incoming RPC Message Validation
  */
 static int
 nacm_access(clicon_handle h,
