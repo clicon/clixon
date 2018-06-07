@@ -205,7 +205,7 @@ yang2cli_var_sub(clicon_handle h,
     }
     type = ytype?ytype->ys_argument:NULL;
     cvtypestr = cv_type2str(cvtype);
-    if (strcmp(type, "identityref") == 0)
+    if (type && strcmp(type, "identityref") == 0)
 	cprintf(cb, "(");
     cprintf(cb, "<%s:%s", ys->ys_argument, cvtypestr);
     /* enumeration special case completion */
@@ -292,7 +292,7 @@ yang2cli_var_sub(clicon_handle h,
     cprintf(cb, ">");
     if (helptext)
 	cprintf(cb, "(\"%s\")", helptext);
-    if (strcmp(type, "identityref") == 0)
+    if (type && strcmp(type, "identityref") == 0)
 	cprintf(cb, ")");
 
     retval = 0;
