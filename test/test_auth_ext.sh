@@ -226,22 +226,22 @@ new2 "guest edit nacm"
 expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
 new "cli show conf as admin"
-expectfn "$clixon_cli -1 -U adm1 -f $cfg -y $fyang show conf" 0 "^x 1;$"
+expectfn "$clixon_cli -1 -U adm1 -l o -f $cfg -y $fyang show conf" 0 "^x 1;$"
 
 new "cli show conf as limited"
-expectfn "$clixon_cli -1 -U wilma -f $cfg -y $fyang show conf" 0 "^x 1;$"
+expectfn "$clixon_cli -1 -U wilma -l o -f $cfg -y $fyang show conf" 0 "^x 1;$"
 
 new "cli show conf as guest"
-expectfn "$clixon_cli -1 -U guest -f $cfg -y $fyang show conf" 255 "CLI command error"
+expectfn "$clixon_cli -1 -U guest -l o -f $cfg -y $fyang show conf" 255 "protocol access-denied"
 
 new "cli rpc as admin"
-expectfn "$clixon_cli -1 -U adm1 -f $cfg -y $fyang rpc ipv4" 0 "<next-hop-list>2.3.4.5</next-hop-list>"
+expectfn "$clixon_cli -1 -U adm1 -l o -f $cfg -y $fyang rpc ipv4" 0 "<next-hop-list>2.3.4.5</next-hop-list>"
 
 new "cli rpc as limited"
-expectfn "$clixon_cli -1 -U wilma -f $cfg -y $fyang rpc ipv4" 0 "<error-tag>access-denied</error-tag>"
+expectfn "$clixon_cli -1 -U wilma -l o -f $cfg -y $fyang rpc ipv4" 255 "protocol access-denied default deny"
 
 new "cli rpc as guest"
-expectfn "$clixon_cli -1 -U guest -f $cfg -y $fyang rpc ipv4" 0 "<error-tag>access-denied</error-tag>"
+expectfn "$clixon_cli -1 -U guest -l o -f $cfg -y $fyang rpc ipv4" 255 "protocol access-denied access denied"
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

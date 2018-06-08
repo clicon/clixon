@@ -477,7 +477,7 @@ cli_show_config(clicon_handle h,
 	    clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have a single '%%'");	
 	    goto done;
 	}
-	if ((cvattr = cvec_find_var(cvv, attr)) == NULL){
+	if ((cvattr = cvec_find(cvv, attr)) == NULL){
 	    clicon_err(OE_PLUGIN, 0, "attr '%s' not found in cligen var list", attr);	
 	    goto done;
 	}
@@ -572,7 +572,7 @@ show_conf_xpath(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", str);	
 	goto done;
     }
-    cv = cvec_find_var(cvv, "xpath");
+    cv = cvec_find(cvv, "xpath");
     xpath = cv_string_get(cv);
     if (clicon_rpc_get_config(h, str, xpath, &xt) < 0)
     	goto done;

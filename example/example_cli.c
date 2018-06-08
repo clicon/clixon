@@ -104,7 +104,7 @@ fib_route_rpc(clicon_handle h,
     /* Send to backend */
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
 	goto done;
-    if ((xerr = xpath_first(xret, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }

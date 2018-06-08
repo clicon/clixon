@@ -394,7 +394,7 @@ cli_debug_cli(clicon_handle h,
     cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find_var(vars, "level")) == NULL){
+    if ((cv = cvec_find(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
 	    clicon_err(OE_PLUGIN, 0, "%s: Requires either label var or single arg: 0|1", __FUNCTION__);
 	    goto done;
@@ -425,7 +425,7 @@ cli_debug_backend(clicon_handle h,
     cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find_var(vars, "level")) == NULL){
+    if ((cv = cvec_find(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
 	    clicon_err(OE_PLUGIN, 0, "%s: Requires either label var or single arg: 0|1", __FUNCTION__);
 	    goto done;
@@ -455,7 +455,7 @@ cli_debug_restconf(clicon_handle h,
     cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find_var(vars, "level")) == NULL){
+    if ((cv = cvec_find(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
 	    clicon_err(OE_PLUGIN, 0, "%s: Requires either label var or single arg: 0|1", __FUNCTION__);
 	    goto done;
@@ -750,7 +750,7 @@ load_config_file(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such op: %s, expected merge or replace", opstr);	
 	goto done;
     }
-    if ((cv = cvec_find_var(cvv, varstr)) == NULL){
+    if ((cv = cvec_find(cvv, varstr)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
 	goto done;
     }
@@ -838,7 +838,7 @@ save_config_file(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
     }
-    if ((cv = cvec_find_var(cvv, varstr)) == NULL){
+    if ((cv = cvec_find(cvv, varstr)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
 	goto done;
     }
@@ -1230,7 +1230,7 @@ cli_copy_config(clicon_handle h,
     tovar = cv_string_get(cvec_i(argv, 4));
     
     /* Get from variable -> cv -> from name */
-    if ((fromcv = cvec_find_var(cvv, fromvar)) == NULL){
+    if ((fromcv = cvec_find(cvv, fromvar)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "fromvar '%s' not found in cligen var list", fromvar);	
 	goto done;
     }
@@ -1261,7 +1261,7 @@ cli_copy_config(clicon_handle h,
     }
 
     /* Get to variable -> cv -> to name */
-    if ((tocv = cvec_find_var(cvv, tovar)) == NULL){
+    if ((tocv = cvec_find(cvv, tovar)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "tovar '%s' not found in cligen var list", tovar);
 	goto done;
     }
@@ -1310,7 +1310,7 @@ cli_debug(clicon_handle h,
     cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find_var(vars, "level")) == NULL)
+    if ((cv = cvec_find(vars, "level")) == NULL)
 	cv = arg;
     level = cv_int32_get(cv);
     /* cli */
