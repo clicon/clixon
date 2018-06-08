@@ -964,12 +964,26 @@ netconf_rpc_dispatch(clicon_handle h,
     int         retval = -1;
     cxobj      *xe;
     yang_spec  *yspec = NULL; 
+    char       *username;
+    cxobj      *xa;
     
     /* Check incoming RPC against system / netconf RPC:s */
     if ((yspec = clicon_netconf_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No netconf yang spec");
 	goto done;
     }
+    /* Tag username on all incoming requests in case they are forwarded as internal messages
+     * This may be unecesary since not all are forwarded. 
+     * It may even be wrong if something else is done with the incoming message?
+     */
+    if ((username = clicon_username_get(h)) != NULL){
+	if ((xa = xml_new("username", xn, NULL)) == NULL)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (xml_value_set(xa, username) < 0)
+	    goto done;
+    }
+
     xe = NULL;
     while ((xe = xml_child_each(xn, xe, CX_ELMNT)) != NULL) {
 	if (strcmp(xml_name(xe), "get-config") == 0){
@@ -1047,5 +1061,8 @@ netconf_rpc_dispatch(clicon_handle h,
     }
     retval = 0;
  done:
+    /* Username attribute added at top - otherwise it is returned to sender */
+    if ((xa = xml_find(xn, "username")) != NULL)
+	xml_purge(xa);
     return retval;
 }

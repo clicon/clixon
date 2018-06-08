@@ -134,6 +134,12 @@ process_incoming_packet(clicon_handle h,
 	    if ((cbret = cbuf_new()) != NULL){
 		if ((xc = xml_child_i(xret,0))!=NULL){
 		    xa=NULL;
+		    /* Copy message-id attribute from incoming to reply. 
+		     * RFC 6241:
+		     * If additional attributes are present in an <rpc> element, a NETCONF
+		     * peer MUST return them unmodified in the <rpc-reply> element.  This
+		     * includes any "xmlns" attributes.
+		     */
 		    while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
 			if ((xa2 = xml_dup(xa)) ==NULL)
 			    goto done;
