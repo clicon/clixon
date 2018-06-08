@@ -77,6 +77,7 @@ int clixon_xml_parsewrap(void)
 %x START
 %s STATEA
 %s AMPERSAND
+%s CDATA
 %s CMNT
 %s STR
 %s TEXTDECL
@@ -106,7 +107,9 @@ int clixon_xml_parsewrap(void)
 <STATEA>\<            { BEGIN(START); return *clixon_xml_parsetext; }
 <STATEA>&             { _YA->ya_lex_state =STATEA;BEGIN(AMPERSAND);}
 <STATEA>\n            { clixon_xml_parselval.string = yytext;_YA->ya_linenum++; return (CHARDATA);}
+<STATEA>"<![CDATA["   { BEGIN(CDATA); _YA->ya_lex_state = STATEA; clixon_xml_parselval.string = yytext; return CHARDATA;}
 <STATEA>.             { clixon_xml_parselval.string = yytext; return CHARDATA; /*XXX:optimize*/}
+
 	/* @see xml_chardata_encode */
 <AMPERSAND>"amp; "     {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "&"; return CHARDATA;}
 <AMPERSAND>"lt; "      {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "<"; return CHARDATA;}
@@ -114,6 +117,9 @@ int clixon_xml_parsewrap(void)
 <AMPERSAND>"apos; "    {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "'"; return CHARDATA;}
 <AMPERSAND>"aquot; "   {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "'"; return CHARDATA;}
 
+<CDATA>.              { clixon_xml_parselval.string = yytext; return CHARDATA;}
+<CDATA>\n            { clixon_xml_parselval.string = yytext;_YA->ya_linenum++; return (CHARDATA);}
+<CDATA>"]]>"          { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = yytext; return CHARDATA;}
 
 <CMNT>"-->"           { BEGIN(START); return ECOMMENT; }
 <CMNT>\n              _YA->ya_linenum++;
