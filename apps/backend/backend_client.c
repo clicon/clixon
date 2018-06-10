@@ -809,6 +809,7 @@ from_client_debug(clicon_handle      h,
  *  has the special value "*".
  * @retval 0  No match
  * @retval 1  Match
+ * XXX access_operations is bit-fields
  */
 static int
 nacm_match_access(char *access_operations,
@@ -818,7 +819,7 @@ nacm_match_access(char *access_operations,
 	return 0;
     if (strcmp(access_operations,"*")==0)
 	return 1;
-    if (strstr(mode, access_operations)!=NULL)
+    if (strstr(access_operations, mode)!=NULL)
 	return 1;
     return 0;
 }
@@ -874,6 +875,7 @@ nacm_match_rule(clicon_handle h,
     
     module_name = xml_find_body(xrule, "module-name");
     rpc_name = xml_find_body(xrule, "rpc-name");
+    /* XXX access_operations can be a set of bits */
     access_operations = xml_find_body(xrule, "access-operations");
     action = xml_find_body(xrule, "action");
     clicon_debug(1, "%s: %s %s %s %s", __FUNCTION__,

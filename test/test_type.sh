@@ -122,6 +122,17 @@ module example{
          range "min..max";
       }
    }*/
+   typedef mybits {
+        description "Test adding several bits";
+	type bits {
+	    bit create;
+	    bit read;
+	    bit write;
+        }
+   }
+   leaf mbits{
+      type mybits;
+   }
 }
 EOF
 
@@ -176,6 +187,19 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><commit/></rpc>]]>]]>" "^<r
 
 new "cli enum value"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang set status down" 0 "^$"
+
+new "cli bits value"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set mbits create" 0 "^$"
+
+#XXX No, cli cant assign two bit values
+#new "cli bits two values"
+#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set mbits \"create read\"" 0 "^$"
+
+new "netconf bits two values"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><mbits>create read</mbits></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "cli bits validate"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang validate" 0 "^$"
 
 new "Kill backend"
 # Check if still alive
