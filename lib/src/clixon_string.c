@@ -54,7 +54,6 @@
 #include "clixon_string.h"
 #include "clixon_err.h"
 
-
 /*! Split string into a vector based on character delimiters. Using malloc
  *
  * The given string is split into a vector where the delimiter can be
@@ -63,6 +62,17 @@
  * The vector returned is one single memory block that must be freed
  * by the caller
  *
+ * @code
+ * char      **vec = NULL;
+ * int         nvec;
+ * if ((vec = clicon_strsep("/home/user/src/clixon", "/", &nvec)) == NULL)
+ *    err;
+ * for (i=0; i<nvec; i++){
+ *    v = vec[i++]; 
+ *    ...
+ * }
+ * free(vec); 
+ * @endcode
  * @param[in]   string     String to be split
  * @param[in]   delim      String of delimiter characters
  * @param[out]  nvec       Number of entries in returned vector

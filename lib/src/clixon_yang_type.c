@@ -402,6 +402,10 @@ cv_validate1(cg_var      *cv,
     uint64_t        u = 0;
     int64_t         i = 0;
     char           *str;
+    int             found;
+    char          **vec = NULL;
+    int             nvec;
+    char           *v;
 
     if (reason && *reason){
 	free(*reason);
@@ -510,22 +514,51 @@ cv_validate1(cg_var      *cv,
     case CGV_STRING:
     case CGV_REST:
 	str = cv_string_get(cv);
-	if (restype && 
-	    (strcmp(restype, "enumeration") == 0 || strcmp(restype, "bits") == 0)){
-	    int found = 0;
-	    while ((yi = yn_each((yang_node*)yrestype, yi)) != NULL){
-		if (yi->ys_keyword != Y_ENUM && yi->ys_keyword != Y_BIT)
-		    continue;
-		if (strcmp(yi->ys_argument, str) == 0){
-		    found++;
+	if (restype){
+	    if (strcmp(restype, "enumeration") == 0){
+		found = 0;
+		while ((yi = yn_each((yang_node*)yrestype, yi)) != NULL){
+		    if (yi->ys_keyword != Y_ENUM)
+			continue;
+		    if (strcmp(yi->ys_argument, str) == 0){
+			found++;
+			break;
+		    }
+		}
+		if (!found){
+		    if (reason)
+			*reason = cligen_reason("'%s' does not match enumeration", str);
+		    retval = 0;
 		    break;
 		}
 	    }
-	    if (!found){
-		if (reason)
-		    *reason = cligen_reason("'%s' does not match enumeration", str);
-		retval = 0;
-		break;
+	    if (strcmp(restype, "bits") == 0){
+		/* The lexical representation of the bits type is a space-separated list
+		 * of the names of the bits that are set.  A zero-length string thus
+		 * represents a value where no bits are set.
+		 */
+		if ((vec = clicon_strsep(str, " \t", &nvec)) == NULL)
+		    goto done;
+		for (i=0; i<nvec; i++){
+		    clicon_log(LOG_NOTICE, "%s: vec[i]: %s", __FUNCTION__, vec[i]);
+		    if ((v = vec[i]) == NULL || !strlen(v))
+			continue;
+		    found = 0;
+		    while ((yi = yn_each((yang_node*)yrestype, yi)) != NULL){
+			if (yi->ys_keyword != Y_BIT)
+			    continue;
+			if (strcmp(yi->ys_argument, v) == 0){
+			    found++;
+			    break;
+			}
+		    }
+		    if (!found){
+			if (reason)
+			    *reason = cligen_reason("'%s' does not match enumeration", v);
+			retval = 0;
+			break;
+		    }
+		}
 	    }
 	}
 	if ((options & YANG_OPTIONS_LENGTH) != 0){
@@ -571,9 +604,11 @@ cv_validate1(cg_var      *cv,
     case CGV_EMPTY:  /* XXX */
 	break;
     }
-
     if (reason && *reason)
 	assert(retval == 0); /* validation failed with error reason */
+ done:
+    if (vec)
+	free(vec);
     return retval;
 }
 
@@ -728,7 +763,7 @@ ys_cv_validate(cg_var    *cv,
     }
     else
 	if ((retval = cv_validate1(cv, cvtype, options, range_min, range_max, pattern,
-				yrestype, restype, reason)) < 0)
+				   yrestype, restype, reason)) < 0)
 	    goto done;
   done:
     if (cvt)
