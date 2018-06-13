@@ -10,7 +10,7 @@ module example {
 	prefix rt;
     }
     import iana-if-type {
-	prefix ianaift;
+      prefix ianaift;
     }
     description
 	"Example code that includes ietf-ip and ietf-routing";

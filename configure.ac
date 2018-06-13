@@ -46,7 +46,8 @@ CLIXON_VERSION_MAJOR="3"
 CLIXON_VERSION_MINOR="7"
 CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
-# Fix to specific version (eg 3.5) or head (3) 
+
+# Fix to specific CLIgen version (eg 3.5) or head (3) 
 CLIGEN_VERSION="3" 
 if test "$prefix" = "NONE"; then
 	CLIGEN_PREFIX="$ac_default_prefix"
