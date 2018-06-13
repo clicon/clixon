@@ -153,6 +153,13 @@ new "cli show configuration eth& - encoding tests"
 expectfn "$clixon_cli -1 -f $cfg -y $fyang show conf cli" 0 "interfaces interface eth& type t<>
 interfaces interface eth& enabled true"
 
+new "netconf edit CDATA"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth/0/0</name><type>ex:eth</type><description><![CDATA[myeth&]]></description></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+#new "netconf get CDATA"
+#expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/interfaces/interface[name=eth/0/0]/description\" /></get-config></rpc>]]>]]>" "<rpc-reply><data><interfaces><interface><name>eth/0/0</name><description><![CDATA[myeth&]]></description><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>"
+
+
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 

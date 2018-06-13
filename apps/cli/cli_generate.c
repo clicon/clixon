@@ -243,6 +243,8 @@ yang2cli_var_sub(clicon_handle h,
 		    if ((id=strchr(name, ':')) != NULL)
 			*id = '\0';
 		    cprintf(cb, "%s:%s", name, id+1);
+		    if (name)
+			free(name);
 		}
 	    }
 	}

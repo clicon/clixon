@@ -1261,7 +1261,11 @@ ys_populate_identity(yang_stmt *ys,
 	}
 	/* add prefix */
 	cv_name_set(cv, idref);
-	cvec_append_var(ybaseid->ys_cvec, cv);
+	cvec_append_var(ybaseid->ys_cvec, cv); /* cv copied */
+	if (cv){
+	    cv_free(cv);
+	    cv = NULL;
+	}
 	/* Transitive to the root */
 	if (ys_populate_identity(ybaseid, idref) < 0)
 	    goto done;

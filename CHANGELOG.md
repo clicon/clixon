@@ -10,6 +10,7 @@
 	
 ### Minor changes:
 * CDATA xml support (patch by David Cornejo, Netgate)
+  * Encode and decode (parsing) support 
 * Validation of yang bits type space-separated list value
 * Added -U <user> command line to clixon_cli and clixon_netconf for NACM pseudo-user tests
 * Added a generated CLI show command that works on the generated parse tree with auto completion.

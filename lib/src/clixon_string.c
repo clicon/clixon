@@ -297,31 +297,56 @@ xml_chardata_encode(char  *str,
     int   l;
     int   len;
     int   i, j;
+    int   cdata; /* when set, skip encoding */
     
-    len = 0;
+    /* First compute length (do nothing) */
+    len = 0; cdata = 0;
     for (i=0; i<strlen(str); i++){
-	switch (str[i]){
-	case '&':
-	    len += strlen("&amp; ");
-	    break;
-	case '<':
-	    len += strlen("&lt; ");
-	    break;
-	case '>':
-	    len += strlen("&gt; ");
-	    break;
-	default:
+	if (cdata){
+	    if (strncmp(&str[i], "]]>", strlen("]]>")) == 0)
+		cdata = 0;
 	    len++;
 	}
+	else
+	    switch (str[i]){
+	    case '&':
+		len += strlen("&amp; ");
+		break;
+	    case '<':
+		if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+		    len++;
+		    cdata++;
+		}
+		else
+		    len += strlen("&lt; ");
+		break;
+	    case '>':
+		len += strlen("&gt; ");
+		break;
+	    default:
+		len++;
+	    }
     }
     len++; /* trailing \0 */
+    /* We know length, allocate encoding buffer  */
     if ((esc = malloc(len)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc"); 
 	goto done;
     }
     memset(esc, 0, len);
-    j = 0;
+
+    /* Same code again, but now actually encode into output buffer */
+    j = 0; cdata = 0;
     for (i=0; i<strlen(str); i++){
+	if (cdata){
+	    if (strncmp(&str[i], "]]>", strlen("]]>")) == 0){
+		cdata = 0;
+		esc[j++] = str[i++];
+		esc[j++] = str[i++];
+	    }
+	    esc[j++] = str[i];
+	}
+	else
 	switch (str[i]){
 	case '&':
 	    if ((l=snprintf(&esc[j], 7, "&amp; ")) < 0){
@@ -331,6 +356,11 @@ xml_chardata_encode(char  *str,
 	    j += l;
 	    break;
 	case '<':
+	    if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+		esc[j++] = str[i];
+		cdata++;
+		break;
+	    }
 	    if ((l=snprintf(&esc[j], 6, "&lt; ")) < 0){
 		clicon_err(OE_UNIX, errno, "snprintf");
 		goto done;

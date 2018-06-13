@@ -104,11 +104,12 @@ int clixon_xml_parsewrap(void)
 
 <STATEA>"</"          { BEGIN(START); return BSLASH; }
 <STATEA>"<!--"        { BEGIN(CMNT); return BCOMMENT; }
+<STATEA>"<![CDATA["   { BEGIN(CDATA); _YA->ya_lex_state = STATEA; clixon_xml_parselval.string = yytext; return CHARDATA;}
 <STATEA>\<            { BEGIN(START); return *clixon_xml_parsetext; }
 <STATEA>&             { _YA->ya_lex_state =STATEA;BEGIN(AMPERSAND);}
 <STATEA>\n            { clixon_xml_parselval.string = yytext;_YA->ya_linenum++; return (CHARDATA);}
-<STATEA>"<![CDATA["   { BEGIN(CDATA); _YA->ya_lex_state = STATEA; clixon_xml_parselval.string = yytext; return CHARDATA;}
-<STATEA>.             { clixon_xml_parselval.string = yytext; return CHARDATA; /*XXX:optimize*/}
+
+<STATEA>.             { clixon_xml_parselval.string = yytext;        return CHARDATA; /*XXX:optimize*/}
 
 	/* @see xml_chardata_encode */
 <AMPERSAND>"amp; "     {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "&"; return CHARDATA;}
