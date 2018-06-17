@@ -19,10 +19,10 @@ node {
         sh 'make'
      }
      stage('Make install') {
-        sh 'make install'
+        sh 'sudo make install'
      }
      stage('Make install-include') {
-        sh 'make install-include'
+        sh 'sudo make install-include'
      }
      stage('Make Example') {
         sh 'cd example'
