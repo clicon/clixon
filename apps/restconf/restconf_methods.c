@@ -254,7 +254,7 @@ api_data_get2(clicon_handle h,
     else{
 	if (xpath_vec(xret, "%s", &xvec, &xlen, path) < 0)
 	    goto done;
-	clicon_debug(1, "%s: xpath:%s xlen:%d", __FUNCTION__, path, xlen);
+	clicon_debug(1, "%s: xpath:%s xlen:%d", __FUNCTION__, path, (int)xlen);
 	if (use_xml){
 	    for (i=0; i<xlen; i++){
 		x = xvec[i];
