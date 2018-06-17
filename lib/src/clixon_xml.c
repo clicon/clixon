@@ -112,7 +112,6 @@ struct xml{
     int               x_flags;      /* Flags according to XML_FLAG_* */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
-    cg_var           *x_cv;         /* If body this contains the typed value */
 };
 
 /* Mapping between xml type <--> string */
@@ -411,35 +410,6 @@ xml_type_set(cxobj          *xn,
 
     xn->x_type = type;
     return old;
-}
-
-/*! Get cligen variable associated with node
- * @param[in]  xn    xml node
- * @retval     cv    Cligen variable if set
- * @retval     NULL  If not set, or not applicable
- */
-cg_var *
-xml_cv_get(cxobj *xn)
-{
-  if (xn->x_cv)
-    return xn->x_cv;
-  else
-    return NULL;
-}
-
-/*! Set cligen variable associated with node
- * @param[in]  xn    xml node
- * @param[in]  cv    Cligen variable or NULL
- * @retval     0     if OK
- */
-int
-xml_cv_set(cxobj  *xn, 
-	   cg_var *cv)
-{
-  if (xn->x_cv)
-    free(xn->x_cv);
-  xn->x_cv = cv;
-  return 0;
 }
 
 /*! Get number of children
@@ -999,8 +969,6 @@ xml_free(cxobj *x)
 	free(x->x_value);
     if (x->x_namespace)
 	free(x->x_namespace);
-    if (x->x_cv)
-	cv_free(x->x_cv);
     for (i=0; i<x->x_childvec_len; i++){
 	if ((xc = x->x_childvec[i]) != NULL){
 	    xml_free(xc);
@@ -1531,14 +1499,6 @@ xml_copy_one(cxobj *x0,
     if (xml_name(x0)) /* malloced string */
 	if ((xml_name_set(x1, xml_name(x0))) < 0)
 	    return -1;
-    if (xml_cv_get(x0)){
-      if ((cv1 = cv_dup(xml_cv_get(x0))) == NULL){
-	clicon_err(OE_XML, errno, "cv_dup");
-	return -1;
-      }
-      if ((xml_cv_set(x1, cv1)) < 0)
-	return -1;
-    }
     return 0;
 }
 

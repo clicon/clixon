@@ -18,8 +18,19 @@ node {
         */
         sh 'make'
      }
-
-     stage('Testing') {
-
+     stage('Make install') {
+        sh 'make install'
      }
+     stage('Make install-include') {
+        sh 'make install-include'
+     }
+     stage('Make Example') {
+        sh 'cd example'
+        sh 'make'
+        sh 'sudo make install'	
+     }
+     stage('Testing') {
+        sh 'cd test'
+        sh './all.sh'
+     }        
 }
