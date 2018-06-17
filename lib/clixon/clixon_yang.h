@@ -257,6 +257,7 @@ char      *yang_find_myprefix(yang_stmt *ys);
 int        yang_order(yang_stmt *y);
 int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
+yang_stmt *yang_parse_file(int fd, const char *name, yang_spec *ysp);
 int        yang_parse(clicon_handle h, const char *yang_dir, 
 		      const char *module, const char *revision, yang_spec *ysp);
 int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 

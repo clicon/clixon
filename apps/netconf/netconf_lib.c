@@ -164,7 +164,7 @@ netconf_get_target(cxobj        *xn,
     cxobj *x;    
     char  *target = NULL;
 
-    if ((x = xpath_first(xn, path)) != NULL){
+    if ((x = xpath_first(xn, "%s", path)) != NULL){
 	if (xpath_first(x, "candidate") != NULL)
 	    target = "candidate";
 	else

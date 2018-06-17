@@ -45,6 +45,7 @@ sysconfdir	= @sysconfdir@
 HOST_VENDOR     = @host_vendor@
 
 SH_SUFFIX	= @SH_SUFFIX@
+
 CLIXON_VERSION  = @CLIXON_VERSION@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
@@ -78,6 +79,14 @@ YACCOBJS := lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
 	    lex.clixon_json_parse.o  clixon_json_parse.tab.o 
 
 
+# Extra applications. Utilities, unit testings. Not installed.
+APPSRC    = clixon_util_xml.c
+APPSRC   += clixon_util_json.c
+APPSRC   += clixon_util_yang.c
+APPSRC   += clixon_util_xsl.c
+
+APPS	  = $(APPSRC:.c=)
+
 # Generated src 
 GENSRC  = build.c 
 
@@ -91,10 +100,10 @@ MYLIB        = libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 MYLIBSO      = libclixon$(SH_SUFFIX).$(CLIXON_MAJOR)
 MYLIBLINK    = libclixon$(SH_SUFFIX)
 
-all:	 $(MYLIB) $(MYLIBLINK)
+all:	 $(MYLIB) $(MYLIBLINK) $(APPS)
 
 clean:
-	rm -f $(OBJS) $(MYLIB) $(MYLIBLINK) $(GENOBJS) $(GENSRC) *.core
+	rm -f $(OBJS) $(MYLIB) $(APPS) $(MYLIBLINK) $(GENOBJS) $(GENSRC) *.core
 	rm -f clixon_xml_parse.tab.[ch] clixon_xml_parse.yy.[co]
 	rm -f clixon_yang_parse.tab.[ch] clixon_yang_parse.[co]
 	rm -f clixon_json_parse.tab.[ch] clixon_json_parse.[co]
@@ -150,6 +159,19 @@ clixon_json_parse.tab.c clixon_json_parse.tab.h: clixon_json_parse.y
 lex.clixon_json_parse.o : lex.clixon_json_parse.c clixon_json_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
 
+# APPS
+clixon_util_xml: clixon_util_xml.c $(MYLIB)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $^ $(LIBS) -o $@
+
+clixon_util_json: clixon_util_json.c $(MYLIB)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $^ $(LIBS) -o $@
+
+clixon_util_yang: clixon_util_yang.c $(MYLIB)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $^ $(LIBS) -o $@
+
+clixon_util_xsl: clixon_util_xsl.c $(MYLIB)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $^ $(LIBS) -o $@
+
 distclean: clean
 	rm -f Makefile *~ .depend
 
@@ -163,7 +185,6 @@ distclean: clean
 build.c:	
 	date +"const char CLIXON_BUILDSTR[64]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; > build.c;
 	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> build.c;
-
 
 $(MYLIB) : $(GENOBJS) $(OBJS) 
 ifeq ($(HOST_VENDOR),apple)

@@ -188,7 +188,7 @@ netconf_input_cb(int   s,
     int           poll;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "%s: cbuf_new", __FUNCTION__);
+	clicon_err(OE_XML, errno, "cbuf_new");
 	return retval;
     }
     memset(buf, 0, sizeof(buf));

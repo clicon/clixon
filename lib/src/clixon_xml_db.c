@@ -87,7 +87,7 @@ xmldb_plugin_load(clicon_handle h,
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen(filename, RTLD_NOW|RTLD_GLOBAL)) == NULL) {
         error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");	
+	clicon_err(OE_PLUGIN, errno, "dlopen: %s", error ? error : "Unknown error");	
 	goto done;
     }
     /* Try v1 */
@@ -162,7 +162,7 @@ xmldb_plugin_unload(clicon_handle h)
     dlerror();    /* Clear any existing error */
     if (dlclose(handle) != 0) {
 	error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
+	clicon_err(OE_PLUGIN, errno, "dlclose: %s", error ? error : "Unknown error");
 	/* Just report no -1 return*/
     }    
     retval = 0;

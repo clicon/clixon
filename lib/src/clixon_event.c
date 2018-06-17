@@ -267,7 +267,7 @@ event_poll(int fd)
     FD_ZERO(&fdset);
     FD_SET(fd, &fdset);
     if ((retval = select(FD_SETSIZE, &fdset, NULL, NULL, &tnull)) < 0)
-	clicon_err(OE_EVENTS, errno, "%s select1: %s", __FUNCTION__, strerror(errno));
+	clicon_err(OE_EVENTS, errno, "select");
     return retval;
 }
 
@@ -307,18 +307,18 @@ event_loop(void)
 	if (n == -1) {
 	    if (errno == EINTR){
 		clicon_debug(1, "%s select: %s", __FUNCTION__, strerror(errno));
-		clicon_err(OE_EVENTS, errno, "%s select1: %s", __FUNCTION__, strerror(errno));
+		clicon_err(OE_EVENTS, errno, "select");
 		retval = 0;
 	    }
 	    else
-		clicon_err(OE_EVENTS, errno, "%s select2", __FUNCTION__);
+		clicon_err(OE_EVENTS, errno, "select");
 	    goto err;
 	}
 	if (n==0){ /* Timeout */
 	    e = ee_timers;
 	    ee_timers = ee_timers->e_next;
 	    clicon_debug(2, "%s timeout: %s[%x]", 
-		    __FUNCTION__, e->e_string, e->e_arg);
+			 __FUNCTION__, e->e_string, (int)e->e_arg);
 	    if ((*e->e_fn)(0, e->e_arg) < 0){
 		free(e);
 		goto err;
@@ -332,7 +332,7 @@ event_loop(void)
 	    e_next = e->e_next;
 	    if(e->e_type == EVENT_FD && FD_ISSET(e->e_fd, &fdset)){
 		clicon_debug(2, "%s: FD_ISSET: %s[%x]", 
-			__FUNCTION__, e->e_string, e->e_arg);
+			     __FUNCTION__, e->e_string, (int)e->e_arg);
 		if ((*e->e_fn)(e->e_fd, e->e_arg) < 0){
 		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, e->e_string);
 		    goto err;

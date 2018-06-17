@@ -116,7 +116,7 @@ int clixon_xml_parsewrap(void)
 <AMPERSAND>"lt; "      {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "<"; return CHARDATA;}
 <AMPERSAND>"gt; "      {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = ">"; return CHARDATA;}
 <AMPERSAND>"apos; "    {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "'"; return CHARDATA;}
-<AMPERSAND>"aquot; "   {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "'"; return CHARDATA;}
+<AMPERSAND>"quot; "   {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "\""; return CHARDATA;}
 
 <CDATA>.              { clixon_xml_parselval.string = yytext; return CHARDATA;}
 <CDATA>\n            { clixon_xml_parselval.string = yytext;_YA->ya_linenum++; return (CHARDATA);}

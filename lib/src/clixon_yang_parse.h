@@ -51,7 +51,6 @@ struct ys_stack{
 };
 
 struct clicon_yang_yacc_arg{ /* XXX: mostly unrelevant */
-    clicon_handle         yy_handle;       /* cligen_handle */
     char                 *yy_name;         /* Name of syntax (for error string) */
     int                   yy_linenum;      /* Number of \n in parsed buffer */
     char                 *yy_parse_string; /* original (copy of) parse string */

@@ -252,7 +252,7 @@ api_data_get2(clicon_handle h,
 	}
     }
     else{
-	if (xpath_vec(xret, path, &xvec, &xlen) < 0)
+	if (xpath_vec(xret, "%s", &xvec, &xlen, path) < 0)
 	    goto done;
 	clicon_debug(1, "%s: xpath:%s xlen:%d", __FUNCTION__, path, xlen);
 	if (use_xml){

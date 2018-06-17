@@ -752,7 +752,7 @@ netconf_notification_cb(int   s,
 	goto done;
     /* handle close from remote end: this will exit the client */
     if (eof){
-	clicon_err(OE_PROTO, ESHUTDOWN, "%s: Socket unexpected close", __FUNCTION__);
+	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
 	close(s);
 	errno = ESHUTDOWN;
 	event_unreg_fd(s, netconf_notification_cb);
@@ -770,13 +770,13 @@ netconf_notification_cb(int   s,
 	    /* find and apply filter */
 	if ((selector = xml_find_value(xfilter, "select")) == NULL)
 	    goto done;
-	if (xpath_first(xe, selector) == NULL) {
+	if (xpath_first(xe, "%s", selector) == NULL) {
 	    fprintf(stderr, "%s no match\n", __FUNCTION__); /* debug */
 	}
     }
     /* create netconf message */
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_PLUGIN, errno, "%s: cbuf_new", __FUNCTION__);
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");
 	goto done;
     }
     add_preamble(cb); /* Make it well-formed netconf xml */

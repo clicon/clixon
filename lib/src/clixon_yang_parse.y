@@ -260,7 +260,7 @@ ysp_add(struct clicon_yang_yacc_arg *yy,
 	clicon_err(OE_YANG, errno, "No stack");
 	goto err;
     }
-    yn = ystack->ys_node;
+    assert(yn = ystack->ys_node);
     if ((ys = ys_new(keyword)) == NULL)
 	goto err;
     /* NOTE: does not make a copy of string, ie argument is 'consumed' here */

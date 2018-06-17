@@ -249,7 +249,7 @@ validate_leafref(cxobj     *xt,
 	clicon_err(OE_DB, 0, "Leafref %s requires path statement", ytype->ys_argument);
 	goto done;
     }
-    if (xpath_vec(xt, ypath->ys_argument, &xvec, &xlen) < 0) 
+    if (xpath_vec(xt, "%s", &xvec, &xlen, ypath->ys_argument) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	x = xvec[i];

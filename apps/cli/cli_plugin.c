@@ -263,7 +263,7 @@ cli_load_syntax(clicon_handle h,
 	if ((cp = clixon_plugin_find(h, plgnam)) != NULL)
 	    handle = cp->cp_handle;
 	if (handle == NULL){
-	    clicon_err(OE_PLUGIN, 0, "CLICON_PLUGIN set to '%s' in %s but plugin %s.so not found in %s\n", 
+	    clicon_err(OE_PLUGIN, 0, "CLICON_PLUGIN set to '%s' in %s but plugin %s.so not found in %s", 
 		       plgnam, filename, plgnam, 
 		       clicon_cli_dir(h));
 	    goto done;

@@ -135,11 +135,11 @@ clicon_err_reset(void)
  * - Set global reason string clicon_err_reason
  * @note: err direction (syslog and/or stderr) controlled by clicon_log_init()
  *
- * @param    fn       Inline function name (when called from clicon_err() macro)
- * @param    line     Inline file line number (when called from clicon_err() macro)
- * @param    err      Error number, typically errno
- * @param    suberr   Sub-error number   
- * @param    reason   Error string, format with argv
+ * @param[in]    fn       Inline function name (when called from clicon_err() macro)
+ * @param[in]    line     Inline file line number (when called from clicon_err() macro)
+ * @param[in]    err      Error number, typically errno
+ * @param[in]    suberr   Sub-error number   
+ * @param[in]    reason   Error string, format with argv
  */
 int
 clicon_err_fn(const char *fn, 

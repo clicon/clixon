@@ -9,6 +9,7 @@
   * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
 	
 ### Minor changes:
+* Dedicated xml,json,yang and xsl parser utility programs added
 * CDATA xml support (patch by David Cornejo, Netgate)
   * Encode and decode (parsing) support 
 * Validation of yang bits type space-separated list value

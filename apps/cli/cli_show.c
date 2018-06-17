@@ -123,8 +123,7 @@ expand_dbvar(void   *h,
     char            *reason = NULL;
     
     if (argv == NULL || cvec_len(argv) != 2){
-	clicon_err(OE_PLUGIN, 0, "%s: requires arguments: <db> <xmlkeyfmt>",
-		   __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "requires arguments: <db> <xmlkeyfmt>");
 	goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -132,7 +131,7 @@ expand_dbvar(void   *h,
 	goto done;
     }
     if ((cv = cvec_i(argv, 0)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: Error when accessing argument <db>");
+	clicon_err(OE_PLUGIN, 0, "Error when accessing argument <db>");
 	goto done;
     }
     dbstr  = cv_string_get(cv);
@@ -143,7 +142,7 @@ expand_dbvar(void   *h,
 	goto done;
     }
     if ((cv = cvec_i(argv, 1)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: Error when accessing argument <api_path>");
+	clicon_err(OE_PLUGIN, 0, "Error when accessing argument <api_path>");
 	goto done;
     }
     api_path_fmt = cv_string_get(cv);
@@ -197,7 +196,7 @@ expand_dbvar(void   *h,
 		cli_output(stderr, "%s\n", reason);
 		goto done;
 	    }	    
-	    if ((xcur = xpath_first(xt, xpath)) == NULL){
+	    if ((xcur = xpath_first(xt, "%s", xpath)) == NULL){
 		clicon_err(OE_DB, 0, "xpath %s should return merged content", xpath);
 		goto done;
 	    }
@@ -205,7 +204,7 @@ expand_dbvar(void   *h,
     /* One round to detect duplicates 
      */
     j = 0;
-    if (xpath_vec(xcur, xpathcur, &xvec, &xlen) < 0) 
+    if (xpath_vec(xcur, "%s", &xvec, &xlen, xpathcur) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	char *str;
@@ -474,7 +473,8 @@ cli_show_config(clicon_handle h,
 	    if (xpath[i] == '%')
 		j++;
 	if (j != 1){
-	    clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have a single '%%'");	
+	    clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have a single '%%'",
+		       xpath);	
 	    goto done;
 	}
 	if ((cvattr = cvec_find(cvv, attr)) == NULL){
@@ -561,7 +561,7 @@ show_conf_xpath(clicon_handle h,
     int              i;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires one element to be <dbname>", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires one element to be <dbname>");
 	goto done;
     }
     str = cv_string_get(cvec_i(argv, 0));
@@ -580,7 +580,7 @@ show_conf_xpath(clicon_handle h,
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
-    if (xpath_vec(xt, xpath, &xv, &xlen) < 0) 
+    if (xpath_vec(xt, "%s", &xv, &xlen, xpath) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)
 	xml_print(stdout, xv[i]);
@@ -625,7 +625,7 @@ cli_show_auto(clicon_handle h,
     enum genmodel_type gt;
 
     if (cvec_len(argv) != 3){
-	clicon_err(OE_PLUGIN, 0, "%s: Usage: <api-path-fmt>* <database> <format>. (*) generated.", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Usage: <api-path-fmt>* <database> <format>. (*) generated.");
 	goto done;
     }
     /* First argv argument: API_path format */
@@ -654,7 +654,7 @@ cli_show_auto(clicon_handle h,
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
-    if ((xp = xpath_first(xt, xpath)) != NULL)
+    if ((xp = xpath_first(xt, "%s", xpath)) != NULL)
 	/* Print configuration according to format */
 	switch (format){
 	case FORMAT_XML:

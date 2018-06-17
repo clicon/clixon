@@ -205,7 +205,7 @@ xpath_parse_predicate(struct xpath_element *xe,
 	    }	
 	    memset(xp, 0, sizeof(*xp));    
 	    if ((xp->xp_expr = strdup(s)) == NULL){	    
-		clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+		clicon_err(OE_XML, errno, "strdup");
 		goto done;
 	    }
 	    xp->xp_next = xe->xe_predicate;
@@ -236,7 +236,7 @@ xpath_element_new(enum axis_type          atype,
     xe->xe_type = atype;
     if (str){
 	if ((str1 = strdup(str)) == NULL){
-	    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+	    clicon_err(OE_XML, errno, "strdup");
 	    goto done;
 	}
 	if (xpath_split(str1, &pred) < 0) /* Can be more predicates */
@@ -247,20 +247,20 @@ xpath_element_new(enum axis_type          atype,
 		*local = '\0';
 		local++;
 		if ((xe->xe_prefix = strdup(str1)) == NULL){
-		    clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+		    clicon_err(OE_XML, errno, "strdup");
 		    goto done;
 		}
 	    }
 	    else
 		local = str1;
 	    if ((xe->xe_str = strdup(local)) == NULL){
-		clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+		clicon_err(OE_XML, errno, "strdup");
 		goto done;
 	    }
 	}
 	else{
 	    if ((xe->xe_str = strdup("*")) == NULL){
-		clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+		clicon_err(OE_XML, errno, "strdup");
 		goto done;
 	    }
 	}
@@ -326,7 +326,7 @@ xpath_parse(char                  *xpath,
     int                    esc = 0;
 
     if ((s0 = strdup(xpath)) == NULL){
-	clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+	clicon_err(OE_XML, errno, "strdup");
 	goto done;
     }
     s = s0;
@@ -502,8 +502,7 @@ xpath_expr(cxobj    *xcur,
 	e_v=e;
 	e_a = strsep(&e_v, "=");
 	if (e_a == NULL){
-	    clicon_err(OE_XML, errno, "%s: malformed expression: [@%s]", 
-		       __FUNCTION__, e);
+	    clicon_err(OE_XML, errno, "malformed expression: [@%s]", e);
 	    goto done;
 	}
 	for (i=0; i<*vec0len; i++){
@@ -534,15 +533,13 @@ xpath_expr(cxobj    *xcur,
 		}
 	    }
 	    else{
-		clicon_err(OE_XML, errno, "%s: malformed expression: [%s]", 
-			   __FUNCTION__, e);
+		clicon_err(OE_XML, errno, "malformed expression: [%s]", e);
 		goto done;
 	    }
 	}
 	else{ /* name = expr */
 	    if ((tag = strsep(&e, "=")) == NULL){
-		clicon_err(OE_XML, errno, "%s: malformed expression: [%s]", 
-			   __FUNCTION__, e);
+		clicon_err(OE_XML, errno, "malformed expression: [%s]", e);
 		goto done;
 	    }
 	    /* Strip trailing spaces */
@@ -782,7 +779,7 @@ xpath_split(char  *xpathstr,
 		}
 	    }
 	    if (pe==NULL){
-		clicon_err(OE_XML, errno, "%s: mismatched []: %s", __FUNCTION__, xpathstr);
+		clicon_err(OE_XML, errno, "mismatched []: %s", xpathstr);
 		goto done;
 	    }
 	}
@@ -859,7 +856,7 @@ xpath_choice(cxobj   *xcur,
     size_t            vec0len = 0;
 
     if ((s0 = strdup(xpath0)) == NULL){
-	clicon_err(OE_XML, errno, "%s: strdup", __FUNCTION__);
+	clicon_err(OE_XML, errno, "strdup");
 	goto done;
     }
     s2 = s1 = s0;

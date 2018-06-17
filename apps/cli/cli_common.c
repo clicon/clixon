@@ -221,7 +221,7 @@ cli_dbxml(clicon_handle       h,
     cxobj     *xb;           /* body */
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires one element to be xml key format string", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires one element to be xml key format string");
 	goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -396,7 +396,7 @@ cli_debug_cli(clicon_handle h,
 
     if ((cv = cvec_find(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, 0, "%s: Requires either label var or single arg: 0|1", __FUNCTION__);
+	    clicon_err(OE_PLUGIN, 0, "Requires either label var or single arg: 0|1");
 	    goto done;
 	}
 	cv = cvec_i(argv, 0);
@@ -427,7 +427,7 @@ cli_debug_backend(clicon_handle h,
 
     if ((cv = cvec_find(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, 0, "%s: Requires either label var or single arg: 0|1", __FUNCTION__);
+	    clicon_err(OE_PLUGIN, 0, "Requires either label var or single arg: 0|1");
 	    goto done;
 	}
 	cv = cvec_i(argv, 0);
@@ -457,7 +457,7 @@ cli_debug_restconf(clicon_handle h,
 
     if ((cv = cvec_find(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, 0, "%s: Requires either label var or single arg: 0|1", __FUNCTION__);
+	    clicon_err(OE_PLUGIN, 0, "Requires either label var or single arg: 0|1");
 	    goto done;
 	}
 	cv = cvec_i(argv, 0);
@@ -482,7 +482,7 @@ cli_set_mode(clicon_handle h,
     char   *str = NULL;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires one element to be cli mode", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires one element to be cli mode");
 	goto done;
     }
     str = cv_string_get(cvec_i(argv, 0));
@@ -494,6 +494,7 @@ cli_set_mode(clicon_handle h,
 
 /*! Start bash from cli callback
  * XXX Application specific??
+ * XXX replace fprintf with clicon_err?
  */ 
 int
 cli_start_shell(clicon_handle h, 
@@ -510,10 +511,10 @@ cli_start_shell(clicon_handle h,
 
     if ((pw = getpwuid(getuid())) == NULL){
 	fprintf(stderr, "%s: getpwuid: %s\n", 
-		__FUNCTION__, strerror(errno));
+               __FUNCTION__, strerror(errno));
 	return -1;
     }
-    if (chdir(pw->pw_dir) < 0){ 
+    if (chdir(pw->pw_dir) < 0){
 	fprintf(stderr, "%s: chdir(%s): %s\n",
 		__FUNCTION__, pw->pw_dir, strerror(errno));
 	endpwent();
@@ -671,7 +672,7 @@ compare_dbs(clicon_handle h,
     int    astext;
 
     if (cvec_len(argv) > 1){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires 0 or 1 element. If given: astext flag 0|1", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires 0 or 1 element. If given: astext flag 0|1");
 	goto done;
     }
     if (cvec_len(argv))
@@ -762,7 +763,7 @@ load_config_file(clicon_handle h,
     }
     /* Open and parse local file into xml */
     if ((fd = open(filename, O_RDONLY)) < 0){
-	clicon_err(OE_UNIX, errno, "%s: open(%s)", __FUNCTION__, filename);
+	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
     }
     if (xml_parse_file(fd, "</clicon>", NULL, &xt) < 0)
@@ -824,9 +825,11 @@ save_config_file(clicon_handle h,
 
     if (cvec_len(argv) != 2){
 	if (cvec_len(argv)==1)
-	    clicon_err(OE_PLUGIN, 0, "%s: Got single argument:\"%s\". Expected \"<dbname>,<varname>\"", cv_string_get(cvec_i(argv,0)));
+	    clicon_err(OE_PLUGIN, 0, "Got single argument:\"%s\". Expected \"<dbname>,<varname>\"",
+		       cv_string_get(cvec_i(argv,0)));
 	else
-	    clicon_err(OE_PLUGIN, 0, "%s: Got %d arguments. Expected: <dbname>,<varname>", cvec_len(argv));
+	    clicon_err(OE_PLUGIN, 0, " Got %d arguments. Expected: <dbname>,<varname>",
+		       cvec_len(argv));
 
 	goto done;
     }
@@ -886,7 +889,7 @@ delete_all(clicon_handle h,
     int              retval = -1;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires one element: dbname", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires one element: dbname");
 	goto done;
     }
     dbstr = cv_string_get(cvec_i(argv, 0));
@@ -949,7 +952,7 @@ cli_notification_cb(int   s,
     if (clicon_msg_rcv(s, &reply, &eof) < 0)
 	goto done;
     if (eof){
-	clicon_err(OE_PROTO, ESHUTDOWN, "%s: Socket unexpected close", __FUNCTION__);
+	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
 	close(s);
 	errno = ESHUTDOWN;
 	event_unreg_fd(s, cli_notification_cb);
@@ -1012,7 +1015,7 @@ cli_notify(clicon_handle h,
     enum format_enum format = FORMAT_TEXT;
 
     if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
-	clicon_err(OE_PLUGIN, 0, "%s Requires arguments: <logstream> <status> [<format>]", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires arguments: <logstream> <status> [<format>]");
 	goto done;
     }
     stream = cv_string_get(cvec_i(argv, 0));
@@ -1215,7 +1218,7 @@ cli_copy_config(clicon_handle h,
     cxobj       *xerr;
 
     if (cvec_len(argv) != 5){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires four elements: <db> <xpath> <keyname> <from> <to>", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires four elements: <db> <xpath> <keyname> <from> <to>");
 	goto done;
     }
     /* First argv argument: Database */
@@ -1247,7 +1250,7 @@ cli_copy_config(clicon_handle h,
 	if (xpath[i] == '%')
 	    j++;
     if (j != 2){
-	clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have two '%%'");	
+	clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have two '%%'", xpath);	
 	goto done;
     }
     cprintf(cb, xpath, keyname, fromname);	
@@ -1273,7 +1276,7 @@ cli_copy_config(clicon_handle h,
 	goto done;
     xml_name_set(x2, "config");
     cprintf(cb, "/%s", keyname);	
-    if ((x = xpath_first(x2, cbuf_get(cb))) == NULL){
+    if ((x = xpath_first(x2, "%s", cbuf_get(cb))) == NULL){
 	clicon_err(OE_PLUGIN, 0, "Field %s not found in copy tree", keyname);
 	goto done;
     }

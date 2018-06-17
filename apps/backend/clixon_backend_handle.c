@@ -220,7 +220,7 @@ backend_notify_xml(clicon_handle h,
 	ce_next = ce->ce_next;
 	for (su = ce->ce_subscription; su; su = su->su_next)
 	    if (strcmp(su->su_stream, stream) == 0){
-		if (strlen(su->su_filter)==0 || xpath_first(x, su->su_filter) != NULL){
+		if (strlen(su->su_filter)==0 || xpath_first(x, "%s", su->su_filter) != NULL){
 		    if (cb==NULL){
 			if ((cb = cbuf_new()) == NULL){
 			    clicon_err(OE_PLUGIN, errno, "cbuf_new");
@@ -255,7 +255,7 @@ backend_notify_xml(clicon_handle h,
 	    continue;
 	if (strcmp(hs->hs_stream, stream))
 	    continue;
-	if (strlen(hs->hs_filter)==0 || xpath_first(x, hs->hs_filter) != NULL){
+	if (strlen(hs->hs_filter)==0 || xpath_first(x, "%s", hs->hs_filter) != NULL){
 	    if ((*hs->hs_fn)(h, x, hs->hs_arg) < 0)
 		goto done;
 	}

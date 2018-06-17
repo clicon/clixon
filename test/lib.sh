@@ -36,10 +36,11 @@ err(){
   if [ $# -gt 1 ]; then 
       echo "Received: $2"
   fi
-  echo -e "\e[0m:"
+  echo -e "\e[0m"
   echo "$ret"| od -t c > $dir/clixon-ret
   echo "$expect"| od -t c > $dir/clixon-expect
   diff $dir/clixon-ret $dir/clixon-expect
+
   exit $testnr
 }
 
@@ -110,18 +111,29 @@ expecteq(){
   fi
 }
 
-# clixon tester. First arg is command second is stdin and
-# third is expected outcome
+# Pipe stdin to command
+# Arguments:
+# - Command
+# - expected command return value (0 if OK)
+# - stdin input
+# - expected stdout outcome
 expecteof(){
   cmd=$1
-  input=$2
-  expect=$3
+  retval=$2
+  input=$3
+  expect=$4
 
 # Do while read stuff
 ret=$($cmd<<EOF 
 $input
 EOF
-)
+) 
+  if [ $? -ne $retval ]; then
+      echo -e "\e[31m\nError in Test$testnr [$testname]:"
+      echo -e "\e[0m:"
+      exit -1
+  fi
+
   # Match if both are empty string
   if [ -z "$ret" -a -z "$expect" ]; then
       return

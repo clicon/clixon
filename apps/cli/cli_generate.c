@@ -783,7 +783,7 @@ yang2cli(clicon_handle      h,
     cvec           *globals;       /* global variables from syntax */
 
     if ((cbuf = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "%s: cbuf_new", __FUNCTION__);
+	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
     /* Traverse YANG specification: loop through statements */

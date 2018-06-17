@@ -1391,7 +1391,7 @@ xml_parse_file(int        fd,
     ptr = xmlbuf;
     while (1){
 	if ((ret = read(fd, &ch, 1)) < 0){
-	    clicon_err(OE_XML, errno, "read: [pid:%d]\n", 
+	    clicon_err(OE_XML, errno, "read: [pid:%d]", 
 		    (int)getpid());
 	    break;
 	}
@@ -1806,7 +1806,7 @@ xml_body_parse(cxobj       *xb,
 	goto done;
     }
     if (cvret == 0){  /* parsing failed */
-	clicon_err(OE_XML, errno, "Parsing CV: %s", &reason);
+	clicon_err(OE_XML, errno, "Parsing CV: %s", reason);
 	if (reason)
 	    free(reason);
     }
@@ -1939,7 +1939,7 @@ xml_operation2str(enum operation_type op)
  * Example run:
  echo "<a><b/></a>" | xml 
 */
-#if 0 /* Test program */
+#if 1 /* Test program */
 
 static int
 usage(char *argv0)

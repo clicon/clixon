@@ -192,7 +192,7 @@ plugin_load_one(clicon_handle   h,
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen(file, dlflags)) == NULL) {
         error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
+	clicon_err(OE_PLUGIN, errno, "dlopen: %s", error ? error : "Unknown error");
 	goto done;
     }
     /* call plugin_init() if defined, eg CLIXON_PLUGIN_INIT or CLIXON_BACKEND_INIT */
@@ -342,7 +342,7 @@ clixon_plugin_exit(clicon_handle h)
 	}
 	if (dlclose(cp->cp_handle) != 0) {
 	    error = (char*)dlerror();
-	    clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
+	    clicon_err(OE_PLUGIN, errno, "dlclose: %s", error ? error : "Unknown error");
 	}
     }
     if (_clixon_plugins){

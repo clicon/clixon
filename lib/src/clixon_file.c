@@ -241,12 +241,11 @@ group_name2gid(char *name,
     gr = &g0; 
     /* This leaks memory in ubuntu */
     if (getgrnam_r(name, gr, buf, sizeof(buf), &gtmp) < 0){
-	clicon_err(OE_UNIX, errno, "%s: getgrnam_r(%s): %s", 
-		   __FUNCTION__, name, strerror(errno));
+	clicon_err(OE_UNIX, errno, "getgrnam_r(%s)", name);
 	return -1;
     }
     if (gtmp == NULL){
-	clicon_err(OE_UNIX, 0, "%s: No such group: %s", __FUNCTION__, name);
+	clicon_err(OE_UNIX, 0, "No such group: %s", name);
 	fprintf(stderr, "No such group %s\n", name);
 	return -1;
     }

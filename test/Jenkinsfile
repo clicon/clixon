@@ -8,15 +8,15 @@ node {
         /* `make check` returns non-zero on test failures,
         * using `true` to allow the Pipeline to continue nonetheless
         */
-        sh 'make clean || true'
-        sh './configure || true'
+        sh 'make clean'
+        sh './configure'
      }
 
      stage('Make') {
         /* `make check` returns non-zero on test failures,
         * using `true` to allow the Pipeline to continue nonetheless
         */
-        sh 'make || true'
+        sh 'make'
      }
 
      stage('Testing') {

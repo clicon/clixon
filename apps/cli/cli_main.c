@@ -173,7 +173,7 @@ dump_configfile_xml_fn(FILE       *fout,
 	clicon_err(OE_UNIX, errno, "configure file: %s", filename);
 	return -1;
     }
-    clicon_debug(2, "Reading config file %s", __FUNCTION__, filename);
+    clicon_debug(2, "%s: Reading config file %s", __FUNCTION__, filename);
     fprintf(fout, "<config>\n");
     while (fgets(line, sizeof(line), f)) {
 	if ((cp = strchr(line, '\n')) != NULL) /* strip last \n */

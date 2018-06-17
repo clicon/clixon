@@ -87,7 +87,7 @@ EOF
     fi
 
     new "Check $mode"
-    expecteof "$clixon_netconf -qf $cfg" '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$expect</rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$expect</rpc-reply>]]>]]>$"
 
     new "Kill backend"
     # Check if still alive
