@@ -1048,8 +1048,13 @@ api_operations_post(clicon_handle h,
     clicon_debug(1, "%s oppath: %s", __FUNCTION__, oppath);
 
     /* Find yang rpc statement, return yang rpc statement if found */
-    if (yang_abs_schema_nodeid(yspec, oppath, Y_RPC, &yrpc) < 0)
-	goto done;
+    if (yang_abs_schema_nodeid(yspec, oppath, Y_RPC, &yrpc) < 0){
+	if (netconf_operation_failed_xml(&xerr, "protocol", "yang node not found") < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
+	goto ok;
+    }
     if (yrpc == NULL){
 	if (netconf_operation_failed_xml(&xerr, "protocol", "yang node not found") < 0)
 	    goto done;

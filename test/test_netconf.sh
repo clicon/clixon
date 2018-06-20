@@ -199,11 +199,11 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><star
 new "netconf rpc"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><rt:fib-route><routing-instance-name>ipv4</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></rt:fib-route></rpc>]]>]]>" "^<rpc-reply><route><address-family>ipv4</address-family><next-hop><next-hop-list>"
 
-new "netconf rpc w/o namespace"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><fib-route><routing-instance-name>ipv4</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></fib-route></rpc>]]>]]>" "^<rpc-reply><route><address-family>ipv4</address-family><next-hop><next-hop-list>"
+new "netconf rpc without namespace"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><rt:fib-route><routing-instance-name>ipv4</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></rt:fib-route></rpc>]]>]]>" "^<rpc-reply><route><address-family>ipv4</address-family><next-hop><next-hop-list>"
 
 new "netconf empty rpc"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><empty/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:empty/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf client-side rpc"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:client-rpc><request>example</request></ex:client-rpc></rpc>]]>]]>" "^<rpc-reply><result>ok</result></rpc-reply>]]>]]>$"

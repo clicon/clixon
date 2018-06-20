@@ -47,6 +47,8 @@
   * See FAQ and example 
 
 ### Corrected Bugs
+* Prefix of rpc was ignored 
+  * https://github.com/clicon/clixon/issues/30
 * Added cli returna value also for single commands (eg -1)
 * Fixed JSON unbalanced braces resulting in assert.
 

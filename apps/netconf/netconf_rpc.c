@@ -888,12 +888,19 @@ netconf_application_rpc(clicon_handle h,
 	goto done;
     }
     cbuf_reset(cb);
-    //    if (xml_namespace(xn))
-	cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn));
-	//    else
-	//	cprintf(cb, "/%s", xml_name(xn)); /* XXX not accepdted by below */
+    if (xml_namespace(xn) == NULL){
+	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
+		     "<error-tag>operation-failed</error-tag>"
+		     "<error-type>rpc</error-type>"
+		     "<error-severity>error</error-severity>"
+		     "<error-message>%s</error-message>"
+		     "<error-info>Not recognized</error-info>"
+		     "</rpc-error></rpc-reply>", xml_name(xn));
+	goto ok;
+    }
+    cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn));
     /* Find yang rpc statement, return yang rpc statement if found */
-	if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), Y_RPC, &yrpc) < 0)
+    if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), Y_RPC, &yrpc) < 0)
 	goto done;
     /* Check if found */
     if (yrpc != NULL){
@@ -937,6 +944,7 @@ netconf_application_rpc(clicon_handle h,
 	retval = 1; /* handled by callback */
 	goto done;
     }
+ ok:
     retval = 0;
  done:
     if (cb)

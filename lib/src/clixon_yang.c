@@ -2082,16 +2082,16 @@ schema_nodeid_vec(yang_node  *yn,
  * Assume schema nodeid:s have prefixes, (actually the first).
  * @see yang_desc_schema_nodeid
  * @see RFC7950 6.5
-   o  schema node: A node in the schema tree.  One of action, container,
-      leaf, leaf-list, list, choice, case, rpc, input, output,
-      notification, anydata, and anyxml.
+ * o  schema node: A node in the schema tree.  One of action, container,
+ *    leaf, leaf-list, list, choice, case, rpc, input, output,
+ *    notification, anydata, and anyxml.
  * Used in yang: deviation, top-level augment
  */
 int
-yang_abs_schema_nodeid(yang_spec  *yspec,
-		       char       *schema_nodeid,
+yang_abs_schema_nodeid(yang_spec    *yspec,
+		       char         *schema_nodeid,
 		       enum rfc_6020 keyword,
-		       yang_stmt **yres)
+		       yang_stmt   **yres)
 {
     int              retval = -1;
     char           **vec = NULL;
@@ -2136,13 +2136,17 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
 	}
     }
     if (ymod == NULL){ /* Try with topnode */
-
 	if ((ys = yang_find_topnode(yspec, id, YC_SCHEMANODE)) == NULL){
 	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found", prefix,id);
 	    goto done;
 	}
 	if ((ymod = ys_module(ys)) == NULL){
 	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found2", prefix,id);
+	    goto done;
+	}
+	if ((yprefix = yang_find((yang_node*)ymod, Y_PREFIX, NULL)) != NULL &&
+	    strcmp(yprefix->ys_argument, prefix) != 0){
+	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found", prefix,id);
 	    goto done;
 	}
     }

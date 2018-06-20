@@ -275,6 +275,9 @@ if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
+new2 "restconf rpc using wrong prefix"
+expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/wrong:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "yang node not found"}}}}'
+
 new "restconf local client rpc using POST xml"
 ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"request":"example"}}' http://localhost/restconf/operations/ex:client-rpc)
 expect="<output><result>ok</result></output>"
