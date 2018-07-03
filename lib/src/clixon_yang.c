@@ -2137,16 +2137,12 @@ yang_abs_schema_nodeid(yang_spec    *yspec,
     }
     if (ymod == NULL){ /* Try with topnode */
 	if ((ys = yang_find_topnode(yspec, id, YC_SCHEMANODE)) == NULL){
-	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found", prefix,id);
+	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found (topnode)", prefix,id);
 	    goto done;
 	}
-	if ((ymod = ys_module(ys)) == NULL){
-	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found2", prefix,id);
-	    goto done;
-	}
-	if ((yprefix = yang_find((yang_node*)ymod, Y_PREFIX, NULL)) != NULL &&
-	    strcmp(yprefix->ys_argument, prefix) != 0){
-	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found", prefix,id);
+	if (((ymod = ys_module(ys)) == NULL) ||
+	    (strcmp(ymod->ys_argument, prefix) != 0)){
+	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found (module)", prefix,id);
 	    goto done;
 	}
     }
