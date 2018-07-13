@@ -1,4 +1,4 @@
-i# Clixon FAQ
+# Clixon FAQ
 
 ## What is Clixon?
 
@@ -41,14 +41,25 @@ The example:
 	 sudo make install
 ```
 
-## Do I need to setup anything?
+## Do I need to setup anything? (IMPORTANT)
 
 The config demon requires a valid group to create a server UNIX socket.
 Define a valid CLICON_SOCK_GROUP in the config file or via the -g option
 or create the group and add the user to it. The default group is 'clicon'.
+Add yourself and www-data, if you intend to use restconf.
+
 On linux:
+```
   sudo groupadd clicon
-  sudo usermod -a -G clicon user
+  sudo usermod -a -G clicon <user>
+  sudo usermod -a -G clicon www-data
+```
+
+Verify:
+```
+grep clicon /etc/group
+clicon:x:1001:<user>,www-data
+```
 
 ## What about reference documentation?
 Clixon uses Doxygen for reference documentation.
