@@ -43,6 +43,7 @@
 #include <errno.h>
 #include <dlfcn.h>
 #include <dirent.h>
+#include <syslog.h>
 
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -204,12 +205,16 @@ plugin_load_one(clicon_handle   h,
 	clicon_err(OE_UNIX, 0, "dlsym: %s: %s", file, error);
 	goto done;
     }
+    clicon_err_reset();
     if ((api = initfn(h)) == NULL) {
-	clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
-	if (!clicon_errno) 	/* sanity: log if clicon_err() is not called ! */
-	    clicon_err(OE_DB, 0, "Unknown error: %s: plugin_init does not make clicon_err call on error",
-		       file);
-	goto err;
+	if (!clicon_errno){ 	/* if clicon_err() is not called then log and continue */
+	    clicon_log(LOG_WARNING, "Warning: failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
+	    dlclose(handle);
+	}
+	else{
+	    clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
+	    goto err;
+	}
     }
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
     if ((cp = (clixon_plugin *)malloc(sizeof(struct clixon_plugin))) == NULL){
@@ -228,7 +233,8 @@ plugin_load_one(clicon_handle   h,
 
     snprintf(cp->cp_name, sizeof(cp->cp_name), "%*s",
 	     (int)strlen(name), name);
-    cp->cp_api = *api;
+    if (api)
+	cp->cp_api = *api;
     clicon_debug(1, "%s", __FUNCTION__);
  done:
     return cp;

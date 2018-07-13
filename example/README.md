@@ -23,7 +23,7 @@ routing example. It contains the following files:
 ```
 Start backend:
 ```
-    clixon_backend -f /usr/local/etc/example.xml -I
+    sudo clixon_backend -f /usr/local/etc/example.xml -s init
 ```
 Edit cli:
 ```

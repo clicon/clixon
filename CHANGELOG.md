@@ -9,7 +9,8 @@
   * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
 	
 ### Minor changes:
-* Dedicated xml,json,yang and xsl parser utility programs added
+* Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
+* Dedicated standalone xml,json,yang and xsl parser utility test programs added under lib/src/.
 * CDATA xml support (patch by David Cornejo, Netgate)
   * Encode and decode (parsing) support 
 * Validation of yang bits type space-separated list value
