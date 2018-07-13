@@ -24,7 +24,7 @@ Clixon is written in C. The plugins are written in C. The CLI
 specification uses cligen (http://cligen.se)
 
 ## How to best understand Clixon?
-Run the Clixon example, in the example directory.
+Run the Clixon example, in the [example](../example) directory.
 
 ## How do you build and install Clixon (and the example)?
 Clixon: 
@@ -177,6 +177,11 @@ You may also add a default method in the configuration file:
    <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE
 </config>
 ```
+
+## Can I use systemd with Clixon?
+
+Yes. Systemd example files are provide for the backend and the
+restconf daemon as part of the [example](../example/systemd).
 
 ## How can I add extra XML?
 
@@ -345,7 +350,7 @@ To authenticate, the callback needs to return the value 1 and supply a username.
 See [../apps/example/example_restconf.c] example_restconf_credentials() for
 an example of HTTP basic auth.
 
-## How do I write a CLI translator function
+## How do I write a CLI translator function?
 
 The CLI can perform variable translation. This is useful if you want to
 prcess the input, such as hashing, encrypting or in other way

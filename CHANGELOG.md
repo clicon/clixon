@@ -9,6 +9,7 @@
   * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
 	
 ### Minor changes:
+* Added systemd example files under example/systemd
 * Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
 * Dedicated standalone xml,json,yang and xsl parser utility test programs added under lib/src/.
 * CDATA xml support (patch by David Cornejo, Netgate)

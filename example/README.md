@@ -188,6 +188,10 @@ The example contains some stubs for authorization according to [RFC8341(NACM)](h
 * A NACM backend plugin reporting the mandatory NACM state variables.
 
 
+## Systemd files
+
+Example systemd files for backend and restconf daemons are found under the systemd directory. Install them under /etc/systemd/system for example.
+
 ## Run as docker container
 
 (Note not updated)

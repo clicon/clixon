@@ -2,7 +2,7 @@
 
 ### Installation using Nginx
 
-Define nginx config file/etc/nginx/sites-available/default
+Define nginx config file: /etc/nginx/sites-available/default
 ```
 server {
   ...
