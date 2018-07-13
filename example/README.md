@@ -16,7 +16,11 @@ routing example. It contains the following files:
 * example_netconf.c Netconf callback plugin
 * Makefile.in       Example makefile where plugins are built and installed
 
+
 ## Compile and run
+
+Before you start, see [preparation](../doc/FAQ.md#do-i-need-to-setup-anything-important).
+
 ```
     cd example
     make && sudo make install
