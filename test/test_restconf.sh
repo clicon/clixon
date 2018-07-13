@@ -92,7 +92,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang # -D
+sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang -D
 
 sleep 1
 
@@ -113,12 +113,12 @@ expecteq "$(curl -s -H 'Accept: application/yang-data+xml' -G http://localhost/r
 '
 
 new2 "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"ex:empty": null,"ex:input": null,"ex:output": null,"ex:client-rpc": null,"rt:fib-route": null,"rt:route-count": null}}
+expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"example:empty": null,"example:input": null,"example:output": null,"example:client-rpc": null,"ietf-routing:fib-route": null,"ietf-routing:route-count": null}}
 '
 
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/operations)
-expect="<operations><ex:empty/><ex:input/><ex:output/><ex:client-rpc/><rt:fib-route/><rt:route-count/></operations>"
+expect="<operations><example:empty/><example:input/><example:output/><example:client-rpc/><ietf-routing:fib-route/><ietf-routing:route-count/></operations>"
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -143,7 +143,7 @@ expectfn "curl -s -I http://localhost/restconf/data" 0 "HTTP/1.1 200 OK"
 #Content-Type: application/yang-data+json"
 
 new2 "restconf empty rpc"
-expecteq "$(curl -s -X POST -d {\"input\":{\"name\":\"\"}} http://localhost/restconf/operations/ex:empty)" ""
+expecteq "$(curl -s -X POST -d {\"input\":{\"name\":\"\"}} http://localhost/restconf/operations/example:empty)" ""
 
 new2 "restconf get empty config + state json"
 expecteq "$(curl -sSG http://localhost/restconf/data)" '{"data": {"interfaces-state": {"interface": [{"name": "eth0","type": "ex:eth","if-index": 42}]}}}
@@ -246,29 +246,29 @@ expecteq "$(curl -s -G http://localhost/restconf/data)" '{"data": {"interfaces":
 '
 
 new2 "restconf rpc using POST json"
-expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/rt:fib-route)" '{"output": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"}}}}
+expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"output": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"}}}}
 '
 
 # Cant get this to work due to quoting
 #new2 "restconf rpc using POST wrong JSON"
-#expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":ipv4}}' http://localhost/restconf/operations/rt:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": " on line 1: syntax error at or before: i"}}}}'
+#expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":ipv4}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": " on line 1: syntax error at or before: i"}}}}'
 
 new2 "restconf rpc using POST json w/o mandatory element"
-expecteq "$(curl -s -X POST -d '{"input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/rt:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "Missing mandatory variable: routing-instance-name"}}}}'
+expecteq "$(curl -s -X POST -d '{"input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "Missing mandatory variable: routing-instance-name"}}}}'
 new2 "restconf rpc non-existing rpc w/o namespace"
 expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/kalle)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "yang node not found"}}}}'
 
 new2 "restconf rpc non-existing rpc"
-expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/ex:kalle)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "yang node not found"}}}}'
+expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/example:kalle)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "yang node not found"}}}}'
 
 new2 "restconf rpc missing name"
 expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "Operation name expected"}}}}'
 
 new2 "restconf rpc missing input"
-expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/rt:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "Missing mandatory variable: routing-instance-name"}}}}'
+expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "Missing mandatory variable: routing-instance-name"}}}}'
 
 new "restconf rpc using POST xml"
-ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/rt:fib-route)
+ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/ietf-routing:fib-route)
 expect="<output><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop></route></output>"
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
@@ -276,10 +276,10 @@ if [ -z "$match" ]; then
 fi
 
 new2 "restconf rpc using wrong prefix"
-expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/wrong:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "yang node not found"}}}}'
+expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/wrong:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "yang module not found"}}}}'
 
 new "restconf local client rpc using POST xml"
-ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"request":"example"}}' http://localhost/restconf/operations/ex:client-rpc)
+ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"request":"example"}}' http://localhost/restconf/operations/example:client-rpc)
 expect="<output><result>ok</result></output>"
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
@@ -287,7 +287,7 @@ if [ -z "$match" ]; then
 fi
 
 # XXX cant get -H to work
-#expecteq 'curl -s -X POST -H "Accept: application/yang-data+xml" -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/rt:fib-route' '<output><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop></route></output>'
+#expecteq 'curl -s -X POST -H "Accept: application/yang-data+xml" -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/ietf-routing:fib-route' '<output><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop></route></output>'
 
 # Cant get shell macros to work, inline matching from lib.sh
 

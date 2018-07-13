@@ -2,6 +2,10 @@
 
 ## 3.7.0 (Upcoming)
 ### Major changes:
+* Conformance for RFC-8040 operations where prefix was used instead of module name.
+  * Proper specification for an operation is POST /restconf/operations/<module_name>:<rpc_procedure> HTTP/1.1
+  * See https://github.com/clicon/clixon/issues/31, https://github.com/clicon/clixon/pull/32 and https://github.com/clicon/clixon/issues/30
+  * Thanks David Cornejo and Dmitry Vakhrushev of Netgate for pointing this out.
 * Support for YANG identity and identityref according to RFC 7950 Sec 7.18 and 9.10
   * Previous support did no validation of values.
   * Validation of types and CLI expansion
