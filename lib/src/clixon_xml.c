@@ -1487,8 +1487,6 @@ int
 xml_copy_one(cxobj *x0, 
 	     cxobj *x1)
 {
-    cg_var *cv1;
-
     xml_type_set(x1, xml_type(x0));
     if (xml_value(x0)){ /* malloced string */
 	if ((x1->x_value = strdup(x0->x_value)) == NULL){

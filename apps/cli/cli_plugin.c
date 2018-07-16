@@ -97,7 +97,7 @@ syntax_mode_find(cli_syntax_t *stx,
 	perror("malloc");
 	return NULL;
     }
-    memset (m, 0, sizeof (*m));
+    memset(m, 0, sizeof(*m));
     strncpy(m->csm_name, mode, sizeof(m->csm_name)-1);
     strncpy(m->csm_prompt, CLI_DEFAULT_PROMPT, sizeof(m->csm_prompt)-1);
     INSQ(m, stx->stx_modes);
@@ -314,7 +314,7 @@ done:
  * @param[in]     h       Clicon handle
  */
 int
-cli_syntax_load (clicon_handle h)
+cli_syntax_load(clicon_handle h)
 {
     int                retval = -1;
     char              *plugin_dir = NULL;
@@ -343,7 +343,7 @@ cli_syntax_load (clicon_handle h)
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
-    memset (stx, 0, sizeof (*stx));	/* Zero out all */
+    memset(stx, 0, sizeof(*stx));	/* Zero out all */
 
     cli_syntax_set(h, stx);
 
@@ -676,9 +676,9 @@ cli_set_prompt(clicon_handle h,
  * @param[in]     fmt     Stdarg fmt string
  */
 static int
-prompt_fmt (char  *prompt,
-	    size_t plen,
-	    char  *fmt, ...)
+prompt_fmt(char  *prompt,
+	   size_t plen,
+	   char  *fmt, ...)
 {
   va_list ap;
   char   *s = fmt;
@@ -698,7 +698,7 @@ prompt_fmt (char  *prompt,
       if (*s == '%' && *++s) {
 	  switch(*s) {
 	  case 'H': /* Hostname */
-	      if (gethostname (hname, sizeof (hname)) != 0)
+	      if (gethostname(hname, sizeof(hname)) != 0)
 		  strncpy(hname, "unknown", sizeof(hname)-1);
 	      cprintf(cb, "%s", hname);
 	      break;

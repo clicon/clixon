@@ -457,7 +457,7 @@ main(int argc, char **argv)
 	    }
 
     if (!cli_syntax_mode(h)){
-	fprintf (stderr, "FATAL: No cli mode set (use -m or CLICON_CLI_MODE)\n");
+	fprintf(stderr, "FATAL: No cli mode set (use -m or CLICON_CLI_MODE)\n");
 	goto done;
     }
     if (cligen_tree_find(cli_cligen(h), cli_syntax_mode(h)) == NULL)

@@ -436,7 +436,7 @@ db_regexp(char            *file,
 	    goto quit;
 	}
 	pair = &newpairs[npairs];
-	memset (pair, 0, sizeof(*pair));
+	memset(pair, 0, sizeof(*pair));
 	
 	pair->dp_key = chunk_sprintf(label, "%s", key);
 	if (regexp)
@@ -451,7 +451,7 @@ db_regexp(char            *file,
 	}
 	if ( ! noval) {
 	    if (vlen){
-		pair->dp_val = chunkdup (val, vlen, label);
+		pair->dp_val = chunkdup(val, vlen, label);
 		if (pair->dp_val == NULL) {
 		    clicon_err(OE_DB, errno, "%s: chunkdup", __FUNCTION__);
 		    goto quit;

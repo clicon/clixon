@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test4: Yang specifics: multi-keys and empty type
+# Yang specifics: multi-keys and empty type
 APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh

@@ -35,54 +35,12 @@
  * NOTE: there is a main function at the end of this file where you can test out
  * different xpath expressions.
  * Look at the end of the file for a test unit program
- */
-/*
-See https://www.w3.org/TR/xpath/
 
-Implementation of a limited xslt xpath syntax. Some examples. Given the following
-xml tree:
-<aaa>
-  <bbb x="hello"><ccc>42</ccc></bbb>
-  <bbb x="bye"><ccc>99</ccc></bbb>
-  <ddd><ccc>22</ccc></ddd>
-</aaa>
+The code is implemented according to XPATH 1.0: 
+   https://www.w3.org/TR/xpath-10/
 
-With the following xpath examples. There are some diffs and many limitations compared
-to the xml standards:
-	/	        whole tree <aaa>...</aaa>
-	/bbb            
-	/aaa/bbb        <bbb x="hello"><ccc>42</ccc></bbb>
-	                <bbb x="bye"><ccc>99</ccc></bbb>
-	//bbb           as above
-	//b?b	        as above
-	//b\*	        as above
-	//b\*\/ccc      <ccc>42</ccc>
-	                <ccc>99</ccc>
-	//\*\/ccc       <ccc>42</ccc>
-                        <ccc>99</ccc>
-                        <ccc>22</ccc>
---	//bbb@x         x="hello"
-	//bbb[@x]       <bbb x="hello"><ccc>42</ccc></bbb>
-	                <bbb x="bye"><ccc>99</ccc></bbb>
-	//bbb[@x=hello] <bbb x="hello"><ccc>42</ccc></bbb>
-	//bbb[@x="hello"] as above
-	//bbb[0]        <bbb x="hello"><ccc>42</ccc></bbb>
-	//bbb[ccc=99]   <bbb x="bye"><ccc>99</ccc></bbb>
----     //\*\/[ccc=99]  same as above
-	'//bbb | //ddd' <bbb><ccc>42</ccc></bbb>
-	                <bbb x="hello"><ccc>99</ccc></bbb>
-		        <ddd><ccc>22</ccc></ddd> (NB spaces)
-	etc
- For xpath v1.0 see http://www.w3.org/TR/xpath/
-record[name=c][time=d]
-in
-<record>
-   <name>c</name>
-   <time>d</time>
-   <userid>45654df4-2292-45d3-9ca5-ee72452568a8</userid>
-</record>
-
-
+The primary syntactic construct in XPath is the expression. An expression matches 
+the production Expr (see https://www.w3.org/TR/xpath-10/#NT-Expr)
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,6 +53,7 @@ in
 #include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <math.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -108,7 +67,10 @@ in
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_xsl.h"
+
 
 /* Constants */
 #define XPATH_VEC_START 128
@@ -116,6 +78,7 @@ in
 /*
  * Types 
  */
+
 struct searchvec{
     cxobj    **sv_v0;   /* here is result */
     int        sv_v0len;
@@ -127,13 +90,22 @@ typedef struct searchvec searchvec;
 
 /* Local types 
  */
-enum axis_type{
-    A_SELF,
-    A_CHILD,
-    A_PARENT,
-    A_ROOT,
-    A_ANCESTOR,
-    A_DESCENDANT_OR_SELF, /* actually descendant-or-self */
+
+struct xpath_predicate{
+    struct xpath_predicate *xp_next;
+    char                   *xp_expr;
+};
+
+/* XPATH Axis according to https://www.w3.org/TR/xpath-10/#NT-Step
+ * Axis ::= AxisSpecifier NodeTest Predicate*	
+ * Eg "child:: 
+ */
+struct xpath_element{
+    struct xpath_element   *xe_next;
+    enum axis_type          xe_type;
+    char                   *xe_prefix;    /* eg for namespaces */
+    char                   *xe_str;       /* eg for child */
+    struct xpath_predicate *xe_predicate; /* eg within [] */
 };
 
 /* Mapping between axis type string <--> int  */
@@ -147,23 +119,12 @@ static const map_str2int axismap[] = {
     {NULL,               -1}
 };
 
-struct xpath_predicate{
-    struct xpath_predicate *xp_next;
-    char                   *xp_expr;
-};
-
-struct xpath_element{
-    struct xpath_element   *xe_next;
-    enum axis_type          xe_type;
-    char                   *xe_prefix; /* eg for namespaces */
-    char                   *xe_str; /* eg for child */
-    struct xpath_predicate *xe_predicate; /* eg within [] */
-};
-
 static int xpath_split(char *xpathstr, char **pathexpr);
 
+/*! Print xpath structure for debug */
 static int 
-xpath_print(FILE *f, struct xpath_element *xplist)
+xpath_print(FILE                 *f,
+	    struct xpath_element *xplist)
 {
     struct xpath_element   *xe;
     struct xpath_predicate *xp;
@@ -217,6 +178,11 @@ xpath_parse_predicate(struct xpath_element *xe,
     return retval;
 }
 
+/*! XPATH parse, create new child element
+ * @param[in]  atype  Axis type, see https://www.w3.org/TR/xpath-10/#axes
+ * @param[in]  str
+ * @param[out] xpnext
+ */
 static int
 xpath_element_new(enum axis_type          atype, 
 		  char                   *str,
@@ -309,8 +275,17 @@ xpath_free(struct xpath_element *xplist)
     return 0;
 }
 
-/*
- * // is short for /descendant-or-self::node()/
+/*! Parse xpath to xpath_element structure
+
+ * 
+ * [1] LocationPath	    ::= RelativeLocationPath	
+ *			        | AbsoluteLocationPath	
+ * [2] AbsoluteLocationPath ::= '/' RelativeLocationPath?	
+ *			        | AbbreviatedAbsoluteLocationPath	
+ * [3] RelativeLocationPath ::= Step	
+			        | RelativeLocationPath '/' Step	
+			        | AbbreviatedRelativeLocationPath	
+ * @see https://www.w3.org/TR/xpath-10/#NT-LocationPath
  */
 static int
 xpath_parse(char                  *xpath, 
@@ -355,6 +330,7 @@ xpath_parse(char                  *xpath,
 	}
 	s++;
     }
+    /* Iterate through steps (s), see https://www.w3.org/TR/xpath-10/#NT-Step */
     s = s0;
     for (i=0; i<nvec; i++){
 	if ((i==0 && strcmp(s,"")==0)) /* Initial / or // */
@@ -364,21 +340,10 @@ xpath_parse(char                  *xpath,
 	else if (strncmp(s,"descendant-or-self::", strlen("descendant-or-self::"))==0){ 
 	    xpath_element_new(A_DESCENDANT_OR_SELF, s+strlen("descendant-or-self::"), &xpnext);
 	}
-#if 1
 	else if (strncmp(s,"..", strlen(".."))==0) /* abbreviatedstep */
 	    xpath_element_new(A_PARENT, s+strlen(".."), &xpnext);
-#else
-	else if (strncmp(s,"..", strlen(s))==0) /* abbreviatedstep */
-	    xpath_element_new(A_PARENT, NULL, &xpnext);
-#endif
-#if 1 /* Problems with .[userid=1321] */
 	else if (strncmp(s,".", strlen("."))==0)
 	    xpath_element_new(A_SELF, s+strlen("."), &xpnext);
-#else
-	else if (strncmp(s,".", strlen(s))==0) /* abbreviatedstep */
-	    xpath_element_new(A_SELF, NULL, &xpnext);
-#endif
-
 	else if (strncmp(s,"self::", strlen("self::"))==0)
 	    xpath_element_new(A_SELF, s+strlen("self::"), &xpnext);
 
@@ -405,23 +370,21 @@ xpath_parse(char                  *xpath,
  *
  * The xv_* arguments are filled in  nodes found earlier.
  * args:
- *  @param[in]    xn_parent  Base XML object
- *  @param[in]    name       shell wildcard pattern to match with node name
- *  @param[in]    node_type  CX_ELMNT, CX_ATTR or CX_BODY
- *  @param[in,out] vec1      internal buffers with results
- *  @param[in,out] vec0      internal buffers with results
- *  @param[in,out] vec_len   internal buffers with length of vec0,vec1
- *  @param[in,out] vec_max   internal buffers with max of vec0,vec1
+ *  @param[in]     xn_parent Base XML object
+ *  @param[in]     pattern   Shell wildcard pattern to match with node name
+ *  @param[in]     node_type CX_ELMNT, CX_ATTR or CX_BODY
+ *  @param[in,out] vec0      Internal buffers with results
+ *  @param[in,out] vec0len   Internal buffers with length of vec0
  * returns:
  *  0 on OK, -1 on error
  */
 static int
-recursive_find(cxobj   *xn, 
-	       char    *pattern, 
-	       int      node_type,
-	       uint16_t flags,
-	       cxobj ***vec0,
-	       size_t  *vec0len)
+xpath_recursive_find(cxobj   *xn, 
+		     char    *pattern, 
+		     int      node_type,
+		     uint16_t flags,
+		     cxobj ***vec0,
+		     size_t  *vec0len)
 {
     int     retval = -1;
     cxobj  *xsub; 
@@ -439,7 +402,7 @@ recursive_find(cxobj   *xn,
 		    goto done;
 	    //	    continue; /* Dont go deeper */
 	}
-	if (recursive_find(xsub, pattern, node_type, flags, &vec, &veclen) < 0)
+	if (xpath_recursive_find(xsub, pattern, node_type, flags, &vec, &veclen) < 0)
 	    goto done;
     }
     retval = 0;
@@ -695,7 +658,7 @@ xpath_find(cxobj                *xcur,
 	if (descendants0){
 	    for (i=0; i<vec0len; i++){
 		xv = vec0[i];
-		if (recursive_find(xv, xe->xe_str, CX_ELMNT, flags, &vec1, &vec1len) < 0)
+		if (xpath_recursive_find(xv, xe->xe_str, CX_ELMNT, flags, &vec1, &vec1len) < 0)
 		    goto done;
 	    }
 	}
@@ -738,7 +701,6 @@ xpath_find(cxobj                *xcur,
 		}
 	    }
 	}
-
     for (xp = xe->xe_predicate; xp; xp = xp->xp_next){
 	if (xpath_expr(xcur, xp->xp_expr, flags, &vec0, &vec0len) < 0)
 	    goto done;
@@ -798,6 +760,7 @@ xpath_split(char  *xpathstr,
  * @param[in]  flags   if != 0, only match xml nodes matching flags
  * @param[out] vec2    Result XML node vector
  * @param[out] vec2len Length of result vector.
+ * @see https://www.w3.org/TR/xpath-10/#NT-LocationPath
  */
 static int
 xpath_exec(cxobj        *xcur, 
@@ -831,14 +794,20 @@ xpath_exec(cxobj        *xcur,
  * @param[in]  xcur  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
  * @param[in]  flags   if != 0, only match xml nodes matching flags
- * @param[in]  vec1    vector of XML trees
- * @param[in]  vec1len length of XML trees
+ * @param[out] vec1    vector of XML trees
+ * @param[out] vec1len length of XML trees
  * For example: xpath = //a | //b. 
  * xpath_first+ splits xpath up in several subcalls
  * (eg xpath=//a and xpath=//b) and collects the results.
  * Note: if a match is found in both, two (or more) same results will be 
  * returned.
  * Note, this could be 'folded' into xpath1 but I judged it too complex.
+ * @see https://www.w3.org/TR/xpath-10/#NT-Expr
+ * An 'Expr' is composed of compositions of and, or, =, +, -, down to:
+ * PathExpr ::= LocationPath	
+ *              | FilterExpr	
+ *              | FilterExpr '/' RelativeLocationPath	
+ *              | FilterExpr '//' RelativeLocationPath	
  */
 static int
 xpath_choice(cxobj   *xcur, 
@@ -848,13 +817,13 @@ xpath_choice(cxobj   *xcur,
 	     size_t  *vec1len)
 {
     int               retval = -1;
-    char             *s0;
+    char             *s0 = NULL;
     char             *s1;
     char             *s2;
     char             *xpath;
     cxobj           **vec0 = NULL;
     size_t            vec0len = 0;
-
+	
     if ((s0 = strdup(xpath0)) == NULL){
 	clicon_err(OE_XML, errno, "strdup");
 	goto done;
@@ -878,7 +847,7 @@ xpath_choice(cxobj   *xcur,
 	    goto done;
     }
     retval = 0;
-  done:
+ done:
     if (s0)
 	free(s0);
     if (vec0)
@@ -1020,7 +989,7 @@ xpath_each(cxobj *xcur,
 /*! A restricted xpath that returns a vector of matches
  *
  * See xpath1() on details for subset
-. * @param[in]  xcur  xml-tree where to search
+ * @param[in]  xcur  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
  * @param[out] vec     vector of xml-trees. Vector must be free():d after use
  * @param[out] veclen  returns length of vector in return value
@@ -1052,7 +1021,7 @@ xpath_vec(cxobj    *xcur,
     int     retval = -1;
     va_list ap;
     size_t  len;
-    char   *xpath;
+    char   *xpath = NULL;
 
     va_start(ap, veclen);    
     len = vsnprintf(NULL, 0, format, ap);
@@ -1078,6 +1047,7 @@ xpath_vec(cxobj    *xcur,
 	free(xpath);
     return retval;
 }
+
 
 /* A restricted xpath that returns a vector of matches (only nodes marked with flags)
  * @param[in]  xcur  xml-tree where to search
@@ -1139,97 +1109,4 @@ xpath_vec_flag(cxobj   *xcur,
 	free(xpath);
     return retval;
 }
-
-/*
- * Turn this on to get an xpath test program 
- * Usage: xpath [<xpath>] 
- * read xpath on first line and xml on rest of lines from input
- * Example compile:
- gcc -g -o xpath -I. -I../clixon ./clixon_xsl.c -lclixon -lcligen
- * Example run:
-echo "a\n<a><b/></a>" | xpath
-*/
-#if 0 /* Test program */
-
-
-static int
-usage(char *argv0)
-{
-    fprintf(stderr, "usage:%s <xml file name>.\n\tInput on stdin\n", argv0);
-    exit(0);
-}
-
-int
-main(int argc, char **argv)
-{
-    int         retval = -1;
-    int         i;
-    cxobj     **xv;
-    cxobj      *x;
-    cxobj      *xn;
-    size_t      xlen = 0;
-    int         c;
-    int         len;
-    char       *buf = NULL;
-    char       *filename;
-    int         fd;
-	
-    if (argc != 2){
-	usage(argv[0]);
-	goto done;
-    }
-    filename = argv[1];
-    if ((fd = open(filename, O_RDONLY)) < 0){
-      clicon_err(OE_UNIX, errno, "open(%s)", filename);
-      goto done;
-    }    
-    /* Read xpath */
-    len = 1024; /* any number is fine */
-    if ((buf = malloc(len)) == NULL){
-	perror("pt_file malloc");
-	return -1;
-    }
-    memset(buf, 0, len);
-    i = 0;
-    while (1){ /* read the whole file */
-      if ((c =  fgetc(stdin)) == EOF)
-	return -1;
-      if (c == '\n')
-	break;
-      if (len==i){
-	if ((buf = realloc(buf, 2*len)) == NULL){
-	  fprintf(stderr, "%s: realloc: %s\n", __FUNCTION__, strerror(errno));
-	  return -1;
-	}	    
-	memset(buf+len, 0, len);
-	len *= 2;
-      }
-      buf[i++] = (char)(c&0xff);
-    }
-    x = NULL;
-    if (xml_parse_file(fd, "</clicon>", NULL, &x) < 0){
-      fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
-	return -1;
-    }
-    close (fd);
-    printf("\n");
-
-    if (xpath_vec(x, "%s", &xv, &xlen, buf) < 0)
-	return -1;
-    if (xv){
-	for (i=0; i<xlen; i++){
-	    xn = xv[i];
-	    fprintf(stdout, "[%d]:\n", i);
-	    clicon_xml2file(stdout, xn, 0, 1);	
-	}
-	free(xv);
-    }
-    if (x)
-	xml_free(x);
-    retval = 0;
- done:
-    return retval;
-}
-
-#endif /* Test program */
 

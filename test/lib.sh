@@ -39,7 +39,7 @@ err(){
   echo -e "\e[0m"
   echo "$ret"| od -t c > $dir/clixon-ret
   echo "$expect"| od -t c > $dir/clixon-expect
-  diff $dir/clixon-ret $dir/clixon-expect
+  diff $dir/clixon-expect $dir/clixon-ret 
 
   exit $testnr
 }

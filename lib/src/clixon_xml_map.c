@@ -424,13 +424,15 @@ xml_yang_validate_all(cxobj   *xt,
 		      void    *arg)
 {
     int        retval = -1;
-    yang_stmt *ys;
-    yang_stmt *ytype;
+    yang_stmt *ys;  /* yang node */
+    yang_stmt *yc;  /* yang child */
+    char      *xpath;
     
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((ys = xml_spec(xt)) != NULL &&
 	yang_config(ys) != 0){
+	/* Node-specific validation */
 	switch (ys->ys_keyword){
 	case Y_LEAF:
 	    /* fall thru */
@@ -438,19 +440,28 @@ xml_yang_validate_all(cxobj   *xt,
 	    /* Special case if leaf is leafref, then first check against
 	       current xml tree
 	    */
-	    if ((ytype = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL){
-		if (strcmp(ytype->ys_argument, "leafref") == 0){
-		    if (validate_leafref(xt, ytype) < 0)
+	    if ((yc = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL){
+		if (strcmp(yc->ys_argument, "leafref") == 0){
+		    if (validate_leafref(xt, yc) < 0)
 			goto done;
 		}
-		else if (strcmp(ytype->ys_argument, "identityref") == 0){
-		    if (validate_identityref(xt, ys, ytype) < 0)
+		else if (strcmp(yc->ys_argument, "identityref") == 0){
+		    if (validate_identityref(xt, ys, yc) < 0)
 			goto done;
 		}
 	    }
 	    break;
+	case Y_MUST: /* RFC 7950 Sec 7.5.3 */
+	    break;
 	default:
 	    break;
+	}
+	/* "when" sub-node RFC 7950 Sec 7.21.5 */
+	if ((yc = yang_find((yang_node*)ys, Y_WHEN, NULL)) != NULL){
+	    xpath = yc->ys_argument; /* "when" has xpath argument */
+	    if (xpath_first(xt, "%s", xpath))
+		;
+	    fprintf(stderr, "%s %s\n", __FUNCTION__, xpath);
 	}
     }
     retval = 0;
@@ -1371,7 +1382,6 @@ xml_spec_populate(cxobj  *x,
  done:
     return retval;
 }
-
 
 /*! Translate from restconf api-path in cvv form to xml xpath
  * eg a/b=c -> a/[b=c] 

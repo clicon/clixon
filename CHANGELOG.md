@@ -2,6 +2,9 @@
 
 ## 3.7.0 (Upcoming)
 ### Major changes:
+* Full support of XPATH 1.0 according to https://www.w3.org/TR/xpath-10 using yacc/lex
+  * The previous XPATH imlementation was very restricted.
+  * The only function implemented is the Yang extension "current()". No other functions are implemented (eg last(), count()).
 * Support for YANG identity and identityref according to RFC 7950 Sec 7.18 and 9.10
   * Previous support did no validation of values.
   * Validation of types and CLI expansion
@@ -9,7 +12,7 @@
   * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
 	
 ### Minor changes:
-* Dedicated xml,json,yang and xsl parser utility programs added
+* Dedicated xml,json,yang and xpath parser utility programs added
 * CDATA xml support (patch by David Cornejo, Netgate)
   * Encode and decode (parsing) support 
 * Validation of yang bits type space-separated list value
@@ -47,7 +50,7 @@
   * See FAQ and example 
 
 ### Corrected Bugs
-* Prefix of rpc was ignored 
+* Prefix of rpc was ignored (thanks Dmitri at netgate)
   * https://github.com/clicon/clixon/issues/30
 * Added cli returna value also for single commands (eg -1)
 * Fixed JSON unbalanced braces resulting in assert.

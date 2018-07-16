@@ -140,11 +140,11 @@ clicon_strjoin(int         argc,
     len += 1; /* '\0' */
     if ((str = malloc(len)) == NULL)
 	return NULL;
-    memset (str, '\0', len);
+    memset(str, '\0', len);
     for (i = 0; i < argc; i++) {
 	if (i != 0)
-	    strncat (str, delim, len - strlen(str));
-	strncat (str, argv[i], len - strlen(str));
+	    strncat(str, delim, len - strlen(str));
+	strncat(str, argv[i], len - strlen(str));
     }
     return str;
 }
@@ -518,21 +518,21 @@ clicon_str2int(const map_str2int *mstab,
  */
 #ifndef HAVE_STRNDUP
 char *
-clicon_strndup (const char *str, 
-		size_t      len)
+clicon_strndup(const char *str, 
+	       size_t      len)
 {
   char *new;
   size_t slen;
 
-  slen  = strlen (str);
+  slen  = strlen(str);
   len = (len < slen ? len : slen);
 
-  new = malloc (len + 1);
+  new = malloc(len + 1);
   if (new == NULL)
     return NULL;
 
   new[len] = '\0';
-  memcpy (new, str, len);
+  memcpy(new, str, len);
 
   return new;
 }
