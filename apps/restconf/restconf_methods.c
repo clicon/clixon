@@ -925,8 +925,7 @@ api_operations_get(clicon_handle h,
     yang_spec *yspec;
     yang_stmt *ym;
     yang_stmt *yc;
-    yang_stmt *yprefix;
-    char      *prefix;
+    char      *modname;
     cbuf      *cbx = NULL;
     cxobj     *xt = NULL;
     
@@ -937,15 +936,12 @@ api_operations_get(clicon_handle h,
     cprintf(cbx, "<operations>");
     ym = NULL;
     while ((ym = yn_each((yang_node*)yspec, ym)) != NULL) {
-	if ((yprefix = yang_find((yang_node*)ym, Y_PREFIX, NULL)) != NULL)
-	    prefix = yprefix->ys_argument;
-	else
-	    continue;
+	modname = ym->ys_argument;
 	yc = NULL;
 	while ((yc = yn_each((yang_node*)ym, yc)) != NULL) {
 	    if (yc->ys_keyword != Y_RPC)
 		continue;
-	    cprintf(cbx, "<%s:%s />", prefix, yc->ys_argument);
+	    cprintf(cbx, "<%s:%s />", modname, yc->ys_argument);
 	}
     }
     cprintf(cbx, "</operations>");
@@ -1030,6 +1026,9 @@ api_operations_post(clicon_handle h,
     char      *username;
     cbuf      *cbret = NULL;
     int        ret = 0;
+    char      *prefix = NULL;
+    char      *id = NULL;
+    yang_stmt *ys = NULL;
     
     clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, path);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -1047,8 +1046,22 @@ api_operations_post(clicon_handle h,
     }
     clicon_debug(1, "%s oppath: %s", __FUNCTION__, oppath);
 
-    /* Find yang rpc statement, return yang rpc statement if found */
-    if (yang_abs_schema_nodeid(yspec, oppath, Y_RPC, &yrpc) < 0){
+    /* Find yang rpc statement, return yang rpc statement if found 
+     *       POST {+restconf}/operations/<operation>
+     *
+     * The <operation> field identifies the module name and rpc identifier
+     * string for the desired operation.
+     */
+    if (yang_nodeid_split(oppath+1, &prefix, &id) < 0) /* +1 skip / */
+	goto done;
+    if ((ys = yang_find((yang_node*)yspec, Y_MODULE, prefix)) == NULL){
+	if (netconf_operation_failed_xml(&xerr, "protocol", "yang module not found") < 0)
+	    goto done;
+	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    goto done;
+	goto ok;
+    }
+    if ((yrpc = yang_find((yang_node*)ys, Y_RPC, id)) == NULL){
 	if (netconf_operation_failed_xml(&xerr, "protocol", "yang node not found") < 0)
 	    goto done;
 	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
@@ -1229,6 +1242,10 @@ api_operations_post(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (prefix)
+	free(prefix);
+    if (id)
+	free(id);
     if (xdata)
 	xml_free(xdata);
     if (xtop)

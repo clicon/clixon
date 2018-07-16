@@ -1725,6 +1725,7 @@ xml_merge1(cxobj              *x0,
     cxobj     *x1c; /* mod child */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
+    cbuf      *cbr = NULL; /* Reason buffer */
 
     assert(x1 && xml_type(x1) == CX_ELMNT);
     assert(y0);
@@ -1763,9 +1764,16 @@ xml_merge1(cxobj              *x0,
 	    x1cname = xml_name(x1c);
 	    /* Get yang spec of the child */
 	    if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
-		if (reason && (*reason = strdup("XML node has no corresponding yang specification (Invalid XML or wrong Yang spec?")) == NULL){
-		    clicon_err(OE_UNIX, errno, "strdup");
-		    goto done;
+		if (reason){
+		    if ((cbr = cbuf_new()) == NULL){
+			clicon_err(OE_XML, errno, "cbuf_new");
+			goto done;
+		    }
+		    cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?", xml_name(x1), x1cname);
+		    if ((*reason = strdup(cbuf_get(cbr))) == NULL){
+			clicon_err(OE_UNIX, errno, "strdup");
+			goto done;
+		    }
 		}
 		break;
 	    }
@@ -1782,6 +1790,8 @@ xml_merge1(cxobj              *x0,
  ok:
     retval = 0;
  done:
+    if (cbr)
+	cbuf_free(cbr);
     return retval;
 }
 
@@ -1807,6 +1817,7 @@ xml_merge(cxobj     *x0,
     cxobj     *x0c; /* base child */
     cxobj     *x1c; /* mod child */
     yang_stmt *yc;
+    cbuf      *cbr = NULL; /* Reason buffer */
 
     /* Loop through children of the modification tree */
     x1c = NULL;
@@ -1814,9 +1825,16 @@ xml_merge(cxobj     *x0,
 	x1cname = xml_name(x1c);
 	/* Get yang spec of the child */
 	if ((yc = yang_find_topnode(yspec, x1cname, YC_DATANODE)) == NULL){
-	    if (reason && (*reason = strdup("XML node has no corresponding yang specification (Invalid XML or wrong Yang spec?")) == NULL){
-		clicon_err(OE_UNIX, errno, "strdup");
-		goto done;
+	    if (reason){
+		if ((cbr = cbuf_new()) == NULL){
+		    clicon_err(OE_XML, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?", xml_name(x1), x1cname);
+		if ((*reason = strdup(cbuf_get(cbr))) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto done;
+		}
 	    }
 	    break;
 	}
@@ -1830,6 +1848,8 @@ xml_merge(cxobj     *x0,
     }
     retval = 0; /* OK */
  done:
+    if (cbr)
+	cbuf_free(cbr);
     return retval;
 }
 

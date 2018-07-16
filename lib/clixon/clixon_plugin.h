@@ -41,7 +41,9 @@
 /*
  * Constants
  */
-/* Hardcoded plugin symbol. Must exist in all plugins to kickstart */
+/* Hardcoded plugin symbol. Must exist in all plugins to kickstart 
+ * @see clixon_plugin_init
+ */
 #define CLIXON_PLUGIN_INIT     "clixon_plugin_init" 
 
 /*
@@ -181,6 +183,7 @@ typedef struct clixon_plugin clixon_plugin;
 /*! Plugin initialization function. Must appear in all plugins
  * @param[in]  h    Clixon handle
  * @retval     api  Pointer to API struct
+ * @retval     NULL Failure (if clixon_err() called), module disabled otherwise.
  * @see CLIXON_PLUGIN_INIT  default symbol 
  */
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);

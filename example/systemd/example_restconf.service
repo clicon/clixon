@@ -1,0 +1,14 @@
+[Unit]
+Description=Starts and stops an example clixon restconf service on this system
+Wants=example.service
+After=example.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/www-data
+Restart=on-failure
+ExecStart=/www-data/clixon_restconf -f /usr/local/etc/example.xml
+
+[Install]
+WantedBy=multi-user.target

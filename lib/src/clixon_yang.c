@@ -611,8 +611,8 @@ yang_find_schemanode(yang_node *yn,
 /*! Find first matching data node in all (sub)modules in a yang spec
  *
  * @param[in]  ysp        Yang specification
- * @param[in]  argument   if NULL, match any(first) argument. XXX is that really a case?
- * @param[in]  schemanode If set look for schema nodes, otherwise only data nodes
+ * @param[in]  argument   Name of node. If NULL match first
+ * @param[in]  class      See yang_class for class of yang nodes
  * A yang specification has modules as children which in turn can have 
  * syntax-nodes as children. This function goes through all the modules to
  * look for nodes. Note that if a child to a module is a choice, 
@@ -803,7 +803,7 @@ yarg_id(yang_stmt *ys)
     return id;
 }
 
-/* Assume argument is id on the type: <[prefix:]id>, return 'prefix'
+/*! Assume argument is id on the type: <[prefix:]id>, return 'prefix'
  * @param[in] ys      A yang statement
  * @retval    NULL    No prefix
  * @retval    prefix  Malloced string that needs to be freed by caller.
@@ -820,6 +820,46 @@ yarg_prefix(yang_stmt *ys)
 	prefix[id-ys->ys_argument] = '\0';
     }
     return prefix;
+}
+
+
+/*! Split yang node identifier into prefix and identifer.
+ * @param[in]  node-id
+ * @param[out] prefix  Malloced string. May be NULL.
+ * @param[out] id      Malloced identifier.
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @note caller need to free id and prefix after use
+ */
+int
+yang_nodeid_split(char  *nodeid,
+		  char **prefix,
+    		  char **id)
+{
+    int   retval = -1;
+    char *str;
+    
+    if ((str = strchr(nodeid, ':')) == NULL){
+	if ((*id = strdup(nodeid)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+    }
+    else{
+	if ((*prefix = strdup(nodeid)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+	(*prefix)[str-nodeid] = '\0';
+	str++;
+	if ((*id = strdup(str)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Given a yang statement and a prefix, return yang module to that prefix

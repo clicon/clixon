@@ -246,6 +246,7 @@ yang_stmt *yn_each(yang_node *yn, yang_stmt *ys);
 char      *yang_key2str(int keyword);
 char      *yarg_prefix(yang_stmt *ys);
 char      *yarg_id(yang_stmt *ys);
+int        yang_nodeid_split(char *nodeid, char **prefix, char **id);
 yang_stmt *ys_module(yang_stmt *ys);
 yang_spec *ys_spec(yang_stmt *ys);
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);

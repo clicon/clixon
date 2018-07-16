@@ -2,9 +2,14 @@
 
 ## 3.7.0 (Upcoming)
 ### Major changes:
+
 * Full support of XPATH 1.0 according to https://www.w3.org/TR/xpath-10 using yacc/lex
   * The previous XPATH imlementation was very restricted.
   * The only function implemented is the Yang extension "current()". No other functions are implemented (eg last(), count()).
+* Conformance of restconf(RFC-8040) operations where prefix was used instead of module name.
+  * Proper specification for an operation is POST /restconf/operations/<module_name>:<rpc_procedure> HTTP/1.1
+  * See https://github.com/clicon/clixon/issues/31, https://github.com/clicon/clixon/pull/32 and https://github.com/clicon/clixon/issues/30
+  * Thanks David Cornejo and Dmitry Vakhrushev of Netgate for pointing this out.
 * Support for YANG identity and identityref according to RFC 7950 Sec 7.18 and 9.10
   * Previous support did no validation of values.
   * Validation of types and CLI expansion
@@ -12,7 +17,9 @@
   * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
 	
 ### Minor changes:
-* Dedicated xml,json,yang and xpath parser utility programs added
+* Added systemd example files under example/systemd
+* Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
+* Dedicated standalone xml,json,yang and xpath parser utility test programs added under lib/src/.
 * CDATA xml support (patch by David Cornejo, Netgate)
   * Encode and decode (parsing) support 
 * Validation of yang bits type space-separated list value

@@ -2,7 +2,12 @@
 
 ### Installation using Nginx
 
-Define nginx config file/etc/nginx/sites-available/default
+Ensure www-data is member of the CLICON_SOCK_GROUP (default clicon). If not, add it:
+```
+  sudo usermod -a -G clicon www-data
+```
+
+Define nginx config file: /etc/nginx/sites-available/default
 ```
 server {
   ...
