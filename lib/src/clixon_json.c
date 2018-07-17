@@ -774,7 +774,7 @@ json_parse_file(int        fd,
 
 /*
  * Turn this on to get a json parse and pretty print test program
- * Usage: xpath
+ * Usage: json
  * read json from input
  * Example compile:
  gcc -g -o json -I. -I../clixon ./clixon_json.c -lclixon -lcligen

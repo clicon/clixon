@@ -82,12 +82,15 @@
 static int
 netconf_hello(cxobj *xn)
 {
+#ifdef nyi
     cxobj *x;
 
     x = NULL;
+
     while ((x = xpath_each(xn, "//capability", x)) != NULL) {
-	//fprintf(stderr, "cap: %s\n", xml_body(x));
+	
     }
+#endif
     return 0;
 }
 

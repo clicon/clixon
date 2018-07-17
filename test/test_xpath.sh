@@ -8,12 +8,20 @@ PROG=../lib/src/clixon_util_xpath
 # XML file (alt provide it in stdin after xpath)
 xml=$dir/xml.xml
 xml2=$dir/xml2.xml
+xml3=$dir/xml3.xml
+xml4=$dir/xml4.xml
 
 cat <<EOF > $xml
 <aaa>
-  <bbb x="hello"><ccc>42</ccc></bbb>
-  <bbb x="bye"><ccc>99</ccc></bbb>
-  <ddd><ccc>22</ccc></ddd>
+  <bbb x="hello">
+      <ccc>42</ccc>
+  </bbb>
+  <bbb x="bye">
+      <ccc>99</ccc>
+  </bbb>
+  <ddd>
+      <ccc>22</ccc>
+  </ddd>
 </aaa>
 EOF
 
@@ -51,6 +59,19 @@ cat <<EOF > $xml2
     <ifMTU>1500</ifMTU>
   </bbb>
 </aaa>
+EOF
+
+# Multiple leaf-list
+cat <<EOF > $xml3
+<bbb x="hello">
+      <ccc>foo</ccc>
+      <ccc>42</ccc>
+      <ccc>bar</ccc>
+</bbb>
+<bbb x="bye">
+      <ccc>99</ccc>
+      <ccc>foo</ccc>
+</bbb>
 EOF
 
 new "xpath /"
@@ -147,5 +168,24 @@ expecteof "$PROG -f $xml2 -i /aaa/bbb" 0 "ifType != \"ethernet\" and ifMTU = 140
 
 new "xpath ifType != \"atm\" or (ifMTU <= 17966 and ifMTU >= 64)"
 expecteof "$PROG -f $xml2 -i /aaa/bbb" 0 "ifType != \"atm\" or (ifMTU <= 17966 and ifMTU >= 64)" "^bool:true$"
+
+new "xpath .[name='bar']"
+expecteof "$PROG -f $xml2 -p .[name='bar'] -i /aaa/bbb/routing/ribs/rib" 0 "" "^nodeset:0:<rib><name>bar</name><address-family>myfamily</address-family></rib>$"
+
+new "Multiple entries"
+new "xpath bbb[ccc='foo']"
+expecteof "$PROG -f $xml3 -p bbb[ccc='foo']" 0 "" "^nodeset:0:<bbb x=\"hello\"><ccc>foo</ccc><ccc>42</ccc><ccc>bar</ccc></bbb>1:<bbb x=\"bye\"><ccc>99</ccc><ccc>foo</ccc></bbb>$"
+
+new "xpath bbb[ccc='42']"
+expecteof "$PROG -f $xml3 -p bbb[ccc='42']" 0 "" "^nodeset:0:<bbb x=\"hello\"><ccc>foo</ccc><ccc>42</ccc><ccc>bar</ccc></bbb>$"
+
+new "xpath bbb[ccc=99] (number w/o quotes)"
+expecteof "$PROG -f $xml3 -p bbb[ccc=99]" 0 "" "^nodeset:0:<bbb x=\"bye\"><ccc>99</ccc><ccc>foo</ccc></bbb>$"
+
+new "xpath bbb[ccc='bar']"
+expecteof "$PROG -f $xml3 -p bbb[ccc='bar']" 0 "" "^nodeset:0:<bbb x=\"hello\"><ccc>foo</ccc><ccc>42</ccc><ccc>bar</ccc></bbb>$"
+
+new "xpath bbb[ccc='fie']"
+expecteof "$PROG -f $xml3 -p bbb[ccc='fie']" 0 "" "^nodeset:$"
 
 rm -rf $dir

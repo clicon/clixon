@@ -5,6 +5,9 @@
 testnr=0
 testname=
 
+# Set to 1 if new xpath. Set to nothing, or comment if old
+#XPATH_USE_NEW=1
+
 # For memcheck
 #clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
 clixon_cli=clixon_cli

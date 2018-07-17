@@ -68,6 +68,8 @@
 #include "clixon_xml.h"
 #include "clixon_plugin.h"
 #include "clixon_xsl.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_xml_map.h"
 
 /* Mapping between Clicon startup modes string <--> constants, 

@@ -63,6 +63,7 @@ expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "^interfaces interface eth/0/0
 
 new "cli configure using encoded chars data <&"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 description \"foo<&bar\"" 0 ""
+
 new "cli configure using encoded chars name <&"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface fddi&< type ianaift:ethernetCsmacd" 0 ""
 

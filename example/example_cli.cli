@@ -24,7 +24,7 @@ debug("Debugging parts of the system"), cli_debug_cli((int32)1);{
 }
 copy("Copy and create a new object") {
     interface("Copy interface"){
-	<name:string expand_dbvar("candidate","/interfaces/interface=%s/name")>("name of interface to copy from") to("Copy to interface") <toname:string>("Name of interface to copy to"), cli_copy_config("candidate","//interface[%s=%s]","name","name","toname");
+	<name:string expand_dbvar("candidate","/interfaces/interface=%s/name")>("name of interface to copy from") to("Copy to interface") <toname:string>("Name of interface to copy to"), cli_copy_config("candidate","//interface[%s='%s']","name","name","toname");
     }
 }
 discard("Discard edits (rollback 0)"), discard_changes();

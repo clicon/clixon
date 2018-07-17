@@ -239,8 +239,8 @@ rellocpath  : step                 { $$=xp_new(XP_RELLOCPATH,A_NAN,0.0,NULL,NULL
             ;
 
 step        : axisspec nodetest predicates {$$=xp_new(XP_STEP,$1,0.0, NULL, NULL, $2, $3);clicon_debug(1,"step->axisspec(%d) nodetest", $1); }
-            | '.'              { $$=xp_new(XP_STEP,A_SELF, 0.0,NULL, NULL, NULL, NULL); clicon_debug(1,"step-> ."); } 
-            | DOUBLEDOT        { $$=xp_new(XP_STEP, A_PARENT, 0.0,NULL, NULL, NULL, NULL); clicon_debug(1,"step-> .."); } 
+            | '.' predicates              { $$=xp_new(XP_STEP,A_SELF, 0.0,NULL, NULL, NULL, $2); clicon_debug(1,"step-> ."); } 
+            | DOUBLEDOT predicates        { $$=xp_new(XP_STEP, A_PARENT, 0.0,NULL, NULL, NULL, $2); clicon_debug(1,"step-> .."); } 
             ;
 
 axisspec    : AXISNAME DOUBLECOLON { clicon_debug(1,"axisspec-> AXISNAME(%d) ::", $1); $$=$1;}

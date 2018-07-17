@@ -285,7 +285,7 @@ yang2cli_var_sub(clicon_handle h,
 		    goto done;
 		}
 	}
-	cprintf(cb, "%s]", r);
+	cprintf(cb, "%s]", r); /* range */
 	free(r);
 	r = NULL;
     }

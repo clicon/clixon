@@ -64,7 +64,7 @@
  *
  * Alternative for xmlkeyfmt would be eg:
  * RESTCONF:     /interfaces/interface=%s/ipv4/address/ip=%s (used)
- * XPATH:        /interfaces/interface[name=%s]/ipv4/address/[ip=%s]
+ * XPATH:        /interfaces/interface[name='%s']/ipv4/address/[ip'=%s']
  *
  * Paths through the code (for coverage)
  *   cli_callback_generate       +----------------+
@@ -375,7 +375,7 @@ get(char      *dbname,
 		arg = valvec[j++];
 		if (uri_percent_decode(arg, &argdec) < 0)
 		    goto done;
-		cprintf(cb, "[%s=%s]", cv_string_get(cvi), argdec);
+		cprintf(cb, "[%s='%s']", cv_string_get(cvi), argdec);
 		free(argdec);
 		argdec=NULL;
 	    }

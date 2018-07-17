@@ -55,3 +55,8 @@ int strverscmp (__const char *__s1, __const char *__s2);
 /* Full xmlns validation check is made only if XML has associated YANG spec 
 */
 #define XMLNS_YANG_ONLY 1
+
+/* Set if you want all old xpath functions in clixon_xsl.* to use the new
+ * xpath functions in clixon_xpath.*
+*/
+#undef XPATH_USE_NEW

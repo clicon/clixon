@@ -148,7 +148,7 @@ expand_dbvar(void   *h,
     api_path_fmt = cv_string_get(cv);
     /* api_path_fmt = /interface/%s/address/%s
        --> ^/interface/eth0/address/.*$
-       --> /interface/[name=eth0]/address
+       --> /interface/[name="eth0"]/address
     */
     if (api_path_fmt2xpath(api_path_fmt, cvv, &xpath) < 0)
 	goto done;
@@ -417,10 +417,10 @@ show_yang(clicon_handle h,
  * Format of argv:
  *   <dbname>  "running"|"candidate"|"startup"
  *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
- *   <xpath>   xpath expression, that may contain one %, eg "/sender[name=%s]"
+ *   <xpath>   xpath expression, that may contain one %, eg "/sender[name="%s"]"
  *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
  * @code
- *   show config id <n:string>, cli_show_config("running","xml","iface[name=%s]","n");
+ *   show config id <n:string>, cli_show_config("running","xml","iface[name="%s"]","n");
  * @endcode
  */
 int

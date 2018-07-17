@@ -545,7 +545,6 @@ cv_validate1(cg_var      *cv,
 		if ((vec = clicon_strsep(str, " \t", &nvec)) == NULL)
 		    goto done;
 		for (i=0; i<nvec; i++){
-		    clicon_log(LOG_NOTICE, "%s: vec[i]: %s", __FUNCTION__, vec[i]);
 		    if ((v = vec[i]) == NULL || !strlen(v))
 			continue;
 		    found = 0;

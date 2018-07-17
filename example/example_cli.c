@@ -67,7 +67,12 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
     cli_output(stderr, "arg = %s\n", cv_string_get(cvec_i(argv,0))); /* get string value */
 
     /* Show eth0 interfaces config using XPATH */
-    if (clicon_rpc_get_config(h, "running","/interfaces/interface[name=eth0]",
+    if (clicon_rpc_get_config(h, "running",
+#ifdef XPATH_USE_NEW
+			      "/interfaces/interface[name='eth0']",
+#else
+			      "/interfaces/interface[name=eth0]",
+#endif
 			      &xret) < 0)
 	goto done;
 

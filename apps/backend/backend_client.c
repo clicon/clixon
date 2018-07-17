@@ -985,7 +985,13 @@ nacm_access(clicon_handle h,
     if (username == NULL)
 	goto step10;
     /* User's group */
-    if (xpath_vec(xacm, "groups/group[user-name=%s]", &gvec, &glen, username) < 0)
+    if (xpath_vec(xacm,
+#ifdef XPATH_USE_NEW
+		  "groups/group[user-name='%s']",
+#else
+		  "groups/group[user-name=%s]",
+#endif
+		  &gvec, &glen, username) < 0)
 	goto done;
     /* 5. If no groups are found, continue with step 10. */
     if (glen == 0)
@@ -1002,7 +1008,13 @@ nacm_access(clicon_handle h,
 	for (j=0; j<glen; j++){
 	    char *gname;
 	    gname = xml_find_body(gvec[j], "name");
-	    if (xpath_first(xrlist,".[group=%s]", gname)!=NULL)
+	    if (xpath_first(xrlist,
+#ifdef XPATH_USE_NEW
+			    ".[group='%s']",
+#else
+			    ".[group=%s]",
+#endif
+			    gname)!=NULL)
 		break; /* found */
 	}
 	if (j==glen) /* not found */

@@ -78,7 +78,7 @@
 /*! Register log notification stream
  * @param[in] h       Clicon handle
  * @param[in] stream  Event stream. CLICON is predefined, others are application-defined
- * @param[in] filter  Filter. For xml notification ie xpath: .[name=kalle]
+ * @param[in] filter  Filter. For xml notification ie xpath: .[name="kalle"]
  * @param[in] status  0 for stop, 1 to start
  * @param[in] fn      Callback function called when notification occurs
  * @param[in] arg     Argument to function note
@@ -1189,7 +1189,7 @@ cli_unlock(clicon_handle h,
  *  tovar:  Name of variable containing name of object to copy to.
  * @code
  * cli spec:
- *  copy snd <n1:string> to <n2:string>, cli_copy_config("candidate", "/sender[%s=%s]", "from", "n1", "n2");
+ *  copy snd <n1:string> to <n2:string>, cli_copy_config("candidate", "/sender[%s='%s']", "from", "n1", "n2");
  * cli command:
  *  copy snd from to to
  * @endcode
@@ -1244,17 +1244,34 @@ cli_copy_config(clicon_handle h,
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
 	goto done;
     }
-    /* Sanity check that xpath contains exactly one %s */
+    /* Sanity check that xpath contains exactly two %s, ie [%s='%s'] */
     j = 0;
-    for (i=0; i<strlen(xpath); i++)
+    for (i=0; i<strlen(xpath); i++){
 	if (xpath[i] == '%')
 	    j++;
+#ifndef XPATH_USE_NEW
+	/* This is a horrible kludge due to:
+	 * (1) old xpath implementation wrongly did: a[b=x] instead of a[b='x']
+	 * (2) cli_copy_config has as 2nd argument such an xpath provided by user.
+	 */
+	if (j==2){
+	    int k;
+	    if ((xpath[i-1] == '\'' || xpath[i-1] == '\"') &&
+		(xpath[i+2] == '\'' || xpath[i+2] == '\"')){
+		for (k=i-1;k<i+2;k++)
+		    xpath[k] =  xpath[k+1];
+		for (k=i+1;k<strlen(xpath)+1;k++)
+		    xpath[k] = xpath[k+2];
+		i-=1;
+	    }
+	}
+#endif	
+    }
     if (j != 2){
 	clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have two '%%'", xpath);	
 	goto done;
     }
     cprintf(cb, xpath, keyname, fromname);	
-
     /* Get from object configuration and store in x1 */
     if (clicon_rpc_get_config(h, db, cbuf_get(cb), &x1) < 0)
 	goto done;

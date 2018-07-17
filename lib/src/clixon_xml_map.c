@@ -83,6 +83,8 @@
 #include "clixon_options.h"
 #include "clixon_xml.h"
 #include "clixon_plugin.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_xsl.h"
 #include "clixon_log.h"
 #include "clixon_err.h"
@@ -439,7 +441,7 @@ xml_yang_validate_all(cxobj   *xt,
 	case Y_LEAF_LIST:
 	    /* Special case if leaf is leafref, then first check against
 	       current xml tree
-	    */
+ 	    */
 	    if ((yc = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL){
 		if (strcmp(yc->ys_argument, "leafref") == 0){
 		    if (validate_leafref(xt, yc) < 0)
@@ -995,7 +997,7 @@ api_path_fmt2api_path(char  *api_path_fmt,
  * @example
  *   api_path_fmt:  /interface/%s/address/%s 
  *   cvv:           name=eth0
- *   xpath:         /interface/[name=eth0]/address
+ *   xpath:         /interface/[name='eth0']/address
  * @example
  *   api_path_fmt:  /ip/me/%s (if key)
  *   cvv:           -
@@ -1038,7 +1040,13 @@ api_path_fmt2xpath(char  *api_path_fmt,
 		    clicon_err(OE_UNIX, errno, "cv2str_dup");
 		    goto done;
 		}
-		cprintf(cb, "[%s=%s]", cv_name_get(cv), str);
+		cprintf(cb,
+#ifdef XPATH_USE_NEW
+			"[%s='%s']",
+#else
+			"[%s=%s]",
+#endif
+			cv_name_get(cv), str);
 		free(str);
 	    }
 	}
@@ -1455,7 +1463,13 @@ api_path2xpath_cvv(yang_spec *yspec,
 	    cprintf(xpath, "/%s", name);
 	    v = val;
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
-		cprintf(xpath, "[%s=%s]", cv_string_get(cvi), v);
+		cprintf(xpath,
+#ifdef XPATH_USE_NEW
+			"[%s='%s']",
+#else
+			"[%s=%s]",
+#endif
+			cv_string_get(cvi), v);
 		v += strlen(v)+1;
 	    }
 	    if (val)
