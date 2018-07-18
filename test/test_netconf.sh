@@ -94,11 +94,11 @@ new "Add subtree eth/0/0 using none and create which should add eth/0/0"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="create"><name>eth/0/0</name><type>ex:eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Too many quotes, (single inside double inside single) need to fool bash
-if [ -n "$XPATH_USE_NEW" ]; then
+if [ -z "$COMPAT_XSL" ]; then
 cat <<EOF > $tmp # new
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name='eth/0/0']"/></get-config></rpc>]]>]]>
 EOF
-else
+else # old
 cat <<EOF > $tmp
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name=eth/0/0]"/></get-config></rpc>]]>]]>
 EOF
@@ -122,12 +122,12 @@ new "netconf edit config"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth/0/0</name></interface><interface><name>eth1</name><enabled>true</enabled><ipv4><address><ip>9.2.3.4</ip><prefix-length>24</prefix-length></address></ipv4></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Too many quotes
-if [ -n "$XPATH_USE_NEW" ]; then
+if [ -z "$COMPAT_XSL" ]; then
 cat <<EOF > $tmp # new
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name='eth1']/enabled"/></get-config></rpc>]]>]]>
 EOF
 else
-cat <<EOF > $tmp # new
+cat <<EOF > $tmp # old
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name=eth1]/enabled"/></get-config></rpc>]]>]]>
 EOF
 fi
@@ -136,7 +136,7 @@ new "netconf get config xpath"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "$(cat $tmp)" "^<rpc-reply><data><interfaces><interface><name>eth1</name><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$"
 
 # Too many quotes
-if [ -n "$XPATH_USE_NEW" ]; then
+if [ -z "$COMPAT_XSL" ]; then
 cat <<EOF > $tmp # new
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name='eth1']/enabled/../.."/></get-config></rpc>]]>]]>
 EOF

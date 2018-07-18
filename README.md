@@ -11,6 +11,7 @@ transaction support from a YANG specification.
   * [Support](#support)
   * [Dependencies](#dependencies)
   * [Extending](#extending)
+  * [XML and XPATH](#xml)
   * [Yang](#yang)
   * [Netconf](#netconf)
   * [Restconf](#restconf)
@@ -89,9 +90,17 @@ are also available.
 Plugins are written in C and easiest is to look at
 [example](example/README.md) or consulting the [FAQ](doc/FAQ.md).
 
+XML
+===
+Clixon has its own implementation of XML and XPATH implementation.
+
+The standards covered include:
+- [XML](https://www.w3.org/TR/2008/REC-xml-20081126)
+- [Namespaces](https://www.w3.org/TR/2009/REC-xml-names-20091208)
+- [XPATH](https://www.w3.org/TR/xpath-10)
+
 Yang
 ====
-
 YANG and XML is at the heart of Clixon.  Yang modules are used as a
 specification for handling XML configuration data. The YANG spec is
 used to generate an interactive CLI, netconf and restconf clients. It
@@ -100,7 +109,7 @@ also manages an XML datastore.
 Clixon mainly follows [YANG 1.0 RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt) with some exceptions:
 - conformance: feature, if-feature, deviation
 - list features: min/max-elements, unique
-- when, must, action statements
+- action statements
 - notifications
 
 The aim is also to cover new features in YANG 1.1 [YANG RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt)

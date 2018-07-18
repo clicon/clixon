@@ -101,14 +101,14 @@ int xpath_vec_bool(cxobj *xcur, char *format, ...);
 int xpath_vec_ctx(cxobj *xcur, char *xpath, xp_ctx  **xrp);
 
 /* backward compatible */
-#ifdef XPATH_USE_NEW
-#define xpath_first(cxtop, format, args...) xpath_first_nodeset(cxtop, format, ##args)
-#define xpath_vec(cxtop, format, vec, veclen, args...) xpath_vec_nodeset(cxtop, format, vec, veclen, ##args)
-#define xpath_vec_flag(cxtop, format, flags, vec, veclen, args...) xpath_vec_nodeset_flag(cxtop, format, flags, vec, veclen, ##args)
-#else
+#ifdef COMPAT_XSL
 #define xpath_first(cxtop, format, args...) xpath_first_xsl(cxtop, format, ##args)
 #define xpath_vec(cxtop, format, vec, veclen, args...) xpath_vec_xsl(cxtop, format, vec, veclen, ##args)
 #define xpath_vec_flag(cxtop, format, flags, vec, veclen, args...) xpath_vec_flag_xsl(cxtop, format, flags, vec, veclen, ##args)
+#else
+#define xpath_first(cxtop, format, args...) xpath_first_nodeset(cxtop, format, ##args)
+#define xpath_vec(cxtop, format, vec, veclen, args...) xpath_vec_nodeset(cxtop, format, vec, veclen, ##args)
+#define xpath_vec_flag(cxtop, format, flags, vec, veclen, args...) xpath_vec_nodeset_flag(cxtop, format, flags, vec, veclen, ##args)
 #endif
 
 #endif /* _CLIXON_XPATH_H */

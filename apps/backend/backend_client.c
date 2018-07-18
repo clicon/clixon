@@ -986,10 +986,10 @@ nacm_access(clicon_handle h,
 	goto step10;
     /* User's group */
     if (xpath_vec(xacm,
-#ifdef XPATH_USE_NEW
-		  "groups/group[user-name='%s']",
-#else
+#ifdef COMPAT_XSL
 		  "groups/group[user-name=%s]",
+#else
+		  "groups/group[user-name='%s']",
 #endif
 		  &gvec, &glen, username) < 0)
 	goto done;
@@ -1009,10 +1009,10 @@ nacm_access(clicon_handle h,
 	    char *gname;
 	    gname = xml_find_body(gvec[j], "name");
 	    if (xpath_first(xrlist,
-#ifdef XPATH_USE_NEW
-			    ".[group='%s']",
-#else
+#ifdef COMPAT_XSL
 			    ".[group=%s]",
+#else
+			    ".[group='%s']",
 #endif
 			    gname)!=NULL)
 		break; /* found */

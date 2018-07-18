@@ -1249,7 +1249,7 @@ cli_copy_config(clicon_handle h,
     for (i=0; i<strlen(xpath); i++){
 	if (xpath[i] == '%')
 	    j++;
-#ifndef XPATH_USE_NEW
+#ifdef COMPAT_XSL
 	/* This is a horrible kludge due to:
 	 * (1) old xpath implementation wrongly did: a[b=x] instead of a[b='x']
 	 * (2) cli_copy_config has as 2nd argument such an xpath provided by user.

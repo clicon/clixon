@@ -136,7 +136,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><can
 new "netconf get leaf-list"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f/e\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$"
 
-if [ -n "$XPATH_USE_NEW" ]; then # new
+if [ -z "$COMPAT_XSL" ]; then # new
 new "netconf get leaf-list path"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f[e='hej']\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$"
 else # old

@@ -56,7 +56,13 @@ int strverscmp (__const char *__s1, __const char *__s2);
 */
 #define XMLNS_YANG_ONLY 1
 
-/* Set if you want all old xpath functions in clixon_xsl.* to use the new
- * xpath functions in clixon_xpath.*
-*/
-#undef XPATH_USE_NEW
+/* Set if you want to enable old xpath functions in clixon_xsl.* instead of the
+ * the new xpath functions in clixon_xpath.*
+ * Note that when changing from old xpath code to new, calls on the form 
+ * `x[a=str]` where `str` is a  string (not a number or XML symbol), 
+ * must be changed to: `x[a='str'] or x[a="str"]`
+ * Enabling COMPAT_XSL may make sense if you have written a lot of user code that 
+ * relieson the error above. Or if a bug appears in the newimplementation.
+ * @see test/lib.sh
+ */
+#undef COMPAT_XSL

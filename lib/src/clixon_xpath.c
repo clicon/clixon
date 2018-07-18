@@ -776,6 +776,9 @@ xp_relop(xp_ctx    *xc1,
 	} /* switch type */
     }
  ok:
+    /* Just ensure bool is 0 or 1 */
+    if (xr->xc_type == XT_BOOL && xr->xc_bool != 0)
+	xr->xc_bool = 1;
     *xrp = xr;
     retval = 0;
  done:
@@ -849,7 +852,6 @@ xp_eval(xp_ctx   *xc,
     xp_ctx    *xr2 = NULL;
     int        use_xr0 = 0; /* In 2nd child use transitively result of 1st child */
     
-    assert(xc->xc_initial);
     if (debug){
 	cbuf *cb;
 	if ((cb = cbuf_new()) == NULL){

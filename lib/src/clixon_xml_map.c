@@ -428,7 +428,9 @@ xml_yang_validate_all(cxobj   *xt,
     int        retval = -1;
     yang_stmt *ys;  /* yang node */
     yang_stmt *yc;  /* yang child */
+    yang_stmt *ye;  /* yang must error-message */
     char      *xpath;
+    int        b;
     
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
@@ -453,17 +455,34 @@ xml_yang_validate_all(cxobj   *xt,
 		}
 	    }
 	    break;
-	case Y_MUST: /* RFC 7950 Sec 7.5.3 */
-	    break;
 	default:
 	    break;
 	}
-	/* "when" sub-node RFC 7950 Sec 7.21.5 */
+	/* must sub-node RFC 7950 Sec 7.5.3. Can be several. */
+	yc = NULL;
+	while ((yc = yn_each((yang_node*)ys, yc)) != NULL) {
+	    if (yc->ys_keyword != Y_MUST)
+		continue;
+	    xpath = yc->ys_argument; /* "must" has xpath argument */
+	    if ((b = xpath_vec_bool(xt, "%s", xpath)) < 0)
+		goto done;
+	    if (!b){
+		if ((ye = yang_find((yang_node*)yc, Y_ERROR_MESSAGE, NULL)) != NULL)
+		    clicon_err(OE_DB, 0, "%s", ye->ys_argument);
+		else
+		    clicon_err(OE_DB, 0, "xpath %s validation failed", xml_name(xt));
+		goto done;
+	    }
+	}
+	/* "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
 	if ((yc = yang_find((yang_node*)ys, Y_WHEN, NULL)) != NULL){
 	    xpath = yc->ys_argument; /* "when" has xpath argument */
-	    if (xpath_first(xt, "%s", xpath))
-		;
-	    fprintf(stderr, "%s %s\n", __FUNCTION__, xpath);
+	    if ((b = xpath_vec_bool(xt, "%s", xpath)) < 0)
+		goto done;
+	    if (!b){
+		clicon_err(OE_DB, 0, "xpath %s validation failed", xml_name(xt));
+		goto done;
+	    }
 	}
     }
     retval = 0;
@@ -1041,10 +1060,10 @@ api_path_fmt2xpath(char  *api_path_fmt,
 		    goto done;
 		}
 		cprintf(cb,
-#ifdef XPATH_USE_NEW
-			"[%s='%s']",
-#else
+#ifdef COMPAT_XSL
 			"[%s=%s]",
+#else
+			"[%s='%s']",
 #endif
 			cv_name_get(cv), str);
 		free(str);
@@ -1464,10 +1483,10 @@ api_path2xpath_cvv(yang_spec *yspec,
 	    v = val;
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
 		cprintf(xpath,
-#ifdef XPATH_USE_NEW
-			"[%s='%s']",
-#else
+#ifdef COMPAT_XSL
 			"[%s=%s]",
+#else
+			"[%s='%s']",
 #endif
 			cv_string_get(cvi), v);
 		v += strlen(v)+1;
