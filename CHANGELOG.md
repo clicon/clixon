@@ -3,9 +3,9 @@
 ## 3.7.0 (Upcoming)
 ### Major changes:
 
-* Support for YANG conditionals "must" and "when" according to RFC 7950 Sec 7.5.3 and 7.21.5
+* Support for YANG conditionals "must" and "when" according to RFC 7950 Sec 7.5.3 and 7.21.5.
   * XPATH checked at validation time
-* Support for YANG identity, identityref, must and when according to RFC 7950 Sec 7.189.
+* Support for YANG identity, identityref, according to RFC 7950 Sec 7.18 and 9.10.
   * Previous support did no validation of values.
   * Validation of types and CLI expansion
   * Example extended with inclusion of iana-if-type RFC 7224 interface identities

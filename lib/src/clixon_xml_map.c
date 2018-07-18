@@ -430,7 +430,7 @@ xml_yang_validate_all(cxobj   *xt,
     yang_stmt *yc;  /* yang child */
     yang_stmt *ye;  /* yang must error-message */
     char      *xpath;
-    int        b;
+    int        nr;
     
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
@@ -454,6 +454,33 @@ xml_yang_validate_all(cxobj   *xt,
 			goto done;
 		}
 	    }
+	    if ((yc = yang_find((yang_node*)ys, Y_MIN_ELEMENTS, NULL)) != NULL){
+		/* The behavior of the constraint depends on the type of the 
+		 * leaf-list's or list's closest ancestor node in the schema tree 
+		 * that is not a non-presence container (see Section 7.5.1):
+		 * o If no such ancestor exists in the schema tree, the constraint
+		 * is enforced.
+		 * o Otherwise, if this ancestor is a case node, the constraint is
+		 * enforced if any other node from the case exists.
+		 * o  Otherwise, it is enforced if the ancestor node exists.
+		 */
+#if 0
+		cxobj     *xp;
+		cxobj     *x;
+		int        i;
+
+		if ((xp = xml_parent(xt)) != NULL){
+		    nr = atoi(yc->ys_argument);
+		    x = NULL;
+		    i = 0;
+		    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL)
+			i++;
+		}
+#endif
+		}
+	    if ((yc = yang_find((yang_node*)ys, Y_MAX_ELEMENTS, NULL)) != NULL){
+		
+	    }
 	    break;
 	default:
 	    break;
@@ -464,9 +491,9 @@ xml_yang_validate_all(cxobj   *xt,
 	    if (yc->ys_keyword != Y_MUST)
 		continue;
 	    xpath = yc->ys_argument; /* "must" has xpath argument */
-	    if ((b = xpath_vec_bool(xt, "%s", xpath)) < 0)
+	    if ((nr = xpath_vec_bool(xt, "%s", xpath)) < 0)
 		goto done;
-	    if (!b){
+	    if (!nr){
 		if ((ye = yang_find((yang_node*)yc, Y_ERROR_MESSAGE, NULL)) != NULL)
 		    clicon_err(OE_DB, 0, "%s", ye->ys_argument);
 		else
@@ -477,9 +504,9 @@ xml_yang_validate_all(cxobj   *xt,
 	/* "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
 	if ((yc = yang_find((yang_node*)ys, Y_WHEN, NULL)) != NULL){
 	    xpath = yc->ys_argument; /* "when" has xpath argument */
-	    if ((b = xpath_vec_bool(xt, "%s", xpath)) < 0)
+	    if ((nr = xpath_vec_bool(xt, "%s", xpath)) < 0)
 		goto done;
-	    if (!b){
+	    if (!nr){
 		clicon_err(OE_DB, 0, "xpath %s validation failed", xml_name(xt));
 		goto done;
 	    }
