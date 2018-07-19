@@ -1,6 +1,6 @@
 #!/bin/bash
 # Test: XML parser tests
-PROG=../lib/src/clixon_util_xml
+PROG=../util/clixon_util_xml
 
 # include err() and new() functions and creates $dir
 . ./lib.sh

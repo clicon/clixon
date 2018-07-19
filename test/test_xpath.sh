@@ -1,6 +1,6 @@
 #!/bin/bash
 # Test: XPATH tests
-PROG=../lib/src/clixon_util_xpath
+PROG=../util/clixon_util_xpath
 
 # include err() and new() functions and creates $dir
 . ./lib.sh

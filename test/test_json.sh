@@ -1,6 +1,6 @@
 #!/bin/bash
 # Test: JSON parser tests
-PROG=../lib/src/clixon_util_json
+PROG=../util/clixon_util_json
 
 # include err() and new() functions and creates $dir
 . ./lib.sh

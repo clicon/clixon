@@ -23,7 +23,7 @@
 ### Minor changes:
 * Added systemd example files under example/systemd
 * Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
-* Dedicated standalone xml,json,yang and xpath parser utility test programs added under lib/src/.
+* Added util subdir, with dedicated standalone xml,json,yang and xpath parser utility test programs.
 * CDATA xml support (patch by David Cornejo, Netgate)
   * Encode and decode (parsing) support 
 * Validation of yang bits type space-separated list value

@@ -211,7 +211,8 @@ AC_OUTPUT(Makefile
 	  docker/netconf/Dockerfile
 	  datastore/Makefile
 	  datastore/text/Makefile
+  	  util/Makefile 
 	  yang/Makefile
-	  doc/Makefile 
+	  doc/Makefile
 )
 

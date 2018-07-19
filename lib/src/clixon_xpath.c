@@ -697,7 +697,7 @@ xp_relop(xp_ctx    *xc1,
 	case XT_BOOL:
 	    /* comparison on the boolean and the result of converting the 
 	       node-set to a boolean using the boolean function is true. */
-	    b = ctx2boolean(xc);
+	    b = ctx2boolean(xc1);
 	    switch(op){
 	    case XO_EQ:
 		xr->xc_bool = (b == xc2->xc_bool);
