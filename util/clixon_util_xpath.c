@@ -62,7 +62,7 @@ echo "a\n<a><b/></a>" | xpath
 #include <cligen/cligen.h>
 
 /* clixon */
-#include <clixon/clixon.h>
+#include "clixon/clixon.h"
 
 static int
 usage(char *argv0)
@@ -128,7 +128,7 @@ main(int argc, char **argv)
     char       *xpath0 = NULL;
     char       *filename;
     xp_ctx     *xc = NULL;
-    cbuf       *cb;
+    cbuf       *cb = NULL;
     
     clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
     optind = 1;

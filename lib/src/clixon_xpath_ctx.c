@@ -162,7 +162,7 @@ ctx_print(cbuf   *cb,
 int
 ctx2boolean(xp_ctx *xc)
 {
-    int b;
+    int b = -1;
     switch (xc->xc_type){
     case XT_NODESET:
 	b = (xc->xc_size != 0);
