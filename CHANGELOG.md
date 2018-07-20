@@ -12,36 +12,23 @@
   * Example extended with inclusion of iana-if-type RFC 7224 interface identities
   * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
 
+* Improved support for XPATH 1.0 according to https://www.w3.org/TR/xpath-10 using yacc/lex, see also API changes below.
+
 ### API changes on existing features (you may need to change your code)
 
 * Conformance of restconf(RFC-8040) operations where prefix was used instead of module name.
   * Proper specification for an operation is POST /restconf/operations/<module_name>:<rpc_procedure> HTTP/1.1
   * See https://github.com/clicon/clixon/issues/31, https://github.com/clicon/clixon/pull/32 and https://github.com/clicon/clixon/issues/30
   * Thanks David Cornejo and Dmitry Vakhrushev of Netgate for pointing this out.
+* New XPATH 1.0 leads to some API changes and corrections
+  * Due to an error in the previous implementation, all XPATH calls on the form `x[a=str]` where `str` is a string (not a number or XML symbol), must be changed to: `x[a='str'] or x[a="str"]`
+  * This includes all calls to `xpath_vec, xpath_first`, etc.
+  * In CLI specs, calls to cli_copy_config() must change 2nd argument from `x[%s=%s]` to `x[%s='%s']`
+  * In CLI specs, calls to cli_show_config() may need to change third argument, eg
+    * `cli_show_config("running","text","/profile[name=%s]","name")` to `cli_show_config("running","text","/profile[name='%s']","name")`
+  * xpath_each() is removed
+  * The old API can be enabled by setting COMPAT_XSL in include/clixon_custom.h and recompile.
 
-* Improved support for XPATH 1.0 according to https://www.w3.org/TR/xpath-10 using yacc/lex
-  * NOTE: Due to an error in the previous implementation, all XPATH calls on the form `x[a=str]` where `str` is a string (not a number or XML symbol), must be changed to: `x[a='str'] or x[a="str"]`
-    * This includes all calls to `xpath_vec, xpath_first`, etc.
-    * All calls to cli_copy_config in CLI spec files must replace 2nd argument from `x[%s=%s]` to `x[%s='%s']`
-    * xpath_each() is removed
-    * The old API can be enabled by setting COMPAT_XSL in include/clixon_custom.h and recompile.
-
-### Minor changes
-
-* Added systemd example files under example/systemd
-* Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
-* Added util subdir, with dedicated standalone xml,json,yang and xpath parser utility test programs.
-* CDATA xml support (patch by David Cornejo, Netgate)
-  * Encode and decode (parsing) support 
-* Validation of yang bits type space-separated list value
-* Added -U <user> command line to clixon_cli and clixon_netconf for NACM pseudo-user tests
-* Added a generated CLI show command that works on the generated parse tree with auto completion.
-  * A typical call is: 	show @datamodel:example, cli_show_auto("candidate", "json");
-  * The example contains a more elaborate example.
-  * Thanks ngashok for request, see https://github.com/clicon/clixon/issues/24
-* Added xmlns validation
-  * for eg <a xmlns:x="uri"><x:b/></a> 
-* Added yang identityref runtime validation
 * Removed cli callback vector functions. Set COMPAT_CLIV if you need to keep these functions in include/clixon_custom.h.
   * Replace functions as follows in CLI SPEC files:
   * cli_setv --> cli_set
@@ -62,6 +49,23 @@
   * cli_notifyv --> cli_notify
   * show_yangv --> show_yang
   * show_confv_xpath --> show_conf_xpath
+
+### Minor changes
+
+* Added systemd example files under example/systemd
+* Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
+* Added util subdir, with dedicated standalone xml,json,yang and xpath parser utility test programs.
+* CDATA xml support (patch by David Cornejo, Netgate)
+  * Encode and decode (parsing) support 
+* Validation of yang bits type space-separated list value
+* Added -U <user> command line to clixon_cli and clixon_netconf for NACM pseudo-user tests
+* Added a generated CLI show command that works on the generated parse tree with auto completion.
+  * A typical call is: 	show @datamodel:example, cli_show_auto("candidate", "json");
+  * The example contains a more elaborate example.
+  * Thanks ngashok for request, see https://github.com/clicon/clixon/issues/24
+* Added xmlns validation
+  * for eg <a xmlns:x="uri"><x:b/></a> 
+* Added yang identityref runtime validation
 
 * Added --enable-debug. 
 * Added cligen variable translation.

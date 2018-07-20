@@ -896,6 +896,7 @@ xpath_first_xsl(cxobj *xcur,
     return xn;
 }
 
+#ifdef COMPAT_XSL
 /*! A restricted xpath iterator that loops over all matching entries. Dont use.
  *
  * See xpath1() on details for subset.
@@ -952,6 +953,7 @@ xpath_each(cxobj *xcur,
   done:
     return xn;
 }
+#endif
 
 /*! A restricted xpath that returns a vector of matches
  *

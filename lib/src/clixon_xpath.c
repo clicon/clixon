@@ -1162,6 +1162,17 @@ xpath_first(cxobj    *xcur,
  * @param[out] veclen  returns length of vector in return value
  * @retval     0       OK
  * @retval    -1       Error
+ * @code
+ *   cxobj **vec;
+ *   size_t  veclen;
+ *   if (xpath_vec(xcur, "//symbol/foo", &vec, &veclen) < 0) 
+ *      goto err;
+ *   for (i=0; i<veclen; i++){
+ *      xn = vec[i];
+ *         ...
+ *   }
+ *   free(vec);
+ * @endcode
  */
 int
 xpath_vec(cxobj    *xcur, 
