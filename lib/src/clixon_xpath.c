@@ -326,6 +326,10 @@ xp_eval_step(xp_ctx     *xc0,
 		if (cxvec_append(xp, &xc->xc_nodeset, &xc->xc_size) < 0)
 		    goto done;
 	}
+	if (vec){
+	    free(vec);
+	    vec = NULL;
+	}
 	break;
     case A_PRECEEDING:
 	break;
@@ -1080,8 +1084,10 @@ xpath_vec_ctx(cxobj    *xcur,
 	goto done;
     if (xp_eval(&xc, xy.xy_top, xrp) < 0)
 	goto done;
-    if (xc.xc_nodeset)
+    if (xc.xc_nodeset){
 	free(xc.xc_nodeset);
+	xc.xc_nodeset = NULL;
+    }
     /* done: */
     xpath_parse_exit(&xy);
     xpath_scan_exit(&xy);

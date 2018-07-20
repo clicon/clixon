@@ -1,5 +1,6 @@
 #!/bin/bash
 # Test: XPATH tests
+#PROG="valgrind --leak-check=full --show-leak-kinds=all ../util/clixon_util_xpath"
 PROG=../util/clixon_util_xpath
 
 # include err() and new() functions and creates $dir

@@ -112,7 +112,7 @@ fi
 
 new "start backend"
 # start new backend
-sudo clixon_backend -s running -f $cfg -y $fyang
+sudo $clixon_backend -s running -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
     err
 fi

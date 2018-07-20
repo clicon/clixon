@@ -343,8 +343,9 @@ unknown_stmt  : ustring  ':' ustring ';'
 	       }
               | ustring  ':' ustring ' ' string ';'
                { char *id; if ((id=prefix_id_join($1, $3)) == NULL) _YYERROR("0");
-		   if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL) _YYERROR("0"); 
+		   if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL){ _YYERROR("0"); }
 		   clicon_debug(2,"unknown-stmt -> ustring : ustring string");
+                   if ($5) free($5);
 	       }
 	      ;
 

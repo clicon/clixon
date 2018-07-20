@@ -1616,7 +1616,6 @@ yang_parse_str(char         *str,
     yy.yy_parse_string = str;
     yy.yy_stack        = NULL;
     yy.yy_module       = NULL; /* this is the return value - the module/sub-module */
-
     if (ystack_push(&yy, (yang_node*)yspec) == NULL)
 	goto done;
     if (strlen(str)){ /* Not empty */
@@ -1640,6 +1639,8 @@ yang_parse_str(char         *str,
     ymod = yy.yy_module;
   done:
     ystack_pop(&yy);
+    if (yy.yy_stack)
+	free (yy.yy_stack);
     return ymod;  /* top-level (sub)module */
 }
 
@@ -2281,7 +2282,7 @@ ys_parse(yang_stmt   *ys,
  * That is, siblings, etc, may not be there. Complete checks are made in
  * ys_populate instead.
  * @param[in] ys    yang statement
- * @param[in] extra Yang extra for cornercases (unknown/extension)
+ * @param[in] extra Yang extra for cornercases (unknown/extension). 
  *
  * The cv:s created in parse-tree as follows:
  * fraction-digits : Create cv as uint8, check limits [1:8] (must be made in 1st pass)
@@ -2335,12 +2336,11 @@ ys_parse_sub(yang_stmt *ys,
 	    clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
 	    goto done;
 	}
-	free(extra);
 	break;
     default:
 	break;
     }
-    ok:
+ ok:
     retval = 0;
   done:
     if (prefix)

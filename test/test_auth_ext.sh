@@ -169,17 +169,18 @@ sudo clixon_backend -zf $cfg -y $fyang
 if [ $? -ne 0 ]; then
     err
 fi
-
+sleep 1
 new "start backend -s init -f $cfg -y $fyang"
 # start new backend
-sudo clixon_backend -s init -f $cfg -y $fyang
+sudo $clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
     err
 fi
+sleep 1
 
 new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
-sleep 1
+
 new "start restconf daemon (-a is enable http basic auth)"
 sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang -- -a
 
@@ -246,6 +247,7 @@ expectfn "$clixon_cli -1 -U guest -l o -f $cfg -y $fyang rpc ipv4" 255 "protocol
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
+new "Kill backend"
 pid=`pgrep clixon_backend`
 if [ -z "$pid" ]; then
     err "backend already dead"

@@ -531,6 +531,8 @@ from_client_unlock(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (cbx)
+	cbuf_free(cbx);
     return retval;
 }
 

@@ -83,7 +83,7 @@ if [ $? -ne 0 ]; then
     err
 fi
 new "start backend -s init -f $cfg -y $fyang"
-sudo clixon_backend -s init -f $cfg -y $fyang # -D 1
+sudo $clixon_backend -s init -f $cfg -y $fyang # -D 1
 if [ $? -ne 0 ]; then
     err
 fi
@@ -290,7 +290,6 @@ fi
 #expecteq 'curl -s -X POST -H "Accept: application/yang-data+xml" -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/ietf-routing:fib-route' '<output><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop></route></output>'
 
 # Cant get shell macros to work, inline matching from lib.sh
-
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

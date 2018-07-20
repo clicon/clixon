@@ -114,7 +114,7 @@ if [ $? -ne 0 ]; then
 fi
 new "start backend  -s init -f $cfg -y $fyang"
 # start new backend
-sudo clixon_backend -s init -f $cfg -y $fyang # -D 1
+sudo $clixon_backend -s init -f $cfg -y $fyang # -D 1
 if [ $? -ne 0 ]; then
     err
 fi

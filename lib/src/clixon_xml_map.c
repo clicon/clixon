@@ -333,6 +333,8 @@ validate_identityref(cxobj     *xt,
     }
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 

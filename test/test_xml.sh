@@ -1,12 +1,13 @@
 #!/bin/bash
 # Test: XML parser tests
+#PROG="valgrind --leak-check=full --show-leak-kinds=all ../util/clixon_util_xml"
 PROG=../util/clixon_util_xml
 
 # include err() and new() functions and creates $dir
 . ./lib.sh
 
 new "xml parse"
-expecteof $PROG 0 "<a><b/></a>" "^<a><b/></a>$"
+expecteof "$PROG" 0 "<a><b/></a>" "^<a><b/></a>$"
 
 XML=$(cat <<EOF
 <a><description>An example of escaped CENDs</description>
@@ -24,7 +25,7 @@ XML=$(cat <<EOF
 EOF
 )
 new "xml CDATA"
-expecteof $PROG 0 "$XML" "^<a><description>An example of escaped CENDs</description><sometext>
+expecteof "$PROG" 0 "$XML" "^<a><description>An example of escaped CENDs</description><sometext>
 <![CDATA[ They're saying \"x < y\" & that \"z > y\" so I guess that means that z > x ]]>
 </sometext><data><![CDATA[This text contains a CEND ]]]]><![CDATA[>]]></data><alternative><![CDATA[This text contains a CEND ]]]><![CDATA[]>]]></alternative></a>$"
 
@@ -33,14 +34,14 @@ XML=$(cat <<EOF
 EOF
 )
 new "xml encode <>&"
-expecteof $PROG 0 "$XML" "^$XML$"
+expecteof "$PROG" 0 "$XML" "^$XML$"
 
 XML=$(cat <<EOF
 <message>To allow attribute values to contain both single and double quotes, the apostrophe or single-quote character ' may be represented as &apos;  and the double-quote character as &quot; </message>
 EOF
 )
 new "xml optional encode single and double quote"
-expecteof $PROG 0 "$XML" "^<message>To allow attribute values to contain both single and double quotes, the apostrophe or single-quote character ' may be represented as ' and the double-quote character as \"</message>$"
+expecteof "$PROG" 0 "$XML" "^<message>To allow attribute values to contain both single and double quotes, the apostrophe or single-quote character ' may be represented as ' and the double-quote character as \"</message>$"
 
 rm -rf $dir
 

@@ -131,7 +131,7 @@ fi
 
 new "start backend -s init -f $cfg -y $fyang"
 # start new backend
-sudo clixon_backend -s init -f $cfg -y $fyang
+sudo $clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
     err
 fi
@@ -195,6 +195,7 @@ expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
+new "Kill backend"
 pid=`pgrep clixon_backend`
 if [ -z "$pid" ]; then
     err "backend already dead"
