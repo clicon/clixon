@@ -58,7 +58,7 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include <clixon/clixon.h>
+#include "clixon/clixon.h"
 
 /*
 */

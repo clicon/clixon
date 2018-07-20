@@ -62,6 +62,7 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xsl.h"
 #include "clixon_xpath_parse.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
@@ -1091,10 +1092,27 @@ xpath_vec_ctx(cxobj    *xcur,
     return retval;
 }
 
+/*! Xpath nodeset function where only the first matching entry is returned
+ * args:
+ * @param[in]  xcur  xml-tree where to search
+ * @param[in]  xpath   string with XPATH syntax
+ * @retval     xml-tree of first match
+ * @retval     NULL    Error or not found
+ *
+ * @code
+ *   cxobj *x;
+ *   if ((x = xpath_first(xtop, "//symbol/foo")) != NULL) {
+ *         ...
+ *   }
+ * @endcode
+ * @note  the returned pointer points into the original tree so should not be freed fter use.
+ * @note return value does not see difference between error and not found
+ * @see also xpath_vec.
+ */
 cxobj *
-xpath_first_nodeset(cxobj    *xcur, 
-		    char     *format, 
-		    ...)
+xpath_first(cxobj    *xcur, 
+	    char     *format, 
+	    ...)
 {
     cxobj     *cx = NULL;
     va_list    ap;
@@ -1118,10 +1136,16 @@ xpath_first_nodeset(cxobj    *xcur,
 	goto done;
     }
     va_end(ap);
+#ifdef COMPAT_XSL
+    if ((cx = xpath_first_xsl(xcur, xpath)) == NULL)
+	goto done;
+#else
     if (xpath_vec_ctx(xcur, xpath, &xr) < 0)
 	goto done;
+
     if (xr && xr->xc_type == XT_NODESET && xr->xc_size)
 	cx = xr->xc_nodeset[0];
+#endif
  done:
     if (xr)
 	ctx_free(xr);
@@ -1140,11 +1164,11 @@ xpath_first_nodeset(cxobj    *xcur,
  * @retval    -1       Error
  */
 int
-xpath_vec_nodeset(cxobj    *xcur, 
-		  char     *format, 
-		  cxobj  ***vec, 
-		  size_t   *veclen,
-		  ...)
+xpath_vec(cxobj    *xcur, 
+	  char     *format, 
+	  cxobj  ***vec, 
+	  size_t   *veclen,
+	  ...)
 {
     int        retval = -1;
     va_list    ap;
@@ -1168,6 +1192,10 @@ xpath_vec_nodeset(cxobj    *xcur,
 	goto done;
     }
     va_end(ap);
+#ifdef COMPAT_XSL
+    if (xpath_vec_xsl(xcur, xpath, vec, veclen) < 0)
+	goto done;
+#else
     if (xpath_vec_ctx(xcur, xpath, &xr) < 0)
 	goto done;
     if (xr && xr->xc_type == XT_NODESET){
@@ -1175,6 +1203,7 @@ xpath_vec_nodeset(cxobj    *xcur,
 	xr->xc_nodeset = NULL;
 	*veclen = xr->xc_size;
     }
+#endif
     retval = 0;
  done:
     if (xr)
@@ -1184,7 +1213,7 @@ xpath_vec_nodeset(cxobj    *xcur,
     return retval;
 }
 
-/* A restricted xpath that returns a vector of matches (only nodes marked with flags)
+/* Xpath that returns a vector of matches (only nodes marked with flags)
  * @param[in]  xcur  xml-tree where to search
  * @param[in]  xpath   string with XPATH syntax
  * @param[in]  flags   Set of flags that return nodes must match (0 if all)
@@ -1208,20 +1237,22 @@ xpath_vec_nodeset(cxobj    *xcur,
  * @see also xpath_vec This is a specialized version.
  */
 int
-xpath_vec_nodeset_flag(cxobj    *xcur, 
-		       char     *format, 
-		       uint16_t flags,
-		       cxobj  ***vec, 
-		       size_t   *veclen,
-		       ...)
+xpath_vec_flag(cxobj    *xcur, 
+	       char     *format, 
+	       uint16_t flags,
+	       cxobj  ***vec, 
+	       size_t   *veclen,
+	       ...)
 {
     int        retval = -1;
     va_list    ap;
     size_t     len;
     char      *xpath = NULL;
     xp_ctx    *xr = NULL;
+#ifndef COMPAT_XSL
     int        i;
     cxobj     *x;
+#endif
     
     va_start(ap, veclen);    
     len = vsnprintf(NULL, 0, format, ap);
@@ -1239,6 +1270,10 @@ xpath_vec_nodeset_flag(cxobj    *xcur,
 	goto done;
     }
     va_end(ap);
+#ifdef COMPAT_XSL
+    if (xpath_vec_flag_xsl(xcur, xpath, flags, vec, veclen) < 0)
+	goto done;
+#else
     if (xpath_vec_ctx(xcur, xpath, &xr) < 0)
 	goto done;
 
@@ -1250,6 +1285,8 @@ xpath_vec_nodeset_flag(cxobj    *xcur,
 		    goto done;		
 	}
     }
+#endif
+
     retval = 0;
  done:
     if (xr)

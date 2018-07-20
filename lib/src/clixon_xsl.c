@@ -859,11 +859,26 @@ xpath_choice(cxobj   *xcur,
     return retval;
 }
 
-/*! Help function to  xpath_first
+/*! Xpath nodeset function where only the first matching entry is returned
+ * args:
+ * @param[in]  xcur  xml-tree where to search
+ * @param[in]  xpath   string with XPATH syntax
+ * @retval     xml-tree of first match
+ * @retval     NULL    Error or not found
+ *
+ * @code
+ *   cxobj *x;
+ *   if ((x = xpath_first(xtop, "//symbol/foo")) != NULL) {
+ *         ...
+ *   }
+ * @endcode
+ * @note  the returned pointer points into the original tree so should not be freed fter use.
+ * @note return value does not see difference between error and not found
+ * @see xpath_first. This is obsolete and only enabled with COMPAT_XSL
  */
-static cxobj *
-xpath_first0(cxobj *xcur, 
-	     char  *xpath)
+cxobj *
+xpath_first_xsl(cxobj *xcur, 
+		char  *xpath)
 {
     cxobj **vec1 = NULL;
     size_t  vec1len = 0;
@@ -879,57 +894,6 @@ xpath_first0(cxobj *xcur,
     if (vec1)
 	free(vec1);
     return xn;
-}
-
-/*! A restricted xpath function where the first matching entry is returned
- * See xpath1() on details for subset.
- * args:
- * @param[in]  xcur  xml-tree where to search
- * @param[in]  xpath   string with XPATH syntax
- * @retval     xml-tree of first match
- * @retval     NULL    Error or not found
- *
- * @code
- *   cxobj *x;
- *   if ((x = xpath_first(xtop, "//symbol/foo")) != NULL) {
- *         ...
- *   }
- * @endcode
- * @note  the returned pointer points into the original tree so should not be freed after use.
- * @note return value does not see difference between error and not found
- * @see also xpath_vec.
- */
-cxobj *
-xpath_first_xsl(cxobj   *xcur, 
-	    char    *format, 
-	    ...)
-{
-    cxobj  *retval = NULL;
-    va_list ap;
-    size_t  len;
-    char   *xpath;
-
-    va_start(ap, format);    
-    len = vsnprintf(NULL, 0, format, ap);
-    va_end(ap);
-    /* allocate a message string exactly fitting the message length */
-    if ((xpath = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }
-    /* second round: compute write message from reason and args */
-    va_start(ap, format);    
-    if (vsnprintf(xpath, len+1, format, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
-    }
-    va_end(ap);
-    retval = xpath_first0(xcur, xpath);
- done:
-    if (xpath)
-	free(xpath);
-    return retval;
 }
 
 /*! A restricted xpath iterator that loops over all matching entries. Dont use.
@@ -949,8 +913,7 @@ xpath_first_xsl(cxobj   *xcur,
  *
  * @note The returned pointer points into the original tree so should not be freed
  * after use.
- * @see also xpath, xpath_vec.
- * @note uses a static variable: consider replacing with xpath_vec() instead
+ * @note obsolete. Dont use
  */
 cxobj *
 xpath_each(cxobj *xcur, 
@@ -1014,41 +977,22 @@ xpath_each(cxobj *xcur,
  * @note Although the returned vector must be freed after use, 
  *       the returned xml trees should not.
  * @see also xpath_first, xpath_each.
+ * @see xpath_vec. This is obsolete and only enabled with COMPAT_XSL
  */
 int
 xpath_vec_xsl(cxobj    *xcur, 
-	  char     *format, 
-	  cxobj  ***vec, 
-	  size_t   *veclen,
-	  ...)
+	      char     *xpath, 
+	      cxobj  ***vec, 
+	      size_t   *veclen)
 {
     int     retval = -1;
-    va_list ap;
-    size_t  len;
-    char   *xpath = NULL;
 
-    va_start(ap, veclen);    
-    len = vsnprintf(NULL, 0, format, ap);
-    va_end(ap);
-    /* allocate a message string exactly fitting the message length */
-    if ((xpath = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }
-    /* second round: compute write message from reason and args */
-    va_start(ap, veclen);    
-    if (vsnprintf(xpath, len+1, format, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
-    }
-    va_end(ap);
     *vec = NULL;
     *veclen = 0;
-    retval = xpath_choice(xcur, xpath, 0x0, vec, veclen);
+    if (xpath_choice(xcur, xpath, 0x0, vec, veclen) < 0)
+	goto done;
+    retval = 0;
  done:
-    if (xpath)
-	free(xpath);
     return retval;
 }
 
@@ -1073,43 +1017,23 @@ xpath_vec_xsl(cxobj    *xcur,
  * @endcode
  * @Note that although the returned vector must be freed after use, the returned xml
  * trees need not be.
- * @see also xpath_vec This is a specialized version.
+ * @see xpath_vec_flag. This is obsolete and only enabled with COMPAT_XSL
  */
 int
 xpath_vec_flag_xsl(cxobj   *xcur, 
-		   char    *format, 
+		   char    *xpath, 
 		   uint16_t flags,
 		   cxobj ***vec, 
-		   size_t  *veclen,
-		   ...)
+		   size_t  *veclen)
 {
     int retval = -1;
-    va_list ap;
-    size_t  len;
-    char   *xpath;
 
-    va_start(ap, veclen);    
-    len = vsnprintf(NULL, 0, format, ap);
-    va_end(ap);
-    /* allocate a message string exactly fitting the message length */
-    if ((xpath = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }
-    /* second round: compute write message from reason and args */
-    va_start(ap, veclen);    
-    if (vsnprintf(xpath, len+1, format, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
-    }
-    va_end(ap);
     *vec=NULL;
     *veclen = 0;
-    retval = xpath_choice(xcur, xpath, flags, vec, veclen);
+    if (xpath_choice(xcur, xpath, flags, vec, veclen) < 0)
+	goto done;
+    retval = 0;
  done:
-    if (xpath)
-	free(xpath);
     return retval;
 }
 

@@ -84,31 +84,20 @@ extern const map_str2int xpopmap[];
  * Prototypes
  */
 #if defined(__GNUC__) && __GNUC__ >= 3
-int xpath_vec_nodeset(cxobj *xcur, char *format, cxobj  ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 2, 5)));
-int xpath_vec_nodeset_flag(cxobj *xcur, char *format, uint16_t flags, 
+int xpath_vec(cxobj *xcur, char *format, cxobj  ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 2, 5)));
+int xpath_vec_flag(cxobj *xcur, char *format, uint16_t flags, 
 			   cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 2, 6)));
-cxobj *xpath_first_nodeset(cxobj *xcur, char *format, ...) __attribute__ ((format (printf, 2, 3)));
+cxobj *xpath_first(cxobj *xcur, char *format, ...) __attribute__ ((format (printf, 2, 3)));
 int xpath_vec_bool(cxobj *xcur, char *format, ...) __attribute__ ((format (printf, 2, 3)));
 
 #else
-int xpath_vec_nodeset(cxobj *xcur, char *format, cxobj  ***vec, size_t *veclen, ...);
-int xpath_vec_nodeset_flag(cxobj *xcur, char *format, uint16_t flags, 
+int xpath_vec(cxobj *xcur, char *format, cxobj  ***vec, size_t *veclen, ...);
+int xpath_vec_flag(cxobj *xcur, char *format, uint16_t flags, 
 			   cxobj ***vec, size_t *veclen, ...);
-cxobj *xpath_first_nodeset(cxobj *xcur, char *format, ...);
+cxobj *xpath_first(cxobj *xcur, char *format, ...);
 int xpath_vec_bool(cxobj *xcur, char *format, ...);
 
 #endif
 int xpath_vec_ctx(cxobj *xcur, char *xpath, xp_ctx  **xrp);
-
-/* backward compatible */
-#ifdef COMPAT_XSL
-#define xpath_first(cxtop, format, args...) xpath_first_xsl(cxtop, format, ##args)
-#define xpath_vec(cxtop, format, vec, veclen, args...) xpath_vec_xsl(cxtop, format, vec, veclen, ##args)
-#define xpath_vec_flag(cxtop, format, flags, vec, veclen, args...) xpath_vec_flag_xsl(cxtop, format, flags, vec, veclen, ##args)
-#else
-#define xpath_first(cxtop, format, args...) xpath_first_nodeset(cxtop, format, ##args)
-#define xpath_vec(cxtop, format, vec, veclen, args...) xpath_vec_nodeset(cxtop, format, vec, veclen, ##args)
-#define xpath_vec_flag(cxtop, format, flags, vec, veclen, args...) xpath_vec_nodeset_flag(cxtop, format, flags, vec, veclen, ##args)
-#endif
 
 #endif /* _CLIXON_XPATH_H */

@@ -1,7 +1,8 @@
 # Clixon Changelog
 
 ## 3.7.0 (Upcoming)
-### Major changes:
+
+### Major New features
 
 * Support for YANG conditionals "must" and "when" according to RFC 7950 Sec 7.5.3 and 7.21.5.
   * XPATH checked at validation time
@@ -10,17 +11,23 @@
   * Validation of types and CLI expansion
   * Example extended with inclusion of iana-if-type RFC 7224 interface identities
   * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
-* Much improved support for XPATH 1.0 according to https://www.w3.org/TR/xpath-10 using yacc/lex
-  * NOTE: Due to an error in the previous implementation, all XPATH calls on the form `x[a=str]` where `str` is a string (not a number or XML symbol), must be changed to: `x[a='str'] or x[a="str"]`
-    * This includes all calls to `xpath_vec, xpath_first`, etc.
-    * All calls to cli_copy_config in CLI spec files must replace 2nd argument from `x[%s=%s]` to `x[%s='%s']`
-  * The old API can be enabled by setting COMPAT_XSL in include/clixon_custom.h and recompile.
+
+### API changes on existing features (you may need to change your code)
+
 * Conformance of restconf(RFC-8040) operations where prefix was used instead of module name.
   * Proper specification for an operation is POST /restconf/operations/<module_name>:<rpc_procedure> HTTP/1.1
   * See https://github.com/clicon/clixon/issues/31, https://github.com/clicon/clixon/pull/32 and https://github.com/clicon/clixon/issues/30
   * Thanks David Cornejo and Dmitry Vakhrushev of Netgate for pointing this out.
-	
-### Minor changes:
+
+* Improved support for XPATH 1.0 according to https://www.w3.org/TR/xpath-10 using yacc/lex
+  * NOTE: Due to an error in the previous implementation, all XPATH calls on the form `x[a=str]` where `str` is a string (not a number or XML symbol), must be changed to: `x[a='str'] or x[a="str"]`
+    * This includes all calls to `xpath_vec, xpath_first`, etc.
+    * All calls to cli_copy_config in CLI spec files must replace 2nd argument from `x[%s=%s]` to `x[%s='%s']`
+    * xpath_each() is removed
+    * The old API can be enabled by setting COMPAT_XSL in include/clixon_custom.h and recompile.
+
+### Minor changes
+
 * Added systemd example files under example/systemd
 * Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
 * Added util subdir, with dedicated standalone xml,json,yang and xpath parser utility test programs.

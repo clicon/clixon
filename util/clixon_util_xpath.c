@@ -62,7 +62,7 @@ echo "a\n<a><b/></a>" | xpath
 #include <cligen/cligen.h>
 
 /* clixon */
-#include <clixon/clixon.h>
+#include "clixon/clixon.h"
 
 static int
 usage(char *argv0)

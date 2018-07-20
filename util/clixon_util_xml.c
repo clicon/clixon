@@ -54,7 +54,7 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include <clixon/clixon.h>
+#include "clixon/clixon.h"
 
 /*
  * Turn this on to get a xml parse and pretty print test program
