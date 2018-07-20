@@ -86,14 +86,14 @@ extern const map_str2int xpopmap[];
 #if defined(__GNUC__) && __GNUC__ >= 3
 int xpath_vec(cxobj *xcur, char *format, cxobj  ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 2, 5)));
 int xpath_vec_flag(cxobj *xcur, char *format, uint16_t flags, 
-			   cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 2, 6)));
+		   cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 2, 6)));
 cxobj *xpath_first(cxobj *xcur, char *format, ...) __attribute__ ((format (printf, 2, 3)));
 int xpath_vec_bool(cxobj *xcur, char *format, ...) __attribute__ ((format (printf, 2, 3)));
 
 #else
 int xpath_vec(cxobj *xcur, char *format, cxobj  ***vec, size_t *veclen, ...);
 int xpath_vec_flag(cxobj *xcur, char *format, uint16_t flags, 
-			   cxobj ***vec, size_t *veclen, ...);
+		   cxobj ***vec, size_t *veclen, ...);
 cxobj *xpath_first(cxobj *xcur, char *format, ...);
 int xpath_vec_bool(cxobj *xcur, char *format, ...);
 

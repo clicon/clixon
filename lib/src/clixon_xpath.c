@@ -1192,6 +1192,8 @@ xpath_vec(cxobj    *xcur,
 	goto done;
     }
     va_end(ap);
+    *vec=NULL;
+    *veclen = 0;
 #ifdef COMPAT_XSL
     if (xpath_vec_xsl(xcur, xpath, vec, veclen) < 0)
 	goto done;
@@ -1270,13 +1272,14 @@ xpath_vec_flag(cxobj    *xcur,
 	goto done;
     }
     va_end(ap);
+    *vec=NULL;
+    *veclen = 0;
 #ifdef COMPAT_XSL
     if (xpath_vec_flag_xsl(xcur, xpath, flags, vec, veclen) < 0)
 	goto done;
 #else
     if (xpath_vec_ctx(xcur, xpath, &xr) < 0)
 	goto done;
-
     if (xr && xr->xc_type == XT_NODESET){
 	for (i=0; i<xr->xc_size; i++){
 	    x = xr->xc_nodeset[i];
