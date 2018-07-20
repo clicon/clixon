@@ -128,7 +128,7 @@ main(int argc, char **argv)
     char       *xpath0 = NULL;
     char       *filename;
     xp_ctx     *xc = NULL;
-    cbuf       *cb;
+    cbuf       *cb = NULL;
     
     clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
     optind = 1;
