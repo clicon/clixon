@@ -51,10 +51,12 @@ CLI_PLUGIN      = $(APPNAME)_cli.so
 NETCONF_PLUGIN  = $(APPNAME)_netconf.so
 RESTCONF_PLUGIN = $(APPNAME)_restconf.so
 
-# Example docker image
+# Example docker image. PLEASE CHANGE THIS
 IMAGE           = olofhagsand/clixon_example
 
 PLUGINS = $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN)
+
+.PHONY: all clean depend install docker push
 
 all:	$(PLUGINS)
 
@@ -131,10 +133,10 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NET
 	install -d -m 0755 $(DESTDIR)$(clixon_LOCALSTATEDIR)
 
 docker:
-        sudo docker build -t $(IMAGE) .
+	sudo docker build -t $(IMAGE) .
 
 push:
-        sudo docker push $(IMAGE)
+	sudo docker push $(IMAGE)
 
 
 uninstall: 

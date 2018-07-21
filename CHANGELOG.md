@@ -52,7 +52,7 @@
 
 ### Minor changes
 
-* Updated the docker image build and changed it to build a single clixon docker image which can be found at olofhagsand/clixon.	
+* Updated the docker image build and changed it to build a single clixon docker image which can be found at olofhagsand/clixon. And the example at olofhagsand/clixon_example.	
 * Added systemd example files under example/systemd
 * Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
 * Added util subdir, with dedicated standalone xml,json,yang and xpath parser utility test programs.
