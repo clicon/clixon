@@ -30,48 +30,42 @@
 #
 # ***** END LICENSE BLOCK *****
 #
-VPATH       	= @srcdir@
-prefix 		= @prefix@
-exec_prefix 	= @exec_prefix@
-srcdir  	= @srcdir@
-top_srcdir  	= @top_srcdir@
-prefix 		= @prefix@
-bindir 		= @bindir@
-sbindir 	= @sbindir@
-libdir		= @libdir@
-includedir	= @includedir@
-datarootdir	= @datarootdir@
-# You may consider changing this
-image           = olofhagsand/clixon_backend
 
-all:
-	@echo "Run make docker to build docker image"
-clean:
+FROM debian
+MAINTAINER Olof Hagsand <olof@hagsand.se>
+ENV DEBIAN_FRONTEND noninteractive
 
-distclean: clean
-	rm -f Makefile *~ .depend libcligen* libclixon* clixon_backend Dockerfile
+RUN apt-get update && apt-get install -y \
+  git make gcc flex bison 
+RUN groupadd clicon
 
-# Kind of reverse install, could have copied from src dir,...
-.PHONY: docker push
-docker:	
-	cp $(DESTDIR)$(libdir)/libcligen.so.@CLIGEN_VERSION@ .
-	cp $(DESTDIR)$(libdir)/libclixon.so.@CLIXON_VERSION_MAJOR@ .
-	cp $(DESTDIR)$(libdir)/libclixon_backend.so.@CLIXON_VERSION_MAJOR@ .
-	cp $(DESTDIR)$(sbindir)/clixon_backend .
-	sudo docker build -t $(image) .
+# Create a directory to hold source-code, dependencies etc
+RUN mkdir /clixon
+WORKDIR /clixon
 
-push:	
-	docker push $(image)
+# Clone cligen and clixon
+RUN git clone https://github.com/olofhagsand/cligen.git
+RUN git clone https://github.com/clicon/clixon.git
+
+# Build cligen
+WORKDIR /clixon/cligen
+RUN ./configure
+RUN make
+RUN make install
+
+# Build clixon
+WORKDIR /clixon/clixon
+RUN git checkout -b develop origin/develop
+RUN ./configure --without-restconf
+RUN make
+RUN make install
+RUN make install-include
+
+#RUN rm -rf /clixon
+RUN ldconfig
 
 
-install:
 
-uninstall: 
 
-install-include:	
 
-depend:
-#	$(CC) $(DEPENDFLAGS) $(INCLUDES) $(CFLAGS) -MM $(SRC) > .depend
-
-#include .depend
 

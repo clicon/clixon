@@ -203,12 +203,6 @@ AC_OUTPUT(Makefile
 	  example/docker/Makefile
 	  extras/rpm/Makefile
 	  docker/Makefile 
-	  docker/cli/Makefile 
-	  docker/cli/Dockerfile
-	  docker/backend/Makefile 
-	  docker/backend/Dockerfile
-	  docker/netconf/Makefile 
-	  docker/netconf/Dockerfile
 	  datastore/Makefile
 	  datastore/text/Makefile
   	  util/Makefile 

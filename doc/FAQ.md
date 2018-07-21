@@ -101,6 +101,8 @@ You can change where CLixon looks for the configuration FILE as follows:
   - FILE is /usr/local/etc/clixon.xml
 
 ## Can I run Clixon as docker containers?
+
+(Not updated)
 Yes, the example works as docker containers as well. backend and cli needs a 
 common file-system so they need to run as a composed pair.
 ```
@@ -108,7 +110,7 @@ common file-system so they need to run as a composed pair.
 	make docker # Prepares /data as shared file-system mount
 	run.sh      # Starts an example backend and a cli
 ```
-The containers are by default downloaded from dockerhib, but you may
+The containers are by default downloaded from dockerhub, but you may
 build the containers locally: 
 ```
 	cd docker

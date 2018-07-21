@@ -52,6 +52,7 @@
 
 ### Minor changes
 
+* Updated the docker image build and changed it to build a single clixon docker image which can be found at olofhagsand/clixon.	
 * Added systemd example files under example/systemd
 * Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
 * Added util subdir, with dedicated standalone xml,json,yang and xpath parser utility test programs.
@@ -66,7 +67,6 @@
 * Added xmlns validation
   * for eg <a xmlns:x="uri"><x:b/></a> 
 * Added yang identityref runtime validation
-
 * Added --enable-debug. 
 * Added cligen variable translation.
   * See FAQ and example 
