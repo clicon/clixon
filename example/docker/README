@@ -1,7 +1,0 @@
-Run the ietf routing example as docker container.
-Use the dockerhub container, or alternatively, build clicon as docker images
-by doing make docker in the top builddir.
-
-   (cd ..; make) # Make example
-   make docker   # Create config file and shared file system
-   run.sh        # Run a backend and a cli container

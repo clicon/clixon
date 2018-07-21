@@ -30,51 +30,32 @@
 #
 # ***** END LICENSE BLOCK *****
 #
-VPATH       	= @srcdir@
-srcdir  	= @srcdir@
-top_srcdir  	= @top_srcdir@
-prefix 		= @prefix@
-bindir 		= @bindir@
-includedir	= @includedir@
-datarootdir     = @datarootdir@
 
-APPNAME	        = routing
+FROM olofhagsand/clixon
+MAINTAINER Olof Hagsand <olof@hagsand.se>
 
-all:	$(APPNAME).conf
+RUN apt-get update && apt-get install -y \
+  procps # ps for debugging
+# Create a directory to hold source-code, dependencies etc
+RUN mkdir /example
+WORKDIR /example
 
--include $(DESTDIR)$(datarootdir)/clixon/clixon.mk
+# Clone clixon (again) since example application is there.
+# Replace this with your application
+RUN git clone https://github.com/clicon/clixon.git
 
-# Kind of reverse install, could have copied from src dir,...
-.PHONY: docker push
-docker:	$(APPNAME).conf
-	install -d data
-	install -d data/yang
-	install -d data/backend
-	install -d data/cli
-	install -d data/netconf
-	install -d data/clispec
-	install $(APPNAME).conf data/clixon.conf # docker image assumes /data/clixon.conf
-	install ../*.yang data/yang/
-	install ../routing_cli.so data/cli/
-	install ../routing_backend.so data/backend/
-	install ../routing_netconf.so data/netconf/
-	install ../*.cli data/clispec
+# Build clixon
+WORKDIR /example/clixon
+RUN git checkout -b develop origin/develop
+RUN ./configure
+WORKDIR /example/clixon/example
+RUN make
+RUN make install
+RUN install example.xml /usr/local/etc/clixon.xml
 
-clean:
-	rm -f $(APPNAME).conf
+CMD /usr/local/sbin/clixon_backend && /usr/local/bin/clixon_cli
 
-distclean: clean
-	rm -f Makefile *~ .depend
-	rm -rf data
 
-install: 
 
-uninstall: 
 
-install-include:	
-
-depend:
-	$(CC) $(DEPENDFLAGS) $(INCLUDES) $(CFLAGS) -MM $(SRC) > .depend
-
-#include .depend
 

@@ -36,7 +36,11 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && apt-get install -y \
-  git make gcc flex bison 
+  git make gcc flex bison \
+  libfcgi-dev \
+  libcurl4-openssl-dev
+
+
 RUN groupadd clicon
 
 # Create a directory to hold source-code, dependencies etc
@@ -56,12 +60,11 @@ RUN make install
 # Build clixon
 WORKDIR /clixon/clixon
 RUN git checkout -b develop origin/develop
-RUN ./configure --without-restconf
+RUN ./configure
 RUN make
 RUN make install
 RUN make install-include
 
-#RUN rm -rf /clixon
 RUN ldconfig
 
 

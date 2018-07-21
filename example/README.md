@@ -204,5 +204,19 @@ cd docker
 # look in README
 ```
 
+## Docker
+
+Run the example as a docker container as follows:
+```
+sudo docker run -ti --rm olofhagsand/clixon_example
+```
+
+Build the container and push yourself: First change the IMAGE variable in Makefile (eg to "you/clixon_example). Then build and push:
+```
+make docker
+make push
+sudo docker run -ti --rm you/clixon_example
+```
+
 
 

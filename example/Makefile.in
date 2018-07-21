@@ -51,6 +51,9 @@ CLI_PLUGIN      = $(APPNAME)_cli.so
 NETCONF_PLUGIN  = $(APPNAME)_netconf.so
 RESTCONF_PLUGIN = $(APPNAME)_restconf.so
 
+# Example docker image
+IMAGE           = olofhagsand/clixon_example
+
 PLUGINS = $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN)
 
 all:	$(PLUGINS)
@@ -106,11 +109,9 @@ OBJS    = $(BE_OBJ) $(BE2_OBJ) $(CLI_OBJ) $(NETCONF_OBJ) $(RESTCONF_OBJ)
 
 clean:
 	rm -f $(PLUGINS) $(OBJS) 
-	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 distclean: clean
 	rm -f Makefile *~ .depend
-	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN) $(APPNAME).xml
 	install -d -m 0755 $(DESTDIR)$(clixon_SYSCONFDIR)
@@ -128,20 +129,24 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NET
 	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/clispec
 	install -m 0644 $(CLISPECS) $(DESTDIR)$(clixon_LIBDIR)/clispec
 	install -d -m 0755 $(DESTDIR)$(clixon_LOCALSTATEDIR)
-	(cd docker && $(MAKE) $(MFLAGS) $@)
+
+docker:
+        sudo docker build -t $(IMAGE) .
+
+push:
+        sudo docker push $(IMAGE)
+
 
 uninstall: 
 	rm -rf $(DESTDIR)$(clixon_SYSCONFDIR)/$(APPNAME).xml
 	rm -rf $(DESTDIR)$(clixon_DBSPECDIR)
 	rm -rf $(DESTDIR)$(clixon_LOCALSTATEDIR)
 	rm -rf $(DESTDIR)$(clixon_LIBDIR)
-	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 install-include:	
 
 depend:
 	$(CC) $(DEPENDFLAGS) $(INCLUDES) $(CFLAGS) -MM $(SRC) > .depend
-	(cd docker && $(MAKE) $(MFLAGS) $@)
 
 #include .depend
 

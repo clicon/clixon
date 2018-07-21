@@ -102,21 +102,13 @@ You can change where CLixon looks for the configuration FILE as follows:
 
 ## Can I run Clixon as docker containers?
 
-(Not updated)
-Yes, the example works as docker containers as well. backend and cli needs a 
-common file-system so they need to run as a composed pair.
+Yes, the example works as docker containers as well. There should be a
+prepared container in docker hib for the example where the backend and
+CLI is bundled. 
 ```
-	cd example/docker
-	make docker # Prepares /data as shared file-system mount
-	run.sh      # Starts an example backend and a cli
+sudo docker run -ti --rm olofhagsand/clixon_example
 ```
-The containers are by default downloaded from dockerhub, but you may
-build the containers locally: 
-```
-	cd docker
-	make docker
-```
-You may also push the containers with 'make push' but you may then consider changing the image name in the makefile.
+Look in the example documentation for more info.
 
 ## How do I use netconf?
 
