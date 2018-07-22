@@ -132,7 +132,25 @@ You can access clixon via REST API using restconf, such as using
 curl. GET, PUT, POST are supported.
 
 You need a web-server, such as nginx, and start a restconf fcgi
-daemon, clixon_restconf. Read more in the restconf docs.
+daemon, clixon_restconf.
+
+For example, using nginx, install, and edit config file: /etc/nginx/sites-available/default:
+```
+server {
+  ...
+  location /restconf {
+    root /usr/share/nginx/html/restconf;
+    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+    include fastcgi_params;
+  }
+}
+```
+Start nginx daemon
+```
+sudo /etc/init.d/nginx start
+```
+
+Read more in the restconf docs.
 
 Example:
 ```

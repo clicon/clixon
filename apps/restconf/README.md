@@ -22,6 +22,11 @@ Start nginx daemon
 ```
 sudo /etc/init.d nginx start
 ```
+Alternatively, start it via systemd:
+```
+sudo /etc/init.d/nginx start
+sudo systemctl start start.service
+```
 
 Start clixon restconf daemon
 ```

@@ -19,7 +19,9 @@ routing example. It contains the following files:
 
 ## Compile and run
 
-Before you start, see [preparation](../doc/FAQ.md#do-i-need-to-setup-anything-important).
+Before you start,
+* Make [group setup](../doc/FAQ.md#do-i-need-to-setup-anything-important)
+* Setup [restconf](../doc/FAQ.md#how-do-i-use-restconf)
 
 ```
     cd example
