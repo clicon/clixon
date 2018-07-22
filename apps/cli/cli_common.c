@@ -1038,79 +1038,6 @@ cli_notify(clicon_handle h,
     return retval;
 }
 
-/* Backward compatible Set if you want to enable "v" cli callback functions, 
- * such as cli_setv() 
- * This was obsoleted in 3.7. 
- * @see include/clixon_custom.h
- */
-#ifdef COMPAT_CLIV
-int cli_setv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_set(h, vars, argv);
-}
-int cli_mergev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_merge(h, vars, argv);
-}
-int cli_delv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_del(h, vars, argv);
-}
-int cli_debug_cliv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_debug_cli(h, vars, argv);
-}
-int cli_debug_backendv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_debug_backend(h, vars, argv);
-}
-int cli_set_modev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_set_mode(h, vars, argv);
-}
-int cli_start_shellv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_start_shell(h, vars, argv);
-}
-int cli_quitv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_quit(h, vars, argv);
-}
-int cli_commitv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_commit(h, vars, argv);
-}
-int cli_validatev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_validate(h, vars, argv);
-
-}
-int compare_dbsv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return compare_dbs(h, vars, argv);
-}
-int load_config_filev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return load_config_file(h, vars, argv);
-}
-int save_config_filev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return save_config_file(h, vars, argv);
-}
-int delete_allv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return delete_all(h, vars, argv);
-}
-int discard_changesv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return discard_changes(h, vars, argv);
-}
-int cli_notifyv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_notify(h, vars, argv);
-}
-#endif /* COMPAT_CLIV */
-
 /*! Lock database
  * 
  * @param[in] h      Clicon handle
@@ -1249,23 +1176,6 @@ cli_copy_config(clicon_handle h,
     for (i=0; i<strlen(xpath); i++){
 	if (xpath[i] == '%')
 	    j++;
-#ifdef COMPAT_XSL
-	/* This is a horrible kludge due to:
-	 * (1) old xpath implementation wrongly did: a[b=x] instead of a[b='x']
-	 * (2) cli_copy_config has as 2nd argument such an xpath provided by user.
-	 */
-	if (j==2){
-	    int k;
-	    if ((xpath[i-1] == '\'' || xpath[i-1] == '\"') &&
-		(xpath[i+2] == '\'' || xpath[i+2] == '\"')){
-		for (k=i-1;k<i+2;k++)
-		    xpath[k] =  xpath[k+1];
-		for (k=i+1;k<strlen(xpath)+1;k++)
-		    xpath[k] = xpath[k+2];
-		i-=1;
-	    }
-	}
-#endif	
     }
     if (j != 2){
 	clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have two '%%'", xpath);	

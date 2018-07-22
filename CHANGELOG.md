@@ -1,5 +1,23 @@
 # Clixon Changelog
 
+## 3.8.0 (Upcoming)
+
+### Major New features
+
+### API changes on existing features (you may need to change your code)
+
+### Minor changes
+* Obsoleted COMPAT_CLIV and COMPAT_XSL that were optional in 3.7
+
+### Corrected Bugs
+
+### Known issues
+* Namespace name relabeling is not supported.
+  * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlfns is not supported, such as:
+```
+  <crypto xmlns:x="urn:example:des">x:des3</crypto>
+```
+
 ## 3.7.0 (22 July 2018)
 
 ### Major New features

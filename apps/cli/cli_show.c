@@ -686,13 +686,4 @@ cli_show_auto(clicon_handle h,
     return retval;
 }
 
-#ifdef COMPAT_CLIV
-int show_yangv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return show_yang(h, vars, argv);
-}
-int show_confv_xpath(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return show_conf_xpath(h, vars, argv);
-}
-#endif /* COMPAT_CLIV */
+

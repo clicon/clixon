@@ -62,7 +62,6 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
-#include "clixon_xsl.h"
 #include "clixon_xpath_parse.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
@@ -1142,16 +1141,11 @@ xpath_first(cxobj    *xcur,
 	goto done;
     }
     va_end(ap);
-#ifdef COMPAT_XSL
-    if ((cx = xpath_first_xsl(xcur, xpath)) == NULL)
-	goto done;
-#else
     if (xpath_vec_ctx(xcur, xpath, &xr) < 0)
 	goto done;
 
     if (xr && xr->xc_type == XT_NODESET && xr->xc_size)
 	cx = xr->xc_nodeset[0];
-#endif
  done:
     if (xr)
 	ctx_free(xr);
@@ -1211,10 +1205,6 @@ xpath_vec(cxobj    *xcur,
     va_end(ap);
     *vec=NULL;
     *veclen = 0;
-#ifdef COMPAT_XSL
-    if (xpath_vec_xsl(xcur, xpath, vec, veclen) < 0)
-	goto done;
-#else
     if (xpath_vec_ctx(xcur, xpath, &xr) < 0)
 	goto done;
     if (xr && xr->xc_type == XT_NODESET){
@@ -1222,7 +1212,6 @@ xpath_vec(cxobj    *xcur,
 	xr->xc_nodeset = NULL;
 	*veclen = xr->xc_size;
     }
-#endif
     retval = 0;
  done:
     if (xr)
@@ -1268,10 +1257,8 @@ xpath_vec_flag(cxobj    *xcur,
     size_t     len;
     char      *xpath = NULL;
     xp_ctx    *xr = NULL;
-#ifndef COMPAT_XSL
     int        i;
     cxobj     *x;
-#endif
     
     va_start(ap, veclen);    
     len = vsnprintf(NULL, 0, format, ap);
@@ -1291,10 +1278,6 @@ xpath_vec_flag(cxobj    *xcur,
     va_end(ap);
     *vec=NULL;
     *veclen = 0;
-#ifdef COMPAT_XSL
-    if (xpath_vec_flag_xsl(xcur, xpath, flags, vec, veclen) < 0)
-	goto done;
-#else
     if (xpath_vec_ctx(xcur, xpath, &xr) < 0)
 	goto done;
     if (xr && xr->xc_type == XT_NODESET){
@@ -1305,8 +1288,6 @@ xpath_vec_flag(cxobj    *xcur,
 		    goto done;		
 	}
     }
-#endif
-
     retval = 0;
  done:
     if (xr)
