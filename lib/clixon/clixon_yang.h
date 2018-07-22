@@ -202,6 +202,7 @@ struct yang_stmt{
     cvec              *ys_cvec;      /* List of stmt-specific variables 
 					Y_RANGE: range_min, range_max 
 					Y_LIST: vector of keys
+					Y_TYPE & identity: store all derived types
 				     */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
 };
@@ -245,6 +246,7 @@ yang_stmt *yn_each(yang_node *yn, yang_stmt *ys);
 char      *yang_key2str(int keyword);
 char      *yarg_prefix(yang_stmt *ys);
 char      *yarg_id(yang_stmt *ys);
+int        yang_nodeid_split(char *nodeid, char **prefix, char **id);
 yang_stmt *ys_module(yang_stmt *ys);
 yang_spec *ys_spec(yang_stmt *ys);
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
@@ -252,9 +254,11 @@ yang_stmt *yang_find(yang_node *yn, int keyword, char *argument);
 yang_stmt *yang_find_datanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_topnode(yang_spec *ysp, char *name, yang_class class);
+char      *yang_find_myprefix(yang_stmt *ys);
 int        yang_order(yang_stmt *y);
 int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
+yang_stmt *yang_parse_file(int fd, const char *name, yang_spec *ysp);
 int        yang_parse(clicon_handle h, const char *yang_dir, 
 		      const char *module, const char *revision, yang_spec *ysp);
 int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 

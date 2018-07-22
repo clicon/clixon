@@ -531,6 +531,8 @@ from_client_unlock(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (cbx)
+	cbuf_free(cbx);
     return retval;
 }
 
@@ -803,12 +805,13 @@ from_client_debug(clicon_handle      h,
     return retval;
 }
 
-/*! Match nacm access operations according to RFC8321 3.4.4.  
+/*! Match nacm access operations according to RFC8341 3.4.4.  
  * Incoming RPC Message Validation Step 7 (c)
  *  The rule's "access-operations" leaf has the "exec" bit set or
  *  has the special value "*".
  * @retval 0  No match
  * @retval 1  Match
+ * XXX access_operations is bit-fields
  */
 static int
 nacm_match_access(char *access_operations,
@@ -818,7 +821,7 @@ nacm_match_access(char *access_operations,
 	return 0;
     if (strcmp(access_operations,"*")==0)
 	return 1;
-    if (strstr(mode, access_operations)!=NULL)
+    if (strstr(access_operations, mode)!=NULL)
 	return 1;
     return 0;
 }
@@ -832,7 +835,7 @@ nacm_match_access(char *access_operations,
  * @retval  0  Matching rule AND Not access and cbret set
  * @retval  1  Matchung rule AND Access
  * @retval  2  No matching rule Goto step 10
- * From RFC8321 3.4.4.  Incoming RPC Message Validation
+ * From RFC8341 3.4.4.  Incoming RPC Message Validation
    +---------+-----------------+---------------------+-----------------+
    | Method  | Resource class  | NETCONF operation   | Access          |
    |         |                 |                     | operation       |
@@ -874,6 +877,7 @@ nacm_match_rule(clicon_handle h,
     
     module_name = xml_find_body(xrule, "module-name");
     rpc_name = xml_find_body(xrule, "rpc-name");
+    /* XXX access_operations can be a set of bits */
     access_operations = xml_find_body(xrule, "access-operations");
     action = xml_find_body(xrule, "action");
     clicon_debug(1, "%s: %s %s %s %s", __FUNCTION__,
@@ -911,7 +915,7 @@ nacm_match_rule(clicon_handle h,
  * @retval -1  Error
  * @retval  0  Not access and cbret set
  * @retval  1  Access
- * From RFC8321 3.4.4.  Incoming RPC Message Validation
+ * From RFC8341 3.4.4.  Incoming RPC Message Validation
  */
 static int
 nacm_access(clicon_handle h,
@@ -983,7 +987,13 @@ nacm_access(clicon_handle h,
     if (username == NULL)
 	goto step10;
     /* User's group */
-    if (xpath_vec(xacm, "groups/group[user-name=%s]", &gvec, &glen, username) < 0)
+    if (xpath_vec(xacm,
+#ifdef COMPAT_XSL
+		  "groups/group[user-name=%s]",
+#else
+		  "groups/group[user-name='%s']",
+#endif
+		  &gvec, &glen, username) < 0)
 	goto done;
     /* 5. If no groups are found, continue with step 10. */
     if (glen == 0)
@@ -1000,7 +1010,13 @@ nacm_access(clicon_handle h,
 	for (j=0; j<glen; j++){
 	    char *gname;
 	    gname = xml_find_body(gvec[j], "name");
-	    if (xpath_first(xrlist,".[group=%s]", gname)!=NULL)
+	    if (xpath_first(xrlist,
+#ifdef COMPAT_XSL
+			    ".[group=%s]",
+#else
+			    ".[group='%s']",
+#endif
+			    gname)!=NULL)
 		break; /* found */
 	}
 	if (j==glen) /* not found */
@@ -1202,7 +1218,7 @@ from_client_msg(clicon_handle        h,
     }
  reply:
     if (cbuf_len(cbret) == 0)
-	if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+	if (netconf_operation_failed(cbret, "application", clicon_errno?clicon_err_reason:"unknown")< 0)
 	    goto done;
     clicon_debug(1, "%s cbret:%s", __FUNCTION__, cbuf_get(cbret));
     /* XXX problem here is that cbret has not been parsed so may contain 

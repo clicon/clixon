@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test4: Yang specifics: multi-keys and empty type
+# Yang specifics: multi-keys and empty type
 APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh
@@ -105,93 +105,101 @@ fi
 
 new "start backend -s init -f $cfg -y $fyang"
 # start new backend
-sudo clixon_backend -s init -f $cfg -y $fyang
+sudo $clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
     err
 fi
 
 new "cli defined extension"
-expectfn "$clixon_cli -1f $cfg -y $fyang show version" "3."
+expectfn "$clixon_cli -1f $cfg -y $fyang show version" 0 "3."
 
 new "cli not defined extension"
 # This text yields an error, but the test cannot detect the error message yet
-#expectfn "$clixon_cli -1f $cfg -y $fyangerr show version" "Yang error: Extension ex:not-defined not found"
+#expectfn "$clixon_cli -1f $cfg -y $fyangerr show version" 0 "Yang error: Extension ex:not-defined not found"
 
 new "netconf edit config"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><y><a>1</a><b>2</b><c>5</c><val>one</val></y><d/></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x><y><a>1</a><b>2</b><c>5</c><val>one</val></y><d/></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # text empty type in running
 new "netconf commit 2nd"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get config xpath"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=1][b=2][c=5]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><y><a>1</a><b>2</b><c>5</c><val>one</val></y></x></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=1][b=2][c=5]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><y><a>1</a><b>2</b><c>5</c><val>one</val></y></x></data></rpc-reply>]]>]]>$"
 
 new "netconf edit leaf-list"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><f><e>hej</e><e>hopp</e></f></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x><f><e>hej</e><e>hopp</e></f></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get leaf-list"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f/e\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f/e\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$"
 
+if [ -z "$COMPAT_XSL" ]; then # new
 new "netconf get leaf-list path"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f[e=hej]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f[e='hej']\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$"
+else # old
+new "netconf get leaf-list path"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f[e=hej]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$"
+fi
 
 new "netconf get (should be some)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><get><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply><data><x><y><a>1</a><b>2</b><c>5</c><val>one</val></y><d/></x></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply><data><x><y><a>1</a><b>2</b><c>5</c><val>one</val></y><d/></x></data></rpc-reply>]]>]]>$"
 
 new "cli set leaf-list"
-expectfn "$clixon_cli -1f $cfg -y $fyang set x f e foo" ""
+expectfn "$clixon_cli -1f $cfg -y $fyang set x f e foo" 0 ""
 
 new "cli show leaf-list"
-expectfn "$clixon_cli -1f $cfg -y $fyang show xpath /x/f/e" "<e>foo</e>"
+expectfn "$clixon_cli -1f $cfg -y $fyang show xpath /x/f/e" 0 "<e>foo</e>"
 new "netconf set state data (not allowed)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><state><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><state><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value"
 
 new "netconf set presence and not present"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><nopresence/><presence/></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x><nopresence/><presence/></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get presence only"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/x/*presence"/></get-config></rpc>]]>]]>' "^<rpc-reply><data><x><presence/></x></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/x/presence"/></get-config></rpc>]]>]]>' "^<rpc-reply><data><x><presence/></x></data></rpc-reply>]]>]]>$"
+
+new "netconf get presence only"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/x/nopresence"/></get-config></rpc>]]>]]>' "^<rpc-reply><data/></rpc-reply>]]>]]>$"
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf anyxml"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><any><foo><bar a=\"nisse\"/></foo></any></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x><any><foo><bar a=\"nisse\"/></foo></any></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate anyxml"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf delete candidate"
-expecteof "$clixon_netconf -qf $cfg" "<rpc><delete-config><target><candidate/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><delete-config><target><candidate/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Check 3-keys
 new "netconf add one 3-key entry"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><y><a>1</a><b>1</b><c>1</c><val>one</val></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x><y><a>1</a><b>1</b><c>1</c><val>one</val></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf check add one 3-key"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '<rpc-reply><data><x><y><a>1</a><b>1</b><c>1</c><val>one</val></y></x></data></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '<rpc-reply><data><x><y><a>1</a><b>1</b><c>1</c><val>one</val></y></x></data></rpc-reply>]]>]]>'
 
 new "netconf add another (with same 1st key)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><y><a>1</a><b>2</b><c>1</c><val>two</val></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x><y><a>1</a><b>2</b><c>1</c><val>two</val></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf check add another"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '<rpc-reply><data><x><y><a>1</a><b>1</b><c>1</c><val>one</val></y><y><a>1</a><b>2</b><c>1</c><val>two</val></y></x></data></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '<rpc-reply><data><x><y><a>1</a><b>1</b><c>1</c><val>one</val></y><y><a>1</a><b>2</b><c>1</c><val>two</val></y></x></data></rpc-reply>]]>]]>'
 
 new "netconf replace first"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><x><y><a>1</a><b>1</b><c>1</c><val>replace</val></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x><y><a>1</a><b>1</b><c>1</c><val>replace</val></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf check replace"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '<rpc-reply><data><x><y><a>1</a><b>1</b><c>1</c><val>replace</val></y><y><a>1</a><b>2</b><c>1</c><val>two</val></y></x></data></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '<rpc-reply><data><x><y><a>1</a><b>1</b><c>1</c><val>replace</val></y><y><a>1</a><b>2</b><c>1</c><val>two</val></y></x></data></rpc-reply>]]>]]>'
 
 new "netconf delete first"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" '<rpc><edit-config><target><candidate/></target><config><x><y operation="remove"><a>1</a><b>1</b><c>1</c></y></x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><x><y operation="remove"><a>1</a><b>1</b><c>1</c></y></x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf check delete"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '<rpc-reply><data><x><y><a>1</a><b>2</b><c>1</c><val>two</val></y></x></data></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '<rpc-reply><data><x><y><a>1</a><b>2</b><c>1</c><val>two</val></y></x></data></rpc-reply>]]>]]>'
 
 # Check if still alive
 pid=`pgrep clixon_backend`

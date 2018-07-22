@@ -63,7 +63,6 @@ OBJS    = $(SRC:.c=.o)
 
 all:	 $(PLUGIN)
 
--include $(DESTDIR)$(datarootdir)/clixon/clixon.mk
 
 $(PLUGIN): $(SRC)
 	$(CC) $(CPPFLAGS) $(INCLUDES) $(CFLAGS) $(LDFLAGS) -shared -o $@ -lc $^ $(LIBS)

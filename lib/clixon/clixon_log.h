@@ -62,10 +62,16 @@ extern int debug;
 int clicon_log_init(char *ident, int upto, int flags);
 int clicon_get_logflags(void);
 int clicon_log_str(int level, char *msg);
+#if defined(__GNUC__) && __GNUC__ >= 3
+int clicon_log(int level, char *format, ...) __attribute__ ((format (printf, 2, 3)));
+int clicon_debug(int dbglevel, char *format, ...) __attribute__ ((format (printf, 2, 3)));
+#else
 int clicon_log(int level, char *format, ...);
+int clicon_debug(int dbglevel, char *format, ...);
+#endif
 clicon_log_notify_t *clicon_log_register_callback(clicon_log_notify_t *cb, void *arg);
 int clicon_debug_init(int dbglevel, FILE *f);
-int clicon_debug(int dbglevel, char *format, ...);
+
 char *mon2name(int md);
 
 #endif  /* _CLIXON_LOG_H_ */

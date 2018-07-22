@@ -3,6 +3,9 @@ CLICON_MODE="example";
 CLICON_PROMPT="%U@%H> ";
 CLICON_PLUGIN="example_cli";
 
+# Translate variable "value" by incrementing its characters
+translate value (<value:string translate:incstr()>),cli_set("/translate/value");
+
 # Note, when switching to PT, change datamodel to only @datamodel
 set @datamodel:example, cli_set();
 merge @datamodel:example, cli_merge();
@@ -21,7 +24,7 @@ debug("Debugging parts of the system"), cli_debug_cli((int32)1);{
 }
 copy("Copy and create a new object") {
     interface("Copy interface"){
-	<name:string expand_dbvar("candidate","/interfaces/interface=%s/name")>("name of interface to copy from") to("Copy to interface") <toname:string>("Name of interface to copy to"), cli_copy_config("candidate","//interface[%s=%s]","name","name","toname");
+	<name:string expand_dbvar("candidate","/interfaces/interface=%s/name")>("name of interface to copy from") to("Copy to interface") <toname:string>("Name of interface to copy to"), cli_copy_config("candidate","//interface[%s='%s']","name","name","toname");
     }
 }
 discard("Discard edits (rollback 0)"), discard_changes();
@@ -36,11 +39,21 @@ show("Show a particular state of the system"){
 		     text("Show comparison in text"), compare_dbs((int32)1);
     }
     configuration("Show configuration"), cli_show_config("candidate", "text", "/");{
-	    xml("Show configuration as XML"), cli_show_config("candidate", "xml", "/");
-	    netconf("Show configuration as netconf edit-config operation"), cli_show_config("candidate", "netconf", "/");
-	    text("Show configuration as text"), cli_show_config("candidate","text","/");
-	    cli("Show configuration as cli commands"), cli_show_config("candidate", "cli", "/");
-	    json("Show configuration as cli commands"), cli_show_config("candidate", "json", "/");
+	    xml("Show configuration as XML"), cli_show_config("candidate", "xml", "/");{
+	        @datamodel:example, cli_show_auto("candidate", "text");		   
+	    }
+	    cli("Show configuration as CLI commands"), cli_show_config("candidate", "cli", "/");{
+	        @datamodel:example, cli_show_auto("candidate", "cli");
+	    }
+	    netconf("Show configuration as netconf edit-config operation"), cli_show_config("candidate", "netconf", "/");{
+	        @datamodel:example, cli_show_auto("candidate", "netconf");
+	    }
+	    text("Show configuration as text"), cli_show_config("candidate","text","/");{
+	        @datamodel:example, cli_show_auto("candidate", "text");
+	    }
+	    json("Show configuration as JSON"), cli_show_config("candidate", "json", "/");{
+	    	@datamodel:example, cli_show_auto("candidate", "json");
+	    }
     }
 }
 
@@ -50,7 +63,7 @@ load("Load configuration from XML file") <filename:string>("Filename (local file
     merge("Merge file with existent candidate"), load_config_file("filename", "merge");
 }
 example("This is a comment") <var:int32>("Just a random number"), mycallback("myarg");
-rpc("fib-route rpc") <instance:string>("routing instance"), fib_route_rpc("myarg");
+rpc("ex:fib-route rpc") <instance:string>("routing instance"), fib_route_rpc("myarg");
 notify("Get notifications from backend"), cli_notify("ROUTING", "1", "text");
 no("Negate") notify("Get notifications from backend"), cli_notify("ROUTING", "0", "xml");
 lock,cli_lock("candidate");

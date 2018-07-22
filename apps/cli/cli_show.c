@@ -123,8 +123,7 @@ expand_dbvar(void   *h,
     char            *reason = NULL;
     
     if (argv == NULL || cvec_len(argv) != 2){
-	clicon_err(OE_PLUGIN, 0, "%s: requires arguments: <db> <xmlkeyfmt>",
-		   __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "requires arguments: <db> <xmlkeyfmt>");
 	goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -132,7 +131,7 @@ expand_dbvar(void   *h,
 	goto done;
     }
     if ((cv = cvec_i(argv, 0)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: Error when accessing argument <db>");
+	clicon_err(OE_PLUGIN, 0, "Error when accessing argument <db>");
 	goto done;
     }
     dbstr  = cv_string_get(cv);
@@ -143,13 +142,13 @@ expand_dbvar(void   *h,
 	goto done;
     }
     if ((cv = cvec_i(argv, 1)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "%s: Error when accessing argument <api_path>");
+	clicon_err(OE_PLUGIN, 0, "Error when accessing argument <api_path>");
 	goto done;
     }
     api_path_fmt = cv_string_get(cv);
     /* api_path_fmt = /interface/%s/address/%s
        --> ^/interface/eth0/address/.*$
-       --> /interface/[name=eth0]/address
+       --> /interface/[name="eth0"]/address
     */
     if (api_path_fmt2xpath(api_path_fmt, cvv, &xpath) < 0)
 	goto done;
@@ -161,7 +160,7 @@ expand_dbvar(void   *h,
     	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
-	goto done;
+	goto ok; 
     }
     xcur = xt; /* default top-of-tree */
     xpathcur = xpath;
@@ -197,7 +196,7 @@ expand_dbvar(void   *h,
 		cli_output(stderr, "%s\n", reason);
 		goto done;
 	    }	    
-	    if ((xcur = xpath_first(xt, xpath)) == NULL){
+	    if ((xcur = xpath_first(xt, "%s", xpath)) == NULL){
 		clicon_err(OE_DB, 0, "xpath %s should return merged content", xpath);
 		goto done;
 	    }
@@ -205,7 +204,7 @@ expand_dbvar(void   *h,
     /* One round to detect duplicates 
      */
     j = 0;
-    if (xpath_vec(xcur, xpathcur, &xvec, &xlen) < 0) 
+    if (xpath_vec(xcur, "%s", &xvec, &xlen, xpathcur) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	char *str;
@@ -409,10 +408,6 @@ show_yang(clicon_handle h,
   yang_print(stdout, yn);
   return 0;
 }
-int show_yangv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return show_yang(h, vars, argv);
-}
 
 /*! Generic show configuration CLIGEN callback
  * Utility function used by cligen spec file
@@ -421,11 +416,11 @@ int show_yangv(clicon_handle h, cvec *vars, cvec *argv)
  * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
  * Format of argv:
  *   <dbname>  "running"|"candidate"|"startup"
- *   <dbname>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
- *   <xpath>   xpath expression, that may contain one %, eg "/sender[name=%s]"
+ *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
+ *   <xpath>   xpath expression, that may contain one %, eg "/sender[name="%s"]"
  *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
  * @code
- *   show config id <n:string>, cli_show_config("running","xml","iface[name=%s]","n");
+ *   show config id <n:string>, cli_show_config("running","xml","iface[name="%s"]","n");
  * @endcode
  */
 int
@@ -478,10 +473,11 @@ cli_show_config(clicon_handle h,
 	    if (xpath[i] == '%')
 		j++;
 	if (j != 1){
-	    clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have a single '%%'");	
+	    clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have a single '%%'",
+		       xpath);	
 	    goto done;
 	}
-	if ((cvattr = cvec_find_var(cvv, attr)) == NULL){
+	if ((cvattr = cvec_find(cvv, attr)) == NULL){
 	    clicon_err(OE_PLUGIN, 0, "attr '%s' not found in cligen var list", attr);	
 	    goto done;
 	}
@@ -565,7 +561,7 @@ show_conf_xpath(clicon_handle h,
     int              i;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires one element to be <dbname>", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires one element to be <dbname>");
 	goto done;
     }
     str = cv_string_get(cvec_i(argv, 0));
@@ -576,7 +572,7 @@ show_conf_xpath(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", str);	
 	goto done;
     }
-    cv = cvec_find_var(cvv, "xpath");
+    cv = cvec_find(cvv, "xpath");
     xpath = cv_string_get(cv);
     if (clicon_rpc_get_config(h, str, xpath, &xt) < 0)
     	goto done;
@@ -584,7 +580,7 @@ show_conf_xpath(clicon_handle h,
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
-    if (xpath_vec(xt, xpath, &xv, &xlen) < 0) 
+    if (xpath_vec(xt, "%s", &xv, &xlen, xpath) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)
 	xml_print(stdout, xv[i]);
@@ -598,13 +594,105 @@ done:
     return retval;
 }
 
-int show_confv_xpath(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return show_conf_xpath(h, vars, argv);
-}
-
 int cli_show_version(clicon_handle h, cvec *vars, cvec *argv)
 {
     cli_output(stdout, "%s\n", CLIXON_VERSION_STRING);
     return 0;
 }
+
+/*! Generic show configuration CLIGEN callback using generated CLI syntax
+ * Format of argv:
+ *   <api_path_fmt> Generated API PATH
+ *   <dbname>  "running"|"candidate"|"startup"
+ *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
+ */
+int 
+cli_show_auto(clicon_handle h,
+	      cvec         *cvv,
+	      cvec         *argv)
+{
+    int              retval = 1;
+    yang_spec       *yspec;
+    char            *api_path_fmt;  /* xml key format */
+    //    char            *api_path = NULL; /* xml key */
+    char            *db;
+    char            *xpath;
+    char            *formatstr;
+    enum format_enum format = FORMAT_XML;
+    cxobj           *xt = NULL;
+    cxobj           *xp;
+    cxobj           *xerr;
+    enum genmodel_type gt;
+
+    if (cvec_len(argv) != 3){
+	clicon_err(OE_PLUGIN, 0, "Usage: <api-path-fmt>* <database> <format>. (*) generated.");
+	goto done;
+    }
+    /* First argv argument: API_path format */
+    api_path_fmt = cv_string_get(cvec_i(argv, 0));
+    /* Second argv argument: Database */
+    db = cv_string_get(cvec_i(argv, 1));
+    /* Third format: output format */
+    formatstr = cv_string_get(cvec_i(argv, 2));
+    if ((format = format_str2int(formatstr)) < 0){
+	clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+	goto done;
+    }
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+
+    //    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
+    //	goto done;
+    if (api_path_fmt2xpath(api_path_fmt, cvv, &xpath) < 0)
+	goto done;
+    /* Get configuration from database */
+    if (clicon_rpc_get_config(h, db, xpath, &xt) < 0)
+	goto done;
+    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+	clicon_rpc_generate_error("Get configuration", xerr);
+	goto done;
+    }
+    if ((xp = xpath_first(xt, "%s", xpath)) != NULL)
+	/* Print configuration according to format */
+	switch (format){
+	case FORMAT_XML:
+	    clicon_xml2file(stdout, xp, 0, 1);
+	    break;
+	case FORMAT_JSON:
+	    xml2json(stdout, xp, 1);
+	    break;
+	case FORMAT_TEXT:
+	    xml2txt(stdout, xp, 0); /* tree-formed text */
+	    break;
+	case FORMAT_CLI:
+	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
+		goto done;
+	    xml2cli(stdout, xp, NULL, gt); /* cli syntax */
+	    break;
+	case FORMAT_NETCONF:
+	    fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
+	    clicon_xml2file(stdout, xp, 2, 1);
+	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
+	    break;
+	default: /* see cli_show_config() */
+	    break;
+	}
+    retval = 0;
+ done:
+    if (xt)
+	xml_free(xt);
+    return retval;
+}
+
+#ifdef COMPAT_CLIV
+int show_yangv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return show_yang(h, vars, argv);
+}
+int show_confv_xpath(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return show_conf_xpath(h, vars, argv);
+}
+#endif /* COMPAT_CLIV */

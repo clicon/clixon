@@ -691,8 +691,9 @@ int
 json_parse_str(char   *str, 
 	       cxobj **xt)
 {
-    if ((*xt = xml_new("top", NULL, NULL)) == NULL)
-	return -1;
+    if (*xt == NULL)
+	if ((*xt = xml_new("top", NULL, NULL)) == NULL)
+	    return -1;
     return json_parse(str, "", *xt);
 }
 
@@ -729,16 +730,14 @@ json_parse_file(int        fd,
     int   len = 0;
     
     if ((jsonbuf = malloc(jsonbuflen)) == NULL){
-	clicon_err(OE_XML, errno, "%s: malloc", __FUNCTION__);
+	clicon_err(OE_XML, errno, "malloc");
 	goto done;
     }
     memset(jsonbuf, 0, jsonbuflen);
     ptr = jsonbuf;
     while (1){
 	if ((ret = read(fd, &ch, 1)) < 0){
-	    clicon_err(OE_XML, errno, "%s: read: [pid:%d]\n", 
-		    __FUNCTION__,
-		    (int)getpid());
+	    clicon_err(OE_XML, errno, "read");
 	    break;
 	}
 	if (ret != 0)
@@ -755,7 +754,7 @@ json_parse_file(int        fd,
 	    oldjsonbuflen = jsonbuflen;
 	    jsonbuflen *= 2;
 	    if ((jsonbuf = realloc(jsonbuf, jsonbuflen)) == NULL){
-		clicon_err(OE_XML, errno, "%s: realloc", __FUNCTION__);
+		clicon_err(OE_XML, errno, "realloc");
 		goto done;
 	    }
 	    memset(jsonbuf+oldjsonbuflen, 0, jsonbuflen-oldjsonbuflen);
@@ -775,7 +774,7 @@ json_parse_file(int        fd,
 
 /*
  * Turn this on to get a json parse and pretty print test program
- * Usage: xpath
+ * Usage: json
  * read json from input
  * Example compile:
  gcc -g -o json -I. -I../clixon ./clixon_json.c -lclixon -lcligen
@@ -792,7 +791,8 @@ usage(char *argv0)
 }
 
 int
-main(int argc, char **argv)
+main(int    argc,
+     char **argv)
 {
     cxobj *xt;
     cxobj *xc;

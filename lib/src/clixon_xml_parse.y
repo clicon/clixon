@@ -43,12 +43,11 @@
 
 %token <string> NAME CHARDATA 
 %token VER ENC
-%token BSLASH ESLASH 
+%token BSLASH ESLASH
 %token BTEXT ETEXT
 %token BCOMMENT ECOMMENT 
 
-
-%type <string> attvalue attqname
+%type <string> attvalue 
 
 %lex-param     {void *_ya} /* Add this argument to parse() and lex() function */
 %parse-param   {void *_ya}
@@ -117,7 +116,7 @@ xml_parse_version(struct xml_parse_yacc_arg *ya,
 		  char                      *ver)
 {
     if(strcmp(ver, "1.0")){
-	clicon_err(OE_XML, errno, "Wrong XML version %s expected 1.0\n", ver);
+	clicon_err(OE_XML, errno, "Wrong XML version %s expected 1.0", ver);
 	free(ver);
 	return -1;
     }
@@ -125,15 +124,41 @@ xml_parse_version(struct xml_parse_yacc_arg *ya,
     return 0;
 }
 
-/*! Parse Qualified name
+/*! Parse Qualified name --> Unprefixed name
  * @param[in] ya        XML parser yacc handler struct 
  * @param[in] prefix    Prefix, namespace, or NULL
  * @param[in] localpart Name
  */
 static int
-xml_parse_qname(struct xml_parse_yacc_arg *ya,
-		char                      *prefix,
-		char                      *name)
+xml_parse_unprefixed_name(struct xml_parse_yacc_arg *ya,
+			  char                      *name)
+{
+    int        retval = -1;
+    cxobj     *x;
+    yang_stmt *y = NULL;  /* yang node */   
+    cxobj     *xp;      /* xml parent */ 
+
+    xp = ya->ya_xparent;
+    if (xml_child_spec(name, xp, ya->ya_yspec, &y) < 0)
+	goto done;
+    if ((x = xml_new(name, xp, y)) == NULL) 
+	goto done;
+    ya->ya_xelement = x;
+    retval = 0;
+ done:
+    free(name);
+    return retval;
+}
+
+/*! Parse Qualified name -> PrefixedName
+ * @param[in] ya        XML parser yacc handler struct 
+ * @param[in] prefix    Prefix, namespace, or NULL
+ * @param[in] localpart Name
+ */
+static int
+xml_parse_prefixed_name(struct xml_parse_yacc_arg *ya,
+			char                      *prefix,
+			char                      *name)
 {
     int        retval = -1;
     cxobj     *x;
@@ -197,7 +222,7 @@ xml_parse_bslash1(struct xml_parse_yacc_arg *ya,
 	goto done;
     }
     if (xml_namespace(x)!=NULL){
-	clicon_err(OE_XML, 0, "XML parse sanity check failed: %s:%s vs %s\n", 
+	clicon_err(OE_XML, 0, "XML parse sanity check failed: %s:%s vs %s", 
 		xml_namespace(x), xml_name(x), name);
 	goto done;
     }
@@ -235,7 +260,7 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
     cxobj *xc;
 
     if (strcmp(xml_name(x), name)){
-	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s\n", 
+	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s", 
 		xml_namespace(x), 
 		xml_name(x), 
 		namespace, 
@@ -244,7 +269,7 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
     }
     if (xml_namespace(x)==NULL ||
 	strcmp(xml_namespace(x), namespace)){
-	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s\n", 
+	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s", 
 		xml_namespace(x), 
 		xml_name(x), 
 		namespace, 
@@ -276,44 +301,29 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
 
 static int
 xml_parse_attr(struct xml_parse_yacc_arg *ya,
-	       char                      *qname,
+	       char                      *prefix,
+	       char                      *name,
 	       char                      *attval)
 {
     int    retval = -1;
     cxobj *xa; 
 
-    if ((xa = xml_new(qname, ya->ya_xelement, NULL)) == NULL)
+    if ((xa = xml_new(name, ya->ya_xelement, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
+    if (prefix && xml_namespace_set(xa, prefix) < 0)
+	goto done;
     if (xml_value_set(xa, attval) < 0)
 	goto done;
     retval = 0;
   done:
-    free(qname); 
+    free(name);
+    if (prefix)
+	free(prefix);
     free(attval);
     return retval;
 }
 
-/*! Parse Attribue Qualified name, Just transform prefix:name into a new string
- *
- */
-static char*
-xml_merge_attqname(struct xml_parse_yacc_arg *ya,
-		   char                      *prefix,
-		   char                      *name)
-{
-    char *str;
-    int len = strlen(prefix)+strlen(name)+2;
-
-    if ((str=malloc(len)) == NULL)
-	return NULL;
-    snprintf(str, len, "%s:%s", prefix, name);
-    free(prefix);
-    free(name);
-    return str;
-}
-
- 
 %} 
  
 %%
@@ -344,9 +354,9 @@ element     : '<' qname  attrs element1
                    { clicon_debug(3, "element -> < qname attrs element1"); }
 	      ;
 
-qname       : NAME           { if (xml_parse_qname(_YA, NULL, $1) < 0) YYABORT; 
+qname       : NAME           { if (xml_parse_unprefixed_name(_YA, $1) < 0) YYABORT; 
                                 clicon_debug(3, "qname -> NAME %s", $1);}
-            | NAME ':' NAME  { if (xml_parse_qname(_YA, $1, $3) < 0) YYABORT; 
+            | NAME ':' NAME  { if (xml_parse_prefixed_name(_YA, $1, $3) < 0) YYABORT; 
                                 clicon_debug(3, "qname -> NAME : NAME");}
             ;
 
@@ -385,14 +395,9 @@ attrs       : attrs attr
             |
             ;
 
-attr        : attqname '=' attvalue { if (xml_parse_attr(_YA, $1, $3) < 0) YYABORT; }
+attr        : NAME '=' attvalue          { if (xml_parse_attr(_YA, NULL, $1, $3) < 0) YYABORT; }
+            | NAME ':' NAME '=' attvalue { if (xml_parse_attr(_YA, $1, $3, $5) < 0) YYABORT; }
             ;
-
-attqname    : NAME   {$$ = $1;}
-            | NAME ':' NAME  
-                     { if (($$ = xml_merge_attqname(_YA, $1, $3)) == NULL) YYABORT; }
-            ;
-
 
 attvalue    : '\"' CHARDATA '\"'   { $$=$2; /* $2 must be consumed */}
             | '\"'  '\"'       { $$=strdup(""); /* $2 must be consumed */}

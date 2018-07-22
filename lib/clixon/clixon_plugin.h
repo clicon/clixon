@@ -41,7 +41,9 @@
 /*
  * Constants
  */
-/* Hardcoded plugin symbol. Must exist in all plugins to kickstart */
+/* Hardcoded plugin symbol. Must exist in all plugins to kickstart 
+ * @see clixon_plugin_init
+ */
 #define CLIXON_PLUGIN_INIT     "clixon_plugin_init" 
 
 /*
@@ -91,8 +93,9 @@ typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
 /* Plugin authorization. Set username option (or not)
  * @param[in]  Clicon handle
  * @param[in]  void*, eg Fastcgihandle request restconf
- * @retval   0 if credentials OK
- * @retval  -1 credentials not OK
+ * @retval  -1 Fatal error
+ * @retval   0 Credential not OK
+ * @retval   1 Credential OK
  */
 typedef int (plgauth_t)(clicon_handle, void *);
 
@@ -180,6 +183,7 @@ typedef struct clixon_plugin clixon_plugin;
 /*! Plugin initialization function. Must appear in all plugins
  * @param[in]  h    Clixon handle
  * @retval     api  Pointer to API struct
+ * @retval     NULL Failure (if clixon_err() called), module disabled otherwise.
  * @see CLIXON_PLUGIN_INIT  default symbol 
  */
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);

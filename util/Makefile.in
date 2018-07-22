@@ -30,47 +30,83 @@
 #
 # ***** END LICENSE BLOCK *****
 #
-VPATH       	= @srcdir@
 prefix 		= @prefix@
-exec_prefix 	= @exec_prefix@
+datarootdir	= @datarootdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
-prefix 		= @prefix@
+exec_prefix 	= @exec_prefix@
 bindir 		= @bindir@
-sbindir 	= @sbindir@
 libdir		= @libdir@
-includedir	= @includedir@
-datarootdir	= @datarootdir@
-# You may consider changing this
-image           = olofhagsand/clixon_cli
+dbdir		= @prefix@/db
+mandir		= @mandir@
+libexecdir	= @libexecdir@
+localstatedir	= @localstatedir@
+sysconfdir	= @sysconfdir@
+HOST_VENDOR     = @host_vendor@
 
-all:
-	@echo "Run make docker to build docker image"
+SH_SUFFIX	= @SH_SUFFIX@
+
+CLIXON_VERSION  = @CLIXON_VERSION@
+CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
+CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
+
+VPATH       	= @srcdir@
+CC		= @CC@
+CFLAGS  	= @CFLAGS@
+INSTALL		= @INSTALL@
+INSTALL_LIB	= @INSTALL@
+INSTALLFLAGS  	= @INSTALLFLAGS@
+LDFLAGS 	= @LDFLAGS@
+LIBS    	= @LIBS@ 
+
+CPPFLAGS  	= @CPPFLAGS@
+
+INCLUDES = -I. @INCLUDES@ -I$(top_srcdir)/lib -I$(top_srcdir)/include
+
+MYLIB        = ../lib/src/libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+
+# Utilities, unit testings. Not installed.
+APPSRC    = clixon_util_xml.c
+APPSRC   += clixon_util_json.c
+APPSRC   += clixon_util_yang.c
+APPSRC   += clixon_util_xpath.c
+
+APPS	  = $(APPSRC:.c=)
+
+all:	 $(APPS)
+
 clean:
+	rm -f $(APPS) *.core
+
+# APPS
+clixon_util_xml: clixon_util_xml.c $(MYLIB)
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $^ $(LIBS) -o $@
+
+clixon_util_json: clixon_util_json.c $(MYLIB)
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $^ $(LIBS) -o $@
+
+clixon_util_yang: clixon_util_yang.c $(MYLIB)
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $^ $(LIBS) -o $@
+
+clixon_util_xpath: clixon_util_xpath.c $(MYLIB)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $^ $(LIBS) -o $@
 
 distclean: clean
-	rm -f Makefile *~ .depend libcligen* libclixon* clixon_cli Dockerfile
+	rm -f Makefile *~ .depend
 
-# Kind of reverse install, could have copied from src dir,...
-.PHONY: docker push
-docker:	
-	cp $(DESTDIR)$(libdir)/libcligen.so.@CLIGEN_VERSION@ .
-	cp $(DESTDIR)$(libdir)/libclixon.so.@CLIXON_VERSION_MAJOR@ .
-	cp $(DESTDIR)$(libdir)/libclixon_cli.so.@CLIXON_VERSION_MAJOR@ .
-	cp $(DESTDIR)$(bindir)/clixon_cli .
-	sudo docker build -t $(image) .
+install: 
 
-push:	
-	sudo docker push $(image)
+install-include:
 
-install:
+install-lib:
 
 uninstall: 
 
-install-include:	
+TAGS:
+	find . -name '*.[ch]' -print | etags -
 
 depend:
-#	$(CC) $(DEPENDFLAGS) $(INCLUDES) $(CFLAGS) -MM $(SRC) > .depend
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(APPSRC) > .depend
 
 #include .depend
 

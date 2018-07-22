@@ -79,8 +79,8 @@
  *    string regexp checked.
  * See also db_lv_set() where defaults are also filled in. The case here for defaults
  * are if code comes via XML/NETCONF.
- * @param   yspec   Yang spec
- * @param   td      Transaction data
+ * @param[in]   yspec   Yang spec
+ * @param[in]   td      Transaction data
  */
 static int
 generic_validate(yang_spec          *yspec,

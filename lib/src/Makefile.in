@@ -45,6 +45,7 @@ sysconfdir	= @sysconfdir@
 HOST_VENDOR     = @host_vendor@
 
 SH_SUFFIX	= @SH_SUFFIX@
+
 CLIXON_VERSION  = @CLIXON_VERSION@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
@@ -52,6 +53,8 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 VPATH       	= @srcdir@
 CC		= @CC@
 CFLAGS  	= -fPIC @CFLAGS@
+INSTALL		= @INSTALL@
+INSTALL_LIB	= @INSTALL@
 INSTALLFLAGS  	= @INSTALLFLAGS@
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@ 
@@ -69,12 +72,13 @@ SRC     = clixon_sig.c clixon_log.c clixon_err.c clixon_event.c \
 	  clixon_json.c clixon_yang.c clixon_yang_type.c \
 	  clixon_hash.c clixon_options.c clixon_plugin.c \
 	  clixon_proto.c clixon_proto_client.c \
-	  clixon_xsl.c clixon_sha1.c clixon_xml_db.c clixon_netconf_lib.c
+	  clixon_xsl.c clixon_xpath.c clixon_xpath_ctx.c clixon_sha1.c \
+	  clixon_xml_db.c clixon_netconf_lib.c
 
 YACCOBJS := lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
 	    lex.clixon_yang_parse.o  clixon_yang_parse.tab.o \
-	    lex.clixon_json_parse.o  clixon_json_parse.tab.o 
-
+	    lex.clixon_json_parse.o  clixon_json_parse.tab.o \
+            lex.clixon_xpath_parse.o clixon_xpath_parse.tab.o 
 
 # Generated src 
 GENSRC  = build.c 
@@ -96,9 +100,11 @@ clean:
 	rm -f clixon_xml_parse.tab.[ch] clixon_xml_parse.yy.[co]
 	rm -f clixon_yang_parse.tab.[ch] clixon_yang_parse.[co]
 	rm -f clixon_json_parse.tab.[ch] clixon_json_parse.[co]
+	rm -f clixon_xpath_parse.tab.[ch] clixon_xpath_parse.[co]
 	rm -f lex.clixon_xml_parse.c
 	rm -f lex.clixon_yang_parse.c
 	rm -f lex.clixon_json_parse.c
+	rm -f lex.clixon_xpath_parse.c
 
 #############################################################################
 # Implicit rules for lex and yacc.
@@ -148,6 +154,18 @@ clixon_json_parse.tab.c clixon_json_parse.tab.h: clixon_json_parse.y
 lex.clixon_json_parse.o : lex.clixon_json_parse.c clixon_json_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
 
+# xpath parser
+lex.clixon_xpath_parse.c : clixon_xpath_parse.l clixon_xpath_parse.tab.h
+	$(LEX) -Pclixon_xpath_parse clixon_xpath_parse.l # -d is debug
+
+clixon_xpath_parse.tab.c clixon_xpath_parse.tab.h: clixon_xpath_parse.y
+	$(YACC) -l -d -p clixon_xpath_parse clixon_xpath_parse.y # -t is debug
+	mv y.tab.c clixon_xpath_parse.tab.c
+	mv y.tab.h clixon_xpath_parse.tab.h
+
+lex.clixon_xpath_parse.o : lex.clixon_xpath_parse.c clixon_xpath_parse.tab.h
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
+
 distclean: clean
 	rm -f Makefile *~ .depend
 
@@ -161,7 +179,6 @@ distclean: clean
 build.c:	
 	date +"const char CLIXON_BUILDSTR[64]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; > build.c;
 	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> build.c;
-
 
 $(MYLIB) : $(GENOBJS) $(OBJS) 
 ifeq ($(HOST_VENDOR),apple)
@@ -182,8 +199,8 @@ install: install-lib
 install-include:
 
 install-lib: $(MYLIB)
-	install -m 0755 -d $(DESTDIR)$(libdir)
-	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
+	$(INSTALL) -m 0755 -d $(DESTDIR)$(libdir)
+	$(INSTALL_LIB) -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
 	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon.so.3
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon.so
 

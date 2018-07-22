@@ -52,24 +52,24 @@
  *    clicon_hash_t *hash = hash_init();
  *
  *    n = 234;
- *    hash_add (hash, "APA", &n, sizeof(n));
+ *    hash_add(hash, "APA", &n, sizeof(n));
  *    hash_dump(hash, stdout);
  *
  *    puts("----");
  *
- *    hash_add (hash, "BEPA", "hoppla Polle!", strlen("hoppla Polle!")+1);
+ *    hash_add(hash, "BEPA", "hoppla Polle!", strlen("hoppla Polle!")+1);
  *    puts((char *)hash_value(hash, "BEPA", NULL));
  *    hash_dump(hash, stdout);
  *    
  *    puts("----");
  *
  *    n = 33;
- *    hash_add (hash, "CEPA", &n, sizeof(n));
+ *    hash_add(hash, "CEPA", &n, sizeof(n));
  *    hash_dump(hash, stdout);
  *
  *    puts("----");
  *    
- *    hash_del (hash, "APA");
+ *    hash_del(hash, "APA");
  *    hash_dump(hash, stdout);
  *
  *    hash_free(hash);
@@ -118,11 +118,11 @@ hash_init (void)
 {
   clicon_hash_t *hash;
 
-  if ((hash = (clicon_hash_t *)malloc (sizeof (clicon_hash_t) * HASH_SIZE)) == NULL){
+  if ((hash = (clicon_hash_t *)malloc(sizeof(clicon_hash_t) * HASH_SIZE)) == NULL){
       clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
       return NULL;
   }
-  memset (hash, 0, sizeof(clicon_hash_t)*HASH_SIZE);
+  memset(hash, 0, sizeof(clicon_hash_t)*HASH_SIZE);
   return hash;
 }
 
@@ -167,7 +167,7 @@ hash_lookup(clicon_hash_t *hash,
     h = hash[bkt];
     if (h) {
 	do {
-	    if (!strcmp (h->h_key, key))
+	    if (!strcmp(h->h_key, key))
 		return h;
 	    h = NEXTQ(clicon_hash_t, h);
 	} while (h != hash[bkt]);
@@ -218,15 +218,15 @@ hash_add(clicon_hash_t *hash,
     clicon_hash_t new = NULL;
     
     /* If variable exist, don't allocate a new. just replace value */
-    h = hash_lookup (hash, key);
+    h = hash_lookup(hash, key);
     if (h == NULL) {
-	if ((new = (clicon_hash_t)malloc (sizeof (*new))) == NULL){
+	if ((new = (clicon_hash_t)malloc(sizeof(*new))) == NULL){
 	    clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
 	    goto catch;
 	}
-	memset (new, 0, sizeof (*new));
+	memset(new, 0, sizeof(*new));
 	
-	new->h_key = strdup (key);
+	new->h_key = strdup(key);
 	if (new->h_key == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup: %s", strerror(errno));
 	    goto catch;
@@ -241,11 +241,11 @@ hash_add(clicon_hash_t *hash,
 	clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
 	goto catch;
     }
-    memcpy (newval, val, vlen);
+    memcpy(newval, val, vlen);
     
     /* Free old value if existing variable */
     if (h->h_val)
-	free (h->h_val);
+	free(h->h_val);
     h->h_val = newval;
     h->h_vlen =  vlen;
 
@@ -258,8 +258,8 @@ hash_add(clicon_hash_t *hash,
 catch:
     if (new) {
 	if (new->h_key)
-	    free (new->h_key);
-	free (new);
+	    free(new->h_key);
+	free(new);
     }
 
     return NULL;
@@ -279,15 +279,15 @@ hash_del(clicon_hash_t *hash,
 {
     clicon_hash_t h;
 
-    h = hash_lookup (hash, key);
+    h = hash_lookup(hash, key);
     if (h == NULL)
 	return -1;
     
     DELQ(h, hash[hash_bucket(key)], clicon_hash_t);
   
-    free (h->h_key);
-    free (h->h_val);
-    free (h);
+    free(h->h_key);
+    free(h->h_val);
+    free(h);
 
     return 0;
 }

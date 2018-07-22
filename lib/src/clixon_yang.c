@@ -45,11 +45,14 @@
 #include <errno.h>
 #include <limits.h>
 #include <ctype.h>
+#include <unistd.h>
 #define __USE_GNU /* strverscmp */
 #include <string.h>
 #include <arpa/inet.h>
 #include <regex.h>
 #include <dirent.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include <syslog.h>
 #include <assert.h>
 #include <sys/stat.h>
@@ -74,6 +77,8 @@
 #include "clixon_yang_type.h"
 #include "clixon_yang_parse.h"
 
+/* Size of json read buffer when reading from file*/
+#define BUFLEN 1024
 
 /* Mapping between yang keyword string <--> clicon constants */
 static const map_str2int ykmap[] = {
@@ -158,7 +163,7 @@ yspec_new(void)
     yang_spec *yspec;
 
     if ((yspec = malloc(sizeof(*yspec))) == NULL){
-	clicon_err(OE_YANG, errno, "%s: malloc", __FUNCTION__);
+	clicon_err(OE_YANG, errno, "malloc");
 	return NULL;
     }
     memset(yspec, 0, sizeof(*yspec));
@@ -176,7 +181,7 @@ ys_new(enum rfc_6020 keyw)
     yang_stmt *ys;
 
     if ((ys = malloc(sizeof(*ys))) == NULL){
-	clicon_err(OE_YANG, errno, "%s: malloc", __FUNCTION__);
+	clicon_err(OE_YANG, errno, "malloc");
 	return NULL;
     }
     memset(ys, 0, sizeof(*ys));
@@ -184,7 +189,7 @@ ys_new(enum rfc_6020 keyw)
     /* The cvec contains stmt-specific variables. Only few stmts need variables so the
        cvec could be lazily created to save some heap and cycles. */
     if ((ys->ys_cvec = cvec_new(0)) == NULL){ 
-	clicon_err(OE_YANG, errno, "%s: cvec_new", __FUNCTION__);
+	clicon_err(OE_YANG, errno, "cvec_new");
 	return NULL;
     }
     return ys;
@@ -247,7 +252,7 @@ yn_realloc(yang_node *yn)
     yn->yn_len++;
 
     if ((yn->yn_stmt = realloc(yn->yn_stmt, (yn->yn_len)*sizeof(yang_stmt *))) == 0){
-	clicon_err(OE_YANG, errno, "%s: realloc", __FUNCTION__);
+	clicon_err(OE_YANG, errno, "realloc");
 	return -1;
     }
     yn->yn_stmt[yn->yn_len - 1] = NULL; /* init field */
@@ -255,6 +260,13 @@ yn_realloc(yang_node *yn)
 }
 
 /*! Copy yang statement recursively from old to new 
+ * @param[in] ynew  New empty (but created) yang statement (to)
+ * @param[in] yold  Old existing yang statement (from)
+ * @code
+ * yang_stmt *new = ys_new(Y_LEAF);
+ * if (ys_cp(new, old) < 0)
+ *    err;
+ * @endcode
  */
 int        
 ys_cp(yang_stmt *ynew, 
@@ -269,22 +281,22 @@ ys_cp(yang_stmt *ynew,
     ynew->ys_parent = NULL;
     if (yold->ys_stmt)
 	if ((ynew->ys_stmt = calloc(yold->ys_len, sizeof(yang_stmt *))) == NULL){
-	    clicon_err(OE_YANG, errno, "%s: calloc", __FUNCTION__);
+	    clicon_err(OE_YANG, errno, "calloc");
 	    goto done;
 	}
     if (yold->ys_argument)
 	if ((ynew->ys_argument = strdup(yold->ys_argument)) == NULL){
-	    clicon_err(OE_YANG, errno, "%s: strdup", __FUNCTION__);
+	    clicon_err(OE_YANG, errno, "strdup");
 	    goto done;
 	}
     if (yold->ys_cv)
 	if ((ynew->ys_cv = cv_dup(yold->ys_cv)) == NULL){
-	    clicon_err(OE_YANG, errno, "%s: cv_dup", __FUNCTION__);
+	    clicon_err(OE_YANG, errno, "cv_dup");
 	    goto done;
 	}
     if (yold->ys_cvec)
 	if ((ynew->ys_cvec = cvec_dup(yold->ys_cvec)) == NULL){
-	    clicon_err(OE_YANG, errno, "%s: cvec_dup", __FUNCTION__);
+	    clicon_err(OE_YANG, errno, "cvec_dup");
 	    goto done;
 	}
     if (yold->ys_typecache){
@@ -304,8 +316,10 @@ ys_cp(yang_stmt *ynew,
     return retval;
 }
 
-/*! Create a new yang node and copy the contents recursively from the original. 
- *
+/*! Create a new yang node and copy the contents recursively from the original.  *
+ * @param[in] old  Old existing yang statement (from)
+ * @retval    NULL Error
+ * @retval    new  New created yang statement
  * This may involve duplicating strings, etc.
  * The new yang tree needs to be freed by ys_free().
  * The parent of new is NULL, it needs to be explicityl inserted somewhere
@@ -327,7 +341,6 @@ ys_dup(yang_stmt *old)
     }
     return new;
 }
-
 
 /*! Insert yang statement as child of a parent yang_statement, last in list 
  *
@@ -598,8 +611,8 @@ yang_find_schemanode(yang_node *yn,
 /*! Find first matching data node in all (sub)modules in a yang spec
  *
  * @param[in]  ysp        Yang specification
- * @param[in]  argument   if NULL, match any(first) argument. XXX is that really a case?
- * @param[in]  schemanode If set look for schema nodes, otherwise only data nodes
+ * @param[in]  argument   Name of node. If NULL match first
+ * @param[in]  class      See yang_class for class of yang nodes
  * A yang specification has modules as children which in turn can have 
  * syntax-nodes as children. This function goes through all the modules to
  * look for nodes. Note that if a child to a module is a choice, 
@@ -790,7 +803,7 @@ yarg_id(yang_stmt *ys)
     return id;
 }
 
-/* Assume argument is id on the type: <[prefix:]id>, return 'prefix'
+/*! Assume argument is id on the type: <[prefix:]id>, return 'prefix'
  * @param[in] ys      A yang statement
  * @retval    NULL    No prefix
  * @retval    prefix  Malloced string that needs to be freed by caller.
@@ -810,6 +823,44 @@ yarg_prefix(yang_stmt *ys)
 }
 
 
+/*! Split yang node identifier into prefix and identifer.
+ * @param[in]  node-id
+ * @param[out] prefix  Malloced string. May be NULL.
+ * @param[out] id      Malloced identifier.
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @note caller need to free id and prefix after use
+ */
+int
+yang_nodeid_split(char  *nodeid,
+		  char **prefix,
+    		  char **id)
+{
+    int   retval = -1;
+    char *str;
+    
+    if ((str = strchr(nodeid, ':')) == NULL){
+	if ((*id = strdup(nodeid)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+    }
+    else{
+	if ((*prefix = strdup(nodeid)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+	(*prefix)[str-nodeid] = '\0';
+	str++;
+	if ((*id = strdup(str)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
 
 /*! Given a yang statement and a prefix, return yang module to that prefix
  * Note, not the other module but the proxy import statement only
@@ -896,7 +947,7 @@ yang_print(FILE      *f,
     cbuf      *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_YANG, errno, "%s: cbuf_new", __FUNCTION__);
+	clicon_err(OE_YANG, errno, "cbuf_new");
 	goto done;
     }
     if (yang_print_cbuf(cb, yn, 0) < 0)
@@ -992,14 +1043,14 @@ ys_populate_leaf(yang_stmt *ys,
 	goto done;
     /* 2. Create the CV using cvtype and name it */
     if ((cv = cv_new(cvtype)) == NULL){
-	clicon_err(OE_YANG, errno, "%s: cv_new", __FUNCTION__); 
+	clicon_err(OE_YANG, errno, "cv_new"); 
 	goto done;
     }
     if (options & YANG_OPTIONS_FRACTION_DIGITS && cvtype == CGV_DEC64) /* XXX: Seems misplaced? / too specific */
 	cv_dec64_n_set(cv, fraction_digits);
 
     if (cv_name_set(cv, ys->ys_argument) == NULL){
-	clicon_err(OE_YANG, errno, "%s: cv_new_set", __FUNCTION__); 
+	clicon_err(OE_YANG, errno, "cv_new_set"); 
 	goto done;
     }
     /* 3. Check if default value. Here we parse the string in the default-stmt
@@ -1077,7 +1128,7 @@ ys_populate_range(yang_stmt *ys,
 
     yparent = ys->ys_parent;     /* Find parent: type */
     if (yparent->yn_keyword != Y_TYPE){
-	clicon_err(OE_YANG, 0, "%s: parent should be type", __FUNCTION__); 
+	clicon_err(OE_YANG, 0, "parent should be type"); 
 	goto done;
     }
     if (yang_type_resolve(ys, (yang_stmt*)yparent, &yrestype, 
@@ -1097,7 +1148,8 @@ ys_populate_range(yang_stmt *ys,
     }
     if ((maxstr = strstr(minstr, "..")) != NULL){
 	if (strlen(maxstr) < 2){
-	    clicon_err(OE_YANG, 0, "range statement: %s not on the form: <int>..<int>");
+	    clicon_err(OE_YANG, 0, "range statement: %s not on the form: <int>..<int>",
+		       ys->ys_argument);
            goto done;
        }
        minstr[maxstr-minstr] = '\0';
@@ -1160,6 +1212,8 @@ ys_populate_range(yang_stmt *ys,
 
 /*! Sanity check yang type statement
  * XXX: Replace with generic parent/child type-check
+ * @param[in] ys   The yang statement (type) to populate.
+ * @
  */
 static int
 ys_populate_type(yang_stmt *ys, 
@@ -1191,27 +1245,85 @@ ys_populate_type(yang_stmt *ys,
     return retval;
 }
 
-/*! Sanity check yang type statement
+/*! Sanity check yang identity statement recursively
+ *
+ * Find base identities if any and add this identity to derived list.
+ * Do this recursively
+ * @param[in] ys   The yang identity to populate.
+ * @param[in] arg  If set contains a derived identifier
+ * @see validate_identityref  which in runtime validates actual valoues
  */
 static int
 ys_populate_identity(yang_stmt *ys, 
 		     void      *arg)
 {
     int             retval = -1;
-    yang_stmt      *ybase;
+    yang_stmt      *yc = NULL;
+    yang_stmt      *ybaseid;
+    cg_var         *cv;
+    char           *derid;
+    char           *baseid;
+    char           *prefix = NULL;
+    cbuf           *cb = NULL;
+    char           *idref = (char*)arg;
+    char           *p;
 
-    if ((ybase = yang_find((yang_node*)ys, Y_BASE, NULL)) == NULL)
-	return 0;
-    if ((yang_find_identity(ys, ybase->ys_argument)) == NULL){
-	clicon_err(OE_YANG, 0, "Identity %s not found (base type of %s)",
-		   ybase->ys_argument, ys->ys_argument);
-	goto done;
+    if (idref == NULL){
+	/* Create derived identity through prefix:id if not recursively called*/
+	derid = ys->ys_argument; /* derived id */
+	if ((prefix = yarg_prefix(ys)) == NULL){
+	    if ((p = yang_find_myprefix(ys)) != NULL)
+		prefix = strdup(yang_find_myprefix(ys));
+	}
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new"); 
+	    goto done;
+	}
+	if (prefix)
+	    cprintf(cb, "%s:%s", prefix, derid);
+	else
+	    cprintf(cb, "%s", derid);
+	idref = cbuf_get(cb);
+    }
+    /* Iterate through all base statements and check the base identity exists 
+     * AND populate the base identity recursively
+     */
+    while ((yc = yn_each((yang_node*)ys, yc)) != NULL) {
+	if (yc->ys_keyword != Y_BASE)
+	    continue;
+	baseid = yc->ys_argument;
+	if (((ybaseid = yang_find_identity(ys, baseid))) == NULL){
+	    clicon_err(OE_YANG, 0, "No such identity: %s", baseid); 
+	    goto done;
+	}
+	//	    continue; /* root identity */
+	/* Check if derived id is already in base identifier */
+	if (cvec_find(ybaseid->ys_cvec, idref) != NULL)
+	    continue;
+	/* Add derived id to ybaseid */
+	if ((cv = cv_new(CGV_STRING)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cv_new"); 
+	    goto done;
+	}
+	/* add prefix */
+	cv_name_set(cv, idref);
+	cvec_append_var(ybaseid->ys_cvec, cv); /* cv copied */
+	if (cv){
+	    cv_free(cv);
+	    cv = NULL;
+	}
+	/* Transitive to the root */
+	if (ys_populate_identity(ybaseid, idref) < 0)
+	    goto done;
     }
     retval = 0;
   done:
+    if (prefix)
+	free(prefix);
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
-
 
 /*! Populate with cligen-variables, default values, etc. Sanity checks on complete tree.
  *
@@ -1433,7 +1545,7 @@ yang_expand(yang_node *yn)
 		size = (yn->yn_len - i - 1)*sizeof(struct yang_stmt *);
 		yn->yn_len += glen - 1;
 		if (glen && (yn->yn_stmt = realloc(yn->yn_stmt, (yn->yn_len)*sizeof(yang_stmt *))) == 0){
-		    clicon_err(OE_YANG, errno, "%s: realloc", __FUNCTION__);
+		    clicon_err(OE_YANG, errno, "realloc");
 		    return -1;
 		}
 		/* Then move all existing elements up from i+1 (not uses-stmt) */
@@ -1474,10 +1586,10 @@ yang_expand(yang_node *yn)
  * Syntax parsing. A string is input and a syntax-tree is returned (or error). 
  * A variable record is also returned containing a list of (global) variable values.
  * (cloned from cligen)
- * @param h        CLICON handle
- * @param str      String of yang statements
- * @param name     Log string, typically filename
- * @param ysp      Yang specification. Should ave been created by caller using yspec_new
+ * @param[in] h        CLICON handle
+ * @param[in] str      String of yang statements
+ * @param[in] name     Log string, typically filename
+ * @param[in] ysp      Yang specification. Should ave been created by caller using yspec_new
  * @retval ymod      Top-level yang (sub)module
  * @retval NULL    Error encountered
  * Calling order:
@@ -1488,21 +1600,22 @@ yang_expand(yang_node *yn)
  *   clixon_yang_parseparse # Actual yang parsing using yacc
  */
 static yang_stmt *
-yang_parse_str(clicon_handle h,
-	       char         *str,
+yang_parse_str(char         *str,
 	       const char   *name, /* just for errs */
 	       yang_spec    *yspec)
 {
     struct clicon_yang_yacc_arg yy = {0,};
     yang_stmt                  *ymod = NULL;
 
-    yy.yy_handle       = h; 
+    if (yspec == NULL){
+	clicon_err(OE_YANG, 0, "Yang parse need top level yang spec");
+	goto done;
+    }
     yy.yy_name         = (char*)name;
     yy.yy_linenum      = 1;
     yy.yy_parse_string = str;
     yy.yy_stack        = NULL;
     yy.yy_module       = NULL; /* this is the return value - the module/sub-module */
-
     if (ystack_push(&yy, (yang_node*)yspec) == NULL)
 	goto done;
     if (strlen(str)){ /* Not empty */
@@ -1526,18 +1639,71 @@ yang_parse_str(clicon_handle h,
     ymod = yy.yy_module;
   done:
     ystack_pop(&yy);
+    if (yy.yy_stack)
+	free (yy.yy_stack);
     return ymod;  /* top-level (sub)module */
 }
 
-/*! Read an opened file into a string and call yang string parsing
+/*! Parse yang spec from an open file descriptor
+ * @param[in]  fd    File descriptor containing the YANG file as ASCII characters
+ * @param[in] name   For debug, eg filename
+ * @param[in] ysp    Yang specification. Should ave been created by caller using yspec_new
+ * @retval ymod      Top-level yang (sub)module
+ * @retval NULL      Error 
+ */
+yang_stmt *
+yang_parse_file(int         fd,
+		const char *name,
+		yang_spec  *ysp)
+{
+    char         *buf = NULL;
+    int           i;
+    int           c;
+    int           len;
+    yang_stmt    *ymod = NULL;
+    int           ret;
+
+    len = BUFLEN; /* any number is fine */
+    if ((buf = malloc(len)) == NULL){
+	perror("pt_file malloc");
+	return NULL;
+    }
+    memset(buf, 0, len);
+    i = 0; /* position in buf */
+    while (1){ /* read the whole file */
+	if ((ret = read(fd, &c, 1)) < 0){
+	    clicon_err(OE_XML, errno, "read");
+	    break;
+	}
+	if (ret == 0)
+	    break; /* eof */
+	if (len==i){
+	    if ((buf = realloc(buf, 2*len)) == NULL){
+		clicon_err(OE_XML, errno, "realloc");
+		goto done;
+	    }	    
+	    memset(buf+len, 0, len);
+	    len *= 2;
+	}
+	buf[i++] = (char)(c&0xff);
+    } /* read a line */
+    if ((ymod = yang_parse_str(buf, name, ysp)) < 0)
+	goto done;
+  done:
+    if (buf)
+	free(buf);
+    return ymod; /* top-level (sub)module */
+}
+
+/*! Open a file, read into a string and invoke yang parsing
  *
  * Similar to clicon_yang_str(), just read a file first
  * (cloned from cligen)
- * @param h        CLICON handle
- * @param filename Name of file
- * @param ysp      Yang specification. Should ave been created by caller using yspec_new
- * @retval ymod      Top-level yang (sub)module
- * @retval NULL    Error encountered
+ * @param[in] h        CLICON handle
+ * @param[in] filename Name of file
+ * @param[in] ysp      Yang specification. Should ave been created by caller using yspec_new
+ * @retval ymod        Top-level yang (sub)module
+ * @retval NULL        Error encountered
 
  * The database symbols are inserted in alphabetical order.
  * Calling order:
@@ -1548,57 +1714,27 @@ yang_parse_str(clicon_handle h,
  *   clixon_yang_parseparse # Actual yang parsing using yacc
  */
 static yang_stmt *
-yang_parse_file(clicon_handle h,
-		const char   *filename, 
-		yang_spec    *ysp
-    )
+yang_parse_filename(const char   *filename, 
+		    yang_spec    *ysp)
 {
-    char         *buf = NULL;
-    int           i;
-    int           c;
-    int           len;
     yang_stmt    *ymod = NULL;
-    FILE         *f = NULL;
-    struct stat st;
+    int           fd = -1;
+    struct stat   st;
 
     clicon_log(LOG_DEBUG, "Parsing yang file: %s", filename);
     if (stat(filename, &st) < 0){
 	clicon_err(OE_YANG, errno, "%s not found", filename);
 	goto done;
     }
-    if ((f = fopen(filename, "r")) == NULL){
-	clicon_err(OE_UNIX, errno, "fopen(%s)", filename);	
+    if ((fd = open(filename, O_RDONLY)) < 0){
+	clicon_err(OE_YANG, errno, "open(%s)", filename);	
 	goto done;
     }
-
-    len = 1024; /* any number is fine */
-    if ((buf = malloc(len)) == NULL){
-	perror("pt_file malloc");
-	return NULL;
-    }
-    memset(buf, 0, len);
-
-    i = 0; /* position in buf */
-    while (1){ /* read the whole file */
-	if ((c =  fgetc(f)) == EOF)
-	    break;
-	if (len==i){
-	    if ((buf = realloc(buf, 2*len)) == NULL){
-		fprintf(stderr, "%s: realloc: %s\n", __FUNCTION__, strerror(errno));
-		goto done;
-	    }	    
-	    memset(buf+len, 0, len);
-	    len *= 2;
-	}
-	buf[i++] = (char)(c&0xff);
-    } /* read a line */
-    if ((ymod = yang_parse_str(h, buf, filename, ysp)) < 0)
+    if ((ymod = yang_parse_file(fd, filename, ysp)) < 0)
 	goto done;
   done:
-    if (f)
-	fclose(f);
-    if (buf)
-	free(buf);
+    if (fd != -1)
+	close(fd);
     return ymod; /* top-level (sub)module */
 }
 
@@ -1613,8 +1749,7 @@ yang_parse_file(clicon_handle h,
  * @retval -1           Error 
 */
 static int
-yang_parse_find_match(clicon_handle h, 
-		      const char   *yang_dir, 
+yang_parse_find_match(const char   *yang_dir, 
 		      const char   *module, 
 		      cbuf         *fbuf)    
 {
@@ -1658,7 +1793,7 @@ yang_parse_find_match(clicon_handle h,
  * @param[in] h        CLICON handle
  * @param[in] yang_dir Directory where all YANG module files reside
  * @param[in] module   Name of main YANG module. Or absolute file name.
- * @param[in] revision Optional module revision date
+ * @param[in] revision Module revision date or NULL
  * @param[in] ysp      Yang specification. Should have been created by caller using yspec_new
  * @retval    ymod    Top-level yang (sub)module
  * @retval    NULL    Error encountered
@@ -1671,8 +1806,7 @@ yang_parse_find_match(clicon_handle h,
  *   clixon_yang_parseparse # Actual yang parsing using yacc
  */
 static yang_stmt *
-yang_parse_recurse(clicon_handle h, 
-		   const char   *yang_dir, 
+yang_parse_recurse(const char   *yang_dir, 
 		   const char   *module, 
 		   const char   *revision, 
 		   yang_spec    *ysp)
@@ -1686,26 +1820,26 @@ yang_parse_recurse(clicon_handle h,
     int         nr;
 
     if (module[0] == '/'){
-	if ((ymod = yang_parse_file(h, module, ysp)) == NULL)
+	if ((ymod = yang_parse_filename(module, ysp)) == NULL)
 	    goto done;
     }
     else {
 	if ((fbuf = cbuf_new()) == NULL){
-	    clicon_err(OE_YANG, errno, "%s: cbuf_new", __FUNCTION__);
+	    clicon_err(OE_YANG, errno, "cbuf_new");
 	    goto done;
 	}
 	if (revision)
 	    cprintf(fbuf, "%s/%s@%s.yang", yang_dir, module, revision);
 	else{
 	    /* No specific revision, Match a yang file */
-	    if ((nr = yang_parse_find_match(h, yang_dir, module, fbuf)) < 0)
+	    if ((nr = yang_parse_find_match(yang_dir, module, fbuf)) < 0)
 		goto done;
 	    if (nr == 0){
-		clicon_err(OE_YANG, errno, "No matching %s yang files found (expected module name or absolute filename)", module);
+		clicon_err(OE_YANG, errno, "No matching %s yang files found in %s (expected module name or absolute filename)", module, yang_dir);
 		goto done;
 	    }
 	}
-	if ((ymod = yang_parse_file(h, cbuf_get(fbuf), ysp)) == NULL)
+	if ((ymod = yang_parse_filename(cbuf_get(fbuf), ysp)) == NULL)
 	    goto done;
     }
 
@@ -1720,7 +1854,7 @@ yang_parse_recurse(clicon_handle h,
 	    subrevision = NULL;
 	if (yang_find((yang_node*)ysp, Y_MODULE, modname) == NULL)
 	    /* recursive call */
-	    if (yang_parse_recurse(h, yang_dir, modname, subrevision, ysp) == NULL){
+	    if (yang_parse_recurse(yang_dir, modname, subrevision, ysp) == NULL){
 		ymod = NULL;
 		goto done;
 	    }
@@ -1779,7 +1913,7 @@ ys_schemanode_check(yang_stmt *ys,
  * @param[in] h        CLICON handle
  * @param[in] yang_dir Directory where all YANG module files reside (except mainfile)
  * @param[in] mainmod  Name of main YANG module. Or absolute file name.
- * @param[in] revision Optional main module revision date.
+ * @param[in] revision Main module revision date string or NULL
  * @param[out] ysp     Yang specification. Should ave been created by caller using yspec_new
  * @retval 0  Everything OK
  * @retval -1 Error encountered
@@ -1788,7 +1922,8 @@ ys_schemanode_check(yang_stmt *ys,
  * @note if mainmod is filename, revision is not considered.
  * Calling order:
  *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
- *   yang_parse_recurse   # Parse one yang module, go through its (sub)modules, parse them and then recursively parse them
+ *   yang_parse_recurse     # Parse one yang module, go through its (sub)modules,
+ *                            parse them and then recursively parse them
  *   yang_parse_file        # Read yang file into a string
  *   yang_parse_str         # Set up yacc parser and call it given a string
  *   clixon_yang_parseparse # Actual yang parsing using yacc
@@ -1804,7 +1939,7 @@ yang_parse(clicon_handle h,
     yang_stmt  *ymod; /* Top-level yang (sub)module */
 
     /* Step 1: parse from text to yang parse-tree. */
-    if ((ymod = yang_parse_recurse(h, yang_dir, mainmodule, revision, ysp)) == NULL)
+    if ((ymod = yang_parse_recurse(yang_dir, mainmodule, revision, ysp)) == NULL)
 	goto done;
     /* Add top module name as dbspec-name */
     clicon_dbspec_name_set(h, ymod->ys_argument);
@@ -1988,16 +2123,16 @@ schema_nodeid_vec(yang_node  *yn,
  * Assume schema nodeid:s have prefixes, (actually the first).
  * @see yang_desc_schema_nodeid
  * @see RFC7950 6.5
-   o  schema node: A node in the schema tree.  One of action, container,
-      leaf, leaf-list, list, choice, case, rpc, input, output,
-      notification, anydata, and anyxml.
+ * o  schema node: A node in the schema tree.  One of action, container,
+ *    leaf, leaf-list, list, choice, case, rpc, input, output,
+ *    notification, anydata, and anyxml.
  * Used in yang: deviation, top-level augment
  */
 int
-yang_abs_schema_nodeid(yang_spec  *yspec,
-		       char       *schema_nodeid,
+yang_abs_schema_nodeid(yang_spec    *yspec,
+		       char         *schema_nodeid,
 		       enum rfc_6020 keyword,
-		       yang_stmt **yres)
+		       yang_stmt   **yres)
 {
     int              retval = -1;
     char           **vec = NULL;
@@ -2014,13 +2149,13 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
 	goto done;
     }
     if ((vec = clicon_strsep(schema_nodeid, "/", &nvec)) == NULL){
-	clicon_err(OE_YANG, errno, "%s: strsep", __FUNCTION__); 
+	clicon_err(OE_YANG, errno, "strsep"); 
 	goto done;
     }
     /* Assume schema nodeid looks like: "/prefix:id[/prefix:id]*" */
     if (nvec < 2){
-	clicon_err(OE_YANG, 0, "%s: NULL or truncated path: %s", 
-		   __FUNCTION__, schema_nodeid);
+	clicon_err(OE_YANG, 0, "NULL or truncated path: %s", 
+		   schema_nodeid);
 	goto done;
     }
     /* split <prefix>:<id> */
@@ -2029,7 +2164,7 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
 	goto ok;
     }
     if ((prefix = strdup(vec[1])) == NULL){
-	clicon_err(OE_UNIX, errno, "%s: strdup", __FUNCTION__); 
+	clicon_err(OE_UNIX, errno, "strdup"); 
 	goto done;
     }
     prefix[id-vec[1]] = '\0';
@@ -2042,13 +2177,17 @@ yang_abs_schema_nodeid(yang_spec  *yspec,
 	}
     }
     if (ymod == NULL){ /* Try with topnode */
-
 	if ((ys = yang_find_topnode(yspec, id, YC_SCHEMANODE)) == NULL){
 	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found", prefix,id);
 	    goto done;
 	}
 	if ((ymod = ys_module(ys)) == NULL){
 	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found2", prefix,id);
+	    goto done;
+	}
+	if ((yprefix = yang_find((yang_node*)ymod, Y_PREFIX, NULL)) != NULL &&
+	    strcmp(yprefix->ys_argument, prefix) != 0){
+	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found", prefix,id);
 	    goto done;
 	}
     }
@@ -2117,7 +2256,7 @@ ys_parse(yang_stmt   *ys,
 
     assert(ys->ys_cv == NULL); /* Cv:s are parsed in different places, difficult to separate */
     if ((ys->ys_cv = cv_new(cvtype)) == NULL){
-	clicon_err(OE_YANG, errno, "%s: cv_new", __FUNCTION__); 
+	clicon_err(OE_YANG, errno, "cv_new"); 
 	goto done;
     }
     if ((cvret = cv_parse1(ys->ys_argument, ys->ys_cv, &reason)) < 0){ /* error */
@@ -2143,7 +2282,7 @@ ys_parse(yang_stmt   *ys,
  * That is, siblings, etc, may not be there. Complete checks are made in
  * ys_populate instead.
  * @param[in] ys    yang statement
- * @param[in] extra Yang extra for cornercases (unknown/extension)
+ * @param[in] extra Yang extra for cornercases (unknown/extension). 
  *
  * The cv:s created in parse-tree as follows:
  * fraction-digits : Create cv as uint8, check limits [1:8] (must be made in 1st pass)
@@ -2186,7 +2325,7 @@ ys_parse_sub(yang_stmt *ys,
 	    goto done;
 	}
 	if ((ys->ys_cv = cv_new(CGV_STRING)) == NULL){
-	    clicon_err(OE_YANG, errno, "%s: cv_new", __FUNCTION__); 
+	    clicon_err(OE_YANG, errno, "cv_new"); 
 	    goto done;
 	}
 	if ((cvret = cv_parse1(extra, ys->ys_cv, &reason)) < 0){ /* error */
@@ -2197,12 +2336,11 @@ ys_parse_sub(yang_stmt *ys,
 	    clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
 	    goto done;
 	}
-	free(extra);
 	break;
     default:
 	break;
     }
-    ok:
+ ok:
     retval = 0;
   done:
     if (prefix)
@@ -2268,9 +2406,9 @@ yang_spec_netconf(clicon_handle h)
 }
 
 /*! Read, parse and save application yang specification as option
- * @param h          clicon handle
- * @param f          file to print to (if printspec enabled)
- * @param printspec  print database (YANG) specification as read from file
+ * @param[in] h          clicon handle
+ * @param[in] f          file to print to (if printspec enabled)
+ * @param[in] printspec  print database (YANG) specification as read from file
  */
 yang_spec*
 yang_spec_main(clicon_handle h)
@@ -2280,7 +2418,7 @@ yang_spec_main(clicon_handle h)
     char           *yang_module;
     char           *yang_revision;
 
-    if ((yang_dir    = clicon_yang_dir(h)) == NULL){
+    if ((yang_dir = clicon_yang_dir(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_YANG_DIR option not set");
 	goto done;
     }

@@ -621,6 +621,7 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+CLIXON_DATADIR
 EGREP
 GREP
 LEXLIB
@@ -634,12 +635,12 @@ EXEEXT
 ac_ct_CC
 with_restconf
 RANLIB
-AR
-EXE_SUFFIX
 SH_SUFFIX
-AR_SUFFIX
-OBJ_SUFFIX
 INSTALLFLAGS
+INSTALL
+INSTALL_DATA
+INSTALL_SCRIPT
+INSTALL_PROGRAM
 CPPFLAGS
 INCLUDES
 LDFLAGS
@@ -705,6 +706,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+enable_debug
 with_cligen
 with_restconf
 with_configfile
@@ -1338,6 +1340,12 @@ fi
 if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
+
+Optional Features:
+  --disable-option-checking  ignore unrecognized --enable/--with options
+  --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
+  --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-debug          Build with debug symbols, default: no
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2147,10 +2155,11 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 : ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="6"
-CLIXON_VERSION_PATCH="1"
+CLIXON_VERSION_MINOR="7"
+CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
-# Fix to specific version (eg 3.5) or head (3)
+
+# Fix to specific CLIgen version (eg 3.5) or head (3)
 CLIGEN_VERSION="3"
 if test "$prefix" = "NONE"; then
 	CLIGEN_PREFIX="$ac_default_prefix"
@@ -2338,6 +2347,99 @@ test -n "$target_alias" &&
 
 
 
+
+# Find a good install program.  We prefer a C program (faster),
+# so one script is as good as another.  But avoid the broken or
+# incompatible versions:
+# SysV /etc/install, /usr/sbin/install
+# SunOS /usr/etc/install
+# IRIX /sbin/install
+# AIX /bin/install
+# AmigaOS /C/install, which installs bootblocks on floppy discs
+# AIX 4 /usr/bin/installbsd, which doesn't work without a -g flag
+# AFS /usr/afsws/bin/install, which mishandles nonexistent args
+# SVR4 /usr/ucb/install, which tries to use the nonexistent group "staff"
+# OS/2's system install, which has a completely different semantic
+# ./install, which can be erroneously created by make from ./install.sh.
+# Reject install programs that cannot install multiple files.
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a BSD-compatible install" >&5
+$as_echo_n "checking for a BSD-compatible install... " >&6; }
+if test -z "$INSTALL"; then
+if ${ac_cv_path_install+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    # Account for people who put trailing slashes in PATH elements.
+case $as_dir/ in #((
+  ./ | .// | /[cC]/* | \
+  /etc/* | /usr/sbin/* | /usr/etc/* | /sbin/* | /usr/afsws/bin/* | \
+  ?:[\\/]os2[\\/]install[\\/]* | ?:[\\/]OS2[\\/]INSTALL[\\/]* | \
+  /usr/ucb/* ) ;;
+  *)
+    # OSF1 and SCO ODT 3.0 have their own names for install.
+    # Don't use installbsd from OSF since it installs stuff as root
+    # by default.
+    for ac_prog in ginstall scoinst install; do
+      for ac_exec_ext in '' $ac_executable_extensions; do
+	if as_fn_executable_p "$as_dir/$ac_prog$ac_exec_ext"; then
+	  if test $ac_prog = install &&
+	    grep dspmsg "$as_dir/$ac_prog$ac_exec_ext" >/dev/null 2>&1; then
+	    # AIX install.  It has an incompatible calling convention.
+	    :
+	  elif test $ac_prog = install &&
+	    grep pwplus "$as_dir/$ac_prog$ac_exec_ext" >/dev/null 2>&1; then
+	    # program-specific install script used by HP pwplus--don't use.
+	    :
+	  else
+	    rm -rf conftest.one conftest.two conftest.dir
+	    echo one > conftest.one
+	    echo two > conftest.two
+	    mkdir conftest.dir
+	    if "$as_dir/$ac_prog$ac_exec_ext" -c conftest.one conftest.two "`pwd`/conftest.dir" &&
+	      test -s conftest.one && test -s conftest.two &&
+	      test -s conftest.dir/conftest.one &&
+	      test -s conftest.dir/conftest.two
+	    then
+	      ac_cv_path_install="$as_dir/$ac_prog$ac_exec_ext -c"
+	      break 3
+	    fi
+	  fi
+	fi
+      done
+    done
+    ;;
+esac
+
+  done
+IFS=$as_save_IFS
+
+rm -rf conftest.one conftest.two conftest.dir
+
+fi
+  if test "${ac_cv_path_install+set}" = set; then
+    INSTALL=$ac_cv_path_install
+  else
+    # As a last resort, use the slow shell script.  Don't cache a
+    # value for INSTALL within a source directory, because that will
+    # break other packages using the cache if that directory is
+    # removed, or if the value is a relative name.
+    INSTALL=$ac_install_sh
+  fi
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $INSTALL" >&5
+$as_echo "$INSTALL" >&6; }
+
+# Use test -z because SunOS4 sh mishandles braces in ${var-val}.
+# It thinks the first close brace ends the variable substitution.
+test -z "$INSTALL_PROGRAM" && INSTALL_PROGRAM='${INSTALL}'
+
+test -z "$INSTALL_SCRIPT" && INSTALL_SCRIPT='${INSTALL}'
+
+test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
 
@@ -3279,6 +3381,27 @@ CPPFLAGS="-DHAVE_CONFIG_H ${CPPFLAGS}"
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: compiler is $CC" >&5
 $as_echo "compiler is $CC" >&6; }
+# Debug flag
+# Check whether --enable-debug was given.
+if test "${enable_debug+set}" = set; then :
+  enableval=$enable_debug;
+	  if test "$enableval" = no; then
+	      ac_enable_debug=no
+	  else
+	      ac_enable_debug=yes
+          fi
+
+else
+   ac_enable_debug=no
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: debug is $ac_enable_debug" >&5
+$as_echo "debug is $ac_enable_debug" >&6; }
+if test "$ac_enable_debug" = "yes"; then
+   CFLAGS="-g -Wall"
+   INSTALLFLAGS=""
+fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: CPPFLAGS is $CPPFLAGS" >&5
 $as_echo "CPPFLAGS is $CPPFLAGS" >&6; }
@@ -3540,11 +3663,7 @@ _ACEOF
 
 fi
 
-EXE_SUFFIX=""
-OBJ_SUFFIX=".o"
-AR_SUFFIX=".a"
 SH_SUFFIX=".so"
-AR="ar"
 
 # This is for cligen
 
@@ -4190,11 +4309,12 @@ fi
 done
 
 
-# This is to find clixon system files in the source code.
-# same as clixon_DATADIR defined in clixon.mk.cpp for Makefiles
+# This is to find clixon system files in the source code and Makefile
+
+CLIXON_DATADIR="${prefix}/share/clixon"
 
 cat >>confdefs.h <<_ACEOF
-#define CLIXON_DATADIR "${prefix}/share/clixon"
+#define CLIXON_DATADIR "${CLIXON_DATADIR}"
 _ACEOF
 
 
@@ -4207,7 +4327,7 @@ _ACEOF
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/docker/Makefile extras/rpm/Makefile docker/Makefile docker/cli/Makefile docker/cli/Dockerfile docker/backend/Makefile docker/backend/Dockerfile docker/netconf/Makefile docker/netconf/Dockerfile datastore/Makefile datastore/text/Makefile yang/Makefile doc/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile extras/rpm/Makefile docker/Makefile datastore/Makefile datastore/text/Makefile util/Makefile yang/Makefile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4787,6 +4907,7 @@ gives unlimited permission to copy, distribute and modify it."
 
 ac_pwd='$ac_pwd'
 srcdir='$srcdir'
+INSTALL='$INSTALL'
 test -n "\$AWK" || AWK=awk
 _ACEOF
 
@@ -4913,17 +5034,11 @@ do
     "etc/Makefile") CONFIG_FILES="$CONFIG_FILES etc/Makefile" ;;
     "etc/clixonrc") CONFIG_FILES="$CONFIG_FILES etc/clixonrc" ;;
     "example/Makefile") CONFIG_FILES="$CONFIG_FILES example/Makefile" ;;
-    "example/docker/Makefile") CONFIG_FILES="$CONFIG_FILES example/docker/Makefile" ;;
     "extras/rpm/Makefile") CONFIG_FILES="$CONFIG_FILES extras/rpm/Makefile" ;;
     "docker/Makefile") CONFIG_FILES="$CONFIG_FILES docker/Makefile" ;;
-    "docker/cli/Makefile") CONFIG_FILES="$CONFIG_FILES docker/cli/Makefile" ;;
-    "docker/cli/Dockerfile") CONFIG_FILES="$CONFIG_FILES docker/cli/Dockerfile" ;;
-    "docker/backend/Makefile") CONFIG_FILES="$CONFIG_FILES docker/backend/Makefile" ;;
-    "docker/backend/Dockerfile") CONFIG_FILES="$CONFIG_FILES docker/backend/Dockerfile" ;;
-    "docker/netconf/Makefile") CONFIG_FILES="$CONFIG_FILES docker/netconf/Makefile" ;;
-    "docker/netconf/Dockerfile") CONFIG_FILES="$CONFIG_FILES docker/netconf/Dockerfile" ;;
     "datastore/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/Makefile" ;;
     "datastore/text/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/text/Makefile" ;;
+    "util/Makefile") CONFIG_FILES="$CONFIG_FILES util/Makefile" ;;
     "yang/Makefile") CONFIG_FILES="$CONFIG_FILES yang/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
 
@@ -5369,6 +5484,10 @@ ac_abs_srcdir=$ac_abs_top_srcdir$ac_dir_suffix
   # CONFIG_FILE
   #
 
+  case $INSTALL in
+  [\\/$]* | ?:[\\/]* ) ac_INSTALL=$INSTALL ;;
+  *) ac_INSTALL=$ac_top_build_prefix$INSTALL ;;
+  esac
 _ACEOF
 
 cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
@@ -5422,6 +5541,7 @@ s&@abs_top_srcdir@&$ac_abs_top_srcdir&;t t
 s&@builddir@&$ac_builddir&;t t
 s&@abs_builddir@&$ac_abs_builddir&;t t
 s&@abs_top_builddir@&$ac_abs_top_builddir&;t t
+s&@INSTALL@&$ac_INSTALL&;t t
 $ac_datarootdir_hack
 "
 eval sed \"\$ac_sed_extra\" "$ac_file_inputs" | $AWK -f "$ac_tmp/subs.awk" \

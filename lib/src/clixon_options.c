@@ -68,6 +68,8 @@
 #include "clixon_xml.h"
 #include "clixon_plugin.h"
 #include "clixon_xsl.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_xml_map.h"
 
 /* Mapping between Clicon startup modes string <--> constants, 
@@ -148,7 +150,7 @@ clicon_option_readfile_xml(clicon_hash_t *copt,
 	clicon_err(OE_UNIX, errno, "configure file: %s", filename);
 	return -1;
     }
-    clicon_debug(2, "Reading config file %s", __FUNCTION__, filename);
+    clicon_debug(2, "%s: Reading config file %s", __FUNCTION__, filename);
     fd = fileno(f);
     if (xml_parse_file(fd, "</clicon>", yspec, &xt) < 0)
 	goto done;
@@ -186,6 +188,7 @@ clicon_option_readfile_xml(clicon_hash_t *copt,
 /*! Initialize option values
  *
  * Set default options, Read config-file, Check that all values are set.
+ * Read clixon system config files
  * @param[in]  h  clicon handle
  */
 int
@@ -289,10 +292,10 @@ clicon_option_str_set(clicon_handle h,
 
 /*! Get options as integer but stored as string
  *
- * @param   h    clicon handle
- * @param   name name of option
- * @retval  int  An integer as aresult of atoi
- * @retval  -1   If option does not exist
+ * @param[in] h    clicon handle
+ * @param[in] name name of option
+ * @retval    int  An integer as aresult of atoi
+ * @retval    -1   If option does not exist
  * @code
  *  if (clicon_option_exists(h, "X")
  *	return clicon_option_int(h, "X");
@@ -330,10 +333,10 @@ clicon_option_int_set(clicon_handle h,
 
 /*! Get options as bool but stored as string
  *
- * @param   h    clicon handle
- * @param   name name of option
- * @retval  0    false, or does not exist, or does not have a boolean value
- * @retval  1    true
+ * @param[in] h    clicon handle
+ * @param[in] name name of option
+ * @retval    0    false, or does not exist, or does not have a boolean value
+ * @retval    1    true
  * @code
  *  if (clicon_option_exists(h, "X")
  *	return clicon_option_bool(h, "X");

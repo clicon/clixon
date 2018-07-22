@@ -158,12 +158,11 @@ slogtime(void)
 
 /*! Make a logging call to syslog (or stderr).
  *
- * This is the _only_ place the actual syslog (or stderr) logging is made in clicon,..
- * @note syslog makes itw own filtering, but if log to stderr we do it here
- * @see  clicon_debug()
- *
  * @param[in]   level log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. Thisis OR:d with facility == LOG_USER
  * @param[in]   msg   Message to print as argv.
+ * This is the _only_ place the actual syslog (or stderr) logging is made in clicon,..
+ * @note syslog makes itw own filtering, but if log to stderr we do it here
+ * @see  clicon_debug
  */
 int
 clicon_log_str(int   level, 
@@ -214,13 +213,13 @@ clicon_log_str(int   level,
 
 /*! Make a logging call to syslog using variable arg syntax.
  *
- * See also clicon_log_init() and clicon_log_str()
- *
+ * @param[in]   level    log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. This 
+ *                       is OR:d with facility == LOG_USER
+ * @param[in]   format   Message to print as argv.
  * @code
 	clicon_log(LOG_NOTICE, "%s: dump to dtd not supported", __PROGRAM__);
  * @endcode
- * @param[in]   level    log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. Thisis OR:d with facility == LOG_USER
- * @param[in]   format   Message to print as argv.
+ * @see cicon_log_init and clicon_log_str
  */
 int
 clicon_log(int   level, 

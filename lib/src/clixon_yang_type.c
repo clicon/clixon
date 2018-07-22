@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <ctype.h>
 #define __USE_GNU /* strverscmp */
@@ -354,7 +355,7 @@ clicon_type2cv(char         *origtype,
     if (restype != NULL){ 
 	yang2cv_type(restype, cvtype);
 	if (*cvtype == CGV_ERR){
-	    clicon_err(OE_DB, 0, "%s: \"%s\" type not translated", __FUNCTION__, restype);
+	    clicon_err(OE_DB, 0, "\"%s\" type not translated", restype);
 	    goto done;
 	}
     }
@@ -365,7 +366,7 @@ clicon_type2cv(char         *origtype,
 	 */
 	yang2cv_type(origtype, cvtype);
 	if (*cvtype == CGV_ERR){
-	    clicon_err(OE_DB, 0, "%s: \"%s\": type not resolved", __FUNCTION__, origtype);
+	    clicon_err(OE_DB, 0, "\"%s\": type not resolved", origtype);
 	    goto done;
 	}
     }
@@ -380,7 +381,7 @@ clicon_type2cv(char         *origtype,
      (rmax && (i) > cv_##type##_get(rmax)))
 
 
-/*!
+/*! Validate CLIgen variable
  * @retval -1  Error (fatal), with errno set to indicate error
  * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
  * @retval 1   Validation OK
@@ -399,9 +400,13 @@ cv_validate1(cg_var      *cv,
     int             retval = 1; /* OK */
     int             retval2;
     yang_stmt      *yi = NULL;
-    uint64_t        u = 0;
-    int64_t         i = 0;
+    unsigned int    u = 0;
+    int             i = 0;
     char           *str;
+    int             found;
+    char          **vec = NULL;
+    int             nvec;
+    char           *v;
 
     if (reason && *reason){
 	free(*reason);
@@ -413,7 +418,7 @@ cv_validate1(cg_var      *cv,
 	    i = cv_int8_get(cv);
 	    if (range_check(i, range_min, range_max, int8)){
 		if (reason)
-		    *reason = cligen_reason("Number out of range: %ld", i);
+		    *reason = cligen_reason("Number out of range: %d", i);
 		retval = 0;
 		break;
 	    }
@@ -424,7 +429,7 @@ cv_validate1(cg_var      *cv,
 	    i = cv_int16_get(cv);
 	    if (range_check(i, range_min, range_max, int16)){
 		if (reason)
-		    *reason = cligen_reason("Number out of range: %ld", i);
+		    *reason = cligen_reason("Number out of range: %d", i);
 		retval = 0;
 		break;
 	    }
@@ -435,29 +440,31 @@ cv_validate1(cg_var      *cv,
 	    i = cv_int32_get(cv);
 	    if (range_check(i, range_min, range_max, int32)){
 		if (reason)
-		    *reason = cligen_reason("Number out of range: %ld", i);
+		    *reason = cligen_reason("Number out of range: %d", i);
 		retval = 0;
 		break;
 	    }
 	}
 	break;
-    case CGV_INT64:
+    case CGV_INT64:{
+	int64_t i64;
 	if ((options & YANG_OPTIONS_RANGE) != 0){
-	    i = cv_int64_get(cv);
+	    i64 = cv_int64_get(cv);
 	    if (range_check(i, range_min, range_max, int64)){
 		if (reason)
-		    *reason = cligen_reason("Number out of range: %ld", i);
+		    *reason = cligen_reason("Number out of range: %" PRId64, i64);
 		retval = 0;
 		break;
 	    }
 	}
 	break;
+    }
     case CGV_UINT8:
 	if ((options & YANG_OPTIONS_RANGE) != 0){
 	    u = cv_uint8_get(cv);
 	    if (range_check(u, range_min, range_max, uint8)){
 		if (reason)
-		    *reason = cligen_reason("Number out of range: %lu", u);
+		    *reason = cligen_reason("Number out of range: %u", u);
 		retval = 0;
 		break;
 	    }
@@ -468,7 +475,7 @@ cv_validate1(cg_var      *cv,
 	    u = cv_uint16_get(cv);
 	    if (range_check(u, range_min, range_max, uint16)){
 		if (reason)
-		    *reason = cligen_reason("Number out of range: %lu", u);
+		    *reason = cligen_reason("Number out of range: %u", u);
 		retval = 0;
 		break;
 	    }
@@ -479,29 +486,31 @@ cv_validate1(cg_var      *cv,
 	    u = cv_uint32_get(cv);
 	    if (range_check(u, range_min, range_max, uint32)){
 		if (reason)
-		    *reason = cligen_reason("Number out of range: %lu", u);
+		    *reason = cligen_reason("Number out of range: %u", u);
 		retval = 0;
 		break;
 	    }
 	}
 	break;
-    case CGV_UINT64:
+    case CGV_UINT64:{
+	uint64_t u64;
 	if ((options & YANG_OPTIONS_RANGE) != 0){
-	    u = cv_uint64_get(cv);
+	    u64 = cv_uint64_get(cv);
 	    if (range_check(u, range_min, range_max, uint64)){
 		if (reason)
-		    *reason = cligen_reason("Number out of range: %lu", u);
+		    *reason = cligen_reason("Number out of range: %" PRIu64, u64);
 		retval = 0;
 		break;
 	    }
 	}
 	break;
+    }
     case CGV_DEC64:
 	if ((options & YANG_OPTIONS_RANGE) != 0){
 	    i = cv_int64_get(cv);
 	    if (range_check(i, range_min, range_max, int64)){
 		if (reason)
-		    *reason = cligen_reason("Number out of range: %ld", i);
+		    *reason = cligen_reason("Number out of range: %d", i);
 		retval = 0;
 		break;
 	    }
@@ -510,29 +519,57 @@ cv_validate1(cg_var      *cv,
     case CGV_STRING:
     case CGV_REST:
 	str = cv_string_get(cv);
-	if (restype && 
-	    (strcmp(restype, "enumeration") == 0 || strcmp(restype, "bits") == 0)){
-	    int found = 0;
-	    while ((yi = yn_each((yang_node*)yrestype, yi)) != NULL){
-		if (yi->ys_keyword != Y_ENUM && yi->ys_keyword != Y_BIT)
-		    continue;
-		if (strcmp(yi->ys_argument, str) == 0){
-		    found++;
+	if (restype){
+	    if (strcmp(restype, "enumeration") == 0){
+		found = 0;
+		while ((yi = yn_each((yang_node*)yrestype, yi)) != NULL){
+		    if (yi->ys_keyword != Y_ENUM)
+			continue;
+		    if (strcmp(yi->ys_argument, str) == 0){
+			found++;
+			break;
+		    }
+		}
+		if (!found){
+		    if (reason)
+			*reason = cligen_reason("'%s' does not match enumeration", str);
+		    retval = 0;
 		    break;
 		}
 	    }
-	    if (!found){
-		if (reason)
-		    *reason = cligen_reason("'%s' does not match enumeration", str);
-		retval = 0;
-		break;
+	    if (strcmp(restype, "bits") == 0){
+		/* The lexical representation of the bits type is a space-separated list
+		 * of the names of the bits that are set.  A zero-length string thus
+		 * represents a value where no bits are set.
+		 */
+		if ((vec = clicon_strsep(str, " \t", &nvec)) == NULL)
+		    goto done;
+		for (i=0; i<nvec; i++){
+		    if ((v = vec[i]) == NULL || !strlen(v))
+			continue;
+		    found = 0;
+		    while ((yi = yn_each((yang_node*)yrestype, yi)) != NULL){
+			if (yi->ys_keyword != Y_BIT)
+			    continue;
+			if (strcmp(yi->ys_argument, v) == 0){
+			    found++;
+			    break;
+			}
+		    }
+		    if (!found){
+			if (reason)
+			    *reason = cligen_reason("'%s' does not match enumeration", v);
+			retval = 0;
+			break;
+		    }
+		}
 	    }
 	}
 	if ((options & YANG_OPTIONS_LENGTH) != 0){
 	    u = strlen(str);
 	    if (range_check(u, range_min, range_max, uint64)){
 		if (reason)
-		    *reason = cligen_reason("string length out of range: %lu", u);
+		    *reason = cligen_reason("string length out of range: %u", u);
 		retval = 0;
 		break;
 	    }
@@ -571,9 +608,11 @@ cv_validate1(cg_var      *cv,
     case CGV_EMPTY:  /* XXX */
 	break;
     }
-
     if (reason && *reason)
 	assert(retval == 0); /* validation failed with error reason */
+ done:
+    if (vec)
+	free(vec);
     return retval;
 }
 
@@ -713,8 +752,8 @@ ys_cv_validate(cg_var    *cv,
 	if (cvtype == CGV_STRING && cv_type_get(ycv) == CGV_REST)
 	    ;
 	else {
-	    clicon_err(OE_DB, 0, "%s: Type mismatch data:%s != yang:%s", 
-		       __FUNCTION__, cv_type2str(cvtype), cv_type2str(cv_type_get(ycv)));
+	    clicon_err(OE_DB, 0, "Type mismatch data:%s != yang:%s", 
+		       cv_type2str(cvtype), cv_type2str(cv_type_get(ycv)));
 	    goto done;
 	}
     }
@@ -728,7 +767,7 @@ ys_cv_validate(cg_var    *cv,
     }
     else
 	if ((retval = cv_validate1(cv, cvtype, options, range_min, range_max, pattern,
-				yrestype, restype, reason)) < 0)
+				   yrestype, restype, reason)) < 0)
 	    goto done;
   done:
     if (cvt)
@@ -764,9 +803,9 @@ ys_typedef_up(yang_stmt *ys)
     return (yang_stmt*)ys;
 }
 
-/*! Return yang-stmt of identity
+/*! Find identity yang-stmt
   This is a sanity check of base identity of identity-ref and for identity 
-  statements.
+  statements when parsing.
 
   Return true if node is identityref and is derived from identity_name
   The derived-from() function returns true if the (first) node (in
@@ -779,12 +818,17 @@ ys_typedef_up(yang_stmt *ys)
    identityref's base identity. 
    1. (base) identity must exist (be found). This is a sanity check
      of the specification and also necessary for identity statements.
+   (This is what is dine here)
    2. Check if a given node has value derived from base identity. This is
       a run-time check necessary when validating eg netconf.
+   (This is validation)
    3. Find all valid derived identities from a identityref base identity.
-     This is for cli generation.
-   Så vad är det denna function ska göra? Svar: 1
-*/
+   (This is for cli generation)
+   * @param[in] ys        Yang spec of id statement
+   * @param[in] identity  Identity string -check if it exists
+   * @retval    0        OK
+ *  @see validate_identityref for (2) above
+ */
 yang_stmt *
 yang_find_identity(yang_stmt *ys, 
 		   char      *identity)
@@ -864,14 +908,14 @@ resolve_restrictions(yang_stmt   *yrange,
 }
 
 /*! Recursively resolve a yang type to built-in type with optional restrictions
- * @param [in]  ys       yang-stmt from where the current search is based
- * @param [in]  ytype    yang-stmt object containing currently resolving type
- * @param [out] yrestype resolved type. return built-in type or NULL. mandatory
- * @param [out] options  pointer to flags field of optional values. optional
- * @param [out] mincv    pointer to cv with min range or length. If options&YANG_OPTIONS_RANGE
- * @param [out] maxcv    pointer to cv with max range or length. If options&YANG_OPTIONS_RANGE
- * @param [out] pattern  pointer to static string of yang string pattern. optional
- * @param [out] fraction for decimal64, how many digits after period
+ * @param[in]  ys       yang-stmt from where the current search is based
+ * @param[in]  ytype    yang-stmt object containing currently resolving type
+ * @param[out] yrestype resolved type. return built-in type or NULL. mandatory
+ * @param[out] options  pointer to flags field of optional values. optional
+ * @param[out] mincv    pointer to cv with min range or length. If options&YANG_OPTIONS_RANGE
+ * @param[out] maxcv    pointer to cv with max range or length. If options&YANG_OPTIONS_RANGE
+ * @param[out] pattern  pointer to static string of yang string pattern. optional
+ * @param[out] fraction for decimal64, how many digits after period
  * @retval      0        OK. Note yrestype may still be NULL.
  * @retval     -1        Error, clicon_err handles errors
  * The setting of the options argument has the following semantics:
@@ -956,7 +1000,7 @@ yang_type_resolve(yang_stmt   *ys,
     if (rytypedef != NULL){     /* We have found a typedef */
 	/* Find associated type statement */
 	if ((rytype = yang_find((yang_node*)rytypedef, Y_TYPE, NULL)) == NULL){
-	    clicon_err(OE_DB, 0, "%s: mandatory type object is not found", __FUNCTION__);
+	    clicon_err(OE_DB, 0, "mandatory type object is not found");
 	    goto done;
 	}
 	/* recursively resolve this new type */
@@ -994,14 +1038,14 @@ yang_type_resolve(yang_stmt   *ys,
  *   if (options & YANG_OPTIONS_PATTERN != 0)
  *      printf("regexp: %s\n", pattern);
  * @endcode
- * @param [in]  ys       yang-stmt, leaf or leaf-list
- * @param [out] origtype original type may be derived or built-in
- * @param [out] yrestype pointer to resolved type stmt. should be built-in or NULL
- * @param [out] options  pointer to flags field of optional values
- * @param [out] mincv    pointer to cv of min range or length. optional
- * @param [out] maxcv    pointer to cv of max range or length. optional
- * @param [out] pattern  pointer to static string of yang string pattern. optional
- * @param [out] fraction for decimal64, how many digits after period
+ * @param[in]  ys       yang-stmt, leaf or leaf-list
+ * @param[out] origtype original type may be derived or built-in
+ * @param[out] yrestype pointer to resolved type stmt. should be built-in or NULL
+ * @param[out] options  pointer to flags field of optional values
+ * @param[out] mincv    pointer to cv of min range or length. optional
+ * @param[out] maxcv    pointer to cv of max range or length. optional
+ * @param[out] pattern  pointer to static string of yang string pattern. optional
+ * @param[out] fraction for decimal64, how many digits after period
  * @retval      0        OK, but note that restype==NULL means not resolved.
  * @retval     -1        Error, clicon_err handles errors
  * The setting of the options argument has the following semantics:
@@ -1031,7 +1075,7 @@ yang_type_get(yang_stmt    *ys,
 	*options = 0x0;
     /* Find mandatory type */
     if ((ytype = yang_find((yang_node*)ys, Y_TYPE, NULL)) == NULL){
-	clicon_err(OE_DB, 0, "%s: mandatory type object is not found", __FUNCTION__);
+	clicon_err(OE_DB, 0, "mandatory type object is not found");
 	goto done;
     }
     /* XXX: here we seem to have some problems if type is union */

@@ -101,7 +101,7 @@ object.
 /* typecast macro */
 #define _JY ((struct clicon_json_yacc_arg *)_jy)
 
-#define _YYERROR(msg) {clicon_debug(2, "YYERROR %s '%s' %d", (msg), clixon_json_parsetext, _JY->jy_linenum); YYERROR;}
+#define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_json_parsetext, _JY->jy_linenum); YYERROR;}
 
 /* add _yy to error paramaters */
 #define YY_(msgid) msgid 
@@ -139,7 +139,8 @@ extern int clixon_json_parseget_lineno  (void);
 */
 
 void 
-clixon_json_parseerror(void *_jy, char *s) 
+clixon_json_parseerror(void *_jy,
+		       char *s) 
 { 
     clicon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'", 
 	       _JY->jy_name,
@@ -192,7 +193,10 @@ json_current_clone(struct clicon_json_yacc_arg *jy)
 {
     cxobj *xn;
 
-    assert(xn = jy->jy_current);
+    if (jy->jy_current == NULL){
+	return -1;
+    }
+    xn = jy->jy_current;
     json_current_pop(jy);
     if (jy->jy_current) 
 	json_current_new(jy, xml_name(xn));
@@ -258,7 +262,7 @@ array         : '[' ']'
               ;
 
 valuelist     : value 
-              | valuelist { json_current_clone(_JY);} ',' value 
+              | valuelist { if (json_current_clone(_JY)< 0) _YYERROR("stack?");} ',' value 
               ;
 
 /* quoted string */

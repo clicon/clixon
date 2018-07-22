@@ -203,7 +203,7 @@ clicon_connect_unix(char *sockpath)
     clicon_debug(2, "%s: connecting to %s", __FUNCTION__, addr.sun_path);
     if (connect(s, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0){
 	if (errno == EACCES)
-	    clicon_err(OE_CFG, errno, "connecting unix socket: %s.\n"
+	    clicon_err(OE_CFG, errno, "connecting unix socket: %s."
 		       "Client should be member of group $CLICON_SOCK_GROUP: ", 
 		       sockpath);
 	else
@@ -273,7 +273,7 @@ msg_dump(struct clicon_msg *msg)
     for (i=0; i<ntohl(msg->op_len); i++){
 	snprintf(buf, sizeof(buf), "%s%02x", buf2, ((char*)msg)[i]&0xff);
 	if ((i+1)%32==0){
-	    clicon_debug(2, buf);
+	    clicon_debug(2, "%s", buf);
 	    snprintf(buf, sizeof(buf), "%s:", __FUNCTION__);
 	}
 	else
@@ -282,7 +282,7 @@ msg_dump(struct clicon_msg *msg)
 	strncpy(buf2, buf, sizeof(buf2));
     }
     if (i%32)
-	clicon_debug(2, buf);
+	clicon_debug(2, "%s", buf);
     return 0;
 }
 
@@ -302,7 +302,7 @@ clicon_msg_send(int                s,
 	msg_dump(msg);
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
 		 s, msg, ntohl(msg->op_len)) < 0){
-	clicon_err(OE_CFG, errno, "%s", __FUNCTION__);
+	clicon_err(OE_CFG, errno, "atomicio");
 	clicon_log(LOG_WARNING, "%s: write: %s len:%u msg:%s", __FUNCTION__,
 		   strerror(errno), ntohs(msg->op_len), msg->op_body);
 	goto done;
@@ -344,7 +344,7 @@ clicon_msg_rcv(int                s,
 	set_signal(SIGINT, atomicio_sig_handler, &oldhandler);
 
     if ((hlen = atomicio(read, s, &hdr, sizeof(hdr))) < 0){ 
-	clicon_err(OE_CFG, errno, "%s", __FUNCTION__);
+	clicon_err(OE_CFG, errno, "atomicio");
 	goto done;
     }
     if (hlen == 0){
@@ -353,7 +353,7 @@ clicon_msg_rcv(int                s,
 	goto done;
     }
     if (hlen != sizeof(hdr)){
-	clicon_err(OE_CFG, errno, "%s: header too short (%d)", __FUNCTION__, hlen);
+	clicon_err(OE_CFG, errno, "header too short (%d)", hlen);
 	goto done;
     }
     mlen = ntohl(hdr.op_len);
@@ -365,11 +365,11 @@ clicon_msg_rcv(int                s,
     }
     memcpy(*msg, &hdr, hlen);
     if ((len2 = atomicio(read, s, (*msg)->op_body, mlen - sizeof(hdr))) < 0){ 
- 	clicon_err(OE_CFG, errno, "%s: read", __FUNCTION__);
+ 	clicon_err(OE_CFG, errno, "read");
 	goto done;
     }
     if (len2 != mlen - sizeof(hdr)){
-	clicon_err(OE_CFG, errno, "%s: body too short", __FUNCTION__);
+	clicon_err(OE_CFG, errno, "body too short");
 	goto done;
     }
     if (debug > 1)
@@ -504,7 +504,7 @@ clicon_rpc(int                   s,
     if (clicon_msg_rcv(s, &reply, &eof) < 0)
 	goto done;
     if (eof){
-	clicon_err(OE_PROTO, ESHUTDOWN, "%s: Socket unexpected close", __FUNCTION__);
+	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
 	close(s);
 	errno = ESHUTDOWN;
 	goto done;

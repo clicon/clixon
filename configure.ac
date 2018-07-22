@@ -43,10 +43,11 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="6"
-CLIXON_VERSION_PATCH="1"
+CLIXON_VERSION_MINOR="7"
+CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
-# Fix to specific version (eg 3.5) or head (3) 
+
+# Fix to specific CLIgen version (eg 3.5) or head (3) 
 CLIGEN_VERSION="3" 
 if test "$prefix" = "NONE"; then
 	CLIGEN_PREFIX="$ac_default_prefix"
@@ -73,18 +74,19 @@ AC_SUBST(CLIGEN_PREFIX)
 AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION})
 
 AC_CANONICAL_TARGET
+
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(INCLUDES)
 AC_SUBST(CPPFLAGS)
+AC_PROG_INSTALL
+AC_SUBST(INSTALL)
+AC_SUBST(INSTALL_DATA)
+AC_SUBST(INSTALL_PROGRAM)
 AC_SUBST(INSTALLFLAGS)
 AC_SUBST(LIBS)
-AC_SUBST(OBJ_SUFFIX)
-AC_SUBST(AR_SUFFIX)
 AC_SUBST(SH_SUFFIX)
-AC_SUBST(EXE_SUFFIX)
-AC_SUBST(AR)
 AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
 #
@@ -94,6 +96,21 @@ AC_PROG_CPP
 CPPFLAGS="-DHAVE_CONFIG_H ${CPPFLAGS}"
 
 AC_MSG_RESULT(compiler is $CC)	
+# Debug flag
+AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[
+	  if test "$enableval" = no; then
+	      ac_enable_debug=no
+	  else	      
+	      ac_enable_debug=yes
+          fi
+        ],
+	[ ac_enable_debug=no])
+
+AC_MSG_RESULT(debug is $ac_enable_debug)	
+if test "$ac_enable_debug" = "yes"; then
+   CFLAGS="-g -Wall"
+   INSTALLFLAGS=""	
+fi
 
 AC_MSG_RESULT(CPPFLAGS is $CPPFLAGS)	
 AC_MSG_RESULT(CFLAGS is $CFLAGS)
@@ -113,11 +130,7 @@ if test "$prefix" = "NONE"; then
 fi
 
 AC_CHECK_LIB(m, main)
-EXE_SUFFIX=""
-OBJ_SUFFIX=".o"
-AR_SUFFIX=".a"
 SH_SUFFIX=".so"
-AR="ar"
 
 # This is for cligen
 AC_ARG_WITH(cligen,  [  --with-cligen=dir       Use CLIGEN here ] )
@@ -165,9 +178,10 @@ AC_CHECK_LIB(dl, dlopen)
 
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp)
 
-# This is to find clixon system files in the source code.
-# same as clixon_DATADIR defined in clixon.mk.cpp for Makefiles
-AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${prefix}/share/clixon", [Clixon data dir for system yang files etc])
+# This is to find clixon system files in the source code and Makefile
+AC_SUBST(CLIXON_DATADIR)
+CLIXON_DATADIR="${prefix}/share/clixon"
+AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${CLIXON_DATADIR}", [Clixon data dir for system yang files etc])
 
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${DEFAULT_CONFIG}",[Location for apps to find default config file])
@@ -187,18 +201,12 @@ AC_OUTPUT(Makefile
 	  etc/Makefile
 	  etc/clixonrc
 	  example/Makefile
-	  example/docker/Makefile
 	  extras/rpm/Makefile
 	  docker/Makefile 
-	  docker/cli/Makefile 
-	  docker/cli/Dockerfile
-	  docker/backend/Makefile 
-	  docker/backend/Dockerfile
-	  docker/netconf/Makefile 
-	  docker/netconf/Dockerfile
 	  datastore/Makefile
 	  datastore/text/Makefile
+  	  util/Makefile 
 	  yang/Makefile
-	  doc/Makefile 
+	  doc/Makefile
 )
 

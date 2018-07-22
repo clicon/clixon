@@ -180,7 +180,7 @@ empty(clicon_handle h,            /* Clicon handle */
  * Real code would poll state
  */
 int 
-plugin_statedata(clicon_handle h, 
+example_statedata(clicon_handle h, 
 		 char         *xpath,
 		 cxobj        *xstate)
 {
@@ -190,7 +190,7 @@ plugin_statedata(clicon_handle h,
     /* Example of (static) statedata, real code would poll state */
     if (xml_parse_string("<interfaces-state><interface>"
 			 "<name>eth0</name>"
-			 "<type>eth</type>"
+			 "<type>ex:eth</type>"
 			 "<if-index>42</if-index>"
 			 "</interface></interfaces-state>", NULL, &xstate) < 0)
 	goto done;
@@ -214,14 +214,14 @@ plugin_statedata(clicon_handle h,
  * @note This assumes example yang with interfaces/interface
  */
 int
-plugin_reset(clicon_handle h,
-	     const char   *db)
+example_reset(clicon_handle h,
+	      const char   *db)
 {
     int    retval = -1;
     cxobj *xt = NULL;
 
     if (xml_parse_string("<config><interfaces><interface>"
-			     "<name>lo</name><type>local</type>"
+			     "<name>lo</name><type>ex:loopback</type>"
 			     "</interface></interfaces></config>", NULL, &xt) < 0)
 	goto done;
     /* Replace parent w fiorst child */
@@ -250,7 +250,7 @@ plugin_reset(clicon_handle h,
  * can be processed with the standard getopt(3).
  */
 int
-plugin_start(clicon_handle h,
+example_start(clicon_handle h,
 	     int           argc,
 	     char        **argv)
 {
@@ -261,11 +261,11 @@ clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
     "example",                              /* name */    
-    clixon_plugin_init,                     /* init */
-    plugin_start,                           /* start */
+    clixon_plugin_init,                     /* init - must be called clixon_plugin_init */
+    example_start,                          /* start */
     NULL,                                   /* exit */
-    .ca_reset=plugin_reset,                 /* reset */
-    .ca_statedata=plugin_statedata,         /* statedata */
+    .ca_reset=example_reset,                /* reset */
+    .ca_statedata=example_statedata,        /* statedata */
     .ca_trans_begin=NULL,                   /* trans begin */
     .ca_trans_validate=transaction_validate,/* trans validate */
     .ca_trans_complete=NULL,                /* trans complete */

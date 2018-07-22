@@ -1,5 +1,104 @@
 # Clixon Changelog
 
+## 3.7.0 (22 July 2018)
+
+### Major New features
+
+* YANG "must" and "when" Xpath-basedconstraints according to RFC 7950 Sec 7.5.3 and 7.21.5.
+  * Must and when Xpath constrained checked at validation/commit.
+* YANG "identity" and "identityref", according to RFC 7950 Sec 7.18 and 9.10.
+  * Identities checked at validation/commit.
+  * CLI completion support of identity values.
+  * Example extended with iana-if-type RFC 7224 interface identities.
+* Improved support for XPATH 1.0 according to https://www.w3.org/TR/xpath-10 using yacc/lex,
+  * Full suport of boolean constraints for "when"/"must", not only nodesets.
+  * See also API changes below.
+* CDATA XML support (patch by David Cornejo, Netgate)
+  * Encode and decode (parsing) support 
+* Added cligen variable translation. Useful for processing input such as hashing, encryption.
+  * More info in example and FAQ.
+  * Example:
+```
+cli> translate value HAL
+cli> show configuration
+translate {
+    value IBM;
+}
+```
+### API changes on existing features (you may need to change your code)
+
+* YANG identity, identityref, must, and when validation support may cause applications that had not strictly enforced identities and constraints before.
+* Restconf operations changed from prefix to module name.
+  * Proper specification for an operation is POST /restconf/operations/<module_name>:<rpc_procedure> HTTP/1.1
+  * See https://github.com/clicon/clixon/issues/31, https://github.com/clicon/clixon/pull/32 and https://github.com/clicon/clixon/issues/30
+  * Thanks David Cornejo and Dmitry Vakhrushev of Netgate for pointing this out.
+* New XPATH 1.0 leads to some API changes and corrections
+  * Due to an error in the previous implementation, all XPATH calls on the form `x[a=str]` where `str` is a string (not a number or XML symbol), must be changed to: `x[a='str'] or x[a="str"]`
+  * This includes all calls to `xpath_vec, xpath_first`, etc.
+  * In CLI specs, calls to cli_copy_config() must change 2nd argument from `x[%s=%s]` to `x[%s='%s']`
+  * In CLI specs, calls to cli_show_config() may need to change third argument, eg
+    * `cli_show_config("running","text","/profile[name=%s]","name")` to `cli_show_config("running","text","/profile[name='%s']","name")`
+  * xpath_each() is removed
+  * The old API can be enabled by setting COMPAT_XSL in include/clixon_custom.h and recompile.
+
+* Makefile change: Removed the make include file: clixon.mk and clixon.mk.in
+  * These generated the Makefile variables: clixon_DBSPECDIR, clixon_SYSCONFDIR, clixon_LOCALSTATEDIR, clixon_LIBDIR, clixon_DATADIR which have been replaced by generic autoconf variables instead.
+
+* Removed cli callback vector functions. Set COMPAT_CLIV if you need to keep these functions in include/clixon_custom.h.
+  * Replace functions as follows in CLI SPEC files:
+  * cli_setv --> cli_set
+  * cli_mergev --> cli_merge
+  * cli_delv --> cli_del
+  * cli_debug_cliv --> cli_debug_cli
+  * cli_debug_backendv --> cli_debug_backend
+  * cli_set_modev --> cli_set_mode
+  * cli_start_shellv --> cli_start_shell
+  * cli_quitv --> cli_quit
+  * cli_commitv --> cli_commit
+  * cli_validatev --> cli_validate
+  * compare_dbsv --> compare_dbs
+  * load_config_filev --> load_config_file
+  * save_config_filev --> save_config_file
+  * delete_allv --> delete_all
+  * discard_changesv --> discard_changes
+  * cli_notifyv --> cli_notify
+  * show_yangv --> show_yang
+  * show_confv_xpath --> show_conf_xpath
+
+* Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
+
+### Minor changes
+
+* Clixon docker upgrade
+  * Updated the docker image build and example to a single clixon docker image.
+  * Example pushed to https://hub.docker.com/r/olofhagsand/clixon_example/
+* Added systemd example files under example/systemd
+* Added util subdir, with dedicated standalone xml, json, yang and xpath parser utility test programs.
+* Validation of yang bits type space-separated list value
+* Added -U <user> command line to clixon_cli and clixon_netconf for changing user.
+  * This is primarily for NACM pseudo-user tests
+* Added a generated CLI show command that works on the generated parse tree with auto completion.
+  * A typical call is: 	show @datamodel:example, cli_show_auto("candidate", "json");
+  * The example contains a more elaborate example.
+  * Thanks ngashok for request, see https://github.com/clicon/clixon/issues/24
+* Added XML namespace (xmlns) validation
+  * for eg <a xmlns:x="uri"><x:b/></a> 
+* ./configure extended with --enable-debug flag
+  * CFLAGS=-g ./configure deprecated
+
+### Corrected Bugs
+* Prefix of rpc was ignored (thanks Dmitri at netgate)
+  * https://github.com/clicon/clixon/issues/30
+* Added cli return value also for single commands (eg -1)
+* Fixed JSON unbalanced braces resulting in assert.
+
+### Known issues
+* Namespace name relabeling is not supported.
+  * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlfns is not supported, such as:
+```
+  <crypto xmlns:x="urn:example:des">x:des3</crypto>
+```
+
 ## 3.6.1 (29 May 2018)
 
 ### Corrected Bugs
@@ -452,7 +551,7 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
   Instead use the rpc calls in clixon_proto_client.[ch]
   In clients (eg cli/netconf) replace xmldb_get() in client code with 
   clicon_rpc_get_config().
-  pIf you use the vector arguments of xmldb_get(), replace as follows:
+  If you use the vector arguments of xmldb_get(), replace as follows:
     xmldb_get(h, db, api_path, &xt, &xvec, &xlen);
   with
     clicon_rpc_get_config(h, dbstr, api_path, &xt);

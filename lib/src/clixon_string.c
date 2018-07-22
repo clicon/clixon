@@ -54,7 +54,6 @@
 #include "clixon_string.h"
 #include "clixon_err.h"
 
-
 /*! Split string into a vector based on character delimiters. Using malloc
  *
  * The given string is split into a vector where the delimiter can be
@@ -63,6 +62,17 @@
  * The vector returned is one single memory block that must be freed
  * by the caller
  *
+ * @code
+ * char      **vec = NULL;
+ * int         nvec;
+ * if ((vec = clicon_strsep("/home/user/src/clixon", "/", &nvec)) == NULL)
+ *    err;
+ * for (i=0; i<nvec; i++){
+ *    v = vec[i++]; 
+ *    ...
+ * }
+ * free(vec); 
+ * @endcode
  * @param[in]   string     String to be split
  * @param[in]   delim      String of delimiter characters
  * @param[out]  nvec       Number of entries in returned vector
@@ -130,11 +140,11 @@ clicon_strjoin(int         argc,
     len += 1; /* '\0' */
     if ((str = malloc(len)) == NULL)
 	return NULL;
-    memset (str, '\0', len);
+    memset(str, '\0', len);
     for (i = 0; i < argc; i++) {
 	if (i != 0)
-	    strncat (str, delim, len - strlen(str));
-	strncat (str, argv[i], len - strlen(str));
+	    strncat(str, delim, len - strlen(str));
+	strncat(str, argv[i], len - strlen(str));
     }
     return str;
 }
@@ -287,31 +297,56 @@ xml_chardata_encode(char  *str,
     int   l;
     int   len;
     int   i, j;
+    int   cdata; /* when set, skip encoding */
     
-    len = 0;
+    /* First compute length (do nothing) */
+    len = 0; cdata = 0;
     for (i=0; i<strlen(str); i++){
-	switch (str[i]){
-	case '&':
-	    len += strlen("&amp; ");
-	    break;
-	case '<':
-	    len += strlen("&lt; ");
-	    break;
-	case '>':
-	    len += strlen("&gt; ");
-	    break;
-	default:
+	if (cdata){
+	    if (strncmp(&str[i], "]]>", strlen("]]>")) == 0)
+		cdata = 0;
 	    len++;
 	}
+	else
+	    switch (str[i]){
+	    case '&':
+		len += strlen("&amp; ");
+		break;
+	    case '<':
+		if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+		    len++;
+		    cdata++;
+		}
+		else
+		    len += strlen("&lt; ");
+		break;
+	    case '>':
+		len += strlen("&gt; ");
+		break;
+	    default:
+		len++;
+	    }
     }
     len++; /* trailing \0 */
+    /* We know length, allocate encoding buffer  */
     if ((esc = malloc(len)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc"); 
 	goto done;
     }
     memset(esc, 0, len);
-    j = 0;
+
+    /* Same code again, but now actually encode into output buffer */
+    j = 0; cdata = 0;
     for (i=0; i<strlen(str); i++){
+	if (cdata){
+	    if (strncmp(&str[i], "]]>", strlen("]]>")) == 0){
+		cdata = 0;
+		esc[j++] = str[i++];
+		esc[j++] = str[i++];
+	    }
+	    esc[j++] = str[i];
+	}
+	else
 	switch (str[i]){
 	case '&':
 	    if ((l=snprintf(&esc[j], 7, "&amp; ")) < 0){
@@ -321,6 +356,11 @@ xml_chardata_encode(char  *str,
 	    j += l;
 	    break;
 	case '<':
+	    if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+		esc[j++] = str[i];
+		cdata++;
+		break;
+	    }
 	    if ((l=snprintf(&esc[j], 6, "&lt; ")) < 0){
 		clicon_err(OE_UNIX, errno, "snprintf");
 		goto done;
@@ -478,21 +518,21 @@ clicon_str2int(const map_str2int *mstab,
  */
 #ifndef HAVE_STRNDUP
 char *
-clicon_strndup (const char *str, 
-		size_t      len)
+clicon_strndup(const char *str, 
+	       size_t      len)
 {
   char *new;
   size_t slen;
 
-  slen  = strlen (str);
+  slen  = strlen(str);
   len = (len < slen ? len : slen);
 
-  new = malloc (len + 1);
+  new = malloc(len + 1);
   if (new == NULL)
     return NULL;
 
   new[len] = '\0';
-  memcpy (new, str, len);
+  memcpy(new, str, len);
 
   return new;
 }

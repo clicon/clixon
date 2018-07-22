@@ -1,0 +1,36 @@
+node {
+     stage('Checkout') {
+        git url: 'https://github.com/clicon/clixon.git'
+        checkout scm
+     }
+
+     stage('Configure') {
+        /* `make check` returns non-zero on test failures,
+        * using `true` to allow the Pipeline to continue nonetheless
+        */
+        sh 'make clean'
+        sh './configure'
+     }
+
+     stage('Make') {
+        /* `make check` returns non-zero on test failures,
+        * using `true` to allow the Pipeline to continue nonetheless
+        */
+        sh 'make'
+     }
+     stage('Make install') {
+        sh 'sudo make install'
+     }
+     stage('Make install-include') {
+        sh 'sudo make install-include'
+     }
+     stage('Make Example') {
+        sh 'cd example'
+        sh 'make'
+        sh 'sudo make install'	
+     }
+     stage('Testing') {
+        sh 'cd test'
+        sh './all.sh'
+     }        
+}

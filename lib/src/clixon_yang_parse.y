@@ -260,7 +260,7 @@ ysp_add(struct clicon_yang_yacc_arg *yy,
 	clicon_err(OE_YANG, errno, "No stack");
 	goto err;
     }
-    yn = ystack->ys_node;
+    assert(yn = ystack->ys_node);
     if ((ys = ys_new(keyword)) == NULL)
 	goto err;
     /* NOTE: does not make a copy of string, ie argument is 'consumed' here */
@@ -343,8 +343,9 @@ unknown_stmt  : ustring  ':' ustring ';'
 	       }
               | ustring  ':' ustring ' ' string ';'
                { char *id; if ((id=prefix_id_join($1, $3)) == NULL) _YYERROR("0");
-		   if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL) _YYERROR("0"); 
+		   if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL){ _YYERROR("0"); }
 		   clicon_debug(2,"unknown-stmt -> ustring : ustring string");
+                   if ($5) free($5);
 	       }
 	      ;
 

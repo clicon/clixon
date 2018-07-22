@@ -46,6 +46,8 @@ static const map_str2int atmap[] = {
     {NULL,               -1}
 };
  * @endcode
+ * @see clicon_int2str
+ * @see clicon_str2int
  */
 struct map_str2int{
     char         *ms_str;

@@ -69,7 +69,7 @@ typedef struct xml cxobj; /* struct defined in clicon_xml.c */
  * @retval     1    Abort, dont continue with others
  * @retval     2    Locally, just abort this subtree, continue with others
  */
-typedef int (xml_applyfn_t)(cxobj *yn, void *arg);
+typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 
 /*
  * xml_flag() flags:
@@ -79,6 +79,7 @@ typedef int (xml_applyfn_t)(cxobj *yn, void *arg);
 #define XML_FLAG_DEL    0x04  /* Node is deleted (commits) or parent deleted rec */
 #define XML_FLAG_CHANGE 0x08  /* Node is changed (commits) or child changed rec */
 #define XML_FLAG_NONE   0x10  /* Node is added as NONE */
+
 
 /* Sort and binary search of XML children
  * Experimental
@@ -105,9 +106,6 @@ int       xml_value_set(cxobj *xn, char *val);
 char     *xml_value_append(cxobj *xn, char *val);
 enum cxobj_type xml_type(cxobj *xn);
 int       xml_type_set(cxobj *xn, enum cxobj_type type);
-
-cg_var   *xml_cv_get(cxobj *xn);
-int       xml_cv_set(cxobj  *xn, cg_var *cv);
 
 int       xml_child_nr(cxobj *xn);
 int       xml_child_nr_type(cxobj *xn, enum cxobj_type type);

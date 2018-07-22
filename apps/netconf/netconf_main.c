@@ -71,7 +71,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hDqf:d:Sy:"
+#define NETCONF_OPTS "hDqf:d:Sy:U:"
 
 /*! Process incoming packet 
  * @param[in]   h    Clicon handle
@@ -134,6 +134,12 @@ process_incoming_packet(clicon_handle h,
 	    if ((cbret = cbuf_new()) != NULL){
 		if ((xc = xml_child_i(xret,0))!=NULL){
 		    xa=NULL;
+		    /* Copy message-id attribute from incoming to reply. 
+		     * RFC 6241:
+		     * If additional attributes are present in an <rpc> element, a NETCONF
+		     * peer MUST return them unmodified in the <rpc-reply> element.  This
+		     * includes any "xmlns" attributes.
+		     */
 		    while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
 			if ((xa2 = xml_dup(xa)) ==NULL)
 			    goto done;
@@ -182,7 +188,7 @@ netconf_input_cb(int   s,
     int           poll;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "%s: cbuf_new", __FUNCTION__);
+	clicon_err(OE_XML, errno, "cbuf_new");
 	return retval;
     }
     memset(buf, 0, sizeof(buf));
@@ -292,7 +298,8 @@ usage(clicon_handle h,
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
 	    "\t-S\t\tLog on syslog\n"
-	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n",
+	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
+	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n",
 	    argv0,
 	    clicon_netconf_dir(h)
 	    );
@@ -379,6 +386,12 @@ main(int    argc,
 	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
 	    break;
 	}
+	case 'U': /* Clixon 'pseudo' user */
+	    if (!strlen(optarg))
+		usage(h, argv[0]);
+	    if (clicon_username_set(h, optarg) < 0)
+		goto done;
+	    break;
 	default:
 	    usage(h, argv[0]);
 	    break;

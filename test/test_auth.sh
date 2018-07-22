@@ -1,6 +1,6 @@
 #!/bin/bash
 # Authentication and authorization and IETF NACM
-# See RFC 8321 A.2
+# See RFC 8341 A.2
 # But replaced ietf-netconf-monitoring with *
 
 APPNAME=example
@@ -131,7 +131,7 @@ fi
 
 new "start backend -s init -f $cfg -y $fyang"
 # start new backend
-sudo clixon_backend -s init -f $cfg -y $fyang
+sudo $clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
     err
 fi
@@ -152,10 +152,10 @@ expecteq "$(curl -u adm1:bar -sS -X GET http://localhost/restconf/data)" '{"data
 '
 
 new "auth set authentication config"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "commit it"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new2 "auth get (no user: access denied)"
 expecteq "$(curl -sS -X GET -H \"Accept:\ application/yang-data+json\" http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
@@ -195,6 +195,7 @@ expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
+new "Kill backend"
 pid=`pgrep clixon_backend`
 if [ -z "$pid" ]; then
     err "backend already dead"

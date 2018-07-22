@@ -2,7 +2,12 @@
 
 ### Installation using Nginx
 
-Define nginx config file/etc/nginx/sites-available/default
+Ensure www-data is member of the CLICON_SOCK_GROUP (default clicon). If not, add it:
+```
+  sudo usermod -a -G clicon www-data
+```
+
+Define nginx config file: /etc/nginx/sites-available/default
 ```
 server {
   ...
@@ -16,6 +21,11 @@ server {
 Start nginx daemon
 ```
 sudo /etc/init.d nginx start
+```
+Alternatively, start it via systemd:
+```
+sudo /etc/init.d/nginx start
+sudo systemctl start start.service
 ```
 
 Start clixon restconf daemon

@@ -83,6 +83,8 @@
 #include "clixon_options.h"
 #include "clixon_xml.h"
 #include "clixon_plugin.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_xsl.h"
 #include "clixon_log.h"
 #include "clixon_err.h"
@@ -226,7 +228,7 @@ xml2cli(FILE              *f,
     return retval;
 }
 
-/*! Validate an xml node of type leafref, ensure the value is one of that path's reference
+/*! Validate xml node of type leafref, ensure the value is one of that path's reference
  * @param[in]  xt    XML leaf node of type leafref
  * @param[in]  ytype Yang type statement belonging to the XML node
  */
@@ -249,7 +251,7 @@ validate_leafref(cxobj     *xt,
 	clicon_err(OE_DB, 0, "Leafref %s requires path statement", ytype->ys_argument);
 	goto done;
     }
-    if (xpath_vec(xt, ypath->ys_argument, &xvec, &xlen) < 0) 
+    if (xpath_vec(xt, "%s", &xvec, &xlen, ypath->ys_argument) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	x = xvec[i];
@@ -267,6 +269,72 @@ validate_leafref(cxobj     *xt,
  done:
     if (xvec)
 	free(xvec);
+    return retval;
+}
+
+/*! Validate xml node of type identityref, ensure value is a defined identity
+ * Check if a given node has value derived from base identity. This is
+ * a run-time check necessary when validating eg netconf.
+ * Valid values for an identityref are any identities derived from all
+ * the identityref's base identities.
+ * Example:
+ * b0 --> b1 --> b2  (b1 & b2 are derived)
+ * identityref b2
+ *   base b0;
+ * This function does: derived_from(b2, b0);
+ * @param[in]  xt    XML leaf node of type identityref
+ * @param[in]  ys    Yang spec of leaf
+ * @param[in]  ytype Yang type field of type identityref
+ * @see ys_populate_identity where the derived types are set
+ * @see RFC7950 Sec 9.10.2:
+
+ */
+static int
+validate_identityref(cxobj     *xt,
+		     yang_stmt *ys,
+		     yang_stmt *ytype)
+{
+    int         retval = -1;
+    char       *node;
+    yang_stmt  *ybaseref; /* This is the type's base reference */
+    yang_stmt  *ybaseid;
+    char       *prefix = NULL;
+    cbuf       *cb = NULL;
+
+    /* Get idref value. Then see if this value is derived from ytype.
+     * Always add default prefix because derived identifiers are stored with
+     * prefixes in the base identifiers derived-list.
+     */
+    if ((node = xml_body(xt)) == NULL)
+	return 0;
+    if (strchr(node, ':') == NULL){
+	prefix = yang_find_myprefix(ys);
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new"); 
+	    goto done;
+	}
+	cprintf(cb, "%s:%s", prefix, node);
+	node = cbuf_get(cb);
+    }
+    /* This is the type's base reference */
+    if ((ybaseref = yang_find((yang_node*)ytype, Y_BASE, NULL)) == NULL){
+	clicon_err(OE_DB, 0, "Identityref validation failed, no base");
+	goto done;
+    }
+    /* This is the actual base identity */
+    if ((ybaseid = yang_find_identity(ybaseref, ybaseref->ys_argument)) == NULL){
+	clicon_err(OE_DB, 0, "Identityref validation failed, no base identity");
+	goto done;
+    }
+    /* Here check if node is in the derived node list of the base identity */
+    if (cvec_find(ybaseid->ys_cvec, node) == NULL){
+	clicon_err(OE_DB, 0, "Identityref validation failed, %s not derived from %s", node, ybaseid->ys_argument);
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
@@ -360,27 +428,90 @@ xml_yang_validate_all(cxobj   *xt,
 		      void    *arg)
 {
     int        retval = -1;
-    yang_stmt *ys;
-    yang_stmt *ytype;
+    yang_stmt *ys;  /* yang node */
+    yang_stmt *yc;  /* yang child */
+    yang_stmt *ye;  /* yang must error-message */
+    char      *xpath;
+    int        nr;
     
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((ys = xml_spec(xt)) != NULL &&
 	yang_config(ys) != 0){
+	/* Node-specific validation */
 	switch (ys->ys_keyword){
 	case Y_LEAF:
 	    /* fall thru */
 	case Y_LEAF_LIST:
 	    /* Special case if leaf is leafref, then first check against
 	       current xml tree
-	    */
-	    if ((ytype = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL &&
-		strcmp(ytype->ys_argument, "leafref") == 0)
-		if (validate_leafref(xt, ytype) < 0)
-		    goto done;
+ 	    */
+	    if ((yc = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL){
+		if (strcmp(yc->ys_argument, "leafref") == 0){
+		    if (validate_leafref(xt, yc) < 0)
+			goto done;
+		}
+		else if (strcmp(yc->ys_argument, "identityref") == 0){
+		    if (validate_identityref(xt, ys, yc) < 0)
+			goto done;
+		}
+	    }
+	    if ((yc = yang_find((yang_node*)ys, Y_MIN_ELEMENTS, NULL)) != NULL){
+		/* The behavior of the constraint depends on the type of the 
+		 * leaf-list's or list's closest ancestor node in the schema tree 
+		 * that is not a non-presence container (see Section 7.5.1):
+		 * o If no such ancestor exists in the schema tree, the constraint
+		 * is enforced.
+		 * o Otherwise, if this ancestor is a case node, the constraint is
+		 * enforced if any other node from the case exists.
+		 * o  Otherwise, it is enforced if the ancestor node exists.
+		 */
+#if 0
+		cxobj     *xp;
+		cxobj     *x;
+		int        i;
+
+		if ((xp = xml_parent(xt)) != NULL){
+		    nr = atoi(yc->ys_argument);
+		    x = NULL;
+		    i = 0;
+		    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL)
+			i++;
+		}
+#endif
+		}
+	    if ((yc = yang_find((yang_node*)ys, Y_MAX_ELEMENTS, NULL)) != NULL){
+		
+	    }
 	    break;
 	default:
 	    break;
+	}
+	/* must sub-node RFC 7950 Sec 7.5.3. Can be several. */
+	yc = NULL;
+	while ((yc = yn_each((yang_node*)ys, yc)) != NULL) {
+	    if (yc->ys_keyword != Y_MUST)
+		continue;
+	    xpath = yc->ys_argument; /* "must" has xpath argument */
+	    if ((nr = xpath_vec_bool(xt, "%s", xpath)) < 0)
+		goto done;
+	    if (!nr){
+		if ((ye = yang_find((yang_node*)yc, Y_ERROR_MESSAGE, NULL)) != NULL)
+		    clicon_err(OE_DB, 0, "%s", ye->ys_argument);
+		else
+		    clicon_err(OE_DB, 0, "xpath %s validation failed", xml_name(xt));
+		goto done;
+	    }
+	}
+	/* "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
+	if ((yc = yang_find((yang_node*)ys, Y_WHEN, NULL)) != NULL){
+	    xpath = yc->ys_argument; /* "when" has xpath argument */
+	    if ((nr = xpath_vec_bool(xt, "%s", xpath)) < 0)
+		goto done;
+	    if (!nr){
+		clicon_err(OE_DB, 0, "xpath %s validation failed", xml_name(xt));
+		goto done;
+	    }
 	}
     }
     retval = 0;
@@ -394,6 +525,7 @@ xml_yang_validate_all(cxobj   *xt,
  * @param[out] cvv  CLIgen variable vector. Should be freed by cvec_free()
  * @retval     0    Everything OK, cvv allocated and set
  * @retval    -1    Something wrong, clicon_err() called to set error. No cvv returned
+ * @note  cvv Should be freed by cvec_free() after use.
  * 'Not recursive' means that only one level of XML bodies is translated to cvec:s.
  * If range is wriong (eg 1000 for uint8) a warning is logged, the value is 
  * skipped, and continues.
@@ -426,7 +558,7 @@ xml2cvec(cxobj      *xt,
     char             *name;
 
     xc = NULL;
-    /* Tried to allocate whole cvv here,but some cg_vars may be invalid */
+    /* Tried to allocate whole cvv here, but some cg_vars may be invalid */
     if ((cvv = cvec_new(0)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto err;
@@ -913,7 +1045,7 @@ api_path_fmt2api_path(char  *api_path_fmt,
  * @example
  *   api_path_fmt:  /interface/%s/address/%s 
  *   cvv:           name=eth0
- *   xpath:         /interface/[name=eth0]/address
+ *   xpath:         /interface/[name='eth0']/address
  * @example
  *   api_path_fmt:  /ip/me/%s (if key)
  *   cvv:           -
@@ -956,7 +1088,13 @@ api_path_fmt2xpath(char  *api_path_fmt,
 		    clicon_err(OE_UNIX, errno, "cv2str_dup");
 		    goto done;
 		}
-		cprintf(cb, "[%s=%s]", cv_name_get(cv), str);
+		cprintf(cb,
+#ifdef COMPAT_XSL
+			"[%s=%s]",
+#else
+			"[%s='%s']",
+#endif
+			cv_name_get(cv), str);
 		free(str);
 	    }
 	}
@@ -1301,7 +1439,6 @@ xml_spec_populate(cxobj  *x,
     return retval;
 }
 
-
 /*! Translate from restconf api-path in cvv form to xml xpath
  * eg a/b=c -> a/[b=c] 
  * @param[in]  yspec Yang spec
@@ -1374,7 +1511,13 @@ api_path2xpath_cvv(yang_spec *yspec,
 	    cprintf(xpath, "/%s", name);
 	    v = val;
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
-		cprintf(xpath, "[%s=%s]", cv_string_get(cvi), v);
+		cprintf(xpath,
+#ifdef COMPAT_XSL
+			"[%s=%s]",
+#else
+			"[%s='%s']",
+#endif
+			cv_string_get(cvi), v);
 		v += strlen(v)+1;
 	    }
 	    if (val)
@@ -1644,6 +1787,7 @@ xml_merge1(cxobj              *x0,
     cxobj     *x1c; /* mod child */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
+    cbuf      *cbr = NULL; /* Reason buffer */
 
     assert(x1 && xml_type(x1) == CX_ELMNT);
     assert(y0);
@@ -1682,9 +1826,16 @@ xml_merge1(cxobj              *x0,
 	    x1cname = xml_name(x1c);
 	    /* Get yang spec of the child */
 	    if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
-		if (reason && (*reason = strdup("XML node has no corresponding yang specification (Invalid XML or wrong Yang spec?")) == NULL){
-		    clicon_err(OE_UNIX, errno, "strdup");
-		    goto done;
+		if (reason){
+		    if ((cbr = cbuf_new()) == NULL){
+			clicon_err(OE_XML, errno, "cbuf_new");
+			goto done;
+		    }
+		    cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?", xml_name(x1), x1cname);
+		    if ((*reason = strdup(cbuf_get(cbr))) == NULL){
+			clicon_err(OE_UNIX, errno, "strdup");
+			goto done;
+		    }
 		}
 		break;
 	    }
@@ -1701,6 +1852,8 @@ xml_merge1(cxobj              *x0,
  ok:
     retval = 0;
  done:
+    if (cbr)
+	cbuf_free(cbr);
     return retval;
 }
 
@@ -1708,7 +1861,7 @@ xml_merge1(cxobj              *x0,
  * @param[in]  x0    Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1    xml tree which modifies base
  * @param[in]  yspec Yang spec
- * @param[out] reason If retval=0 a malloced string. Needs to be freed by caller
+ * @param[out] reason If retval=0, reason is set. Malloced. Needs to be freed by caller
  * @retval     0     OK. If reason is set, Yang error
  * @retval    -1     Error
  * @note both x0 and x1 need to be top-level trees
@@ -1726,6 +1879,7 @@ xml_merge(cxobj     *x0,
     cxobj     *x0c; /* base child */
     cxobj     *x1c; /* mod child */
     yang_stmt *yc;
+    cbuf      *cbr = NULL; /* Reason buffer */
 
     /* Loop through children of the modification tree */
     x1c = NULL;
@@ -1733,9 +1887,16 @@ xml_merge(cxobj     *x0,
 	x1cname = xml_name(x1c);
 	/* Get yang spec of the child */
 	if ((yc = yang_find_topnode(yspec, x1cname, YC_DATANODE)) == NULL){
-	    if (reason && (*reason = strdup("XML node has no corresponding yang specification (Invalid XML or wrong Yang spec?")) == NULL){
-		clicon_err(OE_UNIX, errno, "strdup");
-		goto done;
+	    if (reason){
+		if ((cbr = cbuf_new()) == NULL){
+		    clicon_err(OE_XML, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?", xml_name(x1), x1cname);
+		if ((*reason = strdup(cbuf_get(cbr))) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto done;
+		}
 	    }
 	    break;
 	}
@@ -1749,6 +1910,8 @@ xml_merge(cxobj     *x0,
     }
     retval = 0; /* OK */
  done:
+    if (cbr)
+	cbuf_free(cbr);
     return retval;
 }
 

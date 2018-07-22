@@ -19,9 +19,6 @@ fi
 if [ ! -d $dir/www-data ]; then
     err $dir/www-data
 fi
-if [ ! -f $dir/usr/local/share/clixon/clixon.mk ]; then
-    err $dir/usr/local/share/clixon/clixon.mk
-fi
 if [ ! -f $dir/usr/local/share/clixon/clixon-config* ]; then
     err $dir/usr/local/share/clixon/clixon-config*
 fi

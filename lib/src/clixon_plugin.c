@@ -43,6 +43,7 @@
 #include <errno.h>
 #include <dlfcn.h>
 #include <dirent.h>
+#include <syslog.h>
 
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -126,7 +127,7 @@ clixon_plugin_each_revert(clicon_handle  h,
 			  int            nr)
 {
     int            i;
-    clixon_plugin *cp;
+    clixon_plugin *cp = NULL;
     clixon_plugin *cpnext = NULL; 
 
     if (cpprev == NULL)
@@ -192,7 +193,7 @@ plugin_load_one(clicon_handle   h,
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen(file, dlflags)) == NULL) {
         error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlopen: %s\n", error ? error : "Unknown error");
+	clicon_err(OE_PLUGIN, errno, "dlopen: %s", error ? error : "Unknown error");
 	goto done;
     }
     /* call plugin_init() if defined, eg CLIXON_PLUGIN_INIT or CLIXON_BACKEND_INIT */
@@ -204,12 +205,16 @@ plugin_load_one(clicon_handle   h,
 	clicon_err(OE_UNIX, 0, "dlsym: %s: %s", file, error);
 	goto done;
     }
+    clicon_err_reset();
     if ((api = initfn(h)) == NULL) {
-	clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
-	if (!clicon_errno) 	/* sanity: log if clicon_err() is not called ! */
-	    clicon_err(OE_DB, 0, "Unknown error: %s: plugin_init does not make clicon_err call on error",
-		       file);
-	goto err;
+	if (!clicon_errno){ 	/* if clicon_err() is not called then log and continue */
+	    clicon_log(LOG_WARNING, "Warning: failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
+	    dlclose(handle);
+	}
+	else{
+	    clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
+	    goto err;
+	}
     }
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
     if ((cp = (clixon_plugin *)malloc(sizeof(struct clixon_plugin))) == NULL){
@@ -228,7 +233,8 @@ plugin_load_one(clicon_handle   h,
 
     snprintf(cp->cp_name, sizeof(cp->cp_name), "%*s",
 	     (int)strlen(name), name);
-    cp->cp_api = *api;
+    if (api)
+	cp->cp_api = *api;
     clicon_debug(1, "%s", __FUNCTION__);
  done:
     return cp;
@@ -342,7 +348,7 @@ clixon_plugin_exit(clicon_handle h)
 	}
 	if (dlclose(cp->cp_handle) != 0) {
 	    error = (char*)dlerror();
-	    clicon_err(OE_PLUGIN, errno, "dlclose: %s\n", error ? error : "Unknown error");
+	    clicon_err(OE_PLUGIN, errno, "dlclose: %s", error ? error : "Unknown error");
 	}
     }
     if (_clixon_plugins){
@@ -430,7 +436,7 @@ rpc_callback_register(clicon_handle  h,
 	clicon_err(OE_DB, errno, "malloc: %s", strerror(errno));
 	goto done;
     }
-    memset (rc, 0, sizeof (*rc));
+    memset(rc, 0, sizeof(*rc));
     rc->rc_callback = cb;
     rc->rc_arg  = arg;
     rc->rc_tag  = strdup(tag); /* XXX strdup memleak */
@@ -466,7 +472,7 @@ rpc_callback_delete_all(void)
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
  * @param[out] xret    Return XML, error or OK
- * @param[in]  arg   Domain-speific arg (eg client_entry)
+ * @param[in]  arg     Domain-speific arg (eg client_entry)
  *
  * @retval -1   Error
  * @retval  0   OK, not found handler.

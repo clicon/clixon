@@ -97,7 +97,7 @@ syntax_mode_find(cli_syntax_t *stx,
 	perror("malloc");
 	return NULL;
     }
-    memset (m, 0, sizeof (*m));
+    memset(m, 0, sizeof(*m));
     strncpy(m->csm_name, mode, sizeof(m->csm_name)-1);
     strncpy(m->csm_prompt, CLI_DEFAULT_PROMPT, sizeof(m->csm_prompt)-1);
     INSQ(m, stx->stx_modes);
@@ -263,7 +263,7 @@ cli_load_syntax(clicon_handle h,
 	if ((cp = clixon_plugin_find(h, plgnam)) != NULL)
 	    handle = cp->cp_handle;
 	if (handle == NULL){
-	    clicon_err(OE_PLUGIN, 0, "CLICON_PLUGIN set to '%s' in %s but plugin %s.so not found in %s\n", 
+	    clicon_err(OE_PLUGIN, 0, "CLICON_PLUGIN set to '%s' in %s but plugin %s.so not found in %s", 
 		       plgnam, filename, plgnam, 
 		       clicon_cli_dir(h));
 	    goto done;
@@ -276,6 +276,9 @@ cli_load_syntax(clicon_handle h,
 	goto done;
     }
      if (cligen_expandv_str2fn(pt, (expandv_str2fn_t*)clixon_str2fn, handle) < 0)     
+	 goto done;
+     /* Variable translation functions */
+     if (cligen_translate_str2fn(pt, (translate_str2fn_t*)clixon_str2fn, handle) < 0)     
 	 goto done;
 
     /* Make sure we have a syntax mode specified */
@@ -311,7 +314,7 @@ done:
  * @param[in]     h       Clicon handle
  */
 int
-cli_syntax_load (clicon_handle h)
+cli_syntax_load(clicon_handle h)
 {
     int                retval = -1;
     char              *plugin_dir = NULL;
@@ -340,7 +343,7 @@ cli_syntax_load (clicon_handle h)
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
-    memset (stx, 0, sizeof (*stx));	/* Zero out all */
+    memset(stx, 0, sizeof(*stx));	/* Zero out all */
 
     cli_syntax_set(h, stx);
 
@@ -441,6 +444,8 @@ cli_handler_err(FILE *f)
 /*! Evaluate a matched command
  * @param[in]     h       Clicon handle
  * @param[in]     cmd	  The command string
+ * @retval   int If there is a callback, the return value of the callback is returned,
+ * @retval   0   otherwise
  */
 int
 clicon_eval(clicon_handle h,
@@ -448,10 +453,12 @@ clicon_eval(clicon_handle h,
 	    cg_obj       *match_obj,
 	    cvec         *cvv)
 {
+    int retval = 0;
+
     cli_output_reset();
     if (!cligen_exiting(cli_cligen(h))) {	
 	clicon_err_reset();
-	if (cligen_eval(cli_cligen(h), match_obj, cvv) < 0) {
+	if ((retval = cligen_eval(cli_cligen(h), match_obj, cvv)) < 0) {
 #if 0 /* This is removed since we get two error messages on failure.
 	 But maybe only sometime?
 	 Both a real log when clicon_err is called, and the  here again.
@@ -460,11 +467,10 @@ clicon_eval(clicon_handle h,
 #endif
 	}
     }
-    return 0;
+    return retval;
 }
 
-
-/*! Given a command string, parse and evaluate.
+/*! Given a command string, parse and if match single command, eval it.
  * Parse and evaluate the string according to
  * the syntax parse tree of the syntax mode specified by *mode.
  * If there is no match in the tree for the command, the parse hook 
@@ -475,19 +481,25 @@ clicon_eval(clicon_handle h,
  * @param[in]     h         Clicon handle
  * @param[in]     cmd	    Command string
  * @param[in,out] modenamep Pointer to the mode string pointer
- * @param[out]    result -2	  On eof (shouldnt happen)
+ * @param[out]    evalres   Evaluation result if retval=1
+ *                       -2      On eof (shouldnt happen)
  *                       -1	  On parse error
  *                      >=0       Number of matches
+ * @retval -2              Eof               CG_EOF
+ * @retval -1              Error             CG_ERROR
+ * @retval  0              No match          CG_NOMATCH
+ * @retval  1              Exactly one match CG_MATCH
+ * @retval  2+             Multiple matches
  */
 int
 clicon_parse(clicon_handle h, 
 	     char         *cmd, 
 	     char        **modenamep, 
-	     int          *result)
+	     int          *evalres)
 {
+    int        retval = -1;
     char       *modename;
     char       *modename0;
-    int        res = -1;
     int        r;
     cli_syntax_t *stx = NULL;
     cli_syntaxmode_t *smode;
@@ -508,10 +520,10 @@ clicon_parse(clicon_handle h,
     else {
 	if ((smode = syntax_mode_find(stx, modename, 0)) == NULL) {
 	    cli_output(f, "Can't find syntax mode '%s'\n", modename);
-	    return -1;
+	    goto done;
 	}
     }
-    while(smode) {
+    if (smode){
 	modename0 = NULL;
 	if ((pt = cligen_tree_active_get(cli_cligen(h))) != NULL)
 	    modename0 = pt->pt_name;
@@ -527,20 +539,19 @@ clicon_parse(clicon_handle h,
 	    clicon_err(OE_UNIX, errno, "cvec_new");
 	    goto done;;
 	}
-	res = cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv);
-	if (res != CG_MATCH)
+	retval = cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv);
+	if (retval != CG_MATCH)
 	    pt_expand_cleanup_1(pt); /* XXX change to pt_expand_treeref_cleanup */
 	if (modename0){
 	    cligen_tree_active_set(cli_cligen(h), modename0);
 	    modename0 = NULL;
 	}
-	switch (res) {
+	switch (retval) {
 	case CG_EOF: /* eof */
 	case CG_ERROR:
 	    cli_output(f, "CLI parse error: %s\n", cmd);
-	    goto done;
+	    break;
 	case CG_NOMATCH: /* no match */
-	    smode = NULL;
 	    /*	    clicon_err(OE_CFG, 0, "CLI syntax error: \"%s\": %s", 
 		    cmd, cli_nomatch(h));*/
 	    cli_output(f, "CLI syntax error: \"%s\": %s\n", 
@@ -554,20 +565,18 @@ clicon_parse(clicon_handle h,
 	    if ((r = clicon_eval(h, cmd, match_obj, cvv)) < 0)
 		cli_handler_err(stdout);
 	    pt_expand_cleanup_1(pt); /* XXX change to pt_expand_treeref_cleanup */
-	    if (result)
-		*result = r;
-	    goto done;
+	    if (evalres)
+		*evalres = r;
 	    break;
 	default:
 	    cli_output(f, "CLI syntax error: \"%s\" is ambiguous\n", cmd);
-	    goto done;
 	    break;
-	}
+	} /* switch retval */
     }
 done:
     if (cvv)
 	cvec_free(cvv);
-    return res;
+    return retval;
 }
 
 /*! Read command from CLIgen's cliread() using current syntax mode.
@@ -667,9 +676,9 @@ cli_set_prompt(clicon_handle h,
  * @param[in]     fmt     Stdarg fmt string
  */
 static int
-prompt_fmt (char  *prompt,
-	    size_t plen,
-	    char  *fmt, ...)
+prompt_fmt(char  *prompt,
+	   size_t plen,
+	   char  *fmt, ...)
 {
   va_list ap;
   char   *s = fmt;
@@ -689,7 +698,7 @@ prompt_fmt (char  *prompt,
       if (*s == '%' && *++s) {
 	  switch(*s) {
 	  case 'H': /* Hostname */
-	      if (gethostname (hname, sizeof (hname)) != 0)
+	      if (gethostname(hname, sizeof(hname)) != 0)
 		  strncpy(hname, "unknown", sizeof(hname)-1);
 	      cprintf(cb, "%s", hname);
 	      break;

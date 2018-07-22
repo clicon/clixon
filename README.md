@@ -11,6 +11,7 @@ transaction support from a YANG specification.
   * [Support](#support)
   * [Dependencies](#dependencies)
   * [Extending](#extending)
+  * [XML and XPATH](#xml)
   * [Yang](#yang)
   * [Netconf](#netconf)
   * [Restconf](#restconf)
@@ -21,13 +22,14 @@ transaction support from a YANG specification.
   * [Runtime](#runtime)
   * [Clixon project page](http://www.clicon.org)
   * [Tests](test/)
+  * [Docker](docker/)
   * [Reference manual](http://www.clicon.org/doxygen/index.html) (Note: the link may not be up-to-date. It is better to build your own: `cd doc; make doc`)
   
 Background
 ==========
 
 Clixon was implemented to provide an open-source generic configuration
-tool. The existing [CLIgen](http://www.cligen.se) tool was for command-lines only, whilke clixon is a system with config-db, xml and rest interfaces. Most of the projects using clixon are for embedded network and measuring devices. But Clixon is more generic than that.
+tool. The existing [CLIgen](http://www.cligen.se) tool was for command-lines only, while clixon is a system with configuration database, xml and rest interfaces. Most of the projects using clixon are for embedded network and measuring devices. But Clixon is more generic than that.
 
 Users of clixon currently include:
   * [Netgate](https://www.netgate.com)
@@ -89,9 +91,17 @@ are also available.
 Plugins are written in C and easiest is to look at
 [example](example/README.md) or consulting the [FAQ](doc/FAQ.md).
 
+XML
+===
+Clixon has its own implementation of XML and XPATH implementation.
+
+The standards covered include:
+- [XML](https://www.w3.org/TR/2008/REC-xml-20081126)
+- [Namespaces](https://www.w3.org/TR/2009/REC-xml-names-20091208)
+- [XPATH](https://www.w3.org/TR/xpath-10)
+
 Yang
 ====
-
 YANG and XML is at the heart of Clixon.  Yang modules are used as a
 specification for handling XML configuration data. The YANG spec is
 used to generate an interactive CLI, netconf and restconf clients. It
@@ -99,8 +109,9 @@ also manages an XML datastore.
 
 Clixon mainly follows [YANG 1.0 RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt) with some exceptions:
 - conformance: feature, if-feature, deviation
-- identity, base, identityref
 - list features: min/max-elements, unique
+- action statements
+- notifications
 
 The aim is also to cover new features in YANG 1.1 [YANG RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt)
 

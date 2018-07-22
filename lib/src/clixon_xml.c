@@ -109,10 +109,9 @@ struct xml{
     enum cxobj_type   x_type;       /* type of node: element, attribute, body */
     char             *x_value;      /* attribute and body nodes have values */
     int              _x_vector_i;   /* internal use: xml_child_each */
-    int               x_flags;      /* Flags according to XML_FLAG_* above */
+    int               x_flags;      /* Flags according to XML_FLAG_* */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
-    cg_var           *x_cv;         /* If body this contains the typed value */
 };
 
 /* Mapping between xml type <--> string */
@@ -181,7 +180,7 @@ xml_namespace(cxobj *xn)
     return xn->x_namespace;
 }
 
-/*! Set name of xnode, name is copied
+/*! Set name space of xnode, namespace is copied
  * @param[in]  xn         xml node
  * @param[in]  namespace  new namespace, null-terminated string, copied by function
  * @retval     -1         on error with clicon-err set
@@ -202,6 +201,74 @@ xml_namespace_set(cxobj *xn,
 	}
     }
     return 0;
+}
+
+/*! See if xmlns:<namespace>=<uri> exists, if so return <uri>
+ *
+ * @param[in]  xn   XML node
+ * @param[in]  nsn  Namespace name
+ * @retval     URI  return associated URI if found
+ * @retval     NULL No namespace name binding found for nsn
+ */
+static char *
+xmlns_check(cxobj *xn,
+	    char  *nsn)
+{
+    cxobj *x = NULL;
+    char  *xns;
+    
+    while ((x = xml_child_each(xn, x, -1)) != NULL) 
+	if ((xns = xml_namespace(x)) && strcmp(xns, "xmlns")==0 &&
+	    strcmp(xml_name(x), nsn) == 0)
+	    return xml_value(x);
+    return NULL;
+}
+
+/*! Check namespace of xml node by searhing recursively among ancestors 
+ * @param[in]  xn         xml node
+ * @param[in]  namespace  check validity of namespace
+ * @retval     0          Found / validated or no yang spec
+ * @retval    -1          Not found
+ * @note This function is grossly inefficient
+ */
+static int
+xml_namespace_check(cxobj *xn, 
+		    void  *arg)
+{
+    cxobj     *xp = NULL;
+    char      *nsn;
+    char      *n;
+    yang_stmt *ys = xml_spec(xn);
+    
+    /* No namespace name - comply */
+    if ((nsn = xml_namespace(xn)) == NULL)
+	return 0;
+    /* Check if NSN defined in same node */
+    if (xmlns_check(xn, nsn) != NULL)
+	return 0;
+    /* Check if NSN defined in some ancestor */
+    while ((xp = xml_parent(xn)) != NULL) {
+	if (xmlns_check(xp, nsn) != NULL)
+	    return 0;
+    	xn = xp;
+    }
+#ifdef XMLNS_YANG_ONLY
+    if (ys == NULL)
+	return 0; /* If no yang spec */
+    else
+#endif
+	{
+	/* Check if my namespace */
+	if ((n = yang_find_myprefix(ys)) != NULL && strcmp(nsn,n)==0)
+	    return 0;
+	/* Check if any imported module */
+	if (yang_find_module_by_prefix(ys, nsn) != NULL)
+	    return 0;
+    }
+    /* Not found, error */
+    clicon_err(OE_XML, ENOENT, "Namespace name %s in %s:%s not found",
+	       nsn, nsn, xml_name(xn));
+    return -1;
 }
 
 /*! Get parent of xnode
@@ -343,35 +410,6 @@ xml_type_set(cxobj          *xn,
 
     xn->x_type = type;
     return old;
-}
-
-/*! Get cligen variable associated with node
- * @param[in]  xn    xml node
- * @retval     cv    Cligen variable if set
- * @retval     NULL  If not set, or not applicable
- */
-cg_var *
-xml_cv_get(cxobj *xn)
-{
-  if (xn->x_cv)
-    return xn->x_cv;
-  else
-    return NULL;
-}
-
-/*! Set cligen variable associated with node
- * @param[in]  xn    xml node
- * @param[in]  cv    Cligen variable or NULL
- * @retval     0     if OK
- */
-int
-xml_cv_set(cxobj  *xn, 
-	   cg_var *cv)
-{
-  if (xn->x_cv)
-    free(xn->x_cv);
-  xn->x_cv = cv;
-  return 0;
 }
 
 /*! Get number of children
@@ -869,7 +907,6 @@ xml_find_value(cxobj *xt,
  * Explaining picture:
  *       xt  --> x          --> bx (x_type=CX_BODY)
  *               x_name=name    return x_value
-
  */
 char *
 xml_find_body(cxobj *xt, 
@@ -932,8 +969,6 @@ xml_free(cxobj *x)
 	free(x->x_value);
     if (x->x_namespace)
 	free(x->x_namespace);
-    if (x->x_cv)
-	cv_free(x->x_cv);
     for (i=0; i<x->x_childvec_len; i++){
 	if ((xc = x->x_childvec[i]) != NULL){
 	    xml_free(xc);
@@ -1247,6 +1282,9 @@ _xml_parse(const char *str,
 	goto done;    
     if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
 	goto done;
+    /* Verify namespaces after parsing */
+    if (xml_apply0(xt, CX_ELMNT, xml_namespace_check, NULL) < 0)
+    	goto done;
     /* Sort the complete tree after parsing */
     if (yspec){
 	if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
@@ -1321,7 +1359,7 @@ xml_parse_file(int        fd,
     ptr = xmlbuf;
     while (1){
 	if ((ret = read(fd, &ch, 1)) < 0){
-	    clicon_err(OE_XML, errno, "read: [pid:%d]\n", 
+	    clicon_err(OE_XML, errno, "read: [pid:%d]", 
 		    (int)getpid());
 	    break;
 	}
@@ -1449,8 +1487,6 @@ int
 xml_copy_one(cxobj *x0, 
 	     cxobj *x1)
 {
-    cg_var *cv1;
-
     xml_type_set(x1, xml_type(x0));
     if (xml_value(x0)){ /* malloced string */
 	if ((x1->x_value = strdup(x0->x_value)) == NULL){
@@ -1461,14 +1497,6 @@ xml_copy_one(cxobj *x0,
     if (xml_name(x0)) /* malloced string */
 	if ((xml_name_set(x1, xml_name(x0))) < 0)
 	    return -1;
-    if (xml_cv_get(x0)){
-      if ((cv1 = cv_dup(xml_cv_get(x0))) == NULL){
-	clicon_err(OE_XML, errno, "cv_dup");
-	return -1;
-      }
-      if ((xml_cv_set(x1, cv1)) < 0)
-	return -1;
-    }
     return 0;
 }
 
@@ -1658,7 +1686,6 @@ xml_apply0(cxobj          *xn,
     return retval;   
 }
 
-
 /*! Apply a function call recursively on all ancestors
  * Recursively traverse upwards to all ancestor nodes in a parse-tree and apply fn(arg) for 
  * each object found. The function is called with the xml node and an 
@@ -1737,7 +1764,7 @@ xml_body_parse(cxobj       *xb,
 	goto done;
     }
     if (cvret == 0){  /* parsing failed */
-	clicon_err(OE_XML, errno, "Parsing CV: %s", &reason);
+	clicon_err(OE_XML, errno, "Parsing CV: %s", reason);
 	if (reason)
 	    free(reason);
     }
@@ -1861,7 +1888,6 @@ xml_operation2str(enum operation_type op)
     }
 }
 
-
 /*
  * Turn this on to get a xml parse and pretty print test program
  * Usage: xpath
@@ -1871,7 +1897,7 @@ xml_operation2str(enum operation_type op)
  * Example run:
  echo "<a><b/></a>" | xml 
 */
-#if 0 /* Test program */
+#if 1 /* Test program */
 
 static int
 usage(char *argv0)
@@ -1883,7 +1909,7 @@ usage(char *argv0)
 int
 main(int argc, char **argv)
 {
-    cxobj *xt;
+    cxobj *xt = NULL;
     cxobj *xc;
     cbuf  *cb = cbuf_new();
 
@@ -1891,8 +1917,8 @@ main(int argc, char **argv)
 	usage(argv[0]);
 	return 0;
     }
-    if (xml_parse_file(0, "</config>", NULL,&xt) < 0){
-	fprintf(stderr, "parsing 2\n");
+    if (xml_parse_file(0, "</config>", NULL, &xt) < 0){
+	fprintf(stderr, "xml parse error %s\n", clicon_err_reason);
 	return -1;
     }
     xc = NULL;

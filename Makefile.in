@@ -52,11 +52,11 @@ INSTALL		= @INSTALL@
 INCLUDES 	= -I. -I@srcdir@ @INCLUDES@
 SHELL		= /bin/sh
 
-SUBDIRS = lib apps include etc datastore yang
+SUBDIRS = lib apps include etc datastore util yang
 
 .PHONY:	doc all clean depend $(SUBDIRS) install loc TAGS .config.status docker
 
-all:	$(SUBDIRS) clixon.mk
+all:	$(SUBDIRS)
 
 $(SUBDIRS):
 	(cd $@ && $(MAKE) $(MFLAGS) all)
@@ -65,12 +65,7 @@ depend:
 	for i in $(SUBDIRS) doc example docker; \
 	do (cd $$i && $(MAKE) $(MFLAGS) depend); done
 
-clixon.mk:  clixon.mk.cpp
-	$(CPP) -P -traditional-cpp -x assembler-with-cpp -Dprefix=$(prefix) -Dlocalstatedir=$(localstatedir) -Dsysconfdir=$(sysconfdir) -Ddatadir=$(datadir) -Dlibdir=$(libdir) $< > $@
-
-install:  clixon.mk
-	install -d -m 0755 $(DESTDIR)$(datadir)/clixon
-	install -m 0644 clixon.mk $(DESTDIR)$(datadir)/clixon
+install:  
 	for i in $(SUBDIRS) doc; \
 	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done; \
 	echo "Install for compilation by: make install-include"
@@ -83,7 +78,6 @@ install-include:
 uninstall:
 	for i in $(SUBDIRS) doc example docker; \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done; 
-	rm -f $(DESTDIR)$(datadir)/clixon/clixon.mk
 
 doc:	
 	cd $@; $(MAKE) $(MFLAGS) $@
@@ -100,7 +94,7 @@ clean:
 
 distclean:
 	rm -f Makefile TAGS config.status config.log *~ .depend
-	rm -rf autom4te.cache clixon.mk build-root/rpmbuild
+	rm -rf autom4te.cache build-root/rpmbuild
 	rm -f build-root/*.tar.xz build-root/*.rpm extras/rpm/Makefile
 	for i in $(SUBDIRS) doc example docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done

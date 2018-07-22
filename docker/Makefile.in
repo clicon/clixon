@@ -38,46 +38,33 @@ CFLAGS  	= @CFLAGS@
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
 
+# Change this
+IMAGE           = olofhagsand/clixon
+
 SHELL	= /bin/sh
 
-SUBDIRS = cli backend netconf
 
-.PHONY: all clean depend install $(SUBDIRS) docker push
+.PHONY: all clean depend install docker push
 
-all:	$(SUBDIRS)
-
-depend:
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
-
-$(SUBDIRS):
-	(cd $@; $(MAKE) $(MFLAGS) all)
-
-install-include:
-	for i in $(SUBDIRS); \
-	do (cd $$i ; $(MAKE) $(MFLAGS) $@); done; 
-
-install:
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
-
-uninstall:
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+all:	
+	@echo "Run make docker to build docker image"
 
 clean:
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
 distclean: clean
 	rm -f Makefile *~ .depend
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
 docker:
-	for i in $(SUBDIRS); \
-		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
+	sudo docker build -t $(IMAGE) .
 
 push:
-	for i in $(SUBDIRS); \
-		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
+	sudo docker push $(IMAGE)
+
+depend:
+
+install-include:
+
+install:
+
+uninstall:
+

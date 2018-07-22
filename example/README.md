@@ -16,14 +16,20 @@ routing example. It contains the following files:
 * example_netconf.c Netconf callback plugin
 * Makefile.in       Example makefile where plugins are built and installed
 
+
 ## Compile and run
+
+Before you start,
+* Make [group setup](../doc/FAQ.md#do-i-need-to-setup-anything-important)
+* Setup [restconf](../doc/FAQ.md#how-do-i-use-restconf)
+
 ```
     cd example
     make && sudo make install
 ```
 Start backend:
 ```
-    clixon_backend -f /usr/local/etc/example.xml -I
+    sudo clixon_backend -f /usr/local/etc/example.xml -s init
 ```
 Edit cli:
 ```
@@ -188,12 +194,30 @@ The example contains some stubs for authorization according to [RFC8341(NACM)](h
 * A NACM backend plugin reporting the mandatory NACM state variables.
 
 
+## Systemd files
+
+Example systemd files for backend and restconf daemons are found under the systemd directory. Install them under /etc/systemd/system for example.
+
 ## Run as docker container
 
 (Note not updated)
 ```
 cd docker
 # look in README
+```
+
+## Docker
+
+Run the example as a docker container as follows:
+```
+sudo docker run -ti --rm olofhagsand/clixon_example
+```
+
+Build the container and push yourself: First change the IMAGE variable in Makefile (eg to "you/clixon_example). Then build and push:
+```
+make docker
+make push
+sudo docker run -ti --rm you/clixon_example
 ```
 
 

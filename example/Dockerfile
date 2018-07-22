@@ -30,48 +30,32 @@
 #
 # ***** END LICENSE BLOCK *****
 #
-VPATH       	= @srcdir@
-prefix 		= @prefix@
-exec_prefix 	= @exec_prefix@
-srcdir  	= @srcdir@
-top_srcdir  	= @top_srcdir@
-prefix 		= @prefix@
-bindir 		= @bindir@
-sbindir 	= @sbindir@
-libdir		= @libdir@
-includedir	= @includedir@
-datarootdir	= @datarootdir@
-# You may consider changing this
-image           = olofhagsand/clixon_backend
 
-all:
-	@echo "Run make docker to build docker image"
-clean:
+FROM olofhagsand/clixon
+MAINTAINER Olof Hagsand <olof@hagsand.se>
 
-distclean: clean
-	rm -f Makefile *~ .depend libcligen* libclixon* clixon_backend Dockerfile
+RUN apt-get update && apt-get install -y \
+  procps # ps for debugging
+# Create a directory to hold source-code, dependencies etc
+RUN mkdir /example
+WORKDIR /example
 
-# Kind of reverse install, could have copied from src dir,...
-.PHONY: docker push
-docker:	
-	cp $(DESTDIR)$(libdir)/libcligen.so.@CLIGEN_VERSION@ .
-	cp $(DESTDIR)$(libdir)/libclixon.so.@CLIXON_VERSION_MAJOR@ .
-	cp $(DESTDIR)$(libdir)/libclixon_backend.so.@CLIXON_VERSION_MAJOR@ .
-	cp $(DESTDIR)$(sbindir)/clixon_backend .
-	sudo docker build -t $(image) .
+# Clone clixon (again) since example application is there.
+# Replace this with your application
+RUN git clone https://github.com/clicon/clixon.git
 
-push:	
-	docker push $(image)
+# Build clixon
+WORKDIR /example/clixon
+RUN git checkout -b develop origin/develop
+RUN ./configure
+WORKDIR /example/clixon/example
+RUN make
+RUN make install
+RUN install example.xml /usr/local/etc/clixon.xml
+
+CMD /usr/local/sbin/clixon_backend && /usr/local/bin/clixon_cli
 
 
-install:
 
-uninstall: 
 
-install-include:	
-
-depend:
-#	$(CC) $(DEPENDFLAGS) $(INCLUDES) $(CFLAGS) -MM $(SRC) > .depend
-
-#include .depend
 

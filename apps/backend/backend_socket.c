@@ -96,12 +96,12 @@ config_socket_init_ipv4(clicon_handle h, char *dst)
 	goto err; /* Could check getaddrinfo */
     }
     if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0){
-	clicon_err(OE_UNIX, errno, "%s: bind", __FUNCTION__);
+	clicon_err(OE_UNIX, errno, "bind");
 	goto err;
     }
     clicon_debug(1, "Listen on server socket at %s:%hu", dst, port);
     if (listen(s, 5) < 0){
-	clicon_err(OE_UNIX, errno, "%s: listen", __FUNCTION__);
+	clicon_err(OE_UNIX, errno, "listen");
 	goto err;
     }
     return s;
@@ -126,7 +126,7 @@ config_socket_init_unix(clicon_handle h, char *sock)
     struct stat        st;
 
     if (lstat(sock, &st) == 0 && unlink(sock) < 0){
-	clicon_err(OE_UNIX, errno, "%s: unlink(%s)", __FUNCTION__, sock);
+	clicon_err(OE_UNIX, errno, "unlink(%s)", sock);
 	return -1;
     }
     /* then find configuration group (for clients) and find its groupid */
@@ -142,7 +142,7 @@ config_socket_init_unix(clicon_handle h, char *sock)
 #endif
     /* create unix socket */
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-	clicon_err(OE_UNIX, errno, "%s: socket", __FUNCTION__);
+	clicon_err(OE_UNIX, errno, "socket");
 	return -1;
     }
 //    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&one, sizeof(one));
@@ -151,20 +151,19 @@ config_socket_init_unix(clicon_handle h, char *sock)
     strncpy(addr.sun_path, sock, sizeof(addr.sun_path)-1);
     old_mask = umask(S_IRWXO | S_IXGRP | S_IXUSR);
     if (bind(s, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0){
-	clicon_err(OE_UNIX, errno, "%s: bind", __FUNCTION__);
+	clicon_err(OE_UNIX, errno, "bind");
 	umask(old_mask); 
 	goto err;
     }
     umask(old_mask); 
     /* change socket path file group */
     if (lchown(sock, -1, gid) < 0){
-	clicon_err(OE_UNIX, errno, "%s: lchown(%s, %s)", __FUNCTION__, 
-		sock, config_group);
+	clicon_err(OE_UNIX, errno, "lchown(%s, %s)", sock, config_group);
 	goto err;
     }
     clicon_debug(1, "Listen on server socket at %s", addr.sun_path);
     if (listen(s, 5) < 0){
-	clicon_err(OE_UNIX, errno, "%s: listen", __FUNCTION__);
+	clicon_err(OE_UNIX, errno, "listen");
 	goto err;
     }
     return s;
@@ -221,14 +220,14 @@ backend_accept_client(int   fd,
     clicon_debug(2, "%s", __FUNCTION__);
     len = sizeof(from);
     if ((s = accept(fd, (struct sockaddr*)&from, &len)) < 0){
-	clicon_err(OE_UNIX, errno, "%s: accept", __FUNCTION__);
+	clicon_err(OE_UNIX, errno, "accept");
 	goto done;
     }
 #if defined(SO_PEERCRED)
     /* fill in the user data structure */
     clen =  sizeof(credentials);
     if(getsockopt(s, SOL_SOCKET, SO_PEERCRED/* XXX finns ej i freebsd*/, &credentials, &clen)){
-	clicon_err(OE_UNIX, errno, "%s: getsockopt", __FUNCTION__);
+	clicon_err(OE_UNIX, errno, "getsockopt");
 	goto done;
     }
 #endif   

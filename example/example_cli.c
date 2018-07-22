@@ -67,7 +67,12 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
     cli_output(stderr, "arg = %s\n", cv_string_get(cvec_i(argv,0))); /* get string value */
 
     /* Show eth0 interfaces config using XPATH */
-    if (clicon_rpc_get_config(h, "running","/interfaces/interface[name=eth0]",
+    if (clicon_rpc_get_config(h, "running",
+#ifdef COMPAT_XSL
+			      "/interfaces/interface[name=eth0]",
+#else
+			      "/interfaces/interface[name='eth0']",
+#endif
 			      &xret) < 0)
 	goto done;
 
@@ -90,17 +95,24 @@ fib_route_rpc(clicon_handle h,
     cxobj     *xtop = NULL;
     cxobj     *xrpc;
     cxobj     *xret = NULL;
+    cxobj     *xerr;
 
     /* User supplied variable in CLI command */
     instance = cvec_find(cvv, "instance"); /* get a cligen variable from vector */
     /* Create XML for fib-route netconf RPC */
-    if (xml_parse_va(&xtop, NULL, "<rpc><fib-route><routing-instance-name>%s</routing-instance-name></fib-route></rpc>", cv_string_get(instance)) < 0)
+    if (xml_parse_va(&xtop, NULL, "<rpc username=\"%s\"><fib-route><routing-instance-name>%s</routing-instance-name></fib-route></rpc>",
+		     clicon_username_get(h),
+		     cv_string_get(instance)) < 0)
 	goto done;
     /* Skip top-level */
     xrpc = xml_child_i(xtop, 0);
     /* Send to backend */
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
 	goto done;
+    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+	clicon_rpc_generate_error("Get configuration", xerr);
+	goto done;
+    }
     /* Print result */
     xml_print(stdout, xml_child_i(xret, 0));
     retval = 0;
@@ -136,4 +148,22 @@ clixon_plugin_init(clicon_handle h)
     srandom(tv.tv_usec);
 
     return &api;
+}
+
+/*! Translate function from an original value to a new.
+ * In this case, assume string and increment characters, eg HAL->IBM
+ */
+int
+incstr(cligen_handle h,
+       cg_var       *cv)
+{
+    char *str;
+    int i;
+    
+    if (cv_type_get(cv) != CGV_STRING)
+	return 0;
+    str = cv_string_get(cv);
+    for (i=0; i<strlen(str); i++)
+	str[i]++;
+    return 0;
 }

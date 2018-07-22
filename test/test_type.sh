@@ -122,6 +122,17 @@ module example{
          range "min..max";
       }
    }*/
+   typedef mybits {
+        description "Test adding several bits";
+	type bits {
+	    bit create;
+	    bit read;
+	    bit write;
+        }
+   }
+   leaf mbits{
+      type mybits;
+   }
 }
 EOF
 
@@ -133,49 +144,62 @@ if [ $? -ne 0 ]; then
     err
 fi
 new "start backend -s init -f $cfg -y $fyang"
-sudo clixon_backend -s init -f $cfg -y $fyang
+sudo $clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
     err
 fi
 
 new "cli set ab"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.a.b" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.a.b" 0 "^$"
 
 new "cli set cd"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list c.d.c.d" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list c.d.c.d" 0 "^$"
 
 new "cli set ef"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list e.f.e.f" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list e.f.e.f" 0 "^$"
 
 new "cli set ab fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a&b&a&b" "^CLI syntax error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a&b&a&b" 255 "^CLI syntax error"
 
 new "cli set ad fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.c.d" "^CLI syntax error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.c.d" 255 "^CLI syntax error"
 
 new "cli validate"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 "^$"
 
 new "cli commit"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o commit" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o commit" 0 "^$"
 
 new "netconf validate ok"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf set ab wrong"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><edit-config><target><candidate/></target><config><list><ip>a.b&amp; c.d</ip></list></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><list><ip>a.b&amp; c.d</ip></list></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error>"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error>"
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "cli enum value"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set status down" "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set status down" 0 "^$"
+
+new "cli bits value"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set mbits create" 0 "^$"
+
+#XXX No, cli cant assign two bit values
+#new "cli bits two values"
+#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set mbits \"create read\"" 0 "^$"
+
+new "netconf bits two values"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><mbits>create read</mbits></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "cli bits validate"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang validate" 0 "^$"
 
 new "Kill backend"
 # Check if still alive

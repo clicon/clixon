@@ -281,7 +281,8 @@ text_setopt(xmldb_handle xh,
 	else if (strcmp(value,"json")==0)
 	    th->th_format = "json";
 	else{
-	    clicon_err(OE_PLUGIN, 0, "Option %s unrecognized format: %s", optname, value);
+	    clicon_err(OE_PLUGIN, 0, "Option %s unrecognized format: %s",
+		       optname, (char*)value);
 	    goto done;
 	}
     }
@@ -473,7 +474,7 @@ text_get(xmldb_handle xh,
     } /* xt == NULL */
     /* Here xt looks like: <config>...</config> */
 
-    if (xpath_vec(xt, xpath?xpath:"/", &xvec, &xlen) < 0)
+    if (xpath_vec(xt, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
 
     /* If vectors are specified then mark the nodes found with all ancestors
@@ -806,7 +807,8 @@ text_modify_top(cxobj              *x0,
 	x1cname = xml_name(x1c);
 	/* Get yang spec of the child */
 	if ((yc = yang_find_topnode(yspec, x1cname, YC_DATANODE)) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?", x1, x1cname);
+	    clicon_err(OE_YANG, ENOENT, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?",
+		       xml_name(x1), x1cname);
 	    goto done;
 	}
 	/* See if there is a corresponding node in the base tree */

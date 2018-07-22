@@ -92,7 +92,7 @@ chunk_initialize ()
 
 	chunk_pagesz = getpagesize();
 
-	bzero (&chunk_heads, sizeof (chunk_heads));
+	bzero (&chunk_heads, sizeof(chunk_heads));
 
 	for (idx = 0; idx < CHUNK_HEADS; idx++) {
 		chunk_head_t *chead = &chunk_heads[idx];
@@ -121,7 +121,7 @@ chunk_initialize ()
 		 */
 		chead->ch_size =
 			(chead->ch_blksz / chead->ch_nchkperblk)
-			- sizeof (chunk_t);
+			- sizeof(chunk_t);
 
 	}
 
@@ -150,22 +150,22 @@ chunk_new_block (chunk_head_t *chead)
 		     PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	if (blk == MAP_FAILED)
 		return -1;
-	memset ((void *)blk, 0, sizeof(*blk));
+	memset((void *)blk, 0, sizeof(*blk));
 
 	/* Allocate chunk block */
 	blk->cb_blk = (void *)
 		mmap(NULL, chead->ch_blksz, 
 		     PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	if (blk->cb_blk == MAP_FAILED) {
-	    munmap (blk, chead->ch_blksz);
+	    munmap(blk, chead->ch_blksz);
 	    return -1;
 	}
-	memset (blk->cb_blk, 0, chead->ch_blksz);
+	memset(blk->cb_blk, 0, chead->ch_blksz);
 
 	
 	/* Initialize chunk header */
 	blk->cb_head = chead;
-	INSQ (blk, chead->ch_blks);
+	INSQ(blk, chead->ch_blks);
 	chead->ch_nblks++;
 
 	/* Initialize chunks */
@@ -174,10 +174,10 @@ chunk_new_block (chunk_head_t *chead)
 	       
 		cnk = (chunk_t *)c;
 		cnk->c_blk = blk;
-		INSQ (cnk, chead->ch_free);
+		INSQ(cnk, chead->ch_free);
 		chead->ch_nfree++;
 
-		c += (chead->ch_size + sizeof (chunk_t));
+		c += (chead->ch_size + sizeof(chunk_t));
 	}
 
 
@@ -188,7 +188,7 @@ chunk_new_block (chunk_head_t *chead)
  * chunk_release_block()	- Unqueue a block, it's chunks and free mem
  */
 static void
-chunk_release_block (chunk_block_t *cblk)
+chunk_release_block(chunk_block_t *cblk)
 {
 	int		idx;
 	char		*c;
@@ -201,7 +201,7 @@ chunk_release_block (chunk_block_t *cblk)
 	/*
 	 * Dequeue block 
 	 */
-	DELQ (cblk, chead->ch_blks, chunk_block_t *);
+	DELQ(cblk, chead->ch_blks, chunk_block_t *);
 	chead->ch_nblks--;
 		
 	/* 
@@ -211,17 +211,17 @@ chunk_release_block (chunk_block_t *cblk)
 	for (idx = 0; idx < chead->ch_nchkperblk; idx++) {
 		
 		cnk = (chunk_t *)c;
-		DELQ (cnk, chead->ch_free, chunk_t *);
+		DELQ(cnk, chead->ch_free, chunk_t *);
 		chead->ch_nfree--;
 		
-		c += (chead->ch_size + sizeof (chunk_t));
+		c += (chead->ch_size + sizeof(chunk_t));
 	}
 	
 	/*
 	 * Free block 
 	 */
-	munmap ((void *)cblk->cb_blk, chead->ch_blksz);
-	munmap ((void *)cblk, sizeof(*cblk));
+	munmap((void *)cblk->cb_blk, chead->ch_blksz);
+	munmap((void *)cblk, sizeof(*cblk));
 }
 
 
@@ -230,7 +230,7 @@ chunk_release_block (chunk_block_t *cblk)
  * chunk_alloc()	- Map new chunk of memory
  */
 static void *
-chunk_alloc (size_t len)
+chunk_alloc(size_t len)
 {
 	register int	idx;
 	chunk_head_t   *chead;
@@ -258,21 +258,21 @@ chunk_alloc (size_t len)
 	
 	/* Get new block if necessary */
 	if (!chead->ch_nfree)
-		if (chunk_new_block (chead))
+		if (chunk_new_block(chead))
  			return (void *)NULL;
 		
 
 	/* Move a free chunk to the in-use list */
 	cnk = chead->ch_free;
-	DELQ (cnk, chead->ch_free, chunk_t *);
+	DELQ(cnk, chead->ch_free, chunk_t *);
 	chead->ch_nfree--;
-	INSQ (cnk, chead->ch_cnks);
+	INSQ(cnk, chead->ch_cnks);
 	/* Add reference to the corresponding block */
 	cnk->c_blk->cb_ref++;
 	
 #ifdef CHUNK_DIAG
 	/* Clear diag info */
-	bzero ((void *)&cnk->c_diag, sizeof (cnk->c_diag));
+	bzero((void *)&cnk->c_diag, sizeof(cnk->c_diag));
 #endif /* CHUNK_DIAG */
 	
 	/* Return pointer to first byte after the chunk header */
@@ -285,9 +285,9 @@ chunk_alloc (size_t len)
  */
 void *
 #ifdef CHUNK_DIAG
-_chunk (size_t len, const char *name, const char *file, int line)
+_chunk(size_t len, const char *name, const char *file, int line)
 #else
-chunk (size_t len, const char *name)
+chunk(size_t len, const char *name)
 #endif
 {
 	int		 newgrp = 0;
@@ -306,10 +306,10 @@ chunk (size_t len, const char *name)
 
 	/* Get actual chunk 
 	 */
-	ptr = chunk_alloc (len);
+	ptr = chunk_alloc(len);
 	if (!ptr)
 		goto error;
-	cnk = (chunk_t *) (((char *)ptr) - sizeof (chunk_t));
+	cnk = (chunk_t *) (((char *)ptr) - sizeof(chunk_t));
 
 #ifdef CHUNK_DIAG
 	/* Store who reuested us
@@ -329,7 +329,7 @@ chunk (size_t len, const char *name)
 	if (chunk_grp) {
 		tmp = chunk_grp;
 		do {
-			if (!strcmp (tmp->cg_name, name)) {
+			if (!strcmp(tmp->cg_name, name)) {
 				grp = tmp;
 				break;
 			}
@@ -343,26 +343,26 @@ chunk (size_t len, const char *name)
 	 */
 	if ( !grp ) {
 		
-		grp = (chunk_group_t *) chunk_alloc (sizeof (chunk_group_t));
+		grp = (chunk_group_t *) chunk_alloc(sizeof(chunk_group_t));
 		if (!grp)
 			goto error;
 
-		bzero (grp, sizeof (chunk_group_t));
+		bzero(grp, sizeof(chunk_group_t));
 
-		grp->cg_name = (char *) chunk_alloc (strlen (name) + 1);
+		grp->cg_name = (char *) chunk_alloc(strlen(name) + 1);
 		if (!grp->cg_name)
 		  goto error;
-		bcopy (name, grp->cg_name, strlen(name)+1);
+		bcopy(name, grp->cg_name, strlen(name)+1);
 		newgrp = 1;
 	}
 		
 	
 	/* Get new entry.
 	 */
-	ent = (chunk_grpent_t *) chunk_alloc (sizeof (chunk_grpent_t));
+	ent = (chunk_grpent_t *) chunk_alloc(sizeof(chunk_grpent_t));
 	if (!ent)
 		goto error;
-	bzero (ent, sizeof (chunk_grpent_t));
+	bzero(ent, sizeof(chunk_grpent_t));
 
 	/* Now put everything together
 	 */
@@ -371,22 +371,22 @@ chunk (size_t len, const char *name)
 	ent->ce_cnk = cnk;
 	ent->ce_grp = grp;
 
-	INSQ (ent, grp->cg_ent);
+	INSQ(ent, grp->cg_ent);
 	if (newgrp)
-		INSQ (grp, chunk_grp);
+		INSQ(grp, chunk_grp);
 	
 	return (ptr);
 
  error:
 	if (grp && newgrp) {
 	  	if (grp->cg_name)
-		 	unchunk (grp->cg_name);
-		unchunk (grp);
+		 	unchunk(grp->cg_name);
+		unchunk(grp);
 	}
 	if (ent)
-		unchunk (ent);
+		unchunk(ent);
 	if (ptr)
-		unchunk (ptr);
+		unchunk(ptr);
 	
 	return (void *)	NULL;
 }
@@ -397,9 +397,9 @@ chunk (size_t len, const char *name)
  */
 void *
 #ifdef CHUNK_DIAG
-_rechunk (void *ptr, size_t len, const char *name, const char *file, int line)
+_rechunk(void *ptr, size_t len, const char *name, const char *file, int line)
 #else
-rechunk (void *ptr, size_t len, const char *name)
+rechunk(void *ptr, size_t len, const char *name)
 #endif
 {
 	int		idx;
@@ -414,22 +414,22 @@ rechunk (void *ptr, size_t len, const char *name)
 	 */
 	if (!ptr) {
 #ifdef CHUNK_DIAG
-	  return _chunk (len, name, file, line);
+	  return _chunk(len, name, file, line);
 #else
-	  return chunk (len, name);
+	  return chunk(len, name);
 #endif
 	}
 
 	/* Zero length, free chunk 
 	 */
 	if (len == 0) {
-		unchunk (ptr);
+		unchunk(ptr);
 		return (void *) NULL;
 	}
 
 	/* Rewind pointer to beginning of chunk header 
 	 */
-	cnk = (chunk_t *) (((char *)ptr) - sizeof (chunk_t));
+	cnk = (chunk_t *) (((char *)ptr) - sizeof(chunk_t));
 	chead = cnk->c_blk->cb_head;
 
 	/* Find sufficient sized block head 
@@ -451,22 +451,22 @@ rechunk (void *ptr, size_t len, const char *name)
 	/* Get new chunk 
 	 */
 #ifdef CHUNK_DIAG
-	new = _chunk (len, name, file, line);
+	new = _chunk(len, name, file, line);
 #else
-	new = chunk (len, name);
+	new = chunk(len, name);
 #endif
 	if (!new)
 		return (void *) NULL;
-	newcnk = (chunk_t *) (((char *)new) - sizeof (chunk_t));
+	newcnk = (chunk_t *) (((char *)new) - sizeof(chunk_t));
 	newchead =  newcnk->c_blk->cb_head;
 
 	/* Copy contents to new chunk 
 	 */
-	bcopy (ptr, new, MIN(newchead->ch_size, chead->ch_size));
+	bcopy(ptr, new, MIN(newchead->ch_size, chead->ch_size));
 	
 	/* Free old chunk
 	 */
-	unchunk (ptr);
+	unchunk(ptr);
 
 
 	return (new);
@@ -476,7 +476,7 @@ rechunk (void *ptr, size_t len, const char *name)
  * unchunk()	- Release chunk
  */
 void
-unchunk (void *ptr)
+unchunk(void *ptr)
 {
 	chunk_t		*cnk;
 	chunk_head_t	*chead;
@@ -489,14 +489,14 @@ unchunk (void *ptr)
 
 	/* Rewind pointer to beginning of chunk header 
 	 */
-	cnk = (chunk_t *) (((char *)ptr) - sizeof (chunk_t));
+	cnk = (chunk_t *) (((char *)ptr) - sizeof(chunk_t));
 	cblk = cnk->c_blk;
 	chead = cblk->cb_head;
 
 	/* Move chunk back to free list
 	 */
-	DELQ (cnk, chead->ch_cnks, chunk_t *);
-	INSQ (cnk, chead->ch_free);
+	DELQ(cnk, chead->ch_cnks, chunk_t *);
+	INSQ(cnk, chead->ch_free);
 	chead->ch_nfree++;
 
 	/* If chunk is grouped, remove from group.
@@ -504,13 +504,13 @@ unchunk (void *ptr)
 	ent = cnk->c_grpent;
 	if (ent) {
 		grp = ent->ce_grp;
-		DELQ (ent, grp->cg_ent, chunk_grpent_t *);
-		unchunk (ent);
+		DELQ(ent, grp->cg_ent, chunk_grpent_t *);
+		unchunk(ent);
 		cnk->c_grpent = NULL;
 
 		/* Group empty? */
 		if (!dont_unchunk_group && !grp->cg_ent) {
-			DELQ (grp, chunk_grp, chunk_group_t *);
+			DELQ(grp, chunk_grp, chunk_group_t *);
 			unchunk(grp->cg_name);
 			unchunk(grp);
 		}
@@ -528,7 +528,7 @@ unchunk (void *ptr)
  * unchunk_group()	- Release all group chunks.
  */
 void
-unchunk_group (const char *name)
+unchunk_group(const char *name)
 {
 	chunk_group_t	*tmp;
 	chunk_group_t	*grp = NULL;
@@ -542,7 +542,7 @@ unchunk_group (const char *name)
 	if (chunk_grp) {
 		tmp = chunk_grp;
 		do {
-			if (!strcmp (tmp->cg_name, name)) {
+			if (!strcmp(tmp->cg_name, name)) {
 				grp = tmp;
 				break;
 			}
@@ -560,16 +560,16 @@ unchunk_group (const char *name)
 	dont_unchunk_group = 1;
 	while (grp->cg_ent) {
 		cnk = grp->cg_ent->ce_cnk;
-		unchunk ((chunk_t *)(((char *)cnk) + sizeof (chunk_t)));
+		unchunk((chunk_t *)(((char *)cnk) + sizeof(chunk_t)));
 	}
 	dont_unchunk_group = 0;
 		
 
 	/* Remove group from list and free it 
 	 */
-	DELQ (grp, chunk_grp, chunk_group_t *);
-	unchunk (grp->cg_name);
-	unchunk (grp);
+	DELQ(grp, chunk_grp, chunk_group_t *);
+	unchunk(grp->cg_name);
+	unchunk(grp);
 }
 
 /*
@@ -577,9 +577,9 @@ unchunk_group (const char *name)
  */
 void *
 #ifdef CHUNK_DIAG
-_chunkdup (const void *ptr, size_t len, const char *name, const char *file, int line)
+_chunkdup(const void *ptr, size_t len, const char *name, const char *file, int line)
 #else
-chunkdup (const void *ptr, size_t len, const char *name)
+chunkdup(const void *ptr, size_t len, const char *name)
 #endif
 {
 	void		*new;
@@ -592,9 +592,9 @@ chunkdup (const void *ptr, size_t len, const char *name)
 	/* Get new chunk 
 	 */
 #ifdef CHUNK_DIAG
-	new = _chunk (len, name, file, line);
+	new = _chunk(len, name, file, line);
 #else
-	new = chunk (len, name);
+	new = chunk(len, name);
 #endif
 	if (!new)
 		return (void *)NULL;
@@ -610,7 +610,7 @@ chunkdup (const void *ptr, size_t len, const char *name)
  * chunksize()	- Return size of memory chunk.
  */
 size_t
-chunksize (void *ptr)
+chunksize(void *ptr)
 {
 	chunk_t		*cnk;
 	chunk_head_t	*chead;
@@ -621,7 +621,7 @@ chunksize (void *ptr)
 
 	/* Rewind pointer to beginning of chunk header 
 	 */
-	cnk = (chunk_t *) (((char *)ptr) - sizeof (chunk_t));
+	cnk = (chunk_t *) (((char *)ptr) - sizeof(chunk_t));
 	cblk = cnk->c_blk;
 	chead = cblk->cb_head;
 
@@ -635,10 +635,10 @@ chunksize (void *ptr)
  */
 char *
 #ifdef CHUNK_DIAG
-_chunk_strncat (const char *dst, const char *src, size_t n, const char *name,
+_chunk_strncat(const char *dst, const char *src, size_t n, const char *name,
 		const char *file, int line)
 #else
-chunk_strncat (const char *dst, const char *src, size_t n, const char *name)
+chunk_strncat(const char *dst, const char *src, size_t n, const char *name)
 #endif
 {
 	size_t len;
@@ -651,7 +651,7 @@ chunk_strncat (const char *dst, const char *src, size_t n, const char *name)
 #ifdef CHUNK_DIAG
 	ptr = _rechunk(ptr, len, name, file, line);
 #else
-	ptr = rechunk (ptr, len, name);
+	ptr = rechunk(ptr, len, name);
 #endif
 	if (ptr == NULL) 
 		return NULL;
@@ -670,10 +670,10 @@ chunk_strncat (const char *dst, const char *src, size_t n, const char *name)
  */
 char *
 #ifdef CHUNK_DIAG
-_chunk_sprintf (const char *name, const char *file, 
+_chunk_sprintf(const char *name, const char *file, 
 		int line, const char *fmt, ...)
 #else
-chunk_sprintf (const char *name, char *fmt, ...)
+chunk_sprintf(const char *name, char *fmt, ...)
 #endif
 {
 	size_t len;
@@ -683,13 +683,13 @@ chunk_sprintf (const char *name, char *fmt, ...)
 	/* Calculate formatted string length */
 	va_start(args, fmt);
 	len = vsnprintf(NULL, 0, fmt, args) + 1;
-	va_end (args);
+	va_end(args);
 
 	/* get chunk */
 #ifdef CHUNK_DIAG
- 	str = _chunk (len, name, file, line);
+ 	str = _chunk(len, name, file, line);
 #else
- 	str = chunk (len, name);
+ 	str = chunk(len, name);
 #endif
 	if (str == NULL) 
 		return NULL;
@@ -697,7 +697,7 @@ chunk_sprintf (const char *name, char *fmt, ...)
 	/* Format string */
 	va_start(args, fmt);
 	len = vsnprintf(str, len, fmt, args);
-	va_end (args);
+	va_end(args);
 	
 	return str;
 }
@@ -756,7 +756,7 @@ chunk_check(FILE *fout, const char *name)
 		if (chunk_grp) {
 			tmp = chunk_grp;
 			do {
-				if (!strcmp (tmp->cg_name, name)) {
+				if (!strcmp(tmp->cg_name, name)) {
 					grp = tmp;
 					break;
 				}

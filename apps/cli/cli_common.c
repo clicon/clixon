@@ -78,7 +78,7 @@
 /*! Register log notification stream
  * @param[in] h       Clicon handle
  * @param[in] stream  Event stream. CLICON is predefined, others are application-defined
- * @param[in] filter  Filter. For xml notification ie xpath: .[name=kalle]
+ * @param[in] filter  Filter. For xml notification ie xpath: .[name="kalle"]
  * @param[in] status  0 for stop, 1 to start
  * @param[in] fn      Callback function called when notification occurs
  * @param[in] arg     Argument to function note
@@ -184,7 +184,7 @@ cli_signal_flush(clicon_handle h)
     cli_signal_block (h);
 }
 
-/*! Modify xml database from a callback using xml key format strings
+/*! Modify xml datastore from a callback using xml key format strings
  * @param[in]  h    Clicon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
  * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
@@ -221,7 +221,7 @@ cli_dbxml(clicon_handle       h,
     cxobj     *xb;           /* body */
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires one element to be xml key format string", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires one element to be xml key format string");
 	goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -283,8 +283,15 @@ cli_dbxml(clicon_handle       h,
     return retval;
 }
 
+/*! Set datastore xml entry
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ */
 int 
-cli_set(clicon_handle h, cvec *cvv, cvec *argv)
+cli_set(clicon_handle h,
+	cvec         *cvv,
+	cvec         *argv)
 {
     int retval = 1;
 
@@ -294,13 +301,16 @@ cli_set(clicon_handle h, cvec *cvv, cvec *argv)
  done:
     return retval;
 }
-int cli_setv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_set(h, vars, argv);
-}
 
+/*! Merge datastore xml entry
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ */
 int 
-cli_merge(clicon_handle h, cvec *cvv, cvec *argv)
+cli_merge(clicon_handle h,
+	  cvec         *cvv,
+	  cvec         *argv)
 {
     int retval = -1;
 
@@ -310,13 +320,16 @@ cli_merge(clicon_handle h, cvec *cvv, cvec *argv)
  done:
     return retval;
 }
-int cli_mergev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_merge(h, vars, argv);
-}
 
+/*! Create datastore xml entry
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ */
 int 
-cli_create(clicon_handle h, cvec *cvv, cvec *argv)
+cli_create(clicon_handle h,
+	   cvec         *cvv,
+	   cvec         *argv)
 {
     int retval = -1;
 
@@ -326,11 +339,16 @@ cli_create(clicon_handle h, cvec *cvv, cvec *argv)
  done:
     return retval;
 }
-/*!
+/*! Remove datastore xml entry
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
  * @see cli_del
  */
 int 
-cli_remove(clicon_handle h, cvec *cvv, cvec *argv)
+cli_remove(clicon_handle h,
+	   cvec         *cvv,
+	   cvec         *argv)
 {
     int retval = -1;
 
@@ -341,8 +359,15 @@ cli_remove(clicon_handle h, cvec *cvv, cvec *argv)
     return retval;
 }
 
+/*! Delete datastore xml
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ */
 int 
-cli_del(clicon_handle h, cvec *cvv, cvec *argv)
+cli_del(clicon_handle h,
+	cvec         *cvv,
+	cvec         *argv)
 {
     int   retval = -1;
 
@@ -352,11 +377,6 @@ cli_del(clicon_handle h, cvec *cvv, cvec *argv)
  done:
     return retval;
 }
-int cli_delv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_del(h, vars, argv);
-}
-
 
 /*! Set debug level on CLI client (not backend daemon)
  * @param[in] h     Clicon handle
@@ -374,9 +394,9 @@ cli_debug_cli(clicon_handle h,
     cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find_var(vars, "level")) == NULL){
+    if ((cv = cvec_find(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, 0, "%s: Requires either label var or single arg: 0|1", __FUNCTION__);
+	    clicon_err(OE_PLUGIN, 0, "Requires either label var or single arg: 0|1");
 	    goto done;
 	}
 	cv = cvec_i(argv, 0);
@@ -387,10 +407,6 @@ cli_debug_cli(clicon_handle h,
     retval = 0;
  done:
     return retval;
-}
-int cli_debug_cliv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_debug_cli(h, vars, argv);
 }
 
 /*! Set debug level on backend daemon (not CLI)
@@ -409,9 +425,9 @@ cli_debug_backend(clicon_handle h,
     cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find_var(vars, "level")) == NULL){
+    if ((cv = cvec_find(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, 0, "%s: Requires either label var or single arg: 0|1", __FUNCTION__);
+	    clicon_err(OE_PLUGIN, 0, "Requires either label var or single arg: 0|1");
 	    goto done;
 	}
 	cv = cvec_i(argv, 0);
@@ -422,10 +438,38 @@ cli_debug_backend(clicon_handle h,
  done:
     return retval;
 }
-int cli_debug_backendv(clicon_handle h, cvec *vars, cvec *argv)
+
+/*! Set debug level on restconf daemon
+ * @param[in] h     Clicon handle
+ * @param[in] vars  If variable "level" exists, its integer value is used
+ * @param[in] arg   Else use the integer value of argument
+ * @note The level is either what is specified in arg as int argument.
+ *       _or_ if a 'level' variable is present in vars use that value instead.
+ */
+int
+cli_debug_restconf(clicon_handle h, 
+		   cvec         *vars, 
+		   cvec         *argv)
 {
-    return cli_debug_backend(h, vars, argv);
+    int     retval = -1;
+    cg_var *cv;
+    int     level;
+
+    if ((cv = cvec_find(vars, "level")) == NULL){
+	if (cvec_len(argv) != 1){
+	    clicon_err(OE_PLUGIN, 0, "Requires either label var or single arg: 0|1");
+	    goto done;
+	}
+	cv = cvec_i(argv, 0);
+    }
+    level = cv_int32_get(cv);
+    /* restconf daemon */
+    if (0) /* XXX notyet */
+	retval = clicon_rpc_debug(h, level);
+ done:
+    return retval;
 }
+
 
 /*! Set syntax mode
  */
@@ -438,7 +482,7 @@ cli_set_mode(clicon_handle h,
     char   *str = NULL;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires one element to be cli mode", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires one element to be cli mode");
 	goto done;
     }
     str = cv_string_get(cvec_i(argv, 0));
@@ -447,13 +491,10 @@ cli_set_mode(clicon_handle h,
   done:
     return retval;
 }
-int cli_set_modev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_set_mode(h, vars, argv);
-}
 
 /*! Start bash from cli callback
  * XXX Application specific??
+ * XXX replace fprintf with clicon_err?
  */ 
 int
 cli_start_shell(clicon_handle h, 
@@ -470,10 +511,10 @@ cli_start_shell(clicon_handle h,
 
     if ((pw = getpwuid(getuid())) == NULL){
 	fprintf(stderr, "%s: getpwuid: %s\n", 
-		__FUNCTION__, strerror(errno));
+               __FUNCTION__, strerror(errno));
 	return -1;
     }
-    if (chdir(pw->pw_dir) < 0){ 
+    if (chdir(pw->pw_dir) < 0){
 	fprintf(stderr, "%s: chdir(%s): %s\n",
 		__FUNCTION__, pw->pw_dir, strerror(errno));
 	endpwent();
@@ -508,10 +549,6 @@ cli_start_shell(clicon_handle h,
 
     return 0;
 }
-int cli_start_shellv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_start_shell(h, vars, argv);
-}
 
 /*! Generic quit callback
  */
@@ -522,10 +559,6 @@ cli_quit(clicon_handle h,
 {
     cligen_exiting_set(cli_cligen(h), 1);
     return 0;
-}
-int cli_quitv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_quit(h, vars, argv);
 }
 
 /*! Generic commit callback
@@ -544,10 +577,6 @@ cli_commit(clicon_handle h,
   done:
     return retval;
 }
-int cli_commitv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_commit(h, vars, argv);
-}
 
 /*! Generic validate callback
  */
@@ -563,10 +592,6 @@ cli_validate(clicon_handle h,
     retval = 0;
  done:
     return retval;
-}
-int cli_validatev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return cli_validate(h, vars, argv);
 }
 
 /*! Compare two dbs using XML. Write to file and run diff
@@ -647,7 +672,7 @@ compare_dbs(clicon_handle h,
     int    astext;
 
     if (cvec_len(argv) > 1){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires 0 or 1 element. If given: astext flag 0|1", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires 0 or 1 element. If given: astext flag 0|1");
 	goto done;
     }
     if (cvec_len(argv))
@@ -677,10 +702,6 @@ compare_dbs(clicon_handle h,
 
     return retval;
 }
-int compare_dbsv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return compare_dbs(h, vars, argv);
-}
 
 /*! Load a configuration file to candidate database
  * Utility function used by cligen spec file
@@ -692,7 +713,7 @@ int compare_dbsv(clicon_handle h, cvec *vars, cvec *argv)
  * @note file is assumed to have a dummy top-tag, eg <clicon></clicon>
  * @code
  *   # cligen spec
- *   load file <name2:string>, load_config_filev("name2","merge");
+ *   load file <name2:string>, load_config_file("name2","merge");
  * @endcode
  * @see save_config_file
  */
@@ -730,7 +751,7 @@ load_config_file(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such op: %s, expected merge or replace", opstr);	
 	goto done;
     }
-    if ((cv = cvec_find_var(cvv, varstr)) == NULL){
+    if ((cv = cvec_find(cvv, varstr)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
 	goto done;
     }
@@ -742,7 +763,7 @@ load_config_file(clicon_handle h,
     }
     /* Open and parse local file into xml */
     if ((fd = open(filename, O_RDONLY)) < 0){
-	clicon_err(OE_UNIX, errno, "%s: open(%s)", __FUNCTION__, filename);
+	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
     }
     if (xml_parse_file(fd, "</clicon>", NULL, &xt) < 0)
@@ -771,10 +792,6 @@ load_config_file(clicon_handle h,
     if (fd != -1)
 	close(fd);
     return ret;
-}
-int load_config_filev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return load_config_file(h, vars, argv);
 }
 
 /*! Copy database to local file 
@@ -808,9 +825,11 @@ save_config_file(clicon_handle h,
 
     if (cvec_len(argv) != 2){
 	if (cvec_len(argv)==1)
-	    clicon_err(OE_PLUGIN, 0, "%s: Got single argument:\"%s\". Expected \"<dbname>,<varname>\"", cv_string_get(cvec_i(argv,0)));
+	    clicon_err(OE_PLUGIN, 0, "Got single argument:\"%s\". Expected \"<dbname>,<varname>\"",
+		       cv_string_get(cvec_i(argv,0)));
 	else
-	    clicon_err(OE_PLUGIN, 0, "%s: Got %d arguments. Expected: <dbname>,<varname>", cvec_len(argv));
+	    clicon_err(OE_PLUGIN, 0, " Got %d arguments. Expected: <dbname>,<varname>",
+		       cvec_len(argv));
 
 	goto done;
     }
@@ -822,7 +841,7 @@ save_config_file(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
     }
-    if ((cv = cvec_find_var(cvv, varstr)) == NULL){
+    if ((cv = cvec_find(cvv, varstr)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
 	goto done;
     }
@@ -857,10 +876,6 @@ save_config_file(clicon_handle h,
 	fclose(f);
     return retval;
 }
-int save_config_filev(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return save_config_file(h, vars, argv);
-}
 
 /*! Delete all elements in a database 
  * Utility function used by cligen spec file
@@ -874,7 +889,7 @@ delete_all(clicon_handle h,
     int              retval = -1;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires one element: dbname", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires one element: dbname");
 	goto done;
     }
     dbstr = cv_string_get(cvec_i(argv, 0));
@@ -890,10 +905,6 @@ delete_all(clicon_handle h,
   done:
     return retval;
 }
-int delete_allv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return delete_all(h, vars, argv);
-}
 
 /*! Discard all changes in candidate and replace with running
  */
@@ -903,12 +914,8 @@ discard_changes(clicon_handle h,
 		cvec         *argv)
 {
     return clicon_rpc_discard_changes(h);
-}
-int discard_changesv(clicon_handle h, cvec *vars, cvec *argv)
-{
-    return discard_changes(h, vars, argv);
-}
 
+}
 /*! Copy from one database to another, eg running->startup
  * @param[in] argv  a string: "<db1> <db2>" Copy from db1 to db2
  */
@@ -945,7 +952,7 @@ cli_notification_cb(int   s,
     if (clicon_msg_rcv(s, &reply, &eof) < 0)
 	goto done;
     if (eof){
-	clicon_err(OE_PROTO, ESHUTDOWN, "%s: Socket unexpected close", __FUNCTION__);
+	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
 	close(s);
 	errno = ESHUTDOWN;
 	event_unreg_fd(s, cli_notification_cb);
@@ -992,7 +999,7 @@ cli_notification_cb(int   s,
  * and   <format> is XXX
  * Example code: Start logging of mystream and show logs as xml
  * @code
- * cmd("comment"), cli_notifyv("mystream","1","xml"); 
+ * cmd("comment"), cli_notify("mystream","1","xml"); 
  * @endcode
  * XXX: format is a memory leak
  */
@@ -1008,7 +1015,7 @@ cli_notify(clicon_handle h,
     enum format_enum format = FORMAT_TEXT;
 
     if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
-	clicon_err(OE_PLUGIN, 0, "%s Requires arguments: <logstream> <status> [<format>]", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires arguments: <logstream> <status> [<format>]");
 	goto done;
     }
     stream = cv_string_get(cvec_i(argv, 0));
@@ -1030,10 +1037,79 @@ cli_notify(clicon_handle h,
   done:
     return retval;
 }
+
+/* Backward compatible Set if you want to enable "v" cli callback functions, 
+ * such as cli_setv() 
+ * This was obsoleted in 3.7. 
+ * @see include/clixon_custom.h
+ */
+#ifdef COMPAT_CLIV
+int cli_setv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_set(h, vars, argv);
+}
+int cli_mergev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_merge(h, vars, argv);
+}
+int cli_delv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_del(h, vars, argv);
+}
+int cli_debug_cliv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_debug_cli(h, vars, argv);
+}
+int cli_debug_backendv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_debug_backend(h, vars, argv);
+}
+int cli_set_modev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_set_mode(h, vars, argv);
+}
+int cli_start_shellv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_start_shell(h, vars, argv);
+}
+int cli_quitv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_quit(h, vars, argv);
+}
+int cli_commitv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_commit(h, vars, argv);
+}
+int cli_validatev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return cli_validate(h, vars, argv);
+
+}
+int compare_dbsv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return compare_dbs(h, vars, argv);
+}
+int load_config_filev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return load_config_file(h, vars, argv);
+}
+int save_config_filev(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return save_config_file(h, vars, argv);
+}
+int delete_allv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return delete_all(h, vars, argv);
+}
+int discard_changesv(clicon_handle h, cvec *vars, cvec *argv)
+{
+    return discard_changes(h, vars, argv);
+}
 int cli_notifyv(clicon_handle h, cvec *vars, cvec *argv)
 {
     return cli_notify(h, vars, argv);
 }
+#endif /* COMPAT_CLIV */
 
 /*! Lock database
  * 
@@ -1113,7 +1189,7 @@ cli_unlock(clicon_handle h,
  *  tovar:  Name of variable containing name of object to copy to.
  * @code
  * cli spec:
- *  copy snd <n1:string> to <n2:string>, cli_copy_config("candidate", "/sender[%s=%s]", "from", "n1", "n2");
+ *  copy snd <n1:string> to <n2:string>, cli_copy_config("candidate", "/sender[%s='%s']", "from", "n1", "n2");
  * cli command:
  *  copy snd from to to
  * @endcode
@@ -1142,7 +1218,7 @@ cli_copy_config(clicon_handle h,
     cxobj       *xerr;
 
     if (cvec_len(argv) != 5){
-	clicon_err(OE_PLUGIN, 0, "%s: Requires four elements: <db> <xpath> <keyname> <from> <to>", __FUNCTION__);
+	clicon_err(OE_PLUGIN, 0, "Requires four elements: <db> <xpath> <keyname> <from> <to>");
 	goto done;
     }
     /* First argv argument: Database */
@@ -1157,7 +1233,7 @@ cli_copy_config(clicon_handle h,
     tovar = cv_string_get(cvec_i(argv, 4));
     
     /* Get from variable -> cv -> from name */
-    if ((fromcv = cvec_find_var(cvv, fromvar)) == NULL){
+    if ((fromcv = cvec_find(cvv, fromvar)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "fromvar '%s' not found in cligen var list", fromvar);	
 	goto done;
     }
@@ -1168,17 +1244,34 @@ cli_copy_config(clicon_handle h,
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
 	goto done;
     }
-    /* Sanity check that xpath contains exactly one %s */
+    /* Sanity check that xpath contains exactly two %s, ie [%s='%s'] */
     j = 0;
-    for (i=0; i<strlen(xpath); i++)
+    for (i=0; i<strlen(xpath); i++){
 	if (xpath[i] == '%')
 	    j++;
+#ifdef COMPAT_XSL
+	/* This is a horrible kludge due to:
+	 * (1) old xpath implementation wrongly did: a[b=x] instead of a[b='x']
+	 * (2) cli_copy_config has as 2nd argument such an xpath provided by user.
+	 */
+	if (j==2){
+	    int k;
+	    if ((xpath[i-1] == '\'' || xpath[i-1] == '\"') &&
+		(xpath[i+2] == '\'' || xpath[i+2] == '\"')){
+		for (k=i-1;k<i+2;k++)
+		    xpath[k] =  xpath[k+1];
+		for (k=i+1;k<strlen(xpath)+1;k++)
+		    xpath[k] = xpath[k+2];
+		i-=1;
+	    }
+	}
+#endif	
+    }
     if (j != 2){
-	clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have two '%%'");	
+	clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have two '%%'", xpath);	
 	goto done;
     }
     cprintf(cb, xpath, keyname, fromname);	
-
     /* Get from object configuration and store in x1 */
     if (clicon_rpc_get_config(h, db, cbuf_get(cb), &x1) < 0)
 	goto done;
@@ -1188,7 +1281,7 @@ cli_copy_config(clicon_handle h,
     }
 
     /* Get to variable -> cv -> to name */
-    if ((tocv = cvec_find_var(cvv, tovar)) == NULL){
+    if ((tocv = cvec_find(cvv, tovar)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "tovar '%s' not found in cligen var list", tovar);
 	goto done;
     }
@@ -1200,7 +1293,7 @@ cli_copy_config(clicon_handle h,
 	goto done;
     xml_name_set(x2, "config");
     cprintf(cb, "/%s", keyname);	
-    if ((x = xpath_first(x2, cbuf_get(cb))) == NULL){
+    if ((x = xpath_first(x2, "%s", cbuf_get(cb))) == NULL){
 	clicon_err(OE_PLUGIN, 0, "Field %s not found in copy tree", keyname);
 	goto done;
     }
@@ -1237,7 +1330,7 @@ cli_debug(clicon_handle h,
     cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find_var(vars, "level")) == NULL)
+    if ((cv = cvec_find(vars, "level")) == NULL)
 	cv = arg;
     level = cv_int32_get(cv);
     /* cli */

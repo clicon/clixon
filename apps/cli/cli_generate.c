@@ -141,6 +141,7 @@ cli_expand_var_generate(clicon_handle h,
  * @param[in]  ys  yang_stmt of the node at hand
  * @param[in]  cb0 The string where the result format string is inserted.
  * @see cli_dbxml  This is where the xmlkeyfmt string is used
+ * @see pt_callback_reference  in CLIgen where the actual callback overwrites the template
  */
 static int
 cli_callback_generate(clicon_handle h, 
@@ -204,20 +205,51 @@ yang2cli_var_sub(clicon_handle h,
     }
     type = ytype?ytype->ys_argument:NULL;
     cvtypestr = cv_type2str(cvtype);
+    if (type && strcmp(type, "identityref") == 0)
+	cprintf(cb, "(");
     cprintf(cb, "<%s:%s", ys->ys_argument, cvtypestr);
     /* enumeration special case completion */
-    if (type && (strcmp(type, "enumeration") == 0 || strcmp(type, "bits") == 0)){
-	cprintf(cb, " choice:"); 
-	i = 0;
-	while ((yi = yn_each((yang_node*)ytype, yi)) != NULL){
-	    if (yi->ys_keyword != Y_ENUM && yi->ys_keyword != Y_BIT)
-		continue;
-	    if (i)
-		cprintf(cb, "|"); 
-	    cprintf(cb, "%s", yi->ys_argument); 
-	    i++;
+    if (type){
+	if (strcmp(type, "enumeration") == 0 || strcmp(type, "bits") == 0){
+	    cprintf(cb, " choice:"); 
+	    i = 0;
+	    while ((yi = yn_each((yang_node*)ytype, yi)) != NULL){
+		if (yi->ys_keyword != Y_ENUM && yi->ys_keyword != Y_BIT)
+		    continue;
+		if (i)
+		    cprintf(cb, "|"); 
+		cprintf(cb, "%s", yi->ys_argument); 
+		i++;
+	    }
+	}
+	else if (strcmp(type, "identityref") == 0){
+	    yang_stmt *ybaseref;
+	    yang_stmt *ybaseid;
+	    cg_var    *cv = NULL;
+	    char      *name;
+	    char      *id;
+	    /* Add a wildchar string first -let validate take it for default prefix */
+	    cprintf(cb, ">");
+	    if (helptext)
+		cprintf(cb, "(\"%s\")", helptext);
+    	    cprintf(cb, "|<%s:%s choice:", ys->ys_argument, cvtypestr);
+	    if ((ybaseref = yang_find((yang_node*)ytype, Y_BASE, NULL)) != NULL &&
+		(ybaseid = yang_find_identity(ys, ybaseref->ys_argument)) != NULL){
+		i = 0;
+		while ((cv = cvec_each(ybaseid->ys_cvec, cv)) != NULL){
+		    if (i++)
+			cprintf(cb, "|"); 
+		    name = strdup(cv_name_get(cv));
+		    if ((id=strchr(name, ':')) != NULL)
+			*id = '\0';
+		    cprintf(cb, "%s:%s", name, id+1);
+		    if (name)
+			free(name);
+		}
+	    }
 	}
     }
+
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
 	cprintf(cb, " fraction-digits:%u", fraction_digits);
     if (options & (YANG_OPTIONS_RANGE|YANG_OPTIONS_LENGTH)){
@@ -253,16 +285,18 @@ yang2cli_var_sub(clicon_handle h,
 		    goto done;
 		}
 	}
-	cprintf(cb, "%s]", r);
+	cprintf(cb, "%s]", r); /* range */
 	free(r);
 	r = NULL;
     }
     if (options & YANG_OPTIONS_PATTERN)
 	cprintf(cb, " regexp:\"%s\"", pattern);
-
     cprintf(cb, ">");
     if (helptext)
 	cprintf(cb, "(\"%s\")", helptext);
+    if (type && strcmp(type, "identityref") == 0)
+	cprintf(cb, ")");
+
     retval = 0;
   done:
     return retval;
@@ -385,6 +419,7 @@ yang2cli_var(clicon_handle h,
     enum cv_type  cvtype;
     int           options = 0;
     int           completionp;
+    char         *type;
 
     if (yang_type_get(ys, &origtype, &yrestype, 
 		      &options, &mincv, &maxcv, &pattern, &fraction_digits) < 0)
@@ -413,11 +448,11 @@ yang2cli_var(clicon_handle h,
 	cprintf(cb, ")");
     }
     else{
-	char         *type;
 	type = yrestype?yrestype->ys_argument:NULL;
 	if (type)
 	    completionp = clicon_cli_genmodel_completion(h) &&
-		strcmp(type, "enumeration") != 0 && 
+		strcmp(type, "enumeration") != 0 &&
+		strcmp(type, "identityref") != 0 && 
 		strcmp(type, "bits") != 0;
 	else
 	    completionp = clicon_cli_genmodel_completion(h);
@@ -748,7 +783,7 @@ yang2cli(clicon_handle      h,
     cvec           *globals;       /* global variables from syntax */
 
     if ((cbuf = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "%s: cbuf_new", __FUNCTION__);
+	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
     /* Traverse YANG specification: loop through statements */

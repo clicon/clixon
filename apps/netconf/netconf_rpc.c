@@ -752,7 +752,7 @@ netconf_notification_cb(int   s,
 	goto done;
     /* handle close from remote end: this will exit the client */
     if (eof){
-	clicon_err(OE_PROTO, ESHUTDOWN, "%s: Socket unexpected close", __FUNCTION__);
+	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
 	close(s);
 	errno = ESHUTDOWN;
 	event_unreg_fd(s, netconf_notification_cb);
@@ -770,13 +770,13 @@ netconf_notification_cb(int   s,
 	    /* find and apply filter */
 	if ((selector = xml_find_value(xfilter, "select")) == NULL)
 	    goto done;
-	if (xpath_first(xe, selector) == NULL) {
+	if (xpath_first(xe, "%s", selector) == NULL) {
 	    fprintf(stderr, "%s no match\n", __FUNCTION__); /* debug */
 	}
     }
     /* create netconf message */
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_PLUGIN, errno, "%s: cbuf_new", __FUNCTION__);
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");
 	goto done;
     }
     add_preamble(cb); /* Make it well-formed netconf xml */
@@ -888,12 +888,19 @@ netconf_application_rpc(clicon_handle h,
 	goto done;
     }
     cbuf_reset(cb);
-    //    if (xml_namespace(xn))
-	cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn));
-	//    else
-	//	cprintf(cb, "/%s", xml_name(xn)); /* XXX not accepdted by below */
+    if (xml_namespace(xn) == NULL){
+	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
+		     "<error-tag>operation-failed</error-tag>"
+		     "<error-type>rpc</error-type>"
+		     "<error-severity>error</error-severity>"
+		     "<error-message>%s</error-message>"
+		     "<error-info>Not recognized</error-info>"
+		     "</rpc-error></rpc-reply>", xml_name(xn));
+	goto ok;
+    }
+    cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn));
     /* Find yang rpc statement, return yang rpc statement if found */
-	if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), Y_RPC, &yrpc) < 0)
+    if (yang_abs_schema_nodeid(yspec, cbuf_get(cb), Y_RPC, &yrpc) < 0)
 	goto done;
     /* Check if found */
     if (yrpc != NULL){
@@ -937,6 +944,7 @@ netconf_application_rpc(clicon_handle h,
 	retval = 1; /* handled by callback */
 	goto done;
     }
+ ok:
     retval = 0;
  done:
     if (cb)
@@ -964,12 +972,26 @@ netconf_rpc_dispatch(clicon_handle h,
     int         retval = -1;
     cxobj      *xe;
     yang_spec  *yspec = NULL; 
+    char       *username;
+    cxobj      *xa;
     
     /* Check incoming RPC against system / netconf RPC:s */
     if ((yspec = clicon_netconf_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No netconf yang spec");
 	goto done;
     }
+    /* Tag username on all incoming requests in case they are forwarded as internal messages
+     * This may be unecesary since not all are forwarded. 
+     * It may even be wrong if something else is done with the incoming message?
+     */
+    if ((username = clicon_username_get(h)) != NULL){
+	if ((xa = xml_new("username", xn, NULL)) == NULL)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (xml_value_set(xa, username) < 0)
+	    goto done;
+    }
+
     xe = NULL;
     while ((xe = xml_child_each(xn, xe, CX_ELMNT)) != NULL) {
 	if (strcmp(xml_name(xe), "get-config") == 0){
@@ -1047,5 +1069,8 @@ netconf_rpc_dispatch(clicon_handle h,
     }
     retval = 0;
  done:
+    /* Username attribute added at top - otherwise it is returned to sender */
+    if ((xa = xml_find(xn, "username")) != NULL)
+	xml_purge(xa);
     return retval;
 }

@@ -1,0 +1,13 @@
+[Unit]
+Description=Starts and stops a clixon example service on this system
+Wants=example_restconf.service
+
+[Service]
+Type=forking
+User=root
+RestartSec=60
+Restart=on-failure
+ExecStart=/usr/local/sbin/clixon_backend -s running -f /usr/local/etc/example.xml
+
+[Install]
+WantedBy=multi-user.target

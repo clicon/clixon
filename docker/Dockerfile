@@ -31,16 +31,44 @@
 # ***** END LICENSE BLOCK *****
 #
 
-#
-# Include this file in your application Makefile using eg:
-# -include $(datarootdir)/clixon/clixon.mk
-# then you can use the DIRS below in your install rules.
-# You also get rules for the application configure file.
-# NOTE: APPNAME must be defined in the local Makefile
+FROM debian
+MAINTAINER Olof Hagsand <olof@hagsand.se>
+ENV DEBIAN_FRONTEND noninteractive
 
-clixon_DBSPECDIR=prefix/share/$(APPNAME)
-clixon_SYSCONFDIR=sysconfdir
-clixon_LOCALSTATEDIR=localstatedir/$(APPNAME)
-clixon_LIBDIR=libdir/$(APPNAME)
-clixon_DATADIR=datadir/clixon # for system yang files
+RUN apt-get update && apt-get install -y \
+  git make gcc flex bison \
+  libfcgi-dev \
+  libcurl4-openssl-dev
+
+
+RUN groupadd clicon
+
+# Create a directory to hold source-code, dependencies etc
+RUN mkdir /clixon
+WORKDIR /clixon
+
+# Clone cligen and clixon
+RUN git clone https://github.com/olofhagsand/cligen.git
+RUN git clone https://github.com/clicon/clixon.git
+
+# Build cligen
+WORKDIR /clixon/cligen
+RUN ./configure
+RUN make
+RUN make install
+
+# Build clixon
+WORKDIR /clixon/clixon
+RUN git checkout -b develop origin/develop
+RUN ./configure
+RUN make
+RUN make install
+RUN make install-include
+
+RUN ldconfig
+
+
+
+
+
 

@@ -39,10 +39,12 @@
 /*
  * Prototypes
  */
-cxobj *xpath_first(cxobj *cxtop, char *format, ...);
+int xpath_vec_xsl(cxobj *cxtop, char *xpath, cxobj ***vec, size_t  *veclen);
+int xpath_vec_flag_xsl(cxobj *cxtop, char *xpath, uint16_t flags, 
+		       cxobj ***vec, size_t *veclen);
+cxobj *xpath_first_xsl(cxobj *cxtop, char *xpath);
+#ifdef COMPAT_XSL
 cxobj *xpath_each(cxobj *xn_top, char *xpath, cxobj *prev);
-int xpath_vec(cxobj *cxtop, char *format, cxobj ***vec, size_t  *veclen, ...);
-int xpath_vec_flag(cxobj *cxtop, char *xpath, uint16_t flags, 
-		   cxobj ***vec, size_t *veclen, ...);
+#endif
 
 #endif /* _CLIXON_XSL_H */

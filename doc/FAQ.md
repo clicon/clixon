@@ -1,4 +1,4 @@
-i# Clixon FAQ
+# Clixon FAQ
 
 ## What is Clixon?
 
@@ -24,7 +24,7 @@ Clixon is written in C. The plugins are written in C. The CLI
 specification uses cligen (http://cligen.se)
 
 ## How to best understand Clixon?
-Run the Clixon example, in the example directory.
+Run the Clixon example, in the [example](../example) directory.
 
 ## How do you build and install Clixon (and the example)?
 Clixon: 
@@ -41,14 +41,25 @@ The example:
 	 sudo make install
 ```
 
-## Do I need to setup anything?
+## Do I need to setup anything? (IMPORTANT)
 
 The config demon requires a valid group to create a server UNIX socket.
 Define a valid CLICON_SOCK_GROUP in the config file or via the -g option
 or create the group and add the user to it. The default group is 'clicon'.
+Add yourself and www-data, if you intend to use restconf.
+
 On linux:
+```
   sudo groupadd clicon
-  sudo usermod -a -G clicon user
+  sudo usermod -a -G clicon <user>
+  sudo usermod -a -G clicon www-data
+```
+
+Verify:
+```
+grep clicon /etc/group
+clicon:x:1001:<user>,www-data
+```
 
 ## What about reference documentation?
 Clixon uses Doxygen for reference documentation.
@@ -90,20 +101,14 @@ You can change where CLixon looks for the configuration FILE as follows:
   - FILE is /usr/local/etc/clixon.xml
 
 ## Can I run Clixon as docker containers?
-Yes, the example works as docker containers as well. backend and cli needs a 
-common file-system so they need to run as a composed pair.
+
+Yes, the example works as docker containers as well. There should be a
+prepared container in docker hib for the example where the backend and
+CLI is bundled. 
 ```
-	cd example/docker
-	make docker # Prepares /data as shared file-system mount
-	run.sh      # Starts an example backend and a cli
+sudo docker run -ti --rm olofhagsand/clixon_example
 ```
-The containers are by default downloaded from dockerhib, but you may
-build the containers locally: 
-```
-	cd docker
-	make docker
-```
-You may also push the containers with 'make push' but you may then consider changing the image name in the makefile.
+Look in the example documentation for more info.
 
 ## How do I use netconf?
 
@@ -127,7 +132,25 @@ You can access clixon via REST API using restconf, such as using
 curl. GET, PUT, POST are supported.
 
 You need a web-server, such as nginx, and start a restconf fcgi
-daemon, clixon_restconf. Read more in the restconf docs.
+daemon, clixon_restconf.
+
+For example, using nginx, install, and edit config file: /etc/nginx/sites-available/default:
+```
+server {
+  ...
+  location /restconf {
+    root /usr/share/nginx/html/restconf;
+    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+    include fastcgi_params;
+  }
+}
+```
+Start nginx daemon
+```
+sudo /etc/init.d/nginx start
+```
+
+Read more in the restconf docs.
 
 Example:
 ```
@@ -177,6 +200,11 @@ You may also add a default method in the configuration file:
    <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE
 </config>
 ```
+
+## Can I use systemd with Clixon?
+
+Yes. Systemd example files are provide for the backend and the
+restconf daemon as part of the [example](../example/systemd).
 
 ## How can I add extra XML?
 
@@ -342,5 +370,35 @@ plugin_credentials(clicon_handle h,
 
 To authenticate, the callback needs to return the value 1 and supply a username.
 
-See [../apps/example/example_restconf.c] plugin_credentials() for
+See [../apps/example/example_restconf.c] example_restconf_credentials() for
 an example of HTTP basic auth.
+
+## How do I write a CLI translator function?
+
+The CLI can perform variable translation. This is useful if you want to
+prcess the input, such as hashing, encrypting or in other way
+translate the input.
+
+Yang example:
+```
+list translate{
+    leaf value{
+        type string;
+    }
+}
+```
+
+CLI specification:
+```
+translate value (<value:string translate:incstr()>),cli_set("/translate/value");
+```
+
+If you run this example using the `incstr()` function which increments the characters in the input, you get this result:
+```
+cli> translate value HAL
+cli> show configuration
+translate {
+    value IBM;
+}
+```
+You can perform translation on any type, not only strings.
