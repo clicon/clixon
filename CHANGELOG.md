@@ -1,22 +1,34 @@
 # Clixon Changelog
 
-## 3.7.0 (Upcoming)
+## 3.7.0 (22 July 2018)
 
 ### Major New features
 
-* Support for YANG conditionals "must" and "when" according to RFC 7950 Sec 7.5.3 and 7.21.5.
-  * XPATH checked at validation time
-* Support for YANG identity, identityref, according to RFC 7950 Sec 7.18 and 9.10.
-  * Previous support did no validation of values.
-  * Validation of types and CLI expansion
-  * Example extended with inclusion of iana-if-type RFC 7224 interface identities
-  * Applications which have not strictly enforced the identities may now have problems with validation and may need to be modified.
-
-* Improved support for XPATH 1.0 according to https://www.w3.org/TR/xpath-10 using yacc/lex, see also API changes below.
-
+* YANG "must" and "when" Xpath-basedconstraints according to RFC 7950 Sec 7.5.3 and 7.21.5.
+  * Must and when Xpath constrained checked at validation/commit.
+* YANG "identity" and "identityref", according to RFC 7950 Sec 7.18 and 9.10.
+  * Identities checked at validation/commit.
+  * CLI completion support of identity values.
+  * Example extended with iana-if-type RFC 7224 interface identities.
+* Improved support for XPATH 1.0 according to https://www.w3.org/TR/xpath-10 using yacc/lex,
+  * Full suport of boolean constraints for "when"/"must", not only nodesets.
+  * See also API changes below.
+* CDATA XML support (patch by David Cornejo, Netgate)
+  * Encode and decode (parsing) support 
+* Added cligen variable translation. Useful for processing input such as hashing, encryption.
+  * More info in example and FAQ.
+  * Example:
+```
+cli> translate value HAL
+cli> show configuration
+translate {
+    value IBM;
+}
+```
 ### API changes on existing features (you may need to change your code)
 
-* Conformance of restconf(RFC-8040) operations where prefix was used instead of module name.
+* YANG identity, identityref, must, and when validation support may cause applications that had not strictly enforced identities and constraints before.
+* Restconf operations changed from prefix to module name.
   * Proper specification for an operation is POST /restconf/operations/<module_name>:<rpc_procedure> HTTP/1.1
   * See https://github.com/clicon/clixon/issues/31, https://github.com/clicon/clixon/pull/32 and https://github.com/clicon/clixon/issues/30
   * Thanks David Cornejo and Dmitry Vakhrushev of Netgate for pointing this out.
@@ -50,36 +62,39 @@
   * show_yangv --> show_yang
   * show_confv_xpath --> show_conf_xpath
 
+* Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
+
 ### Minor changes
 
-* Updated the docker image build and changed it to build a single clixon docker image which can be found at olofhagsand/clixon. And the example at olofhagsand/clixon_example.	
+* Clixon docker upgrade
+  * Updated the docker image build and example to a single clixon docker image.
+  * Example pushed to https://hub.docker.com/r/olofhagsand/clixon_example/
 * Added systemd example files under example/systemd
-* Changed `plugin_init()` backend return semantics: If returns NULL, _without_ calling clicon_err(), the module is disabled.
-* Added util subdir, with dedicated standalone xml,json,yang and xpath parser utility test programs.
-* CDATA xml support (patch by David Cornejo, Netgate)
-  * Encode and decode (parsing) support 
+* Added util subdir, with dedicated standalone xml, json, yang and xpath parser utility test programs.
 * Validation of yang bits type space-separated list value
-* Added -U <user> command line to clixon_cli and clixon_netconf for NACM pseudo-user tests
+* Added -U <user> command line to clixon_cli and clixon_netconf for changing user.
+  * This is primarily for NACM pseudo-user tests
 * Added a generated CLI show command that works on the generated parse tree with auto completion.
   * A typical call is: 	show @datamodel:example, cli_show_auto("candidate", "json");
   * The example contains a more elaborate example.
   * Thanks ngashok for request, see https://github.com/clicon/clixon/issues/24
-* Added xmlns validation
+* Added XML namespace (xmlns) validation
   * for eg <a xmlns:x="uri"><x:b/></a> 
-* Added yang identityref runtime validation
-* Added --enable-debug. 
-* Added cligen variable translation.
-  * See FAQ and example 
+* ./configure extended with --enable-debug flag
+  * CFLAGS=-g ./configure deprecated
 
 ### Corrected Bugs
 * Prefix of rpc was ignored (thanks Dmitri at netgate)
   * https://github.com/clicon/clixon/issues/30
-* Added cli returna value also for single commands (eg -1)
+* Added cli return value also for single commands (eg -1)
 * Fixed JSON unbalanced braces resulting in assert.
 
 ### Known issues
 * Namespace name relabeling is not supported.
-  * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlfns is not supported, such as: <crypto xmlns:x="urn:example:des">x:des3</crypto>
+  * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlfns is not supported, such as:
+```
+  <crypto xmlns:x="urn:example:des">x:des3</crypto>
+```
 
 ## 3.6.1 (29 May 2018)
 
