@@ -63,8 +63,6 @@ OBJS    = $(SRC:.c=.o)
 
 all:	 $(PLUGIN)
 
--include $(DESTDIR)$(datarootdir)/clixon/clixon.mk
-
 $(PLUGIN): $(SRC)
 ifeq ($(HOST_VENDOR),apple)
 	$(CC) $(CPPFLAGS) $(INCLUDES) $(CFLAGS) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ -lc $^ $(LIBS)

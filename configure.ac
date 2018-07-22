@@ -178,9 +178,10 @@ AC_CHECK_LIB(dl, dlopen)
 
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp)
 
-# This is to find clixon system files in the source code.
-# same as clixon_DATADIR defined in clixon.mk.cpp for Makefiles
-AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${prefix}/share/clixon", [Clixon data dir for system yang files etc])
+# This is to find clixon system files in the source code and Makefile
+AC_SUBST(CLIXON_DATADIR)
+CLIXON_DATADIR="${prefix}/share/clixon"
+AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${CLIXON_DATADIR}", [Clixon data dir for system yang files etc])
 
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${DEFAULT_CONFIG}",[Location for apps to find default config file])

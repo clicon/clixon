@@ -621,6 +621,7 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+CLIXON_DATADIR
 EGREP
 GREP
 LEXLIB
@@ -4308,11 +4309,12 @@ fi
 done
 
 
-# This is to find clixon system files in the source code.
-# same as clixon_DATADIR defined in clixon.mk.cpp for Makefiles
+# This is to find clixon system files in the source code and Makefile
+
+CLIXON_DATADIR="${prefix}/share/clixon"
 
 cat >>confdefs.h <<_ACEOF
-#define CLIXON_DATADIR "${prefix}/share/clixon"
+#define CLIXON_DATADIR "${CLIXON_DATADIR}"
 _ACEOF
 
 

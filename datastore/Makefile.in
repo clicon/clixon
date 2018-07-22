@@ -78,8 +78,6 @@ APPL	= datastore_client
 
 all:	$(SUBDIRS) $(APPL)
 
--include $(DESTDIR)$(datarootdir)/clixon/clixon.mk
-
 .SUFFIXES:
 .SUFFIXES: .c .o
 
@@ -101,14 +99,11 @@ install-include:
 	for i in $(SUBDIRS); \
 	do (cd $$i ; $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 
-install: $(APPL)
-	install -d -m 0755 $(DESTDIR)$(bindir)
-	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(bindir)
+install: 
 	for i in $(SUBDIRS); \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
 
 uninstall:
-	rm -f $(DESTDIR)$(bindir)/$(APPL)
 	for i in $(SUBDIRS); \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
 

@@ -41,6 +41,9 @@ translate {
   * xpath_each() is removed
   * The old API can be enabled by setting COMPAT_XSL in include/clixon_custom.h and recompile.
 
+* Makefile change: Removed the make include file: clixon.mk and clixon.mk.in
+  * These generated the Makefile variables: clixon_DBSPECDIR, clixon_SYSCONFDIR, clixon_LOCALSTATEDIR, clixon_LIBDIR, clixon_DATADIR which have been replaced by generic autoconf variables instead.
+
 * Removed cli callback vector functions. Set COMPAT_CLIV if you need to keep these functions in include/clixon_custom.h.
   * Replace functions as follows in CLI SPEC files:
   * cli_setv --> cli_set

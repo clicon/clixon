@@ -6,7 +6,7 @@
 . ./lib.sh
 fyang=$dir/ietf-ip.yang
 
-datastore=datastore_client
+datastore=../datastore/datastore_client
 
 cat <<EOF > $fyang
 module ietf-ip{

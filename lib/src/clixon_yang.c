@@ -1835,7 +1835,7 @@ yang_parse_recurse(const char   *yang_dir,
 	    if ((nr = yang_parse_find_match(yang_dir, module, fbuf)) < 0)
 		goto done;
 	    if (nr == 0){
-		clicon_err(OE_YANG, errno, "No matching %s yang files found (expected module name or absolute filename)", module);
+		clicon_err(OE_YANG, errno, "No matching %s yang files found in %s (expected module name or absolute filename)", module, yang_dir);
 		goto done;
 	    }
 	}

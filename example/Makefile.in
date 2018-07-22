@@ -37,8 +37,13 @@ prefix 		= @prefix@
 bindir 		= @bindir@
 includedir	= @includedir@
 datarootdir     = @datarootdir@
+sysconfdir      = @sysconfdir@
+datarootdir	= @datarootdir@
+localstatedir   = @localstatedir@
+libdir          = @exec_prefix@/lib
 
 APPNAME	        = example
+
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ -rdynamic -fPIC 
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
@@ -59,9 +64,6 @@ PLUGINS = $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_
 .PHONY: all clean depend install docker push
 
 all:	$(PLUGINS)
-
-# Note: clixon.mk has rules for clixon_DBSPECDIR, clixon_SYSCONFDIR, etc used below
--include $(DESTDIR)$(datarootdir)/clixon/clixon.mk
 
 CLISPECS = $(APPNAME)_cli.cli
 
@@ -116,21 +118,21 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN) $(APPNAME).xml
-	install -d -m 0755 $(DESTDIR)$(clixon_SYSCONFDIR)
-	install -m 0644 $(APPNAME).xml $(DESTDIR)$(clixon_SYSCONFDIR)
-	install -d -m 0755 $(DESTDIR)$(clixon_DBSPECDIR)/yang
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(clixon_DBSPECDIR)/yang
-	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/cli
-	install -m 0644 $(INSTALLFLAGS) $(CLI_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/cli
-	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/backend
-	install -m 0644 $(INSTALLFLAGS) $(BE_PLUGIN) $(BE2_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/backend
-	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/netconf
-	install -m 0644 $(INSTALLFLAGS) $(NETCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/netconf
-	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/restconf
-	install -m 0644 $(INSTALLFLAGS) $(RESTCONF_PLUGIN) $(DESTDIR)$(clixon_LIBDIR)/restconf
-	install -d -m 0755 $(DESTDIR)$(clixon_LIBDIR)/clispec
-	install -m 0644 $(CLISPECS) $(DESTDIR)$(clixon_LIBDIR)/clispec
-	install -d -m 0755 $(DESTDIR)$(clixon_LOCALSTATEDIR)
+	install -d -m 0755 $(DESTDIR)$(sysconfdir)
+	install -m 0644 $(APPNAME).xml $(DESTDIR)$(sysconfdir)
+	install -d -m 0755 $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
+	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/cli
+	install -m 0644 $(INSTALLFLAGS) $(CLI_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/cli
+	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/backend
+	install -m 0644 $(INSTALLFLAGS) $(BE_PLUGIN) $(BE2_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/backend
+	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/netconf
+	install -m 0644 $(INSTALLFLAGS) $(NETCONF_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/netconf
+	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/restconf
+	install -m 0644 $(INSTALLFLAGS) $(RESTCONF_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/restconf
+	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/clispec
+	install -m 0644 $(CLISPECS) $(DESTDIR)$(libdir)/$(APPNAME)/clispec
+	install -d -m 0755 $(DESTDIR)$(localstatedir)/$(APPNAME)
 
 docker:
 	sudo docker build -t $(IMAGE) .
@@ -138,12 +140,13 @@ docker:
 push:
 	sudo docker push $(IMAGE)
 
-
 uninstall: 
-	rm -rf $(DESTDIR)$(clixon_SYSCONFDIR)/$(APPNAME).xml
-	rm -rf $(DESTDIR)$(clixon_DBSPECDIR)
-	rm -rf $(DESTDIR)$(clixon_LOCALSTATEDIR)
-	rm -rf $(DESTDIR)$(clixon_LIBDIR)
+	echo "libdir:$(libdir)"
+	echo "libdir2:$(libdir2)"
+	rm -rf $(DESTDIR)$(sysconfdir)/$(APPNAME).xml
+	rm -rf $(DESTDIR)$(datarootdir)/$(APPNAME)
+	rm -rf $(DESTDIR)$(localstatedir)/$(APPNAME)
+	rm -rf $(DESTDIR)$(libdir)/$(APPNAME)
 
 install-include:	
 
