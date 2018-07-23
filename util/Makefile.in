@@ -80,16 +80,16 @@ clean:
 
 # APPS
 clixon_util_xml: clixon_util_xml.c $(MYLIB)
-	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $^ $(LIBS) -o $@
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
 
 clixon_util_json: clixon_util_json.c $(MYLIB)
-	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $^ $(LIBS) -o $@
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
 
 clixon_util_yang: clixon_util_yang.c $(MYLIB)
-	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $^ $(LIBS) -o $@
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
 
 clixon_util_xpath: clixon_util_xpath.c $(MYLIB)
-	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $^ $(LIBS) -o $@
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
 distclean: clean
 	rm -f Makefile *~ .depend
