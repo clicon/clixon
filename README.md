@@ -40,6 +40,8 @@ Users of clixon currently include:
 
 See also [Clicon project page](http://clicon.org).
 
+Clixon runs on Linux, [FreeBSD port](https://www.freshports.org/devel/clixon) and Mac/Apple. CPU architecures include x86_64, i686, ARM32.
+
 Installation
 ============
 A typical installation is as follows:
@@ -71,8 +73,6 @@ Clixon depends on the following software packages, which need to exist on the ta
 - Yacc/bison
 - Lex/Flex
 - Fcgi (if restconf is enabled)
-
-There is no yum/apt/ostree package for Clixon (please help?)
 
 Support
 =======
