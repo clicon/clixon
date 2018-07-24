@@ -81,7 +81,6 @@
 #include <clixon/clixon_options.h>
 #include <clixon/clixon_xml_map.h>
 #include <clixon/clixon_xml_db.h>
-#include <clixon/clixon_xsl.h>
 #include <clixon/clixon_xpath_ctx.h>
 #include <clixon/clixon_xpath.h>
 #include <clixon/clixon_json.h>

@@ -144,25 +144,4 @@ int cli_show_config(clicon_handle h, cvec *cvv, cvec *argv);
 
 int cli_show_auto(clicon_handle h, cvec *cvv, cvec *argv);
 
-#ifdef COMPAT_CLIV
-int cli_setv(clicon_handle h, cvec *vars, cvec *argv);
-int cli_mergev(clicon_handle h, cvec *vars, cvec *argv);
-int cli_delv(clicon_handle h, cvec *vars, cvec *argv);
-int cli_debug_cliv(clicon_handle h, cvec *vars, cvec *argv);
-int cli_debug_backendv(clicon_handle h, cvec *vars, cvec *argv);
-int cli_set_modev(clicon_handle h, cvec *vars, cvec *argv);
-int cli_start_shellv(clicon_handle h, cvec *vars, cvec *argv);
-int cli_quitv(clicon_handle h, cvec *vars, cvec *argv);
-int cli_commitv(clicon_handle h, cvec *vars, cvec *argv);
-int cli_validatev(clicon_handle h, cvec *vars, cvec *argv);
-int compare_dbsv(clicon_handle h, cvec *vars, cvec *argv);
-int load_config_filev(clicon_handle h, cvec *vars, cvec *argv);
-int save_config_filev(clicon_handle h, cvec *vars, cvec *argv);
-int delete_allv(clicon_handle h, cvec *vars, cvec *argv);
-int discard_changesv(clicon_handle h, cvec *vars, cvec *argv);
-int cli_notifyv(clicon_handle h, cvec *cvv, cvec *argv);
-int show_yangv(clicon_handle h, cvec *vars, cvec *argv);
-int show_confv_xpath(clicon_handle h, cvec *cvv, cvec *argv);
-#endif /* COMPAT_CLIV */
-
 #endif /* _CLIXON_CLI_API_H_ */

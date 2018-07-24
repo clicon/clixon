@@ -85,7 +85,6 @@
 #include "clixon_plugin.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
-#include "clixon_xsl.h"
 #include "clixon_log.h"
 #include "clixon_err.h"
 #include "clixon_xml_sort.h"
@@ -1088,13 +1087,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
 		    clicon_err(OE_UNIX, errno, "cv2str_dup");
 		    goto done;
 		}
-		cprintf(cb,
-#ifdef COMPAT_XSL
-			"[%s=%s]",
-#else
-			"[%s='%s']",
-#endif
-			cv_name_get(cv), str);
+		cprintf(cb, "[%s='%s']", cv_name_get(cv), str);
 		free(str);
 	    }
 	}
@@ -1511,13 +1504,7 @@ api_path2xpath_cvv(yang_spec *yspec,
 	    cprintf(xpath, "/%s", name);
 	    v = val;
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
-		cprintf(xpath,
-#ifdef COMPAT_XSL
-			"[%s=%s]",
-#else
-			"[%s='%s']",
-#endif
-			cv_string_get(cvi), v);
+		cprintf(xpath, "[%s='%s']", cv_string_get(cvi), v);
 		v += strlen(v)+1;
 	    }
 	    if (val)

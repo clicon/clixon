@@ -71,7 +71,6 @@
 #include "clixon_yang.h"
 #include "clixon_sig.h"
 #include "clixon_xml.h"
-#include "clixon_xsl.h"
 #include "clixon_proto.h"
 
 static int _atomicio_sig = 0;

@@ -5,10 +5,6 @@
 testnr=0
 testname=
 
-# Set to 1 to enable old XSL implementation. Set to nothing, or comment if new.
-# @see include/clixon_custom.h
-#COMPAT_XSL=1
-
 # For memcheck
 #clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
 clixon_cli=clixon_cli

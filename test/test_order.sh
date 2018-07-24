@@ -121,8 +121,6 @@ fi
 new "verify running from start, should be: l,c,y0,y1,y2,y3; y1 and y3 sorted. Note this fails if XML_SORT set to false"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><c><d>hej</d></c><l>hopp</l><y0>d</y0><y0>b</y0><y0>c</y0><y0>a</y0><y1>a</y1><y1>b</y1><y1>c</y1><y1>d</y1><y2><k>d</k><a>bar</a></y2><y2><k>a</k><a>bar</a></y2><y2><k>c</k><a>bar</a></y2><y2><k>b</k><a>bar</a></y2><y3><k>a</k><a>bar</a></y3><y3><k>b</k><a>bar</a></y3><y3><k>c</k><a>bar</a></y3><y3><k>d</k><a>bar</a></y3></data></rpc-reply>]]>]]>$"
 
-if [ -z "$COMPAT_XSL" ]; then #new
-
 new "get each ordered-by user leaf-list"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y2[k='a']\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y2><k>a</k><a>bar</a></y2></data></rpc-reply>]]>]]>$"
 
@@ -134,22 +132,6 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><runn
 
 new "get each ordered-by user leaf-list"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y3[k='b']\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y3><k>b</k><a>bar</a></y3></data></rpc-reply>]]>]]>$"
-
-else # old
-
-new "get each ordered-by user leaf-list"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y2[k=a]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y2><k>a</k><a>bar</a></y2></data></rpc-reply>]]>]]>$"
-
-new "get each ordered-by user leaf-list"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y3[k=a]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y3><k>a</k><a>bar</a></y3></data></rpc-reply>]]>]]>$"
-
-new "get each ordered-by user leaf-list"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y2[k=b]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y2><k>b</k><a>bar</a></y2></data></rpc-reply>]]>]]>$"
-
-new "get each ordered-by user leaf-list"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y3[k=b]\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y3><k>b</k><a>bar</a></y3></data></rpc-reply>]]>]]>$"
-    
-fi
 
 new "delete candidate"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><delete-config><target><candidate/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
