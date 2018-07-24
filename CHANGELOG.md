@@ -8,6 +8,7 @@
 
 ### Minor changes
 * Obsoleted COMPAT_CLIV and COMPAT_XSL that were optional in 3.7
+* Added -l option for clixon_backend for directing syslog to stderr or stdout if running in foreground
 
 ### Corrected Bugs
 

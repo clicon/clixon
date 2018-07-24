@@ -73,7 +73,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:g:y:x:" /* substitute s: for IRCc:r */
+#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:g:l:y:x:" /* substitute s: for IRCc:r */
 
 /*! Terminate. Cannot use h after this */
 static int
@@ -140,6 +140,7 @@ usage(clicon_handle h,
 	    "    -s <mode>\tSpecify backend startup mode: none|startup|running|init (replaces -IRCr\n"
 	    "    -c <file>\tLoad extra xml configuration, but don't commit.\n"
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
+	    "    -l <s|e|o> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
 	    "    -y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "    -x <plugin>\tXMLDB plugin\n",
 	    argv0,
@@ -553,6 +554,7 @@ main(int    argc,
     int           xml_pretty;
     char         *xml_format;
     char         *nacm_mode;
+    int          logdst = CLICON_LOG_SYSLOG;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR|CLICON_LOG_SYSLOG);
@@ -589,6 +591,21 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
+	case 'l': /* Log destination: s|e|o */
+	   switch (optarg[0]){
+	   case 's':
+	     logdst = CLICON_LOG_SYSLOG;
+	     break;
+	   case 'e':
+	     logdst = CLICON_LOG_STDERR;
+	     break;
+	   case 'o':
+	     logdst = CLICON_LOG_STDOUT;
+	     break;
+	   default:
+	       usage(h, argv[0]);
+	   }
+	   break;
 	}
     /* 
      * Here we have the debug flag settings, use that.
@@ -597,7 +614,7 @@ main(int    argc,
      * XXX: if started in a start-daemon script, there will be irritating
      * double syslogs until fork below. 
      */
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_SYSLOG); 
+    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL);
 
     /* Find and read configfile */
@@ -668,6 +685,8 @@ main(int    argc,
 	    clicon_option_str_set(h, "CLICON_XMLDB_PLUGIN", optarg);
 	    break;
 	}
+	case 'l' :
+	    break;
 	default:
 	    usage(h, argv[0]);
 	    break;
@@ -675,6 +694,8 @@ main(int    argc,
 
     argc -= optind;
     argv += optind;
+
+    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
 
     /* Defer: Wait to the last minute to print help message */
     if (help)
