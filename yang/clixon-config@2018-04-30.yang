@@ -248,6 +248,7 @@ module clixon-config {
 	}
 	leaf CLICON_SOCK {
 	    type string;
+	    mandatory true;
 	    description
 		"If family above is AF_UNIX: Unix socket for communicating 
        	         with clixon_backend. If family is AF_INET: IPv4 address";

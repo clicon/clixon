@@ -143,10 +143,8 @@ xmldb_plugin_unload(clicon_handle h)
     xmldb_handle      xh;
     char             *error;
 
-    if ((handle = clicon_xmldb_plugin_get(h)) == NULL){
-	clicon_err(OE_PLUGIN, errno, "No plugin handle");
-	goto done;
-    }
+    if ((handle = clicon_xmldb_plugin_get(h)) == NULL)
+	goto ok; /* OK, may not have been initialized */
     /* If connected storage handle then disconnect */
     if ((xh = clicon_xmldb_handle_get(h)) != NULL)
 	xmldb_disconnect(h); /* sets xmldb handle to NULL */
@@ -165,8 +163,9 @@ xmldb_plugin_unload(clicon_handle h)
 	clicon_err(OE_PLUGIN, errno, "dlclose: %s", error ? error : "Unknown error");
 	/* Just report no -1 return*/
     }    
+ ok:
     retval = 0;
- done:
+    // done:
     return retval;
 }
 
