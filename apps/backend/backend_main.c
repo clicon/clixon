@@ -73,7 +73,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:d:b:Fzu:P:1s:c:g:l:y:x:" /* substitute s: for IRCc:r */
+#define BACKEND_OPTS "hD:f:d:b:Fzu:a:P:1s:c:g:l:y:x:" /* substitute s: for IRCc:r */
 
 /*! Terminate. Cannot use h after this */
 static int
@@ -135,7 +135,8 @@ usage(clicon_handle h,
     	    "    -z\t\tKill other config daemon and exit\n"
     	    "    -F\t\tRun in foreground, do not run as daemon\n"
     	    "    -1\t\tRun once and then quit (dont wait for events)\n"
-    	    "    -u <path>\tConfig UNIX domain path / ip address (default: %s)\n"
+    	    "    -a UNIX|IPv4|IPv6\tInternal backend socket family\n"
+    	    "    -u <path|addr>\tInternal socket domain path or IP addr (see -a)(default: %s)\n"
     	    "    -P <file>\tPid filename (default: %s)\n"
 	    "    -s <mode>\tSpecify backend startup mode: none|startup|running|init (replaces -IRCr\n"
 	    "    -c <file>\tLoad extra xml configuration, but don't commit.\n"
@@ -655,6 +656,9 @@ main(int    argc,
 	    break;
 	case 'z': /* Zap other process */
 	    zap++;
+	    break;
+	case 'a': /* internal backend socket address family */
+	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
 	    break;
 	case 'u': /* config unix domain path / ip address */
 	    if (!strlen(optarg))
