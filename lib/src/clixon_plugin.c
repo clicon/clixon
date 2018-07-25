@@ -189,7 +189,7 @@ plugin_load_one(clicon_handle   h,
     char          *name;
     char          *p;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(1, "%s file:%s function:%s", __FUNCTION__, file, function);
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen(file, dlflags)) == NULL) {
         error = (char*)dlerror();

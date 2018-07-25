@@ -71,7 +71,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:xl:F:1u:d:m:qpGLy:c:U:"
+#define CLI_OPTS "hD:f:xl:F:1a:u:d:m:qpGLy:c:U:"
 
 /*! terminate cli application */
 static int
@@ -197,7 +197,6 @@ static void
 usage(clicon_handle h,
       char         *argv0)
 {
-    char *confsock = clicon_sock(h);
     char *plgdir = clicon_cli_dir(h);
 
     fprintf(stderr, "usage:%s [options] [commands]\n"
@@ -209,7 +208,8 @@ usage(clicon_handle h,
 	    "\t-x\t\tDump configuration file as XML on stdout (migration utility)\n"
     	    "\t-F <file> \tRead commands from file (default stdin)\n"
 	    "\t-1\t\tDo not enter interactive mode\n"
-    	    "\t-u <sockpath>\tconfig UNIX domain path (default: %s)\n"
+    	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
+    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify plugin directory (default: %s)\n"
             "\t-m <mode>\tSpecify plugin syntax mode\n"
 	    "\t-q \t\tQuiet mode, dont print greetings or prompt, terminate on ctrl-C\n"
@@ -221,7 +221,6 @@ usage(clicon_handle h,
 	    "\t-c <file>\tSpecify cli spec file.\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n",
 	    argv0,
-	    confsock ? confsock : "none",
 	    plgdir ? plgdir : "none"
 	);
     exit(1);
@@ -354,7 +353,10 @@ main(int argc, char **argv)
 	case '1' : /* Quit after reading database once - dont wait for events */
 	    once = 1;
 	    break;
-	case 'u': /* config unix domain path/ ip host */
+	case 'a': /* internal backend socket address family */
+	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
+	    break;
+	case 'u': /* internal backend socket unix domain path or ip host */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);

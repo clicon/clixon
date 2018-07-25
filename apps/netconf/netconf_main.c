@@ -71,7 +71,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hDqf:d:Sy:U:"
+#define NETCONF_OPTS "hDqf:a:u:d:Sy:U:"
 
 /*! Process incoming packet 
  * @param[in]   h    Clicon handle
@@ -296,6 +296,8 @@ usage(clicon_handle h,
             "\t-D\t\tDebug\n"
             "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
+    	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
+    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
 	    "\t-S\t\tLog on syslog\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
@@ -374,6 +376,14 @@ main(int    argc,
 	case 'f': /* config file */
 	case 'S': /* Log on syslog */
 	    break; /* see above */
+	case 'a': /* internal backend socket address family */
+	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
+	    break;
+	case 'u': /* internal backend socket unix domain path or ip host */
+	    if (!strlen(optarg))
+		usage(h, argv[0]);
+	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
+	    break;
 	case 'q':  /* quiet: dont write hello */
 	    quiet++;
 	    break;

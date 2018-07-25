@@ -43,7 +43,7 @@ The example:
 
 ## Do I need to setup anything? (IMPORTANT)
 
-The config demon requires a valid group to create a server UNIX socket.
+The config demon requires a valid group to create a server UNIX domain socket.
 Define a valid CLICON_SOCK_GROUP in the config file or via the -g option
 or create the group and add the user to it. The default group is 'clicon'.
 Add yourself and www-data, if you intend to use restconf.
