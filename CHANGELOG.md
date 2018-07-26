@@ -7,11 +7,12 @@
 ### API changes on existing features (you may need to change your code)
 
 ### Minor changes
+* Added clicon_log_init(.., CLICON_LOG_FILE) option and clicon_log_file() for cases where neither syslog or stderr is useful.
 * Obsoleted COMPAT_CLIV and COMPAT_XSL that were optional in 3.7
 * Added -l option for clixon_backend for directing syslog to stderr or stdout if running in foreground
 
 ### Corrected Bugs
-* Setting /www-data with www-data as owner, see https://github.com/clicon/clixon/issues/37
+* Set dir /www-data with www-data as owner, see https://github.com/clicon/clixon/issues/37
 	
 ### Known issues
 * Namespace name relabeling is not supported.

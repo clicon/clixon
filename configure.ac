@@ -89,6 +89,8 @@ AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
+AC_SUBST(wwwdir,/www-data)
+AC_SUBST(wwwuser,www-data)
 #
 AC_PROG_CC()
 AC_PROG_CPP

@@ -50,8 +50,8 @@ sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 HOST_VENDOR     = @host_vendor@
 
-wwwdir  	= /www-data
-wwwuser         = www-data
+wwwdir  	= @wwwdir@
+wwwuser         = @wwwuser@
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@

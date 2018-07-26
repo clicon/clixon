@@ -66,8 +66,8 @@ static int _logflags = 0x0;
 static clicon_log_notify_t *_log_notify_cb  = NULL;
 static void                *_log_notify_arg = NULL;
 
-/* Set to open file to bypass logging and write debug messages directly to file */
-static FILE *_debugfile = NULL;
+/* Set to open file to write debug messages directly to file */
+static FILE *_logfile = NULL;
 
 /*! Initialize system logger.
  *
@@ -94,6 +94,31 @@ clicon_log_init(char *ident,
 	fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno)); 
     _logflags = flags;
     openlog(ident, LOG_PID, LOG_USER); /* LOG_PUSER is achieved by direct stderr logs in clicon_log */
+    return 0;
+}
+
+int
+clicon_log_exit(void)
+{
+    if (_logfile)
+	fclose(_logfile);
+    return 0;
+}
+
+/* If log flags include CLICON_LOG_FILE, set the file 
+ * @param[in]   filename   File to log to
+ * @retval      0          OK
+ * @retval     -1          Error
+ */
+int
+clicon_log_file(char *filename)
+{
+    if (_logfile)
+	fclose(_logfile);
+    if ((_logfile = fopen(filename, "a")) == NULL){
+	fprintf(stderr, "fopen: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+	return -1;
+    }
     return 0;
 }
 
@@ -182,6 +207,10 @@ clicon_log_str(int   level,
     if (_logflags & CLICON_LOG_STDOUT){
 	flogtime(stdout);
 	fprintf(stdout, "%s\n", msg);
+    }
+    if ((_logflags & CLICON_LOG_FILE) && _logfile){
+	flogtime(_logfile);
+	fprintf(_logfile, "%s\n", msg);
     }
     if (_log_notify_cb){
 	static int  cb = 0;
@@ -326,13 +355,7 @@ clicon_debug(int   dbglevel,
 	goto done;
     }
     va_end(args);
-    if (_debugfile != NULL){ /* Bypass syslog altogether */
-	/* XXX: Here use date sub-routine as found in err_print1 */
-	flogtime(_debugfile);
-	fprintf(_debugfile, "%s\n", msg);
-    }
-    else
-	clicon_log_str(LOG_DEBUG, msg);
+    clicon_log_str(LOG_DEBUG, msg);
     retval = 0;
   done:
     if (msg)

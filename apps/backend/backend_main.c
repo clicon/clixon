@@ -98,6 +98,7 @@ backend_terminate(clicon_handle h)
     event_exit();
     clicon_log_register_callback(NULL, NULL);
     clicon_debug(1, "%s done", __FUNCTION__); 
+    clicon_log_exit();
     return 0;
 }
 

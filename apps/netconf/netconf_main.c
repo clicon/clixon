@@ -278,6 +278,7 @@ netconf_terminate(clicon_handle h)
 	yspec_free(yspec);
     event_exit();
     clicon_handle_exit(h);
+    clicon_log_exit();
     return 0;
 }
 

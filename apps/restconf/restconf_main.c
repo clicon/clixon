@@ -74,7 +74,7 @@
 #include "restconf_methods.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hDf:p:y:a:u:"
+#define RESTCONF_OPTS "hDf:p:y:a:u:l:"
 
 /* RESTCONF enables deployments to specify where the RESTCONF API is 
    located.  The client discovers this by getting the "/.well-known/host-meta"
@@ -84,6 +84,8 @@
 
 #define RESTCONF_API       "restconf"
 #define RESTCONF_API_ROOT "/restconf"
+
+#define RESTCONF_LOGFILE "/www-data/clixon_restconf.log"
 
 /*! Generic REST method, GET, PUT, DELETE, etc
  * @param[in]  h      CLIXON handle
@@ -449,6 +451,7 @@ restconf_terminate(clicon_handle h)
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
     clicon_handle_exit(h);
+    clicon_log_exit();
     return 0;
 }
 
@@ -490,7 +493,8 @@ usage(clicon_handle h,
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
-    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n",
+    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
+	    "\t-l <s|f> \tLog on (s)yslog, (f)ile (syslog is default)\n",
 	    argv0,
 	    clicon_restconf_dir(h)
 	    );
@@ -515,9 +519,10 @@ main(int    argc,
     char         *yangspec=NULL;
     char         *dir;
     char	 *tmp;
+    int          logdst = CLICON_LOG_SYSLOG;
     
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_SYSLOG); 
+    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
@@ -551,14 +556,28 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
+	 case 'l': /* Log destination: s|e|o */
+	   switch (optarg[0]){
+	   case 's':
+	     logdst = CLICON_LOG_SYSLOG;
+	     break;
+	   case 'f':
+	     logdst = CLICON_LOG_FILE;
+	     if (clicon_log_file(RESTCONF_LOGFILE) < 0)
+		 goto done;
+	     break;
+	   default:
+	       usage(h, argv[0]);
+	   } 
+	   break;
 	default:
 	    usage(h, argv[0]);
 	     break;
-	}
+	} /* switch getopt */
     argc -= optind;
     argv += optind;
 
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_SYSLOG); 
+    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL); 
     clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){

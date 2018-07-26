@@ -84,6 +84,7 @@ cli_terminate(clicon_handle h)
 	yspec_free(yspec);
     cli_plugin_finish(h);    
     cli_handle_exit(h);
+    clicon_log_exit();
     return 0;
 }
 
