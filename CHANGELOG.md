@@ -11,7 +11,8 @@
 * Added -l option for clixon_backend for directing syslog to stderr or stdout if running in foreground
 
 ### Corrected Bugs
-
+* Setting /www-data with www-data as owner, see https://github.com/clicon/clixon/issues/37
+	
 ### Known issues
 * Namespace name relabeling is not supported.
   * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlfns is not supported, such as:

@@ -45,11 +45,13 @@ bindir 		= @bindir@
 libdir		= @libdir@
 mandir		= @mandir@
 libexecdir	= @libexecdir@
-wwwdir  	= /www-data
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 HOST_VENDOR     = @host_vendor@
+
+wwwdir  	= /www-data
+wwwuser         = www-data
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
@@ -97,8 +99,9 @@ distclean: clean
 # Put other executables in libexec/
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
+# Shouldnt www-dir be owned by www-data?
 install:	install-lib $(APPL)
-	install -d -m 0755 $(DESTDIR)$(wwwdir)
+	install -d -m 0755 -o $(wwwuser) -g $(wwwuser) $(DESTDIR)$(wwwdir)
 	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(wwwdir)
 
 install-lib: $(MYLIB)
