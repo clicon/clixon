@@ -545,8 +545,6 @@ main(int    argc,
 		usage(h, argv[0]);
 	   break;
 	} /* switch getopt */
-    argc -= optind;
-    argv += optind;
 
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
@@ -599,6 +597,8 @@ main(int    argc,
             usage(h, argv[0]);
             break;
 	}
+    argc -= optind;
+    argv += optind;
 
     /* Overwrite yang module with -y option */
     if (yangspec)
