@@ -99,9 +99,13 @@ distclean: clean
 # Put other executables in libexec/
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
-# Shouldnt www-dir be owned by www-data?
+# Also a rule for letting www-dir be owned by www-data, which only orks for sudo
 install:	install-lib $(APPL)
+ifeq ($(shell whoami),root)
 	install -d -m 0755 -o $(wwwuser) -g $(wwwuser) $(DESTDIR)$(wwwdir)
+else
+	install -d -m 0755 $(DESTDIR)$(wwwdir)
+endif
 	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(wwwdir)
 
 install-lib: $(MYLIB)
