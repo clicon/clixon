@@ -74,7 +74,7 @@
 #include "restconf_methods.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hDf:p:y:a:u:l:"
+#define RESTCONF_OPTS "hDf:l:p:y:a:u:"
 
 /* RESTCONF enables deployments to specify where the RESTCONF API is 
    located.  The client discovers this by getting the "/.well-known/host-meta"
@@ -490,11 +490,11 @@ usage(clicon_handle h,
             "\t-h \t\tHelp\n"
     	    "\t-D \t\tDebug. Log to syslog\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
+	    "\t-l <s|f> \tLog on (s)yslog, (f)ile (syslog is default)\n"
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
-    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
-	    "\t-l <s|f> \tLog on (s)yslog, (f)ile (syslog is default)\n",
+    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n",
 	    argv0,
 	    clicon_restconf_dir(h)
 	    );
@@ -540,6 +540,45 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
+	 case 'l': /* Log destination: s|e|o */
+	     if ((logdst = clicon_log_opt(optarg[0])) < 0)
+		usage(h, argv[0]);
+	   break;
+	} /* switch getopt */
+    argc -= optind;
+    argv += optind;
+
+    /* 
+     * Logs, error and debug to stderr or syslog, set debug level
+     */
+    if ((logdst & CLICON_LOG_FILE) && clicon_log_file(RESTCONF_LOGFILE) < 0)
+	goto done;
+    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
+
+    clicon_debug_init(debug, NULL); 
+    clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
+    if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
+	clicon_err(OE_DEMON, errno, "Setting signal");
+	goto done;
+    }
+    if (set_signal(SIGINT, restconf_sig_term, NULL) < 0){
+	clicon_err(OE_DEMON, errno, "Setting signal");
+	goto done;
+    }
+    /* Find and read configfile */
+    if (clicon_options_main(h) < 0)
+	goto done;
+
+    /* Now rest of options, some overwrite option file */
+    optind = 1;
+    opterr = 0;
+    while ((c = getopt(argc, argv, RESTCONF_OPTS)) != -1)
+	switch (c) {
+	case 'h' : /* help */
+	case 'D' : /* debug */
+	case 'f':  /* config file */
+	case 'l':  /* log  */
+	    break; /* see above */
 	case 'd':  /* Plugin directory */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
@@ -556,42 +595,10 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
-	 case 'l': /* Log destination: s|e|o */
-	   switch (optarg[0]){
-	   case 's':
-	     logdst = CLICON_LOG_SYSLOG;
-	     break;
-	   case 'f':
-	     logdst = CLICON_LOG_FILE;
-	     if (clicon_log_file(RESTCONF_LOGFILE) < 0)
-		 goto done;
-	     break;
-	   default:
-	       usage(h, argv[0]);
-	   } 
-	   break;
-	default:
-	    usage(h, argv[0]);
-	     break;
-	} /* switch getopt */
-    argc -= optind;
-    argv += optind;
-
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
-    clicon_debug_init(debug, NULL); 
-    clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
-    if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
-	clicon_err(OE_DEMON, errno, "Setting signal");
-	goto done;
-    }
-    if (set_signal(SIGINT, restconf_sig_term, NULL) < 0){
-	clicon_err(OE_DEMON, errno, "Setting signal");
-	goto done;
-    }
-
-    /* Find and read configfile */
-    if (clicon_options_main(h) < 0)
-	goto done;
+        default:
+            usage(h, argv[0]);
+            break;
+	}
 
     /* Overwrite yang module with -y option */
     if (yangspec)

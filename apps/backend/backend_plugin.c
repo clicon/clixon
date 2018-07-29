@@ -259,7 +259,7 @@ plugin_transaction_begin(clicon_handle       h,
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' transaction_begin callback does not make clicon_err call on error", 
 			       __FUNCTION__, cp->cp_name);
 
-		break;
+	    break;
 	}
     }
     return retval;

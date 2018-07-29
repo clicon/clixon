@@ -1070,10 +1070,10 @@ xpath_vec_ctx(cxobj    *xcur,
 	    clicon_err(OE_XML, 0, "XPATH parser error with no error code (should not happen)");
 	goto done;
     }
-    if (debug){
+    if (debug > 1){
 	cbuf *cb = cbuf_new();
 	xpath_tree_print(cb, xy.xy_top);
-	clicon_debug(1, "xpath parse tree:\n%s", cbuf_get(cb));
+	clicon_debug(2, "xpath parse tree:\n%s", cbuf_get(cb));
 	cbuf_free(cb);
     }
     xc.xc_type = XT_NODESET;

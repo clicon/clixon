@@ -75,6 +75,8 @@
 /* Command line options to be passed to getopt(3) */
 #define BACKEND_OPTS "hD:f:d:b:Fzu:a:P:1s:c:g:l:y:x:" /* substitute s: for IRCc:r */
 
+#define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
+
 /*! Terminate. Cannot use h after this */
 static int
 backend_terminate(clicon_handle h)
@@ -556,10 +558,10 @@ main(int    argc,
     int           xml_pretty;
     char         *xml_format;
     char         *nacm_mode;
-    int          logdst = CLICON_LOG_SYSLOG;
+    int          logdst = CLICON_LOG_SYSLOG|CLICON_LOG_STDERR;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR|CLICON_LOG_SYSLOG);
+    clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
 	return -1;
@@ -594,20 +596,9 @@ main(int    argc,
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
 	case 'l': /* Log destination: s|e|o */
-	   switch (optarg[0]){
-	   case 's':
-	     logdst = CLICON_LOG_SYSLOG;
-	     break;
-	   case 'e':
-	     logdst = CLICON_LOG_STDERR;
-	     break;
-	   case 'o':
-	     logdst = CLICON_LOG_STDOUT;
-	     break;
-	   default:
-	       usage(h, argv[0]);
-	   }
-	   break;
+	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
+		usage(h, argv[0]);
+	    break;
 	}
     /* 
      * Here we have the debug flag settings, use that.
@@ -616,6 +607,8 @@ main(int    argc,
      * XXX: if started in a start-daemon script, there will be irritating
      * double syslogs until fork below. 
      */
+    if ((logdst & CLICON_LOG_FILE) && clicon_log_file(BACKEND_LOGFILE) < 0)
+	goto done;
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL);
 

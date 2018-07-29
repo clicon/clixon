@@ -73,6 +73,8 @@
 /* Command line options to be passed to getopt(3) */
 #define CLI_OPTS "hD:f:xl:F:1a:u:d:m:qpGLy:c:U:"
 
+#define CLI_LOGFILE "/tmp/clixon_cli.log"
+
 /*! terminate cli application */
 static int
 cli_terminate(clicon_handle h)
@@ -297,25 +299,16 @@ main(int argc, char **argv)
 	case 'x': /* dump config file as xml (migration from .conf file)*/
 	    dump_configfile_xml++;
 	    break;
-	 case 'l': /* Log destination: s|e|o */
-	   switch (optarg[0]){
-	   case 's':
-	     logdst = CLICON_LOG_SYSLOG;
-	     break;
-	   case 'e':
-	     logdst = CLICON_LOG_STDERR;
-	     break;
-	   case 'o':
-	     logdst = CLICON_LOG_STDOUT;
-	     break;
-	   default:
-	       usage(h, argv[0]);
-	   }
-	   break;
+	case 'l': /* Log destination: s|e|o */
+	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
+		usage(h, argv[0]);
+	    break;
 	}
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
+    if ((logdst & CLICON_LOG_FILE) && clicon_log_file(CLI_LOGFILE) < 0)
+	goto done;
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst);
 
     clicon_debug_init(debug, NULL); 

@@ -61,6 +61,7 @@ extern int debug;
  */
 int clicon_log_init(char *ident, int upto, int flags);
 int clicon_log_exit(void);
+int clicon_log_opt(char c);
 int clicon_log_file(char *filename);
 int clicon_get_logflags(void);
 int clicon_log_str(int level, char *msg);

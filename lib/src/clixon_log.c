@@ -105,7 +105,36 @@ clicon_log_exit(void)
     return 0;
 }
 
-/* If log flags include CLICON_LOG_FILE, set the file 
+/*! Utility function to set log destination/flag using command-line option
+ * @param[in]  c  Log option,one of s,f,e,o
+ * @retval    -1  No match
+ * @retval     0  One of CLICON_LOG_SYSLOG|STDERR|STDOUT|FILE
+ */
+int
+clicon_log_opt(char c)
+{
+    int logdst = -1;
+
+    switch (c){
+    case 's':
+	logdst = CLICON_LOG_SYSLOG;
+	break;
+    case 'e':
+	logdst = CLICON_LOG_STDERR;
+	break;
+    case 'o':
+	logdst = CLICON_LOG_STDOUT;
+	break;
+    case 'f':
+	logdst = CLICON_LOG_FILE;
+	break;
+    default:
+	break;
+    } 
+    return logdst;
+}
+
+/*! If log flags include CLICON_LOG_FILE, set the file 
  * @param[in]   filename   File to log to
  * @retval      0          OK
  * @retval     -1          Error

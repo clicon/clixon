@@ -5,9 +5,12 @@
 ### Major New features
 
 ### API changes on existing features (you may need to change your code)
+* clixon_netconf -S is obsolete. Use clixon_netconf -l s instead.
 
 ### Minor changes
-* Added clicon_log_init(.., CLICON_LOG_FILE) option and clicon_log_file() for cases where neither syslog or stderr is useful.
+* Unified log handling for all clicon applications using -l e|o|s|f.
+  * The options stand for e:stderr, o:stdout, s: syslog, f:file
+  * Added file logging (-l f)for cases where neither syslog nor stderr is useful.
 * Obsoleted COMPAT_CLIV and COMPAT_XSL that were optional in 3.7
 * Added -l option for clixon_backend for directing syslog to stderr or stdout if running in foreground
 

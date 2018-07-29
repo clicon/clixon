@@ -71,7 +71,9 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hDqf:a:u:d:Sy:U:"
+#define NETCONF_OPTS "hDf:l:qa:u:d:y:U:"
+
+#define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
 /*! Process incoming packet 
  * @param[in]   h    Clicon handle
@@ -297,10 +299,11 @@ usage(clicon_handle h,
             "\t-D\t\tDebug\n"
             "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
+	    "\t-l <s|f> \tLog on (s)yslog, (f)ile (syslog is default)\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
-	    "\t-S\t\tLog on syslog\n"
+
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n",
 	    argv0,
@@ -318,15 +321,12 @@ main(int    argc,
     char            *argv0 = argv[0];
     int              quiet = 0;
     clicon_handle    h;
-    int              use_syslog;
     char            *dir;
+    int              logdst = CLICON_LOG_STDERR;
     struct passwd   *pw;
     
-    /* Defaults */
-    use_syslog = 0;
-
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
+    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
 	return -1;
@@ -352,15 +352,17 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
-	 case 'S': /* Log on syslog */
-	     use_syslog = 1;
+	 case 'l': /* Log destination: s|e|o */
+	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
+		usage(h, argv[0]);
 	     break;
 	}
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, 
-		    use_syslog?CLICON_LOG_SYSLOG:CLICON_LOG_STDERR); 
+    if ((logdst & CLICON_LOG_FILE) && clicon_log_file(NETCONF_LOGFILE) < 0)
+	goto done;
+    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL); 
 
     /* Find and read configfile */
@@ -374,8 +376,8 @@ main(int    argc,
 	switch (c) {
 	case 'h' : /* help */
 	case 'D' : /* debug */
-	case 'f': /* config file */
-	case 'S': /* Log on syslog */
+	case 'f':  /* config file */
+	case 'l':  /* log  */
 	    break; /* see above */
 	case 'a': /* internal backend socket address family */
 	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
@@ -409,8 +411,6 @@ main(int    argc,
 	}
     argc -= optind;
     argv += optind;
-
-
 
     /* Parse yang database spec file */
     if (yang_spec_main(h) == NULL)
