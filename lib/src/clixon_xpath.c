@@ -88,17 +88,6 @@ const map_str2int xpopmap[] = {
     {NULL,               -1}
 };
 
-/* Mapping between axis type string <--> int  */
-static const map_str2int axismap[] = {
-    {"self",             A_SELF}, 
-    {"child",            A_CHILD}, 
-    {"parent",           A_PARENT},
-    {"root",             A_ROOT},
-    {"ancestor",         A_ANCESTOR}, 
-    {"descendant-or-self", A_DESCENDANT_OR_SELF}, 
-    {NULL,               -1}
-};
-
 static const map_str2int xpath_tree_map[] = {
     {"expr",             XP_EXP},
     {"andexpr",          XP_AND},
