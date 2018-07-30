@@ -240,6 +240,7 @@ clicon_log_str(int   level,
     if ((_logflags & CLICON_LOG_FILE) && _logfile){
 	flogtime(_logfile);
 	fprintf(_logfile, "%s\n", msg);
+	fflush(_logfile);
     }
     if (_log_notify_cb){
 	static int  cb = 0;
