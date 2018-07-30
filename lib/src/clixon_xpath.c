@@ -856,14 +856,14 @@ xp_eval(xp_ctx   *xc,
     xp_ctx    *xr2 = NULL;
     int        use_xr0 = 0; /* In 2nd child use transitively result of 1st child */
     
-    if (debug){
+    if (debug>1){
 	cbuf *cb;
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
 	ctx_print(cb, +2, xc, (char*)clicon_int2str(xpath_tree_map, xs->xs_type));
-	clicon_debug(1, "%s", cbuf_get(cb));
+	clicon_debug(2, "%s", cbuf_get(cb));
 	cbuf_free(cb);
     }
     /* Pre-actions before check first child c0
@@ -1027,7 +1027,7 @@ xp_eval(xp_ctx   *xc,
 	    goto done;
 	}
 	ctx_print(cb, -2, *xrp, (char*)clicon_int2str(xpath_tree_map, xs->xs_type));
-	clicon_debug(1, "%s", cbuf_get(cb));
+	clicon_debug(2, "%s", cbuf_get(cb));
 	cbuf_free(cb);
     }
     retval = 0;

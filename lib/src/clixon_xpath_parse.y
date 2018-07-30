@@ -193,85 +193,85 @@ xp_new(enum xp_type  type,
 /*
 */
 
-start       : expr X_EOF         { _XY->xy_top=$1;clicon_debug(1,"start->expr"); YYACCEPT; } 
-            | locationpath X_EOF { _XY->xy_top=$1;clicon_debug(1,"start->locationpath"); YYACCEPT; } 
+start       : expr X_EOF         { _XY->xy_top=$1;clicon_debug(2,"start->expr"); YYACCEPT; } 
+            | locationpath X_EOF { _XY->xy_top=$1;clicon_debug(2,"start->locationpath"); YYACCEPT; } 
             ;
 
-expr        : expr LOGOP andexpr { $$=xp_new(XP_EXP,$2,0.0,NULL,NULL,$1, $3);clicon_debug(1,"expr->expr or andexpr");  } 
-            | andexpr { $$=xp_new(XP_EXP,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(1,"expr-> andexpr"); } 
+expr        : expr LOGOP andexpr { $$=xp_new(XP_EXP,$2,0.0,NULL,NULL,$1, $3);clicon_debug(2,"expr->expr or andexpr");  } 
+            | andexpr { $$=xp_new(XP_EXP,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(2,"expr-> andexpr"); } 
             ;
 
-andexpr     : andexpr LOGOP relexpr { $$=xp_new(XP_AND,$2,0.0,NULL,NULL,$1, $3);clicon_debug(1,"andexpr-> andexpr and relexpr"); } 
-            | relexpr { $$=xp_new(XP_AND,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(1,"andexpr-> relexpr"); } 
+andexpr     : andexpr LOGOP relexpr { $$=xp_new(XP_AND,$2,0.0,NULL,NULL,$1, $3);clicon_debug(2,"andexpr-> andexpr and relexpr"); } 
+            | relexpr { $$=xp_new(XP_AND,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(2,"andexpr-> relexpr"); } 
             ;
 
-relexpr     : relexpr RELOP addexpr { $$=xp_new(XP_RELEX,$2,0.0,NULL,NULL,$1, $3);clicon_debug(1,"relexpr-> relexpr relop addexpr"); } 
-            | addexpr { $$=xp_new(XP_RELEX,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(1,"relexpr-> addexpr"); } 
+relexpr     : relexpr RELOP addexpr { $$=xp_new(XP_RELEX,$2,0.0,NULL,NULL,$1, $3);clicon_debug(2,"relexpr-> relexpr relop addexpr"); } 
+            | addexpr { $$=xp_new(XP_RELEX,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(2,"relexpr-> addexpr"); } 
             ;
 
-addexpr     : addexpr ADDOP unionexpr { $$=xp_new(XP_ADD,$2,0.0,NULL,NULL,$1, $3);clicon_debug(1,"addexpr-> addexpr ADDOP unionexpr"); } 
-            | unionexpr { $$=xp_new(XP_ADD,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(1,"addexpr-> unionexpr"); } 
+addexpr     : addexpr ADDOP unionexpr { $$=xp_new(XP_ADD,$2,0.0,NULL,NULL,$1, $3);clicon_debug(2,"addexpr-> addexpr ADDOP unionexpr"); } 
+            | unionexpr { $$=xp_new(XP_ADD,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(2,"addexpr-> unionexpr"); } 
             ;
 
 /* node-set */
-unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,A_NAN,0.0,NULL,NULL,$1, $3);clicon_debug(1,"unionexpr-> unionexpr | pathexpr"); } 
-            | pathexpr { $$=xp_new(XP_UNION,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(1,"unionexpr-> pathexpr"); } 
+unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,A_NAN,0.0,NULL,NULL,$1, $3);clicon_debug(2,"unionexpr-> unionexpr | pathexpr"); } 
+            | pathexpr { $$=xp_new(XP_UNION,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(2,"unionexpr-> pathexpr"); } 
             ;
 
-pathexpr    : locationpath { $$=xp_new(XP_PATHEXPR,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(1,"pathexpr-> locationpath"); } 
-            | primaryexpr { $$=xp_new(XP_PATHEXPR,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(1,"pathexpr-> primaryexpr"); } 
+pathexpr    : locationpath { $$=xp_new(XP_PATHEXPR,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(2,"pathexpr-> locationpath"); } 
+            | primaryexpr { $$=xp_new(XP_PATHEXPR,A_NAN,0.0,NULL,NULL,$1, NULL);clicon_debug(2,"pathexpr-> primaryexpr"); } 
             ;
 
 /* location path returns a node-set  */
-locationpath : rellocpath { $$=xp_new(XP_LOCPATH,A_NAN,0.0,NULL,NULL,$1, NULL); clicon_debug(1,"locationpath-> rellocpath"); } 
-            | abslocpath  { $$=xp_new(XP_LOCPATH,A_NAN,0.0,NULL,NULL,$1, NULL); clicon_debug(1,"locationpath-> abslocpath"); } 
+locationpath : rellocpath { $$=xp_new(XP_LOCPATH,A_NAN,0.0,NULL,NULL,$1, NULL); clicon_debug(2,"locationpath-> rellocpath"); } 
+            | abslocpath  { $$=xp_new(XP_LOCPATH,A_NAN,0.0,NULL,NULL,$1, NULL); clicon_debug(2,"locationpath-> abslocpath"); } 
             ;
 
-abslocpath  : '/'            { $$=xp_new(XP_ABSPATH,A_ROOT,0.0,NULL,NULL,NULL, NULL);clicon_debug(1,"abslocpath-> /"); }
-            | '/' rellocpath { $$=xp_new(XP_ABSPATH,A_ROOT,0.0,NULL,NULL,$2, NULL);clicon_debug(1,"abslocpath->/ rellocpath");}
+abslocpath  : '/'            { $$=xp_new(XP_ABSPATH,A_ROOT,0.0,NULL,NULL,NULL, NULL);clicon_debug(2,"abslocpath-> /"); }
+            | '/' rellocpath { $$=xp_new(XP_ABSPATH,A_ROOT,0.0,NULL,NULL,$2, NULL);clicon_debug(2,"abslocpath->/ rellocpath");}
             /* // is short for /descendant-or-self::node()/ */
-            | DOUBLESLASH rellocpath  {$$=xp_new(XP_ABSPATH,A_DESCENDANT_OR_SELF,0.0,NULL,NULL,$2, NULL); clicon_debug(1,"abslocpath-> // rellocpath"); } 
+            | DOUBLESLASH rellocpath  {$$=xp_new(XP_ABSPATH,A_DESCENDANT_OR_SELF,0.0,NULL,NULL,$2, NULL); clicon_debug(2,"abslocpath-> // rellocpath"); } 
             ;
 
-rellocpath  : step                 { $$=xp_new(XP_RELLOCPATH,A_NAN,0.0,NULL,NULL,$1, NULL); clicon_debug(1,"rellocpath-> step"); } 
-            | rellocpath '/' step  { $$=xp_new(XP_RELLOCPATH,A_NAN,0.0,NULL,NULL,$1, $3);clicon_debug(1,"rellocpath-> rellocpath / step"); } 
-            | rellocpath DOUBLESLASH step { $$=xp_new(XP_RELLOCPATH,A_DESCENDANT_OR_SELF,0.0,NULL,NULL,$1, $3); clicon_debug(1,"rellocpath-> rellocpath // step"); } 
+rellocpath  : step                 { $$=xp_new(XP_RELLOCPATH,A_NAN,0.0,NULL,NULL,$1, NULL); clicon_debug(2,"rellocpath-> step"); } 
+            | rellocpath '/' step  { $$=xp_new(XP_RELLOCPATH,A_NAN,0.0,NULL,NULL,$1, $3);clicon_debug(2,"rellocpath-> rellocpath / step"); } 
+            | rellocpath DOUBLESLASH step { $$=xp_new(XP_RELLOCPATH,A_DESCENDANT_OR_SELF,0.0,NULL,NULL,$1, $3); clicon_debug(2,"rellocpath-> rellocpath // step"); } 
             ;
 
-step        : axisspec nodetest predicates {$$=xp_new(XP_STEP,$1,0.0, NULL, NULL, $2, $3);clicon_debug(1,"step->axisspec(%d) nodetest", $1); }
-            | '.' predicates              { $$=xp_new(XP_STEP,A_SELF, 0.0,NULL, NULL, NULL, $2); clicon_debug(1,"step-> ."); } 
-            | DOUBLEDOT predicates        { $$=xp_new(XP_STEP, A_PARENT, 0.0,NULL, NULL, NULL, $2); clicon_debug(1,"step-> .."); } 
+step        : axisspec nodetest predicates {$$=xp_new(XP_STEP,$1,0.0, NULL, NULL, $2, $3);clicon_debug(2,"step->axisspec(%d) nodetest", $1); }
+            | '.' predicates              { $$=xp_new(XP_STEP,A_SELF, 0.0,NULL, NULL, NULL, $2); clicon_debug(2,"step-> ."); } 
+            | DOUBLEDOT predicates        { $$=xp_new(XP_STEP, A_PARENT, 0.0,NULL, NULL, NULL, $2); clicon_debug(2,"step-> .."); } 
             ;
 
-axisspec    : AXISNAME DOUBLECOLON { clicon_debug(1,"axisspec-> AXISNAME(%d) ::", $1); $$=$1;}
-            | '@'      { $$=A_ATTRIBUTE; clicon_debug(1,"axisspec-> @"); } 
-            |          { clicon_debug(1,"axisspec-> "); $$=A_CHILD;} 
+axisspec    : AXISNAME DOUBLECOLON { clicon_debug(2,"axisspec-> AXISNAME(%d) ::", $1); $$=$1;}
+            | '@'      { $$=A_ATTRIBUTE; clicon_debug(2,"axisspec-> @"); } 
+            |          { clicon_debug(2,"axisspec-> "); $$=A_CHILD;} 
             ;
 
-nodetest    : '*'              { $$=xp_new(XP_NODE,A_NAN,0.0, NULL, NULL, NULL, NULL); clicon_debug(1,"nodetest-> *"); } 
-            | NAME             { $$=xp_new(XP_NODE,A_NAN,0.0, NULL, $1, NULL, NULL); clicon_debug(1,"nodetest-> name(%s)",$1); } 
-            | NAME ':' NAME    { $$=xp_new(XP_NODE,A_NAN,0.0, $1, $3, NULL, NULL);clicon_debug(1,"nodetest-> name(%s) : name(%s)", $1, $3); } 
-            | NAME ':' '*'     { $$=xp_new(XP_NODE,A_NAN,0.0, $1, NULL, NULL, NULL);clicon_debug(1,"nodetest-> name(%s) : *", $1); } 
-            | NODETYPE '(' ')' { $$=xp_new(XP_NODE_FN,A_NAN,0.0, $1, NULL, NULL, NULL); clicon_debug(1,"nodetest-> nodetype()"); } 
+nodetest    : '*'              { $$=xp_new(XP_NODE,A_NAN,0.0, NULL, NULL, NULL, NULL); clicon_debug(2,"nodetest-> *"); } 
+            | NAME             { $$=xp_new(XP_NODE,A_NAN,0.0, NULL, $1, NULL, NULL); clicon_debug(2,"nodetest-> name(%s)",$1); } 
+            | NAME ':' NAME    { $$=xp_new(XP_NODE,A_NAN,0.0, $1, $3, NULL, NULL);clicon_debug(2,"nodetest-> name(%s) : name(%s)", $1, $3); } 
+            | NAME ':' '*'     { $$=xp_new(XP_NODE,A_NAN,0.0, $1, NULL, NULL, NULL);clicon_debug(2,"nodetest-> name(%s) : *", $1); } 
+            | NODETYPE '(' ')' { $$=xp_new(XP_NODE_FN,A_NAN,0.0, $1, NULL, NULL, NULL); clicon_debug(2,"nodetest-> nodetype()"); } 
             ;
 
 /* evaluates to boolean */
-predicates  : predicates '[' expr ']' { $$=xp_new(XP_PRED,A_NAN,0.0, NULL, NULL, $1, $3); clicon_debug(1,"predicates-> [ expr ]"); } 
-            |                         { $$=xp_new(XP_PRED,A_NAN,0.0, NULL, NULL, NULL, NULL); clicon_debug(1,"predicates->"); } 
+predicates  : predicates '[' expr ']' { $$=xp_new(XP_PRED,A_NAN,0.0, NULL, NULL, $1, $3); clicon_debug(2,"predicates-> [ expr ]"); } 
+            |                         { $$=xp_new(XP_PRED,A_NAN,0.0, NULL, NULL, NULL, NULL); clicon_debug(2,"predicates->"); } 
             ;
 
-primaryexpr : '(' expr ')'         { $$=xp_new(XP_PRI0,A_NAN,0.0, NULL, NULL, $2, NULL); clicon_debug(1,"primaryexpr-> ( expr )"); } 
-            | NUMBER               { $$=xp_new(XP_PRIME_NR,A_NAN, $1, NULL, NULL, NULL, NULL);clicon_debug(1,"primaryexpr-> NUMBER(%lf)", $1); } 
-            | QUOTE string QUOTE   { $$=xp_new(XP_PRIME_STR,A_NAN,0.0, $2, NULL, NULL, NULL);clicon_debug(1,"primaryexpr-> \" string \""); }
-            | QUOTE QUOTE          { $$=xp_new(XP_PRIME_STR,A_NAN,0.0, NULL, NULL, NULL, NULL);clicon_debug(1,"primaryexpr-> \" \""); } 
-            | APOST string APOST   { $$=xp_new(XP_PRIME_STR,A_NAN,0.0, $2, NULL, NULL, NULL);clicon_debug(1,"primaryexpr-> ' string '"); }
-            | APOST APOST          { $$=xp_new(XP_PRIME_STR,A_NAN,0.0, NULL, NULL, NULL, NULL);clicon_debug(1,"primaryexpr-> ' '"); } 
-            | FUNCTIONNAME '(' ')' { $$=xp_new(XP_PRIME_FN,A_NAN,0.0, $1, NULL, NULL, NULL);clicon_debug(1,"primaryexpr-> functionname ( arguments )"); } 
+primaryexpr : '(' expr ')'         { $$=xp_new(XP_PRI0,A_NAN,0.0, NULL, NULL, $2, NULL); clicon_debug(2,"primaryexpr-> ( expr )"); } 
+            | NUMBER               { $$=xp_new(XP_PRIME_NR,A_NAN, $1, NULL, NULL, NULL, NULL);clicon_debug(2,"primaryexpr-> NUMBER(%lf)", $1); } 
+            | QUOTE string QUOTE   { $$=xp_new(XP_PRIME_STR,A_NAN,0.0, $2, NULL, NULL, NULL);clicon_debug(2,"primaryexpr-> \" string \""); }
+            | QUOTE QUOTE          { $$=xp_new(XP_PRIME_STR,A_NAN,0.0, NULL, NULL, NULL, NULL);clicon_debug(2,"primaryexpr-> \" \""); } 
+            | APOST string APOST   { $$=xp_new(XP_PRIME_STR,A_NAN,0.0, $2, NULL, NULL, NULL);clicon_debug(2,"primaryexpr-> ' string '"); }
+            | APOST APOST          { $$=xp_new(XP_PRIME_STR,A_NAN,0.0, NULL, NULL, NULL, NULL);clicon_debug(2,"primaryexpr-> ' '"); } 
+            | FUNCTIONNAME '(' ')' { $$=xp_new(XP_PRIME_FN,A_NAN,0.0, $1, NULL, NULL, NULL);clicon_debug(2,"primaryexpr-> functionname ( arguments )"); } 
             ;
 
 /* XXX Adding this between FUNCTIONNAME() breaks parser,..
-arguments   : arguments expr { clicon_debug(1,"arguments-> arguments expr"); }
-            |                { clicon_debug(1,"arguments-> "); }
+arguments   : arguments expr { clicon_debug(2,"arguments-> arguments expr"); }
+            |                { clicon_debug(2,"arguments-> "); }
 	    ;
 */
 string      : string CHAR  { 
@@ -279,9 +279,9 @@ string      : string CHAR  {
 			 $$ = realloc($1, len+strlen($2) + 1); 
 			 sprintf($$+len, "%s", $2); 
 			 free($2);
-			 clicon_debug(1,"string-> string CHAR");
+			 clicon_debug(2,"string-> string CHAR");
                }
-            | CHAR             { clicon_debug(1,"string-> "); } 
+            | CHAR             { clicon_debug(2,"string-> "); } 
             ;
 
 
