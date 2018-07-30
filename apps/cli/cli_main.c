@@ -219,7 +219,7 @@ usage(clicon_handle h,
 	    "\t-p \t\tPrint database yang specification\n"
 	    "\t-G \t\tPrint CLI syntax generated from dbspec (if CLICON_CLI_GENMODEL enabled)\n"
 	    "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
-	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default)\n"
+	    "\t-l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut or (f)ile (stderr is default)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "\t-c <file>\tSpecify cli spec file.\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n",
@@ -299,16 +299,18 @@ main(int argc, char **argv)
 	case 'x': /* dump config file as xml (migration from .conf file)*/
 	    dump_configfile_xml++;
 	    break;
-	case 'l': /* Log destination: s|e|o */
+	case 'l': /* Log destination: s|e|o|f */
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(h, argv[0]);
+	    if (logdst == CLICON_LOG_FILE &&
+		strlen(optarg)>1 &&
+		clicon_log_file(optarg+1) < 0)
+		goto done;
 	    break;
 	}
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    if ((logdst & CLICON_LOG_FILE) && clicon_log_file(CLI_LOGFILE) < 0)
-	goto done;
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst);
 
     clicon_debug_init(debug, NULL); 

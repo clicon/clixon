@@ -299,7 +299,7 @@ usage(clicon_handle h,
             "\t-D\t\tDebug\n"
             "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
-	    "\t-l <s|f> \tLog on (s)yslog, (f)ile (syslog is default)\n"
+	    "\t-l <e|o|s|f<file>> \tLog on std(e)rr, std(o)ut, (s)yslog, (f)ile (syslog is default)\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
@@ -355,13 +355,15 @@ main(int    argc,
 	 case 'l': /* Log destination: s|e|o */
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(h, argv[0]);
+	    if (logdst == CLICON_LOG_FILE &&
+		strlen(optarg)>1 &&
+		clicon_log_file(optarg+1) < 0)
+		goto done;
 	     break;
 	}
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    if ((logdst & CLICON_LOG_FILE) && clicon_log_file(NETCONF_LOGFILE) < 0)
-	goto done;
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL); 
 

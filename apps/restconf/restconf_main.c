@@ -490,7 +490,7 @@ usage(clicon_handle h,
             "\t-h \t\tHelp\n"
     	    "\t-D \t\tDebug. Log to syslog\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
-	    "\t-l <s|f> \tLog on (s)yslog, (f)ile (syslog is default)\n"
+	    "\t-l <s|f<file>> \tLog on (s)yslog, (f)ile (syslog is default)\n"
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
@@ -543,14 +543,16 @@ main(int    argc,
 	 case 'l': /* Log destination: s|e|o */
 	     if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(h, argv[0]);
+	    if (logdst == CLICON_LOG_FILE &&
+		strlen(optarg)>1 &&
+		clicon_log_file(optarg+1) < 0)
+		goto done;
 	   break;
 	} /* switch getopt */
 
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    if ((logdst & CLICON_LOG_FILE) && clicon_log_file(RESTCONF_LOGFILE) < 0)
-	goto done;
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
 
     clicon_debug_init(debug, NULL); 

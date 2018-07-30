@@ -144,7 +144,7 @@ usage(clicon_handle h,
 	    "    -s <mode>\tSpecify backend startup mode: none|startup|running|init (replaces -IRCr\n"
 	    "    -c <file>\tLoad extra xml configuration, but don't commit.\n"
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
-	    "    -l <s|e|o> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
+	    "    -l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
 	    "    -y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "    -x <plugin>\tXMLDB plugin\n",
 	    argv0,
@@ -598,6 +598,10 @@ main(int    argc,
 	case 'l': /* Log destination: s|e|o */
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(h, argv[0]);
+	    if (logdst == CLICON_LOG_FILE &&
+		strlen(optarg)>1 &&
+		clicon_log_file(optarg+1) < 0)
+		goto done;
 	    break;
 	}
     /* 
@@ -607,8 +611,6 @@ main(int    argc,
      * XXX: if started in a start-daemon script, there will be irritating
      * double syslogs until fork below. 
      */
-    if ((logdst & CLICON_LOG_FILE) && clicon_log_file(BACKEND_LOGFILE) < 0)
-	goto done;
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL);
 
