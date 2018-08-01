@@ -89,11 +89,14 @@ clicon_log_init(char *ident,
 		int    upto, 
 		int    flags)
 {
-    if (setlogmask(LOG_UPTO(upto)) < 0)
-	/* Cant syslog here */
-	fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno)); 
+
     _logflags = flags;
-    openlog(ident, LOG_PID, LOG_USER); /* LOG_PUSER is achieved by direct stderr logs in clicon_log */
+    if (flags & CLICON_LOG_SYSLOG){
+	if (setlogmask(LOG_UPTO(upto)) < 0)
+	    /* Cant syslog here */
+	    fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno)); 
+	openlog(ident, LOG_PID, LOG_USER); /* LOG_PUSER is achieved by direct stderr logs in clicon_log */
+    }
     return 0;
 }
 

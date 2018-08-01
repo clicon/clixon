@@ -73,7 +73,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:d:b:Fzu:a:P:1s:c:g:l:y:x:" /* substitute s: for IRCc:r */
+#define BACKEND_OPTS "hD:f:l:d:b:Fza:u:P:1s:c:g:y:x:" /* substitute s: for IRCc:r */
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
@@ -132,19 +132,20 @@ usage(clicon_handle h,
 	    "where options are\n"
             "    -h\t\tHelp\n"
     	    "    -D <level>\tDebug level\n"
-    	    "    -f <file>\tCLICON config file (mandatory)\n"
+    	    "    -f <file>\tCLICON config file\n"
+	    "    -l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
 	    "    -d <dir>\tSpecify backend plugin directory (default: %s)\n"
 	    "    -b <dir>\tSpecify XMLDB database directory\n"
-    	    "    -z\t\tKill other config daemon and exit\n"
     	    "    -F\t\tRun in foreground, do not run as daemon\n"
-    	    "    -1\t\tRun once and then quit (dont wait for events)\n"
+    	    "    -z\t\tKill other config daemon and exit\n"
     	    "    -a UNIX|IPv4|IPv6\tInternal backend socket family\n"
     	    "    -u <path|addr>\tInternal socket domain path or IP addr (see -a)(default: %s)\n"
     	    "    -P <file>\tPid filename (default: %s)\n"
+    	    "    -1\t\tRun once and then quit (dont wait for events)\n"
 	    "    -s <mode>\tSpecify backend startup mode: none|startup|running|init (replaces -IRCr\n"
 	    "    -c <file>\tLoad extra xml configuration, but don't commit.\n"
 	    "    -g <group>\tClient membership required to this group (default: %s)\n"
-	    "    -l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
+
 	    "    -y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "    -x <plugin>\tXMLDB plugin\n",
 	    argv0,
@@ -577,7 +578,6 @@ main(int    argc,
     optind = 1;
     while ((c = getopt(argc, argv, BACKEND_OPTS)) != -1)
 	switch (c) {
-	case '?':
 	case 'h':
 	    /* Defer the call to usage() to later. Reason is that for helpful
 	       text messages, default dirs, etc, are not set until later.
@@ -631,8 +631,10 @@ main(int    argc,
     optind = 1;
     while ((c = getopt(argc, argv, BACKEND_OPTS)) != -1)
 	switch (c) {
+	case 'h' : /* help */
 	case 'D' : /* debug */
 	case 'f': /* config file */
+	case 'l' :
 	    break; /* see above */
 	case 'd':  /* Plugin directory */
 	    if (!strlen(optarg))
@@ -647,9 +649,6 @@ main(int    argc,
 	case 'F' : /* foreground */
 	    foreground = 1;
 	    break;
-	case '1' : /* Quit after reading database once - dont wait for events */
-	    once = 1;
-	    break;
 	case 'z': /* Zap other process */
 	    zap++;
 	    break;
@@ -663,6 +662,9 @@ main(int    argc,
 	    break;
 	case 'P': /* pidfile */
 	    clicon_option_str_set(h, "CLICON_BACKEND_PIDFILE", optarg);
+	    break;
+	case '1' : /* Quit after reading database once - dont wait for events */
+	    once = 1;
 	    break;
 	case 's' : /* startup mode */
 	    clicon_option_str_set(h, "CLICON_STARTUP_MODE", optarg);
@@ -685,8 +687,6 @@ main(int    argc,
 	    clicon_option_str_set(h, "CLICON_XMLDB_PLUGIN", optarg);
 	    break;
 	}
-	case 'l' :
-	    break;
 	default:
 	    usage(h, argv[0]);
 	    break;
