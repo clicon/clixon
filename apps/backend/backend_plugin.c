@@ -100,7 +100,7 @@ clixon_plugin_reset(clicon_handle h,
 	if ((resetfn = cp->cp_api.ca_reset) == NULL)
 	    continue;
 	if ((retval = resetfn(h, db)) < 0) {
-	    clicon_debug(1, "plugin_start() failed\n");
+	    clicon_debug(1, "plugin_start() failed");
 	    return -1;
 	}
 	break;
@@ -357,7 +357,7 @@ plugin_transaction_revert(clicon_handle       h,
     while ((cp = clixon_plugin_each_revert(h, cp, nr)) != NULL) {
 	if ((fn = cp->cp_api.ca_trans_commit) == NULL)
 	    continue;
-	if ((retval = fn(h, (transaction_data)td)) < 0){
+	if ((retval = fn(h, (transaction_data)&tr)) < 0){
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_commit revert callback failed", 
 			   __FUNCTION__, cp->cp_name);
 		break; 
