@@ -39,7 +39,7 @@
  * sudo apt-get install libfcgi-dev
  * gcc -o fastcgi fastcgi.c -lfcgi
 
- * sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/example.xml " -s /bin/sh www-data
+ * sudo su -c "/www-data/clixon_restconf -D 1 -f /usr/local/etc/example.xml " -s /bin/sh www-data
 
  * This is the interface:
  * api/data/profile=<name>/metric=<name> PUT data:enable=<flag>
@@ -74,7 +74,7 @@
 #include "restconf_methods.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hDf:l:p:y:a:u:"
+#define RESTCONF_OPTS "hD:f:l:p:y:a:u:"
 
 /* RESTCONF enables deployments to specify where the RESTCONF API is 
    located.  The client discovers this by getting the "/.well-known/host-meta"
@@ -488,7 +488,7 @@ usage(clicon_handle h,
     fprintf(stderr, "usage:%s [options]\n"
 	    "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D \t\tDebug. Log to syslog\n"
+	    "\t-D <level>\tDebug level\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-l <s|f<file>> \tLog on (s)yslog, (f)ile (syslog is default)\n"
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
@@ -533,7 +533,8 @@ main(int    argc,
 	    usage(h, argv[0]);
 	    break;
 	case 'D' : /* debug */
-	    debug = 1;
+	    if (sscanf(optarg, "%d", &debug) != 1)
+		usage(h, argv[0]);
 	    break;
 	 case 'f': /* override config file */
 	    if (!strlen(optarg))

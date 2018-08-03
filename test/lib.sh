@@ -15,8 +15,8 @@ clixon_cli=clixon_cli
 clixon_netconf=clixon_netconf
 
 # How to run restconf stand-alone and using valgrind
-#sudo su -c "/www-data/clixon_restconf -f $cfg -D" -s /bin/sh www-data
-#sudo su -c "valgrind --leak-check=full --show-leak-kinds=all /www-data/clixon_restconf -f $cfg -D" -s /bin/sh www-data
+#sudo su -c "/www-data/clixon_restconf -f $cfg -D 1" -s /bin/sh www-data
+#sudo su -c "valgrind --leak-check=full --show-leak-kinds=all /www-data/clixon_restconf -f $cfg -D 1" -s /bin/sh www-data
 
 #clixon_backend="valgrind --leak-check=full --show-leak-kinds=all clixon_backend"
 clixon_backend=clixon_backend

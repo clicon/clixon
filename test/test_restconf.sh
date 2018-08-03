@@ -92,7 +92,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang -D
+sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang # -D 1
 
 sleep 1
 

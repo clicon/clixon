@@ -206,7 +206,7 @@ usage(clicon_handle h,
 	    "where commands is a CLI command or options passed to the main plugin\n" 
 	    "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level> \tDebug\n"
+    	    "\t-D <level> \tDebug level\n"
 	    "\t-f <file> \tConfig-file (mandatory)\n"
 	    "\t-x\t\tDump configuration file as XML on stdout (migration utility)\n"
     	    "\t-F <file> \tRead commands from file (default stdin)\n"

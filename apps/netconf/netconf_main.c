@@ -296,7 +296,7 @@ usage(clicon_handle h,
     fprintf(stderr, "usage:%s\n"
 	    "where options are\n"
             "\t-h\t\tHelp\n"
-            "\t-D\t\tDebug\n"
+	    "\t-D <level>\tDebug level\n"
             "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-l <e|o|s|f<file>> \tLog on std(e)rr, std(o)ut, (s)yslog, (f)ile (syslog is default)\n"
@@ -345,7 +345,8 @@ main(int    argc,
 	    usage(h, argv[0]);
 	    break;
 	case 'D' : /* debug */
-	    debug = 1;
+	    if (sscanf(optarg, "%d", &debug) != 1)
+		usage(h, argv[0]);
 	    break;
 	 case 'f': /* override config file */
 	    if (!strlen(optarg))

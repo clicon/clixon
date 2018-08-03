@@ -5,6 +5,8 @@
 ### Major New features
 
 ### API changes on existing features (you may need to change your code)
+* clixon_restconf and clixon_netconf now take -D <level> as command-line option instead of just -D
+  * This aligns to clixon_cli and clixon_backend
 * Application command option -S to clixon_netconf is obsolete. Use `clixon_netconf -l s` instead.
 
 ### Minor changes

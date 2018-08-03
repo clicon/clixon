@@ -66,7 +66,7 @@ curl -sX POST -d '{"interfaces":{"interface":{"name":"eth1","type":"eth","enable
 
 Start the restconf fastcgi program with debug flag:
 ```
-sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/example.xml" -s /bin/sh www-data
+sudo su -c "/www-data/clixon_restconf -D 1 f /usr/local/etc/example.xml" -s /bin/sh www-data
 ```
 Look at syslog:
 ```
