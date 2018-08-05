@@ -112,8 +112,7 @@ clicon_file_dirent(const char     *dir,
    char           errbuf[128];
    char           filename[MAXPATHLEN];
    struct stat    st;
-   struct dirent  dent;
-   struct dirent *dresp;
+   struct dirent *dent;
    struct dirent *tmp;
    struct dirent *new = NULL;
    struct dirent *dvecp = NULL;
@@ -132,22 +131,15 @@ clicon_file_dirent(const char     *dir,
        clicon_err(OE_UNIX, errno, "opendir(%s)", dir);
      goto quit;
    }
-   for (res = readdir_r(dirp, &dent, &dresp); 
-	dresp; 
-	res = readdir_r(dirp, &dent, &dresp)) {
-       if (res != 0) {
-	   clicon_err(OE_UNIX, 0, "readdir: %s", strerror(errno));
-	   goto quit;
-       }
-
+   while((dent = readdir(dirp)) != NULL) {
        /* Filename matching */
        if (regexp) {
-	   if (regexec(&re, dent.d_name, (size_t) 0, NULL, 0) != 0)
+	   if (regexec(&re, dent->d_name, (size_t) 0, NULL, 0) != 0)
 	       continue;
        }
        /* File type matching */
        if (type) {
-	   snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dent.d_name);
+	   snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
 	   res = lstat(filename, &st);
 	   if (res != 0) {
 	       clicon_err(OE_UNIX, 0, "lstat: %s", strerror(errno));
@@ -161,7 +153,7 @@ clicon_file_dirent(const char     *dir,
 	   goto quit;
        }
        new = tmp;
-       memcpy(&new[nent], &dent, sizeof(dent));
+       memcpy(&new[nent], dent, sizeof(*dent));
        nent++;
 
    } /* while */

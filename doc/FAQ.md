@@ -103,10 +103,10 @@ You can change where CLixon looks for the configuration FILE as follows:
 ## Can I run Clixon as docker containers?
 
 Yes, the example works as docker containers as well. There should be a
-prepared container in docker hib for the example where the backend and
+prepared container in docker hub for the example where the backend and
 CLI is bundled. 
 ```
-sudo docker run -ti --rm olofhagsand/clixon_example
+sudo docker run -td olofhagsand/clixon_example
 ```
 Look in the example documentation for more info.
 

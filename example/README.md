@@ -198,19 +198,13 @@ The example contains some stubs for authorization according to [RFC8341(NACM)](h
 
 Example systemd files for backend and restconf daemons are found under the systemd directory. Install them under /etc/systemd/system for example.
 
-## Run as docker container
-
-(Note not updated)
-```
-cd docker
-# look in README
-```
-
 ## Docker
 
-Run the example as a docker container as follows:
+Run the example as a docker container and access it from a host CLI as follows:
 ```
-sudo docker run -ti --rm olofhagsand/clixon_example
+ID=$(sudo docker run -td olofhagsand/clixon_example)
+IP=$(sudo docker inspect -f '{{.NetworkSettings.IPAddress }}' $ID)
+clixon_cli -a IPv4 -u $IP -f ./example.xml
 ```
 
 Build the container and push yourself: First change the IMAGE variable in Makefile (eg to "you/clixon_example). Then build and push:
@@ -219,6 +213,10 @@ make docker
 make push
 sudo docker run -ti --rm you/clixon_example
 ```
+
+Note that the configuration database is internal in the container, so
+it is deleted if the container is restarted. To make the configuration
+database persistent, you need to mount running_db using `-v`
 
 
 

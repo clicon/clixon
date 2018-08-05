@@ -40,8 +40,6 @@ RUN apt-get update && apt-get install -y \
   libfcgi-dev \
   libcurl4-openssl-dev
 
-RUN groupadd clicon
-
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
 WORKDIR /clixon

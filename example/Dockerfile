@@ -34,8 +34,11 @@
 FROM olofhagsand/clixon
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
-RUN apt-get update && apt-get install -y \
-  procps # ps for debugging
+#RUN apt-get update && apt-get install -y procps # ps for debugging
+
+# The example uses "clicon" group
+RUN groupadd clicon
+
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /example
 WORKDIR /example
@@ -53,7 +56,8 @@ RUN make
 RUN make install
 RUN install example.xml /usr/local/etc/clixon.xml
 
-CMD /usr/local/sbin/clixon_backend && /usr/local/bin/clixon_cli
+# Log to stderr. Add -D 1 for debug
+CMD /usr/local/sbin/clixon_backend -F -a IPv4 -u 0.0.0.0 -s init -l e 
 
 
 
