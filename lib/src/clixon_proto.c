@@ -245,9 +245,10 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
 		if (!_atomicio_sig)
 		    continue;
 	    }
-	    else
-		if (errno == EAGAIN)
-		    continue;
+	    else if (errno == EAGAIN)
+		continue;
+	    else if (errno == EPEER)
+		res = 0;
 	case 0: /* fall thru */
 	    return (res);
 	default:
