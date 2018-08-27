@@ -247,7 +247,7 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
 	    }
 	    else if (errno == EAGAIN)
 		continue;
-	    else if (errno == EPEER)
+	    else if (errno == ECONNRESET)/* Connection reset by peer */
 		res = 0;
 	case 0: /* fall thru */
 	    return (res);
