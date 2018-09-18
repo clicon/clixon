@@ -7,11 +7,13 @@ Ensure www-data is member of the CLICON_SOCK_GROUP (default clicon). If not, add
   sudo usermod -a -G clicon www-data
 ```
 
+This implementation uses FastCGI, see http://www.mit.edu/~yandros/doc/specs/fcgi-spec.html.
+
 Define nginx config file: /etc/nginx/sites-available/default
 ```
 server {
   ...
-  location /restconf {
+  location / {
     root /usr/share/nginx/html/restconf;
     fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
     include fastcgi_params;

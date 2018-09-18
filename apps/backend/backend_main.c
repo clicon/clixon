@@ -756,6 +756,11 @@ main(int    argc,
 	return -1;
     }
 
+    if (stream_register(h, "NETCONF", "default NETCONF event stream") < 0)
+	goto done;
+    if (stream_register(h, "CLICON", "Clicon logs") < 0)
+	goto done;
+	
     if ((xmldb_plugin = clicon_xmldb_plugin(h)) == NULL){
 	clicon_log(LOG_ERR, "No xmldb plugin given (specify option CLICON_XMLDB_PLUGIN).\n"); 
 	goto done;
@@ -765,10 +770,11 @@ main(int    argc,
     /* Connect to plugin to get a handle */
     if (xmldb_connect(h) < 0)
 	goto done;
-    /* Parse db spec file */
+    /* Read and parse application yang specification */
     if (yang_spec_main(h) == NULL)
 	goto done;
-
+    if (yang_spec_append(h, CLIXON_DATADIR, "ietf-restconf-monitoring", NULL)< 0)
+	goto done;
     /* Set options: database dir and yangspec (could be hidden in connect?)*/
     if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)
 	goto done;

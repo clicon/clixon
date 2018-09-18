@@ -99,20 +99,10 @@ client_subscription_add(struct client_entry *ce,
     return su;
 }
 
-static struct client_entry *
-ce_find_bypid(struct client_entry *ce_list, int pid)
-{
-    struct client_entry *ce;
-
-    for (ce = ce_list; ce; ce = ce->ce_next)
-	if (ce->ce_pid == pid)
-	    return ce;
-    return NULL;
-}
-
+/*! Delete stream subscription from client subscription list */
 static int
 client_subscription_delete(struct client_entry *ce, 
-		    struct client_subscription *su0)
+			   struct client_subscription *su0)
 {
     struct client_subscription   *su;
     struct client_subscription  **su_prev;
@@ -134,7 +124,8 @@ client_subscription_delete(struct client_entry *ce,
 
 #ifdef notused /* xxx */
 static struct client_subscription *
-client_subscription_find(struct client_entry *ce, char *stream)
+client_subscription_find(struct client_entry *ce,
+			 char *stream)
 {
     struct client_subscription   *su = NULL;
 
@@ -145,6 +136,18 @@ client_subscription_find(struct client_entry *ce, char *stream)
     return su;
 }
 #endif 
+
+static struct client_entry *
+ce_find_bypid(struct client_entry *ce_list,
+	      int pid)
+{
+    struct client_entry *ce;
+
+    for (ce = ce_list; ce; ce = ce->ce_next)
+	if (ce->ce_pid == pid)
+	    return ce;
+    return NULL;
+}
 
 /*! Remove client entry state
  * Close down everything wrt clients (eg sockets, subscriptions)
@@ -258,6 +261,79 @@ from_client_get_config(clicon_handle h,
     return retval;
 }
 
+static int
+client_get_streams(clicon_handle        h,
+		   char                *xpath,
+		   cxobj              **xtop)
+{
+    int            retval = -1;
+    cxobj         *x = NULL;
+    cxobj         *xc;
+    char          *reason = NULL;
+    yang_spec     *yspec;
+    cbuf          *cb;
+
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    if (*xtop==NULL){
+	clicon_err(OE_CFG, ENOENT, "XML tree expected");
+	goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, 0, "clicon buffer");
+	goto done;
+    }
+    cprintf(cb,"<restconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\">");
+    if (stream_get_xml(h, cb) < 0)
+	goto done;
+    cprintf(cb,"</restconf-state>");
+    /* XXX. yspec */
+    if (xml_parse_string(cbuf_get(cb), NULL, &x) < 0)
+	goto done;
+    if (xml_merge(*xtop, x, yspec, &reason) < 0)
+	goto done;
+    if (reason){
+	while ((xc = xml_child_i(*xtop, 0)) != NULL)
+	    xml_purge(xc);	    
+	if (netconf_operation_failed_xml(xtop, "rpc", reason)< 0)
+	    goto done;
+	goto ok;
+    }
+#ifdef notyet
+    /* Code complex to filter out anything that is outside of xpath */
+    if (xpath_vec(*xtop, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	goto done;
+
+    /* If vectors are specified then mark the nodes found and
+     * then filter out everything else,
+     * otherwise return complete tree.
+     */
+    if (xvec != NULL){
+	for (i=0; i<xlen; i++)
+	    xml_flag_set(xvec[i], XML_FLAG_MARK);
+    }
+    /* Remove everything that is not marked */
+    if (!xml_flag(*xtop, XML_FLAG_MARK))
+	if (xml_tree_prune_flagged_sub(*xtop, XML_FLAG_MARK, 1, NULL) < 0)
+	    goto done;
+    /* reset flag */
+    if (xml_apply(*xtop, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	goto done;
+#endif
+ ok:
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    if (reason)
+	free(reason);
+    if (x)
+	xml_free(x);
+    return retval;
+}
+
 /*! Internal message: get
  * 
  * @param[in]  h     Clicon handle
@@ -288,6 +364,11 @@ from_client_get(clicon_handle h,
     }
     /* Get state data from plugins as defined by plugin_statedata(), if any */
     assert(xret);
+
+#if 1 /* get netconf state data */
+    if ((ret = client_get_streams(h, selector, &xret)) < 0)
+	goto done;
+#endif
     clicon_err_reset();
     if ((ret = clixon_plugin_statedata(h, selector, &xret)) < 0)
 	goto done;

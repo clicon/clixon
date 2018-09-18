@@ -68,6 +68,7 @@
 #include <clixon/clixon_queue.h>
 #include <clixon/clixon_hash.h>
 #include <clixon/clixon_handle.h>
+#include <clixon/clixon_stream.h>
 #include <clixon/clixon_yang.h>
 #include <clixon/clixon_yang_type.h>
 #include <clixon/clixon_event.h>

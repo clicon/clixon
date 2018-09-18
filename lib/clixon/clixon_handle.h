@@ -74,4 +74,9 @@ clicon_hash_t *clicon_options(clicon_handle h);
 /* Return internal clicon data (hash-array) given a handle.*/
 clicon_hash_t *clicon_data(clicon_handle h);
 
+/* Return internal stream hash-array given a handle.*/
+struct event_stream *clicon_stream(clicon_handle h);
+struct event_stream;
+int clicon_stream_append(clicon_handle h, struct event_stream *es);
+
 #endif  /* _CLIXON_HANDLE_H_ */

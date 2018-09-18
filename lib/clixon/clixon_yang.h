@@ -274,6 +274,7 @@ int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
 yang_spec *yang_spec_netconf(clicon_handle h);
 yang_spec *yang_spec_main(clicon_handle h);
+int        yang_spec_append(clicon_handle h, char *yang_dir, char *yang_module, char *yang_revision);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_node *yn, char *name);
 

@@ -1914,7 +1914,7 @@ ys_schemanode_check(yang_stmt *ys,
  * @param[in] yang_dir Directory where all YANG module files reside (except mainfile)
  * @param[in] mainmod  Name of main YANG module. Or absolute file name.
  * @param[in] revision Main module revision date string or NULL
- * @param[out] ysp     Yang specification. Should ave been created by caller using yspec_new
+ * @param[out] ysp     Yang specification. Should have been created by caller using yspec_new
  * @retval 0  Everything OK
  * @retval -1 Error encountered
  * The database symbols are inserted in alphabetical order.
@@ -2388,7 +2388,9 @@ yang_config(yang_stmt *ys)
     return 1;
 }
 
-/*! Parse netconf yang spec, used by netconf client and as internal protocol */
+/*! Parse netconf yang spec, used by netconf client and as internal protocol 
+ * @note not used yet - unfinnisshed code
+ */
 yang_spec *
 yang_spec_netconf(clicon_handle h)
 {
@@ -2405,18 +2407,16 @@ yang_spec_netconf(clicon_handle h)
     return yspec;
 }
 
-/*! Read, parse and save application yang specification as option
+/*! Parse yang specification and its dependencies recursively and return
  * @param[in] h          clicon handle
- * @param[in] f          file to print to (if printspec enabled)
- * @param[in] printspec  print database (YANG) specification as read from file
  */
 yang_spec*
 yang_spec_main(clicon_handle h)
 {
     yang_spec      *yspec = NULL;
-    char           *yang_dir;
     char           *yang_module;
     char           *yang_revision;
+    char           *yang_dir;
 
     if ((yang_dir = clicon_yang_dir(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_YANG_DIR option not set");
@@ -2437,6 +2437,46 @@ yang_spec_main(clicon_handle h)
     clicon_dbspec_yang_set(h, yspec);	
   done:
     return yspec;
+}
+
+/*! Parse yang specification, its dependencies, and append to default yang spec
+ * yang_spec_main should have been called first.
+ * @param[in] h             clicon handle
+ * @param[in] yang_dir      Directory, either system-wide or application-specific
+ * @param[in] yang_module   Name of module
+ * @param[in] yang_revision Revision, or NULL
+ * @see yang_spec_main
+ */
+int
+yang_spec_append(clicon_handle h,
+		 char         *yang_dir,
+		 char         *yang_module,
+		 char         *yang_revision)
+{
+    int        retval = -1;
+    yang_spec *yspec;
+    yang_spec *yspec0;
+    yang_stmt *ym = NULL; /* module */
+
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "yang spec not found");
+	goto done;
+    }
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    if (yang_parse(h, yang_dir, yang_module, yang_revision, yspec) < 0){
+	yspec_free(yspec); yspec = NULL;
+	goto done;
+    }
+    while ((ym = yn_each((yang_node*)yspec, ym)) != NULL)
+	if (yn_insert((yang_node*)yspec0, ym) < 0)
+	    goto done;
+    yspec->yp_len = 0;
+    retval = 0;
+ done:
+    if (yspec)
+	yspec_free(yspec);
+    return retval;
 }
 
 /*! Given a yang node, translate the argument string to a cv vector

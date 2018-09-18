@@ -5,6 +5,9 @@
 ### Major New features
 
 ### API changes on existing features (you may need to change your code)
+* Notification event streams enhancements
+  * Yang 1.1 notification support
+  * Event stream discovery support according to RFC 5277 Sec 3.2.5.1 (netconf) and RFC 8040 (restconf)
 * clixon_restconf and clixon_netconf now take -D <level> as command-line option instead of just -D
   * This aligns to clixon_cli and clixon_backend
 * Application command option -S to clixon_netconf is obsolete. Use `clixon_netconf -l s` instead.

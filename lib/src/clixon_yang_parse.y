@@ -485,6 +485,7 @@ body_stmt     : extension_stmt       { clicon_debug(2,"body-stmt -> extension-st
               | data_def_stmt        { clicon_debug(2,"body-stmt -> data-def-stmt");}
               | augment_stmt         { clicon_debug(2,"body-stmt -> augment-stmt");}
               | rpc_stmt             { clicon_debug(2,"body-stmt -> rpc-stmt");}
+              | notification_stmt    { clicon_debug(2,"body-stmt -> notification-stmt");}
               ;
 
 data_def_stmt : container_stmt       { clicon_debug(2,"data-def-stmt -> container-stmt");}
@@ -521,7 +522,8 @@ container_substmt : when_stmt       { clicon_debug(2,"container-substmt -> when-
               | reference_stmt      { clicon_debug(2,"container-substmt -> reference-stmt"); }
               | typedef_stmt        { clicon_debug(2,"container-substmt -> typedef-stmt"); }
               | grouping_stmt       { clicon_debug(2,"container-substmt -> grouping-stmt"); }
-              | data_def_stmt   { clicon_debug(2,"container-substmt -> data-def-stmt");} 
+              | data_def_stmt       { clicon_debug(2,"container-substmt -> data-def-stmt");}
+              | notification_stmt   { clicon_debug(2,"container-substmt -> notification-stmt");} 
               | unknown_stmt        { clicon_debug(2,"container-substmt -> unknown-stmt");} 
               |                     { clicon_debug(2,"container-substmt ->");} 
               ;
@@ -619,6 +621,7 @@ list_substmt  : when_stmt            { clicon_debug(2,"list-substmt -> when-stmt
               | typedef_stmt         { clicon_debug(2,"list-substmt -> typedef-stmt"); }
               | grouping_stmt        { clicon_debug(2,"list-substmt -> grouping-stmt"); }
               | data_def_stmt        { clicon_debug(2,"list-substmt -> data-def-stmt"); }
+              | notification_stmt    { clicon_debug(2,"list-substmt -> notification-stmt"); }
               | unknown_stmt         { clicon_debug(2,"list-substmt -> unknown-stmt");} 
               |                      { clicon_debug(2,"list-substmt -> "); }
               ;
@@ -792,7 +795,8 @@ augment_substmt : when_stmt          { clicon_debug(2,"augment-substmt -> when-s
               | description_stmt     { clicon_debug(2,"augment-substmt -> description-stmt"); }
               | reference_stmt       { clicon_debug(2,"augment-substmt -> reference-stmt"); }
               | data_def_stmt        { clicon_debug(2,"augment-substmt -> data-def-stmt"); }
-              | case_stmt            { clicon_debug(2,"augment-substmt -> case-stmt");} 
+              | case_stmt            { clicon_debug(2,"augment-substmt -> case-stmt");}
+              | notification_stmt    { clicon_debug(2,"augment-substmt -> notification-stmt");} 
               |                      { clicon_debug(2,"augment-substmt -> "); }
               ;
 
@@ -874,6 +878,34 @@ output_stmt  : K_OUTPUT  /* XXX reuse input-substatements since they are same */
 			     clicon_debug(2,"output-stmt -> OUTPUT { input-substmts }"); }
               ;
 
+
+/* notification */
+notification_stmt : K_NOTIFICATION id_arg_str ';' 
+	                { if (ysp_add(_yy, Y_NOTIFICATION, $2, NULL) == NULL) _YYERROR("46"); 
+			   clicon_debug(2,"notification-stmt -> NOTIFICATION id-arg-str ;"); }
+                  | K_NOTIFICATION id_arg_str
+                        { if (ysp_add_push(_yy, Y_NOTIFICATION, $2) == NULL) _YYERROR("47"); }
+	            '{' notification_substmts '}' 
+                        { if (ystack_pop(_yy) < 0) _YYERROR("48");
+			     clicon_debug(2,"notification-stmt -> NOTIFICATION id-arg-str { notification-substmts }"); }
+                  ;
+
+notification_substmts : notification_substmts notification_substmt 
+                         { clicon_debug(2,"notification-substmts -> notification-substmts notification-substmt"); }
+                      | notification_substmt 
+                         { clicon_debug(2,"notification-substmts -> notification-substmt"); }
+                      ;
+
+notification_substmt : if_feature_stmt  { clicon_debug(2,"notification-substmt -> if-feature-stmt"); }
+                     | must_stmt        { clicon_debug(2,"notification-substmt -> must-stmt"); }
+                     | status_stmt      { clicon_debug(2,"notification-substmt -> status-stmt"); }
+                     | description_stmt { clicon_debug(2,"notification-substmt -> description-stmt"); }
+                     | reference_stmt   { clicon_debug(2,"notification-substmt -> reference-stmt"); }
+                     | typedef_stmt     { clicon_debug(2,"notification-substmt -> typedef-stmt"); }
+                     | grouping_stmt    { clicon_debug(2,"notification-substmt -> grouping-stmt"); }
+                     | data_def_stmt    { clicon_debug(2,"notification-substmt -> data-def-stmt"); }
+                     |                  { clicon_debug(2,"notification-substmt -> "); }
+                     ;
 
 /* Typedef */
 typedef_stmt  : K_TYPEDEF id_arg_str 
@@ -964,6 +996,7 @@ grouping_substmt : status_stmt          { clicon_debug(2,"grouping-substmt -> st
               | typedef_stmt         { clicon_debug(2,"grouping-substmt -> typedef-stmt"); }
               | grouping_stmt        { clicon_debug(2,"grouping-substmt -> grouping-stmt"); }
               | data_def_stmt        { clicon_debug(2,"grouping-substmt -> data-def-stmt"); }
+              | notification_stmt    { clicon_debug(2,"grouping-substmt -> notification-stmt"); }
               |                      { clicon_debug(2,"grouping-substmt -> "); }
               ;
 
