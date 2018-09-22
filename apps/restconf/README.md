@@ -68,7 +68,7 @@ curl -sX POST -d '{"interfaces":{"interface":{"name":"eth1","type":"eth","enable
 
 Start the restconf fastcgi program with debug flag:
 ```
-sudo su -c "/www-data/clixon_restconf -D 1 f /usr/local/etc/example.xml" -s /bin/sh www-data
+sudo su -c "/www-data/clixon_restconf -D 1 -f /usr/local/etc/example.xml" -s /bin/sh www-data
 ```
 Look at syslog:
 ```
@@ -78,4 +78,14 @@ tail -f /var/log/syslog | grep clixon_restconf
 Send command:
 ```
 curl -G http://127.0.0.1/restconf/data/*
+```
+
+You can also run restconf in a debugger.
+```
+sudo gdb /www-data/clixon_restconf
+(gdb) run -D 1 -f /usr/local/etc/example.xml
+```
+but you need to ensure /www-data/fastcgi_restconf.sock has the following access:
+```
+rwxr-xr-x 1 www-data www-data 0 sep 22 11:46 /www-data/fastcgi_restconf.sock
 ```

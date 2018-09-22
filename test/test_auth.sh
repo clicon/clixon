@@ -148,7 +148,7 @@ new "restconf DELETE whole datastore"
 expecteq "$(curl -u adm1:bar -sS -X DELETE http://localhost/restconf/data)" ""
 
 new2 "auth get"
-expecteq "$(curl -u adm1:bar -sS -X GET http://localhost/restconf/data)" '{"data": null}
+expecteq "$(curl -u adm1:bar -sS -X GET http://localhost/restconf/data/x)" 'null
 '
 
 new "auth set authentication config"

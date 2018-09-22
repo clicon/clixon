@@ -5,14 +5,23 @@
 ### Major New features
 
 ### API changes on existing features (you may need to change your code)
-* Notification event streams enhancements
+* Limited support of RFC 7895 YANG Module Library to list modules:
+  * That is, limited support of: ietf-yang-library.yang 
+  * For example: `<module><name>example</name><revision/></module><module><name>ietf-restconf-monitoring</name><revision>2017-01-26</revision></module>...`
+* Notification event stream enhancements
   * Yang 1.1 notification support
-  * Event stream discovery support according to RFC 5277 Sec 3.2.5.1 (netconf) and RFC 8040 (restconf)
+  * Event stream discovery support according to RFC 5277 Sec 3.2.5.1
+    * That is, support of ietf-restconf-monitoring.yang (mimics schema in 3.2.5.1)
+  * Event stream discovery support according to RFC 8040 (restconf)
+    * That is, support of ietf-netconf-notification.yang
 * clixon_restconf and clixon_netconf now take -D <level> as command-line option instead of just -D
   * This aligns to clixon_cli and clixon_backend
 * Application command option -S to clixon_netconf is obsolete. Use `clixon_netconf -l s` instead.
 
 ### Minor changes
+* Comply to RFC 8040 3.5.3.1 rule: api-identifier = [module-name ":"] identifier
+  * The "module-name" was a no-op before.
+  * This means that there was no difference between eg: GET /restconf/data/ietf-yang-library:modules-state and GET /restconf/data/XXXX:modules-state 
 * Unified log handling for all clicon applications using -l e|o|s|f<file>.
   * The options stand for e:stderr, o:stdout, s: syslog, f:file
   * Added file logging (`-l f` or `-l f<file>`) for cases where neither syslog nor stderr is useful.

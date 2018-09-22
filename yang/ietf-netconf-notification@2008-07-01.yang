@@ -1,0 +1,94 @@
+module ietf-restconf-monitoring {
+    namespace "urn:ietf:params:xml:ns:netconf:notification:1:0";
+    prefix "rcmon";
+
+    import ietf-yang-types { prefix yang; }
+    import ietf-inet-types { prefix inet; }
+
+    organization
+	"IETF NETCONF (Network Configuration) Working Group";
+
+    description
+	"Note this is a translation from RFC 5277 schema in section 4 to Yang.
+         RFC 5277 is Copyright (C) The IETF Trust (2008).";
+
+    revision 2008-07-01 {
+	description
+	    "Initial revision.";
+	reference
+	    "RFC 5277: NETCONF Event Notifications.";
+    }
+
+    container netconf {
+	config false;
+	description
+	    "Contains NETCONF protocol monitoring information.";
+
+	container capabilities {
+	    description
+		"Contains a list of protocol capability URIs.";
+
+	    leaf-list capability {
+		type inet:uri;
+		description
+		    "A RESTCONF protocol capability URI.";
+	    }
+	}
+
+	container streams {
+	    description
+		"Container representing the notification event streams
+            supported by the server.";
+	    reference
+		"RFC 5277, Section 3.4, <streams> element.";
+	    list stream {
+		key name;
+		description
+		    "Each entry describes an event stream supported by
+              the server.";
+
+		leaf name {
+		    type string;
+		    description
+			"The stream name.";
+		    reference
+			"RFC 5277, Section 3.4, <name> element.";
+		}
+
+		leaf description {
+		    type string;
+		    description
+			"Description of stream content.";
+		    reference
+			"RFC 5277, Section 3.4, <description> element.";
+		}
+
+		leaf replay-support {
+		    type boolean;
+		    default false;
+		    description
+			"Indicates if replay buffer is supported for this stream.
+                If 'true', then the server MUST support the 'start-time'
+                and 'stop-time' query parameters for this stream.";
+		    reference
+			"RFC 5277, Section 3.4, <replaySupport> element.";
+		}
+
+		leaf replay-log-creation-time {
+		    when "../replay-support" {
+			description
+			    "Only present if notification replay is supported.";
+		    }
+		    type yang:date-and-time;
+		    description
+			"Indicates the time the replay log for this stream
+                was created.";
+		    reference
+			"RFC 5277, Section 3.4, <replayLogCreationTime>
+                element.";
+		}
+
+	    }
+	}
+    }
+}

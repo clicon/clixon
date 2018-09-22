@@ -43,9 +43,6 @@
 /*
  * Types
  */
-/* subscription callback */
-typedef	int (*subscription_fn_t)(clicon_handle, void *filter, void *arg);
-
 /* Notification subscription info 
  * @see client_subscription in config_client.h
  */

@@ -775,6 +775,10 @@ main(int    argc,
 	goto done;
     if (yang_spec_append(h, CLIXON_DATADIR, "ietf-restconf-monitoring", NULL)< 0)
 	goto done;
+    if (yang_spec_append(h, CLIXON_DATADIR, "ietf-netconf-notification", NULL)< 0)
+	goto done;
+    if (yang_spec_append(h, CLIXON_DATADIR, "ietf-yang-library", NULL)< 0)
+	goto done;
     /* Set options: database dir and yangspec (could be hidden in connect?)*/
     if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)
 	goto done;

@@ -13,6 +13,7 @@ fyang=$dir/test.yang
 fyangerr=$dir/err.yang
 nacmfile=$dir/nacmfile
 
+# Note filter out example_backend_nacm.so in CLICON_BACKEND_REGEXP below
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -190,7 +191,7 @@ new "restconf DELETE whole datastore"
 expecteq "$(curl -u adm1:bar -sS -X DELETE http://localhost/restconf/data)" ""
 
 new2 "auth get"
-expecteq "$(curl -u adm1:bar -sS -X GET http://localhost/restconf/data)" '{"data": {"interfaces-state": {"interface": [{"name": "eth0","type": "ex:eth","if-index": 42}]}}}
+expecteq "$(curl -u adm1:bar -sS -X GET http://localhost/restconf/data/ietf-interfaces:interfaces-state)" '{"interfaces-state": {"interface": [{"name": "eth0","type": "ex:eth","if-index": 42}]}}
 '
 
 new "Set x to 0"

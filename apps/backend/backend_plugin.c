@@ -125,11 +125,8 @@ clixon_plugin_statedata(clicon_handle        h,
 			cxobj              **xtop)
 {
     int            retval = -1;
-    int            i;
     cxobj         *x = NULL;
     yang_spec     *yspec;
-    cxobj        **xvec = NULL;
-    size_t         xlen;
     cxobj         *xc;
     clixon_plugin  *cp = NULL;
     plgstatedata_t *fn;          /* Plugin statedata fn */
@@ -168,25 +165,6 @@ clixon_plugin_statedata(clicon_handle        h,
 	    x = NULL;
 	}
     }
-    /* Code complex to filter out anything that is outside of xpath */
-    if (xpath_vec(*xtop, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	goto done;
-
-    /* If vectors are specified then mark the nodes found and
-     * then filter out everything else,
-     * otherwise return complete tree.
-     */
-    if (xvec != NULL){
-	for (i=0; i<xlen; i++)
-	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-    }
-    /* Remove everything that is not marked */
-    if (!xml_flag(*xtop, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged_sub(*xtop, XML_FLAG_MARK, 1, NULL) < 0)
-	    goto done;
-    /* reset flag */
-    if (xml_apply(*xtop, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-	goto done;
  ok:
     retval = 0;
  done:
@@ -194,8 +172,6 @@ clixon_plugin_statedata(clicon_handle        h,
 	free(reason);
     if (x)
 	xml_free(x);
-    if (xvec)
-	free(xvec);
     return retval;
 }
 

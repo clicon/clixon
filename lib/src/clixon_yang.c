@@ -620,33 +620,51 @@ yang_find_schemanode(yang_node *yn,
  */
 yang_stmt *
 yang_find_topnode(yang_spec *ysp, 
-		  char      *argument,
+		  char      *nodeid,
 		  yang_class class)
 {
-    yang_stmt *ys = NULL;
-    yang_stmt *yc = NULL;
+    yang_stmt *ymod = NULL; /* module */
+    yang_stmt *yres = NULL; /* result */
+    char      *prefix = NULL;
+    char      *id = NULL;
     int i;
 
-    for (i=0; i<ysp->yp_len; i++){
-	ys = ysp->yp_stmt[i];
-	switch (class){
-	case YC_NONE:
-	    if ((yc = yang_find((yang_node*)ys, 0, argument)) != NULL)
-		return yc;
-	    break;
-	case YC_DATANODE:
-	    if ((yc = yang_find_datanode((yang_node*)ys, argument)) != NULL)
-		return yc;
-	    break;
-	case YC_SCHEMANODE:
-	    if ((yc = yang_find_schemanode((yang_node*)ys, argument)) != NULL)
-		return yc;
-	    break;
-	case YC_DATADEFINITION:
-	    break; /* nyi */
+    if (yang_nodeid_split(nodeid, &prefix, &id) < 0)
+	goto done;
+    if (prefix){
+	if ((ymod = yang_find((yang_node*)ysp, Y_MODULE, prefix)) != NULL){
+	    if ((yres = yang_find((yang_node*)ymod, 0, id)) != NULL)
+		goto ok;
+	    goto done;
 	}
     }
-    return NULL;
+    else /* No prefix given - loop through and find first */
+	for (i=0; i<ysp->yp_len; i++){
+	    ymod = ysp->yp_stmt[i];
+	    switch (class){
+	    case YC_NONE:
+		if ((yres = yang_find((yang_node*)ymod, 0, id)) != NULL)
+		    goto ok;
+		break;
+	    case YC_DATANODE:
+		if ((yres = yang_find_datanode((yang_node*)ymod, id)) != NULL)
+		    goto ok;
+		break;
+	    case YC_SCHEMANODE:
+		if ((yres = yang_find_schemanode((yang_node*)ymod, id)) != NULL)
+		    goto ok;
+		break;
+	    case YC_DATADEFINITION:
+		break; /* nyi */
+	    }
+	}
+ ok:
+ done:
+    if (prefix)
+	free(prefix);
+    if (id)
+	free(id);
+    return yres;
 }
 
 /*! Given a yang statement, find the prefix associated to this module
@@ -821,7 +839,6 @@ yarg_prefix(yang_stmt *ys)
     }
     return prefix;
 }
-
 
 /*! Split yang node identifier into prefix and identifer.
  * @param[in]  node-id

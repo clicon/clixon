@@ -69,8 +69,8 @@ new "restconf tests"
 new "restconf POST initial tree"
 expectfn 'curl -s -X POST -d {"cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 ""
 
-new "restconf GET datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data" 0 '{"data": {"cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}}'
+new "restconf GET datastore intial"
+expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 '{"cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
 
 new "restconf GET interface"
 expectfn "curl -s -X GET http://localhost/restconf/data/cont1/interface=local0" 0 '{"interface": \[{"name": "local0","type": "regular"}\]}'
@@ -94,31 +94,31 @@ new "restconf DELETE"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data/cont1' 0 ""
 
 new "restconf GET null datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data" 0 '{"data": null}'
+expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 'null'
 
 new "restconf POST initial tree"
 expectfn 'curl -s -X POST -d {"cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 ""
 
 new "restconf GET initial tree"
-expectfn "curl -s -X GET http://localhost/restconf/data" 0 '{"data": {"cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 '{"cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
 
 new "restconf DELETE whole datastore"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
 
 new "restconf GET null datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data" 0 '{"data": null}'
+expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 'null'
 
 new "restconf PUT initial datastore" 
 expectfn 'curl -s -X PUT -d {"data":{"cont1":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' 0 ""
 
 new "restconf GET datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data" 0 '{"data": {"cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 '{"cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
 
 new "restconf PUT replace datastore" 
 expectfn 'curl -s -X PUT -d {"data":{"cont2":{"name":"foo"}}} http://localhost/restconf/data' 0 ""
 
 new "restconf GET replaced datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data" 0 '{"data": {"cont2": {"name": "foo"}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/cont2" 0 '{"cont2": {"name": "foo"}}'
 
 new "restconf PUT initial datastore again" 
 expectfn 'curl -s -X PUT -d {"data":{"cont1":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' 0 ""
@@ -126,9 +126,8 @@ expectfn 'curl -s -X PUT -d {"data":{"cont1":{"interface":{"name":"local0","type
 new "restconf PUT change interface"
 expectfn 'curl -s -X PUT -d {"interface":{"name":"local0","type":"atm0"}} http://localhost/restconf/data/cont1/interface=local0' 0 ""
 
-
 new "restconf GET datastore atm"
-expectfn "curl -s -X GET http://localhost/restconf/data" 0 '{"data": {"cont1": {"interface": \[{"name": "local0","type": "atm0"}\]}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 '{"cont1": {"interface": \[{"name": "local0","type": "atm0"}\]}}'
 
 new "restconf PUT add interface"
 expectfn 'curl -s -X PUT -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/cont1/interface=TEST' 0 ""

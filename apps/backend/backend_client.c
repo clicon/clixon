@@ -261,6 +261,11 @@ from_client_get_config(clicon_handle h,
     return retval;
 }
 
+/*! Get streams state according to RFC 5277 and RCC 8040
+ * @retval       -1       Error (fatal)
+ * @retval        0       OK
+ * @retval        1       Statedata callback failed
+ */
 static int
 client_get_streams(clicon_handle        h,
 		   char                *xpath,
@@ -289,9 +294,18 @@ client_get_streams(clicon_handle        h,
     if (stream_get_xml(h, cb) < 0)
 	goto done;
     cprintf(cb,"</restconf-state>");
-    /* XXX. yspec */
-    if (xml_parse_string(cbuf_get(cb), NULL, &x) < 0)
+    cprintf(cb,"<netconf xmlns=\"urn:ietf:params:xml:ns:netmod:notification\">");
+    if (stream_get_xml(h, cb) < 0)
 	goto done;
+    cprintf(cb,"</netconf>");
+
+    /* XXX. yspec */
+    if (xml_parse_string(cbuf_get(cb), NULL, &x) < 0){
+	if (netconf_operation_failed_xml(xtop, "protocol", clicon_err_reason)< 0)
+	    goto done;
+	retval = 1;
+	goto done;
+    }
     if (xml_merge(*xtop, x, yspec, &reason) < 0)
 	goto done;
     if (reason){
@@ -299,11 +313,117 @@ client_get_streams(clicon_handle        h,
 	    xml_purge(xc);	    
 	if (netconf_operation_failed_xml(xtop, "rpc", reason)< 0)
 	    goto done;
-	goto ok;
+	retval = 1;
+	goto done;
     }
-#ifdef notyet
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    if (reason)
+	free(reason);
+    if (x)
+	xml_free(x);
+    return retval;
+}
+
+/*! Get modules state according to RFC 7895
+ * @retval       -1       Error (fatal)
+ * @retval        0       OK
+ * @retval        1       Statedata callback failed
+ */
+static int
+client_get_modules(clicon_handle        h,
+		   char                *xpath,
+		   cxobj              **xtop)
+{
+    int            retval = -1;
+    cxobj         *x = NULL;
+    cxobj         *xc;
+    char          *reason = NULL;
+    yang_spec     *yspec;
+    cbuf          *cb;
+    yang_stmt     *ymod = NULL;
+    yang_stmt     *yrev;
+
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    if (*xtop==NULL){
+	clicon_err(OE_CFG, ENOENT, "XML tree expected");
+	goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, 0, "clicon buffer");
+	goto done;
+    }
+    cprintf(cb,"<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
+    cprintf(cb,"<module-set-id>1</module-set-id>"); /* NYI */
+    
+    while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
+	cprintf(cb,"<module>");
+	cprintf(cb,"<name>%s</name>", ymod->ys_argument);
+	if ((yrev = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL)
+	    cprintf(cb,"<revision>%s</revision>", yrev->ys_argument);
+	else
+	    cprintf(cb,"<revision></revision>");
+	cprintf(cb,"</module>"); 
+    }
+    cprintf(cb,"</modules-state>");
+
+    /* XXX. yspec */
+    if (xml_parse_string(cbuf_get(cb), NULL, &x) < 0){
+	if (netconf_operation_failed_xml(xtop, "protocol", clicon_err_reason)< 0)
+	    goto done;
+	retval = 1;
+	goto done;
+    }
+    if (xml_merge(*xtop, x, yspec, &reason) < 0)
+	goto done;
+    if (reason){
+	while ((xc = xml_child_i(*xtop, 0)) != NULL)
+	    xml_purge(xc);	    
+	if (netconf_operation_failed_xml(xtop, "rpc", reason)< 0)
+	    goto done;
+	retval = 1;
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    if (reason)
+	free(reason);
+    if (x)
+	xml_free(x);
+    return retval;
+}
+
+/*! Get system state-data, including streams and plugins
+ * @retval       -1       Error (fatal)
+ * @retval        0       OK
+ * @retval        1       Statedata callback failed
+ */
+static int
+client_statedata(clicon_handle h,
+		 char         *xpath,
+		 cxobj       **xret)
+{
+    int     retval = -1;
+    cxobj **xvec = NULL;
+    size_t  xlen;
+    int     i;
+    
+    if ((retval = client_get_streams(h, xpath, xret)) != 0)
+    	goto done;
+    if ((retval = client_get_modules(h, xpath, xret)) != 0)
+    	goto done;
+    if ((retval = clixon_plugin_statedata(h, xpath, xret)) != 0)
+	goto done;
+#if 1
     /* Code complex to filter out anything that is outside of xpath */
-    if (xpath_vec(*xtop, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (xpath_vec(*xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
 
     /* If vectors are specified then mark the nodes found and
@@ -315,22 +435,17 @@ client_get_streams(clicon_handle        h,
 	    xml_flag_set(xvec[i], XML_FLAG_MARK);
     }
     /* Remove everything that is not marked */
-    if (!xml_flag(*xtop, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged_sub(*xtop, XML_FLAG_MARK, 1, NULL) < 0)
+    if (!xml_flag(*xret, XML_FLAG_MARK))
+	if (xml_tree_prune_flagged_sub(*xret, XML_FLAG_MARK, 1, NULL) < 0)
 	    goto done;
     /* reset flag */
-    if (xml_apply(*xtop, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+    if (xml_apply(*xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
 #endif
- ok:
     retval = 0;
  done:
-    if (cb)
-	cbuf_free(cb);
-    if (reason)
-	free(reason);
-    if (x)
-	xml_free(x);
+    if (xvec)
+	free(xvec);
     return retval;
 }
 
@@ -346,31 +461,26 @@ from_client_get(clicon_handle h,
 		cxobj        *xe,
 		cbuf         *cbret)
 {
-    int    retval = -1;
-    cxobj *xfilter;
-    char  *selector = "/";
-    cxobj *xret = NULL;
-    int    ret;
-    cbuf  *cbx = NULL; /* Assist cbuf */
+    int     retval = -1;
+    cxobj  *xfilter;
+    char   *xpath = "/";
+    cxobj  *xret = NULL;
+    int     ret;
+    cbuf   *cbx = NULL; /* Assist cbuf */
     
     if ((xfilter = xml_find(xe, "filter")) != NULL)
-	if ((selector = xml_find_value(xfilter, "select"))==NULL)
-	    selector="/";
+	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
+	    xpath="/";
     /* Get config */
-    if (xmldb_get(h, "running", selector, 0, &xret) < 0){
+    if (xmldb_get(h, "running", xpath, 0, &xret) < 0){
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
     }
     /* Get state data from plugins as defined by plugin_statedata(), if any */
     assert(xret);
-
-#if 1 /* get netconf state data */
-    if ((ret = client_get_streams(h, selector, &xret)) < 0)
-	goto done;
-#endif
     clicon_err_reset();
-    if ((ret = clixon_plugin_statedata(h, selector, &xret)) < 0)
+    if ((ret = client_statedata(h, xpath, &xret)) < 0)
 	goto done;
     if (ret == 0){ /* OK */
 	cprintf(cbret, "<rpc-reply>");
