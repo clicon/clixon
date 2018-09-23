@@ -122,21 +122,6 @@ client_subscription_delete(struct client_entry *ce,
     return 0;
 }
 
-#ifdef notused /* xxx */
-static struct client_subscription *
-client_subscription_find(struct client_entry *ce,
-			 char *stream)
-{
-    struct client_subscription   *su = NULL;
-
-    for (su = ce->ce_subscription; su; su = su->su_next)
-	if (strcmp(su->su_stream, stream) == 0)
-	    break;
-
-    return su;
-}
-#endif 
-
 static struct client_entry *
 ce_find_bypid(struct client_entry *ce_list,
 	      int pid)
@@ -261,146 +246,138 @@ from_client_get_config(clicon_handle h,
     return retval;
 }
 
-/*! Get streams state according to RFC 5277 and RCC 8040
+/*! Get streams state according to RFC 8040 or RFC5277 common function
+ * @param[in]     h       Clicon handle
+ * @param[in]     yspec   Yang spec
+ * @param[in]     xpath   Xpath selection, not used but may be to filter early
+ * @param[in]     module  Name of yang module
+ * @param[in]     top     Top symbol, ie netconf or restconf-state
+ * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
  * @retval        0       OK
  * @retval        1       Statedata callback failed
  */
 static int
-client_get_streams(clicon_handle        h,
-		   char                *xpath,
-		   cxobj              **xtop)
+client_get_streams(clicon_handle   h,
+		   yang_spec      *yspec,
+		   char           *xpath,
+		   char           *module,
+		   char           *top,
+		   cxobj         **xret)
 {
     int            retval = -1;
+    yang_stmt     *ystream = NULL; /* yang stream module */
+    yang_stmt     *yns = NULL;  /* yang namespace */
     cxobj         *x = NULL;
-    cxobj         *xc;
-    char          *reason = NULL;
-    yang_spec     *yspec;
-    cbuf          *cb;
+    cbuf          *cb = NULL;
 
-    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
+    if ((ystream = yang_find((yang_node*)yspec, Y_MODULE, module)) == NULL){
+	clicon_err(OE_YANG, 0, "%s yang module not found", module);
 	goto done;
     }
-    if (*xtop==NULL){
-	clicon_err(OE_CFG, ENOENT, "XML tree expected");
+    if ((yns = yang_find((yang_node*)ystream, Y_NAMESPACE, NULL)) == NULL){
+	clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
 	goto done;
     }
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, 0, "clicon buffer");
 	goto done;
     }
-    cprintf(cb,"<restconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\">");
-    if (stream_get_xml(h, cb) < 0)
+    cprintf(cb,"<%s xmlns=\"%s\">", top, yns->ys_argument);
+    if (stream_get_xml(h, strcmp(top,"restconf-state")==0, cb) < 0)
 	goto done;
-    cprintf(cb,"</restconf-state>");
-    cprintf(cb,"<netconf xmlns=\"urn:ietf:params:xml:ns:netmod:notification\">");
-    if (stream_get_xml(h, cb) < 0)
-	goto done;
-    cprintf(cb,"</netconf>");
+    cprintf(cb,"</%s>", top);
 
-    /* XXX. yspec */
-    if (xml_parse_string(cbuf_get(cb), NULL, &x) < 0){
-	if (netconf_operation_failed_xml(xtop, "protocol", clicon_err_reason)< 0)
+    if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
+	if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
 	    goto done;
 	retval = 1;
 	goto done;
     }
-    if (xml_merge(*xtop, x, yspec, &reason) < 0)
-	goto done;
-    if (reason){
-	while ((xc = xml_child_i(*xtop, 0)) != NULL)
-	    xml_purge(xc);	    
-	if (netconf_operation_failed_xml(xtop, "rpc", reason)< 0)
-	    goto done;
-	retval = 1;
-	goto done;
-    }
-    retval = 0;
+    retval = netconf_trymerge(x, yspec, xret);
  done:
     if (cb)
 	cbuf_free(cb);
-    if (reason)
-	free(reason);
     if (x)
 	xml_free(x);
     return retval;
 }
 
 /*! Get modules state according to RFC 7895
+ * @param[in]     h       Clicon handle
+ * @param[in]     yspec   Yang spec
+ * @param[in]     xpath   Xpath selection, not used but may be to filter early
+ * @param[in]     module  Name of yang module
+ * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
  * @retval        0       OK
  * @retval        1       Statedata callback failed
  */
 static int
-client_get_modules(clicon_handle        h,
-		   char                *xpath,
-		   cxobj              **xtop)
+client_get_modules(clicon_handle    h,
+		   yang_spec       *yspec,
+		   char            *xpath,
+		   char            *module,
+		   cxobj          **xret)
 {
     int            retval = -1;
     cxobj         *x = NULL;
-    cxobj         *xc;
-    char          *reason = NULL;
-    yang_spec     *yspec;
-    cbuf          *cb;
-    yang_stmt     *ymod = NULL;
-    yang_stmt     *yrev;
+    cbuf          *cb = NULL;
+    yang_stmt     *ylib = NULL; /* ietf-yang-library */
+    yang_stmt     *yns = NULL;  /* namespace */
+    yang_stmt     *ymod;        /* generic module */
+    yang_stmt     *ys;
 
-    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
+    if ((ylib = yang_find((yang_node*)yspec, Y_MODULE, module)) == NULL){
+	clicon_err(OE_YANG, 0, "%s not found", module);
 	goto done;
     }
-    if (*xtop==NULL){
-	clicon_err(OE_CFG, ENOENT, "XML tree expected");
+    if ((yns = yang_find((yang_node*)ylib, Y_NAMESPACE, NULL)) == NULL){
+	clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
 	goto done;
     }
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, 0, "clicon buffer");
 	goto done;
     }
-    cprintf(cb,"<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
+    cprintf(cb,"<modules-state xmlns=\"%s\">", yns->ys_argument);
     cprintf(cb,"<module-set-id>1</module-set-id>"); /* NYI */
     
+    ymod = NULL;
     while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
 	cprintf(cb,"<module>");
 	cprintf(cb,"<name>%s</name>", ymod->ys_argument);
-	if ((yrev = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL)
-	    cprintf(cb,"<revision>%s</revision>", yrev->ys_argument);
+	if ((ys = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL)
+	    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
 	else
 	    cprintf(cb,"<revision></revision>");
+	if ((ys = yang_find((yang_node*)ymod, Y_NAMESPACE, NULL)) != NULL)
+	    cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
+	else
+	    cprintf(cb,"<namespace></namespace>");
 	cprintf(cb,"</module>"); 
     }
     cprintf(cb,"</modules-state>");
 
-    /* XXX. yspec */
-    if (xml_parse_string(cbuf_get(cb), NULL, &x) < 0){
-	if (netconf_operation_failed_xml(xtop, "protocol", clicon_err_reason)< 0)
+    if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
+	if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
 	    goto done;
 	retval = 1;
 	goto done;
     }
-    if (xml_merge(*xtop, x, yspec, &reason) < 0)
-	goto done;
-    if (reason){
-	while ((xc = xml_child_i(*xtop, 0)) != NULL)
-	    xml_purge(xc);	    
-	if (netconf_operation_failed_xml(xtop, "rpc", reason)< 0)
-	    goto done;
-	retval = 1;
-	goto done;
-    }
-    retval = 0;
+    retval = netconf_trymerge(x, yspec, xret);
  done:
     if (cb)
 	cbuf_free(cb);
-    if (reason)
-	free(reason);
     if (x)
 	xml_free(x);
     return retval;
 }
 
 /*! Get system state-data, including streams and plugins
+ * @param[in]     h       Clicon handle
+ * @param[in]     xpath   Xpath selection, not used but may be to filter early
+ * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
  * @retval        0       OK
  * @retval        1       Statedata callback failed
@@ -410,18 +387,27 @@ client_statedata(clicon_handle h,
 		 char         *xpath,
 		 cxobj       **xret)
 {
-    int     retval = -1;
-    cxobj **xvec = NULL;
-    size_t  xlen;
-    int     i;
-    
-    if ((retval = client_get_streams(h, xpath, xret)) != 0)
-    	goto done;
-    if ((retval = client_get_modules(h, xpath, xret)) != 0)
-    	goto done;
-    if ((retval = clixon_plugin_statedata(h, xpath, xret)) != 0)
+    int        retval = -1;
+    cxobj    **xvec = NULL;
+    size_t     xlen;
+    int        i;
+    yang_spec *yspec;
+
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
-#if 1
+    }    
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
+	(retval = client_get_streams(h, yspec, xpath, "ietf-netconf-notification", "netconf", xret)) != 0)
+    	goto done;
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
+	(retval = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) != 0)
+    	goto done;
+    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895") &&
+	(retval = client_get_modules(h, yspec, xpath, "ietf-yang-library", xret)) != 0)
+    	goto done;
+    if ((retval = clixon_plugin_statedata(h, yspec, xpath, xret)) != 0)
+	goto done;
     /* Code complex to filter out anything that is outside of xpath */
     if (xpath_vec(*xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
@@ -441,7 +427,6 @@ client_statedata(clicon_handle h,
     /* reset flag */
     if (xml_apply(*xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
-#endif
     retval = 0;
  done:
     if (xvec)

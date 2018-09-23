@@ -75,6 +75,7 @@ APPL	  = clixon_restconf
 # Not accessible from plugin
 APPSRC    = restconf_main.c
 APPSRC   += restconf_methods.c
+APPSRC   += restconf_stream.c
 APPOBJ    = $(APPSRC:.c=.o)
 
 # Accessible from plugin

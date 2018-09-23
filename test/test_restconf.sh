@@ -25,6 +25,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
+  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
 </config>
 EOF
 
@@ -136,7 +137,7 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf schema resource, RFC 8040 sec 3.7 according to RFC 7895"
-expecteq "$(curl -s -H 'Accept: application/yang-data+json' -G http://localhost/restconf/data/ietf-yang-library:modules-state/module=ietf-routing,2014-10-26/)" '{"module": [{"name": "ietf-routing","revision": "2014-10-26"}]}
+expecteq "$(curl -s -H 'Accept: application/yang-data+json' -G http://localhost/restconf/data/ietf-yang-library:modules-state/module=ietf-routing,2014-10-26/)" '{"module": [{"name": "ietf-routing","revision": "2014-10-26","namespace": "urn:ietf:params:xml:ns:yang:ietf-routing"}]}
 '
 
 new "restconf options. RFC 8040 4.1"

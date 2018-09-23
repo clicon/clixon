@@ -230,6 +230,7 @@ xmldb_disconnect(clicon_handle h)
     xmldb_handle      xh;
     struct xmldb_api *xa;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if ((xa = clicon_xmldb_api_get(h)) == NULL){
 	clicon_err(OE_DB, 0, "No xmldb plugin");
 	goto done;

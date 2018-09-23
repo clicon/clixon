@@ -112,6 +112,7 @@ clixon_plugin_reset(clicon_handle h,
  * This is internal system call, plugin is invoked (does not call) this function
  * Backend plugins can register 
  * @param[in]     h       clicon handle
+ * @param[in]     yspec   Yang spec
  * @param[in]     xpath   String with XPATH syntax. or NULL for all
  * @param[in,out] xtop    State XML tree is merged with existing tree.
  * @retval       -1       Error
@@ -120,26 +121,17 @@ clixon_plugin_reset(clicon_handle h,
  * @note xtop can be replaced
  */
 int
-clixon_plugin_statedata(clicon_handle        h,
-			char                *xpath,
-			cxobj              **xtop)
+clixon_plugin_statedata(clicon_handle    h,
+			yang_spec       *yspec,
+			char            *xpath,
+			cxobj          **xret)
 {
-    int            retval = -1;
-    cxobj         *x = NULL;
-    yang_spec     *yspec;
-    cxobj         *xc;
+    int             retval = -1;
+    int             ret;
+    cxobj          *x = NULL;
     clixon_plugin  *cp = NULL;
     plgstatedata_t *fn;          /* Plugin statedata fn */
-    char           *reason = NULL;
     
-    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
-	goto done;
-    }
-    if (*xtop==NULL){
-	clicon_err(OE_CFG, ENOENT, "XML tree expected");
-	goto done;
-    }
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if ((fn = cp->cp_api.ca_statedata) == NULL)
 	    continue;
@@ -149,27 +141,17 @@ clixon_plugin_statedata(clicon_handle        h,
 	    retval = 1;
 	    goto done; /* Dont quit here on user callbacks */
 	}
-	if (xml_merge(*xtop, x, yspec, &reason) < 0)
+	if ((ret = netconf_trymerge(x, yspec, xret)) != 0){
+	    retval = ret;
 	    goto done;
-	if (reason){
-	    while ((xc = xml_child_i(*xtop, 0)) != NULL)
-		xml_purge(xc);	    
-	    clicon_log(LOG_NOTICE, "%s: Plugin '%s' state callback failed",
-		       __FUNCTION__, cp->cp_name);
-	    if (netconf_operation_failed_xml(xtop, "rpc", reason)< 0)
-		goto done;
-	    goto ok;
 	}
 	if (x){
 	    xml_free(x);
 	    x = NULL;
 	}
     }
- ok:
     retval = 0;
  done:
-    if (reason)
-	free(reason);
     if (x)
 	xml_free(x);
     return retval;

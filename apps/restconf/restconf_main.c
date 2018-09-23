@@ -73,11 +73,12 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
+#include <fcgi_stdio.h> /* Need to be after clixon_xml.h due to attribute format */
 
 /* restconf */
 #include "restconf_lib.h"
 #include "restconf_methods.h"
+#include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hD:f:l:p:y:a:u:"
@@ -90,6 +91,7 @@
 
 #define RESTCONF_API       "restconf"
 #define RESTCONF_API_ROOT "/restconf"
+#define RESTCONF_STREAM_ROOT "/stream"
 
 #define RESTCONF_LOGFILE "/www-data/clixon_restconf.log"
 
@@ -622,12 +624,16 @@ main(int    argc,
     if (yang_spec_main(h) == NULL)
 	goto done;
     /* Add system modules */
-    if (yang_spec_append(h, CLIXON_DATADIR, "ietf-restconf-monitoring", NULL)< 0)
-	goto done;
-    if (yang_spec_append(h, CLIXON_DATADIR, "ietf-netconf-notification", NULL)< 0)
-	goto done;
-    if (yang_spec_append(h, CLIXON_DATADIR, "ietf-yang-library", NULL)< 0)
-	goto done;
+     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
+	 yang_spec_append(h, CLIXON_DATADIR, "ietf-restconf-monitoring", NULL)< 0)
+	 goto done;
+     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
+	 yang_spec_append(h, CLIXON_DATADIR, "ietf-netconf-notification", NULL)< 0)
+	 goto done;
+     if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895") &&
+	 yang_spec_append(h, CLIXON_DATADIR, "ietf-yang-library", NULL)< 0)
+	 goto done;
+
     /* Call start function in all plugins before we go interactive 
        Pass all args after the standard options to plugin_start
      */
@@ -660,9 +666,12 @@ main(int    argc,
 	}
 	clicon_debug(1, "------------");
 	if ((path = FCGX_GetParam("REQUEST_URI", r->envp)) != NULL){
-	    clicon_debug(1, "path:%s", path);
+	    clicon_debug(1, "path: %s", path);
 	    if (strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)) == 0)
 		api_restconf(h, r); /* This is the function */
+	    else if (strncmp(path, RESTCONF_STREAM_ROOT, strlen(RESTCONF_STREAM_ROOT)) == 0) {
+		api_stream(h, r); 
+	    }
 	    else if (strncmp(path, RESTCONF_WELL_KNOWN, strlen(RESTCONF_WELL_KNOWN)) == 0) {
 		api_well_known(h, r); /*  */
 	    }

@@ -1,4 +1,4 @@
-module ietf-restconf-monitoring {
+module ietf-netconf-notification {
     namespace "urn:ietf:params:xml:ns:netconf:notification:1:0";
     prefix "rcmon";
 

@@ -174,7 +174,6 @@ text_connect(void)
     xh = (xmldb_handle)th;
   done:
     return xh;
-
 }
 
 /*! Disconnect from to a datastore plugin and deallocate handle
@@ -191,6 +190,7 @@ text_disconnect(xmldb_handle xh)
     size_t              klen;
     int                 i;
 	
+    clicon_debug(1, "%s", __FUNCTION__);
     if (th){
 	if (th->th_dbdir)
 	    free(th->th_dbdir);

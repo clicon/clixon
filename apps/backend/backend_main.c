@@ -773,12 +773,16 @@ main(int    argc,
     /* Read and parse application yang specification */
     if (yang_spec_main(h) == NULL)
 	goto done;
-    if (yang_spec_append(h, CLIXON_DATADIR, "ietf-restconf-monitoring", NULL)< 0)
-	goto done;
-    if (yang_spec_append(h, CLIXON_DATADIR, "ietf-netconf-notification", NULL)< 0)
-	goto done;
-    if (yang_spec_append(h, CLIXON_DATADIR, "ietf-yang-library", NULL)< 0)
-	goto done;
+    /* Add system modules */
+     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
+	 yang_spec_append(h, CLIXON_DATADIR, "ietf-restconf-monitoring", NULL)< 0)
+	 goto done;
+     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
+	 yang_spec_append(h, CLIXON_DATADIR, "ietf-netconf-notification", NULL)< 0)
+	 goto done;
+     if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895") &&
+	 yang_spec_append(h, CLIXON_DATADIR, "ietf-yang-library", NULL)< 0)
+	 goto done;
     /* Set options: database dir and yangspec (could be hidden in connect?)*/
     if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)
 	goto done;

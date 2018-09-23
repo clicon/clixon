@@ -22,6 +22,9 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
+  <CLICON_STREAM_DISCOVERY_RFC5277>true</CLICON_STREAM_DISCOVERY_RFC5277>
+  <CLICON_STREAM_DISCOVERY_RFC8040>true</CLICON_STREAM_DISCOVERY_RFC8040>
 </config>
 EOF
 
@@ -83,30 +86,37 @@ sleep 1
 
 # get the stream list using netconf
 new "netconf event stream discovery RFC5277 Sec 3.2.5"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get><filter type="xpath" select="netconf/streams" xmlns="urn:ietf:params:xml:ns:netmod:notification"/></get></rpc>]]>]]>' '<rpc-reply><data><netconf><streams><stream><name>NETCONF</name><description>default NETCONF event stream</description><replay-support>false</replay-support></stream><stream><name>CLICON</name><description>Clicon logs</description><replay-support>false</replay-support></stream></streams></netconf></data></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get><filter type="xpath" select="netconf/streams" xmlns="urn:ietf:params:xml:ns:netmod:notification"/></get></rpc>]]>]]>' '<rpc-reply><data><netconf><streams><stream><name>CLICON</name><description>Clicon logs</description><replay-support>false</replay-support></stream><stream><name>NETCONF</name><description>default NETCONF event stream</description><replay-support>false</replay-support></stream></streams></netconf></data></rpc-reply>]]>]]>'
 
 new "netconf event stream discovery RFC8040 Sec 6.2"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get><filter type="xpath" select="restconf-state/streams" xmlns="urn:ietf:params:xml:ns:netmod:notification"/></get></rpc>]]>]]>' '<rpc-reply><data><restconf-state><streams><stream><name>NETCONF</name><description>default NETCONF event stream</description><replay-support>false</replay-support></stream><stream><name>CLICON</name><description>Clicon logs</description><replay-support>false</replay-support></stream></streams></restconf-state></data></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get><filter type="xpath" select="restconf-state/streams" xmlns="urn:ietf:params:xml:ns:netmod:notification"/></get></rpc>]]>]]>' '<rpc-reply><data><restconf-state><streams><stream><name>CLICON</name><description>Clicon logs</description><replay-support>false</replay-support><access><encoding>xml</encoding><location>https://example.com/stream/CLICON</location></access></stream><stream><name>NETCONF</name><description>default NETCONF event stream</description><replay-support>false</replay-support><access><encoding>xml</encoding><location>https://example.com/stream/NETCONF</location></access></stream></streams></restconf-state></data></rpc-reply>]]>]]>'
 
 new "restconf event stream discovery RFC8040 Sec 6.2"
-expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams" 0 '{"streams": {"stream": \[{"name": "CLICON","description": "Clicon logs","replay-support": false},{ "name": "NETCONF","description": "default NETCONF event stream","replay-support": false}\]}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams" 0 '{"streams": {"stream": \[{"name": "CLICON","description": "Clicon logs","replay-support": false,"access": \[{"encoding": "xml","location": "https://example.com/stream/CLICON"}\]},{ "name": "NETCONF","description": "default NETCONF event stream","replay-support": false,"access": \[{"encoding": "xml","location": "https://example.com/stream/NETCONF"}\]}\]}'
 
-#new "netconf subscription"
+new "restconf subscribe RFC8040 Sec 6.3, get location"
+expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=NETCONF/access=xml/location" 0 '{"location": "https://example.com/stream/NETCONF"}'
+
+new "restconf monitor event stream RFC8040 Sec 6.3"
+#expectfn "curl -s -X GET http://localhost/stream/NETCONF" 0 ''
+
+#new "netconf subscription" NOTYET
 #expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><notification><event>Routing notification</event></notification>]]>]]>$" 30
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "Kill backend"
-# Check if still alive
-pid=`pgrep clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
 # kill backend
 sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
+fi
+
+# Check if still alive
+pid=`pgrep clixon_backend`
+if [ -n "$pid" ]; then
+    sudo kill $pid
 fi
 
 rm -rf $dir

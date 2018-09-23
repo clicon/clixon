@@ -5,15 +5,18 @@
 ### Major New features
 
 ### API changes on existing features (you may need to change your code)
-* Limited support of RFC 7895 YANG Module Library to list modules:
-  * That is, limited support of: ietf-yang-library.yang 
-  * For example: `<module><name>example</name><revision/></module><module><name>ietf-restconf-monitoring</name><revision>2017-01-26</revision></module>...`
-* Notification event stream enhancements
-  * Yang 1.1 notification support
-  * Event stream discovery support according to RFC 5277 Sec 3.2.5.1
-    * That is, support of ietf-restconf-monitoring.yang (mimics schema in 3.2.5.1)
-  * Event stream discovery support according to RFC 8040 (restconf)
-    * That is, support of ietf-netconf-notification.yang
+* YANG Module Library support
+  * According to RFC 7895 and implemented by ietf-yang-library.yang
+  * Supported: module, name, revision, namespace
+  * Not supported: notification, deviation, module-set-id, etc.
+  * Enabled by default, disable by resetting CLICON_MODULE_LIBRARY_RFC7895
+* Yang 1.1 notification support (RFC 7950: Sec 7.16)
+* Event stream discovery support according to RFC 5277 for netconf 
+  * Implemented by ietf-netconf-notification.yang
+  * Disabled by default. Enable by setting CLICON_STREAM_DISCOVERY_RFC5277
+* Event stream discovery support according to RFC 8040 for restconf
+  * Implemented by ietf-restconf-monitoring.yang (mimics schema in 3.2.5.1)
+  * Disabled by default. Enable by setting CLICON_STREAM_DISCOVERY_RFC8040.
 * clixon_restconf and clixon_netconf now take -D <level> as command-line option instead of just -D
   * This aligns to clixon_cli and clixon_backend
 * Application command option -S to clixon_netconf is obsolete. Use `clixon_netconf -l s` instead.

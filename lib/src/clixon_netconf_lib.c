@@ -60,6 +60,8 @@
 #include "clixon_yang.h"
 #include "clixon_log.h"
 #include "clixon_xml.h"
+#include "clixon_options.h"
+#include "clixon_xml_map.h"
 #include "clixon_netconf_lib.h"
 
 /*! Create Netconf in-use error XML tree according to RFC 6241 Appendix A
@@ -932,5 +934,39 @@ netconf_malformed_message_xml(cxobj **xret,
 	goto done;
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Help function: merge - check yang - if error make netconf errmsg 
+ * @param[in]     x       XML tree
+ * @param[in]     yspec   Yang spec
+ * @param[in,out] xret    Existing XML tree, merge x into this
+ * @retval       -1       Error (fatal)
+ * @retval        0       OK
+ * @retval        1       Statedata callback failed
+ */
+int
+netconf_trymerge(cxobj       *x,
+		 yang_spec   *yspec,
+    		 cxobj      **xret)
+{
+    int    retval = -1;
+    char  *reason = NULL;
+    cxobj *xc;
+    
+    if (xml_merge(*xret, x, yspec, &reason) < 0)
+	goto done;
+    if (reason){
+	while ((xc = xml_child_i(*xret, 0)) != NULL)
+	    xml_purge(xc);	    
+	if (netconf_operation_failed_xml(xret, "rpc", reason)< 0)
+	    goto done;
+	retval = 1;
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (reason)
+	free(reason);
     return retval;
 }
