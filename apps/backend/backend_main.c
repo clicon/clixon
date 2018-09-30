@@ -98,7 +98,6 @@ backend_terminate(clicon_handle h)
     xmldb_plugin_unload(h); /* unload storage plugin */
     backend_handle_exit(h); /* Cannot use h after this */
     event_exit();
-    clicon_log_register_callback(NULL, NULL);
     clicon_debug(1, "%s done", __FUNCTION__); 
     clicon_log_exit();
     return 0;
@@ -191,7 +190,6 @@ db_merge(clicon_handle h,
     return retval;
 }
 
-
 /*! Create backend server socket and register callback
  */
 static int
@@ -209,45 +207,6 @@ server_socket(clicon_handle h)
 	return -1;
     }
     return ss;
-}
-
-/*! Callback for CLICON log events
- * If you make a subscription to CLICON stream, this function is called for every
- * log event.
- */
-static int
-backend_log_cb(int   level, 
-	       char *msg, 
-	       void *arg)
-{
-    int    retval = -1;
-    size_t n;
-    char  *ptr;
-    char  *nptr;
-    char  *newmsg = NULL;
-
-    /* backend_notify() will go through all clients and see if any has 
-       registered "CLICON", and if so make a clicon_proto notify message to
-       those clients. 
-       Sanitize '%' into "%%" to prevent segvfaults in vsnprintf later.
-       At this stage all formatting is already done */
-    n = 0;
-    for(ptr=msg; *ptr; ptr++)
-	if (*ptr == '%')
-	    n++;
-    if ((newmsg = malloc(strlen(msg) + n + 1)) == NULL) {
-	clicon_err(OE_UNIX, errno, "malloc");
-	return -1;
-    }
-    for(ptr=msg, nptr=newmsg; *ptr; ptr++) {
-	*nptr++ = *ptr;
-	if (*ptr == '%')
-	    *nptr++ = '%';
-    }
-    retval = backend_notify(arg, "CLICON", level, newmsg);
-    free(newmsg);
-
-    return retval;
 }
 
 /*! Call plugin_start with -- user options */
@@ -758,8 +717,6 @@ main(int    argc,
 
     if (stream_register(h, "NETCONF", "default NETCONF event stream") < 0)
 	goto done;
-    if (stream_register(h, "CLICON", "Clicon logs") < 0)
-	goto done;
 	
     if ((xmldb_plugin = clicon_xmldb_plugin(h)) == NULL){
 	clicon_log(LOG_ERR, "No xmldb plugin given (specify option CLICON_XMLDB_PLUGIN).\n"); 
@@ -850,9 +807,6 @@ main(int    argc,
     if ((pid = pidfile_write(pidfile)) <  0)
 	goto done;
 
-    /* Register log notifications */
-    if (clicon_log_register_callback(backend_log_cb, h) < 0)
-	goto done;
     clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, backend_sig_term, NULL) < 0){
 	clicon_err(OE_DEMON, errno, "Setting signal");

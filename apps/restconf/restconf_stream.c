@@ -64,6 +64,32 @@
 
 #include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
 
+static int
+restconf_stream(clicon_handle   h,
+		FCGX_Request   *r,
+		event_stream_t *es)
+{
+    int retval = -1;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+
+    FCGX_SetExitStatus(201, r->out); /* Created */
+    FCGX_FPrintF(r->out, "Content-Type: text/event-stream\r\n");
+    FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
+    FCGX_FPrintF(r->out, "Connection: keep-alive\r\n");
+    FCGX_FPrintF(r->out, "X-Accel-Buffering: no\r\n");
+    FCGX_FPrintF(r->out, "\r\n");
+    FCGX_FPrintF(r->out, "Here is output\r\n");
+    FCGX_FPrintF(r->out, "\r\n");
+    FCGX_FFlush(r->out);
+    sync();
+    sleep(1);
+    FCGX_FPrintF(r->out, "Here is output 2\r\n");
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /* restconf */
 #include "restconf_lib.h"
 #include "restconf_stream.h"
@@ -73,13 +99,122 @@
  */
 int
 api_stream(clicon_handle h,
-	     FCGX_Request *r)
+	   FCGX_Request *r)
 {
     int    retval = -1;
+    char  *path;
+    char  *query;
+    char  *method;
+    char **pvec = NULL;
+    int    pn;
+    cvec  *qvec = NULL;
+    cvec  *dvec = NULL;
+    cvec  *pcvec = NULL; /* for rest api */
+    cbuf  *cb = NULL;
+    char  *data;
+    int    authenticated = 0;
+    char  *media_accept;
+    char  *media_content_type;
+    int    pretty;
+    int    parse_xml = 0; /* By default expect and parse JSON */
+    int    use_xml = 0;   /* By default use JSON */
+    cbuf  *cbret = NULL;
+    cxobj *xret = NULL;
+    cxobj *xerr;
+    event_stream_t *es;
 
     clicon_debug(1, "%s", __FUNCTION__);
+    path = FCGX_GetParam("REQUEST_URI", r->envp);
+    query = FCGX_GetParam("QUERY_STRING", r->envp);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    /* get xml/json in put and output */
+    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
+    if (media_accept && strcmp(media_accept, "application/yang-data+xml")==0)
+	use_xml++;
+    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
+    if (media_content_type &&
+	strcmp(media_content_type, "application/yang-data+xml")==0)
+	parse_xml++;
+    if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
+	goto done;
+    /* Sanity check of path. Should be /stream/<name> */
+    if (pn != 3){
+	notfound(r);
+	goto ok;
+    }
+    if (strlen(pvec[0]) != 0){
+	retval = notfound(r);
+	goto done;
+    }
+    if (strcmp(pvec[1], RESTCONF_STREAM)){
+	retval = notfound(r);
+	goto done;
+    }
+    test(r, 1);
+    if ((method = pvec[2]) == NULL){
+	retval = notfound(r);
+	goto done;
+    }
+    clicon_debug(1, "%s: method=%s", __FUNCTION__, method);
+    if (str2cvec(query, '&', '=', &qvec) < 0)
+	goto done;
+    if (str2cvec(path, '/', '=', &pcvec) < 0) /* rest url eg /album=ricky/foo */
+	goto done;
+    /* data */
+    if ((cb = readdata(r)) == NULL)
+	goto done;
+    data = cbuf_get(cb);
+    clicon_debug(1, "%s DATA=%s", __FUNCTION__, data);
+    if (str2cvec(data, '&', '=', &dvec) < 0)
+	goto done;
+
+    /* If present, check credentials. See "plugin_credentials" in plugin  
+     * See RFC 8040 section 2.5
+     */
+    if ((authenticated = clixon_plugin_auth(h, r)) < 0)
+	goto done;
+    clicon_debug(1, "%s auth:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
+
+    /* If set but no user, we set a dummy user */
+    if (authenticated){
+	if (clicon_username_get(h) == NULL)
+	    clicon_username_set(h, "none");
+    }
+    else{
+	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
+	    goto done;
+	if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+		goto done;
+	    goto ok;
+	}
+	goto ok;
+    }
+    clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
+    if ((es = stream_find(h, method)) == NULL){
+	retval = notfound(r);
+	goto done;
+    }
+    if (restconf_stream(h, r, es) < 0)
+	goto done;
+ ok:
     retval = 0;
-    // done:
+ done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (pvec)
+	free(pvec);
+    if (dvec)
+	cvec_free(dvec);
+    if (qvec)
+	cvec_free(qvec);
+    if (pcvec)
+	cvec_free(pcvec);
+    if (cb)
+	cbuf_free(cb);
+    if (cbret)
+	cbuf_free(cbret);
+    if (xret)
+	xml_free(xret);
+
     return retval;
 }

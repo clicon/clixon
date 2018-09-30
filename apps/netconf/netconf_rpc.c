@@ -733,20 +733,14 @@ static int
 netconf_notification_cb(int   s, 
 			void *arg)
 {
-    cxobj             *xfilter = (cxobj *)arg; 
-    char              *selector;
     struct clicon_msg *reply = NULL;
     int                eof;
-    char              *event = NULL;
     int                retval = -1;
     cbuf              *cb;
-    cxobj             *xe = NULL; /* event xml */
+    cxobj             *xn = NULL; /* event xml */
     cxobj             *xt = NULL; /* top xml */
 
-    if (0){
-	fprintf(stderr, "%s\n", __FUNCTION__); /* debug */
-	xml_print(stderr, xfilter); /* debug */
-    }
+    clicon_debug(1, "%s", __FUNCTION__);
     /* get msg (this is the reason this function is called) */
     if (clicon_msg_rcv(s, &reply, &eof) < 0)
 	goto done;
@@ -756,31 +750,20 @@ netconf_notification_cb(int   s,
 	close(s);
 	errno = ESHUTDOWN;
 	event_unreg_fd(s, netconf_notification_cb);
-	if (xfilter)
-	    xml_free(xfilter);
 	goto done;
     }
     if (clicon_msg_decode(reply, &xt) < 0) 
 	goto done;
-    if ((xe = xpath_first(xt, "//event")) != NULL)
-	event = xml_body(xe);
-    
-    /* parse event */
-    if (0){ /* XXX CLICON events are not xml */
-	    /* find and apply filter */
-	if ((selector = xml_find_value(xfilter, "select")) == NULL)
-	    goto done;
-	if (xpath_first(xe, "%s", selector) == NULL) {
-	    fprintf(stderr, "%s no match\n", __FUNCTION__); /* debug */
-	}
-    }
+    if ((xn = xpath_first(xt, "notification")) == NULL)
+	goto ok;
     /* create netconf message */
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");
 	goto done;
     }
     add_preamble(cb); /* Make it well-formed netconf xml */
-    cprintf(cb, "<notification><event>%s</event></notification>", event); 
+    if (clicon_xml2cbuf(cb, xn, 0, 0) < 0)
+	goto done;
     add_postamble(cb);
     /* Send it to listening client on stdout */
     if (netconf_output(1, cb, "notification") < 0){
@@ -789,6 +772,7 @@ netconf_notification_cb(int   s,
     }
     fflush(stdout);
     cbuf_free(cb);
+ok:
     retval = 0;
   done:
     if (xt != NULL)
@@ -802,7 +786,7 @@ netconf_notification_cb(int   s,
 
     <create-subscription> 
        <stream>RESULT</stream> # If not present, events in the default NETCONF stream will be sent.
-       <filter>XPATH-EXPR<(filter>
+       <filter type="xpath" select="XPATHEXPR"/>
        <startTime/> # only for replay (NYI)
        <stopTime/>  # only for replay (NYI)
     </create-subscription> 
@@ -810,7 +794,7 @@ netconf_notification_cb(int   s,
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
  * @param[out] xret    Return XML, error or OK
-
+ * @see netconf_notification_cb for asynchronous stream notifications
  */
 static int
 netconf_create_subscription(clicon_handle h, 
@@ -840,7 +824,7 @@ netconf_create_subscription(clicon_handle h,
 	goto done;
     if (event_reg_fd(s, 
 		     netconf_notification_cb, 
-		     xfilter?xml_dup(xfilter):NULL,
+		     NULL,
 		     "notification socket") < 0)
 	goto done;
  ok:

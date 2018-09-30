@@ -13,10 +13,15 @@ Define nginx config file: /etc/nginx/sites-available/default
 ```
 server {
   ...
-  location / {
-    root /usr/share/nginx/html/restconf;
-    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-    include fastcgi_params;
+  location /restconf {
+     fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+     include fastcgi_params;
+  }
+  location /stream { # for restconf notifications
+     fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+     include fastcgi_params;
+     proxy_http_version 1.1;
+     proxy_set_header Connection "";
   }
 }
 ```

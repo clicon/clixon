@@ -892,7 +892,7 @@ text_put(xmldb_handle        xh,
 	}
 	cbretlocal++;
     }
-    if ((yspec =  th->th_yangspec) == NULL){
+    if ((yspec = th->th_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }

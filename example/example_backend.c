@@ -99,7 +99,8 @@ notification_timer(int   fd,
     int                    retval = -1;
     clicon_handle          h = (clicon_handle)arg;
 
-    if (backend_notify(h, "ROUTING", 0, "Routing notification") < 0)
+    /* XXX Change to actual netconf notifications */
+    if (stream_notify(h, "NETCONF", "<event xmlns=\"http://example.com/event/1.0\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
 	goto done;
     if (notification_timer_setup(h) < 0)
 	goto done;
@@ -108,7 +109,7 @@ notification_timer(int   fd,
     return retval;
 }
 
-/*! Set up routing notifcation timer 
+/*! Set up routing notification timer 
  */
 static int
 notification_timer_setup(clicon_handle h)
@@ -116,7 +117,7 @@ notification_timer_setup(clicon_handle h)
     struct timeval t, t1;
 
     gettimeofday(&t, NULL);
-    t1.tv_sec = 10; t1.tv_usec = 0;
+    t1.tv_sec = 5; t1.tv_usec = 0;
     timeradd(&t, &t1, &t);
     return event_reg_timeout(t, notification_timer, h, "notification timer");
 }
@@ -176,8 +177,15 @@ empty(clicon_handle h,            /* Clicon handle */
  * @retval       0      OK
  * @retval      -1      Error
  * @see xmldb_get
- * @note this example code returns a static statedata used in testing. 
- * Real code would poll state
+ * @note this example code returns requires this yang snippet:
+       container state {
+         config false;
+         description "state data for example application";
+         leaf-list op {
+            type string;
+         }
+       }
+ * 
  */
 int 
 example_statedata(clicon_handle h, 
@@ -187,12 +195,13 @@ example_statedata(clicon_handle h,
     int     retval = -1;
     cxobj **xvec = NULL;
 
-    /* Example of (static) statedata, real code would poll state */
-    if (xml_parse_string("<interfaces-state><interface>"
-			 "<name>eth0</name>"
-			 "<type>ex:eth</type>"
-			 "<if-index>42</if-index>"
-			 "</interface></interfaces-state>", NULL, &xstate) < 0)
+    /* Example of (static) statedata, real code would poll state 
+     * Note this state needs to be accomanied by yang snippet
+     * above
+     */
+    if (xml_parse_string("<state>"
+			 "<op>42</op>"
+			 "</state>", NULL, &xstate) < 0)
 	goto done;
     retval = 0;
  done:

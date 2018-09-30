@@ -55,11 +55,11 @@
 
 /* clixon */
 #include "clixon_err.h"
-#include "clixon_log.h"
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_sort.h"
@@ -1412,7 +1412,8 @@ xml_parse_file(int        fd,
  *  cxobj *xt = NULL;
  *  if (xml_parse_string(str, yspec, &xt) < 0)
  *    err;
- *  xml_free(xt);
+ *  if (xml_root_child(xt, 0, &xt) < 0) # If you want to remove TOP
+ *    err;
  * @endcode
  * @see xml_parse_file
  * @see xml_parse_va

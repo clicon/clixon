@@ -69,59 +69,6 @@
 #include "backend_client.h"
 #include "backend_handle.h"
 
-/*! Add client notification subscription. Ie send notify to this client when event occurs
- * @param[in] ce      Client entry struct
- * @param[in] stream  Notification stream name
- * @param[in] format  How to display event (see enum format_enum)
- * @param[in] filter  Filter, what to display, eg xpath for format=xml, fnmatch
- *
- * @see backend_notify - where subscription is made and notify call is made
- */
-static struct client_subscription *
-client_subscription_add(struct client_entry *ce, 
-			char                *stream, 
-			enum format_enum     format,
-			char                *filter)
-{
-    struct client_subscription *su = NULL;
-
-    if ((su = malloc(sizeof(*su))) == NULL){
-	clicon_err(OE_PLUGIN, errno, "malloc");
-	goto done;
-    }
-    memset(su, 0, sizeof(*su));
-    su->su_stream = strdup(stream);
-    su->su_format = format;
-    su->su_filter = filter?strdup(filter):strdup("");
-    su->su_next   = ce->ce_subscription;
-    ce->ce_subscription = su;
-  done:
-    return su;
-}
-
-/*! Delete stream subscription from client subscription list */
-static int
-client_subscription_delete(struct client_entry *ce, 
-			   struct client_subscription *su0)
-{
-    struct client_subscription   *su;
-    struct client_subscription  **su_prev;
-
-    su_prev = &ce->ce_subscription; /* this points to stack and is not real backpointer */
-    for (su = *su_prev; su; su = su->su_next){
-	if (su == su0){
-	    *su_prev = su->su_next;
-	    free(su->su_stream);
-	    if (su->su_filter)
-		free(su->su_filter);
-	    free(su);
-	    break;
-	}
-	su_prev = &su->su_next;
-    }
-    return 0;
-}
-
 static struct client_entry *
 ce_find_bypid(struct client_entry *ce_list,
 	      int pid)
@@ -132,6 +79,31 @@ ce_find_bypid(struct client_entry *ce_list,
 	if (ce->ce_pid == pid)
 	    return ce;
     return NULL;
+}
+
+static int
+ce_event_cb(clicon_handle h,
+	    void         *event,
+	    void         *arg)
+{
+    struct client_entry *ce = (struct client_entry *)arg;
+    
+    if (send_msg_notify_xml(ce->ce_s, (cxobj*)event) < 0){
+	if (errno == ECONNRESET || errno == EPIPE){
+	    clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
+#if 0
+	    /* We should remove here but removal is not possible
+	       from a client since backend_client is not linked.
+	       Maybe we should add it to the plugin, but it feels
+	       "safe" that you cant remove a client.
+	       Instead, the client is (hopefully) removed elsewhere?
+	    */
+	    backend_client_rm(h, ce);
+#endif
+	}
+
+    }
+    return 0;
 }
 
 /*! Remove client entry state
@@ -148,7 +120,6 @@ backend_client_rm(clicon_handle        h,
     struct client_entry   *c;
     struct client_entry   *c0;
     struct client_entry  **ce_prev;
-    struct client_subscription *su;
 
     c0 = backend_client_list(h);
     ce_prev = &c0; /* this points to stack and is not real backpointer */
@@ -159,8 +130,8 @@ backend_client_rm(clicon_handle        h,
 		close(ce->ce_s);
 		ce->ce_s = 0;
 	    }
-	    while ((su = ce->ce_subscription) != NULL)
-		client_subscription_delete(ce, su);
+	    /* for all streams */
+	    stream_cb_delete(h, NULL, ce_event_cb, (void*)ce);
 	    break;
 	}
 	ce_prev = &c->ce_next;
@@ -900,6 +871,7 @@ from_client_delete_config(clicon_handle h,
     return retval;
 }
 
+
 /*! Internal message: Create subscription for notifications see RFC 5277
  * @param[in]   h     Clicon handle
  * @param[in]   xe    Netconf request xml tree   
@@ -910,7 +882,7 @@ from_client_delete_config(clicon_handle h,
  * @example:
  *    <create-subscription> 
  *       <stream>RESULT</stream> # If not present, events in the default NETCONF stream will be sent.
- *       <filter>XPATH-EXPR<(filter>
+ *       <filter type="xpath" select="XPATH-EXPR"/>
  *       <startTime/> # only for replay (NYI)
  *       <stopTime/>  # only for replay (NYI)
  *    </create-subscription> 
@@ -922,24 +894,27 @@ from_client_create_subscription(clicon_handle        h,
 				cbuf                *cbret)
 {
     char   *stream = "NETCONF";
-    char   *filter = NULL;
     int     retval = -1;
-    cxobj  *x; /* Genereic xml tree */
+    cxobj  *x; /* Generic xml tree */
+    cxobj  *xfilter; /* Filter xml tree */
     char   *ftype;
+    char   *selector = NULL;
 
     if ((x = xpath_first(xe, "//stream")) != NULL)
 	stream = xml_find_value(x, "body");
-    if ((x = xpath_first(xe, "//filter")) != NULL){
-	if ((ftype = xml_find_value(x, "type")) != NULL){
+    if ((xfilter = xpath_first(xe, "//filter")) != NULL){
+	if ((ftype = xml_find_value(xfilter, "type")) != NULL){
 	    /* Only accept xpath as filter type */
 	    if (strcmp(ftype, "xpath") != 0){
 		if (netconf_operation_failed(cbret, "application", "Only xpath filter type supported")< 0)
 		    goto done;
 		goto ok;
 	    }
+	    if ((selector = xml_find_value(xfilter, "select")) == NULL)
+		goto done;
 	}
     }
-    if (client_subscription_add(ce, stream, FORMAT_XML, filter) == NULL)
+    if (stream_cb_add(h, stream, selector, ce_event_cb, (void*)ce) < 0)
 	goto done;
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
@@ -1334,6 +1309,7 @@ from_client_msg(clicon_handle        h,
 	}
 	else if (strcmp(name, "close-session") == 0){
 	    xmldb_unlock_all(h, pid);
+	    stream_cb_delete(h, NULL, ce_event_cb, (void*)ce);
 	    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
 	}
 	else if (strcmp(name, "kill-session") == 0){

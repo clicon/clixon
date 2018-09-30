@@ -39,12 +39,6 @@ EOF
 cat <<EOF > $fyang
 module $APPNAME{
   prefix ex;
-    import ietf-interfaces {
-	prefix if;
-    }
-    import iana-if-type {
-	prefix ianaift;
-    }
   container authentication {
 	description "Example code for enabling www basic auth and some example 
                      users";
@@ -70,21 +64,13 @@ module $APPNAME{
     type int32;
     description "something to edit";
   }
-  container interfaces-state {
+    container state {
        config false;
-    list interface{
-      key "name";
-      leaf name{
-        type string;
-      }
-      leaf type{
-        type string;
-      }
-      leaf if-index {
-        type int32;
-      }
+       description "state data for example application";
+       leaf-list op {
+          type string;
+       }
     }
-  }
 }
 EOF
 
@@ -191,7 +177,7 @@ new "restconf DELETE whole datastore"
 expecteq "$(curl -u adm1:bar -sS -X DELETE http://localhost/restconf/data)" ""
 
 new2 "auth get"
-expecteq "$(curl -u adm1:bar -sS -X GET http://localhost/restconf/data/ietf-interfaces:interfaces-state)" '{"interfaces-state": {"interface": [{"name": "eth0","type": "ex:eth","if-index": 42}]}}
+expecteq "$(curl -u adm1:bar -sS -X GET http://localhost/restconf/data/state)" '{"state": {"op": "42"}}
 '
 
 new "Set x to 0"

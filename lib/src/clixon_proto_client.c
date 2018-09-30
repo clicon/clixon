@@ -57,9 +57,9 @@
 
 /* clicon */
 #include "clixon_queue.h"
-#include "clixon_log.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_options.h"
 #include "clixon_xml.h"
@@ -775,7 +775,7 @@ clicon_rpc_create_subscription(clicon_handle    h,
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode("<rpc username=\"%s\"><create-subscription>"
 				 "<stream>%s</stream>"
-				 "<filter>%s</filter>"
+				 "<filter type=\"xpath\" select=\"%s\" />"
 				 "</create-subscription></rpc>", 
 				 username?username:"",
 				 stream?stream:"", filter?filter:"")) == NULL)

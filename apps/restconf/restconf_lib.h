@@ -37,6 +37,12 @@
 #define _RESTCONF_LIB_H_
 
 /*
+ * Constants
+ */
+#define RESTCONF_API       "restconf"
+#define RESTCONF_STREAM    "stream"
+
+/*
  * Prototypes (also in clixon_restconf.h)
  */
 int restconf_err2code(char *tag);

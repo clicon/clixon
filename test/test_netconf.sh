@@ -65,6 +65,13 @@ module example{
 	    }
 	}
     }
+    container state {
+       config false;
+       description "state data for example application";
+       leaf-list op {
+          type string;
+       }
+    }
 }
 EOF
 
@@ -180,10 +187,10 @@ new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf edit state operation should fail"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><interfaces-state><interface><name>eth1</name><type>ex:eth</type></interface></interfaces-state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag>"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><state><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag>"
 
 new "netconf get state operation"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get><filter type=\"xpath\" select=\"/interfaces-state\"/></get></rpc>]]>]]>" "^<rpc-reply><data><interfaces-state><interface><name>eth0</name><type>ex:eth</type><if-index>42</if-index></interface></interfaces-state></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get><filter type=\"xpath\" select=\"/state\"/></get></rpc>]]>]]>" "^<rpc-reply><data><state><op>42</op></state></data></rpc-reply>]]>]]>$"
 
 new "netconf lock/unlock"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]><rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -225,18 +232,19 @@ new "netconf client-side rpc"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:client-rpc><request>example</request></ex:client-rpc></rpc>]]>]]>" "^<rpc-reply><result>ok</result></rpc-reply>]]>]]>$"
 
 new "netconf subscription"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><notification><event>Routing notification</event></notification>]]>]]>$" 30
+expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>NETCONF</stream></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>201' 10
 
 new "Kill backend"
-# Check if still alive
-pid=`pgrep clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
 # kill backend
 sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
+fi
+
+# Check if still alive
+pid=`pgrep clixon_backend`
+if [ -n "$pid" ]; then
+    sudo kill $pid
 fi
 
 rm -rf $dir

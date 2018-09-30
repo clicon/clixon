@@ -89,12 +89,6 @@
 */
 #define RESTCONF_WELL_KNOWN  "/.well-known/host-meta"
 
-#define RESTCONF_API       "restconf"
-#define RESTCONF_API_ROOT "/restconf"
-#define RESTCONF_STREAM_ROOT "/stream"
-
-#define RESTCONF_LOGFILE "/www-data/clixon_restconf.log"
-
 /*! Generic REST method, GET, PUT, DELETE, etc
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
@@ -531,9 +525,11 @@ main(int    argc,
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
+
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
+
     _CLICON_HANDLE = h; /* for termination handling */
     while ((c = getopt(argc, argv, RESTCONF_OPTS)) != -1)
 	switch (c) {
@@ -634,6 +630,8 @@ main(int    argc,
 	 yang_spec_append(h, CLIXON_DATADIR, "ietf-yang-library", NULL)< 0)
 	 goto done;
 
+     if (stream_register(h, "NETCONF", "default NETCONF event stream") < 0)
+	goto done;
     /* Call start function in all plugins before we go interactive 
        Pass all args after the standard options to plugin_start
      */
@@ -667,9 +665,9 @@ main(int    argc,
 	clicon_debug(1, "------------");
 	if ((path = FCGX_GetParam("REQUEST_URI", r->envp)) != NULL){
 	    clicon_debug(1, "path: %s", path);
-	    if (strncmp(path, RESTCONF_API_ROOT, strlen(RESTCONF_API_ROOT)) == 0)
+	    if (strncmp(path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0)
 		api_restconf(h, r); /* This is the function */
-	    else if (strncmp(path, RESTCONF_STREAM_ROOT, strlen(RESTCONF_STREAM_ROOT)) == 0) {
+	    else if (strncmp(path, "/" RESTCONF_STREAM, strlen("/" RESTCONF_STREAM)) == 0) {
 		api_stream(h, r); 
 	    }
 	    else if (strncmp(path, RESTCONF_WELL_KNOWN, strlen(RESTCONF_WELL_KNOWN)) == 0) {

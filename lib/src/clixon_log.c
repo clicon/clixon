@@ -52,6 +52,9 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+/* cligen */
+#include <cligen/cligen.h>
+
 /* clicon */
 #include "clixon_err.h"
 #include "clixon_log.h"
@@ -61,10 +64,6 @@ int debug = 0;
 
 /* Bitmask whether to log to syslog or stderr: CLICON_LOG_STDERR | CLICON_LOG_SYSLOG */
 static int _logflags = 0x0;
-
-/* Function pointer to log notify callback */
-static clicon_log_notify_t *_log_notify_cb  = NULL;
-static void                *_log_notify_arg = NULL;
 
 /* Set to open file to write debug messages directly to file */
 static FILE *_logfile = NULL;
@@ -81,15 +80,14 @@ static FILE *_logfile = NULL;
  *                              if CLICON_LOG_SYSLOG, then print logs to syslog
  *				You can do a combination of both
  * @code
- *  clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
+ *  clicon_log_init(h, __PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
  * @endcode
  */
 int
-clicon_log_init(char *ident, 
-		int    upto, 
-		int    flags)
+clicon_log_init(char         *ident, 
+		int           upto, 
+		int           flags)
 {
-
     _logflags = flags;
     if (flags & CLICON_LOG_SYSLOG){
 	if (setlogmask(LOG_UPTO(upto)) < 0)
@@ -160,18 +158,6 @@ clicon_get_logflags(void)
     return _logflags;
 }
 
-/*! Register log callback, return old setting
- */
-clicon_log_notify_t *
-clicon_log_register_callback(clicon_log_notify_t *cb, 
-			     void                *arg)
-{
-    clicon_log_notify_t *old = _log_notify_cb;
-    _log_notify_cb  = cb;
-    _log_notify_arg = arg;
-    return old;
-}
-
 /*! Mimic syslog and print a time on file f
  */
 static int
@@ -188,6 +174,7 @@ flogtime(FILE *f)
     return 0;
 }
 
+#ifdef NOTUSED
 /*
  * Mimic syslog and print a time on string s
  * String returned needs to be freed.
@@ -211,19 +198,19 @@ slogtime(void)
 	     tm->tm_hour, tm->tm_min, tm->tm_sec);
     return str;
 }
-
+#endif
 
 /*! Make a logging call to syslog (or stderr).
  *
  * @param[in]   level log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. Thisis OR:d with facility == LOG_USER
  * @param[in]   msg   Message to print as argv.
  * This is the _only_ place the actual syslog (or stderr) logging is made in clicon,..
- * @note syslog makes itw own filtering, but if log to stderr we do it here
+ * @note syslog makes its own filtering, but if log to stderr we do it here
  * @see  clicon_debug
  */
-int
-clicon_log_str(int   level, 
-	       char *msg)
+static int
+clicon_log_str(int           level, 
+	       char         *msg)
 {
     if (_logflags & CLICON_LOG_SYSLOG)
 	syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg);
@@ -245,30 +232,10 @@ clicon_log_str(int   level,
 	fprintf(_logfile, "%s\n", msg);
 	fflush(_logfile);
     }
-    if (_log_notify_cb){
-	static int  cb = 0;
-	char       *d, *msg2;
-	int         len;
 
-	if (cb++ == 0){
-	    /* Here there is danger of recursion: if callback in turn logs, therefore
-	       make static check (should be stack-based - now global) 
-	    */
-	    if ((d = slogtime()) == NULL)
-		return -1;
-	    len = strlen(d) + strlen(msg) + 1;
-	    if ((msg2 = malloc(len)) == NULL){
-		fprintf(stderr, "%s: malloc: %s\n", __FUNCTION__, strerror(errno));
-		return -1;
-	    }
-	    snprintf(msg2, len, "%s%s", d, msg);
-	    assert(_log_notify_arg);
-	    _log_notify_cb(level, msg2, _log_notify_arg);
-	    free(d);
-	    free(msg2);
-	}
-	cb--;
-    }
+    /* Enable this if you want syslog in a stream. But there are problems with 
+     * recursion
+     */
  done:
     return 0;
 }

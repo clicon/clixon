@@ -11,17 +11,23 @@
   * Not supported: notification, deviation, module-set-id, etc.
   * Enabled by default, disable by resetting CLICON_MODULE_LIBRARY_RFC7895
 * Yang 1.1 notification support (RFC 7950: Sec 7.16)
-* Event stream discovery support according to RFC 5277 for netconf 
-  * Implemented by ietf-netconf-notification.yang
-  * Disabled by default. Enable by setting CLICON_STREAM_DISCOVERY_RFC5277
-* Event stream discovery support according to RFC 8040 for restconf
-  * Implemented by ietf-restconf-monitoring.yang (mimics schema in 3.2.5.1)
-  * Disabled by default. Enable by setting CLICON_STREAM_DISCOVERY_RFC8040.
+* Major rewrite of event streams
+  * If you used old event callbacks API, you need to switch to the streams API
+    * See clixon_stream.[ch]
+  * Old streams API which needs to be removed include:
+    * clicon_log_register_callback()
+    * subscription_add() --> stream_register()
+    * backend_notify() and backend_notify_xml() - use stream_notify() instead
+  * Added stream discovery according to RFC 5277 for netconf and RFC 8040 for restconf
+     * Enabled by CLICON_STREAM_DISCOVERY_RFC5277 and CLICON_STREAM_DISCOVERY_RFC8040.
+  * Example uses "NETCONF" stream instead of "ROUTING"
 * clixon_restconf and clixon_netconf now take -D <level> as command-line option instead of just -D
   * This aligns to clixon_cli and clixon_backend
 * Application command option -S to clixon_netconf is obsolete. Use `clixon_netconf -l s` instead.
 
 ### Minor changes
+
+* Added timeout option -t for clixon_netconf - quit after max time.
 * Comply to RFC 8040 3.5.3.1 rule: api-identifier = [module-name ":"] identifier
   * The "module-name" was a no-op before.
   * This means that there was no difference between eg: GET /restconf/data/ietf-yang-library:modules-state and GET /restconf/data/XXXX:modules-state 

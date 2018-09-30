@@ -164,7 +164,7 @@ Example:
 
 ## How do I use notifications?
 
-The example has a prebuilt notification stream called "ROUTING" that triggers every 10s.
+The example has a prebuilt notification stream called "NETCONF" that triggers every 5s.
 You enable the notification either via the cli:
 ```
 cli> notify 
@@ -173,10 +173,9 @@ cli>
 or via netconf:
 ```
 clixon_netconf -qf /usr/local/etc/example.xml 
-<rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>
+<rpc><create-subscription><stream>NETCONF</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
-<notification><event>Routing notification</event></notification>]]>]]>
-<notification><event>Routing notification</event></notification>]]>]]>
+<notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-09-30T12:44:59.657276</eventTime><event xmlns="http://example.com/event/1.0"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>]]>]]>
 ...
 ```
 

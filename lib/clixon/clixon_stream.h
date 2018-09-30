@@ -40,12 +40,12 @@
  * Types
  */
 /* subscription callback */
-typedef	int (*stream_fn_t)(clicon_handle, void *filter, void *arg);
-typedef	stream_fn_t subscription_fn_t;
+typedef	int (*stream_fn_t)(clicon_handle h, void *event, void *arg);
 
 struct stream_subscription{
     struct stream_subscription *ss_next;
     char                       *ss_stream; /* Name of associated stream */
+    char                       *ss_xpath;  /* Filter selector as xpath */
     stream_fn_t                 ss_fn;     /* Callback when event occurs */
     void                       *ss_arg;    /* Callback argument */
 };
@@ -55,7 +55,7 @@ struct stream_subscription{
 struct event_stream{
     struct event_stream *es_next;
     char                *es_name; /* name of notification event stream */
-    char                *es_description;  
+    char                *es_description; 
     struct stream_subscription *es_subscription;
 };
 typedef struct event_stream event_stream_t;
@@ -65,9 +65,15 @@ typedef struct event_stream event_stream_t;
  */
 event_stream_t *stream_find(clicon_handle h, const char *name);
 int stream_register(clicon_handle h, const char *name, const char *description);
-int stream_free(event_stream_t *es);
+int stream_delete_all(event_stream_t *es);
 int stream_get_xml(clicon_handle h, int access, cbuf *cb);
-int stream_cb_add(clicon_handle h, char *stream, stream_fn_t fn, void *arg);
-int stream_cb_delete(clicon_handle h, char *stream, stream_fn_t fn);
+int stream_cb_add(clicon_handle h, char *stream, char *xpath, stream_fn_t fn, void *arg);
+int stream_cb_delete(clicon_handle h, char *stream, stream_fn_t fn, void *arg);
+int stream_notify_xml(clicon_handle h, char *stream, cxobj *xevent);
+#if defined(__GNUC__) && __GNUC__ >= 3
+int stream_notify(clicon_handle h, char *stream, const char *event, ...)  __attribute__ ((format (printf, 3, 4)));
+#else
+int stream_notify(clicon_handle h, char *stream, const char *event, ...);
+#endif
 
 #endif /* _CLIXON_STREAM_H_ */

@@ -71,7 +71,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hDf:l:qa:u:d:y:U:"
+#define NETCONF_OPTS "hD:f:l:qa:u:d:y:U:t:"
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
@@ -284,6 +284,13 @@ netconf_terminate(clicon_handle h)
     return 0;
 }
 
+static int
+timeout_fn(int s,
+	   void *arg)
+{
+    clicon_err(OE_EVENTS, ETIME, "User request timeout");
+    return -1; 
+}
 
 /*! Usage help routine
  * @param[in]  h      Clicon handle
@@ -305,7 +312,8 @@ usage(clicon_handle h,
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
 
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
-	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n",
+	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
+	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n",
 	    argv0,
 	    clicon_netconf_dir(h)
 	    );
@@ -324,12 +332,13 @@ main(int    argc,
     char            *dir;
     int              logdst = CLICON_LOG_STDERR;
     struct passwd   *pw;
-    
-    /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
+    struct timeval   tv = {0,}; /* timeout */
+
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
 	return -1;
+    /* In the startup, logs to stderr & debug flag set later */
+    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
 
     /* Set username to clicon handle. Use in all communication to backend */
     if ((pw = getpwuid(getuid())) == NULL){
@@ -338,7 +347,6 @@ main(int    argc,
     }
     if (clicon_username_set(h, pw->pw_name) < 0)
 	goto done;
-
     while ((c = getopt(argc, argv, NETCONF_OPTS)) != -1)
 	switch (c) {
 	case 'h' : /* help */
@@ -362,6 +370,7 @@ main(int    argc,
 		goto done;
 	     break;
 	}
+
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
@@ -408,6 +417,10 @@ main(int    argc,
 	    if (clicon_username_set(h, optarg) < 0)
 		goto done;
 	    break;
+	case 't': /* timeout in seconds */
+	    tv.tv_sec = atoi(optarg);
+	    break;
+
 	default:
 	    usage(h, argv[0]);
 	    break;
@@ -440,6 +453,13 @@ main(int    argc,
 	goto done;
     if (debug)
 	clicon_option_dump(h, debug);
+    if (tv.tv_sec || tv.tv_usec){
+	struct timeval t;
+	gettimeofday(&t, NULL);
+	timeradd(&t, &tv, &t);
+	if (event_reg_timeout(t, timeout_fn, NULL, "timeout") < 0)
+	    goto done;
+    }
     if (event_loop() < 0)
 	goto done;
   done:

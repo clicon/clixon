@@ -2,6 +2,8 @@
 # Define test functions.
 # Create working dir as variable "dir"
 
+#set -e
+
 testnr=0
 testname=
 
@@ -32,6 +34,7 @@ err(){
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
       echo "Expected: $1"
+      echo
   fi
   if [ $# -gt 1 ]; then 
       echo "Received: $2"
@@ -172,15 +175,27 @@ expectwait(){
   input=$2
   expect=$3
   wait=$4
-
+  
 # Do while read stuff
-  sleep 10|cat <(echo $input) -| $cmd | while [ 1 ] ; do
-    read ret
+  echo timeout > /tmp/flag
+  ret=""
+  sleep $wait |  cat <(echo $input) -| $cmd | while [ 1 ] ; do
+    read r
+#    echo "r:$r"
+    ret="$ret$r"
     match=$(echo "$ret" | grep -Eo "$expect");
     if [ -z "$match" ]; then
+	echo error > /tmp/flag
 	err $expect "$ret"
+    else
+	echo ok > /tmp/flag # only this is OK
+	break;
     fi
-    break
   done
+  cat /tmp/flag
+  if [ $(cat /tmp/flag) != "ok" ]; then
+      cat /tmp/flag
+      exit
+  fi
 }
 
