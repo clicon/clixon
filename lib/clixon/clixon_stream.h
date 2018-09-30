@@ -76,4 +76,8 @@ int stream_notify(clicon_handle h, char *stream, const char *event, ...)  __attr
 int stream_notify(clicon_handle h, char *stream, const char *event, ...);
 #endif
 
+/* Backward compatible macro for <1.8 */
+#define backend_notify_xml(h, stream, level, x) stream_notify_xml(h, stream, x)
+#define backend_notify(h, stream, level, event) stream_notify(h, stream, event)
+
 #endif /* _CLIXON_STREAM_H_ */
