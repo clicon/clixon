@@ -9,6 +9,11 @@ Ensure www-data is member of the CLICON_SOCK_GROUP (default clicon). If not, add
 
 This implementation uses FastCGI, see http://www.mit.edu/~yandros/doc/specs/fcgi-spec.html.
 
+Download and start nginx. For example on ubuntu:
+```
+  sudo apt install ngnix
+```
+
 Define nginx config file: /etc/nginx/sites-available/default
 ```
 server {
@@ -68,6 +73,12 @@ olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=et
 
 curl -sX POST -d '{"interfaces":{"interface":{"name":"eth1","type":"eth","enabled":"true"}}}' http://localhost/restconf/data
 ```
+### Nginx Nchan for streams
+
+Restconf notification event streams needs a server-side push
+package. Clixon has used Nchan (nchan.io) for this
+
+Download and install nchan, see nchan.io, Install section.
 
 ### Debugging
 

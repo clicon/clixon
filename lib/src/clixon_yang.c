@@ -2471,7 +2471,7 @@ yang_spec_append(clicon_handle h,
 		 char         *yang_revision)
 {
     int        retval = -1;
-    yang_spec *yspec;
+    yang_spec *yspec = NULL;
     yang_spec *yspec0;
     yang_stmt *ym = NULL; /* module */
 

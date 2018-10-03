@@ -114,6 +114,7 @@ stream_register(clicon_handle h,
 }
 
 /*! Delete complete notification event stream list (not just single stream)
+ * @param[in] es 
  */
 int
 stream_delete_all(event_stream_t *es)
@@ -315,7 +316,6 @@ stream_notify_xml(clicon_handle h,
  *    err;
  * @endcode
  * @see stream_notify_xml
- * @see backend_notify
  */
 int
 stream_notify(clicon_handle h, 
