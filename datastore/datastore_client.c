@@ -206,7 +206,7 @@ main(int argc, char **argv)
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     /* Parse yang spec from given file */
-    if (yang_parse(h, yangdir, yangmodule, NULL, yspec) < 0)
+    if (yang_parse(h, NULL, yangmodule, yangdir, NULL, yspec) < 0)
 	goto done;
     /* Set database directory option */
     if (xmldb_setopt(h, "dbdir", dbdir) < 0)

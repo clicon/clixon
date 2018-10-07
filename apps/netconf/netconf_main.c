@@ -276,8 +276,6 @@ netconf_terminate(clicon_handle h)
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
-    if ((yspec = clicon_netconf_yang(h)) != NULL)
-	yspec_free(yspec);
     event_exit();
     clicon_handle_exit(h);
     clicon_log_exit();
@@ -306,12 +304,12 @@ usage(clicon_handle h,
 	    "\t-D <level>\tDebug level\n"
             "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
-	    "\t-l <e|o|s|f<file>> \tLog on std(e)rr, std(o)ut, (s)yslog, (f)ile (syslog is default)\n"
+	    "\t-l (e|o|s|f<file>) \tLog on std(e)rr, std(o)ut, (s)yslog, (f)ile (syslog is default)\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
 
-	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
+	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
 	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n",
 	    argv0,
@@ -333,7 +331,9 @@ main(int    argc,
     int              logdst = CLICON_LOG_STDERR;
     struct passwd   *pw;
     struct timeval   tv = {0,}; /* timeout */
-
+    yang_spec       *yspec = NULL;
+    char            *yang_filename = NULL;
+    
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
 	return -1;
@@ -407,8 +407,8 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_NETCONF_DIR", optarg);
 	    break;
-	case 'y' :{ /* Overwrite yang module or absolute filename */
-	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
+	case 'y' :{ /* Load yang spec file (override yang main module) */
+	    yang_filename = optarg;
 	    break;
 	}
 	case 'U': /* Clixon 'pseudo' user */
@@ -428,13 +428,23 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    clicon_dbspec_yang_set(h, yspec);	
     /* Parse yang database spec file */
-    if (yang_spec_main(h) == NULL)
+    if (yang_filename){
+	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec) < 0)
+	    goto done;
+    }
+    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
+				    clicon_yang_dir(h),
+				    clicon_yang_module_revision(h),
+				    yspec) < 0)
 	goto done;
-
-    /* Parse netconf yang spec file  */
-    if (yang_spec_netconf(h) == NULL)
-	goto done;
+    
+    /* Add netconf yang spec, used by netconf client and as internal protocol */
+    if (yang_spec_parse_module(h, "ietf-yang-library", CLIXON_DATADIR, NULL, yspec)< 0)
+	 goto done;
 
     /* Initialize plugins group */
     if ((dir = clicon_netconf_dir(h)) != NULL)

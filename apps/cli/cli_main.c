@@ -251,6 +251,7 @@ main(int argc, char **argv)
     int          dump_configfile_xml = 0;
     yang_spec   *yspec;
     struct passwd *pw;
+    char        *yang_filename = NULL;
     
     /* Defaults */
     once = 0;
@@ -379,8 +380,8 @@ main(int argc, char **argv)
 	case 'L' : /* Debug print dynamic CLI syntax */
 	    logclisyntax++;
 	    break;
-	case 'y' :{ /* Overwrite yang module or absolute filename */
-	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
+	case 'y' :{ /* Load yang spec file (override yang main module) */
+	    yang_filename = optarg;
 	    break;
 	}
 	case 'c' :{ /* Overwrite clispec with absolute filename */
@@ -414,8 +415,19 @@ main(int argc, char **argv)
      */
     cv_exclude_keys(clicon_cli_varonly(h)); 
 
-    /* Parse db specification as cli*/
-    if ((yspec = yang_spec_main(h)) == NULL)
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    clicon_dbspec_yang_set(h, yspec);	
+    /* Parse db specification as cli. 
+     * If -y <file> is given, it overrides main module */
+    if (yang_filename){
+	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec) < 0)
+	    goto done;
+    }
+    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
+				    clicon_yang_dir(h),
+				    clicon_yang_module_revision(h),
+				    yspec) < 0)
 	goto done;
     if (printspec)
 	yang_print(stdout, (yang_node*)yspec);
@@ -424,18 +436,21 @@ main(int argc, char **argv)
      * the only one.
      */
     if (clicon_cli_genmodel(h)){
-	parse_tree         pt = {0,};  /* cli parse tree */
+	parse_tree    pt = {0,};  /* cli parse tree */
+	char         *name;       /* main module name */
 
 	/* Create cli command tree from dbspec */
 	if (yang2cli(h, yspec, &pt, clicon_cli_genmodel_type(h)) < 0)
 	    goto done;
 
-	len = strlen("datamodel:") + strlen(clicon_dbspec_name(h)) + 1;
+	name = yang_main_module_name(yspec);
+
+	len = strlen("datamodel:") + strlen(name) + 1;
 	if ((treename = malloc(len)) == NULL){
 	    clicon_err(OE_UNIX, errno, "malloc");
 	    goto done;
 	}	
-	snprintf(treename, len, "datamodel:%s",  clicon_dbspec_name(h));
+	snprintf(treename, len, "datamodel:%s",  name);
 	cligen_tree_add(cli_cligen(h), treename, pt);
 
 	if (printgen)

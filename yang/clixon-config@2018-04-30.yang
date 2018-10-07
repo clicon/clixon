@@ -351,9 +351,9 @@ module clixon-config {
 	}
 	leaf CLICON_MODULE_LIBRARY_RFC7895 {
 	    type boolean;
-	    default false;
+	    default true;
 	    description "Enable RFC 7895 YANG Module library support as state 
-                         data. Ifenabled, module info will appear when doing 
+                         data. If enabled, module info will appear when doing 
                          netconf get or restconf GET";
 	}
 	leaf CLICON_STREAM_DISCOVERY_RFC5277 {

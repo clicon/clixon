@@ -955,15 +955,9 @@ netconf_rpc_dispatch(clicon_handle h,
 {
     int         retval = -1;
     cxobj      *xe;
-    yang_spec  *yspec = NULL; 
     char       *username;
     cxobj      *xa;
     
-    /* Check incoming RPC against system / netconf RPC:s */
-    if ((yspec = clicon_netconf_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No netconf yang spec");
-	goto done;
-    }
     /* Tag username on all incoming requests in case they are forwarded as internal messages
      * This may be unecesary since not all are forwarded. 
      * It may even be wrong if something else is done with the incoming message?

@@ -216,7 +216,7 @@ clicon_options_main(clicon_handle h)
     if (xml){     /* Read clixon yang file */
 	if ((yspec = yspec_new()) == NULL)
 	    goto done;
-	if (yang_parse(h, CLIXON_DATADIR, "clixon-config", NULL, yspec) < 0)
+	if (yang_parse(h, NULL, "clixon-config", CLIXON_DATADIR, NULL, yspec) < 0)
 	    goto done;    
 	/* Read configfile */
 	if (clicon_option_readfile_xml(copt, configfile, yspec) < 0)
@@ -569,58 +569,6 @@ clicon_dbspec_yang_set(clicon_handle     h,
     if (hash_add(cdat, "dbspec_yang", &ys, sizeof(ys)) == NULL)
 	return -1;
     return 0;
-}
-
-/*! Get YANG NETCONF specification
- * Must use hash functions directly since they are not strings.
- */
-yang_spec *
-clicon_netconf_yang(clicon_handle h)
-{
-    clicon_hash_t  *cdat = clicon_data(h);
-    size_t          len;
-    void           *p;
-
-    if ((p = hash_value(cdat, "netconf_yang", &len)) != NULL)
-	return *(yang_spec **)p;
-    return NULL;
-}
-
-/*! Set yang netconf specification
- * ys must be a malloced pointer
- */
-int
-clicon_netconf_yang_set(clicon_handle     h, 
-		       struct yang_spec *ys)
-{
-    clicon_hash_t  *cdat = clicon_data(h);
-
-    /* It is the pointer to ys that should be copied by hash,
-       so we send a ptr to the ptr to indicate what to copy.
-     */
-    if (hash_add(cdat, "netconf_yang", &ys, sizeof(ys)) == NULL)
-	return -1;
-    return 0;
-}
-
-
-/*! Get dbspec name as read from spec. Can be used in CLI '@' syntax.
- * XXX: this we muśt change,...
- */
-char *
-clicon_dbspec_name(clicon_handle h)
-{
-    if (!clicon_option_exists(h, "dbspec_name"))
-	return NULL;
-    return clicon_option_str(h, "dbspec_name");
-}
-
-/*! Set dbspec name as read from spec. Can be used in CLI '@' syntax.
- */
-int
-clicon_dbspec_name_set(clicon_handle h, char *name)
-{
-    return clicon_option_str_set(h, "dbspec_name", name);
 }
 
 /*! Get xmldb datastore plugin handle, as used by dlopen/dlsym/dlclose */

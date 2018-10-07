@@ -494,7 +494,7 @@ usage(clicon_handle h,
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-l <s|f<file>> \tLog on (s)yslog, (f)ile (syslog is default)\n"
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
-	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
+	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n",
 	    argv0,
@@ -522,6 +522,8 @@ main(int    argc,
     char         *dir;
     char	 *tmp;
     int          logdst = CLICON_LOG_SYSLOG;
+    yang_spec   *yspec = NULL;
+    char        *yang_filename = NULL;
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -589,8 +591,8 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_RESTCONF_DIR", optarg);
 	    break;
-	case 'y' : /* yang module */
-	    yangspec = optarg;
+	case 'y' : /* Load yang spec file (override yang main module) */
+	    yang_filename = optarg;
 	    break;
 	case 'a': /* internal backend socket address family */
 	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
@@ -616,18 +618,28 @@ main(int    argc,
 	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
 	    return -1;
 
-    /* Parse yang database spec file */
-    if (yang_spec_main(h) == NULL)
+    /* Parse main yang spec */
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    clicon_dbspec_yang_set(h, yspec);	
+    if (yang_filename){
+	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec) < 0)
+	    goto done;
+    }
+    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
+		       clicon_yang_dir(h),
+		       clicon_yang_module_revision(h),
+		       yspec) < 0)
 	goto done;
     /* Add system modules */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
-	 yang_spec_append(h, CLIXON_DATADIR, "ietf-restconf-monitoring", NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec)< 0)
 	 goto done;
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_append(h, CLIXON_DATADIR, "ietf-netconf-notification", NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec)< 0)
 	 goto done;
      if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895") &&
-	 yang_spec_append(h, CLIXON_DATADIR, "ietf-yang-library", NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-yang-library", CLIXON_DATADIR, NULL, yspec)< 0)
 	 goto done;
 
      if (stream_register(h, "NETCONF", "default NETCONF event stream") < 0)

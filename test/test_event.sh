@@ -13,7 +13,6 @@ cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>$fyang</CLICON_YANG_MODULE_MAIN>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
@@ -88,7 +87,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
       
 new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -D 1
+sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg  -y $fyang # -D 1
 
 sleep 1
 
@@ -110,7 +109,7 @@ expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stre
 new "netconf NETCONF subscription with simple filter"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>NETCONF</stream><filter type=\"xpath\" select=\"event\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
 
-new "netconf NETCONF subscription with filter classfier"
+new "netconf NETCONF subscription with filter classifier"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>NETCONF</stream><filter type=\"xpath\" select=\"event[event-class='fault']\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
 
 #new "restconf monitor event stream RFC8040 Sec 6.3"

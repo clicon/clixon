@@ -244,6 +244,7 @@ yang_stmt *ys_dup(yang_stmt *old);
 int        yn_insert(yang_node *yn_parent, yang_stmt *ys_child);
 yang_stmt *yn_each(yang_node *yn, yang_stmt *ys);
 char      *yang_key2str(int keyword);
+char      *yang_main_module_name(yang_spec *ysp);
 char      *yarg_prefix(yang_stmt *ys);
 char      *yarg_id(yang_stmt *ys);
 int        yang_nodeid_split(char *nodeid, char **prefix, char **id);
@@ -260,8 +261,9 @@ int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
 int        ys_populate(yang_stmt *ys, void *arg);
 yang_stmt *yang_parse_file(int fd, const char *name, yang_spec *ysp);
-int        yang_parse(clicon_handle h, const char *yang_dir, 
-		      const char *module, const char *revision, yang_spec *ysp);
+int        yang_parse(clicon_handle h, const char *filename,
+		      const char *module, const char *dir, 
+		      const char *revision, yang_spec *ysp);
 int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
 int        yang_abs_schema_nodeid(yang_spec *yspec, char *schema_nodeid, 
@@ -272,9 +274,8 @@ cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys, char *extra);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
-yang_spec *yang_spec_netconf(clicon_handle h);
-yang_spec *yang_spec_main(clicon_handle h);
-int        yang_spec_append(clicon_handle h, char *yang_dir, char *yang_module, char *yang_revision);
+int        yang_spec_parse_module(clicon_handle h, char *module, char *dir, char *revision, yang_spec *yspec);
+int        yang_spec_parse_file(clicon_handle h, char *filename, char *dir, yang_spec *yspec);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_node *yn, char *name);
 

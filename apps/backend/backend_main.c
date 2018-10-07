@@ -129,24 +129,24 @@ usage(clicon_handle h,
 
     fprintf(stderr, "usage:%s\n"
 	    "where options are\n"
-            "    -h\t\tHelp\n"
-    	    "    -D <level>\tDebug level\n"
-    	    "    -f <file>\tCLICON config file\n"
-	    "    -l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
-	    "    -d <dir>\tSpecify backend plugin directory (default: %s)\n"
-	    "    -b <dir>\tSpecify XMLDB database directory\n"
-    	    "    -F\t\tRun in foreground, do not run as daemon\n"
-    	    "    -z\t\tKill other config daemon and exit\n"
-    	    "    -a UNIX|IPv4|IPv6\tInternal backend socket family\n"
-    	    "    -u <path|addr>\tInternal socket domain path or IP addr (see -a)(default: %s)\n"
-    	    "    -P <file>\tPid filename (default: %s)\n"
-    	    "    -1\t\tRun once and then quit (dont wait for events)\n"
-	    "    -s <mode>\tSpecify backend startup mode: none|startup|running|init (replaces -IRCr\n"
-	    "    -c <file>\tLoad extra xml configuration, but don't commit.\n"
-	    "    -g <group>\tClient membership required to this group (default: %s)\n"
+            "\t-h\t\tHelp\n"
+    	    "\t-D <level>\tDebug level\n"
+    	    "\t-f <file>\tCLICON config file\n"
+	    "\t-l (s|e|o|f<file>)  Log on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
+	    "\t-d <dir>\tSpecify backend plugin directory (default: %s)\n"
+	    "\t-b <dir>\tSpecify XMLDB database directory\n"
+    	    "\t-F\t\tRun in foreground, do not run as daemon\n"
+    	    "\t-z\t\tKill other config daemon and exit\n"
+    	    "\t-a UNIX|IPv4|IPv6  Internal backend socket family\n"
+    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)(default: %s)\n"
+    	    "\t-P <file>\tPid filename (default: %s)\n"
+    	    "\t-1\t\tRun once and then quit (dont wait for events)\n"
+	    "\t-s <mode>\tSpecify backend startup mode: none|startup|running|init)\n"
+	    "\t-c <file>\tLoad extra xml configuration, but don't commit.\n"
+	    "\t-g <group>\tClient membership required to this group (default: %s)\n"
 
-	    "    -y <file>\tOverride yang spec file (dont include .yang suffix)\n"
-	    "    -x <plugin>\tXMLDB plugin\n",
+	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
+	    "\t-x <plugin>\tXMLDB plugin\n",
 	    argv0,
 	    plgdir ? plgdir : "none",
 	    confsock ? confsock : "none",
@@ -258,7 +258,7 @@ nacm_load_external(clicon_handle h)
     }
     if ((yspec = yspec_new()) == NULL)
 	goto done;
-    if (yang_parse(h, CLIXON_DATADIR, "ietf-netconf-acm", NULL, yspec) < 0)
+    if (yang_parse(h, NULL, "ietf-netconf-acm", CLIXON_DATADIR, NULL, yspec) < 0)
 	goto done;
     fd = fileno(f);
     /* Read configfile */
@@ -518,7 +518,9 @@ main(int    argc,
     int           xml_pretty;
     char         *xml_format;
     char         *nacm_mode;
-    int          logdst = CLICON_LOG_SYSLOG|CLICON_LOG_STDERR;
+    int           logdst = CLICON_LOG_SYSLOG|CLICON_LOG_STDERR;
+    yang_spec    *yspec = NULL;
+    char         *yang_filename = NULL;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -638,8 +640,8 @@ main(int    argc,
 	case 'g': /* config socket group */
 	    clicon_option_str_set(h, "CLICON_SOCK_GROUP", optarg);
 	    break;
-	case 'y' :{ /* Override yang module or absolute filename */
-	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
+	case 'y' :{ /* Load yang spec file (override yang main module) */
+	    yang_filename = optarg;
 	    break;
 	}
 	case 'x' :{ /* xmldb plugin */
@@ -727,18 +729,31 @@ main(int    argc,
     /* Connect to plugin to get a handle */
     if (xmldb_connect(h) < 0)
 	goto done;
-    /* Read and parse application yang specification */
-    if (yang_spec_main(h) == NULL)
+    if ((yspec = yspec_new()) == NULL)
 	goto done;
+    clicon_dbspec_yang_set(h, yspec);	
+    /* Read and parse application yang specification: either a module and search
+     * in dir, or a specific file
+     */
+    if (yang_filename){
+	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec) < 0)
+	    goto done;
+    }
+    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
+			       clicon_yang_dir(h),
+			       clicon_yang_module_revision(h),
+			       yspec) < 0)
+	goto done;
+
     /* Add system modules */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
-	 yang_spec_append(h, CLIXON_DATADIR, "ietf-restconf-monitoring", NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec)< 0)
 	 goto done;
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_append(h, CLIXON_DATADIR, "ietf-netconf-notification", NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec)< 0)
 	 goto done;
      if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895") &&
-	 yang_spec_append(h, CLIXON_DATADIR, "ietf-yang-library", NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-yang-library", CLIXON_DATADIR, NULL, yspec)< 0)
 	 goto done;
     /* Set options: database dir and yangspec (could be hidden in connect?)*/
     if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)
