@@ -5,6 +5,7 @@
 ### Major New features
 * YANG Features
   * Yang 1.1 feature and if-feature according to RFC 7950 7.20.1 and 7.20.2.
+  * See https://github.com/clicon/clixon/issues/41
   * Features are declared via CLICON_FEATURE in the configuration file. Examples showing enabling (1) a specific feature; (2) all features in a module; (3) all features in all modules:
 ```
       <CLICON_FEATURE>ietf-routing:router-id</CLICON_FEATURE>
