@@ -53,7 +53,7 @@
   * Added yang_spec_parse_file
 
 ### Minor changes
-
+* Yang 1.1 action syntax added (but function is not supported)
 * New function: clicon_conf_xml() returns configuration tree
 * Obsoleted COMPAT_CLIV and COMPAT_XSL that were optional in 3.7
 * Added timeout option -t for clixon_netconf - quit after max time.

@@ -57,7 +57,8 @@
  * - Cant use the symbols in this file because yacc needs token definitions
  */
 enum rfc_6020{
-    Y_ANYXML = 0,
+    Y_ACTION = 0,
+    Y_ANYXML,
     Y_ARGUMENT,
     Y_AUGMENT,
     Y_BASE,

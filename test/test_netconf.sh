@@ -45,9 +45,18 @@ module example{
     }
     rpc empty {
     }
+    list server {
+       key name;
+       leaf name {
+         type string;
+       }
+       action reset {
+       }
+    }
     identity eth {
 	 base if:interface-type;
     }
+
     rpc client-rpc {
 	description "Example local client-side RPC that is processed by the
                      the netconf/restconf and not sent to the backend.
