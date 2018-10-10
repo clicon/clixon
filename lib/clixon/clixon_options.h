@@ -164,6 +164,9 @@ int clicon_quiet_mode_set(clicon_handle h, int val);
 yang_spec * clicon_dbspec_yang(clicon_handle h);
 int clicon_dbspec_yang_set(clicon_handle h, struct yang_spec *ys);
 
+cxobj *clicon_conf_xml(clicon_handle h);
+int clicon_conf_xml_set(clicon_handle h, cxobj *x);
+
 plghndl_t clicon_xmldb_plugin_get(clicon_handle h);
 int clicon_xmldb_plugin_set(clicon_handle h, plghndl_t handle);
 

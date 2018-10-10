@@ -117,6 +117,16 @@ module clixon-config {
 	}
     }
     container config {
+       leaf-list CLICON_FEATURE {
+           description
+               "Supported features as used by YANG feature/if-feature
+	        value is: <module>:<feature>, where <module> and <feature>
+                are either names, or the special character '*'.
+                *:an* means enable all features
+                <module>:* means enable all features in the specified module
+                *:<feature> means enable the specific feature in all modules";
+	   type string;
+        }
 	leaf CLICON_CONFIGFILE{
 	    type string;
 	    description

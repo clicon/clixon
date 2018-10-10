@@ -108,10 +108,9 @@ used to generate an interactive CLI, netconf and restconf clients. It
 also manages an XML datastore.
 
 Clixon mainly follows [YANG 1.0 RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt) with some exceptions:
-- conformance: feature, if-feature, deviation
+- conformance: deviation
 - list features: min/max-elements, unique
 - action statements
-- notifications
 
 The aim is also to cover new features in YANG 1.1 [YANG RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt)
 

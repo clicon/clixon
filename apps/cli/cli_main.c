@@ -79,11 +79,14 @@
 static int
 cli_terminate(clicon_handle h)
 {
-    yang_spec      *yspec;
+    yang_spec  *yspec;
+    cxobj      *x;
 
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((x = clicon_conf_xml(h)) != NULL)
+	xml_free(x);
     cli_plugin_finish(h);    
     cli_handle_exit(h);
     clicon_log_exit();

@@ -131,4 +131,4 @@ if [ -n "$pid" ]; then
     sudo kill $pid
 fi
 
-#rm -rf $dir
+rm -rf $dir

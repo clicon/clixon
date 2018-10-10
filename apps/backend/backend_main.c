@@ -81,13 +81,16 @@
 static int
 backend_terminate(clicon_handle h)
 {
-    yang_spec      *yspec;
-    char           *pidfile = clicon_backend_pidfile(h);
-    char           *sockpath = clicon_sock(h);
+    yang_spec *yspec;
+    char      *pidfile = clicon_backend_pidfile(h);
+    char      *sockpath = clicon_sock(h);
+    cxobj     *x;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((x = clicon_conf_xml(h)) != NULL)
+	xml_free(x);
     clixon_plugin_exit(h);
     /* Delete all backend plugin RPC callbacks */
     rpc_callback_delete_all(); 

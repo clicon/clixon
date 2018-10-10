@@ -672,6 +672,10 @@ yang_find_topnode(yang_spec *ysp,
  * @param[in]  ys        Yang statement
  * @retval     NULL      Not found
  * @retval     prefix    Prefix as char* pointer into yang tree
+ * @code
+ * char *myprefix;
+ * myprefix = yang_find_myprefix(ys);
+ * @endcode
  */
 char *
 yang_find_myprefix(yang_stmt *ys)
@@ -862,6 +866,15 @@ yarg_prefix(yang_stmt *ys)
  * @param[out] id      Malloced identifier.
  * @retval     0       OK
  * @retval    -1       Error
+ * @code
+ *    char      *prefix = NULL;
+ *    char      *id = NULL;
+ *    if (yang_nodeid_split(nodeid, &prefix, &id) < 0)
+ *	 goto done;
+ *    if (prefix)
+ *	 free(prefix);
+ *    if (id)
+ *	 free(id);
  * @note caller need to free id and prefix after use
  */
 int
@@ -1284,11 +1297,11 @@ ys_populate_type(yang_stmt *ys,
  * Do this recursively
  * @param[in] ys   The yang identity to populate.
  * @param[in] arg  If set contains a derived identifier
- * @see validate_identityref  which in runtime validates actual valoues
+ * @see validate_identityref  which in runtime validates actual values
  */
 static int
 ys_populate_identity(yang_stmt *ys, 
-		     void      *arg)
+		     char      *idref)
 {
     int             retval = -1;
     yang_stmt      *yc = NULL;
@@ -1298,7 +1311,6 @@ ys_populate_identity(yang_stmt *ys,
     char           *baseid;
     char           *prefix = NULL;
     cbuf           *cb = NULL;
-    char           *idref = (char*)arg;
     char           *p;
 
     if (idref == NULL){
@@ -1358,31 +1370,91 @@ ys_populate_identity(yang_stmt *ys,
     return retval;
 }
 
+/*! Populate yang feature statement - set cv to 1 if enabled
+ *
+ * @param[in] ys   Feature yang statement to populate.
+ * @param[in] h    Clicon handle
+ */
+static int
+ys_populate_feature(clicon_handle h,
+		    yang_stmt    *ys)
+{
+    int        retval = -1;
+    cxobj     *x;
+    yang_stmt *ymod;
+    int        found = 0;
+    cg_var    *cv;
+    char      *module;
+    char      *feature;
+    cxobj     *x1;
+
+    /* Eg, when parsing the config xml itself */
+    if ((x = clicon_conf_xml(h)) == NULL)
+	goto ok;
+    if ((ymod = ys_module(ys)) == NULL){
+	clicon_err(OE_YANG, 0, "module not found"); 
+	goto done;
+    }
+    module = ymod->ys_argument;
+    feature = ys->ys_argument;
+    x1 = NULL;
+    while ((x1 = xml_child_each(x, x1, CX_ELMNT)) != NULL && found == 0) {
+	char *m = NULL;
+	char *f = NULL;
+	if (strcmp(xml_name(x1), "CLICON_FEATURE") != 0)
+	    continue;
+	/* get m and f from configuration feature rules */
+	if (yang_nodeid_split(xml_body(x1), &m, &f) < 0)
+	    goto done;
+	if (m && f &&
+	    (strcmp(m,"*")==0 ||
+	     strcmp(m, module)==0) &&
+	    (strcmp(f,"*")==0 ||
+	     strcmp(f, feature)==0))
+	    found = 1;
+	if (m) free(m);
+	if (f) free(f);
+    }
+    if ((cv = cv_new(CGV_BOOL)) == NULL){
+	clicon_err(OE_YANG, errno, "cv_new"); 
+	goto done;
+    }
+    cv_name_set(cv, feature);
+    cv_bool_set(cv, found);
+    clicon_debug(1, "%s %s:%s %d", __FUNCTION__, module, feature, found);
+    ys->ys_cv = cv;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Populate with cligen-variables, default values, etc. Sanity checks on complete tree.
  *
  * We do this in 2nd pass after complete parsing to be sure to have a complete parse-tree
  * See ys_parse_sub for first pass and what can be assumed
  * After this pass, cv:s are set for LEAFs and LEAF-LISTs
  */
-int
+static int
 ys_populate(yang_stmt *ys, 
 	    void      *arg)
 {
     int retval = -1;
-
+    //    clicon_handle h = (clicon_handle)arg;
+    
     switch(ys->ys_keyword){
     case Y_LEAF:
     case Y_LEAF_LIST:
-	if (ys_populate_leaf(ys, arg) < 0)
+	if (ys_populate_leaf(ys, NULL) < 0)
 	    goto done;
 	break;
     case Y_LIST:
-	if (ys_populate_list(ys, arg) < 0)
+	if (ys_populate_list(ys, NULL) < 0)
 	    goto done;
 	break;
     case Y_RANGE: 
     case Y_LENGTH: 
-	if (ys_populate_range(ys, arg) < 0)
+	if (ys_populate_range(ys, NULL) < 0)
 	    goto done;
 	break;
     case Y_MANDATORY: /* call yang_mandatory() to check if set */
@@ -1391,11 +1463,11 @@ ys_populate(yang_stmt *ys,
 	    goto done;
 	break;
     case Y_TYPE:
-	if (ys_populate_type(ys, arg) < 0)
+	if (ys_populate_type(ys, NULL) < 0)
 	    goto done;
 	break;
     case Y_IDENTITY:
-	if (ys_populate_identity(ys, arg) < 0)
+	if (ys_populate_identity(ys, NULL) < 0)
 	    goto done;
 	break;
     default:
@@ -1405,7 +1477,6 @@ ys_populate(yang_stmt *ys,
   done:
     return retval;
 }
-
 
 /*! Resolve a grouping name from a point in the yang tree 
  * @retval  0  OK, but ygrouping determines if a grouping was resolved or not
@@ -1852,6 +1923,8 @@ yang_parse_module(const char   *module,
     if ((ymod = yang_parse_filename(cbuf_get(fbuf), ysp)) == NULL)
 	goto done;
   done:
+    if (fbuf)
+	cbuf_free(fbuf);
     return ymod; /* top-level (sub)module */
 }
 
@@ -1894,7 +1967,7 @@ yang_parse_recurse(yang_stmt    *ymod,
 	    subrevision = yrev->ys_argument;
 	else
 	    subrevision = NULL;
-	if (yang_find((yang_node*)ysp, Y_MODULE, submodule) == NULL)
+	if (yang_find((yang_node*)ysp, Y_MODULE, submodule) == NULL){
 	    /* recursive call */
 	    if ((subymod = yang_parse_module(submodule, dir, subrevision, ysp)) == NULL)
 		goto done;
@@ -1902,6 +1975,7 @@ yang_parse_recurse(yang_stmt    *ymod,
 		ymod = NULL;
 		goto done;
 	    }
+	}
     }
     retval = 0;
   done:  
@@ -1948,6 +2022,83 @@ ys_schemanode_check(yang_stmt *ys,
     }
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Find feature and if-feature nodes, check features and remove disabled nodes
+ * @retval -1  Error
+ * @retval  0  Feature not enabled: remove yt
+ * @retval  1  OK
+ * @note On return 1 the over-lying function need to remove yt from its parent
+ * @note cannot use yang_apply here since child-list is modified (destructive) 
+ */
+static int
+yang_features(clicon_handle h,
+	      yang_stmt    *yt)
+{
+    int        retval = -1;
+    int        i;
+    int        j;
+    yang_stmt *ys = NULL;
+    char       *prefix = NULL;
+    char       *feature = NULL;
+    yang_stmt  *ymod;  /* module yang node */
+    yang_stmt  *yfeat; /* feature yang node */
+
+    i = 0;
+    while (i<yt->ys_len){ /* Note, children may be removed */
+	ys = yt->ys_stmt[i];
+	if (ys->ys_keyword == Y_IF_FEATURE){
+	    if (yang_nodeid_split(ys->ys_argument, &prefix, &feature) < 0)
+		goto done;
+	    /* Specifically need to handle? strcmp(prefix, myprefix)) */
+	    if (prefix == NULL)
+		ymod = ys_module(ys);
+	    else
+		ymod = yang_find_module_by_prefix(yt, prefix);
+
+	    /* Check if feature exists, and is set, otherwise remove */
+	    if ((yfeat = yang_find((yang_node*)ymod, Y_FEATURE, feature)) == NULL ||
+		yfeat->ys_cv == NULL || !cv_bool_get(yfeat->ys_cv)){
+		retval = 0; /* feature not enabled */
+		goto done;
+	    }
+	    if (prefix){
+		free(prefix);
+		prefix = NULL;
+	    }
+	    if (feature){
+		free(feature);
+		feature = NULL;
+	    }
+	}
+	else
+	    if (ys->ys_keyword == Y_FEATURE){
+		if (ys_populate_feature(h, ys) < 0)
+		    goto done;
+	    } else switch (yang_features(h, ys)){
+	    case -1: /* error */
+		goto done;
+		break;
+	    case 0: /* disabled: remove ys */
+		for (j=i+1; j<yt->ys_len; j++)
+		    yt->ys_stmt[j-1] = yt->ys_stmt[j];
+		yt->ys_len--;
+		yt->ys_stmt[yt->ys_len] = NULL;
+		ys_free(ys);
+		continue; /* Don't increment i */
+		break;
+	    default: /* ok */
+		break;
+	    }
+	i++;
+    }
+    retval = 1;
+ done:
+    if (prefix)
+	free(prefix);
+    if (feature)
+	free(feature);
     return retval;
 }
 
@@ -2001,12 +2152,18 @@ yang_parse(clicon_handle h,
     if (yang_parse_recurse(ymod, dir, ysp) < 0)
 	goto done;
 
-    /* Step 2: Go through parse tree and populate it with cv types */
+    /* Step 2: check features: check if enabled and remove disabled features */
+    for (i=modnr; i<ysp->yp_len; i++) /* XXX */
+	if (yang_features(h, ysp->yp_stmt[i]) < 0)
+	    goto done;
+    
+    /* Step 3: Go through parse tree and populate it with cv types */
     for (i=modnr; i<ysp->yp_len; i++)
-	if (yang_apply((yang_node*)ysp->yp_stmt[i], -1, ys_populate, NULL) < 0)
+	if (yang_apply((yang_node*)ysp->yp_stmt[i], -1, ys_populate, (void*)h) < 0)
 	    goto done;
 
-    /* Step 3: Resolve all types: populate type caches. Requires eg length/range cvecs
+
+    /* Step 4: Resolve all types: populate type caches. Requires eg length/range cvecs
      * from ys_populate step
      */
     for (i=modnr; i<ysp->yp_len; i++)
@@ -2017,18 +2174,18 @@ yang_parse(clicon_handle h,
        grouping/uses and unfold all macros into a single tree as they are used.
     */
 
-    /* Step 4: Macro expansion of all grouping/uses pairs. Expansion needs marking */
+    /* Step 5: Macro expansion of all grouping/uses pairs. Expansion needs marking */
     for (i=modnr; i<ysp->yp_len; i++){
 	if (yang_expand((yang_node*)ysp->yp_stmt[i]) < 0)
 	    goto done;
 	yang_apply((yang_node*)ysp->yp_stmt[i], -1, ys_flag_reset, (void*)YANG_FLAG_MARK);
     }
 
-    /* Step 4: Top-level augmentation of all modules XXX: only new modules? */
+    /* Step 6: Top-level augmentation of all modules XXX: only new modules? */
     if (yang_augment_spec(ysp) < 0)
 	goto done;
 
-    /* sanity check of schemanode references, need more here */
+    /* Step 7: sanity check of schemanode references, need more here */
     for (i=modnr; i<ysp->yp_len; i++)
 	if (yang_apply((yang_node*)ysp->yp_stmt[i], -1, ys_schemanode_check, NULL) < 0)
 	    goto done;
@@ -2486,11 +2643,8 @@ yang_spec_parse_module(clicon_handle h,
 	clicon_err(OE_YANG, EINVAL, "yang dir not set");
 	goto done;
     }
-    if (yang_parse(h, NULL, module, dir, revision, yspec) < 0){
-	yspec_free(yspec);
-	yspec = NULL;
+    if (yang_parse(h, NULL, module, dir, revision, yspec) < 0)
 	goto done;
-    }
     retval = 0;
   done:
     return retval;
@@ -2521,11 +2675,8 @@ yang_spec_parse_file(clicon_handle h,
 	clicon_err(OE_YANG, EINVAL, "yang dir not set");
 	goto done;
     }
-    if (yang_parse(h, filename, NULL, dir, NULL, yspec) < 0){
-	yspec_free(yspec);
-	yspec = NULL;
+    if (yang_parse(h, filename, NULL, dir, NULL, yspec) < 0)
 	goto done;
-    }
     retval = 0;
   done:
     return retval;

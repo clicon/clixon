@@ -86,7 +86,7 @@ struct backend_handle {
     int                      bh_magic;     /* magic (HDR)*/
     clicon_hash_t           *bh_copt;      /* clicon option list (HDR) */
     clicon_hash_t           *bh_data;      /* internal clicon data (HDR) */
-    event_stream_t          *ch_stream;   /* notification streams, see clixon_stream.[ch] */
+    event_stream_t          *bh_stream;   /* notification streams, see clixon_stream.[ch] */
     
     /* ------ end of common handle ------ */
     struct client_entry     *bh_ce_list;   /* The client list */

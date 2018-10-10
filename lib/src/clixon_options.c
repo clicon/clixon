@@ -64,8 +64,8 @@
 #include "clixon_handle.h"
 #include "clixon_log.h"
 #include "clixon_yang.h"
-#include "clixon_options.h"
 #include "clixon_xml.h"
+#include "clixon_options.h"
 #include "clixon_plugin.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
@@ -116,12 +116,16 @@ clicon_option_dump(clicon_handle h,
 }
 
 /*! Read filename and set values to global options registry. XML variant.
- * @see clicon_option_readfile
+ *
+ * @param[out] xconfig Pointer to xml config tree. Should be freed by caller
+ * @retval     0       OK
+ * @retval    -1       Error
  */
-static int 
-clicon_option_readfile_xml(clicon_hash_t *copt, 
-			   const char    *filename,
-			   yang_spec     *yspec)
+static int
+parse_configfile(clicon_handle  h,
+		 const char    *filename,
+		 yang_spec     *yspec,
+		 cxobj        **xconfig)
 {
     struct stat st;
     FILE       *f = NULL;
@@ -132,6 +136,7 @@ clicon_option_readfile_xml(clicon_hash_t *copt,
     cxobj      *x = NULL;
     char       *name;
     char       *body;
+    clicon_hash_t *copt = clicon_options(h);
 
     if (filename == NULL || !strlen(filename)){
 	clicon_err(OE_UNIX, 0, "Not specified");
@@ -168,14 +173,22 @@ clicon_option_readfile_xml(clicon_hash_t *copt,
     while ((x = xml_child_each(xc, x, CX_ELMNT)) != NULL) {
 	name = xml_name(x);
 	body = xml_body(x);
-	if (name && body && 
-	    (hash_add(copt, 
-		      name,
-		      body,
-		      strlen(body)+1)) == NULL)
+	if (name==NULL || body == NULL){
+	    clicon_log(LOG_WARNING, "%s option NULL: name:%s body:%s",
+		       __FUNCTION__, name, body);
+	    continue;
+	}
+	if (strcmp(name,"CLICON_FEATURE")==0)
+	    continue;
+	if (hash_add(copt, 
+		     name,
+		     body,
+		     strlen(body)+1) == NULL)
 	    goto done;
     }
     retval = 0;
+    *xconfig = xt;
+    xt = NULL;
   done:
     if (xt)
 	xml_free(xt);
@@ -199,6 +212,7 @@ clicon_options_main(clicon_handle h)
     char          *suffix;
     char           xml = 0; /* Configfile is xml, otherwise legacy */
     yang_spec     *yspec = NULL;
+    cxobj         *xconfig = NULL;
 
     /*
      * Set configure file if not set by command-line above
@@ -213,29 +227,30 @@ clicon_options_main(clicon_handle h)
 	suffix++;
 	xml = strcmp(suffix, "xml") == 0;
     }
-    if (xml){     /* Read clixon yang file */
-	if ((yspec = yspec_new()) == NULL)
-	    goto done;
-	if (yang_parse(h, NULL, "clixon-config", CLIXON_DATADIR, NULL, yspec) < 0)
-	    goto done;    
-	/* Read configfile */
-	if (clicon_option_readfile_xml(copt, configfile, yspec) < 0)
-	    goto done;
-	/* Specific option handling */
-	if (clicon_option_bool(h, "CLICON_XML_SORT") == 1)
-	    xml_child_sort = 1;
-	else
-	    xml_child_sort = 0;
-    }
-    else {
+    if (xml == 0){
 	clicon_err(OE_CFG, 0, "%s: suffix %s not recognized (Run ./configure --with-config-compat?)", configfile, suffix);
 	goto done;
     }
+    /* Parse clixon yang spec */
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    if (yang_parse(h, NULL, "clixon-config", CLIXON_DATADIR, NULL, yspec) < 0)
+	goto done;    
+    /* Read configfile */
+    if (parse_configfile(h, configfile, yspec, &xconfig) < 0)
+	goto done;
+    if (xml_rootchild(xconfig, 0, &xconfig) < 0)
+	goto done;
+    clicon_conf_xml_set(h, xconfig);
+    /* Specific option handling */
+    if (clicon_option_bool(h, "CLICON_XML_SORT") == 1)
+	xml_child_sort = 1;
+    else
+	xml_child_sort = 0;
     retval = 0;
  done:
     if (yspec) /* The clixon yang-spec is not used after this */
 	yspec_free(yspec);
-
     return retval;
 }
 
@@ -571,6 +586,38 @@ clicon_dbspec_yang_set(clicon_handle     h,
     return 0;
 }
 
+/*! Get YANG specification for Clixon system options and features
+ * Must use hash functions directly since they are not strings.
+ */
+cxobj *
+clicon_conf_xml(clicon_handle h)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    size_t         len;
+    void          *p;
+
+    if ((p = hash_value(cdat, "clixon_conf", &len)) != NULL)
+	return *(cxobj **)p;
+    return NULL;
+}
+
+/*! Set YANG specification for Clixon system options and features
+ * ys must be a malloced pointer
+ */
+int
+clicon_conf_xml_set(clicon_handle h, 
+		    cxobj        *x)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    /* It is the pointer to x that should be copied by hash,
+     * so we send a ptr to the ptr to indicate what to copy.
+     */
+    if (hash_add(cdat, "clixon_conf", &x, sizeof(x)) == NULL)
+	return -1;
+    return 0;
+}
+
 /*! Get xmldb datastore plugin handle, as used by dlopen/dlsym/dlclose */
 plghndl_t
 clicon_xmldb_plugin_get(clicon_handle h)
@@ -663,7 +710,6 @@ clicon_xmldb_handle_set(clicon_handle h,
 	return -1;
     return 0;
 }
-
 
 /*! Get authorized user name
  * @param[in]  h   Clicon handle

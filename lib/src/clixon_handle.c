@@ -129,13 +129,12 @@ int
 clicon_handle_exit(clicon_handle h)
 {
     struct clicon_handle *ch = handle(h);
-    clicon_hash_t        *copt;
-    clicon_hash_t        *data;
+    clicon_hash_t        *ha;
 
-    if ((copt = clicon_options(h)) != NULL)
-	hash_free(copt);
-    if ((data = clicon_data(h)) != NULL)
-	hash_free(data);
+    if ((ha = clicon_options(h)) != NULL)
+	hash_free(ha);
+    if ((ha = clicon_data(h)) != NULL)
+	hash_free(ha);
     stream_delete_all(clicon_stream(h));
     free(ch);
     return 0;

@@ -100,6 +100,19 @@ You can change where CLixon looks for the configuration FILE as follows:
   - Provide --sysconfig=<dir> when configuring then FILE is <dir>/etc/clixon.xml
   - FILE is /usr/local/etc/clixon.xml
 
+## How do I enable Yang features?
+
+Yang models have features, and parts of a specification can be
+conditional using the if-feature statement. In Clixon, features are
+enabled in the configuration file using <CLICON_FEATURE>.
+
+The example below shows enabling a specific feature; enabling all features in module; and enabling all features in all modules, respectively:
+```
+      <CLICON_FEATURE>ietf-routing:router-id</CLICON_FEATURE>
+      <CLICON_FEATURE>ietf-routing:*</CLICON_FEATURE>
+      <CLICON_FEATURE>*:*</CLICON_FEATURE>
+```
+
 ## Can I run Clixon as docker containers?
 
 Yes, the example works as docker containers as well. There should be a

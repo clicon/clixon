@@ -3,6 +3,15 @@
 ## 3.8.0 (Upcoming)
 
 ### Major New features
+* YANG Features
+  * Yang 1.1 feature and if-feature according to RFC 7950 7.20.1 and 7.20.2.
+  * Features are declared via CLICON_FEATURE in the configuration file. Examples showing enabling (1) a specific feature; (2) all features in a module; (3) all features in all modules:
+```
+      <CLICON_FEATURE>ietf-routing:router-id</CLICON_FEATURE>
+      <CLICON_FEATURE>ietf-routing:*</CLICON_FEATURE>
+      <CLICON_FEATURE>*:*</CLICON_FEATURE>
+```
+  * logical combination of features not implemented, eg if-feature "not foo or bar and baz";
 * YANG Module Library support
   * According to RFC 7895 and implemented by ietf-yang-library.yang
   * Supported: module, name, revision, namespace
@@ -44,11 +53,13 @@
 
 ### Minor changes
 
+* New function: clicon_conf_xml() returns configuration tree
 * Obsoleted COMPAT_CLIV and COMPAT_XSL that were optional in 3.7
 * Added timeout option -t for clixon_netconf - quit after max time.
 * Added -l option for clixon_backend for directing syslog to stderr or stdout if running in foreground
 
 ### Corrected Bugs
+* Identity without any identityref:s caused SEGV
 * Memory error in backend transaction revert
 * Set dir /www-data with www-data as owner, see https://github.com/clicon/clixon/issues/37
 	
