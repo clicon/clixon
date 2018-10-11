@@ -1435,7 +1435,7 @@ ys_populate_feature(clicon_handle h,
  * See ys_parse_sub for first pass and what can be assumed
  * After this pass, cv:s are set for LEAFs and LEAF-LISTs
  */
-static int
+int
 ys_populate(yang_stmt *ys, 
 	    void      *arg)
 {

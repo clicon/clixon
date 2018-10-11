@@ -260,6 +260,7 @@ char      *yang_find_myprefix(yang_stmt *ys);
 int        yang_order(yang_stmt *y);
 int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
+int        ys_populate(yang_stmt *ys, void *arg);
 yang_stmt *yang_parse_file(int fd, const char *name, yang_spec *ysp);
 int        yang_parse(clicon_handle h, const char *filename,
 		      const char *module, const char *dir, 

@@ -43,6 +43,8 @@ localstatedir   = @localstatedir@
 libdir          = @exec_prefix@/lib
 
 APPNAME	        = example
+# Install here if you want default clixon location:
+CLIXON_DEFAULT_CONFIG = @CLIXON_DEFAULT_CONFIG@
 
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ -rdynamic -fPIC 
@@ -55,6 +57,8 @@ BE2_PLUGIN      = $(APPNAME)_backend_nacm.so
 CLI_PLUGIN      = $(APPNAME)_cli.so
 NETCONF_PLUGIN  = $(APPNAME)_netconf.so
 RESTCONF_PLUGIN = $(APPNAME)_restconf.so
+
+
 
 # Example docker image. PLEASE CHANGE THIS
 IMAGE           = olofhagsand/clixon_example
@@ -120,6 +124,7 @@ distclean: clean
 install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN) $(APPNAME).xml
 	install -d -m 0755 $(DESTDIR)$(sysconfdir)
 	install -m 0644 $(APPNAME).xml $(DESTDIR)$(sysconfdir)
+#	install -m 0644 $(APPNAME).xml $(DESTDIR)$(CLIXON_DEFAULT_CONFIG)
 	install -d -m 0755 $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
 	install -m 0644 $(YANGSPECS) $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/cli
