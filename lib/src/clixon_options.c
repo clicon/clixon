@@ -255,9 +255,10 @@ clicon_options_main(clicon_handle h)
 }
 
 /*! Check if a clicon option has a value
- * @param[in] h       clicon_handle
- * @param[in] name    option name
- * @retval
+ * @param[in] h     clicon_handle
+ * @param[in] name  option name
+ * @retval  !=0     option exists
+ * @retval    0     option does not exists
  */
 int
 clicon_option_exists(clicon_handle h,

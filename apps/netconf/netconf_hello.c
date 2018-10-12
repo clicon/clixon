@@ -105,28 +105,37 @@ netconf_hello_dispatch(cxobj *xn)
     return retval;
 }
 
-/*
- * netconf_create_hello
- * create capability string (once)
+/*! Create Netconf hello. Single cap and defer individual to querying modules
+ * This follows YANG 1.1 RFC7950 Sec 5.6.4, where a single capability announced
+ * and a client may query supported modules using RFC 7895 (Yang Module 
+ * Library).
+ * @param[in]  h           Clicon handle
+ * @param[in]  cb          Msg buffer
+ * @param[in]  session_id  Id of client session
  */
 int
-netconf_create_hello(cbuf *xf,            /* msg buffer */
-		     int session_id)
+netconf_create_hello(clicon_handle h,
+		     cbuf         *cb,
+		     int           session_id)
 {
-    int retval = 0;
+    int   retval = -1;
+    char *module_set_id;
+    char *ietf_yang_library_revision;
 
-    add_preamble(xf);
-    cprintf(xf, "<hello>");
-    cprintf(xf, "<capabilities>");
-    cprintf(xf, "<capability>urn:ietf:params:xml:ns:netconf:base:1.0</capability>\n");
-    cprintf(xf, "<capability>urn:ietf:params:xml:ns:netconf:capability:candidate:1:0</capability>\n");
-    cprintf(xf, "<capability>urn:ietf:params:xml:ns:netconf:capability:validate:1.0</capability>\n");
-   cprintf(xf, "<capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>\n");
-   cprintf(xf, "<capability>urn:ietf:params:netconf:capability:notification:1.0</capability>\n");
-   cprintf(xf, "<capability>urn:ietf:params:netconf:capability:startup:1.0</capability>\n");
-    cprintf(xf, "</capabilities>");
-    cprintf(xf, "<session-id>%lu</session-id>", (long unsigned int)42+session_id);
-    cprintf(xf, "</hello>");
-    add_postamble(xf);
+    module_set_id = clicon_option_str(h, "CLICON_MODULE_SET_ID");
+    if ((ietf_yang_library_revision = yang_modules_revision(h)) == NULL)
+	goto done;
+    add_preamble(cb);
+    cprintf(cb, "<hello>");
+    cprintf(cb, "<capabilities>");
+    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=\"%s\"&module-set-id=%s</capability>",
+	    ietf_yang_library_revision,
+	    module_set_id);
+      cprintf(cb, "</capabilities>");
+    cprintf(cb, "<session-id>%lu</session-id>", (long unsigned int)42+session_id);
+    cprintf(cb, "</hello>");
+    add_postamble(cb);
+    retval = 0;
+ done:
     return retval;
 }

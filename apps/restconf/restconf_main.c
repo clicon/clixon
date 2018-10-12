@@ -266,6 +266,7 @@ api_yang_library_version(clicon_handle h,
     cxobj *xt = NULL;
     cbuf  *cb = NULL;
     int    pretty;
+    char  *ietf_yang_library_revision = "2016-06-21"; /* XXX */
 
     clicon_debug(1, "%s", __FUNCTION__);
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
@@ -275,7 +276,7 @@ api_yang_library_version(clicon_handle h,
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
     FCGX_FPrintF(r->out, "\r\n");
-    if (xml_parse_string("<yang-library-version>2016-06-21</yang-library-version>", NULL, &xt) < 0)
+    if (xml_parse_va(&xt, NULL, "<yang-library-version>%s</yang-library-version>", ietf_yang_library_revision) < 0)
 	goto done;
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
@@ -641,9 +642,9 @@ main(int    argc,
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
 	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec)< 0)
 	 goto done;
-     if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895") &&
-	 yang_spec_parse_module(h, "ietf-yang-library", CLIXON_DATADIR, NULL, yspec)< 0)
-	 goto done;
+     /* Load yang module library, RFC7895 */
+    if (yang_modules_init(h) < 0)
+	goto done;
 
      if (stream_register(h, "NETCONF", "default NETCONF event stream") < 0)
 	goto done;

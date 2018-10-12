@@ -31,17 +31,27 @@
 
   ***** END LICENSE BLOCK *****
 
- *
- *  Code for handling netconf hello messages
- *****************************************************************************/
-#ifndef _NETCONF_HELLO_H_
-#define _NETCONF_HELLO_H_
+ * Yang module and feature handling
+ * @see https://tools.ietf.org/html/rfc7895
+ */
+
+#ifndef _CLIXON_YANG_MODULE_H_
+#define _CLIXON_YANG_MODULE_H_
+
+/*
+ * Constants
+ */
+
+/*
+ * Types
+ */
+
 
 /*
  * Prototypes
- */ 
-int netconf_create_hello(clicon_handle h, cbuf *cb, int session_id);
+ */
+int yang_modules_init(clicon_handle h);
+char *yang_modules_revision(clicon_handle h);
+int yang_modules_state_get(clicon_handle h, yang_spec *yspec, cxobj **xret);
 
-int netconf_hello_dispatch(cxobj *xn);
-
-#endif  /* _NETCONF_HELLO_H_ */
+#endif  /* _CLIXON_YANG_MODULE_H_ */

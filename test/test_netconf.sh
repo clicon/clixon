@@ -11,6 +11,7 @@ tmp=$dir/tmp.x
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
   <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
@@ -96,6 +97,9 @@ if [ $? -ne 0 ]; then
     err
 fi
 
+new "netconf hello"
+expecteof "$clixon_netconf -f $cfg -y $fyang" 0 '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<hello><capabilities><capability>urn:ietf:params:netconf:capability:yang-library:1.0\?revision="2016-06-21"\&module-set-id=42</capability></capabilities><session-id>'
+exit
 new "netconf get-config"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
 

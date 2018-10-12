@@ -75,6 +75,7 @@
 #include <clixon/clixon_file.h>
 #include <clixon/clixon_xml.h>
 #include <clixon/clixon_xml_sort.h>
+#include <clixon/clixon_yang_module.h>
 #include <clixon/clixon_stream.h>
 #include <clixon/clixon_proto.h>
 #include <clixon/clixon_proto_client.h>

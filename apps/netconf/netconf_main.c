@@ -241,28 +241,29 @@ netconf_input_cb(int   s,
     return retval;
 }
 
-/*
- * send_hello
- * args: s file descriptor to write on (eg 1 - stdout)
+/*! Send netconf hello message
+ * @param[in]   h   Clicon handle
+ * @param[in]   s   File descriptor to write on (eg 1 - stdout)
  */
 static int
-send_hello(int s)
+send_hello(clicon_handle h,
+	   int           s)
 {
-    cbuf *xf;
-    int retval = -1;
+    int   retval = -1;
+    cbuf *cb;
     
-    if ((xf = cbuf_new()) == NULL){
+    if ((cb = cbuf_new()) == NULL){
 	clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
 	goto done;
     }
-    if (netconf_create_hello(xf, getpid()) < 0)
+    if (netconf_create_hello(h, cb, getpid()) < 0)
 	goto done;
-    if (netconf_output(s, xf, "hello") < 0)
+    if (netconf_output(s, cb, "hello") < 0)
 	goto done;
     retval = 0;
   done:
-    if (xf)
-	cbuf_free(xf);
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
@@ -461,7 +462,7 @@ main(int    argc,
     *(argv-1) = tmp;
 
     if (!quiet)
-	send_hello(1);
+	send_hello(h, 1);
     if (event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)
 	goto done;
     if (debug)

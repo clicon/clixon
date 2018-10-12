@@ -735,8 +735,7 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
-    /* Read and parse application yang specification: either a module and search
-     * in dir, or a specific file
+    /* Load main application yang specification: either module or specific file
      */
     if (yang_filename){
 	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec) < 0)
@@ -747,16 +746,17 @@ main(int    argc,
 			       clicon_yang_module_revision(h),
 			       yspec) < 0)
 	goto done;
-
-    /* Add system modules */
+    
+     /* Load yang module library, RFC7895 */
+    if (yang_modules_init(h) < 0)
+	goto done;
+    /* Load yang Restconf stream discovery */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
 	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec)< 0)
 	 goto done;
+     /* Load yang Netconf stream discovery */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
 	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec)< 0)
-	 goto done;
-     if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895") &&
-	 yang_spec_parse_module(h, "ietf-yang-library", CLIXON_DATADIR, NULL, yspec)< 0)
 	 goto done;
     /* Set options: database dir and yangspec (could be hidden in connect?)*/
     if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)

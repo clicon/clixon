@@ -113,6 +113,9 @@ The example below shows enabling a specific feature; enabling all features in mo
       <CLICON_FEATURE>*:*</CLICON_FEATURE>
 ```
 
+Features can be probed by using RFC 7895 Yang module library which provides
+information on all modules and which features are enabled.
+
 ## Can I run Clixon as docker containers?
 
 Yes, the example works as docker containers as well. There should be a

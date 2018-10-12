@@ -15,9 +15,10 @@
   * logical combination of features not implemented, eg if-feature "not foo or bar and baz";
 * YANG Module Library support
   * According to RFC 7895 and implemented by ietf-yang-library.yang
-  * Supported: module, name, revision, namespace
-  * Not supported: notification, deviation, module-set-id, etc.
-  * Enabled by default, disable by resetting CLICON_MODULE_LIBRARY_RFC7895
+  * Changed Netconf hello to single capabilty urn:ietf:params:netconf:capability:yang-library:1.0 according to YANG 1.1 RFC7950 Sec 5.6.4.
+  * Set by option: CLICON_MODULE_LIBRARY_RFC7895 - enabled by default
+  * Option CLICON_MODULE_SET_ID is set and changed when modules change. 
+  * Notification not supported
 * Yang 1.1 notification support (RFC 7950: Sec 7.16)
 * Major rewrite of event streams
   * See clicon_stream.[ch] for details
@@ -25,6 +26,8 @@
     * Enabled by CLICON_STREAM_DISCOVERY_RFC5277 and CLICON_STREAM_DISCOVERY_RFC8040.
 
 ### API changes on existing features (you may need to change your code)
+* Netconf hello capability updated to YANG 1.1 RFC7950 Sec 5.6.4
+  * A single capability is announced instead of many.
 * Major rewrite of event streams
   * If you used old event callbacks API, you need to switch to the streams API
     * See clixon_stream.[ch]
