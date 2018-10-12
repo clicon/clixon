@@ -203,6 +203,7 @@ stream_cb_add(clicon_handle     h,
     event_stream_t             *es;
     struct stream_subscription *ss;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if ((es = stream_find(h, stream)) == NULL){
 	clicon_err(OE_CFG, ENOENT, "Stream %s not found", stream);
 	goto done;
@@ -289,6 +290,7 @@ stream_notify_xml(clicon_handle h,
     event_stream_t             *es;
     struct stream_subscription *ss;
     
+    clicon_debug(1, "%s", __FUNCTION__);
     if ((es = stream_find(h, stream)) == NULL)
 	goto ok;
     /* Go thru all global (handle) subscriptions and find matches */
@@ -332,6 +334,7 @@ stream_notify(clicon_handle h,
     char       timestr[27];
     struct timeval tv;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     va_start(args, event);
     len = vsnprintf(NULL, 0, event, args) + 1;
     va_end(args);

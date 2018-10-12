@@ -85,6 +85,7 @@ AC_SUBST(INSTALL)
 AC_SUBST(INSTALL_DATA)
 AC_SUBST(INSTALL_PROGRAM)
 AC_SUBST(INSTALLFLAGS)
+AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(RANLIB)
@@ -158,10 +159,10 @@ if test "x${with_restconf}" == xyes; then
 fi
 
 # Set default config file location
+CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
 AC_ARG_WITH([configfile],
 	    [AS_HELP_STRING([--with-configfile=FILE],[set default path to config file])],
-	    [DEFAULT_CONFIG="$withval"],
-	    [DEFAULT_CONFIG="$(eval echo ${sysconfdir}/clixon.xml)"])
+	    [CLIXON_DEFAULT_CONFIG="$withval"],)
 
 AC_CHECK_LIB(crypt, crypt)
 AC_CHECK_HEADERS(crypt.h)
@@ -186,7 +187,7 @@ CLIXON_DATADIR="${prefix}/share/clixon"
 AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${CLIXON_DATADIR}", [Clixon data dir for system yang files etc])
 
 # Default location for config file
-AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${DEFAULT_CONFIG}",[Location for apps to find default config file])
+AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
 
 AH_BOTTOM([#include <clixon_custom.h>])
 

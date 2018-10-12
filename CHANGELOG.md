@@ -52,10 +52,24 @@
     * yang_parse() changed to take either filename or module name and revision. 
   * Removed clicon_dbspec_name[_set]().
     * Use yang_main_module_name() instead.
-  * Replaced yang_spec_main with yang_spec_parse_module
-  * Added yang_spec_parse_file
+  * Replace code for initializing the main yang module
+    * Replace yang_spec_main() with yang_spec_parse_module() as follows:
+```
+    /* old code */
+    if ((yspec = yang_spec_main(ch)) == NULL)
+	goto done;
+    /* new code */
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    clicon_dbspec_yang_set(h, yspec);
+    if (yang_spec_parse_module(h, clicon_yang_module_main(h),
+               clicon_yang_dir(h), clicon_yang_module_revision(h), yspec) < 0)
+	goto done;
+```    
+
 
 ### Minor changes
+* Added CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml as option and in example (so you dont need to provide -f command-line option).
 * Yang 1.1 action syntax added (but function is not supported)
 * New function: clicon_conf_xml() returns configuration tree
 * Obsoleted COMPAT_CLIV and COMPAT_XSL that were optional in 3.7
