@@ -31,17 +31,14 @@
 
   ***** END LICENSE BLOCK *****
 
- * 
- * IETF yang routing example
  */
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
 #include <unistd.h>
+#include <assert.h>
 #include <sys/time.h>
 
 /* clicon */
@@ -54,7 +51,7 @@
 #include <clixon/clixon_backend.h> 
 
 /* forward */
-static int notification_timer_setup(clicon_handle h);
+static int example_stream_timer_setup(clicon_handle h);
 
 /*! This is called on validate (and commit). Check validity of candidate
  */
@@ -93,33 +90,33 @@ transaction_commit(clicon_handle    h,
 /*! Routing example notifcation timer handler. Here is where the periodic action is 
  */
 static int
-notification_timer(int   fd, 
-		   void *arg)
+example_stream_timer(int   fd, 
+		     void *arg)
 {
     int                    retval = -1;
     clicon_handle          h = (clicon_handle)arg;
 
     /* XXX Change to actual netconf notifications */
-    if (stream_notify(h, "NETCONF", "<event xmlns=\"http://example.com/event/1.0\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
+    if (stream_notify(h, "EXAMPLE", "<event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
 	goto done;
-    if (notification_timer_setup(h) < 0)
+    if (example_stream_timer_setup(h) < 0)
 	goto done;
     retval = 0;
  done:
     return retval;
 }
 
-/*! Set up routing notification timer 
+/*! Set up example stream notification timer 
  */
 static int
-notification_timer_setup(clicon_handle h)
+example_stream_timer_setup(clicon_handle h)
 {
     struct timeval t, t1;
 
     gettimeofday(&t, NULL);
     t1.tv_sec = 5; t1.tv_usec = 0;
     timeradd(&t, &t1, &t);
-    return event_reg_timeout(t, notification_timer, h, "notification timer");
+    return event_reg_timeout(t, example_stream_timer, h, "example stream timer");
 }
 
 /*! IETF Routing fib-route rpc 
@@ -230,8 +227,8 @@ example_reset(clicon_handle h,
     cxobj *xt = NULL;
 
     if (xml_parse_string("<config><interfaces><interface>"
-			     "<name>lo</name><type>ex:loopback</type>"
-			     "</interface></interfaces></config>", NULL, &xt) < 0)
+			 "<name>lo</name><type>ex:loopback</type>"
+			 "</interface></interfaces></config>", NULL, &xt) < 0)
 	goto done;
     /* Replace parent w fiorst child */
     if (xml_rootchild(xt, 0, &xt) < 0)
@@ -266,13 +263,19 @@ example_start(clicon_handle h,
     return 0;
 }
 
+int 
+example_exit(clicon_handle h)
+{
+    return 0;
+}
+
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
     "example",                              /* name */    
     clixon_plugin_init,                     /* init - must be called clixon_plugin_init */
     example_start,                          /* start */
-    NULL,                                   /* exit */
+    example_exit,                           /* exit */
     .ca_reset=example_reset,                /* reset */
     .ca_statedata=example_statedata,        /* statedata */
     .ca_trans_begin=NULL,                   /* trans begin */
@@ -292,8 +295,21 @@ clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
     clicon_debug(1, "%s backend", __FUNCTION__);
-    if (notification_timer_setup(h) < 0)
+
+    /* Example stream initialization:
+     * 1) Register EXAMPLE stream 
+     * 2) setup timer for notifications, so something happens on stream
+     * 3) setup stream callbacks for notification to push channel
+     */
+    if (stream_register(h, "EXAMPLE", "Example event stream") < 0)
 	goto done;
+    /* assumes: CLIXON_PUBLISH_STREAMS, eg configure --enable-publish
+     */
+    if (stream_publish(h, "EXAMPLE") < 0)
+	goto done;
+    if (example_stream_timer_setup(h) < 0)
+	goto done;
+
     /* Register callback for routing rpc calls */
     if (rpc_callback_register(h, fib_route, 
 			      NULL, 
@@ -310,6 +326,7 @@ clixon_plugin_init(clicon_handle h)
 			      "empty"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
+
     /* Return plugin API */
     return &api;
  done:

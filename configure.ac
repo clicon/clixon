@@ -63,6 +63,7 @@ AC_DEFINE_UNQUOTED(CLIXON_VERSION_MINOR, $CLIXON_VERSION_MINOR, [Clixon minor re
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_PATCH, $CLIXON_VERSION_PATCH, [Clixon path version])
 
 
+# AC_SUBST(var) makes @var@ appear in makefiles.
 # clixon versions spread to Makefile's (.so files) and variable in build.c
 AC_SUBST(CLIXON_VERSION)
 AC_SUBST(CLIXON_VERSION_STRING)
@@ -142,6 +143,23 @@ if test "${with_cligen}"; then
   CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
   LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
   test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
+fi
+
+# Experimental: Curl publish notification stream to eg Nginx nchan. 
+AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],[Enable publish of notification streams using SSE and curl]),[
+	  if test "$enableval" = no; then
+	      ac_enable_publish=no
+	  else	      
+	      ac_enable_publish=yes
+          fi
+        ],
+	[ ac_enable_publish=no])
+AC_MSG_RESULT(publish is $ac_enable_publish)	
+
+if test "$ac_enable_publish" = "yes"; then
+   # publish streams uses libcurl
+   AC_CHECK_LIB(curl, curl_global_init,, AC_MSG_ERROR([libcurl missing]))
+   AC_DEFINE(CLIXON_PUBLISH_STREAMS, 1, [Enable publish of notification streams using SSE and curl])
 fi
 
 AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR(cligen missing. Try: git clone https://github.com/olofhagsand/cligen.git))

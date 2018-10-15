@@ -664,6 +664,7 @@ main(int    argc,
 	clicon_err(OE_CFG, errno, "FCGX_Init");
 	goto done;
     }
+    clicon_debug(1, "restconf_main: Opening FCGX socket: %s", sockpath);
     if ((sock = FCGX_OpenSocket(sockpath, 10)) < 0){
 	clicon_err(OE_CFG, errno, "FCGX_OpenSocket");
 	goto done;

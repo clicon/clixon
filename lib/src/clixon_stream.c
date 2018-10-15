@@ -44,6 +44,7 @@
 #include <string.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <syslog.h>
 #include <sys/time.h>
 
 /* cligen */
@@ -52,6 +53,7 @@
 /* clicon */
 #include "clixon_queue.h"
 #include "clixon_err.h"
+#include "clixon_log.h"
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
@@ -146,6 +148,7 @@ stream_get_xml(clicon_handle h,
 	       cbuf         *cb)
 {
     event_stream_t *es = NULL;
+    char           *url_prefix;
 
     cprintf(cb, "<streams>");
     for (es=clicon_stream(h); es; es=es->es_next){
@@ -157,11 +160,9 @@ stream_get_xml(clicon_handle h,
 	if (access){
 	    cprintf(cb, "<access>");
 	    cprintf(cb, "<encoding>xml</encoding>");
-	    /* Note /stream need to be in http proxy declaration 
-	     * XXX
-	     */
-	    cprintf(cb, "<location>/stream/%s</location>", es->es_name);
-	    
+	    url_prefix = clicon_option_str(h, "CLICON_STREAM_URL_PREFIX");
+	    cprintf(cb, "<location>%s/%s</location>", 
+		    url_prefix, es->es_name);
 	    cprintf(cb, "</access>");
 	}
 	cprintf(cb, "</stream>");
@@ -377,3 +378,207 @@ stream_notify(clicon_handle h,
 	free(str);
     return retval;
 }
+
+#ifdef CLIXON_PUBLISH_STREAMS
+
+#include <curl/curl.h>
+
+/*
+ * Types (curl)
+ */
+struct curlbuf{
+    size_t b_len;
+    char  *b_buf;
+};
+
+/*
+ * For the asynchronous case. I think we must handle the case where of many of these
+ * come in before we can handle them in the upper-level polling routine.
+ * realloc. Therefore, we append new data to the userdata buffer.
+ */
+static size_t
+curl_get_cb(void *ptr, 
+	    size_t size, 
+	    size_t nmemb, 
+	    void *userdata)
+{
+    struct curlbuf *buf = (struct curlbuf *)userdata;
+    int len;
+
+    len = size*nmemb;
+    if ((buf->b_buf = realloc(buf->b_buf, buf->b_len+len+1)) == NULL)
+	return 0;
+    memcpy(buf->b_buf+buf->b_len, ptr, len);
+    buf->b_len += len;
+    buf->b_buf[buf->b_len] = '\0';
+    fprintf(stderr, "%s: %s\n", __FUNCTION__, buf->b_buf);
+    return len;
+}
+
+/*! Send a curl POST request
+ * @retval  -1   fatal error
+ * @retval   0   expect set but did not expected return or other non-fatal error
+ * @retval   1   ok
+ * Note: curl_easy_perform blocks
+ * Note: New handle is created every time, the handle can be re-used for better TCP performance
+ * @see same function (url_post) in grideye_curl.c
+ */
+static int
+url_post(char *url, 
+	 char *postfields, 
+	 char **getdata)
+{
+    int            retval = -1;
+    CURL          *curl = NULL;
+    char          *err = NULL;
+    struct curlbuf cb = {0, };
+    CURLcode       errcode;
+
+    /* Try it with  curl -X PUT -d '*/
+    clicon_debug(1, "%s:  curl -X POST -d '%s' %s",
+	__FUNCTION__, postfields, url);
+    /* Set up curl for doing the communication with the controller */
+    if ((curl = curl_easy_init()) == NULL) {
+	clicon_debug(1, "curl_easy_init");
+	goto done;
+    }
+    if ((err = malloc(CURL_ERROR_SIZE)) == NULL) {
+	clicon_debug(1, "%s: malloc", __FUNCTION__);
+	goto done;
+    }
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_get_cb);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &cb);
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, err);
+    curl_easy_setopt(curl, CURLOPT_POST, 1);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postfields);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postfields));
+
+    if (debug)
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);   
+    if ((errcode = curl_easy_perform(curl)) != CURLE_OK){
+	clicon_debug(1, "%s: curl: %s(%d)", __FUNCTION__, err, errcode);
+	retval = 0;
+	goto done; 
+    }
+    if (getdata && cb.b_buf){
+	*getdata = cb.b_buf;
+	cb.b_buf = NULL;
+    }
+    retval = 1;
+  done:
+    if (err)
+	free(err);
+    if (cb.b_buf)
+	free(cb.b_buf);
+    if (curl)
+	curl_easy_cleanup(curl);   /* cleanup */ 
+    return retval;
+}
+
+/*! Stream callback for example stream notification 
+ * Push via curl_post to publish stream event
+ * @param[in]  h     Clicon handle
+ * @param[in]  event Event as XML
+ * @param[in]  arg   Extra argument provided in stream_cb_add
+ * @see stream_cb_add
+ */
+static int 
+stream_publish_cb(clicon_handle h, 
+		  cxobj        *event,
+		  void         *arg)
+{
+    int   retval = -1;
+    cbuf *u = NULL; /* stream pub (push) url */
+    cbuf *d = NULL; /* (XML) data to push */
+    char *pub_prefix;
+    char *result = NULL;
+    char *stream = (char*)arg;
+
+    clicon_debug(1, "%s", __FUNCTION__); 
+
+    /* Create pub url */
+    if ((u = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if ((pub_prefix = clicon_option_str(h, "CLICON_STREAM_PUB_PREFIX")) == NULL){
+	clicon_err(OE_CFG, ENOENT, "CLICON_STREAM_PUB_PREFIX not defined");
+	goto done;
+    }
+
+    cprintf(u, "%s/%s", pub_prefix, stream);
+    /* Create XML data as string */
+    if ((d = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (clicon_xml2cbuf(d, event, 0, 0) < 0)
+	goto done;
+    if (url_post(cbuf_get(u),     /* url+stream */
+		 cbuf_get(d),     /* postfields */
+		 &result) < 0)    /* result as xml */
+	goto done;
+    if (result)
+	clicon_debug(1, "%s: %s", __FUNCTION__, result);
+    retval = 0;
+ done:
+    if (u)
+	cbuf_free(u);
+    if (d)
+	cbuf_free(d);
+    if (result)
+	free(result);
+    return retval;
+}
+#endif /* CLIXON_PUBLISH_STREAMS */
+
+/*! Publish all streams on a pubsub channel, eg using SSE
+ */
+int
+stream_publish(clicon_handle h,
+	       char         *stream)
+{
+#ifdef CLIXON_PUBLISH_STREAMS
+    int retval = -1;
+
+    if (stream_cb_add(h, stream, NULL, stream_publish_cb, (void*)stream) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+#else
+   clicon_log(LOG_WARNING, "%s called but CLIXON_PUBLISH_STREAMS not enabled (enable with configure --enable-publish)", __FUNCTION__);
+   clicon_log_init("xpath", LOG_WARNING, CLICON_LOG_STDERR); 
+   return 0;
+#endif
+}
+
+int 
+stream_publish_init()
+{
+#ifdef CLIXON_PUBLISH_STREAMS
+    int retval = -1;
+
+    if (curl_global_init(CURL_GLOBAL_ALL) != 0){
+	clicon_err(OE_PLUGIN, errno, "curl_global_init");
+	goto done;
+    }    
+    retval = 0;
+ done:
+    return retval;
+#else
+    return 0;
+#endif
+}
+
+int 
+stream_publish_exit()
+{
+#ifdef CLIXON_PUBLISH_STREAMS
+    curl_global_cleanup();
+#endif 
+    return 0;
+}
+
+

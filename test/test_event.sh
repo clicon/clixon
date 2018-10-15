@@ -1,12 +1,18 @@
 #!/bin/bash
-# Restconf basic functionality
-# Assume http server setup, such as nginx described in apps/restconf/README.md
+# Tests for event streams using notifications
+# Assumptions:
+# 1. http server setup, such as nginx described in apps/restconf/README.md
+#    especially SSE - ngchan setup
+# 2. Example stream as Clixon example which needs registration, callback and
+#    notification generating code
+
 APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh
 cfg=$dir/conf.xml
 fyang=$dir/restconf.yang
 xml=$dir/xml.xml
+
 
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
 cat <<EOF > $cfg
@@ -62,7 +68,7 @@ cat <<EOF > $fyang
        }
        container state {
          config false;
-         description "state data for example application";
+         description "state data for the example application (must be here for example get operation)";
          leaf-list op {
             type string;
          }
@@ -92,28 +98,30 @@ sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c 
 sleep 1
 
 new "netconf event stream discovery RFC5277 Sec 3.2.5"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get><filter type="xpath" select="netconf/streams" xmlns="urn:ietf:params:xml:ns:netmod:notification"/></get></rpc>]]>]]>' '<rpc-reply><data><netconf><streams><stream><name>NETCONF</name><description>default NETCONF event stream</description><replay-support>false</replay-support></stream></streams></netconf></data></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get><filter type="xpath" select="netconf/streams" xmlns="urn:ietf:params:xml:ns:netmod:notification"/></get></rpc>]]>]]>' '<rpc-reply><data><netconf><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>false</replay-support></stream></streams></netconf></data></rpc-reply>]]>]]>'
 
 new "netconf event stream discovery RFC8040 Sec 6.2"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get><filter type="xpath" select="restconf-state/streams" xmlns="urn:ietf:params:xml:ns:netmod:notification"/></get></rpc>]]>]]>' '<rpc-reply><data><restconf-state><streams><stream><name>NETCONF</name><description>default NETCONF event stream</description><replay-support>false</replay-support><access><encoding>xml</encoding><location>/stream/NETCONF</location></access></stream></streams></restconf-state></data></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get><filter type="xpath" select="restconf-state/streams" xmlns="urn:ietf:params:xml:ns:netmod:notification"/></get></rpc>]]>]]>' '<rpc-reply><data><restconf-state><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>false</replay-support><access><encoding>xml</encoding><location>https://localhost/streams/EXAMPLE</location></access></stream></streams></restconf-state></data></rpc-reply>]]>]]>'
 
 new "restconf event stream discovery RFC8040 Sec 6.2"
-expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams" 0 '{"streams": {"stream": \[{"name": "NETCONF","description": "default NETCONF event stream","replay-support": false,"access": \[{"encoding": "xml","location": "/stream/NETCONF"}\]}\]}'
+expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams" 0 '{"streams": {"stream": \[{"name": "EXAMPLE","description": "Example event stream","replay-support": false,"access": \[{"encoding": "xml","location": "https://localhost/streams/EXAMPLE"}\]}\]}'
 
 new "restconf subscribe RFC8040 Sec 6.3, get location"
-expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=NETCONF/access=xml/location" 0 '{"location": "/stream/NETCONF"}'
+expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location" 0 '{"location": "https://localhost/streams/EXAMPLE"}'
 
-new "netconf NETCONF subscription"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>NETCONF</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
+if false; then
+new "netconf EXAMPLE subscription"
+expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
 
-new "netconf NETCONF subscription with simple filter"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>NETCONF</stream><filter type=\"xpath\" select=\"event\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
+new "netconf EXAMPLE subscription with simple filter"
+expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
 
-new "netconf NETCONF subscription with filter classifier"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>NETCONF</stream><filter type=\"xpath\" select=\"event[event-class='fault']\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
+new "netconf EXAMPLE subscription with filter classifier"
+expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event[event-class='fault']\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
+fi
 
-#new "restconf monitor event stream RFC8040 Sec 6.3"
-#XXX expectfn "curl -s -X GET http://localhost/stream/NETCONF" 0 ''
+new "restconf monitor event stream RFC8040 Sec 6.3"
+expectfn "curl  -H \"Accept: text/event-stream\" -s -X GET http://localhost/streams/EXAMPLE" 0 '<notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-10-14T14:17:50.875370</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

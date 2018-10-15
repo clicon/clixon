@@ -59,7 +59,6 @@ NETCONF_PLUGIN  = $(APPNAME)_netconf.so
 RESTCONF_PLUGIN = $(APPNAME)_restconf.so
 
 
-
 # Example docker image. PLEASE CHANGE THIS
 IMAGE           = olofhagsand/clixon_example
 

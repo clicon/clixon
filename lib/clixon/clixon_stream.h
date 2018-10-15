@@ -39,8 +39,13 @@
 /*
  * Types
  */
-/* subscription callback */
-typedef	int (*stream_fn_t)(clicon_handle h, void *event, void *arg);
+/* Subscription callback 
+ * @param[in]  h     Clicon handle
+ * @param[in]  event Event as XML
+ * @param[in]  arg   Extra argument provided in stream_cb_add
+ * @see stream_cb_add
+ */
+typedef	int (*stream_fn_t)(clicon_handle h, cxobj *event, void *arg);
 
 struct stream_subscription{
     struct stream_subscription *ss_next;
@@ -75,6 +80,11 @@ int stream_notify(clicon_handle h, char *stream, const char *event, ...)  __attr
 #else
 int stream_notify(clicon_handle h, char *stream, const char *event, ...);
 #endif
+
+/* Experimental publish streams using SSE */
+int stream_publish(clicon_handle h, char *stream);
+int stream_publish_init();
+int stream_publish_exit();
 
 /* Backward compatible macro for <1.8 */
 #define backend_notify_xml(h, stream, level, x) stream_notify_xml(h, stream, x)

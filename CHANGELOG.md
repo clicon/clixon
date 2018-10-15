@@ -24,6 +24,11 @@
   * See clicon_stream.[ch] for details
   * Added stream discovery according to RFC 5277 for netconf and RFC 8040 for restconf
     * Enabled by CLICON_STREAM_DISCOVERY_RFC5277 and CLICON_STREAM_DISCOVERY_RFC8040.
+  * Set access/subscribe base URL with: CLICON_STREAM_URL_PREFIX (default https://localhost/streams).
+    * Example: new stream "foo" will get access URL: https://localhost/streams/foo
+  * Optional pub/sub support enabled by ./configure --enable-publish
+    * Set publish URL base with: CLICON_STREAM_PUB_PREFIX (default http://localhost/pub)
+    * Example: new stream "foo" will get pub URL: https://localhost/pub/foo
 
 ### API changes on existing features (you may need to change your code)
 * Netconf hello capability updated to YANG 1.1 RFC7950 Sec 5.6.4

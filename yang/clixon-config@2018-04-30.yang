@@ -390,5 +390,23 @@ module clixon-config {
                          sections 3.2. If enabled, available streams will appear
                          when doing netconf get or restconf GET";
 	}
+	leaf CLICON_STREAM_URL_PREFIX {
+	    type string;
+	    default "https://localhost/streams";
+    	    description "See RFC 8040 Sec 9.3 location leaf: 
+	          'Contains a URL that represents the entry point for 
+		  establishing notification delivery via server-sent events.'
+		  Prepend this constant to name of stream.
+                  Example: https://localhost/streams/NETCONF. Note this is the
+		  external URL, not local behind a reverse-proxy";
+	}
+	leaf CLICON_STREAM_PUB_PREFIX {
+	    type string;
+	    default "http://localhost/pub";
+    	    description "For stream publish using eg nchan, the base address
+	          to publish to. 
+                  Example: http://localhost/pub/NETCONF. Note this may
+		  be local URL behind reverse-proxy";
+	}
     }
 }

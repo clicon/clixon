@@ -22,11 +22,37 @@ module example {
 	base if:interface-type;
     }
     /* Translation function example - See also example_cli */
-
     list translate{
 	leaf value{
 	    type string;
 	}
+    }
+    /* State data (not config) for the example application*/
+    container state {
+         config false;
+         description "state data for the example application (must be here for example get operation)";
+         leaf-list op {
+            type string;
+         }
+    }
+    /* Example notification as used in RFC 5277 and RFC 8040 */
+    notification event {
+         description "Example notification event.";
+         leaf event-class {
+           type string;
+           description "Event class identifier.";
+         }
+         container reportingEntity {
+           description "Event specific information.";
+           leaf card {
+             type string;
+             description "Line card identifier.";
+           }
+         }
+         leaf severity {
+           type string;
+           description "Event severity description.";
+         }
     }
     rpc client-rpc {
 	description "Example local client-side RPC that is processed by the

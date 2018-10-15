@@ -125,7 +125,7 @@ text_db2file(struct text_handle *th,
 	     char              **filename)
 {
     int   retval = -1;
-    cbuf *cb;
+    cbuf *cb = NULL;
     char *dir;
 
     if ((cb = cbuf_new()) == NULL){

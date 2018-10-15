@@ -91,6 +91,7 @@ backend_terminate(clicon_handle h)
 	yspec_free(yspec);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
+    stream_publish_exit();
     clixon_plugin_exit(h);
     /* Delete all backend plugin RPC callbacks */
     rpc_callback_delete_all(); 
@@ -720,9 +721,9 @@ main(int    argc,
 	return -1;
     }
 
-    if (stream_register(h, "NETCONF", "default NETCONF event stream") < 0)
+    /* Publish stream on pubsub channels XXX conditional? */
+    if (stream_publish_init() < 0)
 	goto done;
-	
     if ((xmldb_plugin = clicon_xmldb_plugin(h)) == NULL){
 	clicon_log(LOG_ERR, "No xmldb plugin given (specify option CLICON_XMLDB_PLUGIN).\n"); 
 	goto done;

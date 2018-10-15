@@ -81,14 +81,20 @@ ce_find_bypid(struct client_entry *ce_list,
     return NULL;
 }
 
+/*! Stream callback for netconf stream notification (RFC 5277)
+ * @param[in]  h     Clicon handle
+ * @param[in]  event Event as XML
+ * @param[in]  arg   Extra argument provided in stream_cb_add
+ * @see stream_cb_add
+ */
 static int
 ce_event_cb(clicon_handle h,
-	    void         *event,
+	    cxobj        *event,
 	    void         *arg)
 {
     struct client_entry *ce = (struct client_entry *)arg;
     
-    if (send_msg_notify_xml(ce->ce_s, (cxobj*)event) < 0){
+    if (send_msg_notify_xml(ce->ce_s, event) < 0){
 	if (errno == ECONNRESET || errno == EPIPE){
 	    clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
 #if 0
