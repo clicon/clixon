@@ -120,8 +120,8 @@ new "netconf EXAMPLE subscription with filter classifier"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event[event-class='fault']\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
 fi
 
-new "restconf monitor event stream RFC8040 Sec 6.3"
-expectfn "curl  -H \"Accept: text/event-stream\" -s -X GET http://localhost/streams/EXAMPLE" 0 '<notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-10-14T14:17:50.875370</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>'
+#new "restconf monitor event stream RFC8040 Sec 6.3"
+#expectfn "curl  -H \"Accept: text/event-stream\" -s -X GET http://localhost/streams/EXAMPLE" 0 '<notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-10-14T14:17:50.875370</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf
