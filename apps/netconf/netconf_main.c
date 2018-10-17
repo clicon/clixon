@@ -432,9 +432,11 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+    /* Create first yang spec */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
+
     /* Parse yang database spec file */
     if (yang_filename){
 	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec) < 0)
@@ -446,10 +448,12 @@ main(int    argc,
 				    yspec) < 0)
 	goto done;
     
+     /* Load yang module library, RFC7895 */
+    if (yang_modules_init(h) < 0)
+	goto done;
     /* Add netconf yang spec, used by netconf client and as internal protocol */
-    if (yang_spec_parse_module(h, "ietf-yang-library", CLIXON_DATADIR, NULL, yspec)< 0)
-	 goto done;
-
+    if (netconf_module_load(h) < 0)
+	goto done;
     /* Initialize plugins group */
     if ((dir = clicon_netconf_dir(h)) != NULL)
 	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)

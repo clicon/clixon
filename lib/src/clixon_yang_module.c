@@ -153,6 +153,7 @@ x            +--ro namespace           inet:uri
                +--ro name        yang:yang-identifier
                +--ro revision    union
                +--ro schema?     inet:uri
+ * @see netconf_create_hello
  */
 int
 yang_modules_state_get(clicon_handle    h,

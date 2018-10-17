@@ -86,7 +86,7 @@ netconf_in_use(cbuf *cb,
 		type) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -125,7 +125,7 @@ netconf_invalid_value(cbuf *cb,
 		type) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -165,7 +165,7 @@ netconf_too_big(cbuf *cb,
 		type) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -207,7 +207,7 @@ netconf_missing_attribute(cbuf *cb,
 		type, info) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -248,7 +248,7 @@ netconf_bad_attribute(cbuf *cb,
 		type, info) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -290,7 +290,7 @@ netconf_unknown_attribute(cbuf *cb,
 		type, info) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -332,7 +332,7 @@ netconf_missing_element(cbuf      *cb,
 		type, info) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -375,7 +375,7 @@ netconf_bad_element(cbuf *cb,
 		type, info) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -417,7 +417,7 @@ netconf_unknown_element(cbuf *cb,
 		type, info) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -459,7 +459,7 @@ netconf_unknown_namespace(cbuf *cb,
 		type, info) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -498,7 +498,7 @@ netconf_access_denied(cbuf *cb,
 		type) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -574,7 +574,7 @@ netconf_lock_denied(cbuf *cb,
 		info) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -613,7 +613,7 @@ netconf_resource_denied(cbuf *cb,
 		type) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -653,7 +653,7 @@ netconf_rollback_failed(cbuf *cb,
 		type) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -691,7 +691,7 @@ netconf_data_exists(cbuf      *cb,
 		"<error-severity>error</error-severity>") <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -729,7 +729,7 @@ netconf_data_missing(cbuf *cb,
 		"<error-severity>error</error-severity>") <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -769,7 +769,7 @@ netconf_operation_not_supported(cbuf *cb,
 		type) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -809,7 +809,7 @@ netconf_operation_failed(cbuf  *cb,
 		type) <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -884,7 +884,7 @@ netconf_malformed_message(cbuf  *cb,
 		"<error-severity>error</error-severity>") <0)
 	goto err;
     if (message){
-	if (xml_chardata_encode(message, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
 	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
 	    goto err;
@@ -968,5 +968,42 @@ netconf_trymerge(cxobj       *x,
  done:
     if (reason)
 	free(reason);
+    return retval;
+}
+
+/*! Load ietf netconf yang module and set enabled features
+ * The features added are:
+ *   candidate (8.3)
+ *   validate (8.6)
+ *   startup (8.7)
+ *   xpath (8.9)
+ */
+int
+netconf_module_load(clicon_handle h)
+{
+    int        retval = -1;
+    cxobj     *xc;
+    //    cxobj     *x;
+    yang_spec *yspec;
+
+    yspec = clicon_dbspec_yang(h);
+    /* Load yang spec */
+    if (yang_spec_parse_module(h, "ietf-netconf", CLIXON_DATADIR, NULL, yspec)< 0)
+	goto done;
+    if ((xc = clicon_conf_xml(h)) == NULL){
+	clicon_err(OE_CFG, ENOENT, "Clicon configuration not loaded");
+	goto done; 
+    }
+    /* Enable features (hardcoded here) */
+    if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:candidate</CLICON_FEATURE>", yspec, &xc) < 0)
+	goto done;
+    if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:validate</CLICON_FEATURE>", yspec, &xc) < 0)
+	goto done;
+    if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>", yspec, &xc) < 0)
+	goto done;
+    if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:xpath</CLICON_FEATURE>", yspec, &xc) < 0)
+	goto done;
+    retval = 0;
+ done:
     return retval;
 }

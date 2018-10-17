@@ -1006,7 +1006,7 @@ api_path_fmt2api_path(char  *api_path_fmt,
 		    clicon_err(OE_UNIX, errno, "cv2str_dup");
 		    goto done;
 		}
-		if (uri_percent_encode(str, &strenc) < 0)
+		if (uri_percent_encode(&strenc, "%s", str) < 0)
 		    goto done;
 		cprintf(cb, "%s", strenc); 
 		free(strenc); strenc = NULL;

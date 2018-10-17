@@ -249,8 +249,10 @@ clicon_options_main(clicon_handle h)
 	xml_child_sort = 0;
     retval = 0;
  done:
-    if (yspec) /* The clixon yang-spec is not used after this */
+#if 0 /* XXX yspec should be part of top-level yang but cant since it will be main module */
+	 if (yspec) 
 	yspec_free(yspec);
+#endif
     return retval;
 }
 
@@ -589,6 +591,7 @@ clicon_dbspec_yang_set(clicon_handle     h,
 
 /*! Get YANG specification for Clixon system options and features
  * Must use hash functions directly since they are not strings.
+ * Example: features are typically accessed directly in the config tree.
  */
 cxobj *
 clicon_conf_xml(clicon_handle h)

@@ -182,6 +182,9 @@ netconf_get_target(cxobj        *xn,
  * @param[in]   s    
  * @param[in]   cb   Cligen buffer that contains the XML message
  * @param[in]   msg  Only for debug
+ * @note Assumes "cb" contains valid XML, ie encoding is correct. This is done
+ *       if it is output by a xml render routine (xml_print et al), but NOT
+ *       otherwise.
  */
 int 
 netconf_output(int   s, 

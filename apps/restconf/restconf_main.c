@@ -635,6 +635,10 @@ main(int    argc,
 		       clicon_yang_module_revision(h),
 		       yspec) < 0)
 	goto done;
+
+     /* Load yang module library, RFC7895 */
+    if (yang_modules_init(h) < 0)
+	goto done;
     /* Add system modules */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
 	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec)< 0)
@@ -642,9 +646,7 @@ main(int    argc,
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
 	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec)< 0)
 	 goto done;
-     /* Load yang module library, RFC7895 */
-    if (yang_modules_init(h) < 0)
-	goto done;
+
 
      if (stream_register(h, "NETCONF", "default NETCONF event stream") < 0)
 	goto done;

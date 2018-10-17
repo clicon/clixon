@@ -1018,7 +1018,7 @@ clicon_xml2file(FILE  *f,
     case CX_BODY:
 	if ((val = xml_value(x)) == NULL) /* incomplete tree */
 	    break;
-	if (xml_chardata_encode(val, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", val) < 0)
 	    goto done;
 	fprintf(f, "%s", encstr);
 	break;
@@ -1142,7 +1142,7 @@ clicon_xml2cbuf(cbuf  *cb,
     case CX_BODY:
 	if ((val = xml_value(x)) == NULL) /* incomplete tree */
 	    break;
-	if (xml_chardata_encode(val, &encstr) < 0)
+	if (xml_chardata_encode(&encstr, "%s", val) < 0)
 	    goto done;
 	cprintf(cb, "%s", encstr);
 	break;

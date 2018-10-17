@@ -106,12 +106,46 @@ netconf_hello_dispatch(cxobj *xn)
 }
 
 /*! Create Netconf hello. Single cap and defer individual to querying modules
- * This follows YANG 1.1 RFC7950 Sec 5.6.4, where a single capability announced
- * and a client may query supported modules using RFC 7895 (Yang Module 
- * Library).
+
  * @param[in]  h           Clicon handle
  * @param[in]  cb          Msg buffer
  * @param[in]  session_id  Id of client session
+ * Lots of dependencies here. regarding the hello protocol.
+ * RFC6241 NETCONF Protocol says: (8.1)
+ *    MUST send a <hello> element containing a list of that peer's capabilities
+ *    MUST send at least the base NETCONF capability, urn:ietf:params:netconf:base:1.1
+ *    MAY include capabilities for previous NETCONF versions
+ *    MUST include a <session-id>
+ * the example shows urn:ietf:params:netconf:capability:startup:1.0 
+
+ * RFC5277 NETCONF Event Notifications
+ *  urn:ietf:params:netconf:capability:notification:1.0 is advertised during the capability exchange
+ *  
+ * RFC6022 YANG Module for NETCONF Monitoring
+ *     MUST advertise the capability URI "urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring"
+ * RFC7895 Yang module library defines how to announce module features (not hell capabilities)
+ * RFC7950 YANG 1.1 says (5.6.4);
+ *    MUST announce the modules it implements by implementing the YANG module 
+ *    "ietf-yang-library" (RFC7895) and listing all implemented modules in the
+ *    "/modules-state/module" list.
+ *    MUST advertise urn:ietf:params:netconf:capability:yang-library:1.0?
+ *    revision=<date>&module-set-id=<id> in the <hello> message.
+ *
+ * Question: should the NETCONF in RFC6241 sections 8.2-8.9 be announced both 
+ * as features and as capabilities in the <hello> message according to RFC6241?
+ *   urn:ietf:params:netconf:capability:candidate:1:0 (8.3)
+ *   urn:ietf:params:netconf:capability:validate:1.1 (8.6)
+ *   urn:ietf:params:netconf:capability:startup:1.0 (8.7)
+ *   urn:ietf:params:netconf:capability:xpath:1.0 (8.9)
+ *   urn:ietf:params:netconf:capability:notification:1.0 (RFC5277)
+ *
+ * @note the hello message is created bythe netconf application, not the 
+ *  backend, and backend may implement more modules - please consider if using
+ *  library routines for detecting capabilities here. In contrast, yang module 
+ * list (RFC7895) is processed by the backend.
+ * @note encode bodies, see xml_chardata_encode()
+ * @see yang_modules_state_get
+ * @see netconf_module_load
  */
 int
 netconf_create_hello(clicon_handle h,
@@ -121,21 +155,27 @@ netconf_create_hello(clicon_handle h,
     int   retval = -1;
     char *module_set_id;
     char *ietf_yang_library_revision;
+    char *encstr = NULL;
 
     module_set_id = clicon_option_str(h, "CLICON_MODULE_SET_ID");
     if ((ietf_yang_library_revision = yang_modules_revision(h)) == NULL)
 	goto done;
     add_preamble(cb);
-    cprintf(cb, "<hello>");
+    cprintf(cb, "<hello xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">");
     cprintf(cb, "<capabilities>");
-    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=\"%s\"&module-set-id=%s</capability>",
-	    ietf_yang_library_revision,
-	    module_set_id);
-      cprintf(cb, "</capabilities>");
+        cprintf(cb, "<capability>urn:ietf:params:netconf:base:1.1</capability>");
+    if (xml_chardata_encode(&encstr, "urn:ietf:params:netconf:capability:yang-library:1.0?revision=\"%s\"&module-set-id=%s",
+			    ietf_yang_library_revision,
+			    module_set_id) < 0)
+	goto done;
+    cprintf(cb, "<capability>%s</capability>", encstr);
+    cprintf(cb, "</capabilities>");
     cprintf(cb, "<session-id>%lu</session-id>", (long unsigned int)42+session_id);
     cprintf(cb, "</hello>");
     add_postamble(cb);
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
 }

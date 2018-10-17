@@ -751,6 +751,9 @@ main(int    argc,
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;
+    /* Add netconf yang spec, used by netconf client and as internal protocol */
+    if (netconf_module_load(h) < 0)
+	goto done;
     /* Load yang Restconf stream discovery */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
 	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec)< 0)

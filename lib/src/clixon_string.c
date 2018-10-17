@@ -174,49 +174,77 @@ uri_unreserved(unsigned char in)
 }
 
 /*! Percent encoding according to RFC 3986 URI Syntax
- * @param[in]   str    Not-encoded input string     
- * @param[out]  escp   Encoded/escaped malloced output string
+ * @param[out]  encp   Encoded malloced output string
+ * @param[in]   fmt    Not-encoded input string (stdarg format string)
+ * @param[in]   ...    stdarg variable parameters
  * @retval      0      OK
  * @retval     -1      Error
+ * @code
+ *  char *enc;
+ *  if (uri_percent_encode(&enc, "formatstr: <>= %s", "substr<>") < 0)
+ *    err;
+ *  if(enc)
+ *    free(enc);
+ * @endcode
  * @see RFC 3986 Uniform Resource Identifier (URI): Generic Syntax
  * @see uri_percent_decode
  * @see xml_chardata_encode
  */
 int
-uri_percent_encode(char  *str, 
-		   char **escp)
+uri_percent_encode(char **encp, 
+		   char  *fmt, ...)
 {
-    int   retval = -1;
-    char *esc = NULL;
-    int   len;
-    int   i, j;
-    
+    int     retval = -1;
+    char   *str = NULL;  /* Expanded format string w stdarg */
+    char   *enc = NULL;
+    int     fmtlen;
+    int     len;
+    int     i, j;
+    va_list args;
+
+    /* Two steps: (1) read in the complete format string */
+    va_start(args, fmt); /* dryrun */
+    fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
+    va_end(args);
+    if ((str = malloc(fmtlen)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(str, 0, fmtlen);
+    va_start(args, fmt); /* real */
+    fmtlen = vsnprintf(str, fmtlen, fmt, args) + 1;
+    va_end(args);
+    /* Now str is the combined fmt + ... */
+
+    /* Step (2) encode and expand str --> enc */
     /* This is max */
     len = strlen(str)*3+1;
-    if ((esc = malloc(len)) == NULL){
+    if ((enc = malloc(len)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc"); 
 	goto done;
     }
-    memset(esc, 0, len);
+    memset(enc, 0, len);
     j = 0;
     for (i=0; i<strlen(str); i++){
 	if (uri_unreserved(str[i]))
-	    esc[j++] = str[i];
+	    enc[j++] = str[i];
 	else{
-	    snprintf(&esc[j], 4, "%%%02X", str[i]&0xff);
+	    snprintf(&enc[j], 4, "%%%02X", str[i]&0xff);
 	    j += 3;
 	}
     }
-    *escp = esc;
+    *encp = enc;
     retval = 0;
  done:
-    if (retval < 0 && esc)
-	free(esc);
+    if (str)
+	free(str);
+    if (retval < 0 && enc)
+	free(enc);
     return retval;
 }
 
 /*! Percent decoding according to RFC 3986 URI Syntax
- * @param[in]   esc    Escaped/encoded input string     
+ * @param[in]   enc    Encoded input string     
  * @param[out]  strp   Decoded malloced output string. Deallocate with free()
  * @retval      0      OK
  * @retval     -1      Error
@@ -224,7 +252,7 @@ uri_percent_encode(char  *str,
  * @see uri_percent_encode
  */
 int
-uri_percent_decode(char  *esc, 
+uri_percent_decode(char  *enc, 
 		   char **strp)
 {
     int   retval = -1;
@@ -235,24 +263,24 @@ uri_percent_decode(char  *esc,
     char *ptr;
     
     /* This is max */
-    len = strlen(esc)+1;
+    len = strlen(enc)+1;
     if ((str = malloc(len)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc"); 
 	goto done;
     }
     memset(str, 0, len);
     j = 0;
-    for (i=0; i<strlen(esc); i++){
-	if (esc[i] == '%' && strlen(esc)-i > 2 && 
-	    isxdigit(esc[i+1]) && isxdigit(esc[i+2])){
-	    hstr[0] = esc[i+1];
-	    hstr[1] = esc[i+2];
+    for (i=0; i<strlen(enc); i++){
+	if (enc[i] == '%' && strlen(enc)-i > 2 && 
+	    isxdigit(enc[i+1]) && isxdigit(enc[i+2])){
+	    hstr[0] = enc[i+1];
+	    hstr[1] = enc[i+2];
 	    hstr[2] = 0;
 	    str[j] = strtoul(hstr, &ptr, 16);
 	    i += 2;
 	}
 	else
-	    str[j] = esc[i];
+	    str[j] = enc[i];
 	j++;
     }
     str[j++] = '\0';
@@ -265,8 +293,9 @@ uri_percent_decode(char  *esc,
 }
 
 /*! Escape characters according to XML definition
- * @param[in]   str    Not-encoded input string     
- * @param[out]  escp   Encoded/escaped malloced output string
+ * @param[out]  encp   Encoded malloced output string
+ * @param[in]   fmt    Not-encoded input string (stdarg format string)
+ * @param[in]   ...    stdarg variable parameters
  * @retval      0      OK
  * @retval     -1      Error
  * @see https://www.w3.org/TR/2008/REC-xml-20081126/#syntax chapter 2.6
@@ -274,8 +303,7 @@ uri_percent_decode(char  *esc,
  * @see AMPERSAND mode in clixon_xml_parse.l
  * @code
  *   char *encstr = NULL;
- *   char *val = "a<>b";
- *   if (xml_chardata_encode(str, &encstr) < 0)
+ *   if (xml_chardata_encode(&encstr, "fmtstr<>& %s", "substr<>") < 0)
  *      err;
  *   if (encstr)
  *      free(encstr);
@@ -289,16 +317,34 @@ uri_percent_decode(char  *esc,
  * Optionally >
  */
 int
-xml_chardata_encode(char  *str, 
-		    char **escp)
+xml_chardata_encode(char **escp,
+		    char  *fmt,...)
 {
-    int   retval = -1;
-    char *esc = NULL;
-    int   l;
-    int   len;
-    int   i, j;
-    int   cdata; /* when set, skip encoding */
+    int     retval = -1;
+    char   *str = NULL;  /* Expanded format string w stdarg */
+    int     fmtlen;
+    char   *esc = NULL;
+    int     l;
+    int     len;
+    int     i, j;
+    int     cdata; /* when set, skip encoding */
+    va_list args;
     
+    /* Two steps: (1) read in the complete format string */
+    va_start(args, fmt); /* dryrun */
+    fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
+    va_end(args);
+    if ((str = malloc(fmtlen)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(str, 0, fmtlen);
+    va_start(args, fmt); /* real */
+    fmtlen = vsnprintf(str, fmtlen, fmt, args) + 1;
+    va_end(args);
+    /* Now str is the combined fmt + ... */
+
+    /* Step (2) encode and expand str --> enc */
     /* First compute length (do nothing) */
     len = 0; cdata = 0;
     for (i=0; i<strlen(str); i++){
@@ -381,6 +427,8 @@ xml_chardata_encode(char  *str,
     *escp = esc;
     retval = 0;
  done:
+    if (str)
+	free(str);
     if (retval < 0 && esc)
 	free(esc);
     return retval;

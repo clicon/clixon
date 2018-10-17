@@ -76,9 +76,14 @@ static inline char * strdup4(char *str)
 char **clicon_strsep(char *string, char *delim, int  *nvec0);
 char *clicon_strjoin (int argc, char **argv, char *delim);
 int str2cvec(char *string, char delim1, char delim2, cvec **cvp);
-int uri_percent_encode(char *str, char **escp);
-int uri_percent_decode(char *esc, char **str);
-int xml_chardata_encode(char *str, char **escp);
+#if defined(__GNUC__) && __GNUC__ >= 3
+int uri_percent_encode(char **encp, char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
+int xml_chardata_encode(char **escp, char *fmt, ... ) __attribute__ ((format (printf, 2, 3)));
+#else
+int uri_percent_encode(char **encp, char *str, ...);
+int xml_chardata_encode(char **escp, char *fmt, ...);
+#endif
+int uri_percent_decode(char *enc, char **str);
 const char *clicon_int2str(const map_str2int *mstab, int i);
 int clicon_str2int(const map_str2int *mstab, char *str);
 

@@ -98,8 +98,8 @@ if [ $? -ne 0 ]; then
 fi
 
 new "netconf hello"
-expecteof "$clixon_netconf -f $cfg -y $fyang" 0 '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<hello><capabilities><capability>urn:ietf:params:netconf:capability:yang-library:1.0\?revision="2016-06-21"\&module-set-id=42</capability></capabilities><session-id>'
-exit
+expecteof "$clixon_netconf -f $cfg -y $fyang" 0 '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision="2016-06-21"&amp; module-set-id=42</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]><rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
+
 new "netconf get-config"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
 
@@ -111,6 +111,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc message-id="101"><get-con
 
 new "Add subtree eth/0/0 using none and create which should add eth/0/0"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="create"><name>eth/0/0</name><type>ex:eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
 
 # Too many quotes, (single inside double inside single) need to fool bash
 cat <<EOF > $tmp # new
@@ -242,9 +243,6 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:empty/></rpc>]]>]]>" 
 
 new "netconf client-side rpc"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:client-rpc><request>example</request></ex:client-rpc></rpc>]]>]]>" "^<rpc-reply><result>ok</result></rpc-reply>]]>]]>$"
-
-new "netconf subscription"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>NETCONF</stream></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>201' 10
 
 new "Kill backend"
 # kill backend

@@ -130,9 +130,10 @@ expecteof(){
 ret=$($cmd<<EOF 
 $input
 EOF
-) 
-  if [ $? -ne $retval ]; then
-      echo -e "\e[31m\nError in Test$testnr [$testname]:"
+)
+  r=$? 
+  if [ $r -ne $retval ]; then
+      echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
       echo -e "\e[0m:"
       exit -1
   fi
@@ -141,7 +142,7 @@ EOF
   if [ -z "$ret" -a -z "$expect" ]; then
       return
   fi
-  match=`echo "$ret" | grep -Eo "$expect"`
+  match=`echo "$ret" | grep -GZo "$expect"`
 #  echo "ret:\"$ret\""
 #  echo "expect:\"$expect\""
 #  echo "match:\"$match\""

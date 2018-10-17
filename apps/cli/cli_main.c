@@ -432,6 +432,9 @@ main(int argc, char **argv)
 				    clicon_yang_module_revision(h),
 				    yspec) < 0)
 	goto done;
+     /* Load yang module library, RFC7895 */
+    if (yang_modules_init(h) < 0)
+	goto done;
     if (printspec)
 	yang_print(stdout, (yang_node*)yspec);
 

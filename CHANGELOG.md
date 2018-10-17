@@ -13,6 +13,7 @@
       <CLICON_FEATURE>*:*</CLICON_FEATURE>
 ```
   * logical combination of features not implemented, eg if-feature "not foo or bar and baz";
+  * ietf-netconf yang module added with candidate, validate, startup and xpath features enabled.
 * YANG Module Library support
   * According to RFC 7895 and implemented by ietf-yang-library.yang
   * Changed Netconf hello to single capabilty urn:ietf:params:netconf:capability:yang-library:1.0 according to YANG 1.1 RFC7950 Sec 5.6.4.
@@ -32,7 +33,8 @@
 
 ### API changes on existing features (you may need to change your code)
 * Netconf hello capability updated to YANG 1.1 RFC7950 Sec 5.6.4
-  * A single capability is announced instead of many.
+  * Added urn:ietf:params:netconf:capability:yang-library:1.0
+  * Thanks SCadilhac for helping out, see https://github.com/clicon/clixon/issues/39
 * Major rewrite of event streams
   * If you used old event callbacks API, you need to switch to the streams API
     * See clixon_stream.[ch]
@@ -72,8 +74,8 @@
 	goto done;
 ```    
 
-
 ### Minor changes
+* uri_percent_encode() and xml_chardata_encode() changed to stdarg parameters
 * Added CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml as option and in example (so you dont need to provide -f command-line option).
 * Yang 1.1 action syntax added (but function is not supported)
 * New function: clicon_conf_xml() returns configuration tree

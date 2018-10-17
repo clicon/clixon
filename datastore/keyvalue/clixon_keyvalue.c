@@ -211,7 +211,7 @@ append_listkeys(cbuf      *ckey,
 		       xml_name(xt), keyname);
 	    goto done;
 	}
-	if (uri_percent_encode(xml_body(xkey), &bodyenc) < 0)
+	if (uri_percent_encode(&bodyenc, "%s", xml_body(xkey)) < 0)
 	    goto done;
 	if (i++)
 	    cprintf(ckey, ",");
@@ -328,7 +328,7 @@ get(char      *dbname,
 	     * If xml element is a leaf-list, then the next element is expected to
 	     * be a value
 	     */
-	    if (uri_percent_decode(restval, &argdec) < 0)
+	    if (uri_percent_decode(&argdec, restval) < 0)
 		goto done;
 	    if ((xc = xml_find(x, name))==NULL ||
 		(xb = xml_find(xc, argdec))==NULL){
@@ -681,7 +681,7 @@ put(char               *dbfile,
 	    goto done;
 	break;
     case Y_LEAF_LIST:
-	if (uri_percent_encode(body, &bodyenc) < 0)
+	if (uri_percent_encode(&bodyenc, "%s", body) < 0)
 	    goto done;
 	cprintf(cbxk, "=%s", bodyenc);
 	break;
