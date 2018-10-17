@@ -169,6 +169,11 @@ netconf_create_hello(clicon_handle h,
 			    module_set_id) < 0)
 	goto done;
     cprintf(cb, "<capability>%s</capability>", encstr);
+    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:candidate:1:0</capability>");
+    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:validate:1.1</capability>");
+    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:startup:1.0</capability>");
+    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>");
+    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:notification:1.0</capability>");
     cprintf(cb, "</capabilities>");
     cprintf(cb, "<session-id>%lu</session-id>", (long unsigned int)42+session_id);
     cprintf(cb, "</hello>");
