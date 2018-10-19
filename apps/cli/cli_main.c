@@ -253,8 +253,10 @@ main(int argc, char **argv)
     char        *restarg = NULL; /* what remains after options */
     int          dump_configfile_xml = 0;
     yang_spec   *yspec;
+    yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
     struct passwd *pw;
     char        *yang_filename = NULL;
+    yang_stmt   *ymod = NULL; /* Main module */
     
     /* Defaults */
     once = 0;
@@ -327,8 +329,11 @@ main(int argc, char **argv)
 	    goto done;
     }
 
+    /* Create top-level yang spec and store as option */
+    if ((yspecfg = yspec_new()) == NULL)
+	goto done;
     /* Find and read configfile */
-    if (clicon_options_main(h) < 0){
+    if (clicon_options_main(h, yspecfg) < 0){
         if (help)
 	    usage(h, argv[0]);
 	return -1;
@@ -418,19 +423,21 @@ main(int argc, char **argv)
      */
     cv_exclude_keys(clicon_cli_varonly(h)); 
 
+    /* Create top-level and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
-    /* Parse db specification as cli. 
+
+    /* Load main application yang specification either module or specific file
      * If -y <file> is given, it overrides main module */
     if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec) < 0)
+	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, &ymod) < 0)
 	    goto done;
     }
     else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
 				    clicon_yang_dir(h),
 				    clicon_yang_module_revision(h),
-				    yspec) < 0)
+				    yspec, &ymod) < 0)
 	goto done;
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
@@ -449,7 +456,8 @@ main(int argc, char **argv)
 	if (yang2cli(h, yspec, &pt, clicon_cli_genmodel_type(h)) < 0)
 	    goto done;
 
-	name = yang_main_module_name(yspec);
+	/* name of main module */
+	name = ymod->ys_argument;
 
 	len = strlen("datamodel:") + strlen(name) + 1;
 	if ((treename = malloc(len)) == NULL){

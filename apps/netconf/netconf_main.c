@@ -336,6 +336,7 @@ main(int    argc,
     struct passwd   *pw;
     struct timeval   tv = {0,}; /* timeout */
     yang_spec       *yspec = NULL;
+    yang_spec       *yspecfg = NULL; /* For config XXX clixon bug */
     char            *yang_filename = NULL;
     
     /* Create handle */
@@ -381,8 +382,11 @@ main(int    argc,
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL); 
 
+    /* Create configure yang-spec */
+    if ((yspecfg = yspec_new()) == NULL)
+	goto done;
     /* Find and read configfile */
-    if (clicon_options_main(h) < 0)
+    if (clicon_options_main(h, yspecfg) < 0)
 	return -1;
 
     /* Now rest of options */
@@ -432,20 +436,20 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
-    /* Create first yang spec */
+    /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
-
-    /* Parse yang database spec file */
+    /* Load main application yang specification either module or specific file
+     * If -y <file> is given, it overrides main module */
     if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec) < 0)
+	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, NULL) < 0)
 	    goto done;
     }
     else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
 				    clicon_yang_dir(h),
 				    clicon_yang_module_revision(h),
-				    yspec) < 0)
+				    yspec, NULL) < 0)
 	goto done;
     
      /* Load yang module library, RFC7895 */

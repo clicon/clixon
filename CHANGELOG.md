@@ -34,7 +34,7 @@
 ### API changes on existing features (you may need to change your code)
 * Netconf hello capability updated to YANG 1.1 RFC7950 Sec 5.6.4
   * Added urn:ietf:params:netconf:capability:yang-library:1.0
-  * Thanks SCadilhac for helping out, see https://github.com/clicon/clixon/issues/39
+  * Thanks @SCadilhac for helping out, see https://github.com/clicon/clixon/issues/39
 * Major rewrite of event streams
   * If you used old event callbacks API, you need to switch to the streams API
     * See clixon_stream.[ch]
@@ -53,12 +53,13 @@
   * The "module-name" was a no-op before.
   * This means that there was no difference between eg: GET /restconf/data/ietf-yang-library:modules-state and GET /restconf/data/XXXX:modules-state 
 * Generilized top-level yang parsing functions
+  * All yang modules are stored in the clicon_dbspec_yang() option.
+    * Except clixon-config module due to bug reported below
   * Clarified semantics of main yang module:
     * -y option to commands MUST specify filename
     * CLICON_YANG_MODULE_MAIN MUST specify a module
     * yang_parse() changed to take either filename or module name and revision. 
   * Removed clicon_dbspec_name[_set]().
-    * Use yang_main_module_name() instead.
   * Replace code for initializing the main yang module
     * Replace yang_spec_main() with yang_spec_parse_module() as follows:
 ```
@@ -89,6 +90,8 @@
 * Set dir /www-data with www-data as owner, see https://github.com/clicon/clixon/issues/37
 	
 ### Known issues
+* Bug: Top-level Yang symbol cannot be called "config" in any imported yang file.
+  * datastore uses "config" as reserved keyword for storing any XML whoich collides with code for detecting Yang sanity.
 * Namespace name relabeling is not supported.
   * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlfns is not supported, such as:
 ```

@@ -527,6 +527,7 @@ main(int    argc,
     char	 *tmp;
     int          logdst = CLICON_LOG_SYSLOG;
     yang_spec   *yspec = NULL;
+    yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
     char        *yang_filename = NULL;
     
     /* In the startup, logs to stderr & debug flag set later */
@@ -576,8 +577,11 @@ main(int    argc,
 	clicon_err(OE_DEMON, errno, "Setting signal");
 	goto done;
     }
+    /* Create configure yang-spec */
+    if ((yspecfg = yspec_new()) == NULL)
+	goto done;
     /* Find and read configfile */
-    if (clicon_options_main(h) < 0)
+    if (clicon_options_main(h, yspecfg) < 0)
 	goto done;
 
     /* Now rest of options, some overwrite option file */
@@ -622,18 +626,20 @@ main(int    argc,
 	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
 	    return -1;
 
-    /* Parse main yang spec */
+    /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
+    /* Load main application yang specification either module or specific file
+     * If -y <file> is given, it overrides main module */
     if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec) < 0)
+	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, NULL) < 0)
 	    goto done;
     }
     else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
 		       clicon_yang_dir(h),
 		       clicon_yang_module_revision(h),
-		       yspec) < 0)
+				    yspec, NULL) < 0)
 	goto done;
 
      /* Load yang module library, RFC7895 */
@@ -641,10 +647,10 @@ main(int    argc,
 	goto done;
     /* Add system modules */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
-	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec)< 0)
+	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
 	 goto done;
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec)< 0)
+	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
 	 goto done;
 
 

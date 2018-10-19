@@ -988,7 +988,7 @@ netconf_module_load(clicon_handle h)
 
     yspec = clicon_dbspec_yang(h);
     /* Load yang spec */
-    if (yang_spec_parse_module(h, "ietf-netconf", CLIXON_DATADIR, NULL, yspec)< 0)
+    if (yang_spec_parse_module(h, "ietf-netconf", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
 	goto done;
     if ((xc = clicon_conf_xml(h)) == NULL){
 	clicon_err(OE_CFG, ENOENT, "Clicon configuration not loaded");

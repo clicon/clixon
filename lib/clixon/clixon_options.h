@@ -81,7 +81,8 @@ enum startup_mode_t{
 /* Print registry on file. For debugging. */
 void clicon_option_dump(clicon_handle h, int dblevel);
 /* Initialize options: set defaults, read config-file, etc */
-int clicon_options_main(clicon_handle h);
+int clicon_options_main(clicon_handle h, yang_spec *yspec);
+
 /*! Check if a clicon option has a value */
 int clicon_option_exists(clicon_handle h, const char *name);
 

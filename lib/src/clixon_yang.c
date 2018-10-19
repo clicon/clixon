@@ -761,20 +761,6 @@ yang_key2str(int keyword)
     return (char*)clicon_int2str(ykmap, keyword);
 }
 
-/*! Name of main module of a specification. That is, name of first module 
- * @param[in] ysp   Yang specification
- * @retval    name  Name of first yang module
- */
-char *
-yang_main_module_name(yang_spec *ysp)
-{
-    yang_stmt *ym;
-
-    if ((ym = yang_find((yang_node*)ysp, Y_MODULE, 0)) != NULL)
-	return ym->ys_argument;
-    return NULL;
-}
-
 /*! Find top module or sub-module given a statement. Ultimate top is yang spec 
  * The routine recursively finds ancestors.
  * @param[in] ys    Any yang statement in a yang tree
@@ -2109,7 +2095,8 @@ yang_features(clicon_handle h,
  * @param[in] filename File name containing Yang specification. Overrides module
  * @param[in] module   Name of main YANG module. Or absolute file name.
  * @param[in] revision Main module revision date string or NULL
- * @param[out] ysp     Yang specification. Should have been created by caller using yspec_new
+ * @param[in,out] ysp  Yang specification. Should have been created by caller using yspec_new
+ * @param[out]   ymodp Yang module of first, topmost Yang module, if given.
  * @retval 0  Everything OK
  * @retval -1 Error encountered
  * The database symbols are inserted in alphabetical order.
@@ -2130,7 +2117,8 @@ yang_parse(clicon_handle h,
 	   const char   *module, 
 	   const char   *dir, 
 	   const char   *revision, 
-	   yang_spec    *ysp)
+	   yang_spec    *ysp,
+    	   yang_stmt   **ymodp)
 {
     int         retval = -1;
     yang_stmt  *ymod = NULL; /* Top-level yang (sub)module */
@@ -2189,7 +2177,8 @@ yang_parse(clicon_handle h,
     for (i=modnr; i<ysp->yp_len; i++)
 	if (yang_apply((yang_node*)ysp->yp_stmt[i], -1, ys_schemanode_check, NULL) < 0)
 	    goto done;
-
+    if (ymodp)
+	*ymodp = ymod;
     retval = 0;
   done:
     return retval;
@@ -2613,6 +2602,7 @@ yang_config(yang_stmt *ys)
  * @param[in]     dir       Directory where to look for modules and sub-modules
  * @param[in]     revision  Revision, or NULL
  * @param[in,out] yspec     Modules parse are added to this yangspec
+ * @param[out]    ymodp     Yang module of first, topmost Yang module, if given.
  * @retval        0         OK
  * @retval       -1         Error
  * @see yang_spec_parse_file
@@ -2622,7 +2612,8 @@ yang_spec_parse_module(clicon_handle h,
 		       char         *module,
 		       char         *dir,
 		       char         *revision,
-		       yang_spec    *yspec)
+		       yang_spec    *yspec,
+		       yang_stmt   **ymodp)
 {
     int retval = -1;
     
@@ -2643,7 +2634,7 @@ yang_spec_parse_module(clicon_handle h,
 	clicon_err(OE_YANG, EINVAL, "yang dir not set");
 	goto done;
     }
-    if (yang_parse(h, NULL, module, dir, revision, yspec) < 0)
+    if (yang_parse(h, NULL, module, dir, revision, yspec, ymodp) < 0)
 	goto done;
     retval = 0;
   done:
@@ -2655,6 +2646,7 @@ yang_spec_parse_module(clicon_handle h,
  * @param[in]     filename  Actual filename (including dir and revision)
  * @param[in]     dir       Directory for sub-modules
  * @param[in,out] yspec     Modules parse are added to this yangspec
+ * @param[out]    ymodp     Yang module of first, topmost Yang module, if given.
  * @retval        0         OK
  * @retval       -1         Error
  * @see yang_spec_parse_module for yang dir,module,revision instead of actual filename
@@ -2663,7 +2655,8 @@ int
 yang_spec_parse_file(clicon_handle h,
 		     char         *filename,
 		     char         *dir,
-		     yang_spec    *yspec)
+		     yang_spec    *yspec,
+		     yang_stmt   **ymodp)
 {
     int retval = -1;
     
@@ -2675,7 +2668,7 @@ yang_spec_parse_file(clicon_handle h,
 	clicon_err(OE_YANG, EINVAL, "yang dir not set");
 	goto done;
     }
-    if (yang_parse(h, filename, NULL, dir, NULL, yspec) < 0)
+    if (yang_parse(h, filename, NULL, dir, NULL, yspec, ymodp) < 0)
 	goto done;
     retval = 0;
   done:

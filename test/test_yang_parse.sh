@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test: XML parser tests
+# Test: YANG parser tests
 #PROG="valgrind --leak-check=full --show-leak-kinds=all ../util/clixon_util_yang"
 PROG=../util/clixon_util_yang
 

@@ -262,7 +262,7 @@ nacm_load_external(clicon_handle h)
     }
     if ((yspec = yspec_new()) == NULL)
 	goto done;
-    if (yang_parse(h, NULL, "ietf-netconf-acm", CLIXON_DATADIR, NULL, yspec) < 0)
+    if (yang_parse(h, NULL, "ietf-netconf-acm", CLIXON_DATADIR, NULL, yspec, NULL) < 0)
 	goto done;
     fd = fileno(f);
     /* Read configfile */
@@ -524,6 +524,7 @@ main(int    argc,
     char         *nacm_mode;
     int           logdst = CLICON_LOG_SYSLOG|CLICON_LOG_STDERR;
     yang_spec    *yspec = NULL;
+    yang_spec    *yspecfg = NULL; /* For config XXX clixon bug */
     char         *yang_filename = NULL;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
@@ -579,8 +580,12 @@ main(int    argc,
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL);
 
+    /* Create configure yang-spec */
+    if ((yspecfg = yspec_new()) == NULL)
+	goto done;
+
     /* Find and read configfile */
-    if (clicon_options_main(h) < 0){
+    if (clicon_options_main(h, yspecfg) < 0){
 	if (help)
 	    usage(h, argv[0]);
 	return -1;
@@ -733,19 +738,21 @@ main(int    argc,
     /* Connect to plugin to get a handle */
     if (xmldb_connect(h) < 0)
 	goto done;
+
+    /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
-    /* Load main application yang specification: either module or specific file
-     */
+    /* Load main application yang specification either module or specific file
+     * If -y <file> is given, it overrides main module */
     if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec) < 0)
+	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, NULL) < 0)
 	    goto done;
     }
     else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
-			       clicon_yang_dir(h),
-			       clicon_yang_module_revision(h),
-			       yspec) < 0)
+				    clicon_yang_dir(h),
+				    clicon_yang_module_revision(h),
+				    yspec, NULL) < 0)
 	goto done;
     
      /* Load yang module library, RFC7895 */
@@ -756,11 +763,11 @@ main(int    argc,
 	goto done;
     /* Load yang Restconf stream discovery */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
-	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec)< 0)
+	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
 	 goto done;
      /* Load yang Netconf stream discovery */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec)< 0)
+	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
 	 goto done;
     /* Set options: database dir and yangspec (could be hidden in connect?)*/
     if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)

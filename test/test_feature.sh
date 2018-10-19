@@ -93,9 +93,68 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candid
 new "netconf disabled feature"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><A>foo</A></config></edit-config></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>protocol</error-type><error-severity>error</error-severity><error-message>XML node config/A has no corresponding yang specification (Invalid XML or wrong Yang spec?'
 
-# This is difficult test since changes to the module list are frequent
+# This test has been broken up into all differetn modules instead of one large
+# reply since the modules change so often
 new "netconf schema resource, RFC 7895"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get><filter type="xpath" select="modules-state/module" xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"/></get></rpc>]]>]]>' '^<rpc-reply><data><modules-state><module><name>example</name><revision/><namespace/><feature>A</feature></module><module><name>ietf-inet-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace></module><module><name>ietf-interfaces</name><revision>2014-05-08</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace></module><module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace></module><module><name>ietf-routing</name><revision>2014-10-26</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-routing</namespace><feature>router-id</feature></module><module><name>ietf-yang-library</name><revision>2016-06-21</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace></module><module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace></module></modules-state></data></rpc-reply>]]>]]>$'
+ret=$($clixon_netconf -qf $cfg -y $fyang<<EOF 
+<rpc><get><filter type="xpath" select="modules-state/module" xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"/></get></rpc>]]>]]>
+EOF
+)
+new "netconf module A"
+expect="<module><name>example</name><revision/><namespace/><feature>A</feature></module>"
+match=`echo "$ret" | grep -GZo "$expect"`
+if [ -z "$match" ]; then
+      err "$expect" "$ret"
+fi
+
+if false ; then # clixon "config" bug
+new "netconf module clixon-config"
+expect="<module><name>clixon-config</name><revision>2018-09-30</revision><namespace/></module>"
+match=`echo "$ret" | grep -GZo "$expect"`
+if [ -z "$match" ]; then
+      err "$expect" "$ret"
+fi
+fi # false
+
+new "netconf module ietf-inet-types"
+expect="<module><name>ietf-inet-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace></module>"
+match=`echo "$ret" | grep -GZo "$expect"`
+if [ -z "$match" ]; then
+      err "$expect" "$ret"
+fi
+
+new "netconf module ietf-interfaces"
+expect="<module><name>ietf-interfaces</name><revision>2014-05-08</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace></module>"
+match=`echo "$ret" | grep -GZo "$expect"`
+if [ -z "$match" ]; then
+      err "$expect" "$ret"
+fi
+
+new "netconf module ietf-netconf"
+expect="module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace></module>"
+match=`echo "$ret" | grep -GZo "$expect"`
+if [ -z "$match" ]; then
+      err "$expect" "$ret"
+fi
+
+new "netconf module ietf-routing"
+expect="<module><name>ietf-routing</name><revision>2014-10-26</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-routing</namespace><feature>router-id</feature></module>"
+match=`echo "$ret" | grep -GZo "$expect"`
+if [ -z "$match" ]; then
+      err "$expect" "$ret"
+fi
+expect="<module><name>ietf-yang-library</name><revision>2016-06-21</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace></module>"
+match=`echo "$ret" | grep -GZo "$expect"`
+if [ -z "$match" ]; then
+      err "$expect" "$ret"
+fi
+
+new "netconf module ietf-yang_types"
+expect="<module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace></module>"
+match=`echo "$ret" | grep -GZo "$expect"`
+if [ -z "$match" ]; then
+      err "$expect" "$ret"
+fi
 
 new "Kill backend"
 # kill backend

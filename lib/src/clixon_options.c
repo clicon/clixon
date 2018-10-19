@@ -197,21 +197,26 @@ parse_configfile(clicon_handle  h,
     return retval;
 }
 
-/*! Initialize option values
+/*! Parse clixon yang file. Parse XML config file. Initialize option values
  *
  * Set default options, Read config-file, Check that all values are set.
+ * Parse clixon yang file and save in yspec.
  * Read clixon system config files
- * @param[in]  h  clicon handle
+ * @param[in]  h     clicon handle
+ * @param[in]  yspec Yang spec of clixon config file
+ * @note Due to Bug: Top-level Yang symbol cannot be called "config" in any 
+ *       imported yang file, the config module needs to be isolated from all 
+ *       other yang modules.
  */
 int
-clicon_options_main(clicon_handle h)
+clicon_options_main(clicon_handle h,
+		    yang_spec    *yspec)
 {
     int            retval = -1;
     char          *configfile;
     clicon_hash_t *copt = clicon_options(h);
     char          *suffix;
     char           xml = 0; /* Configfile is xml, otherwise legacy */
-    yang_spec     *yspec = NULL;
     cxobj         *xconfig = NULL;
 
     /*
@@ -232,9 +237,7 @@ clicon_options_main(clicon_handle h)
 	goto done;
     }
     /* Parse clixon yang spec */
-    if ((yspec = yspec_new()) == NULL)
-	goto done;
-    if (yang_parse(h, NULL, "clixon-config", CLIXON_DATADIR, NULL, yspec) < 0)
+    if (yang_parse(h, NULL, "clixon-config", CLIXON_DATADIR, NULL, yspec, NULL) < 0)
 	goto done;    
     /* Read configfile */
     if (parse_configfile(h, configfile, yspec, &xconfig) < 0)
@@ -249,10 +252,6 @@ clicon_options_main(clicon_handle h)
 	xml_child_sort = 0;
     retval = 0;
  done:
-#if 0 /* XXX yspec should be part of top-level yang but cant since it will be main module */
-	 if (yspec) 
-	yspec_free(yspec);
-#endif
     return retval;
 }
 
