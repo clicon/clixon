@@ -39,6 +39,6 @@
 /*
  * Prototypes
  */
-int api_stream(clicon_handle h, FCGX_Request *r);
+int api_stream(clicon_handle h, FCGX_Request *r, char *streampath);
 
 #endif /* _RESTCONF_STREAM_H_ */

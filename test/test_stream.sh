@@ -32,6 +32,9 @@ cat <<EOF > $cfg
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
   <CLICON_STREAM_DISCOVERY_RFC5277>true</CLICON_STREAM_DISCOVERY_RFC5277>
   <CLICON_STREAM_DISCOVERY_RFC8040>true</CLICON_STREAM_DISCOVERY_RFC8040>
+  <CLICON_STREAM_PATH>streams</CLICON_STREAM_PATH>
+  <CLICON_STREAM_URL>https://localhost</CLICON_STREAM_URL>
+  <CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB>
 </config>
 EOF
 
@@ -109,7 +112,33 @@ expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring
 new "restconf subscribe RFC8040 Sec 6.3, get location"
 expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location" 0 '{"location": "https://localhost/streams/EXAMPLE"}'
 
+# Restconf stream subscription RFC8040 Sec 6.3 - Native solution
+new "restconf monitor event nonexist stream"
+expectwait 'curl -s -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" http://localhost/streams/NOTEXIST' 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-tag>invalid-value</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>' 2
+
+# Need manual testing
+new "restconf monitor streams native NEEDS manual testing"
 if false; then
+    # url -H "Accept: text/event-stream" http://localhost/streams/EXAMPLE
+    # Expect:
+    # data: <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-10-21T19:22:11.381827</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>
+    #
+    # data: <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-10-21T19:22:16.387228</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>
+
+new "restconf monitor event ok stream"
+expectwait 'curl -s -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" http://localhost/streams/EXAMPLE' 0 'foo' 2
+fi
+# Restconf stream subscription RFC8040 Sec 6.3 - Nginx nchan solution
+# Need manual testing
+new "restconf monitor streams nchan NEEDS manual testing"
+if false; then
+    # url -H "Accept: text/event-stream" http://localhost/streams/EXAMPLE
+    # Expect:
+    echo foo
+fi
+# Netconf stream subscription
+# Switch here since subscriptions takes time
+if true; then
 new "netconf EXAMPLE subscription"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
 
@@ -118,10 +147,10 @@ expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stre
 
 new "netconf EXAMPLE subscription with filter classifier"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event[event-class='fault']\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
-fi
 
-#new "restconf monitor event stream RFC8040 Sec 6.3"
-#expectfn "curl  -H \"Accept: text/event-stream\" -s -X GET http://localhost/streams/EXAMPLE" 0 '<notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-10-14T14:17:50.875370</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>'
+new "netconf NONEXIST subscription"
+expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>NONEXIST</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>No such stream</error-message></rpc-error></rpc-reply>]]>]]>$' 5
+fi
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

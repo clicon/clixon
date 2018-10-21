@@ -529,6 +529,7 @@ main(int    argc,
     yang_spec   *yspec = NULL;
     yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
     char        *yang_filename = NULL;
+    char        *stream_path;
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -561,7 +562,6 @@ main(int    argc,
 		goto done;
 	   break;
 	} /* switch getopt */
-
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
@@ -583,7 +583,7 @@ main(int    argc,
     /* Find and read configfile */
     if (clicon_options_main(h, yspecfg) < 0)
 	goto done;
-
+    stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
     /* Now rest of options, some overwrite option file */
     optind = 1;
     opterr = 0;
@@ -652,10 +652,6 @@ main(int    argc,
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
 	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
 	 goto done;
-
-
-     if (stream_register(h, "NETCONF", "default NETCONF event stream") < 0)
-	goto done;
     /* Call start function in all plugins before we go interactive 
        Pass all args after the standard options to plugin_start
      */
@@ -692,8 +688,8 @@ main(int    argc,
 	    clicon_debug(1, "path: %s", path);
 	    if (strncmp(path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0)
 		api_restconf(h, r); /* This is the function */
-	    else if (strncmp(path, "/" RESTCONF_STREAM, strlen("/" RESTCONF_STREAM)) == 0) {
-		api_stream(h, r); 
+	    else if (strncmp(path+1, stream_path, strlen(stream_path)) == 0) {
+		api_stream(h, r, stream_path); 
 	    }
 	    else if (strncmp(path, RESTCONF_WELL_KNOWN, strlen(RESTCONF_WELL_KNOWN)) == 0) {
 		api_well_known(h, r); /*  */

@@ -151,8 +151,14 @@ clicon_rpc_msg(clicon_handle      h,
  * Want to go over to use netconf directly between client and server,...
  * @param[in]  h       clicon handle
  * @param[in]  xmlstr  XML netconf tree as string
- * @param[out] xret    Return XML netconf tree, error or OK
+ * @param[out] xret    Return XML netconf tree, error or OK (need to be freed)
  * @param[out] sp      Socket pointer for notification, otherwise NULL
+ * @code
+ *   cxobj *xret = NULL;
+ *   if (clicon_rpc_netconf(h, "<rpc></rpc>", &xret, NULL) < 0)
+ *	err;
+ *   xml_free(xret);
+ * @endcode
  * @see clicon_rpc_netconf_xml xml as tree instead of string
  */
 int
@@ -181,6 +187,14 @@ clicon_rpc_netconf(clicon_handle  h,
  * @param[in]  xml     XML netconf tree 
  * @param[out] xret    Return XML netconf tree, error or OK
  * @param[out] sp      Socket pointer for notification, otherwise NULL
+ * @code
+ *   cxobj *xret = NULL;
+ *   int    s; 
+ *   if (clicon_rpc_netconf_xml(h, x, &xret, &s) < 0)
+ *	err;
+ *   xml_free(xret);
+ * @endcode
+
  * @see clicon_rpc_netconf xml as string instead of tree
  */
 int

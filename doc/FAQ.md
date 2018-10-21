@@ -180,20 +180,25 @@ Example:
 
 ## How do I use notifications?
 
-The example has a prebuilt notification stream called "NETCONF" that triggers every 5s.
-You enable the notification either via the cli:
+The example has a prebuilt notification stream called "EXAMPLE" that triggers every 5s.
+You enable the notification via the CLI:
 ```
 cli> notify 
 cli>
 ```
-or via netconf:
+or via NETCONF:
 ```
 clixon_netconf -qf /usr/local/etc/example.xml 
-<rpc><create-subscription><stream>NETCONF</stream></create-subscription></rpc>]]>]]>
+<rpc><create-subscription><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
 <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-09-30T12:44:59.657276</eventTime><event xmlns="http://example.com/event/1.0"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>]]>]]>
 ...
 ```
+or via restconf:
+```
+   curl -H "Accept: text/event-stream" -s -X GET http://localhost/streams/EXAMPLE
+```
+Consult (../apps/restconf/README.md) on more information on how to setup a reverse proxy for restconf streams. It is also possible to configure a pub/sub system such as (Nginx Nchan)[https://nchan.io]. 
 
 ## How should I start the backend daemon?
 

@@ -140,11 +140,11 @@ run with NGINX.
 The implementatation is based on [RFC 8040: RESTCONF Protocol](https://tools.ietf.org/html/rfc8040).
 The following features are supported:
 - OPTIONS, HEAD, GET, POST, PUT, DELETE
+- stream notifications
+
 The following are not implemented
 - PATCH
 - query parameters (section 4.9)
-- notifications (sec 6)
-- schema resource
 
 See [more detailed instructions](apps/restconf/README.md).
 
@@ -182,7 +182,6 @@ There is an ongoing effort to implement authorization for Clixon
 according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341), at
 least a subset of the functionality. See more information here:
 [NACM](README_NACM.md).
-
 
 Runtime
 =======

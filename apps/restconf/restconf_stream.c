@@ -35,6 +35,26 @@
   See RFC 8040  RESTCONF Protocol
   Sections 3.8, 6, 9.3
 
+  RFC8040:
+   A RESTCONF server MAY send the "retry" field, and if it does, RESTCONF
+   clients SHOULD use it.  A RESTCONF server SHOULD NOT send the "event" 
+   or "id" fields, as there are no meaningful values. RESTCONF
+   servers that do not send the "id" field also do not need to support
+   the HTTP header field "Last-Event-ID"
+
+   The RESTCONF client can then use this URL value to start monitoring
+   the event stream:
+
+      GET /streams/NETCONF HTTP/1.1
+      Host: example.com
+      Accept: text/event-stream
+      Cache-Control: no-cache
+      Connection: keep-alive
+
+   The server MAY support the "start-time", "stop-time", and "filter"
+   query parameters, defined in Section 4.8.  Refer to Appendix B.3.6
+   for filter parameter examples.
+
  */
 
 #ifdef HAVE_CONFIG_H
@@ -62,31 +82,136 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
+#include <fcgi_stdio.h> /* Need to be after clixon_xml.h due to attribute format */
 
+#include "restconf_lib.h"
+#include "restconf_stream.h"
+
+/*! Callback when stream notifications arrive from backend
+ */
 static int
-restconf_stream(clicon_handle   h,
-		FCGX_Request   *r,
-		event_stream_t *es)
+restconf_stream_cb(int   s, 
+		   void *arg)
 {
-    int retval = -1;
-
+    int                retval = -1;
+    FCGX_Request      *r = (FCGX_Request *)arg;
+    int                eof;
+    struct clicon_msg *reply = NULL;
+    cxobj             *xtop = NULL; /* top xml */
+    cxobj             *xn;        /* notification xml */
+    cbuf              *cb;
+    int                pretty = 0; /* XXX should be via arg */
+    
     clicon_debug(1, "%s", __FUNCTION__);
+    /* get msg (this is the reason this function is called) */
+    if (clicon_msg_rcv(s, &reply, &eof) < 0){
+	clicon_debug(1, "%s msg_rcv error", __FUNCTION__);
+	goto done;
+    }
+    clicon_debug(1, "%s msg: %s", __FUNCTION__, reply->op_body);
+    /* handle close from remote end: this will exit the client */
+    if (eof){
+	clicon_debug(1, "%s eof", __FUNCTION__);
+	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
+	close(s);
+	errno = ESHUTDOWN;
+	event_unreg_fd(s, restconf_stream_cb);
+	FCGX_FPrintF(r->out, "SHUTDOWN\r\n");
+	FCGX_FPrintF(r->out, "\r\n");
+	FCGX_FFlush(r->out);
+	clicon_exit_set(); 
+	goto done;
+    }
+    if (clicon_msg_decode(reply, &xtop) < 0) 
+	goto done;
+    /* create event */
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");
+	goto done;
+    }
+    if ((xn = xpath_first(xtop, "notification")) == NULL)
+	goto ok;
+#ifdef notused
+    xt = xpath_first(xn, "eventTime");
+    if ((xe = xpath_first(xn, "event")) == NULL) /* event can depend on yang? */
+	goto ok;
 
+    if (xt)
+	FCGX_FPrintF(r->out, "M#id: %s\r\n", xml_body(xt));
+    else{ /* XXX */
+	gettimeofday(&tv, NULL);
+	FCGX_FPrintF(r->out, "M#id: %02d:0\r\n", tv.tv_sec);
+    }
+#endif
+    if (clicon_xml2cbuf(cb, xn, 0, pretty) < 0)
+	goto done;
+    FCGX_FPrintF(r->out, "data: %s\r\n", cbuf_get(cb));
+    FCGX_FPrintF(r->out, "\r\n");
+    FCGX_FFlush(r->out);
+
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval: %d", __FUNCTION__, retval);
+    if (xtop != NULL)
+	xml_free(xtop);
+    if (reply)
+	free(reply);
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
+/*! Send subsctription to backend
+ * @param[in] h    Clicon handle
+ * @param[in] r    Fastcgi request handle
+ * @param[in] name Stream name
+ * @param[out] sp  Socket -1 if not set
+ */
+static int
+restconf_stream(clicon_handle h,
+		FCGX_Request *r,
+		char         *name,
+		int           pretty,
+		int           use_xml,
+		int          *sp)
+{
+    int    retval = -1;
+    cxobj *xret = NULL;
+    cxobj *xe;
+    cbuf  *cb = NULL;
+    int    s; /* socket */
+
+    *sp = -1;
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "<rpc><create-subscription><stream>%s</stream></create-subscription></rpc>]]>]]>", name);
+    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, &s) < 0)
+	goto done;
+    if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
+	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    goto done;
+	goto ok;
+    }
+    /* Setting up stream */
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/event-stream\r\n");
     FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
     FCGX_FPrintF(r->out, "Connection: keep-alive\r\n");
     FCGX_FPrintF(r->out, "X-Accel-Buffering: no\r\n");
     FCGX_FPrintF(r->out, "\r\n");
-    FCGX_FPrintF(r->out, "Here is output\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
     FCGX_FFlush(r->out);
-    sync();
-    sleep(1);
-    FCGX_FPrintF(r->out, "Here is output 2\r\n");
+    *sp = s;
+ ok:
     retval = 0;
-    // done:
+ done:
+    if (xret)
+	xml_free(xret);
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
@@ -94,12 +219,33 @@ restconf_stream(clicon_handle   h,
 #include "restconf_lib.h"
 #include "restconf_stream.h"
 
+int
+stream_timeout(int   s,
+	       void *arg)
+{
+    struct timeval t;
+    struct timeval t1;
+    FCGX_Request *r = (FCGX_Request *)arg;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (FCGX_GetError(r->out) != 0) /* break loop */
+	clicon_exit_set();
+    else{
+	gettimeofday(&t, NULL);
+	t1.tv_sec = 1; t1.tv_usec = 0;
+	timeradd(&t, &t1, &t);
+	event_reg_timeout(t, stream_timeout, arg, "Stream timeout");
+    }
+    return 0;
+} 
+
 /*! Process a FastCGI request
  * @param[in]  r        Fastcgi request handle
  */
 int
 api_stream(clicon_handle h,
-	   FCGX_Request *r)
+	   FCGX_Request *r,
+	   char         *streampath)
 {
     int    retval = -1;
     char  *path;
@@ -113,28 +259,18 @@ api_stream(clicon_handle h,
     cbuf  *cb = NULL;
     char  *data;
     int    authenticated = 0;
-    char  *media_accept;
-    char  *media_content_type;
     int    pretty;
-    int    parse_xml = 0; /* By default expect and parse JSON */
-    int    use_xml = 0;   /* By default use JSON */
+    int    use_xml = 1; /* default */
     cbuf  *cbret = NULL;
     cxobj *xret = NULL;
     cxobj *xerr;
-    event_stream_t *es;
+    int    s=-1;
 
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("REQUEST_URI", r->envp);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    /* get xml/json in put and output */
-    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
-    if (media_accept && strcmp(media_accept, "application/yang-data+xml")==0)
-	use_xml++;
-    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
-    if (media_content_type &&
-	strcmp(media_content_type, "application/yang-data+xml")==0)
-	parse_xml++;
+    test(r, 1);
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
     /* Sanity check of path. Should be /stream/<name> */
@@ -146,11 +282,11 @@ api_stream(clicon_handle h,
 	retval = notfound(r);
 	goto done;
     }
-    if (strcmp(pvec[1], RESTCONF_STREAM)){
+    if (strcmp(pvec[1], streampath)){
 	retval = notfound(r);
 	goto done;
     }
-    test(r, 1);
+
     if ((method = pvec[2]) == NULL){
 	retval = notfound(r);
 	goto done;
@@ -158,6 +294,7 @@ api_stream(clicon_handle h,
     clicon_debug(1, "%s: method=%s", __FUNCTION__, method);
     if (str2cvec(query, '&', '=', &qvec) < 0)
 	goto done;
+
     if (str2cvec(path, '/', '=', &pcvec) < 0) /* rest url eg /album=ricky/foo */
 	goto done;
     /* data */
@@ -167,7 +304,6 @@ api_stream(clicon_handle h,
     clicon_debug(1, "%s DATA=%s", __FUNCTION__, data);
     if (str2cvec(data, '&', '=', &dvec) < 0)
 	goto done;
-
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * See RFC 8040 section 2.5
      */
@@ -191,12 +327,22 @@ api_stream(clicon_handle h,
 	goto ok;
     }
     clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
-    if ((es = stream_find(h, method)) == NULL){
-	retval = notfound(r);
+    if (restconf_stream(h, r, method, pretty, use_xml, &s) < 0)
 	goto done;
+    if (s != -1){
+	/* Listen to backend socket */
+	if (event_reg_fd(s, 
+			 restconf_stream_cb, 
+			 (void*)r,
+			 "stream socket") < 0)
+	    goto done;
+	/* Poll upstream errors */
+	stream_timeout(0, (void*)r);
+	/* Start loop */
+	event_loop();
+	event_unreg_fd(s, restconf_stream_cb);
+	clicon_exit_reset();
     }
-    if (restconf_stream(h, r, es) < 0)
-	goto done;
  ok:
     retval = 0;
  done:

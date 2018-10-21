@@ -76,10 +76,10 @@ Send restconf command
 <rpc><validate><source><candidate/></source></validate></rpc>]]>]]>
 ```
 
-## Creating notification
+## Streams
 
-The example has an example notification triggering every 10s. To start a notification 
-stream in the session, create a subscription:
+The example has an EXAMPLE stream notification triggering every 5s. To start a notification 
+stream in the session using netconf, create a subscription:
 ```
 <rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
@@ -94,6 +94,8 @@ cli> Routing notification
 Routing notification
 ...
 ```
+
+Restconf support is also supported, see [../apps/restconf/README.md].
 
 ## Initializing a plugin
 

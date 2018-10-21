@@ -176,24 +176,24 @@ expectwait(){
   input=$2
   expect=$3
   wait=$4
-  
+
 # Do while read stuff
   echo timeout > /tmp/flag
   ret=""
   sleep $wait |  cat <(echo $input) -| $cmd | while [ 1 ] ; do
-    read r
+    read -t 20 r
 #    echo "r:$r"
     ret="$ret$r"
     match=$(echo "$ret" | grep -Eo "$expect");
     if [ -z "$match" ]; then
 	echo error > /tmp/flag
-	err $expect "$ret"
+	err "$expect" "$ret"
     else
 	echo ok > /tmp/flag # only this is OK
 	break;
     fi
   done
-  cat /tmp/flag
+#  cat /tmp/flag
   if [ $(cat /tmp/flag) != "ok" ]; then
       cat /tmp/flag
       exit

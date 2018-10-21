@@ -149,6 +149,7 @@ stream_get_xml(clicon_handle h,
 {
     event_stream_t *es = NULL;
     char           *url_prefix;
+    char           *stream_path;
 
     cprintf(cb, "<streams>");
     for (es=clicon_stream(h); es; es=es->es_next){
@@ -160,9 +161,10 @@ stream_get_xml(clicon_handle h,
 	if (access){
 	    cprintf(cb, "<access>");
 	    cprintf(cb, "<encoding>xml</encoding>");
-	    url_prefix = clicon_option_str(h, "CLICON_STREAM_URL_PREFIX");
-	    cprintf(cb, "<location>%s/%s</location>", 
-		    url_prefix, es->es_name);
+	    url_prefix = clicon_option_str(h, "CLICON_STREAM_URL");
+	    stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
+	    cprintf(cb, "<location>%s/%s/%s</location>", 
+		    url_prefix, stream_path, es->es_name);
 	    cprintf(cb, "</access>");
 	}
 	cprintf(cb, "</stream>");
@@ -190,8 +192,7 @@ stream_del()
  * @param[in]  fn     Callback when event occurs
  * @param[in]  arg    Argument to use with callback. Also handle when deleting
  * @retval     0      OK
- * @retval     -1     Error
- * XXX: from subscription_add and client_subscription_add
+ * @retval     -1     Error, ie no such stream 
  */
 int
 stream_cb_add(clicon_handle     h,
@@ -502,8 +503,8 @@ stream_publish_cb(clicon_handle h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if ((pub_prefix = clicon_option_str(h, "CLICON_STREAM_PUB_PREFIX")) == NULL){
-	clicon_err(OE_CFG, ENOENT, "CLICON_STREAM_PUB_PREFIX not defined");
+    if ((pub_prefix = clicon_option_str(h, "CLICON_STREAM_PUB")) == NULL){
+	clicon_err(OE_CFG, ENOENT, "CLICON_STREAM_PUB not defined");
 	goto done;
     }
 

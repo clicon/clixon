@@ -221,6 +221,26 @@ notfound(FCGX_Request *r)
     return 0;
 }
 
+/*! HTTP error 406 Not acceptable
+ * @param[in]  r        Fastcgi request handle
+ */
+int
+notacceptable(FCGX_Request *r)
+{
+    char *path;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    path = FCGX_GetParam("DOCUMENT_URI", r->envp);
+    FCGX_FPrintF(r->out, "Status: 406\r\n"); /* 406 not acceptible */
+
+    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(r->out, "<h1>Not Acceptable</h1>\n");
+    FCGX_FPrintF(r->out, "Not Acceptable\n");
+    FCGX_FPrintF(r->out, "The target resource does not have a current representation that would be acceptable to the user agent.\n",
+		 path);
+    return 0;
+}
+
 /*! HTTP error 409
  * @param[in]  r        Fastcgi request handle
  */

@@ -850,6 +850,11 @@ from_client_create_subscription(clicon_handle        h,
 		goto done;
 	}
     }
+    if ((stream_find(h, stream)) == NULL){
+	if (netconf_invalid_value(cbret, "application", "No such stream") < 0)
+	    goto done;
+	goto ok;
+    }
     if (stream_cb_add(h, stream, selector, ce_event_cb, (void*)ce) < 0)
 	goto done;
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");

@@ -22,14 +22,9 @@ server {
      fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
      include fastcgi_params;
   }
-  location /stream { # for restconf notifications
-     fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-     include fastcgi_params;
-     proxy_http_version 1.1;
-     proxy_set_header Connection "";
-  }
 }
 ```
+
 Start nginx daemon
 ```
 sudo /etc/init.d nginx start
@@ -73,12 +68,77 @@ olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=et
 
 curl -sX POST -d '{"interfaces":{"interface":{"name":"eth1","type":"eth","enabled":"true"}}}' http://localhost/restconf/data
 ```
-### Nginx Nchan for streams
 
-Restconf notification event streams needs a server-side push
-package. Clixon has used Nchan (nchan.io) for this
+### Event streams
 
-Download and install nchan, see nchan.io, Install section.
+Clixon have two experimental restconf event stream implementations following
+RFC8040 Section 6 using SSE.  One native and one using Nginx
+nchan. The two variants to subscribe to the stream is described in the
+next section.
+
+The example [../../example/README.md] creates and EXAMPLE stream.
+
+Set the Clixon configuration options if they differ from default values - if they are OK you do not need to modify them:
+```
+<CLICON_STREAM_PATH>streams</CLICON_STREAM_PATH>
+<CLICON_STREAM_URL>https://example.com</CLICON_STREAM_URL>
+<CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB>
+```
+where
+- https://example.com/streams is the public fronting subscription base URL. A specific stream NAME can be accessed as https://example.com/streams/NAME
+- http://localhost/pub is the local internal base publish stream.
+
+You access the streams using curl, but they differ slightly in behaviour as described in the following two sections.
+
+### Native event streams 
+
+Add the following to extend the nginx configuration file with the following statements:
+```
+	location /streams {
+	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+	    include fastcgi_params;
+ 	    proxy_http_version 1.1;
+	    proxy_set_header Connection "";
+        }
+```
+
+You access a native stream as follos:
+```
+   curl -H "Accept: text/event-stream" -s -X GET http://localhost/streams/EXAMPLE
+   curl -H "Accept: text/event-stream" -s -X GET http://localhost/streams/EXAMPLE?start-time=2014-10-25T10%3A02%3A00Z&stop-time=2014-10-25T12%3A31%3A00Z
+```
+where the first command retrieves only new notifications, and the second receives a range of messages.
+
+### Nginx Nchan streams
+
+Nginx uses pub/sub channels and can be configured in a variety of
+ways. The following uses a simple variant with one generic subscription
+channel (streams) and one publication channel (pub). 
+
+Configure clixon with `--enable-publish` which enables curl code for publishing streams to nchan.
+
+Download and install nchan, see (https://nchan.io/#install).
+
+Add the following to extend the nginx configuration file with the following statements:
+```
+        location ~ /streams/(\w+)$ {
+            nchan_subscriber;
+            nchan_channel_id $1; #first capture of the location match
+        }
+        location ~ /pub/(\w+)$ {
+            nchan_publisher;
+            nchan_channel_id $1; #first capture of the location match
+        }        
+```
+
+Access the event stream EXAMPLE using curl:
+```
+   curl -H "Accept: text/event-stream" -s -X GET http://localhost/streams/EXAMPLE
+   curl -H "Accept: text/event-stream" -H "Last-Event-ID: 1539961709:0" -s -X GET http://localhost/streams/EXAMPLE
+```
+where the first command retrieves the whole stream history, and the second only retreives the most recent messages given by the ID.
+
+See (https://nchan.io/#eventsource) on more info on how to access an SSE sub endpoint.
 
 ### Debugging
 

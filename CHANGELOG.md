@@ -21,17 +21,21 @@
   * Option CLICON_MODULE_SET_ID is set and changed when modules change. 
   * Notification not supported
 * Yang 1.1 notification support (RFC 7950: Sec 7.16)
-* Major rewrite of event streams
+* Restconf stream notification support - two variants.
+  * Both a "native" stream support and one using nginx/nchan pub/sub.
+  * See (apps/restconf/README.md) for details.
+* New event streams implementation
   * See clicon_stream.[ch] for details
   * Added stream discovery according to RFC 5277 for netconf and RFC 8040 for restconf
     * Enabled by CLICON_STREAM_DISCOVERY_RFC5277 and CLICON_STREAM_DISCOVERY_RFC8040.
-  * Set access/subscribe base URL with: CLICON_STREAM_URL_PREFIX (default https://localhost/streams).
+  * Set access/subscribe base URL with: CLICON_STREAM_URL (default "https://localhost") and CLICON_STREAM_PATH (default "streams")
     * Example: new stream "foo" will get access URL: https://localhost/streams/foo
   * Optional pub/sub support enabled by ./configure --enable-publish
-    * Set publish URL base with: CLICON_STREAM_PUB_PREFIX (default http://localhost/pub)
+    * Set publish URL base with: CLICON_STREAM_PUB (default http://localhost/pub)
     * Example: new stream "foo" will get pub URL: https://localhost/pub/foo
 
 ### API changes on existing features (you may need to change your code)
+* clixon-config YAML file has new revision: 2018-10-21.
 * Netconf hello capability updated to YANG 1.1 RFC7950 Sec 5.6.4
   * Added urn:ietf:params:netconf:capability:yang-library:1.0
   * Thanks @SCadilhac for helping out, see https://github.com/clicon/clixon/issues/39

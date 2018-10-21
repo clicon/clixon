@@ -75,6 +75,7 @@ struct event_data{
 
 /*
  * Internal variables
+ * XXX consider use handle variables instead of global
  */
 static struct event_data *ee = NULL;
 static struct event_data *ee_timers = NULL;
@@ -86,13 +87,22 @@ static int _clicon_exit = 0;
 
 /*! For signal handlers: instead of doing exit, set a global variable to exit
  * Status is then checked in event_loop.
- * Note it maybe would be better to do use on a handle basis, bit a signal
+ * Note it maybe would be better to do use on a handle basis, but a signal
  * handler is global
  */
 int
 clicon_exit_set(void)
 {
     _clicon_exit++;
+    return 0;
+}
+
+/*! Set exit to 0
+ */
+int
+clicon_exit_reset(void)
+{
+    _clicon_exit = 0;
     return 0;
 }
 
@@ -274,6 +284,8 @@ event_poll(int fd)
 /*! Dispatch file descriptor events (and timeouts) by invoking callbacks.
  * There is an issue with fairness that timeouts may take over all events
  * One could try to poll the file descriptors after a timeout?
+ * @retval  0  OK
+ * @retval -1  Error: eg select, callback, timer, 
  */
 int
 event_loop(void)

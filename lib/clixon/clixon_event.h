@@ -43,6 +43,8 @@
  */
 int clicon_exit_set(void);
 
+int clicon_exit_reset(void);
+
 int clicon_exit_get(void);
 
 int event_reg_fd(int fd, int (*fn)(int, void*), void *arg, char *str);

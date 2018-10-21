@@ -728,6 +728,14 @@ netconf_discard_changes(clicon_handle h,
          <severity>major</severity>
       </event>
    </notification>
+ * @see rfc5277:
+ *  An event notification is sent to the client who initiated a
+ *  <create-subscription> command asynchronously when an event of
+ *  interest...
+ *  Parameters: eventTime type dateTime and compliant to [RFC3339]
+ *  Also contains notification-specific tagged content, if any.  With
+ *  the exception of <eventTime>, the content of the notification is
+ *  beyond the scope of this document.
  */
 static int
 netconf_notification_cb(int   s, 
@@ -822,6 +830,8 @@ netconf_create_subscription(clicon_handle h,
     }
     if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, &s) < 0)
 	goto done;
+    if (xpath_first(*xret, "rpc-reply/rpc-error") != NULL)
+	goto ok;
     if (event_reg_fd(s, 
 		     netconf_notification_cb, 
 		     NULL,

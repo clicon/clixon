@@ -40,7 +40,6 @@
  * Constants
  */
 #define RESTCONF_API       "restconf"
-#define RESTCONF_STREAM    "stream"
 
 /*
  * Prototypes (also in clixon_restconf.h)
@@ -52,6 +51,7 @@ int badrequest(FCGX_Request *r);
 int unauthorized(FCGX_Request *r);
 int forbidden(FCGX_Request *r);
 int notfound(FCGX_Request *r);
+int notacceptable(FCGX_Request *r);
 int conflict(FCGX_Request *r);
 int internal_server_error(FCGX_Request *r);
 int notimplemented(FCGX_Request *r);
