@@ -91,16 +91,18 @@ process_incoming_packet(clicon_handle h,
     cxobj *xret = NULL; /* Return (out) */
     cxobj *xrpc;
     cxobj *xc;
+    yang_spec *yspec;
 
     clicon_debug(1, "RECV");
     clicon_debug(2, "%s: RCV: \"%s\"", __FUNCTION__, cbuf_get(cb));
+    yspec = clicon_dbspec_yang(h);
     if ((str0 = strdup(cbuf_get(cb))) == NULL){
 	clicon_log(LOG_ERR, "%s: strdup: %s", __FUNCTION__, strerror(errno));
 	return -1;
     }
     str = str0;
     /* Parse incoming XML message */
-    if (xml_parse_string(str, NULL, &xreq) < 0){ 
+    if (xml_parse_string(str, yspec, &xreq) < 0){ 
 	if ((cbret = cbuf_new()) == NULL){
 	    if (netconf_operation_failed(cbret, "rpc", "internal error")< 0)
 		goto done;
