@@ -79,10 +79,11 @@ int clixon_xml_parsewrap(void)
 %s AMPERSAND
 %s CDATA
 %s CMNT
-%s STR
 %s TEXTDECL
 %s STRDQ
 %s STRSQ
+%s STRSQV
+%s STRDQV
 
 %%
 <START>[0-9A-Za-z_\-]+ { clixon_xml_parselval.string = strdup(yytext);
@@ -99,7 +100,8 @@ int clixon_xml_parsewrap(void)
 <START>\<             return *clixon_xml_parsetext;
 <START>\>             { BEGIN(STATEA); return *clixon_xml_parsetext; }
 
-<START>\"             { BEGIN(STR); return *clixon_xml_parsetext; }
+<START>\"             { BEGIN(STRDQ); return *clixon_xml_parsetext; }
+<START>\'             { BEGIN(STRSQ); return *clixon_xml_parsetext; }
 <START>.              { clixon_xml_parselval.string = yytext; return CHARDATA; /*XXX:optimize*/ }
 
 <STATEA>"</"          { BEGIN(START); return BSLASH; }
@@ -112,11 +114,11 @@ int clixon_xml_parsewrap(void)
 <STATEA>.             { clixon_xml_parselval.string = yytext;        return CHARDATA; /*XXX:optimize*/}
 
 	/* @see xml_chardata_encode */
-<AMPERSAND>"amp; "     {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "&"; return CHARDATA;}
-<AMPERSAND>"lt; "      {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "<"; return CHARDATA;}
-<AMPERSAND>"gt; "      {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = ">"; return CHARDATA;}
-<AMPERSAND>"apos; "    {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "'"; return CHARDATA;}
-<AMPERSAND>"quot; "   {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "\""; return CHARDATA;}
+<AMPERSAND>"amp;"     {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "&"; return CHARDATA;}
+<AMPERSAND>"lt;"      {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "<"; return CHARDATA;}
+<AMPERSAND>"gt;"      {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = ">"; return CHARDATA;}
+<AMPERSAND>"apos;"    {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "'"; return CHARDATA;}
+<AMPERSAND>"quot;"    {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "\""; return CHARDATA;}
 
 <CDATA>.              { clixon_xml_parselval.string = yytext; return CHARDATA;}
 <CDATA>\n            { clixon_xml_parselval.string = yytext;_YA->ya_linenum++; return (CHARDATA);}
@@ -129,19 +131,22 @@ int clixon_xml_parsewrap(void)
 <TEXTDECL>version        return VER; 
 <TEXTDECL>"="            return *clixon_xml_parsetext;
 <TEXTDECL>"?>"           { BEGIN(START);return ETEXT;}
-<TEXTDECL>\"             { BEGIN(STRDQ); return *clixon_xml_parsetext; }
-<TEXTDECL>\'             { BEGIN(STRSQ); return *clixon_xml_parsetext; }
+<TEXTDECL>\"             { BEGIN(STRDQV); return *clixon_xml_parsetext; }
+<TEXTDECL>\'             { BEGIN(STRSQV); return *clixon_xml_parsetext; }
 
-<STR>[^\"]+           { clixon_xml_parselval.string = strdup(yytext); return CHARDATA; }
-<STR>\"               { BEGIN(START); return *clixon_xml_parsetext; }
+<STRDQ>[^\"]+           { clixon_xml_parselval.string = strdup(yytext); return CHARDATA; }
+<STRDQ>\"               { BEGIN(START); return *clixon_xml_parsetext; }
 
-<STRDQ>1\.[0-9]+       { clixon_xml_parselval.string = strdup(yytext);  return CHARDATA; }
-<STRDQ>[^\"]+          { clixon_xml_parselval.string = strdup(yytext);  return CHARDATA; }
-<STRDQ>\"              { BEGIN(TEXTDECL); return *clixon_xml_parsetext; }
+<STRSQ>[^\']+           { clixon_xml_parselval.string = strdup(yytext); return CHARDATA; }
+<STRSQ>\'               { BEGIN(START); return *clixon_xml_parsetext; }
 
-<STRSQ>1\.[0-9]+       { clixon_xml_parselval.string = strdup(yytext);   return CHARDATA; }
-<STRSQ>[^\']+          { clixon_xml_parselval.string = strdup(yytext);   return CHARDATA; }
-<STRSQ>\'              { BEGIN(TEXTDECL); return *clixon_xml_parsetext; }
+<STRDQV>1\.[0-9]+       { clixon_xml_parselval.string = strdup(yytext);  return CHARDATA; }
+<STRDQV>[^\"]+          { clixon_xml_parselval.string = strdup(yytext);  return CHARDATA; }
+<STRDQV>\"              { BEGIN(TEXTDECL); return *clixon_xml_parsetext; }
+
+<STRSQV>1\.[0-9]+       { clixon_xml_parselval.string = strdup(yytext);   return CHARDATA; }
+<STRSQV>[^\']+          { clixon_xml_parselval.string = strdup(yytext);   return CHARDATA; }
+<STRSQV>\'              { BEGIN(TEXTDECL); return *clixon_xml_parsetext; }
 
 %%
 

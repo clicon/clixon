@@ -400,6 +400,7 @@ attr        : NAME '=' attvalue          { if (xml_parse_attr(_YA, NULL, $1, $3)
             ;
 
 attvalue    : '\"' CHARDATA '\"'   { $$=$2; /* $2 must be consumed */}
+            | '\'' CHARDATA '\''   { $$=$2; /* $2 must be consumed */}
             | '\"'  '\"'       { $$=strdup(""); /* $2 must be consumed */}
             ;
 
