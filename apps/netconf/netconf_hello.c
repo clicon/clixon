@@ -163,8 +163,8 @@ netconf_create_hello(clicon_handle h,
     add_preamble(cb);
     cprintf(cb, "<hello xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">");
     cprintf(cb, "<capabilities>");
-        cprintf(cb, "<capability>urn:ietf:params:netconf:base:1.1</capability>");
-    if (xml_chardata_encode(&encstr, "urn:ietf:params:netconf:capability:yang-library:1.0?revision=\"%s\"&module-set-id=%s",
+        cprintf(cb, "<capability>urn:ietf:params:netconf:base:1.0</capability>");
+    if (xml_chardata_encode(&encstr, "urn:ietf:params:netconf:capability:yang-library:1.0?revision=%s&module-set-id=%s",
 			    ietf_yang_library_revision,
 			    module_set_id) < 0)
 	goto done;
@@ -174,6 +174,7 @@ netconf_create_hello(clicon_handle h,
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:startup:1.0</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:notification:1.0</capability>");
+    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:writable-running:1.0</capability>");
     cprintf(cb, "</capabilities>");
     cprintf(cb, "<session-id>%lu</session-id>", (long unsigned int)42+session_id);
     cprintf(cb, "</hello>");
