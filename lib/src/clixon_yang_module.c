@@ -201,6 +201,7 @@ yang_modules_state_get(clicon_handle    h,
 	    cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
 	else
 	    cprintf(cb,"<namespace></namespace>");
+        cprintf(cb, "<conformance-type>implement</conformance-type>");
 	yc = NULL;
 	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
 	    switch(yc->ys_keyword){
