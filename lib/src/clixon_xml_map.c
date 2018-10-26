@@ -1774,7 +1774,9 @@ xml_merge1(cxobj              *x0,
     cxobj     *x1c; /* mod child */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
+    yang_stmt *yns; /* Yang namespace */
     cbuf      *cbr = NULL; /* Reason buffer */
+
 
     assert(x1 && xml_type(x1) == CX_ELMNT);
     assert(y0);
@@ -1837,6 +1839,17 @@ xml_merge1(cxobj              *x0,
 	}
     } /* else Y_CONTAINER  */
  ok:
+    if (y0 && y0->yn_parent) {
+	    yns = yang_find(y0->yn_parent, Y_NAMESPACE, NULL);
+	    if (yns) {
+		    if ((x0c = xml_new("xmlns", x0, NULL)) == NULL)
+			    goto done;
+		    xml_type_set(x0c, CX_ATTR);
+		    xml_value_set(x0c, yns->ys_argument);
+	    }
+
+    }
+
     retval = 0;
  done:
     if (cbr)
