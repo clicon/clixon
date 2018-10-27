@@ -143,7 +143,7 @@ if [ -z "$match" ]; then
 fi
 
 new2 "restconf schema resource, RFC 8040 sec 3.7 according to RFC 7895"
-expecteq "$(curl -s -H 'Accept: application/yang-data+json' -G http://localhost/restconf/data/ietf-yang-library:modules-state/module=ietf-routing,2014-10-26/)" '{"module": [{"name": "ietf-routing","revision": "2014-10-26","namespace": "urn:ietf:params:xml:ns:yang:ietf-routing"}]}
+expecteq "$(curl -s -H 'Accept: application/yang-data+json' -G http://localhost/restconf/data/ietf-yang-library:modules-state/module=ietf-routing,2014-10-26/)" '{"module": [{"name": "ietf-routing","revision": "2014-10-26","namespace": "urn:ietf:params:xml:ns:yang:ietf-routing","conformance-type": "implement"}]}
 '
 
 new "restconf options. RFC 8040 4.1"
