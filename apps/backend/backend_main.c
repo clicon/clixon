@@ -89,6 +89,8 @@ backend_terminate(clicon_handle h)
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((yspec = clicon_config_yang(h)) != NULL)
+	yspec_free(yspec);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     stream_publish_exit();
@@ -590,6 +592,7 @@ main(int    argc,
 	    usage(h, argv[0]);
 	return -1;
     }
+    clicon_config_yang_set(h, yspecfg);
     /* External NACM file? */
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (nacm_mode && strcmp(nacm_mode, "external") == 0)

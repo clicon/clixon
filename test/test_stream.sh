@@ -139,6 +139,7 @@ fi
 # Netconf stream subscription
 # Switch here since subscriptions takes time
 if true; then
+
 new "netconf EXAMPLE subscription"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
 
@@ -151,6 +152,9 @@ expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stre
 new "netconf NONEXIST subscription"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>NONEXIST</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>No such stream</error-message></rpc-error></rpc-reply>]]>]]>$' 5
 fi
+
+#new "netconf EXAMPLE subscription with replay"
+#expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream><startTime>2018-10-21T19:22:16</startTime><stopTime>2018-10-21T19:25:00</stopTime></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

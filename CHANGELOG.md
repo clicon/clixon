@@ -33,6 +33,11 @@
   * Optional pub/sub support enabled by ./configure --enable-publish
     * Set publish URL base with: CLICON_STREAM_PUB (default http://localhost/pub)
     * Example: new stream "foo" will get pub URL: https://localhost/pub/foo
+* Stream replay support
+  * RFC8040 Restconf replay support: start-time and stop-time query parameter support
+    * This only applies to "native" restconf stream support, Nchan mode has different replay functionality
+  * RFC5277 Netconf replay support using <startTime> and
+  * Replay support is only in-memory and not persistent. External time-series DB could be added.
 
 ### API changes on existing features (you may need to change your code)
 * clixon-config YAML file has new revision: 2018-10-21.
@@ -94,7 +99,9 @@
 * Set dir /www-data with www-data as owner, see https://github.com/clicon/clixon/issues/37
 	
 ### Known issues
-* Bug: Top-level Yang symbol cannot be called "config" in any imported yang file.
+* netconf rpc input is not sanity checked for wrong symbols (just ignored).
+* Yang sub-command order and cardinality not checked.
+* Top-level Yang symbol cannot be called "config" in any imported yang file.
   * datastore uses "config" as reserved keyword for storing any XML whoich collides with code for detecting Yang sanity.
 * Namespace name relabeling is not supported.
   * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlfns is not supported, such as:

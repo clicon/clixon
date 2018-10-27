@@ -301,7 +301,7 @@ clixon_plugin_init(clicon_handle h)
      * 2) setup timer for notifications, so something happens on stream
      * 3) setup stream callbacks for notification to push channel
      */
-    if (stream_register(h, "EXAMPLE", "Example event stream") < 0)
+    if (stream_register(h, "EXAMPLE", "Example event stream", 1) < 0)
 	goto done;
     /* assumes: CLIXON_PUBLISH_STREAMS, eg configure --enable-publish
      */

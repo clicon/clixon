@@ -815,12 +815,13 @@ from_client_delete_config(clicon_handle h,
  * @param[out]  cbret Return xml value cligen buffer
  * @retval      0    OK
  * @retval      -1   Error. Send error message back to client.
+ * @see RFC5277 2.1
  * @example:
  *    <create-subscription> 
  *       <stream>RESULT</stream> # If not present, events in the default NETCONF stream will be sent.
  *       <filter type="xpath" select="XPATH-EXPR"/>
- *       <startTime/> # only for replay (NYI)
- *       <stopTime/>  # only for replay (NYI)
+ *       <startTime></startTime>
+ *       <stopTime></stopTime>
  *    </create-subscription> 
  */
 static int
@@ -834,10 +835,28 @@ from_client_create_subscription(clicon_handle        h,
     cxobj  *x; /* Generic xml tree */
     cxobj  *xfilter; /* Filter xml tree */
     char   *ftype;
+    char   *starttime = NULL;
+    char   *stoptime = NULL;
     char   *selector = NULL;
+    struct timeval start;
+    struct timeval stop;
 
     if ((x = xpath_first(xe, "//stream")) != NULL)
 	stream = xml_find_value(x, "body");
+    if ((x = xpath_first(xe, "//stopTime")) != NULL){
+	stoptime = xml_find_value(x, "body");
+	if (str2time(stoptime, &stop) < 0){
+	    clicon_err(OE_PROTO, errno, "str2time");
+	    goto done;	
+	}
+    }
+    if ((x = xpath_first(xe, "//startTime")) != NULL){
+	starttime = xml_find_value(x, "body");
+	if (str2time(starttime, &start) < 0){
+	    clicon_err(OE_PROTO, errno, "str2time");
+	    goto done;	
+	}	
+    }
     if ((xfilter = xpath_first(xe, "//filter")) != NULL){
 	if ((ftype = xml_find_value(xfilter, "type")) != NULL){
 	    /* Only accept xpath as filter type */
@@ -855,8 +874,13 @@ from_client_create_subscription(clicon_handle        h,
 	    goto done;
 	goto ok;
     }
-    if (stream_cb_add(h, stream, selector, ce_event_cb, (void*)ce) < 0)
+    if (stream_cb_add(h, stream, selector, stoptime?&stop:NULL,
+		      ce_event_cb, (void*)ce) < 0)
 	goto done;
+    /* Replay of this stream to specific subscription according to start and stop*/
+    if (starttime) /* XXX No this must be done _after_ this RPC completes */
+	if (stream_replay(h, stream, &start, stoptime?&stop:NULL) < 0)
+	    goto done;
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;

@@ -588,6 +588,40 @@ clicon_dbspec_yang_set(clicon_handle     h,
     return 0;
 }
 
+#if 1 /* Temporary function until "Top-level Yang symbol cannot be called "config"" is fixed */
+/*! Get YANG specification for clixon config
+ * Must use hash functions directly since they are not strings.
+ */
+yang_spec *
+clicon_config_yang(clicon_handle h)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    size_t          len;
+    void           *p;
+
+    if ((p = hash_value(cdat, "control_yang", &len)) != NULL)
+	return *(yang_spec **)p;
+    return NULL;
+}
+
+/*! Set yang specification for control
+ * ys must be a malloced pointer
+ */
+int
+clicon_config_yang_set(clicon_handle     h, 
+		       struct yang_spec *ys)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    /* It is the pointer to ys that should be copied by hash,
+       so we send a ptr to the ptr to indicate what to copy.
+     */
+    if (hash_add(cdat, "control_yang", &ys, sizeof(ys)) == NULL)
+	return -1;
+    return 0;
+}
+#endif
+
 /*! Get YANG specification for Clixon system options and features
  * Must use hash functions directly since they are not strings.
  * Example: features are typically accessed directly in the config tree.

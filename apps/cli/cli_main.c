@@ -85,6 +85,8 @@ cli_terminate(clicon_handle h)
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((yspec = clicon_config_yang(h)) != NULL)
+	yspec_free(yspec);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     cli_plugin_finish(h);    
@@ -338,7 +340,7 @@ main(int argc, char **argv)
 	    usage(h, argv[0]);
 	return -1;
     }
-
+    clicon_config_yang_set(h, yspecfg);
     /* Now rest of options */   
     opterr = 0;
     optind = 1;
