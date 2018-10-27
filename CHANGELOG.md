@@ -94,6 +94,8 @@
 * Added -l option for clixon_backend for directing syslog to stderr or stdout if running in foreground
 
 ### Corrected Bugs
+* Fixed https://github.com/clicon/clixon/issues/46 Issue with empty values in leaf-list
+  * Thanks achernavin22 
 * Identity without any identityref:s caused SEGV
 * Memory error in backend transaction revert
 * Set dir /www-data with www-data as owner, see https://github.com/clicon/clixon/issues/37

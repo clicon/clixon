@@ -5,8 +5,6 @@ APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh
 
-
-
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang
 
@@ -91,8 +89,8 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candid
 new "minmax: empty"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c/></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-exit # NYI
-
+# NYI
+if false; then 
 new "minmax: validate should fail"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error/></rpc-reply>]]>]]>$"
 
@@ -119,7 +117,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><can
 
 new "minmax: validate should fail"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error/></rpc-reply>]]>]]>$"
-
+fi # NYI
 
 
 # kill backend

@@ -99,7 +99,7 @@ restconf_stream_cb(int   s,
     struct clicon_msg *reply = NULL;
     cxobj             *xtop = NULL; /* top xml */
     cxobj             *xn;        /* notification xml */
-    cbuf              *cb;
+    cbuf              *cb = NULL;
     int                pretty = 0; /* XXX should be via arg */
     
     clicon_debug(1, "%s", __FUNCTION__);
