@@ -89,17 +89,18 @@ int clixon_xml_parsewrap(void)
                             return NAME; /* rather be catch-all */
                           }
 <START>[ \t]+          ;
-<START>\:              return *clixon_xml_parsetext;
+<START>\:               return *clixon_xml_parsetext;
 <START>\n             { _YA->ya_linenum++;}
 <START>"<?xml"        { BEGIN(TEXTDECL); return BTEXT;}
 <START>"/>"           { BEGIN(STATEA); return ESLASH; }
 <START>"<!--"         { BEGIN(CMNT); return BCOMMENT; }
-<START>"</"           return BSLASH;
-<START>[/=]           return *clixon_xml_parsetext; 
-<START>\<             return *clixon_xml_parsetext;
+<START>"</"             return BSLASH;
+<START>[/=]             return *clixon_xml_parsetext; 
+<START>\<               return *clixon_xml_parsetext;
 <START>\>             { BEGIN(STATEA); return *clixon_xml_parsetext; }
 
-<START>\"             { BEGIN(STR); return *clixon_xml_parsetext; }
+<START>\"             { _YA->ya_lex_state=START;BEGIN(STRDQ); return *clixon_xml_parsetext; }
+<START>\'             { _YA->ya_lex_state=START;BEGIN(STRSQ); return *clixon_xml_parsetext; }
 <START>.              { clixon_xml_parselval.string = yytext; return CHARDATA; /*XXX:optimize*/ }
 
 <STATEA>"</"          { BEGIN(START); return BSLASH; }
@@ -112,36 +113,33 @@ int clixon_xml_parsewrap(void)
 <STATEA>.             { clixon_xml_parselval.string = yytext;        return CHARDATA; /*XXX:optimize*/}
 
 	/* @see xml_chardata_encode */
-<AMPERSAND>"amp; "     {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "&"; return CHARDATA;}
-<AMPERSAND>"lt; "      {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "<"; return CHARDATA;}
-<AMPERSAND>"gt; "      {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = ">"; return CHARDATA;}
-<AMPERSAND>"apos; "    {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "'"; return CHARDATA;}
-<AMPERSAND>"quot; "   {BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "\""; return CHARDATA;}
+<AMPERSAND>"amp; "    { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "&"; return CHARDATA;}
+<AMPERSAND>"lt; "     { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "<"; return CHARDATA;}
+<AMPERSAND>"gt; "     { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = ">"; return CHARDATA;}
+<AMPERSAND>"apos; "   { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "'"; return CHARDATA;}
+<AMPERSAND>"quot; "   { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "\""; return CHARDATA;}
 
 <CDATA>.              { clixon_xml_parselval.string = yytext; return CHARDATA;}
-<CDATA>\n            { clixon_xml_parselval.string = yytext;_YA->ya_linenum++; return (CHARDATA);}
+<CDATA>\n             { clixon_xml_parselval.string = yytext;_YA->ya_linenum++; return (CHARDATA);}
 <CDATA>"]]>"          { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = yytext; return CHARDATA;}
 
 <CMNT>"-->"           { BEGIN(START); return ECOMMENT; }
-<CMNT>\n              _YA->ya_linenum++;
+<CMNT>\n                _YA->ya_linenum++;
 <CMNT>.               
-<TEXTDECL>encoding       return ENC;
-<TEXTDECL>version        return VER; 
-<TEXTDECL>"="            return *clixon_xml_parsetext;
-<TEXTDECL>"?>"           { BEGIN(START);return ETEXT;}
-<TEXTDECL>\"             { BEGIN(STRDQ); return *clixon_xml_parsetext; }
-<TEXTDECL>\'             { BEGIN(STRSQ); return *clixon_xml_parsetext; }
+<TEXTDECL>encoding      return ENC;
+<TEXTDECL>version       return VER; 
+<TEXTDECL>"="           return *clixon_xml_parsetext;
+<TEXTDECL>"?>"        { BEGIN(START);return ETEXT;}
+<TEXTDECL>\"          { _YA->ya_lex_state =TEXTDECL;BEGIN(STRDQ); return *clixon_xml_parsetext; }
+<TEXTDECL>\'          { _YA->ya_lex_state =TEXTDECL;BEGIN(STRSQ); return *clixon_xml_parsetext; }
 
-<STR>[^\"]+           { clixon_xml_parselval.string = strdup(yytext); return CHARDATA; }
-<STR>\"               { BEGIN(START); return *clixon_xml_parsetext; }
+<STRDQ>1\.[0-9]+      { clixon_xml_parselval.string = strdup(yytext);  return CHARDATA; }
+<STRDQ>[^\"]+         { clixon_xml_parselval.string = strdup(yytext);  return CHARDATA; }
+<STRDQ>\"             { BEGIN(_YA->ya_lex_state); return *clixon_xml_parsetext; }
 
-<STRDQ>1\.[0-9]+       { clixon_xml_parselval.string = strdup(yytext);  return CHARDATA; }
-<STRDQ>[^\"]+          { clixon_xml_parselval.string = strdup(yytext);  return CHARDATA; }
-<STRDQ>\"              { BEGIN(TEXTDECL); return *clixon_xml_parsetext; }
-
-<STRSQ>1\.[0-9]+       { clixon_xml_parselval.string = strdup(yytext);   return CHARDATA; }
-<STRSQ>[^\']+          { clixon_xml_parselval.string = strdup(yytext);   return CHARDATA; }
-<STRSQ>\'              { BEGIN(TEXTDECL); return *clixon_xml_parsetext; }
+<STRSQ>1\.[0-9]+      { clixon_xml_parselval.string = strdup(yytext);   return CHARDATA; }
+<STRSQ>[^\']+         { clixon_xml_parselval.string = strdup(yytext);   return CHARDATA; }
+<STRSQ>\'             { BEGIN(_YA->ya_lex_state); return *clixon_xml_parsetext; }
 
 %%
 

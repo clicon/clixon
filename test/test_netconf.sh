@@ -100,8 +100,11 @@ fi
 new "netconf hello"
 expecteof "$clixon_netconf -f $cfg -y $fyang" 0 '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision="2016-06-21"&amp; module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1:0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]><rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
 
-new "netconf get-config"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
+new "netconf get-config double quotes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc message-id="101" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><data/></rpc-reply>]]>]]>$'
+
+new "netconf get-config single quotes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc message-id='101' xmlns='urn:ietf:params:xml:ns:netconf:base:1.0'><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply message-id="101" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><data/></rpc-reply>]]>]]>$'
 
 new "Add subtree eth/0/0 using none which should not change anything"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><default-operation>none</default-operation><target><candidate/></target><config><interfaces><interface><name>eth/0/0</name></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

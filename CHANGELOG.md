@@ -94,6 +94,8 @@
 * Added -l option for clixon_backend for directing syslog to stderr or stdout if running in foreground
 
 ### Corrected Bugs
+* Single quotes for XML attributes https://github.com/clicon/clixon/issues/51
+  * Thanks @SCadilhac
 * Fixed https://github.com/clicon/clixon/issues/46 Issue with empty values in leaf-list
   * Thanks achernavin22 
 * Identity without any identityref:s caused SEGV
