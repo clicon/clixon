@@ -41,7 +41,7 @@ Send netconf command:
 ```
 Start clixon restconf daemon
 ```
-> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+    sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
 ```
 Send restconf command
 ```
@@ -81,7 +81,7 @@ Send restconf command
 The example has an EXAMPLE stream notification triggering every 5s. To start a notification 
 stream in the session using netconf, create a subscription:
 ```
-<rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>
+<rpc><create-subscription><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
 <notification><event>Routing notification</event></notification>]]>]]>
 <notification><event>Routing notification</event></notification>]]>]]>

@@ -72,7 +72,9 @@ struct event_stream{
     char                *es_description;
     struct stream_subscription *es_subscription;
     int                  es_replay_enabled; /* set if replay is enables */
+    struct timeval       es_retention; /* replay retention - how much to save */
     struct stream_replay *es_replay;
+
 };
 typedef struct event_stream event_stream_t;
 
@@ -80,7 +82,7 @@ typedef struct event_stream event_stream_t;
  * Prototypes
  */
 event_stream_t *stream_find(clicon_handle h, const char *name);
-int stream_register(clicon_handle h, const char *name, const char *description, int replay_enabled);
+int stream_add(clicon_handle h, const char *name, const char *description, int replay_enabled, struct timeval *retention);
 int stream_delete_all(clicon_handle h);
 int stream_get_xml(clicon_handle h, int access, cbuf *cb);
 int stream_timer_setup(int fd, void *arg);

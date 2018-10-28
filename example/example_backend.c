@@ -294,14 +294,18 @@ static clixon_plugin_api api = {
 clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
-    clicon_debug(1, "%s backend", __FUNCTION__);
+    struct timeval retention = {0,0};
 
+    clicon_debug(1, "%s backend", __FUNCTION__);
     /* Example stream initialization:
      * 1) Register EXAMPLE stream 
      * 2) setup timer for notifications, so something happens on stream
      * 3) setup stream callbacks for notification to push channel
      */
-    if (stream_register(h, "EXAMPLE", "Example event stream", 1) < 0)
+    if (clicon_option_exists(h, "CLICON_STREAM_RETENTION"))
+	retention.tv_sec = clicon_option_int(h, "CLICON_STREAM_RETENTION");
+    if (stream_add(h, "EXAMPLE", "Example event stream", 1,
+		   retention.tv_sec?&retention:NULL) < 0)
 	goto done;
     /* assumes: CLIXON_PUBLISH_STREAMS, eg configure --enable-publish
      */

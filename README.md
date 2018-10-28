@@ -1,8 +1,8 @@
 # Clixon
 
-Clixon is an automatic configuration manager where you generate
-interactive CLI, NETCONF, RESTCONF and embedded databases with
-transaction support from a YANG specification.
+Clixon is a YANG-based configuration manager, with interactive CLI,
+NETCONF and RESTCONF interfaces, an embedded database and transaction
+support.
 
   * [Background](#background)
   * [Frequently asked questions](doc/FAQ.md)
@@ -107,23 +107,21 @@ specification for handling XML configuration data. The YANG spec is
 used to generate an interactive CLI, netconf and restconf clients. It
 also manages an XML datastore.
 
-Clixon mainly follows [YANG 1.0 RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt) with some exceptions:
-- conformance: deviation
-- list features: min/max-elements, unique
-- action statements
+Clixon follows:
+- [YANG 1.0 RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt)
+- [YANG 1.1 RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt).
+- [RFC 7895: YANG module library](http://www.rfc-base.org/txt/rfc-7895.txt)
 
-The aim is also to cover new features in YANG 1.1 [YANG RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt)
-
-Clixon has its own XML library designed for performance.
+However, the following YANG syntax modules are not implemented:
+`deviation`, `min/max-elements`, `unique`, and `action`.
 
 Netconf
 =======
 Clixon implements the following NETCONF proposals or standards:
-- [NETCONF Configuration Protocol](http://www.rfc-base.org/txt/rfc-4741.txt)
-- [Using the NETCONF Configuration Protocol over Secure Shell (SSH)](http://www.rfc-base.org/txt/rfc-4742.txt)
-- [NETCONF Event Notifications](http://www.rfc-base.org/txt/rfc-5277.txt)
-
-Some updates are being made to RFC 6241 and RFC 6242. 
+- [RFC 6241: NETCONF Configuration Protocol](http://www.rfc-base.org/txt/rfc-6241.txt)
+- [RFC 6242: Using the NETCONF Configuration Protocol over Secure Shell (SSH)](http://www.rfc-base.org/txt/rfc-6242.txt)
+- [RFC 5277: NETCONF Event Notifications](http://www.rfc-base.org/txt/rfc-5277.txt)
+- [RFC 8341: Network Configuration Access Control Model](http://www.rfc-base.org/txt/rfc-8341.txt)
 
 Clixon does not yet support the following netconf features:
 
@@ -154,8 +152,6 @@ The Clixon datastore is a stand-alone XML based datastore. The idea is
 to be able to use different datastores backends with the same
 API.
 
-Update: There used to be a key-value plugin based on qdbm but isnow obsoleted. Only a text datastore is implemented.
-
 The datastore is primarily designed to be used by Clixon but can be used
 separately.
 
@@ -163,7 +159,6 @@ See [more detailed instructions](datastore/README.md).
 
 Auth
 ====
-
 Authentication is managed outside Clixon using SSH, SSL, Oauth2, etc.
 
 For CLI, login is typically made via SSH. For netconf, SSH netconf

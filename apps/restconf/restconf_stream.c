@@ -172,15 +172,19 @@ static int
 restconf_stream(clicon_handle h,
 		FCGX_Request *r,
 		char         *name,
+		cvec         *qvec, 
 		int           pretty,
 		int           use_xml,
 		int          *sp)
 {
-    int    retval = -1;
-    cxobj *xret = NULL;
-    cxobj *xe;
-    cbuf  *cb = NULL;
-    int    s; /* socket */
+    int     retval = -1;
+    cxobj  *xret = NULL;
+    cxobj  *xe;
+    cbuf   *cb = NULL;
+    int     s; /* socket */
+    int     i;
+    cg_var *cv;
+    char   *vname;
 
     *sp = -1;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -188,7 +192,23 @@ restconf_stream(clicon_handle h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(cb, "<rpc><create-subscription><stream>%s</stream></create-subscription></rpc>]]>]]>", name);
+    cprintf(cb, "<rpc><create-subscription><stream>%s</stream>", name);
+    /* Print all fields */
+    for (i=0; i<cvec_len(qvec); i++){
+        cv = cvec_i(qvec, i);
+	vname = cv_name_get(cv);
+	if (strcmp(vname, "start-time") == 0){
+	    cprintf(cb, "<startTime>");
+	    cv2cbuf(cv, cb);
+	    cprintf(cb, "</startTime>");
+	}
+	else if (strcmp(vname, "stop-time") == 0){
+	    cprintf(cb, "<stopTime>");
+	    cv2cbuf(cv, cb);
+	    cprintf(cb, "</stopTime>");
+	}
+    }
+    cprintf(cb, "</create-subscription></rpc>]]>]]>");
     if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, &s) < 0)
 	goto done;
     if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
@@ -267,7 +287,7 @@ api_stream(clicon_handle h,
     int    s=-1;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    path = FCGX_GetParam("REQUEST_URI", r->envp);
+    path = FCGX_GetParam("DOCUMENT_URI", r->envp);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     test(r, 1);
@@ -294,7 +314,6 @@ api_stream(clicon_handle h,
     clicon_debug(1, "%s: method=%s", __FUNCTION__, method);
     if (str2cvec(query, '&', '=', &qvec) < 0)
 	goto done;
-
     if (str2cvec(path, '/', '=', &pcvec) < 0) /* rest url eg /album=ricky/foo */
 	goto done;
     /* data */
@@ -327,7 +346,7 @@ api_stream(clicon_handle h,
 	goto ok;
     }
     clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
-    if (restconf_stream(h, r, method, pretty, use_xml, &s) < 0)
+    if (restconf_stream(h, r, method, qvec, pretty, use_xml, &s) < 0)
 	goto done;
     if (s != -1){
 	/* Listen to backend socket */

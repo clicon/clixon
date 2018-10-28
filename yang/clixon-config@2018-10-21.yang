@@ -370,11 +370,11 @@ module clixon-config {
 	    type string;
 	    default "0";
 	    description "If RFC 7895 YANG Module library enabled:
-                          Contains a server-specific identifier representing
-                          the current set of modules and submodules.  The
-                          server MUST change the value of this leaf if the
-                          information represented by the 'module' list instances
-                          has changed.";
+                         Contains a server-specific identifier representing
+                         the current set of modules and submodules.  The
+                         server MUST change the value of this leaf if the
+                         information represented by the 'module' list instances
+                         has changed.";
 	}
 	leaf CLICON_STREAM_DISCOVERY_RFC5277 {
 	    type boolean;
@@ -417,6 +417,14 @@ module clixon-config {
                   http://localhost/pub/NETCONF. 
                   Note this may be a local/provate URL behind reverse-proxy.
                   If not given, do NOT enable stream publishing using NCHAN.";
+	}
+	leaf CLICON_STREAM_RETENTION {
+	    type uint32;
+	    default 0;
+	    units s;
+	    description "Retention for stream replay buffers in seconds, ie how much
+                         data to store before dropping. 0 means no retention";
+
 	}
     }
 }

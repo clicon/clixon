@@ -2,17 +2,18 @@
 
 ## What is Clixon?
 
-Clixon is a configuration management tool including a generated CLI ,
-Yang parser, netconf and restconf interface and an embedded databases.
+Clixon is a YANG-based configuration manager, with interactive CLI,
+NETCONF and RESTCONF interfaces, an embedded database and transaction
+support.
 
 ## Why should I use Clixon?
 
-If you want an easy-to-use configuration frontend based on yang with an
+If you want an easy-to-use configuration toolkit based on yang with an
 open-source license.  Typically for embedded devices requiring a
 config interface such as routers and switches. 
 
 ## What license is available?
-CLIXON is dual license. Either Apache License, Version 2.0 or GNU
+Clixon is dual license. Either Apache License, Version 2.0 or GNU
 General Public License Version 2. 
 
 ## Is Clixon extendible?
@@ -41,6 +42,16 @@ The example:
 	 sudo make install
 ```
 
+## How do you run Clixon example commands?
+
+- Start a backend server: `clixon_backend -Ff /usr/local/etc/example.xml`
+- Start a cli session: `clixon_cli -f /usr/local/etc/example.xml`
+- Start a netconf session: `clixon_netconf -f /usr/local/etc/example.xml`
+- Start a restconf daemon: `sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data`
+- Send a restconf command: `curl -G http://127.0.0.1/restconf/data`
+
+More info in the [example](../example) directory.
+
 ## Do I need to setup anything? (IMPORTANT)
 
 The config demon requires a valid group to create a server UNIX domain socket.
@@ -63,18 +74,11 @@ clicon:x:1001:<user>,www-data
 
 ## What about reference documentation?
 Clixon uses Doxygen for reference documentation.
-Build using 'make doc' and aim your browser at doc/html/index.html or
-use the web resource: http://clicon.org/ref/index.html
-
-## How do you run the example?
-- Start a backend server: 'clixon_backend -Ff /usr/local/etc/example.xml'
-- Start a cli session: clixon_cli -f /usr/local/etc/example.xml
-- Start a netconf session: clixon_netconf -f /usr/local/etc/example.xml
+Build using 'make doc' and aim your browser at doc/html/index.html.
 
 ## How is configuration data stored?
-Configuration data is stored in an XML datastore. The default is a
-text-based datastore. In the example the datastore are regular files found in
-/usr/local/var/example/.
+Configuration data is stored in an XML datastore. In the example the
+datastore are regular files found in /usr/local/var/example/.
 
 ## What is validate and commit?
 Clixon follows netconf in its validate and commit semantics.
@@ -93,7 +97,7 @@ configuration file is /usr/local/etc/clixon.xml. The example
 configuration file is installed at /usr/local/etc/example.xml. The
 YANG specification for the configuration file is clixon-config.yang.
 
-You can change where CLixon looks for the configuration FILE as follows:
+You can change where Clixon looks for the configuration FILE as follows:
   - Provide -f FILE option when starting a program (eg clixon_backend -f FILE)
   - Provide --with-configfile=FILE when configuring
   - Provide --with-sysconfig=<dir> when configuring, then FILE is <dir>/clixon.xml
@@ -130,7 +134,9 @@ Look in the example documentation for more info.
 
 As an alternative to cli configuration, you can use netconf. Easiest is to just pipe netconf commands to the clixon_netconf application.
 Example:
+```
 	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/example.xml
+```
 
 However, more useful is to run clixon_netconf as an SSH
 subsystem. Register the subsystem in /etc/sshd_config:
@@ -155,7 +161,6 @@ For example, using nginx, install, and edit config file: /etc/nginx/sites-availa
 server {
   ...
   location /restconf {
-    root /usr/share/nginx/html/restconf;
     fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
     include fastcgi_params;
   }
@@ -166,8 +171,6 @@ Start nginx daemon
 sudo /etc/init.d/nginx start
 ```
 
-Read more in the restconf docs.
-
 Example:
 ```
    curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=eth9/type
@@ -177,14 +180,24 @@ Example:
      }
    ]
 ```
+Read more in the (restconf)[../apps/restconf] docs.
 
-## How do I use notifications?
+
+## Does Clixon support event streams? 
+
+Yes, Clixon supports event notification streams in the CLI, Netconf and Restconf API:s.
 
 The example has a prebuilt notification stream called "EXAMPLE" that triggers every 5s.
 You enable the notification via the CLI:
 ```
 cli> notify 
 cli>
+event-class fault;
+reportingEntity {
+    card Ethernet0;
+}
+severity major;
+...
 ```
 or via NETCONF:
 ```

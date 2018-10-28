@@ -104,13 +104,18 @@ stream_find(clicon_handle h,
 }
 
 /*! Add notification event stream
- * 
+ * @param[in]  h              Clicon handle
+ * @param[in]  name           Name of stream
+ * @param[in]  description    Description of stream
+ * @param[in]  replay_enabled Set if replay possible in stream
+ * @param[in]  retention      For replay buffer how much relative to save
  */
 int
-stream_register(clicon_handle h,
-		const char   *name, 
-		const char   *description,
-    		const int     replay_enabled) 
+stream_add(clicon_handle   h,
+	   const char     *name, 
+	   const char     *description,
+	   const int       replay_enabled,
+	   struct timeval *retention) 
 {
     int             retval = -1;
     event_stream_t *es;
@@ -131,6 +136,8 @@ stream_register(clicon_handle h,
 	goto done;
     }
     es->es_replay_enabled = replay_enabled;
+    if (retention)
+	es->es_retention = *retention;
     clicon_stream_append(h, es);
  ok:
     retval = 0;
@@ -159,9 +166,9 @@ stream_delete_all(clicon_handle h)
 	while ((ss = es->es_subscription) != NULL)
 	    stream_ss_rm(es, ss);
 	while ((r = es->es_replay) != NULL){
+	    DELQ(r, es->es_replay, struct stream_replay *);
 	    if (r->r_xml)
 		xml_free(r->r_xml);
-	    DELQ(r, es->es_replay, struct stream_replay *);
 	    free(r);
 	}
 	free(es);
@@ -224,20 +231,25 @@ stream_timer_setup(int   fd,
     struct timeval               now;
     struct timeval               t;
     struct timeval               t1 = {STREAM_TIMER_TIMEOUT_S, 0};
+    struct timeval               tret;
     event_stream_t              *es;
     struct stream_subscription  *ss;
     struct stream_subscription  *ss1;
+    struct stream_replay        *r;
+    struct stream_replay        *r1;
     
     /* Go thru callbacks and see if any have timed out, if so remove them 
      * Could also be done by a separate timer.
      */
     gettimeofday(&now, NULL);
-    /* for all event streams, remove subscription if past stop time */
-
-
-
+    /* For all event streams:
+     * 1) Go through subscriptions, if stop-time and its past, remove it
+     * XXX: but client may not be closed
+     * 2) Go throughreplay buffer and remove entries with passed retention time
+     */
     if ((es = clicon_stream(h)) != NULL){
 	do {
+   /* 1) Go through subscriptions, if stop-time and its past, remove it */
 	    if ((ss = es->es_subscription) != NULL)
 		do {
 		    if (timerisset(&ss->ss_stoptime) && timercmp(&ss->ss_stoptime, &now, <)){
@@ -249,6 +261,23 @@ stream_timer_setup(int   fd,
 		    else
 			ss = NEXTQ(struct stream_subscription *, ss);
 		} while (ss && ss != es->es_subscription);
+  /* 2) Go throughreplay buffer and remove entries with passed retention time */
+	    if (timerisset(&es->es_retention) &&
+		(r = es->es_replay) != NULL){
+		timersub(&now, &es->es_retention, &tret);
+		do {
+		    if (timercmp(&r->r_tv, &tret, <)){
+			r1 = NEXTQ(struct stream_replay *, r);
+			DELQ(r, es->es_replay, struct stream_replay *);
+			if (r->r_xml)
+			    xml_free(r->r_xml);
+			free(r);
+			r = r1;
+		    }
+		    else
+			r = NEXTQ(struct stream_replay *, r);
+		} while (r && r!=es->es_replay);
+	    }
 	    es = NEXTQ(struct event_stream *, es);
 	} while (es && es != clicon_stream(h));
     }
@@ -550,8 +579,7 @@ stream_replay_notify(clicon_handle               h,
 		     event_stream_t             *es,
 		     struct stream_subscription *ss)
 {
-    int             retval = -1;
-
+    int                   retval = -1;
     struct stream_replay *r;
 
     /* If <startTime> is not present, this is not a replay */
