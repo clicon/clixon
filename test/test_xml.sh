@@ -49,5 +49,8 @@ expecteof "$PROG" 0 '<x a="t"/>' '^<x a="t"/>$'
 new "Single quotes for attributes (returns double quotes but at least parses right)"
 expecteof "$PROG" 0 "<x a='t'/>" '^<x a="t"/>$'
 
+new "Mixed quotes"
+expecteof "$PROG" 0 "<x a='t' b=\"q\"/>" '^<x a="t" b="q"/>$'
+
 rm -rf $dir
 

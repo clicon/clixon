@@ -85,6 +85,7 @@
 ```    
 
 ### Minor changes
+* Allow new lines in CLI prompts 
 * uri_percent_encode() and xml_chardata_encode() changed to use stdarg parameters
 * Added CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml as option and in example (so you dont need to provide -f command-line option).
 * Yang 1.1 action syntax added (but function is not supported)

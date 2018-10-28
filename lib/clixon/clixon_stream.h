@@ -42,15 +42,16 @@
 /* Subscription callback 
  * @param[in]  h     Clicon handle
  * @param[in]  event Event as XML
- * @param[in]  arg   Extra argument provided in stream_cb_add
- * @see stream_cb_add
+ * @param[in]  arg   Extra argument provided in stream_ss_add
+ * @see stream_ss_add
  */
 typedef	int (*stream_fn_t)(clicon_handle h, cxobj *event, void *arg);
 
 struct stream_subscription{
-    struct stream_subscription *ss_next;
+    qelem_t                     ss_q;   /* queue header */
     char                       *ss_stream; /* Name of associated stream */
     char                       *ss_xpath;  /* Filter selector as xpath */
+    struct timeval              ss_starttime; /* Replay starttime */
     struct timeval              ss_stoptime; /* Replay stoptime */
     stream_fn_t                 ss_fn;     /* Callback when event occurs */
     void                       *ss_arg;    /* Callback argument */
@@ -82,19 +83,26 @@ event_stream_t *stream_find(clicon_handle h, const char *name);
 int stream_register(clicon_handle h, const char *name, const char *description, int replay_enabled);
 int stream_delete_all(event_stream_t *es);
 int stream_get_xml(clicon_handle h, int access, cbuf *cb);
-struct stream_subscription *stream_cb_add(clicon_handle h, char *stream,
-		  char *xpath, struct timeval *stop, stream_fn_t fn, void *arg);
-int stream_cb_delete(clicon_handle h, char *stream, stream_fn_t fn, void *arg);
-int stream_notify_xml(clicon_handle h, event_stream_t *es, cxobj *xevent);
+int stream_timer_setup(int fd, void *arg);
+/* Subscriptions */
+struct stream_subscription *stream_ss_add(clicon_handle h, char *stream,
+		  char *xpath, struct timeval *start, struct timeval *stop,
+		  stream_fn_t fn, void *arg);
+int stream_ss_rm(event_stream_t *es, struct stream_subscription *ss);
+struct stream_subscription *stream_ss_find(event_stream_t *es,
+					   stream_fn_t fn, void *arg);
+int stream_ss_delete_all(clicon_handle h, stream_fn_t fn, void *arg);
+
+int stream_notify_xml(clicon_handle h, event_stream_t *es, struct timeval *tv, cxobj *xevent);
 #if defined(__GNUC__) && __GNUC__ >= 3
 int stream_notify(clicon_handle h, char *stream, const char *event, ...)  __attribute__ ((format (printf, 3, 4)));
 #else
 int stream_notify(clicon_handle h, char *stream, const char *event, ...);
 #endif
 
-
-int stream_replay(clicon_handle h, char *stream, struct timeval *start, struct timeval *stop);
+/* Replay */
 int stream_replay_add(event_stream_t *es, struct timeval *tv, cxobj *xv);
+int stream_replay_trigger(clicon_handle h, char *stream, stream_fn_t fn, void *arg);
 
 /* Experimental publish streams using SSE. CLIXON_PUBLISH_STREAMS should be set */
 int stream_publish(clicon_handle h, char *stream);

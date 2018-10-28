@@ -84,8 +84,8 @@ ce_find_bypid(struct client_entry *ce_list,
 /*! Stream callback for netconf stream notification (RFC 5277)
  * @param[in]  h     Clicon handle
  * @param[in]  event Event as XML
- * @param[in]  arg   Extra argument provided in stream_cb_add
- * @see stream_cb_add
+ * @param[in]  arg   Extra argument provided in stream_ss_add
+ * @see stream_ss_add
  */
 static int
 ce_event_cb(clicon_handle h,
@@ -116,7 +116,7 @@ ce_event_cb(clicon_handle h,
  * Close down everything wrt clients (eg sockets, subscriptions)
  * Finally actually remove client struct in handle
  * @param[in]  h   Clicon handle
- * @param[in]  ce  Client hadnle
+ * @param[in]  ce  Client handle
  * @see backend_client_delete for actual deallocation of client entry struct
  */
 int
@@ -137,7 +137,7 @@ backend_client_rm(clicon_handle        h,
 		ce->ce_s = 0;
 	    }
 	    /* for all streams */
-	    stream_cb_delete(h, NULL, ce_event_cb, (void*)ce);
+	    stream_ss_delete_all(h, ce_event_cb, (void*)ce);
 	    break;
 	}
 	ce_prev = &c->ce_next;
@@ -807,7 +807,6 @@ from_client_delete_config(clicon_handle h,
     return retval;
 }
 
-
 /*! Internal message: Create subscription for notifications see RFC 5277
  * @param[in]   h     Clicon handle
  * @param[in]   xe    Netconf request xml tree   
@@ -840,7 +839,7 @@ from_client_create_subscription(clicon_handle        h,
     char   *selector = NULL;
     struct timeval start;
     struct timeval stop;
-
+    
     if ((x = xpath_first(xe, "//stream")) != NULL)
 	stream = xml_find_value(x, "body");
     if ((x = xpath_first(xe, "//stopTime")) != NULL){
@@ -874,13 +873,20 @@ from_client_create_subscription(clicon_handle        h,
 	    goto done;
 	goto ok;
     }
-    if (stream_cb_add(h, stream, selector, stoptime?&stop:NULL,
+    if (stream_ss_add(h, stream, selector,
+		      starttime?&start:NULL, stoptime?&stop:NULL,
 		      ce_event_cb, (void*)ce) < 0)
 	goto done;
-    /* Replay of this stream to specific subscription according to start and stop*/
-    if (starttime) /* XXX No this must be done _after_ this RPC completes */
-	if (stream_replay(h, stream, &start, stoptime?&stop:NULL) < 0)
+    /* Replay of this stream to specific subscription according to start and 
+     * stop (if present). 
+     * RFC 5277: If <startTime> is not present, this is not a replay
+     * subscription.
+     * Schedule the replay to occur right after this RPC completes, eg "now"
+     */
+    if (starttime){ 
+	if (stream_replay_trigger(h, stream, ce_event_cb, (void*)ce) < 0)
 	    goto done;
+    }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
@@ -1274,7 +1280,7 @@ from_client_msg(clicon_handle        h,
 	}
 	else if (strcmp(name, "close-session") == 0){
 	    xmldb_unlock_all(h, pid);
-	    stream_cb_delete(h, NULL, ce_event_cb, (void*)ce);
+	    stream_ss_delete_all(h, ce_event_cb, (void*)ce);
 	    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
 	}
 	else if (strcmp(name, "kill-session") == 0){
