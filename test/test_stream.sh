@@ -10,9 +10,8 @@ APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh
 cfg=$dir/conf.xml
-fyang=$dir/restconf.yang
+fyang=$dir/stream.yang
 xml=$dir/xml.xml
-
 
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
 cat <<EOF > $cfg
@@ -34,7 +33,6 @@ cat <<EOF > $cfg
   <CLICON_STREAM_DISCOVERY_RFC8040>true</CLICON_STREAM_DISCOVERY_RFC8040>
   <CLICON_STREAM_PATH>streams</CLICON_STREAM_PATH>
   <CLICON_STREAM_URL>https://localhost</CLICON_STREAM_URL>
-  <CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB>
 </config>
 EOF
 
@@ -98,8 +96,6 @@ sudo pkill -u www-data clixon_restconf
 new "start restconf daemon"
 sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg  -y $fyang # -D 1
 
-sleep 1
-
 new "netconf event stream discovery RFC5277 Sec 3.2.5"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get><filter type="xpath" select="netconf/streams" xmlns="urn:ietf:params:xml:ns:netmod:notification"/></get></rpc>]]>]]>' '<rpc-reply><data><netconf><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>false</replay-support></stream></streams></netconf></data></rpc-reply>]]>]]>'
 
@@ -153,8 +149,13 @@ new "netconf NONEXIST subscription"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>NONEXIST</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>No such stream</error-message></rpc-error></rpc-reply>]]>]]>$' 5
 fi
 
-#new "netconf EXAMPLE subscription with replay"
-#expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream><startTime>2018-10-21T19:22:16</startTime><stopTime>2018-10-21T19:25:00</stopTime></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
+new "netconf EXAMPLE subscription with wrong date"
+expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream><startTime>kallekaka</startTime></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>bad-element</error-tag><error-type>application</error-type><error-info><bad-element>startTime</bad-element></error-info><error-severity>error</error-severity><error-message>Expected timestamp</error-message></rpc-error></rpc-reply>]]>]]>$' 0
+
+new "netconf EXAMPLE subscription with replay"
+NOW=$(date +"%Y-%m-%dT%H:%M:%S")
+sleep 10
+expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>EXAMPLE</stream><startTime>$NOW</startTime></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 10
 
 new "Kill restconf daemon"
 sudo pkill -u www-data clixon_restconf

@@ -67,7 +67,7 @@ struct stream_replay{
 /* See RFC8040 9.3, stream list, no replay support for now
  */
 struct event_stream{
-    struct event_stream *es_next;
+    qelem_t              es_q;   /* queue header */
     char                *es_name; /* name of notification event stream */
     char                *es_description;
     struct stream_subscription *es_subscription;
@@ -81,7 +81,7 @@ typedef struct event_stream event_stream_t;
  */
 event_stream_t *stream_find(clicon_handle h, const char *name);
 int stream_register(clicon_handle h, const char *name, const char *description, int replay_enabled);
-int stream_delete_all(event_stream_t *es);
+int stream_delete_all(clicon_handle h);
 int stream_get_xml(clicon_handle h, int access, cbuf *cb);
 int stream_timer_setup(int fd, void *arg);
 /* Subscriptions */

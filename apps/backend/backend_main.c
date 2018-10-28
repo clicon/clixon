@@ -729,8 +729,12 @@ main(int    argc,
 	return -1;
     }
 
-    /* Publish stream on pubsub channels XXX conditional? */
-    if (stream_publish_init() < 0)
+    /* Publish stream on pubsub channels.
+     * CLICON_STREAM_PUB should be set to URL to where streams are published
+     * and configure should be run with --enable-publish
+     */
+    if (clicon_option_exists(h, "CLICON_STREAM_PUB") &&
+	stream_publish_init() < 0)
 	goto done;
     if ((xmldb_plugin = clicon_xmldb_plugin(h)) == NULL){
 	clicon_log(LOG_ERR, "No xmldb plugin given (specify option CLICON_XMLDB_PLUGIN).\n"); 

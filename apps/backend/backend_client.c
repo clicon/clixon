@@ -107,7 +107,6 @@ ce_event_cb(clicon_handle h,
 	    backend_client_rm(h, ce);
 #endif
 	}
-
     }
     return 0;
 }
@@ -845,14 +844,17 @@ from_client_create_subscription(clicon_handle        h,
     if ((x = xpath_first(xe, "//stopTime")) != NULL){
 	stoptime = xml_find_value(x, "body");
 	if (str2time(stoptime, &stop) < 0){
-	    clicon_err(OE_PROTO, errno, "str2time");
-	    goto done;	
+	    if (netconf_bad_element(cbret, "application", "<bad-element>stopTime</bad-element>", "Expected timestamp") < 0)
+		goto done;
+	    goto ok;	
 	}
     }
     if ((x = xpath_first(xe, "//startTime")) != NULL){
 	starttime = xml_find_value(x, "body");
 	if (str2time(starttime, &start) < 0){
-	    clicon_err(OE_PROTO, errno, "str2time");
+	    if (netconf_bad_element(cbret, "application", "<bad-element>startTime</bad-element>", "Expected timestamp") < 0)
+		goto done;
+	    goto ok;	
 	    goto done;	
 	}	
     }

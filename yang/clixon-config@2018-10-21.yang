@@ -411,11 +411,12 @@ module clixon-config {
 	}
 	leaf CLICON_STREAM_PUB {
 	    type string;
-	    default "http://localhost/pub";
     	    description "For stream publish using eg nchan, the base address
-	          to publish to. 
-                  Example: http://localhost/pub/NETCONF. Note this may
-		  be local URL behind reverse-proxy";
+	          to publish to. Example value: http://localhost/pub
+                  Example: stream NETCONF would then be pushed to
+                  http://localhost/pub/NETCONF. 
+                  Note this may be a local/provate URL behind reverse-proxy.
+                  If not given, do NOT enable stream publishing using NCHAN.";
 	}
     }
 }

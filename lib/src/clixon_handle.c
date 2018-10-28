@@ -135,7 +135,7 @@ clicon_handle_exit(clicon_handle h)
 	hash_free(ha);
     if ((ha = clicon_data(h)) != NULL)
 	hash_free(ha);
-    stream_delete_all(clicon_stream(h));
+    stream_delete_all(h);
     free(ch);
     return 0;
 }
@@ -188,13 +188,21 @@ clicon_stream(clicon_handle h)
 }
 
 int
+clicon_stream_set(clicon_handle   h,
+		  event_stream_t *es)
+{
+    struct clicon_handle *ch = handle(h);
+
+    ch->ch_stream = es;
+    return 0;
+}
+
+int
 clicon_stream_append(clicon_handle h,
 		     event_stream_t *es)
 {
     struct clicon_handle *ch = handle(h);
-    event_stream_t      **ep;
-
-    for (ep = &ch->ch_stream; (*ep); ep=&(*ep)->es_next);
-    *ep = es;
+    
+    ADDQ(es, ch->ch_stream);
     return 0;
 }

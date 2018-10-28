@@ -305,7 +305,8 @@ clixon_plugin_init(clicon_handle h)
 	goto done;
     /* assumes: CLIXON_PUBLISH_STREAMS, eg configure --enable-publish
      */
-    if (stream_publish(h, "EXAMPLE") < 0)
+    if (clicon_option_exists(h, "CLICON_STREAM_PUB") &&
+	stream_publish(h, "EXAMPLE") < 0)
 	goto done;
     if (example_stream_timer_setup(h) < 0)
 	goto done;
