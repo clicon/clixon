@@ -41,7 +41,7 @@ Send netconf command:
 ```
 Start clixon restconf daemon
 ```
-> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+    sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
 ```
 Send restconf command
 ```
