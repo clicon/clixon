@@ -17,7 +17,7 @@
 * YANG module library 
   * YANG modules according to RFC 7895 and implemented by ietf-yang-library.yang
   * Enabled by configuration option CLICON_MODULE_LIBRARY_RFC7895 - enabled by default
-  * RFC 7895 defines a module-set-id. COnfigure option CLICON_MODULE_SET_ID is set and changed when modules change.
+  * RFC 7895 defines a module-set-id. Configure option CLICON_MODULE_SET_ID is set and changed when modules change.
 * Yang 1.1 notification support (RFC 7950: Sec 7.16)
 * New event streams implementation with replay
   * See clicon_stream.[ch] for details
