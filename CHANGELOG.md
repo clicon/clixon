@@ -78,6 +78,8 @@
 * Added command-line option `-t <timeout>` for clixon_netconf - quit after max time.
 
 ### Corrected Bugs
+* No space after ampersand escaped characters in XML https://github.com/clicon/clixon/issues/52
+  * Thanks @SCadilhac
 * Single quotes for XML attributes https://github.com/clicon/clixon/issues/51
   * Thanks @SCadilhac
 * Fixed https://github.com/clicon/clixon/issues/46 Issue with empty values in leaf-list

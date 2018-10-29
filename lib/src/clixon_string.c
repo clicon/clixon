@@ -356,7 +356,7 @@ xml_chardata_encode(char **escp,
 	else
 	    switch (str[i]){
 	    case '&':
-		len += strlen("&amp; ");
+		len += strlen("&amp;");
 		break;
 	    case '<':
 		if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
@@ -364,10 +364,10 @@ xml_chardata_encode(char **escp,
 		    cdata++;
 		}
 		else
-		    len += strlen("&lt; ");
+		    len += strlen("&lt;");
 		break;
 	    case '>':
-		len += strlen("&gt; ");
+		len += strlen("&gt;");
 		break;
 	    default:
 		len++;
@@ -395,7 +395,7 @@ xml_chardata_encode(char **escp,
 	else
 	switch (str[i]){
 	case '&':
-	    if ((l=snprintf(&esc[j], 7, "&amp; ")) < 0){
+	    if ((l=snprintf(&esc[j], 6, "&amp;")) < 0){
 		clicon_err(OE_UNIX, errno, "snprintf");
 		goto done;
 	    }
@@ -407,14 +407,14 @@ xml_chardata_encode(char **escp,
 		cdata++;
 		break;
 	    }
-	    if ((l=snprintf(&esc[j], 6, "&lt; ")) < 0){
+	    if ((l=snprintf(&esc[j], 5, "&lt;")) < 0){
 		clicon_err(OE_UNIX, errno, "snprintf");
 		goto done;
 	    }
 	    j += l;
 	    break;
 	case '>':
-	    if ((l=snprintf(&esc[j], 6, "&gt; ")) < 0){
+	    if ((l=snprintf(&esc[j], 5, "&gt;")) < 0){
 		clicon_err(OE_UNIX, errno, "snprintf");
 		goto done;
 	    }
