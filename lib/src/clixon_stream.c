@@ -199,7 +199,8 @@ stream_get_xml(clicon_handle h,
 	    cprintf(cb, "<name>%s</name>", es->es_name);
 	    if (es->es_description)
 		cprintf(cb, "<description>%s</description>", es->es_description);
-	    cprintf(cb, "<replay-support>false</replay-support>");
+	    cprintf(cb, "<replay-support>%s</replay-support>",
+		    es->es_replay_enabled?"true":"false");
 	    if (access){
 		cprintf(cb, "<access>");
 		cprintf(cb, "<encoding>xml</encoding>");

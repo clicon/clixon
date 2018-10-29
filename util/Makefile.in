@@ -57,7 +57,7 @@ INSTALL		= @INSTALL@
 INSTALL_LIB	= @INSTALL@
 INSTALLFLAGS  	= @INSTALLFLAGS@
 LDFLAGS 	= @LDFLAGS@
-LIBS    	= @LIBS@ 
+LIBS    	= @LIBS@
 
 CPPFLAGS  	= @CPPFLAGS@
 
@@ -70,6 +70,7 @@ APPSRC    = clixon_util_xml.c
 APPSRC   += clixon_util_json.c
 APPSRC   += clixon_util_yang.c
 APPSRC   += clixon_util_xpath.c
+# APPSRC   += clixon_util_stream.c # Needs curl
 
 APPS	  = $(APPSRC:.c=)
 
@@ -90,6 +91,9 @@ clixon_util_yang: clixon_util_yang.c $(MYLIB)
 
 clixon_util_xpath: clixon_util_xpath.c $(MYLIB)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
+
+clixon_util_stream: clixon_util_stream.c $(MYLIB)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lcurl -o $@
 
 distclean: clean
 	rm -f Makefile *~ .depend
