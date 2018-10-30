@@ -100,17 +100,17 @@ if [ $? -ne 0 ]; then
     err
 fi
 new "start backend -s init -f $cfg -y $fyang"
-sudo $clixon_backend -s init -f $cfg -y $fyang -D 1
+sudo $clixon_backend -s init -f $cfg -y $fyang # -D 1
 
 if [ $? -ne 0 ]; then
     err
 fi
 
 new "kill old restconf daemon"
-#sudo pkill -u www-data clixon_restconf
+sudo pkill -u www-data clixon_restconf
       
 new "start restconf daemon"
-#sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg  -y $fyang -D 1
+sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg  -y $fyang # -D 1
 
 sleep 2
 
@@ -164,7 +164,7 @@ expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring
 new "restconf monitor event nonexist stream"
 expectwait 'curl -s -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" http://localhost/streams/NOTEXIST' 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-tag>invalid-value</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>' 2
 
-# 2a) start subscription 8s - see 2 notifications
+# 2a) start subscription 8s - see 1-2 notifications
 new "2a) start subscriptions 8s - see 2 notifications"
 ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 8)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
@@ -178,8 +178,8 @@ if [ $nr != 1 -a $nr != 2 ]; then
     err 2 "$nr"
 fi
 
-# 2b) start subscription 8s - stoptime after 5s - see 1 notifications
-
+sleep 2
+# 2b) start subscription 8s - stoptime after 5s - see 1-2 notifications
 new "2b) start subscriptions 8s - stoptime after 5s - see 1 notifications"
 ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 8 -e +10)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
@@ -192,8 +192,9 @@ if [ $nr != 1 -a $nr != 2 ]; then
     err 1 "$nr"
 fi
 
+sleep 2
 # 2c
-new "2c) start sub 8s - replay from start -8s - see 4 notifications"
+new "2c) start sub 8s - replay from start -8s - see 3-4 notifications"
 ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 10 -s -8)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
@@ -201,7 +202,7 @@ if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 nr=$(echo "$ret" | grep -c "data:")
-if [ $nr != 4 ]; then
+if [ $nr != 3 -a $nr != 4 ]; then
     err 4 "$nr"
 fi
 exit

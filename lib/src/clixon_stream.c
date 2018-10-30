@@ -472,13 +472,14 @@ stream_notify_xml(clicon_handle   h,
 		    goto done;
 		ss = ss1;
 	    }
-	    else  /* xpath match */
+	    else{  /* xpath match */
 		if (ss->ss_xpath == NULL ||
 		    strlen(ss->ss_xpath)==0 ||
 		    xpath_first(xevent, "%s", ss->ss_xpath) != NULL)
 		    if ((*ss->ss_fn)(h, 0, xevent, ss->ss_arg) < 0)
 			goto done;
-	    ss = NEXTQ(struct stream_subscription *, ss);
+		ss = NEXTQ(struct stream_subscription *, ss);
+	    }
 	} while (ss && ss != es->es_subscription);
     retval = 0;
   done:
