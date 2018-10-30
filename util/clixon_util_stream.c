@@ -33,7 +33,7 @@
 
  * Stream restconf support functions.
  * (Original in grideye)
- * Example: clixon_util_stream http://localhost/streams/EXAMPLE 10
+ * Example: clixon_util_stream -u http://localhost/streams/EXAMPLE -s 2018-10-21T19:22:16
  */
 
 #ifdef HAVE_CONFIG_H
@@ -49,6 +49,7 @@
 #include <fnmatch.h>
 #include <stdint.h>
 #include <assert.h>
+#include <syslog.h>
 #include <curl/curl.h>
 
 /* cligen */
@@ -93,8 +94,7 @@ curl_get_cb(void *ptr,
  *
  * If getdata is set, return the (malloced) data (which should be freed).
  *
- * @param[in] query 'q' parameter that should be URL-encoded, ie ?q=<encoded>
- *                   XXX: dont add q=, there may be more parameters.
+ * @param[in] start 'start-time' parameter that will be URL-encoded
  * @retval    -1    fatal error
  * @retval     1    ok
  *
@@ -103,10 +103,11 @@ curl_get_cb(void *ptr,
  * better TCP performance
  */
 int
-url_get(char  *url, 
-	char  *query, 
-	int    timeout,
-	char **getdata)
+stream_url_get(char  *url, 
+	       char  *start,
+	       char  *stop, 
+	       int    timeout,
+	       char **getdata)
 {
     int        retval = -1;
     CURL      *curl;
@@ -126,30 +127,36 @@ url_get(char  *url,
     if ((cbf = cbuf_new()) == NULL)
 	goto done;
 
-    if (query){
-	if ((encoded = curl_easy_escape(curl, query, 0)) == NULL){
-	    clicon_debug(1, "curl_easy_escape");
-	    goto done;
-	}
-    }
     if ((err = malloc(CURL_ERROR_SIZE)) == NULL) {
 	clicon_debug(1, "%s: malloc", __FUNCTION__);
 	goto done;
     }
-    /* specify URL to get */ 
-    if (query)
-	cprintf(cbf, "%s?q=%s", url, encoded);
-    else
-	cprintf(cbf, "%s", url);
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+    /* HEADERS */
     list = curl_slist_append(list, "Accept: text/event-stream");
     list = curl_slist_append(list, "Cache-Control: no-cache");
     list = curl_slist_append(list, "Connection: keep-alive");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-
-    /* For reference, this url works 
-       "http://192.36.171.239:8086/db/nordunet/series?q=select%20tcmp2%20from%20%22dk-ore%22%20limit%201"
-    */
+    /* specify URL to get */ 
+    cprintf(cbf, "%s", url);
+    if (strlen(start)||strlen(stop))
+	cprintf(cbf, "?");
+    if (strlen(start)){
+	if ((encoded = curl_easy_escape(curl, start, 0)) == NULL)
+	    goto done;
+	cprintf(cbf, "start-time=%s", encoded);
+	curl_free(encoded);
+	encoded = NULL;
+    }
+    if (strlen(stop)){
+	if (strlen(start))
+	    cprintf(cbf, "&");
+	if ((encoded = curl_easy_escape(curl, stop, 0)) == NULL)
+	    goto done;
+	cprintf(cbf, "stop-time=%s", encoded);
+	curl_free(encoded);
+	encoded = NULL;
+    }
     clicon_debug(1, "url: %s\n", cbuf_get(cbf));
     curl_easy_setopt(curl, CURLOPT_URL, cbuf_get(cbf));
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_get_cb);
@@ -159,9 +166,7 @@ url_get(char  *url,
        field, so we provide one */ 
 
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, err);
-    //    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, timeout);
-    //    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);  
     ret = curl_easy_perform(curl);
     if (ret != CURLE_OPERATION_TIMEDOUT && ret != CURLE_OK){
@@ -190,7 +195,16 @@ url_get(char  *url,
 static int
 usage(char *argv0)
 {
-    fprintf(stderr, "usage:%s <url> <timeout>.\n\tInput on stdin\n", argv0);
+    fprintf(stderr, "usage:%s <options>*\n"
+	    "where options are:\n"
+            "\t-h\t\tHelp\n"
+    	    "\t-D <level>\tDebug level\n"
+	    "\t-u <url>\tURL (mandatory)\n"
+	    "\t-s <start>\tStart-time (format: 2018-10-21T19:22:16 OR +/-<x>s\n"
+	    "\t-e <end>\tStop-time (same format as start)\n"
+	    "\t-t <timeout>\tTimeout (default: 10)\n"
+	    , argv0);
+
     exit(0);
 }
 
@@ -198,22 +212,69 @@ int
 main(int argc, char **argv)
 {
     cbuf  *cb = cbuf_new();
-    char  *url;
-    char  *query = NULL;
+    char  *url = NULL;
     char  *getdata = NULL;
-    int    timeout;
+    int    timeout = 10;
+    char   start[27] = {0,}; /* strlen = 0 */
+    char   stop[27] = {0,};
+    char   c;
+    char  *argv0 = argv[0];
+    struct timeval now;
 
-    if (argc != 3){
+    clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
+    gettimeofday(&now, NULL);
+    optind = 1;
+    opterr = 0;
+    while ((c = getopt(argc, argv, "hDu:s:e:t:")) != -1)
+	switch (c) {
+	case 'h':
+	    usage(argv0);
+	    break;
+    	case 'D':
+	    debug++;
+	    break;
+	case 'u': /* URL */
+	    url = optarg;
+	    break;
+	case 's': /* start-time */
+	    if (*optarg == '+' || *optarg == '-'){
+		struct timeval t;
+		t = now;
+		t.tv_sec += atoi(optarg);
+		if (time2str(t, start, sizeof(start)) < 0)
+		    goto done;
+	    }
+	    else
+		strcpy(start, optarg);
+	    break;
+	case 'e': /* stop-time */
+	    if (*optarg == '+' || *optarg == '-'){
+		struct timeval t;
+		t = now;
+		t.tv_sec += atoi(optarg);
+		if (time2str(t, stop, sizeof(stop)) < 0)
+		    goto done;
+	    }
+	    else
+		strcpy(stop, optarg);
+	    break;
+	case 't': /* timeout */
+	    timeout = atoi(optarg);
+	    break;
+	default:
+	    usage(argv[0]);
+	    break;
+	}
+    if (url == NULL)
 	usage(argv[0]);
-	return 0;
-    }
-    url = argv[1];
-    timeout = atoi(argv[2]);
-    if (url_get(url, query, timeout, &getdata) < 0)
+    curl_global_init(0);
+    if (stream_url_get(url, start, stop, timeout, &getdata) < 0)
 	goto done;
-    fprintf(stdout, "%s", getdata);
+    if (getdata)
+	fprintf(stdout, "%s", getdata);
     fflush(stdout);
  done:
+    curl_global_cleanup();
     if (getdata)
 	free(getdata);
     if (cb)

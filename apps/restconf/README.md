@@ -90,8 +90,6 @@ where
 
 You access the streams using curl, but they differ slightly in behaviour as described in the following two sections.
 
-### Native event streams 
-
 Add the following to extend the nginx configuration file with the following statements:
 ```
 	location /streams {
@@ -111,11 +109,13 @@ where the first command retrieves only new notifications, and the second receive
 
 ### Nginx Nchan streams
 
+As an alternative, Nginx/Nchan can be used for streams.
 Nginx uses pub/sub channels and can be configured in a variety of
 ways. The following uses a simple variant with one generic subscription
 channel (streams) and one publication channel (pub). 
 
 Configure clixon with `--enable-publish` which enables curl code for publishing streams to nchan.
+Set configure option CLICON_STREAM_PUB to, for example, http://localhost/pub to enable pushing notifications to nchan.
 
 Download and install nchan, see (https://nchan.io/#install).
 

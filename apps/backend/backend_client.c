@@ -83,29 +83,32 @@ ce_find_bypid(struct client_entry *ce_list,
 
 /*! Stream callback for netconf stream notification (RFC 5277)
  * @param[in]  h     Clicon handle
+ * @param[in]  op    0:event, 1:rm
  * @param[in]  event Event as XML
  * @param[in]  arg   Extra argument provided in stream_ss_add
  * @see stream_ss_add
  */
 static int
 ce_event_cb(clicon_handle h,
+	    int           op,
 	    cxobj        *event,
 	    void         *arg)
 {
     struct client_entry *ce = (struct client_entry *)arg;
     
-    if (send_msg_notify_xml(ce->ce_s, event) < 0){
-	if (errno == ECONNRESET || errno == EPIPE){
-	    clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
-#if 0
-	    /* We should remove here but removal is not possible
-	       from a client since backend_client is not linked.
-	       Maybe we should add it to the plugin, but it feels
-	       "safe" that you cant remove a client.
-	       Instead, the client is (hopefully) removed elsewhere?
-	    */
+    clicon_debug(1, "%s op:%d", __FUNCTION__, op);
+    switch (op){
+    case 1:
+	/* Risk of recursion here */
+	if (ce->ce_s)
 	    backend_client_rm(h, ce);
-#endif
+	break;
+    default:
+	if (send_msg_notify_xml(ce->ce_s, event) < 0){
+	    if (errno == ECONNRESET || errno == EPIPE){
+		clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
+	    }
+	    break;
 	}
     }
     return 0;
@@ -126,6 +129,7 @@ backend_client_rm(clicon_handle        h,
     struct client_entry   *c0;
     struct client_entry  **ce_prev;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     c0 = backend_client_list(h);
     ce_prev = &c0; /* this points to stack and is not real backpointer */
     for (c = *ce_prev; c; c = c->ce_next){
@@ -842,20 +846,19 @@ from_client_create_subscription(clicon_handle        h,
     if ((x = xpath_first(xe, "//stream")) != NULL)
 	stream = xml_find_value(x, "body");
     if ((x = xpath_first(xe, "//stopTime")) != NULL){
-	stoptime = xml_find_value(x, "body");
-	if (str2time(stoptime, &stop) < 0){
+	if ((stoptime = xml_find_value(x, "body")) != NULL &&
+	    str2time(stoptime, &stop) < 0){
 	    if (netconf_bad_element(cbret, "application", "<bad-element>stopTime</bad-element>", "Expected timestamp") < 0)
 		goto done;
 	    goto ok;	
 	}
     }
     if ((x = xpath_first(xe, "//startTime")) != NULL){
-	starttime = xml_find_value(x, "body");
-	if (str2time(starttime, &start) < 0){
+	if ((starttime = xml_find_value(x, "body")) != NULL &&
+	    str2time(starttime, &start) < 0){
 	    if (netconf_bad_element(cbret, "application", "<bad-element>startTime</bad-element>", "Expected timestamp") < 0)
 		goto done;
 	    goto ok;	
-	    goto done;	
 	}	
     }
     if ((xfilter = xpath_first(xe, "//filter")) != NULL){

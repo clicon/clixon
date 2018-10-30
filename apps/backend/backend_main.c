@@ -133,7 +133,7 @@ usage(clicon_handle h,
     char *confpid  = clicon_backend_pidfile(h);
     char *group    = clicon_sock_group(h);
 
-    fprintf(stderr, "usage:%s\n"
+    fprintf(stderr, "usage:%s <options>*\n"
 	    "where options are\n"
             "\t-h\t\tHelp\n"
     	    "\t-D <level>\tDebug level\n"
@@ -860,6 +860,8 @@ main(int    argc,
     if (debug)
 	clicon_option_dump(h, debug);
 
+    if (stream_timer_setup(0, h) < 0)
+	goto done;
     if (event_loop() < 0)
 	goto done;
     retval = 0;

@@ -108,14 +108,12 @@ restconf_stream_cb(int   s,
 	clicon_debug(1, "%s msg_rcv error", __FUNCTION__);
 	goto done;
     }
-    clicon_debug(1, "%s msg: %s", __FUNCTION__, reply->op_body);
+    clicon_debug(1, "%s msg: %s", __FUNCTION__, reply?reply->op_body:"null");
     /* handle close from remote end: this will exit the client */
     if (eof){
 	clicon_debug(1, "%s eof", __FUNCTION__);
 	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
-	close(s);
 	errno = ESHUTDOWN;
-	event_unreg_fd(s, restconf_stream_cb);
 	FCGX_FPrintF(r->out, "SHUTDOWN\r\n");
 	FCGX_FPrintF(r->out, "\r\n");
 	FCGX_FFlush(r->out);
@@ -148,7 +146,6 @@ restconf_stream_cb(int   s,
     FCGX_FPrintF(r->out, "data: %s\r\n", cbuf_get(cb));
     FCGX_FPrintF(r->out, "\r\n");
     FCGX_FFlush(r->out);
-
  ok:
     retval = 0;
  done:
@@ -186,8 +183,8 @@ restconf_stream(clicon_handle h,
     cg_var *cv;
     char   *vname;
 
-    *sp = -1;
     clicon_debug(1, "%s", __FUNCTION__);
+    *sp = -1;
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
@@ -228,6 +225,7 @@ restconf_stream(clicon_handle h,
  ok:
     retval = 0;
  done:
+    clicon_debug(1, "%s retval: %d", __FUNCTION__, retval);
     if (xret)
 	xml_free(xret);
     if (cb)
@@ -239,6 +237,19 @@ restconf_stream(clicon_handle h,
 #include "restconf_lib.h"
 #include "restconf_stream.h"
 
+static int
+stream_checkuplink(int   s, 
+		   void *arg)
+{
+    FCGX_Request *r = (FCGX_Request *)arg;
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (FCGX_GetError(r->out) != 0){ /* break loop */
+	clicon_debug(1, "%s FCGX_GetError upstream", __FUNCTION__);
+	clicon_exit_set();
+    }
+    return 0;
+}
+
 int
 stream_timeout(int   s,
 	       void *arg)
@@ -248,8 +259,10 @@ stream_timeout(int   s,
     FCGX_Request *r = (FCGX_Request *)arg;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    if (FCGX_GetError(r->out) != 0) /* break loop */
+    if (FCGX_GetError(r->out) != 0){ /* break loop */
+	clicon_debug(1, "%s FCGX_GetError upstream", __FUNCTION__);
 	clicon_exit_set();
+    }
     else{
 	gettimeofday(&t, NULL);
 	t1.tv_sec = 1; t1.tv_usec = 0;
@@ -355,10 +368,16 @@ api_stream(clicon_handle h,
 			 (void*)r,
 			 "stream socket") < 0)
 	    goto done;
+	if (event_reg_fd(r->listen_sock,
+			 stream_checkuplink, 
+			 (void*)r,
+			 "stream socket") < 0)
+	    goto done;
 	/* Poll upstream errors */
 	stream_timeout(0, (void*)r);
 	/* Start loop */
 	event_loop();
+	close(s);
 	event_unreg_fd(s, restconf_stream_cb);
 	clicon_exit_reset();
     }
