@@ -102,7 +102,7 @@ backend_terminate(clicon_handle h)
     if (sockpath)
 	unlink(sockpath);   
     xmldb_plugin_unload(h); /* unload storage plugin */
-    backend_handle_exit(h); /* Cannot use h after this */
+    backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
     event_exit();
     clicon_debug(1, "%s done", __FUNCTION__); 
     clicon_log_exit();

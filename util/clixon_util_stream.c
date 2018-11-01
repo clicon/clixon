@@ -118,7 +118,8 @@ stream_url_get(char  *url,
     struct curl_slist *list = NULL;
     int       ret;
 
-    clicon_debug(1, "%s:  curl -G %s", __FUNCTION__, url);
+    clicon_debug(1, "%s:  curl -G %s start-time=%s stop-time=%s",
+		 __FUNCTION__, url, start?start:"", stop?stop:"");
     /* Set up curl for doing the communication with the controller */
     if ((curl = curl_easy_init()) == NULL) {
 	clicon_err(OE_PLUGIN, errno, "curl_easy_init");

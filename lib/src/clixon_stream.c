@@ -38,9 +38,14 @@
  * 3) Stream replay: stream_replay/_add
  * 4) nginx/nchan publish code (use --enable-publish config option)
  *
- * +---------------+        * +---------------+        * +---------------+
- * | clicon_handle |--------->| event_stream  |--------->| subscription  |
- * +---------------+          +---------------+          +---------------+
+ *
+ *             +---------------+  1             arg
+ *             | client_entry  | <----------------- +---------------+
+ *             +---------------+                +-->| subscription  |
+ *                                            /     +---------------+
+ * +---------------+        * +---------------+
+ * | clicon_handle |--------->| event_stream  |
+ * +---------------+          +---------------+
  *                                             \  * +---------------+
  *                                              +-->| replay        |
  *                                                  +---------------+
@@ -164,7 +169,7 @@ stream_delete_all(clicon_handle h)
 	if (es->es_description)
 	    free(es->es_description);
 	while ((ss = es->es_subscription) != NULL)
-	    stream_ss_rm(h, es, ss);
+	    stream_ss_rm(h, es, ss); /* XXX in some cases leaks memory due to DONT clause in stream_ss_rm() */
 	while ((r = es->es_replay) != NULL){
 	    DELQ(r, es->es_replay, struct stream_replay *);
 	    if (r->r_xml)
@@ -379,12 +384,14 @@ stream_ss_rm(clicon_handle                h,
     DELQ(ss, es->es_subscription, struct stream_subscription *);
     /* Remove from upper layers - close socket etc. */
     (*ss->ss_fn)(h, 1, NULL, ss->ss_arg);
+#ifdef DONT     /* upcall may have deleted it */
     if (ss->ss_stream)
 	free(ss->ss_stream);
     if (ss->ss_xpath)
 	free(ss->ss_xpath);
     free(ss);
-    
+#endif
+    clicon_debug(1, "%s retval: 0", __FUNCTION__);
     return 0;
 }
 
@@ -480,7 +487,7 @@ stream_notify_xml(clicon_handle   h,
 			goto done;
 		ss = NEXTQ(struct stream_subscription *, ss);
 	    }
-	} while (ss && ss != es->es_subscription);
+	} while (es->es_subscription && ss != es->es_subscription);
     retval = 0;
   done:
     return retval;

@@ -104,6 +104,7 @@ backend_handle_init(void)
 
 /*! Deallocates a backend handle, including all client structs
  * @Note: handle 'h' cannot be used in calls after this
+ * @see backend_client_rm
  */
 int
 backend_handle_exit(clicon_handle h)
@@ -111,12 +112,17 @@ backend_handle_exit(clicon_handle h)
     struct backend_handle *bh = handle(h);
     struct client_entry   *ce;
 
-    /* only delete client structs, not close sockets, etc, see backend_client_rm */
-    while ((ce = backend_client_list(h)) != NULL)
+    /* only delete client structs, not close sockets, etc, see backend_client_rm WHY NOT? */
+    while ((ce = backend_client_list(h)) != NULL){
+	if (ce->ce_s){
+	    close(ce->ce_s);
+	    ce->ce_s = 0;
+	}
 	backend_client_delete(h, ce);
+    }
     if (bh->bh_nacm)
 	xml_free(bh->bh_nacm);
-    clicon_handle_exit(h); /* frees h and options */
+    clicon_handle_exit(h); /* frees h and options (and streams) */
     return 0;
 }
 

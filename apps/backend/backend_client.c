@@ -88,7 +88,7 @@ ce_find_bypid(struct client_entry *ce_list,
  * @param[in]  arg   Extra argument provided in stream_ss_add
  * @see stream_ss_add
  */
-static int
+int
 ce_event_cb(clicon_handle h,
 	    int           op,
 	    cxobj        *event,
@@ -111,6 +111,7 @@ ce_event_cb(clicon_handle h,
 	    break;
 	}
     }
+    clicon_debug(1, "%s retval:0", __FUNCTION__);
     return 0;
 }
 
@@ -130,6 +131,8 @@ backend_client_rm(clicon_handle        h,
     struct client_entry  **ce_prev;
 
     clicon_debug(1, "%s", __FUNCTION__);
+    /* for all streams: XXX better to do it top-level? */
+    stream_ss_delete_all(h, ce_event_cb, (void*)ce);
     c0 = backend_client_list(h);
     ce_prev = &c0; /* this points to stack and is not real backpointer */
     for (c = *ce_prev; c; c = c->ce_next){
@@ -139,12 +142,11 @@ backend_client_rm(clicon_handle        h,
 		close(ce->ce_s);
 		ce->ce_s = 0;
 	    }
-	    /* for all streams */
-	    stream_ss_delete_all(h, ce_event_cb, (void*)ce);
 	    break;
 	}
 	ce_prev = &c->ce_next;
     }
+
     return backend_client_delete(h, ce); /* actually purge it */
 }
 
@@ -878,6 +880,7 @@ from_client_create_subscription(clicon_handle        h,
 	    goto done;
 	goto ok;
     }
+    /* Add subscriber to stream - to make notifications for this client */
     if (stream_ss_add(h, stream, selector,
 		      starttime?&start:NULL, stoptime?&stop:NULL,
 		      ce_event_cb, (void*)ce) < 0)

@@ -1,4 +1,6 @@
 #!/bin/bash
+# Run, eg as:
+# ./run.sh 2>&1 | tee test.log
 
 # include err() and new() functions
 . ./lib.sh
