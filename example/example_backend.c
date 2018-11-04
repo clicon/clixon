@@ -306,7 +306,8 @@ clixon_plugin_init(clicon_handle h)
 	retention.tv_sec = clicon_option_int(h, "CLICON_STREAM_RETENTION");
     if (stream_add(h, "EXAMPLE", "Example event stream", 1, &retention) < 0)
 	goto done;
-    /* assumes: CLIXON_PUBLISH_STREAMS, eg configure --enable-publish
+    /* Enable nchan pub/sub streams
+     * assumes: CLIXON_PUBLISH_STREAMS, eg configure --enable-publish
      */
     if (clicon_option_exists(h, "CLICON_STREAM_PUB") &&
 	stream_publish(h, "EXAMPLE") < 0)

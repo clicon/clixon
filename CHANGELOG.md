@@ -46,9 +46,11 @@
 * Major rewrite of event streams (as described above)
   * If you used old event callbacks API, you need to switch to the streams API
     * See clixon_stream.[ch]
-  * Old streams API which needs to be removed include:
-    * clicon_log_register_callback()
+  * Old streams API which needs to be modified:
+    * clicon_log_register_callback() removed
     * subscription_add() --> stream_add()
+    * stream_cb_add() --> stream_ss_add()	
+    * stream_cb_delete() --> stream_ss_delete()
     * backend_notify() and backend_notify_xml() - use stream_notify() instead
   * Example uses "NETCONF" stream instead of "ROUTING"
 * clixon_restconf and clixon_netconf changed to take -D `<level>` as command-line option instead of just -D (without debig level)

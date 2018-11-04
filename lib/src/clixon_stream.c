@@ -420,9 +420,9 @@ stream_ss_find(event_stream_t   *es,
 
 /*! Remove stream subscription identified with fn and arg in all streams
  * @param[in] h       Clicon handle
- * @param[in] stream  Name of stream or NULL for all streams
  * @param[in] fn      Stream callback
  * @param[in] arg     Argument - typically unique client handle
+ * @see stream_ss_delete  For single stream
  */
 int
 stream_ss_delete_all(clicon_handle     h,
@@ -447,6 +447,34 @@ stream_ss_delete_all(clicon_handle     h,
     return retval;
 }
 
+/*! Delete a single stream
+ * @see stream_ss_delete_all (merge with this?)
+ */
+int
+stream_ss_delete(clicon_handle     h,
+		 char             *name,
+		 stream_fn_t       fn,
+		 void             *arg)
+{
+    int                          retval = -1;
+    event_stream_t              *es;
+    struct stream_subscription  *ss;
+
+    if ((es = clicon_stream(h)) != NULL){
+	do {
+	    if (strcmp(name, es->es_name)==0)
+		if ((ss = stream_ss_find(es, fn, arg)) != NULL){
+		    if (stream_ss_rm(h, es, ss) < 0)
+			goto done;
+		}
+	    es = NEXTQ(struct event_stream *, es);
+	} while (es && es != clicon_stream(h));
+    }	    
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Stream notify event and distribute to all registered callbacks
  * @param[in]  h       Clicon handle
  * @param[in]  stream  Name of event stream. CLICON is predefined as LOG stream
@@ -457,11 +485,11 @@ stream_ss_delete_all(clicon_handle     h,
  * @see stream_notify
  * @see stream_ss_timeout where subscriptions are removed if stoptime<now
  */
-int
-stream_notify_xml(clicon_handle   h, 
-		  event_stream_t *es,
-		  struct timeval *tv,
-		  cxobj          *xevent)
+static int
+stream_notify1(clicon_handle   h, 
+	       event_stream_t *es,
+	       struct timeval *tv,
+	       cxobj          *xevent)
 {
     int                         retval = -1;
     struct stream_subscription *ss;
@@ -503,7 +531,7 @@ stream_notify_xml(clicon_handle   h,
  *  if (stream_notify(h, "NETCONF", "<event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
  *    err;
  * @endcode
- * @see stream_notify_xml
+ * @see stream_notify1 Internal
  */
 int
 stream_notify(clicon_handle h, 
@@ -553,7 +581,7 @@ stream_notify(clicon_handle h,
 	goto done;
     if (xml_rootchild(xev, 0, &xev) < 0)
 	goto done;
-    if (stream_notify_xml(h, es, &tv, xev) < 0)
+    if (stream_notify1(h, es, &tv, xev) < 0)
 	goto done;
     if (es->es_replay_enabled){
 	if (stream_replay_add(es, &tv, xev) < 0)
@@ -571,6 +599,66 @@ stream_notify(clicon_handle h,
 	free(str);
     return retval;
 }
+
+/*! Backward compatible function
+ * @see  stream_notify  Should be merged with this
+ */
+int
+stream_notify_xml(clicon_handle h, 
+		  char         *stream, 
+		  cxobj        *xml)
+{
+    int        retval = -1;
+    cxobj     *xev = NULL;
+    yang_spec *yspec = NULL;
+    char      *str = NULL;
+    cbuf      *cb = NULL;
+    char       timestr[27];
+    struct timeval tv;
+    event_stream_t *es;
+
+    clicon_debug(2, "%s", __FUNCTION__);
+    if ((es = stream_find(h, stream)) == NULL)
+	goto ok;
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, 0, "No yang spec");
+	goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    gettimeofday(&tv, NULL);
+    if (time2str(tv, timestr, sizeof(timestr)) < 0){
+	clicon_err(OE_UNIX, errno, "time2str");
+	goto done;
+    }
+    cprintf(cb, "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>%s</eventTime>%s</notification>", timestr, str);
+    if (xml_parse_string(cbuf_get(cb), yspec, &xev) < 0)
+	goto done;
+    if (xml_rootchild(xev, 0, &xev) < 0)
+	goto done;
+    if (xml_addsub(xev, xml) < 0)
+	goto done;
+    if (stream_notify1(h, es, &tv, xev) < 0)
+	goto done;
+    if (es->es_replay_enabled){
+	if (stream_replay_add(es, &tv, xev) < 0)
+	    goto done;
+	xev = NULL; /* xml stored in replay_add and should not be freed */
+    }
+ ok:
+    retval = 0;
+  done:
+    if (cb)
+	cbuf_free(cb);
+    if (xev)
+	xml_free(xev);
+    if (str)
+	free(str);
+    return retval;
+}
+
 
 /*! Replay a stream by sending notification messages
  * @see RFC5277 Sec 2.1.1:

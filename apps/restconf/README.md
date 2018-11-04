@@ -132,16 +132,17 @@ Nginx uses pub/sub channels and can be configured in a variety of
 ways. The following uses a simple variant with one generic subscription
 channel (streams) and one publication channel (pub).
 
-The advantage with Nchan is the large eco-system of 
+The advantage with Nchan is the large eco-system around Nginx and Nchan.
 
-Native mode and Nchan mode can co-exist?
-Nchan mode does not use Clixon retention, 
+Native mode and Nchan mode can co-exist, but the publish URL of Nchan should be different from the streams URL of the native streams.
+
+Nchan mode does not use Clixon retention, since it uses its own replay mechanism.
 
 Download and install nchan, see (https://nchan.io/#install).
 
 Add the following to extend the Nginx configuration file with the following statements (example):
 ```
-        location ~ /streams/(\w+)$ {
+        location ~ /sub/(\w+)$ {
             nchan_subscriber;
             nchan_channel_id $1; #first capture of the location match
         }
@@ -163,9 +164,19 @@ Clicon will then publish events from stream EXAMPLE to `http://localhost/pub/EXA
 Access the event stream EXAMPLE using curl:
 ```
    curl -H "Accept: text/event-stream" -s -X GET http://localhost/streams/EXAMPLE
-   curl -H "Accept: text/event-stream" -H "Last-Event-ID: 1539961709:0" -s -X GET http://localhost/streams/EXAMPLE
+: hi
+
+id: 1541344320:0
+data: <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-11-04T15:12:00.435769</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>
+
+id: 1541344325:0
+data: <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-11-04T15:12:05.446425</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>
+
 ```
-where the first command retrieves the whole stream history, and the second only retreives the most recent messages given by the ID.
+Note that the SSE stream output is different than for native streams, and that `Last-Event-Id` is used for replay:
+```
+curl -H "Accept: text/event-stream" -H "Last-Event-ID: 1539961709:0" -s -X GET http://localhost/streams/EXAMPLE
+```
 
 See (https://nchan.io/#eventsource) on more info on how to access an SSE sub endpoint.
 

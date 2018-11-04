@@ -95,8 +95,9 @@ int stream_ss_rm(clicon_handle h, event_stream_t *es, struct stream_subscription
 struct stream_subscription *stream_ss_find(event_stream_t *es,
 					   stream_fn_t fn, void *arg);
 int stream_ss_delete_all(clicon_handle h, stream_fn_t fn, void *arg);
+int stream_ss_delete(clicon_handle h, char *name, stream_fn_t fn, void *arg);
 
-int stream_notify_xml(clicon_handle h, event_stream_t *es, struct timeval *tv, cxobj *xevent);
+int stream_notify_xml(clicon_handle h, char *stream, cxobj *xml);
 #if defined(__GNUC__) && __GNUC__ >= 3
 int stream_notify(clicon_handle h, char *stream, const char *event, ...)  __attribute__ ((format (printf, 3, 4)));
 #else

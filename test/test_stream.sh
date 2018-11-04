@@ -22,6 +22,10 @@
 
 APPNAME=example
 UTIL=../util/clixon_util_stream
+if [ ! -x $UTIL ]; then
+    echo "$UTIL not found. To build: (cd ../util; make clixon_util_stream)"
+    exit 1
+fi
 DATE=$(date +"%Y-%m-%d")
 # include err() and new() functions and creates $dir
 . ./lib.sh
@@ -50,6 +54,7 @@ cat <<EOF > $cfg
   <CLICON_STREAM_PATH>streams</CLICON_STREAM_PATH>
   <CLICON_STREAM_URL>https://localhost</CLICON_STREAM_URL>
   <CLICON_STREAM_RETENTION>60</CLICON_STREAM_RETENTION>
+  <CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB>
 </config>
 EOF
 
@@ -253,6 +258,11 @@ if [ $nr -lt 1 -o $nr -gt 2 ]; then
     err 2 "$nr"
 fi
 
+#--------------------------------------------------------------------
+# NCHAN Need manual testing
+echo "Nchan streams requires manual testing"
+echo "Eg: curl -H \"Accept: text/event-stream\" -s -X GET http://localhost/sub/EXAMPLE"
+
 #-----------------
 
 sudo pkill -u www-data clixon_restconf
@@ -272,16 +282,9 @@ fi
 
 rm -rf $dir
 
-exit # DONT REMOVE MANUAL TESTING
 
-#--------------------------------------------------------------------
-# NCHAN Need manual testing
-new "restconf monitor streams nchan NEEDS manual testing"
-if false; then
-    # url -H "Accept: text/event-stream" http://localhost/streams/EXAMPLE
-    # Expect:
-    echo foo
-fi
+
+
 
 
 
