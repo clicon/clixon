@@ -82,10 +82,70 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include <fcgi_stdio.h> /* Need to be after clixon_xml.h due to attribute format */
+#include <fcgiapp.h> /* Need to be after clixon_xml.h due to attribute format */
 
 #include "restconf_lib.h"
 #include "restconf_stream.h"
+
+/*
+ * Constants
+ */
+/* Enable for forking stream subscription loop. 
+ * Disable to get single threading but blocking on streams
+ */
+#define STREAM_FORK 1
+
+/* Keep track of children - whjen they exit - their FCGX handle needs to be 
+ * freed with  FCGX_Free(&rbk, 0);
+ */
+struct stream_child{
+    qelem_t                     sc_q;   /* queue header */
+    int                         sc_pid; /* Child process id */
+    FCGX_Request                sc_r;   /* FCGI stream data */
+};
+/* Linked list of children
+ * @note could hang STREAM_CHILD list on clicon handle instead.
+ */
+static struct stream_child *STREAM_CHILD = NULL; 
+
+/*! Find restconf child using PID and cleanup FCGI Request data
+ * @param[in]  h   Clicon handle
+ * @param[in]  pid Process id of child
+ * @note could hang STREAM_CHILD list on clicon handle instead.
+ */
+int
+stream_child_free(clicon_handle h,
+		  int           pid)
+{
+    struct stream_child *sc;
+    
+    if ((sc = STREAM_CHILD) != NULL){
+	do {
+	    if (pid == sc->sc_pid){
+		DELQ(sc, STREAM_CHILD, struct stream_child *);
+		FCGX_Free(&sc->sc_r, 0);
+		free(sc);
+		goto done;
+	    }
+	    sc = NEXTQ(struct stream_child *, sc);
+	} while (sc && sc !=  STREAM_CHILD);
+    }
+ done:
+    return 0;
+}
+
+int
+stream_child_freeall(clicon_handle h)
+{
+    struct stream_child *sc;
+
+    while ((sc = STREAM_CHILD) != NULL){
+	DELQ(sc, STREAM_CHILD, struct stream_child *);
+	FCGX_Free(&sc->sc_r, 1);
+	free(sc);
+    }
+    return 0;
+}
 
 /*! Callback when stream notifications arrive from backend
  */
@@ -278,7 +338,8 @@ stream_timeout(int   s,
 int
 api_stream(clicon_handle h,
 	   FCGX_Request *r,
-	   char         *streampath)
+	   char         *streampath,
+	   int          *finish)
 {
     int    retval = -1;
     char  *path;
@@ -298,6 +359,10 @@ api_stream(clicon_handle h,
     cxobj *xret = NULL;
     cxobj *xerr;
     int    s=-1;
+#ifdef STREAM_FORK
+    int    pid;
+    struct stream_child *sc;
+#endif
 
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
@@ -362,24 +427,64 @@ api_stream(clicon_handle h,
     if (restconf_stream(h, r, method, qvec, pretty, use_xml, &s) < 0)
 	goto done;
     if (s != -1){
-	/* Listen to backend socket */
-	if (event_reg_fd(s, 
-			 restconf_stream_cb, 
-			 (void*)r,
-			 "stream socket") < 0)
+#ifdef STREAM_FORK
+	if ((pid = fork()) == 0){ /* child */
+	    if (pvec)
+		free(pvec);
+	    if (dvec)
+		cvec_free(dvec);
+	    if (qvec)
+		cvec_free(qvec);
+	    if (pcvec)
+		cvec_free(pcvec);
+	    if (cb)
+		cbuf_free(cb);
+	    if (cbret)
+		cbuf_free(cbret);
+	    if (xret)
+		xml_free(xret);
+#endif /* STREAM_FORK */
+	    /* Listen to backend socket */
+	    if (event_reg_fd(s, 
+			     restconf_stream_cb, 
+			     (void*)r,
+			     "stream socket") < 0)
+		goto done;
+	    if (event_reg_fd(r->listen_sock,
+			     stream_checkuplink, 
+			     (void*)r,
+			     "stream socket") < 0)
+		goto done;
+	    /* Poll upstream errors */
+	    stream_timeout(0, (void*)r);
+	    /* Start loop */
+	    event_loop();
+	    close(s);
+	    event_unreg_fd(s, restconf_stream_cb);
+	    event_unreg_fd(r->listen_sock, restconf_stream_cb);
+	    event_unreg_timeout(stream_timeout, (void*)r);
+	    clicon_exit_reset();
+#ifdef STREAM_FORK
+	    FCGX_Finish_r(r);
+	    FCGX_Free(r, 0);	    
+	    fprintf(stderr, "child exit and free\n");
+	    restconf_terminate(h);
+	    exit(0);
+	}
+	/* parent */
+	/* Create stream_child struct and store pid and FCGI data, when child
+	 * killed, call FCGX_Free
+	 */
+	if ((sc = malloc(sizeof(struct stream_child))) == NULL){
+	    clicon_err(OE_XML, errno, "malloc");
 	    goto done;
-	if (event_reg_fd(r->listen_sock,
-			 stream_checkuplink, 
-			 (void*)r,
-			 "stream socket") < 0)
-	    goto done;
-	/* Poll upstream errors */
-	stream_timeout(0, (void*)r);
-	/* Start loop */
-	event_loop();
-	close(s);
-	event_unreg_fd(s, restconf_stream_cb);
-	clicon_exit_reset();
+	}
+	memset(sc, 0, sizeof(struct stream_child));
+	sc->sc_pid = pid;
+	sc->sc_r = *r;
+	ADDQ(sc, STREAM_CHILD);
+	*finish = 0; /* If spawn child, we should not finish this stream */
+#endif /* STREAM_FORK */
     }
  ok:
     retval = 0;
@@ -399,6 +504,5 @@ api_stream(clicon_handle h,
 	cbuf_free(cbret);
     if (xret)
 	xml_free(xret);
-
     return retval;
 }

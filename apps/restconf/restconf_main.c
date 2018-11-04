@@ -73,7 +73,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include <fcgi_stdio.h> /* Need to be after clixon_xml.h due to attribute format */
+#include <fcgiapp.h> /* Need to be after clixon_xml.h due to attribute format */
 
 /* restconf */
 #include "restconf_lib.h"
@@ -443,27 +443,8 @@ api_restconf(clicon_handle h,
     return retval;
 }
 
-static int
-restconf_terminate(clicon_handle h)
-{
-    yang_spec *yspec;
-    cxobj     *x;
 
-    clixon_plugin_exit(h);
-    rpc_callback_delete_all();
-    clicon_rpc_close_session(h);
-    if ((yspec = clicon_dbspec_yang(h)) != NULL)
-	yspec_free(yspec);
-    if ((yspec = clicon_config_yang(h)) != NULL)
-	yspec_free(yspec);
-    if ((x = clicon_conf_xml(h)) != NULL)
-	xml_free(x);
-    clicon_handle_exit(h);
-    clicon_log_exit();
-    return 0;
-}
-
-/* Need global variable to for signal handler */
+/* Need global variable to for signal handler XXX */
 static clicon_handle _CLICON_HANDLE = NULL;
 
 /*! Signall terminates process
@@ -478,10 +459,22 @@ restconf_sig_term(int arg)
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
     else
 	exit(-1);
-    if (_CLICON_HANDLE)
+    if (_CLICON_HANDLE){
+	stream_child_freeall(_CLICON_HANDLE);
 	restconf_terminate(_CLICON_HANDLE);
+    }
     clicon_exit_set(); /* checked in event_loop() */
     exit(-1);
+}
+
+static void
+restconf_sig_child(int arg)
+{
+    int status;
+    int pid;
+
+    if ((pid = waitpid(-1, &status, 0)) != -1 && WIFEXITED(status))
+	stream_child_free(_CLICON_HANDLE, pid);
 }
 
 /*! Usage help routine
@@ -532,6 +525,7 @@ main(int    argc,
     yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
     char        *yang_filename = NULL;
     char        *stream_path;
+    int          finish;
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -579,6 +573,11 @@ main(int    argc,
 	clicon_err(OE_DEMON, errno, "Setting signal");
 	goto done;
     }
+    if (set_signal(SIGCHLD, restconf_sig_child, NULL) < 0){
+	clicon_err(OE_DEMON, errno, "Setting signal");
+	goto done;
+    }
+
     /* Create configure yang-spec */
     if ((yspecfg = yspec_new()) == NULL)
 	goto done;
@@ -663,11 +662,12 @@ main(int    argc,
     clixon_plugin_start(h, argc+1, argv-1);
     *(argv-1) = tmp;
 
+    /**/
     if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){
 	clicon_err(OE_CFG, errno, "No CLICON_RESTCONF_PATH in clixon configure file");
 	goto done;
     }
-    if (FCGX_Init() != 0){
+    if (FCGX_Init() != 0){ /* How to cleanup memory after this? */
 	clicon_err(OE_CFG, errno, "FCGX_Init");
 	goto done;
     }
@@ -676,12 +676,13 @@ main(int    argc,
 	clicon_err(OE_CFG, errno, "FCGX_OpenSocket");
 	goto done;
     }
-
     if (FCGX_InitRequest(r, sock, 0) != 0){
 	clicon_err(OE_CFG, errno, "FCGX_InitRequest");
 	goto done;
     }
     while (1) {
+	finish = 1; /* If zero, dont finish request, initiate new */
+
 	if (FCGX_Accept_r(r) < 0) {
 	    clicon_err(OE_CFG, errno, "FCGX_Accept_r");
 	    goto done;
@@ -692,7 +693,7 @@ main(int    argc,
 	    if (strncmp(path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0)
 		api_restconf(h, r); /* This is the function */
 	    else if (strncmp(path+1, stream_path, strlen(stream_path)) == 0) {
-		api_stream(h, r, stream_path); 
+		api_stream(h, r, stream_path, &finish); 
 	    }
 	    else if (strncmp(path, RESTCONF_WELL_KNOWN, strlen(RESTCONF_WELL_KNOWN)) == 0) {
 		api_well_known(h, r); /*  */
@@ -704,10 +705,19 @@ main(int    argc,
 	}
 	else
 	    clicon_debug(1, "NULL URI");
-	FCGX_Finish_r(r);
+	if (finish)
+	    FCGX_Finish_r(r);
+	else{ /* A handler is forked so we initiate a new request after instead 
+		 of finnishing the old */
+	    if (FCGX_InitRequest(r, sock, 0) != 0){
+		clicon_err(OE_CFG, errno, "FCGX_InitRequest");
+		goto done;
+	    }
+	}
     }
     retval = 0;
  done:
+    stream_child_freeall(h);
     restconf_terminate(h);
     return retval;
 }

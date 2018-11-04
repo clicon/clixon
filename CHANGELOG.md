@@ -28,6 +28,7 @@
 * Restconf stream notification support according to RFC8040
   * See (apps/restconf/README.md) for more details.
   * start-time and stop-time query parameters
+  * Fork fcgi handler for streams
   * Set access/subscribe base URL with: CLICON_STREAM_URL (default "https://localhost") and CLICON_STREAM_PATH (default "streams")
     * Example: new stream "foo" will get access URL: https://localhost/streams/foo
   * Alternative variant using pub/sub support enabled by ./configure --enable-publish

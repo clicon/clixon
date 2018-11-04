@@ -111,7 +111,8 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
       
 new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg  -y $fyang # -D 1
+
+sudo su -c "/www-data/clixon_restconf -f $cfg -y $fyang" -s /bin/sh www-data &
 
 sleep 2
 
@@ -166,7 +167,6 @@ sleep 2
 # Start Subscription w error
 new "restconf monitor event nonexist stream"
 expectwait 'curl -s -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" http://localhost/streams/NOTEXIST' 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-tag>invalid-value</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>' 2
-
 
 # 2a) start subscription 8s - expect 1-2 notifications
 new "2a) start subscriptions 8s - expect 1-2 notifications"
@@ -234,6 +234,23 @@ nr=$(echo "$ret" | grep -c "data:")
 
 if [ $nr -lt 10 -o $nr -gt 14 ]; then
     err 10 "$nr"
+fi
+
+# Try parallell
+# start background job
+curl -s -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" "http://localhost/streams/EXAMPLE" > /dev/null &
+
+new "Start subscription in parallell"
+ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 8)
+expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+
+match=$(echo "$ret" | grep -Eo "$expect")
+if [ -z "$match" ]; then
+    err "$expect" "$ret"
+fi
+nr=$(echo "$ret" | grep -c "data:")
+if [ $nr -lt 1 -o $nr -gt 2 ]; then
+    err 2 "$nr"
 fi
 
 #-----------------

@@ -118,7 +118,7 @@ Mapping netconf error-tag -> status code
 /* clicon */
 #include <clixon/clixon.h>
 
-#include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
+#include <fcgiapp.h> /* Need to be after clixon_xml-h due to attribute format */
 
 #include "restconf_lib.h"
 #include "restconf_methods.h"

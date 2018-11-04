@@ -39,7 +39,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <signal.h>
-#include <fcgi_stdio.h>
+#include <fcgiapp.h>
 #include <curl/curl.h>
 
 /* cligen */

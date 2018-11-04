@@ -54,7 +54,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
+#include <fcgiapp.h> /* Need to be after clixon_xml-h due to attribute format */
 
 #include "restconf_lib.h"
 
@@ -484,4 +484,24 @@ api_return_err(clicon_handle h,
     if (cb)
         cbuf_free(cb);
     return retval;
+}
+
+int
+restconf_terminate(clicon_handle h)
+{
+    yang_spec *yspec;
+    cxobj     *x;
+
+    clixon_plugin_exit(h);
+    rpc_callback_delete_all();
+    clicon_rpc_close_session(h);
+    if ((yspec = clicon_dbspec_yang(h)) != NULL)
+	yspec_free(yspec);
+    if ((yspec = clicon_config_yang(h)) != NULL)
+	yspec_free(yspec);
+    if ((x = clicon_conf_xml(h)) != NULL)
+	xml_free(x);
+    clicon_handle_exit(h);
+    clicon_log_exit();
+    return 0;
 }

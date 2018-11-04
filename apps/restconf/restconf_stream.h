@@ -39,6 +39,8 @@
 /*
  * Prototypes
  */
-int api_stream(clicon_handle h, FCGX_Request *r, char *streampath);
+int stream_child_free(clicon_handle h, int pid);
+int stream_child_freeall(clicon_handle h);
+int api_stream(clicon_handle h, FCGX_Request *r, char *streampath, int *finish);
 
 #endif /* _RESTCONF_STREAM_H_ */
