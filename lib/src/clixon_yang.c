@@ -1738,7 +1738,7 @@ yang_parse_str(char         *str,
 /*! Parse yang spec from an open file descriptor
  * @param[in]  fd    File descriptor containing the YANG file as ASCII characters
  * @param[in] name   For debug, eg filename
- * @param[in] ysp    Yang specification. Should ave been created by caller using yspec_new
+ * @param[in] ysp    Yang specification. Should have been created by caller using yspec_new
  * @retval ymod      Top-level yang (sub)module
  * @retval NULL      Error 
  */

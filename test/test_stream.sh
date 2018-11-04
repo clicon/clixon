@@ -54,9 +54,11 @@ cat <<EOF > $cfg
   <CLICON_STREAM_PATH>streams</CLICON_STREAM_PATH>
   <CLICON_STREAM_URL>https://localhost</CLICON_STREAM_URL>
   <CLICON_STREAM_RETENTION>60</CLICON_STREAM_RETENTION>
-  <CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB>
 </config>
 EOF
+
+# For nchan testing add this line to above config
+#   <CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB>
 
 # RFC5277 NETCONF Event Notifications 
 # using reportingEntity (rfc5277) not reporting-entity (rfc8040)
@@ -261,6 +263,7 @@ fi
 #--------------------------------------------------------------------
 # NCHAN Need manual testing
 echo "Nchan streams requires manual testing"
+echo "Add <CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB> to config"
 echo "Eg: curl -H \"Accept: text/event-stream\" -s -X GET http://localhost/sub/EXAMPLE"
 
 #-----------------

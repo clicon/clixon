@@ -78,10 +78,11 @@ main(int argc, char **argv)
 	usage(argv[0]);
 	return -1;
     }
+    clicon_log_init("clixon_util_yang", LOG_INFO, CLICON_LOG_STDERR);
     if ((yspec = yspec_new()) == NULL)
 	goto done;
-    if (yang_parse_file(0, "yang test", yspec) < 0){
-	fprintf(stderr, "xml parse error %s\n", clicon_err_reason);
+    if (yang_parse_file(0, "yang test", yspec) == NULL){
+	fprintf(stderr, "yang parse error %s\n", clicon_err_reason);
 	return -1;
     }
     yang_print(stdout, (yang_node*)yspec);
