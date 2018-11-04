@@ -139,7 +139,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 sleep 1
 new "start restconf daemon (-a is enable basic authentication)"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang -- -a 
+sudo su -c "/www-data/clixon_restconf -f $cfg -y $fyang -- -a" -s /bin/sh www-data &
 
 sleep 1
 

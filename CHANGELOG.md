@@ -72,6 +72,7 @@
     example backend_main() and others if you need details.
 
 ### Minor changes
+* Renamed test/test_auth*.sh tests to test/test_nacm*.sh
 * YANG keywords "action" and "belongs-to" implemented by syntactically by parser (but not proper semantics).
 * clixon-config YAML file has new revision: 2018-10-21.
 * Allow new lines in CLI prompts 
