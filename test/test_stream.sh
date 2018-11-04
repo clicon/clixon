@@ -275,26 +275,7 @@ rm -rf $dir
 exit # DONT REMOVE MANUAL TESTING
 
 #--------------------------------------------------------------------
-# Need manual testing
-new "restconf monitor streams native NEEDS manual testing"
-if false; then
-    # url -H "Accept: text/event-stream" http://localhost/streams/EXAMPLE
-    # Expect:
-    # data: <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-10-21T19:22:11.381827</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>
-    #
-    # data: <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-10-21T19:22:16.387228</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>
-
-new "restconf monitor event ok stream"
-expectwait 'curl -s -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" http://localhost/streams/EXAMPLE' 0 'foo' 5
-
-new "restconf monitor event starttime"
-NOW=$(date +"%Y-%m-%dT%H%%3A%M%%3A%S")
-sleep 10
-expectwait "curl -s -X GET  -H \"Accept: text/event-stream\" -H \"Cache-Control: no-cache\" -H \"Connection: keep-alive\" http://localhost/streams/EXAMPLE?start-time=$NOW" 0 'foo' 2
-fi
-
-# Restconf stream subscription RFC8040 Sec 6.3 - Nginx nchan solution
-# Need manual testing
+# NCHAN Need manual testing
 new "restconf monitor streams nchan NEEDS manual testing"
 if false; then
     # url -H "Accept: text/event-stream" http://localhost/streams/EXAMPLE

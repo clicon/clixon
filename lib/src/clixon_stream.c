@@ -847,12 +847,14 @@ url_post(char *url,
 /*! Stream callback for example stream notification 
  * Push via curl_post to publish stream event
  * @param[in]  h     Clicon handle
+ * @param[in]  op    Operation: 0 OK, 1 Close
  * @param[in]  event Event as XML
  * @param[in]  arg   Extra argument provided in stream_ss_add
  * @see stream_ss_add
  */
 static int 
 stream_publish_cb(clicon_handle h, 
+		  int           op,
 		  cxobj        *event,
 		  void         *arg)
 {
@@ -864,7 +866,8 @@ stream_publish_cb(clicon_handle h,
     char *stream = (char*)arg;
 
     clicon_debug(1, "%s", __FUNCTION__); 
-
+    if (op != 0)
+	goto ok;
     /* Create pub url */
     if ((u = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
@@ -874,7 +877,6 @@ stream_publish_cb(clicon_handle h,
 	clicon_err(OE_CFG, ENOENT, "CLICON_STREAM_PUB not defined");
 	goto done;
     }
-
     cprintf(u, "%s/%s", pub_prefix, stream);
     /* Create XML data as string */
     if ((d = cbuf_new()) == NULL){
@@ -889,6 +891,7 @@ stream_publish_cb(clicon_handle h,
 	goto done;
     if (result)
 	clicon_debug(1, "%s: %s", __FUNCTION__, result);
+ ok:
     retval = 0;
  done:
     if (u)
@@ -910,7 +913,7 @@ stream_publish(clicon_handle h,
 #ifdef CLIXON_PUBLISH_STREAMS
     int retval = -1;
 
-    if (stream_ss_add(h, stream, NULL, stream_publish_cb, (void*)stream) < 0)
+    if (stream_ss_add(h, stream, NULL, NULL, NULL, stream_publish_cb, (void*)stream) < 0)
 	goto done;
     retval = 0;
  done:
