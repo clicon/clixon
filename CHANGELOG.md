@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-## 3.8.0 (Expected: Nov 4)
+## 3.8.0 (Expected: Nov 8)
 
 ### Major New features
 * YANG Features
