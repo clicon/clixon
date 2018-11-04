@@ -135,8 +135,8 @@ stream_url_get(char  *url,
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
     /* HEADERS */
     list = curl_slist_append(list, "Accept: text/event-stream");
-    list = curl_slist_append(list, "Cache-Control: no-cache");
-    list = curl_slist_append(list, "Connection: keep-alive");
+    //    list = curl_slist_append(list, "Cache-Control: no-cache");
+    //    list = curl_slist_append(list, "Connection: keep-alive");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
     /* specify URL to get */ 
     cprintf(cbf, "%s", url);

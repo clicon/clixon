@@ -662,7 +662,6 @@ main(int    argc,
     clixon_plugin_start(h, argc+1, argv-1);
     *(argv-1) = tmp;
 
-    /**/
     if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){
 	clicon_err(OE_CFG, errno, "No CLICON_RESTCONF_PATH in clixon configure file");
 	goto done;

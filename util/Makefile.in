@@ -75,6 +75,7 @@ APPSRC   += clixon_util_xpath.c
 APPS	  = $(APPSRC:.c=)
 
 all:	 $(APPS)
+	echo "You may want to make clixon_util_stream separately (curl dependency)"
 
 clean:
 	rm -f $(APPS) *.core

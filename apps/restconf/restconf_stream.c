@@ -467,7 +467,6 @@ api_stream(clicon_handle h,
 #ifdef STREAM_FORK
 	    FCGX_Finish_r(r);
 	    FCGX_Free(r, 0);	    
-	    fprintf(stderr, "child exit and free\n");
 	    restconf_terminate(h);
 	    exit(0);
 	}

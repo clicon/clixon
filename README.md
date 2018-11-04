@@ -133,16 +133,18 @@ Clixon does not yet support the following netconf features:
 
 Restconf
 ========
-Clixon restconf is a daemon based on FASTCGI. Instructions are available to
+Clixon Restconf is a daemon based on FastCGI C-API. Instructions are available to
 run with NGINX.
 The implementatation is based on [RFC 8040: RESTCONF Protocol](https://tools.ietf.org/html/rfc8040).
+
 The following features are supported:
 - OPTIONS, HEAD, GET, POST, PUT, DELETE
-- stream notifications
+- stream notifications (RFC8040 sec 6)
+- query parameters start-time and stop-time(RFC8040 section 4.9)
 
-The following are not implemented
+The following features are not implemented:
 - PATCH
-- query parameters (section 4.9)
+- query parameters other than start/stop-time.
 
 See [more detailed instructions](apps/restconf/README.md).
 
