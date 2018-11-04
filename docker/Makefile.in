@@ -47,7 +47,7 @@ SHELL	= /bin/sh
 .PHONY: all clean depend install docker push
 
 all:	
-	@echo "Run make docker to build docker image"
+	echo "Run make docker to build docker image"
 
 clean:
 
@@ -56,7 +56,7 @@ distclean: clean
 
 docker:
 	sudo docker build -t $(IMAGE) .
-	@echo "cd ../example; make docker to build example application"
+	echo "cd ../example; make docker to build example application"
 
 push:
 	sudo docker push $(IMAGE)
