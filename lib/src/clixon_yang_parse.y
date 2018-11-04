@@ -418,6 +418,7 @@ submodule_header_stmts : submodule_header_stmts submodule_header_stmt
 
 submodule_header_stmt : yang_version_stmt 
                   { clicon_debug(2,"submodule-header-stmt -> yang-version-stmt"); }
+              | belongs_to_stmt { clicon_debug(2,"submodule-header-stmt -> belongs-to-stmt"); }
               ;
 
 /* linkage */
@@ -1357,6 +1358,15 @@ namespace_stmt : K_NAMESPACE string ';'  /* XXX uri-str */
 prefix_stmt   : K_PREFIX string ';' /* XXX prefix-arg-str */
 		{ if (ysp_add(_yy, Y_PREFIX, $2, NULL)== NULL) _YYERROR("100"); 
 			     clicon_debug(2,"prefix-stmt -> PREFIX string ;");}
+              ;
+
+belongs_to_stmt : K_BELONGS_TO  id_arg_str ';' 
+
+                 { if (ysp_add(_yy, Y_BELONGS_TO, $2, NULL)== NULL) _YYERROR("100"); 
+			     clicon_debug(2,"belongs-to-stmt -> BELONGS-TO id-arg-str ;");}
+                | K_BELONGS_TO  id_arg_str '{' prefix_stmt '}'
+				{ if (ysp_add(_yy, Y_BELONGS_TO, $2, NULL)== NULL) _YYERROR("98"); 
+			     clicon_debug(2,"belongs-to-stmt -> BELONGS-TO id-arg-str { prefix-stmt } ");}
               ;
 
 description_stmt: K_DESCRIPTION string ';' 
