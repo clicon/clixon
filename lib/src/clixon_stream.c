@@ -601,6 +601,11 @@ stream_notify(clicon_handle h,
 }
 
 /*! Backward compatible function
+ * @param[in]  h       Clicon handle
+ * @param[in]  stream  Name of event stream. CLICON is predefined as LOG stream
+ * @param[in]  xml     Notification as XML stream. Is copied.
+ * @retval  0  OK
+ * @retval -1  Error with clicon_err called
  * @see  stream_notify  Should be merged with this
  */
 int
@@ -610,6 +615,7 @@ stream_notify_xml(clicon_handle h,
 {
     int        retval = -1;
     cxobj     *xev = NULL;
+    cxobj     *xml2; /* copy */
     yang_spec *yspec = NULL;
     char      *str = NULL;
     cbuf      *cb = NULL;
@@ -638,7 +644,9 @@ stream_notify_xml(clicon_handle h,
 	goto done;
     if (xml_rootchild(xev, 0, &xev) < 0)
 	goto done;
-    if (xml_addsub(xev, xml) < 0)
+    if ((xml2 = xml_dup(xml)) == NULL)
+	goto done;
+    if (xml_addsub(xev, xml2) < 0)
 	goto done;
     if (stream_notify1(h, es, &tv, xev) < 0)
 	goto done;
