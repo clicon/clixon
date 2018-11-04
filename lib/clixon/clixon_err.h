@@ -55,7 +55,7 @@ enum clicon_err{
     OE_DB = 1,   /* database registries */
     OE_DEMON,    /* demons: pidfiles, etc */
     OE_EVENTS,   /* events, filedescriptors, timeouts */
-    OE_CFG,      /* config commit / quagga */
+    OE_CFG,      /* configuration */
     OE_PROTO,    /* config/client communication */
     OE_REGEX,    /* Regexp error */
     OE_UNIX,     /* unix/linux syscall error */

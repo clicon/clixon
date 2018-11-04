@@ -130,8 +130,10 @@ clixon_plugin_each_revert(clicon_handle  h,
     clixon_plugin *cp = NULL;
     clixon_plugin *cpnext = NULL; 
 
-    if (cpprev == NULL)
-	cpnext = &_clixon_plugins[nr-1];
+    if (cpprev == NULL){
+	if (nr>0)
+	    cpnext = &_clixon_plugins[nr-1];
+    }
     else{
 	for (i = nr-1; i >= 0; i--) {
 	    cp = &_clixon_plugins[i];
@@ -189,7 +191,7 @@ plugin_load_one(clicon_handle   h,
     char          *name;
     char          *p;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(1, "%s file:%s function:%s", __FUNCTION__, file, function);
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen(file, dlflags)) == NULL) {
         error = (char*)dlerror();
@@ -320,7 +322,7 @@ clixon_plugin_start(clicon_handle h,
 	    continue;
 	//	optind = 0;
 	if (startfn(h, argc, argv) < 0) {
-	    clicon_debug(1, "plugin_start() failed\n");
+	    clicon_debug(1, "plugin_start() failed");
 	    return -1;
 	}
     }
@@ -343,7 +345,7 @@ clixon_plugin_exit(clicon_handle h)
 	if ((exitfn = cp->cp_api.ca_exit) == NULL)
 	    continue;
 	if (exitfn(h) < 0) {
-	    clicon_debug(1, "plugin_exit() failed\n");
+	    clicon_debug(1, "plugin_exit() failed");
 	    return -1;
 	}
 	if (dlclose(cp->cp_handle) != 0) {
@@ -385,7 +387,7 @@ clixon_plugin_auth(clicon_handle h,
 	if ((authfn = cp->cp_api.ca_auth) == NULL)
 	    continue;
 	if ((retval = authfn(h, arg)) < 0) {
-	    clicon_debug(1, "plugin_auth() failed\n");
+	    clicon_debug(1, "plugin_auth() failed");
 	    return -1;
 	}
 	break;

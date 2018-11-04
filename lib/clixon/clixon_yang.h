@@ -57,7 +57,8 @@
  * - Cant use the symbols in this file because yacc needs token definitions
  */
 enum rfc_6020{
-    Y_ANYXML = 0,
+    Y_ACTION = 0,
+    Y_ANYXML,
     Y_ARGUMENT,
     Y_AUGMENT,
     Y_BASE,
@@ -258,9 +259,11 @@ char      *yang_find_myprefix(yang_stmt *ys);
 int        yang_order(yang_stmt *y);
 int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
+int        ys_populate(yang_stmt *ys, void *arg);
 yang_stmt *yang_parse_file(int fd, const char *name, yang_spec *ysp);
-int        yang_parse(clicon_handle h, const char *yang_dir, 
-		      const char *module, const char *revision, yang_spec *ysp);
+int        yang_parse(clicon_handle h, const char *filename,
+		      const char *module, const char *dir, 
+		      const char *revision, yang_spec *ysp, yang_stmt **ymodp);
 int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
 int        yang_abs_schema_nodeid(yang_spec *yspec, char *schema_nodeid, 
@@ -271,8 +274,8 @@ cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys, char *extra);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
-yang_spec *yang_spec_netconf(clicon_handle h);
-yang_spec *yang_spec_main(clicon_handle h);
+int        yang_spec_parse_module(clicon_handle h, char *module, char *dir, char *revision, yang_spec *yspec, yang_stmt **ymodp);
+int        yang_spec_parse_file(clicon_handle h, char *filename, char *dir, yang_spec *yspec, yang_stmt **ymodp);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_node *yn, char *name);
 

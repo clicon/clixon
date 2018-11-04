@@ -125,7 +125,7 @@ text_db2file(struct text_handle *th,
 	     char              **filename)
 {
     int   retval = -1;
-    cbuf *cb;
+    cbuf *cb = NULL;
     char *dir;
 
     if ((cb = cbuf_new()) == NULL){
@@ -174,7 +174,6 @@ text_connect(void)
     xh = (xmldb_handle)th;
   done:
     return xh;
-
 }
 
 /*! Disconnect from to a datastore plugin and deallocate handle
@@ -191,6 +190,7 @@ text_disconnect(xmldb_handle xh)
     size_t              klen;
     int                 i;
 	
+    clicon_debug(1, "%s", __FUNCTION__);
     if (th){
 	if (th->th_dbdir)
 	    free(th->th_dbdir);
@@ -892,7 +892,7 @@ text_put(xmldb_handle        xh,
 	}
 	cbretlocal++;
     }
-    if ((yspec =  th->th_yangspec) == NULL){
+    if ((yspec = th->th_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
@@ -1387,7 +1387,7 @@ main(int    argc,
     db_init(db);
     if ((yspec = yspec_new()) == NULL)
 	goto done
-    if (yang_parse(h, yangdir, yangmod, NULL, yspec) < 0)
+    if (yang_parse(h, NULL, yangmod, yangdir, NULL, yspec) < 0)
 	goto done;
     if (strcmp(cmd, "get")==0){
 	if (argc < 5)

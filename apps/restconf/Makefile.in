@@ -45,11 +45,13 @@ bindir 		= @bindir@
 libdir		= @libdir@
 mandir		= @mandir@
 libexecdir	= @libexecdir@
-wwwdir  	= /www-data
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 HOST_VENDOR     = @host_vendor@
+
+wwwdir  	= @wwwdir@
+wwwuser         = @wwwuser@
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
@@ -73,6 +75,7 @@ APPL	  = clixon_restconf
 # Not accessible from plugin
 APPSRC    = restconf_main.c
 APPSRC   += restconf_methods.c
+APPSRC   += restconf_stream.c
 APPOBJ    = $(APPSRC:.c=.o)
 
 # Accessible from plugin
@@ -97,8 +100,13 @@ distclean: clean
 # Put other executables in libexec/
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
+# Also a rule for letting www-dir be owned by www-data, which only orks for sudo
 install:	install-lib $(APPL)
+ifeq ($(shell whoami),root)
+	install -d -m 0755 -o $(wwwuser) -g $(wwwuser) $(DESTDIR)$(wwwdir)
+else
 	install -d -m 0755 $(DESTDIR)$(wwwdir)
+endif
 	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(wwwdir)
 
 install-lib: $(MYLIB)

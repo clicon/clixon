@@ -80,12 +80,11 @@
 #include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_yang_type.h"
-#include "clixon_options.h"
 #include "clixon_xml.h"
+#include "clixon_options.h"
 #include "clixon_plugin.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
-#include "clixon_xsl.h"
 #include "clixon_log.h"
 #include "clixon_err.h"
 #include "clixon_xml_sort.h"
@@ -1007,7 +1006,7 @@ api_path_fmt2api_path(char  *api_path_fmt,
 		    clicon_err(OE_UNIX, errno, "cv2str_dup");
 		    goto done;
 		}
-		if (uri_percent_encode(str, &strenc) < 0)
+		if (uri_percent_encode(&strenc, "%s", str) < 0)
 		    goto done;
 		cprintf(cb, "%s", strenc); 
 		free(strenc); strenc = NULL;
@@ -1088,13 +1087,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
 		    clicon_err(OE_UNIX, errno, "cv2str_dup");
 		    goto done;
 		}
-		cprintf(cb,
-#ifdef COMPAT_XSL
-			"[%s=%s]",
-#else
-			"[%s='%s']",
-#endif
-			cv_name_get(cv), str);
+		cprintf(cb, "[%s='%s']", cv_name_get(cv), str);
 		free(str);
 	    }
 	}
@@ -1511,13 +1504,7 @@ api_path2xpath_cvv(yang_spec *yspec,
 	    cprintf(xpath, "/%s", name);
 	    v = val;
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
-		cprintf(xpath,
-#ifdef COMPAT_XSL
-			"[%s=%s]",
-#else
-			"[%s='%s']",
-#endif
-			cv_string_get(cvi), v);
+		cprintf(xpath, "[%s='%s']", cv_string_get(cvi), v);
 		v += strlen(v)+1;
 	    }
 	    if (val)

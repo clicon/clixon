@@ -2,17 +2,18 @@
 
 ## What is Clixon?
 
-Clixon is a configuration management tool including a generated CLI ,
-Yang parser, netconf and restconf interface and an embedded databases.
+Clixon is a YANG-based configuration manager, with interactive CLI,
+NETCONF and RESTCONF interfaces, an embedded database and transaction
+support.
 
 ## Why should I use Clixon?
 
-If you want an easy-to-use configuration frontend based on yang with an
+If you want an easy-to-use configuration toolkit based on yang with an
 open-source license.  Typically for embedded devices requiring a
 config interface such as routers and switches. 
 
 ## What license is available?
-CLIXON is dual license. Either Apache License, Version 2.0 or GNU
+Clixon is dual license. Either Apache License, Version 2.0 or GNU
 General Public License Version 2. 
 
 ## Is Clixon extendible?
@@ -41,9 +42,19 @@ The example:
 	 sudo make install
 ```
 
+## How do you run Clixon example commands?
+
+- Start a backend server: `clixon_backend -Ff /usr/local/etc/example.xml`
+- Start a cli session: `clixon_cli -f /usr/local/etc/example.xml`
+- Start a netconf session: `clixon_netconf -f /usr/local/etc/example.xml`
+- Start a restconf daemon: `sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data`
+- Send a restconf command: `curl -G http://127.0.0.1/restconf/data`
+
+More info in the [example](../example) directory.
+
 ## Do I need to setup anything? (IMPORTANT)
 
-The config demon requires a valid group to create a server UNIX socket.
+The config demon requires a valid group to create a server UNIX domain socket.
 Define a valid CLICON_SOCK_GROUP in the config file or via the -g option
 or create the group and add the user to it. The default group is 'clicon'.
 Add yourself and www-data, if you intend to use restconf.
@@ -63,18 +74,11 @@ clicon:x:1001:<user>,www-data
 
 ## What about reference documentation?
 Clixon uses Doxygen for reference documentation.
-Build using 'make doc' and aim your browser at doc/html/index.html or
-use the web resource: http://clicon.org/ref/index.html
-
-## How do you run the example?
-- Start a backend server: 'clixon_backend -Ff /usr/local/etc/example.xml'
-- Start a cli session: clixon_cli -f /usr/local/etc/example.xml
-- Start a netconf session: clixon_netconf -f /usr/local/etc/example.xml
+Build using 'make doc' and aim your browser at doc/html/index.html.
 
 ## How is configuration data stored?
-Configuration data is stored in an XML datastore. The default is a
-text-based datastore. In the example the datastore are regular files found in
-/usr/local/var/example/.
+Configuration data is stored in an XML datastore. In the example the
+datastore are regular files found in /usr/local/var/example/.
 
 ## What is validate and commit?
 Clixon follows netconf in its validate and commit semantics.
@@ -93,20 +97,36 @@ configuration file is /usr/local/etc/clixon.xml. The example
 configuration file is installed at /usr/local/etc/example.xml. The
 YANG specification for the configuration file is clixon-config.yang.
 
-You can change where CLixon looks for the configuration FILE as follows:
+You can change where Clixon looks for the configuration FILE as follows:
   - Provide -f FILE option when starting a program (eg clixon_backend -f FILE)
   - Provide --with-configfile=FILE when configuring
   - Provide --with-sysconfig=<dir> when configuring, then FILE is <dir>/clixon.xml
   - Provide --sysconfig=<dir> when configuring then FILE is <dir>/etc/clixon.xml
   - FILE is /usr/local/etc/clixon.xml
 
+## How do I enable Yang features?
+
+Yang models have features, and parts of a specification can be
+conditional using the if-feature statement. In Clixon, features are
+enabled in the configuration file using <CLICON_FEATURE>.
+
+The example below shows enabling a specific feature; enabling all features in module; and enabling all features in all modules, respectively:
+```
+      <CLICON_FEATURE>ietf-routing:router-id</CLICON_FEATURE>
+      <CLICON_FEATURE>ietf-routing:*</CLICON_FEATURE>
+      <CLICON_FEATURE>*:*</CLICON_FEATURE>
+```
+
+Features can be probed by using RFC 7895 Yang module library which provides
+information on all modules and which features are enabled.
+
 ## Can I run Clixon as docker containers?
 
 Yes, the example works as docker containers as well. There should be a
-prepared container in docker hib for the example where the backend and
+prepared container in docker hub for the example where the backend and
 CLI is bundled. 
 ```
-sudo docker run -ti --rm olofhagsand/clixon_example
+sudo docker run -td olofhagsand/clixon_example
 ```
 Look in the example documentation for more info.
 
@@ -114,7 +134,9 @@ Look in the example documentation for more info.
 
 As an alternative to cli configuration, you can use netconf. Easiest is to just pipe netconf commands to the clixon_netconf application.
 Example:
+```
 	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/example.xml
+```
 
 However, more useful is to run clixon_netconf as an SSH
 subsystem. Register the subsystem in /etc/sshd_config:
@@ -139,7 +161,6 @@ For example, using nginx, install, and edit config file: /etc/nginx/sites-availa
 server {
   ...
   location /restconf {
-    root /usr/share/nginx/html/restconf;
     fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
     include fastcgi_params;
   }
@@ -150,8 +171,6 @@ Start nginx daemon
 sudo /etc/init.d/nginx start
 ```
 
-Read more in the restconf docs.
-
 Example:
 ```
    curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=eth9/type
@@ -161,24 +180,38 @@ Example:
      }
    ]
 ```
+Read more in the (restconf)[../apps/restconf] docs.
 
-## How do I use notifications?
 
-The example has a prebuilt notification stream called "ROUTING" that triggers every 10s.
-You enable the notification either via the cli:
+## Does Clixon support event streams? 
+
+Yes, Clixon supports event notification streams in the CLI, Netconf and Restconf API:s.
+
+The example has a prebuilt notification stream called "EXAMPLE" that triggers every 5s.
+You enable the notification via the CLI:
 ```
 cli> notify 
 cli>
-```
-or via netconf:
-```
-clixon_netconf -qf /usr/local/etc/example.xml 
-<rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>
-<rpc-reply><ok/></rpc-reply>]]>]]>
-<notification><event>Routing notification</event></notification>]]>]]>
-<notification><event>Routing notification</event></notification>]]>]]>
+event-class fault;
+reportingEntity {
+    card Ethernet0;
+}
+severity major;
 ...
 ```
+or via NETCONF:
+```
+clixon_netconf -qf /usr/local/etc/example.xml 
+<rpc><create-subscription><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>
+<rpc-reply><ok/></rpc-reply>]]>]]>
+<notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-09-30T12:44:59.657276</eventTime><event xmlns="http://example.com/event/1.0"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>]]>]]>
+...
+```
+or via restconf:
+```
+   curl -H "Accept: text/event-stream" -s -X GET http://localhost/streams/EXAMPLE
+```
+Consult (../apps/restconf/README.md) on more information on how to setup a reverse proxy for restconf streams. It is also possible to configure a pub/sub system such as (Nginx Nchan)[https://nchan.io]. 
 
 ## How should I start the backend daemon?
 

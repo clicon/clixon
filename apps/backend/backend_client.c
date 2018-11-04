@@ -69,38 +69,9 @@
 #include "backend_client.h"
 #include "backend_handle.h"
 
-/*! Add client notification subscription. Ie send notify to this client when event occurs
- * @param[in] ce      Client entry struct
- * @param[in] stream  Notification stream name
- * @param[in] format  How to display event (see enum format_enum)
- * @param[in] filter  Filter, what to display, eg xpath for format=xml, fnmatch
- *
- * @see backend_notify - where subscription is made and notify call is made
- */
-static struct client_subscription *
-client_subscription_add(struct client_entry *ce, 
-			char                *stream, 
-			enum format_enum     format,
-			char                *filter)
-{
-    struct client_subscription *su = NULL;
-
-    if ((su = malloc(sizeof(*su))) == NULL){
-	clicon_err(OE_PLUGIN, errno, "malloc");
-	goto done;
-    }
-    memset(su, 0, sizeof(*su));
-    su->su_stream = strdup(stream);
-    su->su_format = format;
-    su->su_filter = filter?strdup(filter):strdup("");
-    su->su_next   = ce->ce_subscription;
-    ce->ce_subscription = su;
-  done:
-    return su;
-}
-
 static struct client_entry *
-ce_find_bypid(struct client_entry *ce_list, int pid)
+ce_find_bypid(struct client_entry *ce_list,
+	      int pid)
 {
     struct client_entry *ce;
 
@@ -110,47 +81,45 @@ ce_find_bypid(struct client_entry *ce_list, int pid)
     return NULL;
 }
 
-static int
-client_subscription_delete(struct client_entry *ce, 
-		    struct client_subscription *su0)
+/*! Stream callback for netconf stream notification (RFC 5277)
+ * @param[in]  h     Clicon handle
+ * @param[in]  op    0:event, 1:rm
+ * @param[in]  event Event as XML
+ * @param[in]  arg   Extra argument provided in stream_ss_add
+ * @see stream_ss_add
+ */
+int
+ce_event_cb(clicon_handle h,
+	    int           op,
+	    cxobj        *event,
+	    void         *arg)
 {
-    struct client_subscription   *su;
-    struct client_subscription  **su_prev;
-
-    su_prev = &ce->ce_subscription; /* this points to stack and is not real backpointer */
-    for (su = *su_prev; su; su = su->su_next){
-	if (su == su0){
-	    *su_prev = su->su_next;
-	    free(su->su_stream);
-	    if (su->su_filter)
-		free(su->su_filter);
-	    free(su);
+    struct client_entry *ce = (struct client_entry *)arg;
+    
+    clicon_debug(1, "%s op:%d", __FUNCTION__, op);
+    switch (op){
+    case 1:
+	/* Risk of recursion here */
+	if (ce->ce_s)
+	    backend_client_rm(h, ce);
+	break;
+    default:
+	if (send_msg_notify_xml(ce->ce_s, event) < 0){
+	    if (errno == ECONNRESET || errno == EPIPE){
+		clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
+	    }
 	    break;
 	}
-	su_prev = &su->su_next;
     }
+    clicon_debug(1, "%s retval:0", __FUNCTION__);
     return 0;
 }
-
-#ifdef notused /* xxx */
-static struct client_subscription *
-client_subscription_find(struct client_entry *ce, char *stream)
-{
-    struct client_subscription   *su = NULL;
-
-    for (su = ce->ce_subscription; su; su = su->su_next)
-	if (strcmp(su->su_stream, stream) == 0)
-	    break;
-
-    return su;
-}
-#endif 
 
 /*! Remove client entry state
  * Close down everything wrt clients (eg sockets, subscriptions)
  * Finally actually remove client struct in handle
  * @param[in]  h   Clicon handle
- * @param[in]  ce  Client hadnle
+ * @param[in]  ce  Client handle
  * @see backend_client_delete for actual deallocation of client entry struct
  */
 int
@@ -160,8 +129,10 @@ backend_client_rm(clicon_handle        h,
     struct client_entry   *c;
     struct client_entry   *c0;
     struct client_entry  **ce_prev;
-    struct client_subscription *su;
 
+    clicon_debug(1, "%s", __FUNCTION__);
+    /* for all streams: XXX better to do it top-level? */
+    stream_ss_delete_all(h, ce_event_cb, (void*)ce);
     c0 = backend_client_list(h);
     ce_prev = &c0; /* this points to stack and is not real backpointer */
     for (c = *ce_prev; c; c = c->ce_next){
@@ -171,12 +142,11 @@ backend_client_rm(clicon_handle        h,
 		close(ce->ce_s);
 		ce->ce_s = 0;
 	    }
-	    while ((su = ce->ce_subscription) != NULL)
-		client_subscription_delete(ce, su);
 	    break;
 	}
 	ce_prev = &c->ce_next;
     }
+
     return backend_client_delete(h, ce); /* actually purge it */
 }
 
@@ -258,6 +228,124 @@ from_client_get_config(clicon_handle h,
     return retval;
 }
 
+/*! Get streams state according to RFC 8040 or RFC5277 common function
+ * @param[in]     h       Clicon handle
+ * @param[in]     yspec   Yang spec
+ * @param[in]     xpath   Xpath selection, not used but may be to filter early
+ * @param[in]     module  Name of yang module
+ * @param[in]     top     Top symbol, ie netconf or restconf-state
+ * @param[in,out] xret    Existing XML tree, merge x into this
+ * @retval       -1       Error (fatal)
+ * @retval        0       OK
+ * @retval        1       Statedata callback failed
+ */
+static int
+client_get_streams(clicon_handle   h,
+		   yang_spec      *yspec,
+		   char           *xpath,
+		   char           *module,
+		   char           *top,
+		   cxobj         **xret)
+{
+    int            retval = -1;
+    yang_stmt     *ystream = NULL; /* yang stream module */
+    yang_stmt     *yns = NULL;  /* yang namespace */
+    cxobj         *x = NULL;
+    cbuf          *cb = NULL;
+
+    if ((ystream = yang_find((yang_node*)yspec, Y_MODULE, module)) == NULL){
+	clicon_err(OE_YANG, 0, "%s yang module not found", module);
+	goto done;
+    }
+    if ((yns = yang_find((yang_node*)ystream, Y_NAMESPACE, NULL)) == NULL){
+	clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
+	goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, 0, "clicon buffer");
+	goto done;
+    }
+    cprintf(cb,"<%s xmlns=\"%s\">", top, yns->ys_argument);
+    if (stream_get_xml(h, strcmp(top,"restconf-state")==0, cb) < 0)
+	goto done;
+    cprintf(cb,"</%s>", top);
+
+    if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
+	if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
+	    goto done;
+	retval = 1;
+	goto done;
+    }
+    retval = netconf_trymerge(x, yspec, xret);
+ done:
+    if (cb)
+	cbuf_free(cb);
+    if (x)
+	xml_free(x);
+    return retval;
+}
+
+
+/*! Get system state-data, including streams and plugins
+ * @param[in]     h       Clicon handle
+ * @param[in]     xpath   Xpath selection, not used but may be to filter early
+ * @param[in,out] xret    Existing XML tree, merge x into this
+ * @retval       -1       Error (fatal)
+ * @retval        0       OK
+ * @retval        1       Statedata callback failed
+ */
+static int
+client_statedata(clicon_handle h,
+		 char         *xpath,
+		 cxobj       **xret)
+{
+    int        retval = -1;
+    cxobj    **xvec = NULL;
+    size_t     xlen;
+    int        i;
+    yang_spec *yspec;
+
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }    
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
+	(retval = client_get_streams(h, yspec, xpath, "ietf-netconf-notification", "netconf", xret)) != 0)
+    	goto done;
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
+	(retval = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) != 0)
+    	goto done;
+    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895") &&
+	(retval = yang_modules_state_get(h, yspec, xret)) != 0)
+    	goto done;
+    if ((retval = clixon_plugin_statedata(h, yspec, xpath, xret)) != 0)
+	goto done;
+    /* Code complex to filter out anything that is outside of xpath */
+    if (xpath_vec(*xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	goto done;
+
+    /* If vectors are specified then mark the nodes found and
+     * then filter out everything else,
+     * otherwise return complete tree.
+     */
+    if (xvec != NULL){
+	for (i=0; i<xlen; i++)
+	    xml_flag_set(xvec[i], XML_FLAG_MARK);
+    }
+    /* Remove everything that is not marked */
+    if (!xml_flag(*xret, XML_FLAG_MARK))
+	if (xml_tree_prune_flagged_sub(*xret, XML_FLAG_MARK, 1, NULL) < 0)
+	    goto done;
+    /* reset flag */
+    if (xml_apply(*xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+
 /*! Internal message: get
  * 
  * @param[in]  h     Clicon handle
@@ -270,18 +358,18 @@ from_client_get(clicon_handle h,
 		cxobj        *xe,
 		cbuf         *cbret)
 {
-    int    retval = -1;
-    cxobj *xfilter;
-    char  *selector = "/";
-    cxobj *xret = NULL;
-    int    ret;
-    cbuf  *cbx = NULL; /* Assist cbuf */
+    int     retval = -1;
+    cxobj  *xfilter;
+    char   *xpath = "/";
+    cxobj  *xret = NULL;
+    int     ret;
+    cbuf   *cbx = NULL; /* Assist cbuf */
     
     if ((xfilter = xml_find(xe, "filter")) != NULL)
-	if ((selector = xml_find_value(xfilter, "select"))==NULL)
-	    selector="/";
+	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
+	    xpath="/";
     /* Get config */
-    if (xmldb_get(h, "running", selector, 0, &xret) < 0){
+    if (xmldb_get(h, "running", xpath, 0, &xret) < 0){
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
@@ -289,7 +377,7 @@ from_client_get(clicon_handle h,
     /* Get state data from plugins as defined by plugin_statedata(), if any */
     assert(xret);
     clicon_err_reset();
-    if ((ret = clixon_plugin_statedata(h, selector, &xret)) < 0)
+    if ((ret = client_statedata(h, xpath, &xret)) < 0)
 	goto done;
     if (ret == 0){ /* OK */
 	cprintf(cbret, "<rpc-reply>");
@@ -731,12 +819,13 @@ from_client_delete_config(clicon_handle h,
  * @param[out]  cbret Return xml value cligen buffer
  * @retval      0    OK
  * @retval      -1   Error. Send error message back to client.
+ * @see RFC5277 2.1
  * @example:
  *    <create-subscription> 
  *       <stream>RESULT</stream> # If not present, events in the default NETCONF stream will be sent.
- *       <filter>XPATH-EXPR<(filter>
- *       <startTime/> # only for replay (NYI)
- *       <stopTime/>  # only for replay (NYI)
+ *       <filter type="xpath" select="XPATH-EXPR"/>
+ *       <startTime></startTime>
+ *       <stopTime></stopTime>
  *    </create-subscription> 
  */
 static int
@@ -746,25 +835,66 @@ from_client_create_subscription(clicon_handle        h,
 				cbuf                *cbret)
 {
     char   *stream = "NETCONF";
-    char   *filter = NULL;
     int     retval = -1;
-    cxobj  *x; /* Genereic xml tree */
+    cxobj  *x; /* Generic xml tree */
+    cxobj  *xfilter; /* Filter xml tree */
     char   *ftype;
-
+    char   *starttime = NULL;
+    char   *stoptime = NULL;
+    char   *selector = NULL;
+    struct timeval start;
+    struct timeval stop;
+    
     if ((x = xpath_first(xe, "//stream")) != NULL)
 	stream = xml_find_value(x, "body");
-    if ((x = xpath_first(xe, "//filter")) != NULL){
-	if ((ftype = xml_find_value(x, "type")) != NULL){
+    if ((x = xpath_first(xe, "//stopTime")) != NULL){
+	if ((stoptime = xml_find_value(x, "body")) != NULL &&
+	    str2time(stoptime, &stop) < 0){
+	    if (netconf_bad_element(cbret, "application", "<bad-element>stopTime</bad-element>", "Expected timestamp") < 0)
+		goto done;
+	    goto ok;	
+	}
+    }
+    if ((x = xpath_first(xe, "//startTime")) != NULL){
+	if ((starttime = xml_find_value(x, "body")) != NULL &&
+	    str2time(starttime, &start) < 0){
+	    if (netconf_bad_element(cbret, "application", "<bad-element>startTime</bad-element>", "Expected timestamp") < 0)
+		goto done;
+	    goto ok;	
+	}	
+    }
+    if ((xfilter = xpath_first(xe, "//filter")) != NULL){
+	if ((ftype = xml_find_value(xfilter, "type")) != NULL){
 	    /* Only accept xpath as filter type */
 	    if (strcmp(ftype, "xpath") != 0){
 		if (netconf_operation_failed(cbret, "application", "Only xpath filter type supported")< 0)
 		    goto done;
 		goto ok;
 	    }
+	    if ((selector = xml_find_value(xfilter, "select")) == NULL)
+		goto done;
 	}
     }
-    if (client_subscription_add(ce, stream, FORMAT_XML, filter) == NULL)
+    if ((stream_find(h, stream)) == NULL){
+	if (netconf_invalid_value(cbret, "application", "No such stream") < 0)
+	    goto done;
+	goto ok;
+    }
+    /* Add subscriber to stream - to make notifications for this client */
+    if (stream_ss_add(h, stream, selector,
+		      starttime?&start:NULL, stoptime?&stop:NULL,
+		      ce_event_cb, (void*)ce) < 0)
 	goto done;
+    /* Replay of this stream to specific subscription according to start and 
+     * stop (if present). 
+     * RFC 5277: If <startTime> is not present, this is not a replay
+     * subscription.
+     * Schedule the replay to occur right after this RPC completes, eg "now"
+     */
+    if (starttime){ 
+	if (stream_replay_trigger(h, stream, ce_event_cb, (void*)ce) < 0)
+	    goto done;
+    }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
@@ -987,13 +1117,7 @@ nacm_access(clicon_handle h,
     if (username == NULL)
 	goto step10;
     /* User's group */
-    if (xpath_vec(xacm,
-#ifdef COMPAT_XSL
-		  "groups/group[user-name=%s]",
-#else
-		  "groups/group[user-name='%s']",
-#endif
-		  &gvec, &glen, username) < 0)
+    if (xpath_vec(xacm, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
 	goto done;
     /* 5. If no groups are found, continue with step 10. */
     if (glen == 0)
@@ -1010,13 +1134,7 @@ nacm_access(clicon_handle h,
 	for (j=0; j<glen; j++){
 	    char *gname;
 	    gname = xml_find_body(gvec[j], "name");
-	    if (xpath_first(xrlist,
-#ifdef COMPAT_XSL
-			    ".[group=%s]",
-#else
-			    ".[group='%s']",
-#endif
-			    gname)!=NULL)
+	    if (xpath_first(xrlist, ".[group='%s']", gname)!=NULL)
 		break; /* found */
 	}
 	if (j==glen) /* not found */
@@ -1170,6 +1288,7 @@ from_client_msg(clicon_handle        h,
 	}
 	else if (strcmp(name, "close-session") == 0){
 	    xmldb_unlock_all(h, pid);
+	    stream_ss_delete_all(h, ce_event_cb, (void*)ce);
 	    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
 	}
 	else if (strcmp(name, "kill-session") == 0){

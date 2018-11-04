@@ -31,20 +31,27 @@
 
   ***** END LICENSE BLOCK *****
 
- * XML XPATH and XSLT functions.
+ * Yang module and feature handling
+ * @see https://tools.ietf.org/html/rfc7895
  */
-#ifndef _CLIXON_XSL_H
-#define _CLIXON_XSL_H
+
+#ifndef _CLIXON_YANG_MODULE_H_
+#define _CLIXON_YANG_MODULE_H_
+
+/*
+ * Constants
+ */
+
+/*
+ * Types
+ */
+
 
 /*
  * Prototypes
  */
-int xpath_vec_xsl(cxobj *cxtop, char *xpath, cxobj ***vec, size_t  *veclen);
-int xpath_vec_flag_xsl(cxobj *cxtop, char *xpath, uint16_t flags, 
-		       cxobj ***vec, size_t *veclen);
-cxobj *xpath_first_xsl(cxobj *cxtop, char *xpath);
-#ifdef COMPAT_XSL
-cxobj *xpath_each(cxobj *xn_top, char *xpath, cxobj *prev);
-#endif
+int yang_modules_init(clicon_handle h);
+char *yang_modules_revision(clicon_handle h);
+int yang_modules_state_get(clicon_handle h, yang_spec *yspec, cxobj **xret);
 
-#endif /* _CLIXON_XSL_H */
+#endif  /* _CLIXON_YANG_MODULE_H_ */

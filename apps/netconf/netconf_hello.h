@@ -40,7 +40,7 @@
 /*
  * Prototypes
  */ 
-int netconf_create_hello(cbuf *xf, int session_id);
+int netconf_create_hello(clicon_handle h, cbuf *cb, int session_id);
 
 int netconf_hello_dispatch(cxobj *xn);
 

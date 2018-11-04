@@ -715,7 +715,17 @@ prompt_fmt(char  *prompt,
 	      cprintf(cb, "%%");
 	      cprintf(cb, "%c", *s);
 	  }
-      } 
+      }
+      else if (*s == '\\' && *++s) {
+	  switch(*s) {
+	  case 'n':
+	      cprintf(cb, "\n");
+              break;
+	  default:
+	      cprintf(cb, "\\");
+	      cprintf(cb, "%c", *s);
+	  }
+      }
       else 
 	  cprintf(cb, "%c", *s);
       s++;

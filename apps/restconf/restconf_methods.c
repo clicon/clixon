@@ -39,7 +39,7 @@
  * sudo apt-get install libfcgi-dev
  * gcc -o fastcgi fastcgi.c -lfcgi
 
- * sudo su -c "/www-data/clixon_restconf -Df /usr/local/etc/example.xml " -s /bin/sh www-data
+ * sudo su -c "/www-data/clixon_restconf -D 1 f /usr/local/etc/example.xml " -s /bin/sh www-data
 
  * This is the interface:
  * api/data/profile=<name>/metric=<name> PUT data:enable=<flag>
@@ -118,7 +118,7 @@ Mapping netconf error-tag -> status code
 /* clicon */
 #include <clixon/clixon.h>
 
-#include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
+#include <fcgiapp.h> /* Need to be after clixon_xml-h due to attribute format */
 
 #include "restconf_lib.h"
 #include "restconf_methods.h"

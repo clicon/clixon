@@ -63,11 +63,11 @@
 #define LIBCLIXON_API 1
 
 #include <clixon/clixon_sig.h>
-#include <clixon/clixon_log.h>
 #include <clixon/clixon_err.h>
 #include <clixon/clixon_queue.h>
 #include <clixon/clixon_hash.h>
 #include <clixon/clixon_handle.h>
+#include <clixon/clixon_log.h>
 #include <clixon/clixon_yang.h>
 #include <clixon/clixon_yang_type.h>
 #include <clixon/clixon_event.h>
@@ -75,13 +75,14 @@
 #include <clixon/clixon_file.h>
 #include <clixon/clixon_xml.h>
 #include <clixon/clixon_xml_sort.h>
+#include <clixon/clixon_yang_module.h>
+#include <clixon/clixon_stream.h>
 #include <clixon/clixon_proto.h>
 #include <clixon/clixon_proto_client.h>
 #include <clixon/clixon_plugin.h>
 #include <clixon/clixon_options.h>
 #include <clixon/clixon_xml_map.h>
 #include <clixon/clixon_xml_db.h>
-#include <clixon/clixon_xsl.h>
 #include <clixon/clixon_xpath_ctx.h>
 #include <clixon/clixon_xpath.h>
 #include <clixon/clixon_json.h>

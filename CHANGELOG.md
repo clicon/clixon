@@ -1,5 +1,109 @@
 # Clixon Changelog
 
+## 3.8.0 (Expected: Nov 4)
+
+### Major New features
+* YANG Features
+  * Yang 1.1 feature and if-feature according to RFC 7950 7.20.1 and 7.20.2.
+  * See https://github.com/clicon/clixon/issues/41
+  * Features are declared via CLICON_FEATURE in the configuration file. Example below shows enabling (1) a specific feature; (2) all features in a module; (3) all features in all modules:
+   ```
+      <CLICON_FEATURE>ietf-routing:router-id</CLICON_FEATURE>
+      <CLICON_FEATURE>ietf-routing:*</CLICON_FEATURE>
+      <CLICON_FEATURE>*:*</CLICON_FEATURE>
+   ```
+  * logical combination of features not implemented, eg if-feature "not foo or bar and baz";
+  * ietf-netconf yang module added with candidate, validate, startup and xpath features enabled.
+* YANG module library 
+  * YANG modules according to RFC 7895 and implemented by ietf-yang-library.yang
+  * Enabled by configuration option CLICON_MODULE_LIBRARY_RFC7895 - enabled by default
+  * RFC 7895 defines a module-set-id. Configure option CLICON_MODULE_SET_ID is set and changed when modules change.
+* Yang 1.1 notification support (RFC 7950: Sec 7.16)
+* New event streams implementation with replay
+  * See clicon_stream.[ch] for details
+  * Added stream discovery according to RFC 5277 for netconf and RFC 8040 for restconf
+    * Enabled by CLICON_STREAM_DISCOVERY_RFC5277 and CLICON_STREAM_DISCOVERY_RFC8040
+  * Configure option CLICON_STREAM_RETENTION is default number of seconds before dropping replay buffers
+8040.
+* Restconf stream notification support according to RFC8040
+  * See (apps/restconf/README.md) for more details.
+  * start-time and stop-time query parameters
+  * Fork fcgi handler for streams
+  * Set access/subscribe base URL with: CLICON_STREAM_URL (default "https://localhost") and CLICON_STREAM_PATH (default "streams")
+    * Example: new stream "foo" will get access URL: https://localhost/streams/foo
+  * Alternative variant using pub/sub support enabled by ./configure --enable-publish
+    * Set publish URL base with: CLICON_STREAM_PUB (default http://localhost/pub)
+    * Example: new stream "foo" will publish event streams on URL: https://localhost/pub/foo
+  * RFC8040 Restconf replay support: start-time and stop-time query parameter support
+    * This only applies to "native" restconf stream support, Nchan mode has different replay functionality
+  * RFC5277 Netconf replay supported
+  * Replay support is only in-memory and not persistent. External time-series DB could be added.
+
+### API changes on existing features (you may need to change your code)
+* Netconf hello capability updated to YANG 1.1 RFC7950 Sec 5.6.4
+  * Added urn:ietf:params:netconf:capability:yang-library:1.0
+  * Thanks @SCadilhac for helping out, see https://github.com/clicon/clixon/issues/39
+* Major rewrite of event streams (as described above)
+  * If you used old event callbacks API, you need to switch to the streams API
+    * See clixon_stream.[ch]
+  * Old streams API which needs to be modified:
+    * clicon_log_register_callback() removed
+    * subscription_add() --> stream_add()
+    * stream_cb_add() --> stream_ss_add()	
+    * stream_cb_delete() --> stream_ss_delete()
+    * backend_notify() and backend_notify_xml() - use stream_notify() instead
+  * Example uses "NETCONF" stream instead of "ROUTING"
+* clixon_restconf and clixon_netconf changed to take -D `<level>` as command-line option instead of just -D (without debig level)
+  * This aligns to clixon_cli and clixon_backend
+* Application command option -S to clixon_netconf is obsolete. Use `clixon_netconf -l s` instead.
+* Unified log handling for all clicon applications using command-line option: `-l e|o|s|f<file>`.
+  * The options stand for e:stderr, o:stdout, s: syslog, f:file
+  * Added file logging (`-l f` or `-l f<file>`) for cases where neither syslog nor stderr is useful.
+* Comply to RFC 8040 3.5.3.1 rule: api-identifier = [module-name ":"] identifier
+  * The "module-name" was a no-op before.
+  * This means that there was no difference between eg: GET /restconf/data/ietf-yang-library:modules-state and GET /restconf/data/foobar:modules-state 
+* Generilized top-level yang parsing functions
+  * Clarified semantics of main yang module:
+    * Command-line option -y MUST specify a filename
+    * Configure option CLICON_YANG_MODULE_MAIN MUST specify a module name
+    * yang_parse() changed to take either filename or module name and revision. 
+  * Removed clicon_dbspec_name() and clicon_dbspec_name_set().
+  * Replace calls to yang_spec_main() with yang_spec_parse_module(). See for
+    example backend_main() and others if you need details.
+
+### Minor changes
+* Renamed test/test_auth*.sh tests to test/test_nacm*.sh
+* YANG keywords "action" and "belongs-to" implemented by syntactically by parser (but not proper semantics).
+* clixon-config YAML file has new revision: 2018-10-21.
+* Allow new lines in CLI prompts 
+* uri_percent_encode() and xml_chardata_encode() changed to use stdarg parameters
+* Added Configure option CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml as option and in example (so you dont need to provide -f command-line option).
+* New function: clicon_conf_xml() returns configuration tree
+* Obsoleted COMPAT_CLIV and COMPAT_XSL that were optional in 3.7
+* Added command-line option `-t <timeout>` for clixon_netconf - quit after max time.
+
+### Corrected Bugs
+* No space after ampersand escaped characters in XML https://github.com/clicon/clixon/issues/52
+  * Thanks @SCadilhac
+* Single quotes for XML attributes https://github.com/clicon/clixon/issues/51
+  * Thanks @SCadilhac
+* Fixed https://github.com/clicon/clixon/issues/46 Issue with empty values in leaf-list
+  * Thanks achernavin22 
+* Identity without any identityref:s caused SEGV
+* Memory error in backend transaction revert
+* Set dir /www-data with www-data as owner, see https://github.com/clicon/clixon/issues/37
+	
+### Known issues
+* Netconf RPC input is not sanity checked for wrong symbols (just ignored).
+* Yang sub-command order and cardinality not checked.
+* Top-level Yang symbol cannot be called "config" in any imported yang file.
+  * datastore uses "config" as reserved keyword for storing any XML whoich collides with code for detecting Yang sanity.
+* Namespace name relabeling is not supported.
+  * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlns is not supported, such as:
+```
+  <crypto xmlns:x="urn:example:des">x:des3</crypto>
+```
+
 ## 3.7.0 (22 July 2018)
 
 ### Major New features

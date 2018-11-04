@@ -44,9 +44,9 @@ extern int xml_child_sort;
 /*
  * Prototypes
  */
-int    xml_child_spec(char  *name, cxobj  *xp, yang_spec *yspec, yang_stmt **yp);
-int    xml_cmp(const void* arg1, const void* arg2);
-int    xml_sort(cxobj *x0, void *arg);
+int xml_child_spec(char *name, cxobj *xp, yang_spec *yspec, yang_stmt **yp);
+int xml_cmp(const void* arg1, const void* arg2);
+int xml_sort(cxobj *x0, void *arg);
 cxobj *xml_search(cxobj *x, char *name, int yangi, enum rfc_6020 keyword, int keynr, char **keyvec, char **keyval);
 int    xml_insert_pos(cxobj *x0, char *name, int yangi, enum rfc_6020 keyword,
 		      int keynr, char **keyvec, char **keyval, int low,

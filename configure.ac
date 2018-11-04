@@ -43,9 +43,9 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="7"
+CLIXON_VERSION_MINOR="8"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Fix to specific CLIgen version (eg 3.5) or head (3) 
 CLIGEN_VERSION="3" 
@@ -63,6 +63,7 @@ AC_DEFINE_UNQUOTED(CLIXON_VERSION_MINOR, $CLIXON_VERSION_MINOR, [Clixon minor re
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_PATCH, $CLIXON_VERSION_PATCH, [Clixon path version])
 
 
+# AC_SUBST(var) makes @var@ appear in makefiles.
 # clixon versions spread to Makefile's (.so files) and variable in build.c
 AC_SUBST(CLIXON_VERSION)
 AC_SUBST(CLIXON_VERSION_STRING)
@@ -85,10 +86,13 @@ AC_SUBST(INSTALL)
 AC_SUBST(INSTALL_DATA)
 AC_SUBST(INSTALL_PROGRAM)
 AC_SUBST(INSTALLFLAGS)
+AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
+AC_SUBST(wwwdir,/www-data)
+AC_SUBST(wwwuser,www-data)
 #
 AC_PROG_CC()
 AC_PROG_CPP
@@ -141,6 +145,23 @@ if test "${with_cligen}"; then
   test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
 fi
 
+# Experimental: Curl publish notification stream to eg Nginx nchan. 
+AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],[Enable publish of notification streams using SSE and curl]),[
+	  if test "$enableval" = no; then
+	      ac_enable_publish=no
+	  else	      
+	      ac_enable_publish=yes
+          fi
+        ],
+	[ ac_enable_publish=no])
+AC_MSG_RESULT(publish is $ac_enable_publish)	
+
+if test "$ac_enable_publish" = "yes"; then
+   # publish streams uses libcurl
+   AC_CHECK_LIB(curl, curl_global_init,, AC_MSG_ERROR([libcurl missing]))
+   AC_DEFINE(CLIXON_PUBLISH_STREAMS, 1, [Enable publish of notification streams using SSE and curl])
+fi
+
 AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR(cligen missing. Try: git clone https://github.com/olofhagsand/cligen.git))
 
 AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen${CLIGEN_VERSION} missing. Try: git clone https://github.com/olofhagsand/cligen.git]))
@@ -156,10 +177,10 @@ if test "x${with_restconf}" == xyes; then
 fi
 
 # Set default config file location
+CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
 AC_ARG_WITH([configfile],
 	    [AS_HELP_STRING([--with-configfile=FILE],[set default path to config file])],
-	    [DEFAULT_CONFIG="$withval"],
-	    [DEFAULT_CONFIG="$(eval echo ${sysconfdir}/clixon.xml)"])
+	    [CLIXON_DEFAULT_CONFIG="$withval"],)
 
 AC_CHECK_LIB(crypt, crypt)
 AC_CHECK_HEADERS(crypt.h)
@@ -184,7 +205,7 @@ CLIXON_DATADIR="${prefix}/share/clixon"
 AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${CLIXON_DATADIR}", [Clixon data dir for system yang files etc])
 
 # Default location for config file
-AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${DEFAULT_CONFIG}",[Location for apps to find default config file])
+AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
 
 AH_BOTTOM([#include <clixon_custom.h>])
 

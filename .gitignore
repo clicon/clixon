@@ -8,7 +8,6 @@ Makefile
 apps/Makefile
 apps/*/Makefile
 docker/Makefile
-docker/*/Makefile
 etc/Makefile
 example/Makefile
 lib/Makefile
@@ -36,8 +35,6 @@ docker/cli/Dockerfile
 docker/netconf/Dockerfile
 
 etc/clixonrc
-
-example/*.conf
 
 include/clixon_config.h
 

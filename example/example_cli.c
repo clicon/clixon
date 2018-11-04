@@ -68,11 +68,7 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 
     /* Show eth0 interfaces config using XPATH */
     if (clicon_rpc_get_config(h, "running",
-#ifdef COMPAT_XSL
-			      "/interfaces/interface[name=eth0]",
-#else
 			      "/interfaces/interface[name='eth0']",
-#endif
 			      &xret) < 0)
 	goto done;
 

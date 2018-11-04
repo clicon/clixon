@@ -38,9 +38,9 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
-    revision 2018-02-12 {
+    revision 2018-04-30 {
 	description
-	    "Added pretty print for datastore";
+	    "Released with Clixon 3.6";
     }
     typedef startup_mode{
 	description

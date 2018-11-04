@@ -64,14 +64,13 @@
 
 /* clicon */
 #include "clixon_err.h"
-#include "clixon_log.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_sig.h"
 #include "clixon_xml.h"
-#include "clixon_xsl.h"
 #include "clixon_proto.h"
 
 static int _atomicio_sig = 0;
@@ -246,9 +245,10 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
 		if (!_atomicio_sig)
 		    continue;
 	    }
-	    else
-		if (errno == EAGAIN)
-		    continue;
+	    else if (errno == EAGAIN)
+		continue;
+	    else if (errno == ECONNRESET)/* Connection reset by peer */
+		res = 0;
 	case 0: /* fall thru */
 	    return (res);
 	default:
@@ -564,16 +564,16 @@ send_msg_reply(int      s,
  * @param[in]  event
  * @retval     0       OK
  * @retval     -1      Error
+ * @see send_msg_notify_xml
  */
-int
+static int
 send_msg_notify(int   s, 
-		int   level, 
 		char *event)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;
 
-    if ((msg=clicon_msg_encode("<notification><event>%s</event></notification>", event)) == NULL)
+    if ((msg=clicon_msg_encode("%s", event)) == NULL)
 	goto done;
     if (clicon_msg_send(s, msg) < 0)
 	goto done;
@@ -581,6 +581,37 @@ send_msg_notify(int   s,
   done:
     if (msg)
 	free(msg);
+    return retval;
+}
+
+/*! Send a clicon_msg NOTIFY message asynchronously to client
+ *
+ * @param[in]  s       Socket to communicate with client
+ * @param[in]  level
+ * @param[in]  xml     Event as XML
+ * @retval     0       OK
+ * @retval     -1      Error
+ * @see send_msg_notify XXX beauty contest
+ */
+int
+send_msg_notify_xml(int    s, 
+		    cxobj *xev)
+{
+    int                retval = -1;
+    cbuf              *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");
+	goto done;
+    }
+    if (clicon_xml2cbuf(cb, xev, 0, 0) < 0)
+	goto done;
+    if (send_msg_notify(s, cbuf_get(cb)) < 0)
+	goto done;
+    retval = 0;
+  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 

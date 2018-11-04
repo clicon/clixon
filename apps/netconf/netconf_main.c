@@ -71,7 +71,9 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hDqf:d:Sy:U:"
+#define NETCONF_OPTS "hD:f:l:qa:u:d:y:U:t:"
+
+#define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
 /*! Process incoming packet 
  * @param[in]   h    Clicon handle
@@ -89,16 +91,18 @@ process_incoming_packet(clicon_handle h,
     cxobj *xret = NULL; /* Return (out) */
     cxobj *xrpc;
     cxobj *xc;
+    yang_spec *yspec;
 
     clicon_debug(1, "RECV");
     clicon_debug(2, "%s: RCV: \"%s\"", __FUNCTION__, cbuf_get(cb));
+    yspec = clicon_dbspec_yang(h);
     if ((str0 = strdup(cbuf_get(cb))) == NULL){
 	clicon_log(LOG_ERR, "%s: strdup: %s", __FUNCTION__, strerror(errno));
 	return -1;
     }
     str = str0;
     /* Parse incoming XML message */
-    if (xml_parse_string(str, NULL, &xreq) < 0){ 
+    if (xml_parse_string(str, yspec, &xreq) < 0){ 
 	if ((cbret = cbuf_new()) == NULL){
 	    if (netconf_operation_failed(cbret, "rpc", "internal error")< 0)
 		goto done;
@@ -239,48 +243,60 @@ netconf_input_cb(int   s,
     return retval;
 }
 
-/*
- * send_hello
- * args: s file descriptor to write on (eg 1 - stdout)
+/*! Send netconf hello message
+ * @param[in]   h   Clicon handle
+ * @param[in]   s   File descriptor to write on (eg 1 - stdout)
  */
 static int
-send_hello(int s)
+send_hello(clicon_handle h,
+	   int           s)
 {
-    cbuf *xf;
-    int retval = -1;
+    int   retval = -1;
+    cbuf *cb;
     
-    if ((xf = cbuf_new()) == NULL){
+    if ((cb = cbuf_new()) == NULL){
 	clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
 	goto done;
     }
-    if (netconf_create_hello(xf, getpid()) < 0)
+    if (netconf_create_hello(h, cb, getpid()) < 0)
 	goto done;
-    if (netconf_output(s, xf, "hello") < 0)
+    if (netconf_output(s, cb, "hello") < 0)
 	goto done;
     retval = 0;
   done:
-    if (xf)
-	cbuf_free(xf);
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
 static int
 netconf_terminate(clicon_handle h)
 {
-    yang_spec      *yspec;
-
+    yang_spec  *yspec;
+    cxobj      *x;
+    
     clixon_plugin_exit(h);
     rpc_callback_delete_all();
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
-    if ((yspec = clicon_netconf_yang(h)) != NULL)
+    if ((yspec = clicon_config_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((x = clicon_conf_xml(h)) != NULL)
+	xml_free(x);
     event_exit();
     clicon_handle_exit(h);
+    clicon_log_exit();
     return 0;
 }
 
+static int
+timeout_fn(int s,
+	   void *arg)
+{
+    clicon_err(OE_EVENTS, ETIME, "User request timeout");
+    return -1; 
+}
 
 /*! Usage help routine
  * @param[in]  h      Clicon handle
@@ -293,13 +309,17 @@ usage(clicon_handle h,
     fprintf(stderr, "usage:%s\n"
 	    "where options are\n"
             "\t-h\t\tHelp\n"
-            "\t-D\t\tDebug\n"
+	    "\t-D <level>\tDebug level\n"
             "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
+	    "\t-l (e|o|s|f<file>) \tLog on std(e)rr, std(o)ut, (s)yslog, (f)ile (syslog is default)\n"
+    	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
+    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
-	    "\t-S\t\tLog on syslog\n"
-	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
-	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n",
+
+	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
+	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
+	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n",
 	    argv0,
 	    clicon_netconf_dir(h)
 	    );
@@ -315,18 +335,19 @@ main(int    argc,
     char            *argv0 = argv[0];
     int              quiet = 0;
     clicon_handle    h;
-    int              use_syslog;
     char            *dir;
+    int              logdst = CLICON_LOG_STDERR;
     struct passwd   *pw;
+    struct timeval   tv = {0,}; /* timeout */
+    yang_spec       *yspec = NULL;
+    yang_spec       *yspecfg = NULL; /* For config XXX clixon bug */
+    char            *yang_filename = NULL;
     
-    /* Defaults */
-    use_syslog = 0;
-
-    /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
 	return -1;
+    /* In the startup, logs to stderr & debug flag set later */
+    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
 
     /* Set username to clicon handle. Use in all communication to backend */
     if ((pw = getpwuid(getuid())) == NULL){
@@ -335,35 +356,43 @@ main(int    argc,
     }
     if (clicon_username_set(h, pw->pw_name) < 0)
 	goto done;
-
     while ((c = getopt(argc, argv, NETCONF_OPTS)) != -1)
 	switch (c) {
 	case 'h' : /* help */
 	    usage(h, argv[0]);
 	    break;
 	case 'D' : /* debug */
-	    debug = 1;
+	    if (sscanf(optarg, "%d", &debug) != 1)
+		usage(h, argv[0]);
 	    break;
 	 case 'f': /* override config file */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
-	 case 'S': /* Log on syslog */
-	     use_syslog = 1;
+	 case 'l': /* Log destination: s|e|o */
+	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
+		usage(h, argv[0]);
+	    if (logdst == CLICON_LOG_FILE &&
+		strlen(optarg)>1 &&
+		clicon_log_file(optarg+1) < 0)
+		goto done;
 	     break;
 	}
+
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, 
-		    use_syslog?CLICON_LOG_SYSLOG:CLICON_LOG_STDERR); 
+    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL); 
 
+    /* Create configure yang-spec */
+    if ((yspecfg = yspec_new()) == NULL)
+	goto done;
     /* Find and read configfile */
-    if (clicon_options_main(h) < 0)
+    if (clicon_options_main(h, yspecfg) < 0)
 	return -1;
-
+    clicon_config_yang_set(h, yspecfg);
     /* Now rest of options */
     optind = 1;
     opterr = 0;
@@ -371,9 +400,17 @@ main(int    argc,
 	switch (c) {
 	case 'h' : /* help */
 	case 'D' : /* debug */
-	case 'f': /* config file */
-	case 'S': /* Log on syslog */
+	case 'f':  /* config file */
+	case 'l':  /* log  */
 	    break; /* see above */
+	case 'a': /* internal backend socket address family */
+	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
+	    break;
+	case 'u': /* internal backend socket unix domain path or ip host */
+	    if (!strlen(optarg))
+		usage(h, argv[0]);
+	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
+	    break;
 	case 'q':  /* quiet: dont write hello */
 	    quiet++;
 	    break;
@@ -382,8 +419,8 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_NETCONF_DIR", optarg);
 	    break;
-	case 'y' :{ /* Overwrite yang module or absolute filename */
-	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
+	case 'y' :{ /* Load yang spec file (override yang main module) */
+	    yang_filename = optarg;
 	    break;
 	}
 	case 'U': /* Clixon 'pseudo' user */
@@ -392,6 +429,10 @@ main(int    argc,
 	    if (clicon_username_set(h, optarg) < 0)
 		goto done;
 	    break;
+	case 't': /* timeout in seconds */
+	    tv.tv_sec = atoi(optarg);
+	    break;
+
 	default:
 	    usage(h, argv[0]);
 	    break;
@@ -399,16 +440,28 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
-
-
-    /* Parse yang database spec file */
-    if (yang_spec_main(h) == NULL)
+    /* Create top-level yang spec and store as option */
+    if ((yspec = yspec_new()) == NULL)
 	goto done;
-
-    /* Parse netconf yang spec file  */
-    if (yang_spec_netconf(h) == NULL)
+    clicon_dbspec_yang_set(h, yspec);	
+    /* Load main application yang specification either module or specific file
+     * If -y <file> is given, it overrides main module */
+    if (yang_filename){
+	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, NULL) < 0)
+	    goto done;
+    }
+    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
+				    clicon_yang_dir(h),
+				    clicon_yang_module_revision(h),
+				    yspec, NULL) < 0)
 	goto done;
-
+    
+     /* Load yang module library, RFC7895 */
+    if (yang_modules_init(h) < 0)
+	goto done;
+    /* Add netconf yang spec, used by netconf client and as internal protocol */
+    if (netconf_module_load(h) < 0)
+	goto done;
     /* Initialize plugins group */
     if ((dir = clicon_netconf_dir(h)) != NULL)
 	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
@@ -421,11 +474,18 @@ main(int    argc,
     *(argv-1) = tmp;
 
     if (!quiet)
-	send_hello(1);
+	send_hello(h, 1);
     if (event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)
 	goto done;
     if (debug)
 	clicon_option_dump(h, debug);
+    if (tv.tv_sec || tv.tv_usec){
+	struct timeval t;
+	gettimeofday(&t, NULL);
+	timeradd(&t, &tv, &t);
+	if (event_reg_timeout(t, timeout_fn, NULL, "timeout") < 0)
+	    goto done;
+    }
     if (event_loop() < 0)
 	goto done;
   done:

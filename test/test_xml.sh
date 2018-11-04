@@ -37,11 +37,20 @@ new "xml encode <>&"
 expecteof "$PROG" 0 "$XML" "^$XML$"
 
 XML=$(cat <<EOF
-<message>To allow attribute values to contain both single and double quotes, the apostrophe or single-quote character ' may be represented as &apos;  and the double-quote character as &quot; </message>
+<message>To allow attribute values to contain both single and double quotes, the apostrophe or single-quote character ' may be represented as &apos; and the double-quote character as &quot;</message>
 EOF
 )
 new "xml optional encode single and double quote"
 expecteof "$PROG" 0 "$XML" "^<message>To allow attribute values to contain both single and double quotes, the apostrophe or single-quote character ' may be represented as ' and the double-quote character as \"</message>$"
+
+new "Double quotes for attributes"
+expecteof "$PROG" 0 '<x a="t"/>' '^<x a="t"/>$'
+
+new "Single quotes for attributes (returns double quotes but at least parses right)"
+expecteof "$PROG" 0 "<x a='t'/>" '^<x a="t"/>$'
+
+new "Mixed quotes"
+expecteof "$PROG" 0 "<x a='t' b=\"q\"/>" '^<x a="t" b="q"/>$'
 
 rm -rf $dir
 

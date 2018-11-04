@@ -74,12 +74,13 @@
 int xml_child_sort = 1;
 
 
-/*! Given an XML object and a child name, return yang stmt of child
+/*! Given a child name and an XML object, return yang stmt of child
  * If no xml parent, find root yang stmt matching name
- * @param[in]  name     Name of child
+ * @param[in]  x        Child
  * @param[in]  xp       XML parent, can be NULL.
  * @param[in]  yspec    Yang specification (top level)
  * @param[out] yresult  Pointer to yang stmt of result, or NULL, if not found
+ * @note special rule for rpc, ie <rpc><foo>,look for top "foo" node.
  */
 int
 xml_child_spec(char       *name,
@@ -108,6 +109,7 @@ xml_child_spec(char       *name,
  * @retval >0  if arg1 is greater than arg2
  * @note args are pointer ot pointers, to fit into qsort cmp function
  * @see xml_cmp1   Similar, but for one object
+ * @note empty value/NULL is smallest value
  */
 int
 xml_cmp(const void* arg1, 
@@ -144,7 +146,12 @@ xml_cmp(const void* arg1,
 	return 0; /* Ordered by user: maintain existing order */
     switch (y1->ys_keyword){
     case Y_LEAF_LIST: /* Match with name and value */
-	equal = strcmp(xml_body(x1), xml_body(x2));
+	if ((b1 = xml_body(x1)) == NULL)
+	    equal = -1;
+	else if ((b2 = xml_body(x2)) == NULL)
+	    equal = 1;
+	else
+	    equal = strcmp(b1, b2);
 	break;
     case Y_LIST: /* Match with key values 
 		  * Use Y_LIST cache (see struct yang_stmt)
@@ -168,7 +175,7 @@ xml_cmp(const void* arg1,
 }
 
 /*! Compare xml object
- * @param[in] yangi  Yang order
+ * @param[in]  yangi    Yang order
  * @param[in]  keynr    Length of keyvec/keyval vector when applicable
  * @param[in]  keyvec   Array of of yang key identifiers
  * @param[in]  keyval   Array of of yang key values
@@ -203,8 +210,10 @@ xml_cmp1(cxobj        *x,
     case Y_LEAF_LIST: /* Match with name and value */
 	if (userorder && yang_find((yang_node*)y, Y_ORDERED_BY, "user") != NULL)
 	    *userorder=1;
-	b=xml_body(x);
-	match = strcmp(keyval[0], b);
+	if ((b=xml_body(x)) == NULL)
+	    match = 1;
+	else
+	    match = strcmp(keyval[0], b);
 	break;
     case Y_LIST: /* Match with array of key values */
 	if (userorder && yang_find((yang_node*)y, Y_ORDERED_BY, "user") != NULL)

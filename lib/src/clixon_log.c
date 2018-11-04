@@ -52,6 +52,9 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+/* cligen */
+#include <cligen/cligen.h>
+
 /* clicon */
 #include "clixon_err.h"
 #include "clixon_log.h"
@@ -62,12 +65,8 @@ int debug = 0;
 /* Bitmask whether to log to syslog or stderr: CLICON_LOG_STDERR | CLICON_LOG_SYSLOG */
 static int _logflags = 0x0;
 
-/* Function pointer to log notify callback */
-static clicon_log_notify_t *_log_notify_cb  = NULL;
-static void                *_log_notify_arg = NULL;
-
-/* Set to open file to bypass logging and write debug messages directly to file */
-static FILE *_debugfile = NULL;
+/* Set to open file to write debug messages directly to file */
+static FILE *_logfile = NULL;
 
 /*! Initialize system logger.
  *
@@ -81,19 +80,75 @@ static FILE *_debugfile = NULL;
  *                              if CLICON_LOG_SYSLOG, then print logs to syslog
  *				You can do a combination of both
  * @code
- *  clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
+ *  clicon_log_init(h, __PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
  * @endcode
  */
 int
-clicon_log_init(char *ident, 
-		int    upto, 
-		int    flags)
+clicon_log_init(char         *ident, 
+		int           upto, 
+		int           flags)
 {
-    if (setlogmask(LOG_UPTO(upto)) < 0)
-	/* Cant syslog here */
-	fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno)); 
     _logflags = flags;
-    openlog(ident, LOG_PID, LOG_USER); /* LOG_PUSER is achieved by direct stderr logs in clicon_log */
+    if (flags & CLICON_LOG_SYSLOG){
+	if (setlogmask(LOG_UPTO(upto)) < 0)
+	    /* Cant syslog here */
+	    fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno)); 
+	openlog(ident, LOG_PID, LOG_USER); /* LOG_PUSER is achieved by direct stderr logs in clicon_log */
+    }
+    return 0;
+}
+
+int
+clicon_log_exit(void)
+{
+    if (_logfile)
+	fclose(_logfile);
+    return 0;
+}
+
+/*! Utility function to set log destination/flag using command-line option
+ * @param[in]  c  Log option,one of s,f,e,o
+ * @retval    -1  No match
+ * @retval     0  One of CLICON_LOG_SYSLOG|STDERR|STDOUT|FILE
+ */
+int
+clicon_log_opt(char c)
+{
+    int logdst = -1;
+
+    switch (c){
+    case 's':
+	logdst = CLICON_LOG_SYSLOG;
+	break;
+    case 'e':
+	logdst = CLICON_LOG_STDERR;
+	break;
+    case 'o':
+	logdst = CLICON_LOG_STDOUT;
+	break;
+    case 'f':
+	logdst = CLICON_LOG_FILE;
+	break;
+    default:
+	break;
+    } 
+    return logdst;
+}
+
+/*! If log flags include CLICON_LOG_FILE, set the file 
+ * @param[in]   filename   File to log to
+ * @retval      0          OK
+ * @retval     -1          Error
+ */
+int
+clicon_log_file(char *filename)
+{
+    if (_logfile)
+	fclose(_logfile);
+    if ((_logfile = fopen(filename, "a")) == NULL){
+	fprintf(stderr, "fopen: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+	return -1;
+    }
     return 0;
 }
 
@@ -101,18 +156,6 @@ int
 clicon_get_logflags(void)
 {
     return _logflags;
-}
-
-/*! Register log callback, return old setting
- */
-clicon_log_notify_t *
-clicon_log_register_callback(clicon_log_notify_t *cb, 
-			     void                *arg)
-{
-    clicon_log_notify_t *old = _log_notify_cb;
-    _log_notify_cb  = cb;
-    _log_notify_arg = arg;
-    return old;
 }
 
 /*! Mimic syslog and print a time on file f
@@ -131,6 +174,7 @@ flogtime(FILE *f)
     return 0;
 }
 
+#ifdef NOTUSED
 /*
  * Mimic syslog and print a time on string s
  * String returned needs to be freed.
@@ -154,19 +198,19 @@ slogtime(void)
 	     tm->tm_hour, tm->tm_min, tm->tm_sec);
     return str;
 }
-
+#endif
 
 /*! Make a logging call to syslog (or stderr).
  *
  * @param[in]   level log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. Thisis OR:d with facility == LOG_USER
  * @param[in]   msg   Message to print as argv.
  * This is the _only_ place the actual syslog (or stderr) logging is made in clicon,..
- * @note syslog makes itw own filtering, but if log to stderr we do it here
+ * @note syslog makes its own filtering, but if log to stderr we do it here
  * @see  clicon_debug
  */
-int
-clicon_log_str(int   level, 
-	       char *msg)
+static int
+clicon_log_str(int           level, 
+	       char         *msg)
 {
     if (_logflags & CLICON_LOG_SYSLOG)
 	syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg);
@@ -183,30 +227,15 @@ clicon_log_str(int   level,
 	flogtime(stdout);
 	fprintf(stdout, "%s\n", msg);
     }
-    if (_log_notify_cb){
-	static int  cb = 0;
-	char       *d, *msg2;
-	int         len;
-
-	if (cb++ == 0){
-	    /* Here there is danger of recursion: if callback in turn logs, therefore
-	       make static check (should be stack-based - now global) 
-	    */
-	    if ((d = slogtime()) == NULL)
-		return -1;
-	    len = strlen(d) + strlen(msg) + 1;
-	    if ((msg2 = malloc(len)) == NULL){
-		fprintf(stderr, "%s: malloc: %s\n", __FUNCTION__, strerror(errno));
-		return -1;
-	    }
-	    snprintf(msg2, len, "%s%s", d, msg);
-	    assert(_log_notify_arg);
-	    _log_notify_cb(level, msg2, _log_notify_arg);
-	    free(d);
-	    free(msg2);
-	}
-	cb--;
+    if ((_logflags & CLICON_LOG_FILE) && _logfile){
+	flogtime(_logfile);
+	fprintf(_logfile, "%s\n", msg);
+	fflush(_logfile);
     }
+
+    /* Enable this if you want syslog in a stream. But there are problems with 
+     * recursion
+     */
  done:
     return 0;
 }
@@ -326,13 +355,7 @@ clicon_debug(int   dbglevel,
 	goto done;
     }
     va_end(args);
-    if (_debugfile != NULL){ /* Bypass syslog altogether */
-	/* XXX: Here use date sub-routine as found in err_print1 */
-	flogtime(_debugfile);
-	fprintf(_debugfile, "%s\n", msg);
-    }
-    else
-	clicon_log_str(LOG_DEBUG, msg);
+    clicon_log_str(LOG_DEBUG, msg);
     retval = 0;
   done:
     if (msg)

@@ -111,6 +111,7 @@ clixon_yang_parsewrap(void)
 <KEYWORD>\}               { return *yytext; }
 
  /* RFC 6020 keywords */
+<KEYWORD>action           { BEGIN(ARGUMENT); return K_ACTION; }
 <KEYWORD>anyxml           { BEGIN(ARGUMENT); return K_ANYXML; }
 <KEYWORD>argument         { BEGIN(ARGUMENT); return K_ARGUMENT; }
 <KEYWORD>augment          { BEGIN(ARGUMENT); return K_AUGMENT; }

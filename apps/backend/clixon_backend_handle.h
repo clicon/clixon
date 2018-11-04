@@ -43,37 +43,9 @@
 /*
  * Types
  */
-/* subscription callback */
-typedef	int (*subscription_fn_t)(clicon_handle, void *filter, void *arg);
-
-/* Notification subscription info 
- * @see client_subscription in config_client.h
- */
-struct handle_subscription{
-    struct handle_subscription *hs_next;
-    enum format_enum     hs_format; /*  format (enum format_enum) XXX not needed? */
-    char                *hs_stream; /* name of notify stream */
-    char                *hs_filter; /* filter, if format=xml: xpath, if text: fnmatch */
-    subscription_fn_t    hs_fn;     /* Callback when event occurs */
-    void                *hs_arg;    /* Callback argument */
-};
 
 /*
  * Prototypes
  */
-/* Log for netconf notify function (config_client.c) */
-int backend_notify(clicon_handle h, char *stream, int level, char *txt);
-int backend_notify_xml(clicon_handle h, char *stream, int level, cxobj *x);
-
-
-struct handle_subscription *subscription_add(clicon_handle h, char *stream, 
-					     enum format_enum format, char *filter, 
-					     subscription_fn_t fn, void *arg);
-
-int subscription_delete(clicon_handle h, char *stream, 
-			subscription_fn_t fn, void *arg);
-
-struct handle_subscription *subscription_each(clicon_handle h,
-				      struct handle_subscription *hprev);
 
 #endif /* _CLIXON_BACKEND_HANDLE_H_ */

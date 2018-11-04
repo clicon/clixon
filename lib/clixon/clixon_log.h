@@ -44,24 +44,21 @@
 #define CLICON_LOG_SYSLOG 1 /* print logs on syslog */
 #define CLICON_LOG_STDERR 2 /* print logs on stderr */
 #define CLICON_LOG_STDOUT 4 /* print logs on stdout */
-
-/*
- * Types
- */
-typedef int (clicon_log_notify_t)(int level, char *msg, void *arg);
+#define CLICON_LOG_FILE   8 /* print logs on clicon_log_filename */
 
 /*
  * Variables
  */
 extern int debug;  
 
-
 /*
  * Prototypes
  */
 int clicon_log_init(char *ident, int upto, int flags);
+int clicon_log_exit(void);
+int clicon_log_opt(char c);
+int clicon_log_file(char *filename);
 int clicon_get_logflags(void);
-int clicon_log_str(int level, char *msg);
 #if defined(__GNUC__) && __GNUC__ >= 3
 int clicon_log(int level, char *format, ...) __attribute__ ((format (printf, 2, 3)));
 int clicon_debug(int dbglevel, char *format, ...) __attribute__ ((format (printf, 2, 3)));
@@ -69,9 +66,7 @@ int clicon_debug(int dbglevel, char *format, ...) __attribute__ ((format (printf
 int clicon_log(int level, char *format, ...);
 int clicon_debug(int dbglevel, char *format, ...);
 #endif
-clicon_log_notify_t *clicon_log_register_callback(clicon_log_notify_t *cb, void *arg);
 int clicon_debug_init(int dbglevel, FILE *f);
-
 char *mon2name(int md);
 
 #endif  /* _CLIXON_LOG_H_ */

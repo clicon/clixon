@@ -1,8 +1,8 @@
 # Clixon
 
-Clixon is an automatic configuration manager where you generate
-interactive CLI, NETCONF, RESTCONF and embedded databases with
-transaction support from a YANG specification.
+Clixon is a YANG-based configuration manager, with interactive CLI,
+NETCONF and RESTCONF interfaces, an embedded database and transaction
+support.
 
   * [Background](#background)
   * [Frequently asked questions](doc/FAQ.md)
@@ -16,7 +16,8 @@ transaction support from a YANG specification.
   * [Netconf](#netconf)
   * [Restconf](#restconf)
   * [Datastore](datastore/README.md)
-  * [Authentication and Authorization](#auth)
+  * [Authentication](#auth)
+  * [NACM Access control](#nacm)
   * [Example](example/)
   * [Changelog](CHANGELOG.md)
   * [Runtime](#runtime)
@@ -107,24 +108,21 @@ specification for handling XML configuration data. The YANG spec is
 used to generate an interactive CLI, netconf and restconf clients. It
 also manages an XML datastore.
 
-Clixon mainly follows [YANG 1.0 RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt) with some exceptions:
-- conformance: feature, if-feature, deviation
-- list features: min/max-elements, unique
-- action statements
-- notifications
+Clixon follows:
+- [YANG 1.0 RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt)
+- [YANG 1.1 RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt).
+- [RFC 7895: YANG module library](http://www.rfc-base.org/txt/rfc-7895.txt)
 
-The aim is also to cover new features in YANG 1.1 [YANG RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt)
-
-Clixon has its own XML library designed for performance.
+However, the following YANG syntax modules are not implemented:
+`deviation`, `min/max-elements`, `unique`, and `action`.
 
 Netconf
 =======
 Clixon implements the following NETCONF proposals or standards:
-- [NETCONF Configuration Protocol](http://www.rfc-base.org/txt/rfc-4741.txt)
-- [Using the NETCONF Configuration Protocol over Secure Shell (SSH)](http://www.rfc-base.org/txt/rfc-4742.txt)
-- [NETCONF Event Notifications](http://www.rfc-base.org/txt/rfc-5277.txt)
-
-Some updates are being made to RFC 6241 and RFC 6242. 
+- [RFC 6241: NETCONF Configuration Protocol](http://www.rfc-base.org/txt/rfc-6241.txt)
+- [RFC 6242: Using the NETCONF Configuration Protocol over Secure Shell (SSH)](http://www.rfc-base.org/txt/rfc-6242.txt)
+- [RFC 5277: NETCONF Event Notifications](http://www.rfc-base.org/txt/rfc-5277.txt)
+- [RFC 8341: Network Configuration Access Control Model](http://www.rfc-base.org/txt/rfc-8341.txt)
 
 Clixon does not yet support the following netconf features:
 
@@ -136,16 +134,18 @@ Clixon does not yet support the following netconf features:
 
 Restconf
 ========
-Clixon restconf is a daemon based on FASTCGI. Instructions are available to
+Clixon Restconf is a daemon based on FastCGI C-API. Instructions are available to
 run with NGINX.
 The implementatation is based on [RFC 8040: RESTCONF Protocol](https://tools.ietf.org/html/rfc8040).
+
 The following features are supported:
 - OPTIONS, HEAD, GET, POST, PUT, DELETE
-The following are not implemented
+- stream notifications (RFC8040 sec 6)
+- query parameters start-time and stop-time(RFC8040 section 4.9)
+
+The following features are not implemented:
 - PATCH
-- query parameters (section 4.9)
-- notifications (sec 6)
-- schema resource
+- query parameters other than start/stop-time.
 
 See [more detailed instructions](apps/restconf/README.md).
 
@@ -155,8 +155,6 @@ The Clixon datastore is a stand-alone XML based datastore. The idea is
 to be able to use different datastores backends with the same
 API.
 
-Update: There used to be a key-value plugin based on qdbm but isnow obsoleted. Only a text datastore is implemented.
-
 The datastore is primarily designed to be used by Clixon but can be used
 separately.
 
@@ -164,7 +162,6 @@ See [more detailed instructions](datastore/README.md).
 
 Auth
 ====
-
 Authentication is managed outside Clixon using SSH, SSL, Oauth2, etc.
 
 For CLI, login is typically made via SSH. For netconf, SSH netconf
@@ -179,10 +176,37 @@ The clients send the ID of the user using a "username" attribute with
 the RPC calls to the backend. Note that the backend trusts the clients
 so the clients can in principle fake a username.
 
-There is an ongoing effort to implement authorization for Clixon
-according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341), at
-least a subset of the functionality. See more information here:
-[NACM](README_NACM.md).
+NACM
+====
+Clixon includes an experimental Network Configuration Access Control Model (NACM) according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341). It has limited functionality.
+
+The support is as follows:
+
+* There is a yang config variable `CLICON_NACM_MODE` to set whether NACM is disabled, uses internal(embedded) NACM configuration, or external configuration. (See yang/clixon-config.yang)
+* If the mode is internal, NACM configurations is expected to be in the regular configuration, managed by regular candidate/runing/commit procedures. This mode may have some problems with bootstrapping.
+* If the mode is `external`, the `CLICON_NACM_FILE` yang config variable contains the name of a separate configuration file containing the NACM configurations. After changes in this file, the backend needs to be restarted.
+* The [example](example/README.md) contains a http basic auth and a NACM backend callback for mandatory state variables.
+* There are two [tests](test/README.md) using internal and external NACM config
+* The backend provides a limited NACM support (when enabled) described below
+
+NACM is implemented in the backend and a single access check is made
+in `from_client_msg()` when an internal netconf RPC has
+just been received and decoded. The code is in `nacm_access()`.
+
+The functionality is as follows:
+* Notification is not supported
+* Groups are supported
+* Rule-lists are supported
+* Rules are supported as follows
+  * module-name: Only '*' supported
+  * access-operations: only '*' and 'exec' supported
+  * rpc-name: fully supported (eg edit-config/get-config, etc)
+  * action: fully supported (permit/deny)
+
+The tests outlines an example of three groups (taken from the RFC): admin, limited and guest:
+* admin: Full access
+* limited: Read access (get and get-config)
+* guest: No access
 
 
 Runtime

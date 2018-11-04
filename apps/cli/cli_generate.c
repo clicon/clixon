@@ -232,19 +232,21 @@ yang2cli_var_sub(clicon_handle h,
 	    cprintf(cb, ">");
 	    if (helptext)
 		cprintf(cb, "(\"%s\")", helptext);
-    	    cprintf(cb, "|<%s:%s choice:", ys->ys_argument, cvtypestr);
 	    if ((ybaseref = yang_find((yang_node*)ytype, Y_BASE, NULL)) != NULL &&
 		(ybaseid = yang_find_identity(ys, ybaseref->ys_argument)) != NULL){
-		i = 0;
-		while ((cv = cvec_each(ybaseid->ys_cvec, cv)) != NULL){
-		    if (i++)
-			cprintf(cb, "|"); 
-		    name = strdup(cv_name_get(cv));
-		    if ((id=strchr(name, ':')) != NULL)
-			*id = '\0';
-		    cprintf(cb, "%s:%s", name, id+1);
-		    if (name)
-			free(name);
+		if (cvec_len(ybaseid->ys_cvec) > 0){
+		    cprintf(cb, "|<%s:%s choice:", ys->ys_argument, cvtypestr);
+		    i = 0;
+		    while ((cv = cvec_each(ybaseid->ys_cvec, cv)) != NULL){
+			if (i++)
+			    cprintf(cb, "|"); 
+			name = strdup(cv_name_get(cv));
+			if ((id=strchr(name, ':')) != NULL)
+			    *id = '\0';
+			cprintf(cb, "%s:%s", name, id+1);
+			if (name)
+			    free(name);
+		    }
 		}
 	    }
 	}
@@ -792,7 +794,7 @@ yang2cli(clicon_handle      h,
 	    if (yang2cli_stmt(h, ymod, cbuf, gt, 0) < 0)
 		goto done;
 	}
-    clicon_debug(1, "%s: buf\n%s\n", __FUNCTION__, cbuf_get(cbuf));
+    clicon_debug(0, "%s: buf\n%s\n", __FUNCTION__, cbuf_get(cbuf));
     /* Parse the buffer using cligen parser. XXX why this?*/
     if ((globals = cvec_new(0)) == NULL)
 	goto done;

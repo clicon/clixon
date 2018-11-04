@@ -37,6 +37,11 @@
 #define _RESTCONF_LIB_H_
 
 /*
+ * Constants
+ */
+#define RESTCONF_API       "restconf"
+
+/*
  * Prototypes (also in clixon_restconf.h)
  */
 int restconf_err2code(char *tag);
@@ -46,6 +51,7 @@ int badrequest(FCGX_Request *r);
 int unauthorized(FCGX_Request *r);
 int forbidden(FCGX_Request *r);
 int notfound(FCGX_Request *r);
+int notacceptable(FCGX_Request *r);
 int conflict(FCGX_Request *r);
 int internal_server_error(FCGX_Request *r);
 int notimplemented(FCGX_Request *r);
@@ -56,5 +62,6 @@ cbuf *readdata(FCGX_Request *r);
 int get_user_cookie(char *cookiestr, char  *attribute, char **val);
 int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
 		   int pretty, int use_xml);
+int restconf_terminate(clicon_handle h);
 
 #endif /* _RESTCONF_LIB_H_ */

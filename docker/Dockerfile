@@ -40,16 +40,13 @@ RUN apt-get update && apt-get install -y \
   libfcgi-dev \
   libcurl4-openssl-dev
 
-
-RUN groupadd clicon
-
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
 WORKDIR /clixon
 
 # Clone cligen and clixon
 RUN git clone https://github.com/olofhagsand/cligen.git
-RUN git clone https://github.com/clicon/clixon.git
+RUN git clone -b develop https://github.com/clicon/clixon.git
 
 # Build cligen
 WORKDIR /clixon/cligen
@@ -59,11 +56,12 @@ RUN make install
 
 # Build clixon
 WORKDIR /clixon/clixon
-RUN git checkout -b develop origin/develop
 RUN ./configure
 RUN make
 RUN make install
 RUN make install-include
+
+RUN rm -rf /clixon
 
 RUN ldconfig
 

@@ -67,12 +67,12 @@ depend:
 
 install:  
 	for i in $(SUBDIRS) doc; \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done; \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 	echo "Install for compilation by: make install-include"
 
 install-include:
 	for i in $(SUBDIRS) doc; \
-	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done; \
+	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 	echo "To install example app: cd example; make; make install"
 
 uninstall:

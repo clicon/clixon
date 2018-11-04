@@ -87,7 +87,7 @@ int clicon_msg_send(int s, struct clicon_msg *msg);
 
 int clicon_msg_rcv(int s, struct clicon_msg **msg, int *eof);
 
-int send_msg_notify(int s, int level, char *event);
+int send_msg_notify_xml(int s, cxobj *xev);
 
 int send_msg_reply(int s, char *data, uint32_t datalen);
 

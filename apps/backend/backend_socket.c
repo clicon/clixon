@@ -74,7 +74,8 @@
 #include "backend_handle.h"
 
 static int
-config_socket_init_ipv4(clicon_handle h, char *dst)
+config_socket_init_ipv4(clicon_handle h,
+			char         *dst)
 {
     int                s;
     struct sockaddr_in addr;
@@ -116,7 +117,8 @@ config_socket_init_ipv4(clicon_handle h, char *dst)
  * and group according to CLICON_SOCK_GROUP option.
  */
 static int
-config_socket_init_unix(clicon_handle h, char *sock)
+config_socket_init_unix(clicon_handle h,
+			char         *sock)
 {
     int                s;
     struct sockaddr_un addr;
@@ -197,7 +199,7 @@ backend_socket_init(clicon_handle h)
  */
 int
 backend_accept_client(int   fd,
-		     void *arg)
+		      void *arg)
 {
     int           retval = -1;
     clicon_handle h = (clicon_handle)arg;

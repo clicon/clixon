@@ -71,19 +71,27 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:xl:F:1u:d:m:qpGLy:c:U:"
+#define CLI_OPTS "hD:f:xl:F:1a:u:d:m:qpGLy:c:U:"
+
+#define CLI_LOGFILE "/tmp/clixon_cli.log"
 
 /*! terminate cli application */
 static int
 cli_terminate(clicon_handle h)
 {
-    yang_spec      *yspec;
+    yang_spec  *yspec;
+    cxobj      *x;
 
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((yspec = clicon_config_yang(h)) != NULL)
+	yspec_free(yspec);
+    if ((x = clicon_conf_xml(h)) != NULL)
+	xml_free(x);
     cli_plugin_finish(h);    
     cli_handle_exit(h);
+    clicon_log_exit();
     return 0;
 }
 
@@ -197,31 +205,30 @@ static void
 usage(clicon_handle h,
       char         *argv0)
 {
-    char *confsock = clicon_sock(h);
     char *plgdir = clicon_cli_dir(h);
 
     fprintf(stderr, "usage:%s [options] [commands]\n"
 	    "where commands is a CLI command or options passed to the main plugin\n" 
 	    "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level> \tDebug\n"
+    	    "\t-D <level> \tDebug level\n"
 	    "\t-f <file> \tConfig-file (mandatory)\n"
 	    "\t-x\t\tDump configuration file as XML on stdout (migration utility)\n"
     	    "\t-F <file> \tRead commands from file (default stdin)\n"
 	    "\t-1\t\tDo not enter interactive mode\n"
-    	    "\t-u <sockpath>\tconfig UNIX domain path (default: %s)\n"
+    	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
+    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify plugin directory (default: %s)\n"
             "\t-m <mode>\tSpecify plugin syntax mode\n"
 	    "\t-q \t\tQuiet mode, dont print greetings or prompt, terminate on ctrl-C\n"
 	    "\t-p \t\tPrint database yang specification\n"
 	    "\t-G \t\tPrint CLI syntax generated from dbspec (if CLICON_CLI_GENMODEL enabled)\n"
 	    "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
-	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr or std(o)ut (stderr is default)\n"
+	    "\t-l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut or (f)ile (stderr is default)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "\t-c <file>\tSpecify cli spec file.\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n",
 	    argv0,
-	    confsock ? confsock : "none",
 	    plgdir ? plgdir : "none"
 	);
     exit(1);
@@ -248,7 +255,10 @@ main(int argc, char **argv)
     char        *restarg = NULL; /* what remains after options */
     int          dump_configfile_xml = 0;
     yang_spec   *yspec;
+    yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
     struct passwd *pw;
+    char        *yang_filename = NULL;
+    yang_stmt   *ymod = NULL; /* Main module */
     
     /* Defaults */
     once = 0;
@@ -297,21 +307,14 @@ main(int argc, char **argv)
 	case 'x': /* dump config file as xml (migration from .conf file)*/
 	    dump_configfile_xml++;
 	    break;
-	 case 'l': /* Log destination: s|e|o */
-	   switch (optarg[0]){
-	   case 's':
-	     logdst = CLICON_LOG_SYSLOG;
-	     break;
-	   case 'e':
-	     logdst = CLICON_LOG_STDERR;
-	     break;
-	   case 'o':
-	     logdst = CLICON_LOG_STDOUT;
-	     break;
-	   default:
-	       usage(h, argv[0]);
-	   }
-	   break;
+	case 'l': /* Log destination: s|e|o|f */
+	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
+		usage(h, argv[0]);
+	    if (logdst == CLICON_LOG_FILE &&
+		strlen(optarg)>1 &&
+		clicon_log_file(optarg+1) < 0)
+		goto done;
+	    break;
 	}
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
@@ -328,13 +331,16 @@ main(int argc, char **argv)
 	    goto done;
     }
 
+    /* Create top-level yang spec and store as option */
+    if ((yspecfg = yspec_new()) == NULL)
+	goto done;
     /* Find and read configfile */
-    if (clicon_options_main(h) < 0){
+    if (clicon_options_main(h, yspecfg) < 0){
         if (help)
 	    usage(h, argv[0]);
 	return -1;
     }
-
+    clicon_config_yang_set(h, yspecfg);
     /* Now rest of options */   
     opterr = 0;
     optind = 1;
@@ -354,7 +360,10 @@ main(int argc, char **argv)
 	case '1' : /* Quit after reading database once - dont wait for events */
 	    once = 1;
 	    break;
-	case 'u': /* config unix domain path/ ip host */
+	case 'a': /* internal backend socket address family */
+	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
+	    break;
+	case 'u': /* internal backend socket unix domain path or ip host */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
@@ -381,8 +390,8 @@ main(int argc, char **argv)
 	case 'L' : /* Debug print dynamic CLI syntax */
 	    logclisyntax++;
 	    break;
-	case 'y' :{ /* Overwrite yang module or absolute filename */
-	    clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", optarg);
+	case 'y' :{ /* Load yang spec file (override yang main module) */
+	    yang_filename = optarg;
 	    break;
 	}
 	case 'c' :{ /* Overwrite clispec with absolute filename */
@@ -416,8 +425,24 @@ main(int argc, char **argv)
      */
     cv_exclude_keys(clicon_cli_varonly(h)); 
 
-    /* Parse db specification as cli*/
-    if ((yspec = yang_spec_main(h)) == NULL)
+    /* Create top-level and store as option */
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    clicon_dbspec_yang_set(h, yspec);	
+
+    /* Load main application yang specification either module or specific file
+     * If -y <file> is given, it overrides main module */
+    if (yang_filename){
+	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, &ymod) < 0)
+	    goto done;
+    }
+    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
+				    clicon_yang_dir(h),
+				    clicon_yang_module_revision(h),
+				    yspec, &ymod) < 0)
+	goto done;
+     /* Load yang module library, RFC7895 */
+    if (yang_modules_init(h) < 0)
 	goto done;
     if (printspec)
 	yang_print(stdout, (yang_node*)yspec);
@@ -426,18 +451,22 @@ main(int argc, char **argv)
      * the only one.
      */
     if (clicon_cli_genmodel(h)){
-	parse_tree         pt = {0,};  /* cli parse tree */
+	parse_tree    pt = {0,};  /* cli parse tree */
+	char         *name;       /* main module name */
 
 	/* Create cli command tree from dbspec */
 	if (yang2cli(h, yspec, &pt, clicon_cli_genmodel_type(h)) < 0)
 	    goto done;
 
-	len = strlen("datamodel:") + strlen(clicon_dbspec_name(h)) + 1;
+	/* name of main module */
+	name = ymod->ys_argument;
+
+	len = strlen("datamodel:") + strlen(name) + 1;
 	if ((treename = malloc(len)) == NULL){
 	    clicon_err(OE_UNIX, errno, "malloc");
 	    goto done;
 	}	
-	snprintf(treename, len, "datamodel:%s",  clicon_dbspec_name(h));
+	snprintf(treename, len, "datamodel:%s",  name);
 	cligen_tree_add(cli_cligen(h), treename, pt);
 
 	if (printgen)

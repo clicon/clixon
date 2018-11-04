@@ -53,6 +53,8 @@
 #include "clixon_log.h"
 #include "clixon_err.h"
 #include "clixon_yang.h"
+#include "clixon_xml.h"
+#include "clixon_stream.h"
 #include "clixon_options.h"
 
 #define CLICON_MAGIC 0x99aafabe
@@ -65,9 +67,10 @@
  * @see struct backend_handle
  */
 struct clicon_handle {
-    int                ch_magic;    /* magic (HDR) */
-    clicon_hash_t     *ch_copt;     /* clicon option list (HDR) */
-    clicon_hash_t     *ch_data;     /* internal clicon data (HDR) */
+    int               ch_magic;    /* magic (HDR) */
+    clicon_hash_t    *ch_copt;     /* clicon option list (HDR) */
+    clicon_hash_t    *ch_data;     /* internal clicon data (HDR) Unclear why two? */
+    event_stream_t   *ch_stream;   /* notification streams, see clixon_stream.[ch] */
 };
 
 /*! Internal call to allocate a CLICON handle. 
@@ -126,13 +129,13 @@ int
 clicon_handle_exit(clicon_handle h)
 {
     struct clicon_handle *ch = handle(h);
-    clicon_hash_t        *copt;
-    clicon_hash_t        *data;
+    clicon_hash_t        *ha;
 
-    if ((copt = clicon_options(h)) != NULL)
-	hash_free(copt);
-    if ((data = clicon_data(h)) != NULL)
-	hash_free(data);
+    if ((ha = clicon_options(h)) != NULL)
+	hash_free(ha);
+    if ((ha = clicon_data(h)) != NULL)
+	hash_free(ha);
+    stream_delete_all(h);
     free(ch);
     return 0;
 }
@@ -171,4 +174,35 @@ clicon_data(clicon_handle h)
     struct clicon_handle *ch = handle(h);
 
     return ch->ch_data;
+}
+
+/*! Return stream hash-array given a clicon handle.
+ * @param[in]  h        Clicon handle
+ */
+event_stream_t *
+clicon_stream(clicon_handle h)
+{
+    struct clicon_handle *ch = handle(h);
+
+    return ch->ch_stream;
+}
+
+int
+clicon_stream_set(clicon_handle   h,
+		  event_stream_t *es)
+{
+    struct clicon_handle *ch = handle(h);
+
+    ch->ch_stream = es;
+    return 0;
+}
+
+int
+clicon_stream_append(clicon_handle h,
+		     event_stream_t *es)
+{
+    struct clicon_handle *ch = handle(h);
+    
+    ADDQ(es, ch->ch_stream);
+    return 0;
 }

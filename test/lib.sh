@@ -2,12 +2,10 @@
 # Define test functions.
 # Create working dir as variable "dir"
 
+#set -e
+
 testnr=0
 testname=
-
-# Set to 1 to enable old XSL implementation. Set to nothing, or comment if new.
-# @see include/clixon_custom.h
-#COMPAT_XSL=1
 
 # For memcheck
 #clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
@@ -19,8 +17,8 @@ clixon_cli=clixon_cli
 clixon_netconf=clixon_netconf
 
 # How to run restconf stand-alone and using valgrind
-#sudo su -c "/www-data/clixon_restconf -f $cfg -D" -s /bin/sh www-data
-#sudo su -c "valgrind --leak-check=full --show-leak-kinds=all /www-data/clixon_restconf -f $cfg -D" -s /bin/sh www-data
+#sudo su -c "/www-data/clixon_restconf -f $cfg -D 1" -s /bin/sh www-data
+#sudo su -c "valgrind --trace-children=no --child-silent-after-fork=yes --leak-check=full --show-leak-kinds=all /www-data/clixon_restconf -f $cfg -D 1" -s /bin/sh www-data
 
 #clixon_backend="valgrind --leak-check=full --show-leak-kinds=all clixon_backend"
 clixon_backend=clixon_backend
@@ -36,6 +34,7 @@ err(){
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
       echo "Expected: $1"
+      echo
   fi
   if [ $# -gt 1 ]; then 
       echo "Received: $2"
@@ -131,9 +130,10 @@ expecteof(){
 ret=$($cmd<<EOF 
 $input
 EOF
-) 
-  if [ $? -ne $retval ]; then
-      echo -e "\e[31m\nError in Test$testnr [$testname]:"
+)
+  r=$? 
+  if [ $r -ne $retval ]; then
+      echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
       echo -e "\e[0m:"
       exit -1
   fi
@@ -142,7 +142,7 @@ EOF
   if [ -z "$ret" -a -z "$expect" ]; then
       return
   fi
-  match=`echo "$ret" | grep -Eo "$expect"`
+  match=`echo "$ret" | grep -GZo "$expect"`
 #  echo "ret:\"$ret\""
 #  echo "expect:\"$expect\""
 #  echo "match:\"$match\""
@@ -178,13 +178,25 @@ expectwait(){
   wait=$4
 
 # Do while read stuff
-  sleep 10|cat <(echo $input) -| $cmd | while [ 1 ] ; do
-    read ret
+  echo timeout > /tmp/flag
+  ret=""
+  sleep $wait |  cat <(echo $input) -| $cmd | while [ 1 ] ; do
+    read -t 20 r
+#    echo "r:$r"
+    ret="$ret$r"
     match=$(echo "$ret" | grep -Eo "$expect");
     if [ -z "$match" ]; then
-	err $expect "$ret"
+	echo error > /tmp/flag
+	err "$expect" "$ret"
+    else
+	echo ok > /tmp/flag # only this is OK
+	break;
     fi
-    break
   done
+#  cat /tmp/flag
+  if [ $(cat /tmp/flag) != "ok" ]; then
+      cat /tmp/flag
+      exit
+  fi
 }
 

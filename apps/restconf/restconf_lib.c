@@ -54,7 +54,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include <fcgi_stdio.h> /* Need to be after clixon_xml-h due to attribute format */
+#include <fcgiapp.h> /* Need to be after clixon_xml-h due to attribute format */
 
 #include "restconf_lib.h"
 
@@ -217,6 +217,26 @@ notfound(FCGX_Request *r)
     FCGX_FPrintF(r->out, "<h1>Not Found</h1>\n");
     FCGX_FPrintF(r->out, "Not Found\n");
     FCGX_FPrintF(r->out, "The requested URL %s was not found on this server.\n",
+		 path);
+    return 0;
+}
+
+/*! HTTP error 406 Not acceptable
+ * @param[in]  r        Fastcgi request handle
+ */
+int
+notacceptable(FCGX_Request *r)
+{
+    char *path;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    path = FCGX_GetParam("DOCUMENT_URI", r->envp);
+    FCGX_FPrintF(r->out, "Status: 406\r\n"); /* 406 not acceptible */
+
+    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(r->out, "<h1>Not Acceptable</h1>\n");
+    FCGX_FPrintF(r->out, "Not Acceptable\n");
+    FCGX_FPrintF(r->out, "The target resource does not have a current representation that would be acceptable to the user agent.\n",
 		 path);
     return 0;
 }
@@ -464,4 +484,24 @@ api_return_err(clicon_handle h,
     if (cb)
         cbuf_free(cb);
     return retval;
+}
+
+int
+restconf_terminate(clicon_handle h)
+{
+    yang_spec *yspec;
+    cxobj     *x;
+
+    clixon_plugin_exit(h);
+    rpc_callback_delete_all();
+    clicon_rpc_close_session(h);
+    if ((yspec = clicon_dbspec_yang(h)) != NULL)
+	yspec_free(yspec);
+    if ((yspec = clicon_config_yang(h)) != NULL)
+	yspec_free(yspec);
+    if ((x = clicon_conf_xml(h)) != NULL)
+	xml_free(x);
+    clicon_handle_exit(h);
+    clicon_log_exit();
+    return 0;
 }

@@ -11,8 +11,8 @@ tmp=$dir/tmp.x
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
   <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>$fyang</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -46,9 +46,18 @@ module example{
     }
     rpc empty {
     }
+    list server {
+       key name;
+       leaf name {
+         type string;
+       }
+       action reset {
+       }
+    }
     identity eth {
 	 base if:interface-type;
     }
+
     rpc client-rpc {
 	description "Example local client-side RPC that is processed by the
                      the netconf/restconf and not sent to the backend.
@@ -64,6 +73,13 @@ module example{
 		type string;
 	    }
 	}
+    }
+    container state {
+       config false;
+       description "state data for example application";
+       leaf-list op {
+          type string;
+       }
     }
 }
 EOF
@@ -81,8 +97,14 @@ if [ $? -ne 0 ]; then
     err
 fi
 
-new "netconf get-config"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
+new "netconf hello"
+expecteof "$clixon_netconf -f $cfg -y $fyang" 0 '<rpc message-id="101"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2016-06-21&amp;module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1:0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]><rpc-reply message-id="101"><data/></rpc-reply>]]>]]>$'
+
+new "netconf get-config double quotes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc message-id="101" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply message-id="101" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><data/></rpc-reply>]]>]]>$'
+
+new "netconf get-config single quotes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc message-id='101' xmlns='urn:ietf:params:xml:ns:netconf:base:1.0'><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply message-id="101" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><data/></rpc-reply>]]>]]>$'
 
 new "Add subtree eth/0/0 using none which should not change anything"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><default-operation>none</default-operation><target><candidate/></target><config><interfaces><interface><name>eth/0/0</name></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -93,16 +115,12 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc message-id="101"><get-con
 new "Add subtree eth/0/0 using none and create which should add eth/0/0"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces><interface operation="create"><name>eth/0/0</name><type>ex:eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
+
 # Too many quotes, (single inside double inside single) need to fool bash
-if [ -z "$COMPAT_XSL" ]; then
 cat <<EOF > $tmp # new
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name='eth/0/0']"/></get-config></rpc>]]>]]>
 EOF
-else # old
-cat <<EOF > $tmp
-<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name=eth/0/0]"/></get-config></rpc>]]>]]>
-EOF
-fi   
+
 new "Check eth/0/0 added using xpath"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "$(cat $tmp)" "^<rpc-reply><data><interfaces><interface><name>eth/0/0</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$"
 
@@ -122,29 +140,17 @@ new "netconf edit config"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth/0/0</name></interface><interface><name>eth1</name><enabled>true</enabled><ipv4><address><ip>9.2.3.4</ip><prefix-length>24</prefix-length></address></ipv4></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Too many quotes
-if [ -z "$COMPAT_XSL" ]; then
 cat <<EOF > $tmp # new
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name='eth1']/enabled"/></get-config></rpc>]]>]]>
 EOF
-else
-cat <<EOF > $tmp # old
-<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name=eth1]/enabled"/></get-config></rpc>]]>]]>
-EOF
-fi
 
 new "netconf get config xpath"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "$(cat $tmp)" "^<rpc-reply><data><interfaces><interface><name>eth1</name><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$"
 
 # Too many quotes
-if [ -z "$COMPAT_XSL" ]; then
 cat <<EOF > $tmp # new
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name='eth1']/enabled/../.."/></get-config></rpc>]]>]]>
 EOF
-else
-cat <<EOF > $tmp # old
-<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name=eth1]/enabled/../.."/></get-config></rpc>]]>]]>
-EOF
-fi
 
 new "netconf get config xpath parent"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "$(cat $tmp)" "^<rpc-reply><data><interfaces><interface><name>eth/0/0</name><enabled>true</enabled></interface><interface><name>eth1</name><enabled>true</enabled><ipv4><enabled>true</enabled><forwarding>false</forwarding><address><ip>9.2.3.4</ip><prefix-length>24</prefix-length></address></ipv4></interface></interfaces></data></rpc-reply>]]>]]>$"
@@ -177,10 +183,10 @@ new "netconf edit config merge"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth2</name><type>ex:eth</type></interface></interfaces></config><default-operation>merge</default-operation></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf edit ampersand encoding(<&): name:'eth&' type:'t<>'"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth&amp; </name><type>t&lt; &gt; </type></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><interfaces><interface><name>eth&amp;</name><type>t&lt;&gt;</type></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get replaced config"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><interfaces><interface><name>eth&amp; </name><type>t&lt; &gt; </type><enabled>true</enabled></interface><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>eth2</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><interfaces><interface><name>eth&amp;</name><type>t&lt;&gt;</type><enabled>true</enabled></interface><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>eth2</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$"
 
 new "cli show configuration eth& - encoding tests"
 expectfn "$clixon_cli -1 -f $cfg -y $fyang show conf cli" 0 "interfaces interface eth& type t<>
@@ -197,10 +203,10 @@ new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf edit state operation should fail"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><interfaces-state><interface><name>eth1</name><type>ex:eth</type></interface></interfaces-state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag>"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><state><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag>"
 
 new "netconf get state operation"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get><filter type=\"xpath\" select=\"/interfaces-state\"/></get></rpc>]]>]]>" "^<rpc-reply><data><interfaces-state><interface><name>eth0</name><type>ex:eth</type><if-index>42</if-index></interface></interfaces-state></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get><filter type=\"xpath\" select=\"/state\"/></get></rpc>]]>]]>" "^<rpc-reply><data><state><op>42</op></state></data></rpc-reply>]]>]]>$"
 
 new "netconf lock/unlock"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]><rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -241,19 +247,17 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:empty/></rpc>]]>]]>" 
 new "netconf client-side rpc"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:client-rpc><request>example</request></ex:client-rpc></rpc>]]>]]>" "^<rpc-reply><result>ok</result></rpc-reply>]]>]]>$"
 
-new "netconf subscription"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>ROUTING</stream></create-subscription></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><notification><event>Routing notification</event></notification>]]>]]>$" 30
-
 new "Kill backend"
-# Check if still alive
-pid=`pgrep clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
 # kill backend
 sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
+fi
+
+# Check if still alive
+pid=`pgrep clixon_backend`
+if [ -n "$pid" ]; then
+    sudo kill $pid
 fi
 
 rm -rf $dir

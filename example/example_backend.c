@@ -31,17 +31,14 @@
 
   ***** END LICENSE BLOCK *****
 
- * 
- * IETF yang routing example
  */
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
 #include <unistd.h>
+#include <assert.h>
 #include <sys/time.h>
 
 /* clicon */
@@ -54,7 +51,7 @@
 #include <clixon/clixon_backend.h> 
 
 /* forward */
-static int notification_timer_setup(clicon_handle h);
+static int example_stream_timer_setup(clicon_handle h);
 
 /*! This is called on validate (and commit). Check validity of candidate
  */
@@ -93,32 +90,33 @@ transaction_commit(clicon_handle    h,
 /*! Routing example notifcation timer handler. Here is where the periodic action is 
  */
 static int
-notification_timer(int   fd, 
-		   void *arg)
+example_stream_timer(int   fd, 
+		     void *arg)
 {
     int                    retval = -1;
     clicon_handle          h = (clicon_handle)arg;
 
-    if (backend_notify(h, "ROUTING", 0, "Routing notification") < 0)
+    /* XXX Change to actual netconf notifications */
+    if (stream_notify(h, "EXAMPLE", "<event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
 	goto done;
-    if (notification_timer_setup(h) < 0)
+    if (example_stream_timer_setup(h) < 0)
 	goto done;
     retval = 0;
  done:
     return retval;
 }
 
-/*! Set up routing notifcation timer 
+/*! Set up example stream notification timer 
  */
 static int
-notification_timer_setup(clicon_handle h)
+example_stream_timer_setup(clicon_handle h)
 {
     struct timeval t, t1;
 
     gettimeofday(&t, NULL);
-    t1.tv_sec = 10; t1.tv_usec = 0;
+    t1.tv_sec = 5; t1.tv_usec = 0;
     timeradd(&t, &t1, &t);
-    return event_reg_timeout(t, notification_timer, h, "notification timer");
+    return event_reg_timeout(t, example_stream_timer, h, "example stream timer");
 }
 
 /*! IETF Routing fib-route rpc 
@@ -176,8 +174,15 @@ empty(clicon_handle h,            /* Clicon handle */
  * @retval       0      OK
  * @retval      -1      Error
  * @see xmldb_get
- * @note this example code returns a static statedata used in testing. 
- * Real code would poll state
+ * @note this example code returns requires this yang snippet:
+       container state {
+         config false;
+         description "state data for example application";
+         leaf-list op {
+            type string;
+         }
+       }
+ * 
  */
 int 
 example_statedata(clicon_handle h, 
@@ -187,12 +192,13 @@ example_statedata(clicon_handle h,
     int     retval = -1;
     cxobj **xvec = NULL;
 
-    /* Example of (static) statedata, real code would poll state */
-    if (xml_parse_string("<interfaces-state><interface>"
-			 "<name>eth0</name>"
-			 "<type>ex:eth</type>"
-			 "<if-index>42</if-index>"
-			 "</interface></interfaces-state>", NULL, &xstate) < 0)
+    /* Example of (static) statedata, real code would poll state 
+     * Note this state needs to be accomanied by yang snippet
+     * above
+     */
+    if (xml_parse_string("<state>"
+			 "<op>42</op>"
+			 "</state>", NULL, &xstate) < 0)
 	goto done;
     retval = 0;
  done:
@@ -221,8 +227,8 @@ example_reset(clicon_handle h,
     cxobj *xt = NULL;
 
     if (xml_parse_string("<config><interfaces><interface>"
-			     "<name>lo</name><type>ex:loopback</type>"
-			     "</interface></interfaces></config>", NULL, &xt) < 0)
+			 "<name>lo</name><type>ex:loopback</type>"
+			 "</interface></interfaces></config>", NULL, &xt) < 0)
 	goto done;
     /* Replace parent w fiorst child */
     if (xml_rootchild(xt, 0, &xt) < 0)
@@ -257,13 +263,19 @@ example_start(clicon_handle h,
     return 0;
 }
 
+int 
+example_exit(clicon_handle h)
+{
+    return 0;
+}
+
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
     "example",                              /* name */    
     clixon_plugin_init,                     /* init - must be called clixon_plugin_init */
     example_start,                          /* start */
-    NULL,                                   /* exit */
+    example_exit,                           /* exit */
     .ca_reset=example_reset,                /* reset */
     .ca_statedata=example_statedata,        /* statedata */
     .ca_trans_begin=NULL,                   /* trans begin */
@@ -282,9 +294,27 @@ static clixon_plugin_api api = {
 clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
+    struct timeval retention = {0,0};
+
     clicon_debug(1, "%s backend", __FUNCTION__);
-    if (notification_timer_setup(h) < 0)
+    /* Example stream initialization:
+     * 1) Register EXAMPLE stream 
+     * 2) setup timer for notifications, so something happens on stream
+     * 3) setup stream callbacks for notification to push channel
+     */
+    if (clicon_option_exists(h, "CLICON_STREAM_RETENTION"))
+	retention.tv_sec = clicon_option_int(h, "CLICON_STREAM_RETENTION");
+    if (stream_add(h, "EXAMPLE", "Example event stream", 1, &retention) < 0)
 	goto done;
+    /* Enable nchan pub/sub streams
+     * assumes: CLIXON_PUBLISH_STREAMS, eg configure --enable-publish
+     */
+    if (clicon_option_exists(h, "CLICON_STREAM_PUB") &&
+	stream_publish(h, "EXAMPLE") < 0)
+	goto done;
+    if (example_stream_timer_setup(h) < 0)
+	goto done;
+
     /* Register callback for routing rpc calls */
     if (rpc_callback_register(h, fib_route, 
 			      NULL, 
@@ -301,6 +331,7 @@ clixon_plugin_init(clicon_handle h)
 			      "empty"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
+
     /* Return plugin API */
     return &api;
  done:
