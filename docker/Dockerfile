@@ -46,7 +46,7 @@ WORKDIR /clixon
 
 # Clone cligen and clixon
 RUN git clone https://github.com/olofhagsand/cligen.git
-RUN git clone -b develop https://github.com/clicon/clixon.git
+RUN git clone https://github.com/clicon/clixon.git
 
 # Build cligen
 WORKDIR /clixon/cligen
