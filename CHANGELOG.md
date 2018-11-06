@@ -98,6 +98,8 @@
   * https://github.com/clicon/clixon/issues/47
 * Yang sub-command cardinality not checked.
   * https://github.com/clicon/clixon/issues/48
+* Issue with bare axis names (XPath 1.0) 
+  * https://github.com/clicon/clixon/issues/54
 * Top-level Yang symbol cannot be called "config" in any imported yang file.
   * datastore uses "config" as reserved keyword for storing any XML whoich collides with code for detecting Yang sanity.
 * Namespace name relabeling is not supported.
