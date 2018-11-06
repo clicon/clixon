@@ -20,7 +20,7 @@
   * RFC 7895 defines a module-set-id. Configure option CLICON_MODULE_SET_ID is set and changed when modules change.
 * Yang 1.1 notification support (RFC 7950: Sec 7.16)
 * New event streams implementation with replay
-  * Generic streasm support (both CLI, Netconf and Restconf)
+  * Generic stream support (both CLI, Netconf and Restconf)
   * Added stream discovery according to RFC 5277 for netconf and RFC 8040 for restconf
     * Enabled by configure options CLICON_STREAM_DISCOVERY_RFC5277 and CLICON_STREAM_DISCOVERY_RFC8040
   * Configure option CLICON_STREAM_RETENTION is default number of seconds before dropping replay buffers
