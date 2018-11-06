@@ -48,7 +48,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_MODULE_MAIN>ietf-ip</CLICON_YANG_MODULE_MAIN>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-<CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
+  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
 </config>
@@ -69,12 +69,12 @@ if [ $? -ne 0 ]; then
 fi
 
 new "kill old restconf daemon"
-sudo pkill -u www-data clixon_restconf
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang # -D 1
+sudo su -c "$clixon_restconf -f $cfg -y $fyang" -s /bin/sh www-data &
 
-sleep 1
+sleep $RCWAIT
 
 new "generate 'large' config with $number list entries"
 echo -n "<rpc><edit-config><target><candidate/></target><config><x>" > $fconfig
@@ -164,14 +164,17 @@ expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit><sourc
 new "netconf get large leaf-list config"
 expecteof "time -f %e $clixon_netconf -qf $cfg  -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><c>0</c><c>1</c>"
 
+new "Kill restconf daemon"
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
+
 new "Kill backend"
-# Check if still alive
-pid=`pgrep clixon_backend`
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
 if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -zf $cfg
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

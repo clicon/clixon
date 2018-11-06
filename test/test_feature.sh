@@ -157,16 +157,15 @@ if [ -z "$match" ]; then
 fi
 
 new "Kill backend"
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
+if [ -z "$pid" ]; then
+    err "backend already dead"
+fi
 # kill backend
-sudo clixon_backend -zf $cfg
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
-fi
-
-# Check if still alive
-pid=`pgrep clixon_backend`
-if [ -n "$pid" ]; then
-    sudo kill $pid
 fi
 
 rm -rf $dir

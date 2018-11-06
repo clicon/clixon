@@ -151,10 +151,12 @@ stream_add(clicon_handle   h,
 }
 
 /*! Delete complete notification event stream list (not just single stream)
- * @param[in] es 
+ * @param[in] h     Clicon handle
+ * @param[in] force Force deletion of 
  */
 int
-stream_delete_all(clicon_handle h)
+stream_delete_all(clicon_handle h,
+		  int           force)
 {
     struct stream_replay *r;
     struct stream_subscription *ss;
@@ -169,7 +171,7 @@ stream_delete_all(clicon_handle h)
 	if (es->es_description)
 	    free(es->es_description);
 	while ((ss = es->es_subscription) != NULL)
-	    stream_ss_rm(h, es, ss); /* XXX in some cases leaks memory due to DONT clause in stream_ss_rm() */
+	    stream_ss_rm(h, es, ss, force); /* XXX in some cases leaks memory due to DONT clause in stream_ss_rm() */
 	while ((r = es->es_replay) != NULL){
 	    DELQ(r, es->es_replay, struct stream_replay *);
 	    if (r->r_xml)
@@ -262,7 +264,7 @@ stream_timer_setup(int   fd,
 		    if (timerisset(&ss->ss_stoptime) && timercmp(&ss->ss_stoptime, &now, <)){
 			ss1 = NEXTQ(struct stream_subscription *, ss);
 			/* Signal to remove stream for upper levels */
-			if (stream_ss_rm(h, es, ss) < 0)
+			if (stream_ss_rm(h, es, ss, 0) < 0)
 			    goto done;
 			ss = ss1;
 		    }
@@ -378,19 +380,20 @@ stream_ss_add(clicon_handle     h,
 int
 stream_ss_rm(clicon_handle                h,
 	     event_stream_t              *es,
-	     struct stream_subscription  *ss)
+	     struct stream_subscription  *ss,
+	     int                          force)
 {
     clicon_debug(1, "%s", __FUNCTION__);
     DELQ(ss, es->es_subscription, struct stream_subscription *);
     /* Remove from upper layers - close socket etc. */
     (*ss->ss_fn)(h, 1, NULL, ss->ss_arg);
-#ifdef DONT     /* upcall may have deleted it */
-    if (ss->ss_stream)
-	free(ss->ss_stream);
-    if (ss->ss_xpath)
-	free(ss->ss_xpath);
-    free(ss);
-#endif
+    if (force){
+	if (ss->ss_stream)
+	    free(ss->ss_stream);
+	if (ss->ss_xpath)
+	    free(ss->ss_xpath);
+	free(ss);
+    }
     clicon_debug(1, "%s retval: 0", __FUNCTION__);
     return 0;
 }
@@ -436,7 +439,7 @@ stream_ss_delete_all(clicon_handle     h,
     if ((es = clicon_stream(h)) != NULL){
 	do {
 	    if ((ss = stream_ss_find(es, fn, arg)) != NULL){
-		if (stream_ss_rm(h, es, ss) < 0)
+		if (stream_ss_rm(h, es, ss, 1) < 0)
 		    goto done;
 	    }
 	    es = NEXTQ(struct event_stream *, es);
@@ -464,7 +467,7 @@ stream_ss_delete(clicon_handle     h,
 	do {
 	    if (strcmp(name, es->es_name)==0)
 		if ((ss = stream_ss_find(es, fn, arg)) != NULL){
-		    if (stream_ss_rm(h, es, ss) < 0)
+		    if (stream_ss_rm(h, es, ss, 0) < 0)
 			goto done;
 		}
 	    es = NEXTQ(struct event_stream *, es);
@@ -503,7 +506,7 @@ stream_notify1(clicon_handle   h,
 		struct stream_subscription *ss1;
 		ss1 = NEXTQ(struct stream_subscription *, ss);
 		/* Signal to remove stream for upper levels */
-		if (stream_ss_rm(h, es, ss) < 0)
+		if (stream_ss_rm(h, es, ss, 1) < 0)
 		    goto done;
 		ss = ss1;
 	    }

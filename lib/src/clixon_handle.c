@@ -135,7 +135,7 @@ clicon_handle_exit(clicon_handle h)
 	hash_free(ha);
     if ((ha = clicon_data(h)) != NULL)
 	hash_free(ha);
-    stream_delete_all(h);
+    stream_delete_all(h, 1);
     free(ch);
     return 0;
 }

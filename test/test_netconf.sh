@@ -248,16 +248,15 @@ new "netconf client-side rpc"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:client-rpc><request>example</request></ex:client-rpc></rpc>]]>]]>" "^<rpc-reply><result>ok</result></rpc-reply>]]>]]>$"
 
 new "Kill backend"
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
+if [ -z "$pid" ]; then
+    err "backend already dead"
+fi
 # kill backend
-sudo clixon_backend -zf $cfg
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
-fi
-
-# Check if still alive
-pid=`pgrep clixon_backend`
-if [ -n "$pid" ]; then
-    sudo kill $pid
 fi
 
 rm -rf $dir

@@ -22,6 +22,8 @@
 
 APPNAME=example
 UTIL=../util/clixon_util_stream
+NCWAIT=5 # Wait (netconf valgrind may need more time)
+
 if [ ! -x $UTIL ]; then
     echo "$UTIL not found. To build: (cd ../util; make clixon_util_stream)"
     exit 1
@@ -109,19 +111,17 @@ if [ $? -ne 0 ]; then
 fi
 new "start backend -s init -f $cfg -y $fyang"
 sudo $clixon_backend -s init -f $cfg -y $fyang # -D 1
-
 if [ $? -ne 0 ]; then
     err
 fi
 
 new "kill old restconf daemon"
-sudo pkill -u www-data clixon_restconf
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
       
 new "start restconf daemon"
+sudo su -c "$clixon_restconf -f $cfg -y $fyang" -s /bin/sh www-data &
 
-sudo su -c "/www-data/clixon_restconf -f $cfg -y $fyang" -s /bin/sh www-data &
-
-sleep 2
+sleep $RCWAIT
 
 #
 # 1. Netconf RFC5277 stream testing
@@ -136,19 +136,19 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get><filter type="xpath"
 #
 # 1.2 Netconf stream subscription
 new "netconf EXAMPLE subscription"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 10
+expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' $NCWAIT
 
 new "netconf subscription with empty startTime"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream><startTime/></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
+expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream><startTime/></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' $NCWAIT
 
 new "netconf EXAMPLE subscription with simple filter"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
+expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' $NCWAIT
 
 new "netconf EXAMPLE subscription with filter classifier"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event[event-class='fault']\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 5
+expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event[event-class='fault']\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' $NCWAIT
 
 new "netconf NONEXIST subscription"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>NONEXIST</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>No such stream</error-message></rpc-error></rpc-reply>]]>]]>$' 5
+expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>NONEXIST</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>No such stream</error-message></rpc-error></rpc-reply>]]>]]>$' $NCWAIT
 
 new "netconf EXAMPLE subscription with wrong date"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream><startTime>kallekaka</startTime></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>bad-element</error-tag><error-type>application</error-type><error-info><bad-element>startTime</bad-element></error-info><error-severity>error</error-severity><error-message>Expected timestamp</error-message></rpc-error></rpc-reply>]]>]]>$' 0
@@ -158,6 +158,7 @@ expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stre
 #sleep 10
 #expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>EXAMPLE</stream><startTime>$NOW</startTime></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 10
 sleep 2
+
 #
 # 2. Restconf RFC8040 stream testing
 new "2. Restconf RFC8040 stream testing"
@@ -239,13 +240,15 @@ if [ -z "$match" ]; then
 fi
 nr=$(echo "$ret" | grep -c "data:")
 
-if [ $nr -lt 10 -o $nr -gt 14 ]; then
+if [ $nr -lt 9 -o $nr -gt 14 ]; then
     err 10 "$nr"
 fi
+
 
 # Try parallell
 # start background job
 curl -s -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" "http://localhost/streams/EXAMPLE" > /dev/null &
+PID=$!
 
 new "Start subscription in parallell"
 ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 8)
@@ -260,6 +263,8 @@ if [ $nr -lt 1 -o $nr -gt 2 ]; then
     err 2 "$nr"
 fi
 
+kill $PID
+
 #--------------------------------------------------------------------
 # NCHAN Need manual testing
 echo "Nchan streams requires manual testing"
@@ -267,27 +272,20 @@ echo "Add <CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB> to config"
 echo "Eg: curl -H \"Accept: text/event-stream\" -s -X GET http://localhost/sub/EXAMPLE"
 
 #-----------------
-
-sudo pkill -u www-data clixon_restconf
+sleep 5
+new "Kill restconf daemon"
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "Kill backend"
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
+if [ -z "$pid" ]; then
+    err "backend already dead"
+fi
 # kill backend
-sudo clixon_backend -zf $cfg
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi
 
-# Check if still alive
-pid=`pgrep clixon_backend`
-if [ -n "$pid" ]; then
-    sudo kill $pid
-fi
-
-rm -rf $dir
-
-
-
-
-
-
-
+#rm -rf $dir

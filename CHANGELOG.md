@@ -94,8 +94,10 @@
 * Set dir /www-data with www-data as owner, see https://github.com/clicon/clixon/issues/37
 	
 ### Known issues
-* Netconf RPC input is not sanity checked for wrong symbols (just ignored).
-* Yang sub-command order and cardinality not checked.
+* Netconf/Restconf RPC extra input arguments are ignored
+  * https://github.com/clicon/clixon/issues/47
+* Yang sub-command cardinality not checked.
+  * https://github.com/clicon/clixon/issues/48
 * Top-level Yang symbol cannot be called "config" in any imported yang file.
   * datastore uses "config" as reserved keyword for storing any XML whoich collides with code for detecting Yang sanity.
 * Namespace name relabeling is not supported.

@@ -114,7 +114,11 @@ Clixon follows:
 - [RFC 7895: YANG module library](http://www.rfc-base.org/txt/rfc-7895.txt)
 
 However, the following YANG syntax modules are not implemented:
-`deviation`, `min/max-elements`, `unique`, and `action`.
+- deviation
+- min/max-elements
+- unique
+- action
+- belongs-to
 
 Netconf
 =======
@@ -131,6 +135,7 @@ Clixon does not yet support the following netconf features:
 - edit-config testopts 
 - edit-config erropts
 - edit-config config-text
+- edit-config operation
 
 Restconf
 ========

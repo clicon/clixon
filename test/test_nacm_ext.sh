@@ -158,19 +158,18 @@ fi
 sleep 1
 new "start backend -s init -f $cfg -y $fyang"
 # start new backend
-sudo $clixon_backend -s init -f $cfg -y $fyang
+sudo $clixon_backend -s init -f $cfg -y $fyang 
 if [ $? -ne 0 ]; then
     err
 fi
-sleep 1
 
 new "kill old restconf daemon"
-sudo pkill -u www-data clixon_restconf
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "start restconf daemon (-a is enable http basic auth)"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang -- -a
+sudo su -c "$clixon_restconf -f $cfg -y $fyang -- -a" -s /bin/sh www-data &
 
-sleep 1
+sleep $RCWAIT
 
 new "restconf DELETE whole datastore"
 expecteq "$(curl -u adm1:bar -sS -X DELETE http://localhost/restconf/data)" ""
@@ -231,15 +230,16 @@ new "cli rpc as guest"
 expectfn "$clixon_cli -1 -U guest -l o -f $cfg -y $fyang rpc ipv4" 255 "protocol access-denied access denied"
 
 new "Kill restconf daemon"
-sudo pkill -u www-data clixon_restconf
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "Kill backend"
-pid=`pgrep clixon_backend`
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
 if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -zf $cfg
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

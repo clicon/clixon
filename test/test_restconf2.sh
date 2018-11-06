@@ -50,18 +50,17 @@ if [ $? -ne 0 ]; then
 fi
 new "start backend -s init -f $cfg -y $fyang"
 sudo $clixon_backend -s init -f $cfg -y $fyang
-
 if [ $? -ne 0 ]; then
     err
 fi
 
 new "kill old restconf daemon"
-sudo pkill -u www-data clixon_restconf
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "start restconf daemon"
-sudo start-stop-daemon -S -q -o -b -x /www-data/clixon_restconf -d /www-data -c www-data -- -f $cfg -y $fyang # -D 1
+sudo su -c "$clixon_restconf -f $cfg -y $fyang" -s /bin/sh www-data &
 
-sleep 1
+sleep $RCWAIT
 
 new "restconf tests"
 
@@ -135,16 +134,16 @@ new "restconf PUT change key error"
 expectfn 'curl -is -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/cont1/interface=TEST' 0 '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "api-path keys do not match data keys"}}}}'
 
 new "Kill restconf daemon"
-sudo pkill -u www-data clixon_restconf
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "Kill backend"
-# Check if still alive
-pid=`pgrep clixon_backend`
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
 if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -zf $cfg
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

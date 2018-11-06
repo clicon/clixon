@@ -81,7 +81,7 @@ EOF
     fi
 
     new "start backend  -f $cfg -s $mode -c $dir/config"
-    sudo clixon_backend -f $cfg -s $mode -c $dir/config
+    sudo $clixon_backend -f $cfg -s $mode -c $dir/config
     if [ $? -ne 0 ]; then
 	err
     fi
@@ -90,13 +90,13 @@ EOF
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$expect</rpc-reply>]]>]]>$"
 
     new "Kill backend"
-    # Check if still alive
-    pid=`pgrep clixon_backend`
+    # Check if premature kill
+    pid=`pgrep -u root -f clixon_backend`
     if [ -z "$pid" ]; then
 	err "backend already dead"
     fi
     # kill backend
-    sudo clixon_backend -zf $cfg
+    sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
 	err "kill backend"
     fi
