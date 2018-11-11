@@ -1,5 +1,16 @@
 # Clixon Changelog
 
+## 3.9.0 (Preliminary Target: 31 December 2018)
+
+### Planned new features
+* [Roadmap](ROADMAP.md) (Uncommitted and unprioritized)
+
+### Major New features
+### API changes on existing features (you may need to change your code)
+### Minor changes
+### Corrected Bugs
+### Known issues
+
 ## 3.8.0 (6 Nov 2018)
 
 ### Major New features

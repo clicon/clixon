@@ -55,7 +55,7 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 docker:
-	sudo docker build -t $(IMAGE) .
+	sudo docker build -t $(IMAGE) .  # --no-cache
 	echo "cd ../example; make docker to build example application"
 
 push:
