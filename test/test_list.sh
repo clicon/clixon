@@ -69,7 +69,7 @@ fi
 
 new "start backend -s init -f $cfg -y $fyang"
 # start new backend
-sudo $clixon_backend -s init -f $cfg -y $fyang
+sudo $clixon_backend -s init -f $cfg -y $fyang 
 if [ $? -ne 0 ]; then
     err
 fi
@@ -119,9 +119,14 @@ new "minmax: validate should fail"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error/></rpc-reply>]]>]]>$"
 fi # NYI
 
-
+new "Kill backend"
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
+if [ -z "$pid" ]; then
+    err "backend already dead"
+fi
 # kill backend
-sudo clixon_backend -zf $cfg
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

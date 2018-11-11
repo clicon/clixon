@@ -136,12 +136,13 @@ if [ $? -ne 0 ]; then
 fi
 
 new "kill old restconf daemon"
-sudo pkill -u www-data clixon_restconf
-sleep 1
-new "start restconf daemon (-a is enable basic authentication)"
-sudo su -c "/www-data/clixon_restconf -f $cfg -y $fyang -- -a" -s /bin/sh www-data &
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 sleep 1
+new "start restconf daemon (-a is enable basic authentication)"
+sudo su -c "$clixon_restconf -f $cfg -y $fyang -- -a" -s /bin/sh www-data &
+
+sleep $RCWAIT
 
 new "restconf DELETE whole datastore"
 expecteq "$(curl -u adm1:bar -sS -X DELETE http://localhost/restconf/data)" ""
@@ -192,15 +193,16 @@ new2 "guest edit nacm"
 expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
 new "Kill restconf daemon"
-sudo pkill -u www-data clixon_restconf
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "Kill backend"
-pid=`pgrep clixon_backend`
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
 if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -zf $cfg
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

@@ -196,8 +196,7 @@ text_disconnect(xmldb_handle xh)
 	    free(th->th_dbdir);
 	if (th->th_dbs){
 	    if (th->th_cache){
-		if ((keys = hash_keys(th->th_dbs, &klen)) == NULL)
-		    return 0;
+		keys = hash_keys(th->th_dbs, &klen);
 		for(i = 0; i < klen; i++) 
 		    if ((de = hash_value(th->th_dbs, keys[i], NULL)) != NULL){
 			if (de->de_xml)

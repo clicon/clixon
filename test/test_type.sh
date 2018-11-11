@@ -136,7 +136,6 @@ module example{
 }
 EOF
 
-
 # kill old backend (if any)
 new "kill old backend"
 sudo clixon_backend -zf $cfg
@@ -202,13 +201,13 @@ new "cli bits validate"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang validate" 0 "^$"
 
 new "Kill backend"
-# Check if still alive
-pid=`pgrep clixon_backend`
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
 if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -zf $cfg
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

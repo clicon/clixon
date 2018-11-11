@@ -41,6 +41,8 @@ Users of clixon currently include:
 
 See also [Clicon project page](http://clicon.org).
 
+Clixon runs on Linux, [FreeBSD port](https://www.freshports.org/devel/clixon) and Mac/Apple. CPU architecures include x86_64, i686, ARM32.
+
 Installation
 ============
 A typical installation is as follows:
@@ -72,8 +74,6 @@ Clixon depends on the following software packages, which need to exist on the ta
 - Yacc/bison
 - Lex/Flex
 - Fcgi (if restconf is enabled)
-
-There is no yum/apt/ostree package for Clixon (please help?)
 
 Support
 =======
@@ -114,7 +114,11 @@ Clixon follows:
 - [RFC 7895: YANG module library](http://www.rfc-base.org/txt/rfc-7895.txt)
 
 However, the following YANG syntax modules are not implemented:
-`deviation`, `min/max-elements`, `unique`, and `action`.
+- deviation
+- min/max-elements
+- unique
+- action
+- belongs-to
 
 Netconf
 =======
@@ -131,6 +135,7 @@ Clixon does not yet support the following netconf features:
 - edit-config testopts 
 - edit-config erropts
 - edit-config config-text
+- edit-config operation
 
 Restconf
 ========

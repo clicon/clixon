@@ -76,9 +76,9 @@ if [ $? -ne 0 ]; then
     err
 fi
 
-new "start backend  -s init -f $cfg -y $fyang"
 # start new backend
-sudo $clixon_backend -s init -f $cfg -y $fyang
+new "start backend  -s init -f $cfg -y $fyang"
+sudo $clixon_backend -s init -f $cfg -y $fyang 
 if [ $? -ne 0 ]; then
     err
 fi
@@ -140,13 +140,13 @@ new "cli sender template"
 expectfn "$clixon_cli -1f $cfg -y $fyang -l o set sender b template a" 0 "^$"
 
 new "Kill backend"
-# Check if still alive
-pid=`pgrep clixon_backend`
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
 if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -zf $cfg
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

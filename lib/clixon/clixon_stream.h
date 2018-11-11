@@ -84,14 +84,14 @@ typedef struct event_stream event_stream_t;
  */
 event_stream_t *stream_find(clicon_handle h, const char *name);
 int stream_add(clicon_handle h, const char *name, const char *description, int replay_enabled, struct timeval *retention);
-int stream_delete_all(clicon_handle h);
+int stream_delete_all(clicon_handle h, int force);
 int stream_get_xml(clicon_handle h, int access, cbuf *cb);
 int stream_timer_setup(int fd, void *arg);
 /* Subscriptions */
 struct stream_subscription *stream_ss_add(clicon_handle h, char *stream,
 		  char *xpath, struct timeval *start, struct timeval *stop,
 		  stream_fn_t fn, void *arg);
-int stream_ss_rm(clicon_handle h, event_stream_t *es, struct stream_subscription *ss);
+int stream_ss_rm(clicon_handle h, event_stream_t *es, struct stream_subscription *ss, int force);
 struct stream_subscription *stream_ss_find(event_stream_t *es,
 					   stream_fn_t fn, void *arg);
 int stream_ss_delete_all(clicon_handle h, stream_fn_t fn, void *arg);

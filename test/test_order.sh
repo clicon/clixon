@@ -167,12 +167,14 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><can
 new "verify list user order (as entered)"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/y2\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y2><k>c</k><a>bar</a></y2><y2><k>b</k><a>foo</a></y2><y2><k>a</k><a>fie</a></y2></data></rpc-reply>]]>]]>$"
 
-pid=`pgrep clixon_backend`
+new "Kill backend"
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
 if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -zf $cfg
+sudo clixon_backend -z -f $cfg
 if [ $? -ne 0 ]; then
     err "kill backend"
 fi

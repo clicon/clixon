@@ -114,8 +114,8 @@ new "cli rpc"
 expectfn "$clixon_cli -1 -f $cfg -l o rpc ipv4" 0 "<address-family>ipv4</address-family>" "<next-hop-list>2.3.4.5</next-hop-list>"
 
 new "Kill backend"
-# Check if still alive
-pid=`pgrep clixon_backend`
+# Check if premature kill
+pid=`pgrep -u root -f clixon_backend`
 if [ -z "$pid" ]; then
     err "backend already dead"
 fi

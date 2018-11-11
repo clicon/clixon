@@ -12,14 +12,16 @@ testname=
 clixon_cli=clixon_cli
 
 # For memcheck / performance
-#clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
 #clixon_netconf="valgrind --tool=callgrind clixon_netconf"
+#clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
 clixon_netconf=clixon_netconf
 
 # How to run restconf stand-alone and using valgrind
-#sudo su -c "/www-data/clixon_restconf -f $cfg -D 1" -s /bin/sh www-data
-#sudo su -c "valgrind --trace-children=no --child-silent-after-fork=yes --leak-check=full --show-leak-kinds=all /www-data/clixon_restconf -f $cfg -D 1" -s /bin/sh www-data
+#clixon_restconf="valgrind --trace-children=no --child-silent-after-fork=yes --leak-check=full --show-leak-kinds=all /www-data/clixon_restconf"
+clixon_restconf=/www-data/clixon_restconf
+RCWAIT=1 # Wait after restconf start. Set to 10 if valgrind
 
+# If you test w valgrind, you need to set -F & and sleep 10 when starting
 #clixon_backend="valgrind --leak-check=full --show-leak-kinds=all clixon_backend"
 clixon_backend=clixon_backend
 

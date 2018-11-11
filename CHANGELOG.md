@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-## 3.8.0 (Expected: Nov 4)
+## 3.8.0 (6 Nov 2018)
 
 ### Major New features
 * YANG Features
@@ -20,22 +20,20 @@
   * RFC 7895 defines a module-set-id. Configure option CLICON_MODULE_SET_ID is set and changed when modules change.
 * Yang 1.1 notification support (RFC 7950: Sec 7.16)
 * New event streams implementation with replay
-  * See clicon_stream.[ch] for details
+  * Generic stream support (both CLI, Netconf and Restconf)
   * Added stream discovery according to RFC 5277 for netconf and RFC 8040 for restconf
-    * Enabled by CLICON_STREAM_DISCOVERY_RFC5277 and CLICON_STREAM_DISCOVERY_RFC8040
+    * Enabled by configure options CLICON_STREAM_DISCOVERY_RFC5277 and CLICON_STREAM_DISCOVERY_RFC8040
   * Configure option CLICON_STREAM_RETENTION is default number of seconds before dropping replay buffers
-8040.
-* Restconf stream notification support according to RFC8040
-  * See (apps/restconf/README.md) for more details.
-  * start-time and stop-time query parameters
-  * Fork fcgi handler for streams
-  * Set access/subscribe base URL with: CLICON_STREAM_URL (default "https://localhost") and CLICON_STREAM_PATH (default "streams")
-    * Example: new stream "foo" will get access URL: https://localhost/streams/foo
-  * Alternative variant using pub/sub support enabled by ./configure --enable-publish
+  * See clicon_stream.[ch] for details
+  * Restconf stream notification support according to RFC8040
+    * start-time and stop-time query parameters
+
+    * Fork fcgi handler for multiple concurrent streams
+    * Set access/subscribe base URL with: CLICON_STREAM_URL (default "https://localhost") and CLICON_STREAM_PATH (default "streams")
+    * Replay support: start-time and stop-time query parameter support
+    * See [apps/restconf/README.md] for more details.
+  * Alternative restconf streams using pub/sub enabled by ./configure --enable-publish
     * Set publish URL base with: CLICON_STREAM_PUB (default http://localhost/pub)
-    * Example: new stream "foo" will publish event streams on URL: https://localhost/pub/foo
-  * RFC8040 Restconf replay support: start-time and stop-time query parameter support
-    * This only applies to "native" restconf stream support, Nchan mode has different replay functionality
   * RFC5277 Netconf replay supported
   * Replay support is only in-memory and not persistent. External time-series DB could be added.
 
@@ -53,12 +51,12 @@
     * stream_cb_delete() --> stream_ss_delete()
     * backend_notify() and backend_notify_xml() - use stream_notify() instead
   * Example uses "NETCONF" stream instead of "ROUTING"
-* clixon_restconf and clixon_netconf changed to take -D `<level>` as command-line option instead of just -D (without debig level)
-  * This aligns to clixon_cli and clixon_backend
-* Application command option -S to clixon_netconf is obsolete. Use `clixon_netconf -l s` instead.
+* clixon_restconf and clixon_netconf changed command-line option from -D to -D `<level>`  aligning with cli and backend
+
 * Unified log handling for all clicon applications using command-line option: `-l e|o|s|f<file>`.
   * The options stand for e:stderr, o:stdout, s: syslog, f:file
-  * Added file logging (`-l f` or `-l f<file>`) for cases where neither syslog nor stderr is useful.
+  * Added file logging (`-l f` or `-l f<file>`) for cases where neither syslog nor stderr is usefpul.
+  * clixon_netconf -S is obsolete. Use `clixon_netconf -l s` instead.
 * Comply to RFC 8040 3.5.3.1 rule: api-identifier = [module-name ":"] identifier
   * The "module-name" was a no-op before.
   * This means that there was no difference between eg: GET /restconf/data/ietf-yang-library:modules-state and GET /restconf/data/foobar:modules-state 
@@ -88,20 +86,24 @@
 * Single quotes for XML attributes https://github.com/clicon/clixon/issues/51
   * Thanks @SCadilhac
 * Fixed https://github.com/clicon/clixon/issues/46 Issue with empty values in leaf-list
-  * Thanks achernavin22 
+  * Thanks @achernavin22 
 * Identity without any identityref:s caused SEGV
 * Memory error in backend transaction revert
 * Set dir /www-data with www-data as owner, see https://github.com/clicon/clixon/issues/37
 	
 ### Known issues
-* Netconf RPC input is not sanity checked for wrong symbols (just ignored).
-* Yang sub-command order and cardinality not checked.
+* Netconf/Restconf RPC extra input arguments are ignored
+  * https://github.com/clicon/clixon/issues/47
+* Yang sub-command cardinality not checked.
+  * https://github.com/clicon/clixon/issues/48
+* Issue with bare axis names (XPath 1.0) 
+  * https://github.com/clicon/clixon/issues/54
 * Top-level Yang symbol cannot be called "config" in any imported yang file.
   * datastore uses "config" as reserved keyword for storing any XML whoich collides with code for detecting Yang sanity.
 * Namespace name relabeling is not supported.
   * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlns is not supported, such as:
 ```
-  <crypto xmlns:x="urn:example:des">x:des3</crypto>
+    <crypto xmlns:x="urn:example:des">x:des3</crypto>
 ```
 
 ## 3.7.0 (22 July 2018)
