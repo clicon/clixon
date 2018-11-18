@@ -78,7 +78,7 @@ all:	 $(APPS)
 	 @echo "You may want to make clixon_util_stream separately (curl dependency)"
 
 clean:
-	rm -f $(APPS) *.core
+	rm -f $(APPS) clixon_util_stream *.core
 
 # APPS
 clixon_util_xml: clixon_util_xml.c $(MYLIB)

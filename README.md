@@ -101,6 +101,9 @@ The standards covered include:
 - [Namespaces](https://www.w3.org/TR/2009/REC-xml-names-20091208)
 - [XPATH](https://www.w3.org/TR/xpath-10)
 
+Not supported:
+- <!DOCTYPE
+
 Yang
 ====
 YANG and XML is at the heart of Clixon.  Yang modules are used as a

@@ -133,13 +133,14 @@ main(int argc, char **argv)
     clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, "hDf:p:i:")) != -1)
+    while ((c = getopt(argc, argv, "hD:f:p:i:")) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv0);
 	    break;
     	case 'D':
-	    debug++;
+	    if (sscanf(optarg, "%d", &debug) != 1)
+		usage(argv0);
 	    break;
 	case 'f': /* XML file */
 	    filename = optarg;

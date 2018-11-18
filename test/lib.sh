@@ -78,6 +78,9 @@ expectfn(){
       expect2=
   fi
   ret=$($cmd)
+#  echo "cmd:\"$cmd\""
+#  echo "retval:\"$retval\""
+#  echo "ret:\"$ret\""
   if [ $? -ne $retval ]; then
       echo -e "\e[31m\nError in Test$testnr [$testname]:"
       echo -e "\e[0m:"
@@ -134,10 +137,14 @@ $input
 EOF
 )
   r=$? 
-  if [ $r -ne $retval ]; then
+  if [ $r != $retval ]; then
       echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
       echo -e "\e[0m:"
       exit -1
+  fi
+  # If error dont match output strings
+  if [ $r != 0 ]; then
+      return
   fi
 
   # Match if both are empty string

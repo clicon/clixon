@@ -99,10 +99,26 @@
  *   <x>a</<x>
  *   <x>b</<x>
  * </c>
+ * From https://www.w3.org/TR/2009/REC-xml-names-20091208
+ * Definitions:
+ * - XML namespace: is identified by a URI reference [RFC3986]; element and 
+ *   attribute names may be placed in an XML namespace using the mechanisms 
+ *   described in this specification.
+ * - Expanded name: is a pair consisting of a namespace name and a local name.
+ * - Namespace name: For a name N in a namespace identified by a URI I, the 
+ *   "namespace name" is I.
+ *   For a name N that is not in a namespace, the "namespace name" has no value.
+ * - Local name: In either case the "local name" is N.
+ * It is this combination of the universally managed URI namespace with the 
+ * vocabulary's local names that is effective in avoiding name clashes.
  */
 struct xml{
     char             *x_name;       /* name of node */
     char             *x_namespace;  /* namespace, if any */
+#ifdef notyet
+    char             *x_namespacename;  /* namespace name (or NULL) */
+    char             *x_localname;  /* Local name N as defined above */
+#endif
     struct xml       *x_up;         /* parent node in hierarchy if any */
     struct xml      **x_childvec;   /* vector of children nodes */
     int               x_childvec_len;/* length of vector */
@@ -224,7 +240,7 @@ xmlns_check(cxobj *xn,
     return NULL;
 }
 
-/*! Check namespace of xml node by searhing recursively among ancestors 
+/*! Check namespace of xml node by searching recursively among ancestors 
  * @param[in]  xn         xml node
  * @param[in]  namespace  check validity of namespace
  * @retval     0          Found / validated or no yang spec
@@ -1258,15 +1274,18 @@ xmltree2cbuf(cbuf  *cb,
  * @see xml_parse_file
  * @see xml_parse_string
  * @see xml_parse_va
+ * @note special case is empty XML where the parser is not invoked.
  */
 static int 
-_xml_parse(const char *str, 
+_xml_parse(const char  *str, 
 	   yang_spec   *yspec,
 	   cxobj       *xt)
 {
     int                       retval = -1;
     struct xml_parse_yacc_arg ya = {0,};
 
+    if (strlen(str) == 0)
+	return 0; /* OK */
     if (xt == NULL){
 	clicon_err(OE_XML, errno, "Unexpected NULL XML");
 	return -1;	

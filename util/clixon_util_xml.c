@@ -48,6 +48,7 @@
 #include <limits.h>
 #include <fnmatch.h>
 #include <stdint.h>
+#include <syslog.h>
 #include <assert.h>
 
 /* cligen */
@@ -68,21 +69,40 @@
 static int
 usage(char *argv0)
 {
-    fprintf(stderr, "usage:%s.\n\tInput on stdin\n", argv0);
+    fprintf(stderr, "usage:%s [options]\n"
+	    "where options are\n"
+            "\t-h \t\tHelp\n"
+    	    "\t-D <level> \tDebug\n",
+	    argv0);
     exit(0);
 }
 
 int
-main(int argc, char **argv)
+main(int    argc,
+     char **argv)
 {
     cxobj *xt = NULL;
     cxobj *xc;
     cbuf  *cb = cbuf_new();
+    int   retval = -1;
+    char  c;
 
-    if (argc != 1){
-	usage(argv[0]);
-	return 0;
-    }
+    clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
+    optind = 1;
+    opterr = 0;
+    while ((c = getopt(argc, argv, "hD:")) != -1)
+	switch (c) {
+	case 'h':
+	    usage(argv[0]);
+	    break;
+    	case 'D':
+	    if (sscanf(optarg, "%d", &debug) != 1)
+		usage(argv[0]);
+	    break;
+	default:
+	    usage(argv[0]);
+	    break;
+	}
     if (xml_parse_file(0, "</config>", NULL, &xt) < 0){
 	fprintf(stderr, "xml parse error %s\n", clicon_err_reason);
 	goto done;
@@ -90,18 +110,20 @@ main(int argc, char **argv)
     xc = NULL;
     while ((xc = xml_child_each(xt, xc, -1)) != NULL) 
 	clicon_xml2cbuf(cb, xc, 0, 0); /* print xml */
-    fprintf(stdout, "%s\n", cbuf_get(cb));
+    fprintf(stdout, "%s", cbuf_get(cb));
+    fflush(stdout);
 #if 0
     cbuf_reset(cb);
     xmltree2cbuf(cb, xt, 0);       /* dump data structures */
     fprintf(stderr, "%s\n", cbuf_get(cb));
 #endif
+    retval = 0;
  done:
     if (xt)
 	xml_free(xt);
     if (cb)
 	cbuf_free(cb);
-    return 0;
+    return retval;
 }
 
 
