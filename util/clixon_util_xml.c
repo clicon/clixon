@@ -46,7 +46,6 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <fnmatch.h>
 #include <stdint.h>
 #include <syslog.h>
 #include <assert.h>
@@ -72,7 +71,8 @@ usage(char *argv0)
     fprintf(stderr, "usage:%s [options]\n"
 	    "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level> \tDebug\n",
+    	    "\t-D <level> \tDebug\n"
+	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n",
 	    argv0);
     exit(0);
 }
@@ -86,11 +86,11 @@ main(int    argc,
     cbuf  *cb = cbuf_new();
     int   retval = -1;
     char  c;
+    int   logdst = CLICON_LOG_STDERR;
 
-    clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, "hD:")) != -1)
+    while ((c = getopt(argc, argv, "hD:l:")) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv[0]);
@@ -99,10 +99,15 @@ main(int    argc,
 	    if (sscanf(optarg, "%d", &debug) != 1)
 		usage(argv[0]);
 	    break;
+	case 'l': /* Log destination: s|e|o|f */
+	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
+		usage(argv[0]);
+	    break;
 	default:
 	    usage(argv[0]);
 	    break;
 	}
+    clicon_log_init("clixon_util_xml", debug?LOG_DEBUG:LOG_INFO, logdst);
     if (xml_parse_file(0, "</config>", NULL, &xt) < 0){
 	fprintf(stderr, "xml parse error %s\n", clicon_err_reason);
 	goto done;

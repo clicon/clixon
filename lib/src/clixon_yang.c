@@ -76,12 +76,17 @@
 #include "clixon_options.h"
 #include "clixon_yang_type.h"
 #include "clixon_yang_parse.h"
+#include "clixon_yang_cardinality.h"
 
 /* Size of json read buffer when reading from file*/
 #define BUFLEN 1024
 
+/*
+ * Local variables
+ */
 /* Mapping between yang keyword string <--> clicon constants */
 static const map_str2int ykmap[] = {
+    {"anydata",          Y_ANYDATA}, 
     {"anyxml",           Y_ANYXML}, 
     {"argument",         Y_ARGUMENT}, 
     {"augment",          Y_AUGMENT}, 
@@ -393,9 +398,11 @@ yn_each(yang_node *yn,
  * @param[in]  yn         Yang node, current context node.
  * @param[in]  keyword    if 0 match any keyword
  * @param[in]  argument   String compare w argument. if NULL, match any.
+ * @retval     ys         Yang statement, if any
  * This however means that if you actually want to match only a yang-stmt with 
  * argument==NULL you cannot, but I have not seen any such examples.
  * @see yang_find_datanode
+ * @see yang_match  returns number of matches
  */
 yang_stmt *
 yang_find(yang_node *yn, 
@@ -419,6 +426,38 @@ yang_find(yang_node *yn,
 	    }
     }
     return match ? ys : NULL;
+}
+
+/*! Count number of children that matches keyword and argument
+ *
+ * @param[in]  yn         Yang node, current context node.
+ * @param[in]  keyword    if 0 match any keyword
+ * @param[in]  argument   String compare w argument. if NULL, match any.
+ * @retval     n          Number of matches
+ * This however means that if you actually want to match only a yang-stmt with 
+ * argument==NULL you cannot, but I have not seen any such examples.
+ * @see yang_find
+ */
+int
+yang_match(yang_node *yn, 
+	   int        keyword, 
+	   char      *argument)
+{
+    yang_stmt *ys = NULL;
+    int        i;
+    int        match = 0;
+
+    for (i=0; i<yn->yn_len; i++){
+	ys = yn->yn_stmt[i];
+	if (keyword == 0 || ys->ys_keyword == keyword){
+	    if (argument == NULL)
+		match++;
+	    else
+		if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
+		    match++;
+	}
+    }
+    return match;
 }
 #ifdef NOTYET
 /*! Prototype more generic than yang_find_datanode and yang_find_schemanode
@@ -2139,6 +2178,11 @@ yang_parse(clicon_handle h,
     /* Iterate through modules */
     if (yang_parse_recurse(ymod, dir, ysp) < 0)
 	goto done;
+
+    /* Check cardinality maybe this should be done after grouping/augment */
+    for (i=modnr; i<ysp->yp_len; i++) /* XXX */
+	if (yang_cardinality(h, ysp->yp_stmt[i], ysp->yp_stmt[i]->ys_argument) < 0)
+	    goto done;
 
     /* Step 2: check features: check if enabled and remove disabled features */
     for (i=modnr; i<ysp->yp_len; i++) /* XXX */

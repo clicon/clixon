@@ -55,9 +55,11 @@
  * Wanted to unify these (K_ and Y_) but gave up for several reasons:
  * - Dont want to expose a generated yacc file to the API
  * - Cant use the symbols in this file because yacc needs token definitions
+ * - Use 0 as no keyword --> therefore start enumeration with 1.
  */
 enum rfc_6020{
-    Y_ACTION = 0,
+    Y_ACTION = 1,
+    Y_ANYDATA,
     Y_ANYXML,
     Y_ARGUMENT,
     Y_AUGMENT,
@@ -252,6 +254,7 @@ yang_stmt *ys_module(yang_stmt *ys);
 yang_spec *ys_spec(yang_stmt *ys);
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
 yang_stmt *yang_find(yang_node *yn, int keyword, char *argument);
+int        yang_match(yang_node *yn, int keyword, char *argument);
 yang_stmt *yang_find_datanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_topnode(yang_spec *ysp, char *name, yang_class class);

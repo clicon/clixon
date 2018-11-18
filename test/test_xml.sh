@@ -79,13 +79,13 @@ new "XMLdecl no version"
 expecteof "$PROG" 255 '<?xml ?><a/>' ''
 
 new "XMLdecl misspelled version"
-expecteof "$PROG" 255 '<?xml verion="1.0"?><a/>' '<a/>'
+expecteof "$PROG -l o" 255 '<?xml verion="1.0"?><a/>' 'yntax error: at or before: v'
 
 new "XMLdecl version + encoding"
 expecteof "$PROG" 0 '<?xml version="1.0" encoding="UTF-16"?><a/>' '<a/>'
 
 new "XMLdecl version + misspelled encoding"
-expecteof "$PROG" 255 '<?xml version="1.0" encding="UTF-16"?><a/>' '<a/>'
+expecteof "$PROG -l o" 255 '<?xml version="1.0" encding="UTF-16"?><a/>' 'syntax error: at or before: e'
 
 new "XMLdecl version + standalone"
 expecteof "$PROG" 0 '<?xml version="1.0" standalone="yes"?><a/>' '<a/>'

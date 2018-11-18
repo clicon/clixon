@@ -28,6 +28,8 @@ EOF
 
 cat <<EOF > $fyang
 module $APPNAME{
+   yang-version 1.1;
+   namespace "urn:example:clixon";
    prefix ex;
    import ietf-routing {
 	prefix rt;
@@ -93,7 +95,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candid
 new "netconf disabled feature"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><A>foo</A></config></edit-config></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>protocol</error-type><error-severity>error</error-severity><error-message>XML node config/A has no corresponding yang specification (Invalid XML or wrong Yang spec?'
 
-# This test has been broken up into all differetn modules instead of one large
+# This test has been broken up into all different modules instead of one large
 # reply since the modules change so often
 new "netconf schema resource, RFC 7895"
 ret=$($clixon_netconf -qf $cfg -y $fyang<<EOF 
@@ -101,7 +103,7 @@ ret=$($clixon_netconf -qf $cfg -y $fyang<<EOF
 EOF
 )
 new "netconf module A"
-expect="<module><name>example</name><revision/><namespace/><feature>A</feature><conformance-type>implement</conformance-type></module>"
+expect="<module><name>example</name><revision/><namespace>urn:example:clixon</namespace><feature>A</feature><conformance-type>implement</conformance-type></module>"
 match=`echo "$ret" | grep -GZo "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"

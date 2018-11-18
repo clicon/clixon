@@ -31,6 +31,8 @@ EOF
 
 cat <<EOF > $fyang
 module $APPNAME{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
   prefix ex;
   import ietf-netconf-acm {
 	prefix nacm;

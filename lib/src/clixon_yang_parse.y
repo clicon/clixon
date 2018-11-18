@@ -65,6 +65,7 @@
  * - Cant use the symbols in this file because yacc needs token definitions
  */
 %token K_ACTION
+%token K_ANYDATA
 %token K_ANYXML
 %token K_ARGUMENT
 %token K_AUGMENT

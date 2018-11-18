@@ -24,6 +24,7 @@ support.
   * [Clixon project page](http://www.clicon.org)
   * [Tests](test/)
   * [Docker](docker/)
+  * [Roadmap](ROADMAP.md)
   * [Reference manual](http://www.clicon.org/doxygen/index.html) (Note: the link may not be up-to-date. It is better to build your own: `cd doc; make doc`)
   
 Background

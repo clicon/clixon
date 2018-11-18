@@ -24,6 +24,9 @@ fconfig=$dir/config
 
 cat <<EOF > $fyang
 module ietf-ip{
+   yang-version 1.1;
+   namespace "urn:example:clixon";
+   prefix ip;
    container x {
     list y {
       key "a";

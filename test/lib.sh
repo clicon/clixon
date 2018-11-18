@@ -142,11 +142,10 @@ EOF
       echo -e "\e[0m:"
       exit -1
   fi
-  # If error dont match output strings
-  if [ $r != 0 ]; then
-      return
-  fi
-
+  # If error dont match output strings (why not?)
+#  if [ $r != 0 ]; then
+#      return
+#  fi
   # Match if both are empty string
   if [ -z "$ret" -a -z "$expect" ]; then
       return

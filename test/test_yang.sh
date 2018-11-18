@@ -27,7 +27,9 @@ EOF
 
 cat <<EOF > $fyang
 module $APPNAME{
+   yang-version 1.1;
    prefix ex;
+   namespace "urn:example:clixon";
    extension c-define {
       description "Example from RFC 6020";
       argument "name";
@@ -89,6 +91,8 @@ EOF
 # This yang definition uses an extension which is not defined. Error when loading
 cat <<EOF > $fyangerr
 module $APPNAME{
+   yang-version 1.1;
+   namespace "urn:example:clixon";
    prefix ex;
    extension c-define {
       description "Example from RFC 6020";
@@ -126,7 +130,9 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><cand
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "cli not defined extension"
+#new "cli not defined extension"
+#new "netconf not defined extension"
+#expecteof "$clixon_netconf -qf $cfg -l o" 0 "$YANG" "Extension ex:not-defined not found"
 # This text yields an error, but the test cannot detect the error message yet
 #expectfn "$clixon_cli -1f $cfg -y $fyangerr show version" 0 "Yang error: Extension ex:not-defined not found"
 

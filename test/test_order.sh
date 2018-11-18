@@ -41,6 +41,9 @@ EOF
 
 cat <<EOF > $fyang
 module example{
+    yang-version 1.1;
+    namespace "urn:example:clixon";
+    prefix ex;
     container c{
       leaf d{
          type string;

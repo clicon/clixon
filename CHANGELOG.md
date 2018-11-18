@@ -7,7 +7,15 @@
 
 ### Major New features
 ### API changes on existing features (you may need to change your code)
+* Yang parser is stricter (see cardinality below) which may break parsing of slack yang specs.
 ### Minor changes
+* YANG parser cardinality checked (only modules level yet)
+  * See https://github.com/clicon/clixon/issues/48
+* XML parser conformance to W3 spec
+  * Names lexically correct (NCName)
+  * Syntactically Correct handling of '<?' (processing instructions) and '<?xml' (XML declaration)
+  * XML prolog syntax for 'well-formed' XML
+  * <!DOCTYPE (ie DTD) is not supported.
 ### Corrected Bugs
 ### Known issues
 

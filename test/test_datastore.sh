@@ -10,6 +10,9 @@ datastore=../datastore/datastore_client
 
 cat <<EOF > $fyang
 module ietf-ip{
+   yang-version 1.1;
+   namespace "urn:example:clixon";
+   prefix ip;
    container x {
     list y {
       key "a b";

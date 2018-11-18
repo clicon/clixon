@@ -37,6 +37,8 @@ EOF
 
 cat <<EOF > $fyang
 module $APPNAME{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
   prefix ex;
   container authentication {
 	description "Example code for enabling www basic auth and some example 
