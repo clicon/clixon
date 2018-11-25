@@ -6,11 +6,15 @@
 * [Roadmap](ROADMAP.md) (Uncommitted and unprioritized)
 
 ### Major New features
+* More complete Yang parser 
+  * YANG parser cardinality checked (only modules level yet)
+    * See https://github.com/clicon/clixon/issues/84
+  * Openconfig yang specs parsed: https://github.com/openconfig/public
+
 ### API changes on existing features (you may need to change your code)
-* Yang parser is stricter (see cardinality below) which may break parsing of slack yang specs.
+* Yang parser is stricter (see above) which may break parsing of existing yang specs.
+
 ### Minor changes
-* YANG parser cardinality checked (only modules level yet)
-  * See https://github.com/clicon/clixon/issues/48
 * XML parser conformance to W3 spec
   * Names lexically correct (NCName)
   * Syntactically Correct handling of '<?' (processing instructions) and '<?xml' (XML declaration)

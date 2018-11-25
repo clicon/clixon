@@ -33,6 +33,7 @@
  * Yang parser. Hopefully useful but not complete
  * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
  * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
+* 
  */
 
 %{
@@ -81,20 +82,20 @@ clixon_yang_parsewrap(void)
    The argument is a string
 
    Example: keyword argument ; keyword ; keyword { keyword argument; } keyword
-
-   STRING0 corresponds to string rule
-   ARGUMENT corresponds to identifier-arg-str,unique-arg-str,key-arg-str, etc.
-                           more to do here.
 */
 
 
 %}
 
+identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
+
 %x KEYWORD
-%s ARGUMENT
-%s STRING0
-%s STRING1
-%s STRING2
+%s BOOLEAN
+%s INTEGER
+%s STRARG
+%s STRING
+%s STRINGDQ
+%s STRINGSQ
 %s ESCAPE
 %s COMMENT1
 %s COMMENT2
@@ -102,84 +103,91 @@ clixon_yang_parsewrap(void)
 
 %%
  /* Common tokens */
-<KEYWORD,ARGUMENT,STRING0>[ \t]            
-<KEYWORD,ARGUMENT,STRING0,UNKNOWN><<EOF>> { return MY_EOF; }
-<KEYWORD,ARGUMENT,STRING0,COMMENT1,UNKNOWN>\n   { _YY->yy_linenum++; }
-<KEYWORD,ARGUMENT,STRING0>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
-<KEYWORD,ARGUMENT,STRING0>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
+<KEYWORD,BOOLEAN,INTEGER,STRARG,ARGUMENT,STRING>[ \t]            
+<KEYWORD,STRING,UNKNOWN><<EOF>> { return MY_EOF; }
+<KEYWORD,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN>\n   { _YY->yy_linenum++; }
+<KEYWORD,STRING>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
+<KEYWORD,STRING>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
 
-<KEYWORD>\}               { return *yytext; }
 
- /* RFC 6020 keywords */
-<KEYWORD>action           { BEGIN(ARGUMENT); return K_ACTION; }
-<KEYWORD>anydata          { BEGIN(ARGUMENT); return K_ANYDATA; }
-<KEYWORD>anyxml           { BEGIN(ARGUMENT); return K_ANYXML; }
-<KEYWORD>argument         { BEGIN(ARGUMENT); return K_ARGUMENT; }
-<KEYWORD>augment          { BEGIN(ARGUMENT); return K_AUGMENT; }
-<KEYWORD>base             { BEGIN(ARGUMENT); return K_BASE; }
-<KEYWORD>belongs-to       { BEGIN(ARGUMENT); return K_BELONGS_TO; }
-<KEYWORD>bit              { BEGIN(ARGUMENT); return K_BIT; }
-<KEYWORD>case             { BEGIN(ARGUMENT); return K_CASE; }
-<KEYWORD>choice           { BEGIN(ARGUMENT); return K_CHOICE; }
-<KEYWORD>config           { BEGIN(ARGUMENT); return K_CONFIG; }
-<KEYWORD>contact          { BEGIN(STRING0);  return K_CONTACT; }
-<KEYWORD>container        { BEGIN(ARGUMENT); return K_CONTAINER; }
-<KEYWORD>default          { BEGIN(STRING0);  return K_DEFAULT; }
-<KEYWORD>description      { BEGIN(STRING0);  return K_DESCRIPTION; }
-<KEYWORD>deviate          { BEGIN(ARGUMENT); return K_DEVIATE; }
-<KEYWORD>deviation        { BEGIN(ARGUMENT); return K_DEVIATION; }
-<KEYWORD>enum             { BEGIN(STRING0);  return K_ENUM; }
-<KEYWORD>error-app-tag    { BEGIN(STRING0);  return K_ERROR_APP_TAG; }
-<KEYWORD>error-message    { BEGIN(STRING0);  return K_ERROR_MESSAGE; }
-<KEYWORD>extension        { BEGIN(ARGUMENT); return K_EXTENSION; }
-<KEYWORD>feature          { BEGIN(ARGUMENT); return K_FEATURE; }
-<KEYWORD>fraction-digits  { BEGIN(ARGUMENT); return K_FRACTION_DIGITS; }
-<KEYWORD>grouping         { BEGIN(ARGUMENT); return K_GROUPING; }
-<KEYWORD>identity         { BEGIN(ARGUMENT); return K_IDENTITY; }
-<KEYWORD>if-feature       { BEGIN(ARGUMENT); return K_IF_FEATURE; }
-<KEYWORD>import           { BEGIN(ARGUMENT); return K_IMPORT; }
-<KEYWORD>include          { BEGIN(ARGUMENT); return K_INCLUDE; }
-<KEYWORD>input            { BEGIN(ARGUMENT); return K_INPUT; }
-<KEYWORD>key              { BEGIN(ARGUMENT); return K_KEY; }
-<KEYWORD>leaf             { BEGIN(ARGUMENT); return K_LEAF; }
-<KEYWORD>leaf-list        { BEGIN(ARGUMENT); return K_LEAF_LIST; }
-<KEYWORD>length           { BEGIN(ARGUMENT); return K_LENGTH; }
-<KEYWORD>list             { BEGIN(ARGUMENT); return K_LIST; }
-<KEYWORD>mandatory        { BEGIN(ARGUMENT); return K_MANDATORY; }
-<KEYWORD>max-elements     { BEGIN(ARGUMENT); return K_MAX_ELEMENTS; }
-<KEYWORD>min-elements     { BEGIN(ARGUMENT); return K_MIN_ELEMENTS; }
-<KEYWORD>module           { BEGIN(ARGUMENT); return K_MODULE; }
-<KEYWORD>must             { BEGIN(STRING0);  return K_MUST; }
-<KEYWORD>namespace        { BEGIN(ARGUMENT); return K_NAMESPACE; }
-<KEYWORD>notification     { BEGIN(ARGUMENT); return K_NOTIFICATION; }
-<KEYWORD>ordered-by       { BEGIN(ARGUMENT); return K_ORDERED_BY; }
-<KEYWORD>organization     { BEGIN(STRING0);  return K_ORGANIZATION; }
-<KEYWORD>output           { BEGIN(ARGUMENT); return K_OUTPUT; }
-<KEYWORD>path             { BEGIN(ARGUMENT); return K_PATH; }
-<KEYWORD>pattern          { BEGIN(STRING0);  return K_PATTERN; }
-<KEYWORD>position         { BEGIN(ARGUMENT); return K_POSITION; }
-<KEYWORD>prefix           { BEGIN(ARGUMENT); return K_PREFIX; }
-<KEYWORD>presence         { BEGIN(STRING0);  return K_PRESENCE; }
-<KEYWORD>range            { BEGIN(ARGUMENT); return K_RANGE; }
-<KEYWORD>reference        { BEGIN(STRING0);  return K_REFERENCE; }
-<KEYWORD>refine           { BEGIN(ARGUMENT); return K_REFINE; }
-<KEYWORD>require-instance { BEGIN(ARGUMENT); return K_REQUIRE_INSTANCE; }
-<KEYWORD>revision         { BEGIN(ARGUMENT); return K_REVISION; }
-<KEYWORD>revision-date    { BEGIN(ARGUMENT); return K_REVISION_DATE; }
-<KEYWORD>rpc              { BEGIN(ARGUMENT); return K_RPC; }
-<KEYWORD>status           { BEGIN(ARGUMENT); return K_STATUS; }
-<KEYWORD>submodule        { BEGIN(ARGUMENT); return K_SUBMODULE; }
-<KEYWORD>type             { BEGIN(ARGUMENT); return K_TYPE; }
-<KEYWORD>typedef          { BEGIN(ARGUMENT); return K_TYPEDEF; }
-<KEYWORD>unique           { BEGIN(ARGUMENT); return K_UNIQUE; }
-<KEYWORD>units            { BEGIN(STRING0);  return K_UNITS; }
-<KEYWORD>uses             { BEGIN(ARGUMENT); return K_USES; }
-<KEYWORD>value            { BEGIN(ARGUMENT); return K_VALUE; }
-<KEYWORD>when             { BEGIN(STRING0);  return K_WHEN; }
-<KEYWORD>yang-version     { BEGIN(ARGUMENT); return K_YANG_VERSION; }
-<KEYWORD>yin-element      { BEGIN(ARGUMENT); return K_YIN_ELEMENT; }
+<KEYWORD>input            { return K_INPUT; } /* No argument */
+<KEYWORD>output           { return K_OUTPUT;} /* No argument */
 
+ /* RFC 7950 keywords using identifier */
+<KEYWORD>action           { BEGIN(STRARG);  return K_ACTION; }
+<KEYWORD>anydata          { BEGIN(STRARG);  return K_ANYDATA; }
+<KEYWORD>anyxml           { BEGIN(STRARG);  return K_ANYXML; }
+<KEYWORD>argument         { BEGIN(STRARG);  return K_ARGUMENT; }
+<KEYWORD>base             { BEGIN(STRARG);  return K_BASE; }
+<KEYWORD>belongs-to       { BEGIN(STRARG);  return K_BELONGS_TO; }
+<KEYWORD>bit              { BEGIN(STRARG);  return K_BIT; }
+<KEYWORD>case             { BEGIN(STRARG);  return K_CASE; }
+<KEYWORD>choice           { BEGIN(STRARG);  return K_CHOICE; }
+<KEYWORD>container        { BEGIN(STRARG);  return K_CONTAINER; }
+<KEYWORD>extension        { BEGIN(STRARG);  return K_EXTENSION; }
+<KEYWORD>feature          { BEGIN(STRARG);  return K_FEATURE; }
+<KEYWORD>grouping         { BEGIN(STRARG);  return K_GROUPING; }
+<KEYWORD>identity         { BEGIN(STRARG);  return K_IDENTITY; }
+<KEYWORD>import           { BEGIN(STRARG);  return K_IMPORT; }
+<KEYWORD>include          { BEGIN(STRARG);  return K_INCLUDE; }
+<KEYWORD>leaf             { BEGIN(STRARG);  return K_LEAF; }
+<KEYWORD>leaf-list        { BEGIN(STRARG);  return K_LEAF_LIST; }
+<KEYWORD>list             { BEGIN(STRARG);  return K_LIST; }
+<KEYWORD>module           { BEGIN(STRARG);  return K_MODULE; }
+<KEYWORD>notification     { BEGIN(STRARG);  return K_NOTIFICATION; }
+<KEYWORD>prefix           { BEGIN(STRARG);  return K_PREFIX; }
+<KEYWORD>refine           { BEGIN(STRARG);  return K_REFINE; }
+<KEYWORD>rpc              { BEGIN(STRARG);  return K_RPC; }
+<KEYWORD>submodule        { BEGIN(STRARG);  return K_SUBMODULE; }
+<KEYWORD>type             { BEGIN(STRARG);  return K_TYPE; }
+<KEYWORD>typedef          { BEGIN(STRARG);  return K_TYPEDEF; }
+<KEYWORD>uses             { BEGIN(STRARG);  return K_USES; }
+
+ /* RFC 7950 keywords using boolean string arguments */
+<KEYWORD>config           { BEGIN(BOOLEAN); return K_CONFIG; }
+<KEYWORD>mandatory        { BEGIN(BOOLEAN); return K_MANDATORY; }
+<KEYWORD>require-instance { BEGIN(BOOLEAN); return K_REQUIRE_INSTANCE; }
+<KEYWORD>yin-element      { BEGIN(BOOLEAN); return K_YIN_ELEMENT;  }
+
+ /* RFC 7950 keywords using integer string argument */
+<KEYWORD>min-elements     { BEGIN(INTEGER);  return K_MIN_ELEMENTS; }
+<KEYWORD>position         { BEGIN(INTEGER);  return K_POSITION; }
+<KEYWORD>value            { BEGIN(INTEGER);  return K_VALUE; }
+
+ /* RFC 7950 keywords using strings  */
+<KEYWORD>augment          { BEGIN(STRING);  return K_AUGMENT; }
+<KEYWORD>contact          { BEGIN(STRING);  return K_CONTACT; }
+<KEYWORD>default          { BEGIN(STRING);  return K_DEFAULT; }
+<KEYWORD>description      { BEGIN(STRING);  return K_DESCRIPTION; }
+<KEYWORD>deviate          { BEGIN(STRING);  return K_DEVIATE; }
+<KEYWORD>deviation        { BEGIN(STRING);  return K_DEVIATION; }
+<KEYWORD>enum             { BEGIN(STRING);  return K_ENUM; }
+<KEYWORD>error-app-tag    { BEGIN(STRING);  return K_ERROR_APP_TAG; }
+<KEYWORD>error-message    { BEGIN(STRING);  return K_ERROR_MESSAGE; }
+<KEYWORD>fraction-digits  { BEGIN(STRING);  return K_FRACTION_DIGITS; }
+<KEYWORD>if-feature       { BEGIN(STRING);  return K_IF_FEATURE; }
+<KEYWORD>key              { BEGIN(STRING);  return K_KEY; }
+<KEYWORD>length           { BEGIN(STRING);  return K_LENGTH; }
+<KEYWORD>max-elements     { BEGIN(STRING);  return K_MAX_ELEMENTS; }
+<KEYWORD>must             { BEGIN(STRING);  return K_MUST; }
+<KEYWORD>namespace        { BEGIN(STRING);  return K_NAMESPACE; }
+<KEYWORD>ordered-by       { BEGIN(STRING);  return K_ORDERED_BY; }
+<KEYWORD>organization     { BEGIN(STRING);  return K_ORGANIZATION; }
+<KEYWORD>path             { BEGIN(STRING);  return K_PATH; }
+<KEYWORD>pattern          { BEGIN(STRING);  return K_PATTERN; }
+<KEYWORD>presence         { BEGIN(STRING);  return K_PRESENCE; }
+<KEYWORD>unique           { BEGIN(STRING);  return K_UNIQUE; }
+<KEYWORD>range            { BEGIN(STRING);   return K_RANGE; }
+<KEYWORD>reference        { BEGIN(STRING);  return K_REFERENCE; }
+<KEYWORD>revision         { BEGIN(STRING);  return K_REVISION; }
+<KEYWORD>revision-date    { BEGIN(STRING);  return K_REVISION_DATE; }
+<KEYWORD>status           { BEGIN(STRING);  return K_STATUS; }
+<KEYWORD>units            { BEGIN(STRING);  return K_UNITS; }
+<KEYWORD>when             { BEGIN(STRING);  return K_WHEN; }
+<KEYWORD>yang-version     { BEGIN(STRING);  return K_YANG_VERSION; }
 <KEYWORD>:                { return *yytext; }
+<KEYWORD>\{               { return *yytext; }
+<KEYWORD>\}               { return *yytext; }
 <KEYWORD>;                { return *yytext; }
 <KEYWORD>.                { clixon_yang_parselval.string = strdup(yytext);
                              BEGIN(UNKNOWN); return CHAR; }
@@ -190,34 +198,43 @@ clixon_yang_parsewrap(void)
 <UNKNOWN>.                { clixon_yang_parselval.string = strdup(yytext);
                             return CHAR; }
 
+<BOOLEAN>true             { clixon_yang_parselval.string = strdup(yytext);
+                            return BOOL; }
+<BOOLEAN>false            { clixon_yang_parselval.string = strdup(yytext);
+                            return BOOL; }
+<BOOLEAN>;                { BEGIN(KEYWORD); return *yytext; }
+<BOOLEAN>\{               { BEGIN(KEYWORD); return *yytext; }
+<BOOLEAN>.                { return *yytext; }
 
+<INTEGER>[0-9][0-9]*      { clixon_yang_parselval.string = strdup(yytext);
+                            return INT; }
+<INTEGER>;                { BEGIN(KEYWORD); return *yytext; }
+<INTEGER>\{                { BEGIN(KEYWORD); return *yytext; }
+<INTEGER>.                { return *yytext; }
 
-<ARGUMENT>;                { BEGIN(KEYWORD); return *yytext; }
-<ARGUMENT>\{               { BEGIN(KEYWORD); return *yytext; }
-<ARGUMENT>\"               { _YY->yy_lex_string_state =ARGUMENT; BEGIN(STRING1); return DQ; }
-<ARGUMENT>\'               { _YY->yy_lex_string_state =ARGUMENT; BEGIN(STRING2); return DQ; }
-<ARGUMENT>\+               { return *yytext; /* many arg rules dont like this */ }
-<ARGUMENT>:                { return *yytext; /* many arg rules dont like this */ }
-<ARGUMENT>.                { clixon_yang_parselval.string = strdup(yytext);
-                             return CHAR;}
+<STRARG>\{                 { BEGIN(KEYWORD); return *yytext; }
+<STRARG>;                  { BEGIN(KEYWORD); return *yytext; }
+<STRARG>{identifier}       { clixon_yang_parselval.string = strdup(yytext);
+                             return IDENTIFIER;}
+<STRARG>.                  { return *yytext; }
 
-<STRING0>\{                { BEGIN(KEYWORD); return *yytext; }
-<STRING0>;                 { BEGIN(KEYWORD); return *yytext; }
-<STRING0>\"                { _YY->yy_lex_string_state =STRING0; BEGIN(STRING1); return DQ; }
-<STRING0>\'                { _YY->yy_lex_string_state =STRING0; BEGIN(STRING2); return DQ; }
-<STRING0>\+               { return *yytext; }
-<STRING0>.                 { clixon_yang_parselval.string = strdup(yytext);
+<STRING>\{                { BEGIN(KEYWORD); return *yytext; }
+<STRING>;                 { BEGIN(KEYWORD); return *yytext; }
+<STRING>\"                { _YY->yy_lex_string_state =STRING; BEGIN(STRINGDQ); return DQ; }
+<STRING>\'                { _YY->yy_lex_string_state =STRING; BEGIN(STRINGSQ); return SQ; }
+<STRING>\+                { return *yytext; }
+<STRING>.                 { clixon_yang_parselval.string = strdup(yytext);
                             return CHAR;}
 
-<STRING1>\\                { _YY->yy_lex_state = STRING1; BEGIN(ESCAPE); }
-<STRING1>\"                { BEGIN(_YY->yy_lex_string_state); return DQ; }
-<STRING1>\n                { _YY->yy_linenum++; clixon_yang_parselval.string = strdup(yytext); return CHAR;}
-<STRING1>.                 { clixon_yang_parselval.string = strdup(yytext);
-                            return CHAR;}
+<STRINGDQ>\\                { _YY->yy_lex_state = STRINGDQ; BEGIN(ESCAPE); }
+<STRINGDQ>\"                { BEGIN(_YY->yy_lex_string_state); return DQ; }
+<STRINGDQ>\n                { _YY->yy_linenum++; clixon_yang_parselval.string = strdup(yytext); return CHAR;}
+<STRINGDQ>.                 { clixon_yang_parselval.string = strdup(yytext);
+                              return CHAR;}
 
-<STRING2>\'                { BEGIN(_YY->yy_lex_string_state); return DQ; }
-<STRING2>\n                { _YY->yy_linenum++; clixon_yang_parselval.string = strdup(yytext); return CHAR;}
-<STRING2>.                 { clixon_yang_parselval.string = strdup(yytext);
+<STRINGSQ>\'                { BEGIN(_YY->yy_lex_string_state); return SQ; }
+<STRINGSQ>\n                { _YY->yy_linenum++; clixon_yang_parselval.string = strdup(yytext); return CHAR;}
+<STRINGSQ>.                 { clixon_yang_parselval.string = strdup(yytext);
                              return CHAR;}
 
 <ESCAPE>.                 { BEGIN(_YY->yy_lex_state); 

@@ -2412,7 +2412,7 @@ yang_abs_schema_nodeid(yang_spec    *yspec,
     }
     /* split <prefix>:<id> */
     if ((id = strchr(vec[1], ':')) == NULL){ /* no prefix */
-	clicon_log(LOG_WARNING, "%s: Absolute schema nodeid must have prefix", __FUNCTION__);
+	clicon_log(LOG_WARNING, "%s: Absolute schema nodeid %s must have prefix", __FUNCTION__, schema_nodeid);
 	goto ok;
     }
     if ((prefix = strdup(vec[1])) == NULL){
