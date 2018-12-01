@@ -119,7 +119,7 @@ main(int argc, char **argv)
     cxobj     **xv = NULL;
     cxobj      *x0 = NULL;
     cxobj      *x;
-    char        c;
+    int         c;
     int         len;
     char       *buf = NULL;
     int         ret;

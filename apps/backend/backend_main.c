@@ -504,7 +504,7 @@ main(int    argc,
      char **argv)
 {
     int           retval = -1;
-    char          c;
+    int           c;
     int           zap;
     int           foreground;
     int           once;

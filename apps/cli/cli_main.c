@@ -240,7 +240,7 @@ int
 main(int argc, char **argv)
 {
     int          retval = -1;
-    char         c;    
+    int          c;    
     int          once;
     char	*tmp;
     char	*argv0 = argv[0];

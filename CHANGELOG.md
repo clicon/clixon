@@ -12,7 +12,7 @@
   * Support of submodule, include and belongs-to.
   * Openconfig yang specs parsed: https://github.com/openconfig/public
   * Improved unknown handling
-  * `CLICON_YANG_DIR` is changed from a single directory to a path of directories
+  * Configure option `CLICON_YANG_DIR` is changed from a single directory to a path of directories
     * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
 
 ### API changes on existing features (you may need to change your code)
@@ -26,7 +26,10 @@
   * Syntactically Correct handling of '<?' (processing instructions) and '<?xml' (XML declaration)
   * XML prolog syntax for 'well-formed' XML
   * <!DOCTYPE (ie DTD) is not supported.
+
 ### Corrected Bugs
+* getopt return value changed from char to int (https://github.com/clicon/clixon/issues/58)
+
 ### Known issues
 
 ## 3.8.0 (6 Nov 2018)

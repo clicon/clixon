@@ -330,7 +330,7 @@ int
 main(int    argc,
      char **argv)
 {
-    char             c;
+    int              c;
     char            *tmp;
     char            *argv0 = argv[0];
     int              quiet = 0;

@@ -81,8 +81,8 @@ int
 main(int argc, char **argv)
 {
     yang_spec *yspec = NULL;
-    char      c;
-    int       logdst = CLICON_LOG_STDERR;
+    int        c;
+    int        logdst = CLICON_LOG_STDERR;
     
     optind = 1;
     opterr = 0;

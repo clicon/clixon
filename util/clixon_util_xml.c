@@ -85,7 +85,7 @@ main(int    argc,
     cxobj *xc;
     cbuf  *cb = cbuf_new();
     int   retval = -1;
-    char  c;
+    int   c;
     int   logdst = CLICON_LOG_STDERR;
 
     optind = 1;

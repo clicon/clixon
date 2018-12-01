@@ -513,7 +513,7 @@ main(int    argc,
     char	 *argv0 = argv[0];
     FCGX_Request  request;
     FCGX_Request *r = &request;
-    char          c;
+    int           c;
     char         *sockpath;
     char         *path;
     clicon_handle h;

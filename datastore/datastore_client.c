@@ -107,7 +107,7 @@ usage(char *argv0)
 int
 main(int argc, char **argv)
 {
-    char                c;
+    int                 c;
     clicon_handle       h;
     char               *argv0;
     char               *db = "running";

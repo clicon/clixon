@@ -289,7 +289,7 @@ example_restconf_start(clicon_handle h,
 		       int           argc,
 		       char        **argv)
 {
-    char c;
+    int c;
 
     clicon_debug(1, "%s argc:%d", __FUNCTION__, argc);
     optind = 1;

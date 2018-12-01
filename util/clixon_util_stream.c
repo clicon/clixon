@@ -218,7 +218,7 @@ main(int argc, char **argv)
     int    timeout = 10;
     char   start[27] = {0,}; /* strlen = 0 */
     char   stop[27] = {0,};
-    char   c;
+    int    c;
     char  *argv0 = argv[0];
     struct timeval now;
 
