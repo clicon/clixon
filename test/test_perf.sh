@@ -23,7 +23,7 @@ fyang=$dir/scaling.yang
 fconfig=$dir/config
 
 cat <<EOF > $fyang
-module ietf-ip{
+module scaling{
    yang-version 1.1;
    namespace "urn:example:clixon";
    prefix ip;
@@ -47,8 +47,9 @@ EOF
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>$fyang</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>ietf-ip</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>scaling</CLICON_YANG_MODULE_MAIN>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>

@@ -71,7 +71,7 @@ sudo ./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src
 #include <clixon/clixon.h>
 
 /* Command line options to be passed to getopt(3) */
-#define DATASTORE_OPTS "hDd:p:b:y:m:"
+#define DATASTORE_OPTS "hDd:p:b:y:"
 
 /*! usage
  */
@@ -85,8 +85,7 @@ usage(char *argv0)
 		"\t-d <db>\t\tDatabase name. Default: running. Alt: candidate,startup\n"
 		"\t-b <dir>\tDatabase directory. Mandatory\n"
 		"\t-p <plugin>\tDatastore plugin. Mandatory\n"
-		"\t-y <dir>\tYang directory (where modules are stored). Mandatory\n"
-		"\t-m <module>\tYang module. Mandatory\n"
+		"\t-y <file>\tYang file. Mandatory\n"
 		"and command is either:\n"
 		"\tget [<xpath>]\n"
  	        "\tmget <nr> [<xpath>]\n"
@@ -115,7 +114,6 @@ main(int argc, char **argv)
     char               *plugin = NULL;
     char               *cmd = NULL;
     yang_spec          *yspec = NULL;
-    char               *yangdir = NULL;
     char               *yangmodule = NULL;
     char               *dbdir = NULL;
     int                 ret;
@@ -158,12 +156,7 @@ main(int argc, char **argv)
 	        usage(argv0);
 	    dbdir = optarg;
 	    break;
-	case 'y': /* Yang directory */
-	    if (!optarg)
-	        usage(argv0);
-	    yangdir = optarg;
-	    break;
-	case 'm': /* Yang module */
+	case 'y': /* Yang file */
 	    if (!optarg)
 	        usage(argv0);
 	    yangmodule = optarg;
@@ -188,10 +181,6 @@ main(int argc, char **argv)
 	clicon_err(OE_DB, 0, "Missing dbdir -b option");
 	goto done;
     }
-    if (yangdir == NULL){
-	clicon_err(OE_YANG, 0, "Missing yangdir -y option");
-	goto done;
-    }
     if (yangmodule == NULL){
 	clicon_err(OE_YANG, 0, "Missing yang module -m option");
 	goto done;
@@ -206,7 +195,7 @@ main(int argc, char **argv)
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     /* Parse yang spec from given file */
-    if (yang_parse(h, NULL, yangmodule, yangdir, NULL, yspec, NULL) < 0)
+    if (yang_parse(h, yangmodule, NULL, NULL, yspec, NULL) < 0)
 	goto done;
     /* Set database directory option */
     if (xmldb_setopt(h, "dbdir", dbdir) < 0)

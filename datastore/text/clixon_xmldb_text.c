@@ -1367,8 +1367,7 @@ main(int    argc,
     enum operation_type      op;
     char       *cmd;
     char       *db;
-    char       *yangdir;
-    char       *yangmod;
+    char       *yangmod; /* yang file */
     yang_spec  *yspec = NULL;
     clicon_handle h;
 
@@ -1381,12 +1380,11 @@ main(int    argc,
     }
     cmd = argv[1];
     db = argv[2];
-    yangdir = argv[3];
     yangmod = argv[4];
     db_init(db);
     if ((yspec = yspec_new()) == NULL)
 	goto done
-    if (yang_parse(h, NULL, yangmod, yangdir, NULL, yspec) < 0)
+    if (yang_parse(h, NULL, yangmod, NULL, yspec) < 0)
 	goto done;
     if (strcmp(cmd, "get")==0){
 	if (argc < 5)

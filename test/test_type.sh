@@ -7,11 +7,15 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/type.yang
+fyang2=$dir/example2.yang
+fyang3=$dir/example3.yang
 
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -21,14 +25,59 @@ cat <<EOF > $cfg
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
+  <CLICON_XMLDB_CACHE>false</CLICON_XMLDB_CACHE>
 </config>
 EOF
 
+# transitive type, exists in fyang3, referenced from fyang2, but not declared in fyang
+cat <<EOF > $fyang3
+module example3{
+  prefix ex3;
+  namespace "urn:example:example3";
+  typedef w{
+    type union{
+       type int32{
+          range "4..44";
+       }
+    }
+  }
+  typedef u{
+     type union {
+       type w;
+       type enumeration {
+         enum "bounded";
+         enum "unbounded";
+       }
+     }
+  }
+  typedef t{
+    type string{
+      pattern '[a-z][0-9]*';
+    }
+  }
+}
+EOF
+cat <<EOF > $fyang2
+module example2{
+  import example3 { prefix ex3; }
+  namespace "urn:example:example2";
+  prefix ex2;
+  grouping gr2 {
+    leaf talle{
+      type ex3:t;
+    }
+    leaf ulle{
+      type ex3:u;
+    }
+  }
+}
+EOF
 cat <<EOF > $fyang
 module example{
   yang-version 1.1;
   namespace "urn:example:clixon";
   prefix ex;
+  import example2 { prefix ex2; }
   typedef ab {
        type string {
          pattern
@@ -136,6 +185,10 @@ module example{
    leaf mbits{
       type mybits;
    }
+  container c{
+    description "transitive type- exists in ex3";
+    uses ex2:gr2;
+  }
 }
 EOF
 
@@ -150,6 +203,50 @@ sudo $clixon_backend -s init -f $cfg -y $fyang
 if [ $? -ne 0 ]; then
     err
 fi
+
+new "cli set transitive string"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c talle x99" 0 "^$"
+
+new "cli set transitive string error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c talle 9xx" 255 "^$"
+
+new "netconf set transitive string error"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><c><talle>9xx</talle></c></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>"
+
+new "netconf validate should fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>validation of talle failed regexp match fail"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "cli set transitive union int"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle 33" 0 "^$"
+
+new "cli validate"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 "^$"
+
+new "cli set transitive union string"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle unbounded" 0 "^$"
+
+new "cli validate"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 "^$"
+
+new "cli set transitive union error. should fail"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle kalle" 255 ""
+
+new "cli set transitive union error int"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle 55" 255 ""
+
+new "netconf set transitive union error int"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><c><ulle>55</ulle></c></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>"
+
+new "netconf validate should fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>validation of ulle failed"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+#-----------
 
 new "cli set ab"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.a.b" 0 "^$"

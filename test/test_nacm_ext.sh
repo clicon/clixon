@@ -18,6 +18,7 @@ cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/example/yang</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>

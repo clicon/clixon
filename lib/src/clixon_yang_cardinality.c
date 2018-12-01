@@ -193,7 +193,8 @@ yang_cardinality(clicon_handle h,
     
     pk = yt->ys_keyword;
     /* 0) Find parent sub-parts of cardinality vector */
-    ycplist = ycard_find(pk, 0, yclist, 0);
+    if ((ycplist = ycard_find(pk, 0, yclist, 0)) == NULL)
+	goto ok; /* skip */
     /* 1) For all children, if neither in 0..n, 0..1, 1 or 1..n   ->ERROR  */
     i = 0;
     while (i<yt->ys_len){
@@ -231,14 +232,15 @@ yang_cardinality(clicon_handle h,
     }
     
     if (0) { /* Notyet */
-    /* 4) Recurse */
-    i = 0;
-    while (i<yt->ys_len){ /* Note, children may be removed */
-	ys = yt->ys_stmt[i++];
-	if (yang_cardinality(h, ys, modname) < 0)
-	    goto done;
+	/* 4) Recurse */
+	i = 0;
+	while (i<yt->ys_len){ /* Note, children may be removed */
+	    ys = yt->ys_stmt[i++];
+	    if (yang_cardinality(h, ys, modname) < 0)
+		goto done;
+	}
     }
-    }
+ ok:
     retval = 0;
  done:
     return retval;

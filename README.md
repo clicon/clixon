@@ -25,7 +25,7 @@ support.
   * [Tests](test/)
   * [Docker](docker/)
   * [Roadmap](ROADMAP.md)
-  * [Reference manual](http://www.clicon.org/doxygen/index.html) (Note: the link may not be up-to-date. It is better to build your own: `cd doc; make doc`)
+  * [Reference manual](#reference) 
   
 Background
 ==========
@@ -124,6 +124,10 @@ However, the following YANG syntax modules are not implemented:
 - action
 - belongs-to
 
+Restrictions on Yang types are as follows:
+- The range statement does not support multiple values (RFC7895 sec 9.2.4)
+- Submodules cannot re-use a prefix in an import statement that is already used for another imported module in the module that the submodule belongs to.
+
 Netconf
 =======
 Clixon implements the following NETCONF proposals or standards:
@@ -217,7 +221,6 @@ The tests outlines an example of three groups (taken from the RFC): admin, limit
 * limited: Read access (get and get-config)
 * guest: No access
 
-
 Runtime
 =======
 
@@ -225,3 +228,12 @@ Runtime
 
 The figure shows the SDK runtime of Clixon.
 
+Reference
+=========
+A reference manual can be built using [Doxygen](http://www.doxygen.nl/index.html). You need to install doxygen and graphviz on your system.
+Build it in the doc directory and point the browser to `.../clixon/doc/html/index.html` as follows:
+```
+> cd doc
+> make doc
+> make graphs # detailed callgraphs
+```

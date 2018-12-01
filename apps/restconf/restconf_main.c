@@ -517,7 +517,6 @@ main(int    argc,
     char         *sockpath;
     char         *path;
     clicon_handle h;
-    char         *yangspec=NULL;
     char         *dir;
     char	 *tmp;
     int          logdst = CLICON_LOG_SYSLOG;
@@ -619,10 +618,6 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
-    /* Overwrite yang module with -y option */
-    if (yangspec)
-	clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", yangspec);
-
     /* Initialize plugins group */
     if ((dir = clicon_restconf_dir(h)) != NULL)
 	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
@@ -635,12 +630,11 @@ main(int    argc,
     /* Load main application yang specification either module or specific file
      * If -y <file> is given, it overrides main module */
     if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, NULL) < 0)
+	if (yang_spec_parse_file(h, yang_filename, yspec, NULL) < 0)
 	    goto done;
     }
     else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
-		       clicon_yang_dir(h),
-		       clicon_yang_module_revision(h),
+				    clicon_yang_module_revision(h),
 				    yspec, NULL) < 0)
 	goto done;
 
@@ -649,10 +643,10 @@ main(int    argc,
 	goto done;
     /* Add system modules */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
-	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec, NULL)< 0)
 	 goto done;
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-netconf-notification", NULL, yspec, NULL)< 0)
 	 goto done;
     /* Call start function in all plugins before we go interactive 
        Pass all args after the standard options to plugin_start

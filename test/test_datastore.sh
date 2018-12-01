@@ -57,7 +57,7 @@ run(){
     fi
     rm -rf $mydir/*
 
-    conf="-d candidate -b $mydir -p ../datastore/$name/$name.so -y $dir -m ietf-ip"
+    conf="-d candidate -b $mydir -p ../datastore/$name/$name.so -y $dir/ietf-ip.yang"
   
     new "datastore $name init"
     expectfn "$datastore $conf init" 0 ""
@@ -144,7 +144,7 @@ run(){
     expectfn "$datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
 
     new "datastore other db init"
-    expectfn "$datastore -d kalle -b $mydir -p ../datastore/$name/$name.so -y $dir -m ietf-ip init" 0 ""
+    expectfn "$datastore -d kalle -b $mydir -p ../datastore/$name/$name.so -y $dir/ietf-ip.yang init" 0 ""
 
     new "datastore other db copy"
     expectfn "$datastore $conf copy kalle" 0 ""

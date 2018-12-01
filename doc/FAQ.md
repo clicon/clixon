@@ -97,12 +97,30 @@ configuration file is /usr/local/etc/clixon.xml. The example
 configuration file is installed at /usr/local/etc/example.xml. The
 YANG specification for the configuration file is clixon-config.yang.
 
-You can change where Clixon looks for the configuration FILE as follows:
+## How are Clixon configuration files found?
+
+Clixon by default finds its configuration file at `/usr/local/etc/clixon.xml`. However, you can modify this location as follows:
   - Provide -f FILE option when starting a program (eg clixon_backend -f FILE)
   - Provide --with-configfile=FILE when configuring
-  - Provide --with-sysconfig=<dir> when configuring, then FILE is <dir>/clixon.xml
-  - Provide --sysconfig=<dir> when configuring then FILE is <dir>/etc/clixon.xml
+  - Provide --with-sysconfig=<dir> when configuring. Then FILE is <dir>/clixon.xml
+  - Provide --sysconfig=<dir> when configuring. Then FILE is <dir>/etc/clixon.xml
   - FILE is /usr/local/etc/clixon.xml
+
+## How are Yang files found?
+
+Yang files contain the configuration specification. A Clixon
+application loads yang files and clixon itself loads system yang
+files. When Yang files are loaded modules are imported and submodules
+are included.
+
+The following configuration file options control the loading of Yang files:
+- `CLICON_YANG_DIR` -  A list of directories (yang dir path) where Clixon searches for module and submodules.
+- `CLICON_YANG_MODULE_MAIN` - Specifies a single module to load. The module is searched for in the yang dir path.
+- `CLICON_YANG_MODULE_REVISION` : Specifies a revision to the main module. 
+
+Note that the special `CLIXON_DATADIR`, by default `/usr/local/share/clixon` should be included in the yang dir path for Clixon system files to be found.
+
+Application also has a command-line option `-y` to include a single Yang using absolute file path. This is mainly for debugging.
 
 ## How do I enable Yang features?
 

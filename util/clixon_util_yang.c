@@ -31,6 +31,8 @@
 
   ***** END LICENSE BLOCK *****
 
+  * Parse a SINGLE yang file - no dependencies - utility function only useful
+  * for basic syntactic checks.
  */
 
 #ifdef HAVE_CONFIG_H

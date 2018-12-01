@@ -51,7 +51,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <sys/param.h>
-
+#include <math.h> /* For pow() kludge in cvtype_max2str_dup2 */
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -169,6 +169,28 @@ static int yang2cli_stmt(clicon_handle h, yang_stmt *ys, cbuf *cb,
 static int yang2cli_var_union(clicon_handle h, yang_stmt *ys, char *origtype,
 			      yang_stmt *ytype, cbuf *cb, char *helptext);
 
+/*! Patched maxstring to account for DEC64 types 
+ * @note kludge to fix overflow error -> Fix the original error in cvtype_max2str
+ * by adding a fraction_digits argument.
+ */
+static char *
+cvtype_max2str_dup2(enum cv_type type,
+		    int fraction_digits)
+{
+    int   len;
+    char *str;
+    
+    if (type!=CGV_DEC64 || fraction_digits==0)
+	return cvtype_max2str_dup(type);
+    if ((len = cvtype_max2str(type, NULL, 0)) < 0)
+	return NULL;
+    if ((str = (char *)malloc(len+1)) == NULL)
+	return NULL;
+    memset(str, '\0', len+1);
+    len = snprintf(str, len+1, "%" PRId64 ".0", (INT64_MAX/((int)pow(10,fraction_digits))));
+    return str;
+}
+    
 /*! Generate CLI code for Yang leaf statement to CLIgen variable of specific type
  * Check for completion (of already existent values), ranges (eg range[min:max]) and
  * patterns, (eg regexp:"[0.9]*").
@@ -282,10 +304,12 @@ yang2cli_var_sub(clicon_handle h,
 		}
 		snprintf(r, 512, "%d", MAXPATHLEN);
 	    }
-	    else if ((r = cvtype_max2str_dup(cvtype)) == NULL){
+	    else {
+		if ((r = cvtype_max2str_dup2(cvtype, fraction_digits)) == NULL){
 		    clicon_err(OE_UNIX, errno, "cvtype_max2str");
 		    goto done;
 		}
+	    }
 	}
 	cprintf(cb, "%s]", r); /* range */
 	free(r);
@@ -410,7 +434,7 @@ yang2cli_var(clicon_handle h,
 	     cbuf         *cb,    
 	     char         *helptext)
 {
-    int retval = -1;
+    int           retval = -1;
     char         *origtype;
     yang_stmt    *yrestype; /* resolved type */
     char         *restype; /* resolved type */
@@ -513,10 +537,12 @@ yang2cli_leaf(clicon_handle h,
 	if (helptext)
 	    cprintf(cbuf, "(\"%s\")", helptext);
 	cprintf(cbuf, " ");
-	yang2cli_var(h, ys, cbuf, helptext);
+	if (yang2cli_var(h, ys, cbuf, helptext) < 0)
+	    goto done;
     }
     else
-	yang2cli_var(h, ys, cbuf, helptext);
+	if (yang2cli_var(h, ys, cbuf, helptext) < 0)
+	    goto done;
     if (callback){
 	if (cli_callback_generate(h, ys, cbuf) < 0)
 	    goto done;

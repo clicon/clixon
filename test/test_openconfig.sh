@@ -1,24 +1,104 @@
 #!/bin/bash
 # Parse yang openconfig tests
+# Note that the openconfig test suites are patched to counter CLixon issues as follows:
+# - release/models/mpls/openconfig-mpls-te.yang
+#      issue: https://github.com/clicon/clixon/issues/60
+# - release/models/wifi/types/openconfig-wifi-types.yang
+#      issue: https://github.com/clicon/clixon/issues/59
+# 
 #PROG="valgrind --leak-check=full --show-leak-kinds=all ../util/clixon_util_yang"
 PROG=../util/clixon_util_yang
-OPENCONFIG=~/syssrc/openconfig
+OPENCONFIG=public
+OCDIR=$OPENCONFIG/release/models
+
+# Clone openconfig dir if not there
+if [ ! -d public ]; then 
+    git clone https://github.com/openconfig/public
+else
+    (cd public; git pull)
+fi
 
 # include err() and new() functions and creates $dir
 . ./lib.sh
 
-# Openconfig
-# Files not parseable:
-# - openconfig-access-points.yang
-# - openconfig-access-points.yang
-new "Openconfig"
-files=$(find $OPENCONFIG -name "*.yang")
-for f in $files; do
-    new "$f"
-    YANG=$(cat $f)
- # NYI
-  expecteof "$PROG" 0 "$YANG" "module"
-done
-rm -rf $dir
+# Yang specifics: multi-keys and empty type
+APPNAME=example
+# include err() and new() functions and creates $dir
+. ./lib.sh
 
+cfg=$dir/conf_yang.xml
+fyang=$dir/test.yang
+
+cat <<EOF > $cfg
+<config>
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_YANG_DIR>$OCDIR</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/acl</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/aft</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/bfd</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/bgp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/catalog</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/interfaces</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/isis</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/lacp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/lldp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/local-routing</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/mpls</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/multicast</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/network-instance</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/openflow</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/optical-transport</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/ospf</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/platform</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/policy</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/policy-forwarding</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/probes</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/qos</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/relay-agent</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/rib</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/segment-routing</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/stp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/system</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/telemetry</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/types</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/vlan</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/wifi</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/wifi/access-points</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/wifi/ap-manager</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/wifi/mac</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/wifi/phy</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/wifi/types</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>$APPNAME</CLICON_YANG_MODULE_MAIN>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
+  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
+  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
+</config>
+EOF
+
+files=$(find $OPENCONFIG -name "*.yang")
+# Just cound nr of modules (exclude submodule)
+let m=0; # Nr of modules
+for f in $files; do
+    if [ -n "$(head -1 $f|grep '^module')" ]; then
+	let m++;
+    fi
+done
+echo "Number of modules:$m"
+for f in $files; do
+    if [ -n "$(head -1 $f|grep '^module')" ]; then
+	new "cli $f"
+	expectfn "$clixon_cli -1f $cfg -y $f show version" 0 "3."
+    fi
+
+done
+
+rm -rf $dir
 

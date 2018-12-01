@@ -13,6 +13,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
   <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -199,7 +200,6 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><can
 
 #new "netconf get CDATA"
 #expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/interfaces/interface[name='eth/0/0']/description\" /></get-config></rpc>]]>]]>" "<rpc-reply><data><interfaces><interface><name>eth/0/0</name><description><![CDATA[myeth&]]></description><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>"
-
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

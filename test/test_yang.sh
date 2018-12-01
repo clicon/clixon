@@ -6,12 +6,16 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang
+fsubmod=$dir/example-types.yang
 fyangerr=$dir/err.yang
 
+#  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
+
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>$APPNAME</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -30,6 +34,7 @@ module $APPNAME{
    yang-version 1.1;
    prefix ex;
    namespace "urn:example:clixon";
+   include example-types;
    extension c-define {
       description "Example from RFC 6020";
       argument "name";
@@ -85,6 +90,41 @@ module $APPNAME{
       type string;
     }
   }
+  list mylist{ /* uses submodule */
+         key x;
+         leaf x{
+           type string;
+         }
+         uses ex:subm-group;
+  }
+}
+EOF
+
+# Submodule Example from rfc7950 sec 7.2.3
+cat <<EOF > $fsubmod
+submodule example-types {
+       yang-version 1.1;
+       belongs-to $APPNAME {
+         prefix "sys";
+       }
+       import ietf-yang-types {
+         prefix "yang";
+       }
+       organization "Example Inc.";
+       contact         "Joe L. User";
+       description
+         "This submodule defines common Example types.";
+       revision "2007-06-09" {
+         description "Initial revision.";
+       }
+      grouping subm-group {
+        description "Defined in submodule";
+        container subm-container{
+          leaf subm-leaf{
+            type string;
+          }
+        }
+      }
 }
 EOF
 
@@ -128,7 +168,8 @@ new "netconf get config"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><f><e/><e>a</e></f></x></data></rpc-reply>]]>]]>$"
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
 
 #new "cli not defined extension"
 #new "netconf not defined extension"
@@ -182,7 +223,7 @@ new "netconf get presence only"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/x/nopresence"/></get-config></rpc>]]>]]>' "^<rpc-reply><data/></rpc-reply>]]>]]>$"
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf anyxml"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x><any><foo><bar a=\"nisse\"/></foo></any></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -191,7 +232,7 @@ new "netconf validate anyxml"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf delete candidate"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><delete-config><target><candidate/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><delete-config><target><candidate/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Check 3-keys
 new "netconf add one 3-key entry"
@@ -217,6 +258,25 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><can
 
 new "netconf check delete"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '<rpc-reply><data><x><y><a>1</a><b>2</b><c>1</c><val>two</val></y></x></data></rpc-reply>]]>]]>'
+
+# clear db for next test
+new "netconf delete candidate"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><delete-config><target><candidate/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit empty candidate"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconfig config submodule"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><mylist><x>a</x><subm-container><subm-leaf>foo</subm-leaf></subm-container></mylist></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf submodule get config"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><mylist><x>a</x><subm-container><subm-leaf>foo</subm-leaf></subm-container></mylist></data></rpc-reply>]]>]]>$"
+
+new "netconf submodule validate"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf submodule discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "Kill backend"
 # Check if premature kill

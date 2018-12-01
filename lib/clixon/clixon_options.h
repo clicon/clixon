@@ -105,9 +105,6 @@ int clicon_option_del(clicon_handle h, const char *name);
 static inline char *clicon_configfile(clicon_handle h){
     return clicon_option_str(h, "CLICON_CONFIGFILE");
 }
-static inline char *clicon_yang_dir(clicon_handle h){
-    return clicon_option_str(h, "CLICON_YANG_DIR");
-}
 static inline char *clicon_yang_module_main(clicon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MODULE_MAIN");
 }

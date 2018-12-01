@@ -264,7 +264,7 @@ nacm_load_external(clicon_handle h)
     }
     if ((yspec = yspec_new()) == NULL)
 	goto done;
-    if (yang_parse(h, NULL, "ietf-netconf-acm", CLIXON_DATADIR, NULL, yspec, NULL) < 0)
+    if (yang_parse(h, NULL, "ietf-netconf-acm", NULL, yspec, NULL) < 0)
 	goto done;
     fd = fileno(f);
     /* Read configfile */
@@ -753,11 +753,10 @@ main(int    argc,
     /* Load main application yang specification either module or specific file
      * If -y <file> is given, it overrides main module */
     if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, NULL) < 0)
+	if (yang_spec_parse_file(h, yang_filename, yspec, NULL) < 0)
 	    goto done;
     }
     else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
-				    clicon_yang_dir(h),
 				    clicon_yang_module_revision(h),
 				    yspec, NULL) < 0)
 	goto done;
@@ -770,11 +769,11 @@ main(int    argc,
 	goto done;
     /* Load yang Restconf stream discovery */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
-	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec, NULL)< 0)
 	 goto done;
      /* Load yang Netconf stream discovery */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-netconf-notification", NULL, yspec, NULL)< 0)
 	 goto done;
     /* Set options: database dir and yangspec (could be hidden in connect?)*/
     if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)

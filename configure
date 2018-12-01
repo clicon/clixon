@@ -4391,14 +4391,13 @@ fi
 done
 
 
-# This is to find clixon system files in the source code and Makefile
+# CLIXON_DATADIR is where clixon installs the "system" yang files in yang/Makfile
+# This directory should most probably be included in each application,
+# so each application designer may need to place CLIXON_DATADIR in their config
+# (last in yang dir list):
+# <CLIXON-YANG-DIR>$CLIXON_DATADIR</CLIXON-YANG_DIR>
 
 CLIXON_DATADIR="${prefix}/share/clixon"
-
-cat >>confdefs.h <<_ACEOF
-#define CLIXON_DATADIR "${CLIXON_DATADIR}"
-_ACEOF
-
 
 # Default location for config file
 

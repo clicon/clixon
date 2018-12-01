@@ -433,11 +433,10 @@ main(int argc, char **argv)
     /* Load main application yang specification either module or specific file
      * If -y <file> is given, it overrides main module */
     if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, &ymod) < 0)
+	if (yang_spec_parse_file(h, yang_filename, yspec, &ymod) < 0)
 	    goto done;
     }
     else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
-				    clicon_yang_dir(h),
 				    clicon_yang_module_revision(h),
 				    yspec, &ymod) < 0)
 	goto done;

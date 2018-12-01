@@ -178,7 +178,15 @@ parse_configfile(clicon_handle  h,
 		       __FUNCTION__, name, body);
 	    continue;
 	}
+	/* hard-coded exceptions for configure options that are leaf-lists (not leaf)
+	 * They must be accessed directly by looping over clicon_conf_xml(h)
+	 */
 	if (strcmp(name,"CLICON_FEATURE")==0)
+	    continue;
+	if (strcmp(name,"CLICON_YANG_DIR")==0)
+	    continue;
+	/* Used as an arg to this fn */
+	if (strcmp(name,"CLICON_CONFIGFILE")==0)
 	    continue;
 	if (hash_add(copt, 
 		     name,
@@ -236,14 +244,25 @@ clicon_options_main(clicon_handle h,
 	clicon_err(OE_CFG, 0, "%s: suffix %s not recognized (Run ./configure --with-config-compat?)", configfile, suffix);
 	goto done;
     }
-    /* Parse clixon yang spec */
-    if (yang_parse(h, NULL, "clixon-config", CLIXON_DATADIR, NULL, yspec, NULL) < 0)
-	goto done;    
-    /* Read configfile */
+    /* Read configfile first without yangspec, for bootstrapping */
     if (parse_configfile(h, configfile, yspec, &xconfig) < 0)
 	goto done;
     if (xml_rootchild(xconfig, 0, &xconfig) < 0)
 	goto done;
+    /* Set clixon_conf pointer to handle */
+    clicon_conf_xml_set(h, xconfig);
+    /* Parse clixon yang spec */
+    if (yang_parse(h, NULL, "clixon-config", NULL, yspec, NULL) < 0)
+	goto done;    
+    clicon_conf_xml_set(h, NULL);
+    if (xconfig)
+	xml_free(xconfig);
+    /* Read configfile second time now with check yang spec */
+    if (parse_configfile(h, configfile, yspec, &xconfig) < 0)
+	goto done;
+    if (xml_rootchild(xconfig, 0, &xconfig) < 0)
+	goto done;
+    /* Set clixon_conf pointer to handle */
     clicon_conf_xml_set(h, xconfig);
     /* Specific option handling */
     if (clicon_option_bool(h, "CLICON_XML_SORT") == 1)
@@ -638,7 +657,7 @@ clicon_conf_xml(clicon_handle h)
     return NULL;
 }
 
-/*! Set YANG specification for Clixon system options and features
+ /*! Set YANG specification for Clixon system options and features
  * ys must be a malloced pointer
  */
 int

@@ -95,6 +95,7 @@ enum rfc_6020{
     Y_MANDATORY,
     Y_MAX_ELEMENTS,
     Y_MIN_ELEMENTS,
+    Y_MODIFIER,
     Y_MODULE,
     Y_MUST,
     Y_NAMESPACE,
@@ -193,6 +194,8 @@ struct yang_stmt{
 
     char              *ys_argument;  /* String / argument depending on keyword */   
     int                ys_flags;     /* Flags according to YANG_FLAG_* above */
+    /*--------------here common for all -------*/
+    char              *ys_extra;     /* For unknown */
     cg_var            *ys_cv;        /* cligen variable. See ys_populate()
 					Following stmts have cv:s:
 				        leaf: for default value
@@ -200,7 +203,7 @@ struct yang_stmt{
 					config: boolean true or false
 					mandatory: boolean true or false
 					fraction-digits for fraction-digits
-					unkown-stmt (argument)
+					unknown-stmt (argument)
 				     */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
 					Y_RANGE: range_min, range_max 
@@ -265,11 +268,12 @@ int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
 int        ys_populate(yang_stmt *ys, void *arg);
 yang_stmt *yang_parse_file(int fd, const char *name, yang_spec *ysp);
 int        yang_parse(clicon_handle h, const char *filename,
-		      const char *module, const char *dir, 
+		      const char *module, 
 		      const char *revision, yang_spec *ysp, yang_stmt **ymodp);
 int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
-int        yang_abs_schema_nodeid(yang_spec *yspec, char *schema_nodeid, 
+int        yang_abs_schema_nodeid(yang_spec *yspec, yang_stmt *ys,
+				  char *schema_nodeid, 
 				  enum rfc_6020 keyword, yang_stmt **yres);
 int        yang_desc_schema_nodeid(yang_node *yn, char *schema_nodeid, 
 				   enum rfc_6020 keyword, yang_stmt **yres);
@@ -277,8 +281,8 @@ cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys, char *extra);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
-int        yang_spec_parse_module(clicon_handle h, char *module, char *dir, char *revision, yang_spec *yspec, yang_stmt **ymodp);
-int        yang_spec_parse_file(clicon_handle h, char *filename, char *dir, yang_spec *yspec, yang_stmt **ymodp);
+int        yang_spec_parse_module(clicon_handle h, char *module, char *revision, yang_spec *yspec, yang_stmt **ymodp);
+int        yang_spec_parse_file(clicon_handle h, char *filename, yang_spec *yspec, yang_stmt **ymodp);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_node *yn, char *name);
 

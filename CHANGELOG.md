@@ -9,10 +9,16 @@
 * More complete Yang parser 
   * YANG parser cardinality checked (only modules level yet)
     * See https://github.com/clicon/clixon/issues/84
+  * Support of submodule, include and belongs-to.
   * Openconfig yang specs parsed: https://github.com/openconfig/public
+  * Improved unknown handling
+  * `CLICON_YANG_DIR` is changed from a single directory to a path of directories
+    * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
 
 ### API changes on existing features (you may need to change your code)
 * Yang parser is stricter (see above) which may break parsing of existing yang specs.
+* Yang parser functions have changed signatures. Please check the source if you call these functions.
+* Add `<CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>` to your configuration file, or corresponding CLICON_DATADIR directory for Clixon system yang files.
 
 ### Minor changes
 * XML parser conformance to W3 spec

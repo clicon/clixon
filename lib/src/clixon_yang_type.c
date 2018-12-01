@@ -150,7 +150,7 @@ yang_type_cache_set(yang_type_cache **ycache0,
     return retval;
 }
 
-/*! Get individual fields (direct/destrucively) from yang type cache. */
+/*! Get individual fields (direct/destructively) from yang type cache. */
 int
 yang_type_cache_get(yang_type_cache *ycache,
 		    yang_stmt      **resolved,
@@ -227,19 +227,17 @@ ys_resolve_type(yang_stmt *ys,
     yang_stmt        *resolved = NULL;
  
     assert(ys->ys_keyword == Y_TYPE);
+    /* Recursively resolve ys -> resolve with restrictions(options, etc) 
+     * Note that the resolved type could be ys itself.
+     */
     if (yang_type_resolve((yang_stmt*)ys->ys_parent, ys, &resolved,
 			  &options, &mincv, &maxcv, &pattern, &fraction) < 0)
 	goto done;
 
-    if (resolved && strcmp(resolved->ys_argument, "union")==0)
-	; 
-    /* skip unions since they may have different sets of options, mincv, etc 
-     * You would have to resolve all sub-types also recursively
-     */
-    else
-	if (yang_type_cache_set(&ys->ys_typecache, 
-				resolved, options, mincv, maxcv, pattern, fraction) < 0)
-	    goto done;
+    /* Cache the resolve locally */
+    if (yang_type_cache_set(&ys->ys_typecache, 
+			    resolved, options, mincv, maxcv, pattern, fraction) < 0)
+	goto done;
     retval = 0;
  done:
     return retval;
@@ -660,10 +658,12 @@ ys_cv_validate_union_one(yang_stmt *ys,
 	    clicon_err(OE_UNIX, errno, "cv_new");
 	    goto done;
 	}
-	if (cv_parse(val, cvt) <0){
+	if ((retval = cv_parse1(val, cvt, reason)) < 0){
 	    clicon_err(OE_UNIX, errno, "cv_parse");
 	    goto done;
 	}
+	if (retval == 0)
+	    goto done;
 	if ((retval = cv_validate1(cvt, cvtype, options, range_min, range_max, 
 				   pattern, yrt, restype, reason)) < 0)
 	    goto done;
@@ -688,16 +688,32 @@ ys_cv_validate_union(yang_stmt *ys,
 {
     int        retval = 1; /* valid */
     yang_stmt *yt = NULL;
+    char      *reason1 = NULL;  /* saved reason */
 
     while ((yt = yn_each((yang_node*)yrestype, yt)) != NULL){
 	if (yt->ys_keyword != Y_TYPE)
 	    continue;
 	if ((retval = ys_cv_validate_union_one(ys, reason, yt, type, val)) < 0)
 	    goto done;
+	/* If validation failed, save reason, reset error and continue,
+	 * save latest reason if noithing validates.
+	 */
+	if (retval == 0 && reason && *reason != NULL){
+	    if (reason1)
+		free(reason1);
+	    reason1 = *reason;
+	    *reason = NULL;
+	}
 	if (retval == 1) /* Enough that one type validates value */
 	    break;
     }
  done:
+    if (retval == 0 && reason1){
+	*reason = reason1;
+	reason1 = NULL;
+    }
+    if (reason1)
+	free(reason1);
     return retval;
 }
 
@@ -908,7 +924,7 @@ resolve_restrictions(yang_stmt   *yrange,
 }
 
 /*! Recursively resolve a yang type to built-in type with optional restrictions
- * @param[in]  ys       yang-stmt from where the current search is based
+ * @param[in]  ys       (original) type yang-stmt where the current search is based
  * @param[in]  ytype    yang-stmt object containing currently resolving type
  * @param[out] yrestype resolved type. return built-in type or NULL. mandatory
  * @param[out] options  pointer to flags field of optional values. optional
@@ -945,14 +961,14 @@ yang_type_resolve(yang_stmt   *ys,
     char        *prefix = NULL;
     int          retval = -1;
     yang_node   *yn;
-    yang_stmt   *ymod;
+    yang_stmt   *yrmod; /* module where resolved type is looked for */
 
     if (options)
 	*options = 0x0;
     *yrestype    = NULL; /* Initialization of resolved type that may not be necessary */
     type      = yarg_id(ytype);     /* This is the type to resolve */
     prefix    = yarg_prefix(ytype); /* And this its prefix */
-    /* Cache does not work for eg string length 32 */
+    /* Cache does not work for eg string length 32? */
     if (!yang_builtin(type) && ytype->ys_typecache != NULL){
 	if (yang_type_cache_get(ytype->ys_typecache, 
 				yrestype, options, mincv, maxcv, pattern, fraction) < 0)
@@ -974,11 +990,12 @@ yang_type_resolve(yang_stmt   *ys,
 
     /* Not basic type. Now check if prefix which means we look in other module */
     if (prefix){ /* Go to top and find import that matches */
-	if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL){
-	    clicon_err(OE_DB, 0, "Type not resolved: %s:%s", prefix, type);
+	if ((yrmod = yang_find_module_by_prefix(ytype, prefix)) == NULL){
+	    clicon_err(OE_DB, 0, "Type not resolved: \"%s:%s\" in module %s",
+		       prefix, type, ys_module(ys)->ys_argument);
 	    goto done;
 	}
-	if ((rytypedef = yang_find((yang_node*)ymod, Y_TYPEDEF, type)) == NULL)
+	if ((rytypedef = yang_find((yang_node*)yrmod, Y_TYPEDEF, type)) == NULL)
 	    goto ok; /* unresolved */
     }
     else

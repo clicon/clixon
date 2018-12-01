@@ -199,10 +199,13 @@ AC_CHECK_LIB(dl, dlopen)
 
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp)
 
-# This is to find clixon system files in the source code and Makefile
+# CLIXON_DATADIR is where clixon installs the "system" yang files in yang/Makfile
+# This directory should most probably be included in each application,
+# so each application designer may need to place CLIXON_DATADIR in their config
+# (last in yang dir list):
+# <CLIXON-YANG-DIR>$CLIXON_DATADIR</CLIXON-YANG_DIR>
 AC_SUBST(CLIXON_DATADIR)
 CLIXON_DATADIR="${prefix}/share/clixon"
-AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${CLIXON_DATADIR}", [Clixon data dir for system yang files etc])
 
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])

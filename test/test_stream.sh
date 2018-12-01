@@ -25,8 +25,7 @@ UTIL=../util/clixon_util_stream
 NCWAIT=5 # Wait (netconf valgrind may need more time)
 
 if [ ! -x $UTIL ]; then
-    echo "$UTIL not found. To build: (cd ../util; make clixon_util_stream)"
-    exit 1
+    (cd ../util; make clixon_util_stream)
 fi
 DATE=$(date +"%Y-%m-%d")
 # include err() and new() functions and creates $dir
