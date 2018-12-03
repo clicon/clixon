@@ -142,9 +142,19 @@ module clixon-config {
                  they appear. Ensure that CLIXON_DATADIR(default 
                  /usr/local/share/clixon) is present in the path";
 	}
+	leaf CLICON_YANG_MAIN_FILE {
+	    type string;
+	    description
+		"If specified load a yang module in a specific absolute filename";
+	}
+	leaf CLICON_YANG_MAIN_DIR {
+	    type string;
+	    description
+		"If given, load all modules in this directory.
+                 See also CLICON_YANG_DIR which specifies a path of dirs";
+	}
 	leaf CLICON_YANG_MODULE_MAIN {
 	    type string;
-            default "clicon";
 	    description
 		"Option used to construct initial yang file: 
                  <module>[@<revision>]";
@@ -224,9 +234,18 @@ module clixon-config {
 	    type int32;
 	    default 1;
 	    description
-		"Generate code for CLI completion of existing db symbols. 
-      	         Example: Add name=\"myspec\" in datamodel spec and reference
-	         as @myspec";
+		"If set, generate CLI specification for CLI completion of
+                 loaded Yang modules. This CLI tree can be accessed in CLI
+                 spec files using the tree reference syntax (eg @datamodel).
+                 See also CLICON_CLI_MODEL_TREENAME.";
+	}
+	leaf CLICON_CLI_MODEL_TREENAME {
+	    type string;
+	    default "datamodel";
+	    description
+		"If CLICON_CLI_GENMODEL is set, CLI specs can reference the
+                 model syntax using this reference. 
+                 Example: set @datamodel, cli_set();";
 	}
 	leaf CLICON_CLI_GENMODEL_COMPLETION {
 	    type int32;

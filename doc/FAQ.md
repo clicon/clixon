@@ -73,8 +73,14 @@ clicon:x:1001:<user>,www-data
 ```
 
 ## What about reference documentation?
-Clixon uses Doxygen for reference documentation.
-Build using 'make doc' and aim your browser at doc/html/index.html.
+Clixon uses [Doxygen](http://www.doxygen.nl/index.html) for reference documentation.
+You need to install doxygen and graphviz on your system.
+Build it in the doc directory and point the browser to `.../clixon/doc/html/index.html` as follows:
+```
+> cd doc
+> make doc
+> make graphs # detailed callgraphs
+```
 
 ## How is configuration data stored?
 Configuration data is stored in an XML datastore. In the example the
@@ -115,12 +121,15 @@ are included.
 
 The following configuration file options control the loading of Yang files:
 - `CLICON_YANG_DIR` -  A list of directories (yang dir path) where Clixon searches for module and submodules.
+- `CLICON_YANG_MAIN_DIR` - Load all yang modules in this directory.
+- `CLICON_YANG_MAIN_FILE` - Load a specific Yang module fiven by a file.
 - `CLICON_YANG_MODULE_MAIN` - Specifies a single module to load. The module is searched for in the yang dir path.
 - `CLICON_YANG_MODULE_REVISION` : Specifies a revision to the main module. 
 
 Note that the special `CLIXON_DATADIR`, by default `/usr/local/share/clixon` should be included in the yang dir path for Clixon system files to be found.
 
-Application also has a command-line option `-y` to include a single Yang using absolute file path. This is mainly for debugging.
+You can combine the options, however, more specific options override
+less specific. For example, `CLICON_YANG_MAIN_FILE` overrides `CLICON_YANG_MODULE_MAIN`.
 
 ## How do I enable Yang features?
 

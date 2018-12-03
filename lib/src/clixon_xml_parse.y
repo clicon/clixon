@@ -315,7 +315,7 @@ xml_parse_attr(struct xml_parse_yacc_arg *ya,
     int    retval = -1;
     cxobj *xa; 
 
-#ifdef notyet
+#ifdef ENABLE_XMLNS
     if (prefix && strcmp(prefix,"xmlns")==0)
 	fprintf(stderr, "PrefixedAttName NCNAME:%s = %s\n", name, attval);
     if (prefix==NULL && strcmp(name,"xmlns")==0)

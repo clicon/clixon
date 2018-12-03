@@ -93,7 +93,7 @@ yang_modules_init(clicon_handle h)
 	goto done;
     }
     /* Ensure revision exists is set */
-    if (yang_spec_parse_module(h, "ietf-yang-library", NULL, yspec, NULL)< 0)
+    if (yang_spec_parse_module(h, "ietf-yang-library", NULL, yspec)< 0)
 	goto done;
     /* Find revision */
     if (yang_modules_revision(h) == NULL){

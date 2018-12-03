@@ -341,7 +341,7 @@ main(int    argc,
     struct timeval   tv = {0,}; /* timeout */
     yang_spec       *yspec = NULL;
     yang_spec       *yspecfg = NULL; /* For config XXX clixon bug */
-    char            *yang_filename = NULL;
+    char            *str;
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -420,7 +420,7 @@ main(int    argc,
 	    clicon_option_str_set(h, "CLICON_NETCONF_DIR", optarg);
 	    break;
 	case 'y' :{ /* Load yang spec file (override yang main module) */
-	    yang_filename = optarg;
+	    clicon_option_str_set(h, "CLICON_YANG_MAIN_FILE", optarg);
 	    break;
 	}
 	case 'U': /* Clixon 'pseudo' user */
@@ -444,16 +444,23 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
-    /* Load main application yang specification either module or specific file
-     * If -y <file> is given, it overrides main module */
-    if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, yspec, NULL) < 0)
+    /* Load Yang modules
+     * 1. Load a yang module as a specific absolute filename */
+    if ((str = clicon_yang_main_file(h)) != NULL){
+	if (yang_spec_parse_file(h, str, yspec) < 0)
 	    goto done;
     }
-    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
-				    clicon_yang_module_revision(h),
-				    yspec, NULL) < 0)
-	goto done;
+    /* 2. Load a (single) main module */
+    if ((str = clicon_yang_module_main(h)) != NULL){
+	if (yang_spec_parse_module(h, str, clicon_yang_module_revision(h),
+				   yspec) < 0)
+	    goto done;
+    }
+    /* 3. Load all modules in a directory */
+    if ((str = clicon_yang_main_dir(h)) != NULL){
+	if (yang_spec_load_dir(h, str, yspec) < 0)
+	    goto done;
+    }
     
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)

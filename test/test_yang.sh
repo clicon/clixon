@@ -5,7 +5,7 @@ APPNAME=example
 . ./lib.sh
 
 cfg=$dir/conf_yang.xml
-fyang=$dir/test.yang
+fyang=$dir/$APPNAME.yang
 fsubmod=$dir/example-types.yang
 fyangerr=$dir/err.yang
 

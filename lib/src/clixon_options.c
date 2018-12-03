@@ -252,7 +252,7 @@ clicon_options_main(clicon_handle h,
     /* Set clixon_conf pointer to handle */
     clicon_conf_xml_set(h, xconfig);
     /* Parse clixon yang spec */
-    if (yang_parse(h, NULL, "clixon-config", NULL, yspec, NULL) < 0)
+    if (yang_parse(h, NULL, "clixon-config", NULL, yspec) < 0)
 	goto done;    
     clicon_conf_xml_set(h, NULL);
     if (xconfig)

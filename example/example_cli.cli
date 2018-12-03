@@ -7,10 +7,10 @@ CLICON_PLUGIN="example_cli";
 translate value (<value:string translate:incstr()>),cli_set("/translate/value");
 
 # Note, when switching to PT, change datamodel to only @datamodel
-set @datamodel:example, cli_set();
-merge @datamodel:example, cli_merge();
-create @datamodel:example, cli_create();
-delete("Delete a configuration item") @datamodel:example, cli_del();
+set @datamodel, cli_set();
+merge @datamodel, cli_merge();
+create @datamodel, cli_create();
+delete("Delete a configuration item") @datamodel, cli_del();
 
 validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
@@ -40,19 +40,19 @@ show("Show a particular state of the system"){
     }
     configuration("Show configuration"), cli_show_config("candidate", "text", "/");{
 	    xml("Show configuration as XML"), cli_show_config("candidate", "xml", "/");{
-	        @datamodel:example, cli_show_auto("candidate", "text");		   
+	        @datamodel, cli_show_auto("candidate", "text");		   
 	    }
 	    cli("Show configuration as CLI commands"), cli_show_config("candidate", "cli", "/");{
-	        @datamodel:example, cli_show_auto("candidate", "cli");
+	        @datamodel, cli_show_auto("candidate", "cli");
 	    }
 	    netconf("Show configuration as netconf edit-config operation"), cli_show_config("candidate", "netconf", "/");{
-	        @datamodel:example, cli_show_auto("candidate", "netconf");
+	        @datamodel, cli_show_auto("candidate", "netconf");
 	    }
 	    text("Show configuration as text"), cli_show_config("candidate","text","/");{
-	        @datamodel:example, cli_show_auto("candidate", "text");
+	        @datamodel, cli_show_auto("candidate", "text");
 	    }
 	    json("Show configuration as JSON"), cli_show_config("candidate", "json", "/");{
-	    	@datamodel:example, cli_show_auto("candidate", "json");
+	    	@datamodel, cli_show_auto("candidate", "json");
 	    }
     }
 }

@@ -250,15 +250,14 @@ main(int argc, char **argv)
     int          logclisyntax  = 0;
     int          help = 0;
     char        *treename = NULL;
-    int          len;
+    //    int          len;
     int          logdst = CLICON_LOG_STDERR;
     char        *restarg = NULL; /* what remains after options */
     int          dump_configfile_xml = 0;
     yang_spec   *yspec;
     yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
     struct passwd *pw;
-    char        *yang_filename = NULL;
-    yang_stmt   *ymod = NULL; /* Main module */
+    char         *str;
     
     /* Defaults */
     once = 0;
@@ -390,8 +389,8 @@ main(int argc, char **argv)
 	case 'L' : /* Debug print dynamic CLI syntax */
 	    logclisyntax++;
 	    break;
-	case 'y' :{ /* Load yang spec file (override yang main module) */
-	    yang_filename = optarg;
+	case 'y' :{ /* Load yang absolute filename */
+	    clicon_option_str_set(h, "CLICON_YANG_MAIN_FILE", optarg);
 	    break;
 	}
 	case 'c' :{ /* Overwrite clispec with absolute filename */
@@ -430,16 +429,24 @@ main(int argc, char **argv)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
 
-    /* Load main application yang specification either module or specific file
-     * If -y <file> is given, it overrides main module */
-    if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, yspec, &ymod) < 0)
+    /* Load Yang modules
+     * 1. Load a yang module as a specific absolute filename */
+    if ((str = clicon_yang_main_file(h)) != NULL){
+	if (yang_spec_parse_file(h, str, yspec) < 0)
 	    goto done;
     }
-    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
-				    clicon_yang_module_revision(h),
-				    yspec, &ymod) < 0)
-	goto done;
+    /* 2. Load a (single) main module */
+    if ((str = clicon_yang_module_main(h)) != NULL){
+	if (yang_spec_parse_module(h, str, clicon_yang_module_revision(h),
+				   yspec) < 0)
+	    goto done;
+    }
+    /* 3. Load all modules in a directory */
+    if ((str = clicon_yang_main_dir(h)) != NULL){
+	if (yang_spec_load_dir(h, str, yspec) < 0)
+	    goto done;
+    }
+
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;
@@ -448,25 +455,22 @@ main(int argc, char **argv)
 
     /* Create tree generated from dataspec. If no other trees exists, this is
      * the only one.
+     * The following code creates the tree @datamodel
+     * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) 
+     * using the "tree reference"
+     * syntax, ie @datamodel
+     * But note that yang2cli generates syntax for ALL modules, not just for 
+     * <module>.
      */
     if (clicon_cli_genmodel(h)){
 	parse_tree    pt = {0,};  /* cli parse tree */
-	char         *name;       /* main module name */
+	char         *treeref; 
 
+	treeref = clicon_cli_model_treename(h);
 	/* Create cli command tree from dbspec */
 	if (yang2cli(h, yspec, &pt, clicon_cli_genmodel_type(h)) < 0)
 	    goto done;
-
-	/* name of main module */
-	name = ymod->ys_argument;
-
-	len = strlen("datamodel:") + strlen(name) + 1;
-	if ((treename = malloc(len)) == NULL){
-	    clicon_err(OE_UNIX, errno, "malloc");
-	    goto done;
-	}	
-	snprintf(treename, len, "datamodel:%s",  name);
-	cligen_tree_add(cli_cligen(h), treename, pt);
+	cligen_tree_add(cli_cligen(h), treeref, pt);
 
 	if (printgen)
 	    cligen_print(stdout, pt, 1);

@@ -230,7 +230,8 @@ The figure shows the SDK runtime of Clixon.
 
 Reference
 =========
-A reference manual can be built using [Doxygen](http://www.doxygen.nl/index.html). You need to install doxygen and graphviz on your system.
+Clixon uses [Doxygen](http://www.doxygen.nl/index.html) for reference documentation.
+You need to install doxygen and graphviz on your system.
 Build it in the doc directory and point the browser to `.../clixon/doc/html/index.html` as follows:
 ```
 > cd doc

@@ -51,3 +51,15 @@ int strverscmp (__const char *__s1, __const char *__s2);
 */
 #define XMLNS_YANG_ONLY 1
 
+/* Set for full XML namespace code in XML, NETCONF and YANG
+ * Experimental
+ */
+#undef ENABLE_XMLNS
+
+/* If set, patch all CLI spec calls to @datamodel:tree to @datamodel.
+ * This is a backward compatible fix for 3.9 for CLIgen specification files
+ * using model generation (CLIXON_CLI_GENMODEL).
+ * All new references should use @datamodel (or CLICON_CLI_MODEL_TREENAME).
+ * whereas older code used @datamodel:tree.
+ */
+#define CLICON_CLI_MODEL_TREENAME_PATCH

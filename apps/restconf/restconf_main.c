@@ -522,9 +522,9 @@ main(int    argc,
     int          logdst = CLICON_LOG_SYSLOG;
     yang_spec   *yspec = NULL;
     yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
-    char        *yang_filename = NULL;
     char        *stream_path;
     int          finish;
+    char        *str;
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -601,7 +601,7 @@ main(int    argc,
 	    clicon_option_str_set(h, "CLICON_RESTCONF_DIR", optarg);
 	    break;
 	case 'y' : /* Load yang spec file (override yang main module) */
-	    yang_filename = optarg;
+	    clicon_option_str_set(h, "CLICON_YANG_MAIN_FILE", optarg);
 	    break;
 	case 'a': /* internal backend socket address family */
 	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
@@ -627,26 +627,34 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
-    /* Load main application yang specification either module or specific file
-     * If -y <file> is given, it overrides main module */
-    if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, yspec, NULL) < 0)
+
+    /* Load Yang modules
+     * 1. Load a yang module as a specific absolute filename */
+    if ((str = clicon_yang_main_file(h)) != NULL){
+	if (yang_spec_parse_file(h, str, yspec) < 0)
 	    goto done;
     }
-    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
-				    clicon_yang_module_revision(h),
-				    yspec, NULL) < 0)
-	goto done;
+    /* 2. Load a (single) main module */
+    if ((str = clicon_yang_module_main(h)) != NULL){
+	if (yang_spec_parse_module(h, str, clicon_yang_module_revision(h),
+				   yspec) < 0)
+	    goto done;
+    }
+    /* 3. Load all modules in a directory */
+    if ((str = clicon_yang_main_dir(h)) != NULL){
+	if (yang_spec_load_dir(h, str, yspec) < 0)
+	    goto done;
+    }
 
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;
     /* Add system modules */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
-	 yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec, NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
 	 goto done;
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_parse_module(h, "ietf-netconf-notification", NULL, yspec, NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-netconf-notification", NULL, yspec)< 0)
 	 goto done;
     /* Call start function in all plugins before we go interactive 
        Pass all args after the standard options to plugin_start

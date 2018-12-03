@@ -12,15 +12,23 @@
   * Support of submodule, include and belongs-to.
   * Openconfig yang specs parsed: https://github.com/openconfig/public
   * Improved unknown handling
-  * Configure option `CLICON_YANG_DIR` is changed from a single directory to a path of directories
-    * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
+  * Yang Configure options changed
+    * `CLICON_YANG_DIR` is changed from a single directory to a path of directories
+      * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
+    * CLICON_YANG_MAIN_FILE Provides a filename with a single module filename.
+    * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
 
 ### API changes on existing features (you may need to change your code)
 * Yang parser is stricter (see above) which may break parsing of existing yang specs.
 * Yang parser functions have changed signatures. Please check the source if you call these functions.
 * Add `<CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>` to your configuration file, or corresponding CLICON_DATADIR directory for Clixon system yang files.
+* Change all @datamodel:tree to @datamodel in all CLI specification files
+  * If you generate CLI code from the model (CLIXON_CLI_GENMODEL).
+  * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
+* Removed return value ymodp from yang parse functions (eg yang_parse()).
+* New config option: CLICON_CLI_MODEL_TREENAME defining name of generated syntax tree if CLIXON_CLI_GENMODEL is set.
 * XML parser conformance to W3 spec
   * Names lexically correct (NCName)
   * Syntactically Correct handling of '<?' (processing instructions) and '<?xml' (XML declaration)

@@ -105,6 +105,12 @@ int clicon_option_del(clicon_handle h, const char *name);
 static inline char *clicon_configfile(clicon_handle h){
     return clicon_option_str(h, "CLICON_CONFIGFILE");
 }
+static inline char *clicon_yang_main_file(clicon_handle h){
+    return clicon_option_str(h, "CLICON_YANG_MAIN_FILE");
+}
+static inline char *clicon_yang_main_dir(clicon_handle h){
+    return clicon_option_str(h, "CLICON_YANG_MAIN_DIR");
+}
 static inline char *clicon_yang_module_main(clicon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MODULE_MAIN");
 }
@@ -128,6 +134,9 @@ static inline char *clicon_clispec_dir(clicon_handle h){
 }
 static inline char *clicon_cli_mode(clicon_handle h){
     return clicon_option_str(h, "CLICON_CLI_MODE");
+}
+static inline char *clicon_cli_model_treename(clicon_handle h){
+    return clicon_option_str(h, "CLICON_CLI_MODEL_TREENAME");
 }
 static inline char *clicon_sock(clicon_handle h){
     return clicon_option_str(h, "CLICON_SOCK");
