@@ -121,15 +121,19 @@ are included.
 
 The following configuration file options control the loading of Yang files:
 - `CLICON_YANG_DIR` -  A list of directories (yang dir path) where Clixon searches for module and submodules.
-- `CLICON_YANG_MAIN_DIR` - Load all yang modules in this directory.
-- `CLICON_YANG_MAIN_FILE` - Load a specific Yang module fiven by a file.
+- `CLICON_YANG_MAIN_FILE` - Load a specific Yang module fiven by a file. 
 - `CLICON_YANG_MODULE_MAIN` - Specifies a single module to load. The module is searched for in the yang dir path.
 - `CLICON_YANG_MODULE_REVISION` : Specifies a revision to the main module. 
+- `CLICON_YANG_MAIN_DIR` - Load all yang modules in this directory.
 
 Note that the special `CLIXON_DATADIR`, by default `/usr/local/share/clixon` should be included in the yang dir path for Clixon system files to be found.
 
-You can combine the options, however, more specific options override
-less specific. For example, `CLICON_YANG_MAIN_FILE` overrides `CLICON_YANG_MODULE_MAIN`.
+You can combine the options, however, if there are different variants
+of the same module, more specific options override less
+specific. The precedence of the options are as follows:
+- `CLICON_YANG_MAIN_FILE`
+- `CLICON_YANG_MODULE_MAIN`
+- `CLICON_YANG_MAIN_DIR`
 
 ## How do I enable Yang features?
 
