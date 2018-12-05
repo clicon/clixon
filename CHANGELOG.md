@@ -7,7 +7,7 @@
 
 ### Major New features
 * More complete Yang parser 
-  * YANG parser cardinality checked (only modules level yet)
+  * YANG parser cardinality checked (https://github.com/clicon/clixon/issues/48)
     * See https://github.com/clicon/clixon/issues/84
   * Support of submodule, include and belongs-to.
   * Openconfig yang specs parsed: https://github.com/openconfig/public

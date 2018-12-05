@@ -490,9 +490,11 @@ import_substmt : prefix_stmt {  clicon_debug(2,"import-stmt -> prefix-stmt"); }
 include_stmt  : K_INCLUDE identifier_str ';'
 		{ if (ysp_add(_yy, Y_INCLUDE, $2, NULL)== NULL) _YYERROR("include_stmt"); 
                            clicon_debug(2,"include-stmt -> id-str"); }
-              | K_INCLUDE identifier_str '{' include_substmts '}'
-		{ if (ysp_add(_yy, Y_INCLUDE, $2, NULL)== NULL) _YYERROR("include_stmt"); 
-                           clicon_debug(2,"include-stmt -> id-str { include-substmts }"); }
+              | K_INCLUDE identifier_str
+                { if (ysp_add_push(_yy, Y_INCLUDE, $2) == NULL) _YYERROR("include_stmt"); }
+	      '{' include_substmts '}'
+                { if (ystack_pop(_yy) < 0) _YYERROR("include_stmt");
+                  clicon_debug(2,"include-stmt -> id-str { include-substmts }"); }
               ;
 
 include_substmts : include_substmts include_substmt 
@@ -518,9 +520,13 @@ prefix_stmt   : K_PREFIX identifier_str stmtend /* XXX prefix-arg-str */
 			     clicon_debug(2,"prefix-stmt -> PREFIX string ;");}
               ;
 
-belongs_to_stmt : K_BELONGS_TO identifier_str '{' prefix_stmt '}'
-				{ if (ysp_add(_yy, Y_BELONGS_TO, $2, NULL)== NULL) _YYERROR("belongs_to_stmt"); 
-			     clicon_debug(2,"belongs-to-stmt -> BELONGS-TO id-arg-str { prefix-stmt } ");}
+belongs_to_stmt : K_BELONGS_TO identifier_str 
+                        { if (ysp_add_push(_yy, Y_BELONGS_TO, $2) == NULL) _YYERROR("belongs_to_stmt"); }
+
+                  '{' prefix_stmt '}'
+                    { if (ystack_pop(_yy) < 0) _YYERROR("belongs_to_stmt");
+		      clicon_debug(2,"belongs-to-stmt -> BELONGS-TO id-arg-str { prefix-stmt } ");
+			}
                  ;
 
 organization_stmt: K_ORGANIZATION string stmtend
@@ -1469,9 +1475,9 @@ deviation_substmt : description_stmt  { clicon_debug(2,"deviation-substmt -> des
 		  ;
 
 deviate_not_supported_stmt : K_DEVIATE string stmtend
-                     { clicon_debug(2,"deviate-not-supported-stmt -> DEVIATE string"); }
+	                { if (ysp_add(_yy, Y_DEVIATE, $2, NULL) == NULL) _YYERROR("notification_stmt");
+    			   clicon_debug(2,"deviate-not-supported-stmt -> DEVIATE string ;"); }
                              ;
-
 
 /* body */
 body_stmts    : body_stmts body_stmt { clicon_debug(2,"body-stmts -> body-stmts body-stmt"); } 

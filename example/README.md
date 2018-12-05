@@ -1,7 +1,6 @@
 # Clixon example
 
-This directory contains a Clixon example which includes a simple
-routing example. It contains the following files:
+This directory contains a Clixon example which includes a simple example. It contains the following files:
 * example.xml       The configuration file. See yang/clixon-config@<date>.yang for all available fields.
 * example.yang      The yang spec of the example. It mainly includes ietf routing and IP modules.
 * example_cli.cli   CLIgen specification.

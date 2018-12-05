@@ -6,16 +6,18 @@
 # - release/models/wifi/types/openconfig-wifi-types.yang
 #      issue: https://github.com/clicon/clixon/issues/59
 # 
-#PROG="valgrind --leak-check=full --show-leak-kinds=all ../util/clixon_util_yang"
-PROG=../util/clixon_util_yang
 OPENCONFIG=public
 OCDIR=$OPENCONFIG/release/models
 
 # Clone openconfig dir if not there
+if false; then
 if [ ! -d public ]; then 
     git clone https://github.com/openconfig/public
 else
-    (cd public; git pull)
+    (cd public;
+     #git pull
+    )
+fi
 fi
 
 # include err() and new() functions and creates $dir
@@ -91,7 +93,7 @@ for f in $files; do
 	let m++;
     fi
 done
-echo "Number of modules:$m"
+new "Openconfig test: $clixon_cli -1f $cfg -y $f show version ($m modules)"
 for f in $files; do
     if [ -n "$(head -1 $f|grep '^module')" ]; then
 	new "cli $f"
