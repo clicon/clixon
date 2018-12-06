@@ -13,6 +13,7 @@ clixon_cli=clixon_cli
 
 # For memcheck / performance
 #clixon_netconf="valgrind --tool=callgrind clixon_netconf"
+# use kcachegrind to view
 #clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
 clixon_netconf=clixon_netconf
 
