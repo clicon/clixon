@@ -31,25 +31,14 @@
 
   ***** END LICENSE BLOCK *****
 
- *
+ * XML sort and earch functions when used with YANG
  */
-
-#ifndef _BACKEND_HANDLE_H_
-#define _BACKEND_HANDLE_H_
+#ifndef _CLIXON_NACM_H
+#define _CLIXON_NACM_H
 
 /*
- * Prototypes 
- * not exported.
+ * Prototypes
  */
-/* backend handles. Defined in clixon_backend_handle.c */
-clicon_handle backend_handle_init(void);
+int nacm_access(clicon_handle h, char *mode, char *name, char *username, cbuf *cbret);
 
-int backend_handle_exit(clicon_handle h);
-
-struct client_entry *backend_client_add(clicon_handle h, struct sockaddr *addr);
-
-struct client_entry *backend_client_list(clicon_handle h);
-
-int backend_client_delete(clicon_handle h, struct client_entry *ce);
-
-#endif  /* _BACKEND_HANDLE_H_ */
+#endif /* _CLIXON_NACM_H */

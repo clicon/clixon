@@ -6,7 +6,10 @@
 * [Roadmap](ROADMAP.md) (Uncommitted and unprioritized)
 
 ### Major New features
-* More complete Yang parser 
+	
+* NACM extension (RFC8341)
+  * Move NACM files from backend to lib src dir
+* Yang code upgrade (RFC7950)
   * YANG parser cardinality checked (https://github.com/clicon/clixon/issues/48)
     * See https://github.com/clicon/clixon/issues/84
   * Support of submodule, include and belongs-to.
