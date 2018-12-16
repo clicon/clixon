@@ -70,7 +70,7 @@
 /*! Load an xmldb storage plugin according to filename
  * If init function fails (not found, wrong version, etc) print a log and dont
  * add it.
- * @param[in]  h         CLicon handle
+ * @param[in]  h         Clicon handle
  * @param[in]  filename  Actual filename including path
  */
 int 

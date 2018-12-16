@@ -245,7 +245,7 @@ validate_leafref(cxobj     *xt,
     char        *leafbody;
 
     if ((leafrefbody = xml_body(xt)) == NULL)
-	return 0;
+	goto ok;
     if ((ypath = yang_find((yang_node*)ytype, Y_PATH, NULL)) == NULL){
 	clicon_err(OE_DB, 0, "Leafref %s requires path statement", ytype->ys_argument);
 	goto done;
@@ -264,6 +264,7 @@ validate_leafref(cxobj     *xt,
 		   leafrefbody);
 	goto done;
     }
+ ok:
     retval = 0;
  done:
     if (xvec)
@@ -335,6 +336,73 @@ validate_identityref(cxobj     *xt,
     if (cb)
 	cbuf_free(cb);
     return retval;
+}
+
+/*! Validate an RPC node
+ * @param[in]  xt  XML node to be validated
+ * @retval     1   Validation OK
+ * @retval     0   Validation failed
+ * @retval    -1   Error
+ * rfc7950
+ * 7.14.2
+ * If a leaf in the input tree has a "mandatory" statement with the
+ * value "true", the leaf MUST be present in an RPC invocation.
+ *
+ * If a leaf in the input tree has a default value, the server MUST use
+ * this value in the same cases as those described in Section 7.6.1.  In
+ * these cases, the server MUST operationally behave as if the leaf was
+ * present in the RPC invocation with the default value as its value.
+ *
+ * If a leaf-list in the input tree has one or more default values, the
+ * server MUST use these values in the same cases as those described in
+ * Section 7.7.2.  In these cases, the server MUST operationally behave
+ * as if the leaf-list was present in the RPC invocation with the
+ * default values as its values.
+ *
+ * Since the input tree is not part of any datastore, all "config"
+ * statements for nodes in the input tree are ignored.
+ *
+ * If any node has a "when" statement that would evaluate to "false",
+ * then this node MUST NOT be present in the input tree.
+ *
+ * 7.14.4
+ * Input parameters are encoded as child XML elements to the rpc node's
+ * XML element, in the same order as they are defined within the "input"
+ * statement.
+ *
+ * If the RPC operation invocation succeeded and no output parameters
+ * are returned, the <rpc-reply> contains a single <ok/> element defined
+ * in [RFC6241].  If output parameters are returned, they are encoded as
+ * child elements to the <rpc-reply> element defined in [RFC6241], in
+ * the same order as they are defined within the "output" statement.
+ */
+int
+xml_yang_validate_rpc(cxobj *xrpc)
+{
+    int        retval = -1;
+    yang_stmt *yn=NULL;  /* rpc name */
+    cxobj     *xn;       /* rpc name */
+    yang_stmt *yi=NULL;  /* input name */
+    cxobj     *xi;       /* input name */
+    
+    assert(strcmp(xml_name(xrpc), "rpc")==0);
+    xn = NULL;
+    while ((xn = xml_child_each(xrpc, xn, CX_ELMNT)) != NULL) {
+	if ((yn = xml_spec(xn)) == NULL)
+	    goto fail;
+	xi = NULL;
+	while ((xi = xml_child_each(xn, xi, CX_ELMNT)) != NULL) {
+	    if ((yi = xml_spec(xi)) == NULL)
+		goto fail;
+	}
+    }
+    // ok: /* pass validation */
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Validate a single XML node with yang specification for added entry
@@ -418,9 +486,14 @@ xml_yang_validate_add(cxobj   *xt,
 /*! Validate a single XML node with yang specification for all (not only added) entries
  * 1. Check leafrefs. Eg you delete a leaf and a leafref references it.
  * @param[in]  xt  XML node to be validated
- * @retval     0   Valid OK
+ * @param[in]  arg Not used
  * @retval    -1   Validation failed
+ * @retval     0   Validation OK
  * @see xml_yang_validate_add
+ * @code
+ *   if (xml_apply(x, CX_ELMNT, (xml_applyfn_t*)xml_yang_validate_all, 0) < 0)
+ *      err;
+ * @endcode
  */
 int
 xml_yang_validate_all(cxobj   *xt, 
@@ -1397,13 +1470,77 @@ xml_non_config_data(cxobj *xt,
     return retval;
 }
 
-
-/*! Add yang specification backpoint to XML node
+/*! Add yang specification backpointer to rpc
+ * 
  * @param[in]   xt      XML tree node
  * @param[in]   arg     Yang spec
- * @note This may be unnecessary if yspec us set on creation
+ * @retval      0       OK
+ * @retval     -1       Error
+ * @note This may be unnecessary if yspec is set on creation
  * @note For subs to anyxml nodes will not have spec set
  * @note No validation is done,... XXX
+ * @code
+ * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
+ * @endcode
+ * @see xml_spec_populate
+ */
+int
+xml_spec_populate_rpc(clicon_handle h,
+		      cxobj        *xrpc,
+		      yang_spec    *yspec)
+{
+    int        retval = -1;
+    yang_stmt *y=NULL;    /* yang node */
+    yang_stmt *ymod=NULL; /* yang module */
+    yang_stmt *yi = NULL; /* input */
+    yang_stmt *ya = NULL; /* arg */
+    cxobj     *x;
+    cxobj     *xi;
+    int        i;
+    
+    if ((strcmp(xml_name(xrpc), "rpc"))!=0){
+	clicon_err(OE_UNIX, EINVAL, "RPC expected");
+	goto done;
+    }
+    x = NULL;
+    while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
+	if (ys_module_by_xml(yspec, x, &ymod) < 0)
+	    goto done;
+	if (ymod != NULL)
+	    y = yang_find((yang_node*)ymod, Y_RPC, xml_name(x));
+	/* Loose semantics: loop through all modules to find the node 
+	 */
+	if (y == NULL &&
+	    clicon_option_bool(h, "CLICON_XML_NS_ITERATE")){
+	    for (i=0; i<yspec->yp_len; i++){
+		ymod = yspec->yp_stmt[i];
+		if ((y = yang_find((yang_node*)ymod, Y_RPC, xml_name(x))) != NULL)
+		    break;
+	    }
+	}
+	if (y){
+	    xml_spec_set(x, y);
+	    if ((yi = yang_find((yang_node*)y, Y_INPUT, NULL)) != NULL){
+		xi = NULL;
+		while ((xi = xml_child_each(x, xi, CX_ELMNT)) != NULL) {
+		    if ((ya = yang_find_datanode((yang_node*)yi, xml_name(xi))) != NULL)
+			xml_spec_set(xi, ya);
+		}		
+	    }
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Add yang specification backpointer to XML node
+ * @param[in]   xt      XML tree node
+ * @param[in]   arg     Yang spec
+ * @note This may be unnecessary if yspec is set on creation
+ * @note For subs to anyxml nodes will not have spec set
+ * @note No validation is done,... XXX
+ * @note relies on kludge _CLICON_XML_NS_ITERATE
  * @code
  * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
  * @endcode
@@ -1413,24 +1550,52 @@ xml_spec_populate(cxobj  *x,
 		  void   *arg)
 {
     int        retval = -1;
-    yang_spec *yspec = (yang_spec*)arg;
+    //    clicon_handle h = (clicon_handle)arg;
+    yang_spec *yspec=NULL; /* yang spec */
     yang_stmt *y=NULL;  /* yang node */
+    yang_stmt *yparent; /* yang parent */
+    yang_stmt *ymod;    /* yang module */
+    cxobj     *xp;      /* xml parent */
+    char      *name;
+    int        i;
 
-    if (xml_child_spec(xml_name(x), xml_parent(x), yspec, &y) < 0)
-	goto done;
-#if 0
-    if ((xp = xml_parent(x)) != NULL &&
-	(yp = xml_spec(xp)) != NULL)
-	y = yang_find_datanode((yang_node*)yp, xml_name(x));
-    else
-	y = yang_find_topnode(yspec, name, YC_DATANODE); /* still NULL for config */
-#endif
-    if (y)
+    yspec = (yang_spec*)arg;
+    if (xml_spec(x))
+	goto ok;
+    xp = xml_parent(x);
+    name = xml_name(x);
+    if (xp && (yparent = xml_spec(xp)) != NULL)
+	y = yang_find_datanode((yang_node*)yparent, name);
+    else if (yspec){
+	if (ys_module_by_xml(yspec, x, &ymod) < 0)
+	    goto done;
+	if (ymod != NULL)
+	    y = yang_find_datanode((yang_node*)ymod, name);
+	/* Loose semantics: loop through all modules to find the node 
+	 * XXX clicon_option_bool(h, "CLICON_XML_NS_ITERATE")
+	 */
+	if (y == NULL && _CLICON_XML_NS_ITERATE){
+	    for (i=0; i<yspec->yp_len; i++){
+		ymod = yspec->yp_stmt[i];
+		if ((y = yang_find_datanode((yang_node*)ymod, name)) != NULL)
+		    break;
+	    }
+	}
+    }
+    if (y) 
 	xml_spec_set(x, y);
+#if 0 /* Add if you want validation error */
+    else {
+	clicon_err(OE_YANG, ENOENT, "No yang top found?");
+	goto done;
+    }
+#endif
+    ok:
     retval = 0;
  done:
     return retval;
 }
+
 
 /*! Translate from restconf api-path in cvv form to xml xpath
  * eg a/b=c -> a/[b=c] 
@@ -1757,7 +1922,6 @@ api_path2xml(char       *api_path,
  * @retval     0     OK. If reason is set, Yang error
  * @retval    -1     Error
  * Assume x0 and x1 are same on entry and that y is the spec
- * @see put in clixon_keyvalue.c
  */
 static int
 xml_merge1(cxobj              *x0,

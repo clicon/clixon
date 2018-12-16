@@ -6,20 +6,42 @@
 * [Roadmap](ROADMAP.md) (Uncommitted and unprioritized)
 
 ### Major New features
-* More complete Yang parser 
+	
+* NACM extension (RFC8341)
+  * NACM module support (RFC8341 A1+A2)
+  * Recovery user "_nacm_recovery" added.
+    * Example use is restconf PUT when NACM edit-config is permitted, then automatic commit and discard are permitted using recovery user.
+  * Example user changed adm1 to andy to comply with RFC8341 example
+* Yang code upgrade (RFC7950)
   * YANG parser cardinality checked (https://github.com/clicon/clixon/issues/48)
     * See https://github.com/clicon/clixon/issues/84
+  * RPC method input parameters validated
+    * see https://github.com/clicon/clixon/issues/47
   * Support of submodule, include and belongs-to.
   * Openconfig yang specs parsed: https://github.com/openconfig/public
-  * Improved unknown handling
+  * Improved "unknown" handling
   * Yang load file configure options changed
     * `CLICON_YANG_DIR` is changed from a single directory to a path of directories
       * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
     * CLICON_YANG_MAIN_FILE Provides a filename with a single module filename.
     * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
+* Correct XML namespace handling
+  * XML multiple modules was based on "loose" semantics so that yang modules were found by iterating thorugh namespaces until a match was made. This did not adhere to proper [XML namespace handling](https://www.w3.org/TR/2009/REC-xml-names-20091208), and causes problems with overlapping names and false positives. Below see XML accepted (but wrong), and correct namespace declaration:
+```
+     <rpc><my-own-method></rpc> # Wrong but accepted
+     <rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"> # Correct
+       <my-own-method xmlns="http://example.net/me/my-own/1.0">
+     </rpc>
+```
+  * To keep old loose semantics set config option CLICON_XML_NS_ITERATE (true by default)
+  * XML to JSON translator support for mapping xmlns attribute to module name prefix.
+  * Default namespace is still "urn:ietf:params:xml:ns:netconf:base:1.0"
+  * See https://github.com/clicon/clixon/issues/49
 
 ### API changes on existing features (you may need to change your code)
 * Yang parser is stricter (see above) which may break parsing of existing yang specs.
+* XML namespace handling is corrected (see above)
+  * For backward compatibility set config option  CLICON_XML_NS_ITERATE
 * Yang parser functions have changed signatures. Please check the source if you call these functions.
 * Add `<CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>` to your configuration file, or corresponding CLICON_DATADIR directory for Clixon system yang files.
 * Change all @datamodel:tree to @datamodel in all CLI specification files
@@ -27,6 +49,8 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
+* Changed all make tags --> make TAGS
+* Keyvalue datastore removed (it has been disabled since 3.3.3)
 * Removed return value ymodp from yang parse functions (eg yang_parse()).
 * New config option: CLICON_CLI_MODEL_TREENAME defining name of generated syntax tree if CLIXON_CLI_GENMODEL is set.
 * XML parser conformance to W3 spec
@@ -39,6 +63,7 @@
 * getopt return value changed from char to int (https://github.com/clicon/clixon/issues/58)
 
 ### Known issues
+* debug rpc added in example application (should be in clixon-config).
 
 ## 3.8.0 (6 Nov 2018)
 

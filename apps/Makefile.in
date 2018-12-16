@@ -80,5 +80,5 @@ distclean: clean
 	for i in $(SUBDIRS); \
 	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
-tags:
+TAGS:
 	find $(srcdir) -name '*.[chyl]' -print | etags -

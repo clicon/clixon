@@ -106,21 +106,23 @@ cat <<EOF > $fyang
      }
 EOF
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg
-if [ $? -ne 0 ]; then
-    err
-fi
-new "start backend  -s init -f $cfg -y $fyang"
-# start new backend
-sudo $clixon_backend -s init -f $cfg -y $fyang # -D 1
-if [ $? -ne 0 ]; then
-    err
+new "test params: -f $cfg -y $fyang"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg -y $fyang"
+    # start new backend
+    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "Set crypto to aes"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><crypto>aes</crypto></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><crypto>aes</crypto></config></edit-config></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><ok/></rpc-reply>]]>]]>$'
 
 new "netconf validate "
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -179,6 +181,10 @@ expectfn "$clixon_cli -1 -f $cfg -y $fyang -l o set crypto des:des3" 0 "^$"
 
 new "cli validate"
 expectfn "$clixon_cli -1 -f $cfg -y $fyang -l o validate" 0 "^$"
+
+if [ $BE -ne 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill

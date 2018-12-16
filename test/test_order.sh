@@ -107,18 +107,19 @@ cat <<EOF > $dbdir/running_db
 </config>
 EOF
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
-fi
+new "test params: -f $cfg -y $fyang"
 
-new "start backend"
-# start new backend
-sudo $clixon_backend -s running -f $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg -y $fyang
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend"
+    sudo $clixon_backend -s running -f $cfg -y $fyang -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 # Check as file
@@ -170,6 +171,10 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><can
 
 new "verify list user order (as entered)"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/y2\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y2><k>c</k><a>bar</a></y2><y2><k>b</k><a>foo</a></y2><y2><k>a</k><a>fie</a></y2></data></rpc-reply>]]>]]>$"
+
+if [ $BE -ne 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill

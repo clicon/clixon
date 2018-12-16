@@ -41,6 +41,10 @@
 /*
  * Constants
  */
+/* If rpc call does not have a namespace (eg w xmlns) then use the default NETCONF
+ * namespace (rfc6241 3.1)
+ */
+#define DEFAULT_XML_RPC_NAMESPACE "urn:ietf:params:xml:ns:netconf:base:1.0"
 
 /*
  * Types
@@ -81,10 +85,13 @@ typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 #define XML_FLAG_NONE   0x10  /* Node is added as NONE */
 
 
-/* Sort and binary search of XML children
- * Experimental
+/* Iterate through modules to find the matching datanode
+ * or rpc if no xmlns attribute specifies namespace.
+ * This is loose semantics of finding namespaces.
+ * And it is wrong, but is the way Clixon originally was written."
+ * @see CLICON_XML_NS_ITERATE clixon configure option 
  */
-extern int xml_child_sort;
+extern int _CLICON_XML_NS_ITERATE;
 
 /*
  * Prototypes
@@ -94,6 +101,7 @@ char     *xml_name(cxobj *xn);
 int       xml_name_set(cxobj *xn, char *name);
 char     *xml_namespace(cxobj *xn);
 int       xml_namespace_set(cxobj *xn, char *name);
+int       xml2ns(cxobj *x, char *localname, char **namespace);
 cxobj    *xml_parent(cxobj *xn);
 int       xml_parent_set(cxobj *xn, cxobj *parent);
 
@@ -129,6 +137,8 @@ int       xml_rootchild(cxobj  *xp, int i, cxobj **xcp);
 
 char     *xml_body(cxobj *xn);
 cxobj    *xml_body_get(cxobj *xn);
+char     *xml_find_type_value(cxobj *xn_parent, char *prefix,
+			      char *name, enum cxobj_type type);
 char     *xml_find_value(cxobj *xn_parent, char *name);
 char     *xml_find_body(cxobj *xn, char *name);
 cxobj    *xml_find_body_obj(cxobj *xt, char *name, char *val);

@@ -14,7 +14,7 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 
 cat <<EOF > $cfg
-<config>
+<config xmlns="http://clicon.org">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
@@ -31,17 +31,18 @@ cat <<EOF > $cfg
 </config>
 EOF
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -z -f $cfg
-if [ $? -ne 0 ]; then
-    err
-fi
-new "start backend -s init -f $cfg"
-sudo $clixon_backend -s init -f $cfg
-
-if [ $? -ne 0 ]; then
-    err
+new "test params: -f $cfg"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -z -f $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg"
+    sudo $clixon_backend -s init -f $cfg -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "cli configure top"
@@ -113,6 +114,10 @@ expectfn "$clixon_cli -1 -f $cfg -l o debug level 0" 0 "^$"
 
 new "cli rpc"
 expectfn "$clixon_cli -1 -f $cfg -l o rpc ipv4" 0 "<address-family>ipv4</address-family>" "<next-hop-list>2.3.4.5</next-hop-list>"
+
+if [ $BE -ne 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill

@@ -123,7 +123,7 @@ module clixon-config {
                "Supported features as used by YANG feature/if-feature
 	        value is: <module>:<feature>, where <module> and <feature>
                 are either names, or the special character '*'.
-                *:an* means enable all features
+                *:* means enable all features
                 <module>:* means enable all features in the specified module
                 *:<feature> means enable the specific feature in all modules";
 	   type string;
@@ -150,7 +150,7 @@ module clixon-config {
 	leaf CLICON_YANG_MAIN_DIR {
 	    type string;
 	    description
-		"If given, load all modules in this directory.
+		"If given, load all modules in this directory (all .yang files)
                  See also CLICON_YANG_DIR which specifies a path of dirs";
 	}
 	leaf CLICON_YANG_MODULE_MAIN {
@@ -353,6 +353,15 @@ module clixon-config {
                  Only works for Yang specified XML.
                  If not set, all lists accessed via linear search.";
 	}
+	leaf CLICON_XML_NS_ITERATE {
+	    type boolean;
+	    default true;
+	    description
+		"If set, iterate through modules to find the matching datanode
+                 or rpc if no xmlns attribute specifies namespace.
+                 This is loose semantics of finding namespaces.
+                 And it is wrong, but is the way Clixon originally was written.";
+	}
 	leaf CLICON_USE_STARTUP_CONFIG {
 	    type int32;
 	    default 0;
@@ -448,6 +457,14 @@ module clixon-config {
 	    description "Retention for stream replay buffers in seconds, ie how much
                          data to store before dropping. 0 means no retention";
 
+	}
+    }
+    rpc debug {
+	description "Set debug level of backend.";
+	input {
+	    leaf level {
+		type uint32;
+	    }
 	}
     }
 }

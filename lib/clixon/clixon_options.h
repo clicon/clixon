@@ -171,6 +171,9 @@ int clicon_quiet_mode_set(clicon_handle h, int val);
 yang_spec * clicon_dbspec_yang(clicon_handle h);
 int clicon_dbspec_yang_set(clicon_handle h, struct yang_spec *ys);
 
+cxobj * clicon_nacm_ext(clicon_handle h);
+int clicon_nacm_ext_set(clicon_handle h, cxobj *xn);
+
 #if 1 /* Temporary function until "Top-level Yang symbol cannot be called "config"" is fixed */
 yang_spec * clicon_config_yang(clicon_handle h);
 int clicon_config_yang_set(clicon_handle h, struct yang_spec *ys);

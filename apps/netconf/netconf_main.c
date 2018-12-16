@@ -95,6 +95,10 @@ process_incoming_packet(clicon_handle h,
 
     clicon_debug(1, "RECV");
     clicon_debug(2, "%s: RCV: \"%s\"", __FUNCTION__, cbuf_get(cb));
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(LOG_ERR, errno, "cbuf_new");
+	goto done;
+    }
     yspec = clicon_dbspec_yang(h);
     if ((str0 = strdup(cbuf_get(cb))) == NULL){
 	clicon_log(LOG_ERR, "%s: strdup: %s", __FUNCTION__, strerror(errno));
@@ -103,19 +107,25 @@ process_incoming_packet(clicon_handle h,
     str = str0;
     /* Parse incoming XML message */
     if (xml_parse_string(str, yspec, &xreq) < 0){ 
-	if ((cbret = cbuf_new()) == NULL){
-	    if (netconf_operation_failed(cbret, "rpc", "internal error")< 0)
-		goto done;
-	    netconf_output(1, cbret, "rpc-error");
-	}
-	else
-	    clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
 	free(str0);
+	if (netconf_operation_failed(cbret, "rpc", "internal error")< 0)
+	    goto done;
+	netconf_output(1, cbret, "rpc-error");
 	goto done;
     }
     free(str0);
-    if ((xrpc=xpath_first(xreq, "//rpc")) != NULL)
+    if ((xrpc=xpath_first(xreq, "//rpc")) != NULL){
+	int ret;
         isrpc++;
+	if ((ret = xml_yang_validate_rpc(xrpc)) < 0) 
+	    goto done;
+	if (ret == 0){
+	    if (netconf_operation_failed(cbret, "application", "Validation failed")< 0)
+		goto done;
+	    netconf_output(1, cbret, "rpc-error");
+	    goto done;
+	}
+    }
     else
         if (xpath_first(xreq, "//hello") != NULL)
 	    ;
@@ -134,30 +144,27 @@ process_incoming_packet(clicon_handle h,
 	else{ /* there is a return message in xret */
 	    cxobj *xa, *xa2;
 	    assert(xret);
-
-	    if ((cbret = cbuf_new()) != NULL){
-		if ((xc = xml_child_i(xret,0))!=NULL){
-		    xa=NULL;
-		    /* Copy message-id attribute from incoming to reply. 
-		     * RFC 6241:
-		     * If additional attributes are present in an <rpc> element, a NETCONF
-		     * peer MUST return them unmodified in the <rpc-reply> element.  This
-		     * includes any "xmlns" attributes.
-		     */
-		    while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
-			if ((xa2 = xml_dup(xa)) ==NULL)
-			    goto done;
-			if (xml_addsub(xc, xa2) < 0)
-			    goto done;
-		    }
-		    add_preamble(cbret);
-
-		    clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0);
-		    add_postamble(cbret);
-		    if (netconf_output(1, cbret, "rpc-reply") < 0){
-			cbuf_free(cbret);
+	    if ((xc = xml_child_i(xret,0))!=NULL){
+		xa=NULL;
+		/* Copy message-id attribute from incoming to reply. 
+		 * RFC 6241:
+		 * If additional attributes are present in an <rpc> element, a NETCONF
+		 * peer MUST return them unmodified in the <rpc-reply> element.  This
+		 * includes any "xmlns" attributes.
+		 */
+		while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
+		    if ((xa2 = xml_dup(xa)) ==NULL)
 			goto done;
-		    }
+		    if (xml_addsub(xc, xa2) < 0)
+			goto done;
+		}
+		add_preamble(cbret);
+		
+		clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0);
+		add_postamble(cbret);
+		if (netconf_output(1, cbret, "rpc-reply") < 0){
+		    cbuf_free(cbret);
+		    goto done;
 		}
 	    }
 	}

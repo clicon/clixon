@@ -69,28 +69,33 @@ cat <<EOF > $cfg
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
 </config>
 EOF
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg
-if [ $? -ne 0 ]; then
-    err
-fi
 
-new "start backend  -s init -f $cfg"
-# start new backend
-sudo $clixon_backend -s init -f $cfg
-if [ $? -ne 0 ]; then
-    err
+new "test params: -f $cfg"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend  -s init -f $cfg"
+    sudo $clixon_backend -s init -f $cfg -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "1. Set newex"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><newex>str</newex></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
-new "Set oldex should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><oldex>str</oldex></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>protocol</error-type><error-severity>error</error-severity><error-message>XML'
+new "Set oldex should fail (since oldex is in old revision and only the new is loaded)"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><oldex>str</oldex></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>Validation failed</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 new "Set other should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><other>str</other></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>protocol</error-type><error-severity>error</error-severity><error-message>XML'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><other>str</other></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>Validation failed</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+if [ $BE -ne 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill

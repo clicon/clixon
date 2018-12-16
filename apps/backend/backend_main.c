@@ -91,6 +91,8 @@ backend_terminate(clicon_handle h)
 	yspec_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((x = clicon_nacm_ext(h)) != NULL)
+	xml_free(x);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     stream_publish_exit();
@@ -274,7 +276,7 @@ nacm_load_external(clicon_handle h)
 	clicon_err(OE_XML, 0, "No xml tree in %s", filename);
 	goto done;
     }
-    if (backend_nacm_list_set(h, xt) < 0)
+    if (clicon_nacm_ext_set(h, xt) < 0)
 	goto done;
     retval = 0;
  done:

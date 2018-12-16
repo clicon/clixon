@@ -108,17 +108,13 @@
  * - Namespace name: For a name N in a namespace identified by a URI I, the 
  *   "namespace name" is I.
  *   For a name N that is not in a namespace, the "namespace name" has no value.
- * - Local name: In either case the "local name" is N.
+ * - Local name: In either case the "local name" is N (also "prefix")
  * It is this combination of the universally managed URI namespace with the 
  * vocabulary's local names that is effective in avoiding name clashes.
  */
 struct xml{
     char             *x_name;       /* name of node */
-    char             *x_namespace;  /* namespace, if any */
-#ifdef notyet
-    char             *x_namespacename;  /* namespace name (or NULL) */
-    char             *x_localname;  /* Local name N as defined above */
-#endif
+    char             *x_prefix;     /* namespace localname N, called prefix */
     struct xml       *x_up;         /* parent node in hierarchy if any */
     struct xml      **x_childvec;   /* vector of children nodes */
     int               x_childvec_len;/* length of vector */
@@ -129,6 +125,17 @@ struct xml{
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
 };
+
+/*
+ * Variables
+ */
+/* Iterate through modules to find the matching datanode
+ * or rpc if no xmlns attribute specifies namespace.
+ * This is loose semantics of finding namespaces.
+ * And it is wrong, but is the way Clixon originally was written."
+ * @see CLICON_XML_NS_ITERATE clixon configure option 
+ */
+int _CLICON_XML_NS_ITERATE = 0;
 
 /* Mapping between xml type <--> string */
 static const map_str2int xsmap[] = {
@@ -189,29 +196,31 @@ xml_name_set(cxobj *xn,
 /*! Get namespace of xnode
  * @param[in]  xn    xml node
  * @retval     namespace of xml node
+ * XXX change to xml_localname
  */
 char*
 xml_namespace(cxobj *xn)
 {
-    return xn->x_namespace;
+    return xn->x_prefix;
 }
 
 /*! Set name space of xnode, namespace is copied
  * @param[in]  xn         xml node
- * @param[in]  namespace  new namespace, null-terminated string, copied by function
+ * @param[in]  localname  new namespace, null-terminated string, copied by function
  * @retval     -1         on error with clicon-err set
  * @retval     0          OK
+ * XXX change to xml_localname_set
  */
 int
 xml_namespace_set(cxobj *xn, 
-		  char  *namespace)
+		  char  *localname)
 {
-    if (xn->x_namespace){
-	free(xn->x_namespace);
-	xn->x_namespace = NULL;
+    if (xn->x_prefix){
+	free(xn->x_prefix);
+	xn->x_prefix = NULL;
     }
-    if (namespace){
-	if ((xn->x_namespace = strdup(namespace)) == NULL){
+    if (localname){
+	if ((xn->x_prefix = strdup(localname)) == NULL){
 	    clicon_err(OE_XML, errno, "strdup");
 	    return -1;
 	}
@@ -219,12 +228,57 @@ xml_namespace_set(cxobj *xn,
     return 0;
 }
 
-/*! See if xmlns:<namespace>=<uri> exists, if so return <uri>
+
+/*! Given an xml tree return URI namespace: default or localname given
+ *
+ * Given an XML tree and a prefix (or NULL) return URI namespace.
+ * @param[in]  x          XML tree
+ * @param[in]  prefix     prefix/ns localname. If NULL then return default.
+ * @param[out] namespace  URI namespace (or NULL). Note pointer into xml tree
+ * @retval     0          OK
+ * @retval    -1          Error
+ * @see xmlns_check XXX coordinate
+ */
+int
+xml2ns(cxobj *x,
+       char  *prefix,
+       char **namespace)
+{
+    int    retval = -1;
+    char  *ns;
+    cxobj *xp;
+    
+    if (prefix != NULL) /* xmlns:<prefix> */
+	ns = xml_find_type_value(x, "xmlns", prefix, CX_ATTR);
+    else /* default ns */
+    	ns = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
+
+    /* namespace not found, try parent */
+    if (ns == NULL){
+	if ((xp = xml_parent(x)) != NULL){
+	    if (xml2ns(xp, prefix, &ns) < 0)
+		goto done;
+	}
+	/* If no parent, return default namespace if defined */
+#if defined(DEFAULT_XML_RPC_NAMESPACE)
+	else
+	    ns = DEFAULT_XML_RPC_NAMESPACE;
+#endif
+    }
+    if (namespace)
+	*namespace = ns;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! See if xmlns:[<localname>=]<uri> exists, if so return <uri>
  *
  * @param[in]  xn   XML node
  * @param[in]  nsn  Namespace name
  * @retval     URI  return associated URI if found
  * @retval     NULL No namespace name binding found for nsn
+ * @see xml2ns XXX coordinate
  */
 static char *
 xmlns_check(cxobj *xn,
@@ -233,7 +287,7 @@ xmlns_check(cxobj *xn,
     cxobj *x = NULL;
     char  *xns;
     
-    while ((x = xml_child_each(xn, x, -1)) != NULL) 
+    while ((x = xml_child_each(xn, x, CX_ATTR)) != NULL) 
 	if ((xns = xml_namespace(x)) && strcmp(xns, "xmlns")==0 &&
 	    strcmp(xml_name(x), nsn) == 0)
 	    return xml_value(x);
@@ -248,7 +302,7 @@ xmlns_check(cxobj *xn,
  * @note This function is grossly inefficient
  */
 static int
-xml_namespace_check(cxobj *xn, 
+xml_localname_check(cxobj *xn, 
 		    void  *arg)
 {
     cxobj     *xp = NULL;
@@ -886,6 +940,42 @@ xml_body_get(cxobj *xt)
     return NULL;
 }
 
+/*! Find and return the value of an xml child of specific type
+ *
+ * The value can be of an attribute only
+ * @param[in]   xt          xml tree node
+ * @param[in]   prefix      Prefix (namespace local name) or NULL
+ * @param[in]   name        name of xml tree node (eg attr name or "body")
+ * @retval      val         Pointer to the name string
+ * @retval      NULL        No such node or no value in node
+ * @code
+ * char *str = xml_find_type_value(x, "prefix", "name", CX_ATTR);
+ * @endcode
+ * @note, make a copy of the return value to use it properly
+ * @see xml_find_value where a body can be found as well
+ */
+char *
+xml_find_type_value(cxobj           *xt, 
+		    char            *prefix,
+		    char            *name,
+		    enum cxobj_type  type)
+{
+    cxobj *x = NULL;
+    int    pmatch; /* prefix match */
+    char  *xprefix;     /* xprefix */
+    
+    while ((x = xml_child_each(xt, x, type)) != NULL) {
+	xprefix = xml_namespace(x);
+	if (prefix)
+	    pmatch = xprefix?strcmp(prefix,xprefix)==0:0;
+	else
+	    pmatch = 1;
+	if (pmatch && strcmp(name, xml_name(x)) == 0)
+	    return xml_value(x);
+    }
+    return NULL;
+}
+
 /*! Find and return the value of a sub xml node
  *
  * The value can be of an attribute or body.
@@ -895,7 +985,7 @@ xml_body_get(cxobj *xt)
  * @retval      NULL        No such node or no value in node
  *
  * Note, make a copy of the return value to use it properly
- * See also xml_find_body
+ * @see xml_find_body
  * Explaining picture:
  *       xt  --> x         
  *               x_name=name
@@ -983,8 +1073,8 @@ xml_free(cxobj *x)
 	free(x->x_name);
     if (x->x_value)
 	free(x->x_value);
-    if (x->x_namespace)
-	free(x->x_namespace);
+    if (x->x_prefix)
+	free(x->x_prefix);
     for (i=0; i<x->x_childvec_len; i++){
 	if ((xc = x->x_childvec[i]) != NULL){
 	    xml_free(xc);
@@ -1028,6 +1118,8 @@ clicon_xml2file(FILE  *f,
     char  *val;
     char  *encstr = NULL; /* xml encoded string */
     
+    if (x == NULL)
+	goto ok;
     name = xml_name(x);
     namespace = xml_namespace(x);
     switch(xml_type(x)){
@@ -1097,6 +1189,7 @@ clicon_xml2file(FILE  *f,
     default:
 	break;
     }/* switch */
+ ok:
     retval = 0;
  done:
     if (encstr)
@@ -1302,7 +1395,7 @@ _xml_parse(const char  *str,
     if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
 	goto done;
     /* Verify namespaces after parsing */
-    if (xml_apply0(xt, CX_ELMNT, xml_namespace_check, NULL) < 0)
+    if (xml_apply0(xt, CX_ELMNT, xml_localname_check, NULL) < 0)
     	goto done;
     /* Sort the complete tree after parsing */
     if (yspec){
@@ -1507,15 +1600,20 @@ int
 xml_copy_one(cxobj *x0, 
 	     cxobj *x1)
 {
+    char *s;
+    
     xml_type_set(x1, xml_type(x0));
-    if (xml_value(x0)){ /* malloced string */
-	if ((x1->x_value = strdup(x0->x_value)) == NULL){
+    if ((s = xml_value(x0))){ /* malloced string */
+	if ((x1->x_value = strdup(s)) == NULL){
 	    clicon_err(OE_XML, errno, "strdup");
 	    return -1;
 	}
     }
-    if (xml_name(x0)) /* malloced string */
-	if ((xml_name_set(x1, xml_name(x0))) < 0)
+    if ((s = xml_name(x0))) /* malloced string */
+	if ((xml_name_set(x1, s)) < 0)
+	    return -1;
+    if ((s = xml_namespace(x0))) /* malloced string */
+	if ((xml_namespace_set(x1, s)) < 0)
 	    return -1;
     return 0;
 }
@@ -1794,7 +1892,6 @@ xml_body_parse(cxobj       *xb,
     if (retval < 0 && cv != NULL)
 	cv_free(cv);
     return retval;
-
 }
 
 /*! Parse an xml body as int32

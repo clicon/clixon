@@ -9,6 +9,7 @@ module example {
 	prefix ip;
     }
     import ietf-routing {
+        description "defines fib-route";
 	prefix rt;
     }
     import iana-if-type {
@@ -72,4 +73,13 @@ module example {
 	    }
 	}
     }
+    rpc debug {
+	description "Set debug level of backend. XXX should be in clixon-config";
+	input {
+	    leaf level {
+		type uint32;
+	    }
+	}
+    }
+
 }

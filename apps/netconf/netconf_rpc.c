@@ -869,6 +869,7 @@ netconf_application_rpc(clicon_handle h,
     int            retval = -1;
     yang_spec     *yspec = NULL; /* application yspec */
     yang_stmt     *yrpc = NULL;
+    yang_stmt     *ymod = NULL;
     yang_stmt     *yinput;
     yang_stmt     *youtput;
     cxobj         *xoutput;
@@ -888,26 +889,33 @@ netconf_application_rpc(clicon_handle h,
 	goto done;
     }
     cbuf_reset(cb);
-    if (xml_namespace(xn) == NULL){
+    if (ys_module_by_xml(yspec, xn, &ymod) < 0)
+	goto done;
+    if (ymod == NULL){
 	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 		     "<error-tag>operation-failed</error-tag>"
 		     "<error-type>rpc</error-type>"
 		     "<error-severity>error</error-severity>"
 		     "<error-message>%s</error-message>"
-		     "<error-info>Not recognized</error-info>"
+		     "<error-info>Not recognized module</error-info>"
 		     "</rpc-error></rpc-reply>", xml_name(xn));
 	goto ok;
     }
-    cprintf(cb, "/%s:%s", xml_namespace(xn), xml_name(xn));
-    /* Find yang rpc statement, return yang rpc statement if found */
-    if (yang_abs_schema_nodeid(yspec, xml_spec(xn), cbuf_get(cb), Y_RPC, &yrpc) < 0)
-	goto done;
+    yrpc = yang_find((yang_node*)ymod, Y_RPC, xml_name(xn));
+    if ((yrpc==NULL) && _CLICON_XML_NS_ITERATE){
+	int i;
+	for (i=0; i<yspec->yp_len; i++){
+	    ymod = yspec->yp_stmt[i];
+	    if ((yrpc = yang_find((yang_node*)ymod, Y_RPC, xml_name(xn))) != NULL)
+		break;
+	}
+    }
     /* Check if found */
     if (yrpc != NULL){
 	/* 1. Check xn arguments with input statement. */
 	if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
 	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
-	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yinput) < 0)
+	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
 	    if (xml_apply(xn, CX_ELMNT, 
 			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
@@ -933,7 +941,7 @@ netconf_application_rpc(clicon_handle h,
 	if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL){
 	    xoutput=xpath_first(*xret, "/");
 	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
-	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, youtput) < 0)
+	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
 	    if (xml_apply(xoutput, CX_ELMNT, 
 			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
@@ -953,7 +961,6 @@ netconf_application_rpc(clicon_handle h,
 	cbuf_free(cbret);
     return retval;
 }
-
 
 /*! The central netconf rpc dispatcher. Look at first tag and dispach to sub-functions.
  * Call plugin handler if tag not found. If not handled by any handler, return
@@ -985,7 +992,6 @@ netconf_rpc_dispatch(clicon_handle h,
 	if (xml_value_set(xa, username) < 0)
 	    goto done;
     }
-
     xe = NULL;
     while ((xe = xml_child_each(xn, xe, CX_ELMNT)) != NULL) {
 	if (strcmp(xml_name(xe), "get-config") == 0){

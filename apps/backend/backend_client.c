@@ -467,12 +467,18 @@ from_client_edit_config(clicon_handle h,
 	    goto ok;
 	}
     }
-    if ((xc  = xpath_first(xn, "config")) == NULL){
+    if ((xc = xpath_first(xn, "config")) == NULL){
 	if (netconf_missing_element(cbret, "protocol", "<bad-element>config</bad-element>", NULL) < 0)
 	    goto done;
 	goto ok;
     }
     else{
+	/* <config> yang spec may be set to anyxml by ingress yang check,...*/
+	if (xml_spec(xc) != NULL)
+	    xml_spec_set(xc, NULL);
+	/* Populate XML with Yang spec (why not do this in parser?) 
+	 * Maybe validate xml here as in text_modify_top?
+	 */
 	if (xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
 	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
@@ -935,272 +941,6 @@ from_client_debug(clicon_handle      h,
     return retval;
 }
 
-/*! Match nacm access operations according to RFC8341 3.4.4.  
- * Incoming RPC Message Validation Step 7 (c)
- *  The rule's "access-operations" leaf has the "exec" bit set or
- *  has the special value "*".
- * @retval 0  No match
- * @retval 1  Match
- * XXX access_operations is bit-fields
- */
-static int
-nacm_match_access(char *access_operations,
-		  char *mode)
-{
-    if (access_operations==NULL)
-	return 0;
-    if (strcmp(access_operations,"*")==0)
-	return 1;
-    if (strstr(access_operations, mode)!=NULL)
-	return 1;
-    return 0;
-}
-
-/*! Match nacm single rule. Either match with access or deny. Or not match.
- * @param[in]  h      Clicon handle
- * @param[in]  name  rpc name
- * @param[in]  xrule  NACM rule XML tree
- * @param[out] cbret  Cligen buffer result. Set to an error msg if retval=0.
- * @retval -1  Error
- * @retval  0  Matching rule AND Not access and cbret set
- * @retval  1  Matchung rule AND Access
- * @retval  2  No matching rule Goto step 10
- * From RFC8341 3.4.4.  Incoming RPC Message Validation
-   +---------+-----------------+---------------------+-----------------+
-   | Method  | Resource class  | NETCONF operation   | Access          |
-   |         |                 |                     | operation       |
-   +---------+-----------------+---------------------+-----------------+
-   | OPTIONS | all             | none                | none            |
-   | HEAD    | all             | <get>, <get-config> | read            |
-   | GET     | all             | <get>, <get-config> | read            |
-   | POST    | datastore, data | <edit-config>       | create          |
-   | POST    | operation       | specified operation | execute         |
-   | PUT     | data            | <edit-config>       | create, update  |
-   | PUT     | datastore       | <copy-config>       | update          |
-   | PATCH   | data, datastore | <edit-config>       | update          |
-   | DELETE  | data            | <edit-config>       | delete          |
-
- 7.(cont) A rule matches if all of the following criteria are met: 
-        *  The rule's "module-name" leaf is "*" or equals the name of
-           the YANG module where the protocol operation is defined.
-
-        *  Either (1) the rule does not have a "rule-type" defined or
-           (2) the "rule-type" is "protocol-operation" and the
-           "rpc-name" is "*" or equals the name of the requested
-           protocol operation.
-
-        *  The rule's "access-operations" leaf has the "exec" bit set or
-           has the special value "*".
- */
-static int
-nacm_match_rule(clicon_handle h,
-		char         *name,
-		cxobj        *xrule,
-		cbuf         *cbret)
-{
-    int    retval = -1;
-    //    cxobj *x;
-    char  *module_name;
-    char  *rpc_name;
-    char  *access_operations;
-    char  *action;
-    
-    module_name = xml_find_body(xrule, "module-name");
-    rpc_name = xml_find_body(xrule, "rpc-name");
-    /* XXX access_operations can be a set of bits */
-    access_operations = xml_find_body(xrule, "access-operations");
-    action = xml_find_body(xrule, "action");
-    clicon_debug(1, "%s: %s %s %s %s", __FUNCTION__,
-	       module_name, rpc_name, access_operations, action);
-    if (module_name && strcmp(module_name,"*")==0){
-	if (nacm_match_access(access_operations, "exec")){
-	    if (rpc_name==NULL ||
-		strcmp(rpc_name, "*")==0 || strcmp(rpc_name, name)==0){
-		/* Here is a matching rule */
-		if (action && strcmp(action, "permit")==0){
-		    retval = 1;
-		    goto done;
-		}
-		else{
-		    if (netconf_access_denied(cbret, "protocol", "access denied") < 0)
-			goto done;
-		    retval = 0;
-		    goto done;
-		}
-	    }
-	}
-    }
-    retval = 2; /* no matching rule */
- done:
-    return retval;
-
-}
-
-/*! Make nacm access control 
- * @param[in]  h     Clicon handle
- * @param[in]  mode  NACMmode, internal or external
- * @param[in]  name  rpc name
- * @param[in]  username
- * @param[out] cbret Cligen buffer result. Set to an error msg if retval=0.
- * @retval -1  Error
- * @retval  0  Not access and cbret set
- * @retval  1  Access
- * From RFC8341 3.4.4.  Incoming RPC Message Validation
- */
-static int
-nacm_access(clicon_handle h,
-	    char         *mode,
-	    char         *name,
-	    char         *username,
-	    cbuf         *cbret)
-{
-    int     retval = -1;
-    cxobj  *xtop = NULL;
-    cxobj  *xacm;
-    cxobj  *x;
-    cxobj  *xrlist;
-    cxobj  *xrule;
-    char   *enabled = NULL;
-    cxobj **gvec = NULL; /* groups */
-    size_t  glen;
-    cxobj **rlistvec = NULL; /* rule-list */
-    size_t  rlistlen;
-    cxobj **rvec = NULL; /* rules */
-    size_t  rlen;
-    int     i, j;
-    char   *exec_default = NULL;
-    int     ret;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    /* 0. If nacm-mode is external, get NACM defintion from separet tree,
-       otherwise get it from internal configuration */
-    if (strcmp(mode, "external")==0){
-	if ((xtop = backend_nacm_list_get(h)) == NULL){
-	    clicon_err(OE_XML, 0, "No nacm external tree");
-	    goto done;
-	}
-    }
-    else if (strcmp(mode, "internal")==0){
-	if (xmldb_get(h, "running", "nacm", 0, &xtop) < 0)
-	    goto done;	
-    }
-    else{
-	clicon_err(OE_UNIX, 0, "Invalid NACM mode: %s", mode);
-	goto done;
-    }
-    
-    /* 1.   If the "enable-nacm" leaf is set to "false", then the protocol
-       operation is permitted. (or config does not exist) */
-
-    if ((xacm = xpath_first(xtop, "nacm")) == NULL)
-	goto permit;
-    exec_default = xml_find_body(xacm, "exec-default");
-    if ((x = xpath_first(xacm, "enable-nacm")) == NULL)
-	goto permit;
-    enabled = xml_body(x);
-    if (strcmp(enabled, "true") != 0)
-	goto permit;
-
-    /* 2.   If the requesting session is identified as a recovery session,
-       then the protocol operation is permitted. NYI */
-    
-    /* 3.   If the requested operation is the NETCONF <close-session>
-       protocol operation, then the protocol operation is permitted.
-    */
-    if (strcmp(name, "close-session") == 0)
-	goto permit;
-    /* 4.   Check all the "group" entries to see if any of them contain a
-       "user-name" entry that equals the username for the session
-       making the request.  (If the "enable-external-groups" leaf is
-       "true", add to these groups the set of groups provided by the
-       transport layer.)	       */
-    if (username == NULL)
-	goto step10;
-    /* User's group */
-    if (xpath_vec(xacm, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
-	goto done;
-    /* 5. If no groups are found, continue with step 10. */
-    if (glen == 0)
-	goto step10;
-    /* 6. Process all rule-list entries, in the order they appear in the
-        configuration.  If a rule-list's "group" leaf-list does not
-        match any of the user's groups, proceed to the next rule-list
-        entry. */
-    if (xpath_vec(xacm, "rule-list", &rlistvec, &rlistlen) < 0)
-	goto done;
-    for (i=0; i<rlistlen; i++){
-	xrlist = rlistvec[i];
-	/* Loop through user's group to find match in this rule-list */
-	for (j=0; j<glen; j++){
-	    char *gname;
-	    gname = xml_find_body(gvec[j], "name");
-	    if (xpath_first(xrlist, ".[group='%s']", gname)!=NULL)
-		break; /* found */
-	}
-	if (j==glen) /* not found */
-	    continue;
-	/* 7. For each rule-list entry found, process all rules, in order,
-	   until a rule that matches the requested access operation is
-	   found. 
-	*/
-	if (xpath_vec(xrlist, "rule", &rvec, &rlen) < 0)
-	    goto done;
-	for (j=0; j<rlen; j++){
-	    xrule = rvec[j];
-	    /* -1 error, 0 deny, 1 permit, 2 continue */
-	    if ((ret = nacm_match_rule(h, name, xrule, cbret)) < 0)
-		goto done;
-	    switch(ret){
-	    case 0: /* deny */
-		goto deny;
-		break;
-	    case 1: /* permit */
-		goto permit;
-		break;
-	    case 2: /* no match, continue */
-		break;
-	    }
-	}
-    }
- step10:
-    /*   10.  If the requested protocol operation is defined in a YANG module
-        advertised in the server capabilities and the "rpc" statement
-        contains a "nacm:default-deny-all" statement, then the protocol
-        operation is denied. */
-    /* 11.  If the requested protocol operation is the NETCONF
-        <kill-session> or <delete-config>, then the protocol operation
-        is denied. */
-    if (strcmp(name, "kill-session")==0 || strcmp(name, "delete-config")==0){
-	if (netconf_access_denied(cbret, "protocol", "default deny") < 0)
-	    goto done;
-	goto deny;
-    }
-    /*   12.  If the "exec-default" leaf is set to "permit", then permit the
-	 protocol operation; otherwise, deny the request. */
-    if (exec_default ==NULL || strcmp(exec_default, "permit")==0)
-	goto permit;
-    if (netconf_access_denied(cbret, "protocol", "default deny") < 0)
-	goto done;
-    goto deny;
- permit:
-    retval = 1;
- done:
-    clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
-    if (strcmp(mode, "internal")==0 && xtop)
-	xml_free(xtop);
-    if (gvec)
-	free(gvec);
-    if (rlistvec)
-	free(rlistvec);
-    if (rvec)
-	free(rvec);
-    return retval;
- deny: /* Here, cbret must contain a netconf error msg */
-    assert(cbuf_len(cbret));
-    retval = 0;
-    goto done;
-}
-
 /*! An internal clicon message has arrived from a client. Receive and dispatch.
  * @param[in]   h    Clicon handle
  * @param[in]   s    Socket where message arrived. read from this.
@@ -1218,13 +958,16 @@ from_client_msg(clicon_handle        h,
     cxobj               *xt = NULL;
     cxobj               *x;
     cxobj               *xe;
-    char                *name = NULL;
+    char                *rpc = NULL;
+    char                *module = NULL;
     char                *db;
     cbuf                *cbret = NULL; /* return message */
     int                  pid;
     int                  ret;
     char                *username;
-    char                *nacm_mode;
+    yang_spec           *yspec;
+    yang_stmt           *ye;
+    yang_stmt           *ymod;
 
     clicon_debug(1, "%s", __FUNCTION__);
     pid = ce->ce_pid;
@@ -1240,62 +983,81 @@ from_client_msg(clicon_handle        h,
 	    goto done;
 	goto reply;
     }
+    /* Get yang spec */ 
+    yspec = clicon_dbspec_yang(h); /* XXX maybe move to clicon_msg_decode? */
     if ((x = xpath_first(xt, "/rpc")) == NULL){
 	if (netconf_malformed_message(cbret, "rpc keyword expected")< 0)
+	    goto done;
+	goto reply;
+    }
+    /* Populate incoming XML tree with yang */
+    if (xml_spec_populate_rpc(h, x, yspec) < 0)
+	goto done;
+    if ((ret = xml_yang_validate_rpc(x)) < 0)
+	goto done;
+    if (ret == 0){
+	if (netconf_operation_failed(cbret, "application", "Validation failed")< 0)
 	    goto done;
 	goto reply;
     }
     xe = NULL;
     username = xml_find_value(x, "username");
     while ((xe = xml_child_each(x, xe, CX_ELMNT)) != NULL) {
-	name = xml_name(xe);
-	clicon_debug(1, "%s name:%s", __FUNCTION__, name);
-	/* Make NACM access control if enabled as "internal"*/
-	nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
-	if (nacm_mode && strcmp(nacm_mode, "disabled") != 0){
-	    if ((ret = nacm_access(h, nacm_mode, name, username, cbret)) < 0)
+	rpc = xml_name(xe);
+	if ((ye = xml_spec(xe)) == NULL){
+	    if (netconf_operation_not_supported(cbret, "protocol", rpc) < 0)
 		goto done;
-	    if (!ret)
-		goto reply;
+	    goto reply;
 	}
-	if (strcmp(name, "get-config") == 0){
+	if ((ymod = ys_module(ye)) == NULL){
+	    clicon_err(OE_XML, ENOENT, "rpc yang does not have module");
+	    goto done;
+	}
+	module = ymod->ys_argument;
+	clicon_debug(1, "%s module:%s rpc:%s", __FUNCTION__, module, rpc);
+	/* Make NACM access control if enabled as "internal"*/
+	if ((ret = nacm_access(h, rpc, module, username, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto reply;
+	if (strcmp(rpc, "get-config") == 0){
 	    if (from_client_get_config(h, xe, cbret) <0)
 		goto done;
 	}
-	else if (strcmp(name, "edit-config") == 0){
+	else if (strcmp(rpc, "edit-config") == 0){
 	    if (from_client_edit_config(h, xe, pid, cbret) <0)
 		goto done;
 	}
-	else if (strcmp(name, "copy-config") == 0){
+	else if (strcmp(rpc, "copy-config") == 0){
 	    if (from_client_copy_config(h, xe, pid, cbret) <0)
 		goto done;
 	}
-	else if (strcmp(name, "delete-config") == 0){
+	else if (strcmp(rpc, "delete-config") == 0){
 	    if (from_client_delete_config(h, xe, pid, cbret) <0)
 		goto done;
 	}
-	else if (strcmp(name, "lock") == 0){
+	else if (strcmp(rpc, "lock") == 0){
 	    if (from_client_lock(h, xe, pid, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "unlock") == 0){
+	else if (strcmp(rpc, "unlock") == 0){
 	    if (from_client_unlock(h, xe, pid, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "get") == 0){
+	else if (strcmp(rpc, "get") == 0){
 	    if (from_client_get(h, xe, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "close-session") == 0){
+	else if (strcmp(rpc, "close-session") == 0){
 	    xmldb_unlock_all(h, pid);
 	    stream_ss_delete_all(h, ce_event_cb, (void*)ce);
 	    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
 	}
-	else if (strcmp(name, "kill-session") == 0){
+	else if (strcmp(rpc, "kill-session") == 0){
 	    if (from_client_kill_session(h, xe, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "validate") == 0){
+	else if (strcmp(rpc, "validate") == 0){
 	    if ((db = netconf_db_find(xe, "source")) == NULL){
 		if (netconf_missing_element(cbret, "protocol", "<bad-element>source</bad-element>", NULL) < 0)
 		    goto done;
@@ -1304,19 +1066,19 @@ from_client_msg(clicon_handle        h,
 	    if (from_client_validate(h, db, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "commit") == 0){
+	else if (strcmp(rpc, "commit") == 0){
 	    if (from_client_commit(h, pid, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "discard-changes") == 0){
+	else if (strcmp(rpc, "discard-changes") == 0){
 	    if (from_client_discard_changes(h, pid, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "create-subscription") == 0){
+	else if (strcmp(rpc, "create-subscription") == 0){
 	    if (from_client_create_subscription(h, xe, ce, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "debug") == 0){
+	else if (strcmp(rpc, "debug") == 0){
 	    if (from_client_debug(h, xe, cbret) < 0)
 		goto done;
 	}
@@ -1370,7 +1132,7 @@ from_client_msg(clicon_handle        h,
     /* Sanity: log if clicon_err() is not called ! */
     if (retval < 0 && clicon_errno < 0) 
 	clicon_log(LOG_NOTICE, "%s: Internal error: No clicon_err call on error (message: %s)",
-		   __FUNCTION__, name?name:"");
+		   __FUNCTION__, rpc?rpc:"");
     //    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;// -1 here terminates backend
 }

@@ -191,9 +191,8 @@ state data.
 
 ## Authentication and NACM
 The example contains some stubs for authorization according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341):
-* A basic auth HTTP callback, see: example_restconf_credentials() containing three example users: adm1, wilma, and guest, according to the examples in Appendix A in the RFC.
+* A basic auth HTTP callback, see: example_restconf_credentials() containing three example users: andy, wilma, and guest, according to the examples in Appendix A in [RFC8341](https://tools.ietf.org/html/rfc8341).
 * A NACM backend plugin reporting the mandatory NACM state variables.
-
 
 ## Systemd files
 

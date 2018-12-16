@@ -57,19 +57,21 @@ module $APPNAME{
    }
 }
 EOF
-new "start backend -s init -f $cfg -y $fyang"
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
-fi
 
-new "start backend -s init -f $cfg -y $fyang"
-# start new backend
-sudo $clixon_backend -s init -f $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
+new "test params: -f $cfg -y $fyang"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg -y $fyang
+    if [ $? -ne 0 ]; then
+	err
+    fi
+
+    new "start backend -s init -f $cfg -y $fyang"
+    # start new backend
+    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "cli enabled feature"
@@ -94,7 +96,8 @@ new "netconf validate enabled feature"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf disabled feature"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><A>foo</A></config></edit-config></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>protocol</error-type><error-severity>error</error-severity><error-message>XML node config/A has no corresponding yang specification (Invalid XML or wrong Yang spec?'
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><A>foo</A></config></edit-config></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>Validation failed</error-message></rpc-error></rpc-reply>]]>]]>$'
+#expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><A>foo</A></config></edit-config></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>protocol</error-type><error-severity>error</error-severity><error-message>XML node config/A has no corresponding yang specification (Invalid XML or wrong Yang spec?'
 
 # This test has been broken up into all different modules instead of one large
 # reply since the modules change so often
@@ -134,7 +137,7 @@ if [ -z "$match" ]; then
 fi
 
 new "netconf module ietf-netconf"
-expect="module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace><conformance-type>implement</conformance-type></module>"
+expect="module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace><feature>candidate</feature><feature>startup</feature><feature>validate</feature><feature>xpath</feature><conformance-type>implement</conformance-type></module>"
 match=`echo "$ret" | grep -GZo "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
@@ -157,6 +160,10 @@ expect="<module><name>ietf-yang-types</name><revision>2013-07-15</revision><name
 match=`echo "$ret" | grep -GZo "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
+fi
+
+if [ $BE -ne 0 ]; then
+    exit # BE
 fi
 
 new "Kill backend"

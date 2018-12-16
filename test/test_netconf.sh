@@ -87,17 +87,21 @@ module example{
 }
 EOF
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg
-if [ $? -ne 0 ]; then
-    err
-fi
-new "start backend  -s init -f $cfg -y $fyang"
-# start new backend
-sudo $clixon_backend -s init -f $cfg -y $fyang # -D 1
-if [ $? -ne 0 ]; then
-    err
+new "test params: -f $cfg -y $fyang"
+# Bring your own backend
+if [ $BE -ne 0 ]; then
+    # kill old backend (if any)
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend  -s init -f $cfg -y $fyang"
+    # start new backend
+    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "netconf hello"
@@ -222,6 +226,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><lock><target><candidate/
 new "close-session"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><close-session/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
+# XXX NOTE that this does not actually kill a running session - and may even kill some random process,...
 new "kill-session"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
@@ -238,16 +243,20 @@ new "netconf check empty startup"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data/></rpc-reply>]]>]]>$"
 
 new "netconf rpc"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><rt:fib-route><routing-instance-name>ipv4</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></rt:fib-route></rpc>]]>]]>" "^<rpc-reply><route><address-family>ipv4</address-family><next-hop><next-hop-list>"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><fib-route xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"><routing-instance-name>ipv4</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></fib-route></rpc>]]>]]>' "^<rpc-reply><route><address-family>ipv4</address-family><next-hop><next-hop-list>"
 
-new "netconf rpc without namespace"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><rt:fib-route><routing-instance-name>ipv4</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></rt:fib-route></rpc>]]>]]>" "^<rpc-reply><route><address-family>ipv4</address-family><next-hop><next-hop-list>"
+new "netconf rpc without namespace (iterate kludge should work)"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><fib-route><routing-instance-name>ipv4</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></fib-route></rpc>]]>]]>" "^<rpc-reply><route><address-family>ipv4</address-family><next-hop><next-hop-list>"
 
 new "netconf empty rpc"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:empty/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf client-side rpc"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:client-rpc><request>example</request></ex:client-rpc></rpc>]]>]]>" "^<rpc-reply><result>ok</result></rpc-reply>]]>]]>$"
+
+if [ $BE -ne 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill

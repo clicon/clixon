@@ -191,7 +191,7 @@ b64_decode(const char *src,
  * @retval -1  Fatal error
  * @retval  0  Unauth
  * @retval  1  Auth
- * @note: Three hardwired users: adm1, wilma, guest w password "bar".
+ * @note: Three hardwired users: andy, wilma, guest w password "bar".
  * Enabled by passing -- -a to the main function
  */
 int
@@ -237,9 +237,9 @@ example_restconf_credentials(clicon_handle h,
     /* Here get auth sub-tree whjere all the users are */
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    /* Hardcoded user/passwd */
-    if (strcmp(user, "wilma")==0 || strcmp(user, "adm1")==0 ||
-	strcmp(user, "quest")==0){
+    /* XXX Three hardcoded user/passwd (from RFC8341 A.1)*/
+    if (strcmp(user, "wilma")==0 || strcmp(user, "andy")==0 ||
+	strcmp(user, "guest")==0){
 	passwd2 = "bar";
     }
     if (strcmp(passwd, passwd2))
@@ -282,7 +282,7 @@ restconf_client_rpc(clicon_handle h,
 /*! Start example restonf plugin. Set authentication method
  * Arguments are argc/argv after --
  * Currently defined: -a  enable http basic authentication
- * Note hardwired users adm1, wilma and guest
+ * @note There are three hardwired users andy, wilma and guest from RFC8341 A.1
  */
 int
 example_restconf_start(clicon_handle h,

@@ -90,18 +90,19 @@ module $APPNAME{
 }
 EOF
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
-fi
+new "test params: -f $cfg -y $fyang"
 
-new "start backend -s init -f $cfg -y $fyang"
-# start new backend
-sudo $clixon_backend -s init -f $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg -y $fyang
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg -y $fyang"
+    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "when: add static route"
@@ -139,6 +140,10 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><can
 
 new "must: eth validate fail"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>An Ethernet MTU must be 1500</error-message></rpc-error></rpc-reply>]]>]]>"
+
+if [ $BE -ne 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill

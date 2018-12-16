@@ -12,7 +12,7 @@ elif [ $# = 2 ]; then
     req=$2
 else
     echo "Usage: $0 [<number> [<requests>]]"
-    exit 1
+    exit 1 # Scaling
 fi
 APPNAME=example
 # include err() and new() functions and creates $dir
@@ -58,18 +58,20 @@ cat <<EOF > $cfg
 </config>
 EOF
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
-fi
+new "test params: -f $cfg" -y $fyang
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg -y $fyang
+    if [ $? -ne 0 ]; then
+	err
+    fi
 
-new "start backend  -s init -f $cfg -y $fyang"
-# start new backend
-sudo $clixon_backend -s init -f $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
+    new "start backend  -s init -f $cfg -y $fyang"
+    # start new backend
+    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "kill old restconf daemon"
@@ -103,10 +105,10 @@ expecteof_file "time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc
 rm $fconfig
 
 new "netconf commit large config"
-expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf commit large config again"
-expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf add small (1 entry) config"
 expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x><y><a>x</a><b>y</b></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
@@ -151,7 +153,7 @@ expecteof_file "time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc
 rm $fconfig
 
 new "netconf commit large leaf-list config"
-expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf add $req small leaf-list config"
 time -p for (( i=0; i<$req; i++ )); do
@@ -163,13 +165,17 @@ new "netconf add small leaf-list config"
 expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x><c>x</c></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf commit small leaf-list config"
-expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit><source><candidate/></source></commit></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf get large leaf-list config"
 expecteof "time -f %e $clixon_netconf -qf $cfg  -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><x><c>0</c><c>1</c>"
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
+
+if [ $BE -ne 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill

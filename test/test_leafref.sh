@@ -72,18 +72,19 @@ module example{
 }
 EOF
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
-fi
+new "test params: -f $cfg -y $fyang"
 
-# start new backend
-new "start backend  -s init -f $cfg -y $fyang"
-sudo $clixon_backend -s init -f $cfg -y $fyang 
-if [ $? -ne 0 ]; then
-    err
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg -y $fyang
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend  -s init -f $cfg -y $fyang"
+    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "leafref base config"
@@ -141,6 +142,10 @@ expectfn "$clixon_cli -1f $cfg -y $fyang -l o set sender a" 0 "^$"
 
 new "cli sender template"
 expectfn "$clixon_cli -1f $cfg -y $fyang -l o set sender b template a" 0 "^$"
+
+if [ $BE -ne 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill

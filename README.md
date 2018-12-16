@@ -31,9 +31,9 @@ Background
 ==========
 
 Clixon was implemented to provide an open-source generic configuration
-tool. The existing [CLIgen](http://www.cligen.se) tool was for command-lines only, while clixon is a system with configuration database, xml and rest interfaces. Most of the projects using clixon are for embedded network and measuring devices. But Clixon is more generic than that.
+tool. The existing [CLIgen](http://www.cligen.se) tool was for command-lines only, while Clixon is a system with configuration database, xml and rest interfaces all defined by Yang. Most of the projects using Clixon are for embedded network and measuring devices. But Clixon can be used for other systems as well due to its modular and pluggable architecture.
 
-Users of clixon currently include:
+Users of Clixon currently include:
   * [Netgate](https://www.netgate.com)
   * [CloudMon360](http://cloudmon360.com)
   * [Grideye](http://hagsand.se/grideye)	
@@ -98,16 +98,16 @@ XML
 Clixon has its own implementation of XML and XPATH implementation.
 
 The standards covered include:
-- [XML](https://www.w3.org/TR/2008/REC-xml-20081126)
-- [Namespaces](https://www.w3.org/TR/2009/REC-xml-names-20091208)
-- [XPATH](https://www.w3.org/TR/xpath-10)
+- [XML 1.0](https://www.w3.org/TR/2008/REC-xml-20081126)
+- [Namespaces in XML 1.0](https://www.w3.org/TR/2009/REC-xml-names-20091208)
+- [XPATH 1.0](https://www.w3.org/TR/xpath-10)
 
 Not supported:
-- <!DOCTYPE
+- !DOCTYPE (ie DTD)
 
 Yang
 ====
-YANG and XML is at the heart of Clixon.  Yang modules are used as a
+YANG and XML is the heart of Clixon.  Yang modules are used as a
 specification for handling XML configuration data. The YANG spec is
 used to generate an interactive CLI, netconf and restconf clients. It
 also manages an XML datastore.
@@ -126,7 +126,7 @@ However, the following YANG syntax modules are not implemented:
 
 Restrictions on Yang types are as follows:
 - The range statement does not support multiple values (RFC7895 sec 9.2.4)
-- Submodules cannot re-use a prefix in an import statement that is already used for another imported module in the module that the submodule belongs to.
+- Submodules cannot re-use a prefix in an import statement that is already used for another imported module in the module that the submodule belongs to. (see https://github.com/clicon/clixon/issues/60)
 
 Netconf
 =======
@@ -136,7 +136,14 @@ Clixon implements the following NETCONF proposals or standards:
 - [RFC 5277: NETCONF Event Notifications](http://www.rfc-base.org/txt/rfc-5277.txt)
 - [RFC 8341: Network Configuration Access Control Model](http://www.rfc-base.org/txt/rfc-8341.txt)
 
-Clixon does not yet support the following netconf features:
+The following RFC6241 capabilities/features are hardcoded in Clixon:
+- :candidate (RFC6241 8.3)
+- :validate (RFC6241 8.6)
+- :startup (RFC6241 8.7)
+- :xpath (RFC6241 8.9)
+- :notification: (RFC5277)
+
+Clixon does not support the following netconf features:
 
 - :url capability
 - copy-config source config
@@ -166,7 +173,7 @@ Datastore
 =========
 The Clixon datastore is a stand-alone XML based datastore. The idea is
 to be able to use different datastores backends with the same
-API.
+API. Currently only an XML plain text datastore is supported.
 
 The datastore is primarily designed to be used by Clixon but can be used
 separately.
@@ -183,7 +190,7 @@ subsystem can be used.
 Restconf however needs credentials.  This is done by writing a credentials callback in a restconf plugin. See:
   * [FAQ](doc/FAQ.md#how-do-i-write-an-authentication-callback).
   * [Example](example/README.md) has an example how to do this with HTTP basic auth.
-  * I have done this for another project using Oauth2 or (https://github.com/CESNET/Netopeer2/tree/master/server/configuration)
+  * It has been done for other projects using Oauth2 or (https://github.com/CESNET/Netopeer2/tree/master/server/configuration)
 
 The clients send the ID of the user using a "username" attribute with
 the RPC calls to the backend. Note that the backend trusts the clients
@@ -211,7 +218,7 @@ The functionality is as follows:
 * Groups are supported
 * Rule-lists are supported
 * Rules are supported as follows
-  * module-name: Only '*' supported
+  * module-name: fully supported
   * access-operations: only '*' and 'exec' supported
   * rpc-name: fully supported (eg edit-config/get-config, etc)
   * action: fully supported (permit/deny)

@@ -36,7 +36,7 @@ This package contains header files for CLIXON.
 %setup
 
 %build
-%configure --with-cligen=%{cligen_prefix} --without-keyvalue
+%configure --with-cligen=%{cligen_prefix}
 make
 
 %install

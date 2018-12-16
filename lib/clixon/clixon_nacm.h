@@ -31,24 +31,24 @@
 
   ***** END LICENSE BLOCK *****
 
-  Key-value store
+ * XML sort and earch functions when used with YANG
  */
-#ifndef _CLIXON_KEYVALUE_H
-#define _CLIXON_KEYVALUE_H
+#ifndef _CLIXON_NACM_H
+#define _CLIXON_NACM_H
+
+/*
+ * Constants
+ */
+/* RFC8341 defines a "recovery session" as outside the scope.
+ * Clixon defines this user as having special admin rights to expemt from
+ * all access control enforcements
+ */
+#define NACM_RECOVERY_USER "_nacm_recovery"
 
 /*
  * Prototypes
  */
-int kv_get(xmldb_handle h, const char *db, char *xpath, int config, cxobj **xtop);
-int kv_put(xmldb_handle h, const char *db, enum operation_type op, cxobj *xt);
-int kv_dump(FILE *f, char *dbfilename, char *rxkey);
-int kv_copy(xmldb_handle h, const char *from, const char *to);
-int kv_lock(xmldb_handle h, const char *db, int pid);
-int kv_unlock(xmldb_handle h, const char *db);
-int kv_unlock_all(xmldb_handle h, int pid);
-int kv_islocked(xmldb_handle h, const char *db);
-int kv_exists(xmldb_handle h, const char *db);
-int kv_delete(xmldb_handle h, const char *db);
-int kv_init(xmldb_handle h, const char *db);
+int nacm_access(clicon_handle h, char *rpc, char *module,
+		char *username, cbuf *cbret);
 
-#endif /* _CLIXON_KEYVALUE_H */
+#endif /* _CLIXON_NACM_H */
