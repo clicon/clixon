@@ -257,7 +257,6 @@ api_data_get2(clicon_handle h,
     else{
 	if (xpath_vec(xret, "%s", &xvec, &xlen, path) < 0)
 	    goto done;
-	clicon_debug(1, "%s: xpath:%s xlen:%d", __FUNCTION__, path, (int)xlen);
 	if (use_xml){
 	    for (i=0; i<xlen; i++){
 		x = xvec[i];
@@ -269,7 +268,7 @@ api_data_get2(clicon_handle h,
 	    if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
 		goto done;
     }
-    clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
+    //    clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
     FCGX_FPrintF(r->out, "\r\n\r\n");
  ok:
@@ -408,9 +407,10 @@ api_data_post(clicon_handle h,
     yang_spec *yspec;
     cxobj     *xa;
     cxobj     *xret = NULL;
-    cxobj     *xretcom = NULL;
+    cxobj     *xretcom = NULL; /* return from commit */
+    cxobj     *xretdis = NULL; /* return from discard-changes */
     cxobj     *xerr = NULL; /* malloced must be freed */
-    cxobj     *xe;
+    cxobj     *xe;            /* dont free */
     char      *username;
 	
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
@@ -488,13 +488,22 @@ api_data_post(clicon_handle h,
     }
     /* Assume this is validation failed since commit includes validate */
     cbuf_reset(cbx);
-    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    /* commit/discard should be done automaticaly by the system, therefore
+     * recovery user is used here (edit-config but not commit may be permitted
+     by NACM */
+    cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
     cprintf(cbx, "<commit/></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
-	if (clicon_rpc_discard_changes(h) < 0)
+	cbuf_reset(cbx);
+	cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+	cprintf(cbx, "<discard-changes/></rpc>");
+	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretdis, NULL) < 0)
 	    goto done;
+	/* log errors from discard, but ignore */
+	if ((xpath_first(xretdis, "//rpc-error")) != NULL)
+	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
 	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
@@ -512,6 +521,8 @@ api_data_post(clicon_handle h,
 	xml_free(xerr);
     if (xretcom)
 	xml_free(xretcom);
+    if (xretdis)
+	xml_free(xretdis);
     if (xtop)
 	xml_free(xtop);
     if (xdata)
@@ -623,7 +634,8 @@ api_data_put(clicon_handle h,
     cxobj     *xa;
     char      *api_path;
     cxobj     *xret = NULL;
-    cxobj     *xretcom = NULL;
+    cxobj     *xretcom = NULL; /* return from commit */
+    cxobj     *xretdis = NULL; /* return from discard-changes */
     cxobj     *xerr = NULL; /* malloced must be freed */
     cxobj     *xe;
     char      *username;
@@ -734,13 +746,23 @@ api_data_put(clicon_handle h,
 	goto ok;
     }
     cbuf_reset(cbx);
-    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    /* commit/discard should be done automaticaly by the system, therefore
+     * recovery user is used here (edit-config but not commit may be permitted
+     by NACM */
+    cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
     cprintf(cbx, "<commit/></rpc>");
+    
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
-	if (clicon_rpc_discard_changes(h) < 0)
+	cbuf_reset(cbx);
+	cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+	cprintf(cbx, "<discard-changes/></rpc>");
+	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretdis, NULL) < 0)
 	    goto done;
+	/* log errors from discard, but ignore */
+	if ((xpath_first(xretdis, "//rpc-error")) != NULL)
+	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
 	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
@@ -758,6 +780,8 @@ api_data_put(clicon_handle h,
 	xml_free(xerr);
     if (xretcom)
 	xml_free(xretcom);
+    if (xretdis)
+	xml_free(xretdis);
     if (xtop)
 	xml_free(xtop);
     if (xdata)
@@ -791,7 +815,7 @@ api_data_patch(clicon_handle h,
     return 0;
 }
 
-/*! Generic REST DELETE method 
+/*! Generic REST DELETE method translated to edit-config
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
@@ -821,7 +845,8 @@ api_data_delete(clicon_handle h,
     yang_spec *yspec;
     enum operation_type op = OP_DELETE;
     cxobj     *xret = NULL;
-    cxobj     *xretcom = NULL;
+    cxobj     *xretcom = NULL; /* return from commmit */
+    cxobj     *xretdis = NULL; /* return from discard */
     cxobj     *xerr = NULL;
     char      *username;
 
@@ -836,7 +861,6 @@ api_data_delete(clicon_handle h,
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
-
     if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
 	goto done;
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
@@ -864,13 +888,22 @@ api_data_delete(clicon_handle h,
     }
     /* Assume this is validation failed since commit includes validate */
     cbuf_reset(cbx);
-    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    /* commit/discard should be done automaticaly by the system, therefore
+     * recovery user is used here (edit-config but not commit may be permitted
+     by NACM */
+    cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
     cprintf(cbx, "<commit/></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xretcom, "//rpc-error")) != NULL){
-	if (clicon_rpc_discard_changes(h) < 0)
+	cbuf_reset(cbx);
+	cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
+	cprintf(cbx, "<discard-changes/></rpc>");
+	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretdis, NULL) < 0)
 	    goto done;
+	/* log errors from discard, but ignore */
+	if ((xpath_first(xretdis, "//rpc-error")) != NULL)
+	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
 	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
@@ -887,6 +920,8 @@ api_data_delete(clicon_handle h,
 	xml_free(xret);
     if (xretcom)
 	xml_free(xretcom);
+    if (xretdis)
+	xml_free(xretdis);
     if (xtop)
 	xml_free(xtop);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -912,6 +947,11 @@ api_data_delete(clicon_handle h,
  * data-model-specific RPC operations supported by the server.  The
  * server MAY omit this resource if no data-model-specific RPC
  * operations are advertised.
+ * From ietf-restconf.yang:
+ * In XML, the YANG module namespace identifies the module:
+ *      <system-restart xmlns='urn:ietf:params:xml:ns:yang:ietf-system'/>
+ * In JSON, the YANG module name identifies the module:
+ *       { 'ietf-system:system-restart' : [null] }
  */
 int
 api_operations_get(clicon_handle h,
@@ -926,9 +966,9 @@ api_operations_get(clicon_handle h,
 {
     int        retval = -1;
     yang_spec *yspec;
-    yang_stmt *ym;
+    yang_stmt *ymod; /* yang module */
     yang_stmt *yc;
-    char      *modname;
+    char      *namespace;
     cbuf      *cbx = NULL;
     cxobj     *xt = NULL;
     
@@ -937,18 +977,17 @@ api_operations_get(clicon_handle h,
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     cprintf(cbx, "<operations>");
-    ym = NULL;
-    while ((ym = yn_each((yang_node*)yspec, ym)) != NULL) {
-	modname = ym->ys_argument;
+    ymod = NULL;
+    while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
+	namespace = yang_find_mynamespace(ymod);
 	yc = NULL;
-	while ((yc = yn_each((yang_node*)ym, yc)) != NULL) {
+	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
 	    if (yc->ys_keyword != Y_RPC)
 		continue;
-	    cprintf(cbx, "<%s:%s />", modname, yc->ys_argument);
+	    cprintf(cbx, "<%s xmlns=\"%s\"/>", yc->ys_argument, namespace);
 	}
     }
     cprintf(cbx, "</operations>");
-    clicon_debug(1, "%s xml:%s", __FUNCTION__, cbuf_get(cbx));
     if (xml_parse_string(cbuf_get(cbx), yspec, &xt) < 0)
 	goto done;
     if (xml_rootchild(xt, 0, &xt) < 0)
@@ -962,7 +1001,6 @@ api_operations_get(clicon_handle h,
 	if (xml2json_cbuf(cbx, xt, pretty) < 0)
 	    goto done;
     }
-    clicon_debug(1, "%s ret:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
     FCGX_FPrintF(r->out, "\r\n");
@@ -1095,18 +1133,9 @@ api_operations_post(clicon_handle h,
 	if (xml_value_set(xa, username) < 0)
 	    goto done;
     }
-
     /* XXX: something strange for rpc user */
     if (api_path2xml(oppath, yspec, xtop, YC_SCHEMANODE, &xbot, &y) < 0)
 	goto done;
-#if 0
-    {
-	cbuf *c = cbuf_new();
-	clicon_xml2cbuf(c, xtop, 0, 0);
-	clicon_debug(1, "%s xtop:%s", __FUNCTION__, cbuf_get(c));
-	cbuf_free(c);
-    }
-#endif
     if (data && strlen(data)){
 	/* Parse input data as json or xml into xml */
 	if (parse_xml){
@@ -1150,7 +1179,8 @@ api_operations_post(clicon_handle h,
 	    }
 	    if (yinput){
 		xml_spec_set(xbot, yinput); /* needed for xml_spec_populate */
-		if (xml_apply(xbot, CX_ELMNT, xml_spec_populate, yinput) < 0)
+		/* XXX yinput <-> h ?*/
+		if (xml_apply(xbot, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		    goto done;
 		if (xml_apply(xbot, CX_ELMNT, 
 			      (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
@@ -1215,7 +1245,7 @@ api_operations_post(clicon_handle h,
 #endif
 	cbuf_reset(cbx);
 	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
-	if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, youtput) < 0)
+	if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
 	if (xml_apply(xoutput, CX_ELMNT, 
 		      (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
@@ -1235,9 +1265,6 @@ api_operations_post(clicon_handle h,
 	else
 	    if (xml2json_cbuf(cbx, xoutput, pretty) < 0)
 		goto done;
-#if 1
-	clicon_debug(1, "%s cbx:%s", __FUNCTION__, cbuf_get(cbx));
-#endif
 	FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
 	FCGX_FPrintF(r->out, "\r\n\r\n");
     }

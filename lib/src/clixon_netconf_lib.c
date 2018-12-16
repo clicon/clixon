@@ -983,19 +983,14 @@ netconf_module_load(clicon_handle h)
 {
     int        retval = -1;
     cxobj     *xc;
-    //    cxobj     *x;
     yang_spec *yspec;
 
     yspec = clicon_dbspec_yang(h);
-    /* Load yang spec */
-    if (yang_spec_parse_module(h, "ietf-netconf", NULL, yspec)< 0)
-	goto done;
-    if (yang_spec_parse_module(h, "ietf-netconf-notification", NULL, yspec)< 0)
-	goto done;
     if ((xc = clicon_conf_xml(h)) == NULL){
 	clicon_err(OE_CFG, ENOENT, "Clicon configuration not loaded");
 	goto done; 
     }
+    
     /* Enable features (hardcoded here) */
     if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:candidate</CLICON_FEATURE>", yspec, &xc) < 0)
 	goto done;
@@ -1004,6 +999,12 @@ netconf_module_load(clicon_handle h)
     if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>", yspec, &xc) < 0)
 	goto done;
     if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:xpath</CLICON_FEATURE>", yspec, &xc) < 0)
+	goto done;
+    
+    /* Load yang spec */
+    if (yang_spec_parse_module(h, "ietf-netconf", NULL, yspec)< 0)
+	goto done;
+    if (yang_spec_parse_module(h, "ietf-netconf-notification", NULL, yspec)< 0)
 	goto done;
     retval = 0;
  done:

@@ -826,7 +826,8 @@ clicon_rpc_debug(clicon_handle h,
     char              *username;
 
     username = clicon_username_get(h);
-    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><debug><level>%d</level></debug></rpc>", username?username:"", level)) == NULL)
+    /* XXX: hardcoded example yang, should be clixon-config!!! */
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><debug xmlns=\"urn:example:clixon\"><level>%d</level></debug></rpc>", username?username:"", level)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;

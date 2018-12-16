@@ -90,22 +90,43 @@ enum childtype{
     ANY_CHILD,    /* eg <a><b/></a> or <a><b/><c/></a> */
 };
 
+/*! Number of children EXCEPT attributes
+ * @param[in]  xn    xml node
+ * @retval     number of children in XML tree (except children of type CX_ATTR)
+ * @see xml_child_nr
+ */
+static int   
+xml_child_nr_noattr(cxobj *xn)
+{
+    cxobj *x = NULL;
+    int    nr = 0;
+
+    while ((x = xml_child_each(xn, x, -1)) != NULL) {
+	if (xml_type(x) != CX_ATTR)
+	    nr++;
+    }
+    return nr;
+}
+
 /*! x is element and has exactly one child which in turn has none 
+ * remove attributes from x
  * Clone from clixon_xml_map.c
  */
 static enum childtype
 childtype(cxobj *x)
 {
     cxobj *xc1; /* the only child of x */
+    int    clen; /* nr of children */
 
+    clen = xml_child_nr_noattr(x);
     if (xml_type(x) != CX_ELMNT)
 	return -1; /* n/a */
-    if (xml_child_nr(x) == 0)
+    if (clen == 0)
     	return NULL_CHILD;
-    if (xml_child_nr(x) > 1)
+    if (clen > 1)
 	return ANY_CHILD;
     xc1 = xml_child_i(x, 0); /* From here exactly one child */
-    if (xml_child_nr(xc1) == 0 && xml_type(xc1)==CX_BODY)
+    if (xml_child_nr_noattr(xc1) == 0 && xml_type(xc1)==CX_BODY)
 	return BODY_CHILD;
     else
 	return ANY_CHILD;
@@ -267,13 +288,13 @@ json_str_escape(char *str)
   +----------+--------------+--------------+--------------+
  */
 static int 
-xml2json1_cbuf(cbuf                  *cb,
-	       cxobj                 *x,
+xml2json1_cbuf(cbuf                   *cb,
+	       cxobj                  *x,
 	       enum array_element_type arraytype,
-	       int                    level,
-	       int                    pretty,
-	       int                    flat,
-	       int                    bodystr)
+	       int                     level,
+	       int                     pretty,
+	       int                     flat,
+	       int                     bodystr)
 {
     int              retval = -1;
     int              i;
@@ -281,10 +302,30 @@ xml2json1_cbuf(cbuf                  *cb,
     enum childtype   childt;
     enum array_element_type xc_arraytype;
     yang_stmt       *ys;
+    yang_stmt       *ymod; /* yang module */
+    yang_spec       *yspec = NULL; /* yang spec */
     int              bodystr0=1;
+    char            *str;
+    char            *prefix=NULL;    /* prefix / local namespace name */
+    char            *namespace=NULL; /* namespace uri */
+    char            *modname=NULL;   /* Module name */
 
+    /* If x is labelled with a default namespace, it should be translated
+     * to a module name. 
+     * Harder if x has a prefix, then that should also be translated to associated
+     * module name
+     */
+    prefix = xml_namespace(x);
+    if (xml2ns(x, prefix, &namespace) < 0)
+	goto done;
+    if ((ys = xml_spec(x)) != NULL) /* yang spec associated with x */
+	yspec = ys_spec(ys);
+    /* Find module name associated with namspace URI */
+    if (namespace && yspec &&
+	(ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL){
+	modname = ymod->ys_argument;
+    }
     childt = childtype(x);
-    ys = xml_spec(x);
     if (pretty==2)
 	cprintf(cb, "#%s_array, %s_child ", 
 		arraytype2str(arraytype),
@@ -292,7 +333,6 @@ xml2json1_cbuf(cbuf                  *cb,
     switch(arraytype){
     case BODY_ARRAY:{
 	if (bodystr){
-	    char      *str;
 	    if ((str = json_str_escape(xml_value(x))) == NULL)
 		goto done;
 	    cprintf(cb, "\"%s\"", str);
@@ -300,14 +340,13 @@ xml2json1_cbuf(cbuf                  *cb,
 	}
 	else
 	    cprintf(cb, "%s", xml_value(x));
-
 	break;
     }
     case NO_ARRAY:
 	if (!flat){
 	    cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
-	    if (xml_namespace(x))
-		cprintf(cb, "%s:", xml_namespace(x));
+	    if (modname) /* XXX should remove this? */
+		cprintf(cb, "%s:", modname);
 	    cprintf(cb, "%s\": ", xml_name(x));
 	}
 	switch (childt){
@@ -326,8 +365,8 @@ xml2json1_cbuf(cbuf                  *cb,
     case FIRST_ARRAY:
     case SINGLE_ARRAY:
 	cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
-	if (xml_namespace(x))
-	    cprintf(cb, "%s:", xml_namespace(x));
+	if (modname)
+	    cprintf(cb, "%s:", modname);
 	cprintf(cb, "%s\": ", xml_name(x));
 	level++;
 	cprintf(cb, "[%s%*s", 
@@ -368,7 +407,7 @@ xml2json1_cbuf(cbuf                  *cb,
 	break;
     }
     /* Check for typed sub-body if:
-     * arracytype=* but chilt-type is BODY_CHILD 
+     * arraytype=* but child-type is BODY_CHILD 
      * This is code for writing <a>42</a> as "a":42 and not "a":"42"
      */
     if (childt == BODY_CHILD && ys!=NULL &&
@@ -393,6 +432,8 @@ xml2json1_cbuf(cbuf                  *cb,
 
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
+	if (xml_type(xc) == CX_ATTR)
+	    continue; /* XXX Only xmlns attributes mapped */
 	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
 				xc, 
 				xml_child_i(x, i+1));
@@ -401,7 +442,7 @@ xml2json1_cbuf(cbuf                  *cb,
 			   xc_arraytype,
 			   level+1, pretty, 0, bodystr0) < 0)
 	    goto done;
-	if (i<xml_child_nr(x)-1)
+	if (i<xml_child_nr_noattr(x)-1)
 	    cprintf(cb, ",%s", pretty?"\n":"");
     }
     switch (arraytype){

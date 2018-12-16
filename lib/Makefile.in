@@ -80,5 +80,5 @@ distclean:	clean
 	do (cd $$i; $(MAKE) $(MFLAGS) distclean); done; \
 	(cd clixon; $(MAKE) $(MFLAGS) $@)
 
-tags:
+TAGS:
 	find $(srcdir) -name '*.[chyl]' -print | etags -

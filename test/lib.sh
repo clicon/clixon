@@ -7,6 +7,12 @@
 testnr=0
 testname=
 
+# If set to 0, override starting of clixon_backend in test (you bring your own)
+: ${BE:=1}
+
+# If set, enable debugging (of backend)
+: ${DBG:=0}
+
 # For memcheck
 #clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
 clixon_cli=clixon_cli
@@ -56,6 +62,7 @@ new(){
     testname=$1
     >&2 echo "Test$testnr [$1]"
 }
+# No CR
 new2(){
     testnr=`expr $testnr + 1`
     testname=$1
@@ -84,7 +91,7 @@ expectfn(){
 #  echo "retval:\"$retval\""
 #  echo "ret:\"$ret\""
 #  echo "r:\"$r\""
-    if [ $r != $retval ]; then
+   if [ $r != $retval ]; then
       echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
       echo -e "\e[0m:"
       exit -1
@@ -219,3 +226,29 @@ expectwait(){
   fi
 }
 
+expectmatch(){
+    ret=$1
+    r=$2
+    expret=$3
+    expect=$4
+    if [ $r != $expret ]; then
+	echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+	echo -e "\e[0m:"
+	exit -1
+    fi
+    if [ -z "$ret" -a -z "$expect" ]; then
+	echo > /dev/null
+    else
+	match=$(echo "$ret" | grep -Eo "$expect")
+	if [ -z "$match" ]; then
+	    err "$expect" "$ret"
+	fi
+	if [ -n "$expect2" ]; then
+	    match=`echo "$ret" | grep -EZo "$expect2"`
+	    if [ -z "$match" ]; then
+		err $expect "$ret"
+	    fi
+	fi
+    fi
+
+}

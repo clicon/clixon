@@ -467,12 +467,18 @@ from_client_edit_config(clicon_handle h,
 	    goto ok;
 	}
     }
-    if ((xc  = xpath_first(xn, "config")) == NULL){
+    if ((xc = xpath_first(xn, "config")) == NULL){
 	if (netconf_missing_element(cbret, "protocol", "<bad-element>config</bad-element>", NULL) < 0)
 	    goto done;
 	goto ok;
     }
     else{
+	/* <config> yang spec may be set to anyxml by ingress yang check,...*/
+	if (xml_spec(xc) != NULL)
+	    xml_spec_set(xc, NULL);
+	/* Populate XML with Yang spec (why not do this in parser?) 
+	 * Maybe validate xml here as in text_modify_top?
+	 */
 	if (xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
 	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
@@ -952,13 +958,16 @@ from_client_msg(clicon_handle        h,
     cxobj               *xt = NULL;
     cxobj               *x;
     cxobj               *xe;
-    char                *name = NULL;
+    char                *rpc = NULL;
+    char                *module = NULL;
     char                *db;
     cbuf                *cbret = NULL; /* return message */
     int                  pid;
     int                  ret;
     char                *username;
-    char                *nacm_mode;
+    yang_spec           *yspec;
+    yang_stmt           *ye;
+    yang_stmt           *ymod;
 
     clicon_debug(1, "%s", __FUNCTION__);
     pid = ce->ce_pid;
@@ -974,62 +983,81 @@ from_client_msg(clicon_handle        h,
 	    goto done;
 	goto reply;
     }
+    /* Get yang spec */ 
+    yspec = clicon_dbspec_yang(h); /* XXX maybe move to clicon_msg_decode? */
     if ((x = xpath_first(xt, "/rpc")) == NULL){
 	if (netconf_malformed_message(cbret, "rpc keyword expected")< 0)
+	    goto done;
+	goto reply;
+    }
+    /* Populate incoming XML tree with yang */
+    if (xml_spec_populate_rpc(h, x, yspec) < 0)
+	goto done;
+    if ((ret = xml_yang_validate_rpc(x)) < 0)
+	goto done;
+    if (ret == 0){
+	if (netconf_operation_failed(cbret, "application", "Validation failed")< 0)
 	    goto done;
 	goto reply;
     }
     xe = NULL;
     username = xml_find_value(x, "username");
     while ((xe = xml_child_each(x, xe, CX_ELMNT)) != NULL) {
-	name = xml_name(xe);
-	clicon_debug(1, "%s name:%s", __FUNCTION__, name);
-	/* Make NACM access control if enabled as "internal"*/
-	nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
-	if (nacm_mode && strcmp(nacm_mode, "disabled") != 0){
-	    if ((ret = nacm_access(h, nacm_mode, name, username, cbret)) < 0)
+	rpc = xml_name(xe);
+	if ((ye = xml_spec(xe)) == NULL){
+	    if (netconf_operation_not_supported(cbret, "protocol", rpc) < 0)
 		goto done;
-	    if (!ret)
-		goto reply;
+	    goto reply;
 	}
-	if (strcmp(name, "get-config") == 0){
+	if ((ymod = ys_module(ye)) == NULL){
+	    clicon_err(OE_XML, ENOENT, "rpc yang does not have module");
+	    goto done;
+	}
+	module = ymod->ys_argument;
+	clicon_debug(1, "%s module:%s rpc:%s", __FUNCTION__, module, rpc);
+	/* Make NACM access control if enabled as "internal"*/
+	if ((ret = nacm_access(h, rpc, module, username, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto reply;
+	if (strcmp(rpc, "get-config") == 0){
 	    if (from_client_get_config(h, xe, cbret) <0)
 		goto done;
 	}
-	else if (strcmp(name, "edit-config") == 0){
+	else if (strcmp(rpc, "edit-config") == 0){
 	    if (from_client_edit_config(h, xe, pid, cbret) <0)
 		goto done;
 	}
-	else if (strcmp(name, "copy-config") == 0){
+	else if (strcmp(rpc, "copy-config") == 0){
 	    if (from_client_copy_config(h, xe, pid, cbret) <0)
 		goto done;
 	}
-	else if (strcmp(name, "delete-config") == 0){
+	else if (strcmp(rpc, "delete-config") == 0){
 	    if (from_client_delete_config(h, xe, pid, cbret) <0)
 		goto done;
 	}
-	else if (strcmp(name, "lock") == 0){
+	else if (strcmp(rpc, "lock") == 0){
 	    if (from_client_lock(h, xe, pid, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "unlock") == 0){
+	else if (strcmp(rpc, "unlock") == 0){
 	    if (from_client_unlock(h, xe, pid, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "get") == 0){
+	else if (strcmp(rpc, "get") == 0){
 	    if (from_client_get(h, xe, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "close-session") == 0){
+	else if (strcmp(rpc, "close-session") == 0){
 	    xmldb_unlock_all(h, pid);
 	    stream_ss_delete_all(h, ce_event_cb, (void*)ce);
 	    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
 	}
-	else if (strcmp(name, "kill-session") == 0){
+	else if (strcmp(rpc, "kill-session") == 0){
 	    if (from_client_kill_session(h, xe, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "validate") == 0){
+	else if (strcmp(rpc, "validate") == 0){
 	    if ((db = netconf_db_find(xe, "source")) == NULL){
 		if (netconf_missing_element(cbret, "protocol", "<bad-element>source</bad-element>", NULL) < 0)
 		    goto done;
@@ -1038,19 +1066,19 @@ from_client_msg(clicon_handle        h,
 	    if (from_client_validate(h, db, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "commit") == 0){
+	else if (strcmp(rpc, "commit") == 0){
 	    if (from_client_commit(h, pid, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "discard-changes") == 0){
+	else if (strcmp(rpc, "discard-changes") == 0){
 	    if (from_client_discard_changes(h, pid, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "create-subscription") == 0){
+	else if (strcmp(rpc, "create-subscription") == 0){
 	    if (from_client_create_subscription(h, xe, ce, cbret) < 0)
 		goto done;
 	}
-	else if (strcmp(name, "debug") == 0){
+	else if (strcmp(rpc, "debug") == 0){
 	    if (from_client_debug(h, xe, cbret) < 0)
 		goto done;
 	}
@@ -1104,7 +1132,7 @@ from_client_msg(clicon_handle        h,
     /* Sanity: log if clicon_err() is not called ! */
     if (retval < 0 && clicon_errno < 0) 
 	clicon_log(LOG_NOTICE, "%s: Internal error: No clicon_err call on error (message: %s)",
-		   __FUNCTION__, name?name:"");
+		   __FUNCTION__, rpc?rpc:"");
     //    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;// -1 here terminates backend
 }

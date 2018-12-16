@@ -658,15 +658,18 @@ yang_find_schemanode(yang_node *yn,
     return ysmatch;
 }
 
-/*! Find first matching data node in all (sub)modules in a yang spec
+/*! Find first matching data node in all modules in a yang spec (prefixes)
  *
  * @param[in]  ysp        Yang specification
- * @param[in]  argument   Name of node. If NULL match first
+ * @param[in]  nodeid     Name of node. If NULL match first
  * @param[in]  class      See yang_class for class of yang nodes
  * A yang specification has modules as children which in turn can have 
  * syntax-nodes as children. This function goes through all the modules to
  * look for nodes. Note that if a child to a module is a choice, 
  * the search is made recursively made to the choice's children.
+ * @note works for import prefix, but not work for generic XML parsing where
+ *       xmlns and xmlns:ns are used.
+ * @see yang_find_top_ns
  */
 yang_stmt *
 yang_find_topnode(yang_spec *ysp, 
@@ -677,7 +680,7 @@ yang_find_topnode(yang_spec *ysp,
     yang_stmt *yres = NULL; /* result */
     char      *prefix = NULL;
     char      *id = NULL;
-    int i;
+    int        i;
 
     if (yang_nodeid_split(nodeid, &prefix, &id) < 0)
 	goto done;
@@ -719,7 +722,7 @@ yang_find_topnode(yang_spec *ysp,
 }
 
 /*! Given a yang statement, find the prefix associated to this module
- * @param[in]  ys        Yang statement
+ * @param[in]  ys        Yang statement in module tree (or module itself)
  * @retval     NULL      Not found
  * @retval     prefix    Prefix as char* pointer into yang tree
  * @code
@@ -744,6 +747,34 @@ yang_find_myprefix(yang_stmt *ys)
  done:
     return prefix;
 }
+
+/*! Given a yang statement, find the namespace URI associated to this module
+ * @param[in]  ys        Yang statement in module tree (or module itself)
+ * @retval     NULL      Not found
+ * @retval     namespace Namspace URI as char* pointer into yang tree
+ * @code
+ * char *myns = yang_find_mynamespace(ys);
+ * @endcode
+ * @see yang_find_module_by_namespace
+ */
+char *
+yang_find_mynamespace(yang_stmt *ys)
+{
+    yang_stmt *ymod; /* My module */
+    yang_stmt *ynamespace;
+    char      *namespace = NULL;
+
+    if ((ymod = ys_module(ys)) == NULL){
+	clicon_err(OE_YANG, 0, "My yang module not found");
+	goto done;
+    }
+    if ((ynamespace = yang_find((yang_node*)ymod, Y_NAMESPACE, NULL)) == NULL)
+	goto done;
+    namespace = ynamespace->ys_argument;
+ done:
+    return namespace;
+}
+
 
 /*! Find matching y in yp:s children, return 0 and index or -1 if not found.
  * @retval 0 not found
@@ -811,7 +842,52 @@ yang_key2str(int keyword)
     return (char*)clicon_int2str(ykmap, keyword);
 }
 
-/*! Find top module or sub-module given a statement. 
+/*! Find top data node among all modules by namespace in xml tree
+ * @param[in]  ysp      Yang specification
+ * @param[in]  xt       XML node
+ * @param[out] ymod     Yang module (NULL if not found)
+ * @retval     0        OK
+ * @retval    -1        Error
+ * @note works for xml namespaces (xmlns / xmlns:ns)
+ */
+int
+ys_module_by_xml(yang_spec  *ysp,
+		 cxobj      *xt,
+		 yang_stmt **ymodp)
+{
+    int        retval = -1;
+    yang_stmt *ym = NULL; /* module */
+    char      *prefix = NULL;
+    char      *namespace = NULL; /* namespace URI */
+
+    if (ymodp)
+	*ymodp = NULL;
+    prefix = xml_namespace(xt);
+    if (prefix){
+	/* Get namespace for prefix */
+	if (xml2ns(xt, prefix, &namespace) < 0)
+	    goto done;
+    }
+    else{
+	/* Get default namespace */
+	if (xml2ns(xt, NULL, &namespace) < 0)
+	    goto done;
+    }
+    /* No namespace found, give up */
+    if (namespace == NULL)
+	goto ok;
+    /* We got the namespace, now get the module */
+    ym = yang_find_module_by_namespace(ysp, namespace);
+    /* Set result param */
+    if (ymodp && ym)
+	*ymodp = ym;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Find the top module or sub-module given a statement from within a yang tree
  * Ultimate top is yang spec, dont return that
  * The routine recursively finds ancestors.
  * @param[in] ys    Any yang statement in a yang tree
@@ -840,7 +916,7 @@ ys_module(yang_stmt *ys)
     return ys;
 }
 
-/*! Find top of tree, the yang specification 
+/*! Find top of tree, the yang specification from within the tree
  * @param[in] ys    Any yang statement in a yang tree
  * @retval    yspec The top yang specification
  * @see  ys_module
@@ -1000,6 +1076,29 @@ yang_find_module_by_prefix(yang_stmt *ys,
 	    yimport = NULL;
 	    goto done; /* unresolved */
 	}
+    }
+ done:
+    return ymod;
+}
+
+/*! Given a yang statement and a namespace, return yang module
+ *
+ * @param[in]  yspec      A yang specification
+ * @param[in]  namespace  namespace
+ * @retval     ymod       Yang module statement if found
+ * @retval     NULL       not found
+ */
+yang_stmt *
+yang_find_module_by_namespace(yang_spec *yspec, 
+			      char      *namespace)
+{
+    yang_stmt *ymod = NULL;
+
+    if (namespace == NULL)
+	goto done;
+    while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
+	if (yang_find((yang_node*)ymod, Y_NAMESPACE, namespace) != NULL)
+	    break;
     }
  done:
     return ymod;
@@ -1984,6 +2083,7 @@ yang_parse_filename(const char   *filename,
     int           fd = -1;
     struct stat   st;
 
+    //    clicon_debug(1, "%s %s", __FUNCTION__, filename);
     if (stat(filename, &st) < 0){
 	clicon_err(OE_YANG, errno, "%s not found", filename);
 	goto done;
@@ -2903,6 +3003,8 @@ yang_spec_load_dir(clicon_handle h,
 	    len = b-base;
 	else
 	    len = strlen(base);
+	/* remove duplicates: there may be cornercases that dont work, eg
+	 * mix of revisions and not? */
 	for (j = (i+1); j < ndp; j++)
 	    if (strncmp(base, dp[j].d_name, len) == 0)
 		break;

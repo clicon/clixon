@@ -37,8 +37,18 @@
 #define _CLIXON_NACM_H
 
 /*
+ * Constants
+ */
+/* RFC8341 defines a "recovery session" as outside the scope.
+ * Clixon defines this user as having special admin rights to expemt from
+ * all access control enforcements
+ */
+#define NACM_RECOVERY_USER "_nacm_recovery"
+
+/*
  * Prototypes
  */
-int nacm_access(clicon_handle h, char *mode, char *name, char *username, cbuf *cbret);
+int nacm_access(clicon_handle h, char *rpc, char *module,
+		char *username, cbuf *cbret);
 
 #endif /* _CLIXON_NACM_H */

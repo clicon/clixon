@@ -56,7 +56,6 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_string.h"
-
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
@@ -73,7 +72,6 @@
  */
 int xml_child_sort = 1;
 
-
 /*! Given a child name and an XML object, return yang stmt of child
  * If no xml parent, find root yang stmt matching name
  * @param[in]  x        Child
@@ -81,6 +79,8 @@ int xml_child_sort = 1;
  * @param[in]  yspec    Yang specification (top level)
  * @param[out] yresult  Pointer to yang stmt of result, or NULL, if not found
  * @note special rule for rpc, ie <rpc><foo>,look for top "foo" node.
+ * @note works for import prefix, but not work for generic XML parsing where
+ *       xmlns and xmlns:ns are used.
  */
 int
 xml_child_spec(char       *name,
@@ -88,17 +88,40 @@ xml_child_spec(char       *name,
 	       yang_spec  *yspec,
 	       yang_stmt **yresult)
 {
-    yang_stmt *y;  /* result yang node */   
+    int        retval = -1;
+    yang_stmt *y = NULL;  /* result yang node */   
     yang_stmt *yparent; /* parent yang */
-    
-    if (xp && (yparent = xml_spec(xp)) != NULL)
-	y = yang_find_datanode((yang_node*)yparent, name);
-    else if (yspec)
-	y = yang_find_topnode(yspec, name, YC_DATANODE); /* still NULL for config */
+    yang_stmt *ymod = NULL;
+    yang_stmt *yi;
+    int        i;
+	    
+    if (xp && (yparent = xml_spec(xp)) != NULL){
+	if (yparent->ys_keyword == Y_RPC){
+	    if ((yi = yang_find((yang_node*)yparent, Y_INPUT, NULL)) != NULL)
+		y = yang_find_datanode((yang_node*)yi, name);
+	}
+	else
+	    y = yang_find_datanode((yang_node*)yparent, name);
+    }
+    else if (yspec){
+	if (ys_module_by_xml(yspec, xp, &ymod) < 0)
+	    goto done;
+	if (ymod != NULL)
+	    y = yang_find_schemanode((yang_node*)ymod, name);
+	if (y == NULL && _CLICON_XML_NS_ITERATE){
+	    for (i=0; i<yspec->yp_len; i++){
+		ymod = yspec->yp_stmt[i];
+		if ((y = yang_find_schemanode((yang_node*)ymod, name)) != NULL)
+		    break;
+	    }
+	}
+    }
     else
 	y = NULL;
     *yresult = y;
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Help function to qsort for sorting entries in xml child vector

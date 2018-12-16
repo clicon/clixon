@@ -102,16 +102,19 @@ cat <<EOF > $fyang
    }
 EOF
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg
-if [ $? -ne 0 ]; then
-    err
-fi
-new "start backend -s init -f $cfg -y $fyang"
-sudo $clixon_backend -s init -f $cfg -y $fyang # -D 1
-if [ $? -ne 0 ]; then
-    err
+new "test params: -f $cfg -y $fyang"
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg -y $fyang"
+    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "kill old restconf daemon"
@@ -274,6 +277,10 @@ echo "Eg: curl -H \"Accept: text/event-stream\" -s -X GET http://localhost/sub/E
 sleep 5
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
+
+if [ $BE -ne 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill

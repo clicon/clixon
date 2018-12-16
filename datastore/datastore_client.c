@@ -31,14 +31,6 @@
 
   ***** END LICENSE BLOCK *****
 
-  * Examples: 
-
-./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip get /
-
-sudo ./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip put merge /interfaces/interface=eth66 '<config>eth66</config>'
-
-sudo ./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip put merge / '<config><interfaces><interface><name>eth0</name><enabled>true</enabled></interface></interfaces></config>'
-
  */
 
 #ifdef HAVE_CONFIG_H
@@ -247,6 +239,7 @@ main(int argc, char **argv)
 	    clicon_err(OE_DB, 0, "Unrecognized operation: %s", argv[1]);
 	    usage(argv0);
 	}
+	_CLICON_XML_NS_ITERATE = 1;
 	if (xml_parse_string(argv[2], NULL, &xt) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)

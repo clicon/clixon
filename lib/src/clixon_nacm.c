@@ -128,27 +128,28 @@ nacm_match_access(char *access_operations,
 static int
 nacm_match_rule(clicon_handle h,
 		char         *name,
+		char         *module,
 		cxobj        *xrule,
 		cbuf         *cbret)
 {
     int    retval = -1;
-    //    cxobj *x;
-    char  *module_name;
-    char  *rpc_name;
+    char  *module_rule; /* rule module name */
+    char  *rpc_rule;
     char  *access_operations;
     char  *action;
     
-    module_name = xml_find_body(xrule, "module-name");
-    rpc_name = xml_find_body(xrule, "rpc-name");
+    module_rule = xml_find_body(xrule, "module-name");
+    rpc_rule = xml_find_body(xrule, "rpc-name");
     /* XXX access_operations can be a set of bits */
     access_operations = xml_find_body(xrule, "access-operations");
     action = xml_find_body(xrule, "action");
     clicon_debug(1, "%s: %s %s %s %s", __FUNCTION__,
-	       module_name, rpc_name, access_operations, action);
-    if (module_name && strcmp(module_name,"*")==0){
+	       module_rule, rpc_rule, access_operations, action);
+    if (module_rule &&
+	(strcmp(module_rule,"*")==0 || strcmp(module_rule,module)==0)){
 	if (nacm_match_access(access_operations, "exec")){
-	    if (rpc_name==NULL ||
-		strcmp(rpc_name, "*")==0 || strcmp(rpc_name, name)==0){
+	    if (rpc_rule==NULL ||
+		strcmp(rpc_rule, "*")==0 || strcmp(rpc_rule, name)==0){
 		/* Here is a matching rule */
 		if (action && strcmp(action, "permit")==0){
 		    retval = 1;
@@ -166,61 +167,43 @@ nacm_match_rule(clicon_handle h,
     retval = 2; /* no matching rule */
  done:
     return retval;
-
 }
 
-/*! Make nacm access control 
+/*! Process a nacm message control
  * @param[in]  h     Clicon handle
  * @param[in]  mode  NACMmode, internal or external
  * @param[in]  name  rpc name
  * @param[in]  username
+ * @param[in]  xtop
  * @param[out] cbret Cligen buffer result. Set to an error msg if retval=0.
  * @retval -1  Error
  * @retval  0  Not access and cbret set
  * @retval  1  Access
  * @see RFC8341 3.4.4.  Incoming RPC Message Validation
  */
-int
-nacm_access(clicon_handle h,
-	    char         *mode,
-	    char         *name,
-	    char         *username,
-	    cbuf         *cbret)
+static int
+nacm_rpc_validation(clicon_handle h,
+		    char         *name,
+		    char         *module,
+		    char         *username,
+		    cxobj        *xtop,
+		    cbuf         *cbret)
 {
     int     retval = -1;
-    cxobj  *xtop = NULL;
     cxobj  *xacm;
     cxobj  *x;
-    cxobj  *xrlist;
     cxobj  *xrule;
     char   *enabled = NULL;
     cxobj **gvec = NULL; /* groups */
     size_t  glen;
+    cxobj  *xrlist;
     cxobj **rlistvec = NULL; /* rule-list */
     size_t  rlistlen;
     cxobj **rvec = NULL; /* rules */
     size_t  rlen;
+    int     ret;
     int     i, j;
     char   *exec_default = NULL;
-    int     ret;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    /* 0. If nacm-mode is external, get NACM defintion from separet tree,
-       otherwise get it from internal configuration */
-    if (strcmp(mode, "external")==0){
-	if ((xtop = clicon_nacm_ext(h)) == NULL){
-	    clicon_err(OE_XML, 0, "No nacm external tree");
-	    goto done;
-	}
-    }
-    else if (strcmp(mode, "internal")==0){
-	if (xmldb_get(h, "running", "nacm", 0, &xtop) < 0)
-	    goto done;	
-    }
-    else{
-	clicon_err(OE_UNIX, 0, "Invalid NACM mode: %s", mode);
-	goto done;
-    }
     
     /* 1.   If the "enable-nacm" leaf is set to "false", then the protocol
        operation is permitted. (or config does not exist) */
@@ -235,6 +218,8 @@ nacm_access(clicon_handle h,
 
     /* 2.   If the requesting session is identified as a recovery session,
        then the protocol operation is permitted. NYI */
+    if (strcmp(username, NACM_RECOVERY_USER) == 0)
+	goto permit;
     
     /* 3.   If the requested operation is the NETCONF <close-session>
        protocol operation, then the protocol operation is permitted.
@@ -280,7 +265,7 @@ nacm_access(clicon_handle h,
 	for (j=0; j<rlen; j++){
 	    xrule = rvec[j];
 	    /* -1 error, 0 deny, 1 permit, 2 continue */
-	    if ((ret = nacm_match_rule(h, name, xrule, cbret)) < 0)
+	    if ((ret = nacm_match_rule(h, name, module, xrule, cbret)) < 0)
 		goto done;
 	    switch(ret){
 	    case 0: /* deny */
@@ -318,8 +303,6 @@ nacm_access(clicon_handle h,
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
-    if (strcmp(mode, "internal")==0 && xtop)
-	xml_free(xtop);
     if (gvec)
 	free(gvec);
     if (rlistvec)
@@ -331,4 +314,58 @@ nacm_access(clicon_handle h,
     assert(cbuf_len(cbret));
     retval = 0;
     goto done;
+}
+
+/*! Make nacm access control 
+ * @param[in]  h     Clicon handle
+ * @param[in]  name  rpc name
+ * @param[in]  username
+ * @param[out] cbret Cligen buffer result. Set to an error msg if retval=0.
+ * @retval -1  Error
+ * @retval  0  Not access and cbret set
+ * @retval  1  Access
+ * @see RFC8341 3.4.4.  Incoming RPC Message Validation
+ */
+int
+nacm_access(clicon_handle h,
+	    char         *rpc,
+	    char         *module,
+	    char         *username,
+	    cbuf         *cbret)
+{
+    int     retval = -1;
+    cxobj  *xtop = NULL;
+    char   *mode;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    mode = clicon_option_str(h, "CLICON_NACM_MODE");
+    if (mode == NULL || strcmp(mode, "disabled") == 0){
+	retval = 1;
+	goto done;
+    }
+
+    /* 0. If nacm-mode is external, get NACM defintion from separet tree,
+       otherwise get it from internal configuration */
+    if (strcmp(mode, "external")==0){
+	if ((xtop = clicon_nacm_ext(h)) == NULL){
+	    clicon_err(OE_XML, 0, "No nacm external tree");
+	    goto done;
+	}
+    }
+    else if (strcmp(mode, "internal")==0){
+	if (xmldb_get(h, "running", "nacm", 0, &xtop) < 0)
+	    goto done;	
+    }
+    else{
+	clicon_err(OE_UNIX, 0, "Invalid NACM mode: %s", mode);
+	goto done;
+    }
+    /* Do the real nacm processing */
+    if ((retval = nacm_rpc_validation(h, rpc, module, username, xtop, cbret)) < 0)
+	goto done;
+ done:
+    clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    if (strcmp(mode, "internal")==0 && xtop)
+	xml_free(xtop);
+    return retval;
 }

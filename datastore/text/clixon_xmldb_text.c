@@ -748,7 +748,8 @@ text_modify(cxobj              *x0,
  * @see text_modify
  */
 static int
-text_modify_top(cxobj              *x0,
+text_modify_top(struct text_handle *th,
+		cxobj              *x0,
 		cxobj              *x1,
 		yang_spec          *yspec,
 		enum operation_type op,
@@ -759,6 +760,7 @@ text_modify_top(cxobj              *x0,
     cxobj     *x0c; /* base child */
     cxobj     *x1c; /* mod child */
     yang_stmt *yc;  /* yang child */
+    yang_stmt *ymod;/* yang module */
     char      *opstr;
 
     /* Assure top-levels are 'config' */
@@ -805,10 +807,23 @@ text_modify_top(cxobj              *x0,
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 	x1cname = xml_name(x1c);
 	/* Get yang spec of the child */
-	if ((yc = yang_find_topnode(yspec, x1cname, YC_DATANODE)) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?",
-		       xml_name(x1), x1cname);
+	yc = NULL;
+	if (ys_module_by_xml(yspec, x1c, &ymod) <0)
 	    goto done;
+	if (ymod != NULL)
+	    yc = yang_find_datanode((yang_node*)ymod, x1cname);
+	if (yc == NULL && _CLICON_XML_NS_ITERATE){
+	    int i;
+	    for (i=0; i<yspec->yp_len; i++){
+		ymod = yspec->yp_stmt[i];
+		if ((yc = yang_find_datanode((yang_node*)ymod, x1cname)) != NULL)
+		    break;
+	    }
+	}
+	if (yc == NULL){
+	    if (netconf_operation_failed(cbret, "application", "Validation failed")< 0)
+		goto done;
+	    goto ok;
 	}
 	/* See if there is a corresponding node in the base tree */
 	if (match_base_child(x0, x1c, &x0c, yc) < 0)
@@ -942,11 +957,12 @@ text_put(xmldb_handle        xh,
 		   xml_name(x0));
 	goto done;
     }
-
-    /* Add yang specification backpointer to all XML nodes */
-    /* XXX: where is this created? Add yspec */
+#if 0
+    /* Add yang specification backpointer to all XML nodes 
+     * This  is already done in from_client_edit_config() */
     if (xml_apply(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
        goto done;
+#endif
 #if 0 /* debug */
     if (xml_child_sort && xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
@@ -955,7 +971,7 @@ text_put(xmldb_handle        xh,
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
      */
-    if (text_modify_top(x0, x1, yspec, op, cbret) < 0)
+    if (text_modify_top(th, x0, x1, yspec, op, cbret) < 0)
 	goto done;
     /* If xml return - ie netconf error xml tree, then stop and return OK */
     if (cbuf_len(cbret))

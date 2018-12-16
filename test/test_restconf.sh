@@ -86,23 +86,25 @@ EOF
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
 state='{"state": {"op": "42"}}'
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg
-if [ $? -ne 0 ]; then
-    err
-fi
-new "start backend -s init -f $cfg -y $fyang"
-sudo $clixon_backend -s init -f $cfg -y $fyang  # -D 1
-if [ $? -ne 0 ]; then
-    err
+new "test params: -f $cfg -y $fyang"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg -y $fyang"
+    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-sudo su -c "$clixon_restconf -f $cfg -y $fyang" -s /bin/sh www-data &
+sudo su -c "$clixon_restconf -f $cfg -y $fyang -D 1" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
@@ -128,7 +130,7 @@ expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"ex
 
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/operations)
-expect="<operations><example:empty/><example:input/><example:output/><example:client-rpc/><ietf-routing:fib-route/><ietf-routing:route-count/></operations>"
+expect='<operations><empty xmlns="urn:example:clixon"/><input xmlns="urn:example:clixon"/><output xmlns="urn:example:clixon"/><client-rpc xmlns="urn:example:clixon"/><fib-route xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/><route-count xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/></operations>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -157,7 +159,7 @@ expectfn "curl -s -I http://localhost/restconf/data" 0 "HTTP/1.1 200 OK"
 #Content-Type: application/yang-data+json"
 
 new "restconf empty rpc"
-expecteq "$(curl -s -X POST -d {\"input\":{\"name\":\"\"}} http://localhost/restconf/operations/example:empty)" ""
+expecteq "$(curl -s -X POST -d {\"input\":null} http://localhost/restconf/operations/example:empty)" ""
 
 new2 "restconf get empty config + state json"
 expecteq "$(curl -sSG http://localhost/restconf/data/state)" '{"state": {"op": "42"}}
@@ -318,6 +320,10 @@ fi
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
+
+if [ $BE -ne 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill
