@@ -776,12 +776,10 @@ netconf_notification_cb(int   s,
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");
 	goto done;
     }
-    add_preamble(cb); /* Make it well-formed netconf xml */
     if (clicon_xml2cbuf(cb, xn, 0, 0) < 0)
 	goto done;
-    add_postamble(cb);
     /* Send it to listening client on stdout */
-    if (netconf_output(1, cb, "notification") < 0){
+    if (netconf_output_encap(1, cb, "notification") < 0){
 	cbuf_free(cb);
 	goto done;
     }
@@ -925,13 +923,13 @@ netconf_application_rpc(clicon_handle h,
 	    if ((ret = xml_yang_validate_all_top(xn, cbret)) < 0)
 		goto done;
 	    if (ret == 0){
-		netconf_output(1, cbret, "rpc-error");
+		netconf_output_encap(1, cbret, "rpc-error");
 		goto ok;
 	    }
 	    if ((ret = xml_yang_validate_add(xn, cbret)) < 0)
 		goto done;
 	    if (ret == 0){
-		netconf_output(1, cbret, "rpc-error");
+		netconf_output_encap(1, cbret, "rpc-error");
 		goto ok;
 	    }
 	}

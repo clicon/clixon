@@ -20,7 +20,8 @@
   * Openconfig yang specs parsed: https://github.com/openconfig/public
   * Improved "unknown" handling
   * More precise Yang validation and better error messages
-    * For Example, adding bad-, missing-, or unknown-element error messages, etc instead of operation-failed
+    * Example: adding bad-, missing-, or unknown-element error messages, etc instead of operation-failed, bad-element instead of "yang node not found", etc.
+    * 
   * Yang load file configure options changed
     * `CLICON_YANG_DIR` is changed from a single directory to a path of directories
       * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list

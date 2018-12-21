@@ -112,7 +112,7 @@ process_incoming_packet(clicon_handle h,
 	free(str0);
 	if (netconf_operation_failed(cbret, "rpc", "internal error")< 0)
 	    goto done;
-	netconf_output(1, cbret, "rpc-error");
+	netconf_output_encap(1, cbret, "rpc-error");
 	goto done;
     }
     free(str0);
@@ -121,7 +121,7 @@ process_incoming_packet(clicon_handle h,
 	if ((ret = xml_yang_validate_rpc(xrpc, cbret)) < 0) 
 	    goto done;
 	if (ret == 0){
-	    netconf_output(1, cbret, "rpc-error");
+	    netconf_output_encap(1, cbret, "rpc-error");
 	    goto ok;
 	}
     }
@@ -157,11 +157,8 @@ process_incoming_packet(clicon_handle h,
 		    if (xml_addsub(xc, xa2) < 0)
 			goto done;
 		}
-		add_preamble(cbret);
-		
 		clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0);
-		add_postamble(cbret);
-		if (netconf_output(1, cbret, "rpc-reply") < 0){
+		if (netconf_output_encap(1, cbret, "rpc-reply") < 0){
 		    cbuf_free(cbret);
 		    goto done;
 		}

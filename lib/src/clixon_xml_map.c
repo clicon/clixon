@@ -398,6 +398,8 @@ validate_identityref(cxobj     *xt,
  * in [RFC6241].  If output parameters are returned, they are encoded as
  * child elements to the <rpc-reply> element defined in [RFC6241], in
  * the same order as they are defined within the "output" statement.
+ * @see xml_yang_validate_all
+ * @note Should need a variant accepting cxobj **xret
  */
 int
 xml_yang_validate_rpc(cxobj *xrpc,
@@ -454,6 +456,7 @@ xml_yang_validate_rpc(cxobj *xrpc,
  *      fail;
  * @endcode
  * @see xml_yang_validate_all
+ * @note Should need a variant accepting cxobj **xret
  */
 int
 xml_yang_validate_add(cxobj   *xt, 
@@ -503,15 +506,14 @@ xml_yang_validate_add(cxobj   *xt,
 	     * needs to be reparsed when concrete type is selected
 	     */
 	    if ((body = xml_body(xt)) != NULL){
-		if (cv_parse(body, cv) <0){
-		    clicon_err(OE_UNIX, errno, "cv_parse");
-		    goto done;
+		if (cv_parse1(body, cv, &reason) != 1){
+		    if (netconf_bad_element(cbret, "application",  ys->ys_argument, reason) < 0)
+			goto done;
+		    goto fail;
 		}
 		if ((ys_cv_validate(cv, ys, &reason)) != 1){
 		    if (netconf_bad_element(cbret, "application",  ys->ys_argument, reason) < 0)
 			goto done;
-		    if (reason)
-			free(reason);
 		    goto fail;
 		}
 	    }
@@ -531,6 +533,8 @@ xml_yang_validate_add(cxobj   *xt,
  done:
     if (cv)
 	cv_free(cv);
+    if (reason)
+	free(reason);
     return retval;
  fail:
     retval = 0;
@@ -544,7 +548,6 @@ xml_yang_validate_add(cxobj   *xt,
  * @retval     1     Validation OK
  * @retval     0     Validation failed
  * @retval    -1     Error
- * @see xml_yang_validate_add
  * @code
  *   cxobj *x;
  *   cbuf *cbret = cbuf_new();
@@ -553,6 +556,9 @@ xml_yang_validate_add(cxobj   *xt,
  *   if (ret == 0)
  *      fail;
  * @endcode
+ * @see xml_yang_validate_add
+ * @see xml_yang_validate_rpc
+ * @note Should need a variant accepting cxobj **xret
  */
 int
 xml_yang_validate_all(cxobj   *xt, 

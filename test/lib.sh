@@ -38,7 +38,9 @@ if [ ! -d $dir ]; then
 fi
 rm -rf $dir/*
 
-# error and exit, arg is optional extra errmsg
+# error and exit,
+# arg1: expected
+# arg2: errmsg[optional]
 err(){
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
@@ -53,7 +55,7 @@ err(){
   echo "$expect"| od -t c > $dir/clixon-expect
   diff $dir/clixon-expect $dir/clixon-ret 
 
-  exit $testnr
+  exit -1 #$testnr
 }
 
 # Increment test number and print a nice string
@@ -221,8 +223,9 @@ expectwait(){
   done
 #  cat /tmp/flag
   if [ $(cat /tmp/flag) != "ok" ]; then
-      cat /tmp/flag
-      exit
+#      err "ok" $(cat /tmp/flag)
+#      cat /tmp/flag
+      exit -1
   fi
 }
 
@@ -250,5 +253,4 @@ expectmatch(){
 	    fi
 	fi
     fi
-
 }

@@ -46,7 +46,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-sudo su -c "$clixon_restconf -f $cfg" -s /bin/sh www-data &
+sudo su -c "$clixon_restconf -f $cfg -D $DBG" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
@@ -54,7 +54,7 @@ new "rpc tests"
 
 # 1.First some positive tests vary media types
 #
-new2 "restconf example rpc json/json default - no headers"
+new2 "restconf example rpc json/json default - no http media headers"
 expecteq "$(curl -s -X POST -d '{"input":{"x":"0"}}' http://localhost/restconf/operations/example:example)" '{"output": {"x": "0","y": "42"}}
 '
 
@@ -93,13 +93,13 @@ new2 "restconf add extra"
 expecteq "$(curl -s -X POST -d '{"input":{"x":"0","extra":"0"}}' http://localhost/restconf/operations/example:example)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "extra"},"error-severity": "error"}}}'
 
 new2 "restconf wrong method"
-expecteq "$(curl -s -X POST -d '{"input":{"x":"0"}}' http://localhost/restconf/operations/example:wrong)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang node not found"}}}'
+expecteq "$(curl -s -X POST -d '{"input":{"x":"0"}}' http://localhost/restconf/operations/example:wrong)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "wrong"},"error-severity": "error","error-message": "RPC not defined"}}}'
 
 new2 "restconf edit-config missing mandatory"
 expecteq "$(curl -s -X POST -d '{"input":null}' http://localhost/restconf/operations/ietf-netconf:edit-config)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang module not found"}}}'
 
 new "netconf kill-session missing session-id mandatory"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><kill-session/></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>session-id</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable</error-message></rpc-error></rpc-reply>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><kill-session/></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>session-id</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 # edit-config?
 

@@ -1118,15 +1118,8 @@ api_operations_post(clicon_handle h,
 	goto ok;
     }
     if ((yrpc = yang_find((yang_node*)ys, Y_RPC, id)) == NULL){
-	if (netconf_operation_failed_xml(&xerr, "protocol", "yang node not found") < 0)
-	    goto done;
-	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
-		goto done;
-	goto ok;
-    }
-    if (yrpc == NULL){
-	if (netconf_operation_failed_xml(&xerr, "protocol", "yang node not found") < 0)
+	clicon_debug(1, "%s rpc %s not found", __FUNCTION__, id);
+	if (netconf_missing_element_xml(&xerr, "application", id, "RPC not defined") < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
 	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)

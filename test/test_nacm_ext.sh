@@ -155,7 +155,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "start restconf daemon (-a is enable http basic auth)"
-sudo su -c "$clixon_restconf -f $cfg -y $fyang -- -a" -s /bin/sh www-data &
+sudo su -c "$clixon_restconf -f $cfg -y $fyang -D $DBG -- -a" -s /bin/sh www-data &
 
 sleep $RCWAIT
 

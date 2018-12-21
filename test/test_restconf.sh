@@ -282,10 +282,10 @@ new2 "restconf rpc using POST json without mandatory element"
 expecteq "$(curl -s -X POST -d '{"input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "wrongelement"},"error-severity": "error"}}}'
 
 new2 "restconf rpc non-existing rpc without namespace"
-expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/kalle)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang node not found"}}}'
+expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/kalle)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "kalle"},"error-severity": "error","error-message": "RPC not defined"}}}'
 
 new2 "restconf rpc non-existing rpc"
-expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/example:kalle)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang node not found"}}}'
+expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/example:kalle)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "kalle"},"error-severity": "error","error-message": "RPC not defined"}}}'
 
 new2 "restconf rpc missing name"
 expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "Operation name expected"}}}'

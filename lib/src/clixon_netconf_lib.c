@@ -307,6 +307,45 @@ netconf_unknown_attribute(cbuf *cb,
     goto done;
 }
 
+/*! Common Netconf element XML tree according to RFC 6241 App A
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[in]  type    Error type: "application" or "protocol"
+ * @param[in]  tag     Error tag
+ * @param[in]  element bad-element xml
+ * @param[in]  message Error message
+ */
+static int
+netconf_element_xml_common(cxobj **xret,
+			   char   *type,
+			   char   *tag,
+			   char   *element,
+			   char   *message)
+{
+    int   retval =-1;
+    cxobj *xerr;
+    
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	    goto done;
+    }
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+	goto done;
+    if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
+		     "<error-tag>%s</error-tag>"
+		     "<error-info><bad-element>%s</bad-element></error-info>"
+		     "<error-severity>error</error-severity>",
+		     type, tag, element) < 0)
+	goto done;
+    if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
+			 message) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}    
+
 /*! Create Netconf missing-element error XML tree according to RFC 6241 App A
  *
  * An expected element is missing.
@@ -321,32 +360,34 @@ netconf_missing_element(cbuf      *cb,
 			char      *element,
 			char      *message)
 {
-    int   retval = -1;
-    char *encstr = NULL;
+    int    retval = -1;
+    cxobj *xret = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>%s</error-type>"
-		"<error-tag>missing-element</error-tag>"
-		"<error-info><bad-element>%s</bad-element></error-info>"
-		"<error-severity>error</error-severity>",
-		type, element) <0)
-	goto err;
-    if (message){
-	if (xml_chardata_encode(&encstr, "%s", message) < 0)
-	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
-    }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
-	goto err;
+    if (netconf_element_xml_common(&xret, type, "missing-element", element, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+	goto done;
     retval = 0;
  done:
-    if (encstr)
-	free(encstr);
+    if (xret)
+	xml_free(xret);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
+}
+
+
+/*! Create Netconf missing-element error XML tree according to RFC 6241 App A
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[in]  type    Error type: "application" or "protocol"
+ * @param[in]  element bad-element xml
+ * @param[in]  message Error message
+ */
+int
+netconf_missing_element_xml(cxobj **xret,
+			    char   *type,
+			    char   *element,
+			    char   *message)
+{
+    return netconf_element_xml_common(xret, type, "missing-element", element, message);
 }
 
 /*! Create Netconf bad-element error XML tree according to RFC 6241 App A
@@ -364,32 +405,26 @@ netconf_bad_element(cbuf *cb,
 		    char *element,
 		    char *message)
 {
-    int   retval = -1;
-    char *encstr = NULL;
+    int    retval = -1;
+    cxobj *xret = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>%s</error-type>"
-		"<error-tag>bad-element</error-tag>"
-		"<error-info><bad-element>%s</bad-element></error-info>"
-		"<error-severity>error</error-severity>",
-		type, element) <0)
-	goto err;
-    if (message){
-	if (xml_chardata_encode(&encstr, "%s", message) < 0)
-	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
-    }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
-	goto err;
+    if (netconf_element_xml_common(&xret, type, "bad-element", element, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+	goto done;
     retval = 0;
  done:
-    if (encstr)
-	free(encstr);
+    if (xret)
+	xml_free(xret);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
+}
+int
+netconf_bad_element_xml(cxobj **xret,
+			char   *type,
+			char   *element,
+			char   *message)
+{
+    return netconf_element_xml_common(xret, type, "bad-element", element, message);
 }
 
 /*! Create Netconf unknown-element error XML tree according to RFC 6241 App A
@@ -406,32 +441,26 @@ netconf_unknown_element(cbuf *cb,
 			char *element,
 			char *message)
 {
-    int   retval = -1;
-    char *encstr = NULL;
+    int    retval = -1;
+    cxobj *xret = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>%s</error-type>"
-		"<error-tag>unknown-element</error-tag>"
-		"<error-info><bad-element>%s</bad-element></error-info>"
-		"<error-severity>error</error-severity>",
-		type, element) <0)
-	goto err;
-    if (message){
-	if (xml_chardata_encode(&encstr, "%s", message) < 0)
-	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
-    }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
-	goto err;
+    if (netconf_element_xml_common(&xret, type, "unknown-element", element, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+	goto done;
     retval = 0;
  done:
-    if (encstr)
-	free(encstr);
+    if (xret)
+	xml_free(xret);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
+}
+int
+netconf_unknown_element_xml(cxobj **xret,
+			    char   *type,
+			    char   *element,
+			    char   *message)
+{
+    return netconf_element_xml_common(xret, type, "unknown-element", element, message);
 }
 
 /*! Create Netconf unknown-namespace error XML tree according to RFC 6241 App A
@@ -476,53 +505,48 @@ netconf_unknown_namespace(cbuf *cb,
     goto done;
 }
 
-/*! Create Netconf access-denied error XML tree according to RFC 6241 App A
+/*! Create Netconf access-denied error cbuf according to RFC 6241 App A
  *
  * Access to the requested protocol operation or data model is denied because 
  * authorization failed.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message
+ * @see netconf_access_denied_xml  Same but returns XML tree
  */
 int
 netconf_access_denied(cbuf *cb,
 		      char *type,
 		      char *message)
 {
-    int retval = -1;
-    char *encstr = NULL;
-    
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>%s</error-type>"
-		"<error-tag>access-denied</error-tag>"
-		"<error-severity>error</error-severity>",
-		type) <0)
-	goto err;
-    if (message){
-	if (xml_chardata_encode(&encstr, "%s", message) < 0)
-	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
-    }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
-	goto err;
+    int    retval = -1;
+    cxobj *xret = NULL;
+
+    if (netconf_access_denied_xml(&xret, type, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+	goto done;
     retval = 0;
  done:
-    if (encstr)
-	free(encstr);
+    if (xret)
+	xml_free(xret);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
 }
 
 /*! Create Netconf access-denied error XML tree according to RFC 6241 App A
  *
  * Access to the requested protocol operation or data model is denied because
  * authorization failed.
- * @param[out] xret    Error XML tree 
+ * @param[out] xret    Error XML tree. Free with xml_free after use
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message
+ * @code
+ *  cxobj *xret = NULL;
+ *  if (netconf_access_denied_xml(&xret, "protocol", "Unauthorized") < 0)
+ *    err;
+ *  xml_free(xret);
+ * @endcode
+ * @see netconf_access_denied  Same but returns cligen buffer
  */
 int
 netconf_access_denied_xml(cxobj **xret,
@@ -795,37 +819,25 @@ netconf_operation_not_supported(cbuf *cb,
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
  * @param[in]  message Error message
+ * @see netconf_operation_failed_xml  Same but returns XML tree
  */
 int
 netconf_operation_failed(cbuf  *cb,
 			 char  *type,
 			 char  *message)
 {
-    int   retval = -1;
-    char *encstr = NULL;
+    int    retval = -1;
+    cxobj *xret = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>%s</error-type>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-severity>error</error-severity>",
-		type) <0)
-	goto err;
-    if (message){
-	if (xml_chardata_encode(&encstr, "%s", message) < 0)
-	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
-    }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") < 0)
-	goto err;
+    if (netconf_operation_failed_xml(&xret, type, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+	goto done;
     retval = 0;
  done:
-    if (encstr)
-	free(encstr);
+    if (xret)
+	xml_free(xret);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
 }
 
 /*! Create Netconf operation-failed error XML tree according to RFC 6241 App A
@@ -835,6 +847,13 @@ netconf_operation_failed(cbuf  *cb,
  * @param[out] xret    Error XML tree 
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
  * @param[in]  message Error message
+ * @code
+ *  cxobj *xret = NULL;
+ *  if (netconf_operation_failed_xml(&xret, "protocol", "Unauthorized") < 0)
+ *    err;
+ *  xml_free(xret);
+ * @endcode
+ * @see netconf_operation_failed  Same but returns cligen buffer
  */
 int
 netconf_operation_failed_xml(cxobj **xret,
@@ -872,35 +891,24 @@ netconf_operation_failed_xml(cxobj **xret,
  * @param[out]  cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]   message Error message
  * @note New in :base:1.1
+ * @see netconf_malformed_message_xml  Same but returns XML tree
  */
 int
 netconf_malformed_message(cbuf  *cb,
 			  char  *message)
 {
     int   retval = -1;
-    char *encstr = NULL;
+    cxobj *xret = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>rpc</error-type>"
-		"<error-tag>malformed-message</error-tag>"
-		"<error-severity>error</error-severity>") <0)
-	goto err;
-    if (message){
-	if (xml_chardata_encode(&encstr, "%s", message) < 0)
-	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
-    }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
-	goto err;
+    if (netconf_malformed_message_xml(&xret, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+	goto done;
     retval = 0;
  done:
-    if (encstr)
-	free(encstr);
+    if (xret)
+	xml_free(xret);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
 }
 
 /*! Create Netconf malformed-message error XML tree according to RFC 6241 App A
@@ -911,10 +919,17 @@ netconf_malformed_message(cbuf  *cb,
  * @param[out] xret    Error XML tree 
  * @param[in]  message Error message
  * @note New in :base:1.1
+ * @code
+ *  cxobj *xret = NULL;
+ *  if (netconf_malformed_message_xml(&xret, "Unauthorized") < 0)
+ *    err;
+ *  xml_free(xret);
+ * @endcode
+ * @see netconf_malformed_message  Same but returns cligen buffer
  */
 int
 netconf_malformed_message_xml(cxobj **xret,
-			     char  *message)
+			      char   *message)
 {
     int   retval =-1;
     cxobj *xerr;

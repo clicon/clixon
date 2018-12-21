@@ -450,10 +450,12 @@ api_return_err(clicon_handle h,
     else
 	if (xml2json_cbuf(cb, xerr, pretty) < 0)
 	    goto done;
+    clicon_debug(1, "%s code:%d err:%s", __FUNCTION__, code, cbuf_get(cb));
     FCGX_SetExitStatus(code, r->out); /* Created */
     FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n\r\n",
 		 use_xml?"xml":"json");
+
     if (use_xml){
 	if (pretty){
 	    FCGX_FPrintF(r->out, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n", cbuf_get(cb));

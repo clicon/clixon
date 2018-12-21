@@ -182,9 +182,9 @@ netconf_get_target(cxobj        *xn,
  * @param[in]   s    
  * @param[in]   cb   Cligen buffer that contains the XML message
  * @param[in]   msg  Only for debug
- * @note Assumes "cb" contains valid XML, ie encoding is correct. This is done
- *       if it is output by a xml render routine (xml_print et al), but NOT
- *       otherwise.
+ * @retval      0    OK
+ * @retval     -1    Error
+ * @see netconf_output_encap  for function with encapsulation
  */
 int 
 netconf_output(int   s, 
@@ -216,3 +216,34 @@ netconf_output(int   s,
     return retval;
 }
 
+	    
+/*! Encapsulate and send outgoing netconf packet as cbuf on socket
+ * @param[in]   s    
+ * @param[in]   cb   Cligen buffer that contains the XML message
+ * @param[in]   msg  Only for debug
+ * @retval      0    OK
+ * @retval     -1    Error
+ * @note Assumes "cb" contains valid XML
+ * @see netconf_output  without encapsulation
+ */
+int 
+netconf_output_encap(int   s, 
+		     cbuf *cb, 
+		     char *msg)
+{
+    int  retval = -1;
+    cbuf *cb1 = NULL;
+    
+    if ((cb1 = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    add_preamble(cb1);
+    cprintf(cb1, "%s", cbuf_get(cb));
+    add_postamble(cb1);
+    retval = netconf_output(s, cb1, msg);
+ done:
+    if (cb1)
+	cbuf_free(cb1);
+    return retval;
+}
