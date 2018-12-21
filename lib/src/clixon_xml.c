@@ -196,10 +196,9 @@ xml_name_set(cxobj *xn,
 /*! Get namespace of xnode
  * @param[in]  xn    xml node
  * @retval     namespace of xml node
- * XXX change to xml_localname
  */
 char*
-xml_namespace(cxobj *xn)
+xml_prefix(cxobj *xn)
 {
     return xn->x_prefix;
 }
@@ -209,11 +208,10 @@ xml_namespace(cxobj *xn)
  * @param[in]  localname  new namespace, null-terminated string, copied by function
  * @retval     -1         on error with clicon-err set
  * @retval     0          OK
- * XXX change to xml_localname_set
  */
 int
-xml_namespace_set(cxobj *xn, 
-		  char  *localname)
+xml_prefix_set(cxobj *xn, 
+	       char  *localname)
 {
     if (xn->x_prefix){
 	free(xn->x_prefix);
@@ -288,7 +286,7 @@ xmlns_check(cxobj *xn,
     char  *xns;
     
     while ((x = xml_child_each(xn, x, CX_ATTR)) != NULL) 
-	if ((xns = xml_namespace(x)) && strcmp(xns, "xmlns")==0 &&
+	if ((xns = xml_prefix(x)) && strcmp(xns, "xmlns")==0 &&
 	    strcmp(xml_name(x), nsn) == 0)
 	    return xml_value(x);
     return NULL;
@@ -311,7 +309,7 @@ xml_localname_check(cxobj *xn,
     yang_stmt *ys = xml_spec(xn);
     
     /* No namespace name - comply */
-    if ((nsn = xml_namespace(xn)) == NULL)
+    if ((nsn = xml_prefix(xn)) == NULL)
 	return 0;
     /* Check if NSN defined in same node */
     if (xmlns_check(xn, nsn) != NULL)
@@ -965,7 +963,7 @@ xml_find_type_value(cxobj           *xt,
     char  *xprefix;     /* xprefix */
     
     while ((x = xml_child_each(xt, x, type)) != NULL) {
-	xprefix = xml_namespace(x);
+	xprefix = xml_prefix(x);
 	if (prefix)
 	    pmatch = xprefix?strcmp(prefix,xprefix)==0:0;
 	else
@@ -1121,7 +1119,7 @@ clicon_xml2file(FILE  *f,
     if (x == NULL)
 	goto ok;
     name = xml_name(x);
-    namespace = xml_namespace(x);
+    namespace = xml_prefix(x);
     switch(xml_type(x)){
     case CX_BODY:
 	if ((val = xml_value(x)) == NULL) /* incomplete tree */
@@ -1246,7 +1244,7 @@ clicon_xml2cbuf(cbuf  *cb,
     char  *val;
     
     name = xml_name(x);
-    namespace = xml_namespace(x);
+    namespace = xml_prefix(x);
     switch(xml_type(x)){
     case CX_BODY:
 	if ((val = xml_value(x)) == NULL) /* incomplete tree */
@@ -1333,10 +1331,10 @@ xmltree2cbuf(cbuf  *cb,
 	cprintf(cb, " ");
     if (xml_type(x) != CX_BODY)
 	cprintf(cb, "%s", xml_type2str(xml_type(x)));
-    if (xml_namespace(x)==NULL)
+    if (xml_prefix(x)==NULL)
 	cprintf(cb, " %s", xml_name(x));
     else
-	cprintf(cb, " %s:%s", xml_namespace(x), xml_name(x));
+	cprintf(cb, " %s:%s", xml_prefix(x), xml_name(x));
     if (xml_value(x))
 	cprintf(cb, " value:\"%s\"", xml_value(x));
     if (x->x_flags)
@@ -1612,8 +1610,8 @@ xml_copy_one(cxobj *x0,
     if ((s = xml_name(x0))) /* malloced string */
 	if ((xml_name_set(x1, s)) < 0)
 	    return -1;
-    if ((s = xml_namespace(x0))) /* malloced string */
-	if ((xml_namespace_set(x1, s)) < 0)
+    if ((s = xml_prefix(x0))) /* malloced string */
+	if ((xml_prefix_set(x1, s)) < 0)
 	    return -1;
     return 0;
 }

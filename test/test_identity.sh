@@ -162,7 +162,7 @@ new "Set crypto to foo:bar"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><crypto>foo:bar</crypto></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>Identityref validation failed, foo:bar not derived from crypto-alg</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Identityref validation failed, foo:bar not derived from crypto-alg</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "cli set crypto to mc:aes"
 expectfn "$clixon_cli -1 -f $cfg -y $fyang -l o set crypto mc:aes" 0 "^$"
@@ -182,7 +182,7 @@ expectfn "$clixon_cli -1 -f $cfg -y $fyang -l o set crypto des:des3" 0 "^$"
 new "cli validate"
 expectfn "$clixon_cli -1 -f $cfg -y $fyang -l o validate" 0 "^$"
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 

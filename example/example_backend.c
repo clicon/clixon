@@ -132,6 +132,7 @@ fib_route(clicon_handle h,            /* Clicon handle */
     cprintf(cbret, "<rpc-reply><route>"
 	    "<address-family>ipv4</address-family>"
 	    "<next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop>"
+	    "<source-protocol>static</source-protocol>"
 	    "</route></rpc-reply>");    
     return 0;
 }
@@ -157,15 +158,40 @@ route_count(clicon_handle h,
  * in [RFC6241].
  */
 static int 
-empty(clicon_handle h,            /* Clicon handle */
-      cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-      cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-      void         *arg,          /* client_entry */
-      void         *regarg)       /* Argument given at register */
+empty_rpc(clicon_handle h,            /* Clicon handle */
+	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	  void         *arg,          /* client_entry */
+	  void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     return 0;
 }
+
+/*! More elaborate example RPC for testing
+ * The RPC returns the incoming parameters
+ */
+static int 
+example_rpc(clicon_handle h,            /* Clicon handle */
+	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	    void         *arg,          /* client_entry */
+	    void         *regarg)       /* Argument given at register */
+{
+    int    retval = -1;
+    cxobj *x = NULL;
+
+    cprintf(cbret, "<rpc-reply>");
+    while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+	if (clicon_xml2cbuf(cbret, x, 0, 0) < 0)
+	    goto done;
+    }
+    cprintf(cbret, "</rpc-reply>");
+    retval = 0;
+ done:
+    return retval;
+}
+
 
 /*! Called to get state data from plugin
  * @param[in]    h      Clicon handle
@@ -315,20 +341,29 @@ clixon_plugin_init(clicon_handle h)
     if (example_stream_timer_setup(h) < 0)
 	goto done;
 
-    /* Register callback for routing rpc calls */
+    /* Register callback for routing rpc calls 
+     */
+
     if (rpc_callback_register(h, fib_route, 
 			      NULL, 
 			      "fib-route"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
+    /* From ietf-routing.yang */
     if (rpc_callback_register(h, route_count, 
 			      NULL, 
 			      "route-count"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
-    if (rpc_callback_register(h, empty, 
+    /* From example.yang (clicon) */
+    if (rpc_callback_register(h, empty_rpc, 
 			      NULL, 
 			      "empty"/* Xml tag when callback is made */
+			      ) < 0)
+	goto done;
+    if (rpc_callback_register(h, example_rpc, 
+			      NULL, 
+			      "example"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
 

@@ -173,7 +173,7 @@ expecteof "time -f %e $clixon_netconf -qf $cfg  -y $fyang" 0 "<rpc><get-config><
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 

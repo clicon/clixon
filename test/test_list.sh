@@ -125,7 +125,7 @@ new "minmax: validate should fail"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error/></rpc-reply>]]>]]>$"
 fi # NYI
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 

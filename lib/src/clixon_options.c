@@ -136,6 +136,8 @@ parse_configfile(clicon_handle  h,
     char       *name;
     char       *body;
     clicon_hash_t *copt = clicon_options(h);
+    cbuf       *cbret = NULL;
+    int         ret;
 
     if (filename == NULL || !strlen(filename)){
 	clicon_err(OE_UNIX, 0, "Not specified");
@@ -167,8 +169,16 @@ parse_configfile(clicon_handle  h,
     }
     if (xml_apply0(xc, CX_ELMNT, xml_default, yspec) < 0)
 	goto done;	
-    if (xml_apply0(xc, CX_ELMNT, xml_yang_validate_add, NULL) < 0)
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;	
+    }
+    if ((ret = xml_yang_validate_add(xc, cbret)) < 0)
+	goto done;
+    if (ret == 0){
+	clicon_err(OE_CFG, 0, "Config file validation: %s", cbuf_get(cbret));
+	goto done;
+    }
     while ((x = xml_child_each(xc, x, CX_ELMNT)) != NULL) {
 	name = xml_name(x);
 	body = xml_body(x);

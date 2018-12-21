@@ -468,12 +468,12 @@ from_client_edit_config(clicon_handle h,
 	}
     }
     if ((xc = xpath_first(xn, "config")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>config</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "config", NULL) < 0)
 	    goto done;
 	goto ok;
     }
     else{
-	/* <config> yang spec may be set to anyxml by ingress yang check,...*/
+	/* <config> yang spec may be set to anyxmly by ingress yang check,...*/
 	if (xml_spec(xc) != NULL)
 	    xml_spec_set(xc, NULL);
 	/* Populate XML with Yang spec (why not do this in parser?) 
@@ -530,7 +530,7 @@ from_client_lock(clicon_handle h,
     cbuf  *cbx = NULL; /* Assist cbuf */
     
     if ((db = netconf_db_find(xe, "target")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -589,7 +589,7 @@ from_client_unlock(clicon_handle h,
     cbuf  *cbx = NULL; /* Assist cbuf */
 
     if ((db = netconf_db_find(xe, "target")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -651,7 +651,7 @@ from_client_kill_session(clicon_handle h,
     
     if ((x = xml_find(xe, "session-id")) == NULL ||
 	(str = xml_find_value(x, "body")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>session-id</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "session-id", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -709,7 +709,7 @@ from_client_copy_config(clicon_handle h,
     cbuf  *cbx = NULL; /* Assist cbuf */
     
     if ((source = netconf_db_find(xe, "source")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>source</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -724,7 +724,7 @@ from_client_copy_config(clicon_handle h,
 	goto ok;
     }
     if ((target = netconf_db_find(xe, "target")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -777,7 +777,7 @@ from_client_delete_config(clicon_handle h,
 
     if ((target = netconf_db_find(xe, "target")) == NULL||
 	strcmp(target, "running")==0){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -856,7 +856,7 @@ from_client_create_subscription(clicon_handle        h,
     if ((x = xpath_first(xe, "//stopTime")) != NULL){
 	if ((stoptime = xml_find_value(x, "body")) != NULL &&
 	    str2time(stoptime, &stop) < 0){
-	    if (netconf_bad_element(cbret, "application", "<bad-element>stopTime</bad-element>", "Expected timestamp") < 0)
+	    if (netconf_bad_element(cbret, "application", "stopTime", "Expected timestamp") < 0)
 		goto done;
 	    goto ok;	
 	}
@@ -864,7 +864,7 @@ from_client_create_subscription(clicon_handle        h,
     if ((x = xpath_first(xe, "//startTime")) != NULL){
 	if ((starttime = xml_find_value(x, "body")) != NULL &&
 	    str2time(starttime, &start) < 0){
-	    if (netconf_bad_element(cbret, "application", "<bad-element>startTime</bad-element>", "Expected timestamp") < 0)
+	    if (netconf_bad_element(cbret, "application", "startTime", "Expected timestamp") < 0)
 		goto done;
 	    goto ok;	
 	}	
@@ -925,7 +925,7 @@ from_client_debug(clicon_handle      h,
     char    *valstr;
     
     if ((valstr = xml_find_body(xe, "level")) == NULL){
-	if (netconf_missing_element(cbret, "application", "<bad-element>level</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "application", "level", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -993,13 +993,10 @@ from_client_msg(clicon_handle        h,
     /* Populate incoming XML tree with yang */
     if (xml_spec_populate_rpc(h, x, yspec) < 0)
 	goto done;
-    if ((ret = xml_yang_validate_rpc(x)) < 0)
+    if ((ret = xml_yang_validate_rpc(x, cbret)) < 0)
 	goto done;
-    if (ret == 0){
-	if (netconf_operation_failed(cbret, "application", "Validation failed")< 0)
-	    goto done;
+    if (ret == 0)
 	goto reply;
-    }
     xe = NULL;
     username = xml_find_value(x, "username");
     while ((xe = xml_child_each(x, xe, CX_ELMNT)) != NULL) {
@@ -1059,7 +1056,7 @@ from_client_msg(clicon_handle        h,
 	}
 	else if (strcmp(rpc, "validate") == 0){
 	    if ((db = netconf_db_find(xe, "source")) == NULL){
-		if (netconf_missing_element(cbret, "protocol", "<bad-element>source</bad-element>", NULL) < 0)
+		if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
 		    goto done;
 		goto reply;
 	    }

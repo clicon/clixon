@@ -87,6 +87,7 @@
 #include "clixon_xpath.h"
 #include "clixon_log.h"
 #include "clixon_err.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_map.h"
 
@@ -230,10 +231,15 @@ xml2cli(FILE              *f,
 /*! Validate xml node of type leafref, ensure the value is one of that path's reference
  * @param[in]  xt    XML leaf node of type leafref
  * @param[in]  ytype Yang type statement belonging to the XML node
+ * @param[out] cbret Error buffer
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed
+ * @retval    -1     Error
  */
 static int
 validate_leafref(cxobj     *xt,
-		 yang_stmt *ytype)
+		 yang_stmt *ytype,
+		 cbuf      *cbret)
 {
     int          retval = -1;
     yang_stmt   *ypath;
@@ -247,8 +253,9 @@ validate_leafref(cxobj     *xt,
     if ((leafrefbody = xml_body(xt)) == NULL)
 	goto ok;
     if ((ypath = yang_find((yang_node*)ytype, Y_PATH, NULL)) == NULL){
-	clicon_err(OE_DB, 0, "Leafref %s requires path statement", ytype->ys_argument);
-	goto done;
+	if (netconf_missing_element(cbret, "application", ytype->ys_argument, "Leafref requires path statement") < 0)
+	    goto done;
+	goto fail;
     }
     if (xpath_vec(xt, "%s", &xvec, &xlen, ypath->ys_argument) < 0) 
 	goto done;
@@ -260,9 +267,9 @@ validate_leafref(cxobj     *xt,
 	    break;
     }
     if (i==xlen){
-	clicon_err(OE_DB, 0, "Leafref validation failed, no such leaf: %s",
-		   leafrefbody);
-	goto done;
+	if (netconf_bad_element(cbret, "application", leafrefbody, "Leafref validation failed: No such leaf") < 0)
+	    goto done;
+	goto fail;
     }
  ok:
     retval = 0;
@@ -270,6 +277,9 @@ validate_leafref(cxobj     *xt,
     if (xvec)
 	free(xvec);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Validate xml node of type identityref, ensure value is a defined identity
@@ -285,14 +295,18 @@ validate_leafref(cxobj     *xt,
  * @param[in]  xt    XML leaf node of type identityref
  * @param[in]  ys    Yang spec of leaf
  * @param[in]  ytype Yang type field of type identityref
+ * @param[out] cbret Error buffer
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed
+ * @retval    -1     Error
  * @see ys_populate_identity where the derived types are set
  * @see RFC7950 Sec 9.10.2:
-
  */
 static int
 validate_identityref(cxobj     *xt,
 		     yang_stmt *ys,
-		     yang_stmt *ytype)
+		     yang_stmt *ytype,
+		     cbuf      *cbret)
 {
     int         retval = -1;
     char       *node;
@@ -305,37 +319,46 @@ validate_identityref(cxobj     *xt,
      * Always add default prefix because derived identifiers are stored with
      * prefixes in the base identifiers derived-list.
      */
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new"); 
+	goto done;
+    }
     if ((node = xml_body(xt)) == NULL)
 	return 0;
     if (strchr(node, ':') == NULL){
 	prefix = yang_find_myprefix(ys);
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new"); 
-	    goto done;
-	}
 	cprintf(cb, "%s:%s", prefix, node);
 	node = cbuf_get(cb);
     }
     /* This is the type's base reference */
     if ((ybaseref = yang_find((yang_node*)ytype, Y_BASE, NULL)) == NULL){
-	clicon_err(OE_DB, 0, "Identityref validation failed, no base");
-	goto done;
+	if (netconf_missing_element(cbret, "application", ytype->ys_argument, "Identityref validation failed, no base") < 0)
+	    goto done;
+	goto fail;
     }
     /* This is the actual base identity */
     if ((ybaseid = yang_find_identity(ybaseref, ybaseref->ys_argument)) == NULL){
-	clicon_err(OE_DB, 0, "Identityref validation failed, no base identity");
-	goto done;
+	if (netconf_missing_element(cbret, "application", ybaseref->ys_argument, "Identityref validation failed, no base identity") < 0)
+	    goto done;
+	goto fail;
     }
     /* Here check if node is in the derived node list of the base identity */
     if (cvec_find(ybaseid->ys_cvec, node) == NULL){
-	clicon_err(OE_DB, 0, "Identityref validation failed, %s not derived from %s", node, ybaseid->ys_argument);
-	goto done;
+	cbuf_reset(cb);
+	cprintf(cb, "Identityref validation failed, %s not derived from %s", 
+		node, ybaseid->ys_argument);
+	if (netconf_operation_failed(cbret, "application", cbuf_get(cb)) < 0)
+	    goto done;
+	goto fail;
     }
-    retval = 0;
+    retval = 1;
  done:
     if (cb)
 	cbuf_free(cb);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Validate an RPC node
@@ -377,24 +400,33 @@ validate_identityref(cxobj     *xt,
  * the same order as they are defined within the "output" statement.
  */
 int
-xml_yang_validate_rpc(cxobj *xrpc)
+xml_yang_validate_rpc(cxobj *xrpc,
+		      cbuf  *cbret)
 {
     int        retval = -1;
     yang_stmt *yn=NULL;  /* rpc name */
     cxobj     *xn;       /* rpc name */
-    yang_stmt *yi=NULL;  /* input name */
-    cxobj     *xi;       /* input name */
+    int        ret;
     
-    assert(strcmp(xml_name(xrpc), "rpc")==0);
+    if (strcmp(xml_name(xrpc), "rpc")){
+	clicon_err(OE_XML, EINVAL, "Expected RPC");
+	goto done;
+    }
     xn = NULL;
+    /* xn is name of rpc, ie <rcp><xn/></rpc> */
     while ((xn = xml_child_each(xrpc, xn, CX_ELMNT)) != NULL) {
 	if ((yn = xml_spec(xn)) == NULL)
 	    goto fail;
-	xi = NULL;
-	while ((xi = xml_child_each(xn, xi, CX_ELMNT)) != NULL) {
-	    if ((yi = xml_spec(xi)) == NULL)
-		goto fail;
-	}
+	if ((ret = xml_yang_validate_all(xn, cbret)) < 0)
+	    goto fail;
+	if (ret == 0)
+	    goto fail;
+	if ((ret = xml_yang_validate_add(xn, cbret)) < 0)
+	    goto fail;
+	if (ret == 0)
+	    goto fail;
+	if (xml_apply0(xn, CX_ELMNT, xml_default, NULL) < 0)
+	    goto done;
     }
     // ok: /* pass validation */
     retval = 1;
@@ -408,14 +440,24 @@ xml_yang_validate_rpc(cxobj *xrpc)
 /*! Validate a single XML node with yang specification for added entry
  * 1. Check if mandatory leafs present as subs.
  * 2. Check leaf values, eg int ranges and string regexps.
- * @param[in]  xt  XML node to be validated
- * @retval     0   Valid OK
- * @retval    -1   Validation failed
+ * @param[in]  xt    XML node to be validated
+ * @param[out] cbret Error buffer
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed
+ * @retval    -1     Error
+ * @code
+ *   cxobj *x;
+ *   cbuf *cbret = cbuf_new();
+ *   if ((ret = xml_yang_validate_add(x, cbret)) < 0)
+ *      err;
+ *   if (ret == 0)
+ *      fail;
+ * @endcode
  * @see xml_yang_validate_all
  */
 int
 xml_yang_validate_add(cxobj   *xt, 
-		      void    *arg)
+		      cbuf    *cbret)
 {
     int        retval = -1;
     cg_var    *cv = NULL;
@@ -424,11 +466,14 @@ xml_yang_validate_add(cxobj   *xt,
     int        i;
     yang_stmt *ys;
     char      *body;
+    int        ret;
+    cxobj     *x;
     
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((ys = xml_spec(xt)) != NULL && yang_config(ys) != 0){
 	switch (ys->ys_keyword){
+	case Y_RPC:
 	case Y_INPUT:
 	case Y_LIST:
 	    /* fall thru */
@@ -440,9 +485,9 @@ xml_yang_validate_add(cxobj   *xt,
 		if (yang_config(yc)==0)
 		    continue;
 		if (yang_mandatory(yc) && xml_find(xt, yc->ys_argument)==NULL){
-		    clicon_err(OE_CFG, 0,"Missing mandatory variable: %s",
-			       yc->ys_argument);
-		    goto done;
+		    if (netconf_missing_element(cbret, "application", yc->ys_argument, "Mandatory variable") < 0)
+			goto done;
+		    goto fail;
 		}
 	    }
 	    break;
@@ -463,12 +508,11 @@ xml_yang_validate_add(cxobj   *xt,
 		    goto done;
 		}
 		if ((ys_cv_validate(cv, ys, &reason)) != 1){
-		    clicon_err(OE_DB, 0,
-			       "validation of %s failed %s",
-			       ys->ys_argument, reason?reason:"");
+		    if (netconf_bad_element(cbret, "application",  ys->ys_argument, reason) < 0)
+			goto done;
 		    if (reason)
 			free(reason);
-		    goto done;
+		    goto fail;
 		}
 	    }
 	    break;
@@ -476,28 +520,43 @@ xml_yang_validate_add(cxobj   *xt,
 	    break;
 	}
     }
-    retval = 0;
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if ((ret = xml_yang_validate_add(x, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
+    retval = 1;
  done:
     if (cv)
 	cv_free(cv);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Validate a single XML node with yang specification for all (not only added) entries
  * 1. Check leafrefs. Eg you delete a leaf and a leafref references it.
  * @param[in]  xt  XML node to be validated
- * @param[in]  arg Not used
- * @retval    -1   Validation failed
- * @retval     0   Validation OK
+ * @param[out] cbret Error buffer
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed
+ * @retval    -1     Error
  * @see xml_yang_validate_add
  * @code
- *   if (xml_apply(x, CX_ELMNT, (xml_applyfn_t*)xml_yang_validate_all, 0) < 0)
+ *   cxobj *x;
+ *   cbuf *cbret = cbuf_new();
+ *   if ((ret = xml_yang_validate_all(x, cbret)) < 0)
  *      err;
+ *   if (ret == 0)
+ *      fail;
  * @endcode
  */
 int
 xml_yang_validate_all(cxobj   *xt, 
-		      void    *arg)
+		      cbuf    *cbret)
 {
     int        retval = -1;
     yang_stmt *ys;  /* yang node */
@@ -505,13 +564,24 @@ xml_yang_validate_all(cxobj   *xt,
     yang_stmt *ye;  /* yang must error-message */
     char      *xpath;
     int        nr;
-    
+    int        ret;
+    cxobj     *x;
+
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
-    if ((ys = xml_spec(xt)) != NULL &&
-	yang_config(ys) != 0){
+    ys=xml_spec(xt);
+    if (ys==NULL){
+	if (netconf_unknown_element(cbret, "application", xml_name(xt), NULL) < 0)
+	    goto done;
+	goto fail;
+    }
+    if (ys != NULL && yang_config(ys) != 0){
 	/* Node-specific validation */
 	switch (ys->ys_keyword){
+	case Y_ANYXML:
+	case Y_ANYDATA:
+	    goto ok;
+	    break;
 	case Y_LEAF:
 	    /* fall thru */
 	case Y_LEAF_LIST:
@@ -520,11 +590,11 @@ xml_yang_validate_all(cxobj   *xt,
  	    */
 	    if ((yc = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL){
 		if (strcmp(yc->ys_argument, "leafref") == 0){
-		    if (validate_leafref(xt, yc) < 0)
+		    if (validate_leafref(xt, yc, cbret) < 0)
 			goto done;
 		}
 		else if (strcmp(yc->ys_argument, "identityref") == 0){
-		    if (validate_identityref(xt, ys, yc) < 0)
+		    if (validate_identityref(xt, ys, yc, cbret) < 0)
 			goto done;
 		}
 	    }
@@ -568,11 +638,11 @@ xml_yang_validate_all(cxobj   *xt,
 	    if ((nr = xpath_vec_bool(xt, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){
-		if ((ye = yang_find((yang_node*)yc, Y_ERROR_MESSAGE, NULL)) != NULL)
-		    clicon_err(OE_DB, 0, "%s", ye->ys_argument);
-		else
-		    clicon_err(OE_DB, 0, "xpath %s validation failed", xml_name(xt));
-		goto done;
+		ye = yang_find((yang_node*)yc, Y_ERROR_MESSAGE, NULL);
+		if (netconf_operation_failed(cbret, "application",
+					     ye?ye->ys_argument:"must xpath validation failed") < 0)
+		    goto done;
+		goto fail;
 	    }
 	}
 	/* "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
@@ -581,14 +651,42 @@ xml_yang_validate_all(cxobj   *xt,
 	    if ((nr = xpath_vec_bool(xt, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){
-		clicon_err(OE_DB, 0, "xpath %s validation failed", xml_name(xt));
-		goto done;
+		if (netconf_operation_failed(cbret, "application",
+					     "when xpath validation failed") < 0)
+		    goto done;
+		goto fail;
 	    }
 	}
     }
-    retval = 0;
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if ((ret = xml_yang_validate_all(x, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
+ ok:
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+int
+xml_yang_validate_all_top(cxobj   *xt, 
+			  cbuf    *cbret)
+{
+    int    ret;
+    cxobj *x;
+    
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if ((ret = xml_yang_validate_all(x, cbret)) < 1)
+	    return ret;
+    }
+    return 1;
 }
 
 /*! Translate a single xml node to a cligen variable vector. Note not recursive 
@@ -1310,6 +1408,11 @@ xml_tree_prune_flagged(cxobj *xt,
 
 /*! Add default values (if not set)
  * @param[in]   xt      XML tree with some node marked
+ * @param[in]   arg     Ignored
+ * Typically called in a recursive apply function:
+ * @code
+ *   xml_apply(xt, CX_ELMNT, xml_default, NULL);
+ * @endcode
  */
 int
 xml_default(cxobj *xt, 
@@ -1328,7 +1431,8 @@ xml_default(cxobj *xt,
 	goto done;
     }
     /* Check leaf defaults */
-    if (ys->ys_keyword == Y_CONTAINER || ys->ys_keyword == Y_LIST){
+    if (ys->ys_keyword == Y_CONTAINER || ys->ys_keyword == Y_LIST ||
+	ys->ys_keyword == Y_INPUT){
 	for (i=0; i<ys->ys_len; i++){
 	    y = ys->ys_stmt[i];
 	    if (y->ys_keyword != Y_LEAF)
@@ -1493,9 +1597,9 @@ xml_spec_populate_rpc(clicon_handle h,
     yang_stmt *y=NULL;    /* yang node */
     yang_stmt *ymod=NULL; /* yang module */
     yang_stmt *yi = NULL; /* input */
-    yang_stmt *ya = NULL; /* arg */
+    //    yang_stmt *ya = NULL; /* arg */
     cxobj     *x;
-    cxobj     *xi;
+    //    cxobj     *xi;
     int        i;
     
     if ((strcmp(xml_name(xrpc), "rpc"))!=0){
@@ -1521,11 +1625,18 @@ xml_spec_populate_rpc(clicon_handle h,
 	if (y){
 	    xml_spec_set(x, y);
 	    if ((yi = yang_find((yang_node*)y, Y_INPUT, NULL)) != NULL){
+		/* kludge rpc -> input */
+		xml_spec_set(x, yi); 
+#if 1
+		if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
+		    goto done;
+#else
 		xi = NULL;
 		while ((xi = xml_child_each(x, xi, CX_ELMNT)) != NULL) {
 		    if ((ya = yang_find_datanode((yang_node*)yi, xml_name(xi))) != NULL)
 			xml_spec_set(xi, ya);
-		}		
+		}
+#endif		
 	    }
 	}
     }

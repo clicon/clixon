@@ -81,68 +81,86 @@
  * are if code comes via XML/NETCONF.
  * @param[in]   yspec   Yang spec
  * @param[in]   td      Transaction data
+ * @param[out]  cbret   Cligen buffer containing netconf error (if retval == 0)
+ * @retval     -1       Error
+ * @retval      0       Validation failed (with cbret set)
+ * @retval      1       Validation OK       
  */
 static int
 generic_validate(yang_spec          *yspec,
-		 transaction_data_t *td)
+		 transaction_data_t *td,
+		 cbuf               *cbret)
 {
     int             retval = -1;
     cxobj          *x1;
     cxobj          *x2;
     yang_stmt      *ys;
     int             i;
+    int             ret;
 
     /* All entries */
-    if (xml_apply(td->td_target, CX_ELMNT, 
-		  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+    if ((ret = xml_yang_validate_all_top(td->td_target, cbret)) < 0) 
 	goto done;
-
+    if (ret == 0)
+	goto fail;
     /* changed entries */
     for (i=0; i<td->td_clen; i++){
 	x1 = td->td_scvec[i]; /* source changed */
 	x2 = td->td_tcvec[i]; /* target changed */
-	if (xml_yang_validate_add(x2, NULL) < 0)
+	/* Should this be recursive? */
+	if ((ret = xml_yang_validate_add(x2, cbret)) < 0)
 	    goto done;
+	if (ret == 0)
+	    goto fail;
     }
     /* deleted entries */
     for (i=0; i<td->td_dlen; i++){
 	x1 = td->td_dvec[i];
 	ys = xml_spec(x1);
 	if (ys && yang_mandatory(ys)){
-	    clicon_err(OE_CFG, 0,"Removed mandatory variable: %s", 
-		       xml_name(x1));
-	    goto done;
+	    if (netconf_missing_element(cbret, "protocol", xml_name(x1), "Removed mandatory variable") < 0)
+		goto done;
+	    goto fail;
 	}
     }
     /* added entries */
     for (i=0; i<td->td_alen; i++){
 	x2 = td->td_avec[i];
-	if (xml_apply0(x2, CX_ELMNT, 
-		      (xml_applyfn_t*)xml_yang_validate_add, NULL) < 0)
+	if ((ret = xml_yang_validate_add(x2, cbret)) < 0)
 	    goto done;
+	if (ret == 0)
+	    goto fail;
     }
-    retval = 0;
+    // ok:
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Common code of candidate_validate and candidate_commit 
  * @param[in] h         Clicon handle
  * @param[in] candidate The candidate database. The wanted backend state
- * @retval    0         OK  
- * @retval   -1         Fatal error or validation fail
- * @note Need to differentiate between error and validation fail
+ * @retval   -1       Error - or validation failed (but cbret not set)
+ * @retval    0       Validation failed (with cbret set)
+ * @retval    1       Validation OK       
+ * @note Need to differentiate between error and validation fail 
+ *       (only done for generic_validate)
  */
 static int
 validate_common(clicon_handle       h, 
 		char               *candidate,
-	        transaction_data_t *td)
+	        transaction_data_t *td,
+		cbuf               *cbret)
 {
     int         retval = -1;
     yang_spec  *yspec;
     int         i;
     cxobj      *xn;
-
+    int         ret;
+    
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
@@ -193,9 +211,12 @@ validate_common(clicon_handle       h,
     if (plugin_transaction_begin(h, td) < 0)
 	goto done;
 
-    /* 5. Make generic validation on all new or changed data. */
-    if (generic_validate(yspec, td) < 0)
+    /* 5. Make generic validation on all new or changed data.
+       Note this is only call that uses 3-values */
+    if ((ret = generic_validate(yspec, td, cbret)) < 0)
 	goto done;
+    if (ret == 0)
+	goto fail;
 
     /* 6. Call plugin transaction validate callbacks */
     if (plugin_transaction_validate(h, td) < 0)
@@ -204,9 +225,12 @@ validate_common(clicon_handle       h,
     /* 7. Call plugin transaction complete callbacks */
     if (plugin_transaction_complete(h, td) < 0)
 	goto done;
-    retval = 0;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Do a diff between candidate and running, then start a commit transaction
@@ -216,24 +240,30 @@ validate_common(clicon_handle       h,
  * do something more drastic?
  * @param[in]  h         Clicon handle
  * @param[in]  candidate A candidate database, not necessarily "candidate"
- * @retval    0         OK  
- * @retval   -1         Fatal error or validation fail
+ * @retval   -1       Error - or validation failed (but cbret not set)
+ * @retval    0       Validation failed (with cbret set)
+ * @retval    1       Validation OK       
  * @note Need to differentiate between error and validation fail
+ *       (only done for validate_common)
  */
 int
 candidate_commit(clicon_handle h, 
-		 char         *candidate)
+		 char         *candidate,
+		 cbuf         *cbret)
 {
-    int                retval = -1;
+    int                 retval = -1;
     transaction_data_t *td = NULL;
+    int                 ret;
 
      /* 1. Start transaction */
     if ((td = transaction_new()) == NULL)
 	goto done;
 
-    /* Common steps (with validate) */
-    if (validate_common(h, candidate, td) < 0)
+    /* Common steps (with validate). Note this is only call that uses 3-values */
+    if ((ret = validate_common(h, candidate, td, cbret)) < 0)
 	goto done;
+    if (ret == 0)
+	goto fail;
 
      /* 7. Call plugin transaction commit callbacks */
      if (plugin_transaction_commit(h, td) < 0)
@@ -252,21 +282,23 @@ candidate_commit(clicon_handle h,
     /* 9. Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);
 
-
     /* 8. Copy running back to candidate in case end functions updated running */
     if (xmldb_copy(h, "running", candidate) < 0){
 	/* ignore errors or signal major setback ? */
 	clicon_log(LOG_NOTICE, "Error in rollback, trying to continue");
 	goto done;
     } 
-    retval = 0;
+    retval = 1;
  done:
-     /* In case of failure, call plugin transaction termination callbacks */
-     if (retval < 0 && td)
+     /* In case of failure (or error), call plugin transaction termination callbacks */
+     if (retval < 1 && td)
 	 plugin_transaction_abort(h, td);
      if (td)
 	 transaction_free(td);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Commit changes from candidate to running
@@ -283,6 +315,7 @@ from_client_commit(clicon_handle h,
     int        retval = -1;
     int        piddb;
     cbuf      *cbx = NULL; /* Assist cbuf */
+    int        ret;
 
     /* Check if target locked by other client */
     piddb = xmldb_islocked(h, "running");
@@ -296,9 +329,10 @@ from_client_commit(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if (candidate_commit(h, "candidate") < 0){ /* Assume validation fail, nofatal */
+    if ((ret = candidate_commit(h, "candidate", cbret)) < 0){ /* Assume validation fail, nofatal */
 	clicon_debug(1, "Commit candidate failed");
-	    if (netconf_invalid_value(cbret, "protocol", clicon_err_reason)< 0)
+	if (ret < 0)
+	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 		goto done;
         goto ok;
     }
@@ -367,6 +401,7 @@ from_client_validate(clicon_handle h,
 {
     int                 retval = -1;
     transaction_data_t *td = NULL;
+    int                 ret;
 
     if (strcmp(db, "candidate") != 0 && strcmp(db, "tmp") != 0){
 	if (netconf_invalid_value(cbret, "protocol", "No such database")< 0)
@@ -379,11 +414,12 @@ from_client_validate(clicon_handle h,
     if ((td = transaction_new()) == NULL)
 	goto done;
     /* Common steps (with commit) */
-    if (validate_common(h, db, td) < 0){
+    if ((ret = validate_common(h, db, td, cbret)) < 1){
 	clicon_debug(1, "Validate %s failed",  db);
-	/* XXX: candidate_validate should have proper error handling */
-	if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
-	    goto done;
+	if (ret < 0){
+	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+		goto done;
+	}
 	goto ok;
     }
     /* Optionally write (potentially modified) tree back to candidate */

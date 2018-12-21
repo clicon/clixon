@@ -862,7 +862,7 @@ ys_module_by_xml(yang_spec  *ysp,
 
     if (ymodp)
 	*ymodp = NULL;
-    prefix = xml_namespace(xt);
+    prefix = xml_prefix(xt);
     if (prefix){
 	/* Get namespace for prefix */
 	if (xml2ns(xt, prefix, &namespace) < 0)

@@ -118,6 +118,9 @@ xml_child_spec(char       *name,
     }
     else
 	y = NULL;
+    /* kludge rpc -> input */
+    if (y && y->ys_keyword == Y_RPC && yang_find((yang_node*)y, Y_INPUT, NULL))
+	y = yang_find((yang_node*)y, Y_INPUT, NULL);
     *yresult = y;
     retval = 0;
  done:

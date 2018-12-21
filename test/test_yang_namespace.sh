@@ -122,7 +122,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><cand
 
 # rpc
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 new "Kill backend"

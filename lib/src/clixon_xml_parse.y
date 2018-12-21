@@ -172,7 +172,7 @@ xml_parse_prefixed_name(struct xml_parse_yacc_arg *ya,
 	goto done;
     if ((x = xml_new(name, xp, y)) == NULL) 
 	goto done;
-    if (xml_namespace_set(x, prefix) < 0)
+    if (xml_prefix_set(x, prefix) < 0)
 	goto done;
     ya->ya_xelement = x;
     retval = 0;
@@ -223,9 +223,9 @@ xml_parse_bslash1(struct xml_parse_yacc_arg *ya,
 		xml_name(x), name);
 	goto done;
     }
-    if (xml_namespace(x)!=NULL){
+    if (xml_prefix(x)!=NULL){
 	clicon_err(OE_XML, 0, "XML parse sanity check failed: %s:%s vs %s", 
-		xml_namespace(x), xml_name(x), name);
+		xml_prefix(x), xml_name(x), name);
 	goto done;
     }
     /* Strip pretty-print. Ad-hoc algorithm
@@ -263,16 +263,16 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
 
     if (strcmp(xml_name(x), name)){
 	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s", 
-		xml_namespace(x), 
+		xml_prefix(x), 
 		xml_name(x), 
 		namespace, 
 		name);
 	goto done;
     }
-    if (xml_namespace(x)==NULL ||
-	strcmp(xml_namespace(x), namespace)){
+    if (xml_prefix(x)==NULL ||
+	strcmp(xml_prefix(x), namespace)){
 	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s", 
-		xml_namespace(x), 
+		xml_prefix(x), 
 		xml_name(x), 
 		namespace, 
 		name);
@@ -324,7 +324,7 @@ xml_parse_attr(struct xml_parse_yacc_arg *ya,
     if ((xa = xml_new(name, ya->ya_xelement, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
-    if (prefix && xml_namespace_set(xa, prefix) < 0)
+    if (prefix && xml_prefix_set(xa, prefix) < 0)
 	goto done;
     if (xml_value_set(xa, attval) < 0)
 	goto done;

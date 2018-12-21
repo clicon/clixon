@@ -212,7 +212,7 @@ expectfn "$clixon_cli -1f $cfg -y $fyang set x f e foo" 0 ""
 new "cli show leaf-list"
 expectfn "$clixon_cli -1f $cfg -y $fyang show xpath /x/f/e" 0 "<e>foo</e>"
 new "netconf set state data (not allowed)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><state><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><state><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>invalid-value"
 
 new "netconf set presence and not present"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x><nopresence/><presence/></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -233,7 +233,7 @@ new "netconf validate anyxml"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf delete candidate"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><delete-config><target><candidate/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config operation="delete"/></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Check 3-keys
 new "netconf add one 3-key entry"
@@ -262,7 +262,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><cand
 
 # clear db for next test
 new "netconf delete candidate"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><delete-config><target><candidate/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config operation="delete"/></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit empty candidate"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -279,7 +279,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candid
 new "netconf submodule discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 

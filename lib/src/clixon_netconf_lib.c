@@ -80,8 +80,8 @@ netconf_in_use(cbuf *cb,
     char *encstr = NULL;
     
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>in-use</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>in-use</error-tag>"
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
@@ -119,8 +119,8 @@ netconf_invalid_value(cbuf *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>invalid-value</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>invalid-value</error-tag>"
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
@@ -159,8 +159,8 @@ netconf_too_big(cbuf *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>too-big</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>too-big</error-tag>"
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
@@ -200,8 +200,8 @@ netconf_missing_attribute(cbuf *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-attribute</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>missing-attribute</error-tag>"
 		"<error-info>%s</error-info>"
 		"<error-severity>error</error-severity>",
 		type, info) <0)
@@ -241,8 +241,8 @@ netconf_bad_attribute(cbuf *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>bad-attribute</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>bad-attribute</error-tag>"
 		"<error-info>%s</error-info>"
 		"<error-severity>error</error-severity>",
 		type, info) <0)
@@ -283,8 +283,8 @@ netconf_unknown_attribute(cbuf *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>unknown-attribute</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>unknown-attribute</error-tag>"
 		"<error-info>%s</error-info>"
 		"<error-severity>error</error-severity>",
 		type, info) <0)
@@ -318,18 +318,18 @@ netconf_unknown_attribute(cbuf *cb,
 int
 netconf_missing_element(cbuf      *cb, 
 			char      *type,
-			char      *info,
+			char      *element,
 			char      *message)
 {
     int   retval = -1;
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>missing-element</error-tag>"
 		"<error-type>%s</error-type>"
-		"<error-info>%s</error-info>"
+		"<error-tag>missing-element</error-tag>"
+		"<error-info><bad-element>%s</bad-element></error-info>"
 		"<error-severity>error</error-severity>",
-		type, info) <0)
+		type, element) <0)
 	goto err;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
@@ -355,24 +355,24 @@ netconf_missing_element(cbuf      *cb,
  * pattern mismatch.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
- * @param[in]  info    bad-element xml
+ * @param[in]  elemnt  Bad element name
  * @param[in]  message Error message
  */
 int
 netconf_bad_element(cbuf *cb,
 		    char *type,
-		    char *info,
+		    char *element,
 		    char *message)
 {
     int   retval = -1;
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>bad-element</error-tag>"
 		"<error-type>%s</error-type>"
-		"<error-info>%s</error-info>"
+		"<error-tag>bad-element</error-tag>"
+		"<error-info><bad-element>%s</bad-element></error-info>"
 		"<error-severity>error</error-severity>",
-		type, info) <0)
+		type, element) <0)
 	goto err;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
@@ -397,24 +397,24 @@ netconf_bad_element(cbuf *cb,
  * An unexpected element is present.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
- * @param[in]  info    bad-element xml
+ * @param[in]  element Bad element name
  * @param[in]  message Error message
  */
 int
 netconf_unknown_element(cbuf *cb,
 			char *type,
-			char *info,
+			char *element,
 			char *message)
 {
     int   retval = -1;
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>unknown-element</error-tag>"
 		"<error-type>%s</error-type>"
-		"<error-info>%s</error-info>"
+		"<error-tag>unknown-element</error-tag>"
+		"<error-info><bad-element>%s</bad-element></error-info>"
 		"<error-severity>error</error-severity>",
-		type, info) <0)
+		type, element) <0)
 	goto err;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
@@ -452,8 +452,8 @@ netconf_unknown_namespace(cbuf *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>unknown-namespace</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>unknown-namespace</error-tag>"
 		"<error-info>%s</error-info>"
 		"<error-severity>error</error-severity>",
 		type, info) <0)
@@ -478,7 +478,8 @@ netconf_unknown_namespace(cbuf *cb,
 
 /*! Create Netconf access-denied error XML tree according to RFC 6241 App A
  *
- * An expected element is missing.
+ * Access to the requested protocol operation or data model is denied because 
+ * authorization failed.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message
@@ -492,8 +493,8 @@ netconf_access_denied(cbuf *cb,
     char *encstr = NULL;
     
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>access-denied</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>access-denied</error-tag>"
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
@@ -517,7 +518,8 @@ netconf_access_denied(cbuf *cb,
 
 /*! Create Netconf access-denied error XML tree according to RFC 6241 App A
  *
- * An expected element is missing.
+ * Access to the requested protocol operation or data model is denied because
+ * authorization failed.
  * @param[out] xret    Error XML tree 
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message
@@ -538,8 +540,8 @@ netconf_access_denied_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, "<error-tag>access-denied</error-tag>"
-		     "<error-type>%s</error-type>"
+    if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
+		     "<error-tag>access-denied</error-tag>"
 		     "<error-severity>error</error-severity>", type) < 0)
 	goto done;
     if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
@@ -567,8 +569,8 @@ netconf_lock_denied(cbuf *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>lock-denied</error-tag>"
 		"<error-type>protocol</error-type>"
+		"<error-tag>lock-denied</error-tag>"
 		"<error-info>%s</error-info>"
 		"<error-severity>error</error-severity>",
 		info) <0)
@@ -593,7 +595,7 @@ netconf_lock_denied(cbuf *cb,
 
 /*! Create Netconf resource-denied error XML tree according to RFC 6241 App A
  *
- * An expected element is missing.
+ * Request could not be completed because of insufficient resources.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "transport, "rpc", "application", "protocol"
  * @param[in]  message Error message
@@ -607,8 +609,8 @@ netconf_resource_denied(cbuf *cb,
     char *encstr = NULL;
     
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>resource-denied</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>resource-denied</error-tag>"
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
@@ -647,8 +649,8 @@ netconf_rollback_failed(cbuf *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>rollback-failed</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>rollback-failed</error-tag>"
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
@@ -686,8 +688,8 @@ netconf_data_exists(cbuf      *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>data-exists</error-tag>"
 		"<error-type>application</error-type>"
+		"<error-tag>data-exists</error-tag>"
 		"<error-severity>error</error-severity>") <0)
 	goto err;
     if (message){
@@ -724,8 +726,8 @@ netconf_data_missing(cbuf *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>data-missing</error-tag>"
 		"<error-type>application</error-type>"
+		"<error-tag>data-missing</error-tag>"
 		"<error-severity>error</error-severity>") <0)
 	goto err;
     if (message){
@@ -763,8 +765,8 @@ netconf_operation_not_supported(cbuf *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-not-supported</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>operation-not-supported</error-tag>"
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
@@ -803,8 +805,8 @@ netconf_operation_failed(cbuf  *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>operation-failed</error-tag>"
 		"<error-type>%s</error-type>"
+		"<error-tag>operation-failed</error-tag>"
 		"<error-severity>error</error-severity>",
 		type) <0)
 	goto err;
@@ -850,8 +852,8 @@ netconf_operation_failed_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, "<error-tag>operation-failed</error-tag>"
-		     "<error-type>%s</error-type>"
+    if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
+		     "<error-tag>operation-failed</error-tag>"
 		     "<error-severity>error</error-severity>", type) < 0)
 	goto done;
     if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
@@ -879,8 +881,8 @@ netconf_malformed_message(cbuf  *cb,
     char *encstr = NULL;
 
     if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-tag>malformed-message</error-tag>"
 		"<error-type>rpc</error-type>"
+		"<error-tag>malformed-message</error-tag>"
 		"<error-severity>error</error-severity>") <0)
 	goto err;
     if (message){
@@ -925,8 +927,8 @@ netconf_malformed_message_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, "<error-tag>malformed-message</error-tag>"
-		     "<error-type>rpc</error-type>"
+    if (xml_parse_va(&xerr, NULL, "<error-type>rpc</error-type>"
+		     "<error-tag>malformed-message</error-tag>"
 		     "<error-severity>error</error-severity>") < 0)
 	goto done;
     if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
@@ -990,7 +992,6 @@ netconf_module_load(clicon_handle h)
 	clicon_err(OE_CFG, ENOENT, "Clicon configuration not loaded");
 	goto done; 
     }
-    
     /* Enable features (hardcoded here) */
     if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:candidate</CLICON_FEATURE>", yspec, &xc) < 0)
 	goto done;

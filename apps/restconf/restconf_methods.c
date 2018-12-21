@@ -190,7 +190,7 @@ api_data_get2(clicon_handle h,
     yang_spec *yspec;
     cxobj     *xret = NULL;
     cxobj     *xerr = NULL; /* malloced */
-    cxobj     *xe;
+    cxobj     *xe = NULL;
     cxobj    **xvec = NULL;
     size_t     xlen;
     int        i;
@@ -206,8 +206,9 @@ api_data_get2(clicon_handle h,
     if (api_path2xpath_cvv(yspec, pcvec, pi, cbpath) < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
 	goto ok;
     }
     path = cbuf_get(cbpath);
@@ -215,8 +216,9 @@ api_data_get2(clicon_handle h,
     if (clicon_rpc_get(h, path, &xret) < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
 	goto ok;
     }
     /* We get return via netconf which is complete tree from root 
@@ -434,16 +436,18 @@ api_data_post(clicon_handle h,
 	if (xml_parse_string(data, NULL, &xdata) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
-	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-		goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		    goto done;
 	    goto ok;
 	}
     }
     else if (json_parse_str(data, &xdata) < 0){
 	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
 	goto ok;
     }
     /* 4.4.1: The message-body MUST contain exactly one instance of the
@@ -452,8 +456,9 @@ api_data_post(clicon_handle h,
     if (xml_child_nr(xdata) != 1){
 	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
 	goto ok;
     }
     x = xml_child_i(xdata,0);
@@ -662,16 +667,18 @@ api_data_put(clicon_handle h,
 	if (xml_parse_string(data, NULL, &xdata) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
-	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-		goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		    goto done;
 	    goto ok;
 	}
     }
     else if (json_parse_str(data, &xdata) < 0){
 	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
 	goto ok;
     }
     /* The message-body MUST contain exactly one instance of the
@@ -680,8 +687,9 @@ api_data_put(clicon_handle h,
     if (xml_child_nr(xdata) != 1){
 	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
 	goto ok;
     }
     x = xml_child_i(xdata,0);
@@ -705,8 +713,9 @@ api_data_put(clicon_handle h,
 	if (strcmp(xml_name(x), xml_name(xbot))){
 	    if (netconf_operation_failed_xml(&xerr, "protocol", "Not same symbol in api-path as data") < 0)
 		goto done;
-	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-		goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		    goto done;
 	    goto ok;
 	}
 	/* If list or leaf-list, api-path keys must match data keys */	    
@@ -714,8 +723,9 @@ api_data_put(clicon_handle h,
 	    if (match_list_keys((yang_stmt*)y, x, xbot) < 0){
 		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
 		    goto done;
-		if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-		    goto done;
+		if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+		    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+			goto done;
 		goto ok;
 	    }
 	}
@@ -866,7 +876,7 @@ api_data_delete(clicon_handle h,
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
-    if (xml_value_set(xa,  xml_operation2str(op)) < 0)
+    if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
@@ -1054,7 +1064,6 @@ api_operations_post(clicon_handle h,
     cxobj     *xdata = NULL;
     cxobj     *xret = NULL;
     cxobj     *xerr = NULL; /* malloced must be freed */
-    cxobj     *xer; /* non-malloced error */
     cbuf      *cbx = NULL;
     cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xbot = NULL;
@@ -1076,13 +1085,18 @@ api_operations_post(clicon_handle h,
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, 0, "cbuf_new");
+	goto done;
+    }
     for (i=0; i<pi; i++)
 	oppath = index(oppath+1, '/');
     if (oppath == NULL || strcmp(oppath,"/")==0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", "Operation name expected") < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
 	goto ok;
     }
     clicon_debug(1, "%s oppath: %s", __FUNCTION__, oppath);
@@ -1098,22 +1112,25 @@ api_operations_post(clicon_handle h,
     if ((ys = yang_find((yang_node*)yspec, Y_MODULE, prefix)) == NULL){
 	if (netconf_operation_failed_xml(&xerr, "protocol", "yang module not found") < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
 	goto ok;
     }
     if ((yrpc = yang_find((yang_node*)ys, Y_RPC, id)) == NULL){
 	if (netconf_operation_failed_xml(&xerr, "protocol", "yang node not found") < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
 	goto ok;
     }
     if (yrpc == NULL){
 	if (netconf_operation_failed_xml(&xerr, "protocol", "yang node not found") < 0)
 	    goto done;
-	if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
 	goto ok;
     }
     /* Create an xml message: 
@@ -1142,16 +1159,18 @@ api_operations_post(clicon_handle h,
 	    if (xml_parse_string(data, NULL, &xdata) < 0){
 		if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		    goto done;
-		if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-		    goto done;
+		if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+		    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+			goto done;
 		goto ok;
 	    }
 	}
 	else if (json_parse_str(data, &xdata) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
-	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-		goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) != NULL)
+		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		    goto done;
 	    goto ok;
 	}
 	yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL);
@@ -1160,11 +1179,14 @@ api_operations_post(clicon_handle h,
 	    xml_name_set(xdata, "input");
 	    xml_spec_set(xdata, yinput); /* needed for xml_spec_populate */
 	    if (yinput){
-		if (xml_yang_validate_add(xdata, NULL) < 0){
-		    if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+		if ((ret = xml_yang_validate_add(xdata, cbret)) < 0)
+		    goto done;
+		if (ret == 0){ /* validation failed */
+		    if (xml_parse_string(cbuf_get(cbret), yspec, &xerr) < 0)
 			goto done;
-		    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-			goto done;
+		    if ((xe=xpath_first(xerr, "rpc-reply/rpc-error")) != NULL)
+			if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+			    goto done;
 		    goto ok;
 		}
 	    }
@@ -1182,23 +1204,31 @@ api_operations_post(clicon_handle h,
 		/* XXX yinput <-> h ?*/
 		if (xml_apply(xbot, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		    goto done;
-		if (xml_apply(xbot, CX_ELMNT, 
-			      (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+		if ((ret = xml_yang_validate_all(xbot, cbret)) < 0)
 		    goto done;
-		if (xml_yang_validate_add(xbot, NULL) < 0){
-		    if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+		if (ret == 0){ /* validation failed */
+		    clicon_debug(1, "%s err: %s", __FUNCTION__, cbuf_get(cbret));
+		    if (xml_parse_string(cbuf_get(cbret), yspec, &xerr) < 0)
 			goto done;
-		    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
-			goto done;
+		    if ((xe=xpath_first(xerr, "rpc-reply/rpc-error")) != NULL)
+			if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+			    goto done;
 		    goto ok;
 		}
+		if ((ret = xml_yang_validate_add(xbot, cbret)) < 0){
+		    if (xml_parse_string(cbuf_get(cbret), yspec, &xerr) < 0)
+			goto done;
+		    if ((xe=xpath_first(xerr, "rpc-reply/rpc-error")) != NULL)
+			if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+			    goto done;
+		    goto ok;
+		}
+		if (xml_apply0(xbot, CX_ELMNT, xml_default, NULL) < 0)
+		    goto done;
 	    }
 	}
     }
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, 0, "cbuf_new");
-	goto done;
-    }
+    ret = 0;
     xe = NULL;
     while ((xe = xml_child_each(xtop, xe, CX_ELMNT)) != NULL) {
 	/* Look for local (client-side) restconf plugins. */
@@ -1208,8 +1238,8 @@ api_operations_post(clicon_handle h,
 	    if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)
 		goto done;
 	    /* Local error: return it and quit */
-	    if ((xer = xpath_first(xret, "//rpc-error")) != NULL){
-		if (api_return_err(h, r, xer, pretty, use_xml) < 0)
+	    if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
+		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 		    goto done;
 		goto ok;
 	    }
@@ -1219,8 +1249,8 @@ api_operations_post(clicon_handle h,
     if (ret == 0){ /* Send to backend */
 	if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	    goto done;
-	if ((xer = xpath_first(xret, "//rpc-error")) != NULL){
-	    if (api_return_err(h, r, xer, pretty, use_xml) < 0)
+	if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -1240,18 +1270,31 @@ api_operations_post(clicon_handle h,
 	goto done;
     if ((xoutput=xpath_first(xret, "/")) != NULL){
 	xml_name_set(xoutput, "output");
-#if 0
-	clicon_debug(1, "%s xoutput:%s", __FUNCTION__, cbuf_get(cbx));
-#endif
 	cbuf_reset(cbx);
 	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
 	if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
-	if (xml_apply(xoutput, CX_ELMNT, 
-		      (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+	if ((ret = xml_yang_validate_all(xoutput, cbret)) < 0)
 	    goto done;
-	if (xml_yang_validate_add(xoutput, NULL) < 0)
+	if (ret == 0){ /* validation failed */
+	    clicon_debug(1, "%s output validation failed", __FUNCTION__);
+	    if (xml_parse_string(cbuf_get(cbret), yspec, &xerr) < 0)
+		goto done;
+	    if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL)
+		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
+	    goto ok;
+	}
+	if ((ret = xml_yang_validate_add(xoutput, cbret)) < 0)
 	    goto done;
+	if (ret == 0){ /* validation failed */
+	    if (xml_parse_string(cbuf_get(cbret), yspec, &xerr) < 0)
+		goto done;
+	    if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL)
+		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		    goto done;
+	    goto ok;
+	}
     }
     /* Sanity check of outgoing XML */
     FCGX_SetExitStatus(200, r->out); /* OK */

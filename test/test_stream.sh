@@ -150,10 +150,10 @@ new "netconf EXAMPLE subscription with filter classifier"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" "<rpc><create-subscription><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event[event-class='fault']\"/></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' $NCWAIT
 
 new "netconf NONEXIST subscription"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>NONEXIST</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>No such stream</error-message></rpc-error></rpc-reply>]]>]]>$' $NCWAIT
+expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>NONEXIST</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></rpc-error></rpc-reply>]]>]]>$' $NCWAIT
 
 new "netconf EXAMPLE subscription with wrong date"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream><startTime>kallekaka</startTime></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-tag>bad-element</error-tag><error-type>application</error-type><error-info><bad-element>startTime</bad-element></error-info><error-severity>error</error-severity><error-message>Expected timestamp</error-message></rpc-error></rpc-reply>]]>]]>$' 0
+expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription><stream>EXAMPLE</stream><startTime>kallekaka</startTime></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>startTime</bad-element></error-info><error-severity>error</error-severity><error-message>Expected timestamp</error-message></rpc-error></rpc-reply>]]>]]>$' 0
 
 #new "netconf EXAMPLE subscription with replay"
 #NOW=$(date +"%Y-%m-%dT%H:%M:%S")
@@ -176,7 +176,7 @@ sleep 2
 # Restconf stream subscription RFC8040 Sec 6.3
 # Start Subscription w error
 new "restconf monitor event nonexist stream"
-expectwait 'curl -s -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" http://localhost/streams/NOTEXIST' 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-tag>invalid-value</error-tag><error-type>application</error-type><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>' 2
+expectwait 'curl -s -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" http://localhost/streams/NOTEXIST' 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>' 2
 
 # 2a) start subscription 8s - expect 1-2 notifications
 new "2a) start subscriptions 8s - expect 1-2 notifications"
@@ -278,7 +278,7 @@ sleep 5
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 

@@ -83,15 +83,17 @@ static int
 process_incoming_packet(clicon_handle h, 
 			cbuf         *cb)
 {
-    char  *str;
-    char  *str0;
-    cxobj *xreq = NULL; /* Request (in) */
-    int    isrpc = 0;   /* either hello or rpc */
-    cbuf  *cbret = NULL;
-    cxobj *xret = NULL; /* Return (out) */
-    cxobj *xrpc;
-    cxobj *xc;
+    int        retval = -1;
+    char      *str;
+    char      *str0;
+    cxobj     *xreq = NULL; /* Request (in) */
+    int        isrpc = 0;   /* either hello or rpc */
+    cbuf      *cbret = NULL;
+    cxobj     *xret = NULL; /* Return (out) */
+    cxobj     *xrpc;
+    cxobj     *xc;
     yang_spec *yspec;
+    int        ret;
 
     clicon_debug(1, "RECV");
     clicon_debug(2, "%s: RCV: \"%s\"", __FUNCTION__, cbuf_get(cb));
@@ -115,15 +117,12 @@ process_incoming_packet(clicon_handle h,
     }
     free(str0);
     if ((xrpc=xpath_first(xreq, "//rpc")) != NULL){
-	int ret;
         isrpc++;
-	if ((ret = xml_yang_validate_rpc(xrpc)) < 0) 
+	if ((ret = xml_yang_validate_rpc(xrpc, cbret)) < 0) 
 	    goto done;
 	if (ret == 0){
-	    if (netconf_operation_failed(cbret, "application", "Validation failed")< 0)
-		goto done;
 	    netconf_output(1, cbret, "rpc-error");
-	    goto done;
+	    goto ok;
 	}
     }
     else
@@ -168,6 +167,8 @@ process_incoming_packet(clicon_handle h,
 		}
 	    }
 	}
+ ok:
+    retval = 0;
   done:
     if (xreq)
 	xml_free(xreq);
@@ -175,7 +176,7 @@ process_incoming_packet(clicon_handle h,
 	xml_free(xret);
     if (cbret)
 	cbuf_free(cbret);
-    return 0;
+    return retval;
 }
 
 /*! Get netconf message: detect end-of-msg 
@@ -229,7 +230,7 @@ netconf_input_cb(int   s,
 		/* Remove trailer */
 		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
 		if (process_incoming_packet(h, cb) < 0)
-		    goto done;
+		    ; //goto done; // ignore errors
 		if (cc_closed)
 		    break;
 		cbuf_reset(cb);

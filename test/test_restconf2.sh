@@ -84,16 +84,16 @@ new "restconf GET if-type"
 expectfn "curl -s -X GET http://localhost/restconf/data/cont1/interface=local0/type" 0 '{"type": "regular"}'
 
 new "restconf POST interface without mandatory type"
-expectfn 'curl -s -X POST -d {"interface":{"name":"TEST"}} http://localhost/restconf/data/cont1' 0 '"error-message": "Missing mandatory variable: type"'
+expectfn 'curl -s -X POST -d {"interface":{"name":"TEST"}} http://localhost/restconf/data/cont1' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "type"},"error-severity": "error","error-message": "Mandatory variable"}}}'
 
 new "restconf POST interface"
 expectfn 'curl -s -X POST -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/cont1' 0 ""
 
 new2 "restconf POST again"
-expecteq "$(curl -s -X POST -d '{"interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/cont1)" '{"ietf-restconf:errors" : {"error": {"error-tag": "data-exists","error-type": "application","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+expecteq "$(curl -s -X POST -d '{"interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/cont1)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 new2 "restconf POST from top"
-expecteq "$(curl -s -X POST -d '{"cont1":{"interface":{"name":"TEST","type":"eth0"}}}' http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-tag": "data-exists","error-type": "application","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+expecteq "$(curl -s -X POST -d '{"cont1":{"interface":{"name":"TEST","type":"eth0"}}}' http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 new "restconf DELETE"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data/cont1' 0 ""
@@ -138,12 +138,12 @@ new "restconf PUT add interface"
 expectfn 'curl -s -X PUT -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/cont1/interface=TEST' 0 ""
 
 new "restconf PUT change key error"
-expectfn 'curl -is -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/cont1/interface=TEST' 0 '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "api-path keys do not match data keys"}}}}'
+expectfn 'curl -is -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/cont1/interface=TEST' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 

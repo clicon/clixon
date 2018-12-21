@@ -56,6 +56,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <syslog.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/param.h>
@@ -876,9 +877,13 @@ netconf_application_rpc(clicon_handle h,
     cbuf          *cb = NULL;
     cbuf          *cbret = NULL;
     int            ret;
-
+    
     /* First check system / netconf RPC:s */
     if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, 0, "cbuf_new");
+	goto done;
+    }
+    if ((cbret = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, 0, "cbuf_new");
 	goto done;
     }
@@ -917,15 +922,18 @@ netconf_application_rpc(clicon_handle h,
 	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
 	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
-	    if (xml_apply(xn, CX_ELMNT, 
-			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+	    if ((ret = xml_yang_validate_all_top(xn, cbret)) < 0)
 		goto done;
-	    if (xml_yang_validate_add(xn, NULL) < 0)
+	    if (ret == 0){
+		netconf_output(1, cbret, "rpc-error");
+		goto ok;
+	    }
+	    if ((ret = xml_yang_validate_add(xn, cbret)) < 0)
 		goto done;
-	}
-	if ((cbret = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, 0, "cbuf_new");
-	    goto done;
+	    if (ret == 0){
+		netconf_output(1, cbret, "rpc-error");
+		goto ok;
+	    }
 	}
 	/* Look for local (client-side) netconf plugins. */
 	if ((ret = rpc_callback_call(h, xn, cbret, NULL)) < 0)
@@ -943,11 +951,18 @@ netconf_application_rpc(clicon_handle h,
 	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
 	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
-	    if (xml_apply(xoutput, CX_ELMNT, 
-			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+	    if ((ret = xml_yang_validate_all_top(xoutput, cbret)) < 0)
 		goto done;
-	    if (xml_yang_validate_add(xoutput, NULL) < 0)
+	    if (ret == 0){
+		clicon_log(LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
+		goto ok;
+	    }
+	    if ((ret = xml_yang_validate_add(xoutput, cbret)) < 0)
 		goto done;
+	    if (ret == 0){
+		clicon_log(LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
+		goto ok;
+	    }
 	}
 	retval = 1; /* handled by callback */
 	goto done;

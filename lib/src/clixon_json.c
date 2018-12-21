@@ -315,7 +315,7 @@ xml2json1_cbuf(cbuf                   *cb,
      * Harder if x has a prefix, then that should also be translated to associated
      * module name
      */
-    prefix = xml_namespace(x);
+    prefix = xml_prefix(x);
     if (xml2ns(x, prefix, &namespace) < 0)
 	goto done;
     if ((ys = xml_spec(x)) != NULL) /* yang spec associated with x */

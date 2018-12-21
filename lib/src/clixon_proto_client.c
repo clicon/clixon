@@ -444,7 +444,7 @@ clicon_rpc_delete_config(clicon_handle h,
     char              *username;
 
     username = clicon_username_get(h);
-    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><delete-config><target><%s/></target></delete-config></rpc>",
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><edit-config><target><%s/></target><default-operation>none</default-operation><config operation=\"delete\"/></edit-config></rpc>",
 				 username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)

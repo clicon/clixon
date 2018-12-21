@@ -139,7 +139,7 @@ new "get each ordered-by user leaf-list"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y3[k='b']\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y3><k>b</k><a>bar</a></y3></data></rpc-reply>]]>]]>$"
 
 new "delete candidate"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><delete-config><target><candidate/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config operation="delete"/></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # LEAF_LISTS
 
@@ -172,7 +172,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><can
 new "verify list user order (as entered)"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/y2\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y2><k>c</k><a>bar</a></y2><y2><k>b</k><a>foo</a></y2><y2><k>a</k><a>fie</a></y2></data></rpc-reply>]]>]]>$"
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 

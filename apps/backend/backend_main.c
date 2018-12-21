@@ -386,6 +386,7 @@ startup_mode_running(clicon_handle h,
     		     char         *extraxml_file)
 {
     int     retval = -1;
+    cbuf   *cbret = NULL;
 
     /* Stash original running to candidate for later commit */
     if (xmldb_copy(h, "running", "candidate") < 0)
@@ -405,15 +406,20 @@ startup_mode_running(clicon_handle h,
     /* Clear running db */
     if (db_reset(h, "running") < 0)
 	goto done;
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
     /* Commit original running. Assume -1 is validate fail */
-    if (candidate_commit(h, "candidate") < 0){
+    if (candidate_commit(h, "candidate", cbret) < 1){
 	/*  (1) We cannot differentiate between fatal errors and validation
 	 *      failures
 	 *  (2) If fatal error, we should exit
 	 *  (3) If validation fails we cannot continue. How could we?
 	 *  (4) Need to restore the running db since we destroyed it above
 	 */
-	clicon_log(LOG_NOTICE, "%s: Commit of saved running failed, exiting.", __FUNCTION__);
+	clicon_log(LOG_NOTICE, "%s: Commit of saved running failed, exiting: %s.",
+		   __FUNCTION__, cbuf_get(cbret));
 	/* Reinstate original */
 	if (xmldb_copy(h, "candidate", "running") < 0)
 	    goto done;
@@ -424,6 +430,8 @@ startup_mode_running(clicon_handle h,
 	goto done;
     retval = 0;
  done:
+    if (cbret)
+	cbuf_free(cbret);
     if (xmldb_delete(h, "tmp") < 0)
 	goto done;
     return retval;
@@ -455,6 +463,7 @@ startup_mode_startup(clicon_handle h,
 		     char *extraxml_file)
 {
     int     retval = -1;
+    cbuf   *cbret = NULL;
 
     /* Stash original running to backup */
     if (xmldb_copy(h, "running", "backup") < 0)
@@ -478,13 +487,19 @@ startup_mode_startup(clicon_handle h,
     /* Clear running db */
     if (db_reset(h, "running") < 0)
 	goto done;
+    /* Create return buffer (not used) */
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
     /* Commit startup */
-    if (candidate_commit(h, "startup") < 0){ /* diff */
+    if (candidate_commit(h, "startup", cbret) < 1){ /* diff */
 	/*  We cannot differentiate between fatal errors and validation
 	 *  failures
 	 *  In both cases we copy back the original running and quit
 	 */
-	clicon_log(LOG_NOTICE, "%s: Commit of startup failed, exiting.", __FUNCTION__);
+	clicon_log(LOG_NOTICE, "%s: Commit of startup failed, exiting: %s.",
+		   __FUNCTION__, cbuf_get(cbret));
 	if (xmldb_copy(h, "backup", "running") < 0)
 	    goto done;
 	goto done;
@@ -494,6 +509,8 @@ startup_mode_startup(clicon_handle h,
 	goto done;
     retval = 0;
  done:
+    if (cbret)
+	cbuf_free(cbret);
     if (xmldb_delete(h, "backup") < 0)
 	goto done;
     if (xmldb_delete(h, "tmp") < 0)

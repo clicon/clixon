@@ -209,7 +209,7 @@ new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf edit state operation should fail"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><state><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>invalid-value</error-tag>"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><state><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>invalid-value</error-tag>"
 
 new "netconf get state operation"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get><filter type=\"xpath\" select=\"/state\"/></get></rpc>]]>]]>" "^<rpc-reply><data><state><op>42</op></state></data></rpc-reply>]]>]]>$"
@@ -254,7 +254,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:empty/></rpc>]]>]]>" 
 new "netconf client-side rpc"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><ex:client-rpc><request>example</request></ex:client-rpc></rpc>]]>]]>" "^<rpc-reply><result>ok</result></rpc-reply>]]>]]>$"
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 
