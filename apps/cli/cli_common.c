@@ -959,7 +959,7 @@ cli_notification_cb(int   s,
 	event_unreg_fd(s, cli_notification_cb);
 	goto done;
     }
-    if (clicon_msg_decode(reply, &xt) < 0) 
+    if (clicon_msg_decode(reply, NULL, &xt) < 0) /* XXX pass yang_spec */
 	goto done;
     if ((xe = xpath_first(xt, "//event")) != NULL){
 	x = NULL;

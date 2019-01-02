@@ -66,7 +66,7 @@ struct clicon_msg *clicon_msg_encode(char *format, ...) __attribute__ ((format (
 #else
 struct clicon_msg *clicon_msg_encode(char *format, ...);
 #endif
-int clicon_msg_decode(struct clicon_msg *msg, cxobj **xml);
+int clicon_msg_decode(struct clicon_msg *msg, yang_spec *yspec, cxobj **xml);
 
 int clicon_connect_unix(char *sockpath);
 

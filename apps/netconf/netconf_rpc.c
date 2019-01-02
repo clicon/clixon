@@ -754,6 +754,8 @@ netconf_notification_cb(int   s,
     cbuf              *cb;
     cxobj             *xn = NULL; /* event xml */
     cxobj             *xt = NULL; /* top xml */
+    clicon_handle      h = (clicon_handle)arg;
+    yang_spec         *yspec = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* get msg (this is the reason this function is called) */
@@ -767,7 +769,8 @@ netconf_notification_cb(int   s,
 	event_unreg_fd(s, netconf_notification_cb);
 	goto done;
     }
-    if (clicon_msg_decode(reply, &xt) < 0) 
+    yspec = clicon_dbspec_yang(h);
+    if (clicon_msg_decode(reply, yspec, &xt) < 0) 
 	goto done;
     if ((xn = xpath_first(xt, "notification")) == NULL)
 	goto ok;
@@ -839,7 +842,7 @@ netconf_create_subscription(clicon_handle h,
 	goto ok;
     if (event_reg_fd(s, 
 		     netconf_notification_cb, 
-		     NULL,
+		     h,
 		     "notification socket") < 0)
 	goto done;
  ok:

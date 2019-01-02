@@ -1623,7 +1623,7 @@ xml_spec_populate_rpc(clicon_handle h,
     yang_stmt *ymod=NULL; /* yang module */
     yang_stmt *yi = NULL; /* input */
     cxobj     *x;
-    int        i;
+    //    int        i;
     
     if ((strcmp(xml_name(xrpc), "rpc"))!=0){
 	clicon_err(OE_UNIX, EINVAL, "RPC expected");
@@ -1635,15 +1635,12 @@ xml_spec_populate_rpc(clicon_handle h,
 	    goto done;
 	if (ymod != NULL)
 	    y = yang_find((yang_node*)ymod, Y_RPC, xml_name(x));
-	/* Loose semantics: loop through all modules to find the node 
+	/* Non-strict semantics: loop through all modules to find the node 
 	 */
 	if (y == NULL &&
 	    !clicon_option_bool(h, "CLICON_XML_NS_STRICT")){
-	    for (i=0; i<yspec->yp_len; i++){
-		ymod = yspec->yp_stmt[i];
-		if ((y = yang_find((yang_node*)ymod, Y_RPC, xml_name(x))) != NULL)
-		    break;
-	    }
+	    if (xml_yang_find_non_strict(x, yspec, &y) < 0) /* find rpc */
+		goto done;
 	}
 	if (y){
 	    xml_spec_set(x, y);
@@ -1696,9 +1693,8 @@ xml_spec_populate(cxobj  *x,
 	if (ys_module_by_xml(yspec, x, &ymod) < 0)
 	    goto done;
 	if (ymod != NULL)
-	    y = yang_find_datanode((yang_node*)ymod, name);
+	    y = yang_find_schemanode((yang_node*)ymod, name);
 	/* Non-strict semantics: loop through all modules to find the node 
-	 * XXX clicon_option_bool(h, "CLICON_XML_NS_STRICT")
 	 */
 	if (y == NULL && !_CLICON_XML_NS_STRICT){
 	    if (xml_yang_find_non_strict(x, yspec, &y) < 0)

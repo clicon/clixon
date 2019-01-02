@@ -965,6 +965,7 @@ from_client_msg(clicon_handle        h,
 
     clicon_debug(1, "%s", __FUNCTION__);
     pid = ce->ce_pid;
+    yspec = clicon_dbspec_yang(h); 
     /* Return netconf message. Should be filled in by the dispatch(sub) functions 
      * as wither rpc-error or by positive response.
      */
@@ -972,21 +973,22 @@ from_client_msg(clicon_handle        h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_msg_decode(msg, &xt) < 0){
+    if (clicon_msg_decode(msg, yspec, &xt) < 0){
 	if (netconf_malformed_message(cbret, "XML parse error")< 0)
 	    goto done;
 	goto reply;
     }
-    /* Get yang spec */ 
-    yspec = clicon_dbspec_yang(h); /* XXX maybe move to clicon_msg_decode? */
+
     if ((x = xpath_first(xt, "/rpc")) == NULL){
 	if (netconf_malformed_message(cbret, "rpc keyword expected")< 0)
 	    goto done;
 	goto reply;
     }
-    /* Populate incoming XML tree with yang */
+    /* Populate incoming XML tree with yang - 
+     * should really have been dealt with by decode above
+     * maybe not necessary since it should be */
     if (xml_spec_populate_rpc(h, x, yspec) < 0)
-	goto done;
+    	goto done;
     if ((ret = xml_yang_validate_rpc(x, cbret)) < 0)
 	goto done;
     if (ret == 0)
