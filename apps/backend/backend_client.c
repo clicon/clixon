@@ -292,7 +292,7 @@ client_get_streams(clicon_handle   h,
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
  * @retval        0       OK
- * @retval        1       Statedata callback failed
+ * @retval        1       Statedata callback failed (clicon_err called)
  */
 static int
 client_statedata(clicon_handle h,
@@ -309,15 +309,15 @@ client_statedata(clicon_handle h,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }    
-    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	(retval = client_get_streams(h, yspec, xpath, "ietf-netconf-notification", "netconf", xret)) != 0)
-    	goto done;
-    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
-	(retval = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) != 0)
-    	goto done;
-    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895") &&
-	(retval = yang_modules_state_get(h, yspec, xret)) != 0)
-    	goto done;
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277"))
+	if ((retval = client_get_streams(h, yspec, xpath, "ietf-netconf-notification", "netconf", xret)) != 0)
+	    goto done;
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040"))
+	if ((retval = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) != 0)
+	    goto done;
+    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895"))
+	if ((retval = yang_modules_state_get(h, yspec, xret)) != 0)
+	    goto done;
     if ((retval = clixon_plugin_statedata(h, yspec, xpath, xret)) != 0)
 	goto done;
     /* Code complex to filter out anything that is outside of xpath */
@@ -339,7 +339,7 @@ client_statedata(clicon_handle h,
     /* reset flag */
     if (xml_apply(*xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
-    retval = 0;
+    retval = 0; /* OK */
  done:
     if (xvec)
 	free(xvec);
@@ -363,7 +363,6 @@ from_client_get(clicon_handle h,
     char   *xpath = "/";
     cxobj  *xret = NULL;
     int     ret;
-    cbuf   *cbx = NULL; /* Assist cbuf */
     
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
@@ -379,33 +378,24 @@ from_client_get(clicon_handle h,
     clicon_err_reset();
     if ((ret = client_statedata(h, xpath, &xret)) < 0)
 	goto done;
-    if (ret == 0){ /* OK */
-	cprintf(cbret, "<rpc-reply>");
-	if (xret==NULL)
-	    cprintf(cbret, "<data/>");
-	else{
-	    if (xml_name_set(xret, "data") < 0)
-		goto done;
-	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
-		goto done;
-	}
-	cprintf(cbret, "</rpc-reply>");
-    }
-    else { /* 1 Error from callback */
-	if ((cbx = cbuf_new()) == NULL){
-	    clicon_err(OE_XML, errno, "cbuf_new");
+    if (ret == 1){ /* Error from callback (error in xret) */
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
 	    goto done;
-	}	
-	cprintf(cbx, "Internal error:%s", clicon_err_reason);
-	if (netconf_operation_failed(cbret, "rpc", cbuf_get(cbx))< 0)
-	    goto done;
-	clicon_log(LOG_NOTICE, "%s Error in backend_statedata_call:%s", __FUNCTION__, xml_name(xe));
+	goto ok;
     }
+    cprintf(cbret, "<rpc-reply>");     /* OK */
+    if (xret==NULL)
+	cprintf(cbret, "<data/>");
+    else{
+	if (xml_name_set(xret, "data") < 0)
+	    goto done;
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
+    }
+    cprintf(cbret, "</rpc-reply>");
  ok:
     retval = 0;
  done:
-    if (cbx)
-	cbuf_free(cbx);
     if (xret)
 	xml_free(xret);
     return retval;
@@ -433,6 +423,7 @@ from_client_edit_config(clicon_handle h,
     int                 non_config = 0;
     yang_spec          *yspec;
     cbuf               *cbx = NULL; /* Assist cbuf */
+    int                 ret;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec9");
@@ -491,24 +482,27 @@ from_client_edit_config(clicon_handle h,
 	/* Cant do this earlier since we dont have a yang spec to
 	 * the upper part of the tree, until we get the "config" tree.
 	 */
-	if (xml_child_sort && xml_apply0(xc, CX_ELMNT, xml_sort, NULL) < 0)
+	if (clicon_xml_sort(h) && xml_apply0(xc, CX_ELMNT, xml_sort, NULL) < 0)
 	    goto done;
-	if (xmldb_put(h, target, operation, xc, cbret) < 0){
+	if ((ret = xmldb_put(h, target, operation, xc, cbret)) < 0){
 	    clicon_debug(1, "%s ERROR PUT", __FUNCTION__);	
 	    if (netconf_operation_failed(cbret, "protocol", clicon_err_reason)< 0)
 		goto done;
 	    goto ok;
 	}
+	if (ret == 0)
+	    goto ok;
     }
+    assert(cbuf_len(cbret) == 0);
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
-    if (!cbuf_len(cbret))
-	cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     retval = 0;
  done:
     if (cbx)
 	cbuf_free(cbx);
     clicon_debug(1, "%s done cbret:%s", __FUNCTION__, cbuf_get(cbret));	
     return retval;
+    
 } /* from_client_edit_config */
 
 /*! Internal message: Lock database

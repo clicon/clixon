@@ -130,6 +130,7 @@ xml_parse_version(struct xml_parse_yacc_arg *ya,
  * @param[in] ya        XML parser yacc handler struct 
  * @param[in] prefix    Prefix, namespace, or NULL
  * @param[in] localpart Name
+ * @note the call to xml_child_spec() may not have xmlns attribute read yet XXX
  */
 static int
 xml_parse_unprefixed_name(struct xml_parse_yacc_arg *ya,
@@ -138,12 +139,14 @@ xml_parse_unprefixed_name(struct xml_parse_yacc_arg *ya,
     int        retval = -1;
     cxobj     *x;
     yang_stmt *y = NULL;  /* yang node */   
-    cxobj     *xp;      /* xml parent */ 
+    cxobj     *xp;        /* xml parent */ 
 
     xp = ya->ya_xparent;
-    if (xml_child_spec(name, xp, ya->ya_yspec, &y) < 0)
+    if ((x = xml_new(name, xp, NULL)) == NULL) 
 	goto done;
-    if ((x = xml_new(name, xp, y)) == NULL) 
+    if (xml_child_spec(x, xp, ya->ya_yspec, &y) < 0)
+	goto done;
+    if (y && xml_spec_set(x, y) < 0)
 	goto done;
     ya->ya_xelement = x;
     retval = 0;
@@ -168,9 +171,11 @@ xml_parse_prefixed_name(struct xml_parse_yacc_arg *ya,
     cxobj     *xp;      /* xml parent */ 
 
     xp = ya->ya_xparent;
-    if (xml_child_spec(name, xp, ya->ya_yspec, &y) < 0)
+    if ((x = xml_new(name, xp, NULL)) == NULL) 
 	goto done;
-    if ((x = xml_new(name, xp, y)) == NULL) 
+    if (xml_child_spec(x, xp, ya->ya_yspec, &y) < 0)
+	goto done;
+    if (y && xml_spec_set(x, y) < 0)
 	goto done;
     if (xml_prefix_set(x, prefix) < 0)
 	goto done;
@@ -313,19 +318,15 @@ xml_parse_attr(struct xml_parse_yacc_arg *ya,
 	       char                      *attval)
 {
     int    retval = -1;
-    cxobj *xa; 
+    cxobj *xa = NULL; 
 
-#ifdef ENABLE_XMLNS
-    if (prefix && strcmp(prefix,"xmlns")==0)
-	fprintf(stderr, "PrefixedAttName NCNAME:%s = %s\n", name, attval);
-    if (prefix==NULL && strcmp(name,"xmlns")==0)
-	fprintf(stderr, "DefaultAttName = %s\n", attval);
-#endif /* notyet */
-    if ((xa = xml_new(name, ya->ya_xelement, NULL)) == NULL)
-	goto done;
-    xml_type_set(xa, CX_ATTR);
-    if (prefix && xml_prefix_set(xa, prefix) < 0)
-	goto done;
+    if ((xa = xml_find_type(ya->ya_xelement, prefix, name, CX_ATTR)) == NULL){
+	if ((xa = xml_new(name, ya->ya_xelement, NULL)) == NULL)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (prefix && xml_prefix_set(xa, prefix) < 0)
+	    goto done;
+    }
     if (xml_value_set(xa, attval) < 0)
 	goto done;
     retval = 0;

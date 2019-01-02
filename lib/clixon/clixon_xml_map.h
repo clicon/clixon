@@ -43,10 +43,13 @@
  */
 int xml2txt(FILE *f, cxobj *x, int level);
 int xml2cli(FILE *f, cxobj *x, char *prepend, enum genmodel_type gt);
+int xml_yang_root(cxobj *x, cxobj **xr);
+int xmlns_assign(cxobj *x);
 int xml_yang_validate_rpc(cxobj *xrpc, cbuf *cbret);
 int xml_yang_validate_add(cxobj *xt, cbuf *cbret);
 int xml_yang_validate_all(cxobj *xt, cbuf *cbret);
 int xml_yang_validate_all_top(cxobj *xt, cbuf *cbret);
+int xml_yang_find_non_strict(cxobj *x, yang_spec *yspec, yang_stmt **y);
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
 int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
 int xml_diff(yang_spec *yspec, cxobj *xt1, cxobj *xt2, 	 
@@ -64,8 +67,7 @@ int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, void *arg);
 int xml_spec_populate_rpc(clicon_handle h, cxobj *x, yang_spec *yspec);
 int xml_spec_populate(cxobj *x, void *arg);
-int api_path2xpath_cvv(yang_spec *yspec, cvec *cvv, int offset, cbuf *xpath);
-int api_path2xpath(yang_spec *yspec, char *api_path, cbuf *xpath);
+int api_path2xpath(yang_spec *yspec, cvec *cvv, int offset, cbuf *xpath);
 int api_path2xml(char *api_path, yang_spec *yspec, cxobj *xtop, 
 		 yang_class nodeclass, cxobj **xpathp, yang_node **ypathp);
 int xml_merge(cxobj *x0, cxobj *x1, yang_spec *yspec, char **reason);

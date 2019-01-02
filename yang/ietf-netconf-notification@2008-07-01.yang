@@ -1,5 +1,6 @@
 module ietf-netconf-notification {
-    namespace "urn:ietf:params:xml:ns:netconf:notification:1:0";
+    /*    namespace "urn:ietf:params:xml:ns:netconf:notification:1.0";*/
+    namespace "urn:ietf:params:xml:ns:netmod:notification";
     prefix "rcmon";
 
     import ietf-yang-types { prefix yang; }

@@ -275,7 +275,7 @@ restconf_client_rpc(clicon_handle h,
 {
     //    FCGX_Request *r = (FCGX_Request *)arg;
     clicon_debug(1, "%s", __FUNCTION__);
-    cprintf(cbret, "<rpc-reply><result>ok</result></rpc-reply>");
+    cprintf(cbret, "<rpc-reply><result xmlns=\"urn:example:clixon\">ok</result></rpc-reply>");
     return 0;
 }
 

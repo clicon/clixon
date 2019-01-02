@@ -239,15 +239,18 @@ main(int argc, char **argv)
 	    clicon_err(OE_DB, 0, "Unrecognized operation: %s", argv[1]);
 	    usage(argv0);
 	}
-	_CLICON_XML_NS_ITERATE = 1;
+	_CLICON_XML_NS_STRICT = 0;
 	if (xml_parse_string(argv[2], NULL, &xt) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)
 	    goto done;
-	if ((cbret = cbuf_new()) == NULL)
+	if ((cbret = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
-	if (xmldb_put(h, db, op, xt, cbret) < 0)
+	}
+	if (xmldb_put(h, db, op, xt, cbret) < 1)
 	    goto done;
+	    
     }
     else if (strcmp(cmd, "copy")==0){
 	if (argc != 2)

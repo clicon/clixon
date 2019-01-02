@@ -38,6 +38,7 @@ if [ $err -eq 0 ]; then
 else
     echo -e "\e[31mError"
     echo -ne "\e[0m"
+    exit -1
 fi
 
 

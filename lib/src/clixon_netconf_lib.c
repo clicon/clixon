@@ -315,11 +315,12 @@ netconf_unknown_attribute(cbuf *cb,
  * @param[in]  message Error message
  */
 static int
-netconf_element_xml_common(cxobj **xret,
-			   char   *type,
-			   char   *tag,
-			   char   *element,
-			   char   *message)
+netconf_common_xml(cxobj **xret,
+		   char   *type,
+		   char   *tag,
+		   char   *infotag,
+		   char   *element,
+		   char   *message)
 {
     int   retval =-1;
     cxobj *xerr;
@@ -334,9 +335,9 @@ netconf_element_xml_common(cxobj **xret,
 	goto done;
     if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
 		     "<error-tag>%s</error-tag>"
-		     "<error-info><bad-element>%s</bad-element></error-info>"
+		     "<error-info><%s>%s</%s></error-info>"
 		     "<error-severity>error</error-severity>",
-		     type, tag, element) < 0)
+		     type, tag, infotag, element, infotag) < 0)
 	goto done;
     if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
 			 message) < 0)
@@ -363,7 +364,8 @@ netconf_missing_element(cbuf      *cb,
     int    retval = -1;
     cxobj *xret = NULL;
 
-    if (netconf_element_xml_common(&xret, type, "missing-element", element, message) < 0)
+    if (netconf_common_xml(&xret, type, "missing-element",
+			   "bad-element", element, message) < 0)
 	goto done;
     if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
 	goto done;
@@ -387,7 +389,8 @@ netconf_missing_element_xml(cxobj **xret,
 			    char   *element,
 			    char   *message)
 {
-    return netconf_element_xml_common(xret, type, "missing-element", element, message);
+    return netconf_common_xml(xret, type, "missing-element",
+			      "bad-element", element, message);
 }
 
 /*! Create Netconf bad-element error XML tree according to RFC 6241 App A
@@ -408,7 +411,8 @@ netconf_bad_element(cbuf *cb,
     int    retval = -1;
     cxobj *xret = NULL;
 
-    if (netconf_element_xml_common(&xret, type, "bad-element", element, message) < 0)
+    if (netconf_common_xml(&xret, type, "bad-element",
+			   "bad-element",element, message) < 0)
 	goto done;
     if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
 	goto done;
@@ -424,7 +428,7 @@ netconf_bad_element_xml(cxobj **xret,
 			char   *element,
 			char   *message)
 {
-    return netconf_element_xml_common(xret, type, "bad-element", element, message);
+    return netconf_common_xml(xret, type, "bad-element", "bad-element", element, message);
 }
 
 /*! Create Netconf unknown-element error XML tree according to RFC 6241 App A
@@ -444,7 +448,8 @@ netconf_unknown_element(cbuf *cb,
     int    retval = -1;
     cxobj *xret = NULL;
 
-    if (netconf_element_xml_common(&xret, type, "unknown-element", element, message) < 0)
+    if (netconf_common_xml(&xret, type, "unknown-element",
+			   "bad-element", element, message) < 0)
 	goto done;
     if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
 	goto done;
@@ -454,13 +459,23 @@ netconf_unknown_element(cbuf *cb,
 	xml_free(xret);
     return retval;
 }
+
+/*! Create Netconf unknown-element error XML tree according to RFC 6241 App A
+ *
+ * An unexpected element is present.
+ * @param[out] xret    XML buffer
+ * @param[in]  type    Error type: "application" or "protocol"
+ * @param[in]  element Bad element name
+ * @param[in]  message Error message
+ */
 int
 netconf_unknown_element_xml(cxobj **xret,
 			    char   *type,
 			    char   *element,
 			    char   *message)
 {
-    return netconf_element_xml_common(xret, type, "unknown-element", element, message);
+    return netconf_common_xml(xret, type, "unknown-element",
+			      "bad-element", element, message);
 }
 
 /*! Create Netconf unknown-namespace error XML tree according to RFC 6241 App A
@@ -474,35 +489,32 @@ netconf_unknown_element_xml(cxobj **xret,
 int
 netconf_unknown_namespace(cbuf *cb,
 			  char *type,
-			  char *info,
+			  char *namespace,
 			  char *message)
 {
-    int   retval = -1;
-    char *encstr = NULL;
+    int    retval = -1;
+    cxobj *xret = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>%s</error-type>"
-		"<error-tag>unknown-namespace</error-tag>"
-		"<error-info>%s</error-info>"
-		"<error-severity>error</error-severity>",
-		type, info) <0)
-	goto err;
-    if (message){
-	if (xml_chardata_encode(&encstr, "%s", message) < 0)
-	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
-    }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
-	goto err;
+    if (netconf_common_xml(&xret, type, "unknown-namespace",
+			   "bad-namespace", namespace, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+	goto done;
     retval = 0;
  done:
-    if (encstr)
-	free(encstr);
+    if (xret)
+	xml_free(xret);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
+}
+
+int
+netconf_unknown_namespace_xml(cxobj **xret,
+			      char   *type,
+			      char   *namespace,
+			      char   *message)
+{
+    return netconf_common_xml(xret, type, "unknown-namespace",
+			      "bad-namespace", namespace, message);
 }
 
 /*! Create Netconf access-denied error cbuf according to RFC 6241 App A
@@ -989,7 +1001,7 @@ netconf_trymerge(cxobj       *x,
 }
 
 /*! Load ietf netconf yang module and set enabled features
- * The features added are:
+ * The features added are (in order):
  *   candidate (8.3)
  *   validate (8.6)
  *   startup (8.7)

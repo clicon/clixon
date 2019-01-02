@@ -380,7 +380,8 @@ xmldb_get(clicon_handle h,
  * @param[in]  op     Top-level operation, can be superceded by other op in tree
  * @param[in]  xt     xml-tree. Top-level symbol is dummy
  * @param[out] cbret  Initialized cligen buffer or NULL. On exit contains XML or "".
- * @retval     0      OK
+ * @retval     1      OK
+ * @retval     0      Failed, cbret contains error xml message
  * @retval     -1     Error
  * The xml may contain the "operation" attribute which defines the operation.
  * @code
@@ -388,8 +389,10 @@ xmldb_get(clicon_handle h,
  *   cxobj     *xret = NULL;
  *   if (xml_parse_string("<a>17</a>", yspec, &xt) < 0)
  *     err;
- *   if (xmldb_put(xh, "running", OP_MERGE, xt, cbret) < 0)
+ *   if ((ret = xmldb_put(xh, "running", OP_MERGE, xt, cbret)) < 0)
  *     err;
+ *   if (ret==0)
+ *     cbret contains netconf error message
  * @endcode
  * @note that you can add both config data and state data. In comparison,
  *  xmldb_get has a parameter to get config data only.

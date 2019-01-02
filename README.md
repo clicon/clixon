@@ -105,6 +105,23 @@ The standards covered include:
 Not supported:
 - !DOCTYPE (ie DTD)
 
+Historically, Clixon has not until 3.9 made strict namespace
+enforcing. For example, the following non-strict netconf was
+previously accepted:
+```
+     <rpc><my-own-method/></rpc> 
+```
+In 3.9, the same statement should be, for example:
+```
+     <rpc><my-own-method xmlns="urn:example:my-own"/></rpc> 
+```
+Note that base netconf syntax is still not enforced but recommended:
+```
+     <rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+        <my-own-method xmlns="urn:example:my-own"/>
+     </rpc> 
+```
+
 Yang
 ====
 YANG and XML is the heart of Clixon.  Yang modules are used as a
@@ -152,6 +169,9 @@ Clixon does not support the following netconf features:
 - edit-config erropts
 - edit-config config-text
 - edit-config operation
+
+Some other deviations from the RFC:
+- edit-config xpath select statement does not support namespaces
 
 Restconf
 ========

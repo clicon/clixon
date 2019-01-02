@@ -562,6 +562,54 @@ clicon_str2int(const map_str2int *mstab,
     return -1;
 }
 
+/*! Split colon-separated node identifier into prefix and name
+ * @param[in]  node-id
+ * @param[out] prefix  Malloced string. May be NULL.
+ * @param[out] id      Malloced identifier.
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @code
+ *    char      *prefix = NULL;
+ *    char      *id = NULL;
+ *    if (nodeid_split(nodeid, &prefix, &id) < 0)
+ *	 goto done;
+ *    if (prefix)
+ *	 free(prefix);
+ *    if (id)
+ *	 free(id);
+ * @note caller need to free id and prefix after use
+ */
+int
+nodeid_split(char  *nodeid,
+	     char **prefix,
+	     char **id)
+{
+    int   retval = -1;
+    char *str;
+    
+    if ((str = strchr(nodeid, ':')) == NULL){
+	if ((*id = strdup(nodeid)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+    }
+    else{
+	if ((*prefix = strdup(nodeid)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+	(*prefix)[str-nodeid] = '\0';
+	str++;
+	if ((*id = strdup(str)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! strndup() for systems without it, such as xBSD
  */
 #ifndef HAVE_STRNDUP

@@ -71,7 +71,7 @@ int netconf_client_rpc(clicon_handle h,
 		       void         *regarg)
 {
     clicon_debug(1, "%s restconf", __FUNCTION__);
-    cprintf(cbret, "<rpc-reply><result>ok</result></rpc-reply>");
+    cprintf(cbret, "<rpc-reply><result xmlns=\"urn:example:clixon\">ok</result></rpc-reply>");
     return 0;
 }
 

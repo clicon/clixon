@@ -96,7 +96,7 @@ example_stream_timer(int   fd,
     int                    retval = -1;
     clicon_handle          h = (clicon_handle)arg;
 
-    /* XXX Change to actual netconf notifications */
+    /* XXX Change to actual netconf notifications and namespace */
     if (stream_notify(h, "EXAMPLE", "<event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
 	goto done;
     if (example_stream_timer_setup(h) < 0)
@@ -129,7 +129,7 @@ fib_route(clicon_handle h,            /* Clicon handle */
 	  void         *arg,          /* Client session */
 	  void         *regarg)       /* Argument given at register */
 {
-    cprintf(cbret, "<rpc-reply><route>"
+    cprintf(cbret, "<rpc-reply><route xmlns=\"urn:ietf:params:xml:ns:yang:ietf-routing\">"
 	    "<address-family>ipv4</address-family>"
 	    "<next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop>"
 	    "<source-protocol>static</source-protocol>"
@@ -147,7 +147,7 @@ route_count(clicon_handle h,
 	    void         *arg,
 	    void         *regarg)          /* Argument given at register */
 {
-    cprintf(cbret, "<rpc-reply><number-of-routes>42</number-of-routes></rpc-reply>");    
+    cprintf(cbret, "<rpc-reply><number-of-routes xmlns=\"urn:ietf:params:xml:ns:yang:ietf-routing\">42</number-of-routes></rpc-reply>");    
     return 0;
 }
 
@@ -180,9 +180,17 @@ example_rpc(clicon_handle h,            /* Clicon handle */
 {
     int    retval = -1;
     cxobj *x = NULL;
+    char  *namespace;
 
+    /* get namespace from rpc name, return back in each output parameter */
+    if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
+	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+	goto done;
+    }
     cprintf(cbret, "<rpc-reply>");
     while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+	if (xmlns_set(x, NULL, namespace) < 0)
+	    goto done;
 	if (clicon_xml2cbuf(cbret, x, 0, 0) < 0)
 	    goto done;
     }
@@ -222,7 +230,7 @@ example_statedata(clicon_handle h,
      * Note this state needs to be accomanied by yang snippet
      * above
      */
-    if (xml_parse_string("<state>"
+    if (xml_parse_string("<state xmlns=\"urn:example:clixon\">"
 			 "<op>42</op>"
 			 "</state>", NULL, &xstate) < 0)
 	goto done;
@@ -251,17 +259,22 @@ example_reset(clicon_handle h,
 {
     int    retval = -1;
     cxobj *xt = NULL;
+    int    ret;
 
-    if (xml_parse_string("<config><interfaces><interface>"
+    if (xml_parse_string("<config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface>"
 			 "<name>lo</name><type>ex:loopback</type>"
 			 "</interface></interfaces></config>", NULL, &xt) < 0)
 	goto done;
-    /* Replace parent w fiorst child */
+    /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
     /* Merge user reset state */
-    if (xmldb_put(h, (char*)db, OP_MERGE, xt, NULL) < 0)
+    if ((ret = xmldb_put(h, (char*)db, OP_MERGE, xt, NULL)) < 0)
 	goto done;
+    if (ret == 0){
+	clicon_err(OE_XML, 0, "Error when writing to XML database");
+	goto done;
+    }
     retval = 0;
  done:
     if (xt != NULL)

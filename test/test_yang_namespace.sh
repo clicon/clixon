@@ -1,11 +1,15 @@
 #!/bin/bash
-# Yang specifics: multi-keys and empty type
+
 APPNAME=example
-# include err() and new() functions and creates $dir
+# test two modules example1 and example2 with overlapping statements x.
+# x is leaf in example1 and list on example2.
+# Test netconf and restconf
+# BTW, this is not supported in generated CLI
+
 . ./lib.sh
 
 cfg=$dir/conf_yang.xml
-fyang=$dir/example.yang
+fyang1=$dir/example1.yang
 fyang2=$dir/example2.yang
 
 #  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
@@ -18,17 +22,35 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
+  <CLICON_XML_NS_STRICT>true</CLICON_XML_NS_STRICT> <!-- Must be strict -->
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
 </config>
 EOF
 
+
+cat <<EOF > $fyang1
+module example1{
+   yang-version 1.1;
+   prefix ex1;
+   namespace "urn:example:clixon1";
+   import ietf-routing {
+        description "defines fib-route";
+	prefix rt;
+   }
+   leaf x{
+     type int32;
+   }
+}
+EOF
+
 # For testing namespaces -
-# x.y is different type. Here it is string whereas in fyang it is list.
+# x.y is different type. Here it is string whereas in fyang1 it is list.
 #
 cat <<EOF > $fyang2
 module example2{
@@ -40,37 +62,6 @@ module example2{
         type uint32;
      }
    }
-}
-EOF
-
-cat <<EOF > $fyang
-module example{
-   yang-version 1.1;
-   prefix ex;
-   namespace "urn:example:clixon";
-   import ietf-routing {
-        description "defines fib-route";
-	prefix rt;
-   }
-   leaf x{
-     type int32;
-   }
-   rpc client-rpc {
-	description "Example local client-side RPC that is processed by the
-                     the netconf/restconf and not sent to the backend.
-                     This is a clixon implementation detail: some rpc:s
-                     are better processed by the client for API or perf reasons";
-	input {
-	    leaf request {
-		type string;
-	    }
-	}
-	output {
-	    leaf result{
-		type string;
-	    }
-	}
-    }
 }
 EOF
 
@@ -91,36 +82,57 @@ if [ $BE -ne 0 ]; then
     fi
 fi
 
+new "kill old restconf daemon"
+sudo pkill -u www-data clixon_restconf
 
+new "start restconf daemon"
+sudo su -c "$clixon_restconf -f $cfg -D $DBG" -s /bin/sh www-data &
 
-new "netconf xmlns module ex"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon">42</x></config></edit-config></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><ok/></rpc-reply>]]>]]>$'
+new "netconf set x in example1"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon1">42</x></config></edit-config></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><ok/></rpc-reply>]]>]]>$'
 
-new "netconf get config XXX xmlfn in return"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><x>42</x></data></rpc-reply>]]>]]>$"
+new "netconf get config example1"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon1">42</x></data></rpc-reply>]]>]]>$'
 
-new "netconf xmlns module ex2"
+new "netconf set x in example2"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon2"><y>99</y></x></config></edit-config></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><ok/></rpc-reply>]]>]]>$'
 
-new "netconf get config XXX xmlns"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><x>42</x><x><y>99</y></x></data></rpc-reply>]]>]]>$"
+new "netconf get config example1 and example2"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon1">42</x><x xmlns="urn:example:clixon2"><y>99</y></x></data></rpc-reply>]]>]]>$'
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang1" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "netconf xmlns:ex"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:ex="urn:example:clixon"><edit-config><target><candidate/></target><config><ex:x>4422</ex:x></config></edit-config></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:ex="urn:example:clixon"><ok/></rpc-reply>]]>]]>$'
+new "restconf set x in example1"
+expecteq "$(curl -s -X POST -d '{"example1:x":42}' http://localhost/restconf/data)" ''
 
-new "netconf get config XXX xmlns:ex"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><x>4422</x></data></rpc-reply>]]>]]>$"
+new2 "restconf get config example1"
+expecteq "$(curl -s -X GET http://localhost/restconf/data/example1:x)" '{"example1:x": 42}
+'
 
-new "netconf xmlns:ex2"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:ex2="urn:example:clixon2"><edit-config><target><candidate/></target><config><ex2:x><ex2:y>9999</ex2:y></ex2:x></config></edit-config></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:ex2="urn:example:clixon2"><ok/></rpc-reply>]]>]]>$'
+new "restconf set x in example2"
+expecteq "$(curl -s -X POST -d '{"example2:x":{"y":99}}' http://localhost/restconf/data)" ''
 
-new "netconf get config XXX xmlns:ex2"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><x>4422</x><x><y>9999</y></x></data></rpc-reply>]]>]]>$"
+# XXX GET ../example1:x is translated to select=/x which gets both example1&2
+#new "restconf get config example1"
+#expecteq "$(curl -s -X GET http://localhost/restconf/data/example1:x)" '{"example1:x": 42}
+#'
 
-# rpc
+# XXX GET ../example2:x is translated to select=/x which gets both example1&2
+#new "restconf get config example2"
+#expecteq "$(curl -s -X GET http://localhost/restconf/data/example2:x)" '{"example2:x": {"y":42}}
+#'
+
+new "restconf get config example1 and example2"
+ret=$(curl -s -X GET http://localhost/restconf/data)
+expect='"example1:x": 42,"example2:x": {"y": 99}'
+match=`echo $ret | grep -EZo "$expect"`
+if [ -z "$match" ]; then
+    err "$expect" "$ret"
+fi
+
+new "Kill restconf daemon"
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 if [ $BE -eq 0 ]; then
     exit # BE

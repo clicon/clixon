@@ -351,7 +351,7 @@ clicon_rpc_edit_config(clicon_handle       h,
 
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "<rpc");
+    cprintf(cb, "<rpc %s", DEFAULT_XMLNS);
     if ((username = clicon_username_get(h)) != NULL)
 	cprintf(cb, " username=\"%s\"", username);
     cprintf(cb, "><edit-config><target><%s/></target>", db);
@@ -787,7 +787,7 @@ clicon_rpc_create_subscription(clicon_handle    h,
     char              *username;
 
     username = clicon_username_get(h);
-    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><create-subscription>"
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\">"
 				 "<stream>%s</stream>"
 				 "<filter type=\"xpath\" select=\"%s\" />"
 				 "</create-subscription></rpc>", 

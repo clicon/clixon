@@ -236,8 +236,8 @@ cli_dbxml(clicon_handle       h,
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
-    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
-	goto done;
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 1)
+	goto done; 
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
@@ -293,7 +293,7 @@ cli_set(clicon_handle h,
 	cvec         *cvv,
 	cvec         *argv)
 {
-    int retval = 1;
+    int retval = -1;
 
     if (cli_dbxml(h, cvv, argv, OP_REPLACE) < 0)
 	goto done;
@@ -501,53 +501,54 @@ cli_start_shell(clicon_handle h,
 		cvec         *vars, 
 		cvec         *argv)
 {
-    char *cmd;
+    char          *cmd;
     struct passwd *pw;
-    int retval;
-    char bcmd[128];
-    cg_var *cv1 = cvec_i(vars, 1);
+    int            retval = -1;
+    char           bcmd[128];
+    cg_var        *cv1 = cvec_i(vars, 1);
 
     cmd = (cvec_len(vars)>1 ? cv_string_get(cv1) : NULL);
 
     if ((pw = getpwuid(getuid())) == NULL){
 	fprintf(stderr, "%s: getpwuid: %s\n", 
                __FUNCTION__, strerror(errno));
-	return -1;
+	goto done;
     }
     if (chdir(pw->pw_dir) < 0){
 	fprintf(stderr, "%s: chdir(%s): %s\n",
 		__FUNCTION__, pw->pw_dir, strerror(errno));
 	endpwent();
-	return -1;
+	goto done;
     }
     endpwent();
     cli_signal_flush(h);
     cli_signal_unblock(h);
     if (cmd){
 	snprintf(bcmd, 128, "bash -l -c \"%s\"", cmd);
-	if ((retval = system(bcmd)) < 0){
+	if (system(bcmd) < 0){
 	    cli_signal_block(h);
 	    fprintf(stderr, "%s: system(bash -c): %s\n", 
 		    __FUNCTION__, strerror(errno));
-	    return -1;
+	    goto done;
 	}
     }
     else
-	if ((retval = system("bash -l")) < 0){
+	if (system("bash -l") < 0){
 	    cli_signal_block(h);
 	    fprintf(stderr, "%s: system(bash): %s\n", 
 		    __FUNCTION__, strerror(errno));
-	    return -1;
+	    goto done;
 	}
     cli_signal_block(h);
 #if 0 /* Allow errcodes from bash */
     if (retval != 0){
 	fprintf(stderr, "%s: system(%s) code=%d\n", __FUNCTION__, cmd, retval);
-      return -1;
+	goto done;
     }
 #endif
-
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Generic quit callback

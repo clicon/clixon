@@ -469,94 +469,6 @@ yang_match(yang_node *yn,
     }
     return match;
 }
-#ifdef NOTYET
-/*! Prototype more generic than yang_find_datanode and yang_find_schemanode
- */
-yang_stmt *
-yang_find_class(yang_node *yn, 
-		char      *argument,
-		yang_class class)
-{
-    yang_stmt *ys = NULL;
-    yang_stmt *yc = NULL;
-    yang_stmt *ysmatch = NULL;
-    int        i, j;
-    int        ok;
-
-    for (i=0; i<yn->yn_len; i++){
-	ys = yn->yn_stmt[i];
-	switch(class){
-	case YC_NONE:
-	    ok = 1;
-	    break;
-	case YC_DATANODE:
-	    ok = yang_datanode(ys);
-	    break;
-	case YC_DATADEFINITION:
-	    ok = yang_datadefinition(ys);
-	    break;
-	case YC_SCHEMANODE:
-	    ok = yang_schemanode(ys);
-	    break;
-	}
-	if (!ok)
-	    continue;
-	switch(class){
-	case YC_NONE:
-	    if (argument == NULL)
-		ysmatch = ys;
-	    else
-		if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
-		    ysmatch = ys;
-	    if (ysmatch)
-		goto match;
-	    break;
-	case YC_DATANODE:
-	case YC_DATADEFINITION:
-	    if (argument == NULL)
-		ysmatch = ys;
-	    else
-		if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
-		    ysmatch = ys;
-	    if (ysmatch)
-		goto match;
-	    break;
-	case YC_SCHEMANODE:
-	    if (ys->ys_keyword == Y_CHOICE){ /* Look for its children */
-	    for (j=0; j<ys->ys_len; j++){
-		yc = ys->ys_stmt[j];
-		if (yc->ys_keyword == Y_CASE) /* Look for its children */
-		    ysmatch = yang_find_class((yang_node*)yc, argument, class);
-		else{
-		    if (yang_schemanode(yc)){
-			if (argument == NULL)
-			    ysmatch = yc;
-			else
-			    if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
-				ysmatch = yc;
-		    }
-		}
-		if (ysmatch)
-		    goto match;
-	    }
-	} /* Y_CHOICE */
-	else{
-	    if (argument == NULL)
-		ysmatch = ys;
-	    else
-		if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
-		    ysmatch = ys;
-	    if (ysmatch)
-		goto match;
-
-	}
-	break;
-	} /* switch */
-    } /* for */
- match:
-    return ysmatch;
-}
-#endif /* NOTYET */
 
 /*! Find child data node with matching argument (container, leaf, etc)
  *
@@ -658,69 +570,6 @@ yang_find_schemanode(yang_node *yn,
     return ysmatch;
 }
 
-/*! Find first matching data node in all modules in a yang spec (prefixes)
- *
- * @param[in]  ysp        Yang specification
- * @param[in]  nodeid     Name of node. If NULL match first
- * @param[in]  class      See yang_class for class of yang nodes
- * A yang specification has modules as children which in turn can have 
- * syntax-nodes as children. This function goes through all the modules to
- * look for nodes. Note that if a child to a module is a choice, 
- * the search is made recursively made to the choice's children.
- * @note works for import prefix, but not work for generic XML parsing where
- *       xmlns and xmlns:ns are used.
- * @see yang_find_top_ns
- */
-yang_stmt *
-yang_find_topnode(yang_spec *ysp, 
-		  char      *nodeid,
-		  yang_class class)
-{
-    yang_stmt *ymod = NULL; /* module */
-    yang_stmt *yres = NULL; /* result */
-    char      *prefix = NULL;
-    char      *id = NULL;
-    int        i;
-
-    if (yang_nodeid_split(nodeid, &prefix, &id) < 0)
-	goto done;
-    if (prefix){
-	if ((ymod = yang_find((yang_node*)ysp, Y_MODULE, prefix)) != NULL ||
-	    (ymod = yang_find((yang_node*)ysp, Y_SUBMODULE, prefix)) != NULL){
-	    if ((yres = yang_find((yang_node*)ymod, 0, id)) != NULL)
-		goto ok;
-	    goto done;
-	}
-    }
-    else /* No prefix given - loop through and find first */
-	for (i=0; i<ysp->yp_len; i++){
-	    ymod = ysp->yp_stmt[i];
-	    switch (class){
-	    case YC_NONE:
-		if ((yres = yang_find((yang_node*)ymod, 0, id)) != NULL)
-		    goto ok;
-		break;
-	    case YC_DATANODE:
-		if ((yres = yang_find_datanode((yang_node*)ymod, id)) != NULL)
-		    goto ok;
-		break;
-	    case YC_SCHEMANODE:
-		if ((yres = yang_find_schemanode((yang_node*)ymod, id)) != NULL)
-		    goto ok;
-		break;
-	    case YC_DATADEFINITION:
-		break; /* nyi */
-	    }
-	}
- ok:
- done:
-    if (prefix)
-	free(prefix);
-    if (id)
-	free(id);
-    return yres;
-}
-
 /*! Given a yang statement, find the prefix associated to this module
  * @param[in]  ys        Yang statement in module tree (or module itself)
  * @retval     NULL      Not found
@@ -774,7 +623,6 @@ yang_find_mynamespace(yang_stmt *ys)
  done:
     return namespace;
 }
-
 
 /*! Find matching y in yp:s children, return 0 and index or -1 if not found.
  * @retval 0 not found
@@ -972,60 +820,15 @@ yarg_prefix(yang_stmt *ys)
     return prefix;
 }
 
-/*! Split yang node identifier into prefix and identifer.
- * @param[in]  node-id
- * @param[out] prefix  Malloced string. May be NULL.
- * @param[out] id      Malloced identifier.
- * @retval     0       OK
- * @retval    -1       Error
- * @code
- *    char      *prefix = NULL;
- *    char      *id = NULL;
- *    if (yang_nodeid_split(nodeid, &prefix, &id) < 0)
- *	 goto done;
- *    if (prefix)
- *	 free(prefix);
- *    if (id)
- *	 free(id);
- * @note caller need to free id and prefix after use
- */
-int
-yang_nodeid_split(char  *nodeid,
-		  char **prefix,
-    		  char **id)
-{
-    int   retval = -1;
-    char *str;
-    
-    if ((str = strchr(nodeid, ':')) == NULL){
-	if ((*id = strdup(nodeid)) == NULL){
-	    clicon_err(OE_YANG, errno, "strdup");
-	    goto done;
-	}
-    }
-    else{
-	if ((*prefix = strdup(nodeid)) == NULL){
-	    clicon_err(OE_YANG, errno, "strdup");
-	    goto done;
-	}
-	(*prefix)[str-nodeid] = '\0';
-	str++;
-	if ((*id = strdup(str)) == NULL){
-	    clicon_err(OE_YANG, errno, "strdup");
-	    goto done;
-	}
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Given a yang statement and a prefix, return yang module to that prefix
+/*! Given a yang statement and a prefix, return yang module to that relative prefix
  * Note, not the other module but the proxy import statement only
  * @param[in]  ys      A yang statement
  * @param[in]  prefix  prefix
  * @retval     ymod    Yang module statement if found
  * @retval     NULL    not found
+ * @node Prefixes are relative to the module they are defined
+ * @see yang_find_module_by_name
+ * @see yang_find_module_by_namespace
  */
 yang_stmt *
 yang_find_module_by_prefix(yang_stmt *ys, 
@@ -1081,12 +884,14 @@ yang_find_module_by_prefix(yang_stmt *ys,
     return ymod;
 }
 
-/*! Given a yang statement and a namespace, return yang module
+/*! Given a yang spec and a namespace, return yang module 
  *
  * @param[in]  yspec      A yang specification
  * @param[in]  namespace  namespace
  * @retval     ymod       Yang module statement if found
  * @retval     NULL       not found
+ * @see yang_find_module_by_name
+ * @see yang_find_module_by_prefix    module-specific prefix
  */
 yang_stmt *
 yang_find_module_by_namespace(yang_spec *yspec, 
@@ -1102,6 +907,28 @@ yang_find_module_by_namespace(yang_spec *yspec,
     }
  done:
     return ymod;
+}
+
+/*! Given a yang spec and a module name, return yang module
+ *
+ * @param[in]  yspec      A yang specification
+ * @param[in]  name       Name of module
+ * @retval     ymod       Yang module statement if found
+ * @retval     NULL       not found
+ * @see yang_find_module_by_namespace
+ * @see yang_find_module_by_prefix    module-specific prefix
+ */
+yang_stmt *
+yang_find_module_by_name(yang_spec *yspec, 
+			 char      *name)
+{
+    yang_stmt *ymod = NULL;
+    
+    while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) 
+	if ((ymod->ys_keyword == Y_MODULE || ymod->ys_keyword == Y_SUBMODULE) &&
+	    strcmp(ymod->ys_argument, name)==0)
+	    return ymod;
+    return NULL;
 }
 
 /*! string is quoted if it contains space or tab, needs double '' */
@@ -1541,7 +1368,7 @@ ys_populate_feature(clicon_handle h,
 	if (strcmp(xml_name(xc), "CLICON_FEATURE") != 0)
 	    continue;
 	/* get m and f from configuration feature rules */
-	if (yang_nodeid_split(xml_body(xc), &m, &f) < 0)
+	if (nodeid_split(xml_body(xc), &m, &f) < 0)
 	    goto done;
 	if (m && f &&
 	    (strcmp(m,"*")==0 ||
@@ -1558,7 +1385,8 @@ ys_populate_feature(clicon_handle h,
     }
     cv_name_set(cv, feature);
     cv_bool_set(cv, found);
-    clicon_debug(1, "%s %s:%s %d", __FUNCTION__, module, feature, found);
+    if (found)
+	clicon_debug(1, "%s %s:%s", __FUNCTION__, module, feature);
     ys->ys_cv = cv;
  ok:
     retval = 0;
@@ -1936,7 +1764,7 @@ yang_parse_str(char         *str,
 }
 
 /*! Parse yang spec from an open file descriptor
- * @param[in]  fd    File descriptor containing the YANG file as ASCII characters
+ * @param[in] fd     File descriptor containing the YANG file as ASCII characters
  * @param[in] name   For debug, eg filename
  * @param[in] ysp    Yang specification. Should have been created by caller using yspec_new
  * @retval ymod      Top-level yang (sub)module
@@ -2083,7 +1911,7 @@ yang_parse_filename(const char   *filename,
     int           fd = -1;
     struct stat   st;
 
-    //    clicon_debug(1, "%s %s", __FUNCTION__, filename);
+    clicon_debug(1, "%s %s", __FUNCTION__, filename);
     if (stat(filename, &st) < 0){
 	clicon_err(OE_YANG, errno, "%s not found", filename);
 	goto done;
@@ -2258,7 +2086,7 @@ yang_features(clicon_handle h,
     while (i<yt->ys_len){ /* Note, children may be removed */
 	ys = yt->ys_stmt[i];
 	if (ys->ys_keyword == Y_IF_FEATURE){
-	    if (yang_nodeid_split(ys->ys_argument, &prefix, &feature) < 0)
+	    if (nodeid_split(ys->ys_argument, &prefix, &feature) < 0)
 		goto done;
 	    /* Specifically need to handle? strcmp(prefix, myprefix)) */
 	    if (prefix == NULL)
@@ -2680,7 +2508,6 @@ yang_abs_schema_nodeid(yang_spec    *yspec,
     char            *id;
     char            *prefix = NULL;
     yang_stmt       *yprefix;
-    yang_stmt       *ys;
 
     /* check absolute schema_nodeid */
     if (schema_nodeid[0] != '/'){
@@ -2717,21 +2544,6 @@ yang_abs_schema_nodeid(yang_spec    *yspec,
 		strcmp(yprefix->ys_argument, prefix) == 0){
 		break;
 	    }
-	}
-    }
-    if (ymod == NULL){ /* Try find id from topnode without prefix XXX remove?*/
-	if ((ys = yang_find_topnode(yspec, id, YC_SCHEMANODE)) == NULL){
-	    clicon_err(OE_YANG, 0, "Module with id:\"%s:%s\" not found", prefix,id);
-	    goto done;
-	}
-	if ((ymod = ys_module(ys)) == NULL){
-	    clicon_err(OE_YANG, 0, "Module with id:%s:%s not found2", prefix,id);
-	    goto done;
-	}
-	if ((yprefix = yang_find((yang_node*)ymod, Y_PREFIX, NULL)) != NULL &&
-	    strcmp(yprefix->ys_argument, prefix) != 0){
-	    clicon_err(OE_YANG, 0, "Module with id:\"%s:%s\" not found", prefix,id);
-	    goto done;
 	}
     }
     if (schema_nodeid_vec((yang_node*)ymod, vec+1, nvec-1, keyword, yres) < 0)

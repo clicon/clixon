@@ -165,11 +165,23 @@ validate_common(clicon_handle       h,
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }	
-    /* 2. Parse xml trees */
+    /* 2. Parse xml trees 
+     * This is the state we are going from */
     if (xmldb_get(h, "running", "/", 1, &td->td_src) < 0)
 	goto done;
+    /* This is the state we are going to */
     if (xmldb_get(h, candidate, "/", 1, &td->td_target) < 0)
 	goto done;
+
+    /* Validate the target state. It is not completely clear this should be done 
+     * here. It is being made in generic_validate below. 
+     * But xml_diff requires some basic validation, at least check that yang-specs
+     * have been assigned
+     */
+    if ((ret = xml_yang_validate_all_top(td->td_target, cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
 
     /* 3. Compute differences */
     if (xml_diff(yspec, 
@@ -240,7 +252,7 @@ validate_common(clicon_handle       h,
  * do something more drastic?
  * @param[in]  h         Clicon handle
  * @param[in]  candidate A candidate database, not necessarily "candidate"
- * @retval   -1       Error - or validation failed (but cbret not set)
+ * @retval   -1       Error - or validation failed 
  * @retval    0       Validation failed (with cbret set)
  * @retval    1       Validation OK       
  * @note Need to differentiate between error and validation fail
@@ -259,7 +271,9 @@ candidate_commit(clicon_handle h,
     if ((td = transaction_new()) == NULL)
 	goto done;
 
-    /* Common steps (with validate). Note this is only call that uses 3-values */
+    /* Common steps (with validate). Load candidate and running and compute diffs
+     * Note this is only call that uses 3-values
+     */
     if ((ret = validate_common(h, candidate, td, cbret)) < 0)
 	goto done;
     if (ret == 0)
@@ -270,12 +284,14 @@ candidate_commit(clicon_handle h,
 	 goto done;
 
      /* Optionally write (potentially modified) tree back to candidate */
-     if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD"))
-	 if (xmldb_put(h, candidate, OP_REPLACE, td->td_target, NULL) < 0)
+     if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD")){
+	 if ((ret = xmldb_put(h, candidate, OP_REPLACE, td->td_target, NULL)) < 0)
 	     goto done;
+	 if (ret == 0)
+	     goto fail;
+     }
      /* 8. Success: Copy candidate to running 
       */
-
      if (xmldb_copy(h, candidate, "running") < 0)
 	 goto done;
 
@@ -423,9 +439,11 @@ from_client_validate(clicon_handle h,
 	goto ok;
     }
     /* Optionally write (potentially modified) tree back to candidate */
-     if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD"))
-	 if (xmldb_put(h, "candidate", OP_REPLACE, td->td_target, NULL) < 0)
-	     goto done;
+    if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD")){
+	if ((ret = xmldb_put(h, "candidate", OP_REPLACE, td->td_target, cbret)) < 0)
+	    goto done;
+	goto ok;
+    }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;

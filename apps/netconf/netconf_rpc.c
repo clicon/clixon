@@ -905,13 +905,9 @@ netconf_application_rpc(clicon_handle h,
 	goto ok;
     }
     yrpc = yang_find((yang_node*)ymod, Y_RPC, xml_name(xn));
-    if ((yrpc==NULL) && _CLICON_XML_NS_ITERATE){
-	int i;
-	for (i=0; i<yspec->yp_len; i++){
-	    ymod = yspec->yp_stmt[i];
-	    if ((yrpc = yang_find((yang_node*)ymod, Y_RPC, xml_name(xn))) != NULL)
-		break;
-	}
+    if ((yrpc==NULL) && !_CLICON_XML_NS_STRICT){
+	if (xml_yang_find_non_strict(xn, yspec, &yrpc) < 0) /* Y_RPC */
+		goto done;
     }
     /* Check if found */
     if (yrpc != NULL){

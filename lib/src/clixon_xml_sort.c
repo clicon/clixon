@@ -61,6 +61,8 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_options.h"
+#include "clixon_xml_map.h"
 #include "clixon_xml_sort.h"
 
 /*
@@ -68,7 +70,9 @@
  */
 
 /* Sort and binary search of XML children
- * Experimental
+ * XXX kludge since low-level functions xml_merge/xml_diff calls 
+ * match_base_child without handle
+ * @see clicon_xml_sort
  */
 int xml_child_sort = 1;
 
@@ -83,7 +87,7 @@ int xml_child_sort = 1;
  *       xmlns and xmlns:ns are used.
  */
 int
-xml_child_spec(char       *name,
+xml_child_spec(cxobj      *x,
 	       cxobj      *xp,
 	       yang_spec  *yspec,
 	       yang_stmt **yresult)
@@ -93,8 +97,9 @@ xml_child_spec(char       *name,
     yang_stmt *yparent; /* parent yang */
     yang_stmt *ymod = NULL;
     yang_stmt *yi;
-    int        i;
+    char      *name;
 	    
+    name = xml_name(x);
     if (xp && (yparent = xml_spec(xp)) != NULL){
 	if (yparent->ys_keyword == Y_RPC){
 	    if ((yi = yang_find((yang_node*)yparent, Y_INPUT, NULL)) != NULL)
@@ -108,12 +113,9 @@ xml_child_spec(char       *name,
 	    goto done;
 	if (ymod != NULL)
 	    y = yang_find_schemanode((yang_node*)ymod, name);
-	if (y == NULL && _CLICON_XML_NS_ITERATE){
-	    for (i=0; i<yspec->yp_len; i++){
-		ymod = yspec->yp_stmt[i];
-		if ((y = yang_find_schemanode((yang_node*)ymod, name)) != NULL)
-		    break;
-	    }
+	if (y == NULL && !_CLICON_XML_NS_STRICT){
+	    if (xml_yang_find_non_strict(x, yspec, &y) < 0) /* schemanode */
+		goto done;
 	}
     }
     else
@@ -265,6 +267,7 @@ xml_cmp1(cxobj        *x,
  * Assume populated by yang spec.
  * @param[in] x0   XML node
  * @param[in] arg  Dummy so it can be called by xml_apply()
+ * @see xml_order XXX: how do they relate?
  */
 int
 xml_sort(cxobj *x,
@@ -560,9 +563,10 @@ xml_sort_verify(cxobj *x0,
 }
 
 /*! Given child tree x1c, find matching child in base tree x0 and return as x0cp
- * param[in]  x0   Base tree node
- * param[in]  x1c  Modification tree child
- * param[in]  yc   Yang spec of tree child
+ * param[in]  x0      Base tree node
+ * param[in]  x1c     Modification tree child
+ * param[in]  yc      Yang spec of tree child
+ * param[in]  xml_sort Value of CLICON_XML_SORT option
  * param[out] x0cp Matching base tree child (if any)
  * @note XXX: room for optimization? on 1K calls we have 1M body calls and
 	   500K xml_child_each/cvec_each calls. 
@@ -575,6 +579,7 @@ int
 match_base_child(cxobj     *x0, 
 		 cxobj     *x1c,
 		 cxobj    **x0cp,
+		 int        xml_sort,
 		 yang_stmt *yc)
 {
     int        retval = -1;
@@ -632,7 +637,7 @@ match_base_child(cxobj     *x0,
 	break;
     }
     /* Get match. Sorting mode(optimized) or not?*/
-    if (xml_child_sort==0)
+    if (xml_sort==0)
 	*x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
     else{
 	if (xml_child_nr(x0)==0 || xml_spec(xml_child_i(x0,0))!=NULL){
@@ -640,12 +645,6 @@ match_base_child(cxobj     *x0,
 	    *x0cp = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
 	}
 	else{
-#if 1 /* This is just a warning, but a catcher for when xml tree is not
-	 populated with yang spec. If you see this, a previous invacation of,
-	 for example  xml_spec_populate() may be missing
-      */
-	    clicon_log(LOG_WARNING, "%s No yspec", __FUNCTION__);
-#endif
 	    *x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
 	}
     }

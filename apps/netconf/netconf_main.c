@@ -118,6 +118,8 @@ process_incoming_packet(clicon_handle h,
     free(str0);
     if ((xrpc=xpath_first(xreq, "//rpc")) != NULL){
         isrpc++;
+	if (xml_spec_populate_rpc(h, xrpc, yspec) < 0)
+	    goto done;
 	if ((ret = xml_yang_validate_rpc(xrpc, cbret)) < 0) 
 	    goto done;
 	if (ret == 0){

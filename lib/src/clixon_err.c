@@ -140,6 +140,7 @@ clicon_err_reset(void)
  * @param[in]    err      Error number, typically errno
  * @param[in]    suberr   Sub-error number   
  * @param[in]    reason   Error string, format with argv
+ * @see clicon_err_reser  Resetting the global error variables.
  */
 int
 clicon_err_fn(const char *fn, 

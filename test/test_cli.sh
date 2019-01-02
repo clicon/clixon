@@ -59,7 +59,7 @@ expectfn "$clixon_cli -1 -f $cfg delete interfaces" 0 "^$"
 new "cli show configuration delete top"
 expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "^$"
 
-new "cli configure"
+new "cli configure set interfaces"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0" 0 "^$"
 
 new "cli show configuration"

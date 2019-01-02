@@ -253,9 +253,8 @@ clicon_options_main(clicon_handle h,
 	clicon_err(OE_CFG, 0, "%s: suffix %s not recognized (Run ./configure --with-config-compat?)", configfile, suffix);
 	goto done;
     }
-#if 1 /* XXX Kludge to low-level functions to iterate over namspaces or not */
-    _CLICON_XML_NS_ITERATE = 1;
-#endif
+    /* XXX Kludge to low-level functions to search for xml in all yang modules */
+    _CLICON_XML_NS_STRICT = 0;
     /* Read configfile first without yangspec, for bootstrapping */
     if (parse_configfile(h, configfile, yspec, &xconfig) < 0)
 	goto done;
@@ -281,9 +280,8 @@ clicon_options_main(clicon_handle h,
 	xml_child_sort = 1;
     else
 	xml_child_sort = 0;
-#if 1 /* XXX Kludge to low-level functions to iterate over namspaces or not */
-    _CLICON_XML_NS_ITERATE = clicon_option_bool(h, "CLICON_XML_NS_ITERATE");
-#endif
+    /* XXX Kludge to low-level functions to search for xml in all yang modules */
+    _CLICON_XML_NS_STRICT = clicon_option_bool(h, "CLICON_XML_NS_STRICT");
     retval = 0;
  done:
     return retval;

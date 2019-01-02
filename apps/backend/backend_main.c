@@ -176,22 +176,24 @@ db_reset(clicon_handle h,
 }
 
 /*! Merge db1 into db2 without commit 
+ * @retval   -1       Error
+ * @retval    0       Validation failed (with cbret set)
+ * @retval    1       Validation OK       
  */
 static int
 db_merge(clicon_handle h,
  	 const char   *db1,
-    	 const char   *db2)
+    	 const char   *db2,
+	 cbuf         *cbret)
 {
-    int retval = -1;
-    cxobj  *xt = NULL;
-
+    int    retval = -1;
+    cxobj *xt = NULL;
+    
     /* Get data as xml from db1 */
     if (xmldb_get(h, (char*)db1, NULL, 1, &xt) < 0)
 	goto done;
     /* Merge xml into db2. Without commit */
-    if (xmldb_put(h, (char*)db2, OP_MERGE, xt, NULL) < 0)
-	goto done;
-    retval = 0;
+    retval = xmldb_put(h, (char*)db2, OP_MERGE, xt, cbret);
  done:
     if (xt)
 	xml_free(xt);
@@ -288,18 +290,22 @@ nacm_load_external(clicon_handle h)
 }
 
 /*! Merge xml in filename into database
+ * @retval   -1       Error
+ * @retval    0       Validation failed (with cbret set)
+ * @retval    1       Validation OK       
  */
 static int
 load_extraxml(clicon_handle h,
 	      char         *filename,
-	      const char   *db)
+	      const char   *db,
+	      cbuf         *cbret)
 {
     int    retval =  -1;
     cxobj *xt = NULL;
     int    fd = -1;
-    
+
     if (filename == NULL)
-	return 0;
+	return 1;
     if ((fd = open(filename, O_RDONLY)) < 0){
 	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
@@ -310,9 +316,7 @@ load_extraxml(clicon_handle h,
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
     /* Merge user reset state */
-    if (xmldb_put(h, (char*)db, OP_MERGE, xt, NULL) < 0)
-	goto done;
-    retval = 0;
+    retval = xmldb_put(h, (char*)db, OP_MERGE, xt, cbret);
  done:
     if (fd != -1)
 	close(fd);
@@ -385,9 +389,13 @@ static int
 startup_mode_running(clicon_handle h,
     		     char         *extraxml_file)
 {
-    int     retval = -1;
-    cbuf   *cbret = NULL;
+    int   retval = -1;
+    cbuf *cbret = NULL;
 
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
     /* Stash original running to candidate for later commit */
     if (xmldb_copy(h, "running", "candidate") < 0)
 	goto done;
@@ -400,41 +408,46 @@ startup_mode_running(clicon_handle h,
     /* Application may define extra xml in its reset function*/
     if (clixon_plugin_reset(h, "tmp") < 0)   
 	goto done;
+    /* XXX Kludge to low-level functions to search for xml in all yang modules */
+    _CLICON_XML_NS_STRICT = 0;
     /* Get application extra xml from file */
-    if (load_extraxml(h, extraxml_file, "tmp") < 0)   
-	goto done;	    
+    if (load_extraxml(h, extraxml_file, "tmp", cbret) < 1)   
+	goto fail;	    
     /* Clear running db */
     if (db_reset(h, "running") < 0)
 	goto done;
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
     /* Commit original running. Assume -1 is validate fail */
-    if (candidate_commit(h, "candidate", cbret) < 1){
-	/*  (1) We cannot differentiate between fatal errors and validation
-	 *      failures
-	 *  (2) If fatal error, we should exit
-	 *  (3) If validation fails we cannot continue. How could we?
-	 *  (4) Need to restore the running db since we destroyed it above
-	 */
-	clicon_log(LOG_NOTICE, "%s: Commit of saved running failed, exiting: %s.",
-		   __FUNCTION__, cbuf_get(cbret));
-	/* Reinstate original */
-	if (xmldb_copy(h, "candidate", "running") < 0)
-	    goto done;
-	goto done;
-    }
+    if (candidate_commit(h, "candidate", cbret) < 1)
+	goto fail;
     /* Merge user reset state and extra xml file (no commit) */
-    if (db_merge(h, "tmp", "running") < 0)
-	goto done;
+    if (db_merge(h, "tmp", "running", cbret) < 1)
+	goto fail;
     retval = 0;
  done:
+    /* XXX Kludge to low-level functions to search for xml in all yang modules */
+    _CLICON_XML_NS_STRICT = clicon_option_bool(h, "CLICON_XML_NS_STRICT");
     if (cbret)
 	cbuf_free(cbret);
     if (xmldb_delete(h, "tmp") < 0)
 	goto done;
     return retval;
+ fail:
+    /*  (1) We cannot differentiate between fatal errors and validation
+     *      failures
+     *  (2) If fatal error, we should exit
+     *  (3) If validation fails we cannot continue. How could we?
+     *  (4) Need to restore the running db since we destroyed it above
+     */
+    if (strlen(cbuf_get(cbret)))
+	clicon_log(LOG_NOTICE, "%s: Commit of running failed, exiting: %s.",
+		   __FUNCTION__, cbuf_get(cbret));
+    else
+	clicon_log(LOG_NOTICE, "%s: Commit of running failed, exiting: %s.",
+		   __FUNCTION__, clicon_err_reason);
+    /* Reinstate original */
+    if (xmldb_copy(h, "candidate", "running") < 0)
+	goto done;
+    goto done;
 }
 
 /*! Clixon startup startup mode: Commit startup configuration into running state
@@ -460,11 +473,16 @@ startup    -------------------------+--|
  */
 static int
 startup_mode_startup(clicon_handle h,
-		     char *extraxml_file)
+		     char         *extraxml_file)
 {
     int     retval = -1;
     cbuf   *cbret = NULL;
 
+    /* Create return buffer for netconf xml errors */
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
     /* Stash original running to backup */
     if (xmldb_copy(h, "running", "backup") < 0)
 	goto done;
@@ -481,34 +499,25 @@ startup_mode_startup(clicon_handle h,
     /* Application may define extra xml in its reset function*/
     if (clixon_plugin_reset(h, "tmp") < 0)  
 	goto done;
+    /* XXX Kludge to low-level functions to search for xml in all yang modules */
+    _CLICON_XML_NS_STRICT = 0;
     /* Get application extra xml from file */
-    if (load_extraxml(h, extraxml_file, "tmp") < 0)   
-	goto done;	    
+    if (load_extraxml(h, extraxml_file, "tmp", cbret) < 1)   
+	goto fail;	    
     /* Clear running db */
     if (db_reset(h, "running") < 0)
 	goto done;
-    /* Create return buffer (not used) */
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
+
     /* Commit startup */
-    if (candidate_commit(h, "startup", cbret) < 1){ /* diff */
-	/*  We cannot differentiate between fatal errors and validation
-	 *  failures
-	 *  In both cases we copy back the original running and quit
-	 */
-	clicon_log(LOG_NOTICE, "%s: Commit of startup failed, exiting: %s.",
-		   __FUNCTION__, cbuf_get(cbret));
-	if (xmldb_copy(h, "backup", "running") < 0)
-	    goto done;
-	goto done;
-    }
+    if (candidate_commit(h, "startup", cbret) < 1) /* diff */
+	goto fail;
     /* Merge user reset state and extra xml file (no commit) */
-    if (db_merge(h, "tmp", "running") < 0)
-	goto done;
+    if (db_merge(h, "tmp", "running", cbret) < 1)
+	goto fail;
     retval = 0;
  done:
+    /* XXX Kludge to low-level functions to search for xml in all yang modules */
+    _CLICON_XML_NS_STRICT = clicon_option_bool(h, "CLICON_XML_NS_STRICT");
     if (cbret)
 	cbuf_free(cbret);
     if (xmldb_delete(h, "backup") < 0)
@@ -516,6 +525,20 @@ startup_mode_startup(clicon_handle h,
     if (xmldb_delete(h, "tmp") < 0)
 	goto done;
     return retval;
+ fail:
+    /*  We cannot differentiate between fatal errors and validation
+     *  failures
+     *  In both cases we copy back the original running and quit
+     */
+    if (strlen(cbuf_get(cbret)))
+	clicon_log(LOG_NOTICE, "%s: Commit of startup failed, exiting: %s.",
+		   __FUNCTION__, cbuf_get(cbret));
+    else
+	clicon_log(LOG_NOTICE, "%s: Commit of startup failed, exiting: %s.",
+		   __FUNCTION__, clicon_err_reason);
+    if (xmldb_copy(h, "backup", "running") < 0)
+	goto done;
+    goto done;
 }
 
 int
@@ -540,7 +563,6 @@ main(int    argc,
     int           sockfamily;
     char         *xmldb_plugin;
     int           xml_cache;
-    int           xml_pretty;
     char         *xml_format;
     char         *nacm_mode;
     int           logdst = CLICON_LOG_SYSLOG|CLICON_LOG_STDERR;
@@ -808,9 +830,10 @@ main(int    argc,
     if ((xml_format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) >= 0)
 	if (xmldb_setopt(h, "format", (void*)xml_format) < 0)
 	    goto done;
-    if ((xml_pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) >= 0)
-	if (xmldb_setopt(h, "pretty", (void*)(intptr_t)xml_pretty) < 0)
-	    goto done;
+    if (xmldb_setopt(h, "pretty", (void*)(intptr_t)clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) < 0)
+	goto done;
+    if (xmldb_setopt(h, "sort", (void*)(intptr_t)clicon_option_bool(h, "CLICON_XML_SORT")) < 0)
+	goto done;
     /* Startup mode needs to be defined,  */
     startup_mode = clicon_startup_mode(h);
     if (startup_mode == -1){ 	

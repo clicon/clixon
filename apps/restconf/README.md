@@ -1,11 +1,11 @@
 # Clixon Restconf
 
-  * [Installation](#Installation)
-  * [Streams](Streams)
-  * [Nchan Streams](Nchan)
-  * [Debugging](Debugging)	
+  * [Installation](#installation)
+  * [Streams](#streams)
+  * [Nchan Streams](#nchan-streams)
+  * [Debugging](#debugging)	
 
-### 1. Installation
+## 1. Installation
 
 The examples are based on Nginx. Other reverse proxies should work but are not verified.
 
@@ -44,39 +44,39 @@ sudo systemctl start start.service
 
 Start clixon restconf daemon
 ```
-olof@vandal> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
 ```
 
 Make restconf calls with curl
 ```
-olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces
+> curl -G http://127.0.0.1/restconf/data/ietf-interfaces:interfaces
 [
   {
-    "interfaces": {
+    "ietf-interfaces:interfaces": {
       "interface":[
         {
-          "name": "eth0",
-          "type": "eth",
-          "enabled": "true",
           "name": "eth9",
-          "type": "eth",
-          "enabled": "true"
+          "type": "ex:eth",
+          "enabled": true,
          }
       ]
     }
   }
 ]
-olof@vandal> curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=eth9/type
-[
-  {
-    "type": "eth" 
-  }
-]
-
-curl -sX POST -d '{"interfaces":{"interface":{"name":"eth1","type":"eth","enabled":"true"}}}' http://localhost/restconf/data
+```
+Get the type of a specific interface:
+```
+> curl -G http://127.0.0.1/restconf/data/interfaces/interface=eth9/type
+{
+  "ietf-interfaces:type": "eth" 
+}
+```
+Example of writing a new interfaces specification:
+```
+curl -sX PUT http://localhost/restconf/data -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth1","type":"ex:eth","enabled":true}}}' 
 ```
 
-### 2. Streams
+## 2. Streams
 
 Clixon have two experimental restconf event stream implementations following
 RFC8040 Section 6 using SSE.  One native and one using Nginx
@@ -112,7 +112,7 @@ Add the following to extend the nginx configuration file with the following stat
 
 AN example of a stream access is as follows:
 ```
-vandal> curl -H "Accept: text/event-stream" -s -X GET http://localhost/streams/EXAMPLE
+> curl -H "Accept: text/event-stream" -s -X GET http://localhost/streams/EXAMPLE
 data: <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-11-04T14:47:11.373124</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>
 
 data: <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-11-04T14:47:16.375265</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>
@@ -125,7 +125,7 @@ You can also specify start and stop time. Start-time enables replay of existing 
 
 See (stream tests)[../test/test_streams.sh] for more examples.
 
-### 3. Nchan
+## 3. Nchan
 
 As an alternative streams implementation, Nginx/Nchan can be used. 
 Nginx uses pub/sub channels and can be configured in a variety of
@@ -180,7 +180,7 @@ curl -H "Accept: text/event-stream" -H "Last-Event-ID: 1539961709:0" -s -X GET h
 
 See (https://nchan.io/#eventsource) on more info on how to access an SSE sub endpoint.
 
-### 4. Debugging
+## 4. Debugging
 
 Start the restconf fastcgi program with debug flag:
 ```

@@ -117,7 +117,7 @@ clixon_plugin_reset(clicon_handle h,
  * @param[in,out] xtop    State XML tree is merged with existing tree.
  * @retval       -1       Error
  * @retval        0       OK
- * @retval        1       Statedata callback failed
+ * @retval        1       Statedata callback failed (xret set with netconf-error)
  * @note xtop can be replaced
  */
 int

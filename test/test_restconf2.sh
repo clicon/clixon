@@ -72,73 +72,82 @@ sleep $RCWAIT
 new "restconf tests"
 
 new "restconf POST initial tree"
-expectfn 'curl -s -X POST -d {"cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 ""
+expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 ""
 
 new "restconf GET datastore intial"
-expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 '{"cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
 
-new "restconf GET interface"
-expectfn "curl -s -X GET http://localhost/restconf/data/cont1/interface=local0" 0 '{"interface": \[{"name": "local0","type": "regular"}\]}'
+new "restconf GET interface subtree"
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=local0" 0 '{"example:interface": \[{"name": "local0","type": "regular"}\]}'
+
+new "restconf GET interface subtree xml"
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/example:cont1/interface=local0)
+expect='<interface xmlns="urn:example:clixon"><name>local0</name><type>regular</type></interface>'
+match=`echo $ret | grep -EZo "$expect"`
+if [ -z "$match" ]; then
+    err "$expect" "$ret"
+fi
 
 new "restconf GET if-type"
-expectfn "curl -s -X GET http://localhost/restconf/data/cont1/interface=local0/type" 0 '{"type": "regular"}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=local0/type" 0 '{"example:type": "regular"}'
 
 new "restconf POST interface without mandatory type"
-expectfn 'curl -s -X POST -d {"interface":{"name":"TEST"}} http://localhost/restconf/data/cont1' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "type"},"error-severity": "error","error-message": "Mandatory variable"}}}'
+expectfn 'curl -s -X POST -d {"interface":{"name":"TEST"}} http://localhost/restconf/data/example:cont1' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "type"},"error-severity": "error","error-message": "Mandatory variable"}}}'
 
 new "restconf POST interface"
-expectfn 'curl -s -X POST -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/cont1' 0 ""
+expectfn 'curl -s -X POST -d {"example:interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/example:cont1' 0 ""
 
+# XXX should it be example:interface?
 new2 "restconf POST again"
-expecteq "$(curl -s -X POST -d '{"interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/cont1)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+expecteq "$(curl -s -X POST -d '{"interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/example:cont1)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 new2 "restconf POST from top"
-expecteq "$(curl -s -X POST -d '{"cont1":{"interface":{"name":"TEST","type":"eth0"}}}' http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+expecteq "$(curl -s -X POST -d '{"example:cont1":{"interface":{"name":"TEST","type":"eth0"}}}' http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 new "restconf DELETE"
-expectfn 'curl -s -X DELETE http://localhost/restconf/data/cont1' 0 ""
+expectfn 'curl -s -X DELETE http://localhost/restconf/data/example:cont1' 0 ""
 
 new "restconf GET null datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 'null'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 'null'
 
 new "restconf POST initial tree"
-expectfn 'curl -s -X POST -d {"cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 ""
+expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 ""
 
 new "restconf GET initial tree"
-expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 '{"cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
 
 new "restconf DELETE whole datastore"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
 
 new "restconf GET null datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 'null'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 'null'
 
 new "restconf PUT initial datastore" 
-expectfn 'curl -s -X PUT -d {"data":{"cont1":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' 0 ""
+expectfn 'curl -s -X PUT -d {"data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' 0 ""
 
 new "restconf GET datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 '{"cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
 
 new "restconf PUT replace datastore" 
-expectfn 'curl -s -X PUT -d {"data":{"cont2":{"name":"foo"}}} http://localhost/restconf/data' 0 ""
+expectfn 'curl -s -X PUT -d {"data":{"example:cont2":{"name":"foo"}}} http://localhost/restconf/data' 0 ""
 
 new "restconf GET replaced datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data/cont2" 0 '{"cont2": {"name": "foo"}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont2" 0 '{"example:cont2": {"name": "foo"}}'
 
 new "restconf PUT initial datastore again" 
-expectfn 'curl -s -X PUT -d {"data":{"cont1":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' 0 ""
+expectfn 'curl -s -X PUT -d {"data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' 0 ""
 
 new "restconf PUT change interface"
-expectfn 'curl -s -X PUT -d {"interface":{"name":"local0","type":"atm0"}} http://localhost/restconf/data/cont1/interface=local0' 0 ""
+expectfn 'curl -s -X PUT -d {"interface":{"name":"local0","type":"atm0"}} http://localhost/restconf/data/example:cont1/interface=local0' 0 ""
 
 new "restconf GET datastore atm"
-expectfn "curl -s -X GET http://localhost/restconf/data/cont1" 0 '{"cont1": {"interface": \[{"name": "local0","type": "atm0"}\]}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1": {"interface": \[{"name": "local0","type": "atm0"}\]}}'
 
 new "restconf PUT add interface"
-expectfn 'curl -s -X PUT -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/cont1/interface=TEST' 0 ""
+expectfn 'curl -s -X PUT -d {"interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/example:cont1/interface=TEST' 0 ""
 
 new "restconf PUT change key error"
-expectfn 'curl -is -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/cont1/interface=TEST' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
+expectfn 'curl -is -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/example:cont1/interface=TEST' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"

@@ -37,14 +37,16 @@
 #define _CLIXON_XML_SORT_H
 
 /* Sort and binary search of XML children
- * Experimental
+ * XXX This variable is a kludge since low-level functions xml_merge/xml_diff calls 
+ * match_base_child without handle
+ * @see clicon_xml_sort
  */
 extern int xml_child_sort;
 
 /*
  * Prototypes
  */
-int xml_child_spec(char *name, cxobj *xp, yang_spec *yspec, yang_stmt **yp);
+int xml_child_spec(cxobj *x, cxobj *xp, yang_spec *yspec, yang_stmt **yp);
 int xml_cmp(const void* arg1, const void* arg2);
 int xml_sort(cxobj *x0, void *arg);
 cxobj *xml_search(cxobj *x, char *name, int yangi, enum rfc_6020 keyword, int keynr, char **keyvec, char **keyval);
@@ -53,6 +55,6 @@ int    xml_insert_pos(cxobj *x0, char *name, int yangi, enum rfc_6020 keyword,
 		      int upper);
 cxobj *xml_match(cxobj *x0, char *name, enum rfc_6020 keyword, int keynr, char **keyvec, char **keyval);
 int    xml_sort_verify(cxobj *x, void *arg);
-int    match_base_child(cxobj *x0, cxobj *x1c, cxobj **x0cp, yang_stmt *yc);
+int    match_base_child(cxobj *x0, cxobj *x1c, cxobj **x0cp, int xml_sort, yang_stmt *yc);
 
 #endif /* _CLIXON_XML_SORT_H */

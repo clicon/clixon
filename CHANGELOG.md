@@ -1,11 +1,61 @@
 # Clixon Changelog
 
-## 3.9.0 (Preliminary Target: 31 December 2018)
+## 3.9.0 (Preliminary Target: Mid-January 2019)
 
 ### Planned new features
 * [Roadmap](ROADMAP.md) (Uncommitted and unprioritized)
 
 ### Major New features
+* Correct XML namespace handling
+  * XML multiple modules was based on non-strict semantics so that yang modules were found by iterating thorugh namespaces until a match was made. This did not adhere to proper [XML namespace handling](https://www.w3.org/TR/2009/REC-xml-names-20091208) as well as strict Netconf and Restconf namespace handling, which causes problems with overlapping names and false positives, and most importantly, with standard conformance.
+  * There are still the following non-strict namespace handling:
+    * Everything in ietf-netconf base syntax with namespace `urn:ietf:params:xml:ns:netconf:base:1.0` is default and need not be explicitly given
+    * edit-config xpath select statement does not support namespaces
+    * notifications do not support namespaces.
+  * Below see netconf old (but wrong) netconf RPC:
+  ```
+     <rpc>
+       <my-own-method/>
+     </rpc> 
+     <rpc-reply>
+       <route>
+         <address-family>ipv4</address-family>
+       </route>
+     </rpc-reply>
+  ```
+  This is the currently correct Netconf RPC:
+  ```
+     <rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"> # xmlns may be ommitted
+       <my-own-method xmlns="urn:example:my-own">
+     </rpc>
+     <rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+       <route xmlns="urn:ietf:params:xml:ns:yang:ietf-routing">
+         <address-family>ipv4</address-family>
+       </route>
+     </rpc-reply>
+  ```
+  * Another example for restconf rpc with new correct syntax. Note that while Netconf uses xmlns attribute syntax, Restconf uses module name prefix. First the request:
+  ```
+    POST http://localhost/restconf/operations/example:example)
+    Content-Type: application/yang-data+json
+    {
+      "example:input":{
+        "x":0
+      }
+    }
+  ```
+  then the reply:
+  ```
+    HTTP/1.1 200 OK
+    {
+      "example:output": {
+        "x": "0",
+        "y": "42"
+      }
+    }
+  ```
+  * To keep previous non-strict namespace handling (backwards compatible), set CLICON_XML_NS_STRICT to false.
+  * See https://github.com/clicon/clixon/issues/49
 * NACM extension (RFC8341)
   * NACM module support (RFC8341 A1+A2)
   * Recovery user "_nacm_recovery" added.
@@ -27,25 +77,15 @@
       * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
     * CLICON_YANG_MAIN_FILE Provides a filename with a single module filename.
     * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
-* Correct XML namespace handling
-  * XML multiple modules was based on "loose" semantics so that yang modules were found by iterating thorugh namespaces until a match was made. This did not adhere to proper [XML namespace handling](https://www.w3.org/TR/2009/REC-xml-names-20091208), and causes problems with overlapping names and false positives. Below see XML accepted (but wrong), and correct namespace declaration:
-  ```
-     <rpc><my-own-method></rpc> # Wrong but accepted
-     <rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"> # Correct
-       <my-own-method xmlns="http://example.net/me/my-own/1.0">
-     </rpc>
-  ```
-  * To keep old loose semantics set config option CLICON_XML_NS_ITERATE (true by default)
-  * XML to JSON translator support for mapping xmlns attribute to module name prefix.
-  * Default namespace is still "urn:ietf:params:xml:ns:netconf:base:1.0"
-  * See https://github.com/clicon/clixon/issues/49
 
 ### API changes on existing features (you may need to change your code)
-* Removed delete-config support for candidate db since it is not supported in RFC6241.
+* Strict namespace setting can be a problem when upgrading existing database files, such as startup-db or persistent running-db, or any other saved XML file.
+  * For backward compatibility, load of startup and running set CLICON_XML_NS_STRICT to false temporarily.
+* Removed `delete-config` support for candidate db since it is not supported in RFC6241.
 * Switched the order of `error-type` and `error-tag` in all netconf and restconf error messages to comply to RFC order.
 * Yang parser is stricter (see above) which may break parsing of existing yang specs.
 * XML namespace handling is corrected (see above)
-  * For backward compatibility set config option  CLICON_XML_NS_ITERATE
+  * For backward compatibility set config option  CLICON_XML_NS_LOOSE
 * Yang parser functions have changed signatures. Please check the source if you call these functions.
 * Add `<CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>` to your configuration file, or corresponding CLICON_DATADIR directory for Clixon system yang files.
 * Change all @datamodel:tree to @datamodel in all CLI specification files
@@ -53,6 +93,9 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
+* Added three-valued return values for several validate functions where -1 is fatal error, 0 is validation failed and 1 is validation OK.
+  * This includes: `xmldb_put`, `xml_yang_validate_all`, `xml_yang_validate_add`, `xml_yang_validate_rpc`, `api_path2xml`, `api_path2xpath`
+* Added new xml functions for specific types: `xml_child_nr_notype`, `xml_child_nr_notype`, `xml_child_i_type`, `xml_find_type`.
 * Added example_rpc RPC to example backend
 * Renamed xml_namespace[_set]() to xml_prefix[_set]()
 * Changed all make tags --> make TAGS
@@ -273,7 +316,7 @@ translate {
 
 ### Known issues
 * Namespace name relabeling is not supported.
-  * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlfns is not supported, such as:
+  * Eg: if "des" is defined as prefix for an imported module, then a relabeling using xmlns is not supported, such as:
 ```
   <crypto xmlns:x="urn:example:des">x:des3</crypto>
 ```

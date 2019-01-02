@@ -249,7 +249,7 @@ restconf_stream(clicon_handle h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(cb, "<rpc><create-subscription><stream>%s</stream>", name);
+    cprintf(cb, "<rpc><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>%s</stream>", name);
     /* Print all fields */
     for (i=0; i<cvec_len(qvec); i++){
         cv = cvec_i(qvec, i);

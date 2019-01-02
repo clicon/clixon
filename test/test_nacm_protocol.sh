@@ -122,7 +122,7 @@ RULES=$(cat <<EOF
      $NADMIN
 
    </nacm>
-   <x>0</x>
+   <x xmlns="urn:example:clixon">0</x>
 EOF
 )
 
@@ -158,10 +158,10 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/nacm/enable-nacm)" ""
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
 
 new2 "admin get nacm"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/x)" '{"x": 0}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
 '
 
 # Rule 1: deny-kill-session
@@ -186,7 +186,7 @@ new "deny-delete-config: limited fail (restconf) ok"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data)" ''
 
 new2 "admin get nacm (should be null)"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/x)" 'null
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" 'null
 '
 
 new "deny-delete-config: admin ok (restconf)"
@@ -200,14 +200,14 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/nacm/enable-nacm)" ""
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
 
 # Rule 3: permit-edit-config
 new "permit-edit-config: limited ok restconf"
-expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/x)" ''
+expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"example:x": 2}' http://localhost/restconf/data/example:x)" ''
 
 new2 "permit-edit-config: guest fail restconf"
-expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u guest:bar -sS -X PUT -d '{"example:x": 2}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
