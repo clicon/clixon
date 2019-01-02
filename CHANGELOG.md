@@ -94,6 +94,7 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
+* Added new clixon-lib yang module for internal netconf protocol. Currently only extends the standard with a debug RPC.
 * Added three-valued return values for several validate functions where -1 is fatal error, 0 is validation failed and 1 is validation OK.
   * This includes: `xmldb_put`, `xml_yang_validate_all`, `xml_yang_validate_add`, `xml_yang_validate_rpc`, `api_path2xml`, `api_path2xpath`
 * Added new xml functions for specific types: `xml_child_nr_notype`, `xml_child_nr_notype`, `xml_child_i_type`, `xml_find_type`.

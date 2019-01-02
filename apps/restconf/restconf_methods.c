@@ -1132,27 +1132,23 @@ api_operations_get(clicon_handle h,
     if (use_xml)
 	cprintf(cbx, "<operations>");
     else
-	cprintf(cbx, "{\"operations\": ");
+	cprintf(cbx, "{\"operations\": {");
     ymod = NULL;
+    i = 0;
     while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
 	namespace = yang_find_mynamespace(ymod);
-	yc = NULL; i=0;
+	yc = NULL; 
 	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
 	    if (yc->ys_keyword != Y_RPC)
 		continue;
 	    if (use_xml)
 		cprintf(cbx, "<%s xmlns=\"%s\"/>", yc->ys_argument, namespace);
 	    else{
-		if (i==0)
-		    cprintf(cbx, "{");
-		if (i)
+		if (i++)
 		    cprintf(cbx, ",");
 		cprintf(cbx, "\"%s:%s\": null", ymod->ys_argument, yc->ys_argument);
 	    }
-	    i++;
 	}
-	if (!use_xml && i)
-	    cprintf(cbx, "}");
     }
     if (use_xml)
 	cprintf(cbx, "</operations>");

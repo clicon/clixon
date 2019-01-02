@@ -1,6 +1,6 @@
 module clixon-config {
     yang-version 1.1;
-    namespace "http://clicon.org";
+    namespace "http://clicon.org/config";
     prefix cc;
 
     organization
@@ -453,14 +453,6 @@ module clixon-config {
 	    description "Retention for stream replay buffers in seconds, ie how much
                          data to store before dropping. 0 means no retention";
 
-	}
-    }
-    rpc debug {
-	description "Set debug level of backend.";
-	input {
-	    leaf level {
-		type uint32;
-	    }
 	}
     }
 }

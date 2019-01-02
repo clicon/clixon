@@ -645,7 +645,9 @@ main(int    argc,
 	if (yang_spec_load_dir(h, str, yspec) < 0)
 	    goto done;
     }
-
+    /* Load clixon lib yang module */
+    if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
+	goto done;
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;

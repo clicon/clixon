@@ -118,12 +118,12 @@ expecteq "$(curl -s -H 'Accept: application/yang-data+xml' -G http://localhost/r
 
 # Should be alphabetically ordered
 new2 "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"example:empty": null,"example:client-rpc": null}{"ietf-routing:fib-route": null,"ietf-routing:route-count": null}}
+expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"example:empty": null,"example:client-rpc": null,"ietf-routing:fib-route": null,"ietf-routing:route-count": null,"clixon-lib:debug": null}
 '
 
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/operations)
-expect='<operations><empty xmlns="urn:example:clixon"/><client-rpc xmlns="urn:example:clixon"/><fib-route xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/><route-count xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/></operations>'
+expect='<operations><empty xmlns="urn:example:clixon"/><client-rpc xmlns="urn:example:clixon"/><fib-route xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/><route-count xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/><debug xmlns="http://clicon.org/lib"/></operations>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
