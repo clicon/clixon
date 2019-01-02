@@ -260,6 +260,7 @@ example_reset(clicon_handle h,
     int    retval = -1;
     cxobj *xt = NULL;
     int    ret;
+    cbuf  *cbret = NULL;
 
     if (xml_parse_string("<config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface>"
 			 "<name>lo</name><type>ex:loopback</type>"
@@ -268,15 +269,22 @@ example_reset(clicon_handle h,
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
     /* Merge user reset state */
-    if ((ret = xmldb_put(h, (char*)db, OP_MERGE, xt, NULL)) < 0)
+    if ((ret = xmldb_put(h, (char*)db, OP_MERGE, xt, cbret)) < 0)
 	goto done;
     if (ret == 0){
-	clicon_err(OE_XML, 0, "Error when writing to XML database");
+	clicon_err(OE_XML, 0, "Error when writing to XML database: %s",
+		   cbuf_get(cbret));
 	goto done;
     }
     retval = 0;
  done:
+    if (cbret)
+	cbuf_free(cbret);
     if (xt != NULL)
 	xml_free(xt);
     return retval;

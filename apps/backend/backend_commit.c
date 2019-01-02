@@ -285,7 +285,7 @@ candidate_commit(clicon_handle h,
 
      /* Optionally write (potentially modified) tree back to candidate */
      if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD")){
-	 if ((ret = xmldb_put(h, candidate, OP_REPLACE, td->td_target, NULL)) < 0)
+	 if ((ret = xmldb_put(h, candidate, OP_REPLACE, td->td_target, cbret)) < 0)
 	     goto done;
 	 if (ret == 0)
 	     goto fail;

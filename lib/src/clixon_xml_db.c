@@ -379,7 +379,7 @@ xmldb_get(clicon_handle h,
  * @param[in]  db     running or candidate
  * @param[in]  op     Top-level operation, can be superceded by other op in tree
  * @param[in]  xt     xml-tree. Top-level symbol is dummy
- * @param[out] cbret  Initialized cligen buffer or NULL. On exit contains XML or "".
+ * @param[out] cbret  Initialized cligen buffer. On exit contains XML if retval == 0
  * @retval     1      OK
  * @retval     0      Failed, cbret contains error xml message
  * @retval     -1     Error

@@ -572,7 +572,10 @@ text_get(xmldb_handle xh,
  * @param[in]  x0p Parent of x0
  * @param[in]  x1  xml tree which modifies base
  * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
- * @param[out] cbret  Initialized cligen buffer. Contains return XML or "".
+ * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0.
+ * @retval    -1     Error
+ * @retval     0     Failed (cbret set)
+ * @retval     1     OK
  * Assume x0 and x1 are same on entry and that y is the spec
  * @see text_modify_top
  */
@@ -598,6 +601,7 @@ text_modify(struct text_handle *th,
     yang_stmt *yc;  /* yang child */
     cxobj    **x0vec = NULL;
     int        i;
+    int        ret;
 
     assert(x1 && xml_type(x1) == CX_ELMNT);
     assert(y0);
@@ -613,7 +617,7 @@ text_modify(struct text_handle *th,
 	    if (x0){
 		if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
 		    goto done;
-		goto ok;
+		goto fail;
 	    }
 	case OP_NONE: /* fall thru */
 	case OP_MERGE:
@@ -658,7 +662,7 @@ text_modify(struct text_handle *th,
 	    if (x0==NULL){
 		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
-		goto ok;
+		goto fail;
 	    }
 	case OP_REMOVE: /* fall thru */
 	    if (x0){
@@ -675,7 +679,7 @@ text_modify(struct text_handle *th,
 	    if (x0){
 		if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
 		    goto done;
-		goto ok;
+		goto fail;
 	    }
 	case OP_REPLACE: /* fall thru */
 	    if (x0){
@@ -738,18 +742,18 @@ text_modify(struct text_handle *th,
 	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 		x1cname = xml_name(x1c);
 		yc = yang_find_datanode(y0, x1cname);
-		if (text_modify(th, x0vec[i++], (yang_node*)yc, x0, x1c, op, cbret) < 0)
+		if ((ret = text_modify(th, x0vec[i++], (yang_node*)yc, x0, x1c, op, cbret)) < 0)
 		    goto done;
 		/* If xml return - ie netconf error xml tree, then stop and return OK */
-		if (cbuf_len(cbret))
-		    goto ok;
+		if (ret == 0)
+		    goto fail;
 	    }
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
 		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
-		goto ok;
+		goto fail;
 	    }
 	case OP_REMOVE: /* fall thru */
 	    if (x0)
@@ -760,21 +764,26 @@ text_modify(struct text_handle *th,
 	} /* CONTAINER switch op */
     } /* else Y_CONTAINER  */
     xml_sort(x0p, NULL);
- ok:
-    retval = 0;
+    retval = 1;
  done:
     if (x0vec)
 	free(x0vec);
     return retval;
+ fail: /* cbret set */
+    retval = 0;
+    goto done;
 } /* text_modify */
 
 /*! Modify a top-level base tree x0 with modification tree x1
- * @param[in]  th  text handle
- * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
- * @param[in]  x1  xml tree which modifies base
+ * @param[in]  th    text handle
+ * @param[in]  x0    Base xml tree (can be NULL in add scenarios)
+ * @param[in]  x1    xml tree which modifies base
  * @param[in]  yspec Top-level yang spec (if y is NULL)
- * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
- * @param[out] cbret  Initialized cligen buffer. Contains return XML or "".
+ * @param[in]  op    OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
+ * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0.
+ * @retval    -1     Error
+ * @retval     0     Failed (cbret set)
+ * @retval     1     OK
  * @see text_modify
  */
 static int
@@ -792,6 +801,7 @@ text_modify_top(struct text_handle *th,
     yang_stmt *yc;  /* yang child */
     yang_stmt *ymod;/* yang module */
     char      *opstr;
+    int        ret;
 
     /* Assure top-levels are 'config' */
     assert(x0 && strcmp(xml_name(x0),"config")==0);
@@ -820,7 +830,7 @@ text_modify_top(struct text_handle *th,
 	    case OP_DELETE:
 		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
-		goto ok;
+		goto fail;
 		break;
 	    default:
 		break;
@@ -849,21 +859,24 @@ text_modify_top(struct text_handle *th,
 	if (yc == NULL){
 	    if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
 		goto done;
-	    goto ok;
+	    goto fail;
 	}
 	/* See if there is a corresponding node in the base tree */
 	if (match_base_child(x0, x1c, &x0c, yc) < 0)
 	    goto done;
-	if (text_modify(th, x0c, (yang_node*)yc, x0, x1c, op, cbret) < 0)
+	if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op, cbret)) < 0)
 	    goto done;
 	/* If xml return - ie netconf error xml tree, then stop and return OK */
-	if (cbuf_len(cbret))
-	    goto ok;
+	if (ret == 0)
+	    goto fail;
     }
- ok:
-    retval = 0;
+    // ok:
+    retval = 1;
  done:
     return retval;
+ fail: /* cbret set */
+    retval = 0;
+    goto done;
 } /* text_modify_top */
 
 /*! For containers without presence and no children(except attrs), remove
@@ -923,14 +936,11 @@ text_put(xmldb_handle        xh,
     yang_spec          *yspec;
     cxobj              *x0 = NULL;
     struct db_element  *de = NULL;
-    int                 cbretlocal = 0; /* Set if cbret is NULL on entry */
+    int                 ret;
     
     if (cbret == NULL){
-	if ((cbret = cbuf_new()) == NULL){
-	    clicon_err(OE_XML, errno, "cbuf_new");
-	    goto done;
-	}
-	cbretlocal++;
+	clicon_err(OE_XML, EINVAL, "cbret is NULL");
+	goto done;
     }
     if ((yspec = th->th_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -991,10 +1001,10 @@ text_put(xmldb_handle        xh,
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
      */
-    if (text_modify_top(th, x0, x1, yspec, op, cbret) < 0)
+    if ((ret = text_modify_top(th, x0, x1, yspec, op, cbret)) < 0)
 	goto done;
     /* If xml return - ie netconf error xml tree, then stop and return OK */
-    if (cbuf_len(cbret))
+    if (ret == 0)
 	goto fail;
 
     /* Remove NONE nodes if all subs recursively are also NONE */
@@ -1047,8 +1057,6 @@ text_put(xmldb_handle        xh,
 	goto done;
     retval = 1;
  done:
-    if (cbretlocal && cbret)
-	cbuf_free(cbret);
     if (f != NULL)
 	fclose(f);
     if (dbfile)
@@ -1408,6 +1416,8 @@ main(int    argc,
     char       *yangmod; /* yang file */
     yang_spec  *yspec = NULL;
     clicon_handle h;
+    cbuf       *cbret = NULL;
+    int         ret;
 
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
@@ -1456,13 +1466,21 @@ main(int    argc,
 	    op = OP_REMOVE;
 	else
 	    usage(argv[0]);
-	if (xmldb_put(h, db, op, NULL, xn, NULL) < 1)
+	if ((cbret = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
+	}
+	if ((ret = xmldb_put(h, db, op, NULL, xn, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    fprintf(stderr, "%s\n", cbuf_get(cbret));
     }
     else
 	usage(argv[0]);
     printf("\n");
  done:
+    if (cbret)
+	cbuf_free(cbret);
     return 0;
 }
 
