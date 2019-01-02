@@ -153,9 +153,6 @@ static inline char *clicon_xmldb_dir(clicon_handle h){
 static inline char *clicon_xmldb_plugin(clicon_handle h){
     return clicon_option_str(h, "CLICON_XMLDB_PLUGIN");
 }
-static inline int clicon_xml_sort(clicon_handle h){
-    return clicon_option_bool(h, "CLICON_XML_SORT");
-}
 
 /*-- Specific option access functions for YANG options w type conversion--*/
 int   clicon_cli_genmodel(clicon_handle h);

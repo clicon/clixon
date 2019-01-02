@@ -209,7 +209,7 @@ new "cli show conf as guest"
 expectfn "$clixon_cli -1 -U guest -l o -f $cfg -y $fyang show conf" 255 "protocol access-denied"
 
 new "cli rpc as admin"
-expectfn "$clixon_cli -1 -U andy -l o -f $cfg -y $fyang rpc ipv4" 0 "<next-hop-list>2.3.4.5</next-hop-list>"
+expectfn "$clixon_cli -1 -U andy -l o -f $cfg -y $fyang rpc ipv4" 0 "next-hop-list 2.3.4.5;"
 
 new "cli rpc as limited"
 expectfn "$clixon_cli -1 -U wilma -l o -f $cfg -y $fyang rpc ipv4" 255 "protocol access-denied default deny"

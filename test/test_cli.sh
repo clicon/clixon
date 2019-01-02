@@ -115,7 +115,13 @@ expectfn "$clixon_cli -1 -f $cfg -l o debug level 1" 0 "^$"
 expectfn "$clixon_cli -1 -f $cfg -l o debug level 0" 0 "^$"
 
 new "cli rpc"
-expectfn "$clixon_cli -1 -f $cfg -l o rpc ipv4" 0 "<address-family>ipv4</address-family>" "<next-hop-list>2.3.4.5</next-hop-list>"
+expectfn "$clixon_cli -1 -f $cfg -l o rpc ipv4" 0 'rpc-reply {
+    route {
+        address-family ipv4;
+        next-hop {
+            next-hop-list 2.3.4.5;
+        }
+        source-protocol static;'
 
 if [ $BE -eq 0 ]; then
     exit # BE

@@ -344,15 +344,6 @@ module clixon-config {
                  If set, insert spaces and line-feeds making the XML/JSON human
                  readable. If not set, make the XML/JSON more compact.";
 	}
-	leaf CLICON_XML_SORT {
-	    type boolean;
-	    default true;
-	    description
-		"If set, sort XML lists and leaf-lists alphabetically and uses binary
-                 search. Unless ordered-by user is used. 
-                 Only works for Yang specified XML.
-                 If not set, all lists accessed via linear search.";
-	}
 	leaf CLICON_XML_NS_STRICT {
 	    type boolean;
 	    default true;

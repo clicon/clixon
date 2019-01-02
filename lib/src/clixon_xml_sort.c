@@ -69,13 +69,6 @@
  * Variables
  */
 
-/* Sort and binary search of XML children
- * XXX kludge since low-level functions xml_merge/xml_diff calls 
- * match_base_child without handle
- * @see clicon_xml_sort
- */
-int xml_child_sort = 1;
-
 /*! Given a child name and an XML object, return yang stmt of child
  * If no xml parent, find root yang stmt matching name
  * @param[in]  x        Child
@@ -267,7 +260,6 @@ xml_cmp1(cxobj        *x,
  * Assume populated by yang spec.
  * @param[in] x0   XML node
  * @param[in] arg  Dummy so it can be called by xml_apply()
- * @see xml_order XXX: how do they relate?
  */
 int
 xml_sort(cxobj *x,
@@ -566,7 +558,6 @@ xml_sort_verify(cxobj *x0,
  * param[in]  x0      Base tree node
  * param[in]  x1c     Modification tree child
  * param[in]  yc      Yang spec of tree child
- * param[in]  xml_sort Value of CLICON_XML_SORT option
  * param[out] x0cp Matching base tree child (if any)
  * @note XXX: room for optimization? on 1K calls we have 1M body calls and
 	   500K xml_child_each/cvec_each calls. 
@@ -579,7 +570,6 @@ int
 match_base_child(cxobj     *x0, 
 		 cxobj     *x1c,
 		 cxobj    **x0cp,
-		 int        xml_sort,
 		 yang_stmt *yc)
 {
     int        retval = -1;
@@ -637,16 +627,12 @@ match_base_child(cxobj     *x0,
 	break;
     }
     /* Get match. Sorting mode(optimized) or not?*/
-    if (xml_sort==0)
-	*x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
+    if (xml_child_nr(x0)==0 || xml_spec(xml_child_i(x0,0))!=NULL){
+	yorder = yang_order(yc);
+	*x0cp = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
+    }
     else{
-	if (xml_child_nr(x0)==0 || xml_spec(xml_child_i(x0,0))!=NULL){
-	    yorder = yang_order(yc);
-	    *x0cp = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
-	}
-	else{
-	    *x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
-	}
+	*x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
     }
  ok:
     retval = 0;

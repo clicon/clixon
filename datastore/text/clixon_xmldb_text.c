@@ -88,8 +88,6 @@ struct text_handle {
 				   Assumes single backend*/
     char          *th_format;   /* Datastroe format: xml / json */
     int            th_pretty;   /* Store xml/json pretty-printed. */
-    int            th_sort;     /* Sort XML lists and leaf-lists alphabetically 
-				   (unless ordered-by user) */
 };
 
 /* Struct per database in hash */
@@ -241,8 +239,6 @@ text_getopt(xmldb_handle xh,
 	*value = th->th_format;
     else if (strcmp(optname, "pretty") == 0)
 	*value = &th->th_pretty;
-    else if (strcmp(optname, "sort") == 0)
-	*value = &th->th_sort;
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
 	goto done;
@@ -291,9 +287,6 @@ text_setopt(xmldb_handle xh,
     }
     else if (strcmp(optname, "pretty") == 0){
 	th->th_pretty = (intptr_t)value;
-    }
-    else if (strcmp(optname, "sort") == 0){
-	th->th_sort = (intptr_t)value;
     }
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
@@ -551,14 +544,8 @@ text_get(xmldb_handle xh,
     /* Add default values (if not set) */
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
-    /* Order XML children according to YANG.
-     * XXX: should this be !th->th_sort?
-     */
-    if (!th->th_sort)
-	if (xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
-	    goto done;
 #if 1 /* debug */
-    if (th->th_sort && xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
+    if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: sort verify failed #2", __FUNCTION__);
 #endif
     if (debug>1)
@@ -741,7 +728,7 @@ text_modify(struct text_handle *th,
 		}
 		/* See if there is a corresponding node in the base tree */
 		x0c = NULL;
-		if (match_base_child(x0, x1c, &x0c, th->th_sort, yc) < 0)
+		if (match_base_child(x0, x1c, &x0c, yc) < 0)
 		    goto done;
 		x0vec[i++] = x0c;
 	    }
@@ -865,7 +852,7 @@ text_modify_top(struct text_handle *th,
 	    goto ok;
 	}
 	/* See if there is a corresponding node in the base tree */
-	if (match_base_child(x0, x1c, &x0c, th->th_sort, yc) < 0)
+	if (match_base_child(x0, x1c, &x0c, yc) < 0)
 	    goto done;
 	if (text_modify(th, x0c, (yang_node*)yc, x0, x1c, op, cbret) < 0)
 	    goto done;
@@ -996,14 +983,8 @@ text_put(xmldb_handle        xh,
 		   xml_name(x0));
 	goto done;
     }
-#if 0
-    /* Add yang specification backpointer to all XML nodes 
-     * This  is already done in from_client_edit_config() */
-    if (xml_apply(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
-       goto done;
-#endif
 #if 0 /* debug */
-    if (th->th_sort && xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
+    if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
 #endif
     /* 
@@ -1029,7 +1010,7 @@ text_put(xmldb_handle        xh,
     if (xml_tree_prune_flagged(x0, XML_FLAG_MARK, 1) < 0)
 	goto done;
 #if 0 /* debug */
-    if (th->th_sort && xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
+    if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
 #endif
     /* Write back to datastore cache if first time */

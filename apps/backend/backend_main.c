@@ -832,8 +832,6 @@ main(int    argc,
 	    goto done;
     if (xmldb_setopt(h, "pretty", (void*)(intptr_t)clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) < 0)
 	goto done;
-    if (xmldb_setopt(h, "sort", (void*)(intptr_t)clicon_option_bool(h, "CLICON_XML_SORT")) < 0)
-	goto done;
     /* Startup mode needs to be defined,  */
     startup_mode = clicon_startup_mode(h);
     if (startup_mode == -1){ 	

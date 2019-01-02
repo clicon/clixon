@@ -207,6 +207,8 @@ parse_configfile(clicon_handle  h,
     *xconfig = xt;
     xt = NULL;
   done:
+    if (cbret)
+	cbuf_free(cbret);
     if (xt)
 	xml_free(xt);
     if (f)
@@ -275,11 +277,6 @@ clicon_options_main(clicon_handle h,
 	goto done;
     /* Set clixon_conf pointer to handle */
     clicon_conf_xml_set(h, xconfig);
-    /* Specific option handling */
-    if (clicon_option_bool(h, "CLICON_XML_SORT") == 1)
-	xml_child_sort = 1;
-    else
-	xml_child_sort = 0;
     /* XXX Kludge to low-level functions to search for xml in all yang modules */
     _CLICON_XML_NS_STRICT = clicon_option_bool(h, "CLICON_XML_NS_STRICT");
     retval = 0;

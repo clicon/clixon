@@ -62,7 +62,6 @@ int api_path_fmt2xpath(char *api_path_fmt, cvec *cvv, char **xpath);
 int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
 int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
 int xml_default(cxobj *x, void  *arg);
-int xml_order(cxobj *x, void  *arg);
 int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, void *arg);
 int xml_spec_populate_rpc(clicon_handle h, cxobj *x, yang_spec *yspec);

@@ -988,8 +988,7 @@ xml_diff1(yang_stmt *ys,
 	    clicon_err(OE_UNIX, errno, "Unknown element: %s", xml_name(x1c));
 	    goto done;
 	}
-	/* XXX xml_child_sort is global */
-	if (match_base_child(x2, x1c, &x2c, xml_child_sort, yc) < 0)
+	if (match_base_child(x2, x1c, &x2c, yc) < 0)
 	    goto done;
 	if (x2c == NULL){
 	    if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
@@ -1025,8 +1024,7 @@ xml_diff1(yang_stmt *ys,
 	    clicon_err(OE_UNIX, errno, "Unknown element: %s", xml_name(x2c));
 	    goto done;
 	}
-	/* XXX xml_child_sort is global */
-        if (match_base_child(x1, x2c, &x1c, xml_child_sort, yc) < 0)
+        if (match_base_child(x1, x2c, &x1c, yc) < 0)
 	    goto done;
 	if (x1c == NULL)
 	    if (cxvec_append(x2c, x2vec, x2veclen) < 0) 
@@ -1545,70 +1543,6 @@ xml_default(cxobj *xt,
 	}
     }
     xml_sort(xt, NULL);
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Order XML children according to YANG
- * @param[in]   xt      XML top of tree
- * @param[in]   arg     Dummy (so it can be called from xml_apply)
- * @see xml_sort XXX: how do they relate?
- * Called from text_get *only*
- */
-int
-xml_order(cxobj *xt, 
-	  void  *arg)
-{
-    int        retval = -1;
-    yang_stmt *y;
-    yang_stmt *yc;
-    int        i;
-    int        j0;
-    int        j;
-    cxobj     *xc;
-    cxobj     *xj;
-    char      *yname; /* yang child name */
-    char      *xname; /* xml child name */
-
-    if ((y = (yang_stmt*)xml_spec(xt)) == NULL){
-	retval = 0;
-	goto done;
-    }
-    j0 = 0;
-    /* Go through yang node's children and ensure that the 
-     * xml children follow this order.
-     * Do not order the list or leaf-list children (have same name).
-     */
-    for (i=0; i<y->ys_len; i++){
-	yc = y->ys_stmt[i];
-	if (!yang_datanode(yc))
-	    continue;
-	yname = yc->ys_argument;
-	/* First go thru xml children with same name in rest of list */
-	for (; j0<xml_child_nr(xt); j0++){
-	    xc = xml_child_i(xt, j0);
-	    if (xml_type(xc) != CX_ELMNT)
-		continue;
-	    xname = xml_name(xc);
-	    if (strcmp(xname, yname))
-		break;
-	}
-	/* Now we have children not with same name */
-	for (j=j0; j<xml_child_nr(xt); j++){
-	    xc = xml_child_i(xt, j);
-	    if (xml_type(xc) != CX_ELMNT)
-		continue;
-	    xname = xml_name(xc);
-	    if (strcmp(xname, yname))
-		continue;
-	    /* reorder */
-	    xj = xml_child_i(xt, j0);
-	    xml_child_i_set(xt, j0, xc);
-	    xml_child_i_set(xt, j, xj);
-	    j0++;
-	}
-    }
     retval = 0;
  done:
     return retval;
@@ -2272,7 +2206,7 @@ xml_merge1(cxobj              *x0,
 	    }
 	    /* See if there is a corresponding node in the base tree */
 	    x0c = NULL;
-	    if (yc && match_base_child(x0, x1c, &x0c, xml_child_sort, yc) < 0)
+	    if (yc && match_base_child(x0, x1c, &x0c, yc) < 0)
 		goto done;
 	    if (xml_merge1(x0c, (yang_node*)yc, x0, x1c, reason) < 0)
 		goto done;
@@ -2354,7 +2288,7 @@ xml_merge(cxobj     *x0,
 	    break;
 	}
 	/* See if there is a corresponding node in the base tree */
-	if (match_base_child(x0, x1c, &x0c, xml_child_sort, yc) < 0)
+	if (match_base_child(x0, x1c, &x0c, yc) < 0)
 	    goto done;
 	if (xml_merge1(x0c, (yang_node*)yc, x0, x1c, reason) < 0)
 	    goto done;

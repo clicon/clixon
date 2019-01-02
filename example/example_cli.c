@@ -110,7 +110,7 @@ fib_route_rpc(clicon_handle h,
 	goto done;
     }
     /* Print result */
-    xml2txt(stdout, xml_child_i(xret, 0), 1);
+    xml2txt(stdout, xml_child_i(xret, 0), 0);
     retval = 0;
  done:
     if (xret)

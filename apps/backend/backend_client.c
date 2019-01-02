@@ -482,7 +482,7 @@ from_client_edit_config(clicon_handle h,
 	/* Cant do this earlier since we dont have a yang spec to
 	 * the upper part of the tree, until we get the "config" tree.
 	 */
-	if (clicon_xml_sort(h) && xml_apply0(xc, CX_ELMNT, xml_sort, NULL) < 0)
+	if (xml_apply0(xc, CX_ELMNT, xml_sort, NULL) < 0)
 	    goto done;
 	if ((ret = xmldb_put(h, target, operation, xc, cbret)) < 0){
 	    clicon_debug(1, "%s ERROR PUT", __FUNCTION__);	

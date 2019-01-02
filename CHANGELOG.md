@@ -79,6 +79,7 @@
     * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
 
 ### API changes on existing features (you may need to change your code)
+* CLICON_XML_SORT option (in clixon-config.yang) has been removed and set to true permanently since setting it to false is obsolete.
 * Strict namespace setting can be a problem when upgrading existing database files, such as startup-db or persistent running-db, or any other saved XML file.
   * For backward compatibility, load of startup and running set CLICON_XML_NS_STRICT to false temporarily.
 * Removed `delete-config` support for candidate db since it is not supported in RFC6241.
