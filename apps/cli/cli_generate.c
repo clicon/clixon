@@ -751,11 +751,6 @@ yang2cli_stmt(clicon_handle h,
 
     if (yang_config(ys)){
 	switch (ys->ys_keyword){
-	case Y_GROUPING:
-	case Y_RPC:
-	case Y_AUGMENT:
-	    return 0;
-	    break;
 	case Y_CONTAINER:
 	    if (yang2cli_container(h, ys, cbuf, gt, level) < 0)
 		goto done;
@@ -773,19 +768,20 @@ yang2cli_stmt(clicon_handle h,
 	    if (yang2cli_leaf(h, ys, cbuf, gt, level, 1) < 0)
 		goto done;
 	    break;
-	default:
+	case Y_SUBMODULE:
+	case Y_MODULE:
 	    for (i=0; i<ys->ys_len; i++)
 		if ((yc = ys->ys_stmt[i]) != NULL)
 		    if (yang2cli_stmt(h, yc, cbuf, gt, level+1) < 0)
 			goto done;
 	    break;
+	default: /* skip */
+	    break;
 	}
     }
-
     retval = 0;
   done:
     return retval;
-
 }
 
 /*! Generate CLI code for Yang specification
@@ -814,7 +810,7 @@ yang2cli(clicon_handle      h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    /* Traverse YANG specification: loop through statements */
+    /* Traverse YANG, loop through all modules and generate CLI */
     for (i=0; i<yspec->yp_len; i++)
 	if ((ymod = yspec->yp_stmt[i]) != NULL){
 	    if (yang2cli_stmt(h, ymod, cbuf, gt, 0) < 0)
