@@ -165,7 +165,7 @@
 
 #define _YYERROR(msg) {clicon_debug(2, "YYERROR %s '%s' %d", (msg), clixon_yang_parsetext, _YY->yy_linenum); YYERROR;}
 
-/* add _yy to error paramaters */
+/* add _yy to error parameters */
 #define YY_(msgid) msgid 
 
 #include "clixon_config.h"

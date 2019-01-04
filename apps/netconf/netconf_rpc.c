@@ -314,7 +314,6 @@ netconf_edit_config(clicon_handle h,
     enum operation_type operation = OP_MERGE;
     enum test_option    testopt = TEST_THEN_SET;/* only supports this */
     enum error_option   erropt = STOP_ON_ERROR; /* only supports this */
-    cxobj              *xc;       /* config */
     cxobj              *x;
     cxobj              *xfilter;
     char               *ftype = NULL;
@@ -366,18 +365,8 @@ netconf_edit_config(clicon_handle h,
 			 "</rpc-error></rpc-reply>");
 	goto ok;
     }    
-
-    /* operation is OP_REPLACE, OP_MERGE, or OP_NONE pass all to backend */
-    if ((xc  = xpath_first(xn, "config")) != NULL){
-#if 0
-	/* application-specific code registers 'config' */
-	if ((ret = netconf_plugin_callbacks(h, xc, xret)) < 0){
-	    goto ok;
-	}
-#endif
-	if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	     goto done;	
-    }
+    if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
+	goto done;	
  ok:
     retval = 0;
  done:

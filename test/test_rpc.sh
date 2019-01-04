@@ -115,13 +115,28 @@ expecteq "$(curl -s -X POST -d '{"example:input":{"x":"0","extra":"0"}}' http://
 new2 "restconf wrong method"
 expecteq "$(curl -s -X POST -d '{"example:input":{"x":"0"}}' http://localhost/restconf/operations/example:wrong)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "wrong"},"error-severity": "error","error-message": "RPC not defined"}}}'
 
-new2 "restconf edit-config missing mandatory"
+new2 "restconf example missing input"
 expecteq "$(curl -s -X POST -d '{"example:input":null}' http://localhost/restconf/operations/ietf-netconf:edit-config)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang module not found"}}}'
+
 
 new "netconf kill-session missing session-id mandatory"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><kill-session/></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>session-id</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable</error-message></rpc-error></rpc-reply>]]>]]>$'
 
-# edit-config?
+new "netconf edit-config ok"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><candidate/></target><config/></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf edit-config extra arg should fail"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><candidate/></target><extra/><config/></edit-config></rpc>]]>]]>' "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra</bad-element></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>]]>]]>$"
+
+new "netconf edit-config empty target should fail"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target/><config/></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>config-target</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory choice</error-message></rpc-error></rpc-reply>]]>]]>
+$'
+
+new "netconf edit-config missing target should fail"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><config/></edit-config></rpc>]]>]]>' "^<rpc-reply><rpc-error><error-tag>missing-element</error-tag><error-type>protocol</error-type><error-severity>error</error-severity><error-info><bad-element>target</bad-element></error-info></rpc-error></rpc-reply>]]>]]>$"
+
+new "netconf edit-config missing config should fail"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><candidate/></target></edit-config></rpc>]]>]]>' '<rpc-reply><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>edit-content</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory choice</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"

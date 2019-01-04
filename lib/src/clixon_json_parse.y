@@ -103,7 +103,7 @@ object.
 
 #define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_json_parsetext, _JY->jy_linenum); YYERROR;}
 
-/* add _yy to error paramaters */
+/* add _yy to error parameters */
 #define YY_(msgid) msgid 
 
 #include "clixon_config.h"

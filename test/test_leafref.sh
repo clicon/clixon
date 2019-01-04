@@ -88,7 +88,7 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "leafref base config"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth0</name><type>ex:eth</type>  <ipv4><address><ip>192.0.2.1</ip></address><address><ip>192.0.2.2</ip></address></ipv4></interface><interface><name>lo</name><type>ex:lo</type><ipv4><address><ip>127.0.0.1</ip></address></ipv4></interface></interfaces></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth0</name><type>ex:eth</type><ipv4><address><ip>192.0.2.1</ip><prefix-length>24</prefix-length></address><address><ip>192.0.2.2</ip><prefix-length>24</prefix-length></address></ipv4></interface><interface><name>lo</name><type>ex:lo</type><ipv4><address><ip>127.0.0.1</ip><prefix-length>32</prefix-length></address></ipv4></interface></interfaces></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 new "leafref get config"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth0</name>'

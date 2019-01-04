@@ -715,8 +715,9 @@ text_modify(struct text_handle *th,
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
 	    }
-	    /* First pass: mark existing children in base */
-	    /* Loop through children of the modification tree */
+	    /* First pass: Loop through children of the x1 modification tree 
+	     * collect matching nodes from x0 in x0vec (no changes to x0 children)
+	     */
 	    if ((x0vec = calloc(xml_child_nr(x1), sizeof(x1))) == NULL){
 		clicon_err(OE_UNIX, errno, "calloc");
 		goto done;
@@ -732,17 +733,29 @@ text_modify(struct text_handle *th,
 		}
 		/* See if there is a corresponding node in the base tree */
 		x0c = NULL;
-		if (match_base_child(x0, x1c, &x0c, yc) < 0)
+		if (match_base_child(x0, x1c, yc, &x0c) < 0)
 		    goto done;
-		x0vec[i++] = x0c;
+#if 1
+		if (x0c && (yc != xml_spec(x0c))){
+		    /* There is a match but is should be replaced (choice)*/
+		    if (xml_purge(x0c) < 0)
+			goto done;
+		    x0c = NULL;
+		}
+#endif
+		x0vec[i++] = x0c; /* != NULL if x0c is matching x1c */
 	    }
-	    /* Second pass: modify tree */
+	    /* Second pass: Loop through children of the x1 modification tree again
+	     * Now potentially modify x0:s children 
+	     * Here x0vec contains one-to-one matching nodes of x1:s children.
+	     */
 	    x1c = NULL;
 	    i = 0;
 	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 		x1cname = xml_name(x1c);
+		x0c = x0vec[i++];
 		yc = yang_find_datanode(y0, x1cname);
-		if ((ret = text_modify(th, x0vec[i++], (yang_node*)yc, x0, x1c, op, cbret)) < 0)
+		if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op, cbret)) < 0)
 		    goto done;
 		/* If xml return - ie netconf error xml tree, then stop and return OK */
 		if (ret == 0)
@@ -862,8 +875,16 @@ text_modify_top(struct text_handle *th,
 	    goto fail;
 	}
 	/* See if there is a corresponding node in the base tree */
-	if (match_base_child(x0, x1c, &x0c, yc) < 0)
+	if (match_base_child(x0, x1c, yc, &x0c) < 0)
 	    goto done;
+#if 1
+	if (x0c && (yc != xml_spec(x0c))){
+	    /* There is a match but is should be replaced (choice)*/
+	    if (xml_purge(x0c) < 0)
+		goto done;
+	    x0c = NULL;
+	}
+#endif
 	if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op, cbret)) < 0)
 	    goto done;
 	/* If xml return - ie netconf error xml tree, then stop and return OK */

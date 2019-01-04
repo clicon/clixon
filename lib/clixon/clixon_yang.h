@@ -264,6 +264,7 @@ yang_stmt *yang_find_datanode(yang_node *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_node *yn, char *argument);
 char      *yang_find_myprefix(yang_stmt *ys);
 char      *yang_find_mynamespace(yang_stmt *ys);
+yang_node *yang_choice(yang_stmt *y);
 int        yang_order(yang_stmt *y);
 int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);

@@ -189,13 +189,14 @@ xml2cli(FILE              *f,
     if (ys->ys_keyword == Y_LEAF || ys->ys_keyword == Y_LEAF_LIST){
 	if (prepend0)
 	    fprintf(f, "%s", prepend0);
-	body = xml_body(x);
 	if (gt == GT_ALL || gt == GT_VARS)
 	    fprintf(f, "%s ", xml_name(x));
-	if (index(body, ' '))
-	    fprintf(f, "\"%s\"", body);
-	else
-	    fprintf(f, "%s", body);
+	if ((body = xml_body(x)) != NULL){
+	    if (index(body, ' '))
+		fprintf(f, "\"%s\"", body);
+	    else
+		fprintf(f, "%s", body);
+	}
 	fprintf(f, "\n");
 	goto ok;
     }
@@ -508,32 +509,56 @@ xml_yang_validate_add(cxobj   *xt,
     int        retval = -1;
     cg_var    *cv = NULL;
     char      *reason = NULL;
-    yang_stmt *yc;
+    yang_stmt *yt;   /* yang spec of xt going in */
+    yang_stmt *yc;   /* yang spec of yt child */
+    yang_stmt *yx;   /* yang spec of xt children */
+    yang_node *yp;   /* yang spec of parent of yang spec of xt children */
     int        i;
-    yang_stmt *ys;
     char      *body;
     int        ret;
     cxobj     *x;
     
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
-    if ((ys = xml_spec(xt)) != NULL && yang_config(ys) != 0){
-	switch (ys->ys_keyword){
+    if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
+	switch (yt->ys_keyword){
 	case Y_RPC:
 	case Y_INPUT:
 	case Y_LIST:
 	    /* fall thru */
 	case Y_CONTAINER:
-	    for (i=0; i<ys->ys_len; i++){
-		yc = ys->ys_stmt[i];
-		if (yc->ys_keyword != Y_LEAF)
-		    continue;
-		if (yang_config(yc)==0)
-		    continue;
-		if (yang_mandatory(yc) && xml_find(xt, yc->ys_argument)==NULL){
-		    if (netconf_missing_element(cbret, "application", yc->ys_argument, "Mandatory variable") < 0)
-			goto done;
-		    goto fail;
+	    for (i=0; i<yt->ys_len; i++){
+		yc = yt->ys_stmt[i];
+		switch (yc->ys_keyword){
+		case Y_LEAF:
+		    if (yang_config(yc)==0)
+			break;
+		    if (yang_mandatory(yc) && xml_find(xt, yc->ys_argument)==NULL){
+			if (netconf_missing_element(cbret, "application", yc->ys_argument, "Mandatory variable") < 0)
+			    goto done;
+			goto fail;
+		    }
+		    break;
+		case Y_CHOICE:
+		    if (yang_mandatory(yc)){
+			/* If there is one child with this choice as parent */
+			x = NULL;
+			while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+			    if ((yx = xml_spec(x)) != NULL &&
+				(yp = yang_choice(yx)) != NULL &&
+				yp == (yang_node*)yc){
+				break; /* leave loop with x set */
+			    }
+			}
+			if (x == NULL){ /* No hit */
+			    if (netconf_missing_element(cbret, "application", yc->ys_argument, "Mandatory choice") < 0)
+				goto done;
+			    goto fail;
+			}
+		    }
+		    break;
+		default:
+		    break;
 		}
 	    }
 	    break;
@@ -541,7 +566,7 @@ xml_yang_validate_add(cxobj   *xt,
 	    /* fall thru */
 	case Y_LEAF_LIST:
 	    /* validate value against ranges, etc */
-	    if ((cv = cv_dup(ys->ys_cv)) == NULL){
+	    if ((cv = cv_dup(yt->ys_cv)) == NULL){
 		clicon_err(OE_UNIX, errno, "cv_dup");
 		goto done;
 	    }
@@ -550,12 +575,12 @@ xml_yang_validate_add(cxobj   *xt,
 	     */
 	    if ((body = xml_body(xt)) != NULL){
 		if (cv_parse1(body, cv, &reason) != 1){
-		    if (netconf_bad_element(cbret, "application",  ys->ys_argument, reason) < 0)
+		    if (netconf_bad_element(cbret, "application",  yt->ys_argument, reason) < 0)
 			goto done;
 		    goto fail;
 		}
-		if ((ys_cv_validate(cv, ys, &reason)) != 1){
-		    if (netconf_bad_element(cbret, "application",  ys->ys_argument, reason) < 0)
+		if ((ys_cv_validate(cv, yt, &reason)) != 1){
+		    if (netconf_bad_element(cbret, "application",  yt->ys_argument, reason) < 0)
 			goto done;
 		    goto fail;
 		}
@@ -948,12 +973,12 @@ cvec2xml_1(cvec   *cvv,
 }
 
 /*! Recursive help function to compute differences between two xml trees
- * @param[in]  x1       First XML tree
- * @param[in]  x2       Second XML tree
+ * @param[in]  x1        First XML tree
+ * @param[in]  x2        Second XML tree
  * @param[out] x1vec     Pointervector to XML nodes existing in only first tree
  * @param[out] x1veclen  Length of first vector
- * @param[out] x2vec    Pointervector to XML nodes existing in only second tree
- * @param[out] x2veclen Length of x2vec vector
+ * @param[out] x2vec     Pointervector to XML nodes existing in only second tree
+ * @param[out] x2veclen  Length of x2vec vector
  * @param[out] changed_x1  Pointervector to XML nodes changed orig value
  * @param[out] changed_x2  Pointervector to XML nodes changed wanted value
  * @param[out] changedlen Length of changed vector
@@ -988,13 +1013,21 @@ xml_diff1(yang_stmt *ys,
 	    clicon_err(OE_UNIX, errno, "Unknown element: %s", xml_name(x1c));
 	    goto done;
 	}
-	if (match_base_child(x2, x1c, &x2c, yc) < 0)
+	if (match_base_child(x2, x1c, yc, &x2c) < 0)
 	    goto done;
 	if (x2c == NULL){
 	    if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
 		goto done;
 	}
-	else{
+	else if (yang_choice(yc)){
+	    /* if x1c and x2c are choice/case, then they are changed */
+	    if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
+		goto done;
+	    (*changedlen)--; /* append two vectors */
+	    if (cxvec_append(x2c, changed_x2, changedlen) < 0) 
+		goto done;
+	}
+	else{  /* if x1c and x2c are leafs w bodies, then they are changed */
 	    if (yc->ys_keyword == Y_LEAF){
 		if ((b1 = xml_body(x1c)) == NULL) /* empty type */
 		    break;
@@ -1024,7 +1057,7 @@ xml_diff1(yang_stmt *ys,
 	    clicon_err(OE_UNIX, errno, "Unknown element: %s", xml_name(x2c));
 	    goto done;
 	}
-        if (match_base_child(x1, x2c, &x1c, yc) < 0)
+        if (match_base_child(x1, x2c, yc, &x1c) < 0)
 	    goto done;
 	if (x1c == NULL)
 	    if (cxvec_append(x2c, x2vec, x2veclen) < 0) 
@@ -1118,7 +1151,8 @@ yang2api_path_fmt_1(yang_stmt *ys,
 	yp->yn_keyword != Y_SUBMODULE){
 	if (yang2api_path_fmt_1((yang_stmt *)yp, 1, cb) < 0) /* recursive call */
 	    goto done;
-	cprintf(cb, "/");
+	if (yp->yn_keyword != Y_CHOICE && yp->yn_keyword != Y_CASE)
+	    cprintf(cb, "/");
     }
     else /* top symbol - mark with name prefix */
 	cprintf(cb, "/%s:", yp->yn_argument);
@@ -1128,14 +1162,12 @@ yang2api_path_fmt_1(yang_stmt *ys,
 	    cprintf(cb, "%s", ys->ys_argument);
     }
     else{
-#if 1
 	if (ys->ys_keyword == Y_LEAF && yp && 
 	    yp->yn_keyword == Y_LIST){
 	    if (yang_key_match(yp, ys->ys_argument) == 0)
 		cprintf(cb, "%s", ys->ys_argument); /* Not if leaf and key */
 	}
 	else  
-#endif
 	    if (ys->ys_keyword != Y_CHOICE && ys->ys_keyword != Y_CASE)
 		cprintf(cb, "%s", ys->ys_argument);
     }
@@ -2202,7 +2234,7 @@ xml_merge1(cxobj              *x0,
 	    }
 	    /* See if there is a corresponding node in the base tree */
 	    x0c = NULL;
-	    if (yc && match_base_child(x0, x1c, &x0c, yc) < 0)
+	    if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
 		goto done;
 	    if (xml_merge1(x0c, (yang_node*)yc, x0, x1c, reason) < 0)
 		goto done;
@@ -2284,8 +2316,12 @@ xml_merge(cxobj     *x0,
 	    break;
 	}
 	/* See if there is a corresponding node in the base tree */
-	if (match_base_child(x0, x1c, &x0c, yc) < 0)
+	if (match_base_child(x0, x1c, yc, &x0c) < 0)
 	    goto done;
+	/* There is a case where x0c and x1c are choice nodes, if so,
+	 * it is treated as a match, and x0c will remain 
+	 * If it is overwritten, then x0c should be removed here.
+	 */
 	if (xml_merge1(x0c, (yang_node*)yc, x0, x1c, reason) < 0)
 	    goto done;
 	if (*reason != NULL)

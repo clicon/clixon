@@ -768,6 +768,7 @@ yang2cli_stmt(clicon_handle h,
 	    if (yang2cli_leaf(h, ys, cbuf, gt, level, 1) < 0)
 		goto done;
 	    break;
+	case Y_CASE:
 	case Y_SUBMODULE:
 	case Y_MODULE:
 	    for (i=0; i<ys->ys_len; i++)

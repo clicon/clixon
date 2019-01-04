@@ -75,6 +75,8 @@
  * @param[in]  xp       XML parent, can be NULL.
  * @param[in]  yspec    Yang specification (top level)
  * @param[out] yresult  Pointer to yang stmt of result, or NULL, if not found
+ * @retval     0       OK
+ * @retval    -1       Error
  * @note special rule for rpc, ie <rpc><foo>,look for top "foo" node.
  * @note works for import prefix, but not work for generic XML parsing where
  *       xmlns and xmlns:ns are used.
@@ -555,22 +557,18 @@ xml_sort_verify(cxobj *x0,
 }
 
 /*! Given child tree x1c, find matching child in base tree x0 and return as x0cp
- * param[in]  x0      Base tree node
- * param[in]  x1c     Modification tree child
- * param[in]  yc      Yang spec of tree child
- * param[out] x0cp Matching base tree child (if any)
- * @note XXX: room for optimization? on 1K calls we have 1M body calls and
-	   500K xml_child_each/cvec_each calls. 
-	   The outer loop is large for large lists
-	   The inner loop is small
-	   Major time in xml_find_body()
-	   Can one do a binary search in the x0 list?
-*/
+ * @param[in]  x0      Base tree node
+ * @param[in]  x1c     Modification tree child
+ * @param[in]  yc      Yang spec of tree child
+ * @param[out] x0cp    Matching base tree child (if any)
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
 int
-match_base_child(cxobj     *x0, 
-		 cxobj     *x1c,
-		 cxobj    **x0cp,
-		 yang_stmt *yc)
+match_base_child(cxobj      *x0, 
+		 cxobj      *x1c,
+		 yang_stmt  *yc,
+		 cxobj     **x0cp)
 {
     int        retval = -1;
     cvec      *cvk = NULL; /* vector of index keys */
@@ -582,8 +580,29 @@ match_base_child(cxobj     *x0,
     char     **keyvec = NULL;
     int        i;
     int        yorder;
+    cxobj     *x0c = NULL;
+    yang_stmt *y0c;
+    yang_node *y0p;
+    yang_node *yp; /* yang parent */
     
-    *x0cp = NULL; /* return value */
+    *x0cp = NULL; /* init return value */
+#if 1
+    /* Special case is if yc parent (yp) is choice/case
+     * then find x0 child with same yc even though it does not match lexically
+     * However this will give another y0c != yc
+     */
+    if ((yp = yang_choice(yc)) != NULL){
+	x0c = NULL;
+	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
+	    if ((y0c = xml_spec(x0c)) != NULL &&
+		(y0p = yang_choice(y0c)) != NULL &&
+		y0p == yp)
+		break;	/* x0c will have a value */
+	}
+	*x0cp = x0c;
+	goto ok; /* What to do if not found? */
+    }
+#endif
     switch (yc->ys_keyword){
     case Y_CONTAINER: 	/* Equal regardless */
     case Y_LEAF: 	/* Equal regardless */
@@ -629,11 +648,12 @@ match_base_child(cxobj     *x0,
     /* Get match. Sorting mode(optimized) or not?*/
     if (xml_child_nr(x0)==0 || xml_spec(xml_child_i(x0,0))!=NULL){
 	yorder = yang_order(yc);
-	*x0cp = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
+	x0c = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
     }
     else{
-	*x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
+	x0c = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
     }
+    *x0cp = x0c;
  ok:
     retval = 0;
  done:

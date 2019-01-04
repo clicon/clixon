@@ -48,6 +48,6 @@ int    xml_insert_pos(cxobj *x0, char *name, int yangi, enum rfc_6020 keyword,
 		      int upper);
 cxobj *xml_match(cxobj *x0, char *name, enum rfc_6020 keyword, int keynr, char **keyvec, char **keyval);
 int    xml_sort_verify(cxobj *x, void *arg);
-int    match_base_child(cxobj *x0, cxobj *x1c, cxobj **x0cp, yang_stmt *yc);
+int    match_base_child(cxobj *x0, cxobj *x1c, yang_stmt *yc, cxobj **x0cp);
 
 #endif /* _CLIXON_XML_SORT_H */

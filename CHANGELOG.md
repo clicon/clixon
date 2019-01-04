@@ -79,6 +79,7 @@
     * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
 
 ### API changes on existing features (you may need to change your code)
+* Stricter YANG choice validation leads to enforcement of structures like: `choice c{ mandatory true; leaf x` statements. `x` was not previously enforced.
 * CLICON_XML_SORT option (in clixon-config.yang) has been removed and set to true permanently since setting it to false is obsolete.
 * Strict namespace setting can be a problem when upgrading existing database files, such as startup-db or persistent running-db, or any other saved XML file.
   * For backward compatibility, load of startup and running set CLICON_XML_NS_STRICT to false temporarily.
@@ -94,6 +95,7 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
+* Yang choice functionality improved and stricter validation for CLI generation, mandatory flags, etc.
 * Added new clixon-lib yang module for internal netconf protocol. Currently only extends the standard with a debug RPC.
 * Added three-valued return values for several validate functions where -1 is fatal error, 0 is validation failed and 1 is validation OK.
   * This includes: `xmldb_put`, `xml_yang_validate_all`, `xml_yang_validate_add`, `xml_yang_validate_rpc`, `api_path2xml`, `api_path2xpath`

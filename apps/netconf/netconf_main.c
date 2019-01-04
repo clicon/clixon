@@ -80,7 +80,7 @@
  * @param[in]   cb   Packet buffer
  */
 static int
-process_incoming_packet(clicon_handle h, 
+netconf_input_packet(clicon_handle h, 
 			cbuf         *cb)
 {
     int        retval = -1;
@@ -94,6 +94,8 @@ process_incoming_packet(clicon_handle h,
     cxobj     *xc;
     yang_spec *yspec;
     int        ret;
+    cxobj     *xa;
+    cxobj     *xa2;
 
     clicon_debug(1, "RECV");
     clicon_debug(2, "%s: RCV: \"%s\"", __FUNCTION__, cbuf_get(cb));
@@ -110,7 +112,7 @@ process_incoming_packet(clicon_handle h,
     /* Parse incoming XML message */
     if (xml_parse_string(str, yspec, &xreq) < 0){ 
 	free(str0);
-	if (netconf_operation_failed(cbret, "rpc", "internal error")< 0)
+	if (netconf_operation_failed(cbret, "rpc", clicon_err_reason)< 0)
 	    goto done;
 	netconf_output_encap(1, cbret, "rpc-error");
 	goto done;
@@ -143,8 +145,13 @@ process_incoming_packet(clicon_handle h,
 	    goto done;
 	}
 	else{ /* there is a return message in xret */
-	    cxobj *xa, *xa2;
-	    assert(xret);
+
+	    if (xret == NULL){
+		if (netconf_operation_failed(cbret, "rpc", "Internal error: no xml return")< 0)
+		    goto done;
+		netconf_output_encap(1, cbret, "rpc-error");
+		goto done;
+	    }
 	    if ((xc = xml_child_i(xret,0))!=NULL){
 		xa=NULL;
 		/* Copy message-id attribute from incoming to reply. 
@@ -228,7 +235,7 @@ netconf_input_cb(int   s,
 		/* OK, we have an xml string from a client */
 		/* Remove trailer */
 		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
-		if (process_incoming_packet(h, cb) < 0)
+		if (netconf_input_packet(h, cb) < 0)
 		    ; //goto done; // ignore errors
 		if (cc_closed)
 		    break;

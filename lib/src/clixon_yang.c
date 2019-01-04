@@ -624,6 +624,28 @@ yang_find_mynamespace(yang_stmt *ys)
     return namespace;
 }
 
+/*! If a given yang stmt has a choice/case as parent, return the choice statement 
+ */
+yang_node *
+yang_choice(yang_stmt *y)
+{
+    yang_node *yp;
+
+    if ((yp = y->ys_parent) != NULL){
+	switch (yp->yn_keyword){
+	case Y_CHOICE:
+	    return yp;
+	    break;
+	case Y_CASE:
+	    return yp->yn_parent;
+	    break;
+	default:
+	    break;
+	}
+    }
+    return NULL;
+}
+
 /*! Find matching y in yp:s children, return 0 and index or -1 if not found.
  * @retval 0 not found
  * @retval 1 found
@@ -2685,7 +2707,7 @@ yang_mandatory(yang_stmt *ys)
 {
     yang_stmt *ym;
 
-    if (ys->ys_keyword != Y_LEAF)
+    if (ys->ys_keyword != Y_LEAF && ys->ys_keyword != Y_CHOICE)
 	return 0;
     if ((ym = yang_find((yang_node*)ys, Y_MANDATORY, NULL)) != NULL){
 	if (ym->ys_cv == NULL) /* shouldnt happen */
