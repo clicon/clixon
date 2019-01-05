@@ -293,7 +293,7 @@ new2 "restconf rpc missing input"
 expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": "restconf RPC does not have input statement"}}}'
 
 new "restconf rpc using POST xml"
-ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"ietf-routing:input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/ietf-routing:fib-route)
+ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"ietf-routing:input":{"routing-instance-name":"ipv4","destination-address":{"address-family":"ipv4"}}}' http://localhost/restconf/operations/ietf-routing:fib-route)
 expect='<output xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop><source-protocol>static</source-protocol></route></output>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then

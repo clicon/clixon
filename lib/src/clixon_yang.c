@@ -2701,26 +2701,62 @@ ys_parse_sub(yang_stmt *ys,
  * Note: one can cache this value in ys_cvec instead of functionally evaluating it.
  * @retval 1 yang statement is leaf and it has a mandatory sub-stmt with value true
  * @retval 0 The negation of conditions for return value 1.
+ * @see RFC7950 Sec 3:
+ *   o  mandatory node: A mandatory node is one of:
+ *      1)  A leaf, choice, anydata, or anyxml node with a "mandatory"
+ *         statement with the value "true".
+ *      2)  A list or leaf-list node with a "min-elements" statement with a
+ *         value greater than zero.
+ *      3)  A container node without a "presence" statement and that has at
+ *         least one mandatory node as a child.
  */
 int
 yang_mandatory(yang_stmt *ys)
 {
     yang_stmt *ym;
+    char      *reason = NULL;
+    uint8_t   min_elements; /* XXX change to 32 (need new cligen version) */
 
-    if (ys->ys_keyword != Y_LEAF && ys->ys_keyword != Y_CHOICE)
-	return 0;
-    if ((ym = yang_find((yang_node*)ys, Y_MANDATORY, NULL)) != NULL){
-	if (ym->ys_cv == NULL) /* shouldnt happen */
-	    return 0; 
-	return cv_bool_get(ym->ys_cv);
+    /* 1) A leaf, choice, anydata, or anyxml node with a "mandatory"
+     *    statement with the value "true". */
+    if (ys->ys_keyword == Y_LEAF || ys->ys_keyword == Y_CHOICE ||
+	ys->ys_keyword == Y_ANYDATA || ys->ys_keyword == Y_ANYXML){
+	if ((ym = yang_find((yang_node*)ys, Y_MANDATORY, NULL)) != NULL){
+	    if (ym->ys_cv != NULL) /* shouldnt happen */
+		return cv_bool_get(ym->ys_cv);
+	}
+    }
+    /* 2) A list or leaf-list node with a "min-elements" statement with a
+     *    value greater than zero. */
+    else if (ys->ys_keyword == Y_LIST || ys->ys_keyword == Y_LEAF_LIST){
+	if ((ym = yang_find((yang_node*)ys, Y_MIN_ELEMENTS, NULL)) != NULL){
+	    /* XXX change to 32 (need new cligen version) */
+	    if (parse_uint8(ym->ys_argument, &min_elements, &reason) != 1){
+		clicon_err(OE_YANG, EINVAL, "%s", reason?reason:"parse_uint8");
+		return 0; /* XXX ignore error */
+	    }
+	    return min_elements > 0;
+	}
+    }
+    /* 3) A container node without a "presence" statement and that has at
+     *    least one mandatory node as a child. */
+    else if (ys->ys_keyword == Y_CONTAINER && 
+	     yang_find((yang_node*)ys, Y_PRESENCE, NULL) == NULL){
+	yang_stmt *yc;
+	int i;
+	for (i=0; i<ys->ys_len; i++){
+	    yc = ys->ys_stmt[i];
+	    if (yang_mandatory(yc))
+		return 1;
+	}
     }
     return 0;
 }
 
 /*! Return config state of this node
  * config statement is default true. 
- * Note that a node with config=false may not have a sub
- * statement where config=true. And this function does not check the sttaus of a parent.
+ * @note a node with config=false may not have a sub statement where 
+ * config=true. And this function does not check the status of a parent.
  * @retval 0 if node has a config sub-statement and it is false
  * @retval 1 node has not config sub-statement or it is true
  */

@@ -3,7 +3,7 @@
 ## 3.9.0 (Preliminary Target: Mid-January 2019)
 
 ### Planned new features
-* [Roadmap](ROADMAP.md) (Uncommitted and unprioritized)
+* [Roadmap](ROADMAP.md)
 
 ### Major New features
 * Correct XML namespace handling
@@ -56,11 +56,6 @@
   ```
   * To keep previous non-strict namespace handling (backwards compatible), set CLICON_XML_NS_STRICT to false.
   * See https://github.com/clicon/clixon/issues/49
-* NACM extension (RFC8341)
-  * NACM module support (RFC8341 A1+A2)
-  * Recovery user "_nacm_recovery" added.
-    * Example use is restconf PUT when NACM edit-config is permitted, then automatic commit and discard are permitted using recovery user.
-  * Example user changed adm1 to andy to comply with RFC8341 example
 * Yang code upgrade (RFC7950)
   * YANG parser cardinality checked (https://github.com/clicon/clixon/issues/48)
     * See https://github.com/clicon/clixon/issues/84
@@ -70,13 +65,18 @@
   * Openconfig yang specs parsed: https://github.com/openconfig/public
   * Improved "unknown" handling
   * More precise Yang validation and better error messages
-    * Example: adding bad-, missing-, or unknown-element error messages, etc instead of operation-failed, bad-element instead of "yang node not found", etc.
-    * 
+    * Example: adding bad-, missing-, or unknown-element error messages, instead of operation-failed.
+    * Validation of mandatory choice and recursive mandatory containers
   * Yang load file configure options changed
     * `CLICON_YANG_DIR` is changed from a single directory to a path of directories
       * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
     * CLICON_YANG_MAIN_FILE Provides a filename with a single module filename.
     * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
+* NACM extension (RFC8341)
+  * NACM module support (RFC8341 A1+A2)
+  * Recovery user "_nacm_recovery" added.
+    * Example use is restconf PUT when NACM edit-config is permitted, then automatic commit and discard are permitted using recovery user.
+  * Example user changed adm1 to andy to comply with RFC8341 example
 
 ### API changes on existing features (you may need to change your code)
 * Stricter YANG choice validation leads to enforcement of structures like: `choice c{ mandatory true; leaf x` statements. `x` was not previously enforced.
@@ -95,7 +95,6 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
-* Yang choice functionality improved and stricter validation for CLI generation, mandatory flags, etc.
 * Added new clixon-lib yang module for internal netconf protocol. Currently only extends the standard with a debug RPC.
 * Added three-valued return values for several validate functions where -1 is fatal error, 0 is validation failed and 1 is validation OK.
   * This includes: `xmldb_put`, `xml_yang_validate_all`, `xml_yang_validate_add`, `xml_yang_validate_rpc`, `api_path2xml`, `api_path2xpath`

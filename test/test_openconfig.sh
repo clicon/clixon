@@ -10,14 +10,12 @@ OPENCONFIG=public
 OCDIR=$OPENCONFIG/release/models
 
 # Clone openconfig dir if not there
-if false; then
 if [ ! -d public ]; then 
     git clone https://github.com/openconfig/public
-else
-    (cd public;
-     #git pull
-    )
-fi
+#else
+#    (cd public;
+#     #git pull
+#    )
 fi
 
 # include err() and new() functions and creates $dir
@@ -86,17 +84,33 @@ cat <<EOF > $cfg
 EOF
 
 files=$(find $OPENCONFIG -name "*.yang")
-# Just cound nr of modules (exclude submodule)
-let m=0; # Nr of modules
+# Count nr of modules (exclude submodule) Assume "module" or "submodule"
+# first word on first line
+let ms=0; # Nr of modules
+let ss=0; # Nr of smodules
 for f in $files; do
-    if [ -n "$(head -1 $f|grep '^module')" ]; then
+    let m=0; # Nr of modules
+    let s=0; # Nr of modules
+    if [ -n "$(head -15 $f|grep '^[ ]*module')" ]; then
 	let m++;
+	let ms++;
+    elif [ -n "$(head -15 $f|grep '^[ ]*submodule')" ]; then
+	let s++;
+	let ss++;
+    else
+	echo "No module or submodule found $f"
+	exit
+    fi
+    if [ $m -eq 1 -a $s -eq 1 ]; then
+	echo "Double match $f"
+	exit
     fi
 done
+echo "m:$ms s:$ss"
 new "Openconfig test: $clixon_cli -1f $cfg -y $f show version ($m modules)"
 for f in $files; do
     if [ -n "$(head -1 $f|grep '^module')" ]; then
-	new "cli $f"
+	new "$clixon_cli -1f $cfg -y $f show version"
 	expectfn "$clixon_cli -1f $cfg -y $f show version" 0 "3."
     fi
 

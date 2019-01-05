@@ -482,6 +482,89 @@ xml_yang_validate_rpc(cxobj *xrpc,
     goto done;
 }
 
+/*! Check if an xml node lacks mandatory children
+ * @param[in]  xt    XML node to be validated
+ * @param[in]  yt    xt:s yang statement
+ * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (cbret set)
+ * @retval    -1     Error
+ */
+static int
+check_mandatory(cxobj     *xt, 
+		yang_stmt *yt,
+		cbuf      *cbret)
+{
+    int        retval = -1;
+    int        i;
+    cxobj     *x;
+    yang_stmt *y;
+    yang_stmt *yc;
+    yang_node *yp;
+    
+    for (i=0; i<yt->ys_len; i++){
+	yc = yt->ys_stmt[i];
+	if (!yang_mandatory(yc))
+	    continue;
+	switch (yc->ys_keyword){
+	case Y_CONTAINER:
+	case Y_ANYDATA:
+	case Y_ANYXML:
+	case Y_LEAF: 
+	    if (yang_config(yc)==0) 
+		 break;
+	    /* Find a child with the mandatory yang */
+	    x = NULL;
+	    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+		if ((y = xml_spec(x)) != NULL
+		    && y==yc)
+		    break; /* got it */
+	    }
+	    if (x == NULL){
+		if (netconf_missing_element(cbret, "application", yc->ys_argument, "Mandatory variable") < 0)
+		    goto done;
+		goto fail;
+	    }
+	    break;
+	case Y_CHOICE: /* More complex because of choice/case structure */
+	    x = NULL;
+	    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+		if ((y = xml_spec(x)) != NULL &&
+		    (yp = yang_choice(y)) != NULL &&
+		    yp == (yang_node*)yc){
+		    break; /* leave loop with x set */
+		}
+	    }
+	    if (x == NULL){
+		/* @see RFC7950: 15.6 Error Message for Data That Violates 
+		 * a Mandatory "choice" Statement */
+		if (cprintf(cbret, "<rpc-reply><rpc-error>"
+			    "<error-type>application</error-type>"
+			    "<error-tag>data-missing</error-tag>"
+			    "<error-app-tag>missing-choice</error-app-tag>"
+#ifdef NYI
+			    //  "<error-path></error-path>"
+#endif
+			    "<error-info><missing-choice>%s</missing-choice></error-info>"
+			    "<error-severity>error</error-severity>"
+			    "</rpc-error></rpc-reply>",
+			    yc->ys_argument) <0)
+		    goto done;
+		goto fail;
+	    }
+	    break;
+	default:
+	    break;
+	} /* switch */
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Validate a single XML node with yang specification for added entry
  * 1. Check if mandatory leafs present as subs.
  * 2. Check leaf values, eg int ranges and string regexps.
@@ -510,10 +593,6 @@ xml_yang_validate_add(cxobj   *xt,
     cg_var    *cv = NULL;
     char      *reason = NULL;
     yang_stmt *yt;   /* yang spec of xt going in */
-    yang_stmt *yc;   /* yang spec of yt child */
-    yang_stmt *yx;   /* yang spec of xt children */
-    yang_node *yp;   /* yang spec of parent of yang spec of xt children */
-    int        i;
     char      *body;
     int        ret;
     cxobj     *x;
@@ -521,47 +600,12 @@ xml_yang_validate_add(cxobj   *xt,
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
+	if ((ret = check_mandatory(xt, yt, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+	/* Check leaf values */
 	switch (yt->ys_keyword){
-	case Y_RPC:
-	case Y_INPUT:
-	case Y_LIST:
-	    /* fall thru */
-	case Y_CONTAINER:
-	    for (i=0; i<yt->ys_len; i++){
-		yc = yt->ys_stmt[i];
-		switch (yc->ys_keyword){
-		case Y_LEAF:
-		    if (yang_config(yc)==0)
-			break;
-		    if (yang_mandatory(yc) && xml_find(xt, yc->ys_argument)==NULL){
-			if (netconf_missing_element(cbret, "application", yc->ys_argument, "Mandatory variable") < 0)
-			    goto done;
-			goto fail;
-		    }
-		    break;
-		case Y_CHOICE:
-		    if (yang_mandatory(yc)){
-			/* If there is one child with this choice as parent */
-			x = NULL;
-			while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-			    if ((yx = xml_spec(x)) != NULL &&
-				(yp = yang_choice(yx)) != NULL &&
-				yp == (yang_node*)yc){
-				break; /* leave loop with x set */
-			    }
-			}
-			if (x == NULL){ /* No hit */
-			    if (netconf_missing_element(cbret, "application", yc->ys_argument, "Mandatory choice") < 0)
-				goto done;
-			    goto fail;
-			}
-		    }
-		    break;
-		default:
-		    break;
-		}
-	    }
-	    break;
 	case Y_LEAF:
 	    /* fall thru */
 	case Y_LEAF_LIST:

@@ -117,8 +117,8 @@ generic_validate(yang_spec          *yspec,
     for (i=0; i<td->td_dlen; i++){
 	x1 = td->td_dvec[i];
 	ys = xml_spec(x1);
-	if (ys && yang_mandatory(ys)){
-	    if (netconf_missing_element(cbret, "protocol", xml_name(x1), "Removed mandatory variable") < 0)
+	if (ys && yang_mandatory(ys) && yang_config(ys)==0){
+	    if (netconf_missing_element(cbret, "protocol", xml_name(x1), "Missing mandatory variable") < 0)
 		goto done;
 	    goto fail;
 	}

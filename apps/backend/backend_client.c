@@ -430,8 +430,9 @@ from_client_edit_config(clicon_handle h,
 	goto done;
     }
     if ((target = netconf_db_find(xn, "target")) == NULL){
-	clicon_err(OE_XML, 0, "db not found");
-	goto done;
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
+	    goto done;
+	goto ok;
     }
     if ((cbx = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");

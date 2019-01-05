@@ -96,7 +96,7 @@ fib_route_rpc(clicon_handle h,
     /* User supplied variable in CLI command */
     instance = cvec_find(cvv, "instance"); /* get a cligen variable from vector */
     /* Create XML for fib-route netconf RPC */
-    if (xml_parse_va(&xtop, NULL, "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" username=\"%s\"><fib-route xmlns=\"urn:ietf:params:xml:ns:yang:ietf-routing\"><routing-instance-name>%s</routing-instance-name></fib-route></rpc>",
+    if (xml_parse_va(&xtop, NULL, "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" username=\"%s\"><fib-route xmlns=\"urn:ietf:params:xml:ns:yang:ietf-routing\"><routing-instance-name>%s</routing-instance-name><destination-address><address-family>ipv4</address-family></destination-address></fib-route></rpc>",
 		     clicon_username_get(h),
 		     cv_string_get(instance)) < 0)
 	goto done;

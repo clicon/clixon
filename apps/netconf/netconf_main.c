@@ -97,8 +97,8 @@ netconf_input_packet(clicon_handle h,
     cxobj     *xa;
     cxobj     *xa2;
 
-    clicon_debug(1, "RECV");
-    clicon_debug(2, "%s: RCV: \"%s\"", __FUNCTION__, cbuf_get(cb));
+    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(2, "%s: \"%s\"", __FUNCTION__, cbuf_get(cb));
     if ((cbret = cbuf_new()) == NULL){
 	clicon_err(LOG_ERR, errno, "cbuf_new");
 	goto done;

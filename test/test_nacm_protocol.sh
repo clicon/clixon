@@ -21,7 +21,7 @@
 #  automatically committed to running immediately after each successful
 #  edit.
 # Which means that restconf -X DELETE /data translates to edit-config + commit
-# WHICH IS allowed.
+# which is allowed.
 
 APPNAME=example
 # include err() and new() functions and creates $dir
@@ -65,7 +65,6 @@ module $APPNAME{
   }
 }
 EOF
-
 # The groups are slightly modified from RFC8341 A.1
 # The rule-list is from A.2
 RULES=$(cat <<EOF
@@ -228,4 +227,4 @@ if [ $? -ne 0 ]; then
     err "kill backend"
 fi
 
-#rm -rf $dir # XXX
+rm -rf $dir 

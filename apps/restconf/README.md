@@ -2,10 +2,10 @@
 
   * [Installation](#installation)
   * [Streams](#streams)
-  * [Nchan Streams](#nchan-streams)
+  * [Nchan Streams](#nchan)
   * [Debugging](#debugging)	
 
-## 1. Installation
+## Installation
 
 The examples are based on Nginx. Other reverse proxies should work but are not verified.
 
@@ -76,7 +76,7 @@ Example of writing a new interfaces specification:
 curl -sX PUT http://localhost/restconf/data -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth1","type":"ex:eth","enabled":true}}}' 
 ```
 
-## 2. Streams
+## Streams
 
 Clixon have two experimental restconf event stream implementations following
 RFC8040 Section 6 using SSE.  One native and one using Nginx
@@ -125,7 +125,7 @@ You can also specify start and stop time. Start-time enables replay of existing 
 
 See (stream tests)[../test/test_streams.sh] for more examples.
 
-## 3. Nchan
+## Nchan
 
 As an alternative streams implementation, Nginx/Nchan can be used. 
 Nginx uses pub/sub channels and can be configured in a variety of
@@ -180,7 +180,7 @@ curl -H "Accept: text/event-stream" -H "Last-Event-ID: 1539961709:0" -s -X GET h
 
 See (https://nchan.io/#eventsource) on more info on how to access an SSE sub endpoint.
 
-## 4. Debugging
+## Debugging
 
 Start the restconf fastcgi program with debug flag:
 ```
