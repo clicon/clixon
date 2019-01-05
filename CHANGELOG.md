@@ -80,9 +80,9 @@
 
 ### API changes on existing features (you may need to change your code)
 * Stricter YANG choice validation leads to enforcement of structures like: `choice c{ mandatory true; leaf x` statements. `x` was not previously enforced.
-* CLICON_XML_SORT option (in clixon-config.yang) has been removed and set to true permanently since setting it to false is obsolete.
+* Many hand-crafted validation messages have been removed and replaced with generic validations, which may lead to changed rpc-error messages.
+* CLICON_XML_SORT option (in clixon-config.yang) has been removed and set to true permanently. Unsorted XML lists leads to slower performance and old obsolete code can be removed.
 * Strict namespace setting can be a problem when upgrading existing database files, such as startup-db or persistent running-db, or any other saved XML file.
-  * For backward compatibility, load of startup and running set CLICON_XML_NS_STRICT to false temporarily.
 * Removed `delete-config` support for candidate db since it is not supported in RFC6241.
 * Switched the order of `error-type` and `error-tag` in all netconf and restconf error messages to comply to RFC order.
 * Yang parser is stricter (see above) which may break parsing of existing yang specs.
