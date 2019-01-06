@@ -176,8 +176,7 @@ typedef struct yang_stmt yang_stmt; /* forward */
 */
 struct yang_type_cache{
     int        yc_options;
-    cg_var    *yc_mincv;
-    cg_var    *yc_maxcv;
+    cvec      *yc_cvv; /* range and length restriction */
     char      *yc_pattern;
     uint8_t    yc_fraction;
     yang_stmt *yc_resolved; /* Resolved type object, can be NULL - note direct ptr */

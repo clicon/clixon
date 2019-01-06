@@ -3,9 +3,6 @@
 # Note that the openconfig test suites are patched to counter CLixon issues as follows:
 # - release/models/mpls/openconfig-mpls-te.yang
 #      issue: https://github.com/clicon/clixon/issues/60
-# - release/models/wifi/types/openconfig-wifi-types.yang
-#      issue: https://github.com/clicon/clixon/issues/59
-# 
 
 # Yang specifics: multi-keys and empty type
 APPNAME=example

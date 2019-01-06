@@ -44,5 +44,5 @@ build-root/*.tar.xz
 build-root/*.rpm
 build-root/rpmbuild
 
-test/public
+test/site.sh
 doc/html

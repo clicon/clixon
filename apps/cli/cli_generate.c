@@ -169,28 +169,6 @@ static int yang2cli_stmt(clicon_handle h, yang_stmt *ys, cbuf *cb,
 static int yang2cli_var_union(clicon_handle h, yang_stmt *ys, char *origtype,
 			      yang_stmt *ytype, cbuf *cb, char *helptext);
 
-/*! Patched maxstring to account for DEC64 types 
- * @note kludge to fix overflow error -> Fix the original error in cvtype_max2str
- * by adding a fraction_digits argument.
- */
-static char *
-cvtype_max2str_dup2(enum cv_type type,
-		    int fraction_digits)
-{
-    int   len;
-    char *str;
-    
-    if (type!=CGV_DEC64 || fraction_digits==0)
-	return cvtype_max2str_dup(type);
-    if ((len = cvtype_max2str(type, NULL, 0)) < 0)
-	return NULL;
-    if ((str = (char *)malloc(len+1)) == NULL)
-	return NULL;
-    memset(str, '\0', len+1);
-    len = snprintf(str, len+1, "%" PRId64 ".0", (INT64_MAX/((int)pow(10,fraction_digits))));
-    return str;
-}
-    
 /*! Generate CLI code for Yang leaf statement to CLIgen variable of specific type
  * Check for completion (of already existent values), ranges (eg range[min:max]) and
  * patterns, (eg regexp:"[0.9]*").
@@ -208,18 +186,17 @@ yang2cli_var_sub(clicon_handle h,
 		 char         *helptext,
 		 enum cv_type  cvtype,
 		 int           options,
-		 cg_var       *mincv,
-		 cg_var       *maxcv,
+		 cvec         *cvv,
 		 char         *pattern,
 		 uint8_t       fraction_digits
     )
 {
     int           retval = -1;
     char         *type;
-    char         *r;
     yang_stmt    *yi = NULL;
     int           i = 0;
     char         *cvtypestr;
+    cg_var       *cv;
 
     if (cvtype == CGV_VOID){
 	retval = 0;
@@ -276,44 +253,30 @@ yang2cli_var_sub(clicon_handle h,
 
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
 	cprintf(cb, " fraction-digits:%u", fraction_digits);
+
     if (options & (YANG_OPTIONS_RANGE|YANG_OPTIONS_LENGTH)){
-	assert(mincv || maxcv);
-	cprintf(cb, " %s[", (options&YANG_OPTIONS_RANGE)?"range":"length");
-	if (mincv){
-	    if ((r = cv2str_dup(mincv)) == NULL){
-		clicon_err(OE_UNIX, errno, "cv2str_dup");
-		goto done;
-	    }
-	    cprintf(cb, "%s:", r);
-	    free(r);
-	    r = NULL;
-	}
-	if (maxcv != NULL){
-	    if ((r = cv2str_dup(maxcv)) == NULL){
-		clicon_err(OE_UNIX, errno, "cv2str_dup");
-		goto done;
-	    }
-	}
-	else{ /* Cligen does not have 'max' keyword in range so need to find actual
-		 max value of type if yang range expression is 0..max 
-	      */
-	    if (cvtype==CGV_STRING){
-		if ((r = malloc(512)) == NULL){
-		    clicon_err(OE_UNIX, errno, "malloc");
-		    goto done;
+	/* Loop through range_min and range_min..rang_max */
+	i = 0;
+	while (i<cvec_len(cvv)){
+	    //	    if (i)
+	    //		clicon_log(LOG_NOTICE, "%s: Warning %s has more ranges, ignoring", __FUNCTION__, ys->ys_argument);
+	    cv = cvec_i(cvv, i++);
+	    if (strcmp(cv_name_get(cv),"range_min") == 0){
+		cprintf(cb, " %s[", (options&YANG_OPTIONS_RANGE)?"range":"length");
+		cv2cbuf(cv, cb);
+		cprintf(cb,":");
+		/* probe next */
+		if (i<cvec_len(cvv) &&
+		    (cv = cvec_i(cvv, i)) != NULL &&
+		    strcmp(cv_name_get(cv),"range_max") == 0){
+		    i++;
+		    cv2cbuf(cv, cb);
 		}
-		snprintf(r, 512, "%d", MAXPATHLEN);
-	    }
-	    else {
-		if ((r = cvtype_max2str_dup2(cvtype, fraction_digits)) == NULL){
-		    clicon_err(OE_UNIX, errno, "cvtype_max2str");
-		    goto done;
-		}
+		else /* If not, it is a single number range [x:x]*/
+		    cv2cbuf(cv, cb);
+		cprintf(cb,"]");
 	    }
 	}
-	cprintf(cb, "%s]", r); /* range */
-	free(r);
-	r = NULL;
     }
     if (options & YANG_OPTIONS_PATTERN)
 	cprintf(cb, " regexp:\"%s\"", pattern);
@@ -347,8 +310,7 @@ yang2cli_var_union_one(clicon_handle h,
 {
     int          retval = -1;
     int          options = 0;
-    cg_var      *mincv = NULL; 
-    cg_var      *maxcv = NULL;
+    cvec        *cvv = NULL; 
     char        *pattern = NULL;
     uint8_t      fraction_digits = 0;
     enum cv_type cvtype;
@@ -358,7 +320,7 @@ yang2cli_var_union_one(clicon_handle h,
     /* Resolve the sub-union type to a resolved type */
     if (yang_type_resolve(ys, ytsub, /* in */
 			  &ytype, &options, /* resolved type */
-			  &mincv, &maxcv, &pattern, &fraction_digits) < 0)
+			  &cvv, &pattern, &fraction_digits) < 0)
 	goto done;
     restype = ytype?ytype->ys_argument:NULL;
 
@@ -370,7 +332,7 @@ yang2cli_var_union_one(clicon_handle h,
 	if (clicon_type2cv(origtype, restype, &cvtype) < 0)
 	    goto done;
 	if ((retval = yang2cli_var_sub(h, ys, ytype, cb, helptext, cvtype, 
-				       options, mincv, maxcv, pattern, fraction_digits)) < 0)
+				       options, cvv, pattern, fraction_digits)) < 0)
 	    goto done;
     }
     retval = 0;
@@ -438,8 +400,7 @@ yang2cli_var(clicon_handle h,
     char         *origtype;
     yang_stmt    *yrestype; /* resolved type */
     char         *restype; /* resolved type */
-    cg_var       *mincv = NULL; 
-    cg_var       *maxcv = NULL;
+    cvec         *cvv = NULL; 
     char         *pattern = NULL;
     uint8_t       fraction_digits = 0;
     enum cv_type  cvtype;
@@ -448,7 +409,7 @@ yang2cli_var(clicon_handle h,
     char         *type;
 
     if (yang_type_get(ys, &origtype, &yrestype, 
-		      &options, &mincv, &maxcv, &pattern, &fraction_digits) < 0)
+		      &options, &cvv, &pattern, &fraction_digits) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
 
@@ -485,7 +446,7 @@ yang2cli_var(clicon_handle h,
 	if (completionp)
 	    cprintf(cb, "(");
 	if ((retval = yang2cli_var_sub(h, ys, yrestype, cb, helptext, cvtype, 
-				    options, mincv, maxcv, pattern, fraction_digits)) < 0)
+				    options, cvv, pattern, fraction_digits)) < 0)
 	    goto done;
 	if (completionp){
 	    if (cli_expand_var_generate(h, ys, cvtype, cb, 

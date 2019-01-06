@@ -57,14 +57,15 @@
 /*! Split string into a vector based on character delimiters. Using malloc
  *
  * The given string is split into a vector where the delimiter can be
- * any of the characters in the specified delimiter string. 
+ * _any_ of the characters in the specified delimiter string. 
  *
  * The vector returned is one single memory block that must be freed
  * by the caller
  *
  * @code
- * char      **vec = NULL;
- * int         nvec;
+ * char **vec = NULL;
+ * char  *v;
+ * int    nvec;
  * if ((vec = clicon_strsep("/home/user/src/clixon", "/", &nvec)) == NULL)
  *    err;
  * for (i=0; i<nvec; i++){
@@ -437,15 +438,18 @@ xml_chardata_encode(char **escp,
 /*! Split a string into a cligen variable vector using 1st and 2nd delimiter 
  * Split a string first into elements delimited by delim1, then into
  * pairs delimited by delim2.
- * @param[in] string  String to split
- * @param[in] delim1  First delimiter char that delimits between elements
- * @param[in] delim2  Second delimiter char for pairs within an element
+ * @param[in]  string String to split
+ * @param[in]  delim1 First delimiter char that delimits between elements
+ * @param[in]  delim2 Second delimiter char for pairs within an element
  * @param[out] cvp    Created cligen variable vector, deallocate w cvec_free
- * @retval    0       on OK
+ * @retval     0      OK
  * @retval    -1      error
+ * @code
+ * cvec  *cvv = NULL;
+ * if (str2cvec("a=b&c=d", ';', '=', &cvv) < 0)
+ *   err;
+ * @endcode
  *
- * @example, 
- * Assuming delim1 = '&' and delim2 = '='
  * a=b&c=d    ->  [[a,"b"][c="d"]
  * kalle&c=d  ->  [[c="d"]]  # Discard elements with no delim2
  * XXX differentiate between error and null cvec.
@@ -608,6 +612,26 @@ nodeid_split(char  *nodeid,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Trim blanks from front and end of a string, return new string 
+ * @param[in]  str 
+ * @retval     s   Pointer into existing str after trimming blanks
+ */
+char *
+clixon_trim(char *str)
+{
+    char *s = str;
+    int   i;
+
+    while (strlen(s) && isblank(s[0]))
+	s++;
+    for (i=0; i<strlen(s); i++)
+	if (isblank(s[i])){
+	    s[i] = '\0';
+	    break;
+	}
+    return s;
 }
 
 /*! strndup() for systems without it, such as xBSD

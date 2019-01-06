@@ -1,8 +1,10 @@
 #!/bin/bash
 # Advanced union types and generated code
 # and enum w values
+# XXX NO SUPPORT FOR lists of ranges and lengths !!!
 APPNAME=example
 # include err() and new() functions and creates $dir
+
 . ./lib.sh
 
 cfg=$dir/conf_yang.xml
@@ -123,57 +125,47 @@ module example{
          enum down;
       }
    }
-   leaf length1 {
-       type string {
-       length "1";
-      }
-   }
-/*   leaf length2 {
-       type string {
-         length "max";
-      }
-   }
-   leaf length3 {
-       type string {
-         length "min";
-      }
-   }*/
-   leaf length4 {
-       type string {
-         length "4..4000";
-      }
-   }
-/*   leaf length5 {
-       type string {
-         length "min..max";
-      }
-   }*/
    leaf num1 {
        type int32 {
        range "1";
       }
    }
-/*   leaf num2 {
-       type int32 {
-         range "min";
-      }
-   }
-   leaf num3 {
-       type int32 {
-         range "max";
-      }
-   }
-*/
-   leaf num4 {
+   leaf num2 {
        type int32 {
          range "4..4000";
       }
    }
-/*   leaf num5 {
-       type int32 {
+   leaf num3 {
+       type uint8 {
          range "min..max";
       }
-   }*/
+   }
+   leaf num4 { /* XXX multiple ranges not supported yet - only first*/
+       type uint8 {
+         range "1  ..  2 |  42";
+      }
+   }
+   leaf len1 {
+       type string {
+       length "2";
+      }
+   }
+   leaf len2 {
+       type string {
+         length "4..4000";
+      }
+   }
+   leaf len3 {
+       type string {
+         length "min..max";
+      }
+   }
+   leaf len4 {
+       type string {
+         range "1  ..  2 |  42";
+      }
+   }
+
    typedef mybits {
         description "Test adding several bits";
 	type bits {
@@ -302,6 +294,70 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><can
 
 new "cli bits validate"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang validate" 0 "^$"
+
+#----------------int ranges---------------------
+
+new "cli range test num1 1 OK"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 1" 0 "^$"
+
+#new "cli range test num1 -100 ok" # XXX - cant be given on cmd line
+#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 \-100" 0 "^$"
+
+new "cli range test num1 2 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 2" 255 "^$"
+
+new "netconf range set num1 -1"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num1 xmlns="urn:example:clixon">-1</num1></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate num1 -1 wrong"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num1</bad-element></error-info><error-severity>error</error-severity><error-message>Number out of range: -1</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+new "cli range test num2 1000 ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 1000" 0 "^$"
+
+new "cli range test num2 3 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 3" 255 "^$"
+
+new "cli range test num2 5000 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 5000" 255 "^$"
+
+new "cli range test num3 42 ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num3 42" 0 "^$"
+
+new "cli range test num3 260 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num3 260" 255 "^$"
+
+#----------------string ranges---------------------
+
+new "cli length test len1 1 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 x" 255 "^$"
+
+new "cli length test len1 2 OK"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 xy" 0 "^$"
+
+new "cli length test len1 3 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 hej" 255 "^$"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf length set len1 1"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><len1 xmlns="urn:example:clixon">x</len1></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate len1 1 wrong"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>len1</bad-element></error-info><error-severity>error</error-severity><error-message>string length out of range: 1</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+new "cli length test len2 42 ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len2 hejhophdsakjhkjsadhkjsahdkjsad" 0 "^$"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "cli length test len2 3 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len2 ab" 255 "^$"
+
+new "cli range test len3 42 ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len3 hsakjdhkjsahdkjsahdksahdksajdhsakjhd" 0 "^$"
 
 if [ $BE -eq 0 ]; then
     exit # BE

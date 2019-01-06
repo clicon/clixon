@@ -1068,7 +1068,7 @@ ys_populate_leaf(yang_stmt *ys,
 
     yparent = ys->ys_parent;     /* Find parent: list/container */
     /* 1. Find type specification and set cv type accordingly */
-    if (yang_type_get(ys, &type, &yrestype, &options, NULL, NULL, NULL, &fraction_digits) < 0)
+    if (yang_type_get(ys, &type, &yrestype, &options, NULL, NULL, &fraction_digits) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
     if (clicon_type2cv(type, restype, &cvtype) < 0) /* This handles non-resolved also */
@@ -1133,12 +1133,62 @@ ys_populate_list(yang_stmt *ys,
     return 0;
 }
 
-/*! Populate range and length statements
+/*! Set range or length boundary for built-in yang types
+ * Help functions to range and length statements 
+ */
+static int
+bound_add(yang_stmt   *ys,
+	  enum cv_type cvtype,
+	  char        *name,
+	  char        *val,
+	  int          options,
+	  uint8_t      fraction_digits
+	  )
+{
+    int     retval = -1;
+    cg_var *cv;
+    char   *reason = NULL;
+    int     ret = 1;
+
+    if ((cv = cvec_add(ys->ys_cvec, cvtype)) == NULL){
+	clicon_err(OE_YANG, errno, "cvec_add");
+	goto done;
+    }
+    if (cv_name_set(cv, name) == NULL){
+	clicon_err(OE_YANG, errno, "cv_name_set(%s)", name);
+	goto done;
+    }
+    if (options & YANG_OPTIONS_FRACTION_DIGITS && cvtype == CGV_DEC64)
+	cv_dec64_n_set(cv, fraction_digits);
+    if (strcmp(val, "min") == 0)
+	cv_min_set(cv);
+    else if (strcmp(val, "max") == 0)
+	cv_max_set(cv);
+    else if ((ret = cv_parse1(val, cv, &reason)) < 0){
+	clicon_err(OE_YANG, errno, "cv_parse1");
+	goto done;
+    }
+    if (ret == 0){ /* parsing failed */
+	clicon_err(OE_YANG, errno, "range statement %s: %s", val, reason);
+	free(reason);
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Populate string built-in range statement
  *
  * Create cvec variables "range_min" and "range_max". Assume parent is type.
- * Actually: min..max [| min..max]*  
- *   where min,max is integer or keywords 'min' or 'max. 
- * We only allow one range, ie not 1..2|4..5
+ * Actually: bound[..bound] (| bound[..bound])*  
+ *   where bound is integer, decimal or keywords 'min' or 'max. 
+ * RFC 7950 9.2.4:
+ *  A range consists of an explicit value, or a lower-inclusive bound,
+ *  two consecutive dots "..", and an upper-inclusive bound.  Multiple
+ *  values or ranges can be given, separated by "|".  If multiple values
+ *  or ranges are given, they all MUST be disjoint and MUST be in
+ *  ascending order
  */
 static int
 ys_populate_range(yang_stmt *ys, 
@@ -1152,11 +1202,11 @@ ys_populate_range(yang_stmt *ys,
     int             options = 0x0;
     uint8_t         fraction_digits;
     enum cv_type    cvtype = CGV_ERR;
-    char           *minstr = NULL;
-    char           *maxstr;
-    cg_var         *cv;
-    char           *reason = NULL;
-    int             cvret;
+    char          **vec = NULL;
+    char           *v;
+    char           *v2;
+    int             nvec;
+    int             i;
 
     yparent = ys->ys_parent;     /* Find parent: type */
     if (yparent->yn_keyword != Y_TYPE){
@@ -1164,81 +1214,90 @@ ys_populate_range(yang_stmt *ys,
 	goto done;
     }
     if (yang_type_resolve(ys, (yang_stmt*)yparent, &yrestype, 
-			  &options, NULL, NULL, NULL, &fraction_digits) < 0)
+			  &options, NULL, NULL, &fraction_digits) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
     origtype = yarg_id((yang_stmt*)yparent);
     /* This handles non-resolved also */
     if (clicon_type2cv(origtype, restype, &cvtype) < 0) 
 	goto done;
-    /* special case for strings, where limit is length, not a string */
-    if (cvtype == CGV_STRING)
-	cvtype = CGV_UINT64;
-    if ((minstr = strdup(ys->ys_argument)) == NULL){
-	clicon_err(OE_YANG, errno, "strdup");
+    if ((vec = clicon_strsep(ys->ys_argument, "|", &nvec)) == NULL)
 	goto done;
-    }
-    if ((maxstr = strstr(minstr, "..")) != NULL){
-	if (strlen(maxstr) < 2){
-	    clicon_err(OE_YANG, 0, "range statement: %s not on the form: <int>..<int>",
-		       ys->ys_argument);
-           goto done;
-       }
-       minstr[maxstr-minstr] = '\0';
-       maxstr += 2;
-       /* minstr and maxstr need trimming */
-       if (isblank(minstr[strlen(minstr)-1]))
-	   minstr[strlen(minstr)-1] = '\0';
-       if (isblank(maxstr[0]))
-	   maxstr++;
-	if ((cv = cvec_add(ys->ys_cvec, cvtype)) == NULL){
-	    clicon_err(OE_YANG, errno, "cvec_add");
-	    goto done;
+    for (i=0; i<nvec; i++){
+	v = vec[i++];
+	v = clixon_trim(v); 	/* trim blanks */
+	if ((v2 = strstr(v, "..")) != NULL){
+	    *v2 = '\0';
+	    v2 += 2;
+	    v2 = clixon_trim(v2); 	    /* trim blanks */
 	}
-	if (cv_name_set(cv, "range_min") == NULL){
-	    clicon_err(OE_YANG, errno, "cv_name_set");
+	if (bound_add(ys, cvtype, "range_min", v,
+		      options, fraction_digits) < 0)
 	    goto done;
-	}
-	if (options & YANG_OPTIONS_FRACTION_DIGITS && cvtype == CGV_DEC64)
-	    cv_dec64_n_set(cv, fraction_digits);
-
-	if ((cvret = cv_parse1(minstr, cv, &reason)) < 0){
-	    clicon_err(OE_YANG, errno, "cv_parse1");
-	    goto done;
-	}
-	if (cvret == 0){ /* parsing failed */
-	    clicon_err(OE_YANG, errno, "range statement, min: %s", reason);
-	    free(reason);
-	    goto done;
-	}
-    }
-    else
-	maxstr = minstr;
-    if (strcmp(maxstr, "max") != 0){ /* no range_max means max */
-	if ((cv = cvec_add(ys->ys_cvec, cvtype)) == NULL){
-	    clicon_err(OE_YANG, errno, "cvec_add");
-	    goto done;
-	}
-	if (cv_name_set(cv, "range_max") == NULL){
-	    clicon_err(OE_YANG, errno, "cv_name_set");
-	    goto done;
-	}
-	if (options & YANG_OPTIONS_FRACTION_DIGITS && cvtype == CGV_DEC64)
-	    cv_dec64_n_set(cv, fraction_digits);
-	if ((cvret = cv_parse1(maxstr, cv, &reason)) < 0){
-	    clicon_err(OE_YANG, errno, "cv_parse1");
-	    goto done;
-	}
-	if (cvret == 0){ /* parsing failed */
-	    clicon_err(OE_YANG, errno, "range statement, max: %s", reason);
-	    free(reason);
-	    goto done;
-	}
+	if (v2)
+	    if (bound_add(ys, cvtype, "range_max",v2,
+			  options, fraction_digits) < 0)
+		goto done;
     }
     retval = 0;
   done:
-    if (minstr)
-	free(minstr);
+    if (vec)
+	free(vec);
+    return retval;
+}
+
+/*! Populate integer built-in length statement
+ *
+ * Create cvec variables "range_min" and "range_max". Assume parent is type.
+ * Actually: len[..len] (| len[..len])*  
+ *   len is unsigned integer or keywords 'min' or 'max. 
+ * RFC 7950 9.4.4
+ *  A length range consists of an explicit value, or a lower bound, two
+ *  consecutive dots "..", and an upper bound.  Multiple values or ranges
+ *  can be given, separated by "|".  Length-restricting values MUST NOT
+ *  be negative.  If multiple values or ranges are given, they all MUST
+ *  be disjoint and MUST be in ascending order.
+ */
+static int
+ys_populate_length(yang_stmt *ys, 
+		  void      *arg)
+{
+    int             retval = -1;
+    yang_node      *yparent;        /* type */
+    enum cv_type    cvtype = CGV_ERR;
+    char          **vec = NULL;
+    char           *v;
+    int             nvec;
+    int             i;
+    char           *v2;
+
+    yparent = ys->ys_parent;     /* Find parent: type */
+    if (yparent->yn_keyword != Y_TYPE){
+	clicon_err(OE_YANG, 0, "parent should be type"); 
+	goto done;
+    }
+    cvtype = CGV_UINT64;
+    if ((vec = clicon_strsep(ys->ys_argument, "|", &nvec)) == NULL)
+	goto done;
+    for (i=0; i<nvec; i++){
+
+	v = vec[i++];
+	v = clixon_trim(v); 	/* trim blanks */
+	if ((v2 = strstr(v, "..")) != NULL){
+	    *v2 = '\0';
+	    v2 += 2;
+	    v2 = clixon_trim(v2); 	    /* trim blanks */
+	}
+	if (bound_add(ys, cvtype, "range_min", v, 0, 0) < 0)
+	    goto done;
+	if (v2)
+	    if (bound_add(ys, cvtype, "range_max",v2, 0, 0) < 0)
+		goto done;
+    }
+    retval = 0;
+  done:
+    if (vec)
+	free(vec);
     return retval;
 }
 
@@ -1485,8 +1544,11 @@ ys_populate(yang_stmt *ys,
 	    goto done;
 	break;
     case Y_RANGE: 
-    case Y_LENGTH: 
 	if (ys_populate_range(ys, NULL) < 0)
+	    goto done;
+	break;
+    case Y_LENGTH: 
+	if (ys_populate_length(ys, NULL) < 0)
 	    goto done;
 	break;
     case Y_MANDATORY: /* call yang_mandatory() to check if set */
