@@ -13,6 +13,14 @@ testname=
 # If set, enable debugging (of backend)
 : ${DBG:=0}
 
+# Parse yangmodels from https://github.com/YangModels/yang
+# Recommended: checkout yangmodels elsewhere in the tree and set the env
+# to that
+: ${YANGMODELS=$(pwd)/yang}
+
+# Parse yang openconfig models from https://github.com/openconfig/public
+: ${OPENCONFIG=$(pwd)/public}
+
 # For memcheck
 #clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
 clixon_cli=clixon_cli

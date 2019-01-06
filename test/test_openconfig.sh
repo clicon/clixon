@@ -6,28 +6,23 @@
 # - release/models/wifi/types/openconfig-wifi-types.yang
 #      issue: https://github.com/clicon/clixon/issues/59
 # 
-OPENCONFIG=public
-OCDIR=$OPENCONFIG/release/models
-
-# Clone openconfig dir if not there
-if [ ! -d public ]; then 
-    git clone https://github.com/openconfig/public
-#else
-#    (cd public;
-#     #git pull
-#    )
-fi
-
-# include err() and new() functions and creates $dir
-. ./lib.sh
 
 # Yang specifics: multi-keys and empty type
 APPNAME=example
+
 # include err() and new() functions and creates $dir
 . ./lib.sh
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang
+
+new "openconfig"
+if [ ! -d "$OPENCONFIG" ]; then
+    err "Hmm Openconfig dir does not seem to exist, try git clone https://github.com/openconfig/public?"
+fi
+
+OCDIR=$OPENCONFIG/release/models
+
 
 cat <<EOF > $cfg
 <config>

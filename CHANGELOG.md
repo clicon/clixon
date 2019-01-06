@@ -112,6 +112,7 @@
   * <!DOCTYPE (ie DTD) is not supported.
 
 ### Corrected Bugs
+* Support for empty yang string added, eg `default "";`
 * Removed CLI generation for yang notifications (and other non-data yang nodes)
 * Some restconf error messages contained "rpc-reply" or "rpc-error" which have now been removed.
 * getopt return value changed from char to int (https://github.com/clicon/clixon/issues/58)

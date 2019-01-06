@@ -206,7 +206,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <BOOLEAN>\{               { BEGIN(KEYWORD); return *yytext; }
 <BOOLEAN>.                { return *yytext; }
 
-<INTEGER>[0-9][0-9]*      { clixon_yang_parselval.string = strdup(yytext);
+<INTEGER>\-?[0-9][0-9]*   { clixon_yang_parselval.string = strdup(yytext);
                             return INT; }
 <INTEGER>;                { BEGIN(KEYWORD); return *yytext; }
 <INTEGER>\{                { BEGIN(KEYWORD); return *yytext; }

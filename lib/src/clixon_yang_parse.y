@@ -641,7 +641,8 @@ identity_substmts : identity_substmts identity_substmt
                       { clicon_debug(2,"identity-substmts -> identity-substmt"); }
               ;
 
-identity_substmt : base_stmt         { clicon_debug(2,"identity-substmt -> base-stmt"); }
+identity_substmt : if_feature_stmt   { clicon_debug(2,"identity-substmt -> if-feature-stmt"); }
+              | base_stmt            { clicon_debug(2,"identity-substmt -> base-stmt"); }
               | status_stmt          { clicon_debug(2,"identity-substmt -> status-stmt"); }
               | description_stmt     { clicon_debug(2,"identity-substmt -> description-stmt"); }
               | reference_stmt       { clicon_debug(2,"identity-substmt -> reference-stmt"); }
@@ -876,7 +877,8 @@ enum_substmts : enum_substmts enum_substmt
                       { clicon_debug(2,"enum-substmts -> enum-substmt"); }
               ;
 
-enum_substmt  : value_stmt           { clicon_debug(2,"enum-substmt -> value-stmt"); }
+enum_substmt  : if_feature_stmt      { clicon_debug(2,"enum-substmt -> if-feature-stmt"); }
+              | value_stmt           { clicon_debug(2,"enum-substmt -> value-stmt"); }
               | status_stmt          { clicon_debug(2,"enum-substmt -> status-stmt"); }
               | description_stmt     { clicon_debug(2,"enum-substmt -> description-stmt"); }
               | reference_stmt       { clicon_debug(2,"enum-substmt -> reference-stmt"); }
@@ -911,7 +913,8 @@ bit_substmts : bit_substmts bit_substmt
                       { clicon_debug(2,"bit-substmts -> bit-substmt"); }
               ;
 
-bit_substmt   : position_stmt        { clicon_debug(2,"bit-substmt -> positition-stmt"); }
+bit_substmt   : if_feature_stmt      { clicon_debug(2,"bit-substmt -> if-feature-stmt"); }
+              | position_stmt        { clicon_debug(2,"bit-substmt -> positition-stmt"); }
               | status_stmt          { clicon_debug(2,"bit-substmt -> status-stmt"); }
               | description_stmt     { clicon_debug(2,"bit-substmt -> description-stmt"); }
               | reference_stmt       { clicon_debug(2,"bit-substmt -> reference-stmt"); }
@@ -1318,9 +1321,16 @@ refine_substmts : refine_substmts refine_substmt
                       { clicon_debug(2,"refine-substmts -> refine-substmt"); }
               ;
 
-refine_substmt  : must_stmt     { clicon_debug(2,"refine-substmt -> must-stmt"); }
-              | mandatory_stmt  { clicon_debug(2,"refine-substmt -> mandatory-stmt"); }
+refine_substmt  : if_feature_stmt     { clicon_debug(2,"refine-substmt -> if-feature-stmt"); }
+              | must_stmt     { clicon_debug(2,"refine-substmt -> must-stmt"); }
+              | presence_stmt  { clicon_debug(2,"refine-substmt -> presence-stmt"); }
               | default_stmt    { clicon_debug(2,"refine-substmt -> default-stmt"); }
+              | config_stmt    { clicon_debug(2,"refine-substmt -> config-stmt"); }
+              | mandatory_stmt  { clicon_debug(2,"refine-substmt -> mandatory-stmt"); }
+              | min_elements_stmt  { clicon_debug(2,"refine-substmt -> min-elements-stmt"); }
+              | max_elements_stmt  { clicon_debug(2,"refine-substmt -> max-elements-stmt"); }
+              | description_stmt  { clicon_debug(2,"refine-substmt -> description-stmt"); }
+              | reference_stmt  { clicon_debug(2,"refine-substmt -> reference-stmt"); }
               | unknown_stmt    { clicon_debug(2,"refine-substmt -> unknown-stmt");} 
               |                 { clicon_debug(2,"refine-substmt -> "); }
               ;
@@ -1561,7 +1571,8 @@ qstrings      : qstrings '+' qstring
                      { $$=$1; clicon_debug(2,"qstrings-> qstring"); } 
               ;
 
-qstring        : DQ ustring DQ  { $$=$2; clicon_debug(2,"string-> \" ustring \"");} 
+qstring        : DQ ustring DQ  { $$=$2; clicon_debug(2,"string-> \" ustring \"");}
+               | DQ DQ  { $$=strdup(""); clicon_debug(2,"string-> \"  \"");} 
                | SQ ustring SQ  { $$=$2; clicon_debug(2,"string-> ' ustring '"); }
   ;
 
