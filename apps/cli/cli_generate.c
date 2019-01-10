@@ -318,7 +318,7 @@ yang2cli_var_union_one(clicon_handle h,
     char        *restype;
 
     /* Resolve the sub-union type to a resolved type */
-    if (yang_type_resolve(ys, ytsub, /* in */
+    if (yang_type_resolve(ys, ys, ytsub, /* in */
 			  &ytype, &options, /* resolved type */
 			  &cvv, &pattern, &fraction_digits) < 0)
 	goto done;
@@ -778,7 +778,7 @@ yang2cli(clicon_handle      h,
 	    if (yang2cli_stmt(h, ymod, cbuf, gt, 0) < 0)
 		goto done;
 	}
-    clicon_debug(0, "%s: buf\n%s\n", __FUNCTION__, cbuf_get(cbuf));
+    clicon_debug(2, "%s: buf\n%s\n", __FUNCTION__, cbuf_get(cbuf));
     /* Parse the buffer using cligen parser. XXX why this?*/
     if ((globals = cvec_new(0)) == NULL)
 	goto done;

@@ -71,7 +71,7 @@ int        clicon_type2cv(char *type, char *rtype, enum cv_type *cvtype);
 int        yang_type_get(yang_stmt *ys, char **otype, yang_stmt **restype, 
 			 int *options, cvec **cvv, char **pattern,
                          uint8_t *fraction_digits);
-int        yang_type_resolve(yang_stmt *ys, yang_stmt *ytype, 
+int        yang_type_resolve(yang_stmt *yorig, yang_stmt *ys, yang_stmt *ytype, 
 			     yang_stmt **restype, int *options, 
 			     cvec **cvv, char **pattern, uint8_t *fraction);
 

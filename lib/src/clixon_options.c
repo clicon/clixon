@@ -111,7 +111,6 @@ clicon_option_dump(clicon_handle h,
 	    clicon_debug(dbglevel, "%s = NULL", keys[i]);
     }
     free(keys);
-
 }
 
 /*! Read filename and set values to global options registry. XML variant.
@@ -216,6 +215,42 @@ parse_configfile(clicon_handle  h,
     return retval;
 }
 
+/*! Add configuration option overriding file setting
+ * Add to clicon_options hash, and to clicon_conf_xml tree
+ * @param[in]  h      Clicon handle
+ * @param[in]  name   Name of configuration option (see clixon-config.yang)
+ * @param[in]  value  String value
+ * @retval     0      OK
+ * @retval    -1      Error
+ * @see clicon_options_main  For loading options from file
+ */
+int
+clicon_option_add(clicon_handle h,
+		  char         *name,
+		  char         *value)
+{
+    int            retval = -1;
+    clicon_hash_t *copt = clicon_options(h);
+    cxobj         *x;
+
+    if (strcmp(name, "CLICON_FEATURE")==0 ||
+	strcmp(name, "CLICON_YANG_DIR")==0){
+	if ((x = clicon_conf_xml(h)) == NULL)
+	    goto done;
+	if (xml_parse_va(&x, NULL, "<%s>%s</%s>",
+			 name, value, name) < 0)
+	    goto done;
+    }
+    if (hash_add(copt, 
+		 name,
+		 value,
+		 strlen(value)+1) == NULL)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Parse clixon yang file. Parse XML config file. Initialize option values
  *
  * Set default options, Read config-file, Check that all values are set.
@@ -265,7 +300,7 @@ clicon_options_main(clicon_handle h,
     /* Set clixon_conf pointer to handle */
     clicon_conf_xml_set(h, xconfig);
     /* Parse clixon yang spec */
-    if (yang_parse(h, NULL, "clixon-config", NULL, yspec) < 0)
+    if (yang_spec_parse_module(h, "clixon-config", NULL, yspec) < 0)
 	goto done;    
     clicon_conf_xml_set(h, NULL);
     if (xconfig)

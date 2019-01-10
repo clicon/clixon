@@ -100,6 +100,9 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 install: 
+#	install -d -m 0755 $(DESTDIR)$(bindir)
+#	install -m 0755 $(INSTALLFLAGS) $(APPS) $(DESTDIR)$(bindir)
+
 
 install-include:
 

@@ -73,7 +73,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:l:d:b:Fza:u:P:1s:c:g:y:x:" /* substitute s: for IRCc:r */
+#define BACKEND_OPTS "hD:f:l:d:b:Fza:u:P:1s:c:g:y:x:o:" 
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
@@ -154,7 +154,8 @@ usage(clicon_handle h,
 	    "\t-g <group>\tClient membership required to this group (default: %s)\n"
 
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
-	    "\t-x <plugin>\tXMLDB plugin\n",
+	    "\t-x <plugin>\tXMLDB plugin\n"
+	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    plgdir ? plgdir : "none",
 	    confsock ? confsock : "none",
@@ -268,7 +269,7 @@ nacm_load_external(clicon_handle h)
     }
     if ((yspec = yspec_new()) == NULL)
 	goto done;
-    if (yang_parse(h, NULL, "ietf-netconf-acm", NULL, yspec) < 0)
+    if (yang_spec_parse_module(h, "ietf-netconf-acm", NULL, yspec) < 0)
 	goto done;
     fd = fileno(f);
     /* Read configfile */
@@ -699,6 +700,15 @@ main(int    argc,
 	}
 	case 'x' :{ /* xmldb plugin */
 	    clicon_option_str_set(h, "CLICON_XMLDB_PLUGIN", optarg);
+	    break;
+	}
+	case 'o':{ /* Configuration option */
+	    char          *val;
+	    if ((val = index(optarg, '=')) == NULL)
+		usage(h, argv0);
+	    *val++ = '\0';
+	    if (clicon_option_add(h, optarg, val) < 0)
+		goto done;
 	    break;
 	}
 	default:

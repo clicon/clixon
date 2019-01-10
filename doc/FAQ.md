@@ -197,7 +197,7 @@ are included.
 
 The following configuration file options control the loading of Yang files:
 - `CLICON_YANG_DIR` -  A list of directories (yang dir path) where Clixon searches for module and submodules.
-- `CLICON_YANG_MAIN_FILE` - Load a specific Yang module fiven by a file. 
+- `CLICON_YANG_MAIN_FILE` - Load a specific Yang module given by a file. 
 - `CLICON_YANG_MODULE_MAIN` - Specifies a single module to load. The module is searched for in the yang dir path.
 - `CLICON_YANG_MODULE_REVISION` : Specifies a revision to the main module. 
 - `CLICON_YANG_MAIN_DIR` - Load all yang modules in this directory.

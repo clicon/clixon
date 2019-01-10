@@ -2413,7 +2413,7 @@ yang_enum_int_value(cxobj   *node,
 	goto done;
     if ((ytype = yang_find((yang_node *)ys, Y_TYPE, NULL)) == NULL)
 	goto done;
-    if (yang_type_resolve(ys, ytype, &yrestype, 
+    if (yang_type_resolve(ys, ys, ytype, &yrestype, 
 			  NULL, NULL, NULL, NULL) < 0)
 	goto done;
     if (yrestype==NULL || strcmp(yrestype->ys_argument, "enumeration"))

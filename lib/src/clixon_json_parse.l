@@ -87,9 +87,10 @@ exp ({integer}|{real})[eE][+-]{integer}
 %s ESCAPE
 
 %%
+
 <START>[ \t]            
 <START>\n               { _JY->jy_linenum++; }
-<START>\r               { }
+<START>\r               
 <START><<EOF>>          { return J_EOF; }
 <START>\{               { return *yytext; }
 <START>\}               { return *yytext; }

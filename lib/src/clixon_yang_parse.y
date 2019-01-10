@@ -56,7 +56,6 @@
 }
 
 %token MY_EOF 
-%token DQ           /* Double quote: " */
 %token SQ           /* Single quote: ' */
 %token <string>   CHAR
 %token <string>   IDENTIFIER
@@ -70,7 +69,8 @@
 %type <string>    integer_value_str
 %type <string>    identifier_ref
 %type <string>    abs_schema_nodeid
-%type <string>    desc_schema_node_str
+%type <string>    desc_schema_nodeid_strs
+%type <string>    desc_schema_nodeid_str
 %type <string>    desc_schema_nodeid
 %type <string>    node_identifier
 %type <string>    identifier_str
@@ -365,19 +365,6 @@ file          : module_stmt MY_EOF
                        { clicon_debug(2,"file->submodule-stmt"); YYACCEPT; } 
               ;
 
-  /* For extensions */
-unknown_stmt  : ustring  ':' ustring ';'
-                 { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
-		   if (ysp_add(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); 
-		   clicon_debug(2,"unknown-stmt -> ustring : ustring");
-	       }
-              | ustring  ':' ustring ' ' string ';'
-	        { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknwon_stmt");
-		   if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL){ _YYERROR("unknwon_stmt"); }
-		   clicon_debug(2,"unknown-stmt -> ustring : ustring string");
-	       }
-	      ;
-
 /* module identifier-arg-str */
 module_stmt   : K_MODULE identifier_str 
                   { if ((_YY->yy_module = ysp_add_push(_yy, Y_MODULE, $2)) == NULL) _YYERROR("module_stmt");
@@ -591,14 +578,13 @@ revision_date_stmt : K_REVISION_DATE string stmtend  /* XXX date-arg-str */
 
 extension_stmt : K_EXTENSION identifier_str ';' 
 	       { if (ysp_add(_yy, Y_EXTENSION, $2, NULL) == NULL) _YYERROR("extension_stmt");
-                    clicon_debug(2,"extenstion-stmt -> EXTENSION id-arg-str ;"); }
+                    clicon_debug(2,"extenstion-stmt -> EXTENSION id-str ;"); }
               | K_EXTENSION identifier_str 
  	          { if (ysp_add_push(_yy, Y_EXTENSION, $2) == NULL) _YYERROR("extension_stmt"); }
 	       '{' extension_substmts '}' 
 	       { if (ystack_pop(_yy) < 0) _YYERROR("extension_stmt");
-                    clicon_debug(2,"extension-stmt -> FEATURE id-arg-str { extension-substmts }"); }
+                    clicon_debug(2,"extension-stmt -> EXTENSION id-str { extension-substmts }"); }
 	      ;
-
 
 /* extension substmts */
 extension_substmts : extension_substmts extension_substmt 
@@ -615,9 +601,27 @@ extension_substmt : argument_stmt    { clicon_debug(2,"extension-substmt -> argu
               |                      { clicon_debug(2,"extension-substmt -> "); }
               ;
 
-argument_stmt  : K_ARGUMENT identifier_str ';'     { free($2); }
-               | K_ARGUMENT identifier_str '{' yin_element_stmt1 '}' { free($2); }
+argument_stmt  : K_ARGUMENT identifier_str ';'
+               { if (ysp_add(_yy, Y_ARGUMENT, $2, NULL) == NULL) _YYERROR("argument_stmt");
+			 clicon_debug(2,"argument-stmt -> ARGUMENT identifier ;"); }
+               | K_ARGUMENT identifier_str
+                       { if (ysp_add_push(_yy, Y_ARGUMENT, $2) == NULL) _YYERROR("argument_stmt"); }
+                '{' argument_substmts '}'
+                       { if (ystack_pop(_yy) < 0) _YYERROR("argument_stmt");
+	                 clicon_debug(2,"argument-stmt -> ARGUMENT { argument-substmts }"); }
                ;
+
+/* argument substmts */
+argument_substmts : argument_substmts argument_substmt 
+                      { clicon_debug(2,"argument-substmts -> argument-substmts argument-substmt"); }
+                  | argument_substmt 
+                      { clicon_debug(2,"argument-substmts -> argument-substmt"); }
+                  ;
+
+argument_substmt : yin_element_stmt1 { clicon_debug(2,"argument-substmt -> yin-element-stmt1");}
+                 | unknown_stmt   { clicon_debug(2,"argument-substmt -> unknown-stmt");}
+                 ;
+
 
 /* Example of optional rule, eg [yin-element-stmt] */
 yin_element_stmt1 : K_YIN_ELEMENT bool_str stmtend {free($2);}
@@ -752,6 +756,8 @@ type_body_stmt/* numerical-restrictions */
               | bit_stmt               { clicon_debug(2,"type-body-stmt -> bit-stmt"); }
               /* union-specification */
               | type_stmt              { clicon_debug(2,"type-body-stmt -> type-stmt"); }
+/* Cisco uses this (eg Cisco-IOS-XR-sysadmin-nto-misc-set-hostname.yang) but I dont see this is in the RFC */
+              | unknown_stmt           { clicon_debug(2,"type-body-stmt -> unknown-stmt");} 
               ;
 
 /* range-stmt */
@@ -1305,10 +1311,10 @@ uses_substmt  : when_stmt            { clicon_debug(2,"uses-substmt -> when-stmt
               ;
 
 /* refine-stmt = refine-keyword sep refine-arg-str */
-refine_stmt   : K_REFINE desc_schema_node_str ';' 
+refine_stmt   : K_REFINE desc_schema_nodeid_strs ';' 
 	       { if (ysp_add(_yy, Y_REFINE, $2, NULL) == NULL) _YYERROR("refine_stmt"); 
 			   clicon_debug(2,"refine-stmt -> REFINE id-arg-str ;"); }
-              | K_REFINE desc_schema_node_str
+              | K_REFINE desc_schema_nodeid_strs
                           { if (ysp_add_push(_yy, Y_REFINE, $2) == NULL) _YYERROR("refine_stmt"); }
 	       '{' refine_substmts '}' 
                            { if (ystack_pop(_yy) < 0) _YYERROR("refine_stmt");
@@ -1335,8 +1341,10 @@ refine_substmt  : if_feature_stmt     { clicon_debug(2,"refine-substmt -> if-fea
               |                 { clicon_debug(2,"refine-substmt -> "); }
               ;
 
-/* uses-augment-stmt = augment-keyword augment-arg-str */
-uses_augment_stmt : K_AUGMENT desc_schema_node_str
+/* uses-augment-stmt = augment-keyword augment-arg-str 
+uses_augment_stmt : K_AUGMENT desc_schema_nodeid_strs
+*/
+uses_augment_stmt : K_AUGMENT string
                       { if (ysp_add_push(_yy, Y_AUGMENT, $2) == NULL) _YYERROR("uses_augment_stmt"); }
                     '{' augment_substmts '}'
                       { if (ystack_pop(_yy) < 0) _YYERROR("uses_augment_stmt");
@@ -1345,6 +1353,7 @@ uses_augment_stmt : K_AUGMENT desc_schema_node_str
 		    
 /* augment-stmt = augment-keyword sep augment-arg-str 
  * XXX abs-schema-nodeid-str is too difficult, it needs the + semantics
+augment_stmt   : K_AUGMENT abs_schema_nodeid_strs
  */
 augment_stmt   : K_AUGMENT string
                     { if (ysp_add_push(_yy, Y_AUGMENT, $2) == NULL) _YYERROR("augment_stmt"); }
@@ -1418,6 +1427,7 @@ rpc_substmt   : if_feature_stmt  { clicon_debug(2,"rpc-substmt -> if-feature-stm
               | grouping_stmt    { clicon_debug(2,"rpc-substmt -> grouping-stmt"); }
               | input_stmt       { clicon_debug(2,"rpc-substmt -> input-stmt"); }
               | output_stmt      { clicon_debug(2,"rpc-substmt -> output-stmt"); }
+              | unknown_stmt     { clicon_debug(2,"rpc-substmt -> unknown-stmt");} 
               |                  { clicon_debug(2,"rpc-substmt -> "); }
               ;
 
@@ -1481,13 +1491,147 @@ deviation_substmts : deviation_substmts deviation_substmt
 
 deviation_substmt : description_stmt  { clicon_debug(2,"deviation-substmt -> description-stmt"); }
                   | reference_stmt  { clicon_debug(2,"deviation-substmt -> reference-stmt"); }
-                  | deviate_not_supported_stmt  { clicon_debug(2,"deviation-substmt -> deviate-not-supported-stmt"); }
+                  | deviate_stmt  { clicon_debug(2,"deviation-substmt -> deviate-stmt"); }
 		  ;
 
-deviate_not_supported_stmt : K_DEVIATE string stmtend
+/* RFC7950 differentiates between deviate-not-supported, deviate-add, 
+ * deviate-replave, and deviate-delete. Here all are bundled into a single
+ * deviate rule. For now, until "deviate" gets supported.
+ */
+deviate_stmt      : K_DEVIATE string ';'
 	                { if (ysp_add(_yy, Y_DEVIATE, $2, NULL) == NULL) _YYERROR("notification_stmt");
     			   clicon_debug(2,"deviate-not-supported-stmt -> DEVIATE string ;"); }
-                             ;
+                  | K_DEVIATE string
+                        { if (ysp_add_push(_yy, Y_DEVIATE, $2) == NULL) _YYERROR("deviate_stmt"); }
+	            '{' deviate_substmts '}' 
+                        { if (ystack_pop(_yy) < 0) _YYERROR("deviate_stmt");
+			     clicon_debug(2,"deviate-stmt -> DEVIATE string { deviate-substmts }"); }
+                   ;
+
+/* RFC7950 differentiates between deviate-not-supported, deviate-add, 
+ * deviate-replave, and deviate-delete. Here all are bundled into a single
+ * deviate-substmt rule. For now, until "deviate" gets supported.
+ */
+deviate_substmts     : deviate_substmts deviate_substmt 
+                         { clicon_debug(2,"deviate-substmts -> deviate-substmts deviate-substmt"); }
+                     | deviate_substmt 
+                         { clicon_debug(2,"deviate-substmts -> deviate-substmt"); }
+                     ;
+/* Bundled */
+deviate_substmt : type_stmt         { clicon_debug(2,"deviate-substmt -> type-stmt"); }
+                | units_stmt        { clicon_debug(2,"deviate-substmt -> units-stmt"); }
+                | must_stmt         { clicon_debug(2,"deviate-substmt -> must-stmt"); }
+                | unique_stmt       { clicon_debug(2,"deviate-substmt -> unique-stmt"); }
+                | default_stmt      { clicon_debug(2,"deviate-substmt -> default-stmt"); }
+                | config_stmt       { clicon_debug(2,"deviate-substmt -> config-stmt"); }
+                | mandatory_stmt    { clicon_debug(2,"deviate-substmt -> mandatory-stmt"); }
+                | min_elements_stmt { clicon_debug(2,"deviate-substmt -> min-elements-stmt"); }
+                | max_elements_stmt { clicon_debug(2,"deviate-substmt -> max-elements-stmt"); }
+                |                   { clicon_debug(2,"deviate-substmt -> "); }
+                ;
+
+
+  /* For extensions */
+unknown_stmt  : ustring  ':' ustring ';'
+                 { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+		   if (ysp_add(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); 
+		   clicon_debug(2,"unknown-stmt -> ustring : ustring");
+	       }
+              | ustring  ':' ustring string ';'
+	        { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+		   if (ysp_add(_yy, Y_UNKNOWN, id, $4) == NULL){ _YYERROR("unknwon_stmt"); }
+		   clicon_debug(2,"unknown-stmt -> ustring : ustring string");
+	       }
+              | ustring  ':' ustring
+                       { if (ysp_add_push(_yy, Y_UNKNOWN, NULL) == NULL) _YYERROR("unknown_stmt"); }
+	         '{' yang_stmts '}'
+	               { if (ystack_pop(_yy) < 0) _YYERROR("unknown_stmt");
+			 clicon_debug(2,"unknown-stmt -> ustring : ustring { yang-stmts }"); }
+              | ustring  ':' ustring string
+                       { if (ysp_add_push(_yy, Y_UNKNOWN, NULL) == NULL) _YYERROR("unknown_stmt"); }
+	         '{' yang_stmts '}'
+	               { if (ystack_pop(_yy) < 0) _YYERROR("unknown_stmt");
+			 clicon_debug(2,"unknown-stmt -> ustring : ustring string { yang-stmts }"); }
+	      ;
+
+yang_stmts    : yang_stmts yang_stmt { clicon_debug(2,"yang-stmts -> yang-stmts yang-stmt"); } 
+              | yang_stmt            { clicon_debug(2,"yang-stmts -> yang-stmt");}
+              ;
+
+yang_stmt     : action_stmt          { clicon_debug(2,"yang-stmt -> action-stmt");}
+              | anydata_stmt         { clicon_debug(2,"yang-stmt -> anydata-stmt");}
+              | anyxml_stmt          { clicon_debug(2,"yang-stmt -> anyxml-stmt");}
+              | argument_stmt        { clicon_debug(2,"yang-stmt -> argument-stmt");}
+              | augment_stmt         { clicon_debug(2,"yang-stmt -> augment-stmt");}
+              | base_stmt            { clicon_debug(2,"yang-stmt -> base-stmt");}
+              | bit_stmt             { clicon_debug(2,"yang-stmt -> bit-stmt");}
+              | case_stmt            { clicon_debug(2,"yang-stmt -> case-stmt");}
+              | choice_stmt          { clicon_debug(2,"yang-stmt -> choice-stmt");}
+              | config_stmt          { clicon_debug(2,"yang-stmt -> config-stmt");}
+              | contact_stmt         { clicon_debug(2,"yang-stmt -> contact-stmt");}
+              | container_stmt       { clicon_debug(2,"yang-stmt -> container-stmt");}
+              | default_stmt         { clicon_debug(2,"yang-stmt -> default-stmt");}
+              | description_stmt     { clicon_debug(2,"yang-stmt -> description-stmt");}
+              | deviate_stmt         { clicon_debug(2,"yang-stmt -> deviate-stmt");}
+/* deviate is not yet implemented, the above may be replaced by the following lines
+              | deviate_add_stmt     { clicon_debug(2,"yang-stmt -> deviate-add-stmt");}
+              | deviate_delete_stmt  { clicon_debug(2,"yang-stmt -> deviate-add-stmt");}
+              | deviate_replace_stmt { clicon_debug(2,"yang-stmt -> deviate-add-stmt");}
+*/
+              | deviation_stmt       { clicon_debug(2,"yang-stmt -> deviation-stmt");}
+              | enum_stmt            { clicon_debug(2,"yang-stmt -> enum-stmt");}
+              | error_app_tag_stmt   { clicon_debug(2,"yang-stmt -> error-app-tag-stmt");}
+              | error_message_stmt   { clicon_debug(2,"yang-stmt -> error-message-stmt");}
+              | extension_stmt       { clicon_debug(2,"yang-stmt -> extension-stmt");}
+              | feature_stmt         { clicon_debug(2,"yang-stmt -> feature-stmt");}
+              | fraction_digits_stmt { clicon_debug(2,"yang-stmt -> fraction-digits-stmt");}
+              | grouping_stmt        { clicon_debug(2,"yang-stmt -> grouping-stmt");}
+              | identity_stmt        { clicon_debug(2,"yang-stmt -> identity-stmt");}
+              | if_feature_stmt      { clicon_debug(2,"yang-stmt -> if-feature-stmt");}
+              | import_stmt          { clicon_debug(2,"yang-stmt -> import-stmt");}
+              | include_stmt         { clicon_debug(2,"yang-stmt -> include-stmt");}
+              | input_stmt           { clicon_debug(2,"yang-stmt -> input-stmt");}
+              | key_stmt             { clicon_debug(2,"yang-stmt -> key-stmt");}
+              | leaf_list_stmt       { clicon_debug(2,"yang-stmt -> leaf-list-stmt");}
+              | leaf_stmt            { clicon_debug(2,"yang-stmt -> leaf-stmt");}
+              | length_stmt          { clicon_debug(2,"yang-stmt -> length-stmt");}
+              | list_stmt            { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | mandatory_stmt       { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | max_elements_stmt    { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | min_elements_stmt    { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | modifier_stmt        { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | module_stmt          { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | must_stmt            { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | namespace_stmt       { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | notification_stmt    { clicon_debug(2,"yang-stmt -> notification-stmt");}
+              | ordered_by_stmt      { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | organization_stmt    { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | output_stmt          { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | path_stmt            { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | pattern_stmt         { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | position_stmt        { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | prefix_stmt          { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | presence_stmt        { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | range_stmt           { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | reference_stmt       { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | refine_stmt          { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | require_instance_stmt { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | revision_date_stmt   { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | revision_stmt        { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | rpc_stmt             { clicon_debug(2,"yang-stmt -> rpc-stmt");}
+              | status_stmt          { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | submodule_stmt       { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | typedef_stmt         { clicon_debug(2,"yang-stmt -> typedef-stmt");}
+              | type_stmt            { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | unique_stmt          { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | units_stmt           { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | uses_augment_stmt    { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | uses_stmt            { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | value_stmt           { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | when_stmt            { clicon_debug(2,"yang-stmt -> list-stmt");}
+              | yang_version_stmt    { clicon_debug(2,"yang-stmt -> list-stmt");}
+/*              | yin_element_stmt     { clicon_debug(2,"yang-stmt -> list-stmt");} */
+              ;
 
 /* body */
 body_stmts    : body_stmts body_stmt { clicon_debug(2,"body-stmts -> body-stmts body-stmt"); } 
@@ -1571,8 +1715,8 @@ qstrings      : qstrings '+' qstring
                      { $$=$1; clicon_debug(2,"qstrings-> qstring"); } 
               ;
 
-qstring        : DQ ustring DQ  { $$=$2; clicon_debug(2,"string-> \" ustring \"");}
-               | DQ DQ  { $$=strdup(""); clicon_debug(2,"string-> \"  \"");} 
+qstring        : '"' ustring '"'  { $$=$2; clicon_debug(2,"string-> \" ustring \"");}
+               | '"' '"'  { $$=strdup(""); clicon_debug(2,"string-> \"  \"");} 
                | SQ ustring SQ  { $$=$2; clicon_debug(2,"string-> ' ustring '"); }
   ;
 
@@ -1596,12 +1740,25 @@ abs_schema_nodeid : abs_schema_nodeid '/' node_identifier
 		     clicon_debug(2,"absolute-schema-nodeid -> / node-identifier"); }
               ;
 
-desc_schema_node_str : desc_schema_nodeid
-                         { $$=$1; clicon_debug(2,"descendant-schema-node-str -> descendant-node"); }
+desc_schema_nodeid_strs : desc_schema_nodeid_strs '+' desc_schema_nodeid_str
+                     {
+			 int len = strlen($1);
+			 $$ = realloc($1, len + strlen($3) + 1); 
+			 sprintf($$+len, "%s", $3);
+			 free($3); 
+			 clicon_debug(2,"desc-schema-nodeid-strs-> desc-schema-nodeid-strs + desc-schema-nodeid-str");
+		     }
+                      | desc_schema_nodeid_str
+                           { $$=$1; clicon_debug(2,"desc-schema-nodeid-strs-> desc-schema-nodeid-str"); }
+                      ;
+
+desc_schema_nodeid_str : desc_schema_nodeid
+                         { $$=$1; clicon_debug(2,"descendant-schema-nodeid-str -> descendant-schema-nodeid"); }
                      | '"' desc_schema_nodeid '"'
-                         { $$=$2; clicon_debug(2,"descendant-schema-node-str -> descendant-node"); }
+                         { $$=$2; clicon_debug(2,"descendant-schema-nodeid-str -> descendant-schema-nodeid"); }
                      ;
 
+/* descendant-schema-nodeid */
 desc_schema_nodeid : node_identifier
                      { $$= $1; clicon_debug(2,"descendant-schema-nodeid -> node_identifier"); }
                    | node_identifier abs_schema_nodeid

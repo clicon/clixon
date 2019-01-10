@@ -513,8 +513,12 @@ yang_cardinality(clicon_handle h,
 	    continue;
 	/* Find entry in yang cardinality table from parent/child keyword pair */
 	if ((yc = ycard_find(pk, ck, ycplist, 1)) == NULL){
-	    clicon_err(OE_YANG, 0, "%s: \"%s\" is child of \"%s\", but should not be",
-		       modname, yang_key2str(ck), yang_key2str(pk));
+	    clicon_err(OE_YANG, 0, "%s: \"%s\"(%s) is child of \"%s\"(%s), but should not be",
+		       modname,
+		       yang_key2str(ck),
+		       ys->ys_argument,
+		       yang_key2str(pk),
+		       yt->ys_argument);
 	    goto done;
 	}
     }

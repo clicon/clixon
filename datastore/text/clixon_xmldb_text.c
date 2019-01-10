@@ -1453,7 +1453,7 @@ main(int    argc,
     db_init(db);
     if ((yspec = yspec_new()) == NULL)
 	goto done
-    if (yang_parse(h, NULL, yangmod, NULL, yspec) < 0)
+    if (yang_spec_parse_module(h, yangmod, NULL, yspec) < 0)
 	goto done;
     if (strcmp(cmd, "get")==0){
 	if (argc < 5)

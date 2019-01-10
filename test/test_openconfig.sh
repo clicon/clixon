@@ -1,10 +1,11 @@
 #!/bin/bash
-# Parse yang openconfig tests
-# Note that the openconfig test suites are patched to counter CLixon issues as follows:
-# - release/models/mpls/openconfig-mpls-te.yang
+# Parse yang openconfig yangs from https://github.com/openconfig/public
+# Notes:
+# - openconfig test suites are patched to counter Clixon issues as follows:
+#    - release/models/mpls/openconfig-mpls-te.yang
 #      issue: https://github.com/clicon/clixon/issues/60
+# - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)
 
-# Yang specifics: multi-keys and empty type
 APPNAME=example
 
 # include err() and new() functions and creates $dir

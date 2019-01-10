@@ -34,6 +34,16 @@
  * Yang functions
  * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
  * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
+ *
+ * yang_spec_parse_module
+ *                       \
+ * yang_spec_parse_file-> yang_parse_post->yang_parse_recurse->yang_parse_module
+ *                    \   /                                         v
+ * yang_spec_load_dir ------------------------------------> yang_parse_filename
+ *                                                                 v  
+ *                                                          yang_parse_file
+ *                                                                 v  
+ *                                                          yang_parse_str
  */
 
 #ifdef HAVE_CONFIG_H
@@ -1068,7 +1078,8 @@ ys_populate_leaf(yang_stmt *ys,
 
     yparent = ys->ys_parent;     /* Find parent: list/container */
     /* 1. Find type specification and set cv type accordingly */
-    if (yang_type_get(ys, &type, &yrestype, &options, NULL, NULL, &fraction_digits) < 0)
+    if (yang_type_get(ys, &type, &yrestype, &options, NULL, NULL, &fraction_digits)
+ < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
     if (clicon_type2cv(type, restype, &cvtype) < 0) /* This handles non-resolved also */
@@ -1213,7 +1224,7 @@ ys_populate_range(yang_stmt *ys,
 	clicon_err(OE_YANG, 0, "parent should be type"); 
 	goto done;
     }
-    if (yang_type_resolve(ys, (yang_stmt*)yparent, &yrestype, 
+    if (yang_type_resolve(ys, ys, (yang_stmt*)yparent, &yrestype, 
 			  &options, NULL, NULL, &fraction_digits) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
@@ -1467,7 +1478,7 @@ ys_populate_feature(clicon_handle h,
     cv_name_set(cv, feature);
     cv_bool_set(cv, found);
     if (found)
-	clicon_debug(1, "%s %s:%s", __FUNCTION__, module, feature);
+	clicon_debug(2, "%s %s:%s", __FUNCTION__, module, feature);
     ys->ys_cv = cv;
  ok:
     retval = 0;
@@ -2085,7 +2096,7 @@ yang_parse_recurse(clicon_handle h,
 	    subrevision = NULL;
 	/* if already loaded, ignore, else parse the file */
 	if (yang_find((yang_node*)ysp,
-		      keyw=Y_IMPORT?Y_MODULE:Y_SUBMODULE,
+		      keyw==Y_IMPORT?Y_MODULE:Y_SUBMODULE,
 		      submodule) == NULL){
 	    /* recursive call */
 	    if ((subymod = yang_parse_module(h, submodule, subrevision, ysp)) == NULL)
@@ -2249,7 +2260,9 @@ yang_merge_submodules(clicon_handle h,
     }
     modname = yb->ys_argument;
     if ((ymod = yang_find((yang_node*)yspec, Y_MODULE, modname)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "Module %s which submodule %s belongs to is not found", modname, ysubm->ys_argument);
+	clicon_err(OE_YANG, ENOENT, "Submodule %s is loaded before/without its main module %s (you need to load the submodule together with or after the main module)",
+		   ysubm->ys_argument,
+		   modname);
 	goto done;
     }
     /* Move sub-module statements to modules 
@@ -2304,64 +2317,29 @@ yang_merge_submodules(clicon_handle h,
  *   yang_parse_str         # Set up yacc parser and call it given a string
  *   clixon_yang_parseparse # Actual yang parsing using yacc
  */
-int
-yang_parse(clicon_handle h, 
-	   const char   *filename, 
-	   const char   *module, 
-	   const char   *revision, 
-	   yang_spec    *yspec)
+static int
+yang_parse_post(clicon_handle h,
+		yang_spec    *yspec,
+		int           modnr)
 {
-    int         retval = -1;
-    yang_stmt  *ymod = NULL; /* Top-level yang (sub)module */
-    int         i;
-    int         modnr;       /* Existing number of modules */
-    char       *base = NULL;;
-
-    /* Apply steps 2.. on new modules, ie ones after modnr. */
-    modnr = yspec->yp_len;
-    if (filename){
-	/* Find module, and do not load file if module already exists */
-	if (basename(filename) == NULL){
-	    clicon_err(OE_YANG, errno, "No basename");
-	    goto done;
-	}
-	if ((base = strdup(basename(filename))) == NULL){
-	    clicon_err(OE_YANG, errno, "strdup");
-	    goto done;
-	}
-	if (index(base, '@') != NULL)
-	    *index(base, '@') = '\0';
-	if (yang_find((yang_node*)yspec, Y_MODULE, base) != NULL)
-	    goto ok;
-	if ((ymod = yang_parse_filename(filename, yspec)) == NULL)
-	    goto done;
-    }
-    else {
-	/* Do not load module if it already exists */
-	if (yang_find((yang_node*)yspec, Y_MODULE, module) != NULL)
-	    goto ok;
-	if ((ymod = yang_parse_module(h, module, revision, yspec)) == NULL)
-	    goto done;
-    }
-
+    int retval = -1;
+    int i;
+    
     /* 1: Parse from text to yang parse-tree. */
     /* Iterate through modules */
-    if (yang_parse_recurse(h, ymod, yspec) < 0)
-	goto done;
+    for (i=modnr; i<yspec->yp_len; i++)
+	if (yang_parse_recurse(h, yspec->yp_stmt[i], yspec) < 0)
+	    goto done;
 
     /* 2. Check cardinality maybe this should be done after grouping/augment */
-    for (i=modnr; i<yspec->yp_len; i++) /* XXX */
+    for (i=modnr; i<yspec->yp_len; i++) 
 	if (yang_cardinality(h, yspec->yp_stmt[i], yspec->yp_stmt[i]->ys_argument) < 0)
 	    goto done;
 
     /* 3: Merge sub-modules with modules - after this step, no submodules exist
      * In the merge, remove submodule headers
      */
-    for (i=modnr; i<yspec->yp_len; i++){
-	if (yspec->yp_stmt[i]->ys_keyword != Y_SUBMODULE)
-	    continue;
-    }
-    i = 0;
+    i = modnr;
     while (i<yspec->yp_len){
 	int j;
 	if (yspec->yp_stmt[i]->ys_keyword != Y_SUBMODULE){
@@ -2416,7 +2394,48 @@ yang_parse(clicon_handle h,
     for (i=modnr; i<yspec->yp_len; i++)
 	if (yang_apply((yang_node*)yspec->yp_stmt[i], -1, ys_schemanode_check, NULL) < 0)
 	    goto done;
-    /* Return main module parsed in step 1 */
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Parse yang specification and its dependencies recursively given module
+ * @param[in]     h         clicon handle
+ * @param[in]     module    Module name, or absolute filename (including dir)
+ * @param[in]     dir       Directory where to look for modules and sub-modules
+ * @param[in]     revision  Revision, or NULL
+ * @param[in,out] yspec     Modules parse are added to this yangspec
+ * @retval        0         OK
+ * @retval       -1         Error
+ * @see yang_spec_parse_file
+ */
+int
+yang_spec_parse_module(clicon_handle h, 
+		       const char   *module, 
+		       const char   *revision, 
+		       yang_spec    *yspec)
+{
+    int         retval = -1;
+    int         modnr;       /* Existing number of modules */
+    char       *base = NULL;;
+
+    if (yspec == NULL){
+	clicon_err(OE_YANG, EINVAL, "yang spec is NULL");
+	goto done;
+    }
+    if (module == NULL){
+	clicon_err(OE_YANG, EINVAL, "yang module not set");
+	goto done;
+    }
+    /* Apply steps 2.. on new modules, ie ones after modnr. */
+    modnr = yspec->yp_len;
+    /* Do not load module if it already exists */
+    if (yang_find((yang_node*)yspec, Y_MODULE, module) != NULL)
+	goto ok;
+    if (yang_parse_module(h, module, revision, yspec) == NULL)
+	goto done;
+    if (yang_parse_post(h, yspec, modnr) < 0)
+	goto done;
  ok:
     retval = 0;
  done:
@@ -2424,6 +2443,132 @@ yang_parse(clicon_handle h,
 	free(base);
     return retval;
 }
+
+/*! Parse yang specification and its dependencies recursively given filename
+ * @param[in]     h         clicon handle
+ * @param[in]     filename  Actual filename (including dir and revision)
+ * @param[in]     dir       Directory for sub-modules
+ * @param[in,out] yspec     Modules parse are added to this yangspec
+ * @retval        0         OK
+ * @retval       -1         Error
+ * @see yang_spec_parse_module for yang dir,module,revision instead of 
+ *       actual filename
+ * @see yang_spec_load_dir For loading all files in a directory
+ */
+int
+yang_spec_parse_file(clicon_handle h, 
+		     const char   *filename, 
+		     yang_spec    *yspec)
+{
+    int         retval = -1;
+    int         modnr;       /* Existing number of modules */
+    char       *base = NULL;;
+
+    /* Apply steps 2.. on new modules, ie ones after modnr. */
+    modnr = yspec->yp_len;
+    /* Find module, and do not load file if module already exists */
+    if (basename(filename) == NULL){
+	clicon_err(OE_YANG, errno, "No basename");
+	goto done;
+    }
+    if ((base = strdup(basename(filename))) == NULL){
+	clicon_err(OE_YANG, errno, "strdup");
+	goto done;
+    }
+    if (index(base, '@') != NULL)
+	*index(base, '@') = '\0';
+    if (yang_find((yang_node*)yspec, Y_MODULE, base) != NULL)
+	goto ok;
+    if (yang_parse_filename(filename, yspec) == NULL)
+	goto done;
+    if (yang_parse_post(h, yspec, modnr) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
+    if (base)
+	free(base);
+    return retval;
+}
+
+/*! Load all yang modules in directory
+ * @param[in]  h   Clicon handle
+ * @param[in]  dir Load all yang modules in this directory
+ * @param[in,out] yspec     Modules parse are added to this yangspec
+ * @retval        0         OK
+ * @retval       -1         Error
+ * @see yang_spec_parse_file
+ */
+int
+yang_spec_load_dir(clicon_handle h,
+		   char         *dir,
+		   yang_spec    *yspec)
+{
+    int            retval = -1;
+    int            ndp;
+    struct dirent *dp = NULL;
+    int            i;
+    char           filename[MAXPATHLEN];
+    char          *base = NULL; /* filename without dir */
+    char          *b;    
+    int            j;
+    int            modnr;
+    
+    /* Get plugin objects names from plugin directory */
+    if((ndp = clicon_file_dirent(dir, &dp, "(.yang)$", S_IFREG)) < 0)
+	goto done;
+    if (ndp == 0)
+	clicon_log(LOG_WARNING, "%s: No yang files found in %s",
+		   __FUNCTION__, dir);
+    /* Apply post steps on new modules, ie ones after modnr. */
+    modnr = yspec->yp_len;
+    /* Load all yang files in dir */
+    for (i = 0; i < ndp; i++) {
+	/* base = module name [+ @rev ] + .yang */
+	if (base)
+	    free(base);
+	if ((base = strdup(dp[i].d_name)) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+	*rindex(base, '.') = '\0'; /* strip postfix .yang */
+	/* base = module name [+ @rev] 
+	 * if it hasnt @rev then prefer it (dont check other files w @rev)
+	 * Otherwise see if there is a newer
+	 */
+	if ((b = index(base, '@')) != NULL){
+	    *b = '\0';
+	    /* base = module name */
+
+	    /* Entries are sorted, see if later entry exists (include @), if so
+	     * skip this one and take last.
+	     * Assume file without @ is last
+	     */
+	    for (j = (i+1); j < ndp; j++)
+		if (strncmp(base, dp[j].d_name, strlen(base)) == 0)
+		    break;
+	    if (j<ndp){ /* exists later entry */
+		clicon_debug(1, "%s skip %s", __FUNCTION__, dp[i].d_name);
+		continue;
+	    }
+	}
+	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
+	/* Dont parse if already exists */
+	if (yang_find((yang_node*)yspec, Y_MODULE, base) != NULL ||
+	    yang_find((yang_node*)yspec, Y_SUBMODULE, base) != NULL)
+	    continue;
+	if (yang_parse_filename(filename, yspec) == NULL)
+	    goto done;
+    }
+    if (yang_parse_post(h, yspec, modnr) < 0)
+	goto done;
+    retval = 0;
+  done:
+    if (base)
+	free(base);
+    return retval;
+}
+
 
 /*! Apply a function call recursively on all yang-stmt s recursively
  *
@@ -2835,121 +2980,6 @@ yang_config(yang_stmt *ys)
     return 1;
 }
 
-/*! Parse yang specification and its dependencies recursively given module
- * @param[in]     h         clicon handle
- * @param[in]     module    Module name, or absolute filename (including dir)
- * @param[in]     dir       Directory where to look for modules and sub-modules
- * @param[in]     revision  Revision, or NULL
- * @param[in,out] yspec     Modules parse are added to this yangspec
- * @retval        0         OK
- * @retval       -1         Error
- * @see yang_spec_parse_file
- */
-int
-yang_spec_parse_module(clicon_handle h,
-		       char         *module,
-		       char         *revision,
-		       yang_spec    *yspec)
-{
-    int retval = -1;
-    
-    if (yspec == NULL){
-	clicon_err(OE_YANG, EINVAL, "yang spec is NULL");
-	goto done;
-    }
-    if (module == NULL){
-	clicon_err(OE_YANG, EINVAL, "yang module not set");
-	goto done;
-    }
-    /* Sanity check - use yang_spec_parse_file instead */
-    if (strlen(module) && module[0] == '/'){
-	clicon_err(OE_YANG, EINVAL, "yang module illegal format");
-	goto done;
-    }
-    if (yang_parse(h, NULL, module, revision, yspec) < 0)
-	goto done;
-    retval = 0;
-  done:
-    return retval;
-}
-
-/*! Parse yang specification and its dependencies recursively given filename
- * @param[in]     h         clicon handle
- * @param[in]     filename  Actual filename (including dir and revision)
- * @param[in]     dir       Directory for sub-modules
- * @param[in,out] yspec     Modules parse are added to this yangspec
- * @retval        0         OK
- * @retval       -1         Error
- * @see yang_spec_parse_module for yang dir,module,revision instead of actual filename
- */
-int
-yang_spec_parse_file(clicon_handle h,
-		     char         *filename,
-		     yang_spec    *yspec)
-{
-    int retval = -1;
-    
-    if (yspec == NULL){
-	clicon_err(OE_YANG, EINVAL, "yang spec is NULL");
-	goto done;
-    }
-    if (yang_parse(h, filename, NULL, NULL, yspec) < 0)
-	goto done;
-    retval = 0;
-  done:
-    return retval;
-}
-
-/*! Load all yang modules in directory
- * @param[in]  h   Clicon handle
- * @param[in]  dir Load all yang modules in this directory
- * @param[in,out] yspec     Modules parse are added to this yangspec
- * @retval        0         OK
- * @retval       -1         Error
- */
-int
-yang_spec_load_dir(clicon_handle h,
-		   char         *dir,
-		   yang_spec    *yspec)
-{
-    int            retval = -1;
-    int            ndp;
-    struct dirent *dp = NULL;
-    int            i;
-    char           filename[MAXPATHLEN];
-    char          *base;
-    char          *b;
-    int            j;
-    int            len;
-    
-    /* Get plugin objects names from plugin directory */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.yang)$", S_IFREG)) < 0)
-	goto done;
-    /* Load all yang files */
-    for (i = 0; i < ndp; i++) {
-	base = dp[i].d_name;
-	/* Entries are sorted, see if later entry exists (include @), if so skip 
-	 * this one and take last.
-	 */
-	if ((b = index(base, '@')) != NULL)
-	    len = b-base;
-	else
-	    len = strlen(base);
-	/* remove duplicates: there may be cornercases that dont work, eg
-	 * mix of revisions and not? */
-	for (j = (i+1); j < ndp; j++)
-	    if (strncmp(base, dp[j].d_name, len) == 0)
-		break;
-	if (j<ndp) /* exists later entry */
-	    continue;
-	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
-	if (yang_parse(h, filename, NULL, NULL, yspec) < 0)
-	    goto done;
-    }
-    retval = 0;
-  done:
-    return retval;
-}
 
 /*! Given a yang node, translate the argument string to a cv vector
  *

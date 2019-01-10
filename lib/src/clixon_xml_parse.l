@@ -106,6 +106,7 @@ ncname     {namestart}{namechar}*
 
 <START,TEXTDECL>[ \t]   ;
 <START,STATEA,CMNT,TEXTDECL>\n   { _YA->ya_linenum++; }
+<START,STATEA,CMNT,TEXTDECL>\r
 
 <START>{ncname}        { clixon_xml_parselval.string = strdup(yytext);
                             return NAME; /* rather be catch-all */

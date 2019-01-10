@@ -4,6 +4,10 @@
 
 #set -e
 
+if [ -x ./site.sh ]; then
+    . ./site.sh
+fi
+
 testnr=0
 testname=
 

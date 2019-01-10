@@ -71,7 +71,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hD:f:l:qa:u:d:y:U:t:"
+#define NETCONF_OPTS "hD:f:l:qa:u:d:y:U:t:o:"
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
@@ -333,7 +333,8 @@ usage(clicon_handle h,
 
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
-	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n",
+	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n"
+	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_netconf_dir(h)
 	    );
@@ -446,7 +447,15 @@ main(int    argc,
 	case 't': /* timeout in seconds */
 	    tv.tv_sec = atoi(optarg);
 	    break;
-
+	case 'o':{ /* Configuration option */
+	    char          *val;
+	    if ((val = index(optarg, '=')) == NULL)
+		usage(h, argv0);
+	    *val++ = '\0';
+	    if (clicon_option_add(h, optarg, val) < 0)
+		goto done;
+	    break;
+	}
 	default:
 	    usage(h, argv[0]);
 	    break;

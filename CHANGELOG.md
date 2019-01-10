@@ -62,7 +62,11 @@
   * RPC method input parameters validated
     * see https://github.com/clicon/clixon/issues/47
   * Support of submodule, include and belongs-to.
-  * Openconfig yang specs parsed: https://github.com/openconfig/public
+  * Parsing of standard yang files supported, such as:
+    * https://github.com/openconfig/public - except [https://github.com/clicon/clixon/issues/60].
+      * See [test/test_openconfig.sh]
+    * https://github.com/YangModels/yang - except vendor-specific specs
+      * See [test/test_yangmodels.sh]
   * Improved "unknown" handling
   * More precise Yang validation and better error messages
     * Example: adding bad-, missing-, or unknown-element error messages, instead of operation-failed.
@@ -77,7 +81,9 @@
   * Recovery user "_nacm_recovery" added.
     * Example use is restconf PUT when NACM edit-config is permitted, then automatic commit and discard are permitted using recovery user.
   * Example user changed adm1 to andy to comply with RFC8341 example
-
+* Added -o "<option>=<value>" command-line option to all programs: backend, cli, netconf, restconf.
+  * Any config option from file can be overrided by giving them on command-line.
+	
 ### API changes on existing features (you may need to change your code)
 * Stricter YANG choice validation leads to enforcement of structures like: `choice c{ mandatory true; leaf x` statements. `x` was not previously enforced.
 * Many hand-crafted validation messages have been removed and replaced with generic validations, which may lead to changed rpc-error messages.
@@ -112,6 +118,7 @@
   * <!DOCTYPE (ie DTD) is not supported.
 
 ### Corrected Bugs
+* Ignore CR(\r) in yang files for DOS files
 * Keyword "min" (not only "max") can be used in built-in types "range" and "length" statements.
 * Support for empty yang string added, eg `default "";`
 * Removed CLI generation for yang notifications (and other non-data yang nodes)

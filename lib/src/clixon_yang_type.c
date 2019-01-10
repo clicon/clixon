@@ -220,7 +220,8 @@ ys_resolve_type(yang_stmt *ys,
     /* Recursively resolve ys -> resolve with restrictions(options, etc) 
      * Note that the resolved type could be ys itself.
      */
-    if (yang_type_resolve((yang_stmt*)ys->ys_parent, ys, &resolved,
+    if (yang_type_resolve((yang_stmt*)ys->ys_parent, (yang_stmt*)ys->ys_parent,
+			  ys, &resolved,
 			  &options, &cvv, &pattern, &fraction) < 0)
 	goto done;
 
@@ -328,7 +329,7 @@ cv2yang_type(enum cv_type cv_type)
  * to find special cligen types such as ipv4addr.
  * not true yang types
  * @param[in]  origtype Name of original type
- * @param[in]  restype  Resolved type. may be null, in that case origtype is used
+ * @param[in]  restype  Resolved type. May be null, in that case origtype is used
  * @param[out] cvtype   Translation from resolved type 
  * @note Thereis a kludge for handling direct translations of native cligen types
  */
@@ -343,7 +344,7 @@ clicon_type2cv(char         *origtype,
     if (restype != NULL){ 
 	yang2cv_type(restype, cvtype);
 	if (*cvtype == CGV_ERR){
-	    clicon_err(OE_DB, 0, "\"%s\" type not translated", restype);
+	    clicon_err(OE_YANG, EINVAL, "\"%s\" type not translated", restype);
 	    goto done;
 	}
     }
@@ -354,7 +355,7 @@ clicon_type2cv(char         *origtype,
 	 */
 	yang2cv_type(origtype, cvtype);
 	if (*cvtype == CGV_ERR){
-	    clicon_err(OE_DB, 0, "\"%s\": type not resolved", origtype);
+	    clicon_err(OE_YANG, EINVAL, "\"%s\": type not resolved", origtype);
 	    goto done;
 	}
     }
@@ -601,7 +602,7 @@ ys_cv_validate_union_one(yang_stmt *ys,
     enum cv_type cvtype;
     cg_var      *cvt=NULL;
 
-    if (yang_type_resolve(ys, yt, &yrt, &options, &cvv, &pattern,
+    if (yang_type_resolve(ys, ys, yt, &yrt, &options, &cvv, &pattern,
 			  &fraction) < 0)
 	goto done;
     restype = yrt?yrt->ys_argument:NULL;
@@ -888,7 +889,8 @@ resolve_restrictions(yang_stmt   *yrange,
 }
 
 /*! Recursively resolve a yang type to built-in type with optional restrictions
- * @param[in]  ys       (original) type yang-stmt where the current search is based
+ * @param[in]  yorig    (original) type yang-stmt where original search is based
+ * @param[in]  ys       (transitive) yang-stmt where current search is based
  * @param[in]  ytype    yang-stmt object containing currently resolving type
  * @param[out] yrestype resolved type. return built-in type or NULL. mandatory
  * @param[out] options  pointer to flags field of optional values. optional
@@ -906,7 +908,8 @@ resolve_restrictions(yang_stmt   *yrange,
  * Note also that for all pointer arguments, if NULL is given, no value is assigned.
  */
 int 
-yang_type_resolve(yang_stmt   *ys, 
+yang_type_resolve(yang_stmt   *yorig,
+		  yang_stmt   *ys, 
 		  yang_stmt   *ytype, 
 		  yang_stmt  **yrestype, 
 		  int         *options, 
@@ -938,6 +941,7 @@ yang_type_resolve(yang_stmt   *ys,
 	    goto done;
 	goto ok;
     }
+    /* Resolving type restrictions */
     yrange    = yang_find((yang_node*)ytype, Y_RANGE, NULL);
     ylength   = yang_find((yang_node*)ytype, Y_LENGTH, NULL);
     ypattern  = yang_find((yang_node*)ytype, Y_PATTERN, NULL);
@@ -955,11 +959,12 @@ yang_type_resolve(yang_stmt   *ys,
     if (prefix){ /* Go to top and find import that matches */
 	if ((yrmod = yang_find_module_by_prefix(ytype, prefix)) == NULL){
 	    clicon_err(OE_DB, 0, "Type not resolved: \"%s:%s\" in module %s",
-		       prefix, type, ys_module(ys)->ys_argument);
+		       prefix, type, ys_module(yorig)->ys_argument);
 	    goto done;
 	}
 	if ((rytypedef = yang_find((yang_node*)yrmod, Y_TYPEDEF, type)) == NULL)
 	    goto ok; /* unresolved */
+	ys = rytypedef;
     }
     else
 	while (1){
@@ -984,7 +989,7 @@ yang_type_resolve(yang_stmt   *ys,
 	    goto done;
 	}
 	/* recursively resolve this new type */
-	if (yang_type_resolve(ys, rytype, yrestype, 
+	if (yang_type_resolve(yorig, ys, rytype, yrestype, 
 			      options, cvv, pattern, fraction) < 0)
 	    goto done;
 	/* overwrites the resolved if any */
@@ -1060,7 +1065,7 @@ yang_type_get(yang_stmt    *ys,
     type = yarg_id(ytype);
     if (origtype)
 	*origtype = type;
-    if (yang_type_resolve(ys, ytype, yrestype, 
+    if (yang_type_resolve(ys, ys, ytype, yrestype, 
 			  options, cvv, pattern, fraction) < 0)
 	goto done;
     clicon_debug(3, "%s: %s %s->%s", __FUNCTION__, ys->ys_argument, type, 

@@ -81,7 +81,7 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:l:p:y:a:u:"
+#define RESTCONF_OPTS "hD:f:l:p:y:a:u:o:"
 
 /* RESTCONF enables deployments to specify where the RESTCONF API is 
    located.  The client discovers this by getting the "/.well-known/host-meta"
@@ -495,7 +495,8 @@ usage(clicon_handle h,
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
-    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n",
+    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
+	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_restconf_dir(h)
 	    );
@@ -611,6 +612,15 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
+	case 'o':{ /* Configuration option */
+	    char          *val;
+	    if ((val = index(optarg, '=')) == NULL)
+		usage(h, argv0);
+	    *val++ = '\0';
+	    if (clicon_option_add(h, optarg, val) < 0)
+		goto done;
+	    break;
+	}
         default:
             usage(h, argv[0]);
             break;

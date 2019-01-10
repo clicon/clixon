@@ -212,7 +212,6 @@ struct yang_stmt{
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
 };
 
-
 /*! top-level yang parse-tree */
 struct yang_spec{
     int                yp_len;       /* Number of children */
@@ -269,9 +268,6 @@ int        yang_print(FILE *f, yang_node *yn);
 int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
 int        ys_populate(yang_stmt *ys, void *arg);
 yang_stmt *yang_parse_file(int fd, const char *name, yang_spec *ysp);
-int        yang_parse(clicon_handle h, const char *filename,
-		      const char *module, 
-		      const char *revision, yang_spec *ysp);
 int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
 int        yang_abs_schema_nodeid(yang_spec *yspec, yang_stmt *ys,
@@ -283,8 +279,9 @@ cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys, char *extra);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
-int        yang_spec_parse_module(clicon_handle h, char *module, char *revision, yang_spec *yspec);
-int        yang_spec_parse_file(clicon_handle h, char *filename, yang_spec *yspec);
+int        yang_spec_parse_module(clicon_handle h, const char *module,
+				  const char *revision, yang_spec *yspec);
+int        yang_spec_parse_file(clicon_handle h, const char *filename, yang_spec *yspec);
 int        yang_spec_load_dir(clicon_handle h, char *dir, yang_spec *yspec);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_node *yn, char *name);
