@@ -634,6 +634,51 @@ clixon_trim(char *str)
     return s;
 }
 
+/*! Transform from XSD regex to posix ERE
+ * The usecase is that Yang (RFC7950) supports XSD regexpressions but CLIgen supports
+ * Current translations:
+ * \d --> [0-9]
+ * POSIX ERE regexps according to man regex(3).
+ * @param[in]  xsd    Input regex string according XSD
+ * @param[out] posix  Output (malloced) string according to POSIX ERE
+ * @see http://www.w3.org/TR/2004/REC-xmlschema-2-20041028
+ * @note that the translation is ad-hoc, may need more translations
+ */
+int
+regexp_xsd2posix(char  *xsd,
+		 char **posix)
+{
+    int   retval = -1;
+    char *x;
+    char *p = NULL;
+    int   i;
+    int   len;
+
+    len = strlen(xsd);
+    x = xsd;
+    while ((x = strstr(x, "\\d")) != NULL){
+	len += 3; /* \d --> [0-9] */
+	x += 2;
+    }
+    if ((p = malloc(len+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(p, 0, len+1);
+    *posix = p;
+    for (i=0; i<strlen(xsd); i++){
+	if (strncmp(&xsd[i], "\\d", 2) == 0){
+	    strcpy(p, "[0-9]");
+	    p += 5; i++;
+	}
+	else
+	    *p++ = xsd[i];
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! strndup() for systems without it, such as xBSD
  */
 #ifndef HAVE_STRNDUP

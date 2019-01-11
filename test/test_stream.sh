@@ -153,7 +153,7 @@ new "netconf NONEXIST subscription"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>NONEXIST</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></rpc-error></rpc-reply>]]>]]>$' $NCWAIT
 
 new "netconf EXAMPLE subscription with wrong date"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream><startTime>kallekaka</startTime></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>startTime</bad-element></error-info><error-severity>error</error-severity><error-message>Invalid time: kallekaka</error-message></rpc-error></rpc-reply>]]>]]>$' 0
+expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream><startTime>kallekaka</startTime></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>startTime</bad-element></error-info><error-severity>error</error-severity><error-message>regexp match fail: "kallekaka" does not match' 0
 
 #new "netconf EXAMPLE subscription with replay"
 #NOW=$(date +"%Y-%m-%dT%H:%M:%S")
@@ -181,7 +181,7 @@ expectwait 'curl -s -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-
 # 2a) start subscription 8s - expect 1-2 notifications
 new "2a) start subscriptions 8s - expect 1-2 notifications"
 ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 8)
-expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
@@ -193,10 +193,11 @@ if [ $nr -lt 1 -o $nr -gt 2 ]; then
 fi
 
 sleep 2
+
 # 2b) start subscription 8s - stoptime after 5s - expect 1-2 notifications
 new "2b) start subscriptions 8s - stoptime after 5s - expect 1-2 notifications"
 ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 8 -e +10)
-expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -209,7 +210,7 @@ fi
 # 2c
 new "2c) start sub 8s - replay from start -8s - expect 3-4 notifications"
 ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 10 -s -8)
-expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -222,7 +223,7 @@ fi
 # 2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications
 new "2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications"
 ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 10 -s -30 -e +4)
-expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -235,7 +236,7 @@ fi
 # 2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications
 new "2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications"
 ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 10 -s -90 -e +0)
-expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -253,7 +254,7 @@ PID=$!
 
 new "Start subscriptions in parallell"
 ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 8)
-expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then

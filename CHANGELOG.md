@@ -85,6 +85,12 @@
   * Any config option from file can be overrided by giving them on command-line.
 	
 ### API changes on existing features (you may need to change your code)
+* Date-and-time type now properly uses ISO 8601 UTC timezone designators.
+  * Eg 2008-09-21T18:57:21.003456 is changed to 2008-09-21T18:57:21.003456Z
+* Renamed yang file `ietf-netconf-notification@2008-07-01.yang` to `clixon-rfc5277`.
+  * Fixed validation problems, see [https://github.com/clicon/clixon/issues/62]
+  * Name confusion, the file is manually constructed from the rfc.
+  * Changed prefix to `ncevent`
 * Stricter YANG choice validation leads to enforcement of structures like: `choice c{ mandatory true; leaf x` statements. `x` was not previously enforced.
 * Many hand-crafted validation messages have been removed and replaced with generic validations, which may lead to changed rpc-error messages.
 * CLICON_XML_SORT option (in clixon-config.yang) has been removed and set to true permanently. Unsorted XML lists leads to slower performance and old obsolete code can be removed.
@@ -101,6 +107,7 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
+* Cligen uses posix regex while yang uses XSD. It differs in some aspects. A translator function has been added for `\d` -> `[0-9]` translation, there may be more.
 * Added new clixon-lib yang module for internal netconf protocol. Currently only extends the standard with a debug RPC.
 * Added three-valued return values for several validate functions where -1 is fatal error, 0 is validation failed and 1 is validation OK.
   * This includes: `xmldb_put`, `xml_yang_validate_all`, `xml_yang_validate_add`, `xml_yang_validate_rpc`, `api_path2xml`, `api_path2xpath`
@@ -118,6 +125,7 @@
   * <!DOCTYPE (ie DTD) is not supported.
 
 ### Corrected Bugs
+* [ietf-netconf-notification@2008-07-01.yang validation problem #62](https://github.com/clicon/clixon/issues/62)
 * Ignore CR(\r) in yang files for DOS files
 * Keyword "min" (not only "max") can be used in built-in types "range" and "length" statements.
 * Support for empty yang string added, eg `default "";`

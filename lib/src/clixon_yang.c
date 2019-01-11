@@ -1082,7 +1082,7 @@ ys_populate_leaf(yang_stmt *ys,
  < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
-    if (clicon_type2cv(type, restype, &cvtype) < 0) /* This handles non-resolved also */
+    if (clicon_type2cv(type, restype, ys, &cvtype) < 0) /* This handles non-resolved also */
 	goto done;
     /* 2. Create the CV using cvtype and name it */
     if ((cv = cv_new(cvtype)) == NULL){
@@ -1230,7 +1230,7 @@ ys_populate_range(yang_stmt *ys,
     restype = yrestype?yrestype->ys_argument:NULL;
     origtype = yarg_id((yang_stmt*)yparent);
     /* This handles non-resolved also */
-    if (clicon_type2cv(origtype, restype, &cvtype) < 0) 
+    if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0) 
 	goto done;
     if ((vec = clicon_strsep(ys->ys_argument, "|", &nvec)) == NULL)
 	goto done;

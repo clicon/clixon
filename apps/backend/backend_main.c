@@ -830,7 +830,7 @@ main(int    argc,
 	 goto done;
      /* Load yang Netconf stream discovery */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_parse_module(h, "ietf-netconf-notification", NULL, yspec)< 0)
+	 yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
 	 goto done;
     /* Set options: database dir and yangspec (could be hidden in connect?)*/
     if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)

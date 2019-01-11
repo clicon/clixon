@@ -1032,7 +1032,7 @@ netconf_module_load(clicon_handle h)
     /* Load yang spec */
     if (yang_spec_parse_module(h, "ietf-netconf", NULL, yspec)< 0)
 	goto done;
-    if (yang_spec_parse_module(h, "ietf-netconf-notification", NULL, yspec)< 0)
+    if (yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
 	goto done;
     retval = 0;
  done:

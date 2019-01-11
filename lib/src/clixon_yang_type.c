@@ -254,35 +254,6 @@ yang2cv_type(char         *ytype,
 	*cv_type = ret;
 	return 0;
     }
-    /* special derived types */
-    if (strcmp("ipv4-address", ytype) == 0){ /* RFC6991 */
-	*cv_type = CGV_IPV4ADDR;
-	return 0;
-    }
-    if (strcmp("ipv6-address", ytype) == 0){ /* RFC6991 */
-	*cv_type = CGV_IPV6ADDR;
-	return 0;
-    }
-    if (strcmp("ipv4-prefix", ytype) == 0){ /* RFC6991 */
-	*cv_type = CGV_IPV4PFX;
-	return 0;
-    }
-    if (strcmp("ipv6-prefix", ytype) == 0){ /* RFC6991 */
-	*cv_type = CGV_IPV6PFX;
-	return 0;
-    }
-    if (strcmp("date-and-time", ytype) == 0){ /* RFC6991 */
-	*cv_type = CGV_TIME;
-	return 0;
-    }
-    if (strcmp("mac-address", ytype) == 0){ /* RFC6991 */
-	*cv_type = CGV_MACADDR;
-	return 0;
-    }
-    if (strcmp("uuid", ytype) == 0){ /* RFC6991 */
-	*cv_type = CGV_UUID;
-	return 0;
-    }
     return 0;
 }
 
@@ -330,12 +301,14 @@ cv2yang_type(enum cv_type cv_type)
  * not true yang types
  * @param[in]  origtype Name of original type
  * @param[in]  restype  Resolved type. May be null, in that case origtype is used
+ * @param[in]  ys       Yang stmt of original resolving node
  * @param[out] cvtype   Translation from resolved type 
  * @note Thereis a kludge for handling direct translations of native cligen types
  */
 int
 clicon_type2cv(char         *origtype, 
 	       char         *restype, 
+	       yang_stmt    *ys,
 	       enum cv_type *cvtype)
 {
     int retval = -1;
@@ -344,7 +317,8 @@ clicon_type2cv(char         *origtype,
     if (restype != NULL){ 
 	yang2cv_type(restype, cvtype);
 	if (*cvtype == CGV_ERR){
-	    clicon_err(OE_YANG, EINVAL, "\"%s\" type not translated", restype);
+	    clicon_err(OE_YANG, 0, "%s: \"%s\" type not translated",
+		       ys_module(ys)->ys_argument, restype);
 	    goto done;
 	}
     }
@@ -355,7 +329,8 @@ clicon_type2cv(char         *origtype,
 	 */
 	yang2cv_type(origtype, cvtype);
 	if (*cvtype == CGV_ERR){
-	    clicon_err(OE_YANG, EINVAL, "\"%s\": type not resolved", origtype);
+	    clicon_err(OE_YANG, 0, "%s:\"%s\": type not resolved",
+		       ys_module(ys)->ys_argument, origtype);
 	    goto done;
 	}
     }
@@ -543,10 +518,15 @@ cv_validate1(cg_var      *cv,
 	    }
 	}
 	if ((options & YANG_OPTIONS_PATTERN) != 0){
-	    if ((retval2 = match_regexp(str, pattern)) < 0){
+	    char *posix = NULL;
+	    if (regexp_xsd2posix(pattern, &posix) < 0)
+		goto done;
+	    if ((retval2 = match_regexp(str, posix)) < 0){
 		clicon_err(OE_DB, 0, "match_regexp: %s", pattern);
 		return -1;
 	    }
+	    if (posix)
+		free(posix);
 	    if (retval2 == 0){
 		if (reason)
 		    *reason = cligen_reason("regexp match fail: \"%s\" does not match %s",
@@ -611,7 +591,7 @@ ys_cv_validate_union_one(yang_stmt *ys,
 	    goto done;
     }
     else {
-	if (clicon_type2cv(type, restype, &cvtype) < 0)
+	if (clicon_type2cv(type, restype, ys, &cvtype) < 0)
 	    goto done;
 	/* reparse value with the new type */
 	if ((cvt = cv_new(cvtype)) == NULL){
@@ -718,7 +698,7 @@ ys_cv_validate(cg_var    *cv,
 		      &options, &cvv, &pattern, &fraction) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
-    if (clicon_type2cv(type, restype, &cvtype) < 0)
+    if (clicon_type2cv(type, restype, ys, &cvtype) < 0)
 	goto done;
 
     if (cv_type_get(ycv) != cvtype){
@@ -978,7 +958,7 @@ yang_type_resolve(yang_stmt   *yorig,
 		break;
 	    /* Did not find a matching typedef there, proceed to next level */
 	    yn = ys->ys_parent;
-	    if (yn && yn->yn_keyword == Y_SPEC)
+	    if (yn && (yn->yn_keyword == Y_SPEC))
 		yn = NULL;
 	    ys = (yang_stmt*)yn;
 	}

@@ -278,8 +278,14 @@ yang2cli_var_sub(clicon_handle h,
 	    }
 	}
     }
-    if (options & YANG_OPTIONS_PATTERN)
-	cprintf(cb, " regexp:\"%s\"", pattern);
+    if (options & YANG_OPTIONS_PATTERN){
+	char *posix = NULL;
+	if (regexp_xsd2posix(pattern, &posix) < 0)
+	    goto done;
+	cprintf(cb, " regexp:\"%s\"", posix);
+	if (posix)
+	    free(posix);
+    }
     cprintf(cb, ">");
     if (helptext)
 	cprintf(cb, "(\"%s\")", helptext);
@@ -329,7 +335,7 @@ yang2cli_var_union_one(clicon_handle h,
 	    goto done;
     }
     else {
-	if (clicon_type2cv(origtype, restype, &cvtype) < 0)
+	if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
 	    goto done;
 	if ((retval = yang2cli_var_sub(h, ys, ytype, cb, helptext, cvtype, 
 				       options, cvv, pattern, fraction_digits)) < 0)
@@ -417,7 +423,7 @@ yang2cli_var(clicon_handle h,
 	retval = 0;
 	goto done;
     }
-    if (clicon_type2cv(origtype, restype, &cvtype) < 0)
+    if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
 	goto done;
     /* Note restype can be NULL here for example with unresolved hardcoded uuid */
     if (restype && strcmp(restype, "union") == 0){ 

@@ -666,7 +666,7 @@ main(int    argc,
 	 yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
 	 goto done;
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_parse_module(h, "ietf-netconf-notification", NULL, yspec)< 0)
+	 yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
 	 goto done;
     /* Call start function in all plugins before we go interactive 
        Pass all args after the standard options to plugin_start

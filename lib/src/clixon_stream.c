@@ -548,7 +548,7 @@ stream_notify(clicon_handle h,
     yang_spec *yspec = NULL;
     char      *str = NULL;
     cbuf      *cb = NULL;
-    char       timestr[27];
+    char       timestr[28];
     struct timeval tv;
     event_stream_t *es;
 
@@ -622,7 +622,7 @@ stream_notify_xml(clicon_handle h,
     yang_spec *yspec = NULL;
     char      *str = NULL;
     cbuf      *cb = NULL;
-    char       timestr[27];
+    char       timestr[28];
     struct timeval tv;
     event_stream_t *es;
 

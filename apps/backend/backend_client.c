@@ -310,7 +310,7 @@ client_statedata(clicon_handle h,
 	goto done;
     }    
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277"))
-	if ((retval = client_get_streams(h, yspec, xpath, "ietf-netconf-notification", "netconf", xret)) != 0)
+	if ((retval = client_get_streams(h, yspec, xpath, "clixon-rfc5277", "netconf", xret)) != 0)
 	    goto done;
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040"))
 	if ((retval = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) != 0)
