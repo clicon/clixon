@@ -1,7 +1,18 @@
 #!/bin/bash
 # Authentication and authorization and IETF NACM
-# See RFC 8341 A.2
-# But replaced ietf-netconf-monitoring with *
+# NACM data node rule
+# @see RFC 8341 A.1 and A.4 (and permit-all from A.2)
+# Tests for:
+# deny-nacm:  This rule denies the "guest" group any access to the
+#     /nacm subtree.
+# permit-acme-config:  This rule gives the "limited" group read-write
+#    access to the acme <config-parameters>.
+# permit-dummy-interface:  This rule gives the "limited" and "guest"
+#     groups read-update access to the acme <interface> entry named
+#     "dummy".  This entry cannot be created or deleted by these groups;
+#     it can only be altered.
+# permit-interface:  This rule gives the "admin" group read-write
+#     access to all acme <interface> entries.
 
 APPNAME=example
 # include err() and new() functions and creates $dir
@@ -60,38 +71,70 @@ RULES=$(cat <<EOF
      <rule-list>
        <name>guest-acl</name>
        <group>guest</group>
+
        <rule>
-         <name>deny-ncm</name>
-         <module-name>*</module-name>
+         <name>deny-nacm</name>
+         <path xmlns:n="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
+           /n:nacm
+         </path>
          <access-operations>*</access-operations>
          <action>deny</action>
          <comment>
-             Do not allow guests any access to the NETCONF
-             monitoring information.
+           Deny the 'guest' group any access to the /nacm data.
+         </comment>
+       </rule>
+     </rule-list>
+
+     <rule-list>
+       <name>limited-acl</name>
+       <group>limited</group>
+
+       <rule>
+         <name>permit-acme-config</name>
+         <path xmlns:acme="http://example.com/ns/netconf">
+           /acme:acme-netconf/acme:config-parameters
+         </path>
+         <access-operations>
+           read create update delete
+         </access-operations>
+         <action>permit</action>
+         <comment>
+           Allow the 'limited' group complete access to the acme
+           NETCONF configuration parameters.  Showing long form
+           of 'access-operations' instead of shorthand.
          </comment>
        </rule>
      </rule-list>
      <rule-list>
-       <name>limited-acl</name>
+       <name>guest-limited-acl</name>
+       <group>guest</group>
        <group>limited</group>
+
        <rule>
-         <name>permit-get</name>
-         <rpc-name>get</rpc-name>
-         <module-name>*</module-name>
-         <access-operations>exec</access-operations>
+         <name>permit-dummy-interface</name>
+         <path xmlns:acme="http://example.com/ns/itf">
+           /acme:interfaces/acme:interface[acme:name='dummy']
+         </path>
+         <access-operations>read update</access-operations>
          <action>permit</action>
          <comment>
-             Allow get 
+           Allow the 'limited' and 'guest' groups read
+           and update access to the dummy interface.
          </comment>
        </rule>
+     </rule-list>
+     <rule-list>
+       <name>admin-acl</name>
+       <group>admin</group>
        <rule>
-         <name>permit-get-config</name>
-         <rpc-name>get-config</rpc-name>
-         <module-name>*</module-name>
-         <access-operations>exec</access-operations>
+         <name>permit-interface</name>
+         <path xmlns:acme="http://example.com/ns/itf">
+           /acme:interfaces/acme:interface
+         </path>
+         <access-operations>*</access-operations>
          <action>permit</action>
          <comment>
-             Allow get-config
+           Allow the 'admin' group full access to all acme interfaces.
          </comment>
        </rule>
      </rule-list>
@@ -103,19 +146,18 @@ RULES=$(cat <<EOF
 EOF
 )
 
-new "test params: -f $cfg"
+# kill old backend (if any)
+new "kill old backend"
+sudo clixon_backend -zf $cfg
+if [ $? -ne 0 ]; then
+    err
+fi
 
-if [ $BE -ne 0 ]; then
-    new "kill old backend"
-    sudo clixon_backend -zf $cfg
-    if [ $? -ne 0 ]; then
-	err
-    fi
-    new "start backend -s init -f $cfg"
-    sudo $clixon_backend -s init -f $cfg -D $DBG
-    if [ $? -ne 0 ]; then
-	err
-    fi
+new "start backend -s init -f $cfg"
+# start new backend
+sudo $clixon_backend -s init -f $cfg
+if [ $? -ne 0 ]; then
+    err
 fi
 
 new "kill old restconf daemon"
@@ -127,21 +169,16 @@ sudo su -c "$clixon_restconf -f $cfg -D $DBG -- -a" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
-new "restconf DELETE whole datastore"
-expecteq "$(curl -u andy:bar -sS -X DELETE http://localhost/restconf/data)" ""
-
-new2 "auth get"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" 'null
-'
-
 new "auth set authentication config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "commit it"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new2 "auth get (no user: access denied)"
-expecteq "$(curl -sS -X GET -H \"Accept:\ application/yang-data+json\" http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
+new "enable nacm"
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
+
+#--------------- nacm enabled
 
 new2 "auth get (wrong passwd: access denied)"
 expecteq "$(curl -u andy:foo -sS -X GET http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
@@ -153,7 +190,7 @@ expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x
 #----------------Enable NACM
 
 new "enable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
 
 new2 "admin get nacm"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
@@ -164,23 +201,19 @@ expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/example:
 '
 
 new2 "guest get nacm"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
 new "admin edit nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"example:x": 1}' http://localhost/restconf/data/example:x)" ""
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"x": 1}' http://localhost/restconf/data/example:x)" ""
 
 new2 "limited edit nacm"
-expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"example:x": 2}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new2 "guest edit nacm"
-expecteq "$(curl -u guest:bar -sS -X PUT -d '{"example:x": 3}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
-
-if [ $BE -eq 0 ]; then
-    exit # BE
-fi
 
 new "Kill backend"
 # Check if premature kill

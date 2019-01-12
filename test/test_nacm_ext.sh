@@ -20,6 +20,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/example/yang</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -134,7 +135,7 @@ cat <<EOF > $nacmfile
    </nacm>
 EOF
 
-new "test params: -f $cfg -y $fyang"
+new "test params: -f $cfg"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend -zf $cfg "
@@ -143,9 +144,9 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     sleep 1
-    new "start backend -s init -f $cfg -y $fyang"
+    new "start backend -s init -f $cfg"
     # start new backend
-    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    sudo $clixon_backend -s init -f $cfg -D $DBG
     if [ $? -ne 0 ]; then
 	err
     fi
@@ -155,7 +156,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "start restconf daemon (-a is enable http basic auth)"
-sudo su -c "$clixon_restconf -f $cfg -y $fyang -D $DBG -- -a" -s /bin/sh www-data &
+sudo su -c "$clixon_restconf -f $cfg -D $DBG -- -a" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
@@ -200,22 +201,22 @@ new2 "guest edit nacm"
 expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "cli show conf as admin"
-expectfn "$clixon_cli -1 -U andy -l o -f $cfg -y $fyang show conf" 0 "^x 1;$"
+expectfn "$clixon_cli -1 -U andy -l o -f $cfg show conf" 0 "^x 1;$"
 
 new "cli show conf as limited"
-expectfn "$clixon_cli -1 -U wilma -l o -f $cfg -y $fyang show conf" 0 "^x 1;$"
+expectfn "$clixon_cli -1 -U wilma -l o -f $cfg show conf" 0 "^x 1;$"
 
 new "cli show conf as guest"
-expectfn "$clixon_cli -1 -U guest -l o -f $cfg -y $fyang show conf" 255 "protocol access-denied"
+expectfn "$clixon_cli -1 -U guest -l o -f $cfg show conf" 255 "protocol access-denied"
 
 new "cli rpc as admin"
-expectfn "$clixon_cli -1 -U andy -l o -f $cfg -y $fyang rpc ipv4" 0 "next-hop-list 2.3.4.5;"
+expectfn "$clixon_cli -1 -U andy -l o -f $cfg rpc ipv4" 0 "next-hop-list 2.3.4.5;"
 
 new "cli rpc as limited"
-expectfn "$clixon_cli -1 -U wilma -l o -f $cfg -y $fyang rpc ipv4" 255 "protocol access-denied default deny"
+expectfn "$clixon_cli -1 -U wilma -l o -f $cfg rpc ipv4" 255 "protocol access-denied default deny"
 
 new "cli rpc as guest"
-expectfn "$clixon_cli -1 -U guest -l o -f $cfg -y $fyang rpc ipv4" 255 "protocol access-denied access denied"
+expectfn "$clixon_cli -1 -U guest -l o -f $cfg rpc ipv4" 255 "protocol access-denied access denied"
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"

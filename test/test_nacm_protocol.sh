@@ -36,7 +36,7 @@ cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -125,17 +125,17 @@ RULES=$(cat <<EOF
 EOF
 )
 
-new "test params: -f $cfg -y $fyang"
+new "test params: -f $cfg"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
-    sudo clixon_backend -zf $cfg -y $fyang
+    sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
 	err
     fi
 
-    new "start backend -s init -f $cfg -y $fyang"
-    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    new "start backend -s init -f $cfg"
+    sudo $clixon_backend -s init -f $cfg -D $DBG
     if [ $? -ne 0 ]; then
 	err
     fi
@@ -146,18 +146,20 @@ sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 sleep 1
 new "start restconf daemon (-a is enable basic authentication)"
-sudo su -c "$clixon_restconf -f $cfg -y $fyang -D $DBG -- -a" -s /bin/sh www-data &
+sudo su -c "$clixon_restconf -f $cfg -D $DBG -- -a" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
 new "auth set authentication config"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "commit it"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
 expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
+
+#--------------- nacm enabled
 
 new2 "admin get nacm"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
@@ -165,17 +167,17 @@ expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x
 
 # Rule 1: deny-kill-session
 new "deny-kill-session: limited fail (netconf)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang -U wilma" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -U wilma" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "deny-kill-session: guest fail (netconf)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang -U guest" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -U guest" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "deny-kill-session: admin ok (netconf)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang -U andy" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -U andy" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Rule 2: deny-delete-config
 new "deny-delete-config: limited fail (netconf)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang -U wilma" 0 "<rpc><delete-config><target><startup/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -U wilma" 0 "<rpc><delete-config><target><startup/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new2 "deny-delete-config: guest fail (restconf)"
 expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
@@ -193,10 +195,10 @@ expecteq "$(curl -u andy:bar -sS -X DELETE http://localhost/restconf/data)" ''
 
 # Here the whole config is gone so we need to start again
 new "auth set authentication config (restart)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "commit it"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
 expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
