@@ -97,6 +97,9 @@ EOF
 
 ## New release
 What to think about when doing a new release.
+* valgrind for memory leaks
+* New clixon-config.yang revision?
+Tagging:
 * git merge --no-ff develop
 * change CLIXON_VERSION in configure.ac
 * git tag -a <version"

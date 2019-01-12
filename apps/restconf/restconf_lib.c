@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -71,11 +71,12 @@ static const map_str2int netconf_restconf_map[] = {
     {"missing-attribute",      400},
     {"bad-attribute",          400},
     {"unknown-attribute",      400},
+    {"missing-element",        400},
     {"bad-element",            400},
     {"unknown-element",        400},
     {"unknown-namespace",      400},
-    {"access-denied",          401},
-    {"access-denied",          403},
+    {"access-denied",          401}, /* or 403 */
+    {"access-denied",          403}, 
     {"lock-denied",            409},
     {"resource-denied",        409},
     {"rollback-failed",        500},
@@ -436,7 +437,8 @@ api_return_err(clicon_handle h,
 	goto ok;
     }
     tagstr = xml_body(xtag);
-    code = restconf_err2code(tagstr);
+    if ((code = restconf_err2code(tagstr)) < 0)
+	code = 500; /* internal server error */
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
 	reason_phrase="";
     if (xml_name_set(xerr, "error") < 0)
@@ -448,9 +450,12 @@ api_return_err(clicon_handle h,
     else
 	if (xml2json_cbuf(cb, xerr, pretty) < 0)
 	    goto done;
+    clicon_debug(1, "%s code:%d err:%s", __FUNCTION__, code, cbuf_get(cb));
+    FCGX_SetExitStatus(code, r->out); /* Created */
     FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n\r\n",
 		 use_xml?"xml":"json");
+
     if (use_xml){
 	if (pretty){
 	    FCGX_FPrintF(r->out, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n", cbuf_get(cb));

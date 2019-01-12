@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -106,7 +106,7 @@ main(int argc, char **argv)
     char               *plugin = NULL;
     char               *cmd = NULL;
     yang_spec          *yspec = NULL;
-    char               *yangmodule = NULL;
+    char               *yangfilename = NULL;
     char               *dbdir = NULL;
     int                 ret;
     int                 pid;
@@ -151,7 +151,7 @@ main(int argc, char **argv)
 	case 'y': /* Yang file */
 	    if (!optarg)
 	        usage(argv0);
-	    yangmodule = optarg;
+	    yangfilename = optarg;
 	    break;
 	}
     /* 
@@ -173,8 +173,8 @@ main(int argc, char **argv)
 	clicon_err(OE_DB, 0, "Missing dbdir -b option");
 	goto done;
     }
-    if (yangmodule == NULL){
-	clicon_err(OE_YANG, 0, "Missing yang module -m option");
+    if (yangfilename == NULL){
+	clicon_err(OE_YANG, 0, "Missing yang filename -y option");
 	goto done;
     }
     /* Load datastore plugin */
@@ -187,7 +187,7 @@ main(int argc, char **argv)
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     /* Parse yang spec from given file */
-    if (yang_parse(h, yangmodule, NULL, NULL, yspec) < 0)
+    if (yang_spec_parse_file(h, yangfilename, yspec) < 0)
 	goto done;
     /* Set database directory option */
     if (xmldb_setopt(h, "dbdir", dbdir) < 0)
@@ -239,15 +239,18 @@ main(int argc, char **argv)
 	    clicon_err(OE_DB, 0, "Unrecognized operation: %s", argv[1]);
 	    usage(argv0);
 	}
-	_CLICON_XML_NS_ITERATE = 1;
+	_CLICON_XML_NS_STRICT = 0;
 	if (xml_parse_string(argv[2], NULL, &xt) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)
 	    goto done;
-	if ((cbret = cbuf_new()) == NULL)
+	if ((cbret = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
-	if (xmldb_put(h, db, op, xt, cbret) < 0)
+	}
+	if (xmldb_put(h, db, op, xt, cbret) < 1)
 	    goto done;
+	    
     }
     else if (strcmp(cmd, "copy")==0){
 	if (argc != 2)

@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -45,6 +45,8 @@
  * namespace (rfc6241 3.1)
  */
 #define DEFAULT_XML_RPC_NAMESPACE "urn:ietf:params:xml:ns:netconf:base:1.0"
+/* default namespace statement, such as in <rpc xmlns="..."> */
+#define DEFAULT_XMLNS "xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\""
 
 /*
  * Types
@@ -84,14 +86,13 @@ typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 #define XML_FLAG_CHANGE 0x08  /* Node is changed (commits) or child changed rec */
 #define XML_FLAG_NONE   0x10  /* Node is added as NONE */
 
-
 /* Iterate through modules to find the matching datanode
  * or rpc if no xmlns attribute specifies namespace.
- * This is loose semantics of finding namespaces.
+ * This is lazy non-strict semantics of finding namespaces.
  * And it is wrong, but is the way Clixon originally was written."
- * @see CLICON_XML_NS_ITERATE clixon configure option 
+ * @see CLICON_XML_NS_STRICT clixon configure option 
  */
-extern int _CLICON_XML_NS_ITERATE;
+extern int _CLICON_XML_NS_STRICT;
 
 /*
  * Prototypes
@@ -99,9 +100,10 @@ extern int _CLICON_XML_NS_ITERATE;
 char     *xml_type2str(enum cxobj_type type);
 char     *xml_name(cxobj *xn);
 int       xml_name_set(cxobj *xn, char *name);
-char     *xml_namespace(cxobj *xn);
-int       xml_namespace_set(cxobj *xn, char *name);
+char     *xml_prefix(cxobj *xn);
+int       xml_prefix_set(cxobj *xn, char *name);
 int       xml2ns(cxobj *x, char *localname, char **namespace);
+int       xmlns_set(cxobj *x, char *prefix, char *namespace);
 cxobj    *xml_parent(cxobj *xn);
 int       xml_parent_set(cxobj *xn, cxobj *parent);
 
@@ -117,7 +119,9 @@ int       xml_type_set(cxobj *xn, enum cxobj_type type);
 
 int       xml_child_nr(cxobj *xn);
 int       xml_child_nr_type(cxobj *xn, enum cxobj_type type);
+int       xml_child_nr_notype(cxobj *xn, enum cxobj_type type);
 cxobj    *xml_child_i(cxobj *xn, int i);
+cxobj    *xml_child_i_type(cxobj *xn, int i, enum cxobj_type type);
 cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);
 cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 
@@ -139,6 +143,7 @@ char     *xml_body(cxobj *xn);
 cxobj    *xml_body_get(cxobj *xn);
 char     *xml_find_type_value(cxobj *xn_parent, char *prefix,
 			      char *name, enum cxobj_type type);
+cxobj    *xml_find_type(cxobj *xn_parent, char *prefix, char *name, enum cxobj_type type);
 char     *xml_find_value(cxobj *xn_parent, char *name);
 char     *xml_find_body(cxobj *xn, char *name);
 cxobj    *xml_find_body_obj(cxobj *xt, char *name, char *val);

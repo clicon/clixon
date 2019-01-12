@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -71,7 +71,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:xl:F:1a:u:d:m:qpGLy:c:U:"
+#define CLI_OPTS "hD:f:xl:F:1a:u:d:m:qpGLy:c:U:o:"
 
 #define CLI_LOGFILE "/tmp/clixon_cli.log"
 
@@ -227,7 +227,8 @@ usage(clicon_handle h,
 	    "\t-l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut or (f)ile (stderr is default)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "\t-c <file>\tSpecify cli spec file.\n"
-	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n",
+	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
+	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    plgdir ? plgdir : "none"
 	);
@@ -403,6 +404,15 @@ main(int argc, char **argv)
 	    if (clicon_username_set(h, optarg) < 0)
 		goto done;
 	    break;
+	case 'o':{ /* Configuration option */
+	    char          *val;
+	    if ((val = index(optarg, '=')) == NULL)
+		usage(h, argv0);
+	    *val++ = '\0';
+	    if (clicon_option_add(h, optarg, val) < 0)
+		goto done;
+	    break;
+	}
 	default:
 	    usage(h, argv[0]);
 	    break;
@@ -446,6 +456,9 @@ main(int argc, char **argv)
 	if (yang_spec_load_dir(h, str, yspec) < 0)
 	    goto done;
     }
+    /* Load clixon lib yang module */
+    if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
+	goto done;
 
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)

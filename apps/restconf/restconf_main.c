@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -81,7 +81,7 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:l:p:y:a:u:"
+#define RESTCONF_OPTS "hD:f:l:p:y:a:u:o:"
 
 /* RESTCONF enables deployments to specify where the RESTCONF API is 
    located.  The client discovers this by getting the "/.well-known/host-meta"
@@ -495,7 +495,8 @@ usage(clicon_handle h,
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
-    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n",
+    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
+	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_restconf_dir(h)
 	    );
@@ -611,6 +612,15 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
+	case 'o':{ /* Configuration option */
+	    char          *val;
+	    if ((val = index(optarg, '=')) == NULL)
+		usage(h, argv0);
+	    *val++ = '\0';
+	    if (clicon_option_add(h, optarg, val) < 0)
+		goto done;
+	    break;
+	}
         default:
             usage(h, argv[0]);
             break;
@@ -645,7 +655,9 @@ main(int    argc,
 	if (yang_spec_load_dir(h, str, yspec) < 0)
 	    goto done;
     }
-
+    /* Load clixon lib yang module */
+    if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
+	goto done;
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;
@@ -654,7 +666,7 @@ main(int    argc,
 	 yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
 	 goto done;
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_parse_module(h, "ietf-netconf-notification", NULL, yspec)< 0)
+	 yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
 	 goto done;
     /* Call start function in all plugins before we go interactive 
        Pass all args after the standard options to plugin_start

@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -96,7 +96,7 @@ example_stream_timer(int   fd,
     int                    retval = -1;
     clicon_handle          h = (clicon_handle)arg;
 
-    /* XXX Change to actual netconf notifications */
+    /* XXX Change to actual netconf notifications and namespace */
     if (stream_notify(h, "EXAMPLE", "<event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
 	goto done;
     if (example_stream_timer_setup(h) < 0)
@@ -129,9 +129,10 @@ fib_route(clicon_handle h,            /* Clicon handle */
 	  void         *arg,          /* Client session */
 	  void         *regarg)       /* Argument given at register */
 {
-    cprintf(cbret, "<rpc-reply><route>"
+    cprintf(cbret, "<rpc-reply><route xmlns=\"urn:ietf:params:xml:ns:yang:ietf-routing\">"
 	    "<address-family>ipv4</address-family>"
 	    "<next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop>"
+	    "<source-protocol>static</source-protocol>"
 	    "</route></rpc-reply>");    
     return 0;
 }
@@ -146,7 +147,7 @@ route_count(clicon_handle h,
 	    void         *arg,
 	    void         *regarg)          /* Argument given at register */
 {
-    cprintf(cbret, "<rpc-reply><number-of-routes>42</number-of-routes></rpc-reply>");    
+    cprintf(cbret, "<rpc-reply><number-of-routes xmlns=\"urn:ietf:params:xml:ns:yang:ietf-routing\">42</number-of-routes></rpc-reply>");    
     return 0;
 }
 
@@ -157,15 +158,48 @@ route_count(clicon_handle h,
  * in [RFC6241].
  */
 static int 
-empty(clicon_handle h,            /* Clicon handle */
-      cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-      cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-      void         *arg,          /* client_entry */
-      void         *regarg)       /* Argument given at register */
+empty_rpc(clicon_handle h,            /* Clicon handle */
+	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	  void         *arg,          /* client_entry */
+	  void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     return 0;
 }
+
+/*! More elaborate example RPC for testing
+ * The RPC returns the incoming parameters
+ */
+static int 
+example_rpc(clicon_handle h,            /* Clicon handle */
+	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	    void         *arg,          /* client_entry */
+	    void         *regarg)       /* Argument given at register */
+{
+    int    retval = -1;
+    cxobj *x = NULL;
+    char  *namespace;
+
+    /* get namespace from rpc name, return back in each output parameter */
+    if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
+	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+	goto done;
+    }
+    cprintf(cbret, "<rpc-reply>");
+    while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+	if (xmlns_set(x, NULL, namespace) < 0)
+	    goto done;
+	if (clicon_xml2cbuf(cbret, x, 0, 0) < 0)
+	    goto done;
+    }
+    cprintf(cbret, "</rpc-reply>");
+    retval = 0;
+ done:
+    return retval;
+}
+
 
 /*! Called to get state data from plugin
  * @param[in]    h      Clicon handle
@@ -196,7 +230,7 @@ example_statedata(clicon_handle h,
      * Note this state needs to be accomanied by yang snippet
      * above
      */
-    if (xml_parse_string("<state>"
+    if (xml_parse_string("<state xmlns=\"urn:example:clixon\">"
 			 "<op>42</op>"
 			 "</state>", NULL, &xstate) < 0)
 	goto done;
@@ -225,19 +259,32 @@ example_reset(clicon_handle h,
 {
     int    retval = -1;
     cxobj *xt = NULL;
+    int    ret;
+    cbuf  *cbret = NULL;
 
-    if (xml_parse_string("<config><interfaces><interface>"
+    if (xml_parse_string("<config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface>"
 			 "<name>lo</name><type>ex:loopback</type>"
 			 "</interface></interfaces></config>", NULL, &xt) < 0)
 	goto done;
-    /* Replace parent w fiorst child */
+    /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
-    /* Merge user reset state */
-    if (xmldb_put(h, (char*)db, OP_MERGE, xt, NULL) < 0)
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
+    }
+    /* Merge user reset state */
+    if ((ret = xmldb_put(h, (char*)db, OP_MERGE, xt, cbret)) < 0)
+	goto done;
+    if (ret == 0){
+	clicon_err(OE_XML, 0, "Error when writing to XML database: %s",
+		   cbuf_get(cbret));
+	goto done;
+    }
     retval = 0;
  done:
+    if (cbret)
+	cbuf_free(cbret);
     if (xt != NULL)
 	xml_free(xt);
     return retval;
@@ -315,20 +362,29 @@ clixon_plugin_init(clicon_handle h)
     if (example_stream_timer_setup(h) < 0)
 	goto done;
 
-    /* Register callback for routing rpc calls */
+    /* Register callback for routing rpc calls 
+     */
+
     if (rpc_callback_register(h, fib_route, 
 			      NULL, 
 			      "fib-route"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
+    /* From ietf-routing.yang */
     if (rpc_callback_register(h, route_count, 
 			      NULL, 
 			      "route-count"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
-    if (rpc_callback_register(h, empty, 
+    /* From example.yang (clicon) */
+    if (rpc_callback_register(h, empty_rpc, 
 			      NULL, 
 			      "empty"/* Xml tag when callback is made */
+			      ) < 0)
+	goto done;
+    if (rpc_callback_register(h, example_rpc, 
+			      NULL, 
+			      "example"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
 

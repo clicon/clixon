@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -216,8 +216,8 @@ main(int argc, char **argv)
     char  *url = NULL;
     char  *getdata = NULL;
     int    timeout = 10;
-    char   start[27] = {0,}; /* strlen = 0 */
-    char   stop[27] = {0,};
+    char   start[28] = {0,}; /* strlen = 0 */
+    char   stop[28] = {0,};
     int    c;
     char  *argv0 = argv[0];
     struct timeval now;

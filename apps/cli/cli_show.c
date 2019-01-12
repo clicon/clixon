@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -171,7 +171,7 @@ expand_dbvar(void   *h,
     /* This is primarily to get "y", 
      * xpath2xml would have worked!!
      */
-    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 0)
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 1)
 	goto done;
     if (y==NULL)
 	goto ok;
@@ -443,6 +443,7 @@ cli_show_config(clicon_handle h,
     cxobj           *xc;
     cxobj           *xerr;
     enum genmodel_type gt;
+    yang_spec       *yspec;
     
     if (cvec_len(argv) != 3 && cvec_len(argv) != 4){
 	clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <dbname>,<format>,<xpath>[,<attr>]", cvec_len(argv));
@@ -496,6 +497,13 @@ cli_show_config(clicon_handle h,
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    /* Some formats (eg cli) require yang */
+    if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	goto done;
     /* Print configuration according to format */
     switch (format){
     case FORMAT_XML:
@@ -516,7 +524,7 @@ cli_show_config(clicon_handle h,
 	if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
 	    goto done;
 	xc = NULL; /* Dont print xt itself */
-	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
+	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
 	    xml2cli(stdout, xc, NULL, gt); /* cli syntax */
 	break;
     case FORMAT_NETCONF:

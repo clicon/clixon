@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -95,7 +95,7 @@
 
 #define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_xpath_parsetext, _XY->xy_linenum); YYERROR;}
 
-/* add _yy to error paramaters */
+/* add _yy to error parameters */
 #define YY_(msgid) msgid 
 
 #include "clixon_config.h"

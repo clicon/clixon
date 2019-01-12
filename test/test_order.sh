@@ -16,7 +16,6 @@ fyang=$dir/order.yang
 
 dbdir=$dir/order
 
-new "Set up $dbdir"
 rm -rf $dbdir
 if [ ! -d $dbdir ]; then
     mkdir $dbdir
@@ -84,30 +83,32 @@ module example{
 }
 EOF
 
+rm -f $dbdir/candidate_db
+# alt
 cat <<EOF > $dbdir/running_db
 <config>
-  <y0>d</y0>
-  <y1>d</y1>
-  <y2><k>d</k><a>bar</a></y2>
-  <y3><k>d</k><a>bar</a></y3>
-  <y0>b</y0>
-  <y1>b</y1>
-  <c><d>hej</d></c>
-  <y0>c</y0>
-  <y1>c</y1>
-  <y2><k>a</k><a>bar</a></y2>
-  <y3><k>a</k><a>bar</a></y3>
-  <l>hopp</l>
-  <y0>a</y0>
-  <y1>a</y1>
-  <y2><k>c</k><a>bar</a></y2>
-  <y3><k>c</k><a>bar</a></y3>
-  <y2><k>b</k><a>bar</a></y2>
-  <y3><k>b</k><a>bar</a></y3>
+  <y0 xmlns="urn:example:clixon">d</y0>
+  <y1 xmlns="urn:example:clixon">d</y1>
+  <y2 xmlns="urn:example:clixon"><k>d</k><a>bar</a></y2>
+  <y3 xmlns="urn:example:clixon"><k>d</k><a>bar</a></y3>
+  <y0 xmlns="urn:example:clixon">b</y0>
+  <y1 xmlns="urn:example:clixon">b</y1>
+  <c xmlns="urn:example:clixon"><d>hej</d></c>
+  <y0 xmlns="urn:example:clixon">c</y0>
+  <y1 xmlns="urn:example:clixon">c</y1>
+  <y2 xmlns="urn:example:clixon"><k>a</k><a>bar</a></y2>
+  <y3 xmlns="urn:example:clixon"><k>a</k><a>bar</a></y3>
+  <l xmlns="urn:example:clixon">hopp</l>
+  <y0 xmlns="urn:example:clixon">a</y0>
+  <y1 xmlns="urn:example:clixon">a</y1>
+  <y2 xmlns="urn:example:clixon"><k>c</k><a>bar</a></y2>
+  <y3 xmlns="urn:example:clixon"><k>c</k><a>bar</a></y3>
+  <y2 xmlns="urn:example:clixon"><k>b</k><a>bar</a></y2>
+  <y3 xmlns="urn:example:clixon"><k>b</k><a>bar</a></y3>
 </config>
 EOF
 
-new "test params: -f $cfg -y $fyang"
+new "test params: -s running -f $cfg -y $fyang"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -123,56 +124,56 @@ if [ $BE -ne 0 ]; then
 fi
 
 # Check as file
-new "verify running from start, should be: l,c,y0,y1,y2,y3; y1 and y3 sorted. Note this fails if XML_SORT set to false"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><c><d>hej</d></c><l>hopp</l><y0>d</y0><y0>b</y0><y0>c</y0><y0>a</y0><y1>a</y1><y1>b</y1><y1>c</y1><y1>d</y1><y2><k>d</k><a>bar</a></y2><y2><k>a</k><a>bar</a></y2><y2><k>c</k><a>bar</a></y2><y2><k>b</k><a>bar</a></y2><y3><k>a</k><a>bar</a></y3><y3><k>b</k><a>bar</a></y3><y3><k>c</k><a>bar</a></y3><y3><k>d</k><a>bar</a></y3></data></rpc-reply>]]>]]>$"
+new "verify running from start, should be: c,l,y0,y1,y2,y3; y1 and y3 sorted. Note this fails if CLICON_XML_SORT set to false"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><c xmlns="urn:example:clixon"><d>hej</d></c><l xmlns="urn:example:clixon">hopp</l><y0 xmlns="urn:example:clixon">d</y0><y0 xmlns="urn:example:clixon">b</y0><y0 xmlns="urn:example:clixon">c</y0><y0 xmlns="urn:example:clixon">a</y0><y1 xmlns="urn:example:clixon">a</y1><y1 xmlns="urn:example:clixon">b</y1><y1 xmlns="urn:example:clixon">c</y1><y1 xmlns="urn:example:clixon">d</y1><y2 xmlns="urn:example:clixon"><k>d</k><a>bar</a></y2><y2 xmlns="urn:example:clixon"><k>a</k><a>bar</a></y2><y2 xmlns="urn:example:clixon"><k>c</k><a>bar</a></y2><y2 xmlns="urn:example:clixon"><k>b</k><a>bar</a></y2><y3 xmlns="urn:example:clixon"><k>a</k><a>bar</a></y3><y3 xmlns="urn:example:clixon"><k>b</k><a>bar</a></y3><y3 xmlns="urn:example:clixon"><k>c</k><a>bar</a></y3><y3 xmlns="urn:example:clixon"><k>d</k><a>bar</a></y3></data></rpc-reply>]]>]]>$'
 
 new "get each ordered-by user leaf-list"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y2[k='a']\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y2><k>a</k><a>bar</a></y2></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y2[k='a']\"/></get-config></rpc>]]>]]>" '^<rpc-reply><data><y2 xmlns="urn:example:clixon"><k>a</k><a>bar</a></y2></data></rpc-reply>]]>]]>$'
 
 new "get each ordered-by user leaf-list"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y3[k='a']\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y3><k>a</k><a>bar</a></y3></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y3[k='a']\"/></get-config></rpc>]]>]]>" '^<rpc-reply><data><y3 xmlns="urn:example:clixon"><k>a</k><a>bar</a></y3></data></rpc-reply>]]>]]>$'
 
 new "get each ordered-by user leaf-list"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y2[k='b']\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y2><k>b</k><a>bar</a></y2></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y2[k='b']\"/></get-config></rpc>]]>]]>" '^<rpc-reply><data><y2 xmlns="urn:example:clixon"><k>b</k><a>bar</a></y2></data></rpc-reply>]]>]]>$'
 
 new "get each ordered-by user leaf-list"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y3[k='b']\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y3><k>b</k><a>bar</a></y3></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y3[k='b']\"/></get-config></rpc>]]>]]>" '^<rpc-reply><data><y3 xmlns="urn:example:clixon"><k>b</k><a>bar</a></y3></data></rpc-reply>]]>]]>$'
 
 new "delete candidate"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><delete-config><target><candidate/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config operation="delete"/></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # LEAF_LISTS
 
 new "add two entries to leaf-list user order"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><y0>c</y0><y0>b</y0></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:clixon">c</y0><y0 xmlns="urn:example:clixon">b</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "add one entry to leaf-list user order"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><y0>a</y0></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:clixon">a</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "add one entry to leaf-list user order after commit"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><y0>0</y0></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:clixon">0</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "verify leaf-list user order in running (as entered)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y0\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y0>c</y0><y0>b</y0><y0>a</y0><y0>0</y0></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><running/></source><filter type="xpath" select="/y0"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><y0 xmlns="urn:example:clixon">c</y0><y0 xmlns="urn:example:clixon">b</y0><y0 xmlns="urn:example:clixon">a</y0><y0 xmlns="urn:example:clixon">0</y0></data></rpc-reply>]]>]]>$'
 
 # LISTS
 
 new "add two entries to list user order"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><y2><k>c</k><a>bar</a></y2><y2><k>b</k><a>foo</a></y2></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:clixon"><k>c</k><a>bar</a></y2><y2 xmlns="urn:example:clixon"><k>b</k><a>foo</a></y2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "add one entry to list user order"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><y2><k>a</k><a>fie</a></y2></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:clixon"><k>a</k><a>fie</a></y2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "verify list user order (as entered)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/y2\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><y2><k>c</k><a>bar</a></y2><y2><k>b</k><a>foo</a></y2><y2><k>a</k><a>fie</a></y2></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/y2"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><y2 xmlns="urn:example:clixon"><k>c</k><a>bar</a></y2><y2 xmlns="urn:example:clixon"><k>b</k><a>foo</a></y2><y2 xmlns="urn:example:clixon"><k>a</k><a>fie</a></y2></data></rpc-reply>]]>]]>$'
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 

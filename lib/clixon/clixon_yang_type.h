@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -55,11 +55,11 @@
  * Prototypes
  */
 int        yang_type_cache_set(yang_type_cache **ycache, 	    
-			       yang_stmt *resolved, int options, cg_var *mincv, 
-			       cg_var *maxcv, char *pattern, uint8_t fraction);
-int        yang_type_cache_get(yang_type_cache *ycache, 
-			       yang_stmt **resolved, int *options, cg_var **mincv, 
-			       cg_var **maxcv, char **pattern, uint8_t *fraction);
+			       yang_stmt *resolved, int options,
+			       cvec *cvv, char *pattern, uint8_t fraction);
+int        yang_type_cache_get(yang_type_cache *ycache, yang_stmt **resolved,
+			       int *options, cvec **cvv, char **pattern,
+			       uint8_t *fraction);
 int        yang_type_cache_cp(yang_type_cache **ycnew, yang_type_cache *ycold);
 int        yang_type_cache_free(yang_type_cache *ycache);
 int        ys_resolve_type(yang_stmt *ys, void *arg);
@@ -67,14 +67,13 @@ int        yang2cv_type(char *ytype, enum cv_type *cv_type);
 char      *cv2yang_type(enum cv_type cv_type);
 yang_stmt *yang_find_identity(yang_stmt *ys, char *identity);
 int        ys_cv_validate(cg_var *cv, yang_stmt *ys, char **reason);
-int        clicon_type2cv(char *type, char *rtype, enum cv_type *cvtype);
+int        clicon_type2cv(char *type, char *rtype, yang_stmt *ys, enum cv_type *cvtype);
 int        yang_type_get(yang_stmt *ys, char **otype, yang_stmt **restype, 
-			 int *options, cg_var **mincv, cg_var **maxcv, char **pattern,
+			 int *options, cvec **cvv, char **pattern,
                          uint8_t *fraction_digits);
-int        yang_type_resolve(yang_stmt   *ys, yang_stmt   *ytype, 
-			     yang_stmt  **restype, int   *options, 
-			     cg_var     **mincv, cg_var     **maxcv, 
-			     char       **pattern,  uint8_t     *fraction);
+int        yang_type_resolve(yang_stmt *yorig, yang_stmt *ys, yang_stmt *ytype, 
+			     yang_stmt **restype, int *options, 
+			     cvec **cvv, char **pattern, uint8_t *fraction);
 
 
 #endif  /* _CLIXON_YANG_TYPE_H_ */

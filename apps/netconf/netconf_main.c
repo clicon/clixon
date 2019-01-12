@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -71,7 +71,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hD:f:l:qa:u:d:y:U:t:"
+#define NETCONF_OPTS "hD:f:l:qa:u:d:y:U:t:o:"
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
@@ -80,21 +80,25 @@
  * @param[in]   cb   Packet buffer
  */
 static int
-process_incoming_packet(clicon_handle h, 
+netconf_input_packet(clicon_handle h, 
 			cbuf         *cb)
 {
-    char  *str;
-    char  *str0;
-    cxobj *xreq = NULL; /* Request (in) */
-    int    isrpc = 0;   /* either hello or rpc */
-    cbuf  *cbret = NULL;
-    cxobj *xret = NULL; /* Return (out) */
-    cxobj *xrpc;
-    cxobj *xc;
+    int        retval = -1;
+    char      *str;
+    char      *str0;
+    cxobj     *xreq = NULL; /* Request (in) */
+    int        isrpc = 0;   /* either hello or rpc */
+    cbuf      *cbret = NULL;
+    cxobj     *xret = NULL; /* Return (out) */
+    cxobj     *xrpc;
+    cxobj     *xc;
     yang_spec *yspec;
+    int        ret;
+    cxobj     *xa;
+    cxobj     *xa2;
 
-    clicon_debug(1, "RECV");
-    clicon_debug(2, "%s: RCV: \"%s\"", __FUNCTION__, cbuf_get(cb));
+    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(2, "%s: \"%s\"", __FUNCTION__, cbuf_get(cb));
     if ((cbret = cbuf_new()) == NULL){
 	clicon_err(LOG_ERR, errno, "cbuf_new");
 	goto done;
@@ -108,22 +112,21 @@ process_incoming_packet(clicon_handle h,
     /* Parse incoming XML message */
     if (xml_parse_string(str, yspec, &xreq) < 0){ 
 	free(str0);
-	if (netconf_operation_failed(cbret, "rpc", "internal error")< 0)
+	if (netconf_operation_failed(cbret, "rpc", clicon_err_reason)< 0)
 	    goto done;
-	netconf_output(1, cbret, "rpc-error");
+	netconf_output_encap(1, cbret, "rpc-error");
 	goto done;
     }
     free(str0);
     if ((xrpc=xpath_first(xreq, "//rpc")) != NULL){
-	int ret;
         isrpc++;
-	if ((ret = xml_yang_validate_rpc(xrpc)) < 0) 
+	if (xml_spec_populate_rpc(h, xrpc, yspec) < 0)
+	    goto done;
+	if ((ret = xml_yang_validate_rpc(xrpc, cbret)) < 0) 
 	    goto done;
 	if (ret == 0){
-	    if (netconf_operation_failed(cbret, "application", "Validation failed")< 0)
-		goto done;
-	    netconf_output(1, cbret, "rpc-error");
-	    goto done;
+	    netconf_output_encap(1, cbret, "rpc-error");
+	    goto ok;
 	}
     }
     else
@@ -142,8 +145,13 @@ process_incoming_packet(clicon_handle h,
 	    goto done;
 	}
 	else{ /* there is a return message in xret */
-	    cxobj *xa, *xa2;
-	    assert(xret);
+
+	    if (xret == NULL){
+		if (netconf_operation_failed(cbret, "rpc", "Internal error: no xml return")< 0)
+		    goto done;
+		netconf_output_encap(1, cbret, "rpc-error");
+		goto done;
+	    }
 	    if ((xc = xml_child_i(xret,0))!=NULL){
 		xa=NULL;
 		/* Copy message-id attribute from incoming to reply. 
@@ -158,16 +166,15 @@ process_incoming_packet(clicon_handle h,
 		    if (xml_addsub(xc, xa2) < 0)
 			goto done;
 		}
-		add_preamble(cbret);
-		
 		clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0);
-		add_postamble(cbret);
-		if (netconf_output(1, cbret, "rpc-reply") < 0){
+		if (netconf_output_encap(1, cbret, "rpc-reply") < 0){
 		    cbuf_free(cbret);
 		    goto done;
 		}
 	    }
 	}
+ ok:
+    retval = 0;
   done:
     if (xreq)
 	xml_free(xreq);
@@ -175,7 +182,7 @@ process_incoming_packet(clicon_handle h,
 	xml_free(xret);
     if (cbret)
 	cbuf_free(cbret);
-    return 0;
+    return retval;
 }
 
 /*! Get netconf message: detect end-of-msg 
@@ -228,8 +235,8 @@ netconf_input_cb(int   s,
 		/* OK, we have an xml string from a client */
 		/* Remove trailer */
 		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
-		if (process_incoming_packet(h, cb) < 0)
-		    goto done;
+		if (netconf_input_packet(h, cb) < 0)
+		    ; //goto done; // ignore errors
 		if (cc_closed)
 		    break;
 		cbuf_reset(cb);
@@ -326,7 +333,8 @@ usage(clicon_handle h,
 
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
-	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n",
+	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n"
+	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_netconf_dir(h)
 	    );
@@ -439,7 +447,15 @@ main(int    argc,
 	case 't': /* timeout in seconds */
 	    tv.tv_sec = atoi(optarg);
 	    break;
-
+	case 'o':{ /* Configuration option */
+	    char          *val;
+	    if ((val = index(optarg, '=')) == NULL)
+		usage(h, argv0);
+	    *val++ = '\0';
+	    if (clicon_option_add(h, optarg, val) < 0)
+		goto done;
+	    break;
+	}
 	default:
 	    usage(h, argv[0]);
 	    break;
@@ -468,7 +484,9 @@ main(int    argc,
 	if (yang_spec_load_dir(h, str, yspec) < 0)
 	    goto done;
     }
-    
+    /* Load clixon lib yang module */
+    if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
+	goto done;
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;

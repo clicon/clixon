@@ -21,7 +21,7 @@
 #  automatically committed to running immediately after each successful
 #  edit.
 # Which means that restconf -X DELETE /data translates to edit-config + commit
-# WHICH IS allowed.
+# which is allowed.
 
 APPNAME=example
 # include err() and new() functions and creates $dir
@@ -65,7 +65,6 @@ module $APPNAME{
   }
 }
 EOF
-
 # The groups are slightly modified from RFC8341 A.1
 # The rule-list is from A.2
 RULES=$(cat <<EOF
@@ -122,7 +121,7 @@ RULES=$(cat <<EOF
      $NADMIN
 
    </nacm>
-   <x>0</x>
+   <x xmlns="urn:example:clixon">0</x>
 EOF
 )
 
@@ -147,7 +146,7 @@ sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 sleep 1
 new "start restconf daemon (-a is enable basic authentication)"
-sudo su -c "$clixon_restconf -f $cfg -y $fyang -D 1 -- -a" -s /bin/sh www-data &
+sudo su -c "$clixon_restconf -f $cfg -y $fyang -D $DBG -- -a" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
@@ -158,35 +157,35 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/nacm/enable-nacm)" ""
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
 
 new2 "admin get nacm"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/x)" '{"x": 0}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
 '
 
 # Rule 1: deny-kill-session
 new "deny-kill-session: limited fail (netconf)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang -U wilma" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>access-denied</error-tag><error-type>protocol</error-type><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang -U wilma" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "deny-kill-session: guest fail (netconf)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang -U guest" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>access-denied</error-tag><error-type>protocol</error-type><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang -U guest" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "deny-kill-session: admin ok (netconf)"
 expecteof "$clixon_netconf -qf $cfg -y $fyang -U andy" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Rule 2: deny-delete-config
 new "deny-delete-config: limited fail (netconf)"
-expecteof "$clixon_netconf -qf $cfg -y $fyang -U wilma" 0 "<rpc><delete-config><target><startup/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-tag>access-denied</error-tag><error-type>protocol</error-type><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang -U wilma" 0 "<rpc><delete-config><target><startup/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new2 "deny-delete-config: guest fail (restconf)"
-expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 # In restconf delete-config is translated to edit-config which is permitted
 new "deny-delete-config: limited fail (restconf) ok"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data)" ''
 
 new2 "admin get nacm (should be null)"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/x)" 'null
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" 'null
 '
 
 new "deny-delete-config: admin ok (restconf)"
@@ -200,19 +199,19 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/nacm/enable-nacm)" ""
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
 
 # Rule 3: permit-edit-config
 new "permit-edit-config: limited ok restconf"
-expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/x)" ''
+expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"example:x": 2}' http://localhost/restconf/data/example:x)" ''
 
 new2 "permit-edit-config: guest fail restconf"
-expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u guest:bar -sS -X PUT -d '{"example:x": 2}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 
@@ -228,4 +227,4 @@ if [ $? -ne 0 ]; then
     err "kill backend"
 fi
 
-#rm -rf $dir # XXX
+rm -rf $dir 

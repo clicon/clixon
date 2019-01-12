@@ -50,9 +50,6 @@ EOF
 
 xml='<config><x xmlns="urn:example:clixon"><y><a>1</a><b>2</b><c>first-entry</c></y><y><a>1</a><b>3</b><c>second-entry</c></y><y><a>2</a><b>3</b><c>third-entry</c></y><d/><f><e>a</e><e>b</e><e>c</e></f><g>astring</g></x></config>'
 
-# Without xmlns
-xmlxxx='<config><x><y><a>1</a><b>2</b><c>first-entry</c></y><y><a>1</a><b>3</b><c>second-entry</c></y><y><a>2</a><b>3</b><c>third-entry</c></y><d/><f><e>a</e><e>b</e><e>c</e></f><g>astring</g></x></config>'
-
 run(){
     name=$1
     mydir=$dir/$name
@@ -72,7 +69,7 @@ run(){
     expectmatch "$ret" $? "0" ""
 
     new "datastore $name get"
-    expectfn "$datastore $conf get /" 0 "^$xmlxxx$"
+    expectfn "$datastore $conf get /" 0 "^$xml$"
 
     new "datastore $name put all remove"
     expectfn "$datastore $conf put remove <config/>" 0 ""
@@ -87,7 +84,7 @@ run(){
 #    expectfn "$datastore $conf put merge $xml" 0 ""
 
     new "datastore $name get"
-    expectfn "$datastore $conf get /" 0 "^$xmlxxx$"
+    expectfn "$datastore $conf get /" 0 "^$xml$"
 
     new "datastore $name put all delete"
     expectfn "$datastore $conf put remove <config/>" 0 ""
@@ -100,7 +97,7 @@ run(){
     expectmatch "$ret" $? "0" ""
 
     new "datastore $name get"
-    expectfn "$datastore $conf get /" 0 "^$xmlxxx$"
+    expectfn "$datastore $conf get /" 0 "^$xml$"
 
     new "datastore $name put top create"
     expectfn "$datastore $conf put create <config><x/></config>" 0 "" # error

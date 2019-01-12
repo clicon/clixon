@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -56,6 +56,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <syslog.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/param.h>
@@ -134,20 +135,10 @@ netconf_get_config(clicon_handle h,
 {
      cxobj      *xfilter; /* filter */
      int         retval = -1;
-     char       *source;
      char       *ftype = NULL;
      cxobj      *xfilterconf; 
      cxobj      *xconf;
 
-     if ((source = netconf_get_target(xn, "source")) == NULL){
-	 xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-			  "<error-tag>missing-element</error-tag>"
-			  "<error-type>protocol</error-type>"
-			  "<error-severity>error</error-severity>"
-			  "<error-info><bad-element>source</bad-element></error-info>"
-			  "</rpc-error></rpc-reply>");
-	 goto ok;
-     }
      /* ie <filter>...</filter> */
      if ((xfilter = xpath_first(xn, "filter")) != NULL) 
 	 ftype = xml_find_value(xfilter, "type");
@@ -186,7 +177,6 @@ netconf_get_config(clicon_handle h,
 			  "<error-info>type</error-info>"
 			  "</rpc-error></rpc-reply>");
      }
- ok: /* netconf error is not fatal */
     retval = 0;
  done:
     return retval;
@@ -222,11 +212,9 @@ get_edit_opts(cxobj               *xn,
 	if ((optstr = xml_body(x)) != NULL){
 	    if (strcmp(optstr, "test-then-set") == 0)
 		*testopt = TEST_THEN_SET;
-	    else
-	    if (strcmp(optstr, "set") == 0)
+	    else if (strcmp(optstr, "set") == 0)
 		*testopt = SET;
-	    else
-	    if (strcmp(optstr, "test-only") == 0)
+	    else if (strcmp(optstr, "test-only") == 0)
 		*testopt = TEST_ONLY;
 	    else
 		goto parerr;
@@ -310,53 +298,18 @@ netconf_edit_config(clicon_handle h,
 {
     int                 retval = -1;
     int                 optret;
-    enum operation_type operation = OP_MERGE;
     enum test_option    testopt = TEST_THEN_SET;/* only supports this */
     enum error_option   erropt = STOP_ON_ERROR; /* only supports this */
-    cxobj              *xc;       /* config */
-    cxobj              *x;
-    cxobj              *xfilter;
-    char               *ftype = NULL;
-    char               *target;  /* db */
 
-    /* must have target, and it should be candidate */
-    if ((target = netconf_get_target(xn, "target")) == NULL ||
-	strcmp(target, "candidate")){
-	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-			 "<error-tag>missing-element</error-tag>"
-			 "<error-type>protocol</error-type>"
-			 "<error-severity>error</error-severity>"
-			 "<error-info><bad-element>target</bad-element></error-info>"
-			 "</rpc-error></rpc-reply>");
-	goto ok;
-    }
-    /* CLICON addition, eg <filter type="restconf" select=<api-path> /> */
-    if ((xfilter = xpath_first(xn, "filter")) != NULL) {
-	if ((ftype = xml_find_value(xfilter, "type")) != NULL)
-	    if (strcmp(ftype,"restconf")){
-		xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-				 "<error-tag>invalid-value</error-tag>"
-				 "<error-type>protocol</error-type>"
-				 "<error-severity>error</error-severity>"
-				 "</rpc-error></rpc-reply>");
-		goto ok;
-	    }
-    }
-    if ((x = xpath_first(xn, "default-operation")) != NULL){
-	if (xml_operation(xml_body(x), &operation) < 0){
-	    xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-			     "<error-tag>invalid-value</error-tag>"
-			     "<error-type>protocol</error-type>"
-			     "<error-severity>error</error-severity>"
-			     "</rpc-error></rpc-reply>");
-	    goto ok;
-	}
-    }
     if ((optret = get_edit_opts(xn, &testopt, &erropt, xret)) < 0)
 	goto done;
     if (optret == 0) /* error in opt parameters */
 	goto ok;
-    /* not supported opts */
+    /* These constraints are clixon-specific since :validate should 
+     * support all testopts, and erropts should be supported 
+     * And therefore extends the validation 
+     * (implement the features before removing these checks)
+     */
     if (testopt!=TEST_THEN_SET || erropt!=STOP_ON_ERROR){
 	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
 			 "<error-tag>operation-not-supported</error-tag>"
@@ -364,166 +317,13 @@ netconf_edit_config(clicon_handle h,
 			 "<error-severity>error</error-severity>"
 			 "</rpc-error></rpc-reply>");
 	goto ok;
-    }    
-
-    /* operation is OP_REPLACE, OP_MERGE, or OP_NONE pass all to backend */
-    if ((xc  = xpath_first(xn, "config")) != NULL){
-#if 0
-	/* application-specific code registers 'config' */
-	if ((ret = netconf_plugin_callbacks(h, xc, xret)) < 0){
-	    goto ok;
-	}
-#endif
-	if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	     goto done;	
-    }
- ok:
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Netconf copy configuration
-    <copy-config> 
-        <target> 
-            <candidate/> 
-        </target> 
-        <source> 
-            <url> 
-                <!- - location specifier for file containing the new configuration - -> 
-            </url> 
-        </source> 
-    <copy-config> 
- * @param[in]  h       clicon handle
- * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
- * @param[out] xret    Return XML, error or OK
- */
-static int
-netconf_copy_config(clicon_handle h,
-		    cxobj        *xn, 
-		    cxobj       **xret)	    
-{
-    int       retval = -1;
-    char     *source;
-    char     *target; /* filenames */
-
-    if ((source = netconf_get_target(xn, "source")) == NULL){
-	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-			 "<error-tag>missing-element</error-tag>"
-			 "<error-type>protocol</error-type>"
-			 "<error-severity>error</error-severity>"
-			 "<error-info><bad-element>source</bad-element></error-info>"
-			 "</rpc-error></rpc-reply>");
-	goto ok;
-    }
-    if ((target = netconf_get_target(xn, "target")) == NULL){
-	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-			 "<error-tag>missing-element</error-tag>"
-			 "<error-type>protocol</error-type>"
-			 "<error-severity>error</error-severity>"
-			 "<error-info><bad-element>target</bad-element></error-info>"
-			 "</rpc-error></rpc-reply>");
-	goto ok;
-    }
-    if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	goto done;	
- ok:
-    retval = 0;
-  done:
-    return retval;
-}
-
-/*! Delete configuration
-  <delete-config> 
-        <target> 
-            <candidate/> 
-        </target> 
-    </delete-config> 
-    Delete a configuration datastore.  The <running>
-    configuration datastore cannot be deleted.
- * @param[in]  h       clicon handle
- * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
- * @param[out] xret    Return XML, error or OK
- */
-static int
-netconf_delete_config(clicon_handle h,
-		      cxobj        *xn, 
-		      cxobj       **xret)
-{
-    char              *target; /* filenames */
-    int                retval = -1;
-
-    if ((target = netconf_get_target(xn, "target")) == NULL ||
-	strcmp(target, "running")==0){
-	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-			 "<error-tag>missing-element</error-tag>"
-			 "<error-type>protocol</error-type>"
-			 "<error-severity>error</error-severity>"
-			 "<error-info><bad-element>target</bad-element></error-info>"
-			 "</rpc-error></rpc-reply>");
-	goto ok;
-    }
-    if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	goto done;	
- ok:
-    retval = 0;
-  done:
-    return retval;
-}
-
-
-/*! Lock a database
-    <lock> 
-        <target> 
-            <candidate/> 
-        </target> 
-    </lock> 
- * @param[in]  h       clicon handle
- * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
- * @param[out] xret    Return XML, error or OK
- */
-static int
-netconf_lock(clicon_handle h,
-	     cxobj        *xn, 
-	     cxobj       **xret)
-{
-    int      retval = -1;
-    char    *target;
-
-    if ((target = netconf_get_target(xn, "target")) == NULL){
-	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-			  "<error-tag>missing-element</error-tag>"
-			  "<error-type>protocol</error-type>"
-			  "<error-severity>error</error-severity>"
-			  "<error-info><bad-element>target</bad-element></error-info>"
-			  "</rpc-error></rpc-reply>");
-	goto ok;
     }
     if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
 	goto done;
  ok:
     retval = 0;
-  done:
+ done:
     return retval;
-}
-
-/*! Unlock a database
-   <unlock> 
-        <target> 
-            <candidate/> 
-        </target> 
-    </unlock> 
-    XXX
- * @param[in]  h       clicon handle
- * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
- * @param[out] xret    Return XML, error or OK
- */
-static int
-netconf_unlock(clicon_handle h, 
-	       cxobj        *xn, 
-	       cxobj       **xret)
-{
-    return netconf_lock(h, xn, xret);
 }
 
 /*! Get running configuration and device state information
@@ -589,135 +389,8 @@ netconf_get(clicon_handle h,
 			  "<error-info>type</error-info>"
 			  "</rpc-error></rpc-reply>");
      }
-     // ok: /* netconf error is not fatal */
     retval = 0;
  done:
-    return retval;
-}
-
-
-/*! Close a (user) session
-    <close-session/> 
- * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
- * @param[out] xret    Return XML, error or OK
-*/
-static int
-netconf_close_session(clicon_handle h,
-		      cxobj        *xn, 
-		      cxobj       **xret)
-{
-    int retval = -1;
-
-    cc_closed++;
-    if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Kill other user sessions
-  <kill-session> 
-        <session-id>PID</session-id> 
-  </kill-session> 
- * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
- * @param[out] xret    Return XML, error or OK
- */
-static int
-netconf_kill_session(clicon_handle h,
-		     cxobj        *xn, 
-		     cxobj       **xret)
-{
-    int    retval=-1;
-    cxobj *xs;
-
-    if ((xs = xpath_first(xn, "//session-id")) == NULL){
-	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-			  "<error-tag>missing-element</error-tag>"
-			  "<error-type>protocol</error-type>"
-			  "<error-severity>error</error-severity>"
-			  "<error-info><bad-element>session-id</bad-element></error-info>"
-			  "</rpc-error></rpc-reply>");
-	 goto ok;
-    }
-    if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	goto done;
- ok:
-    retval = 0;
- done:
-    return retval;
-}
-/*! Check the semantic consistency of candidate
-    <validate/> 
-    :validate
- * @param[in]  h       clicon handle
- * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
- * @param[out] xret    Return XML, error or OK
- */
-static int
-netconf_validate(clicon_handle h, 
-		 cxobj        *xn, 
-		 cxobj       **xret)
-{
-    int    retval = -1;
-    char  *target;
-
-    if ((target = netconf_get_target(xn, "source")) == NULL){
-	xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-			  "<error-tag>missing-element</error-tag>"
-			  "<error-type>protocol</error-type>"
-			  "<error-severity>error</error-severity>"
-			  "<error-info><bad-element>target</bad-element></error-info>"
-			  "</rpc-error></rpc-reply>");
-	 goto ok;
-    }
-    if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	goto done;
- ok:
-    retval = 0;
-  done:
-    return retval;
-}
-
-/*! Commit candidate -> running
-    <commit/> 
-    :candidate
- * @param[in]  h       clicon handle
- * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
- * @param[out] xret    Return XML, error or OK
- */
-static int
-netconf_commit(clicon_handle h,
-	       cxobj        *xn, 
-	       cxobj       **xret)
-{
-    int      retval = -1;
-
-    if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	goto done;
-    retval = 0;
-  done:
-    return retval;
-}
-
-/*! Discard all changes in candidate / revert to running
-    <discard-changes/> 
-    :candidate
- * @param[in]  h       clicon handle
- * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
- * @param[out] xret    Return XML, error or OK
- */
-static int
-netconf_discard_changes(clicon_handle h,
-			cxobj        *xn, 
-			cxobj       **xret)
-{
-    int     retval = -1;
-
-    if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	goto done;
-    retval = 0;
-  done:
     return retval;
 }
 
@@ -753,6 +426,8 @@ netconf_notification_cb(int   s,
     cbuf              *cb;
     cxobj             *xn = NULL; /* event xml */
     cxobj             *xt = NULL; /* top xml */
+    clicon_handle      h = (clicon_handle)arg;
+    yang_spec         *yspec = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* get msg (this is the reason this function is called) */
@@ -766,7 +441,8 @@ netconf_notification_cb(int   s,
 	event_unreg_fd(s, netconf_notification_cb);
 	goto done;
     }
-    if (clicon_msg_decode(reply, &xt) < 0) 
+    yspec = clicon_dbspec_yang(h);
+    if (clicon_msg_decode(reply, yspec, &xt) < 0) 
 	goto done;
     if ((xn = xpath_first(xt, "notification")) == NULL)
 	goto ok;
@@ -775,12 +451,10 @@ netconf_notification_cb(int   s,
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");
 	goto done;
     }
-    add_preamble(cb); /* Make it well-formed netconf xml */
     if (clicon_xml2cbuf(cb, xn, 0, 0) < 0)
 	goto done;
-    add_postamble(cb);
     /* Send it to listening client on stdout */
-    if (netconf_output(1, cb, "notification") < 0){
+    if (netconf_output_encap(1, cb, "notification") < 0){
 	cbuf_free(cb);
 	goto done;
     }
@@ -840,7 +514,7 @@ netconf_create_subscription(clicon_handle h,
 	goto ok;
     if (event_reg_fd(s, 
 		     netconf_notification_cb, 
-		     NULL,
+		     h,
 		     "notification socket") < 0)
 	goto done;
  ok:
@@ -876,9 +550,13 @@ netconf_application_rpc(clicon_handle h,
     cbuf          *cb = NULL;
     cbuf          *cbret = NULL;
     int            ret;
-
+    
     /* First check system / netconf RPC:s */
     if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, 0, "cbuf_new");
+	goto done;
+    }
+    if ((cbret = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, 0, "cbuf_new");
 	goto done;
     }
@@ -902,13 +580,9 @@ netconf_application_rpc(clicon_handle h,
 	goto ok;
     }
     yrpc = yang_find((yang_node*)ymod, Y_RPC, xml_name(xn));
-    if ((yrpc==NULL) && _CLICON_XML_NS_ITERATE){
-	int i;
-	for (i=0; i<yspec->yp_len; i++){
-	    ymod = yspec->yp_stmt[i];
-	    if ((yrpc = yang_find((yang_node*)ymod, Y_RPC, xml_name(xn))) != NULL)
-		break;
-	}
+    if ((yrpc==NULL) && !_CLICON_XML_NS_STRICT){
+	if (xml_yang_find_non_strict(xn, yspec, &yrpc) < 0) /* Y_RPC */
+		goto done;
     }
     /* Check if found */
     if (yrpc != NULL){
@@ -917,15 +591,18 @@ netconf_application_rpc(clicon_handle h,
 	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
 	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
-	    if (xml_apply(xn, CX_ELMNT, 
-			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+	    if ((ret = xml_yang_validate_all_top(xn, cbret)) < 0)
 		goto done;
-	    if (xml_yang_validate_add(xn, NULL) < 0)
+	    if (ret == 0){
+		netconf_output_encap(1, cbret, "rpc-error");
+		goto ok;
+	    }
+	    if ((ret = xml_yang_validate_add(xn, cbret)) < 0)
 		goto done;
-	}
-	if ((cbret = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, 0, "cbuf_new");
-	    goto done;
+	    if (ret == 0){
+		netconf_output_encap(1, cbret, "rpc-error");
+		goto ok;
+	    }
 	}
 	/* Look for local (client-side) netconf plugins. */
 	if ((ret = rpc_callback_call(h, xn, cbret, NULL)) < 0)
@@ -943,11 +620,18 @@ netconf_application_rpc(clicon_handle h,
 	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
 	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
-	    if (xml_apply(xoutput, CX_ELMNT, 
-			  (xml_applyfn_t*)xml_yang_validate_all, NULL) < 0)
+	    if ((ret = xml_yang_validate_all_top(xoutput, cbret)) < 0)
 		goto done;
-	    if (xml_yang_validate_add(xoutput, NULL) < 0)
+	    if (ret == 0){
+		clicon_log(LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
+		goto ok;
+	    }
+	    if ((ret = xml_yang_validate_add(xoutput, cbret)) < 0)
 		goto done;
+	    if (ret == 0){
+		clicon_log(LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
+		goto ok;
+	    }
 	}
 	retval = 1; /* handled by callback */
 	goto done;
@@ -992,9 +676,25 @@ netconf_rpc_dispatch(clicon_handle h,
 	if (xml_value_set(xa, username) < 0)
 	    goto done;
     }
+    /* Many of these calls are now calling generic clicon_rpc_netconf_xml
+     * directly, since the validation is generic and done before this place
+     * in the call. Some call however need extra validation, such as the 
+     * filter parameter to get/get-config and tes- err-opts of edit-config.
+     */
     xe = NULL;
     while ((xe = xml_child_each(xn, xe, CX_ELMNT)) != NULL) {
-	if (strcmp(xml_name(xe), "get-config") == 0){
+	if (strcmp(xml_name(xe), "copy-config") == 0 ||
+	    strcmp(xml_name(xe), "delete-config") == 0 ||
+	    strcmp(xml_name(xe), "lock") == 0 ||
+	    strcmp(xml_name(xe), "unlock") == 0 ||
+	    strcmp(xml_name(xe), "kill-session") == 0 ||
+	    strcmp(xml_name(xe), "validate") == 0 ||  /* :validate */
+	    strcmp(xml_name(xe), "commit") == 0 || /* :candidate */
+	    strcmp(xml_name(xe), "discard-changes") == 0){
+	    if (clicon_rpc_netconf_xml(h, xml_parent(xe), xret, NULL) < 0)
+		goto done;	
+	}
+	else if (strcmp(xml_name(xe), "get-config") == 0){
 	    if (netconf_get_config(h, xe, xret) < 0)
 		goto done;
 	}
@@ -1002,47 +702,14 @@ netconf_rpc_dispatch(clicon_handle h,
 	    if (netconf_edit_config(h, xe, xret) < 0)
 		goto done;
 	}
-        else if (strcmp(xml_name(xe), "copy-config") == 0){
-	    if (netconf_copy_config(h, xe, xret) < 0)
-		goto done;
-	}
-	else if (strcmp(xml_name(xe), "delete-config") == 0){
-	    if (netconf_delete_config(h, xe, xret) < 0)
-		goto done;
-	}
-	else if (strcmp(xml_name(xe), "lock") == 0) {
-	    if (netconf_lock(h, xe, xret) < 0)
-		goto done;
-	}
-	else if (strcmp(xml_name(xe), "unlock") == 0){
-	    if (netconf_unlock(h, xe, xret) < 0)
-		goto done;
-	}
 	else if (strcmp(xml_name(xe), "get") == 0){
 	    if (netconf_get(h, xe, xret) < 0)
 		goto done;
 	}
 	else if (strcmp(xml_name(xe), "close-session") == 0){
-	    if (netconf_close_session(h, xe, xret) < 0)
-		goto done;
-	}
-	else if (strcmp(xml_name(xe), "kill-session") == 0) {
-	    if (netconf_kill_session(h, xe, xret) < 0)
-		goto done;
-	}
-	/* Validate capability :validate */
-	else if (strcmp(xml_name(xe), "validate") == 0){
-	    if (netconf_validate(h, xe, xret) < 0)
-		goto done;
-	}
-	/* Candidate configuration capability :candidate */
-	else if (strcmp(xml_name(xe), "commit") == 0){
-	    if (netconf_commit(h, xe, xret) < 0)
-		goto done;
-	}
-	else if (strcmp(xml_name(xe), "discard-changes") == 0){
-	    if (netconf_discard_changes(h, xe, xret) < 0)
-		goto done;
+	    cc_closed++;
+	    if (clicon_rpc_netconf_xml(h, xml_parent(xe), xret, NULL) < 0)
+		goto done;	
 	}
 	/* RFC 5277 :notification */
 	else if (strcmp(xml_name(xe), "create-subscription") == 0){

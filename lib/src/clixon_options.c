@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -111,7 +111,6 @@ clicon_option_dump(clicon_handle h,
 	    clicon_debug(dbglevel, "%s = NULL", keys[i]);
     }
     free(keys);
-
 }
 
 /*! Read filename and set values to global options registry. XML variant.
@@ -136,6 +135,8 @@ parse_configfile(clicon_handle  h,
     char       *name;
     char       *body;
     clicon_hash_t *copt = clicon_options(h);
+    cbuf       *cbret = NULL;
+    int         ret;
 
     if (filename == NULL || !strlen(filename)){
 	clicon_err(OE_UNIX, 0, "Not specified");
@@ -167,8 +168,16 @@ parse_configfile(clicon_handle  h,
     }
     if (xml_apply0(xc, CX_ELMNT, xml_default, yspec) < 0)
 	goto done;	
-    if (xml_apply0(xc, CX_ELMNT, xml_yang_validate_add, NULL) < 0)
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;	
+    }
+    if ((ret = xml_yang_validate_add(xc, cbret)) < 0)
+	goto done;
+    if (ret == 0){
+	clicon_err(OE_CFG, 0, "Config file validation: %s", cbuf_get(cbret));
+	goto done;
+    }
     while ((x = xml_child_each(xc, x, CX_ELMNT)) != NULL) {
 	name = xml_name(x);
 	body = xml_body(x);
@@ -197,10 +206,48 @@ parse_configfile(clicon_handle  h,
     *xconfig = xt;
     xt = NULL;
   done:
+    if (cbret)
+	cbuf_free(cbret);
     if (xt)
 	xml_free(xt);
     if (f)
 	fclose(f);
+    return retval;
+}
+
+/*! Add configuration option overriding file setting
+ * Add to clicon_options hash, and to clicon_conf_xml tree
+ * @param[in]  h      Clicon handle
+ * @param[in]  name   Name of configuration option (see clixon-config.yang)
+ * @param[in]  value  String value
+ * @retval     0      OK
+ * @retval    -1      Error
+ * @see clicon_options_main  For loading options from file
+ */
+int
+clicon_option_add(clicon_handle h,
+		  char         *name,
+		  char         *value)
+{
+    int            retval = -1;
+    clicon_hash_t *copt = clicon_options(h);
+    cxobj         *x;
+
+    if (strcmp(name, "CLICON_FEATURE")==0 ||
+	strcmp(name, "CLICON_YANG_DIR")==0){
+	if ((x = clicon_conf_xml(h)) == NULL)
+	    goto done;
+	if (xml_parse_va(&x, NULL, "<%s>%s</%s>",
+			 name, value, name) < 0)
+	    goto done;
+    }
+    if (hash_add(copt, 
+		 name,
+		 value,
+		 strlen(value)+1) == NULL)
+	goto done;
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -243,9 +290,8 @@ clicon_options_main(clicon_handle h,
 	clicon_err(OE_CFG, 0, "%s: suffix %s not recognized (Run ./configure --with-config-compat?)", configfile, suffix);
 	goto done;
     }
-#if 1 /* XXX Kludge to low-level functions to iterate over namspaces or not */
-    _CLICON_XML_NS_ITERATE = 1;
-#endif
+    /* XXX Kludge to low-level functions to search for xml in all yang modules */
+    _CLICON_XML_NS_STRICT = 0;
     /* Read configfile first without yangspec, for bootstrapping */
     if (parse_configfile(h, configfile, yspec, &xconfig) < 0)
 	goto done;
@@ -254,7 +300,7 @@ clicon_options_main(clicon_handle h,
     /* Set clixon_conf pointer to handle */
     clicon_conf_xml_set(h, xconfig);
     /* Parse clixon yang spec */
-    if (yang_parse(h, NULL, "clixon-config", NULL, yspec) < 0)
+    if (yang_spec_parse_module(h, "clixon-config", NULL, yspec) < 0)
 	goto done;    
     clicon_conf_xml_set(h, NULL);
     if (xconfig)
@@ -266,14 +312,8 @@ clicon_options_main(clicon_handle h,
 	goto done;
     /* Set clixon_conf pointer to handle */
     clicon_conf_xml_set(h, xconfig);
-    /* Specific option handling */
-    if (clicon_option_bool(h, "CLICON_XML_SORT") == 1)
-	xml_child_sort = 1;
-    else
-	xml_child_sort = 0;
-#if 1 /* XXX Kludge to low-level functions to iterate over namspaces or not */
-    _CLICON_XML_NS_ITERATE = clicon_option_bool(h, "CLICON_XML_NS_ITERATE");
-#endif
+    /* XXX Kludge to low-level functions to search for xml in all yang modules */
+    _CLICON_XML_NS_STRICT = clicon_option_bool(h, "CLICON_XML_NS_STRICT");
     retval = 0;
  done:
     return retval;

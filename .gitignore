@@ -14,10 +14,9 @@ lib/Makefile
 lib/*/Makefile
 autom4te.cache/
 
-clixon.conf.cpp
-clixon.mk
 config.log
 config.status
+TAGS
 
 apps/backend/clixon_backend
 apps/backend/test
@@ -45,5 +44,5 @@ build-root/*.tar.xz
 build-root/*.rpm
 build-root/rpmbuild
 
-test/public
+test/site.sh
 doc/html

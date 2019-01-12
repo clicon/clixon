@@ -52,14 +52,6 @@ module example{
     }
     rpc empty {
     }
-    rpc input {
-       input {
-       }
-    }
-    rpc output {
-       output {
-       }
-    }
     rpc client-rpc {
        	description "Example local client-side rpc";
 	input {
@@ -84,7 +76,7 @@ module example{
 EOF
 
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
-state='{"state": {"op": "42"}}'
+state='{"example:state": {"op": "42"}}'
 
 new "test params: -f $cfg -y $fyang"
 if [ $BE -ne 0 ]; then
@@ -104,7 +96,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-sudo su -c "$clixon_restconf -f $cfg -y $fyang -D 1" -s /bin/sh www-data &
+sudo su -c "$clixon_restconf -f $cfg -y $fyang -D $DBG" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
@@ -124,13 +116,14 @@ new2 "restconf get restconf resource. RFC 8040 3.3 (xml)"
 expecteq "$(curl -s -H 'Accept: application/yang-data+xml' -G http://localhost/restconf)" '<restconf><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>
 '
 
+# Should be alphabetically ordered
 new2 "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"example:empty": null,"example:input": null,"example:output": null,"example:client-rpc": null,"ietf-routing:fib-route": null,"ietf-routing:route-count": null}}
+expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"example:empty": null,"example:client-rpc": null,"ietf-routing:fib-route": null,"ietf-routing:route-count": null,"clixon-lib:debug": null}
 '
 
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/operations)
-expect='<operations><empty xmlns="urn:example:clixon"/><input xmlns="urn:example:clixon"/><output xmlns="urn:example:clixon"/><client-rpc xmlns="urn:example:clixon"/><fib-route xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/><route-count xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/></operations>'
+expect='<operations><empty xmlns="urn:example:clixon"/><client-rpc xmlns="urn:example:clixon"/><fib-route xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/><route-count xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/><debug xmlns="http://clicon.org/lib"/></operations>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -147,8 +140,8 @@ if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
-new2 "restconf schema resource, RFC 8040 sec 3.7 according to RFC 7895"
-expecteq "$(curl -s -H 'Accept: application/yang-data+json' -G http://localhost/restconf/data/ietf-yang-library:modules-state/module=ietf-routing,2014-10-26/)" '{"module": [{"name": "ietf-routing","revision": "2014-10-26","namespace": "urn:ietf:params:xml:ns:yang:ietf-routing","conformance-type": "implement"}]}
+new2 "restconf schema resource, RFC 8040 sec 3.7 according to RFC 7895 (explicit resource)"
+expecteq "$(curl -s -H 'Accept: application/yang-data+json' -G http://localhost/restconf/data/ietf-yang-library:modules-state/module=ietf-routing,2014-10-26/)" '{"ietf-yang-library:module": [{"name": "ietf-routing","revision": "2014-10-26","namespace": "urn:ietf:params:xml:ns:yang:ietf-routing","conformance-type": "implement"}]}
 '
 
 new "restconf options. RFC 8040 4.1"
@@ -159,169 +152,174 @@ expectfn "curl -s -I http://localhost/restconf/data" 0 "HTTP/1.1 200 OK"
 #Content-Type: application/yang-data+json"
 
 new "restconf empty rpc"
-expecteq "$(curl -s -X POST -d {\"input\":null} http://localhost/restconf/operations/example:empty)" ""
+expecteq "$(curl -s -X POST -d {\"example:input\":null} http://localhost/restconf/operations/example:empty)" ""
+
+new2 "restconf empty rpc with extra args (should fail)"
+expecteq "$(curl -s -X POST -d {\"example:input\":{\"extra\":null}} http://localhost/restconf/operations/example:empty)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "extra"},"error-severity": "error"}}}'
 
 new2 "restconf get empty config + state json"
-expecteq "$(curl -sSG http://localhost/restconf/data/state)" '{"state": {"op": "42"}}
+expecteq "$(curl -sSG http://localhost/restconf/data/example:state)" '{"example:state": {"op": "42"}}
 '
 
 new2 "restconf get empty config + state json + module"
-expecteq "$(curl -sSG http://localhost/restconf/data/example:state)" '{"state": {"op": "42"}}
+expecteq "$(curl -sSG http://localhost/restconf/data/example:state)" '{"example:state": {"op": "42"}}
 '
 
 new2 "restconf get empty config + state json with wrong module name"
-expecteq "$(curl -sSG http://localhost/restconf/data/badmodule:state)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "No yang node found: badmodule:state"}}}}'
+expecteq "$(curl -sSG http://localhost/restconf/data/badmodule:state)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "No such yang module: badmodule"}}}'
 
 new "restconf get empty config + state xml"
-ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/state)
-expect="<state><op>42</op></state>"
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/example:state)
+expect='<state xmlns="urn:example:clixon"><op>42</op></state>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
 new2 "restconf get data/ json"
-expecteq "$(curl -s -G http://localhost/restconf/data/state/op=42)" '{"op": "42"}
+expecteq "$(curl -s -G http://localhost/restconf/data/example:state/op=42)" '{"example:op": "42"}
 '
 
 new "restconf get state operation eth0 xml"
 # Cant get shell macros to work, inline matching from lib.sh
-ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/state/op=42)
-expect="<op>42</op>"
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/example:state/op=42)
+expect='<op xmlns="urn:example:clixon">42</op>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
 new2 "restconf get state operation eth0 type json"
-expecteq "$(curl -s -G http://localhost/restconf/data/state/op=42)" '{"op": "42"}
+expecteq "$(curl -s -G http://localhost/restconf/data/example:state/op=42)" '{"example:op": "42"}
 '
 
 new "restconf get state operation eth0 type xml"
 # Cant get shell macros to work, inline matching from lib.sh
-ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/state/op=42)
-expect="<op>42</op>"
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/example:state/op=42)
+expect='<op xmlns="urn:example:clixon">42</op>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
 new2 "restconf GET datastore"
-expecteq "$(curl -s -X GET http://localhost/restconf/data/state)" '{"state": {"op": "42"}}
+expecteq "$(curl -s -X GET http://localhost/restconf/data/example:state)" '{"example:state": {"op": "42"}}
 '
 
 # Exact match
 new "restconf Add subtree to datastore using POST"
-expectfn 'curl -s -i -X POST -H "Accept: application/yang-data+json" -d {"interfaces":{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}} http://localhost/restconf/data' 0 'HTTP/1.1 200 OK'
+expectfn 'curl -s -i -X POST -H "Accept: application/yang-data+json" -d {"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}} http://localhost/restconf/data' 0 'HTTP/1.1 200 OK'
 
 new "restconf Re-add subtree which should give error"
-expectfn 'curl -s -X POST -d {"interfaces":{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors" : {"error": {"error-tag": "data-exists","error-type": "application","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+expectfn 'curl -s -X POST -d {"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 # XXX Cant get this to work
-#expecteq "$(curl -s -X POST -d {\"interfaces\":{\"interface\":{\"name\":\"eth/0/0\",\"type\":\"ex:eth\",\"enabled\":true}}} http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-tag": "data-exists","error-type": "application","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+#expecteq "$(curl -s -X POST -d {\"interfaces\":{\"interface\":{\"name\":\"eth/0/0\",\"type\":\"ex:eth\",\"enabled\":true}}} http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 new "restconf Check interfaces eth/0/0 added"
-expectfn "curl -s -G http://localhost/restconf/data" 0 '{"interfaces": {"interface": \[{"name": "eth/0/0","type": "ex:eth","enabled": true}\]},"state": {"op": "42"}}
-'
+expectfn "curl -s -G http://localhost/restconf/data" 0 '"ietf-interfaces:interfaces": {"interface": \[{"name": "eth/0/0","type": "ex:eth","enabled": true}\]}'
 
 new "restconf delete interfaces"
-expecteq $(curl -s -X DELETE  http://localhost/restconf/data/interfaces) ""
+expecteq $(curl -s -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces) ""
 
 new "restconf Check empty config"
-expectfn "curl -sG http://localhost/restconf/data/state" 0 "$state"
+expectfn "curl -sG http://localhost/restconf/data/example:state" 0 "$state"
 
+# XXX: gives  <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+#      <interface xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
 new "restconf Add interfaces subtree eth/0/0 using POST"
-expectfn 'curl -s -X POST -d {"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}} http://localhost/restconf/data/interfaces' 0 ""
+expectfn 'curl -s -X POST -d {"ietf-interfaces:interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}} http://localhost/restconf/data/ietf-interfaces:interfaces' 0 ""
 # XXX cant get this to work
 #expecteq "$(curl -s -X POST -d '{"interface":{"name":"eth/0/0","type\":"ex:eth","enabled":true}}' http://localhost/restconf/data/interfaces)" ""
 
 new2 "restconf Check eth/0/0 added config"
-expecteq "$(curl -s -G http://localhost/restconf/data/interfaces)" '{"interfaces": {"interface": [{"name": "eth/0/0","type": "ex:eth","enabled": true}]}}
+expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" '{"ietf-interfaces:interfaces": {"interface": [{"name": "eth/0/0","type": "ex:eth","enabled": true}]}}
 '
 
 new2 "restconf Check eth/0/0 added state"
-expecteq "$(curl -s -G http://localhost/restconf/data/state)" '{"state": {"op": "42"}}
+expecteq "$(curl -s -G http://localhost/restconf/data/example:state)" '{"example:state": {"op": "42"}}
 '
 
 new2 "restconf Re-post eth/0/0 which should generate error"
-expecteq "$(curl -s -X POST -d '{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}' http://localhost/restconf/data/interfaces)" '{"ietf-restconf:errors" : {"error": {"error-tag": "data-exists","error-type": "application","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+expecteq "$(curl -s -X POST -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 new "Add leaf description using POST"
-expecteq "$(curl -s -X POST -d '{"description":"The-first-interface"}' http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0)" ""
+expecteq "$(curl -s -X POST -d '{"ietf-interfaces:description":"The-first-interface"}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" ""
 
 new "Add nothing using POST"
-expectfn 'curl -s -X POST http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0' 0 '"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "malformed-message","error-type": "rpc","error-severity": "error","error-message": " on line 1: syntax error at or before:'
+expectfn 'curl -s -X POST http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0' 0 '"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": " on line 1: syntax error at or before:'
 
 new2 "restconf Check description added"
-expecteq "$(curl -s -G http://localhost/restconf/data/interfaces)" '{"interfaces": {"interface": [{"name": "eth/0/0","description": "The-first-interface","type": "ex:eth","enabled": true}]}}
+expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" '{"ietf-interfaces:interfaces": {"interface": [{"name": "eth/0/0","description": "The-first-interface","type": "ex:eth","enabled": true}]}}
 '
 
 new "restconf delete eth/0/0"
-expecteq "$(curl -s -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0)" ""
+expecteq "$(curl -s -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" ""
 
 new "Check deleted eth/0/0"
 expectfn 'curl -s -G http://localhost/restconf/data' 0 $state
 
 new2 "restconf Re-Delete eth/0/0 using none should generate error"
-expecteq "$(curl -s -X DELETE  http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0)" '{"ietf-restconf:errors" : {"error": {"error-tag": "data-missing","error-type": "application","error-severity": "error","error-message": "Data does not exist; cannot delete resource"}}}'
+expecteq "$(curl -s -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-missing","error-severity": "error","error-message": "Data does not exist; cannot delete resource"}}}'
 
 new "restconf Add subtree eth/0/0 using PUT"
-expecteq "$(curl -s -X PUT -d '{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}' http://localhost/restconf/data/interfaces/interface=eth%2f0%2f0)" ""
+expecteq "$(curl -s -X PUT -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" ""
 
 new2 "restconf get subtree"
-expecteq "$(curl -s -G http://localhost/restconf/data/interfaces)" '{"interfaces": {"interface": [{"name": "eth/0/0","type": "ex:eth","enabled": true}]}}
+expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" '{"ietf-interfaces:interfaces": {"interface": [{"name": "eth/0/0","type": "ex:eth","enabled": true}]}}
 '
 
 new2 "restconf rpc using POST json"
-expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"output": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"}}}}
+expecteq "$(curl -s -X POST -d '{"ietf-routing:input":{"routing-instance-name":"ipv4","destination-address":{"address-family":"ipv6"}}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-routing:output": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"},"source-protocol": "static"}}}
 '
 
 # Cant get this to work due to quoting
 #new2 "restconf rpc using POST wrong JSON"
-#expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":ipv4}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": " on line 1: syntax error at or before: i"}}}}'
+#expecteq "$(curl -s -X POST -d '{"ietf-routing:input":{"routing-instance-name":ipv4}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": " on line 1: syntax error at or before: i"}}}'
 
-new2 "restconf rpc using POST json w/o mandatory element"
-expecteq "$(curl -s -X POST -d '{"input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "Missing mandatory variable: routing-instance-name"}}}}'
-new2 "restconf rpc non-existing rpc w/o namespace"
-expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/kalle)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "yang node not found"}}}}'
+new2 "restconf rpc using POST json without mandatory element"
+expecteq "$(curl -s -X POST -d '{"ietf-routing:input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "wrongelement"},"error-severity": "error"}}}'
+
+new2 "restconf rpc non-existing rpc without namespace"
+expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/kalle)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "kalle"},"error-severity": "error","error-message": "RPC not defined"}}}'
 
 new2 "restconf rpc non-existing rpc"
-expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/example:kalle)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "yang node not found"}}}}'
+expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/example:kalle)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "kalle"},"error-severity": "error","error-message": "RPC not defined"}}}'
 
 new2 "restconf rpc missing name"
-expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "Operation name expected"}}}}'
+expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "Operation name expected"}}}'
 
 new2 "restconf rpc missing input"
-expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "Missing mandatory variable: routing-instance-name"}}}}'
+expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": "restconf RPC does not have input statement"}}}'
 
 new "restconf rpc using POST xml"
-ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/ietf-routing:fib-route)
-expect="<output><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop></route></output>"
+ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"ietf-routing:input":{"routing-instance-name":"ipv4","destination-address":{"address-family":"ipv4"}}}' http://localhost/restconf/operations/ietf-routing:fib-route)
+expect='<output xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop><source-protocol>static</source-protocol></route></output>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
 new2 "restconf rpc using wrong prefix"
-expecteq "$(curl -s -X POST -d '{"input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/wrong:fib-route)" '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-tag": "operation-failed","error-type": "protocol","error-severity": "error","error-message": "yang module not found"}}}}'
+expecteq "$(curl -s -X POST -d '{"wrong:input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/wrong:fib-route)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang module not found"}}}'
 
 new "restconf local client rpc using POST xml"
-ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"input":{"request":"example"}}' http://localhost/restconf/operations/example:client-rpc)
-expect="<output><result>ok</result></output>"
+ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"example:input":{"request":"example"}}' http://localhost/restconf/operations/example:client-rpc)
+expect='<output xmlns="urn:example:clixon"><result>ok</result></output>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
 # XXX cant get -H to work
-#expecteq 'curl -s -X POST -H "Accept: application/yang-data+xml" -d {"input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/ietf-routing:fib-route' '<output><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop></route></output>'
+#expecteq 'curl -s -X POST -H "Accept: application/yang-data+xml" -d {"ietf-routing:input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/ietf-routing:fib-route' '<output><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop></route></output>'
 
 # Cant get shell macros to work, inline matching from lib.sh
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 

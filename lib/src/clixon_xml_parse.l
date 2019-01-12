@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -106,6 +106,7 @@ ncname     {namestart}{namechar}*
 
 <START,TEXTDECL>[ \t]   ;
 <START,STATEA,CMNT,TEXTDECL>\n   { _YA->ya_linenum++; }
+<START,STATEA,CMNT,TEXTDECL>\r
 
 <START>{ncname}        { clixon_xml_parselval.string = strdup(yytext);
                             return NAME; /* rather be catch-all */

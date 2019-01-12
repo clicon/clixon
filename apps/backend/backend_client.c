@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -292,7 +292,7 @@ client_get_streams(clicon_handle   h,
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
  * @retval        0       OK
- * @retval        1       Statedata callback failed
+ * @retval        1       Statedata callback failed (clicon_err called)
  */
 static int
 client_statedata(clicon_handle h,
@@ -309,15 +309,15 @@ client_statedata(clicon_handle h,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }    
-    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	(retval = client_get_streams(h, yspec, xpath, "ietf-netconf-notification", "netconf", xret)) != 0)
-    	goto done;
-    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
-	(retval = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) != 0)
-    	goto done;
-    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895") &&
-	(retval = yang_modules_state_get(h, yspec, xret)) != 0)
-    	goto done;
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277"))
+	if ((retval = client_get_streams(h, yspec, xpath, "clixon-rfc5277", "netconf", xret)) != 0)
+	    goto done;
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040"))
+	if ((retval = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) != 0)
+	    goto done;
+    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895"))
+	if ((retval = yang_modules_state_get(h, yspec, xret)) != 0)
+	    goto done;
     if ((retval = clixon_plugin_statedata(h, yspec, xpath, xret)) != 0)
 	goto done;
     /* Code complex to filter out anything that is outside of xpath */
@@ -339,7 +339,7 @@ client_statedata(clicon_handle h,
     /* reset flag */
     if (xml_apply(*xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
-    retval = 0;
+    retval = 0; /* OK */
  done:
     if (xvec)
 	free(xvec);
@@ -363,7 +363,6 @@ from_client_get(clicon_handle h,
     char   *xpath = "/";
     cxobj  *xret = NULL;
     int     ret;
-    cbuf   *cbx = NULL; /* Assist cbuf */
     
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
@@ -379,33 +378,24 @@ from_client_get(clicon_handle h,
     clicon_err_reset();
     if ((ret = client_statedata(h, xpath, &xret)) < 0)
 	goto done;
-    if (ret == 0){ /* OK */
-	cprintf(cbret, "<rpc-reply>");
-	if (xret==NULL)
-	    cprintf(cbret, "<data/>");
-	else{
-	    if (xml_name_set(xret, "data") < 0)
-		goto done;
-	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
-		goto done;
-	}
-	cprintf(cbret, "</rpc-reply>");
-    }
-    else { /* 1 Error from callback */
-	if ((cbx = cbuf_new()) == NULL){
-	    clicon_err(OE_XML, errno, "cbuf_new");
+    if (ret == 1){ /* Error from callback (error in xret) */
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
 	    goto done;
-	}	
-	cprintf(cbx, "Internal error:%s", clicon_err_reason);
-	if (netconf_operation_failed(cbret, "rpc", cbuf_get(cbx))< 0)
-	    goto done;
-	clicon_log(LOG_NOTICE, "%s Error in backend_statedata_call:%s", __FUNCTION__, xml_name(xe));
+	goto ok;
     }
+    cprintf(cbret, "<rpc-reply>");     /* OK */
+    if (xret==NULL)
+	cprintf(cbret, "<data/>");
+    else{
+	if (xml_name_set(xret, "data") < 0)
+	    goto done;
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
+    }
+    cprintf(cbret, "</rpc-reply>");
  ok:
     retval = 0;
  done:
-    if (cbx)
-	cbuf_free(cbx);
     if (xret)
 	xml_free(xret);
     return retval;
@@ -433,14 +423,16 @@ from_client_edit_config(clicon_handle h,
     int                 non_config = 0;
     yang_spec          *yspec;
     cbuf               *cbx = NULL; /* Assist cbuf */
+    int                 ret;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec9");
 	goto done;
     }
     if ((target = netconf_db_find(xn, "target")) == NULL){
-	clicon_err(OE_XML, 0, "db not found");
-	goto done;
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
+	    goto done;
+	goto ok;
     }
     if ((cbx = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
@@ -468,12 +460,12 @@ from_client_edit_config(clicon_handle h,
 	}
     }
     if ((xc = xpath_first(xn, "config")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>config</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "config", NULL) < 0)
 	    goto done;
 	goto ok;
     }
     else{
-	/* <config> yang spec may be set to anyxml by ingress yang check,...*/
+	/* <config> yang spec may be set to anyxmly by ingress yang check,...*/
 	if (xml_spec(xc) != NULL)
 	    xml_spec_set(xc, NULL);
 	/* Populate XML with Yang spec (why not do this in parser?) 
@@ -491,24 +483,27 @@ from_client_edit_config(clicon_handle h,
 	/* Cant do this earlier since we dont have a yang spec to
 	 * the upper part of the tree, until we get the "config" tree.
 	 */
-	if (xml_child_sort && xml_apply0(xc, CX_ELMNT, xml_sort, NULL) < 0)
+	if (xml_apply0(xc, CX_ELMNT, xml_sort, NULL) < 0)
 	    goto done;
-	if (xmldb_put(h, target, operation, xc, cbret) < 0){
+	if ((ret = xmldb_put(h, target, operation, xc, cbret)) < 0){
 	    clicon_debug(1, "%s ERROR PUT", __FUNCTION__);	
 	    if (netconf_operation_failed(cbret, "protocol", clicon_err_reason)< 0)
 		goto done;
 	    goto ok;
 	}
+	if (ret == 0)
+	    goto ok;
     }
+    assert(cbuf_len(cbret) == 0);
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
-    if (!cbuf_len(cbret))
-	cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     retval = 0;
  done:
     if (cbx)
 	cbuf_free(cbx);
     clicon_debug(1, "%s done cbret:%s", __FUNCTION__, cbuf_get(cbret));	
     return retval;
+    
 } /* from_client_edit_config */
 
 /*! Internal message: Lock database
@@ -530,7 +525,7 @@ from_client_lock(clicon_handle h,
     cbuf  *cbx = NULL; /* Assist cbuf */
     
     if ((db = netconf_db_find(xe, "target")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -589,7 +584,7 @@ from_client_unlock(clicon_handle h,
     cbuf  *cbx = NULL; /* Assist cbuf */
 
     if ((db = netconf_db_find(xe, "target")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -651,7 +646,7 @@ from_client_kill_session(clicon_handle h,
     
     if ((x = xml_find(xe, "session-id")) == NULL ||
 	(str = xml_find_value(x, "body")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>session-id</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "session-id", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -709,7 +704,7 @@ from_client_copy_config(clicon_handle h,
     cbuf  *cbx = NULL; /* Assist cbuf */
     
     if ((source = netconf_db_find(xe, "source")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>source</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -724,7 +719,7 @@ from_client_copy_config(clicon_handle h,
 	goto ok;
     }
     if ((target = netconf_db_find(xe, "target")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -777,7 +772,7 @@ from_client_delete_config(clicon_handle h,
 
     if ((target = netconf_db_find(xe, "target")) == NULL||
 	strcmp(target, "running")==0){
-	if (netconf_missing_element(cbret, "protocol", "<bad-element>target</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -856,7 +851,7 @@ from_client_create_subscription(clicon_handle        h,
     if ((x = xpath_first(xe, "//stopTime")) != NULL){
 	if ((stoptime = xml_find_value(x, "body")) != NULL &&
 	    str2time(stoptime, &stop) < 0){
-	    if (netconf_bad_element(cbret, "application", "<bad-element>stopTime</bad-element>", "Expected timestamp") < 0)
+	    if (netconf_bad_element(cbret, "application", "stopTime", "Expected timestamp") < 0)
 		goto done;
 	    goto ok;	
 	}
@@ -864,7 +859,7 @@ from_client_create_subscription(clicon_handle        h,
     if ((x = xpath_first(xe, "//startTime")) != NULL){
 	if ((starttime = xml_find_value(x, "body")) != NULL &&
 	    str2time(starttime, &start) < 0){
-	    if (netconf_bad_element(cbret, "application", "<bad-element>startTime</bad-element>", "Expected timestamp") < 0)
+	    if (netconf_bad_element(cbret, "application", "startTime", "Expected timestamp") < 0)
 		goto done;
 	    goto ok;	
 	}	
@@ -925,7 +920,7 @@ from_client_debug(clicon_handle      h,
     char    *valstr;
     
     if ((valstr = xml_find_body(xe, "level")) == NULL){
-	if (netconf_missing_element(cbret, "application", "<bad-element>level</bad-element>", NULL) < 0)
+	if (netconf_missing_element(cbret, "application", "level", NULL) < 0)
 	    goto done;
 	goto ok;
     }
@@ -971,6 +966,7 @@ from_client_msg(clicon_handle        h,
 
     clicon_debug(1, "%s", __FUNCTION__);
     pid = ce->ce_pid;
+    yspec = clicon_dbspec_yang(h); 
     /* Return netconf message. Should be filled in by the dispatch(sub) functions 
      * as wither rpc-error or by positive response.
      */
@@ -978,28 +974,26 @@ from_client_msg(clicon_handle        h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_msg_decode(msg, &xt) < 0){
+    if (clicon_msg_decode(msg, yspec, &xt) < 0){
 	if (netconf_malformed_message(cbret, "XML parse error")< 0)
 	    goto done;
 	goto reply;
     }
-    /* Get yang spec */ 
-    yspec = clicon_dbspec_yang(h); /* XXX maybe move to clicon_msg_decode? */
+
     if ((x = xpath_first(xt, "/rpc")) == NULL){
 	if (netconf_malformed_message(cbret, "rpc keyword expected")< 0)
 	    goto done;
 	goto reply;
     }
-    /* Populate incoming XML tree with yang */
+    /* Populate incoming XML tree with yang - 
+     * should really have been dealt with by decode above
+     * maybe not necessary since it should be */
     if (xml_spec_populate_rpc(h, x, yspec) < 0)
+    	goto done;
+    if ((ret = xml_yang_validate_rpc(x, cbret)) < 0)
 	goto done;
-    if ((ret = xml_yang_validate_rpc(x)) < 0)
-	goto done;
-    if (ret == 0){
-	if (netconf_operation_failed(cbret, "application", "Validation failed")< 0)
-	    goto done;
+    if (ret == 0)
 	goto reply;
-    }
     xe = NULL;
     username = xml_find_value(x, "username");
     while ((xe = xml_child_each(x, xe, CX_ELMNT)) != NULL) {
@@ -1059,7 +1053,7 @@ from_client_msg(clicon_handle        h,
 	}
 	else if (strcmp(rpc, "validate") == 0){
 	    if ((db = netconf_db_find(xe, "source")) == NULL){
-		if (netconf_missing_element(cbret, "protocol", "<bad-element>source</bad-element>", NULL) < 0)
+		if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
 		    goto done;
 		goto reply;
 	    }

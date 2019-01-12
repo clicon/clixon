@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -46,10 +46,14 @@ int netconf_too_big(cbuf *cb, char *type, char *message);
 int netconf_missing_attribute(cbuf *cb,	char *type, char *info, char *message);
 int netconf_bad_attribute(cbuf *cb, char *type, char *info, char *message);
 int netconf_unknown_attribute(cbuf *cb,	char *type, char *info, char *message);
-int netconf_missing_element(cbuf *cb, char *type, char *info, char *message);
-int netconf_bad_element(cbuf *cb, char *type, char *info, char *message);
-int netconf_unknown_element(cbuf *cb, char *type, char *info, char *message);
-int netconf_unknown_namespace(cbuf *cb, char *type, char *info, char *message);
+int netconf_missing_element(cbuf *cb, char *type, char *element, char *message);
+int netconf_missing_element_xml(cxobj **xret, char *type, char *element, char *message);
+int netconf_bad_element(cbuf *cb, char *type, char *info, char *element);
+int netconf_bad_element_xml(cxobj **xret, char *type, char *info, char *element);
+int netconf_unknown_element(cbuf *cb, char *type, char *element, char *message);
+int netconf_unknown_element_xml(cxobj **xret, char *type, char *element, char *message);
+int netconf_unknown_namespace(cbuf *cb, char *type, char *namespace, char *message);
+int netconf_unknown_namespace_xml(cxobj **xret, char *type, char *namespace, char *message);
 int netconf_access_denied(cbuf *cb, char *type, char *message);
 int netconf_access_denied_xml(cxobj **xret, char *type, char *message);
 int netconf_lock_denied(cbuf *cb, char *info, char *message);

@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -275,7 +275,7 @@ restconf_client_rpc(clicon_handle h,
 {
     //    FCGX_Request *r = (FCGX_Request *)arg;
     clicon_debug(1, "%s", __FUNCTION__);
-    cprintf(cbret, "<rpc-reply><result>ok</result></rpc-reply>");
+    cprintf(cbret, "<rpc-reply><result xmlns=\"urn:example:clixon\">ok</result></rpc-reply>");
     return 0;
 }
 

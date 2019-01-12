@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -358,6 +358,16 @@ xml_copy_marked(cxobj *x0,
 
     assert(x0 && x1);
     yt = xml_spec(x0); /* can be null */
+    /* Copy all attributes */
+    x = NULL;
+    while ((x = xml_child_each(x0, x, CX_ATTR)) != NULL) {
+	name = xml_name(x);
+	if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
+	    goto done;
+	if (xml_copy(x, xcopy) < 0) 
+	    goto done;
+    }
+
     /* Go through children to detect any marked nodes:
      * (3) Special case: key nodes in lists are copied if any 
      * node in list is marked
@@ -470,6 +480,10 @@ text_get(xmldb_handle xh,
 	    if (singleconfigroot(xt, &xt) < 0)
 		goto done;
 	}
+	/* XXX: should we validate file if read from disk? 
+	 * Argument against: we may want to have a semantically wrong file and wish
+	 * to edit?
+	 */
     } /* xt == NULL */
     /* Here xt looks like: <config>...</config> */
 
@@ -530,12 +544,9 @@ text_get(xmldb_handle xh,
     /* Add default values (if not set) */
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
-    /* Order XML children according to YANG */
-    if (!xml_child_sort && xml_apply(xt, CX_ELMNT, xml_order, NULL) < 0)
-	goto done;
-#if 0 /* debug */
-    if (xml_child_sort && xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
-	clicon_log(LOG_NOTICE, "%s: verify failed #2", __FUNCTION__);
+#if 1 /* debug */
+    if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
+	clicon_log(LOG_NOTICE, "%s: sort verify failed #2", __FUNCTION__);
 #endif
     if (debug>1)
     	clicon_xml2file(stderr, xt, 0, 1);
@@ -555,17 +566,22 @@ text_get(xmldb_handle xh,
 }
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
+ * @param[in]  th  text handle
  * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
  * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  x0p Parent of x0
  * @param[in]  x1  xml tree which modifies base
  * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
- * @param[out] cbret  Initialized cligen buffer. Contains return XML or "".
+ * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0.
+ * @retval    -1     Error
+ * @retval     0     Failed (cbret set)
+ * @retval     1     OK
  * Assume x0 and x1 are same on entry and that y is the spec
- * @see put in clixon_keyvalue.c
+ * @see text_modify_top
  */
 static int
-text_modify(cxobj              *x0,
+text_modify(struct text_handle *th,
+	    cxobj              *x0,
 	    yang_node          *y0,
 	    cxobj              *x0p,
 	    cxobj              *x1,
@@ -576,6 +592,8 @@ text_modify(cxobj              *x0,
     char      *opstr;
     char      *x1name;
     char      *x1cname; /* child name */
+    cxobj     *x0a; /* attribute */
+    cxobj     *x1a; /* attribute */
     cxobj     *x0c; /* base child */
     cxobj     *x0b; /* base body */
     cxobj     *x1c; /* mod child */
@@ -583,6 +601,7 @@ text_modify(cxobj              *x0,
     yang_stmt *yc;  /* yang child */
     cxobj    **x0vec = NULL;
     int        i;
+    int        ret;
 
     assert(x1 && xml_type(x1) == CX_ELMNT);
     assert(y0);
@@ -598,7 +617,7 @@ text_modify(cxobj              *x0,
 	    if (x0){
 		if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
 		    goto done;
-		goto ok;
+		goto fail;
 	    }
 	case OP_NONE: /* fall thru */
 	case OP_MERGE:
@@ -607,6 +626,13 @@ text_modify(cxobj              *x0,
 		//		int iamkey=0;
 		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
+		/* Copy xmlns attributes */
+		if ((x1a = xml_find_type(x1, NULL, "xmlns", CX_ATTR)) != 0){
+		    if ((x0a = xml_dup(x1a)) == NULL)
+			goto done;
+		    if (xml_addsub(x0, x0a) < 0)
+			goto done;
+		}
 #if 0
 		/* If it is key I dont want to mark it */
 		if ((iamkey=yang_key_match(y0->yn_parent, x1name)) < 0)
@@ -636,7 +662,7 @@ text_modify(cxobj              *x0,
 	    if (x0==NULL){
 		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
-		goto ok;
+		goto fail;
 	    }
 	case OP_REMOVE: /* fall thru */
 	    if (x0){
@@ -653,7 +679,7 @@ text_modify(cxobj              *x0,
 	    if (x0){
 		if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
 		    goto done;
-		goto ok;
+		goto fail;
 	    }
 	case OP_REPLACE: /* fall thru */
 	    if (x0){
@@ -679,11 +705,19 @@ text_modify(cxobj              *x0,
 	    if (x0==NULL){
 		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
+		/* Copy xmlns attributes */
+		if ((x1a = xml_find_type(x1, NULL, "xmlns", CX_ATTR)) != 0){
+		    if ((x0a = xml_dup(x1a)) == NULL)
+			goto done;
+		    if (xml_addsub(x0, x0a) < 0)
+			goto done;
+		}
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
 	    }
-	    /* First pass: mark existing children in base */
-	    /* Loop through children of the modification tree */
+	    /* First pass: Loop through children of the x1 modification tree 
+	     * collect matching nodes from x0 in x0vec (no changes to x0 children)
+	     */
 	    if ((x0vec = calloc(xml_child_nr(x1), sizeof(x1))) == NULL){
 		clicon_err(OE_UNIX, errno, "calloc");
 		goto done;
@@ -699,28 +733,40 @@ text_modify(cxobj              *x0,
 		}
 		/* See if there is a corresponding node in the base tree */
 		x0c = NULL;
-		if (match_base_child(x0, x1c, &x0c, yc) < 0)
+		if (match_base_child(x0, x1c, yc, &x0c) < 0)
 		    goto done;
-		x0vec[i++] = x0c;
+#if 1
+		if (x0c && (yc != xml_spec(x0c))){
+		    /* There is a match but is should be replaced (choice)*/
+		    if (xml_purge(x0c) < 0)
+			goto done;
+		    x0c = NULL;
+		}
+#endif
+		x0vec[i++] = x0c; /* != NULL if x0c is matching x1c */
 	    }
-	    /* Second pass: modify tree */
+	    /* Second pass: Loop through children of the x1 modification tree again
+	     * Now potentially modify x0:s children 
+	     * Here x0vec contains one-to-one matching nodes of x1:s children.
+	     */
 	    x1c = NULL;
 	    i = 0;
 	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 		x1cname = xml_name(x1c);
+		x0c = x0vec[i++];
 		yc = yang_find_datanode(y0, x1cname);
-		if (text_modify(x0vec[i++], (yang_node*)yc, x0, x1c, op, cbret) < 0)
+		if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op, cbret)) < 0)
 		    goto done;
 		/* If xml return - ie netconf error xml tree, then stop and return OK */
-		if (cbuf_len(cbret))
-		    goto ok;
+		if (ret == 0)
+		    goto fail;
 	    }
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
 		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
-		goto ok;
+		goto fail;
 	    }
 	case OP_REMOVE: /* fall thru */
 	    if (x0)
@@ -731,20 +777,26 @@ text_modify(cxobj              *x0,
 	} /* CONTAINER switch op */
     } /* else Y_CONTAINER  */
     xml_sort(x0p, NULL);
- ok:
-    retval = 0;
+    retval = 1;
  done:
     if (x0vec)
 	free(x0vec);
     return retval;
+ fail: /* cbret set */
+    retval = 0;
+    goto done;
 } /* text_modify */
 
 /*! Modify a top-level base tree x0 with modification tree x1
- * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
- * @param[in]  x1  xml tree which modifies base
+ * @param[in]  th    text handle
+ * @param[in]  x0    Base xml tree (can be NULL in add scenarios)
+ * @param[in]  x1    xml tree which modifies base
  * @param[in]  yspec Top-level yang spec (if y is NULL)
- * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
- * @param[out] cbret  Initialized cligen buffer. Contains return XML or "".
+ * @param[in]  op    OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
+ * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0.
+ * @retval    -1     Error
+ * @retval     0     Failed (cbret set)
+ * @retval     1     OK
  * @see text_modify
  */
 static int
@@ -762,6 +814,7 @@ text_modify_top(struct text_handle *th,
     yang_stmt *yc;  /* yang child */
     yang_stmt *ymod;/* yang module */
     char      *opstr;
+    int        ret;
 
     /* Assure top-levels are 'config' */
     assert(x0 && strcmp(xml_name(x0),"config")==0);
@@ -790,7 +843,7 @@ text_modify_top(struct text_handle *th,
 	    case OP_DELETE:
 		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
-		goto ok;
+		goto fail;
 		break;
 	    default:
 		break;
@@ -812,35 +865,42 @@ text_modify_top(struct text_handle *th,
 	    goto done;
 	if (ymod != NULL)
 	    yc = yang_find_datanode((yang_node*)ymod, x1cname);
-	if (yc == NULL && _CLICON_XML_NS_ITERATE){
-	    int i;
-	    for (i=0; i<yspec->yp_len; i++){
-		ymod = yspec->yp_stmt[i];
-		if ((yc = yang_find_datanode((yang_node*)ymod, x1cname)) != NULL)
-		    break;
-	    }
+	if (yc == NULL && !_CLICON_XML_NS_STRICT){
+	    if (xml_yang_find_non_strict(x1c, yspec, &yc) < 0)
+		goto done;
 	}
 	if (yc == NULL){
-	    if (netconf_operation_failed(cbret, "application", "Validation failed")< 0)
+	    if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
 		goto done;
-	    goto ok;
+	    goto fail;
 	}
 	/* See if there is a corresponding node in the base tree */
-	if (match_base_child(x0, x1c, &x0c, yc) < 0)
+	if (match_base_child(x0, x1c, yc, &x0c) < 0)
 	    goto done;
-	if (text_modify(x0c, (yang_node*)yc, x0, x1c, op, cbret) < 0)
+#if 1
+	if (x0c && (yc != xml_spec(x0c))){
+	    /* There is a match but is should be replaced (choice)*/
+	    if (xml_purge(x0c) < 0)
+		goto done;
+	    x0c = NULL;
+	}
+#endif
+	if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op, cbret)) < 0)
 	    goto done;
 	/* If xml return - ie netconf error xml tree, then stop and return OK */
-	if (cbuf_len(cbret))
-	    goto ok;
+	if (ret == 0)
+	    goto fail;
     }
- ok:
-    retval = 0;
+    // ok:
+    retval = 1;
  done:
     return retval;
+ fail: /* cbret set */
+    retval = 0;
+    goto done;
 } /* text_modify_top */
 
-/*! For containers without presence and no children, remove
+/*! For containers without presence and no children(except attrs), remove
  * @param[in]   x       XML tree node
  * See section 7.5.1 in rfc6020bis-02.txt:
  * No presence:
@@ -869,7 +929,7 @@ xml_container_presence(cxobj  *x,
     }
     /* Mark node that is: container, have no children, dont have presence */
     if (y->ys_keyword == Y_CONTAINER && 
-	xml_child_nr(x)==0 &&
+	xml_child_nr_notype(x, CX_ATTR)==0 &&
 	yang_find((yang_node*)y, Y_PRESENCE, NULL) == NULL)
 	xml_flag_set(x, XML_FLAG_MARK); /* Mark, remove later */
     retval = 0;
@@ -897,14 +957,11 @@ text_put(xmldb_handle        xh,
     yang_spec          *yspec;
     cxobj              *x0 = NULL;
     struct db_element  *de = NULL;
-    int                 cbretlocal = 0; /* Set if cbret is NULL on entry */
+    int                 ret;
     
     if (cbret == NULL){
-	if ((cbret = cbuf_new()) == NULL){
-	    clicon_err(OE_XML, errno, "cbuf_new");
-	    goto done;
-	}
-	cbretlocal++;
+	clicon_err(OE_XML, EINVAL, "cbret is NULL");
+	goto done;
     }
     if ((yspec = th->th_yangspec) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -957,25 +1014,19 @@ text_put(xmldb_handle        xh,
 		   xml_name(x0));
 	goto done;
     }
-#if 0
-    /* Add yang specification backpointer to all XML nodes 
-     * This  is already done in from_client_edit_config() */
-    if (xml_apply(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
-       goto done;
-#endif
 #if 0 /* debug */
-    if (xml_child_sort && xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
+    if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
 #endif
     /* 
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
      */
-    if (text_modify_top(th, x0, x1, yspec, op, cbret) < 0)
+    if ((ret = text_modify_top(th, x0, x1, yspec, op, cbret)) < 0)
 	goto done;
     /* If xml return - ie netconf error xml tree, then stop and return OK */
-    if (cbuf_len(cbret))
-	goto ok;
+    if (ret == 0)
+	goto fail;
 
     /* Remove NONE nodes if all subs recursively are also NONE */
     if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) <0)
@@ -990,7 +1041,7 @@ text_put(xmldb_handle        xh,
     if (xml_tree_prune_flagged(x0, XML_FLAG_MARK, 1) < 0)
 	goto done;
 #if 0 /* debug */
-    if (xml_child_sort && xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
+    if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
 #endif
     /* Write back to datastore cache if first time */
@@ -1025,11 +1076,8 @@ text_put(xmldb_handle        xh,
     }
     else if (clicon_xml2file(f, x0, 0, th->th_pretty) < 0)
 	goto done;
- ok:
-    retval = 0;
+    retval = 1;
  done:
-    if (cbretlocal && cbret)
-	cbuf_free(cbret);
     if (f != NULL)
 	fclose(f);
     if (dbfile)
@@ -1041,6 +1089,9 @@ text_put(xmldb_handle        xh,
     if (!th->th_cache && x0)
 	xml_free(x0);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Copy database from db1 to db2
@@ -1386,6 +1437,8 @@ main(int    argc,
     char       *yangmod; /* yang file */
     yang_spec  *yspec = NULL;
     clicon_handle h;
+    cbuf       *cbret = NULL;
+    int         ret;
 
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
@@ -1400,7 +1453,7 @@ main(int    argc,
     db_init(db);
     if ((yspec = yspec_new()) == NULL)
 	goto done
-    if (yang_parse(h, NULL, yangmod, NULL, yspec) < 0)
+    if (yang_spec_parse_module(h, yangmod, NULL, yspec) < 0)
 	goto done;
     if (strcmp(cmd, "get")==0){
 	if (argc < 5)
@@ -1434,13 +1487,21 @@ main(int    argc,
 	    op = OP_REMOVE;
 	else
 	    usage(argv[0]);
-	if (xmldb_put(h, db, op, NULL, xn, NULL) < 0)
+	if ((cbret = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
+	}
+	if ((ret = xmldb_put(h, db, op, NULL, xn, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    fprintf(stderr, "%s\n", cbuf_get(cbret));
     }
     else
 	usage(argv[0]);
     printf("\n");
  done:
+    if (cbret)
+	cbuf_free(cbret);
     return 0;
 }
 

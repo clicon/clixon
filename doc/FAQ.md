@@ -42,9 +42,9 @@ The example:
 	 sudo make install
 ```
 
-## How do you run Clixon example commands?
+## How do I run Clixon example commands?
 
-- Start a backend server: `clixon_backend -Ff /usr/local/etc/example.xml`
+- Start a backend server: `clixon_backend -F -s init -f /usr/local/etc/example.xml`
 - Start a cli session: `clixon_cli -f /usr/local/etc/example.xml`
 - Start a netconf session: `clixon_netconf -f /usr/local/etc/example.xml`
 - Start a restconf daemon: `sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data`
@@ -72,6 +72,82 @@ grep clicon /etc/group
 clicon:x:1001:<user>,www-data
 ```
 
+## How do I use the CLI?
+
+The easiest way to use Clixon is via the CLI. Once the backend is started
+Example:
+```
+clixon_cli -f /usr/local/etc/example.xml 
+cli> set interfaces interface eth9 ?
+ description               enabled                   ipv4                     
+ ipv6                      link-up-down-trap-enable  type                     
+cli> set interfaces interface eth9 type ex:eth
+cli> validate 
+cli> commit 
+cli> show configuration xml 
+<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+   <interface>
+      <name>eth9</name>
+      <type>ex:eth</type>
+      <enabled>true</enabled>
+   </interface>
+</interfaces>
+cli> delete interfaces interface eth9
+```
+
+## How do I use netconf?
+
+As an alternative to cli configuration, you can use netconf. Easiest is to just pipe netconf commands to the clixon_netconf application.
+Example:
+```
+clixon_netconf -qf /usr/local/etc/example.xml
+<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
+<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth9</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>
+```
+
+However, more useful is to run clixon_netconf as an SSH
+subsystem. Register the subsystem in /etc/sshd_config:
+```
+	Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/example.xml
+```
+and then invoke it from a client using
+```
+	ssh -s <host> netconf
+```
+
+## How do I use restconf?
+
+You can access clixon via REST API using restconf, such as using
+curl. GET, PUT, POST are supported.
+
+You need a web-server, such as nginx, and start a restconf fcgi
+daemon, clixon_restconf.
+
+For example, using nginx, install, and edit config file: /etc/nginx/sites-available/default:
+```
+server {
+  ...
+  location /restconf {
+    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+    include fastcgi_params;
+  }
+}
+```
+Start nginx daemon
+```
+sudo /etc/init.d/nginx start
+```
+
+Example:
+```
+   curl -G http://127.0.0.1/restconf/data/ietf-interfaces:interfaces/interface=eth9/type
+   [
+     {
+       "ietf-interfaces:type": "ex:eth" 
+     }
+   ]
+```
+Read more in the (restconf)[../apps/restconf] docs.
 ## What about reference documentation?
 Clixon uses [Doxygen](http://www.doxygen.nl/index.html) for reference documentation.
 You need to install doxygen and graphviz on your system.
@@ -121,7 +197,7 @@ are included.
 
 The following configuration file options control the loading of Yang files:
 - `CLICON_YANG_DIR` -  A list of directories (yang dir path) where Clixon searches for module and submodules.
-- `CLICON_YANG_MAIN_FILE` - Load a specific Yang module fiven by a file. 
+- `CLICON_YANG_MAIN_FILE` - Load a specific Yang module given by a file. 
 - `CLICON_YANG_MODULE_MAIN` - Specifies a single module to load. The module is searched for in the yang dir path.
 - `CLICON_YANG_MODULE_REVISION` : Specifies a revision to the main module. 
 - `CLICON_YANG_MAIN_DIR` - Load all yang modules in this directory.
@@ -161,59 +237,6 @@ sudo docker run -td olofhagsand/clixon_example
 ```
 Look in the example documentation for more info.
 
-## How do I use netconf?
-
-As an alternative to cli configuration, you can use netconf. Easiest is to just pipe netconf commands to the clixon_netconf application.
-Example:
-```
-	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/example.xml
-```
-
-However, more useful is to run clixon_netconf as an SSH
-subsystem. Register the subsystem in /etc/sshd_config:
-```
-	Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/example.xml
-```
-and then invoke it from a client using
-```
-	ssh -s <host> netconf
-```
-
-## How do I use restconf?
-
-You can access clixon via REST API using restconf, such as using
-curl. GET, PUT, POST are supported.
-
-You need a web-server, such as nginx, and start a restconf fcgi
-daemon, clixon_restconf.
-
-For example, using nginx, install, and edit config file: /etc/nginx/sites-available/default:
-```
-server {
-  ...
-  location /restconf {
-    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-    include fastcgi_params;
-  }
-}
-```
-Start nginx daemon
-```
-sudo /etc/init.d/nginx start
-```
-
-Example:
-```
-   curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=eth9/type
-   [
-     {
-       "type": "eth" 
-     }
-   ]
-```
-Read more in the (restconf)[../apps/restconf] docs.
-
-
 ## Does Clixon support event streams? 
 
 Yes, Clixon supports event notification streams in the CLI, Netconf and Restconf API:s.
@@ -233,7 +256,7 @@ severity major;
 or via NETCONF:
 ```
 clixon_netconf -qf /usr/local/etc/example.xml 
-<rpc><create-subscription><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>
+<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
 <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-09-30T12:44:59.657276</eventTime><event xmlns="http://example.com/event/1.0"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>]]>]]>
 ...
@@ -242,11 +265,11 @@ or via restconf:
 ```
    curl -H "Accept: text/event-stream" -s -X GET http://localhost/streams/EXAMPLE
 ```
-Consult (../apps/restconf/README.md) on more information on how to setup a reverse proxy for restconf streams. It is also possible to configure a pub/sub system such as (Nginx Nchan)[https://nchan.io]. 
+Consult [clixon restconf](../apps/restconf/README.md) on more information on how to setup a reverse proxy for restconf streams. It is also possible to configure a pub/sub system such as [Nginx Nchan](https://nchan.io). 
 
 ## How should I start the backend daemon?
 
-There are four different backend startup modes. There is differences in running state treatment, ie what state the machine is when you startthe daemon and how loading the configuration affects it:
+There are four different backend startup modes. There is differences in running state treatment, ie what state the machine is when you start the daemon and how loading the configuration affects it:
 - none - Do not touch running state. Typically after crash when running state and db are synched.
 - init - Initialize running state. Start with a completely clean running state.
 - running - Commit running db configuration into running state. Typically after reboot if a persistent running db exists.
@@ -277,7 +300,7 @@ There are two ways to add extra XML to running database  after start. Note that 
 The first way is via a file. Assume you want to add this xml (the config tag is a necessary top-level tag):
 ```
 <config>
-   <x>extra</x>
+   <x xmlns="urn:example:clixon">extra</x>
 </config>
 ```
 You add this via the -c option:
@@ -289,12 +312,13 @@ The second way is by programming the plugin_reset() in the backend
 plugin. The example code contains an example on how to do this (see plugin_reset() in example_backend.c).
 
 ## I want to program. How do I extend the example?
-See [../apps/example] 
+See [../apps/example](../apps/example)
 - example.xml - Change the configuration file
 - The yang specifications - This is the central part. It changes the XML, database and the config cli.
 - example_cli.cli - Change the fixed part of the CLI commands 
 - example_cli.c - Cli C-commands are placed here.
 - example_backend.c - Commit and validate functions.
+- example_backend_nacm.c - Secondary example plugin (for authorization)
 - example_netconf.c - Netconf plugin
 - example_restconf.c - Add restconf authentication, etc.
 

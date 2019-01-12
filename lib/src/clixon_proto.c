@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -160,10 +160,12 @@ clicon_msg_encode(char *format, ...)
 
 /*! Decode a clicon netconf message
  * @param[in]  msg    CLICON msg
+ * @param[in]  yspec  Yang specification, (can be NULL)
  * @param[out] xml    XML parse tree
  */
 int
 clicon_msg_decode(struct clicon_msg *msg, 
+		  yang_spec         *yspec,
 		  cxobj            **xml)
 {
     int   retval = -1;
@@ -172,7 +174,7 @@ clicon_msg_decode(struct clicon_msg *msg,
     /* body */
     xmlstr = msg->op_body;
     clicon_debug(1, "%s %s", __FUNCTION__, xmlstr);
-    if (xml_parse_string(xmlstr, NULL, xml) < 0)
+    if (xml_parse_string(xmlstr, yspec, xml) < 0)
 	goto done;
     retval = 0;
  done:

@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -68,7 +68,7 @@
 static int
 usage(char *argv0)
 {
-    fprintf(stderr, "usage:%s [options]\n"
+    fprintf(stderr, "usage:%s [options] # input yang spec on stdin\n"
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"

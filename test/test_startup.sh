@@ -41,7 +41,7 @@ run(){
     dbdir=$dir/db
     cat <<EOF > $dbdir
 <config>
-   <interfaces>
+   <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
       <interface>
          <name>run</name>
          <type>ex:eth</type>
@@ -53,7 +53,7 @@ EOF
 
     cat <<EOF > $dbdir
 <config>
-   <interfaces>
+   <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
       <interface>
          <name>startup</name>
          <type>ex:eth</type>
@@ -65,7 +65,7 @@ EOF
 
     cat <<EOF > $dir/config
 <config>
-   <interfaces>
+   <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
       <interface>
          <name>extra</name>
          <type>ex:eth</type>
@@ -104,8 +104,8 @@ EOF
 }
 
 run init    '<data/>'
-run none    '<data><interfaces><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
-run running '<data><interfaces><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
-run startup '<data><interfaces><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+run none    '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+run running '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+run startup '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
 
 rm -rf $dir

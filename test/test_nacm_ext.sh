@@ -137,8 +137,8 @@ EOF
 new "test params: -f $cfg -y $fyang"
 
 if [ $BE -ne 0 ]; then
-    new "kill old backend -zf $cfg -y $fyang"
-    sudo clixon_backend -zf $cfg -y $fyang
+    new "kill old backend -zf $cfg "
+    sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
 	err
     fi
@@ -155,7 +155,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "start restconf daemon (-a is enable http basic auth)"
-sudo su -c "$clixon_restconf -f $cfg -y $fyang -- -a" -s /bin/sh www-data &
+sudo su -c "$clixon_restconf -f $cfg -y $fyang -D $DBG -- -a" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
@@ -163,41 +163,41 @@ new "restconf DELETE whole datastore"
 expecteq "$(curl -u andy:bar -sS -X DELETE http://localhost/restconf/data)" ""
 
 new2 "auth get"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/state)" '{"state": {"op": "42"}}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:state)" '{"example:state": {"op": "42"}}
 '
 
 new "Set x to 0"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"x": 0}' http://localhost/restconf/data/x)" ""
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"example:x": 0}' http://localhost/restconf/data/example:x)" ""
 
 new2 "auth get (no user: access denied)"
-expecteq "$(curl -sS -X GET -H \"Accept:\ application/yang-data+json\" http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
+expecteq "$(curl -sS -X GET -H \"Accept:\ application/yang-data+json\" http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
 new2 "auth get (wrong passwd: access denied)"
-expecteq "$(curl -u andy:foo -sS -X GET http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
+expecteq "$(curl -u andy:foo -sS -X GET http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
 new2 "auth get (access)"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/x)" '{"x": 0}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
 '
 
 new2 "admin get nacm"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/x)" '{"x": 0}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
 '
 
 new2 "limited get nacm"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/x)" '{"x": 0}
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
 '
 
 new2 "guest get nacm"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "admin edit nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"x": 1}' http://localhost/restconf/data/x)" ""
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"example:x": 1}' http://localhost/restconf/data/example:x)" ""
 
 new2 "limited edit nacm"
-expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new2 "guest edit nacm"
-expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/x)" '{"ietf-restconf:errors" : {"error": {"error-tag": "access-denied","error-type": "protocol","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "cli show conf as admin"
 expectfn "$clixon_cli -1 -U andy -l o -f $cfg -y $fyang show conf" 0 "^x 1;$"
@@ -209,7 +209,7 @@ new "cli show conf as guest"
 expectfn "$clixon_cli -1 -U guest -l o -f $cfg -y $fyang show conf" 255 "protocol access-denied"
 
 new "cli rpc as admin"
-expectfn "$clixon_cli -1 -U andy -l o -f $cfg -y $fyang rpc ipv4" 0 "<next-hop-list>2.3.4.5</next-hop-list>"
+expectfn "$clixon_cli -1 -U andy -l o -f $cfg -y $fyang rpc ipv4" 0 "next-hop-list 2.3.4.5;"
 
 new "cli rpc as limited"
 expectfn "$clixon_cli -1 -U wilma -l o -f $cfg -y $fyang rpc ipv4" 255 "protocol access-denied default deny"
@@ -220,7 +220,7 @@ expectfn "$clixon_cli -1 -U guest -l o -f $cfg -y $fyang rpc ipv4" 255 "protocol
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-if [ $BE -ne 0 ]; then
+if [ $BE -eq 0 ]; then
     exit # BE
 fi
 

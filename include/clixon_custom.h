@@ -1,7 +1,7 @@
 /*
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -50,11 +50,6 @@ int strverscmp (__const char *__s1, __const char *__s2);
 /* Full xmlns validation check is made only if XML has associated YANG spec 
 */
 #define XMLNS_YANG_ONLY 1
-
-/* Set for full XML namespace code in XML, NETCONF and YANG
- * Experimental
- */
-#undef ENABLE_XMLNS
 
 /* If set, patch all CLI spec calls to @datamodel:tree to @datamodel.
  * This is a backward compatible fix for 3.9 for CLIgen specification files

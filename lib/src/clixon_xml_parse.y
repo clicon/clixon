@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -130,6 +130,7 @@ xml_parse_version(struct xml_parse_yacc_arg *ya,
  * @param[in] ya        XML parser yacc handler struct 
  * @param[in] prefix    Prefix, namespace, or NULL
  * @param[in] localpart Name
+ * @note the call to xml_child_spec() may not have xmlns attribute read yet XXX
  */
 static int
 xml_parse_unprefixed_name(struct xml_parse_yacc_arg *ya,
@@ -138,12 +139,14 @@ xml_parse_unprefixed_name(struct xml_parse_yacc_arg *ya,
     int        retval = -1;
     cxobj     *x;
     yang_stmt *y = NULL;  /* yang node */   
-    cxobj     *xp;      /* xml parent */ 
+    cxobj     *xp;        /* xml parent */ 
 
     xp = ya->ya_xparent;
-    if (xml_child_spec(name, xp, ya->ya_yspec, &y) < 0)
+    if ((x = xml_new(name, xp, NULL)) == NULL) 
 	goto done;
-    if ((x = xml_new(name, xp, y)) == NULL) 
+    if (xml_child_spec(x, xp, ya->ya_yspec, &y) < 0)
+	goto done;
+    if (y && xml_spec_set(x, y) < 0)
 	goto done;
     ya->ya_xelement = x;
     retval = 0;
@@ -168,11 +171,13 @@ xml_parse_prefixed_name(struct xml_parse_yacc_arg *ya,
     cxobj     *xp;      /* xml parent */ 
 
     xp = ya->ya_xparent;
-    if (xml_child_spec(name, xp, ya->ya_yspec, &y) < 0)
+    if ((x = xml_new(name, xp, NULL)) == NULL) 
 	goto done;
-    if ((x = xml_new(name, xp, y)) == NULL) 
+    if (xml_child_spec(x, xp, ya->ya_yspec, &y) < 0)
 	goto done;
-    if (xml_namespace_set(x, prefix) < 0)
+    if (y && xml_spec_set(x, y) < 0)
+	goto done;
+    if (xml_prefix_set(x, prefix) < 0)
 	goto done;
     ya->ya_xelement = x;
     retval = 0;
@@ -223,9 +228,9 @@ xml_parse_bslash1(struct xml_parse_yacc_arg *ya,
 		xml_name(x), name);
 	goto done;
     }
-    if (xml_namespace(x)!=NULL){
+    if (xml_prefix(x)!=NULL){
 	clicon_err(OE_XML, 0, "XML parse sanity check failed: %s:%s vs %s", 
-		xml_namespace(x), xml_name(x), name);
+		xml_prefix(x), xml_name(x), name);
 	goto done;
     }
     /* Strip pretty-print. Ad-hoc algorithm
@@ -263,16 +268,16 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
 
     if (strcmp(xml_name(x), name)){
 	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s", 
-		xml_namespace(x), 
+		xml_prefix(x), 
 		xml_name(x), 
 		namespace, 
 		name);
 	goto done;
     }
-    if (xml_namespace(x)==NULL ||
-	strcmp(xml_namespace(x), namespace)){
+    if (xml_prefix(x)==NULL ||
+	strcmp(xml_prefix(x), namespace)){
 	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s", 
-		xml_namespace(x), 
+		xml_prefix(x), 
 		xml_name(x), 
 		namespace, 
 		name);
@@ -313,19 +318,15 @@ xml_parse_attr(struct xml_parse_yacc_arg *ya,
 	       char                      *attval)
 {
     int    retval = -1;
-    cxobj *xa; 
+    cxobj *xa = NULL; 
 
-#ifdef ENABLE_XMLNS
-    if (prefix && strcmp(prefix,"xmlns")==0)
-	fprintf(stderr, "PrefixedAttName NCNAME:%s = %s\n", name, attval);
-    if (prefix==NULL && strcmp(name,"xmlns")==0)
-	fprintf(stderr, "DefaultAttName = %s\n", attval);
-#endif /* notyet */
-    if ((xa = xml_new(name, ya->ya_xelement, NULL)) == NULL)
-	goto done;
-    xml_type_set(xa, CX_ATTR);
-    if (prefix && xml_namespace_set(xa, prefix) < 0)
-	goto done;
+    if ((xa = xml_find_type(ya->ya_xelement, prefix, name, CX_ATTR)) == NULL){
+	if ((xa = xml_new(name, ya->ya_xelement, NULL)) == NULL)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (prefix && xml_prefix_set(xa, prefix) < 0)
+	    goto done;
+    }
     if (xml_value_set(xa, attval) < 0)
 	goto done;
     retval = 0;

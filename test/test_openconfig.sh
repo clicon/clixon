@@ -1,35 +1,26 @@
 #!/bin/bash
-# Parse yang openconfig tests
-# Note that the openconfig test suites are patched to counter CLixon issues as follows:
-# - release/models/mpls/openconfig-mpls-te.yang
+# Parse yang openconfig yangs from https://github.com/openconfig/public
+# Notes:
+# - openconfig test suites are patched to counter Clixon issues as follows:
+#    - release/models/mpls/openconfig-mpls-te.yang
 #      issue: https://github.com/clicon/clixon/issues/60
-# - release/models/wifi/types/openconfig-wifi-types.yang
-#      issue: https://github.com/clicon/clixon/issues/59
-# 
-OPENCONFIG=public
-OCDIR=$OPENCONFIG/release/models
+# - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)
 
-# Clone openconfig dir if not there
-if false; then
-if [ ! -d public ]; then 
-    git clone https://github.com/openconfig/public
-else
-    (cd public;
-     #git pull
-    )
-fi
-fi
-
-# include err() and new() functions and creates $dir
-. ./lib.sh
-
-# Yang specifics: multi-keys and empty type
 APPNAME=example
+
 # include err() and new() functions and creates $dir
 . ./lib.sh
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang
+
+new "openconfig"
+if [ ! -d "$OPENCONFIG" ]; then
+    err "Hmm Openconfig dir does not seem to exist, try git clone https://github.com/openconfig/public?"
+fi
+
+OCDIR=$OPENCONFIG/release/models
+
 
 cat <<EOF > $cfg
 <config>
@@ -86,17 +77,33 @@ cat <<EOF > $cfg
 EOF
 
 files=$(find $OPENCONFIG -name "*.yang")
-# Just cound nr of modules (exclude submodule)
-let m=0; # Nr of modules
+# Count nr of modules (exclude submodule) Assume "module" or "submodule"
+# first word on first line
+let ms=0; # Nr of modules
+let ss=0; # Nr of smodules
 for f in $files; do
-    if [ -n "$(head -1 $f|grep '^module')" ]; then
+    let m=0; # Nr of modules
+    let s=0; # Nr of modules
+    if [ -n "$(head -15 $f|grep '^[ ]*module')" ]; then
 	let m++;
+	let ms++;
+    elif [ -n "$(head -15 $f|grep '^[ ]*submodule')" ]; then
+	let s++;
+	let ss++;
+    else
+	echo "No module or submodule found $f"
+	exit
+    fi
+    if [ $m -eq 1 -a $s -eq 1 ]; then
+	echo "Double match $f"
+	exit
     fi
 done
+echo "m:$ms s:$ss"
 new "Openconfig test: $clixon_cli -1f $cfg -y $f show version ($m modules)"
 for f in $files; do
     if [ -n "$(head -1 $f|grep '^module')" ]; then
-	new "cli $f"
+	new "$clixon_cli -1f $cfg -y $f show version"
 	expectfn "$clixon_cli -1f $cfg -y $f show version" 0 "3."
     fi
 

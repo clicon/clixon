@@ -26,6 +26,10 @@ module example {
     }
     /* Translation function example - See also example_cli */
     list translate{
+	key k;
+	leaf k{
+	    type string;
+	}
 	leaf value{
 	    type string;
 	}
@@ -73,13 +77,55 @@ module example {
 	    }
 	}
     }
-    rpc debug {
-	description "Set debug level of backend. XXX should be in clixon-config";
+    rpc empty {
+	description "Smallest possible RPC with no input or output";
+    }
+    rpc example {
+	description "Some example input/output for testing RFC7950 7.14.
+                     RPC simply echoes the input for debugging.";
 	input {
-	    leaf level {
-		type uint32;
+	    leaf x {
+		description
+         	    "If a leaf in the input tree has a 'mandatory' statement with
+                   the value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		mandatory true;
+	    }
+	    leaf y {
+		description
+                 "If a leaf in the input tree has a 'mandatory' statement with the
+                  value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		default "42";
+	    }
+	    leaf-list z {
+		description
+		    "If a leaf-list in the input tree has one or more default 
+                     values, the server MUST use these values (XXX not supported)";
+		type string;
+	    }
+	    leaf w {
+		description
+		    "If any node has a 'when' statement that would evaluate to 
+                    'false',then this node MUST NOT be present in the input tree.
+                     (XXX not supported)";
+		type string;
+		when "/translate/k=5/value='w'";
+	    }
+	}
+	output {
+	    leaf x {
+		type string;
+	    }
+	    leaf y {
+		type string;
+	    }
+	    leaf z {
+		type string;
+	    }
+	    leaf w {
+		type string;
 	    }
 	}
     }
-
 }
