@@ -83,10 +83,12 @@
   * Example user changed adm1 to andy to comply with RFC8341 example
 	
 ### API changes on existing features (you may need to change your code)
-* Moved and updated all standard ietf and iana yang files from example and yang/ to `yang/standard`.
-  * To turn off install of standard yang file: `./configure --disable-stdyangs`
-  * This is to make it easier to use standard IETF/IANA yang files
-* Renamed example yang from example.yang -> clixon-example.yang
+* Rearranged yang files
+  * Moved and updated all standard ietf and iana yang files from example and yang/ to `yang/standard`.
+  * Moved clixon yang files from yang to `yang/clixon`
+  * New configure option to disable standard yang files: `./configure --disable-stdyangs`
+    * This is to make it easier to use standard IETF/IANA yang files in separate directory
+  * Renamed example yang from example.yang -> clixon-example.yang
 * clixon_cli -p (printspec) changed semantics to add new yang path dir (see minor changes).
 * Date-and-time type now properly uses ISO 8601 UTC timezone designators.
   * Eg 2008-09-21T18:57:21.003456 is changed to 2008-09-21T18:57:21.003456Z
