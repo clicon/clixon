@@ -270,8 +270,17 @@ api_data_get2(clicon_handle h,
 	}
     }
     else{
-	if (xpath_vec(xret, "%s", &xvec, &xlen, path) < 0)
-	    goto done;
+	if (xpath_vec(xret, "%s", &xvec, &xlen, path) < 0){
+	    if (netconf_operation_failed_xml(&xerr, "application", clicon_err_reason) < 0)
+		goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
+	    goto ok;
+	}
 	if (use_xml){
 	    for (i=0; i<xlen; i++){
 		char *prefix, *namespace;
@@ -302,6 +311,7 @@ api_data_get2(clicon_handle h,
     FCGX_FPrintF(r->out, "\r\n");
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
     FCGX_FPrintF(r->out, "\r\n\r\n");
+    clicon_debug(1, "%s Z", __FUNCTION__);
  ok:
     retval = 0;
  done:

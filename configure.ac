@@ -91,6 +91,7 @@ AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
+AC_SUBST(enable_stdyangs) 
 AC_SUBST(wwwdir,/www-data)
 AC_SUBST(wwwuser,www-data)
 #
@@ -144,6 +145,20 @@ if test "${with_cligen}"; then
   LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
   test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
 fi
+
+# Disable/enable standard Yang files.
+# If enable - include yang/standard/*.yang in clixon yang files (default)
+# If disable - get standard yang files from elsewhere
+AC_ARG_ENABLE(stdyangs, AS_HELP_STRING([--disable-stdyangs],[Include standard yang files in clixon install, default: yes]),[
+	  if test "$enableval" = no; then
+	      enable_stdyangs=no
+	  else	      
+	      enable_stdyangs=yes
+          fi
+        ],
+	[ enable_stdyangs=yes])
+
+AC_MSG_RESULT(stdyangs is $enable_stdyangs)	
 
 # Experimental: Curl publish notification stream to eg Nginx nchan. 
 AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],[Enable publish of notification streams using SSE and curl]),[
@@ -231,6 +246,8 @@ AC_OUTPUT(Makefile
 	  datastore/text/Makefile
   	  util/Makefile 
 	  yang/Makefile
+  	  yang/clixon/Makefile
+  	  yang/standard/Makefile
 	  doc/Makefile
 )
 

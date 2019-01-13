@@ -119,38 +119,6 @@ example_stream_timer_setup(clicon_handle h)
     return event_reg_timeout(t, example_stream_timer, h, "example stream timer");
 }
 
-/*! IETF Routing fib-route rpc 
- * @see ietf-routing@2014-10-26.yang  (fib-route)
- */
-static int 
-fib_route(clicon_handle h,            /* Clicon handle */
-	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg,          /* Client session */
-	  void         *regarg)       /* Argument given at register */
-{
-    cprintf(cbret, "<rpc-reply><route xmlns=\"urn:ietf:params:xml:ns:yang:ietf-routing\">"
-	    "<address-family>ipv4</address-family>"
-	    "<next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop>"
-	    "<source-protocol>static</source-protocol>"
-	    "</route></rpc-reply>");    
-    return 0;
-}
-
-/*! IETF Routing route-count rpc 
- * @see ietf-routing@2014-10-26.yang  (route-count)
- */
-static int 
-route_count(clicon_handle h, 
-	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	    void         *arg,
-	    void         *regarg)          /* Argument given at register */
-{
-    cprintf(cbret, "<rpc-reply><number-of-routes xmlns=\"urn:ietf:params:xml:ns:yang:ietf-routing\">42</number-of-routes></rpc-reply>");    
-    return 0;
-}
-
 /*! Smallest possible RPC declaration for test 
  * Yang/XML:
  * If the RPC operation invocation succeeded and no output parameters
@@ -364,18 +332,6 @@ clixon_plugin_init(clicon_handle h)
 
     /* Register callback for routing rpc calls 
      */
-
-    if (rpc_callback_register(h, fib_route, 
-			      NULL, 
-			      "fib-route"/* Xml tag when callback is made */
-			      ) < 0)
-	goto done;
-    /* From ietf-routing.yang */
-    if (rpc_callback_register(h, route_count, 
-			      NULL, 
-			      "route-count"/* Xml tag when callback is made */
-			      ) < 0)
-	goto done;
     /* From example.yang (clicon) */
     if (rpc_callback_register(h, empty_rpc, 
 			      NULL, 

@@ -81,7 +81,7 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:l:p:y:a:u:o:"
+#define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:"
 
 /* RESTCONF enables deployments to specify where the RESTCONF API is 
    located.  The client discovers this by getting the "/.well-known/host-meta"
@@ -492,6 +492,7 @@ usage(clicon_handle h,
 	    "\t-D <level>\tDebug level\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-l <s|f<file>> \tLog on (s)yslog, (f)ile (syslog is default)\n"
+	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
@@ -596,6 +597,10 @@ main(int    argc,
 	case 'f':  /* config file */
 	case 'l':  /* log  */
 	    break; /* see above */
+	case 'p' : /* yang dir path */
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
+	    break;
 	case 'd':  /* Plugin directory */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);

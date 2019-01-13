@@ -5,7 +5,7 @@ NETCONF and RESTCONF interfaces, an embedded database and transaction
 support.
 
   * [Background](#background)
-  * [Frequently asked questions](doc/FAQ.md)
+  * [Frequently asked questions (FAQ)](doc/FAQ.md)
   * [Installation](#installation)
   * [Licenses](#licenses)
   * [Support](#support)

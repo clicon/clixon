@@ -20,6 +20,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/example/yang</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -40,13 +41,11 @@ EOF
 cat <<EOF > $fyang
 module $APPNAME{
   yang-version 1.1;
-  namespace "urn:example:clixon";
-
-  prefix ex;
-  import ietf-routing {
-        description "For fib-route";
-	prefix rt;
+  namespace "urn:example:my";
+  import clixon-example {
+	prefix ex;
   }
+  prefix my;
   container authentication {
 	description "Example code for enabling www basic auth and some example 
                      users";
@@ -72,13 +71,6 @@ module $APPNAME{
     type int32;
     description "something to edit";
   }
-    container state {
-       config false;
-       description "state data for example application";
-       leaf-list op {
-          type string;
-       }
-    }
 }
 EOF
 
@@ -163,7 +155,7 @@ new "restconf DELETE whole datastore"
 expecteq "$(curl -u andy:bar -sS -X DELETE http://localhost/restconf/data)" ""
 
 new2 "auth get"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:state)" '{"example:state": {"op": "42"}}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
 '
 
 new "Set x to 0"
@@ -209,7 +201,7 @@ new "cli show conf as guest"
 expectfn "$clixon_cli -1 -U guest -l o -f $cfg -y $fyang show conf" 255 "protocol access-denied"
 
 new "cli rpc as admin"
-expectfn "$clixon_cli -1 -U andy -l o -f $cfg -y $fyang rpc ipv4" 0 "next-hop-list 2.3.4.5;"
+expectfn "$clixon_cli -1 -U andy -l o -f $cfg -y $fyang rpc ipv4" 0 '<x xmlns="urn:example:clixon">ipv4</x><y xmlns="urn:example:clixon">42</y>'
 
 new "cli rpc as limited"
 expectfn "$clixon_cli -1 -U wilma -l o -f $cfg -y $fyang rpc ipv4" 255 "protocol access-denied default deny"

@@ -5,14 +5,15 @@ APPNAME=example
 # include err() and new() functions and creates $dir
 . ./lib.sh
 cfg=$dir/conf.xml
-fyang=$dir/restconf.yang
+
+# Use yang in example
 
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -30,63 +31,38 @@ cat <<EOF > $cfg
 EOF
 
 cat <<EOF > $fyang
-module example{
+module mymod{
     yang-version 1.1;
-    namespace "urn:example:clixon";
-    prefix ex;
+    namespace "urn:example:my";
+    prefix me;
+    import clixon-example {
+	prefix ex;
+    }
     import ietf-interfaces {
 	prefix if;
     }
     import ietf-ip {
       prefix ip;
     }
-    import ietf-routing {
-      prefix rt;
-    }
     import ietf-inet-types {
        prefix "inet";
        revision-date "2013-07-15";
-    }
-    identity eth {
-	base if:interface-type;
-    }
-    rpc empty {
-    }
-    rpc client-rpc {
-       	description "Example local client-side rpc";
-	input {
-	    leaf request {
-		type string;
-	    }
-	}
-	output {
-	    leaf result{
-		type string;
-	    }
-	}
-    }
-    container state {
-       config false;
-       description "state data for example application";
-       leaf-list op {
-          type string;
-       }
     }
 }
 EOF
 
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
-state='{"example:state": {"op": "42"}}'
+state='{"clixon-example:state": {"op": "42"}}'
 
-new "test params: -f $cfg -y $fyang"
+new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend -s init -f $cfg -y $fyang"
-    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    new "start backend -s init -f $cfg"
+    sudo $clixon_backend -s init -f $cfg -D $DBG
     if [ $? -ne 0 ]; then
 	err
     fi
@@ -96,7 +72,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-sudo su -c "$clixon_restconf -f $cfg -y $fyang -D $DBG" -s /bin/sh www-data &
+sudo su -c "$clixon_restconf -f $cfg -D $DBG" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
@@ -118,12 +94,12 @@ expecteq "$(curl -s -H 'Accept: application/yang-data+xml' -G http://localhost/r
 
 # Should be alphabetically ordered
 new2 "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"example:empty": null,"example:client-rpc": null,"ietf-routing:fib-route": null,"ietf-routing:route-count": null,"clixon-lib:debug": null}
+expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"clixon-example:client-rpc": null,"clixon-example:empty": null,"clixon-example:example": null,"clixon-lib:debug": null}
 '
 
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/operations)
-expect='<operations><empty xmlns="urn:example:clixon"/><client-rpc xmlns="urn:example:clixon"/><fib-route xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/><route-count xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"/><debug xmlns="http://clicon.org/lib"/></operations>'
+expect='<operations><client-rpc xmlns="urn:example:clixon"/><empty xmlns="urn:example:clixon"/><example xmlns="urn:example:clixon"/><debug xmlns="http://clicon.org/lib"/></operations>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -141,7 +117,7 @@ if [ -z "$match" ]; then
 fi
 
 new2 "restconf schema resource, RFC 8040 sec 3.7 according to RFC 7895 (explicit resource)"
-expecteq "$(curl -s -H 'Accept: application/yang-data+json' -G http://localhost/restconf/data/ietf-yang-library:modules-state/module=ietf-routing,2014-10-26/)" '{"ietf-yang-library:module": [{"name": "ietf-routing","revision": "2014-10-26","namespace": "urn:ietf:params:xml:ns:yang:ietf-routing","conformance-type": "implement"}]}
+expecteq "$(curl -s -H 'Accept: application/yang-data+json' -G http://localhost/restconf/data/ietf-yang-library:modules-state/module=ietf-interfaces,2018-02-20)" '{"ietf-yang-library:module": [{"name": "ietf-interfaces","revision": "2018-02-20","namespace": "urn:ietf:params:xml:ns:yang:ietf-interfaces","conformance-type": "implement"}]}
 '
 
 new "restconf options. RFC 8040 4.1"
@@ -152,24 +128,24 @@ expectfn "curl -s -I http://localhost/restconf/data" 0 "HTTP/1.1 200 OK"
 #Content-Type: application/yang-data+json"
 
 new "restconf empty rpc"
-expecteq "$(curl -s -X POST -d {\"example:input\":null} http://localhost/restconf/operations/example:empty)" ""
+expecteq "$(curl -s -X POST -d {\"clixon-example:input\":null} http://localhost/restconf/operations/clixon-example:empty)" ""
 
 new2 "restconf empty rpc with extra args (should fail)"
-expecteq "$(curl -s -X POST -d {\"example:input\":{\"extra\":null}} http://localhost/restconf/operations/example:empty)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "extra"},"error-severity": "error"}}}'
+expecteq "$(curl -s -X POST -d {\"clixon-example:input\":{\"extra\":null}} http://localhost/restconf/operations/clixon-example:empty)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "extra"},"error-severity": "error"}}}'
 
 new2 "restconf get empty config + state json"
-expecteq "$(curl -sSG http://localhost/restconf/data/example:state)" '{"example:state": {"op": "42"}}
+expecteq "$(curl -sSG http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
 '
 
 new2 "restconf get empty config + state json + module"
-expecteq "$(curl -sSG http://localhost/restconf/data/example:state)" '{"example:state": {"op": "42"}}
+expecteq "$(curl -sSG http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
 '
 
 new2 "restconf get empty config + state json with wrong module name"
 expecteq "$(curl -sSG http://localhost/restconf/data/badmodule:state)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "No such yang module: badmodule"}}}'
 
 new "restconf get empty config + state xml"
-ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/example:state)
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/clixon-example:state)
 expect='<state xmlns="urn:example:clixon"><op>42</op></state>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
@@ -177,12 +153,12 @@ if [ -z "$match" ]; then
 fi
 
 new2 "restconf get data/ json"
-expecteq "$(curl -s -G http://localhost/restconf/data/example:state/op=42)" '{"example:op": "42"}
+expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" '{"clixon-example:op": "42"}
 '
 
 new "restconf get state operation eth0 xml"
 # Cant get shell macros to work, inline matching from lib.sh
-ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/example:state/op=42)
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/clixon-example:state/op=42)
 expect='<op xmlns="urn:example:clixon">42</op>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
@@ -190,12 +166,12 @@ if [ -z "$match" ]; then
 fi
 
 new2 "restconf get state operation eth0 type json"
-expecteq "$(curl -s -G http://localhost/restconf/data/example:state/op=42)" '{"example:op": "42"}
+expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" '{"clixon-example:op": "42"}
 '
 
 new "restconf get state operation eth0 type xml"
 # Cant get shell macros to work, inline matching from lib.sh
-ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/example:state/op=42)
+ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/clixon-example:state/op=42)
 expect='<op xmlns="urn:example:clixon">42</op>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
@@ -203,7 +179,7 @@ if [ -z "$match" ]; then
 fi
 
 new2 "restconf GET datastore"
-expecteq "$(curl -s -X GET http://localhost/restconf/data/example:state)" '{"example:state": {"op": "42"}}
+expecteq "$(curl -s -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
 '
 
 # Exact match
@@ -223,7 +199,7 @@ new "restconf delete interfaces"
 expecteq $(curl -s -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces) ""
 
 new "restconf Check empty config"
-expectfn "curl -sG http://localhost/restconf/data/example:state" 0 "$state"
+expectfn "curl -sG http://localhost/restconf/data/clixon-example:state" 0 "$state"
 
 # XXX: gives  <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
 #      <interface xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
@@ -237,7 +213,7 @@ expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces
 '
 
 new2 "restconf Check eth/0/0 added state"
-expecteq "$(curl -s -G http://localhost/restconf/data/example:state)" '{"example:state": {"op": "42"}}
+expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
 '
 
 new2 "restconf Re-post eth/0/0 which should generate error"
@@ -270,51 +246,41 @@ expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces
 '
 
 new2 "restconf rpc using POST json"
-expecteq "$(curl -s -X POST -d '{"ietf-routing:input":{"routing-instance-name":"ipv4","destination-address":{"address-family":"ipv6"}}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-routing:output": {"route": {"address-family": "ipv4","next-hop": {"next-hop-list": "2.3.4.5"},"source-protocol": "static"}}}
+expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":42}}' http://localhost/restconf/operations/clixon-example:example)" '{"clixon-example:output": {"x": "42","y": "42"}}
 '
 
-# Cant get this to work due to quoting
-#new2 "restconf rpc using POST wrong JSON"
-#expecteq "$(curl -s -X POST -d '{"ietf-routing:input":{"routing-instance-name":ipv4}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": " on line 1: syntax error at or before: i"}}}'
-
-new2 "restconf rpc using POST json without mandatory element"
-expecteq "$(curl -s -X POST -d '{"ietf-routing:input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "wrongelement"},"error-severity": "error"}}}'
+expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/clixon-example:example)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "wrongelement"},"error-severity": "error"}}}'
 
 new2 "restconf rpc non-existing rpc without namespace"
 expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/kalle)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "kalle"},"error-severity": "error","error-message": "RPC not defined"}}}'
 
 new2 "restconf rpc non-existing rpc"
-expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/example:kalle)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "kalle"},"error-severity": "error","error-message": "RPC not defined"}}}'
+expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/clixon-example:kalle)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "kalle"},"error-severity": "error","error-message": "RPC not defined"}}}'
 
 new2 "restconf rpc missing name"
 expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "Operation name expected"}}}'
 
 new2 "restconf rpc missing input"
-expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/ietf-routing:fib-route)" '{"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": "restconf RPC does not have input statement"}}}'
+expecteq "$(curl -s -X POST -d '{}' http://localhost/restconf/operations/clixon-example:example)" '{"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": "restconf RPC does not have input statement"}}}'
 
 new "restconf rpc using POST xml"
-ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"ietf-routing:input":{"routing-instance-name":"ipv4","destination-address":{"address-family":"ipv4"}}}' http://localhost/restconf/operations/ietf-routing:fib-route)
-expect='<output xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop><source-protocol>static</source-protocol></route></output>'
+ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"x":42}}' http://localhost/restconf/operations/clixon-example:example)
+expect='<output xmlns="urn:example:clixon"><x>42</x><y>42</y></output>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
 new2 "restconf rpc using wrong prefix"
-expecteq "$(curl -s -X POST -d '{"wrong:input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/wrong:fib-route)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang module not found"}}}'
+expecteq "$(curl -s -X POST -d '{"wrong:input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/wrong:example)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang module not found"}}}'
 
 new "restconf local client rpc using POST xml"
-ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"example:input":{"request":"example"}}' http://localhost/restconf/operations/example:client-rpc)
+ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"request":"example"}}' http://localhost/restconf/operations/clixon-example:client-rpc)
 expect='<output xmlns="urn:example:clixon"><result>ok</result></output>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
-
-# XXX cant get -H to work
-#expecteq 'curl -s -X POST -H "Accept: application/yang-data+xml" -d {"ietf-routing:input":{"routing-instance-name":"ipv4"}} http://localhost/restconf/operations/ietf-routing:fib-route' '<output><route><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop></route></output>'
-
-# Cant get shell macros to work, inline matching from lib.sh
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"

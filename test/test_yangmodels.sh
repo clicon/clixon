@@ -20,6 +20,7 @@
 APPNAME=example
 
 # include err() and new() functions and creates $dir
+. ./site.sh
 . ./lib.sh
 
 cfg=$dir/conf_yang.xml
@@ -52,7 +53,7 @@ EOF
 new "yangmodels parse: -f $cfg"
 
 new "yangmodel Experimental IEEE 802.1: $YANGMODELS/experimental/ieee/802.1"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/experimental/ieee/802.1 -o CLICON_YANG_DIR=$YANGMODELS/experimental/ieee/1588 show version" 0 "3."
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/experimental/ieee/802.1 -p $YANGMODELS/experimental/ieee/1588 show version" 0 "3."
 
 # experimental 802.3 dir is empty
 #new "yangmodel Experimental IEEE 802.3: $YANGMODELS/experimental/ieee/802.3"
@@ -85,7 +86,24 @@ expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendo
 
 new "yangmodel vendor cisco xr 651: $YANGMODELS/vendor/cisco/xr/651"
 expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/cisco/xr/651 show version" 0 "3."
-fi
+fi ### cisco
+
+# vendor/junos
+#junos           : M/MX, T/TX, Some EX platforms, ACX
+#junos-es        : SRX, Jseries, LN-*
+#junos-ex        : EX series
+#junos-qfx       : QFX series
+#junos-nfx       : NFX series
+
+new "yangmodel vendor junos: $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf/"
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_FILE=$YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf/junos-conf-interfaces@2018-01-01.yang -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common show version" 0 "3."
+
+# breaks memory and cpu limits,...
+#new "yangmodel vendor junos: $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf"
+#expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common show version" 0 "3."
+
+#new "yangmodel vendor junos: $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/rpc"
+#expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/juniper/18.2/18.2R1/junos/rpc -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common show version" 0 "3."
 
 rm -rf $dir
 

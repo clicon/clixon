@@ -1695,11 +1695,10 @@ xml_spec_populate_rpc(clicon_handle h,
 		      yang_spec    *yspec)
 {
     int        retval = -1;
-    yang_stmt *y=NULL;    /* yang node */
+    yang_stmt *yrpc = NULL;    /* yang node */
     yang_stmt *ymod=NULL; /* yang module */
     yang_stmt *yi = NULL; /* input */
     cxobj     *x;
-    //    int        i;
     
     if ((strcmp(xml_name(xrpc), "rpc"))!=0){
 	clicon_err(OE_UNIX, EINVAL, "RPC expected");
@@ -1710,18 +1709,18 @@ xml_spec_populate_rpc(clicon_handle h,
 	if (ys_module_by_xml(yspec, x, &ymod) < 0)
 	    goto done;
 	if (ymod != NULL)
-	    y = yang_find((yang_node*)ymod, Y_RPC, xml_name(x));
+	    yrpc = yang_find((yang_node*)ymod, Y_RPC, xml_name(x));
 	/* Non-strict semantics: loop through all modules to find the node 
 	 */
-	if (y == NULL &&
+	if (yrpc == NULL &&
 	    !clicon_option_bool(h, "CLICON_XML_NS_STRICT")){
-	    if (xml_yang_find_non_strict(x, yspec, &y) < 0) /* find rpc */
+	    if (xml_yang_find_non_strict(x, yspec, &yrpc) < 0) /* find rpc */
 		goto done;
 	}
-	if (y){
-	    xml_spec_set(x, y);
-	    if ((yi = yang_find((yang_node*)y, Y_INPUT, NULL)) != NULL){
-		/* kludge rpc -> input */
+	if (yrpc){
+	    xml_spec_set(x, yrpc);
+	    if ((yi = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
+		/* kludge rpc -> input XXX THIS HIDES AN ERROR IN xml_spec_populate */
 		xml_spec_set(x, yi); 
 		if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		    goto done;
@@ -1751,16 +1750,16 @@ xml_spec_populate(cxobj  *x,
 {
     int        retval = -1;
     //    clicon_handle h = (clicon_handle)arg;
-    yang_spec *yspec=NULL; /* yang spec */
-    yang_stmt *y=NULL;  /* yang node */
-    yang_stmt *yparent; /* yang parent */
-    yang_stmt *ymod;    /* yang module */
-    cxobj     *xp;      /* xml parent */
+    yang_spec *yspec = NULL; /* yang spec */
+    yang_stmt *y = NULL;     /* yang node */
+    yang_stmt *yparent;      /* yang parent */
+    yang_stmt *ymod;         /* yang module */
+    cxobj     *xp = NULL;    /* xml parent */
     char      *name;
 
     yspec = (yang_spec*)arg;
     if (xml_spec(x))
-	goto ok;
+	;	//	goto ok;
     xp = xml_parent(x);
     name = xml_name(x);
     if (xp && (yparent = xml_spec(xp)) != NULL)
@@ -1785,7 +1784,7 @@ xml_spec_populate(cxobj  *x,
 	goto done;
     }
 #endif
-    ok:
+    //    ok:
     retval = 0;
  done:
     return retval;

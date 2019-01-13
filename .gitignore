@@ -12,6 +12,8 @@ etc/Makefile
 example/Makefile
 lib/Makefile
 lib/*/Makefile
+yang/Makefile
+yang/*/Makefile
 autom4te.cache/
 
 config.log

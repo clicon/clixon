@@ -16,9 +16,9 @@
 
 This directory contains a Clixon example which includes a simple example. It contains the following files:
 * `example.xml`       The configuration file. See (yang/clixon-config@<date>.yang)[../yang/clixon-config@2018-10-21.yang] for the documentation of all available fields.
-* `example.yang`      The yang spec of the example. It mainly includes ietf routing and IP modules.
+* `clixon-example@2019-01-13.yang`      The yang spec of the example.
 * `example_cli.cli`   CLIgen specification.
-* `example_cli.c`     CLI callback plugin containing functions called in the cli file above: a generic callback (`mycallback`) and an RPC (`fib_route_rpc`).
+* `example_cli.c`     CLI callback plugin containing functions called in the cli file above: a generic callback (`mycallback`) and an example RPC call (`example_client_rpc`).
 * `example_backend.c` Backend callback plugin including example of:
   * transaction callbacks (validate/commit),
   * notification,
@@ -115,6 +115,31 @@ The following example shows how to set data using netconf:
 <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface"/></get-config></rpc>]]>]]>
 <rpc><validate><source><candidate/></source></validate></rpc>]]>]]>
 ```
+## Restconf
+
+Setup a web/reverse-proxy server.
+For example, using nginx, install, and edit config file: /etc/nginx/sites-available/default:
+```
+server {
+  ...
+  location /restconf {
+    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+    include fastcgi_params;
+  }
+}
+```
+Start nginx daemon
+```
+sudo /etc/init.d/nginx start
+```
+Start the clixon restconf daemon
+```
+sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+```
+then access using curl or wget:
+```
+   curl -G http://127.0.0.1/restconf/data/ietf-interfaces:interfaces/interface=eth9/type
+```
 
 ## Streams
 
@@ -153,52 +178,59 @@ independent of the yang rpc construct, but it is recommended. The example includ
 
 Example using CLI:
 ```
+clixon_cli -f /usr/local/etc/example.xml
 cli> rpc ipv4
-    rpc-reply {
-        route {
-            address-family ipv4;
-            next-hop {
-                next-hop-list 2.3.4.5;
-            }
-            source-protocol static;
-        }
-    }
+<rpc-reply><x xmlns="urn:example:clixon">ipv4</x><y xmlns="urn:example:clixon">42</y></rpc-reply>
 ```
-Netconf:
+Example using Netconf:
 ```
-<rpc><fib-route xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"><routing-instance-name>ipv4</routing-instance-name></fib-route></rpc>]]>]]>
-<rpc-reply><route xmlns="urn:ietf:params:xml:ns:yang:ietf-routing"><address-family>ipv4</address-family><next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop><source-protocol>static</source-protocol></route></rpc-reply>]]>]]>
+clixon_netconf -qf /usr/local/etc/example.xml
+<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>ipv4</x></example></rpc>]]>]]>
+<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">ipv4</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>
 ```
-Restconf:
+Restconf (assuming nginx started):
 ```
-curl -X POST  http://localhost/restconf/operations/ietf-routing:fib-route -d '{"ietf-routing:input":{"routing-instance-name":"ipv4"}}'
+sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data&
+curl -X POST  http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":"ipv4"}}'
+{
+  "clixon-example:output": {
+    "x": "ipv4",
+    "y": "42"
+  }
+}
 ```
 
 ### Details
 
-The example works by creating a netconf rpc call and sending it to the backend: (see the fib_route_rpc() function in [example_cli.c](example_cli.c)).
+The example works by defining an RPC in clixon-example.yang:
+```
+    rpc example {
+	description "Some example input/output for testing RFC7950 7.14.
+                     RPC simply echoes the input for debugging.";
+    	input {
+	    leaf x {
+        ...
+```
 
-In the (example_backend.c)[example_backend.c], a callback is registered (fib_route()) which handles the RPC (this is just dummy data):
+In the CLI a netconf rpc call is constructed and sent to the backend: See `example_client_rpc()` in [example_cli.c] CLI plugin.
+
+The clixon backend  plugin [example_backend.c] reveives the netconf call and replies. This is made byregistering a callback handling handling the RPC:
 ```
 static int 
-fib_route(clicon_handle h, 
-	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg,          /* Client session */
-	  void         *regarg)       /* Argument given at register */
+example_rpc(clicon_handle h, 
+	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	    void         *arg,          /* Client session */
+	    void         *regarg)       /* Argument given at register */
 {
-    cprintf(cbret, "<rpc-reply><route xmlns=\"urn:ietf:params:xml:ns:yang:ietf-routing\">"
-	    "<address-family>ipv4</address-family>"
-	    "<next-hop><next-hop-list>2.3.4.5</next-hop-list></next-hop>"
-	    "<source-protocol>static</source-protocol>"
-	    "</route></rpc-reply>");    
+    /* code that echoes the request */
     return 0;
 }
 int
 clixon_plugin_init(clicon_handle h)
 {
 ...
-   rpc_callback_register(h, fib_route, NULL, "fib-route");
+   rpc_callback_register(h, example_rpc, NULL, "example");
 ...
 }
 ```
@@ -274,7 +306,7 @@ clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
     /* Optional callback registration for RPC calls */
-    rpc_callback_register(h, fib_route, NULL, "fib-route");
+    rpc_callback_register(h, example_rpc, NULL, "example");
     /* Return plugin API */
     return &api; /* Return NULL on error */
 }

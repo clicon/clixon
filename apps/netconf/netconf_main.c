@@ -71,7 +71,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hD:f:l:qa:u:d:y:U:t:o:"
+#define NETCONF_OPTS "hD:f:l:qa:u:d:p:y:U:t:o:"
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
@@ -324,13 +324,13 @@ usage(clicon_handle h,
 	    "where options are\n"
             "\t-h\t\tHelp\n"
 	    "\t-D <level>\tDebug level\n"
-            "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-l (e|o|s|f<file>) \tLog on std(e)rr, std(o)ut, (s)yslog, (f)ile (syslog is default)\n"
+            "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
-
+	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
 	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n"
@@ -418,6 +418,9 @@ main(int    argc,
 	case 'f':  /* config file */
 	case 'l':  /* log  */
 	    break; /* see above */
+	case 'q':  /* quiet: dont write hello */
+	    quiet++;
+	    break;
 	case 'a': /* internal backend socket address family */
 	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
 	    break;
@@ -426,18 +429,20 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
-	case 'q':  /* quiet: dont write hello */
-	    quiet++;
-	    break;
 	case 'd':  /* Plugin directory */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_NETCONF_DIR", optarg);
+	    if (clicon_option_add(h, "CLICON_NETCONF_DIR", optarg) < 0)
+		goto done;
 	    break;
-	case 'y' :{ /* Load yang spec file (override yang main module) */
-	    clicon_option_str_set(h, "CLICON_YANG_MAIN_FILE", optarg);
+	case 'p' : /* yang dir path */
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
 	    break;
-	}
+	case 'y' : /* Load yang spec file (override yang main module) */
+	    if (clicon_option_add(h, "CLICON_YANG_MAIN_FILE", optarg) < 0)
+		goto done;
+	    break;
 	case 'U': /* Clixon 'pseudo' user */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);

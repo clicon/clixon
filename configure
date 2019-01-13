@@ -635,6 +635,7 @@ EXEEXT
 ac_ct_CC
 wwwuser
 wwwdir
+enable_stdyangs
 with_restconf
 RANLIB
 SH_SUFFIX
@@ -711,6 +712,7 @@ ac_user_opts='
 enable_option_checking
 enable_debug
 with_cligen
+enable_stdyangs
 enable_publish
 with_restconf
 with_configfile
@@ -1350,6 +1352,8 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-debug          Build with debug symbols, default: no
+  --disable-stdyangs      Include standard yang files in clixon install,
+                          default: yes
   --enable-publish        Enable publish of notification streams using SSE and
                           curl
 
@@ -2457,6 +2461,7 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
  # If yes, compile apps/restconf
+
 wwwdir=/www-data
 
 wwwuser=www-data
@@ -3691,6 +3696,26 @@ if test "${with_cligen}"; then
   test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
 fi
 
+# Disable/enable standard Yang files.
+# If enable - include yang/standard/*.yang in clixon yang files (default)
+# If disable - get standard yang files from elsewhere
+# Check whether --enable-stdyangs was given.
+if test "${enable_stdyangs+set}" = set; then :
+  enableval=$enable_stdyangs;
+	  if test "$enableval" = no; then
+	      enable_stdyangs=no
+	  else
+	      enable_stdyangs=yes
+          fi
+
+else
+   enable_stdyangs=yes
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: stdyangs is $enable_stdyangs" >&5
+$as_echo "stdyangs is $enable_stdyangs" >&6; }
+
 # Experimental: Curl publish notification stream to eg Nginx nchan.
 # Check whether --enable-publish was given.
 if test "${enable_publish+set}" = set; then :
@@ -4408,7 +4433,7 @@ _ACEOF
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile extras/rpm/Makefile docker/Makefile datastore/Makefile datastore/text/Makefile util/Makefile yang/Makefile doc/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile extras/rpm/Makefile docker/Makefile datastore/Makefile datastore/text/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/standard/Makefile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5121,6 +5146,8 @@ do
     "datastore/text/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/text/Makefile" ;;
     "util/Makefile") CONFIG_FILES="$CONFIG_FILES util/Makefile" ;;
     "yang/Makefile") CONFIG_FILES="$CONFIG_FILES yang/Makefile" ;;
+    "yang/clixon/Makefile") CONFIG_FILES="$CONFIG_FILES yang/clixon/Makefile" ;;
+    "yang/standard/Makefile") CONFIG_FILES="$CONFIG_FILES yang/standard/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

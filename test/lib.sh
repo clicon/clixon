@@ -25,6 +25,9 @@ testname=
 # Parse yang openconfig models from https://github.com/openconfig/public
 : ${OPENCONFIG=$(pwd)/public}
 
+# Standard IETF RFC yang files. 
+: ${IETFRFC=$YANGMODELS/standard/ietf/RFC}
+
 # For memcheck
 #clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
 clixon_cli=clixon_cli

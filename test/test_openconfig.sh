@@ -9,6 +9,7 @@
 APPNAME=example
 
 # include err() and new() functions and creates $dir
+. ./site.sh
 . ./lib.sh
 
 cfg=$dir/conf_yang.xml
@@ -61,9 +62,8 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>$OCDIR/wifi/mac</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR/wifi/phy</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR/wifi/types</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>$APPNAME</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
