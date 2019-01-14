@@ -189,16 +189,18 @@ array_eval(cxobj *xprev,
     if (xnext && 
 	xml_type(xnext)==CX_ELMNT &&
 	strcmp(xml_name(x),xml_name(xnext))==0){
-        ns2 = xml_find_type_value(xnext, NULL, "xmlns", CX_ATTR);
-	if (nsx && ns2 && strcmp(nsx,ns2)==0)
-	    eqnext++;
+	    ns2 = xml_find_type_value(xnext, NULL, "xmlns", CX_ATTR);
+	    if ((!nsx && !ns2)
+		|| (nsx && ns2 && strcmp(nsx,ns2)==0))
+		    eqnext++;
     }
     if (xprev &&
 	xml_type(xprev)==CX_ELMNT &&
 	strcmp(xml_name(x),xml_name(xprev))==0){
-	ns2 = xml_find_type_value(xprev, NULL, "xmlns", CX_ATTR);
-	if (nsx && ns2 && strcmp(nsx,ns2)==0)
-	    eqprev++;
+	    ns2 = xml_find_type_value(xprev, NULL, "xmlns", CX_ATTR);
+	    if ((!nsx && !ns2)
+		|| (nsx && ns2 && strcmp(nsx,ns2)==0))
+		    eqprev++;
     }
     if (eqprev && eqnext)
 	array = MIDDLE_ARRAY;
@@ -432,6 +434,8 @@ xml2json1_cbuf(cbuf                   *cb,
 	    break;
 	}
 
+    int na = xml_child_nr_notype(x, CX_ATTR);
+    int commas = na - 1;
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
 	if (xml_type(xc) == CX_ATTR)
@@ -444,8 +448,10 @@ xml2json1_cbuf(cbuf                   *cb,
 			   xc_arraytype,
 			   level+1, pretty, 0, bodystr0) < 0)
 	    goto done;
-	if (i<xml_child_nr_notype(x, CX_ATTR)-1)
+	if (commas > 0) {
 	    cprintf(cb, ",%s", pretty?"\n":"");
+	    --commas;
+	}
     }
     switch (arraytype){
     case BODY_ARRAY:
