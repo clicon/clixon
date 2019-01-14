@@ -189,18 +189,18 @@ array_eval(cxobj *xprev,
     if (xnext && 
 	xml_type(xnext)==CX_ELMNT &&
 	strcmp(xml_name(x),xml_name(xnext))==0){
-	    ns2 = xml_find_type_value(xnext, NULL, "xmlns", CX_ATTR);
-	    if ((!nsx && !ns2)
-		|| (nsx && ns2 && strcmp(nsx,ns2)==0))
-		    eqnext++;
+        ns2 = xml_find_type_value(xnext, NULL, "xmlns", CX_ATTR);
+	if ((!nsx && !ns2)
+	    || (nsx && ns2 && strcmp(nsx,ns2)==0))
+	    eqnext++;
     }
     if (xprev &&
 	xml_type(xprev)==CX_ELMNT &&
 	strcmp(xml_name(x),xml_name(xprev))==0){
-	    ns2 = xml_find_type_value(xprev, NULL, "xmlns", CX_ATTR);
-	    if ((!nsx && !ns2)
-		|| (nsx && ns2 && strcmp(nsx,ns2)==0))
-		    eqprev++;
+	ns2 = xml_find_type_value(xprev, NULL, "xmlns", CX_ATTR);
+	if ((!nsx && !ns2)
+	    || (nsx && ns2 && strcmp(nsx,ns2)==0))
+	    eqprev++;
     }
     if (eqprev && eqnext)
 	array = MIDDLE_ARRAY;
