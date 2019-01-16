@@ -134,6 +134,7 @@
   * <!DOCTYPE (ie DTD) is not supported.
 
 ### Corrected Bugs
+* Removing newlines from XML data [https://github.com/clicon/clixon/issues/65]
 * [ietf-netconf-notification@2008-07-01.yang validation problem #62](https://github.com/clicon/clixon/issues/62)
 * Ignore CR(\r) in yang files for DOS files
 * Keyword "min" (not only "max") can be used in built-in types "range" and "length" statements.

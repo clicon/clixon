@@ -3,13 +3,19 @@
 #  @see https://www.w3.org/TR/2008/REC-xml-20081126
 #       https://www.w3.org/TR/2009/REC-xml-names-20091208
 #PROG="valgrind --leak-check=full --show-leak-kinds=all ../util/clixon_util_xml"
-PROG=../util/clixon_util_xml
+
 
 # include err() and new() functions and creates $dir
 . ./lib.sh
 
+
+PROG="../util/clixon_util_xml -D $DBG"
+
 new "xml parse"
 expecteof "$PROG" 0 "<a><b/></a>" "^<a><b/></a>$"
+
+new "xml parse to json"
+expecteof "$PROG -j" 0 "<a><b/></a>" '^{"a": {"b": null}}$'
 
 new "xml parse strange names"
 expecteof "$PROG" 0 "<_-><b0.><c-.-._/></b0.></_->" "^<_-><b0.><c-.-._/></b0.></_->$"
@@ -22,6 +28,14 @@ expecteof "$PROG" 255 "<9/>" ""
 
 new "xml parse name errors"
 expecteof "$PROG" 255 "<a%/>" ""
+
+LF='
+'
+new "xml parse content with CR LF -> LF, CR->LF (see https://www.w3.org/TR/REC-xml/#sec-line-ends)"
+ret=$(echo "<x>ab${LF}c${LF}d</x>" | $PROG)
+if [ "$ret" != "<x>a${LF}b${LF}c${LF}d</x>" ]; then
+     err '<x>a$LFb$LFc</x>' "$ret"
+fi
 
 XML=$(cat <<EOF
 <a><description>An example of escaped CENDs</description>
@@ -38,6 +52,7 @@ XML=$(cat <<EOF
 </a>
 EOF
 )
+
 new "xml CDATA"
 expecteof "$PROG" 0 "$XML" "^<a><description>An example of escaped CENDs</description><sometext>
 <![CDATA[ They're saying \"x < y\" & that \"z > y\" so I guess that means that z > x ]]>
