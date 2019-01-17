@@ -180,6 +180,16 @@ module example{
     description "transitive type- exists in ex3";
     uses ex2:gr2;
   }
+  leaf digit4{
+     type string {
+         pattern '\d{4}';
+       }
+  }
+  leaf word4{
+     type string {
+         pattern '\w{4}';
+       }
+  }
 }
 EOF
 
@@ -357,6 +367,31 @@ expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len2 ab" 255 "^$"
 
 new "cli range test len3 42 ok"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len3 hsakjdhkjsahdkjsahdksahdksajdhsakjhd" 0 "^$"
+
+# XSD schema -> POSIX ECE translation
+new "cli yang pattern \d ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set digit4 0123" 0 "^$"
+
+new "cli yang pattern \d error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set digit4 01b2" 255 "^$"
+
+new "cli yang pattern \w ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 a2-_" 0 "^$"
+
+new "cli yang pattern \w error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 ab%d3" 255 "^$"
+
+new "netconf pattern \w"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><word4 xmlns="urn:example:clixon">a-_9</word4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf pattern \w valid"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf pattern \w error"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><word4 xmlns="urn:example:clixon">ab%d3</word4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf pattern \w valid"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>word4</bad-element></error-info><error-severity>error</error-severity><error-message>regexp match fail: "ab%d3" does not match \\w{4}</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 if [ $BE -eq 0 ]; then
     exit # BE

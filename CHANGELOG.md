@@ -134,6 +134,8 @@
   * <!DOCTYPE (ie DTD) is not supported.
 
 ### Corrected Bugs
+* xsd regular expression support for character classes [https://github.com/clicon/clixon/issues/68]
+  * added support for \c, \d, \w, \W, \s, \S.
 * Removing newlines from XML data [https://github.com/clicon/clixon/issues/65]
 * [ietf-netconf-notification@2008-07-01.yang validation problem #62](https://github.com/clicon/clixon/issues/62)
 * Ignore CR(\r) in yang files for DOS files
