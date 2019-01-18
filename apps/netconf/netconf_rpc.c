@@ -614,12 +614,18 @@ netconf_application_rpc(clicon_handle h,
 	else /* Send to backend */
 	    if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
 		goto done;
-	/* Sanity check of outgoing XML */
+	/* Sanity check of outgoing XML 
+	 * For now, skip outgoing checks.
+	 * (1) Does not handle <ok/> properly
+	 * (2) Uncertain how validation errors should be logged/handled
+	 */
+	if (0)
 	if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL){
 	    xoutput=xpath_first(*xret, "/");
 	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
 	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
+
 	    if ((ret = xml_yang_validate_all_top(xoutput, cbret)) < 0)
 		goto done;
 	    if (ret == 0){

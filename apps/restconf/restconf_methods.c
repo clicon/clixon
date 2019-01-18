@@ -1390,7 +1390,7 @@ api_operations_post_output(clicon_handle h,
     }
 #endif
     /* Validate output (in case handlers are wrong) */
-    if (youtput==NULL){ 
+    if (youtput==NULL){
 	/* Special case, no yang output
 	 * RFC 7950 7.14.4
 	 * If the RPC operation invocation succeeded and no output parameters
@@ -1428,10 +1428,17 @@ api_operations_post_output(clicon_handle h,
     }
     else{
 	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
+	if (0){
+	/* Sanity check of outgoing XML 
+	 * For now, skip outgoing checks.
+	 * (1) Does not handle <ok/> properly
+	 * (2) Uncertain how validation errors should be logged/handled
+	 */
 	if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
 	if ((ret = xml_yang_validate_all(xoutput, cbret)) < 0)
 	    goto done;
+
 	if (ret == 1 &&
 	    (ret = xml_yang_validate_add(xoutput, cbret)) < 0)
 	    goto done;
@@ -1446,7 +1453,7 @@ api_operations_post_output(clicon_handle h,
 		goto done;
 	    goto fail;
 	}
-    
+	}
 	/* Clear namespace of parameters */
 	x = NULL;
 	while ((x = xml_child_each(xoutput, x, CX_ELMNT)) != NULL) {

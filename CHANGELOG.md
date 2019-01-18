@@ -134,6 +134,7 @@
   * <!DOCTYPE (ie DTD) is not supported.
 
 ### Corrected Bugs
+* Restconf returns error when RPC generates "ok" reply [https://github.com/clicon/clixon/issues/69]
 * xsd regular expression support for character classes [https://github.com/clicon/clixon/issues/68]
   * added support for \c, \d, \w, \W, \s, \S.
 * Removing newlines from XML data [https://github.com/clicon/clixon/issues/65]
