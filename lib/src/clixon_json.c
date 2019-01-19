@@ -216,42 +216,58 @@ array_eval(cxobj *xprev,
     return array;
 }
 
-/*! Escape a json string
+/*! Escape a json string as well as decode xml cdata
+ * And a
  */
-static char *
-json_str_escape(char *str)
+static int
+json_str_escape_cdata(cbuf *cb,
+		      char *str)
 {
-    int   i, j;
-    char *snew;
+    int   retval = -1;
+    char *snew = NULL;
+    int   i;
+    int   esc = 0; /* cdata escape */
 
-    j = 0;
     for (i=0;i<strlen(str);i++)
 	switch (str[i]){
 	case '\n':
-	case '\"':
-	case '\\':
-	    j++;
-	    break;
-	}
-    if ((snew = malloc(strlen(str)+1+j))==NULL){
-	clicon_err(OE_XML, errno, "malloc");
-	return NULL;
-    }
-    j = 0;
-    for (i=0;i<strlen(str);i++)
-	switch (str[i]){
-	case '\n':
-	    snew[j++]='\\';
-	    snew[j++]='n';
+	    cprintf(cb, "\\n");
 	    break;
 	case '\"':
+	    cprintf(cb, "\\\"");
+	    break;
 	case '\\':
-	    snew[j++]='\\';
+	    cprintf(cb, "\\\\");
+	    break;
+	case '<':
+	    if (!esc &&
+		strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+		esc=1;
+		i += strlen("<![CDATA[")-1;
+	    }
+	    else
+		cprintf(cb, "%c", str[i]);
+	    break;
+	case ']':
+	    if (esc &&
+		strncmp(&str[i], "]]>", strlen("]]>")) == 0){
+		esc=0;
+		i += strlen("]]>")-1;
+	    }
+	    else
+		cprintf(cb, "%c", str[i]);
+	    break;
 	default: /* fall thru */
-	    snew[j++]=str[i];
+	    cprintf(cb, "%c", str[i]);
+	    break;
 	}
-    snew[j++]='\0';
-    return snew;
+    if ((snew = strdup(cbuf_get(cb))) ==NULL){
+	clicon_err(OE_XML, errno, "strdup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Do the actual work of translating XML to JSON 
@@ -309,10 +325,10 @@ xml2json1_cbuf(cbuf                   *cb,
     yang_stmt       *ymod; /* yang module */
     yang_spec       *yspec = NULL; /* yang spec */
     int              bodystr0=1;
-    char            *str;
     char            *prefix=NULL;    /* prefix / local namespace name */
     char            *namespace=NULL; /* namespace uri */
     char            *modname=NULL;   /* Module name */
+    int              commas;
 
     /* If x is labelled with a default namespace, it should be translated
      * to a module name. 
@@ -337,10 +353,11 @@ xml2json1_cbuf(cbuf                   *cb,
     switch(arraytype){
     case BODY_ARRAY:{
 	if (bodystr){
-	    if ((str = json_str_escape(xml_value(x))) == NULL)
+	    /* XXX String if right type */
+	    cprintf(cb, "\"");
+	    if (json_str_escape_cdata(cb, xml_value(x)) < 0)
 		goto done;
-	    cprintf(cb, "\"%s\"", str);
-	    free(str);
+	    cprintf(cb, "\"");
 	}
 	else
 	    cprintf(cb, "%s", xml_value(x));
@@ -434,8 +451,7 @@ xml2json1_cbuf(cbuf                   *cb,
 	    break;
 	}
 
-    int na = xml_child_nr_notype(x, CX_ATTR);
-    int commas = na - 1;
+    commas = xml_child_nr_notype(x, CX_ATTR) - 1;
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
 	if (xml_type(xc) == CX_ATTR)
