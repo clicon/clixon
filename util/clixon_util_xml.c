@@ -72,7 +72,7 @@ usage(char *argv0)
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"
-	    "\t-j \tOutput as JSON\n"
+	    "\t-j \t\tOutput as JSON\n"
 	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n",
 	    argv0);
     exit(0);
@@ -82,10 +82,10 @@ int
 main(int    argc,
      char **argv)
 {
+    int   retval = -1;
     cxobj *xt = NULL;
     cxobj *xc;
     cbuf  *cb = cbuf_new();
-    int   retval = -1;
     int   c;
     int   logdst = CLICON_LOG_STDERR;
     int   json = 0;
@@ -112,7 +112,7 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
 	}
-    clicon_log_init("clixon_util_xml", debug?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, logdst);
     if (xml_parse_file(0, "</config>", NULL, &xt) < 0){
 	fprintf(stderr, "xml parse error %s\n", clicon_err_reason);
 	goto done;

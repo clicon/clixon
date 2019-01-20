@@ -44,6 +44,23 @@ module example{
          type string;
       }
    }
+   container types{
+     /* A couple of types to test quoting */
+     leaf tint {
+       type int32;
+     }
+     leaf tdec64 {
+       type decimal64{
+         fraction-digits 3;
+       }
+     }
+     leaf tbool {
+       type boolean;
+     }
+     leaf tstr {
+       type string;
+     }
+   }
 }
 EOF
 
@@ -149,6 +166,13 @@ expectfn 'curl -s -X PUT -d {"interface":{"name":"TEST","type":"eth0"}} http://l
 
 new "restconf PUT change key error"
 expectfn 'curl -is -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/example:cont1/interface=TEST' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
+
+#--------------- json type tests
+new "restconf POST type x3"
+expectfn 'curl -s -X POST -d {"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}} http://localhost/restconf/data' 0 ''
+
+new "restconf POST type x3"
+expectfn 'curl -s -X GET http://localhost/restconf/data/example:types' 0 '{"example:types": {"tint": 42,"tdec64": 42.123,"tbool": false,"tstr": "str"}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"

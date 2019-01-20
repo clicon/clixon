@@ -311,7 +311,6 @@ api_data_get2(clicon_handle h,
     FCGX_FPrintF(r->out, "\r\n");
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
     FCGX_FPrintF(r->out, "\r\n\r\n");
-    clicon_debug(1, "%s Z", __FUNCTION__);
  ok:
     retval = 0;
  done:

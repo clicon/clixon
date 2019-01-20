@@ -193,7 +193,8 @@ EOF
   if [ -z "$ret" -a -z "$expect" ]; then
       return
   fi
-  # -E for regexp (eg ^$). -Z for nul character, -x for implicit ^$ -q for quiet
+  # -G for basic regexp (eg ^$). -E for extended regular expression - differs in \
+  # -Z for nul character, -x for implicit ^$ -q for quiet
   # -o only matching
   # Two variants: -EZo and -Fxq
   #  match=`echo "$ret" | grep -FZo "$expect"`
