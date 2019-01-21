@@ -1269,9 +1269,8 @@ api_operations_post_input(clicon_handle h,
     xml_name_set(xdata, "data");
     /* Here xdata is: 
      * <data><input xmlns="urn:example:clixon">...</input></data>
-     * Validate that exactly only <input> tag 
      */
-#if 0
+#if 1
     if (debug){
 	cbuf *ccc=cbuf_new();
 	if (clicon_xml2cbuf(ccc, xdata, 0, 0) < 0)
@@ -1279,6 +1278,7 @@ api_operations_post_input(clicon_handle h,
 	clicon_debug(1, "%s DATA:%s", __FUNCTION__, cbuf_get(ccc));
     }
 #endif
+    /* Validate that exactly only <input> tag */
     if ((xinput = xml_child_i_type(xdata, 0, CX_ELMNT)) == NULL ||
 	strcmp(xml_name(xinput),"input") != 0 ||
 	xml_child_nr_type(xdata, CX_ELMNT) != 1){
@@ -1356,8 +1356,9 @@ api_operations_post_output(clicon_handle h,
     cxobj     *x;
     cxobj     *xok;
     cbuf      *cbret = NULL;
-    int        ret;
-
+    int        isempty;
+    
+    //    clicon_debug(1, "%s", __FUNCTION__);
     if ((cbret = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, 0, "cbuf_new");
 	goto done;
@@ -1380,7 +1381,7 @@ api_operations_post_output(clicon_handle h,
     /* 9. Translate to restconf RPC data */
     xml_name_set(xoutput, "output");
     /* xoutput should now look: <output><x xmlns="uri">0</x></output> */
-#if 0
+#if 1
     if (debug){
 	cbuf *ccc=cbuf_new();
 	if (clicon_xml2cbuf(ccc, xoutput, 0, 0) < 0)
@@ -1388,56 +1389,19 @@ api_operations_post_output(clicon_handle h,
 	clicon_debug(1, "%s XOUTPUT:%s", __FUNCTION__, cbuf_get(ccc));
     }
 #endif
-    /* Validate output (in case handlers are wrong) */
-    if (youtput==NULL){
-	/* Special case, no yang output
-	 * RFC 7950 7.14.4
-	 * If the RPC operation invocation succeeded and no output parameters
-	 * are returned, the <rpc-reply> contains a single <ok/> element
-	 * RFC 8040 3.6.2
-	 * If the "rpc" statement has no "output" section, the response message
-	 * MUST NOT include a message-body and MUST send a "204 No Content"
-	 * status-line instead.
-	 */
-	if ((xok = xml_child_i_type(xoutput, 0, CX_ELMNT)) == NULL ||
-	    strcmp(xml_name(xok),"ok") != 0 ||
-	    xml_child_nr_type(xoutput, CX_ELMNT) != 1){
-	    /* Internal error - invalid output from rpc handler */
-	    if (xok){
-		if (netconf_operation_failed_xml(&xerr, "application",
-					"Internal error: Empty RPC reply is not ok") < 0)
-		    goto done;
-	    }
-	    else
-		if (netconf_operation_failed_xml(&xerr, "application",
-						"Internal error: Empty RPC reply should have OK") < 0)
-		    goto done;
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
-		goto done;
-	    goto fail;
-	}
-	FCGX_SetExitStatus(204, r->out); /* OK */
-	FCGX_FPrintF(r->out, "Status: 204 No Content\r\n");
-	FCGX_FPrintF(r->out, "\r\n");
-	goto fail;
-    }
-    else{
+
+    /* Sanity check of outgoing XML 
+     * For now, skip outgoing checks.
+     * (1) Does not handle <ok/> properly
+     * (2) Uncertain how validation errors should be logged/handled
+     */
+    if (youtput!=NULL){
 	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
-	if (0){
-	/* Sanity check of outgoing XML 
-	 * For now, skip outgoing checks.
-	 * (1) Does not handle <ok/> properly
-	 * (2) Uncertain how validation errors should be logged/handled
-	 */
+#if 0
 	if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
 	if ((ret = xml_yang_validate_all(xoutput, cbret)) < 0)
 	    goto done;
-
 	if (ret == 1 &&
 	    (ret = xml_yang_validate_add(xoutput, cbret)) < 0)
 	    goto done;
@@ -1452,14 +1416,34 @@ api_operations_post_output(clicon_handle h,
 		goto done;
 	    goto fail;
 	}
-	}
-	/* Clear namespace of parameters */
-	x = NULL;
-	while ((x = xml_child_each(xoutput, x, CX_ELMNT)) != NULL) {
-	    if ((xa = xml_find_type(x, NULL, "xmlns", CX_ATTR)) != NULL)
-		if (xml_purge(xa) < 0)
-		    goto done;
-	}
+#endif
+    }
+    /* Special case, no yang output (single <ok/> - or empty body?)
+     * RFC 7950 7.14.4
+     * If the RPC operation invocation succeeded and no output parameters
+     * are returned, the <rpc-reply> contains a single <ok/> element
+     * RFC 8040 3.6.2
+     * If the "rpc" statement has no "output" section, the response message
+     * MUST NOT include a message-body and MUST send a "204 No Content"
+     * status-line instead.
+     */
+    isempty = xml_child_nr_type(xoutput, CX_ELMNT) == 0 ||
+	(xml_child_nr_type(xoutput, CX_ELMNT) == 1 &&
+	 (xok = xml_child_i_type(xoutput, 0, CX_ELMNT)) != NULL &&
+	 strcmp(xml_name(xok),"ok")==0);
+    if (isempty) {
+	/* Internal error - invalid output from rpc handler */
+	FCGX_SetExitStatus(204, r->out); /* OK */
+	FCGX_FPrintF(r->out, "Status: 204 No Content\r\n");
+	FCGX_FPrintF(r->out, "\r\n");
+	goto fail;
+    }
+    /* Clear namespace of parameters */
+    x = NULL;
+    while ((x = xml_child_each(xoutput, x, CX_ELMNT)) != NULL) {
+	if ((xa = xml_find_type(x, NULL, "xmlns", CX_ATTR)) != NULL)
+	    if (xml_purge(xa) < 0)
+		goto done;
     }
     /* Set namespace on output */
     if (xmlns_set(xoutput, NULL, namespace) < 0)
@@ -1643,7 +1627,7 @@ api_operations_post(clicon_handle h,
     }
     /* Here xtop is: 
       <rpc username="foo"><myfn xmlns="uri"><x>42</x></myfn></rpc> */
-#if 0
+#if 1
     if (debug){
 	cbuf *ccc=cbuf_new();
 	if (clicon_xml2cbuf(ccc, xtop, 0, 0) < 0)
@@ -1652,8 +1636,8 @@ api_operations_post(clicon_handle h,
 		     __FUNCTION__, cbuf_get(ccc));
     }
 #endif
-    /* 6. Validate outgoing RPC and fill in defaults */
-    if (xml_spec_populate_rpc(h, xtop, yspec) < 0)
+    /* 6. Validate incoming RPC and fill in defaults */
+    if (xml_spec_populate_rpc(h, xtop, yspec) < 0) /*  */
 	goto done;
     if ((ret = xml_yang_validate_rpc(xtop, cbret)) < 0)
 	goto done;
@@ -1710,7 +1694,7 @@ api_operations_post(clicon_handle h,
     /* 8. Receive reply from local/backend handler as Netconf RPC
      *       <rpc-reply><x xmlns="uri">0</x></rpc-reply>
      */
-#if 0
+#if 1
     if (debug){
 	cbuf *ccc=cbuf_new();
 	if (clicon_xml2cbuf(ccc, xret, 0, 0) < 0)

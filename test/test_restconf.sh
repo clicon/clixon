@@ -30,27 +30,6 @@ cat <<EOF > $cfg
 </config>
 EOF
 
-cat <<EOF > $fyang
-module mymod{
-    yang-version 1.1;
-    namespace "urn:example:my";
-    prefix me;
-    import clixon-example {
-	prefix ex;
-    }
-    import ietf-interfaces {
-	prefix if;
-    }
-    import ietf-ip {
-      prefix ip;
-    }
-    import ietf-inet-types {
-       prefix "inet";
-       revision-date "2013-07-15";
-    }
-}
-EOF
-
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
 state='{"clixon-example:state": {"op": "42"}}'
 
@@ -94,12 +73,12 @@ expecteq "$(curl -s -H 'Accept: application/yang-data+xml' -G http://localhost/r
 
 # Should be alphabetically ordered
 new2 "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"clixon-example:client-rpc": null,"clixon-example:empty": null,"clixon-example:example": null,"clixon-lib:debug": null}
+expecteq "$(curl -sG http://localhost/restconf/operations)" '{"operations": {"clixon-example:client-rpc": null,"clixon-example:empty": null,"clixon-example:optional": null,"clixon-example:example": null,"clixon-lib:debug": null}
 '
 
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/operations)
-expect='<operations><client-rpc xmlns="urn:example:clixon"/><empty xmlns="urn:example:clixon"/><example xmlns="urn:example:clixon"/><debug xmlns="http://clicon.org/lib"/></operations>'
+expect='<operations><client-rpc xmlns="urn:example:clixon"/><empty xmlns="urn:example:clixon"/><optional xmlns="urn:example:clixon"/><example xmlns="urn:example:clixon"/><debug xmlns="http://clicon.org/lib"/></operations>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -275,7 +254,7 @@ new2 "restconf rpc using wrong prefix"
 expecteq "$(curl -s -X POST -d '{"wrong:input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/wrong:example)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang module not found"}}}'
 
 new "restconf local client rpc using POST xml"
-ret=$(curl -s -X POST -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"request":"example"}}' http://localhost/restconf/operations/clixon-example:client-rpc)
+ret=$(curl -s -i -X POST -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"request":"example"}}' http://localhost/restconf/operations/clixon-example:client-rpc)
 expect='<output xmlns="urn:example:clixon"><result>ok</result></output>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then

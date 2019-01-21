@@ -2,6 +2,9 @@
 # RPC tests
 # Validate parameters in restconf and netconf, check namespaces, etc
 # See rfc8040 3.6
+# Use the example application that has one mandatory input arg,
+# At the end is an alternative Yang without mandatory arg for
+# valid empty input and output.
 APPNAME=example
 
 # include err() and new() functions and creates $dir
@@ -95,7 +98,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netco
 
 # 2. Then error cases
 #
-new "restconf empy rpc with null input"
+new "restconf empty rpc with null input"
 ret=$(curl -is -X POST -d '{"clixon-example:input":null}' http://localhost/restconf/operations/clixon-example:empty)
 expect="204 No Content"
 match=`echo $ret | grep -EZo "$expect"`
@@ -103,8 +106,17 @@ if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
-new2 "restconf empy rpc with input x"
+new2 "restconf empty rpc with input x"
 expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":0}}' http://localhost/restconf/operations/clixon-example:empty)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "x"},"error-severity": "error"}}}'
+
+# cornercase: optional has yang input/output sections but test without body
+new "restconf optional rpc with null input and output"
+ret=$(curl -is -X POST -d '{"clixon-example:input":null}' http://localhost/restconf/operations/clixon-example:optional)
+expect="204 No Content"
+match=`echo $ret | grep -EZo "$expect"`
+if [ -z "$match" ]; then
+    err "$expect" "$ret"
+fi
 
 new2 "restconf omit mandatory"
 expecteq "$(curl -s -X POST -d '{"clixon-example:input":null}' http://localhost/restconf/operations/clixon-example:example)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "x"},"error-severity": "error","error-message": "Mandatory variable"}}}'
@@ -117,7 +129,6 @@ expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":"0"}}' http://local
 
 new2 "restconf example missing input"
 expecteq "$(curl -s -X POST -d '{"clixon-example:input":null}' http://localhost/restconf/operations/ietf-netconf:edit-config)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang module not found"}}}'
-
 
 new "netconf kill-session missing session-id mandatory"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><kill-session/></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>session-id</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable</error-message></rpc-error></rpc-reply>]]>]]>$'

@@ -76,7 +76,20 @@ module clixon-example {
 	}
     }
     rpc empty {
-	description "Smallest possible RPC with no input or output";
+	description "Smallest possible RPC with no input or output sections";
+    }
+    rpc optional {
+	description "Small RPC with optional input and output";
+	input {
+	    leaf x {
+		type string;
+	    }
+	}
+	output {
+	    leaf x {
+		type string;
+	    }
+	}
     }
     rpc example {
 	description "Some example input/output for testing RFC7950 7.14.

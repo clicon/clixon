@@ -156,18 +156,19 @@ example_rpc(clicon_handle h,            /* Clicon handle */
 	goto done;
     }
     cprintf(cbret, "<rpc-reply>");
-    while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
-	if (xmlns_set(x, NULL, namespace) < 0)
-	    goto done;
-	if (clicon_xml2cbuf(cbret, x, 0, 0) < 0)
-	    goto done;
-    }
+    if (!xml_child_nr_type(xe, CX_ELMNT))
+	cprintf(cbret, "<ok/>");
+    else while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+	    if (xmlns_set(x, NULL, namespace) < 0)
+		goto done;
+	    if (clicon_xml2cbuf(cbret, x, 0, 0) < 0)
+		goto done;
+	}
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
  done:
     return retval;
 }
-
 
 /*! Called to get state data from plugin
  * @param[in]    h      Clicon handle
@@ -338,6 +339,12 @@ clixon_plugin_init(clicon_handle h)
 			      "empty"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
+    /* Same as example but with optional input/output */
+    if (rpc_callback_register(h, example_rpc, 
+			      NULL, 
+			      "optional"/* Xml tag when callback is made */
+			      ) < 0)
+	goto done;
     if (rpc_callback_register(h, example_rpc, 
 			      NULL, 
 			      "example"/* Xml tag when callback is made */
@@ -349,4 +356,3 @@ clixon_plugin_init(clicon_handle h)
  done:
     return NULL;
 }
-
