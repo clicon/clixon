@@ -37,48 +37,33 @@ prefix 		= @prefix@
 bindir 		= @bindir@
 includedir	= @includedir@
 datarootdir     = @datarootdir@
-enable_stdyangs	= @enable_stdyangs@
 
 CLIXON_DATADIR   = @CLIXON_DATADIR@
 
-SUBDIRS  = clixon
-# See configure.ac
-ifeq ($(enable_stdyangs),yes)
-SUBDIRS += standard
-endif
+YANGSPECS	 = clixon-config@2018-10-21.yang
+YANGSPECS	+= clixon-lib@2019-01-02.yang
+YANGSPECS	+= clixon-rfc5277@2008-07-01.yang
 
-.PHONY: all clean depend install $(SUBDIRS)
+APPNAME	        = clixon  # subdir ehere these files are installed
 
-all:	$(SUBDIRS)
-
-depend:
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
-
-$(SUBDIRS):
-	(cd $@; $(MAKE) $(MFLAGS) all)
-
-install-include:
-	for i in $(SUBDIRS); \
-	do (cd $$i && $(MAKE) $(MFLAGS) $@||exit 1); done; 
-
-install:
-	for i in $(SUBDIRS); \
-	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
-
-uninstall:
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done
+all:	
 
 clean:
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
 distclean: clean
 	rm -f Makefile *~ .depend
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
-TAGS:
-	find $(srcdir) -name '*.[chyl]' -print | etags -
+install: $(YANGSPECS) 
+	install -d -m 0755 $(DESTDIR)$(CLIXON_DATADIR)
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(CLIXON_DATADIR)
+
+uninstall:
+	(cd $(DESTDIR)$(CLIXON_DATADIR); rm -rf *.yang)
+
+install-include:	
+
+depend:
+
+
+#include .depend
 

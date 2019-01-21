@@ -73,7 +73,7 @@
 #include "backend_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:l:d:b:Fza:u:P:1s:c:g:y:x:o:" 
+#define BACKEND_OPTS "hD:f:l:d:p:b:Fza:u:P:1s:c:g:y:x:o:" 
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
@@ -142,6 +142,7 @@ usage(clicon_handle h,
     	    "\t-f <file>\tCLICON config file\n"
 	    "\t-l (s|e|o|f<file>)  Log on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
 	    "\t-d <dir>\tSpecify backend plugin directory (default: %s)\n"
+	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-b <dir>\tSpecify XMLDB database directory\n"
     	    "\t-F\t\tRun in foreground, do not run as daemon\n"
     	    "\t-z\t\tKill other config daemon and exit\n"
@@ -654,12 +655,18 @@ main(int    argc,
 	case 'd':  /* Plugin directory */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_BACKEND_DIR", optarg);
+	    if (clicon_option_add(h, "CLICON_BACKEND_DIR", optarg) < 0)
+		goto done;
 	    break;
 	case 'b':  /* XMLDB database directory */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_XMLDB_DIR", optarg);
+	    if (clicon_option_add(h, "CLICON_XMLDB_DIR", optarg) < 0)
+		goto done;
+	    break;
+	case 'p' : /* yang dir path */
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
 	    break;
 	case 'F' : /* foreground */
 	    foreground = 1;
@@ -668,21 +675,25 @@ main(int    argc,
 	    zap++;
 	    break;
 	case 'a': /* internal backend socket address family */
-	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
+	    if (clicon_option_add(h, "CLICON_SOCK_FAMILY", optarg) < 0)
+		goto done;
 	    break;
 	case 'u': /* config unix domain path / ip address */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
+	    if (clicon_option_add(h, "CLICON_SOCK", optarg) < 0)
+		goto done;
 	    break;
 	case 'P': /* pidfile */
-	    clicon_option_str_set(h, "CLICON_BACKEND_PIDFILE", optarg);
+	    if (clicon_option_add(h, "CLICON_BACKEND_PIDFILE", optarg) < 0)
+		goto done;
 	    break;
 	case '1' : /* Quit after reading database once - dont wait for events */
 	    once = 1;
 	    break;
 	case 's' : /* startup mode */
-	    clicon_option_str_set(h, "CLICON_STARTUP_MODE", optarg);
+	    if (clicon_option_add(h, "CLICON_STARTUP_MODE", optarg) < 0)
+		goto done;
 	    if (clicon_startup_mode(h) < 0){
 		fprintf(stderr, "Invalid startup mode: %s\n", optarg);
 		usage(h, argv[0]);
@@ -692,16 +703,17 @@ main(int    argc,
 	    extraxml_file = optarg;
 	    break;
 	case 'g': /* config socket group */
-	    clicon_option_str_set(h, "CLICON_SOCK_GROUP", optarg);
+	    if (clicon_option_add(h, "CLICON_SOCK_GROUP", optarg) < 0)
+		goto done;
 	    break;
-	case 'y' :{ /* Load yang absolute filename */
-	    clicon_option_str_set(h, "CLICON_YANG_MAIN_FILE", optarg);
+	case 'y' : /* Load yang absolute filename */
+	    if (clicon_option_add(h, "CLICON_YANG_MAIN_FILE", optarg) < 0)
+		goto done;
 	    break;
-	}
-	case 'x' :{ /* xmldb plugin */
-	    clicon_option_str_set(h, "CLICON_XMLDB_PLUGIN", optarg);
+	case 'x' : /* xmldb plugin */
+	    if (clicon_option_add(h, "CLICON_XMLDB_PLUGIN", optarg) < 0)
+		goto done;
 	    break;
-	}
 	case 'o':{ /* Configuration option */
 	    char          *val;
 	    if ((val = index(optarg, '=')) == NULL)

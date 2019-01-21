@@ -1,6 +1,14 @@
 #!/bin/bash
 # Define test functions.
 # Create working dir as variable "dir"
+# The functions are somewhat wildgrown, a little too many:
+# - expectfn
+# - expecteq
+# - expecteof
+# - expecteofx
+# - expecteof_file
+# - expectwait
+# - expectmatch
 
 #set -e
 
@@ -24,6 +32,9 @@ testname=
 
 # Parse yang openconfig models from https://github.com/openconfig/public
 : ${OPENCONFIG=$(pwd)/public}
+
+# Standard IETF RFC yang files. 
+: ${IETFRFC=$YANGMODELS/standard/ietf/RFC}
 
 # For memcheck
 #clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
@@ -157,7 +168,50 @@ expecteq(){
 # - expected command return value (0 if OK)
 # - stdin input
 # - expected stdout outcome
+# Use this if you want regex eg  ^foo$
 expecteof(){
+  cmd=$1
+  retval=$2
+  input=$3
+  expect=$4
+# Do while read stuff
+ret=$($cmd<<EOF 
+$input
+EOF
+)
+  r=$? 
+  if [ $r != $retval ]; then
+      echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+      echo -e "\e[0m:"
+      exit -1
+  fi
+  # If error dont match output strings (why not?)
+#  if [ $r != 0 ]; then
+#      return
+#  fi
+  # Match if both are empty string
+  if [ -z "$ret" -a -z "$expect" ]; then
+      return
+  fi
+  # -G for basic regexp (eg ^$). -E for extended regular expression - differs in \
+  # -Z for nul character, -x for implicit ^$ -q for quiet
+  # -o only matching
+  # Two variants: -EZo and -Fxq
+  #  match=`echo "$ret" | grep -FZo "$expect"`
+  r=$(echo "$ret" | grep -GZo "$expect")
+  match=$?
+#  echo "r:\"$r\""
+#  echo "ret:\"$ret\""
+#  echo "expect:\"$expect\""
+#  echo "match:\"$match\""
+  if [ $match -ne 0 ]; then
+      err "$expect" "$ret"
+  fi
+}
+
+# Like expecteof but with grep -Fxq instead of -EZq. Ie implicit ^$
+# Use this for fixed all line, ie must match exact.
+expecteofx(){
   cmd=$1
   retval=$2
   input=$3
@@ -182,11 +236,16 @@ EOF
   if [ -z "$ret" -a -z "$expect" ]; then
       return
   fi
-  match=`echo "$ret" | grep -GZo "$expect"`
+  # -E for regexp (eg ^$). -Z for nul character, -x for implicit ^$ -q for quiet
+  # -o only matching
+  # Two variants: -EZo and -Fxq
+  #  match=`echo "$ret" | grep -FZo "$expect"`
+  r=$(echo "$ret" | grep -Fxq "$expect")
+  match=$?
 #  echo "ret:\"$ret\""
 #  echo "expect:\"$expect\""
 #  echo "match:\"$match\""
-  if [ -z "$match" ]; then
+  if [ $match -ne 0 ]; then
       err "$expect" "$ret"
   fi
 }

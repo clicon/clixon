@@ -1641,7 +1641,7 @@ yang_augment_node(yang_stmt *ys,
     int        i;
     
     schema_nodeid = ys->ys_argument;
-    clicon_debug(1, "%s %s", __FUNCTION__, schema_nodeid);
+    clicon_debug(2, "%s %s", __FUNCTION__, schema_nodeid);
     /* Find the target */
     if (yang_abs_schema_nodeid(ysp, ys, schema_nodeid, -1, &yss) < 0)
 	goto done;

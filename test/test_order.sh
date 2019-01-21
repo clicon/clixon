@@ -24,9 +24,8 @@ fi
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>/tmp/conf_yang.xml</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -140,7 +139,7 @@ new "get each ordered-by user leaf-list"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><running/></source><filter type=\"xpath\" select=\"/y3[k='b']\"/></get-config></rpc>]]>]]>" '^<rpc-reply><data><y3 xmlns="urn:example:clixon"><k>b</k><a>bar</a></y3></data></rpc-reply>]]>]]>$'
 
 new "delete candidate"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config operation="delete"/></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config operation="delete"/></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # LEAF_LISTS
 

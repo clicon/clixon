@@ -81,10 +81,15 @@
   * Recovery user "_nacm_recovery" added.
     * Example use is restconf PUT when NACM edit-config is permitted, then automatic commit and discard are permitted using recovery user.
   * Example user changed adm1 to andy to comply with RFC8341 example
-* Added -o "<option>=<value>" command-line option to all programs: backend, cli, netconf, restconf.
-  * Any config option from file can be overrided by giving them on command-line.
 	
 ### API changes on existing features (you may need to change your code)
+* Rearranged yang files
+  * Moved and updated all standard ietf and iana yang files from example and yang/ to `yang/standard`.
+  * Moved clixon yang files from yang to `yang/clixon`
+  * New configure option to disable standard yang files: `./configure --disable-stdyangs`
+    * This is to make it easier to use standard IETF/IANA yang files in separate directory
+  * Renamed example yang from example.yang -> clixon-example.yang
+* clixon_cli -p (printspec) changed semantics to add new yang path dir (see minor changes).
 * Date-and-time type now properly uses ISO 8601 UTC timezone designators.
   * Eg 2008-09-21T18:57:21.003456 is changed to 2008-09-21T18:57:21.003456Z
 * Renamed yang file `ietf-netconf-notification@2008-07-01.yang` to `clixon-rfc5277`.
@@ -107,6 +112,10 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
+* Added -o "<option>=<value>" command-line option to all programs: backend, cli, netconf, restconf.
+  * Any config option from file can be overrided by giving them on command-line.
+* Added -p <dir> command-line option to all programs: backend, cli, netconf, restconf.
+  * -p adds a new dir to the yang path dir. (same as -o CLICON_YAN_DIR=<dir>)
 * Cligen uses posix regex while yang uses XSD. It differs in some aspects. A translator function has been added for `\d` -> `[0-9]` translation, there may be more.
 * Added new clixon-lib yang module for internal netconf protocol. Currently only extends the standard with a debug RPC.
 * Added three-valued return values for several validate functions where -1 is fatal error, 0 is validation failed and 1 is validation OK.
@@ -125,6 +134,12 @@
   * <!DOCTYPE (ie DTD) is not supported.
 
 ### Corrected Bugs
+* XML<>JSON conversion problems [https://github.com/clicon/clixon/issues/66]
+  * CDATA sections stripped from XML when converted to JSON
+* Restconf returns error when RPC generates "ok" reply [https://github.com/clicon/clixon/issues/69]
+* xsd regular expression support for character classes [https://github.com/clicon/clixon/issues/68]
+  * added support for \c, \d, \w, \W, \s, \S.
+* Removing newlines from XML data [https://github.com/clicon/clixon/issues/65]
 * [ietf-netconf-notification@2008-07-01.yang validation problem #62](https://github.com/clicon/clixon/issues/62)
 * Ignore CR(\r) in yang files for DOS files
 * Keyword "min" (not only "max") can be used in built-in types "range" and "length" statements.

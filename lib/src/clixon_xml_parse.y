@@ -41,7 +41,7 @@
 
 %start document
 
-%token <string> NAME CHARDATA STRING
+%token <string> NAME CHARDATA WHITESPACE STRING
 %token MY_EOF
 %token VER ENC SD
 %token BSLASH ESLASH
@@ -357,12 +357,13 @@ prolog      : xmldcl misclist
             ;
 
 misclist    : misclist misc { clicon_debug(2, "misclist->misclist misc"); }
-            |      { clicon_debug(2, "misclist->"); }
+            |     { clicon_debug(2, "misclist->"); }
             ;
 
 /* [27]	Misc ::=  Comment | PI | S */
-misc        : comment { clicon_debug(2, "misc->comment"); }
-	    | pi      { clicon_debug(2, "misc->pi"); }
+misc        : comment    { clicon_debug(2, "misc->comment"); }
+	    | pi         { clicon_debug(2, "misc->pi"); }
+            | WHITESPACE { clicon_debug(2, "misc->white space"); }
 	    ;
 
 xmldcl      : BXMLDCL verinfo encodingdecl sddecl EQMARK
@@ -424,6 +425,8 @@ content     : element      { clicon_debug(2, "content -> element"); }
             | pi           { clicon_debug(2, "content -> pi"); }
             | CHARDATA     { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
                              clicon_debug(2, "content -> CHARDATA %s", $1); }
+            | WHITESPACE   { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
+                             clicon_debug(2, "content -> WHITESPACE %s", $1); }
             |              { clicon_debug(2, "content -> "); }
             ;
 

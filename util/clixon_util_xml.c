@@ -72,6 +72,7 @@ usage(char *argv0)
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"
+	    "\t-j \t\tOutput as JSON\n"
 	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n",
 	    argv0);
     exit(0);
@@ -81,16 +82,17 @@ int
 main(int    argc,
      char **argv)
 {
+    int   retval = -1;
     cxobj *xt = NULL;
     cxobj *xc;
     cbuf  *cb = cbuf_new();
-    int   retval = -1;
     int   c;
     int   logdst = CLICON_LOG_STDERR;
+    int   json = 0;
 
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, "hD:l:")) != -1)
+    while ((c = getopt(argc, argv, "hD:jl:")) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv[0]);
@@ -98,6 +100,9 @@ main(int    argc,
     	case 'D':
 	    if (sscanf(optarg, "%d", &debug) != 1)
 		usage(argv[0]);
+	    break;
+	case 'j':
+	    json++;
 	    break;
 	case 'l': /* Log destination: s|e|o|f */
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
@@ -107,14 +112,17 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
 	}
-    clicon_log_init("clixon_util_xml", debug?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, logdst);
     if (xml_parse_file(0, "</config>", NULL, &xt) < 0){
 	fprintf(stderr, "xml parse error %s\n", clicon_err_reason);
 	goto done;
     }
     xc = NULL;
     while ((xc = xml_child_each(xt, xc, -1)) != NULL) 
-	clicon_xml2cbuf(cb, xc, 0, 0); /* print xml */
+	if (json)
+	    xml2json_cbuf(cb, xc, 0); /* print xml */
+	else
+	    clicon_xml2cbuf(cb, xc, 0, 0); /* print xml */
     fprintf(stdout, "%s", cbuf_get(cb));
     fflush(stdout);
 #if 0

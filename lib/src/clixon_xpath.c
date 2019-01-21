@@ -450,7 +450,6 @@ xp_eval_predicate(xp_ctx     *xc,
 	}
     retval = 0;
  done:
-    assert(retval==0);
     if (xr0)
 	ctx_free(xr0);
     if (xr1)
@@ -716,9 +715,17 @@ xp_relop(xp_ctx    *xc1,
 		s1 = xml_body(x);
 		switch(op){
 		case XO_EQ:
+		    if (s1==NULL || s2==NULL){
+			clicon_err(OE_XML, EINVAL, "Malformed xpath: empty string");
+			goto done;
+		    }
 		    xr->xc_bool = (strcmp(s1, s2)==0);
 		    break;
 		case XO_NE:
+		    if (s1==NULL || s2==NULL){
+			clicon_err(OE_XML, EINVAL, "Malformed xpath: empty string");
+			goto done;
+		    }
 		    xr->xc_bool = (strcmp(s1, s2));
 		    break;
 		default:

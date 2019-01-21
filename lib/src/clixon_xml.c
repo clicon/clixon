@@ -1483,7 +1483,7 @@ _xml_parse(const char  *str,
 {
     int                       retval = -1;
     struct xml_parse_yacc_arg ya = {0,};
-
+    cxobj                    *x;
     if (strlen(str) == 0)
 	return 0; /* OK */
     if (xt == NULL){
@@ -1501,6 +1501,9 @@ _xml_parse(const char  *str,
 	goto done;    
     if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
 	goto done;
+    x = NULL;
+    while ((x = xml_find_type(xt, NULL, "body", CX_BODY)) != NULL)
+	xml_purge(x);
     /* Verify namespaces after parsing */
     if (xml_apply0(xt, CX_ELMNT, xml_localname_check, NULL) < 0)
     	goto done;

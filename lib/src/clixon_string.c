@@ -641,41 +641,68 @@ clixon_trim(char *str)
  * POSIX ERE regexps according to man regex(3).
  * @param[in]  xsd    Input regex string according XSD
  * @param[out] posix  Output (malloced) string according to POSIX ERE
- * @see http://www.w3.org/TR/2004/REC-xmlschema-2-20041028
- * @note that the translation is ad-hoc, may need more translations
+ * @see https://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
+ * @see https://www.regular-expressions.info/posixbrackets.html#class translation
+ * Translation is not complete but covers some character sequences:
+ * \d decimal digit
+ * \w alphanum + underscore
  */
 int
 regexp_xsd2posix(char  *xsd,
 		 char **posix)
 {
     int   retval = -1;
-    char *x;
-    char *p = NULL;
+    cbuf *cb = NULL;
+    char  x;
     int   i;
-    int   len;
+    int   esc;
 
-    len = strlen(xsd);
-    x = xsd;
-    while ((x = strstr(x, "\\d")) != NULL){
-	len += 3; /* \d --> [0-9] */
-	x += 2;
-    }
-    if ((p = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    memset(p, 0, len+1);
-    *posix = p;
+    esc=0;
     for (i=0; i<strlen(xsd); i++){
-	if (strncmp(&xsd[i], "\\d", 2) == 0){
-	    strcpy(p, "[0-9]");
-	    p += 5; i++;
+	x = xsd[i];
+	if (esc){
+	    esc = 0;
+	    switch (x){
+	    case 'c': /* xml namechar */
+		cprintf(cb, "[0-9a-zA-Z\\\\.\\\\-_:]");
+		break;
+	    case 'd':
+		cprintf(cb, "[0-9]");
+		break;
+	    case 'w':
+		cprintf(cb, "[0-9a-zA-Z_\\\\-]");
+		break;
+	    case 'W':
+		cprintf(cb, "[^0-9a-zA-Z_\\\\-]");
+		break;
+	    case 's':
+		cprintf(cb, "[ \t\r\n]");
+		break;
+	    case 'S':
+		cprintf(cb, "[^ \t\r\n]");
+		break;
+	    default:
+		cprintf(cb, "\\%c", x);
+		break;
+	    }
 	}
+	else if (x == '\\')
+	    esc++;
 	else
-	    *p++ = xsd[i];
+	    cprintf(cb, "%c", x);
+    }
+    if ((*posix = strdup(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
     }
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 

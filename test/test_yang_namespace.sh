@@ -12,13 +12,12 @@ cfg=$dir/conf_yang.xml
 fyang1=$dir/example1.yang
 fyang2=$dir/example2.yang
 
-#  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
-  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -39,10 +38,6 @@ module example1{
    yang-version 1.1;
    prefix ex1;
    namespace "urn:example:clixon1";
-   import ietf-routing {
-        description "defines fib-route";
-	prefix rt;
-   }
    leaf x{
      type int32;
    }

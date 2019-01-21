@@ -7,13 +7,14 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang
 
+# Note ietf-routing@2018-03-13 assumed
 cat <<EOF > $cfg
 <config>
   <CLICON_FEATURE>$APPNAME:A</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-routing:router-id</CLICON_FEATURE>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>$APPNAME</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -81,10 +82,10 @@ new "cli disabled feature"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang set y foo" 255 "CLI syntax error: \"set y foo\": Unknown command"
 
 new "cli enabled feature in other module"
-expectfn "$clixon_cli -1f $cfg -y $fyang set routing routing-instance A router-id 1.2.3.4" 0 ""
+expectfn "$clixon_cli -1f $cfg -y $fyang set routing router-id 1.2.3.4" 0 ""
 
 new "cli disabled feature in other module"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set routing routing-instance A default-ribs" 255 "CLI syntax error: \"set routing routing-instance A default-ribs\": Unknown command"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set routing ribs rib default-rib false" 255 "CLI syntax error: \"set routing ribs rib default-rib\": Unknown command"
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -136,7 +137,7 @@ if [ -z "$match" ]; then
 fi
 
 new "netconf module ietf-interfaces"
-expect="<module><name>ietf-interfaces</name><revision>2014-05-08</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace><conformance-type>implement</conformance-type></module>"
+expect="<module><name>ietf-interfaces</name><revision>2018-02-20</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace><conformance-type>implement</conformance-type></module>"
 match=`echo "$ret" | grep -GZo "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
@@ -151,7 +152,7 @@ if [ -z "$match" ]; then
 fi
 
 new "netconf module ietf-routing"
-expect="<module><name>ietf-routing</name><revision>2014-10-26</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-routing</namespace><feature>router-id</feature><conformance-type>implement</conformance-type></module>"
+expect="<module><name>ietf-routing</name><revision>2018-03-13</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-routing</namespace><feature>router-id</feature><conformance-type>implement</conformance-type></module>"
 match=`echo "$ret" | grep -GZo "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"

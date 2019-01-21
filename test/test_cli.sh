@@ -18,9 +18,9 @@ cfg=$dir/conf_yang.xml
 cat <<EOF > $cfg
 <config xmlns="urn:example:clixon">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>$APPNAME</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -115,13 +115,7 @@ expectfn "$clixon_cli -1 -f $cfg -l o debug level 1" 0 "^$"
 expectfn "$clixon_cli -1 -f $cfg -l o debug level 0" 0 "^$"
 
 new "cli rpc"
-expectfn "$clixon_cli -1 -f $cfg -l o rpc ipv4" 0 'rpc-reply {
-    route {
-        address-family ipv4;
-        next-hop {
-            next-hop-list 2.3.4.5;
-        }
-        source-protocol static;'
+expectfn "$clixon_cli -1 -f $cfg -l o rpc ipv4" 0 '<rpc-reply><x xmlns="urn:example:clixon">ipv4</x><y xmlns="urn:example:clixon">42</y></rpc-reply>'
 
 if [ $BE -eq 0 ]; then
     exit # BE

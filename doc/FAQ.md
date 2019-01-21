@@ -137,8 +137,12 @@ Start nginx daemon
 ```
 sudo /etc/init.d/nginx start
 ```
+Start the clixon restconf daemon
+```
+sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+```
 
-Example:
+Then acess:
 ```
    curl -G http://127.0.0.1/restconf/data/ietf-interfaces:interfaces/interface=eth9/type
    [
@@ -147,7 +151,7 @@ Example:
      }
    ]
 ```
-Read more in the (restconf)[../apps/restconf] docs.
+Read more in the [restconf](../apps/restconf) docs.
 ## What about reference documentation?
 Clixon uses [Doxygen](http://www.doxygen.nl/index.html) for reference documentation.
 You need to install doxygen and graphviz on your system.
@@ -187,6 +191,15 @@ Clixon by default finds its configuration file at `/usr/local/etc/clixon.xml`. H
   - Provide --with-sysconfig=<dir> when configuring. Then FILE is <dir>/clixon.xml
   - Provide --sysconfig=<dir> when configuring. Then FILE is <dir>/etc/clixon.xml
   - FILE is /usr/local/etc/clixon.xml
+
+## Can I modify clixon options at runtime?
+
+Yes, when you start a clixon program, you can supply the `-o` option to modify the configuration specified in the configuration file. Options that are leafs are overriden, whereas options that are leaf-lists are added to.
+
+Example, add the "usr/local/share/ietf" directory to the list of directories where yang files are searched for:
+```
+  clixon_cli -o CLICON_YANG_DIR=/usr/local/share/ietf
+```
 
 ## How are Yang files found?
 
@@ -404,7 +417,7 @@ Please look at the example for an example on how to write a state data callback.
 
 A YANG RPC is an application specific operation. Example:
 ```
-   rpc fib-route {
+   rpc example-rpc {
       input {
          leaf inarg { type string; }
       }
@@ -413,7 +426,7 @@ A YANG RPC is an application specific operation. Example:
       }
    }
 ```
-which defines the fib-route operation present in the example (the arguments have been changed).
+which defines the example-rpc operation present in the example (the arguments have been changed).
 
 Clixon automatically relays the RPC to the clixon backend. To
 implement the RFC, you need to register an RPC callback in the backend plugin:
@@ -423,18 +436,18 @@ int
 clixon_plugin_init(clicon_handle h)
 {
 ...
-   rpc_callback_register(h, fib_route, NULL, "fib-route");
+   rpc_callback_register(h, example_rpc, NULL, "example-rpc");
 ...
 }
 ```
 And then define the callback itself:
 ```
 static int 
-fib_route(clicon_handle h,            /* Clicon handle */
-	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg,          /* Client session */
-	  void         *regarg)       /* Argument given at register */
+example_rpc(clicon_handle h,            /* Clicon handle */
+	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	    void         *arg,          /* Client session */
+	    void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
     return 0;

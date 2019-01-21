@@ -71,7 +71,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:xl:F:1a:u:d:m:qpGLy:c:U:o:"
+#define CLI_OPTS "hD:f:xl:F:1a:u:d:m:qp:GLy:c:U:o:"
 
 #define CLI_LOGFILE "/tmp/clixon_cli.log"
 
@@ -221,7 +221,7 @@ usage(clicon_handle h,
 	    "\t-d <dir>\tSpecify plugin directory (default: %s)\n"
             "\t-m <mode>\tSpecify plugin syntax mode\n"
 	    "\t-q \t\tQuiet mode, dont print greetings or prompt, terminate on ctrl-C\n"
-	    "\t-p \t\tPrint database yang specification\n"
+	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-G \t\tPrint CLI syntax generated from dbspec (if CLICON_CLI_GENMODEL enabled)\n"
 	    "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
 	    "\t-l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut or (f)ile (stderr is default)\n"
@@ -246,7 +246,6 @@ main(int argc, char **argv)
     char	*tmp;
     char	*argv0 = argv[0];
     clicon_handle h;
-    int          printspec = 0;
     int          printgen  = 0;
     int          logclisyntax  = 0;
     int          help = 0;
@@ -361,28 +360,33 @@ main(int argc, char **argv)
 	    once = 1;
 	    break;
 	case 'a': /* internal backend socket address family */
-	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
+	    if (clicon_option_add(h, "CLICON_SOCK_FAMILY", optarg) < 0)
+		goto done;
 	    break;
 	case 'u': /* internal backend socket unix domain path or ip host */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
+	    if (clicon_option_add(h, "CLICON_SOCK", optarg) < 0)
+		goto done;
 	    break;
 	case 'd':  /* Plugin directory: overrides configfile */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_CLI_DIR", optarg);
+	    if (clicon_option_add(h, "CLICON_CLI_DIR", optarg) < 0)
+		goto done;
 	    break;
 	case 'm': /* CLI syntax mode */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_CLI_MODE", optarg);
+	    if (clicon_option_add(h, "CLICON_CLI_MODE", optarg) < 0)
+		goto done;
 	    break;
 	case 'q' : /* Quiet mode */
 	    clicon_quiet_mode_set(h, 1);
 	    break;
-	case 'p' : /* Print spec */
-	    printspec++;
+	case 'p' : /* yang dir path */
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
 	    break;
 	case 'G' : /* Print generated CLI syntax */
 	    printgen++;
@@ -390,14 +394,14 @@ main(int argc, char **argv)
 	case 'L' : /* Debug print dynamic CLI syntax */
 	    logclisyntax++;
 	    break;
-	case 'y' :{ /* Load yang absolute filename */
-	    clicon_option_str_set(h, "CLICON_YANG_MAIN_FILE", optarg);
+	case 'y' : /* Load yang absolute filename */
+	    if (clicon_option_add(h, "CLICON_YANG_MAIN_FILE", optarg) < 0)
+		goto done;
 	    break;
-	}
-	case 'c' :{ /* Overwrite clispec with absolute filename */
-	    clicon_option_str_set(h, "CLICON_CLISPEC_FILE", optarg);
+	case 'c' : /* Overwrite clispec with absolute filename */
+	    if (clicon_option_add(h, "CLICON_CLISPEC_FILE", optarg) < 0)
+		goto done;
 	    break;
-	}
 	case 'U': /* Clixon 'pseudo' user */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
@@ -463,8 +467,6 @@ main(int argc, char **argv)
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;
-    if (printspec)
-	yang_print(stdout, (yang_node*)yspec);
 
     /* Create tree generated from dataspec. If no other trees exists, this is
      * the only one.
