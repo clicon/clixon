@@ -228,6 +228,7 @@ new2 "restconf rpc using POST json"
 expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":42}}' http://localhost/restconf/operations/clixon-example:example)" '{"clixon-example:output": {"x": "42","y": "42"}}
 '
 
+new2 "restconf rpc using POST json wrong"
 expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/clixon-example:example)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "wrongelement"},"error-severity": "error"}}}'
 
 new2 "restconf rpc non-existing rpc without namespace"
@@ -254,8 +255,8 @@ new2 "restconf rpc using wrong prefix"
 expecteq "$(curl -s -X POST -d '{"wrong:input":{"routing-instance-name":"ipv4"}}' http://localhost/restconf/operations/wrong:example)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang module not found"}}}'
 
 new "restconf local client rpc using POST xml"
-ret=$(curl -s -i -X POST -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"request":"example"}}' http://localhost/restconf/operations/clixon-example:client-rpc)
-expect='<output xmlns="urn:example:clixon"><result>ok</result></output>'
+ret=$(curl -s -i -X POST -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"x":"example"}}' http://localhost/restconf/operations/clixon-example:client-rpc)
+expect='<output xmlns="urn:example:clixon"><x>example</x></output>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"

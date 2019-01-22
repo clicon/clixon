@@ -268,15 +268,33 @@ example_restconf_credentials(clicon_handle h,
  */
 int
 restconf_client_rpc(clicon_handle h, 
-		    cxobj        *xn,      
+		    cxobj        *xe,      
 		    cbuf         *cbret,    
 		    void         *arg,
 		    void         *regarg)
 {
-    //    FCGX_Request *r = (FCGX_Request *)arg;
-    clicon_debug(1, "%s", __FUNCTION__);
-    cprintf(cbret, "<rpc-reply><result xmlns=\"urn:example:clixon\">ok</result></rpc-reply>");
-    return 0;
+    int    retval = -1;
+    cxobj *x = NULL;
+    char  *namespace;
+
+    /* get namespace from rpc name, return back in each output parameter */
+    if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
+	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+	goto done;
+    }
+    cprintf(cbret, "<rpc-reply>");
+    if (!xml_child_nr_type(xe, CX_ELMNT))
+	cprintf(cbret, "<ok/>");
+    else while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+	    if (xmlns_set(x, NULL, namespace) < 0)
+		goto done;
+	    if (clicon_xml2cbuf(cbret, x, 0, 0) < 0)
+		goto done;
+	}
+    cprintf(cbret, "</rpc-reply>");
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Start example restonf plugin. Set authentication method

@@ -1676,7 +1676,7 @@ api_operations_post(clicon_handle h,
 	if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)
 	    goto done;
 	/* Local error: return it and quit */
-	if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
+	if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
 	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 		goto done;
 	    goto ok;
@@ -1685,7 +1685,7 @@ api_operations_post(clicon_handle h,
     else {    /* Send to backend */
 	if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	    goto done;
-	if ((xe = xpath_first(xret, "rpc-error")) != NULL){
+	if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
 	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 		goto done;
 	    goto ok;

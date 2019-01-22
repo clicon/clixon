@@ -65,12 +65,12 @@ module clixon-example {
                      This is a clixon implementation detail: some rpc:s
                      are better processed by the client for API or perf reasons";
 	input {
-	    leaf request {
+	    leaf x {
 		type string;
 	    }
 	}
 	output {
-	    leaf result{
+	    leaf x {
 		type string;
 	    }
 	}

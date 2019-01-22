@@ -192,7 +192,7 @@ new "netconf empty rpc"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><empty xmlns="urn:example:clixon"/></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf client-side rpc"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><client-rpc xmlns="urn:example:clixon"><request>example</request></client-rpc></rpc>]]>]]>' '^<rpc-reply><result xmlns="urn:example:clixon">ok</result></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><client-rpc xmlns="urn:example:clixon"><x>val42</x></client-rpc></rpc>]]>]]>' '^<rpc-reply><x xmlns="urn:example:clixon">val42</x></rpc-reply>]]>]]>$'
 
 if [ $BE -eq 0 ]; then
     exit # BE
