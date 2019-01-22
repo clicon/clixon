@@ -9,8 +9,7 @@ APPNAME=example
 . ./nacm.sh
 
 cfg=$dir/conf_yang.xml
-fyang=$dir/test.yang
-fyangerr=$dir/err.yang
+fyang=$dir/nacm-example.yang
 
 cat <<EOF > $cfg
 <config>
@@ -23,6 +22,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
@@ -33,10 +33,13 @@ cat <<EOF > $cfg
 EOF
 
 cat <<EOF > $fyang
-module $APPNAME{
+module nacm-example{
   yang-version 1.1;
-  namespace "urn:example:clixon";
-  prefix ex;
+  namespace "urn:example:nacm";
+  prefix nacm;
+  import clixon-example {
+	prefix ex;
+  }
   import ietf-netconf-acm {
 	prefix nacm;
   }
@@ -100,7 +103,7 @@ RULES=$(cat <<EOF
      $NADMIN
 
    </nacm>
-   <x xmlns="urn:example:clixon">0</x>
+   <x xmlns="urn:example:nacm">0</x>
 EOF
 )
 
@@ -132,7 +135,7 @@ new "restconf DELETE whole datastore"
 expecteq "$(curl -u andy:bar -sS -X DELETE http://localhost/restconf/data)" ""
 
 new2 "auth get"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" 'null
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 'null
 '
 
 new "auth set authentication config"
@@ -148,7 +151,7 @@ new2 "auth get (wrong passwd: access denied)"
 expecteq "$(curl -u andy:foo -sS -X GET http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
 new2 "auth get (access)"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"nacm-example:x": 0}
 '
 
 #----------------Enable NACM
@@ -157,24 +160,24 @@ new "enable nacm"
 expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
 
 new2 "admin get nacm"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"nacm-example:x": 0}
 '
 
 new2 "limited get nacm"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"nacm-example:x": 0}
 '
 
 new2 "guest get nacm"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "admin edit nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"example:x": 1}' http://localhost/restconf/data/example:x)" ""
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"nacm-example:x": 1}' http://localhost/restconf/data/nacm-example:x)" ""
 
 new2 "limited edit nacm"
-expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"example:x": 2}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"nacm-example:x": 2}' http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new2 "guest edit nacm"
-expecteq "$(curl -u guest:bar -sS -X PUT -d '{"example:x": 3}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X PUT -d '{"nacm-example:x": 3}' http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"

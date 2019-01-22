@@ -21,7 +21,6 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang
-fyangerr=$dir/err.yang
 
 cat <<EOF > $cfg
 <config>
@@ -34,6 +33,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
@@ -44,10 +44,13 @@ cat <<EOF > $cfg
 EOF
 
 cat <<EOF > $fyang
-module $APPNAME{
+module nacm-example{
   yang-version 1.1;
-  namespace "urn:example:clixon";
-  prefix ex;
+  namespace "urn:example:nacm";
+  prefix nacm;
+  import clixon-example {
+	prefix ex;
+  }
   import ietf-netconf-acm {
 	prefix nacm;
   }
@@ -146,21 +149,20 @@ RULES=$(cat <<EOF
    <x xmlns="urn:example:clixon">0</x>
 EOF
 )
-
 exit # XXX
+new "test params: -f $cfg"
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg
-if [ $? -ne 0 ]; then
-    err
-fi
-
-new "start backend -s init -f $cfg"
-# start new backend
-sudo $clixon_backend -s init -f $cfg
-if [ $? -ne 0 ]; then
-    err
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg"
+    sudo $clixon_backend -s init -f $cfg -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "kill old restconf daemon"
@@ -217,6 +219,10 @@ expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
+
+if [ $BE -eq 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill

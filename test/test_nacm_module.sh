@@ -3,7 +3,9 @@
 # NACM module rules
 # @see test_nacm.sh is slightly modified - this follows the RFC more closely
 # See RFC 8341 A.1 and A.2
-# Tests for:
+# Note: use clixon-example instead of ietf-netconf-monitoring since the latter is
+# not yet implemented
+# Tests for 
 # deny-ncm:  This rule prevents the "guest" group from reading any
 #     monitoring information in the "ietf-netconf-monitoring" YANG
 #     module.
@@ -21,10 +23,7 @@ APPNAME=example
 . ./nacm.sh
 
 cfg=$dir/conf_yang.xml
-fyang=$dir/test.yang
-fyangerr=$dir/err.yang
-
-exit # XXX
+fyang=$dir/nacm-example.yang
 
 cat <<EOF > $cfg
 <config>
@@ -37,6 +36,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
@@ -47,10 +47,13 @@ cat <<EOF > $cfg
 EOF
 
 cat <<EOF > $fyang
-module $APPNAME{
+module nacm-example{
   yang-version 1.1;
-  namespace "urn:example:clixon";
-  prefix ex;
+  namespace "urn:example:nacm";
+  prefix nacm;
+  import clixon-example {
+	prefix ex;
+  }
   import ietf-netconf-acm {
 	prefix nacm;
   }
@@ -71,6 +74,7 @@ RULES=$(cat <<EOF
      <exec-default>deny</exec-default>
 
      $NGROUPS
+
 
      <rule-list>
        <name>guest-acl</name>
@@ -113,22 +117,24 @@ RULES=$(cat <<EOF
      $NADMIN
 
    </nacm>
-   <x xmlns="urn:example:clixon">0</x>
+   <x xmlns="urn:example:nacm">42</x>
+   <translate xmlns="urn:example:clixon"><k>key42</k><value>val42</value></translate>
 EOF
 )
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg
-if [ $? -ne 0 ]; then
-    err
-fi
+new "test params: -f $cfg"
 
-new "start backend -s init -f $cfg"
-# start new backend
-sudo $clixon_backend -s init -f $cfg
-if [ $? -ne 0 ]; then
-    err
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg"
+    sudo $clixon_backend -s init -f $cfg -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "kill old restconf daemon"
@@ -151,29 +157,42 @@ expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localh
 
 #--------------- nacm enabled
 
-# Read monitoring information from ietf-netconf-monitoring
-new2 "admin get nacm"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
+# Read monitoring information from example - (ietf-netconf-monitoring)
+new2 "admin read ok"
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" '{"clixon-example:translate": [{"k": "key42","value": "val42"}]}
 '
 
-new2 "limited get nacm"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"example:x": 0}
+new2 "limit read ok"
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" '{"clixon-example:translate": [{"k": "key42","value": "val42"}]}
 '
 
-new2 "guest get nacm"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+new2 "guest read fail"
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
-new "admin edit nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"example:x": 1}' http://localhost/restconf/data/example:x)" ""
+new2 "guest read other module"
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
-new2 "limited edit nacm"
-expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"example:x": 2}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+new2 "admin read other module OK"
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"nacm-example:x": 42}
+'
 
-new2 "guest edit nacm"
-expecteq "$(curl -u guest:bar -sS -X PUT -d '{"example:x": 3}' http://localhost/restconf/data/example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+new2 "admin rpc ok"
+expecteq "$(curl -u andy:bar -s -X POST  -d '{"clixon-example:input":{"x":42}}' http://localhost/restconf/operations/clixon-example:example)" '{"clixon-example:output": {"x": "42","y": "42"}}
+'
+
+new2 "limit rpc ok"
+expecteq "$(curl -u wilma:bar -s -X POST http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":42}}' )" '{"clixon-example:output": {"x": "42","y": "42"}}
+'
+
+new2 "guest rpc fail"
+expecteq "$(curl -u guest:bar -s -X POST http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":42}}' )" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
+
+if [ $BE -eq 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill
