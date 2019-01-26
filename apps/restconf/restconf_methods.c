@@ -643,18 +643,19 @@ match_list_keys(yang_stmt *y,
     char      *keyd;
 
     if (y->ys_keyword != Y_LIST &&y->ys_keyword != Y_LEAF_LIST)
-	return -1;
+	goto done;
     cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	keyname = cv_string_get(cvi);	    
 	if ((xkeya = xml_find(xapipath, keyname)) == NULL)
 	    goto done; /* No key in api-path */
-	    
-	keya = xml_body(xkeya);
+	if ((keya = xml_body(xkeya)) == NULL)
+	    goto done;
 	if ((xkeyd = xml_find(xdata, keyname)) == NULL)
 	    goto done; /* No key in data */
-	keyd = xml_body(xkeyd);
+	if ((keyd = xml_body(xkeyd)) == NULL)
+	    goto done;
 	if (strcmp(keya, keyd) != 0)
 	    goto done; /* keys dont match */
     }
