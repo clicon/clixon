@@ -368,6 +368,75 @@ rule_datanode_read(cxobj  *xrule,
     return retval;
 }
 
+/*! Go through all rules for a requested node
+ * @param[in]  xt       XML root tree with "config" label 
+ * @param[in]  xr       Requested node (node in xt)
+ * @param[in]  gvec     NACM groups where user is member
+ * @param[in]  glen     Length of gvec
+ * @param[in]  rlistvec NACM rule-list entries
+ * @param[in]  rlistlen Length of rlistvec
+ * @param[out] xrulep  If set, then points to matching rule
+ */
+static int
+nacm_datanode_read_xr(cxobj  *xt,
+		      cxobj  *xr,
+		      cxobj **gvec,
+		      size_t  glen,
+		      cxobj **rlistvec,
+		      size_t  rlistlen,
+		      cxobj **xrulep
+		      )
+{
+    int retval = -1;
+    int i, j;
+    cxobj  *xrlist;
+    char   *gname;
+    cxobj **rvec = NULL; /* rules */
+    size_t  rlen;
+    cxobj  *xrule = NULL;
+    int     match = 0;
+
+    for (i=0; i<rlistlen; i++){ 	/* Loop through rule list */
+	xrlist = rlistvec[i];
+	/* Loop through user's group to find match in this rule-list */
+	for (j=0; j<glen; j++){
+	    gname = xml_find_body(gvec[j], "name");
+	    if (xpath_first(xrlist, ".[group='%s']", gname)!=NULL)
+		break; /* found */
+	}
+	if (j==glen) /* not found */
+	    continue;
+	/* 6. For each rule-list entry found, process all rules, in order,
+	   until a rule that matches the requested access operation is
+	   found. (see 6 sub rules in nacm_match_rule2)
+	*/
+	if (xpath_vec(xrlist, "rule", &rvec, &rlen) < 0)
+	    goto done;
+	for (j=0; j<rlen; j++){ /* Loop through rules */
+	    xrule = rvec[j];
+	    if (rule_datanode_read(xrule, xr, xt, &match) < 0)
+		goto done;
+	    if (match) /* xrule match */
+		break;
+	}
+	if (rvec){
+	    free(rvec);
+	    rvec=NULL;
+	}
+	if (match) /* xrule match */
+	    break;
+    }
+    if (match)
+	*xrulep = xrule;
+    else
+	*xrulep = NULL;
+    retval = 0;
+ done:
+    if (rvec)
+	free(rvec);
+    return retval;
+}
+
 /*! Make nacm datanode and module rule read access validation
  * Just purge nodes that fail validation (dont send netconf error message)
  * @param[in]  xt       XML root tree with "config" label 
@@ -450,21 +519,15 @@ nacm_datanode_read(cxobj  *xt,
 {
     int     retval = -1;
     cxobj **gvec = NULL; /* groups */
-    cxobj  *xr;
     size_t  glen;
-    cxobj  *xrlist;
+    cxobj  *xr;
     cxobj **rlistvec = NULL; /* rule-list */
     size_t  rlistlen;
     cxobj **rvec = NULL; /* rules */
-    size_t  rlen;
-    int     i, j, k;
+    int     i;
     char   *read_default = NULL;
-    char   *gname;
-    int     match;
     cxobj  *xrule;
     char   *action;
-
-
     
     /* 3.   Check all the "group" entries to see if any of them contain a
        "user-name" entry that equals the username for the session
@@ -485,36 +548,15 @@ nacm_datanode_read(cxobj  *xt,
         entry. */
     if (xpath_vec(xnacm, "rule-list", &rlistvec, &rlistlen) < 0)
 	goto done;
-    for (k=0; k<xrlen; k++){     /* Loop through requested nodes */
-	xr = xrvec[k]; /* requested node XR */
-	match = 0; /* Go thru steps 5,6,7, if no match do 8-13 */ 
-	for (i=0; i<rlistlen; i++){ 	/* Loop through rule list */
-	    xrlist = rlistvec[i];
-	    /* Loop through user's group to find match in this rule-list */
-	    for (j=0; j<glen; j++){
-		gname = xml_find_body(gvec[j], "name");
-		if (xpath_first(xrlist, ".[group='%s']", gname)!=NULL)
-		    break; /* found */
-	    }
-	    if (j==glen) /* not found */
-		continue;
-	    /* 6. For each rule-list entry found, process all rules, in order,
-	       until a rule that matches the requested access operation is
-	       found. (see 6 sub rules in nacm_match_rule2)
-	    */
-	    if (xpath_vec(xrlist, "rule", &rvec, &rlen) < 0)
-		goto done;
-	    for (j=0; j<rlen; j++){ /* Loop through rules */
-		xrule = rvec[j];
-		if (rule_datanode_read(xrule, xr, xt, &match) < 0)
-		    goto done;
-		if (match) /* xrule match */
-		    break;
-	    }
-	    if (match) /* xrule match */
-		break;
-	}
-	if (match){ /* xrule match requested node xr */
+    for (i=0; i<xrlen; i++){     /* Loop through requested nodes */
+	xr = xrvec[i]; /* requested node XR */
+	/* Loop through rule-list (steps 5,6,7) to find match of requested node
+	 */
+	xrule = NULL;
+	if (nacm_datanode_read_xr(xt, xr, gvec, glen, rlistvec, rlistlen,
+				  &xrule) < 0) 
+	    goto done;
+	if (xrule){ /* xrule match requested node xr */
 	    if ((action = xml_find_body(xrule, "action")) == NULL)
 		continue;
 	    if (strcmp(action, "deny")==0){
@@ -523,7 +565,7 @@ nacm_datanode_read(cxobj  *xt,
 	    }
 	    else if (strcmp(action, "permit")==0)
 		;/* XXX recursively find denies in xr and purge them 
-		  * ie go back to the k-loop with all sub-items?
+		  * ie call nacm_datanode_read_xr recursively?
 		  */
 	}
 	else{ /* no rule matching xr, apply default */
@@ -547,8 +589,8 @@ nacm_datanode_read(cxobj  *xt,
         "nacm:default-deny-all" statement, then the requested data node
         and all its descendants are not included in the reply.
     */
-    for (k=0; k<xrlen; k++)     /* Loop through requested nodes */
-	if (xml_purge(xrvec[k]) < 0)
+    for (i=0; i<xrlen; i++)     /* Loop through requested nodes */
+	if (xml_purge(xrvec[i]) < 0)
 	    goto done;
  ok:
     retval = 0;
