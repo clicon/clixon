@@ -48,7 +48,8 @@
 /*
  * Prototypes
  */
-int nacm_access(clicon_handle h, char *rpc, char *module,
-		char *username, cbuf *cbret);
+int nacm_rpc(char *rpc, char *module, char *username, cxobj *xnacm, cbuf *cbret);
+int nacm_datanode_read(cxobj *xt, cxobj **xvec, size_t xlen, char *username, cxobj *nacm_xtree);
+int nacm_access(clicon_handle h, char *username, cxobj **xnacmp);
 
 #endif /* _CLIXON_NACM_H */

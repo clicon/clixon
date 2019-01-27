@@ -77,12 +77,17 @@
     * CLICON_YANG_MAIN_FILE Provides a filename with a single module filename.
     * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
 * NACM extension (RFC8341)
-  * NACM module support (RFC8341 A1+A2)
+  * NACM Data node READ access module support (RFC8341 3.4.5)
+    * Access control points added for `get` and `get-config` in addition to incoming rpc.
+    * RFC 8341 Example A.2 implemented, see: [test/test_nacm_module.sh]
+  * Remaining work:
+    * data-node module write/create/delete/update
+    * data-node path 
   * Recovery user "_nacm_recovery" added.
     * Example use is restconf PUT when NACM edit-config is permitted, then automatic commit and discard are permitted using recovery user.
-  * Example user changed adm1 to andy to comply with RFC8341 example
 	
 ### API changes on existing features (you may need to change your code)
+* Added `username` argument on `xmldb_put()` datastore function for NACM data-node write checks
 * Rearranged yang files
   * Moved and updated all standard ietf and iana yang files from example and yang/ to `yang/standard`.
   * Moved clixon yang files from yang to `yang/clixon`
@@ -112,6 +117,7 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
+* Added `xml_rootchild_node()` lib function as variant of `xml_rootchild()`
 * Added -o "<option>=<value>" command-line option to all programs: backend, cli, netconf, restconf.
   * Any config option from file can be overrided by giving them on command-line.
 * Added -p <dir> command-line option to all programs: backend, cli, netconf, restconf.

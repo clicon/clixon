@@ -76,7 +76,7 @@ EOF
 cat <<EOF > $nacmfile
    <nacm>
      <enable-nacm>true</enable-nacm>
-     <read-default>deny</read-default>
+     <read-default>permit</read-default>
      <write-default>deny</write-default>
      <exec-default>deny</exec-default>
 

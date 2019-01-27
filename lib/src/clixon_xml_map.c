@@ -2117,7 +2117,7 @@ api_path2xml(char       *api_path,
     int    nvec;
     cxobj *xroot;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
     if (*api_path!='/'){
 	clicon_err(OE_XML, EINVAL, "Invalid api-path: %s (must start with '/')",
 		   api_path);

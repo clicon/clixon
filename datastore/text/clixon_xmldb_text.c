@@ -88,6 +88,8 @@ struct text_handle {
 				   Assumes single backend*/
     char          *th_format;   /* Datastroe format: xml / json */
     int            th_pretty;   /* Store xml/json pretty-printed. */
+    char          *th_nacm_mode;
+    cxobj         *th_nacm_xtree;
 };
 
 /* Struct per database in hash */
@@ -207,6 +209,8 @@ text_disconnect(xmldb_handle xh)
 	    }
 	    hash_free(th->th_dbs);
 	}
+	if (th->th_nacm_mode)
+	    free(th->th_nacm_mode);
 	free(th);
     }
     retval = 0;
@@ -239,6 +243,10 @@ text_getopt(xmldb_handle xh,
 	*value = th->th_format;
     else if (strcmp(optname, "pretty") == 0)
 	*value = &th->th_pretty;
+    else if (strcmp(optname, "nacm_mode") == 0)
+	*value = &th->th_nacm_mode;
+    else if (strcmp(optname, "nacm_xtree") == 0)
+	*value = th->th_nacm_xtree;
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
 	goto done;
@@ -287,6 +295,15 @@ text_setopt(xmldb_handle xh,
     }
     else if (strcmp(optname, "pretty") == 0){
 	th->th_pretty = (intptr_t)value;
+    }
+    else if (strcmp(optname, "nacm_mode") == 0){
+	if (value && (th->th_nacm_mode = strdup((char*)value)) == NULL){
+	    clicon_err(OE_UNIX, 0, "strdup");
+	    goto done;
+	}
+    }
+    else if (strcmp(optname, "nacm_xtree") == 0){
+	th->th_nacm_xtree = (cxobj*)value;
     }
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
@@ -421,10 +438,17 @@ xml_copy_marked(cxobj *x0,
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
  * This is a clixon datastore plugin of the the xmldb api
- * @see xmldb_get
+ * @param[in]  h      Clicon handle
+ * @param[in]  dbname Name of database to search in (filename including dir path
+ * @param[in]  xpath  String with XPATH syntax. or NULL for all
+ * @param[in]  config If set only configuration data, else also state
+ * @param[out] xret   Single return XML tree. Free with xml_free()
+ * @retval     0      OK
+ * @retval     -1     Error
+ * @see xmldb_get  the generic API function
  */
 int
-text_get(xmldb_handle xh,
+text_get(xmldb_handle  xh,
 	 const char   *db, 
 	 char         *xpath,
 	 int           config,
@@ -434,6 +458,7 @@ text_get(xmldb_handle xh,
     char           *dbfile = NULL;
     yang_spec      *yspec;
     cxobj          *xt = NULL;
+    cxobj          *x;
     int             fd = -1;
     cxobj         **xvec = NULL;
     size_t          xlen;
@@ -486,7 +511,6 @@ text_get(xmldb_handle xh,
 	 */
     } /* xt == NULL */
     /* Here xt looks like: <config>...</config> */
-
     if (xpath_vec(xt, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
 
@@ -496,11 +520,13 @@ text_get(xmldb_handle xh,
      */
     if (xvec != NULL)
 	for (i=0; i<xlen; i++){
-	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-	    if (th->th_cache)
-		xml_apply_ancestor(xvec[i], (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+	    x = xvec[i];
+	    xml_flag_set(x, XML_FLAG_MARK);
+	    if (1 || th->th_cache)
+		xml_apply_ancestor(x, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
 	}
 
+    
     if (th->th_cache){
 	/* Copy the matching parts of the (relevant) XML tree.
 	 * If cache was NULL, also write to datastore cache
@@ -534,13 +560,16 @@ text_get(xmldb_handle xh,
     /* reset flag */
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
+
     /* filter out state (operations) data if config not set. Mark all nodes
      that are not config data */
-    if (config && xml_apply(xt, CX_ELMNT, xml_non_config_data, NULL) < 0)
-	goto done;
-    /* Remove (prune) nodes that are marked (that does not pass test) */
-    if (xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1) < 0)
-	goto done;
+    if (config){
+	if (xml_apply(xt, CX_ELMNT, xml_non_config_data, NULL) < 0)
+	    goto done;
+	/* Remove (prune) nodes that are marked (that does not pass test) */
+	if (xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1) < 0)
+	    goto done;
+    }
     /* Add default values (if not set) */
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
@@ -939,13 +968,23 @@ xml_container_presence(cxobj  *x,
 
 /*! Modify database provided an xml tree and an operation
  * This is a clixon datastore plugin of the the xmldb api
- * @see xmldb_put
+ * @param[in]  h      CLICON handle
+ * @param[in]  db     running or candidate
+ * @param[in]  op     Top-level operation, can be superceded by other op in tree
+ * @param[in]  x1     xml-tree. Top-level symbol is dummy
+ * @param[in]  username User name for nacm
+ * @param[out] cbret  Initialized cligen buffer. On exit contains XML if retval == 0
+ * @retval     1      OK
+ * @retval     0      Failed, cbret contains error xml message
+ * @retval     -1     Error
+ * @see xmldb_put  the generic API function
  */
 int
 text_put(xmldb_handle        xh,
 	 const char         *db, 
 	 enum operation_type op,
 	 cxobj              *x1,
+	 char               *username,
     	 cbuf               *cbret)
 {
     int                 retval = -1;

@@ -55,7 +55,7 @@ EOF
 RULES=$(cat <<EOF
    <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
      <enable-nacm>false</enable-nacm>
-     <read-default>deny</read-default>
+     <read-default>permit</read-default>
      <write-default>deny</write-default>
      <exec-default>deny</exec-default>
 

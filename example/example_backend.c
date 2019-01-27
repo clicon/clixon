@@ -243,7 +243,7 @@ example_reset(clicon_handle h,
 	goto done;
     }
     /* Merge user reset state */
-    if ((ret = xmldb_put(h, (char*)db, OP_MERGE, xt, cbret)) < 0)
+    if ((ret = xmldb_put(h, (char*)db, OP_MERGE, xt, clicon_username_get(h), cbret)) < 0)
 	goto done;
     if (ret == 0){
 	clicon_err(OE_XML, 0, "Error when writing to XML database: %s",

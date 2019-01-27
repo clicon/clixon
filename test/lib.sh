@@ -149,14 +149,17 @@ expectfn(){
   fi
 }
 
+# 
 expecteq(){
   ret=$1
   expect=$2
+#  echo "ret:$ret"
+#  echo "expect:$expect"
   if [ -z "$ret" -a -z "$expect" ]; then
       return
   fi
   if [[ "$ret" = "$expect" ]]; then
-      echo
+      echo 
   else
       err "$expect" "$ret"
   fi
