@@ -80,7 +80,7 @@ RULES=$(cat <<EOF
        <name>guest-acl</name>
        <group>guest</group>
        <rule>
-         <name>deny-ncm</name>
+         <name>permit-read</name>
          <module-name>clixon-example</module-name>
          <access-operations>*</access-operations>
          <action>deny</action>
@@ -157,7 +157,7 @@ expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localh
 
 #--------------- nacm enabled
 
-#----READ monitoring information from example - (ietf-netconf-monitoring)
+#----READ access
 #user:admin
 new2 "admin read ok"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" '{"clixon-example:translate": [{"k": "key42","value": "val42"},{ "k": "key43","value": "val43"}]}

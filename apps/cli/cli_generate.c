@@ -212,6 +212,7 @@ yang2cli_var_sub(clicon_handle h,
 	if (strcmp(type, "enumeration") == 0 || strcmp(type, "bits") == 0){
 	    cprintf(cb, " choice:"); 
 	    i = 0;
+	    yi = NULL;
 	    while ((yi = yn_each((yang_node*)ytype, yi)) != NULL){
 		if (yi->ys_keyword != Y_ENUM && yi->ys_keyword != Y_BIT)
 		    continue;

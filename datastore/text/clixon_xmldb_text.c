@@ -615,6 +615,8 @@ text_modify(struct text_handle *th,
 	    cxobj              *x0p,
 	    cxobj              *x1,
 	    enum operation_type op,
+	    char               *username,
+	    cxobj              *xnacm,
 	    cbuf               *cbret)
 {
     int        retval = -1;
@@ -626,6 +628,7 @@ text_modify(struct text_handle *th,
     cxobj     *x0c; /* base child */
     cxobj     *x0b; /* base body */
     cxobj     *x1c; /* mod child */
+    char      *x0bstr; /* mod body string */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
     cxobj    **x0vec = NULL;
@@ -679,12 +682,33 @@ text_modify(struct text_handle *th,
 	    }
 	    if (x1bstr){
 		if ((x0b = xml_body_get(x0)) == NULL){
+		    if (xnacm){
+			if ((ret = nacm_datanode_write(NULL, x0, NACM_CREATE, username, xnacm, cbret)) < 0) 
+			    goto done;
+			if (ret == 0)
+			    goto fail;
+		    }
 		    if ((x0b = xml_new("body", x0, NULL)) == NULL)
 			goto done; 
 		    xml_type_set(x0b, CX_BODY);
+
+		    if (xml_value_set(x0b, x1bstr) < 0)
+			goto done;
 		}
-		if (xml_value_set(x0b, x1bstr) < 0)
-		    goto done;
+		else{
+		    x0bstr = xml_value(x0b);
+		    if (x0bstr==NULL || strcmp(x0bstr, x1bstr)){
+			if (xnacm){
+			    if ((ret = nacm_datanode_write(NULL, x0, NACM_UPDATE, username, xnacm, cbret)) < 0)
+				goto done;
+			    if (ret == 0)
+				goto fail;
+			}
+			if (xml_value_set(x0b, x1bstr) < 0)
+			    goto done;
+		    }
+		}
+
 	    }
 	    break;
 	case OP_DELETE:
@@ -784,7 +808,8 @@ text_modify(struct text_handle *th,
 		x1cname = xml_name(x1c);
 		x0c = x0vec[i++];
 		yc = yang_find_datanode(y0, x1cname);
-		if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op, cbret)) < 0)
+		if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op,
+				       username, xnacm, cbret)) < 0)
 		    goto done;
 		/* If xml return - ie netconf error xml tree, then stop and return OK */
 		if (ret == 0)
@@ -834,6 +859,8 @@ text_modify_top(struct text_handle *th,
 		cxobj              *x1,
 		yang_spec          *yspec,
 		enum operation_type op,
+		char               *username,
+		cxobj              *xnacm,
 		cbuf               *cbret)
 {
     int        retval = -1;
@@ -860,6 +887,10 @@ text_modify_top(struct text_handle *th,
 	    case OP_DELETE:
 	    case OP_REMOVE:
 	    case OP_REPLACE:
+		if ((ret = nacm_datanode_write(NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0) /* XXX */
+		    goto done;
+		if (ret == 0)
+		    goto fail;
 		x0c = NULL;
 		while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) 
 		    xml_purge(x0c);
@@ -914,7 +945,8 @@ text_modify_top(struct text_handle *th,
 	    x0c = NULL;
 	}
 #endif
-	if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op, cbret)) < 0)
+	if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op,
+			       username,xnacm, cbret)) < 0)
 	    goto done;
 	/* If xml return - ie netconf error xml tree, then stop and return OK */
 	if (ret == 0)
@@ -997,6 +1029,7 @@ text_put(xmldb_handle        xh,
     cxobj              *x0 = NULL;
     struct db_element  *de = NULL;
     int                 ret;
+    cxobj              *xnacm = NULL; 
     
     if (cbret == NULL){
 	clicon_err(OE_XML, EINVAL, "cbret is NULL");
@@ -1057,11 +1090,33 @@ text_put(xmldb_handle        xh,
     if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
 #endif
+#if 1
+    {
+	char  *mode;
+	cxobj *xnacm0 = NULL;
+	
+	mode = th->th_nacm_mode;
+	if (mode){
+	    if (strcmp(mode, "external")==0)
+		xnacm0 = th->th_nacm_xtree;
+	    else if (strcmp(mode, "internal")==0)
+		xnacm0 = x0;
+	}
+	if (xnacm0 != NULL &&
+	    (xnacm = xpath_first(xnacm0, "nacm")) != NULL){
+	    /* Pre-NACM access step */
+	    if ((ret = nacm_access(mode, xnacm, username)) < 0)
+		goto done;
+	}
+	/* Here assume if xnacm is set (actually may be ret==0?) do NACM */
+    }
+
+#endif
     /* 
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
      */
-    if ((ret = text_modify_top(th, x0, x1, yspec, op, cbret)) < 0)
+    if ((ret = text_modify_top(th, x0, x1, yspec, op, username, xnacm, cbret)) < 0)
 	goto done;
     /* If xml return - ie netconf error xml tree, then stop and return OK */
     if (ret == 0)

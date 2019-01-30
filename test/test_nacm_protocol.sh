@@ -75,7 +75,7 @@ RULES=$(cat <<EOF
    <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
      <enable-nacm>false</enable-nacm>
      <read-default>deny</read-default>
-     <write-default>deny</write-default>
+     <write-default>permit</write-default>
      <exec-default>deny</exec-default>
 
      $NGROUPS

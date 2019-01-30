@@ -72,19 +72,24 @@
  * Incoming RPC Message Validation Step 7 (c)
  *  The rule's "access-operations" leaf has the "exec" bit set or
  *  has the special value "*".
+ * @param[in] mode  Primary mode, eg read, create, update, delete, exec
+ * @param[in] mode2 Secondary mode, eg "write"
  * @retval 0  No match
  * @retval 1  Match
  * @note access_operations is bit-fields
  */
 static int
-nacm_match_access(char *access_operations,
-		  char *mode)
+match_access(char *access_operations,
+	     char *mode,
+	     char *mode2)
 {
     if (access_operations==NULL)
 	return 0;
     if (strcmp(access_operations,"*")==0)
 	return 1;
     if (strstr(access_operations, mode)!=NULL)
+	return 1;
+    if (mode2 && strstr(access_operations, mode2)!=NULL)
 	return 1;
     return 0;
 }
@@ -146,7 +151,7 @@ nacm_rule_rpc(char         *rpc,
 	       module_rule, rpc_rule, access_operations, action);
     if (module_rule &&
 	(strcmp(module_rule,"*")==0 || strcmp(module_rule,module)==0)){
-	if (nacm_match_access(access_operations, "exec")){
+	if (match_access(access_operations, "exec", NULL)){
 	    if (rpc_rule==NULL ||
 		strcmp(rpc_rule, "*")==0 || strcmp(rpc_rule, rpc)==0){
 		/* Here is a matching rule */
@@ -171,13 +176,15 @@ nacm_rule_rpc(char         *rpc,
 /*! Process nacm incoming RPC message validation steps
  * @param[in]  module   Yang module name
  * @param[in]  rpc      rpc name
- * @param[in]  username User name making access
+ * @param[in]  username User name of requestor
  * @param[in]  xnacm    NACM xml tree
  * @param[out] cbret Cligen buffer result. Set to an error msg if retval=0.
  * @retval -1  Error
  * @retval  0  Not access and cbret set
  * @retval  1  Access
  * @see RFC8341 3.4.4.  Incoming RPC Message Validation
+ * @see nacm_datanode_write
+ * @see nacm_datanode_read
  */
 int
 nacm_rpc(char         *rpc,
@@ -190,7 +197,7 @@ nacm_rpc(char         *rpc,
     cxobj  *xrule;
     cxobj **gvec = NULL; /* groups */
     size_t  glen;
-    cxobj  *xrlist;
+    cxobj  *rlist;
     cxobj **rlistvec = NULL; /* rule-list */
     size_t  rlistlen;
     cxobj **rvec = NULL; /* rules */
@@ -198,6 +205,7 @@ nacm_rpc(char         *rpc,
     int     ret;
     int     i, j;
     char   *exec_default = NULL;
+    char   *gname;
     
     /* 3.   If the requested operation is the NETCONF <close-session>
        protocol operation, then the protocol operation is permitted.
@@ -224,12 +232,11 @@ nacm_rpc(char         *rpc,
     if (xpath_vec(xnacm, "rule-list", &rlistvec, &rlistlen) < 0)
 	goto done;
     for (i=0; i<rlistlen; i++){
-	xrlist = rlistvec[i];
+	rlist = rlistvec[i];
 	/* Loop through user's group to find match in this rule-list */
 	for (j=0; j<glen; j++){
-	    char *gname;
 	    gname = xml_find_body(gvec[j], "name");
-	    if (xpath_first(xrlist, ".[group='%s']", gname)!=NULL)
+	    if (xpath_first(rlist, ".[group='%s']", gname)!=NULL)
 		break; /* found */
 	}
 	if (j==glen) /* not found */
@@ -238,7 +245,7 @@ nacm_rpc(char         *rpc,
 	   until a rule that matches the requested access operation is
 	   found. 
 	*/
-	if (xpath_vec(xrlist, "rule", &rvec, &rlen) < 0)
+	if (xpath_vec(rlist, "rule", &rvec, &rlen) < 0)
 	    goto done;
 	for (j=0; j<rlen; j++){
 	    xrule = rvec[j];
@@ -255,6 +262,10 @@ nacm_rpc(char         *rpc,
 	    case 2: /* no match, continue */
 		break;
 	    }
+	}
+	if (rvec){
+	    free(rvec);
+	    rvec=NULL;
 	}
     }
  step10:
@@ -296,18 +307,20 @@ nacm_rpc(char         *rpc,
 }
 
 /*---------------------------------------------------------------
- * Datanode read
+ * Datanode/module read
  */
 
 /*! We have a rule matching user group. Now match proper read operation and module
  * @see RFC8341 3.4.5.  Data Node Access Validation point (6)
- * 
+ * @retval -1 Error
+ * @retval  0 No Match
+ * @retval  1 Match
+ * @see rule_data_write
  */
 static int
-rule_datanode_read(cxobj  *xrule,
-		   cxobj  *xr,
-		   cxobj  *xt,
-		   int    *match)
+rule_data_read(cxobj  *xrule,
+	       cxobj  *xr,
+	       cxobj  *xt)
 {
     int        retval = -1;
     cxobj     *xp; /* parent */
@@ -319,7 +332,6 @@ rule_datanode_read(cxobj  *xrule,
     char      *path;
     cxobj     *xpath; /* xpath match */
 
-    *match = 0;
     /*  6b) Either (1) the rule does not have a "rule-type" defined or
 	(2) the "rule-type" is "data-node" and the "path" matches the
 	requested data node, action node, or notification node.  A
@@ -332,7 +344,7 @@ rule_datanode_read(cxobj  *xrule,
     /* 6c) For a "read" access operation, the rule's "access-operations"
 	leaf has the "read" bit set or has the special value "*" */
     access_operations = xml_find_body(xrule, "access-operations");
-    if (!nacm_match_access(access_operations, "read"))
+    if (!match_access(access_operations, "read", NULL))
 	goto nomatch;
     /* 6a) The rule's "module-name" leaf is "*" or equals the name of
      * the YANG module where the requested data node is defined. */
@@ -361,11 +373,12 @@ rule_datanode_read(cxobj  *xrule,
 	} while ((xp = xml_parent(xp)) != NULL);
     }
  match:
-    *match = 1;
+    retval = 1;
+ done:
+    return retval;
  nomatch:
     retval = 0;
-    // done:
-    return retval;
+    goto done;
 }
 
 /*! Go through all rules for a requested node
@@ -378,18 +391,17 @@ rule_datanode_read(cxobj  *xrule,
  * @param[out] xrulep  If set, then points to matching rule
  */
 static int
-nacm_datanode_read_xr(cxobj  *xt,
-		      cxobj  *xr,
-		      cxobj **gvec,
-		      size_t  glen,
-		      cxobj **rlistvec,
-		      size_t  rlistlen,
-		      cxobj **xrulep
-		      )
+nacm_data_read_xr(cxobj  *xt,
+		  cxobj  *xr,
+		  cxobj **gvec,
+		  size_t  glen,
+		  cxobj **rlistvec,
+		  size_t  rlistlen,
+		  cxobj **xrulep)
 {
     int retval = -1;
     int i, j;
-    cxobj  *xrlist;
+    cxobj  *rlist;
     char   *gname;
     cxobj **rvec = NULL; /* rules */
     size_t  rlen;
@@ -397,24 +409,24 @@ nacm_datanode_read_xr(cxobj  *xt,
     int     match = 0;
 
     for (i=0; i<rlistlen; i++){ 	/* Loop through rule list */
-	xrlist = rlistvec[i];
+	rlist = rlistvec[i];
 	/* Loop through user's group to find match in this rule-list */
 	for (j=0; j<glen; j++){
 	    gname = xml_find_body(gvec[j], "name");
-	    if (xpath_first(xrlist, ".[group='%s']", gname)!=NULL)
+	    if (xpath_first(rlist, ".[group='%s']", gname)!=NULL)
 		break; /* found */
 	}
 	if (j==glen) /* not found */
 	    continue;
 	/* 6. For each rule-list entry found, process all rules, in order,
 	   until a rule that matches the requested access operation is
-	   found. (see 6 sub rules in nacm_match_rule2)
+	   found. (see 6 sub rules in rule_data_read)
 	*/
-	if (xpath_vec(xrlist, "rule", &rvec, &rlen) < 0)
+	if (xpath_vec(rlist, "rule", &rvec, &rlen) < 0)
 	    goto done;
 	for (j=0; j<rlen; j++){ /* Loop through rules */
 	    xrule = rvec[j];
-	    if (rule_datanode_read(xrule, xr, xt, &match) < 0)
+	    if ((match = rule_data_read(xrule, xr, xt)) < 0)
 		goto done;
 	    if (match) /* xrule match */
 		break;
@@ -443,11 +455,10 @@ nacm_datanode_read_xr(cxobj  *xt,
  * @param[in]  xrvec    Vector of requested nodes (sub-part of xt)
  * @param[in]  xrlen    Length of requsted node vector
  * @param[in]  username 
- * @param[in]  xaxm     NACM xml tree
+ * @param[in]  xnacm     NACM xml tree
  * @retval -1  Error
  * @retval  0  Not access and cbret set
  * @retval  1  Access
- * @see RFC8341 3.4.5.  Data Node Access Validation
  * 3.2.4: <get> and <get-config> Operations
  * Data nodes to which the client does not have read access are silently
  * omitted, along with any descendants, from the <rpc-reply> message.
@@ -509,6 +520,9 @@ nacm_datanode_read_xr(cxobj  *xt,
  *
  * A module rule has the "module-name" leaf set but no nodes from the
  * "rule-type" choice set.
+ * @see RFC8341 3.4.5.  Data Node Access Validation
+ * @see nacm_datanode_write
+ * @see nacm_rpc
  */
 int
 nacm_datanode_read(cxobj  *xt,
@@ -523,7 +537,6 @@ nacm_datanode_read(cxobj  *xt,
     cxobj  *xr;
     cxobj **rlistvec = NULL; /* rule-list */
     size_t  rlistlen;
-    cxobj **rvec = NULL; /* rules */
     int     i;
     char   *read_default = NULL;
     cxobj  *xrule;
@@ -553,8 +566,8 @@ nacm_datanode_read(cxobj  *xt,
 	/* Loop through rule-list (steps 5,6,7) to find match of requested node
 	 */
 	xrule = NULL;
-	if (nacm_datanode_read_xr(xt, xr, gvec, glen, rlistvec, rlistlen,
-				  &xrule) < 0) 
+	if (nacm_data_read_xr(xt, xr, gvec, glen, rlistvec, rlistlen,
+			      &xrule) < 0) 
 	    goto done;
 	if (xrule){ /* xrule match requested node xr */
 	    if ((action = xml_find_body(xrule, "action")) == NULL)
@@ -565,7 +578,7 @@ nacm_datanode_read(cxobj  *xt,
 	    }
 	    else if (strcmp(action, "permit")==0)
 		;/* XXX recursively find denies in xr and purge them 
-		  * ie call nacm_datanode_read_xr recursively?
+		  * ie call nacm_data_read_xr recursively?
 		  */
 	}
 	else{ /* no rule matching xr, apply default */
@@ -600,24 +613,260 @@ nacm_datanode_read(cxobj  *xt,
 	free(gvec);
     if (rlistvec)
 	free(rlistvec);
+    return retval;
+}
+
+/*---------------------------------------------------------------
+ * Datanode/module write (=create, delete, update)
+ */
+
+/*! We have a rule matching user group. Now match proper write operation and module
+ * @retval -1 Error
+ * @retval  0 No Match
+ * @retval  1 Match
+ * @see RFC8341 3.4.5.  Data Node Access Validation point (6)
+ * @see rule_data_read
+ */
+static int
+rule_data_write(cxobj           *xt,
+		cxobj           *xr,
+		cxobj           *xrule,
+		enum nacm_access access)
+{
+    int        retval = -1;
+    char      *path;
+    char      *access_operations;
+    char      *module_rule; /* rule module name */
+    yang_stmt *ys;
+    yang_stmt *ymod;
+    char      *module;
+    cxobj     *xpath; /* xpath match */
+    cxobj     *xp; /* parent */
+   
+    /*  6b) Either (1) the rule does not have a "rule-type" defined or
+	(2) the "rule-type" is "data-node" and the "path" matches the
+	requested data node, action node, or notification node.  A
+	path is considered to match if the requested node is the node
+	specified by the path or is a descendant node of the path.*/    
+    if ((path = xml_find_body(xrule, "path")) == NULL){
+	if (xml_find_body(xrule, "rpc-name") ||xml_find_body(xrule, "notification-name"))
+	    goto nomatch;
+    }
+    /* 6c) For a "read" access operation, the rule's "access-operations"
+	leaf has the "read" bit set or has the special value "*" */
+
+    /*  6d) For a "create" access operation, the rule's
+           "access-operations" leaf has the "create" bit set or has the
+           special value "*".
+        6e) For a "delete" access operation, the rule's
+           "access-operations" leaf has the "delete" bit set or has the
+           special value "*".
+        6f) For an "update" access operation, the rule's
+           "access-operations" leaf has the "update" bit set or has the
+           special value "*". */
+    access_operations = xml_find_body(xrule, "access-operations");
+    switch (access){
+    case NACM_CREATE:
+	if (!match_access(access_operations, "create", "write"))
+	    goto nomatch;
+	break;
+    case NACM_UPDATE:
+	if (!match_access(access_operations, "update", "write"))
+	    goto nomatch;
+	break;
+    case NACM_DELETE:
+	if (!match_access(access_operations, "delete", "write"))
+	    goto nomatch;
+	break;
+    default:
+	break;
+    }
+        /* 6a) The rule's "module-name" leaf is "*" or equals the name of
+     * the YANG module where the requested data node is defined. */
+    if ((module_rule = xml_find_body(xrule, "module-name")) == NULL)
+	goto nomatch;
+    if (strcmp(module_rule,"*")!=0){
+	if ((ys = xml_spec(xr)) == NULL)
+	    goto nomatch;
+	ymod = ys_module(ys);
+	module = ymod->ys_argument;
+	if (strcmp(module, module_rule) != 0)
+	    goto nomatch;
+    }
+    /* Here module is matched, now check for path if any */
+    if (path){ 
+	if ((xpath = xpath_first(xt, "%s", path)) == NULL)
+	    goto nomatch;
+	/* The requested node xr is the node specified by the path or is a 
+	 * descendant node of the path:
+	 * xmatch is one of xvec[] or an ancestor of the xvec[] nodes.
+	 */
+	xp = xr;
+	do {
+	    if (xpath == xp)
+		goto match;
+	} while ((xp = xml_parent(xp)) != NULL);
+    }
+ match:
+    retval = 1;
+ done:
+    return retval;
+ nomatch:
+    retval = 0;
+    goto done;
+}
+	      
+/*! Make nacm datanode and module rule write access validation
+ * The operations of NACM are: create, read, update, delete, exec
+ *  where write is short-hand for create+delete+update
+ * @param[in]  xt       XML root tree with "config" label. XXX?
+ * @param[in]  xr       XML requestor node (part of xt)
+ * @param[in]  op       NACM access of xr
+ * @param[in]  username User making access
+ * @param[in]  xnacm    NACM xml tree
+ * @param[out] cbret Cligen buffer result. Set to an error msg if retval=0.
+ * @retval -1  Error
+ * @retval  0  Not access and cbret set
+ * @retval  1  Access
+ * @see RFC8341 3.4.5.  Data Node Access Validation
+ * @see nacm_datanode_read
+ * @see nacm_rpc
+ */
+int
+nacm_datanode_write(cxobj           *xt,
+		    cxobj           *xr,
+		    enum nacm_access access,
+		    char            *username,
+		    cxobj           *xnacm,
+		    cbuf            *cbret)
+{
+    int retval = -1;
+    cxobj **gvec = NULL; /* groups */
+    size_t  glen;
+    cxobj **rlistvec = NULL; /* rule-list */
+    size_t  rlistlen;
+    cxobj  *rlist;
+    cxobj **rvec = NULL; /* rules */
+    size_t  rlen;
+    int     i, j;
+    char   *gname;
+    cxobj  *xrule;
+    int     match = 0;
+    char   *action;
+    char   *write_default;
+    
+    if (xnacm == NULL)
+	goto permit;
+    /* 3.   Check all the "group" entries to see if any of them contain a
+       "user-name" entry that equals the username for the session
+       making the request.  (If the "enable-external-groups" leaf is
+       "true", add to these groups the set of groups provided by the
+       transport layer.)	       */
+    if (username == NULL)
+	goto step9;
+    /* User's group */
+    if (xpath_vec(xnacm, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
+	goto done;
+    /* 4. If no groups are found, continue with step 9. */
+    if (glen == 0)
+	goto step9;
+    /* 5. Process all rule-list entries, in the order they appear in the
+        configuration.  If a rule-list's "group" leaf-list does not
+        match any of the user's groups, proceed to the next rule-list
+        entry. */
+    if (xpath_vec(xnacm, "rule-list", &rlistvec, &rlistlen) < 0)
+	goto done;
+    for (i=0; i<rlistlen; i++){
+	rlist = rlistvec[i];
+    	/* Loop through user's group to find match in this rule-list */
+	for (j=0; j<glen; j++){
+	    gname = xml_find_body(gvec[j], "name");
+	    if (xpath_first(rlist, ".[group='%s']", gname)!=NULL)
+		break; /* found */
+	}
+	if (j==glen) /* not found */
+	    continue;
+	if (xpath_vec(rlist, "rule", &rvec, &rlen) < 0)
+	    goto done;
+	/* 6. For each rule-list entry found, process all rules, in order,
+	   until a rule that matches the requested access operation is
+	   found. (see 6 sub rules in nacm_match_rule2)
+	*/
+	for (j=0; j<rlen; j++){ /* Loop through rules */
+	    xrule = rvec[j];
+	    if ((match = rule_data_write(xt, xr, xrule, access)) < 0)
+		goto done;
+	    if (match) /* match */
+		break;
+	}
+	if (match)
+	    break;
+    }
+    if (match){
+	if ((action = xml_find_body(xrule, "action")) == NULL)
+	    goto step9;
+	if (strcmp(action, "deny")==0){
+	    if (netconf_access_denied(cbret, "application", "access denied") < 0)
+		goto done;
+	    goto deny;
+	}
+	else if (strcmp(action, "permit")==0)
+	    goto permit;
+
+    }
+    /*  8.   At this point, no matching rule was found in any rule-list
+	entry. */
+ step9:   
+    /* 10.  For a "write" access operation, if the requested data node is
+        defined in a YANG module advertised in the server capabilities
+        and the data definition statement contains a
+        "nacm:default-deny-write" or a "nacm:default-deny-all"
+        statement, then the access request is denied for the data node
+        and all its descendants.
+	XXX
+    */
+    /*12.  For a "write" access operation, if the "write-default" leaf is
+        set to "permit", then permit the data node access request;
+        otherwise, deny the request.*/
+    write_default = xml_find_body(xnacm, "write-default");
+    if (write_default == NULL  || strcmp(write_default, "permit") != 0){
+	if (netconf_access_denied(cbret, "application", "default deny") < 0)
+	    goto done;
+	goto deny;
+    }
+ permit:
+    retval = 1;
+ done:
+    clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    if (gvec)
+	free(gvec);
+    if (rlistvec)
+	free(rlistvec);
     if (rvec)
 	free(rvec);
     return retval;
+ deny: /* Here, cbret must contain a netconf error msg */
+    assert(cbuf_len(cbret));
+    retval = 0;
+    goto done;
 }
+
+/*---------------------------------------------------------------
+ * NACM pre-procesing
+ */
 
 /*! NACM intial pre- access control enforcements 
  * Initial NACM steps and common to all NACM access validation.
  * If retval=0 continue with next NACM step, eg rpc, module, 
  * etc. If retval = 1 access is OK and skip next NACM step.
  * @param[in]  h        Clicon handle
- * @param[in]  username
- * @param[out] xncam    NACM XML tree, set if retval=0. Free after use
+ * @param[in]  xnacm    NACM XML tree, root should be "nacm"
+ * @param[in]  username User name of requestor
  * @retval -1  Error
- * @retval  0  OK not yet permit/. continue with next NACM step using xnacm
- * @retval  1  OK permitted. dont do next NACM step
+ * @retval  0  OK but not validated. Need to do NACM step using xnacm
+ * @retval  1  OK permitted. You do not need to do next NACM step
  * @code
- *   cxobj *xnacm = NULL;
- *   if ((ret = nacm_access(h, username, &xnacm)) < 0)
+ *   if ((ret = nacm_access(mode, xnacm, username)) < 0)
  *     err;
  *   if (ret == 0){
  *      // Next step NACM processing
@@ -627,47 +876,27 @@ nacm_datanode_read(cxobj  *xt,
  * @see RFC8341 3.4 Access Control Enforcement Procedures
  */
 int
-nacm_access(clicon_handle  h,
-	    char          *username,
-	    cxobj        **xnacmp)
+nacm_access(char          *mode,
+	    cxobj         *xnacm,
+	    char          *username)
 {
     int     retval = -1;
     cxobj  *xnacm0 = NULL;
-    cxobj  *xnacm;
-    char   *mode;
     char   *enabled;
     cxobj  *x;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (mode == NULL || strcmp(mode, "disabled") == 0)
 	goto permit;
     /* 0. If nacm-mode is external, get NACM defintion from separet tree,
        otherwise get it from internal configuration */
-    if (strcmp(mode, "external")==0){
-	cxobj *xne;
-	if ((xne = clicon_nacm_ext(h)) == NULL){
-	    clicon_err(OE_XML, 0, "No nacm external tree");
-	    goto done;
-	}
-	if ((xnacm0 = xml_dup(xne)) == NULL)
-	    goto done;
-    }
-    else if (strcmp(mode, "internal")==0){
-	if (xmldb_get(h, "running", "nacm", 0, &xnacm0) < 0)
-	    goto done;	
-    }
-    else{
-	clicon_err(OE_UNIX, 0, "Invalid NACM mode: %s", mode);
+    if (strcmp(mode, "external") && strcmp(mode, "internal")){
+	clicon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
 	goto done;
     }
     /* If config does not exist, then the operation is permitted. (?) */
-    if ((xnacm = xpath_first(xnacm0, "nacm")) == NULL)
+    if (xnacm == NULL)
 	goto permit;
-    if (xml_rootchild_node(xnacm0, xnacm) < 0)
-	goto done;
-    xnacm0 = NULL;
-    *xnacmp = xnacm;
     /* Do initial nacm processing common to all access validation in
      * RFC8341 3.4 */
     /* 1.   If the "enable-nacm" leaf is set to "false", then the protocol
@@ -692,3 +921,74 @@ nacm_access(clicon_handle  h,
     retval = 1;
     goto done;
 }
+
+/*! NACM intial pre- access control enforcements 
+ * Initial NACM steps and common to all NACM access validation.
+ * If retval=0 continue with next NACM step, eg rpc, module, 
+ * etc. If retval = 1 access is OK and skip next NACM step.
+ * @param[in]  h        Clicon handle
+ * @param[in]  username User name of requestor
+ * @param[out] xncam    NACM XML tree, set if retval=0. Free after use
+ * @retval -1  Error
+ * @retval  0  OK but not validated. Need to do NACM step using xnacm
+ * @retval  1  OK permitted. You do not need to do next NACM step
+ * @code
+ *   cxobj *xnacm = NULL;
+ *   if ((ret = nacm_access_h(h, username, &xnacm)) < 0)
+ *     err;
+ *   if (ret == 0){
+ *      // Next step NACM processing
+ *      xml_free(xnacm);
+ *   }
+ * @endcode
+ * @see RFC8341 3.4 Access Control Enforcement Procedures
+ */
+
+int
+nacm_access_h(clicon_handle  h,
+	      char          *username,
+	      cxobj        **xnacmp)
+{
+    int    retval = -1;
+    char  *mode;
+    cxobj *x;
+    cxobj *xnacm0 = NULL;
+    cxobj *xnacm = NULL;
+    
+    if ((mode = clicon_option_str(h, "CLICON_NACM_MODE")) != NULL){
+	if (strcmp(mode, "external")==0){
+	    if ((x = clicon_nacm_ext(h)))
+		if ((xnacm0 = xml_dup(x)) == NULL)
+		    goto done;
+	}
+	else if (strcmp(mode, "internal")==0){
+	    if (xmldb_get(h, "running", "nacm", 0, &xnacm0) < 0)
+		goto done;
+	}
+    }
+    /* If config does not exist then the operation is permitted(?) */
+    if (xnacm0 == NULL)
+	goto permit;
+    /* If config does not exist then the operation is permitted(?) */
+    if ((xnacm = xpath_first(xnacm0, "nacm")) == NULL)
+	goto permit;
+    if (xml_rootchild_node(xnacm0, xnacm) < 0)
+	goto done;
+    xnacm0 = NULL;
+    if ((retval = nacm_access(mode, xnacm, username)) < 0)
+	goto done;
+    if (retval == 0){ /* if retval == 0 then return an xml nacm tree */
+	*xnacmp = xnacm;
+	xnacm = NULL;
+    }
+ done:
+    if (xnacm0)
+	xml_free(xnacm0);
+    else if (xnacm)
+	xml_free(xnacm);
+    return retval;
+ permit:
+    retval = 1;
+    goto done;
+}
+

@@ -77,12 +77,10 @@
     * CLICON_YANG_MAIN_FILE Provides a filename with a single module filename.
     * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
 * NACM extension (RFC8341)
-  * NACM Data node READ access module support (RFC8341 3.4.5)
+  * NACM Data node READ and WRITE access module support (RFC8341 3.4.5)
     * Access control points added for `get` and `get-config` in addition to incoming rpc.
     * RFC 8341 Example A.2 implemented, see: [test/test_nacm_module.sh]
-  * Remaining work:
-    * data-node module write/create/delete/update
-    * data-node path 
+  * Remaining work: data-node PATH  
   * Recovery user "_nacm_recovery" added.
     * Example use is restconf PUT when NACM edit-config is permitted, then automatic commit and discard are permitted using recovery user.
 	

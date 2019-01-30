@@ -214,7 +214,7 @@ from_client_get_config(clicon_handle h,
 	goto ok;
     }
     /* Pre-NACM access step */
-    if ((ret = nacm_access(h, username, &xnacm)) < 0)
+    if ((ret = nacm_access_h(h, username, &xnacm)) < 0)
 	goto done;
     if (ret == 0){ /* Do NACM validation */
 	if (xpath_vec(xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
@@ -407,7 +407,7 @@ from_client_get(clicon_handle h,
 	goto ok;
     }
     /* Pre-NACM access step */
-    if ((ret = nacm_access(h, username, &xnacm)) < 0)
+    if ((ret = nacm_access_h(h, username, &xnacm)) < 0)
 	goto done;
     if (ret == 0){ /* Do NACM validation */
 	if (xpath_vec(xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
@@ -1052,7 +1052,7 @@ from_client_msg(clicon_handle        h,
 	clicon_debug(1, "%s module:%s rpc:%s", __FUNCTION__, module, rpc);
 	/* Pre-NACM access step */
 	xnacm = NULL;
-	if ((ret = nacm_access(h, username, &xnacm)) < 0)
+	if ((ret = nacm_access_h(h, username, &xnacm)) < 0)
 	    goto done;
 	if (ret == 0){ /* Do NACM validation */
 	    /* NACM rpc operation exec validation */
