@@ -143,22 +143,22 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><can
 
 # LEAF_LISTS
 
-new "add two entries to leaf-list user order"
+new "add two entries (c,b) to leaf-list user order"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:clixon">c</y0><y0 xmlns="urn:example:clixon">b</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "add one entry to leaf-list user order"
+new "add one entry (a) to leaf-list user order"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:clixon">a</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "add one entry to leaf-list user order after commit"
+new "add one entry (0) to leaf-list user order after commit"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:clixon">0</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "verify leaf-list user order in running (as entered)"
+new "verify leaf-list user order in running (as entered: c,b,a,0)"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><running/></source><filter type="xpath" select="/y0"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><y0 xmlns="urn:example:clixon">c</y0><y0 xmlns="urn:example:clixon">b</y0><y0 xmlns="urn:example:clixon">a</y0><y0 xmlns="urn:example:clixon">0</y0></data></rpc-reply>]]>]]>$'
 
 # LISTS

@@ -131,9 +131,6 @@ sudo su -c "$clixon_restconf -f $cfg -D $DBG -- -a" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
-new "restconf DELETE whole datastore"
-expecteq "$(curl -u andy:bar -sS -X DELETE http://localhost/restconf/data)" ""
-
 new2 "auth get"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 'null
 '

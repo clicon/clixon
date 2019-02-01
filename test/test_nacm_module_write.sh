@@ -6,17 +6,19 @@
 # @see test_nacm.sh is slightly modified - this follows the RFC more closely
 # See RFC 8341 A.1 and A.2
 # Note: use clixon-example instead of ietf-netconf-monitoring since the latter is
-# Tests for 
-# deny-ncm:  This rule prevents the "guest" group from reading any
-#     monitoring information in the "clixon-example" YANG
-#     module.
-# permit-ncm:  This rule allows the "limited" group to read the
-#     "clixon-example" YANG module.
-# permit-exec:  This rule allows the "limited" group to invoke any
-#     protocol operation supported by the server.
-# permit-all:  This rule allows the "admin" group complete access to
-#     all content in the server.  No subsequent rule will match for the
-#     "admin" group because of this module rule
+# A) Three tracks in the code for leaf/leaf-list, container/lists, and root
+# B) Three operations: create, update, delete (write)
+# C) Two access operations: permit, deny  (also default deny/permit)
+# This gives 18 testcases
+# Set group access:
+# - Admin: permit: create, update, delete
+# - Limit: permit: create, delete; deny: update
+# - Guest: permit: update; deny: create delete
+# ops\track:|  root  |  leaf  | list
+#-----------+--------+--------+----------
+# create    |  na    |  p/d   | p/d
+# update    |  p/d   |  p/d   | p/d
+# delete    |  p/d   |  p/d   | p/d
 
 APPNAME=example
 # include err() and new() functions and creates $dir
@@ -62,6 +64,17 @@ module nacm-example{
     type int32;
     description "something to edit";
   }
+  list a{
+    key k;
+    leaf k{
+      type string;
+    }
+    container b{
+      leaf c{
+        type string;
+      }
+    }
+  }
 }
 EOF
 
@@ -69,77 +82,51 @@ EOF
 # The rule-list is from A.2 
 RULES=$(cat <<EOF
    <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
-     <enable-nacm>false</enable-nacm>
+     <enable-nacm>true</enable-nacm>
      <read-default>deny</read-default>
      <write-default>deny</write-default>
-     <exec-default>deny</exec-default>
+     <exec-default>permit</exec-default>
 
      $NGROUPS
+
+     <rule-list>
+       <name>limited-acl</name>
+       <group>limited</group>
+       <rule>
+         <name>permit-create-delete</name>
+         <module-name>nacm-example</module-name>
+         <access-operations>read create delete</access-operations>
+         <action>permit</action>
+       </rule>
+       <rule>
+         <name>deny-update</name>
+         <module-name>nacm-example</module-name>
+         <access-operations>read update</access-operations>
+         <action>deny</action>
+       </rule>
+     </rule-list>
 
      <rule-list>
        <name>guest-acl</name>
        <group>guest</group>
        <rule>
-         <name>permit-get</name>
-         <module-name>ietf-netconf</module-name>
-         <rpc-name>*</rpc-name>
-         <access-operations>exec</access-operations>
+         <name>permit-update</name>
+         <module-name>nacm-example</module-name>
+         <access-operations>read update</access-operations>
          <action>permit</action>
-         <comment>
-             Allow invocation of get rpc
-         </comment>
        </rule>
        <rule>
-         <name>permit-read</name>
-         <module-name>clixon-example</module-name>
-         <access-operations>read</access-operations>
-         <action>permit</action>
-         <comment>
-             Do not allow guests any access to the NETCONF
-             monitoring information.
-         </comment>
-       </rule>
-       <rule>
-         <name>deny-write</name>
-         <module-name>clixon-example</module-name>
-         <access-operations>*</access-operations>
+         <name>deny-create-delete</name>
+         <module-name>nacm-example</module-name>
+         <access-operations>read create delete</access-operations>
          <action>deny</action>
-         <comment>
-             Do not allow guests any access to the NETCONF
-             monitoring information.
-         </comment>
        </rule>
 
-     </rule-list>
-     <rule-list>
-       <name>limited-acl</name>
-       <group>limited</group>
-       <rule>
-         <name>permit-ncm</name>
-         <module-name>clixon-example</module-name>
-         <access-operations>read create update delete</access-operations>
-         <action>permit</action>
-         <comment>
-             Allow write access to the NETCONF monitoring information.
-         </comment>
-       </rule>
-       <rule>
-         <name>permit-exec</name>
-         <module-name>*</module-name>
-         <access-operations>exec</access-operations>
-         <action>permit</action>
-         <comment>
-             Allow invocation of the supported server operations.
-         </comment>
-       </rule>
      </rule-list>
 
      $NADMIN
 
    </nacm>
-   <x xmlns="urn:example:nacm">42</x>
-   <translate xmlns="urn:example:clixon"><k>key42</k><value>val42</value></translate>
-   <translate xmlns="urn:example:clixon"><k>key43</k><value>val43</value></translate>
 EOF
 )
 
@@ -167,40 +154,103 @@ sudo su -c "$clixon_restconf -f $cfg -D $DBG -- -a" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
-new "auth set authentication config"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+# Set nacm from scratch
+nacm(){
+    new "auth set authentication config"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config operation='replace'>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "commit it"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+    new "commit it"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "enable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
+    new "enable nacm"
+    expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" ""
+}
 
-#--------------- nacm enabled
-#----WRITE access
-#user:admin
-new2 "admin read element ok"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate=key42/value)" '{"clixon-example:value": "val42"}
+#--------------- enable nacm
+nacm
+
+# ops\track:|  root  |  leaf  | list
+#-----------+--------+--------+----------
+# create    |  n/a   | xp/dx  |  p/d
+# update    |  p/d   | xp/dx  |  p/d
+# delete    |  p/d   | xp/dx  |  p/d
+
+#----------root
+new2 "update root list default deny"
+expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data -d '<data><x xmlns="urn:example:nacm">42</x>$RULES</data>')" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+
+# replace all, then must include NACM rules as well
+MSG="<data>$RULES</data>"
+new "update root list permit"
+expecteq "$(curl -u andy:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data -d "$MSG")" ''
+
+new "delete root list deny"
+expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+
+new "delete root permit"
+expecteq "$(curl -u andy:bar -sS -X DELETE http://localhost/restconf/data)" ''
+
+#--------------- re-enable nacm
+nacm
+
+#----------leaf
+new2 "create leaf deny"
+expecteq "$(curl -u guest:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:x -d '<x xmlns="urn:example:nacm">42</x>')" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+
+new "create leaf permit"
+expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:x -d '<x xmlns="urn:example:nacm">42</x>')" ''
+
+new2 "update leaf deny"
+expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:x -d '<x xmlns="urn:example:nacm">99</x>')" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+
+new "update leaf permit"
+expecteq "$(curl -u guest:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:x -d '<x xmlns="urn:example:nacm">99</x>')" ''
+
+new2 "read leaf check"
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"nacm-example:x": 99}
 '
 
-new "admin write element ok"
-expecteq "$(curl -u andy:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42/value -d '{"clixon-example:value": "val99"}')"
+new2 "delete leaf deny"
+expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
-#user:limit
-new2 "limit read element ok"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate=key42/value)" '{"clixon-example:value": "val99"}
+new "delete leaf permit"
+expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/nacm-example:x)" ''
+
+#-----  list/container
+new2 "create list deny"
+expecteq "$(curl -u guest:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:a=key42 -d '<a xmlns="urn:example:nacm"><k>key42</k><b><c>str</c></b></a>')" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+
+new "create list permit"
+expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:a=key42 -d '<a xmlns="urn:example:nacm"><k>key42</k><b><c>str</c></b></a>')" ''
+
+new2 "update list deny"
+expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:a=key42 -d '<a xmlns="urn:example:nacm"><k>key42</k><b><c>update</c></b></a>')" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+
+new "update list permit"
+expecteq "$(curl -u guest:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:a=key42 -d '<a xmlns="urn:example:nacm"><k>key42</k><b><c>update</c></b></a>')" ''
+
+new2 "read list check"
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:a)" '{"nacm-example:a": [{"k": "key42","b": {"c": "update"}}]}
 '
 
-new "limit write element ok"
-expecteq "$(curl -u wilma:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42/value -d '{"clixon-example:value": "val55"}')"
+new2 "delete list deny"
+expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data/nacm-example:a=key42)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
-#user:guest
-new2 "guest read element ok"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate=key42/value)" '{"clixon-example:value": "val55"}
-'
+new "delete list permit"
+expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/nacm-example:a=key42)" ''
 
-new2 "guest write element ok"
-expecteq "$(curl -u guest:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42/value -d '{"clixon-example:value": "val99"}')" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+#----- default deny (clixon-example limit and guest have default access)
+new2 "default create list deny"
+expecteq "$(curl -u wilma:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k": "key42","value": "val42"}]}')" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+
+new2 "create list permit"
+expecteq "$(curl -u andy:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k": "key42","value": "val42"}]}')" ''
+
+new2 "default update list deny"
+expecteq "$(curl -u wilma:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k": "key42","value": "val99"}]}')" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+
+new2 "default delete list deny"
+expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/clixon-example:translate=key42)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"

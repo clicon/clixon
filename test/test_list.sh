@@ -96,7 +96,7 @@ new "minmax: empty"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns="urn:example:clixon"/></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 # NYI
-if false; then 
+if false; then # nyi
 new "minmax: validate should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error/></rpc-reply>]]>]]>$"
 
