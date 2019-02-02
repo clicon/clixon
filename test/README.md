@@ -3,7 +3,9 @@
 This directory contains testing code for clixon and the example
 application. Assumes setup of http daemon as describe under apps/restonf
 - Jenkinsfile       Makefile for Jenkins tests. Build clixon and run tests.
-- all.sh            Run through all tests named 'test*.sh' in this directory. Therefore, if you place a test in this directory matching 'test*.sh' it will be run automatically. By default the script will exit on first error. Run as `all.sh summary` to continue and print a summary on all tests.
+- all.sh            Run through all tests with detailed output, and stop on first error.
+- sum.sh            Run though all tests and print summary
+- mem.sh            Make valgrind 
 - site.sh           Add your site-specific modifications here
 - test_nacm.sh      Auth tests using internal NACM
 - test_nacm_ext.sh  Auth tests using external NACM (separate file)
@@ -18,14 +20,20 @@ application. Assumes setup of http daemon as describe under apps/restonf
 - test_datastore.sh Datastore tests
 - and many more...
 
-Example runs:
-```
-> run.sh
-# Runs through all tests matching 'test_*.sh' in the directory. Prints test output
-# and stops on first error
+Tests called 'test*.sh' and placed in this directory will be automatically run as part of the all.sh, sum.sh tests etc. 
 
-> run.sh summary
-# Same as above but continues after errors and does not print test output.
+You can prefix a test with `BE=0` if you want to run your own backend.
+
+To run with debug flags, use the `DBG=<number>` environment variable.
+
+You can run an individual test by itself, or run through all tests matching 'test_*.sh' in the directory. Prints test output and stops on first error:
+```
+  all.sh
+```
+
+Run all tests but continue after errors and only print a summary test output identifying which tests succeeded and which failed:
+```
+  all.sh summary
 ```
 
 

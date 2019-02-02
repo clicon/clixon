@@ -76,7 +76,8 @@
       * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
     * CLICON_YANG_MAIN_FILE Provides a filename with a single module filename.
     * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
-* NACM (RFC8341) experimental
+* NACM (RFC8341)
+  * Experimental support, no performance enhancements and need further testing
   * Incoming RPC Message validation is supported (3.4.4)
   * Data Node Access validation is supported (3.4.5), except:
     * rule-type data-node path is not supported
