@@ -139,7 +139,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^
 new "restconf set protocol tcp"
 expecteq "$(curl -s -X PUT http://localhost/restconf/data/system:system/protocol -d {\"system:protocol\":{\"tcp\":null}})" ""
 
-new2 "restconf get protocol tcp"
+new "restconf get protocol tcp"
 expecteq "$(curl -s -X GET http://localhost/restconf/data/system:system)" '{"system:system": {"protocol": {"tcp": null}}}
 '
 

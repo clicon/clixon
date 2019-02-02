@@ -159,22 +159,22 @@ expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localh
 
 #----READ access
 #user:admin
-new2 "admin read ok"
+new "admin read ok"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" '{"clixon-example:translate": [{"k": "key42","value": "val42"},{ "k": "key43","value": "val43"}]}
 '
 
-new2 "admin read netconf ok"
+new "admin read netconf ok"
 expecteof "$clixon_netconf -U andy -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/translate"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><translate xmlns="urn:example:clixon"><k>key42</k><value>val42</value></translate><translate xmlns="urn:example:clixon"><k>key43</k><value>val43</value></translate></data></rpc-reply>]]>]]>$'
 
-new2 "admin read element ok"
+new "admin read element ok"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate=key42/value)" '{"clixon-example:value": "val42"}
 '
 
-new2 "admin read other module OK"
+new "admin read other module OK"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"nacm-example:x": 42}
 '
 
-new2 "admin read state OK"
+new "admin read state OK"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
 '
 
@@ -188,66 +188,66 @@ fi
 
 #user:limit
 
-new2 "limit read ok"
+new "limit read ok"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" '{"clixon-example:translate": [{"k": "key42","value": "val42"},{ "k": "key43","value": "val43"}]}
 '
 
-new2 "limit read netconf ok"
+new "limit read netconf ok"
 expecteof "$clixon_netconf -U wilma -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/translate"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><translate xmlns="urn:example:clixon"><k>key42</k><value>val42</value></translate><translate xmlns="urn:example:clixon"><k>key43</k><value>val43</value></translate></data></rpc-reply>]]>]]>$'
 
-new2 "limit read element ok"
+new "limit read element ok"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate=key42/value)" '{"clixon-example:value": "val42"}
 '
 
-new2 "limit read other module fail"
+new "limit read other module fail"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 'null
 '
 
-new2 "limit read state OK"
+new "limit read state OK"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
 '
 
-new2 "limit read top ok (part)"
+new "limit read top ok (part)"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data)" '{"data": {"clixon-example:translate": [{"k": "key42","value": "val42"},{ "k": "key43","value": "val43"}],"clixon-example:state": {"op": "42"}}}
 '
 
 #user:guest
 
-new2 "guest read fail"
+new "guest read fail"
 expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
-new2 "guest read netconf fail"
+new "guest read netconf fail"
 expecteof "$clixon_netconf -U guest -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/translate"/></get-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></rpc-error></rpc-reply>]]>]]>$'
 
-new2 "guest read element fail"
+new "guest read element fail"
 expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate=key42/value)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
-new2 "guest read other module fail"
+new "guest read other module fail"
 expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
-new2 "guest read state fail"
+new "guest read state fail"
 expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
-new2 "guest read top ok (part)"
+new "guest read top ok (part)"
 expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 #------- RPC operation
 
-new2 "admin rpc ok"
+new "admin rpc ok"
 expecteq "$(curl -u andy:bar -s -X POST  -d '{"clixon-example:input":{"x":42}}' http://localhost/restconf/operations/clixon-example:example)" '{"clixon-example:output": {"x": "42","y": "42"}}
 '
 
 new "admin rpc netconf ok"
 expecteof "$clixon_netconf -U andy -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">0</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>$'
 
-new2 "limit rpc ok"
+new "limit rpc ok"
 expecteq "$(curl -u wilma:bar -s -X POST http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":42}}' )" '{"clixon-example:output": {"x": "42","y": "42"}}
 '
 
 new "limit rpc netconf ok"
 expecteof "$clixon_netconf -U wilma -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">0</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>$'
 
-new2 "guest rpc fail"
+new "guest rpc fail"
 expecteq "$(curl -u guest:bar -s -X POST http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":42}}' )" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "guest rpc netconf fail"
@@ -258,15 +258,15 @@ expecteof "$clixon_netconf -U guest -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml
 new "admin set read-default permit"
 expecteq "$(curl -u andy:bar -sS -X PUT -d '{"read-default": "permit"}' http://localhost/restconf/data/ietf-netconf-acm:nacm/read-default)" ""
 
-new2 "limit read ok"
+new "limit read ok"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" '{"clixon-example:translate": [{"k": "key42","value": "val42"},{ "k": "key43","value": "val43"}]}
 '
 
-new2 "limit read other module ok"
+new "limit read other module ok"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"nacm-example:x": 42}
 '
 
-new2 "guest read state fail"
+new "guest read state fail"
 expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 

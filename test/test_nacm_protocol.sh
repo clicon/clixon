@@ -165,7 +165,7 @@ expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localh
 
 #--------------- nacm enabled
 
-new2 "admin get nacm"
+new "admin get nacm"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"nacm-example:x": 0}
 '
 
@@ -183,14 +183,14 @@ expecteof "$clixon_netconf -qf $cfg -U andy" 0 "<rpc><kill-session><session-id>4
 new "deny-delete-config: limited fail (netconf)"
 expecteof "$clixon_netconf -qf $cfg -U wilma" 0 "<rpc><delete-config><target><startup/></target></delete-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
 
-new2 "deny-delete-config: guest fail (restconf)"
+new "deny-delete-config: guest fail (restconf)"
 expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 # In restconf delete-config is translated to edit-config which is permitted
 new "deny-delete-config: limited fail (restconf) ok"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data)" ''
 
-new2 "admin get nacm (should be null)"
+new "admin get nacm (should be null)"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 'null
 '
 
@@ -211,7 +211,7 @@ expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": tru
 new "permit-edit-config: limited ok restconf"
 expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"nacm-example:x": 2}' http://localhost/restconf/data/nacm-example:x)" ''
 
-new2 "permit-edit-config: guest fail restconf"
+new "permit-edit-config: guest fail restconf"
 expecteq "$(curl -u guest:bar -sS -X PUT -d '{"nacm-example:x": 2}' http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new "Kill restconf daemon"

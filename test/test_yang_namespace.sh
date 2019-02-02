@@ -101,7 +101,7 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang1" 0 "<rpc><discard-changes/></rpc>
 new "restconf set x in example1"
 expecteq "$(curl -s -X POST -d '{"example1:x":42}' http://localhost/restconf/data)" ''
 
-new2 "restconf get config example1"
+new "restconf get config example1"
 expecteq "$(curl -s -X GET http://localhost/restconf/data/example1:x)" '{"example1:x": 42}
 '
 

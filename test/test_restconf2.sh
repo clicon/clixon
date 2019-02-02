@@ -116,10 +116,10 @@ new "restconf POST interface"
 expectfn 'curl -s -X POST -d {"example:interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/example:cont1' 0 ""
 
 # XXX should it be example:interface?
-new2 "restconf POST again"
+new "restconf POST again"
 expecteq "$(curl -s -X POST -d '{"interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/example:cont1)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
-new2 "restconf POST from top"
+new "restconf POST from top"
 expecteq "$(curl -s -X POST -d '{"example:cont1":{"interface":{"name":"TEST","type":"eth0"}}}' http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 new "restconf DELETE"

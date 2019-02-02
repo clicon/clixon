@@ -151,41 +151,41 @@ sudo su -c "$clixon_restconf -f $cfg -D $DBG -- -a" -s /bin/sh www-data &
 
 sleep $RCWAIT
 
-new2 "auth get"
+new "auth get"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
 '
 
 new "Set x to 0"
 expecteq "$(curl -u andy:bar -sS -X PUT -d '{"nacm-example:x": 0}' http://localhost/restconf/data/nacm-example:x)" ""
 
-new2 "auth get (no user: access denied)"
+new "auth get (no user: access denied)"
 expecteq "$(curl -sS -X GET -H \"Accept:\ application/yang-data+json\" http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
-new2 "auth get (wrong passwd: access denied)"
+new "auth get (wrong passwd: access denied)"
 expecteq "$(curl -u andy:foo -sS -X GET http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "The requested URL was unauthorized"}}}'
 
-new2 "auth get (access)"
+new "auth get (access)"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"nacm-example:x": 0}
 '
 
-new2 "admin get nacm"
+new "admin get nacm"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"nacm-example:x": 0}
 '
 
-new2 "limited get nacm"
+new "limited get nacm"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"nacm-example:x": 0}
 '
 
-new2 "guest get nacm"
+new "guest get nacm"
 expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "admin edit nacm"
 expecteq "$(curl -u andy:bar -sS -X PUT -d '{"nacm-example:x": 1}' http://localhost/restconf/data/nacm-example:x)" ""
 
-new2 "limited edit nacm"
+new "limited edit nacm"
 expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
-new2 "guest edit nacm"
+new "guest edit nacm"
 expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "cli show conf as admin"

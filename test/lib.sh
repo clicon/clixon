@@ -87,12 +87,6 @@ new(){
     testname=$1
     >&2 echo "Test$testnr [$1]"
 }
-# No CR
-new2(){
-    testnr=`expr $testnr + 1`
-    testname=$1
-    >&2 echo -n "Test$testnr [$1]"
-}
 
 # clixon command tester.
 # Arguments:
@@ -158,9 +152,7 @@ expecteq(){
   if [ -z "$ret" -a -z "$expect" ]; then
       return
   fi
-  if [[ "$ret" = "$expect" ]]; then
-      echo 
-  else
+  if [[ "$ret" != "$expect" ]]; then
       err "$expect" "$ret"
   fi
 }

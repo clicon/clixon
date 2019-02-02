@@ -486,7 +486,7 @@ limitations. See the (README)(../README.md) for more information.
 ## How do I write a CLI translator function?
 
 The CLI can perform variable translation. This is useful if you want to
-prcess the input, such as hashing, encrypting or in other way
+process the input, such as hashing, encrypting or in other way
 translate the input.
 
 Yang example:
