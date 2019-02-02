@@ -138,6 +138,7 @@ int       xml_purge(cxobj *xc);
 int       xml_child_rm(cxobj *xp, int i);
 int       xml_rm(cxobj *xc);
 int       xml_rootchild(cxobj  *xp, int i, cxobj **xcp);
+int       xml_rootchild_node(cxobj  *xp, cxobj *xc);
 
 char     *xml_body(cxobj *xn);
 cxobj    *xml_body_get(cxobj *xn);

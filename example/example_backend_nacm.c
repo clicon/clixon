@@ -75,7 +75,7 @@ nacm_statedata(clicon_handle h,
     cxobj **xvec = NULL;
 
     /* Example of (static) statedata, real code would poll state */
-    if (xml_parse_string("<nacm>"
+    if (xml_parse_string("<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
 			 "<denied-data-writes>0</denied-data-writes>"
 			 "<denied-operations>0</denied-operations>"
 			 "<denied-notifications>0</denied-notifications>"

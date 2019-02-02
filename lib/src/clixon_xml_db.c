@@ -379,6 +379,7 @@ xmldb_get(clicon_handle h,
  * @param[in]  db     running or candidate
  * @param[in]  op     Top-level operation, can be superceded by other op in tree
  * @param[in]  xt     xml-tree. Top-level symbol is dummy
+ * @param[in]  username User name for nacm
  * @param[out] cbret  Initialized cligen buffer. On exit contains XML if retval == 0
  * @retval     1      OK
  * @retval     0      Failed, cbret contains error xml message
@@ -389,7 +390,7 @@ xmldb_get(clicon_handle h,
  *   cxobj     *xret = NULL;
  *   if (xml_parse_string("<a>17</a>", yspec, &xt) < 0)
  *     err;
- *   if ((ret = xmldb_put(xh, "running", OP_MERGE, xt, cbret)) < 0)
+ *   if ((ret = xmldb_put(xh, "running", OP_MERGE, xt, username, cbret)) < 0)
  *     err;
  *   if (ret==0)
  *     cbret contains netconf error message
@@ -404,6 +405,7 @@ xmldb_put(clicon_handle       h,
 	  const char         *db, 
 	  enum operation_type op, 
 	  cxobj              *xt,
+	  char               *username,
 	  cbuf               *cbret)
 {
     int               retval = -1;
@@ -434,7 +436,7 @@ xmldb_put(clicon_handle       h,
 	cbuf_free(cb);
     }
 #endif
-    retval = xa->xa_put_fn(xh, db, op, xt, cbret);
+    retval = xa->xa_put_fn(xh, db, op, xt, username, cbret);
  done:
     return retval;
 }

@@ -88,6 +88,8 @@ struct text_handle {
 				   Assumes single backend*/
     char          *th_format;   /* Datastroe format: xml / json */
     int            th_pretty;   /* Store xml/json pretty-printed. */
+    char          *th_nacm_mode;
+    cxobj         *th_nacm_xtree;
 };
 
 /* Struct per database in hash */
@@ -207,6 +209,8 @@ text_disconnect(xmldb_handle xh)
 	    }
 	    hash_free(th->th_dbs);
 	}
+	if (th->th_nacm_mode)
+	    free(th->th_nacm_mode);
 	free(th);
     }
     retval = 0;
@@ -239,6 +243,10 @@ text_getopt(xmldb_handle xh,
 	*value = th->th_format;
     else if (strcmp(optname, "pretty") == 0)
 	*value = &th->th_pretty;
+    else if (strcmp(optname, "nacm_mode") == 0)
+	*value = &th->th_nacm_mode;
+    else if (strcmp(optname, "nacm_xtree") == 0)
+	*value = th->th_nacm_xtree;
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
 	goto done;
@@ -287,6 +295,15 @@ text_setopt(xmldb_handle xh,
     }
     else if (strcmp(optname, "pretty") == 0){
 	th->th_pretty = (intptr_t)value;
+    }
+    else if (strcmp(optname, "nacm_mode") == 0){
+	if (value && (th->th_nacm_mode = strdup((char*)value)) == NULL){
+	    clicon_err(OE_UNIX, 0, "strdup");
+	    goto done;
+	}
+    }
+    else if (strcmp(optname, "nacm_xtree") == 0){
+	th->th_nacm_xtree = (cxobj*)value;
     }
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
@@ -421,10 +438,17 @@ xml_copy_marked(cxobj *x0,
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
  * This is a clixon datastore plugin of the the xmldb api
- * @see xmldb_get
+ * @param[in]  h      Clicon handle
+ * @param[in]  dbname Name of database to search in (filename including dir path
+ * @param[in]  xpath  String with XPATH syntax. or NULL for all
+ * @param[in]  config If set only configuration data, else also state
+ * @param[out] xret   Single return XML tree. Free with xml_free()
+ * @retval     0      OK
+ * @retval     -1     Error
+ * @see xmldb_get  the generic API function
  */
 int
-text_get(xmldb_handle xh,
+text_get(xmldb_handle  xh,
 	 const char   *db, 
 	 char         *xpath,
 	 int           config,
@@ -434,6 +458,7 @@ text_get(xmldb_handle xh,
     char           *dbfile = NULL;
     yang_spec      *yspec;
     cxobj          *xt = NULL;
+    cxobj          *x;
     int             fd = -1;
     cxobj         **xvec = NULL;
     size_t          xlen;
@@ -486,7 +511,6 @@ text_get(xmldb_handle xh,
 	 */
     } /* xt == NULL */
     /* Here xt looks like: <config>...</config> */
-
     if (xpath_vec(xt, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
 
@@ -496,11 +520,13 @@ text_get(xmldb_handle xh,
      */
     if (xvec != NULL)
 	for (i=0; i<xlen; i++){
-	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-	    if (th->th_cache)
-		xml_apply_ancestor(xvec[i], (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+	    x = xvec[i];
+	    xml_flag_set(x, XML_FLAG_MARK);
+	    if (1 || th->th_cache)
+		xml_apply_ancestor(x, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
 	}
 
+    
     if (th->th_cache){
 	/* Copy the matching parts of the (relevant) XML tree.
 	 * If cache was NULL, also write to datastore cache
@@ -534,13 +560,16 @@ text_get(xmldb_handle xh,
     /* reset flag */
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
+
     /* filter out state (operations) data if config not set. Mark all nodes
      that are not config data */
-    if (config && xml_apply(xt, CX_ELMNT, xml_non_config_data, NULL) < 0)
-	goto done;
-    /* Remove (prune) nodes that are marked (that does not pass test) */
-    if (xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1) < 0)
-	goto done;
+    if (config){
+	if (xml_apply(xt, CX_ELMNT, xml_non_config_data, NULL) < 0)
+	    goto done;
+	/* Remove (prune) nodes that are marked (that does not pass test) */
+	if (xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1) < 0)
+	    goto done;
+    }
     /* Add default values (if not set) */
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
@@ -572,6 +601,9 @@ text_get(xmldb_handle xh,
  * @param[in]  x0p Parent of x0
  * @param[in]  x1  xml tree which modifies base
  * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
+ * @param[in]  username User name of requestor for nacm
+ * @param[in]  xnacm NACM XML tree 
+ * @param[in]  permit If set, NACM has permitted this tree on an upper level
  * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0.
  * @retval    -1     Error
  * @retval     0     Failed (cbret set)
@@ -586,6 +618,9 @@ text_modify(struct text_handle *th,
 	    cxobj              *x0p,
 	    cxobj              *x1,
 	    enum operation_type op,
+	    char               *username,
+	    cxobj              *xnacm,
+	    int                 permit,
 	    cbuf               *cbret)
 {
     int        retval = -1;
@@ -597,6 +632,7 @@ text_modify(struct text_handle *th,
     cxobj     *x0c; /* base child */
     cxobj     *x0b; /* base body */
     cxobj     *x1c; /* mod child */
+    char      *x0bstr; /* mod body string */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
     cxobj    **x0vec = NULL;
@@ -623,6 +659,13 @@ text_modify(struct text_handle *th,
 	case OP_MERGE:
 	case OP_REPLACE:
 	    if (x0==NULL){
+		if ((op != OP_NONE) && !permit && xnacm){
+		    if ((ret = nacm_datanode_write(NULL, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 
+			goto done;
+		    if (ret == 0)
+			goto fail;
+		    permit = 1;
+		}
 		//		int iamkey=0;
 		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
@@ -649,13 +692,21 @@ text_modify(struct text_handle *th,
 		}
 	    }
 	    if (x1bstr){
-		if ((x0b = xml_body_get(x0)) == NULL){
-		    if ((x0b = xml_new("body", x0, NULL)) == NULL)
-			goto done; 
-		    xml_type_set(x0b, CX_BODY);
+		if ((x0b = xml_body_get(x0)) != NULL){
+		    x0bstr = xml_value(x0b);
+		    if (x0bstr==NULL || strcmp(x0bstr, x1bstr)){
+			if ((op != OP_NONE) && !permit && xnacm){
+			    if ((ret = nacm_datanode_write(NULL, x1,
+							   x0bstr==NULL?NACM_CREATE:NACM_UPDATE,
+							   username, xnacm, cbret)) < 0)
+				goto done;
+			    if (ret == 0)
+				goto fail;
+			}
+			if (xml_value_set(x0b, x1bstr) < 0)
+			    goto done;
+		    }
 		}
-		if (xml_value_set(x0b, x1bstr) < 0)
-		    goto done;
 	    }
 	    break;
 	case OP_DELETE:
@@ -666,7 +717,14 @@ text_modify(struct text_handle *th,
 	    }
 	case OP_REMOVE: /* fall thru */
 	    if (x0){
-		xml_purge(x0);
+		if ((op != OP_NONE) && !permit && xnacm){
+		    if ((ret = nacm_datanode_write(NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0)
+			goto done;
+		    if (ret == 0)
+			goto fail;
+		}
+		if (xml_purge(x0) < 0)
+		    goto done;
 	    }
 	    break;
 	default:
@@ -682,6 +740,13 @@ text_modify(struct text_handle *th,
 		goto fail;
 	    }
 	case OP_REPLACE: /* fall thru */
+	    if (xnacm && !permit){
+		if ((ret = nacm_datanode_write(NULL, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    goto done;
+		if (ret == 0)
+		    goto fail;
+		permit = 1;
+	    }
 	    if (x0){
 		xml_purge(x0);
 		x0 = NULL;
@@ -689,10 +754,21 @@ text_modify(struct text_handle *th,
 	case OP_MERGE:  /* fall thru */
 	case OP_NONE: 
 	    /* Special case: anyxml, just replace tree, 
-	       See 7.10.3 of RFC6020bis */
+	       See rfc6020 7.10.3:n
+	       An anyxml node is treated as an opaque chunk of data.  This data
+	       can be modified in its entirety only.
+	       Any "operation" attributes present on subelements of an anyxml 
+	       node are ignored by the NETCONF server.*/
 	    if (y0->yn_keyword == Y_ANYXML){
 		if (op == OP_NONE)
 		    break;
+		if (xnacm && op==OP_MERGE && !permit){
+		    if ((ret = nacm_datanode_write(NULL, x0, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+			goto done;
+		    if (ret == 0)
+			goto fail;
+		    permit = 1;
+		}
 		if (x0){
 		    xml_purge(x0);
 		}
@@ -703,6 +779,13 @@ text_modify(struct text_handle *th,
 		break;
 	    }
 	    if (x0==NULL){
+		if (xnacm && op==OP_MERGE && !permit){
+		    if ((ret = nacm_datanode_write(NULL, x0, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+			goto done;
+		    if (ret == 0)
+			goto fail;
+		    permit = 1;
+		}
 		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
 		/* Copy xmlns attributes */
@@ -755,7 +838,8 @@ text_modify(struct text_handle *th,
 		x1cname = xml_name(x1c);
 		x0c = x0vec[i++];
 		yc = yang_find_datanode(y0, x1cname);
-		if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op, cbret)) < 0)
+		if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op,
+				       username, xnacm, permit, cbret)) < 0)
 		    goto done;
 		/* If xml return - ie netconf error xml tree, then stop and return OK */
 		if (ret == 0)
@@ -769,8 +853,16 @@ text_modify(struct text_handle *th,
 		goto fail;
 	    }
 	case OP_REMOVE: /* fall thru */
-	    if (x0)
-		xml_purge(x0);
+	    if (x0){
+		if (xnacm){
+		    if ((ret = nacm_datanode_write(NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0) 
+			goto done;
+		    if (ret == 0)
+			goto fail;
+		}
+		if (xml_purge(x0) < 0)
+		    goto done;
+	    }
 	    break;
 	default:
 	    break;
@@ -793,6 +885,8 @@ text_modify(struct text_handle *th,
  * @param[in]  x1    xml tree which modifies base
  * @param[in]  yspec Top-level yang spec (if y is NULL)
  * @param[in]  op    OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
+ * @param[in]  username User name of requestor for nacm
+ * @param[in]  xnacm NACM XML tree 
  * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0.
  * @retval    -1     Error
  * @retval     0     Failed (cbret set)
@@ -805,6 +899,8 @@ text_modify_top(struct text_handle *th,
 		cxobj              *x1,
 		yang_spec          *yspec,
 		enum operation_type op,
+		char               *username,
+		cxobj              *xnacm,
 		cbuf               *cbret)
 {
     int        retval = -1;
@@ -815,6 +911,7 @@ text_modify_top(struct text_handle *th,
     yang_stmt *ymod;/* yang module */
     char      *opstr;
     int        ret;
+    int        permit = 0;
 
     /* Assure top-levels are 'config' */
     assert(x0 && strcmp(xml_name(x0),"config")==0);
@@ -825,35 +922,56 @@ text_modify_top(struct text_handle *th,
 	if (xml_operation(opstr, &op) < 0)
 	    goto done;
     /* Special case if x1 is empty, top-level only <config/> */
-    if (xml_child_nr(x1) == 0){ 
-	if (xml_child_nr(x0)) /* base tree not empty */
+    if (xml_child_nr_type(x1, CX_ELMNT) == 0){ 
+	if (xml_child_nr_type(x0, CX_ELMNT)){ /* base tree not empty */
 	    switch(op){ 
 	    case OP_DELETE:
 	    case OP_REMOVE:
 	    case OP_REPLACE:
-		x0c = NULL;
-		while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) 
-		    xml_purge(x0c);
+		if (xnacm){
+		    if ((ret = nacm_datanode_write(NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0)
+			goto done;
+		    if (ret == 0)
+			goto fail;
+		    permit = 1;
+		}
+		while ((x0c = xml_child_i(x0, 0)) != 0)
+		    if (xml_purge(x0c) < 0)
+			goto done;
 		break;
 	    default:
 		break;
 	    }
+	}
 	else /* base tree empty */
 	    switch(op){ 
+#if 0 /* According to RFC6020 7.5.8 you cant delete a non-existing object.
+	 On the other hand, the top-level cannot be removed anyway.
+	 Additionally, I think this is irritating so I disable it.
+	 I.e., curl -u andy:bar -sS -X DELETE http://localhost/restconf/data
+      */
 	    case OP_DELETE:
 		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
 		goto fail;
 		break;
+#endif
 	    default:
 		break;
 	    }
     }
     /* Special case top-level replace */
-    if (op == OP_REPLACE || op == OP_DELETE){
-	x0c = NULL;
+    else if (op == OP_REPLACE || op == OP_DELETE){
+	if (xnacm && !permit){
+	    if ((ret = nacm_datanode_write(NULL, x1, NACM_UPDATE, username, xnacm, cbret)) < 0) 
+		goto done;
+	    if (ret == 0)
+		goto fail;
+	    permit = 1;
+	}
 	while ((x0c = xml_child_i(x0, 0)) != 0)
-	    xml_purge(x0c);
+	    if (xml_purge(x0c) < 0)
+		goto done;
     }
     /* Loop through children of the modification tree */
     x1c = NULL;
@@ -885,7 +1003,8 @@ text_modify_top(struct text_handle *th,
 	    x0c = NULL;
 	}
 #endif
-	if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op, cbret)) < 0)
+	if ((ret = text_modify(th, x0c, (yang_node*)yc, x0, x1c, op,
+			       username, xnacm, permit, cbret)) < 0)
 	    goto done;
 	/* If xml return - ie netconf error xml tree, then stop and return OK */
 	if (ret == 0)
@@ -939,13 +1058,23 @@ xml_container_presence(cxobj  *x,
 
 /*! Modify database provided an xml tree and an operation
  * This is a clixon datastore plugin of the the xmldb api
- * @see xmldb_put
+ * @param[in]  h      CLICON handle
+ * @param[in]  db     running or candidate
+ * @param[in]  op     Top-level operation, can be superceded by other op in tree
+ * @param[in]  x1     xml-tree. Top-level symbol is dummy
+ * @param[in]  username User name for nacm
+ * @param[out] cbret  Initialized cligen buffer. On exit contains XML if retval == 0
+ * @retval     1      OK
+ * @retval     0      Failed, cbret contains error xml message
+ * @retval     -1     Error
+ * @see xmldb_put  the generic API function
  */
 int
 text_put(xmldb_handle        xh,
 	 const char         *db, 
 	 enum operation_type op,
 	 cxobj              *x1,
+	 char               *username,
     	 cbuf               *cbret)
 {
     int                 retval = -1;
@@ -958,6 +1087,7 @@ text_put(xmldb_handle        xh,
     cxobj              *x0 = NULL;
     struct db_element  *de = NULL;
     int                 ret;
+    cxobj              *xnacm = NULL; 
     
     if (cbret == NULL){
 	clicon_err(OE_XML, EINVAL, "cbret is NULL");
@@ -1018,11 +1148,33 @@ text_put(xmldb_handle        xh,
     if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
 #endif
+#if 1
+    {
+	char  *mode;
+	cxobj *xnacm0 = NULL;
+	
+	mode = th->th_nacm_mode;
+	if (mode){
+	    if (strcmp(mode, "external")==0)
+		xnacm0 = th->th_nacm_xtree;
+	    else if (strcmp(mode, "internal")==0)
+		xnacm0 = x0;
+	}
+	if (xnacm0 != NULL &&
+	    (xnacm = xpath_first(xnacm0, "nacm")) != NULL){
+	    /* Pre-NACM access step */
+	    if ((ret = nacm_access(mode, xnacm, username)) < 0)
+		goto done;
+	}
+	/* Here assume if xnacm is set (actually may be ret==0?) do NACM */
+    }
+
+#endif
     /* 
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
      */
-    if ((ret = text_modify_top(th, x0, x1, yspec, op, cbret)) < 0)
+    if ((ret = text_modify_top(th, x0, x1, yspec, op, username, xnacm, cbret)) < 0)
 	goto done;
     /* If xml return - ie netconf error xml tree, then stop and return OK */
     if (ret == 0)

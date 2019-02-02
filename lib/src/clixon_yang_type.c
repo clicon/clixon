@@ -475,6 +475,7 @@ cv_validate1(cg_var      *cv,
 	if (restype){
 	    if (strcmp(restype, "enumeration") == 0){
 		found = 0;
+		yi = NULL;
 		while ((yi = yn_each((yang_node*)yrestype, yi)) != NULL){
 		    if (yi->ys_keyword != Y_ENUM)
 			continue;
@@ -500,6 +501,7 @@ cv_validate1(cg_var      *cv,
 		    if ((v = vec[i]) == NULL || !strlen(v))
 			continue;
 		    found = 0;
+		    yi = NULL;
 		    while ((yi = yn_each((yang_node*)yrestype, yi)) != NULL){
 			if (yi->ys_keyword != Y_BIT)
 			    continue;

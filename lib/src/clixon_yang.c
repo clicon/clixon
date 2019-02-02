@@ -1389,6 +1389,7 @@ ys_populate_identity(yang_stmt *ys,
     /* Iterate through all base statements and check the base identity exists 
      * AND populate the base identity recursively
      */
+    yc = NULL;
     while ((yc = yn_each((yang_node*)ys, yc)) != NULL) {
 	if (yc->ys_keyword != Y_BASE)
 	    continue;

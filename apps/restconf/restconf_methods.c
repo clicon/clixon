@@ -779,7 +779,7 @@ api_data_put(clicon_handle h,
 		goto done;
 	    goto ok;
 	}
-    }      
+    }
     /* The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
@@ -808,6 +808,7 @@ api_data_put(clicon_handle h,
 	    goto ok;
 	}
     }
+    
     /* Add operation (create/replace) as attribute */
     if ((xa = xml_new("operation", x, NULL)) == NULL)
 	goto done;
@@ -832,6 +833,7 @@ api_data_put(clicon_handle h,
 	xml_name_set(xtop, "config");
     }
     else {
+	clicon_debug(1, "%s x:%s xbot:%s",__FUNCTION__, xml_name(x), xml_name(xbot));
 	/* Check same symbol in api-path as data */	    
 	if (strcmp(xml_name(x), xml_name(xbot))){
 	    if (netconf_operation_failed_xml(&xerr, "protocol", "Not same symbol in api-path as data") < 0)
@@ -897,7 +899,6 @@ api_data_put(clicon_handle h,
      by NACM */
     cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
     cprintf(cbx, "<commit/></rpc>");
-    
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){

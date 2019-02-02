@@ -46,9 +46,28 @@
 #define NACM_RECOVERY_USER "_nacm_recovery"
 
 /*
+ * Types
+ */
+/* NACM access rights, 
+ * Note that these are not the same as netconf operations
+ * @see rfc8341 3.2.2
+ * @see enum operation_type  Netconf operations
+ */
+enum nacm_access{
+    NACM_CREATE,
+    NACM_READ,
+    NACM_UPDATE,
+    NACM_DELETE,
+    NACM_EXEC
+};
+/*
  * Prototypes
  */
-int nacm_access(clicon_handle h, char *rpc, char *module,
-		char *username, cbuf *cbret);
+int nacm_rpc(char *rpc, char *module, char *username, cxobj *xnacm, cbuf *cbret);
+int nacm_datanode_read(cxobj *xt, cxobj **xvec, size_t xlen, char *username, cxobj *nacm_xtree);
+int nacm_datanode_write(cxobj *xt, cxobj *xr, enum nacm_access access,
+			char *username, cxobj *xnacm, cbuf *cbret);
+int nacm_access_pre(clicon_handle h, char *username, cxobj **xnacmp);
+int nacm_access(char *mode, cxobj *xnacmin, char *username);
 
 #endif /* _CLIXON_NACM_H */

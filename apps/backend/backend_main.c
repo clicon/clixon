@@ -195,7 +195,7 @@ db_merge(clicon_handle h,
     if (xmldb_get(h, (char*)db1, NULL, 1, &xt) < 0)
 	goto done;
     /* Merge xml into db2. Without commit */
-    retval = xmldb_put(h, (char*)db2, OP_MERGE, xt, cbret);
+    retval = xmldb_put(h, (char*)db2, OP_MERGE, xt, clicon_username_get(h), cbret);
  done:
     if (xt)
 	xml_free(xt);
@@ -318,7 +318,7 @@ load_extraxml(clicon_handle h,
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
     /* Merge user reset state */
-    retval = xmldb_put(h, (char*)db, OP_MERGE, xt, cbret);
+    retval = xmldb_put(h, (char*)db, OP_MERGE, xt, clicon_username_get(h), cbret);
  done:
     if (fd != -1)
 	close(fd);
@@ -857,6 +857,10 @@ main(int    argc,
 	    goto done;
     if (xmldb_setopt(h, "pretty", (void*)(intptr_t)clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) < 0)
 	goto done;
+    if (xmldb_setopt(h, "nacm_mode", (void*)nacm_mode) < 0)
+	goto done;
+    if (xmldb_setopt(h, "nacm_xtree", (void*)clicon_nacm_ext(h)) < 0)
+	goto done;
     /* Startup mode needs to be defined,  */
     startup_mode = clicon_startup_mode(h);
     if (startup_mode == -1){ 	
@@ -906,7 +910,6 @@ main(int    argc,
 	}
     }
     /* Write pid-file */
-
     if ((pid = pidfile_write(pidfile)) <  0)
 	goto done;
 

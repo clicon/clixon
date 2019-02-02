@@ -177,14 +177,19 @@ netconf_db_find(cxobj *xn,
 static int
 from_client_get_config(clicon_handle h,
 		       cxobj        *xe,
+		       char         *username,
 		       cbuf         *cbret)
 {
-    int    retval = -1;
-    char  *db;
-    cxobj *xfilter;
-    char  *selector = "/";
-    cxobj *xret = NULL;
-    cbuf  *cbx = NULL; /* Assist cbuf */
+    int     retval = -1;
+    char   *db;
+    cxobj  *xfilter;
+    char   *xpath = "/";
+    cxobj  *xret = NULL;
+    cbuf   *cbx = NULL; /* Assist cbuf */
+    cxobj  *xnacm = NULL;
+    cxobj **xvec = NULL;
+    size_t  xlen;    
+    int     ret;
     
     if ((db = netconf_db_find(xe, "source")) == NULL){
 	clicon_err(OE_XML, 0, "db not found");
@@ -201,12 +206,22 @@ from_client_get_config(clicon_handle h,
 	goto ok;
     }
     if ((xfilter = xml_find(xe, "filter")) != NULL)
-	if ((selector = xml_find_value(xfilter, "select"))==NULL)
-	    selector="/";
-    if (xmldb_get(h, db, selector, 1, &xret) < 0){
+	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
+	    xpath="/";
+    if (xmldb_get(h, db, xpath, 1, &xret) < 0){
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
+    }
+    /* Pre-NACM access step */
+    if ((ret = nacm_access_pre(h, username, &xnacm)) < 0)
+	goto done;
+    if (ret == 0){ /* Do NACM validation */
+	if (xpath_vec(xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	    goto done;
+	/* NACM datanode/module read validation */
+	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
+	    goto done;
     }
     cprintf(cbret, "<rpc-reply>");
     if (xret==NULL)
@@ -221,6 +236,10 @@ from_client_get_config(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (xnacm)
+	xml_free(xnacm);
+    if (xvec)
+	free(xvec);
     if (cbx)
 	cbuf_free(cbx);
     if (xret)
@@ -356,6 +375,7 @@ client_statedata(clicon_handle h,
 static int
 from_client_get(clicon_handle h,
 		cxobj        *xe,
+		char         *username,
 		cbuf         *cbret)
 {
     int     retval = -1;
@@ -363,7 +383,10 @@ from_client_get(clicon_handle h,
     char   *xpath = "/";
     cxobj  *xret = NULL;
     int     ret;
-    
+    cxobj **xvec = NULL;
+    size_t  xlen;    
+    cxobj  *xnacm = NULL;
+
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
 	    xpath="/";
@@ -383,6 +406,16 @@ from_client_get(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+    /* Pre-NACM access step */
+    if ((ret = nacm_access_pre(h, username, &xnacm)) < 0)
+	goto done;
+    if (ret == 0){ /* Do NACM validation */
+	if (xpath_vec(xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	    goto done;
+	/* NACM datanode/module read validation */
+	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
+	    goto done;
+    }
     cprintf(cbret, "<rpc-reply>");     /* OK */
     if (xret==NULL)
 	cprintf(cbret, "<data/>");
@@ -396,6 +429,10 @@ from_client_get(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (xnacm)
+	xml_free(xnacm);
+    if (xvec)
+	free(xvec);
     if (xret)
 	xml_free(xret);
     return retval;
@@ -412,6 +449,7 @@ static int
 from_client_edit_config(clicon_handle h,
 			cxobj        *xn,
 			int           mypid,
+			char         *username,
 			cbuf         *cbret)
 {
     int                 retval = -1;
@@ -485,7 +523,7 @@ from_client_edit_config(clicon_handle h,
 	 */
 	if (xml_apply0(xc, CX_ELMNT, xml_sort, NULL) < 0)
 	    goto done;
-	if ((ret = xmldb_put(h, target, operation, xc, cbret)) < 0){
+	if ((ret = xmldb_put(h, target, operation, xc, username, cbret)) < 0){
 	    clicon_debug(1, "%s ERROR PUT", __FUNCTION__);	
 	    if (netconf_operation_failed(cbret, "protocol", clicon_err_reason)< 0)
 		goto done;
@@ -690,6 +728,10 @@ from_client_kill_session(clicon_handle h,
  * @param[out]  cbret  Return xml value cligen buffer
  * @retval      0      OK
  * @retval      -1     Error. Send error message back to client.
+ * NACM: If source running and target startup --> only exec permission
+ * else: 
+ * - omit data nodes to which the client does not have read access
+ * - access denied if user lacks create/delete/update
  */
 static int
 from_client_copy_config(clicon_handle h,
@@ -963,7 +1005,8 @@ from_client_msg(clicon_handle        h,
     yang_spec           *yspec;
     yang_stmt           *ye;
     yang_stmt           *ymod;
-
+    cxobj               *xnacm = NULL;
+    
     clicon_debug(1, "%s", __FUNCTION__);
     pid = ce->ce_pid;
     yspec = clicon_dbspec_yang(h); 
@@ -996,6 +1039,8 @@ from_client_msg(clicon_handle        h,
 	goto reply;
     xe = NULL;
     username = xml_find_value(x, "username");
+    /* May be used by callbacks, etc */
+    clicon_username_set(h, username);
     while ((xe = xml_child_each(x, xe, CX_ELMNT)) != NULL) {
 	rpc = xml_name(xe);
 	if ((ye = xml_spec(xe)) == NULL){
@@ -1009,17 +1054,25 @@ from_client_msg(clicon_handle        h,
 	}
 	module = ymod->ys_argument;
 	clicon_debug(1, "%s module:%s rpc:%s", __FUNCTION__, module, rpc);
-	/* Make NACM access control if enabled as "internal"*/
-	if ((ret = nacm_access(h, rpc, module, username, cbret)) < 0)
+	/* Pre-NACM access step */
+	xnacm = NULL;
+	if ((ret = nacm_access_pre(h, username, &xnacm)) < 0)
 	    goto done;
-	if (ret == 0)
-	    goto reply;
+	if (ret == 0){ /* Do NACM validation */
+	    /* NACM rpc operation exec validation */
+	    if ((ret = nacm_rpc(rpc, module, username, xnacm, cbret)) < 0)
+		goto done;
+	    if (xnacm)
+		xml_free(xnacm);
+	    if (ret == 0) /* Not permitted and cbret set */
+		goto reply;
+	}
 	if (strcmp(rpc, "get-config") == 0){
-	    if (from_client_get_config(h, xe, cbret) <0)
+	    if (from_client_get_config(h, xe, username, cbret) <0)
 		goto done;
 	}
 	else if (strcmp(rpc, "edit-config") == 0){
-	    if (from_client_edit_config(h, xe, pid, cbret) <0)
+	    if (from_client_edit_config(h, xe, pid, username, cbret) <0)
 		goto done;
 	}
 	else if (strcmp(rpc, "copy-config") == 0){
@@ -1039,7 +1092,7 @@ from_client_msg(clicon_handle        h,
 		goto done;
 	}
 	else if (strcmp(rpc, "get") == 0){
-	    if (from_client_get(h, xe, cbret) < 0)
+	    if (from_client_get(h, xe, username, cbret) < 0)
 		goto done;
 	}
 	else if (strcmp(rpc, "close-session") == 0){

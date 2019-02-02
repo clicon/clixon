@@ -76,13 +76,19 @@
       * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
     * CLICON_YANG_MAIN_FILE Provides a filename with a single module filename.
     * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
-* NACM extension (RFC8341)
-  * NACM module support (RFC8341 A1+A2)
+* NACM (RFC8341) experimental
+  * Incoming RPC Message validation is supported (3.4.4)
+  * Data Node Access validation is supported (3.4.5), except:
+    * rule-type data-node path is not supported
+  * Outgoing noitification aithorization is _not_ supported (3.4.6)
+  * RPC:s are supported _except_:
+    * `copy-config`for other src/target combinations than running/startup (3.2.6)
+    * `commit` - NACM is applied to candidate and running operations only (3.2.8)
+  * Client-side RPC:s are _not_ supported.
   * Recovery user "_nacm_recovery" added.
-    * Example use is restconf PUT when NACM edit-config is permitted, then automatic commit and discard are permitted using recovery user.
-  * Example user changed adm1 to andy to comply with RFC8341 example
 	
 ### API changes on existing features (you may need to change your code)
+* Added `username` argument on `xmldb_put()` datastore function for NACM data-node write checks
 * Rearranged yang files
   * Moved and updated all standard ietf and iana yang files from example and yang/ to `yang/standard`.
   * Moved clixon yang files from yang to `yang/clixon`
@@ -112,6 +118,7 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
+* Added `xml_rootchild_node()` lib function as variant of `xml_rootchild()`
 * Added -o "<option>=<value>" command-line option to all programs: backend, cli, netconf, restconf.
   * Any config option from file can be overrided by giving them on command-line.
 * Added -p <dir> command-line option to all programs: backend, cli, netconf, restconf.

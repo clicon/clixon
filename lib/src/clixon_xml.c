@@ -640,7 +640,7 @@ xml_child_each(cxobj           *xparent,
 	       cxobj           *xprev, 
 	       enum cxobj_type  type)
 {
-    int i;
+    int    i;
     cxobj *xn = NULL; 
 
     for (i=xprev?xprev->_x_vector_i+1:0; i<xparent->x_childvec_len; i++){
@@ -957,6 +957,7 @@ xml_rm(cxobj *xc)
  *  # Here xt will be: <a>2</a>
  * @endcode
  * @see xml_child_rm
+ * @see xml_child_rootchild_node  where xc is explicitly given
  */
 int
 xml_rootchild(cxobj  *xp, 
@@ -979,6 +980,44 @@ xml_rootchild(cxobj  *xp,
     if (xml_free(xp) < 0)
 	goto done;
     *xcp = xc;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Return a child sub-tree, while removing parent and all other children
+ * Given a root xml node, remove the child from its parent
+ * , remove the parent and all other children.
+ * Before: xp-->[..xc..]
+ * After: xc
+ * @param[in]  xp   xml parent node. Must be root. Will be deleted
+ * @param[in]  xc   xml child node. Must be a child of xp
+ * @retval     0    OK
+ * @retval    -1    Error
+ * @see xml_child_rootchild  where an index is used to find xc
+ */
+int
+xml_rootchild_node(cxobj  *xp, 
+		   cxobj  *xc)
+{
+    int    retval = -1;
+    cxobj *x;
+    int    i;
+
+    if (xml_parent(xp) != NULL){
+	clicon_err(OE_XML, 0, "Parent is not root");
+	goto done;
+    }
+    x = NULL; i = 0;
+    while ((x = xml_child_each(xp, x, -1)) != NULL) {
+	if (x == xc)
+	    break;
+	i++;
+    }
+    if (xml_child_rm(xp, i) < 0)
+	goto done;
+    if (xml_free(xp) < 0)
+	goto done;
     retval = 0;
  done:
     return retval;

@@ -248,7 +248,7 @@ main(int argc, char **argv)
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
-	if (xmldb_put(h, db, op, xt, cbret) < 1)
+	if (xmldb_put(h, db, op, xt, NULL, cbret) < 1)
 	    goto done;
 	    
     }
