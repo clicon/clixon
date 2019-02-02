@@ -184,7 +184,7 @@ MSG="<data>$RULES</data>"
 new "update root list permit"
 expecteq "$(curl -u andy:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data -d "$MSG")" ''
 
-new "delete root list deny"
+new2 "delete root list deny"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new "delete root permit"

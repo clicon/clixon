@@ -177,16 +177,16 @@ expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-exa
 '
 
 new2 "guest get nacm"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "admin edit nacm"
 expecteq "$(curl -u andy:bar -sS -X PUT -d '{"nacm-example:x": 1}' http://localhost/restconf/data/nacm-example:x)" ""
 
 new2 "limited edit nacm"
-expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new2 "guest edit nacm"
-expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "cli show conf as admin"
 expectfn "$clixon_cli -1 -U andy -l o -f $cfg show conf" 0 "^x 1;$"

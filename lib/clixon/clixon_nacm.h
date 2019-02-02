@@ -67,7 +67,7 @@ int nacm_rpc(char *rpc, char *module, char *username, cxobj *xnacm, cbuf *cbret)
 int nacm_datanode_read(cxobj *xt, cxobj **xvec, size_t xlen, char *username, cxobj *nacm_xtree);
 int nacm_datanode_write(cxobj *xt, cxobj *xr, enum nacm_access access,
 			char *username, cxobj *xnacm, cbuf *cbret);
-int nacm_access_h(clicon_handle h, char *username, cxobj **xnacmp);
+int nacm_access_pre(clicon_handle h, char *username, cxobj **xnacmp);
 int nacm_access(char *mode, cxobj *xnacmin, char *username);
 
 #endif /* _CLIXON_NACM_H */

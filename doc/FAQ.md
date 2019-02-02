@@ -306,6 +306,7 @@ You may also add a default method in the configuration file:
 Yes. Systemd example files are provide for the backend and the
 restconf daemon as part of the [example](../example/systemd).
 
+
 ## How can I add extra XML?
 
 There are two ways to add extra XML to running database  after start. Note that this XML is not "committed" into running.
@@ -473,6 +474,14 @@ To authenticate, the callback needs to return the value 1 and supply a username.
 
 See [../apps/example/example_restconf.c] example_restconf_credentials() for
 an example of HTTP basic auth.
+
+## What about access control?
+
+Clixon has experimental support of the Network Configuration Access
+Control Model defined in [RFC8341](https://tools.ietf.org/html/rfc8341)
+
+Incoming RPC and data node access points are supported with some
+limitations. See the (README)(../README.md) for more information.
 
 ## How do I write a CLI translator function?
 

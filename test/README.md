@@ -7,6 +7,9 @@ application. Assumes setup of http daemon as describe under apps/restonf
 - site.sh           Add your site-specific modifications here
 - test_nacm.sh      Auth tests using internal NACM
 - test_nacm_ext.sh  Auth tests using external NACM (separate file)
+- test_nacm_protocol.sh  Auth tests for incoming RPC:s
+- test_nacm_module_read.sh  Auth tests for data node read operations
+- test_nacm_module_write.sh  Auth tests for data node write operations
 - test_cli.sh       CLI tests
 - test_netconf.sh   Netconf tests
 - test_restconf.sh  Restconf tests

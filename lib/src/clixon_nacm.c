@@ -101,23 +101,9 @@ match_access(char *access_operations,
  * @param[out] cbret  Cligen buffer result. Set to an error msg if retval=0.
  * @retval -1  Error
  * @retval  0  Matching rule AND Not access and cbret set
- * @retval  1  Matchung rule AND Access
+ * @retval  1  Matching rule AND Access
  * @retval  2  No matching rule Goto step 10
- * From RFC8341 3.4.4.  Incoming RPC Message Validation
-   +---------+-----------------+---------------------+-----------------+
-   | Method  | Resource class  | NETCONF operation   | Access          |
-   |         |                 |                     | operation       |
-   +---------+-----------------+---------------------+-----------------+
-   | OPTIONS | all             | none                | none            |
-   | HEAD    | all             | <get>, <get-config> | read            |
-   | GET     | all             | <get>, <get-config> | read            |
-   | POST    | datastore, data | <edit-config>       | create          |
-   | POST    | operation       | specified operation | execute         |
-   | PUT     | data            | <edit-config>       | create, update  |
-   | PUT     | datastore       | <copy-config>       | update          |
-   | PATCH   | data, datastore | <edit-config>       | update          |
-   | DELETE  | data            | <edit-config>       | delete          |
-
+ * @see RFC8341 3.4.4.  Incoming RPC Message Validation
  7.(cont) A rule matches if all of the following criteria are met: 
         *  The rule's "module-name" leaf is "*" or equals the name of
            the YANG module where the protocol operation is defined.
@@ -133,44 +119,40 @@ match_access(char *access_operations,
 static int
 nacm_rule_rpc(char         *rpc,
 	      char         *module,
-	      cxobj        *xrule,
-	      cbuf         *cbret)
+	      cxobj        *xrule)
 {
     int    retval = -1;
     char  *module_rule; /* rule module name */
     char  *rpc_rule;
     char  *access_operations;
-    char  *action;
     
-    module_rule = xml_find_body(xrule, "module-name");
-    rpc_rule = xml_find_body(xrule, "rpc-name");
-    /* XXX access_operations can be a set of bits */
-    access_operations = xml_find_body(xrule, "access-operations");
-    action = xml_find_body(xrule, "action");
-    clicon_debug(1, "%s: %s %s %s %s", __FUNCTION__,
-	       module_rule, rpc_rule, access_operations, action);
-    if (module_rule &&
-	(strcmp(module_rule,"*")==0 || strcmp(module_rule,module)==0)){
-	if (match_access(access_operations, "exec", NULL)){
-	    if (rpc_rule==NULL ||
-		strcmp(rpc_rule, "*")==0 || strcmp(rpc_rule, rpc)==0){
-		/* Here is a matching rule */
-		if (action && strcmp(action, "permit")==0){
-		    retval = 1;
-		    goto done;
-		}
-		else{
-		    if (netconf_access_denied(cbret, "protocol", "access denied") < 0)
-			goto done;
-		    retval = 0;
-		    goto done;
-		}
-	    }
-	}
+    /*  7a) The rule's "module-name" leaf is "*" or equals the name of
+	the YANG module where the protocol operation is defined. */
+    if ((module_rule = xml_find_body(xrule, "module-name")) == NULL)
+	goto nomatch;
+    if (strcmp(module_rule,"*") && strcmp(module_rule,module))
+	goto nomatch;
+    /*  7b) Either (1) the rule does not have a "rule-type" defined or
+	(2) the "rule-type" is "protocol-operation" and the
+	"rpc-name" is "*" or equals the name of the requested
+	protocol operation. */
+    if ((rpc_rule = xml_find_body(xrule, "rpc-name")) == NULL){
+	if (xml_find_body(xrule, "path") || xml_find_body(xrule, "notification-name"))
+	    goto nomatch;
     }
-    retval = 2; /* no matching rule */
+    if (rpc_rule && (strcmp(rpc_rule, "*") && strcmp(rpc_rule, rpc)))
+	goto nomatch;
+    /* 7c) The rule's "access-operations" leaf has the "exec" bit set or
+	has the special value "*". */
+    access_operations = xml_find_body(xrule, "access-operations");
+    if (!match_access(access_operations, "exec", NULL))
+	goto nomatch;
+    retval = 1;
  done:
     return retval;
+ nomatch:
+    retval = 0;
+    goto done;
 }
 
 /*! Process nacm incoming RPC message validation steps
@@ -202,10 +184,11 @@ nacm_rpc(char         *rpc,
     size_t  rlistlen;
     cxobj **rvec = NULL; /* rules */
     size_t  rlen;
-    int     ret;
     int     i, j;
     char   *exec_default = NULL;
     char   *gname;
+    char   *action;
+    int     match= 0;
     
     /* 3.   If the requested operation is the NETCONF <close-session>
        protocol operation, then the protocol operation is permitted.
@@ -249,24 +232,29 @@ nacm_rpc(char         *rpc,
 	    goto done;
 	for (j=0; j<rlen; j++){
 	    xrule = rvec[j];
-	    /* -1 error, 0 deny, 1 permit, 2 continue */
-	    if ((ret = nacm_rule_rpc(rpc, module, xrule, cbret)) < 0)
+	    if ((match = nacm_rule_rpc(rpc, module, xrule)) < 0)
 		goto done;
-	    switch(ret){
-	    case 0: /* deny */
-		goto deny;
+	    if (match)
 		break;
-	    case 1: /* permit */
-		goto permit;
-		break;
-	    case 2: /* no match, continue */
-		break;
-	    }
 	}
+	if (match)
+	    break;
 	if (rvec){
 	    free(rvec);
 	    rvec=NULL;
 	}
+    }
+    if (match){
+	if ((action = xml_find_body(xrule, "action")) == NULL)
+	    goto step10;
+	if (strcmp(action, "deny")==0){
+	    if (netconf_access_denied(cbret, "application", "access denied") < 0)
+		goto done;
+	    goto deny;
+	}
+	else if (strcmp(action, "permit")==0)
+	    goto permit;
+
     }
  step10:
     /*   10.  If the requested protocol operation is defined in a YANG module
@@ -277,7 +265,7 @@ nacm_rpc(char         *rpc,
         <kill-session> or <delete-config>, then the protocol operation
         is denied. */
     if (strcmp(rpc, "kill-session")==0 || strcmp(rpc, "delete-config")==0){
-	if (netconf_access_denied(cbret, "protocol", "default deny") < 0)
+	if (netconf_access_denied(cbret, "application", "default deny") < 0)
 	    goto done;
 	goto deny;
     }
@@ -286,7 +274,7 @@ nacm_rpc(char         *rpc,
     exec_default = xml_find_body(xnacm, "exec-default");
     if (exec_default ==NULL || strcmp(exec_default, "permit")==0)
 	goto permit;
-    if (netconf_access_denied(cbret, "protocol", "default deny") < 0)
+    if (netconf_access_denied(cbret, "application", "default deny") < 0)
 	goto done;
     goto deny;
  permit:
@@ -307,45 +295,31 @@ nacm_rpc(char         *rpc,
 }
 
 /*---------------------------------------------------------------
- * Datanode/module read
+ * Datanode/module read and write
  */
 
-/*! We have a rule matching user group. Now match proper read operation and module
- * @see RFC8341 3.4.5.  Data Node Access Validation point (6)
+/*! We have a rule matching user group. Now match proper write operation and module
  * @retval -1 Error
  * @retval  0 No Match
  * @retval  1 Match
- * @see rule_data_write
+ * @see RFC8341 3.4.5.  Data Node Access Validation point (6)
  */
 static int
-rule_data_read(cxobj  *xrule,
-	       cxobj  *xr,
-	       cxobj  *xt)
+nacm_rule_datanode(cxobj           *xt,
+		   cxobj           *xr,
+		   cxobj           *xrule,
+		   enum nacm_access access)
 {
     int        retval = -1;
-    cxobj     *xp; /* parent */
+    char      *path;
     char      *access_operations;
     char      *module_rule; /* rule module name */
     yang_stmt *ys;
     yang_stmt *ymod;
     char      *module;
-    char      *path;
     cxobj     *xpath; /* xpath match */
-
-    /*  6b) Either (1) the rule does not have a "rule-type" defined or
-	(2) the "rule-type" is "data-node" and the "path" matches the
-	requested data node, action node, or notification node.  A
-	path is considered to match if the requested node is the node
-	specified by the path or is a descendant node of the path.*/    
-    if ((path = xml_find_body(xrule, "path")) == NULL){
-	if (xml_find_body(xrule, "rpc-name") ||xml_find_body(xrule, "notification-name"))
-	    goto nomatch;
-    }
-    /* 6c) For a "read" access operation, the rule's "access-operations"
-	leaf has the "read" bit set or has the special value "*" */
-    access_operations = xml_find_body(xrule, "access-operations");
-    if (!match_access(access_operations, "read", NULL))
-	goto nomatch;
+    cxobj     *xp; /* parent */
+   
     /* 6a) The rule's "module-name" leaf is "*" or equals the name of
      * the YANG module where the requested data node is defined. */
     if ((module_rule = xml_find_body(xrule, "module-name")) == NULL)
@@ -358,7 +332,46 @@ rule_data_read(cxobj  *xrule,
 	if (strcmp(module, module_rule) != 0)
 	    goto nomatch;
     }
-    /* Here module is matched, now check for path if any */
+
+    /*  6b) Either (1) the rule does not have a "rule-type" defined or
+	(2) the "rule-type" is "data-node" and the "path" matches the
+	requested data node, action node, or notification node.  A
+	path is considered to match if the requested node is the node
+	specified by the path or is a descendant node of the path.*/    
+    if ((path = xml_find_body(xrule, "path")) == NULL){
+	if (xml_find_body(xrule, "rpc-name") ||xml_find_body(xrule, "notification-name"))
+	    goto nomatch;
+    }
+    access_operations = xml_find_body(xrule, "access-operations");
+    switch (access){
+    case NACM_READ:
+	/* 6c) For a "read" access operation, the rule's "access-operations"
+	   leaf has the "read" bit set or has the special value "*" */
+	if (!match_access(access_operations, "read", NULL))
+	    goto nomatch;
+	break;
+    case NACM_CREATE:
+	/* 6d) For a "create" access operation, the rule's "access-operations" 
+	   leaf has the "create" bit set or has the special value "*". */
+	if (!match_access(access_operations, "create", "write"))
+	    goto nomatch;
+	break;
+    case NACM_DELETE:
+        /* 6e) For a "delete" access operation, the rule's "access-operations" 
+	   leaf has the "delete" bit set or has the  special value "*". */
+	if (!match_access(access_operations, "delete", "write"))
+	    goto nomatch;
+	break;
+    case NACM_UPDATE:
+        /* 6f) For an "update" access operation, the rule's "access-operations"
+	   leaf has the "update" bit set or has the special value "*". */ 
+	if (!match_access(access_operations, "update", "write"))
+	    goto nomatch;
+	break;
+    default:
+	break;
+    }
+    /* Here module is matched, now check for path if any NYI */
     if (path){ 
 	if ((xpath = xpath_first(xt, "%s", path)) == NULL)
 	    goto nomatch;
@@ -420,13 +433,13 @@ nacm_data_read_xr(cxobj  *xt,
 	    continue;
 	/* 6. For each rule-list entry found, process all rules, in order,
 	   until a rule that matches the requested access operation is
-	   found. (see 6 sub rules in rule_data_read)
+	   found. (see 6 sub rules in nacm_rule_datanode
 	*/
 	if (xpath_vec(rlist, "rule", &rvec, &rlen) < 0)
 	    goto done;
 	for (j=0; j<rlen; j++){ /* Loop through rules */
 	    xrule = rvec[j];
-	    if ((match = rule_data_read(xrule, xr, xt)) < 0)
+	    if ((match = nacm_rule_datanode(xt, xr, xrule, NACM_READ)) < 0)
 		goto done;
 	    if (match) /* xrule match */
 		break;
@@ -615,106 +628,6 @@ nacm_datanode_read(cxobj  *xt,
 	free(rlistvec);
     return retval;
 }
-
-/*---------------------------------------------------------------
- * Datanode/module write (=create, delete, update)
- */
-
-/*! We have a rule matching user group. Now match proper write operation and module
- * @retval -1 Error
- * @retval  0 No Match
- * @retval  1 Match
- * @see RFC8341 3.4.5.  Data Node Access Validation point (6)
- * @see rule_data_read
- */
-static int
-rule_data_write(cxobj           *xt,
-		cxobj           *xr,
-		cxobj           *xrule,
-		enum nacm_access access)
-{
-    int        retval = -1;
-    char      *path;
-    char      *access_operations;
-    char      *module_rule; /* rule module name */
-    yang_stmt *ys;
-    yang_stmt *ymod;
-    char      *module;
-    cxobj     *xpath; /* xpath match */
-    cxobj     *xp; /* parent */
-   
-    /*  6b) Either (1) the rule does not have a "rule-type" defined or
-	(2) the "rule-type" is "data-node" and the "path" matches the
-	requested data node, action node, or notification node.  A
-	path is considered to match if the requested node is the node
-	specified by the path or is a descendant node of the path.*/    
-    if ((path = xml_find_body(xrule, "path")) == NULL){
-	if (xml_find_body(xrule, "rpc-name") ||xml_find_body(xrule, "notification-name"))
-	    goto nomatch;
-    }
-    /* 6c) For a "read" access operation, the rule's "access-operations"
-	leaf has the "read" bit set or has the special value "*" */
-
-    /*  6d) For a "create" access operation, the rule's
-           "access-operations" leaf has the "create" bit set or has the
-           special value "*".
-        6e) For a "delete" access operation, the rule's
-           "access-operations" leaf has the "delete" bit set or has the
-           special value "*".
-        6f) For an "update" access operation, the rule's
-           "access-operations" leaf has the "update" bit set or has the
-           special value "*". */
-    access_operations = xml_find_body(xrule, "access-operations");
-    switch (access){
-    case NACM_CREATE:
-	if (!match_access(access_operations, "create", "write"))
-	    goto nomatch;
-	break;
-    case NACM_UPDATE:
-	if (!match_access(access_operations, "update", "write"))
-	    goto nomatch;
-	break;
-    case NACM_DELETE:
-	if (!match_access(access_operations, "delete", "write"))
-	    goto nomatch;
-	break;
-    default:
-	break;
-    }
-        /* 6a) The rule's "module-name" leaf is "*" or equals the name of
-     * the YANG module where the requested data node is defined. */
-    if ((module_rule = xml_find_body(xrule, "module-name")) == NULL)
-	goto nomatch;
-    if (strcmp(module_rule,"*")!=0){
-	if ((ys = xml_spec(xr)) == NULL)
-	    goto nomatch;
-	ymod = ys_module(ys);
-	module = ymod->ys_argument;
-	if (strcmp(module, module_rule) != 0)
-	    goto nomatch;
-    }
-    /* Here module is matched, now check for path if any */
-    if (path){ 
-	if ((xpath = xpath_first(xt, "%s", path)) == NULL)
-	    goto nomatch;
-	/* The requested node xr is the node specified by the path or is a 
-	 * descendant node of the path:
-	 * xmatch is one of xvec[] or an ancestor of the xvec[] nodes.
-	 */
-	xp = xr;
-	do {
-	    if (xpath == xp)
-		goto match;
-	} while ((xp = xml_parent(xp)) != NULL);
-    }
- match:
-    retval = 1;
- done:
-    return retval;
- nomatch:
-    retval = 0;
-    goto done;
-}
 	      
 /*! Make nacm datanode and module rule write access validation
  * The operations of NACM are: create, read, update, delete, exec
@@ -790,17 +703,21 @@ nacm_datanode_write(cxobj           *xt,
 	    goto done;
 	/* 6. For each rule-list entry found, process all rules, in order,
 	   until a rule that matches the requested access operation is
-	   found. (see 6 sub rules in nacm_match_rule2)
+	   found. (see 6 sub rules in nacm_rule_data_write)
 	*/
 	for (j=0; j<rlen; j++){ /* Loop through rules */
 	    xrule = rvec[j];
-	    if ((match = rule_data_write(xt, xr, xrule, access)) < 0)
+	    if ((match = nacm_rule_datanode(xt, xr, xrule, access)) < 0)
 		goto done;
 	    if (match) /* match */
 		break;
 	}
 	if (match)
 	    break;
+	if (rvec){
+	    free(rvec);
+	    rvec = NULL;
+	}
     }
     if (match){
 	if ((action = xml_find_body(xrule, "action")) == NULL)
@@ -934,7 +851,7 @@ nacm_access(char          *mode,
  * @retval  1  OK permitted. You do not need to do next NACM step
  * @code
  *   cxobj *xnacm = NULL;
- *   if ((ret = nacm_access_h(h, username, &xnacm)) < 0)
+ *   if ((ret = nacm_access_pre(h, username, &xnacm)) < 0)
  *     err;
  *   if (ret == 0){
  *      // Next step NACM processing
@@ -943,11 +860,10 @@ nacm_access(char          *mode,
  * @endcode
  * @see RFC8341 3.4 Access Control Enforcement Procedures
  */
-
 int
-nacm_access_h(clicon_handle  h,
-	      char          *username,
-	      cxobj        **xnacmp)
+nacm_access_pre(clicon_handle  h,
+		char          *username,
+		cxobj        **xnacmp)
 {
     int    retval = -1;
     char  *mode;

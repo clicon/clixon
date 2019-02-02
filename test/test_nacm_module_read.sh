@@ -214,22 +214,22 @@ expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data)" '{"dat
 #user:guest
 
 new2 "guest read fail"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new2 "guest read netconf fail"
-expecteof "$clixon_netconf -U guest -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/translate"/></get-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></rpc-error></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -U guest -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/translate"/></get-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 new2 "guest read element fail"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate=key42/value)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate=key42/value)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new2 "guest read other module fail"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new2 "guest read state fail"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new2 "guest read top ok (part)"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 #------- RPC operation
 
@@ -248,10 +248,10 @@ new "limit rpc netconf ok"
 expecteof "$clixon_netconf -U wilma -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">0</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>$'
 
 new2 "guest rpc fail"
-expecteq "$(curl -u guest:bar -s -X POST http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":42}}' )" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -s -X POST http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":42}}' )" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "guest rpc netconf fail"
-expecteof "$clixon_netconf -U guest -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -U guest -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 #------------------ Set read-default permit
 
@@ -267,7 +267,7 @@ expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-exa
 '
 
 new2 "guest read state fail"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 
 new "Kill restconf daemon"

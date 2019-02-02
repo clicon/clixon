@@ -323,6 +323,10 @@ candidate_commit(clicon_handle h,
  * @param[out] cbret Return xml value cligen buffer
  * @retval  0   OK. This may indicate both ok and err msg back to client
  * @retval  -1  (Local) Error
+ * NACM:    The server MUST determine the exact nodes in the running
+ *  configuration datastore that are actually different and only check
+ *  "create", "update", and "delete" access permissions for this set of
+ *  nodes, which could be empty.
  */
 int
 from_client_commit(clicon_handle h,
@@ -368,6 +372,7 @@ from_client_commit(clicon_handle h,
  * @param[out] cbret Return xml value cligen buffer
  * @retval  0  OK. This may indicate both ok and err msg back to client
  * @retval  -1 (Local) Error
+ * NACM: No datastore permissions are needed.
  */
 int
 from_client_discard_changes(clicon_handle h,
