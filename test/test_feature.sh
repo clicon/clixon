@@ -145,7 +145,7 @@ fi
 
 # Note order of features in ietf-netconf yang is alphabetically: candidate, startup, validate, xpath
 new "netconf module ietf-netconf"
-expect="<module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace><feature>candidate</feature><feature>startup</feature><feature>validate</feature><feature>xpath</feature><conformance-type>implement</conformance-type></module>"
+expect="<module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace><feature>candidate</feature><feature>validate</feature><feature>startup</feature><feature>xpath</feature><conformance-type>implement</conformance-type></module>"
 match=`echo "$ret" | grep -GZo "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"

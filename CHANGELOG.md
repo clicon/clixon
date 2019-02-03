@@ -142,6 +142,7 @@
   * <!DOCTYPE (ie DTD) is not supported.
 
 ### Corrected Bugs
+* xml_cmp() respects 'ordered-by user' for state nodes, which violates RFC 7950 [https://github.com/clicon/clixon/issues/63. (Thanks JDL)
 * XML<>JSON conversion problems [https://github.com/clicon/clixon/issues/66]
   * CDATA sections stripped from XML when converted to JSON
 * Restconf returns error when RPC generates "ok" reply [https://github.com/clicon/clixon/issues/69]

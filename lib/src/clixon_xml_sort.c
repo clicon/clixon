@@ -134,7 +134,7 @@ xml_child_spec(cxobj      *x,
  * @see xml_cmp1   Similar, but for one object
  * @note empty value/NULL is smallest value
  */
-int
+static int
 xml_cmp(const void* arg1, 
 	const void* arg2)
 {
@@ -162,11 +162,13 @@ xml_cmp(const void* arg1,
 	if ((equal = yi1-yi2) != 0)
 	    return equal;
     }
-    /* Now y1=y2, same Yang spec, can only be list or leaf-list,
-     * sort according to key
+    /* Now y1==y2, same Yang spec, can only be list or leaf-list,
+     * But first check exceptions, eg config false or ordered-by user
+     * otherwuse sort according to key
      */
-    if (yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL)
-	return 0; /* Ordered by user: maintain existing order */
+    if (yang_config(y1)==0 ||
+	yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL)
+	return 0; /* Ordered by user or state data : maintain existing order */
     switch (y1->ys_keyword){
     case Y_LEAF_LIST: /* Match with name and value */
 	if ((b1 = xml_body(x1)) == NULL)
@@ -262,11 +264,20 @@ xml_cmp1(cxobj        *x,
  * Assume populated by yang spec.
  * @param[in] x0   XML node
  * @param[in] arg  Dummy so it can be called by xml_apply()
+ * @retval    -1    Error, aborted at first error encounter
+ * @retval     0    OK, all nodes traversed (subparts may have been skipped)
+ * @retval     1    OK, aborted on first fn returned 1
+ * @see xml_apply  - typically called by recursive apply function
  */
 int
 xml_sort(cxobj *x,
 	 void  *arg)
 {
+    yang_stmt *ys;
+
+    /* Abort sort if non-config (=state) data */
+    if ((ys = xml_spec(x)) != 0 && yang_config(ys)==0)
+	return 1;
     qsort(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp);
     return 0;
 }
@@ -543,7 +554,13 @@ xml_sort_verify(cxobj *x0,
     int    retval = -1;
     cxobj *x = NULL;
     cxobj *xprev = NULL;
+    yang_stmt *ys;
 
+    /* Abort sort if non-config (=state) data */
+    if ((ys = xml_spec(x0)) != 0 && yang_config(ys)==0){
+	retval = 1;
+	goto done;
+    }
     while ((x = xml_child_each(x0, x, -1)) != NULL) {
 	if (xprev != NULL){ /* Check xprev <= x */
 	    if (xml_cmp(&xprev, &x) > 0)

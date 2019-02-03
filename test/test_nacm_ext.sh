@@ -152,7 +152,7 @@ sudo su -c "$clixon_restconf -f $cfg -D $DBG -- -a" -s /bin/sh www-data &
 sleep $RCWAIT
 
 new "auth get"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": ["42","41","43"]}}
 '
 
 new "Set x to 0"

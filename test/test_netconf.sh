@@ -155,7 +155,7 @@ new "netconf edit state operation should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><state xmlns="urn:example:clixon"><op>42</op></state></config></edit-config></rpc>]]>]]>' "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>invalid-value</error-tag>"
 
 new "netconf get state operation"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get><filter type=\"xpath\" select=\"/state\"/></get></rpc>]]>]]>" '^<rpc-reply><data><state xmlns="urn:example:clixon"><op>42</op></state></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get><filter type=\"xpath\" select=\"/state\"/></get></rpc>]]>]]>" '^<rpc-reply><data><state xmlns="urn:example:clixon"><op>42</op><op>41</op><op>43</op></state></data></rpc-reply>]]>]]>$'
 
 new "netconf lock/unlock"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]><rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><rpc-reply><ok/></rpc-reply>]]>]]>$"

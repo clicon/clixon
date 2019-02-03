@@ -175,7 +175,7 @@ expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-exam
 '
 
 new "admin read state OK"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": ["42","41","43"]}}
 '
 
 new "admin read top ok (all)"
@@ -204,11 +204,11 @@ expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-exa
 '
 
 new "limit read state OK"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": ["42","41","43"]}}
 '
 
 new "limit read top ok (part)"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data)" '{"data": {"clixon-example:translate": [{"k": "key42","value": "val42"},{ "k": "key43","value": "val43"}],"clixon-example:state": {"op": "42"}}}
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data)" '{"data": {"clixon-example:translate": [{"k": "key42","value": "val42"},{ "k": "key43","value": "val43"}],"clixon-example:state": {"op": ["42","41","43"]}}}
 '
 
 #user:guest

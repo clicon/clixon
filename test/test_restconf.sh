@@ -31,7 +31,7 @@ cat <<EOF > $cfg
 EOF
 
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
-state='{"clixon-example:state": {"op": "42"}}'
+state='{"clixon-example:state": {"op": ["42","41","43"]}}'
 
 new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
@@ -113,11 +113,11 @@ new "restconf empty rpc with extra args (should fail)"
 expecteq "$(curl -s -X POST -d {\"clixon-example:input\":{\"extra\":null}} http://localhost/restconf/operations/clixon-example:empty)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "extra"},"error-severity": "error"}}}'
 
 new "restconf get empty config + state json"
-expecteq "$(curl -sSG http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
+expecteq "$(curl -sSG http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": ["42","41","43"]}}
 '
 
 new "restconf get empty config + state json + module"
-expecteq "$(curl -sSG http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
+expecteq "$(curl -sSG http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": ["42","41","43"]}}
 '
 
 new "restconf get empty config + state json with wrong module name"
@@ -125,14 +125,14 @@ expecteq "$(curl -sSG http://localhost/restconf/data/badmodule:state)" '{"ietf-r
 
 new "restconf get empty config + state xml"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/clixon-example:state)
-expect='<state xmlns="urn:example:clixon"><op>42</op></state>'
+expect='<state xmlns="urn:example:clixon"><op>42</op><op>41</op><op>43</op></state>'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
 new "restconf get data/ json"
-expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" '{"clixon-example:op": "42"}
+expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" '{"clixon-example:op": ["42","41","43"]}
 '
 
 new "restconf get state operation eth0 xml"
@@ -145,7 +145,7 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf get state operation eth0 type json"
-expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" '{"clixon-example:op": "42"}
+expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" '{"clixon-example:op": ["42","41","43"]}
 '
 
 new "restconf get state operation eth0 type xml"
@@ -158,7 +158,7 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf GET datastore"
-expecteq "$(curl -s -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
+expecteq "$(curl -s -X GET http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": ["42","41","43"]}}
 '
 
 # Exact match
@@ -178,7 +178,8 @@ new "restconf delete interfaces"
 expecteq $(curl -s -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces) ""
 
 new "restconf Check empty config"
-expectfn "curl -sG http://localhost/restconf/data/clixon-example:state" 0 "$state"
+expectfn "curl -sG http://localhost/restconf/data/clixon-example:state" 0 "$state
+"
 
 # XXX: gives  <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
 #      <interface xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
@@ -192,7 +193,7 @@ expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces
 '
 
 new "restconf Check eth/0/0 added state"
-expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": "42"}}
+expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state)" '{"clixon-example:state": {"op": ["42","41","43"]}}
 '
 
 new "restconf Re-post eth/0/0 which should generate error"

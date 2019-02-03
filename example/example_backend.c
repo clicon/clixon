@@ -201,6 +201,8 @@ example_statedata(clicon_handle h,
      */
     if (xml_parse_string("<state xmlns=\"urn:example:clixon\">"
 			 "<op>42</op>"
+			 "<op>41</op>"
+			 "<op>43</op>" /* should not be ordered */
 			 "</state>", NULL, &xstate) < 0)
 	goto done;
     retval = 0;
