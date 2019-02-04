@@ -43,7 +43,8 @@ SHELL	= /bin/sh
 .PHONY: all clean distclean depend install uninstall
 
 all:	
-	./all.sh
+	./test_choice.sh
+#	./all.sh
 
 clean:
 
