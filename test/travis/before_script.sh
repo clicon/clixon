@@ -9,3 +9,6 @@ sudo make install-include
 (cd example && make && sudo make install)
 sudo groupadd clicon
 sudo usermod -a -G clicon $(whoami)
+sudo usermod -a -G clicon root
+echo "whoami:$(whoami)"
+
