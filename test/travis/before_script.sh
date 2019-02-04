@@ -7,4 +7,5 @@ git clone https://github.com/olofhagsand/cligen.git
 sudo /sbin/ldconfig
 sudo make install-include
 (cd example && make && sudo make install)
-
+sudo groupadd clicon
+sudo usermod -a -G clicon user
