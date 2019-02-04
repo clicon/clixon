@@ -141,7 +141,7 @@ pkg-srpm: dist
 example:	
 	(cd $@ && $(MAKE) $(MFLAGS) all)
 
-test: example	
+test: #example	
 	(cd $@ && $(MAKE) $(MFLAGS) all)
 
 docker:
