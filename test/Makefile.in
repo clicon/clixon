@@ -44,22 +44,6 @@ SHELL	= /bin/sh
 
 all:	
 	./test_xml.sh
-	./test_netconf.sh
-	./test_cli.sh
-	./test_datastore.sh
-	./test_feature.sh
-	./test_install.sh
-	./test_leafref.sh
-	./test_list.sh
-	./test_order.sh
-	./test_type.sh
-	./test_union.sh
-	./test_when_must.sh
-	./test_xml.sh
-	./test_xpath.sh
-	./test_yang_load.sh
-	./test_yang.sh
-
 #	./all.sh
 
 clean:

@@ -8,11 +8,6 @@ sudo /sbin/ldconfig
 sudo make install-include
 (cd example && make && sudo make install)
 sudo groupadd clicon
-sudo usermod -a -G clicon travis
+sudo usermod -a -G clicon $(whoami)
 sudo usermod -a -G clicon root
 sudo usermod -a -G clicon www-data
-sudo cat /etc/group |grep clicon
-cat /etc/group
-
-echo "whoami:$(whoami)"
-
