@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/clicon/clixon.png)](https://travis-ci.org/clicon/clixon)
+
 # Clixon
 
 Clixon is a YANG-based configuration manager, with interactive CLI,

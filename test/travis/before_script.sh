@@ -6,3 +6,5 @@ git clone https://github.com/olofhagsand/cligen.git
 ./configure && make && sudo make install
 sudo /sbin/ldconfig
 sudo make install-include
+(cd example && make && sudo make install)
+
