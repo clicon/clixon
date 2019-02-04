@@ -249,5 +249,6 @@ AC_OUTPUT(Makefile
   	  yang/clixon/Makefile
   	  yang/standard/Makefile
 	  doc/Makefile
+	  test/Makefile	
 )
 

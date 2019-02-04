@@ -12,6 +12,7 @@ etc/Makefile
 example/Makefile
 lib/Makefile
 lib/*/Makefile
+test/Makefile
 yang/Makefile
 yang/*/Makefile
 autom4te.cache/

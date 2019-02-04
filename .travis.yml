@@ -1,1 +1,9 @@
 language: c
+# safelist
+branches:
+  only:
+  - master
+  - develop
+before_script:
+  - ./test/travis/before_script.sh
+ 

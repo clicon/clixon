@@ -54,7 +54,7 @@ SHELL		= /bin/sh
 
 SUBDIRS = lib apps include etc datastore util yang
 
-.PHONY:	doc all clean depend $(SUBDIRS) install loc TAGS .config.status docker
+.PHONY:	doc all clean depend $(SUBDIRS) install loc TAGS .config.status docker test
 
 all:	$(SUBDIRS)
 
@@ -137,6 +137,9 @@ pkg-rpm: dist
 
 pkg-srpm: dist
 	make -C extras/rpm srpm
+
+test:	install-include
+	(cd $@ && $(MAKE) $(MFLAGS) all)
 
 docker:
 	for i in docker; \

@@ -119,6 +119,7 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
+* Added make test from top-level
 * Added `xml_rootchild_node()` lib function as variant of `xml_rootchild()`
 * Added -o "<option>=<value>" command-line option to all programs: backend, cli, netconf, restconf.
   * Any config option from file can be overrided by giving them on command-line.
