@@ -130,6 +130,8 @@ int       xml_childvec_set(cxobj *x, int len);
 cxobj    *xml_new(char *name, cxobj *xn_parent, yang_stmt *spec);
 yang_stmt *xml_spec(cxobj *x);
 int       xml_spec_set(cxobj *x, yang_stmt *spec);
+cg_var   *xml_cv(cxobj *x);
+int       xml_cv_set(cxobj *x, cg_var *cv);
 cxobj    *xml_find(cxobj *xn_parent, char *name);
 
 int       xml_addsub(cxobj *xp, cxobj *xc);

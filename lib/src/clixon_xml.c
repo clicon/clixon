@@ -126,6 +126,8 @@ struct xml{
     int               x_flags;      /* Flags according to XML_FLAG_* */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
+    cg_var           *x_cv;         /* Cached value as cligen variable 
+                                       (eg xml_cmp) */
 };
 
 /*
@@ -758,6 +760,34 @@ xml_spec_set(cxobj     *x,
     return 0;
 }
 
+/*! Return (cached)  cligen variable value of xml node
+ * @param[in]  x    XML node (body and leaf/leaf-list)
+ * @retval     cv   CLIgen variable containing value of x body
+ * @retval     NULL
+ * @note only applicable if x is body and has yang-spec and is leaf or leaf-list
+ */
+cg_var *
+xml_cv(cxobj *x)
+{
+    return x->x_cv;
+}
+
+/*! Return (cached) cligen variable value of xml node
+ * @param[in]  x   XML node (body and leaf/leaf-list)
+ * @param[in]  cv  CLIgen variable containing value of x body
+ * @retval     0   OK
+ * @note only applicable if x is body and has yang-spec and is leaf or leaf-list
+ */
+int
+xml_cv_set(cxobj  *x, 
+	   cg_var *cv)
+{
+    if (x->x_cv)
+	cv_free(x->x_cv);
+    x->x_cv = cv;
+    return 0;
+}
+
 /*! Find an XML node matching name among a parent's children.
  *
  * Get first XML node directly under x_up in the xml hierarchy with
@@ -1229,6 +1259,8 @@ xml_free(cxobj *x)
     }
     if (x->x_childvec)
 	free(x->x_childvec);
+    if (x->x_cv)
+	cv_free(x->x_cv);
     free(x);
     return 0;
 }

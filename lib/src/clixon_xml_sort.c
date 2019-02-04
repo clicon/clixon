@@ -60,14 +60,75 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
+#include "clixon_yang_type.h"
 #include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_sort.h"
 
-/*
- * Variables
+/*! Get xml body value as cligen variable
+ * @param[in]  x   XML node (body and leaf/leaf-list)
+ * @param[out] cvp Pointer to cligen variable containing value of x body
+ * @retval     0   OK, cvp contains cv or NULL
+ * @retval    -1   Error
+ * @note only applicable if x is body and has yang-spec and is leaf or leaf-list
+ * Move to clixon_xml.c?
  */
+static int
+xml_cv_cache(cxobj   *x,
+	     char    *body,
+	     cg_var **cvp)
+{
+    int          retval = -1;
+    cg_var      *cv = NULL;
+    yang_stmt   *y;
+    yang_stmt   *yrestype;
+    enum cv_type cvtype;
+    int          ret;
+    char        *reason=NULL;
+    int          options = 0;
+    uint8_t      fraction = 0;
+	    
+    if ((cv = xml_cv(x)) != NULL)
+	goto ok;
+    if ((y = xml_spec(x)) == NULL)
+	goto done;
+    if (yang_type_get(y, NULL, &yrestype, &options, NULL, NULL, &fraction) < 0)
+	goto done;
+    yang2cv_type(yrestype->ys_argument, &cvtype);
+    if (cvtype==CGV_ERR){
+	clicon_err(OE_YANG, errno, "yang->cligen type %s mapping failed",
+		   yrestype->ys_argument);
+	goto done;
+    }
+    if ((cv = cv_new(cvtype)) == NULL){
+	clicon_err(OE_YANG, errno, "cv_new");
+	goto done;
+    }
+    if (cvtype == CGV_DEC64)
+	cv_dec64_n_set(cv, fraction);
+	
+    if ((ret = cv_parse1(body, cv, &reason)) < 0){
+	clicon_err(OE_YANG, errno, "cv_parse1");
+	goto done;
+    }
+    if (ret == 0){
+	clicon_err(OE_YANG, EINVAL, "cv parse error: %s\n", reason);
+	goto done;
+    }
+    if (xml_cv_set(x, cv) < 0)
+	goto done;
+ ok:
+    *cvp = cv;
+    cv = NULL;
+    retval = 0;
+ done:
+    if (reason)
+	free(reason);
+    if (cv)
+	cv_free(cv);
+    return retval;
+}
 
 /*! Given a child name and an XML object, return yang stmt of child
  * If no xml parent, find root yang stmt matching name
@@ -150,7 +211,9 @@ xml_cmp(const void* arg1,
     char       *b1;
     char       *b2;
     char       *keyname;
-    
+    cg_var     *cv1; 
+    cg_var     *cv2;
+
     assert(x1&&x2);
     y1 = xml_spec(x1);
     y2 = xml_spec(x2);
@@ -164,7 +227,7 @@ xml_cmp(const void* arg1,
     }
     /* Now y1==y2, same Yang spec, can only be list or leaf-list,
      * But first check exceptions, eg config false or ordered-by user
-     * otherwuse sort according to key
+     * otherwise sort according to key
      */
     if (yang_config(y1)==0 ||
 	yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL)
@@ -175,8 +238,13 @@ xml_cmp(const void* arg1,
 	    equal = -1;
 	else if ((b2 = xml_body(x2)) == NULL)
 	    equal = 1;
-	else
-	    equal = strcmp(b1, b2);
+	else{
+	    if (xml_cv_cache(x1, b1, &cv1) < 0)
+		goto done;
+	    if (xml_cv_cache(x2, b2, &cv2) < 0)
+		goto done;
+	    equal = cv_cmp(cv1, cv2);
+	}
 	break;
     case Y_LIST: /* Match with key values 
 		  * Use Y_LIST cache (see struct yang_stmt)
@@ -200,7 +268,10 @@ xml_cmp(const void* arg1,
 }
 
 /*! Compare xml object
- * @param[in]  yangi    Yang order
+ * @param[in]  x        XML node to compare with
+ * @param[in]  y        The yang spec of x
+ * @param[in]  name     Name to compare with x
+ * @param[in]  keyword  Yang keyword (stmt type) to compare w x/y
  * @param[in]  keynr    Length of keyvec/keyval vector when applicable
  * @param[in]  keyvec   Array of of yang key identifiers
  * @param[in]  keyval   Array of of yang key values
@@ -209,6 +280,7 @@ xml_cmp(const void* arg1,
  * @retval <0  if arg1 is less than arg2
  * @retval >0  if arg1 is greater than arg2
  * @see xml_cmp   Similar, but for two objects
+ * @note Does not care about y type of value as xml_cmp
  */
 static int
 xml_cmp1(cxobj        *x,
@@ -220,12 +292,15 @@ xml_cmp1(cxobj        *x,
 	 char        **keyval,
 	 int          *userorder)
 {
-    char *b;
-    int   i;
-    char *keyname;
-    char *key;
-    int   match = 0;
+    char      *b;
+    int        i;
+    char      *keyname;
+    char      *key;
+    int        match = 0;
 
+    /* state data = userorder */
+    if (userorder && yang_config(y)==0)
+	*userorder=1;
     /* Check if same yang spec (order in yang stmt list) */
     switch (keyword){
     case Y_CONTAINER: /* Match with name */
@@ -257,6 +332,7 @@ xml_cmp1(cxobj        *x,
     default:
 	break;
     }
+    // done:
     return match; /* should not reach here */
 }
 
@@ -603,7 +679,6 @@ match_base_child(cxobj      *x0,
     yang_node *yp; /* yang parent */
     
     *x0cp = NULL; /* init return value */
-#if 1
     /* Special case is if yc parent (yp) is choice/case
      * then find x0 child with same yc even though it does not match lexically
      * However this will give another y0c != yc
@@ -619,7 +694,6 @@ match_base_child(cxobj      *x0,
 	*x0cp = x0c;
 	goto ok; /* What to do if not found? */
     }
-#endif
     switch (yc->ys_keyword){
     case Y_CONTAINER: 	/* Equal regardless */
     case Y_LEAF: 	/* Equal regardless */

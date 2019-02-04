@@ -46,7 +46,7 @@ module order-example{
     namespace "urn:example:order";
     prefix ex;
     import clixon-example { /* for state callback */
-	prefix ex;
+       prefix ex;
     }
     container c{
       leaf d{
@@ -82,7 +82,24 @@ module order-example{
       }
       leaf a {
         type string;
-      }   
+      } 
+    }
+    container types{
+      description "For testing ordering using other types than strings";
+      leaf-list strings{
+        type string;
+        ordered-by system;
+      }
+      leaf-list ints{
+        type int32;
+        ordered-by system;
+      }
+      leaf-list decs{
+        type decimal64{
+           fraction-digits 3;
+        }
+        ordered-by system;
+      }
     }
 }
 EOF
@@ -183,6 +200,19 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><can
 
 new "verify list user order (as entered)"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/y2"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><y2 xmlns="urn:example:order"><k>c</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>b</k><a>foo</a></y2><y2 xmlns="urn:example:order"><k>a</k><a>fie</a></y2></data></rpc-reply>]]>]]>$'
+
+#-- order by type rather than strings.
+# there are three lists: strings, ints, and decimal64
+# the strings is there for comparison
+new "add type ordered entries"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><types xmlns="urn:example:order">
+<ints>10</ints><ints>2</ints><ints>1</ints>
+<strings>10</strings><strings>2</strings><strings>1</strings>
+<decs>10.0</decs><decs>2.0</decs><decs>1.0</decs>
+</types></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "get type ordered entries"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/types"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><types xmlns="urn:example:order"><strings>1</strings><strings>10</strings><strings>2</strings><ints>1</ints><ints>2</ints><ints>10</ints><decs>1.0</decs><decs>2.0</decs><decs>10.0</decs></types></data></rpc-reply>]]>]]>$'
 
 if [ $BE -eq 0 ]; then
     exit # BE
