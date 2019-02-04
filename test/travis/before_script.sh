@@ -8,4 +8,4 @@ sudo /sbin/ldconfig
 sudo make install-include
 (cd example && make && sudo make install)
 sudo groupadd clicon
-sudo usermod -a -G clicon user
+sudo usermod -a -G clicon $(whoami)
