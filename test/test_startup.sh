@@ -13,8 +13,9 @@ cfg=$dir/conf_startup.xml
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_NETCONF_DIR>/usr/local/lib/$APPNAME/netconf</CLICON_NETCONF_DIR>
@@ -40,7 +41,7 @@ run(){
     dbdir=$dir/db
     cat <<EOF > $dbdir
 <config>
-   <interfaces>
+   <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
       <interface>
          <name>run</name>
          <type>ex:eth</type>
@@ -52,7 +53,7 @@ EOF
 
     cat <<EOF > $dbdir
 <config>
-   <interfaces>
+   <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
       <interface>
          <name>startup</name>
          <type>ex:eth</type>
@@ -64,7 +65,7 @@ EOF
 
     cat <<EOF > $dir/config
 <config>
-   <interfaces>
+   <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
       <interface>
          <name>extra</name>
          <type>ex:eth</type>
@@ -103,8 +104,8 @@ EOF
 }
 
 run init    '<data/>'
-run none    '<data><interfaces><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
-run running '<data><interfaces><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
-run startup '<data><interfaces><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+run none    '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+run running '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+run startup '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
 
 rm -rf $dir

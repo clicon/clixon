@@ -1,20 +1,33 @@
 # Clixon example
 
-This directory contains a Clixon example which includes a simple
-routing example. It contains the following files:
-* example.xml       The configuration file. See yang/clixon-config@<date>.yang for all available fields.
-* example.yang      The yang spec of the example. It mainly includes ietf routing and IP modules.
-* example_cli.cli   CLIgen specification.
-* example_cli.c     CLI callback plugin containing functions called in the cli file above: a generic callback (`mycallback`) and an RPC (`fib_route_rpc`).
-* example_backend.c Backend callback plugin including example of:
+  * [Content](#content)
+  * [Compile and run](#compile)
+  * [Using the CLI](#using-the-cli)
+  * [Using netconf](#using-netconf)
+  * [Streams](#streams)
+  * [RPC Operations](#rpc-operations)
+  * [State data](#state-data)
+  * [Authentication and NACM](#authentication-and-nacm)
+  * [Systemd](#systemd)
+  * [Docker](#docker)
+  * [Plugins](#plugins)
+  
+## Content
+
+This directory contains a Clixon example which includes a simple example. It contains the following files:
+* `example.xml`       The configuration file. See (yang/clixon-config@<date>.yang)[../yang/clixon-config@2018-10-21.yang] for the documentation of all available fields.
+* `clixon-example@2019-01-13.yang`      The yang spec of the example.
+* `example_cli.cli`   CLIgen specification.
+* `example_cli.c`     CLI callback plugin containing functions called in the cli file above: a generic callback (`mycallback`) and an example RPC call (`example_client_rpc`).
+* `example_backend.c` Backend callback plugin including example of:
   * transaction callbacks (validate/commit),
   * notification,
   * rpc handler
   * state-data handler, ie non-config data
-* example_backend_nacm.c Secondary backend plugin. Plugins are loaded alphabetically.
-* example_restconf.c Restconf callback plugin containing an HTTP basic authentication callback
-* example_netconf.c Netconf callback plugin
-* Makefile.in       Example makefile where plugins are built and installed
+* `example_backend_nacm.c` Secondary backend plugin. Plugins are loaded alphabetically.
+* `example_restconf.c` Restconf callback plugin containing an HTTP basic authentication callback
+* `example_netconf.c` Netconf callback plugin
+* `Makefile.in`       Example makefile where plugins are built and installed
 
 
 ## Compile and run
@@ -48,10 +61,37 @@ Send restconf command
     curl -G http://127.0.0.1/restconf/data
 ```
 
-## Setting data example using netconf
+## Using the CLI
+
+The example CLI allows you to modify and view the data model using `set`, `delete` and `show` via generated code.
+There are also many other commands available as examples. View the source file (example_cli.cli)[example_cli.cli] for more details.
+
+The following example shows how to add an interface in candidate, validate and commit it to running, then look at it (as xml) and finally delete it.
+```
+clixon_cli -f /usr/local/etc/example.xml 
+cli> set interfaces interface eth9 ?
+ description               enabled                   ipv4                     
+ ipv6                      link-up-down-trap-enable  type                     
+cli> set interfaces interface eth9 type ex:eth
+cli> validate 
+cli> commit 
+cli> show configuration xml 
+<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+   <interface>
+      <name>eth9</name>
+      <type>ex:eth</type>
+      <enabled>true</enabled>
+   </interface>
+</interfaces>
+cli> delete interfaces interface eth9
+```
+
+## Using Netconf
+
+The following example shows how to set data using netconf:
 ```
 <rpc><edit-config><target><candidate/></target><config>
-      <interfaces>
+      <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
          <interface>
             <name>eth1</name>
             <enabled>true</enabled>
@@ -66,14 +106,39 @@ Send restconf command
 </config></edit-config></rpc>]]>]]>
 ```
 
-## Getting data using netconf
+### Getting data using netconf
 ```
 <rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
 <rpc><get-config><source><candidate/></source><filter/></get-config></rpc>]]>]]>
 <rpc><get-config><source><candidate/></source><filter type="xpath"/></get-config></rpc>]]>]]>
-<rpc><get-config><source><candidate/></source><filter type="subtree"><configuration><interfaces><interface><ipv4/></interface></interfaces></configuration></filter></get-config></rpc>]]>]]>
-<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface/ipv4"/></get-config></rpc>]]>]]>
+<rpc><get-config><source><candidate/></source><filter type="subtree"><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth9</name><type>ex:eth</type></interface></interfaces></data></filter></get-config></rpc>]]>]]>
+<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface"/></get-config></rpc>]]>]]>
 <rpc><validate><source><candidate/></source></validate></rpc>]]>]]>
+```
+## Restconf
+
+Setup a web/reverse-proxy server.
+For example, using nginx, install, and edit config file: /etc/nginx/sites-available/default:
+```
+server {
+  ...
+  location /restconf {
+    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+    include fastcgi_params;
+  }
+}
+```
+Start nginx daemon
+```
+sudo /etc/init.d/nginx start
+```
+Start the clixon restconf daemon
+```
+sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+```
+then access using curl or wget:
+```
+   curl -G http://127.0.0.1/restconf/data/ietf-interfaces:interfaces/interface=eth9/type
 ```
 
 ## Streams
@@ -81,23 +146,141 @@ Send restconf command
 The example has an EXAMPLE stream notification triggering every 5s. To start a notification 
 stream in the session using netconf, create a subscription:
 ```
-<rpc><create-subscription><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>
+<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
-<notification><event>Routing notification</event></notification>]]>]]>
-<notification><event>Routing notification</event></notification>]]>]]>
+<notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2019-01-02T10:20:05.929272</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>]]>]]>
 ...
 ```
 This can also be triggered via the CLI:
 ```
-cli> notify 
-cli> Routing notification
-Routing notification
+clixon_cli -f /usr/local/etc/example.xml
+cli> notify
+cli> event-class fault;
+reportingEntity {
+    card Ethernet0;
+}
+severity major;
 ...
+cli> no notify
+cli>
 ```
 
-Restconf support is also supported, see [../apps/restconf/README.md].
+Restconf support is also supported, see (restc)[../apps/restconf/README.md].
 
-## Initializing a plugin
+
+## RPC Operations
+
+Clixon implements Yang RPC operations by an extension mechanism. The
+extension mechanism enables you to add application-specific
+operations. It works by adding user-defined callbacks for added
+netconf operations. It is possible to use the extension mechanism
+independent of the yang rpc construct, but it is recommended. The example includes an example:
+
+Example using CLI:
+```
+clixon_cli -f /usr/local/etc/example.xml
+cli> rpc ipv4
+<rpc-reply><x xmlns="urn:example:clixon">ipv4</x><y xmlns="urn:example:clixon">42</y></rpc-reply>
+```
+Example using Netconf:
+```
+clixon_netconf -qf /usr/local/etc/example.xml
+<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>ipv4</x></example></rpc>]]>]]>
+<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">ipv4</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>
+```
+Restconf (assuming nginx started):
+```
+sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data&
+curl -X POST  http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":"ipv4"}}'
+{
+  "clixon-example:output": {
+    "x": "ipv4",
+    "y": "42"
+  }
+}
+```
+
+### Details
+
+The example works by defining an RPC in clixon-example.yang:
+```
+    rpc example {
+	description "Some example input/output for testing RFC7950 7.14.
+                     RPC simply echoes the input for debugging.";
+    	input {
+	    leaf x {
+        ...
+```
+
+In the CLI a netconf rpc call is constructed and sent to the backend: See `example_client_rpc()` in [example_cli.c] CLI plugin.
+
+The clixon backend  plugin [example_backend.c] reveives the netconf call and replies. This is made byregistering a callback handling handling the RPC:
+```
+static int 
+example_rpc(clicon_handle h, 
+	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	    void         *arg,          /* Client session */
+	    void         *regarg)       /* Argument given at register */
+{
+    /* code that echoes the request */
+    return 0;
+}
+int
+clixon_plugin_init(clicon_handle h)
+{
+...
+   rpc_callback_register(h, example_rpc, NULL, "example");
+...
+}
+```
+
+## State data
+
+Netconf <get> and restconf GET also returns state data(not only configuration data).
+
+In YANG state data is specified with `config false;`. In the example,
+`state` is state data, see (example.yang)[example.yang]
+
+To return state data, you need to write a backend state data callback
+with the name "plugin_statedata" where you return an XML tree with
+state. This is then merged with config data by the system.
+
+A static example of returning state data is in the example. Note that
+a real example would poll or get the interface counters via a system
+call, as well as use the "xpath" argument to identify the requested
+state data.
+
+## Authentication and NACM
+The example contains some stubs for authorization according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341):
+* A basic auth HTTP callback, see: example_restconf_credentials() containing three example users: andy, wilma, and guest, according to the examples in Appendix A in [RFC8341](https://tools.ietf.org/html/rfc8341).
+* A NACM backend plugin reporting the mandatory NACM state variables.
+
+## Systemd
+
+Example systemd files for backend and restconf daemons are found under the systemd directory. Install them under /etc/systemd/system for example.
+
+## Docker
+
+Run the example as a docker container and access it from a host CLI as follows:
+```
+ID=$(sudo docker run -td olofhagsand/clixon_example)
+IP=$(sudo docker inspect -f '{{.NetworkSettings.IPAddress }}' $ID)
+clixon_cli -a IPv4 -u $IP -f ./example.xml
+```
+
+Build the container and push yourself: First change the IMAGE variable in Makefile (eg to "you/clixon_example). Then build and push:
+```
+make docker
+make push
+sudo docker run -ti --rm you/clixon_example
+```
+
+Note that the configuration database is internal in the container, so
+it is deleted if the container is restarted. To make the configuration
+database persistent, you need to mount running_db using `-v`
+
+## Plugins
 
 The example includes a restonf, netconf, CLI and two backend plugins.
 Each plugin is initiated with an API struct followed by a plugin init function.
@@ -123,102 +306,8 @@ clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
     /* Optional callback registration for RPC calls */
-    rpc_callback_register(h, fib_route, NULL, "fib-route");
+    rpc_callback_register(h, example_rpc, NULL, "example");
     /* Return plugin API */
     return &api; /* Return NULL on error */
 }
 ```
-
-## Operation data
-
-Clixon implements Yang RPC operations by an extension mechanism. The
-extension mechanism enables you to add application-specific
-operations. It works by adding user-defined callbacks for added
-netconf operations. It is possible to use the extension mechanism
-independent of the yang rpc construct, but it is recommended. The example includes an example:
-
-Example:
-```
-cli> rpc ipv4
-<rpc-reply>
-   <ok/>
-</rpc-reply>
-```
-
-The example works by creating a netconf rpc call and sending it to the backend: (see the fib_route_rpc() function).
-```
-  <rpc>
-    <fib-route>
-      <routing-instance-name>ipv4</routing-instance-name>
-    </fib-route>
-   </rpc>
-```
-
-In the backend, a callback is registered (fib_route()) which handles the RPC.
-```
-static int 
-fib_route(clicon_handle h, 
-	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg,          /* Client session */
-	  void         *regarg)       /* Argument given at register */
-{
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
-    return 0;
-}
-int
-clixon_plugin_init(clicon_handle h)
-{
-...
-   rpc_callback_register(h, fib_route, NULL, "fib-route");
-...
-}
-```
-## State data
-
-Netconf <get> and restconf GET also returns state data, in contrast to
-config data. 
-p
-In YANG state data is specified with "config false;". In the example, interface-state is state data.
-
-To return state data, you need to write a backend state data callback
-with the name "plugin_statedata" where you return an XML tree with
-state. This is then merged with config data by the system.
-
-A static example of returning state data is in the example. Note that
-a real example would poll or get the interface counters via a system
-call, as well as use the "xpath" argument to identify the requested
-state data.
-
-## Authentication and NACM
-The example contains some stubs for authorization according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341):
-* A basic auth HTTP callback, see: example_restconf_credentials() containing three example users: adm1, wilma, and guest, according to the examples in Appendix A in the RFC.
-* A NACM backend plugin reporting the mandatory NACM state variables.
-
-
-## Systemd files
-
-Example systemd files for backend and restconf daemons are found under the systemd directory. Install them under /etc/systemd/system for example.
-
-## Docker
-
-Run the example as a docker container and access it from a host CLI as follows:
-```
-ID=$(sudo docker run -td olofhagsand/clixon_example)
-IP=$(sudo docker inspect -f '{{.NetworkSettings.IPAddress }}' $ID)
-clixon_cli -a IPv4 -u $IP -f ./example.xml
-```
-
-Build the container and push yourself: First change the IMAGE variable in Makefile (eg to "you/clixon_example). Then build and push:
-```
-make docker
-make push
-sudo docker run -ti --rm you/clixon_example
-```
-
-Note that the configuration database is internal in the container, so
-it is deleted if the container is restarted. To make the configuration
-database persistent, you need to mount running_db using `-v`
-
-
-

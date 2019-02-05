@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 #
 # This file is part of CLIXON
 #
@@ -44,11 +44,13 @@ all:  $(SUBDIRS) doc
 	echo "Build doxygen doc: make doc"
 
 # Regular doxygen documentation
+# Need to install doxygen
 doc:	
 	doxygen Doxyfile # generates html dir
 	echo "Build doxygen graphs: make graphs"
 
 # doxygen documentation with callgraphs
+# Need to install graphviz
 graphs:
 	doxygen Doxyfile.graphs # generates html dir + call graphs (takes time)
 

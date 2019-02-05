@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -209,6 +209,30 @@ clixon_str2fn(char  *name,
    return NULL; 
 }
 
+#ifdef CLICON_CLI_MODEL_TREENAME_PATCH
+/*! Patch all CLI spec calls to @datamodel:tree to @datamodel.
+ * This is a backward compatible fix for 3.9 for CLIgen specification files
+ * using model generation (CLIXON_CLI_GENMODEL).
+ * All new references should use @datamodel (or CLICON_CLI_MODEL_TREENAME).
+ * whereas older code used @datamodel:tree.
+ */
+static int
+mask_datamodel_fn(cg_obj *co,
+		  void   *arg)
+{
+    char *str = "datamodel:";
+    int len = strlen(str);
+    if (co->co_type == CO_REFERENCE){
+
+	if (strlen(co->co_command) > len &&
+	    strncmp(co->co_command, "datamodel:", len)==0){
+	    co->co_command[len-1] = '\0';
+	}
+    }
+    return 0;
+}
+#endif /* CLICON_CLI_MODEL_TREENAME_PATCH */
+
 /*! Append to syntax mode from file
  * @param[in]  h         Clixon handle
  * @param[in]  filename	 Name of file where syntax is specified (in syntax-group dir)
@@ -253,7 +277,10 @@ cli_load_syntax(clicon_handle h,
 	goto done;
     }
     fclose(f);
-	
+#ifdef CLICON_CLI_MODEL_TREENAME_PATCH
+    if (pt_apply(pt, mask_datamodel_fn, h) < 0)
+	goto done;
+#endif
     /* Get CLICON specific global variables */
     prompt = cvec_find_str(cvv, "CLICON_PROMPT");
     plgnam = cvec_find_str(cvv, "CLICON_PLUGIN");

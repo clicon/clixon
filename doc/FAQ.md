@@ -42,9 +42,9 @@ The example:
 	 sudo make install
 ```
 
-## How do you run Clixon example commands?
+## How do I run Clixon example commands?
 
-- Start a backend server: `clixon_backend -Ff /usr/local/etc/example.xml`
+- Start a backend server: `clixon_backend -F -s init -f /usr/local/etc/example.xml`
 - Start a cli session: `clixon_cli -f /usr/local/etc/example.xml`
 - Start a netconf session: `clixon_netconf -f /usr/local/etc/example.xml`
 - Start a restconf daemon: `sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data`
@@ -72,70 +72,37 @@ grep clicon /etc/group
 clicon:x:1001:<user>,www-data
 ```
 
-## What about reference documentation?
-Clixon uses Doxygen for reference documentation.
-Build using 'make doc' and aim your browser at doc/html/index.html.
+## How do I use the CLI?
 
-## How is configuration data stored?
-Configuration data is stored in an XML datastore. In the example the
-datastore are regular files found in /usr/local/var/example/.
-
-## What is validate and commit?
-Clixon follows netconf in its validate and commit semantics.
-In short, you edit a 'candidate' configuration, which is first
-'validated' for consistency and then 'committed' to the 'running' 
-configuration.
-
-A clixon developer writes commit functions to incrementaly upgrade a
-system state based on configuration changes. Writing commit callbacks
-is the core functionality of a clixon system.
-
-## What is a Clixon configuration file?
-
-Clixon options are stored in an XML configuration file. The default
-configuration file is /usr/local/etc/clixon.xml. The example
-configuration file is installed at /usr/local/etc/example.xml. The
-YANG specification for the configuration file is clixon-config.yang.
-
-You can change where Clixon looks for the configuration FILE as follows:
-  - Provide -f FILE option when starting a program (eg clixon_backend -f FILE)
-  - Provide --with-configfile=FILE when configuring
-  - Provide --with-sysconfig=<dir> when configuring, then FILE is <dir>/clixon.xml
-  - Provide --sysconfig=<dir> when configuring then FILE is <dir>/etc/clixon.xml
-  - FILE is /usr/local/etc/clixon.xml
-
-## How do I enable Yang features?
-
-Yang models have features, and parts of a specification can be
-conditional using the if-feature statement. In Clixon, features are
-enabled in the configuration file using <CLICON_FEATURE>.
-
-The example below shows enabling a specific feature; enabling all features in module; and enabling all features in all modules, respectively:
+The easiest way to use Clixon is via the CLI. Once the backend is started
+Example:
 ```
-      <CLICON_FEATURE>ietf-routing:router-id</CLICON_FEATURE>
-      <CLICON_FEATURE>ietf-routing:*</CLICON_FEATURE>
-      <CLICON_FEATURE>*:*</CLICON_FEATURE>
+clixon_cli -f /usr/local/etc/example.xml 
+cli> set interfaces interface eth9 ?
+ description               enabled                   ipv4                     
+ ipv6                      link-up-down-trap-enable  type                     
+cli> set interfaces interface eth9 type ex:eth
+cli> validate 
+cli> commit 
+cli> show configuration xml 
+<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+   <interface>
+      <name>eth9</name>
+      <type>ex:eth</type>
+      <enabled>true</enabled>
+   </interface>
+</interfaces>
+cli> delete interfaces interface eth9
 ```
-
-Features can be probed by using RFC 7895 Yang module library which provides
-information on all modules and which features are enabled.
-
-## Can I run Clixon as docker containers?
-
-Yes, the example works as docker containers as well. There should be a
-prepared container in docker hub for the example where the backend and
-CLI is bundled. 
-```
-sudo docker run -td olofhagsand/clixon_example
-```
-Look in the example documentation for more info.
 
 ## How do I use netconf?
 
 As an alternative to cli configuration, you can use netconf. Easiest is to just pipe netconf commands to the clixon_netconf application.
 Example:
 ```
-	echo "<rpc><get-config><source><candidate/></source><configuration/></get-config></rpc>]]>]]>" | clixon_netconf -f /usr/local/etc/example.xml
+clixon_netconf -qf /usr/local/etc/example.xml
+<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
+<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth9</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>
 ```
 
 However, more useful is to run clixon_netconf as an SSH
@@ -170,18 +137,118 @@ Start nginx daemon
 ```
 sudo /etc/init.d/nginx start
 ```
-
-Example:
+Start the clixon restconf daemon
 ```
-   curl -G http://127.0.0.1/restconf/data/interfaces/interface/name=eth9/type
+sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+```
+
+Then acess:
+```
+   curl -G http://127.0.0.1/restconf/data/ietf-interfaces:interfaces/interface=eth9/type
    [
      {
-       "type": "eth" 
+       "ietf-interfaces:type": "ex:eth" 
      }
    ]
 ```
-Read more in the (restconf)[../apps/restconf] docs.
+Read more in the [restconf](../apps/restconf) docs.
+## What about reference documentation?
+Clixon uses [Doxygen](http://www.doxygen.nl/index.html) for reference documentation.
+You need to install doxygen and graphviz on your system.
+Build it in the doc directory and point the browser to `.../clixon/doc/html/index.html` as follows:
+```
+> cd doc
+> make doc
+> make graphs # detailed callgraphs
+```
 
+## How is configuration data stored?
+Configuration data is stored in an XML datastore. In the example the
+datastore are regular files found in /usr/local/var/example/.
+
+## What is validate and commit?
+Clixon follows netconf in its validate and commit semantics.
+In short, you edit a 'candidate' configuration, which is first
+'validated' for consistency and then 'committed' to the 'running' 
+configuration.
+
+A clixon developer writes commit functions to incrementaly upgrade a
+system state based on configuration changes. Writing commit callbacks
+is the core functionality of a clixon system.
+
+## What is a Clixon configuration file?
+
+Clixon options are stored in an XML configuration file. The default
+configuration file is /usr/local/etc/clixon.xml. The example
+configuration file is installed at /usr/local/etc/example.xml. The
+YANG specification for the configuration file is clixon-config.yang.
+
+## How are Clixon configuration files found?
+
+Clixon by default finds its configuration file at `/usr/local/etc/clixon.xml`. However, you can modify this location as follows:
+  - Provide -f FILE option when starting a program (eg clixon_backend -f FILE)
+  - Provide --with-configfile=FILE when configuring
+  - Provide --with-sysconfig=<dir> when configuring. Then FILE is <dir>/clixon.xml
+  - Provide --sysconfig=<dir> when configuring. Then FILE is <dir>/etc/clixon.xml
+  - FILE is /usr/local/etc/clixon.xml
+
+## Can I modify clixon options at runtime?
+
+Yes, when you start a clixon program, you can supply the `-o` option to modify the configuration specified in the configuration file. Options that are leafs are overriden, whereas options that are leaf-lists are added to.
+
+Example, add the "usr/local/share/ietf" directory to the list of directories where yang files are searched for:
+```
+  clixon_cli -o CLICON_YANG_DIR=/usr/local/share/ietf
+```
+
+## How are Yang files found?
+
+Yang files contain the configuration specification. A Clixon
+application loads yang files and clixon itself loads system yang
+files. When Yang files are loaded modules are imported and submodules
+are included.
+
+The following configuration file options control the loading of Yang files:
+- `CLICON_YANG_DIR` -  A list of directories (yang dir path) where Clixon searches for module and submodules.
+- `CLICON_YANG_MAIN_FILE` - Load a specific Yang module given by a file. 
+- `CLICON_YANG_MODULE_MAIN` - Specifies a single module to load. The module is searched for in the yang dir path.
+- `CLICON_YANG_MODULE_REVISION` : Specifies a revision to the main module. 
+- `CLICON_YANG_MAIN_DIR` - Load all yang modules in this directory.
+
+Note that the special `CLIXON_DATADIR`, by default `/usr/local/share/clixon` should be included in the yang dir path for Clixon system files to be found.
+
+You can combine the options, however, if there are different variants
+of the same module, more specific options override less
+specific. The precedence of the options are as follows:
+- `CLICON_YANG_MAIN_FILE`
+- `CLICON_YANG_MODULE_MAIN`
+- `CLICON_YANG_MAIN_DIR`
+
+## How do I enable Yang features?
+
+Yang models have features, and parts of a specification can be
+conditional using the if-feature statement. In Clixon, features are
+enabled in the configuration file using <CLICON_FEATURE>.
+
+The example below shows enabling a specific feature; enabling all features in module; and enabling all features in all modules, respectively:
+```
+      <CLICON_FEATURE>ietf-routing:router-id</CLICON_FEATURE>
+      <CLICON_FEATURE>ietf-routing:*</CLICON_FEATURE>
+      <CLICON_FEATURE>*:*</CLICON_FEATURE>
+```
+
+Features can be probed by using RFC 7895 Yang module library which provides
+information on all modules and which features are enabled.
+
+## Can I run Clixon as docker containers?
+
+Yes, the example works as docker containers as well. There should be a
+prepared container in docker hub for the example where the backend and
+CLI is bundled. 
+```
+sudo docker run -td olofhagsand/clixon_example
+```
+Look in the example documentation for more info.
 
 ## Does Clixon support event streams? 
 
@@ -202,7 +269,7 @@ severity major;
 or via NETCONF:
 ```
 clixon_netconf -qf /usr/local/etc/example.xml 
-<rpc><create-subscription><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>
+<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
 <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-09-30T12:44:59.657276</eventTime><event xmlns="http://example.com/event/1.0"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>]]>]]>
 ...
@@ -211,11 +278,11 @@ or via restconf:
 ```
    curl -H "Accept: text/event-stream" -s -X GET http://localhost/streams/EXAMPLE
 ```
-Consult (../apps/restconf/README.md) on more information on how to setup a reverse proxy for restconf streams. It is also possible to configure a pub/sub system such as (Nginx Nchan)[https://nchan.io]. 
+Consult [clixon restconf](../apps/restconf/README.md) on more information on how to setup a reverse proxy for restconf streams. It is also possible to configure a pub/sub system such as [Nginx Nchan](https://nchan.io). 
 
 ## How should I start the backend daemon?
 
-There are four different backend startup modes. There is differences in running state treatment, ie what state the machine is when you startthe daemon and how loading the configuration affects it:
+There are four different backend startup modes. There is differences in running state treatment, ie what state the machine is when you start the daemon and how loading the configuration affects it:
 - none - Do not touch running state. Typically after crash when running state and db are synched.
 - init - Initialize running state. Start with a completely clean running state.
 - running - Commit running db configuration into running state. Typically after reboot if a persistent running db exists.
@@ -239,6 +306,7 @@ You may also add a default method in the configuration file:
 Yes. Systemd example files are provide for the backend and the
 restconf daemon as part of the [example](../example/systemd).
 
+
 ## How can I add extra XML?
 
 There are two ways to add extra XML to running database  after start. Note that this XML is not "committed" into running.
@@ -246,7 +314,7 @@ There are two ways to add extra XML to running database  after start. Note that 
 The first way is via a file. Assume you want to add this xml (the config tag is a necessary top-level tag):
 ```
 <config>
-   <x>extra</x>
+   <x xmlns="urn:example:clixon">extra</x>
 </config>
 ```
 You add this via the -c option:
@@ -258,12 +326,13 @@ The second way is by programming the plugin_reset() in the backend
 plugin. The example code contains an example on how to do this (see plugin_reset() in example_backend.c).
 
 ## I want to program. How do I extend the example?
-See [../apps/example] 
+See [../apps/example](../apps/example)
 - example.xml - Change the configuration file
 - The yang specifications - This is the central part. It changes the XML, database and the config cli.
 - example_cli.cli - Change the fixed part of the CLI commands 
 - example_cli.c - Cli C-commands are placed here.
 - example_backend.c - Commit and validate functions.
+- example_backend_nacm.c - Secondary example plugin (for authorization)
 - example_netconf.c - Netconf plugin
 - example_restconf.c - Add restconf authentication, etc.
 
@@ -349,7 +418,7 @@ Please look at the example for an example on how to write a state data callback.
 
 A YANG RPC is an application specific operation. Example:
 ```
-   rpc fib-route {
+   rpc example-rpc {
       input {
          leaf inarg { type string; }
       }
@@ -358,7 +427,7 @@ A YANG RPC is an application specific operation. Example:
       }
    }
 ```
-which defines the fib-route operation present in the example (the arguments have been changed).
+which defines the example-rpc operation present in the example (the arguments have been changed).
 
 Clixon automatically relays the RPC to the clixon backend. To
 implement the RFC, you need to register an RPC callback in the backend plugin:
@@ -368,18 +437,18 @@ int
 clixon_plugin_init(clicon_handle h)
 {
 ...
-   rpc_callback_register(h, fib_route, NULL, "fib-route");
+   rpc_callback_register(h, example_rpc, NULL, "example-rpc");
 ...
 }
 ```
 And then define the callback itself:
 ```
 static int 
-fib_route(clicon_handle h,            /* Clicon handle */
-	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg,          /* Client session */
-	  void         *regarg)       /* Argument given at register */
+example_rpc(clicon_handle h,            /* Clicon handle */
+	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	    void         *arg,          /* Client session */
+	    void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
     return 0;
@@ -406,10 +475,18 @@ To authenticate, the callback needs to return the value 1 and supply a username.
 See [../apps/example/example_restconf.c] example_restconf_credentials() for
 an example of HTTP basic auth.
 
+## What about access control?
+
+Clixon has experimental support of the Network Configuration Access
+Control Model defined in [RFC8341](https://tools.ietf.org/html/rfc8341)
+
+Incoming RPC and data node access points are supported with some
+limitations. See the (README)(../README.md) for more information.
+
 ## How do I write a CLI translator function?
 
 The CLI can perform variable translation. This is useful if you want to
-prcess the input, such as hashing, encrypting or in other way
+process the input, such as hashing, encrypting or in other way
 translate the input.
 
 Yang example:

@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -40,7 +40,7 @@
  * Prototypes
  */
 int text_get(xmldb_handle h, const char *db, char *xpath, int config, cxobj **xtop);
-int text_put(xmldb_handle h, const char *db, enum operation_type op, cxobj *xt, cbuf *cbret);
+int text_put(xmldb_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
 int text_dump(FILE *f, char *dbfilename, char *rxkey);
 int text_copy(xmldb_handle h, const char *from, const char *to);
 int text_lock(xmldb_handle h, const char *db, int pid);

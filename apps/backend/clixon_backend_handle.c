@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -91,7 +91,6 @@ struct backend_handle {
     /* ------ end of common handle ------ */
     struct client_entry     *bh_ce_list;   /* The client list */
     int                      bh_ce_nr;     /* Number of clients, just increment */
-    cxobj                   *bh_nacm;      /* NACM external struct */
 };
 
 /*! Creates and returns a clicon config handle for other CLICON API calls
@@ -109,7 +108,6 @@ backend_handle_init(void)
 int
 backend_handle_exit(clicon_handle h)
 {
-    struct backend_handle *bh = handle(h);
     struct client_entry   *ce;
 
     /* only delete client structs, not close sockets, etc, see backend_client_rm WHY NOT? */
@@ -120,8 +118,6 @@ backend_handle_exit(clicon_handle h)
 	}
 	backend_client_delete(h, ce);
     }
-    if (bh->bh_nacm)
-	xml_free(bh->bh_nacm);
     clicon_handle_exit(h); /* frees h and options (and streams) */
     return 0;
 }
@@ -188,22 +184,3 @@ backend_client_delete(clicon_handle        h,
     return 0;
 }
 
-int
-backend_nacm_list_set(clicon_handle h,
-		      cxobj        *xnacm)
-{
-    struct backend_handle *bh = handle(h);
-
-    if (bh->bh_nacm)
-	xml_free(bh->bh_nacm);
-    bh->bh_nacm = xnacm;
-    return 0;
-}
-
-cxobj *
-backend_nacm_list_get(clicon_handle h)
-{
-    struct backend_handle *bh = handle(h);
-    
-    return bh->bh_nacm;
-}

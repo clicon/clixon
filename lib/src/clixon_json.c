@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -55,10 +55,12 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_queue.h"
+#include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_json.h"
 #include "clixon_json_parse.h"
 
@@ -91,21 +93,30 @@ enum childtype{
 };
 
 /*! x is element and has exactly one child which in turn has none 
+ * remove attributes from x
  * Clone from clixon_xml_map.c
  */
 static enum childtype
-childtype(cxobj *x)
+child_type(cxobj *x)
 {
-    cxobj *xc1; /* the only child of x */
+    cxobj *xc;   /* the only child of x */
+    int    clen; /* nr of children */
 
+    clen = xml_child_nr_notype(x, CX_ATTR);
     if (xml_type(x) != CX_ELMNT)
 	return -1; /* n/a */
-    if (xml_child_nr(x) == 0)
+    if (clen == 0)
     	return NULL_CHILD;
-    if (xml_child_nr(x) > 1)
+    if (clen > 1)
 	return ANY_CHILD;
-    xc1 = xml_child_i(x, 0); /* From here exactly one child */
-    if (xml_child_nr(xc1) == 0 && xml_type(xc1)==CX_BODY)
+    /* From here exactly one noattr child, get it */
+    xc = NULL;
+    while ((xc = xml_child_each(x, xc, -1)) != NULL)
+	if (xml_type(xc) != CX_ATTR)
+	    break;
+    if (xc == NULL)
+	return -2; /* n/a */
+    if (xml_child_nr_notype(xc, CX_ATTR) == 0 && xml_type(xc)==CX_BODY)
 	return BODY_CHILD;
     else
 	return ANY_CHILD;
@@ -154,6 +165,9 @@ arraytype2str(enum array_element_type lt)
     return "";
 }
 
+/*! Check typeof x in array
+ * Some complexity when x is in different namespaces
+ */
 static enum array_element_type
 array_eval(cxobj *xprev, 
 	   cxobj *x, 
@@ -163,7 +177,10 @@ array_eval(cxobj *xprev,
     int                     eqprev=0;
     int                     eqnext=0;
     yang_stmt              *ys;
+    char                   *nsx; /* namespace of x */
+    char                   *ns2;
 
+    nsx = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
     if (xml_type(x)!=CX_ELMNT){
 	array=BODY_ARRAY;
 	goto done;
@@ -171,12 +188,20 @@ array_eval(cxobj *xprev,
     ys = xml_spec(x);
     if (xnext && 
 	xml_type(xnext)==CX_ELMNT &&
-	strcmp(xml_name(x),xml_name(xnext))==0)
-	eqnext++;
+	strcmp(xml_name(x),xml_name(xnext))==0){
+        ns2 = xml_find_type_value(xnext, NULL, "xmlns", CX_ATTR);
+	if ((!nsx && !ns2)
+	    || (nsx && ns2 && strcmp(nsx,ns2)==0))
+	    eqnext++;
+    }
     if (xprev &&
 	xml_type(xprev)==CX_ELMNT &&
-	strcmp(xml_name(x),xml_name(xprev))==0)
-	eqprev++;
+	strcmp(xml_name(x),xml_name(xprev))==0){
+	ns2 = xml_find_type_value(xprev, NULL, "xmlns", CX_ATTR);
+	if ((!nsx && !ns2)
+	    || (nsx && ns2 && strcmp(nsx,ns2)==0))
+	    eqprev++;
+    }
     if (eqprev && eqnext)
 	array = MIDDLE_ARRAY;
     else if (eqprev)
@@ -191,42 +216,58 @@ array_eval(cxobj *xprev,
     return array;
 }
 
-/*! Escape a json string
+/*! Escape a json string as well as decode xml cdata
+ * And a
  */
-static char *
-json_str_escape(char *str)
+static int
+json_str_escape_cdata(cbuf *cb,
+		      char *str)
 {
-    int   i, j;
-    char *snew;
+    int   retval = -1;
+    char *snew = NULL;
+    int   i;
+    int   esc = 0; /* cdata escape */
 
-    j = 0;
     for (i=0;i<strlen(str);i++)
 	switch (str[i]){
 	case '\n':
-	case '\"':
-	case '\\':
-	    j++;
-	    break;
-	}
-    if ((snew = malloc(strlen(str)+1+j))==NULL){
-	clicon_err(OE_XML, errno, "malloc");
-	return NULL;
-    }
-    j = 0;
-    for (i=0;i<strlen(str);i++)
-	switch (str[i]){
-	case '\n':
-	    snew[j++]='\\';
-	    snew[j++]='n';
+	    cprintf(cb, "\\n");
 	    break;
 	case '\"':
+	    cprintf(cb, "\\\"");
+	    break;
 	case '\\':
-	    snew[j++]='\\';
+	    cprintf(cb, "\\\\");
+	    break;
+	case '<':
+	    if (!esc &&
+		strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+		esc=1;
+		i += strlen("<![CDATA[")-1;
+	    }
+	    else
+		cprintf(cb, "%c", str[i]);
+	    break;
+	case ']':
+	    if (esc &&
+		strncmp(&str[i], "]]>", strlen("]]>")) == 0){
+		esc=0;
+		i += strlen("]]>")-1;
+	    }
+	    else
+		cprintf(cb, "%c", str[i]);
+	    break;
 	default: /* fall thru */
-	    snew[j++]=str[i];
+	    cprintf(cb, "%c", str[i]);
+	    break;
 	}
-    snew[j++]='\0';
-    return snew;
+    if ((snew = strdup(cbuf_get(cb))) ==NULL){
+	clicon_err(OE_XML, errno, "strdup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Do the actual work of translating XML to JSON 
@@ -267,13 +308,13 @@ json_str_escape(char *str)
   +----------+--------------+--------------+--------------+
  */
 static int 
-xml2json1_cbuf(cbuf                  *cb,
-	       cxobj                 *x,
+xml2json1_cbuf(cbuf                   *cb,
+	       cxobj                  *x,
 	       enum array_element_type arraytype,
-	       int                    level,
-	       int                    pretty,
-	       int                    flat,
-	       int                    bodystr)
+	       int                     level,
+	       int                     pretty,
+	       int                     flat,
+	       int                     bodystr)
 {
     int              retval = -1;
     int              i;
@@ -281,10 +322,30 @@ xml2json1_cbuf(cbuf                  *cb,
     enum childtype   childt;
     enum array_element_type xc_arraytype;
     yang_stmt       *ys;
+    yang_stmt       *ymod; /* yang module */
+    yang_spec       *yspec = NULL; /* yang spec */
     int              bodystr0=1;
+    char            *prefix=NULL;    /* prefix / local namespace name */
+    char            *namespace=NULL; /* namespace uri */
+    char            *modname=NULL;   /* Module name */
+    int              commas;
 
-    childt = childtype(x);
-    ys = xml_spec(x);
+    /* If x is labelled with a default namespace, it should be translated
+     * to a module name. 
+     * Harder if x has a prefix, then that should also be translated to associated
+     * module name
+     */
+    prefix = xml_prefix(x);
+    namespace = xml_find_type_value(x, prefix, "xmlns", CX_ATTR);
+
+    if ((ys = xml_spec(x)) != NULL) /* yang spec associated with x */
+	yspec = ys_spec(ys);
+    /* Find module name associated with namspace URI */
+    if (namespace && yspec &&
+	(ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL){
+	modname = ymod->ys_argument;
+    }
+    childt = child_type(x);
     if (pretty==2)
 	cprintf(cb, "#%s_array, %s_child ", 
 		arraytype2str(arraytype),
@@ -292,22 +353,21 @@ xml2json1_cbuf(cbuf                  *cb,
     switch(arraytype){
     case BODY_ARRAY:{
 	if (bodystr){
-	    char      *str;
-	    if ((str = json_str_escape(xml_value(x))) == NULL)
+	    /* XXX String if right type */
+	    cprintf(cb, "\"");
+	    if (json_str_escape_cdata(cb, xml_value(x)) < 0)
 		goto done;
-	    cprintf(cb, "\"%s\"", str);
-	    free(str);
+	    cprintf(cb, "\"");
 	}
 	else
 	    cprintf(cb, "%s", xml_value(x));
-
 	break;
     }
     case NO_ARRAY:
 	if (!flat){
 	    cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
-	    if (xml_namespace(x))
-		cprintf(cb, "%s:", xml_namespace(x));
+	    if (modname) /* XXX should remove this? */
+		cprintf(cb, "%s:", modname);
 	    cprintf(cb, "%s\": ", xml_name(x));
 	}
 	switch (childt){
@@ -326,8 +386,8 @@ xml2json1_cbuf(cbuf                  *cb,
     case FIRST_ARRAY:
     case SINGLE_ARRAY:
 	cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
-	if (xml_namespace(x))
-	    cprintf(cb, "%s:", xml_namespace(x));
+	if (modname)
+	    cprintf(cb, "%s:", modname);
 	cprintf(cb, "%s\": ", xml_name(x));
 	level++;
 	cprintf(cb, "[%s%*s", 
@@ -368,7 +428,7 @@ xml2json1_cbuf(cbuf                  *cb,
 	break;
     }
     /* Check for typed sub-body if:
-     * arracytype=* but chilt-type is BODY_CHILD 
+     * arraytype=* but child-type is BODY_CHILD 
      * This is code for writing <a>42</a> as "a":42 and not "a":"42"
      */
     if (childt == BODY_CHILD && ys!=NULL &&
@@ -391,8 +451,11 @@ xml2json1_cbuf(cbuf                  *cb,
 	    break;
 	}
 
+    commas = xml_child_nr_notype(x, CX_ATTR) - 1;
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
+	if (xml_type(xc) == CX_ATTR)
+	    continue; /* XXX Only xmlns attributes mapped */
 	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
 				xc, 
 				xml_child_i(x, i+1));
@@ -401,8 +464,10 @@ xml2json1_cbuf(cbuf                  *cb,
 			   xc_arraytype,
 			   level+1, pretty, 0, bodystr0) < 0)
 	    goto done;
-	if (i<xml_child_nr(x)-1)
+	if (commas > 0) {
 	    cprintf(cb, ",%s", pretty?"\n":"");
+	    --commas;
+	}
     }
     switch (arraytype){
     case BODY_ARRAY:
@@ -491,10 +556,24 @@ xml2json_cbuf(cbuf      *cb,
 {
     int    retval = 1;
     int    level = 0;
+    char  *prefix;
+    char  *namespace;
 
     cprintf(cb, "%*s{%s", 
 	    pretty?level*JSON_INDENT:0,"", 
 	    pretty?"\n":"");
+    /* If x is labelled with a default namespace, it should be translated
+     * to a module name. 
+     * Harder if x has a prefix, then that should also be translated to associated
+     * module name
+     */
+    prefix = xml_prefix(x);
+    if (xml2ns(x, prefix, &namespace) < 0)
+	goto done;
+    /* Some complexities in grafting namespace in existing trees to new */
+    if (xml_find_type_value(x, prefix, "xmlns", CX_ATTR) == NULL && namespace)
+	if (xmlns_set(x, prefix, namespace) < 0)
+		goto done;
     if (xml2json1_cbuf(cb, 
 		       x, 
 		       NO_ARRAY,
@@ -510,7 +589,7 @@ xml2json_cbuf(cbuf      *cb,
     return retval;
 }
 
-/*! Translate a vector of xml objects to JSON CLigen buffer.
+/*! Translate a vector of xml objects to JSON Cligen buffer.
  * This is done by adding a top pseudo-object, and add the vector as subs,
  * and then not printing the top pseudo-object using the 'flat' option.
  * @param[out] cb     Cligen buffer to write to
@@ -534,12 +613,21 @@ xml2json_cbuf_vec(cbuf      *cb,
     int    i;
     cxobj *xp = NULL;
     cxobj *xc;
+    char  *prefix;
+    char  *namespace;
 
-    if ((xp = xml_new("", NULL, NULL)) == NULL)
+    if ((xp = xml_new("xml2json", NULL, NULL)) == NULL)
 	goto done;
+    /* Some complexities in grafting namespace in existing trees to new */
     for (i=0; i<veclen; i++){
+	prefix = xml_prefix(vec[i]);
+	if (xml2ns(vec[i], prefix, &namespace) < 0)
+	    goto done;
 	xc = xml_dup(vec[i]);
 	xml_addsub(xp, xc);
+	if (xml_find_type_value(xc, prefix, "xmlns", CX_ATTR) == NULL && namespace)
+	    if (xmlns_set(xc, prefix, namespace) < 0)
+		goto done;
     }
     if (0){
 	cprintf(cb, "[%s", pretty?"\n":" ");
@@ -633,6 +721,66 @@ xml2json_vec(FILE      *f,
  done:
     if (cb)
 	cbuf_free(cb);
+    return retval;
+}
+
+/*! Translate from JSON module:name to XML name xmlns="uri" recursively
+ * @param[in]     yspec Yang spec
+ * @param[in,out] x     XML tree. Translate it in-line
+ * @param[out]    xerr  If namespace not set, create xml error tree
+ * @retval        0     OK (if xerr set see above)
+ * @retval       -1     Error
+ * @note the opposite - xml2ns is made inline in xml2json1_cbuf
+ */
+int
+json2xml_ns(yang_spec *yspec,
+	    cxobj     *x,
+	    cxobj    **xerr)
+{
+    int        retval = -1;
+    yang_stmt *ymod;
+    char      *namespace0;
+    char      *namespace;
+    char      *name = NULL;
+    char      *prefix = NULL;
+    cxobj     *xc;
+    
+    if (nodeid_split(xml_name(x), &prefix, &name) < 0)
+	goto done;
+    if (prefix != NULL){
+	if ((ymod = yang_find_module_by_name(yspec, prefix)) == NULL){
+	    if (netconf_unknown_namespace_xml(xerr, "application",
+					      prefix,
+					      "No yang module found corresponding to prefix") < 0)
+		goto done;
+	    goto ok;
+	}
+	namespace = yang_find_mynamespace(ymod);
+	/* Get existing default namespace in tree */
+	if (xml2ns(x, NULL, &namespace0) < 0)
+	    goto done;
+	/* Set xmlns="" default namespace attribute (if diff from default) */
+	if (namespace0==NULL || strcmp(namespace0, namespace))
+	    if (xmlns_set(x, NULL, namespace) < 0)
+		goto done;
+	/* Remove prefix from name */
+	if (xml_name_set(x, name) < 0)
+	    goto done;
+    }
+    xc = NULL;
+    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL){
+	if (json2xml_ns(yspec, xc, xerr) < 0)
+	    goto done;
+	if (*xerr != NULL)
+	    break;
+    }
+ ok:
+    retval = 0;
+ done:
+    if (prefix)
+	free(prefix);
+    if (name)
+	free(name);
     return retval;
 }
 

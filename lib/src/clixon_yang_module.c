@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -77,12 +77,11 @@
  *
  * Load RFC7895 yang spec, module-set-id, etc.
  * @param[in]     h       Clicon handle
- * @note CLIXON_DATADIR is hardcoded
  */
 int
 yang_modules_init(clicon_handle h)
 {
-    int retval = -1;
+    int        retval = -1;
     yang_spec *yspec;
 
     yspec = clicon_dbspec_yang(h);	
@@ -94,7 +93,7 @@ yang_modules_init(clicon_handle h)
 	goto done;
     }
     /* Ensure revision exists is set */
-    if (yang_spec_parse_module(h, "ietf-yang-library", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
+    if (yang_spec_parse_module(h, "ietf-yang-library", NULL, yspec)< 0)
 	goto done;
     /* Find revision */
     if (yang_modules_revision(h) == NULL){
@@ -121,7 +120,8 @@ yang_modules_revision(clicon_handle h)
     char      *revision = NULL;
 
     yspec = clicon_dbspec_yang(h);
-    if ((ymod = yang_find((yang_node*)yspec, Y_MODULE, "ietf-yang-library")) != NULL){
+    if ((ymod = yang_find((yang_node*)yspec, Y_MODULE, "ietf-yang-library")) != NULL ||
+	(ymod = yang_find((yang_node*)yspec, Y_SUBMODULE, "ietf-yang-library")) != NULL){
 	if ((yrev = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL){
 	    revision = yrev->ys_argument;
 	}
@@ -172,7 +172,8 @@ yang_modules_state_get(clicon_handle    h,
     char       *module = "ietf-yang-library";
 
     module_set_id = clicon_option_str(h, "CLICON_MODULE_SET_ID");
-    if ((ylib = yang_find((yang_node*)yspec, Y_MODULE, module)) == NULL){
+    if ((ylib = yang_find((yang_node*)yspec, Y_MODULE, module)) == NULL &&
+	(ylib = yang_find((yang_node*)yspec, Y_SUBMODULE, module)) == NULL){
 	clicon_err(OE_YANG, 0, "%s not found", module);
 	goto done;
     }
@@ -189,7 +190,8 @@ yang_modules_state_get(clicon_handle    h,
     
     ymod = NULL;
     while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
-	if (ymod->ys_keyword != Y_MODULE)
+	if (ymod->ys_keyword != Y_MODULE &&
+	    ymod->ys_keyword != Y_SUBMODULE)
 	    continue;
 	cprintf(cb,"<module>");
 	cprintf(cb,"<name>%s</name>", ymod->ys_argument);
@@ -201,7 +203,7 @@ yang_modules_state_get(clicon_handle    h,
 	    cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
 	else
 	    cprintf(cb,"<namespace></namespace>");
-        cprintf(cb, "<conformance-type>implement</conformance-type>");
+	/* This follows order in rfc 7895: feature, conformance-type, submodules */
 	yc = NULL;
 	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
 	    switch(yc->ys_keyword){
@@ -209,6 +211,14 @@ yang_modules_state_get(clicon_handle    h,
 		if (yc->ys_cv && cv_bool_get(yc->ys_cv))
 		    cprintf(cb,"<feature>%s</feature>", yc->ys_argument);
 		break;
+	    default:
+		break;
+	    }
+	}
+        cprintf(cb, "<conformance-type>implement</conformance-type>");
+	yc = NULL;
+	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
+	    switch(yc->ys_keyword){
 	    case Y_SUBMODULE:
 		cprintf(cb,"<submodule>");
 		cprintf(cb,"<name>%s</name>", yc->ys_argument);

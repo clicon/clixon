@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -57,14 +57,15 @@
 /*! Split string into a vector based on character delimiters. Using malloc
  *
  * The given string is split into a vector where the delimiter can be
- * any of the characters in the specified delimiter string. 
+ * _any_ of the characters in the specified delimiter string. 
  *
  * The vector returned is one single memory block that must be freed
  * by the caller
  *
  * @code
- * char      **vec = NULL;
- * int         nvec;
+ * char **vec = NULL;
+ * char  *v;
+ * int    nvec;
  * if ((vec = clicon_strsep("/home/user/src/clixon", "/", &nvec)) == NULL)
  *    err;
  * for (i=0; i<nvec; i++){
@@ -437,15 +438,18 @@ xml_chardata_encode(char **escp,
 /*! Split a string into a cligen variable vector using 1st and 2nd delimiter 
  * Split a string first into elements delimited by delim1, then into
  * pairs delimited by delim2.
- * @param[in] string  String to split
- * @param[in] delim1  First delimiter char that delimits between elements
- * @param[in] delim2  Second delimiter char for pairs within an element
+ * @param[in]  string String to split
+ * @param[in]  delim1 First delimiter char that delimits between elements
+ * @param[in]  delim2 Second delimiter char for pairs within an element
  * @param[out] cvp    Created cligen variable vector, deallocate w cvec_free
- * @retval    0       on OK
+ * @retval     0      OK
  * @retval    -1      error
+ * @code
+ * cvec  *cvv = NULL;
+ * if (str2cvec("a=b&c=d", ';', '=', &cvv) < 0)
+ *   err;
+ * @endcode
  *
- * @example, 
- * Assuming delim1 = '&' and delim2 = '='
  * a=b&c=d    ->  [[a,"b"][c="d"]
  * kalle&c=d  ->  [[c="d"]]  # Discard elements with no delim2
  * XXX differentiate between error and null cvec.
@@ -560,6 +564,147 @@ clicon_str2int(const map_str2int *mstab,
 	if (strcmp(ms->ms_str, str) == 0)
 	    return ms->ms_int;
     return -1;
+}
+
+/*! Split colon-separated node identifier into prefix and name
+ * @param[in]  node-id
+ * @param[out] prefix  Malloced string. May be NULL.
+ * @param[out] id      Malloced identifier.
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @code
+ *    char      *prefix = NULL;
+ *    char      *id = NULL;
+ *    if (nodeid_split(nodeid, &prefix, &id) < 0)
+ *	 goto done;
+ *    if (prefix)
+ *	 free(prefix);
+ *    if (id)
+ *	 free(id);
+ * @note caller need to free id and prefix after use
+ */
+int
+nodeid_split(char  *nodeid,
+	     char **prefix,
+	     char **id)
+{
+    int   retval = -1;
+    char *str;
+    
+    if ((str = strchr(nodeid, ':')) == NULL){
+	if ((*id = strdup(nodeid)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+    }
+    else{
+	if ((*prefix = strdup(nodeid)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+	(*prefix)[str-nodeid] = '\0';
+	str++;
+	if ((*id = strdup(str)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Trim blanks from front and end of a string, return new string 
+ * @param[in]  str 
+ * @retval     s   Pointer into existing str after trimming blanks
+ */
+char *
+clixon_trim(char *str)
+{
+    char *s = str;
+    int   i;
+
+    while (strlen(s) && isblank(s[0])) /* trim from front */
+	s++;
+    for (i=strlen(s)-1; i>=0; i--){ /* trim from rear */
+	if (isblank(s[i]))
+	    s[i] = '\0';
+	else
+	    break;
+    }
+    return s;
+}
+
+/*! Transform from XSD regex to posix ERE
+ * The usecase is that Yang (RFC7950) supports XSD regexpressions but CLIgen supports
+ * Current translations:
+ * \d --> [0-9]
+ * POSIX ERE regexps according to man regex(3).
+ * @param[in]  xsd    Input regex string according XSD
+ * @param[out] posix  Output (malloced) string according to POSIX ERE
+ * @see https://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
+ * @see https://www.regular-expressions.info/posixbrackets.html#class translation
+ * Translation is not complete but covers some character sequences:
+ * \d decimal digit
+ * \w alphanum + underscore
+ */
+int
+regexp_xsd2posix(char  *xsd,
+		 char **posix)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+    char  x;
+    int   i;
+    int   esc;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    esc=0;
+    for (i=0; i<strlen(xsd); i++){
+	x = xsd[i];
+	if (esc){
+	    esc = 0;
+	    switch (x){
+	    case 'c': /* xml namechar */
+		cprintf(cb, "[0-9a-zA-Z\\\\.\\\\-_:]");
+		break;
+	    case 'd':
+		cprintf(cb, "[0-9]");
+		break;
+	    case 'w':
+		cprintf(cb, "[0-9a-zA-Z_\\\\-]");
+		break;
+	    case 'W':
+		cprintf(cb, "[^0-9a-zA-Z_\\\\-]");
+		break;
+	    case 's':
+		cprintf(cb, "[ \t\r\n]");
+		break;
+	    case 'S':
+		cprintf(cb, "[^ \t\r\n]");
+		break;
+	    default:
+		cprintf(cb, "\\%c", x);
+		break;
+	    }
+	}
+	else if (x == '\\')
+	    esc++;
+	else
+	    cprintf(cb, "%c", x);
+    }
+    if ((*posix = strdup(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
 }
 
 /*! strndup() for systems without it, such as xBSD

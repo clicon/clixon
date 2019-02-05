@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 #
 # This file is part of CLIXON
 #
@@ -55,7 +55,7 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 docker:
-	sudo docker build -t $(IMAGE) .
+	sudo docker build -t $(IMAGE) .  # --no-cache
 	echo "cd ../example; make docker to build example application"
 
 push:

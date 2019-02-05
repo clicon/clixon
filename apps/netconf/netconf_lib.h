@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -75,5 +75,6 @@ int add_error_preamble(cbuf *xf, char *reason);
 char *netconf_get_target(cxobj *xn, char *path);
 int add_error_postamble(cbuf *xf);
 int netconf_output(int s, cbuf *xf, char *msg);
+int netconf_output_encap(int s, cbuf *cb, char *msg);
 
 #endif  /* _NETCONF_LIB_H_ */

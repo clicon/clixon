@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -51,9 +51,5 @@ struct client_entry *backend_client_add(clicon_handle h, struct sockaddr *addr);
 struct client_entry *backend_client_list(clicon_handle h);
 
 int backend_client_delete(clicon_handle h, struct client_entry *ce);
-
-int backend_nacm_list_set(clicon_handle h, cxobj *xnacm);
-
-cxobj * backend_nacm_list_get(clicon_handle h);
 
 #endif  /* _BACKEND_HANDLE_H_ */

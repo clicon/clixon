@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -43,6 +43,6 @@
 int from_client_validate(clicon_handle h, char *db, cbuf *cbret);
 int from_client_commit(clicon_handle h, int pid, cbuf *cbret);
 int from_client_discard_changes(clicon_handle h, int pid, cbuf *cbret);
-int candidate_commit(clicon_handle h, char *db);
+int candidate_commit(clicon_handle h, char *db, cbuf *cbret);
 
 #endif  /* _BACKEND_COMMIT_H_ */

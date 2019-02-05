@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -71,7 +71,6 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 			      "/interfaces/interface[name='eth0']",
 			      &xret) < 0)
 	goto done;
-
     xml_print(stdout, xret);
     retval = 0;
  done:
@@ -80,25 +79,25 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
     return retval;
 }
 
-/*! Example "downcall": ietf-routing fib-route RPC */
+/*! Example "downcall", ie initiate an RPC to the backend */
 int
-fib_route_rpc(clicon_handle h, 
-	      cvec         *cvv, 
-	      cvec         *argv)
+example_client_rpc(clicon_handle h, 
+		   cvec         *cvv, 
+		   cvec         *argv)
 {
     int        retval = -1;
-    cg_var    *instance;
+    cg_var    *cva;
     cxobj     *xtop = NULL;
     cxobj     *xrpc;
     cxobj     *xret = NULL;
     cxobj     *xerr;
 
     /* User supplied variable in CLI command */
-    instance = cvec_find(cvv, "instance"); /* get a cligen variable from vector */
-    /* Create XML for fib-route netconf RPC */
-    if (xml_parse_va(&xtop, NULL, "<rpc username=\"%s\"><fib-route><routing-instance-name>%s</routing-instance-name></fib-route></rpc>",
+    cva = cvec_find(cvv, "a"); /* get a cligen variable from vector */
+    /* Create XML for example netconf RPC */
+    if (xml_parse_va(&xtop, NULL, "<rpc message-id=\"101\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" username=\"%s\"><example xmlns=\"urn:example:clixon\"><x>%s</x></example></rpc>",
 		     clicon_username_get(h),
-		     cv_string_get(instance)) < 0)
+		     cv_string_get(cva)) < 0)
 	goto done;
     /* Skip top-level */
     xrpc = xml_child_i(xtop, 0);
@@ -110,7 +109,12 @@ fib_route_rpc(clicon_handle h,
 	goto done;
     }
     /* Print result */
-    xml_print(stdout, xml_child_i(xret, 0));
+    clicon_xml2file(stdout, xml_child_i(xret, 0), 0, 0);
+    fprintf(stdout,"\n");
+
+    /* pretty-print:
+       xml2txt(stdout, xml_child_i(xret, 0), 0);
+    */
     retval = 0;
  done:
     if (xret)

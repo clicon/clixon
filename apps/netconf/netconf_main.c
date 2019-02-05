@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -71,7 +71,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hD:f:l:qa:u:d:y:U:t:"
+#define NETCONF_OPTS "hD:f:l:qa:u:d:p:y:U:t:o:"
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
@@ -80,21 +80,29 @@
  * @param[in]   cb   Packet buffer
  */
 static int
-process_incoming_packet(clicon_handle h, 
+netconf_input_packet(clicon_handle h, 
 			cbuf         *cb)
 {
-    char  *str;
-    char  *str0;
-    cxobj *xreq = NULL; /* Request (in) */
-    int    isrpc = 0;   /* either hello or rpc */
-    cbuf  *cbret = NULL;
-    cxobj *xret = NULL; /* Return (out) */
-    cxobj *xrpc;
-    cxobj *xc;
+    int        retval = -1;
+    char      *str;
+    char      *str0;
+    cxobj     *xreq = NULL; /* Request (in) */
+    int        isrpc = 0;   /* either hello or rpc */
+    cbuf      *cbret = NULL;
+    cxobj     *xret = NULL; /* Return (out) */
+    cxobj     *xrpc;
+    cxobj     *xc;
     yang_spec *yspec;
+    int        ret;
+    cxobj     *xa;
+    cxobj     *xa2;
 
-    clicon_debug(1, "RECV");
-    clicon_debug(2, "%s: RCV: \"%s\"", __FUNCTION__, cbuf_get(cb));
+    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(2, "%s: \"%s\"", __FUNCTION__, cbuf_get(cb));
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(LOG_ERR, errno, "cbuf_new");
+	goto done;
+    }
     yspec = clicon_dbspec_yang(h);
     if ((str0 = strdup(cbuf_get(cb))) == NULL){
 	clicon_log(LOG_ERR, "%s: strdup: %s", __FUNCTION__, strerror(errno));
@@ -103,19 +111,24 @@ process_incoming_packet(clicon_handle h,
     str = str0;
     /* Parse incoming XML message */
     if (xml_parse_string(str, yspec, &xreq) < 0){ 
-	if ((cbret = cbuf_new()) == NULL){
-	    if (netconf_operation_failed(cbret, "rpc", "internal error")< 0)
-		goto done;
-	    netconf_output(1, cbret, "rpc-error");
-	}
-	else
-	    clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
 	free(str0);
+	if (netconf_operation_failed(cbret, "rpc", clicon_err_reason)< 0)
+	    goto done;
+	netconf_output_encap(1, cbret, "rpc-error");
 	goto done;
     }
     free(str0);
-    if ((xrpc=xpath_first(xreq, "//rpc")) != NULL)
+    if ((xrpc=xpath_first(xreq, "//rpc")) != NULL){
         isrpc++;
+	if (xml_spec_populate_rpc(h, xrpc, yspec) < 0)
+	    goto done;
+	if ((ret = xml_yang_validate_rpc(xrpc, cbret)) < 0) 
+	    goto done;
+	if (ret == 0){
+	    netconf_output_encap(1, cbret, "rpc-error");
+	    goto ok;
+	}
+    }
     else
         if (xpath_first(xreq, "//hello") != NULL)
 	    ;
@@ -132,35 +145,36 @@ process_incoming_packet(clicon_handle h,
 	    goto done;
 	}
 	else{ /* there is a return message in xret */
-	    cxobj *xa, *xa2;
-	    assert(xret);
 
-	    if ((cbret = cbuf_new()) != NULL){
-		if ((xc = xml_child_i(xret,0))!=NULL){
-		    xa=NULL;
-		    /* Copy message-id attribute from incoming to reply. 
-		     * RFC 6241:
-		     * If additional attributes are present in an <rpc> element, a NETCONF
-		     * peer MUST return them unmodified in the <rpc-reply> element.  This
-		     * includes any "xmlns" attributes.
-		     */
-		    while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
-			if ((xa2 = xml_dup(xa)) ==NULL)
-			    goto done;
-			if (xml_addsub(xc, xa2) < 0)
-			    goto done;
-		    }
-		    add_preamble(cbret);
-
-		    clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0);
-		    add_postamble(cbret);
-		    if (netconf_output(1, cbret, "rpc-reply") < 0){
-			cbuf_free(cbret);
+	    if (xret == NULL){
+		if (netconf_operation_failed(cbret, "rpc", "Internal error: no xml return")< 0)
+		    goto done;
+		netconf_output_encap(1, cbret, "rpc-error");
+		goto done;
+	    }
+	    if ((xc = xml_child_i(xret,0))!=NULL){
+		xa=NULL;
+		/* Copy message-id attribute from incoming to reply. 
+		 * RFC 6241:
+		 * If additional attributes are present in an <rpc> element, a NETCONF
+		 * peer MUST return them unmodified in the <rpc-reply> element.  This
+		 * includes any "xmlns" attributes.
+		 */
+		while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
+		    if ((xa2 = xml_dup(xa)) ==NULL)
 			goto done;
-		    }
+		    if (xml_addsub(xc, xa2) < 0)
+			goto done;
+		}
+		clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0);
+		if (netconf_output_encap(1, cbret, "rpc-reply") < 0){
+		    cbuf_free(cbret);
+		    goto done;
 		}
 	    }
 	}
+ ok:
+    retval = 0;
   done:
     if (xreq)
 	xml_free(xreq);
@@ -168,7 +182,7 @@ process_incoming_packet(clicon_handle h,
 	xml_free(xret);
     if (cbret)
 	cbuf_free(cbret);
-    return 0;
+    return retval;
 }
 
 /*! Get netconf message: detect end-of-msg 
@@ -221,8 +235,8 @@ netconf_input_cb(int   s,
 		/* OK, we have an xml string from a client */
 		/* Remove trailer */
 		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
-		if (process_incoming_packet(h, cb) < 0)
-		    goto done;
+		if (netconf_input_packet(h, cb) < 0)
+		    ; //goto done; // ignore errors
 		if (cc_closed)
 		    break;
 		cbuf_reset(cb);
@@ -310,16 +324,17 @@ usage(clicon_handle h,
 	    "where options are\n"
             "\t-h\t\tHelp\n"
 	    "\t-D <level>\tDebug level\n"
-            "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-l (e|o|s|f<file>) \tLog on std(e)rr, std(o)ut, (s)yslog, (f)ile (syslog is default)\n"
+            "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
-
+	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
-	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n",
+	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n"
+	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_netconf_dir(h)
 	    );
@@ -330,7 +345,7 @@ int
 main(int    argc,
      char **argv)
 {
-    char             c;
+    int              c;
     char            *tmp;
     char            *argv0 = argv[0];
     int              quiet = 0;
@@ -341,7 +356,7 @@ main(int    argc,
     struct timeval   tv = {0,}; /* timeout */
     yang_spec       *yspec = NULL;
     yang_spec       *yspecfg = NULL; /* For config XXX clixon bug */
-    char            *yang_filename = NULL;
+    char            *str;
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -403,6 +418,9 @@ main(int    argc,
 	case 'f':  /* config file */
 	case 'l':  /* log  */
 	    break; /* see above */
+	case 'q':  /* quiet: dont write hello */
+	    quiet++;
+	    break;
 	case 'a': /* internal backend socket address family */
 	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
 	    break;
@@ -411,18 +429,20 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
-	case 'q':  /* quiet: dont write hello */
-	    quiet++;
-	    break;
 	case 'd':  /* Plugin directory */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_NETCONF_DIR", optarg);
+	    if (clicon_option_add(h, "CLICON_NETCONF_DIR", optarg) < 0)
+		goto done;
 	    break;
-	case 'y' :{ /* Load yang spec file (override yang main module) */
-	    yang_filename = optarg;
+	case 'p' : /* yang dir path */
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
 	    break;
-	}
+	case 'y' : /* Load yang spec file (override yang main module) */
+	    if (clicon_option_add(h, "CLICON_YANG_MAIN_FILE", optarg) < 0)
+		goto done;
+	    break;
 	case 'U': /* Clixon 'pseudo' user */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
@@ -432,7 +452,15 @@ main(int    argc,
 	case 't': /* timeout in seconds */
 	    tv.tv_sec = atoi(optarg);
 	    break;
-
+	case 'o':{ /* Configuration option */
+	    char          *val;
+	    if ((val = index(optarg, '=')) == NULL)
+		usage(h, argv0);
+	    *val++ = '\0';
+	    if (clicon_option_add(h, optarg, val) < 0)
+		goto done;
+	    break;
+	}
 	default:
 	    usage(h, argv[0]);
 	    break;
@@ -444,18 +472,26 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
-    /* Load main application yang specification either module or specific file
-     * If -y <file> is given, it overrides main module */
-    if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, NULL) < 0)
+    /* Load Yang modules
+     * 1. Load a yang module as a specific absolute filename */
+    if ((str = clicon_yang_main_file(h)) != NULL){
+	if (yang_spec_parse_file(h, str, yspec) < 0)
 	    goto done;
     }
-    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
-				    clicon_yang_dir(h),
-				    clicon_yang_module_revision(h),
-				    yspec, NULL) < 0)
+    /* 2. Load a (single) main module */
+    if ((str = clicon_yang_module_main(h)) != NULL){
+	if (yang_spec_parse_module(h, str, clicon_yang_module_revision(h),
+				   yspec) < 0)
+	    goto done;
+    }
+    /* 3. Load all modules in a directory */
+    if ((str = clicon_yang_main_dir(h)) != NULL){
+	if (yang_spec_load_dir(h, str, yspec) < 0)
+	    goto done;
+    }
+    /* Load clixon lib yang module */
+    if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
 	goto done;
-    
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;

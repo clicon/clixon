@@ -28,7 +28,7 @@ usage(char *argv0)
 int
 main(int argc, char **argv)
 {
-    int i;
+    int         i;
     cxobj     **xv;
     cxobj      *x;
     cxobj      *xn;
@@ -42,7 +42,7 @@ main(int argc, char **argv)
     char       *buf;
     char       *p;
     int         retval;
-    char        c;
+    int         c;
 
     while ((c = getopt(argc, argv, "?hbj")) != -1)
       switch (c) {

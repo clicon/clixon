@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 #
 # This file is part of CLIXON
 #
@@ -43,9 +43,9 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="8"
+CLIXON_VERSION_MINOR="9"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Fix to specific CLIgen version (eg 3.5) or head (3) 
 CLIGEN_VERSION="3" 
@@ -91,6 +91,7 @@ AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
+AC_SUBST(enable_stdyangs) 
 AC_SUBST(wwwdir,/www-data)
 AC_SUBST(wwwuser,www-data)
 #
@@ -144,6 +145,20 @@ if test "${with_cligen}"; then
   LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
   test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
 fi
+
+# Disable/enable standard Yang files.
+# If enable - include yang/standard/*.yang in clixon yang files (default)
+# If disable - get standard yang files from elsewhere
+AC_ARG_ENABLE(stdyangs, AS_HELP_STRING([--disable-stdyangs],[Include standard yang files in clixon install, default: yes]),[
+	  if test "$enableval" = no; then
+	      enable_stdyangs=no
+	  else	      
+	      enable_stdyangs=yes
+          fi
+        ],
+	[ enable_stdyangs=yes])
+
+AC_MSG_RESULT(stdyangs is $enable_stdyangs)	
 
 # Experimental: Curl publish notification stream to eg Nginx nchan. 
 AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],[Enable publish of notification streams using SSE and curl]),[
@@ -199,10 +214,13 @@ AC_CHECK_LIB(dl, dlopen)
 
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp)
 
-# This is to find clixon system files in the source code and Makefile
+# CLIXON_DATADIR is where clixon installs the "system" yang files in yang/Makfile
+# This directory should most probably be included in each application,
+# so each application designer may need to place CLIXON_DATADIR in their config
+# (last in yang dir list):
+# <CLIXON-YANG-DIR>$CLIXON_DATADIR</CLIXON-YANG_DIR>
 AC_SUBST(CLIXON_DATADIR)
 CLIXON_DATADIR="${prefix}/share/clixon"
-AC_DEFINE_UNQUOTED(CLIXON_DATADIR, "${CLIXON_DATADIR}", [Clixon data dir for system yang files etc])
 
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
@@ -228,6 +246,9 @@ AC_OUTPUT(Makefile
 	  datastore/text/Makefile
   	  util/Makefile 
 	  yang/Makefile
+  	  yang/clixon/Makefile
+  	  yang/standard/Makefile
 	  doc/Makefile
+	  test/Makefile	
 )
 

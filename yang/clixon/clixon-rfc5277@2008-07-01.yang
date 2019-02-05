@@ -1,6 +1,7 @@
-module ietf-netconf-notification {
-    namespace "urn:ietf:params:xml:ns:netconf:notification:1:0";
-    prefix "rcmon";
+module clixon-rfc5277 {
+    /*    namespace "urn:ietf:params:xml:ns:netconf:notification:1.0";*/
+    namespace "urn:ietf:params:xml:ns:netmod:notification";
+    prefix "ncevent";
 
     import ietf-yang-types { prefix yang; }
     import ietf-inet-types { prefix inet; }
@@ -9,7 +10,8 @@ module ietf-netconf-notification {
 	"IETF NETCONF (Network Configuration) Working Group";
 
     description
-	"Note this is a translation from RFC 5277 schema in section 4 to Yang.
+	"Note this is a translation from RFC 5277 schema in section 4 to Yang
+         made by Olof Hagsand manually for the Clixon project.
          RFC 5277 is Copyright (C) The IETF Trust (2008).";
 
     revision 2008-07-01 {
@@ -119,14 +121,14 @@ module ietf-netconf-notification {
                for more information on filters";
 	  }
 	  leaf startTime {
-	      type date-and-time;
+	      type yang:date-and-time;
 	      description "used to trigger the replay feature
          and indicate that the replay should start at the time
          specified. If <startTime> is not present, this is not a replay
          subscription.";
 	  }
 	  leaf stopTime {
-	      type date-and-time;
+	      type yang:date-and-time;
 	      description "used with the optional
          replay feature to indicate the newest notifications of
          interest.  If <stopTime> is not present, the notifications will

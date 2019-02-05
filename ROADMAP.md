@@ -1,27 +1,42 @@
 # Clixon roadmap
 
-Not in prio order (yet)
+## High prio
+- Special handling of the initial startup transaction to avoid exit at startup
+  - Possibly - draft-wu-netconf-restconf-factory-restore-03
+- Handle revisions to data model.
+  - Possibly draft-wang-netmod-module-revision-management-01
+- (DONE) NACM (RFC 8341) 
+  - NACM support for create, read, update, delete operations 
+  - ACM support for specifying a module name other than '*' 
+- (DONE)XML [Namespace handling](https://github.com/clicon/clixon/issues/49) (DONE)
 
-- XML
-  - [Namespace handling](https://github.com/clicon/clixon/issues/49)
+## Medium prio:
+- Support a plugin callback that is invoked when copy-config is called.
+- Preserve CLI command history across sessions. The up/down arrows
+- (DONE)Support for XML regex's.
+  - Currently Posix extended regular expressions
+- (DONE) Input validation on custom RPCs/
+  - [Sanity checks](https://github.com/clicon/clixon/issues/47)
+  
+## Low prio:
+- Provide a client library to access netconf APIs provided by system services.
+  - Netconf backend (Clixon acts as netconf controller)
+- Support for restconf call-home (RFC 8071)
+
+Not prioritized:
+- Support for restconf PATCH method
 - NETCONF
   - Support for additional Netconf [edit-config modes](https://github.com/clicon/clixon/issues/53)
   - Netconf [framing](https://github.com/clicon/clixon/issues/50)
-  - [Sanity checks](https://github.com/clicon/clixon/issues/47)
   - [Child ordering](https://github.com/clicon/clixon/issues/22)
-- Netconf backend (Clixon acts as netconf controller)
 - Restconf
   - Query parameters
-- NACM (RFC 8341) is somewhat limited
-  - Extend with data node access (read/create/delete/update/execute)
 - Streams (netconf and restconf)
   - Extend native stream mode with external persistent timeseries database, eg influxdb.
 - Jenkins CI/CD and webhooks
 - YANG
-  - [Cardinality](https://github.com/clicon/clixon/issues/48)
   - RFC 6022 [NETCONF monitoring](https://github.com/clicon/clixon/issues/39)
-  - Factory default Setting - draft-wu-netconf-restconf-factory-restore-03
-  - Deviation, belongs-to, min/max-elements, action, unique
+  - Deviation, min/max-elements, action, unique
 - Containers
   - [Docker improvements](https://github.com/clicon/clixon/issues/44)
   - Kubernetes Helm chart definition

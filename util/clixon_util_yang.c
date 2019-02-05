@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -31,6 +31,8 @@
 
   ***** END LICENSE BLOCK *****
 
+  * Parse a SINGLE yang file - no dependencies - utility function only useful
+  * for basic syntactic checks.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -40,6 +42,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 #include <limits.h>
 #include <ctype.h>
 #define __USE_GNU /* strverscmp */
@@ -65,20 +68,42 @@
 static int
 usage(char *argv0)
 {
-    fprintf(stderr, "usage:%s.\n\tInput on stdin\n", argv0);
+    fprintf(stderr, "usage:%s [options] # input yang spec on stdin\n"
+	    "where options are\n"
+            "\t-h \t\tHelp\n"
+    	    "\t-D <level> \tDebug\n"
+	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n",
+	    argv0);
     exit(0);
 }
 
 int
 main(int argc, char **argv)
 {
-    yang_spec    *yspec = NULL;
-
-    if (argc != 1){
-	usage(argv[0]);
-	return -1;
-    }
-    clicon_log_init("clixon_util_yang", LOG_INFO, CLICON_LOG_STDERR);
+    yang_spec *yspec = NULL;
+    int        c;
+    int        logdst = CLICON_LOG_STDERR;
+    
+    optind = 1;
+    opterr = 0;
+    while ((c = getopt(argc, argv, "hD:l:")) != -1)
+	switch (c) {
+	case 'h':
+	    usage(argv[0]);
+	    break;
+    	case 'D':
+	    if (sscanf(optarg, "%d", &debug) != 1)
+		usage(argv[0]);
+	    break;
+	case 'l': /* Log destination: s|e|o|f */
+	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
+		usage(argv[0]);
+	    break;
+	default:
+	    usage(argv[0]);
+	    break;
+	}
+    clicon_log_init("clixon_util_yang", debug?LOG_DEBUG:LOG_INFO, logdst);
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     if (yang_parse_file(0, "yang test", yspec) == NULL){

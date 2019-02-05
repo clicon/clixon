@@ -1,8 +1,5 @@
 /* include/clixon_config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Clixon data dir for system yang files etc */
-#undef CLIXON_DATADIR
-
 /* Location for apps to find default config file */
 #undef CLIXON_DEFAULT_CONFIG
 
@@ -41,6 +38,9 @@
 
 /* Define to 1 if you have the `crypt' library (-lcrypt). */
 #undef HAVE_LIBCRYPT
+
+/* Define to 1 if you have the `curl' library (-lcurl). */
+#undef HAVE_LIBCURL
 
 /* Define to 1 if you have the `dl' library (-ldl). */
 #undef HAVE_LIBDL
@@ -133,4 +133,4 @@
    `char[]'. */
 #undef YYTEXT_POINTER
 
-#include "clixon_custom.h"
+#include <clixon_custom.h>

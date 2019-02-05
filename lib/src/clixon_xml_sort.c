@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -56,23 +56,79 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_string.h"
-
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
+#include "clixon_yang_type.h"
 #include "clixon_xml.h"
+#include "clixon_options.h"
+#include "clixon_xml_map.h"
 #include "clixon_xml_sort.h"
 
-/*
- * Variables
+/*! Get xml body value as cligen variable
+ * @param[in]  x   XML node (body and leaf/leaf-list)
+ * @param[out] cvp Pointer to cligen variable containing value of x body
+ * @retval     0   OK, cvp contains cv or NULL
+ * @retval    -1   Error
+ * @note only applicable if x is body and has yang-spec and is leaf or leaf-list
+ * Move to clixon_xml.c?
  */
-
-/* Sort and binary search of XML children
- * Experimental
- */
-int xml_child_sort = 1;
-
+static int
+xml_cv_cache(cxobj   *x,
+	     char    *body,
+	     cg_var **cvp)
+{
+    int          retval = -1;
+    cg_var      *cv = NULL;
+    yang_stmt   *y;
+    yang_stmt   *yrestype;
+    enum cv_type cvtype;
+    int          ret;
+    char        *reason=NULL;
+    int          options = 0;
+    uint8_t      fraction = 0;
+	    
+    if ((cv = xml_cv(x)) != NULL)
+	goto ok;
+    if ((y = xml_spec(x)) == NULL)
+	goto done;
+    if (yang_type_get(y, NULL, &yrestype, &options, NULL, NULL, &fraction) < 0)
+	goto done;
+    yang2cv_type(yrestype->ys_argument, &cvtype);
+    if (cvtype==CGV_ERR){
+	clicon_err(OE_YANG, errno, "yang->cligen type %s mapping failed",
+		   yrestype->ys_argument);
+	goto done;
+    }
+    if ((cv = cv_new(cvtype)) == NULL){
+	clicon_err(OE_YANG, errno, "cv_new");
+	goto done;
+    }
+    if (cvtype == CGV_DEC64)
+	cv_dec64_n_set(cv, fraction);
+	
+    if ((ret = cv_parse1(body, cv, &reason)) < 0){
+	clicon_err(OE_YANG, errno, "cv_parse1");
+	goto done;
+    }
+    if (ret == 0){
+	clicon_err(OE_YANG, EINVAL, "cv parse error: %s\n", reason);
+	goto done;
+    }
+    if (xml_cv_set(x, cv) < 0)
+	goto done;
+ ok:
+    *cvp = cv;
+    cv = NULL;
+    retval = 0;
+ done:
+    if (reason)
+	free(reason);
+    if (cv)
+	cv_free(cv);
+    return retval;
+}
 
 /*! Given a child name and an XML object, return yang stmt of child
  * If no xml parent, find root yang stmt matching name
@@ -80,25 +136,53 @@ int xml_child_sort = 1;
  * @param[in]  xp       XML parent, can be NULL.
  * @param[in]  yspec    Yang specification (top level)
  * @param[out] yresult  Pointer to yang stmt of result, or NULL, if not found
+ * @retval     0       OK
+ * @retval    -1       Error
  * @note special rule for rpc, ie <rpc><foo>,look for top "foo" node.
+ * @note works for import prefix, but not work for generic XML parsing where
+ *       xmlns and xmlns:ns are used.
  */
 int
-xml_child_spec(char       *name,
+xml_child_spec(cxobj      *x,
 	       cxobj      *xp,
 	       yang_spec  *yspec,
 	       yang_stmt **yresult)
 {
-    yang_stmt *y;  /* result yang node */   
+    int        retval = -1;
+    yang_stmt *y = NULL;  /* result yang node */   
     yang_stmt *yparent; /* parent yang */
-    
-    if (xp && (yparent = xml_spec(xp)) != NULL)
-	y = yang_find_datanode((yang_node*)yparent, name);
-    else if (yspec)
-	y = yang_find_topnode(yspec, name, YC_DATANODE); /* still NULL for config */
+    yang_stmt *ymod = NULL;
+    yang_stmt *yi;
+    char      *name;
+	    
+    name = xml_name(x);
+    if (xp && (yparent = xml_spec(xp)) != NULL){
+	if (yparent->ys_keyword == Y_RPC){
+	    if ((yi = yang_find((yang_node*)yparent, Y_INPUT, NULL)) != NULL)
+		y = yang_find_datanode((yang_node*)yi, name);
+	}
+	else
+	    y = yang_find_datanode((yang_node*)yparent, name);
+    }
+    else if (yspec){
+	if (ys_module_by_xml(yspec, xp, &ymod) < 0)
+	    goto done;
+	if (ymod != NULL)
+	    y = yang_find_schemanode((yang_node*)ymod, name);
+	if (y == NULL && !_CLICON_XML_NS_STRICT){
+	    if (xml_yang_find_non_strict(x, yspec, &y) < 0) /* schemanode */
+		goto done;
+	}
+    }
     else
 	y = NULL;
+    /* kludge rpc -> input */
+    if (y && y->ys_keyword == Y_RPC && yang_find((yang_node*)y, Y_INPUT, NULL))
+	y = yang_find((yang_node*)y, Y_INPUT, NULL);
     *yresult = y;
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Help function to qsort for sorting entries in xml child vector
@@ -111,7 +195,7 @@ xml_child_spec(char       *name,
  * @see xml_cmp1   Similar, but for one object
  * @note empty value/NULL is smallest value
  */
-int
+static int
 xml_cmp(const void* arg1, 
 	const void* arg2)
 {
@@ -127,7 +211,9 @@ xml_cmp(const void* arg1,
     char       *b1;
     char       *b2;
     char       *keyname;
-    
+    cg_var     *cv1; 
+    cg_var     *cv2;
+
     assert(x1&&x2);
     y1 = xml_spec(x1);
     y2 = xml_spec(x2);
@@ -139,19 +225,26 @@ xml_cmp(const void* arg1,
 	if ((equal = yi1-yi2) != 0)
 	    return equal;
     }
-    /* Now y1=y2, same Yang spec, can only be list or leaf-list,
-     * sort according to key
+    /* Now y1==y2, same Yang spec, can only be list or leaf-list,
+     * But first check exceptions, eg config false or ordered-by user
+     * otherwise sort according to key
      */
-    if (yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL)
-	return 0; /* Ordered by user: maintain existing order */
+    if (yang_config(y1)==0 ||
+	yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL)
+	return 0; /* Ordered by user or state data : maintain existing order */
     switch (y1->ys_keyword){
     case Y_LEAF_LIST: /* Match with name and value */
 	if ((b1 = xml_body(x1)) == NULL)
 	    equal = -1;
 	else if ((b2 = xml_body(x2)) == NULL)
 	    equal = 1;
-	else
-	    equal = strcmp(b1, b2);
+	else{
+	    if (xml_cv_cache(x1, b1, &cv1) < 0)
+		goto done;
+	    if (xml_cv_cache(x2, b2, &cv2) < 0)
+		goto done;
+	    equal = cv_cmp(cv1, cv2);
+	}
 	break;
     case Y_LIST: /* Match with key values 
 		  * Use Y_LIST cache (see struct yang_stmt)
@@ -175,7 +268,10 @@ xml_cmp(const void* arg1,
 }
 
 /*! Compare xml object
- * @param[in]  yangi    Yang order
+ * @param[in]  x        XML node to compare with
+ * @param[in]  y        The yang spec of x
+ * @param[in]  name     Name to compare with x
+ * @param[in]  keyword  Yang keyword (stmt type) to compare w x/y
  * @param[in]  keynr    Length of keyvec/keyval vector when applicable
  * @param[in]  keyvec   Array of of yang key identifiers
  * @param[in]  keyval   Array of of yang key values
@@ -184,6 +280,7 @@ xml_cmp(const void* arg1,
  * @retval <0  if arg1 is less than arg2
  * @retval >0  if arg1 is greater than arg2
  * @see xml_cmp   Similar, but for two objects
+ * @note Does not care about y type of value as xml_cmp
  */
 static int
 xml_cmp1(cxobj        *x,
@@ -195,12 +292,15 @@ xml_cmp1(cxobj        *x,
 	 char        **keyval,
 	 int          *userorder)
 {
-    char *b;
-    int   i;
-    char *keyname;
-    char *key;
-    int   match = 0;
+    char      *b;
+    int        i;
+    char      *keyname;
+    char      *key;
+    int        match = 0;
 
+    /* state data = userorder */
+    if (userorder && yang_config(y)==0)
+	*userorder=1;
     /* Check if same yang spec (order in yang stmt list) */
     switch (keyword){
     case Y_CONTAINER: /* Match with name */
@@ -232,6 +332,7 @@ xml_cmp1(cxobj        *x,
     default:
 	break;
     }
+    // done:
     return match; /* should not reach here */
 }
 
@@ -239,11 +340,20 @@ xml_cmp1(cxobj        *x,
  * Assume populated by yang spec.
  * @param[in] x0   XML node
  * @param[in] arg  Dummy so it can be called by xml_apply()
+ * @retval    -1    Error, aborted at first error encounter
+ * @retval     0    OK, all nodes traversed (subparts may have been skipped)
+ * @retval     1    OK, aborted on first fn returned 1
+ * @see xml_apply  - typically called by recursive apply function
  */
 int
 xml_sort(cxobj *x,
 	 void  *arg)
 {
+    yang_stmt *ys;
+
+    /* Abort sort if non-config (=state) data */
+    if ((ys = xml_spec(x)) != 0 && yang_config(ys)==0)
+	return 1;
     qsort(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp);
     return 0;
 }
@@ -520,7 +630,13 @@ xml_sort_verify(cxobj *x0,
     int    retval = -1;
     cxobj *x = NULL;
     cxobj *xprev = NULL;
+    yang_stmt *ys;
 
+    /* Abort sort if non-config (=state) data */
+    if ((ys = xml_spec(x0)) != 0 && yang_config(ys)==0){
+	retval = 1;
+	goto done;
+    }
     while ((x = xml_child_each(x0, x, -1)) != NULL) {
 	if (xprev != NULL){ /* Check xprev <= x */
 	    if (xml_cmp(&xprev, &x) > 0)
@@ -534,22 +650,18 @@ xml_sort_verify(cxobj *x0,
 }
 
 /*! Given child tree x1c, find matching child in base tree x0 and return as x0cp
- * param[in]  x0   Base tree node
- * param[in]  x1c  Modification tree child
- * param[in]  yc   Yang spec of tree child
- * param[out] x0cp Matching base tree child (if any)
- * @note XXX: room for optimization? on 1K calls we have 1M body calls and
-	   500K xml_child_each/cvec_each calls. 
-	   The outer loop is large for large lists
-	   The inner loop is small
-	   Major time in xml_find_body()
-	   Can one do a binary search in the x0 list?
-*/
+ * @param[in]  x0      Base tree node
+ * @param[in]  x1c     Modification tree child
+ * @param[in]  yc      Yang spec of tree child
+ * @param[out] x0cp    Matching base tree child (if any)
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
 int
-match_base_child(cxobj     *x0, 
-		 cxobj     *x1c,
-		 cxobj    **x0cp,
-		 yang_stmt *yc)
+match_base_child(cxobj      *x0, 
+		 cxobj      *x1c,
+		 yang_stmt  *yc,
+		 cxobj     **x0cp)
 {
     int        retval = -1;
     cvec      *cvk = NULL; /* vector of index keys */
@@ -561,8 +673,27 @@ match_base_child(cxobj     *x0,
     char     **keyvec = NULL;
     int        i;
     int        yorder;
+    cxobj     *x0c = NULL;
+    yang_stmt *y0c;
+    yang_node *y0p;
+    yang_node *yp; /* yang parent */
     
-    *x0cp = NULL; /* return value */
+    *x0cp = NULL; /* init return value */
+    /* Special case is if yc parent (yp) is choice/case
+     * then find x0 child with same yc even though it does not match lexically
+     * However this will give another y0c != yc
+     */
+    if ((yp = yang_choice(yc)) != NULL){
+	x0c = NULL;
+	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
+	    if ((y0c = xml_spec(x0c)) != NULL &&
+		(y0p = yang_choice(y0c)) != NULL &&
+		y0p == yp)
+		break;	/* x0c will have a value */
+	}
+	*x0cp = x0c;
+	goto ok; /* What to do if not found? */
+    }
     switch (yc->ys_keyword){
     case Y_CONTAINER: 	/* Equal regardless */
     case Y_LEAF: 	/* Equal regardless */
@@ -606,23 +737,14 @@ match_base_child(cxobj     *x0,
 	break;
     }
     /* Get match. Sorting mode(optimized) or not?*/
-    if (xml_child_sort==0)
-	*x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
-    else{
-	if (xml_child_nr(x0)==0 || xml_spec(xml_child_i(x0,0))!=NULL){
-	    yorder = yang_order(yc);
-	    *x0cp = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
-	}
-	else{
-#if 1 /* This is just a warning, but a catcher for when xml tree is not
-	 populated with yang spec. If you see this, a previous invacation of,
-	 for example  xml_spec_populate() may be missing
-      */
-	    clicon_log(LOG_WARNING, "%s No yspec", __FUNCTION__);
-#endif
-	    *x0cp = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
-	}
+    if (xml_child_nr(x0)==0 || xml_spec(xml_child_i(x0,0))!=NULL){
+	yorder = yang_order(yc);
+	x0c = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
     }
+    else{
+	x0c = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
+    }
+    *x0cp = x0c;
  ok:
     retval = 0;
  done:

@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -34,6 +34,8 @@
  * XML parser
  * @see https://www.w3.org/TR/2008/REC-xml-20081126
  *      https://www.w3.org/TR/2009/REC-xml-names-20091208
+ * 
+
  */
 
 %{
@@ -72,7 +74,21 @@ int clixon_xml_parsewrap(void)
   return 1;
 }
 
+/*
+ * From https://www.w3.org/TR/2008/REC-xml-20081126:
+ * [4]* NameStartChar ::= ":" | [A-Z] | "_" | [a-z]   | [#xC0-#xD6] | [#xD8-#xF6] ...
+ * [4a] NameChar      ::= NameStartChar | "-" | "." | [0-9]     | #xB7| 
+ * [5]  Name	      ::= NameStartChar (NameChar)*
+ * NOTE: From https://www.w3.org/TR/2009/REC-xml-names-20091208:
+ * [4] 	NCName	      ::= Name - (Char* ':' Char*)  An XML Name, minus the ":"
+ * --> namestart and name below is NCNAME
+ */
+
 %}
+
+namestart  [A-Z_a-z]
+namechar   [A-Z_a-z\-\.0-9]
+ncname     {namestart}{namechar}*
 
 %x START
 %s STATEA
@@ -81,36 +97,47 @@ int clixon_xml_parsewrap(void)
 %s CMNT
 %s STR
 %s TEXTDECL
+%s PIDECL
+%s PIDECL2
 %s STRDQ
 %s STRSQ
 
 %%
-<START>[0-9A-Za-z_\-]+ { clixon_xml_parselval.string = strdup(yytext);
+
+<START,TEXTDECL>[ \t]   ;
+<START,CMNT,TEXTDECL>\n   { _YA->ya_linenum++; }
+<START,CMNT,TEXTDECL>\r
+
+<START>{ncname}        { clixon_xml_parselval.string = strdup(yytext);
                             return NAME; /* rather be catch-all */
                           }
-<START>[ \t]+          ;
 <START>\:               return *clixon_xml_parsetext;
 <START>\n             { _YA->ya_linenum++;}
-<START>"<?xml"        { BEGIN(TEXTDECL); return BTEXT;}
+<START><<EOF>>        { return MY_EOF; }
+<START>"<?xml"        { BEGIN(TEXTDECL); return BXMLDCL;}
+<START>"<?"           { BEGIN(PIDECL); return BQMARK;}
 <START>"/>"           { BEGIN(STATEA); return ESLASH; }
 <START>"<!--"         { BEGIN(CMNT); return BCOMMENT; }
 <START>"</"             return BSLASH;
 <START>[/=]             return *clixon_xml_parsetext; 
 <START>\<               return *clixon_xml_parsetext;
 <START>\>             { BEGIN(STATEA); return *clixon_xml_parsetext; }
-
 <START>\"             { _YA->ya_lex_state=START;BEGIN(STRDQ); return *clixon_xml_parsetext; }
 <START>\'             { _YA->ya_lex_state=START;BEGIN(STRSQ); return *clixon_xml_parsetext; }
-<START>.              { clixon_xml_parselval.string = yytext; return CHARDATA; /*XXX:optimize*/ }
+<START>.              { clixon_xml_parselval.string = yytext; return CHARDATA; /* optimize? */}
 
 <STATEA>"</"          { BEGIN(START); return BSLASH; }
+<STATEA><<EOF>>       { return MY_EOF; }
 <STATEA>"<!--"        { BEGIN(CMNT); return BCOMMENT; }
 <STATEA>"<![CDATA["   { BEGIN(CDATA); _YA->ya_lex_state = STATEA; clixon_xml_parselval.string = yytext; return CHARDATA;}
+<STATEA>"<?"          { BEGIN(PIDECL); return BQMARK; }
 <STATEA>\<            { BEGIN(START); return *clixon_xml_parsetext; }
 <STATEA>&             { _YA->ya_lex_state =STATEA;BEGIN(AMPERSAND);}
-<STATEA>\n            { clixon_xml_parselval.string = yytext;_YA->ya_linenum++; return (CHARDATA);}
-
-<STATEA>.             { clixon_xml_parselval.string = yytext;        return CHARDATA; /*XXX:optimize*/}
+<STATEA>[ \t]         { clixon_xml_parselval.string = yytext;return WHITESPACE; }
+<STATEA>\r\n          { clixon_xml_parselval.string = "\n";return WHITESPACE; }
+<STATEA>\r            { clixon_xml_parselval.string = "\n";return WHITESPACE; }
+<STATEA>\n            { clixon_xml_parselval.string = yytext; _YA->ya_linenum++;return WHITESPACE; }
+<STATEA>.             { clixon_xml_parselval.string = yytext; return CHARDATA; }
 
 	/* @see xml_chardata_encode */
 <AMPERSAND>"amp;"    { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "&"; return CHARDATA;}
@@ -124,21 +151,30 @@ int clixon_xml_parsewrap(void)
 <CDATA>"]]>"          { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = yytext; return CHARDATA;}
 
 <CMNT>"-->"           { BEGIN(START); return ECOMMENT; }
-<CMNT>\n                _YA->ya_linenum++;
 <CMNT>.               
 <TEXTDECL>encoding      return ENC;
 <TEXTDECL>version       return VER; 
-<TEXTDECL>"="           return *clixon_xml_parsetext;
-<TEXTDECL>"?>"        { BEGIN(START);return ETEXT;}
+<TEXTDECL>standalone    return SD; 
+<TEXTDECL>"="         { return *clixon_xml_parsetext; }
+<TEXTDECL>"?>"        { BEGIN(START);return EQMARK;}
 <TEXTDECL>\"          { _YA->ya_lex_state =TEXTDECL;BEGIN(STRDQ); return *clixon_xml_parsetext; }
 <TEXTDECL>\'          { _YA->ya_lex_state =TEXTDECL;BEGIN(STRSQ); return *clixon_xml_parsetext; }
+<TEXTDECL>.           { clixon_xml_parselval.string = yytext; return CHARDATA; /* optimize? */}
 
-<STRDQ>1\.[0-9]+      { clixon_xml_parselval.string = strdup(yytext);  return CHARDATA; }
-<STRDQ>[^\"]+         { clixon_xml_parselval.string = strdup(yytext);  return CHARDATA; }
+<PIDECL>{ncname}      { clixon_xml_parselval.string = strdup(yytext);
+                            return NAME; /* rather be catch-all */
+                          }
+<PIDECL>[ \t]         { BEGIN(PIDECL2);}
+<PIDECL>.             { clixon_xml_parselval.string = yytext; return CHARDATA; /* optimize? */}
+<PIDECL2>"?>"         { BEGIN(START);return EQMARK;}
+<PIDECL2>[^{?>}]+     { clixon_xml_parselval.string = strdup(yytext);  return STRING; }
+
+<STRDQ>1\.[0-9]+      { clixon_xml_parselval.string = strdup(yytext);  return STRING; }
+<STRDQ>[^\"]+         { clixon_xml_parselval.string = strdup(yytext); return STRING; }
 <STRDQ>\"             { BEGIN(_YA->ya_lex_state); return *clixon_xml_parsetext; }
 
-<STRSQ>1\.[0-9]+      { clixon_xml_parselval.string = strdup(yytext);   return CHARDATA; }
-<STRSQ>[^\']+         { clixon_xml_parselval.string = strdup(yytext);   return CHARDATA; }
+<STRSQ>1\.[0-9]+      { clixon_xml_parselval.string = strdup(yytext); return STRING; }
+<STRSQ>[^\']+         { clixon_xml_parselval.string = strdup(yytext); return STRING; }
 <STRSQ>\'             { BEGIN(_YA->ya_lex_state); return *clixon_xml_parsetext; }
 
 %%

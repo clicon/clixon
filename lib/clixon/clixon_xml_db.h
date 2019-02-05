@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -78,7 +78,7 @@ typedef int (xmldb_setopt_t)(xmldb_handle xh, char *optname, void *value);
 typedef int (xmldb_get_t)(xmldb_handle xh, const char *db, char *xpath, int config, cxobj **xtop);
 
 /* Type of xmldb put function */
-typedef int (xmldb_put_t)(xmldb_handle xh, const char *db, enum operation_type op, cxobj *xt, cbuf *cbret);
+typedef int (xmldb_put_t)(xmldb_handle xh, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
 
 /* Type of xmldb copy function */
 typedef int (xmldb_copy_t)(xmldb_handle xh, const char *from, const char *to);
@@ -139,7 +139,7 @@ int xmldb_disconnect(clicon_handle h);
 int xmldb_getopt(clicon_handle h, char *optname, void **value);
 int xmldb_setopt(clicon_handle h, char *optname, void *value);
 int xmldb_get(clicon_handle h, const char *db, char *xpath, int config, cxobj **xtop);
-int xmldb_put(clicon_handle h, const char *db, enum operation_type op, cxobj *xt, cbuf *cbret);
+int xmldb_put(clicon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
 int xmldb_copy(clicon_handle h, const char *from, const char *to);
 int xmldb_lock(clicon_handle h, const char *db, int pid);
 int xmldb_unlock(clicon_handle h, const char *db);

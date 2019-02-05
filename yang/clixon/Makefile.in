@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 #
 # This file is part of CLIXON
 #
@@ -31,68 +31,39 @@
 # ***** END LICENSE BLOCK *****
 #
 VPATH       	= @srcdir@
-prefix 		= @prefix@
-datarootdir	= @datarootdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
-exec_prefix 	= @exec_prefix@
+prefix 		= @prefix@
 bindir 		= @bindir@
-libdir		= @libdir@
-dbdir		= @prefix@/db
-mandir		= @mandir@
-libexecdir	= @libexecdir@
-localstatedir	= @localstatedir@
-sysconfdir	= @sysconfdir@
+includedir	= @includedir@
+datarootdir     = @datarootdir@
 
-VPATH       	= @srcdir@
-CC		= @CC@
-CFLAGS  	= @CFLAGS@ -rdynamic -fPIC 
-INSTALLFLAGS  	= @INSTALLFLAGS@ 
-LDFLAGS 	= @LDFLAGS@
-LIBS    	= @LIBS@ 
-DATASTORE       = keyvalue
-CPPFLAGS  	= @CPPFLAGS@
+CLIXON_DATADIR   = @CLIXON_DATADIR@
 
-INCLUDES = -I. -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
+YANGSPECS	 = clixon-config@2018-10-21.yang
+YANGSPECS	+= clixon-lib@2019-01-02.yang
+YANGSPECS	+= clixon-rfc5277@2008-07-01.yang
 
-PLUGIN       = $(DATASTORE).so
+APPNAME	        = clixon  # subdir ehere these files are installed
 
-SRC     = clixon_keyvalue.c clixon_qdb.c clixon_chunk.c 
-
-OBJS    = $(SRC:.c=.o) 
-
-all:	 $(PLUGIN)
-
-
-$(PLUGIN): $(SRC)
-	$(CC) $(CPPFLAGS) $(INCLUDES) $(CFLAGS) $(LDFLAGS) -shared -o $@ -lc $^ $(LIBS)
+all:	
 
 clean:
-	rm -f $(PLUGIN) $(OBJS) *.core
 
 distclean: clean
 	rm -f Makefile *~ .depend
 
-.SUFFIXES:
-.SUFFIXES: .c .o
+install: $(YANGSPECS) 
+	install -d -m 0755 $(DESTDIR)$(CLIXON_DATADIR)
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(CLIXON_DATADIR)
 
-.c.o: $(SRC)
-	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
+uninstall:
+	(cd $(DESTDIR)$(CLIXON_DATADIR); rm -rf *.yang)
 
-install: $(PLUGIN)
-	install -d -m 0755 $(DESTDIR)$(libdir)/xmldb
-	install -m 0644 $(INSTALLFLAGS) $(PLUGIN) $(DESTDIR)$(libdir)/xmldb
-
-install-include:
-
-uninstall: 
-	rm -rf $(DESTDIR)$(libdir)/xmldb/$(PLUGIN)
-
-TAGS:
-	find . -name '*.[chyl]' -print | etags -
+install-include:	
 
 depend:
-	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(SRC) > .depend
+
 
 #include .depend
 

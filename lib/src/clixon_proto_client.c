@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -351,7 +351,7 @@ clicon_rpc_edit_config(clicon_handle       h,
 
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "<rpc");
+    cprintf(cb, "<rpc %s", DEFAULT_XMLNS);
     if ((username = clicon_username_get(h)) != NULL)
 	cprintf(cb, " username=\"%s\"", username);
     cprintf(cb, "><edit-config><target><%s/></target>", db);
@@ -444,7 +444,7 @@ clicon_rpc_delete_config(clicon_handle h,
     char              *username;
 
     username = clicon_username_get(h);
-    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><delete-config><target><%s/></target></delete-config></rpc>",
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><edit-config><target><%s/></target><default-operation>none</default-operation><config operation=\"delete\"/></edit-config></rpc>",
 				 username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
@@ -787,7 +787,7 @@ clicon_rpc_create_subscription(clicon_handle    h,
     char              *username;
 
     username = clicon_username_get(h);
-    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><create-subscription>"
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\">"
 				 "<stream>%s</stream>"
 				 "<filter type=\"xpath\" select=\"%s\" />"
 				 "</create-subscription></rpc>", 
@@ -826,7 +826,8 @@ clicon_rpc_debug(clicon_handle h,
     char              *username;
 
     username = clicon_username_get(h);
-    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><debug><level>%d</level></debug></rpc>", username?username:"", level)) == NULL)
+    /* XXX: hardcoded example yang, should be clixon-config!!! */
+    if ((msg = clicon_msg_encode("<rpc username=\"%s\"><debug xmlns=\"http://clicon.org/lib\"><level>%d</level></debug></rpc>", username?username:"", level)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;

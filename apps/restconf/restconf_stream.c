@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -180,7 +180,7 @@ restconf_stream_cb(int   s,
 	clicon_exit_set(); 
 	goto done;
     }
-    if (clicon_msg_decode(reply, &xtop) < 0) 
+    if (clicon_msg_decode(reply, NULL, &xtop) < 0)  /* XXX pass yang_spec */
 	goto done;
     /* create event */
     if ((cb = cbuf_new()) == NULL){
@@ -249,7 +249,7 @@ restconf_stream(clicon_handle h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(cb, "<rpc><create-subscription><stream>%s</stream>", name);
+    cprintf(cb, "<rpc><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>%s</stream>", name);
     /* Print all fields */
     for (i=0; i<cvec_len(qvec); i++){
         cv = cvec_i(qvec, i);

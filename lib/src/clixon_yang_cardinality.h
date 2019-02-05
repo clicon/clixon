@@ -1,8 +1,7 @@
 /*
- *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -30,44 +29,14 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
+ * Yang cardinality functions according to RFC 7950 
  */
-
-#ifndef _CLIXON_QDB_H_
-#define _CLIXON_QDB_H_
-
-
-/*
- * Low level API
- */
-
-struct db_pair {    
-    char *dp_key;  /* database key */
-    char *dp_matched; /* Matched component of key */
-    char *dp_val;  /* pointer to vector of lvalues */
-    int   dp_vlen; /* length of vector of lvalues */
-};
+#ifndef _CLIXON_YANG_CARDINALITY_H_
+#define _CLIXON_YANG_CARDINALITY_H_
 
 /*
  * Prototypes
- */ 
-int db_init(char *file);
+ */
+int yang_cardinality(clicon_handle h, yang_stmt *yt, char *modname);
 
-int db_delete(char *file);
-
-int db_set(char *file, char *key, void *data, size_t datalen);
-
-int db_get(char *file, char *key, void *data, size_t *datalen);
-
-int db_get_alloc(char *file, char *key, void **data, size_t *datalen);
-
-int db_del(char *file, char *key);
-
-int db_exists(char *file, char *key);
-
-int db_regexp(char *file, char *regexp, const char *label, 
-	      struct db_pair **pairs, int noval);
-
-char *db_sanitize(char *rx, const char *label);
-
-#endif  /* _CLIXON_QDB_H_ */
+#endif	/* _CLIXON_YANG_CARDINALITY_H_ */

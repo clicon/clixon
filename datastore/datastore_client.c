@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -30,14 +30,6 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
-  * Examples: 
-
-./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip get /
-
-sudo ./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip put merge /interfaces/interface=eth66 '<config>eth66</config>'
-
-sudo ./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src/clixon/datastore/keyvalue/keyvalue.so -y /usr/local/share/example/yang -m ietf-ip put merge / '<config><interfaces><interface><name>eth0</name><enabled>true</enabled></interface></interfaces></config>'
 
  */
 
@@ -71,7 +63,7 @@ sudo ./datastore_client -d candidate -b /usr/local/var/example -p /home/olof/src
 #include <clixon/clixon.h>
 
 /* Command line options to be passed to getopt(3) */
-#define DATASTORE_OPTS "hDd:p:b:y:m:"
+#define DATASTORE_OPTS "hDd:p:b:y:"
 
 /*! usage
  */
@@ -85,8 +77,7 @@ usage(char *argv0)
 		"\t-d <db>\t\tDatabase name. Default: running. Alt: candidate,startup\n"
 		"\t-b <dir>\tDatabase directory. Mandatory\n"
 		"\t-p <plugin>\tDatastore plugin. Mandatory\n"
-		"\t-y <dir>\tYang directory (where modules are stored). Mandatory\n"
-		"\t-m <module>\tYang module. Mandatory\n"
+		"\t-y <file>\tYang file. Mandatory\n"
 		"and command is either:\n"
 		"\tget [<xpath>]\n"
  	        "\tmget <nr> [<xpath>]\n"
@@ -108,15 +99,14 @@ usage(char *argv0)
 int
 main(int argc, char **argv)
 {
-    char                c;
+    int                 c;
     clicon_handle       h;
     char               *argv0;
     char               *db = "running";
     char               *plugin = NULL;
     char               *cmd = NULL;
     yang_spec          *yspec = NULL;
-    char               *yangdir = NULL;
-    char               *yangmodule = NULL;
+    char               *yangfilename = NULL;
     char               *dbdir = NULL;
     int                 ret;
     int                 pid;
@@ -158,15 +148,10 @@ main(int argc, char **argv)
 	        usage(argv0);
 	    dbdir = optarg;
 	    break;
-	case 'y': /* Yang directory */
+	case 'y': /* Yang file */
 	    if (!optarg)
 	        usage(argv0);
-	    yangdir = optarg;
-	    break;
-	case 'm': /* Yang module */
-	    if (!optarg)
-	        usage(argv0);
-	    yangmodule = optarg;
+	    yangfilename = optarg;
 	    break;
 	}
     /* 
@@ -188,12 +173,8 @@ main(int argc, char **argv)
 	clicon_err(OE_DB, 0, "Missing dbdir -b option");
 	goto done;
     }
-    if (yangdir == NULL){
-	clicon_err(OE_YANG, 0, "Missing yangdir -y option");
-	goto done;
-    }
-    if (yangmodule == NULL){
-	clicon_err(OE_YANG, 0, "Missing yang module -m option");
+    if (yangfilename == NULL){
+	clicon_err(OE_YANG, 0, "Missing yang filename -y option");
 	goto done;
     }
     /* Load datastore plugin */
@@ -206,7 +187,7 @@ main(int argc, char **argv)
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     /* Parse yang spec from given file */
-    if (yang_parse(h, NULL, yangmodule, yangdir, NULL, yspec, NULL) < 0)
+    if (yang_spec_parse_file(h, yangfilename, yspec) < 0)
 	goto done;
     /* Set database directory option */
     if (xmldb_setopt(h, "dbdir", dbdir) < 0)
@@ -258,14 +239,18 @@ main(int argc, char **argv)
 	    clicon_err(OE_DB, 0, "Unrecognized operation: %s", argv[1]);
 	    usage(argv0);
 	}
+	_CLICON_XML_NS_STRICT = 0;
 	if (xml_parse_string(argv[2], NULL, &xt) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)
 	    goto done;
-	if ((cbret = cbuf_new()) == NULL)
+	if ((cbret = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
-	if (xmldb_put(h, db, op, xt, cbret) < 0)
+	}
+	if (xmldb_put(h, db, op, xt, NULL, cbret) < 1)
 	    goto done;
+	    
     }
     else if (strcmp(cmd, "copy")==0){
 	if (argc != 2)

@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -191,7 +191,7 @@ b64_decode(const char *src,
  * @retval -1  Fatal error
  * @retval  0  Unauth
  * @retval  1  Auth
- * @note: Three hardwired users: adm1, wilma, guest w password "bar".
+ * @note: Three hardwired users: andy, wilma, guest w password "bar".
  * Enabled by passing -- -a to the main function
  */
 int
@@ -237,9 +237,9 @@ example_restconf_credentials(clicon_handle h,
     /* Here get auth sub-tree whjere all the users are */
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    /* Hardcoded user/passwd */
-    if (strcmp(user, "wilma")==0 || strcmp(user, "adm1")==0 ||
-	strcmp(user, "quest")==0){
+    /* XXX Three hardcoded user/passwd (from RFC8341 A.1)*/
+    if (strcmp(user, "wilma")==0 || strcmp(user, "andy")==0 ||
+	strcmp(user, "guest")==0){
 	passwd2 = "bar";
     }
     if (strcmp(passwd, passwd2))
@@ -268,28 +268,46 @@ example_restconf_credentials(clicon_handle h,
  */
 int
 restconf_client_rpc(clicon_handle h, 
-		    cxobj        *xn,      
+		    cxobj        *xe,      
 		    cbuf         *cbret,    
 		    void         *arg,
 		    void         *regarg)
 {
-    //    FCGX_Request *r = (FCGX_Request *)arg;
-    clicon_debug(1, "%s", __FUNCTION__);
-    cprintf(cbret, "<rpc-reply><result>ok</result></rpc-reply>");
-    return 0;
+    int    retval = -1;
+    cxobj *x = NULL;
+    char  *namespace;
+
+    /* get namespace from rpc name, return back in each output parameter */
+    if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
+	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+	goto done;
+    }
+    cprintf(cbret, "<rpc-reply>");
+    if (!xml_child_nr_type(xe, CX_ELMNT))
+	cprintf(cbret, "<ok/>");
+    else while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+	    if (xmlns_set(x, NULL, namespace) < 0)
+		goto done;
+	    if (clicon_xml2cbuf(cbret, x, 0, 0) < 0)
+		goto done;
+	}
+    cprintf(cbret, "</rpc-reply>");
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Start example restonf plugin. Set authentication method
  * Arguments are argc/argv after --
  * Currently defined: -a  enable http basic authentication
- * Note hardwired users adm1, wilma and guest
+ * @note There are three hardwired users andy, wilma and guest from RFC8341 A.1
  */
 int
 example_restconf_start(clicon_handle h,
 		       int           argc,
 		       char        **argv)
 {
-    char c;
+    int c;
 
     clicon_debug(1, "%s argc:%d", __FUNCTION__, argc);
     optind = 1;

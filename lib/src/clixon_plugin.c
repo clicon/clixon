@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -269,8 +269,7 @@ clixon_plugins_load(clicon_handle h,
 
     clicon_debug(1, "%s", __FUNCTION__); 
     /* Get plugin objects names from plugin directory */
-    if((ndp = clicon_file_dirent(dir, &dp,
-				 regexp?regexp:"(.so)$", S_IFREG))<0)
+    if((ndp = clicon_file_dirent(dir, &dp, regexp?regexp:"(.so)$", S_IFREG)) < 0)
 	goto done;
     /* Load all plugins */
     for (i = 0; i < ndp; i++) {

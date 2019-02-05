@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -71,7 +71,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:xl:F:1a:u:d:m:qpGLy:c:U:"
+#define CLI_OPTS "hD:f:xl:F:1a:u:d:m:qp:GLy:c:U:o:"
 
 #define CLI_LOGFILE "/tmp/clixon_cli.log"
 
@@ -221,13 +221,14 @@ usage(clicon_handle h,
 	    "\t-d <dir>\tSpecify plugin directory (default: %s)\n"
             "\t-m <mode>\tSpecify plugin syntax mode\n"
 	    "\t-q \t\tQuiet mode, dont print greetings or prompt, terminate on ctrl-C\n"
-	    "\t-p \t\tPrint database yang specification\n"
+	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-G \t\tPrint CLI syntax generated from dbspec (if CLICON_CLI_GENMODEL enabled)\n"
 	    "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
 	    "\t-l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut or (f)ile (stderr is default)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "\t-c <file>\tSpecify cli spec file.\n"
-	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n",
+	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
+	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    plgdir ? plgdir : "none"
 	);
@@ -240,25 +241,23 @@ int
 main(int argc, char **argv)
 {
     int          retval = -1;
-    char         c;    
+    int          c;    
     int          once;
     char	*tmp;
     char	*argv0 = argv[0];
     clicon_handle h;
-    int          printspec = 0;
     int          printgen  = 0;
     int          logclisyntax  = 0;
     int          help = 0;
     char        *treename = NULL;
-    int          len;
+    //    int          len;
     int          logdst = CLICON_LOG_STDERR;
     char        *restarg = NULL; /* what remains after options */
     int          dump_configfile_xml = 0;
     yang_spec   *yspec;
     yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
     struct passwd *pw;
-    char        *yang_filename = NULL;
-    yang_stmt   *ymod = NULL; /* Main module */
+    char         *str;
     
     /* Defaults */
     once = 0;
@@ -361,28 +360,33 @@ main(int argc, char **argv)
 	    once = 1;
 	    break;
 	case 'a': /* internal backend socket address family */
-	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
+	    if (clicon_option_add(h, "CLICON_SOCK_FAMILY", optarg) < 0)
+		goto done;
 	    break;
 	case 'u': /* internal backend socket unix domain path or ip host */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
+	    if (clicon_option_add(h, "CLICON_SOCK", optarg) < 0)
+		goto done;
 	    break;
 	case 'd':  /* Plugin directory: overrides configfile */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_CLI_DIR", optarg);
+	    if (clicon_option_add(h, "CLICON_CLI_DIR", optarg) < 0)
+		goto done;
 	    break;
 	case 'm': /* CLI syntax mode */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_CLI_MODE", optarg);
+	    if (clicon_option_add(h, "CLICON_CLI_MODE", optarg) < 0)
+		goto done;
 	    break;
 	case 'q' : /* Quiet mode */
 	    clicon_quiet_mode_set(h, 1);
 	    break;
-	case 'p' : /* Print spec */
-	    printspec++;
+	case 'p' : /* yang dir path */
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
 	    break;
 	case 'G' : /* Print generated CLI syntax */
 	    printgen++;
@@ -390,20 +394,29 @@ main(int argc, char **argv)
 	case 'L' : /* Debug print dynamic CLI syntax */
 	    logclisyntax++;
 	    break;
-	case 'y' :{ /* Load yang spec file (override yang main module) */
-	    yang_filename = optarg;
+	case 'y' : /* Load yang absolute filename */
+	    if (clicon_option_add(h, "CLICON_YANG_MAIN_FILE", optarg) < 0)
+		goto done;
 	    break;
-	}
-	case 'c' :{ /* Overwrite clispec with absolute filename */
-	    clicon_option_str_set(h, "CLICON_CLISPEC_FILE", optarg);
+	case 'c' : /* Overwrite clispec with absolute filename */
+	    if (clicon_option_add(h, "CLICON_CLISPEC_FILE", optarg) < 0)
+		goto done;
 	    break;
-	}
 	case 'U': /* Clixon 'pseudo' user */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
 	    if (clicon_username_set(h, optarg) < 0)
 		goto done;
 	    break;
+	case 'o':{ /* Configuration option */
+	    char          *val;
+	    if ((val = index(optarg, '=')) == NULL)
+		usage(h, argv0);
+	    *val++ = '\0';
+	    if (clicon_option_add(h, optarg, val) < 0)
+		goto done;
+	    break;
+	}
 	default:
 	    usage(h, argv[0]);
 	    break;
@@ -430,44 +443,49 @@ main(int argc, char **argv)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
 
-    /* Load main application yang specification either module or specific file
-     * If -y <file> is given, it overrides main module */
-    if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, &ymod) < 0)
+    /* Load Yang modules
+     * 1. Load a yang module as a specific absolute filename */
+    if ((str = clicon_yang_main_file(h)) != NULL){
+	if (yang_spec_parse_file(h, str, yspec) < 0)
 	    goto done;
     }
-    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
-				    clicon_yang_dir(h),
-				    clicon_yang_module_revision(h),
-				    yspec, &ymod) < 0)
+    /* 2. Load a (single) main module */
+    if ((str = clicon_yang_module_main(h)) != NULL){
+	if (yang_spec_parse_module(h, str, clicon_yang_module_revision(h),
+				   yspec) < 0)
+	    goto done;
+    }
+    /* 3. Load all modules in a directory */
+    if ((str = clicon_yang_main_dir(h)) != NULL){
+	if (yang_spec_load_dir(h, str, yspec) < 0)
+	    goto done;
+    }
+    /* Load clixon lib yang module */
+    if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
 	goto done;
+
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;
-    if (printspec)
-	yang_print(stdout, (yang_node*)yspec);
 
     /* Create tree generated from dataspec. If no other trees exists, this is
      * the only one.
+     * The following code creates the tree @datamodel
+     * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) 
+     * using the "tree reference"
+     * syntax, ie @datamodel
+     * But note that yang2cli generates syntax for ALL modules, not just for 
+     * <module>.
      */
     if (clicon_cli_genmodel(h)){
 	parse_tree    pt = {0,};  /* cli parse tree */
-	char         *name;       /* main module name */
+	char         *treeref; 
 
+	treeref = clicon_cli_model_treename(h);
 	/* Create cli command tree from dbspec */
 	if (yang2cli(h, yspec, &pt, clicon_cli_genmodel_type(h)) < 0)
 	    goto done;
-
-	/* name of main module */
-	name = ymod->ys_argument;
-
-	len = strlen("datamodel:") + strlen(name) + 1;
-	if ((treename = malloc(len)) == NULL){
-	    clicon_err(OE_UNIX, errno, "malloc");
-	    goto done;
-	}	
-	snprintf(treename, len, "datamodel:%s",  name);
-	cligen_tree_add(cli_cligen(h), treename, pt);
+	cligen_tree_add(cli_cligen(h), treeref, pt);
 
 	if (printgen)
 	    cligen_print(stdout, pt, 1);

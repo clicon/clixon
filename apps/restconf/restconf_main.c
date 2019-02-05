@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -81,7 +81,7 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:l:p:y:a:u:"
+#define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:"
 
 /* RESTCONF enables deployments to specify where the RESTCONF API is 
    located.  The client discovers this by getting the "/.well-known/host-meta"
@@ -492,10 +492,12 @@ usage(clicon_handle h,
 	    "\t-D <level>\tDebug level\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-l <s|f<file>> \tLog on (s)yslog, (f)ile (syslog is default)\n"
+	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
-    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n",
+    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
+	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_restconf_dir(h)
 	    );
@@ -513,19 +515,18 @@ main(int    argc,
     char	 *argv0 = argv[0];
     FCGX_Request  request;
     FCGX_Request *r = &request;
-    char          c;
+    int           c;
     char         *sockpath;
     char         *path;
     clicon_handle h;
-    char         *yangspec=NULL;
     char         *dir;
     char	 *tmp;
     int          logdst = CLICON_LOG_SYSLOG;
     yang_spec   *yspec = NULL;
     yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
-    char        *yang_filename = NULL;
     char        *stream_path;
     int          finish;
+    char        *str;
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -596,13 +597,17 @@ main(int    argc,
 	case 'f':  /* config file */
 	case 'l':  /* log  */
 	    break; /* see above */
+	case 'p' : /* yang dir path */
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
+	    break;
 	case 'd':  /* Plugin directory */
 	    if (!strlen(optarg))
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_RESTCONF_DIR", optarg);
 	    break;
 	case 'y' : /* Load yang spec file (override yang main module) */
-	    yang_filename = optarg;
+	    clicon_option_str_set(h, "CLICON_YANG_MAIN_FILE", optarg);
 	    break;
 	case 'a': /* internal backend socket address family */
 	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
@@ -612,16 +617,21 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
+	case 'o':{ /* Configuration option */
+	    char          *val;
+	    if ((val = index(optarg, '=')) == NULL)
+		usage(h, argv0);
+	    *val++ = '\0';
+	    if (clicon_option_add(h, optarg, val) < 0)
+		goto done;
+	    break;
+	}
         default:
             usage(h, argv[0]);
             break;
 	}
     argc -= optind;
     argv += optind;
-
-    /* Overwrite yang module with -y option */
-    if (yangspec)
-	clicon_option_str_set(h, "CLICON_YANG_MODULE_MAIN", yangspec);
 
     /* Initialize plugins group */
     if ((dir = clicon_restconf_dir(h)) != NULL)
@@ -632,27 +642,36 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
-    /* Load main application yang specification either module or specific file
-     * If -y <file> is given, it overrides main module */
-    if (yang_filename){
-	if (yang_spec_parse_file(h, yang_filename, clicon_yang_dir(h), yspec, NULL) < 0)
+
+    /* Load Yang modules
+     * 1. Load a yang module as a specific absolute filename */
+    if ((str = clicon_yang_main_file(h)) != NULL){
+	if (yang_spec_parse_file(h, str, yspec) < 0)
 	    goto done;
     }
-    else if (yang_spec_parse_module(h, clicon_yang_module_main(h),
-		       clicon_yang_dir(h),
-		       clicon_yang_module_revision(h),
-				    yspec, NULL) < 0)
+    /* 2. Load a (single) main module */
+    if ((str = clicon_yang_module_main(h)) != NULL){
+	if (yang_spec_parse_module(h, str, clicon_yang_module_revision(h),
+				   yspec) < 0)
+	    goto done;
+    }
+    /* 3. Load all modules in a directory */
+    if ((str = clicon_yang_main_dir(h)) != NULL){
+	if (yang_spec_load_dir(h, str, yspec) < 0)
+	    goto done;
+    }
+    /* Load clixon lib yang module */
+    if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
 	goto done;
-
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;
     /* Add system modules */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
-	 yang_spec_parse_module(h, "ietf-restconf-monitoring", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
+	 yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
 	 goto done;
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_parse_module(h, "ietf-netconf-notification", CLIXON_DATADIR, NULL, yspec, NULL)< 0)
+	 yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
 	 goto done;
     /* Call start function in all plugins before we go interactive 
        Pass all args after the standard options to plugin_start

@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -70,7 +70,7 @@
 /*! Load an xmldb storage plugin according to filename
  * If init function fails (not found, wrong version, etc) print a log and dont
  * add it.
- * @param[in]  h         CLicon handle
+ * @param[in]  h         Clicon handle
  * @param[in]  filename  Actual filename including path
  */
 int 
@@ -379,8 +379,10 @@ xmldb_get(clicon_handle h,
  * @param[in]  db     running or candidate
  * @param[in]  op     Top-level operation, can be superceded by other op in tree
  * @param[in]  xt     xml-tree. Top-level symbol is dummy
- * @param[out] cbret  Initialized cligen buffer or NULL. On exit contains XML or "".
- * @retval     0      OK
+ * @param[in]  username User name for nacm
+ * @param[out] cbret  Initialized cligen buffer. On exit contains XML if retval == 0
+ * @retval     1      OK
+ * @retval     0      Failed, cbret contains error xml message
  * @retval     -1     Error
  * The xml may contain the "operation" attribute which defines the operation.
  * @code
@@ -388,8 +390,10 @@ xmldb_get(clicon_handle h,
  *   cxobj     *xret = NULL;
  *   if (xml_parse_string("<a>17</a>", yspec, &xt) < 0)
  *     err;
- *   if (xmldb_put(xh, "running", OP_MERGE, xt, cbret) < 0)
+ *   if ((ret = xmldb_put(xh, "running", OP_MERGE, xt, username, cbret)) < 0)
  *     err;
+ *   if (ret==0)
+ *     cbret contains netconf error message
  * @endcode
  * @note that you can add both config data and state data. In comparison,
  *  xmldb_get has a parameter to get config data only.
@@ -401,6 +405,7 @@ xmldb_put(clicon_handle       h,
 	  const char         *db, 
 	  enum operation_type op, 
 	  cxobj              *xt,
+	  char               *username,
 	  cbuf               *cbret)
 {
     int               retval = -1;
@@ -431,7 +436,7 @@ xmldb_put(clicon_handle       h,
 	cbuf_free(cb);
     }
 #endif
-    retval = xa->xa_put_fn(xh, db, op, xt, cbret);
+    retval = xa->xa_put_fn(xh, db, op, xt, username, cbret);
  done:
     return retval;
 }

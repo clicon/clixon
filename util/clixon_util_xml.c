@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -46,8 +46,8 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <fnmatch.h>
 #include <stdint.h>
+#include <syslog.h>
 #include <assert.h>
 
 /* cligen */
@@ -68,40 +68,75 @@
 static int
 usage(char *argv0)
 {
-    fprintf(stderr, "usage:%s.\n\tInput on stdin\n", argv0);
+    fprintf(stderr, "usage:%s [options]\n"
+	    "where options are\n"
+            "\t-h \t\tHelp\n"
+    	    "\t-D <level> \tDebug\n"
+	    "\t-j \t\tOutput as JSON\n"
+	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n",
+	    argv0);
     exit(0);
 }
 
 int
-main(int argc, char **argv)
+main(int    argc,
+     char **argv)
 {
+    int   retval = -1;
     cxobj *xt = NULL;
     cxobj *xc;
     cbuf  *cb = cbuf_new();
+    int   c;
+    int   logdst = CLICON_LOG_STDERR;
+    int   json = 0;
 
-    if (argc != 1){
-	usage(argv[0]);
-	return 0;
-    }
+    optind = 1;
+    opterr = 0;
+    while ((c = getopt(argc, argv, "hD:jl:")) != -1)
+	switch (c) {
+	case 'h':
+	    usage(argv[0]);
+	    break;
+    	case 'D':
+	    if (sscanf(optarg, "%d", &debug) != 1)
+		usage(argv[0]);
+	    break;
+	case 'j':
+	    json++;
+	    break;
+	case 'l': /* Log destination: s|e|o|f */
+	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
+		usage(argv[0]);
+	    break;
+	default:
+	    usage(argv[0]);
+	    break;
+	}
+    clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, logdst);
     if (xml_parse_file(0, "</config>", NULL, &xt) < 0){
 	fprintf(stderr, "xml parse error %s\n", clicon_err_reason);
 	goto done;
     }
     xc = NULL;
     while ((xc = xml_child_each(xt, xc, -1)) != NULL) 
-	clicon_xml2cbuf(cb, xc, 0, 0); /* print xml */
-    fprintf(stdout, "%s\n", cbuf_get(cb));
+	if (json)
+	    xml2json_cbuf(cb, xc, 0); /* print xml */
+	else
+	    clicon_xml2cbuf(cb, xc, 0, 0); /* print xml */
+    fprintf(stdout, "%s", cbuf_get(cb));
+    fflush(stdout);
 #if 0
     cbuf_reset(cb);
     xmltree2cbuf(cb, xt, 0);       /* dump data structures */
     fprintf(stderr, "%s\n", cbuf_get(cb));
 #endif
+    retval = 0;
  done:
     if (xt)
 	xml_free(xt);
     if (cb)
 	cbuf_free(cb);
-    return 0;
+    return retval;
 }
 
 

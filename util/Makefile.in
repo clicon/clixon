@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 #
 # This file is part of CLIXON
 #
@@ -78,7 +78,7 @@ all:	 $(APPS)
 	 @echo "You may want to make clixon_util_stream separately (curl dependency)"
 
 clean:
-	rm -f $(APPS) *.core
+	rm -f $(APPS) clixon_util_stream *.core
 
 # APPS
 clixon_util_xml: clixon_util_xml.c $(MYLIB)
@@ -100,6 +100,9 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 install: 
+#	install -d -m 0755 $(DESTDIR)$(bindir)
+#	install -m 0755 $(INSTALLFLAGS) $(APPS) $(DESTDIR)$(bindir)
+
 
 install-include:
 

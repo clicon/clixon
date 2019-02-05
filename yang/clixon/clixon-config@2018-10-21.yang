@@ -1,5 +1,6 @@
 module clixon-config {
-
+    yang-version 1.1;
+    namespace "http://clicon.org/config";
     prefix cc;
 
     organization
@@ -11,7 +12,7 @@ module clixon-config {
     description
       "Clixon configuration file
        ***** BEGIN LICENSE BLOCK *****
-       Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+       Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
        
        This file is part of CLIXON
 
@@ -38,9 +39,9 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
-    revision 2018-02-12 {
+    revision 2018-10-21 {
 	description
-	    "Added pretty print for datastore";
+	    "Released in Clixon 3.8";
     }
     typedef startup_mode{
 	description
@@ -82,21 +83,81 @@ module clixon-config {
 	    }
 	}
     }
+    typedef cli_genmodel_type{
+	description
+	    "How to generate CLI from YANG model, 
+             eg list a{ key x; leaf x; leaf y;}";
+	type enumeration{
+	    enum NONE{
+		description "No extra keywords: a <x> <y>";
+	    }
+	    enum VARS{
+		description "Keywords on non-key variables: a <x> y <y>";
+	    }
+	    enum ALL{
+		description "Keywords on all variables: a x <x> y <y>";
+	    }
+	}
+    }
+    typedef nacm_mode{
+	description
+	    "Mode of RFC8341 Network Configuration Access Control Model.
+             It is unclear from the RFC whether NACM rules are internal
+             in a configuration (ie embedded in regular config) or external/OOB
+             in s separate, specific NACM-config";
+	type enumeration{
+	    enum disabled{
+		description "NACM is disabled";
+	    }
+	    enum internal{
+		description "NACM is enabled and available in the regular config";
+	    }
+	    enum external{
+		description "NACM is enabled and available in a separate config";
+	    }
+	}
+    }
     container config {
+       leaf-list CLICON_FEATURE {
+           description
+               "Supported features as used by YANG feature/if-feature
+	        value is: <module>:<feature>, where <module> and <feature>
+                are either names, or the special character '*'.
+                *:* means enable all features
+                <module>:* means enable all features in the specified module
+                *:<feature> means enable the specific feature in all modules";
+	   type string;
+        }
 	leaf CLICON_CONFIGFILE{
 	    type string;
 	    description
 		"Location of configuration-file for default values (this file)";
 	}
-	leaf CLICON_YANG_DIR {
+	leaf-list CLICON_YANG_DIR {
+	    ordered-by user;
 	    type string;
-	    mandatory true;
 	    description
-		"Location of YANG module and submodule files.";
+		"Yang directory path for finding module and submodule files. 
+                 A list of these options should be in the configuration. 
+                 When loading a Yang module, Clixon searches this list in the order
+                 they appear. Ensure that CLIXON_DATADIR(default 
+                 /usr/local/share/clixon) is present in the path";
+	}
+	leaf CLICON_YANG_MAIN_FILE {
+	    type string;
+	    description
+		"If specified load a yang module in a specific absolute filename.
+                 This corresponds to the -y command-line option in most CLixon
+                 programs.";
+	}
+	leaf CLICON_YANG_MAIN_DIR {
+	    type string;
+	    description
+		"If given, load all modules in this directory (all .yang files)
+                 See also CLICON_YANG_DIR which specifies a path of dirs";
 	}
 	leaf CLICON_YANG_MODULE_MAIN {
 	    type string;
-            default "clicon";
 	    description
 		"Option used to construct initial yang file: 
                  <module>[@<revision>]";
@@ -112,6 +173,12 @@ module clixon-config {
 	    description
 		"Location of backend .so plugins. Load all .so 
        	         plugins in this dir as backend plugins";
+	}
+	leaf CLICON_BACKEND_REGEXP {
+	    type string;
+	    description
+		"Regexp of matching backend plugins in CLICON_BACKEND_DIR";
+	    default "(.so)$";
 	}
 	leaf CLICON_NETCONF_DIR {
 	    type string;
@@ -170,9 +237,18 @@ module clixon-config {
 	    type int32;
 	    default 1;
 	    description
-		"Generate code for CLI completion of existing db symbols. 
-      	         Example: Add name=\"myspec\" in datamodel spec and reference
-	         as @myspec";
+		"If set, generate CLI specification for CLI completion of
+                 loaded Yang modules. This CLI tree can be accessed in CLI
+                 spec files using the tree reference syntax (eg @datamodel).
+                 See also CLICON_CLI_MODEL_TREENAME.";
+	}
+	leaf CLICON_CLI_MODEL_TREENAME {
+	    type string;
+	    default "datamodel";
+	    description
+		"If CLICON_CLI_GENMODEL is set, CLI specs can reference the
+                 model syntax using this reference. 
+                 Example: set @datamodel, cli_set();";
 	}
 	leaf CLICON_CLI_GENMODEL_COMPLETION {
 	    type int32;
@@ -180,7 +256,7 @@ module clixon-config {
 	    description "Generate code for CLI completion of existing db symbols";
 	}
 	leaf CLICON_CLI_GENMODEL_TYPE {
-	    type string;
+	    type cli_genmodel_type;
 	    default "VARS";
 	    description "How to generate and show CLI syntax: VARS|ALL";
 	}
@@ -237,14 +313,6 @@ module clixon-config {
 		"Set if all configuration changes are committed automatically 
                  on every edit change. Explicit commit commands unnecessary";
 	}
-	leaf CLICON_MASTER_PLUGIN {
-	    type string;
-	    default "master";
-	    description
-		"Name of master plugin (both frontend and backend). 
-                 Master plugin has special callbacks for frontends. 
-	         See clicon user manual for more info. (Obsolete?)";
-	}
 	leaf CLICON_XMLDB_DIR {
 	    type string;
 	    mandatory true;
@@ -279,14 +347,19 @@ module clixon-config {
                  If set, insert spaces and line-feeds making the XML/JSON human
                  readable. If not set, make the XML/JSON more compact.";
 	}
-	leaf CLICON_XML_SORT {
+	leaf CLICON_XML_NS_STRICT {
 	    type boolean;
 	    default true;
 	    description
-		"If set, sort XML lists and leaf-lists alphabetically and uses binary
-                 search. Unless ordered-by user is used. 
-                 Only works for Yang specified XML.
-                 If not set, all lists accessed via linear search.";
+		"If not set, make non-strict laze namespace checks, by iterating
+                 through modules to find the matching datanode
+                 or rpc if no xmlns attribute specifies namespace.
+                 This is lazy semantics of finding namespaces, which means you
+                 do not need to explicitly give the namespace if the symbol exists
+                 in some loaded module.
+                 Example: <x/> is enough, instead of <x xmlns='urn:example:clixon'/>
+                 But it is wrong, but is the way Clixon originally was written.
+                 Strict semantics is the default.";
 	}
 	leaf CLICON_USE_STARTUP_CONFIG {
 	    type int32;
@@ -299,6 +372,90 @@ module clixon-config {
 	leaf CLICON_STARTUP_MODE {
 	    type startup_mode;
 	    description "Which method to boot/start clicon backend";
+	}
+	leaf CLICON_TRANSACTION_MOD {
+	    type boolean;
+	    default false;
+	    description "If set, modifications in validation and commit 
+                         callbacks are written back into the datastore";
+	}
+	leaf CLICON_NACM_MODE {
+	    type nacm_mode;
+	    default disabled;
+	    description "RFC8341 network access configuration control model 
+                         (NACM) mode: disabled, in regular (internal) config
+                         or separate external file given by CLICON_NACM_FILE";
+	}
+	leaf CLICON_NACM_FILE {
+	    type string;
+	    description "RFC8341 NACM external configuration file";
+	}
+	leaf CLICON_MODULE_LIBRARY_RFC7895 {
+	    type boolean;
+	    default true;
+	    description "Enable RFC 7895 YANG Module library support as state 
+                         data. If enabled, module info will appear when doing 
+                         netconf get or restconf GET";
+	}
+	leaf CLICON_MODULE_SET_ID {
+	    type string;
+	    default "0";
+	    description "If RFC 7895 YANG Module library enabled:
+                         Contains a server-specific identifier representing
+                         the current set of modules and submodules.  The
+                         server MUST change the value of this leaf if the
+                         information represented by the 'module' list instances
+                         has changed.";
+	}
+	leaf CLICON_STREAM_DISCOVERY_RFC5277 {
+	    type boolean;
+	    default false;
+	    description "Enable event stream discovery as described in RFC 5277
+                         sections 3.2. If enabled, available streams will appear
+                         when doing netconf get or restconf GET";
+	}
+	leaf CLICON_STREAM_DISCOVERY_RFC8040 {
+	    type boolean;
+	    default false;
+    	    description "Enable event stream discovery as described in RFC 5277
+                         sections 3.2. If enabled, available streams will appear
+                         when doing netconf get or restconf GET";
+	}
+	leaf CLICON_STREAM_PATH {
+	    type string;
+    	    default "streams";
+    	    description "Stream path appended to CLICON_STREAM_URL to form
+                         stream subscription URL.";
+	}
+	leaf CLICON_STREAM_URL {
+	    type string;
+	    default "https://localhost";
+    	    description "Prepend this to CLICON_STREAM_PATH to form URL.
+                  See RFC 8040 Sec 9.3 location leaf: 
+	          'Contains a URL that represents the entry point for 
+		  establishing notification delivery via server-sent events.'
+		  Prepend this constant to name of stream.
+                  Example: https://localhost/streams/NETCONF. Note this is the
+		  external URL, not local behind a reverse-proxy.
+                  Note that -s <stream> command-line option to clixon_restconf
+                  should correspond to last path of url (eg 'streams')";
+	}
+	leaf CLICON_STREAM_PUB {
+	    type string;
+    	    description "For stream publish using eg nchan, the base address
+	          to publish to. Example value: http://localhost/pub
+                  Example: stream NETCONF would then be pushed to
+                  http://localhost/pub/NETCONF. 
+                  Note this may be a local/provate URL behind reverse-proxy.
+                  If not given, do NOT enable stream publishing using NCHAN.";
+	}
+	leaf CLICON_STREAM_RETENTION {
+	    type uint32;
+	    default 3600;
+	    units s;
+	    description "Retention for stream replay buffers in seconds, ie how much
+                         data to store before dropping. 0 means no retention";
+
 	}
     }
 }

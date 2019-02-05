@@ -7,12 +7,14 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang
 
+# Note ietf-routing@2018-03-13 assumed
 cat <<EOF > $cfg
 <config>
   <CLICON_FEATURE>$APPNAME:A</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-routing:router-id</CLICON_FEATURE>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>$APPNAME</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -28,6 +30,8 @@ EOF
 
 cat <<EOF > $fyang
 module $APPNAME{
+   yang-version 1.1;
+   namespace "urn:example:clixon";
    prefix ex;
    import ietf-routing {
 	prefix rt;
@@ -54,19 +58,21 @@ module $APPNAME{
    }
 }
 EOF
-new "start backend -s init -f $cfg -y $fyang"
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
-fi
 
-new "start backend -s init -f $cfg -y $fyang"
-# start new backend
-sudo $clixon_backend -s init -f $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
+new "test params: -f $cfg -y $fyang"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg -y $fyang
+    if [ $? -ne 0 ]; then
+	err
+    fi
+
+    new "start backend -s init -f $cfg -y $fyang"
+    # start new backend
+    sudo $clixon_backend -s init -f $cfg -y $fyang -D $DBG
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
 
 new "cli enabled feature"
@@ -76,32 +82,39 @@ new "cli disabled feature"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang set y foo" 255 "CLI syntax error: \"set y foo\": Unknown command"
 
 new "cli enabled feature in other module"
-expectfn "$clixon_cli -1f $cfg -y $fyang set routing routing-instance A router-id 1.2.3.4" 0 ""
+expectfn "$clixon_cli -1f $cfg -y $fyang set routing router-id 1.2.3.4" 0 ""
 
 new "cli disabled feature in other module"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set routing routing-instance A default-ribs" 255 "CLI syntax error: \"set routing routing-instance A default-ribs\": Unknown command"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set routing ribs rib default-rib false" 255 "CLI syntax error: \"set routing ribs rib default-rib\": Unknown command"
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf enabled feature"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><x>foo</x></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon">foo</x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate enabled feature"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf disabled feature"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><A>foo</A></config></edit-config></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-tag>operation-failed</error-tag><error-type>protocol</error-type><error-severity>error</error-severity><error-message>XML node config/A has no corresponding yang specification (Invalid XML or wrong Yang spec?'
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y xmlns="urn:example:clixon">foo</y></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>y</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>$'
 
-# This test has been broken up into all differetn modules instead of one large
+# This test has been broken up into all different modules instead of one large
 # reply since the modules change so often
 new "netconf schema resource, RFC 7895"
 ret=$($clixon_netconf -qf $cfg -y $fyang<<EOF 
 <rpc><get><filter type="xpath" select="modules-state/module" xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"/></get></rpc>]]>]]>
 EOF
 )
+new "netconf modules-state header"
+expect='^<rpc-reply><data><modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"><module><name>'
+match=`echo "$ret" | grep -GZo "$expect"`
+if [ -z "$match" ]; then
+      err "$expect" "$ret"
+fi
+
 new "netconf module A"
-expect="<module><name>example</name><revision/><namespace/><feature>A</feature><conformance-type>implement</conformance-type></module>"
+expect="<module><name>example</name><revision/><namespace>urn:example:clixon</namespace><feature>A</feature><conformance-type>implement</conformance-type></module>"
 match=`echo "$ret" | grep -GZo "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
@@ -124,21 +137,22 @@ if [ -z "$match" ]; then
 fi
 
 new "netconf module ietf-interfaces"
-expect="<module><name>ietf-interfaces</name><revision>2014-05-08</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace><conformance-type>implement</conformance-type></module>"
+expect="<module><name>ietf-interfaces</name><revision>2018-02-20</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace><conformance-type>implement</conformance-type></module>"
 match=`echo "$ret" | grep -GZo "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
 
+# Note order of features in ietf-netconf yang is alphabetically: candidate, startup, validate, xpath
 new "netconf module ietf-netconf"
-expect="module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace><conformance-type>implement</conformance-type></module>"
+expect="<module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace><feature>candidate</feature><feature>validate</feature><feature>startup</feature><feature>xpath</feature><conformance-type>implement</conformance-type></module>"
 match=`echo "$ret" | grep -GZo "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
 
 new "netconf module ietf-routing"
-expect="<module><name>ietf-routing</name><revision>2014-10-26</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-routing</namespace><feature>router-id</feature><conformance-type>implement</conformance-type></module>"
+expect="<module><name>ietf-routing</name><revision>2018-03-13</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-routing</namespace><feature>router-id</feature><conformance-type>implement</conformance-type></module>"
 match=`echo "$ret" | grep -GZo "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
@@ -154,6 +168,10 @@ expect="<module><name>ietf-yang-types</name><revision>2013-07-15</revision><name
 match=`echo "$ret" | grep -GZo "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
+fi
+
+if [ $BE -eq 0 ]; then
+    exit # BE
 fi
 
 new "Kill backend"

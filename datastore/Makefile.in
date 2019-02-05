@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 #
 # This file is part of CLIXON
 #
@@ -49,7 +49,6 @@ INSTALLFLAGS  	= @INSTALLFLAGS@
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
 with_restconf	= @with_restconf@
-with_keyvalue	= @with_keyvalue@
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
@@ -117,5 +116,5 @@ distclean: clean
 	for i in $(SUBDIRS); \
 	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
-tags:
+TAGS:
 	find $(srcdir) -name '*.[chyl]' -print | etags -

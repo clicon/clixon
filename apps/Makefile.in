@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 #
 # This file is part of CLIXON
 #
@@ -44,6 +44,7 @@ SHELL	= /bin/sh
 SUBDIRS  = backend
 SUBDIRS += cli
 SUBDIRS += netconf
+# See configure.ac
 ifeq ($(with_restconf),yes)
 SUBDIRS += restconf
 endif
@@ -80,5 +81,5 @@ distclean: clean
 	for i in $(SUBDIRS); \
 	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
-tags:
+TAGS:
 	find $(srcdir) -name '*.[chyl]' -print | etags -

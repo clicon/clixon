@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -36,16 +36,10 @@
 #ifndef _CLIXON_XML_SORT_H
 #define _CLIXON_XML_SORT_H
 
-/* Sort and binary search of XML children
- * Experimental
- */
-extern int xml_child_sort;
-
 /*
  * Prototypes
  */
-int xml_child_spec(char *name, cxobj *xp, yang_spec *yspec, yang_stmt **yp);
-int xml_cmp(const void* arg1, const void* arg2);
+int xml_child_spec(cxobj *x, cxobj *xp, yang_spec *yspec, yang_stmt **yp);
 int xml_sort(cxobj *x0, void *arg);
 cxobj *xml_search(cxobj *x, char *name, int yangi, enum rfc_6020 keyword, int keynr, char **keyvec, char **keyval);
 int    xml_insert_pos(cxobj *x0, char *name, int yangi, enum rfc_6020 keyword,
@@ -53,6 +47,6 @@ int    xml_insert_pos(cxobj *x0, char *name, int yangi, enum rfc_6020 keyword,
 		      int upper);
 cxobj *xml_match(cxobj *x0, char *name, enum rfc_6020 keyword, int keynr, char **keyvec, char **keyval);
 int    xml_sort_verify(cxobj *x, void *arg);
-int    match_base_child(cxobj *x0, cxobj *x1c, cxobj **x0cp, yang_stmt *yc);
+int    match_base_child(cxobj *x0, cxobj *x1c, yang_stmt *yc, cxobj **x0cp);
 
 #endif /* _CLIXON_XML_SORT_H */

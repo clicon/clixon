@@ -1,18 +1,23 @@
 #!/bin/bash
 # Advanced union types and generated code
 # and enum w values
+# XXX NO SUPPORT FOR lists of ranges and lengths !!!
 APPNAME=example
 # include err() and new() functions and creates $dir
+
 . ./lib.sh
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/type.yang
+fyang2=$dir/example2.yang
+fyang3=$dir/example3.yang
 
 cat <<EOF > $cfg
 <config>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/$APPNAME/yang</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -21,11 +26,59 @@ cat <<EOF > $cfg
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
+  <CLICON_XMLDB_CACHE>false</CLICON_XMLDB_CACHE>
 </config>
 EOF
 
+# transitive type, exists in fyang3, referenced from fyang2, but not declared in fyang
+cat <<EOF > $fyang3
+module example3{
+  prefix ex3;
+  namespace "urn:example:example3";
+  typedef w{
+    type union{
+       type int32{
+          range "4..44";
+       }
+    }
+  }
+  typedef u{
+     type union {
+       type w;
+       type enumeration {
+         enum "bounded";
+         enum "unbounded";
+       }
+     }
+  }
+  typedef t{
+    type string{
+      pattern '[a-z][0-9]*';
+    }
+  }
+}
+EOF
+cat <<EOF > $fyang2
+module example2{
+  import example3 { prefix ex3; }
+  namespace "urn:example:example2";
+  prefix ex2;
+  grouping gr2 {
+    leaf talle{
+      type ex3:t;
+    }
+    leaf ulle{
+      type ex3:u;
+    }
+  }
+}
+EOF
 cat <<EOF > $fyang
 module example{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+  import example2 { prefix ex2; }
   typedef ab {
        type string {
          pattern
@@ -71,57 +124,47 @@ module example{
          enum down;
       }
    }
-   leaf length1 {
-       type string {
-       length "1";
-      }
-   }
-/*   leaf length2 {
-       type string {
-         length "max";
-      }
-   }
-   leaf length3 {
-       type string {
-         length "min";
-      }
-   }*/
-   leaf length4 {
-       type string {
-         length "4..4000";
-      }
-   }
-/*   leaf length5 {
-       type string {
-         length "min..max";
-      }
-   }*/
    leaf num1 {
        type int32 {
        range "1";
       }
    }
-/*   leaf num2 {
+   leaf num2 { /* range and blanks */
        type int32 {
-         range "min";
+         range " 4 .. 4000 ";
       }
    }
    leaf num3 {
-       type int32 {
-         range "max";
-      }
-   }
-*/
-   leaf num4 {
-       type int32 {
-         range "4..4000";
-      }
-   }
-/*   leaf num5 {
-       type int32 {
+       type uint8 {
          range "min..max";
       }
-   }*/
+   }
+   leaf num4 { 
+       type uint8 {
+         range "1..2 |  42";
+      }
+   }
+   leaf len1 {
+       type string {
+       length "2";
+      }
+   }
+   leaf len2 {
+       type string {
+         length " 4 .. 4000 ";
+      }
+   }
+   leaf len3 {
+       type string {
+         length "min..max";
+      }
+   }
+   leaf len4 {
+       type string {
+         range "1  ..  2 |  42";
+      }
+   }
+
    typedef mybits {
         description "Test adding several bits";
 	type bits {
@@ -133,20 +176,81 @@ module example{
    leaf mbits{
       type mybits;
    }
+  container c{
+    description "transitive type- exists in ex3";
+    uses ex2:gr2;
+  }
+  leaf digit4{
+     type string {
+         pattern '\d{4}';
+       }
+  }
+  leaf word4{
+     type string {
+         pattern '\w{4}';
+       }
+  }
 }
 EOF
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg
-if [ $? -ne 0 ]; then
-    err
+new "test params: -f $cfg -y $fyang"
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg -y $fyang"
+    sudo $clixon_backend -s init -f $cfg -y $fyang
+    if [ $? -ne 0 ]; then
+	err
+    fi
 fi
-new "start backend -s init -f $cfg -y $fyang"
-sudo $clixon_backend -s init -f $cfg -y $fyang
-if [ $? -ne 0 ]; then
-    err
-fi
+
+new "cli set transitive string"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c talle x99" 0 "^$"
+
+new "cli set transitive string error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c talle 9xx" 255 "^$"
+
+new "netconf set transitive string error"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><c xmlns="urn:example:clixon"><talle>9xx</talle></c></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>"
+
+new "netconf validate should fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>talle</bad-element></error-info><error-severity>error</error-severity><error-message>regexp match fail: "9xx" does not match \[a-z\]\[0-9\]\*</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "cli set transitive union int"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle 33" 0 "^$"
+
+new "cli validate"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 "^$"
+
+new "cli set transitive union string"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle unbounded" 0 "^$"
+
+new "cli validate"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 "^$"
+
+new "cli set transitive union error. should fail"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle kalle" 255 ""
+
+new "cli set transitive union error int"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle 55" 255 ""
+
+new "netconf set transitive union error int"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><c xmlns="urn:example:clixon"><ulle>55</ulle></c></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>"
+
+new "netconf validate should fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>ulle</bad-element></error-info><error-severity>error</error-severity><error-message>'55' does not match enumeration</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+#-----------
 
 new "cli set ab"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.a.b" 0 "^$"
@@ -173,7 +277,7 @@ new "netconf validate ok"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf set ab wrong"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><list><ip>a.b&amp; c.d</ip></list></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><list xmlns="urn:example:clixon"><ip>a.b&amp; c.d</ip></list></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error>"
@@ -195,10 +299,191 @@ expectfn "$clixon_cli -1f $cfg -l o -y $fyang set mbits create" 0 "^$"
 #expectfn "$clixon_cli -1f $cfg -l o -y $fyang set mbits \"create read\"" 0 "^$"
 
 new "netconf bits two values"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><config><mbits>create read</mbits></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><mbits xmlns="urn:example:clixon">create read</mbits></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "cli bits validate"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang validate" 0 "^$"
+
+#-------- num1 single range (1)
+
+new "cli range test num1 1 OK"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 1" 0 "^$"
+
+#new "cli range test num1 -100 ok" # XXX - cant be given on cmd line
+#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 \-100" 0 "^$"
+
+new "cli range test num1 2 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 2" 255 "^$"
+
+new "netconf range set num1 -1"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num1 xmlns="urn:example:clixon">-1</num1></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate num1 -1 wrong"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num1</bad-element></error-info><error-severity>error</error-severity><error-message>Number out of range: -1</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+#-------- num2 range and blanks
+
+new "cli range test num2 3 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 3" 255 "^$"
+
+new "cli range test num2 1000 ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 1000" 0 "^$"
+
+new "cli range test num2 5000 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 5000" 255 "^$"
+
+new "netconf range set num2 3 fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num2 xmlns="urn:example:clixon">3</num2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate num2 3 fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num2</bad-element></error-info><error-severity>error</error-severity><error-message>Number out of range: 3</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+new "netconf range set num2 1000 ok"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num2 xmlns="urn:example:clixon">1000</num2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate num2 1000 ok"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+
+new "netconf range set num2 5000 fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num2 xmlns="urn:example:clixon">5000</num2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate num2 5000 fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num2</bad-element></error-info><error-severity>error</error-severity><error-message>Number out of range: 5000</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+#-------- num3 min max range
+
+new "cli range test num3 42 ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num3 42" 0 "^$"
+
+new "cli range test num3 260 fail"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num3 260" 255 "^$"
+
+new "cli range test num3 -1 fail"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num3 -1" 255 "^$"
+
+new "netconf range set num3 260 fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num3 xmlns="urn:example:clixon">260</num3></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate num3 260 fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num3</bad-element></error-info><error-severity>error</error-severity><error-message>260 is out of range(type is uint8)</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+#-------- num4 multiple ranges 1..2 |  42
+
+new "cli range test num4 multiple 2 ok"
+expectfn "$clixon_cli -1f $cfg -l e -y $fyang set num4 2" 0 "^$"
+
+new "cli range test num4 multiple 99 fail"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 99" 255 "^$"
+
+# See https://github.com/clicon/clixon/issues/59
+#new "cli range test num4 multiple 42 ok"
+#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 42" 0 "^$"
+
+new "netconf range set num4 multiple 2"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num4 xmlns="urn:example:clixon">42</num4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate num4 OK"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+
+new "netconf range set num4 multiple 20"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num4 xmlns="urn:example:clixon">42</num4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate num4 fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+
+new "netconf range set num4 multiple 42"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num4 xmlns="urn:example:clixon">42</num4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate num4 fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+#----------------string ranges---------------------
+#-------- len1 single range (2)
+new "cli length test len1 1 fail"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 x" 255 "^$"
+
+new "cli length test len1 2 OK"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 xy" 0 "^$"
+
+new "cli length test len1 3 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 hej" 255 "^$"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf length set len1 1"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><len1 xmlns="urn:example:clixon">x</len1></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate len1 1 wrong"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>len1</bad-element></error-info><error-severity>error</error-severity><error-message>string length out of range: 1</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+#-------- len2 range and blanks
+
+new "cli length test len2 3 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len2 ab" 255 "^$"
+
+new "cli length test len2 42 ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len2 hejhophdsakjhkjsadhkjsahdkjsad" 0 "^$"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+#-------- len3 min max range
+
+new "cli range test len3 42 ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len3 hsakjdhkjsahdkjsahdksahdksajdhsakjhd" 0 "^$"
+
+#-------- len4 multiple ranges 1..2 |  42 (only first range)
+new "cli length test len4 3 error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 abc" 255 "^$"
+
+new "cli length test len4 2 ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 ab" 255 "^$"
+
+# See https://github.com/clicon/clixon/issues/59
+#new "cli length test len4 42 ok"
+#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 hsakjdhkjsahdkjsahdksahdksajdhsakjhd" 0 "^$"
+
+# XSD schema -> POSIX ECE translation
+new "cli yang pattern \d ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set digit4 0123" 0 "^$"
+
+new "cli yang pattern \d error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set digit4 01b2" 255 "^$"
+
+new "cli yang pattern \w ok"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 a2-_" 0 "^$"
+
+new "cli yang pattern \w error"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 ab%d3" 255 "^$"
+
+new "netconf pattern \w"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><word4 xmlns="urn:example:clixon">a-_9</word4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf pattern \w valid"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf pattern \w error"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><word4 xmlns="urn:example:clixon">ab%d3</word4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf pattern \w valid"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>word4</bad-element></error-info><error-severity>error</error-severity><error-message>regexp match fail: "ab%d3" does not match \\w{4}</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+if [ $BE -eq 0 ]; then
+    exit # BE
+fi
 
 new "Kill backend"
 # Check if premature kill

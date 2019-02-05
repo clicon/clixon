@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -117,7 +117,7 @@ clixon_plugin_reset(clicon_handle h,
  * @param[in,out] xtop    State XML tree is merged with existing tree.
  * @retval       -1       Error
  * @retval        0       OK
- * @retval        1       Statedata callback failed
+ * @retval        1       Statedata callback failed (xret set with netconf-error)
  * @note xtop can be replaced
  */
 int

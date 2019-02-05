@@ -12,12 +12,14 @@ etc/Makefile
 example/Makefile
 lib/Makefile
 lib/*/Makefile
+test/Makefile
+yang/Makefile
+yang/*/Makefile
 autom4te.cache/
 
-clixon.conf.cpp
-clixon.mk
 config.log
 config.status
+TAGS
 
 apps/backend/clixon_backend
 apps/backend/test
@@ -44,3 +46,6 @@ lib/clixon/clixon.h
 build-root/*.tar.xz
 build-root/*.rpm
 build-root/rpmbuild
+
+test/site.sh
+doc/html

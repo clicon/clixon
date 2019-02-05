@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -39,12 +39,13 @@
   char *string;
 }
 
-%start topxml
+%start document
 
-%token <string> NAME CHARDATA 
-%token VER ENC
+%token <string> NAME CHARDATA WHITESPACE STRING
+%token MY_EOF
+%token VER ENC SD
 %token BSLASH ESLASH
-%token BTEXT ETEXT
+%token BXMLDCL BQMARK EQMARK
 %token BCOMMENT ECOMMENT 
 
 %type <string> attvalue 
@@ -120,7 +121,8 @@ xml_parse_version(struct xml_parse_yacc_arg *ya,
 	free(ver);
 	return -1;
     }
-    free(ver);
+    if (ver)
+	free(ver);
     return 0;
 }
 
@@ -128,6 +130,7 @@ xml_parse_version(struct xml_parse_yacc_arg *ya,
  * @param[in] ya        XML parser yacc handler struct 
  * @param[in] prefix    Prefix, namespace, or NULL
  * @param[in] localpart Name
+ * @note the call to xml_child_spec() may not have xmlns attribute read yet XXX
  */
 static int
 xml_parse_unprefixed_name(struct xml_parse_yacc_arg *ya,
@@ -136,12 +139,14 @@ xml_parse_unprefixed_name(struct xml_parse_yacc_arg *ya,
     int        retval = -1;
     cxobj     *x;
     yang_stmt *y = NULL;  /* yang node */   
-    cxobj     *xp;      /* xml parent */ 
+    cxobj     *xp;        /* xml parent */ 
 
     xp = ya->ya_xparent;
-    if (xml_child_spec(name, xp, ya->ya_yspec, &y) < 0)
+    if ((x = xml_new(name, xp, NULL)) == NULL) 
 	goto done;
-    if ((x = xml_new(name, xp, y)) == NULL) 
+    if (xml_child_spec(x, xp, ya->ya_yspec, &y) < 0)
+	goto done;
+    if (y && xml_spec_set(x, y) < 0)
 	goto done;
     ya->ya_xelement = x;
     retval = 0;
@@ -166,11 +171,13 @@ xml_parse_prefixed_name(struct xml_parse_yacc_arg *ya,
     cxobj     *xp;      /* xml parent */ 
 
     xp = ya->ya_xparent;
-    if (xml_child_spec(name, xp, ya->ya_yspec, &y) < 0)
+    if ((x = xml_new(name, xp, NULL)) == NULL) 
 	goto done;
-    if ((x = xml_new(name, xp, y)) == NULL) 
+    if (xml_child_spec(x, xp, ya->ya_yspec, &y) < 0)
 	goto done;
-    if (xml_namespace_set(x, prefix) < 0)
+    if (y && xml_spec_set(x, y) < 0)
+	goto done;
+    if (xml_prefix_set(x, prefix) < 0)
 	goto done;
     ya->ya_xelement = x;
     retval = 0;
@@ -221,9 +228,9 @@ xml_parse_bslash1(struct xml_parse_yacc_arg *ya,
 		xml_name(x), name);
 	goto done;
     }
-    if (xml_namespace(x)!=NULL){
+    if (xml_prefix(x)!=NULL){
 	clicon_err(OE_XML, 0, "XML parse sanity check failed: %s:%s vs %s", 
-		xml_namespace(x), xml_name(x), name);
+		xml_prefix(x), xml_name(x), name);
 	goto done;
     }
     /* Strip pretty-print. Ad-hoc algorithm
@@ -261,16 +268,16 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
 
     if (strcmp(xml_name(x), name)){
 	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s", 
-		xml_namespace(x), 
+		xml_prefix(x), 
 		xml_name(x), 
 		namespace, 
 		name);
 	goto done;
     }
-    if (xml_namespace(x)==NULL ||
-	strcmp(xml_namespace(x), namespace)){
+    if (xml_prefix(x)==NULL ||
+	strcmp(xml_prefix(x), namespace)){
 	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s", 
-		xml_namespace(x), 
+		xml_prefix(x), 
 		xml_name(x), 
 		namespace, 
 		name);
@@ -299,6 +306,11 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
     return retval;
 }
 
+/*! Parse XML attribute
+ * Special cases:
+ *  - DefaultAttName:  xmlns
+ *  - PrefixedAttName: xmlns:NAME 
+ */
 static int
 xml_parse_attr(struct xml_parse_yacc_arg *ya,
 	       char                      *prefix,
@@ -306,13 +318,15 @@ xml_parse_attr(struct xml_parse_yacc_arg *ya,
 	       char                      *attval)
 {
     int    retval = -1;
-    cxobj *xa; 
+    cxobj *xa = NULL; 
 
-    if ((xa = xml_new(name, ya->ya_xelement, NULL)) == NULL)
-	goto done;
-    xml_type_set(xa, CX_ATTR);
-    if (prefix && xml_namespace_set(xa, prefix) < 0)
-	goto done;
+    if ((xa = xml_find_type(ya->ya_xelement, prefix, name, CX_ATTR)) == NULL){
+	if ((xa = xml_new(name, ya->ya_xelement, NULL)) == NULL)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (prefix && xml_prefix_set(xa, prefix) < 0)
+	    goto done;
+    }
     if (xml_value_set(xa, attval) < 0)
 	goto done;
     retval = 0;
@@ -327,67 +341,101 @@ xml_parse_attr(struct xml_parse_yacc_arg *ya,
 %} 
  
 %%
-
-topxml      : list
-                    { clicon_debug(3, "topxml->list ACCEPT"); 
-                      YYACCEPT; }
-            | dcl list
-	            { clicon_debug(3, "topxml->dcl list ACCEPT"); 
-                      YYACCEPT; }
+ /* [1] document ::= prolog element Misc* */
+document    : prolog element misclist  MY_EOF
+                 { clicon_debug(2, "document->prolog element misc* ACCEPT"); 
+		   YYACCEPT; }
+            | elist MY_EOF
+	    { clicon_debug(2, "document->elist ACCEPT");  /* internal exception*/
+		   YYACCEPT; }
+            ;
+/* [22] prolog ::=  XMLDecl? Misc* (doctypedecl Misc*)? */
+prolog      : xmldcl misclist
+                { clicon_debug(2, "prolog->xmldcl misc*"); }
+            | misclist
+	        { clicon_debug(2, "prolog->misc*"); }
             ;
 
-dcl         : BTEXT info encode ETEXT { clicon_debug(3, "dcl->info encode"); }
+misclist    : misclist misc { clicon_debug(2, "misclist->misclist misc"); }
+            |     { clicon_debug(2, "misclist->"); }
             ;
 
-info        : VER '=' '\"' CHARDATA '\"' 
-                 { if (xml_parse_version(_YA, $4) <0) YYABORT; }
-            | VER '=' '\'' CHARDATA '\'' 
-         	 { if (xml_parse_version(_YA, $4) <0) YYABORT; }
+/* [27]	Misc ::=  Comment | PI | S */
+misc        : comment    { clicon_debug(2, "misc->comment"); }
+	    | pi         { clicon_debug(2, "misc->pi"); }
+            | WHITESPACE { clicon_debug(2, "misc->white space"); }
+	    ;
+
+xmldcl      : BXMLDCL verinfo encodingdecl sddecl EQMARK
+	          { clicon_debug(2, "xmldcl->verinfo encodingdecl? sddecl?"); }
+            ;
+
+verinfo     : VER '=' '\"' STRING '\"' 
+                 { if (xml_parse_version(_YA, $4) <0) YYABORT;
+		     clicon_debug(2, "verinfo->version=\"STRING\"");}
+            | VER '=' '\'' STRING '\'' 
+         	 { if (xml_parse_version(_YA, $4) <0) YYABORT;
+		     clicon_debug(2, "verinfo->version='STRING'");}
+            ;
+
+encodingdecl : ENC '=' '\"' STRING '\"' {if ($4)free($4);}
+            | ENC '=' '\'' STRING '\'' {if ($4)free($4);}
             |
             ;
 
-encode      : ENC '=' '\"' CHARDATA '\"' {free($4);}
-            | ENC '=' '\'' CHARDATA '\'' {free($4);}
+sddecl      : SD '=' '\"' STRING '\"' {if ($4)free($4);}
+            | SD '=' '\'' STRING '\'' {if ($4)free($4);}
+            |
             ;
-
+/* [39] element ::= EmptyElemTag | STag content ETag */
 element     : '<' qname  attrs element1 
-                   { clicon_debug(3, "element -> < qname attrs element1"); }
-	      ;
+                   { clicon_debug(2, "element -> < qname attrs element1"); }
+	    ;
 
 qname       : NAME           { if (xml_parse_unprefixed_name(_YA, $1) < 0) YYABORT; 
-                                clicon_debug(3, "qname -> NAME %s", $1);}
+                                clicon_debug(2, "qname -> NAME %s", $1);}
             | NAME ':' NAME  { if (xml_parse_prefixed_name(_YA, $1, $3) < 0) YYABORT; 
-                                clicon_debug(3, "qname -> NAME : NAME");}
+                                clicon_debug(2, "qname -> NAME : NAME");}
             ;
 
 element1    :  ESLASH         {_YA->ya_xelement = NULL; 
-                               clicon_debug(3, "element1 -> />");} 
+                               clicon_debug(2, "element1 -> />");} 
             | '>'             { xml_parse_endslash_pre(_YA); }
-              list            { xml_parse_endslash_mid(_YA); }
-              etg             { xml_parse_endslash_post(_YA); 
-                               clicon_debug(3, "element1 -> > list etg");} 
+              elist           { xml_parse_endslash_mid(_YA); }
+              endtag          { xml_parse_endslash_post(_YA); 
+                               clicon_debug(2, "element1 -> > elist endtag");} 
             ;
 
-etg         : BSLASH NAME '>'          
-{ 			   clicon_debug(3, "etg -> < </ NAME %s>", $2); if (xml_parse_bslash1(_YA, $2) < 0) YYABORT; }
+endtag      : BSLASH NAME '>'          
+                       { clicon_debug(2, "endtag -> < </ NAME>");
+		         if (xml_parse_bslash1(_YA, $2) < 0) YYABORT; }
 
             | BSLASH NAME ':' NAME '>' 
                        { if (xml_parse_bslash2(_YA, $2, $4) < 0) YYABORT; 
-			 clicon_debug(3, "etg -> < </ NAME:NAME >"); }
+			 clicon_debug(2, "endtag -> < </ NAME:NAME >"); }
             ;
 
-list        : list content { clicon_debug(3, "list -> list content"); }
-            | content      { clicon_debug(3, "list -> content"); }
+elist       : elist content { clicon_debug(2, "elist -> elist content"); }
+            | content      { clicon_debug(2, "elist -> content"); }
             ;
 
-content     : element      { clicon_debug(3, "content -> element"); }
-            | comment      { clicon_debug(3, "content -> comment"); }
-            | CHARDATA         { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
-                             clicon_debug(3, "content -> CHARDATA %s", $1); }
-            |              { clicon_debug(3, "content -> "); }
+/* Rule 43 */
+content     : element      { clicon_debug(2, "content -> element"); }
+            | comment      { clicon_debug(2, "content -> comment"); }
+            | pi           { clicon_debug(2, "content -> pi"); }
+            | CHARDATA     { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
+                             clicon_debug(2, "content -> CHARDATA %s", $1); }
+            | WHITESPACE   { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
+                             clicon_debug(2, "content -> WHITESPACE %s", $1); }
+            |              { clicon_debug(2, "content -> "); }
             ;
 
 comment     : BCOMMENT ECOMMENT
+            ;
+
+pi          : BQMARK NAME EQMARK {clicon_debug(2, "pi -> <? NAME ?>"); free($2); }
+            | BQMARK NAME STRING EQMARK
+	    {clicon_debug(2, "pi -> <? NAME STRING ?>"); free($2); free($3);}
             ;
 
 
@@ -399,9 +447,9 @@ attr        : NAME '=' attvalue          { if (xml_parse_attr(_YA, NULL, $1, $3)
             | NAME ':' NAME '=' attvalue { if (xml_parse_attr(_YA, $1, $3, $5) < 0) YYABORT; }
             ;
 
-attvalue    : '\"' CHARDATA '\"'   { $$=$2; /* $2 must be consumed */}
+attvalue    : '\"' STRING '\"'   { $$=$2; /* $2 must be consumed */}
             | '\"'  '\"'       { $$=strdup(""); /* $2 must be consumed */}
-            | '\'' CHARDATA '\''   { $$=$2; /* $2 must be consumed */}
+            | '\'' STRING '\''   { $$=$2; /* $2 must be consumed */}
             | '\''  '\''       { $$=strdup(""); /* $2 must be consumed */}
             ;
 

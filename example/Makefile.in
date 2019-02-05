@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 #
 # This file is part of CLIXON
 #
@@ -43,6 +43,8 @@ localstatedir   = @localstatedir@
 libdir          = @exec_prefix@/lib
 
 APPNAME	        = example
+# Here is where example yang appears
+CLIXON_DATADIR  = @CLIXON_DATADIR@
 # Install here if you want default clixon location:
 CLIXON_DEFAULT_CONFIG = @CLIXON_DEFAULT_CONFIG@
 
@@ -70,16 +72,7 @@ all:	$(PLUGINS)
 
 CLISPECS = $(APPNAME)_cli.cli
 
-YANGSPECS	 = $(APPNAME).yang
-YANGSPECS	+= ietf-yang-types@2013-07-15.yang
-YANGSPECS	+= ietf-inet-types@2013-07-15.yang
-YANGSPECS	+= ietf-interfaces@2014-05-08.yang
-YANGSPECS	+= ietf-ip@2014-06-16.yang
-YANGSPECS	+= ietf-routing@2014-10-26.yang
-YANGSPECS	+= ietf-ipv4-unicast-routing@2014-10-26.yang
-YANGSPECS	+= ietf-ipv6-unicast-routing@2014-10-26.yang
-YANGSPECS	+= ietf-ipsec@2016-03-09.yang
-YANGSPECS	+= iana-if-type@2014-05-08.yang
+YANGSPECS	 = clixon-example@2019-01-13.yang
 
 # Backend plugin
 BE_SRC   = $(APPNAME)_backend.c
@@ -125,7 +118,7 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NET
 	install -m 0644 $(APPNAME).xml $(DESTDIR)$(sysconfdir)
 #	install -m 0644 $(APPNAME).xml $(DESTDIR)$(CLIXON_DEFAULT_CONFIG)
 	install -d -m 0755 $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(DESTDIR)$(CLIXON_DATADIR)
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/cli
 	install -m 0644 $(INSTALLFLAGS) $(CLI_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/cli
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/backend

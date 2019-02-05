@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 #
 # This file is part of CLIXON
 #
@@ -37,38 +37,48 @@ prefix 		= @prefix@
 bindir 		= @bindir@
 includedir	= @includedir@
 datarootdir     = @datarootdir@
+enable_stdyangs	= @enable_stdyangs@
 
 CLIXON_DATADIR   = @CLIXON_DATADIR@
 
-YANGSPECS	 = clixon-config@2018-10-21.yang
-YANGSPECS	+= ietf-netconf@2011-06-01.yang
-YANGSPECS	+= ietf-netconf-acm@2018-02-14.yang
-YANGSPECS	+= ietf-inet-types@2013-07-15.yang
-YANGSPECS	+= ietf-yang-types@2013-07-15.yang
-YANGSPECS	+= ietf-restconf-monitoring@2017-01-26.yang
-YANGSPECS	+= ietf-netconf-notification@2008-07-01.yang
-YANGSPECS	+= ietf-yang-library@2016-06-21.yang
+SUBDIRS  = clixon
+# See configure.ac
+ifeq ($(enable_stdyangs),yes)
+SUBDIRS += standard
+endif
 
-APPNAME	        = clixon  # subdir ehere these files are installed
+.PHONY: all clean depend install $(SUBDIRS)
 
-all:	
+all:	$(SUBDIRS)
+
+depend:
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+
+$(SUBDIRS):
+	(cd $@; $(MAKE) $(MFLAGS) all)
+
+install-include:
+	for i in $(SUBDIRS); \
+	do (cd $$i && $(MAKE) $(MFLAGS) $@||exit 1); done; 
+
+install:
+	for i in $(SUBDIRS); \
+	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
+
+uninstall:
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done
 
 clean:
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
 distclean: clean
 	rm -f Makefile *~ .depend
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
-install: $(YANGSPECS) 
-	install -d -m 0755 $(DESTDIR)$(CLIXON_DATADIR)
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(CLIXON_DATADIR)
-
-uninstall:
-	(cd $(DESTDIR)$(CLIXON_DATADIR); rm -rf *.yang)
-
-install-include:	
-
-depend:
-
-
-#include .depend
+TAGS:
+	find $(srcdir) -name '*.[chyl]' -print | etags -
 

@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2018 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
 
   This file is part of CLIXON.
 
@@ -80,6 +80,10 @@ enum startup_mode_t{
 
 /* Print registry on file. For debugging. */
 void clicon_option_dump(clicon_handle h, int dblevel);
+
+/* Add a clicon options overriding file setting */
+int clicon_option_add(clicon_handle h,	char *name, char *value);
+
 /* Initialize options: set defaults, read config-file, etc */
 int clicon_options_main(clicon_handle h, yang_spec *yspec);
 
@@ -105,8 +109,11 @@ int clicon_option_del(clicon_handle h, const char *name);
 static inline char *clicon_configfile(clicon_handle h){
     return clicon_option_str(h, "CLICON_CONFIGFILE");
 }
-static inline char *clicon_yang_dir(clicon_handle h){
-    return clicon_option_str(h, "CLICON_YANG_DIR");
+static inline char *clicon_yang_main_file(clicon_handle h){
+    return clicon_option_str(h, "CLICON_YANG_MAIN_FILE");
+}
+static inline char *clicon_yang_main_dir(clicon_handle h){
+    return clicon_option_str(h, "CLICON_YANG_MAIN_DIR");
 }
 static inline char *clicon_yang_module_main(clicon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MODULE_MAIN");
@@ -131,6 +138,9 @@ static inline char *clicon_clispec_dir(clicon_handle h){
 }
 static inline char *clicon_cli_mode(clicon_handle h){
     return clicon_option_str(h, "CLICON_CLI_MODE");
+}
+static inline char *clicon_cli_model_treename(clicon_handle h){
+    return clicon_option_str(h, "CLICON_CLI_MODEL_TREENAME");
 }
 static inline char *clicon_sock(clicon_handle h){
     return clicon_option_str(h, "CLICON_SOCK");
@@ -165,10 +175,11 @@ int clicon_quiet_mode_set(clicon_handle h, int val);
 yang_spec * clicon_dbspec_yang(clicon_handle h);
 int clicon_dbspec_yang_set(clicon_handle h, struct yang_spec *ys);
 
-#if 1 /* Temporary function until "Top-level Yang symbol cannot be called "config"" is fixed */
+cxobj * clicon_nacm_ext(clicon_handle h);
+int clicon_nacm_ext_set(clicon_handle h, cxobj *xn);
+
 yang_spec * clicon_config_yang(clicon_handle h);
 int clicon_config_yang_set(clicon_handle h, struct yang_spec *ys);
-#endif
 
 cxobj *clicon_conf_xml(clicon_handle h);
 int clicon_conf_xml_set(clicon_handle h, cxobj *x);

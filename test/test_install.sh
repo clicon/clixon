@@ -12,19 +12,23 @@ if [ $? -ne 0 ]; then
     err
 fi
 
-new "Check installed files"
+new "Check installed files /usr"
 if [ ! -d $dir/usr ]; then
     err $dir/usr
 fi
+new "Check installed files /www-data"
 if [ ! -d $dir/www-data ]; then
     err $dir/www-data
 fi
+new "Check installed files clixon-config"
 if [ ! -f $dir/usr/local/share/clixon/clixon-config* ]; then
     err $dir/usr/local/share/clixon/clixon-config*
 fi
+new "Check installed files libclixon.so"
 if [ ! -h $dir/usr/local/lib/libclixon.so ]; then
     err $dir/usr/local/lib/libclixon.so
 fi
+new "Check installed files libclixon_backend.so"
 if [ ! -h $dir/usr/local/lib/libclixon_backend.so ]; then
     err $dir/usr/local/lib/libclixon_backend.so
 fi
