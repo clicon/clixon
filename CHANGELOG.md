@@ -143,6 +143,9 @@
   * <!DOCTYPE (ie DTD) is not supported.
 
 ### Corrected Bugs
+* Partially corrected: [yang type range statement does not support multiple values](https://github.com/clicon/clixon/issues/59).
+  * Should work for netconf and restconf, but not for CLI.
+* Fixed again: [Range parsing is not RFC 7950 compliant](https://github.com/clicon/clixon/issues/71)
 * xml_cmp() compares numeric nodes based on string value [https://github.com/clicon/clixon/issues/64]
 * xml_cmp() respects 'ordered-by user' for state nodes, which violates RFC 7950 [https://github.com/clicon/clixon/issues/63]. (Thanks JDL)
 * XML<>JSON conversion problems [https://github.com/clicon/clixon/issues/66]

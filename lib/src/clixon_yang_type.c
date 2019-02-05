@@ -373,7 +373,9 @@ cv_validate1(cg_var      *cv,
     uint64_t        uu = 0;
     int64_t         ii = 0;
     int             i;
-    int             ret;
+    int             reti; /* must keep signed, unsigned and string retval */
+    int             retu; /* separated due to different error handling */
+    int             rets;
 
     if (reason && *reason){
 	free(*reason);
@@ -384,89 +386,86 @@ cv_validate1(cg_var      *cv,
 	(options & YANG_OPTIONS_LENGTH) != 0){
 	i = 0;
 	while (i<cvec_len(cvv)){
-	    cv1 = cvec_i(cvv, i++);
-	    if (strcmp(cv_name_get(cv1),"range_min") == 0){
-		if (i<cvec_len(cvv) &&
-		    (cv2 = cvec_i(cvv, i)) != NULL &&
-		    strcmp(cv_name_get(cv2),"range_max") == 0){
-		    i++;
-		}
-		else
-		    cv2 = cv1;
-		ret = 0;
-		switch (cvtype){
-		case CGV_INT8:
-		    ii =  cv_int8_get(cv);
-		    ret = range_check(ii, cv1, cv2, int8);
-		    break;
-		case CGV_INT16:
-		    ii =  cv_int16_get(cv);
-		    ret = range_check(ii, cv1, cv2, int16);
-		    break;
-		case CGV_INT32:
-		    ii =  cv_int32_get(cv);
-		    ret = range_check(ii, cv1, cv2, int32);
-		    break;
-		case CGV_DEC64: /* XXX look at fraction-digit? */
-		case CGV_INT64:
-		    ii =  cv_int64_get(cv);
-		    ret = range_check(ii, cv1, cv2, int64);
-		    break;
-		default:
-		    break;
-		}
-		if (ret){
-		    if (reason)
-			*reason = cligen_reason("Number out of range: %" PRId64, ii);
-		    goto fail;
-		    break;
-		}
-		ret = 0;
-		switch (cvtype){
-		case CGV_UINT8:
-		    uu =  cv_uint8_get(cv);
-		    ret = range_check(uu, cv1, cv2, uint8);
-		    break;
-		case CGV_UINT16:
-		    uu =  cv_uint16_get(cv);
-		    ret = range_check(uu, cv1, cv2, uint16);
-		    break;
-		case CGV_UINT32:
-		    uu =  cv_uint32_get(cv);
-		    ret = range_check(uu, cv1, cv2, uint32);
-		    break;
-		case CGV_UINT64:
-		    uu =  cv_uint32_get(cv);
-		    ret = range_check(uu, cv1, cv2, uint64);
-		    break;
-		default:
-		    break;
-		}
-		if (ret){
-		    if (reason)
-			*reason = cligen_reason("Number out of range: %" PRIu64, uu);
-		    goto fail;
-		    break;
-		}
-		ret = 0;
-		switch (cvtype){
-		case CGV_STRING:
-		case CGV_REST:
-		    if ((str = cv_string_get(cv)) == NULL)
-			break;
-		    uu = strlen(str);
-		    if (range_check(uu, cv1, cv2, uint64)){
-			if (reason)
-			    *reason = cligen_reason("string length out of range: %" PRIu64, uu);
-			goto fail;
-		    }
-		    break;
-		default:
-		    break;
-		}
+	    cv1 = cvec_i(cvv, i++); /* Increment to check for max pair */
+	    if (strcmp(cv_name_get(cv1),"range_min") != 0){
+		clicon_err(OE_YANG, EINVAL, "Internal error, expected range_min");
+		goto done;
 	    }
-	}
+	    if (i<cvec_len(cvv) &&
+		(cv2 = cvec_i(cvv, i)) != NULL &&
+		strcmp(cv_name_get(cv2),"range_max") == 0){
+		i++;
+	    }
+	    else
+		cv2 = cv1;
+	    reti = 0; retu = 0; rets = 0;
+	    switch (cvtype){ 
+	    case CGV_INT8:
+		ii =  cv_int8_get(cv);
+		reti = range_check(ii, cv1, cv2, int8);
+		break;
+	    case CGV_INT16:
+		ii =  cv_int16_get(cv);
+		reti = range_check(ii, cv1, cv2, int16);
+		break;
+	    case CGV_INT32:
+		ii =  cv_int32_get(cv);
+		reti = range_check(ii, cv1, cv2, int32);
+		break;
+	    case CGV_DEC64: /* XXX look at fraction-digit? */
+	    case CGV_INT64:
+		ii =  cv_int64_get(cv);
+		reti = range_check(ii, cv1, cv2, int64);
+		break;
+	    case CGV_UINT8:
+		uu =  cv_uint8_get(cv);
+		retu = range_check(uu, cv1, cv2, uint8);
+		break;
+	    case CGV_UINT16:
+		uu =  cv_uint16_get(cv);
+		retu = range_check(uu, cv1, cv2, uint16);
+		break;
+	    case CGV_UINT32:
+		uu =  cv_uint32_get(cv);
+		retu = range_check(uu, cv1, cv2, uint32);
+		break;
+	    case CGV_UINT64:
+		uu =  cv_uint32_get(cv);
+		retu = range_check(uu, cv1, cv2, uint64);
+		break;
+	    case CGV_STRING:
+	    case CGV_REST:
+		if ((str = cv_string_get(cv)) == NULL)
+		    break;
+		uu = strlen(str);
+		rets = range_check(uu, cv1, cv2, uint64);
+		break;
+	    default:
+		break;
+	    }
+	    /* Error handling for signed and unsigned, strings in switch 
+	     * OK: if check OK
+	     * Failure: check fails and it is the last
+	     */
+	    if ((reti==0 && retu==0 && rets == 0))
+		goto step1ok;
+	    /* Check fails */
+	    if (i==cvec_len(cvv)){ /* And it is last */
+		if (reason){
+		    if (reti)
+			*reason = cligen_reason("Number out of range: %"
+						PRId64,	ii);
+		    else if (retu)
+			*reason = cligen_reason("Number out of range: %"
+						PRIu64, uu);
+		    else 
+			*reason = cligen_reason("string length out of range: %" PRIu64, uu);
+		}
+		goto fail;
+	    }
+	} /* while i<cvec_len(cvv) */
     }
+ step1ok:
     /* then check options for others */
     switch (cvtype){
     case CGV_STRING:

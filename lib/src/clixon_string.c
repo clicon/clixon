@@ -624,13 +624,14 @@ clixon_trim(char *str)
     char *s = str;
     int   i;
 
-    while (strlen(s) && isblank(s[0]))
+    while (strlen(s) && isblank(s[0])) /* trim from front */
 	s++;
-    for (i=0; i<strlen(s); i++)
-	if (isblank(s[i])){
+    for (i=strlen(s)-1; i>=0; i--){ /* trim from rear */
+	if (isblank(s[i]))
 	    s[i] = '\0';
+	else
 	    break;
-	}
+    }
     return s;
 }
 

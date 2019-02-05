@@ -1152,9 +1152,7 @@ bound_add(yang_stmt   *ys,
 	  enum cv_type cvtype,
 	  char        *name,
 	  char        *val,
-	  int          options,
-	  uint8_t      fraction_digits
-	  )
+	  uint8_t      fraction_digits)
 {
     int     retval = -1;
     cg_var *cv;
@@ -1169,7 +1167,7 @@ bound_add(yang_stmt   *ys,
 	clicon_err(OE_YANG, errno, "cv_name_set(%s)", name);
 	goto done;
     }
-    if (options & YANG_OPTIONS_FRACTION_DIGITS && cvtype == CGV_DEC64)
+    if (cvtype == CGV_DEC64)
 	cv_dec64_n_set(cv, fraction_digits);
     if (strcmp(val, "min") == 0)
 	cv_min_set(cv);
@@ -1186,6 +1184,43 @@ bound_add(yang_stmt   *ys,
     }
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Common range length parsing of "x .. y | z..w " statements
+ */
+static int
+range_parse(yang_stmt   *ys,
+	    enum cv_type cvtype,
+	    uint8_t      fraction_digits)
+{
+    int    retval = -1;
+    char **vec = NULL;
+    int    nvec;
+    int    i;
+    char  *v;
+    char  *v2;
+
+    if ((vec = clicon_strsep(ys->ys_argument, "|", &nvec)) == NULL)
+	goto done;
+    for (i=0; i<nvec; i++){
+	v = vec[i];
+	if ((v2 = strstr(v, "..")) != NULL){
+	    *v2 = '\0';
+	    v2 += 2;
+	    v2 = clixon_trim(v2); 	    /* trim blanks */
+	}
+	v = clixon_trim(v); 	/* trim blanks */
+	if (bound_add(ys, cvtype, "range_min", v, fraction_digits) < 0)
+	    goto done;
+	if (v2)
+	    if (bound_add(ys, cvtype, "range_max", v2, fraction_digits) < 0)
+		goto done;
+    }
+    retval = 0;
+  done:
+    if (vec)
+	free(vec);
     return retval;
 }
 
@@ -1213,11 +1248,6 @@ ys_populate_range(yang_stmt *ys,
     int             options = 0x0;
     uint8_t         fraction_digits;
     enum cv_type    cvtype = CGV_ERR;
-    char          **vec = NULL;
-    char           *v;
-    char           *v2;
-    int             nvec;
-    int             i;
 
     yparent = ys->ys_parent;     /* Find parent: type */
     if (yparent->yn_keyword != Y_TYPE){
@@ -1232,28 +1262,10 @@ ys_populate_range(yang_stmt *ys,
     /* This handles non-resolved also */
     if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0) 
 	goto done;
-    if ((vec = clicon_strsep(ys->ys_argument, "|", &nvec)) == NULL)
+    if (range_parse(ys, cvtype, fraction_digits) < 0)
 	goto done;
-    for (i=0; i<nvec; i++){
-	v = vec[i++];
-	v = clixon_trim(v); 	/* trim blanks */
-	if ((v2 = strstr(v, "..")) != NULL){
-	    *v2 = '\0';
-	    v2 += 2;
-	    v2 = clixon_trim(v2); 	    /* trim blanks */
-	}
-	if (bound_add(ys, cvtype, "range_min", v,
-		      options, fraction_digits) < 0)
-	    goto done;
-	if (v2)
-	    if (bound_add(ys, cvtype, "range_max",v2,
-			  options, fraction_digits) < 0)
-		goto done;
-    }
     retval = 0;
   done:
-    if (vec)
-	free(vec);
     return retval;
 }
 
@@ -1276,11 +1288,6 @@ ys_populate_length(yang_stmt *ys,
     int             retval = -1;
     yang_node      *yparent;        /* type */
     enum cv_type    cvtype = CGV_ERR;
-    char          **vec = NULL;
-    char           *v;
-    int             nvec;
-    int             i;
-    char           *v2;
 
     yparent = ys->ys_parent;     /* Find parent: type */
     if (yparent->yn_keyword != Y_TYPE){
@@ -1288,27 +1295,10 @@ ys_populate_length(yang_stmt *ys,
 	goto done;
     }
     cvtype = CGV_UINT64;
-    if ((vec = clicon_strsep(ys->ys_argument, "|", &nvec)) == NULL)
+    if (range_parse(ys, cvtype, 0) < 0)
 	goto done;
-    for (i=0; i<nvec; i++){
-
-	v = vec[i++];
-	v = clixon_trim(v); 	/* trim blanks */
-	if ((v2 = strstr(v, "..")) != NULL){
-	    *v2 = '\0';
-	    v2 += 2;
-	    v2 = clixon_trim(v2); 	    /* trim blanks */
-	}
-	if (bound_add(ys, cvtype, "range_min", v, 0, 0) < 0)
-	    goto done;
-	if (v2)
-	    if (bound_add(ys, cvtype, "range_max",v2, 0, 0) < 0)
-		goto done;
-    }
     retval = 0;
   done:
-    if (vec)
-	free(vec);
     return retval;
 }
 

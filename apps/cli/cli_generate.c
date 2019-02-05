@@ -50,6 +50,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <syslog.h>
 #include <sys/param.h>
 #include <math.h> /* For pow() kludge in cvtype_max2str_dup2 */
 
@@ -162,6 +163,98 @@ cli_callback_generate(clicon_handle h,
     return retval;
 }
 
+
+/*! Generate identityref statements for CLI variables
+ * @param[in]  ys        Yang statement
+ * @param[in]  ytype     Yang union type being resolved
+ * @param[in]  helptext  CLI help text
+ * @param[out] cb        Buffer where cligen code is written
+ * @see yang2cli_var_sub  Its sub-function
+ */
+static int
+yang2cli_var_identityref(yang_stmt *ys,
+			 yang_stmt *ytype,
+			 char      *cvtypestr,
+			 char      *helptext,
+			 cbuf      *cb)
+{
+    int     retval = -1;
+    yang_stmt *ybaseref;
+    yang_stmt *ybaseid;
+    cg_var    *cv = NULL;
+    char      *name;
+    char      *id;
+    int        i;
+    
+    /* Add a wildchar string first -let validate take it for default prefix */
+    cprintf(cb, ">");
+    if (helptext)
+	cprintf(cb, "(\"%s\")", helptext);
+    if ((ybaseref = yang_find((yang_node*)ytype, Y_BASE, NULL)) != NULL &&
+	(ybaseid = yang_find_identity(ys, ybaseref->ys_argument)) != NULL){
+	if (cvec_len(ybaseid->ys_cvec) > 0){
+	    cprintf(cb, "|<%s:%s choice:", ys->ys_argument, cvtypestr);
+	    i = 0;
+	    while ((cv = cvec_each(ybaseid->ys_cvec, cv)) != NULL){
+		if (i++)
+		    cprintf(cb, "|"); 
+		name = strdup(cv_name_get(cv));
+		if ((id=strchr(name, ':')) != NULL)
+		    *id = '\0';
+		cprintf(cb, "%s:%s", name, id+1);
+		if (name)
+		    free(name);
+	    }
+	}
+    }
+    retval = 0;
+    // done:
+    return retval;
+}
+    
+/*! Generate range check statements for CLI variables
+ * @param[out] cb    Buffer where cligen code is written
+ * @see yang2cli_var_sub  Its sub-function
+ */
+static int
+yang2cli_var_range(yang_stmt *ys,
+		   cvec      *cvv,
+		   int        options,
+		   cbuf      *cb)
+{
+    int     retval = -1;
+    int     i;
+    cg_var *cv;
+    
+    /* Loop through range_min and range_min..range_max */
+    i = 0;
+    while (i<cvec_len(cvv)){
+	if (i){
+	    //	    clicon_log(LOG_NOTICE, "%s: Warning %s has more ranges, ignoring", __FUNCTION__, ys->ys_argument);
+	    break;
+	}
+	cv = cvec_i(cvv, i++);
+	if (strcmp(cv_name_get(cv),"range_min") == 0){
+	    cprintf(cb, " %s[", (options&YANG_OPTIONS_RANGE)?"range":"length");
+	    cv2cbuf(cv, cb);
+	    cprintf(cb,":");
+	    /* probe next */
+	    if (i<cvec_len(cvv) &&
+		(cv = cvec_i(cvv, i)) != NULL &&
+		strcmp(cv_name_get(cv),"range_max") == 0){
+		i++;
+		cv2cbuf(cv, cb);
+	    }
+	    else /* If not, it is a single number range [x:x]*/
+		cv2cbuf(cv, cb);
+	    cprintf(cb,"]");
+	}
+    }
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /* Forward */
 static int yang2cli_stmt(clicon_handle h, yang_stmt *ys, cbuf *cb,    
 			 enum genmodel_type gt, int level);
@@ -175,7 +268,7 @@ static int yang2cli_var_union(clicon_handle h, yang_stmt *ys, char *origtype,
  * @param[in]  h     Clixon handle
  * @param[in]  ys    Yang statement
  * @param[in]  ytype Yang union type being resolved
- * @param[in]  cb    Buffer where cligen code is written
+ * @param[out] cb    Buffer where cligen code is written
  * @param[in]  helptext  CLI help text
  */
 static int
@@ -196,7 +289,6 @@ yang2cli_var_sub(clicon_handle h,
     yang_stmt    *yi = NULL;
     int           i = 0;
     char         *cvtypestr;
-    cg_var       *cv;
 
     if (cvtype == CGV_VOID){
 	retval = 0;
@@ -223,61 +315,16 @@ yang2cli_var_sub(clicon_handle h,
 	    }
 	}
 	else if (strcmp(type, "identityref") == 0){
-	    yang_stmt *ybaseref;
-	    yang_stmt *ybaseid;
-	    cg_var    *cv = NULL;
-	    char      *name;
-	    char      *id;
-	    /* Add a wildchar string first -let validate take it for default prefix */
-	    cprintf(cb, ">");
-	    if (helptext)
-		cprintf(cb, "(\"%s\")", helptext);
-	    if ((ybaseref = yang_find((yang_node*)ytype, Y_BASE, NULL)) != NULL &&
-		(ybaseid = yang_find_identity(ys, ybaseref->ys_argument)) != NULL){
-		if (cvec_len(ybaseid->ys_cvec) > 0){
-		    cprintf(cb, "|<%s:%s choice:", ys->ys_argument, cvtypestr);
-		    i = 0;
-		    while ((cv = cvec_each(ybaseid->ys_cvec, cv)) != NULL){
-			if (i++)
-			    cprintf(cb, "|"); 
-			name = strdup(cv_name_get(cv));
-			if ((id=strchr(name, ':')) != NULL)
-			    *id = '\0';
-			cprintf(cb, "%s:%s", name, id+1);
-			if (name)
-			    free(name);
-		    }
-		}
-	    }
+	    if (yang2cli_var_identityref(ys, ytype, cvtypestr, helptext, cb) < 0)
+		goto done;
 	}
     }
-
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
 	cprintf(cb, " fraction-digits:%u", fraction_digits);
 
     if (options & (YANG_OPTIONS_RANGE|YANG_OPTIONS_LENGTH)){
-	/* Loop through range_min and range_min..rang_max */
-	i = 0;
-	while (i<cvec_len(cvv)){
-	    //	    if (i)
-	    //		clicon_log(LOG_NOTICE, "%s: Warning %s has more ranges, ignoring", __FUNCTION__, ys->ys_argument);
-	    cv = cvec_i(cvv, i++);
-	    if (strcmp(cv_name_get(cv),"range_min") == 0){
-		cprintf(cb, " %s[", (options&YANG_OPTIONS_RANGE)?"range":"length");
-		cv2cbuf(cv, cb);
-		cprintf(cb,":");
-		/* probe next */
-		if (i<cvec_len(cvv) &&
-		    (cv = cvec_i(cvv, i)) != NULL &&
-		    strcmp(cv_name_get(cv),"range_max") == 0){
-		    i++;
-		    cv2cbuf(cv, cb);
-		}
-		else /* If not, it is a single number range [x:x]*/
-		    cv2cbuf(cv, cb);
-		cprintf(cb,"]");
-	    }
-	}
+	if (yang2cli_var_range(ys, cvv, options, cb) < 0)
+	    goto done;
     }
     if (options & YANG_OPTIONS_PATTERN){
 	char *posix = NULL;
@@ -292,7 +339,6 @@ yang2cli_var_sub(clicon_handle h,
 	cprintf(cb, "(\"%s\")", helptext);
     if (type && strcmp(type, "identityref") == 0)
 	cprintf(cb, ")");
-
     retval = 0;
   done:
     return retval;
