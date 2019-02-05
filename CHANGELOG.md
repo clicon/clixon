@@ -1,19 +1,19 @@
 # Clixon Changelog
 
-## 3.9.0 (Preliminary Target: Mid-January 2019)
-
-### Planned new features
-* [Roadmap](ROADMAP.md)
+## 3.9.0 (Preliminary Target: February 2019)
 
 ### Major New features
-* Correct XML namespace handling
-  * XML multiple modules was based on non-strict semantics so that yang modules were found by iterating thorugh namespaces until a match was made. This did not adhere to proper [XML namespace handling](https://www.w3.org/TR/2009/REC-xml-names-20091208) as well as strict Netconf and Restconf namespace handling, which causes problems with overlapping names and false positives, and most importantly, with standard conformance.
-  * There are still the following non-strict namespace handling:
-    * Everything in ietf-netconf base syntax with namespace `urn:ietf:params:xml:ns:netconf:base:1.0` is default and need not be explicitly given
+1. Correct XML namespace handling
+  * According to [XML 1.0](https://www.w3.org/TR/2009/REC-xml-names-20091208) in restconf and Netconf.
+  * Remaining deviations from strict namespace handling:
     * edit-config xpath select statement does not support namespaces
     * notifications do not support namespaces.
-  * Below see netconf old (but wrong) netconf RPC:
-  ```
+    * ietf-netconf base syntax is default  `urn:ietf:params:xml:ns:netconf:base:1.0` and may not be explicitly given. However, in future versions this may be mandatory.
+    * CLI syntax (ie generated commands) do not have namespaces.
+
+  * The following example shows changes in netconf and restconf:
+    * Wrong Netconf RPC:
+    ```
      <rpc>
        <my-own-method/>
      </rpc> 
@@ -22,9 +22,9 @@
          <address-family>ipv4</address-family>
        </route>
      </rpc-reply>
-  ```
-  This is the currently correct Netconf RPC:
-  ```
+    ```
+    * Correct Netconf RPC:
+    ```
      <rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"> # xmlns may be ommitted
        <my-own-method xmlns="urn:example:my-own">
      </rpc>
@@ -33,9 +33,9 @@
          <address-family>ipv4</address-family>
        </route>
      </rpc-reply>
-  ```
-  * Another example for restconf rpc with new correct syntax. Note that while Netconf uses xmlns attribute syntax, Restconf uses module name prefix. First the request:
-  ```
+    ```
+    * Example: Correct restconf request:
+    ```
     POST http://localhost/restconf/operations/example:example)
     Content-Type: application/yang-data+json
     {
@@ -43,9 +43,9 @@
         "x":0
       }
     }
-  ```
-  then the reply:
-  ```
+    ```
+    * Example: correct Restconf reply:
+    ```
     HTTP/1.1 200 OK
     {
       "example:output": {
@@ -53,10 +53,10 @@
         "y": "42"
       }
     }
-  ```
+    ```
   * To keep previous non-strict namespace handling (backwards compatible), set CLICON_XML_NS_STRICT to false.
-  * See https://github.com/clicon/clixon/issues/49
-* Yang code upgrade (RFC7950)
+  * See [https://github.com/clicon/clixon/issues/49]
+1. Yang upgrade (RFC7950)
   * YANG parser cardinality checked (https://github.com/clicon/clixon/issues/48)
     * See https://github.com/clicon/clixon/issues/84
   * RPC method input parameters validated
@@ -76,7 +76,7 @@
       * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
     * CLICON_YANG_MAIN_FILE Provides a filename with a single module filename.
     * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
-* NACM (RFC8341)
+1. NACM (RFC8341)
   * Experimental support, no performance enhancements and need further testing
   * Incoming RPC Message validation is supported (3.4.4)
   * Data Node Access validation is supported (3.4.5), except:
@@ -89,7 +89,7 @@
   * Recovery user "_nacm_recovery" added.
 	
 ### API changes on existing features (you may need to change your code)
-* Added `username` argument on `xmldb_put()` datastore function for NACM data-node write checks
+* Added `username` argument to `xmldb_put()` datastore function for NACM data-node write checks
 * Rearranged yang files
   * Moved and updated all standard ietf and iana yang files from example and yang/ to `yang/standard`.
   * Moved clixon yang files from yang to `yang/clixon`
@@ -98,19 +98,19 @@
   * Renamed example yang from example.yang -> clixon-example.yang
 * clixon_cli -p (printspec) changed semantics to add new yang path dir (see minor changes).
 * Date-and-time type now properly uses ISO 8601 UTC timezone designators.
-  * Eg 2008-09-21T18:57:21.003456 is changed to 2008-09-21T18:57:21.003456Z
-* Renamed yang file `ietf-netconf-notification@2008-07-01.yang` to `clixon-rfc5277`.
+  * Eg `2008-09-21T18:57:21.003456` is changed to `2008-09-21T18:57:21.003456Z`
+* Renamed yang file `ietf-netconf-notification.yang` to `clixon-rfc5277.yang`.
   * Fixed validation problems, see [https://github.com/clicon/clixon/issues/62]
   * Name confusion, the file is manually constructed from the rfc.
   * Changed prefix to `ncevent`
-* Stricter YANG choice validation leads to enforcement of structures like: `choice c{ mandatory true; leaf x` statements. `x` was not previously enforced.
+* Stricter YANG choice validation leads to enforcement of structures
+  * Example: In `choice c{ mandatory true; leaf x; }`, `x` was not previously enforced but is now.
 * Many hand-crafted validation messages have been removed and replaced with generic validations, which may lead to changed rpc-error messages.
 * CLICON_XML_SORT option (in clixon-config.yang) has been removed and set to true permanently. Unsorted XML lists leads to slower performance and old obsolete code can be removed.
 * Strict namespace setting can be a problem when upgrading existing database files, such as startup-db or persistent running-db, or any other saved XML file.
 * Removed `delete-config` support for candidate db since it is not supported in RFC6241.
 * Switched the order of `error-type` and `error-tag` in all netconf and restconf error messages to comply to RFC order.
-* Yang parser is stricter (see above) which may break parsing of existing yang specs.
-* XML namespace handling is corrected (see above)
+* XML namespace handling is corrected (see major changes)
   * For backward compatibility set config option  CLICON_XML_NS_LOOSE
 * Yang parser functions have changed signatures. Please check the source if you call these functions.
 * Add `<CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>` to your configuration file, or corresponding CLICON_DATADIR directory for Clixon system yang files.
@@ -119,33 +119,35 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
-* Added make test from top-level
+* Change GIT branch handling to a single working master branch
+  * Develop branched abandoned
+  * Travis CI supported, see [https://travis-ci.org/clicon/clixon]
+* XML parser conformance to W3 spec
+  * Names lexically correct (NCName)
+  * Syntactically Correct handling of '<?' (processing instructions) and '<?xml' (XML declaration)
+  * XML prolog syntax for 'well-formed' XML
+  * `<!DOCTYPE` (ie DTD) is not supported.
+* Added `make test` from top-level Makefile
 * Added `xml_rootchild_node()` lib function as variant of `xml_rootchild()`
 * Added -o "<option>=<value>" command-line option to all programs: backend, cli, netconf, restconf.
   * Any config option from file can be overrided by giving them on command-line.
 * Added -p <dir> command-line option to all programs: backend, cli, netconf, restconf.
   * -p adds a new dir to the yang path dir. (same as -o CLICON_YAN_DIR=<dir>)
-* Cligen uses posix regex while yang uses XSD. It differs in some aspects. A translator function has been added for `\d` -> `[0-9]` translation, there may be more.
+* Cligen uses posix regex while yang uses XSD. It differs in some aspects. A translator function has been added for `\d` -> `[0-9]` translation, there may be more. This fixes the most acute problems, but there may be more.
 * Added new clixon-lib yang module for internal netconf protocol. Currently only extends the standard with a debug RPC.
 * Added three-valued return values for several validate functions where -1 is fatal error, 0 is validation failed and 1 is validation OK.
   * This includes: `xmldb_put`, `xml_yang_validate_all`, `xml_yang_validate_add`, `xml_yang_validate_rpc`, `api_path2xml`, `api_path2xpath`
 * Added new xml functions for specific types: `xml_child_nr_notype`, `xml_child_nr_notype`, `xml_child_i_type`, `xml_find_type`.
-* Added example_rpc RPC to example backend
-* Renamed xml_namespace[_set]() to xml_prefix[_set]()
+* Added `example_rpc` RPC to example backend
+* Renamed `xml_namespace()` and `xml_namespace_set()` to `xml_prefix()` and `xml_prefix_set()`, respectively.
 * Changed all make tags --> make TAGS
 * Keyvalue datastore removed (it has been disabled since 3.3.3)
-* Removed return value ymodp from yang parse functions (eg yang_parse()).
 * New config option: CLICON_CLI_MODEL_TREENAME defining name of generated syntax tree if CLIXON_CLI_GENMODEL is set.
-* XML parser conformance to W3 spec
-  * Names lexically correct (NCName)
-  * Syntactically Correct handling of '<?' (processing instructions) and '<?xml' (XML declaration)
-  * XML prolog syntax for 'well-formed' XML
-  * <!DOCTYPE (ie DTD) is not supported.
 
 ### Corrected Bugs
 * Partially corrected: [yang type range statement does not support multiple values](https://github.com/clicon/clixon/issues/59).
   * Should work for netconf and restconf, but not for CLI.
-* Fixed again: [Range parsing is not RFC 7950 compliant](https://github.com/clicon/clixon/issues/71)
+* Fixed: [Range parsing is not RFC 7950 compliant](https://github.com/clicon/clixon/issues/71)
 * xml_cmp() compares numeric nodes based on string value [https://github.com/clicon/clixon/issues/64]
 * xml_cmp() respects 'ordered-by user' for state nodes, which violates RFC 7950 [https://github.com/clicon/clixon/issues/63]. (Thanks JDL)
 * XML<>JSON conversion problems [https://github.com/clicon/clixon/issues/66]
@@ -154,18 +156,15 @@
 * xsd regular expression support for character classes [https://github.com/clicon/clixon/issues/68]
   * added support for \c, \d, \w, \W, \s, \S.
 * Removing newlines from XML data [https://github.com/clicon/clixon/issues/65]
-* [ietf-netconf-notification@2008-07-01.yang validation problem #62](https://github.com/clicon/clixon/issues/62)
+* Fixed [ietf-netconf-notification@2008-07-01.yang validation problem #62](https://github.com/clicon/clixon/issues/62)
 * Ignore CR(\r) in yang files for DOS files
 * Keyword "min" (not only "max") can be used in built-in types "range" and "length" statements.
 * Support for empty yang string added, eg `default "";`
 * Removed CLI generation for yang notifications (and other non-data yang nodes)
-* Some restconf error messages contained "rpc-reply" or "rpc-error" which have now been removed.
+* Some restconf error messages contained `rpc-reply` or `rpc-error` which have now been removed.
 * getopt return value changed from char to int (https://github.com/clicon/clixon/issues/58)
 * Netconf/Restconf RPC extra input arguments are ignored (https://github.com/clicon/clixon/issues/47)
 	
-### Known issues
-* debug rpc added in example application (should be in clixon-config).
-
 ## 3.8.0 (6 Nov 2018)
 
 ### Major New features

@@ -31,10 +31,9 @@ How to document the code
 ## Branching
 How to work in git (branching)
 
-Basically follows: http://nvie.com/posts/a-successful-git-branching-model/
-only somewhat simplified:
+Try to keep a single master branch always working. Currently testing is made using [Travis CI](https://travis-ci.org/clicon/clixon).
 
-Do commits in develop branch. When done, merge with master.
+However, releases are made periodically (ca every 3 months) which is more tested.
 
 ## How the meta-configure stuff works
 ```

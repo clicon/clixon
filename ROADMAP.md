@@ -1,23 +1,23 @@
 # Clixon roadmap
 
 ## High prio
-- NACM (RFC 8341) 
-  - Module rules (done)
-  - Data node rules (read/create/delete/update/execute)
 - Special handling of the initial startup transaction to avoid exit at startup
   - Possibly - draft-wu-netconf-restconf-factory-restore-03
 - Handle revisions to data model.
   - Possibly draft-wang-netmod-module-revision-management-01
-- XML [Namespace handling](https://github.com/clicon/clixon/issues/49)
+- (DONE) NACM (RFC 8341) 
+  - NACM support for create, read, update, delete operations 
+  - ACM support for specifying a module name other than '*' 
+- (DONE)XML [Namespace handling](https://github.com/clicon/clixon/issues/49) (DONE)
 
 ## Medium prio:
-- Input validation on custom RPCs/ (done)
-  - [Sanity checks](https://github.com/clicon/clixon/issues/47)
-- Support for XML regex's.
-  - Currently Posix extended regular expressions
 - Support a plugin callback that is invoked when copy-config is called.
 - Preserve CLI command history across sessions. The up/down arrows
-
+- (DONE)Support for XML regex's.
+  - Currently Posix extended regular expressions
+- (DONE) Input validation on custom RPCs/
+  - [Sanity checks](https://github.com/clicon/clixon/issues/47)
+  
 ## Low prio:
 - Provide a client library to access netconf APIs provided by system services.
   - Netconf backend (Clixon acts as netconf controller)
