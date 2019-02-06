@@ -455,15 +455,13 @@ int
 cli_handler_err(FILE *f)
 {
     if (clicon_errno){
-	cli_output(f,  "%s: %s", 
-		   clicon_strerror(clicon_errno),
-		   clicon_err_reason);
+	fprintf(f,  "%s: %s", clicon_strerror(clicon_errno), clicon_err_reason);
 	if (clicon_suberrno)
-	    cli_output(f, ": %s", strerror(clicon_suberrno));
-	cli_output(f,  "\n");
+	    fprintf(f, ": %s", strerror(clicon_suberrno));
+	fprintf(f,  "\n");
     }
     else
-	cli_output(f, "CLI command error\n");
+	fprintf(f, "CLI command error\n");
     return 0;
 }
 
@@ -482,7 +480,6 @@ clicon_eval(clicon_handle h,
 {
     int retval = 0;
 
-    cli_output_reset();
     if (!cligen_exiting(cli_cligen(h))) {	
 	clicon_err_reset();
 	if ((retval = cligen_eval(cli_cligen(h), match_obj, cvv)) < 0) {
@@ -546,7 +543,7 @@ clicon_parse(clicon_handle h,
     }
     else {
 	if ((smode = syntax_mode_find(stx, modename, 0)) == NULL) {
-	    cli_output(f, "Can't find syntax mode '%s'\n", modename);
+	    fprintf(f, "Can't find syntax mode '%s'\n", modename);
 	    goto done;
 	}
     }
@@ -576,13 +573,12 @@ clicon_parse(clicon_handle h,
 	switch (retval) {
 	case CG_EOF: /* eof */
 	case CG_ERROR:
-	    cli_output(f, "CLI parse error: %s\n", cmd);
+	    fprintf(f, "CLI parse error: %s\n", cmd);
 	    break;
 	case CG_NOMATCH: /* no match */
 	    /*	    clicon_err(OE_CFG, 0, "CLI syntax error: \"%s\": %s", 
 		    cmd, cli_nomatch(h));*/
-	    cli_output(f, "CLI syntax error: \"%s\": %s\n", 
-		       cmd, cli_nomatch(h));
+	    fprintf(f, "CLI syntax error: \"%s\": %s\n", cmd, cli_nomatch(h));
 	    break;
 	case CG_MATCH:
 	    if (strcmp(modename, *modenamep)){	/* Command in different mode */
@@ -596,7 +592,7 @@ clicon_parse(clicon_handle h,
 		*evalres = r;
 	    break;
 	default:
-	    cli_output(f, "CLI syntax error: \"%s\" is ambiguous\n", cmd);
+	    fprintf(f, "CLI syntax error: \"%s\" is ambiguous\n", cmd);
 	    break;
 	} /* switch retval */
     }

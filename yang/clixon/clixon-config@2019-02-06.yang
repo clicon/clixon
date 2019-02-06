@@ -39,6 +39,10 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2019-02-06 {
+	description
+	    "Released in Clixon 3.9";
+    }
     revision 2018-10-21 {
 	description
 	    "Released in Clixon 3.8";
@@ -274,6 +278,14 @@ module clixon-config {
 		"Set to 0 if you want CLI to wrap to next line.
                  Set to 1 if you  want CLI to scroll sideways when approaching 
                       right margin";
+	}
+	leaf CLICON_CLI_UTF8 {
+	    type int8;
+	    default 0;
+	    description
+		"Set to 1 to enable CLIgen UTF-8 experimental mode.
+                 Note that this feature is EXPERIMENTAL and may not properly handle 
+                 scrolling, control characters, etc";
 	}
 	leaf CLICON_SOCK_FAMILY {
 	    type string;

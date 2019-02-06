@@ -352,7 +352,7 @@ main(int argc, char **argv)
 	    break; /* see above */
 	case 'F': /* read commands from file */
 	    if (freopen(optarg, "r", stdin) == NULL){
-		cli_output(stderr, "freopen: %s\n", strerror(errno));
+		fprintf(stderr, "freopen: %s\n", strerror(errno));
 		return -1;
 	    }
 	    break; 
@@ -531,6 +531,7 @@ main(int argc, char **argv)
     *(argv-1) = tmp;
 
     cligen_line_scrolling_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_LINESCROLLING"));
+    cligen_utf8_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_UTF8"));
     /* Launch interfactive event loop, unless -1 */
     if (restarg != NULL && strlen(restarg)){
 	char *mode = cli_syntax_mode(h);

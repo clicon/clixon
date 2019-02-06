@@ -65,6 +65,7 @@ On linux:
   sudo usermod -a -G clicon <user>
   sudo usermod -a -G clicon www-data
 ```
+(you may have to restart shell)
 
 Verify:
 ```
