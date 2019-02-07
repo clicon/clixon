@@ -2,11 +2,12 @@
 
 This directory contains testing code for clixon and the example
 application. Assumes setup of http daemon as describe under apps/restonf
-- Jenkinsfile       Makefile for Jenkins tests. Build clixon and run tests.
+- jenkins           Directory w Jenkins specific stuff
+- travis            Directory w Travis specific stuff
 - all.sh            Run through all tests with detailed output, and stop on first error.
 - sum.sh            Run though all tests and print summary
 - mem.sh            Make valgrind 
-- site.sh           Add your site-specific modifications here
+- site.sh           Add your site-specific modifications here (see example below)
 - test_nacm.sh      Auth tests using internal NACM
 - test_nacm_ext.sh  Auth tests using external NACM (separate file)
 - test_nacm_protocol.sh  Auth tests for incoming RPC:s
@@ -36,4 +37,14 @@ Run all tests but continue after errors and only print a summary test output ide
   all.sh summary
 ```
 
+You need to start nginx. There are instructions in [the example](../example/README.md)
 
+Example site.sh file:
+
+#!/bin/bash
+# Add your local site specific env variables (or tests) here.
+# get from: https://github.com/openconfig/public
+OPENCONFIG=/home/olof/src/clixon/test/public
+# get from:  https://github.com/YangModels/yang 
+YANGMODELS=/usr/local/share/yangmodels
+IETFRFC=$YANGMODELS/standard/ietf/RFC

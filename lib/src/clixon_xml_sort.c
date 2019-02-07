@@ -424,7 +424,8 @@ xml_search1(cxobj        *x0,
     if (mid >= xml_child_nr(x0))  /* beyond range */
 	return NULL;
     xc = xml_child_i(x0, mid);
-    assert(y = xml_spec(xc));
+    if ((y = xml_spec(xc)) == NULL)
+	return NULL;
     cmp = yangi-yang_order(y);
     if (cmp == 0){
 	cmp = xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, &userorder);

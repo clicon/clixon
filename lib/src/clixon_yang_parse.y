@@ -175,7 +175,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <assert.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -236,7 +235,10 @@ ystack_pop(struct clicon_yang_yacc_arg *yy)
 {
     struct ys_stack *ystack; 
 
-    assert(ystack =  yy->yy_stack);
+    if ((ystack =  yy->yy_stack) == NULL){
+	clicon_err(OE_YANG, 0, "ystack is NULL");
+	return -1;
+    }
     yy->yy_stack = ystack->ys_next;
     free(ystack);
     return 0;
@@ -283,7 +285,10 @@ ysp_add(struct clicon_yang_yacc_arg *yy,
 	clicon_err(OE_YANG, errno, "No stack");
 	goto err;
     }
-    assert(yn = ystack->ys_node);
+    if ((yn = ystack->ys_node) == NULL){
+	clicon_err(OE_YANG, errno, "No ys_node");
+	goto err;
+    }
     if ((ys = ys_new(keyword)) == NULL)
 	goto err;
     /* NOTE: does not make a copy of string, ie argument is 'consumed' here */

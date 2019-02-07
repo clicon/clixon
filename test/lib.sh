@@ -12,6 +12,7 @@
 
 #set -e
 
+# Site file, an example of this file in README.md
 if [ -x ./site.sh ]; then
     . ./site.sh
 fi
@@ -143,12 +144,25 @@ expectfn(){
   fi
 }
 
-# 
+# Evaluate and return
+# Example: expecteq $(fn arg) 0 "my return"
+# - evaluated expression
+# - expected command return value (0 if OK)
+# - expected stdout outcome
 expecteq(){
+  r=$?
   ret=$1
-  expect=$2
-#  echo "ret:$ret"
+  retval=$2
+  expect=$3
+#  echo "r:$r"
+#  echo "ret:\"$ret\""
+#  echo "retval:$retval"
 #  echo "expect:$expect"
+  if [ $r != $retval ]; then
+      echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+      echo -e "\e[0m:"
+      exit -1
+  fi
   if [ -z "$ret" -a -z "$expect" ]; then
       return
   fi

@@ -34,10 +34,12 @@
 FROM olofhagsand/clixon
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
-#RUN apt-get update && apt-get install -y procps # ps for debugging
+RUN apt-get update && apt-get install -y nginx
+RUN apt-get update && apt-get install -y procps curl # ps for debugging
 
 # The example uses "clicon" group
 RUN groupadd clicon
+RUN usermod -a -G clicon www-data
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /example
@@ -49,15 +51,22 @@ RUN git clone https://github.com/clicon/clixon.git
 
 # Build clixon
 WORKDIR /example/clixon
-RUN git checkout -b develop origin/develop
 RUN ./configure
 WORKDIR /example/clixon/example
 RUN make
 RUN make install
 RUN install example.xml /usr/local/etc/clixon.xml
 
-# Log to stderr. Add -D 1 for debug
-CMD /usr/local/sbin/clixon_backend -F -a IPv4 -u 0.0.0.0 -s init -l e 
+# Copy startscript
+WORKDIR /
+COPY startsystem.sh startsystem.sh 
+RUN install startsystem.sh /usr/local/bin/
+
+# Expose nginx port for restconf
+EXPOSE 80
+
+# Log to stderr.
+CMD /usr/local/bin/startsystem.sh
 
 
 

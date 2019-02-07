@@ -241,7 +241,8 @@ AC_OUTPUT(Makefile
 	  etc/clixonrc
 	  example/Makefile
 	  extras/rpm/Makefile
-	  docker/Makefile 
+	  docker/Makefile
+  	  docker/system/Makefile
 	  datastore/Makefile
 	  datastore/text/Makefile
   	  util/Makefile 

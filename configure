@@ -4433,7 +4433,7 @@ _ACEOF
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile extras/rpm/Makefile docker/Makefile datastore/Makefile datastore/text/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/standard/Makefile doc/Makefile test/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile extras/rpm/Makefile docker/Makefile docker/system/Makefile docker/cluster/Makefile datastore/Makefile datastore/text/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/standard/Makefile doc/Makefile test/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5142,6 +5142,8 @@ do
     "example/Makefile") CONFIG_FILES="$CONFIG_FILES example/Makefile" ;;
     "extras/rpm/Makefile") CONFIG_FILES="$CONFIG_FILES extras/rpm/Makefile" ;;
     "docker/Makefile") CONFIG_FILES="$CONFIG_FILES docker/Makefile" ;;
+    "docker/system/Makefile") CONFIG_FILES="$CONFIG_FILES docker/system/Makefile" ;;
+    "docker/cluster/Makefile") CONFIG_FILES="$CONFIG_FILES docker/cluster/Makefile" ;;
     "datastore/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/Makefile" ;;
     "datastore/text/Makefile") CONFIG_FILES="$CONFIG_FILES datastore/text/Makefile" ;;
     "util/Makefile") CONFIG_FILES="$CONFIG_FILES util/Makefile" ;;

@@ -127,6 +127,7 @@
   * Syntactically Correct handling of '<?' (processing instructions) and '<?xml' (XML declaration)
   * XML prolog syntax for 'well-formed' XML
   * `<!DOCTYPE` (ie DTD) is not supported.
+* Added Clixon example full system docker container, see [docker/system].
 * Added `make test` from top-level Makefile
 * Added `xml_rootchild_node()` lib function as variant of `xml_rootchild()`
 * Added -o "<option>=<value>" command-line option to all programs: backend, cli, netconf, restconf.

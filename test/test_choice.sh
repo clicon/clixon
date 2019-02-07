@@ -137,10 +137,10 @@ new "netconf commit protocol udp"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "restconf set protocol tcp"
-expecteq "$(curl -s -X PUT http://localhost/restconf/data/system:system/protocol -d {\"system:protocol\":{\"tcp\":null}})" ""
+expecteq "$(curl -s -X PUT http://localhost/restconf/data/system:system/protocol -d {\"system:protocol\":{\"tcp\":null}})" 0 ""
 
 new "restconf get protocol tcp"
-expecteq "$(curl -s -X GET http://localhost/restconf/data/system:system)" '{"system:system": {"protocol": {"tcp": null}}}
+expecteq "$(curl -s -X GET http://localhost/restconf/data/system:system)" 0 '{"system:system": {"protocol": {"tcp": null}}}
 '
 
 new "cli set protocol udp"
