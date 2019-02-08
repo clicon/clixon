@@ -63,8 +63,8 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 
     /* Access cligen callback variables */
     myvar = cvec_find(cvv, "var"); /* get a cligen variable from vector */
-    cli_output(stderr, "%s: %d\n", __FUNCTION__, cv_int32_get(myvar)); /* get int value */
-    cli_output(stderr, "arg = %s\n", cv_string_get(cvec_i(argv,0))); /* get string value */
+    fprintf(stderr, "%s: %d\n", __FUNCTION__, cv_int32_get(myvar)); /* get int value */
+    fprintf(stderr, "arg = %s\n", cv_string_get(cvec_i(argv,0))); /* get string value */
 
     /* Show eth0 interfaces config using XPATH */
     if (clicon_rpc_get_config(h, "running",

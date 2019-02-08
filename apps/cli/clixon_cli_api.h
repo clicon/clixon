@@ -67,7 +67,6 @@ int cli_notification_register(clicon_handle h, char *stream, enum format_enum fo
 			      char *filter, int status, 
 			      int (*fn)(int, void*), void *arg);
 
-#define cli_output cligen_output
 /* cli_common.c: CLIgen new vector callbacks */
 
 

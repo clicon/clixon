@@ -44,6 +44,7 @@ SHELL	= /bin/sh
 
 all:	
 	./test_xml.sh
+	./test_json.sh
 #	./all.sh
 
 clean:

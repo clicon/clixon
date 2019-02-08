@@ -9,8 +9,11 @@
 APPNAME=example
 
 # include err() and new() functions and creates $dir
-. ./site.sh
 . ./lib.sh
+
+if [ $MODELS -eq 0 ]; then
+    exit
+fi
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang

@@ -12,6 +12,12 @@
 
 #set -e
 
+# Probe nginx
+#sudo systemctl status nginx.service > /dev/null
+#if [ $? -ne 0 ]; then
+#    sudo systemctl start nginx.service
+#fi
+
 # Site file, an example of this file in README.md
 if [ -x ./site.sh ]; then
     . ./site.sh
@@ -25,6 +31,11 @@ testname=
 
 # If set, enable debugging (of backend)
 : ${DBG:=0}
+
+# If reset, do NOT run tests with external yang models.
+# This involves downloading
+# https://github.com/openconfig/public and https://github.com/YangModels/yang 
+: ${MODELS:=1}
 
 # Parse yangmodels from https://github.com/YangModels/yang
 # Recommended: checkout yangmodels elsewhere in the tree and set the env

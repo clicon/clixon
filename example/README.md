@@ -121,11 +121,22 @@ Setup a web/reverse-proxy server.
 For example, using nginx, install, and edit config file: /etc/nginx/sites-available/default:
 ```
 server {
-  ...
-  location /restconf {
-    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-    include fastcgi_params;
-  }
+        ...
+	location / {
+	    root /usr/share/nginx/html/restconf;
+	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+	    include fastcgi_params;
+        }
+	location /restconf {
+	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+	    include fastcgi_params;
+        }
+	location /streams {
+	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+	    include fastcgi_params;
+ 	    proxy_http_version 1.1;
+	    proxy_set_header Connection "";
+        }
 }
 ```
 Start nginx daemon

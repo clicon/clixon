@@ -117,10 +117,10 @@ expectfn 'curl -s -X POST -d {"example:interface":{"name":"TEST","type":"eth0"}}
 
 # XXX should it be example:interface?
 new "restconf POST again"
-expecteq "$(curl -s -X POST -d '{"interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/example:cont1)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+expecteq "$(curl -s -X POST -d '{"interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/example:cont1)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 new "restconf POST from top"
-expecteq "$(curl -s -X POST -d '{"example:cont1":{"interface":{"name":"TEST","type":"eth0"}}}' http://localhost/restconf/data)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+expecteq "$(curl -s -X POST -d '{"example:cont1":{"interface":{"name":"TEST","type":"eth0"}}}' http://localhost/restconf/data)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 new "restconf DELETE"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data/example:cont1' 0 ""

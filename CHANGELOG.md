@@ -87,6 +87,9 @@
     * `commit` - NACM is applied to candidate and running operations only (3.2.8)
   * Client-side RPC:s are _not_ supported.
   * Recovery user "_nacm_recovery" added.
+* Change GIT branch handling to a single working master branch
+  * Develop branched abandoned
+  * Travis CI supported, see [https://travis-ci.org/clicon/clixon]
 	
 ### API changes on existing features (you may need to change your code)
 * Added `username` argument to `xmldb_put()` datastore function for NACM data-node write checks
@@ -119,15 +122,16 @@
   * For backward compatibility, define CLICON_CLI_MODEL_TREENAME_PATCH in clixon_custom.h
 
 ### Minor changes
-* Change GIT branch handling to a single working master branch
-  * Develop branched abandoned
-  * Travis CI supported, see [https://travis-ci.org/clicon/clixon]
 * XML parser conformance to W3 spec
   * Names lexically correct (NCName)
   * Syntactically Correct handling of '<?' (processing instructions) and '<?xml' (XML declaration)
   * XML prolog syntax for 'well-formed' XML
   * `<!DOCTYPE` (ie DTD) is not supported.
 * Added Clixon example full system docker container, see [docker/system].
+* clixon-config YAML file has new revision: 2019-02-06.
+* Replaced all calls to (obsolete) `cli_output` with `fprintf`
+* Added _experimental_ config option `CLICON_CLI_UTF8` default set to 0.
+  * CLIgen UTF8 does not work with scrolling and control editing
 * Added `make test` from top-level Makefile
 * Added `xml_rootchild_node()` lib function as variant of `xml_rootchild()`
 * Added -o "<option>=<value>" command-line option to all programs: backend, cli, netconf, restconf.

@@ -69,28 +69,28 @@ new "netconf empty rpc"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><empty xmlns="urn:example:clixon"/></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><ok/></rpc-reply>]]>]]>$'
 
 new "restconf example rpc json/json default - no http media headers"
-expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":0}}' http://localhost/restconf/operations/clixon-example:example)" '{"clixon-example:output": {"x": "0","y": "42"}}
+expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":0}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"clixon-example:output": {"x": "0","y": "42"}}
 '
 
 new "restconf example rpc json/json change y default"
-expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":"0","y":"99"}}' http://localhost/restconf/operations/clixon-example:example)" '{"clixon-example:output": {"x": "0","y": "99"}}
+expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":"0","y":"99"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"clixon-example:output": {"x": "0","y": "99"}}
 '
 
 new "restconf example rpc json/json"
 # XXX example:input example:output
-expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+json' -H 'Content-Type: application/yang-data+json' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" '{"clixon-example:output": {"x": "0","y": "42"}}
+expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+json' -H 'Content-Type: application/yang-data+json' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"clixon-example:output": {"x": "0","y": "42"}}
 '
 
 new "restconf example rpc xml/json"
-expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' -H 'Content-Type: application/yang-data+json' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)"  '{"clixon-example:output": {"x": "0","y": "42"}}
+expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' -H 'Content-Type: application/yang-data+json' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)"  0 '{"clixon-example:output": {"x": "0","y": "42"}}
 '
 
 new "restconf example rpc json/xml"
-expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+xml' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" '<output xmlns="urn:example:clixon"><x>0</x><y>42</y></output>
+expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+xml' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '<output xmlns="urn:example:clixon"><x>0</x><y>42</y></output>
 '
 
 new "restconf example rpc xml/xml"
-expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)" '<output xmlns="urn:example:clixon"><x>0</x><y>42</y></output>
+expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)" 0 '<output xmlns="urn:example:clixon"><x>0</x><y>42</y></output>
 '
 
 new "netconf example rpc"
@@ -107,7 +107,7 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf empty rpc with input x"
-expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":0}}' http://localhost/restconf/operations/clixon-example:empty)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "x"},"error-severity": "error"}}}'
+expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":0}}' http://localhost/restconf/operations/clixon-example:empty)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "x"},"error-severity": "error"}}}'
 
 # cornercase: optional has yang input/output sections but test without body
 new "restconf optional rpc with null input and output"
@@ -119,16 +119,16 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf omit mandatory"
-expecteq "$(curl -s -X POST -d '{"clixon-example:input":null}' http://localhost/restconf/operations/clixon-example:example)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "x"},"error-severity": "error","error-message": "Mandatory variable"}}}'
+expecteq "$(curl -s -X POST -d '{"clixon-example:input":null}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "x"},"error-severity": "error","error-message": "Mandatory variable"}}}'
 
 new "restconf add extra"
-expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":"0","extra":"0"}}' http://localhost/restconf/operations/clixon-example:example)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "extra"},"error-severity": "error"}}}'
+expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":"0","extra":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "extra"},"error-severity": "error"}}}'
 
 new "restconf wrong method"
-expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:wrong)" '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "wrong"},"error-severity": "error","error-message": "RPC not defined"}}}'
+expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:wrong)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "wrong"},"error-severity": "error","error-message": "RPC not defined"}}}'
 
 new "restconf example missing input"
-expecteq "$(curl -s -X POST -d '{"clixon-example:input":null}' http://localhost/restconf/operations/ietf-netconf:edit-config)" '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang module not found"}}}'
+expecteq "$(curl -s -X POST -d '{"clixon-example:input":null}' http://localhost/restconf/operations/ietf-netconf:edit-config)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang module not found"}}}'
 
 new "netconf kill-session missing session-id mandatory"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><kill-session/></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>session-id</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable</error-message></rpc-error></rpc-reply>]]>]]>$'

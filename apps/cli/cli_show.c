@@ -193,7 +193,7 @@ expand_dbvar(void   *h,
 	    if (xml_merge(xt, xtop, yspec, &reason) < 0) /* Merge xtop into xt */
 		goto done;
 	    if (reason){
-		cli_output(stderr, "%s\n", reason);
+		fprintf(stderr, "%s\n", reason);
 		goto done;
 	    }	    
 	    if ((xcur = xpath_first(xt, "%s", xpath)) == NULL){
@@ -602,9 +602,11 @@ done:
     return retval;
 }
 
-int cli_show_version(clicon_handle h, cvec *vars, cvec *argv)
+int cli_show_version(clicon_handle h,
+		     cvec         *vars,
+		     cvec         *argv)
 {
-    cli_output(stdout, "%s\n", CLIXON_VERSION_STRING);
+    fprintf(stdout, "%s\n", CLIXON_VERSION_STRING);
     return 0;
 }
 
