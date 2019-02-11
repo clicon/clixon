@@ -94,52 +94,52 @@ echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig
 echo "$clixon_netconf -qf $cfg  -y $fyang"
 
 new "netconf write large config"
-expecteof_file "time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 #echo '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' | $clixon_netconf -qf $cfg  -y $fyang 
 
 new "netconf write large config again"
-expecteof_file "time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 #echo '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' | $clixon_netconf -qf $cfg  -y $fyang 
 
 rm $fconfig
 
 new "netconf commit large config"
-expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf commit large config again"
-expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf add small (1 entry) config"
-expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon"><y><a>x</a><b>y</b></y></x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon"><y><a>x</a><b>y</b></y></x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf get $req small config"
-time -p for (( i=0; i<$req; i++ )); do
+/usr/bin/time -p for (( i=0; i<$req; i++ )); do
     rnd=$(( ( RANDOM % $number ) ))
     echo "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=$rnd][b=$rnd]\" /></get-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
 
 new "netconf get $req restconf small config"
-time -p for (( i=0; i<$req; i++ )); do
+/usr/bin/time -p for (( i=0; i<$req; i++ )); do
     rnd=$(( ( RANDOM % $number ) ))
 #XXX    curl -sX PUT -d {"y":{"a":"$rnd","b":"$rnd"}} http://localhost/restconf/data/x/y=$rnd,$rnd 
 done 
 
 new "netconf add $req small config"
-time -p for (( i=0; i<$req; i++ )); do
+/usr/bin/time -p for (( i=0; i<$req; i++ )); do
     rnd=$(( ( RANDOM % $number ) ))
     echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
 
 new "netconf add $req restconf small config"
-time -p for (( i=0; i<$req; i++ )); do
+/usr/bin/time -p for (( i=0; i<$req; i++ )); do
     rnd=$(( ( RANDOM % $number ) ))
     curl -sG http://localhost/restconf/data/x/y=$rnd,$rnd > /dev/null
 done 
 
 new "netconf get large config"
-expecteof "time -f %e $clixon_netconf -qf $cfg  -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><y><a>0</a><b>0</b></y><y><a>1</a><b>1</b>'
+expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg  -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><y><a>0</a><b>0</b></y><y><a>1</a><b>1</b>'
 
 new "generate large leaf-list config"
 echo -n "<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fconfig
@@ -149,27 +149,27 @@ done
 echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig
 
 new "netconf replace large list-leaf config"
-expecteof_file "time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 rm $fconfig
 
 new "netconf commit large leaf-list config"
-expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf add $req small leaf-list config"
-time -p for (( i=0; i<$req; i++ )); do
+/usr/bin/time -p for (( i=0; i<$req; i++ )); do
     rnd=$(( ( RANDOM % $number ) ))
     echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>$rnd</c></x></config></edit-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
 
 new "netconf add small leaf-list config"
-expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon"><c>x</c></x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon"><c>x</c></x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf commit small leaf-list config"
-expecteof "time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf get large leaf-list config"
-expecteof "time -f %e $clixon_netconf -qf $cfg  -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><c>0</c><c>1</c>'
+expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg  -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><c>0</c><c>1</c>'
 
 new "Kill restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"

@@ -43,9 +43,6 @@ SHELL	= /bin/sh
 .PHONY: all clean distclean depend install uninstall
 
 all:	
-	./test_xml.sh
-	./test_json.sh
-#	./all.sh
 
 clean:
 

@@ -48,3 +48,5 @@ To check status and then kill it:
   $ sudo docker ps --all
   $ ./cleanup.sh 
 ```
+
+You can also trigger the test scripts inside the container using `make test`.

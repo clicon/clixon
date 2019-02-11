@@ -10,7 +10,5 @@ sudo make install-include
 sudo groupadd clicon
 sudo usermod -a -G clicon $(whoami)
 sudo usermod -a -G clicon www-data
-# Build and start the system docker container
-(cd docker/system && make docker && ./start.sh)
-# Run clixon testcases
-(cd docker/system && sudo docker exec -it clixon-system bash -c 'cd /clixon/clixon/test; exec ./all.sh')
+# Build the system docker container (make test may trigger it)
+(cd docker/system && make docker)

@@ -43,7 +43,7 @@ IMG   = clixon/clixon-system
 
 SHELL	= /bin/sh
 
-.PHONY: all clean depend install docker push clixon-system
+.PHONY: all clean distclean docker test push depend install-include install uninstall
 
 all:	
 	echo "Run make docker to build docker image"
@@ -60,6 +60,11 @@ distclean: clean
 
 docker: clixon Dockerfile
 	sudo docker build -t $(IMG) .  # --no-cache
+
+# Start the clixon system container and run the test script
+test: docker
+	./start.sh
+	sudo docker exec -it clixon-system bash -c 'cd /clixon/clixon/test; exec ./all.sh'
 
 push:
 

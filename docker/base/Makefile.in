@@ -48,12 +48,16 @@ SHELL	= /bin/sh
 all:	
 	echo "Run make docker to build docker image"
 
+# (recursively) clone the repo from top-level - NOTE changes must be committed
+clixon:
+	git clone file://$(realpath ${top_srcdir})
+
 clean:
 
 distclean: clean
 	rm -f Makefile *~ .depend
 
-docker: Dockerfile
+docker: clixon Dockerfile
 	sudo docker build -t $(IMG) .  # --no-cache
 
 push:

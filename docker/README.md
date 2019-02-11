@@ -1,6 +1,7 @@
-# Clixon base docker image
+# Clixon and dockers
 
 This directory contains sub-directories with examples of Clixon docker images:
-    * [base]    Clixon base image (pulls code from github)
-    * [system]  Example and test application (builds from local dir)
+
+  * [base](base/README.md)      Clixon base image 
+  * [system](system/README.md)  Example and test application 
 

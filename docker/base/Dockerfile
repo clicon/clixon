@@ -44,9 +44,8 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir /clixon
 WORKDIR /clixon
 
-# Clone cligen and clixon
+# Clone cligen
 RUN git clone https://github.com/olofhagsand/cligen.git
-RUN git clone https://github.com/clicon/clixon.git
 
 # Build cligen
 WORKDIR /clixon/cligen
@@ -54,8 +53,12 @@ RUN ./configure
 RUN make
 RUN make install
 
-# Build clixon
+# Copy Clixon from local dir
+RUN mkdir /clixon/clixon
 WORKDIR /clixon/clixon
+COPY clixon .
+
+# Build clixon
 RUN ./configure
 RUN make
 RUN make install

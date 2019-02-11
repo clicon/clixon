@@ -69,25 +69,25 @@ run(){
 
     case $mode in
 	readlist)
-	time -p for (( i=0; i<$reqs; i++ )); do
+	/usr/bin/time -p for (( i=0; i<$reqs; i++ )); do
     rnd=$(( ( RANDOM % $nr ) ))
     echo "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=$rnd][b=$rnd]\" /></get-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg -y $fyang > /dev/null
             ;;
 	writelist)
-	    time -p for (( i=0; i<$reqs; i++ )); do
+	    /usr/bin/time -p for (( i=0; i<$reqs; i++ )); do
 	rnd=$(( ( RANDOM % $nr ) ))
 	echo "<rpc><edit-config><target><candidate/></target><config><x><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg -y $fyang > /dev/null
     ;;
     	restreadlist)
-	time -p for (( i=0; i<$reqs; i++ )); do
+	/usr/bin/time -p for (( i=0; i<$reqs; i++ )); do
     rnd=$(( ( RANDOM % $nr ) ))
     curl -sSG http://localhost/restconf/data/x/y=$rnd,$rnd > /dev/null
 done 
             ;;
     writeleaflist)
-	time -p for (( i=0; i<$reqs; i++ )); do
+	/usr/bin/time -p for (( i=0; i<$reqs; i++ )); do
 	rnd=$(( ( RANDOM % $nr ) ))
 	echo "<rpc><edit-config><target><candidate/></target><config><x><c>$rnd</c></x></config></edit-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg -y $fyang > /dev/null

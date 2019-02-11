@@ -45,8 +45,8 @@ RUN apt-get update && apt-get install -y \
 # Application-specific
 RUN apt-get update && apt-get install -y nginx
 
-# Test-specific
-RUN apt-get update && apt-get install -y sudo curl procps # for test scripts
+# Test-specific (for test scripts)
+RUN apt-get update && apt-get install -y sudo curl procps time 
 
 # The example uses "clicon" group
 RUN groupadd clicon

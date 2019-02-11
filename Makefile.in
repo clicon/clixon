@@ -141,8 +141,10 @@ pkg-srpm: dist
 example:	
 	(cd $@ && $(MAKE) $(MFLAGS) all)
 
-test: #example	
-	(cd $@ && $(MAKE) $(MFLAGS) all)
+# Run a clixon test container.
+# Alt: cd test; ./all.sh
+test:
+	(cd docker/system && $(MAKE) $(MFLAGS) test)
 
 docker:
 	for i in docker; \

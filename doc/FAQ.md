@@ -243,13 +243,20 @@ information on all modules and which features are enabled.
 
 ## Can I run Clixon as docker containers?
 
-Yes, the example works as docker containers as well. There should be a
-prepared container in docker hub for the example where the backend and
-CLI is bundled. 
-```
-sudo docker run -td olofhagsand/clixon_example
-```
-Look in the example documentation for more info.
+Yes, Clixon has two examples on how to build docker containers. A [base](../docker/base) image and a complete [example system](../docker/system).
+
+The base image can only be used as a boilerplate for building clixon
+applications (it has no applications semantics); whereas the system is
+a complete example applications with CLI/Netconf/Restconf, and
+testing.
+
+For example, the clixon-system container can be used as follows:
+* CLI: `sudo docker exec -it clixon-system clixon_cli`
+* Netconf: `sudo docker exec -it clixon-system clixon_netconf`
+* Restconf: `curl -G http://localhost/restconf`
+* Run tests: `sudo docker exec -it clixon-system bash -c 'cd /clixon/clixon/test; exec ./all.sh'`
+
+See [../docker](../docker) for more info.
 
 ## Does Clixon support event streams? 
 
