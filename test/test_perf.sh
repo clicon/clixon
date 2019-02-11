@@ -115,7 +115,7 @@ new "netconf add small (1 entry) config"
 expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon"><y><a>x</a><b>y</b></y></x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf get $req small config"
-/usr/bin/time -p for (( i=0; i<$req; i++ )); do
+time -p for (( i=0; i<$req; i++ )); do
     rnd=$(( ( RANDOM % $number ) ))
     echo "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=$rnd][b=$rnd]\" /></get-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
