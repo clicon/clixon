@@ -44,7 +44,7 @@ SUBDIRS  = base
 SUBDIRS  += system
 #SUBDIRS += cluster
 
-.PHONY: all clean distclean depend install-include install uninstall
+.PHONY: all clean distclean depend install-include install uninstall test
 
 all:	$(SUBDIRS)
 
@@ -52,6 +52,9 @@ clean:
 
 distclean: clean
 	rm -f Makefile *~ .depend
+
+test:
+	(cd system && $(MAKE) $(MFLAGS) test)
 
 depend:
 

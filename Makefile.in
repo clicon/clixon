@@ -144,7 +144,7 @@ example:
 # Run a clixon test container.
 # Alt: cd test; ./all.sh
 test:
-	(cd docker/system && $(MAKE) $(MFLAGS) test)
+	(cd docker && $(MAKE) $(MFLAGS) test)
 
 docker:
 	for i in docker; \
