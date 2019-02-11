@@ -121,19 +121,19 @@ time -p for (( i=0; i<$req; i++ )); do
 done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
 
 new "netconf get $req restconf small config"
-/usr/bin/time -p for (( i=0; i<$req; i++ )); do
+time -p for (( i=0; i<$req; i++ )); do
     rnd=$(( ( RANDOM % $number ) ))
 #XXX    curl -sX PUT -d {"y":{"a":"$rnd","b":"$rnd"}} http://localhost/restconf/data/x/y=$rnd,$rnd 
 done 
 
 new "netconf add $req small config"
-/usr/bin/time -p for (( i=0; i<$req; i++ )); do
+time -p for (( i=0; i<$req; i++ )); do
     rnd=$(( ( RANDOM % $number ) ))
     echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
 
 new "netconf add $req restconf small config"
-/usr/bin/time -p for (( i=0; i<$req; i++ )); do
+time -p for (( i=0; i<$req; i++ )); do
     rnd=$(( ( RANDOM % $number ) ))
     curl -sG http://localhost/restconf/data/x/y=$rnd,$rnd > /dev/null
 done 
@@ -157,7 +157,7 @@ new "netconf commit large leaf-list config"
 expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf add $req small leaf-list config"
-/usr/bin/time -p for (( i=0; i<$req; i++ )); do
+time -p for (( i=0; i<$req; i++ )); do
     rnd=$(( ( RANDOM % $number ) ))
     echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>$rnd</c></x></config></edit-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
