@@ -61,8 +61,10 @@ CLI_PLUGIN      = $(APPNAME)_cli.so
 NETCONF_PLUGIN  = $(APPNAME)_netconf.so
 RESTCONF_PLUGIN = $(APPNAME)_restconf.so
 
-
-PLUGINS = $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN)
+PLUGINS = $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN)
+ifeq ($(with_restconf),yes)
+PLUGINS += $(RESTCONF_PLUGIN)
+endif
 
 .PHONY: all clean depend install 
 
@@ -102,14 +104,18 @@ NETCONF_OBJ  = $(NETCONF_SRC:%.c=%.o)
 $(NETCONF_PLUGIN): $(NETCONF_OBJ)
 	$(CC) -Wall -shared -o $@ -lc $^
 
+# See configure.ac
 # RESTCONF frontend plugin
 RESTCONF_SRC  = $(APPNAME)_restconf.c
 RESTCONF_OBJ  = $(RESTCONF_SRC:%.c=%.o)
 $(RESTCONF_PLUGIN): $(RESTCONF_OBJ)
 	$(CC) -Wall -shared -o $@ -lc $^ 
 
-SRC     = $(BE_SRC) $(BE2_SRC) $(CLI_SRC) $(NETCONF_SRC) $(RESTCONF_SRC)
-OBJS    = $(BE_OBJ) $(BE2_OBJ) $(CLI_OBJ) $(NETCONF_OBJ) $(RESTCONF_OBJ)
+SRC     = $(BE_SRC) $(BE2_SRC) $(CLI_SRC) $(NETCONF_SRC)
+SRC    +=  $(RESTCONF_SRC)
+
+OBJS    = $(BE_OBJ) $(BE2_OBJ) $(CLI_OBJ) $(NETCONF_OBJ)
+OBJS   += $(RESTCONF_OBJ)
 
 clean:
 	rm -f $(PLUGINS) $(OBJS) 
@@ -117,7 +123,7 @@ clean:
 distclean: clean
 	rm -f Makefile *~ .depend
 
-install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN) $(APPNAME).xml
+install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml
 	install -d -m 0755 $(DESTDIR)$(sysconfdir)
 	install -m 0644 $(APPNAME).xml $(DESTDIR)$(sysconfdir)
 #	install -m 0644 $(APPNAME).xml $(DESTDIR)$(CLIXON_DEFAULT_CONFIG)
@@ -129,15 +135,15 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NET
 	install -m 0644 $(INSTALLFLAGS) $(BE_PLUGIN) $(BE2_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/backend
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/netconf
 	install -m 0644 $(INSTALLFLAGS) $(NETCONF_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/netconf
+ifeq ($(with_restconf),yes)
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/restconf
 	install -m 0644 $(INSTALLFLAGS) $(RESTCONF_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/restconf
+endif
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/clispec
 	install -m 0644 $(CLISPECS) $(DESTDIR)$(libdir)/$(APPNAME)/clispec
 	install -d -m 0755 $(DESTDIR)$(localstatedir)/$(APPNAME)
 
 uninstall: 
-	echo "libdir:$(libdir)"
-	echo "libdir2:$(libdir2)"
 	rm -rf $(DESTDIR)$(sysconfdir)/$(APPNAME).xml
 	rm -rf $(DESTDIR)$(datarootdir)/$(APPNAME)
 	rm -rf $(DESTDIR)$(localstatedir)/$(APPNAME)

@@ -44,7 +44,6 @@ SHELL	= /bin/sh
 SUBDIRS  = backend
 SUBDIRS += cli
 SUBDIRS += netconf
-SUBDIRS += restconf
 
 # See configure.ac
 ifeq ($(with_restconf),yes)
