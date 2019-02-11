@@ -53,6 +53,7 @@ CFLAGS  	= @CFLAGS@ -rdynamic -fPIC
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
 
 INCLUDES 	= -I$(includedir) @INCLUDES@ 
+CPPFLAGS  	= @CPPFLAGS@ -fPIC
 
 BE_PLUGIN       = $(APPNAME)_backend.so
 BE2_PLUGIN      = $(APPNAME)_backend_nacm.so
@@ -61,14 +62,17 @@ NETCONF_PLUGIN  = $(APPNAME)_netconf.so
 RESTCONF_PLUGIN = $(APPNAME)_restconf.so
 
 
-# Example docker image. PLEASE CHANGE THIS
-IMAGE           = olofhagsand/clixon_example
-
 PLUGINS = $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN) $(RESTCONF_PLUGIN)
 
-.PHONY: all clean depend install docker push
+.PHONY: all clean depend install 
 
 all:	$(PLUGINS)
+
+.SUFFIXES: .c .o
+
+# implicit rule
+.c.o:
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
 
 CLISPECS = $(APPNAME)_cli.cli
 
@@ -130,12 +134,6 @@ install: $(YANGSPECS) $(CLISPECS) $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NET
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/clispec
 	install -m 0644 $(CLISPECS) $(DESTDIR)$(libdir)/$(APPNAME)/clispec
 	install -d -m 0755 $(DESTDIR)$(localstatedir)/$(APPNAME)
-
-docker:
-	sudo docker build -t $(IMAGE) .
-
-push:
-	sudo docker push $(IMAGE)
 
 uninstall: 
 	echo "libdir:$(libdir)"
