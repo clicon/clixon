@@ -46,6 +46,8 @@
 #include <sys/socket.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <sys/time.h> /* gettimeofday */
+#include <sys/types.h>
 
 /*
  * CLIXON version macros

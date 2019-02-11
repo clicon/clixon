@@ -56,6 +56,7 @@
 #include <sys/ucred.h>
 #endif
 #define __USE_GNU
+#define _GNU_SOURCE /* for ucred */
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <sys/types.h>
