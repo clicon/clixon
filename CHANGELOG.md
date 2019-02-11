@@ -3,7 +3,7 @@
 ## 3.9.0 (Preliminary Target: February 2019)
 
 ### Major New features
-1. Correct XML namespace handling
+* Correct XML namespace handling
   * According to [XML 1.0](https://www.w3.org/TR/2009/REC-xml-names-20091208) in restconf and Netconf.
   * Remaining deviations from strict namespace handling:
     * edit-config xpath select statement does not support namespaces
@@ -56,7 +56,7 @@
     ```
   * To keep previous non-strict namespace handling (backwards compatible), set CLICON_XML_NS_STRICT to false.
   * See [https://github.com/clicon/clixon/issues/49]
-1. Yang upgrade (RFC7950)
+* Yang upgrade (RFC7950)
   * YANG parser cardinality checked (https://github.com/clicon/clixon/issues/48)
     * See https://github.com/clicon/clixon/issues/84
   * RPC method input parameters validated
@@ -76,7 +76,7 @@
       * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
     * CLICON_YANG_MAIN_FILE Provides a filename with a single module filename.
     * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
-1. NACM (RFC8341)
+* NACM (RFC8341)
   * Experimental support, no performance enhancements and need further testing
   * Incoming RPC Message validation is supported (3.4.4)
   * Data Node Access validation is supported (3.4.5), except:

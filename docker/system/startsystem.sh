@@ -45,6 +45,15 @@ server {
 }
 EOF
 
+# This is a clixon site test file. Disable all model testing.
+cat <<EOF > /clixon/clixon/test/site.sh
+# Add your local site specific env variables (or tests) here.
+MODELS=0 # Dont run yangmodels/openconfig  tests
+IETFRFC=/clixon/clixon/yang/standard
+EOF
+
+
+
 # Start nginx
 #/usr/sbin/nginx -g 'daemon off;' -c /etc/nginx/nginx.conf
 /usr/sbin/nginx -c /etc/nginx/nginx.conf
@@ -58,8 +67,6 @@ su -c "/www-data/clixon_restconf -l f/www-data/restconf.log -D $DBG" -s /bin/sh 
 >&2 echo "start clixon_backend:"
 /usr/local/sbin/clixon_backend -FD $DBG -s running -l e # logs on docker logs
 
-
-# Start clixon cli in foreground
-#/usr/local/bin/clixon_cli -D $DBG
-
-#/bin/sleep 100000000
+# Alt: let backend be in foreground, but test scripts may
+# want to restart backend
+/bin/sleep 100000000

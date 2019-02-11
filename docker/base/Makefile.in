@@ -30,68 +30,39 @@
 #
 # ***** END LICENSE BLOCK *****
 #
+VPATH       	= @srcdir@
+srcdir  	= @srcdir@
+top_srcdir  	= @top_srcdir@
+CC		= @CC@
+CFLAGS  	= @CFLAGS@ 
+LDFLAGS 	= @LDFLAGS@
+LIBS    	= @LIBS@
 
-# This application could use the base image, but it does not at this point.
-#FROM olofhagsand/clixon 
-FROM debian
-MAINTAINER Olof Hagsand <olof@hagsand.se>
+# docker.hub image. PLEASE CHANGE THIS IF YOU PUSH YOUR OWN
+IMG   = olofhagsand/clixon # base image
 
-# Clixon dependenies (not needed if build from base)
-RUN apt-get update && apt-get install -y \
-  git make gcc flex bison \
-  libfcgi-dev \
-  libcurl4-openssl-dev
+SHELL	= /bin/sh
 
-# Application-specific
-RUN apt-get update && apt-get install -y nginx
+.PHONY: all clean distclean docker push depend install-include install uninstall
 
-# Test-specific
-RUN apt-get update && apt-get install -y sudo curl procps # for test scripts
+all:	
+	echo "Run make docker to build docker image"
 
-# The example uses "clicon" group
-RUN groupadd clicon
-RUN usermod -a -G clicon www-data
+clean:
 
-# Create a directory to hold source-code, dependencies etc
-RUN mkdir /clixon
-WORKDIR /clixon
+distclean: clean
+	rm -f Makefile *~ .depend
 
-# Clone and build cligen (not necessary if use base image)
-RUN git clone https://github.com/olofhagsand/cligen.git
-WORKDIR /clixon/cligen
-RUN ./configure
-RUN make
-RUN make install
+docker: Dockerfile
+	sudo docker build -t $(IMG) .  # --no-cache
 
-# Copy Clixon from local dir
-RUN mkdir /clixon/clixon
-WORKDIR /clixon/clixon
-COPY clixon .
+push:
 
-RUN ./configure
-RUN make
-RUN make install
-RUN make install-include
+depend:
 
-WORKDIR /clixon/clixon/example
-RUN make
-RUN make install
-RUN install example.xml /usr/local/etc/clixon.xml
+install-include:
 
-RUN ldconfig
+install:
 
-# Copy startscript
-WORKDIR /clixon
-COPY startsystem.sh startsystem.sh 
-RUN install startsystem.sh /usr/local/bin/
-
-# Expose nginx port for restconf
-EXPOSE 80
-
-# Log to stderr.
-CMD /usr/local/bin/startsystem.sh
-
-
-
-
+uninstall:
 

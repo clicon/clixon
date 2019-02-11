@@ -8,6 +8,8 @@ Makefile
 apps/Makefile
 apps/*/Makefile
 docker/Makefile
+docker/base/Makefile
+docker/system/Makefile
 etc/Makefile
 example/Makefile
 lib/Makefile

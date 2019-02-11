@@ -46,7 +46,8 @@ testname=
 : ${OPENCONFIG=$(pwd)/public}
 
 # Standard IETF RFC yang files. 
-: ${IETFRFC=$YANGMODELS/standard/ietf/RFC}
+: ${IETFRFC=../yang/standard}
+#: ${IETFRFC=$YANGMODELS/standard/ietf/RFC}
 
 # For memcheck
 #clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"

@@ -38,29 +38,20 @@ CFLAGS  	= @CFLAGS@
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
 
-# Example docker image. PLEASE CHANGE THIS IF YOU PUSH
-IMG_BASE      = olofhagsand/clixon # base image
-
 SHELL	= /bin/sh
 
-SUBDIRS  = system
+SUBDIRS  = base
+SUBDIRS  += system
 #SUBDIRS += cluster
 
-.PHONY: all clean depend install docker push
+.PHONY: all clean distclean depend install-include install uninstall
 
 all:	$(SUBDIRS)
-	echo "Run make docker to build docker image"
 
 clean:
 
 distclean: clean
 	rm -f Makefile *~ .depend
-
-docker: Dockerfile
-	sudo docker build -t $(IMG_BASE) .  # --no-cache
-
-push:
-	sudo docker push $(IMG_BASE)
 
 depend:
 

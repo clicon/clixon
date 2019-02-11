@@ -243,6 +243,7 @@ AC_OUTPUT(Makefile
 	  extras/rpm/Makefile
 	  docker/Makefile
   	  docker/system/Makefile
+    	  docker/base/Makefile
 	  datastore/Makefile
 	  datastore/text/Makefile
   	  util/Makefile 
