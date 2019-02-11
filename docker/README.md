@@ -1,4 +1,4 @@
-# Clixon container images
+# Clixon containers
 
 This directory contains sub-directories with examples of Clixon docker images:
 

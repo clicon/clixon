@@ -241,7 +241,7 @@ The example below shows enabling a specific feature; enabling all features in mo
 Features can be probed by using RFC 7895 Yang module library which provides
 information on all modules and which features are enabled.
 
-## Can I run Clixon as docker containers?
+## Can I run Clixon as a container?
 
 Yes, Clixon has two examples on how to build docker containers. A [base](../docker/base) image and a complete [example system](../docker/system).
 

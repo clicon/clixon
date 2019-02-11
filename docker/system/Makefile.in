@@ -63,8 +63,8 @@ docker: clixon Dockerfile
 
 # Start the clixon system container and run the test script
 test: docker
-	./start.sh
-	sudo docker exec -it clixon-system bash -c 'cd /clixon/clixon/test; exec ./all.sh'
+	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
+	sudo docker exec -it clixon-system bash -c 'cd /clixon/clixon/test && ./all.sh'
 
 push:
 
