@@ -1,6 +1,7 @@
 #!/bin/bash
 # Parse yangmodels from https://github.com/YangModels/yang
 # Notes:
+# - Env-var MODELS should be 1
 # - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)
 # - Only cisco/nx/9.2-2 # Many other versions
 # - Only cisco/xe/1631  # Many other versions
@@ -30,7 +31,8 @@ cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang
 
 if [ ! -d "$YANGMODELS" ]; then
-    err "Hmm Yangmodels dir does not seem to exist, try git clone https://github.com/YangModels/yang?"
+#    err "Hmm Yangmodels dir does not seem to exist, try git clone https://github.com/YangModels/yang?"
+    exit
 fi
 
 # Experimental IEEE

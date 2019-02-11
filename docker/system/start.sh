@@ -6,11 +6,24 @@
 
 >&2 echo "Running script: $0"
 
-# include err(), stat() and other functions
-. ./lib.sh
+pwd
+
+# Error function
+# usage: err $msg
+err(){
+    echo  "\e[31m\n[Error $1]"
+    echo  "\e[0m"
+    exit 1
+}
 
 # Turn on debug in containers (restconf, backend)
-DBG=${DBG:-1}
+DBG=${DBG:-0}
+
+# Expose other host port than port 80
+PORT=${PORT:-80}
+
+# Initial running datastore content (other than empty)
+STORE=${STORE:-}
 
 CONFIG0=$(cat <<EOF
 <config>
@@ -38,18 +51,14 @@ EOF
 )
 
 CONFIG=${CONFIG:-$CONFIG0}
-STORE=${STORE:-}
 
 # Start clixon-example backend
 # -p 4535 to access via cli from host
 >&2 echo -n "Starting Backend..."
-sudo docker run -p 80:80 --rm -e DBG=$DBG -e CONFIG="$CONFIG" -e STORE="$STORE" -td clixon/clixon-system || err "Error starting clixon-system"
+sudo docker run -p $PORT:80 --name clixon-system --rm -e DBG=$DBG -e CONFIG="$CONFIG" -e STORE="$STORE" -td clixon/clixon-system || err "Error starting clixon-system"
 
 >&2 echo "clixon-system started"
 
-name=clixon/clixon-system
-ps=$(sudo docker ps -f ancestor=$name|tail -n +2|grep $name|awk '{print $1}')
-echo "sudo docker exec -it $ps clixon_cli # example command"
 
 
 

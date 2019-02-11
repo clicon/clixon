@@ -39,7 +39,7 @@ LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
 
 # Example docker image. PLEASE CHANGE THIS IF YOU PUSH
-IMG_SYSTEM   = clixon/clixon-system
+IMG   = clixon/clixon-system
 
 SHELL	= /bin/sh
 
@@ -48,13 +48,18 @@ SHELL	= /bin/sh
 all:	
 	echo "Run make docker to build docker image"
 
+# (recursively) clone the repo from top-level - NOTE changes must be committed
+clixon:
+	git clone file://$(realpath ${top_srcdir})
+
 clean:
+	rm -rf clixon # clone of top-srcdir
 
 distclean: clean
 	rm -f Makefile *~ .depend
 
-docker: Dockerfile
-	sudo docker build -t $(IMG_SYSTEM) .  # --no-cache
+docker: clixon Dockerfile
+	sudo docker build -t $(IMG) .  # --no-cache
 
 push:
 

@@ -112,7 +112,6 @@ ncname     {namestart}{namechar}*
                             return NAME; /* rather be catch-all */
                           }
 <START>\:               return *clixon_xml_parsetext;
-<START>\n             { _YA->ya_linenum++;}
 <START><<EOF>>        { return MY_EOF; }
 <START>"<?xml"        { BEGIN(TEXTDECL); return BXMLDCL;}
 <START>"<?"           { BEGIN(PIDECL); return BQMARK;}

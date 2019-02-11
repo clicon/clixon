@@ -3,8 +3,9 @@
 # Notes:
 # - openconfig test suites are patched to counter Clixon issues as follows:
 #    - release/models/mpls/openconfig-mpls-te.yang
-#      issue: https://github.com/clicon/clixon/issues/60
-# - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)
+#      issue: https://github.com/clicon/clixon/issues/6
+# - Env-var MODELS should be 1
+# - Env-var OPENCONFIG should point to checkout place. (define it in site.sh for example)
 
 APPNAME=example
 
@@ -20,7 +21,8 @@ fyang=$dir/test.yang
 
 new "openconfig"
 if [ ! -d "$OPENCONFIG" ]; then
-    err "Hmm Openconfig dir does not seem to exist, try git clone https://github.com/openconfig/public?"
+#    err "Hmm Openconfig dir does not seem to exist, try git clone https://github.com/openconfig/public?"
+    exit
 fi
 
 OCDIR=$OPENCONFIG/release/models
