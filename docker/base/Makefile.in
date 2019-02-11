@@ -39,7 +39,7 @@ LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
 
 # docker.hub image. PLEASE CHANGE THIS IF YOU PUSH YOUR OWN
-IMG   = olofhagsand/clixon # base image
+IMG   = clixon/clixon # base image
 
 SHELL	= /bin/sh
 
@@ -53,6 +53,7 @@ clixon:
 	git clone file://$(realpath ${top_srcdir})
 
 clean:
+	rm -rf clixon # clone of top-srcdir
 
 distclean: clean
 	rm -f Makefile *~ .depend
@@ -61,7 +62,7 @@ docker: clixon Dockerfile
 	sudo docker build -t $(IMG) .  # --no-cache
 
 push:
-
+	sudo docker push $(IMG)
 depend:
 
 install-include:

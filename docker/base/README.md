@@ -1,7 +1,7 @@
 # Clixon base docker image
 
 This directory contains code for building and pushing the clixon base docker
-container. By default it is pushed to olofhagsand/clixon, but you can change
+container. By default it is pushed to docker hub clixon/clixon, but you can change
 the IMAGE in Makefile.in and push it to another name.
 
 The clixon docker base image can be used to build clixon

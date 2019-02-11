@@ -127,7 +127,8 @@
   * Syntactically Correct handling of '<?' (processing instructions) and '<?xml' (XML declaration)
   * XML prolog syntax for 'well-formed' XML
   * `<!DOCTYPE` (ie DTD) is not supported.
-* Added Clixon example full system docker container, see [docker/system].
+* Added Clixon example full system docker container, see [docker/system](docker/system).
+* Changed clixon base system container to use Alpine [docker/base](docker/base).
 * clixon-config YAML file has new revision: 2019-02-06.
 * Replaced all calls to (obsolete) `cli_output` with `fprintf`
 * Added _experimental_ config option `CLICON_CLI_UTF8` default set to 0.

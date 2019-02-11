@@ -31,14 +31,14 @@
 # ***** END LICENSE BLOCK *****
 #
 
-FROM debian
+FROM alpine
 MAINTAINER Olof Hagsand <olof@hagsand.se>
-ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get install -y \
-  git make gcc flex bison \
-  libfcgi-dev \
-  libcurl4-openssl-dev
+# For clixon and cligen
+RUN apk add --update git make build-base gcc flex bison fcgi-dev curl-dev
+
+# For debug
+RUN apk add --update bash nano
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
@@ -58,15 +58,12 @@ RUN mkdir /clixon/clixon
 WORKDIR /clixon/clixon
 COPY clixon .
 
-# Build clixon
-RUN ./configure
+# Build clixon (without restconf if you dont have nginx)
+RUN ./configure --without-restconf
 RUN make
 RUN make install
 RUN make install-include
 
-RUN rm -rf /clixon
-
-RUN ldconfig
 
 
 
