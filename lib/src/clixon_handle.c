@@ -43,6 +43,7 @@
 #include <errno.h>
 #include <string.h>
 #include <assert.h>
+#include <sys/time.h>
  
 #include <cligen/cligen.h>
 
