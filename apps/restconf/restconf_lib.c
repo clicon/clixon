@@ -197,7 +197,7 @@ forbidden(FCGX_Request *r)
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
     FCGX_FPrintF(r->out, "Status: 403\r\n"); /* 403 forbidden */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Grideye Forbidden</h1>\n");
+    FCGX_FPrintF(r->out, "<h1>Forbidden</h1>\n");
     FCGX_FPrintF(r->out, "The requested URL %s was forbidden.\n", path);
    return 0;
 }
@@ -267,7 +267,7 @@ internal_server_error(FCGX_Request *r)
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
     FCGX_FPrintF(r->out, "Status: 500\r\n"); /* 500 internal server error */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Grideye Internal server error when accessing %s</h1>\n", path);
+    FCGX_FPrintF(r->out, "<h1>Internal server error when accessing %s</h1>\n", path);
     return 0;
 }
 

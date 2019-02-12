@@ -504,7 +504,7 @@ usage(clicon_handle h,
     exit(0);
 }
 
-/*! Main routine for grideye fastcgi API
+/*! Main routine for fastcgi API
  */
 int 
 main(int    argc, 

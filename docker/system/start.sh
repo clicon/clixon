@@ -1,12 +1,9 @@
 #!/bin/bash
-# Build grideye containers, start all containers, setup networking
 # Usage: ./startup.sh
 # Debug: DBG=1 ./startup.sh
 # See also cleanup.sh
 
 >&2 echo "Running script: $0"
-
-pwd
 
 # Error function
 # usage: err $msg
@@ -53,7 +50,6 @@ EOF
 CONFIG=${CONFIG:-$CONFIG0}
 
 # Start clixon-example backend
-# -p 4535 to access via cli from host
 >&2 echo -n "Starting Backend..."
 sudo docker run -p $PORT:80 --name clixon-system --rm -e DBG=$DBG -e CONFIG="$CONFIG" -e STORE="$STORE" -td clixon/clixon-system || err "Error starting clixon-system"
 

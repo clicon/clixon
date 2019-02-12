@@ -37,11 +37,11 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 # For clixon and cligen
 RUN apk add --update git make build-base gcc flex bison fcgi-dev curl-dev
 
-# For debug
-RUN apk add --update bash nano
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
+RUN mkdir /clixon/build
+
 WORKDIR /clixon
 
 # Clone cligen
@@ -49,7 +49,7 @@ RUN git clone https://github.com/olofhagsand/cligen.git
 
 # Build cligen
 WORKDIR /clixon/cligen
-RUN ./configure
+RUN ./configure --prefix=/clixon/build
 RUN make
 RUN make install
 
@@ -59,10 +59,32 @@ WORKDIR /clixon/clixon
 COPY clixon .
 
 # Build clixon (without restconf if you dont have nginx)
-RUN ./configure --without-restconf
+RUN ./configure --without-restconf  --prefix=/clixon/build --with-cligen=/clixon/build
 RUN make
 RUN make install
 RUN make install-include
+
+WORKDIR /clixon/clixon/example
+RUN DESTDIR=/clixon/build make
+RUN make install
+
+#
+# Stage 2
+#
+
+FROM alpine
+MAINTAINER Olof Hagsand <olof@hagsand.se>
+
+# For clixon and cligen
+RUN apk add --update flex bison # fcgi-dev curl-dev
+
+# Run a clicon group - actually an application may want another
+RUN addgroup clicon
+
+COPY --from=0 /clixon/build/ /usr/local/
+
+# For debug
+#RUN apk add --update bash nano
 
 
 

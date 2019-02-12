@@ -57,6 +57,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #define __USE_GNU    /* strverscmp */
+#define _GNU_SOURCE
 #include <string.h>
 #include <arpa/inet.h>
 #include <regex.h>
