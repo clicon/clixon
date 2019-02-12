@@ -32,7 +32,6 @@
 #
 
 # This application could use the base image, but it does not at this point.
-#FROM olofhagsand/clixon 
 FROM debian
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 

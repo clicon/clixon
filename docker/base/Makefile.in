@@ -38,7 +38,7 @@ CFLAGS  	= @CFLAGS@
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
 
-# docker.hub image. PLEASE CHANGE THIS IF YOU PUSH YOUR OWN
+# docker.hub image. CHANGE THIS IF YOU PUSH YOUR OWN
 IMG   = clixon/clixon # base image
 
 SHELL	= /bin/sh
