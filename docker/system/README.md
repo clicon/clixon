@@ -37,11 +37,23 @@ Example:
   $ DBG=1 PORT=8080 ./start.sh
 ```
 
-Once running you can access it as follows:
-* CLI: `sudo docker exec -it clixon-system clixon_cli`
-* Netconf: `sudo docker exec -it clixon-system clixon_netconf`
-* Restconf: `curl -G http://localhost/restconf`
-* Run tests: `sudo docker exec -it clixon-system bash -c 'cd /clixon/clixon/test; exec ./all.sh'`
+Once running you can access it in different ways as follows:
+As CLI:
+```
+  $ sudo docker exec -it clixon-system clixon_cli
+```
+As netconf via stdin/stdout:
+```
+  $ sudo docker exec -it clixon-system clixon_netconf
+```
+As restconf using curl on exposed port 80:
+```
+  $ curl -G http://localhost/restconf
+```
+Or run tests:
+```
+  $ sudo docker exec -it clixon-system bash -c 'cd /clixon/clixon/test&& ./all.sh'
+```
 
 To check status and then kill it:
 ```
@@ -49,4 +61,4 @@ To check status and then kill it:
   $ ./cleanup.sh 
 ```
 
-You can also trigger the test scripts inside the container using `make test`.
+You trigger the test scripts inside the container using `make test`.

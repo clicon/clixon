@@ -150,7 +150,7 @@ sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 sleep 1
 new "start restconf daemon (-a is enable basic authentication)"
-sudo su -c "$clixon_restconf -f $cfg -D $DBG -- -a" -s /bin/sh www-data &
+sudo su -c "$clixon_restconf -f $cfg $RCLOG -D $DBG -- -a" -s /bin/sh www-data &
 
 sleep $RCWAIT
 

@@ -32,6 +32,10 @@ testname=
 # If set, enable debugging (of backend)
 : ${DBG:=0}
 
+# Where to log restconf. Some systems may not have syslog,
+# eg logging to a file: RCLOG="-l f/www-data/restconf.log"
+: ${RCLOG:=}
+
 # If reset, do NOT run tests with external yang models.
 # This involves downloading
 # https://github.com/openconfig/public and https://github.com/YangModels/yang 

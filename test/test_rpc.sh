@@ -49,7 +49,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-sudo su -c "$clixon_restconf -f $cfg -D $DBG" -s /bin/sh www-data &
+sudo su -c "$clixon_restconf -f $cfg $RCLOG -D $DBG" -s /bin/sh www-data &
 
 sleep $RCWAIT
 

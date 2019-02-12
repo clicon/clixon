@@ -51,6 +51,7 @@ CLIXON_DEFAULT_CONFIG = @CLIXON_DEFAULT_CONFIG@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ -rdynamic -fPIC 
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
+with_restconf	= @with_restconf@
 
 INCLUDES 	= -I$(includedir) @INCLUDES@ 
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
