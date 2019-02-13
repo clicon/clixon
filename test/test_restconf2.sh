@@ -89,6 +89,9 @@ sleep $RCWAIT
 
 new "restconf tests"
 
+new "restconf POST tree without key"
+expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"type":"regular"}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "name"},"error-severity": "error","error-message": "Mandatory key"}}}'
+
 new "restconf POST initial tree"
 expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 ""
 
@@ -110,7 +113,10 @@ new "restconf GET if-type"
 expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=local0/type" 0 '{"example:type": "regular"}'
 
 new "restconf POST interface without mandatory type"
-expectfn 'curl -s -X POST -d {"interface":{"name":"TEST"}} http://localhost/restconf/data/example:cont1' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "type"},"error-severity": "error","error-message": "Mandatory variable"}}}'
+expectfn 'curl -s -X POST http://localhost/restconf/data/example:cont1 -d {"interface":{"name":"TEST"}} http://localhost/restconf/data/example:cont1' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "type"},"error-severity": "error","error-message": "Mandatory variable"}}}'
+
+new "restconf POST interface without mandatory key"
+expectfn 'curl -s -X POST http://localhost/restconf/data/example:cont1 -d {"interface":{"type":"regular"}}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "name"},"error-severity": "error","error-message": "Mandatory key"}}}'
 
 new "restconf POST interface"
 expectfn 'curl -s -X POST -d {"example:interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/example:cont1' 0 ""

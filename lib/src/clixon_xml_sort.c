@@ -252,11 +252,15 @@ xml_cmp(const void* arg1,
 	cvk = y1->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
 	cvi = NULL;
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	    keyname = cv_string_get(cvi);
-	    b1 = xml_find_body(x1, keyname);
-	    b2 = xml_find_body(x2, keyname);
-	    if ((equal = strcmp(b1,b2)) != 0)
-		goto done;
+	    keyname = cv_string_get(cvi); /* operational data may have NULL keys*/
+	    if ((b1 = xml_find_body(x1, keyname)) == NULL)
+		equal = -1;
+	    else if ((b2 = xml_find_body(x2, keyname)) == NULL)
+		equal = 1;
+	    else{
+		if ((equal = strcmp(b1,b2)) != 0)
+		    goto done;
+	    }
 	}
 	equal = 0;
 	break;

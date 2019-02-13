@@ -203,13 +203,13 @@ validate_common(clicon_handle       h,
 	xml_flag_set(xn, XML_FLAG_DEL);
 	xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_DEL);
 	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-    }    
+    }
     for (i=0; i<td->td_alen; i++){ /* Also down */
 	xn = td->td_avec[i];
 	xml_flag_set(xn, XML_FLAG_ADD);
 	xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD);
 	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-    }    
+    }
     for (i=0; i<td->td_clen; i++){ /* Also up */
 	xn = td->td_scvec[i];
 	xml_flag_set(xn, XML_FLAG_CHANGE);
@@ -218,7 +218,6 @@ validate_common(clicon_handle       h,
 	xml_flag_set(xn, XML_FLAG_CHANGE);
 	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }    
-
     /* 4. Call plugin transaction start callbacks */
     if (plugin_transaction_begin(h, td) < 0)
 	goto done;
@@ -357,7 +356,8 @@ from_client_commit(clicon_handle h,
 		goto done;
         goto ok;
     }
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    if (ret == 1)
+	cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
  done:

@@ -501,9 +501,27 @@ check_mandatory(cxobj     *xt,
     yang_stmt *y;
     yang_stmt *yc;
     yang_node *yp;
+    cvec      *cvk = NULL; /* vector of index keys */
+    cg_var    *cvi;
+    char      *keyname;
     
     for (i=0; i<yt->ys_len; i++){
 	yc = yt->ys_stmt[i];
+	/* Check if a list does not have mandatory key leafs */
+	if (yt->ys_keyword == Y_LIST &&
+	    yc->ys_keyword == Y_KEY &&
+	    yang_config(yt)){
+	    cvk = yt->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	    cvi = NULL;
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+		keyname = cv_string_get(cvi);	    
+		if (xml_find_type(xt, NULL, keyname, CX_ELMNT) == NULL){
+		    if (netconf_missing_element(cbret, "application", keyname, "Mandatory key") < 0)
+			goto done;
+		    goto fail;
+		}
+	    }
+	}
 	if (!yang_mandatory(yc))
 	    continue;
 	switch (yc->ys_keyword){
@@ -793,6 +811,9 @@ xml_yang_validate_all(cxobj   *xt,
 }
 
 /*! Translate a single xml node to a cligen variable vector. Note not recursive 
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (cbret set)
+ * @retval    -1     Error
  */
 int
 xml_yang_validate_all_top(cxobj   *xt, 
