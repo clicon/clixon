@@ -154,19 +154,21 @@ The Clixon CLI uses [CLIgen](http://github.com/olofhagsand/cligen) best describe
 
 Clixon adds some features and structure to CLIgen which include:
 * A plugin framework for both textual CLI specifications(.cli) and object files (.so)
-  * The CLI specification follows CLIgen syntax with some extensions given below.
-  * Object files contained compiled C functions which may be referenced by CLI specification _callbacks_. A CLI API struct is given in the plugin. See [example](example/README.md#plugins).
-* The CLI specification is enhanced with the following CLIgen variables:
-  * `CLICON_PROMPT` is a string describing the CLI prompt using a very simple format with: `%H`, `%U` and `%T`.
-  * `CLICON_PLUGIN` is the name of the object file containing callbacks in this file.
-  * `CLICON_MODE` A colon separated list of CLIgen `modes` where the syntax in this file is added.
-* Clixon may generate a command syntax from the Yang specification which can be refernced as `@datamodel`. This is useful if you do not want to hand-craft CLI syntax for configuration syntax. Example:
+* Object files contains compiled C functions referenced by callbacks in the CLI specification. For example, in the cli spec command: `a,fn()`, `fn` must exist oin the object file as a C function.
+  * A CLI API struct is given in the plugin. See [example](example/README.md#plugins).
+* A CLI specification file is enhanced with the following CLIgen variables:
+  * `CLICON_MODE`: A colon-separated list of CLIgen `modes`. The CLI spec in the file are added to _all_ modes specified in the list.
+  * `CLICON_PROMPT`: A string describing the CLI prompt using a very simple format with: `%H`, `%U` and `%T`.
+  * `CLICON_PLUGIN`: the name of the object file containing callbacks in this file.
+
+* Clixon generates a command syntax from the Yang specification that can be refernced as `@datamodel`. This is useful if you do not want to hand-craft CLI syntax for configuration syntax. Example:
   ```
   set    @datamodel, cli_set();
   merge  @datamodel, cli_merge();
   create @datamodel, cli_create();
   show   @datamodel, cli_show_auto("running", "xml");		   
   ```
+  The commands (eg `cli_set`) will be called with the first argument an api-path to the referenced object.
 * The CLIgen `treename` syntax does not work.
 
 ### Large CLI specifications
