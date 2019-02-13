@@ -284,26 +284,6 @@ notimplemented(FCGX_Request *r)
     return 0;
 }
 
-/*! Specialization of clicon_debug with xml tree */
-int 
-clicon_debug_xml(int    dbglevel, 
-		 char  *str,
-		 cxobj *x)
-{
-    int   retval = -1;
-    cbuf *cb;
-
-    if ((cb = cbuf_new()) == NULL)
-	goto done;
-    if (clicon_xml2cbuf(cb, x, 0, 0) < 0)
-	goto done;
-    clicon_debug(1, "%s %s", str, cbuf_get(cb));
-    retval = 0;
- done:
-    if (cb!=NULL)
-	cbuf_free(cb);
-    return retval;
-}
 
 /*!
  * @param[in]  r        Fastcgi request handle

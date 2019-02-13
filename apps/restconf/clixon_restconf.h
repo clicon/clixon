@@ -51,8 +51,6 @@ int notfound(FCGX_Request *r);
 int conflict(FCGX_Request *r);
 int internal_server_error(FCGX_Request *r);
 int notimplemented(FCGX_Request *r);
-
-int clicon_debug_xml(int dbglevel, char *str, cxobj *cx);
 int test(FCGX_Request *r, int dbg);
 cbuf *readdata(FCGX_Request *r);
 int get_user_cookie(char *cookiestr, char  *attribute, char **val);

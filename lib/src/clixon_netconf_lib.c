@@ -983,6 +983,11 @@ netconf_trymerge(cxobj       *x,
     char  *reason = NULL;
     cxobj *xc;
     
+    if (*xret == NULL){
+	if ((*xret = xml_dup(x)) == NULL)
+	    goto done;
+	goto ok;
+    }
     if (xml_merge(*xret, x, yspec, &reason) < 0)
 	goto done;
     if (reason){
@@ -993,6 +998,7 @@ netconf_trymerge(cxobj       *x,
 	retval = 1;
 	goto done;
     }
+ ok:
     retval = 0;
  done:
     if (reason)

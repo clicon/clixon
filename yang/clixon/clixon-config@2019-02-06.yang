@@ -135,7 +135,10 @@ module clixon-config {
 	leaf CLICON_CONFIGFILE{
 	    type string;
 	    description
-		"Location of configuration-file for default values (this file)";
+               "Location of configuration-file for default values (this file).
+                 Default is CLIXON_DEFAULT_CONFIG=/usr/local/etc/clicon.xml
+                 set in configure. Note that due to bootstrapping, a default
+                 value here does not work.";
 	}
 	leaf-list CLICON_YANG_DIR {
 	    ordered-by user;

@@ -798,6 +798,7 @@ xml_cv_set(cxobj  *x,
  *
  * @retval xmlobj     if found.
  * @retval NULL       if no such node found.
+ * @see xml_find_type  wich is a more generic function
  */
 cxobj *
 xml_find(cxobj *x_up, 
@@ -987,7 +988,7 @@ xml_rm(cxobj *xc)
  *  # Here xt will be: <a>2</a>
  * @endcode
  * @see xml_child_rm
- * @see xml_child_rootchild_node  where xc is explicitly given
+ * @see xml_rootchild_node  where xc is explicitly given
  */
 int
 xml_rootchild(cxobj  *xp, 
@@ -1024,7 +1025,7 @@ xml_rootchild(cxobj  *xp,
  * @param[in]  xc   xml child node. Must be a child of xp
  * @retval     0    OK
  * @retval    -1    Error
- * @see xml_child_rootchild  where an index is used to find xc
+ * @see xml_rootchild  where an index is used to find xc
  */
 int
 xml_rootchild_node(cxobj  *xp, 
@@ -2187,6 +2188,61 @@ xml_operation2str(enum operation_type op)
 	return "none";
     }
 }
+
+/*! Specialization of clicon_debug with xml tree 
+ * @param[in]  level    log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. 
+ * @param[in]  x        XML tree that is logged without prettyprint
+ * @param[in]  format   Message to print as argv.
+*/
+int
+clicon_log_xml(int    level, 
+	       cxobj *x,
+	       char  *format, ...)
+{
+    va_list args;
+    int     len;
+    char   *msg = NULL;
+    cbuf   *cb = NULL;
+    int     retval = -1;
+
+    /* Print xml as cbuf */
+    if ((cb = cbuf_new()) == NULL)
+	goto done;
+    if (clicon_xml2cbuf(cb, x, 0, 0) < 0)
+	goto done;
+    
+    /* first round: compute length of debug message */
+    va_start(args, format);
+    len = vsnprintf(NULL, 0, format, args);
+    va_end(args);
+    
+    /* allocate a message string exactly fitting the message length */
+    if ((msg = malloc(len+1)) == NULL){
+	fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+	goto done;
+    }
+
+    /* second round: compute write message from format and args */
+    va_start(args, format);
+    if (vsnprintf(msg, len+1, format, args) < 0){
+	va_end(args);
+	fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+	goto done;
+    }
+    va_end(args);
+
+    /* Actually log it */
+    clicon_log(level, "%s: %s", msg, cbuf_get(cb));
+
+    retval = 0;
+  done:
+    if (cb)
+	cbuf_free(cb);
+    if (msg)
+	free(msg);
+    return retval;
+}
+
 
 /*
  * Turn this on to get a xml parse and pretty print test program

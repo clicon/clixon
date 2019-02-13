@@ -2329,6 +2329,11 @@ xml_merge(cxobj     *x0,
     yang_stmt *ymod;
     cbuf      *cbr = NULL; /* Reason buffer */
 
+    if (x0 == NULL || x1 == NULL){
+	clicon_err(OE_UNIX, EINVAL, "parameters x0 or x1 is NULL");
+	goto done;
+	goto done;
+    }
     /* Loop through children of the modification tree */
     x1c = NULL;
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {

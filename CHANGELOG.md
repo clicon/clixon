@@ -130,6 +130,7 @@
 * Added Clixon example full system docker container, see [docker/system](docker/system).
 * Changed clixon base system container to use Alpine [docker/base](docker/base).
 * clixon-config YAML file has new revision: 2019-02-06.
+* Added new log function: `clicon_log_xml()` for logging XML tree
 * Replaced all calls to (obsolete) `cli_output` with `fprintf`
 * Added _experimental_ config option `CLICON_CLI_UTF8` default set to 0.
   * CLIgen UTF8 does not work with scrolling and control editing
