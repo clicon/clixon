@@ -1,5 +1,30 @@
 # Clixon Changelog
 
+### Major New features
+* New backend startup and upgrade support, see [doc/startup.md] for details
+  * Enable with CLICON_XMLDB_MODSTATE config option
+  * Tag all datastores with system modules-state as in RFC7895
+  * Check modules-state tags when loading a datastore at startup
+    * Check which modules match, and which do not.
+  * Loading of a "startup" XML or JSON configuration
+  * Loading of "extra" XML.
+  * Detection of in-compatible XML and Yang models in the startup configuration.
+  * An upgrade callback when in-compatible XML is encountered (`ca_upgrade`)
+  * A "failsafe" mode allowing a user to repair the startup on errors or failed validation.
+  * Major rewrite of `backend_main.c` and a new module `backend_startup.c`
+* Datastore files contain RFC7895 module-state information
+  * Added modules-state parameter to xmldb_get datastore function
+  * Set config option `CLICON_XMLDB_MODSTATE` to true
+    * Enable this if you wish to use the upgrade feature in the new startup functionality.
+  * Note that this adds bytes to your configs
+
+### API changes on existing features (you may need to change your code)
+* Removed obsolete `CLICON_CLI_MODEL_TREENAME_PATCH`
+
+### Minor changes
+* Added specific clixon_suberrno code: XMLPARSE_ERRNO to identify XML parse errors.
+
+
 ## 3.9.0 (Preliminary Target: February 2019)
 
 ### Major New features

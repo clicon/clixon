@@ -64,8 +64,8 @@
 #include <clixon/clixon.h>
 
 #include "clixon_backend_handle.h"
-#include "backend_commit.h"
 #include "backend_plugin.h"
+#include "backend_commit.h"
 #include "backend_client.h"
 #include "backend_handle.h"
 
@@ -208,7 +208,7 @@ from_client_get_config(clicon_handle h,
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
 	    xpath="/";
-    if (xmldb_get(h, db, xpath, 1, &xret) < 0){
+    if (xmldb_get(h, db, xpath, 1, &xret, NULL) < 0){
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
@@ -335,7 +335,7 @@ client_statedata(clicon_handle h,
 	if ((retval = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) != 0)
 	    goto done;
     if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895"))
-	if ((retval = yang_modules_state_get(h, yspec, xret)) != 0)
+	if ((retval = yang_modules_state_get(h, yspec, 0, xret)) != 0)
 	    goto done;
     if ((retval = clixon_plugin_statedata(h, yspec, xpath, xret)) != 0)
 	goto done;
@@ -391,7 +391,7 @@ from_client_get(clicon_handle h,
 	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
 	    xpath="/";
     /* Get config */
-    if (xmldb_get(h, "running", xpath, 0, &xret) < 0){
+    if (xmldb_get(h, "running", xpath, 0, &xret, NULL) < 0){
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;

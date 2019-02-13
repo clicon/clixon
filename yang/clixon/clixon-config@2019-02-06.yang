@@ -364,6 +364,14 @@ module clixon-config {
                  If set, insert spaces and line-feeds making the XML/JSON human
                  readable. If not set, make the XML/JSON more compact.";
 	}
+	leaf CLICON_XMLDB_MODSTATE {
+	    type boolean;
+	    default false;
+       	    description
+		"If set, tag datastores with RFC 7895 YANG Module Library 
+                 info. When loaded at startup, a check is made if the system
+                 yang modules match";
+	}
 	leaf CLICON_XML_NS_STRICT {
 	    type boolean;
 	    default true;
@@ -474,5 +482,6 @@ module clixon-config {
                          data to store before dropping. 0 means no retention";
 
 	}
+
     }
 }

@@ -107,13 +107,34 @@ typedef void *transaction_data;
 /* Transaction callbacks */
 typedef int (trans_cb_t)(clicon_handle h, transaction_data td); 
 
-/* Hook to override default prompt with explicit function
+/*! Hook to override default prompt with explicit function
  * Format prompt before each getline 
  * @param[in] h      Clicon handle
  * @param[in] mode   Cligen syntax mode
  * @retval    prompt Prompt to prepend all CLigen command lines
  */
 typedef char *(cli_prompthook_t)(clicon_handle, char *mode);
+
+/*! Startup status for use in startup-callback
+ * Note that for STARTUP_ERR and _INVALID, running runs in failsafe mode
+ * and startup contains the erroneous or invalid database.
+ * The user should repair the startup and 
+ * (1) restart he backend
+ * (2) copy startup to candidate and commit.
+ */
+enum startup_status{
+    STARTUP_ERR,         /* XML/JSON syntax error */
+    STARTUP_INVALID,     /* XML/JSON OK, but (yang) validation fails */
+    STARTUP_OK           /* Everything OK (may still be modules-mismatch) */
+};
+
+/*! Upgrade configuration callback given a diff of yang module state
+ * @param[in]  h      Clicon handle
+ * @param[in]  xms    XML tree of module state differences
+ * @retval     0      OK
+ * @retval    -1      Error
+ */
+typedef int (upgrade_cb_t)(clicon_handle, cxobj *xms);
 
 /* plugin init struct for the api 
  * Note: Implicit init function
@@ -139,14 +160,16 @@ struct clixon_plugin_api{
 	struct {
 	} cau_netconf;
 	struct {
-	    plgreset_t       *cb_reset;          /* Reset system status (backend only) */
+	    plgreset_t       *cb_reset;          /* Reset system status */
 	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
+	    upgrade_cb_t     *cb_upgrade;        /* Upgrade callback */
 	    trans_cb_t       *cb_trans_begin;	 /* Transaction start */
 	    trans_cb_t       *cb_trans_validate; /* Transaction validation */
 	    trans_cb_t       *cb_trans_complete; /* Transaction validation complete */
 	    trans_cb_t       *cb_trans_commit;   /* Transaction commit */
 	    trans_cb_t       *cb_trans_end;	 /* Transaction completed  */
-	    trans_cb_t       *cb_trans_abort;	 /* Transaction aborted */    
+    	    trans_cb_t       *cb_trans_abort;	 /* Transaction aborted */    
+
 	} cau_backend;
 
     } u;
@@ -158,6 +181,7 @@ struct clixon_plugin_api{
 #define ca_auth           u.cau_restconf.cr_auth
 #define ca_reset          u.cau_backend.cb_reset
 #define ca_statedata      u.cau_backend.cb_statedata
+#define ca_upgrade        u.cau_backend.cb_upgrade
 #define ca_trans_begin    u.cau_backend.cb_trans_begin
 #define ca_trans_validate u.cau_backend.cb_trans_validate
 #define ca_trans_complete u.cau_backend.cb_trans_complete

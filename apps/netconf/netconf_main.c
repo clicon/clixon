@@ -527,6 +527,6 @@ main(int    argc,
   done:
     netconf_terminate(h);
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
-    clicon_log(LOG_NOTICE, "%s: %u Terminated\n", __PROGRAM__, getpid());
+    clicon_log(LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
     return 0;
 }

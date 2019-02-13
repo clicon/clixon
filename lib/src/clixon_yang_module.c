@@ -132,6 +132,7 @@ yang_modules_revision(clicon_handle h)
 /*! Get modules state according to RFC 7895
  * @param[in]     h       Clicon handle
  * @param[in]     yspec   Yang spec
+ * @param[in]     brief   Just name and revision
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
  * @retval        0       OK
@@ -158,6 +159,7 @@ x            +--ro namespace           inet:uri
 int
 yang_modules_state_get(clicon_handle    h,
 		       yang_spec       *yspec,
+		       int              brief,
 		       cxobj          **xret)
 {
     int         retval = -1;
@@ -199,24 +201,29 @@ yang_modules_state_get(clicon_handle    h,
 	    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
 	else
 	    cprintf(cb,"<revision></revision>");
-	if ((ys = yang_find((yang_node*)ymod, Y_NAMESPACE, NULL)) != NULL)
-	    cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
-	else
-	    cprintf(cb,"<namespace></namespace>");
+	if (!brief){
+	    if ((ys = yang_find((yang_node*)ymod, Y_NAMESPACE, NULL)) != NULL)
+		cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
+	    else
+		cprintf(cb,"<namespace></namespace>");
+	}
 	/* This follows order in rfc 7895: feature, conformance-type, submodules */
 	yc = NULL;
-	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
-	    switch(yc->ys_keyword){
-	    case Y_FEATURE:
-		if (yc->ys_cv && cv_bool_get(yc->ys_cv))
-		    cprintf(cb,"<feature>%s</feature>", yc->ys_argument);
-		break;
-	    default:
-		break;
+	if (!brief)
+	    while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
+		switch(yc->ys_keyword){
+		case Y_FEATURE:
+		    if (yc->ys_cv && cv_bool_get(yc->ys_cv))
+			cprintf(cb,"<feature>%s</feature>", yc->ys_argument);
+		    break;
+		default:
+		    break;
+		}
 	    }
-	}
-        cprintf(cb, "<conformance-type>implement</conformance-type>");
+	if (!brief)
+	    cprintf(cb, "<conformance-type>implement</conformance-type>");
 	yc = NULL;
+	if (!brief)
 	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
 	    switch(yc->ys_keyword){
 	    case Y_SUBMODULE:

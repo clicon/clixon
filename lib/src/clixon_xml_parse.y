@@ -81,7 +81,7 @@
 void 
 clixon_xml_parseerror(void *_ya, char *s) 
 { 
-  clicon_err(OE_XML, 0, "xml_parse: line %d: %s: at or before: %s", 
+  clicon_err(OE_XML, XMLPARSE_ERRNO, "xml_parse: line %d: %s: at or before: %s", 
 	      _YA->ya_linenum, s, clixon_xml_parsetext); 
   return;
 }
@@ -117,7 +117,7 @@ xml_parse_version(struct xml_parse_yacc_arg *ya,
 		  char                      *ver)
 {
     if(strcmp(ver, "1.0")){
-	clicon_err(OE_XML, errno, "Wrong XML version %s expected 1.0", ver);
+	clicon_err(OE_XML, XMLPARSE_ERRNO, "Wrong XML version %s expected 1.0", ver);
 	free(ver);
 	return -1;
     }
@@ -224,12 +224,12 @@ xml_parse_bslash1(struct xml_parse_yacc_arg *ya,
     cxobj *xc;
 
     if (strcmp(xml_name(x), name)){
-	clicon_err(OE_XML, 0, "XML parse sanity check failed: %s vs %s", 
+	clicon_err(OE_XML, XMLPARSE_ERRNO, "XML parse sanity check failed: %s vs %s", 
 		xml_name(x), name);
 	goto done;
     }
     if (xml_prefix(x)!=NULL){
-	clicon_err(OE_XML, 0, "XML parse sanity check failed: %s:%s vs %s", 
+	clicon_err(OE_XML, XMLPARSE_ERRNO, "XML parse sanity check failed: %s:%s vs %s", 
 		xml_prefix(x), xml_name(x), name);
 	goto done;
     }
@@ -267,7 +267,7 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
     cxobj *xc;
 
     if (strcmp(xml_name(x), name)){
-	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s", 
+	clicon_err(OE_XML, XMLPARSE_ERRNO, "Sanity check failed: %s:%s vs %s:%s", 
 		xml_prefix(x), 
 		xml_name(x), 
 		namespace, 
@@ -276,7 +276,7 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
     }
     if (xml_prefix(x)==NULL ||
 	strcmp(xml_prefix(x), namespace)){
-	clicon_err(OE_XML, 0, "Sanity check failed: %s:%s vs %s:%s", 
+	clicon_err(OE_XML, XMLPARSE_ERRNO, "Sanity check failed: %s:%s vs %s:%s", 
 		xml_prefix(x), 
 		xml_name(x), 
 		namespace, 

@@ -22,7 +22,7 @@ APIs. There are currently plugins for: CLI, Netconf,  Restconf, the datastore an
 
 ## Which programming language is used?
 Clixon is written in C. The plugins are written in C. The CLI
-specification uses cligen (http://cligen.se)
+specification uses [CLIgen](http://github.com/olofhagsand/cligen)
 
 ## How to best understand Clixon?
 Run the Clixon example, in the [example](../example) directory.

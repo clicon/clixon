@@ -288,8 +288,9 @@ static clixon_plugin_api api = {
     clixon_plugin_init, 
     plugin_start,       
     plugin_exit,        
-    .ca_reset=plugin_reset,/* reset */          
+    .ca_reset=plugin_reset,/* reset for extra XML at startup*/          
     .ca_statedata=plugin_statedata, /* statedata */
+    .ca_upgrade=example_upgrade,            /* upgrade configuration */
     .ca_trans_begin=NULL, /* trans begin */
     .ca_trans_validate=transaction_validate,/* trans validate */
     .ca_trans_complete=NULL,                /* trans complete */

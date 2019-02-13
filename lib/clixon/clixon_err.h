@@ -46,6 +46,11 @@
  */ 
 #define ERR_STRLEN 256
 
+/* Special error number for clicon_suberrno
+ * For catching xml parse errors as exceptions
+ */
+#define XMLPARSE_ERRNO 898943
+
 /*
  * Types
  * Add error here, but must also add an entry in EV variable.
