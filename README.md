@@ -13,8 +13,9 @@ support.
   * [Support](#support)
   * [Dependencies](#dependencies)
   * [Extending](#extending)
-  * [XML and XPATH](#xml)
   * [Yang](#yang)
+  * [CLI](#cli)
+  * [XML and XPATH](#xml)
   * [Netconf](#netconf)
   * [Restconf](#restconf)
   * [Datastore](datastore/README.md)
@@ -29,8 +30,7 @@ support.
   * [Roadmap](ROADMAP.md)
   * [Reference manual](#reference) 
   
-Background
-==========
+## Background
 
 Clixon was implemented to provide an open-source generic configuration
 tool. The existing [CLIgen](http://www.cligen.se) tool was for command-lines only, while Clixon is a system with configuration database, xml and rest interfaces all defined by Yang. Most of the projects using Clixon are for embedded network and measuring devices. But Clixon can be used for other systems as well due to its modular and pluggable architecture.
@@ -46,8 +46,8 @@ See also [Clicon project page](http://clicon.org).
 
 Clixon runs on Linux, [FreeBSD port](https://www.freshports.org/devel/clixon) and Mac/Apple. CPU architecures include x86_64, i686, ARM32.
 
-Installation
-============
+## Installation
+
 A typical installation is as follows:
 ```
      configure	       	       # Configure clixon to platform
@@ -59,17 +59,17 @@ A typical installation is as follows:
 One [example application](example/README.md) is provided, a IETF IP YANG datamodel with
 generated CLI, Netconf and restconf interface.
 
-Licenses
-========
+## Licenses
+
 Clixon is open-source and dual licensed. Either Apache License, Version 2.0 or GNU
 General Public License Version 2; you choose.
 
 See [LICENSE.md](LICENSE.md) for the license.
 
-Dependencies
-============
+## Dependencies
+
 Clixon depends on the following software packages, which need to exist on the target machine.
-- [CLIgen](http://www.cligen.se) If you need to build and install CLIgen: 
+- [CLIgen](http://github.com/olofhagsand/cligen) If you need to build and install CLIgen: 
 ```
     git clone https://github.com/olofhagsand/cligen.git
     cd cligen; configure; make; make install
@@ -78,14 +78,14 @@ Clixon depends on the following software packages, which need to exist on the ta
 - Lex/Flex
 - Fcgi (if restconf is enabled)
 
-Support
-=======
+## Support
+
 Clixon interaction is best done posting issues, pull requests, or joining the
 [slack channel](https://clixondev.slack.com).
 [Slack invite](https://join.slack.com/t/clixondev/shared_invite/enQtMzI3OTM4MzA3Nzk3LTA3NWM4OWYwYWMxZDhiYTNhNjRkNjQ1NWI1Zjk5M2JjMDk4MTUzMTljYTZiYmNhODkwMDI2ZTkyNWU3ZWMyN2U). 
 
-Extending
-=========
+## Extending
+
 Clixon provides a core system and can be used as-is using available
 Yang specifications.  However, an application very quickly needs to
 specialize functions.  Clixon is extended by writing
@@ -95,8 +95,32 @@ are also available.
 Plugins are written in C and easiest is to look at
 [example](example/README.md) or consulting the [FAQ](doc/FAQ.md).
 
-XML
-===
+## Yang
+
+YANG and XML is the heart of Clixon.  Yang modules are used as a
+specification for handling XML configuration data. The YANG spec is
+used to generate an interactive CLI, netconf and restconf clients. It
+also manages an XML datastore.
+
+Clixon follows:
+- [YANG 1.0 RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt)
+- [YANG 1.1 RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt).
+- [RFC 7895: YANG module library](http://www.rfc-base.org/txt/rfc-7895.txt)
+
+However, the following YANG syntax modules are not implemented:
+- deviation
+- min/max-elements
+- unique
+- action
+
+Restrictions on Yang types are as follows:
+- The range statement for built-in integers does not support multiple values (RFC7950 9.2.4)
+- The length statement for built-in strings does not support multiple values (RFC7950 9.4.4)
+- Submodules cannot re-use a prefix in an import statement that is already used for another imported module in the module that the submodule belongs to. (see https://github.com/clicon/clixon/issues/60)
+- default values on leaf-lists are not supported (RFC7950 7.7.2)
+
+## XML
+
 Clixon has its own implementation of XML and XPATH implementation.
 
 The standards covered include:
@@ -124,33 +148,77 @@ Note that base netconf syntax is still not enforced but recommended:
      </rpc> 
 ```
 
-Yang
-====
-YANG and XML is the heart of Clixon.  Yang modules are used as a
-specification for handling XML configuration data. The YANG spec is
-used to generate an interactive CLI, netconf and restconf clients. It
-also manages an XML datastore.
+## CLI
 
-Clixon follows:
-- [YANG 1.0 RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt)
-- [YANG 1.1 RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt).
-- [RFC 7895: YANG module library](http://www.rfc-base.org/txt/rfc-7895.txt)
+The Clixon CLI uses [CLIgen](http://github.com/olofhagsand/cligen) best described by the [CLIgen tutorial](https://github.com/olofhagsand/cligen/blob/master/cligen_tutorial.pdf). The [example](example) is also helpful.
 
-However, the following YANG syntax modules are not implemented:
-- deviation
-- min/max-elements
-- unique
-- action
-- belongs-to
+Clixon adds some features and structure to CLIgen which include:
+* A plugin framework for both textual CLI specifications(.cli) and object files (.so)
+  * The CLI specification follows CLIgen syntax with some extensions given below.
+  * Object files contained compiled C functions which may be referenced by CLI specification _callbacks_. A CLI API struct is given in the plugin. See [example](example/README.md#plugins).
+* The CLI specification is enhanced with the following CLIgen variables:
+  * `CLICON_PROMPT` is a string describing the CLI prompt using a very simple format with: `%H`, `%U` and `%T`.
+  * `CLICON_PLUGIN` is the name of the object file containing callbacks in this file.
+  * `CLICON_MODE` A colon separated list of CLIgen `modes` where the syntax in this file is added.
+* Clixon may generate a command syntax from the Yang specification which can be refernced as `@datamodel`. This is useful if you do not want to hand-craft CLI syntax for configuration syntax. Example:
+  ```
+  set    @datamodel, cli_set();
+  merge  @datamodel, cli_merge();
+  create @datamodel, cli_create();
+  show   @datamodel, cli_show_auto("running", "xml");		   
+  ```
+* The CLIgen `treename` syntax does not work.
 
-Restrictions on Yang types are as follows:
-- The range statement for built-in integers does not support multiple values (RFC7950 9.2.4)
-- The length statement for built-in strings does not support multiple values (RFC7950 9.4.4)
-- Submodules cannot re-use a prefix in an import statement that is already used for another imported module in the module that the submodule belongs to. (see https://github.com/clicon/clixon/issues/60)
-- default values on leaf-lists (RFC7950 7.7.2)
+### Large CLI specifications
 
-Netconf
-=======
+CLIgen is designed to handle large specifications in runtime, but it may be
+difficult to handle large specifications from a design perspective.
+
+Here are some techniques and hints on how to reduce the complexity of large CLI specs:
+* Use sub-modes. The `CLICON_MODE` can be used to add the same syntax in multiple modes. For example, if you have major modes `configure`and `operation` and a set of commands that should be in both, you can add a sub-mode that will appear in both configure and operation mode.
+  ```
+  CLICON_MODE="configure:operation";
+  show("Show") routing("routing");
+  ```
+  Note that CLI command trees are _merged_ so that show commands in other files are shown together. Thus, for example:
+  ```
+  CLICON_MODE="operation:files";
+  show("Show") files("files");
+  ```
+  will result in both commands in the operation mode (not the others):
+  ```
+  cli> show <TAB>
+    routing      files
+  ```
+  
+* Use sub-trees and the the tree operator `@`. Every mode gets assigned a tree which can be referenced as `@name`. This tree can be either on the top-level or as a sub-tree. For example, create a specific sub-tree that is used as sub-trees in other modes:
+  ```
+  CLICON_MODE="subtree";
+  subcommand{
+    a, a();
+    b, b();
+  }
+  ```
+  then access that subtree from other modes:
+  ```
+  CLICON_MODE="configure";
+  main @subtree;
+  other @subtree,c();
+  ```
+  The configure mode will now use the same subtree in two different commands. Additionally, in the `other` command, the callbacks will be overwritten by `c`. That is, if `other a`, or `other b` is called, callback function `c`will be invoked.
+  
+* Use the C preprocessor. You can then define macros, include files, etc. Here is an example of a Makefile using cpp:
+  ```
+   C_CPP    = clispec_example1.cpp clispec_example2.cpp
+   C_CLI    = $(C_CPP:.cpp=.cli
+   CLIS     = $(C_CLI)
+   all:     $(CLIS)
+   %.cli : %.cpp
+        $(CPP) -P -x assembler-with-cpp $(INCLUDES) -o $@ $<
+  ```
+
+## Netconf
+
 Clixon implements the following NETCONF proposals or standards:
 - [RFC 6241: NETCONF Configuration Protocol](http://www.rfc-base.org/txt/rfc-6241.txt)
 - [RFC 6242: Using the NETCONF Configuration Protocol over Secure Shell (SSH)](http://www.rfc-base.org/txt/rfc-6242.txt)
@@ -176,8 +244,8 @@ Clixon does not support the following netconf features:
 Some other deviations from the RFC:
 - edit-config xpath select statement does not support namespaces
 
-Restconf
-========
+## Restconf
+
 Clixon Restconf is a daemon based on FastCGI C-API. Instructions are available to
 run with NGINX.
 The implementatation is based on [RFC 8040: RESTCONF Protocol](https://tools.ietf.org/html/rfc8040).
@@ -193,8 +261,8 @@ The following features are not implemented:
 
 See [more detailed instructions](apps/restconf/README.md).
 
-Datastore
-=========
+## Datastore
+
 The Clixon datastore is a stand-alone XML based datastore. The idea is
 to be able to use different datastores backends with the same
 API. Currently only an XML plain text datastore is supported.
@@ -204,8 +272,8 @@ separately.
 
 See [more detailed instructions](datastore/README.md).
 
-Auth
-====
+## Auth
+
 Authentication is managed outside Clixon using SSH, SSL, Oauth2, etc.
 
 For CLI, login is typically made via SSH. For netconf, SSH netconf
@@ -220,8 +288,8 @@ The clients send the ID of the user using a "username" attribute with
 the RPC calls to the backend. Note that the backend trusts the clients
 so the clients can in principle fake a username.
 
-NACM
-====
+## NACM
+
 Clixon includes an experimental Network Configuration Access Control Model (NACM) according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341).
 
 To enable NACM:
@@ -245,15 +313,14 @@ The functionality is as follows (references to sections in [RFC8341](https://too
   * `commit` - NACM is applied to candidate and running operations only (3.2.8)
 * Client-side RPC:s are _not_ supported.
 
-Runtime
-=======
+## Runtime
 
 <img src="doc/clixon_example_sdk.png" alt="clixon sdk" style="width: 180px;"/>
 
 The figure shows the SDK runtime of Clixon.
 
-Reference
-=========
+## Reference
+
 Clixon uses [Doxygen](http://www.doxygen.nl/index.html) for reference documentation.
 You need to install doxygen and graphviz on your system.
 Build it in the doc directory and point the browser to `.../clixon/doc/html/index.html` as follows:

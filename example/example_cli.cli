@@ -40,7 +40,7 @@ show("Show a particular state of the system"){
     }
     configuration("Show configuration"), cli_show_config("candidate", "text", "/");{
 	    xml("Show configuration as XML"), cli_show_config("candidate", "xml", "/");{
-	        @datamodel, cli_show_auto("candidate", "text");		   
+	        @datamodel, cli_show_auto("candidate", "xml");		   
 	    }
 	    cli("Show configuration as CLI commands"), cli_show_config("candidate", "cli", "/");{
 	        @datamodel, cli_show_auto("candidate", "cli");

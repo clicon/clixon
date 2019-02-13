@@ -231,7 +231,9 @@ module clixon-config {
 	}
 	leaf CLICON_CLISPEC_FILE {
 	    type string;
-	    description "Specific frontend .cli cligen spec file.";
+	    description "Specific frontend .cli cligen spec file as simple
+                         alternative to CLICON_CLISPEC_DIR. Also available as
+                         -c in clixon_cli.";
 	}
 	leaf CLICON_CLI_MODE {
 	    type string;

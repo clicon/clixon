@@ -307,3 +307,16 @@ clixon_plugin_init(clicon_handle h)
     return &api; /* Return NULL on error */
 }
 ```
+
+Here is a corresponding example for a CLI plugin:
+```
+static clixon_plugin_api api = {
+    "example",          /* name */
+    clixon_plugin_init, /* init */
+    NULL,               /* start */
+    NULL,               /* exit */
+    .ca_prompt=NULL,    /* cli_prompthook_t */
+    .ca_suspend=NULL,   /* cligen_susp_cb_t */
+    .ca_interrupt=NULL, /* cligen_interrupt_cb_t */
+};
+```
