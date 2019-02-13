@@ -52,7 +52,7 @@ As restconf using curl on exposed port 80:
 ```
 Or run tests:
 ```
-  $ sudo docker exec -it clixon-system bash -c 'cd /clixon/clixon/test&& ./all.sh'
+  $ sudo docker exec -it clixon-system bash -c 'cd /usr/local/bin/test&& ./all.sh'
 ```
 
 To check status and then kill it:

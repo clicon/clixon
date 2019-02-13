@@ -18,9 +18,12 @@
 #     all content in the server.  No subsequent rule will match for the
 #     "admin" group because of this module rule
 
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
 APPNAME=example
-# include err() and new() functions and creates $dir
-. ./lib.sh
+
+# Common NACM scripts
 . ./nacm.sh
 
 cfg=$dir/conf_yang.xml

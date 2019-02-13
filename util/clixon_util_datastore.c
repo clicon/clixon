@@ -117,7 +117,7 @@ main(int argc, char **argv)
     cbuf               *cbret = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
+    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
 
     argv0 = argv[0];
     /* Defaults */
@@ -157,7 +157,7 @@ main(int argc, char **argv)
     /* 
      * Logs, error and debug to stderr, set debug level
      */
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR); 
+    clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR); 
     clicon_debug_init(debug, NULL); 
 
     argc -= optind;

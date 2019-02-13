@@ -5,9 +5,12 @@
 # The ordered-by user MUST be the order it is entered.
 # No test of ordered-by system is done yet
 # (we may want to sort them alphabetically for better performance).
+
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
 APPNAME=example
-# include err() and new() functions and creates $dir
-. ./lib.sh
+
 cfg=$dir/conf_yang.xml
 fyang=$dir/order.yang
 tmp=$dir/tmp.x
@@ -36,7 +39,6 @@ cat <<EOF > $cfg
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>$dbdir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
-  <CLICON_XML_SORT>true</CLICON_XML_SORT>
 </config>
 EOF
 
@@ -152,7 +154,7 @@ EOF
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "$(cat $tmp)" '<rpc-reply><data><state xmlns="urn:example:clixon"><op>42</op><op>41</op><op>43</op></state></data></rpc-reply>]]>]]>'
 
 # Check as file
-new "verify running from start, should be: c,l,y0,y1,y2,y3; y1 and y3 sorted. Note this fails if CLICON_XML_SORT set to false"
+new "verify running from start, should be: c,l,y0,y1,y2,y3; y1 and y3 sorted."
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><c xmlns="urn:example:order"><d>hej</d></c><l xmlns="urn:example:order">hopp</l><y0 xmlns="urn:example:order">d</y0><y0 xmlns="urn:example:order">b</y0><y0 xmlns="urn:example:order">c</y0><y0 xmlns="urn:example:order">a</y0><y1 xmlns="urn:example:order">a</y1><y1 xmlns="urn:example:order">b</y1><y1 xmlns="urn:example:order">c</y1><y1 xmlns="urn:example:order">d</y1><y2 xmlns="urn:example:order"><k>d</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>a</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>c</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>b</k><a>bar</a></y2><y3 xmlns="urn:example:order"><k>a</k><a>bar</a></y3><y3 xmlns="urn:example:order"><k>b</k><a>bar</a></y3><y3 xmlns="urn:example:order"><k>c</k><a>bar</a></y3><y3 xmlns="urn:example:order"><k>d</k><a>bar</a></y3><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$'
 
 new "get each ordered-by user leaf-list"

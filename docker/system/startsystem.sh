@@ -11,6 +11,8 @@
 
 DBG=${DBG:-0}
 
+WWWUSER=${WWWUSER:-www-data}
+
 # Initiate clixon configuration (env variable)
 echo "$CONFIG" > /usr/local/etc/clixon.xml
 
@@ -19,7 +21,7 @@ echo "$STORE" > /usr/local/var/example/running_db
 
 >&2 echo "Write nginx config files"
 # nginx site config file
-cat <<EOF > /etc/nginx/sites-enabled/default
+cat <<EOF > /etc/nginx/conf.d/default.conf
 #
 server {
         listen 80 default_server;
@@ -28,7 +30,6 @@ server {
 	server_name localhost;
 	server_name _;
 	location / {
-	    root /usr/share/nginx/html/restconf;
 	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
 	    include fastcgi_params;
         }
@@ -46,13 +47,17 @@ server {
 EOF
 
 # This is a clixon site test file. Disable all model testing.
-cat <<EOF > /clixon/clixon/test/site.sh
+cat <<EOF > /usr/local/bin/test/site.sh
 # Add your local site specific env variables (or tests) here.
-MODELS=0 # Dont run yangmodels/openconfig  tests
-IETFRFC=/clixon/clixon/yang/standard
+SKIPLIST="test_yangmodels.sh test_openconfig.sh test_install.sh test_order.sh"
+#IETFRFC=
 EOF
 
+chmod 775 /usr/local/bin/test/site.sh 
 
+if [ ! -d /run/nginx ]; then
+    mkdir /run/nginx
+fi
 
 # Start nginx
 #/usr/sbin/nginx -g 'daemon off;' -c /etc/nginx/nginx.conf
@@ -60,8 +65,11 @@ EOF
 >&2 echo "nginx started"
 
 # Start clixon_restconf
-su -c "/www-data/clixon_restconf -l f/www-data/restconf.log -D $DBG" -s /bin/sh www-data &
+su -c "/www-data/clixon_restconf -l f/www-data/restconf.log -D $DBG" -s /bin/sh $WWWUSER &
 >&2 echo "clixon_restconf started"
+
+# Set grp write XXX do this when creating
+chmod g+w /www-data/fastcgi_restconf.sock
 
 # Start clixon backend
 >&2 echo "start clixon_backend:"

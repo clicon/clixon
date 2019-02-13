@@ -128,6 +128,7 @@
   * XML prolog syntax for 'well-formed' XML
   * `<!DOCTYPE` (ie DTD) is not supported.
 * Added Clixon example full system docker container, see [docker/system](docker/system).
+* Moved datastore/text/ code to datastore/ since there is only one type of datastore.
 * Changed clixon base system container to use Alpine [docker/base](docker/base).
 * clixon-config YAML file has new revision: 2019-02-06.
 * Added new log function: `clicon_log_xml()` for logging XML tree
@@ -520,7 +521,6 @@ enables saved files to be used as datastore without any editing. Thanks Matt, Ne
   * `configure --with-xml-compat`
   
 * New configuration option: CLICON_RESTCONF_PRETTY. Default true. Set to false to get more compact Restconf output.
-
 
 * Default configure file handling generalized by Renato Botelho/Matt Smith. Config file FILE is selected in the following priority order:
   * Provide -f FILE option when starting a program (eg clixon_backend -f FILE)

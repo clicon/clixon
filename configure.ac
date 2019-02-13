@@ -191,6 +191,14 @@ if test "x${with_restconf}" == xyes; then
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
 fi
 
+# This is for changing web user default www-data
+AC_ARG_WITH([wwwuser],
+            [AS_HELP_STRING([--with-wwwuser=<user>],[Set www user different from www-data])])
+if test "${with_wwwuser}"; then
+   wwwuser=${with_wwwuser}
+fi
+echo "wwwuser:$wwwuser"
+
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
 AC_ARG_WITH([configfile],
@@ -245,7 +253,6 @@ AC_OUTPUT(Makefile
   	  docker/system/Makefile
     	  docker/base/Makefile
 	  datastore/Makefile
-	  datastore/text/Makefile
   	  util/Makefile 
 	  yang/Makefile
   	  yang/clixon/Makefile

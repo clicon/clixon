@@ -12,18 +12,34 @@
 
 #set -e
 
-# Probe nginx
-#sudo systemctl status nginx.service > /dev/null
-#if [ $? -ne 0 ]; then
-#    sudo systemctl start nginx.service
-#fi
+# Testfile (not including path)
+: ${testfile:=$(basename $0)}
+
+# Add test to this list that you dont want run
+# Typically add them in your site file
+: ${SKIPLIST:=""}
+
+>&2 echo "Running $testfile"
 
 # Site file, an example of this file in README.md
 if [ -x ./site.sh ]; then
+
     . ./site.sh
+    if [ $? -ne 0 ]; then
+	return -1 # skip
+    fi
+    # test skiplist.
+    for f in $SKIPLIST; do
+	if [ "$testfile" = "$f" ]; then
+	    return -1 # skip
+	fi
+    done
 fi
 
-testnr=0
+# Running test number
+: ${testnr:=0}
+
+# Single test. Set by "new"
 testname=
 
 # If set to 0, override starting of clixon_backend in test (you bring your own)
@@ -35,11 +51,6 @@ testname=
 # Where to log restconf. Some systems may not have syslog,
 # eg logging to a file: RCLOG="-l f/www-data/restconf.log"
 : ${RCLOG:=}
-
-# If reset, do NOT run tests with external yang models.
-# This involves downloading
-# https://github.com/openconfig/public and https://github.com/YangModels/yang 
-: ${MODELS:=1}
 
 # Parse yangmodels from https://github.com/YangModels/yang
 # Recommended: checkout yangmodels elsewhere in the tree and set the env

@@ -1,9 +1,12 @@
 #!/bin/bash
 # Restconf basic functionality
 # Assume http server setup, such as nginx described in apps/restconf/README.md
+
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
 APPNAME=example
-# include err() and new() functions and creates $dir
-. ./lib.sh
+
 cfg=$dir/conf.xml
 
 # Use yang in example

@@ -3,9 +3,11 @@
 # 1) Load <3.9 startup/running/extra files without namespaces - ensure it returns namespaces
 #
 
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
 APPNAME=example
-# include err() and new() functions and creates $dir
-. ./lib.sh
+
 cfg=$dir/conf_startup.xml
 
 # Use yang in example
@@ -29,7 +31,6 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
   <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>
-  <CLICON_XML_SORT>true</CLICON_XML_SORT>
 </config>
 
 EOF

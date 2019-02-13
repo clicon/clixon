@@ -20,16 +20,15 @@
 # 2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications
 # Note the sleeps are mainly for valgrind usage
 
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
 APPNAME=example
-UTIL=../util/clixon_util_stream
+: ${clixon_util_stream:=clixon_util_stream}
 NCWAIT=5 # Wait (netconf valgrind may need more time)
 
-if [ ! -x $UTIL ]; then
-    (cd ../util; make clixon_util_stream)
-fi
 DATE=$(date +"%Y-%m-%d")
-# include err() and new() functions and creates $dir
-. ./lib.sh
+
 cfg=$dir/conf.xml
 fyang=$dir/stream.yang
 xml=$dir/xml.xml
@@ -181,7 +180,7 @@ expectwait 'curl -s -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-
 
 # 2a) start subscription 8s - expect 1-2 notifications
 new "2a) start subscriptions 8s - expect 1-2 notifications"
-ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 8)
+ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 8)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 
 match=$(echo "$ret" | grep -Eo "$expect")
@@ -197,7 +196,7 @@ sleep 2
 
 # 2b) start subscription 8s - stoptime after 5s - expect 1-2 notifications
 new "2b) start subscriptions 8s - stoptime after 5s - expect 1-2 notifications"
-ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 8 -e +10)
+ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 8 -e +10)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
@@ -210,7 +209,7 @@ fi
 
 # 2c
 new "2c) start sub 8s - replay from start -8s - expect 3-4 notifications"
-ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 10 -s -8)
+ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 10 -s -8)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
@@ -223,7 +222,7 @@ fi
 
 # 2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications
 new "2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications"
-ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 10 -s -30 -e +4)
+ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 10 -s -30 -e +4)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
@@ -236,7 +235,7 @@ fi
 
 # 2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications
 new "2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications"
-ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 10 -s -90 -e +0)
+ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 10 -s -90 -e +0)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
@@ -254,7 +253,7 @@ curl -s -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "
 PID=$!
 
 new "Start subscriptions in parallell"
-ret=$($UTIL -u http://localhost/streams/EXAMPLE -t 8)
+ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 8)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 
 match=$(echo "$ret" | grep -Eo "$expect")

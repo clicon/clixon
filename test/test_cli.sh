@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Test1: backend and cli basic functionality
 # Start backend server
 # Add an ethernet interface and an address
@@ -8,9 +7,13 @@
 # Set the mandatory type
 # Commit
 
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
 APPNAME=example
+
 # include err() and new() functions and creates $dir
-. ./lib.sh
+
 cfg=$dir/conf_yang.xml
 
 # Use yang in example

@@ -1,5 +1,8 @@
 #!/bin/bash
-# Scaling test
+# Scaling/ performance tests
+
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 number=5000
 req=100
@@ -15,8 +18,6 @@ else
     exit 1 # Scaling
 fi
 APPNAME=example
-# include err() and new() functions and creates $dir
-. ./lib.sh
 
 cfg=$dir/scaling-conf.xml
 fyang=$dir/scaling.yang

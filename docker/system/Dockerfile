@@ -31,34 +31,23 @@
 # ***** END LICENSE BLOCK *****
 #
 
-# This application could use the base image, but it does not at this point.
-FROM debian
+FROM alpine
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
-# Clixon dependenies (not needed if build from base)
-RUN apt-get update && apt-get install -y \
-  git make gcc flex bison \
-  libfcgi-dev \
-  libcurl4-openssl-dev
-
-# Application-specific
-RUN apt-get update && apt-get install -y nginx
-
-# Test-specific (for test scripts)
-RUN apt-get update && apt-get install -y sudo curl procps time 
-
-# The example uses "clicon" group
-RUN groupadd clicon
-RUN usermod -a -G clicon www-data
+# For clixon and cligen
+RUN apk add --update git make build-base gcc flex bison fcgi-dev curl-dev
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
+RUN mkdir /clixon/build
 WORKDIR /clixon
 
-# Clone and build cligen (not necessary if use base image)
+# Clone cligen
 RUN git clone https://github.com/olofhagsand/cligen.git
+
+# Build cligen
 WORKDIR /clixon/cligen
-RUN ./configure
+RUN ./configure --prefix=/clixon/build
 RUN make
 RUN make install
 
@@ -67,30 +56,69 @@ RUN mkdir /clixon/clixon
 WORKDIR /clixon/clixon
 COPY clixon .
 
-RUN ./configure
+# Need to add www user manually
+RUN adduser -D -H www-data
+# nginx adds group www-data
+RUN apk add --update nginx
+
+# Configure, build and install clixon
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data
 RUN make
 RUN make install
 RUN make install-include
 
+# Install utils
+WORKDIR /clixon/clixon/util
+RUN make
+RUN make install
+
+# Build and install the clixon example
 WORKDIR /clixon/clixon/example
 RUN make
 RUN make install
-RUN install example.xml /usr/local/etc/clixon.xml
+RUN install example.xml /clixon/build/etc/clixon.xml
 
-RUN ldconfig
+# Copy tests
+WORKDIR /clixon/clixon/test
+RUN install -d /clixon/build/bin/test
+RUN install *.sh /clixon/build/bin/test
 
 # Copy startscript
 WORKDIR /clixon
 COPY startsystem.sh startsystem.sh 
-RUN install startsystem.sh /usr/local/bin/
+RUN install startsystem.sh /clixon/build/bin/
+
+#
+# Stage 2
+#
+FROM alpine
+MAINTAINER Olof Hagsand <olof@hagsand.se>
+
+# For clixon and cligen
+RUN apk add --update flex bison fcgi-dev
+
+# need to add www user manually
+RUN adduser -D -H www-data
+# nginx adds group www-data
+RUN apk add --update nginx
+
+# Test-specific (for test scripts)
+RUN apk add --update sudo curl procps grep make bash
 
 # Expose nginx port for restconf
 EXPOSE 80
 
+# Create clicon group
+RUN addgroup clicon
+RUN adduser nginx clicon
+RUN adduser www-data clicon
+
+COPY --from=0 /clixon/build/ /usr/local/
+COPY --from=0 /www-data /www-data
+
+# Manually created
+RUN chown www-data /www-data
+RUN chgrp www-data /www-data
+
 # Log to stderr.
 CMD /usr/local/bin/startsystem.sh
-
-
-
-
-

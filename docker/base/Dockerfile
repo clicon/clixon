@@ -37,11 +37,9 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 # For clixon and cligen
 RUN apk add --update git make build-base gcc flex bison fcgi-dev curl-dev
 
-
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
 RUN mkdir /clixon/build
-
 WORKDIR /clixon
 
 # Clone cligen
@@ -58,37 +56,54 @@ RUN mkdir /clixon/clixon
 WORKDIR /clixon/clixon
 COPY clixon .
 
-# Build clixon (without restconf if you dont have nginx)
-RUN ./configure --without-restconf  --prefix=/clixon/build --with-cligen=/clixon/build
+# Need to add www user manually
+RUN adduser -D -H www-data
+# nginx adds group www-data
+RUN apk add --update nginx
+
+# Configure, build and install clixon
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data
 RUN make
 RUN make install
 RUN make install-include
 
+# Build and install the clixon example (not really necessary for base)
 WORKDIR /clixon/clixon/example
-RUN DESTDIR=/clixon/build make
+RUN make
 RUN make install
+RUN install example.xml /clixon/build/etc/clixon.xml
 
 #
 # Stage 2
 #
-
 FROM alpine
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
 # For clixon and cligen
-RUN apk add --update flex bison # fcgi-dev curl-dev
+RUN apk add --update flex bison fcgi-dev 
 
-# Run a clicon group - actually an application may want another
+# need to add www user manually
+RUN adduser -D -H www-data
+# nginx adds group www-data
+RUN apk add --update nginx
+
+# Test-specific (for test scripts)
+#RUN apk add --update sudo curl bash
+
+# Expose nginx port for restconf
+EXPOSE 80
+
+# Create clicon group
 RUN addgroup clicon
+RUN adduser nginx clicon
+RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
+COPY --from=0 /www-data /www-data
 
-# For debug
-#RUN apk add --update bash nano
-
-
-
-
+# Manually created
+RUN chown www-data /www-data
+RUN chgrp www-data /www-data
 
 
 

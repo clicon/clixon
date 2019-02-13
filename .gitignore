@@ -7,9 +7,9 @@ lex.*_parse.c
 Makefile
 apps/Makefile
 apps/*/Makefile
+datastore/Makefile
 docker/Makefile
-docker/base/Makefile
-docker/system/Makefile
+docker/*/Makefile
 etc/Makefile
 example/Makefile
 lib/Makefile
@@ -33,10 +33,6 @@ apps/dbctrl/clixon_dbctrl
 apps/netconf/clixon_netconf
 apps/restconf/clixon_restconf
 apps/xmldb/clixon_xmldb
-
-docker/backend/Dockerfile
-docker/cli/Dockerfile
-docker/netconf/Dockerfile
 
 etc/clixonrc
 

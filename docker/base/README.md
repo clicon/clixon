@@ -12,23 +12,24 @@ See [clixon-system](../system/README.md) for a more complete clixon image.
 
 ## Build and push
 
-Perform the build by `make docker`. 
-You may also do `make push` if you want to push the image, but you may then consider changing the image name (in the makefile:s).
+Perform the build by `make docker`. This copies the latest _committed_ clixon code into the container.
 
-You may run the container directly by going directly to example and
-the docker runtime scripts there
+You may also do `make push` if you want to push the image, but you may then consider changing the image name (in the makefile:s).
 
 (You may have to login for push with sudo docker login -u <username>)
 
 ## Example run
 
-The following shows a simple example of how to run the example
-application. First,the container is started, then the backend is startend in the background inside the container, and finally the CLI is started in the foreground.
+The base container is a minimal and primitive example. Look at the [clixon-system](../system) for a more stream-lined application.
 
+The following shows a simple example of how to run the example
+application. First, the container is started with the backend running:
 ```
-  $ sudo docker run --name clixon --rm -td clixon/clixon
-  $ sudo docker exec -it clixon clixon_backend -s init -f /usr/local/etc/example.xml
-  $ sudo docker exec -it clixon clixon_cli -f /usr/local/etc/example.xml
+  $ sudo docker run --rm --name clixon-base -d clixon/clixon clixon_backend -Fs init
+```
+Then a CLI is started, and finally the container is removed:
+```
+  $ sudo docker exec -it clixon-base clixon_cli 
   > set interfaces interface e
   > show configuration 
   interfaces {
@@ -38,10 +39,10 @@ application. First,the container is started, then the backend is startend in the
     }
   }
   > q
-  $ sudo docker kill clixon
+  $ sudo docker kill clixon-base
 ```
 
-Note that this is a special case since the example is
+Note that the clixon example application is a special case since the example is
 already a part of the installation. If you want to add your own
 application, such as plugins, cli syntax files, yang models, etc, you
 need to extend the base container with your own additions.

@@ -61,11 +61,11 @@
 #include <fcntl.h>
 #include <time.h>
 #include <limits.h>
-
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <libgen.h>
+#include <sys/stat.h> /* chmod */
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -692,6 +692,11 @@ main(int    argc,
     clicon_debug(1, "restconf_main: Opening FCGX socket: %s", sockpath);
     if ((sock = FCGX_OpenSocket(sockpath, 10)) < 0){
 	clicon_err(OE_CFG, errno, "FCGX_OpenSocket");
+	goto done;
+    }
+    /* umask settings may interfer: we want group to write: this is 774 */
+    if (chmod(sockpath, S_IRWXU|S_IRWXG|S_IROTH) < 0){
+	clicon_err(OE_UNIX, errno, "chmod");
 	goto done;
     }
     if (FCGX_InitRequest(r, sock, 0) != 0){
