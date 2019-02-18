@@ -43,6 +43,7 @@ libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 HOST_VENDOR     = @host_vendor@
+with_restconf	= @with_restconf@
 
 SH_SUFFIX	= @SH_SUFFIX@
 
@@ -70,12 +71,14 @@ APPSRC    = clixon_util_xml.c
 APPSRC   += clixon_util_json.c
 APPSRC   += clixon_util_yang.c
 APPSRC   += clixon_util_xpath.c
-# APPSRC   += clixon_util_stream.c # Needs curl
+APPSRC   += clixon_util_datastore.c
+ifeq ($(with_restconf),yes)
+APPSRC   += clixon_util_stream.c # Needs curl
+endif
 
 APPS	  = $(APPSRC:.c=)
 
 all:	 $(APPS)
-	 @echo "You may want to make clixon_util_stream separately (curl dependency)"
 
 clean:
 	rm -f $(APPS) clixon_util_stream *.core
@@ -96,13 +99,15 @@ clixon_util_xpath: clixon_util_xpath.c $(MYLIB)
 clixon_util_stream: clixon_util_stream.c $(MYLIB)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lcurl -o $@
 
+clixon_util_datastore: clixon_util_datastore.c $(MYLIB)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
+
 distclean: clean
 	rm -f Makefile *~ .depend
 
 install: 
-#	install -d -m 0755 $(DESTDIR)$(bindir)
-#	install -m 0755 $(INSTALLFLAGS) $(APPS) $(DESTDIR)$(bindir)
-
+	install -d -m 0755 $(DESTDIR)$(bindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPS) $(DESTDIR)$(bindir)
 
 install-include:
 

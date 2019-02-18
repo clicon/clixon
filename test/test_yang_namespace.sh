@@ -1,12 +1,13 @@
 #!/bin/bash
-
-APPNAME=example
-# test two modules example1 and example2 with overlapping statements x.
+# Test two modules example1 and example2 with overlapping statements x.
 # x is leaf in example1 and list on example2.
 # Test netconf and restconf
 # BTW, this is not supported in generated CLI
 
-. ./lib.sh
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
+APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang1=$dir/example1.yang

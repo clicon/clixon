@@ -21,7 +21,22 @@ application. Assumes setup of http daemon as describe under apps/restonf
 - test_datastore.sh Datastore tests
 - and many more...
 
-Tests called 'test*.sh' and placed in this directory will be automatically run as part of the all.sh, sum.sh tests etc. 
+Tests called 'test_*.sh' and placed in this directory will be
+automatically run as part of the all.sh, sum.sh tests etc. The scripts need to follow some rules to work properly, such as add this magic line as the first command line in the script, which ensures it works well when started from `all.sh`:
+```
+  s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+```
+
+You need to build and install the clixon utility programs before running the tests as some of the tests rely on them:
+```
+  cd util
+  make
+  sudo make install
+```
+
+You need to start nginx for some of the text. There are instructions in 
+* If you run systemd: `sudo systemctl start nginx.service`
+* The [example](../example/README.md) has instructions
 
 You can prefix a test with `BE=0` if you want to run your own backend.
 
@@ -37,14 +52,16 @@ Run all tests but continue after errors and only print a summary test output ide
   all.sh summary
 ```
 
-You need to start nginx. There are instructions in [the example](../example/README.md)
-
 Example site.sh file:
+```
+  # Add your local site specific env variables (or tests) here.
+  # Add test to this list that you dont want run
+  SKIPLIST="test_openconfig.sh test_yangmodels.sh"
+  # Parse yang openconfig models from https://github.com/openconfig/public
+  OPENCONFIG=/home/olof/src/clixon/test/public
+  # Parse yangmodels from https://github.com/YangModels/yang
+  YANGMODELS=/usr/local/share/yangmodels
+  # Standard IETF RFC yang files. 
+  IETFRFC=$YANGMODELS/standard/ietf/RFC
+```
 
-#!/bin/bash
-# Add your local site specific env variables (or tests) here.
-# get from: https://github.com/openconfig/public
-OPENCONFIG=/home/olof/src/clixon/test/public
-# get from:  https://github.com/YangModels/yang 
-YANGMODELS=/usr/local/share/yangmodels
-IETFRFC=$YANGMODELS/standard/ietf/RFC

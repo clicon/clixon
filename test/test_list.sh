@@ -1,9 +1,10 @@
 #!/bin/bash
 # Yang list / leaf-list operations. min/max-elements
 
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
 APPNAME=example
-# include err() and new() functions and creates $dir
-. ./lib.sh
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang

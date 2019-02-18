@@ -7,12 +7,11 @@ if [ $# -gt 0 ]; then
     exit -1
 fi
 
-# include err() and new() functions
-. ./lib.sh
 err=0
+testnr=0
 for test in test*.sh; do
-    echo "Running $test"
-    ./$test 
+    testfile=$test
+    . ./$test 
     errcode=$?
     if [ $errcode -ne 0 ]; then
 	err=1

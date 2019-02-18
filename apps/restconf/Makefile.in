@@ -50,6 +50,7 @@ sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 HOST_VENDOR     = @host_vendor@
 
+# XXX why is not wwwdir under prefix?
 wwwdir  	= @wwwdir@
 wwwuser         = @wwwuser@
 
@@ -100,7 +101,7 @@ distclean: clean
 # Put other executables in libexec/
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
-# Also a rule for letting www-dir be owned by www-data, which only orks for sudo
+# Also a rule for letting www-dir be owned by www-data, which only works for sudo
 install:	install-lib $(APPL)
 ifeq ($(shell whoami),root)
 	install -d -m 0755 -o $(wwwuser) -g $(wwwuser) $(DESTDIR)$(wwwdir)

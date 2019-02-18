@@ -6,9 +6,10 @@
 # Use-case: The ietf-netconf edit-config has a shorthand version of choice w mandatory:
 # container { choice target { mandatory; leaf candidate; leaf running; }}
 
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
 APPNAME=example
-# include err() and new() functions and creates $dir
-. ./lib.sh
 
 cfg=$dir/choice.xml
 fyang=$dir/type.yang
@@ -95,7 +96,7 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    pkill clixon_backend # to be sure
+    sudo pkill clixon_backend # to be sure
     
     new "start backend -s init -f $cfg -y $fyang"
     sudo $clixon_backend -s init -f $cfg -y $fyang

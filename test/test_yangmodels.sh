@@ -1,7 +1,6 @@
 #!/bin/bash
 # Parse yangmodels from https://github.com/YangModels/yang
 # Notes:
-# - Env-var MODELS should be 1
 # - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)
 # - Only cisco/nx/9.2-2 # Many other versions
 # - Only cisco/xe/1631  # Many other versions
@@ -17,15 +16,11 @@
 #./vendor/cisco/xe/check.sh
 #./vendor/cisco/nx/check.sh
 
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
 # Yang specifics: multi-keys and empty type
 APPNAME=example
-
-# include err() and new() functions and creates $dir
-. ./lib.sh
-
-if [ $MODELS -eq 0 ]; then
-    exit
-fi
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang

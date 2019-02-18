@@ -30,7 +30,6 @@
 #
 # ***** END LICENSE BLOCK *****
 #
-VPATH       	= @srcdir@
 prefix 		= @prefix@
 datarootdir	= @datarootdir@
 srcdir  	= @srcdir@
@@ -43,78 +42,60 @@ mandir		= @mandir@
 libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
+HOST_VENDOR     = @host_vendor@
+
+VPATH       	= @srcdir@
 CC		= @CC@
-CFLAGS  	= @CFLAGS@
-INSTALLFLAGS  	= @INSTALLFLAGS@ 
+CFLAGS  	= @CFLAGS@ -rdynamic -fPIC 
+INSTALLFLAGS  	= @INSTALLFLAGS@
 LDFLAGS 	= @LDFLAGS@
-LIBS    	= @LIBS@
-with_restconf	= @with_restconf@
-
-SH_SUFFIX	= @SH_SUFFIX@
-CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
-CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
-
-# Use this clixon lib for linking
-CLIXON_LIB	= libclixon.so.$(CLIXON_MAJOR).$(CLIXON_MINOR)
-
-# For dependency
-LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
-
-LIBS            = -L$(top_srcdir)/lib/src @LIBS@ $(top_srcdir)/lib/src/$(CLIXON_LIB)
-
+LIBS    	= @LIBS@ 
+DATASTORE       = text
 CPPFLAGS  	= @CPPFLAGS@
 
-INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
+INCLUDES = -I. -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
+PLUGIN       = $(DATASTORE).so
 
-SUBDIRS = text
+SRC     = clixon_xmldb_text.c
 
-.PHONY: all clean depend install $(SUBDIRS)
+OBJS    = $(SRC:.c=.o) 
 
-APPSRC  = datastore_client.c
-APPOBJ  = $(APPSRC:.c=.o)
-APPL	= datastore_client
+all:	 $(PLUGIN)
 
-all:	$(SUBDIRS) $(APPL)
+$(PLUGIN): $(SRC)
+ifeq ($(HOST_VENDOR),apple)
+	$(CC) $(CPPFLAGS) $(INCLUDES) $(CFLAGS) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ -lc $^ $(LIBS)
+else
+	$(CC) $(CPPFLAGS) $(INCLUDES) $(CFLAGS) $(LDFLAGS) -shared -o $@ -lc $^ $(LIBS)
+endif
+
+clean:
+	rm -f $(PLUGIN) $(OBJS) *.core
+
+distclean: clean
+	rm -f Makefile *~ .depend
 
 .SUFFIXES:
 .SUFFIXES: .c .o
 
-.c.o:
-	$(CC) $(INCLUDES) -D__PROGRAM__=\"$(APPL)\" $(CPPFLAGS) $(CFLAGS) -c $<
+.c.o: $(SRC)
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
 
-$(APPL) : $(APPOBJ) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(APPOBJ) $(LIBS) -o $@
-
-
-depend:
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
-
-$(SUBDIRS):
-	(cd $@; $(MAKE) $(MFLAGS) all)
+install: $(PLUGIN)
+	install -d -m 0755 $(DESTDIR)$(libdir)/xmldb
+	install -m 0644 $(INSTALLFLAGS) $(PLUGIN) $(DESTDIR)$(libdir)/xmldb
 
 install-include:
-	for i in $(SUBDIRS); \
-	do (cd $$i ; $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 
-install: 
-	for i in $(SUBDIRS); \
-	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
-
-uninstall:
-	for i in $(SUBDIRS); \
-	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
-
-clean:
-	rm -f *.core $(APPL) $(APPOBJ)
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
-
-distclean: clean
-	rm -f Makefile *~ .depend
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+uninstall: 
+	rm -rf $(DESTDIR)$(libdir)/xmldb/$(PLUGIN)
 
 TAGS:
-	find $(srcdir) -name '*.[chyl]' -print | etags -
+	find . -name '*.[chyl]' -print | etags -
+
+depend:
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(SRC) > .depend
+
+#include .depend
+

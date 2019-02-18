@@ -7,16 +7,14 @@ if [ $# -gt 0 ]; then
     exit -1
 fi
 
-# include err() and new() functions
-. ./lib.sh
 err=0
-for test in test*.sh; do
-    echo "Running $test"
-    ./$test  > /dev/null 2>&1
+for testfile in test*.sh; do # For lib.sh the variable must be called testfile
+    echo "Running $testfile"
+    ./$testfile  > /dev/null 2>&1
     errcode=$?
     if [ $errcode -ne 0 ]; then
 	err=1
-	echo -e "\e[31mError in $test errcode=$errcode"
+	echo -e "\e[31mError in $testfile errcode=$errcode"
 	echo -ne "\e[0m"
     fi
 done

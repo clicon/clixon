@@ -52,7 +52,7 @@ INSTALL		= @INSTALL@
 INCLUDES 	= -I. -I@srcdir@ @INCLUDES@
 SHELL		= /bin/sh
 
-SUBDIRS = lib apps include etc datastore util yang
+SUBDIRS = lib apps include etc datastore yang
 
 .PHONY:	doc example all clean depend $(SUBDIRS) install loc TAGS .config.status docker test
 

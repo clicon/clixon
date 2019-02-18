@@ -7,14 +7,10 @@
 # - Env-var MODELS should be 1
 # - Env-var OPENCONFIG should point to checkout place. (define it in site.sh for example)
 
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
 APPNAME=example
-
-# include err() and new() functions and creates $dir
-. ./lib.sh
-
-if [ $MODELS -eq 0 ]; then
-    exit
-fi
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang
@@ -104,7 +100,7 @@ for f in $files; do
 	exit
     fi
 done
-echo "m:$ms s:$ss"
+
 new "Openconfig test: $clixon_cli -1f $cfg -y $f show version ($m modules)"
 for f in $files; do
     if [ -n "$(head -1 $f|grep '^module')" ]; then
