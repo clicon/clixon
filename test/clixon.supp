@@ -1,0 +1,29 @@
+{
+   supp2
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*
+   fun:_dl_new_object
+}
+{
+   supp3
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*
+   fun:*
+   fun:expand_dynamic_string_token
+}
+{
+   supp44
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*
+   fun:_dlerror_run
+}
+{
+   supp5
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*
+   fun:_dl_check_map_versions
+}

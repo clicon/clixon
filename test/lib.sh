@@ -11,6 +11,7 @@
 # - expectmatch
 
 #set -e
+# : ${A=B} vs : ${A:=B} # colon also checks for NULL
 
 # Testfile (not including path)
 : ${testfile:=$(basename $0)}
@@ -42,6 +43,10 @@ fi
 # Single test. Set by "new"
 testname=
 
+# If valgrindtest use a file to log valgrind output on (checked by new)
+: ${valgrindtest=0}
+: ${valgrindfile=$(mktemp)}
+
 # If set to 0, override starting of clixon_backend in test (you bring your own)
 : ${BE:=1}
 
@@ -51,6 +56,9 @@ testname=
 # Where to log restconf. Some systems may not have syslog,
 # eg logging to a file: RCLOG="-l f/www-data/restconf.log"
 : ${RCLOG:=}
+
+# Wait after daemons (backend/restconf) start. Set to 10 if valgrind
+: ${RCWAIT:=1} 
 
 # Parse yangmodels from https://github.com/YangModels/yang
 # Recommended: checkout yangmodels elsewhere in the tree and set the env
@@ -66,22 +74,21 @@ testname=
 
 # For memcheck
 #clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
-clixon_cli=clixon_cli
+: ${clixon_cli:=clixon_cli}
 
 # For memcheck / performance
 #clixon_netconf="valgrind --tool=callgrind clixon_netconf"
 # use kcachegrind to view
 #clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
-clixon_netconf=clixon_netconf
+: ${clixon_netconf:=clixon_netconf}
 
 # How to run restconf stand-alone and using valgrind
 #clixon_restconf="valgrind --trace-children=no --child-silent-after-fork=yes --leak-check=full --show-leak-kinds=all /www-data/clixon_restconf"
-clixon_restconf=/www-data/clixon_restconf
-RCWAIT=1 # Wait after restconf start. Set to 10 if valgrind
+: ${clixon_restconf:=/www-data/clixon_restconf}
 
 # If you test w valgrind, you need to set -F & and sleep 10 when starting
 #clixon_backend="valgrind --leak-check=full --show-leak-kinds=all clixon_backend"
-clixon_backend=clixon_backend
+: ${clixon_backend:=clixon_backend}
 
 dir=/var/tmp/$0
 if [ ! -d $dir ]; then
@@ -109,8 +116,24 @@ err(){
   exit -1 #$testnr
 }
 
+# Test is previous test had valgrind errors if so quit
+checkvalgrind(){
+    if [ -f $valgrindfile ]; then
+	res=$(cat $valgrindfile | grep -e "reachable" -e "lost:"|awk '{print  $4}' | grep -v '^0$')
+	if [ -n "$res" ]; then
+	    >&2 cat $valgrindfile
+	    rm -f $valgrindfile
+	    exit -1	    
+	fi
+	rm -f $valgrindfile
+    fi    
+}
+
 # Increment test number and print a nice string
 new(){
+    if [ $valgrindtest -eq 1 ]; then 
+	checkvalgrind
+    fi
     testnr=`expr $testnr + 1`
     testname=$1
     >&2 echo "Test$testnr [$1]"

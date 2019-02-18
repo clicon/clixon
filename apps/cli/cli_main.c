@@ -249,8 +249,6 @@ main(int argc, char **argv)
     int          printgen  = 0;
     int          logclisyntax  = 0;
     int          help = 0;
-    char        *treename = NULL;
-    //    int          len;
     int          logdst = CLICON_LOG_STDERR;
     char        *restarg = NULL; /* what remains after options */
     int          dump_configfile_xml = 0;
@@ -550,8 +548,6 @@ main(int argc, char **argv)
     else
 	retval = 0;
   done:
-    if (treename)
-	free(treename);
     if (restarg)
 	free(restarg);
     // Gets in your face if we log on stderr
