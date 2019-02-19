@@ -1,4 +1,4 @@
-# Clixon tests
+# Clixon tests and CI
 
 ## Overview
 
@@ -7,7 +7,15 @@ automatically run as part of the all.sh, sum.sh tests etc. The scripts
 need to follow some rules to work properly, please look at one or two
 to get the idea.
 
-See also the [site.sh](#site.sh) for example for skipping tests or setting some site-specific variables.
+See also the [site.sh](#site-sh) for example for skipping tests or setting some site-specific variables.
+
+## Continuous Integration
+
+CI is done via [Travis CI](https://travis-ci.org/clicon/clixon).
+
+In the CI process, the system is built and configured and then the
+[clixon test container](../docker/system) is built and the tests in
+this directory is executed.
 
 ## Getting started
 
@@ -21,7 +29,6 @@ You need to build and install the clixon utility programs before running the tes
 You need to start nginx for some of the text. There are instructions in 
 * If you run systemd: `sudo systemctl start nginx.service`
 * The [example](../example/README.md) has instructions
-* See also the [clixon test container](../docker/system) where all test are encapsulated.
 
 ## Prefix variable
 

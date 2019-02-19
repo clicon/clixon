@@ -259,7 +259,7 @@ For example, the clixon-system container can be used as follows:
 * CLI: `sudo docker exec -it clixon-system clixon_cli`
 * Netconf: `sudo docker exec -it clixon-system clixon_netconf`
 * Restconf: `curl -G http://localhost/restconf`
-* Run tests: `sudo docker exec -it clixon-system bash -c 'cd /clixon/clixon/test; exec ./all.sh'`
+* Run tests: `sudo docker exec -it clixon-system bash -c 'cd /clixon/clixon/test; ./all.sh'`
 
 See [../docker](../docker) for more info.
 

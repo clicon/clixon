@@ -1,16 +1,8 @@
-# Clixon example container
+# Clixon example test container
 
 This directory show how to build a "monolithic" clixon docker
 container exporting port 80 and contains the example application with
-both restconf, netconf, cli and backend.
-
-Note that the container is built from scratch instead of using the
-base image. And it differs from the base image in that it builds the
-code from the local git locally (regardless of status and branch)
-wheras the base image pulls from remote github master branch.
-
-Note that it could use the base image, and may in the future, see
-comments in the Dockerfile.
+both restconf, netconf, cli and backend. It also includes packages to be able to run the [Clixon tests](../../test).
 
 The directory contains the following files:
 	 cleanup.sh     kill containers
@@ -52,7 +44,7 @@ As restconf using curl on exposed port 80:
 ```
 Or run tests:
 ```
-  $ sudo docker exec -it clixon-system bash -c 'cd /usr/local/bin/test&& ./all.sh'
+  $ sudo docker exec -it clixon-system bash -c 'cd /usr/local/bin/test && ./all.sh'
 ```
 
 To check status and then kill it:

@@ -25,8 +25,8 @@ support.
   * [Changelog](CHANGELOG.md)
   * [Runtime](#runtime)
   * [Clixon project page](http://www.clicon.org)
-  * [Tests](test/README.md)
-  * [Clixon containers](docker/README.md)
+  * [Tests and CI](test/README.md)
+  * [Containers](docker/README.md)
   * [Roadmap](ROADMAP.md)
   * [Reference manual](#reference) 
   
