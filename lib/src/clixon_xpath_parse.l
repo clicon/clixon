@@ -94,8 +94,7 @@ real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 <TOKEN>\r               { }
 <TOKEN><<EOF>>          { return X_EOF; }
 <TOKEN>".."             { return DOUBLEDOT; }
-<TOKEN>[()\[\]\.@,/:|]  { return *yytext; }
-<TOKEN>"::"             { return DOUBLECOLON; }
+<TOKEN>[()\[\]\.,/:|]   { return *yytext; }
 <TOKEN>and              { clixon_xpath_parselval.intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
 <TOKEN>or               { clixon_xpath_parselval.intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
 <TOKEN>div              { clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
@@ -110,24 +109,28 @@ real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 <TOKEN>last	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
 <TOKEN>position	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
 <TOKEN>count	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
-<TOKEN>ancestor	        { clixon_xpath_parselval.intval = A_ANCESTOR; return AXISNAME; }
-<TOKEN>ancestor-or-self { clixon_xpath_parselval.intval = A_ANCESTOR_OR_SELF; return AXISNAME; }
-<TOKEN>attribute        { clixon_xpath_parselval.intval = A_ATTRIBUTE; return AXISNAME; }
-<TOKEN>child            { clixon_xpath_parselval.intval = A_CHILD; return AXISNAME; }
-<TOKEN>descendant       { clixon_xpath_parselval.intval = A_DESCENDANT; return AXISNAME; }
-<TOKEN>descendant-or-self { clixon_xpath_parselval.intval = A_DESCENDANT_OR_SELF; return AXISNAME; }
-<TOKEN>following        { clixon_xpath_parselval.intval = A_FOLLOWING; return AXISNAME; }
-<TOKEN>following-sibling { clixon_xpath_parselval.intval = A_FOLLOWING_SIBLING; return AXISNAME; }
-<TOKEN>namespace        { clixon_xpath_parselval.intval = A_NAMESPACE; return AXISNAME; }
-<TOKEN>parent           { clixon_xpath_parselval.intval = A_PARENT; return AXISNAME; }
-<TOKEN>preceding        { clixon_xpath_parselval.intval = A_PRECEEDING; return AXISNAME; }
-<TOKEN>preceding-sibling { clixon_xpath_parselval.intval = A_PRECEEDING_SIBLING; return AXISNAME; }
-<TOKEN>self             { clixon_xpath_parselval.intval = A_SELF; return AXISNAME; }
+
+<TOKEN>@                { return *yytext; }
+<TOKEN>ancestor::       { clixon_xpath_parselval.intval = A_ANCESTOR; return AXISNAME; }
+<TOKEN>ancestor-or-self:: { clixon_xpath_parselval.intval = A_ANCESTOR_OR_SELF; return AXISNAME; }
+<TOKEN>attribute::        { clixon_xpath_parselval.intval = A_ATTRIBUTE; return AXISNAME; }
+<TOKEN>child::            { clixon_xpath_parselval.intval = A_CHILD; return AXISNAME; }
+<TOKEN>descendant::       { clixon_xpath_parselval.intval = A_DESCENDANT; return AXISNAME; }
+<TOKEN>descendant-or-self:: { clixon_xpath_parselval.intval = A_DESCENDANT_OR_SELF; return AXISNAME; }
+<TOKEN>following::        { clixon_xpath_parselval.intval = A_FOLLOWING; return AXISNAME; }
+<TOKEN>following-sibling:: { clixon_xpath_parselval.intval = A_FOLLOWING_SIBLING; return AXISNAME; }
+<TOKEN>namespace::        { clixon_xpath_parselval.intval = A_NAMESPACE; return AXISNAME; }
+<TOKEN>parent::           { clixon_xpath_parselval.intval = A_PARENT; return AXISNAME; }
+<TOKEN>preceding::        { clixon_xpath_parselval.intval = A_PRECEEDING; return AXISNAME; }
+<TOKEN>preceding-sibling:: { clixon_xpath_parselval.intval = A_PRECEEDING_SIBLING; return AXISNAME; }
+<TOKEN>self::             { clixon_xpath_parselval.intval = A_SELF; return AXISNAME; }
+
 <TOKEN>current          { clixon_xpath_parselval.string = strdup(yytext); return NODETYPE; }
 <TOKEN>comment          { clixon_xpath_parselval.string = strdup(yytext); return NODETYPE; }
 <TOKEN>text             { clixon_xpath_parselval.string = strdup(yytext); return NODETYPE; }
 <TOKEN>processing-instructions { clixon_xpath_parselval.string = strdup(yytext); return NODETYPE; }
 <TOKEN>node             { clixon_xpath_parselval.string = strdup(yytext); return NODETYPE; }
+
 <TOKEN>\"               { BEGIN(QLITERAL); return QUOTE; }
 <TOKEN>\'               { BEGIN(ALITERAL); return APOST; }
 <TOKEN>\-?({integer}|{real}) { sscanf(yytext,"%lf",&clixon_xpath_parselval.dval); return NUMBER;}
@@ -135,6 +138,7 @@ real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
                             return NAME; /* rather be catch-all */
                         }
 <TOKEN>.                { fprintf(stderr,"LEXICAL ERROR\n"); return -1; }
+
 <QLITERAL>\"            { BEGIN(TOKEN); return QUOTE; }
 <QLITERAL>.             { clixon_xpath_parselval.string = strdup(yytext);
                           return CHAR;}

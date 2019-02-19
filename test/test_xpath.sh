@@ -11,7 +11,6 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 xml=$dir/xml.xml
 xml2=$dir/xml2.xml
 xml3=$dir/xml3.xml
-xml4=$dir/xml4.xml
 
 cat <<EOF > $xml
 <aaa>
@@ -59,6 +58,7 @@ cat <<EOF > $xml2
     <here2><here/></here2>
     <ifType>ethernet</ifType>
     <ifMTU>1500</ifMTU>
+    <namespace>urn:example:foo</namespace>
   </bbb>
 </aaa>
 EOF
@@ -173,6 +173,15 @@ expecteof "$clixon_util_xpath -f $xml2 -i /aaa/bbb" 0 "ifType != \"atm\" or (ifM
 
 new "xpath .[name='bar']"
 expecteof "$clixon_util_xpath -f $xml2 -p .[name='bar'] -i /aaa/bbb/routing/ribs/rib" 0 "" "^nodeset:0:<rib><name>bar</name><address-family>myfamily</address-family></rib>$"
+
+new "xpath /aaa/bbb/namespace (namespace is xpath axisname)"
+echo "$clixon_util_xpath -f $xml2 -p /aaa/bbb/namespace"
+expecteof "$clixon_util_xpath -f $xml2 -p /aaa/bbb/namespace" 0 "" "^nodeset:0:<namespace>urn:example:foo</namespace>$"
+
+# See https://github.com/clicon/clixon/issues/54
+# But it is not only axis names. There are also, for example, nodetype like this example:
+#new "xpath /aaa/bbb/comment (comment is xpath nodetype)"
+#expecteof "$clixon_util_xpath -f $xml2 -p /aaa/bbb/comment" 0 "" "^kalle$"
 
 new "Multiple entries"
 new "xpath bbb[ccc='foo']"

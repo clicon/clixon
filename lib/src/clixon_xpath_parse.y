@@ -63,7 +63,6 @@
 %token <string> NAME
 %token <string> NODETYPE
 %token <string> DOUBLEDOT
-%token <string> DOUBLECOLON
 %token <string> DOUBLESLASH
 %token <string> FUNCTIONNAME
 
@@ -243,7 +242,7 @@ step        : axisspec nodetest predicates {$$=xp_new(XP_STEP,$1,0.0, NULL, NULL
             | DOUBLEDOT predicates        { $$=xp_new(XP_STEP, A_PARENT, 0.0,NULL, NULL, NULL, $2); clicon_debug(2,"step-> .."); } 
             ;
 
-axisspec    : AXISNAME DOUBLECOLON { clicon_debug(2,"axisspec-> AXISNAME(%d) ::", $1); $$=$1;}
+axisspec    : AXISNAME { clicon_debug(2,"axisspec-> AXISNAME(%d) ::", $1); $$=$1;}
             | '@'      { $$=A_ATTRIBUTE; clicon_debug(2,"axisspec-> @"); } 
             |          { clicon_debug(2,"axisspec-> "); $$=A_CHILD;} 
             ;

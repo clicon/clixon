@@ -155,6 +155,7 @@
 * New config option: CLICON_CLI_MODEL_TREENAME defining name of generated syntax tree if CLIXON_CLI_GENMODEL is set.
 
 ### Corrected Bugs
+* [Issue with bare axis names](https://github.com/clicon/clixon/issues/54)
 * Did not check for missing keys in validate. [Key of a list isn't mandatory](https://github.com/clicon/clixon/issues/73)
   * Problem here is that you can still add keys via netconf - since validation is a separate step, but in cli or restconf it should not be possible.
 * Partially corrected: [yang type range statement does not support multiple values](https://github.com/clicon/clixon/issues/59).
