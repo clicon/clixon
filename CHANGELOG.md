@@ -135,7 +135,8 @@
 * Replaced all calls to (obsolete) `cli_output` with `fprintf`
 * Added _experimental_ config option `CLICON_CLI_UTF8` default set to 0.
   * CLIgen UTF8 does not work with scrolling and control editing
-* Added valgrind memory leak tests in testmem.sh for cli and netconf
+* Added valgrind memory leak tests in testmem.sh for cli, netconf and backend
+  * remains: restconf
 * Added `make test` from top-level Makefile
 * Added `xml_rootchild_node()` lib function as variant of `xml_rootchild()`
 * Added -o "<option>=<value>" command-line option to all programs: backend, cli, netconf, restconf.

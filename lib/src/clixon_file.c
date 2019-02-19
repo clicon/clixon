@@ -160,9 +160,11 @@ clicon_file_dirent(const char     *dir,
 
    qsort((void *)new, nent, sizeof(*new), clicon_file_dirent_sort);
    *ent = new;
+   new = NULL;
    retval = nent;
-
 quit:
+   if (new)
+       free(new);
    if (dirp)
        closedir(dirp);
    if (regexp)

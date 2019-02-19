@@ -44,10 +44,10 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     new "start backend -s init -f $cfg"
-    sudo $clixon_backend -s init -f $cfg -D $DBG
-    if [ $? -ne 0 ]; then
-	err
-    fi
+    start_backend -s init -f $cfg
+
+    new "waiting"
+    sleep $RCWAIT
 fi
 
 new "cli configure top"
@@ -131,9 +131,6 @@ if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -z -f $cfg
-if [ $? -ne 0 ]; then
-    err "kill backend"
-fi
+stop_backend -f $cfg
 
 rm -rf $dir

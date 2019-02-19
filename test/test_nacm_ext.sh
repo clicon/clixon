@@ -139,10 +139,7 @@ if [ $BE -ne 0 ]; then
     sleep 1
     new "start backend -s init -f $cfg"
     # start new backend
-    sudo $clixon_backend -s init -f $cfg -D $DBG
-    if [ $? -ne 0 ]; then
-	err
-    fi
+    start_backend -s init -f $cfg
 fi
 
 new "kill old restconf daemon"
@@ -151,6 +148,7 @@ sudo pkill -u www-data -f "/www-data/clixon_restconf"
 new "start restconf daemon (-a is enable http basic auth)"
 sudo su -c "$clixon_restconf -f $cfg $RCLOG -D $DBG -- -a" -s /bin/sh www-data &
 
+new "waiting"
 sleep $RCWAIT
 
 new "auth get"
@@ -222,9 +220,6 @@ if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -z -f $cfg
-if [ $? -ne 0 ]; then
-    err "kill backend"
-fi
+stop_backend -f $cfg
 
 rm -rf $dir

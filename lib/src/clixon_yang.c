@@ -2556,6 +2556,8 @@ yang_spec_load_dir(clicon_handle h,
 	goto done;
     retval = 0;
   done:
+    if (dp)
+	free(dp);
     if (base)
 	free(base);
     return retval;

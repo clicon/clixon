@@ -74,6 +74,13 @@
 #include "backend_client.h"
 #include "backend_handle.h"
 
+/*! Open an INET stream socket and bind it to a file descriptor
+ *
+o * @param[in]  h    Clicon handle
+ * @param[in]  dst  IPv4 address (see inet_pton(3))
+ * @retval     s    Socket file descriptor (see socket(2))
+ * @retval    -1    Error
+ */
 static int
 config_socket_init_ipv4(clicon_handle h,
 			char         *dst)
@@ -112,10 +119,14 @@ config_socket_init_ipv4(clicon_handle h,
     return -1;
 }
 
-/*! Open a socket and bind it to a file descriptor
+/*! Open a UNIX domain socket and bind it to a file descriptor
  *
  * The socket is accessed via CLICON_SOCK option, has 770 permissions
  * and group according to CLICON_SOCK_GROUP option.
+ * @param[in]  h    Clicon handle
+ * @param[in]  sock Unix file-system path
+ * @retval     s    Socket file descriptor (see socket(2))
+ * @retval    -1    Error
  */
 static int
 config_socket_init_unix(clicon_handle h,
@@ -175,10 +186,16 @@ config_socket_init_unix(clicon_handle h,
     return -1;
 }
 
+/*! Open backend socket, the one clients send requests to, either ip or unix
+ * 
+ * @param[in]  h    Clicon handle
+ * @retval     s    Socket file descriptor (see socket(2))
+ * @retval    -1    Error
+ */
 int
 backend_socket_init(clicon_handle h)
 {
-    char *sock;
+    char *sock; /* unix path or ip address string */
 
     if ((sock = clicon_sock(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
@@ -191,8 +208,12 @@ backend_socket_init(clicon_handle h)
     case AF_INET:
 	return config_socket_init_ipv4(h, sock);
 	break;
+    default:
+	clicon_err(OE_UNIX, EINVAL, "No such address family: %d",
+		   clicon_sock_family(h));
+	break;
     }
-    return 0;
+    return -1;
 }
 
 /*! Accept new socket client

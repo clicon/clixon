@@ -3,12 +3,13 @@
 ## Overview
 
 Tests called 'test_*.sh' and placed in this directory will be
-automatically run as part of the all.sh, sum.sh tests etc. The scripts need to follow some rules to work properly, such as add this magic line as the first command line in the script, which ensures it works well when started from `all.sh`:
-```
-  s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
-```
+automatically run as part of the all.sh, sum.sh tests etc. The scripts
+need to follow some rules to work properly, please look at one or two
+to get the idea.
 
-## Prerequisites
+See also the [site.sh](#site.sh) for example for skipping tests or setting some site-specific variables.
+
+## Getting started
 
 You need to build and install the clixon utility programs before running the tests as some of the tests rely on them:
 ```
@@ -20,6 +21,7 @@ You need to build and install the clixon utility programs before running the tes
 You need to start nginx for some of the text. There are instructions in 
 * If you run systemd: `sudo systemctl start nginx.service`
 * The [example](../example/README.md) has instructions
+* See also the [clixon test container](../docker/system) where all test are encapsulated.
 
 ## Prefix variable
 
@@ -28,7 +30,7 @@ You can prefix a test with `BE=0` if you want to run your own backend.
 To run with debug flags, use the `DBG=<number>` environment variable.
 
 Other variables include:
-* DEMSLEEP Number of seconds to sleep after daemons have started
+* RCWAIT Number of seconds to sleep after daemons have started
 
 ## Run all tests
 
@@ -47,6 +49,8 @@ These tests use valgrind to check for memory leaks:
 ```
   mem.sh cli
   mem.sh netconf
+  mem.sh backend
+#  mem.sh restconf # NYI
 ```
 
 ## Site.sh
@@ -62,8 +66,4 @@ You may add your site-specific modifications in a `site.sh` file. Example:
   # Standard IETF RFC yang files. 
   IETFRFC=$YANGMODELS/standard/ietf/RFC
 ```
-
-## See also
-
-The [clixon test container](../docker/system) encapsulates the `all.sh` test in a test container. 
 

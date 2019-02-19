@@ -103,6 +103,7 @@ clicon_log_exit(void)
 {
     if (_logfile)
 	fclose(_logfile);
+    closelog(); /* optional */
     return 0;
 }
 

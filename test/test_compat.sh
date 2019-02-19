@@ -35,8 +35,7 @@ cat <<EOF > $cfg
 
 EOF
 
-
-run(){
+testrun(){
     mode=$1
     expect=$2
 
@@ -86,17 +85,18 @@ EOF
 	fi
     
 	new "start backend  -f $cfg -s $mode -c $dir/config"
-	sudo $clixon_backend -f $cfg -s $mode -c $dir/config
-	if [ $? -ne 0 ]; then
-	    err
-	fi
+	start_backend -f $cfg -s $mode -c $dir/config
+
+	new "waiting"
+	sleep $RCWAIT
+
     fi
 
     new "Check $mode"
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$expect</rpc-reply>]]>]]>$"
 
     if [ $BE -eq 0 ]; then
-	exit # BE
+	return # BE
     fi
 
     new "Kill backend"
@@ -106,14 +106,11 @@ EOF
 	err "backend already dead"
     fi
     # kill backend
-    sudo clixon_backend -z -f $cfg
-    if [ $? -ne 0 ]; then
-	err "kill backend"
-    fi
+    stop_backend -f $cfg
+} # testrun 
 
-} # run 
+testrun running '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
 
-run running '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
-run startup '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+testrun startup '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
 
 rm -rf $dir

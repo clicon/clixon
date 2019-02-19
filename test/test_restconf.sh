@@ -44,10 +44,7 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     new "start backend -s init -f $cfg"
-    sudo $clixon_backend -s init -f $cfg -D $DBG
-    if [ $? -ne 0 ]; then
-	err
-    fi
+    start_backend -s init -f $cfg
 fi
 
 new "kill old restconf daemon"
@@ -56,6 +53,7 @@ sudo pkill -u www-data clixon_restconf
 new "start restconf daemon"
 sudo su -c "$clixon_restconf -f $cfg $RCLOG -D $DBG" -s /bin/sh www-data &
 
+new "waiting"
 sleep $RCWAIT
 
 new "restconf tests"
@@ -280,9 +278,6 @@ if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -z -f $cfg
-if [ $? -ne 0 ]; then
-    err "kill backend"
-fi
+stop_backend -f $cfg
 
 rm -rf $dir

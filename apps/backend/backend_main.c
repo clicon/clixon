@@ -83,8 +83,10 @@ backend_terminate(clicon_handle h)
 {
     yang_spec *yspec;
     char      *pidfile = clicon_backend_pidfile(h);
+    int       sockfamily = clicon_sock_family(h);
     char      *sockpath = clicon_sock(h);
     cxobj     *x;
+    struct stat st;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
@@ -99,10 +101,12 @@ backend_terminate(clicon_handle h)
     clixon_plugin_exit(h);
     /* Delete all backend plugin RPC callbacks */
     rpc_callback_delete_all(); 
+
     if (pidfile)
 	unlink(pidfile);   
-    if (sockpath)
-	unlink(sockpath);   
+    if (sockfamily==AF_UNIX && lstat(sockpath, &st) == 0)
+	unlink(sockpath);
+	
     xmldb_plugin_unload(h); /* unload storage plugin */
     backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
     event_exit();
@@ -203,9 +207,12 @@ db_merge(clicon_handle h,
 }
 
 /*! Create backend server socket and register callback
+ * @param[in]  h    Clicon handle
+ * @retval     s    Server socket file descriptor (see socket(2))
+ * @retval    -1    Error
  */
 static int
-server_socket(clicon_handle h)
+backend_server_socket(clicon_handle h)
 {
     int ss;
 
@@ -571,6 +578,7 @@ main(int    argc,
     yang_spec    *yspec = NULL;
     yang_spec    *yspecfg = NULL; /* For config XXX clixon bug */
     char         *str;
+    int           ss = -1; /* server socket */
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -924,7 +932,7 @@ main(int    argc,
     }
 	
     /* Initialize server socket */
-    if (server_socket(h) < 0)
+    if ((ss = backend_server_socket(h)) < 0)
 	goto done;
 
     if (debug)
@@ -937,6 +945,8 @@ main(int    argc,
     retval = 0;
   done:
     clicon_log(LOG_NOTICE, "%s: %u Terminated retval:%d", __PROGRAM__, getpid(), retval);
+    if (ss != -1)
+	close(ss);
     backend_terminate(h); /* Cannot use h after this */
 
     return retval;

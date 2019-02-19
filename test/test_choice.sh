@@ -99,10 +99,7 @@ if [ $BE -ne 0 ]; then
     sudo pkill clixon_backend # to be sure
     
     new "start backend -s init -f $cfg -y $fyang"
-    sudo $clixon_backend -s init -f $cfg -y $fyang
-    if [ $? -ne 0 ]; then
-	err
-    fi
+    start_backend -s init -f $cfg -y $fyang
 fi
 
 new "kill old restconf daemon"
@@ -110,6 +107,9 @@ sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
 sudo su -c "$clixon_restconf -f $RCLOG $cfg -y $fyang -D $DBG" -s /bin/sh www-data &
+
+new "waiting"
+sleep $RCWAIT
 
 # First vanilla (protocol) case
 new "netconf validate empty"
@@ -207,9 +207,6 @@ if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-sudo clixon_backend -z -f $cfg
-if [ $? -ne 0 ]; then
-    err "kill backend"
-fi
+stop_backend -f $cfg
 
 rm -rf $dir

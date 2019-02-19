@@ -43,8 +43,16 @@ fi
 # Single test. Set by "new"
 testname=
 
-# If valgrindtest use a file to log valgrind output on (checked by new)
+# Valgind memory leak check.
+# The values are:
+# 0: No valgrind check
+# 1: Start valgrind at every new testcase. Check result every next new
+# 2: Start valgrind every new backend start. Check when backend stops
+# 3: Start valgrind every new restconf start. Check when restconf stops
+# 
 : ${valgrindtest=0}
+
+# Valgrind log file. This is usually removed automatically
 : ${valgrindfile=$(mktemp)}
 
 # If set to 0, override starting of clixon_backend in test (you bring your own)
@@ -72,22 +80,14 @@ testname=
 : ${IETFRFC=../yang/standard}
 #: ${IETFRFC=$YANGMODELS/standard/ietf/RFC}
 
-# For memcheck
-#clixon_cli="valgrind --leak-check=full --show-leak-kinds=all clixon_cli"
+# Follow the binary programs that can be parametrized (eg with valgrind)
+
 : ${clixon_cli:=clixon_cli}
 
-# For memcheck / performance
-#clixon_netconf="valgrind --tool=callgrind clixon_netconf"
-# use kcachegrind to view
-#clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
 : ${clixon_netconf:=clixon_netconf}
 
-# How to run restconf stand-alone and using valgrind
-#clixon_restconf="valgrind --trace-children=no --child-silent-after-fork=yes --leak-check=full --show-leak-kinds=all /www-data/clixon_restconf"
 : ${clixon_restconf:=/www-data/clixon_restconf}
 
-# If you test w valgrind, you need to set -F & and sleep 10 when starting
-#clixon_backend="valgrind --leak-check=full --show-leak-kinds=all clixon_backend"
 : ${clixon_backend:=clixon_backend}
 
 dir=/var/tmp/$0
@@ -122,11 +122,37 @@ checkvalgrind(){
 	res=$(cat $valgrindfile | grep -e "reachable" -e "lost:"|awk '{print  $4}' | grep -v '^0$')
 	if [ -n "$res" ]; then
 	    >&2 cat $valgrindfile
-	    rm -f $valgrindfile
+	    sudo rm -f $valgrindfile
 	    exit -1	    
 	fi
-	rm -f $valgrindfile
-    fi    
+	sudo rm -f $valgrindfile
+    fi
+}
+
+# Start backend with all varargs.
+# If valgrindtest == 2, start valgrind
+start_backend(){
+    if [ $valgrindtest -eq 2 ]; then
+	# Start in background since daemon version creates two traces: parent,
+	# child. If background then only the single relevant.
+	sudo $clixon_backend -F $* -D $DBG &
+    else
+	sudo $clixon_backend $* -D $DBG
+    fi
+    if [ $? -ne 0 ]; then
+	err
+    fi
+}
+
+stop_backend(){
+    sudo clixon_backend -z $*
+    if [ $? -ne 0 ]; then
+	err "kill backend"
+    fi
+    if [ $valgrindtest -eq 2 ]; then 
+	sleep 1
+	checkvalgrind
+    fi
 }
 
 # Increment test number and print a nice string
