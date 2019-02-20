@@ -77,7 +77,10 @@
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
-/*! Terminate. Cannot use h after this */
+/*! Clean and close all state of backend (but dont exit). 
+ * Cannot use h after this 
+ * @param[in]  h  Clixon handle
+ */
 static int
 backend_terminate(clicon_handle h)
 {
@@ -87,8 +90,11 @@ backend_terminate(clicon_handle h)
     char      *sockpath = clicon_sock(h);
     cxobj     *x;
     struct stat st;
+    int        ss;
 
     clicon_debug(1, "%s", __FUNCTION__);
+    if ((ss = clicon_socket_get(h)) != -1)
+	close(ss);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
@@ -931,10 +937,11 @@ main(int    argc,
 	goto done;
     }
 	
-    /* Initialize server socket */
+    /* Initialize server socket and save it to handle */
     if ((ss = backend_server_socket(h)) < 0)
 	goto done;
-
+    if (clicon_socket_set(h, ss) < 0)
+	goto done;
     if (debug)
 	clicon_option_dump(h, debug);
 
@@ -945,8 +952,6 @@ main(int    argc,
     retval = 0;
   done:
     clicon_log(LOG_NOTICE, "%s: %u Terminated retval:%d", __PROGRAM__, getpid(), retval);
-    if (ss != -1)
-	close(ss);
     backend_terminate(h); /* Cannot use h after this */
 
     return retval;

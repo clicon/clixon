@@ -15,12 +15,12 @@ case "$PROGRAM" in
     'cli')
 	valgrindtest=1
 	RCWAIT=1
-	clixon_cli="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./clixon.supp --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_cli"
+	clixon_cli="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp  --track-fds=yes --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_cli"
 ;;
     'netconf')
 	valgrindtest=1
 	RCWAIT=1
-	clixon_netconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./clixon.supp --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_netconf"
+	clixon_netconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp  --track-fds=yes  --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_netconf"
 ;;
     'backend')
 	valgrindtest=2 # This means backend valgrind test
@@ -28,10 +28,19 @@ case "$PROGRAM" in
 	perfnr=100 # test_perf.sh restconf put more or less stops
 	perfreq=10
 
-	clixon_backend="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./clixon.supp --track-fds=yes --trace-children=yes --log-file=$valgrindfile clixon_backend"
+	clixon_backend="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=yes --log-file=$valgrindfile clixon_backend"
+;;
+    'restconf')
+	valgrindtest=3 # This means backend valgrind test
+	sudo chmod 660 $valgrindfile
+	sudo chown www-data $valgrindfile
+	RCWAIT=5 # valgrind restconf needs some time to get up 
+	clixon_restconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile /www-data/clixon_restconf"
+
 ;;
 *)
     echo "usage: $0 cli|netconf|restconf|backend" # valgrind memleak checks
+    rm -f $valgrindfile
     exit -1
 ;;
 esac

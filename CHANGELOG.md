@@ -111,6 +111,7 @@
 * Many hand-crafted validation messages have been removed and replaced with generic validations, which may lead to changed rpc-error messages.
 * CLICON_XML_SORT option (in clixon-config.yang) has been removed and set to true permanently. Unsorted XML lists leads to slower performance and old obsolete code can be removed.
 * Strict namespace setting can be a problem when upgrading existing database files, such as startup-db or persistent running-db, or any other saved XML file.
+* Removed obsolete `-x` command-line option to clixon_cli.
 * Removed `delete-config` support for candidate db since it is not supported in RFC6241.
 * Switched the order of `error-type` and `error-tag` in all netconf and restconf error messages to comply to RFC order.
 * XML namespace handling is corrected (see major changes)
@@ -129,14 +130,15 @@
   * `<!DOCTYPE` (ie DTD) is not supported.
 * Added Clixon example full system docker container, see [docker/system](docker/system).
 * Moved datastore/text/ code to datastore/ since there is only one type of datastore.
+* Added clicon_socket_set() and clicon_socket_get() functions for cleaning up backend server and restconf FCGI socket on termination.
 * Changed clixon base system container to use Alpine [docker/base](docker/base).
 * clixon-config YAML file has new revision: 2019-02-06.
 * Added new log function: `clicon_log_xml()` for logging XML tree
 * Replaced all calls to (obsolete) `cli_output` with `fprintf`
 * Added _experimental_ config option `CLICON_CLI_UTF8` default set to 0.
   * CLIgen UTF8 does not work with scrolling and control editing
-* Added valgrind memory leak tests in testmem.sh for cli, netconf and backend
-  * remains: restconf
+* Added valgrind memory leak tests in testmem.sh for cli, netconf, restconf and backend
+  * To run with backend for example: `mem.sh backend`
 * Added `make test` from top-level Makefile
 * Added `xml_rootchild_node()` lib function as variant of `xml_rootchild()`
 * Added -o "<option>=<value>" command-line option to all programs: backend, cli, netconf, restconf.

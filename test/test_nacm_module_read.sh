@@ -142,7 +142,7 @@ sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 sleep 1
 new "start restconf daemon (-a is enable basic authentication)"
-sudo su -c "$clixon_restconf -f $cfg $RCLOG -D $DBG -- -a" -s /bin/sh www-data &
+start_restconf -f $cfg -- -a
 
 new "waiting"
 sleep $RCWAIT
@@ -272,7 +272,8 @@ expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-e
 
 
 new "Kill restconf daemon"
-sudo pkill -u www-data -f "/www-data/clixon_restconf"
+stop_restconf 
+
 
 if [ $BE -eq 0 ]; then
     exit # BE

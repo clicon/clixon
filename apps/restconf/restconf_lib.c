@@ -471,12 +471,20 @@ api_return_err(clicon_handle h,
     return retval;
 }
 
+/*! Clean and close all state of restconf process (but dont exit). 
+ * Cannot use h after this 
+ * @param[in]  h  Clixon handle
+ */
 int
 restconf_terminate(clicon_handle h)
 {
     yang_spec *yspec;
     cxobj     *x;
+    int        fs; /* fgcx socket */
 
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((fs = clicon_socket_get(h)) != -1)
+	close(fs);
     clixon_plugin_exit(h);
     rpc_callback_delete_all();
     clicon_rpc_close_session(h);
@@ -490,3 +498,4 @@ restconf_terminate(clicon_handle h)
     clicon_log_exit();
     return 0;
 }
+

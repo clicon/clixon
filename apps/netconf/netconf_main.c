@@ -283,6 +283,10 @@ send_hello(clicon_handle h,
     return retval;
 }
 
+/*! Clean and close all state of netconf process (but dont exit). 
+ * Cannot use h after this 
+ * @param[in]  h  Clixon handle
+ */
 static int
 netconf_terminate(clicon_handle h)
 {

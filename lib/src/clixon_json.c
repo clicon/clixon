@@ -224,7 +224,6 @@ json_str_escape_cdata(cbuf *cb,
 		      char *str)
 {
     int   retval = -1;
-    char *snew = NULL;
     int   i;
     int   esc = 0; /* cdata escape */
 
@@ -261,12 +260,8 @@ json_str_escape_cdata(cbuf *cb,
 	    cprintf(cb, "%c", str[i]);
 	    break;
 	}
-    if ((snew = strdup(cbuf_get(cb))) ==NULL){
-	clicon_err(OE_XML, errno, "strdup");
-	goto done;
-    }
     retval = 0;
- done:
+    // done:
     return retval;
 }
 
