@@ -70,7 +70,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "start restconf daemon"
-start_restconf -f $cfg -y $fyang
+sudo su -c "$clixon_restconf -f $cfg -y $fyang $RCLOG -D $DBG" -s /bin/sh www-data &
 
 new "waiting"
 sleep $RCWAIT
@@ -169,7 +169,7 @@ new "netconf get large leaf-list config"
 expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg  -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><c>0</c><c>1</c>'
 
 new "Kill restconf daemon"
-stop_restconf 
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 if [ $BE -eq 0 ]; then
     exit # BE

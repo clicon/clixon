@@ -1,12 +1,12 @@
 {
-   supp1
+   supp2
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:*
    fun:_dl_new_object
 }
 {
-   supp2
+   supp3
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:*
@@ -14,31 +14,16 @@
    fun:expand_dynamic_string_token
 }
 {
-   supp3
+   supp44
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:*
    fun:_dlerror_run
 }
 {
-   supp4
-   Memcheck:Leak
-   match-leak-kinds: reachable
-   fun:*
-   fun:_dl_check_map_versions
-}
-{
    supp5
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:*
-   fun:*
-   fun:_dl_map_object
-}
-{
-   supp6-fcgi
-   Memcheck:Leak
-   match-leak-kinds: reachable
-   fun:*
-   fun:OS_LibInit
+   fun:_dl_check_map_versions
 }

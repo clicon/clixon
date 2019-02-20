@@ -66,17 +66,6 @@
  * @note If you change here, you must also change the structs below:
  * @see struct cli_handle
  * @see struct backend_handle
- * This is the internal definition of a "Clixon handle" which in its external
- * form is "clicon_handle" and is used in most Clixon API calls.
- * Some details:
- * 1) the internal structure contains a header (defined here) whereas higher
- *    order libs (eg cli and backend) introduce more fields appended to this 
- *    struct.
- * 2) ch_options accessed via clicon_data() are clixon config options are 
- *    string values appearing in the XML configfile accessed with -f. 
- *    Alternatively, these  could be accessed via clicon_conf_xml()
- * 3) ch_data accessed via clicon_data() is more general purpose for any data.
- *    that is, not only strings. And has separate namespace from options.
  */
 struct clicon_handle {
     int               ch_magic;    /* magic (HDR) */

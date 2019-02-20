@@ -52,9 +52,8 @@ testname=
 # 
 : ${valgrindtest=0}
 
-# Valgrind log file. This should be removed automatically. Note that mktemp
-# actually creates a file so do not call it by default
-#: ${valgrindfile=$(mktemp)}
+# Valgrind log file. This is usually removed automatically
+: ${valgrindfile=$(mktemp)}
 
 # If set to 0, override starting of clixon_backend in test (you bring your own)
 : ${BE:=1}
@@ -136,9 +135,9 @@ start_backend(){
     if [ $valgrindtest -eq 2 ]; then
 	# Start in background since daemon version creates two traces: parent,
 	# child. If background then only the single relevant.
-	sudo $clixon_backend -F -D $DBG $* &
+	sudo $clixon_backend -F $* -D $DBG &
     else
-	sudo $clixon_backend -D $DBG $*
+	sudo $clixon_backend $* -D $DBG
     fi
     if [ $? -ne 0 ]; then
 	err
@@ -151,22 +150,6 @@ stop_backend(){
 	err "kill backend"
     fi
     if [ $valgrindtest -eq 2 ]; then 
-	sleep 1
-	checkvalgrind
-    fi
-}
-
-start_restconf(){
-    # Start in background 
-    sudo su -c "$clixon_restconf $RCLOG -D $DBG $*" -s /bin/sh www-data &
-    if [ $? -ne 0 ]; then
-	err
-    fi
-}
-
-stop_restconf(){
-    sudo pkill -u www-data -f "/www-data/clixon_restconf"
-    if [ $valgrindtest -eq 3 ]; then 
 	sleep 1
 	checkvalgrind
     fi

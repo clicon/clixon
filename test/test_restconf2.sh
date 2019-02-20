@@ -83,7 +83,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "start restconf daemon"
-start_restconf -f $cfg -y $fyang
+sudo su -c "$clixon_restconf -f $cfg -y $fyang $RCLOG -D $DBG" -s /bin/sh www-data &
 
 new "waiting"
 sleep $RCWAIT
@@ -182,7 +182,7 @@ new "restconf POST type x3"
 expectfn 'curl -s -X GET http://localhost/restconf/data/example:types' 0 '{"example:types": {"tint": 42,"tdec64": 42.123,"tbool": false,"tstr": "str"}}'
 
 new "Kill restconf daemon"
-stop_restconf 
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 if [ $BE -eq 0 ]; then
     exit # BE

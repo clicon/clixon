@@ -51,7 +51,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-start_restconf -f $cfg
+sudo su -c "$clixon_restconf -f $cfg $RCLOG -D $DBG" -s /bin/sh www-data &
 
 new "waiting"
 sleep $RCWAIT
@@ -265,7 +265,7 @@ if [ -z "$match" ]; then
 fi
 
 new "Kill restconf daemon"
-stop_restconf 
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 if [ $BE -eq 0 ]; then
     exit # BE

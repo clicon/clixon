@@ -694,8 +694,6 @@ main(int    argc,
 	clicon_err(OE_CFG, errno, "FCGX_OpenSocket");
 	goto done;
     }
-    if (clicon_socket_set(h, sock) < 0)
-	goto done;
     /* umask settings may interfer: we want group to write: this is 774 */
     if (chmod(sockpath, S_IRWXU|S_IRWXG|S_IROTH) < 0){
 	clicon_err(OE_UNIX, errno, "chmod");

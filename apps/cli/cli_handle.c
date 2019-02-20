@@ -83,7 +83,7 @@ struct cli_handle {
     /* ------ end of common handle ------ */
 
     cligen_handle   cl_cligen;   /* cligen handle */
-    cli_syntax_t   *cl_stx;	 /* CLI syntax structure */
+    cli_syntax_t   *cl_stx;	/* syntax structure */
 };
 
 /*! Return a clicon handle for other CLICON API calls

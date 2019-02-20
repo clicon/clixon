@@ -71,12 +71,11 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:l:F:1a:u:d:m:qp:GLy:c:U:o:"
+#define CLI_OPTS "hD:f:xl:F:1a:u:d:m:qp:GLy:c:U:o:"
 
-/*! Clean and close all state of cli process (but dont exit). 
- * Cannot use h after this 
- * @param[in]  h  Clixon handle
- */
+#define CLI_LOGFILE "/tmp/clixon_cli.log"
+
+/*! terminate cli application */
 static int
 cli_terminate(clicon_handle h)
 {
@@ -145,6 +144,63 @@ cli_interactive(clicon_handle h)
     return retval;
 }
 
+/*! Read file as configuration file and print xml file  for migrating to new fmt
+ * @see clicon_option_readfile_xml
+ */
+static int 
+dump_configfile_xml_fn(FILE       *fout,
+		       const char *filename)
+{
+    struct stat st;
+    char        opt[1024];
+    char        val[1024];
+    char        line[1024];
+    char       *cp;
+    FILE       *f = NULL;
+    int         retval = -1;
+    char       *suffix;
+
+    if (filename == NULL || !strlen(filename)){
+	clicon_err(OE_UNIX, 0, "Not specified");
+	goto done;
+    }
+    if ((suffix = rindex(filename, '.')) != NULL &&
+	strcmp((suffix+1), "xml") == 0){
+	clicon_err(OE_CFG, 0, "Configfile %s should not be XML", filename);
+	goto done;
+    }
+    if (stat(filename, &st) < 0){
+	clicon_err(OE_UNIX, errno, "%s", filename);
+	goto done;
+    }
+    if (!S_ISREG(st.st_mode)){
+	clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
+	goto done;
+    }
+    if ((f = fopen(filename, "r")) == NULL) {
+	clicon_err(OE_UNIX, errno, "configure file: %s", filename);
+	return -1;
+    }
+    clicon_debug(2, "%s: Reading config file %s", __FUNCTION__, filename);
+    fprintf(fout, "<config>\n");
+    while (fgets(line, sizeof(line), f)) {
+	if ((cp = strchr(line, '\n')) != NULL) /* strip last \n */
+	    *cp = '\0';
+	/* Trim out comments, strip whitespace, and remove CR */
+	if ((cp = strchr(line, '#')) != NULL)
+	    memcpy(cp, "\n", 2);
+	if (sscanf(line, "%s %s", opt, val) < 2)
+	    continue;
+	fprintf(fout, "\t<%s>%s</%s>\n", opt, val, opt);
+    }
+    fprintf(fout, "</config>\n");
+    retval = 0;
+  done:
+    if (f)
+	fclose(f);
+    return retval;
+}
+
 static void
 usage(clicon_handle h,
       char         *argv0)
@@ -157,6 +213,7 @@ usage(clicon_handle h,
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug level\n"
 	    "\t-f <file> \tConfig-file (mandatory)\n"
+	    "\t-x\t\tDump configuration file as XML on stdout (migration utility)\n"
     	    "\t-F <file> \tRead commands from file (default stdin)\n"
 	    "\t-1\t\tDo not enter interactive mode\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
@@ -194,6 +251,7 @@ main(int argc, char **argv)
     int          help = 0;
     int          logdst = CLICON_LOG_STDERR;
     char        *restarg = NULL; /* what remains after options */
+    int          dump_configfile_xml = 0;
     yang_spec   *yspec;
     yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
     struct passwd *pw;
@@ -207,7 +265,6 @@ main(int argc, char **argv)
     /* Initiate CLICON handle */
     if ((h = cli_handle_init()) == NULL)
 	goto done;
-
     /* Set username to clicon handle. Use in all communication to backend 
      * Note, can be overridden by -U
      */
@@ -244,6 +301,9 @@ main(int argc, char **argv)
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
+	case 'x': /* dump config file as xml (migration from .conf file)*/
+	    dump_configfile_xml++;
+	    break;
 	case 'l': /* Log destination: s|e|o|f */
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(h, argv[0]);
@@ -259,6 +319,14 @@ main(int argc, char **argv)
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst);
 
     clicon_debug_init(debug, NULL); 
+
+    /* Use cli as util tool to dump config file as xml for migration */
+    if (dump_configfile_xml) {
+	clicon_hash_t *copt = clicon_options(h);
+	char *configfile = hash_value(copt, "CLICON_CONFIGFILE", NULL);	
+	if (dump_configfile_xml_fn(stdout, configfile) < 0)
+	    goto done;
+    }
 
     /* Create top-level yang spec and store as option */
     if ((yspecfg = yspec_new()) == NULL)
@@ -277,6 +345,7 @@ main(int argc, char **argv)
 	switch (c) {
 	case 'D' : /* debug */
 	case 'f': /* config file */
+	case 'x': /* dump config file as xml */
 	case 'l': /* Log destination */
 	    break; /* see above */
 	case 'F': /* read commands from file */

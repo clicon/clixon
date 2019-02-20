@@ -57,7 +57,7 @@ These tests use valgrind to check for memory leaks:
   mem.sh cli
   mem.sh netconf
   mem.sh backend
-  mem.sh restconf 
+#  mem.sh restconf # NYI
 ```
 
 ## Site.sh

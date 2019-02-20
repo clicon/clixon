@@ -48,7 +48,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
 
 new "start restconf daemon"
-start_restconf -f $cfg
+sudo su -c "$clixon_restconf -f $cfg $RCLOG -D $DBG" -s /bin/sh www-data &
 
 new "waiting"
 sleep $RCWAIT
@@ -149,7 +149,7 @@ new "netconf edit-config missing config should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><candidate/></target></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>missing-choice</error-app-tag><error-info><missing-choice>edit-content</missing-choice></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>]]>]]>$'
 
 new "Kill restconf daemon"
-stop_restconf 
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 if [ $BE -eq 0 ]; then
     exit # BE

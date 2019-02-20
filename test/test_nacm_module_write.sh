@@ -150,7 +150,7 @@ sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 sleep 1
 new "start restconf daemon (-a is enable basic authentication)"
-start_restconf -f $cfg -- -a
+sudo su -c "$clixon_restconf -f $cfg $RCLOG -D $DBG -- -a" -s /bin/sh www-data &
 
 new "waiting"
 sleep $RCWAIT
@@ -254,7 +254,7 @@ new "default delete list deny"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/clixon-example:translate=key42)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new "Kill restconf daemon"
-stop_restconf 
+sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 if [ $BE -eq 0 ]; then
     exit # BE
