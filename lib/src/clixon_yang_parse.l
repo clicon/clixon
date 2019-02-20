@@ -191,14 +191,14 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <KEYWORD>\}               { return *yytext; }
 <KEYWORD>;                { return *yytext; }
 <KEYWORD>.                { clixon_yang_parselval.string = strdup(yytext);
-                             BEGIN(UNKNOWN); return CHARS; }
+                             BEGIN(UNKNOWN); return CHAR; }
 
 <UNKNOWN>:                { return *yytext; }
 <UNKNOWN>;                { BEGIN(KEYWORD); return *yytext; }
 <UNKNOWN>\"               { _YY->yy_lex_string_state =UNKNOWN; BEGIN(STRINGDQ); return *yytext; }
 <UNKNOWN>\{               { BEGIN(KEYWORD); return *yytext; }
 <UNKNOWN>.                { clixon_yang_parselval.string = strdup(yytext);
-                            return CHARS; }
+                            return CHAR; }
 
 <BOOLEAN>true             { clixon_yang_parselval.string = strdup(yytext);
                             return BOOL; }
@@ -211,14 +211,14 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <INTEGER>\-?[0-9][0-9]*   { clixon_yang_parselval.string = strdup(yytext);
                             return INT; }
 <INTEGER>;                { BEGIN(KEYWORD); return *yytext; }
-<INTEGER>\{               { BEGIN(KEYWORD); return *yytext; }
+<INTEGER>\{                { BEGIN(KEYWORD); return *yytext; }
 <INTEGER>.                { return *yytext; }
 
-<STRARG>\{                { BEGIN(KEYWORD); return *yytext; }
-<STRARG>;                 { BEGIN(KEYWORD); return *yytext; }
-<STRARG>{identifier}      { clixon_yang_parselval.string = strdup(yytext);
-                            return IDENTIFIER;}
-<STRARG>.                 { return *yytext; }
+<STRARG>\{                 { BEGIN(KEYWORD); return *yytext; }
+<STRARG>;                  { BEGIN(KEYWORD); return *yytext; }
+<STRARG>{identifier}       { clixon_yang_parselval.string = strdup(yytext);
+                             return IDENTIFIER;}
+<STRARG>.                  { return *yytext; }
 
 <STRING>\{                { BEGIN(KEYWORD); return *yytext; }
 <STRING>;                 { BEGIN(KEYWORD); return *yytext; }
@@ -226,27 +226,22 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <STRING>\'                { _YY->yy_lex_string_state =STRING; BEGIN(STRINGSQ); return SQ; }
 <STRING>\+                { return *yytext; }
 <STRING>.                 { clixon_yang_parselval.string = strdup(yytext);
-                            return CHARS;}
+                            return CHAR;}
 
-<STRINGDQ>\\              { _YY->yy_lex_state = STRINGDQ; BEGIN(ESCAPE); }
-<STRINGDQ>\"              { BEGIN(_YY->yy_lex_string_state); return *yytext; }
-<STRINGDQ>\n              { _YY->yy_linenum++;
-                            clixon_yang_parselval.string = strdup(yytext);
-                            return CHARS;}
-<STRINGDQ>[^\\"\n]+      { clixon_yang_parselval.string = strdup(yytext);
-                            return CHARS;}
+<STRINGDQ>\\                { _YY->yy_lex_state = STRINGDQ; BEGIN(ESCAPE); }
+<STRINGDQ>\"                { BEGIN(_YY->yy_lex_string_state); return *yytext; }
+<STRINGDQ>\n                { _YY->yy_linenum++; clixon_yang_parselval.string = strdup(yytext); return CHAR;}
+<STRINGDQ>.                 { clixon_yang_parselval.string = strdup(yytext);
+                              return CHAR;}
 
-<STRINGSQ>\\              { _YY->yy_lex_state = STRINGSQ; BEGIN(ESCAPE); }
-<STRINGSQ>\'              { BEGIN(_YY->yy_lex_string_state); return SQ; }
-<STRINGSQ>\n              { _YY->yy_linenum++;
-                            clixon_yang_parselval.string = strdup(yytext);
-                            return CHARS;}
-<STRINGSQ>[^\\'\n]+       { clixon_yang_parselval.string = strdup(yytext);
-                            return CHARS;}
+<STRINGSQ>\'                { BEGIN(_YY->yy_lex_string_state); return SQ; }
+<STRINGSQ>\n                { _YY->yy_linenum++; clixon_yang_parselval.string = strdup(yytext); return CHAR;}
+<STRINGSQ>.                 { clixon_yang_parselval.string = strdup(yytext);
+                             return CHAR;}
 
 <ESCAPE>.                 { BEGIN(_YY->yy_lex_state); 
                              clixon_yang_parselval.string = strdup(yytext); 
-                             return CHARS; }
+                             return CHAR; }
 <COMMENT1>[^*\n]*        /* eat anything that's not a '*' */
 <COMMENT1>"*"+[^*/\n]*   /* eat up '*'s not followed by '/'s */
 <COMMENT1>"*"+"/"        BEGIN(_YY->yy_lex_state);
