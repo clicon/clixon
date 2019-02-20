@@ -118,7 +118,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
       
 new "start restconf daemon"
-sudo su -c "$clixon_restconf -f $cfg -y $fyang $RCLOG -D $DBG" -s /bin/sh www-data &
+start_restconf -f $cfg -y $fyang
 
 new "waiting"
 sleep $RCWAIT
@@ -274,7 +274,7 @@ echo "Eg: curl -H \"Accept: text/event-stream\" -s -X GET http://localhost/sub/E
 #-----------------
 sleep 5
 new "Kill restconf daemon"
-sudo pkill -u www-data -f "/www-data/clixon_restconf"
+stop_restconf 
 
 if [ $BE -eq 0 ]; then
     exit # BE

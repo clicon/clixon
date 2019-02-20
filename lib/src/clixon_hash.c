@@ -202,7 +202,7 @@ hash_value(clicon_hash_t *hash,
  *
  * @param[in] hash   Hash table
  * @param[in] key    Variable name
- * @param[in] val    Variable value
+ * @param[in] val    Variable value (pointer to)
  * @param[in] vlen   Length of variable value
  * @retval variable  New hash structure on success
  * @retval NULL      Failure

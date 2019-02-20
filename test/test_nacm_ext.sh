@@ -146,7 +146,7 @@ new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "start restconf daemon (-a is enable http basic auth)"
-sudo su -c "$clixon_restconf -f $cfg $RCLOG -D $DBG -- -a" -s /bin/sh www-data &
+start_restconf -f $cfg -- -a
 
 new "waiting"
 sleep $RCWAIT
@@ -207,7 +207,7 @@ new "cli rpc as guest"
 expectfn "$clixon_cli -1 -U guest -l o -f $cfg rpc ipv4" 255 "protocol access-denied access denied"
 
 new "Kill restconf daemon"
-sudo pkill -u www-data -f "/www-data/clixon_restconf"
+stop_restconf 
 
 if [ $BE -eq 0 ]; then
     exit # BE

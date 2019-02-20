@@ -127,7 +127,7 @@ sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 sleep 1
 new "start restconf daemon (-a is enable basic authentication)"
-sudo su -c "$clixon_restconf -f $cfg $RCLOG -D $DBG -- -a" -s /bin/sh www-data &
+start_restconf -f $cfg -- -a
 
 new "waiting"
 sleep $RCWAIT
@@ -178,7 +178,7 @@ new "guest edit nacm"
 expecteq "$(curl -u guest:bar -sS -X PUT -d '{"nacm-example:x": 3}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "Kill restconf daemon"
-sudo pkill -u www-data -f "/www-data/clixon_restconf"
+stop_restconf 
 
 if [ $BE -eq 0 ]; then
     exit # BE
