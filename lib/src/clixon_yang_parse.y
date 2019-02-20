@@ -57,7 +57,7 @@
 
 %token MY_EOF 
 %token SQ           /* Single quote: ' */
-%token <string>   CHAR
+%token <string>   CHARS
 %token <string>   IDENTIFIER
 %token <string>   BOOL
 %token <string>   INT
@@ -1726,14 +1726,14 @@ qstring        : '"' ustring '"'  { $$=$2; clicon_debug(2,"string-> \" ustring \
   ;
 
 /* unquoted string */
-ustring       : ustring CHAR 
+ustring       : ustring CHARS
                      {
 			 int len = strlen($1);
 			 $$ = realloc($1, len+strlen($2) + 1);
 			 sprintf($$+len, "%s", $2); 
 			 free($2);
 		     }
-              | CHAR 
+              | CHARS 
 	             {$$=$1; } 
               ;
 
