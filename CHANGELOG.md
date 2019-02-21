@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-## Forthcoming: 3.9.0 (22 Feb 2019)
+## 3.9.0 (21 Feb 2019)
 
 Thanks for all bug reports, feature requests and support! Thanks to [Netgate](https://www.netgate.com) and other sponsors for making Clixon a better tool!
 
@@ -54,21 +54,21 @@ Thanks for all bug reports, feature requests and support! Thanks to [Netgate](ht
     ```
   * To keep previous non-strict namespace handling (backwards compatible), set CLICON_XML_NS_STRICT to false. Note that this option will be removed asap after 3.9.0.
 
-* A major uplift to conform to Yang RFC7950
+* An uplift of Yang to conform to RFC7950
   * YANG parser cardinality checked (https://github.com/clicon/clixon/issues/48)
   * More precise Yang validation and better error messages
     * RPC method input parameters validated (https://github.com/clicon/clixon/issues/47)
-    * Example: adding bad-, missing-, or unknown-element error messages, instead of operation-failed.
+    * Added bad-, missing-, or unknown-element error messages, instead of operation-failed.
     * Validation of mandatory choice and recursive mandatory containers
-  * Support of YANG `submodule, include and belongs-to` and improved `unknown` handlin
+  * Support of YANG `submodule, include and belongs-to` and improved `unknown` handling
   * Parsing of standard yang files supported, such as:
-    * https://github.com/openconfig/public - except [https://github.com/clicon/clixon/issues/60]. See (test/test_openconfig.sh)
-    * https://github.com/YangModels/yang - except vendor-specific specs. See (test/test_yangmodels.sh).
+    * https://github.com/openconfig/public - except [https://github.com/clicon/clixon/issues/60]. See [test/test_openconfig.sh]
+    * https://github.com/YangModels/yang - except vendor-specific specs. See [test/test_yangmodels.sh].
   * Yang load file configure options changed
     * `CLICON_YANG_DIR` is changed from a single directory to a path of directories
-      * Note CLIXON_DATADIR (=/usr/local/share/clixon) need to be in the list
-    * CLICON_YANG_MAIN_FILE Provides a filename with a single module filename.
-    * CLICON_YANG_MAIN_DIR Provides a directory where all yang modules should be loaded.
+      * Note `CLIXON_DATADIR` (=/usr/local/share/clixon) need to be in the list
+    * `CLICON_YANG_MAIN_FILE` Provides a filename with a single module filename.
+    * `CLICON_YANG_MAIN_DIR` Provides a directory where all yang modules should be loaded.
 * NACM (RFC8341)
   * Incoming RPC Message validation is supported (See sec 3.4.4 in RFC8341)
   * Data Node Access validation is supported (3.4.5), _except_:
@@ -77,19 +77,19 @@ Thanks for all bug reports, feature requests and support! Thanks to [Netgate](ht
   * RPC:s are supported _except_:
     * `copy-config`for other src/target combinations than running/startup (3.2.6)
     * `commit` - NACM is applied to candidate and running operations only (3.2.8)
-  * Client-side RPC:s are _not_ supported. That is, RPC code that runs in Netconf, restconf and CLI clients.
-  * Recovery user "_nacm_recovery" added.
-  * Experimental support, no performance enhancements and need further testing
+  * Client-side RPC:s are _not_ supported. That is, RPC code that runs in Netconf, Restconf or CLI clients.
+  * Recovery user `_nacm_recovery` added.
+  * The NACM support is ongoing work and needs performance enhancements and further testing.
 * Change GIT branch handling to a single working master branch
   * Develop branched abandoned
-  * Travis CI supported, see [https://travis-ci.org/clicon/clixon]
+  * [Clixon Travis CI]([https://travis-ci.org/clicon/clixon]) continuous integration is now supported.
 * Clixon Alpine-based containers
   * [Clixon base container](docker/base).
-  * [CLixon system and test container](docker/system).
+  * [Clixon system and test container](docker/system) used in Travis CI.
   * See also: [Clixon docker hub](https://hub.docker.com/u/clixon)
 	
 ### API changes on existing features (you may need to change your code)
-* XML namespace handling is corrected (see (#major-changes))
+* XML namespace handling is corrected (see [#major-changes])
   * For backward compatibility set config option  CLICON_XML_NS_LOOSE
   * You may have to manually upgrade existing database files, such as startup-db or persistent running-db, or any other saved XML file.
 * Stricter Yang validation (see (#major-changes)):

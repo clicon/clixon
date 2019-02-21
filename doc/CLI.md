@@ -1,7 +1,7 @@
-# CLixon CLI
+# Clixon CLI
 
 * [CLIgen](#cligen)
-* [Tricks - eg for large specs](tricks)
+* [Tricks - eg for large specs](#tricks)
 
 ## CLIgen
 
