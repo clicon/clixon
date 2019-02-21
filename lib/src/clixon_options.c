@@ -922,3 +922,36 @@ clicon_socket_set(clicon_handle h,
 	return hash_del(cdat, "socket");
     return hash_add(cdat, "socket", &s, sizeof(int))==NULL?-1:0;
 }
+
+/*! Get module state cache
+ * @param[in]  h   Clicon handle
+ * @retval     xms Module state cache XML tree
+ */
+cxobj *
+clicon_module_state_get(clicon_handle h)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+
+    void           *p;
+
+    if ((p = hash_value(cdat, "module_state_cache", NULL)) != NULL)
+	return *(cxobj **)p;
+    return NULL;
+}
+
+/*! Set module state cache
+ * @param[in]  h   Clicon handle
+ * @param[in]  s   Open socket (or -1 to close)
+ * @retval    0       OK
+ * @retval   -1       Error
+ */
+int
+clicon_module_state_set(clicon_handle h, 
+			cxobj        *xms)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    if (hash_add(cdat, "module_state_cache", &xms, sizeof(xms))==NULL)
+	return -1;
+    return 0;
+}

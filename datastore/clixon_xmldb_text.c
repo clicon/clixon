@@ -573,7 +573,7 @@ text_get(xmldb_handle  xh,
     /* Add default values (if not set) */
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
 	goto done;
-#if 1 /* debug */
+#if 0 /* debug */
     if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: sort verify failed #2", __FUNCTION__);
 #endif

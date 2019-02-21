@@ -335,7 +335,7 @@ client_statedata(clicon_handle h,
 	if ((retval = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) != 0)
 	    goto done;
     if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895"))
-	if ((retval = yang_modules_state_get(h, yspec, xret)) != 0)
+	if ((retval = yang_modules_state_get(h, yspec, xpath, xret)) != 0)
 	    goto done;
     if ((retval = clixon_plugin_statedata(h, yspec, xpath, xret)) != 0)
 	goto done;

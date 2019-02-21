@@ -95,6 +95,7 @@ backend_terminate(clicon_handle h)
     clicon_debug(1, "%s", __FUNCTION__);
     if ((ss = clicon_socket_get(h)) != -1)
 	close(ss);
+    modules_state_cache_set(h, NULL);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)

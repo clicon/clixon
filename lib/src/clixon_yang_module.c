@@ -69,6 +69,8 @@
 #include "clixon_file.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_options.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
@@ -129,9 +131,64 @@ yang_modules_revision(clicon_handle h)
     return revision;
 }
 
+
+/*! Get modules state cache associated with module_set_id, or NULL if none
+ * @param[in]  h        Clixon handle
+ * @param[in]  msid     Module set id. Cache stored per id
+ * @param[out] xms      XML tree for module state cache. Note need to xml_dup it.
+ * @retval     0        OK, x is either NULL or set
+ * @retval    -1        Error
+ */
+static int
+modules_state_cache_get(clicon_handle  h,
+			char          *msid,
+			cxobj        **xms)
+{
+    cxobj *x;     /* module state cache XML */
+    cxobj *xmsid; /* module state id of cache XML */
+
+    if ((x = clicon_module_state_get(h)) == NULL)
+	return 0;
+    if ((xmsid = xpath_first(x, "modules-state/module-set-id")) == NULL)
+	return 0;
+    if (strcmp(xml_body(xmsid), msid) == 0) 	/* return cache */
+	*xms = x;
+    return 0;
+}
+
+/*! Set modules state cache associated with msid, or NULL if none
+ * @param[in]  h        Clixon handle
+ * @param[in]  msid     Module set id. Cache stored per id
+ * @param[out] xms      XML tree for module state cache. Note need to xml_dup it.
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+int
+modules_state_cache_set(clicon_handle  h,
+			cxobj         *msx)
+{
+    int retval = -1;
+    cxobj *x;     /* module state cache XML */
+    
+    if ((x = clicon_module_state_get(h)) != NULL)
+	xml_free(x);
+    clicon_module_state_set(h, NULL);
+    if (msx == NULL)
+	goto ok;
+    /* Duplicate XML tree from original. */
+    if ((x = xml_dup(msx)) == NULL)
+	goto done;
+    clicon_module_state_set(h, x);
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Get modules state according to RFC 7895
  * @param[in]     h       Clicon handle
  * @param[in]     yspec   Yang spec
+ * @param[in]     xpath   XML Xpath
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
  * @retval        0       OK
@@ -158,6 +215,7 @@ x            +--ro namespace           inet:uri
 int
 yang_modules_state_get(clicon_handle    h,
 		       yang_spec       *yspec,
+		       char            *xpath,
 		       cxobj          **xret)
 {
     int         retval = -1;
@@ -168,85 +226,103 @@ yang_modules_state_get(clicon_handle    h,
     yang_stmt  *ymod;        /* generic module */
     yang_stmt  *ys;
     yang_stmt  *yc;
-    char       *module_set_id;
+    char       *msid; /* modules-set-id */
     char       *module = "ietf-yang-library";
-
-    module_set_id = clicon_option_str(h, "CLICON_MODULE_SET_ID");
-    if ((ylib = yang_find((yang_node*)yspec, Y_MODULE, module)) == NULL &&
-	(ylib = yang_find((yang_node*)yspec, Y_SUBMODULE, module)) == NULL){
-	clicon_err(OE_YANG, 0, "%s not found", module);
-	goto done;
-    }
-    if ((yns = yang_find((yang_node*)ylib, Y_NAMESPACE, NULL)) == NULL){
-	clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
-	goto done;
-    }
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, 0, "clicon buffer");
-	goto done;
-    }
-    cprintf(cb,"<modules-state xmlns=\"%s\">", yns->ys_argument);
-    cprintf(cb,"<module-set-id>%s</module-set-id>", module_set_id); 
+    cxobj      *x1;
     
-    ymod = NULL;
-    while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
-	if (ymod->ys_keyword != Y_MODULE &&
-	    ymod->ys_keyword != Y_SUBMODULE)
-	    continue;
-	cprintf(cb,"<module>");
-	cprintf(cb,"<name>%s</name>", ymod->ys_argument);
-	if ((ys = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL)
-	    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
-	else
-	    cprintf(cb,"<revision></revision>");
-	if ((ys = yang_find((yang_node*)ymod, Y_NAMESPACE, NULL)) != NULL)
-	    cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
-	else
-	    cprintf(cb,"<namespace></namespace>");
-	/* This follows order in rfc 7895: feature, conformance-type, submodules */
-	yc = NULL;
-	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
-	    switch(yc->ys_keyword){
-	    case Y_FEATURE:
-		if (yc->ys_cv && cv_bool_get(yc->ys_cv))
-		    cprintf(cb,"<feature>%s</feature>", yc->ys_argument);
-		break;
-	    default:
-		break;
-	    }
-	}
-        cprintf(cb, "<conformance-type>implement</conformance-type>");
-	yc = NULL;
-	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
-	    switch(yc->ys_keyword){
-	    case Y_SUBMODULE:
-		cprintf(cb,"<submodule>");
-		cprintf(cb,"<name>%s</name>", yc->ys_argument);
-		if ((ys = yang_find((yang_node*)yc, Y_REVISION, NULL)) != NULL)
-		    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
-		else
-		    cprintf(cb,"<revision></revision>");
-		cprintf(cb,"</submodule>");
-		break;
-	    default:
-		break;
-	    }
-	}
-	cprintf(cb,"</module>"); 
-    }
-    cprintf(cb,"</modules-state>");
-
-    if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
-	if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
-	    goto done;
-	retval = 1;
+    msid = clicon_option_str(h, "CLICON_MODULE_SET_ID");
+    if (modules_state_cache_get(h, msid, &x) < 0)
 	goto done;
+    if (x != NULL){ /* Yes a cache (but no duplicate) */
+	if (xpath_first(x, "%s", xpath)){
+	    if ((x1 = xml_dup(x)) == NULL)
+		goto done;
+	    x = x1;
+	}
+	else
+	    x = NULL;
     }
-    retval = netconf_trymerge(x, yspec, xret);
+    else { /* No cache -> build the tree */
+	if ((ylib = yang_find((yang_node*)yspec, Y_MODULE, module)) == NULL &&
+	    (ylib = yang_find((yang_node*)yspec, Y_SUBMODULE, module)) == NULL){
+	    clicon_err(OE_YANG, 0, "%s not found", module);
+	    goto done;
+	}
+	if ((yns = yang_find((yang_node*)ylib, Y_NAMESPACE, NULL)) == NULL){
+	    clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
+	    goto done;
+	}
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, 0, "clicon buffer");
+	    goto done;
+	}
+	cprintf(cb,"<modules-state xmlns=\"%s\">", yns->ys_argument);
+	cprintf(cb,"<module-set-id>%s</module-set-id>", msid); 
+    
+	ymod = NULL;
+	while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
+	    if (ymod->ys_keyword != Y_MODULE &&
+		ymod->ys_keyword != Y_SUBMODULE)
+		continue;
+	    cprintf(cb,"<module>");
+	    cprintf(cb,"<name>%s</name>", ymod->ys_argument);
+	    if ((ys = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL)
+		cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
+	    else
+		cprintf(cb,"<revision></revision>");
+	    if ((ys = yang_find((yang_node*)ymod, Y_NAMESPACE, NULL)) != NULL)
+		cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
+	    else
+		cprintf(cb,"<namespace></namespace>");
+	    /* This follows order in rfc 7895: feature, conformance-type, submodules */
+	    yc = NULL;
+	    while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
+		switch(yc->ys_keyword){
+		case Y_FEATURE:
+		    if (yc->ys_cv && cv_bool_get(yc->ys_cv))
+			cprintf(cb,"<feature>%s</feature>", yc->ys_argument);
+		    break;
+		default:
+		    break;
+		}
+	    }
+	    cprintf(cb, "<conformance-type>implement</conformance-type>");
+	    yc = NULL;
+	    while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
+		switch(yc->ys_keyword){
+		case Y_SUBMODULE:
+		    cprintf(cb,"<submodule>");
+		    cprintf(cb,"<name>%s</name>", yc->ys_argument);
+		    if ((ys = yang_find((yang_node*)yc, Y_REVISION, NULL)) != NULL)
+			cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
+		    else
+			cprintf(cb,"<revision></revision>");
+		    cprintf(cb,"</submodule>");
+		    break;
+		default:
+		    break;
+		}
+	    }
+	    cprintf(cb,"</module>"); 
+	}
+	cprintf(cb,"</modules-state>");
+
+	if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
+	    if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
+		goto done;
+	    retval = 1;
+	    goto done;
+	}
+	if (modules_state_cache_set(h, x) < 0)
+	    goto done;
+    }
+    if (x && netconf_trymerge(x, yspec, xret) < 0)
+	goto done;
+    retval = 0;
  done:
-    if (cb)
-	cbuf_free(cb);
     if (x)
 	xml_free(x);
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }

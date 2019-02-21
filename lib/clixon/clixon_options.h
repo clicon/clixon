@@ -202,4 +202,8 @@ int clicon_username_set(clicon_handle h, void *username);
 int clicon_socket_get(clicon_handle h);
 int clicon_socket_set(clicon_handle h, int s);
 
+/*! Set and set module state cache */
+cxobj *clicon_module_state_get(clicon_handle h);
+int clicon_module_state_set(clicon_handle h, cxobj *xms);
+
 #endif  /* _CLIXON_OPTIONS_H_ */

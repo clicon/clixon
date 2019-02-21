@@ -50,8 +50,10 @@
 /*
  * Prototypes
  */
+int modules_state_cache_set(clicon_handle h, cxobj *msx);
 int yang_modules_init(clicon_handle h);
 char *yang_modules_revision(clicon_handle h);
-int yang_modules_state_get(clicon_handle h, yang_spec *yspec, cxobj **xret);
+int yang_modules_state_get(clicon_handle h, yang_spec *yspec, char *xpath,
+			   cxobj **xret);
 
 #endif  /* _CLIXON_YANG_MODULE_H_ */

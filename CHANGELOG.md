@@ -250,6 +250,7 @@
     example backend_main() and others if you need details.
 
 ### Minor changes
+* Added cache for modules-state RFC7895 to avoid building new XML every get call
 * Renamed test/test_auth*.sh tests to test/test_nacm*.sh
 * YANG keywords "action" and "belongs-to" implemented by syntactically by parser (but not proper semantics).
 * clixon-config YAML file has new revision: 2018-10-21.
