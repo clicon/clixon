@@ -50,6 +50,8 @@ configure.ac --.
                     +--> config.status* -+               +--> make*
      Makefile.in ---'                    `-> Makefile ---'
 ```
+Note: remember to run autoheader sometimes (when?)
+And when you do note (https://github.com/olofhagsand/cligen/issues/17) which states that cligen_custom.h should be in quote. 
 
 ## Debug
 How to debug
@@ -96,9 +98,24 @@ EOF
 
 ## New release
 What to think about when doing a new release.
-* run test/mem.sh
-* New clixon-config.yang revision?
-Tagging:
-* change CLIXON_VERSION in configure.ac
-* git tag -a <version"
-* git push origin <version>
+* Ensure all tests run OK
+* New yang/clicon/clixon-config@XXX.yang revision?
+* In configure.ac, for minor releases change CLIXON_VERSION in configure.ac to eg: (minor should have been bumped):
+```
+  CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+```
+* For patch releases change CLIXON_VERSION_PATCH
+* Run autoconf
+* Git stuff:
+```
+  git tag -a <version"
+  git push origin <version>
+```
+
+After release:
+* Bump minor version and add a "PRE":
+```
+  CLIXON_VERSION_MINOR="10" ++
+  CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+```
+* Run autoconf

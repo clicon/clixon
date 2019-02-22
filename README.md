@@ -27,7 +27,7 @@ support.
   * [Clixon project page](http://www.clicon.org)
   * [Tests and CI](test/README.md)
   * [Containers](docker/README.md)
-  * [Roadmap](ROADMAP.md)
+  * [Roadmap](doc/ROADMAP.md)
   * [Reference manual](#reference) 
   
 ## Background

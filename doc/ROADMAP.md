@@ -3,8 +3,10 @@
 ## High prio
 - Special handling of the initial startup transaction to avoid exit at startup
   - Possibly - draft-wu-netconf-restconf-factory-restore-03
+  - See (startup.md)
 - Handle revisions to data model.
   - Possibly draft-wang-netmod-module-revision-management-01
+  - See (startup.md)
 - (DONE) NACM (RFC 8341) 
   - NACM support for create, read, update, delete operations 
   - ACM support for specifying a module name other than '*' 
@@ -33,12 +35,12 @@ Not prioritized:
   - Query parameters
 - Streams (netconf and restconf)
   - Extend native stream mode with external persistent timeseries database, eg influxdb.
-- Jenkins CI/CD and webhooks
+- (DONE)Jenkins/Travis CI/CD and webhooks
 - YANG
   - RFC 6022 [NETCONF monitoring](https://github.com/clicon/clixon/issues/39)
   - Deviation, min/max-elements, action, unique
 - Containers
-  - [Docker improvements](https://github.com/clicon/clixon/issues/44)
+  - (DONE)[Docker improvements](https://github.com/clicon/clixon/issues/44)
   - Kubernetes Helm chart definition
 - [gRPC](https://github.com/clicon/clixon/issues/43)
 

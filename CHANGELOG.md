@@ -1,5 +1,15 @@
 # Clixon Changelog
 
+## 3.10.0 (Upcoming)
+
+### Major New features
+
+### API changes on existing features (you may need to change your code)
+
+### Minor changes
+
+### Corrected Bugs
+
 ## 3.9.0 (21 Feb 2019)
 
 Thanks for all bug reports, feature requests and support! Thanks to [Netgate](https://www.netgate.com) and other sponsors for making Clixon a better tool!
