@@ -1,5 +1,6 @@
 *.o
 *.so.*
+*.so
 *_parse.tab.c
 *_parse.tab.h
 lex.*_parse.c

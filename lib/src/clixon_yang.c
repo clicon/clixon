@@ -69,6 +69,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <netinet/in.h>
+#include <libgen.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -2449,7 +2450,7 @@ yang_spec_parse_module(clicon_handle h,
  */
 int
 yang_spec_parse_file(clicon_handle h, 
-		     const char   *filename, 
+		     char   *filename, 
 		     yang_spec    *yspec)
 {
     int         retval = -1;
