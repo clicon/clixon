@@ -14,7 +14,7 @@
 
 ## Background
 
-This document describes the configuration startup mechanism of the Clixon backend. This document describes the mechanism of Clixon version 3.10 which supports the following features:
+This document describes the configuration startup mechanism of the Clixon backend. It describes the mechanism of Clixon version 3.10 which supports the following features:
 * Loading of a "startup" XML or JSON configuration
 * Loading of "extra" XML.
 * Detection of in-compatible XML and Yang models in the startup configuration.
@@ -24,10 +24,15 @@ This document describes the configuration startup mechanism of the Clixon backen
 ## Modes
 
 When the Clixon backend starts, it can start in one of four modes:
-* _startup_: The configuration is loaded from a persistent `startup` database. This database is loaded, validated and committed into the running database.
-* _running_: Similar to startup, but instead the `running` database is used as persistent database.*
-_none_: No databases are touched - the system starts and loads existing running database without validation or commits. This is mostly a debug option.
-* _init_: Similar to none, but the running database is cleared before loading
+* `startup`: The configuration is loaded from a persistent `startup` database. This database is loaded, validated and committed into the running database.
+* `running`: Similar to `startup`, but instead the `running` database is used as persistent database.
+* `none`: No databases are touched - the system starts and loads existing running database without validation or commits.
+* `init`: Similar to `none`, but the running database is cleared before loading
+
+`Startup` targets usecases where running db may be in memory and a
+separate persistent storage (such as flash) is available. `Running` is
+for usecases when the running db is located in persistent The `none`
+and `init` modes are mostly for debugging, or restart at crashes or updates.
 
 ## Startup configuration
 
