@@ -8,7 +8,7 @@
   * [Extra XML](#extra-xml)
   * [Startup status](#startup-status)
   * [Failsafe mode](#failsafe-mode)
-  * [FLowcharts](#flowcharts)
+  * [Flowcharts](#flowcharts)
   * [Thanks](#thanks)
   * [References](#references)
 
