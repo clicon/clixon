@@ -2,31 +2,22 @@
 
 ## Background
 
-This document describes the startup mechanism of the Clixon backend
-daemon from a configuration point-of-view. The startup behaviour has
-evolved and this document describes the Clixon 3.10 version and
-supports the following features:
-* A _startup_ XML or JSON configuration
-* Loading of additional XML
-* _Detection_ of in-compatible XML and yang models.
-* When in-compatible XML is loaded, an _upgrade_ callback is invoked enabling for automated XML upgrade.
-* A _failsafe_ mode allowing a user to repair the startup on errors or failed validation.
+This document describes the configuration startup mechanism of the Clixon backend. This document describes the mechanism of Clixon version 3.10 which supports the following features:
+* Loading of a "startup" XML or JSON configuration
+* Loading of "extra" XML.
+* Detection of in-compatible XML and Yang models in the startup configuration.
+* An upgrade callback when in-compatible XML is encountered
+* A "failsafe" mode allowing a user to repair the startup on errors or failed validation.
 
 ## Operation
-
-The backend daemon goes through the following approximate phases on startup:
-1. Determine startup _mode_, one of none, init, startup or running
-2. Startup _configuration_ is loaded, syntax-checked, validated and committed.
-3. _Extra-xml_ is loaded.
-4. If failures are detected, a _failsafe_ mode is entered.
 
 ### Modes
 
 When the Clixon backend starts, it can start in one of four modes:
-* _none_: No databases are touched - the system starts and loads existing running database without validation or commits.
-* _init_: Similar to none, bit the running databsae is cleared before loading
 * _startup_: The configuration is loaded from a persistent `startup` database. This database is loaded, validated and committed into the running database.
-* _running_: Similar to startup, but instead the `running` database is used as persistent database.
+* _running_: Similar to startup, but instead the `running` database is used as persistent database.*
+_none_: No databases are touched - the system starts and loads existing running database without validation or commits. This is mostly a debug option.
+* _init_: Similar to none, but the running database is cleared before loading
 
 ### Startup configuration
 
@@ -39,34 +30,41 @@ When loading the startup configuration, it is checked for parse
 errors, the yang model-state is detected and the XML is validated
 against the backend Yang models.
 
+If yang-models do not match, an `upgrade` callback is made.
+
+If any errors are detected, the backend tries to enter a `failsafe` mode.
+
 
 ### Yang model-state
 
 Clixon has the ability to store module-state information according to
 RFC7895 in the datastores. Including yang module-state in the
 datastores is enabled by the following entry in the Clixon
-configuration: ``` <CLICON_XMLDB_MODSTATE>true</CLICON_XMLDB_MODSTATE>
+configuration:
+```
+   <CLICON_XMLDB_MODSTATE>true</CLICON_XMLDB_MODSTATE>
 ```
 
 If the datastore does not contain module-state info, no detection of
 incompatible XML is made, and the upgrade feature described in
-this section will not happen.
+this section will not occur.
 
 A backend does not perform detection of mismatching XML/Yang if:
-1. The datastore was saved in a pre-3.10 system or;
+1. The datastore was saved in a pre-3.10 system 
 2. `CLICON_XMLDB_MODSTATE` was not enabled when saving the file
 3. The backend configuration does not have `CLICON_XMLDB_MODSTATE` enabled.
 
-Note that the module-state detetion is independent of the other steps
-of startup operation: syntax errors, validation checks, failsafe mode
-are still made.
+Note that the module-state detection is independent of the other steps
+of the startup operation: syntax errors, validation checks, failsafe mode, etc,
+are still made, even though module-state detection does not occur.
 
-Further, if a 3.10 Clixon system with `CLICON_XMLDB_MODSTATE` disabled
+Note also that a 3.10 Clixon system with `CLICON_XMLDB_MODSTATE` disabled
 will silently ignore the module state.
 
-Example of a (simplified) datastore with prepended Yang module-state:
+Example of a (simplified) datastore with Yang module-state:
 ```
 <config>
+   <a1 xmlns="urn:example:a">some text</a1>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -75,18 +73,16 @@ Example of a (simplified) datastore with prepended Yang module-state:
          <namespace>urn:example:a</namespace>
       </module>
    </modules-state>
-   <a1 xmlns="urn:example:a">some text</a1>
 </config>
 ```
 
 ### Upgrade callback
 
-If a mismatch of Yang models in the loaded configuration is
-detected. That is, if the module-state of the startup configuration
-does not match the module-state of the backend daemon, then an _upgrade_
-callback is made. This allows the user to automatically upgrade the
-XML to the recent version. As a hint, the module-state differences is
-passed to the callback.
+If the module-state of the startup configuration does not match the
+module-state of the backend daemon, an _upgrade_ callback is
+made. This allows the user to automatically upgrade the XML to the
+recent version. As a hint, the module-state differences is passed to
+the callback.
 
 Example upgrade callback:
 ```
@@ -113,12 +109,23 @@ Example upgrade callback:
   };
 ```
 
-Note that this is simply a template for upgrade. Advanced automatic
-upgrading may be implememted by a user.
+Note that this is simply a template for upgrade. Actual upgrading may
+be implememted by a user.
 
-Clixon may also add functionality for automated XML upgrades in future releases.
+If no action is made, and the XML is not upgraded, the next step of
+the startup is made, which is XML/Yang validation.
+
+An out-dated XML
+may still pass validation and the system will go up in normal state.
+
+However, if the validation fails, the backend will try to enter the
+failsafe mode so that the user may perform manual upgarding of the
+configuration.
+
 
 ### Extra XML
+
+If validation succeeds and the startup configuration has been committed to the running database, a user may add "extra" XML.
 
 There are two ways to add extra XML to running database after start. Note that this XML is not "committed" into running.
 
@@ -140,10 +147,12 @@ The extra-xml feature is not available if startup mode is `none`. It will also n
 
 ### Startup status and failsafe mode
 
-A startup status is set and is accessible via `clixon_startup_status_get(h)` with the following values:
-  * STARTUP_ERR        XML/JSON syntax error
-  * STARTUP_INVALID,   XML / Yang validation failure
-  * STARTUP_OK         OK
+When the startup process is completed, a startup status is set and is accessible via `clixon_startup_status_get(h)` with the following values:
+```
+  STARTUP_ERR        XML/JSON syntax error
+  STARTUP_INVALID,   XML / Yang validation failure
+  STARTUP_OK         OK
+```
 
 If the startup fails, the backend looks for a `failsafe` configuration
 in `CLICON_XMLDB_DIR/failsafe_db`. If such a config is not found, the
@@ -166,24 +175,27 @@ and then copy/commit it via CLI, Netconf or Restconf.
 
 ## Flowcharts
 
-### Init
+This section contains non-formal "flowcharts" showing the dynamics of
+the configuration databases in the startup phase.
+
+Starting in init mode:
 
 ```
                  reset     
 running   |--------+------------> 
 ```
 
-### Running
+Starting in init running mode:
 ```
 running   ----+
                \ copy 
 startup         +------------> GOTO STARTUP
 
 ```
-### Startup
+Starting in init startup mode:
 ```
                               reset     
-running                         |--------+------------> RUNNING
+running                         |--------+------------> GOTO SYSTEM UP
                 parse validate OK       / commit 
 startup -------+--+-------+------------+          
 ```
@@ -192,10 +204,24 @@ If validation of startup fails:
 ```
 failsafe      ----------------------+
                             reset    \ commit
-running                       |-------+---------------> RUNNING FAILSAFE
+running                       |-------+---------------> GOTO SYSTEM UP
               parse validate fail 
 startup      ---+-------------------------------------> INVALID XML
 ```
 
+Load extra XML:
+```
+running -----------------+----+------> GOTO UP
+           reset  loadfile   / merge
+tmp     |-------+-----+-----+
+```
+
+System up:
+```
+running ----+-----------------------> RUNNING
+             \ copy
+candidate     +---------------------> CANDIDATE
+```
+	     
 ## Thanks
 Thanks matt smith and dave cornejo for input
