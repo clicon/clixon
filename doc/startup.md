@@ -178,24 +178,25 @@ and then copy/commit it via CLI, Netconf or Restconf.
 This section contains non-formal "flowcharts" showing the dynamics of
 the configuration databases in the startup phase.
 
-Starting in init mode:
+The flowchart starts in one of the the modes (non, init, startup, running):
 
+Starting in init mode:
 ```
                  reset     
-running   |--------+------------> 
+running   |--------+------------> GOTO EXTRA XML
 ```
 
-Starting in init running mode:
+Start in running mode:
 ```
 running   ----+
                \ copy 
 startup         +------------> GOTO STARTUP
 
 ```
-Starting in init startup mode:
+Starting in startup mode:
 ```
                               reset     
-running                         |--------+------------> GOTO SYSTEM UP
+running                         |--------+------------> GOTO EXTRA XML
                 parse validate OK       / commit 
 startup -------+--+-------+------------+          
 ```
@@ -204,19 +205,19 @@ If validation of startup fails:
 ```
 failsafe      ----------------------+
                             reset    \ commit
-running                       |-------+---------------> GOTO SYSTEM UP
+running                       |-------+---------------> GOTO EXTRA XML
               parse validate fail 
 startup      ---+-------------------------------------> INVALID XML
 ```
 
-Load extra XML:
+Load EXTRA XML:
 ```
-running -----------------+----+------> GOTO UP
+running -----------------+----+------> GOTO SYSTEM UP
            reset  loadfile   / merge
 tmp     |-------+-----+-----+
 ```
 
-System up:
+SYSTEM UP:
 ```
 running ----+-----------------------> RUNNING
              \ copy
@@ -225,3 +226,8 @@ candidate     +---------------------> CANDIDATE
 	     
 ## Thanks
 Thanks matt smith and dave cornejo for input
+
+## References
+
+[RFC7895](https://tools.ietf.org/html/rfc7895)
+
