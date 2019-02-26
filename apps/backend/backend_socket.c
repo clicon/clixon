@@ -152,7 +152,7 @@ config_socket_init_unix(clicon_handle h,
 	return -1;
 #if 0
     if (gid == 0) 
-	clicon_log(LOG_WARNING, "%s: No such group: %s\n", __FUNCTION__, config_group);
+	clicon_log(LOG_WARNING, "%s: No such group: %s", __FUNCTION__, config_group);
 #endif
     /* create unix socket */
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {

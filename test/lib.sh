@@ -59,6 +59,10 @@ testname=
 # If set to 0, override starting of clixon_backend in test (you bring your own)
 : ${BE:=1}
 
+# If BE is set, some tests have a user timeout to show which params to set
+# for starting a backend
+: ${BETIMEOUT:=10}
+
 # If set, enable debugging (of backend)
 : ${DBG:=0}
 
@@ -95,7 +99,12 @@ dir=/var/tmp/$0
 if [ ! -d $dir ]; then
     mkdir $dir
 fi
-rm -rf $dir/*
+# If we bring our own backend BE=0 (it is already started),the backend may
+# have created some files (eg unix socket) in $dir and therefore cannot
+# be deleted
+if [ $BE -ne 0 ]; then
+    rm -rf $dir/*
+fi
 
 # error and exit,
 # arg1: expected
@@ -179,7 +188,7 @@ new(){
     fi
     testnr=`expr $testnr + 1`
     testname=$1
-    >&2 echo "Test$testnr [$1]"
+    >&2 echo "Test $testnr [$1]"
 }
 
 # clixon command tester.

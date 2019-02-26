@@ -1135,8 +1135,8 @@ xml_diff1(yang_stmt *ys,
 
 /*! Compute differences between two xml trees
  * @param[in]  yspec     Yang specification
- * @param[in]  x1       First XML tree
- * @param[in]  x2       Second XML tree
+ * @param[in]  x1        First XML tree
+ * @param[in]  x2        Second XML tree
  * @param[out] first     Pointervector to XML nodes existing in only first tree
  * @param[out] firstlen  Length of first vector
  * @param[out] second    Pointervector to XML nodes existing in only second tree

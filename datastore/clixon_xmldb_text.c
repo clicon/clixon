@@ -90,6 +90,7 @@ struct text_handle {
     int            th_pretty;   /* Store xml/json pretty-printed. */
     char          *th_nacm_mode;
     cxobj         *th_nacm_xtree;
+    cxobj         *th_modst; /* According to RFC7895 for rev mgmnt */
 };
 
 /* Struct per database in hash */
@@ -211,6 +212,8 @@ text_disconnect(xmldb_handle xh)
 	}
 	if (th->th_nacm_mode)
 	    free(th->th_nacm_mode);
+	if (th->th_modst)
+	    xml_free(th->th_modst);
 	free(th);
     }
     retval = 0;
@@ -247,6 +250,8 @@ text_getopt(xmldb_handle xh,
 	*value = &th->th_nacm_mode;
     else if (strcmp(optname, "nacm_xtree") == 0)
 	*value = th->th_nacm_xtree;
+    else if (strcmp(optname, "modules_state") == 0)
+	*value = th->th_modst;
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
 	goto done;
@@ -304,6 +309,9 @@ text_setopt(xmldb_handle xh,
     }
     else if (strcmp(optname, "nacm_xtree") == 0){
 	th->th_nacm_xtree = (cxobj*)value;
+    }
+    else if (strcmp(optname, "modules_state") == 0){
+	th->th_modst = (cxobj*)value;
     }
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
@@ -434,6 +442,143 @@ xml_copy_marked(cxobj *x0,
     return retval;
 }
 
+/*! Common read function that reads an XML tree from file
+ * @param[in]  db  Symbolic database name, eg "candidate", "running"
+ * @param[out] xp  XML tree read from file
+ * @param[out] xmsp If set, return modules-state differences
+ */
+static int
+text_readfile(struct text_handle *th,
+	      const char         *db,
+	      yang_spec          *yspec,
+	      cxobj             **xp,
+	      cxobj             **xmsp)
+{
+    int    retval = -1;
+    cxobj *x0 = NULL;
+    char  *dbfile = NULL;
+    int    fd = -1;
+    cxobj *xmsd = NULL; /* Local modules-state diff tree */
+    
+    if (text_db2file(th, db, &dbfile) < 0)
+	goto done;
+    if (dbfile==NULL){
+	clicon_err(OE_XML, 0, "dbfile NULL");
+	goto done;
+    }
+    if ((fd = open(dbfile, O_RDONLY)) < 0) {
+	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
+	goto done;
+    }    
+    /* Parse file into XML tree */
+    if (strcmp(th->th_format,"json")==0){
+	if ((json_parse_file(fd, yspec, &x0)) < 0)
+	    goto done;
+    }
+    else if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
+	goto done;
+    /* Always assert a top-level called "config". 
+       To ensure that, deal with two cases:
+       1. File is empty <top/> -> rename top-level to "config" */
+    if (xml_child_nr(x0) == 0){ 
+	if (xml_name_set(x0, "config") < 0)
+	    goto done;     
+    }
+    /* 2. File is not empty <top><config>...</config></top> -> replace root */
+    else{ 
+	/* There should only be one element and called config */
+	if (singleconfigroot(x0, &x0) < 0)
+	    goto done;
+    }
+    {
+	cxobj *xmodst;
+	cxobj *xm = NULL;
+	cxobj *xm2;
+	cxobj *xs;
+	char  *name; /* module name */
+	char  *mrev; /* file revision */
+	char  *srev; /* system revision */
+	/* Read existing if any and compare with systems module revisions:
+	 * This can happen:
+	 * 1) There is no modules-state info in the file
+	 * 2) There is module state info in the file
+	 * 3) For each module state m in the file:
+	 *    3a) There is no such module in the system
+	 *    3b) File module-state matches system
+	 *    3c) File module-state does not match system
+	 */
+	if ((xmodst = xml_find_type(x0, NULL, "modules-state", CX_ELMNT)) == NULL){
+	    /* 1) There is no modules-state info in the file */
+	}
+	else{
+
+	    /* Create a diff tree */
+	    if (xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>", yspec, &xmsd) < 0)
+		goto done;
+	    if (xml_rootchild(xmsd, 0, &xmsd) < 0) 
+		goto done;
+
+	    /* 3) For each module state m in the file */
+	    while ((xm = xml_child_each(xmodst, xm, CX_ELMNT)) != NULL) {
+		if (strcmp(xml_name(xm), "module"))
+		    continue;
+		if ((name = xml_find_body(xm, "name")) == NULL)
+		    continue;
+		/* 3a) There is no such module in the system */
+		if ((xs = xpath_first(th->th_modst, "module[name=\"%s\"]", name)) == NULL){
+		    //		fprintf(stderr, "%s: Module %s: not in system\n", __FUNCTION__, name);
+		    if ((xm2 = xml_dup(xm)) == NULL)
+			goto done;
+		    if (xml_addsub(xmsd, xm2) < 0)
+			goto done;
+		    continue;
+		}
+		/* These two shouldnt happen since revision is key, just ignore */
+		if ((mrev = xml_find_body(xm, "revision")) == NULL)
+		    continue;
+		if ((srev = xml_find_body(xs, "revision")) == NULL)
+		    continue;
+		if (strcmp(mrev, srev)==0){
+		    /* 3b) File module-state matches system */
+		    //		fprintf(stderr, "%s: Module %s: file \"%s\" and system revisions match\n", __FUNCTION__, name, mrev);
+		}
+		else{
+		    /* 3c) File module-state does not match system */
+		    //		fprintf(stderr, "%s: Module %s: file \"%s\" and system \"%s\" revisions do not match\n", __FUNCTION__, name, mrev, srev);
+		    if ((xm2 = xml_dup(xm)) == NULL)
+			goto done;
+		    if (xml_addsub(xmsd, xm2) < 0)
+			goto done;
+		}
+	    }
+	}
+	if (xmodst){
+	    /* For now ignore the modules_state - just remove it*/
+	    if (xml_purge(xmodst) < 0)
+		goto done;
+	}
+    }
+    if (xp){
+	*xp = x0;
+	x0 = NULL;
+    }
+    if (xmsp){
+	*xmsp = xmsd;
+	xmsd = NULL;
+    }
+    retval = 0;
+ done:
+    if (xmsd)
+	xml_free(xmsd);
+    if (fd != -1)
+	close(fd);
+    if (dbfile)
+	free(dbfile);
+    if (x0)
+	xml_free(x0);
+    return retval;
+}
+
 /*! Get content of database using xpath. return a set of matching sub-trees
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
@@ -443,6 +588,7 @@ xml_copy_marked(cxobj *x0,
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
+ * @param[out] xms    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
  * @see xmldb_get  the generic API function
@@ -452,14 +598,13 @@ text_get(xmldb_handle  xh,
 	 const char   *db, 
 	 char         *xpath,
 	 int           config,
-	 cxobj       **xtop)
+	 cxobj       **xtop,
+    	 cxobj       **xms)
 {
     int             retval = -1;
-    char           *dbfile = NULL;
     yang_spec      *yspec;
     cxobj          *xt = NULL;
     cxobj          *x;
-    int             fd = -1;
     cxobj         **xvec = NULL;
     size_t          xlen;
     int             i;
@@ -474,37 +619,10 @@ text_get(xmldb_handle  xh,
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL)
 	    xt = de->de_xml; 
     }
+    /* If there is no xml x0 tree (in cache), then read it from file */
     if (xt == NULL){
-	if (text_db2file(th, db, &dbfile) < 0)
+	if (text_readfile(th, db, yspec, &xt, xms) < 0)
 	    goto done;
-	if (dbfile==NULL){
-	    clicon_err(OE_XML, 0, "dbfile NULL");
-	    goto done;
-	}
-	if ((fd = open(dbfile, O_RDONLY)) < 0){
-	    clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
-	    goto done;
-	}    
-	/* Parse file into XML tree */
-	if (strcmp(th->th_format,"json")==0){
-	    if ((json_parse_file(fd, yspec, &xt)) < 0)
-		goto done;
-	}
-	else if ((xml_parse_file(fd, "</config>", yspec, &xt)) < 0)
-	    goto done;
-	/* Always assert a top-level called "config". 
-	   To ensure that, deal with two cases:
-	   1. File is empty <top/> -> rename top-level to "config" */
-	if (xml_child_nr(xt) == 0){ 
-	    if (xml_name_set(xt, "config") < 0)
-		goto done;     
-	}
-	/* 2. File is not empty <top><config>...</config></top> -> replace root */
-	else{ 
-	    /* There should only be one element and called config */
-	    if (singleconfigroot(xt, &xt) < 0)
-		goto done;
-	}
 	/* XXX: should we validate file if read from disk? 
 	 * Argument against: we may want to have a semantically wrong file and wish
 	 * to edit?
@@ -585,12 +703,8 @@ text_get(xmldb_handle  xh,
  done:
     if (xt)
 	xml_free(xt);
-    if (dbfile)
-	free(dbfile);
     if (xvec)
 	free(xvec);
-    if (fd != -1)
-	close(fd);
     return retval;
 }
 
@@ -1080,7 +1194,6 @@ text_put(xmldb_handle        xh,
     int                 retval = -1;
     struct text_handle *th = handle(xh);
     char               *dbfile = NULL;
-    int                 fd = -1;
     FILE               *f = NULL;
     cbuf               *cb = NULL;
     yang_spec          *yspec;
@@ -1088,7 +1201,10 @@ text_put(xmldb_handle        xh,
     struct db_element  *de = NULL;
     int                 ret;
     cxobj              *xnacm = NULL; 
-    
+    char               *mode;
+    cxobj              *xnacm0 = NULL;
+    cxobj              *xmodst = NULL;
+
     if (cbret == NULL){
 	clicon_err(OE_XML, EINVAL, "cbret is NULL");
 	goto done;
@@ -1106,70 +1222,37 @@ text_put(xmldb_handle        xh,
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL)
 	    x0 = de->de_xml; 
     }
+    /* If there is no xml x0 tree (in cache), then read it from file */
     if (x0 == NULL){
-	if (text_db2file(th, db, &dbfile) < 0)
+	if (text_readfile(th, db, yspec, &x0, NULL) < 0)
 	    goto done;
-	if (dbfile==NULL){
-	    clicon_err(OE_XML, 0, "dbfile NULL");
-	    goto done;
-	}
-	if ((fd = open(dbfile, O_RDONLY)) < 0) {
-	    clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
-	    goto done;
-	}    
-	/* Parse file into XML tree */
-	if (strcmp(th->th_format,"json")==0){
-	    if ((json_parse_file(fd, yspec, &x0)) < 0)
-		goto done;
-	}
-	else if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
-	    goto done;
-	/* Always assert a top-level called "config". 
-	   To ensure that, deal with two cases:
-	   1. File is empty <top/> -> rename top-level to "config" */
-	if (xml_child_nr(x0) == 0){ 
-	    if (xml_name_set(x0, "config") < 0)
-		goto done;     
-	}
-	/* 2. File is not empty <top><config>...</config></top> -> replace root */
-	else{ 
-	    /* There should only be one element and called config */
-	    if (singleconfigroot(x0, &x0) < 0)
-		goto done;
-	}
     }
-    /* Here x0 looks like: <config>...</config> */
     if (strcmp(xml_name(x0),"config")!=0){
 	clicon_err(OE_XML, 0, "Top-level symbol is %s, expected \"config\"",
 		   xml_name(x0));
 	goto done;
     }
+    /* Here x0 looks like: <config>...</config> */
+
 #if 0 /* debug */
     if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
 #endif
-#if 1
-    {
-	char  *mode;
-	cxobj *xnacm0 = NULL;
-	
-	mode = th->th_nacm_mode;
-	if (mode){
-	    if (strcmp(mode, "external")==0)
-		xnacm0 = th->th_nacm_xtree;
-	    else if (strcmp(mode, "internal")==0)
-		xnacm0 = x0;
-	}
-	if (xnacm0 != NULL &&
-	    (xnacm = xpath_first(xnacm0, "nacm")) != NULL){
-	    /* Pre-NACM access step */
-	    if ((ret = nacm_access(mode, xnacm, username)) < 0)
-		goto done;
-	}
-	/* Here assume if xnacm is set (actually may be ret==0?) do NACM */
+    mode = th->th_nacm_mode;
+    if (mode){
+	if (strcmp(mode, "external")==0)
+	    xnacm0 = th->th_nacm_xtree;
+	else if (strcmp(mode, "internal")==0)
+	    xnacm0 = x0;
     }
+    if (xnacm0 != NULL &&
+	(xnacm = xpath_first(xnacm0, "nacm")) != NULL){
+	/* Pre-NACM access step */
+	if ((ret = nacm_access(mode, xnacm, username)) < 0)
+	    goto done;
+    }
+    /* Here assume if xnacm is set (actually may be ret==0?) do NACM */
 
-#endif
     /* 
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
@@ -1206,17 +1289,19 @@ text_put(xmldb_handle        xh,
 	    hash_add(th->th_dbs, db, &de0, sizeof(de0));
 	}
     }
-    if (dbfile == NULL){
-	if (text_db2file(th, db, &dbfile) < 0)
-	    goto done;
-	if (dbfile==NULL){
-	    clicon_err(OE_XML, 0, "dbfile NULL");
-	    goto done;
-	}
+    if (text_db2file(th, db, &dbfile) < 0)
+	goto done;
+    if (dbfile==NULL){
+	clicon_err(OE_XML, 0, "dbfile NULL");
+	goto done;
     }
-    if (fd != -1){
-	close(fd);
-	fd = -1;
+    /* Add module revision info before writing to file)
+     */
+    if (th->th_modst){
+	if ((xmodst = xml_dup(th->th_modst)) == NULL)
+	    goto done;
+	if (xml_addsub(x0, xmodst) < 0)
+	    goto done;
     }
     if ((f = fopen(dbfile, "w")) == NULL){
 	clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
@@ -1228,14 +1313,16 @@ text_put(xmldb_handle        xh,
     }
     else if (clicon_xml2file(f, x0, 0, th->th_pretty) < 0)
 	goto done;
+    /* Remove modules state after writing to file
+     */
+    if (xmodst && xml_purge(xmodst) < 0)
+	goto done;
     retval = 1;
  done:
     if (f != NULL)
 	fclose(f);
     if (dbfile)
 	free(dbfile);
-    if (fd != -1)
-	close(fd);
     if (cb)
 	cbuf_free(cb);
     if (!th->th_cache && x0)
@@ -1489,7 +1576,7 @@ text_create(xmldb_handle xh,
     struct db_element  *de = NULL;
     cxobj              *xt = NULL;
 
-    if (th->th_cache){ /* XXX This should nt really happen? */
+    if (th->th_cache){ /* XXX This should not really happen? */
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL){
 	    if ((xt = de->de_xml) != NULL){
 		assert(xt==NULL); /* XXX */

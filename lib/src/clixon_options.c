@@ -889,6 +889,36 @@ clicon_username_set(clicon_handle h,
     return hash_add(cdat, "username", username, strlen(username)+1)==NULL?-1:0;
 }
 
+/*! Get backend daemon startup status
+ * @param[in]  h      Clicon handle
+ * @retval     status Startup status
+ */
+enum startup_status
+clicon_startup_status_get(clicon_handle h)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    void           *p;
+
+    if ((p = hash_value(cdat, "startup_status", NULL)) != NULL)
+        return *(enum startup_status *)p;
+    return STARTUP_ERR;
+}
+
+/*! Set backend daemon startup status
+ * @param[in]  h      Clicon handle
+ * @param[in]  status Startup status
+ * @retval     0      OK
+ * @retval    -1      Error (when setting value)
+ */
+int
+clicon_startup_status_set(clicon_handle       h,
+			  enum startup_status status)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    if (hash_add(cdat, "startup_status", &status, sizeof(status))==NULL)
+        return -1;
+    return 0;
+}
 
 /*! Get socket fd (ie backend server socket / restconf fcgx socket)
  * @param[in]  h   Clicon handle

@@ -50,4 +50,3 @@ int strverscmp (__const char *__s1, __const char *__s2);
 /* Full xmlns validation check is made only if XML has associated YANG spec 
 */
 #define XMLNS_YANG_ONLY 1
-

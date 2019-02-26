@@ -325,11 +325,12 @@ xmldb_setopt(clicon_handle h,
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
+ * @param[out] xms    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
  * @code
  *   cxobj   *xt;
- *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 1, &xt) < 0)
+ *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 1, &xt, NULL) < 0)
  *      err;
  *   xml_free(xt);
  * @endcode
@@ -341,7 +342,8 @@ xmldb_get(clicon_handle h,
 	  const char   *db, 
 	  char         *xpath,
 	  int           config,
-	  cxobj       **xret)
+	  cxobj       **xret,
+	  cxobj       **xms)
 {
     int               retval = -1;
     xmldb_handle      xh;
@@ -359,7 +361,7 @@ xmldb_get(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = xa->xa_get_fn(xh, db, xpath, config, xret);
+    retval = xa->xa_get_fn(xh, db, xpath, config, xret, xms);
 #if DEBUG
     if (retval == 0) { 
 	 cbuf *cb = cbuf_new();

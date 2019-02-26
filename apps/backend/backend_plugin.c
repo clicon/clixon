@@ -157,6 +157,31 @@ clixon_plugin_statedata(clicon_handle    h,
     return retval;
 }
 
+/*! Call configuration upgrade routines in backend plugins
+ * @param[in]  h    Clicon handle
+ * @param[in]  xms  XML tree of module state differences
+ * @retval     0    OK
+ * @retval    -1    Error in one (first) of user callbacks
+ */
+int
+clixon_plugin_upgrade(clicon_handle       h,
+		      cxobj              *xmodst)
+{
+    int             retval = -1;
+    clixon_plugin  *cp = NULL;
+    upgrade_cb_t *fn;          /* Plugin configuration upgrade fn */
+    
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	if ((fn = cp->cp_api.ca_upgrade) == NULL)
+	    continue;
+	if (fn(h, xmodst) < 0)
+	    goto done; 
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Create and initialize transaction */
 transaction_data_t *
 transaction_new(void)
