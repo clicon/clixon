@@ -322,17 +322,17 @@ restconf daemon as part of the [example](../example/systemd).
 
 ## How can I add extra XML?
 
-There are two ways to add extra XML to running database  after start. Note that this XML is not "committed" into running.
+There are two ways to add extra XML to running database after start. Note that this XML is not "committed" into running.
 
 The first way is via a file. Assume you want to add this xml (the config tag is a necessary top-level tag):
 ```
-<config>
-   <x xmlns="urn:example:clixon">extra</x>
-</config>
+   <config>
+      <x xmlns="urn:example:clixon">extra</x>
+   </config>
 ```
 You add this via the -c option:
 ```
-clixon_backend ... -c extra.xml
+   clixon_backend ... -c extra.xml
 ```
 
 The second way is by programming the plugin_reset() in the backend
