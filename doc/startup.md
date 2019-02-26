@@ -1,5 +1,17 @@
 # Startup of the Clixon backend
 
+  * [Background](#background)
+  * [Modes](#modes)
+  * [Startup configuration](#startup-configuration)
+  * [Model-state](#model-state)
+  * [Upgrade callback](#upgrade-callback)
+  * [Extra XML](#extra-xml)
+  * [Startup status](#startup-status)
+  * [Failsafe mode](#failsafe-mode)
+  * [FLowcharts](#flowcharts)
+  * [Thanks](#thanks)
+  * [References](#references)
+
 ## Background
 
 This document describes the configuration startup mechanism of the Clixon backend. This document describes the mechanism of Clixon version 3.10 which supports the following features:
@@ -9,9 +21,7 @@ This document describes the configuration startup mechanism of the Clixon backen
 * An upgrade callback when in-compatible XML is encountered
 * A "failsafe" mode allowing a user to repair the startup on errors or failed validation.
 
-## Operation
-
-### Modes
+## Modes
 
 When the Clixon backend starts, it can start in one of four modes:
 * _startup_: The configuration is loaded from a persistent `startup` database. This database is loaded, validated and committed into the running database.
@@ -19,7 +29,7 @@ When the Clixon backend starts, it can start in one of four modes:
 _none_: No databases are touched - the system starts and loads existing running database without validation or commits. This is mostly a debug option.
 * _init_: Similar to none, but the running database is cleared before loading
 
-### Startup configuration
+## Startup configuration
 
 When the backend daemon is started in `startup` mode, the system loads
 the `startup` database. The `running` mode is very similar, the only
@@ -34,10 +44,9 @@ If yang-models do not match, an `upgrade` callback is made.
 
 If any errors are detected, the backend tries to enter a `failsafe` mode.
 
+## Model-state
 
-### Yang model-state
-
-Clixon has the ability to store module-state information according to
+Clixon has the ability to store Yang module-state information according to
 RFC7895 in the datastores. Including yang module-state in the
 datastores is enabled by the following entry in the Clixon
 configuration:
@@ -76,7 +85,7 @@ Example of a (simplified) datastore with Yang module-state:
 </config>
 ```
 
-### Upgrade callback
+## Upgrade callback
 
 If the module-state of the startup configuration does not match the
 module-state of the backend daemon, an _upgrade_ callback is
@@ -122,8 +131,7 @@ However, if the validation fails, the backend will try to enter the
 failsafe mode so that the user may perform manual upgarding of the
 configuration.
 
-
-### Extra XML
+## Extra XML
 
 If validation succeeds and the startup configuration has been committed to the running database, a user may add "extra" XML.
 
@@ -145,7 +153,7 @@ plugin. The example code contains an example on how to do this (see plugin_reset
 
 The extra-xml feature is not available if startup mode is `none`. It will also not occur in failsafe mode.
 
-### Startup status and failsafe mode
+## Startup status
 
 When the startup process is completed, a startup status is set and is accessible via `clixon_startup_status_get(h)` with the following values:
 ```
@@ -153,6 +161,8 @@ When the startup process is completed, a startup status is set and is accessible
   STARTUP_INVALID,   XML / Yang validation failure
   STARTUP_OK         OK
 ```
+
+## Failsafe mode
 
 If the startup fails, the backend looks for a `failsafe` configuration
 in `CLICON_XMLDB_DIR/failsafe_db`. If such a config is not found, the
@@ -162,9 +172,8 @@ If the failsafe is found, the failsafe config is loaded and
 committed into the running db. The `startup` database will contain syntax
 errors or invalidated XML.
 
-A user can repair the `startup`
-configuration and either restart the backend or copy the startup
-configuration to candidate and the commit.
+A user can repair the `startup` configuration and either restart the
+backend or copy the startup configuration to candidate and the commit.
 
 Note that the if the startup configuration contains syntactic errors
 (eg `STARTUP_ERR`) you cannot access the startup via Restconf or
@@ -175,7 +184,7 @@ and then copy/commit it via CLI, Netconf or Restconf.
 
 ## Flowcharts
 
-This section contains non-formal "flowcharts" showing the dynamics of
+This section contains "pseudo" flowcharts showing the dynamics of
 the configuration databases in the startup phase.
 
 The flowchart starts in one of the the modes (non, init, startup, running):
