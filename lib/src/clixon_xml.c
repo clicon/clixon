@@ -1560,6 +1560,7 @@ _xml_parse(const char  *str,
     int                       retval = -1;
     struct xml_parse_yacc_arg ya = {0,};
     cxobj                    *x;
+
     if (strlen(str) == 0)
 	return 0; /* OK */
     if (xt == NULL){
@@ -1595,7 +1596,7 @@ _xml_parse(const char  *str,
     retval = 0;
   done:
     clixon_xml_parsel_exit(&ya);
-    if(ya.ya_parse_string != NULL)
+    if (ya.ya_parse_string != NULL)
 	free(ya.ya_parse_string);
     return retval; 
 }
@@ -2044,6 +2045,28 @@ xml_apply_ancestor(cxobj          *xn,
     retval = 0;
   done:
     return retval;   
+}
+
+/*! Is xpp ancestor of x?
+ * @param[in]   x       XML node
+ * @param[in]   xpp     Potential ancestor of x in XML tree
+ * @retval      0       No, xpp is not ancestor of x
+ * @retval      1       Yes, xpp is ancestor of x
+ */
+int
+xml_isancestor(cxobj *x,
+	       cxobj *xpp)
+{
+    cxobj     *xp = NULL;
+    cxobj     *xn = NULL;
+
+    xn = x;
+    while ((xp = xml_parent(xn)) != NULL) {
+	if (xp == xpp)
+	    return 1;
+	xn = xp;
+    }
+    return 0;
 }
 
 /*! Generic parse function for xml values

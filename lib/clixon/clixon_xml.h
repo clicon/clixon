@@ -173,6 +173,7 @@ int       cxvec_append(cxobj *x, cxobj ***vec, size_t  *len);
 int       xml_apply(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg);
 int       xml_apply0(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg);
 int       xml_apply_ancestor(cxobj *xn, xml_applyfn_t fn, void *arg);
+int       xml_isancestor(cxobj *x, cxobj *xp);
 
 int       xml_body_parse(cxobj *xb, enum cv_type type, cg_var **cvp);
 int       xml_body_int32(cxobj *xb, int32_t *val);

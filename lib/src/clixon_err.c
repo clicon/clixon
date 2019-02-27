@@ -187,7 +187,7 @@ clicon_err_fn(const char *fn,
 		   line,
 		   clicon_strerror(category),
 		   msg,
-		   strerror(suberr));
+		   suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
     }
     else
 	clicon_log(LOG_ERR, "%s: %d: %s: %s", 
