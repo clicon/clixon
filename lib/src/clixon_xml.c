@@ -122,12 +122,14 @@ struct xml{
     int               x_childvec_len;/* length of vector */
     enum cxobj_type   x_type;       /* type of node: element, attribute, body */
     char             *x_value;      /* attribute and body nodes have values */
-    int              _x_vector_i;   /* internal use: xml_child_each */
     int               x_flags;      /* Flags according to XML_FLAG_* */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable 
                                        (eg xml_cmp) */
+    int              _x_vector_i;   /* internal use: xml_child_each */
+    int              _x_i;          /* internal use for sorting: 
+				       see xml_enumerate and xml_cmp */
 };
 
 /*
@@ -1055,6 +1057,43 @@ xml_rootchild_node(cxobj  *xp,
     retval = 0;
  done:
     return retval;
+}
+
+
+/*! help function to sorting: enumerate all children according to present order
+ * This is so that the child itself know its present order in a list.
+ * When sorting by "ordered by user", the order should remain in its present
+ * state.
+ * A child can always compute its order functionally but it computes
+ * more cycles,..
+ * @param[in]  xp  Enumerate its children
+ * @retval     0   OK
+ * @see xml_sort
+ * @see xml_enumerate_get  Call to the child to get the number
+ */
+int
+xml_enumerate_children(cxobj *xp)
+{
+    cxobj *x = NULL;
+    int    i = 0;
+
+    while ((x = xml_child_each(xp, x, -1)) != NULL)
+	x->_x_i = i++;
+    return 0;
+}
+
+/*! Get the enumeration of a single child set by enumeration of parent
+ * @see xml_children_enumerate
+ * @note that it has to be called right after xml_children_enumerate. If not,
+ * there are many cases where this info is stale. 
+ * @param[in]  x   A child whose parent has enumerated its children
+ * @retval     n   Enumeration
+ * @see xml_enumerate_children   Call to the parent to compute the nr
+ */
+int
+xml_enumerate_get(cxobj *x)
+{
+    return x->_x_i;
 }
 
 /*! Get the first sub-node which is an XML body.
@@ -2277,7 +2316,6 @@ clicon_log_xml(int    level,
 	free(msg);
     return retval;
 }
-
 
 /*
  * Turn this on to get a xml parse and pretty print test program

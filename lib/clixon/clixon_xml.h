@@ -142,6 +142,9 @@ int       xml_rm(cxobj *xc);
 int       xml_rootchild(cxobj  *xp, int i, cxobj **xcp);
 int       xml_rootchild_node(cxobj  *xp, cxobj *xc);
 
+int       xml_enumerate_children(cxobj *xp);
+int       xml_enumerate_get(cxobj *x);
+
 char     *xml_body(cxobj *xn);
 cxobj    *xml_body_get(cxobj *xn);
 char     *xml_find_type_value(cxobj *xn_parent, char *prefix,
