@@ -90,9 +90,6 @@
 /* Define to 1 if you have the `strsep' function. */
 #undef HAVE_STRSEP
 
-/* Define to 1 if you have the `strverscmp' function. */
-#undef HAVE_STRVERSCMP
-
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
 

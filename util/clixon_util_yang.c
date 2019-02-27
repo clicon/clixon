@@ -45,7 +45,6 @@
 #include <unistd.h>
 #include <limits.h>
 #include <ctype.h>
-#define __USE_GNU /* strverscmp */
 #include <string.h>
 #include <arpa/inet.h>
 #include <regex.h>

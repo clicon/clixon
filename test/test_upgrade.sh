@@ -311,17 +311,17 @@ runtest startup '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:e
 new "4. Load non-compat invalid startup. Enter failsafe, startup invalid."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp non-compat-invalid.xml startup_db)
-runtest startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><a0 xmlns="urn:example:a">old version</a0><c xmlns="urn:example:c">bla bla</c></data>'
+runtest startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>'
 
 new "5. Load non-compat invalid running. Enter failsafe, startup invalid."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp non-compat-invalid.xml running_db)
-runtest running '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><a0 xmlns="urn:example:a">old version</a0><c xmlns="urn:example:c">bla bla</c></data>'
+runtest running '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>'
 
 new "6. Load compatible invalid startup."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-invalid.xml startup_db)
-runtest startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><a0 xmlns="urn:example:a">old version</a0><c xmlns="urn:example:c">bla bla</c></data>'
+runtest startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>'
 
 new "7. Load non-compat startup. Syntax fail, enter failsafe, startup invalid"
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases

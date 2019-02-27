@@ -39,7 +39,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#define __USE_GNU /* strverscmp */
 #include <string.h>
 #include <errno.h>
 #include <dirent.h>
@@ -71,11 +70,7 @@ clicon_file_dirent_sort(const void* arg1,
     struct dirent *d1 = (struct dirent *)arg1;
     struct dirent *d2 = (struct dirent *)arg2;
 
-#ifdef  HAVE_STRVERSCMP
-    return strverscmp(d1->d_name, d2->d_name);     /* strverscmp specific GNU function */
-#else /* HAVE_STRVERSCMP */ 
     return strcoll(d1->d_name, d2->d_name);
-#endif /* HAVE_STRVERSCMP */
 }
 
 /*! Return alphabetically sorted files from a directory matching regexp

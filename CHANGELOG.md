@@ -25,7 +25,9 @@
 
 ### Minor changes
 * Added specific clixon_suberrno code: XMLPARSE_ERRNO to identify XML parse errors.
-
+* Removed all dependency on strverscmp
+* Added libgen.h for baseline()
+	
 ### Corrected Bugs
 
 ## 3.9.0 (21 Feb 2019)

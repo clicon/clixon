@@ -281,7 +281,7 @@ int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
 int        yang_spec_parse_module(clicon_handle h, const char *module,
 				  const char *revision, yang_spec *yspec);
-int        yang_spec_parse_file(clicon_handle h, const char *filename, yang_spec *yspec);
+int        yang_spec_parse_file(clicon_handle h, char *filename, yang_spec *yspec);
 int        yang_spec_load_dir(clicon_handle h, char *dir, yang_spec *yspec);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_node *yn, char *name);

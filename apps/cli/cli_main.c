@@ -39,7 +39,6 @@
 #endif
 
 #include <stdio.h>
-#define __USE_GNU /* strverscmp */
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
