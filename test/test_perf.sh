@@ -25,10 +25,10 @@ module scaling{
     list y {
       key "a";
       leaf a {
-        type string;
+        type int32;
       }
       leaf b {
-        type string;
+        type int32;
       }
     }
     leaf-list c {
@@ -131,10 +131,10 @@ done
 
 # Instead of many small entries, get one large in netconf and restconf
 new "netconf get large config"
-expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg  -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><y><a>0</a><b>0</b></y><y><a>1</a><b>1</b>'
+expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg  -y $fyang" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><y><a>0</a><b>0</b></y><y><a>1</a><b>1</b></y><y><a>2</a><b>2</b></y><y><a>3</a><b>3</b></y>'
 
 new "restconf get large config"
-expecteof "/usr/bin/time -f %e curl -sG http://localhost/restconf/data" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^{"data": {"scaling:x": {"y": \[{"a": "0","b": "0"},{ "a": "1","b": "1"},'
+expecteof "/usr/bin/time -f %e curl -sG http://localhost/restconf/data" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^{"data": {"scaling:x": {"y": \[{"a": 0,"b": 0},{ "a": 1,"b": 1},{ "a": 2,"b": 2},{ "a": 3,"b": 3},'
 
 # Now do leaf-lists istead of leafs
 

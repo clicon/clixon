@@ -195,6 +195,7 @@ xml_child_spec(cxobj      *x,
  * @see xml_cmp1   Similar, but for one object
  * @note empty value/NULL is smallest value
  * @note xml_enumerate_children must have been called prior to this call
+ * @note some error cases return as -1 (qsort cant handle errors)
  */
 static int
 xml_cmp(const void* arg1, 
@@ -216,22 +217,25 @@ xml_cmp(const void* arg1,
     cg_var     *cv2;
     int         nr1;
     int         nr2;
+    cxobj      *x1b;
+    cxobj      *x2b;
 
-    if (x1==NULL || x2==NULL)
-	return 0; /* shouldnt happen */
+    if (x1==NULL || x2==NULL){
+	goto done; /* shouldnt happen */
+    }
     y1 = xml_spec(x1);
     y2 = xml_spec(x2);
     nr1 = xml_enumerate_get(x1);
     nr2 = xml_enumerate_get(x2);
     if (y1==NULL || y2==NULL){
 	equal = nr1-nr2;
-	return equal; 
+	goto done;
     }
     if (y1 != y2){
 	yi1 = yang_order(y1);
 	yi2 = yang_order(y2);
 	if ((equal = yi1-yi2) != 0)
-	    return equal;
+	    goto done;
     }
     /* Now y1==y2, same Yang spec, can only be list or leaf-list,
      * But first check exceptions, eg config false or ordered-by user
@@ -240,7 +244,7 @@ xml_cmp(const void* arg1,
     if (yang_config(y1)==0 ||
 	yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL){
 	equal = nr1-nr2;
-	return equal; /* Ordered by user or state data : maintain existing order */
+	goto done; /* Ordered by user or state data : maintain existing order */
     }
     switch (y1->ys_keyword){
     case Y_LEAF_LIST: /* Match with name and value */
@@ -249,9 +253,9 @@ xml_cmp(const void* arg1,
 	else if ((b2 = xml_body(x2)) == NULL)
 	    equal = 1;
 	else{
-	    if (xml_cv_cache(x1, b1, &cv1) < 0)
+	    if (xml_cv_cache(x1, b1, &cv1) < 0) /* error case */
 		goto done;
-	    if (xml_cv_cache(x2, b2, &cv2) < 0)
+	    if (xml_cv_cache(x2, b2, &cv2) < 0) /* error case */
 		goto done;
 	    equal = cv_cmp(cv1, cv2);
 	}
@@ -263,12 +267,18 @@ xml_cmp(const void* arg1,
 	cvi = NULL;
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	    keyname = cv_string_get(cvi); /* operational data may have NULL keys*/
-	    if ((b1 = xml_find_body(x1, keyname)) == NULL)
+	    if ((x1b = xml_find(x1, keyname)) == NULL ||
+		(b1 = xml_body(x1b)) == NULL)
 		equal = -1;
-	    else if ((b2 = xml_find_body(x2, keyname)) == NULL)
+	    else if ((x2b = xml_find(x2, keyname)) == NULL ||
+		     (b2 = xml_body(x2b)) == NULL)
 		equal = 1;
 	    else{
-		if ((equal = strcmp(b1,b2)) != 0)
+		if (xml_cv_cache(x1b, b1, &cv1) < 0) /* error case */
+		    goto done;
+		if (xml_cv_cache(x2b, b2, &cv2) < 0) /* error case */
+		    goto done;
+		if ((equal = cv_cmp(cv1, cv2)) != 0)
 		    goto done;
 	    }
 	}

@@ -31,6 +31,7 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Fixed numeric ordering of lists (again) [https://github.com/clicon/clixon/issues/64] It was previously just fixed for leaf-lists.
 * There was a problem with ordered-by-user for XML children that appeared in some circumstances and difficult to trigger. Entries entered by the user did not appear in the order they were entered. This should now be fixed.
 
 ## 3.9.0 (21 Feb 2019)

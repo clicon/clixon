@@ -96,11 +96,27 @@ module order-example{
         type int32;
         ordered-by system;
       }
+      list listints{
+        ordered-by system;
+        key a;
+        leaf a {
+          type int32;
+        }
+      }
       leaf-list decs{
         type decimal64{
            fraction-digits 3;
         }
         ordered-by system;
+      }
+      list listdecs{
+        ordered-by system;
+        key a;
+        leaf a {
+          type decimal64{
+            fraction-digits 3;
+          }
+        }
       }
     }
 }
@@ -204,17 +220,50 @@ new "verify list user order (as entered)"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/y2"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><y2 xmlns="urn:example:order"><k>c</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>b</k><a>foo</a></y2><y2 xmlns="urn:example:order"><k>a</k><a>fie</a></y2></data></rpc-reply>]]>]]>$'
 
 #-- order by type rather than strings.
-# there are three lists: strings, ints, and decimal64
+# there are three leaf-lists:strings, ints, and decimal64, and two lists:
+# listints and listdecs
 # the strings is there for comparison
-new "add type ordered entries"
+# The check is to write the entries as: 10,2,1, and then expect them to
+# get back as 1,2,10 (if typed).
+new "put strings (10,2,1)"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><types xmlns="urn:example:order">
+<strings>10</strings><strings>2</strings><strings>1</strings>
+</types></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "check string order (1,10,2)"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/types/strings"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><types xmlns="urn:example:order"><strings>1</strings><strings>10</strings><strings>2</strings></types></data></rpc-reply>]]>]]>$'
+
+new "put leaf-list int (10,2,1)"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><types xmlns="urn:example:order">
 <ints>10</ints><ints>2</ints><ints>1</ints>
-<strings>10</strings><strings>2</strings><strings>1</strings>
+</types></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "check leaf-list int order (1,2,10)"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/types/ints"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><types xmlns="urn:example:order"><ints>1</ints><ints>2</ints><ints>10</ints></types></data></rpc-reply>]]>]]>$'
+
+new "put list int (10,2,1)"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><types xmlns="urn:example:order">
+<listints><a>10</a></listints><listints><a>2</a></listints><listints><a>1</a></listints>
+</types></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "check list int order (1,2,10)"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/types/listints"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><types xmlns="urn:example:order"><listints><a>1</a></listints><listints><a>2</a></listints><listints><a>10</a></listints></types></data></rpc-reply>]]>]]>$'
+
+new "put leaf-list decimal64 (10,2,1)"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><types xmlns="urn:example:order">
 <decs>10.0</decs><decs>2.0</decs><decs>1.0</decs>
 </types></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "get type ordered entries"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/types"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><types xmlns="urn:example:order"><strings>1</strings><strings>10</strings><strings>2</strings><ints>1</ints><ints>2</ints><ints>10</ints><decs>1.0</decs><decs>2.0</decs><decs>10.0</decs></types></data></rpc-reply>]]>]]>$'
+new "check leaf-list decimal64 order (1,2,10)"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/types/decs"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><types xmlns="urn:example:order"><decs>1.0</decs><decs>2.0</decs><decs>10.0</decs></types></data></rpc-reply>]]>]]>$'
+
+new "put list decimal64 (10,2,1)"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><types xmlns="urn:example:order">
+<listdecs><a>10.0</a></listdecs><listdecs><a>2.0</a></listdecs><listdecs><a>1.0</a></listdecs>
+</types></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "check list decimal64 order (1,2,10)"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/types/listdecs"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><types xmlns="urn:example:order"><listdecs><a>1.0</a></listdecs><listdecs><a>2.0</a></listdecs><listdecs><a>10.0</a></listdecs></types></data></rpc-reply>]]>]]>$'
 
 if [ $BE -eq 0 ]; then
     exit # BE
