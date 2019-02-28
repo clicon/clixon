@@ -318,6 +318,7 @@ startup_failsafe(clicon_handle h)
 
 /*! Init modules state of the backend (server). To compare with startup XML
  * Set the modules state as setopt to the datastore module.
+ * Only if CLICON_XMLDB_MODSTATE is enabled
  */
 int
 startup_module_state(clicon_handle h,
@@ -326,6 +327,8 @@ startup_module_state(clicon_handle h,
     int    retval = -1;
     cxobj *x = NULL;
 	
+    if (!clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
+	goto ok;
     if (yang_modules_state_get(h, yspec, NULL, 1, &x) < 0)
 	goto done;
     if (x){
@@ -334,6 +337,7 @@ startup_module_state(clicon_handle h,
 	if (xmldb_setopt(h, "modules_state", (void*)x) < 0)
 	    goto done;
     }
+ ok:
     retval = 0;
  done:
     return retval;

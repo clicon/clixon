@@ -90,7 +90,9 @@ struct text_handle {
     int            th_pretty;   /* Store xml/json pretty-printed. */
     char          *th_nacm_mode;
     cxobj         *th_nacm_xtree;
-    cxobj         *th_modst; /* According to RFC7895 for rev mgmnt */
+    cxobj         *th_modst; /* According to RFC7895 for rev mgmnt 
+			      * Should be set only if CLICON_XMLDB_MODSTATE is true
+			      */
 };
 
 /* Struct per database in hash */
@@ -552,10 +554,108 @@ xml_copy_marked(cxobj *x0,
     return retval;
 }
 
+/*! Read module-state in an XML tree
+ *
+ * @param[in]  th    Datastore text handle
+ * @param[in]  yspec Top-level yang spec 
+ * @param[in]  xt    XML tree
+ * @param[out] xmsp  If set, return modules-state differences
+ *
+ * Read mst (module-state-tree) from xml tree (if any) and compare it with 
+ * the system state mst.
+ * This can happen:
+ * 1) There is no modules-state info in the file
+ * 2) There is module state info in the file
+ * 3) For each module state m in the file:
+ *    3a) There is no such module in the system
+ *    3b) File module-state matches system
+ *    3c) File module-state does not match system
+ */
+static int
+text_read_modstate(struct text_handle *th,
+		   yang_spec          *yspec,
+		   cxobj              *xt,
+		   cxobj             **xmsp)
+{
+    int retval = -1;
+    cxobj *xmodst;
+    cxobj *xm = NULL;
+    cxobj *xm2;
+    cxobj *xs;
+    char  *name; /* module name */
+    char  *mrev; /* file revision */
+    char  *srev; /* system revision */
+    cxobj *xmsd = NULL; /* Local modules-state diff tree */
+
+    if ((xmodst = xml_find_type(xt, NULL, "modules-state", CX_ELMNT)) == NULL){
+	/* 1) There is no modules-state info in the file */
+    }
+    else if (th->th_modst){
+	/* Create a diff tree */
+	if (xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>", yspec, &xmsd) < 0)
+	    goto done;
+	if (xml_rootchild(xmsd, 0, &xmsd) < 0) 
+	    goto done;
+
+	/* 3) For each module state m in the file */
+	while ((xm = xml_child_each(xmodst, xm, CX_ELMNT)) != NULL) {
+	    if (strcmp(xml_name(xm), "module"))
+		continue;
+	    if ((name = xml_find_body(xm, "name")) == NULL)
+		continue;
+	    /* 3a) There is no such module in the system */
+	    if ((xs = xpath_first(th->th_modst, "module[name=\"%s\"]", name)) == NULL){
+		//		fprintf(stderr, "%s: Module %s: not in system\n", __FUNCTION__, name);
+		if ((xm2 = xml_dup(xm)) == NULL)
+		    goto done;
+		if (xml_addsub(xmsd, xm2) < 0)
+		    goto done;
+		continue;
+	    }
+	    /* These two shouldnt happen since revision is key, just ignore */
+	    if ((mrev = xml_find_body(xm, "revision")) == NULL)
+		continue;
+	    if ((srev = xml_find_body(xs, "revision")) == NULL)
+		continue;
+	    if (strcmp(mrev, srev)==0){
+		/* 3b) File module-state matches system */
+		//		fprintf(stderr, "%s: Module %s: file \"%s\" and system revisions match\n", __FUNCTION__, name, mrev);
+	    }
+	    else{
+		/* 3c) File module-state does not match system */
+		//		fprintf(stderr, "%s: Module %s: file \"%s\" and system \"%s\" revisions do not match\n", __FUNCTION__, name, mrev, srev);
+		if ((xm2 = xml_dup(xm)) == NULL)
+		    goto done;
+		if (xml_addsub(xmsd, xm2) < 0)
+		    goto done;
+	    }
+	}
+    }
+    /* The module-state is removed from the input XML tree. This is done
+     * in all cases, whether CLICON_XMLDB_MODSTATE is on or not.
+     * Clixon systems with CLICON_XMLDB_MODSTATE disabled ignores it
+     */
+    if (xmodst){ 	
+	if (xml_purge(xmodst) < 0)
+	    goto done;
+    }
+    if (xmsp){
+	*xmsp = xmsd;
+	xmsd = NULL;
+    }
+    retval = 0;
+ done:
+    if (xmsd)
+	xml_free(xmsd);
+    return retval;
+}
+
 /*! Common read function that reads an XML tree from file
- * @param[in]  db  Symbolic database name, eg "candidate", "running"
- * @param[out] xp  XML tree read from file
- * @param[out] xmsp If set, return modules-state differences
+ * @param[in]  th    Datastore text handle
+ * @param[in]  db    Symbolic database name, eg "candidate", "running"
+ * @param[in]  yspec Top-level yang spec
+ * @param[out] xp    XML tree read from file
+ * @param[out] xmsp  If set, return modules-state differences
  */
 static int
 text_readfile(struct text_handle *th,
@@ -568,7 +668,6 @@ text_readfile(struct text_handle *th,
     cxobj *x0 = NULL;
     char  *dbfile = NULL;
     int    fd = -1;
-    cxobj *xmsd = NULL; /* Local modules-state diff tree */
     
     if (text_db2file(th, db, &dbfile) < 0)
 	goto done;
@@ -600,86 +699,17 @@ text_readfile(struct text_handle *th,
 	if (singleconfigroot(x0, &x0) < 0)
 	    goto done;
     }
-    {
-	cxobj *xmodst;
-	cxobj *xm = NULL;
-	cxobj *xm2;
-	cxobj *xs;
-	char  *name; /* module name */
-	char  *mrev; /* file revision */
-	char  *srev; /* system revision */
-	/* Read existing if any and compare with systems module revisions:
-	 * This can happen:
-	 * 1) There is no modules-state info in the file
-	 * 2) There is module state info in the file
-	 * 3) For each module state m in the file:
-	 *    3a) There is no such module in the system
-	 *    3b) File module-state matches system
-	 *    3c) File module-state does not match system
-	 */
-	if ((xmodst = xml_find_type(x0, NULL, "modules-state", CX_ELMNT)) == NULL){
-	    /* 1) There is no modules-state info in the file */
-	}
-	else{
-
-	    /* Create a diff tree */
-	    if (xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>", yspec, &xmsd) < 0)
-		goto done;
-	    if (xml_rootchild(xmsd, 0, &xmsd) < 0) 
-		goto done;
-
-	    /* 3) For each module state m in the file */
-	    while ((xm = xml_child_each(xmodst, xm, CX_ELMNT)) != NULL) {
-		if (strcmp(xml_name(xm), "module"))
-		    continue;
-		if ((name = xml_find_body(xm, "name")) == NULL)
-		    continue;
-		/* 3a) There is no such module in the system */
-		if ((xs = xpath_first(th->th_modst, "module[name=\"%s\"]", name)) == NULL){
-		    //		fprintf(stderr, "%s: Module %s: not in system\n", __FUNCTION__, name);
-		    if ((xm2 = xml_dup(xm)) == NULL)
-			goto done;
-		    if (xml_addsub(xmsd, xm2) < 0)
-			goto done;
-		    continue;
-		}
-		/* These two shouldnt happen since revision is key, just ignore */
-		if ((mrev = xml_find_body(xm, "revision")) == NULL)
-		    continue;
-		if ((srev = xml_find_body(xs, "revision")) == NULL)
-		    continue;
-		if (strcmp(mrev, srev)==0){
-		    /* 3b) File module-state matches system */
-		    //		fprintf(stderr, "%s: Module %s: file \"%s\" and system revisions match\n", __FUNCTION__, name, mrev);
-		}
-		else{
-		    /* 3c) File module-state does not match system */
-		    //		fprintf(stderr, "%s: Module %s: file \"%s\" and system \"%s\" revisions do not match\n", __FUNCTION__, name, mrev, srev);
-		    if ((xm2 = xml_dup(xm)) == NULL)
-			goto done;
-		    if (xml_addsub(xmsd, xm2) < 0)
-			goto done;
-		}
-	    }
-	}
-	if (xmodst){
-	    /* For now ignore the modules_state - just remove it*/
-	    if (xml_purge(xmodst) < 0)
-		goto done;
-	}
-    }
+    /* From Clixon 3.10,datastore files may contain module-state defining
+     * which modules are used in the file. 
+     */
+    if (text_read_modstate(th, yspec, x0, xmsp) < 0)
+	goto done;
     if (xp){
 	*xp = x0;
 	x0 = NULL;
     }
-    if (xmsp){
-	*xmsp = xmsd;
-	xmsd = NULL;
-    }
     retval = 0;
  done:
-    if (xmsd)
-	xml_free(xmsd);
     if (fd != -1)
 	close(fd);
     if (dbfile)
@@ -693,8 +723,8 @@ text_readfile(struct text_handle *th,
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
  * This is a clixon datastore plugin of the the xmldb api
- * @param[in]  h      Clicon handle
- * @param[in]  dbname Name of database to search in (filename including dir path
+ * @param[in]  th     Datastore text handle
+ * @param[in]  db     Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
@@ -793,8 +823,8 @@ text_get_cache(struct text_handle *th,
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
  * This is a clixon datastore plugin of the the xmldb api
- * @param[in]  h      Clicon handle
- * @param[in]  dbname Name of database to search in (filename including dir path
+ * @param[in]  th     Datastore text handle
+ * @param[in]  db     Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
@@ -819,7 +849,7 @@ text_get(xmldb_handle  xh,
 }
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
- * @param[in]  th  text handle
+ * @param[in]  th     Datastore text handle
  * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
  * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  x0p Parent of x0
@@ -1104,7 +1134,7 @@ text_modify(struct text_handle *th,
 } /* text_modify */
 
 /*! Modify a top-level base tree x0 with modification tree x1
- * @param[in]  th    text handle
+ * @param[in]  th    Datastore text handle
  * @param[in]  x0    Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1    xml tree which modifies base
  * @param[in]  yspec Top-level yang spec (if y is NULL)
@@ -1406,6 +1436,7 @@ text_put(xmldb_handle        xh,
 	goto done;
     }
     /* Add module revision info before writing to file)
+     * Only if CLICON_XMLDB_MODSTATE is set
      */
     if (th->th_modst){
 	if ((xmodst = xml_dup(th->th_modst)) == NULL)
