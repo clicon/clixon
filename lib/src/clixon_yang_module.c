@@ -189,6 +189,7 @@ modules_state_cache_set(clicon_handle  h,
  * @param[in]     h       Clicon handle
  * @param[in]     yspec   Yang spec
  * @param[in]     xpath   XML Xpath
+ * @param[in]     brief   Just name,revision and uri (no cache)
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
  * @retval        0       OK
@@ -212,10 +213,149 @@ x            +--ro namespace           inet:uri
                +--ro schema?     inet:uri
  * @see netconf_create_hello
  */
+#if 1
+/*! Actually build the yang modules state XML tree
+*/
+static int
+yms_build(clicon_handle    h,
+	  yang_spec       *yspec,
+	  char            *msid,
+	  int              brief,
+	  cbuf            *cb)
+{
+    int         retval = -1;
+    yang_stmt  *ylib = NULL; /* ietf-yang-library */
+    char       *module = "ietf-yang-library";
+    yang_stmt  *ys;
+    yang_stmt  *yc;
+    yang_stmt  *ymod;        /* generic module */
+    yang_stmt  *yns = NULL;  /* namespace */
+
+    if ((ylib = yang_find((yang_node*)yspec, Y_MODULE, module)) == NULL &&
+	(ylib = yang_find((yang_node*)yspec, Y_SUBMODULE, module)) == NULL){
+            clicon_err(OE_YANG, 0, "%s not found", module);
+            goto done;
+        }
+    if ((yns = yang_find((yang_node*)ylib, Y_NAMESPACE, NULL)) == NULL){
+	clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
+	goto done;
+    }
+
+    cprintf(cb,"<modules-state xmlns=\"%s\">", yns->ys_argument);
+    cprintf(cb,"<module-set-id>%s</module-set-id>", msid);
+
+    ymod = NULL;
+    while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
+	if (ymod->ys_keyword != Y_MODULE &&
+	    ymod->ys_keyword != Y_SUBMODULE)
+	    continue;
+	cprintf(cb,"<module>");
+	cprintf(cb,"<name>%s</name>", ymod->ys_argument);
+	if ((ys = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL)
+	    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
+	else
+	    cprintf(cb,"<revision></revision>");
+	if ((ys = yang_find((yang_node*)ymod, Y_NAMESPACE, NULL)) != NULL)
+	    cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
+	else
+	    cprintf(cb,"<namespace></namespace>");
+	/* This follows order in rfc 7895: feature, conformance-type, 
+	   submodules */
+	if (!brief){
+	    yc = NULL;
+	    while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
+		switch(yc->ys_keyword){
+		case Y_FEATURE:
+		    if (yc->ys_cv && cv_bool_get(yc->ys_cv))
+			cprintf(cb,"<feature>%s</feature>", yc->ys_argument);
+		    break;
+		default:
+		    break;
+		}
+	    }
+	    cprintf(cb, "<conformance-type>implement</conformance-type>");
+	}
+	yc = NULL;
+	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
+	    switch(yc->ys_keyword){
+	    case Y_SUBMODULE:
+		cprintf(cb,"<submodule>");
+		cprintf(cb,"<name>%s</name>", yc->ys_argument);
+		if ((ys = yang_find((yang_node*)yc, Y_REVISION, NULL)) != NULL)
+		    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
+		else
+		    cprintf(cb,"<revision></revision>");
+		cprintf(cb,"</submodule>");
+		break;
+	    default:
+		break;
+	    }
+	}
+	cprintf(cb,"</module>");
+    }
+    cprintf(cb,"</modules-state>");
+    retval = 0;
+ done:
+    return retval;
+}
+    
+int
+yang_modules_state_get(clicon_handle    h,
+                       yang_spec       *yspec,
+                       char            *xpath,
+		       int              brief,
+                       cxobj          **xret)
+{
+    int         retval = -1;
+    cxobj      *x = NULL;
+    char       *msid; /* modules-set-id */
+    cxobj      *x1;
+    cbuf       *cb = NULL;
+
+    msid = clicon_option_str(h, "CLICON_MODULE_SET_ID");
+    if (!brief && modules_state_cache_get(h, msid, &x) < 0)
+        goto done;
+    if (x != NULL){ /* Yes a cache (but no duplicate) */
+        if (xpath_first(x, "%s", xpath)){
+            if ((x1 = xml_dup(x)) == NULL)
+                goto done;
+            x = x1;
+        }
+        else
+            x = NULL;
+    }
+    else { /* No cache -> build the tree */
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, 0, "clicon buffer");
+	    goto done;
+	}
+	if (yms_build(h, yspec, msid, brief, cb) < 0)
+	    goto done;
+	if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
+	    if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
+		goto done;
+	    retval = 1;
+	    goto done;
+	}
+	if (!brief && modules_state_cache_set(h, x) < 0) /* move to fn above? */
+	    goto done;
+    }
+    if (x && netconf_trymerge(x, yspec, xret) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (x)
+        xml_free(x);
+    return retval;
+}
+#else
 int
 yang_modules_state_get(clicon_handle    h,
 		       yang_spec       *yspec,
 		       char            *xpath,
+		       int              brief,
 		       cxobj          **xret)
 {
     int         retval = -1;
@@ -259,6 +399,7 @@ yang_modules_state_get(clicon_handle    h,
 	cprintf(cb,"<modules-state xmlns=\"%s\">", yns->ys_argument);
 	cprintf(cb,"<module-set-id>%s</module-set-id>", msid); 
     
+<<<<<<< HEAD
 	ymod = NULL;
 	while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
 	    if (ymod->ys_keyword != Y_MODULE &&
@@ -270,12 +411,33 @@ yang_modules_state_get(clicon_handle    h,
 		cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
 	    else
 		cprintf(cb,"<revision></revision>");
+=======
+    ymod = NULL;
+    while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
+	if (ymod->ys_keyword != Y_MODULE &&
+	    ymod->ys_keyword != Y_SUBMODULE)
+	    continue;
+	cprintf(cb,"<module>");
+	cprintf(cb,"<name>%s</name>", ymod->ys_argument);
+	if ((ys = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL)
+	    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
+	else
+	    cprintf(cb,"<revision></revision>");
+	if (!brief){
+>>>>>>> modules-state
 	    if ((ys = yang_find((yang_node*)ymod, Y_NAMESPACE, NULL)) != NULL)
 		cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
 	    else
 		cprintf(cb,"<namespace></namespace>");
+<<<<<<< HEAD
 	    /* This follows order in rfc 7895: feature, conformance-type, submodules */
 	    yc = NULL;
+=======
+	}
+	/* This follows order in rfc 7895: feature, conformance-type, submodules */
+	yc = NULL;
+	if (!brief)
+>>>>>>> modules-state
 	    while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
 		switch(yc->ys_keyword){
 		case Y_FEATURE:
@@ -286,6 +448,7 @@ yang_modules_state_get(clicon_handle    h,
 		    break;
 		}
 	    }
+<<<<<<< HEAD
 	    cprintf(cb, "<conformance-type>implement</conformance-type>");
 	    yc = NULL;
 	    while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
@@ -302,6 +465,25 @@ yang_modules_state_get(clicon_handle    h,
 		default:
 		    break;
 		}
+=======
+	if (!brief)
+	    cprintf(cb, "<conformance-type>implement</conformance-type>");
+	yc = NULL;
+	if (!brief)
+	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
+	    switch(yc->ys_keyword){
+	    case Y_SUBMODULE:
+		cprintf(cb,"<submodule>");
+		cprintf(cb,"<name>%s</name>", yc->ys_argument);
+		if ((ys = yang_find((yang_node*)yc, Y_REVISION, NULL)) != NULL)
+		    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
+		else
+		    cprintf(cb,"<revision></revision>");
+		cprintf(cb,"</submodule>");
+		break;
+	    default:
+		break;
+>>>>>>> modules-state
 	    }
 	    cprintf(cb,"</module>"); 
 	}
@@ -326,3 +508,4 @@ yang_modules_state_get(clicon_handle    h,
 	cbuf_free(cb);
     return retval;
 }
+#endif

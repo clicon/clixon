@@ -90,6 +90,7 @@ struct text_handle {
     int            th_pretty;   /* Store xml/json pretty-printed. */
     char          *th_nacm_mode;
     cxobj         *th_nacm_xtree;
+    cxobj         *th_modst; /* According to RFC7895 for rev mgmnt */
 };
 
 /* Struct per database in hash */
@@ -211,6 +212,8 @@ text_disconnect(xmldb_handle xh)
 	}
 	if (th->th_nacm_mode)
 	    free(th->th_nacm_mode);
+	if (th->th_modst)
+	    xml_free(th->th_modst);
 	free(th);
     }
     retval = 0;
@@ -247,6 +250,8 @@ text_getopt(xmldb_handle xh,
 	*value = &th->th_nacm_mode;
     else if (strcmp(optname, "nacm_xtree") == 0)
 	*value = th->th_nacm_xtree;
+    else if (strcmp(optname, "modules_state") == 0)
+	*value = th->th_modst;
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
 	goto done;
@@ -305,6 +310,9 @@ text_setopt(xmldb_handle xh,
     else if (strcmp(optname, "nacm_xtree") == 0){
 	th->th_nacm_xtree = (cxobj*)value;
     }
+    else if (strcmp(optname, "modules_state") == 0){
+	th->th_modst = (cxobj*)value;
+    }
     else{
 	clicon_err(OE_PLUGIN, 0, "Option %s not implemented by plugin", optname);
 	goto done;
@@ -352,13 +360,14 @@ singleconfigroot(cxobj  *xt,
     return retval;
 }
 
-
-int
+static int
 text_get_nocache(struct text_handle *th,
 		 const char   *db, 
 		 char         *xpath,
 		 int           config,
-		 cxobj       **xtop)
+		 cxobj       **xtop,
+		 cxobj       **xms)
+		 
 {
     int             retval = -1;
     char           *dbfile = NULL;
@@ -460,79 +469,225 @@ text_get_nocache(struct text_handle *th,
     return retval;
 }
 
-
-/*! Given a tree rooted in x0t and a point x0, create a duplicate path in x1t
- * Given a tree rooted in x0t and a point in the tree x0, 
- * create a duplicate rooted in x1t.
- * x0t -- x -- x -- x0
- * x1t
+/*! Given XML tree x0 with marked nodes, copy marked nodes to new tree x1
+ * Two marks are used: XML_FLAG_MARK and XML_FLAG_CHANGE
+ *
+ * The algorithm works as following:
+ * (1) Copy individual nodes marked with XML_FLAG_CHANGE 
+ * until nodes marked with XML_FLAG_MARK are reached, where 
+ * (2) the complete subtree of that node is copied. 
+ * (3) Special case: key nodes in lists are copied if any node in list is marked
+ *  @note you may want to check:!yang_config(ys)
  */
-int
-create_path2root(cxobj  *x0,
-		 cxobj  *x0t,
-		 cxobj  *x1t,
-		 cxobj **x1r)
+static int
+xml_copy_marked(cxobj *x0, 
+		cxobj *x1)
 {
-    int    retval = -1;
-    cxobj *x0p;
-    cxobj *x1p = NULL;
-    cxobj *x1 = NULL;
-    char  *name;
+    int        retval = -1;
+    int        mark;
+    cxobj     *x;
+    cxobj     *xcopy;
+    int        iskey;
+    yang_stmt *yt;
+    char      *name;
 
-    name = xml_name(x0);
-    x0p = xml_parent(x0);
-    if (x0t != x0p){
-	if (create_path2root(x0p, x0t, x1t, &x1p) < 0)
+    assert(x0 && x1);
+    yt = xml_spec(x0); /* can be null */
+    /* Copy all attributes */
+    x = NULL;
+    while ((x = xml_child_each(x0, x, CX_ATTR)) != NULL) {
+	name = xml_name(x);
+	if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
 	    goto done;
-	if ((x1 = xml_find_type(x1p, NULL, name, CX_ELMNT)) == NULL){
-	    if ((x1 = xml_new(name, x1p, xml_spec(x0))) == NULL)
-		goto done;
-	    if (xml_copy_one(x0, x1) < 0)
-		goto done;
+	if (xml_copy(x, xcopy) < 0) 
+	    goto done;
+    }
+
+    /* Go through children to detect any marked nodes:
+     * (3) Special case: key nodes in lists are copied if any 
+     * node in list is marked
+     */
+    mark = 0;
+    x = NULL;
+    while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
+	if (xml_flag(x, XML_FLAG_MARK|XML_FLAG_CHANGE)){
+	    mark++;
+	    break;
 	}
     }
-    else /* root of tree */
-	x1 = x1t;
-    assert(x1);
-    *x1r = x1;
+    x = NULL;
+    while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
+	name = xml_name(x);
+	if (xml_flag(x, XML_FLAG_MARK)){
+	    /* (2) the complete subtree of that node is copied. */
+	    if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
+		goto done;
+	    if (xml_copy(x, xcopy) < 0) 
+		goto done;
+	    continue; 
+	}
+	if (xml_flag(x, XML_FLAG_CHANGE)){
+	    /*  Copy individual nodes marked with XML_FLAG_CHANGE */
+	    if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
+		goto done;
+	    if (xml_copy_marked(x, xcopy) < 0) /*  */
+		goto done;
+	}
+	/* (3) Special case: key nodes in lists are copied if any 
+	 * node in list is marked */
+	if (mark && yt && yt->ys_keyword == Y_LIST){
+	    /* XXX: I think yang_key_match is suboptimal here */
+	    if ((iskey = yang_key_match((yang_node*)yt, name)) < 0)
+		goto done;
+	    if (iskey){
+		if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
+		    goto done;
+		if (xml_copy(x, xcopy) < 0) 
+		    goto done;
+	    }
+	}
+    }
     retval = 0;
  done:
     return retval;
 }
 
-/*!
- * @param[in]  config If set only configuration data, else also state
+/*! Common read function that reads an XML tree from file
+ * @param[in]  db  Symbolic database name, eg "candidate", "running"
+ * @param[out] xp  XML tree read from file
+ * @param[out] xmsp If set, return modules-state differences
  */
-int
-xml_copy_config(cxobj *x0, 
-		cxobj *x1,
-		int    config)
+static int
+text_readfile(struct text_handle *th,
+	      const char         *db,
+	      yang_spec          *yspec,
+	      cxobj             **xp,
+	      cxobj             **xmsp)
 {
     int    retval = -1;
-    cxobj *x;
-    cxobj *xcopy;
-    yang_stmt *ys;
-
-    if (xml_copy_one(x0, x1) <0)
+    cxobj *x0 = NULL;
+    char  *dbfile = NULL;
+    int    fd = -1;
+    cxobj *xmsd = NULL; /* Local modules-state diff tree */
+    
+    if (text_db2file(th, db, &dbfile) < 0)
 	goto done;
-    x = NULL;
-    while ((x = xml_child_each(x0, x, -1)) != NULL) {
-	if (config){
-	    if ((ys = (yang_stmt*)xml_spec(x)) != NULL){
-		if (!yang_config(ys))
-		    continue; /* skip */
-	    }
-	}
-	if ((xcopy = xml_new(xml_name(x), x1, xml_spec(x))) == NULL)
-	    goto done;
-	if (xml_copy(x, xcopy) < 0) /* recursion */
+    if (dbfile==NULL){
+	clicon_err(OE_XML, 0, "dbfile NULL");
+	goto done;
+    }
+    if ((fd = open(dbfile, O_RDONLY)) < 0) {
+	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
+	goto done;
+    }    
+    /* Parse file into XML tree */
+    if (strcmp(th->th_format,"json")==0){
+	if ((json_parse_file(fd, yspec, &x0)) < 0)
 	    goto done;
     }
+    else if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
+	goto done;
+    /* Always assert a top-level called "config". 
+       To ensure that, deal with two cases:
+       1. File is empty <top/> -> rename top-level to "config" */
+    if (xml_child_nr(x0) == 0){ 
+	if (xml_name_set(x0, "config") < 0)
+	    goto done;     
+    }
+    /* 2. File is not empty <top><config>...</config></top> -> replace root */
+    else{ 
+	/* There should only be one element and called config */
+	if (singleconfigroot(x0, &x0) < 0)
+	    goto done;
+    }
+    {
+	cxobj *xmodst;
+	cxobj *xm = NULL;
+	cxobj *xm2;
+	cxobj *xs;
+	char  *name; /* module name */
+	char  *mrev; /* file revision */
+	char  *srev; /* system revision */
+	/* Read existing if any and compare with systems module revisions:
+	 * This can happen:
+	 * 1) There is no modules-state info in the file
+	 * 2) There is module state info in the file
+	 * 3) For each module state m in the file:
+	 *    3a) There is no such module in the system
+	 *    3b) File module-state matches system
+	 *    3c) File module-state does not match system
+	 */
+	if ((xmodst = xml_find_type(x0, NULL, "modules-state", CX_ELMNT)) == NULL){
+	    /* 1) There is no modules-state info in the file */
+	}
+	else{
+
+	    /* Create a diff tree */
+	    if (xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>", yspec, &xmsd) < 0)
+		goto done;
+	    if (xml_rootchild(xmsd, 0, &xmsd) < 0) 
+		goto done;
+
+	    /* 3) For each module state m in the file */
+	    while ((xm = xml_child_each(xmodst, xm, CX_ELMNT)) != NULL) {
+		if (strcmp(xml_name(xm), "module"))
+		    continue;
+		if ((name = xml_find_body(xm, "name")) == NULL)
+		    continue;
+		/* 3a) There is no such module in the system */
+		if ((xs = xpath_first(th->th_modst, "module[name=\"%s\"]", name)) == NULL){
+		    //		fprintf(stderr, "%s: Module %s: not in system\n", __FUNCTION__, name);
+		    if ((xm2 = xml_dup(xm)) == NULL)
+			goto done;
+		    if (xml_addsub(xmsd, xm2) < 0)
+			goto done;
+		    continue;
+		}
+		/* These two shouldnt happen since revision is key, just ignore */
+		if ((mrev = xml_find_body(xm, "revision")) == NULL)
+		    continue;
+		if ((srev = xml_find_body(xs, "revision")) == NULL)
+		    continue;
+		if (strcmp(mrev, srev)==0){
+		    /* 3b) File module-state matches system */
+		    //		fprintf(stderr, "%s: Module %s: file \"%s\" and system revisions match\n", __FUNCTION__, name, mrev);
+		}
+		else{
+		    /* 3c) File module-state does not match system */
+		    //		fprintf(stderr, "%s: Module %s: file \"%s\" and system \"%s\" revisions do not match\n", __FUNCTION__, name, mrev, srev);
+		    if ((xm2 = xml_dup(xm)) == NULL)
+			goto done;
+		    if (xml_addsub(xmsd, xm2) < 0)
+			goto done;
+		}
+	    }
+	}
+	if (xmodst){
+	    /* For now ignore the modules_state - just remove it*/
+	    if (xml_purge(xmodst) < 0)
+		goto done;
+	}
+    }
+    if (xp){
+	*xp = x0;
+	x0 = NULL;
+    }
+    if (xmsp){
+	*xmsp = xmsd;
+	xmsd = NULL;
+    }
     retval = 0;
-  done:
+ done:
+    if (xmsd)
+	xml_free(xmsd);
+    if (fd != -1)
+	close(fd);
+    if (dbfile)
+	free(dbfile);
+    if (x0)
+	xml_free(x0);
     return retval;
 }
-
 
 /*! Get content of database using xpath. return a set of matching sub-trees
  * The function returns a minimal tree that includes all sub-trees that match
@@ -543,6 +698,7 @@ xml_copy_config(cxobj *x0,
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
+ * @param[out] xms    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
  * @see xmldb_get  the generic API function
@@ -552,20 +708,18 @@ text_get_cache(struct text_handle *th,
 	       const char   *db, 
 	       char         *xpath,
 	       int           config,
-	       cxobj       **xtop)
+	       cxobj       **xtop,
+	       cxobj       **xms)
 {
     int             retval = -1;
-    char           *dbfile = NULL;
     yang_spec      *yspec;
     cxobj          *x0t = NULL; /* (cached) top of tree */
-    cxobj          *x;
-    int             fd = -1;
+    cxobj          *x0;
     cxobj         **xvec = NULL;
     size_t          xlen;
     int             i;
     struct db_element *de = NULL;
     cxobj          *x1t = NULL;
-    cxobj          *x1;
     struct db_element de0 = {0,};
 
     if ((yspec = th->th_yangspec) == NULL){
@@ -574,45 +728,18 @@ text_get_cache(struct text_handle *th,
     }
     de = hash_value(th->th_dbs, db, NULL);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
-	if (text_db2file(th, db, &dbfile) < 0)
+	/* If there is no xml x0 tree (in cache), then read it from file */
+	if (text_readfile(th, db, yspec, &x0t, xms) < 0)
 	    goto done;
-	if (dbfile==NULL){
-	    clicon_err(OE_XML, 0, "dbfile NULL");
-	    goto done;
-	}
-	if ((fd = open(dbfile, O_RDONLY)) < 0){
-	    clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
-	    goto done;
-	}    
-	/* Parse file into XML tree */
-	if (strcmp(th->th_format,"json")==0){
-	    if ((json_parse_file(fd, yspec, &x0t)) < 0)
-		goto done;
-	}
-	else if ((xml_parse_file(fd, "</config>", yspec, &x0t)) < 0)
-	    goto done;
-	/* Always assert a top-level called "config". 
-	   To ensure that, deal with two cases:
-	   1. File is empty <top/> -> rename top-level to "config" */
-	if (xml_child_nr(x0t) == 0){ 
-	    if (xml_name_set(x0t, "config") < 0)
-		goto done;     
-	}
-	/* 2. File is not empty <top><config>...</config></top> -> replace root */
-	else{ 
-	    /* There should only be one element and called config */
-	    if (singleconfigroot(x0t, &x0t) < 0)
-		goto done;
-	}
-	/* default values? */
-	if (xml_apply(x0t, CX_ELMNT, xml_default, NULL) < 0)
-	    goto done;
+	/* XXX: should we validate file if read from disk? 
+	 * Argument against: we may want to have a semantically wrong file and wish
+	 * to edit?
+	 */
 	de0.de_xml = x0t;
 	hash_add(th->th_dbs, db, &de0, sizeof(de0));
     } /* x0t == NULL */
     else
 	x0t = de->de_xml;
-    
     /* Here x0t looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec 
      * Can we do everything in one go?
@@ -622,31 +749,32 @@ text_get_cache(struct text_handle *th,
      *   a) for every node that is found, copy to new tree
      *   b) if config dont dont state data
      */
-    /* Make new tree by copying top-of-tree from x0t to x1t */
-    if ((x1t = xml_new(xml_name(x0t), NULL, xml_spec(x0t))) == NULL)
-	goto done;
-    if (xml_copy_one(x0t, x1t) < 0) 
-	goto done;
-    /* Get matches */
+
+    /* Here xt looks like: <config>...</config> */
     if (xpath_vec(x0t, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
 
-    /* Iterate through matches */
-    
-    /* If vectors are specified then mark the nodes found with all ancestors
-     * and filter out everything else,
-     * otherwise return complete tree.
+    /* Make new tree by copying top-of-tree from x0t to x1t */
+    if ((x1t = xml_new(xml_name(x0t), NULL, xml_spec(x0t))) == NULL)
+	goto done;
+    /* Iterate through the match vector
+     * For every node found in x0, mark the tree up to t1
      */
     for (i=0; i<xlen; i++){
-	/* Copy x and its ancestors to x1 */
-	x = xvec[i];
-	x1 = NULL;
-	if (create_path2root(x, x0t, x1t, &x1) < 0)
-	    goto done;
-	assert(x1);
-	if (xml_copy_config(x, x1, config) < 0) 
-	    goto done;
+	x0 = xvec[i];
+	xml_flag_set(x0, XML_FLAG_MARK);
+	xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
+    if (xml_copy_marked(x0t, x1t) < 0) /* config */
+	goto done;
+    if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+	goto done;
+    if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+	goto done;
+    /* x1t is wrong here should be <config><system>.. but is <system>.. */
+    /* XXX where should we apply default values once? */
+    if (xml_apply(x1t, CX_ELMNT, xml_default, NULL) < 0)
+	goto done;
     
     /* Copy the matching parts of the (relevant) XML tree.
      * If cache was empty, also update to datastore cache
@@ -656,12 +784,8 @@ text_get_cache(struct text_handle *th,
     *xtop = x1t;
     retval = 0;
  done:
-    if (dbfile)
-	free(dbfile);
     if (xvec)
 	free(xvec);
-    if (fd != -1)
-	close(fd);
     return retval;
 }
 
@@ -683,16 +807,16 @@ text_get(xmldb_handle  xh,
 	 const char   *db, 
 	 char         *xpath,
 	 int           config,
-	 cxobj       **xtop)
+	 cxobj       **xtop,
+	 cxobj       **xms)
 {
     struct text_handle *th = handle(xh);
 
     if (th->th_cache)
-	return text_get_cache(th, db, xpath, config, xtop);
+	return text_get_cache(th, db, xpath, config, xtop, xms);
     else
-	return text_get_nocache(th, db, xpath, config, xtop);
+	return text_get_nocache(th, db, xpath, config, xtop, xms);
 }
-
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
  * @param[in]  th  text handle
@@ -1180,7 +1304,6 @@ text_put(xmldb_handle        xh,
     int                 retval = -1;
     struct text_handle *th = handle(xh);
     char               *dbfile = NULL;
-    int                 fd = -1;
     FILE               *f = NULL;
     cbuf               *cb = NULL;
     yang_spec          *yspec;
@@ -1188,7 +1311,10 @@ text_put(xmldb_handle        xh,
     struct db_element  *de = NULL;
     int                 ret;
     cxobj              *xnacm = NULL; 
-    
+    char               *mode;
+    cxobj              *xnacm0 = NULL;
+    cxobj              *xmodst = NULL;
+
     if (cbret == NULL){
 	clicon_err(OE_XML, EINVAL, "cbret is NULL");
 	goto done;
@@ -1206,70 +1332,37 @@ text_put(xmldb_handle        xh,
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL)
 	    x0 = de->de_xml; 
     }
+    /* If there is no xml x0 tree (in cache), then read it from file */
     if (x0 == NULL){
-	if (text_db2file(th, db, &dbfile) < 0)
+	if (text_readfile(th, db, yspec, &x0, NULL) < 0)
 	    goto done;
-	if (dbfile==NULL){
-	    clicon_err(OE_XML, 0, "dbfile NULL");
-	    goto done;
-	}
-	if ((fd = open(dbfile, O_RDONLY)) < 0) {
-	    clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
-	    goto done;
-	}    
-	/* Parse file into XML tree */
-	if (strcmp(th->th_format,"json")==0){
-	    if ((json_parse_file(fd, yspec, &x0)) < 0)
-		goto done;
-	}
-	else if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
-	    goto done;
-	/* Always assert a top-level called "config". 
-	   To ensure that, deal with two cases:
-	   1. File is empty <top/> -> rename top-level to "config" */
-	if (xml_child_nr(x0) == 0){ 
-	    if (xml_name_set(x0, "config") < 0)
-		goto done;     
-	}
-	/* 2. File is not empty <top><config>...</config></top> -> replace root */
-	else{ 
-	    /* There should only be one element and called config */
-	    if (singleconfigroot(x0, &x0) < 0)
-		goto done;
-	}
     }
-    /* Here x0 looks like: <config>...</config> */
     if (strcmp(xml_name(x0),"config")!=0){
 	clicon_err(OE_XML, 0, "Top-level symbol is %s, expected \"config\"",
 		   xml_name(x0));
 	goto done;
     }
+    /* Here x0 looks like: <config>...</config> */
+
 #if 0 /* debug */
     if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
 #endif
-#if 1
-    {
-	char  *mode;
-	cxobj *xnacm0 = NULL;
-	
-	mode = th->th_nacm_mode;
-	if (mode){
-	    if (strcmp(mode, "external")==0)
-		xnacm0 = th->th_nacm_xtree;
-	    else if (strcmp(mode, "internal")==0)
-		xnacm0 = x0;
-	}
-	if (xnacm0 != NULL &&
-	    (xnacm = xpath_first(xnacm0, "nacm")) != NULL){
-	    /* Pre-NACM access step */
-	    if ((ret = nacm_access(mode, xnacm, username)) < 0)
-		goto done;
-	}
-	/* Here assume if xnacm is set (actually may be ret==0?) do NACM */
+    mode = th->th_nacm_mode;
+    if (mode){
+	if (strcmp(mode, "external")==0)
+	    xnacm0 = th->th_nacm_xtree;
+	else if (strcmp(mode, "internal")==0)
+	    xnacm0 = x0;
     }
+    if (xnacm0 != NULL &&
+	(xnacm = xpath_first(xnacm0, "nacm")) != NULL){
+	/* Pre-NACM access step */
+	if ((ret = nacm_access(mode, xnacm, username)) < 0)
+	    goto done;
+    }
+    /* Here assume if xnacm is set (actually may be ret==0?) do NACM */
 
-#endif
     /* 
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
@@ -1306,17 +1399,19 @@ text_put(xmldb_handle        xh,
 	    hash_add(th->th_dbs, db, &de0, sizeof(de0));
 	}
     }
-    if (dbfile == NULL){
-	if (text_db2file(th, db, &dbfile) < 0)
-	    goto done;
-	if (dbfile==NULL){
-	    clicon_err(OE_XML, 0, "dbfile NULL");
-	    goto done;
-	}
+    if (text_db2file(th, db, &dbfile) < 0)
+	goto done;
+    if (dbfile==NULL){
+	clicon_err(OE_XML, 0, "dbfile NULL");
+	goto done;
     }
-    if (fd != -1){
-	close(fd);
-	fd = -1;
+    /* Add module revision info before writing to file)
+     */
+    if (th->th_modst){
+	if ((xmodst = xml_dup(th->th_modst)) == NULL)
+	    goto done;
+	if (xml_addsub(x0, xmodst) < 0)
+	    goto done;
     }
     if ((f = fopen(dbfile, "w")) == NULL){
 	clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
@@ -1328,14 +1423,16 @@ text_put(xmldb_handle        xh,
     }
     else if (clicon_xml2file(f, x0, 0, th->th_pretty) < 0)
 	goto done;
+    /* Remove modules state after writing to file
+     */
+    if (xmodst && xml_purge(xmodst) < 0)
+	goto done;
     retval = 1;
  done:
     if (f != NULL)
 	fclose(f);
     if (dbfile)
 	free(dbfile);
-    if (fd != -1)
-	close(fd);
     if (cb)
 	cbuf_free(cb);
     if (!th->th_cache && x0)
@@ -1362,42 +1459,51 @@ text_copy(xmldb_handle xh,
     struct text_handle *th = handle(xh);
     char               *fromfile = NULL;
     char               *tofile = NULL;
-    struct db_element  *de = NULL;
+    struct db_element  *de1 = NULL;
     struct db_element  *de2 = NULL;
-
+    struct db_element   de0 = {0,};
+    cxobj              *x1 = NULL;
+    cxobj              *x2 = NULL;
+		
     /* XXX lock */
     if (th->th_cache){
-	/* 1. Free xml tree in "to"
-	 */
-	if ((de = hash_value(th->th_dbs, to, NULL)) != NULL){
-	    if (de->de_xml != NULL){
-		xml_free(de->de_xml);
-		de->de_xml = NULL;
-	    }
+	/* 1. "to" xml tree in x1 */
+	if ((de1 = hash_value(th->th_dbs, from, NULL)) != NULL)
+	    x1 = de1->de_xml;
+	if ((de2 = hash_value(th->th_dbs, to, NULL)) != NULL)
+	    x2 = de2->de_xml;
+	if (x1 == NULL && x2 == NULL){
+	    /* do nothing */
 	}
-	/* 2. Copy xml tree from "from" to "to" 
-	 * 2a) create "to" if it does not exist
-	 */
-	if ((de2 = hash_value(th->th_dbs, from, NULL)) != NULL){
-	    if (de2->de_xml != NULL){
-		struct db_element de0 = {0,};
-		cxobj *x, *xcopy;
-		x = de2->de_xml;
-		if (de != NULL)
-		    de0 = *de;
-		if ((xcopy = xml_new(xml_name(x), NULL, xml_spec(x))) == NULL)
-		    goto done;
-		if (xml_copy(x, xcopy) < 0) 
-		    goto done;
-		de0.de_xml = xcopy;
-		hash_add(th->th_dbs, to, &de0, sizeof(de0));
-	    }
+	else if (x1 == NULL){  /* free x2 and set to NULL */
+	    xml_free(x2);
+	    x2 = NULL;
+	}
+	else  if (x2 == NULL){ /* create x2 and copy x1 to it */
+	    if ((x2 = xml_new(xml_name(x1), NULL, xml_spec(x1))) == NULL)
+		goto done;
+	    if (xml_copy(x1, x2) < 0) 
+		goto done;
+	}
+	else{ /* copy x1 to x2 */
+	    xml_free(x2);
+	    if ((x2 = xml_new(xml_name(x1), NULL, xml_spec(x1))) == NULL)
+		goto done;
+	    if (xml_copy(x1, x2) < 0) 
+		goto done;
+	}
+	if (x1 || x2){
+	    if (de2)
+		de0 = *de2;
+	    de0.de_xml = x2; /* The new tree */
+	    hash_add(th->th_dbs, to, &de0, sizeof(de0));
 	}
     }
     if (text_db2file(th, from, &fromfile) < 0)
 	goto done;
     if (text_db2file(th, to, &tofile) < 0)
 	goto done;
+    /* Copy the files themselves (above only in-memory cache) */
     if (clicon_file_copy(fromfile, tofile) < 0)
 	goto done;
     retval = 0;
@@ -1589,7 +1695,7 @@ text_create(xmldb_handle xh,
     struct db_element  *de = NULL;
     cxobj              *xt = NULL;
 
-    if (th->th_cache){ /* XXX This should nt really happen? */
+    if (th->th_cache){ /* XXX This should not really happen? */
 	if ((de = hash_value(th->th_dbs, db, NULL)) != NULL){
 	    if ((xt = de->de_xml) != NULL){
 		assert(xt==NULL); /* XXX */

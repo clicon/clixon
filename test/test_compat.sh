@@ -1,6 +1,5 @@
 #!/bin/bash
-# Test of backward compatibility
-# 1) Load <3.9 startup/running/extra files without namespaces - ensure it returns namespaces
+# Test of backward compatibility, from last release to newer.
 #
 
 # Magic line must be first in script (see README.md)
@@ -35,82 +34,6 @@ cat <<EOF > $cfg
 
 EOF
 
-testrun(){
-    mode=$1
-    expect=$2
-
-    dbdir=$dir/db
-    cat <<EOF > $dbdir
-<config>
-   <interfaces>
-      <interface>
-         <name>run</name>
-         <type>ex:eth</type>
-      </interface>
-    </interfaces>
-</config>
-EOF
-    sudo mv $dbdir /usr/local/var/$APPNAME/running_db
-
-    cat <<EOF > $dbdir
-<config>
-   <interfaces>
-      <interface>
-         <name>startup</name>
-         <type>ex:eth</type>
-      </interface>
-    </interfaces>
-</config>
-EOF
-    sudo mv $dbdir /usr/local/var/$APPNAME/startup_db
-
-    cat <<EOF > $dir/config
-<config>
-   <interfaces>
-      <interface>
-         <name>extra</name>
-         <type>ex:eth</type>
-      </interface>
-    </interfaces>
-</config>
-EOF
-
-    new "test params: -f $cfg -s $mode -c $dir/config"
-
-    if [ $BE -ne 0 ]; then
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
- 	    err
-	fi
-    
-	new "start backend  -f $cfg -s $mode -c $dir/config"
-	start_backend -f $cfg -s $mode -c $dir/config
-
-	new "waiting"
-	sleep $RCWAIT
-
-    fi
-
-    new "Check $mode"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$expect</rpc-reply>]]>]]>$"
-
-    if [ $BE -eq 0 ]; then
-	return # BE
-    fi
-
-    new "Kill backend"
-    # Check if premature kill
-    pid=`pgrep -u root -f clixon_backend`
-    if [ -z "$pid" ]; then
-	err "backend already dead"
-    fi
-    # kill backend
-    stop_backend -f $cfg
-} # testrun 
-
-testrun running '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
-
-testrun startup '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>lo</name><type>ex:loopback</type><enabled>true</enabled></interface><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+# Nothing
 
 rm -rf $dir

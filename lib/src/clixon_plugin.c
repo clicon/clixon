@@ -210,7 +210,7 @@ plugin_load_one(clicon_handle   h,
     clicon_err_reset();
     if ((api = initfn(h)) == NULL) {
 	if (!clicon_errno){ 	/* if clicon_err() is not called then log and continue */
-	    clicon_log(LOG_WARNING, "Warning: failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
+	    clicon_log(LOG_DEBUG, "Warning: failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
 	    dlclose(handle);
 	}
 	else{

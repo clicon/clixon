@@ -180,9 +180,9 @@ int       xml_body_uint32(cxobj *xb, uint32_t *val);
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
 #if defined(__GNUC__) && __GNUC__ >= 3
-int       clicon_log_xml(int level, cxobj *x, char  *format, ...)  __attribute__ ((format (printf, 3, 4)));
+int       clicon_log_xml(int level, cxobj *x, char *format, ...)  __attribute__ ((format (printf, 3, 4)));
 #else
-int       clicon_log_xml(int level, cxobj *x, char  *format, ...);
+int       clicon_log_xml(int level, cxobj *x, char *format, ...);
 #endif
 
 #endif /* _CLIXON_XML_H */

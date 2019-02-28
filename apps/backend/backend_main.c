@@ -68,9 +68,10 @@
 #include "clixon_backend_handle.h"
 #include "backend_socket.h"
 #include "backend_client.h"
-#include "backend_commit.h"
 #include "backend_plugin.h"
+#include "backend_commit.h"
 #include "backend_handle.h"
+#include "backend_startup.h"
 
 /* Command line options to be passed to getopt(3) */
 #define BACKEND_OPTS "hD:f:l:d:p:b:Fza:u:P:1s:c:g:y:x:o:" 
@@ -133,84 +134,6 @@ backend_sig_term(int arg)
 	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
     clicon_exit_set(); /* checked in event_loop() */
-}
-
-/*! usage
- */
-static void
-usage(clicon_handle h,
-      char         *argv0)
-{
-    char *plgdir   = clicon_backend_dir(h);
-    char *confsock = clicon_sock(h);
-    char *confpid  = clicon_backend_pidfile(h);
-    char *group    = clicon_sock_group(h);
-
-    fprintf(stderr, "usage:%s <options>*\n"
-	    "where options are\n"
-            "\t-h\t\tHelp\n"
-    	    "\t-D <level>\tDebug level\n"
-    	    "\t-f <file>\tCLICON config file\n"
-	    "\t-l (s|e|o|f<file>)  Log on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
-	    "\t-d <dir>\tSpecify backend plugin directory (default: %s)\n"
-	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
-	    "\t-b <dir>\tSpecify XMLDB database directory\n"
-    	    "\t-F\t\tRun in foreground, do not run as daemon\n"
-    	    "\t-z\t\tKill other config daemon and exit\n"
-    	    "\t-a UNIX|IPv4|IPv6  Internal backend socket family\n"
-    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)(default: %s)\n"
-    	    "\t-P <file>\tPid filename (default: %s)\n"
-    	    "\t-1\t\tRun once and then quit (dont wait for events)\n"
-	    "\t-s <mode>\tSpecify backend startup mode: none|startup|running|init)\n"
-	    "\t-c <file>\tLoad extra xml configuration, but don't commit.\n"
-	    "\t-g <group>\tClient membership required to this group (default: %s)\n"
-
-	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
-	    "\t-x <plugin>\tXMLDB plugin\n"
-	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
-	    argv0,
-	    plgdir ? plgdir : "none",
-	    confsock ? confsock : "none",
-	    confpid ? confpid : "none",
-	    group ? group : "none"
-	    );
-    exit(-1);
-}
-
-static int
-db_reset(clicon_handle h, 
-	 char         *db)
-{
-    if (xmldb_exists(h, db) == 1 && xmldb_delete(h, db) != 0 && errno != ENOENT) 
-	return -1;
-    if (xmldb_create(h, db) < 0)
-	return -1;
-    return 0;
-}
-
-/*! Merge db1 into db2 without commit 
- * @retval   -1       Error
- * @retval    0       Validation failed (with cbret set)
- * @retval    1       Validation OK       
- */
-static int
-db_merge(clicon_handle h,
- 	 const char   *db1,
-    	 const char   *db2,
-	 cbuf         *cbret)
-{
-    int    retval = -1;
-    cxobj *xt = NULL;
-    
-    /* Get data as xml from db1 */
-    if (xmldb_get(h, (char*)db1, NULL, 1, &xt) < 0)
-	goto done;
-    /* Merge xml into db2. Without commit */
-    retval = xmldb_put(h, (char*)db2, OP_MERGE, xt, clicon_username_get(h), cbret);
- done:
-    if (xt)
-	xml_free(xt);
-    return retval;
 }
 
 /*! Create backend server socket and register callback
@@ -305,256 +228,88 @@ nacm_load_external(clicon_handle h)
     return retval;
 }
 
-/*! Merge xml in filename into database
- * @retval   -1       Error
- * @retval    0       Validation failed (with cbret set)
- * @retval    1       Validation OK       
- */
-static int
-load_extraxml(clicon_handle h,
-	      char         *filename,
-	      const char   *db,
-	      cbuf         *cbret)
-{
-    int    retval =  -1;
-    cxobj *xt = NULL;
-    int    fd = -1;
-
-    if (filename == NULL)
-	return 1;
-    if ((fd = open(filename, O_RDONLY)) < 0){
-	clicon_err(OE_UNIX, errno, "open(%s)", filename);
-	goto done;
-    }
-    if (xml_parse_file(fd, "</config>", NULL, &xt) < 0)
-	goto done;
-    /* Replace parent w first child */
-    if (xml_rootchild(xt, 0, &xt) < 0)
-	goto done;
-    /* Merge user reset state */
-    retval = xmldb_put(h, (char*)db, OP_MERGE, xt, clicon_username_get(h), cbret);
- done:
-    if (fd != -1)
-	close(fd);
-    if (xt)
-	xml_free(xt);
-    return retval;
-}
-
-/*! Clixon none startup modes Do not touch running state
- */
-static int
-startup_mode_none(clicon_handle h)
-{
-    int retval = -1;
-
-    /* If it is not there, create candidate from running  */
-    if (xmldb_exists(h, "candidate") != 1)
-	if (xmldb_copy(h, "running", "candidate") < 0)
-	    goto done;
-    /* Load plugins and call plugin_init() */
-    if (backend_plugin_initiate(h) != 0) 
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Clixon init startup modes Start with a completely clean running state
- */
-static int
-startup_mode_init(clicon_handle h)
-{
-    int retval = -1;
-
-    /* Reset running, regardless */
-    if (db_reset(h, "running") < 0)
-	goto done;
-    /* If it is not there, create candidate from running  */
-    if (xmldb_exists(h, "candidate") != 1)
-	if (xmldb_copy(h, "running", "candidate") < 0)
-	    goto done;
-    /* Load plugins and call plugin_init() */
-    if (backend_plugin_initiate(h) != 0) 
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Clixon running startup mode: Commit running db configuration into running 
+/*! Given a retval, transform to status or fatal error
  *
-OK:
-        copy   reset              commit   merge
-running----+   |--------------------+--------+------>
-            \                      /        /
-candidate    +--------------------+        /
-                                          /
-tmp           |-------+-----+------------+---|
-             reset   extra  file
-
-COMMIT ERROR:
-        copy   reset              copy 
-running----+   |--------------------+------> EXIT
-            \                      /       
-candidate    +--------------------+        
-
- * @note: if commit fails, copy candidate to running and exit
+ * @param[in]  ret    Return value from xml validation function
+ * @param[out] status Transform status according to rules below
+ * @retval    0       OK, status set
+ * @retval   -1       Fatal error outside scope of startup_status
+ * Transformation rules:
+ * 1) retval -1 assume clicon_errno/suberrno set. Special case from xml parser
+ * is clicon_suberrno = XMLPARSE_ERRNO which assumes an XML (non-fatal) parse 
+ * error which translates to -> STARTUP_ERR
+ * All other error cases translates to fatal error
+ * 2) retval 0 is xml validation fails -> STARTUP_INVALID
+ * 3) retval 1 is OK -> STARTUP_OK
+ * 4) any other retval translates to fatal error
  */
 static int
-startup_mode_running(clicon_handle h,
-    		     char         *extraxml_file)
+ret2status(int                  ret,
+	   enum startup_status *status)
 {
-    int   retval = -1;
-    cbuf *cbret = NULL;
+    int retval = -1;
 
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
-    /* Stash original running to candidate for later commit */
-    if (xmldb_copy(h, "running", "candidate") < 0)
-	goto done;
-    /* Load plugins and call plugin_init() */
-    if (backend_plugin_initiate(h) != 0) 
-	goto done;
-    /* Clear tmp db */
-    if (db_reset(h, "tmp") < 0)
-	goto done;
-    /* Application may define extra xml in its reset function*/
-    if (clixon_plugin_reset(h, "tmp") < 0)   
-	goto done;
-    /* XXX Kludge to low-level functions to search for xml in all yang modules */
-    _CLICON_XML_NS_STRICT = 0;
-    /* Get application extra xml from file */
-    if (load_extraxml(h, extraxml_file, "tmp", cbret) < 1)   
-	goto fail;	    
-    /* Clear running db */
-    if (db_reset(h, "running") < 0)
-	goto done;
-    /* Commit original running. Assume -1 is validate fail */
-    if (candidate_commit(h, "candidate", cbret) < 1)
-	goto fail;
-    /* Merge user reset state and extra xml file (no commit) */
-    if (db_merge(h, "tmp", "running", cbret) < 1)
-	goto fail;
+    switch (ret){
+    case -1:
+	if (clicon_suberrno != XMLPARSE_ERRNO)
+	    goto done;
+	clicon_err_reset();
+	*status = STARTUP_ERR;
+	break;
+    case 0:
+	*status = STARTUP_INVALID;
+	break;
+    case 1:
+	*status = STARTUP_OK;
+	break;
+    default:
+	clicon_err(OE_CFG, EINVAL, "No such retval %d", retval);
+    } /* switch */
     retval = 0;
  done:
-    /* XXX Kludge to low-level functions to search for xml in all yang modules */
-    _CLICON_XML_NS_STRICT = clicon_option_bool(h, "CLICON_XML_NS_STRICT");
-    if (cbret)
-	cbuf_free(cbret);
-    if (xmldb_delete(h, "tmp") < 0)
-	goto done;
     return retval;
- fail:
-    /*  (1) We cannot differentiate between fatal errors and validation
-     *      failures
-     *  (2) If fatal error, we should exit
-     *  (3) If validation fails we cannot continue. How could we?
-     *  (4) Need to restore the running db since we destroyed it above
-     */
-    if (strlen(cbuf_get(cbret)))
-	clicon_log(LOG_NOTICE, "%s: Commit of running failed, exiting: %s.",
-		   __FUNCTION__, cbuf_get(cbret));
-    else
-	clicon_log(LOG_NOTICE, "%s: Commit of running failed, exiting: %s.",
-		   __FUNCTION__, clicon_err_reason);
-    /* Reinstate original */
-    if (xmldb_copy(h, "candidate", "running") < 0)
-	goto done;
-    goto done;
 }
 
-/*! Clixon startup startup mode: Commit startup configuration into running state
-
-
-backup         +--------------------|
-         copy / reset              commit merge
-running   |-+----|--------------------+-----+------>
-                                     /     /
-startup    -------------------------+-->  /
-                                         /
-tmp        -----|-------+-----+---------+--|
-             reset   extra  file
-
-COMMIT ERROR:
-backup         +------------------------+--|
-         copy / reset               copy \
-running   |-+----|--------------------+---+------->EXIT
-                               error / 
-startup    -------------------------+--|    
-
- * @note: if commit fails, copy backup to commit and exit
+/*! usage
  */
-static int
-startup_mode_startup(clicon_handle h,
-		     char         *extraxml_file)
+static void
+usage(clicon_handle h,
+      char         *argv0)
 {
-    int     retval = -1;
-    cbuf   *cbret = NULL;
+    char *plgdir   = clicon_backend_dir(h);
+    char *confsock = clicon_sock(h);
+    char *confpid  = clicon_backend_pidfile(h);
+    char *group    = clicon_sock_group(h);
 
-    /* Create return buffer for netconf xml errors */
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
-    /* Stash original running to backup */
-    if (xmldb_copy(h, "running", "backup") < 0)
-	goto done;
-    /* If startup does not exist, clear it */
-    if (xmldb_exists(h, "startup") != 1) /* diff */
-	if (xmldb_create(h, "startup") < 0) /* diff */
-	    return -1;
-    /* Load plugins and call plugin_init() */
-    if (backend_plugin_initiate(h) != 0) 
-	goto done;
-    /* Clear tmp db */
-    if (db_reset(h, "tmp") < 0)
-	goto done;
-    /* Application may define extra xml in its reset function*/
-    if (clixon_plugin_reset(h, "tmp") < 0)  
-	goto done;
-    /* XXX Kludge to low-level functions to search for xml in all yang modules */
-    _CLICON_XML_NS_STRICT = 0;
-    /* Get application extra xml from file */
-    if (load_extraxml(h, extraxml_file, "tmp", cbret) < 1)   
-	goto fail;	    
-    /* Clear running db */
-    if (db_reset(h, "running") < 0)
-	goto done;
+    fprintf(stderr, "usage:%s <options>*\n"
+	    "where options are\n"
+            "\t-h\t\tHelp\n"
+    	    "\t-D <level>\tDebug level\n"
+    	    "\t-f <file>\tCLICON config file\n"
+	    "\t-l (s|e|o|f<file>)  Log on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
+	    "\t-d <dir>\tSpecify backend plugin directory (default: %s)\n"
+	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
+	    "\t-b <dir>\tSpecify XMLDB database directory\n"
+    	    "\t-F\t\tRun in foreground, do not run as daemon\n"
+    	    "\t-z\t\tKill other config daemon and exit\n"
+    	    "\t-a UNIX|IPv4|IPv6  Internal backend socket family\n"
+    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)(default: %s)\n"
+    	    "\t-P <file>\tPid filename (default: %s)\n"
+    	    "\t-1\t\tRun once and then quit (dont wait for events)\n"
+	    "\t-s <mode>\tSpecify backend startup mode: none|startup|running|init)\n"
+	    "\t-c <file>\tLoad extra xml configuration, but don't commit.\n"
+	    "\t-g <group>\tClient membership required to this group (default: %s)\n"
 
-    /* Commit startup */
-    if (candidate_commit(h, "startup", cbret) < 1) /* diff */
-	goto fail;
-    /* Merge user reset state and extra xml file (no commit) */
-    if (db_merge(h, "tmp", "running", cbret) < 1)
-	goto fail;
-    retval = 0;
- done:
-    /* XXX Kludge to low-level functions to search for xml in all yang modules */
-    _CLICON_XML_NS_STRICT = clicon_option_bool(h, "CLICON_XML_NS_STRICT");
-    if (cbret)
-	cbuf_free(cbret);
-    if (xmldb_delete(h, "backup") < 0)
-	goto done;
-    if (xmldb_delete(h, "tmp") < 0)
-	goto done;
-    return retval;
- fail:
-    /*  We cannot differentiate between fatal errors and validation
-     *  failures
-     *  In both cases we copy back the original running and quit
-     */
-    if (strlen(cbuf_get(cbret)))
-	clicon_log(LOG_NOTICE, "%s: Commit of startup failed, exiting: %s.",
-		   __FUNCTION__, cbuf_get(cbret));
-    else
-	clicon_log(LOG_NOTICE, "%s: Commit of startup failed, exiting: %s.",
-		   __FUNCTION__, clicon_err_reason);
-    if (xmldb_copy(h, "backup", "running") < 0)
-	goto done;
-    goto done;
+	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
+	    "\t-x <plugin>\tXMLDB plugin\n"
+	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
+	    argv0,
+	    plgdir ? plgdir : "none",
+	    confsock ? confsock : "none",
+	    confpid ? confpid : "none",
+	    group ? group : "none"
+	    );
+    exit(-1);
 }
 
 int
@@ -586,6 +341,9 @@ main(int    argc,
     yang_spec    *yspecfg = NULL; /* For config XXX clixon bug */
     char         *str;
     int           ss = -1; /* server socket */
+    cbuf         *cbret = NULL; /* startup cbuf if invalid */
+    enum startup_status status = STARTUP_ERR; /* Startup status */
+    int           ret;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -796,7 +554,7 @@ main(int    argc,
     }
 
     if (group_name2gid(config_group, NULL) < 0){
-	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.\n" 
+	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.\n" /* \n required here due to multi-line log */
 		"The config demon requires a valid group to create a server UNIX socket\n"
 		"Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
 		"or create the group and add the user to it. On linux for example:"
@@ -815,7 +573,7 @@ main(int    argc,
 	stream_publish_init() < 0)
 	goto done;
     if ((xmldb_plugin = clicon_xmldb_plugin(h)) == NULL){
-	clicon_log(LOG_ERR, "No xmldb plugin given (specify option CLICON_XMLDB_PLUGIN).\n"); 
+	clicon_log(LOG_ERR, "No xmldb plugin given (specify option CLICON_XMLDB_PLUGIN)."); 
 	goto done;
     }
     if (xmldb_plugin_load(h, xmldb_plugin) < 0)
@@ -876,10 +634,14 @@ main(int    argc,
 	goto done;
     if (xmldb_setopt(h, "nacm_xtree", (void*)clicon_nacm_ext(h)) < 0)
 	goto done;
+
+    /* Save modules state of the backend (server). Compare with startup XML */
+    if (startup_module_state(h, yspec) < 0)
+	goto done;
     /* Startup mode needs to be defined,  */
     startup_mode = clicon_startup_mode(h);
     if (startup_mode == -1){ 	
-	clicon_log(LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend.\n"); 
+	clicon_log(LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend."); 
 	goto done;
     }
     /* Init running db if it is not there
@@ -887,27 +649,59 @@ main(int    argc,
     if (xmldb_exists(h, "running") != 1)
 	if (xmldb_create(h, "running") < 0)
 	    return -1;
-    switch (startup_mode){
-    case SM_NONE:
-	if (startup_mode_none(h) < 0)
-	    goto done;
-	break;
-    case SM_INIT: /* -I */
-	if (startup_mode_init(h) < 0)
-	    goto done;
-	break;
-    case SM_RUNNING: /* -CIr */
-	if (startup_mode_running(h, extraxml_file) < 0)
-	    goto done;
-	break; 
-    case SM_STARTUP: /* startup configuration */
-	if (startup_mode_startup(h, extraxml_file) < 0)
-	    goto done;
-	break;
+    /* If startup fails, lib functions report invalidation info in a cbuf */
+    if ((cbret = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
     }
+    switch (startup_mode){
+    case SM_INIT: /* Scratch running and start from empty */
+	/* [Delete and] create running db */
+	if (startup_db_reset(h, "running") < 0)
+	    goto done;
+    case SM_NONE: /* Fall through *
+		   * Load plugins and call plugin_init() */
+	if (backend_plugin_initiate(h) != 0) 
+	    goto done;
+	status = STARTUP_OK;
+	break;
+    case SM_RUNNING: /* Use running as startup */
+	/* Copy original running to startup and treat as startup */
+	if (xmldb_copy(h, "running", "startup") < 0)
+	    goto done;
+    case SM_STARTUP: /* Fall through */
+	/* Load and commit from startup */
+	ret = startup_mode_startup(h, cbret);
+	if (ret2status(ret, &status) < 0)
+	    goto done;
+	/* if status = STARTUP_INVALID, cbret contains info */
+    }
+    /* Merge extra XML from file and reset function to running  
+     */
+    if (status == STARTUP_OK && startup_mode != SM_NONE){
+	if ((ret = startup_extraxml(h, extraxml_file, cbret)) < 0)
+	    goto done;
+	if (ret2status(ret, &status) < 0)
+	    goto done;
+	/* if status = STARTUP_INVALID, cbret contains info */
+    }
+
+    if (status != STARTUP_OK){
+	if (startup_failsafe(h) < 0){
+	    goto done;
+	}
+    }
+    
     /* Initiate the shared candidate. */
     if (xmldb_copy(h, "running", "candidate") < 0)
 	goto done;
+    /* Set startup status */
+    if (clicon_startup_status_set(h, status) < 0)
+	goto done;
+
+    if (status == STARTUP_INVALID && cbuf_len(cbret))
+	clicon_log(LOG_NOTICE, "%s: %u %s", __PROGRAM__, getpid(), cbuf_get(cbret));
+	
     /* Call backend plugin_start with user -- options */
     if (plugin_start_useroptions(h, argv0, argc, argv) <0)
 	goto done;
@@ -952,6 +746,8 @@ main(int    argc,
 	goto done;
     retval = 0;
   done:
+    if (cbret)
+	cbuf_free(cbret);
     clicon_log(LOG_NOTICE, "%s: %u Terminated retval:%d", __PROGRAM__, getpid(), retval);
     backend_terminate(h); /* Cannot use h after this */
 

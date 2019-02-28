@@ -198,6 +198,10 @@ int clicon_xmldb_handle_set(clicon_handle h, void *xh);
 char *clicon_username_get(clicon_handle h);
 int clicon_username_set(clicon_handle h, void *username);
 
+/* Set and get startup status */
+enum startup_status clicon_startup_status_get(clicon_handle h);
+int clicon_startup_status_set(clicon_handle h, enum startup_status status);
+
 /* Set and get socket fd (ie backend server socket / restconf fcgx socket */
 int clicon_socket_get(clicon_handle h);
 int clicon_socket_set(clicon_handle h, int s);

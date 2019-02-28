@@ -72,7 +72,7 @@ int backend_plugin_initiate(clicon_handle h);
 int clixon_plugin_reset(clicon_handle h, char *db);
 
 int clixon_plugin_statedata(clicon_handle h, yang_spec *yspec, char *xpath, cxobj **xtop);
-
+int clixon_plugin_upgrade(clicon_handle h, cxobj *xmodst);
 transaction_data_t * transaction_new(void);
 int transaction_free(transaction_data_t *);
 

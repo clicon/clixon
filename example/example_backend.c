@@ -39,6 +39,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <assert.h>
+#include <syslog.h>
 #include <sys/time.h>
 
 /* clicon */
@@ -49,6 +50,13 @@
 
 /* These include signatures for plugin and transaction callbacks. */
 #include <clixon/clixon_backend.h> 
+
+/* Variable to control if reset code is run.
+ * The reset code inserts "extra XML" which assumes ietf-interfaces is
+ * loaded, and this is not always the case.
+ * Therefore, the backend must be started with -- -r to enable the reset function
+ */
+static int _reset = 0;
 
 /* forward */
 static int example_stream_timer_setup(clicon_handle h);
@@ -212,6 +220,25 @@ example_statedata(clicon_handle h,
     return retval;
 }
 
+/*! Upgrade configuration from one version to another
+ * @param[in]  h      Clicon handle
+ * @param[in]  xms    Module state differences
+ * @retval     0      OK
+ * @retval    -1      Error
+ */
+int 
+example_upgrade(clicon_handle       h, 
+		cxobj              *xms)
+{
+    int     retval = -1;
+	
+    if (xms)
+	clicon_log_xml(LOG_NOTICE, xms, "%s", __FUNCTION__);
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /*! Plugin state reset. Add xml or set state in backend machine.
  * Called in each backend plugin. plugin_reset is called after all plugins
  * have been initialized. This give the application a chance to reset
@@ -233,6 +260,7 @@ example_reset(clicon_handle h,
     int    ret;
     cbuf  *cbret = NULL;
 
+    goto ok; /* Note not enabled by default */
     if (xml_parse_string("<config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface>"
 			 "<name>lo</name><type>ex:loopback</type>"
 			 "</interface></interfaces></config>", NULL, &xt) < 0)
@@ -252,6 +280,7 @@ example_reset(clicon_handle h,
 		   cbuf_get(cbret));
 	goto done;
     }
+ ok:
     retval = 0;
  done:
     if (cbret)
@@ -267,7 +296,8 @@ example_reset(clicon_handle h,
  * @param[in]  argv  Argument vector 
  *
  * plugin_start is called once everything has been initialized, right before 
- * the main event loop is entered. Command line options can be passed to the 
+ * the main event loop is entered. 
+ * From the CLI, command line options can be passed to the 
  * plugins by using "-- <args>" where <args> is any choice of 
  * options specific to the application. These options are passed to the
  * plugin_start function via the argc and argv arguments which
@@ -278,6 +308,16 @@ example_start(clicon_handle h,
 	     int           argc,
 	     char        **argv)
 {
+    char c;
+    
+    opterr = 0;
+    optind = 1;
+    while ((c = getopt(argc, argv, "r")) != -1)
+	switch (c) {
+	case 'r':
+	    _reset = 1;
+	    break;
+	}
     return 0;
 }
 
@@ -296,6 +336,7 @@ static clixon_plugin_api api = {
     example_exit,                           /* exit */
     .ca_reset=example_reset,                /* reset */
     .ca_statedata=example_statedata,        /* statedata */
+    .ca_upgrade=example_upgrade,            /* upgrade configuration */
     .ca_trans_begin=NULL,                   /* trans begin */
     .ca_trans_validate=transaction_validate,/* trans validate */
     .ca_trans_complete=NULL,                /* trans complete */

@@ -120,7 +120,7 @@ clixon_plugin_init(clicon_handle h)
     clicon_debug(1, "%s backend nacm", __FUNCTION__);
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (nacm_mode==NULL || strcmp(nacm_mode, "disabled") == 0){
-	clicon_log(LOG_WARNING, "%s CLICON_NACM_MODE not enabled: example nacm module disabled", __FUNCTION__);
+	clicon_log(LOG_DEBUG, "%s CLICON_NACM_MODE not enabled: example nacm module disabled", __FUNCTION__);
 	return NULL;
     }
     return &api;

@@ -31,23 +31,19 @@
 
   ***** END LICENSE BLOCK *****
 
-  Key-value store
  */
-#ifndef _CLIXON_XMLDB_TEXT_H
-#define _CLIXON_XMLDB_TEXT_H
+
+
+#ifndef _BACKEND_STARTUP_H_
+#define _BACKEND_STARTUP_H_
 
 /*
  * Prototypes
- */
-int text_get(xmldb_handle h, const char *db, char *xpath, int config, cxobj **xtop, cxobj **xms);
-int text_put(xmldb_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
-int text_dump(FILE *f, char *dbfilename, char *rxkey);
-int text_copy(xmldb_handle h, const char *from, const char *to);
-int text_lock(xmldb_handle h, const char *db, int pid);
-int text_unlock(xmldb_handle h, const char *db);
-int text_unlock_all(xmldb_handle h, int pid);
-int text_islocked(xmldb_handle h, const char *db);
-int text_exists(xmldb_handle h, const char *db);
-int text_delete(xmldb_handle h, const char *db);
+ */ 
+int startup_db_reset(clicon_handle h, char *db);
+int startup_mode_startup(clicon_handle h, cbuf *cbret);
+int startup_extraxml(clicon_handle h, char *file, cbuf *cbret);
+int startup_failsafe(clicon_handle h);
+int startup_module_state(clicon_handle h, yang_spec *yspec);
 
-#endif /* _CLIXON_XMLDB_TEXT_H */
+#endif  /* _BACKEND_STARTUP_H_ */

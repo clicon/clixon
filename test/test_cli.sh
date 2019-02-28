@@ -66,7 +66,7 @@ new "cli configure set interfaces"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0" 0 "^$"
 
 new "cli show configuration"
-expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "^interfaces interface eth/0/0 enabled true"
+expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 '^interfaces interface eth/0/0 interfaces interface eth/0/0 enabled true'
 
 new "cli configure using encoded chars data <&"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 description \"foo<&bar\"" 0 ""

@@ -140,7 +140,9 @@ generic_validate(yang_spec          *yspec,
     goto done;
 }
 
-/*! Common code of candidate_validate and candidate_commit 
+/*! Validate a candidate db and comnpare to running
+ * Get both source and dest datastore, validate target, compute diffs
+ * and call application callback validations.
  * @param[in] h         Clicon handle
  * @param[in] candidate The candidate database. The wanted backend state
  * @retval   -1       Error - or validation failed (but cbret not set)
@@ -165,12 +167,9 @@ validate_common(clicon_handle       h,
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }	
-    /* 2. Parse xml trees 
-     * This is the state we are going from */
-    if (xmldb_get(h, "running", "/", 1, &td->td_src) < 0)
-	goto done;
+
     /* This is the state we are going to */
-    if (xmldb_get(h, candidate, "/", 1, &td->td_target) < 0)
+    if (xmldb_get(h, candidate, "/", 1, &td->td_target, NULL) < 0)
 	goto done;
 
     /* Validate the target state. It is not completely clear this should be done 
@@ -183,6 +182,11 @@ validate_common(clicon_handle       h,
     if (ret == 0)
 	goto fail;
 
+    /* 2. Parse xml trees 
+     * This is the state we are going from */
+    if (xmldb_get(h, "running", "/", 1, &td->td_src, NULL) < 0)
+	goto done;
+    
     /* 3. Compute differences */
     if (xml_diff(yspec, 
 		 td->td_src,
@@ -217,7 +221,7 @@ validate_common(clicon_handle       h,
 	xn = td->td_tcvec[i];
 	xml_flag_set(xn, XML_FLAG_CHANGE);
 	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-    }    
+    }
     /* 4. Call plugin transaction start callbacks */
     if (plugin_transaction_begin(h, td) < 0)
 	goto done;
@@ -243,6 +247,90 @@ validate_common(clicon_handle       h,
     retval = 0;
     goto done;
 }
+
+/*! Validate a candidate db and comnpare to running XXX Experimental
+ * Get both source and dest datastore, validate target, compute diffs
+ * and call application callback validations.
+ * @param[in] h         Clicon handle
+ * @param[in] candidate The candidate database. The wanted backend state
+ * @retval   -1       Error - or validation failed (but cbret not set)
+ * @retval    0       Validation failed (with cbret set)
+ * @retval    1       Validation OK       
+ * @note Need to differentiate between error and validation fail 
+ * 1. Parse startup XML (or JSON)
+ * 2. If syntax failure, call startup-cb(ERROR), copy failsafe db to 
+ * candidate and commit. Done
+ * 3. Check yang module versions between backend and init config XML. (msdiff)
+ * 4. Validate startup db. (valid)
+ * 5. If valid fails, call startup-cb(Invalid, msdiff), keep startup in candidate and commit failsafe db. Done.
+ * 6. Call startup-cb(OK, msdiff) and commit.
+ */
+int
+startup_validate(clicon_handle  h, 
+		 char          *db,
+		 cbuf          *cbret)
+{
+    int                 retval = -1;
+    yang_spec          *yspec;
+    int                 ret;
+    cxobj              *xms = NULL;
+    transaction_data_t *td = NULL;
+
+    /* Handcraft a transition with only target and add trees */
+    if ((td = transaction_new()) == NULL)
+	goto done;
+    /* 2. Parse xml trees 
+     * This is the state we are going to 
+     * Note: xmsdiff contains non-matching modules
+     */
+    if (xmldb_get(h, db, "/", 1, &td->td_target, &xms) < 0)
+	goto done;
+    if (xms && clixon_plugin_upgrade(h, xms) < 0)
+	goto done;
+
+    /* Handcraft transition with with only add tree */
+    if (cxvec_append(td->td_target, &td->td_avec, &td->td_alen) < 0) 
+	goto done;
+
+    /* 4. Call plugin transaction start callbacks */
+    if (plugin_transaction_begin(h, td) < 0)
+	goto done;
+
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, 0, "Yang spec not set");
+	goto done;
+    }
+    /* 5. Make generic validation on all new or changed data.
+       Note this is only call that uses 3-values */
+    if ((ret = generic_validate(yspec, td, cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail; /* STARTUP_INVALID */
+
+    /* 6. Call plugin transaction validate callbacks */
+    if (plugin_transaction_validate(h, td) < 0)
+	goto done;
+
+    /* 7. Call plugin transaction complete callbacks */
+    if (plugin_transaction_complete(h, td) < 0)
+	goto done;
+    retval = 1;
+ done:
+    if (td)
+	transaction_free(td);
+    if (xms)
+	xml_free(xms);
+    return retval;
+ fail: /* cbret should be set */
+    if (cbuf_len(cbret)==0){	
+	clicon_err(OE_CFG, EINVAL, "Validation fail but cbret not set");
+	goto done;
+    }
+    retval = 0;
+    goto done;
+}
+
+
 
 /*! Do a diff between candidate and running, then start a commit transaction
  *
@@ -298,7 +386,10 @@ candidate_commit(clicon_handle h,
     /* 9. Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);
 
-    /* 8. Copy running back to candidate in case end functions updated running */
+    /* 8. Copy running back to candidate in case end functions updated running 
+     * XXX: room for improvement: candidate and running may be equal.
+     * Copy only diffs?
+     */
     if (xmldb_copy(h, "running", candidate) < 0){
 	/* ignore errors or signal major setback ? */
 	clicon_log(LOG_NOTICE, "Error in rollback, trying to continue");

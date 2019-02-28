@@ -228,8 +228,10 @@ xml2cli(FILE              *f,
 	if (ys->ys_keyword == Y_LIST){
 	    if ((match = yang_key_match((yang_node*)ys, xml_name(xe))) < 0)
 		goto done;
-	    if (match)
-		continue;
+	    if (match){
+		fprintf(f, "%s\n", cbuf_get(cbpre));	
+		continue; /* Not key itself */
+	    }
 	}
 	if (xml2cli(f, xe, cbuf_get(cbpre), gt) < 0)
 	    goto done;
@@ -1135,8 +1137,8 @@ xml_diff1(yang_stmt *ys,
 
 /*! Compute differences between two xml trees
  * @param[in]  yspec     Yang specification
- * @param[in]  x1       First XML tree
- * @param[in]  x2       Second XML tree
+ * @param[in]  x1        First XML tree
+ * @param[in]  x2        Second XML tree
  * @param[out] first     Pointervector to XML nodes existing in only first tree
  * @param[out] firstlen  Length of first vector
  * @param[out] second    Pointervector to XML nodes existing in only second tree
@@ -1572,7 +1574,7 @@ xml_tree_prune_flagged(cxobj *xt,
     cxobj     *xprev;
 
     x = NULL;
-    xprev = x = NULL;
+    xprev = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	if (xml_flag(x, flag) == test?flag:0){ 	/* Pass test means purge */
 	    if (xml_purge(x) < 0)

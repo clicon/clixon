@@ -133,10 +133,13 @@ struct xml{
 /*
  * Variables
  */
-/* Iterate through modules to find the matching datanode
+/* If set to 1 which is default, strict namespace checking of XML is made.
+ * If set to 0, "loose" namespace semantics is applied.
+ * This means: iterate through all yang modules to find matching datanode
  * or rpc if no xmlns attribute specifies namespace.
- * This is loose semantics of finding namespaces.
- * And it is wrong, but is the way Clixon originally was written."
+ * This is _wrong_, but is the way Clixon originally was written, and some
+ * code still relies on it. 
+ * This, of course, should change.
  * @see CLICON_XML_NS_STRICT clixon configure option 
  */
 int _CLICON_XML_NS_STRICT = 1;
@@ -1129,6 +1132,7 @@ xml_find_type_value(cxobj           *xt,
  * @code
  * cxobj *x = xml_find_type(x, "prefix", "name", CX_ATTR);
  * @endcode
+ * @see xml_find  which finds any child given name
  * @see xml_find_value where a body can be found as well
  */
 cxobj *
@@ -1708,7 +1712,7 @@ xml_parse_file(int        fd,
  *  cxobj *xt = NULL;
  *  if (xml_parse_string(str, yspec, &xt) < 0)
  *    err;
- *  if (xml_root_child(xt, 0, &xt) < 0) # If you want to remove TOP
+ *  if (xml_rootchild(xt, 0, &xt) < 0) # If you want to remove TOP
  *    err;
  * @endcode
  * @see xml_parse_file
@@ -1778,7 +1782,11 @@ xml_parse_va(cxobj     **xtop,
     return retval;
 }
 
-/*! Copy single xml node frm x0 to x1 without copying children
+/*! Copy single xml node from x0 to x1 without copying children
+ * @param[in]  x0  Source XML tree
+ * @param[in]  x1  Destination XML tree (must exist)
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 int
 xml_copy_one(cxobj *x0, 
@@ -1806,6 +1814,10 @@ xml_copy_one(cxobj *x0,
  *
  * x1 should be a created placeholder. If x1 is non-empty,
  * the copied tree is appended to the existing tree.
+ * @param[in]  x0  Source XML tree
+ * @param[in]  x1  Destination XML tree (must exist)
+ * @retval     0   OK
+ * @retval    -1   Error
  * @code
  *   x1 = xml_new("new", xparent, NULL);
  *   if (xml_copy(x0, x1) < 0)

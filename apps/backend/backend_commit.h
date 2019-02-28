@@ -43,6 +43,7 @@
 int from_client_validate(clicon_handle h, char *db, cbuf *cbret);
 int from_client_commit(clicon_handle h, int pid, cbuf *cbret);
 int from_client_discard_changes(clicon_handle h, int pid, cbuf *cbret);
+int startup_validate(clicon_handle h, char *db, cbuf *cbret);
 int candidate_commit(clicon_handle h, char *db, cbuf *cbret);
 
 #endif  /* _BACKEND_COMMIT_H_ */
