@@ -56,8 +56,6 @@
 #include <limits.h>
 #include <ctype.h>
 #include <unistd.h>
-#define __USE_GNU    /* strverscmp */
-#define _GNU_SOURCE
 #include <string.h>
 #include <arpa/inet.h>
 #include <regex.h>
@@ -66,6 +64,7 @@
 #include <fcntl.h>
 #include <syslog.h>
 #include <assert.h>
+#include <libgen.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <netinet/in.h>
@@ -2449,7 +2448,7 @@ yang_spec_parse_module(clicon_handle h,
  */
 int
 yang_spec_parse_file(clicon_handle h, 
-		     const char   *filename, 
+		     char         *filename, 
 		     yang_spec    *yspec)
 {
     int         retval = -1;

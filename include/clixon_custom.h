@@ -37,12 +37,6 @@
 #define strndup(s, n) clicon_strndup(s, n)
 #endif
 
-#if defined(__OpenBSD__) || defined(__FreeBSD__) ||  defined(__NetBSD__)
-#define BSD
-/* at least for openbsd 4.5 i cannot get a hdr file */
-int strverscmp (__const char *__s1, __const char *__s2);
-#endif
-
 /* Set if you want to assert that all rpc messages have set username
  */
 #undef RPC_USERNAME_ASSERT

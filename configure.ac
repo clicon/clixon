@@ -220,7 +220,7 @@ AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(nsl, xdr_char)
 AC_CHECK_LIB(dl, dlopen)
 
-AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort strverscmp)
+AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort)
 
 # CLIXON_DATADIR is where clixon installs the "system" yang files in yang/Makfile
 # This directory should most probably be included in each application,

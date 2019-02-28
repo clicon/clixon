@@ -23,7 +23,7 @@
 >&2 echo "Running $testfile"
 
 # Site file, an example of this file in README.md
-if [ -x ./site.sh ]; then
+if [ -f ./site.sh ]; then
 
     . ./site.sh
     if [ $? -ne 0 ]; then

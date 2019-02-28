@@ -249,7 +249,7 @@ clicon_log_str(int           level,
  * @code
 	clicon_log(LOG_NOTICE, "%s: dump to dtd not supported", __PROGRAM__);
  * @endcode
- * @see cicon_log_init and clicon_log_str
+ * @see clicon_log_init and clicon_log_str
  */
 int
 clicon_log(int   level, 

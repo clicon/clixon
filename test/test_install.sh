@@ -11,7 +11,6 @@ new "Make DESTDIR install"
 if [ $? -ne 0 ]; then
     err
 fi
-
 new "Check installed files /usr"
 if [ ! -d $dir/usr ]; then
     err $dir/usr
@@ -59,3 +58,5 @@ l=$(find $dir -type l)
 if [ -n "$l" ]; then
     err "$l"
 fi
+
+rm -rf $dir

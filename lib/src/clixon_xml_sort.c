@@ -194,6 +194,7 @@ xml_child_spec(cxobj      *x,
  * @note args are pointer ot pointers, to fit into qsort cmp function
  * @see xml_cmp1   Similar, but for one object
  * @note empty value/NULL is smallest value
+ * @note xml_enumerate_children must have been called prior to this call
  */
 static int
 xml_cmp(const void* arg1, 
@@ -213,12 +214,19 @@ xml_cmp(const void* arg1,
     char       *keyname;
     cg_var     *cv1; 
     cg_var     *cv2;
+    int         nr1;
+    int         nr2;
 
-    assert(x1&&x2);
+    if (x1==NULL || x2==NULL)
+	return 0; /* shouldnt happen */
     y1 = xml_spec(x1);
     y2 = xml_spec(x2);
-    if (y1==NULL || y2==NULL)
-	return 0; /* just ignore */
+    nr1 = xml_enumerate_get(x1);
+    nr2 = xml_enumerate_get(x2);
+    if (y1==NULL || y2==NULL){
+	equal = nr1-nr2;
+	return equal; 
+    }
     if (y1 != y2){
 	yi1 = yang_order(y1);
 	yi2 = yang_order(y2);
@@ -230,8 +238,10 @@ xml_cmp(const void* arg1,
      * otherwise sort according to key
      */
     if (yang_config(y1)==0 ||
-	yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL)
-	return 0; /* Ordered by user or state data : maintain existing order */
+	yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL){
+	equal = nr1-nr2;
+	return equal; /* Ordered by user or state data : maintain existing order */
+    }
     switch (y1->ys_keyword){
     case Y_LEAF_LIST: /* Match with name and value */
 	if ((b1 = xml_body(x1)) == NULL)
@@ -358,6 +368,7 @@ xml_sort(cxobj *x,
     /* Abort sort if non-config (=state) data */
     if ((ys = xml_spec(x)) != 0 && yang_config(ys)==0)
 	return 1;
+    xml_enumerate_children(x);
     qsort(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp);
     return 0;
 }
@@ -642,6 +653,7 @@ xml_sort_verify(cxobj *x0,
 	retval = 1;
 	goto done;
     }
+    xml_enumerate_children(x0);
     while ((x = xml_child_each(x0, x, -1)) != NULL) {
 	if (xprev != NULL){ /* Check xprev <= x */
 	    if (xml_cmp(&xprev, &x) > 0)
