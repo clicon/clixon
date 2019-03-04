@@ -7,10 +7,8 @@
 ### Major New features
 * New backend startup and upgrade support, see [doc/startup.md] for details
   * Enable with CLICON_XMLDB_MODSTATE config option
-  * Tag all datastores with system modules-state as in RFC7895
   * Check modules-state tags when loading a datastore at startup
     * Check which modules match, and which do not.
-  * Loading of a "startup" XML or JSON configuration
   * Loading of "extra" XML.
   * Detection of in-compatible XML and Yang models in the startup configuration.
   * An upgrade callback when in-compatible XML is encountered (`ca_upgrade`)
@@ -31,6 +29,9 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* [yang type range statement does not support multiple values](https://github.com/clicon/clixon/issues/59)
+  * Remaining problem was mainly CLIgen feature. Strengthened test cases in [test/test_type.sh].
+  * Also in: [Multiple ranges support](https://github.com/clicon/clixon/issues/78)
 * Fixed numeric ordering of lists (again) [https://github.com/clicon/clixon/issues/64] It was previously just fixed for leaf-lists.
 * There was a problem with ordered-by-user for XML children that appeared in some circumstances and difficult to trigger. Entries entered by the user did not appear in the order they were entered. This should now be fixed.
 

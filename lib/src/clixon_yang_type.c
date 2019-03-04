@@ -872,16 +872,20 @@ resolve_restrictions(yang_stmt   *yrange,
  * @param[in]  yorig    (original) type yang-stmt where original search is based
  * @param[in]  ys       (transitive) yang-stmt where current search is based
  * @param[in]  ytype    yang-stmt object containing currently resolving type
- * @param[out] yrestype resolved type. return built-in type or NULL. mandatory
- * @param[out] options  pointer to flags field of optional values. optional
- * @param[out] cvv      pointer to cvec with min range or length. 
- *                      If options&YANG_OPTIONS_RANGE or YANG_OPTIONS_LENGTH
- * @param[out] pattern  pointer to static string of yang string pattern. optional
+ * @param[out] yrestype Resolved type. return built-in type or NULL. 
+ * @param[out] options  Flags field of optional values, see YANG_OPTIONS_*
+ * @param[out] cvv      Cvec with min/max range or length. 
+ *                      Present if options&YANG_OPTIONS_RANGE|_LENGTH.
+ *                      Can be a vector if multiple ranges
+ * @param[out] pattern  String of POSIX regexp pattern
+ *                      Present if options&YANG_OPTIONS_PATTERN
  * @param[out] fraction for decimal64, how many digits after period
+ *                      Present if options&YANG_OPTIONS_FRACTION_DIGITS
  * @retval      0        OK. Note yrestype may still be NULL.
  * @retval     -1        Error, clicon_err handles errors
  * The setting of the options argument has the following semantics:
- *   options&YANG_OPTIONS_RANGE or YANG_OPTIONS_LENGTH --> mincv and max _can_ be set
+ *   options&YANG_OPTIONS_RANGE or YANG_OPTIONS_LENGTH --> cvv is set containing
+ *                   array of range_min, range_max cv:s
  *   options&YANG_OPTIONS_PATTERN --> pattern is set
  *   options&YANG_OPTIONS_FRACTION_DIGITS --> fraction is set
  * Note that the static output strings (type, pattern) should be copied if used asap.
@@ -1004,16 +1008,20 @@ yang_type_resolve(yang_stmt   *yorig,
  * @endcode
  * @param[in]  ys       yang-stmt, leaf or leaf-list
  * @param[out] origtype original type may be derived or built-in
- * @param[out] yrestype pointer to resolved type stmt. should be built-in or NULL
- * @param[out] options  pointer to flags field of optional values
- * @param[out] mincv    pointer to cv of min range or length. optional
- * @param[out] maxcv    pointer to cv of max range or length. optional
- * @param[out] pattern  pointer to static string of yang string pattern. optional
+ * @param[out] yrestype Resolved type. return built-in type or NULL. 
+ * @param[out] options  Flags field of optional values, see YANG_OPTIONS_*
+ * @param[out] cvv      Cvec with min/max range or length. 
+ *                      Present if options&YANG_OPTIONS_RANGE|_LENGTH.
+ *                      Can be a vector if multiple ranges
+ * @param[out] pattern  yang string pattern POSIX regexp patterns
+ *                      Present if options&YANG_OPTIONS_PATTERN
  * @param[out] fraction for decimal64, how many digits after period
- * @retval      0        OK, but note that restype==NULL means not resolved.
- * @retval     -1        Error, clicon_err handles errors
+ *                      Present if options&YANG_OPTIONS_FRACTION_DIGITS
+ * @retval      0       OK, but note that restype==NULL means not resolved.
+ * @retval     -1       Error, clicon_err handles errors
  * The setting of the options argument has the following semantics:
- *   options&YANG_OPTIONS_RANGE or YANG_OPTIONS_LENGTH --> mincv and max _can_ be set
+ *   options&YANG_OPTIONS_RANGE or YANG_OPTIONS_LENGTH --> cvv is set containing
+ *                   array of range_min, range_max cv:s
  *   options&YANG_OPTIONS_PATTERN --> pattern is set
  *   options&YANG_OPTIONS_FRACTION_DIGITS --> fraction is set
  * Note that the static output strings (type, pattern) should be copied if used asap.

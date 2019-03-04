@@ -175,10 +175,14 @@ typedef struct yang_stmt yang_stmt; /* forward */
  * @note unions not cached
 */
 struct yang_type_cache{
-    int        yc_options;
-    cvec      *yc_cvv; /* range and length restriction */
-    char      *yc_pattern;
-    uint8_t    yc_fraction;
+    int        yc_options;  /* See YANG_OPTIONS_* that determines pattern/
+			       fraction fields. */
+    cvec      *yc_cvv;      /* Range and length restriction. (if YANG_OPTION_
+                               LENGTH|RANGE. Can be a vector if multiple 
+                               ranges*/
+    char      *yc_pattern;  /* regex (posix) (if YANG_OPTIONS_PATTERN) */
+    uint8_t    yc_fraction; /* Fraction digits for decimal64 (if 
+                               YANG_OPTIONS_FRACTION_DIGITS */
     yang_stmt *yc_resolved; /* Resolved type object, can be NULL - note direct ptr */
 };
 typedef struct yang_type_cache yang_type_cache;

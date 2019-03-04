@@ -1262,6 +1262,10 @@ ys_populate_range(yang_stmt *ys,
     /* This handles non-resolved also */
     if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0) 
 	goto done;
+    if (!cv_isint(cvtype) && cvtype != CGV_DEC64){
+	clicon_err(OE_YANG, 0, "The range substatement only applies to int types, not to type: %s", origtype); 
+	goto done;
+    }
     if (range_parse(ys, cvtype, fraction_digits) < 0)
 	goto done;
     retval = 0;
@@ -1283,7 +1287,7 @@ ys_populate_range(yang_stmt *ys,
  */
 static int
 ys_populate_length(yang_stmt *ys, 
-		  void      *arg)
+		   void      *arg)
 {
     int             retval = -1;
     yang_node      *yparent;        /* type */

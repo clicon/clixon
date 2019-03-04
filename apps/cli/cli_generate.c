@@ -103,9 +103,9 @@ Jan  2 11:17:58: yang2cli: buf
  * @param[in]  h      clicon handle
  * @param[in]  ys     yang_stmt of the node at hand
  * @param[in]  cvtype Type of the cligen variable
- * @param[in]  cb0    The string where the result format string is inserted.
  * @param[in]  options 
  * @param[in]  fraction_digits
+ * @param[out] cb     The string where the result format string is inserted.
 
  * @see expand_dbvar  This is where the expand string is used
  * @note XXX only fraction_digits handled,should also have mincv, maxcv, pattern
@@ -114,20 +114,20 @@ static int
 cli_expand_var_generate(clicon_handle h, 
 			yang_stmt    *ys, 
 			enum cv_type  cvtype,
-			cbuf         *cb0,
 			int           options,
-			uint8_t       fraction_digits)
+			uint8_t       fraction_digits,
+			cbuf         *cb)
 {
     int   retval = -1;
     char *api_path_fmt = NULL;
 
     if (yang2api_path_fmt(ys, 1, &api_path_fmt) < 0)
 	goto done;
-    cprintf(cb0, "|<%s:%s",  ys->ys_argument, 
+    cprintf(cb, "|<%s:%s",  ys->ys_argument, 
 	    cv_type2str(cvtype));
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
-	cprintf(cb0, " fraction-digits:%u", fraction_digits);
-    cprintf(cb0, " %s(\"candidate\",\"%s\")>",
+	cprintf(cb, " fraction-digits:%u", fraction_digits);
+    cprintf(cb, " %s(\"candidate\",\"%s\")>",
 	    GENERATE_EXPAND_XMLDB,
 	    api_path_fmt);
     retval = 0;
@@ -140,21 +140,21 @@ cli_expand_var_generate(clicon_handle h,
 /*! Create callback with api_path format string as argument
  * @param[in]  h   clicon handle
  * @param[in]  ys  yang_stmt of the node at hand
- * @param[in]  cb0 The string where the result format string is inserted.
+ * @param[out] cb  The string where the result format string is inserted.
  * @see cli_dbxml  This is where the xmlkeyfmt string is used
  * @see pt_callback_reference  in CLIgen where the actual callback overwrites the template
  */
 static int
 cli_callback_generate(clicon_handle h, 
 		      yang_stmt    *ys, 
-		      cbuf         *cb0)
+		      cbuf         *cb)
 {
     int        retval = -1;
     char      *api_path_fmt = NULL;
 
     if (yang2api_path_fmt(ys, 0, &api_path_fmt) < 0)
 	goto done;
-    cprintf(cb0, ",%s(\"%s\")", GENERATE_CALLBACK, 
+    cprintf(cb, ",%s(\"%s\")", GENERATE_CALLBACK, 
 	    api_path_fmt);
     retval = 0;
  done:
@@ -213,40 +213,57 @@ yang2cli_var_identityref(yang_stmt *ys,
 }
     
 /*! Generate range check statements for CLI variables
- * @param[out] cb    Buffer where cligen code is written
- * @see yang2cli_var_sub  Its sub-function
+ * @param[in]  ys      Yang statement
+ * @param[in]  options Flags field of optional values, eg YANG_OPTIONS_RANGE
+ * @param[in]  cvv     Cvec with array of range_min/range_max cv:s (if YANG_OPTIONS_RANGE is set in options)
+ * @param[out] cb      Buffer where cligen code is written
+ * @see yang2cli_var_sub   which is the main function
+ * In yang ranges are given as range 1 or range 1 .. 16, encoded in a cvv
+ * 0 : range_min = x
+ * and
+ * 0 : range_min = x
+ * 1 : range_max = y
+ * Multiple ranges are given as: range x..y | x1..y1
+ * This is encode in clixon as a cvec as:
+ * 0 : range_min = x
+ * 1 : range_max = y
+ * 0 : range_min = x1
+ * 1 : range_max = y1
+ *
+ * Generation of cli code
+ * Single range is made by eg:
+ *   <n:uint8 range[1:16]>
+ * Multiple ranges is made by generating code eg:
+ *   <n:uint8 range[1:16] range[32:64]>
  */
 static int
 yang2cli_var_range(yang_stmt *ys,
-		   cvec      *cvv,
 		   int        options,
+		   cvec      *cvv,
 		   cbuf      *cb)
 {
     int     retval = -1;
     int     i;
-    cg_var *cv;
+    cg_var *cv1; /* lower limit */
+    cg_var *cv2; /* upper limit */
     
     /* Loop through range_min and range_min..range_max */
     i = 0;
     while (i<cvec_len(cvv)){
-	if (i){
-	    //	    clicon_log(LOG_NOTICE, "%s: Warning %s has more ranges, ignoring", __FUNCTION__, ys->ys_argument);
-	    break;
-	}
-	cv = cvec_i(cvv, i++);
-	if (strcmp(cv_name_get(cv),"range_min") == 0){
+	cv1 = cvec_i(cvv, i++);
+	if (strcmp(cv_name_get(cv1),"range_min") == 0){
 	    cprintf(cb, " %s[", (options&YANG_OPTIONS_RANGE)?"range":"length");
-	    cv2cbuf(cv, cb);
+	    cv2cbuf(cv1, cb);
 	    cprintf(cb,":");
 	    /* probe next */
 	    if (i<cvec_len(cvv) &&
-		(cv = cvec_i(cvv, i)) != NULL &&
-		strcmp(cv_name_get(cv),"range_max") == 0){
+		(cv2 = cvec_i(cvv, i)) != NULL &&
+		strcmp(cv_name_get(cv2),"range_max") == 0){
 		i++;
-		cv2cbuf(cv, cb);
+		cv2cbuf(cv2, cb);
 	    }
 	    else /* If not, it is a single number range [x:x]*/
-		cv2cbuf(cv, cb);
+		cv2cbuf(cv1, cb);
 	    cprintf(cb,"]");
 	}
     }
@@ -256,32 +273,38 @@ yang2cli_var_range(yang_stmt *ys,
 }
 
 /* Forward */
-static int yang2cli_stmt(clicon_handle h, yang_stmt *ys, cbuf *cb,    
-			 enum genmodel_type gt, int level);
+static int yang2cli_stmt(clicon_handle h, yang_stmt *ys, 
+			 enum genmodel_type gt, int level, cbuf *cb);
 
 static int yang2cli_var_union(clicon_handle h, yang_stmt *ys, char *origtype,
-			      yang_stmt *ytype, cbuf *cb, char *helptext);
+			      yang_stmt *ytype, char *helptext, cbuf *cb);
 
 /*! Generate CLI code for Yang leaf statement to CLIgen variable of specific type
  * Check for completion (of already existent values), ranges (eg range[min:max]) and
  * patterns, (eg regexp:"[0.9]*").
- * @param[in]  h     Clixon handle
- * @param[in]  ys    Yang statement
- * @param[in]  ytype Yang union type being resolved
- * @param[out] cb    Buffer where cligen code is written
- * @param[in]  helptext  CLI help text
+ * @param[in]  h        Clixon handle
+ * @param[in]  ys       Yang statement
+ * @param[in]  ytype    Yang union type being resolved
+ * @param[in]  helptext CLI help text
+ * @param[in]  cvtype
+ * @param[in]  options  Flags field of optional values, see YANG_OPTIONS_*
+ * @param[in]  cvv      Cvec with array of range_min/range_max cv:s
+ * @param[in]  pattern  String of POSIX regexp pattern
+ * @param[in]  fraction for decimal64, how many digits after period
+ * @param[out] cb       Buffer where cligen code is written
+ * @see yang_type_resolve for options and other arguments
  */
 static int
 yang2cli_var_sub(clicon_handle h,
 		 yang_stmt    *ys, 
 		 yang_stmt    *ytype,  /* resolved type */
-		 cbuf         *cb,    
 		 char         *helptext,
 		 enum cv_type  cvtype,
 		 int           options,
 		 cvec         *cvv,
 		 char         *pattern,
-		 uint8_t       fraction_digits
+		 uint8_t       fraction_digits,
+		 cbuf         *cb
     )
 {
     int           retval = -1;
@@ -296,6 +319,7 @@ yang2cli_var_sub(clicon_handle h,
     }
     type = ytype?ytype->ys_argument:NULL;
     cvtypestr = cv_type2str(cvtype);
+    
     if (type && strcmp(type, "identityref") == 0)
 	cprintf(cb, "(");
     cprintf(cb, "<%s:%s", ys->ys_argument, cvtypestr);
@@ -323,7 +347,7 @@ yang2cli_var_sub(clicon_handle h,
 	cprintf(cb, " fraction-digits:%u", fraction_digits);
 
     if (options & (YANG_OPTIONS_RANGE|YANG_OPTIONS_LENGTH)){
-	if (yang2cli_var_range(ys, cvv, options, cb) < 0)
+	if (yang2cli_var_range(ys, options, cvv, cb) < 0)
 	    goto done;
     }
     if (options & YANG_OPTIONS_PATTERN){
@@ -358,8 +382,8 @@ yang2cli_var_union_one(clicon_handle h,
 		       yang_stmt    *ys, 
 		       char         *origtype,
 		       yang_stmt    *ytsub,
-		       cbuf         *cb,
-		       char         *helptext)
+		       char         *helptext,
+		       cbuf         *cb)
 {
     int          retval = -1;
     int          options = 0;
@@ -378,14 +402,14 @@ yang2cli_var_union_one(clicon_handle h,
     restype = ytype?ytype->ys_argument:NULL;
 
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
-	if (yang2cli_var_union(h, ys, origtype, ytype, cb, helptext) < 0)
+	if (yang2cli_var_union(h, ys, origtype, ytype, helptext, cb) < 0)
 	    goto done;
     }
     else {
 	if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
 	    goto done;
-	if ((retval = yang2cli_var_sub(h, ys, ytype, cb, helptext, cvtype, 
-				       options, cvv, pattern, fraction_digits)) < 0)
+	if ((retval = yang2cli_var_sub(h, ys, ytype, helptext, cvtype, 
+				       options, cvv, pattern, fraction_digits, cb)) < 0)
 	    goto done;
     }
     retval = 0;
@@ -399,17 +423,16 @@ yang2cli_var_union_one(clicon_handle h,
  * @param[in]  ys    Yang statement (caller)
  * @param[in]  origtype Name of original type in the call
  * @param[in]  ytype Yang resolved type (a union in this case)
- * @param[in]  type  Name of type
- * @param[in]  cb    Buffer where cligen code is written
  * @param[in]  helptext  CLI help text
+ * @param[out]  cb    Buffer where cligen code is written
  */
 static int
 yang2cli_var_union(clicon_handle h,
 		   yang_stmt    *ys, 
 		   char         *origtype,
 		   yang_stmt    *ytype,
-		   cbuf         *cb,
-		   char         *helptext)
+		   char         *helptext,
+		   cbuf         *cb)
 {
     int        retval = -1;
     yang_stmt *ytsub = NULL;
@@ -425,7 +448,7 @@ yang2cli_var_union(clicon_handle h,
 	    continue;
 	if (i++)
 	    cprintf(cb, "|");
-	if (yang2cli_var_union_one(h, ys, origtype, ytsub, cb, helptext) < 0)
+	if (yang2cli_var_union_one(h, ys, origtype, ytsub, helptext, cb) < 0)
 	    goto done;
     }
     retval = 0;
@@ -434,20 +457,23 @@ yang2cli_var_union(clicon_handle h,
 }
 
 /*! Generate CLI code for Yang leaf statement to CLIgen variable
- * @param[in]  h     Clixon handle
- * @param[in]  ys    Yang statement
- * @param[in]  cb    Buffer where cligen code is written
- * @param[in]  helptext  CLI help text
+ * @param[in]  h        Clixon handle
+ * @param[in]  ys       Yang statement
+ * @param[in]  helptext CLI help text
+ * @param[out] cb       Buffer where cligen code is written
+
  *
  * Make a type lookup and complete a cligen variable expression such as <a:string>.
- * One complication is yang union, that needs a recursion since it consists of sub-types.
+ * One complication is yang union, that needs a recursion since it consists of 
+ * sub-types.
  * eg type union{ type int32; type string } --> (<x:int32>| <x:string>)
+ * Another is multiple ranges
  */
 static int
 yang2cli_var(clicon_handle h,
 	     yang_stmt    *ys, 
-	     cbuf         *cb,    
-	     char         *helptext)
+	     char         *helptext,
+	     cbuf         *cb)
 {
     int           retval = -1;
     char         *origtype;
@@ -476,11 +502,11 @@ yang2cli_var(clicon_handle h,
     if (restype && strcmp(restype, "union") == 0){ 
 	/* Union: loop over resolved type's sub-types (can also be recursive unions) */
 	cprintf(cb, "(");
-	if (yang2cli_var_union(h, ys, origtype, yrestype, cb, helptext) < 0)
+	if (yang2cli_var_union(h, ys, origtype, yrestype, helptext, cb) < 0)
 	    goto done;
 	if (clicon_cli_genmodel_completion(h)){
-	    if (cli_expand_var_generate(h, ys, cvtype, cb, 
-					options, fraction_digits) < 0)
+	    if (cli_expand_var_generate(h, ys, cvtype, 
+					options, fraction_digits, cb) < 0)
 		goto done;
 	    if (helptext)
 		cprintf(cb, "(\"%s\")", helptext);
@@ -498,12 +524,12 @@ yang2cli_var(clicon_handle h,
 	    completionp = clicon_cli_genmodel_completion(h);
 	if (completionp)
 	    cprintf(cb, "(");
-	if ((retval = yang2cli_var_sub(h, ys, yrestype, cb, helptext, cvtype, 
-				    options, cvv, pattern, fraction_digits)) < 0)
+	if ((retval = yang2cli_var_sub(h, ys, yrestype, helptext, cvtype, 
+				       options, cvv, pattern, fraction_digits, cb)) < 0)
 	    goto done;
 	if (completionp){
-	    if (cli_expand_var_generate(h, ys, cvtype, cb, 
-					options, fraction_digits) < 0)
+	    if (cli_expand_var_generate(h, ys, cvtype, 
+					options, fraction_digits, cb) < 0)
 		goto done;
 	    if (helptext)
 		cprintf(cb, "(\"%s\")", helptext);
@@ -518,18 +544,18 @@ yang2cli_var(clicon_handle h,
 /*! Generate CLI code for Yang leaf statement
  * @param[in]  h     Clixon handle
  * @param[in]  ys    Yang statement
- * @param[in]  cbuf  Buffer where cligen code is written
  * @param[in]  gt    CLI Generate style 
  * @param[in]  level Indentation level
- * @param[in]  callback  If set, include a "; cli_set()" callback, otherwise not.
+ * @param[in]  callback  If set, include a "; cli_set()" callback, otherwise not
+ * @param[out] cb  Buffer where cligen code is written
  */
 static int
 yang2cli_leaf(clicon_handle h, 
 	      yang_stmt    *ys, 
-	      cbuf         *cbuf,
 	      enum genmodel_type gt,
 	      int           level,
-	      int           callback)
+	      int           callback,
+	      cbuf         *cb)
 {
     yang_stmt    *yd;  /* description */
     int           retval = -1;
@@ -545,22 +571,22 @@ yang2cli_leaf(clicon_handle h,
 	if ((s = strstr(helptext, "\n\n")) != NULL)
 	    *s = '\0';
     }
-    cprintf(cbuf, "%*s", level*3, "");
+    cprintf(cb, "%*s", level*3, "");
     if (gt == GT_VARS|| gt == GT_ALL){
-	cprintf(cbuf, "%s", ys->ys_argument);
+	cprintf(cb, "%s", ys->ys_argument);
 	if (helptext)
-	    cprintf(cbuf, "(\"%s\")", helptext);
-	cprintf(cbuf, " ");
-	if (yang2cli_var(h, ys, cbuf, helptext) < 0)
+	    cprintf(cb, "(\"%s\")", helptext);
+	cprintf(cb, " ");
+	if (yang2cli_var(h, ys, helptext, cb) < 0)
 	    goto done;
     }
     else
-	if (yang2cli_var(h, ys, cbuf, helptext) < 0)
+	if (yang2cli_var(h, ys, helptext, cb) < 0)
 	    goto done;
     if (callback){
-	if (cli_callback_generate(h, ys, cbuf) < 0)
+	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
-	cprintf(cbuf, ";\n");
+	cprintf(cb, ";\n");
     }
 
     retval = 0;
@@ -573,16 +599,16 @@ yang2cli_leaf(clicon_handle h,
 /*! Generate CLI code for Yang container statement
  * @param[in]  h     Clixon handle
  * @param[in]  ys    Yang statement
- * @param[in]  cbuf  Buffer where cligen code is written
  * @param[in]  gt    CLI Generate style 
  * @param[in]  level Indentation level
+ * @param[out] cb  Buffer where cligen code is written
  */
 static int
 yang2cli_container(clicon_handle h, 
 		   yang_stmt    *ys, 
-		   cbuf         *cbuf,
 		   enum genmodel_type gt,
-		   int           level)
+		   int           level,
+		   cbuf         *cb)
 {
     yang_stmt    *yc;
     yang_stmt    *yd;
@@ -591,7 +617,7 @@ yang2cli_container(clicon_handle h,
     char         *helptext = NULL;
     char         *s;
 
-    cprintf(cbuf, "%*s%s", level*3, "", ys->ys_argument);
+    cprintf(cb, "%*s%s", level*3, "", ys->ys_argument);
     if ((yd = yang_find((yang_node*)ys, Y_DESCRIPTION, NULL)) != NULL){
 	if ((helptext = strdup(yd->ys_argument)) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
@@ -599,16 +625,16 @@ yang2cli_container(clicon_handle h,
 	}
 	if ((s = strstr(helptext, "\n\n")) != NULL)
 	    *s = '\0';
-	cprintf(cbuf, "(\"%s\")", helptext);
+	cprintf(cb, "(\"%s\")", helptext);
     }
-    if (cli_callback_generate(h, ys, cbuf) < 0)
+    if (cli_callback_generate(h, ys, cb) < 0)
 	goto done;
-    cprintf(cbuf, ";{\n");
+    cprintf(cb, ";{\n");
     for (i=0; i<ys->ys_len; i++)
 	if ((yc = ys->ys_stmt[i]) != NULL)
-	    if (yang2cli_stmt(h, yc, cbuf, gt, level+1) < 0)
+	    if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
 		goto done;
-    cprintf(cbuf, "%*s}\n", level*3, "");
+    cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
   done:
     if (helptext)
@@ -619,16 +645,16 @@ yang2cli_container(clicon_handle h,
 /*! Generate CLI code for Yang list statement
  * @param[in]  h     Clixon handle
  * @param[in]  ys    Yang statement
- * @param[in]  cbuf  Buffer where cligen code is written
  * @param[in]  gt    CLI Generate style 
  * @param[in]  level Indentation level
+ * @param[out] cb    Buffer where cligen code is written
  */
 static int
-yang2cli_list(clicon_handle h, 
-	      yang_stmt    *ys, 
-	      cbuf         *cbuf,
+yang2cli_list(clicon_handle      h, 
+	      yang_stmt         *ys, 
 	      enum genmodel_type gt,
-	      int           level)
+	      int                level,
+	      cbuf              *cb)
 {
     yang_stmt    *yc;
     yang_stmt    *yd;
@@ -641,7 +667,7 @@ yang2cli_list(clicon_handle h,
     char         *helptext = NULL;
     char         *s;
 
-    cprintf(cbuf, "%*s%s", level*3, "", ys->ys_argument);
+    cprintf(cb, "%*s%s", level*3, "", ys->ys_argument);
     if ((yd = yang_find((yang_node*)ys, Y_DESCRIPTION, NULL)) != NULL){
 	if ((helptext = strdup(yd->ys_argument)) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
@@ -649,7 +675,7 @@ yang2cli_list(clicon_handle h,
 	}
 	if ((s = strstr(helptext, "\n\n")) != NULL)
 	    *s = '\0';
-	cprintf(cbuf, "(\"%s\")", helptext);
+	cprintf(cb, "(\"%s\")", helptext);
     }
     /* Loop over all key variables */
     cvk = ys->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
@@ -665,12 +691,12 @@ yang2cli_list(clicon_handle h,
 	/* Print key variable now, and skip it in loop below 
 	   Note, only print callback on last statement
 	 */
-	if (yang2cli_leaf(h, yleaf, cbuf, gt==GT_VARS?GT_NONE:gt, level+1, 
-			  cvec_next(cvk, cvi)?0:1) < 0)
+	if (yang2cli_leaf(h, yleaf, gt==GT_VARS?GT_NONE:gt, level+1, 
+			  cvec_next(cvk, cvi)?0:1, cb) < 0)
 	    goto done;
     }
 
-    cprintf(cbuf, "{\n");
+    cprintf(cb, "{\n");
     for (i=0; i<ys->ys_len; i++)
 	if ((yc = ys->ys_stmt[i]) != NULL){
 	    /*  cvk is a cvec of strings containing variable names
@@ -684,10 +710,10 @@ yang2cli_list(clicon_handle h,
 	    }
 	    if (cvi != NULL)
 		continue;
-	    if (yang2cli_stmt(h, yc, cbuf, gt, level+1) < 0)
+	    if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
 		goto done;
 	}
-    cprintf(cbuf, "%*s}\n", level*3, "");
+    cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
   done:
     if (helptext)
@@ -699,9 +725,9 @@ yang2cli_list(clicon_handle h,
  *
  * @param[in]  h     Clixon handle
  * @param[in]  ys    Yang statement
- * @param[in]  cbuf  Buffer where cligen code is written
  * @param[in]  gt    CLI Generate style 
  * @param[in]  level Indentation level
+ * @param[out] cb    Buffer where cligen code is written
 @example
   choice interface-type {
          container ethernet { ... }
@@ -714,9 +740,9 @@ yang2cli_list(clicon_handle h,
 static int
 yang2cli_choice(clicon_handle h, 
 		yang_stmt    *ys, 
-		cbuf         *cbuf,
 		enum genmodel_type gt,
-		int           level)
+		int           level,
+    		cbuf         *cb)
 {
     int           retval = -1;
     yang_stmt    *yc;
@@ -726,7 +752,7 @@ yang2cli_choice(clicon_handle h,
 	if ((yc = ys->ys_stmt[i]) != NULL){
 	    switch (yc->ys_keyword){
 	    case Y_CASE:
-		if (yang2cli_stmt(h, yc, cbuf, gt, level+2) < 0)
+		if (yang2cli_stmt(h, yc, gt, level+2, cb) < 0)
 		    goto done;
 		break;
 	    case Y_CONTAINER:
@@ -734,7 +760,7 @@ yang2cli_choice(clicon_handle h,
 	    case Y_LEAF_LIST:
 	    case Y_LIST:
 	    default:
-		if (yang2cli_stmt(h, yc, cbuf, gt, level+1) < 0)
+		if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
 		    goto done;
 		break;
 	    }
@@ -747,17 +773,16 @@ yang2cli_choice(clicon_handle h,
 /*! Generate CLI code for Yang statement
  * @param[in]  h     Clixon handle
  * @param[in]  ys    Yang statement
- * @param[in]  cbuf  Buffer where cligen code is written
+ * @param[out] cb    Buffer where cligen code is written
  * @param[in]  gt    CLI Generate style 
  * @param[in]  level Indentation level
  */
 static int
 yang2cli_stmt(clicon_handle h, 
 	      yang_stmt    *ys, 
-	      cbuf         *cbuf,
 	      enum genmodel_type gt,
-	      int           level /* indentation level for pretty-print */
-    )
+	      int           level, /* indentation level for pretty-print */
+	      cbuf         *cb)
 {
     yang_stmt    *yc;
     int           retval = -1;
@@ -766,20 +791,20 @@ yang2cli_stmt(clicon_handle h,
     if (yang_config(ys)){
 	switch (ys->ys_keyword){
 	case Y_CONTAINER:
-	    if (yang2cli_container(h, ys, cbuf, gt, level) < 0)
+	    if (yang2cli_container(h, ys, gt, level, cb) < 0)
 		goto done;
 	    break;
 	case Y_LIST:
-	    if (yang2cli_list(h, ys, cbuf, gt, level) < 0)
+	    if (yang2cli_list(h, ys, gt, level, cb) < 0)
 		goto done;
 	    break;
 	case Y_CHOICE:
-	    if (yang2cli_choice(h, ys, cbuf, gt, level) < 0)
+	    if (yang2cli_choice(h, ys, gt, level, cb) < 0)
 		goto done;
 	    break;
 	case Y_LEAF_LIST:
 	case Y_LEAF:
-	    if (yang2cli_leaf(h, ys, cbuf, gt, level, 1) < 0)
+	    if (yang2cli_leaf(h, ys, gt, level, 1, cb) < 0)
 		goto done;
 	    break;
 	case Y_CASE:
@@ -787,7 +812,7 @@ yang2cli_stmt(clicon_handle h,
 	case Y_MODULE:
 	    for (i=0; i<ys->ys_len; i++)
 		if ((yc = ys->ys_stmt[i]) != NULL)
-		    if (yang2cli_stmt(h, yc, cbuf, gt, level+1) < 0)
+		    if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
 			goto done;
 	    break;
 	default: /* skip */
@@ -815,28 +840,28 @@ yang2cli(clicon_handle      h,
 	 parse_tree        *ptnew, 
 	 enum genmodel_type gt)
 {
-    cbuf           *cbuf;
+    cbuf           *cb = NULL;
     int             i;
     int             retval = -1;
     yang_stmt      *ymod = NULL;
     cvec           *globals;       /* global variables from syntax */
 
-    if ((cbuf = cbuf_new()) == NULL){
+    if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
     /* Traverse YANG, loop through all modules and generate CLI */
     for (i=0; i<yspec->yp_len; i++)
 	if ((ymod = yspec->yp_stmt[i]) != NULL){
-	    if (yang2cli_stmt(h, ymod, cbuf, gt, 0) < 0)
+	    if (yang2cli_stmt(h, ymod, gt, 0, cb) < 0)
 		goto done;
 	}
-    clicon_debug(2, "%s: buf\n%s\n", __FUNCTION__, cbuf_get(cbuf));
+    clicon_debug(2, "%s: buf\n%s\n", __FUNCTION__, cbuf_get(cb));
     /* Parse the buffer using cligen parser. XXX why this?*/
     if ((globals = cvec_new(0)) == NULL)
 	goto done;
     /* load cli syntax */
-    if (cligen_parse_str(cli_cligen(h), cbuf_get(cbuf), 
+    if (cligen_parse_str(cli_cligen(h), cbuf_get(cb), 
 			 "yang2cli", ptnew, globals) < 0)
 	goto done;
     cvec_free(globals);
@@ -850,6 +875,7 @@ yang2cli(clicon_handle      h,
 
     retval = 0;
   done:
-    cbuf_free(cbuf);
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
