@@ -27,7 +27,7 @@ cat <<EOF > $xml
 EOF
 
 cat <<EOF > $xml2
-<if:interfaces>
+<if:interfaces xmlns:if="urn:example:if" xmlns:ip="urn:example:ip">
   <if:interface>
     <if:name>e0</if:name>
     <ip:ipv6>
@@ -35,9 +35,9 @@ cat <<EOF > $xml2
     </ip:ipv6>
   </if:interface>
 </if:interfaces>
-<rt:name>e0</rt:name>
+<rt:name xmlns:rt="urn:example:rt">e0</rt:name>
 <address-family>myfamily</address-family>
-<aaa>
+<aaa xmlns:rt="urn:example:rt">
   <rt:address-family>v6ur:ipv6-unicast</rt:address-family>
   <name>foo</name>
   <bbb>

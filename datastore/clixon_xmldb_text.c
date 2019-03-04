@@ -886,6 +886,7 @@ text_modify(struct text_handle *th,
     cxobj     *x0c; /* base child */
     cxobj     *x0b; /* base body */
     cxobj     *x1c; /* mod child */
+    char      *xns;  /* namespace */
     char      *x0bstr; /* mod body string */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
@@ -923,13 +924,18 @@ text_modify(struct text_handle *th,
 		//		int iamkey=0;
 		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
-		/* Copy xmlns attributes */
-		if ((x1a = xml_find_type(x1, NULL, "xmlns", CX_ATTR)) != 0){
-		    if ((x0a = xml_dup(x1a)) == NULL)
-			goto done;
-		    if (xml_addsub(x0, x0a) < 0)
-			goto done;
-		}
+
+		/* Copy xmlns attributes  */
+		x1a = NULL;
+		while ((x1a = xml_child_each(x1, x1a, CX_ATTR)) != NULL) 
+		    if (strcmp(xml_name(x1a),"xmlns")==0 ||
+			((xns = xml_prefix(x1a)) && strcmp(xns, "xmlns")==0)){
+			if ((x0a = xml_dup(x1a)) == NULL)
+			    goto done;
+			if (xml_addsub(x0, x0a) < 0)
+			    goto done;
+		    }
+
 #if 0
 		/* If it is key I dont want to mark it */
 		if ((iamkey=yang_key_match(y0->yn_parent, x1name)) < 0)
@@ -1042,13 +1048,16 @@ text_modify(struct text_handle *th,
 		}
 		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
-		/* Copy xmlns attributes */
-		if ((x1a = xml_find_type(x1, NULL, "xmlns", CX_ATTR)) != 0){
-		    if ((x0a = xml_dup(x1a)) == NULL)
-			goto done;
-		    if (xml_addsub(x0, x0a) < 0)
-			goto done;
-		}
+		/* Copy xmlns attributes  */
+		x1a = NULL;
+		while ((x1a = xml_child_each(x1, x1a, CX_ATTR)) != NULL) 
+		    if (strcmp(xml_name(x1a),"xmlns")==0 ||
+			((xns = xml_prefix(x1a)) && strcmp(xns, "xmlns")==0)){
+			if ((x0a = xml_dup(x1a)) == NULL)
+			    goto done;
+			if (xml_addsub(x0, x0a) < 0)
+			    goto done;
+		    }
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
 	    }

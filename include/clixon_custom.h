@@ -41,6 +41,4 @@
  */
 #undef RPC_USERNAME_ASSERT
 
-/* Full xmlns validation check is made only if XML has associated YANG spec 
-*/
-#define XMLNS_YANG_ONLY 1
+

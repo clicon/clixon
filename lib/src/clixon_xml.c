@@ -362,19 +362,12 @@ xml_localname_check(cxobj *xn,
 	    return 0;
     	xn = xp;
     }
-#ifdef XMLNS_YANG_ONLY
-    if (ys == NULL)
-	return 0; /* If no yang spec */
-    else
-#endif
-	{
-	/* Check if my namespace */
-	if ((n = yang_find_myprefix(ys)) != NULL && strcmp(nsn,n)==0)
-	    return 0;
-	/* Check if any imported module */
-	if (yang_find_module_by_prefix(ys, nsn) != NULL)
-	    return 0;
-    }
+    /* Check if my namespace */
+    if ((n = yang_find_myprefix(ys)) != NULL && strcmp(nsn,n)==0)
+	return 0;
+    /* Check if any imported module */
+    if (yang_find_module_by_prefix(ys, nsn) != NULL)
+	return 0;
     /* Not found, error */
     clicon_err(OE_XML, ENOENT, "Namespace name %s in %s:%s not found",
 	       nsn, nsn, xml_name(xn));

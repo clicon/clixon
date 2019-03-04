@@ -358,7 +358,9 @@ validate_identityref(cxobj     *xt,
 	    goto done;
 	goto fail;
     }
-    /* Here check if node is in the derived node list of the base identity */
+    /* Here check if node is in the derived node list of the base identity 
+     * The derived node list is a cvec computed XXX
+     */
     if (cvec_find(ybaseid->ys_cvec, node) == NULL){
 	cbuf_reset(cb);
 	cprintf(cb, "Identityref validation failed, %s not derived from %s", 
@@ -767,7 +769,8 @@ xml_yang_validate_all(cxobj   *xt,
 	default:
 	    break;
 	}
-	/* must sub-node RFC 7950 Sec 7.5.3. Can be several. */
+	/* must sub-node RFC 7950 Sec 7.5.3. Can be several. 
+	* XXX. use yang path instead? */
 	yc = NULL;
 	while ((yc = yn_each((yang_node*)ys, yc)) != NULL) {
 	    if (yc->ys_keyword != Y_MUST)

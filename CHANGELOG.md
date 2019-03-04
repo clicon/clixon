@@ -21,14 +21,20 @@
   * Note that this adds bytes to your configs
 
 ### API changes on existing features (you may need to change your code)
-* Removed obsolete `CLICON_CLI_MODEL_TREENAME_PATCH`
+* Strict XML Prefixed namespace check. This means all XML namespaces must always be declared by default or prefixed attribute name. There were some cases where this was not enforced. Example, `y` must be declared:
+```
+  <a><y:b/></a> -->    <a xmlns:y="urn:example:y"><y:b/></a>
+```
 
 ### Minor changes
+* Removed obsolete `CLICON_CLI_MODEL_TREENAME_PATCH`
 * Added specific clixon_suberrno code: XMLPARSE_ERRNO to identify XML parse errors.
 * Removed all dependency on strverscmp
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Yang augment created multiple augmented children (no side-effect)
+* XML prefixed attribute names were not copied into the datastore
 * [yang type range statement does not support multiple values](https://github.com/clicon/clixon/issues/59)
   * Remaining problem was mainly CLIgen feature. Strengthened test cases in [test/test_type.sh].
   * Also in: [Multiple ranges support](https://github.com/clicon/clixon/issues/78)

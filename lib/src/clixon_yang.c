@@ -1620,10 +1620,16 @@ ys_grouping_resolve(yang_stmt  *ys,
 }
 
 /*! This is an augment node, augment the original datamodel. 
-  The target node MUST be either a container, list, choice, case, input,
-  output, or notification node.
-  If the "augment" statement is on the top level the absolute form MUST be used.
-  @note Destructively changing a datamodel may affect outlying loop?
+ * @param[in] ys    The augment statement
+ * @param[in] yspec Yang specification
+ * @see RFC7950 Sec 7.17
+ * The target node MUST be either a container, list, choice, case, input,
+ * output, or notification node.
+ * If the "augment" statement is on the top level the absolute form MUST be 
+ * used.
+ * All data nodes defined in the "augment" statement are defined as XML
+ * elements in the XML namespace of the module where the "augment" is
+ * specified.
  */
 static int
 yang_augment_node(yang_stmt *ys, 
@@ -1631,25 +1637,25 @@ yang_augment_node(yang_stmt *ys,
 {
     int        retval = -1;
     char      *schema_nodeid;
-    yang_stmt *yss = NULL;
+    yang_stmt *ytarget = NULL;
     yang_stmt *yc;
     int        i;
     
     schema_nodeid = ys->ys_argument;
     clicon_debug(2, "%s %s", __FUNCTION__, schema_nodeid);
     /* Find the target */
-    if (yang_abs_schema_nodeid(ysp, ys, schema_nodeid, -1, &yss) < 0)
+    if (yang_abs_schema_nodeid(ysp, ys, schema_nodeid, -1, &ytarget) < 0)
 	goto done;
-    if (yss == NULL)
+    if (ytarget == NULL)
 	goto ok;
-    /* Extend yss with ys' children
-     * First enlarge yss vector 
+    /* Extend ytarget with ys' children
+     * First enlarge ytarget vector 
      */
     for (i=0; i<ys->ys_len; i++){
 	if ((yc = ys_dup(ys->ys_stmt[i])) == NULL)
 	    goto done;
 	/* XXX: use prefix of origin */
-	if (yn_insert((yang_node*)yss, yc) < 0)
+	if (yn_insert((yang_node*)ytarget, yc) < 0)
 	    goto done;
     }
  ok:
@@ -1660,7 +1666,8 @@ yang_augment_node(yang_stmt *ys,
 
 /*! Find all top-level augments and change original datamodels. */
 static int
-yang_augment_spec(yang_spec *ysp)
+yang_augment_spec(yang_spec *ysp,
+		  int        modnr)
 {
     int        retval = -1;
     yang_stmt *ym;
@@ -1668,7 +1675,7 @@ yang_augment_spec(yang_spec *ysp)
     int        i;
     int        j;
 
-    i = 0;
+    i = modnr;
     while (i<ysp->yp_len){ /* Loop through modules and sub-modules */
 	ym = ysp->yp_stmt[i++];
 	j = 0;
@@ -2320,8 +2327,9 @@ yang_parse_post(clicon_handle h,
     int retval = -1;
     int i;
     
-    /* 1: Parse from text to yang parse-tree. */
-    /* Iterate through modules */
+    /* 1: Parse from text to yang parse-tree. 
+     * Iterate through modules and detect module/submodules to parse
+     * - note the list may grow on each iteration */
     for (i=modnr; i<yspec->yp_len; i++)
 	if (yang_parse_recurse(h, yspec->yp_stmt[i], yspec) < 0)
 	    goto done;
@@ -2382,7 +2390,7 @@ yang_parse_post(clicon_handle h,
     }
 
     /* 8: Top-level augmentation of all modules XXX: only new modules? */
-    if (yang_augment_spec(yspec) < 0)
+    if (yang_augment_spec(yspec, modnr) < 0)
 	goto done;
 
     /* 9: sanity check of schemanode references, need more here */
