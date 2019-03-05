@@ -773,6 +773,7 @@ ys_module_by_xml(yang_spec  *ysp,
  * @param[in] ys    Any yang statement in a yang tree
  * @retval    ymod  The top module or sub-module 
  * @see ys_spec
+ * @note For an augmented node, the original module is returned
  */
 yang_stmt *
 ys_module(yang_stmt *ys)
@@ -786,6 +787,10 @@ ys_module(yang_stmt *ys)
     while (ys != NULL &&
 	   ys->ys_keyword != Y_MODULE &&
 	   ys->ys_keyword != Y_SUBMODULE){
+	if (ys->ys_module){ /* shortcut due to augment */
+	    ys = ys->ys_module;
+	    break;
+	}
 	yn = ys->ys_parent;
 	/* Some extra stuff to ensure ys is a stmt */
 	if (yn && yn->yn_keyword == Y_SPEC)
@@ -800,6 +805,7 @@ ys_module(yang_stmt *ys)
  * @param[in] ys    Any yang statement in a yang tree
  * @retval    yspec The top yang specification
  * @see  ys_module
+ * @see  ys_yang_augment_node where shortcut is set
  */
 yang_spec *
 ys_spec(yang_stmt *ys)
@@ -1640,7 +1646,12 @@ yang_augment_node(yang_stmt *ys,
     yang_stmt *ytarget = NULL;
     yang_stmt *yc;
     int        i;
-    
+    yang_stmt *ymod;
+
+    if ((ymod = ys_module(ys)) == NULL){
+	clicon_err(OE_YANG, 0, "My yang module not found");
+	goto done;
+    }
     schema_nodeid = ys->ys_argument;
     clicon_debug(2, "%s %s", __FUNCTION__, schema_nodeid);
     /* Find the target */
@@ -1654,7 +1665,7 @@ yang_augment_node(yang_stmt *ys,
     for (i=0; i<ys->ys_len; i++){
 	if ((yc = ys_dup(ys->ys_stmt[i])) == NULL)
 	    goto done;
-	/* XXX: use prefix of origin */
+	yc->ys_module = ymod;
 	if (yn_insert((yang_node*)ytarget, yc) < 0)
 	    goto done;
     }

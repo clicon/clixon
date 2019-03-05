@@ -198,6 +198,10 @@ struct yang_stmt{
     char              *ys_argument;  /* String / argument depending on keyword */   
     int                ys_flags;     /* Flags according to YANG_FLAG_* above */
     /*--------------here common for all -------*/
+    yang_stmt         *ys_module;   /* Shortcut to "my" module. Augmented
+				       nodes can belong to other 
+					modules than the ancestor module */
+
     char              *ys_extra;     /* For unknown */
     cg_var            *ys_cv;        /* cligen variable. See ys_populate()
 					Following stmts have cv:s:

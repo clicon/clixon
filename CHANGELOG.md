@@ -34,6 +34,8 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* [Identityref inside augment statement](https://github.com/clicon/clixon/issues/77)
+  * Yang-stmt enhanced with "shortcut" to original module
 * Yang augment created multiple augmented children (no side-effect)
 * XML prefixed attribute names were not copied into the datastore
 * [yang type range statement does not support multiple values](https://github.com/clicon/clixon/issues/59)

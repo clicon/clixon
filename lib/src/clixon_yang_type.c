@@ -772,7 +772,7 @@ ys_typedef_up(yang_stmt *ys)
    identityref's base identity. 
    1. (base) identity must exist (be found). This is a sanity check
      of the specification and also necessary for identity statements.
-   (This is what is dine here)
+   (This is what is done here)
    2. Check if a given node has value derived from base identity. This is
       a run-time check necessary when validating eg netconf.
    (This is validation)

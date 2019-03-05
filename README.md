@@ -112,12 +112,11 @@ However, the following YANG syntax modules are not implemented:
 - min/max-elements
 - unique
 - action
+- refine
 
 Restrictions on Yang types are as follows:
-- The range statement for built-in integers does not support multiple values (RFC7950 9.2.4)
-- The length statement for built-in strings does not support multiple values (RFC7950 9.4.4)
 - Submodules cannot re-use a prefix in an import statement that is already used for another imported module in the module that the submodule belongs to. (see https://github.com/clicon/clixon/issues/60)
-- default values on leaf-lists are not supported (RFC7950 7.7.2)
+- Default values on leaf-lists are not supported (RFC7950 7.7.2)
 
 ## XML
 

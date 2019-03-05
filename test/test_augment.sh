@@ -6,7 +6,6 @@
 # both defined in the basic ietf-interfaces module (type) as well as the main
 # module through the augmented module ()
 # The ietf-interfaces is very restricted (not original).
-# Work-in-progress
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -36,6 +35,8 @@ cat <<EOF > $cfg
 EOF
 
 # Stub ietf-interfaces for test
+# This is the target module (where the augment is applied to)
+# The grouping is from rfc7950 Sec 7.12 with simplified types
 cat <<EOF > $fyang2
 module ietf-interfaces {
   yang-version 1.1;
@@ -46,9 +47,6 @@ module ietf-interfaces {
     description
       "Base identity from which specific interface types are
        derived.";
-  }
-  identity eth {
-     base interface-type;
   }
   identity fddi {
      base interface-type;
@@ -68,11 +66,21 @@ module ietf-interfaces {
       }
     }
   }
+  grouping endpoint {
+       description "A reusable endpoint group.";
+       leaf mip {
+         type string;
+       }
+       leaf mport {
+         type uint16;
+       }
+  }
 }
 EOF
 
 # From rfc7950 sec 7.17
 # Note "when" is not present
+# This is the main module where the augment exists
 cat <<EOF > $fyang
 module example-augment {
        yang-version 1.1;
@@ -85,11 +93,46 @@ module example-augment {
        identity some-new-iftype {
           base if:interface-type;
        }
+       identity my-type {
+          description "an identity based in the main module";
+       }
+       identity you {
+          base my-type;
+       }
+       grouping mypoint {
+         description "A reusable endpoint group.";
+         leaf ip {
+           type string;
+         }
+         leaf port {
+           type uint16;
+         }
+       }
        augment "/if:interfaces/if:interface" {
 /*       when 'derived-from-or-self(if:type, "mymod:some-new-iftype")'; */
           leaf mandatory-leaf {
              mandatory true;
              type string;
+          }
+          leaf me {
+              type identityref {
+                    base mymod:my-type;
+              }
+          }
+          leaf other {
+              type identityref {
+                    base if:interface-type;
+              }
+          }
+          uses if:endpoint {
+            refine port {
+              default 80;
+            }
+          }
+          uses mypoint {
+            refine mport {
+              default 8080;
+            }
           }
        }
 }
@@ -113,13 +156,44 @@ fi
 # mandatory-leaf See RFC7950 Sec 7.17
 # Error1: the xml should have xmlns for "mymod"
 #                XMLNS_YANG_ONLY must be undeffed
-new "netconf set new if my w augmented type"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:mymod="urn:example:augment"><name>my</name><type>mymod:some-new-iftype</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf></interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+new "netconf set interface with augmented type and mandatory leaf"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+  <interface xmlns:mymod="urn:example:augment">
+    <name>e1</name>
+    <type>mymod:some-new-iftype</type>
+    <mymod:mandatory-leaf>true</mymod:mandatory-leaf>
+  </interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate ok"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+
+new "netconf set identity defined in other"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+  <interface xmlns:mymod="urn:example:augment">
+    <name>e2</name>
+    <type>fddi</type>
+    <mymod:mandatory-leaf>true</mymod:mandatory-leaf>
+    <other>if:fddi</other>
+  </interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate ok"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+
+new "netconf set identity defined in main"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+<interface xmlns:mymod="urn:example:augment">
+   <name>e3</name>
+   <type>fddi</type>
+   <mymod:mandatory-leaf>true</mymod:mandatory-leaf>
+   <me>mymod:you</me>
+ </interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate ok"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+exit
 
 if [ $BE -eq 0 ]; then
     exit # BE
@@ -134,7 +208,5 @@ fi
 # kill backend
 stop_backend -f $cfg
 sudo pkill -u root -f clixon_backend
-
-
 
 rm -rf $dir

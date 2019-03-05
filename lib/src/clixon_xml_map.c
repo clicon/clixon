@@ -316,6 +316,7 @@ validate_leafref(cxobj     *xt,
  * @retval     0     Validation failed
  * @retval    -1     Error
  * @see ys_populate_identity where the derived types are set
+ * @see yang_augment_node
  * @see RFC7950 Sec 9.10.2:
  */
 static int
