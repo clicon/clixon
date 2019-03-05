@@ -156,7 +156,10 @@ xml_child_spec(cxobj      *x,
     char      *name;
 	    
     name = xml_name(x);
+
     if (xp && (yparent = xml_spec(xp)) != NULL){
+	/* First case: parent already has an associated yang statement,
+	 * then find matching child of that */
 	if (yparent->ys_keyword == Y_RPC){
 	    if ((yi = yang_find((yang_node*)yparent, Y_INPUT, NULL)) != NULL)
 		y = yang_find_datanode((yang_node*)yi, name);
@@ -165,14 +168,12 @@ xml_child_spec(cxobj      *x,
 	    y = yang_find_datanode((yang_node*)yparent, name);
     }
     else if (yspec){
+	/* Second case, this is a "root", need to find yang stmt from spec
+	 */
 	if (ys_module_by_xml(yspec, xp, &ymod) < 0)
 	    goto done;
 	if (ymod != NULL)
 	    y = yang_find_schemanode((yang_node*)ymod, name);
-	if (y == NULL && !_CLICON_XML_NS_STRICT){
-	    if (xml_yang_find_non_strict(x, yspec, &y) < 0) /* schemanode */
-		goto done;
-	}
     }
     else
 	y = NULL;

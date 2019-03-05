@@ -30,7 +30,7 @@ cfg=$dir/conf_yang.xml
 fyang=$dir/nacm-example.yang
 
 cat <<EOF > $cfg
-<config>
+<clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
@@ -47,7 +47,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
-</config>
+</clixon-config>
 EOF
 
 cat <<EOF > $fyang
@@ -235,7 +235,7 @@ expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data)" 0 '{"i
 #------- RPC operation
 
 new "admin rpc ok"
-expecteq "$(curl -u andy:bar -s -X POST  -d '{"clixon-example:input":{"x":42}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"clixon-example:output": {"x": "42","y": "42"}}
+expecteq "$(curl -u andy:bar -s -X POST  -d '{"clixon-example:input":{"x":"78"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"clixon-example:output": {"x": "78","y": "42"}}
 '
 
 new "admin rpc netconf ok"

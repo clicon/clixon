@@ -503,7 +503,7 @@ from_client_edit_config(clicon_handle h,
 	goto ok;
     }
     else{
-	/* <config> yang spec may be set to anyxmly by ingress yang check,...*/
+	/* <config> yang spec may be set to anyxml by ingress yang check,...*/
 	if (xml_spec(xc) != NULL)
 	    xml_spec_set(xc, NULL);
 	/* Populate XML with Yang spec (why not do this in parser?) 

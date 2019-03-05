@@ -21,13 +21,28 @@
   * Note that this adds bytes to your configs
 
 ### API changes on existing features (you may need to change your code)
-* Strict XML Prefixed namespace check. This means all XML namespaces must always be declared by default or prefixed attribute name. There were some cases where this was not enforced. Example, `y` must be declared:
+* Clixon configuration file top-level symbols has changed to `clixon-config`and namespace check is enforced. This means all Clixon configuration files must change from:
+```
+  <config>
+    ...
+  </config>
+```
+to:
+```
+  <clixon-config xmlns="http://clicon.org/config">
+    ...
+  </clixon-config>
+```
+* Strict XML prefixed namespace check. This means all XML namespaces must always be declared by default or prefixed attribute name. There were some cases where this was not enforced. Example, `y` must be declared:
 ```
   <a><y:b/></a> -->    <a xmlns:y="urn:example:y"><y:b/></a>
 ```
 
 ### Minor changes
-* Removed obsolete `CLICON_CLI_MODEL_TREENAME_PATCH`
+* clixon-config YAML file has new revision: 2019-03-05.
+  * New URN and changed top-level symbol to `clixon-config`
+* Removed obsolete `_CLICON_XML_NS_STRICT` variable and `CLICON_XML_NS_STRICT` config option.
+* Removed obsolete `CLICON_CLI_MODEL_TREENAME_PATCH` constant
 * Added specific clixon_suberrno code: XMLPARSE_ERRNO to identify XML parse errors.
 * Removed all dependency on strverscmp
 * Added libgen.h for baseline()

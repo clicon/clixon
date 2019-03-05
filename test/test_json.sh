@@ -1,6 +1,6 @@
 #!/bin/bash
 # Test: JSON parser tests
-# Note that nmbers shouldnot be quoted. See test_restconf2.sh for typed
+# Note that members should not be quoted. See test_restconf2.sh for typed
 #PROG="valgrind --leak-check=full --show-leak-kinds=all ../util/clixon_util_json"
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

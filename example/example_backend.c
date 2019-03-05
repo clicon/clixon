@@ -95,7 +95,7 @@ transaction_commit(clicon_handle    h,
     return 0;
 }
 
-/*! Routing example notifcation timer handler. Here is where the periodic action is 
+/*! Routing example notification timer handler. Here is where the periodic action is 
  */
 static int
 example_stream_timer(int   fd, 
@@ -105,7 +105,7 @@ example_stream_timer(int   fd,
     clicon_handle          h = (clicon_handle)arg;
 
     /* XXX Change to actual netconf notifications and namespace */
-    if (stream_notify(h, "EXAMPLE", "<event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
+    if (stream_notify(h, "EXAMPLE", "<event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
 	goto done;
     if (example_stream_timer_setup(h) < 0)
 	goto done;

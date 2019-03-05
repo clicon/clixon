@@ -1246,10 +1246,6 @@ text_modify_top(struct text_handle *th,
 	    goto done;
 	if (ymod != NULL)
 	    yc = yang_find_datanode((yang_node*)ymod, x1cname);
-	if (yc == NULL && !_CLICON_XML_NS_STRICT){
-	    if (xml_yang_find_non_strict(x1c, yspec, &yc) < 0)
-		goto done;
-	}
 	if (yc == NULL){
 	    if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
 		goto done;

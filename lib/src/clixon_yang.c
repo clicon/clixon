@@ -1801,12 +1801,13 @@ yang_expand(yang_node *yn)
  * Syntax parsing. A string is input and a syntax-tree is returned (or error). 
  * A variable record is also returned containing a list of (global) variable values.
  * (cloned from cligen)
- * @param[in] h        CLICON handle
- * @param[in] str      String of yang statements
- * @param[in] name     Log string, typically filename
- * @param[in] ysp      Yang specification. Should ave been created by caller using yspec_new
+ * @param[in] h      CLICON handle
+ * @param[in] str    String of yang statements
+ * @param[in] name   Log string, typically filename
+ * @param[in] ysp    Yang specification. Should ave been created by caller 
+ *                   using yspec_new
  * @retval ymod      Top-level yang (sub)module
- * @retval NULL    Error encountered
+ * @retval NULL      Error encountered
  * Calling order:
  *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
  *   yang_parse_recurse     # Parse one yang module, go through its (sub)modules, parse them and then recursively parse them
