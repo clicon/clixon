@@ -29,7 +29,6 @@ copy("Copy and create a new object") {
 }
 discard("Discard edits (rollback 0)"), discard_changes();
 compare("Compare running and candidate"), compare_dbs((int32)1);
-compare("Compare running and candidate"), compare_dbs((int32)1);
 
 show("Show a particular state of the system"){
     xpath("Show configuration") <xpath:string>("XPATH expression"), show_conf_xpath("candidate");

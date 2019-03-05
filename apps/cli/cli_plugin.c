@@ -282,8 +282,11 @@ cli_load_syntax(clicon_handle h,
 
     /* Make sure we have a syntax mode specified */
     if (mode == NULL || strlen(mode) < 1) { /* may be null if not given in file */
-	clicon_err(OE_PLUGIN, 0, "No syntax mode specified in %s", filepath);
-	goto done;
+	mode = clicon_cli_mode(h);
+	if (mode == NULL || strlen(mode) < 1) { /* may be null if not given in file */	
+	    clicon_err(OE_PLUGIN, 0, "No syntax mode specified in %s", filepath);
+	    goto done;
+	}
     }
     if ((vec = clicon_strsep(mode, ":", &nvec)) == NULL) 
 	goto done;

@@ -27,6 +27,7 @@
 ```
 
 ### Minor changes
+* Added "base" as CLI default mode and "cli> " as default prompt.
 * Removed obsolete `CLICON_CLI_MODEL_TREENAME_PATCH`
 * Added specific clixon_suberrno code: XMLPARSE_ERRNO to identify XML parse errors.
 * Removed all dependency on strverscmp

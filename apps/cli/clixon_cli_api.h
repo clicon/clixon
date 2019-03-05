@@ -42,7 +42,7 @@
  */
 /* Max prompt length */
 #define CLI_PROMPT_LEN 64
-#define CLI_DEFAULT_PROMPT	">"
+#define CLI_DEFAULT_PROMPT	"cli> "
 
 /* 
  * Function Declarations 
