@@ -193,8 +193,6 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candid
 
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-exit
-
 if [ $BE -eq 0 ]; then
     exit # BE
 fi
