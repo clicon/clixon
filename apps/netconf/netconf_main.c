@@ -312,7 +312,7 @@ static int
 timeout_fn(int s,
 	   void *arg)
 {
-    clicon_err(OE_EVENTS, ETIME, "User request timeout");
+    clicon_err(OE_EVENTS, ETIMEDOUT, "User request timeout");
     return -1; 
 }
 
