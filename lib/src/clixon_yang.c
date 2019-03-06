@@ -68,6 +68,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <netinet/in.h>
+#include <libgen.h>
 
 /* cligen */
 #include <cligen/cligen.h>
