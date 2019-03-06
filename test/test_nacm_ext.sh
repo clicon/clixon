@@ -17,7 +17,7 @@ nacmfile=$dir/nacmfile
 
 # Note filter out example_backend_nacm.so in CLICON_BACKEND_REGEXP below
 cat <<EOF > $cfg
-<config>
+<clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
@@ -36,7 +36,7 @@ cat <<EOF > $cfg
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_NACM_MODE>external</CLICON_NACM_MODE>
   <CLICON_NACM_FILE>$nacmfile</CLICON_NACM_FILE>
-</config>
+</clixon-config>
 EOF
 
 cat <<EOF > $fyang

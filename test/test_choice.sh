@@ -15,7 +15,7 @@ cfg=$dir/choice.xml
 fyang=$dir/type.yang
 
 cat <<EOF > $cfg
-<config>
+<clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
@@ -30,7 +30,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
-</config>
+</clixon-config>
 EOF
 
 cat <<EOF > $fyang

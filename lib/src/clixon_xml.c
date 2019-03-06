@@ -135,16 +135,6 @@ struct xml{
 /*
  * Variables
  */
-/* If set to 1 which is default, strict namespace checking of XML is made.
- * If set to 0, "loose" namespace semantics is applied.
- * This means: iterate through all yang modules to find matching datanode
- * or rpc if no xmlns attribute specifies namespace.
- * This is _wrong_, but is the way Clixon originally was written, and some
- * code still relies on it. 
- * This, of course, should change.
- * @see CLICON_XML_NS_STRICT clixon configure option 
- */
-int _CLICON_XML_NS_STRICT = 1;
 
 /* Mapping between xml type <--> string */
 static const map_str2int xsmap[] = {

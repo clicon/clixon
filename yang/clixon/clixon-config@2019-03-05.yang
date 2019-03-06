@@ -39,6 +39,11 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2019-03-05 {
+	description
+	    "Changed URN. Changed top-level symbol to clixon-config.
+             Released in Clixon 3.10";
+    }
     revision 2019-02-06 {
 	description
 	    "Released in Clixon 3.9";
@@ -121,7 +126,7 @@ module clixon-config {
 	    }
 	}
     }
-    container config {
+    container clixon-config {
        leaf-list CLICON_FEATURE {
            description
                "Supported features as used by YANG feature/if-feature
@@ -371,20 +376,6 @@ module clixon-config {
 		"If set, tag datastores with RFC 7895 YANG Module Library 
                  info. When loaded at startup, a check is made if the system
                  yang modules match";
-	}
-	leaf CLICON_XML_NS_STRICT {
-	    type boolean;
-	    default true;
-	    description
-		"If not set, make non-strict laze namespace checks, by iterating
-                 through modules to find the matching datanode
-                 or rpc if no xmlns attribute specifies namespace.
-                 This is lazy semantics of finding namespaces, which means you
-                 do not need to explicitly give the namespace if the symbol exists
-                 in some loaded module.
-                 Example: <x/> is enough, instead of <x xmlns='urn:example:clixon'/>
-                 But it is wrong, but is the way Clixon originally was written.
-                 Strict semantics is the default.";
 	}
 	leaf CLICON_USE_STARTUP_CONFIG {
 	    type int32;

@@ -836,47 +836,6 @@ xml_yang_validate_all_top(cxobj   *xt,
     return 1;
 }
 
-/*! Given XML node x, find yang spec in _any_ module matching name
- * This is non-struct namespace semantics (not correct) but necessary
- * in historic Clixon code.
- * Also, add a proper default namespaces statement (xmlns="uri") in x
- * @param[in]  x     XML node (find yang statement on this one)
- * @param[in]  yspec Top-level yang spec
- * @param[out] y     Yang stmt associated to x. NULL i not found
- * @retval     0     OK
- * @see CLICON_XML_NS_STRICT clixon config option
- */
-int
-xml_yang_find_non_strict(cxobj      *x,
-			 yang_spec  *yspec,
-			 yang_stmt **yp)
-{
-    int        retval = -1;
-    char      *name;
-    yang_stmt *ymod;    
-    int        i;
-    yang_stmt *y=NULL;
-    char      *ns;
-    
-    name = xml_name(x);
-    for (i=0; i<yspec->yp_len; i++){
-	ymod = yspec->yp_stmt[i];
-	if ((y = yang_find_schemanode((yang_node*)ymod, name)) != NULL)
-	    break;
-    }
-    if (y){
-	*yp = y;
-	if ((ns = yang_find_mynamespace(ymod)) != NULL){
-	    if (xml_find_type_value(x, NULL, "xmlns", CX_ATTR) == NULL)
-		if (xmlns_set(x, NULL, ns) < 0)
-		    goto done;
-	}
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Translate a single xml node to a cligen variable vector. Note not recursive 
  * @param[in]  xt   XML tree containing one top node
  * @param[in]  ys   Yang spec containing type specification of top-node of xt
@@ -1739,11 +1698,6 @@ xml_spec_populate_rpc(clicon_handle h,
 	    yrpc = yang_find((yang_node*)ymod, Y_RPC, xml_name(x));
 	/* Non-strict semantics: loop through all modules to find the node 
 	 */
-	if (yrpc == NULL &&
-	    !clicon_option_bool(h, "CLICON_XML_NS_STRICT")){
-	    if (xml_yang_find_non_strict(x, yspec, &yrpc) < 0) /* find rpc */
-		goto done;
-	}
 	if (yrpc){
 	    xml_spec_set(x, yrpc);
 	    if ((yi = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
@@ -1759,14 +1713,12 @@ xml_spec_populate_rpc(clicon_handle h,
     return retval;
 }
 
-
 /*! Add yang specification backpointer to XML node
  * @param[in]   xt      XML tree node
  * @param[in]   arg     Yang spec
  * @note This may be unnecessary if yspec is set on creation
  * @note For subs to anyxml nodes will not have spec set
  * @note No validation is done,... XXX
- * @note relies on kludge _CLICON_XML_NS_STRICT
  * @code
  * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
  * @endcode
@@ -1796,12 +1748,6 @@ xml_spec_populate(cxobj  *x,
 	    goto done;
 	if (ymod != NULL)
 	    y = yang_find_schemanode((yang_node*)ymod, name);
-	/* Non-strict semantics: loop through all modules to find the node 
-	 */
-	if (y == NULL && !_CLICON_XML_NS_STRICT){
-	    if (xml_yang_find_non_strict(x, yspec, &y) < 0)
-		goto done;
-	}
     }
     if (y) 
 	xml_spec_set(x, y);

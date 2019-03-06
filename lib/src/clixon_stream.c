@@ -579,6 +579,7 @@ stream_notify(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "time2str");
 	goto done;
     }
+    /* From RFC5277 */
     cprintf(cb, "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>%s</eventTime>%s</notification>", timestr, str);
     if (xml_parse_string(cbuf_get(cb), yspec, &xev) < 0)
 	goto done;

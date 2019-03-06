@@ -32,7 +32,7 @@ fi
 
 # Experimental IEEE
 cat <<EOF > $cfg
-<config>
+<clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>$YANGMODELS/standard/ietf/RFC</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft</CLICON_YANG_DIR> 
@@ -47,7 +47,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
-</config>
+</clixon-config>
 EOF
 
 new "yangmodels parse: -f $cfg"

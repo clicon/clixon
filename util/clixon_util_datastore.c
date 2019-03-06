@@ -239,7 +239,6 @@ main(int argc, char **argv)
 	    clicon_err(OE_DB, 0, "Unrecognized operation: %s", argv[1]);
 	    usage(argv0);
 	}
-	_CLICON_XML_NS_STRICT = 0;
 	if (xml_parse_string(argv[2], NULL, &xt) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)

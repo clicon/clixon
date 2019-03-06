@@ -167,9 +167,26 @@ parse_configfile(clicon_handle  h,
 	clicon_err(OE_CFG, 0, "Config file %s: Expected XML but is probably old sh style", filename);
 	goto done;
     }
-    if ((xc = xpath_first(xt, "config")) == NULL) {
-	clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"config\" element", filename);
-	goto done;	
+    /* Hard-coded config for < 3.10 and clixon-config for >= 3.10 */
+    if ((xc = xpath_first(xt, "clixon-config")) == NULL){
+	/* Backward compatible code to accept "config" as top-level symbol.
+	   This cannot be controlled by config option due to bootstrap */
+#if 0
+	if ((xc = xpath_first(xt, "config")) != NULL){
+	    if (xml_name_set(xc, "clixon-config") < 0)
+		goto done;
+	    if (xml_apply0(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
+		goto done;
+	    if (xml_apply0(xc, CX_ELMNT, xml_sort, NULL) < 0)
+		goto done;
+	}
+	else
+#endif
+	{
+	    clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"clixon_config\" element\nClixon config files should begin with: <clixon-config xmlns=\"http://clicon.org/config\" (See Changelog in Clixon 3.10)>", filename);
+	    
+	    goto done;
+	}
     }
     if (xml_apply0(xc, CX_ELMNT, xml_default, yspec) < 0)
 	goto done;	
@@ -286,18 +303,23 @@ clicon_options_main(clicon_handle h,
     }
     configfile = hash_value(copt, "CLICON_CONFIGFILE", NULL);
     clicon_debug(1, "CLICON_CONFIGFILE=%s", configfile);
-    /* If file ends with .xml, assume it is new format */
+    /* File must end with .xml */
     if ((suffix = rindex(configfile, '.')) != NULL){
 	suffix++;
 	xml = strcmp(suffix, "xml") == 0;
     }
     if (xml == 0){
-	clicon_err(OE_CFG, 0, "%s: suffix %s not recognized (Run ./configure --with-config-compat?)", configfile, suffix);
+	clicon_err(OE_CFG, 0, "%s: suffix %s not recognized", configfile, suffix);
 	goto done;
     }
-    /* XXX Kludge to low-level functions to search for xml in all yang modules */
-    _CLICON_XML_NS_STRICT = 0;
-    /* Read configfile first without yangspec, for bootstrapping */
+    /* Read configfile first without yangspec, for bootstrapping, see second
+     * time below with proper yangspec. 
+     * (You need to read the config-file to get the YANG_DIR to find the
+     * the clixon yang-spec)
+     * Difference from parsing with yangspec is:
+     * - no default values
+     * - no sanity checks
+     */
     if (parse_configfile(h, configfile, yspec, &xconfig) < 0)
 	goto done;
     if (xml_rootchild(xconfig, 0, &xconfig) < 0)
@@ -308,17 +330,23 @@ clicon_options_main(clicon_handle h,
     if (yang_spec_parse_module(h, "clixon-config", NULL, yspec) < 0)
 	goto done;    
     clicon_conf_xml_set(h, NULL);
-    if (xconfig)
+    if (xconfig){
 	xml_free(xconfig);
+	xconfig = NULL;
+    }
     /* Read configfile second time now with check yang spec */
     if (parse_configfile(h, configfile, yspec, &xconfig) < 0)
 	goto done;
     if (xml_rootchild(xconfig, 0, &xconfig) < 0)
 	goto done;
+    if (xml_spec(xconfig) == NULL){
+	clicon_err(OE_CFG, 0, "Config file %s: did not find corresponding Yang specification\nHint: File does not begin with: <clixon-config xmlns=\"http://clicon.org/config\"> or clixon-config.yang not found?", configfile);
+
+	goto done;
+    }
     /* Set clixon_conf pointer to handle */
     clicon_conf_xml_set(h, xconfig);
-    /* XXX Kludge to low-level functions to search for xml in all yang modules */
-    _CLICON_XML_NS_STRICT = clicon_option_bool(h, "CLICON_XML_NS_STRICT");
+
     retval = 0;
  done:
     return retval;

@@ -49,7 +49,6 @@ int xml_yang_validate_rpc(cxobj *xrpc, cbuf *cbret);
 int xml_yang_validate_add(cxobj *xt, cbuf *cbret);
 int xml_yang_validate_all(cxobj *xt, cbuf *cbret);
 int xml_yang_validate_all_top(cxobj *xt, cbuf *cbret);
-int xml_yang_find_non_strict(cxobj *x, yang_spec *yspec, yang_stmt **y);
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
 int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
 int xml_diff(yang_spec *yspec, cxobj *xt1, cxobj *xt2, 	 

@@ -189,6 +189,8 @@ configuration file is /usr/local/etc/clixon.xml. The example
 configuration file is installed at /usr/local/etc/example.xml. The
 YANG specification for the configuration file is clixon-config.yang.
 
+See the [example config file](../example/example.xml).
+
 ## How are Clixon configuration files found?
 
 Clixon by default finds its configuration file at `/usr/local/etc/clixon.xml`. However, you can modify this location as follows:
@@ -308,10 +310,10 @@ clixon_backend ... -s running
 
 You may also add a default method in the configuration file:
 ```
-<config>
+<clixon-config xmlns="http://clicon.org/config">
    ...
    <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE
-</config>
+</clixon-config>
 ```
 
 ## Can I use systemd with Clixon?

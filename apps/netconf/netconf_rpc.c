@@ -580,10 +580,6 @@ netconf_application_rpc(clicon_handle h,
 	goto ok;
     }
     yrpc = yang_find((yang_node*)ymod, Y_RPC, xml_name(xn));
-    if ((yrpc==NULL) && !_CLICON_XML_NS_STRICT){
-	if (xml_yang_find_non_strict(xn, yspec, &yrpc) < 0) /* Y_RPC */
-		goto done;
-    }
     /* Check if found */
     if (yrpc != NULL){
 	/* 1. Check xn arguments with input statement. */

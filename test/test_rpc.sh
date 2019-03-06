@@ -15,7 +15,7 @@ cfg=$dir/conf.xml
 
 # Use yang in example
 cat <<EOF > $cfg
-<config xmlns="urn:example:clixon">
+<clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
@@ -30,7 +30,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
-</config>
+</clixon-config>
 EOF
 
 new "test params: -f $cfg"

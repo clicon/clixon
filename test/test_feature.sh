@@ -11,7 +11,7 @@ fyang=$dir/test.yang
 
 # Note ietf-routing@2018-03-13 assumed
 cat <<EOF > $cfg
-<config>
+<clixon-config xmlns="http://clicon.org/config">
   <CLICON_FEATURE>$APPNAME:A</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-routing:router-id</CLICON_FEATURE>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -27,7 +27,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
-</config>
+</clixon-config>
 EOF
 
 cat <<EOF > $fyang
