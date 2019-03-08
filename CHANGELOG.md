@@ -1,5 +1,3 @@
-* Optimized text_get
-
 # Clixon Changelog
 
 ## 3.10.0 (Upcoming)

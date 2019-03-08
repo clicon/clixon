@@ -14,7 +14,7 @@
 
 ## Medium prio:
 - Support a plugin callback that is invoked when copy-config is called.
-- Preserve CLI command history across sessions. The up/down arrows
+- (DONE)Preserve CLI command history across sessions. The up/down arrows
 - (DONE)Support for XML regex's.
   - Currently Posix extended regular expressions
 - (DONE) Input validation on custom RPCs/
