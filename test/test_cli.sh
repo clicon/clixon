@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test1: backend and cli basic functionality
+# Backend and cli basic functionality
 # Start backend server
 # Add an ethernet interface and an address
 # Show configuration

@@ -1,7 +1,9 @@
 # Clixon CLI
 
 * [CLIgen](#cligen)
-* [Tricks - eg for large specs](#tricks)
+* [Command history](#history)
+* [Large spec designs](#large-specs)
+
 
 ## CLIgen
 
@@ -26,7 +28,18 @@ Clixon adds some features and structure to CLIgen which include:
   The commands (eg `cli_set`) will be called with the first argument an api-path to the referenced object.
 * The CLIgen `treename` syntax does not work.
 
-## Tricks
+## History
+
+Clixon CLI supports persistent command history. There are two CLI history related configuration options: `CLICON_CLI_HIST_FILE` with default value `~/.clixon_cli_history` and `CLICON_CLI_HIST_SIZE` with default value 300.
+
+The design is similar to bash history but is simpler in some respects:
+   * The CLI loads/saves its complete history to a file on entry and exit, respectively
+   * The size (number of lines) of the file is the same as the history in memory
+   * Only the latest session dumping its history will survive (bash merges multiple session history).
+
+Further, tilde-expansion is supported and if history files are not found or lack appropriate access will not cause an exit but will be logged at debug level
+
+## Large specs
 
 CLIgen is designed to handle large specifications in runtime, but it may be
 difficult to handle large specifications from a design perspective.
@@ -79,3 +92,4 @@ You can also add the C preprocessor as a first step. You can then define macros,
    %.cli : %.cpp
         $(CPP) -P -x assembler-with-cpp $(INCLUDES) -o $@ $<
   ```
+

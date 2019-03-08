@@ -5,6 +5,15 @@
 ## 3.10.0 (Upcoming)
 
 ### Major New features
+* CLI history: [Preserve CLI command history across sessions. The up/down arrows](https://github.com/clicon/clixon/issues/79)
+  * The design is similar to bash history:
+      * The CLI loads/saves its complete history to a file on entry and exit, respectively
+      * The size (number of lines) of the file is the same as the history in memory
+      * Only the latest session dumping its history will survive (bash merges multiple session history).
+      * Tilde-expansion is supported
+      * Files not found or without appropriate access will not cause an exit but will be logged at debug level
+  * New config options: CLICON_CLI_HIST_FILE with default value `~/.clixon_cli_history`
+  * New config options: CLICON_CLI_HIST_SIZE with default value 300.
 * New backend startup and upgrade support, see [doc/startup.md] for details
   * Enable with CLICON_XMLDB_MODSTATE config option
   * Check modules-state tags when loading a datastore at startup

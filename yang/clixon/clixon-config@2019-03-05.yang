@@ -297,6 +297,21 @@ module clixon-config {
                  Note that this feature is EXPERIMENTAL and may not properly handle 
                  scrolling, control characters, etc";
 	}
+	leaf CLICON_CLI_HIST_FILE {
+	    type string;
+	    default "~/.clixon_cli_history";
+	    description
+		"Name of CLI history file. If not given, history is not saved.
+                 The number of lines is saved is given by CLICON_CLI_HIST_SIZE.";
+	}
+	leaf CLICON_CLI_HIST_SIZE {
+	    type int32;
+	    default 300;
+	    description
+		"Number of lines to save in CLI history. 
+                 Also, if CLICON_CLI_HIST_FILE is set, also the size in lines
+                 of the saved history.";
+	}
 	leaf CLICON_SOCK_FAMILY {
 	    type string;
 	    default "UNIX";

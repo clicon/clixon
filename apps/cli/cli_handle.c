@@ -114,13 +114,13 @@ cli_handle_init(void)
 int
 cli_handle_exit(clicon_handle h)
 {
-    cligen_handle ch = cligen(h);
+    cligen_handle      ch = cligen(h);
     struct cli_handle *cl = handle(h);
 
     if (cl->cl_stx)
 	free(cl->cl_stx);
     clicon_handle_exit(h); /* frees h and options */
-
+    
     cligen_exit(ch);
 
     return 0;

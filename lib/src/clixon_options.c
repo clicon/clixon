@@ -183,7 +183,7 @@ parse_configfile(clicon_handle  h,
 	else
 #endif
 	{
-	    clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"clixon_config\" element\nClixon config files should begin with: <clixon-config xmlns=\"http://clicon.org/config\" (See Changelog in Clixon 3.10)>", filename);
+	    clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"clixon-config\" element\nClixon config files should begin with: <clixon-config xmlns=\"http://clicon.org/config\" (See Changelog in Clixon 3.10)>", filename);
 	    
 	    goto done;
 	}

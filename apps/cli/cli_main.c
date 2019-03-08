@@ -55,6 +55,7 @@
 #include <pwd.h>
 #include <assert.h>
 #include <libgen.h>
+#include <wordexp.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -71,6 +72,84 @@
 
 /* Command line options to be passed to getopt(3) */
 #define CLI_OPTS "hD:f:l:F:1a:u:d:m:qp:GLy:c:U:o:"
+
+/*! Check if there is a CLI history file and if so dump the CLI histiry to it
+ * Just log if file does not exist or is not readable
+ * @param[in]  h    CLICON handle
+ */
+static int
+cli_history_load(clicon_handle h)
+{
+    int       retval = -1;
+    int       lines;
+    char     *filename;
+    FILE     *f = NULL;
+    wordexp_t result = {0,}; /* for tilde expansion */
+
+    lines = clicon_option_int(h,"CLICON_CLI_HIST_SIZE");
+    /* Re-init history with clixon lines (1st time was w cligen defaults) */
+    if (cligen_hist_init(cli_cligen(h), lines) < 0)
+	goto done;
+    if ((filename = clicon_option_str(h,"CLICON_CLI_HIST_FILE")) == NULL)
+	goto ok; /* ignore */
+    if (wordexp(filename, &result, 0) < 0){
+	clicon_err(OE_UNIX, errno, "wordexp");
+	goto done;
+    }
+    if ((f = fopen(result.we_wordv[0], "r")) == NULL){
+	clicon_log(LOG_DEBUG, "Warning: Could not open CLI history file for reading: %s: %s",
+		   result.we_wordv[0], strerror(errno));
+	goto ok;
+    }
+    if (cligen_hist_file_load(cli_cligen(h), f) < 0){
+	clicon_err(OE_UNIX, errno, "cligen_hist_file_load");
+	goto done;
+    }
+ ok:
+    retval = 0;
+ done:
+    wordfree(&result);
+    if (f)
+	fclose(f);
+    return retval;
+}
+
+/*! Start CLI history and load from file 
+ * Just log if file does not exist or is not readable
+ * @param[in]  h    CLICON handle
+ */
+static int
+cli_history_save(clicon_handle h)
+{
+    int       retval = -1;
+    char     *filename;
+    FILE     *f = NULL;
+    wordexp_t result = {0,}; /* for tilde expansion */
+
+    if ((filename = clicon_option_str(h, "CLICON_CLI_HIST_FILE")) == NULL)
+	goto ok; /* ignore */
+    if (wordexp(filename, &result, 0) < 0){
+	clicon_err(OE_UNIX, errno, "wordexp");
+	goto done;
+    }
+    if ((f = fopen(result.we_wordv[0], "w+")) == NULL){
+	clicon_log(LOG_DEBUG, "Warning: Could not open CLI history file for writing: %s: %s",
+		   result.we_wordv[0], strerror(errno));
+	goto ok;
+    }
+    if (cligen_hist_file_save(cli_cligen(h), f) < 0){
+	clicon_err(OE_UNIX, errno, "cligen_hist_file_save");
+	goto done;
+    }
+ ok:
+    retval = 0;
+ done:
+    wordfree(&result);
+    if (f)
+	fclose(f);
+    return retval;
+}
+
 
 /*! Clean and close all state of cli process (but dont exit). 
  * Cannot use h after this 
@@ -90,6 +169,7 @@ cli_terminate(clicon_handle h)
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     cli_plugin_finish(h);    
+    cli_history_save(h);
     cli_handle_exit(h);
     clicon_log_exit();
     return 0;
@@ -134,15 +214,17 @@ cli_interactive(clicon_handle h)
 	new_mode = cli_syntax_mode(h);
 	if ((cmd = clicon_cliread(h)) == NULL) {
 	    cligen_exiting_set(cli_cligen(h), 1); /* EOF */
-	    goto done;
+	    goto ok; /* EOF should not be -1 error? */
 	}
 	if ((res = clicon_parse(h, cmd, &new_mode, &eval)) < 0)
 	    goto done;
     }
+ ok:
     retval = 0;
  done:
     return retval;
 }
+
 
 static void
 usage(clicon_handle h,
@@ -182,21 +264,21 @@ usage(clicon_handle h,
 int
 main(int argc, char **argv)
 {
-    int          retval = -1;
-    int          c;    
-    int          once;
-    char	*tmp;
-    char	*argv0 = argv[0];
-    clicon_handle h;
-    int          printgen  = 0;
-    int          logclisyntax  = 0;
-    int          help = 0;
-    int          logdst = CLICON_LOG_STDERR;
-    char        *restarg = NULL; /* what remains after options */
-    yang_spec   *yspec;
-    yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
+    int            retval = -1;
+    int            c;    
+    int            once;
+    char	  *tmp;
+    char	  *argv0 = argv[0];
+    clicon_handle  h;
+    int            printgen  = 0;
+    int            logclisyntax  = 0;
+    int            help = 0;
+    int            logdst = CLICON_LOG_STDERR;
+    char          *restarg = NULL; /* what remains after options */
+    yang_spec     *yspec;
+    yang_spec     *yspecfg = NULL; /* For config XXX clixon bug */
     struct passwd *pw;
-    char         *str;
+    char          *str;
     
     /* Defaults */
     once = 0;
@@ -459,6 +541,10 @@ main(int argc, char **argv)
     *(argv-1) = tmp;
 
     cligen_line_scrolling_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_LINESCROLLING"));
+    /*! Start CLI history and load from file */
+    if (cli_history_load(h) < 0)
+	goto done;
+    /* Experimental utf8 mode */
     cligen_utf8_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_UTF8"));
     /* Launch interfactive event loop, unless -1 */
     if (restarg != NULL && strlen(restarg)){
@@ -466,9 +552,8 @@ main(int argc, char **argv)
 	int result;
 
 	/* */
-	if (clicon_parse(h, restarg, &mode, &result) != 1){
+	if (clicon_parse(h, restarg, &mode, &result) != 1)
 	    goto done;
-	}
 	if (result < 0)
 	    goto done;
     }
