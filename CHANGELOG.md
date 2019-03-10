@@ -33,17 +33,11 @@
      rpc_callback_register(h, empty_rpc, NULL, "urn:example:clixon", "empty");
    ```
 * Clixon configuration file top-level symbols has changed to `clixon-config`and namespace check is enforced. This means all Clixon configuration files must change from:
-```
-  <config>
-    ...
-  </config>
-```
-to:
-```
-  <clixon-config xmlns="http://clicon.org/config">
-    ...
-  </clixon-config>
-```
+  ```
+    <config>...</config>
+  to:
+    <clixon-config xmlns="http://clicon.org/config">...</clixon-config>
+  ```
 * Strict XML prefixed namespace check. This means all XML namespaces must always be declared by default or prefixed attribute name. There were some cases where this was not enforced. Example, `y` must be declared:
 ```
   <a><y:b/></a> -->    <a xmlns:y="urn:example:y"><y:b/></a>
@@ -52,7 +46,7 @@ to:
 ### Minor changes
 * Ensured you can add multiple callbacks for any RPC, including basic ones.
   * Extra RPC:s will be called _after_ the basic ones.
-  * One specific usecase is hook for `copy-config` (see [doc/ROADMAP.md] that can be implemented thus way.
+  * One specific usecase is hook for `copy-config` (see [doc/ROADMAP.md](doc/ROADMAP.md) that can be implemented this way.
 * Added "base" as CLI default mode and "cli> " as default prompt.
 * clixon-config YAML file has new revision: 2019-03-05.
   * New URN and changed top-level symbol to `clixon-config`

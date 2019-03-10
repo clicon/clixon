@@ -1,5 +1,44 @@
 # Clixon FAQ
 
+  * [What is Clixon?](#what-is-clixon)
+  * [Why should I use Clixon?](#why-should-i-use-clixon)
+  * [What license is available?](#what-license-is-available)
+  * [Is Clixon extendible?](#is-clixon-extendible)
+  * [Which programming language is used?](#which-programming-language-is-used)
+  * [How to best understand Clixon?](#how-to-best-understand-clixon)
+  * [How do you build and install Clixon (and the example)?](how-do-you-build-and-install-clixon)
+  * [How do I run Clixon example commands?](#how-do-i-run-clixon-example-commands)
+  * [Do I need to setup anything? (IMPORTANT)](#do-i-need-to-setup-anything))
+  * [How do I use the CLI?](#how-do-i-use-the-cli)
+  * [How do I use netconf?](#how-do-i-use-netconf)
+  * [How do I use restconf?](#how-do-i-use-restconf)
+  * [What about reference documentation?](#what-about-reference-documentation)
+  * [How is configuration data stored?](#how-is-configuration-data-stored)
+  * [What is validate and commit?](#what-is-validate-and-commit)
+  * [What is a Clixon configuration file?](#what-is-a-clixon-configuration-file)
+  * [How are Clixon configuration files found?](#how-are-clixon-configuration-files-found)
+  * [Can I modify clixon options at runtime?](#can-i-modify-clixon-options-at-runtime)
+  * [How are Yang files found?](#how-are-yang-files-found)
+  * [How do I enable Yang features?](#how-do-i-enable-yang-features)
+  * [Can I run Clixon as a container?](#can-i-run-clixon-as-a-container)
+  * [Does Clixon support event streams?](#does-clixon-support-event-streams)
+  * [How should I start the backend daemon?](#how-should-i-start-the-backend-daemon)
+  * [Can I use systemd with Clixon?](#can-i-use-systemd-with-clixon)
+  * [How can I add extra XML?](#how-can-i-add-extra-xml)
+  * [I want to program. How do I extend the example?](#i-want-to-program-how-do-i-extend-the-example)
+  * [How is a plugin initiated?](#how-is-a-plugin-initiated)
+  * [How do I write a commit function?](#how-do-i-write-a-commit-function)
+  * [How do I check what has changed on commit?](#how do i check what has changed on commit)
+  * [How do I access the XML tree?](#how-do-i-access-the-xml-tree)
+  * [How do I write a CLI callback function?](#how-do-i-write-a-cli-callback-function)
+  * [How do I write a validation function?](#how-do-i-write-a-validation-function)
+  * [How do I write a state data callback function?](#how-do-i-write-a-state-data-callback-function)
+  * [How do I write an RPC function?](#how-do-i-write-an-rpc-function)
+  * [I want to add a hook to an existing operation, can I do that?](#i-want-to-add-a-hook-to-an-existing-operation-can-i-do-that)
+  * [How do I write an authentication callback?](#how-do-i-write-an-authentication-callback)
+  * [What about access control?](#what-about-access-control)
+  * [How do I write a CLI translator function?](#how-do-i-write-a-cli-translator-function)
+
 ## What is Clixon?
 
 Clixon is a YANG-based configuration manager, with interactive CLI,
@@ -27,7 +66,7 @@ specification uses [CLIgen](http://github.com/olofhagsand/cligen)
 ## How to best understand Clixon?
 Run the Clixon example, in the [example](../example) directory.
 
-## How do you build and install Clixon (and the example)?
+## How do you build and install Clixon?
 Clixon: 
 ```
 	./configure; 
@@ -52,7 +91,7 @@ The example:
 
 More info in the [example](../example) directory.
 
-## Do I need to setup anything? (IMPORTANT)
+## Do I need to setup anything?
 
 The config demon requires a valid group to create a server UNIX domain socket.
 Define a valid CLICON_SOCK_GROUP in the config file or via the -g option

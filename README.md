@@ -15,7 +15,7 @@ support.
   * [Dependencies](#dependencies)
   * [Extending](#extending)
   * [Yang](#yang)
-  * [CLI](doc/FAQ.md)
+  * [CLI](doc/CLI.md)
   * [XML and XPATH](#xml)
   * [Netconf](#netconf)
   * [Restconf](#restconf)

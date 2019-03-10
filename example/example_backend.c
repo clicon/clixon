@@ -407,6 +407,13 @@ clixon_plugin_init(clicon_handle h)
 			      "optional"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
+        /* Same as example but with optional input/output */
+    if (rpc_callback_register(h, example_rpc, 
+			      NULL, 
+			      "urn:example:clixon",
+			      "example"/* Xml tag when callback is made */
+			      ) < 0)
+	goto done;
     /* Called after the regular system copy_config callback */
     if (rpc_callback_register(h, example_copy_extra, 
 			      NULL, 
