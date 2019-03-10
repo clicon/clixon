@@ -404,35 +404,41 @@ clixon_plugin_auth(clicon_handle h,
  * specification are directly dlsym:ed to the CLI plugin.
  * It would be possible to use this rpc registering API for CLI plugins as well.
  * 
- * @note may have a problem if callbacks are of different types
+ * When namespace and name match, the callback is made
  */
 typedef struct {
     qelem_t 	  rc_qelem;	/* List header */
     clicon_rpc_cb rc_callback;  /* RPC Callback */
     void	  *rc_arg;	/* Application specific argument to cb */
-    char          *rc_tag;	/* Xml/json tag when matched, callback called */
+    char          *rc_namespace;/* Namespace to combine with name tag */
+    char          *rc_name;	/* Xml/json tag/name */
 } rpc_callback_t;
 
 /* List of rpc callback entries */
 static rpc_callback_t *rpc_cb_list = NULL;
 
-/*! Register a RPC callback
- * Called from plugin to register a callback for a specific netconf XML tag.
+/*! Register a RPC callback by appending a new RPC to the list
  *
- * @param[in]  h       clicon handle
- * @param[in]  cb,     Callback called 
- * @param[in]  arg,    Domain-specific argument to send to callback 
- * @param[in]  tag     Xml tag when callback is made 
- * @see rpc_callback_call
+ * @param[in]  h         clicon handle
+ * @param[in]  cb,       Callback called 
+ * @param[in]  arg,      Domain-specific argument to send to callback 
+ * @param[in]  namespace namespace of rpc
+ * @param[in]  name      RPC name
+ * @see rpc_callback_call  which makes the actual callback
  */
 int
 rpc_callback_register(clicon_handle  h,
 		      clicon_rpc_cb  cb,
 		      void          *arg,       
-		      char          *tag)
+    		      char          *namespace,
+		      char          *name)
 {
     rpc_callback_t *rc;
 
+    if (name == NULL || namespace == NULL){
+	clicon_err(OE_DB, EINVAL, "name or namespace NULL");
+	goto done;
+    }
     if ((rc = malloc(sizeof(rpc_callback_t))) == NULL) {
 	clicon_err(OE_DB, errno, "malloc: %s", strerror(errno));
 	goto done;
@@ -440,13 +446,16 @@ rpc_callback_register(clicon_handle  h,
     memset(rc, 0, sizeof(*rc));
     rc->rc_callback = cb;
     rc->rc_arg  = arg;
-    rc->rc_tag  = strdup(tag); /* XXX strdup memleak */
-    INSQ(rc, rpc_cb_list);
+    rc->rc_namespace  = strdup(namespace); 
+    rc->rc_name  = strdup(name);
+    ADDQ(rc, rpc_cb_list);
     return 0;
  done:
     if (rc){
-	if (rc->rc_tag)
-	    free(rc->rc_tag);
+	if (rc->rc_namespace)
+	    free(rc->rc_namespace);
+	if (rc->rc_name)
+	    free(rc->rc_name);
 	free(rc);
     }
     return -1;
@@ -461,8 +470,10 @@ rpc_callback_delete_all(void)
 
     while((rc = rpc_cb_list) != NULL) {
 	DELQ(rc, rpc_cb_list, rpc_callback_t *);
-	if (rc->rc_tag)
-	    free(rc->rc_tag);
+	if (rc->rc_namespace)
+	    free(rc->rc_namespace);
+	if (rc->rc_name)
+	    free(rc->rc_name);
 	free(rc);
     }
     return 0;
@@ -472,12 +483,15 @@ rpc_callback_delete_all(void)
  *
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
- * @param[out] xret    Return XML, error or OK
+ * @param[out] cbret   Return XML (as string in CLIgen buffer), error or OK
  * @param[in]  arg     Domain-speific arg (eg client_entry)
- *
  * @retval -1   Error
  * @retval  0   OK, not found handler.
- * @retval  1   OK, handler called
+ * @retval  n   OK, <n> handler called 
+ * @see rpc_callback_register  which register a callback function
+ * @note that several callbacks can be registered. They need to cooperate on
+ * return values, ie if one writes cbret, the other needs to handle that by
+ * leaving it, replacing it or amending it.
  */
 int
 rpc_callback_call(clicon_handle h,
@@ -486,25 +500,32 @@ rpc_callback_call(clicon_handle h,
 		  void         *arg)
 {
     int            retval = -1;
+    int            ret;
     rpc_callback_t *rc;
+    char           *name;
+    char           *prefix;
+    char           *namespace;
+    int             nr = 0; /* How many callbacks */
 
     if (rpc_cb_list == NULL)
 	return 0;
     rc = rpc_cb_list;
     do {
-	if (strcmp(rc->rc_tag, xml_name(xe)) == 0){
-	    if ((retval = rc->rc_callback(h, xe, cbret, arg, rc->rc_arg)) < 0){
-		clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_tag);
+	name = xml_name(xe);
+	prefix = xml_prefix(xe);
+	xml2ns(xe, prefix, &namespace);
+	if (strcmp(rc->rc_name, name) == 0 &&
+	    namespace && rc->rc_namespace &&
+	    strcmp(rc->rc_namespace, namespace) == 0){
+	    if ((ret = rc->rc_callback(h, xe, cbret, arg, rc->rc_arg)) < 0){
+		clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_name);
 		goto done;
 	    }
-	    else{
-		retval = 1; /* handled */
-		goto done;
-	    }
+	    nr++;
 	}
 	rc = NEXTQ(rpc_callback_t *, rc);
     } while (rc != rpc_cb_list);
-    retval = 0;
+    retval = nr; /* 0: none found, >0 nr of handlers called */
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;

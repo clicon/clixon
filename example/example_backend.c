@@ -178,6 +178,23 @@ example_rpc(clicon_handle h,            /* Clicon handle */
     return retval;
 }
 
+/*! This will be called as a hook right after the original system copy-config
+ */
+static int 
+example_copy_extra(clicon_handle h,            /* Clicon handle */
+		   cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+		   cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+		   void         *arg,          /* client_entry */
+		   void         *regarg)       /* Argument given at register */
+{
+    int    retval = -1;
+
+    fprintf(stderr, "%s\n", __FUNCTION__);
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /*! Called to get state data from plugin
  * @param[in]    h      Clicon handle
  * @param[in]    xpath  String with XPATH syntax. or NULL for all
@@ -379,18 +396,22 @@ clixon_plugin_init(clicon_handle h)
     /* From example.yang (clicon) */
     if (rpc_callback_register(h, empty_rpc, 
 			      NULL, 
+			      "urn:example:clixon",
 			      "empty"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
     /* Same as example but with optional input/output */
     if (rpc_callback_register(h, example_rpc, 
 			      NULL, 
+			      "urn:example:clixon",
 			      "optional"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
-    if (rpc_callback_register(h, example_rpc, 
+    /* Called after the regular system copy_config callback */
+    if (rpc_callback_register(h, example_copy_extra, 
 			      NULL, 
-			      "example"/* Xml tag when callback is made */
+			      "urn:ietf:params:xml:ns:netconf:base:1.0",
+			      "copy-config"
 			      ) < 0)
 	goto done;
 

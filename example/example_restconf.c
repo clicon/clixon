@@ -344,7 +344,7 @@ clixon_plugin_init(clicon_handle h)
 {
     clicon_debug(1, "%s restconf", __FUNCTION__);
     /* Register local netconf rpc client (note not backend rpc client) */
-    if (rpc_callback_register(h, restconf_client_rpc, NULL, "client-rpc") < 0)
+    if (rpc_callback_register(h, restconf_client_rpc, NULL, "urn:example:clixon", "client-rpc") < 0)
 	return NULL;
     return &api;
 }

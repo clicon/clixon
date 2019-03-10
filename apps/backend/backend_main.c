@@ -635,6 +635,10 @@ main(int    argc,
     if (xmldb_setopt(h, "nacm_xtree", (void*)clicon_nacm_ext(h)) < 0)
 	goto done;
 
+    /* Initialize server socket and save it to handle */
+    if (backend_rpc_init(h) < 0)
+	goto done;
+
     /* Save modules state of the backend (server). Compare with startup XML */
     if (startup_module_state(h, yspec) < 0)
 	goto done;

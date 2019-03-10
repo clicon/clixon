@@ -13,7 +13,7 @@
 - (DONE)XML [Namespace handling](https://github.com/clicon/clixon/issues/49) (DONE)
 
 ## Medium prio:
-- Support a plugin callback that is invoked when copy-config is called.
+- (DONE) Register extra callbacks on system Netconf messages. (Was:Support a plugin callback that is invoked when copy-config is called.)
 - (DONE)Preserve CLI command history across sessions. The up/down arrows
 - (DONE)Support for XML regex's.
   - Currently Posix extended regular expressions

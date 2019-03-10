@@ -452,7 +452,7 @@ int
 clixon_plugin_init(clicon_handle h)
 {
 ...
-   rpc_callback_register(h, example_rpc, NULL, "example-rpc");
+   rpc_callback_register(h, example_rpc, NULL, "urn:example:my", "example-rpc");
 ...
 }
 ```
@@ -470,6 +470,34 @@ example_rpc(clicon_handle h,            /* Clicon handle */
 }
 ```
 Here, the callback is over-simplified.
+
+## I want to add a hook to an existing operation, can I do that?
+
+Yes, by registering an [RPC callback](how-do-i-write-an-rpc-function)
+on an existing function, your function will be called immediately
+_after_ the original.
+
+The following example shows how `my_copy` can be called right after the system (RFC6241) `copy-config` RPC. You can perform some side-effect or even alter
+the original operation:
+```
+static int 
+my_copy(clicon_handle h,            /* Clicon handle */
+  	cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+	cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+	void         *arg,          /* Client session */
+	void         *regarg)       /* Argument given at register */
+{
+    /* Do something */
+    return 0;
+}
+int
+clixon_plugin_init(clicon_handle h)
+{
+...
+   rpc_callback_register(h, my_copy, NULL, "urn:ietf:params:xml:ns:netconf:base:1.0", "copy-config");
+...
+}
+```
 
 ## How do I write an authentication callback?
 

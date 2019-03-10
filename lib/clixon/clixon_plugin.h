@@ -56,6 +56,8 @@
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
  * @param[in]  arg     Domain specific arg, ec client-entry or FCGX_Request 
  * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 typedef int (*clicon_rpc_cb)(
     clicon_handle h,       
@@ -147,17 +149,17 @@ struct clixon_plugin_api{
     plgstart_t       *ca_start;          /* Plugin start */
     plgexit_t        *ca_exit;	         /* Plugin exit */
     union {
-	struct {
+	struct { /* cli-specific */
 	    cli_prompthook_t *ci_prompt;         /* Prompt hook */
 	    cligen_susp_cb_t *ci_suspend;        /* Ctrl-Z hook, see cligen getline */
 	    cligen_interrupt_cb_t *ci_interrupt; /* Ctrl-C, see cligen getline */
 	} cau_cli;
-	struct {
+	struct { /* restconf-specific */
 	    plgauth_t        *cr_auth;           /* Auth credentials */
 	} cau_restconf;
-	struct {
+	struct { /* netconf-specific */
 	} cau_netconf;
-	struct {
+	struct { /* backend-specific */
 	    plgreset_t       *cb_reset;          /* Reset system status */
 	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
 	    upgrade_cb_t     *cb_upgrade;        /* Upgrade callback */
@@ -225,7 +227,7 @@ int clixon_plugin_exit(clicon_handle h);
 int clixon_plugin_auth(clicon_handle h, void *arg);
 
 /* rpc callback API */
-int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *tag);
+int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *namespace, char *name);
 
 int rpc_callback_delete_all(void);
 

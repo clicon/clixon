@@ -60,5 +60,6 @@ struct client_entry{
  */ 
 int backend_client_rm(clicon_handle h, struct client_entry *ce);
 int from_client(int fd, void *arg);
+int backend_rpc_init(clicon_handle h);
 
 #endif  /* _BACKEND_CLIENT_H_ */

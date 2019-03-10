@@ -330,8 +330,6 @@ startup_validate(clicon_handle  h,
     goto done;
 }
 
-
-
 /*! Do a diff between candidate and running, then start a commit transaction
  *
  * The code reverts changes if the commit fails. But if the revert
@@ -408,25 +406,33 @@ candidate_commit(clicon_handle h,
     goto done;
 }
 
-/*! Commit changes from candidate to running
- * @param[in]  h     Clicon handle
- * @param[out] cbret Return xml value cligen buffer
- * @retval  0   OK. This may indicate both ok and err msg back to client
- * @retval  -1  (Local) Error
- * NACM:    The server MUST determine the exact nodes in the running
+/*! Commit the candidate configuration as the device's new current configuration
+ *
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @note NACM:    The server MUST determine the exact nodes in the running
  *  configuration datastore that are actually different and only check
  *  "create", "update", and "delete" access permissions for this set of
  *  nodes, which could be empty.
  */
 int
 from_client_commit(clicon_handle h,
-		   int           mypid,
-		   cbuf         *cbret)
+		   cxobj        *xe,
+		   cbuf         *cbret,
+		   void         *arg,
+		   void         *regarg)
 {
-    int        retval = -1;
-    int        piddb;
-    cbuf      *cbx = NULL; /* Assist cbuf */
-    int        ret;
+    int                  retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
+    int                  mypid = ce->ce_pid;
+    int                  piddb;
+    cbuf                *cbx = NULL; /* Assist cbuf */
+    int                  ret;
 
     /* Check if target locked by other client */
     piddb = xmldb_islocked(h, "running");
@@ -457,22 +463,30 @@ from_client_commit(clicon_handle h,
     return retval; /* may be zero if we ignoring errors from commit */
 } /* from_client_commit */
 
-/*! Discard all changes in candidate / revert to running
- * @param[in]  h     Clicon handle
- * @param[in]  mypid  Process/session id of calling client
- * @param[out] cbret Return xml value cligen buffer
+/*! Revert the candidate configuration to the current running configuration.
+ *
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
  * @retval  0  OK. This may indicate both ok and err msg back to client
- * @retval  -1 (Local) Error
+ * @retval     0       OK
+ * @retval    -1       Error
  * NACM: No datastore permissions are needed.
  */
 int
 from_client_discard_changes(clicon_handle h,
-			    int           mypid,
-			    cbuf         *cbret)
+			    cxobj        *xe,
+			    cbuf         *cbret,
+			    void         *arg,
+			    void         *regarg)
 {
-    int   retval = -1;
-    int   piddb;
-    cbuf *cbx = NULL; /* Assist cbuf */
+    int                  retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
+    int                  mypid = ce->ce_pid;
+    int                  piddb;
+    cbuf                *cbx = NULL; /* Assist cbuf */
     
     /* Check if target locked by other client */
     piddb = xmldb_islocked(h, "candidate");
@@ -500,22 +514,60 @@ from_client_discard_changes(clicon_handle h,
     return retval; /* may be zero if we ignoring errors from commit */
 }
 
-/*! Handle an incoming validate message from a client.
- * @param[in]  h     Clicon handle
- * @param[in]  db    Database name
- * @param[out] cbret Return xml value cligen buffer
- * @retval  0   OK. This may indicate both ok and err msg back to client (eg invalid)
- * @retval  -1  (Local) Error
+/*! Cancel an ongoing confirmed commit.
+ * If the confirmed commit is persistent, the parameter 'persist-id' must be
+ * given, and it must match the value of the 'persist' parameter.
+ *
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval  0  OK. This may indicate both ok and err msg back to client
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see RFC 6241 Sec 8.4
+ */
+int
+from_client_cancel_commit(clicon_handle h,
+			  cxobj        *xe,
+			  cbuf         *cbret,
+			  void         *arg,
+			  void         *regarg)
+{
+    int retval = -1;
+    retval = 0;
+    // done:
+    return retval;
+}
+
+/*! Validates the contents of the specified configuration.
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK. This may indicate both ok and err msg back to client 
+ *                     (eg invalid)
+ * @retval    -1       Error
  */
 int
 from_client_validate(clicon_handle h,
-		     char         *db,
-		     cbuf         *cbret)
+		     cxobj        *xe,
+		     cbuf         *cbret,
+		     void         *arg,
+		     void         *regarg)
 {
     int                 retval = -1;
     transaction_data_t *td = NULL;
     int                 ret;
+    char               *db;
 
+    if ((db = netconf_db_find(xe, "source")) == NULL){
+	if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
+	    goto done;
+	goto ok;
+    }
     if (strcmp(db, "candidate") != 0 && strcmp(db, "tmp") != 0){
 	if (netconf_invalid_value(cbret, "protocol", "No such database")< 0)
 	    goto done;
@@ -552,3 +604,4 @@ from_client_validate(clicon_handle h,
 	 transaction_free(td);
     return retval;
 } /* from_client_validate */
+

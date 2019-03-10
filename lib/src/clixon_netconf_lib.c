@@ -1034,7 +1034,10 @@ netconf_module_load(clicon_handle h)
 	goto done;
     if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:xpath</CLICON_FEATURE>", yspec, &xc) < 0)
 	goto done;
-    
+#ifdef NYI
+    if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:confirmed-commit</CLICON_FEATURE>", yspec, &xc) < 0)
+	goto done;
+#endif
     /* Load yang spec */
     if (yang_spec_parse_module(h, "ietf-netconf", NULL, yspec)< 0)
 	goto done;
@@ -1044,3 +1047,35 @@ netconf_module_load(clicon_handle h)
  done:
     return retval;
 }
+
+/*! Find some sub-child in netconf/xm request.
+ * Actually, find a child with a certain name and return its body
+ * @param[in]  xn
+ * @param[in]  name
+ * @retval     db    Name of database
+ * @retval     NULL  Not found
+ * The following code returns "source"
+ * @code
+ *   cxobj *xt = NULL;
+ *   char  *db;
+ *   xml_parse_string("<x><target>source</target></x>", NULL, &xt);
+ *   db = netconf_db_find(xt, "target");
+ * @endcode
+ */
+char*
+netconf_db_find(cxobj *xn, 
+		char  *name)
+{
+    cxobj *xs; /* source */
+    cxobj *xi;
+    char  *db = NULL;
+
+    if ((xs = xml_find(xn, name)) == NULL)
+	goto done;
+    if ((xi = xml_child_i(xs, 0)) == NULL)
+	goto done;
+    db = xml_name(xi);
+ done:
+    return db;
+}
+

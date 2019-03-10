@@ -150,102 +150,6 @@ backend_client_rm(clicon_handle        h,
     return backend_client_delete(h, ce); /* actually purge it */
 }
 
-/*! Find target/source in netconf request. Assume sanity- not finding is error */
-static char*
-netconf_db_find(cxobj *xn, 
-		char  *name)
-{
-    cxobj *xs; /* source */
-    cxobj *xi;
-    char  *db = NULL;
-
-    if ((xs = xml_find(xn, name)) == NULL)
-	goto done;
-    if ((xi = xml_child_i(xs, 0)) == NULL)
-	goto done;
-    db = xml_name(xi);
- done:
-    return db;
-}
-
-/*! Internal message: get-config
- * 
- * @param[in]  h     Clicon handle
- * @param[in]  xe    Netconf request xml tree   
- * @param[out] cbret Return xml value cligen buffer
- */
-static int
-from_client_get_config(clicon_handle h,
-		       cxobj        *xe,
-		       char         *username,
-		       cbuf         *cbret)
-{
-    int     retval = -1;
-    char   *db;
-    cxobj  *xfilter;
-    char   *xpath = "/";
-    cxobj  *xret = NULL;
-    cbuf   *cbx = NULL; /* Assist cbuf */
-    cxobj  *xnacm = NULL;
-    cxobj **xvec = NULL;
-    size_t  xlen;    
-    int     ret;
-    
-    if ((db = netconf_db_find(xe, "source")) == NULL){
-	clicon_err(OE_XML, 0, "db not found");
-	goto done;
-    }
-    if (xmldb_validate_db(db) < 0){
-	if ((cbx = cbuf_new()) == NULL){
-	    clicon_err(OE_XML, errno, "cbuf_new");
-	    goto done;
-	}	
-	cprintf(cbx, "No such database: %s", db);
-	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
-	    goto done;
-	goto ok;
-    }
-    if ((xfilter = xml_find(xe, "filter")) != NULL)
-	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
-	    xpath="/";
-    if (xmldb_get(h, db, xpath, 1, &xret, NULL) < 0){
-	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
-	    goto done;
-	goto ok;
-    }
-    /* Pre-NACM access step */
-    if ((ret = nacm_access_pre(h, username, &xnacm)) < 0)
-	goto done;
-    if (ret == 0){ /* Do NACM validation */
-	if (xpath_vec(xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	    goto done;
-	/* NACM datanode/module read validation */
-	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
-	    goto done;
-    }
-    cprintf(cbret, "<rpc-reply>");
-    if (xret==NULL)
-	cprintf(cbret, "<data/>");
-    else{
-	if (xml_name_set(xret, "data") < 0)
-	    goto done;
-	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
-	    goto done;
-    }
-    cprintf(cbret, "</rpc-reply>");
- ok:
-    retval = 0;
- done:
-    if (xnacm)
-	xml_free(xnacm);
-    if (xvec)
-	free(xvec);
-    if (cbx)
-	cbuf_free(cbx);
-    if (xret)
-	xml_free(xret);
-    return retval;
-}
 
 /*! Get streams state according to RFC 8040 or RFC5277 common function
  * @param[in]     h       Clicon handle
@@ -303,7 +207,6 @@ client_get_streams(clicon_handle   h,
 	xml_free(x);
     return retval;
 }
-
 
 /*! Get system state-data, including streams and plugins
  * @param[in]     h       Clicon handle
@@ -365,44 +268,55 @@ client_statedata(clicon_handle h,
     return retval;
 }
 
-/*! Internal message: get
+/*! Retrieve all or part of a specified configuration.
  * 
- * @param[in]  h     Clicon handle
- * @param[in]  xe    Netconf request xml tree   
- * @param[out] cbret Return xml value cligen buffer
- * @see from_client_get_config
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 static int
-from_client_get(clicon_handle h,
-		cxobj        *xe,
-		char         *username,
-		cbuf         *cbret)
+from_client_get_config(clicon_handle h,
+		       cxobj        *xe,
+		       cbuf         *cbret,
+		       void         *arg,
+		       void         *regarg)
 {
     int     retval = -1;
+    char   *db;
     cxobj  *xfilter;
     char   *xpath = "/";
     cxobj  *xret = NULL;
-    int     ret;
+    cbuf   *cbx = NULL; /* Assist cbuf */
+    cxobj  *xnacm = NULL;
     cxobj **xvec = NULL;
     size_t  xlen;    
-    cxobj  *xnacm = NULL;
+    int     ret;
+    char   *username;
 
-    if ((xfilter = xml_find(xe, "filter")) != NULL)
-	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
-	    xpath="/";
-    /* Get config */
-    if (xmldb_get(h, "running", xpath, 0, &xret, NULL) < 0){
-	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+    username = clicon_username_get(h);
+    if ((db = netconf_db_find(xe, "source")) == NULL){
+	clicon_err(OE_XML, 0, "db not found");
+	goto done;
+    }
+    if (xmldb_validate_db(db) < 0){
+	if ((cbx = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}	
+	cprintf(cbx, "No such database: %s", db);
+	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
 	    goto done;
 	goto ok;
     }
-    /* Get state data from plugins as defined by plugin_statedata(), if any */
-    assert(xret);
-    clicon_err_reset();
-    if ((ret = client_statedata(h, xpath, &xret)) < 0)
-	goto done;
-    if (ret == 1){ /* Error from callback (error in xret) */
-	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+    if ((xfilter = xml_find(xe, "filter")) != NULL)
+	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
+	    xpath="/";
+    if (xmldb_get(h, db, xpath, 1, &xret, NULL) < 0){
+	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
     }
@@ -416,7 +330,7 @@ from_client_get(clicon_handle h,
 	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
 	    goto done;
     }
-    cprintf(cbret, "<rpc-reply>");     /* OK */
+    cprintf(cbret, "<rpc-reply>");
     if (xret==NULL)
 	cprintf(cbret, "<data/>");
     else{
@@ -433,26 +347,33 @@ from_client_get(clicon_handle h,
 	xml_free(xnacm);
     if (xvec)
 	free(xvec);
+    if (cbx)
+	cbuf_free(cbx);
     if (xret)
 	xml_free(xret);
     return retval;
 }
 
-/*! Internal message: edit-config
+/*! Loads all or part of a specified configuration to target configuration
  * 
- * @param[in]  h      Clicon handle
- * @param[in]  xe     Netconf request xml tree   
- * @param[in]  mypid  Process/session id of calling client
- * @param[out] cbret  Return xml value cligen buffer
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 static int
 from_client_edit_config(clicon_handle h,
 			cxobj        *xn,
-			int           mypid,
-			char         *username,
-			cbuf         *cbret)
+			cbuf         *cbret,
+			void         *arg,
+			void         *regarg)
 {
     int                 retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
+    int                 mypid = ce->ce_pid;
     char               *target;
     cxobj              *xc;
     cxobj              *x;
@@ -462,7 +383,9 @@ from_client_edit_config(clicon_handle h,
     yang_spec          *yspec;
     cbuf               *cbx = NULL; /* Assist cbuf */
     int                 ret;
+    char               *username;
 
+    username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec9");
 	goto done;
@@ -544,190 +467,14 @@ from_client_edit_config(clicon_handle h,
     
 } /* from_client_edit_config */
 
-/*! Internal message: Lock database
- * 
- * @param[in]  h    Clicon handle
- * @param[in]  xe   Netconf request xml tree   
- * @param[in]  pid  Unix process id
- * @param[out] cbret Return xml value cligen buffer
- */
-static int
-from_client_lock(clicon_handle h,
-		 cxobj        *xe,
-		 int           pid,
-		 cbuf         *cbret)
-{
-    int    retval = -1;
-    char  *db;
-    int    piddb;
-    cbuf  *cbx = NULL; /* Assist cbuf */
-    
-    if ((db = netconf_db_find(xe, "target")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
-	    goto done;
-	goto ok;
-    }
-    if ((cbx = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }	
-    if (xmldb_validate_db(db) < 0){
-	cprintf(cbx, "No such database: %s", db);
-	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
-	    goto done;
-	goto ok;
-    }
-    /*
-     * A lock MUST not be granted if either of the following conditions is true:
-     * 1) A lock is already held by any NETCONF session or another entity.
-     * 2) The target configuration is <candidate>, it has already been modified, and 
-     *    these changes have not been committed or rolled back.
-     */
-    piddb = xmldb_islocked(h, db);
-    if (piddb){
-	cprintf(cbx, "<session-id>%d</session-id>", piddb);
-	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
-	    goto done;
-	goto ok;
-    }
-    else{
-	if (xmldb_lock(h, db, pid) < 0)
-	    goto done;
-	cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
-    }
- ok:
-    retval = 0;
- done:
-    if (cbx)
-	cbuf_free(cbx);
-    return retval;
-}
-
-/*! Internal message: Unlock database
- * 
- * @param[in]  h    Clicon handle
- * @param[in]  xe   Netconf request xml tree   
- * @param[in]  pid  Unix process id
- * @param[out] cbret Return xml value cligen buffer
- */
-static int
-from_client_unlock(clicon_handle h,
-		   cxobj        *xe,
-		   int           pid,
-		   cbuf         *cbret)
-{
-    int    retval = -1;
-    char  *db;
-    int    piddb;
-    cbuf  *cbx = NULL; /* Assist cbuf */
-
-    if ((db = netconf_db_find(xe, "target")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
-	    goto done;
-	goto ok;
-    }
-    if ((cbx = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }	
-    if (xmldb_validate_db(db) < 0){
-	cprintf(cbx, "No such database: %s", db);
-	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
-	    goto done;
-	goto ok;
-    }
-    piddb = xmldb_islocked(h, db);
-    /* 
-     * An unlock operation will not succeed if any of the following
-     * conditions are true:
-     * 1) the specified lock is not currently active
-     * 2) the session issuing the <unlock> operation is not the same
-     *    session that obtained the lock
-     */
-    if (piddb==0 || piddb != pid){
-	cprintf(cbx, "<session-id>pid=%d piddb=%d</session-id>", pid, piddb);
-	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Unlock failed, lock is already held") < 0)
-	    goto done;
-	goto ok;
-    }
-    else{
-	xmldb_unlock(h, db);
-	if (cprintf(cbret, "<rpc-reply><ok/></rpc-reply>") < 0)
-	    goto done;
-    }
- ok:
-    retval = 0;
- done:
-    if (cbx)
-	cbuf_free(cbx);
-    return retval;
-}
-
-/*! Internal message:  Kill session (Kill the process)
- * @param[in]  h     Clicon handle
- * @param[in]  xe    Netconf request xml tree   
- * @param[out] cbret Return xml value cligen buffer
- * @retval     0     OK
- * @retval    -1    Error. Send error message back to client.
- */
-static int
-from_client_kill_session(clicon_handle h,
-			 cxobj        *xe,
-			 cbuf         *cbret)
-{
-    int                  retval = -1;
-    uint32_t             pid; /* other pid */
-    char                *str;
-    struct client_entry *ce;
-    char                *db = "running"; /* XXX */
-    cxobj               *x;
-    
-    if ((x = xml_find(xe, "session-id")) == NULL ||
-	(str = xml_find_value(x, "body")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "session-id", NULL) < 0)
-	    goto done;
-	goto ok;
-    }
-    pid = atoi(str);
-    /* may or may not be in active client list, probably not */
-    if ((ce = ce_find_bypid(backend_client_list(h), pid)) != NULL){
-	xmldb_unlock_all(h, pid);	    
-	backend_client_rm(h, ce);
-    }
-    
-    if (kill (pid, 0) != 0 && errno == ESRCH) /* Nothing there */
-	;
-    else{
-	killpg(pid, SIGTERM);
-	kill(pid, SIGTERM);
-#if 0 /* Hate sleeps we assume it died, see also 0 in next if.. */
-	sleep(1);
-#endif
-    }
-    if (1 || (kill (pid, 0) != 0 && errno == ESRCH)){ /* Nothing there */
-	/* clear from locks */
-	if (xmldb_islocked(h, db) == pid)
-	    xmldb_unlock(h, db);
-    }
-    else{ /* failed to kill client */
-	    if (netconf_operation_failed(cbret, "application", "Failed to kill session")< 0)
-		goto done;
-	goto ok;
-    }
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
- ok:
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Internal message: Copy database from db1 to db2
- * @param[in]   h      Clicon handle
- * @param[in]   xe     Netconf request xml tree   
- * @param[in]   mypid  Process/session id of calling client
- * @param[out]  cbret  Return xml value cligen buffer
- * @retval      0      OK
- * @retval      -1     Error. Send error message back to client.
+/*! Create or replace an entire config with another complete config db
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
  * NACM: If source running and target startup --> only exec permission
  * else: 
  * - omit data nodes to which the client does not have read access
@@ -736,13 +483,16 @@ from_client_kill_session(clicon_handle h,
 static int
 from_client_copy_config(clicon_handle h,
 			cxobj        *xe,
-			int           mypid,
-			cbuf         *cbret)
+			cbuf         *cbret,
+			void         *arg,
+			void         *regarg)
 {
+    int    retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
     char  *source;
     char  *target;
-    int    retval = -1;
     int    piddb;
+    int    mypid = ce->ce_pid;
     cbuf  *cbx = NULL; /* Assist cbuf */
     
     if ((source = netconf_db_find(xe, "source")) == NULL){
@@ -793,26 +543,30 @@ from_client_copy_config(clicon_handle h,
     return retval;
 }
 
-/*! Internal message: Delete database
- * @param[in]   h     Clicon handle
- * @param[in]   xe    Netconf request xml tree   
- * @param[in]   mypid Process/session id of calling client
- * @param[out]  cbret Return xml value cligen buffer
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
+/*! Delete a configuration datastore.
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 static int
 from_client_delete_config(clicon_handle h,
 			  cxobj        *xe,
-			  int           mypid,
-			  cbuf         *cbret)
+			  cbuf         *cbret,
+			  void         *arg, 
+			  void         *regarg)
 {
-    int    retval = -1;
-    char  *target;
-    int    piddb;
-    cbuf  *cbx = NULL; /* Assist cbuf */
+    int                  retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
+    char                *target;
+    int                  piddb;
+    cbuf                *cbx = NULL; /* Assist cbuf */
+    int                  mypid = ce->ce_pid;
 
-    if ((target = netconf_db_find(xe, "target")) == NULL||
+    if ((target = netconf_db_find(xe, "target")) == NULL ||
 	strcmp(target, "running")==0){
 	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
 	    goto done;
@@ -855,13 +609,314 @@ from_client_delete_config(clicon_handle h,
     return retval;
 }
 
-/*! Internal message: Create subscription for notifications see RFC 5277
- * @param[in]   h     Clicon handle
- * @param[in]   xe    Netconf request xml tree   
- * @param[in]   ce    Client entry
- * @param[out]  cbret Return xml value cligen buffer
- * @retval      0    OK
- * @retval      -1   Error. Send error message back to client.
+/*! Lock the configuration system of a device
+ * 
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+from_client_lock(clicon_handle h,
+		 cxobj        *xe,
+		 cbuf         *cbret,
+		 void         *arg, 
+		 void         *regarg)
+{
+    int                  retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
+    int                  pid = ce->ce_pid;
+    char                *db;
+    int                  piddb;
+    cbuf                *cbx = NULL; /* Assist cbuf */
+    
+    if ((db = netconf_db_find(xe, "target")) == NULL){
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
+	    goto done;
+	goto ok;
+    }
+    if ((cbx = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }	
+    if (xmldb_validate_db(db) < 0){
+	cprintf(cbx, "No such database: %s", db);
+	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
+	    goto done;
+	goto ok;
+    }
+    /*
+     * A lock MUST not be granted if either of the following conditions is true:
+     * 1) A lock is already held by any NETCONF session or another entity.
+     * 2) The target configuration is <candidate>, it has already been modified, and 
+     *    these changes have not been committed or rolled back.
+     */
+    piddb = xmldb_islocked(h, db);
+    if (piddb){
+	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
+	    goto done;
+	goto ok;
+    }
+    else{
+	if (xmldb_lock(h, db, pid) < 0)
+	    goto done;
+	cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    }
+ ok:
+    retval = 0;
+ done:
+    if (cbx)
+	cbuf_free(cbx);
+    return retval;
+}
+
+/*! Release a configuration lock previously obtained with the 'lock' operation
+ * 
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+from_client_unlock(clicon_handle h,
+		   cxobj        *xe,
+		   cbuf         *cbret,
+		   void         *arg,
+		   void         *regarg)
+{
+    int                  retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
+    int                  pid = ce->ce_pid;
+    char                *db;
+    int                  piddb;
+    cbuf                *cbx = NULL; /* Assist cbuf */
+
+    if ((db = netconf_db_find(xe, "target")) == NULL){
+	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
+	    goto done;
+	goto ok;
+    }
+    if ((cbx = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }	
+    if (xmldb_validate_db(db) < 0){
+	cprintf(cbx, "No such database: %s", db);
+	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
+	    goto done;
+	goto ok;
+    }
+    piddb = xmldb_islocked(h, db);
+    /* 
+     * An unlock operation will not succeed if any of the following
+     * conditions are true:
+     * 1) the specified lock is not currently active
+     * 2) the session issuing the <unlock> operation is not the same
+     *    session that obtained the lock
+     */
+    if (piddb==0 || piddb != pid){
+	cprintf(cbx, "<session-id>pid=%d piddb=%d</session-id>", pid, piddb);
+	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Unlock failed, lock is already held") < 0)
+	    goto done;
+	goto ok;
+    }
+    else{
+	xmldb_unlock(h, db);
+	if (cprintf(cbret, "<rpc-reply><ok/></rpc-reply>") < 0)
+	    goto done;
+    }
+ ok:
+    retval = 0;
+ done:
+    if (cbx)
+	cbuf_free(cbx);
+    return retval;
+}
+
+/*! Retrieve running configuration and device state information.
+ * 
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ *
+ * @see from_client_get_config
+ */
+static int
+from_client_get(clicon_handle h,
+		cxobj        *xe,
+		cbuf         *cbret,
+		void         *arg, 
+		void         *regarg)
+{
+    int     retval = -1;
+    cxobj  *xfilter;
+    char   *xpath = "/";
+    cxobj  *xret = NULL;
+    int     ret;
+    cxobj **xvec = NULL;
+    size_t  xlen;    
+    cxobj  *xnacm = NULL;
+    char               *username;
+
+    username = clicon_username_get(h);
+    if ((xfilter = xml_find(xe, "filter")) != NULL)
+	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
+	    xpath="/";
+    /* Get config */
+    if (xmldb_get(h, "running", xpath, 0, &xret, NULL) < 0){
+	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+	    goto done;
+	goto ok;
+    }
+    /* Get state data from plugins as defined by plugin_statedata(), if any */
+    assert(xret);
+    clicon_err_reset();
+    if ((ret = client_statedata(h, xpath, &xret)) < 0)
+	goto done;
+    if (ret == 1){ /* Error from callback (error in xret) */
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
+	goto ok;
+    }
+    /* Pre-NACM access step */
+    if ((ret = nacm_access_pre(h, username, &xnacm)) < 0)
+	goto done;
+    if (ret == 0){ /* Do NACM validation */
+	if (xpath_vec(xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	    goto done;
+	/* NACM datanode/module read validation */
+	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
+	    goto done;
+    }
+    cprintf(cbret, "<rpc-reply>");     /* OK */
+    if (xret==NULL)
+	cprintf(cbret, "<data/>");
+    else{
+	if (xml_name_set(xret, "data") < 0)
+	    goto done;
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
+    }
+    cprintf(cbret, "</rpc-reply>");
+ ok:
+    retval = 0;
+ done:
+    if (xnacm)
+	xml_free(xnacm);
+    if (xvec)
+	free(xvec);
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
+/*! Request graceful termination of a NETCONF session.
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+from_client_close_session(clicon_handle h,
+			 cxobj        *xe,
+			 cbuf         *cbret,
+			 void         *arg, 
+			 void         *regarg)
+{
+    struct client_entry *ce = (struct client_entry *)arg;
+    int                  pid = ce->ce_pid;
+
+    xmldb_unlock_all(h, pid);
+    stream_ss_delete_all(h, ce_event_cb, (void*)ce);
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    return 0;
+}
+
+/*! Internal message:  Force the termination of a NETCONF session.
+ *
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+from_client_kill_session(clicon_handle h,
+			 cxobj        *xe,
+			 cbuf         *cbret,
+			 void         *arg,
+			 void         *regarg)
+{
+    int                  retval = -1;
+    uint32_t             pid; /* other pid */
+    char                *str;
+    struct client_entry *ce;
+    char                *db = "running"; /* XXX */
+    cxobj               *x;
+    
+    if ((x = xml_find(xe, "session-id")) == NULL ||
+	(str = xml_find_value(x, "body")) == NULL){
+	if (netconf_missing_element(cbret, "protocol", "session-id", NULL) < 0)
+	    goto done;
+	goto ok;
+    }
+    pid = atoi(str);
+    /* may or may not be in active client list, probably not */
+    if ((ce = ce_find_bypid(backend_client_list(h), pid)) != NULL){
+	xmldb_unlock_all(h, pid);	    
+	backend_client_rm(h, ce);
+    }
+    
+    if (kill (pid, 0) != 0 && errno == ESRCH) /* Nothing there */
+	;
+    else{
+	killpg(pid, SIGTERM);
+	kill(pid, SIGTERM);
+#if 0 /* Hate sleeps we assume it died, see also 0 in next if.. */
+	sleep(1);
+#endif
+    }
+    if (1 || (kill (pid, 0) != 0 && errno == ESRCH)){ /* Nothing there */
+	/* clear from locks */
+	if (xmldb_islocked(h, db) == pid)
+	    xmldb_unlock(h, db);
+    }
+    else{ /* failed to kill client */
+	    if (netconf_operation_failed(cbret, "application", "Failed to kill session")< 0)
+		goto done;
+	goto ok;
+    }
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Create a notification subscription
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
  * @see RFC5277 2.1
  * @example:
  *    <create-subscription> 
@@ -872,21 +927,23 @@ from_client_delete_config(clicon_handle h,
  *    </create-subscription> 
  */
 static int
-from_client_create_subscription(clicon_handle        h,
-				cxobj               *xe,
-				struct client_entry *ce,
-				cbuf                *cbret)
+from_client_create_subscription(clicon_handle h,
+				cxobj        *xe,
+				cbuf         *cbret,
+				void         *arg, 
+				void         *regarg)
 {
-    char   *stream = "NETCONF";
-    int     retval = -1;
-    cxobj  *x; /* Generic xml tree */
-    cxobj  *xfilter; /* Filter xml tree */
-    char   *ftype;
-    char   *starttime = NULL;
-    char   *stoptime = NULL;
-    char   *selector = NULL;
-    struct timeval start;
-    struct timeval stop;
+    int                  retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
+    char                *stream = "NETCONF";
+    cxobj               *x; /* Generic xml tree */
+    cxobj               *xfilter; /* Filter xml tree */
+    char                *ftype;
+    char                *starttime = NULL;
+    char                *stoptime = NULL;
+    char                *selector = NULL;
+    struct timeval       start;
+    struct timeval       stop;
     
     if ((x = xpath_first(xe, "//stream")) != NULL)
 	stream = xml_find_value(x, "body");
@@ -945,17 +1002,21 @@ from_client_create_subscription(clicon_handle        h,
     return retval;
 }
 
-/*! Internal message: Set debug level. This is global, not just for the session.
- * @param[in]   h     Clicon handle
- * @param[in]   xe    Netconf request xml tree   
- * @param[out]  cbret Return xml value cligen buffer
- * @retval      0     OK
- * @retval      -1    Error. Send error message back to client.
+/*! Set debug level. 
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 static int
-from_client_debug(clicon_handle      h,
-		  cxobj             *xe,
-		  cbuf              *cbret)
+from_client_debug(clicon_handle h,
+		  cxobj        *xe,
+		  cbuf         *cbret,
+		  void         *arg,
+		  void         *regarg)
 {
     int      retval = -1;
     uint32_t level;
@@ -997,9 +1058,7 @@ from_client_msg(clicon_handle        h,
     cxobj               *xe;
     char                *rpc = NULL;
     char                *module = NULL;
-    char                *db;
     cbuf                *cbret = NULL; /* return message */
-    int                  pid;
     int                  ret;
     char                *username;
     yang_spec           *yspec;
@@ -1008,7 +1067,6 @@ from_client_msg(clicon_handle        h,
     cxobj               *xnacm = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    pid = ce->ce_pid;
     yspec = clicon_dbspec_yang(h); 
     /* Return netconf message. Should be filled in by the dispatch(sub) functions 
      * as wither rpc-error or by positive response.
@@ -1067,81 +1125,17 @@ from_client_msg(clicon_handle        h,
 	    if (ret == 0) /* Not permitted and cbret set */
 		goto reply;
 	}
-	if (strcmp(rpc, "get-config") == 0){
-	    if (from_client_get_config(h, xe, username, cbret) <0)
+	clicon_err_reset();
+	if ((ret = rpc_callback_call(h, xe, cbret, ce)) < 0){
+	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 		goto done;
+	    clicon_log(LOG_NOTICE, "%s Error in rpc_callback_call:%s", __FUNCTION__, xml_name(xe));
+	    goto reply; /* Dont quit here on user callbacks */
 	}
-	else if (strcmp(rpc, "edit-config") == 0){
-	    if (from_client_edit_config(h, xe, pid, username, cbret) <0)
+	if (ret == 0){ /* not handled by callback */
+	    if (netconf_operation_failed(cbret, "application", "Callback not recognized")< 0)
 		goto done;
-	}
-	else if (strcmp(rpc, "copy-config") == 0){
-	    if (from_client_copy_config(h, xe, pid, cbret) <0)
-		goto done;
-	}
-	else if (strcmp(rpc, "delete-config") == 0){
-	    if (from_client_delete_config(h, xe, pid, cbret) <0)
-		goto done;
-	}
-	else if (strcmp(rpc, "lock") == 0){
-	    if (from_client_lock(h, xe, pid, cbret) < 0)
-		goto done;
-	}
-	else if (strcmp(rpc, "unlock") == 0){
-	    if (from_client_unlock(h, xe, pid, cbret) < 0)
-		goto done;
-	}
-	else if (strcmp(rpc, "get") == 0){
-	    if (from_client_get(h, xe, username, cbret) < 0)
-		goto done;
-	}
-	else if (strcmp(rpc, "close-session") == 0){
-	    xmldb_unlock_all(h, pid);
-	    stream_ss_delete_all(h, ce_event_cb, (void*)ce);
-	    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
-	}
-	else if (strcmp(rpc, "kill-session") == 0){
-	    if (from_client_kill_session(h, xe, cbret) < 0)
-		goto done;
-	}
-	else if (strcmp(rpc, "validate") == 0){
-	    if ((db = netconf_db_find(xe, "source")) == NULL){
-		if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
-		    goto done;
-		goto reply;
-	    }
-	    if (from_client_validate(h, db, cbret) < 0)
-		goto done;
-	}
-	else if (strcmp(rpc, "commit") == 0){
-	    if (from_client_commit(h, pid, cbret) < 0)
-		goto done;
-	}
-	else if (strcmp(rpc, "discard-changes") == 0){
-	    if (from_client_discard_changes(h, pid, cbret) < 0)
-		goto done;
-	}
-	else if (strcmp(rpc, "create-subscription") == 0){
-	    if (from_client_create_subscription(h, xe, ce, cbret) < 0)
-		goto done;
-	}
-	else if (strcmp(rpc, "debug") == 0){
-	    if (from_client_debug(h, xe, cbret) < 0)
-		goto done;
-	}
-	else{
-	    clicon_err_reset();
-	    if ((ret = rpc_callback_call(h, xe, cbret, ce)) < 0){
-		if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
-		    goto done;
-		clicon_log(LOG_NOTICE, "%s Error in rpc_callback_call:%s", __FUNCTION__, xml_name(xe));
-		goto reply; /* Dont quit here on user callbacks */
-	    }
-	    if (ret == 0){ /* not handled by callback */
-		if (netconf_operation_failed(cbret, "application", "Callback not recognized")< 0)
-		    goto done;
-		goto reply;
-	    }
+	    goto reply;
 	}
     }
  reply:
@@ -1216,4 +1210,72 @@ from_client(int   s,
     if (msg)
 	free(msg);
     return retval; /* -1 here terminates backend */
+}
+
+/*! Init backend rpc: Set up standard netconf rpc callbacks
+ * @param[in]  h     Clicon handle
+ * @retval       -1       Error (fatal)
+ * @retval        0       OK
+ * @see ietf-netconf@2011-06-01.yang 
+ */
+int
+backend_rpc_init(clicon_handle h)
+{
+    int retval = -1;
+
+    /* In backend_client.? RFC 6241 */
+    if (rpc_callback_register(h, from_client_get_config, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "get-config") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_edit_config, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "edit-config") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_copy_config, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "copy-config") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_delete_config, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "delete-config") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_lock, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "lock") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_unlock, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "unlock") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_get, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "get") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_close_session, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "close-session") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_kill_session, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "kill-session") < 0)
+	goto done;
+    /* In backend_commit.? */
+    if (rpc_callback_register(h, from_client_commit, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "commit") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_discard_changes, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "discard-changes") < 0)
+	goto done;
+    /* if-feature confirmed-commit */
+    if (rpc_callback_register(h, from_client_cancel_commit, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "cancel-commit") < 0)
+	goto done;
+    /* if-feature validate */
+    if (rpc_callback_register(h, from_client_validate, NULL,
+		      "urn:ietf:params:xml:ns:netconf:base:1.0", "validate") < 0)
+	goto done;
+
+    /* In backend_client.? RPC from RFC 5277 */
+    if (rpc_callback_register(h, from_client_create_subscription, NULL,
+		      "urn:ietf:params:xml:ns:netmod:notification", "create-subscription") < 0)
+	goto done;
+    /* In backend_client.? Clixon RPC */
+    if (rpc_callback_register(h, from_client_debug, NULL,
+			      "http://clicon.org/lib", "debug") < 0)
+	goto done;
+    retval =0;
+ done:
+    return retval;
 }

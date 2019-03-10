@@ -1674,7 +1674,7 @@ api_operations_post(clicon_handle h,
      */
     if ((ret = rpc_callback_call(h, xbot, cbret, r)) < 0)
 	goto done;
-    if (ret == 1){ /* Handled locally */
+    if (ret > 0){ /* Handled locally */
 	if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)
 	    goto done;
 	/* Local error: return it and quit */

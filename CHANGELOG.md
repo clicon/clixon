@@ -3,7 +3,7 @@
 ## 3.10.0 (Upcoming)
 
 ### Major New features
-* CLI history: [Preserve CLI command history across sessions. The up/down arrows](https://github.com/clicon/clixon/issues/79)
+* Persistent CLI history: [Preserve CLI command history across sessions. The up/down arrows](https://github.com/clicon/clixon/issues/79)
   * The design is similar to bash history:
       * The CLI loads/saves its complete history to a file on entry and exit, respectively
       * The size (number of lines) of the file is the same as the history in memory
@@ -28,6 +28,10 @@
   * Note that this adds bytes to your configs
 
 ### API changes on existing features (you may need to change your code)
+* `rpc_callback_register` added a namespace parameter. Example:
+   ```
+     rpc_callback_register(h, empty_rpc, NULL, "urn:example:clixon", "empty");
+   ```
 * Clixon configuration file top-level symbols has changed to `clixon-config`and namespace check is enforced. This means all Clixon configuration files must change from:
 ```
   <config>
@@ -46,6 +50,9 @@ to:
 ```
 
 ### Minor changes
+* Ensured you can add multiple callbacks for any RPC, including basic ones.
+  * Extra RPC:s will be called _after_ the basic ones.
+  * One specific usecase is hook for `copy-config` (see [doc/ROADMAP.md] that can be implemented thus way.
 * Added "base" as CLI default mode and "cli> " as default prompt.
 * clixon-config YAML file has new revision: 2019-03-05.
   * New URN and changed top-level symbol to `clixon-config`

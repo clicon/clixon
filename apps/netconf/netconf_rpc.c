@@ -603,7 +603,7 @@ netconf_application_rpc(clicon_handle h,
 	/* Look for local (client-side) netconf plugins. */
 	if ((ret = rpc_callback_call(h, xn, cbret, NULL)) < 0)
 	    goto done;
-	if (ret == 1){ /* Handled locally */
+	if (ret > 0){ /* Handled locally */
 	    if (xml_parse_string(cbuf_get(cbret), NULL, xret) < 0)
 		goto done;
 	}
@@ -692,6 +692,7 @@ netconf_rpc_dispatch(clicon_handle h,
 	    strcmp(xml_name(xe), "kill-session") == 0 ||
 	    strcmp(xml_name(xe), "validate") == 0 ||  /* :validate */
 	    strcmp(xml_name(xe), "commit") == 0 || /* :candidate */
+	    strcmp(xml_name(xe), "cancel-commit") == 0 || 
 	    strcmp(xml_name(xe), "discard-changes") == 0){
 	    if (clicon_rpc_netconf_xml(h, xml_parent(xe), xret, NULL) < 0)
 		goto done;	
