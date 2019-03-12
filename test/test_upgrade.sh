@@ -2,10 +2,6 @@
 # Starting clixon with outdated (or not) modules
 # This relieas on storing RFC7895 YANG Module Library modules-state info
 # in the datastore (or XML files?)
-# There is also a: Factory default Setting:
-#        draft-wu-netconf-restconf-factory-restore-03
-# And: A YANG Data Model for module revision management:
-#        draft-wang-netmod-module-revision-management-01
 # The test is made with three Yang models A, B and C as follows:
 # Yang module A has revisions "814-01-28" and "2019-01-01"
 # Yang module B has only revision "2019-01-01"
@@ -250,8 +246,8 @@ EOF
 runtest(){
     modstate=$1
     mode=$2
-    expect=$3
-    startup=$4
+    exprun=$3     # Expected running
+    expstartup=$4 # Expected startup
     
     new "test params: -f $cfg"
     # Bring your own backend
@@ -273,10 +269,10 @@ runtest(){
     fi
 
     new "Get running"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$expect</rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$exprun</rpc-reply>]]>]]>$"
 
     new "Get startup"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$startup</rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$expstartup</rpc-reply>]]>]]>$"
     
     if [ $BE -ne 0 ]; then
 	new "Kill backend"
@@ -292,7 +288,6 @@ runtest(){
 
 # Compatible == all yang modules match
 # runtest <mode> <expected running> <expected startup>
-
 new "1. Run without CLICON_XMLDB_MODSTATE ensure no modstate in datastore"
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-valid.xml startup_db)
@@ -320,6 +315,7 @@ fi
 new "3. Load compatible running valid running (rest of tests are startup)"
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-valid.xml running_db)
+(cd $dir; cp compat-valid.xml startup_db) # XXX
 runtest true running '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>'
 
 new "4. Load non-compat valid startup"
@@ -335,7 +331,8 @@ runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '
 new "6. Load non-compat invalid running. Enter failsafe, startup invalid."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp non-compat-invalid.xml running_db)
-runtest true running '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>'
+(cd $dir; cp non-compat-valid.xml startup_db) # XXX tmp
+#runtest true running '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>'
 
 new "7. Load compatible invalid startup."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases

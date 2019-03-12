@@ -144,11 +144,11 @@ startup       --+-------------------------------------> BROKEN XML
  */
 int
 startup_mode_startup(clicon_handle        h,
+		     char                *db,
 		     cbuf                *cbret)
 {
     int         retval = -1;
     int         ret;
-    char       *db = "startup";
     
     /* [Delete and] create running db */
     if (startup_db_reset(h, "running") < 0)

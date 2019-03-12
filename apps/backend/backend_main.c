@@ -671,11 +671,15 @@ main(int    argc,
 	break;
     case SM_RUNNING: /* Use running as startup */
 	/* Copy original running to startup and treat as startup */
-	if (xmldb_copy(h, "running", "startup") < 0)
+	if (xmldb_copy(h, "running", "tmp") < 0)
 	    goto done;
-    case SM_STARTUP: /* Fall through */
+	ret = startup_mode_startup(h, "tmp", cbret);
+	if (ret2status(ret, &status) < 0)
+	    goto done;
+	break;
+    case SM_STARTUP: 
 	/* Load and commit from startup */
-	ret = startup_mode_startup(h, cbret);
+	ret = startup_mode_startup(h, "startup", cbret);
 	if (ret2status(ret, &status) < 0)
 	    goto done;
 	/* if status = STARTUP_INVALID, cbret contains info */

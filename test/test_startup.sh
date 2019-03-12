@@ -32,56 +32,32 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
   <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>
+  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
 </clixon-config>
 
 EOF
 
+# Create running-db containin the interface "run"
+runvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces>'
+
+# Create startup-db containing the interface "startup"
+startvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces>'
+
+# extra
+extravar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces>'
+
 # Create a pre-set running, startup and (extra) config.
 # The configs are identified by an interface called run, startup, extra.
 # Depending on startup mode (init, none, running, or startup)
-# expect different output of an initial get-config
+# expect different output of an initial get-config of running
 testrun(){
     mode=$1
-    expect=$2
+    exprun=$2 # expected running_db after startup
 
-    # Create running-db containin the interface "run"
-    sudo rm -f  $dir/running_db
-    cat <<EOF > $dir/running_db
-<config>
-   <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
-      <interface>
-         <name>run</name>
-         <type>ex:eth</type>
-      </interface>
-    </interfaces>
-</config>
-EOF
-
-    # Create startup-db containin the interface "startup"
-    sudo rm -f  $dir/startup_db
-    cat <<EOF > $dir/startup_db
-<config>
-   <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
-      <interface>
-         <name>startup</name>
-         <type>ex:eth</type>
-      </interface>
-    </interfaces>
-</config>
-EOF
-
-    # Create extra xml containin the interface "extra"
-    sudo rm -f  $dir/config
-    cat <<EOF > $dir/config
-<config>
-   <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
-      <interface>
-         <name>extra</name>
-         <type>ex:eth</type>
-      </interface>
-    </interfaces>
-</config>
-EOF
+    sudo rm -f  $dir/*_db
+    echo "<config>$runvar</config>" > $dir/running_db
+    echo "<config>$startvar</config>" > $dir/startup_db
+    echo "<config>$extravar</config>" > $dir/extra_db
 
     if [ $BE -ne 0 ]; then     # Bring your own backend
 	# kill old backend (if any)
@@ -90,18 +66,24 @@ EOF
 	if [ $? -ne 0 ]; then
 	    err
 	fi
-        new "start backend -f $cfg -s $mode -c $dir/config"
-	start_backend -s $mode -f $cfg -c $dir/config
+        new "start backend -f $cfg -s $mode -c $dir/extra_db"
+	start_backend -s $mode -f $cfg -c $dir/extra_db
 
 	new "waiting"
 	sleep $RCWAIT
     else
-	new "Restart backend as eg follows: -Ff $cfg -s $mode -c $dir/config # $BETIMEOUT s"
+	new "Restart backend as eg follows: -Ff $cfg -s $mode -c $dir/extra_db # $BETIMEOUT s"
 	sleep $BETIMEOUT
     fi
-    new "Startup test for init mode: $mode"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$expect</rpc-reply>]]>]]>$"
+    new "Startup test for $mode mode, check running"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$exprun</rpc-reply>]]>]]>$"
 
+    new "Startup test for $mode mode, check candidate"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$exprun</rpc-reply>]]>]]>$"
+
+    new "Startup test for $mode mode, check startup is untouched"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$startvar</data></rpc-reply>]]>]]>$"
+    
     new "Kill backend"
     # Check if premature kill
     pid=`pgrep -u root -f clixon_backend`
@@ -112,12 +94,17 @@ EOF
     stop_backend -f $cfg
 } # testrun
 
-testrun init    '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+# Init mode: delete running and reload from scratch (just extra)
+testrun init "<data>$extravar</data>"
 
-testrun none    '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+# None mode: do nothing, running remains
+testrun none  "<data>$runvar</data>"
 
+# Running mode: keep running but load also extra
 testrun running '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
 
+# Startup mode: scratch running, load startup with extra on top
 testrun startup '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
 
-rm -rf $dir
+echo $dir
+#rm -rf $dir
