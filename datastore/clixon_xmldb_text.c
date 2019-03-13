@@ -1117,7 +1117,7 @@ text_modify(struct text_handle *th,
 	    }
 	case OP_REMOVE: /* fall thru */
 	    if (x0){
-		if (xnacm){
+		if (!permit && xnacm){
 		    if ((ret = nacm_datanode_write(NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
@@ -1149,6 +1149,7 @@ text_modify(struct text_handle *th,
  * @param[in]  yspec Top-level yang spec (if y is NULL)
  * @param[in]  op    OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
  * @param[in]  username User name of requestor for nacm
+ * @param[in]  permit If set, NACM has permitted this tree on an upper level
  * @param[in]  xnacm NACM XML tree 
  * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0.
  * @retval    -1     Error
@@ -1164,6 +1165,7 @@ text_modify_top(struct text_handle *th,
 		enum operation_type op,
 		char               *username,
 		cxobj              *xnacm,
+		int                 permit,
 		cbuf               *cbret)
 {
     int        retval = -1;
@@ -1174,7 +1176,6 @@ text_modify_top(struct text_handle *th,
     yang_stmt *ymod;/* yang module */
     char      *opstr;
     int        ret;
-    int        permit = 0;
 
     /* Assure top-levels are 'config' */
     assert(x0 && strcmp(xml_name(x0),"config")==0);
@@ -1191,7 +1192,7 @@ text_modify_top(struct text_handle *th,
 	    case OP_DELETE:
 	    case OP_REMOVE:
 	    case OP_REPLACE:
-		if (xnacm){
+		if (!permit && xnacm){
 		    if ((ret = nacm_datanode_write(NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0)
 			goto done;
 		    if (ret == 0)
@@ -1225,7 +1226,7 @@ text_modify_top(struct text_handle *th,
     }
     /* Special case top-level replace */
     else if (op == OP_REPLACE || op == OP_DELETE){
-	if (xnacm && !permit){
+	if (!permit && xnacm){
 	    if ((ret = nacm_datanode_write(NULL, x1, NACM_UPDATE, username, xnacm, cbret)) < 0) 
 		goto done;
 	    if (ret == 0)
@@ -1349,6 +1350,7 @@ text_put(xmldb_handle        xh,
     char               *mode;
     cxobj              *xnacm0 = NULL;
     cxobj              *xmodst = NULL;
+    int                 permit = 0; /* nacm permit all */
 
     if (cbret == NULL){
 	clicon_err(OE_XML, EINVAL, "cbret is NULL");
@@ -1392,17 +1394,17 @@ text_put(xmldb_handle        xh,
     }
     if (xnacm0 != NULL &&
 	(xnacm = xpath_first(xnacm0, "nacm")) != NULL){
-	/* Pre-NACM access step */
-	if ((ret = nacm_access(mode, xnacm, username)) < 0)
+	/* Pre-NACM access step, if permit, then dont do any nacm checks in 
+	 * text_modify_* below */
+	if ((permit = nacm_access(mode, xnacm, username)) < 0)
 	    goto done;
     }
-    /* Here assume if xnacm is set (actually may be ret==0?) do NACM */
-
+    /* Here assume if xnacm is set and !permit do NACM */
     /* 
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
      */
-    if ((ret = text_modify_top(th, x0, x1, yspec, op, username, xnacm, cbret)) < 0)
+    if ((ret = text_modify_top(th, x0, x1, yspec, op, username, xnacm, permit, cbret)) < 0)
 	goto done;
     /* If xml return - ie netconf error xml tree, then stop and return OK */
     if (ret == 0)

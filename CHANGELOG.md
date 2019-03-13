@@ -57,6 +57,7 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Bugfix: Default NACM policies applied even if NACM is disabled
 * [Identityref inside augment statement](https://github.com/clicon/clixon/issues/77)
   * Yang-stmt enhanced with "shortcut" to original module
 * Yang augment created multiple augmented children (no side-effect)

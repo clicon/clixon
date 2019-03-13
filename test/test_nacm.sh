@@ -136,6 +136,10 @@ new "auth get"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 'null
 '
 
+# explicitly disable nacm (regression on netgate bug)
+new "disable nacm"
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": false}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
+
 new "auth set authentication config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
