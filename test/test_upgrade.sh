@@ -240,15 +240,18 @@ cat <<EOF > $dir/compat-err.xml
 </config>
 EOF
 
-# Start system in $mode with existing (old) configuration in $db 
-# mode is one of: init, none, running, or startup
-# db is one of: running_db or startup_db
+#! Start system in given mode and check database contents
+# Before script is called populate running_db and startup_db
+# @param[in] modstate  Boolean: Tag datastores with RFC 7895 YANG Module Library
+# @param[in] mode      Startup mode: init, none, running, or startup
+# @param[in] exprun    Expected content of running-db
+# @param[in] expstart  Check startup database or not if ""
 runtest(){
     modstate=$1
     mode=$2
-    exprun=$3     # Expected running
-    expstartup=$4 # Expected startup
-    
+    exprun=$3  
+    expstart=$4   
+
     new "test params: -f $cfg"
     # Bring your own backend
     if [ $BE -ne 0 ]; then
@@ -268,11 +271,14 @@ runtest(){
 	sleep $BETIMEOUT
     fi
 
-    new "Get running"
+    new "Check running db content"
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$exprun</rpc-reply>]]>]]>$"
 
-    new "Get startup"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$expstartup</rpc-reply>]]>]]>$"
+    # If given check startup db XML
+    if [ -n "$expstart" ]; then 
+	new "Check startup db content"
+	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>" "^<rpc-reply>$expstart</rpc-reply>]]>]]>$"
+    fi
     
     if [ $BE -ne 0 ]; then
 	new "Kill backend"
@@ -315,8 +321,8 @@ fi
 new "3. Load compatible running valid running (rest of tests are startup)"
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-valid.xml running_db)
-(cd $dir; cp compat-valid.xml startup_db) # XXX
-runtest true running '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>'
+runtest true running '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' ''
+#'<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>'
 
 new "4. Load non-compat valid startup"
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
@@ -332,7 +338,9 @@ new "6. Load non-compat invalid running. Enter failsafe, startup invalid."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp non-compat-invalid.xml running_db)
 (cd $dir; cp non-compat-valid.xml startup_db) # XXX tmp
-#runtest true running '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>'
+runtest true running '<data><a1 xmlns="urn:example:a">always work</a1></data>' ''
+
+#'<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>'
 
 new "7. Load compatible invalid startup."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases

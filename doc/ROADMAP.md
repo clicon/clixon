@@ -7,17 +7,8 @@
 - Handle revisions to data model.
   - Possibly draft-wang-netmod-module-revision-management-01
   - See (startup.md)
-- (DONE) NACM (RFC 8341) 
-  - NACM support for create, read, update, delete operations 
-  - ACM support for specifying a module name other than '*' 
-- (DONE)XML [Namespace handling](https://github.com/clicon/clixon/issues/49) (DONE)
 
 ## Medium prio:
-- (DONE) Register extra callbacks on system Netconf messages. (Was:Support a plugin callback that is invoked when copy-config is called.)
-- (DONE)Preserve CLI command history across sessions. The up/down arrows
-- (DONE)Support for XML regex's.
-  - Currently Posix extended regular expressions
-- (DONE) Input validation on custom RPCs/
   - [Sanity checks](https://github.com/clicon/clixon/issues/47)
   
 ## Low prio:

@@ -849,19 +849,19 @@ text_get(xmldb_handle  xh,
 }
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
- * @param[in]  th     Datastore text handle
- * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
- * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
- * @param[in]  x0p Parent of x0
- * @param[in]  x1  xml tree which modifies base
- * @param[in]  op  OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
+ * @param[in]  th       Datastore text handle
+ * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
+ * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
+ * @param[in]  x0p      Parent of x0
+ * @param[in]  x1       XML tree which modifies base
+ * @param[in]  op       OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
  * @param[in]  username User name of requestor for nacm
- * @param[in]  xnacm NACM XML tree 
- * @param[in]  permit If set, NACM has permitted this tree on an upper level
- * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0.
- * @retval    -1     Error
- * @retval     0     Failed (cbret set)
- * @retval     1     OK
+ * @param[in]  xnacm    NACM XML tree (only if !permit)
+ * @param[in]  permit   If set, no NACM tests using xnacm required
+ * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
+ * @retval    -1        Error
+ * @retval     0        Failed (cbret set)
+ * @retval     1        OK
  * Assume x0 and x1 are same on entry and that y is the spec
  * @see text_modify_top
  */
@@ -1000,7 +1000,7 @@ text_modify(struct text_handle *th,
 		goto fail;
 	    }
 	case OP_REPLACE: /* fall thru */
-	    if (xnacm && !permit){
+	    if (!permit && xnacm){
 		if ((ret = nacm_datanode_write(NULL, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
 		    goto done;
 		if (ret == 0)
@@ -1022,7 +1022,7 @@ text_modify(struct text_handle *th,
 	    if (y0->yn_keyword == Y_ANYXML){
 		if (op == OP_NONE)
 		    break;
-		if (xnacm && op==OP_MERGE && !permit){
+		if (op==OP_MERGE && !permit && xnacm){
 		    if ((ret = nacm_datanode_write(NULL, x0, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
@@ -1039,7 +1039,7 @@ text_modify(struct text_handle *th,
 		break;
 	    }
 	    if (x0==NULL){
-		if (xnacm && op==OP_MERGE && !permit){
+		if (op==OP_MERGE && !permit && xnacm){
 		    if ((ret = nacm_datanode_write(NULL, x0, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
@@ -1143,18 +1143,18 @@ text_modify(struct text_handle *th,
 } /* text_modify */
 
 /*! Modify a top-level base tree x0 with modification tree x1
- * @param[in]  th    Datastore text handle
- * @param[in]  x0    Base xml tree (can be NULL in add scenarios)
- * @param[in]  x1    xml tree which modifies base
- * @param[in]  yspec Top-level yang spec (if y is NULL)
- * @param[in]  op    OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
+ * @param[in]  th       Datastore text handle
+ * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
+ * @param[in]  x1       XML tree which modifies base
+ * @param[in]  yspec    Top-level yang spec (if y is NULL)
+ * @param[in]  op       OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
  * @param[in]  username User name of requestor for nacm
- * @param[in]  permit If set, NACM has permitted this tree on an upper level
- * @param[in]  xnacm NACM XML tree 
- * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0.
- * @retval    -1     Error
- * @retval     0     Failed (cbret set)
- * @retval     1     OK
+ * @param[in]  xnacm    NACM XML tree (only if !permit)
+ * @param[in]  permit   If set, no NACM tests using xnacm required
+ * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
+ * @retval    -1        Error
+ * @retval     0        Failed (cbret set)
+ * @retval     1        OK
  * @see text_modify
  */
 static int

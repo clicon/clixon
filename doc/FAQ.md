@@ -28,7 +28,7 @@
   * [I want to program. How do I extend the example?](#i-want-to-program-how-do-i-extend-the-example)
   * [How is a plugin initiated?](#how-is-a-plugin-initiated)
   * [How do I write a commit function?](#how-do-i-write-a-commit-function)
-  * [How do I check what has changed on commit?](#how do i check what has changed on commit)
+  * [How do I check what has changed on commit?](#how-do-i-check-what-has-changed-on-commit)
   * [How do I access the XML tree?](#how-do-i-access-the-xml-tree)
   * [How do I write a CLI callback function?](#how-do-i-write-a-cli-callback-function)
   * [How do I write a validation function?](#how-do-i-write-a-validation-function)
