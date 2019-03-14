@@ -487,6 +487,50 @@ xml_yang_validate_rpc(cxobj *xrpc,
     goto done;
 }
 
+/*! Check if an xml node is a part of a choice and have >1 siblings 
+ * @param[in]  xt    XML node to be validated
+ * @param[in]  yt    xt:s yang statement
+ * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (cbret set)
+ * @retval    -1     Error
+ */
+static int
+check_choice(cxobj     *xt, 
+	     yang_stmt *yt,
+	     cbuf      *cbret)
+{
+    int        retval = -1;
+    yang_node *yc;
+    yang_stmt *y;
+    yang_node *yp;
+    cxobj     *x;
+    cxobj     *xp;
+    
+    if ((yc = yang_choice(yt)) == NULL)
+	goto ok;
+    if ((xp = xml_parent(xt)) == NULL)
+	goto ok;
+    x = NULL; 		    /* Find a child with same yang spec */
+    while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
+	if ((x != xt) &&
+	    (y = xml_spec(x)) != NULL &&
+	    (yp = yang_choice(y)) != NULL &&
+	    yp == (yang_node*)yc){
+	    if (netconf_bad_element(cbret, "application", xml_name(x), "Element in choice statement already exists") < 0)
+		goto done;
+	    goto fail;
+	}
+    }
+ ok:
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Check if an xml node lacks mandatory children
  * @param[in]  xt    XML node to be validated
  * @param[in]  yt    xt:s yang statement
@@ -623,6 +667,10 @@ xml_yang_validate_add(cxobj   *xt,
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
+	if ((ret = check_choice(xt, yt, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
 	if ((ret = check_mandatory(xt, yt, cbret)) < 0)
 	    goto done;
 	if (ret == 0)

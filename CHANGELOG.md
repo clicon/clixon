@@ -57,6 +57,8 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Bugfix: [Nodes from more than one of the choice's branches exist at the same time](https://github.com/clicon/clixon/issues/81)
+  * Note it may still be possible to load a file with multiple choice elements via netconf, but it will not pass validate.
 * Bugfix: Default NACM policies applied even if NACM is disabled
 * [Identityref inside augment statement](https://github.com/clicon/clixon/issues/77)
   * Yang-stmt enhanced with "shortcut" to original module

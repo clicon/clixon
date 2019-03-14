@@ -115,6 +115,15 @@ sleep $RCWAIT
 new "netconf validate empty"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
+new "netconf set protocol both udp and tcp"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><system xmlns="urn:example:config"><protocol><tcp/><udp/></protocol></system></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate both udp and tcp fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>udp</bad-element></error-info><error-severity>error</error-severity><error-message>Element in choice statement already exists</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
 new "netconf set empty protocol"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><system xmlns="urn:example:config"><protocol/></system></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
@@ -139,6 +148,14 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><get-config><source><cand
 new "netconf commit protocol udp"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
+#-- restconf
+
+new "restconf DELETE whole datastore"
+expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
+
+new "restconf set protocol tcp+udp fail"
+expecteq "$(curl -s -X PUT http://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": null, "udp": null}}')" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "bad-element","error-info": {"bad-element": "udp"},"error-severity": "error","error-message": "Element in choice statement already exists"}}}'
+
 new "restconf set protocol tcp"
 expecteq "$(curl -s -X PUT http://localhost/restconf/data/system:system/protocol -d {\"system:protocol\":{\"tcp\":null}})" 0 ""
 
@@ -146,11 +163,20 @@ new "restconf get protocol tcp"
 expecteq "$(curl -s -X GET http://localhost/restconf/data/system:system)" 0 '{"system:system": {"protocol": {"tcp": null}}}
 '
 
+new "restconf set protocol tcp+udp fail"
+expecteq "$(curl -s -X PUT http://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": null, "udp": null}}')" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "bad-element","error-info": {"bad-element": "udp"},"error-severity": "error","error-message": "Element in choice statement already exists"}}}'
+
 new "cli set protocol udp"
 expectfn "$clixon_cli -1 -f $cfg -y $fyang -l o set system protocol udp" 0 "^$"
 
 new "cli get protocol udp"
 expectfn "$clixon_cli -1 -f $cfg -y $fyang -l o show configuration cli " 0 "^system protocol udp$"
+
+new "cli change protocol to tcp"
+expectfn "$clixon_cli -1 -f $cfg -y $fyang -l o set system protocol tcp" 0 "^$"
+
+new "cli get protocol tcp"
+expectfn "$clixon_cli -1 -f $cfg -y $fyang -l o show configuration cli " 0 "^system protocol tcp$"
 
 new "cli delete all"
 expectfn "$clixon_cli -1 -f $cfg -y $fyang -l o delete all" 0 "^$"
@@ -159,6 +185,15 @@ new "commit"
 expectfn "$clixon_cli -1 -f $cfg -y $fyang -l o commit" 0 "^$"
 
 # Second shorthand (no case)
+new "netconf set protocol both udp and tcp"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><system xmlns="urn:example:config"><protocol><tcp/><udp/></protocol></system></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate both udp and tcp fail"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>udp</bad-element></error-info><error-severity>error</error-severity><error-message>Element in choice statement already exists</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
 new "netconf set shorthand tcp"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><system xmlns="urn:example:config"><shorthand><tcp/></shorthand></system></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
