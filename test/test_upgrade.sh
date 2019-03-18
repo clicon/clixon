@@ -3,14 +3,14 @@
 # This relieas on storing RFC7895 YANG Module Library modules-state info
 # in the datastore (or XML files?)
 # The test is made with three Yang models A, B and C as follows:
-# Yang module A has revisions "814-01-28" and "2019-01-01"
+# Yang module A has revisions "0814-01-28" and "2019-01-01"
 # Yang module B has only revision "2019-01-01"
 # Yang module C has only revision "2019-01-01"
 # The system is started YANG modules:
 #      A revision "2019-01-01"
 #      B revision "2019-01-01"
 # The (startup) configuration XML file has:
-#      A revision "814-01-28";
+#      A revision "0814-01-28";
 #      B revision "2019-01-01"
 #      C revision "2019-01-01"
 # Which means the following:
@@ -19,24 +19,26 @@
 #      B has a compatible version
 #      C is not present in the system
 
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
 APPNAME=example
 
-# include err() and new() functions and creates $dir
-. ./lib.sh
+
 
 cfg=$dir/conf_yang.xml
-fyangA0=$dir/A@814-01-28.yang
+fyangA0=$dir/A@0814-01-28.yang
 fyangA1=$dir/A@2019-01-01.yang
 fyangB=$dir/B@2019-01-01.yang
 
-# Yang module A revision "814-01-28"
+# Yang module A revision "0814-01-28"
 # Note that this Yang model will exist in the DIR but will not be loaded
 # by the system. Just here for reference
 # XXX: Maybe it should be loaded and used in draft-wu?
 cat <<EOF > $fyangA0
 module A{
   prefix a;
-  revision 814-01-28;
+  revision 0814-01-28;
   namespace "urn:example:a";
   leaf a0{
     type string;
@@ -52,7 +54,7 @@ cat <<EOF > $fyangA1
 module A{
   prefix a;
   revision 2019-01-01;
-  revision 814-01-28;
+  revision 0814-01-28;
   namespace "urn:example:a";
   /*  leaf a0 has been removed */
   leaf a1{
@@ -171,7 +173,7 @@ cat <<EOF > $dir/non-compat-valid.xml
       <module-set-id>42</module-set-id>
       <module>
          <name>A</name>
-         <revision>814-01-28</revision>
+         <revision>0814-01-28</revision>
          <namespace>urn:example:a</namespace>
       </module>
       <module>
@@ -198,7 +200,7 @@ cat <<EOF > $dir/non-compat-invalid.xml
       <module-set-id>42</module-set-id>
       <module>
          <name>A</name>
-         <revision>814-01-28</revision>
+         <revision>0814-01-28</revision>
          <namespace>urn:example:a</namespace>
       </module>
       <module>
@@ -332,7 +334,8 @@ runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="
 new "5. Load non-compat invalid startup. Enter failsafe, startup invalid."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp non-compat-invalid.xml startup_db)
-runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' 
+#runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' # sorted
+runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><a0 xmlns="urn:example:a">old version</a0><c xmlns="urn:example:c">bla bla</c></data>' # unsorted
 
 new "6. Load non-compat invalid running. Enter failsafe, startup invalid."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
@@ -345,7 +348,8 @@ runtest true running '<data><a1 xmlns="urn:example:a">always work</a1></data>' '
 new "7. Load compatible invalid startup."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-invalid.xml startup_db)
-runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>'
+#runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' # sorted
+runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><a0 xmlns="urn:example:a">old version</a0><c xmlns="urn:example:c">bla bla</c></data>' # unsorted
 
 # This testcase contains an error/exception of the clixon xml parser, and
 # I cant track down the memory leakage.
@@ -354,8 +358,7 @@ new "8. Load non-compat startup. Syntax fail, enter failsafe, startup invalid"
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-err.xml startup_db)
 runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>read registry</error-message></rpc-error>'
-
-fi
+fi # valgrindtest
 
 if [ $BE -ne 0 ]; then
     rm -rf $dir

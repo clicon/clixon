@@ -271,6 +271,11 @@ specific. The precedence of the options are as follows:
 - `CLICON_YANG_MODULE_MAIN`
 - `CLICON_YANG_MAIN_DIR`
 
+Note that using `CLICON_YANG_MAIN_DIR` Clixon may find several files
+containing the same Yang module. Clixon will prefer the one without a
+revision date if such a file exists. If no file has a revision date,
+Clixon will prefer the newest.
+
 ## How do I enable Yang features?
 
 Yang models have features, and parts of a specification can be

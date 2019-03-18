@@ -9,7 +9,7 @@ fi
 
 err=0
 testnr=0
-for test in test*.sh; do
+for test in test_*.sh; do
     if [ $testnr != 0 ]; then echo; fi
     testfile=$test
     . ./$test 

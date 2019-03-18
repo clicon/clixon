@@ -99,7 +99,7 @@ new "netconf get config example1 and example2"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon1">42</x><x xmlns="urn:example:clixon2"><y>99</y></x></data></rpc-reply>]]>]]>$'
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg -y $fyang1" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "restconf set x in example1"
 expecteq "$(curl -s -X POST -d '{"example1:x":42}' http://localhost/restconf/data)" 0 ''

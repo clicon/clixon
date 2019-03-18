@@ -137,9 +137,9 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     sleep 1
-    new "start backend -s init -f $cfg"
+    new "start backend -s init -f $cfg -- -s"
     # start new backend
-    start_backend -s init -f $cfg
+    start_backend -s init -f $cfg -- -s
 fi
 
 new "kill old restconf daemon"

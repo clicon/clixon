@@ -596,7 +596,7 @@ main(int    argc,
 	if (yang_spec_parse_module(h, str, clicon_yang_module_revision(h),
 				   yspec) < 0)
 	    goto done;
-    /* 3. Load all modules in a directory */
+    /* 3. Load all modules in a directory (will not overwrite file loaded ^) */
     if ((str = clicon_yang_main_dir(h)) != NULL)
 	if (yang_spec_load_dir(h, str, yspec) < 0)
 	    goto done;

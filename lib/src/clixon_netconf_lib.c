@@ -67,7 +67,7 @@
 /*! Create Netconf in-use error XML tree according to RFC 6241 Appendix A
  *
  * The request requires a resource that already is in use.
- * @param[out] cb      CLIgen buf. Error XML is written in this buffer
+ * @param[out] cb       CLIgen buf. Error XML is written in this buffer
  * @param[in]  type     Error type: "application" or "protocol"
  * @param[in]  message  Error message
  */
@@ -375,7 +375,6 @@ netconf_missing_element(cbuf      *cb,
 	xml_free(xret);
     return retval;
 }
-
 
 /*! Create Netconf missing-element error XML tree according to RFC 6241 App A
  * @param[out] xret    Error XML tree. Free with xml_free after use

@@ -44,6 +44,10 @@
 ```
 
 ### Minor changes
+* Added flags to example backend to control its behaviour:
+  * Start with `-- -r` to run the reset plugin
+  * Start with `-- -s` to run the state callback
+* Rewrote yang dir load algorithm to follow the algorithm in [FAQ](FAQ(doc/FAQ.md#how-are-yang-files-found) with more precise timestamp checks, etc.
 * Ensured you can add multiple callbacks for any RPC, including basic ones.
   * Extra RPC:s will be called _after_ the basic ones.
   * One specific usecase is hook for `copy-config` (see [doc/ROADMAP.md](doc/ROADMAP.md) that can be implemented this way.

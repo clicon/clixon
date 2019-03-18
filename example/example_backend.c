@@ -51,12 +51,18 @@
 /* These include signatures for plugin and transaction callbacks. */
 #include <clixon/clixon_backend.h> 
 
-/* Variable to control if reset code is run.
+/*! Variable to control if reset code is run.
  * The reset code inserts "extra XML" which assumes ietf-interfaces is
  * loaded, and this is not always the case.
  * Therefore, the backend must be started with -- -r to enable the reset function
  */
 static int _reset = 0;
+
+/*! Variable to control if state code is run
+ * The state code adds extra non-config data
+ * Therefore, the backend must be started with -- -s to enable the state function
+ */
+static int _state = 0;
 
 /* forward */
 static int example_stream_timer_setup(clicon_handle h);
@@ -210,7 +216,7 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
             type string;
          }
        }
- * 
+ * This yang snippet is present in clixon-example.yang for exampl.
  */
 int 
 example_statedata(clicon_handle h, 
@@ -220,6 +226,8 @@ example_statedata(clicon_handle h,
     int     retval = -1;
     cxobj **xvec = NULL;
 
+    if (!_state)
+	goto ok;
     /* Example of (static) statedata, real code would poll state 
      * Note this state needs to be accomanied by yang snippet
      * above
@@ -230,6 +238,7 @@ example_statedata(clicon_handle h,
 			 "<op>43</op>" /* should not be ordered */
 			 "</state>", NULL, &xstate) < 0)
 	goto done;
+ ok:
     retval = 0;
  done:
     if (xvec)
@@ -277,7 +286,8 @@ example_reset(clicon_handle h,
     int    ret;
     cbuf  *cbret = NULL;
 
-    goto ok; /* Note not enabled by default */
+    if (!_reset)
+	goto ok; /* Note not enabled by default */
     if (xml_parse_string("<config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface>"
 			 "<name>lo</name><type>ex:loopback</type>"
 			 "</interface></interfaces></config>", NULL, &xt) < 0)
@@ -329,10 +339,13 @@ example_start(clicon_handle h,
     
     opterr = 0;
     optind = 1;
-    while ((c = getopt(argc, argv, "r")) != -1)
+    while ((c = getopt(argc, argv, "rs")) != -1)
 	switch (c) {
 	case 'r':
 	    _reset = 1;
+	    break;
+	case 's':
+	    _state = 1;
 	    break;
 	}
     return 0;

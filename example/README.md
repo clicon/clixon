@@ -262,6 +262,8 @@ a real example would poll or get the interface counters via a system
 call, as well as use the "xpath" argument to identify the requested
 state data.
 
+The state data is enabled by starting the backend with: `-- -s`.
+
 ## Authentication and NACM
 The example contains some stubs for authorization according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341):
 * A basic auth HTTP callback, see: example_restconf_credentials() containing three example users: andy, wilma, and guest, according to the examples in Appendix A in [RFC8341](https://tools.ietf.org/html/rfc8341).

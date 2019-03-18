@@ -147,7 +147,7 @@ cat <<EOF > $dbdir/running_db
 </config>
 EOF
 
-new "test params: -s running -f $cfg -y $fyang"
+new "test params: -s running -f $cfg -y $fyang -- -s"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -156,7 +156,7 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     new "start backend"
-    start_backend -s running -f $cfg -y $fyang
+    start_backend -s running -f $cfg -y $fyang -- -s
 
     new "waiting"
     sleep $RCWAIT

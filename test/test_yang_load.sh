@@ -10,16 +10,20 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
+OLDDATE=0814-01-28 # This is alphabeticaly after 2018-12-02
+NEWDATE=2018-12-02
+
 cfg=$dir/conf_yang.xml
 fyang1=$dir/$APPNAME@2018-12-02.yang
-fyang2=$dir/$APPNAME@2018-01-01.yang
+fyang2=$dir/$APPNAME@$OLDDATE.yang
 fyang3=$dir/other.yang
 
 # 1st variant of the example module
 cat <<EOF > $fyang1
 module example{
   prefix ex;
-  revision 2018-12-02;
+  revision $NEWDATE;
+  revision $OLDDATE;
   namespace "urn:example:clixon";
   leaf newex{
     type string;
@@ -31,7 +35,7 @@ EOF
 cat <<EOF > $fyang2
 module example{
   prefix ex;
-  revision 2018-01-01;
+  revision $OLDDATE;
   namespace "urn:example:clixon";
   leaf oldex{
     type string;
@@ -43,7 +47,7 @@ EOF
 cat <<EOF > $fyang3
 module other{
   prefix oth;
-  revision 2018-01-01;
+  revision $NEWDATE;
   namespace "urn:example:clixon2";
   leaf other{
     type string;
@@ -94,19 +98,17 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 new "Set other should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><other xmlns="urn:example:clixon2">str</other></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>$'
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=`pgrep -u root -f clixon_backend`
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+    sudo pkill -u root -f clixon_backend
 fi
-
-new "Kill backend"
-# Check if premature kill
-pid=`pgrep -u root -f clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
-sudo pkill -u root -f clixon_backend
 
 #--------------------------------------
 new "2. Load old module as file"
@@ -128,12 +130,14 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-new "start backend  -s init -f $cfg"
-# start new backend
-start_backend -s init -f $cfg
-
-new "waiting"
-sleep $RCWAIT
+if [ $BE -ne 0 ]; then
+    new "start backend  -s init -f $cfg"
+    # start new backend
+    start_backend -s init -f $cfg
+    
+    new "waiting"
+    sleep $RCWAIT
+fi
 
 new "Set oldex"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><oldex xmlns="urn:example:clixon">str</oldex></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
@@ -144,15 +148,17 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 new "Set other should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><other xmlns="urn:example:clixon2">str</other></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>$'
 
-new "Kill backend"
-# Check if premature kill
-pid=`pgrep -u root -f clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=`pgrep -u root -f clixon_backend`
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+    sudo pkill -u root -f clixon_backend
 fi
-# kill backend
-stop_backend -f $cfg
-sudo pkill -u root -f clixon_backend
 
 #--------------------------------------
 new "3. Load module with no revision"
@@ -170,11 +176,13 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-new "start backend  -s init -f $cfg"
-start_backend -s init -f $cfg
+if [ $BE -ne 0 ]; then
+    new "start backend  -s init -f $cfg"
+    start_backend -s init -f $cfg
 
-new "waiting"
-sleep $RCWAIT
+    new "waiting"
+    sleep $RCWAIT
+fi
 
 new "Set newex"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><newex xmlns="urn:example:clixon">str</newex></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
@@ -185,14 +193,16 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 new "Set other should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><other xmlns="urn:example:clixon2">str</other></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>$'
 
-new "Kill backend"
-# Check if premature kill
-pid=`pgrep -u root -f clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=`pgrep -u root -f clixon_backend`
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    stop_backend -f $cfg
+    sudo pkill -u root -f clixon_backend
 fi
-stop_backend -f $cfg
-sudo pkill -u root -f clixon_backend
 
 #--------------------------------------
 new "4. Load module with old revision"
@@ -203,7 +213,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
-  <CLICON_YANG_MODULE_REVISION>2018-01-01</CLICON_YANG_MODULE_REVISION>
+  <CLICON_YANG_MODULE_REVISION>$OLDDATE</CLICON_YANG_MODULE_REVISION>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
@@ -211,11 +221,13 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-new "start backend  -s init -f $cfg"
-start_backend -s init -f $cfg
-
-new "waiting"
-sleep $RCWAIT
+if [ $BE -ne 0 ]; then
+    new "start backend  -s init -f $cfg"
+    start_backend -s init -f $cfg
+    
+    new "waiting"
+    sleep $RCWAIT
+fi
 
 new "Set oldex"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><oldex xmlns="urn:example:clixon">str</oldex></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
@@ -226,15 +238,17 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 new "Set other should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><other xmlns="urn:example:clixon2">str</other></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>$'
 
-new "Kill backend"
-# Check if premature kill
-pid=`pgrep -u root -f clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=`pgrep -u root -f clixon_backend`
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+    sudo pkill -u root -f clixon_backend
 fi
-# kill backend
-stop_backend -f $cfg
-sudo pkill -u root -f clixon_backend
 
 #--------------------------------------
 new "5. Load dir"
@@ -252,11 +266,13 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-new "start backend  -s init -f $cfg"
-start_backend -s init -f $cfg
+if [ $BE -ne 0 ]; then
+    new "start backend  -s init -f $cfg"
+    start_backend -s init -f $cfg
 
-new "waiting"
-sleep $RCWAIT
+    new "waiting"
+    sleep $RCWAIT
+fi
 
 new "Set newex"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><newex xmlns="urn:example:clixon">str</newex></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
@@ -267,15 +283,18 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 new "Set other"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><other xmlns="urn:example:clixon2">str</other></config></edit-config></rpc>]]>]]>'  '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
-new "Kill backend"
-# Check if premature kill
-pid=`pgrep -u root -f clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=`pgrep -u root -f clixon_backend`
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+
+    # kill backend
+    stop_backend -f $cfg
+    sudo pkill -u root -f clixon_backend
 fi
-# kill backend
-stop_backend -f $cfg
-sudo pkill -u root -f clixon_backend
 
 #--------------------------------------
 new "6. Load dir override with file"
@@ -294,12 +313,13 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-new "start backend  -s init -f $cfg"
-start_backend -s init -f $cfg
+if [ $BE -ne 0 ]; then
+    new "start backend  -s init -f $cfg"
+    start_backend -s init -f $cfg
 
-new "waiting"
-sleep $RCWAIT
-
+    new "waiting"
+    sleep $RCWAIT
+fi
 new "Set oldex"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><oldex xmlns="urn:example:clixon">str</oldex></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
@@ -309,16 +329,17 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 new "Set other"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><other xmlns="urn:example:clixon2">str</other></config></edit-config></rpc>]]>]]>'  '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
-new "Kill backend"
-# Check if premature kill
-pid=`pgrep -u root -f clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=`pgrep -u root -f clixon_backend`
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+    sudo pkill -u root -f clixon_backend
 fi
-# kill backend
-stop_backend -f $cfg
-sudo pkill -u root -f clixon_backend
-
 
 #--------------------------------------
 new "7. Load dir override with module + revision"
@@ -330,7 +351,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
-  <CLICON_YANG_MODULE_REVISION>2018-01-01</CLICON_YANG_MODULE_REVISION>
+  <CLICON_YANG_MODULE_REVISION>$OLDDATE</CLICON_YANG_MODULE_REVISION>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
@@ -338,11 +359,13 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-new "start backend  -s init -f $cfg"
-start_backend -s init -f $cfg
+if [ $BE -ne 0 ]; then
+    new "start backend  -s init -f $cfg"
+    start_backend -s init -f $cfg
 
-new "waiting"
-sleep $RCWAIT
+    new "waiting"
+    sleep $RCWAIT
+fi
 
 new "Set oldex"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><oldex xmlns="urn:example:clixon">str</oldex></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
@@ -353,15 +376,17 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 new "Set other"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><other xmlns="urn:example:clixon2">str</other></config></edit-config></rpc>]]>]]>'  '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
-new "Kill backend"
-# Check if premature kill
-pid=`pgrep -u root -f clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=`pgrep -u root -f clixon_backend`
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+    sudo pkill -u root -f clixon_backend
 fi
-# kill backend
-stop_backend -f $cfg
-sudo pkill -u root -f clixon_backend
 
 #--------------------------------------
 new "8. Load module w new revision overrided by old file"
@@ -373,7 +398,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang2</CLICON_YANG_MAIN_FILE>
   <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
-  <CLICON_YANG_MODULE_REVISION>2018-12-02</CLICON_YANG_MODULE_REVISION>
+  <CLICON_YANG_MODULE_REVISION>$NEWDATE</CLICON_YANG_MODULE_REVISION>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
@@ -381,11 +406,13 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-new "start backend  -s init -f $cfg"
-start_backend -s init -f $cfg
+if [ $BE -ne 0 ]; then
+    new "start backend  -s init -f $cfg"
+    start_backend -s init -f $cfg
 
-new "waiting"
-sleep $RCWAIT
+    new "waiting"
+    sleep $RCWAIT
+fi
 
 new "Set oldex"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><oldex xmlns="urn:example:clixon">str</oldex></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
@@ -396,14 +423,18 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 new "Set other should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><other xmlns="urn:example:clixon2">str</other></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>$'
 
-new "Kill backend"
-# Check if premature kill
-pid=`pgrep -u root -f clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
-sudo pkill -u root -f clixon_backend
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=`pgrep -u root -f clixon_backend`
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+    sudo pkill -u root -f clixon_backend
 
-rm -rf $dir
+    rm -rf $dir
+fi
+
+

@@ -96,7 +96,9 @@
 /*
  * Local variables
  */
-/* Mapping between yang keyword string <--> clicon constants */
+/* Mapping between yang keyword string <--> clicon constants 
+ * Here is also the place where doc on some types store variables (cv)
+ */
 static const map_str2int ykmap[] = {
     {"anydata",          Y_ANYDATA}, 
     {"anyxml",           Y_ANYXML}, 
@@ -107,7 +109,7 @@ static const map_str2int ykmap[] = {
     {"bit",              Y_BIT}, 
     {"case",             Y_CASE}, 
     {"choice",           Y_CHOICE}, 
-    {"config",           Y_CONFIG}, 
+    {"config",           Y_CONFIG},  /* cv: boolean config flag */
     {"contact",          Y_CONTACT}, 
     {"container",        Y_CONTAINER}, 
     {"default",          Y_DEFAULT}, 
@@ -118,8 +120,8 @@ static const map_str2int ykmap[] = {
     {"error-app-tag",    Y_ERROR_APP_TAG}, 
     {"error_message",    Y_ERROR_MESSAGE}, 
     {"extension",        Y_EXTENSION}, 
-    {"feature",          Y_FEATURE}, 
-    {"fraction-digits",  Y_FRACTION_DIGITS}, 
+    {"feature",          Y_FEATURE},        /* cv: feature as boolean */
+    {"fraction-digits",  Y_FRACTION_DIGITS}, /* cv: fraction-digits as uint8 */
     {"grouping",         Y_GROUPING}, 
     {"identity",         Y_IDENTITY}, 
     {"if-feature",       Y_IF_FEATURE}, 
@@ -127,11 +129,11 @@ static const map_str2int ykmap[] = {
     {"include",          Y_INCLUDE}, 
     {"input",            Y_INPUT}, 
     {"key",              Y_KEY}, 
-    {"leaf",             Y_LEAF}, 
-    {"leaf-list",        Y_LEAF_LIST}, 
+    {"leaf",             Y_LEAF},           /* cv: store default value (if any)*/
+    {"leaf-list",        Y_LEAF_LIST},      /* cv: store default value (if any)*/
     {"length",           Y_LENGTH}, 
     {"list",             Y_LIST}, 
-    {"mandatory",        Y_MANDATORY}, 
+    {"mandatory",        Y_MANDATORY},      /* cv: store mandatory boolean */
     {"max-elements",     Y_MAX_ELEMENTS}, 
     {"min-elements",     Y_MIN_ELEMENTS}, 
     {"modifier",         Y_MODIFIER}, 
@@ -151,8 +153,8 @@ static const map_str2int ykmap[] = {
     {"reference",        Y_REFERENCE}, 
     {"refine",           Y_REFINE}, 
     {"require-instance", Y_REQUIRE_INSTANCE}, 
-    {"revision",         Y_REVISION}, 
-    {"revision-date",    Y_REVISION_DATE}, 
+    {"revision",         Y_REVISION},          /* cv: YYYY-MM-DD as uint32 */
+    {"revision-date",    Y_REVISION_DATE},     /* cv: YYYY-MM-DD as uint32 */
     {"rpc",              Y_RPC}, 
     {"status",           Y_STATUS}, 
     {"submodule",        Y_SUBMODULE}, 
@@ -160,7 +162,7 @@ static const map_str2int ykmap[] = {
     {"typedef",          Y_TYPEDEF}, 
     {"unique",           Y_UNIQUE}, 
     {"units",            Y_UNITS},
-    {"unknown",          Y_UNKNOWN}, 
+    {"unknown",          Y_UNKNOWN},  /* cv: store extra string */
     {"uses",             Y_USES}, 
     {"value",            Y_VALUE}, 
     {"when",             Y_WHEN}, 
@@ -170,6 +172,9 @@ static const map_str2int ykmap[] = {
 				       for top level spec */
     {NULL,               -1}
 };
+
+/* forward declaration */
+static int ys_parse_date_arg(char *str, uint32_t *date);
 
 /*! Create new yang specification
  * @retval  yspec    Free with yspec_free() 
@@ -426,8 +431,8 @@ yn_each(yang_node *yn,
  * @see yang_match  returns number of matches
  */
 yang_stmt *
-yang_find(yang_node *yn, 
-	  int        keyword, 
+yang_find(yang_node  *yn, 
+	  int         keyword, 
 	  const char *argument)
 {
     yang_stmt *ys = NULL;
@@ -2514,6 +2519,13 @@ yang_spec_parse_file(clicon_handle h,
  * @retval        0         OK
  * @retval       -1         Error
  * @see yang_spec_parse_file
+ * Load all yang files in a directory as primary objects.
+ * Some details if several same yang module x exists:
+ * 1) If x is already loaded (eg via direct file loading) skip it
+ * 2) Prefer x.yang over x@rev.yang (no revision)
+ * 3) If only x@rev.yang's found, prefer newest (newest revision)
+ * There is also an extra failsafe which may not be necessary, which removes
+ * the oldest module if 1-3 for some reason fails.
  */
 int
 yang_spec_load_dir(clicon_handle h,
@@ -2524,13 +2536,26 @@ yang_spec_load_dir(clicon_handle h,
     int            ndp;
     struct dirent *dp = NULL;
     int            i;
+    int            j;
     char           filename[MAXPATHLEN];
     char          *base = NULL; /* filename without dir */
-    char          *b;    
-    int            j;
     int            modnr;
+    yang_stmt     *ym;   /* yang module */
+    yang_stmt     *ym0;  /* (existing) yang module */
+    yang_stmt     *yrev; /* yang revision */
+    uint32_t       revf; /* revision in filename */
+    uint32_t       revm; /* revision in parsed new module (same as revf) */
+    uint32_t       rev0; /* revision in existing module */
+    char          *s;
+    char          *oldbase = NULL;
+    int            taken = 0;
     
-    /* Get plugin objects names from plugin directory */
+    /* Get yang files names from yang module directory. Note that these
+     * are sorted alphatetically:
+     * a.yang, 
+     * a@2000-01-01.yang, 
+     * a@2111-11-11.yang
+     */
     if((ndp = clicon_file_dirent(dir, &dp, "(.yang)$", S_IFREG)) < 0)
 	goto done;
     if (ndp == 0)
@@ -2541,40 +2566,76 @@ yang_spec_load_dir(clicon_handle h,
     /* Load all yang files in dir */
     for (i = 0; i < ndp; i++) {
 	/* base = module name [+ @rev ] + .yang */
-	if (base)
-	    free(base);
+	if (oldbase)
+	    free(oldbase);
+	oldbase = base; base = NULL;
 	if ((base = strdup(dp[i].d_name)) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
 	    goto done;
 	}
+	clicon_debug(1, "%s %s", __FUNCTION__, base);
 	*rindex(base, '.') = '\0'; /* strip postfix .yang */
 	/* base = module name [+ @rev] 
 	 * if it hasnt @rev then prefer it (dont check other files w @rev)
-	 * Otherwise see if there is a newer
 	 */
-	if ((b = index(base, '@')) != NULL){
-	    *b = '\0';
-	    /* base = module name */
-
-	    /* Entries are sorted, see if later entry exists (include @), if so
-	     * skip this one and take last.
-	     * Assume file without @ is last
-	     */
-	    for (j = (i+1); j < ndp; j++)
-		if (strncmp(base, dp[j].d_name, strlen(base)) == 0)
-		    break;
-	    if (j<ndp){ /* exists later entry */
-		clicon_debug(1, "%s skip %s", __FUNCTION__, dp[i].d_name);
-		continue;
-	    }
+	revf = 0;
+	if ((s = index(base, '@')) != NULL){
+	    *s++ = '\0';
+	    if (ys_parse_date_arg(s, &revf) < 0)
+		goto done;
 	}
+	if (oldbase && strcmp(base, oldbase)) /* new yang file basename */
+	    taken = 0;
+	if (revf == 0){ /* No revision: a.yang - take that */
+	    taken = 1;
+	}
+	else{ /* a@xxx.yang */
+	    if (taken)
+		continue; /* skip if already taken */
+	    /* is there anyone else later? */
+	    if (i+1<ndp && strncmp(base, dp[i+1].d_name, strlen(base)) == 0)
+		continue; /* same base: skip; */
+	    taken = 1; /* last in line and not taken */
+	}
+	/* Here only a single file is reached(taken)
+	 * Check if module already exists -> ym0/rev0 */
+	rev0 = 0;
+	if ((ym0 = yang_find((yang_node*)yspec, Y_MODULE, base)) != NULL ||
+	    (ym0 = yang_find((yang_node*)yspec, Y_SUBMODULE, base)) != NULL){
+	    yrev = yang_find((yang_node*)ym0, Y_REVISION, NULL);
+	    rev0 = cv_uint32_get(yrev->ys_cv);
+	    continue; /* skip if already added by specific file or module */
+	}
+	/* Create full filename */
 	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
-	/* Dont parse if already exists */
-	if (yang_find((yang_node*)yspec, Y_MODULE, base) != NULL ||
-	    yang_find((yang_node*)yspec, Y_SUBMODULE, base) != NULL)
-	    continue;
-	if (yang_parse_filename(filename, yspec) == NULL)
+	if ((ym = yang_parse_filename(filename, yspec)) == NULL)
 	    goto done;
+	revm = 0;
+	if ((yrev = yang_find((yang_node*)ym, Y_REVISION, NULL)) != NULL)
+	    revm = cv_uint32_get(yrev->ys_cv);
+	/* Sanity check that file revision does not match internal rev stmt */
+	if (revf && revm && revm != revf){
+	    clicon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s vs %u", filename, revm); 
+	    goto done;
+	}
+	/* If ym0 and ym exists, delete the yang with oldest revision 
+	 * This is a failsafe in case anything else fails
+	 */
+	if (revm && rev0){
+	    int size;
+	    if (revm > rev0) /* Loaded module is older or eq -> remove ym */
+		ym = ym0;
+	    for (j=0; j<yspec->yp_len; j++)
+		if (yspec->yp_stmt[j] == ym)
+		    break;
+	    size = (yspec->yp_len - j - 1)*sizeof(struct yang_stmt *);
+	    memmove(&yspec->yp_stmt[j],
+		    &yspec->yp_stmt[j+1],
+		    size);
+	    ys_free(ym);
+	    yspec->yp_len--;
+	    yspec->yp_stmt[yspec->yp_len] = NULL;
+	}
     }
     if (yang_parse_post(h, yspec, modnr) < 0)
 	goto done;
@@ -2584,9 +2645,10 @@ yang_spec_load_dir(clicon_handle h,
 	free(dp);
     if (base)
 	free(base);
+    if (oldbase)
+	free(oldbase);
     return retval;
 }
-
 
 /*! Apply a function call recursively on all yang-stmt s recursively
  *
@@ -2843,6 +2905,42 @@ yang_desc_schema_nodeid(yang_node  *yn,
     return retval;
 }
 
+
+/*! parse yang date-arg string
+ */
+static int
+ys_parse_date_arg(char     *str,
+		  uint32_t *date)
+{
+    int      retval = -1;
+    int      i;
+    uint32_t d = 0;
+    
+    if (strlen(str) != 10 || str[4] != '-' || str[7] != '-'){
+	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", str);
+	goto done;
+    }
+    if ((i = cligen_tonum(4, str)) < 0){
+	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", str);
+	goto done;
+    }
+    d = i*10000; /* year */
+    if ((i = cligen_tonum(2, &str[5])) < 0){
+	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", str);
+	goto done;
+    }
+    d += i*100; /* month */
+    if ((i = cligen_tonum(2, &str[8])) < 0){
+	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", str);
+	goto done;
+    }
+    d += i; /* day */
+    *date = d;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Parse argument as CV and save result in yang cv variable
  *
  * Note that some CV:s are parsed directly (eg fraction-digits) while others are parsed 
@@ -2897,6 +2995,7 @@ ys_parse_sub(yang_stmt *ys,
 {
     int        retval = -1;
     uint8_t    fd;
+    uint32_t   date = 0;
 
     switch (ys->ys_keyword){
     case Y_FRACTION_DIGITS:
@@ -2907,6 +3006,16 @@ ys_parse_sub(yang_stmt *ys,
 	    clicon_err(OE_YANG, errno, "%u: Out of range, should be [1:18]", fd);
 	    goto done;
 	}
+	break;
+    case Y_REVISION:
+    case Y_REVISION_DATE:  /* YYYY-MM-DD encoded as uint32 YYYYMMDD */
+	if (ys_parse_date_arg(ys->ys_argument, &date) < 0)
+	    goto done;
+	if ((ys->ys_cv = cv_new(CGV_UINT32)) == NULL){
+	    clicon_err(OE_YANG, errno, "cv_new"); 
+	    goto done;
+	}
+	cv_uint32_set(ys->ys_cv, date);
 	break;
     case Y_UNKNOWN: /* XXX This code assumes ymod already loaded
 		       but it may not be */
@@ -2997,7 +3106,6 @@ yang_config(yang_stmt *ys)
     }
     return 1;
 }
-
 
 /*! Given a yang node, translate the argument string to a cv vector
  *

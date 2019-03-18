@@ -24,7 +24,6 @@
 
 # Site file, an example of this file in README.md
 if [ -f ./site.sh ]; then
-
     . ./site.sh
     if [ $? -ne 0 ]; then
 	return -1 # skip
@@ -102,7 +101,8 @@ dir=/var/tmp/$0
 if [ ! -d $dir ]; then
     mkdir $dir
 fi
-# If we bring our own backend BE=0 (it is already started),the backend may
+
+# If you bring your own backend BE=0 (it is already started),the backend may
 # have created some files (eg unix socket) in $dir and therefore cannot
 # be deleted
 if [ $BE -ne 0 ]; then
@@ -440,3 +440,4 @@ expectmatch(){
 	fi
     fi
 }
+

@@ -43,8 +43,8 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend -s init -f $cfg"
-    start_backend -s init -f $cfg
+    new "start backend -s init -f $cfg -- -s"
+    start_backend -s init -f $cfg -- -s
 fi
 
 new "kill old restconf daemon"

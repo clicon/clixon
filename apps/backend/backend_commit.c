@@ -568,11 +568,6 @@ from_client_validate(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if (strcmp(db, "candidate") != 0 && strcmp(db, "tmp") != 0){
-	if (netconf_invalid_value(cbret, "protocol", "No such database")< 0)
-	    goto done;
-	goto ok;
-    }
     clicon_debug(1, "Validate %s",  db);
 
      /* 1. Start transaction */
