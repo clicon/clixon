@@ -221,9 +221,8 @@ xml_cmp(const void* arg1,
     cxobj      *x1b;
     cxobj      *x2b;
 
-    if (x1==NULL || x2==NULL){
+    if (x1==NULL || x2==NULL)
 	goto done; /* shouldnt happen */
-    }
     y1 = xml_spec(x1);
     y2 = xml_spec(x2);
     nr1 = xml_enumerate_get(x1);
@@ -232,7 +231,7 @@ xml_cmp(const void* arg1,
 	equal = nr1-nr2;
 	goto done;
     }
-    if (y1 != y2){
+    if (y1 != y2){ 
 	yi1 = yang_order(y1);
 	yi2 = yang_order(y2);
 	if ((equal = yi1-yi2) != 0)
@@ -289,6 +288,7 @@ xml_cmp(const void* arg1,
 	break;
     }
  done:
+    clicon_debug(2, "%s %s %s %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal);
     return equal;
 }
 

@@ -24,8 +24,6 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
-
-
 cfg=$dir/conf_yang.xml
 fyangA0=$dir/A@0814-01-28.yang
 fyangA1=$dir/A@2019-01-01.yang

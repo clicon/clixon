@@ -663,8 +663,11 @@ yang_choice(yang_stmt *y)
 }
 
 /*! Find matching y in yp:s children, return 0 and index or -1 if not found.
- * @retval 0 not found
- * @retval 1 found
+ * @param[in]  yp     Parent
+ * @param[in]  y      Yang datanode to find
+ * @param[out] index  Index of y in yp:s list of children
+ * @retval     0      not found (must be datanode)
+ * @retval     1      found
  */
 static int
 order1(yang_node *yp,
@@ -686,29 +689,41 @@ order1(yang_node *yp,
 }
 
 /*! Return order of yang statement y in parents child vector
- * @retval  i  Order of child with specified argument
- * @retval -1  Not found
+ * @param[in]  y      Find position of this data-node
+ * @param[out] index  Index of y in yp:s list of children
+ * @retval   >=0      Order of child with specified argument
+ * @retval    -1      Not found
+ * @note special handling if y is child of (sub)module
  */
 int
 yang_order(yang_stmt *y)
 {
     yang_node  *yp;
     yang_node  *ypp;
-    yang_node  *yn;
+    yang_stmt  *ym;
     int         i;
     int         j=0;
+    int         tot = 0;
     
     yp = y->ys_parent;
+    /* XML nodes with yang specs that are children of modules are special - 
+     * In clixon, they are seen as an "implicit" container where the XML can come from different
+     * modules. The order must therefore be global among yang top-symbols to be unique.
+     * Example: <x xmlns="foo"/><y xmlns="bar"/>
+     * The order of x and y cannot be compared within a single yang module since they belong to different
+     */
     if (yp->yn_keyword == Y_MODULE || yp->yn_keyword == Y_SUBMODULE){
-	ypp = yp->yn_parent;
-	for (i=0; i<ypp->yn_len; i++){
-	    yn = (yang_node*)ypp->yn_stmt[i];
-	    if (order1(yn, y, &j) == 1)
-		return j;
+	ypp = yp->yn_parent; /* yang spec */
+	for (i=0; i<ypp->yn_len; i++){ /* iterate through other modules */
+	    ym = ypp->yn_stmt[i];
+	    if (yp == ym)
+		break;
+	    tot += ym->ys_len;
 	}
     }
-    order1(yp, y, &j);
-    return j;
+    if (order1(yp, y, &j) == 1)
+	return tot + j;
+    return -1;
 }
 
 /*! Reset flag in complete tree, arg contains flag */
