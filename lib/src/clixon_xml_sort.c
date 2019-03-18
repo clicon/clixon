@@ -206,8 +206,8 @@ xml_cmp(const void* arg1,
     cxobj *x2 = *(struct xml**)arg2;
     yang_stmt  *y1;
     yang_stmt  *y2;
-    int         yi1;
-    int         yi2;
+    int         yi1 = 0;
+    int         yi2 = 0;
     cvec       *cvk = NULL; /* vector of index keys */
     cg_var     *cvi;
     int         equal = 0;
@@ -220,23 +220,37 @@ xml_cmp(const void* arg1,
     int         nr2;
     cxobj      *x1b;
     cxobj      *x2b;
+    int         e;
 
+    e=0;
     if (x1==NULL || x2==NULL)
 	goto done; /* shouldnt happen */
+    e=1;
     y1 = xml_spec(x1);
     y2 = xml_spec(x2);
     nr1 = xml_enumerate_get(x1);
     nr2 = xml_enumerate_get(x2);
-    if (y1==NULL || y2==NULL){
+    if (y1==NULL && y2==NULL){
 	equal = nr1-nr2;
 	goto done;
     }
+    if (y1==NULL){
+        equal = -1;
+        goto done;
+    }
+    if (y2==NULL){
+        equal = 1;
+        goto done;
+    }
+
+    e=2;
     if (y1 != y2){ 
 	yi1 = yang_order(y1);
 	yi2 = yang_order(y2);
 	if ((equal = yi1-yi2) != 0)
 	    goto done;
     }
+    e=3;
     /* Now y1==y2, same Yang spec, can only be list or leaf-list,
      * But first check exceptions, eg config false or ordered-by user
      * otherwise sort according to key
@@ -246,6 +260,7 @@ xml_cmp(const void* arg1,
 	equal = nr1-nr2;
 	goto done; /* Ordered by user or state data : maintain existing order */
     }
+    e=4;
     switch (y1->ys_keyword){
     case Y_LEAF_LIST: /* Match with name and value */
 	if ((b1 = xml_body(x1)) == NULL)
@@ -287,8 +302,9 @@ xml_cmp(const void* arg1,
     default:
 	break;
     }
+    e=5;
  done:
-    clicon_debug(2, "%s %s %s %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal);
+    clicon_debug(2, "%s %s %s %d %d nr: %d %d yi: %d %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal, e, nr1, nr2, yi1, yi2);
     return equal;
 }
 
