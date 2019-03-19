@@ -8,6 +8,7 @@
   * [Extra XML](#extra-xml)
   * [Startup status](#startup-status)
   * [Failsafe mode](#failsafe-mode)
+  * [Repair](#repair)
   * [Flowcharts](#flowcharts)
   * [Thanks](#thanks)
   * [References](#references)
@@ -193,15 +194,65 @@ contain syntax errors or invalidated XML.
 If the startup mode was `running`, the the `tmp` database will contain
 syntax errors or invalidated XML.
 
-A user can repair a broken configuration and either restart the
-backend or copy the repaired configuration to candidate and then commit.
+## Repair
 
-Note that if the broken configuration contains syntactic errors
-(eg `STARTUP_ERR`) you cannot access the startup via Restconf or
-Netconf operations since the XML may be broken.
+If the system is in the failsafe mode (or fails to start), a user can
+repair a broken configuration and then restart the backend. This can
+be done out-of-band by editing the startup db and then restarting
+clixon.
 
-If the startup is not valid (no syntax errors), you can edit the XML
-and then copy/commit it via CLI, Netconf or Restconf.
+In some circumstances, it is also possible to repair the startup
+configuration on-line without restarting the backend. This section
+shows how to repair a startup datastore on-line.
+
+However, on-line repair _cannot_ be made in the following circumstances:
+* The broken configuration contains syntactic errors - the system cannot parse the XML.
+* The startup mode is `running`. In this case, the broken config is in the `tmp` datastore that is not a recognized Netconf datastore, it has to be accessed out-of-band.
+* Netconf must be used. Restconf cannot separately access the different datastores.
+
+First, copy the (broken) startup config to candidate. This is necessary since you cannot make `edit-config` calls to the startup db:
+```
+  <rpc>
+    <copy-config>
+      <source><startup/></source>
+      <target><candidate/></target>
+    </copy-config>
+  </rpc>
+```
+
+You can now edit the XML in candidate. However, there are some restrictions on the edit commands. For example, you cannot access invalid XML (eg that does not have a corresponding module) via the edit-config operation.
+For example, assume `x` is obsolete syntax, then this is _not_ accepted:
+```
+  <rpc>
+    <edit-config>
+      <target><candidate/></target>
+      <config>
+        <x xmlns="example" operation='delete'/>
+      </config>
+    </edit-config>
+  </rpc>
+```
+
+Instead, assuming `y` is a valid syntax, this is allowed (`x` is not explicitly accessed):
+```
+  <rpc>
+    <edit-config>
+      <target><candidate/></target>
+      <config operation='replace'>
+        <y xmlns="example"/>
+      </config>
+    </edit-config>
+  </rpc>
+```
+
+Finally, the candidate is validate and committed:
+```
+  <rpc>
+    <commit/>
+  </rpc>
+```
+
+This example is also used as a [test script](../test/test_upgrade_repair.sh).
 
 ## Flowcharts
 

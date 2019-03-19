@@ -12,6 +12,10 @@ cfg=$dir/conf_yang.xml
 fyangA0=$dir/A@0814-01-28.yang
 fyangA1=$dir/A@2019-01-01.yang
 
+OLDXML='<a0 xmlns="urn:example:a">old version</a0>'
+SAMEXML='<a1 xmlns="urn:example:a">always work</a1>'
+NEWXML='<a2 xmlns="urn:example:a">new version</a2>'
+
 # Yang module A revision "0814-01-28"
 # Note that this Yang model will exist in the DIR but will not be loaded
 # by the system. Just here for reference
@@ -70,7 +74,7 @@ EOF
 # Create failsafe db
 cat <<EOF > $dir/failsafe_db
 <config>
-   <a1 xmlns="urn:example:a">always work</a1>
+   $SAMEXML
 </config>
 EOF
 
@@ -86,8 +90,8 @@ cat <<EOF > $dir/non-compat-invalid.xml
          <namespace>urn:example:a</namespace>
       </module>
    </modules-state>
-   <a0 xmlns="urn:example:a">old version</a0>
-   <a1 xmlns="urn:example:a">always work</a1>
+   $OLDXML
+   $SAMEXML
 </config>
 EOF
 
@@ -96,7 +100,7 @@ EOF
 
 mode=startup
 
-new "test params: -f $cfg"
+new "test params: -s $mode -f $cfg"
 # Bring your own backend
 if [ $BE -ne 0 ]; then
     # kill old backend (if any)
@@ -121,11 +125,26 @@ new "waiting"
 sleep $RCWAIT
 
 new "Check running db content is failsafe"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><a1 xmlns="urn:example:a">always work</a1></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$SAMEXML</data></rpc-reply>]]>]]>$"
 
-#repair    
+new "copy startup->candidate"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><copy-config><target><candidate/></target><source><startup/></source></copy-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-#exit
+new "Check candidate db content is startup"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$OLDXML$SAMEXML</data></rpc-reply>]]>]]>$"
+
+# Note you cannot edit invalid XML since a0 lacks namespace
+new "Put new version into candidate"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config operation='replace'>$NEWXML$SAMEXML</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "Check candidate db content is updated"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$SAMEXML$NEWXML</data></rpc-reply>]]>]]>$"
+
+new "commit to running"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "Check running db content is updated"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$SAMEXML$NEWXML</data></rpc-reply>]]>]]>$"
 
 new "Kill restconf daemon"
 stop_restconf
