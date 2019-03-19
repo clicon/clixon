@@ -196,7 +196,7 @@ syntax errors or invalidated XML.
 
 ## Repair
 
-If the system is in the failsafe mode (or fails to start), a user can
+If the system is in failsafe mode (or fails to start), a user can
 repair a broken configuration and then restart the backend. This can
 be done out-of-band by editing the startup db and then restarting
 clixon.
@@ -207,7 +207,7 @@ shows how to repair a startup datastore on-line.
 
 However, on-line repair _cannot_ be made in the following circumstances:
 * The broken configuration contains syntactic errors - the system cannot parse the XML.
-* The startup mode is `running`. In this case, the broken config is in the `tmp` datastore that is not a recognized Netconf datastore, it has to be accessed out-of-band.
+* The startup mode is `running`. In this case, the broken config is in the `tmp` datastore that is not a recognized Netconf datastore, and has to be accessed out-of-band.
 * Netconf must be used. Restconf cannot separately access the different datastores.
 
 First, copy the (broken) startup config to candidate. This is necessary since you cannot make `edit-config` calls to the startup db:
@@ -233,7 +233,7 @@ For example, assume `x` is obsolete syntax, then this is _not_ accepted:
   </rpc>
 ```
 
-Instead, assuming `y` is a valid syntax, this is allowed (`x` is not explicitly accessed):
+Instead, assuming `y` is a valid syntax, the following operation is allowed since `x` is not explicitly accessed:
 ```
   <rpc>
     <edit-config>
@@ -252,7 +252,7 @@ Finally, the candidate is validate and committed:
   </rpc>
 ```
 
-This example is also used as a [test script](../test/test_upgrade_repair.sh).
+The example shown in this Section is also available as a regression [test script](../test/test_upgrade_repair.sh).
 
 ## Flowcharts
 
@@ -261,14 +261,14 @@ the configuration databases in the startup phase.
 
 The flowchart starts in one of the modes (none, init, startup, running):
 
-### init mode
+### Init mode
 
 ```
                  reset     
 running   |--------+------------> GOTO EXTRA XML
 ```
 
-### running mode
+### Running mode
 
 ```
 running   ----+                   |----------+--------> GOTO EXTRA XML
@@ -277,7 +277,7 @@ tmp       ------+-------+------+-----------+
 
 ```
 
-### startup mode
+### Startup mode
 ```
                               reset     
 running                         |--------+------------> GOTO EXTRA XML
@@ -312,8 +312,6 @@ candidate     +---------------------> CANDIDATE
 ### Invalid XML
                    repair     restart
 tmp/startup --------+---------+-----------------------> 
-
-
 
 ## Thanks
 Thanks matt smith and dave cornejo for input

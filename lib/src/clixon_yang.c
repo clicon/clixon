@@ -716,7 +716,7 @@ yang_order(yang_stmt *y)
 	ypp = yp->yn_parent; /* yang spec */
 	for (i=0; i<ypp->yn_len; i++){ /* iterate through other modules */
 	    ym = ypp->yn_stmt[i];
-	    if (yp == ym)
+	    if (yp == (yang_node*)ym)
 		break;
 	    tot += ym->ys_len;
 	}
