@@ -94,9 +94,9 @@ modstate_diff_free(modstate_diff_t *md)
     if (md == NULL)
 	return 0;
     if (md->md_del)
-	free(md->md_del);
+	xml_free(md->md_del);
     if (md->md_mod)
-	free(md->md_mod);
+	xml_free(md->md_mod);
     free(md);
     return 0;
 }

@@ -111,7 +111,9 @@ backend_terminate(clicon_handle h)
     stream_publish_exit();
     clixon_plugin_exit(h);
     /* Delete all backend plugin RPC callbacks */
-    rpc_callback_delete_all(); 
+    rpc_callback_delete_all(h);
+    /* Delete all backend plugin upgrade callbacks */
+    upgrade_callback_delete_all(h); 
 
     if (pidfile)
 	unlink(pidfile);   

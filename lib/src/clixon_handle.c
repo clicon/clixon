@@ -72,9 +72,9 @@
  * 1) the internal structure contains a header (defined here) whereas higher
  *    order libs (eg cli and backend) introduce more fields appended to this 
  *    struct.
- * 2) ch_options accessed via clicon_data() are clixon config options are 
+ * 2) ch_options accessed via clicon_options() are clixon config options are 
  *    string values appearing in the XML configfile accessed with -f. 
- *    Alternatively, these  could be accessed via clicon_conf_xml()
+ *    Alternatively, these could be accessed via clicon_conf_xml()
  * 3) ch_data accessed via clicon_data() is more general purpose for any data.
  *    that is, not only strings. And has separate namespace from options.
  */

@@ -466,7 +466,7 @@ rpc_callback_register(clicon_handle  h,
 /*! Delete all RPC callbacks
  */
 int
-rpc_callback_delete_all(void)
+rpc_callback_delete_all(clicon_handle h)
 {
     rpc_callback_t *rc;
 
@@ -604,7 +604,7 @@ upgrade_callback_register(clicon_handle     h,
 /*! Delete all Upgrade callbacks
  */
 int
-upgrade_callback_delete_all(void)
+upgrade_callback_delete_all(clicon_handle h)
 {
     upgrade_callback_t *uc;
 

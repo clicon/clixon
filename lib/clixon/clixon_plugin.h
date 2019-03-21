@@ -242,12 +242,12 @@ int clixon_plugin_auth(clicon_handle h, void *arg);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *namespace, char *name);
-int rpc_callback_delete_all(void);
+int rpc_callback_delete_all(clicon_handle h);
 int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);
 
 /* upgrade callback API */
 int upgrade_callback_register(clicon_handle h, clicon_upgrade_cb cb, void *arg, char *name, char *namespace, uint32_t from, uint32_t to);
-int upgrade_callback_delete_all(void);
+int upgrade_callback_delete_all(clicon_handle h);
 int upgrade_callback_call(clicon_handle h, cxobj *xt, char *modname, char *modns, uint32_t from, uint32_t to, cbuf *cbret);
 
 #endif  /* _CLIXON_PLUGIN_H_ */
