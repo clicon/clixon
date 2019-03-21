@@ -173,9 +173,6 @@ static const map_str2int ykmap[] = {
     {NULL,               -1}
 };
 
-/* forward declaration */
-static int ys_parse_date_arg(char *str, uint32_t *date);
-
 /*! Create new yang specification
  * @retval  yspec    Free with yspec_free() 
  * @retval  NULL     Error
@@ -2920,37 +2917,40 @@ yang_desc_schema_nodeid(yang_node  *yn,
     return retval;
 }
 
-
-/*! parse yang date-arg string
+/*! parse yang date-arg string and return a uint32 useful for arithmetics
+ * @param[in]  datearg  yang revision string as "YYYY-MM-DD"
+ * @param[out] dateint  Integer version as YYYYMMDD
+ * @retval     0        OK
+ * @retval    -1        Error, eg str is not on the format "YYYY-MM-DD"
  */
-static int
-ys_parse_date_arg(char     *str,
-		  uint32_t *date)
+int
+ys_parse_date_arg(char     *datearg,
+		  uint32_t *dateint)
 {
     int      retval = -1;
     int      i;
     uint32_t d = 0;
     
-    if (strlen(str) != 10 || str[4] != '-' || str[7] != '-'){
-	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", str);
+    if (strlen(datearg) != 10 || datearg[4] != '-' || datearg[7] != '-'){
+	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
 	goto done;
     }
-    if ((i = cligen_tonum(4, str)) < 0){
-	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", str);
+    if ((i = cligen_tonum(4, datearg)) < 0){
+	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
 	goto done;
     }
     d = i*10000; /* year */
-    if ((i = cligen_tonum(2, &str[5])) < 0){
-	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", str);
+    if ((i = cligen_tonum(2, &datearg[5])) < 0){
+	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
 	goto done;
     }
     d += i*100; /* month */
-    if ((i = cligen_tonum(2, &str[8])) < 0){
-	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", str);
+    if ((i = cligen_tonum(2, &datearg[8])) < 0){
+	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
 	goto done;
     }
     d += i; /* day */
-    *date = d;
+    *dateint = d;
     retval = 0;
  done:
     return retval;

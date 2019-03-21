@@ -65,6 +65,30 @@ typedef int (*clicon_rpc_cb)(
     cbuf         *cbret,   
     void         *arg,     
     void         *regarg   
+);
+
+/*! Registered Upgrade callback function 
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xn      XML tree to be updated
+ * @param[in]  modname Name of module
+ * @param[in]  modns   Namespace of module (for info)
+ * @param[in]  from    From revision on the form YYYYMMDD
+ * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
+ * @param[in]  arg     User argument given at rpc_callback_register() 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @retval     1       OK
+ * @retval     0       Invalid
+ * @retval    -1       Error
+ */
+typedef int (*clicon_upgrade_cb)(
+    clicon_handle h,       
+    cxobj        *xn,      
+    char         *modname,
+    char         *modns,
+    uint32_t      from,
+    uint32_t      to,
+    void         *arg,     
+    cbuf         *cbret
 );  
 
 /*
@@ -128,14 +152,6 @@ enum startup_status{
     STARTUP_OK           /* Everything OK (may still be modules-mismatch) */
 };
 
-/*! Upgrade configuration callback given a diff of yang module state
- * @param[in]  h      Clicon handle
- * @param[in]  xms    XML tree of module state differences
- * @retval     0      OK
- * @retval    -1      Error
- */
-typedef int (upgrade_cb_t)(clicon_handle, cxobj *xms);
-
 /* plugin init struct for the api 
  * Note: Implicit init function
  */
@@ -162,7 +178,6 @@ struct clixon_plugin_api{
 	struct { /* backend-specific */
 	    plgreset_t       *cb_reset;          /* Reset system status */
 	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
-	    upgrade_cb_t     *cb_upgrade;        /* Upgrade callback */
 	    trans_cb_t       *cb_trans_begin;	 /* Transaction start */
 	    trans_cb_t       *cb_trans_validate; /* Transaction validation */
 	    trans_cb_t       *cb_trans_complete; /* Transaction validation complete */
@@ -181,7 +196,6 @@ struct clixon_plugin_api{
 #define ca_auth           u.cau_restconf.cr_auth
 #define ca_reset          u.cau_backend.cb_reset
 #define ca_statedata      u.cau_backend.cb_statedata
-#define ca_upgrade        u.cau_backend.cb_upgrade
 #define ca_trans_begin    u.cau_backend.cb_trans_begin
 #define ca_trans_validate u.cau_backend.cb_trans_validate
 #define ca_trans_complete u.cau_backend.cb_trans_complete
@@ -228,9 +242,12 @@ int clixon_plugin_auth(clicon_handle h, void *arg);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *namespace, char *name);
-
 int rpc_callback_delete_all(void);
-
 int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);
+
+/* upgrade callback API */
+int upgrade_callback_register(clicon_handle h, clicon_upgrade_cb cb, void *arg, char *name, char *namespace, uint32_t from, uint32_t to);
+int upgrade_callback_delete_all(void);
+int upgrade_callback_call(clicon_handle h, cxobj *xt, char *modname, char *modns, uint32_t from, uint32_t to, cbuf *cbret);
 
 #endif  /* _CLIXON_PLUGIN_H_ */

@@ -428,6 +428,18 @@ module clixon-config {
                          data. If enabled, module info will appear when doing 
                          netconf get or restconf GET";
 	}
+	leaf CLICON_YANG_CHANGELOG {
+	    type boolean;
+	    default false;
+	    description "If true enable automatic upgrade using yang clixon
+                         changelog.";
+	}
+	leaf CLICON_YANG_CHANGELOG_FILE {
+	    type string;
+	    description "Name of file with module revision changelog.
+                         If CLICON_YANG_CHANGELOG is true, Clixon
+                         reads the module changelog from this file.";
+	}
 	leaf CLICON_MODULE_SET_ID {
 	    type string;
 	    default "0";

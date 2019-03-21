@@ -196,7 +196,12 @@ module example{
          pattern '\w{4}';
        }
   }
-
+  leaf minus{
+      description "Problem with minus";
+      type string{
+         pattern '[a-zA-Z_][a-zA-Z0-9_\-.]*';
+      }
+  }
 }
 EOF
 
@@ -535,13 +540,13 @@ new "cli yang pattern \d error"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang set digit4 01b2" 255 "^$"
 
 new "cli yang pattern \w ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 a2-_" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 abc9" 0 "^$"
 
 new "cli yang pattern \w error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 ab%d3" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 ab%3" 255 "^$"
 
 new "netconf pattern \w"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><word4 xmlns="urn:example:clixon">a-_9</word4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><word4 xmlns="urn:example:clixon">aXG9</word4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf pattern \w valid"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -551,6 +556,21 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><can
 
 new "netconf pattern \w valid"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>word4</bad-element></error-info><error-severity>error</error-severity><error-message>regexp match fail: "ab%d3" does not match \\w{4}</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+
+#------ minus
+
+new "type with minus"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><minus xmlns="urn:example:clixon">my-name</minus></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "validate minus"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+#new "cli type with minus"
+#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set name my-name" 0 "^$"
 
 if [ $BE -eq 0 ]; then
     exit # BE

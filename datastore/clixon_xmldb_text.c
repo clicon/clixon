@@ -364,12 +364,11 @@ singleconfigroot(cxobj  *xt,
 
 static int
 text_get_nocache(struct text_handle *th,
-		 const char   *db, 
-		 char         *xpath,
-		 int           config,
-		 cxobj       **xtop,
-		 cxobj       **xms)
-		 
+		 const char         *db, 
+		 char               *xpath,
+		 int                 config,
+		 cxobj             **xtop,
+		 modstate_diff_t    *msd)
 {
     int             retval = -1;
     char           *dbfile = NULL;
@@ -385,7 +384,6 @@ text_get_nocache(struct text_handle *th,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-
     if (text_db2file(th, db, &dbfile) < 0)
 	goto done;
     if (dbfile==NULL){
@@ -559,7 +557,7 @@ xml_copy_marked(cxobj *x0,
  * @param[in]  th    Datastore text handle
  * @param[in]  yspec Top-level yang spec 
  * @param[in]  xt    XML tree
- * @param[out] xmsp  If set, return modules-state differences
+ * @param[out] msd   If set, return modules-state differences
  *
  * Read mst (module-state-tree) from xml tree (if any) and compare it with 
  * the system state mst.
@@ -575,7 +573,7 @@ static int
 text_read_modstate(struct text_handle *th,
 		   yang_spec          *yspec,
 		   cxobj              *xt,
-		   cxobj             **xmsp)
+		   modstate_diff_t    *msd)
 {
     int retval = -1;
     cxobj *xmodst;
@@ -585,16 +583,19 @@ text_read_modstate(struct text_handle *th,
     char  *name; /* module name */
     char  *mrev; /* file revision */
     char  *srev; /* system revision */
-    cxobj *xmsd = NULL; /* Local modules-state diff tree */
 
     if ((xmodst = xml_find_type(xt, NULL, "modules-state", CX_ELMNT)) == NULL){
 	/* 1) There is no modules-state info in the file */
     }
-    else if (th->th_modst){
-	/* Create a diff tree */
-	if (xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>", yspec, &xmsd) < 0)
+    else if (th->th_modst && msd){
+	/* Create diff trees */
+	if (xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>", yspec, &msd->md_del) < 0)
 	    goto done;
-	if (xml_rootchild(xmsd, 0, &xmsd) < 0) 
+	if (xml_rootchild(msd->md_del, 0, &msd->md_del) < 0) 
+	    goto done;
+	if (xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>", yspec, &msd->md_mod) < 0)
+	    goto done;
+	if (xml_rootchild(msd->md_mod, 0, &msd->md_mod) < 0) 
 	    goto done;
 
 	/* 3) For each module state m in the file */
@@ -608,7 +609,7 @@ text_read_modstate(struct text_handle *th,
 		//		fprintf(stderr, "%s: Module %s: not in system\n", __FUNCTION__, name);
 		if ((xm2 = xml_dup(xm)) == NULL)
 		    goto done;
-		if (xml_addsub(xmsd, xm2) < 0)
+		if (xml_addsub(msd->md_del, xm2) < 0)
 		    goto done;
 		continue;
 	    }
@@ -626,7 +627,7 @@ text_read_modstate(struct text_handle *th,
 		//		fprintf(stderr, "%s: Module %s: file \"%s\" and system \"%s\" revisions do not match\n", __FUNCTION__, name, mrev, srev);
 		if ((xm2 = xml_dup(xm)) == NULL)
 		    goto done;
-		if (xml_addsub(xmsd, xm2) < 0)
+		if (xml_addsub(msd->md_mod, xm2) < 0)
 		    goto done;
 	    }
 	}
@@ -639,14 +640,8 @@ text_read_modstate(struct text_handle *th,
 	if (xml_purge(xmodst) < 0)
 	    goto done;
     }
-    if (xmsp){
-	*xmsp = xmsd;
-	xmsd = NULL;
-    }
     retval = 0;
  done:
-    if (xmsd)
-	xml_free(xmsd);
     return retval;
 }
 
@@ -655,14 +650,14 @@ text_read_modstate(struct text_handle *th,
  * @param[in]  db    Symbolic database name, eg "candidate", "running"
  * @param[in]  yspec Top-level yang spec
  * @param[out] xp    XML tree read from file
- * @param[out] xmsp  If set, return modules-state differences
+ * @param[out] msd    If set, return modules-state differences
  */
 static int
 text_readfile(struct text_handle *th,
 	      const char         *db,
 	      yang_spec          *yspec,
 	      cxobj             **xp,
-	      cxobj             **xmsp)
+	      modstate_diff_t    *msd)
 {
     int    retval = -1;
     cxobj *x0 = NULL;
@@ -702,7 +697,7 @@ text_readfile(struct text_handle *th,
     /* From Clixon 3.10,datastore files may contain module-state defining
      * which modules are used in the file. 
      */
-    if (text_read_modstate(th, yspec, x0, xmsp) < 0)
+    if (text_read_modstate(th, yspec, x0, msd) < 0)
 	goto done;
     if (xp){
 	*xp = x0;
@@ -728,18 +723,18 @@ text_readfile(struct text_handle *th,
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
- * @param[out] xms    If set, return modules-state differences
+ * @param[out] msd    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
  * @see xmldb_get  the generic API function
  */
 static int
 text_get_cache(struct text_handle *th,
-	       const char   *db, 
-	       char         *xpath,
-	       int           config,
-	       cxobj       **xtop,
-	       cxobj       **xms)
+	       const char         *db, 
+	       char               *xpath,
+	       int                 config,
+	       cxobj             **xtop,
+	       modstate_diff_t    *msd)
 {
     int             retval = -1;
     yang_spec      *yspec;
@@ -759,7 +754,7 @@ text_get_cache(struct text_handle *th,
     de = hash_value(th->th_dbs, db, NULL);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
 	/* If there is no xml x0 tree (in cache), then read it from file */
-	if (text_readfile(th, db, yspec, &x0t, xms) < 0)
+	if (text_readfile(th, db, yspec, &x0t, msd) < 0)
 	    goto done;
 	/* XXX: should we validate file if read from disk? 
 	 * Argument against: we may want to have a semantically wrong file and wish
@@ -828,24 +823,25 @@ text_get_cache(struct text_handle *th,
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
+ * @param[out] msd    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
  * @see xmldb_get  the generic API function
  */
 int
-text_get(xmldb_handle  xh,
-	 const char   *db, 
-	 char         *xpath,
-	 int           config,
-	 cxobj       **xtop,
-	 cxobj       **xms)
+text_get(xmldb_handle     xh,
+	 const char      *db, 
+	 char            *xpath,
+	 int              config,
+	 cxobj          **xtop,
+	 modstate_diff_t *msd)
 {
     struct text_handle *th = handle(xh);
 
     if (th->th_cache)
-	return text_get_cache(th, db, xpath, config, xtop, xms);
+	return text_get_cache(th, db, xpath, config, xtop, msd);
     else
-	return text_get_nocache(th, db, xpath, config, xtop, xms);
+	return text_get_nocache(th, db, xpath, config, xtop, msd);
 }
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
@@ -1019,7 +1015,7 @@ text_modify(struct text_handle *th,
 	       can be modified in its entirety only.
 	       Any "operation" attributes present on subelements of an anyxml 
 	       node are ignored by the NETCONF server.*/
-	    if (y0->yn_keyword == Y_ANYXML){
+	    if (y0->yn_keyword == Y_ANYXML || y0->yn_keyword == Y_ANYDATA){
 		if (op == OP_NONE)
 		    break;
 		if (op==OP_MERGE && !permit && xnacm){

@@ -69,6 +69,7 @@
 %type <intval>    axisspec
 
 %type <string>    string
+%type <stack>     args
 %type <stack>     expr
 %type <stack>     andexpr
 %type <stack>     relexpr
@@ -164,8 +165,8 @@ xp_new(enum xp_type  type,
        double        d0,
        char         *s0,
        char         *s1,
-       xpath_tree     *c0,
-       xpath_tree     *c1)
+       xpath_tree   *c0,
+       xpath_tree   *c1)
 {
     xpath_tree     *xs = NULL;
     
@@ -251,7 +252,7 @@ nodetest    : '*'              { $$=xp_new(XP_NODE,A_NAN,0.0, NULL, NULL, NULL, 
             | NAME             { $$=xp_new(XP_NODE,A_NAN,0.0, NULL, $1, NULL, NULL); clicon_debug(2,"nodetest-> name(%s)",$1); } 
             | NAME ':' NAME    { $$=xp_new(XP_NODE,A_NAN,0.0, $1, $3, NULL, NULL);clicon_debug(2,"nodetest-> name(%s) : name(%s)", $1, $3); } 
             | NAME ':' '*'     { $$=xp_new(XP_NODE,A_NAN,0.0, $1, NULL, NULL, NULL);clicon_debug(2,"nodetest-> name(%s) : *", $1); } 
-            | NODETYPE '(' ')' { $$=xp_new(XP_NODE_FN,A_NAN,0.0, $1, NULL, NULL, NULL); clicon_debug(2,"nodetest-> nodetype()"); } 
+            | NODETYPE '(' ')' { $$=xp_new(XP_NODE_FN,A_NAN,0.0, $1, NULL, NULL, NULL); clicon_debug(1,"nodetest-> nodetype():%s", $1); } 
             ;
 
 /* evaluates to boolean */
@@ -266,13 +267,15 @@ primaryexpr : '(' expr ')'         { $$=xp_new(XP_PRI0,A_NAN,0.0, NULL, NULL, $2
             | APOST string APOST   { $$=xp_new(XP_PRIME_STR,A_NAN,0.0, $2, NULL, NULL, NULL);clicon_debug(2,"primaryexpr-> ' string '"); }
             | APOST APOST          { $$=xp_new(XP_PRIME_STR,A_NAN,0.0, NULL, NULL, NULL, NULL);clicon_debug(2,"primaryexpr-> ' '"); } 
             | FUNCTIONNAME '(' ')' { $$=xp_new(XP_PRIME_FN,A_NAN,0.0, $1, NULL, NULL, NULL);clicon_debug(2,"primaryexpr-> functionname ( arguments )"); } 
+            | FUNCTIONNAME '(' args ')' { $$=xp_new(XP_PRIME_FN,A_NAN,0.0, $1, NULL, $3, NULL);clicon_debug(2,"primaryexpr-> functionname ( arguments )"); } 
             ;
 
-/* XXX Adding this between FUNCTIONNAME() breaks parser,..
-arguments   : arguments expr { clicon_debug(2,"arguments-> arguments expr"); }
-            |                { clicon_debug(2,"arguments-> "); }
+args        : args ',' expr { $$=xp_new(XP_EXP,A_NAN,0.0,NULL,NULL,$1, $3);
+                              clicon_debug(2,"args -> args expr");}
+            | expr          { $$=xp_new(XP_EXP,A_NAN,0.0,NULL,NULL,$1, NULL);
+                              clicon_debug(2,"args -> expr "); }
 	    ;
-*/
+
 string      : string CHAR  { 
      			 int len = strlen($1);
 			 $$ = realloc($1, len+strlen($2) + 1); 

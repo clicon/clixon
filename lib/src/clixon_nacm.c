@@ -65,6 +65,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
+#include "clixon_yang_module.h"
 #include "clixon_xml_db.h"
 #include "clixon_nacm.h"
 

@@ -39,7 +39,7 @@
 /*
  * Prototypes
  */
-int text_get(xmldb_handle h, const char *db, char *xpath, int config, cxobj **xtop, cxobj **xms);
+int text_get(xmldb_handle h, const char *db, char *xpath, int config, cxobj **xtop, modstate_diff_t *xms);
 int text_put(xmldb_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
 int text_dump(FILE *f, char *dbfilename, char *rxkey);
 int text_copy(xmldb_handle h, const char *from, const char *to);

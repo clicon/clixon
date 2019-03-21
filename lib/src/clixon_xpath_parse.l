@@ -109,6 +109,12 @@ real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 <TOKEN>last	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
 <TOKEN>position	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
 <TOKEN>count	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
+<TOKEN>re-match         { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
+<TOKEN>deref            { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
+<TOKEN>derived-from     { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
+<TOKEN>derived-from-or-self { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
+<TOKEN>enum-value       { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
+<TOKEN>bit-is-set       { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
 
 <TOKEN>@                { return *yytext; }
 <TOKEN>ancestor::       { clixon_xpath_parselval.intval = A_ANCESTOR; return AXISNAME; }

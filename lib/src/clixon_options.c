@@ -989,7 +989,6 @@ cxobj *
 clicon_module_state_get(clicon_handle h)
 {
     clicon_hash_t *cdat = clicon_data(h);
-
     void           *p;
 
     if ((p = hash_value(cdat, "module_state_cache", NULL)) != NULL)
@@ -999,7 +998,7 @@ clicon_module_state_get(clicon_handle h)
 
 /*! Set module state cache
  * @param[in]  h   Clicon handle
- * @param[in]  s   Open socket (or -1 to close)
+ * @param[in]  xms Module state cache XML tree
  * @retval    0       OK
  * @retval   -1       Error
  */
@@ -1010,6 +1009,40 @@ clicon_module_state_set(clicon_handle h,
     clicon_hash_t  *cdat = clicon_data(h);
 
     if (hash_add(cdat, "module_state_cache", &xms, sizeof(xms))==NULL)
+	return -1;
+    return 0;
+}
+
+/*! Get yang module changelog
+ * @param[in]  h    Clicon handle
+ * @retval     xch  Module revision changelog XML tree
+ * @see draft-wang-netmod-module-revision-management-01
+ */
+cxobj *
+clicon_yang_changelog_get(clicon_handle h)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    void          *p;
+
+    if ((p = hash_value(cdat, "yang-changelog", NULL)) != NULL)
+	return *(cxobj **)p;
+    return NULL;
+}
+
+/*! Set yang module changelog
+ * @param[in] h   Clicon handle
+ * @param[in] s   Module revision changelog XML tree
+ * @retval    0   OK
+ * @retval   -1   Error
+ * @see draft-wang-netmod-module-revision-management-01
+ */
+int
+clicon_yang_changelog_set(clicon_handle h, 
+			cxobj        *xchlog)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    if (hash_add(cdat, "yang_changelog", &xchlog, sizeof(xchlog))==NULL)
 	return -1;
     return 0;
 }

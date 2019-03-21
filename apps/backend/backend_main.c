@@ -96,7 +96,10 @@ backend_terminate(clicon_handle h)
     clicon_debug(1, "%s", __FUNCTION__);
     if ((ss = clicon_socket_get(h)) != -1)
 	close(ss);
-    modules_state_cache_set(h, NULL);
+    if ((x = clicon_module_state_get(h)) != NULL)
+	xml_free(x);
+    if ((x = clicon_yang_changelog_get(h)) != NULL)
+	xml_free(x);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
@@ -639,6 +642,11 @@ main(int    argc,
     if (backend_rpc_init(h) < 0)
 	goto done;
 
+    /* Must be after netconf_module_load, but before startup code */
+    if (clicon_option_bool(h, "CLICON_YANG_CHANGELOG"))
+	if (clixon_yang_changelog_init(h) < 0)
+	    goto done;
+    
     /* Save modules state of the backend (server). Compare with startup XML */
     if (startup_module_state(h, yspec) < 0)
 	goto done;

@@ -62,6 +62,7 @@
 #include "clixon_xml.h"
 #include "clixon_plugin.h"
 #include "clixon_options.h"
+#include "clixon_yang_module.h"
 #include "clixon_xml_db.h"
 
 /* Set to log get and put requests */
@@ -325,7 +326,7 @@ xmldb_setopt(clicon_handle h,
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
- * @param[out] xms    If set, return modules-state differences
+ * @param[out] msd    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
  * @code
@@ -338,12 +339,12 @@ xmldb_setopt(clicon_handle h,
  * @see xpath_vec
  */
 int 
-xmldb_get(clicon_handle h, 
-	  const char   *db, 
-	  char         *xpath,
-	  int           config,
-	  cxobj       **xret,
-	  cxobj       **xms)
+xmldb_get(clicon_handle    h, 
+	  const char      *db, 
+	  char            *xpath,
+	  int              config,
+	  cxobj          **xret,
+	  modstate_diff_t *msd)
 {
     int               retval = -1;
     xmldb_handle      xh;
@@ -361,7 +362,7 @@ xmldb_get(clicon_handle h,
 	clicon_err(OE_DB, 0, "Not connected to datastore plugin");
 	goto done;
     }
-    retval = xa->xa_get_fn(xh, db, xpath, config, xret, xms);
+    retval = xa->xa_get_fn(xh, db, xpath, config, xret, msd);
 #if DEBUG
     if (retval == 0) { 
 	 cbuf *cb = cbuf_new();

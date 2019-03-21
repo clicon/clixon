@@ -636,17 +636,20 @@ clixon_trim(char *str)
 }
 
 /*! Transform from XSD regex to posix ERE
- * The usecase is that Yang (RFC7950) supports XSD regexpressions but CLIgen supports
- * Current translations:
- * \d --> [0-9]
+ * The usecase is that Yang (RFC7950) supports XSD regular expressions but
+ * CLIgen supports POSIX ERE
  * POSIX ERE regexps according to man regex(3).
  * @param[in]  xsd    Input regex string according XSD
  * @param[out] posix  Output (malloced) string according to POSIX ERE
  * @see https://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
  * @see https://www.regular-expressions.info/posixbrackets.html#class translation
+ * @see https://www.regular-expressions.info/xml.html
  * Translation is not complete but covers some character sequences:
  * \d decimal digit
- * \w alphanum + underscore
+ * \w all characters except the set of "punctuation", "separator" and 
+ *    "other" characters: #x0000-#x10FFFF]-[\p{P}\p{Z}\p{C}]
+ * \i letters + underscore and colon
+ * \c XML Namechar, see: https://www.w3.org/TR/2008/REC-xml-20081126/#NT-NameChar
  */
 int
 regexp_xsd2posix(char  *xsd,
@@ -657,6 +660,7 @@ regexp_xsd2posix(char  *xsd,
     char  x;
     int   i;
     int   esc;
+    int   minus = 0;
 
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -668,17 +672,24 @@ regexp_xsd2posix(char  *xsd,
 	if (esc){
 	    esc = 0;
 	    switch (x){
+	    case '-': /* \- is translated to -], ie must be last in bracket */
+		minus++;
+		break;
 	    case 'c': /* xml namechar */
-		cprintf(cb, "[0-9a-zA-Z\\\\.\\\\-_:]");
+		cprintf(cb, "[0-9a-zA-Z._:-]"); /* also interpunct */
 		break;
 	    case 'd':
 		cprintf(cb, "[0-9]");
 		break;
-	    case 'w':
-		cprintf(cb, "[0-9a-zA-Z_\\\\-]");
+	    case 'i': /* initial */
+		cprintf(cb, "[a-zA-Z_:]");
 		break;
-	    case 'W':
-		cprintf(cb, "[^0-9a-zA-Z_\\\\-]");
+	    case 'w': /* word */
+		//cprintf(cb, "[0-9a-zA-Z_\\\\-]")
+		cprintf(cb, "[^[:punct:][:space:][:cntrl:]]"); 
+		break;
+	    case 'W': /* inverse of \w */
+		cprintf(cb, "[[:punct:][:space:][:cntrl:]]"); 
 		break;
 	    case 's':
 		cprintf(cb, "[ \t\r\n]");
@@ -693,6 +704,10 @@ regexp_xsd2posix(char  *xsd,
 	}
 	else if (x == '\\')
 	    esc++;
+	else if (x == ']' && minus){
+	    cprintf(cb, "-]");
+	    minus = 0;
+	}
 	else
 	    cprintf(cb, "%c", x);
     }

@@ -206,8 +206,12 @@ int clicon_startup_status_set(clicon_handle h, enum startup_status status);
 int clicon_socket_get(clicon_handle h);
 int clicon_socket_set(clicon_handle h, int s);
 
-/*! Set and set module state cache */
+/*! Set and get module state cache */
 cxobj *clicon_module_state_get(clicon_handle h);
 int clicon_module_state_set(clicon_handle h, cxobj *xms);
+
+/*! Set and get module revision changelog */
+cxobj *clicon_yang_changelog_get(clicon_handle h);
+int clicon_yang_changelog_set(clicon_handle h, cxobj *xchlog);
 
 #endif  /* _CLIXON_OPTIONS_H_ */

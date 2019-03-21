@@ -150,7 +150,7 @@ typedef enum yang_class yang_class;
  *      data tree.  One of container, leaf, leaf-list, list, anydata, and
  *      anyxml.
  */
-#define yang_datanode(y) ((y)->ys_keyword == Y_CONTAINER || (y)->ys_keyword == Y_LEAF || (y)->ys_keyword == Y_LIST || (y)->ys_keyword == Y_LEAF_LIST || (y)->ys_keyword == Y_ANYXML)
+#define yang_datanode(y) ((y)->ys_keyword == Y_CONTAINER || (y)->ys_keyword == Y_LEAF || (y)->ys_keyword == Y_LIST || (y)->ys_keyword == Y_LEAF_LIST || (y)->ys_keyword == Y_ANYXML || (y)->ys_keyword == Y_ANYDATA)
 
 /* Yang data definition statement
  * See RFC 7950 Sec 3:
@@ -283,6 +283,8 @@ int        yang_abs_schema_nodeid(yang_spec *yspec, yang_stmt *ys,
 				  enum rfc_6020 keyword, yang_stmt **yres);
 int        yang_desc_schema_nodeid(yang_node *yn, char *schema_nodeid, 
 				   enum rfc_6020 keyword, yang_stmt **yres);
+int        ys_parse_date_arg(char *datearg, uint32_t *dateint);
+
 cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys, char *extra);
 int        yang_mandatory(yang_stmt *ys);

@@ -199,4 +199,8 @@ expecteof "$clixon_util_xpath -f $xml3 -p bbb[ccc='bar']" 0 "" "^nodeset:0:<bbb 
 new "xpath bbb[ccc='fie']"
 expecteof "$clixon_util_xpath -f $xml3 -p bbb[ccc='fie']" 0 "" "^nodeset:$"
 
+# Just syntax - no semantic meaning
+new "xpath derived-from-or-self"
+expecteof "$clixon_util_xpath -f $xml3 -p 'derived-from-or-self(../../change-operation,modify)'" 0 "" "derived-from-or-self"
+
 rm -rf $dir

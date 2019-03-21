@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-## 3.10.0 (Upcoming)
+## 3.10.0/4.0.0 (Upcoming)
 
 ### Major New features
 * Persistent CLI history: [Preserve CLI command history across sessions. The up/down arrows](https://github.com/clicon/clixon/issues/79)
@@ -18,16 +18,22 @@
     * Check which modules match, and which do not.
   * Loading of "extra" XML.
   * Detection of in-compatible XML and Yang models in the startup configuration.
-  * An upgrade callback when in-compatible XML is encountered (`ca_upgrade`)
+  * A user can register upgrade callbacks per module/revision when in-compatible XML is encountered (`update_callback_register`).
   * A "failsafe" mode allowing a user to repair the startup on errors or failed validation.
   * Major rewrite of `backend_main.c` and a new module `backend_startup.c`
+* New yang changelog experimental feature for automatic upgrade
+  * Yang module clixon-yang-changelog@2019-03-21.yang based on draft-wang-netmod-module-revision-management-01
+  * Two config options control:
+    * CLICON_YANG_CHANGELOG enables the yang changelog feature
+    * CLICON_YANG_CHANGELOG_FILE where the changelog resides
 * Datastore files contain RFC7895 module-state information
-  * Added modules-state parameter to xmldb_get datastore function
+  * Added modules-state diff parameter to xmldb_get datastore function
   * Set config option `CLICON_XMLDB_MODSTATE` to true
     * Enable this if you wish to use the upgrade feature in the new startup functionality.
   * Note that this adds bytes to your configs
 
 ### API changes on existing features (you may need to change your code)
+* Added modules-state diff parameter to xmldb_get datastore function for startup scenarios. Set this to NULL in normal cases.
 * `rpc_callback_register` added a namespace parameter. Example:
    ```
      rpc_callback_register(h, empty_rpc, NULL, "urn:example:clixon", "empty");
@@ -62,6 +68,11 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Allowed Yang extended Xpath functions (syntax only):
+  * re-match, deref, derived-from, derived-from-or-self, enum-value, bit-is-set
+* XSD regular expression handling of dash(`-`)
+  *: Translate XDS `[xxx\-yyy]` to POSIX `[xxxyyy-]`.
+* YANG Anydata treated same as Anyxml 
 * Bugfix: [Nodes from more than one of the choice's branches exist at the same time](https://github.com/clicon/clixon/issues/81)
   * Note it may still be possible to load a file with multiple choice elements via netconf, but it will not pass validate.
 * Bugfix: Default NACM policies applied even if NACM is disabled

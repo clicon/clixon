@@ -72,8 +72,34 @@
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_options.h"
+#include "clixon_plugin.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
+
+modstate_diff_t *
+modstate_diff_new(void)
+{
+    modstate_diff_t *md;
+    if ((md = malloc(sizeof(modstate_diff_t))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	return NULL;
+    }
+    memset(md, 0, sizeof(modstate_diff_t));
+    return md;
+}
+
+int
+modstate_diff_free(modstate_diff_t *md)
+{
+    if (md == NULL)
+	return 0;
+    if (md->md_del)
+	free(md->md_del);
+    if (md->md_mod)
+	free(md->md_mod);
+    free(md);
+    return 0;
+}
 
 /*! Init the Yang module library
  *
@@ -167,7 +193,7 @@ int
 modules_state_cache_set(clicon_handle  h,
 			cxobj         *msx)
 {
-    int retval = -1;
+    int    retval = -1;
     cxobj *x;     /* module state cache XML */
     
     if ((x = clicon_module_state_get(h)) != NULL)
@@ -185,35 +211,6 @@ modules_state_cache_set(clicon_handle  h,
     return retval;
 }
 
-/*! Get modules state according to RFC 7895
- * @param[in]     h       Clicon handle
- * @param[in]     yspec   Yang spec
- * @param[in]     xpath   XML Xpath
- * @param[in]     brief   Just name,revision and uri (no cache)
- * @param[in,out] xret    Existing XML tree, merge x into this
- * @retval       -1       Error (fatal)
- * @retval        0       OK
- * @retval        1       Statedata callback failed
- * @notes NYI: schema, deviation
-x      +--ro modules-state
-x         +--ro module-set-id    string
-x         +--ro module* [name revision]
-x            +--ro name                yang:yang-identifier
-x            +--ro revision            union
-            +--ro schema?             inet:uri
-x            +--ro namespace           inet:uri
-            +--ro feature*            yang:yang-identifier
-            +--ro deviation* [name revision]
-            |  +--ro name        yang:yang-identifier
-            |  +--ro revision    union
-            +--ro conformance-type    enumeration
-            +--ro submodule* [name revision]
-               +--ro name        yang:yang-identifier
-               +--ro revision    union
-               +--ro schema?     inet:uri
- * @see netconf_create_hello
- */
-#if 1
 /*! Actually build the yang modules state XML tree
 */
 static int
@@ -298,7 +295,34 @@ yms_build(clicon_handle    h,
  done:
     return retval;
 }
-    
+/*! Get modules state according to RFC 7895
+ * @param[in]     h       Clicon handle
+ * @param[in]     yspec   Yang spec
+ * @param[in]     xpath   XML Xpath
+ * @param[in]     brief   Just name,revision and uri (no cache)
+ * @param[in,out] xret    Existing XML tree, merge x into this
+ * @retval       -1       Error (fatal)
+ * @retval        0       OK
+ * @retval        1       Statedata callback failed
+ * @notes NYI: schema, deviation
+x      +--ro modules-state
+x         +--ro module-set-id    string
+x         +--ro module* [name revision]
+x            +--ro name                yang:yang-identifier
+x            +--ro revision            union
+            +--ro schema?             inet:uri
+x            +--ro namespace           inet:uri
+            +--ro feature*            yang:yang-identifier
+            +--ro deviation* [name revision]
+            |  +--ro name        yang:yang-identifier
+            |  +--ro revision    union
+            +--ro conformance-type    enumeration
+            +--ro submodule* [name revision]
+               +--ro name        yang:yang-identifier
+               +--ro revision    union
+               +--ro schema?     inet:uri
+ * @see netconf_create_hello
+ */
 int
 yang_modules_state_get(clicon_handle    h,
                        yang_spec       *yspec,
@@ -350,162 +374,87 @@ yang_modules_state_get(clicon_handle    h,
         xml_free(x);
     return retval;
 }
-#else
-int
-yang_modules_state_get(clicon_handle    h,
-		       yang_spec       *yspec,
-		       char            *xpath,
-		       int              brief,
-		       cxobj          **xret)
-{
-    int         retval = -1;
-    cxobj      *x = NULL;
-    cbuf       *cb = NULL;
-    yang_stmt  *ylib = NULL; /* ietf-yang-library */
-    yang_stmt  *yns = NULL;  /* namespace */
-    yang_stmt  *ymod;        /* generic module */
-    yang_stmt  *ys;
-    yang_stmt  *yc;
-    char       *msid; /* modules-set-id */
-    char       *module = "ietf-yang-library";
-    cxobj      *x1;
-    
-    msid = clicon_option_str(h, "CLICON_MODULE_SET_ID");
-    if (modules_state_cache_get(h, msid, &x) < 0)
-	goto done;
-    if (x != NULL){ /* Yes a cache (but no duplicate) */
-	if (xpath_first(x, "%s", xpath)){
-	    if ((x1 = xml_dup(x)) == NULL)
-		goto done;
-	    x = x1;
-	}
-	else
-	    x = NULL;
-    }
-    else { /* No cache -> build the tree */
-	if ((ylib = yang_find((yang_node*)yspec, Y_MODULE, module)) == NULL &&
-	    (ylib = yang_find((yang_node*)yspec, Y_SUBMODULE, module)) == NULL){
-	    clicon_err(OE_YANG, 0, "%s not found", module);
-	    goto done;
-	}
-	if ((yns = yang_find((yang_node*)ylib, Y_NAMESPACE, NULL)) == NULL){
-	    clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
-	    goto done;
-	}
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, 0, "clicon buffer");
-	    goto done;
-	}
-	cprintf(cb,"<modules-state xmlns=\"%s\">", yns->ys_argument);
-	cprintf(cb,"<module-set-id>%s</module-set-id>", msid); 
-    
-<<<<<<< HEAD
-	ymod = NULL;
-	while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
-	    if (ymod->ys_keyword != Y_MODULE &&
-		ymod->ys_keyword != Y_SUBMODULE)
-		continue;
-	    cprintf(cb,"<module>");
-	    cprintf(cb,"<name>%s</name>", ymod->ys_argument);
-	    if ((ys = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL)
-		cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
-	    else
-		cprintf(cb,"<revision></revision>");
-=======
-    ymod = NULL;
-    while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
-	if (ymod->ys_keyword != Y_MODULE &&
-	    ymod->ys_keyword != Y_SUBMODULE)
-	    continue;
-	cprintf(cb,"<module>");
-	cprintf(cb,"<name>%s</name>", ymod->ys_argument);
-	if ((ys = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL)
-	    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
-	else
-	    cprintf(cb,"<revision></revision>");
-	if (!brief){
->>>>>>> modules-state
-	    if ((ys = yang_find((yang_node*)ymod, Y_NAMESPACE, NULL)) != NULL)
-		cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
-	    else
-		cprintf(cb,"<namespace></namespace>");
-<<<<<<< HEAD
-	    /* This follows order in rfc 7895: feature, conformance-type, submodules */
-	    yc = NULL;
-=======
-	}
-	/* This follows order in rfc 7895: feature, conformance-type, submodules */
-	yc = NULL;
-	if (!brief)
->>>>>>> modules-state
-	    while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
-		switch(yc->ys_keyword){
-		case Y_FEATURE:
-		    if (yc->ys_cv && cv_bool_get(yc->ys_cv))
-			cprintf(cb,"<feature>%s</feature>", yc->ys_argument);
-		    break;
-		default:
-		    break;
-		}
-	    }
-<<<<<<< HEAD
-	    cprintf(cb, "<conformance-type>implement</conformance-type>");
-	    yc = NULL;
-	    while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
-		switch(yc->ys_keyword){
-		case Y_SUBMODULE:
-		    cprintf(cb,"<submodule>");
-		    cprintf(cb,"<name>%s</name>", yc->ys_argument);
-		    if ((ys = yang_find((yang_node*)yc, Y_REVISION, NULL)) != NULL)
-			cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
-		    else
-			cprintf(cb,"<revision></revision>");
-		    cprintf(cb,"</submodule>");
-		    break;
-		default:
-		    break;
-		}
-=======
-	if (!brief)
-	    cprintf(cb, "<conformance-type>implement</conformance-type>");
-	yc = NULL;
-	if (!brief)
-	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
-	    switch(yc->ys_keyword){
-	    case Y_SUBMODULE:
-		cprintf(cb,"<submodule>");
-		cprintf(cb,"<name>%s</name>", yc->ys_argument);
-		if ((ys = yang_find((yang_node*)yc, Y_REVISION, NULL)) != NULL)
-		    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
-		else
-		    cprintf(cb,"<revision></revision>");
-		cprintf(cb,"</submodule>");
-		break;
-	    default:
-		break;
->>>>>>> modules-state
-	    }
-	    cprintf(cb,"</module>"); 
-	}
-	cprintf(cb,"</modules-state>");
 
-	if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
-	    if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
-		goto done;
-	    retval = 1;
-	    goto done;
+/*! Upgrade XML
+ * @param[in]  h    Clicon handle
+ * @param[in]  xt   XML tree (to upgrade)
+ * @param[in]  msd  Modules-state differences of xt
+ * @retval     1    OK
+ * @retval     0    Validation failed
+ * @retval    -1    Error
+ */
+int
+clixon_module_upgrade(clicon_handle    h,
+		      cxobj           *xt,
+		      modstate_diff_t *msd,
+   		      cbuf            *cbret)
+{
+    int        retval = -1;
+    cxobj     *xc; /* XML child of data */
+    char      *namespace;
+    cxobj     *xs; /* XML module state */
+    char      *xname; /* XML top-level symbol name */
+    int        state; /* 0: no changes, 1: deleted, 2: modified */
+    char      *modname;
+    yang_spec *yspec;
+    yang_stmt *ymod;
+    yang_stmt *yrev;
+    char      *rev;
+    uint32_t   from;
+    uint32_t   to;
+    int        ret;
+
+    /* Iterate through db XML top-level - get namespace info */
+    xc = NULL;
+    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+	xname = xml_name(xc); /* xml top-symbol name */
+	if (xml2ns(xc, NULL, &namespace) < 0) /* Get namespace of XML */
+	    goto done;       
+	if (namespace == NULL){
+	    clicon_log(LOG_DEBUG, "XML %s lacks namespace", xname);
+	    goto fail;
 	}
-	if (modules_state_cache_set(h, x) < 0)
+	/* Look up module-state via namespace of XML */
+	state = 0; /* XML matches system modules */
+	if (msd){
+	    if ((xs = xpath_first(msd->md_del, "module[namespace=\"%s\"]", namespace)) != NULL)
+		state = 1; /* XML belongs to a removed module */
+	    else if ((xs = xpath_first(msd->md_mod, "module[namespace=\"%s\"]", namespace)) != NULL)
+		state = 2; /* XML belongs to an outdated module */
+	}
+	/* Pick up more data from data store module-state */
+	from = to = 0;
+	modname = NULL;
+	if (state && xs && msd){ /* sanity: XXX what about no msd?? */
+	    modname = xml_find_body(xs, "name");    /* Module name */
+	    if ((rev = xml_find_body(xs, "revision")) != NULL) /* Module revision */
+		if (ys_parse_date_arg(rev, &from) < 0)
+		    goto done;
+	    if (state > 1){
+		yspec = clicon_dbspec_yang(h);
+		/* Look up system module (alt send it via argument) */
+		if ((ymod = yang_find_module_by_name(yspec, modname)) == NULL)
+		    goto fail;
+		if ((yrev = yang_find((yang_node*)ymod, Y_REVISION, NULL)) == NULL)
+		    goto fail;
+		if (ys_parse_date_arg(yrev->ys_argument, &to) < 0)
+		    goto done;
+
+	    }
+	}
+	/* Make upgrade callback for this XML, specifying the module name,
+	 * namespace, from and to revision.
+	 * XXX: namespace may be known but not module!!
+	 */
+	if ((ret = upgrade_callback_call(h, xc, modname, namespace, from, to, NULL)) < 0)
 	    goto done;
+	if (ret == 0)
+	    goto fail;
     }
-    if (x && netconf_trymerge(x, yspec, xret) < 0)
-	goto done;
-    retval = 0;
+    retval = 1;
  done:
-    if (x)
-	xml_free(x);
-    if (cb)
-	cbuf_free(cb);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
-#endif

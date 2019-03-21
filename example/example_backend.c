@@ -246,24 +246,35 @@ example_statedata(clicon_handle h,
     return retval;
 }
 
-/*! Upgrade configuration from one version to another
- * @param[in]  h      Clicon handle
- * @param[in]  xms    Module state differences
- * @retval     0      OK
- * @retval    -1      Error
+#ifdef keep_as_example
+/*! Registered Upgrade callback function 
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xn      XML tree to be updated
+ * @param[in]  modname Name of module
+ * @param[in]  modns   Namespace of module (for info)
+ * @param[in]  from    From revision on the form YYYYMMDD
+ * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
+ * @param[in]  arg     User argument given at rpc_callback_register() 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @retval     1       OK
+ * @retval     0       Invalid
+ * @retval    -1       Error
  */
-int 
-example_upgrade(clicon_handle       h, 
-		cxobj              *xms)
+static int
+upgrade_all(clicon_handle h,       
+	    cxobj        *xn,      
+	    char         *modname,
+	    char         *modns,
+	    uint32_t      from,
+	    uint32_t      to,
+	    void         *arg,     
+	    cbuf         *cbret)
 {
-    int     retval = -1;
-	
-    if (xms)
-	clicon_log_xml(LOG_NOTICE, xms, "%s", __FUNCTION__);
-    retval = 0;
-    // done:
-    return retval;
+    fprintf(stderr, "%s XML:%s mod:%s %s from:%d to:%d\n", __FUNCTION__, xml_name(xn),
+	    modname, modns, from, to);
+    return 1;
 }
+#endif
 
 /*! Plugin state reset. Add xml or set state in backend machine.
  * Called in each backend plugin. plugin_reset is called after all plugins
@@ -366,7 +377,6 @@ static clixon_plugin_api api = {
     example_exit,                           /* exit */
     .ca_reset=example_reset,                /* reset */
     .ca_statedata=example_statedata,        /* statedata */
-    .ca_upgrade=example_upgrade,            /* upgrade configuration */
     .ca_trans_begin=NULL,                   /* trans begin */
     .ca_trans_validate=transaction_validate,/* trans validate */
     .ca_trans_complete=NULL,                /* trans complete */
@@ -434,6 +444,14 @@ clixon_plugin_init(clicon_handle h)
 			      "copy-config"
 			      ) < 0)
 	goto done;
+        /* Called after the regular system copy_config callback */
+    if (upgrade_callback_register(h, yang_changelog_upgrade, 
+				  NULL, 
+				  NULL, NULL,
+				  0, 0
+				  ) < 0)
+	goto done;
+
 
     /* Return plugin API */
     return &api;

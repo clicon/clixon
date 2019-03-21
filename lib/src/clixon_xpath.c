@@ -973,7 +973,7 @@ xp_eval(xp_ctx   *xc,
 	break;
     }
     /* Eval second child c0
-     * Note, some operators 8like locationpath, need transitive context (use_xr0)
+     * Note, some operators like locationpath, need transitive context (use_xr0)
      */
     if (xs->xs_c1)
 	if (xp_eval(use_xr0?xr0:xc, xs->xs_c1, &xr1) < 0) 
@@ -1060,6 +1060,7 @@ xpath_vec_ctx(cxobj    *xcur,
 	goto done;
     if (xpath_parse_init(&xy) < 0)
 	goto done;
+    clicon_debug(2,"%s",__FUNCTION__);
     if (clixon_xpath_parseparse(&xy) != 0) { /* yacc returns 1 on error */
 	clicon_log(LOG_NOTICE, "XPATH error: on line %d", xy.xy_linenum);
 	if (clicon_errno == 0)

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Start clixon with module A rec 2019
 # Load startup with non-compatible and invalid module A with rev 0814-01-28
 # Go into fail-safe with invalid startup
+# Repair by copying startup into candidate, editing and commit it
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

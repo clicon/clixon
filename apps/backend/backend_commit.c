@@ -273,7 +273,7 @@ startup_validate(clicon_handle  h,
     int                 retval = -1;
     yang_spec          *yspec;
     int                 ret;
-    cxobj              *xms = NULL;
+    modstate_diff_t    *msd = NULL;
     transaction_data_t *td = NULL;
 
     /* Handcraft a transition with only target and add trees */
@@ -282,11 +282,17 @@ startup_validate(clicon_handle  h,
     /* 2. Parse xml trees 
      * This is the state we are going to 
      * Note: xmsdiff contains non-matching modules
+     * Only if CLICON_XMLDB_MODSTATE is enabled 
      */
-    if (xmldb_get(h, db, "/", 1, &td->td_target, &xms) < 0)
+    if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
+	if ((msd = modstate_diff_new()) == NULL)
+	    goto done;
+    if (xmldb_get(h, db, "/", 1, &td->td_target, msd) < 0)
 	goto done;
-    if (xms && clixon_plugin_upgrade(h, xms) < 0)
+    if ((ret = clixon_module_upgrade(h, td->td_target, msd, cbret)) < 0)
 	goto done;
+    if (ret == 0)
+	goto fail;
 
     /* Handcraft transition with with only add tree */
     if (cxvec_append(td->td_target, &td->td_avec, &td->td_alen) < 0) 
@@ -318,8 +324,8 @@ startup_validate(clicon_handle  h,
  done:
     if (td)
 	transaction_free(td);
-    if (xms)
-	xml_free(xms);
+    if (msd)
+	modstate_diff_free(msd);
     return retval;
  fail: /* cbret should be set */
     if (cbuf_len(cbret)==0){	

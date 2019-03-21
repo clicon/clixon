@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -31,41 +31,16 @@
 
   ***** END LICENSE BLOCK *****
 
- * Yang module and feature handling
- * @see https://tools.ietf.org/html/rfc7895
+ * YANG module revision change management. 
+ * See draft-wang-netmod-module-revision-management-01
  */
-
-#ifndef _CLIXON_YANG_MODULE_H_
-#define _CLIXON_YANG_MODULE_H_
-
-/*
- * Constants
- */
-
-/*
- * Types
- */
-
-/* Struct contataining module state differences between two modules or two 
- * revisions of same module. 
- * This is in state of flux so it needss to be conatained and easily changed.
- */
-typedef struct {
-    cxobj *md_del;   /* yang mdoule state deletes */
-    cxobj *md_mod;   /* yang mdoule state modifications */
-} modstate_diff_t;
+#ifndef _CLIXON_YANG_CHANGELOG_H
+#define _CLIXON_YANG_CHANGELOG_H
 
 /*
  * Prototypes
  */
-modstate_diff_t * modstate_diff_new(void);
-int modstate_diff_free(modstate_diff_t *);
-int modules_state_cache_set(clicon_handle h, cxobj *msx);
-int yang_modules_init(clicon_handle h);
-char *yang_modules_revision(clicon_handle h);
+int yang_changelog_upgrade(clicon_handle h, cxobj *xn, char *modname, char *modns, uint32_t from, uint32_t to, void *arg, cbuf *cbret);
+int clixon_yang_changelog_init(clicon_handle h);
 
-int yang_modules_state_get(clicon_handle h, yang_spec *yspec, char *xpath,
-			   int brief, cxobj **xret);
-int clixon_module_upgrade(clicon_handle h, cxobj *xt, modstate_diff_t *msd, cbuf *cb);
-
-#endif  /* _CLIXON_YANG_MODULE_H_ */
+#endif /* _CLIXON_YANG_CHANGELOG_H */

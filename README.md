@@ -113,6 +113,7 @@ However, the following YANG syntax modules are not implemented:
 - unique
 - action
 - refine
+- Yang extended Xpath functions: re-match, deref, derived-from, derived-from-or-self, enum-value, bit-is-set
 
 Restrictions on Yang types are as follows:
 - Submodules cannot re-use a prefix in an import statement that is already used for another imported module in the module that the submodule belongs to. (see https://github.com/clicon/clixon/issues/60)
