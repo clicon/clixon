@@ -486,7 +486,7 @@ restconf_terminate(clicon_handle h)
     if ((fs = clicon_socket_get(h)) != -1)
 	close(fs);
     clixon_plugin_exit(h);
-    rpc_callback_delete_all();
+    rpc_callback_delete_all(h);
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);

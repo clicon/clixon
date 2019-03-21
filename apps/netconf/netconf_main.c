@@ -294,7 +294,7 @@ netconf_terminate(clicon_handle h)
     cxobj      *x;
     
     clixon_plugin_exit(h);
-    rpc_callback_delete_all();
+    rpc_callback_delete_all(h);
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
