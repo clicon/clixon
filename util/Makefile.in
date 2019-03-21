@@ -62,9 +62,10 @@ LIBS    	= @LIBS@
 
 CPPFLAGS  	= @CPPFLAGS@
 
-INCLUDES = -I. @INCLUDES@ -I$(top_srcdir)/lib -I$(top_srcdir)/include
+INCLUDES        = -I. @INCLUDES@ -I$(top_srcdir)/lib -I$(top_srcdir)/include
 
-MYLIB        = ../lib/src/libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+CLIXON_LIB      = libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB)
 
 # Utilities, unit testings. Not installed.
 APPSRC    = clixon_util_xml.c
@@ -80,26 +81,30 @@ APPS	  = $(APPSRC:.c=)
 
 all:	 $(APPS)
 
+# Dependency of clixon library
+$(top_srcdir)/lib/src/$(CLIXON_LIB):
+	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
+
 clean:
 	rm -f $(APPS) clixon_util_stream *.core
 
 # APPS
-clixon_util_xml: clixon_util_xml.c $(MYLIB)
+clixon_util_xml: clixon_util_xml.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
 
-clixon_util_json: clixon_util_json.c $(MYLIB)
+clixon_util_json: clixon_util_json.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
 
-clixon_util_yang: clixon_util_yang.c $(MYLIB)
+clixon_util_yang: clixon_util_yang.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
 
-clixon_util_xpath: clixon_util_xpath.c $(MYLIB)
+clixon_util_xpath: clixon_util_xpath.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
-clixon_util_stream: clixon_util_stream.c $(MYLIB)
+clixon_util_stream: clixon_util_stream.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lcurl -o $@
 
-clixon_util_datastore: clixon_util_datastore.c $(MYLIB)
+clixon_util_datastore: clixon_util_datastore.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
 distclean: clean

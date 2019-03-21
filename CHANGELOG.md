@@ -44,6 +44,7 @@
 ```
 
 ### Minor changes
+* Made Makefile concurrent so that it can be compiled with -jN
 * Added flags to example backend to control its behaviour:
   * Start with `-- -r` to run the reset plugin
   * Start with `-- -s` to run the state callback

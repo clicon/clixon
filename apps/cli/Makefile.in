@@ -88,9 +88,11 @@ MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
 MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
 
-
-
 all:	 $(MYLIB) $(APPL) test
+
+# Dependency of clixon library
+$(top_srcdir)/lib/src/$(CLIXON_LIB):
+	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
 
 clean:
 	rm -f $(LIBOBJ) $(APPOBJ) *.core $(APPL) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
@@ -132,13 +134,13 @@ uninstall:
 test.c	:
 	echo "int main(){}" > $@
 
-test: 	test.c $(LIBOBJ) 
+test: 	test.c $(LIBOBJ) $(MYLIB)
 	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
 $(APPL): $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)	
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
-$(MYLIB) : $(LIBOBJ)
+$(MYLIB) : $(LIBOBJ) $(LIBDEPS)
 ifeq ($(HOST_VENDOR),apple)
 	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJ) $(LIBS)
 else

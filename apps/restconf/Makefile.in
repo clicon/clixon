@@ -91,6 +91,10 @@ MYLIBSO   = $(MYLIBLINK).$(CLIXON_MAJOR)
 
 all:	 $(MYLIB) $(APPL)
 
+# Dependency of clixon library
+$(top_srcdir)/lib/src/$(CLIXON_LIB):
+	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
+
 clean:
 	rm -f $(LIBOBJ) *.core $(APPL) $(APPOBJ) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
 
@@ -133,7 +137,7 @@ uninstall:
 $(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
-$(MYLIB) : $(LIBOBJ)
+$(MYLIB) : $(LIBOBJ) $(LIBDEPS)
 ifeq ($(HOST_VENDOR),apple)
 	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJ) $(LIBS)
 else

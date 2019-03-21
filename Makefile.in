@@ -58,7 +58,7 @@ SUBDIRS = lib apps include etc datastore yang
 
 all:	$(SUBDIRS)
 
-$(SUBDIRS):
+$(SUBDIRS): include lib # Cannot build app before lib (for parallel make -j)
 	(cd $@ && $(MAKE) $(MFLAGS) all)
 
 depend:

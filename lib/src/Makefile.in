@@ -74,7 +74,7 @@ SRC     = clixon_sig.c clixon_log.c clixon_err.c clixon_event.c \
 	  clixon_hash.c clixon_options.c clixon_plugin.c \
 	  clixon_proto.c clixon_proto_client.c \
 	  clixon_xpath.c clixon_xpath_ctx.c clixon_sha1.c \
-	  clixon_xml_db.c clixon_netconf_lib.c clixon_stream.c clixon_nacm.c
+	  clixon_xml_db.c clixon_netconf_lib.c clixon_stream.c clixon_nacm.c 
 
 YACCOBJS := lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
 	    lex.clixon_yang_parse.o  clixon_yang_parse.tab.o \
@@ -124,9 +124,7 @@ lex.clixon_xml_parse.c : clixon_xml_parse.l clixon_xml_parse.tab.h
 	$(LEX) -Pclixon_xml_parse clixon_xml_parse.l # -d is debug
 
 clixon_xml_parse.tab.c clixon_xml_parse.tab.h: clixon_xml_parse.y
-	$(YACC) -l -d -p clixon_xml_parse clixon_xml_parse.y # -t is debug
-	mv y.tab.c clixon_xml_parse.tab.c
-	mv y.tab.h clixon_xml_parse.tab.h
+	$(YACC) -l -d -b clixon_xml_parse -p clixon_xml_parse clixon_xml_parse.y # -t is debug
 
 lex.clixon_xml_parse.o : lex.clixon_xml_parse.c clixon_xml_parse.tab.h # special rule to for make clean to work
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
@@ -136,9 +134,7 @@ lex.clixon_yang_parse.c : clixon_yang_parse.l clixon_yang_parse.tab.h
 	$(LEX) -Pclixon_yang_parse clixon_yang_parse.l # -d is debug
 
 clixon_yang_parse.tab.c clixon_yang_parse.tab.h: clixon_yang_parse.y
-	$(YACC) -l -d -p clixon_yang_parse clixon_yang_parse.y # -t is debug
-	mv y.tab.c clixon_yang_parse.tab.c
-	mv y.tab.h clixon_yang_parse.tab.h
+	$(YACC) -l -d -b clixon_yang_parse -p clixon_yang_parse clixon_yang_parse.y # -t is debug
 
 lex.clixon_yang_parse.o : lex.clixon_yang_parse.c clixon_yang_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
@@ -148,9 +144,7 @@ lex.clixon_json_parse.c : clixon_json_parse.l clixon_json_parse.tab.h
 	$(LEX) -Pclixon_json_parse clixon_json_parse.l # -d is debug
 
 clixon_json_parse.tab.c clixon_json_parse.tab.h: clixon_json_parse.y
-	$(YACC) -l -d -p clixon_json_parse clixon_json_parse.y # -t is debug
-	mv y.tab.c clixon_json_parse.tab.c
-	mv y.tab.h clixon_json_parse.tab.h
+	$(YACC) -l -d -b clixon_json_parse -p clixon_json_parse clixon_json_parse.y # -t is debug
 
 lex.clixon_json_parse.o : lex.clixon_json_parse.c clixon_json_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
@@ -160,9 +154,7 @@ lex.clixon_xpath_parse.c : clixon_xpath_parse.l clixon_xpath_parse.tab.h
 	$(LEX) -Pclixon_xpath_parse clixon_xpath_parse.l # -d is debug
 
 clixon_xpath_parse.tab.c clixon_xpath_parse.tab.h: clixon_xpath_parse.y
-	$(YACC) -l -d -p clixon_xpath_parse clixon_xpath_parse.y # -t is debug
-	mv y.tab.c clixon_xpath_parse.tab.c
-	mv y.tab.h clixon_xpath_parse.tab.h
+	$(YACC) -l -d -b clixon_xpath_parse -p clixon_xpath_parse clixon_xpath_parse.y # -t is debug
 
 lex.clixon_xpath_parse.o : lex.clixon_xpath_parse.c clixon_xpath_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
