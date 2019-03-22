@@ -50,6 +50,7 @@
 ```
 
 ### Minor changes
+* Added CLICON_NACM_MODE "internal-rpc" which is for RPC functionality only, ie no module or data-node read-write functionality. This is for backward compatibility with Clixon 3. (A reduced-functionality "internal")
 * Made Makefile concurrent so that it can be compiled with -jN
 * Added flags to example backend to control its behaviour:
   * Start with `-- -r` to run the reset plugin
@@ -68,7 +69,7 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
-* Re-inserted `cli_output_reset` for what was erroneuos thought to be an obsolete function (
+* Re-inserted `cli_output_reset` for what was erroneuos thought to be an obsolete function
   * See in 3.9.0 minro changes: Replaced all calls to (obsolete) `cli_output` with `fprintf`
 * Allowed Yang extended Xpath functions (syntax only):
   * re-match, deref, derived-from, derived-from-or-self, enum-value, bit-is-set

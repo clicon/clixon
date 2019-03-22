@@ -60,6 +60,17 @@ enum nacm_access{
     NACM_DELETE,
     NACM_EXEC
 };
+
+/*! In RFC8341, NACM defines three access points: rpc 
+ * 3.4.4  Incoming RPC Message Validation
+ * 3.4.5  Data Node Access Validation
+ * 3.4.6  Outgoing <notification> Authorization
+ */
+enum nacm_point {
+    NACM_RPC,
+    NACM_DATA,
+    NACM_NOTIFICATION,
+};
 /*
  * Prototypes
  */
@@ -67,7 +78,7 @@ int nacm_rpc(char *rpc, char *module, char *username, cxobj *xnacm, cbuf *cbret)
 int nacm_datanode_read(cxobj *xt, cxobj **xvec, size_t xlen, char *username, cxobj *nacm_xtree);
 int nacm_datanode_write(cxobj *xt, cxobj *xr, enum nacm_access access,
 			char *username, cxobj *xnacm, cbuf *cbret);
-int nacm_access_pre(clicon_handle h, char *username, cxobj **xnacmp);
+int nacm_access_pre(clicon_handle h, char *username, enum nacm_point point, cxobj **xnacmp);
 int nacm_access(char *mode, cxobj *xnacmin, char *username);
 
 #endif /* _CLIXON_NACM_H */

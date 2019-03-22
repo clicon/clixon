@@ -808,7 +808,7 @@ nacm_access(char          *mode,
 	goto permit;
     /* 0. If nacm-mode is external, get NACM defintion from separet tree,
        otherwise get it from internal configuration */
-    if (strcmp(mode, "external") && strcmp(mode, "internal")){
+    if (strcmp(mode, "external") && strcmp(mode, "internal") && strcmp(mode, "internal-rpc")){
 	clicon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
 	goto done;
     }
@@ -846,6 +846,7 @@ nacm_access(char          *mode,
  * etc. If retval = 1 access is OK and skip next NACM step.
  * @param[in]  h        Clicon handle
  * @param[in]  username User name of requestor
+ * @param[in]  point  NACM access control point
  * @param[out] xncam    NACM XML tree, set if retval=0. Free after use
  * @retval -1  Error
  * @retval  0  OK but not validated. Need to do NACM step using xnacm
@@ -864,6 +865,7 @@ nacm_access(char          *mode,
 int
 nacm_access_pre(clicon_handle  h,
 		char          *username,
+		enum nacm_point point,
 		cxobj        **xnacmp)
 {
     int    retval = -1;
@@ -881,6 +883,15 @@ nacm_access_pre(clicon_handle  h,
 	else if (strcmp(mode, "internal")==0){
 	    if (xmldb_get(h, "running", "nacm", 0, &xnacm0, NULL) < 0)
 		goto done;
+	}
+	else if (strcmp(mode, "internal-rpc")==0){
+	    /* Special mode only implemet exec rpc access point */
+	    if (point == NACM_RPC){
+		if (xmldb_get(h, "running", "nacm", 0, &xnacm0, NULL) < 0)
+		    goto done;
+	    }
+	    else
+		goto permit;
 	}
     }
     /* If config does not exist then the operation is permitted(?) */
