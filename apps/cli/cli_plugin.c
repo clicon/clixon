@@ -455,6 +455,7 @@ clicon_eval(clicon_handle h,
 {
     int retval = 0;
 
+    cli_output_reset();
     if (!cligen_exiting(cli_cligen(h))) {	
 	clicon_err_reset();
 	if ((retval = cligen_eval(cli_cligen(h), match_obj, cvv)) < 0) {

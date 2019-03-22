@@ -68,6 +68,8 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Re-inserted `cli_output_reset` for what was erroneuos thought to be an obsolete function (
+  * See in 3.9.0 minro changes: Replaced all calls to (obsolete) `cli_output` with `fprintf`
 * Allowed Yang extended Xpath functions (syntax only):
   * re-match, deref, derived-from, derived-from-or-self, enum-value, bit-is-set
 * XSD regular expression handling of dash(`-`)
