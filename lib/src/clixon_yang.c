@@ -3032,6 +3032,15 @@ ys_parse_sub(yang_stmt *ys,
 	}
 	cv_uint32_set(ys->ys_cv, date);
 	break;
+    case Y_STATUS: /* RFC7950 7.21.2: "current", "deprecated", or "obsolete". */
+	if (strcmp(ys->ys_argument, "current") &&
+	    strcmp(ys->ys_argument, "deprecated") &&
+	    strcmp(ys->ys_argument, "obsolete")){
+	    clicon_err(OE_YANG, errno, "Invalid status: \"%s\", expected current, deprecated, or obsolete", ys->ys_argument); 
+	    goto done;
+
+	}
+	break;
     case Y_UNKNOWN: /* XXX This code assumes ymod already loaded
 		       but it may not be */
 	if (extra == NULL)

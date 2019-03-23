@@ -50,6 +50,7 @@
 ```
 
 ### Minor changes
+* Added synatctic check for yang status: current, deprectated or obsolete.
 * Added CLICON_NACM_MODE "internal-rpc" which is for RPC functionality only, ie no module or data-node read-write functionality. This is for backward compatibility with Clixon 3. (A reduced-functionality "internal")
 * Made Makefile concurrent so that it can be compiled with -jN
 * Added flags to example backend to control its behaviour:
