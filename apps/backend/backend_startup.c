@@ -270,6 +270,8 @@ startup_extraxml(clicon_handle        h,
 	goto fail;
     retval = 1;
  done:
+    if (xt)
+	xml_free(xt);
     if (xmldb_delete(h, "tmp") != 0 && errno != ENOENT) 
 	return -1;
     return retval;
