@@ -375,10 +375,12 @@ startup_commit(clicon_handle  h,
 	    goto done;
     if (xmldb_get(h, db, "/", 1, &xt, msd) < 0)
 	goto done;
-    if (msd && (ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
-	goto done;
-    if (ret == 0)
-	goto fail;
+    if (msd){
+	if((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, 0, "Yang spec not set");
 	goto done;
