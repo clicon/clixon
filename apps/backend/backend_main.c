@@ -98,7 +98,7 @@ backend_terminate(clicon_handle h)
 	close(ss);
     if ((x = clicon_module_state_get(h)) != NULL)
 	xml_free(x);
-    if ((x = clicon_yang_changelog_get(h)) != NULL)
+    if ((x = clicon_xml_changelog_get(h)) != NULL)
 	xml_free(x);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
@@ -643,8 +643,8 @@ main(int    argc,
 	goto done;
 
     /* Must be after netconf_module_load, but before startup code */
-    if (clicon_option_bool(h, "CLICON_YANG_CHANGELOG"))
-	if (clixon_yang_changelog_init(h) < 0)
+    if (clicon_option_bool(h, "CLICON_XML_CHANGELOG"))
+	if (clixon_xml_changelog_init(h) < 0)
 	    goto done;
     
     /* Save modules state of the backend (server). Compare with startup XML */

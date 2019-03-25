@@ -94,9 +94,9 @@ modstate_diff_free(modstate_diff_t *md)
     if (md == NULL)
 	return 0;
     if (md->md_del)
-	free(md->md_del);
+	xml_free(md->md_del);
     if (md->md_mod)
-	free(md->md_mod);
+	xml_free(md->md_mod);
     free(md);
     return 0;
 }
@@ -375,12 +375,72 @@ yang_modules_state_get(clicon_handle    h,
     return retval;
 }
 
+/*! For single module state with namespace, get revisions and send upgrade callbacks
+ * @param[in]  h        Clicon handle
+ * @param[in]  xt      Top-level XML tree to be updated (includes other ns as well)
+ * @param[in]  xs       XML module state (for one yang module)
+ * @param[in]  xvec     Help vector where to store XML child nodes (??)
+ * @param[in]  xlen     Length of xvec
+ * @param[in]  ns0      Namespace of module state we are looking for
+ * @param[in]  deleted  If set, dont look for system yang module and "to" rev
+ * @param[out] cbret Netconf error message if invalid
+ * @retval     1        OK
+ * @retval     0        Validation failed (cbret set)
+ * @retval    -1        Error
+ */
+static int
+mod_ns_upgrade(clicon_handle h,
+	       cxobj        *xt,
+	       cxobj        *xs,
+	       char         *ns,
+	       int           deleted,
+	       cbuf         *cbret)
+{
+    int        retval = -1;
+    char      *b; /* string body */
+    yang_stmt *ymod;
+    yang_stmt *yrev;
+    uint32_t   from = 0;
+    uint32_t   to = 0;
+    int        ret;
+    yang_spec *yspec;
+
+    /* Make upgrade callback for this XML, specifying the module 
+     * namespace, from and to revision.
+     */
+    if ((b = xml_find_body(xs, "revision")) != NULL) /* Module revision */
+	if (ys_parse_date_arg(b, &from) < 0)
+	    goto done;
+    if (deleted)
+	to = 0;
+    else {	    /* Look up system module (alt send it via argument) */
+	yspec = clicon_dbspec_yang(h);
+	if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL)
+	    goto fail;
+	if ((yrev = yang_find((yang_node*)ymod, Y_REVISION, NULL)) == NULL)
+	    goto fail;
+	if (ys_parse_date_arg(yrev->ys_argument, &to) < 0)
+	    goto done;
+    }
+    if ((ret = upgrade_callback_call(h, xt, ns, from, to, cbret)) < 0)
+	goto done;
+    if (ret == 0) /* XXX ignore and continue? */
+	goto fail;
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Upgrade XML
  * @param[in]  h    Clicon handle
  * @param[in]  xt   XML tree (to upgrade)
  * @param[in]  msd  Modules-state differences of xt
+ * @param[out] cbret Netconf error message if invalid
  * @retval     1    OK
- * @retval     0    Validation failed
+ * @retval     0    Validation failed (cbret set)
  * @retval    -1    Error
  */
 int
@@ -390,67 +450,37 @@ clixon_module_upgrade(clicon_handle    h,
    		      cbuf            *cbret)
 {
     int        retval = -1;
-    cxobj     *xc; /* XML child of data */
-    char      *namespace;
-    cxobj     *xs; /* XML module state */
-    char      *xname; /* XML top-level symbol name */
-    int        state; /* 0: no changes, 1: deleted, 2: modified */
-    char      *modname;
-    yang_spec *yspec;
-    yang_stmt *ymod;
-    yang_stmt *yrev;
-    char      *rev;
-    uint32_t   from;
-    uint32_t   to;
+    char      *ns;           /* Namespace */
+    cxobj     *xs;            /* XML module state */
     int        ret;
 
-    /* Iterate through db XML top-level - get namespace info */
-    xc = NULL;
-    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	xname = xml_name(xc); /* xml top-symbol name */
-	if (xml2ns(xc, NULL, &namespace) < 0) /* Get namespace of XML */
-	    goto done;       
-	if (namespace == NULL){
-	    clicon_log(LOG_DEBUG, "XML %s lacks namespace", xname);
-	    goto fail;
-	}
-	/* Look up module-state via namespace of XML */
-	state = 0; /* XML matches system modules */
-	if (msd){
-	    if ((xs = xpath_first(msd->md_del, "module[namespace=\"%s\"]", namespace)) != NULL)
-		state = 1; /* XML belongs to a removed module */
-	    else if ((xs = xpath_first(msd->md_mod, "module[namespace=\"%s\"]", namespace)) != NULL)
-		state = 2; /* XML belongs to an outdated module */
-	}
-	/* Pick up more data from data store module-state */
-	from = to = 0;
-	modname = NULL;
-	if (state && xs && msd){ /* sanity: XXX what about no msd?? */
-	    modname = xml_find_body(xs, "name");    /* Module name */
-	    if ((rev = xml_find_body(xs, "revision")) != NULL) /* Module revision */
-		if (ys_parse_date_arg(rev, &from) < 0)
-		    goto done;
-	    if (state > 1){
-		yspec = clicon_dbspec_yang(h);
-		/* Look up system module (alt send it via argument) */
-		if ((ymod = yang_find_module_by_name(yspec, modname)) == NULL)
-		    goto fail;
-		if ((yrev = yang_find((yang_node*)ymod, Y_REVISION, NULL)) == NULL)
-		    goto fail;
-		if (ys_parse_date_arg(yrev->ys_argument, &to) < 0)
-		    goto done;
-
-	    }
-	}
-	/* Make upgrade callback for this XML, specifying the module name,
-	 * namespace, from and to revision.
-	 * XXX: namespace may be known but not module!!
-	 */
-	if ((ret = upgrade_callback_call(h, xc, modname, namespace, from, to, NULL)) < 0)
+    if (msd == NULL)
+	goto ok;
+    /* Iterate through xml modified module state */
+    xs = NULL;
+    while ((xs = xml_child_each(msd->md_mod, xs, CX_ELMNT)) != NULL) {
+	/* Extract namespace */
+	if ((ns = xml_find_body(xs, "namespace")) == NULL)
+	    goto done;
+	/* Extract revisions and make callbacks */
+	if ((ret = mod_ns_upgrade(h, xt, xs, ns, 0, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
     }
+    /* Iterate through xml deleted module state */
+    xs = NULL;
+    while ((xs = xml_child_each(msd->md_del, xs, CX_ELMNT)) != NULL) {
+	/* Extract namespace */
+	if ((ns = xml_find_body(xs, "namespace")) == NULL)
+	    continue;
+	/* Extract revisions and make callbacks (now w deleted=1)  */
+	if ((ret = mod_ns_upgrade(h, xt, xs, ns, 1, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
+ ok:
     retval = 1;
  done:
     return retval;

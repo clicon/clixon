@@ -161,14 +161,9 @@ startup_mode_startup(clicon_handle        h,
 	if (xmldb_create(h, db) < 0) /* diff */
 	    return -1;
     }
-    if ((ret = startup_validate(h, db, cbret)) < 0)
+    if ((ret = startup_commit(h, db, cbret)) < 0)
 	goto done;
     if (ret == 0)
-	goto fail;
-    /* Commit startup */
-    if (candidate_commit(h, db, cbret) < 1) /* diff */
-	goto fail;
-    if (ret == 0) /* shouldnt happen (we already validate) */
 	goto fail;
     retval = 1;
  done:
@@ -241,6 +236,7 @@ startup_extraxml(clicon_handle        h,
     int         retval = -1;
     char       *db = "tmp";
     int         ret;
+    cxobj	*xt = NULL; /* Potentially upgraded XML */
     
     /* Clear tmp db */
     if (startup_db_reset(h, db) < 0)
@@ -256,11 +252,17 @@ startup_extraxml(clicon_handle        h,
 	if (ret == 0)
 	    goto fail;
     }
-    /* Validate tmp (unless empty?) */
-    if ((ret = startup_validate(h, db, cbret)) < 0)
+    /* Validate the tmp db and return possibly upgraded xml in xt
+     */
+    if ((ret = startup_validate(h, db, &xt, cbret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
+    /* Write (potentially modified) xml tree xt back to tmp
+     */
+    if ((ret = xmldb_put(h, "tmp", OP_REPLACE, xt,
+			 clicon_username_get(h), cbret)) < 0)
+	goto done;
     /* Merge tmp into running (no commit) */
     if ((ret = db_merge(h, db, "running", cbret)) < 0)
 	goto fail;

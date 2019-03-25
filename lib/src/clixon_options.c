@@ -1019,17 +1019,17 @@ clicon_module_state_set(clicon_handle h,
  * @see draft-wang-netmod-module-revision-management-01
  */
 cxobj *
-clicon_yang_changelog_get(clicon_handle h)
+clicon_xml_changelog_get(clicon_handle h)
 {
     clicon_hash_t *cdat = clicon_data(h);
     void          *p;
 
-    if ((p = hash_value(cdat, "yang-changelog", NULL)) != NULL)
+    if ((p = hash_value(cdat, "xml-changelog", NULL)) != NULL)
 	return *(cxobj **)p;
     return NULL;
 }
 
-/*! Set yang module changelog
+/*! Set xml module changelog
  * @param[in] h   Clicon handle
  * @param[in] s   Module revision changelog XML tree
  * @retval    0   OK
@@ -1037,12 +1037,12 @@ clicon_yang_changelog_get(clicon_handle h)
  * @see draft-wang-netmod-module-revision-management-01
  */
 int
-clicon_yang_changelog_set(clicon_handle h, 
+clicon_xml_changelog_set(clicon_handle h, 
 			cxobj        *xchlog)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
-    if (hash_add(cdat, "yang_changelog", &xchlog, sizeof(xchlog))==NULL)
+    if (hash_add(cdat, "xml-changelog", &xchlog, sizeof(xchlog))==NULL)
 	return -1;
     return 0;
 }

@@ -1,0 +1,134 @@
+module clixon-xml-changelog {
+    yang-version 1.1;
+    namespace "http://clicon.org/xml-changelog";
+    prefix ml;
+
+    import ietf-yang-library {
+	prefix yanglib;
+    }
+    import ietf-yang-types {
+	prefix yang;
+    }
+
+    organization    "Clixon";
+    contact
+	"Olof Hagsand <olof@hagsand.se>";
+    description
+        "This is experimental XML changelog module with several influences:
+       1) draft-wang-netmod-module-revision-management-01, by:
+         Qin Wu               <mailto:bill.wu@huawei.com>
+         Zitao Wang           <mailto:wangzitao@huawei.com>
+       2) XProc https://www.w3.org/TR/xproc/#xpath-context";
+
+    revision 2019-03-21 {
+	description
+	    "Initial Clixon derived version";
+    }
+
+    typedef operation_type {
+	description
+	    "From: https://en.wikipedia.org/wiki/XML_pipeline:
+              Rename - renames elements or attributes without modifying the content
+              Replace - replaces elements or attributes
+              Insert - adds a new data element to the output stream at a specified point
+              Delete - removes an element or attribute (also known as pruning the input tree)
+              Wrap - wraps elements with additional elements
+              Reorder - changes the order of elements
+             More inspiration in XProc: https://www.w3.org/TR/xproc/#ex2";
+	type enumeration{
+	    enum rename {
+		description "Rename the target node (NYI)";
+	    }
+	    enum replace {
+		description "Replace the target data node
+                             modification is given by the leaf transform which
+                             is a string with %s where the original value
+                             is inserted";
+	    }
+	    enum insert {
+		description "Create new data nodes and insert under an existing node";
+	    }
+	    enum delete {
+		description "Delete the target node";
+	    }
+	    enum move {
+		description "Move the target node(Added)";
+	    }
+	    enum wrap {
+		description "Wraps elements with additional elements(NYI)";
+	    }
+	    enum reorder {
+		description "Changes the order of elements (NYI)";
+	    }
+	}
+    }
+    container yang-modules {
+	config false;
+	list module {
+	    key "namespace revision";
+	    leaf namespace {
+		type string;
+		description
+		    "The YANG namespace identifying a module or submodule.
+               XML needs to be identified by namespace, translation to
+               module name may not always be possible.";
+	    }
+	    leaf revision {
+		type yanglib:revision-identifier;
+		description
+		    "The YANG module or submodule revision date. 
+           This is the actual date of the changlelog items. 
+           Note however if the terminate flag is set, this is a virtual
+           revision just in place to terminate the XML, such as removing or
+           moving items,.";
+	    }
+	    leaf revfrom {
+		type yanglib:revision-identifier;
+		description
+		    "Optional revision from date. This changelog is effective in the
+           range [from,to]. If from is not given the changelog is open-ended.
+           Several changelogs may be applied if the upgrade spans multiple
+           ranges: [from0,to0],..[fromN,toN]";
+	    }
+	    list change-log {
+		description
+		    "List for module revision change log";
+		key "index";
+		leaf index {
+		    type uint32;
+		    description
+			"Index for module change log";
+		}
+		leaf change-operation {
+		    type operation_type;
+		    mandatory true;
+		    description
+			"This leaf indicate the change operation, such as create, move, delete, modify, etc.";
+		}
+		leaf target-node {
+		    type yang:xpath1.0;
+		    mandatory true;
+		    description
+			"Identifies the target data node for update.
+                         for move, modify or delete the target-node points to 
+                         the data node of the old version.
+                         For create, it is the parent where it should be
+                         inserted.";
+		}
+		leaf location-node {
+		    description
+			"If op is move, this denotes the destination";
+		    type yang:xpath1.0;
+		}
+		leaf transform {
+		    description
+			"If op is modify or create, this denotes how to 
+                         transform the XML encoding. 
+                         Special value %s for the original value.";
+		    type string;
+		}
+
+	    }
+	}
+    }
+}

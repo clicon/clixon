@@ -40,7 +40,8 @@
 /*
  * Prototypes
  */ 
-int startup_validate(clicon_handle h, char *db, cbuf *cbret);
+int startup_validate(clicon_handle h, char *db, cxobj **xtr, cbuf *cbret);
+int startup_commit(clicon_handle h, char *db, cbuf *cbret);
 int candidate_commit(clicon_handle h, char *db, cbuf *cbret);
 
 int from_client_commit(clicon_handle h,	cxobj *xe, cbuf *cbret, void *arg, void *regarg);

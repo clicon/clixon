@@ -251,11 +251,13 @@ validate_common(clicon_handle       h,
 /*! Validate a candidate db and comnpare to running XXX Experimental
  * Get both source and dest datastore, validate target, compute diffs
  * and call application callback validations.
- * @param[in] h         Clicon handle
- * @param[in] candidate The candidate database. The wanted backend state
- * @retval   -1       Error - or validation failed (but cbret not set)
- * @retval    0       Validation failed (with cbret set)
- * @retval    1       Validation OK       
+ * @param[in]  h       Clicon handle
+ * @param[in]  db      The startup database. The wanted backend state
+ * @param[out] xtr     Transformed XML
+ * @param[out] cbret   CLIgen buffer w error stmt if retval = 0
+ * @retval    -1       Error - or validation failed (but cbret not set)
+ * @retval     0       Validation failed (with cbret set)
+ * @retval     1       Validation OK       
  * @note Need to differentiate between error and validation fail 
  * 1. Parse startup XML (or JSON)
  * 2. If syntax failure, call startup-cb(ERROR), copy failsafe db to 
@@ -268,12 +270,14 @@ validate_common(clicon_handle       h,
 int
 startup_validate(clicon_handle  h, 
 		 char          *db,
+		 cxobj        **xtr,
 		 cbuf          *cbret)
 {
     int                 retval = -1;
     yang_spec          *yspec;
     int                 ret;
     modstate_diff_t    *msd = NULL;
+    cxobj              *xt = NULL;
     transaction_data_t *td = NULL;
 
     /* Handcraft a transition with only target and add trees */
@@ -287,14 +291,23 @@ startup_validate(clicon_handle  h,
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
 	if ((msd = modstate_diff_new()) == NULL)
 	    goto done;
-    if (xmldb_get(h, db, "/", 1, &td->td_target, msd) < 0)
+    if (xmldb_get(h, db, "/", 1, &xt, msd) < 0)
 	goto done;
-    if ((ret = clixon_module_upgrade(h, td->td_target, msd, cbret)) < 0)
+    if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
-
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, 0, "Yang spec not set");
+	goto done;
+    }
+    /* After upgrading, XML tree needs to be sorted and yang spec populated */
+    if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	goto done;
+    if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
+	goto done;
     /* Handcraft transition with with only add tree */
+    td->td_target = xt;
     if (cxvec_append(td->td_target, &td->td_avec, &td->td_alen) < 0) 
 	goto done;
 
@@ -302,10 +315,6 @@ startup_validate(clicon_handle  h,
     if (plugin_transaction_begin(h, td) < 0)
 	goto done;
 
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, 0, "Yang spec not set");
-	goto done;
-    }
     /* 5. Make generic validation on all new or changed data.
        Note this is only call that uses 3-values */
     if ((ret = generic_validate(yspec, td, cbret)) < 0)
@@ -320,6 +329,112 @@ startup_validate(clicon_handle  h,
     /* 7. Call plugin transaction complete callbacks */
     if (plugin_transaction_complete(h, td) < 0)
 	goto done;
+    
+    if (xtr){
+	*xtr = td->td_target;
+	td->td_target = NULL;
+    }
+    retval = 1;
+ done:
+    if (td)
+	transaction_free(td);
+    if (msd)
+	modstate_diff_free(msd);
+    return retval;
+ fail: /* cbret should be set */
+    if (cbuf_len(cbret)==0){	
+	clicon_err(OE_CFG, EINVAL, "Validation fail but cbret not set");
+	goto done;
+    }
+    retval = 0;
+    goto done;
+}
+
+int
+startup_commit(clicon_handle  h, 
+	       char          *db,
+	       cbuf          *cbret)
+{
+    int                 retval = -1;
+    yang_spec          *yspec;
+    int                 ret;
+    modstate_diff_t    *msd = NULL;
+    cxobj              *xt = NULL;
+    transaction_data_t *td = NULL;
+
+    /* Handcraft a transition with only target and add trees */
+    if ((td = transaction_new()) == NULL)
+	goto done;
+    /* 2. Parse xml trees 
+     * This is the state we are going to 
+     * Note: xmsdiff contains non-matching modules
+     * Only if CLICON_XMLDB_MODSTATE is enabled 
+     */
+    if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
+	if ((msd = modstate_diff_new()) == NULL)
+	    goto done;
+    if (xmldb_get(h, db, "/", 1, &xt, msd) < 0)
+	goto done;
+    if (msd && (ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, 0, "Yang spec not set");
+	goto done;
+    }
+    /* After upgrading, XML tree needs to be sorted and yang spec populated */
+    if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	goto done;
+    if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
+	goto done;
+    /* Handcraft transition with with only add tree */
+    td->td_target = xt;
+    if (cxvec_append(td->td_target, &td->td_avec, &td->td_alen) < 0) 
+	goto done;
+
+    /* 4. Call plugin transaction start callbacks */
+    if (plugin_transaction_begin(h, td) < 0)
+	goto done;
+
+    /* 5. Make generic validation on all new or changed data.
+       Note this is only call that uses 3-values */
+    if ((ret = generic_validate(yspec, td, cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail; /* STARTUP_INVALID */
+
+    /* 6. Call plugin transaction validate callbacks */
+    if (plugin_transaction_validate(h, td) < 0)
+	goto done;
+
+    /* 7. Call plugin transaction complete callbacks */
+    if (plugin_transaction_complete(h, td) < 0)
+	goto done;
+    
+     /* 8. Call plugin transaction commit callbacks */
+     if (plugin_transaction_commit(h, td) < 0)
+	 goto done;
+     /* 9, write (potentially modified) tree to running
+      * XXX note here startup is copied to candidate, which may confuse everything
+      */
+     if ((ret = xmldb_put(h, "running", OP_REPLACE, td->td_target,
+			  clicon_username_get(h), cbret)) < 0)
+	 goto done;
+     if (ret == 0)
+	 goto fail;
+    /* 10. Call plugin transaction end callbacks */
+    plugin_transaction_end(h, td);
+
+    /* 11. Copy running back to candidate in case end functions updated running 
+     * XXX: room for improvement: candidate and running may be equal.
+     * Copy only diffs?
+     */
+    if (xmldb_copy(h, "running", "candidate") < 0){
+	/* ignore errors or signal major setback ? */
+	clicon_log(LOG_NOTICE, "Error in rollback, trying to continue");
+	goto done;
+    } 
     retval = 1;
  done:
     if (td)

@@ -21,11 +21,11 @@
   * A user can register upgrade callbacks per module/revision when in-compatible XML is encountered (`update_callback_register`).
   * A "failsafe" mode allowing a user to repair the startup on errors or failed validation.
   * Major rewrite of `backend_main.c` and a new module `backend_startup.c`
-* New yang changelog experimental feature for automatic upgrade
-  * Yang module clixon-yang-changelog@2019-03-21.yang based on draft-wang-netmod-module-revision-management-01
+* New xml changelog experimental feature for automatic upgrade
+  * Yang module clixon-xml-changelog@2019-03-21.yang based on draft-wang-netmod-module-revision-management-01
   * Two config options control:
-    * CLICON_YANG_CHANGELOG enables the yang changelog feature
-    * CLICON_YANG_CHANGELOG_FILE where the changelog resides
+    * CLICON_XML_CHANGELOG enables the yang changelog feature
+    * CLICON_XML_CHANGELOG_FILE where the changelog resides
 * Datastore files contain RFC7895 module-state information
   * Added modules-state diff parameter to xmldb_get datastore function
   * Set config option `CLICON_XMLDB_MODSTATE` to true

@@ -246,7 +246,6 @@ example_statedata(clicon_handle h,
     return retval;
 }
 
-#ifdef keep_as_example
 /*! Registered Upgrade callback function 
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
@@ -259,22 +258,44 @@ example_statedata(clicon_handle h,
  * @retval     1       OK
  * @retval     0       Invalid
  * @retval    -1       Error
+ * @see clicon_upgrade_cb
  */
 static int
 upgrade_all(clicon_handle h,       
-	    cxobj        *xn,      
-	    char         *modname,
-	    char         *modns,
+	    cxobj        *xt,      
+	    char         *ns,
 	    uint32_t      from,
 	    uint32_t      to,
 	    void         *arg,     
 	    cbuf         *cbret)
 {
-    fprintf(stderr, "%s XML:%s mod:%s %s from:%d to:%d\n", __FUNCTION__, xml_name(xn),
-	    modname, modns, from, to);
-    return 1;
+    int        retval = -1;
+    yang_spec *yspec;
+    yang_stmt *ym;
+    cxobj    **vec = NULL;
+    cxobj     *xc;
+    size_t     vlen;
+    int        i;
+
+    /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
+    yspec = clicon_dbspec_yang(h);	
+    if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
+	goto ok; /* shouldnt happen */
+    clicon_debug(1, "%s module %s", __FUNCTION__, ym?ym->ys_argument:"none");
+    /* Get all XML nodes with that namespace */
+    if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
+	goto done;
+    for (i=0; i<vlen; i++){
+	xc = vec[i];
+	clicon_debug(1, "%s update %s", __FUNCTION__, xml_name(xc));
+    }
+ ok:
+    retval = 1;
+ done:
+    if (vec)
+	free(vec);
+    return retval;
 }
-#endif
 
 /*! Plugin state reset. Add xml or set state in backend machine.
  * Called in each backend plugin. plugin_reset is called after all plugins
@@ -444,12 +465,9 @@ clixon_plugin_init(clicon_handle h)
 			      "copy-config"
 			      ) < 0)
 	goto done;
-        /* Called after the regular system copy_config callback */
-    if (upgrade_callback_register(h, yang_changelog_upgrade, 
-				  NULL, 
-				  NULL, NULL,
-				  0, 0
-				  ) < 0)
+    /* General purpose upgrade callback */
+    if (upgrade_callback_register(h, 0?upgrade_all:xml_changelog_upgrade, 
+				  NULL, 0, 0, NULL) < 0)
 	goto done;
 
 

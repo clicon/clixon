@@ -392,6 +392,18 @@ module clixon-config {
                  info. When loaded at startup, a check is made if the system
                  yang modules match";
 	}
+	leaf CLICON_XML_CHANGELOG {
+	    type boolean;
+	    default false;
+	    description "If true enable automatic upgrade using yang clixon
+                         changelog.";
+	}
+	leaf CLICON_XML_CHANGELOG_FILE {
+	    type string;
+	    description "Name of file with module revision changelog.
+                         If CLICON_XML_CHANGELOG is true, Clixon
+                         reads the module changelog from this file.";
+	}
 	leaf CLICON_USE_STARTUP_CONFIG {
 	    type int32;
 	    default 0;
@@ -427,18 +439,6 @@ module clixon-config {
 	    description "Enable RFC 7895 YANG Module library support as state 
                          data. If enabled, module info will appear when doing 
                          netconf get or restconf GET";
-	}
-	leaf CLICON_YANG_CHANGELOG {
-	    type boolean;
-	    default false;
-	    description "If true enable automatic upgrade using yang clixon
-                         changelog.";
-	}
-	leaf CLICON_YANG_CHANGELOG_FILE {
-	    type string;
-	    description "Name of file with module revision changelog.
-                         If CLICON_YANG_CHANGELOG is true, Clixon
-                         reads the module changelog from this file.";
 	}
 	leaf CLICON_MODULE_SET_ID {
 	    type string;

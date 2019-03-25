@@ -1043,8 +1043,8 @@ netconf_module_load(clicon_handle h)
     if (yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
 	goto done;
     /* YANG module revision change management */
-    if (clicon_option_bool(h, "CLICON_YANG_CHANGELOG"))
-	if (yang_spec_parse_module(h, "clixon-yang-changelog", NULL, yspec)< 0)
+    if (clicon_option_bool(h, "CLICON_XML_CHANGELOG"))
+	if (yang_spec_parse_module(h, "clixon-xml-changelog", NULL, yspec)< 0)
 	    goto done;
     retval = 0;
  done:

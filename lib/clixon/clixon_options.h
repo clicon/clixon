@@ -210,8 +210,8 @@ int clicon_socket_set(clicon_handle h, int s);
 cxobj *clicon_module_state_get(clicon_handle h);
 int clicon_module_state_set(clicon_handle h, cxobj *xms);
 
-/*! Set and get module revision changelog */
-cxobj *clicon_yang_changelog_get(clicon_handle h);
-int clicon_yang_changelog_set(clicon_handle h, cxobj *xchlog);
+/*! Set and get yang/xml module revision changelog */
+cxobj *clicon_xml_changelog_get(clicon_handle h);
+int clicon_xml_changelog_set(clicon_handle h, cxobj *xchlog);
 
 #endif  /* _CLIXON_OPTIONS_H_ */

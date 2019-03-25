@@ -560,7 +560,8 @@ xml_child_nr_type(cxobj          *xn,
 /*! Get a specific child
  * @param[in]  xn    xml node
  * @param[in]  i     the number of the child, eg order in children vector
- * @retval     child in XML tree, or NULL if no such child, or empty child
+ * @retval     xml   The child xml node
+ * @retval     NULL  if no such child, or empty child
  */
 cxobj *
 xml_child_i(cxobj *xn, 
@@ -633,6 +634,8 @@ xml_child_each(cxobj           *xparent,
     int    i;
     cxobj *xn = NULL; 
 
+    if (xparent == NULL)
+	return NULL;
     for (i=xprev?xprev->_x_vector_i+1:0; i<xparent->x_childvec_len; i++){
 	xn = xparent->x_childvec[i];
 	if (xn == NULL)
@@ -1611,8 +1614,6 @@ _xml_parse(const char  *str,
 	if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
 	if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
-	    goto done;
-	if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
 	    goto done;
     }
     retval = 0;

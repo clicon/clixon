@@ -70,7 +70,7 @@ SRC     = clixon_sig.c clixon_log.c clixon_err.c clixon_event.c \
 	  clixon_string.c clixon_handle.c  \
 	  clixon_xml.c clixon_xml_sort.c clixon_xml_map.c clixon_file.c \
 	  clixon_json.c clixon_yang.c clixon_yang_type.c clixon_yang_module.c \
-          clixon_yang_cardinality.c clixon_yang_changelog.c \
+          clixon_yang_cardinality.c clixon_xml_changelog.c \
 	  clixon_hash.c clixon_options.c clixon_plugin.c \
 	  clixon_proto.c clixon_proto_client.c \
 	  clixon_xpath.c clixon_xpath_ctx.c clixon_sha1.c \

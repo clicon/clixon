@@ -43,7 +43,7 @@ CLIXON_DATADIR   = @CLIXON_DATADIR@
 YANGSPECS	 = clixon-config@2019-03-05.yang
 YANGSPECS	+= clixon-lib@2019-01-02.yang
 YANGSPECS	+= clixon-rfc5277@2008-07-01.yang
-YANGSPECS	+= clixon-yang-changelog@2019-03-21.yang
+YANGSPECS	+= clixon-xml-changelog@2019-03-21.yang
 
 APPNAME	        = clixon  # subdir ehere these files are installed
 
