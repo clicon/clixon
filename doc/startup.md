@@ -204,12 +204,38 @@ An example upgrade callback:
 	       void         *arg,     
 	       cbuf         *cbret)
   {
-     return 1;
+    int        retval = -1;
+    yang_spec *yspec;
+    yang_stmt *ym;
+    cxobj    **vec = NULL;
+    cxobj     *xc;
+    size_t     vlen;
+    int        i;
+
+    /* Get Yang module for this namespace. Note it may not exist */
+    yspec = clicon_dbspec_yang(h);	
+    if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
+	goto ok; /* shouldnt happen */
+    /* Get all XML nodes with that namespace */
+    if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
+	goto done;
+    for (i=0; i<vlen; i++){
+	xc = vec[i];
+	/* Insert code here to transform nodes of module */
+    }
+ ok:
+    retval = 1;
+ done:
+    if (vec)
+	free(vec);
+    return retval;
   }
 ```
 
-Note that the example shown is only a template for an upgrade
-function. Actual upgrading code may be implemented by a user.
+Note that the example shown is a template for an upgrade function. It
+gets the nodes of an yang module given by `namespace` and the
+(outdated) `from` revision, and iterates through them. Actual
+upgrading code may be implemented by a user.
 
 If no action is made by the upgrade calback, and thus the XML is not
 upgraded, the next step is XML/Yang validation.
@@ -346,26 +372,53 @@ You enable the automatic upgrading by registering the changelog upgrade method i
    upgrade_callback_register(h, yang_changelog_upgrade, NULL, 0, 0, NULL);
 ```
 
-Example of a changelog from a [testcase](../test/test_upgrade_changelog.sh):
+The transformation is defined by a list of changelogs. Each changelog defined how a module (defined by a namespace) is transformed from an old revision to a nnew. Example:
 ```
-<yang-modules xmlns="http://clicon.org/yang-changelog">
-   <module>
-    <namespace>urn:example:a</namespace>
+<changelogs xmlns="http://clicon.org/xml-changelog">
+  <changelog>
+    <namespace>urn:example:b</namespace>
     <revfrom>2017-12-01</revfrom>
     <revision>2017-12-20</revision>
-    <revision-change-log>
-      <index>0001</index>
-      <change-operation>create</change-operation>
-      <target-node>/a:system/a:y</target-node>
-    </revision-change-log>
-    <revision-change-log>
-      <index>0002</index>
-      <change-operation>delete</change-operation>
-       <target-node>/a:system/a:x</target-node>
-    </revision-change-log
-  </module>
-</yang-modules>
+    ...
+  <changelog>
+</changelogs>
 ```
+Each changelog consists of set of (orderered) steps:
+```
+    <step>
+      <name>1</name>
+      <op>insert</op>
+      <where>/a:system</where>
+      <transform>&lt;y&gt;created&lt;/y&gt;</transform>
+    </step>
+    <step>
+      <name>2</name>
+      <op>delete</op>
+       <where>/a:system/a:x</where>
+    </step>
+```
+Each step has an (atomic) operation:
+* rename - Rename an XML tag
+* replace - Replace the content of an XML node
+* insert - Insert a new XML node
+* delete - Delete and existing node
+* move - Move a node to a new place
+
+Step have the following mandatory arguments:
+* where - An XPath node-vector pointing at a set of target nodes. In most operations, the vector denotes the target node themselves, but for some operations (such as insert) the vector points to parent nodes.
+* when - A boolean XPath determining if the step should be evaluated for that (target) node.
+
+Extended arguments:
+* string - XPath string argument (rename)
+* xml - XML expression for a new or transformed node (replace, insert)
+* node - XPath node expression (move)
+
+Step summary:
+* rename(where:targets, when:bool, tag:string)
+* replace(where:targets, when:bool, new:xml)
+* insert(where:parents, when:bool, new:xml)
+* delete(where:parents, when:bool)
+* move(where:parents, when:bool, to:node)
 
 ## Flowcharts
 
