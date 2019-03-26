@@ -216,8 +216,8 @@ xml_cmp(const void* arg1,
     char       *keyname;
     cg_var     *cv1; 
     cg_var     *cv2;
-    int         nr1;
-    int         nr2;
+    int         nr1 = 0;
+    int         nr2 = 0;
     cxobj      *x1b;
     cxobj      *x2b;
     int         e;

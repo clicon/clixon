@@ -121,13 +121,6 @@ module clixon-config {
 	    enum internal{
 		description "NACM is enabled and available in the regular config";
 	    }
-	    enum internal-rpc{
-		description
-		   "NACM is enabled and available in the regular config. 
-                    But only for RPC functionality, ie no module or data-node
-                    read-write functionality. 
-                    This is for backward compatibility with Clixon 3.8.";
-	    }
 	    enum external{
 		description "NACM is enabled and available in a separate config";
 	    }

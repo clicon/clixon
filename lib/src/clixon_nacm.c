@@ -808,7 +808,7 @@ nacm_access(char          *mode,
 	goto permit;
     /* 0. If nacm-mode is external, get NACM defintion from separet tree,
        otherwise get it from internal configuration */
-    if (strcmp(mode, "external") && strcmp(mode, "internal") && strcmp(mode, "internal-rpc")){
+    if (strcmp(mode, "external") && strcmp(mode, "internal")){
 	clicon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
 	goto done;
     }
@@ -883,15 +883,6 @@ nacm_access_pre(clicon_handle  h,
 	else if (strcmp(mode, "internal")==0){
 	    if (xmldb_get(h, "running", "nacm", 0, &xnacm0, NULL) < 0)
 		goto done;
-	}
-	else if (strcmp(mode, "internal-rpc")==0){
-	    /* Special mode only implemet exec rpc access point */
-	    if (point == NACM_RPC){
-		if (xmldb_get(h, "running", "nacm", 0, &xnacm0, NULL) < 0)
-		    goto done;
-	    }
-	    else
-		goto permit;
 	}
     }
     /* If config does not exist then the operation is permitted(?) */

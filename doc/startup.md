@@ -409,16 +409,16 @@ Step have the following mandatory arguments:
 * when - A boolean XPath determining if the step should be evaluated for that (target) node.
 
 Extended arguments:
-* string - XPath string argument (rename)
-* xml - XML expression for a new or transformed node (replace, insert)
-* node - XPath node expression (move)
+* tag - XPath string argument (rename)
+* new - XML expression for a new or transformed node (replace, insert)
+* dst - XPath node expression (move)
 
 Step summary:
 * rename(where:targets, when:bool, tag:string)
 * replace(where:targets, when:bool, new:xml)
 * insert(where:parents, when:bool, new:xml)
 * delete(where:parents, when:bool)
-* move(where:parents, when:bool, to:node)
+* move(where:parents, when:bool, dst:node)
 
 ## Flowcharts
 
