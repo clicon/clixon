@@ -71,10 +71,146 @@
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 
+static int
+changelog_rename(clicon_handle h,
+		 cxobj        *xt,
+		 cxobj        *xw,
+		 char         *tag)
+{
+    int     retval = -1;
+    xp_ctx *xctx = NULL;
+    char   *str = NULL;
+    
+    if (tag == NULL){
+	clicon_err(OE_XML, 0, "tag required");
+	goto done;
+    }
+    if (xpath_vec_ctx(xw, tag, &xctx) < 0)
+	goto done;
+    if (ctx2string(xctx, &str) < 0)
+	goto done;
+    if (!strlen(str)){
+	clicon_err(OE_XML, 0, "invalid rename tag: \"%s\"", str);
+	goto done;
+    }
+    if (xml_name_set(xw, str) < 0)
+	goto done;
+    // ok:
+    retval = 1;
+ done:
+    if (xctx)
+	ctx_free(xctx);
+    if (str)
+	free(str);
+    return retval;
+    // fail:
+    retval = 0;
+    goto done;
+}
+
+/* replace target XML */
+static int
+changelog_replace(clicon_handle h,
+		  cxobj        *xt,
+		  cxobj        *xw,
+		  cxobj        *xnew)
+{
+    int    retval = -1;
+    cxobj *x;
+
+    /* create a new node by parsing fttransform string and insert it at 
+       target */
+    if (xnew == NULL){
+	clicon_err(OE_XML, 0, "new required");
+	goto done;
+    }
+    /* replace: remove all children of target */
+    while ((x = xml_child_i(xw, 0)) != NULL)
+	if (xml_purge(x) < 0)
+	    goto done;
+    /* replace: first single node under <new> */
+    if (xml_child_nr(xnew) != 1){
+	clicon_err(OE_XML, 0, "Single child to <new> required");
+	goto done;
+    }
+    x = xml_child_i(xnew, 0);
+    /* Copy from xnew to (now) empty target */
+    if (xml_copy(x, xw) < 0)
+	goto done;
+    retval = 1;
+ done:
+    return retval;
+}
+
+/* create a new node by parsing "new" and insert it at 
+   target */
+static int
+changelog_insert(clicon_handle h,
+		 cxobj        *xt,
+		 cxobj        *xw,
+		 cxobj        *xnew)
+{
+    int    retval = -1;
+    cxobj *x;
+    
+    if (xnew == NULL){
+	clicon_err(OE_XML, 0, "new required");
+	goto done;
+    }
+    /* replace: add all new children to target */
+    while ((x = xml_child_i(xnew, 0)) != NULL)
+	if (xml_addsub(xw, x) < 0)
+	    goto done;
+    // ok:
+    retval = 1;
+ done:
+    return retval;
+    // fail:
+    retval = 0;
+    goto done;
+}
+
+/* delete target */
+static int
+changelog_delete(clicon_handle h,
+		 cxobj        *xt,
+		 cxobj        *xw)
+{
+    int retval = -1;
+
+    if (xml_purge(xw) < 0)
+	goto done;
+    retval = 1;
+ done:
+    return retval;
+}
+
+/* Move target node to location */
+static int
+changelog_move(clicon_handle h,
+	       cxobj        *xt,
+	       cxobj        *xw,
+	       char         *dst)
+{
+    int    retval = -1;
+    cxobj *xp;       /* destination parent node */
+
+    if ((xp = xpath_first(xt, "%s", dst)) == NULL){
+	clicon_err(OE_XML, 0, "path required");
+	goto done;
+    }
+    if (xml_addsub(xp, xw) < 0)
+	goto done;
+    retval = 1;
+ done:
+    return retval;
+}
+
 /*! Perform a changelog operation
  * @param[in]  h   Clicon handle
+ * @param[in]  xt  XML to upgrade
  * @param[in]  xi  Changelog item
- * @param[in]  xn  XML to upgrade
+
  * @note XXX error handling!
  * @note XXX xn --> xt  xpath may not match
 */
@@ -84,72 +220,84 @@ changelog_op(clicon_handle h,
 	     cxobj        *xi)
 
 {
-    int    retval = -1;
-    char  *op;
-    char  *xptarget;    /* xpath to target-node */
-    char  *xplocation;  /* xpath to location-node (move) */
-    char  *ftransform;  /* transform string format (modify, create) */
-    cxobj *xtrg;        /* xml target node */
-    cxobj *xloc;        /* xml location node */
-    cxobj *xnew = NULL;
-    cxobj *x;
+    int     retval = -1;
+    char   *op;
+    char   *whenxpath;   /* xpath to when */
+    char   *tag;         /* xpath to extra path (move) */
+    char   *dst;         /* xpath to extra path (move) */
+    cxobj  *xnew;        /* new xml (insert, replace) */
+    char   *wxpath;      /* xpath to where (target-node) */
+    cxobj **wvec = NULL; /* Vector of where(target) nodes */
+    size_t  wlen;
+    cxobj  *xw;
+    int     ret;
+    xp_ctx *xctx = NULL;
+    int     i;
 
-    if ((op = xml_find_body(xi, "change-operation")) == NULL)
+    if ((op = xml_find_body(xi, "op")) == NULL)
 	goto ok;
-    if ((xptarget = xml_find_body(xi, "target-node")) == NULL)
+    /* get common variables that may be used in the operations below */
+    tag = xml_find_body(xi, "tag");
+    dst = xml_find_body(xi, "dst");
+    xnew = xml_find(xi, "new");
+    whenxpath = xml_find_body(xi, "when");
+    if ((wxpath = xml_find_body(xi, "where")) == NULL)
 	goto ok;
-    /* target node (if any) */
-    if ((xtrg = xpath_first(xt, "%s", xptarget)) == NULL)
-	goto fail;
-    //    fprintf(stderr, "%s %s %s\n", __FUNCTION__, op, xml_name(xt));
-    xplocation = xml_find_body(xi, "location-node");
-    ftransform = xml_find_body(xi, "transform");
-    if (strcmp(op, "insert") == 0){
-	/* create a new node by parsing fttransform string and insert it at 
-           target */
-	if (ftransform == NULL)
-	    goto fail;
-	if (xml_parse_va(&xtrg, NULL, "%s", ftransform) < 0)
-	    goto done;
-    }
-    else if (strcmp(op, "delete") == 0){
-	/* delete target */
-	if (xml_purge(xtrg) < 0)
-	    goto done;
-    }
-    else if (strcmp(op, "move") == 0){
-	/* Move target node to location */
-	if ((xloc = xpath_first(xt, "%s", xplocation)) == NULL)
-	    goto fail;
-	if (xml_addsub(xloc, xtrg) < 0)
-	    goto done;
-    }
-    else if (strcmp(op, "replace") == 0){
-	/* create a new node by parsing fttransform string and insert it at 
-           target */
-	if (ftransform == NULL)
-	    goto fail;
-	/* replace: remove all children of target */
-	while ((x = xml_child_i(xtrg, 0)) != NULL)
-	    if (xml_purge(x) < 0)
-		goto done;
-	/* Parse the new node */
-	if (xml_parse_va(&xnew, NULL, "%s", ftransform) < 0)
-	    goto done;
-	if (xml_rootchild(xnew, 0, &xnew) < 0)
-	    goto done;
-	/* Copy old to new */
-	if (xml_copy(xnew, xtrg) < 0)
-	    goto done;
-	if (xml_purge(xnew) < 0)
-	    goto done;
-    }
+    /* Get vector of target nodes meeting the where requirement */
+    if (xpath_vec(xt, "%s", &wvec, &wlen, wxpath) < 0)
+       goto done;
+   for (i=0; i<wlen; i++){
+       xw = wvec[i];
+       /* If 'when' exists and is false, skip this target */
+       if (whenxpath){
+	   if (xpath_vec_ctx(xw, whenxpath, &xctx) < 0)
+	       goto done;
+	   if ((ret = ctx2boolean(xctx)) < 0)
+	       goto done;
+	   if (xctx){
+	       ctx_free(xctx);
+	       xctx = NULL;
+	   }
+	   if (ret == 0)
+	       continue;
+       }
+       /* Now switch on operation */
+       if (strcmp(op, "rename") == 0){
+	   ret = changelog_rename(h, xt, xw, tag);
+       }
+       else if (strcmp(op, "replace") == 0){
+	   ret = changelog_replace(h, xt, xw, xnew);
+       }
+       else if (strcmp(op, "insert") == 0){
+	   ret = changelog_insert(h, xt, xw, xnew);
+       }
+       else if (strcmp(op, "delete") == 0){
+	   ret = changelog_delete(h, xt, xw);
+       }
+       else if (strcmp(op, "move") == 0){
+	   ret = changelog_move(h, xt, xw, dst);
+       }
+       else{
+	   clicon_err(OE_XML, 0, "Unknown operation: %s", op);
+	   goto done;
+       }
+       if (ret < 0)
+	   goto done;
+       if (ret == 0)
+	   goto fail;
+   }
+
  ok:
     retval = 1;
  done:
+    if (wvec)
+	free(wvec);
+    if (xctx)
+	ctx_free(xctx);
     return retval;
  fail:
     retval = 0;
+    clicon_debug(1, "%s fail op:%s ", __FUNCTION__, op);
     goto done;
 }
     
@@ -170,7 +318,7 @@ changelog_iterate(clicon_handle h,
     int        ret;
     int        i;
     
-    if (xpath_vec(xch, "change-log", &vec, &veclen) < 0)
+    if (xpath_vec(xch, "step", &vec, &veclen) < 0)
 	goto done;
     /* Iterate through changelog items */
     for (i=0; i<veclen; i++){
@@ -181,6 +329,7 @@ changelog_iterate(clicon_handle h,
     }
     retval = 1;
  done:
+    clicon_debug(1, "%s retval: %d", __FUNCTION__, retval);
     if (vec)
 	free(vec);
     return retval;
@@ -233,7 +382,7 @@ xml_changelog_upgrade(clicon_handle h,
      * - find all changelogs in the interval: [from, to]
      * - note it t=0 then no changelog is applied
      */
-    if (xpath_vec(xchlog, "module[namespace=\"%s\"]",
+    if (xpath_vec(xchlog, "changelog[namespace=\"%s\"]",
 		  &vec, &veclen, namespace) < 0)
 	goto done;
     /* Get all changelogs in the interval [from,to]*/

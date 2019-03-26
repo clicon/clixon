@@ -201,6 +201,11 @@ struct clixon_plugin_api{
 #define ca_trans_end      u.cau_backend.cb_trans_end
 #define ca_trans_abort    u.cau_backend.cb_trans_abort
 
+/*
+ * Macros
+ */
+#define upgrade_callback_register(h, cb, namespace, from, to, arg) upgrade_callback_reg_fn((h), (cb), #cb, (namespace), (from), (to), (arg))
+
 typedef struct clixon_plugin_api clixon_plugin_api;
 
 /* Internal plugin structure with dlopen() handle and plugin_api
@@ -244,7 +249,7 @@ int rpc_callback_delete_all(void);
 int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);
 
 /* upgrade callback API */
-int upgrade_callback_register(clicon_handle h, clicon_upgrade_cb cb, char *namespace, uint32_t from, uint32_t to, void *arg);
+int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, char *namespace, uint32_t from, uint32_t to, void *arg);
 int upgrade_callback_delete_all(void);
 int upgrade_callback_call(clicon_handle h, cxobj *xt, char *namespace, uint32_t from, uint32_t to, cbuf *cbret);
 

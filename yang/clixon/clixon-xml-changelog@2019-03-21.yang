@@ -37,34 +37,37 @@ module clixon-xml-changelog {
              More inspiration in XProc: https://www.w3.org/TR/xproc/#ex2";
 	type enumeration{
 	    enum rename {
-		description "Rename the target node (NYI)";
+		description
+		"Rename the 'where' node, ie XML label
+                 Synopsis: rename(where:targets, when:bool, tag:string)";
 	    }
 	    enum replace {
-		description "Replace the target data node
-                             modification is given by the leaf transform which
-                             is a string with %s where the original value
-                             is inserted";
+		description
+		"Replace the target data node modification is given by the leaf
+                 transform which is a string with %s where the original value
+                 is inserted.
+                 Synopsis: replace(where:targets, when:bool, new:xml)";
 	    }
 	    enum insert {
-		description "Create new data nodes and insert under an existing node";
+		description
+		"Create new data nodes and insert under an existing node.
+                 Synopsis: insert(where:parents, when:bool, new:xml)";
 	    }
 	    enum delete {
-		description "Delete the target node";
+		description
+		"Delete the target node.
+                 Synopsis: delete(where:parents, when:bool)";
 	    }
 	    enum move {
-		description "Move the target node(Added)";
-	    }
-	    enum wrap {
-		description "Wraps elements with additional elements(NYI)";
-	    }
-	    enum reorder {
-		description "Changes the order of elements (NYI)";
+		description
+		"Move the target node(Added).
+                 Synopsis: move(where:parents, when:bool, dst:node)";
 	    }
 	}
     }
-    container yang-modules {
+    container changelogs {
 	config false;
-	list module {
+	list changelog {
 	    key "namespace revision";
 	    leaf namespace {
 		type string;
@@ -90,22 +93,22 @@ module clixon-xml-changelog {
            Several changelogs may be applied if the upgrade spans multiple
            ranges: [from0,to0],..[fromN,toN]";
 	    }
-	    list change-log {
+	    list step {
 		description
 		    "List for module revision change log";
-		key "index";
-		leaf index {
-		    type uint32;
+		key "name";
+		leaf name {
+		    type string;
 		    description
-			"Index for module change log";
+			"Unique step name";
 		}
-		leaf change-operation {
+		leaf op {
 		    type operation_type;
 		    mandatory true;
 		    description
 			"This leaf indicate the change operation, such as create, move, delete, modify, etc.";
 		}
-		leaf target-node {
+		leaf where {
 		    type yang:xpath1.0;
 		    mandatory true;
 		    description
@@ -115,19 +118,27 @@ module clixon-xml-changelog {
                          For create, it is the parent where it should be
                          inserted.";
 		}
-		leaf location-node {
+		leaf when {
+		    type yang:xpath1.0;
 		    description
-			"If op is move, this denotes the destination";
+			"Boolean XPATH. Execute this step if this xpath exists
+                         and evaluates to true";
+		}
+		leaf tag {
+		    description
+			"For rename, a string XPath definining the new tag.";
 		    type yang:xpath1.0;
 		}
-		leaf transform {
+		leaf dst {
 		    description
-			"If op is modify or create, this denotes how to 
-                         transform the XML encoding. 
-                         Special value %s for the original value.";
-		    type string;
+		    "For move, a destination XPath definining the parent where
+                     to insert.";
+		    type yang:xpath1.0;
 		}
-
+		anydata new {
+		    description
+		    "If op is replace or insert, new XML for the new node.";
+		}
 	    }
 	}
     }

@@ -140,6 +140,194 @@ generic_validate(yang_spec          *yspec,
     goto done;
 }
 
+/*! Common startup validation
+ * Get db, upgrade it w potential transformed XML, populate it w yang spec,
+ * sort it, validate it by triggering a transaction
+ * and call application callback validations.
+ * @param[in]  h       Clicon handle
+ * @param[in]  db      The startup database. The wanted backend state
+ * @param[out] xtr     Transformed XML
+ * @param[out] cbret   CLIgen buffer w error stmt if retval = 0
+ * @retval    -1       Error - or validation failed (but cbret not set)
+ * @retval     0       Validation failed (with cbret set)
+ * @retval     1       Validation OK       
+ * @note Need to differentiate between error and validation fail 
+ *
+ * 1. Parse startup XML (or JSON)
+ * 2. If syntax failure, call startup-cb(ERROR), copy failsafe db to 
+ * candidate and commit. Done
+ * 3. Check yang module versions between backend and init config XML. (msdiff)
+ * 4. Validate startup db. (valid)
+ * 5. If valid fails, call startup-cb(Invalid, msdiff), keep startup in candidate and commit failsafe db. Done.
+ * 6. Call startup-cb(OK, msdiff) and commit.
+ */
+static int
+startup_common(clicon_handle       h, 
+	       char               *db,
+	       transaction_data_t *td,
+	       cbuf               *cbret)
+{
+    int                 retval = -1;
+    yang_spec          *yspec;
+    int                 ret;
+    modstate_diff_t    *msd = NULL;
+    cxobj              *xt = NULL;
+    
+    /* If CLICON_XMLDB_MODSTATE is enabled, then get the db XML with 
+     * potentially non-matching module-state in msd
+     */
+    if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
+	if ((msd = modstate_diff_new()) == NULL)
+	    goto done;
+    if (xmldb_get(h, db, "/", 1, &xt, msd) < 0)
+	goto done;
+    if (msd){
+	if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, 0, "Yang spec not set");
+	goto done;
+    }
+    /* After upgrading, XML tree needs to be sorted and yang spec populated */
+    if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	goto done;
+    if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
+	goto done;
+    /* Handcraft transition with with only add tree */
+    td->td_target = xt;
+    if (cxvec_append(td->td_target, &td->td_avec, &td->td_alen) < 0) 
+	goto done;
+
+    /* 4. Call plugin transaction start callbacks */
+    if (plugin_transaction_begin(h, td) < 0)
+	goto done;
+
+    /* 5. Make generic validation on all new or changed data.
+       Note this is only call that uses 3-values */
+    if ((ret = generic_validate(yspec, td, cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail; /* STARTUP_INVALID */
+
+    /* 6. Call plugin transaction validate callbacks */
+    if (plugin_transaction_validate(h, td) < 0)
+	goto done;
+
+    /* 7. Call plugin transaction complete callbacks */
+    if (plugin_transaction_complete(h, td) < 0)
+	goto done;
+    retval = 1;
+ done:
+    if (msd)
+	modstate_diff_free(msd);
+    return retval;
+ fail: 
+    retval = 0;
+    goto done;
+}
+
+/*! Read startup db, check upgrades and validate it, return upgraded XML
+ *
+ * @param[in]  h       Clicon handle
+ * @param[in]  db      The startup database. The wanted backend state
+ * @param[out] xtr     (Potentially) transformed XML
+ * @param[out] cbret   CLIgen buffer w error stmt if retval = 0
+ * @retval    -1       Error - or validation failed (but cbret not set)
+ * @retval     0       Validation failed (with cbret set)
+ * @retval     1       Validation OK       
+ */
+int
+startup_validate(clicon_handle  h, 
+		 char          *db,
+		 cxobj        **xtr,
+		 cbuf          *cbret)
+{
+    int                 retval = -1;
+    int                 ret;
+    transaction_data_t *td = NULL;
+
+    /* Handcraft a transition with only target and add trees */
+    if ((td = transaction_new()) == NULL)
+	goto done;
+    if ((ret = startup_common(h, db, td, cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+    if (xtr){
+	*xtr = td->td_target;
+	td->td_target = NULL;
+    }
+    retval = 1;
+ done:
+    if (td)
+	transaction_free(td);
+    return retval;
+ fail: /* cbret should be set */
+    retval = 0;
+    goto done;
+}
+
+/*! Read startup db, check upgrades and commit it
+ *
+ * @param[in]  h       Clicon handle
+ * @param[in]  db      The startup database. The wanted backend state
+ * @param[out] cbret   CLIgen buffer w error stmt if retval = 0
+ * @retval    -1       Error - or validation failed (but cbret not set)
+ * @retval     0       Validation failed (with cbret set)
+ * @retval     1       Validation OK       
+ */
+int
+startup_commit(clicon_handle  h, 
+	       char          *db,
+	       cbuf          *cbret)
+{
+    int                 retval = -1;
+    int                 ret;
+    transaction_data_t *td = NULL;
+
+    /* Handcraft a transition with only target and add trees */
+    if ((td = transaction_new()) == NULL)
+	goto done;
+    if ((ret = startup_common(h, db, td, cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+     /* 8. Call plugin transaction commit callbacks */
+     if (plugin_transaction_commit(h, td) < 0)
+	 goto done;
+     /* 9, write (potentially modified) tree to running
+      * XXX note here startup is copied to candidate, which may confuse everything
+      */
+     if ((ret = xmldb_put(h, "running", OP_REPLACE, td->td_target,
+			  clicon_username_get(h), cbret)) < 0)
+	 goto done;
+     if (ret == 0)
+	 goto fail;
+    /* 10. Call plugin transaction end callbacks */
+    plugin_transaction_end(h, td);
+
+    /* 11. Copy running back to candidate in case end functions updated running 
+     * XXX: room for improvement: candidate and running may be equal.
+     * Copy only diffs?
+     */
+    if (xmldb_copy(h, "running", "candidate") < 0){
+	/* ignore errors or signal major setback ? */
+	clicon_log(LOG_NOTICE, "Error in rollback, trying to continue");
+	goto done;
+    } 
+    retval = 1;
+ done:
+    if (td)
+	transaction_free(td);
+    return retval;
+ fail: /* cbret should be set */
+    retval = 0;
+    goto done;
+}
+
 /*! Validate a candidate db and comnpare to running
  * Get both source and dest datastore, validate target, compute diffs
  * and call application callback validations.
@@ -152,10 +340,10 @@ generic_validate(yang_spec          *yspec,
  *       (only done for generic_validate)
  */
 static int
-validate_common(clicon_handle       h, 
-		char               *candidate,
-	        transaction_data_t *td,
-		cbuf               *cbret)
+from_validate_common(clicon_handle       h, 
+		     char               *candidate,
+		     transaction_data_t *td,
+		     cbuf               *cbret)
 {
     int         retval = -1;
     yang_spec  *yspec;
@@ -248,211 +436,6 @@ validate_common(clicon_handle       h,
     goto done;
 }
 
-/*! Validate a candidate db and comnpare to running XXX Experimental
- * Get both source and dest datastore, validate target, compute diffs
- * and call application callback validations.
- * @param[in]  h       Clicon handle
- * @param[in]  db      The startup database. The wanted backend state
- * @param[out] xtr     Transformed XML
- * @param[out] cbret   CLIgen buffer w error stmt if retval = 0
- * @retval    -1       Error - or validation failed (but cbret not set)
- * @retval     0       Validation failed (with cbret set)
- * @retval     1       Validation OK       
- * @note Need to differentiate between error and validation fail 
- * 1. Parse startup XML (or JSON)
- * 2. If syntax failure, call startup-cb(ERROR), copy failsafe db to 
- * candidate and commit. Done
- * 3. Check yang module versions between backend and init config XML. (msdiff)
- * 4. Validate startup db. (valid)
- * 5. If valid fails, call startup-cb(Invalid, msdiff), keep startup in candidate and commit failsafe db. Done.
- * 6. Call startup-cb(OK, msdiff) and commit.
- */
-int
-startup_validate(clicon_handle  h, 
-		 char          *db,
-		 cxobj        **xtr,
-		 cbuf          *cbret)
-{
-    int                 retval = -1;
-    yang_spec          *yspec;
-    int                 ret;
-    modstate_diff_t    *msd = NULL;
-    cxobj              *xt = NULL;
-    transaction_data_t *td = NULL;
-
-    /* Handcraft a transition with only target and add trees */
-    if ((td = transaction_new()) == NULL)
-	goto done;
-    /* 2. Parse xml trees 
-     * This is the state we are going to 
-     * Note: xmsdiff contains non-matching modules
-     * Only if CLICON_XMLDB_MODSTATE is enabled 
-     */
-    if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
-	if ((msd = modstate_diff_new()) == NULL)
-	    goto done;
-    if (xmldb_get(h, db, "/", 1, &xt, msd) < 0)
-	goto done;
-    if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
-	goto done;
-    if (ret == 0)
-	goto fail;
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, 0, "Yang spec not set");
-	goto done;
-    }
-    /* After upgrading, XML tree needs to be sorted and yang spec populated */
-    if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
-	goto done;
-    if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
-	goto done;
-    /* Handcraft transition with with only add tree */
-    td->td_target = xt;
-    if (cxvec_append(td->td_target, &td->td_avec, &td->td_alen) < 0) 
-	goto done;
-
-    /* 4. Call plugin transaction start callbacks */
-    if (plugin_transaction_begin(h, td) < 0)
-	goto done;
-
-    /* 5. Make generic validation on all new or changed data.
-       Note this is only call that uses 3-values */
-    if ((ret = generic_validate(yspec, td, cbret)) < 0)
-	goto done;
-    if (ret == 0)
-	goto fail; /* STARTUP_INVALID */
-
-    /* 6. Call plugin transaction validate callbacks */
-    if (plugin_transaction_validate(h, td) < 0)
-	goto done;
-
-    /* 7. Call plugin transaction complete callbacks */
-    if (plugin_transaction_complete(h, td) < 0)
-	goto done;
-    
-    if (xtr){
-	*xtr = td->td_target;
-	td->td_target = NULL;
-    }
-    retval = 1;
- done:
-    if (td)
-	transaction_free(td);
-    if (msd)
-	modstate_diff_free(msd);
-    return retval;
- fail: /* cbret should be set */
-    if (cbuf_len(cbret)==0){	
-	clicon_err(OE_CFG, EINVAL, "Validation fail but cbret not set");
-	goto done;
-    }
-    retval = 0;
-    goto done;
-}
-
-int
-startup_commit(clicon_handle  h, 
-	       char          *db,
-	       cbuf          *cbret)
-{
-    int                 retval = -1;
-    yang_spec          *yspec;
-    int                 ret;
-    modstate_diff_t    *msd = NULL;
-    cxobj              *xt = NULL;
-    transaction_data_t *td = NULL;
-
-    /* Handcraft a transition with only target and add trees */
-    if ((td = transaction_new()) == NULL)
-	goto done;
-    /* 2. Parse xml trees 
-     * This is the state we are going to 
-     * Note: xmsdiff contains non-matching modules
-     * Only if CLICON_XMLDB_MODSTATE is enabled 
-     */
-    if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
-	if ((msd = modstate_diff_new()) == NULL)
-	    goto done;
-    if (xmldb_get(h, db, "/", 1, &xt, msd) < 0)
-	goto done;
-    if (msd){
-	if((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-    }
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, 0, "Yang spec not set");
-	goto done;
-    }
-    /* After upgrading, XML tree needs to be sorted and yang spec populated */
-    if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
-	goto done;
-    if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
-	goto done;
-    /* Handcraft transition with with only add tree */
-    td->td_target = xt;
-    if (cxvec_append(td->td_target, &td->td_avec, &td->td_alen) < 0) 
-	goto done;
-
-    /* 4. Call plugin transaction start callbacks */
-    if (plugin_transaction_begin(h, td) < 0)
-	goto done;
-
-    /* 5. Make generic validation on all new or changed data.
-       Note this is only call that uses 3-values */
-    if ((ret = generic_validate(yspec, td, cbret)) < 0)
-	goto done;
-    if (ret == 0)
-	goto fail; /* STARTUP_INVALID */
-
-    /* 6. Call plugin transaction validate callbacks */
-    if (plugin_transaction_validate(h, td) < 0)
-	goto done;
-
-    /* 7. Call plugin transaction complete callbacks */
-    if (plugin_transaction_complete(h, td) < 0)
-	goto done;
-    
-     /* 8. Call plugin transaction commit callbacks */
-     if (plugin_transaction_commit(h, td) < 0)
-	 goto done;
-     /* 9, write (potentially modified) tree to running
-      * XXX note here startup is copied to candidate, which may confuse everything
-      */
-     if ((ret = xmldb_put(h, "running", OP_REPLACE, td->td_target,
-			  clicon_username_get(h), cbret)) < 0)
-	 goto done;
-     if (ret == 0)
-	 goto fail;
-    /* 10. Call plugin transaction end callbacks */
-    plugin_transaction_end(h, td);
-
-    /* 11. Copy running back to candidate in case end functions updated running 
-     * XXX: room for improvement: candidate and running may be equal.
-     * Copy only diffs?
-     */
-    if (xmldb_copy(h, "running", "candidate") < 0){
-	/* ignore errors or signal major setback ? */
-	clicon_log(LOG_NOTICE, "Error in rollback, trying to continue");
-	goto done;
-    } 
-    retval = 1;
- done:
-    if (td)
-	transaction_free(td);
-    if (msd)
-	modstate_diff_free(msd);
-    return retval;
- fail: /* cbret should be set */
-    if (cbuf_len(cbret)==0){	
-	clicon_err(OE_CFG, EINVAL, "Validation fail but cbret not set");
-	goto done;
-    }
-    retval = 0;
-    goto done;
-}
-
 /*! Do a diff between candidate and running, then start a commit transaction
  *
  * The code reverts changes if the commit fails. But if the revert
@@ -482,7 +465,7 @@ candidate_commit(clicon_handle h,
     /* Common steps (with validate). Load candidate and running and compute diffs
      * Note this is only call that uses 3-values
      */
-    if ((ret = validate_common(h, candidate, td, cbret)) < 0)
+    if ((ret = from_validate_common(h, candidate, td, cbret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -697,7 +680,7 @@ from_client_validate(clicon_handle h,
     if ((td = transaction_new()) == NULL)
 	goto done;
     /* Common steps (with commit) */
-    if ((ret = validate_common(h, db, td, cbret)) < 1){
+    if ((ret = from_validate_common(h, db, td, cbret)) < 1){
 	clicon_debug(1, "Validate %s failed",  db);
 	if (ret < 0){
 	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)

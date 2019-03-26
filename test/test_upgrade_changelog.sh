@@ -40,6 +40,10 @@ module example-a{
 	    type string;
 	    description "no change";
 	}
+	leaf b {
+	    type string;
+	    description "rename tag";
+	}
 	leaf x {
 	    type string;
 	    description "delete";
@@ -79,6 +83,10 @@ module example-a {
 	leaf a {
 	    type string;
 	    description "no change";
+	}
+	leaf c {
+	    type string;
+	    description "rename tag";
 	}
 	leaf host-name {
 	    type string;
@@ -144,6 +152,7 @@ cat <<EOF > $dir/startup_db
   </modules-state>
   <system xmlns="urn:example:a">
     <a>dont change me</a>
+    <b>rename me</b>
     <host-name>modify me</host-name>
     <x>remove me</x>
     <z>move me</z>
@@ -157,7 +166,7 @@ cat <<EOF > $dir/startup_db
 EOF
 
 # Wanted new XML
-XML='<system xmlns="urn:example:a"><a>dont change me</a><host-name>i am modified</host-name><y>created</y></system><alt xmlns="urn:example:a"><z>move me</z></alt>'
+XML='<system xmlns="urn:example:a"><a>dont change me</a><c>rename me</c><host-name>i am modified</host-name><y>created</y></system><alt xmlns="urn:example:a"><z>move me</z></alt>'
 
 
 # Create configuration
@@ -182,46 +191,52 @@ EOF
 
 # Changelog of example-a: 
 cat <<EOF > $changelog
-<yang-modules xmlns="http://clicon.org/xml-changelog">
-  <module>
+<changelogs xmlns="http://clicon.org/xml-changelog">
+  <changelog>
     <namespace>urn:example:b</namespace>
     <revfrom>2017-12-01</revfrom>
     <revision>2017-12-20</revision>
-    <change-log>
-      <index>0001</index>
-      <change-operation>delete</change-operation>
-      <target-node>/b:system-b</target-node>
-    </change-log>
-  </module>
-  <module>
+    <step>
+      <name>1</name>
+      <op>delete</op>
+      <where>/b:system-b</where>
+    </step>
+  </changelog>
+  <changelog>
     <namespace>urn:example:a</namespace>
     <revfrom>2017-12-01</revfrom>
     <revision>2017-12-20</revision>
-    <change-log>
-      <index>0001</index>
-      <change-operation>insert</change-operation>
-      <target-node>/a:system</target-node>
-      <transform>&lt;y&gt;created&lt;/y&gt;</transform>
-    </change-log>
-    <change-log>
-      <index>0002</index>
-      <change-operation>delete</change-operation>
-       <target-node>/a:system/a:x</target-node>
-    </change-log>
-    <change-log>
-      <index>0003</index>
-      <change-operation>replace</change-operation>
-      <target-node>/a:system/a:host-name</target-node>
-      <transform>&lt;host-name&gt;i am modified&lt;/host-name&gt;</transform>
-    </change-log>
-    <change-log>
-      <index>0004</index>
-      <change-operation>move</change-operation>
-      <target-node>/a:system/a:z</target-node>
-      <location-node>/a:alt</location-node>
-    </change-log>
-  </module>
-</yang-modules>
+    <step>
+      <name>0</name>
+      <op>rename</op>
+      <where>/a:system/a:b</where>
+      <tag>"c"</tag>
+    </step>
+    <step>
+      <name>1</name>
+      <op>insert</op>
+      <where>/a:system</where>
+      <new><y>created</y></new>
+    </step>
+    <step>
+      <name>2</name>
+      <op>delete</op>
+      <where>/a:system/a:x</where>
+    </step>
+    <step>
+      <name>3</name>
+      <op>replace</op>
+      <where>/a:system/a:host-name</where>
+      <new><host-name>i am modified</host-name></new>
+    </step>
+    <step>
+      <name>4</name>
+      <op>move</op>
+      <where>/a:system/a:z</where>
+      <dst>/a:alt</dst>
+    </step>
+  </changelog>
+</changelogs>
 EOF
 
 # Start new system from old datastore

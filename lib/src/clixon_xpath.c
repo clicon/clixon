@@ -830,7 +830,6 @@ xp_union(xp_ctx    *xc1,
     return retval;
 }
 
-
 /*! Evaluate an XPATH on an XML tree
 
  * The initial sequence of steps selects a set of nodes relative to a context node. 
@@ -1038,11 +1037,20 @@ xp_eval(xp_ctx   *xc,
 }
 
 /*! Given XML tree and xpath, returns xpath context
+ * This is a raw form of xpath where you can do type conversion, etc,
+ * not just a nodeset.
  * @param[in]  xcur   XML-tree where to search
  * @param[in]  xpath  String with XPATH 1.0 syntax
  * @param[out] xrp    Return XPATH context
  * @retval     0      OK
  * @retval    -1      Error
+ * @code
+ *   xp_ctx     *xc = NULL;
+ *   if (xpath_vec_ctx(x, xpath, &xc) < 0)
+ *     err;
+ *   if (xc)
+ *	ctx_free(xc);
+ * @endcode
  */
 int
 xpath_vec_ctx(cxobj    *xcur, 
@@ -1295,6 +1303,7 @@ xpath_vec_flag(cxobj    *xcur,
 }
 
 /*! Given XML tree and xpath, returns boolean
+ * Returns true if the nodeset is non-empty
  * @param[in]  xcur    xml-tree where to search
  * @param[in]  xpath   stdarg string with XPATH 1.0 syntax
  * @retval     1       True

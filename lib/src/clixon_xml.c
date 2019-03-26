@@ -843,7 +843,7 @@ xml_addsub(cxobj *xp,
  * @param[in] tag Name of new xml child
  * @retval    xc  Return the new child (xc)
  * @see xml_addsub
- * The name of the function is somewhat misleading
+ * The name of the function is somewhat misleading, should be called "wrap"
  */
 cxobj *
 xml_insert(cxobj *xp, 

@@ -249,8 +249,7 @@ example_statedata(clicon_handle h,
 /*! Registered Upgrade callback function 
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
- * @param[in]  modname Name of module
- * @param[in]  modns   Namespace of module (for info)
+ * @param[in]  ns      Namespace of module (for info)
  * @param[in]  from    From revision on the form YYYYMMDD
  * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
  * @param[in]  arg     User argument given at rpc_callback_register() 
@@ -466,10 +465,8 @@ clixon_plugin_init(clicon_handle h)
 			      ) < 0)
 	goto done;
     /* General purpose upgrade callback */
-    if (upgrade_callback_register(h, 0?upgrade_all:xml_changelog_upgrade, 
-				  NULL, 0, 0, NULL) < 0)
+    if (upgrade_callback_register(h, xml_changelog_upgrade, NULL, 0, 0, NULL) < 0)
 	goto done;
-
 
     /* Return plugin API */
     return &api;

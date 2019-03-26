@@ -541,6 +541,7 @@ rpc_callback_call(clicon_handle h,
 typedef struct {
     qelem_t           uc_qelem;	    /* List header */
     clicon_upgrade_cb uc_callback;  /* RPC Callback */
+    const char       *uc_fnstr;     /* Stringified fn name for debug */
     void             *uc_arg;	    /* Application specific argument to cb */
     char             *uc_namespace; /* Module namespace */
     uint32_t          uc_rev;       /* Module revision (to) in YYYYMMDD format or 0 */
@@ -555,6 +556,7 @@ static upgrade_callback_t *upgrade_cb_list = NULL;
  *
  * @param[in]  h         clicon handle
  * @param[in]  cb        Callback called 
+ * @param[in]  fnstr     Stringified function for debug
  * @param[in]  arg       Domain-specific argument to send to callback 
  * @param[in]  namespace Module namespace (if NULL all modules) 
  * @param[in]  rev       To module revision (0 means module obsoleted)
@@ -564,12 +566,13 @@ static upgrade_callback_t *upgrade_cb_list = NULL;
  * @see upgrade_callback_call  which makes the actual callback
  */
 int
-upgrade_callback_register(clicon_handle     h,
-			  clicon_upgrade_cb cb,
-			  char             *namespace,
-			  uint32_t          revision,
-			  uint32_t          from,
-			  void             *arg)
+upgrade_callback_reg_fn(clicon_handle     h,
+			clicon_upgrade_cb cb,
+			const char       *fnstr,
+			char             *namespace,
+			uint32_t          revision,
+			uint32_t          from,
+			void             *arg)
 {
     upgrade_callback_t *uc;
 
@@ -579,6 +582,7 @@ upgrade_callback_register(clicon_handle     h,
     }
     memset(uc, 0, sizeof(*uc));
     uc->uc_callback = cb;
+    uc->uc_fnstr = fnstr;
     uc->uc_arg  = arg;
     if (namespace)
 	uc->uc_namespace  = strdup(namespace);
@@ -623,7 +627,7 @@ upgrade_callback_delete_all(void)
  * @retval -1  Error
  * @retval  0  Invalid - cbret contains reason as netconf
  * @retval  1  OK
- * @see upgrade_callback_register  which registers the callbacks
+ * @see upgrade_callback_reg_fn  which registers the callbacks
  */
 int
 upgrade_callback_call(clicon_handle h,
@@ -657,8 +661,14 @@ upgrade_callback_call(clicon_handle h,
 		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, uc->uc_namespace);
 		    goto done;
 		}
-		if (ret == 0)
+		if (ret == 0){
+		    if (cbuf_len(cbret)==0){	
+			clicon_err(OE_CFG, 0, "Validation fail %s(%s): cbret not set",
+				   uc->uc_fnstr, namespace);
+			goto done;
+		    }
 		    goto fail;
+		}
 		nr++;
 	    }
 	uc = NEXTQ(upgrade_callback_t *, uc);
