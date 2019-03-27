@@ -33,6 +33,7 @@
   * Note that this adds bytes to your configs
 
 ### API changes on existing features (you may need to change your code)
+* Renamed `xml_insert` to `xml_wrap_all`.
 * Added modules-state diff parameter to xmldb_get datastore function for startup scenarios. Set this to NULL in normal cases.
 * `rpc_callback_register` added a namespace parameter. Example:
    ```
@@ -50,6 +51,9 @@
 ```
 
 ### Minor changes
+* Added `xml_wrap` function that adds an XML node above a node as a wrapper
+  * also renamed `xml_insert` to `xml_wrap_all`.
+* Added `clicon_argv_get()` function to get the user command-line options, ie the args in `-- <args>`. This is an alternative to using them passed to `plugin_start()`.
 * Made Makefile concurrent so that it can be compiled with -jN
 * Added flags to example backend to control its behaviour:
   * Start with `-- -r` to run the reset plugin
