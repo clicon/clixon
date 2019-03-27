@@ -34,6 +34,8 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
@@ -63,6 +65,12 @@ static int _reset = 0;
  * Therefore, the backend must be started with -- -s to enable the state function
  */
 static int _state = 0;
+
+/*! Variable to control upgrade callbacks.
+ * If set, call test-case for upgrading ietf-interfaces, otherwise call 
+ * auto-upgrade
+ */
+static int _upgrade = 0;
 
 /* forward */
 static int example_stream_timer_setup(clicon_handle h);
@@ -246,12 +254,10 @@ example_statedata(clicon_handle h,
     return retval;
 }
 
-#ifdef keep_as_example
-/*! Registered Upgrade callback function 
+/*! Testcase upgrade function moving interfaces-state to interfaces
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
- * @param[in]  modname Name of module
- * @param[in]  modns   Namespace of module (for info)
+ * @param[in]  ns      Namespace of module (for info)
  * @param[in]  from    From revision on the form YYYYMMDD
  * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
  * @param[in]  arg     User argument given at rpc_callback_register() 
@@ -259,22 +265,182 @@ example_statedata(clicon_handle h,
  * @retval     1       OK
  * @retval     0       Invalid
  * @retval    -1       Error
+ * @see clicon_upgrade_cb
+ * @see test_upgrade_interfaces.sh
+ * @see upgrade_interfaces_2016
+ * This example shows a two-step upgrade where the 2014 function does:
+ * - Move /if:interfaces-state/if:interface/if:admin-status to 
+ *        /if:interfaces/if:interface/
+ * - Move /if:interfaces-state/if:interface/if:statistics to
+ *        /if:interfaces/if:interface/
+ * - Rename /interfaces/interface/description to descr 
  */
 static int
-upgrade_all(clicon_handle h,       
-	    cxobj        *xn,      
-	    char         *modname,
-	    char         *modns,
-	    uint32_t      from,
-	    uint32_t      to,
-	    void         *arg,     
-	    cbuf         *cbret)
+upgrade_interfaces_2014(clicon_handle h,       
+			cxobj        *xt,      
+			char         *ns,
+			uint32_t      from,
+			uint32_t      to,
+			void         *arg,     
+			cbuf         *cbret)
 {
-    fprintf(stderr, "%s XML:%s mod:%s %s from:%d to:%d\n", __FUNCTION__, xml_name(xn),
-	    modname, modns, from, to);
-    return 1;
+    int        retval = -1;
+    yang_spec *yspec;
+    yang_stmt *ym;
+    cxobj    **vec = NULL;
+    cxobj     *xc;
+    cxobj     *xi;  /* xml /interfaces-states/interface node */
+    cxobj     *x;
+    cxobj     *xif; /* xml /interfaces/interface node */
+    size_t     vlen;
+    int        i;
+    char      *name;
+
+    /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
+    yspec = clicon_dbspec_yang(h);	
+    if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
+	goto ok; /* shouldnt happen */
+    clicon_debug(1, "%s module %s", __FUNCTION__, ym?ym->ys_argument:"none");
+    /* Get all XML nodes with that namespace */
+    if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
+	goto done;
+    for (i=0; i<vlen; i++){
+	xc = vec[i];
+	/* Iterate through interfaces-state */
+	if (strcmp(xml_name(xc),"interfaces-state") == 0){
+	    /* Note you cannot delete or move xml objects directly under xc
+	     * in the loop (eg xi objects) but you CAN move children of xi
+	     */
+	    xi = NULL;
+	    while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
+		if (strcmp(xml_name(xi), "interface"))
+		    continue;
+		if ((name = xml_find_body(xi, "name")) == NULL)
+		    continue; /* shouldnt happen */
+		/* Get corresponding /interfaces/interface entry */
+		xif = xpath_first(xt, "/interfaces/interface[name=\"%s\"]", name);
+		/* - Move /if:interfaces-state/if:interface/if:admin-status to 
+		 *        /if:interfaces/if:interface/ */
+		if ((x = xml_find(xi, "admin-status")) != NULL && xif){
+		    if (xml_addsub(xif, x) < 0)
+			goto done;
+		}
+		/* - Move /if:interfaces-state/if:interface/if:statistics to
+		 *        /if:interfaces/if:interface/*/
+		if ((x = xml_find(xi, "statistics")) != NULL){
+		    if (xml_addsub(xif, x) < 0)
+			goto done;
+		}
+	    }
+	}
+	else if (strcmp(xml_name(xc),"interfaces") == 0){
+	    /* Iterate through interfaces */
+	    xi = NULL;
+	    while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
+		if (strcmp(xml_name(xi), "interface"))
+		    continue;
+		/* Rename /interfaces/interface/description to descr */
+		if ((x = xml_find(xi, "description")) != NULL)
+		    if (xml_name_set(x, "descr") < 0)
+			goto done;
+	    }
+	}
+    }
+ ok:
+    retval = 1;
+ done:
+    if (vec)
+	free(vec);
+    return retval;
 }
-#endif
+
+/*! Testcase upgrade function removing interfaces-state
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xn      XML tree to be updated
+ * @param[in]  ns      Namespace of module (for info)
+ * @param[in]  from    From revision on the form YYYYMMDD
+ * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
+ * @param[in]  arg     User argument given at rpc_callback_register() 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @retval     1       OK
+ * @retval     0       Invalid
+ * @retval    -1       Error
+ * @see clicon_upgrade_cb
+ * @see test_upgrade_interfaces.sh
+ * @see upgrade_interfaces_2014
+ * The 2016 function does:
+ * - Delete /if:interfaces-state
+ * - Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr
+ * - Change type /interfaces/interface/statistics/in-octets to decimal64 with
+ *   fraction-digits 3 and divide all values with 1000
+ */
+static int
+upgrade_interfaces_2016(clicon_handle h,       
+			cxobj        *xt,      
+			char         *ns,
+			uint32_t      from,
+			uint32_t      to,
+			void         *arg,     
+			cbuf         *cbret)
+{
+    int        retval = -1;
+    yang_spec *yspec;
+    yang_stmt *ym;
+    cxobj    **vec = NULL;
+    cxobj     *xc;
+    cxobj     *xi;
+    cxobj     *x;
+    cxobj     *xb;
+    size_t     vlen;
+    int        i;
+
+    /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
+    yspec = clicon_dbspec_yang(h);	
+    if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
+	goto ok; /* shouldnt happen */
+    clicon_debug(1, "%s module %s", __FUNCTION__, ym?ym->ys_argument:"none");
+    /* Get all XML nodes with that namespace */
+    if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
+	goto done;
+    for (i=0; i<vlen; i++){
+	xc = vec[i];
+	/* Delete /if:interfaces-state */
+	if (strcmp(xml_name(xc), "interfaces-state") == 0)
+	    xml_purge(xc);
+	/* Iterate through interfaces */
+	else if (strcmp(xml_name(xc),"interfaces") == 0){
+	    /* Iterate through interfaces */
+	    xi = NULL;
+	    while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
+		if (strcmp(xml_name(xi), "interface"))
+		    continue;
+		/* Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr */
+		if ((x = xml_find(xi, "descr")) != NULL)
+		    if (xml_wrap(x, "docs") < 0)
+			goto done;
+		/* Change type /interfaces/interface/statistics/in-octets to 
+		 * decimal64 with fraction-digits 3 and divide values with 1000 
+		 */
+		if ((x = xpath_first(xi, "statistics/in-octets")) != NULL){
+		    if ((xb = xml_body_get(x)) != NULL){
+			uint64_t u64;
+			cbuf *cb = cbuf_new();
+			parse_uint64(xml_value(xb), &u64, NULL);
+			cprintf(cb, "%" PRIu64 ".%03d", u64/1000, (int)(u64%1000));
+			xml_value_set(xb, cbuf_get(cb));
+			cbuf_free(cb);
+		    }
+		}
+	    }
+	}
+    }
+ ok:
+    retval = 1;
+ done:
+    if (vec)
+	free(vec);
+    return retval;
+}
 
 /*! Plugin state reset. Add xml or set state in backend machine.
  * Called in each backend plugin. plugin_reset is called after all plugins
@@ -335,7 +501,7 @@ example_reset(clicon_handle h,
  *
  * plugin_start is called once everything has been initialized, right before 
  * the main event loop is entered. 
- * From the CLI, command line options can be passed to the 
+ * From the cli/backend, command line options can be passed to the 
  * plugins by using "-- <args>" where <args> is any choice of 
  * options specific to the application. These options are passed to the
  * plugin_start function via the argc and argv arguments which
@@ -343,22 +509,9 @@ example_reset(clicon_handle h,
  */
 int
 example_start(clicon_handle h,
-	     int           argc,
-	     char        **argv)
+	      int           argc,
+	      char        **argv)
 {
-    char c;
-    
-    opterr = 0;
-    optind = 1;
-    while ((c = getopt(argc, argv, "rs")) != -1)
-	switch (c) {
-	case 'r':
-	    _reset = 1;
-	    break;
-	case 's':
-	    _state = 1;
-	    break;
-	}
     return 0;
 }
 
@@ -389,13 +542,36 @@ static clixon_plugin_api api = {
  * @param[in]  h    Clixon handle
  * @retval     NULL Error with clicon_err set
  * @retval     api  Pointer to API struct
+ * In this example, you can pass -r, -s, -u to control the behaviour, mainly 
+ * for use in the test suites.
  */
 clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
     struct timeval retention = {0,0};
+    int            argc; /* command-line options (after --) */
+    char         **argv;
+    char           c;
 
     clicon_debug(1, "%s backend", __FUNCTION__);
+
+    if (clicon_argv_get(h, &argc, &argv) < 0)
+	goto done;
+        opterr = 0;
+    optind = 1;
+    while ((c = getopt(argc, argv, "rsu")) != -1)
+	switch (c) {
+	case 'r':
+	    _reset = 1;
+	    break;
+	case 's':
+	    _state = 1;
+	    break;
+	case 'u':
+	    _upgrade = 1;
+	    break;
+	}
+
     /* Example stream initialization:
      * 1) Register EXAMPLE stream 
      * 2) setup timer for notifications, so something happens on stream
@@ -444,14 +620,18 @@ clixon_plugin_init(clicon_handle h)
 			      "copy-config"
 			      ) < 0)
 	goto done;
-        /* Called after the regular system copy_config callback */
-    if (upgrade_callback_register(h, yang_changelog_upgrade, 
-				  NULL, 
-				  NULL, NULL,
-				  0, 0
-				  ) < 0)
-	goto done;
-
+    /* Upgrade callback: if you start the backend with -- -u you will get the
+     * test interface example. Otherwise the auto-upgrade feature is enabled.
+     */
+    if (_upgrade){
+	if (upgrade_callback_register(h, upgrade_interfaces_2014, "urn:example:interfaces", 0, 0, NULL) < 0)
+	    goto done;
+	if (upgrade_callback_register(h, upgrade_interfaces_2016, "urn:example:interfaces", 0, 0, NULL) < 0)
+	    goto done;
+    }
+    else
+	if (upgrade_callback_register(h, xml_changelog_upgrade, NULL, 0, 0, NULL) < 0)
+	    goto done;
 
     /* Return plugin API */
     return &api;

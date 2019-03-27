@@ -34,13 +34,14 @@
  * YANG module revision change management. 
  * See draft-wang-netmod-module-revision-management-01
  */
-#ifndef _CLIXON_YANG_CHANGELOG_H
-#define _CLIXON_YANG_CHANGELOG_H
+#ifndef _CLIXON_XML_CHANGELOG_H
+#define _CLIXON_XML_CHANGELOG_H
 
 /*
  * Prototypes
  */
-int yang_changelog_upgrade(clicon_handle h, cxobj *xn, char *modname, char *modns, uint32_t from, uint32_t to, void *arg, cbuf *cbret);
-int clixon_yang_changelog_init(clicon_handle h);
+int xml_changelog_upgrade(clicon_handle h, cxobj *xn, char *namespace, uint32_t from, uint32_t to, void *arg, cbuf *cbret);
+int clixon_xml_changelog_init(clicon_handle h);
+int xml_namespace_vec(clicon_handle h, cxobj *xt, char *namespace, cxobj ***vec, size_t *veclen);
 
-#endif /* _CLIXON_YANG_CHANGELOG_H */
+#endif /* _CLIXON_XML_CHANGELOG_H */

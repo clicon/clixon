@@ -51,8 +51,8 @@
  * This is in state of flux so it needss to be conatained and easily changed.
  */
 typedef struct {
-    cxobj *md_del;   /* yang mdoule state deletes */
-    cxobj *md_mod;   /* yang mdoule state modifications */
+    cxobj *md_del;   /* yang module state deletes */
+    cxobj *md_mod;   /* yang module state modifications */
 } modstate_diff_t;
 
 /*

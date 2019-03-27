@@ -16,23 +16,25 @@
   * Enable with CLICON_XMLDB_MODSTATE config option
   * Check modules-state tags when loading a datastore at startup
     * Check which modules match, and which do not.
-  * Loading of "extra" XML.
+  * Loading of "extra" XML, such as from a file.
   * Detection of in-compatible XML and Yang models in the startup configuration.
   * A user can register upgrade callbacks per module/revision when in-compatible XML is encountered (`update_callback_register`).
+    * See the [example](example/example_backend.c) and [test](test/test_upgrade_interfaces.sh].
   * A "failsafe" mode allowing a user to repair the startup on errors or failed validation.
   * Major rewrite of `backend_main.c` and a new module `backend_startup.c`
-* New yang changelog experimental feature for automatic upgrade
-  * Yang module clixon-yang-changelog@2019-03-21.yang based on draft-wang-netmod-module-revision-management-01
-  * Two config options control:
-    * CLICON_YANG_CHANGELOG enables the yang changelog feature
-    * CLICON_YANG_CHANGELOG_FILE where the changelog resides
 * Datastore files contain RFC7895 module-state information
   * Added modules-state diff parameter to xmldb_get datastore function
   * Set config option `CLICON_XMLDB_MODSTATE` to true
     * Enable this if you wish to use the upgrade feature in the new startup functionality.
   * Note that this adds bytes to your configs
+* New xml changelog experimental feature for automatic upgrade
+  * Yang module clixon-xml-changelog@2019-03-21.yang based on draft-wang-netmod-module-revision-management-01
+  * Two config options control:
+    * CLICON_XML_CHANGELOG enables the yang changelog feature
+    * CLICON_XML_CHANGELOG_FILE where the changelog resides
 
 ### API changes on existing features (you may need to change your code)
+* Renamed `xml_insert` to `xml_wrap_all`.
 * Added modules-state diff parameter to xmldb_get datastore function for startup scenarios. Set this to NULL in normal cases.
 * `rpc_callback_register` added a namespace parameter. Example:
    ```
@@ -50,7 +52,10 @@
 ```
 
 ### Minor changes
-* Added synatctic check for yang status: current, deprectated or obsolete.
+* Added syntactic check for yang status: current, deprecated or obsolete.
+* Added `xml_wrap` function that adds an XML node above a node as a wrapper
+  * also renamed `xml_insert` to `xml_wrap_all`.
+* Added `clicon_argv_get()` function to get the user command-line options, ie the args in `-- <args>`. This is an alternative to using them passed to `plugin_start()`.
 * Made Makefile concurrent so that it can be compiled with -jN
 * Added flags to example backend to control its behaviour:
   * Start with `-- -r` to run the reset plugin

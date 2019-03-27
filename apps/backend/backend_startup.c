@@ -161,14 +161,9 @@ startup_mode_startup(clicon_handle        h,
 	if (xmldb_create(h, db) < 0) /* diff */
 	    return -1;
     }
-    if ((ret = startup_validate(h, db, cbret)) < 0)
+    if ((ret = startup_commit(h, db, cbret)) < 0)
 	goto done;
     if (ret == 0)
-	goto fail;
-    /* Commit startup */
-    if (candidate_commit(h, db, cbret) < 1) /* diff */
-	goto fail;
-    if (ret == 0) /* shouldnt happen (we already validate) */
 	goto fail;
     retval = 1;
  done:
@@ -241,6 +236,7 @@ startup_extraxml(clicon_handle        h,
     int         retval = -1;
     char       *db = "tmp";
     int         ret;
+    cxobj	*xt = NULL; /* Potentially upgraded XML */
     
     /* Clear tmp db */
     if (startup_db_reset(h, db) < 0)
@@ -256,11 +252,17 @@ startup_extraxml(clicon_handle        h,
 	if (ret == 0)
 	    goto fail;
     }
-    /* Validate tmp (unless empty?) */
-    if ((ret = startup_validate(h, db, cbret)) < 0)
+    /* Validate the tmp db and return possibly upgraded xml in xt
+     */
+    if ((ret = startup_validate(h, db, &xt, cbret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
+    /* Write (potentially modified) xml tree xt back to tmp
+     */
+    if ((ret = xmldb_put(h, "tmp", OP_REPLACE, xt,
+			 clicon_username_get(h), cbret)) < 0)
+	goto done;
     /* Merge tmp into running (no commit) */
     if ((ret = db_merge(h, db, "running", cbret)) < 0)
 	goto fail;
@@ -268,6 +270,8 @@ startup_extraxml(clicon_handle        h,
 	goto fail;
     retval = 1;
  done:
+    if (xt)
+	xml_free(xt);
     if (xmldb_delete(h, "tmp") != 0 && errno != ENOENT) 
 	return -1;
     return retval;
@@ -300,15 +304,16 @@ startup_failsafe(clicon_handle h)
     if ((ret = xmldb_exists(h, db)) < 0)
 	goto done;
     if (ret == 0){ /* No it does not exist, fail */
-	clicon_err(OE_DB, 0, "No failsafe database");
+	clicon_err(OE_DB, 0, "Startup failed and no Failsafe database found, exiting");
 	goto done;
     }
     if ((ret = candidate_commit(h, db, cbret)) < 0) /* diff */
 	goto done;
     if (ret == 0){
-	clicon_err(OE_DB, 0, "Failsafe database validation failed %s", cbuf_get(cbret));
+	clicon_err(OE_DB, 0, "Startup failed, Failsafe database validation failed %s", cbuf_get(cbret));
 	goto done;
     }
+    clicon_log(LOG_NOTICE, "Startup failed, Failsafe database loaded ");
     retval = 0;
  done:
     if (cbret)

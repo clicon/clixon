@@ -1,0 +1,333 @@
+#!/bin/bash
+# Upgrade a module by registering a manually programmed callback
+# The usecase is insipred by the ietf-interfaces upgrade from
+# 2014-05-08 to 2018-02-20.
+# That includes moving parts from interfaces-state to interfaces and then
+# deprecating the whole /interfaces-state tree.
+# A preliminary change list is in Appendix A of
+# draft-wang-netmod-module-revision-management-01
+# The example here is simplified and also extended.
+# It has also been broken up into two parts to test a series of upgrades.
+# These are the operations (authentic):
+# Move /if:interfaces-state/if:interface/if:admin-status to
+#   /if:interfaces/if:interface/
+# Move /if:interfaces-state/if:interface/if:statistics to
+#   if:interfaces/if:interface/
+# Delete /if:interfaces-state
+# These are extra added for test:
+# Rename /interfaces/interface/description to /interfaces/interface/descr
+# Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr
+# Change type /interfaces/interface/statistics/in-octets to decimal64 and divide all values with 1000
+# 
+
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
+APPNAME=example
+
+cfg=$dir/conf.xml
+if2014=$dir/interfaces@2014-05-08.yang
+if2018=$dir/interfaces@2018-02-20.yang
+
+# Original simplified version - note all is config to allow for storing in
+# datastore
+cat <<EOF > $if2014
+module interfaces{
+    yang-version 1.1;
+    namespace "urn:example:interfaces";
+    prefix "if";
+    
+    import ietf-yang-types {
+	prefix yang;
+    }
+    revision 2014-05-08 {
+	description
+	    "Initial revision.";
+	reference
+	    "RFC 7223: A YANG Data Model for Interface Management";
+    }
+    feature if-mib {
+	description
+	    "This feature indicates that the device implements
+       the IF-MIB.";
+	reference
+	    "RFC 2863: The Interfaces Group MIB";
+    }
+    container interfaces {
+	description
+	    "Interface configuration parameters.";
+
+	list interface {
+	    key "name";
+	    leaf name {
+		type string;
+	    }
+	    leaf description {
+		type string;
+	    }
+	    leaf type {
+		type string;
+		mandatory true;
+	    }
+	    leaf link-up-down-trap-enable {
+		if-feature if-mib;
+		type enumeration {
+		    enum enabled;
+		    enum disabled;
+		}
+	    }
+	}
+    }
+    container interfaces-state {
+	list interface {
+	    key "name";
+	    leaf name {
+		type string;
+	    }
+	    leaf admin-status {
+		if-feature if-mib;
+		type enumeration {
+		    enum up;
+		    enum down;
+		    enum testing;
+		}
+		mandatory true;
+	    }
+	    container statistics {
+		leaf in-octets {
+		    type yang:counter64;
+		}
+		leaf in-unicast-pkts {
+		    type yang:counter64;
+		}
+	    }
+	}
+    }
+}
+
+EOF
+
+cat <<EOF > $if2018
+module interfaces{
+    yang-version 1.1;
+    namespace "urn:example:interfaces";
+    prefix "if";
+    
+    import ietf-yang-types {
+	prefix yang;
+    }
+    revision 2018-02-20 {
+     description
+      "Updated to support NMDA.";
+    reference
+      "RFC 8343: A YANG Data Model for Interface Management";
+    }
+    revision 2014-05-08 {
+	description
+	    "Initial revision.";
+	reference
+	    "RFC 7223: A YANG Data Model for Interface Management";
+    }
+    feature if-mib {
+	description
+	    "This feature indicates that the device implements
+       the IF-MIB.";
+	reference
+	    "RFC 2863: The Interfaces Group MIB";
+    }
+    container interfaces {
+	description
+	    "Interface configuration parameters.";
+
+	list interface {
+	    key "name";
+	    leaf name {
+		type string;
+	    }
+	    container docs{
+               description "Original description is wrapped and renamed";
+  	       leaf descr {
+	 	 type string;
+	      }
+            }
+	    leaf type {
+		type string;
+		mandatory true;
+	    }
+	    leaf link-up-down-trap-enable {
+		if-feature if-mib;
+		type enumeration {
+		    enum enabled;
+		    enum disabled;
+		}
+	    }
+	    leaf admin-status {
+		if-feature if-mib;
+		type enumeration {
+		    enum up;
+		    enum down;
+		    enum testing;
+		}
+		mandatory true;
+	    }
+	    container statistics {
+		leaf in-octets {
+		    type decimal64{
+                       fraction-digits 3;
+                    }
+		}
+		leaf in-unicast-pkts {
+		    type yang:counter64;
+		}
+	    }
+	}
+    }
+}
+EOF
+
+
+# Create startup db revision example-a and example-b 2017-12-01
+# this should be automatically upgraded to 2017-12-20
+cat <<EOF > $dir/startup_db
+<config>
+   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <module-set-id>42</module-set-id>
+      <module>
+         <name>interfaces</name>
+         <revision>2014-05-08</revision>
+         <namespace>urn:example:interfaces</namespace>
+      </module>
+  </modules-state>
+  <interfaces xmlns="urn:example:interfaces">
+    <interface>
+      <name>e0</name>
+      <type>eth</type>
+      <description>First interface</description>
+    </interface>
+    <interface>
+      <name>e1</name>
+      <type>eth</type>
+    </interface>
+  </interfaces>
+  <interfaces-state xmlns="urn:example:interfaces">
+    <interface>
+      <name>e0</name>
+      <admin-status>up</admin-status>
+      <statistics>
+        <in-octets>54326432</in-octets>
+        <in-unicast-pkts>8458765</in-unicast-pkts>
+      </statistics>
+    </interface>
+    <interface>
+      <name>e1</name>
+      <admin-status>down</admin-status>
+    </interface>
+    <interface>
+      <name>e2</name>
+      <admin-status>testing</admin-status>
+    </interface>
+  </interfaces-state>
+</config>
+EOF
+
+# Wanted new XML
+# Note interface e2 is not moved
+cat <<EOF > $dir/wanted
+<config>
+   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <module-set-id>42</module-set-id>
+      <module>
+         <name>interfaces</name>
+         <revision>2018-02-20</revision>
+         <namespace>urn:example:interfaces</namespace>
+      </module>
+  </modules-state>
+  <interfaces xmlns="urn:example:interfaces">
+    <interface>
+      <name>e0</name>
+      <type>eth</type>
+      <admin-status>up</admin-status>
+      <docs><descr>First interface</descr></docs>
+      <statistics>
+        <in-octets>54326.432</in-octets>
+        <in-unicast-pkts>8458765</in-unicast-pkts>
+      </statistics>
+    </interface>
+    <interface>
+      <name>e1</name>
+      <type>eth</type>
+      <admin-status>down</admin-status>
+    </interface>
+  </interfaces>
+</config>
+EOF
+
+XML='<interfaces xmlns="urn:example:interfaces"><interface><name>e0</name><docs><descr>First interface</descr></docs><type>eth</type><admin-status>up</admin-status><statistics><in-octets>54326.432</in-octets><in-unicast-pkts>8458765</in-unicast-pkts></statistics></interface><interface><name>e1</name><type>eth</type><admin-status>down</admin-status></interface></interfaces>'
+
+
+# Create configuration
+cat <<EOF > $cfg
+<clixon-config xmlns="http://clicon.org/config">
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_FEATURE>*:*</CLICON_FEATURE>
+  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_DIR>/usr/local/lib/example/backend</CLICON_BACKEND_DIR>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
+  <CLICON_XMLDB_MODSTATE>true</CLICON_XMLDB_MODSTATE>
+  <CLICON_XML_CHANGELOG>false</CLICON_XML_CHANGELOG>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+</clixon-config>
+EOF
+
+# Start new system from old datastore
+mode=startup
+
+# -u means trigger example upgrade
+new "test params: -s $mode -f $cfg -- -u"
+# Bring your own backend
+if [ $BE -ne 0 ]; then
+    # kill old backend (if any)
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s $mode -f $cfg -- -u"
+    start_backend -s $mode -f $cfg -- -u
+fi
+new "waiting"
+sleep $RCWAIT
+
+new "kill old restconf daemon"
+sudo pkill -u www-data clixon_restconf
+
+new "start restconf daemon"
+start_restconf -f $cfg
+
+new "waiting"
+sleep $RCWAIT
+
+new "Check running db content"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
+
+new "Kill restconf daemon"
+stop_restconf
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=`pgrep -u root -f clixon_backend`
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+
+    rm -rf $dir
+fi

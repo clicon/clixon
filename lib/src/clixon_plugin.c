@@ -539,13 +539,14 @@ rpc_callback_call(clicon_handle h,
  * revision.
  */
 typedef struct {
-    qelem_t 	  uc_qelem;	/* List header */
+    qelem_t           uc_qelem;	    /* List header */
     clicon_upgrade_cb uc_callback;  /* RPC Callback */
-    void	 *uc_arg;	/* Application specific argument to cb */
-    char         *uc_name;      /* Module name */
-    char         *uc_namespace; /* Module namespace ??? */
-    uint32_t      uc_from;      /* Module revision (from) or 0 in YYYYMMDD format */
-    uint32_t      uc_to;        /* Module revision (to) in YYYYMMDD format */
+    const char       *uc_fnstr;     /* Stringified fn name for debug */
+    void             *uc_arg;	    /* Application specific argument to cb */
+    char             *uc_namespace; /* Module namespace */
+    uint32_t          uc_rev;       /* Module revision (to) in YYYYMMDD format or 0 */
+    uint32_t          uc_from;      /* Module revision (from) or 0 in YYYYMMDD format */
+
 } upgrade_callback_t;
 
 /* List of rpc callback entries XXX hang on handle */
@@ -555,23 +556,23 @@ static upgrade_callback_t *upgrade_cb_list = NULL;
  *
  * @param[in]  h         clicon handle
  * @param[in]  cb        Callback called 
+ * @param[in]  fnstr     Stringified function for debug
  * @param[in]  arg       Domain-specific argument to send to callback 
- * @param[in]  name      Module name (if NULL all modules)
- * @param[in]  namespace Module namespace (NOTE not relevant)
+ * @param[in]  namespace Module namespace (if NULL all modules) 
+ * @param[in]  rev       To module revision (0 means module obsoleted)
  * @param[in]  from      From module revision (0 from any revision)
- * @param[in]  to        To module revision (0 means module obsoleted)
  * @retval     0         OK
  * @retval    -1         Error
  * @see upgrade_callback_call  which makes the actual callback
  */
 int
-upgrade_callback_register(clicon_handle     h,
-			  clicon_upgrade_cb cb,
-			  void             *arg,       
-			  char             *name,
-			  char             *namespace,
-			  uint32_t          from,
-			  uint32_t          to)
+upgrade_callback_reg_fn(clicon_handle     h,
+			clicon_upgrade_cb cb,
+			const char       *fnstr,
+			char             *namespace,
+			uint32_t          revision,
+			uint32_t          from,
+			void             *arg)
 {
     upgrade_callback_t *uc;
 
@@ -581,19 +582,16 @@ upgrade_callback_register(clicon_handle     h,
     }
     memset(uc, 0, sizeof(*uc));
     uc->uc_callback = cb;
+    uc->uc_fnstr = fnstr;
     uc->uc_arg  = arg;
-    if (name)
-	uc->uc_name  = strdup(name);
     if (namespace)
 	uc->uc_namespace  = strdup(namespace);
+    uc->uc_rev = revision;
     uc->uc_from = from;
-    uc->uc_to = to;
     ADDQ(uc, upgrade_cb_list);
     return 0;
  done:
     if (uc){
-	if (uc->uc_name)
-	    free(uc->uc_name);
 	if (uc->uc_namespace)
 	    free(uc->uc_namespace);
 	free(uc);
@@ -610,8 +608,6 @@ upgrade_callback_delete_all(clicon_handle h)
 
     while((uc = upgrade_cb_list) != NULL) {
 	DELQ(uc, upgrade_cb_list, upgrade_callback_t *);
-	if (uc->uc_name)
-	    free(uc->uc_name);
 	if (uc->uc_namespace)
 	    free(uc->uc_namespace);
 	free(uc);
@@ -622,7 +618,7 @@ upgrade_callback_delete_all(clicon_handle h)
 /*! Search Upgrade callbacks and invoke if module match
  *
  * @param[in]  h       clicon handle
- * @param[in]  xt      XML tree to be updated
+ * @param[in]  xt      Top-level XML tree to be updated (includes other ns as well)
  * @param[in]  modname Name of module
  * @param[in]  modns   Namespace of module (for info)
  * @param[in]  from    From revision on the form YYYYMMDD
@@ -631,13 +627,12 @@ upgrade_callback_delete_all(clicon_handle h)
  * @retval -1  Error
  * @retval  0  Invalid - cbret contains reason as netconf
  * @retval  1  OK
- * @see upgrade_callback_register  which registers the callbacks
+ * @see upgrade_callback_reg_fn  which registers the callbacks
  */
 int
 upgrade_callback_call(clicon_handle h,
 		      cxobj        *xt,
-		      char         *modname,
-		      char         *modns,
+		      char         *namespace,
 		      uint32_t      from,
 		      uint32_t      to,
 		      cbuf         *cbret)
@@ -659,15 +654,21 @@ upgrade_callback_call(clicon_handle h,
 	 *   - Registered from revision >= from AND
          *   - Registered to revision <= to (which includes case both 0)
 	 */
-	if (uc->uc_name == NULL || strcmp(uc->uc_name, modname)==0)
+	if (uc->uc_namespace == NULL || strcmp(uc->uc_namespace, namespace)==0)
 	    if ((uc->uc_from == 0) ||
-		(uc->uc_from >= from && uc->uc_to <= to)){
-		if ((ret = uc->uc_callback(h, xt, modname, modns, from, to, uc->uc_arg, cbret)) < 0){
-		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, uc->uc_name);
+		(uc->uc_from >= from && uc->uc_rev <= to)){
+		if ((ret = uc->uc_callback(h, xt, namespace, from, to, uc->uc_arg, cbret)) < 0){
+		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, uc->uc_namespace);
 		    goto done;
 		}
-		if (ret == 0)
+		if (ret == 0){
+		    if (cbuf_len(cbret)==0){	
+			clicon_err(OE_CFG, 0, "Validation fail %s(%s): cbret not set",
+				   uc->uc_fnstr, namespace);
+			goto done;
+		    }
 		    goto fail;
+		}
 		nr++;
 	    }
 	uc = NEXTQ(upgrade_callback_t *, uc);

@@ -1019,17 +1019,17 @@ clicon_module_state_set(clicon_handle h,
  * @see draft-wang-netmod-module-revision-management-01
  */
 cxobj *
-clicon_yang_changelog_get(clicon_handle h)
+clicon_xml_changelog_get(clicon_handle h)
 {
     clicon_hash_t *cdat = clicon_data(h);
     void          *p;
 
-    if ((p = hash_value(cdat, "yang-changelog", NULL)) != NULL)
+    if ((p = hash_value(cdat, "xml-changelog", NULL)) != NULL)
 	return *(cxobj **)p;
     return NULL;
 }
 
-/*! Set yang module changelog
+/*! Set xml module changelog
  * @param[in] h   Clicon handle
  * @param[in] s   Module revision changelog XML tree
  * @retval    0   OK
@@ -1037,12 +1037,69 @@ clicon_yang_changelog_get(clicon_handle h)
  * @see draft-wang-netmod-module-revision-management-01
  */
 int
-clicon_yang_changelog_set(clicon_handle h, 
+clicon_xml_changelog_set(clicon_handle h, 
 			cxobj        *xchlog)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
-    if (hash_add(cdat, "yang_changelog", &xchlog, sizeof(xchlog))==NULL)
+    if (hash_add(cdat, "xml-changelog", &xchlog, sizeof(xchlog))==NULL)
+	return -1;
+    return 0;
+}
+
+/*! Get user clicon command-line options argv, argc (after --)
+ * @param[in]  h    Clicon handle
+ * @param[out] argc
+ * @param[out] argv
+ * @retval     0    OK 
+ * @retval    -1    Error
+ */
+int
+clicon_argv_get(clicon_handle h,
+		int          *argc,
+		char       ***argv)
+		
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    void          *p;
+
+    if ((p = hash_value(cdat, "argc", NULL)) == NULL)
+	return -1;
+    *argc = *(int*)p;
+    if ((p = hash_value(cdat, "argv", NULL)) == NULL)
+	return -1;
+    *argv = *(char***)p;
+    return 0;
+}
+
+/*! Set clicon user command-line options argv, argc (after --)
+ * @param[in] h     Clicon handle
+ * @param[in] prog  argv[0] - the program name
+ * @param[in] argc  Length of argv
+ * @param[in] argv  Array of command-line options
+ * @retval    0     OK
+ * @retval   -1     Error
+ */
+int
+clicon_argv_set(clicon_handle h, 
+		char         *prgm,
+		int           argc,
+		char        **argv)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    char          **argvv = NULL;
+
+    /* add space for null-termination and argv[0] program name */
+    if ((argvv = calloc(argc+2, sizeof(char*))) == NULL){
+	clicon_err(OE_UNIX, errno, "calloc");
+	return -1;
+    }
+    memcpy(argvv+1, argv, argc*sizeof(char*));
+    argvv[0] = prgm;
+    if (hash_add(cdat, "argv", &argvv, sizeof(argvv))==NULL)
+	return -1;
+    argc += 1;
+    if (hash_add(cdat, "argc", &argc, sizeof(argc))==NULL)
 	return -1;
     return 0;
 }

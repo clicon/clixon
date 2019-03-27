@@ -127,7 +127,9 @@ int       xml_cv_set(cxobj *x, cg_var *cv);
 cxobj    *xml_find(cxobj *xn_parent, char *name);
 
 int       xml_addsub(cxobj *xp, cxobj *xc);
-cxobj    *xml_insert(cxobj *xt, char *tag);
+cxobj    *xml_wrap_all(cxobj *xp, char *tag);
+cxobj    *xml_wrap(cxobj *xc, char *tag);
+#define xml_insert(x,t) xml_wrap_all((x),(t))
 int       xml_purge(cxobj *xc);
 int       xml_child_rm(cxobj *xp, int i);
 int       xml_rm(cxobj *xc);
