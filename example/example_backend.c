@@ -557,7 +557,7 @@ clixon_plugin_init(clicon_handle h)
 
     if (clicon_argv_get(h, &argc, &argv) < 0)
 	goto done;
-        opterr = 0;
+    opterr = 0;
     optind = 1;
     while ((c = getopt(argc, argv, "rsu")) != -1)
 	switch (c) {
