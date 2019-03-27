@@ -120,7 +120,7 @@ module-state of the backend daemon, a set of _upgrade_ callbacks are
 made. This allows a user to program upgrade funtions in the backend
 plugins to automatically upgrade the XML to the current version.
 
-Clixon also has a system-provided [automatic upgrading method](#automatic-upgrades) based on Yang changelogs covered in a separate chapter.
+Clixon also has an experimental [automatic upgrading method](#automatic-upgrades) based on Yang changelogs covered in a separate chapter.
 
 A user registers upgrade callbacks based on module and revision
 ranges. A user can register many callbacks, or choose wildcards.
@@ -138,37 +138,36 @@ callback per module and revision range that will be called in a series.
 
 A user registers upgrade callbacks in the backend `clixon_plugin_init()` function. The signature of upgrade callback is as follows:
 ```
-int upgrade_callback_register(clicon_handle     h,
-    			      clicon_upgrade_cb cb,
-			      char             *namespace,
-			      uint32_t          from,
-			      uint32_t          to,
-			      void             *arg)
+  upgrade_callback_register(h, cb, namespace, from, revision, arg);
 ```
 where:
 * `h` is the Clicon handle,
 * `cb` is the name of the callback function,
-* `namespace` defines a Yang module. NULL denotes all modules. Note that module `name` is not used.
-* `revision` is the revision date to where the upgrade is made. It is either the same revision as the Clixon system module, or an older version. In the latter case, it i recommended to provide an upgrade function to the most recent revision. If revision is `0` it means that this module is not present in the system and is _obsolete_.
-* `from` is a revision date indicated an optional start date of the upgrade. This allows for defining a partial upgrade. It can also be `0` to denote any old version.
+* `namespace` defines a Yang module. NULL denotes all modules. Note that module `name` is not used (XML uses namespace, whereas JSON uses name, XML is more common).
+* `from` is a revision date indicated an optional start date of the upgrade. This allows for defining a partial upgrade. It can also be `0` to denote any version.
+* `revision` is the revision date "to" where the upgrade is made. It is either the same revision as the Clixon system module, or an older version. In the latter case, you can provide another upgrade callback to the most recent revision. 
 * `arg` is a user defined argument which can be passed to the callback.
 
 One example of registering a "catch-all" upgrade: 
 ```
-   upgrade_callback_register(h, yang_changelog_upgrade, NULL, 0, 0, NULL);
+   upgrade_callback_register(h, xml_changelog_upgrade, NULL, 0, 0, NULL);
 ```
 
-Another example are fine-grained stepwise upgrades of a single module:
+Another example are fine-grained stepwise upgrades of a singlemodule [upgrade example](#example-upgrade):
 ```
-   upgrade_callback_register(h, upgrade_a_1, "urn:example:a",
-                             20171201, 20180101, NULL);
-   upgrade_callback_register(h, upgrade_a_2, "urn:example:a",
-                             20180101, 20190101, NULL);
+   upgrade_callback_register(h, upgrade_2016, "urn:example:interfaces",
+                             20140508, 20160101, NULL);
+   upgrade_callback_register(h, upgrade_2018, "urn:example:interfaces",
+                             20160101, 20180220, NULL);
 ```
-
-In the latter case, one upgrade function updates data modelled by `A`
-from revision 2017-12-01 to 2018-01-01; a separate one updates from
-2018-01-01 to 2019-01-01. These are run in series.
+```
+   20140508       20160101       20180220
+------+--------------+--------------+-------->
+        upgrade_2016   upgrade_2018
+```
+In the latter case, the first callback upgrades
+from revision 2014-05-08 to 2016-01-01; while the second makes upgrades from
+2016-01-01 to 2018-02-20. These are run in series.
 
 ### Upgrade callback
 
@@ -181,61 +180,15 @@ Note the following:
 * Upgrade callbacks _will_ be called if the datastore contains a version of a module that is older than the module loaded in Clixon.
 * Upgrade callbacks _will_ also be called if the datastore contains a version of a module that is not present in Clixon - an obsolete module.
 
-An example upgrade callback:
+Re-using the previous stepwise example, if a datastore is loaded based on revision 20140508 by a system supporting revision 20180220, the following two callbacks will be made:
 ```
-  /*! Automatic upgrade of module A
-   * @param[in]  h       Clicon handle 
-   * @param[in]  xn      XML tree to be updated
-   * @param[in]  namespace Namespace of module (for info)
-   * @param[in]  from    From revision on the form YYYYMMDD
-   * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
-   * @param[in]  arg     User argument given at rpc_callback_register() 
-   * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
-   * @retval     1       OK
-   * @retval     0       Invalid
-   * @retval    -1       Error
-   */
-   int
-   upgrade_a_1(clicon_handle h,       
-   	       cxobj        *xn,      
-	       char         *namespace,
-	       uint32_t      revision,
-	       uint32_t      from,
-	       void         *arg,     
-	       cbuf         *cbret)
-  {
-    int        retval = -1;
-    yang_spec *yspec;
-    yang_stmt *ym;
-    cxobj    **vec = NULL;
-    cxobj     *xc;
-    size_t     vlen;
-    int        i;
-
-    /* Get Yang module for this namespace. Note it may not exist */
-    yspec = clicon_dbspec_yang(h);	
-    if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
-	goto ok; /* shouldnt happen */
-    /* Get all XML nodes with that namespace */
-    if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
-	goto done;
-    for (i=0; i<vlen; i++){
-	xc = vec[i];
-	/* Insert code here to transform nodes of module */
-    }
- ok:
-    retval = 1;
- done:
-    if (vec)
-	free(vec);
-    return retval;
-  }
+  upgrade_2016(h, <xml>, "urn:example:interfaces", 20140508, 20180220, NULL, cbret);
+  upgrade_2018(h, <xml>, "urn:example:interfaces", 20140508, 20180220, NULL, cbret);
 ```
-
 Note that the example shown is a template for an upgrade function. It
 gets the nodes of an yang module given by `namespace` and the
 (outdated) `from` revision, and iterates through them. Actual
-upgrading code may be implemented by a user.
+upgrading code is in [the example](../example/example_backend.c).
 
 If no action is made by the upgrade calback, and thus the XML is not
 upgraded, the next step is XML/Yang validation.
@@ -247,6 +200,19 @@ However, if the validation fails, the backend will try to enter the
 failsafe mode so that the user may perform manual upgarding of the
 configuration.
 
+### Example upgrade
+
+[The example](../example/example_backend.c) and [test](../test/test_upgrade_interfaces.sh) shos the code for upgrading of an interface module. The example is inspired by the ietf-interfaces module that made a subset of the upgrades shown in the examples.
+
+The code is split in two steps. The `upgrade_2016` callback does the following transforms:
+  * Move /if:interfaces-state/if:interface/if:admin-status to /if:interfaces/if:interface/
+  * Move /if:interfaces-state/if:interface/if:statistics to if:interfaces/if:interface/
+  * Rename /interfaces/interface/description to /interfaces/interface/descr
+
+While the `upgrade_2018` callback does the following transforms:
+  * Delete /if:interfaces-state
+  * Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr
+  * Change type /interfaces/interface/statistics/in-octets to decimal64 and divide all values with 1000
 
 ## Extra XML
 
@@ -358,10 +324,10 @@ The example shown in this Section is also available as a regression [test script
 
 ## Automatic upgrades
 
-Clixon supports an experimental yang changelog feature based on
+Clixon supports an EXPERIMENTAL xml changelog feature based on
 "draft-wang-netmod-module-revision-management-01" (Zitao Wang et al)
 where changes to the Yang model are documented and loaded into
-Clixon.
+Clixon. The implementation is not complete.
 
 When upgrading, the system parses the changelog and tries to upgrade
 the datastore automatically. This featire is experimental and has
@@ -369,10 +335,10 @@ several limitations.
 
 You enable the automatic upgrading by registering the changelog upgrade method in `clixon_plugin_ini()` using wildcards:
 ```
-   upgrade_callback_register(h, yang_changelog_upgrade, NULL, 0, 0, NULL);
+   upgrade_callback_register(h, xml_changelog_upgrade, NULL, 0, 0, NULL);
 ```
 
-The transformation is defined by a list of changelogs. Each changelog defined how a module (defined by a namespace) is transformed from an old revision to a nnew. Example:
+The transformation is defined by a list of changelogs. Each changelog defined how a module (defined by a namespace) is transformed from an old revision to a nnew. Example from [test_upgrade_auto.sh](../test/test_upgrade_auto.sh)
 ```
 <changelogs xmlns="http://clicon.org/xml-changelog">
   <changelog>
@@ -389,12 +355,12 @@ Each changelog consists of set of (orderered) steps:
       <name>1</name>
       <op>insert</op>
       <where>/a:system</where>
-      <transform>&lt;y&gt;created&lt;/y&gt;</transform>
+      <new><y>created</y></new>
     </step>
     <step>
       <name>2</name>
       <op>delete</op>
-       <where>/a:system/a:x</where>
+      <where>/a:system/a:x</where>
     </step>
 ```
 Each step has an (atomic) operation:

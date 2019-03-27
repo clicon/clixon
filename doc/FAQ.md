@@ -37,6 +37,7 @@
   * [I want to add a hook to an existing operation, can I do that?](#i-want-to-add-a-hook-to-an-existing-operation-can-i-do-that)
   * [How do I write an authentication callback?](#how-do-i-write-an-authentication-callback)
   * [What about access control?](#what-about-access-control)
+  * [Does Clixon support upgrade?](#does-clixon-support-upgrade)
   * [How do I write a CLI translator function?](#how-do-i-write-a-cli-translator-function)
 
 ## What is Clixon?
@@ -569,6 +570,11 @@ Control Model defined in [RFC8341](https://tools.ietf.org/html/rfc8341)
 
 Incoming RPC and data node access points are supported with some
 limitations. See the (README)(../README.md) for more information.
+
+## Does Clixon support upgrade?
+
+Yes. Clixon provides a callback interface where datastores can be
+upgraded. This is described in [the startup doc](startup.md).
 
 ## How do I write a CLI translator function?
 

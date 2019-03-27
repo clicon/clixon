@@ -267,7 +267,7 @@ example_statedata(clicon_handle h,
  * @retval    -1       Error
  * @see clicon_upgrade_cb
  * @see test_upgrade_interfaces.sh
- * @see upgrade_interfaces_2016
+ * @see upgrade_2016
  * This example shows a two-step upgrade where the 2014 function does:
  * - Move /if:interfaces-state/if:interface/if:admin-status to 
  *        /if:interfaces/if:interface/
@@ -276,13 +276,13 @@ example_statedata(clicon_handle h,
  * - Rename /interfaces/interface/description to descr 
  */
 static int
-upgrade_interfaces_2014(clicon_handle h,       
-			cxobj        *xt,      
-			char         *ns,
-			uint32_t      from,
-			uint32_t      to,
-			void         *arg,     
-			cbuf         *cbret)
+upgrade_2016(clicon_handle h,       
+	     cxobj        *xt,      
+	     char         *ns,
+	     uint32_t      from,
+	     uint32_t      to,
+	     void         *arg,     
+	     cbuf         *cbret)
 {
     int        retval = -1;
     yang_spec *yspec;
@@ -367,7 +367,7 @@ upgrade_interfaces_2014(clicon_handle h,
  * @retval    -1       Error
  * @see clicon_upgrade_cb
  * @see test_upgrade_interfaces.sh
- * @see upgrade_interfaces_2014
+ * @see upgrade_2016
  * The 2016 function does:
  * - Delete /if:interfaces-state
  * - Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr
@@ -375,13 +375,13 @@ upgrade_interfaces_2014(clicon_handle h,
  *   fraction-digits 3 and divide all values with 1000
  */
 static int
-upgrade_interfaces_2016(clicon_handle h,       
-			cxobj        *xt,      
-			char         *ns,
-			uint32_t      from,
-			uint32_t      to,
-			void         *arg,     
-			cbuf         *cbret)
+upgrade_2018(clicon_handle h,       
+	     cxobj        *xt,      
+	     char         *ns,
+	     uint32_t      from,
+	     uint32_t      to,
+	     void         *arg,     
+	     cbuf         *cbret)
 {
     int        retval = -1;
     yang_spec *yspec;
@@ -624,9 +624,9 @@ clixon_plugin_init(clicon_handle h)
      * test interface example. Otherwise the auto-upgrade feature is enabled.
      */
     if (_upgrade){
-	if (upgrade_callback_register(h, upgrade_interfaces_2014, "urn:example:interfaces", 0, 0, NULL) < 0)
+	if (upgrade_callback_register(h, upgrade_2016, "urn:example:interfaces", 20140508, 20160101, NULL) < 0)
 	    goto done;
-	if (upgrade_callback_register(h, upgrade_interfaces_2016, "urn:example:interfaces", 0, 0, NULL) < 0)
+	if (upgrade_callback_register(h, upgrade_2018, "urn:example:interfaces", 20160101, 20180220, NULL) < 0)
 	    goto done;
     }
     else

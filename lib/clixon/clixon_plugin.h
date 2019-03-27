@@ -204,7 +204,7 @@ struct clixon_plugin_api{
 /*
  * Macros
  */
-#define upgrade_callback_register(h, cb, namespace, from, to, arg) upgrade_callback_reg_fn((h), (cb), #cb, (namespace), (from), (to), (arg))
+#define upgrade_callback_register(h, cb, namespace, from, rev, arg) upgrade_callback_reg_fn((h), (cb), #cb, (namespace), (from), (rev), (arg))
 
 typedef struct clixon_plugin_api clixon_plugin_api;
 

@@ -1,5 +1,21 @@
 #!/bin/bash
-# Yang features. if-feature. and schema resources according to RFC7895
+# Yang features. if-feature.
+# The test has a example module with FEATURES A and B, where A is enabled and
+# B is disabled.
+# It also uses an ietf-router module where (only) router-id is enabled
+# Also check modules-state (RFC7895) announces the enabled features.
+#
+# From RFC7950:
+# 7.20.1 Schema nodes tagged with an "if-feature" statement are _ignored_ by
+# the server unless the server supports the given feature expression.
+# 8.1: There MUST be no nodes tagged with "if-feature" present if the
+#  "if-feature" expression evaluates to "false" in the server.
+# - Should the server just "ignore" these nodes or actively reject them?
+#
+# Clixon has a strict implementation of the features so that setting
+# data with disabled features is same as if they are not present in the Yang.
+# Which means no cli syntax or edit operations were syntactically allowed
+# (and therefore invalid).
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -31,7 +47,7 @@ cat <<EOF > $cfg
 EOF
 
 cat <<EOF > $fyang
-module $APPNAME{
+module example{
    yang-version 1.1;
    namespace "urn:example:clixon";
    prefix ex;
@@ -42,9 +58,6 @@ module $APPNAME{
       description "This test feature is enabled";
    }
    feature B{
-      description "This test feature is disabled";
-   }
-   feature C{
       description "This test feature is disabled";
    }
    leaf x{

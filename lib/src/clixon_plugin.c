@@ -559,8 +559,8 @@ static upgrade_callback_t *upgrade_cb_list = NULL;
  * @param[in]  fnstr     Stringified function for debug
  * @param[in]  arg       Domain-specific argument to send to callback 
  * @param[in]  namespace Module namespace (if NULL all modules) 
- * @param[in]  rev       To module revision (0 means module obsoleted)
  * @param[in]  from      From module revision (0 from any revision)
+ * @param[in]  revision  To module revision (0 means module obsoleted)
  * @retval     0         OK
  * @retval    -1         Error
  * @see upgrade_callback_call  which makes the actual callback
@@ -570,8 +570,8 @@ upgrade_callback_reg_fn(clicon_handle     h,
 			clicon_upgrade_cb cb,
 			const char       *fnstr,
 			char             *namespace,
-			uint32_t          revision,
 			uint32_t          from,
+			uint32_t          revision,
 			void             *arg)
 {
     upgrade_callback_t *uc;
