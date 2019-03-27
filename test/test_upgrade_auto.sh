@@ -266,7 +266,6 @@ start_restconf -f $cfg
 new "waiting"
 sleep $RCWAIT
 
-new "Check failsafe (work in progress)"
 new "Check running db content"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
 

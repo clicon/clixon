@@ -214,4 +214,8 @@ int clicon_module_state_set(clicon_handle h, cxobj *xms);
 cxobj *clicon_xml_changelog_get(clicon_handle h);
 int clicon_xml_changelog_set(clicon_handle h, cxobj *xchlog);
 
+/*! Set and get user command-line options (after --) */
+int clicon_argv_get(clicon_handle h, int *argc, char ***argv);
+int clicon_argv_set(clicon_handle h, char *argv0, int argc, char **argv);
+
 #endif  /* _CLIXON_OPTIONS_H_ */

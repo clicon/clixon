@@ -509,6 +509,7 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+    clicon_argv_set(h, argv0, argc, argv);
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
 
     /* Defer: Wait to the last minute to print help message */
@@ -705,6 +706,8 @@ main(int    argc,
     }
 
     if (status != STARTUP_OK){
+	if (cbuf_len(cbret))
+	    clicon_log(LOG_NOTICE, "%s: %u %s", __PROGRAM__, getpid(), cbuf_get(cbret));
 	if (startup_failsafe(h) < 0){
 	    goto done;
 	}

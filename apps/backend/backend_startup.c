@@ -304,15 +304,16 @@ startup_failsafe(clicon_handle h)
     if ((ret = xmldb_exists(h, db)) < 0)
 	goto done;
     if (ret == 0){ /* No it does not exist, fail */
-	clicon_err(OE_DB, 0, "No failsafe database");
+	clicon_err(OE_DB, 0, "Startup failed and no Failsafe database found, exiting");
 	goto done;
     }
     if ((ret = candidate_commit(h, db, cbret)) < 0) /* diff */
 	goto done;
     if (ret == 0){
-	clicon_err(OE_DB, 0, "Failsafe database validation failed %s", cbuf_get(cbret));
+	clicon_err(OE_DB, 0, "Startup failed, Failsafe database validation failed %s", cbuf_get(cbret));
 	goto done;
     }
+    clicon_log(LOG_NOTICE, "Startup failed, Failsafe database loaded ");
     retval = 0;
  done:
     if (cbret)

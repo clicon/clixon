@@ -808,7 +808,7 @@ xml_find(cxobj *x_up,
  * @param[in] xc  Child xml node to insert under xp
  * @retval    0   OK
  * @retval    -1  Error
- * @see xml_insert
+ * @see xml_wrap
  */
 int
 xml_addsub(cxobj *xp, 
@@ -836,30 +836,55 @@ xml_addsub(cxobj *xp,
     return 0;
 }
 
-/*! Insert a new element (xc) under an xml node (xp), move all children to xc.
- *  Before:  xp --> xt
- *  After:   xp --> xc --> xt
+/*! Wrap a new node between a parent xml node (xp) and all its children
+ *  Before:  xp --> xc*
+ *  After:   xp --> xw --> xc*
+ * @param[in] xp  Parent xml node
+ * @param[in] tag Name of new xml child
+ * @retval    xw  Return the new child (xw)
+ * @see xml_addsub
+ * @see xml_wrap  (wrap s single node)
+ */
+cxobj *
+xml_wrap_all(cxobj *xp, 
+	     char  *tag)
+{
+    cxobj *xw; /* new wrap node */
+
+    if ((xw = xml_new(tag, NULL, NULL)) == NULL)
+	goto done;
+    while (xp->x_childvec_len)
+	if (xml_addsub(xw, xml_child_i(xp, 0)) < 0)
+	    goto done;
+    if (xml_addsub(xp, xw) < 0)
+	goto done;
+  done:
+    return xw;
+}
+
+/*! Wrap a new element above a single xml node (xc) with new tag 
+ *  Before:  xp --> xc # specific child
+ *  After:   xp --> xt(tag) --> xc
  * @param[in] xp  Parent xml node
  * @param[in] tag Name of new xml child
  * @retval    xc  Return the new child (xc)
- * @see xml_addsub
- * The name of the function is somewhat misleading, should be called "wrap"
+ * @see xml_addsub (give the parent)
+ * @see xml_wrap_all  (wrap all children of a node, not just one)
  */
 cxobj *
-xml_insert(cxobj *xp, 
-	   char  *tag)
+xml_wrap(cxobj *xc, 
+	 char  *tag)
 {
-    cxobj *xc; /* new child */
+    cxobj *xw; /* new wrap node */
+    cxobj *xp; /* parent */
 
-    if ((xc = xml_new(tag, NULL, NULL)) == NULL)
-	goto catch;
-    while (xp->x_childvec_len)
-	if (xml_addsub(xc, xml_child_i(xp, 0)) < 0)
-	    goto catch;
-    if (xml_addsub(xp, xc) < 0)
-	goto catch;
-  catch:
-    return xc;
+    xp = xml_parent(xc);
+    if ((xw = xml_new(tag, xp, NULL)) == NULL)
+	goto done;
+    if (xml_addsub(xw, xc) < 0)
+	goto done;
+  done:
+    return xw;
 }
 
 /*! Remove and free an xml node child from xml parent
@@ -961,7 +986,7 @@ xml_rm(cxobj *xc)
 
 /*! Return a child sub-tree, while removing parent and all other children
  * Given a root xml node, and the i:th child, remove the child from its parent
- * and return it, remove the parent and all other children.
+ * and return it, remove the parent and all other children. (unwrap)
  * Before: xp-->[..xc..]
  * After: xc
  * @param[in]  xp   xml parent node. Will be deleted
@@ -1009,7 +1034,7 @@ xml_rootchild(cxobj  *xp,
 
 /*! Return a child sub-tree, while removing parent and all other children
  * Given a root xml node, remove the child from its parent
- * , remove the parent and all other children.
+ * , remove the parent and all other children. (unwrap)
  * Before: xp-->[..xc..]
  * After: xc
  * @param[in]  xp   xml parent node. Must be root. Will be deleted
@@ -1045,8 +1070,7 @@ xml_rootchild_node(cxobj  *xp,
     return retval;
 }
 
-
-/*! help function to sorting: enumerate all children according to present order
+/*! Help function to sorting: enumerate all children according to present order
  * This is so that the child itself know its present order in a list.
  * When sorting by "ordered by user", the order should remain in its present
  * state.
