@@ -1,4 +1,4 @@
-# Startup of the Clixon backend
+# Startup and upgrading
 
   * [Background](#background)
   * [Modes](#modes)
@@ -108,9 +108,9 @@ Example of a (simplified) datastore with Yang module-state:
 ## Upgrade callback
 
 This section describes how a user can write upgrade callbacks for data
-modeled by outdated Yang models. The scenario is that a Clixon system
-is started with a set of current yang models, but loads a datastore
-with old or even obsolete data.
+modeled by outdated Yang models. The scenario is a Clixon system with
+a set of current yang models that loads a datastore with old or even
+obsolete data.
 
 Note that this feature is only available if
 [module-state](module-state) in the datastore is enabled.
