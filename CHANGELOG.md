@@ -35,6 +35,28 @@
 
 
 ### API changes on existing features (you may need to change your code)
+* Removed argc/argv parameters from ca_start plugin API function:
+  * You may need to change signatures of your startup in your plugins, eg from:
+  ```
+    int xxx_start(clicon_handle h, int argc, char **argv)
+    {
+	return 0;
+    }
+    static clixon_plugin_api xxx_api = {
+        ...
+	.ca_start = xxx_start,
+  ```
+    to:
+  ```
+    int xxx_start(clicon_handle h)
+    {
+	return 0;
+    }
+    static clixon_plugin_api xxx_api = {
+        ...
+	.ca_start = xxx_start,
+  ```
+    * If you use argv/argc use `clicon_argv_get()` in the init function instead.
 * Changed hash API for better error handling
   * hash_dump, hash_keys, clicon_option_dump have new signatures
 * Renamed `xml_insert` to `xml_wrap_all`.

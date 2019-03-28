@@ -163,23 +163,6 @@ backend_server_socket(clicon_handle h)
     return ss;
 }
 
-/*! Call plugin_start with -- user options */
-static int
-plugin_start_useroptions(clicon_handle h,
-			 char         *argv0,
-			 int           argc,
-			 char        **argv)
-{
-    char *tmp;
-
-    tmp = *(argv-1);
-    *(argv-1) = argv0;
-    if (clixon_plugin_start(h, argc+1, argv-1) < 0) 
-	return -1;
-    *(argv-1) = tmp;
-    return 0;
-}
-
 /*! Load external NACM file
  */
 static int
@@ -726,7 +709,7 @@ main(int    argc,
 	clicon_log(LOG_NOTICE, "%s: %u %s", __PROGRAM__, getpid(), cbuf_get(cbret));
 	
     /* Call backend plugin_start with user -- options */
-    if (plugin_start_useroptions(h, argv0, argc, argv) <0)
+    if (clixon_plugin_start(h) < 0)
 	goto done;
     if (once)
 	goto done;

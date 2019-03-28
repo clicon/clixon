@@ -89,9 +89,7 @@ nacm_statedata(clicon_handle h,
 }
 
 int
-plugin_start(clicon_handle h,
-	     int           argc,
-	     char        **argv)
+plugin_start(clicon_handle h)
 {
     return 0;
 }

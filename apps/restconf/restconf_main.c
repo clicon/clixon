@@ -520,7 +520,6 @@ main(int    argc,
     char         *path;
     clicon_handle h;
     char         *dir;
-    char	 *tmp;
     int          logdst = CLICON_LOG_SYSLOG;
     yang_spec   *yspec = NULL;
     yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
@@ -677,12 +676,9 @@ main(int    argc,
 	 yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
 	 goto done;
     /* Call start function in all plugins before we go interactive 
-       Pass all args after the standard options to plugin_start
      */
-    tmp = *(argv-1);
-    *(argv-1) = argv0;
-    clixon_plugin_start(h, argc+1, argv-1);
-    *(argv-1) = tmp;
+     if (clixon_plugin_start(h) < 0)
+	 goto done;
 
     if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){
 	clicon_err(OE_CFG, errno, "No CLICON_RESTCONF_PATH in clixon configure file");

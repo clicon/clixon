@@ -51,7 +51,7 @@
  * the main event loop is entered.
  */
 int
-plugin_start(clicon_handle h, int argc, char **argv)
+plugin_start(clicon_handle h)
 {
     return 0;
 }

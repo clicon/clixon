@@ -98,12 +98,9 @@ typedef int (*clicon_upgrade_cb)(
  *   Backend see config_plugin.c
  */
 
-/* Called when backend started with cmd-line arguments from daemon call. 
- * Call plugin start functions with argc/argv multiple arguments.
- * Typically the argc/argv are the ones appearing after "--", eg
- * clicon_cli -f /etc/clicon.xml -- -a myopt
+/* Called when application started (eg after daemon call). 
  */
-typedef int (plgstart_t)(clicon_handle, int, char **); /* Plugin start */
+typedef int (plgstart_t)(clicon_handle); /* Plugin start */
 
 /* Called just before plugin unloaded. 
  */
@@ -141,7 +138,7 @@ typedef char *(cli_prompthook_t)(clicon_handle, char *mode);
  * Note that for STARTUP_ERR and _INVALID, running runs in failsafe mode
  * and startup contains the erroneous or invalid database.
  * The user should repair the startup and 
- * (1) restart he backend
+ * (1) restart the backend
  * (2) copy startup to candidate and commit.
  */
 enum startup_status{
@@ -237,7 +234,7 @@ clixon_plugin *clixon_plugin_find(clicon_handle h, char *name);
 
 int clixon_plugins_load(clicon_handle h, char *function, char *dir, char *regexp);
 
-int clixon_plugin_start(clicon_handle h, int argc, char **argv);
+int clixon_plugin_start(clicon_handle h);
 
 int clixon_plugin_exit(clicon_handle h);
 

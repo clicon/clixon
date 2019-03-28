@@ -496,21 +496,12 @@ example_reset(clicon_handle h,
 
 /*! Plugin start.
  * @param[in]  h     Clicon handle
- * @param[in]  argc  Argument vector length (args after -- to backend_main)
- * @param[in]  argv  Argument vector 
  *
  * plugin_start is called once everything has been initialized, right before 
  * the main event loop is entered. 
- * From the cli/backend, command line options can be passed to the 
- * plugins by using "-- <args>" where <args> is any choice of 
- * options specific to the application. These options are passed to the
- * plugin_start function via the argc and argv arguments which
- * can be processed with the standard getopt(3).
  */
 int
-example_start(clicon_handle h,
-	      int           argc,
-	      char        **argv)
+example_start(clicon_handle h)
 {
     return 0;
 }
@@ -555,6 +546,7 @@ clixon_plugin_init(clicon_handle h)
 
     clicon_debug(1, "%s backend", __FUNCTION__);
 
+    /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
 	goto done;
     opterr = 0;

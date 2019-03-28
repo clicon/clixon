@@ -1076,7 +1076,7 @@ clicon_argv_get(clicon_handle h,
     if (argv){
 	if ((p = hash_value(cdat, "argv", NULL)) == NULL)
 	    return -1;
-	*argv = *(char***)p;
+	*argv = (char**)p;
     }
     return 0;
 }
@@ -1099,15 +1099,18 @@ clicon_argv_set(clicon_handle h,
     int             retval = -1;
     clicon_hash_t  *cdat = clicon_data(h);
     char          **argvv = NULL;
-
+    size_t          len;
+    
     /* add space for null-termination and argv[0] program name */
-    if ((argvv = calloc(argc+2, sizeof(char*))) == NULL){
+    len = argc+2;
+    if ((argvv = calloc(len, sizeof(char*))) == NULL){
 	clicon_err(OE_UNIX, errno, "calloc");
 	goto done;
     }
     memcpy(argvv+1, argv, argc*sizeof(char*));
     argvv[0] = prgm;
-    if (hash_add(cdat, "argv", &argvv, sizeof(argvv))==NULL)
+    /* Note the value is the argv vector (which is copied) */
+    if (hash_add(cdat, "argv", argvv, len*sizeof(char*))==NULL) 
 	goto done;
     argc += 1;
     if (hash_add(cdat, "argc", &argc, sizeof(argc))==NULL)

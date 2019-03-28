@@ -350,7 +350,6 @@ main(int    argc,
      char **argv)
 {
     int              c;
-    char            *tmp;
     char            *argv0 = argv[0];
     int              quiet = 0;
     clicon_handle    h;
@@ -511,10 +510,8 @@ main(int    argc,
 	    goto done;
 
     /* Call start function is all plugins before we go interactive */
-    tmp = *(argv-1);
-    *(argv-1) = argv0;
-    clixon_plugin_start(h, argc+1, argv-1);
-    *(argv-1) = tmp;
+    if (clixon_plugin_start(h) < 0)
+	goto done;
 
     if (!quiet)
 	send_hello(h, 1);

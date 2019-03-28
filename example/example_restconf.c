@@ -54,8 +54,8 @@ static const char Base64[] =
 static const char Pad64 = '=';
 
 /* Use http basic auth. Set by starting restonf with:
-   clixon_restconf ... -- -a
-*/
+ *   clixon_restconf ... -- -a
+ */
 static int basic_auth = 0;
 
 /* skips all whitespace anywhere.
@@ -298,29 +298,11 @@ restconf_client_rpc(clicon_handle h,
 }
 
 /*! Start example restonf plugin. Set authentication method
- * Arguments are argc/argv after --
- * Currently defined: -a  enable http basic authentication
- * @note There are three hardwired users andy, wilma and guest from RFC8341 A.1
  */
 int
-example_restconf_start(clicon_handle h,
-		       int           argc,
-		       char        **argv)
+example_restconf_start(clicon_handle h)
 {
-    int c;
-
-    clicon_debug(1, "%s argc:%d", __FUNCTION__, argc);
-    optind = 1;
-    opterr = 0;
-    while ((c = getopt(argc, argv, "a")) != -1){
-	switch (c) {
-	case 'a':
-	    basic_auth = 1;
-	    break;
-	default:
-	    break;
-	}
-    }
+    clicon_debug(1, "%s", __FUNCTION__);
     return 0;
 }
 
@@ -338,11 +320,31 @@ static clixon_plugin_api api = {
  * @param[in]  h    Clixon handle
  * @retval     NULL Error with clicon_err set
  * @retval     api  Pointer to API struct
+ * Arguments are argc/argv after --
+ * Currently defined: -a  enable http basic authentication
+ * @note There are three hardwired users andy, wilma and guest from RFC8341 A.1
  */
 clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
+    int       argc; /* command-line options (after --) */
+    char    **argv = NULL;
+    char      c;
+    
     clicon_debug(1, "%s restconf", __FUNCTION__);
+    /* Get user command-line options (after --) */
+    if (clicon_argv_get(h, &argc, &argv) < 0)
+	return NULL;
+    opterr = 0;
+    optind = 1;
+    while ((c = getopt(argc, argv, "a")) != -1)
+	switch (c) {
+	case 'a':
+	    basic_auth = 1;
+	    break;
+	default:
+	    break;
+	}
     /* Register local netconf rpc client (note not backend rpc client) */
     if (rpc_callback_register(h, restconf_client_rpc, NULL, "urn:example:clixon", "client-rpc") < 0)
 	return NULL;

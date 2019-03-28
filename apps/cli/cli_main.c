@@ -540,12 +540,9 @@ main(int argc, char **argv)
     cligen_match_cgvar_same(1);
 
     /* Call start function in all plugins before we go interactive 
-       Pass all args after the standard options to plugin_start
      */
-    tmp = *(argv-1);
-    *(argv-1) = argv0;
-    clixon_plugin_start(h, argc+1, argv-1);
-    *(argv-1) = tmp;
+    if (clixon_plugin_start(h) < 0)
+	goto done;
 
     cligen_line_scrolling_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_LINESCROLLING"));
     /*! Start CLI history and load from file */
