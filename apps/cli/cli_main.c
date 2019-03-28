@@ -86,7 +86,11 @@ cli_history_load(clicon_handle h)
     FILE     *f = NULL;
     wordexp_t result = {0,}; /* for tilde expansion */
 
-    lines = clicon_option_int(h,"CLICON_CLI_HIST_SIZE");
+    /* Get history size from clixon option, if not use cligen default. */
+    if (clicon_option_exists(h, "CLICON_CLI_HIST_SIZE"))
+	lines = clicon_option_int(h,"CLICON_CLI_HIST_SIZE");
+    else
+	lines = CLIGEN_HISTSIZE_DEFAULT;
     /* Re-init history with clixon lines (1st time was w cligen defaults) */
     if (cligen_hist_init(cli_cligen(h), lines) < 0)
 	goto done;
