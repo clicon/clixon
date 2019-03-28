@@ -86,24 +86,25 @@ static const map_str2int startup_mode_map[] = {
 };
 
 /*! Print registry on file. For debugging.
+ * @param[in] h        Clicon handle
+ * @param[in] dbglevel Debug level
+ * @retval    0        OK
+ * @retval   -1        Error
  */
-void
+int
 clicon_option_dump(clicon_handle h, 
 		   int           dbglevel)
 {
+    int            retval = -1;
     clicon_hash_t *hash = clicon_options(h);
     int            i;
-    char         **keys;
+    char         **keys = NULL;
     void          *val;
     size_t         klen;
     size_t         vlen;
     
-    if (hash == NULL)
-	return;
-    keys = hash_keys(hash, &klen);
-    if (keys == NULL)
-	return;
-	
+    if (hash_keys(hash, &keys, &klen) < 0)
+	goto done;
     for(i = 0; i < klen; i++) {
 	val = hash_value(hash, keys[i], &vlen);
 	if (vlen){
@@ -115,7 +116,11 @@ clicon_option_dump(clicon_handle h,
 	else
 	    clicon_debug(dbglevel, "%s = NULL", keys[i]);
     }
-    free(keys);
+    retval = 0;
+ done:
+    if (keys)
+	free(keys);
+    return retval;
 }
 
 /*! Read filename and set values to global options registry. XML variant.
@@ -1063,12 +1068,16 @@ clicon_argv_get(clicon_handle h,
     clicon_hash_t *cdat = clicon_data(h);
     void          *p;
 
-    if ((p = hash_value(cdat, "argc", NULL)) == NULL)
-	return -1;
-    *argc = *(int*)p;
-    if ((p = hash_value(cdat, "argv", NULL)) == NULL)
-	return -1;
-    *argv = *(char***)p;
+    if (argc){
+	if ((p = hash_value(cdat, "argc", NULL)) == NULL)
+	    return -1;
+	*argc = *(int*)p;
+    }
+    if (argv){
+	if ((p = hash_value(cdat, "argv", NULL)) == NULL)
+	    return -1;
+	*argv = *(char***)p;
+    }
     return 0;
 }
 
@@ -1076,9 +1085,10 @@ clicon_argv_get(clicon_handle h,
  * @param[in] h     Clicon handle
  * @param[in] prog  argv[0] - the program name
  * @param[in] argc  Length of argv
- * @param[in] argv  Array of command-line options
+ * @param[in] argv  Array of command-line options or NULL
  * @retval    0     OK
  * @retval   -1     Error
+ * @note If argv=NULL deallocate allocated argv vector if exists.
  */
 int
 clicon_argv_set(clicon_handle h, 
@@ -1086,20 +1096,25 @@ clicon_argv_set(clicon_handle h,
 		int           argc,
 		char        **argv)
 {
+    int             retval = -1;
     clicon_hash_t  *cdat = clicon_data(h);
     char          **argvv = NULL;
 
     /* add space for null-termination and argv[0] program name */
     if ((argvv = calloc(argc+2, sizeof(char*))) == NULL){
 	clicon_err(OE_UNIX, errno, "calloc");
-	return -1;
+	goto done;
     }
     memcpy(argvv+1, argv, argc*sizeof(char*));
     argvv[0] = prgm;
     if (hash_add(cdat, "argv", &argvv, sizeof(argvv))==NULL)
-	return -1;
+	goto done;
     argc += 1;
     if (hash_add(cdat, "argc", &argc, sizeof(argc))==NULL)
-	return -1;
-    return 0;
+	goto done;
+    retval = 0;
+ done:
+    if (argvv)
+	free(argvv);
+    return retval;
 }

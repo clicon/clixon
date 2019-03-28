@@ -633,6 +633,9 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+    /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
+    clicon_argv_set(h, argv0, argc, argv);
+    
     /* Initialize plugins group */
     if ((dir = clicon_restconf_dir(h)) != NULL)
 	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)

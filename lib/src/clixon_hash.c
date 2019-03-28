@@ -105,16 +105,16 @@ hash_bucket(const char *str)
 
     while(*str)
 	n += (uint32_t)*str++;
-    
     return n % HASH_SIZE;
 }
 
 /*! Initialize hash table.
  *
- * @retval Pointer to new hash table.
+ * @retval  hash  Pointer to new hash table.
+ * @retval  NULL  Error
  */
 clicon_hash_t *
-hash_init (void)
+hash_init(void)
 {
   clicon_hash_t *hash;
 
@@ -148,19 +148,18 @@ hash_free(clicon_hash_t *hash)
     free(hash);
 }
 
-
 /*! Find hash key.
  *
  * @param[in] hash     Hash table
  * @param[in] key      Variable name
  * @retval    variable Hash variable structure on success
- * @retval    NULL     Error
+ * @retval    NULL     Not found
  */
 clicon_hash_t
 hash_lookup(clicon_hash_t *hash, 
 	    const char    *key)
 {
-    uint32_t bkt;
+    uint32_t      bkt;
     clicon_hash_t h;
 
     bkt = hash_bucket(key);
@@ -176,11 +175,11 @@ hash_lookup(clicon_hash_t *hash,
 }
 
 /*! Get value of hash
- * @param[in]  hash Hash table
- * @param[in]  key  Variable name
- * @param[out] vlen Length of value (as returned by function)
- * @retval value    Hash value, length given in vlen
- * @retval NULL     Error
+ * @param[in]  hash   Hash table
+ * @param[in]  key    Variable name
+ * @param[out] vlen   Length of value (as returned by function if != NULL)
+ * @retval     value  Hash value, length given in vlen 
+ * @retval     NULL   Key not found or value NULL
  */
 void *
 hash_value(clicon_hash_t *hash, 
@@ -191,7 +190,7 @@ hash_value(clicon_hash_t *hash,
 
     h = hash_lookup(hash, key);
     if (h == NULL)
-	return NULL;
+	return NULL; /* OK, key not found */
 
     if (vlen)
 	*vlen = h->h_vlen;
@@ -204,8 +203,9 @@ hash_value(clicon_hash_t *hash,
  * @param[in] key    Variable name
  * @param[in] val    Variable value (pointer to)
  * @param[in] vlen   Length of variable value
- * @retval variable  New hash structure on success
- * @retval NULL      Failure
+ * @retval    hash   New hash structure on success
+ * @retval    NULL   Error
+ * @note special case val is NULL and vlen==0
  */
 clicon_hash_t
 hash_add(clicon_hash_t *hash, 
@@ -213,10 +213,16 @@ hash_add(clicon_hash_t *hash,
 	 void          *val, 
 	 size_t         vlen)
 {
-    void         *newval;
+    void         *newval = NULL;
     clicon_hash_t h;
     clicon_hash_t new = NULL;
     
+    /* Check NULL case */
+    if ((val == NULL && vlen != 0) ||
+	(val != NULL && vlen == 0)){
+	clicon_err(OE_UNIX, EINVAL, "Mismatch in value and length, only one is zero");
+	goto catch;
+    }
     /* If variable exist, don't allocate a new. just replace value */
     h = hash_lookup(hash, key);
     if (h == NULL) {
@@ -235,13 +241,15 @@ hash_add(clicon_hash_t *hash,
 	h = new;
     }
     
-    /* Make copy of value. aligned */
-    newval = malloc(align4(vlen+3)); 
-    if (newval == NULL){
-	clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
-	goto catch;
+    if (vlen){
+	/* Make copy of value. aligned */
+	newval = malloc(align4(vlen+3)); 
+	if (newval == NULL){
+	    clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
+	    goto catch;
+	}
+	memcpy(newval, val, vlen);
     }
-    memcpy(newval, val, vlen);
     
     /* Free old value if existing variable */
     if (h->h_val)
@@ -270,8 +278,8 @@ catch:
  * @param[in] hash    Hash table
  * @param[in] key     Variable name
  *
- * @retval   0  success
- * @retval  -1  failure
+ * @retval    0       OK
+ * @retval   -1       Key not found
  */
 int
 hash_del(clicon_hash_t *hash, 
@@ -295,18 +303,22 @@ hash_del(clicon_hash_t *hash,
 /*! Return vector of keys in hash table
  *
  * @param[in]   hash  	Hash table
+ * @param[out]  vector  Vector of keys, NULL if not found
  * @param[out]	nkeys   Size of key vector
- * @retval      vector  Vector of keys
- * @retval      NULL    Error
+ * @retval      0       OK
+ * @retval     -1       Error
+ * @note: vector needs to be deallocated with free
  */
-char **
+int
 hash_keys(clicon_hash_t *hash, 
+	  char        ***vector,
 	  size_t        *nkeys)
 {
-    int bkt;
+    int           retval = -1;
+    int           bkt;
     clicon_hash_t h;
-    char **tmp;
-    char **keys = NULL;
+    char        **tmp;
+    char        **keys = NULL;
 
     *nkeys = 0;
     for (bkt = 0; bkt < HASH_SIZE; bkt++) {
@@ -325,40 +337,48 @@ hash_keys(clicon_hash_t *hash,
 	    h = NEXTQ(clicon_hash_t, h);
 	} while (h != hash[bkt]);
     }
-
-    return keys;
-
+    if (vector){
+	*vector = keys;
+	keys = NULL;
+    }
+    retval = 0;
 catch:
     if (keys)
 	free(keys);
-    return NULL;
+    return retval;
 }
 
 /*! Dump contents of hash to FILE pointer.
  *
  * @param[in]   hash  	Hash structure
  * @param[in]	f	FILE pointer for print output
- * @retval      void
+ * @retval      0       OK
+ * @retval     -1       Error
  */
-void
+int
 hash_dump(clicon_hash_t *hash, 
 	  FILE          *f)
 {
-    int i;
-    char **keys;
-    void *val;
+    int    retval = -1;
+    int    i;
+    char **keys = NULL;
+    void  *val;
     size_t klen;
     size_t vlen;
     
     if (hash == NULL)
-	return;
-    keys = hash_keys(hash, &klen);
-    if (keys == NULL)
-	return;
-	
+	goto ok;
+    if (hash_keys(hash, &keys, &klen) < 0)
+	goto done;
     for(i = 0; i < klen; i++) {
 	val = hash_value(hash, keys[i], &vlen);
 	printf("%s =\t 0x%p , length %zu\n", keys[i], val, vlen);
     }
-    free(keys);
+
+ ok:
+    retval = 0;
+ done:
+    if (keys)
+	free(keys);
+    return retval;
 }

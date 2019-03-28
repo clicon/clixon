@@ -79,7 +79,7 @@ enum startup_mode_t{
  */
 
 /* Print registry on file. For debugging. */
-void clicon_option_dump(clicon_handle h, int dblevel);
+int clicon_option_dump(clicon_handle h, int dblevel);
 
 /* Add a clicon options overriding file setting */
 int clicon_option_add(clicon_handle h,	char *name, char *value);

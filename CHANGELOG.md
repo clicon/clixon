@@ -33,7 +33,10 @@
     * CLICON_XML_CHANGELOG enables the yang changelog feature
     * CLICON_XML_CHANGELOG_FILE where the changelog resides
 
+
 ### API changes on existing features (you may need to change your code)
+* Changed hash API for better error handling
+  * hash_dump, hash_keys, clicon_option_dump have new signatures
 * Renamed `xml_insert` to `xml_wrap_all`.
 * Added modules-state diff parameter to xmldb_get datastore function for startup scenarios. Set this to NULL in normal cases.
 * `rpc_callback_register` added a namespace parameter. Example:

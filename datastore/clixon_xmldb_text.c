@@ -201,7 +201,8 @@ text_disconnect(xmldb_handle xh)
 	    free(th->th_dbdir);
 	if (th->th_dbs){
 	    if (th->th_cache){
-		keys = hash_keys(th->th_dbs, &klen);
+		if (hash_keys(th->th_dbs, &keys, &klen) < 0)
+		    goto done;
 		for(i = 0; i < klen; i++) 
 		    if ((de = hash_value(th->th_dbs, keys[i], NULL)) != NULL){
 			if (de->de_xml)
@@ -219,7 +220,7 @@ text_disconnect(xmldb_handle xh)
 	free(th);
     }
     retval = 0;
-    // done:
+ done:
     return retval;
 }
 
@@ -1605,23 +1606,26 @@ int
 text_unlock_all(xmldb_handle xh, 
 	      int            pid)
 {
+    int                 retval = -1;
     struct text_handle *th = handle(xh);
     char              **keys = NULL;
     size_t              klen;
     int                 i;
     struct db_element  *de;
 
-    if ((keys = hash_keys(th->th_dbs, &klen)) == NULL)
-	return 0;
+    if (hash_keys(th->th_dbs, &keys, &klen) < 0)
+	goto done;
     for(i = 0; i < klen; i++) 
 	if ((de = hash_value(th->th_dbs, keys[i], NULL)) != NULL &&
 	    de->de_pid == pid){
 	    de->de_pid = 0;
 	    hash_add(th->th_dbs, keys[i], de, sizeof(*de));
 	}
+    retval = 0;
+ done:
     if (keys)
 	free(keys);
-    return 0;
+    return retval;
 }
 
 /*! Check if database is locked

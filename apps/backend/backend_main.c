@@ -509,7 +509,9 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+    /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
+    
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
 
     /* Defer: Wait to the last minute to print help message */

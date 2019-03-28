@@ -50,9 +50,8 @@ clicon_hash_t hash_lookup (clicon_hash_t *head, const char *key);
 void *hash_value (clicon_hash_t *head, const char *key, size_t *vlen);
 clicon_hash_t hash_add (clicon_hash_t *head, const char *key, void *val, size_t vlen);
 int hash_del (clicon_hash_t *head, const char *key);
-void hash_dump(clicon_hash_t *head, FILE *f);
-char **hash_keys(clicon_hash_t *hash, size_t *nkeys);
-
+int hash_dump(clicon_hash_t *head, FILE *f);
+int hash_keys(clicon_hash_t *hash, char ***vector, size_t *nkeys);
 
 /*
  *   Macros to iterate over hash contents.

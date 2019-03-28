@@ -472,6 +472,9 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+    /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
+    clicon_argv_set(h, argv0, argc, argv);
+
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
