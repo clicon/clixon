@@ -35,6 +35,7 @@
 
 
 ### API changes on existing features (you may need to change your code)
+* Directory change: Moved example to example/main to make room for other examples.
 * Removed argc/argv parameters from ca_start plugin API function:
   * You may need to change signatures of your startup in your plugins, eg from:
   ```

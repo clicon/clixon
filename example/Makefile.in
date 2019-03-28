@@ -33,127 +33,46 @@
 VPATH       	= @srcdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
-prefix 		= @prefix@
-bindir 		= @bindir@
-includedir	= @includedir@
-datarootdir     = @datarootdir@
-sysconfdir      = @sysconfdir@
-datarootdir	= @datarootdir@
-localstatedir   = @localstatedir@
-libdir          = @exec_prefix@/lib
-
-APPNAME	        = example
-# Here is where example yang appears
-CLIXON_DATADIR  = @CLIXON_DATADIR@
-# Install here if you want default clixon location:
-CLIXON_DEFAULT_CONFIG = @CLIXON_DEFAULT_CONFIG@
-
 CC		= @CC@
-CFLAGS  	= @CFLAGS@ -rdynamic -fPIC 
-INSTALLFLAGS  	= @INSTALLFLAGS@ 
-with_restconf	= @with_restconf@
+CFLAGS  	= @CFLAGS@ 
+LDFLAGS 	= @LDFLAGS@
+LIBS    	= @LIBS@
 
-INCLUDES 	= -I$(includedir) @INCLUDES@ 
-CPPFLAGS  	= @CPPFLAGS@ -fPIC
+SHELL	= /bin/sh
 
-BE_PLUGIN       = $(APPNAME)_backend.so
-BE2_PLUGIN      = $(APPNAME)_backend_nacm.so
-CLI_PLUGIN      = $(APPNAME)_cli.so
-NETCONF_PLUGIN  = $(APPNAME)_netconf.so
-RESTCONF_PLUGIN = $(APPNAME)_restconf.so
+SUBDIRS  = main
 
-PLUGINS = $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN)
-ifeq ($(with_restconf),yes)
-PLUGINS += $(RESTCONF_PLUGIN)
-endif
+.PHONY: all clean depend install $(SUBDIRS)
 
-.PHONY: all clean depend install 
+all:	$(SUBDIRS)
 
-all:	$(PLUGINS)
+depend:
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
-.SUFFIXES: .c .o
+$(SUBDIRS):
+	(cd $@; $(MAKE) $(MFLAGS) all)
 
-# implicit rule
-.c.o:
-	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
+install-include:
+	for i in $(SUBDIRS); \
+	do (cd $$i && $(MAKE) $(MFLAGS) $@||exit 1); done; 
 
-CLISPECS = $(APPNAME)_cli.cli
+install:
+	for i in $(SUBDIRS); \
+	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
 
-YANGSPECS	 = clixon-example@2019-01-13.yang
-
-# Backend plugin
-BE_SRC   = $(APPNAME)_backend.c
-BE_OBJ   = $(BE_SRC:%.c=%.o)
-$(BE_PLUGIN): $(BE_OBJ)
-	$(CC) -Wall -shared -o $@ -lc $<
-
-# Secondary NACM backend plugin
-BE2_SRC  = $(APPNAME)_backend_nacm.c
-BE2_OBJ  = $(BE2_SRC:%.c=%.o)
-$(BE2_PLUGIN): $(BE2_OBJ)
-	$(CC) -Wall -shared -o $@ -lc $<
-
-# CLI frontend plugin
-CLI_SRC  = $(APPNAME)_cli.c
-CLI_OBJ  = $(CLI_SRC:%.c=%.o)
-$(CLI_PLUGIN): $(CLI_OBJ)
-	$(CC) -Wall -shared -o $@ -lc $^ 
-
-# NETCONF frontend plugin
-NETCONF_SRC  = $(APPNAME)_netconf.c
-NETCONF_OBJ  = $(NETCONF_SRC:%.c=%.o)
-$(NETCONF_PLUGIN): $(NETCONF_OBJ)
-	$(CC) -Wall -shared -o $@ -lc $^
-
-# See configure.ac
-# RESTCONF frontend plugin
-RESTCONF_SRC  = $(APPNAME)_restconf.c
-RESTCONF_OBJ  = $(RESTCONF_SRC:%.c=%.o)
-$(RESTCONF_PLUGIN): $(RESTCONF_OBJ)
-	$(CC) -Wall -shared -o $@ -lc $^ 
-
-SRC     = $(BE_SRC) $(BE2_SRC) $(CLI_SRC) $(NETCONF_SRC)
-SRC    +=  $(RESTCONF_SRC)
-
-OBJS    = $(BE_OBJ) $(BE2_OBJ) $(CLI_OBJ) $(NETCONF_OBJ)
-OBJS   += $(RESTCONF_OBJ)
+uninstall:
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done
 
 clean:
-	rm -f $(PLUGINS) $(OBJS) 
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
 distclean: clean
 	rm -f Makefile *~ .depend
+	for i in $(SUBDIRS); \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
-install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml
-	install -d -m 0755 $(DESTDIR)$(sysconfdir)
-	install -m 0644 $(APPNAME).xml $(DESTDIR)$(sysconfdir)
-#	install -m 0644 $(APPNAME).xml $(DESTDIR)$(CLIXON_DEFAULT_CONFIG)
-	install -d -m 0755 $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(DESTDIR)$(CLIXON_DATADIR)
-	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/cli
-	install -m 0644 $(INSTALLFLAGS) $(CLI_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/cli
-	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/backend
-	install -m 0644 $(INSTALLFLAGS) $(BE_PLUGIN) $(BE2_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/backend
-	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/netconf
-	install -m 0644 $(INSTALLFLAGS) $(NETCONF_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/netconf
-ifeq ($(with_restconf),yes)
-	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/restconf
-	install -m 0644 $(INSTALLFLAGS) $(RESTCONF_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/restconf
-endif
-	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/clispec
-	install -m 0644 $(CLISPECS) $(DESTDIR)$(libdir)/$(APPNAME)/clispec
-	install -d -m 0755 $(DESTDIR)$(localstatedir)/$(APPNAME)
-
-uninstall: 
-	rm -rf $(DESTDIR)$(sysconfdir)/$(APPNAME).xml
-	rm -rf $(DESTDIR)$(datarootdir)/$(APPNAME)
-	rm -rf $(DESTDIR)$(localstatedir)/$(APPNAME)
-	rm -rf $(DESTDIR)$(libdir)/$(APPNAME)
-
-install-include:	
-
-depend:
-	$(CC) $(DEPENDFLAGS) $(INCLUDES) $(CFLAGS) -MM $(SRC) > .depend
-
-#include .depend
-
+TAGS:
+	find $(srcdir) -name '*.[chyl]' -print | etags -

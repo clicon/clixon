@@ -4,6 +4,7 @@
 *_parse.tab.c
 *_parse.tab.h
 lex.*_parse.c
+*.depend
 
 Makefile
 apps/Makefile

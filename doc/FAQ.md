@@ -75,7 +75,7 @@ Clixon:
 	sudo make install; 
 	sudo make install-include
 ```
-The example: 
+The main example: 
 ```
 	 cd example; 
 	 make; 
@@ -229,7 +229,7 @@ configuration file is /usr/local/etc/clixon.xml. The example
 configuration file is installed at /usr/local/etc/example.xml. The
 YANG specification for the configuration file is clixon-config.yang.
 
-See the [example config file](../example/example.xml).
+See the [example config file](../example/main/example.xml).
 
 ## How are Clixon configuration files found?
 
@@ -364,7 +364,7 @@ You may also add a default method in the configuration file:
 ## Can I use systemd with Clixon?
 
 Yes. Systemd example files are provide for the backend and the
-restconf daemon as part of the [example](../example/systemd).
+restconf daemon as part of the [example](../example/main/systemd).
 
 
 ## How can I add extra XML?
@@ -386,7 +386,7 @@ The second way is by programming the plugin_reset() in the backend
 plugin. The example code contains an example on how to do this (see plugin_reset() in example_backend.c).
 
 ## I want to program. How do I extend the example?
-See [../apps/example](../apps/example)
+See [../example/main](../example/main)
 - example.xml - Change the configuration file
 - The yang specifications - This is the central part. It changes the XML, database and the config cli.
 - example_cli.cli - Change the fixed part of the CLI commands 
@@ -412,7 +412,7 @@ Each plugin is initiated with an API struct followed by a plugin init function a
       return &api; /* Return NULL on error */
    }
 ```
-For more info see [../example/README.md]
+For more info see [../example/main/README.md]
 
 
 ## How do I write a commit function?
@@ -560,7 +560,7 @@ plugin_credentials(clicon_handle h,
 
 To authenticate, the callback needs to return the value 1 and supply a username.
 
-See [../apps/example/example_restconf.c] example_restconf_credentials() for
+See [../example/main/example_restconf.c] example_restconf_credentials() for
 an example of HTTP basic auth.
 
 ## What about access control?
