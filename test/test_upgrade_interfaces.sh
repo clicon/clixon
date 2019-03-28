@@ -8,16 +8,15 @@
 # draft-wang-netmod-module-revision-management-01
 # The example here is simplified and also extended.
 # It has also been broken up into two parts to test a series of upgrades.
-# These are the operations (authentic):
-# Move /if:interfaces-state/if:interface/if:admin-status to
+# These are the operations (authentic move/delete are from ietf-interfaces):
+# Move /if:interfaces-state/if:interface/if:admin-status to (2016)
 #   /if:interfaces/if:interface/
-# Move /if:interfaces-state/if:interface/if:statistics to
+# Move /if:interfaces-state/if:interface/if:statistics to (2016)
 #   if:interfaces/if:interface/
-# Delete /if:interfaces-state
-# These are extra added for test:
-# Rename /interfaces/interface/description to /interfaces/interface/descr
-# Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr
-# Change type /interfaces/interface/statistics/in-octets to decimal64 and divide all values with 1000
+# Delete /if:interfaces-state (2018)
+# Rename /interfaces/interface/description to /interfaces/interface/descr (2016)
+# Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr (2018)
+# Change type /interfaces/interface/statistics/in-octets to decimal64 and divide all values with 1000 (2018)
 # 
 
 # Magic line must be first in script (see README.md)
@@ -185,9 +184,8 @@ module interfaces{
 }
 EOF
 
-
-# Create startup db revision example-a and example-b 2017-12-01
-# this should be automatically upgraded to 2017-12-20
+# Create startup db revision from 2014-05-08 to be upgraded to 2018-02-20
+# This is 2014 syntax
 cat <<EOF > $dir/startup_db
 <config>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
@@ -230,41 +228,6 @@ cat <<EOF > $dir/startup_db
 </config>
 EOF
 
-# Wanted new XML
-# Note interface e2 is not moved
-cat <<EOF > $dir/wanted
-<config>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
-      <module>
-         <name>interfaces</name>
-         <revision>2018-02-20</revision>
-         <namespace>urn:example:interfaces</namespace>
-      </module>
-  </modules-state>
-  <interfaces xmlns="urn:example:interfaces">
-    <interface>
-      <name>e0</name>
-      <type>eth</type>
-      <admin-status>up</admin-status>
-      <docs><descr>First interface</descr></docs>
-      <statistics>
-        <in-octets>54326.432</in-octets>
-        <in-unicast-pkts>8458765</in-unicast-pkts>
-      </statistics>
-    </interface>
-    <interface>
-      <name>e1</name>
-      <type>eth</type>
-      <admin-status>down</admin-status>
-    </interface>
-  </interfaces>
-</config>
-EOF
-
-XML='<interfaces xmlns="urn:example:interfaces"><interface><name>e0</name><docs><descr>First interface</descr></docs><type>eth</type><admin-status>up</admin-status><statistics><in-octets>54326.432</in-octets><in-unicast-pkts>8458765</in-unicast-pkts></statistics></interface><interface><name>e1</name><type>eth</type><admin-status>down</admin-status></interface></interfaces>'
-
-
 # Create configuration
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -285,49 +248,166 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-# Start new system from old datastore
-mode=startup
+# Start from startup and upgrade, check running 
+testrun(){
+    runxml=$1 
 
-# -u means trigger example upgrade
-new "test params: -s $mode -f $cfg -- -u"
-# Bring your own backend
-if [ $BE -ne 0 ]; then
-    # kill old backend (if any)
-    new "kill old backend"
-    sudo clixon_backend -zf $cfg
-    if [ $? -ne 0 ]; then
-	err
+    # -u means trigger example upgrade
+    new "test params: -s startup -f $cfg -- -u"
+    # Bring your own backend
+    if [ $BE -ne 0 ]; then
+	# kill old backend (if any)
+	new "kill old backend"
+	sudo clixon_backend -zf $cfg
+	if [ $? -ne 0 ]; then
+	    err
+	fi
+	new "start backend -s startup -f $cfg -- -u"
+	start_backend -s startup -f $cfg -- -u
     fi
-    new "start backend -s $mode -f $cfg -- -u"
-    start_backend -s $mode -f $cfg -- -u
-fi
-new "waiting"
-sleep $RCWAIT
+    new "waiting"
+    sleep $RCWAIT
 
-new "kill old restconf daemon"
-sudo pkill -u www-data clixon_restconf
+    new "kill old restconf daemon"
+    sudo pkill -u www-data clixon_restconf
 
-new "start restconf daemon"
-start_restconf -f $cfg
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
-new "waiting"
-sleep $RCWAIT
+    new "waiting"
+    sleep $RCWAIT
 
-new "Check running db content"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
+    new "Check running db content"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$runxml</data></rpc-reply>]]>]]>$"
 
-new "Kill restconf daemon"
-stop_restconf
+    new "Kill restconf daemon"
+    stop_restconf
+
+    if [ $BE -ne 0 ]; then
+	new "Kill backend"
+	# Check if premature kill
+	pid=`pgrep -u root -f clixon_backend`
+	if [ -z "$pid" ]; then
+	    err "backend already dead"
+	fi
+	# kill backend
+	stop_backend -f $cfg
+    fi
+}
+
+XML='<interfaces xmlns="urn:example:interfaces"><interface><name>e0</name><docs><descr>First interface</descr></docs><type>eth</type><admin-status>up</admin-status><statistics><in-octets>54326.432</in-octets><in-unicast-pkts>8458765</in-unicast-pkts></statistics></interface><interface><name>e1</name><type>eth</type><admin-status>down</admin-status></interface></interfaces>'
+
+new "1. Upgrade from 2014 to 2018-02-20"
+testrun "$XML"
+
+# This is "2016" syntax
+cat <<EOF > $dir/startup_db
+<config>
+   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <module-set-id>42</module-set-id>
+      <module>
+         <name>interfaces</name>
+         <revision>2016-01-01</revision>
+         <namespace>urn:example:interfaces</namespace>
+      </module>
+  </modules-state>
+  <interfaces xmlns="urn:example:interfaces">
+    <interface>
+      <name>e0</name>
+      <admin-status>up</admin-status>
+      <type>eth</type>
+      <descr>First interface</descr>
+      <statistics>
+        <in-octets>54326432</in-octets>
+        <in-unicast-pkts>8458765</in-unicast-pkts>
+      </statistics>
+    </interface>
+    <interface>
+      <name>e1</name>
+      <type>eth</type>
+      <admin-status>down</admin-status>
+    </interface>
+  </interfaces>
+  <interfaces-state xmlns="urn:example:interfaces">
+    <interface>
+      <name>e0</name>
+      <admin-status>down</admin-status>
+      <statistics>
+        <in-octets>946743234</in-octets>
+        <in-unicast-pkts>218347</in-unicast-pkts>
+      </statistics>
+    </interface>
+    <interface>
+      <name>e1</name>
+      <admin-status>up</admin-status>
+    </interface>
+    <interface>
+      <name>e2</name>
+      <admin-status>testing</admin-status>
+    </interface>
+  </interfaces-state>
+</config>
+EOF
+
+# 2. Upgrade from intermediate 2016-01-01 to 2018-02-20
+new "2. Upgrade from intermediate 2016-01-01 to 2018-02-20"
+testrun "$XML"
+
+# Again 2014 syntax
+cat <<EOF > $dir/startup_db
+<config>
+   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <module-set-id>42</module-set-id>
+      <module>
+         <name>interfaces</name>
+         <revision>2014-05-08</revision>
+         <namespace>urn:example:interfaces</namespace>
+      </module>
+  </modules-state>
+  <interfaces xmlns="urn:example:interfaces">
+    <interface>
+      <name>e0</name>
+      <type>eth</type>
+      <description>First interface</description>
+    </interface>
+    <interface>
+      <name>e1</name>
+      <type>eth</type>
+    </interface>
+  </interfaces>
+  <interfaces-state xmlns="urn:example:interfaces">
+    <interface>
+      <name>e0</name>
+      <admin-status>up</admin-status>
+      <statistics>
+        <in-octets>54326432</in-octets>
+        <in-unicast-pkts>8458765</in-unicast-pkts>
+      </statistics>
+    </interface>
+    <interface>
+      <name>e1</name>
+      <admin-status>down</admin-status>
+    </interface>
+    <interface>
+      <name>e2</name>
+      <admin-status>testing</admin-status>
+    </interface>
+  </interfaces-state>
+</config>
+
+EOF
+rm $if2018
+# Original XML
+XML='<interfaces xmlns="urn:example:interfaces"><interface><name>e0</name><description>First interface</description><type>eth</type></interface><interface><name>e1</name><type>eth</type></interface></interfaces><interfaces-state xmlns="urn:example:interfaces"><interface><name>e0</name><admin-status>up</admin-status><statistics><in-octets>54326432</in-octets><in-unicast-pkts>8458765</in-unicast-pkts></statistics></interface><interface><name>e1</name><admin-status>down</admin-status></interface><interface><name>e2</name><admin-status>testing</admin-status></interface></interfaces-state>'
+
+new "3. No 2018 (upgrade) model -> dont trigger upgrade"
+testrun "$XML"
+
+#rm $if2014
+#new "4. No model at all"
+#testrun "$XML"
 
 if [ $BE -ne 0 ]; then
-    new "Kill backend"
-    # Check if premature kill
-    pid=`pgrep -u root -f clixon_backend`
-    if [ -z "$pid" ]; then
-	err "backend already dead"
-    fi
-    # kill backend
-    stop_backend -f $cfg
-
     rm -rf $dir
 fi
+

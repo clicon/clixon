@@ -419,7 +419,7 @@ clicon_option_str_set(clicon_handle h,
  * @endcode
  * Note that -1 can be both error and value.
  * This means that it should be used together with clicon_option_exists() and
- * supply a defualt value as shown in the example.
+ * supply a default value as shown in the example.
  */
 int
 clicon_option_int(clicon_handle h,

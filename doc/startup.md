@@ -113,7 +113,7 @@ a set of current yang models that loads a datastore with old or even
 obsolete data.
 
 Note that this feature is only available if
-[module-state](module-state) in the datastore is enabled.
+[module-state](#module-state) in the datastore is enabled.
 
 If the module-state of the startup configuration does not match the
 module-state of the backend daemon, a set of _upgrade_ callbacks are
@@ -153,7 +153,7 @@ One example of registering a "catch-all" upgrade:
    upgrade_callback_register(h, xml_changelog_upgrade, NULL, 0, 0, NULL);
 ```
 
-Another example are fine-grained stepwise upgrades of a singlemodule [upgrade example](#example-upgrade):
+Another example are fine-grained stepwise upgrades of a single module [upgrade example](#example-upgrade):
 ```
    upgrade_callback_register(h, upgrade_2016, "urn:example:interfaces",
                              20140508, 20160101, NULL);
@@ -175,20 +175,19 @@ When Clixon loads a startup datastore with outdated modules, the matching
 upgrade callbacks will be called.
 
 Note the following:
-* Upgrade callbacks will _not_ be called for data that is up-to-date with the current system
-* Upgrade callbacks will _not_ be called if there is no module-state in the datastore, or if module-state support is disabled.
+* Upgrade callbacks _will_ _not_ be called for data that is up-to-date with the current system
+* Upgrade callbacks _will_ _not_ be called if there is no module-state in the datastore, or if module-state support is disabled.
 * Upgrade callbacks _will_ be called if the datastore contains a version of a module that is older than the module loaded in Clixon.
 * Upgrade callbacks _will_ also be called if the datastore contains a version of a module that is not present in Clixon - an obsolete module.
 
-Re-using the previous stepwise example, if a datastore is loaded based on revision 20140508 by a system supporting revision 20180220, the following two callbacks will be made:
+Re-using the previous stepwise example, if a datastore is loaded based on revision 20140508 by a system supporting revision 2018-02-20, the following two callbacks are made:
 ```
   upgrade_2016(h, <xml>, "urn:example:interfaces", 20140508, 20180220, NULL, cbret);
   upgrade_2018(h, <xml>, "urn:example:interfaces", 20140508, 20180220, NULL, cbret);
 ```
 Note that the example shown is a template for an upgrade function. It
 gets the nodes of an yang module given by `namespace` and the
-(outdated) `from` revision, and iterates through them. Actual
-upgrading code is in [the example](../example/example_backend.c).
+(outdated) `from` revision, and iterates through them. 
 
 If no action is made by the upgrade calback, and thus the XML is not
 upgraded, the next step is XML/Yang validation.
@@ -202,17 +201,21 @@ configuration.
 
 ### Example upgrade
 
-[The example](../example/example_backend.c) and [test](../test/test_upgrade_interfaces.sh) shos the code for upgrading of an interface module. The example is inspired by the ietf-interfaces module that made a subset of the upgrades shown in the examples.
+The example and  shows the code for upgrading of an interface module. The example is inspired by the ietf-interfaces module that made a subset of the upgrades shown in the examples.
 
 The code is split in two steps. The `upgrade_2016` callback does the following transforms:
   * Move /if:interfaces-state/if:interface/if:admin-status to /if:interfaces/if:interface/
   * Move /if:interfaces-state/if:interface/if:statistics to if:interfaces/if:interface/
   * Rename /interfaces/interface/description to /interfaces/interface/descr
 
-While the `upgrade_2018` callback does the following transforms:
+The `upgrade_2018` callback does the following transforms:
   * Delete /if:interfaces-state
   * Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr
   * Change type /interfaces/interface/statistics/in-octets to decimal64 and divide all values with 1000
+
+Please consult the `upgrade_2016` and `upgrade_2018` functions in [the
+example](../example/example_backend.c) and
+[test](../test/test_upgrade_interfaces.sh) for more details.
 
 ## Extra XML
 
