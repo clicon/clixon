@@ -14,17 +14,17 @@ memonce(){
     case "$what" in
 	'cli')
 	    valgrindtest=1
-	    RCWAIT=1
+	    : ${RCWAIT:=5} # valgrind backend needs some time to get up 
 	    clixon_cli="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp  --track-fds=yes --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_cli"
 	    ;;
 	'netconf')
 	    valgrindtest=1
-	    RCWAIT=1
+    	    : ${RCWAIT:=5} # valgrind backend needs some time to get up 
 	    clixon_netconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp  --track-fds=yes  --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_netconf"
 	    ;;
 	'backend')
 	    valgrindtest=2 # This means backend valgrind test
-	    RCWAIT=10 # valgrind backend needs some time to get up 
+	    : ${RCWAIT:=5} # valgrind backend needs some time to get up 
 	    perfnr=100 # test_perf.sh restconf put more or less stops
 	    perfreq=10
 
@@ -34,7 +34,7 @@ memonce(){
 	    valgrindtest=3 # This means backend valgrind test
 	    sudo chmod 660 $valgrindfile
 	    sudo chown www-data $valgrindfile
-	    RCWAIT=5 # valgrind restconf needs some time to get up 
+	    : ${RCWAIT:=5} # valgrind backend needs some time to get up 
 	    clixon_restconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile /www-data/clixon_restconf"
 
 	    ;;
@@ -46,7 +46,6 @@ memonce(){
     esac
 
     err=0
-    testnr=0
     for test in test_*.sh; do
 	if [ $testnr != 0 ]; then echo; fi
 	testfile=$test
@@ -82,7 +81,9 @@ for c in $cmds; do
 done
 
 # Then actual run
+testnr=0
 for c in $cmds; do
+    if [ $testnr != 0 ]; then echo; fi
     echo "Mem test for $c"
     echo "================="
     memonce $c
