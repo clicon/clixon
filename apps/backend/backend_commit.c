@@ -172,6 +172,7 @@ startup_common(clicon_handle       h,
     int                 ret;
     modstate_diff_t    *msd = NULL;
     cxobj              *xt = NULL;
+    cxobj              *x;
     
     /* If CLICON_XMLDB_MODSTATE is enabled, then get the db XML with 
      * potentially non-matching module-state in msd
@@ -198,8 +199,11 @@ startup_common(clicon_handle       h,
 	goto done;
     /* Handcraft transition with with only add tree */
     td->td_target = xt;
-    if (cxvec_append(td->td_target, &td->td_avec, &td->td_alen) < 0) 
-	goto done;
+    x = NULL;
+    while ((x = xml_child_each(td->td_target, x, CX_ELMNT)) != NULL){
+	if (cxvec_append(x, &td->td_avec, &td->td_alen) < 0) 
+	    goto done;
+    }
 
     /* 4. Call plugin transaction start callbacks */
     if (plugin_transaction_begin(h, td) < 0)
