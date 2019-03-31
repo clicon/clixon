@@ -31,18 +31,16 @@
 
   ***** END LICENSE BLOCK *****
 
-  * This file requires dirent.h
+  * Datastore text-based XML read functions
  */
+#ifndef _CLIXON_DATASTORE_READ_H
+#define _CLIXON_DATASTORE_READ_H
 
-#ifndef _CLIXON_FILE_H_
-#define _CLIXON_FILE_H_
+/*
+ * Prototypes
+ */
+int xmldb_get_cache(clicon_handle h, const char *db, char *xpath, int config, cxobj **xret, modstate_diff_t *msd);
+int xmldb_get_nocache(clicon_handle h, const char *db, char *xpath, int config, cxobj **xret, modstate_diff_t *msd);
+int xmldb_readfile(clicon_handle h, const char *db, yang_spec *yspec, cxobj **xp,	modstate_diff_t *msd);
 
-
-int clicon_file_dirent(const char *dir, struct dirent **ent, 
-		       const char *regexp, mode_t type);
-
-int clicon_file_copy(char *src, char *target);
-
-int group_name2gid(char *name, gid_t *gid);
-
-#endif /* _CLIXON_FILE_H_ */
+#endif /* _CLIXON_DATASTORE_READ_H */

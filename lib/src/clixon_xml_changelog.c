@@ -65,6 +65,7 @@
 #include "clixon_log.h"
 #include "clixon_xml.h"
 #include "clixon_options.h"
+#include "clixon_data.h"
 #include "clixon_xml_map.h"
 #include "clixon_yang_module.h"
 #include "clixon_xml_changelog.h"

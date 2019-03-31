@@ -56,6 +56,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_stream.h"
+#include "clixon_data.h"
 #include "clixon_options.h"
 
 #define CLICON_MAGIC 0x99aafabe
@@ -64,8 +65,6 @@
 
 /*! Internal structure of basic handle. Also header of all other handles.
  * @note If you change here, you must also change the structs below:
- * @see struct cli_handle
- * @see struct backend_handle
  * This is the internal definition of a "Clixon handle" which in its external
  * form is "clicon_handle" and is used in most Clixon API calls.
  * Some details:
@@ -77,11 +76,17 @@
  *    Alternatively, these could be accessed via clicon_conf_xml()
  * 3) ch_data accessed via clicon_data() is more general purpose for any data.
  *    that is, not only strings. And has separate namespace from options.
+ * 4) ch_db_elmnt. Only reason it is not in ch_data is its own namespace and
+ *    need to dump all hashes
+ * XXX: put ch_stream under ch_data
+ * @see struct cli_handle
+ * @see struct backend_handle
  */
 struct clicon_handle {
     int               ch_magic;    /* magic (HDR) */
     clicon_hash_t    *ch_copt;     /* clicon option list (HDR) */
-    clicon_hash_t    *ch_data;     /* internal clicon data (HDR) Unclear why two? */
+    clicon_hash_t    *ch_data;     /* internal clicon data (HDR) */
+    clicon_hash_t    *ch_db_elmnt; /* xml datastore element cache data */
     event_stream_t   *ch_stream;   /* notification streams, see clixon_stream.[ch] */
 };
 
@@ -114,6 +119,10 @@ clicon_handle_init0(int size)
 	clicon_handle_exit((clicon_handle)ch);
 	goto done;
     }
+    if ((ch->ch_db_elmnt = hash_init()) == NULL){
+	clicon_handle_exit((clicon_handle)ch);
+	goto done;
+    }
     h = (clicon_handle)ch;
   done:
     return h;
@@ -140,6 +149,7 @@ clicon_handle_init(void)
 int
 clicon_handle_exit(clicon_handle h)
 {
+    int                   retval = -1;
     struct clicon_handle *ch = handle(h);
     clicon_hash_t        *ha;
 
@@ -147,9 +157,13 @@ clicon_handle_exit(clicon_handle h)
 	hash_free(ha);
     if ((ha = clicon_data(h)) != NULL)
 	hash_free(ha);
+
+    if ((ha = clicon_db_elmnt(h)) != NULL)
+	hash_free(ha);
     stream_delete_all(h, 1);
     free(ch);
-    return 0;
+    retval = 0;
+    return retval;
 }
 
 /*! Check struct magic number for sanity checks
@@ -186,6 +200,17 @@ clicon_data(clicon_handle h)
     struct clicon_handle *ch = handle(h);
 
     return ch->ch_data;
+}
+
+/*! Return clicon db_elmnt (hash-array) given a handle.
+ * @param[in]  h        Clicon handle
+ */
+clicon_hash_t *
+clicon_db_elmnt(clicon_handle h)
+{
+    struct clicon_handle *ch = handle(h);
+
+    return ch->ch_db_elmnt;
 }
 
 /*! Return stream hash-array given a clicon handle.

@@ -47,7 +47,6 @@
 /*
  * Types
  */
-
 /*! Controls how keywords a generated in CLI syntax / prints from object model
  * Example YANG: 
  *  list a {
@@ -154,9 +153,6 @@ static inline char *clicon_backend_pidfile(clicon_handle h){
 static inline char *clicon_xmldb_dir(clicon_handle h){
     return clicon_option_str(h, "CLICON_XMLDB_DIR");
 }
-static inline char *clicon_xmldb_plugin(clicon_handle h){
-    return clicon_option_str(h, "CLICON_XMLDB_PLUGIN");
-}
 
 /*-- Specific option access functions for YANG options w type conversion--*/
 int   clicon_cli_genmodel(clicon_handle h);
@@ -171,51 +167,5 @@ int   clicon_startup_mode(clicon_handle h);
 /*-- Specific option access functions for non-yang options --*/
 int clicon_quiet_mode(clicon_handle h);
 int clicon_quiet_mode_set(clicon_handle h, int val);
-
-yang_spec * clicon_dbspec_yang(clicon_handle h);
-int clicon_dbspec_yang_set(clicon_handle h, struct yang_spec *ys);
-
-cxobj * clicon_nacm_ext(clicon_handle h);
-int clicon_nacm_ext_set(clicon_handle h, cxobj *xn);
-
-yang_spec * clicon_config_yang(clicon_handle h);
-int clicon_config_yang_set(clicon_handle h, struct yang_spec *ys);
-
-cxobj *clicon_conf_xml(clicon_handle h);
-int clicon_conf_xml_set(clicon_handle h, cxobj *x);
-
-plghndl_t clicon_xmldb_plugin_get(clicon_handle h);
-int clicon_xmldb_plugin_set(clicon_handle h, plghndl_t handle);
-
-void *clicon_xmldb_api_get(clicon_handle h);
-int clicon_xmldb_api_set(clicon_handle h, void *xa_api);
-
-void *clicon_xmldb_handle_get(clicon_handle h);
-int clicon_xmldb_handle_set(clicon_handle h, void *xh);
-
-/**/
-/* Set and get authorized user name */
-char *clicon_username_get(clicon_handle h);
-int clicon_username_set(clicon_handle h, void *username);
-
-/* Set and get startup status */
-enum startup_status clicon_startup_status_get(clicon_handle h);
-int clicon_startup_status_set(clicon_handle h, enum startup_status status);
-
-/* Set and get socket fd (ie backend server socket / restconf fcgx socket */
-int clicon_socket_get(clicon_handle h);
-int clicon_socket_set(clicon_handle h, int s);
-
-/*! Set and get module state cache */
-cxobj *clicon_module_state_get(clicon_handle h);
-int clicon_module_state_set(clicon_handle h, cxobj *xms);
-
-/*! Set and get yang/xml module revision changelog */
-cxobj *clicon_xml_changelog_get(clicon_handle h);
-int clicon_xml_changelog_set(clicon_handle h, cxobj *xchlog);
-
-/*! Set and get user command-line options (after --) */
-int clicon_argv_get(clicon_handle h, int *argc, char ***argv);
-int clicon_argv_set(clicon_handle h, char *argv0, int argc, char **argv);
 
 #endif  /* _CLIXON_OPTIONS_H_ */

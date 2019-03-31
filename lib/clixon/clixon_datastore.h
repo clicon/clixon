@@ -30,24 +30,33 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
-  Key-value store
+ 
+ * Clixon Datastore (XMLDB)
+ * Saves Clixon data as clear-text XML (or JSON)
  */
-#ifndef _CLIXON_XMLDB_TEXT_H
-#define _CLIXON_XMLDB_TEXT_H
+#ifndef _CLIXON_DATASTORE_H
+#define _CLIXON_DATASTORE_H
 
 /*
  * Prototypes
+ * API
  */
-int text_get(xmldb_handle h, const char *db, char *xpath, int config, cxobj **xtop, modstate_diff_t *xms);
-int text_put(xmldb_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
-int text_dump(FILE *f, char *dbfilename, char *rxkey);
-int text_copy(xmldb_handle h, const char *from, const char *to);
-int text_lock(xmldb_handle h, const char *db, int pid);
-int text_unlock(xmldb_handle h, const char *db);
-int text_unlock_all(xmldb_handle h, int pid);
-int text_islocked(xmldb_handle h, const char *db);
-int text_exists(xmldb_handle h, const char *db);
-int text_delete(xmldb_handle h, const char *db);
+/* Internal functions */
+int xmldb_db2file(clicon_handle h, const char *db, char **filename);
 
-#endif /* _CLIXON_XMLDB_TEXT_H */
+/* API */
+int xmldb_validate_db(const char *db);
+int xmldb_connect(clicon_handle h);
+int xmldb_disconnect(clicon_handle h);
+int xmldb_get(clicon_handle h, const char *db, char *xpath, int config, cxobj **xtop, modstate_diff_t *msd);
+int xmldb_put(clicon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret); /* in clixon_datastore_write.[ch] */
+int xmldb_copy(clicon_handle h, const char *from, const char *to);
+int xmldb_lock(clicon_handle h, const char *db, int pid);
+int xmldb_unlock(clicon_handle h, const char *db);
+int xmldb_unlock_all(clicon_handle h, int pid);
+int xmldb_islocked(clicon_handle h, const char *db);
+int xmldb_exists(clicon_handle h, const char *db);
+int xmldb_delete(clicon_handle h, const char *db);
+int xmldb_create(clicon_handle h, const char *db);
+
+#endif /* _CLIXON_DATASTORE_H */

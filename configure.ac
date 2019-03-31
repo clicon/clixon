@@ -253,7 +253,6 @@ AC_OUTPUT(Makefile
 	  docker/Makefile
   	  docker/system/Makefile
     	  docker/base/Makefile
-	  datastore/Makefile
   	  util/Makefile 
 	  yang/Makefile
   	  yang/clixon/Makefile

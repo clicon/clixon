@@ -78,6 +78,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_options.h"
+#include "clixon_data.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_stream.h"
