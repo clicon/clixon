@@ -341,5 +341,7 @@ startup_module_state(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (x)
+	xml_free(x);
     return retval;
 }
