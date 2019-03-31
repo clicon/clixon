@@ -73,7 +73,7 @@ RUN make
 RUN make install
 
 # Build and install the clixon example
-WORKDIR /clixon/clixon/example
+WORKDIR /clixon/clixon/example/main
 RUN make
 RUN make install
 RUN install example.xml /clixon/build/etc/clixon.xml
