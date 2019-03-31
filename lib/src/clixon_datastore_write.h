@@ -31,18 +31,18 @@
 
   ***** END LICENSE BLOCK *****
 
-  * This file requires dirent.h
+  * Datastore text-based XML write functions
+ */
+#ifndef _CLIXON_DATASTORE_WRITE_H
+#define _CLIXON_DATASTORE_WRITE_H
+
+/*
+ * Types
  */
 
-#ifndef _CLIXON_FILE_H_
-#define _CLIXON_FILE_H_
+/*
+ * Prototypes
+ */
+int xmldb_put(clicon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
 
-
-int clicon_file_dirent(const char *dir, struct dirent **ent, 
-		       const char *regexp, mode_t type);
-
-int clicon_file_copy(char *src, char *target);
-
-int group_name2gid(char *name, gid_t *gid);
-
-#endif /* _CLIXON_FILE_H_ */
+#endif /* _CLIXON_DATASTORE_WRITE_H */

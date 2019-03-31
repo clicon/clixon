@@ -72,6 +72,7 @@
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_options.h"
+#include "clixon_data.h"
 #include "clixon_plugin.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
@@ -155,60 +156,6 @@ yang_modules_revision(clicon_handle h)
 	}
     }
     return revision;
-}
-
-
-/*! Get modules state cache associated with module_set_id, or NULL if none
- * @param[in]  h        Clixon handle
- * @param[in]  msid     Module set id. Cache stored per id
- * @param[out] xms      XML tree for module state cache. Note need to xml_dup it.
- * @retval     0        OK, x is either NULL or set
- * @retval    -1        Error
- */
-static int
-modules_state_cache_get(clicon_handle  h,
-			char          *msid,
-			cxobj        **xms)
-{
-    cxobj *x;     /* module state cache XML */
-    cxobj *xmsid; /* module state id of cache XML */
-
-    if ((x = clicon_module_state_get(h)) == NULL)
-	return 0;
-    if ((xmsid = xpath_first(x, "modules-state/module-set-id")) == NULL)
-	return 0;
-    if (strcmp(xml_body(xmsid), msid) == 0) 	/* return cache */
-	*xms = x;
-    return 0;
-}
-
-/*! Set modules state cache associated with msid, or NULL if none
- * @param[in]  h        Clixon handle
- * @param[in]  msid     Module set id. Cache stored per id
- * @param[out] xms      XML tree for module state cache. Note need to xml_dup it.
- * @retval     0        OK
- * @retval    -1        Error
- */
-int
-modules_state_cache_set(clicon_handle  h,
-			cxobj         *msx)
-{
-    int    retval = -1;
-    cxobj *x;     /* module state cache XML */
-    
-    if ((x = clicon_module_state_get(h)) != NULL)
-	xml_free(x);
-    clicon_module_state_set(h, NULL);
-    if (msx == NULL)
-	goto ok;
-    /* Duplicate XML tree from original. */
-    if ((x = xml_dup(msx)) == NULL)
-	goto done;
-    clicon_module_state_set(h, x);
- ok:
-    retval = 0;
- done:
-    return retval;
 }
 
 /*! Actually build the yang modules state XML tree
@@ -295,11 +242,12 @@ yms_build(clicon_handle    h,
  done:
     return retval;
 }
+
 /*! Get modules state according to RFC 7895
  * @param[in]     h       Clicon handle
  * @param[in]     yspec   Yang spec
  * @param[in]     xpath   XML Xpath
- * @param[in]     brief   Just name,revision and uri (no cache)
+ * @param[in]     brief   Just name, revision and uri (no cache)
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
  * @retval        0       OK
@@ -331,15 +279,15 @@ yang_modules_state_get(clicon_handle    h,
                        cxobj          **xret)
 {
     int         retval = -1;
-    cxobj      *x = NULL;
+    cxobj      *x = NULL; /* Top tree, some juggling w top symbol */
     char       *msid; /* modules-set-id */
     cxobj      *x1;
     cbuf       *cb = NULL;
 
     msid = clicon_option_str(h, "CLICON_MODULE_SET_ID");
-    if (!brief && modules_state_cache_get(h, msid, &x) < 0)
-        goto done;
-    if (x != NULL){ /* Yes a cache (but no duplicate) */
+    if ((x = clicon_modst_cache_get(h, brief)) != NULL){
+	/* x is here: <modules-state>... 
+	 * and x is original tree, need to copy */
         if (xpath_first(x, "%s", xpath)){
             if ((x1 = xml_dup(x)) == NULL)
                 goto done;
@@ -353,21 +301,32 @@ yang_modules_state_get(clicon_handle    h,
 	    clicon_err(OE_UNIX, 0, "clicon buffer");
 	    goto done;
 	}
+	/* Build a cb string: <modules-state>... */
 	if (yms_build(h, yspec, msid, brief, cb) < 0)
 	    goto done;
+	/* Parse cb, x is on the form: <top><modules-state>... */
 	if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
 	    if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
 		goto done;
 	    retval = 1;
 	    goto done;
 	}
-	if (!brief && modules_state_cache_set(h, x) < 0) /* move to fn above? */
+	if (xml_rootchild(x, 0, &x) < 0)
+	    goto done;
+	/* x is now: <modules-state>... */
+	if (clicon_modst_cache_set(h, brief, x) < 0) /* move to fn above? */
 	    goto done;
     }
-    if (x && netconf_trymerge(x, yspec, xret) < 0)
-        goto done;
+    if (x){
+	/* Wrap x (again) with new top-level node "top" which merge wants */
+	if ((x = xml_wrap(x, "top")) < 0)
+	    goto done;
+	if (netconf_trymerge(x, yspec, xret) < 0)
+	    goto done;
+    }
     retval = 0;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     if (x)

@@ -60,12 +60,13 @@ typedef struct {
  */
 modstate_diff_t * modstate_diff_new(void);
 int modstate_diff_free(modstate_diff_t *);
-int modules_state_cache_set(clicon_handle h, cxobj *msx);
+
 int yang_modules_init(clicon_handle h);
 char *yang_modules_revision(clicon_handle h);
 
 int yang_modules_state_get(clicon_handle h, yang_spec *yspec, char *xpath,
 			   int brief, cxobj **xret);
+
 int clixon_module_upgrade(clicon_handle h, cxobj *xt, modstate_diff_t *msd, cbuf *cb);
 
 #endif  /* _CLIXON_YANG_MODULE_H_ */

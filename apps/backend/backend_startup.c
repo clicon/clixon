@@ -334,14 +334,10 @@ startup_module_state(clicon_handle h,
 	
     if (!clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
 	goto ok;
+    /* Set up cache 
+     * Now, access brief module cache with clicon_modst_cache_get(h, 1) */
     if (yang_modules_state_get(h, yspec, NULL, 1, &x) < 0)
 	goto done;
-    if (x){
-	if (xml_rootchild(x, 0, &x) < 0)
-	    goto done;
-	if (xmldb_setopt(h, "modules_state", (void*)x) < 0)
-	    goto done;
-    }
  ok:
     retval = 0;
  done:

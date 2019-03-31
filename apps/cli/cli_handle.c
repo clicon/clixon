@@ -79,6 +79,7 @@ struct cli_handle {
     int             cl_magic;    /* magic (HDR)*/
     clicon_hash_t  *cl_copt;     /* clicon option list (HDR) */
     clicon_hash_t  *cl_data;     /* internal clicon data (HDR) */
+    clicon_hash_t  *ch_db_elmnt; /* xml datastore element cache data */
     event_stream_t *cl_stream;   /* notification streams, see clixon_stream.[ch] */
     /* ------ end of common handle ------ */
 

@@ -35,6 +35,11 @@
 
 
 ### API changes on existing features (you may need to change your code)
+* Structural change: removed datastore plugin and directory, and merged into regulat clixon lib code.
+  * The CLICON_XMLDB_PLUGIN config option is obsolete, you should remove it from your config file
+  * The datastore directory is removed, code is moved to lib/src/clixon_datastore*.c
+  * removed clixon_backend -x <plugin> command-line options
+* Moved out code from clixon_options.[ch] into a new file: clixon_data.[ch] where non-option data resides.
 * Directory change: Moved example to example/main to make room for other examples.
 * Removed argc/argv parameters from ca_start plugin API function:
   * You may need to change signatures of your startup in your plugins, eg from:

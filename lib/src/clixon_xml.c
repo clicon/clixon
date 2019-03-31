@@ -687,6 +687,8 @@ xml_childvec_set(cxobj *x,
     return 0;
 }
 
+/*! Get the children of an XML node as an XML vector
+ */
 cxobj **
 xml_childvec_get(cxobj *x)
 {
@@ -863,7 +865,7 @@ xml_wrap_all(cxobj *xp,
 }
 
 /*! Wrap a new element above a single xml node (xc) with new tag 
- *  Before:  xp --> xc # specific child
+ *  Before:  xp --> xc # specific child (xp can be NULL)
  *  After:   xp --> xt(tag) --> xc
  * @param[in] xp  Parent xml node
  * @param[in] tag Name of new xml child

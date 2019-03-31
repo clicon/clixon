@@ -74,7 +74,7 @@
 #include "backend_startup.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:l:d:p:b:Fza:u:P:1s:c:g:y:x:o:" 
+#define BACKEND_OPTS "hD:f:l:d:p:b:Fza:u:P:1s:c:g:y:o:"
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
@@ -96,8 +96,14 @@ backend_terminate(clicon_handle h)
     clicon_debug(1, "%s", __FUNCTION__);
     if ((ss = clicon_socket_get(h)) != -1)
 	close(ss);
-    if ((x = clicon_module_state_get(h)) != NULL)
+    /* Disconnect datastore */
+    xmldb_disconnect(h);
+    /* Clear module state caches */
+    if ((x = clicon_modst_cache_get(h, 0)) != NULL)
 	xml_free(x);
+    if ((x = clicon_modst_cache_get(h, 1)) != NULL)
+	xml_free(x);
+    /* Free changelog */
     if ((x = clicon_xml_changelog_get(h)) != NULL)
 	xml_free(x);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
@@ -119,8 +125,6 @@ backend_terminate(clicon_handle h)
 	unlink(pidfile);   
     if (sockfamily==AF_UNIX && lstat(sockpath, &st) == 0)
 	unlink(sockpath);
-	
-    xmldb_plugin_unload(h); /* unload storage plugin */
     backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
     event_exit();
     clicon_debug(1, "%s done", __FUNCTION__); 
@@ -289,7 +293,6 @@ usage(clicon_handle h,
 	    "\t-g <group>\tClient membership required to this group (default: %s)\n"
 
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
-	    "\t-x <plugin>\tXMLDB plugin\n"
 	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    plgdir ? plgdir : "none",
@@ -320,9 +323,6 @@ main(int    argc,
     char         *pidfile;
     char         *sock;
     int           sockfamily;
-    char         *xmldb_plugin;
-    int           xml_cache;
-    char         *xml_format;
     char         *nacm_mode;
     int           logdst = CLICON_LOG_SYSLOG|CLICON_LOG_STDERR;
     yang_spec    *yspec = NULL;
@@ -471,10 +471,6 @@ main(int    argc,
 	    if (clicon_option_add(h, "CLICON_YANG_MAIN_FILE", optarg) < 0)
 		goto done;
 	    break;
-	case 'x' : /* xmldb plugin */
-	    if (clicon_option_add(h, "CLICON_XMLDB_PLUGIN", optarg) < 0)
-		goto done;
-	    break;
 	case 'o':{ /* Configuration option */
 	    char          *val;
 	    if ((val = index(optarg, '=')) == NULL)
@@ -563,12 +559,6 @@ main(int    argc,
     if (clicon_option_exists(h, "CLICON_STREAM_PUB") &&
 	stream_publish_init() < 0)
 	goto done;
-    if ((xmldb_plugin = clicon_xmldb_plugin(h)) == NULL){
-	clicon_log(LOG_ERR, "No xmldb plugin given (specify option CLICON_XMLDB_PLUGIN)."); 
-	goto done;
-    }
-    if (xmldb_plugin_load(h, xmldb_plugin) < 0)
-	goto done;
     /* Connect to plugin to get a handle */
     if (xmldb_connect(h) < 0)
 	goto done;
@@ -608,24 +598,6 @@ main(int    argc,
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
 	 yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
 	 goto done;
-    /* Set options: database dir and yangspec (could be hidden in connect?)*/
-    if (xmldb_setopt(h, "dbdir", clicon_xmldb_dir(h)) < 0)
-	goto done;
-    if (xmldb_setopt(h, "yangspec", clicon_dbspec_yang(h)) < 0)
-	goto done;
-    if ((xml_cache = clicon_option_bool(h, "CLICON_XMLDB_CACHE")) >= 0)
-	if (xmldb_setopt(h, "xml_cache", (void*)(intptr_t)xml_cache) < 0)
-	    goto done;
-    if ((xml_format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) >= 0)
-	if (xmldb_setopt(h, "format", (void*)xml_format) < 0)
-	    goto done;
-    if (xmldb_setopt(h, "pretty", (void*)(intptr_t)clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) < 0)
-	goto done;
-    if (xmldb_setopt(h, "nacm_mode", (void*)nacm_mode) < 0)
-	goto done;
-    if (xmldb_setopt(h, "nacm_xtree", (void*)clicon_nacm_ext(h)) < 0)
-	goto done;
-
     /* Initialize server socket and save it to handle */
     if (backend_rpc_init(h) < 0)
 	goto done;

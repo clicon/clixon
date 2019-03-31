@@ -111,7 +111,6 @@ ce_event_cb(clicon_handle h,
 	    break;
 	}
     }
-    clicon_debug(1, "%s retval:0", __FUNCTION__);
     return 0;
 }
 
@@ -227,10 +226,10 @@ client_statedata(clicon_handle h,
     int        i;
     yang_spec *yspec;
 
-    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
-    }    
+    }
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277"))
 	if ((retval = client_get_streams(h, yspec, xpath, "clixon-rfc5277", "netconf", xret)) != 0)
 	    goto done;
@@ -245,7 +244,6 @@ client_statedata(clicon_handle h,
     /* Code complex to filter out anything that is outside of xpath */
     if (xpath_vec(*xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
-
     /* If vectors are specified then mark the nodes found and
      * then filter out everything else,
      * otherwise return complete tree.
@@ -263,6 +261,7 @@ client_statedata(clicon_handle h,
 	goto done;
     retval = 0; /* OK */
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (xvec)
 	free(xvec);
     return retval;
@@ -812,6 +811,7 @@ from_client_get(clicon_handle h,
  ok:
     retval = 0;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xnacm)
 	xml_free(xnacm);
     if (xvec)

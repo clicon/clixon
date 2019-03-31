@@ -63,7 +63,7 @@
 #include <clixon/clixon.h>
 
 /* Command line options to be passed to getopt(3) */
-#define DATASTORE_OPTS "hDd:p:b:y:"
+#define DATASTORE_OPTS "hDd:b:y:"
 
 /*! usage
  */
@@ -76,7 +76,6 @@ usage(char *argv0)
 		"\t-D\t\tDebug\n"
 		"\t-d <db>\t\tDatabase name. Default: running. Alt: candidate,startup\n"
 		"\t-b <dir>\tDatabase directory. Mandatory\n"
-		"\t-p <plugin>\tDatastore plugin. Mandatory\n"
 		"\t-y <file>\tYang file. Mandatory\n"
 		"and command is either:\n"
 		"\tget [<xpath>]\n"
@@ -103,7 +102,6 @@ main(int argc, char **argv)
     clicon_handle       h;
     char               *argv0;
     char               *db = "running";
-    char               *plugin = NULL;
     char               *cmd = NULL;
     yang_spec          *yspec = NULL;
     char               *yangfilename = NULL;
@@ -138,11 +136,6 @@ main(int argc, char **argv)
 	        usage(argv0);
 	    db = optarg;
 	    break;
-	case 'p': /* datastore plugin */
-	    if (!optarg)
-	        usage(argv0);
-	    plugin = optarg;
-	    break;
 	case 'b': /* db directory */
 	    if (!optarg)
 	        usage(argv0);
@@ -165,10 +158,6 @@ main(int argc, char **argv)
     if (argc < 1)
 	usage(argv0);
     cmd = argv[0];
-    if (plugin == NULL){
-	clicon_err(OE_DB, 0, "Missing plugin -p option");
-	goto done;
-    }
     if (dbdir == NULL){
 	clicon_err(OE_DB, 0, "Missing dbdir -b option");
 	goto done;
@@ -177,9 +166,6 @@ main(int argc, char **argv)
 	clicon_err(OE_YANG, 0, "Missing yang filename -y option");
 	goto done;
     }
-    /* Load datastore plugin */
-    if (xmldb_plugin_load(h, plugin) < 0)
-	goto done;
     /* Connect to plugin to get a handle */
     if (xmldb_connect(h) < 0)
 	goto done;
@@ -189,12 +175,8 @@ main(int argc, char **argv)
     /* Parse yang spec from given file */
     if (yang_spec_parse_file(h, yangfilename, yspec) < 0)
 	goto done;
-    /* Set database directory option */
-    if (xmldb_setopt(h, "dbdir", dbdir) < 0)
-	goto done;
-    /* Set yang spec option */
-    if (xmldb_setopt(h, "yangspec", yspec) < 0)
-	goto done;
+    clicon_option_str_set(h, "CLICON_XMLDB_DIR", dbdir);
+    clicon_dbspec_yang_set(h, yspec);
     if (strcmp(cmd, "get")==0){
 	if (argc != 1 && argc != 2)
 	    usage(argv0);
@@ -308,8 +290,6 @@ main(int argc, char **argv)
 	usage(argv0);
     }
     if (xmldb_disconnect(h) < 0)
-	goto done;
-    if (xmldb_plugin_unload(h) < 0)
 	goto done;
   done:
     if (cbret)

@@ -9,7 +9,6 @@ fyang=$dir/ietf-ip.yang
 
 # If set, enable debugging (of backend)
 : ${clixon_util_datastore:=clixon_util_datastore}
-: ${clixon_datastore_lib:=/usr/local/lib/xmldb/text.so}
 
 cat <<EOF > $fyang
 module ietf-ip{
@@ -62,8 +61,7 @@ if [ ! -d $mydir ]; then
 fi
 rm -rf $mydir/*
 
-# XXX static link
-conf="-d candidate -b $mydir -p $clixon_datastore_lib -y $dir/ietf-ip.yang"
+conf="-d candidate -b $mydir -y $dir/ietf-ip.yang"
 
 new "datastore init"
 expectfn "$clixon_util_datastore $conf init" 0 ""
@@ -154,7 +152,7 @@ new "datastore create leaf"
 expectfn "$clixon_util_datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
 
 new "datastore other db init"
-expectfn "$clixon_util_datastore -d kalle -b $mydir -p  $clixon_datastore_lib -y $dir/ietf-ip.yang init" 0 ""
+expectfn "$clixon_util_datastore -d kalle -b $mydir -y $dir/ietf-ip.yang init" 0 ""
 
 new "datastore other db copy"
 expectfn "$clixon_util_datastore $conf copy kalle" 0 ""
