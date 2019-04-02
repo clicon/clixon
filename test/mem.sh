@@ -1,7 +1,6 @@
 #!/bin/bash
 # Run valgrind leak test for cli, restconf, netconf or background.
 # Stop on first error
-
     
 # Run valgrindtest once, args:
 # what: cli|netconf|restconf|backend
@@ -24,7 +23,7 @@ memonce(){
 	    ;;
 	'backend')
 	    valgrindtest=2 # This means backend valgrind test
-	    : ${RCWAIT:=5} # valgrind backend needs some time to get up 
+	    : ${RCWAIT:=10} # valgrind backend needs some time to get up 
 	    perfnr=100 # test_perf.sh restconf put more or less stops
 	    perfreq=10
 

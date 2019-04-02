@@ -89,7 +89,6 @@ expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/stand
 files=$(find $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -name "*.yang")
 let i=0;
 for f in $files; do
-    echo "f:$f"
     if [ -n "$(head -5 $f|grep '^ module')" ]; then
 	new "$clixon_cli -1f $cfg -o CLICON_YANG_MAIN_FILE=$f -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf show version"
 	expectfn "$clixon_cli -1f $cfg -o CLICON_YANG_MAIN_FILE=$f -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -o CLICON_CLI_GENMODEL=0 show version" 0 "3."
