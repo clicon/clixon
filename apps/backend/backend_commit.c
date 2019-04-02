@@ -313,15 +313,6 @@ startup_commit(clicon_handle  h,
     /* 10. Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);
 
-    /* 11. Copy running back to candidate in case end functions updated running 
-     * XXX: room for improvement: candidate and running may be equal.
-     * Copy only diffs?
-     */
-    if (xmldb_copy(h, "running", "candidate") < 0){
-	/* ignore errors or signal major setback ? */
-	clicon_log(LOG_NOTICE, "Error in rollback, trying to continue");
-	goto done;
-    } 
     retval = 1;
  done:
     if (td)
@@ -494,15 +485,6 @@ candidate_commit(clicon_handle h,
     /* 9. Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);
 
-    /* 8. Copy running back to candidate in case end functions updated running 
-     * XXX: room for improvement: candidate and running may be equal.
-     * Copy only diffs?
-     */
-    if (xmldb_copy(h, "running", candidate) < 0){
-	/* ignore errors or signal major setback ? */
-	clicon_log(LOG_NOTICE, "Error in rollback, trying to continue");
-	goto done;
-    } 
     retval = 1;
  done:
      /* In case of failure (or error), call plugin transaction termination callbacks */
