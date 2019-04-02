@@ -213,7 +213,7 @@ xml2cli(FILE              *f,
 	/* If list then first loop through keys */
 	xe = NULL;
 	while ((xe = xml_child_each(x, xe, -1)) != NULL){
-	    if ((match = yang_key_match((yang_node*)ys, xml_name(xe))) < 0)
+	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
 		goto done;
 	    if (!match)
 		continue;
@@ -226,7 +226,7 @@ xml2cli(FILE              *f,
     xe = NULL;
     while ((xe = xml_child_each(x, xe, -1)) != NULL){
 	if (ys->ys_keyword == Y_LIST){
-	    if ((match = yang_key_match((yang_node*)ys, xml_name(xe))) < 0)
+	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
 		goto done;
 	    if (match){
 		fprintf(f, "%s\n", cbuf_get(cbpre));	
@@ -268,7 +268,7 @@ validate_leafref(cxobj     *xt,
 
     if ((leafrefbody = xml_body(xt)) == NULL)
 	goto ok;
-    if ((ypath = yang_find((yang_node*)ytype, Y_PATH, NULL)) == NULL){
+    if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
 	if (netconf_missing_element(cbret, "application", ytype->ys_argument, "Leafref requires path statement") < 0)
 	    goto done;
 	goto fail;
@@ -348,7 +348,7 @@ validate_identityref(cxobj     *xt,
 	node = cbuf_get(cb);
     }
     /* This is the type's base reference */
-    if ((ybaseref = yang_find((yang_node*)ytype, Y_BASE, NULL)) == NULL){
+    if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) == NULL){
 	if (netconf_missing_element(cbret, "application", ytype->ys_argument, "Identityref validation failed, no base") < 0)
 	    goto done;
 	goto fail;
@@ -501,9 +501,9 @@ check_choice(cxobj     *xt,
 	     cbuf      *cbret)
 {
     int        retval = -1;
-    yang_node *yc;
+    yang_stmt *yc;
     yang_stmt *y;
-    yang_node *yp;
+    yang_stmt *yp;
     cxobj     *x;
     cxobj     *xp;
     
@@ -516,7 +516,7 @@ check_choice(cxobj     *xt,
 	if ((x != xt) &&
 	    (y = xml_spec(x)) != NULL &&
 	    (yp = yang_choice(y)) != NULL &&
-	    yp == (yang_node*)yc){
+	    yp == yc){
 	    if (netconf_bad_element(cbret, "application", xml_name(x), "Element in choice statement already exists") < 0)
 		goto done;
 	    goto fail;
@@ -549,7 +549,7 @@ check_mandatory(cxobj     *xt,
     cxobj     *x;
     yang_stmt *y;
     yang_stmt *yc;
-    yang_node *yp;
+    yang_stmt *yp;
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
     char      *keyname;
@@ -598,7 +598,7 @@ check_mandatory(cxobj     *xt,
 	    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 		if ((y = xml_spec(x)) != NULL &&
 		    (yp = yang_choice(y)) != NULL &&
-		    yp == (yang_node*)yc){
+		    yp == yc){
 		    break; /* leave loop with x set */
 		}
 	    }
@@ -777,7 +777,7 @@ xml_yang_validate_all(cxobj   *xt,
 	    /* Special case if leaf is leafref, then first check against
 	       current xml tree
  	    */
-	    if ((yc = yang_find((yang_node*)ys, Y_TYPE, NULL)) != NULL){
+	    if ((yc = yang_find(ys, Y_TYPE, NULL)) != NULL){
 		if (strcmp(yc->ys_argument, "leafref") == 0){
 		    if (validate_leafref(xt, yc, cbret) < 0)
 			goto done;
@@ -787,7 +787,7 @@ xml_yang_validate_all(cxobj   *xt,
 			goto done;
 		}
 	    }
-	    if ((yc = yang_find((yang_node*)ys, Y_MIN_ELEMENTS, NULL)) != NULL){
+	    if ((yc = yang_find(ys, Y_MIN_ELEMENTS, NULL)) != NULL){
 		/* The behavior of the constraint depends on the type of the 
 		 * leaf-list's or list's closest ancestor node in the schema tree 
 		 * that is not a non-presence container (see Section 7.5.1):
@@ -811,7 +811,7 @@ xml_yang_validate_all(cxobj   *xt,
 		}
 #endif
 		}
-	    if ((yc = yang_find((yang_node*)ys, Y_MAX_ELEMENTS, NULL)) != NULL){
+	    if ((yc = yang_find(ys, Y_MAX_ELEMENTS, NULL)) != NULL){
 		
 	    }
 	    break;
@@ -821,14 +821,14 @@ xml_yang_validate_all(cxobj   *xt,
 	/* must sub-node RFC 7950 Sec 7.5.3. Can be several. 
 	* XXX. use yang path instead? */
 	yc = NULL;
-	while ((yc = yn_each((yang_node*)ys, yc)) != NULL) {
+	while ((yc = yn_each(ys, yc)) != NULL) {
 	    if (yc->ys_keyword != Y_MUST)
 		continue;
 	    xpath = yc->ys_argument; /* "must" has xpath argument */
 	    if ((nr = xpath_vec_bool(xt, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){
-		ye = yang_find((yang_node*)yc, Y_ERROR_MESSAGE, NULL);
+		ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
 		if (netconf_operation_failed(cbret, "application",
 					     ye?ye->ys_argument:"must xpath validation failed") < 0)
 		    goto done;
@@ -836,7 +836,7 @@ xml_yang_validate_all(cxobj   *xt,
 	    }
 	}
 	/* "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
-	if ((yc = yang_find((yang_node*)ys, Y_WHEN, NULL)) != NULL){
+	if ((yc = yang_find(ys, Y_WHEN, NULL)) != NULL){
 	    xpath = yc->ys_argument; /* "when" has xpath argument */
 	    if ((nr = xpath_vec_bool(xt, "%s", xpath)) < 0)
 		goto done;
@@ -932,7 +932,7 @@ xml2cvec(cxobj      *xt,
     /* Go through all children of the xml tree */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
 	name = xml_name(xc);
-	if ((ys = yang_find_datanode((yang_node*)yt, name)) == NULL){
+	if ((ys = yang_find_datanode(yt, name)) == NULL){
 	    clicon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
 			 __FUNCTION__, name, yt->ys_argument);
 	    if ((body = xml_body(xc)) != NULL){
@@ -1161,7 +1161,7 @@ xml_diff1(yang_stmt *ys,
  * Bot xml trees should be freed with xml_free()
  */
 int
-xml_diff(yang_spec *yspec, 
+xml_diff(yang_stmt *yspec, 
 	 cxobj     *x1, 
 	 cxobj     *x2,
 	 cxobj   ***first,
@@ -1215,7 +1215,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
 		    int        inclkey,
 		    cbuf      *cb)
 {
-    yang_node *yp; /* parent */
+    yang_stmt *yp; /* parent */
     int        i;
     cvec      *cvk = NULL; /* vector of index keys */
     int        retval = -1;
@@ -1225,15 +1225,15 @@ yang2api_path_fmt_1(yang_stmt *ys,
 	goto done;
     }
     if (yp != NULL && /* XXX rm */
-	yp->yn_keyword != Y_MODULE && 
-	yp->yn_keyword != Y_SUBMODULE){
+	yp->ys_keyword != Y_MODULE && 
+	yp->ys_keyword != Y_SUBMODULE){
 	if (yang2api_path_fmt_1((yang_stmt *)yp, 1, cb) < 0) /* recursive call */
 	    goto done;
-	if (yp->yn_keyword != Y_CHOICE && yp->yn_keyword != Y_CASE)
+	if (yp->ys_keyword != Y_CHOICE && yp->ys_keyword != Y_CASE)
 	    cprintf(cb, "/");
     }
     else /* top symbol - mark with name prefix */
-	cprintf(cb, "/%s:", yp->yn_argument);
+	cprintf(cb, "/%s:", yp->ys_argument);
 
     if (inclkey){
 	if (ys->ys_keyword != Y_CHOICE && ys->ys_keyword != Y_CASE)
@@ -1241,7 +1241,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
     }
     else{
 	if (ys->ys_keyword == Y_LEAF && yp && 
-	    yp->yn_keyword == Y_LIST){
+	    yp->ys_keyword == Y_LIST){
 	    if (yang_key_match(yp, ys->ys_argument) == 0)
 		cprintf(cb, "%s", ys->ys_argument); /* Not if leaf and key */
 	}
@@ -1521,7 +1521,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
 	}
 	/* If it is key dont remove it yet (see second round) */
 	if (yt){
-	    if ((iskey = yang_key_match((yang_node*)yt, xml_name(x))) < 0)
+	    if ((iskey = yang_key_match(yt, xml_name(x))) < 0)
 		goto done;
 	    if (iskey){
 		anykey++;
@@ -1549,7 +1549,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
 	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	    /* If it is key remove it here */
 	    if (yt){
-		if ((iskey = yang_key_match((yang_node*)yt, xml_name(x))) < 0)
+		if ((iskey = yang_key_match(yt, xml_name(x))) < 0)
 		    goto done;
 		if (iskey && xml_purge(x) < 0)
 		    goto done;
@@ -1726,7 +1726,7 @@ xml_non_config_data(cxobj *xt,
 int
 xml_spec_populate_rpc(clicon_handle h,
 		      cxobj        *xrpc,
-		      yang_spec    *yspec)
+		      yang_stmt    *yspec)
 {
     int        retval = -1;
     yang_stmt *yrpc = NULL;    /* yang node */
@@ -1743,12 +1743,12 @@ xml_spec_populate_rpc(clicon_handle h,
 	if (ys_module_by_xml(yspec, x, &ymod) < 0)
 	    goto done;
 	if (ymod != NULL)
-	    yrpc = yang_find((yang_node*)ymod, Y_RPC, xml_name(x));
+	    yrpc = yang_find(ymod, Y_RPC, xml_name(x));
 	/* Non-strict semantics: loop through all modules to find the node 
 	 */
 	if (yrpc){
 	    xml_spec_set(x, yrpc);
-	    if ((yi = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
+	    if ((yi = yang_find(yrpc, Y_INPUT, NULL)) != NULL){
 		/* kludge rpc -> input XXX THIS HIDES AN ERROR IN xml_spec_populate */
 		xml_spec_set(x, yi); 
 		if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
@@ -1777,25 +1777,25 @@ xml_spec_populate(cxobj  *x,
 {
     int        retval = -1;
     //    clicon_handle h = (clicon_handle)arg;
-    yang_spec *yspec = NULL; /* yang spec */
+    yang_stmt *yspec = NULL; /* yang spec */
     yang_stmt *y = NULL;     /* yang node */
     yang_stmt *yparent;      /* yang parent */
     yang_stmt *ymod;         /* yang module */
     cxobj     *xp = NULL;    /* xml parent */
     char      *name;
 
-    yspec = (yang_spec*)arg;
+    yspec = (yang_stmt*)arg;
     if (xml_spec(x))
 	;	//	goto ok;
     xp = xml_parent(x);
     name = xml_name(x);
     if (xp && (yparent = xml_spec(xp)) != NULL)
-	y = yang_find_datanode((yang_node*)yparent, name);
+	y = yang_find_datanode(yparent, name);
     else if (yspec){
 	if (ys_module_by_xml(yspec, x, &ymod) < 0)
 	    goto done;
 	if (ymod != NULL)
-	    y = yang_find_schemanode((yang_node*)ymod, name);
+	    y = yang_find_schemanode(ymod, name);
     }
     if (y) 
 	xml_spec_set(x, y);
@@ -1848,7 +1848,7 @@ xml_spec_populate(cxobj  *x,
  * @see api_path2xml  For api-path to xml tree
  */
 int
-api_path2xpath(yang_spec *yspec,
+api_path2xpath(yang_stmt *yspec,
 	       cvec      *cvv,
 	       int        offset,
 	       cbuf      *xpath)
@@ -1881,10 +1881,10 @@ api_path2xpath(yang_spec *yspec,
 		clicon_err(OE_YANG, ENOENT, "No such yang module: %s", prefix);
 		goto fail;
 	    }
-	    y = yang_find_datanode((yang_node*)ymod, name);
+	    y = yang_find_datanode(ymod, name);
 	}
 	else
-	    y = yang_find_datanode((yang_node*)y, name);
+	    y = yang_find_datanode(y, name);
 	if (y == NULL){
 	    clicon_err(OE_YANG, errno, "Unknown element: '%s'", name);
 	    goto fail;
@@ -1955,10 +1955,10 @@ static int
 api_path2xml_vec(char             **vec,
 		 int                nvec,
 		 cxobj             *x0,
-		 yang_node         *y0,
+		 yang_stmt         *y0,
 		 yang_class         nodeclass,
 		 cxobj            **xpathp,
-		 yang_node        **ypathp)
+		 yang_stmt        **ypathp)
 {
     int        retval = -1;
     int        j;
@@ -1997,22 +1997,22 @@ api_path2xml_vec(char             **vec,
     /* Split into prefix and localname */
     if (nodeid_split(nodeid, &prefix, &name) < 0)
 	goto done;
-    if (y0->yn_keyword == Y_SPEC){ /* top-node */
+    if (y0->ys_keyword == Y_SPEC){ /* top-node */
 	if (prefix == NULL){
 	    clicon_err(OE_XML, EINVAL, "api-path element '%s', expected prefix:name", nodeid);
 	    goto fail;
 	}
-	if ((ymod = yang_find_module_by_name((yang_spec*)y0, prefix)) == NULL){
+	if ((ymod = yang_find_module_by_name(y0, prefix)) == NULL){
 	    clicon_err(OE_YANG, EINVAL, "api-path element prefix: '%s', no such yang module", prefix);
 	    goto fail;
 	}
 	namespace = yang_find_mynamespace(ymod);
-	y0 = (yang_node*)ymod;
+	y0 = ymod;
 
     }
     y = (nodeclass==YC_SCHEMANODE)?
-	yang_find_schemanode((yang_node*)y0, name):
-	yang_find_datanode((yang_node*)y0, name);
+	yang_find_schemanode(y0, name):
+	yang_find_datanode(y0, name);
     if (y == NULL){
 	clicon_err(OE_YANG, EINVAL, "api-path name: '%s', no such yang element", name);
 	goto fail;
@@ -2082,7 +2082,7 @@ api_path2xml_vec(char             **vec,
 	    goto done;
     }
     if ((retval = api_path2xml_vec(vec+1, nvec-1, 
-				   x, (yang_node*)y, 
+				   x, y, 
 				   nodeclass,
 				   xpathp, ypathp)) < 1)
 	goto done;
@@ -2127,11 +2127,11 @@ api_path2xml_vec(char             **vec,
  */
 int
 api_path2xml(char       *api_path,
-	     yang_spec  *yspec,
+	     yang_stmt  *yspec,
 	     cxobj      *xtop,
 	     yang_class  nodeclass,
 	     cxobj     **xbotp,
-	     yang_node **ybotp)
+	     yang_stmt **ybotp)
 {
     int    retval = -1;
     char **vec = NULL;
@@ -2155,7 +2155,7 @@ api_path2xml(char       *api_path,
     }
     nvec--; /* NULL-terminated */
     if ((retval = api_path2xml_vec(vec+1, nvec, 
-				   xtop, (yang_node*)yspec, nodeclass,
+				   xtop, yspec, nodeclass,
 				   xbotp, ybotp)) < 1)
 	goto done;
     xml_yang_root(*xbotp, &xroot);
@@ -2229,7 +2229,7 @@ xmlns_assign(cxobj *x)
  */
 static int
 xml_merge1(cxobj              *x0,
-	   yang_node          *y0,
+	   yang_stmt          *y0,
 	   cxobj              *x0p,
 	   cxobj              *x1,
 	   char              **reason)
@@ -2250,7 +2250,7 @@ xml_merge1(cxobj              *x0,
     assert(y0);
 
     x1name = xml_name(x1);
-    if (y0->yn_keyword == Y_LEAF_LIST || y0->yn_keyword == Y_LEAF){
+    if (y0->ys_keyword == Y_LEAF_LIST || y0->ys_keyword == Y_LEAF){
 	x1bstr = xml_body(x1);
 	if (x0==NULL){
 	    if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
@@ -2300,7 +2300,7 @@ xml_merge1(cxobj              *x0,
 	    x0c = NULL;
 	    if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
 		goto done;
-	    if (xml_merge1(x0c, (yang_node*)yc, x0, x1c, reason) < 0)
+	    if (xml_merge1(x0c, yc, x0, x1c, reason) < 0)
 		goto done;
 	    if (*reason != NULL)
 		goto ok;
@@ -2339,7 +2339,7 @@ xml_merge1(cxobj              *x0,
 int
 xml_merge(cxobj     *x0,
 	  cxobj     *x1,
-	  yang_spec *yspec,
+	  yang_stmt *yspec,
 	  char     **reason)
 {
     int        retval = -1;
@@ -2370,7 +2370,7 @@ xml_merge(cxobj     *x0,
 	    goto ok;	
 	}
 	/* Get yang spec of the child */
-	if ((yc = yang_find_datanode((yang_node*)ymod, x1cname)) == NULL){
+	if ((yc = yang_find_datanode(ymod, x1cname)) == NULL){
 	    if (reason){
 		if ((cbr = cbuf_new()) == NULL){
 		    clicon_err(OE_XML, errno, "cbuf_new");
@@ -2391,7 +2391,7 @@ xml_merge(cxobj     *x0,
 	 * it is treated as a match, and x0c will remain 
 	 * If it is overwritten, then x0c should be removed here.
 	 */
-	if (xml_merge1(x0c, (yang_node*)yc, x0, x1c, reason) < 0)
+	if (xml_merge1(x0c, yc, x0, x1c, reason) < 0)
 	    goto done;
 	if (*reason != NULL)
 	    break;
@@ -2422,7 +2422,7 @@ yang_enum_int_value(cxobj   *node,
 		    int32_t *val)
 {
     int retval = -1;
-    yang_spec *yspec;
+    yang_stmt *yspec;
     yang_stmt *ys;
     yang_stmt *ytype;
     yang_stmt *yrestype;  /* resolved type */
@@ -2436,17 +2436,17 @@ yang_enum_int_value(cxobj   *node,
 	goto done;
     if ((yspec = ys_spec(ys)) == NULL)
 	goto done;
-    if ((ytype = yang_find((yang_node *)ys, Y_TYPE, NULL)) == NULL)
+    if ((ytype = yang_find(ys, Y_TYPE, NULL)) == NULL)
 	goto done;
     if (yang_type_resolve(ys, ys, ytype, &yrestype, 
 			  NULL, NULL, NULL, NULL) < 0)
 	goto done;
     if (yrestype==NULL || strcmp(yrestype->ys_argument, "enumeration"))
 	goto done;
-    if ((yenum = yang_find((yang_node *)yrestype, Y_ENUM, xml_body(node))) == NULL)
+    if ((yenum = yang_find(yrestype, Y_ENUM, xml_body(node))) == NULL)
 	goto done;
     /* Should assign value if yval not found */
-    if ((yval = yang_find((yang_node *)yenum, Y_VALUE, NULL)) == NULL)
+    if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
 	goto done;
     /* reason is string containing why int could not be parsed */
     if (parse_int32(yval->ys_argument, val, &reason) < 0)

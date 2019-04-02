@@ -188,7 +188,7 @@ api_data_get2(clicon_handle h,
     cbuf      *cbpath = NULL;
     char      *path;
     cbuf      *cbx = NULL;
-    yang_spec *yspec;
+    yang_stmt *yspec;
     cxobj     *xret = NULL;
     cxobj     *xerr = NULL; /* malloced */
     cxobj     *xe = NULL;
@@ -443,8 +443,8 @@ api_data_post(clicon_handle h,
     cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xbot = NULL;
     cxobj     *x;
-    yang_node *y = NULL;
-    yang_spec *yspec;
+    yang_stmt *y = NULL;
+    yang_stmt *yspec;
     cxobj     *xa;
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL; /* return from commit */
@@ -710,8 +710,8 @@ api_data_put(clicon_handle h,
     cxobj     *xbot = NULL;
     cxobj     *xparent;
     cxobj     *x;
-    yang_node *y = NULL;
-    yang_spec *yspec;
+    yang_stmt *y = NULL;
+    yang_stmt *yspec;
     cxobj     *xa;
     char      *api_path;
     cxobj     *xret = NULL;
@@ -847,7 +847,7 @@ api_data_put(clicon_handle h,
 	    goto ok;
 	}
 	/* If list or leaf-list, api-path keys must match data keys */	    
-	if (y && (y->yn_keyword == Y_LIST ||y->yn_keyword == Y_LEAF_LIST)){
+	if (y && (y->ys_keyword == Y_LIST ||y->ys_keyword == Y_LEAF_LIST)){
 	    if (match_list_keys((yang_stmt*)y, x, xbot) < 0){
 		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
 		    goto done;
@@ -988,8 +988,8 @@ api_data_delete(clicon_handle h,
     cxobj     *xbot = NULL;
     cxobj     *xa;
     cbuf      *cbx = NULL;
-    yang_node *y = NULL;
-    yang_spec *yspec;
+    yang_stmt *y = NULL;
+    yang_stmt *yspec;
     enum operation_type op = OP_DELETE;
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL; /* return from commmit */
@@ -1128,7 +1128,7 @@ api_operations_get(clicon_handle h,
 		   int           use_xml)
 {
     int        retval = -1;
-    yang_spec *yspec;
+    yang_stmt *yspec;
     yang_stmt *ymod; /* yang module */
     yang_stmt *yc;
     char      *namespace;
@@ -1146,10 +1146,10 @@ api_operations_get(clicon_handle h,
 	cprintf(cbx, "{\"operations\": {");
     ymod = NULL;
     i = 0;
-    while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
+    while ((ymod = yn_each(yspec, ymod)) != NULL) {
 	namespace = yang_find_mynamespace(ymod);
 	yc = NULL; 
-	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
+	while ((yc = yn_each(ymod, yc)) != NULL) {
 	    if (yc->ys_keyword != Y_RPC)
 		continue;
 	    if (use_xml)
@@ -1207,7 +1207,7 @@ static int
 api_operations_post_input(clicon_handle h,
 			  FCGX_Request *r, 
 			  char         *data,
-			  yang_spec    *yspec,
+			  yang_stmt    *yspec,
 			  yang_stmt    *yrpc,
 			  cxobj        *xrpc,
 			  int           pretty,
@@ -1342,7 +1342,7 @@ static int
 api_operations_post_output(clicon_handle h,
 			   FCGX_Request *r, 
 			   cxobj        *xret,
-			   yang_spec    *yspec,
+			   yang_stmt    *yspec,
 			   yang_stmt    *youtput,
 			   char         *namespace,
 			   int           pretty,
@@ -1511,14 +1511,14 @@ api_operations_post(clicon_handle h,
     int        retval = -1;
     int        i;
     char      *oppath = path;
-    yang_spec *yspec;
+    yang_stmt *yspec;
     yang_stmt *youtput = NULL;
     yang_stmt *yrpc = NULL;
     cxobj     *xret = NULL;
     cxobj     *xerr = NULL; /* malloced must be freed */
     cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xbot = NULL;
-    yang_node *y = NULL;
+    yang_stmt *y = NULL;
     cxobj     *xoutput = NULL;
     cxobj     *xa;
     cxobj     *xe;
@@ -1561,7 +1561,7 @@ api_operations_post(clicon_handle h,
      */
     if (nodeid_split(oppath+1, &prefix, &id) < 0) /* +1 skip / */
 	goto done;
-    if ((ys = yang_find((yang_node*)yspec, Y_MODULE, prefix)) == NULL){
+    if ((ys = yang_find(yspec, Y_MODULE, prefix)) == NULL){
 	if (netconf_operation_failed_xml(&xerr, "protocol", "yang module not found") < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -1572,7 +1572,7 @@ api_operations_post(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if ((yrpc = yang_find((yang_node*)ys, Y_RPC, id)) == NULL){
+    if ((yrpc = yang_find(ys, Y_RPC, id)) == NULL){
 	if (netconf_missing_element_xml(&xerr, "application", id, "RPC not defined") < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -1704,7 +1704,7 @@ api_operations_post(clicon_handle h,
 	clicon_debug(1, "%s 8. Receive reply:%s", __FUNCTION__, cbuf_get(ccc));
     }
 #endif
-    youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL);
+    youtput = yang_find(yrpc, Y_OUTPUT, NULL);
     if ((ret = api_operations_post_output(h, r, xret, yspec, youtput, namespace,
 					  pretty, use_xml, &xoutput)) < 0)
 	goto done;

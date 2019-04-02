@@ -111,7 +111,7 @@ int
 yang_modules_init(clicon_handle h)
 {
     int        retval = -1;
-    yang_spec *yspec;
+    yang_stmt *yspec;
 
     yspec = clicon_dbspec_yang(h);	
     if (!clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895"))
@@ -143,15 +143,15 @@ yang_modules_init(clicon_handle h)
 char *
 yang_modules_revision(clicon_handle h)
 {
-    yang_spec *yspec;
+    yang_stmt *yspec;
     yang_stmt *ymod;
     yang_stmt *yrev;
     char      *revision = NULL;
 
     yspec = clicon_dbspec_yang(h);
-    if ((ymod = yang_find((yang_node*)yspec, Y_MODULE, "ietf-yang-library")) != NULL ||
-	(ymod = yang_find((yang_node*)yspec, Y_SUBMODULE, "ietf-yang-library")) != NULL){
-	if ((yrev = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL){
+    if ((ymod = yang_find(yspec, Y_MODULE, "ietf-yang-library")) != NULL ||
+	(ymod = yang_find(yspec, Y_SUBMODULE, "ietf-yang-library")) != NULL){
+	if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
 	    revision = yrev->ys_argument;
 	}
     }
@@ -162,7 +162,7 @@ yang_modules_revision(clicon_handle h)
 */
 static int
 yms_build(clicon_handle    h,
-	  yang_spec       *yspec,
+	  yang_stmt       *yspec,
 	  char            *msid,
 	  int              brief,
 	  cbuf            *cb)
@@ -175,12 +175,12 @@ yms_build(clicon_handle    h,
     yang_stmt  *ymod;        /* generic module */
     yang_stmt  *yns = NULL;  /* namespace */
 
-    if ((ylib = yang_find((yang_node*)yspec, Y_MODULE, module)) == NULL &&
-	(ylib = yang_find((yang_node*)yspec, Y_SUBMODULE, module)) == NULL){
+    if ((ylib = yang_find(yspec, Y_MODULE, module)) == NULL &&
+	(ylib = yang_find(yspec, Y_SUBMODULE, module)) == NULL){
             clicon_err(OE_YANG, 0, "%s not found", module);
             goto done;
         }
-    if ((yns = yang_find((yang_node*)ylib, Y_NAMESPACE, NULL)) == NULL){
+    if ((yns = yang_find(ylib, Y_NAMESPACE, NULL)) == NULL){
 	clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
 	goto done;
     }
@@ -189,17 +189,17 @@ yms_build(clicon_handle    h,
     cprintf(cb,"<module-set-id>%s</module-set-id>", msid);
 
     ymod = NULL;
-    while ((ymod = yn_each((yang_node*)yspec, ymod)) != NULL) {
+    while ((ymod = yn_each(yspec, ymod)) != NULL) {
 	if (ymod->ys_keyword != Y_MODULE &&
 	    ymod->ys_keyword != Y_SUBMODULE)
 	    continue;
 	cprintf(cb,"<module>");
 	cprintf(cb,"<name>%s</name>", ymod->ys_argument);
-	if ((ys = yang_find((yang_node*)ymod, Y_REVISION, NULL)) != NULL)
+	if ((ys = yang_find(ymod, Y_REVISION, NULL)) != NULL)
 	    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
 	else
 	    cprintf(cb,"<revision></revision>");
-	if ((ys = yang_find((yang_node*)ymod, Y_NAMESPACE, NULL)) != NULL)
+	if ((ys = yang_find(ymod, Y_NAMESPACE, NULL)) != NULL)
 	    cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
 	else
 	    cprintf(cb,"<namespace></namespace>");
@@ -207,7 +207,7 @@ yms_build(clicon_handle    h,
 	   submodules */
 	if (!brief){
 	    yc = NULL;
-	    while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
+	    while ((yc = yn_each(ymod, yc)) != NULL) {
 		switch(yc->ys_keyword){
 		case Y_FEATURE:
 		    if (yc->ys_cv && cv_bool_get(yc->ys_cv))
@@ -220,12 +220,12 @@ yms_build(clicon_handle    h,
 	    cprintf(cb, "<conformance-type>implement</conformance-type>");
 	}
 	yc = NULL;
-	while ((yc = yn_each((yang_node*)ymod, yc)) != NULL) {
+	while ((yc = yn_each(ymod, yc)) != NULL) {
 	    switch(yc->ys_keyword){
 	    case Y_SUBMODULE:
 		cprintf(cb,"<submodule>");
 		cprintf(cb,"<name>%s</name>", yc->ys_argument);
-		if ((ys = yang_find((yang_node*)yc, Y_REVISION, NULL)) != NULL)
+		if ((ys = yang_find(yc, Y_REVISION, NULL)) != NULL)
 		    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
 		else
 		    cprintf(cb,"<revision></revision>");
@@ -273,7 +273,7 @@ x            +--ro namespace           inet:uri
  */
 int
 yang_modules_state_get(clicon_handle    h,
-                       yang_spec       *yspec,
+                       yang_stmt       *yspec,
                        char            *xpath,
 		       int              brief,
                        cxobj          **xret)
@@ -362,7 +362,7 @@ mod_ns_upgrade(clicon_handle h,
     uint32_t   from = 0;
     uint32_t   to = 0;
     int        ret;
-    yang_spec *yspec;
+    yang_stmt *yspec;
 
     /* Make upgrade callback for this XML, specifying the module 
      * namespace, from and to revision.
@@ -376,7 +376,7 @@ mod_ns_upgrade(clicon_handle h,
 	yspec = clicon_dbspec_yang(h);
 	if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL)
 	    goto fail;
-	if ((yrev = yang_find((yang_node*)ymod, Y_REVISION, NULL)) == NULL)
+	if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL)
 	    goto fail;
 	if (ys_parse_date_arg(yrev->ys_argument, &to) < 0)
 	    goto done;

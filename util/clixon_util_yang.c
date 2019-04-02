@@ -79,7 +79,7 @@ usage(char *argv0)
 int
 main(int argc, char **argv)
 {
-    yang_spec *yspec = NULL;
+    yang_stmt *yspec = NULL;
     int        c;
     int        logdst = CLICON_LOG_STDERR;
     
@@ -109,7 +109,7 @@ main(int argc, char **argv)
 	fprintf(stderr, "yang parse error %s\n", clicon_err_reason);
 	return -1;
     }
-    yang_print(stdout, (yang_node*)yspec);
+    yang_print(stdout, yspec);
  done:
     if (yspec)
 	yspec_free(yspec);

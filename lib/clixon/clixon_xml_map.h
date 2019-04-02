@@ -51,7 +51,7 @@ int xml_yang_validate_all(cxobj *xt, cbuf *cbret);
 int xml_yang_validate_all_top(cxobj *xt, cbuf *cbret);
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
 int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
-int xml_diff(yang_spec *yspec, cxobj *xt1, cxobj *xt2, 	 
+int xml_diff(yang_stmt *yspec, cxobj *xt1, cxobj *xt2, 	 
 	     cxobj ***first, size_t *firstlen, 
 	     cxobj ***second, size_t *secondlen, 
 	     cxobj ***changed1, cxobj ***changed2, size_t *changedlen);
@@ -63,12 +63,12 @@ int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
 int xml_default(cxobj *x, void  *arg);
 int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, void *arg);
-int xml_spec_populate_rpc(clicon_handle h, cxobj *x, yang_spec *yspec);
+int xml_spec_populate_rpc(clicon_handle h, cxobj *x, yang_stmt *yspec);
 int xml_spec_populate(cxobj *x, void *arg);
-int api_path2xpath(yang_spec *yspec, cvec *cvv, int offset, cbuf *xpath);
-int api_path2xml(char *api_path, yang_spec *yspec, cxobj *xtop, 
-		 yang_class nodeclass, cxobj **xpathp, yang_node **ypathp);
-int xml_merge(cxobj *x0, cxobj *x1, yang_spec *yspec, char **reason);
+int api_path2xpath(yang_stmt *yspec, cvec *cvv, int offset, cbuf *xpath);
+int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop, 
+		 yang_class nodeclass, cxobj **xpathp, yang_stmt **ypathp);
+int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

@@ -46,8 +46,8 @@
  */
 
 struct ys_stack{
-    struct ys_stack    *ys_next;
-    struct yang_node   *ys_node;
+    struct ys_stack *ys_next;
+    yang_stmt       *ys_node;
 };
 
 struct clicon_yang_yacc_arg{ /* XXX: mostly unrelevant */
@@ -88,7 +88,7 @@ extern char *clixon_yang_parsetext;
 int yang_scan_init(struct clicon_yang_yacc_arg *ya);
 int yang_scan_exit(struct clicon_yang_yacc_arg *ya);
 
-int yang_parse_init(struct clicon_yang_yacc_arg *ya, yang_spec *ysp);
+int yang_parse_init(struct clicon_yang_yacc_arg *ya, yang_stmt *ysp);
 int yang_parse_exit(struct clicon_yang_yacc_arg *ya);
 
 int clixon_yang_parselex(void *_ya);
@@ -96,6 +96,6 @@ int clixon_yang_parseparse(void *);
 void clixon_yang_parseerror(void *_ya, char*);
 
 int ystack_pop(struct clicon_yang_yacc_arg *ya);
-struct ys_stack *ystack_push(struct clicon_yang_yacc_arg *ya, yang_node *yn);
+struct ys_stack *ystack_push(struct clicon_yang_yacc_arg *ya, yang_stmt *yn);
 
 #endif	/* _CLIXON_YANG_PARSE_H_ */

@@ -192,7 +192,7 @@ typedef struct yang_type_cache yang_type_cache;
 struct yang_stmt{
     int                ys_len;       /* Number of children */
     struct yang_stmt **ys_stmt;      /* Vector of children statement pointers */
-    struct yang_node  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
+    struct yang_stmt  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
     enum rfc_6020      ys_keyword;   /* See clicon_yang_parse.tab.h */
 
     char              *ys_argument;  /* String / argument depending on keyword */   
@@ -220,68 +220,64 @@ struct yang_stmt{
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
 };
 
-/*! top-level yang parse-tree */
-struct yang_spec{
-    int                yp_len;       /* Number of children */
-    struct yang_stmt **yp_stmt;      /* Vector of children statement pointers */
-    struct yang_node  *yp_parent;    /* Backpointer to parent: always NULL. See yang_stmt */
-    enum rfc_6020      yp_keyword;   /* SHOULD BE Y_SPEC */
-    char              *yp_argument;  /* XXX String / argument depending on keyword */   
-    int                yp_flags;     /* Flags according to YANG_FLAG_* above */
-};
-typedef struct yang_spec yang_spec;
+#if 0 /* Backward compatible */
+typedef struct yang_stmt yang_node; 
+typedef struct yang_stmt yang_spec; 
 
-/*! super-class of yang_stmt and yang_spec: it must start exactly as those two classes */
-struct yang_node{
-    int                yn_len;       /* Number of children */
-    struct yang_stmt **yn_stmt;      /* Vector of children statement pointers */
-    struct yang_node  *yn_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
-    enum rfc_6020      yn_keyword;   /* See clicon_yang_parse.tab.h */
-    char              *yn_argument;  /* XXX String / argument depending on keyword */   
-    int                yn_flags;     /* Flags according to YANG_FLAG_* above */
-};
-typedef struct yang_node yang_node;
+#define yn_len      ys_len
+#define yn_stmt     ys_stmt
+#define yn_parent   ys_parent
+#define yn_keyword  ys_keyword
+#define yn_argument ys_argument
+#define yn_flags    ys_flags
+#define yp_len      ys_len
+#define yp_stmt     ys_stmt
+#define yp_parent   ys_parent
+#define yp_keyword  ys_keyword
+#define yp_argument ys_argument
+#define yp_flags    ys_flags
+#endif
 
 typedef int (yang_applyfn_t)(yang_stmt *ys, void *arg);
 
 /*
  * Prototypes
  */
-yang_spec *yspec_new(void);
+yang_stmt *yspec_new(void);
 yang_stmt *ys_new(enum rfc_6020 keyw);
 int        ys_free(yang_stmt *ys);
-int        yspec_free(yang_spec *yspec);
+int        yspec_free(yang_stmt *yspec);
 int        ys_cp(yang_stmt *new, yang_stmt *old);
 yang_stmt *ys_dup(yang_stmt *old);
-int        yn_insert(yang_node *yn_parent, yang_stmt *ys_child);
-yang_stmt *yn_each(yang_node *yn, yang_stmt *ys);
+int        yn_insert(yang_stmt *ys_parent, yang_stmt *ys_child);
+yang_stmt *yn_each(yang_stmt *yn, yang_stmt *ys);
 char      *yang_key2str(int keyword);
 char      *yarg_prefix(yang_stmt *ys);
 char      *yarg_id(yang_stmt *ys);
-int        ys_module_by_xml(yang_spec *ysp, struct xml *xt, yang_stmt **ymodp);
+int        ys_module_by_xml(yang_stmt *ysp, struct xml *xt, yang_stmt **ymodp);
 yang_stmt *ys_module(yang_stmt *ys);
-yang_spec *ys_spec(yang_stmt *ys);
+yang_stmt *ys_spec(yang_stmt *ys);
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
-yang_stmt *yang_find_module_by_namespace(yang_spec *yspec, char *namespace);
-yang_stmt *yang_find_module_by_name(yang_spec *yspec, char *name);
-yang_stmt *yang_find(yang_node *yn, int keyword, const char *argument);
-int        yang_match(yang_node *yn, int keyword, char *argument);
-yang_stmt *yang_find_datanode(yang_node *yn, char *argument);
-yang_stmt *yang_find_schemanode(yang_node *yn, char *argument);
+yang_stmt *yang_find_module_by_namespace(yang_stmt *yspec, char *namespace);
+yang_stmt *yang_find_module_by_name(yang_stmt *yspec, char *name);
+yang_stmt *yang_find(yang_stmt *yn, int keyword, const char *argument);
+int        yang_match(yang_stmt *yn, int keyword, char *argument);
+yang_stmt *yang_find_datanode(yang_stmt *yn, char *argument);
+yang_stmt *yang_find_schemanode(yang_stmt *yn, char *argument);
 char      *yang_find_myprefix(yang_stmt *ys);
 char      *yang_find_mynamespace(yang_stmt *ys);
-yang_node *yang_choice(yang_stmt *y);
+yang_stmt *yang_choice(yang_stmt *y);
 int        yang_order(yang_stmt *y);
-int        yang_print(FILE *f, yang_node *yn);
-int        yang_print_cbuf(cbuf *cb, yang_node *yn, int marginal);
+int        yang_print(FILE *f, yang_stmt *yn);
+int        yang_print_cbuf(cbuf *cb, yang_stmt *yn, int marginal);
 int        ys_populate(yang_stmt *ys, void *arg);
-yang_stmt *yang_parse_file(int fd, const char *name, yang_spec *ysp);
-int        yang_apply(yang_node *yn, enum rfc_6020 key, yang_applyfn_t fn, 
+yang_stmt *yang_parse_file(int fd, const char *name, yang_stmt *ysp);
+int        yang_apply(yang_stmt *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
-int        yang_abs_schema_nodeid(yang_spec *yspec, yang_stmt *ys,
+int        yang_abs_schema_nodeid(yang_stmt *yspec, yang_stmt *ys,
 				  char *schema_nodeid, 
 				  enum rfc_6020 keyword, yang_stmt **yres);
-int        yang_desc_schema_nodeid(yang_node *yn, char *schema_nodeid, 
+int        yang_desc_schema_nodeid(yang_stmt *yn, char *schema_nodeid, 
 				   enum rfc_6020 keyword, yang_stmt **yres);
 int        ys_parse_date_arg(char *datearg, uint32_t *dateint);
 
@@ -290,10 +286,10 @@ int        ys_parse_sub(yang_stmt *ys, char *extra);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
 int        yang_spec_parse_module(clicon_handle h, const char *module,
-				  const char *revision, yang_spec *yspec);
-int        yang_spec_parse_file(clicon_handle h, char *filename, yang_spec *yspec);
-int        yang_spec_load_dir(clicon_handle h, char *dir, yang_spec *yspec);
+				  const char *revision, yang_stmt *yspec);
+int        yang_spec_parse_file(clicon_handle h, char *filename, yang_stmt *yspec);
+int        yang_spec_load_dir(clicon_handle h, char *dir, yang_stmt *yspec);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
-int        yang_key_match(yang_node *yn, char *name);
+int        yang_key_match(yang_stmt *yn, char *name);
 
 #endif  /* _CLIXON_YANG_H_ */

@@ -121,7 +121,7 @@ clixon_plugin_reset(clicon_handle h,
  */
 int
 clixon_plugin_statedata(clicon_handle    h,
-			yang_spec       *yspec,
+			yang_stmt       *yspec,
 			char            *xpath,
 			cxobj          **xret)
 {

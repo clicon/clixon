@@ -76,7 +76,7 @@
 /*! Get YANG specification for application
  * Must use hash functions directly since they are not strings.
  */
-yang_spec *
+yang_stmt *
 clicon_dbspec_yang(clicon_handle h)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -84,7 +84,7 @@ clicon_dbspec_yang(clicon_handle h)
     void           *p;
 
     if ((p = hash_value(cdat, "dbspec_yang", &len)) != NULL)
-	return *(yang_spec **)p;
+	return *(yang_stmt **)p;
     return NULL;
 }
 
@@ -92,8 +92,8 @@ clicon_dbspec_yang(clicon_handle h)
  * ys must be a malloced pointer
  */
 int
-clicon_dbspec_yang_set(clicon_handle     h, 
-		       struct yang_spec *ys)
+clicon_dbspec_yang_set(clicon_handle h, 
+		       yang_stmt    *ys)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
@@ -151,7 +151,7 @@ clicon_nacm_ext_set(clicon_handle h,
 /*! Get YANG specification for clixon config
  * Must use hash functions directly since they are not strings.
  */
-yang_spec *
+yang_stmt *
 clicon_config_yang(clicon_handle h)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -159,7 +159,7 @@ clicon_config_yang(clicon_handle h)
     void           *p;
 
     if ((p = hash_value(cdat, "control_yang", &len)) != NULL)
-	return *(yang_spec **)p;
+	return *(yang_stmt **)p;
     return NULL;
 }
 
@@ -167,8 +167,8 @@ clicon_config_yang(clicon_handle h)
  * ys must be a malloced pointer
  */
 int
-clicon_config_yang_set(clicon_handle     h, 
-		       struct yang_spec *ys)
+clicon_config_yang_set(clicon_handle   h, 
+		       yang_stmt      *ys)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 

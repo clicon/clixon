@@ -218,7 +218,7 @@ clixon_yang_parseerror(void *_yy,
 
 int
 yang_parse_init(struct clicon_yang_yacc_arg *yy,
-		yang_spec                   *ysp)
+		yang_stmt                   *ysp)
 {
     return 0;
 }
@@ -246,7 +246,7 @@ ystack_pop(struct clicon_yang_yacc_arg *yy)
 
 struct ys_stack *
 ystack_push(struct clicon_yang_yacc_arg *yy,
-	    yang_node                   *yn)
+	    yang_stmt                   *yn)
 {
     struct ys_stack *ystack; 
 
@@ -278,7 +278,7 @@ ysp_add(struct clicon_yang_yacc_arg *yy,
 {
     struct ys_stack *ystack = yy->yy_stack;
     yang_stmt       *ys = NULL;
-    yang_node       *yn;
+    yang_stmt       *yn;
  
     ystack = yy->yy_stack;
     if (ystack == NULL){
@@ -317,7 +317,7 @@ ysp_add_push(struct clicon_yang_yacc_arg *yy,
 
     if ((ys = ysp_add(yy, keyword, argument, extra)) == NULL)
 	return NULL;
-    if (ystack_push(yy, (yang_node*)ys) == NULL)
+    if (ystack_push(yy, ys) == NULL)
 	return NULL;
     return ys;
 }

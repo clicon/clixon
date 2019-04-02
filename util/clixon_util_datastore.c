@@ -103,7 +103,7 @@ main(int argc, char **argv)
     char               *argv0;
     char               *db = "running";
     char               *cmd = NULL;
-    yang_spec          *yspec = NULL;
+    yang_stmt          *yspec = NULL;
     char               *yangfilename = NULL;
     char               *dbdir = NULL;
     int                 ret;

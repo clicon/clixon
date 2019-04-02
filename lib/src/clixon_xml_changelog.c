@@ -423,7 +423,7 @@ clixon_xml_changelog_init(clicon_handle h)
     char      *filename;
     int        fd = -1;
     cxobj     *xt = NULL;
-    yang_spec *yspec;
+    yang_stmt *yspec;
     cbuf      *cbret = NULL;
     int        ret;
 

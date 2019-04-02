@@ -521,8 +521,8 @@ main(int    argc,
     clicon_handle h;
     char         *dir;
     int          logdst = CLICON_LOG_SYSLOG;
-    yang_spec   *yspec = NULL;
-    yang_spec   *yspecfg = NULL; /* For config XXX clixon bug */
+    yang_stmt   *yspec = NULL;
+    yang_stmt   *yspecfg = NULL; /* For config XXX clixon bug */
     char        *stream_path;
     int          finish;
     char        *str;

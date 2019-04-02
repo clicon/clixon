@@ -85,7 +85,7 @@
 static int
 backend_terminate(clicon_handle h)
 {
-    yang_spec *yspec;
+    yang_stmt *yspec;
     char      *pidfile = clicon_backend_pidfile(h);
     int       sockfamily = clicon_sock_family(h);
     char      *sockpath = clicon_sock(h);
@@ -174,7 +174,7 @@ nacm_load_external(clicon_handle h)
 {
     int         retval = -1;
     char       *filename; /* NACM config file */
-    yang_spec  *yspec = NULL;
+    yang_stmt  *yspec = NULL;
     cxobj      *xt = NULL;
     struct stat st;
     FILE       *f = NULL;
@@ -325,8 +325,8 @@ main(int    argc,
     int           sockfamily;
     char         *nacm_mode;
     int           logdst = CLICON_LOG_SYSLOG|CLICON_LOG_STDERR;
-    yang_spec    *yspec = NULL;
-    yang_spec    *yspecfg = NULL; /* For config XXX clixon bug */
+    yang_stmt    *yspec = NULL;
+    yang_stmt    *yspecfg = NULL; /* For config XXX clixon bug */
     char         *str;
     int           ss = -1; /* server socket */
     cbuf         *cbret = NULL; /* startup cbuf if invalid */

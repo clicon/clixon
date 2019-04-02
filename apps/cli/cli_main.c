@@ -162,7 +162,7 @@ cli_history_save(clicon_handle h)
 static int
 cli_terminate(clicon_handle h)
 {
-    yang_spec  *yspec;
+    yang_stmt  *yspec;
     cxobj      *x;
 
     clicon_rpc_close_session(h);
@@ -279,8 +279,8 @@ main(int argc, char **argv)
     int            help = 0;
     int            logdst = CLICON_LOG_STDERR;
     char          *restarg = NULL; /* what remains after options */
-    yang_spec     *yspec;
-    yang_spec     *yspecfg = NULL; /* For config XXX clixon bug */
+    yang_stmt     *yspec;
+    yang_stmt     *yspecfg = NULL; /* For config XXX clixon bug */
     struct passwd *pw;
     char          *str;
     

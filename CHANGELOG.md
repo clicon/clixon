@@ -35,6 +35,9 @@
 
 
 ### API changes on existing features (you may need to change your code)
+* Structural C-code change: Merged yang_spec and yang_node types into yang_stmt
+  * Change all yn_* and yp_ to ys_*
+  * Change all references to yang_node/yang_spec to yang_stmt
 * Structural change: removed datastore plugin and directory, and merged into regulat clixon lib code.
   * The CLICON_XMLDB_PLUGIN config option is obsolete, you should remove it from your config file
   * The datastore directory is removed, code is moved to lib/src/clixon_datastore*.c

@@ -190,7 +190,7 @@ yang2cli_var_identityref(yang_stmt *ys,
     cprintf(cb, ">");
     if (helptext)
 	cprintf(cb, "(\"%s\")", helptext);
-    if ((ybaseref = yang_find((yang_node*)ytype, Y_BASE, NULL)) != NULL &&
+    if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) != NULL &&
 	(ybaseid = yang_find_identity(ys, ybaseref->ys_argument)) != NULL){
 	if (cvec_len(ybaseid->ys_cvec) > 0){
 	    cprintf(cb, "|<%s:%s choice:", ys->ys_argument, cvtypestr);
@@ -329,7 +329,7 @@ yang2cli_var_sub(clicon_handle h,
 	    cprintf(cb, " choice:"); 
 	    i = 0;
 	    yi = NULL;
-	    while ((yi = yn_each((yang_node*)ytype, yi)) != NULL){
+	    while ((yi = yn_each(ytype, yi)) != NULL){
 		if (yi->ys_keyword != Y_ENUM && yi->ys_keyword != Y_BIT)
 		    continue;
 		if (i)
@@ -443,7 +443,7 @@ yang2cli_var_union(clicon_handle h,
      * not resolved types (unless they are built-in, but the resolve call is
      * made in the union_one call.
      */
-    while ((ytsub = yn_each((yang_node*)ytype, ytsub)) != NULL){
+    while ((ytsub = yn_each(ytype, ytsub)) != NULL){
 	if (ytsub->ys_keyword != Y_TYPE)
 	    continue;
 	if (i++)
@@ -563,7 +563,7 @@ yang2cli_leaf(clicon_handle h,
     char         *s;
 
     /* description */
-    if ((yd = yang_find((yang_node*)ys, Y_DESCRIPTION, NULL)) != NULL){
+    if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	if ((helptext = strdup(yd->ys_argument)) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
 	    goto done;
@@ -618,7 +618,7 @@ yang2cli_container(clicon_handle h,
     char         *s;
 
     cprintf(cb, "%*s%s", level*3, "", ys->ys_argument);
-    if ((yd = yang_find((yang_node*)ys, Y_DESCRIPTION, NULL)) != NULL){
+    if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	if ((helptext = strdup(yd->ys_argument)) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
 	    goto done;
@@ -668,7 +668,7 @@ yang2cli_list(clicon_handle      h,
     char         *s;
 
     cprintf(cb, "%*s%s", level*3, "", ys->ys_argument);
-    if ((yd = yang_find((yang_node*)ys, Y_DESCRIPTION, NULL)) != NULL){
+    if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	if ((helptext = strdup(yd->ys_argument)) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
 	    goto done;
@@ -683,7 +683,7 @@ yang2cli_list(clicon_handle      h,
     /* Iterate over individual keys  */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	keyname = cv_string_get(cvi);
-	if ((yleaf = yang_find((yang_node*)ys, Y_LEAF, keyname)) == NULL){
+	if ((yleaf = yang_find(ys, Y_LEAF, keyname)) == NULL){
 	    clicon_err(OE_XML, 0, "List statement \"%s\" has no key leaf \"%s\"", 
 		       ys->ys_argument, keyname);
 	    goto done;
@@ -836,7 +836,7 @@ yang2cli_stmt(clicon_handle h,
  */
 int
 yang2cli(clicon_handle      h, 
-	 yang_spec         *yspec, 
+	 yang_stmt         *yspec, 
 	 parse_tree        *ptnew, 
 	 enum genmodel_type gt)
 {
@@ -851,8 +851,8 @@ yang2cli(clicon_handle      h,
 	goto done;
     }
     /* Traverse YANG, loop through all modules and generate CLI */
-    for (i=0; i<yspec->yp_len; i++)
-	if ((ymod = yspec->yp_stmt[i]) != NULL){
+    for (i=0; i<yspec->ys_len; i++)
+	if ((ymod = yspec->ys_stmt[i]) != NULL){
 	    if (yang2cli_stmt(h, ymod, gt, 0, cb) < 0)
 		goto done;
 	}

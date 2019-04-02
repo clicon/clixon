@@ -318,7 +318,7 @@ xml2json1_cbuf(cbuf                   *cb,
     enum array_element_type xc_arraytype;
     yang_stmt       *ys;
     yang_stmt       *ymod; /* yang module */
-    yang_spec       *yspec = NULL; /* yang spec */
+    yang_stmt       *yspec = NULL; /* yang spec */
     int              bodystr0=1;
     char            *prefix=NULL;    /* prefix / local namespace name */
     char            *namespace=NULL; /* namespace uri */
@@ -728,7 +728,7 @@ xml2json_vec(FILE      *f,
  * @note the opposite - xml2ns is made inline in xml2json1_cbuf
  */
 int
-json2xml_ns(yang_spec *yspec,
+json2xml_ns(yang_stmt *yspec,
 	    cxobj     *x,
 	    cxobj    **xerr)
 {
@@ -860,7 +860,7 @@ json_parse_str(char   *str,
  */
 int 
 json_parse_file(int        fd,
-		yang_spec *yspec,
+		yang_stmt *yspec,
 		cxobj    **xt)
 {
     int   retval = -1;

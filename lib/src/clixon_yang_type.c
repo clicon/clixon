@@ -474,7 +474,7 @@ cv_validate1(cg_var      *cv,
 	    if (strcmp(restype, "enumeration") == 0){
 		found = 0;
 		yi = NULL;
-		while ((yi = yn_each((yang_node*)yrestype, yi)) != NULL){
+		while ((yi = yn_each(yrestype, yi)) != NULL){
 		    if (yi->ys_keyword != Y_ENUM)
 			continue;
 		    if (strcmp(yi->ys_argument, str) == 0){
@@ -500,7 +500,7 @@ cv_validate1(cg_var      *cv,
 			continue;
 		    found = 0;
 		    yi = NULL;
-		    while ((yi = yn_each((yang_node*)yrestype, yi)) != NULL){
+		    while ((yi = yn_each(yrestype, yi)) != NULL){
 			if (yi->ys_keyword != Y_BIT)
 			    continue;
 			if (strcmp(yi->ys_argument, v) == 0){
@@ -630,7 +630,7 @@ ys_cv_validate_union(yang_stmt *ys,
     yang_stmt *yt = NULL;
     char      *reason1 = NULL;  /* saved reason */
 
-    while ((yt = yn_each((yang_node*)yrestype, yt)) != NULL){
+    while ((yt = yn_each(yrestype, yt)) != NULL){
 	if (yt->ys_keyword != Y_TYPE)
 	    continue;
 	if ((retval = ys_cv_validate_union_one(ys, reason, yt, type, val)) < 0)
@@ -744,12 +744,12 @@ ys_typedef(yang_stmt *ys)
 static yang_stmt *
 ys_typedef_up(yang_stmt *ys)
 {
-    yang_node *yn;
+    yang_stmt *yn;
 
     while (ys != NULL && !ys_typedef(ys)){
 	yn = ys->ys_parent;
 	/* Some extra stuff to ensure ys is a stmt */
-	if (yn && yn->yn_keyword == Y_SPEC)
+	if (yn && yn->ys_keyword == Y_SPEC)
 	    yn = NULL;
 	ys = (yang_stmt*)yn;
     }
@@ -791,7 +791,7 @@ yang_find_identity(yang_stmt *ys,
     char        *prefix = NULL;
     yang_stmt   *ymodule;
     yang_stmt   *yid = NULL;
-    yang_node   *yn;
+    yang_stmt   *yn;
 
     if ((id = strchr(identity, ':')) == NULL)
 	id = identity;
@@ -804,7 +804,7 @@ yang_find_identity(yang_stmt *ys,
     if (prefix){ /* Go to top and find import that matches */
 	if ((ymodule = yang_find_module_by_prefix(ys, prefix)) == NULL)
 	    goto done;
-	yid = yang_find((yang_node*)ymodule, Y_IDENTITY, id);
+	yid = yang_find(ymodule, Y_IDENTITY, id);
     }
     else{
 	while (1){
@@ -812,11 +812,11 @@ yang_find_identity(yang_stmt *ys,
 	    if ((ys = ys_typedef_up(ys)) == NULL) /* If reach top */
 		break;
 	    /* Here find identity */
-	    if ((yid = yang_find((yang_node*)ys, Y_IDENTITY, id)) != NULL)
+	    if ((yid = yang_find(ys, Y_IDENTITY, id)) != NULL)
 		break;
 	    /* Did not find a matching typedef there, proceed to next level */
 	    yn = ys->ys_parent;
-	    if (yn && yn->yn_keyword == Y_SPEC)
+	    if (yn && yn->ys_keyword == Y_SPEC)
 		yn = NULL;
 	    ys = (yang_stmt*)yn;
 	}
@@ -910,7 +910,7 @@ yang_type_resolve(yang_stmt   *yorig,
     char        *type;
     char        *prefix = NULL;
     int          retval = -1;
-    yang_node   *yn;
+    yang_stmt   *yn;
     yang_stmt   *yrmod; /* module where resolved type is looked for */
 
     if (options)
@@ -926,10 +926,10 @@ yang_type_resolve(yang_stmt   *yorig,
 	goto ok;
     }
     /* Resolving type restrictions */
-    yrange    = yang_find((yang_node*)ytype, Y_RANGE, NULL);
-    ylength   = yang_find((yang_node*)ytype, Y_LENGTH, NULL);
-    ypattern  = yang_find((yang_node*)ytype, Y_PATTERN, NULL);
-    yfraction = yang_find((yang_node*)ytype, Y_FRACTION_DIGITS, NULL);
+    yrange    = yang_find(ytype, Y_RANGE, NULL);
+    ylength   = yang_find(ytype, Y_LENGTH, NULL);
+    ypattern  = yang_find(ytype, Y_PATTERN, NULL);
+    yfraction = yang_find(ytype, Y_FRACTION_DIGITS, NULL);
 
     /* Check if type is basic type. If so, return that */
     if (prefix == NULL && yang_builtin(type)){
@@ -946,7 +946,7 @@ yang_type_resolve(yang_stmt   *yorig,
 		       prefix, type, ys_module(yorig)->ys_argument);
 	    goto done;
 	}
-	if ((rytypedef = yang_find((yang_node*)yrmod, Y_TYPEDEF, type)) == NULL)
+	if ((rytypedef = yang_find(yrmod, Y_TYPEDEF, type)) == NULL)
 	    goto ok; /* unresolved */
 	ys = rytypedef;
     }
@@ -958,17 +958,17 @@ yang_type_resolve(yang_stmt   *yorig,
 		break;
 	    }
 	    /* Here find typedef */
-	    if ((rytypedef = yang_find((yang_node*)ys, Y_TYPEDEF, type)) != NULL)
+	    if ((rytypedef = yang_find(ys, Y_TYPEDEF, type)) != NULL)
 		break;
 	    /* Did not find a matching typedef there, proceed to next level */
 	    yn = ys->ys_parent;
-	    if (yn && (yn->yn_keyword == Y_SPEC))
+	    if (yn && (yn->ys_keyword == Y_SPEC))
 		yn = NULL;
 	    ys = (yang_stmt*)yn;
 	}
     if (rytypedef != NULL){     /* We have found a typedef */
 	/* Find associated type statement */
-	if ((rytype = yang_find((yang_node*)rytypedef, Y_TYPE, NULL)) == NULL){
+	if ((rytype = yang_find(rytypedef, Y_TYPE, NULL)) == NULL){
 	    clicon_err(OE_DB, 0, "mandatory type object is not found");
 	    goto done;
 	}
@@ -1045,7 +1045,7 @@ yang_type_get(yang_stmt    *ys,
     if (options)
 	*options = 0x0;
     /* Find mandatory type */
-    if ((ytype = yang_find((yang_node*)ys, Y_TYPE, NULL)) == NULL){
+    if ((ytype = yang_find(ys, Y_TYPE, NULL)) == NULL){
 	clicon_err(OE_DB, 0, "mandatory type object is not found");
 	goto done;
     }

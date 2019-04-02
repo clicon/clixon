@@ -111,7 +111,7 @@ valgrind --tool=callgrind datastore_client -d candidate -b /tmp/text -p ../datas
 static int
 text_modify(clicon_handle       h,
 	    cxobj              *x0,
-	    yang_node          *y0,
+	    yang_stmt          *y0,
 	    cxobj              *x0p,
 	    cxobj              *x1,
 	    enum operation_type op,
@@ -144,7 +144,7 @@ text_modify(clicon_handle       h,
 	if (xml_operation(opstr, &op) < 0)
 	    goto done;
     x1name = xml_name(x1);
-    if (y0->yn_keyword == Y_LEAF_LIST || y0->yn_keyword == Y_LEAF){
+    if (y0->ys_keyword == Y_LEAF_LIST || y0->ys_keyword == Y_LEAF){
 	x1bstr = xml_body(x1);
 	switch(op){ 
 	case OP_CREATE:
@@ -181,7 +181,7 @@ text_modify(clicon_handle       h,
 
 #if 0
 		/* If it is key I dont want to mark it */
-		if ((iamkey=yang_key_match(y0->yn_parent, x1name)) < 0)
+		if ((iamkey=yang_key_match(y0->ys_parent, x1name)) < 0)
 		    goto done;
 		if (!iamkey && op==OP_NONE)
 #else
@@ -262,7 +262,7 @@ text_modify(clicon_handle       h,
 	       can be modified in its entirety only.
 	       Any "operation" attributes present on subelements of an anyxml 
 	       node are ignored by the NETCONF server.*/
-	    if (y0->yn_keyword == Y_ANYXML || y0->yn_keyword == Y_ANYDATA){
+	    if (y0->ys_keyword == Y_ANYXML || y0->ys_keyword == Y_ANYDATA){
 		if (op == OP_NONE)
 		    break;
 		if (op==OP_MERGE && !permit && xnacm){
@@ -344,7 +344,7 @@ text_modify(clicon_handle       h,
 		x1cname = xml_name(x1c);
 		x0c = x0vec[i++];
 		yc = yang_find_datanode(y0, x1cname);
-		if ((ret = text_modify(h, x0c, (yang_node*)yc, x0, x1c, op,
+		if ((ret = text_modify(h, x0c, yc, x0, x1c, op,
 				       username, xnacm, permit, cbret)) < 0)
 		    goto done;
 		/* If xml return - ie netconf error xml tree, then stop and return OK */
@@ -404,7 +404,7 @@ static int
 text_modify_top(clicon_handle       h,
 		cxobj              *x0,
 		cxobj              *x1,
-		yang_spec          *yspec,
+		yang_stmt          *yspec,
 		enum operation_type op,
 		char               *username,
 		cxobj              *xnacm,
@@ -489,7 +489,7 @@ text_modify_top(clicon_handle       h,
 	if (ys_module_by_xml(yspec, x1c, &ymod) <0)
 	    goto done;
 	if (ymod != NULL)
-	    yc = yang_find_datanode((yang_node*)ymod, x1cname);
+	    yc = yang_find_datanode(ymod, x1cname);
 	if (yc == NULL){
 	    if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
 		goto done;
@@ -506,7 +506,7 @@ text_modify_top(clicon_handle       h,
 	    x0c = NULL;
 	}
 #endif
-	if ((ret = text_modify(h, x0c, (yang_node*)yc, x0, x1c, op,
+	if ((ret = text_modify(h, x0c, yc, x0, x1c, op,
 			       username, xnacm, permit, cbret)) < 0)
 	    goto done;
 	/* If xml return - ie netconf error xml tree, then stop and return OK */
@@ -552,7 +552,7 @@ xml_container_presence(cxobj  *x,
     /* Mark node that is: container, have no children, dont have presence */
     if (y->ys_keyword == Y_CONTAINER && 
 	xml_child_nr_notype(x, CX_ATTR)==0 &&
-	yang_find((yang_node*)y, Y_PRESENCE, NULL) == NULL)
+	yang_find(y, Y_PRESENCE, NULL) == NULL)
 	xml_flag_set(x, XML_FLAG_MARK); /* Mark, remove later */
     retval = 0;
  done:
@@ -597,7 +597,7 @@ xmldb_put(clicon_handle       h,
     char               *dbfile = NULL;
     FILE               *f = NULL;
     cbuf               *cb = NULL;
-    yang_spec          *yspec;
+    yang_stmt          *yspec;
     cxobj              *x0 = NULL;
     db_elmnt           *de = NULL;
     int                 ret;

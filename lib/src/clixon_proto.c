@@ -165,7 +165,7 @@ clicon_msg_encode(char *format, ...)
  */
 int
 clicon_msg_decode(struct clicon_msg *msg, 
-		  yang_spec         *yspec,
+		  yang_stmt         *yspec,
 		  cxobj            **xml)
 {
     int   retval = -1;

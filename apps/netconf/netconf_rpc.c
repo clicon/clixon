@@ -427,7 +427,7 @@ netconf_notification_cb(int   s,
     cxobj             *xn = NULL; /* event xml */
     cxobj             *xt = NULL; /* top xml */
     clicon_handle      h = (clicon_handle)arg;
-    yang_spec         *yspec = NULL;
+    yang_stmt         *yspec = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* get msg (this is the reason this function is called) */
@@ -541,7 +541,7 @@ netconf_application_rpc(clicon_handle h,
 			cxobj       **xret)
 {
     int            retval = -1;
-    yang_spec     *yspec = NULL; /* application yspec */
+    yang_stmt     *yspec = NULL; /* application yspec */
     yang_stmt     *yrpc = NULL;
     yang_stmt     *ymod = NULL;
     yang_stmt     *yinput;
@@ -579,11 +579,11 @@ netconf_application_rpc(clicon_handle h,
 		     "</rpc-error></rpc-reply>", xml_name(xn));
 	goto ok;
     }
-    yrpc = yang_find((yang_node*)ymod, Y_RPC, xml_name(xn));
+    yrpc = yang_find(ymod, Y_RPC, xml_name(xn));
     /* Check if found */
     if (yrpc != NULL){
 	/* 1. Check xn arguments with input statement. */
-	if ((yinput = yang_find((yang_node*)yrpc, Y_INPUT, NULL)) != NULL){
+	if ((yinput = yang_find(yrpc, Y_INPUT, NULL)) != NULL){
 	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
 	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
@@ -616,7 +616,7 @@ netconf_application_rpc(clicon_handle h,
 	 * (2) Uncertain how validation errors should be logged/handled
 	 */
 	if (0)
-	if ((youtput = yang_find((yang_node*)yrpc, Y_OUTPUT, NULL)) != NULL){
+	if ((youtput = yang_find(yrpc, Y_OUTPUT, NULL)) != NULL){
 	    xoutput=xpath_first(*xret, "/");
 	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
 	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)

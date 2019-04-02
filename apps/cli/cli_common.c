@@ -213,9 +213,9 @@ cli_dbxml(clicon_handle       h,
     int        len;
     cg_var    *arg;
     cbuf      *cb = NULL;
-    yang_spec *yspec;
+    yang_stmt *yspec;
     cxobj     *xbot = NULL; /* xpath, NULL if datastore */
-    yang_node *y = NULL; /* yang spec of xpath */
+    yang_stmt *y = NULL; /* yang spec of xpath */
     cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xa;           /* attribute */
     cxobj     *xb;           /* body */
@@ -243,7 +243,7 @@ cli_dbxml(clicon_handle       h,
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa,  xml_operation2str(op)) < 0)
 	goto done;
-    if (y->yn_keyword != Y_LIST && y->yn_keyword != Y_LEAF_LIST){
+    if (y->ys_keyword != Y_LIST && y->ys_keyword != Y_LEAF_LIST){
 	len = cvec_len(cvv);
 	if (len > 1){
 	    cval = cvec_i(cvv, len-1); 

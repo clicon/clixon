@@ -87,7 +87,7 @@
  * @retval      1       Validation OK       
  */
 static int
-generic_validate(yang_spec          *yspec,
+generic_validate(yang_stmt          *yspec,
 		 transaction_data_t *td,
 		 cbuf               *cbret)
 {
@@ -168,7 +168,7 @@ startup_common(clicon_handle       h,
 	       cbuf               *cbret)
 {
     int                 retval = -1;
-    yang_spec          *yspec;
+    yang_stmt          *yspec;
     int                 ret;
     modstate_diff_t    *msd = NULL;
     cxobj              *xt = NULL;
@@ -341,7 +341,7 @@ from_validate_common(clicon_handle       h,
 		     cbuf               *cbret)
 {
     int         retval = -1;
-    yang_spec  *yspec;
+    yang_stmt  *yspec;
     int         i;
     cxobj      *xn;
     int         ret;

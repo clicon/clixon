@@ -112,10 +112,10 @@ expand_dbvar(void   *h,
     int              j;
     int              k;
     cg_var          *cv;
-    yang_spec       *yspec;
+    yang_stmt       *yspec;
     cxobj           *xtop = NULL; /* xpath root */
     cxobj           *xbot = NULL; /* xpath, NULL if datastore */
-    yang_node       *y = NULL; /* yang spec of xpath */
+    yang_stmt       *y = NULL; /* yang spec of xpath */
     yang_stmt       *ytype;
     yang_stmt       *ypath;
     cxobj           *xcur;
@@ -183,9 +183,9 @@ expand_dbvar(void   *h,
      * Here the whole syntax tree is loaded, and it would be better to offload
      * such operations to the datastore by a generic xpath function.
      */
-    if ((ytype = yang_find((yang_node*)y, Y_TYPE, NULL)) != NULL)
+    if ((ytype = yang_find(y, Y_TYPE, NULL)) != NULL)
 	if (strcmp(ytype->ys_argument, "leafref")==0){
-	    if ((ypath = yang_find((yang_node*)ytype, Y_PATH, NULL)) == NULL){
+	    if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
 		clicon_err(OE_DB, 0, "Leafref %s requires path statement", ytype->ys_argument);
 		goto done;
 	    }
@@ -394,17 +394,17 @@ show_yang(clicon_handle h,
 	  cvec         *cvv, 
 	  cvec         *argv)
 {
-  yang_node *yn;
+  yang_stmt *yn;
   char      *str = NULL;
-  yang_spec *yspec;
+  yang_stmt *yspec;
 
   yspec = clicon_dbspec_yang(h);	
   if (cvec_len(argv) > 0){
       str = cv_string_get(cvec_i(argv, 0));
-      yn = (yang_node*)yang_find((yang_node*)yspec, 0, str);
+      yn = yang_find(yspec, 0, str);
   }
   else
-    yn = (yang_node*)yspec;
+    yn = yspec;
   yang_print(stdout, yn);
   return 0;
 }
@@ -443,7 +443,7 @@ cli_show_config(clicon_handle h,
     cxobj           *xc;
     cxobj           *xerr;
     enum genmodel_type gt;
-    yang_spec       *yspec;
+    yang_stmt       *yspec;
     
     if (cvec_len(argv) != 3 && cvec_len(argv) != 4){
 	clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <dbname>,<format>,<xpath>[,<attr>]", cvec_len(argv));
@@ -622,7 +622,7 @@ cli_show_auto(clicon_handle h,
 	      cvec         *argv)
 {
     int              retval = 1;
-    yang_spec       *yspec;
+    yang_stmt       *yspec;
     char            *api_path_fmt;  /* xml key format */
     //    char            *api_path = NULL; /* xml key */
     char            *db;

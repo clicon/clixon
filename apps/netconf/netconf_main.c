@@ -92,7 +92,7 @@ netconf_input_packet(clicon_handle h,
     cxobj     *xret = NULL; /* Return (out) */
     cxobj     *xrpc;
     cxobj     *xc;
-    yang_spec *yspec;
+    yang_stmt *yspec;
     int        ret;
     cxobj     *xa;
     cxobj     *xa2;
@@ -290,7 +290,7 @@ send_hello(clicon_handle h,
 static int
 netconf_terminate(clicon_handle h)
 {
-    yang_spec  *yspec;
+    yang_stmt  *yspec;
     cxobj      *x;
     
     clixon_plugin_exit(h);
@@ -357,8 +357,8 @@ main(int    argc,
     int              logdst = CLICON_LOG_STDERR;
     struct passwd   *pw;
     struct timeval   tv = {0,}; /* timeout */
-    yang_spec       *yspec = NULL;
-    yang_spec       *yspecfg = NULL; /* For config XXX clixon bug */
+    yang_stmt       *yspec = NULL;
+    yang_stmt       *yspecfg = NULL; /* For config XXX clixon bug */
     char            *str;
     
     /* Create handle */

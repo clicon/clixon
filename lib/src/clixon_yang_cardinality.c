@@ -524,7 +524,7 @@ yang_cardinality(clicon_handle h,
     /* 2) For all in 1 and 1..n list, if 0 such children          ->ERROR */
     for (yc = &ycplist[0]; (int)yc->yc_parent == pk; yc++){
 	if (yc->yc_min  &&
-	    yang_find((yang_node*)yt, yc->yc_child, NULL) == NULL){
+	    yang_find(yt, yc->yc_child, NULL) == NULL){
 	    clicon_err(OE_YANG, 0, "%s: \"%s\" is missing but is mandatory child of \"%s\"",
 		       modname, yang_key2str(yc->yc_child), yang_key2str(pk));
 	    goto done;
@@ -533,7 +533,7 @@ yang_cardinality(clicon_handle h,
     /* 3) For all in 0..1 and 1 list, if >1 such children         ->ERROR */
     for (yc = &ycplist[0]; (int)yc->yc_parent == pk; yc++){
 	if (yc->yc_max<NMAX &&
-	    (nr = yang_match((yang_node*)yt, yc->yc_child, NULL)) > yc->yc_max){
+	    (nr = yang_match(yt, yc->yc_child, NULL)) > yc->yc_max){
 	    clicon_err(OE_YANG, 0, "%s: \"%s\" has %d children of type \"%s\", but only %d allowed",
 		       modname,
 		       yang_key2str(pk),

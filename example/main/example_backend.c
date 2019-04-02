@@ -285,7 +285,7 @@ upgrade_2016(clicon_handle h,
 	     cbuf         *cbret)
 {
     int        retval = -1;
-    yang_spec *yspec;
+    yang_stmt *yspec;
     yang_stmt *ym;
     cxobj    **vec = NULL;
     cxobj     *xc;
@@ -384,7 +384,7 @@ upgrade_2018(clicon_handle h,
 	     cbuf         *cbret)
 {
     int        retval = -1;
-    yang_spec *yspec;
+    yang_stmt *yspec;
     yang_stmt *ym;
     cxobj    **vec = NULL;
     cxobj     *xc;

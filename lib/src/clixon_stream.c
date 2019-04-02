@@ -546,7 +546,7 @@ stream_notify(clicon_handle h,
     va_list    args;
     int        len;
     cxobj     *xev = NULL;
-    yang_spec *yspec = NULL;
+    yang_stmt *yspec = NULL;
     char      *str = NULL;
     cbuf      *cb = NULL;
     char       timestr[28];
@@ -621,7 +621,7 @@ stream_notify_xml(clicon_handle h,
     int        retval = -1;
     cxobj     *xev = NULL;
     cxobj     *xml2; /* copy */
-    yang_spec *yspec = NULL;
+    yang_stmt *yspec = NULL;
     char      *str = NULL;
     cbuf      *cb = NULL;
     char       timestr[28];

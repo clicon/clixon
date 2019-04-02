@@ -976,7 +976,7 @@ netconf_malformed_message_xml(cxobj **xret,
  */
 int
 netconf_trymerge(cxobj       *x,
-		 yang_spec   *yspec,
+		 yang_stmt   *yspec,
     		 cxobj      **xret)
 {
     int    retval = -1;
@@ -1018,7 +1018,7 @@ netconf_module_load(clicon_handle h)
 {
     int        retval = -1;
     cxobj     *xc;
-    yang_spec *yspec;
+    yang_stmt *yspec;
 
     yspec = clicon_dbspec_yang(h);
     if ((xc = clicon_conf_xml(h)) == NULL){

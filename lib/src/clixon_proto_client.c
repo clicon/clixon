@@ -92,7 +92,7 @@ clicon_rpc_msg(clicon_handle      h,
     int                port;
     char              *retdata = NULL;
     cxobj             *xret = NULL;
-    yang_spec         *yspec;
+    yang_stmt         *yspec;
 
 #ifdef RPC_USERNAME_ASSERT
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */

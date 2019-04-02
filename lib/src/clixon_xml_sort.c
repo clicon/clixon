@@ -145,7 +145,7 @@ xml_cv_cache(cxobj   *x,
 int
 xml_child_spec(cxobj      *x,
 	       cxobj      *xp,
-	       yang_spec  *yspec,
+	       yang_stmt  *yspec,
 	       yang_stmt **yresult)
 {
     int        retval = -1;
@@ -161,11 +161,11 @@ xml_child_spec(cxobj      *x,
 	/* First case: parent already has an associated yang statement,
 	 * then find matching child of that */
 	if (yparent->ys_keyword == Y_RPC){
-	    if ((yi = yang_find((yang_node*)yparent, Y_INPUT, NULL)) != NULL)
-		y = yang_find_datanode((yang_node*)yi, name);
+	    if ((yi = yang_find(yparent, Y_INPUT, NULL)) != NULL)
+		y = yang_find_datanode(yi, name);
 	}
 	else
-	    y = yang_find_datanode((yang_node*)yparent, name);
+	    y = yang_find_datanode(yparent, name);
     }
     else if (yspec){
 	/* Second case, this is a "root", need to find yang stmt from spec
@@ -173,13 +173,13 @@ xml_child_spec(cxobj      *x,
 	if (ys_module_by_xml(yspec, xp, &ymod) < 0)
 	    goto done;
 	if (ymod != NULL)
-	    y = yang_find_schemanode((yang_node*)ymod, name);
+	    y = yang_find_schemanode(ymod, name);
     }
     else
 	y = NULL;
     /* kludge rpc -> input */
-    if (y && y->ys_keyword == Y_RPC && yang_find((yang_node*)y, Y_INPUT, NULL))
-	y = yang_find((yang_node*)y, Y_INPUT, NULL);
+    if (y && y->ys_keyword == Y_RPC && yang_find(y, Y_INPUT, NULL))
+	y = yang_find(y, Y_INPUT, NULL);
     *yresult = y;
     retval = 0;
  done:
@@ -256,7 +256,7 @@ xml_cmp(const void* arg1,
      * otherwise sort according to key
      */
     if (yang_config(y1)==0 ||
-	yang_find((yang_node*)y1, Y_ORDERED_BY, "user") != NULL){
+	yang_find(y1, Y_ORDERED_BY, "user") != NULL){
 	equal = nr1-nr2;
 	goto done; /* Ordered by user or state data : maintain existing order */
     }
@@ -349,7 +349,7 @@ xml_cmp1(cxobj        *x,
 	match = strcmp(name, xml_name(x));
 	break;
     case Y_LEAF_LIST: /* Match with name and value */
-	if (userorder && yang_find((yang_node*)y, Y_ORDERED_BY, "user") != NULL)
+	if (userorder && yang_find(y, Y_ORDERED_BY, "user") != NULL)
 	    *userorder=1;
 	if ((b=xml_body(x)) == NULL)
 	    match = 1;
@@ -357,7 +357,7 @@ xml_cmp1(cxobj        *x,
 	    match = strcmp(keyval[0], b);
 	break;
     case Y_LIST: /* Match with array of key values */
-	if (userorder && yang_find((yang_node*)y, Y_ORDERED_BY, "user") != NULL)
+	if (userorder && yang_find(y, Y_ORDERED_BY, "user") != NULL)
 	    *userorder=1;
 	/* All must match */
 	for (i=0; i<keynr; i++){
@@ -719,8 +719,8 @@ match_base_child(cxobj      *x0,
     int        yorder;
     cxobj     *x0c = NULL;
     yang_stmt *y0c;
-    yang_node *y0p;
-    yang_node *yp; /* yang parent */
+    yang_stmt *y0p;
+    yang_stmt *yp; /* yang parent */
     
     *x0cp = NULL; /* init return value */
     /* Special case is if yc parent (yp) is choice/case

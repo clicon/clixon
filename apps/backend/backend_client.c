@@ -163,7 +163,7 @@ backend_client_rm(clicon_handle        h,
  */
 static int
 client_get_streams(clicon_handle   h,
-		   yang_spec      *yspec,
+		   yang_stmt      *yspec,
 		   char           *xpath,
 		   char           *module,
 		   char           *top,
@@ -175,11 +175,11 @@ client_get_streams(clicon_handle   h,
     cxobj         *x = NULL;
     cbuf          *cb = NULL;
 
-    if ((ystream = yang_find((yang_node*)yspec, Y_MODULE, module)) == NULL){
+    if ((ystream = yang_find(yspec, Y_MODULE, module)) == NULL){
 	clicon_err(OE_YANG, 0, "%s yang module not found", module);
 	goto done;
     }
-    if ((yns = yang_find((yang_node*)ystream, Y_NAMESPACE, NULL)) == NULL){
+    if ((yns = yang_find(ystream, Y_NAMESPACE, NULL)) == NULL){
 	clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
 	goto done;
     }
@@ -224,7 +224,7 @@ client_statedata(clicon_handle h,
     cxobj    **xvec = NULL;
     size_t     xlen;
     int        i;
-    yang_spec *yspec;
+    yang_stmt *yspec;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -379,7 +379,7 @@ from_client_edit_config(clicon_handle h,
     enum operation_type operation = OP_MERGE;
     int                 piddb;
     int                 non_config = 0;
-    yang_spec          *yspec;
+    yang_stmt          *yspec;
     cbuf               *cbx = NULL; /* Assist cbuf */
     int                 ret;
     char               *username;
@@ -1061,7 +1061,7 @@ from_client_msg(clicon_handle        h,
     cbuf                *cbret = NULL; /* return message */
     int                  ret;
     char                *username;
-    yang_spec           *yspec;
+    yang_stmt           *yspec;
     yang_stmt           *ye;
     yang_stmt           *ymod;
     cxobj               *xnacm = NULL;

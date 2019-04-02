@@ -478,7 +478,7 @@ api_return_err(clicon_handle h,
 int
 restconf_terminate(clicon_handle h)
 {
-    yang_spec *yspec;
+    yang_stmt *yspec;
     cxobj     *x;
     int        fs; /* fgcx socket */
 

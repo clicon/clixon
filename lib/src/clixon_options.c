@@ -131,7 +131,7 @@ clicon_option_dump(clicon_handle h,
 static int
 parse_configfile(clicon_handle  h,
 		 const char    *filename,
-		 yang_spec     *yspec,
+		 yang_stmt     *yspec,
 		 cxobj        **xconfig)
 {
     struct stat st;
@@ -290,7 +290,7 @@ clicon_option_add(clicon_handle h,
  */
 int
 clicon_options_main(clicon_handle h,
-		    yang_spec    *yspec)
+		    yang_stmt    *yspec)
 {
     int            retval = -1;
     char          *configfile;

@@ -327,7 +327,7 @@ startup_failsafe(clicon_handle h)
  */
 int
 startup_module_state(clicon_handle h,
-		     yang_spec    *yspec)
+		     yang_stmt    *yspec)
 {
     int    retval = -1;
     cxobj *x = NULL;

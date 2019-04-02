@@ -1605,7 +1605,7 @@ xmltree2cbuf(cbuf  *cb,
  */
 static int 
 _xml_parse(const char  *str, 
-	   yang_spec   *yspec,
+	   yang_stmt   *yspec,
 	   cxobj       *xt)
 {
     int                       retval = -1;
@@ -1685,7 +1685,7 @@ FSM(char *tag,
 int 
 xml_parse_file(int        fd, 
 	       char      *endtag,
-	       yang_spec *yspec,
+	       yang_stmt *yspec,
 	       cxobj    **xt)
 {
     int   retval = -1;
@@ -1772,7 +1772,7 @@ xml_parse_file(int        fd,
  */
 int 
 xml_parse_string(const char *str, 
-		 yang_spec  *yspec,
+		 yang_stmt  *yspec,
 		 cxobj     **xtop)
 {
     if (*xtop == NULL)
@@ -1804,7 +1804,7 @@ xml_parse_string(const char *str,
  */
 int 
 xml_parse_va(cxobj     **xtop,
-	     yang_spec  *yspec,		 
+	     yang_stmt  *yspec,		 
 	     const char *format, ...)
 {
     int     retval = -1;

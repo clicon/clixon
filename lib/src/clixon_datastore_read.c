@@ -186,7 +186,7 @@ xml_copy_marked(cxobj *x0,
 	 * node in list is marked */
 	if (mark && yt && yt->ys_keyword == Y_LIST){
 	    /* XXX: I think yang_key_match is suboptimal here */
-	    if ((iskey = yang_key_match((yang_node*)yt, name)) < 0)
+	    if ((iskey = yang_key_match(yt, name)) < 0)
 		goto done;
 	    if (iskey){
 		if ((xcopy = xml_new(name, x1, xml_spec(x))) == NULL)
@@ -220,7 +220,7 @@ xml_copy_marked(cxobj *x0,
  */
 static int
 text_read_modstate(clicon_handle       h,
-		   yang_spec          *yspec,
+		   yang_stmt          *yspec,
 		   cxobj              *xt,
 		   modstate_diff_t    *msd)
 {
@@ -306,7 +306,7 @@ text_read_modstate(clicon_handle       h,
 int
 xmldb_readfile(clicon_handle      h,
 	       const char         *db,
-	       yang_spec          *yspec,
+	       yang_stmt          *yspec,
 	       cxobj             **xp,
 	       modstate_diff_t    *msd)
 {
@@ -391,7 +391,7 @@ xmldb_get_nocache(clicon_handle       h,
 {
     int             retval = -1;
     char           *dbfile = NULL;
-    yang_spec      *yspec;
+    yang_stmt      *yspec;
     cxobj          *xt = NULL;
     cxobj          *x;
     int             fd = -1;
@@ -513,7 +513,7 @@ xmldb_get_cache(clicon_handle       h,
 	       modstate_diff_t    *msd)
 {
     int             retval = -1;
-    yang_spec      *yspec;
+    yang_stmt      *yspec;
     cxobj          *x0t = NULL; /* (cached) top of tree */
     cxobj          *x0;
     cxobj         **xvec = NULL;
