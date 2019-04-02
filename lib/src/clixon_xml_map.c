@@ -1652,7 +1652,7 @@ xml_default(cxobj *xt,
 	    }
 	}
     }
-    xml_sort(xt, NULL);
+    //    xml_sort(xt, NULL);
     retval = 0;
  done:
     return retval;

@@ -41,7 +41,7 @@ module scaling{
 EOF
 
 cat <<EOF > $cfg
-<config>
+<clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
@@ -53,7 +53,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
-</config>
+</clixon-config>
 EOF
 
 new "test params: -f $cfg -y $fyang"

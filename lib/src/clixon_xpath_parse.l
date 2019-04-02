@@ -146,11 +146,11 @@ real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 <TOKEN>.                { fprintf(stderr,"LEXICAL ERROR\n"); return -1; }
 
 <QLITERAL>\"            { BEGIN(TOKEN); return QUOTE; }
-<QLITERAL>.             { clixon_xpath_parselval.string = strdup(yytext);
-                          return CHAR;}
+<QLITERAL>[^"]+         { clixon_xpath_parselval.string = strdup(yytext);
+                            return CHARS;}
 <ALITERAL>\'            { BEGIN(TOKEN); return APOST; }
-<ALITERAL>.             { clixon_xpath_parselval.string = strdup(yytext);
-                          return CHAR;}
+<ALITERAL>[^']+         { clixon_xpath_parselval.string = strdup(yytext);
+                            return CHARS;}
 
 %%
 

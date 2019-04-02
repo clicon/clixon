@@ -52,12 +52,10 @@ Run all tests but continue after errors and only print a summary test output ide
 ```
 
 ## Memory leak test
-These tests use valgrind to check for memory leaks:
+The `mem.sh` runs memory checks using valgrind. Start it with no arguments to test all components (backend, restconf, cli, netconf), or specify which components to run:
 ```
-  mem.sh cli
-  mem.sh netconf
-  mem.sh backend
-  mem.sh restconf 
+  mem.sh                  # All components
+  mem.sh restconf backend # Only backend and cli
 ```
 
 ## Site.sh

@@ -1132,6 +1132,7 @@ leaf_list_substmt : when_stmt        { clicon_debug(2,"leaf-list-substmt -> when
               | type_stmt            { clicon_debug(2,"leaf-list-substmt -> type-stmt"); }
               | units_stmt           { clicon_debug(2,"leaf-list-substmt -> units-stmt"); }
               | must_stmt            { clicon_debug(2,"leaf-list-substmt -> must-stmt"); }
+              | default_stmt         { clicon_debug(2,"leaf-list-substmt -> default-stmt"); }
               | config_stmt          { clicon_debug(2,"leaf-list-substmt -> config-stmt"); }
               | min_elements_stmt    { clicon_debug(2,"leaf-list-substmt -> min-elements-stmt"); }
               | max_elements_stmt    { clicon_debug(2,"leaf-list-substmt -> max-elements-stmt"); }

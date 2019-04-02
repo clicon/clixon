@@ -59,7 +59,7 @@
 %token <string> X_EOF
 %token <string> QUOTE
 %token <string> APOST
-%token <string> CHAR
+%token <string> CHARS
 %token <string> NAME
 %token <string> NODETYPE
 %token <string> DOUBLEDOT
@@ -276,14 +276,14 @@ args        : args ',' expr { $$=xp_new(XP_EXP,A_NAN,0.0,NULL,NULL,$1, $3);
                               clicon_debug(2,"args -> expr "); }
 	    ;
 
-string      : string CHAR  { 
+string      : string CHARS  { 
      			 int len = strlen($1);
 			 $$ = realloc($1, len+strlen($2) + 1); 
 			 sprintf($$+len, "%s", $2); 
 			 free($2);
 			 clicon_debug(2,"string-> string CHAR");
                }
-            | CHAR             { clicon_debug(2,"string-> "); } 
+            | CHARS         { clicon_debug(2,"string-> "); } 
             ;
 
 

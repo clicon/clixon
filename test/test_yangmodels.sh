@@ -35,14 +35,15 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>$YANGMODELS/standard/ietf/RFC</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft</CLICON_YANG_DIR> 
-  <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/802.1/draft</CLICON_YANG_DIR> 
+  <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft/802.1</CLICON_YANG_DIR> 
+  <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft/802</CLICON_YANG_DIR> 
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_CLI_GENMODEL>1</CLICON_CLI_GENMODEL>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
@@ -55,23 +56,50 @@ new "yangmodels parse: -f $cfg"
 new "yangmodel Experimental IEEE 802.1: $YANGMODELS/experimental/ieee/802.1"
 expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/experimental/ieee/802.1 -p $YANGMODELS/experimental/ieee/1588 show version" 0 "3."
 
-# experimental 802.3 dir is empty
-#new "yangmodel Experimental IEEE 802.3: $YANGMODELS/experimental/ieee/802.3"
-#expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/experimental/ieee/802.3 show version" 0 "3."
-
 new "yangmodel Experimental IEEE 1588: $YANGMODELS/experimental/ieee/1588"
 expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/experimental/ieee/1588 show version" 0 "3."
 
 # Standard IEEE
-new "yangmodel Standard IEEE 802.1: $YANGMODELS/standard/ieee/802.1/draft"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/802.1/draft show version" 0 "3."
+new "yangmodel Standard IEEE 802.1: $YANGMODELS/standard/ieee/draft/802.1"
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.1 show version" 0 "3."
 
-new "yangmodel Standard IEEE 802.3: $YANGMODELS/standard/ieee/802.3/draft"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/802.3/draft show version" 0 "3."
+new "yangmodel Standard IEEE 802.3: $YANGMODELS/standard/ieee/draft/802.3"
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.3 show version" 0 "3."
 
 # Standard IETF
 new "yangmodel Standard IETF: $YANGMODELS/standard/ietf/RFC"
 expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ietf/RFC show version" 0 "3."
+
+# vendor/junos
+#junos           : M/MX, T/TX, Some EX platforms, ACX
+#junos-es        : SRX, Jseries, LN-*
+#junos-ex        : EX series
+#junos-qfx       : QFX series
+#junos-nfx       : NFX series
+
+# Juniper JunOS. Junos files have 4 lines copyright, then "<space>module" on
+# line 5. No sub-modules.
+# NOTE: We DISABLE CLI generation, because some juniper are very large.
+# and cli generation consumes memory.
+# For example (100K lines):
+#wc /usr/local/share/yangmodels/vendor/juniper/18.2/18.2R1/junos/conf/junos-conf-system@2018-01-01.yang
+#  92853  274279 3228229 /usr/local/share/yangmodels/vendor/juniper/18.2/18.2R1/junos/conf/junos-conf-system@2018-01-01.yan
+# But junos-conf-logical-systems@2018-01-01.yang takes longest time
+
+files=$(find $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -name "*.yang")
+let i=0;
+for f in $files; do
+    if [ -n "$(head -5 $f|grep '^ module')" ]; then
+	new "$clixon_cli -1f $cfg -o CLICON_YANG_MAIN_FILE=$f -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf show version"
+	expectfn "$clixon_cli -1f $cfg -o CLICON_YANG_MAIN_FILE=$f -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -o CLICON_CLI_GENMODEL=0 show version" 0 "3."
+	let i++;
+	sleep 1
+    fi
+done
+
+# We skip CISCO because we have errors that vilates the RFC (I think)
+# eg: Test 7(7) [yangmodel vendor cisco xr 623: /usr/local/share/yangmodels/vendor/cisco/xr/623]
+#  yang_abs_schema_nodeid: Absolute schema nodeid /bgp-rib/afi-safis/afi-safi/ipv4-unicast/loc-rib must have prefix
 
 if false; then
 # vendor/cisco/xr
@@ -87,23 +115,6 @@ expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendo
 new "yangmodel vendor cisco xr 651: $YANGMODELS/vendor/cisco/xr/651"
 expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/cisco/xr/651 show version" 0 "3."
 fi ### cisco
-
-# vendor/junos
-#junos           : M/MX, T/TX, Some EX platforms, ACX
-#junos-es        : SRX, Jseries, LN-*
-#junos-ex        : EX series
-#junos-qfx       : QFX series
-#junos-nfx       : NFX series
-
-new "yangmodel vendor junos: $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf/"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_FILE=$YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf/junos-conf-interfaces@2018-01-01.yang -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common show version" 0 "3."
-
-# breaks memory and cpu limits,...
-#new "yangmodel vendor junos: $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf"
-#expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common show version" 0 "3."
-
-#new "yangmodel vendor junos: $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/rpc"
-#expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/juniper/18.2/18.2R1/junos/rpc -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common show version" 0 "3."
 
 rm -rf $dir
 
