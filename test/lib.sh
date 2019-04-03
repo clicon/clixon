@@ -78,10 +78,10 @@ testname=
 # Parse yangmodels from https://github.com/YangModels/yang
 # Recommended: checkout yangmodels elsewhere in the tree and set the env
 # to that
-: ${YANGMODELS=$(pwd)/yang}
+#: ${YANGMODELS=$(pwd)/yang} # just skip if not set
 
 # Parse yang openconfig models from https://github.com/openconfig/public
-: ${OPENCONFIG=$(pwd)/public}
+#: ${OPENCONFIG=$(pwd)/public} # just skip if not set
 
 # Standard IETF RFC yang files. 
 : ${IETFRFC=../yang/standard}

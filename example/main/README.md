@@ -141,11 +141,12 @@ server {
 ```
 Start nginx daemon
 ```
-sudo /etc/init.d/nginx start
+   sudo /etc/init.d/nginx start
+   sudo systemctl start nginx.service # alternative using systemd
 ```
 Start the clixon restconf daemon
 ```
-sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+   sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
 ```
 then access using curl or wget:
 ```
