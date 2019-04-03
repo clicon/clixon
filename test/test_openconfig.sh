@@ -18,7 +18,7 @@ fyang=$dir/test.yang
 new "openconfig"
 if [ ! -d "$OPENCONFIG" ]; then
 #    err "Hmm Openconfig dir does not seem to exist, try git clone https://github.com/openconfig/public?"
-    exit
+     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
 OCDIR=$OPENCONFIG/release/models
