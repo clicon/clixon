@@ -105,6 +105,7 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* NACM read default rule did not work properly if nacm was enabled AND no groups were defined 
 * Re-inserted `cli_output_reset` for what was erroneuos thought to be an obsolete function
   * See in 3.9.0 minro changes: Replaced all calls to (obsolete) `cli_output` with `fprintf`
 * Allowed Yang extended Xpath functions (syntax only):
