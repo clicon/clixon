@@ -567,22 +567,27 @@ nacm_datanode_read(cxobj  *xt,
     /* User's group */
     if (xpath_vec(xnacm, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
 	goto done;
-    /* 4. If no groups are found, continue with step 9. */
-    if (glen == 0)
-	goto step9;
+    /* 4. If no groups are found (glen=0), continue and check read-default 
+          in step 11. */
     /* 5. Process all rule-list entries, in the order they appear in the
         configuration.  If a rule-list's "group" leaf-list does not
         match any of the user's groups, proceed to the next rule-list
         entry. */
     if (xpath_vec(xnacm, "rule-list", &rlistvec, &rlistlen) < 0)
 	goto done;
+    /* read-default has default permit so should never be NULL */
+    if ((read_default = xml_find_body(xnacm, "read-default")) == NULL){
+	clicon_err(OE_XML, EINVAL, "No nacm read-default rule");
+	goto done;
+    }
     for (i=0; i<xrlen; i++){     /* Loop through requested nodes */
 	xr = xrvec[i]; /* requested node XR */
 	/* Loop through rule-list (steps 5,6,7) to find match of requested node
 	 */
 	xrule = NULL;
-	if (nacm_data_read_xr(xt, xr, gvec, glen, rlistvec, rlistlen,
-			      &xrule) < 0) 
+	/* Skip if no groups */
+	if (glen && nacm_data_read_xr(xt, xr, gvec, glen, rlistvec, rlistlen,
+				      &xrule) < 0) 
 	    goto done;
 	if (xrule){ /* xrule match requested node xr */
 	    if ((action = xml_find_body(xrule, "action")) == NULL)
@@ -601,8 +606,7 @@ nacm_datanode_read(cxobj  *xt,
         to "permit", then include the requested data node in the reply;
         otherwise, do not include the requested data node or any of its
         descendants in the reply.*/
-	    read_default = xml_find_body(xnacm, "read-default");
-	    if (read_default == NULL || strcmp(read_default, "deny")==0)
+	    if (strcmp(read_default, "deny")==0)
 		if (xml_purge(xr) < 0)
 		    goto done;
 	}
@@ -668,7 +672,7 @@ nacm_datanode_write(cxobj           *xt,
     cxobj  *xrule;
     int     match = 0;
     char   *action;
-    char   *write_default;
+    char   *write_default = NULL;
     
     if (xnacm == NULL)
 	goto permit;
@@ -747,8 +751,12 @@ nacm_datanode_write(cxobj           *xt,
     /*12.  For a "write" access operation, if the "write-default" leaf is
         set to "permit", then permit the data node access request;
         otherwise, deny the request.*/
-    write_default = xml_find_body(xnacm, "write-default");
-    if (write_default == NULL  || strcmp(write_default, "permit") != 0){
+    /* write-default has default permit so should never be NULL */
+    if ((write_default = xml_find_body(xnacm, "write-default")) == NULL){
+	clicon_err(OE_XML, EINVAL, "No nacm write-default rule");
+	goto done;
+    }
+    if (strcmp(write_default, "permit") != 0){
 	if (netconf_access_denied(cbret, "application", "default deny") < 0)
 	    goto done;
 	goto deny;
