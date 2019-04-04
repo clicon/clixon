@@ -30,15 +30,6 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-1000 entries
-valgrind --tool=callgrind datastore_client -d candidate -b /tmp/text -p ../datastore/text/text.so -y /tmp -m ietf-ip mget 300 /x/y[a=574][b=574] > /dev/null
-  xml_copy_marked 87% 200x 
-    yang_key_match 81% 600K
-      yang_arg2cvec 52% 400K
-      cvecfree      23% 400K
-
-10000 entries
-valgrind --tool=callgrind datastore_client -d candidate -b /tmp/text -p ../datastore/text/text.so -y /tmp -m ietf-ip mget 10 /x/y[a=574][b=574] > /dev/null
 
  */
 
@@ -136,6 +127,7 @@ text_modify(clicon_handle       h,
     cxobj    **x0vec = NULL;
     int        i;
     int        ret;
+    int        changed = 0; /* Only if x0p's children have changed-> sort is necessary */
 
     assert(x1 && xml_type(x1) == CX_ELMNT);
     assert(y0);
@@ -167,6 +159,7 @@ text_modify(clicon_handle       h,
 		//		int iamkey=0;
 		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
+		changed++;
 
 		/* Copy xmlns attributes  */
 		x1a = NULL;
@@ -291,6 +284,7 @@ text_modify(clicon_handle       h,
 		}
 		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
+		changed++;
 		/* Copy xmlns attributes  */
 		x1a = NULL;
 		while ((x1a = xml_child_each(x1, x1a, CX_ATTR)) != NULL) 
@@ -368,13 +362,15 @@ text_modify(clicon_handle       h,
 		}
 		if (xml_purge(x0) < 0)
 		    goto done;
+		changed++;
 	    }
 	    break;
 	default:
 	    break;
 	} /* CONTAINER switch op */
     } /* else Y_CONTAINER  */
-    xml_sort(x0p, NULL);
+    if (changed)
+	xml_sort(x0p, NULL);
     retval = 1;
  done:
     if (x0vec)
@@ -671,7 +667,7 @@ xmldb_put(clicon_handle       h,
     if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) <0)
 	goto done;
     if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
-		  (void*)XML_FLAG_NONE) < 0)
+		  (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
 	goto done;
     /* Mark non-presence containers that do not have children */
     if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_container_presence, NULL) < 0)

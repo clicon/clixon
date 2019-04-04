@@ -172,42 +172,6 @@ xmldb_disconnect(clicon_handle h)
     return retval;
 }
 
-/*! Get content of database using xpath. return a set of matching sub-trees
- * The function returns a minimal tree that includes all sub-trees that match
- * xpath.
- * @param[in]  h      Clicon handle
- * @param[in]  dbname Name of database to search in (filename including dir path
- * @param[in]  xpath  String with XPATH syntax. or NULL for all
- * @param[in]  config If set only configuration data, else also state
- * @param[out] xret   Single return XML tree. Free with xml_free()
- * @param[out] msd    If set, return modules-state differences
- * @retval     0      OK
- * @retval     -1     Error
- * @code
- *   cxobj   *xt;
- *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 1, &xt, NULL) < 0)
- *      err;
- *   xml_free(xt);
- * @endcode
- * @note if xvec is given, then purge tree, if not return whole tree.
- * @see xpath_vec
- */
-int 
-xmldb_get(clicon_handle    h, 
-	  const char      *db, 
-	  char            *xpath,
-	  int              config,
-	  cxobj          **xret,
-	  modstate_diff_t *msd)
-{
-    int               retval = -1;
-
-    if (clicon_option_bool(h, "CLICON_XMLDB_CACHE"))
-	retval = xmldb_get_cache(h, db, xpath, config, xret, msd);
-    else
-	retval = xmldb_get_nocache(h, db, xpath, config, xret, msd);
-    return retval;
-}
 
 /*! Copy database from db1 to db2
  * @param[in]  h     Clicon handle
@@ -264,11 +228,11 @@ xmldb_copy(clicon_handle h,
 	    clicon_db_elmnt_set(h, to, &de0);
 	}
     }
+    /* Copy the files themselves (above only in-memory cache) */
     if (xmldb_db2file(h, from, &fromfile) < 0)
 	goto done;
     if (xmldb_db2file(h, to, &tofile) < 0)
 	goto done;
-    /* Copy the files themselves (above only in-memory cache) */
     if (clicon_file_copy(fromfile, tofile) < 0)
 	goto done;
     retval = 0;

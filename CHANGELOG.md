@@ -33,15 +33,19 @@
     * CLICON_XML_CHANGELOG enables the yang changelog feature
     * CLICON_XML_CHANGELOG_FILE where the changelog resides
 
-
 ### API changes on existing features (you may need to change your code)
+
+* Structural change: removed datastore plugin and directory, and merged into regular clixon lib code.
+  * The CLICON_XMLDB_PLUGIN config option is obsolete, you should remove it from your config file
+  * All references to plugin "text.so" should be removed.
+  * The datastore directory is removed, code is moved to lib/src/clixon_datastore*.c
+  * Removed clixon_backend -x <plugin> command-line options
 * Structural C-code change: Merged yang_spec and yang_node types into yang_stmt
   * Change all yn_* and yp_ to ys_*
   * Change all references to yang_node/yang_spec to yang_stmt
-* Structural change: removed datastore plugin and directory, and merged into regulat clixon lib code.
-  * The CLICON_XMLDB_PLUGIN config option is obsolete, you should remove it from your config file
-  * The datastore directory is removed, code is moved to lib/src/clixon_datastore*.c
-  * removed clixon_backend -x <plugin> command-line options
+* xmldb_get() removed unnecessary config option:
+  * Change all calls to dbget from: `xmldb_get(h, db, xpath, 0|1, &xret, msd)` to `xmldb_get(h, db, xpath, &xret, msd)`
+
 * Moved out code from clixon_options.[ch] into a new file: clixon_data.[ch] where non-option data resides.
 * Directory change: Moved example to example/main to make room for other examples.
 * Removed argc/argv parameters from ca_start plugin API function:
@@ -86,6 +90,7 @@
 ```
 
 ### Minor changes
+* Optimized validation by making xml_diff work on raw cache tree (not copies)
 * Added syntactic check for yang status: current, deprecated or obsolete.
 * Added `xml_wrap` function that adds an XML node above a node as a wrapper
   * also renamed `xml_insert` to `xml_wrap_all`.

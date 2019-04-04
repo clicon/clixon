@@ -85,6 +85,7 @@ typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 #define XML_FLAG_DEL    0x04  /* Node is deleted (commits) or parent deleted rec */
 #define XML_FLAG_CHANGE 0x08  /* Node is changed (commits) or child changed rec */
 #define XML_FLAG_NONE   0x10  /* Node is added as NONE */
+#define XML_FLAG_DEFAULT 0x20 /* Added as default value @see xml_default*/
 
 /*
  * Prototypes
@@ -137,6 +138,7 @@ int       xml_rootchild(cxobj  *xp, int i, cxobj **xcp);
 int       xml_rootchild_node(cxobj  *xp, cxobj *xc);
 
 int       xml_enumerate_children(cxobj *xp);
+int       xml_enumerate_reset(cxobj *xp);
 int       xml_enumerate_get(cxobj *x);
 
 char     *xml_body(cxobj *xn);

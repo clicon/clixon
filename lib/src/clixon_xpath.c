@@ -839,9 +839,9 @@ xp_union(xp_ctx    *xc1,
  * @param[out] xrp  Resulting context
  */
 static int
-xp_eval(xp_ctx   *xc,
+xp_eval(xp_ctx     *xc,
 	xpath_tree *xs,
-	xp_ctx  **xrp)
+	xp_ctx    **xrp)
     
 {
     int        retval = -1;

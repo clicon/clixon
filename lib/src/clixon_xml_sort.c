@@ -76,7 +76,6 @@
  */
 static int
 xml_cv_cache(cxobj   *x,
-	     char    *body,
 	     cg_var **cvp)
 {
     int          retval = -1;
@@ -88,7 +87,9 @@ xml_cv_cache(cxobj   *x,
     char        *reason=NULL;
     int          options = 0;
     uint8_t      fraction = 0;
-	    
+    char        *body;
+		 
+    body = xml_body(x);
     if ((cv = xml_cv(x)) != NULL)
 	goto ok;
     if ((y = xml_spec(x)) == NULL)
@@ -186,24 +187,21 @@ xml_child_spec(cxobj      *x,
     return retval;
 }
 
-/*! Help function to qsort for sorting entries in xml child vector
- * @param[in]  arg1 - actually cxobj**
- * @param[in]  arg2 - actually cxobj**
+/*! Help function to qsort for sorting entries in xml child vector same parent
+ * @param[in]  xml object 1
+ * @param[in]  xml object 2
  * @retval  0  If equal
- * @retval <0  if arg1 is less than arg2
- * @retval >0  if arg1 is greater than arg2
- * @note args are pointer ot pointers, to fit into qsort cmp function
+ * @retval <0  if x1 is less than x2
+ * @retval >0  if x1 is greater than x2
  * @see xml_cmp1   Similar, but for one object
  * @note empty value/NULL is smallest value
  * @note xml_enumerate_children must have been called prior to this call
  * @note some error cases return as -1 (qsort cant handle errors)
  */
 static int
-xml_cmp(const void* arg1, 
-	const void* arg2)
+xml_cmp(cxobj *x1,
+	cxobj *x2)
 {
-    cxobj *x1 = *(struct xml**)arg1;
-    cxobj *x2 = *(struct xml**)arg2;
     yang_stmt  *y1;
     yang_stmt  *y2;
     int         yi1 = 0;
@@ -242,7 +240,6 @@ xml_cmp(const void* arg1,
         equal = 1;
         goto done;
     }
-
     e=2;
     if (y1 != y2){ 
 	yi1 = yang_order(y1);
@@ -268,9 +265,9 @@ xml_cmp(const void* arg1,
 	else if ((b2 = xml_body(x2)) == NULL)
 	    equal = 1;
 	else{
-	    if (xml_cv_cache(x1, b1, &cv1) < 0) /* error case */
+	    if (xml_cv_cache(x1, &cv1) < 0) /* error case */
 		goto done;
-	    if (xml_cv_cache(x2, b2, &cv2) < 0) /* error case */
+	    if (xml_cv_cache(x2, &cv2) < 0) /* error case */
 		goto done;
 	    equal = cv_cmp(cv1, cv2);
 	}
@@ -283,15 +280,15 @@ xml_cmp(const void* arg1,
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	    keyname = cv_string_get(cvi); /* operational data may have NULL keys*/
 	    if ((x1b = xml_find(x1, keyname)) == NULL ||
-		(b1 = xml_body(x1b)) == NULL)
+		xml_body(x1b) == NULL)
 		equal = -1;
 	    else if ((x2b = xml_find(x2, keyname)) == NULL ||
-		     (b2 = xml_body(x2b)) == NULL)
+		     xml_body(x2b) == NULL)
 		equal = 1;
 	    else{
-		if (xml_cv_cache(x1b, b1, &cv1) < 0) /* error case */
+		if (xml_cv_cache(x1b, &cv1) < 0) /* error case */
 		    goto done;
-		if (xml_cv_cache(x2b, b2, &cv2) < 0) /* error case */
+		if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
 		    goto done;
 		if ((equal = cv_cmp(cv1, cv2)) != 0)
 		    goto done;
@@ -306,6 +303,16 @@ xml_cmp(const void* arg1,
  done:
     clicon_debug(2, "%s %s %s %d %d nr: %d %d yi: %d %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal, e, nr1, nr2, yi1, yi2);
     return equal;
+}
+
+/*!
+ * @note args are pointer ot pointers, to fit into qsort cmp function
+ */
+static int
+xml_cmp_qsort(const void* arg1, 
+	      const void* arg2)
+{
+    return xml_cmp(*(struct xml**)arg1, *(struct xml**)arg2);
 }
 
 /*! Compare xml object
@@ -358,7 +365,7 @@ xml_cmp1(cxobj        *x,
 	    match = 1;
 	else{
 	    if (keycvec[0]){
-		if (xml_cv_cache(x, b, &cv) < 0) /* error case */
+		if (xml_cv_cache(x, &cv) < 0) /* error case */
 		    goto done;
 		match = cv_cmp(keycvec[0], cv);
 	    }
@@ -377,7 +384,7 @@ xml_cmp1(cxobj        *x,
 		break; /* error case */
 	    if ((b = xml_body(xb)) == NULL)
 		break; /* error case */
-	    if (xml_cv_cache(xb, b, &cv) < 0) /* error case */
+	    if (xml_cv_cache(xb, &cv) < 0) /* error case */
 		goto done;
 	    if (keycvec[i]){
 		if ((match = cv_cmp(keycvec[i], cv)) != 0)
@@ -395,7 +402,7 @@ xml_cmp1(cxobj        *x,
     return match;
 }
 
-/*! Sort children of an XML node
+/*! Sort children of an XML node 
  * Assume populated by yang spec.
  * @param[in] x0   XML node
  * @param[in] arg  Dummy so it can be called by xml_apply()
@@ -414,7 +421,7 @@ xml_sort(cxobj *x,
     if ((ys = xml_spec(x)) != 0 && yang_config(ys)==0)
 	return 1;
     xml_enumerate_children(x);
-    qsort(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp);
+    qsort(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort);
     return 0;
 }
 
@@ -489,6 +496,7 @@ xml_search1(cxobj        *x0,
     if ((y = xml_spec(xc)) == NULL)
 	return NULL;
     cmp = yangi-yang_order(y);
+    /* Here is right yang order == same yang? */
     if (cmp == 0){
 	cmp = xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, keycvec, &userorder);
 	if (userorder && cmp)	    /* Look inside this yangi order */
@@ -507,9 +515,9 @@ xml_search1(cxobj        *x0,
 
 /*! Find XML children using binary search
  * @param[in] yangi  yang child order
- * @param[in]  keynr    Length of keyvec/keyval vector when applicable
- * @param[in]  keyvec   Array of of yang key identifiers
- * @param[in]  keyval   Array of of yang key values
+ * @param[in] keynr  Length of keyvec/keyval vector when applicable
+ * @param[in] keyvec Array of of yang key identifiers
+ * @param[in] keyval Array of of yang key values
  */
 static cxobj *
 xml_search(cxobj        *x0,
@@ -534,7 +542,65 @@ xml_search(cxobj        *x0,
 		       low, high);
 }
 
-
+#ifdef NOTUSED
+/*! Position where to insert xml object into a list of children nodes
+ * @note EXPERIMENTAL
+ * Insert after position returned
+ * @param[in]  x0       XML parent node.
+ * @param[in]  low       Lower bound
+ * @param[in]  upper     Upper bound (+1)
+ * @retval     position 
+ * XXX: Problem with this is that evrything must be known before insertion
+ */
+int
+xml_insert_pos(cxobj        *x0,
+	       char         *name,
+	       int           yangi,
+	       enum rfc_6020 keyword,   
+	       int           keynr,
+	       char        **keyvec,
+	       char        **keyval,
+	       int           low, 
+	       int           upper)
+{
+    int        mid;
+    cxobj     *xc;
+    yang_stmt *y;
+    int        cmp;
+    int        i;
+    int        userorder= 0;
+    
+    if (upper < low)
+	return low; /* not found */
+    mid = (low + upper) / 2;
+    if (mid >= xml_child_nr(x0))
+	return xml_child_nr(x0); /* upper range */
+    xc = xml_child_i(x0, mid); 
+    y = xml_spec(xc);
+    cmp = yangi-yang_order(y);
+    if (cmp == 0){
+	cmp = xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, keycvec, &userorder);
+	if (userorder){	    /* Look inside this yangi order */
+	    /* Special case: append last of equals if ordered by user */
+	    for (i=mid+1;i<xml_child_nr(x0);i++){
+		xc = xml_child_i(x0, i);
+		if (strcmp(xml_name(xc), name))
+		    break;
+		mid=i; /* still ok */
+	    }
+	    return mid;
+	}
+    }
+    if (cmp == 0)
+	return mid;
+    else if (cmp < 0)
+	return xml_insert_pos(x0, name, yangi, keyword,
+			      keynr, keyvec, keyval, keycvec, low, mid-1);
+    else
+	return xml_insert_pos(x0, name, yangi, keyword,
+			      keynr, keyvec, keyval, keycvec, mid+1, upper);
+}
+#endif /* NOTUSED */
 
 /*! Verify all children of XML node are sorted according to xml_sort()
  * @param[in]   x       XML node. Check its children
@@ -560,7 +626,7 @@ xml_sort_verify(cxobj *x0,
     xml_enumerate_children(x0);
     while ((x = xml_child_each(x0, x, -1)) != NULL) {
 	if (xprev != NULL){ /* Check xprev <= x */
-	    if (xml_cmp(&xprev, &x) > 0)
+	    if (xml_cmp(xprev, x) > 0)
 		goto done;
 	}
 	xprev = x;
@@ -632,7 +698,7 @@ match_base_child(cxobj      *x0,
 	    clicon_err(OE_UNIX, errno, "calloc");
 	    goto done;
 	}
-	if (xml_cv_cache(x1c, keyval[0], &keycvec[0]) < 0) /* error case */
+	if (xml_cv_cache(x1c, &keycvec[0]) < 0) /* error case */
 	    goto done;
 	break;
     case Y_LIST: /* Match with key values */
@@ -665,7 +731,7 @@ match_base_child(cxobj      *x0,
 	    if ((b = xml_body(xb)) == NULL)
 		goto ok;
 	    keyval[i] = b;
-	    if (xml_cv_cache(xb, b, &keycvec[i]) < 0) /* error case */
+	    if (xml_cv_cache(xb, &keycvec[i]) < 0) /* error case */
 		goto done;
 	    i++;
 	}
@@ -673,8 +739,7 @@ match_base_child(cxobj      *x0,
     default:
 	break;
     }
-    /* Get match.
-     */
+    /* Get match. */
     yorder = yang_order(yc);
     x0c = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval, keycvec);
  ok:
@@ -685,6 +750,8 @@ match_base_child(cxobj      *x0,
 	free(keyval);
     if (keyvec)
 	free(keyvec);
+    if (keycvec)
+	free(keycvec);
     return retval;
 }
 	   

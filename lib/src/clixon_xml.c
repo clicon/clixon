@@ -811,6 +811,7 @@ xml_find(cxobj *x_up,
  * @retval    0   OK
  * @retval    -1  Error
  * @see xml_wrap
+ * @note xc is not sorted correctly, need to call xml_sort on parent
  */
 int
 xml_addsub(cxobj *xp, 
@@ -1091,6 +1092,18 @@ xml_enumerate_children(cxobj *xp)
 
     while ((x = xml_child_each(xp, x, -1)) != NULL)
 	x->_x_i = i++;
+    return 0;
+}
+
+/*! Reset enumeration as done by xml_enumerate_children
+ */
+int
+xml_enumerate_reset(cxobj *xp)
+{
+    cxobj *x = NULL;
+ 
+    while ((x = xml_child_each(xp, x, -1)) != NULL)
+	x->_x_i = 0;
     return 0;
 }
 

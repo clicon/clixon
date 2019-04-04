@@ -314,7 +314,7 @@ from_client_get_config(clicon_handle h,
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
 	    xpath="/";
-    if (xmldb_get(h, db, xpath, 1, &xret, NULL) < 0){
+    if (xmldb_get(h, db, xpath, &xret, NULL) < 0){
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
@@ -773,7 +773,7 @@ from_client_get(clicon_handle h,
 	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
 	    xpath="/";
     /* Get config */
-    if (xmldb_get(h, "running", xpath, 0, &xret, NULL) < 0){
+    if (xmldb_get(h, "running", xpath, &xret, NULL) < 0){
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
