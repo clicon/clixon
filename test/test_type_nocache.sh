@@ -1,6 +1,7 @@
 #!/bin/bash
 # Advanced union types and generated code
 # and enum w values
+# @see test_type.sh  ONLY DIFFERENCE IS db-cache is OFF here
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -25,7 +26,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_XMLDB_CACHE>true</CLICON_XMLDB_CACHE>
+  <CLICON_XMLDB_CACHE>false</CLICON_XMLDB_CACHE>
 </clixon-config>
 EOF
 

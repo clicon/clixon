@@ -41,11 +41,6 @@
  */
 int xml_child_spec(cxobj *x, cxobj *xp, yang_spec *yspec, yang_stmt **yp);
 int xml_sort(cxobj *x0, void *arg);
-cxobj *xml_search(cxobj *x, char *name, int yangi, enum rfc_6020 keyword, int keynr, char **keyvec, char **keyval);
-int    xml_insert_pos(cxobj *x0, char *name, int yangi, enum rfc_6020 keyword,
-		      int keynr, char **keyvec, char **keyval, int low,
-		      int upper);
-cxobj *xml_match(cxobj *x0, char *name, enum rfc_6020 keyword, int keynr, char **keyvec, char **keyval);
 int    xml_sort_verify(cxobj *x, void *arg);
 int    match_base_child(cxobj *x0, cxobj *x1c, yang_stmt *yc, cxobj **x0cp);
 

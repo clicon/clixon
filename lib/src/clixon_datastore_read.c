@@ -374,18 +374,16 @@ xmldb_readfile(clicon_handle      h,
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
- * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msd    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
  * @see xmldb_get  the generic API function
  */
-int
+static int
 xmldb_get_nocache(clicon_handle       h,
 		  const char         *db, 
 		  char               *xpath,
-		  int                 config,
 		  cxobj             **xtop,
 		  modstate_diff_t    *msd)
 {
@@ -457,15 +455,6 @@ xmldb_get_nocache(clicon_handle       h,
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
 
-    /* filter out state (operations) data if config not set. Mark all nodes
-     that are not config data */
-    if (config){
-	if (xml_apply(xt, CX_ELMNT, xml_non_config_data, NULL) < 0)
-	    goto done;
-	/* Remove (prune) nodes that are marked (that does not pass test) */
-	if (xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1) < 0)
-	    goto done;
-    }
     /* Add default values (if not set) */
     if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
     	goto done;
@@ -497,20 +486,18 @@ xmldb_get_nocache(clicon_handle       h,
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
- * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msd    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
  * @see xmldb_get  the generic API function
  */
-int
+static int
 xmldb_get_cache(clicon_handle       h,
-	       const char         *db, 
-	       char               *xpath,
-	       int                 config,
-	       cxobj             **xtop,
-	       modstate_diff_t    *msd)
+		const char         *db, 
+		char               *xpath,
+		cxobj             **xtop,
+		modstate_diff_t    *msd)
 {
     int             retval = -1;
     yang_spec      *yspec;
@@ -591,3 +578,183 @@ xmldb_get_cache(clicon_handle       h,
     return retval;
 }
 
+/*! Get the raw cache of whole tree
+ * Useful for some higer level usecases for optimized access
+ * This is a clixon datastore plugin of the the xmldb api
+ * @param[in]  h      Clicon handle
+ * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  xpath  String with XPATH syntax. or NULL for all
+ * @param[in]  config If set only configuration data, else also state
+ * @param[out] xret   Single return XML tree. Free with xml_free()
+ * @param[out] msd    If set, return modules-state differences
+ * @retval     0      OK
+ * @retval     -1     Error
+ */
+static int
+xmldb_get1_cache(clicon_handle       h,
+		 const char         *db, 
+		 char               *xpath,
+		 cxobj             **xtop,
+		 modstate_diff_t    *modst)
+{
+    int             retval = -1;
+    yang_spec      *yspec;
+    cxobj          *x0t = NULL; /* (cached) top of tree */
+    cxobj         **xvec = NULL;
+    size_t          xlen;
+    int             i;
+    cxobj          *x0;
+    db_elmnt       *de = NULL;
+    db_elmnt        de0 = {0,};
+
+    if (!clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
+	clicon_err(OE_CFG, 0, "CLICON_XMLDB_CACHE must be set");
+	goto done;
+    }
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    de = clicon_db_elmnt_get(h, db);
+    if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
+	/* If there is no xml x0 tree (in cache), then read it from file */
+	if (xmldb_readfile(h, db, yspec, &x0t, modst) < 0)
+	    goto done;
+	/* XXX: should we validate file if read from disk? 
+	 * Argument against: we may want to have a semantically wrong file and wish
+	 * to edit?
+	 */
+	de0.de_xml = x0t;
+	clicon_db_elmnt_set(h, db, &de0);
+    } /* x0t == NULL */
+    else
+	x0t = de->de_xml;
+    /* Here xt looks like: <config>...</config> */
+    if (xpath_vec(x0t, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	goto done;
+    /* Iterate through the match vector
+     * For every node found in x0, mark the tree up to t1
+     */
+    for (i=0; i<xlen; i++){
+	x0 = xvec[i];
+	xml_flag_set(x0, XML_FLAG_MARK);
+	xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    }
+    /* Apply default values (removed in clear function) */
+    if (xml_apply(x0t, CX_ELMNT, xml_default, NULL) < 0)
+	goto done;
+    if (debug>1)
+    	clicon_xml2file(stderr, x0t, 0, 1);
+    *xtop = x0t;
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+
+/*! Get content of database using xpath. return a set of matching sub-trees
+ * The function returns a minimal tree that includes all sub-trees that match
+ * xpath.
+ * @param[in]  h      Clicon handle
+ * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  xpath  String with XPATH syntax. or NULL for all
+ * @param[out] xret   Single return XML tree. Free with xml_free()
+ * @param[out] msd    If set, return modules-state differences
+ * @retval     0      OK
+ * @retval     -1     Error
+ * @code
+ *   cxobj   *xt;
+ *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", &xt, NULL) < 0)
+ *      err;
+ *   xml_free(xt);
+ * @endcode
+ * @note if xvec is given, then purge tree, if not return whole tree.
+ * @see xpath_vec
+ */
+int 
+xmldb_get(clicon_handle    h, 
+	  const char      *db, 
+	  char            *xpath,
+	  cxobj          **xret,
+	  modstate_diff_t *msd)
+{
+    int               retval = -1;
+
+    if (clicon_option_bool(h, "CLICON_XMLDB_CACHE"))
+	retval = xmldb_get_cache(h, db, xpath, xret, msd);
+    else
+	retval = xmldb_get_nocache(h, db, xpath, xret, msd);
+    return retval;
+}
+
+/*! Get content of database using xpath. return a set of matching sub-trees
+ * The function returns a minimal tree that includes all sub-trees that match
+ * xpath.
+ * @param[in]  h      Clicon handle
+ * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  xpath  String with XPATH syntax. or NULL for all
+ * @param[out] xret   Single return XML tree. see note
+ * @param[out] msd    If set, return modules-state differences
+ * @retval     0      OK
+ * @retval     -1     Error
+ * @code
+ *   cxobj   *xt;
+ *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", &xt, NULL) < 0)
+ *      err;
+ *   xml_free(xt);
+ * @endcode
+ * @note if xvec is given, then purge tree, if not return whole tree.
+ * @see xmldb_get This version uses direct cache access and needs to be 
+ *      cleanued up after use
+ * @see xmldb_get1_clean  Must call after use
+ * @note If !CLICON_XMLDB_CACHE you need to free xret after use
+ * This should probably replace xmldb_get completely
+ */
+int 
+xmldb_get1(clicon_handle    h, 
+	   const char      *db, 
+	   char            *xpath,
+	   cxobj          **xret,
+	   modstate_diff_t *msd)
+{
+    int               retval = -1;
+
+    if (clicon_option_bool(h, "CLICON_XMLDB_CACHE"))
+	retval = xmldb_get1_cache(h, db, xpath, xret, msd);
+    else
+	retval = xmldb_get_nocache(h, db, xpath, xret, msd);
+    return retval;
+}
+
+/*! Clear cached tree after accessed by xmldb_get1
+ *
+ * @param[in]  h      Clicon handle
+ * @param[in]  dbname Name of database to search in (filename including dir path
+ * @see xmldb_get1
+ */
+int 
+xmldb_get1_clear(clicon_handle    h, 
+		 const char      *db)
+{
+    int        retval = -1;
+    db_elmnt  *de = NULL;
+    
+    if (!clicon_option_bool(h, "CLICON_XMLDB_CACHE"))
+	goto ok; /* dont bother, tree is a copy */
+    de = clicon_db_elmnt_get(h, db);    
+    if (de != NULL && de->de_xml != NULL){
+	/* clear XML tree of defaults */
+	if (xml_tree_prune_flagged(de->de_xml, XML_FLAG_DEFAULT, 1) < 0)
+	    goto done;
+	/* clear mark and change */
+	xml_apply0(de->de_xml, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+		   (void*)(0xff));
+    }
+ ok:
+    retval = 0;
+ done:
+    return retval;
+
+}

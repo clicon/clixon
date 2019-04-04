@@ -83,7 +83,6 @@ cat <<EOF > /tmp/myconf.xml
   <CLICON_SOCK>/usr/local/var/example/example.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/example/example.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/example</CLICON_XMLDB_DIR>
-  <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
 </config>
 EOF
  sudo clixon_backend -F -s init -f /tmp/myconf.xml -y /tmp/my.yang

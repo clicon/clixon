@@ -39,8 +39,6 @@
 /*
  * Prototypes
  */
-int xmldb_get_cache(clicon_handle h, const char *db, char *xpath, int config, cxobj **xret, modstate_diff_t *msd);
-int xmldb_get_nocache(clicon_handle h, const char *db, char *xpath, int config, cxobj **xret, modstate_diff_t *msd);
-int xmldb_readfile(clicon_handle h, const char *db, yang_spec *yspec, cxobj **xp,	modstate_diff_t *msd);
+int xmldb_readfile(clicon_handle h, const char *db, yang_spec *yspec, cxobj **xp, modstate_diff_t *msd);
 
 #endif /* _CLIXON_DATASTORE_READ_H */

@@ -1051,39 +1051,84 @@ cvec2xml_1(cvec   *cvv,
 }
 
 /*! Recursive help function to compute differences between two xml trees
- * @param[in]  x1        First XML tree
- * @param[in]  x2        Second XML tree
- * @param[out] x1vec     Pointervector to XML nodes existing in only first tree
- * @param[out] x1veclen  Length of first vector
- * @param[out] x2vec     Pointervector to XML nodes existing in only second tree
- * @param[out] x2veclen  Length of x2vec vector
- * @param[out] changed_x1  Pointervector to XML nodes changed orig value
- * @param[out] changed_x2  Pointervector to XML nodes changed wanted value
+ * @param[in]  x0        First XML tree
+ * @param[in]  x1        Second XML tree
+ * @param[out] x0vec     Pointervector to XML nodes existing in only first tree
+ * @param[out] x0veclen  Length of first vector
+ * @param[out] x1vec     Pointervector to XML nodes existing in only second tree
+ * @param[out] x1veclen  Length of x1vec vector
+ * @param[out] changed_x0  Pointervector to XML nodes changed orig value
+ * @param[out] changed_x1  Pointervector to XML nodes changed wanted value
  * @param[out] changedlen Length of changed vector
  */
 static int
 xml_diff1(yang_stmt *ys, 
-	  cxobj     *x1, 
-	  cxobj     *x2,
+	  cxobj     *x0, 
+	  cxobj     *x1,
+	  cxobj   ***x0vec,
+	  size_t    *x0veclen,
 	  cxobj   ***x1vec,
 	  size_t    *x1veclen,
-	  cxobj   ***x2vec,
-	  size_t    *x2veclen,
+	  cxobj   ***changed_x0,
 	  cxobj   ***changed_x1,
-	  cxobj   ***changed_x2,
 	  size_t    *changedlen)
 {
     int        retval = -1;
+    cxobj     *x0c = NULL; /* x0 child */
     cxobj     *x1c = NULL; /* x1 child */
-    cxobj     *x2c = NULL; /* x2 child */
     yang_stmt *yc;
     char      *b1;
     char      *b2;
 
     clicon_debug(2, "%s: %s", __FUNCTION__, ys->ys_argument?ys->ys_argument:"yspec");
-    /* Check nodes present in x1 and x2 + nodes only in x1
-     * Loop over x1
+    /* Check nodes present in x0 and x1 + nodes only in x0
+     * Loop over x0
      * XXX: room for improvement. Compare with match_base_child()
+     */
+    x0c = NULL;
+    while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL){
+	if ((yc = xml_spec(x0c)) == NULL){
+	    clicon_err(OE_UNIX, errno, "Unknown element: %s", xml_name(x0c));
+	    goto done;
+	}
+	/* Does x1 have a child matching x0c? */
+	if (match_base_child(x1, x0c, yc, &x1c) < 0)
+	    goto done;
+	if (x1c == NULL){
+	    if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
+		goto done;
+	}
+	else if (yang_choice(yc)){
+	    /* if x0c and x1c are choice/case, then they are changed */
+	    if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
+		goto done;
+	    (*changedlen)--; /* append two vectors */
+	    if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
+		goto done;
+	}
+	else{  /* if x0c and x1c are leafs w bodies, then they are changed */
+	    if (yc->ys_keyword == Y_LEAF){
+		if ((b1 = xml_body(x0c)) == NULL) /* empty type */
+		    break;
+		if ((b2 = xml_body(x1c)) == NULL) /* empty type */
+		    break;
+		if (strcmp(b1, b2)){
+		    if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
+			goto done;
+		    (*changedlen)--; /* append two vectors */
+		    if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
+			goto done;
+		}
+	    }
+	    if (xml_diff1(yc, x0c, x1c,   
+			  x0vec, x0veclen, 
+			  x1vec, x1veclen, 
+			  changed_x0, changed_x1, changedlen)< 0)
+		goto done;
+	}
+    } /* while x0 */
+    /* Check nodes present only in x1
+     * Loop over x1
      */
     x1c = NULL;
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL){
@@ -1091,56 +1136,13 @@ xml_diff1(yang_stmt *ys,
 	    clicon_err(OE_UNIX, errno, "Unknown element: %s", xml_name(x1c));
 	    goto done;
 	}
-	if (match_base_child(x2, x1c, yc, &x2c) < 0)
+	/* Does x0 have a child matching x1c? */
+        if (match_base_child(x0, x1c, yc, &x0c) < 0)
 	    goto done;
-	if (x2c == NULL){
+	if (x0c == NULL)
 	    if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
 		goto done;
-	}
-	else if (yang_choice(yc)){
-	    /* if x1c and x2c are choice/case, then they are changed */
-	    if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
-		goto done;
-	    (*changedlen)--; /* append two vectors */
-	    if (cxvec_append(x2c, changed_x2, changedlen) < 0) 
-		goto done;
-	}
-	else{  /* if x1c and x2c are leafs w bodies, then they are changed */
-	    if (yc->ys_keyword == Y_LEAF){
-		if ((b1 = xml_body(x1c)) == NULL) /* empty type */
-		    break;
-		if ((b2 = xml_body(x2c)) == NULL) /* empty type */
-		    break;
-		if (strcmp(b1, b2)){
-		    if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
-			goto done;
-		    (*changedlen)--; /* append two vectors */
-		    if (cxvec_append(x2c, changed_x2, changedlen) < 0) 
-			goto done;
-		}
-	    }
-	    if (xml_diff1(yc, x1c, x2c,   
-			  x1vec, x1veclen, 
-			  x2vec, x2veclen, 
-			  changed_x1, changed_x2, changedlen)< 0)
-		goto done;
-	}
-    } /* while x1 */
-    /* Check nodes present only in x2
-     * Loop over x2
-     */
-    x2c = NULL;
-    while ((x2c = xml_child_each(x2, x2c, CX_ELMNT)) != NULL){
-	if ((yc = xml_spec(x2c)) == NULL){
-	    clicon_err(OE_UNIX, errno, "Unknown element: %s", xml_name(x2c));
-	    goto done;
-	}
-        if (match_base_child(x1, x2c, yc, &x1c) < 0)
-	    goto done;
-	if (x1c == NULL)
-	    if (cxvec_append(x2c, x2vec, x2veclen) < 0) 
-		goto done;
-    } /* while x1 */
+    } /* while x0 */
     retval = 0;
  done:
     return retval;
@@ -1148,28 +1150,28 @@ xml_diff1(yang_stmt *ys,
 
 /*! Compute differences between two xml trees
  * @param[in]  yspec     Yang specification
- * @param[in]  x1        First XML tree
- * @param[in]  x2        Second XML tree
+ * @param[in]  x0        First XML tree
+ * @param[in]  x1        Second XML tree
  * @param[out] first     Pointervector to XML nodes existing in only first tree
  * @param[out] firstlen  Length of first vector
  * @param[out] second    Pointervector to XML nodes existing in only second tree
  * @param[out] secondlen Length of second vector
- * @param[out] changed1  Pointervector to XML nodes changed orig value
- * @param[out] changed2  Pointervector to XML nodes changed wanted value
+ * @param[out] changed_x0  Pointervector to XML nodes changed orig value
+ * @param[out] changed_x1  Pointervector to XML nodes changed wanted value
  * @param[out] changedlen Length of changed vector
  * All xml vectors should be freed after use.
  * Bot xml trees should be freed with xml_free()
  */
 int
 xml_diff(yang_spec *yspec, 
-	 cxobj     *x1, 
-	 cxobj     *x2,
+	 cxobj     *x0, 
+	 cxobj     *x1,
 	 cxobj   ***first,
 	 size_t    *firstlen,
 	 cxobj   ***second,
 	 size_t    *secondlen,
-	 cxobj   ***changed1,
-	 cxobj   ***changed2,
+	 cxobj   ***changed_x0,
+	 cxobj   ***changed_x1,
 	 size_t    *changedlen)
 {
     int retval = -1;
@@ -1177,22 +1179,22 @@ xml_diff(yang_spec *yspec,
     *firstlen = 0;
     *secondlen = 0;    
     *changedlen = 0;
-    if (x1 == NULL && x2 == NULL)
+    if (x0 == NULL && x1 == NULL)
 	return 0;
-    if (x2 == NULL){
-	if (cxvec_append(x1, first, firstlen) < 0) 
-	    goto done;
-	goto ok;
-    }
     if (x1 == NULL){
-	if (cxvec_append(x1, second, secondlen) < 0) 
+	if (cxvec_append(x0, first, firstlen) < 0) 
 	    goto done;
 	goto ok;
     }
-    if (xml_diff1((yang_stmt*)yspec, x1, x2,
+    if (x0 == NULL){
+	if (cxvec_append(x0, second, secondlen) < 0) 
+	    goto done;
+	goto ok;
+    }
+    if (xml_diff1((yang_stmt*)yspec, x0, x1,
 		  first, firstlen, 
 		  second, secondlen, 
-		  changed1, changed2, changedlen) < 0)
+		  changed_x0, changed_x1, changedlen) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -1565,14 +1567,13 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     return retval;
 }
 
-
 /*! Prune everything that passes test
  * @param[in]   xt      XML tree with some node marked
  * @param[in]   flag    Which flag to test for
  * @param[in]   test    1: test that flag is set, 0: test that flag is not set
  * The function removes all branches that does not pass test
  * @code
- *    xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1, NULL);
+ *    xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1);
  * @endcode
  */
 int
@@ -1638,6 +1639,7 @@ xml_default(cxobj *xt,
 		if (!xml_find(xt, y->ys_argument)){
 		    if ((xc = xml_new(y->ys_argument, xt, y)) == NULL)
 			goto done;
+		    xml_flag_set(xc, XML_FLAG_DEFAULT);
 		    if ((xb = xml_new("body", xc, NULL)) == NULL)
 			goto done;
 		    xml_type_set(xb, CX_BODY);
@@ -1652,7 +1654,7 @@ xml_default(cxobj *xt,
 	    }
 	}
     }
-    //    xml_sort(xt, NULL);
+    xml_sort(xt, NULL);
     retval = 0;
  done:
     return retval;

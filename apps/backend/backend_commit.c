@@ -180,7 +180,7 @@ startup_common(clicon_handle       h,
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
 	if ((msd = modstate_diff_new()) == NULL)
 	    goto done;
-    if (xmldb_get(h, db, "/", 1, &xt, msd) < 0)
+    if (xmldb_get(h, db, "/", &xt, msd) < 0)
 	goto done;
     if (msd){
 	if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
@@ -350,11 +350,9 @@ from_validate_common(clicon_handle       h,
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }	
-
     /* This is the state we are going to */
-    if (xmldb_get(h, candidate, "/", 1, &td->td_target, NULL) < 0)
+    if (xmldb_get1(h, candidate, "/", &td->td_target, NULL) < 0)
 	goto done;
-
     /* Validate the target state. It is not completely clear this should be done 
      * here. It is being made in generic_validate below. 
      * But xml_diff requires some basic validation, at least check that yang-specs
@@ -367,9 +365,9 @@ from_validate_common(clicon_handle       h,
 
     /* 2. Parse xml trees 
      * This is the state we are going from */
-    if (xmldb_get(h, "running", "/", 1, &td->td_src, NULL) < 0)
+    if (xmldb_get1(h, "running", "/", &td->td_src, NULL) < 0)
 	goto done;
-    
+
     /* 3. Compute differences */
     if (xml_diff(yspec, 
 		 td->td_src,
@@ -469,7 +467,14 @@ candidate_commit(clicon_handle h,
      if (plugin_transaction_commit(h, td) < 0)
 	 goto done;
 
-     /* Optionally write (potentially modified) tree back to candidate */
+     /* Clear cached trees from default values and marking */
+     if (xmldb_get1_clear(h, candidate) < 0)
+	 goto done;
+     if (xmldb_get1_clear(h, "running") < 0)
+	 goto done;
+
+     /* Optionally write (potentially modified) tree back to candidate 
+      */
      if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD")){
 	 if ((ret = xmldb_put(h, candidate, OP_REPLACE, td->td_target,
 			      clicon_username_get(h), cbret)) < 0)
@@ -490,8 +495,14 @@ candidate_commit(clicon_handle h,
      /* In case of failure (or error), call plugin transaction termination callbacks */
      if (retval < 1 && td)
 	 plugin_transaction_abort(h, td);
-     if (td)
+     if (td){
+	 if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
+	     /* xmldb_get1 requires free only if not cache */
+	     td->td_target = NULL;
+	     td->td_src = NULL;
+	 }
 	 transaction_free(td);
+     }
     return retval;
  fail:
     retval = 0;
@@ -662,7 +673,7 @@ from_client_validate(clicon_handle h,
     }
     clicon_debug(1, "Validate %s",  db);
 
-     /* 1. Start transaction */
+    /* 1. Start transaction */
     if ((td = transaction_new()) == NULL)
 	goto done;
     /* Common steps (with commit) */
@@ -674,6 +685,12 @@ from_client_validate(clicon_handle h,
 	}
 	goto ok;
     }
+    /* Clear cached trees from default values and marking */
+    if (xmldb_get1_clear(h, db) < 0)
+	goto done;
+    if (xmldb_get1_clear(h, "running") < 0)
+	goto done;
+
     /* Optionally write (potentially modified) tree back to candidate */
     if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD")){
 	if ((ret = xmldb_put(h, "candidate", OP_REPLACE, td->td_target,
@@ -685,10 +702,16 @@ from_client_validate(clicon_handle h,
  ok:
     retval = 0;
  done:
-     if (retval < 0 && td)
-	 plugin_transaction_abort(h, td);
-     if (td)
-	 transaction_free(td);
+    if (retval < 0 && td)
+	plugin_transaction_abort(h, td);
+    if (td){
+	if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
+	     /* xmldb_get1 requires free only if not cache */
+	    td->td_target = NULL;
+	    td->td_src = NULL;
+	}
+	transaction_free(td);
+    }
     return retval;
 } /* from_client_validate */
 

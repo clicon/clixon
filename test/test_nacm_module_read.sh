@@ -44,7 +44,6 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
 </clixon-config>
@@ -125,7 +124,7 @@ RULES=$(cat <<EOF
 EOF
 )
 
-new "test params: -f $cfg"
+new "test params: -f $cfg -- -s"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
