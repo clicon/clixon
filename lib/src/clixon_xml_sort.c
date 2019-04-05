@@ -92,7 +92,7 @@ xml_cv_cache(cxobj   *x,
     if ((cv = xml_cv(x)) != NULL)
 	goto ok;
     if ((y = xml_spec(x)) == NULL)
-	goto done;
+	goto ok;
     if (yang_type_get(y, NULL, &yrestype, &options, NULL, NULL, &fraction) < 0)
 	goto done;
     yang2cv_type(yrestype->ys_argument, &cvtype);
@@ -331,13 +331,16 @@ xml_cmp1(cxobj        *x,
 	 int           keynr,
 	 char        **keyvec,
 	 char        **keyval,
+	 cg_var      **keycvec,
 	 int          *userorder)
 {
     char      *b;
+    cxobj     *xb;
     int        i;
     char      *keyname;
     char      *key;
     int        match = 0;
+    cg_var    *cv;
 
     /* state data = userorder */
     if (userorder && yang_config(y)==0)
@@ -353,8 +356,15 @@ xml_cmp1(cxobj        *x,
 	    *userorder=1;
 	if ((b=xml_body(x)) == NULL)
 	    match = 1;
-	else
-	    match = strcmp(keyval[0], b);
+	else{
+	    if (keycvec[0]){
+		if (xml_cv_cache(x, b, &cv) < 0) /* error case */
+		    goto done;
+		match = cv_cmp(keycvec[0], cv);
+	    }
+	    else
+		match = strcmp(keyval[0], b);
+	}
 	break;
     case Y_LIST: /* Match with array of key values */
 	if (userorder && yang_find((yang_node*)y, Y_ORDERED_BY, "user") != NULL)
@@ -363,18 +373,26 @@ xml_cmp1(cxobj        *x,
 	for (i=0; i<keynr; i++){
 	    keyname = keyvec[i];
 	    key = keyval[i];
-	    /* Eg return "e0" in <if><name>e0</name></name></if> given "name" */
-	    if ((b = xml_find_body(x, keyname)) == NULL)
+	    if ((xb = xml_find(x, keyname)) == NULL)
 		break; /* error case */
-	    if ((match = strcmp(key, b)) != 0)
-		break;
+	    if ((b = xml_body(xb)) == NULL)
+		break; /* error case */
+	    if (xml_cv_cache(xb, b, &cv) < 0) /* error case */
+		goto done;
+	    if (keycvec[i]){
+		if ((match = cv_cmp(keycvec[i], cv)) != 0)
+		    break;
+	    }
+	    else
+		if ((match = strcmp(key, b)) != 0)
+		    break;
 	}
 	break;
     default:
 	break;
     }
-    // done:
-    return match; /* should not reach here */
+ done:
+    return match;
 }
 
 /*! Sort children of an XML node
@@ -411,7 +429,8 @@ xml_search_userorder(cxobj        *x0,
 		     enum rfc_6020 keyword,   
 		     int           keynr,
 		     char        **keyvec,
-		     char        **keyval)
+		     char        **keyval,
+		     cg_var      **keycvec)
 {
     int    i;
     cxobj *xc;
@@ -421,7 +440,7 @@ xml_search_userorder(cxobj        *x0,
 	y = xml_spec(xc);
 	if (yangi!=yang_order(y))
 	    break;
-	if (xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, NULL) == 0)
+	if (xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, keycvec, NULL) == 0)
 	    return xc;
     }
     for (i=mid-1; i>=0; i--){ /* Then decrement */
@@ -429,7 +448,7 @@ xml_search_userorder(cxobj        *x0,
 	y = xml_spec(xc);
 	if (yangi!=yang_order(y))
 	    break;
-	if (xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, NULL) == 0)
+	if (xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, keycvec, NULL) == 0)
 	    return xc;
     }
     return NULL; /* Not found */
@@ -451,6 +470,7 @@ xml_search1(cxobj        *x0,
 	    int           keynr,
 	    char        **keyvec,
 	    char        **keyval,
+	    cg_var      **keycvec,
 	    int           low, 
 	    int           upper)
 {
@@ -470,18 +490,18 @@ xml_search1(cxobj        *x0,
 	return NULL;
     cmp = yangi-yang_order(y);
     if (cmp == 0){
-	cmp = xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, &userorder);
+	cmp = xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, keycvec, &userorder);
 	if (userorder && cmp)	    /* Look inside this yangi order */
-	    return xml_search_userorder(x0, y, name, yangi, mid, keyword, keynr, keyvec, keyval);
+	    return xml_search_userorder(x0, y, name, yangi, mid, keyword, keynr, keyvec, keyval, keycvec);
     }
     if (cmp == 0)
 	return xc;
     else if (cmp < 0)
 	return xml_search1(x0, name, yangi, keyword,
-			   keynr, keyvec, keyval, low, mid-1);
+			   keynr, keyvec, keyval, keycvec, low, mid-1);
     else 
 	return xml_search1(x0, name, yangi, keyword,
-			   keynr, keyvec, keyval, mid+1, upper);
+			   keynr, keyvec, keyval, keycvec,  mid+1, upper);
     return NULL;
 }
 
@@ -491,173 +511,30 @@ xml_search1(cxobj        *x0,
  * @param[in]  keyvec   Array of of yang key identifiers
  * @param[in]  keyval   Array of of yang key values
  */
-cxobj *
+static cxobj *
 xml_search(cxobj        *x0,
 	   char         *name,
 	   int           yangi,
 	   enum rfc_6020 keyword,   
 	   int           keynr,
 	   char        **keyvec,
-	   char        **keyval)
+	   char        **keyval,
+    	   cg_var      **keycvec)
 {
-    return xml_search1(x0, name, yangi, keyword, keynr, keyvec, keyval,
-		       0, xml_child_nr(x0));
+    cxobj *xa;
+    int    low = 0;
+    int    high = xml_child_nr(x0);
+
+    /* Assume if there are any attributes, they are first in the list, mask
+       them by raising low to skip them */
+    for (low=0; low<high; low++)
+	if ((xa = xml_child_i(x0, low)) == NULL || xml_type(xa)!=CX_ATTR)
+	    break;
+    return xml_search1(x0, name, yangi, keyword, keynr, keyvec, keyval, keycvec,
+		       low, high);
 }
 
 
-/*! Position where to insert xml object into a list of children nodes
- * @note EXPERIMENTAL
- * Insert after position returned
- * @param[in]  x0       XML parent node.
- * @param[in]  low       Lower bound
- * @param[in]  upper     Upper bound (+1)
- * @retval     position 
- * XXX: Problem with this is that evrything must be known before insertion
- */
-int
-xml_insert_pos(cxobj        *x0,
-	       char         *name,
-	       int           yangi,
-	       enum rfc_6020 keyword,   
-	       int           keynr,
-	       char        **keyvec,
-	       char        **keyval,
-	       int           low, 
-	       int           upper)
-{
-    int        mid;
-    cxobj     *xc;
-    yang_stmt *y;
-    int        cmp;
-    int        i;
-    int        userorder= 0;
-    
-    if (upper < low)
-	return low; /* not found */
-    mid = (low + upper) / 2;
-    if (mid >= xml_child_nr(x0))
-	return xml_child_nr(x0); /* upper range */
-    xc = xml_child_i(x0, mid); 
-    y = xml_spec(xc);
-    cmp = yangi-yang_order(y);
-    if (cmp == 0){
-	cmp = xml_cmp1(xc, y, name, keyword, keynr, keyvec, keyval, &userorder);
-	if (userorder){	    /* Look inside this yangi order */
-	    /* Special case: append last of equals if ordered by user */
-	    for (i=mid+1;i<xml_child_nr(x0);i++){
-		xc = xml_child_i(x0, i);
-		if (strcmp(xml_name(xc), name))
-		    break;
-		mid=i; /* still ok */
-	    }
-	    return mid;
-	}
-    }
-    if (cmp == 0)
-	return mid;
-    else if (cmp < 0)
-	return xml_insert_pos(x0, name, yangi, keyword,
-			      keynr, keyvec, keyval, low, mid-1);
-    else
-	return xml_insert_pos(x0, name, yangi, keyword,
-			      keynr, keyvec, keyval, mid+1, upper);
-}
-
-/*! Find matching xml child given name and optional key values
- * container: x0, y->keyword, name
- * list:      x0, y->keyword, y->key, name
- *
- * The function needs a vector of key values (or single for LEAF_LIST).
- * What format? 
- * 1) argc/argv:: "val1","val2" <<==
- * 2) cv-list?
- * 3) va-list?
- *
- *      yc - LIST (interface) - 
- *       ^
- *       |
- * x0-->x0c-->(name=interface)+->x(name=name)->xb(value="eth0") <==this is
- *       |
- *       v
- *      x1c->name (interface)
- *      x1c->x(name=name)->xb(value="eth0")
- *
- *      CONTAINER:name
- *      LEAF:     name
- *      LEAFLIST: name/body... #b0
- *      LIST:     name/key0/key1... #b2vec+b0 -> x0c
-
- * <interface><name>eth0</name></interface>
- * <interface><name>eth1</name></interface>
- * <interface><name>eth2</name></interface>
- * @param[in]  x0       XML node. Find child of this node.
- * @param[in]  keyword  Yang keyword. Relevant: container, list, leaf, leaf_list
- * @param[in]  keynr    Length of keyvec/keyval vector when applicable
- * @param[in]  keyvec   Array of of yang key identifiers
- * @param[in]  keyval   Array of of yang key values
- * @param[out] xp       Return value on success, pointer to XML child node
- * @note If keyword is:
- *   - list, keyvec and keyval should be an array with keynr length
- *   - leaf_list, keyval should be 1 and keyval should contain one element
- *   - otherwise, keyval should be 0 and keyval and keyvec should be both NULL.
- */
-cxobj *
-xml_match(cxobj        *x0,
-	  char         *name,
-	  enum rfc_6020 keyword,   
-	  int           keynr,
-	  char        **keyvec,
-	  char        **keyval)
-{
-    char  *key;
-    char  *keyname;
-    char  *b0;
-    cxobj *x = NULL;
-    int    equal;
-    int    i;
-    
-    x = NULL;
-    switch (keyword){
-    case Y_CONTAINER: /* Match with name */
-    case Y_LEAF: /* Match with name */
-	if (keynr != 0){
-	    clicon_err(OE_XML, EINVAL, "Expected no key argument to CONTAINER or LEAF");
-	    goto ok;
-	}
-	x = xml_find(x0, name);
-	break;
-    case Y_LEAF_LIST: /* Match with name and value */
-	if (keynr != 1)
-	    goto ok;
-	x = xml_find_body_obj(x0, name, keyval[0]);
-	break;
-    case Y_LIST: /* Match with array of key values */
-	i = 0;
-	while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL){
-	    equal = 0;
-	    if (strcmp(xml_name(x), name))
-		continue;
-	    /* Must be inner loop */
-	    for (i=0; i<keynr; i++){
-		keyname = keyvec[i];
-		key = keyval[i];
-		equal = 0;
-		if ((b0 = xml_find_body(x, keyname)) == NULL)
-		    break; /* error case */
-		if (strcmp(b0, key))
-		    break; /* stop as soon as inequal key found */
-		equal=1; /* reaches here for all keynames, x is found. */
-	    }
-	    if (equal) /* x matches, oyherwise look for other */
-		break;
-	} /* while x */
-	break;
-    default: 
-	break;
-    }
- ok:
-    return x;
-}
 
 /*! Verify all children of XML node are sorted according to xml_sort()
  * @param[in]   x       XML node. Check its children
@@ -711,10 +588,12 @@ match_base_child(cxobj      *x0,
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
     char      *b;
+    cxobj     *xb;
     char      *keyname;
     char       keynr = 0;
     char     **keyval = NULL;
     char     **keyvec = NULL;
+    cg_var   **keycvec = NULL;
     int        i;
     int        yorder;
     cxobj     *x0c = NULL;
@@ -735,7 +614,6 @@ match_base_child(cxobj      *x0,
 		y0p == yp)
 		break;	/* x0c will have a value */
 	}
-	*x0cp = x0c;
 	goto ok; /* What to do if not found? */
     }
     switch (yc->ys_keyword){
@@ -750,6 +628,12 @@ match_base_child(cxobj      *x0,
 	}
 	if ((keyval[0] = xml_body(x1c)) == NULL)
 	    goto ok;
+	if ((keycvec = calloc(keynr+1, sizeof(cg_var*))) == NULL){
+	    clicon_err(OE_UNIX, errno, "calloc");
+	    goto done;
+	}
+	if (xml_cv_cache(x1c, keyval[0], &keycvec[0]) < 0) /* error case */
+	    goto done;
 	break;
     case Y_LIST: /* Match with key values */
 	cvk = yc->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
@@ -768,28 +652,33 @@ match_base_child(cxobj      *x0,
 	    clicon_err(OE_UNIX, errno, "calloc");
 	    goto done;
 	}
+	if ((keycvec = calloc(keynr+1, sizeof(char*))) == NULL){
+	    clicon_err(OE_UNIX, errno, "calloc");
+	    goto done;
+	}
 	cvi = NULL; i = 0;
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	    keyname = cv_string_get(cvi);
 	    keyvec[i] = keyname;
-	    if ((b = xml_find_body(x1c, keyname)) == NULL)
-		goto ok; /* not found */
-	    keyval[i++] = b;
+	    if ((xb = xml_find(x1c, keyname)) == NULL)
+		goto ok;
+	    if ((b = xml_body(xb)) == NULL)
+		goto ok;
+	    keyval[i] = b;
+	    if (xml_cv_cache(xb, b, &keycvec[i]) < 0) /* error case */
+		goto done;
+	    i++;
 	}
 	break;
     default:
 	break;
     }
-    /* Get match. Sorting mode(optimized) or not?*/
-    if (xml_child_nr(x0)==0 || xml_spec(xml_child_i(x0,0))!=NULL){
-	yorder = yang_order(yc);
-	x0c = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval);
-    }
-    else{
-	x0c = xml_match(x0, xml_name(x1c), yc->ys_keyword, keynr, keyvec, keyval);
-    }
-    *x0cp = x0c;
+    /* Get match.
+     */
+    yorder = yang_order(yc);
+    x0c = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval, keycvec);
  ok:
+    *x0cp = x0c;
     retval = 0;
  done:
     if (keyval)
