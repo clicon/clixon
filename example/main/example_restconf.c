@@ -40,7 +40,6 @@
 #include <ctype.h>
 #include <signal.h>
 #include <fcgiapp.h>
-#include <curl/curl.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -329,7 +328,7 @@ clixon_plugin_init(clicon_handle h)
 {
     int       argc; /* command-line options (after --) */
     char    **argv = NULL;
-    char      c;
+    int       c;
     
     clicon_debug(1, "%s restconf", __FUNCTION__);
     /* Get user command-line options (after --) */

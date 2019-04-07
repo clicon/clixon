@@ -730,8 +730,7 @@ match_base_child(cxobj      *x0,
 		goto ok;
 	    if ((b = xml_body(xb)) == NULL)
 		goto ok;
-	    //	    if ((b = xml_find_body(x1c, keyname)) == NULL)
-	    //		goto ok; /* not found */
+
 	    keyval[i] = b;
 	    if (xml_cv_cache(xb, &keycvec[i]) < 0) /* error case */
 		goto done;
@@ -741,9 +740,7 @@ match_base_child(cxobj      *x0,
     default:
 	break;
     }
-    /* Get match. Sorting mode(optimized) or not?
-     * This conditional is a mystery , but test_yang_namespace.sh breaks if set to (0)
-     */
+    /* Get match. */
     yorder = yang_order(yc);
     x0c = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval, keycvec);
  ok:

@@ -27,7 +27,7 @@ fyang=$dir/test.yang
 
 if [ ! -d "$YANGMODELS" ]; then
 #    err "Hmm Yangmodels dir does not seem to exist, try git clone https://github.com/YangModels/yang?"
-    exit
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
 # Experimental IEEE

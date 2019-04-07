@@ -542,7 +542,7 @@ clixon_plugin_init(clicon_handle h)
     struct timeval retention = {0,0};
     int            argc; /* command-line options (after --) */
     char         **argv;
-    char           c;
+    int            c;
 
     clicon_debug(1, "%s backend", __FUNCTION__);
 

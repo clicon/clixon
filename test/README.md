@@ -26,9 +26,11 @@ You need to build and install the clixon utility programs before running the tes
   sudo make install
 ```
 
-You need to start nginx for some of the text. There are instructions in 
+You need to configure and start nginx for the restconf tests:
+* The [example](../example/main/README.md) has instructions on how to edit your nginx config files
 * If you run systemd: `sudo systemctl start nginx.service`
-* The [example](../example/README.md) has instructions
+
+You may need to install the `time` utility (`/usr/bin/time`). 
 
 ## Prefix variable
 
@@ -65,7 +67,7 @@ You may add your site-specific modifications in a `site.sh` file. Example:
   # Add test to this list that you dont want run
   SKIPLIST="test_openconfig.sh test_yangmodels.sh"
   # Parse yang openconfig models from https://github.com/openconfig/public
-  OPENCONFIG=/home/olof/src/clixon/test/public
+  OPENCONFIG=/usr/local/share/openconfig/public
   # Parse yangmodels from https://github.com/YangModels/yang
   YANGMODELS=/usr/local/share/yangmodels
   # Standard IETF RFC yang files. 
