@@ -598,7 +598,7 @@ xmldb_get1_cache(clicon_handle       h,
 		 modstate_diff_t    *modst)
 {
     int             retval = -1;
-    yang_spec      *yspec;
+    yang_stmt      *yspec;
     cxobj          *x0t = NULL; /* (cached) top of tree */
     cxobj         **xvec = NULL;
     size_t          xlen;
