@@ -32,6 +32,8 @@
   * Two config options control:
     * CLICON_XML_CHANGELOG enables the yang changelog feature
     * CLICON_XML_CHANGELOG_FILE where the changelog resides
+	
+### API changes on existing features (you may need to change your code)
 
 * xmldb_get() removed "config" parameter:
   * Change all calls to dbget from: `xmldb_get(h, db, xpath, 0|1, &xret, msd)` to `xmldb_get(h, db, xpath, &xret, msd)`
