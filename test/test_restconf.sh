@@ -73,7 +73,7 @@ expecteq "$(curl -s -H 'Accept: application/yang-data+xml' -G http://localhost/r
 
 # Should be alphabetically ordered
 new "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-expecteq "$(curl -sG http://localhost/restconf/operations)" 0 '{"operations": {"clixon-example:client-rpc": null,"clixon-example:empty": null,"clixon-example:optional": null,"clixon-example:example": null,"clixon-lib:debug": null}
+expecteq "$(curl -sG http://localhost/restconf/operations)" 0 '{"operations": {"clixon-example:client-rpc": null,"clixon-example:empty": null,"clixon-example:optional": null,"clixon-example:example": null,"clixon-lib:debug": null}}
 '
 
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"

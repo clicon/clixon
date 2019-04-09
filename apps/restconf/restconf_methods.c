@@ -1164,7 +1164,7 @@ api_operations_get(clicon_handle h,
     if (use_xml)
 	cprintf(cbx, "</operations>");
     else
-	cprintf(cbx, "}");
+	cprintf(cbx, "}}");
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
     FCGX_FPrintF(r->out, "\r\n");

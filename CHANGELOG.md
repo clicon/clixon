@@ -115,6 +115,7 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* [Invalid JSON if GET /operations via RESTCONF #82](https://github.com/clicon/clixon/issues/82), thanks achernavin22
 * List ordering bug - lists with ints as keys behaved wrongly and slow.
 * NACM read default rule did not work properly if nacm was enabled AND no groups were defined 
 * Re-inserted `cli_output_reset` for what was erroneuos thought to be an obsolete function
