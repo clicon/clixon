@@ -708,9 +708,9 @@ xmldb_get(clicon_handle    h,
  * @note if xvec is given, then purge tree, if not return whole tree.
  * @see xmldb_get This version uses direct cache access and needs to be 
  *      cleanued up after use
- * @see xmldb_get1_clean  Must call after use
+ * @see xmldb_get1_clear  Must call after use
  * @note If !CLICON_XMLDB_CACHE you need to free xret after use
- * This should probably replace xmldb_get completely
+ * @note If CLICON_XMLDB_CACHE mark|change flags set, need to clear after call
  */
 int 
 xmldb_get1(clicon_handle    h, 
