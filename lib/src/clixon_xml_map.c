@@ -663,6 +663,7 @@ xml_yang_validate_add(cxobj   *xt,
     char      *body;
     int        ret;
     cxobj     *x;
+    enum cv_type cvtype;
     
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
@@ -688,17 +689,28 @@ xml_yang_validate_add(cxobj   *xt,
 	    /* In the union case, value is parsed as generic REST type,
 	     * needs to be reparsed when concrete type is selected
 	     */
-	    if ((body = xml_body(xt)) != NULL){
+	    if ((body = xml_body(xt)) == NULL){
+		/* We do not allow ints to be empty. Otherwise NULL strings
+		 * are considered as "" */
+		cvtype = cv_type_get(cv);
+		if (cv_isint(cvtype) || cvtype == CGV_BOOL || cvtype == CGV_DEC64){
+		    if (netconf_bad_element(cbret, "application",  yt->ys_argument, "Invalid NULL value") < 0)
+			goto done;
+		    goto fail;
+		}
+	    }
+	    else{
 		if (cv_parse1(body, cv, &reason) != 1){
 		    if (netconf_bad_element(cbret, "application",  yt->ys_argument, reason) < 0)
 			goto done;
 		    goto fail;
 		}
-		if ((ys_cv_validate(cv, yt, &reason)) != 1){
-		    if (netconf_bad_element(cbret, "application",  yt->ys_argument, reason) < 0)
-			goto done;
-		    goto fail;
-		}
+	    }
+
+	    if ((ys_cv_validate(cv, yt, &reason)) != 1){
+		if (netconf_bad_element(cbret, "application",  yt->ys_argument, reason) < 0)
+		    goto done;
+		goto fail;
 	    }
 	    break;
 	default:

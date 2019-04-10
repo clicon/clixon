@@ -92,6 +92,9 @@
 ```
 
 ### Minor changes
+* Empty leaf values, eg <a></a> are now checked at vlidation.
+  * Empty values were skipped in validation.
+  * They are now checked and invalid for ints, dec64, etc, but are treated as empty string "" for string types.
 * Optimized validation by making xml_diff work on raw cache tree (not copies)
 * Added syntactic check for yang status: current, deprecated or obsolete.
 * Added `xml_wrap` function that adds an XML node above a node as a wrapper

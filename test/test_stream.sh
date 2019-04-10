@@ -138,7 +138,7 @@ new "netconf EXAMPLE subscription"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' $NCWAIT
 
 new "netconf subscription with empty startTime"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream><startTime/></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' $NCWAIT
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream><startTime/></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>startTime</bad-element></error-info><error-severity>error</error-severity><error-message>regexp match fail:'
 
 new "netconf EXAMPLE subscription with simple filter"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream><filter type="xpath" select="event"/></create-subscription></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' $NCWAIT

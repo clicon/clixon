@@ -123,6 +123,9 @@ module example{
          enum down;
       }
    }
+   leaf num0 {
+       type int32;
+   }
    leaf num1 {
        type int32 {
        range "1";
@@ -314,6 +317,17 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><can
 
 new "cli bits validate"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang validate" 0 "^$"
+
+#-------- num0 empty value
+
+new "netconf num0 no value"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num0 xmlns="urn:example:clixon"/></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate no value wrong"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num0</bad-element></error-info><error-severity>error</error-severity><error-message>Invalid NULL value</error-message></rpc-error></rpc-reply>]]>]]>'
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 #-------- num1 single range (1)
 
