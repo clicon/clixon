@@ -791,7 +791,7 @@ xml_cv_set(cxobj  *x,
  *
  * @retval xmlobj     if found.
  * @retval NULL       if no such node found.
- * @see xml_find_type  wich is a more generic function
+ * @see xml_find_type  which is a more generic function
  */
 cxobj *
 xml_find(cxobj *x_up, 

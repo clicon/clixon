@@ -173,23 +173,27 @@ clixon_plugin_find(clicon_handle h,
  * @param[in]  file    Which plugin to load
  * @param[in]  function Which function symbol to load and call
  * @param[in]  dlflags See man(3) dlopen
- * @retval     cp      Clixon plugin structure
- * @retval     NULL    Error
+ * @param[out] cpp      Clixon plugin structure (if retval is 1)
+ * @retval     1     OK
+ * @retval     0     Failed load, log, skip and continue with other plugins
+ * @retval     -1    Error
  * @see clixon_plugins_load  Load all plugins
  */
-static clixon_plugin *
+static int
 plugin_load_one(clicon_handle   h, 
 		char           *file,
 		char           *function,
-		int             dlflags)
+		int             dlflags,
+		clixon_plugin **cpp)
 {
-    char          *error;
-    void          *handle = NULL;
-    plginit2_t    *initfn;
+    int                retval = -1;
+    char              *error;
+    void              *handle = NULL;
+    plginit2_t        *initfn;
     clixon_plugin_api *api = NULL;
-    clixon_plugin *cp = NULL;
-    char          *name;
-    char          *p;
+    clixon_plugin     *cp = NULL;
+    char              *name;
+    char              *p;
 
     clicon_debug(1, "%s file:%s function:%s", __FUNCTION__, file, function);
     dlerror();    /* Clear any existing error */
@@ -201,7 +205,7 @@ plugin_load_one(clicon_handle   h,
     /* call plugin_init() if defined, eg CLIXON_PLUGIN_INIT or CLIXON_BACKEND_INIT */
     if ((initfn = dlsym(handle, function)) == NULL){
 	clicon_err(OE_PLUGIN, errno, "Failed to find %s when loading clixon plugin %s", CLIXON_PLUGIN_INIT, file);
-	goto err;
+	goto done;
     }
     if ((error = (char*)dlerror()) != NULL) {
 	clicon_err(OE_UNIX, 0, "dlsym: %s: %s", file, error);
@@ -211,11 +215,12 @@ plugin_load_one(clicon_handle   h,
     if ((api = initfn(h)) == NULL) {
 	if (!clicon_errno){ 	/* if clicon_err() is not called then log and continue */
 	    clicon_log(LOG_DEBUG, "Warning: failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
-	    dlclose(handle);
+	    retval = 0;
+	    goto done;
 	}
 	else{
 	    clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
-	    goto err;
+	    goto done;
 	}
     }
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
@@ -235,15 +240,19 @@ plugin_load_one(clicon_handle   h,
 
     snprintf(cp->cp_name, sizeof(cp->cp_name), "%*s",
 	     (int)strlen(name), name);
-    if (api)
-	cp->cp_api = *api;
+    cp->cp_api = *api;
     clicon_debug(1, "%s", __FUNCTION__);
+    if (cp){
+	*cpp = cp;
+	cp = NULL;
+    }
+    retval = 1;
  done:
-    return cp;
- err:
-    if (handle)
+    if (retval != 1 && handle)
 	dlclose(handle);
-    return NULL;
+    if (cp)
+	free(cp);
+    return retval;
 }
 
 /*! Load a set of plugin objects from a directory and and call their init-function
@@ -266,6 +275,7 @@ clixon_plugins_load(clicon_handle h,
     int            i;
     char           filename[MAXPATHLEN];
     clixon_plugin *cp;
+    int            ret;
 
     clicon_debug(1, "%s", __FUNCTION__); 
     /* Get plugin objects names from plugin directory */
@@ -276,8 +286,10 @@ clixon_plugins_load(clicon_handle h,
 	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
 	clicon_debug(1, "DEBUG: Loading plugin '%.*s' ...", 
 		     (int)strlen(filename), filename);
-	if ((cp = plugin_load_one(h, filename, function, RTLD_NOW)) == NULL)
+	if ((ret = plugin_load_one(h, filename, function, RTLD_NOW, &cp)) < 0)
 	    goto done;
+	if (ret == 0)
+	    continue;
 	_clixon_nplugins++;
 	if ((_clixon_plugins = realloc(_clixon_plugins, _clixon_nplugins*sizeof(clixon_plugin))) == NULL) {
 	    clicon_err(OE_UNIX, errno, "realloc");

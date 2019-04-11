@@ -68,7 +68,7 @@ int xml_spec_populate_rpc(clicon_handle h, cxobj *x, yang_stmt *yspec);
 int xml_spec_populate(cxobj *x, void *arg);
 int api_path2xpath(yang_stmt *yspec, cvec *cvv, int offset, cbuf *xpath);
 int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop, 
-		 yang_class nodeclass, cxobj **xpathp, yang_stmt **ypathp);
+		 yang_class nodeclass, int strict, cxobj **xpathp, yang_stmt **ypathp);
 int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 

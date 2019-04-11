@@ -84,7 +84,6 @@
  * @param[in]   name     Name of this function (eg "expand_dbvar")
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback ("<db>" "<xmlkeyfmt>")
- * @param[out]  len      len of return commands & helptxt 
  * @param[out]  commands vector of function pointers to callback functions
  * @param[out]  helptxt  vector of pointers to helptexts
  * @see cli_expand_var_generate  This is where arg is generated
@@ -171,7 +170,7 @@ expand_dbvar(void   *h,
     /* This is primarily to get "y", 
      * xpath2xml would have worked!!
      */
-    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 1)
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y) < 1)
 	goto done;
     if (y==NULL)
 	goto ok;

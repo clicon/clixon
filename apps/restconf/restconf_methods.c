@@ -469,7 +469,7 @@ api_data_post(clicon_handle h,
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
     if (api_path){
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y)) < 0)
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
@@ -738,7 +738,7 @@ api_data_put(clicon_handle h,
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
     if (api_path){
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y)) < 0)
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
@@ -1011,7 +1011,7 @@ api_data_delete(clicon_handle h,
 	goto done;
     xbot = xtop;
     if (api_path){
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y)) < 0)
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
@@ -1598,7 +1598,7 @@ api_operations_post(clicon_handle h,
 	    goto done;
 	/* Here xtop is: <rpc username="foo"/> */
     }
-    if ((ret = api_path2xml(oppath, yspec, xtop, YC_SCHEMANODE, &xbot, &y)) < 0)
+    if ((ret = api_path2xml(oppath, yspec, xtop, YC_SCHEMANODE, 1, &xbot, &y)) < 0)
 	goto done;
     if (ret == 0){ /* validation failed */
 	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)

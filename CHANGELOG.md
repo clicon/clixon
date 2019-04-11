@@ -92,7 +92,7 @@
 ```
 
 ### Minor changes
-* Empty leaf values, eg <a></a> are now checked at vlidation.
+* Empty leaf values, eg <a></a> are now checked at validation.
   * Empty values were skipped in validation.
   * They are now checked and invalid for ints, dec64, etc, but are treated as empty string "" for string types.
 * Optimized validation by making xml_diff work on raw cache tree (not copies)
@@ -118,6 +118,8 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Backend plugin returning NULL was still installed - is now logged and skipped.
+* [Parent list key is not validated if not provided via RESTCONF #83](https://github.com/clicon/clixon/issues/83), thanks achernavin22.
 * [Invalid JSON if GET /operations via RESTCONF #82](https://github.com/clicon/clixon/issues/82), thanks achernavin22
 * List ordering bug - lists with ints as keys behaved wrongly and slow.
 * NACM read default rule did not work properly if nacm was enabled AND no groups were defined 
