@@ -98,7 +98,7 @@ new "cli set transitive union"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle 33" 0 "^$"
 
 new "cli set transitive union error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle kalle" 255 ""
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle kalle" 255 '^CLI syntax error: "set c ulle kalle": Unknown command$'
 
 if [ $BE -eq 0 ]; then
     exit # BE

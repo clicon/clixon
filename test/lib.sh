@@ -202,52 +202,53 @@ new(){
 # - expected stdout outcome,
 # - expected2 stdout outcome,
 expectfn(){
-  cmd=$1
-  retval=$2
-  expect="$3"
+    cmd=$1
+    retval=$2
+    expect="$3"
 
-  if [ $# = 4 ]; then
-      expect2=$4
-  else
-      expect2=
-  fi
-  ret=$($cmd)
-  r=$? 
-#  echo "cmd:\"$cmd\""
-#  echo "retval:\"$retval\""
-#  echo "ret:\"$ret\""
-#  echo "r:\"$r\""
-   if [ $r != $retval ]; then
-      echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
-      echo -e "\e[0m:"
-      exit -1
+    if [ $# = 4 ]; then
+	expect2=$4
+    else
+	expect2=
     fi
-    if [ $r != 0 ]; then
-       return
+    ret=$($cmd)
+    r=$? 
+#    echo "cmd:\"$cmd\""
+#    echo "retval:\"$retval\""
+#    echo "expect:\"$expect\""
+#    echo "ret:\"$ret\""
+#    echo "r:\"$r\""
+    if [ $r != $retval ]; then
+	echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+	echo -e "\e[0m:"
+	return
     fi
-#  if [ $ret -ne $retval ]; then
-#      echo -e "\e[31m\nError in Test$testnr [$testname]:"
-#      echo -e "\e[0m:"
-#      exit -1
-#  fi
-  # Match if both are empty string
-  if [ -z "$ret" -a -z "$expect" ]; then
-      return
-  fi
-  if [ -z "$ret" -a "$expect" = "^$" ]; then
-      return
-  fi
-  # grep extended grep 
-  match=`echo $ret | grep -EZo "$expect"`
-  if [ -z "$match" ]; then
-      err "$expect" "$ret"
-  fi
-  if [ -n "$expect2" ]; then
-      match=`echo "$ret" | grep -EZo "$expect2"`
-      if [ -z "$match" ]; then
-	  err $expect "$ret"
-      fi
-  fi
+#    if [ $r != 0 ]; then
+#	return
+#    fi
+    #  if [ $ret -ne $retval ]; then
+    #      echo -e "\e[31m\nError in Test$testnr [$testname]:"
+    #      echo -e "\e[0m:"
+    #      exit -1
+    #  fi
+    # Match if both are empty string
+    if [ -z "$ret" -a -z "$expect" ]; then
+	return
+    fi
+    if [ -z "$ret" -a "$expect" = "^$" ]; then
+	return
+    fi
+    # grep extended grep 
+    match=`echo $ret | grep -EZo "$expect"`
+    if [ -z "$match" ]; then
+	err "$expect" "$ret"
+    fi
+    if [ -n "$expect2" ]; then
+	match=`echo "$ret" | grep -EZo "$expect2"`
+	if [ -z "$match" ]; then
+	    err $expect "$ret"
+	fi
+    fi
 }
 
 # Evaluate and return

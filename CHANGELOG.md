@@ -92,6 +92,7 @@
 ```
 
 ### Minor changes
+* Experimental customized error output strings, see [lib/clixon/clixon_err_string.h]
 * Empty leaf values, eg <a></a> are now checked at validation.
   * Empty values were skipped in validation.
   * They are now checked and invalid for ints, dec64, etc, but are treated as empty string "" for string types.

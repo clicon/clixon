@@ -74,7 +74,7 @@ new "cli configure using encoded chars name <&"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface fddi&< type ianaift:ethernetCsmacd" 0 ""
 
 new "cli failed validate"
-expectfn "$clixon_cli -1 -f $cfg -l o validate" 255 "Missing mandatory variable"
+expectfn "$clixon_cli -1 -f $cfg -l o validate" 255 "Validate failed. Edit and try again or discard changes: application missing-element Mandatory variable <bad-element>type</bad-element>"
 
 new "cli configure more"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 ipv4 address 1.2.3.4 prefix-length 24" 0 "^$"

@@ -223,10 +223,10 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "cli set transitive string. type is alpha followed by number and is defined in three levels of modules"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c talle x99" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c talle x99" 0 '^$'
 
 new "cli set transitive string error. Wrong type"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c talle 9xx" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c talle 9xx" 255 '^CLI syntax error: "set c talle 9xx": Unknown command$'
 
 new "netconf set transitive string error"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><c xmlns="urn:example:clixon"><talle>9xx</talle></c></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>"
@@ -238,22 +238,22 @@ new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "cli set transitive union int (ulle should accept 4.44|bounded|unbounded)"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle 33" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle 33" 0 '^$'
 
 new "cli validate"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 '^$'
 
 new "cli set transitive union string"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle unbounded" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle unbounded" 0 '^$'
 
 new "cli validate"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 '^$'
 
 new "cli set transitive union error. should fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle kalle" 255 ""
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle kalle" 255 '^CLI syntax error: "set c ulle kalle": Unknown command$'
 
 new "cli set transitive union error int"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle 55" 255 ""
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle 55" 255 '^CLI syntax error: "set c ulle 55": Unknown command$'
 
 new "netconf set transitive union error int"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><c xmlns="urn:example:clixon"><ulle>55</ulle></c></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>"
@@ -267,13 +267,13 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]
 #-----------
 
 new "cli set ab"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.a.b" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.a.b" 0 '^$'
 
 new "cli set cd"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list c.d.c.d" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list c.d.c.d" 0 '^$'
 
 new "cli set ef"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list e.f.e.f" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list e.f.e.f" 0 '^$'
 
 new "cli set ab fail"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a&b&a&b" 255 "^CLI syntax error"
@@ -282,10 +282,10 @@ new "cli set ad fail"
 expectfn "$clixon_cli -1f $cfg -l o -y $fyang set list a.b.c.d" 255 "^CLI syntax error"
 
 new "cli validate"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o validate" 0 '^$'
 
 new "cli commit"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o commit" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang -l o commit" 0 '^$'
 
 new "netconf validate ok"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -303,20 +303,20 @@ new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "cli enum value"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set status down" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set status down" 0 '^$'
 
 new "cli bits value"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set mbits create" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set mbits create" 0 '^$'
 
 #XXX No, cli cant assign two bit values
 #new "cli bits two values"
-#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set mbits \"create read\"" 0 "^$"
+#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set mbits \"create read\"" 0 '^$'
 
 new "netconf bits two values"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><mbits xmlns="urn:example:clixon">create read</mbits></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "cli bits validate"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang validate" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang validate" 0 '^$'
 
 #-------- num0 empty value
 
@@ -332,13 +332,13 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]
 #-------- num1 single range (1)
 
 new "cli range test num1 1 OK"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 1" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 1" 0 '^$'
 
 #new "cli range test num1 -100 ok" # XXX -/minus cant be given as argv
-#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 \-100" 0 "^$"
+#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 \-100" 0 '^$'
 
 new "cli range test num1 2 error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 2" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num1 2" 255 '^CLI syntax error: "set num1 2": Unknown command$'
 
 new "netconf range set num1 -1"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num1 xmlns="urn:example:clixon">-1</num1></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -352,13 +352,13 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]
 #-------- num2 range and blanks
 
 new "cli range test num2 3 error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 3" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 3" 255 '^CLI syntax error: "set num2 3": Number out of range: 3$'
 
 new "cli range test num2 1000 ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 1000" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 1000" 0 '^$'
 
 new "cli range test num2 5000 error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 5000" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num2 5000" 255 '^CLI syntax error: "set num2 5000": Unknown command$'
 
 new "netconf range set num2 3 fail"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num2 xmlns="urn:example:clixon">3</num2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -384,13 +384,13 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]
 #-------- num3 min max range
 
 new "cli range test num3 42 ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num3 42" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num3 42" 0 '^$'
 
 new "cli range test num3 260 fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num3 260" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num3 260" 255 '^CLI syntax error: "set num3 260": Unknown command$'
 
 new "cli range test num3 -1 fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num3 -1" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num3 -1" 255 '^CLI syntax error: "set num3": Incomplete command$'
 
 new "netconf range set num3 260 fail"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num3 xmlns="urn:example:clixon">260</num3></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -404,19 +404,19 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]
 #-------- num4 multiple ranges 1..2 |  42..50
 
 new "cli range test num4 multiple 0 fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 0" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 0" 255 '^CLI syntax error: "set num4 0": Number out of range: 0$'
 
 new "cli range test num4 multiple 2 ok"
-expectfn "$clixon_cli -1f $cfg -l e -y $fyang set num4 2" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l e -y $fyang set num4 2" 0 '^$'
 
 new "cli range test num4 multiple 20 fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 20" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 20" 255 '^CLI syntax error: "set num4 20": Unknown command$'
 
 new "cli range test num4 multiple 42 ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 42" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 42" 0 '^$'
 
 new "cli range test num4 multiple 99 fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 99" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 99" 255 '^CLI syntax error: "set num4 99": Unknown command$'
 
 new "netconf range set num4 multiple 2"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><num4 xmlns="urn:example:clixon">42</num4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -442,16 +442,16 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]
 #-------- dec64 multiple ranges -3.5..-2.5 | 0.0 | 10.0..20.0
 # XXX how to enter negative numbers in bash string and cli -1?
 new "cli range dec64 multiple 0 ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set dec 0" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set dec 0" 0 '^$'
 
 new "cli range dec64 multiple 0.1 fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 0.1" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set num4 0.1" 255 '^CLI syntax error: "set num4 0.1": '"'"'0.1'"'"' is not a number$'
 
 new "cli range dec64 multiple 15.0 ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set dec 15.0" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set dec 15.0" 0 '^$'
 
 new "cli range dec64 multiple 30.0 fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set dec 30.0" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set dec 30.0" 255 '^CLI syntax error: "set dec 30.0": Unknown command$'
 
 new "dec64 discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -496,13 +496,13 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candid
 #----------------string ranges---------------------
 #-------- len1 single range (2)
 new "cli length test len1 1 fail"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 x" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 x" 255 '^CLI syntax error: "set len1 x": String length not within limits: 1$'
 
 new "cli length test len1 2 OK"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 xy" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 xy" 0 '^$'
 
 new "cli length test len1 3 error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 hej" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len1 hej" 255 '^CLI syntax error: "set len1 hej": Unknown command$'
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -516,10 +516,10 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candid
 #-------- len2 range and blanks
 
 new "cli length test len2 3 error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len2 ab" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len2 ab" 255 '^CLI syntax error: "set len2 ab": String length not within limits: 2$'
 
 new "cli length test len2 42 ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len2 hejhophdsakjhkjsadhkjsahdkjsad" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len2 hejhophdsakjhkjsadhkjsahdkjsad" 0 '^$'
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -527,36 +527,36 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]
 #-------- len3 min max range
 
 new "cli range ptest len3 42 ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len3 hsakjdhkjsahdkjsahdksahdksajdhsakjhd" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len3 hsakjdhkjsahdkjsahdksahdksajdhsakjhd" 0 '^$'
 
 #-------- len4 multiple ranges 2..3 |  20-29
 new "cli length test len4 1 error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 a" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 a" 255 '^CLI syntax error: "set len4 a": String length not within limits: 1$'
 
 new "cli length test len4 2 ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 ab" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 ab" 0 '^$'
 
 new "cli length test len4 10 error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 abcdefghij" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 abcdefghij" 255 '^CLI syntax error: "set len4 abcdefghij": Unknown command$'
 
 new "cli length test len4 20 ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 abcdefghijabcdefghija" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 abcdefghijabcdefghija" 0 '^$'
 
 new "cli length test len4 30 error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 abcdefghijabcdefghijabcdefghij" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set len4 abcdefghijabcdefghijabcdefghij" 255 '^CLI syntax error: "set len4 abcdefghijabcdefghijabcdefghij": Unknown command$'
 
 # XSD schema -> POSIX ECE translation
 new "cli yang pattern \d ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set digit4 0123" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set digit4 0123" 0 '^$'
 
 new "cli yang pattern \d error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set digit4 01b2" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set digit4 01b2" 255 '^CLI syntax error: "set digit4 01b2": Unknown command$'
 
 new "cli yang pattern \w ok"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 abc9" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 abc9" 0 '^$'
 
 new "cli yang pattern \w error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 ab%3" 255 "^$"
+expectfn "$clixon_cli -1f $cfg -l o -y $fyang set word4 ab%3" 255 '^CLI syntax error: "set word4 ab%3": Unknown command$'
 
 new "netconf pattern \w"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><word4 xmlns="urn:example:clixon">aXG9</word4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -583,7 +583,7 @@ new "validate minus"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 #new "cli type with minus"
-#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set name my-name" 0 "^$"
+#expectfn "$clixon_cli -1f $cfg -l o -y $fyang set name my-name" 0 '^$'
 
 if [ $BE -eq 0 ]; then
     exit # BE
