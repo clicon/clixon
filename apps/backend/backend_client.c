@@ -187,7 +187,7 @@ client_get_streams(clicon_handle   h,
 	clicon_err(OE_UNIX, 0, "clicon buffer");
 	goto done;
     }
-    cprintf(cb,"<%s xmlns=\"%s\">", top, yns->ys_argument);
+    cprintf(cb,"<%s xmlns=\"%s\">", top, yang_argument_get(yns));
     if (stream_get_xml(h, strcmp(top,"restconf-state")==0, cb) < 0)
 	goto done;
     cprintf(cb,"</%s>", top);
@@ -1110,7 +1110,7 @@ from_client_msg(clicon_handle        h,
 	    clicon_err(OE_XML, ENOENT, "rpc yang does not have module");
 	    goto done;
 	}
-	module = ymod->ys_argument;
+	module = yang_argument_get(ymod);
 	clicon_debug(1, "%s module:%s rpc:%s", __FUNCTION__, module, rpc);
 	/* Pre-NACM access step */
 	xnacm = NULL;

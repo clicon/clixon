@@ -183,12 +183,12 @@ expand_dbvar(void   *h,
      * such operations to the datastore by a generic xpath function.
      */
     if ((ytype = yang_find(y, Y_TYPE, NULL)) != NULL)
-	if (strcmp(ytype->ys_argument, "leafref")==0){
+	if (strcmp(yang_argument_get(ytype), "leafref")==0){
 	    if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-		clicon_err(OE_DB, 0, "Leafref %s requires path statement", ytype->ys_argument);
+		clicon_err(OE_DB, 0, "Leafref %s requires path statement", yang_argument_get(ytype));
 		goto done;
 	    }
-	    xpathcur = ypath->ys_argument;
+	    xpathcur = yang_argument_get(ypath);
 	    if (xml_merge(xt, xtop, yspec, &reason) < 0) /* Merge xtop into xt */
 		goto done;
 	    if (reason){

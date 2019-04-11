@@ -42,9 +42,17 @@
   * All references to plugin "text.so" should be removed.
   * The datastore directory is removed, code is moved to lib/src/clixon_datastore*.c
   * Removed clixon_backend -x <plugin> command-line options
-* Structural C-code change: Merged yang_spec and yang_node types into yang_stmt
-  * Change all yn_* and yp_ to ys_*
-  * Change all references to yang_node/yang_spec to yang_stmt
+* Structural C-code change of yang statements:
+  * Merged yang_spec and yang_node types into yang_stmt
+    * Change all references to types yang_node/yang_spec to yang_stmt
+    * Change all yang struct field accesses yn_* and yp_* to ys_* (but see next item for access functions).
+  * Added yang access functions
+    * Change all y->ys_parent to yang_parent_get(y)
+    * Change all y->ys_keyword to yang_keyword_get(y)
+    * Change all y->ys_argument to yang_argument_get(y)
+    * Change all y->ys_cv to yang_cv_get(y)
+    * Change all y->ys_cvec to yang_cvec_get(y)
+
 * xmldb_get() removed unnecessary config option:
   * Change all calls to dbget from: `xmldb_get(h, db, xpath, 0|1, &xret, msd)` to `xmldb_get(h, db, xpath, &xret, msd)`
 

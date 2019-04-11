@@ -243,7 +243,7 @@ cli_dbxml(clicon_handle       h,
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa,  xml_operation2str(op)) < 0)
 	goto done;
-    if (y->ys_keyword != Y_LIST && y->ys_keyword != Y_LEAF_LIST){
+    if (yang_keyword_get(y) != Y_LIST && yang_keyword_get(y) != Y_LEAF_LIST){
 	len = cvec_len(cvv);
 	if (len > 1){
 	    cval = cvec_i(cvv, len-1); 

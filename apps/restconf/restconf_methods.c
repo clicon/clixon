@@ -642,9 +642,9 @@ match_list_keys(yang_stmt *y,
     char      *keya;
     char      *keyd;
 
-    if (y->ys_keyword != Y_LIST &&y->ys_keyword != Y_LEAF_LIST)
+    if (yang_keyword_get(y) != Y_LIST && yang_keyword_get(y) != Y_LEAF_LIST)
 	goto done;
-    cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+    cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	keyname = cv_string_get(cvi);	    
@@ -847,7 +847,7 @@ api_data_put(clicon_handle h,
 	    goto ok;
 	}
 	/* If list or leaf-list, api-path keys must match data keys */	    
-	if (y && (y->ys_keyword == Y_LIST ||y->ys_keyword == Y_LEAF_LIST)){
+	if (y && (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST)){
 	    if (match_list_keys((yang_stmt*)y, x, xbot) < 0){
 		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
 		    goto done;
@@ -1150,14 +1150,14 @@ api_operations_get(clicon_handle h,
 	namespace = yang_find_mynamespace(ymod);
 	yc = NULL; 
 	while ((yc = yn_each(ymod, yc)) != NULL) {
-	    if (yc->ys_keyword != Y_RPC)
+	    if (yang_keyword_get(yc) != Y_RPC)
 		continue;
 	    if (use_xml)
-		cprintf(cbx, "<%s xmlns=\"%s\"/>", yc->ys_argument, namespace);
+		cprintf(cbx, "<%s xmlns=\"%s\"/>", yang_argument_get(yc), namespace);
 	    else{
 		if (i++)
 		    cprintf(cbx, ",");
-		cprintf(cbx, "\"%s:%s\": null", ymod->ys_argument, yc->ys_argument);
+		cprintf(cbx, "\"%s:%s\": null", yang_argument_get(ymod), yang_argument_get(yc));
 	    }
 	}
     }

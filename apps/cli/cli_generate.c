@@ -123,7 +123,7 @@ cli_expand_var_generate(clicon_handle h,
 
     if (yang2api_path_fmt(ys, 1, &api_path_fmt) < 0)
 	goto done;
-    cprintf(cb, "|<%s:%s",  ys->ys_argument, 
+    cprintf(cb, "|<%s:%s",  yang_argument_get(ys), 
 	    cv_type2str(cvtype));
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
 	cprintf(cb, " fraction-digits:%u", fraction_digits);
@@ -191,11 +191,11 @@ yang2cli_var_identityref(yang_stmt *ys,
     if (helptext)
 	cprintf(cb, "(\"%s\")", helptext);
     if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) != NULL &&
-	(ybaseid = yang_find_identity(ys, ybaseref->ys_argument)) != NULL){
-	if (cvec_len(ybaseid->ys_cvec) > 0){
-	    cprintf(cb, "|<%s:%s choice:", ys->ys_argument, cvtypestr);
+	(ybaseid = yang_find_identity(ys, yang_argument_get(ybaseref))) != NULL){
+	if (cvec_len(yang_cvec_get(ybaseid)) > 0){
+	    cprintf(cb, "|<%s:%s choice:", yang_argument_get(ys), cvtypestr);
 	    i = 0;
-	    while ((cv = cvec_each(ybaseid->ys_cvec, cv)) != NULL){
+	    while ((cv = cvec_each(yang_cvec_get(ybaseid), cv)) != NULL){
 		if (i++)
 		    cprintf(cb, "|"); 
 		name = strdup(cv_name_get(cv));
@@ -317,12 +317,12 @@ yang2cli_var_sub(clicon_handle h,
 	retval = 0;
 	goto done;
     }
-    type = ytype?ytype->ys_argument:NULL;
+    type = ytype?yang_argument_get(ytype):NULL;
     cvtypestr = cv_type2str(cvtype);
     
     if (type && strcmp(type, "identityref") == 0)
 	cprintf(cb, "(");
-    cprintf(cb, "<%s:%s", ys->ys_argument, cvtypestr);
+    cprintf(cb, "<%s:%s", yang_argument_get(ys), cvtypestr);
     /* enumeration special case completion */
     if (type){
 	if (strcmp(type, "enumeration") == 0 || strcmp(type, "bits") == 0){
@@ -330,11 +330,11 @@ yang2cli_var_sub(clicon_handle h,
 	    i = 0;
 	    yi = NULL;
 	    while ((yi = yn_each(ytype, yi)) != NULL){
-		if (yi->ys_keyword != Y_ENUM && yi->ys_keyword != Y_BIT)
+		if (yang_keyword_get(yi) != Y_ENUM && yang_keyword_get(yi) != Y_BIT)
 		    continue;
 		if (i)
 		    cprintf(cb, "|"); 
-		cprintf(cb, "%s", yi->ys_argument); 
+		cprintf(cb, "%s", yang_argument_get(yi)); 
 		i++;
 	    }
 	}
@@ -399,7 +399,7 @@ yang2cli_var_union_one(clicon_handle h,
 			  &ytype, &options, /* resolved type */
 			  &cvv, &pattern, &fraction_digits) < 0)
 	goto done;
-    restype = ytype?ytype->ys_argument:NULL;
+    restype = ytype?yang_argument_get(ytype):NULL;
 
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
 	if (yang2cli_var_union(h, ys, origtype, ytype, helptext, cb) < 0)
@@ -444,7 +444,7 @@ yang2cli_var_union(clicon_handle h,
      * made in the union_one call.
      */
     while ((ytsub = yn_each(ytype, ytsub)) != NULL){
-	if (ytsub->ys_keyword != Y_TYPE)
+	if (yang_keyword_get(ytsub) != Y_TYPE)
 	    continue;
 	if (i++)
 	    cprintf(cb, "|");
@@ -490,7 +490,7 @@ yang2cli_var(clicon_handle h,
     if (yang_type_get(ys, &origtype, &yrestype, 
 		      &options, &cvv, &pattern, &fraction_digits) < 0)
 	goto done;
-    restype = yrestype?yrestype->ys_argument:NULL;
+    restype = yrestype?yang_argument_get(yrestype):NULL;
 
     if (restype && strcmp(restype, "empty") == 0){
 	retval = 0;
@@ -514,7 +514,7 @@ yang2cli_var(clicon_handle h,
 	cprintf(cb, ")");
     }
     else{
-	type = yrestype?yrestype->ys_argument:NULL;
+	type = yrestype?yang_argument_get(yrestype):NULL;
 	if (type)
 	    completionp = clicon_cli_genmodel_completion(h) &&
 		strcmp(type, "enumeration") != 0 &&
@@ -564,7 +564,7 @@ yang2cli_leaf(clicon_handle h,
 
     /* description */
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
-	if ((helptext = strdup(yd->ys_argument)) == NULL){
+	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
 	    goto done;
 	}
@@ -573,7 +573,7 @@ yang2cli_leaf(clicon_handle h,
     }
     cprintf(cb, "%*s", level*3, "");
     if (gt == GT_VARS|| gt == GT_ALL){
-	cprintf(cb, "%s", ys->ys_argument);
+	cprintf(cb, "%s", yang_argument_get(ys));
 	if (helptext)
 	    cprintf(cb, "(\"%s\")", helptext);
 	cprintf(cb, " ");
@@ -612,14 +612,13 @@ yang2cli_container(clicon_handle h,
 {
     yang_stmt    *yc;
     yang_stmt    *yd;
-    int           i;
     int           retval = -1;
     char         *helptext = NULL;
     char         *s;
 
-    cprintf(cb, "%*s%s", level*3, "", ys->ys_argument);
+    cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
-	if ((helptext = strdup(yd->ys_argument)) == NULL){
+	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
 	    goto done;
 	}
@@ -630,10 +629,11 @@ yang2cli_container(clicon_handle h,
     if (cli_callback_generate(h, ys, cb) < 0)
 	goto done;
     cprintf(cb, ";{\n");
-    for (i=0; i<ys->ys_len; i++)
-	if ((yc = ys->ys_stmt[i]) != NULL)
-	    if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
-		goto done;
+
+    yc = NULL;
+    while ((yc = yn_each(ys, yc)) != NULL) 
+       if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
+	   goto done;
     cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
   done:
@@ -659,7 +659,6 @@ yang2cli_list(clicon_handle      h,
     yang_stmt    *yc;
     yang_stmt    *yd;
     yang_stmt    *yleaf;
-    int           i;
     cg_var       *cvi;
     char         *keyname;
     cvec         *cvk = NULL; /* vector of index keys */
@@ -667,9 +666,9 @@ yang2cli_list(clicon_handle      h,
     char         *helptext = NULL;
     char         *s;
 
-    cprintf(cb, "%*s%s", level*3, "", ys->ys_argument);
+    cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
-	if ((helptext = strdup(yd->ys_argument)) == NULL){
+	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
 	    goto done;
 	}
@@ -678,14 +677,14 @@ yang2cli_list(clicon_handle      h,
 	cprintf(cb, "(\"%s\")", helptext);
     }
     /* Loop over all key variables */
-    cvk = ys->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+    cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
     /* Iterate over individual keys  */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	keyname = cv_string_get(cvi);
 	if ((yleaf = yang_find(ys, Y_LEAF, keyname)) == NULL){
 	    clicon_err(OE_XML, 0, "List statement \"%s\" has no key leaf \"%s\"", 
-		       ys->ys_argument, keyname);
+		       yang_argument_get(ys), keyname);
 	    goto done;
 	}
 	/* Print key variable now, and skip it in loop below 
@@ -697,22 +696,22 @@ yang2cli_list(clicon_handle      h,
     }
 
     cprintf(cb, "{\n");
-    for (i=0; i<ys->ys_len; i++)
-	if ((yc = ys->ys_stmt[i]) != NULL){
-	    /*  cvk is a cvec of strings containing variable names
-		yc is a leaf that may match one of the values of cvk.
-	     */
-	    cvi = NULL;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		keyname = cv_string_get(cvi);
-		if (strcmp(keyname, yc->ys_argument) == 0)
-		    break;
-	    }
-	    if (cvi != NULL)
-		continue;
-	    if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
-		goto done;
+    yc = NULL;
+    while ((yc = yn_each(ys, yc)) != NULL) {
+	/*  cvk is a cvec of strings containing variable names
+	    yc is a leaf that may match one of the values of cvk.
+	*/
+	cvi = NULL;
+	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+	    keyname = cv_string_get(cvi);
+	    if (strcmp(keyname, yang_argument_get(yc)) == 0)
+		break;
 	}
+	if (cvi != NULL)
+	    continue;
+	if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
+	    goto done;
+    }
     cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
   done:
@@ -746,25 +745,24 @@ yang2cli_choice(clicon_handle h,
 {
     int           retval = -1;
     yang_stmt    *yc;
-    int           i;
 
-    for (i=0; i<ys->ys_len; i++)
-	if ((yc = ys->ys_stmt[i]) != NULL){
-	    switch (yc->ys_keyword){
-	    case Y_CASE:
-		if (yang2cli_stmt(h, yc, gt, level+2, cb) < 0)
-		    goto done;
-		break;
-	    case Y_CONTAINER:
-	    case Y_LEAF:
-	    case Y_LEAF_LIST:
-	    case Y_LIST:
-	    default:
-		if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
-		    goto done;
-		break;
-	    }
+    yc = NULL;
+    while ((yc = yn_each(ys, yc)) != NULL) {
+	switch (yang_keyword_get(yc)){
+	case Y_CASE:
+	    if (yang2cli_stmt(h, yc, gt, level+2, cb) < 0)
+		goto done;
+	    break;
+	case Y_CONTAINER:
+	case Y_LEAF:
+	case Y_LEAF_LIST:
+	case Y_LIST:
+	default:
+	    if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
+		goto done;
+	    break;
 	}
+    }
     retval = 0;
   done:
     return retval;
@@ -786,10 +784,9 @@ yang2cli_stmt(clicon_handle h,
 {
     yang_stmt    *yc;
     int           retval = -1;
-    int           i;
 
     if (yang_config(ys)){
-	switch (ys->ys_keyword){
+	switch (yang_keyword_get(ys)){
 	case Y_CONTAINER:
 	    if (yang2cli_container(h, ys, gt, level, cb) < 0)
 		goto done;
@@ -810,10 +807,10 @@ yang2cli_stmt(clicon_handle h,
 	case Y_CASE:
 	case Y_SUBMODULE:
 	case Y_MODULE:
-	    for (i=0; i<ys->ys_len; i++)
-		if ((yc = ys->ys_stmt[i]) != NULL)
-		    if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
-			goto done;
+	    yc = NULL;
+	    while ((yc = yn_each(ys, yc)) != NULL)
+		if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
+		    goto done;
 	    break;
 	default: /* skip */
 	    break;
@@ -841,7 +838,6 @@ yang2cli(clicon_handle      h,
 	 enum genmodel_type gt)
 {
     cbuf           *cb = NULL;
-    int             i;
     int             retval = -1;
     yang_stmt      *ymod = NULL;
     cvec           *globals;       /* global variables from syntax */
@@ -851,11 +847,10 @@ yang2cli(clicon_handle      h,
 	goto done;
     }
     /* Traverse YANG, loop through all modules and generate CLI */
-    for (i=0; i<yspec->ys_len; i++)
-	if ((ymod = yspec->ys_stmt[i]) != NULL){
-	    if (yang2cli_stmt(h, ymod, gt, 0, cb) < 0)
-		goto done;
-	}
+    ymod = NULL;
+    while ((ymod = yn_each(yspec, ymod)) != NULL)
+	if (yang2cli_stmt(h, ymod, gt, 0, cb) < 0)
+	    goto done;
     clicon_debug(2, "%s: buf\n%s\n", __FUNCTION__, cbuf_get(cb));
     /* Parse the buffer using cligen parser. XXX why this?*/
     if ((globals = cvec_new(0)) == NULL)
