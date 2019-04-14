@@ -92,7 +92,10 @@
 ```
 
 ### Minor changes
-* Optimized validation by making xml_diff work on raw cache tree (not copies)
+* Optimized validation of large lists
+  * New xmldb_get1() returning actual cache - not a copy. This has lead to some householding instead of just deleting the copy
+  * xml_diff rewritten to work linearly instead of O(2)
+  * New xml_insert function using tree search. The new code uses this in insertion xmldb_put and defaults. (Note previous xml_insert renamed to xml_wrap_all)
 * Added syntactic check for yang status: current, deprecated or obsolete.
 * Added `xml_wrap` function that adds an XML node above a node as a wrapper
   * also renamed `xml_insert` to `xml_wrap_all`.

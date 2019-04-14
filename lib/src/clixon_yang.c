@@ -660,6 +660,30 @@ yang_choice(yang_stmt *y)
     return NULL;
 }
 
+static int
+order1_choice(yang_stmt *yp,
+	      yang_stmt *y)
+{
+    yang_stmt  *ys;
+    yang_stmt  *yc;
+    int         i;
+    int         j;
+
+    for (i=0; i<yp->ys_len; i++){
+	ys = yp->ys_stmt[i];
+	if (ys->ys_keyword == Y_CASE){
+	    for (j=0; j<ys->ys_len; j++){
+		yc = ys->ys_stmt[j];
+		if (yang_datanode(yc) && yc == y)
+		    return 1;
+	    }
+	}
+	else if (yang_datanode(ys) && ys == y)
+	    return 1;
+    }
+    return 0;
+}
+
 /*! Find matching y in yp:s children, return 0 and index or -1 if not found.
  * @param[in]  yp     Parent
  * @param[in]  y      Yang datanode to find
@@ -677,10 +701,16 @@ order1(yang_stmt *yp,
     
     for (i=0; i<yp->ys_len; i++){
 	ys = yp->ys_stmt[i];
-	if (!yang_datanode(ys))
-	    continue;
-	if (ys==y)
-	    return 1;
+	if (ys->ys_keyword == Y_CHOICE){
+	    if (order1_choice(ys, y) == 1) /* If one of the choices is "y" */
+		return 1;
+	}
+	else {
+	    if (!yang_datanode(ys))
+		continue;
+	    if (ys==y)
+		return 1;
+	}
 	(*index)++;
     }
     return 0;
@@ -703,7 +733,14 @@ yang_order(yang_stmt *y)
     int         j=0;
     int         tot = 0;
     
+    /* Some special handling if yp is choice (or case) and maybe union?
+     * if so, the real parent (from an xml point of view) is the parents
+     * parent. 
+     */
     yp = y->ys_parent;
+    while (yp->ys_keyword == Y_CASE || yp->ys_keyword == Y_CHOICE)
+	yp = yp->ys_parent;
+
     /* XML nodes with yang specs that are children of modules are special - 
      * In clixon, they are seen as an "implicit" container where the XML can come from different
      * modules. The order must therefore be global among yang top-symbols to be unique.
@@ -1890,6 +1927,7 @@ yang_parse_str(char         *str,
  * @param[in] ysp    Yang specification. Should have been created by caller using yspec_new
  * @retval ymod      Top-level yang (sub)module
  * @retval NULL      Error 
+ * @note this function simply parse a yang spec, no dependencies or checks
  */
 yang_stmt *
 yang_parse_file(int         fd,

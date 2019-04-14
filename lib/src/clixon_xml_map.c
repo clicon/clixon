@@ -1060,6 +1060,13 @@ cvec2xml_1(cvec   *cvv,
  * @param[out] changed_x0  Pointervector to XML nodes changed orig value
  * @param[out] changed_x1  Pointervector to XML nodes changed wanted value
  * @param[out] changedlen Length of changed vector
+ * Algorithm to compare two sorted lists A, B:
+ * A 0 1 2 3 5 6
+ * B 0 2 4 5 6
+ * Let a,b be first elements of A,B respectively
+ * a = b : recurse; get next a,b
+ * a < b : add a in x0, get next a 
+ * a > b : add b in x1, get next b
  */
 static int
 xml_diff1(yang_stmt *ys, 
@@ -1079,35 +1086,54 @@ xml_diff1(yang_stmt *ys,
     yang_stmt *yc;
     char      *b1;
     char      *b2;
+    int        eq;
 
-    clicon_debug(2, "%s: %s", __FUNCTION__, ys->ys_argument?ys->ys_argument:"yspec");
-    /* Check nodes present in x0 and x1 + nodes only in x0
-     * Loop over x0
-     * XXX: room for improvement. Compare with match_base_child()
-     */
-    x0c = NULL;
-    while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL){
-	if ((yc = xml_spec(x0c)) == NULL){
-	    clicon_err(OE_UNIX, errno, "Unknown element: %s", xml_name(x0c));
-	    goto done;
+    /* Traverse x0 and x1 in lock-step */
+    x0c = x1c = NULL;    
+    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    for (;;){
+	if (x0c == NULL && x1c == NULL)
+	    goto ok;
+	else if (x0c == NULL){
+	    if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
+		goto done;
+	    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+	    continue;
 	}
-	/* Does x1 have a child matching x0c? */
-	if (match_base_child(x1, x0c, yc, &x1c) < 0)
-	    goto done;
-	if (x1c == NULL){
+	else if (x1c == NULL){
 	    if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
 		goto done;
+	    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+	    continue;
 	}
-	else if (yang_choice(yc)){
-	    /* if x0c and x1c are choice/case, then they are changed */
-	    if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
+	/* Both x0c and x1c exists, check if they are equal. */
+	eq = xml_cmp(x0c, x1c, 0);
+	if (eq < 0){
+	    if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
 		goto done;
-	    (*changedlen)--; /* append two vectors */
-	    if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
-		goto done;
+	    x0c = xml_child_each(x0, x0c, CX_ELMNT);
 	}
-	else{  /* if x0c and x1c are leafs w bodies, then they are changed */
-	    if (yc->ys_keyword == Y_LEAF){
+	else if (eq > 0){
+	    if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
+		goto done;
+	    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+	}
+	else{ /* equal */
+	    if ((yc = xml_spec(x0c)) == NULL){
+		clicon_err(OE_UNIX, errno, "Unknown element: %s", xml_name(x0c));
+		goto done;
+	    }
+	    if (yang_choice(yc)){
+		/* if x0c and x1c are choice/case, then they are changed */
+		if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
+		    goto done;
+		(*changedlen)--; /* append two vectors */
+		if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
+		    goto done;
+	    }
+	    else if (yc->ys_keyword == Y_LEAF){
+		/* if x0c and x1c are leafs w bodies, then they are changed */
 		if ((b1 = xml_body(x0c)) == NULL) /* empty type */
 		    break;
 		if ((b2 = xml_body(x1c)) == NULL) /* empty type */
@@ -1120,29 +1146,16 @@ xml_diff1(yang_stmt *ys,
 			goto done;
 		}
 	    }
-	    if (xml_diff1(yc, x0c, x1c,   
-			  x0vec, x0veclen, 
-			  x1vec, x1veclen, 
-			  changed_x0, changed_x1, changedlen)< 0)
+	    else if (xml_diff1(yc, x0c, x1c,   
+			       x0vec, x0veclen, 
+			       x1vec, x1veclen, 
+			       changed_x0, changed_x1, changedlen)< 0)
 		goto done;
 	}
-    } /* while x0 */
-    /* Check nodes present only in x1
-     * Loop over x1
-     */
-    x1c = NULL;
-    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL){
-	if ((yc = xml_spec(x1c)) == NULL){
-	    clicon_err(OE_UNIX, errno, "Unknown element: %s", xml_name(x1c));
-	    goto done;
-	}
-	/* Does x0 have a child matching x1c? */
-        if (match_base_child(x0, x1c, yc, &x0c) < 0)
-	    goto done;
-	if (x0c == NULL)
-	    if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
-		goto done;
-    } /* while x0 */
+	x0c = xml_child_each(x0, x0c, CX_ELMNT);
+	x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    }
+ ok:
     retval = 0;
  done:
     return retval;
@@ -1622,7 +1635,8 @@ xml_default(cxobj *xt,
     cxobj     *xc;
     cxobj     *xb;
     char      *str;
-
+    int        added=0;
+    
     if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
 	retval = 0;
 	goto done;
@@ -1637,8 +1651,14 @@ xml_default(cxobj *xt,
 	    assert(y->ys_cv);
 	    if (!cv_flag(y->ys_cv, V_UNSET)){  /* Default value exists */
 		if (!xml_find(xt, y->ys_argument)){
+
+#ifdef USE_XML_INSERT
+		    if ((xc = xml_new(y->ys_argument, NULL, y)) == NULL)
+			goto done;
+#else
 		    if ((xc = xml_new(y->ys_argument, xt, y)) == NULL)
 			goto done;
+#endif
 		    xml_flag_set(xc, XML_FLAG_DEFAULT);
 		    if ((xb = xml_new("body", xc, NULL)) == NULL)
 			goto done;
@@ -1650,11 +1670,19 @@ xml_default(cxobj *xt,
 		    if (xml_value_set(xb, str) < 0)
 			goto done;
 		    free(str);
+		    added++;
+#ifdef USE_XML_INSERT
+		    if (xml_insert(xt, xc) < 0)
+			goto done;
+#endif
 		}
 	    }
 	}
     }
-    xml_sort(xt, NULL);
+#ifndef USE_XML_INSERT
+    if (added)
+	xml_sort(xt, NULL);
+#endif
     retval = 0;
  done:
     return retval;
@@ -1946,8 +1974,8 @@ api_path2xpath(yang_stmt *yspec,
  * @param[out]  xpathp    Resulting xml tree 
  * @param[out]  ypathp    Yang spec matching xpathp
  * @retval      1         OK
- * @retval     0          Invalid api_path or associated XML, clicon_err called
- * @retval    -1          Fatal error, clicon_err called
+ * @retval      0         Invalid api_path or associated XML, clicon_err called
+ * @retval     -1         Fatal error, clicon_err called
  *
  * @note both retval 0 and -1 set clicon_err, but the later is fatal
  * @see api_path2xpath For api-path to xml xpath translation
@@ -2156,8 +2184,8 @@ api_path2xml(char       *api_path,
 	goto fail;
     }
     nvec--; /* NULL-terminated */
-    if ((retval = api_path2xml_vec(vec+1, nvec, 
-				   xtop, yspec, nodeclass,
+    if ((retval = api_path2xml_vec(vec+1, nvec,
+				   xtop, yspec, nodeclass, 
 				   xbotp, ybotp)) < 1)
 	goto done;
     xml_yang_root(*xbotp, &xroot);

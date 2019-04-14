@@ -40,8 +40,10 @@
  * Prototypes
  */
 int xml_child_spec(cxobj *x, cxobj *xp, yang_stmt *yspec, yang_stmt **yp);
+int xml_cmp(cxobj *x1, cxobj *x2, int enm);
 int xml_sort(cxobj *x0, void *arg);
-int    xml_sort_verify(cxobj *x, void *arg);
-int    match_base_child(cxobj *x0, cxobj *x1c, yang_stmt *yc, cxobj **x0cp);
+int xml_insert(cxobj *xp, cxobj *xc);
+int xml_sort_verify(cxobj *x, void *arg);
+int match_base_child(cxobj *x0, cxobj *x1c, yang_stmt *yc, cxobj **x0cp);
 
 #endif /* _CLIXON_XML_SORT_H */

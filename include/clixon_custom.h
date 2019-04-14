@@ -41,4 +41,6 @@
  */
 #undef RPC_USERNAME_ASSERT
 
-
+/* Use new xml_insert code on sorted xml lists
+ */
+#define USE_XML_INSERT

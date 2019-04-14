@@ -562,6 +562,7 @@ xml_child_nr_type(cxobj          *xn,
  * @param[in]  i     the number of the child, eg order in children vector
  * @retval     xml   The child xml node
  * @retval     NULL  if no such child, or empty child
+ * @see xml_child_i_type
  */
 cxobj *
 xml_child_i(cxobj *xn, 
@@ -652,7 +653,7 @@ xml_child_each(cxobj           *xparent,
 }
 
 /*! Extend child vector with one and insert xml node there
- * Note: does not do anything with child, you may need to set its parent, etc
+ * @note does not do anything with child, you may need to set its parent, etc
  */
 static int
 xml_child_append(cxobj *x, 
@@ -668,7 +669,31 @@ xml_child_append(cxobj *x,
     return 0;
 }
 
-/*! Set a a childvec to a specific size, fill with children after
+/*! Insert child xc at position i under parent xp
+ * 
+ * @see xml_child_append
+ * @note does not do anything with child, you may need to set its parent, etc
+ */
+int
+xml_child_insert_pos(cxobj *xp,
+		     cxobj *xc,
+		     int    i)
+{
+    size_t size;
+   
+    xp->x_childvec_len++;
+    xp->x_childvec = realloc(xp->x_childvec, xp->x_childvec_len*sizeof(cxobj*));
+    if (xp->x_childvec == NULL){
+	clicon_err(OE_XML, errno, "realloc");
+	return -1;
+    }
+    size = (xml_child_nr(xp) - i - 1)*sizeof(cxobj *);
+    memmove(&xp->x_childvec[i+1], &xp->x_childvec[i], size);
+    xp->x_childvec[i] = xc;
+    return 0;
+}
+
+/*! Set a childvec to a specific size, fill with children after
  * @code
  *   xml_childvec_set(x, 2);
  *   xml_child_i_set(x, 0, xc0)
@@ -731,6 +756,7 @@ xml_new(char      *name,
 	xml_parent_set(x, xp);
 	if (xml_child_append(xp, x) < 0) 
 	    return NULL;
+	x->_x_i = xml_child_nr(xp)-1;
     }
     x->x_spec = yspec; /* Can be NULL */
     return x;
@@ -966,15 +992,14 @@ xml_child_rm(cxobj *xp,
 int
 xml_rm(cxobj *xc)
 {
-    int    retval = 0;
+    int    retval = -1;
     cxobj *xp;
     cxobj *x;
     int    i;
 
     if ((xp = xml_parent(xc)) == NULL)
-	goto done;
-    retval = -1;
-    /* Find child in parent */
+	goto ok;
+    /* Find child in parent XXX: search? */
     x = NULL; i = 0;
     while ((x = xml_child_each(xp, x, -1)) != NULL) {
 	if (x == xc)
@@ -982,7 +1007,10 @@ xml_rm(cxobj *xc)
 	i++;
     }
     if (x != NULL)
-	retval = xml_child_rm(xp, i);
+	if (xml_child_rm(xp, i) < 0)
+	    goto done;
+ ok:
+    retval = 0;
  done:
     return retval;
 }

@@ -128,9 +128,7 @@ text_modify(clicon_handle       h,
     int        i;
     int        ret;
     int        changed = 0; /* Only if x0p's children have changed-> sort is necessary */
-
-    assert(x1 && xml_type(x1) == CX_ELMNT);
-    assert(y0);
+    
     /* Check for operations embedded in tree according to netconf */
     if ((opstr = xml_find_value(x1, "operation")) != NULL)
 	if (xml_operation(opstr, &op) < 0)
@@ -157,8 +155,16 @@ text_modify(clicon_handle       h,
 		    permit = 1;
 		}
 		//		int iamkey=0;
-		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
+
+#ifdef USE_XML_INSERT
+		/* Add new xml node but without parent - insert when node fully
+		   copied (see changed conditional below) */
+		if ((x0 = xml_new(x1name, NULL, (yang_stmt*)y0)) == NULL)
 		    goto done;
+#else
+		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
+		    goto done;		
+#endif
 		changed++;
 
 		/* Copy xmlns attributes  */
@@ -204,6 +210,12 @@ text_modify(clicon_handle       h,
 		    }
 		}
 	    }
+#ifdef USE_XML_INSERT
+	    if (changed){
+		if (xml_insert(x0p, x0) < 0)
+		    goto done;
+	    }
+#endif
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
@@ -282,8 +294,15 @@ text_modify(clicon_handle       h,
 			goto fail;
 		    permit = 1;
 		}
+#ifdef USE_XML_INSERT
+		/* Add new xml node but without parent - insert when node fully
+		   copied (see changed conditional below) */
+		if ((x0 = xml_new(x1name, NULL, (yang_stmt*)y0)) == NULL)
+		    goto done;
+#else
 		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
+#endif
 		changed++;
 		/* Copy xmlns attributes  */
 		x1a = NULL;
@@ -345,6 +364,12 @@ text_modify(clicon_handle       h,
 		if (ret == 0)
 		    goto fail;
 	    }
+#ifdef USE_XML_INSERT
+	    if (changed){
+		if (xml_insert(x0p, x0) < 0)
+		    goto done;
+	    }
+#endif
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
@@ -362,15 +387,16 @@ text_modify(clicon_handle       h,
 		}
 		if (xml_purge(x0) < 0)
 		    goto done;
-		changed++;
 	    }
 	    break;
 	default:
 	    break;
 	} /* CONTAINER switch op */
     } /* else Y_CONTAINER  */
+#ifndef USE_XML_INSERT
     if (changed)
 	xml_sort(x0p, NULL);
+#endif
     retval = 1;
  done:
     if (x0vec)
@@ -417,8 +443,8 @@ text_modify_top(clicon_handle       h,
     int        ret;
 
     /* Assure top-levels are 'config' */
-    assert(x0 && strcmp(xml_name(x0),"config")==0);
-    assert(x1 && strcmp(xml_name(x1),"config")==0);
+    //    assert(x0 && strcmp(xml_name(x0),"config")==0);
+    //    assert(x1 && strcmp(xml_name(x1),"config")==0);
 
     /* Check for operations embedded in tree according to netconf */
     if ((opstr = xml_find_value(x1, "operation")) != NULL)
@@ -583,11 +609,11 @@ xml_container_presence(cxobj  *x,
  */
 int
 xmldb_put(clicon_handle       h,
-	 const char         *db, 
-	 enum operation_type op,
-	 cxobj              *x1,
-	 char               *username,
-    	 cbuf               *cbret)
+	  const char         *db, 
+	  enum operation_type op,
+	  cxobj              *x1,
+	  char               *username,
+	  cbuf               *cbret)
 {
     int                 retval = -1;
     char               *dbfile = NULL;
