@@ -42,9 +42,17 @@
   * All references to plugin "text.so" should be removed.
   * The datastore directory is removed, code is moved to lib/src/clixon_datastore*.c
   * Removed clixon_backend -x <plugin> command-line options
-* Structural C-code change: Merged yang_spec and yang_node types into yang_stmt
-  * Change all yn_* and yp_ to ys_*
-  * Change all references to yang_node/yang_spec to yang_stmt
+* Structural C-code change of yang statements:
+  * Merged yang_spec and yang_node types into yang_stmt
+    * Change all references to types yang_node/yang_spec to yang_stmt
+    * Change all yang struct field accesses yn_* and yp_* to ys_* (but see next item for access functions).
+  * Added yang access functions
+    * Change all y->ys_parent to yang_parent_get(y)
+    * Change all y->ys_keyword to yang_keyword_get(y)
+    * Change all y->ys_argument to yang_argument_get(y)
+    * Change all y->ys_cv to yang_cv_get(y)
+    * Change all y->ys_cvec to yang_cvec_get(y)
+
 * xmldb_get() removed unnecessary config option:
   * Change all calls to dbget from: `xmldb_get(h, db, xpath, 0|1, &xret, msd)` to `xmldb_get(h, db, xpath, &xret, msd)`
 
@@ -92,10 +100,15 @@
 ```
 
 ### Minor changes
+
 * Optimized validation of large lists
   * New xmldb_get1() returning actual cache - not a copy. This has lead to some householding instead of just deleting the copy
   * xml_diff rewritten to work linearly instead of O(2)
   * New xml_insert function using tree search. The new code uses this in insertion xmldb_put and defaults. (Note previous xml_insert renamed to xml_wrap_all)
+* Experimental customized error output strings, see [lib/clixon/clixon_err_string.h]
+* Empty leaf values, eg <a></a> are now checked at validation.
+  * Empty values were skipped in validation.
+  * They are now checked and invalid for ints, dec64, etc, but are treated as empty string "" for string types.
 * Added syntactic check for yang status: current, deprecated or obsolete.
 * Added `xml_wrap` function that adds an XML node above a node as a wrapper
   * also renamed `xml_insert` to `xml_wrap_all`.
@@ -118,6 +131,9 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Backend plugin returning NULL was still installed - is now logged and skipped.
+* [Parent list key is not validated if not provided via RESTCONF #83](https://github.com/clicon/clixon/issues/83), thanks achernavin22.
+* [Invalid JSON if GET /operations via RESTCONF #82](https://github.com/clicon/clixon/issues/82), thanks achernavin22
 * List ordering bug - lists with ints as keys behaved wrongly and slow.
 * NACM read default rule did not work properly if nacm was enabled AND no groups were defined 
 * Re-inserted `cli_output_reset` for what was erroneuos thought to be an obsolete function

@@ -84,7 +84,6 @@
  * @param[in]   name     Name of this function (eg "expand_dbvar")
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback ("<db>" "<xmlkeyfmt>")
- * @param[out]  len      len of return commands & helptxt 
  * @param[out]  commands vector of function pointers to callback functions
  * @param[out]  helptxt  vector of pointers to helptexts
  * @see cli_expand_var_generate  This is where arg is generated
@@ -171,7 +170,7 @@ expand_dbvar(void   *h,
     /* This is primarily to get "y", 
      * xpath2xml would have worked!!
      */
-    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, &xbot, &y) < 1)
+    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y) < 1)
 	goto done;
     if (y==NULL)
 	goto ok;
@@ -184,12 +183,12 @@ expand_dbvar(void   *h,
      * such operations to the datastore by a generic xpath function.
      */
     if ((ytype = yang_find(y, Y_TYPE, NULL)) != NULL)
-	if (strcmp(ytype->ys_argument, "leafref")==0){
+	if (strcmp(yang_argument_get(ytype), "leafref")==0){
 	    if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-		clicon_err(OE_DB, 0, "Leafref %s requires path statement", ytype->ys_argument);
+		clicon_err(OE_DB, 0, "Leafref %s requires path statement", yang_argument_get(ytype));
 		goto done;
 	    }
-	    xpathcur = ypath->ys_argument;
+	    xpathcur = yang_argument_get(ypath);
 	    if (xml_merge(xt, xtop, yspec, &reason) < 0) /* Merge xtop into xt */
 		goto done;
 	    if (reason){

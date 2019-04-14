@@ -87,9 +87,9 @@
 #include "clixon_plugin.h"
 #include "clixon_data.h"
 #include "clixon_options.h"
-#include "clixon_yang_type.h"
 #include "clixon_yang_parse.h"
 #include "clixon_yang_cardinality.h"
+#include "clixon_yang_type.h"
 
 /* Size of json read buffer when reading from file*/
 #define BUFLEN 1024
@@ -173,6 +173,56 @@ static const map_str2int ykmap[] = {
 				       for top level spec */
     {NULL,               -1}
 };
+
+/* Access functions
+ */
+
+/*! Get yang statement parent
+ * @param[in] ys  Yang statement node
+ */
+yang_stmt *
+yang_parent_get(yang_stmt *ys)
+{
+    return ys->ys_parent;
+}
+
+/*! Get yang statement keyword
+ * @param[in] ys  Yang statement node
+ */
+enum rfc_6020
+yang_keyword_get(yang_stmt *ys)
+{
+    return ys->ys_keyword;
+}
+
+/*! Get yang statement context-dependent argument
+ * @param[in] ys  Yang statement node
+ */
+char*
+yang_argument_get(yang_stmt *ys)
+{
+    return ys->ys_argument;
+}
+
+/*! Get yang statement CLIgen variable
+ * @param[in] ys  Yang statement node
+ */
+cg_var*
+yang_cv_get(yang_stmt *ys)
+{
+    return ys->ys_cv;
+}
+
+/*! Get yang statement CLIgen variable vector
+ * @param[in] ys  Yang statement node
+ */
+cvec*
+yang_cvec_get(yang_stmt *ys)
+{
+    return ys->ys_cvec;
+}
+
+/* End access functions */
 
 /*! Create new yang specification
  * @retval  yspec    Free with yspec_free() 
@@ -392,29 +442,38 @@ yn_insert(yang_stmt *ys_parent,
 
 /*! Iterate through all yang statements from a yang node 
  *
- * Note that this is not optimized, one could use 'i' as index?
+ * @param[in] yparent  yang statement whose children should be iterated
+ * @param[in] yprev    previous child, or NULL on init
  * @code
- *   yang_stmt *ys = NULL;
- *   while ((ys = yn_each(yn, ys)) != NULL) {
- *     ...ys...
+ *   yang_stmt *yprev = NULL;
+ *   while ((yprev = yn_each(yparent, yprev)) != NULL) {
+ *     ...yprev...
  *   }
  * @endcode
+ * @note makes uses _ys_vector_i:can be changed if list changed between calls
  */
 yang_stmt *
-yn_each(yang_stmt *yn, 
-	yang_stmt *ys)
+yn_each(yang_stmt *yparent, 
+	yang_stmt *yprev)
 {
+    int        i;
     yang_stmt *yc = NULL;
-    int i;
 
-    for (i=0; i<yn->ys_len; i++){
-	yc = yn->ys_stmt[i];
-	if (ys==NULL)
-	    return yc;
-	if (ys==yc)
-	    ys = NULL;
+    if (yparent == NULL)
+	return NULL;
+    for (i=yprev?yprev->_ys_vector_i+1:0; i<yparent->ys_len; i++){
+	if ((yc = yparent->ys_stmt[i]) == NULL){
+	    assert(yc); /* XXX Check if happens */
+	    continue;
+	}
+	/* make room for other conditionals */
+	break; /* this is next object after previous */
     }
-    return NULL;
+    if (i < yparent->ys_len) /* found */
+	yc->_ys_vector_i = i;
+    else
+	yc = NULL;
+    return yc;
 }
 
 /*! Find first child yang_stmt with matching keyword and argument

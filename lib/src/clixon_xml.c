@@ -626,6 +626,7 @@ xml_child_i_set(cxobj *xt,
  *     ...
  *   }
  * @endcode
+ * @note makes uses _x_vector_i:can be changed if list changed between calls
  */
 cxobj *
 xml_child_each(cxobj           *xparent, 
@@ -817,7 +818,7 @@ xml_cv_set(cxobj  *x,
  *
  * @retval xmlobj     if found.
  * @retval NULL       if no such node found.
- * @see xml_find_type  wich is a more generic function
+ * @see xml_find_type  A more generic function
  */
 cxobj *
 xml_find(cxobj *x_up, 

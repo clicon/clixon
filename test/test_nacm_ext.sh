@@ -194,16 +194,16 @@ new "cli show conf as limited"
 expectfn "$clixon_cli -1 -U wilma -l o -f $cfg show conf" 0 "^x 1;$"
 
 new "cli show conf as guest"
-expectfn "$clixon_cli -1 -U guest -l o -f $cfg show conf" 255 "protocol access-denied"
+expectfn "$clixon_cli -1 -U guest -l o -f $cfg show conf" 255 "application access-denied"
 
 new "cli rpc as admin"
 expectfn "$clixon_cli -1 -U andy -l o -f $cfg rpc ipv4" 0 '<x xmlns="urn:example:clixon">ipv4</x><y xmlns="urn:example:clixon">42</y>'
 
 new "cli rpc as limited"
-expectfn "$clixon_cli -1 -U wilma -l o -f $cfg rpc ipv4" 255 "protocol access-denied default deny"
+expectfn "$clixon_cli -1 -U wilma -l o -f $cfg rpc ipv4" 255 "access-denied default deny"
 
 new "cli rpc as guest"
-expectfn "$clixon_cli -1 -U guest -l o -f $cfg rpc ipv4" 255 "protocol access-denied access denied"
+expectfn "$clixon_cli -1 -U guest -l o -f $cfg rpc ipv4" 255 "access-denied access denied"
 
 new "Kill restconf daemon"
 stop_restconf 

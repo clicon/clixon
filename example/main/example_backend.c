@@ -300,7 +300,7 @@ upgrade_2016(clicon_handle h,
     yspec = clicon_dbspec_yang(h);	
     if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
 	goto ok; /* shouldnt happen */
-    clicon_debug(1, "%s module %s", __FUNCTION__, ym?ym->ys_argument:"none");
+    clicon_debug(1, "%s module %s", __FUNCTION__, ym?yang_argument_get(ym):"none");
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
 	goto done;
@@ -398,7 +398,7 @@ upgrade_2018(clicon_handle h,
     yspec = clicon_dbspec_yang(h);	
     if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
 	goto ok; /* shouldnt happen */
-    clicon_debug(1, "%s module %s", __FUNCTION__, ym?ym->ys_argument:"none");
+    clicon_debug(1, "%s module %s", __FUNCTION__, ym?yang_argument_get(ym):"none");
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
 	goto done;

@@ -663,6 +663,7 @@ xml_yang_validate_add(cxobj   *xt,
     char      *body;
     int        ret;
     cxobj     *x;
+    enum cv_type cvtype;
     
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
@@ -688,17 +689,28 @@ xml_yang_validate_add(cxobj   *xt,
 	    /* In the union case, value is parsed as generic REST type,
 	     * needs to be reparsed when concrete type is selected
 	     */
-	    if ((body = xml_body(xt)) != NULL){
+	    if ((body = xml_body(xt)) == NULL){
+		/* We do not allow ints to be empty. Otherwise NULL strings
+		 * are considered as "" */
+		cvtype = cv_type_get(cv);
+		if (cv_isint(cvtype) || cvtype == CGV_BOOL || cvtype == CGV_DEC64){
+		    if (netconf_bad_element(cbret, "application",  yt->ys_argument, "Invalid NULL value") < 0)
+			goto done;
+		    goto fail;
+		}
+	    }
+	    else{
 		if (cv_parse1(body, cv, &reason) != 1){
 		    if (netconf_bad_element(cbret, "application",  yt->ys_argument, reason) < 0)
 			goto done;
 		    goto fail;
 		}
-		if ((ys_cv_validate(cv, yt, &reason)) != 1){
-		    if (netconf_bad_element(cbret, "application",  yt->ys_argument, reason) < 0)
-			goto done;
-		    goto fail;
-		}
+	    }
+
+	    if ((ys_cv_validate(cv, yt, &reason)) != 1){
+		if (netconf_bad_element(cbret, "application",  yt->ys_argument, reason) < 0)
+		    goto done;
+		goto fail;
 	    }
 	    break;
 	default:
@@ -1987,6 +1999,7 @@ api_path2xml_vec(char             **vec,
 		 cxobj             *x0,
 		 yang_stmt         *y0,
 		 yang_class         nodeclass,
+		 int                strict,
 		 cxobj            **xpathp,
 		 yang_stmt        **ypathp)
 {
@@ -2069,9 +2082,10 @@ api_path2xml_vec(char             **vec,
 	    valvec = NULL;
 	}
 	if (restval==NULL){
-	    // XXX patch to allow for lists without restval to be backward compat
-	    //	    clicon_err(OE_XML, 0, "malformed key, expected '=restval'");
-	    //	    goto done;
+	    if (strict){
+		clicon_err(OE_XML, 0, "malformed key, expected '=restval'");
+	        goto fail;
+	    }
 	}
 	else{
 	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
@@ -2102,9 +2116,11 @@ api_path2xml_vec(char             **vec,
 	}
 	break;
     default: /* eg Y_CONTAINER, Y_LEAF */
-	if ((x = xml_new(name, x0, y)) == NULL)
-	    goto done;
-	xml_type_set(x, CX_ELMNT);
+	if ((x = xml_find_type(x0, NULL, name, CX_ELMNT)) == NULL){ /* eg key of list */
+	    if ((x = xml_new(name, x0, y)) == NULL)
+		goto done;
+	    xml_type_set(x, CX_ELMNT);
+	}
 	break;
     }
     if (x && namespace){
@@ -2113,7 +2129,7 @@ api_path2xml_vec(char             **vec,
     }
     if ((retval = api_path2xml_vec(vec+1, nvec-1, 
 				   x, y, 
-				   nodeclass,
+				   nodeclass, strict,
 				   xpathp, ypathp)) < 1)
 	goto done;
  ok:
@@ -2160,6 +2176,7 @@ api_path2xml(char       *api_path,
 	     yang_stmt  *yspec,
 	     cxobj      *xtop,
 	     yang_class  nodeclass,
+	     int         strict,
 	     cxobj     **xbotp,
 	     yang_stmt **ybotp)
 {
@@ -2185,7 +2202,7 @@ api_path2xml(char       *api_path,
     }
     nvec--; /* NULL-terminated */
     if ((retval = api_path2xml_vec(vec+1, nvec,
-				   xtop, yspec, nodeclass, 
+				   xtop, yspec, nodeclass, strict, 
 				   xbotp, ybotp)) < 1)
 	goto done;
     xml_yang_root(*xbotp, &xroot);

@@ -70,6 +70,7 @@
 #include "clixon_xpath.h"
 #include "clixon_proto.h"
 #include "clixon_err.h"
+#include "clixon_err_string.h"
 #include "clixon_proto_client.h"
 
 /*! Send internal netconf rpc from client to backend
@@ -689,7 +690,7 @@ clicon_rpc_validate(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Validate failed. Edit and try again or discard changes", xerr);
+	clicon_rpc_generate_error(CLIXON_ERRSTR_VALIDATE_FAILED, xerr);
 	goto done;	
     }
     retval = 0;
@@ -721,7 +722,7 @@ clicon_rpc_commit(clicon_handle h)
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Commit failed. Edit and try again or discard changes", xerr);
+	clicon_rpc_generate_error(CLIXON_ERRSTR_COMMIT_FAILED, xerr);
 	goto done;
     }
     retval = 0;

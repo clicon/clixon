@@ -353,6 +353,10 @@ from_validate_common(clicon_handle       h,
     /* This is the state we are going to */
     if (xmldb_get1(h, candidate, "/", &td->td_target, NULL) < 0)
 	goto done;
+
+    /* Clear flags xpath for get */
+    xml_apply0(td->td_target, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+	       (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
     /* Validate the target state. It is not completely clear this should be done 
      * here. It is being made in generic_validate below. 
      * But xml_diff requires some basic validation, at least check that yang-specs
@@ -367,7 +371,9 @@ from_validate_common(clicon_handle       h,
      * This is the state we are going from */
     if (xmldb_get1(h, "running", "/", &td->td_src, NULL) < 0)
 	goto done;
-
+    /* Clear flags xpath for get */
+    xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+	       (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
     /* 3. Compute differences */
     if (xml_diff(yspec, 
 		 td->td_src,

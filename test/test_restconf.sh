@@ -73,7 +73,7 @@ expecteq "$(curl -s -H 'Accept: application/yang-data+xml' -G http://localhost/r
 
 # Should be alphabetically ordered
 new "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-expecteq "$(curl -sG http://localhost/restconf/operations)" 0 '{"operations": {"clixon-example:client-rpc": null,"clixon-example:empty": null,"clixon-example:optional": null,"clixon-example:example": null,"clixon-lib:debug": null}
+expecteq "$(curl -sG http://localhost/restconf/operations)" 0 '{"operations": {"clixon-example:client-rpc": null,"clixon-example:empty": null,"clixon-example:optional": null,"clixon-example:example": null,"clixon-lib:debug": null}}
 '
 
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
@@ -262,6 +262,12 @@ match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
+
+new "restconf Add subtree without key (expected error)"
+expecteq "$(curl -s -X PUT -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": "malformed key, expected '"'"'=restval'"'"'"}}}'
+
+new "restconf Add subtree with too many keys (expected error)"
+expecteq "$(curl -s -X PUT -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=a,b)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": "List key interface length mismatch"}}}'
 
 new "Kill restconf daemon"
 stop_restconf 

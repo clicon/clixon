@@ -364,7 +364,7 @@ cv_validate1(cg_var      *cv,
     cg_var         *cv2;
     int             retval2;
     yang_stmt      *yi = NULL;
-    char           *str;
+    char           *str = NULL;
     int             found;
     char          **vec = NULL;
     int             nvec;
@@ -435,8 +435,9 @@ cv_validate1(cg_var      *cv,
 	    case CGV_STRING:
 	    case CGV_REST:
 		if ((str = cv_string_get(cv)) == NULL)
-		    break;
-		uu = strlen(str);
+		    uu = 0; /* equal no string with empty string for range check */
+		else
+		    uu = strlen(str);
 		rets = range_check(uu, cv1, cv2, uint64);
 		break;
 	    default:
@@ -470,29 +471,34 @@ cv_validate1(cg_var      *cv,
     case CGV_STRING:
     case CGV_REST:
 	str = cv_string_get(cv);
+	/* Note, if there is no value, eg <s/>, str is NULL. 
+	 */
 	if (restype){
 	    if (strcmp(restype, "enumeration") == 0){
 		found = 0;
 		yi = NULL;
-		while ((yi = yn_each(yrestype, yi)) != NULL){
-		    if (yi->ys_keyword != Y_ENUM)
-			continue;
-		    if (strcmp(yi->ys_argument, str) == 0){
-			found++;
-			break;
+		if (str != NULL) 
+		    while ((yi = yn_each(yrestype, yi)) != NULL){
+			if (yi->ys_keyword != Y_ENUM)
+			    continue;
+			if (strcmp(yi->ys_argument, str) == 0){
+			    found++;
+			    break;
+			}
 		    }
-		}
 		if (!found){
 		    if (reason)
 			*reason = cligen_reason("'%s' does not match enumeration", str);
 		    goto fail;
 		}
 	    }
-	    if (strcmp(restype, "bits") == 0){
+	    if (strcmp(restype, "bits") == 0 && str != NULL){
 		/* The lexical representation of the bits type is a space-separated list
 		 * of the names of the bits that are set.  A zero-length string thus
 		 * represents a value where no bits are set.
 		 */
+
+		nvec = 0;
 		if ((vec = clicon_strsep(str, " \t", &nvec)) == NULL)
 		    goto done;
 		for (i=0; i<nvec; i++){
@@ -521,7 +527,7 @@ cv_validate1(cg_var      *cv,
 	    char *posix = NULL;
 	    if (regexp_xsd2posix(pattern, &posix) < 0)
 		goto done;
-	    if ((retval2 = match_regexp(str, posix)) < 0){
+	    if ((retval2 = match_regexp(str?str:"", posix)) < 0){
 		clicon_err(OE_DB, 0, "match_regexp: %s", pattern);
 		return -1;
 	    }
@@ -536,8 +542,9 @@ cv_validate1(cg_var      *cv,
 	    }
 	}
 	break;
-    case CGV_ERR:
     case CGV_VOID:
+	break; /* empty type OK */
+    case CGV_ERR:
 	retval = 0;
 	if (reason)
 	    *reason = cligen_reason("Invalid cv");

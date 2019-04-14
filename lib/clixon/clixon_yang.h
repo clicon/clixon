@@ -169,7 +169,7 @@ typedef enum yang_class yang_class;
 #define yang_schemanode(y) (yang_datanode(y) || (y)->ys_keyword == Y_RPC || (y)->ys_keyword == Y_CHOICE || (y)->ys_keyword == Y_CASE || (y)->ys_keyword == Y_INPUT || (y)->ys_keyword == Y_OUTPUT || (y)->ys_keyword == Y_NOTIFICATION)
 
 
-typedef struct yang_stmt yang_stmt; /* forward */
+typedef struct yang_stmt yang_stmt; /* Defined in clixon_yang_internal */
 
 /*! Yang type cache. Yang type statements can cache all typedef info here
  * @note unions not cached
@@ -189,6 +189,7 @@ typedef struct yang_type_cache yang_type_cache;
 
 /*! yang statement 
  */
+
 struct yang_stmt{
     int                ys_len;       /* Number of children */
     struct yang_stmt **ys_stmt;      /* Vector of children statement pointers */
@@ -197,7 +198,6 @@ struct yang_stmt{
 
     char              *ys_argument;  /* String / argument depending on keyword */   
     int                ys_flags;     /* Flags according to YANG_FLAG_* above */
-    /*--------------here common for all -------*/
     yang_stmt         *ys_module;   /* Shortcut to "my" module. Augmented
 				       nodes can belong to other 
 					modules than the ancestor module */
@@ -218,31 +218,22 @@ struct yang_stmt{
 					Y_TYPE & identity: store all derived types
 				     */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
+    int               _ys_vector_i;   /* internal use: yn_each */
 };
-
-#if 0 /* Backward compatible */
-typedef struct yang_stmt yang_node; 
-typedef struct yang_stmt yang_spec; 
-
-#define yn_len      ys_len
-#define yn_stmt     ys_stmt
-#define yn_parent   ys_parent
-#define yn_keyword  ys_keyword
-#define yn_argument ys_argument
-#define yn_flags    ys_flags
-#define yp_len      ys_len
-#define yp_stmt     ys_stmt
-#define yp_parent   ys_parent
-#define yp_keyword  ys_keyword
-#define yp_argument ys_argument
-#define yp_flags    ys_flags
-#endif
 
 typedef int (yang_applyfn_t)(yang_stmt *ys, void *arg);
 
 /*
  * Prototypes
  */
+/* Access functions */
+yang_stmt *yang_parent_get(yang_stmt *ys);
+enum rfc_6020 yang_keyword_get(yang_stmt *ys);
+char      *yang_argument_get(yang_stmt *ys);
+cg_var    *yang_cv_get(yang_stmt *ys);
+cvec      *yang_cvec_get(yang_stmt *ys);
+
+/* Other functions */
 yang_stmt *yspec_new(void);
 yang_stmt *ys_new(enum rfc_6020 keyw);
 int        ys_free(yang_stmt *ys);

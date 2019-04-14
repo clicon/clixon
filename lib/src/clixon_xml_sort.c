@@ -652,9 +652,14 @@ xml_insert(cxobj        *xp,
     /* Ensure the intermediate state that xp is parent of x but has not yet been
      * added as a child
      */
-    //    assert(xml_parent(xi) == NULL); 
-    //    assert(y = xml_spec(xi));
-
+    if (xml_parent(xi) != NULL){
+	clicon_err(OE_XML, 0, "XML node %s should not have parent", xml_name(xi));
+	goto done;
+    }
+    if ((y = xml_spec(xi)) == NULL){
+	clicon_err(OE_XML, 0, "No spec found %s", xml_name(xi));
+	goto done;
+    }
     upper = xml_child_nr(xp);
     /* Assume if there are any attributes, they are first in the list, mask
        them by raising low to skip them */

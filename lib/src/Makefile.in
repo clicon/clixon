@@ -124,8 +124,11 @@ clean:
 lex.clixon_xml_parse.c : clixon_xml_parse.l clixon_xml_parse.tab.h
 	$(LEX) -Pclixon_xml_parse clixon_xml_parse.l # -d is debug
 
-clixon_xml_parse.tab.c clixon_xml_parse.tab.h: clixon_xml_parse.y
+clixon_xml_parse.tab.h: clixon_xml_parse.y
 	$(YACC) -l -d -b clixon_xml_parse -p clixon_xml_parse clixon_xml_parse.y # -t is debug
+
+# extra rule to avoid parallell yaccs
+clixon_xml_parse.tab.c:	clixon_xml_parse.tab.h
 
 lex.clixon_xml_parse.o : lex.clixon_xml_parse.c clixon_xml_parse.tab.h # special rule to for make clean to work
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
@@ -134,8 +137,11 @@ lex.clixon_xml_parse.o : lex.clixon_xml_parse.c clixon_xml_parse.tab.h # special
 lex.clixon_yang_parse.c : clixon_yang_parse.l clixon_yang_parse.tab.h
 	$(LEX) -Pclixon_yang_parse clixon_yang_parse.l # -d is debug
 
-clixon_yang_parse.tab.c clixon_yang_parse.tab.h: clixon_yang_parse.y
+clixon_yang_parse.tab.h: clixon_yang_parse.y
 	$(YACC) -l -d -b clixon_yang_parse -p clixon_yang_parse clixon_yang_parse.y # -t is debug
+
+# extra rule to avoid parallell yaccs
+clixon_yang_parse.tab.c:	clixon_yang_parse.tab.h
 
 lex.clixon_yang_parse.o : lex.clixon_yang_parse.c clixon_yang_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
@@ -144,8 +150,11 @@ lex.clixon_yang_parse.o : lex.clixon_yang_parse.c clixon_yang_parse.tab.h
 lex.clixon_json_parse.c : clixon_json_parse.l clixon_json_parse.tab.h
 	$(LEX) -Pclixon_json_parse clixon_json_parse.l # -d is debug
 
-clixon_json_parse.tab.c clixon_json_parse.tab.h: clixon_json_parse.y
+clixon_json_parse.tab.h: clixon_json_parse.y
 	$(YACC) -l -d -b clixon_json_parse -p clixon_json_parse clixon_json_parse.y # -t is debug
+
+# extra rule to avoid parallell yaccs
+clixon_json_parse.tab.c:	clixon_json_parse.tab.h
 
 lex.clixon_json_parse.o : lex.clixon_json_parse.c clixon_json_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
@@ -154,8 +163,11 @@ lex.clixon_json_parse.o : lex.clixon_json_parse.c clixon_json_parse.tab.h
 lex.clixon_xpath_parse.c : clixon_xpath_parse.l clixon_xpath_parse.tab.h
 	$(LEX) -Pclixon_xpath_parse clixon_xpath_parse.l # -d is debug
 
-clixon_xpath_parse.tab.c clixon_xpath_parse.tab.h: clixon_xpath_parse.y
+clixon_xpath_parse.tab.h: clixon_xpath_parse.y
 	$(YACC) -l -d -b clixon_xpath_parse -p clixon_xpath_parse clixon_xpath_parse.y # -t is debug
+
+# extra rule to avoid parallell yaccs
+clixon_xpath_parse.tab.c:	clixon_xpath_parse.tab.h
 
 lex.clixon_xpath_parse.o : lex.clixon_xpath_parse.c clixon_xpath_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
