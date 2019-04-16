@@ -26,6 +26,7 @@ support.
   * [Runtime](#runtime)
   * [Clixon project page](http://www.clicon.org)
   * [Tests and CI](test/README.md)
+  * [Scaling: large lists](doc/large-lists.md)
   * [Containers](docker/README.md)
   * [Roadmap](doc/ROADMAP.md)
   * [Reference manual](#reference) 

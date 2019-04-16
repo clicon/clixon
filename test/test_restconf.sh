@@ -58,7 +58,7 @@ sleep $RCWAIT
 new "restconf tests"
 
 new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
-expecteq "$(curl  -s -X GET http://localhost/.well-known/host-meta)" 0 "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>
+expecteq "$(curl -s -X GET http://localhost/.well-known/host-meta)" 0 "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>
    <Link rel='restconf' href='/restconf'/>
 </XRD>"
 

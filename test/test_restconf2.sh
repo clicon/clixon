@@ -95,7 +95,7 @@ expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"type":"regular"}}} 
 new "restconf POST initial tree"
 expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 ""
 
-new "restconf GET datastore intial"
+new "restconf GET datastore initial"
 expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
 
 new "restconf GET interface subtree"

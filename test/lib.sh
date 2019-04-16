@@ -212,7 +212,7 @@ expectfn(){
 	expect2=
     fi
     ret=$($cmd)
-    r=$? 
+    r=$?
 #    echo "cmd:\"$cmd\""
 #    echo "retval:\"$retval\""
 #    echo "expect:\"$expect\""
@@ -221,7 +221,7 @@ expectfn(){
     if [ $r != $retval ]; then
 	echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
 	echo -e "\e[0m:"
-	return
+	exit -1
     fi
 #    if [ $r != 0 ]; then
 #	return

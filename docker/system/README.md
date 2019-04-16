@@ -54,3 +54,10 @@ To check status and then kill it:
 ```
 
 You trigger the test scripts inside the container using `make test`.
+
+## Changing code
+
+If you want to edit clixon code so it runs in the container?
+You either
+(1) "persistent": make your changes in the actual clixon code and commit; make clean to remove the local clone;  make test again
+(2) "volatile" edit the local clone; make test.

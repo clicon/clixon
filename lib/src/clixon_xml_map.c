@@ -2021,6 +2021,7 @@ api_path2xml_vec(char             **vec,
     cxobj     *x = NULL;
     yang_stmt *y = NULL;
     yang_stmt *ymod;
+    yang_stmt *ykey;
     char      *namespace = NULL;
 
     if ((nodeid = vec[0]) == NULL || strlen(nodeid)==0){
@@ -2104,7 +2105,12 @@ api_path2xml_vec(char             **vec,
 	/* Create keys */
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	    keyname = cv_string_get(cvi);
-	    if ((xn = xml_new(keyname, x, NULL)) == NULL)
+	    if ((ykey = yang_find(y, Y_LEAF, keyname)) == NULL){
+		clicon_err(OE_XML, 0, "List statement \"%s\" has no key leaf \"%s\"", 
+			   yang_argument_get(y), keyname);
+		goto done;
+	    }
+	    if ((xn = xml_new(keyname, x, ykey)) == NULL)
 		goto done; 
 	    xml_type_set(xn, CX_ELMNT);
 	    if ((xb = xml_new("body", xn, NULL)) == NULL)

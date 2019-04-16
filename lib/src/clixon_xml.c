@@ -814,7 +814,7 @@ xml_cv_set(cxobj  *x,
  * name "name".
  *
  * @param[in]  x_up   Base XML object
- * @param[in]  name   shell wildcard pattern to match with node name
+ * @param[in]  name   Node name
  *
  * @retval xmlobj     if found.
  * @retval NULL       if no such node found.

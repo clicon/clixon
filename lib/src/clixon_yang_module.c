@@ -159,7 +159,8 @@ yang_modules_revision(clicon_handle h)
 }
 
 /*! Actually build the yang modules state XML tree
-*/
+ * @see RFC7895
+ */
 static int
 yms_build(clicon_handle    h,
 	  yang_stmt       *yspec,
@@ -197,8 +198,11 @@ yms_build(clicon_handle    h,
 	cprintf(cb,"<name>%s</name>", ymod->ys_argument);
 	if ((ys = yang_find(ymod, Y_REVISION, NULL)) != NULL)
 	    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
-	else
+	else{
+	    /* RFC7895 1 If no (such) revision statement exists, the module's or 
+	       submodule's revision is the zero-length string. */
 	    cprintf(cb,"<revision></revision>");
+	}
 	if ((ys = yang_find(ymod, Y_NAMESPACE, NULL)) != NULL)
 	    cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
 	else
