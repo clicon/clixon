@@ -1,0 +1,167 @@
+#
+# ***** BEGIN LICENSE BLOCK *****
+# 
+# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+#
+# This file is part of CLIXON
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Alternatively, the contents of this file may be used under the terms of
+# the GNU General Public License Version 3 or later (the "GPL"),
+# in which case the provisions of the GPL are applicable instead
+# of those above. If you wish to allow use of your version of this file only
+# under the terms of the GPL, and not to allow others to
+# use your version of this file under the terms of Apache License version 2, 
+# indicate your decision by deleting the provisions above and replace them with
+# the notice and other provisions required by the GPL. If you do not delete
+# the provisions above, a recipient may use your version of this file under
+# the terms of any one of the Apache License version 2 or the GPL.
+#
+# ***** END LICENSE BLOCK *****
+#
+VPATH       	= @srcdir@
+srcdir  	= @srcdir@
+top_srcdir  	= @top_srcdir@
+prefix 		= @prefix@
+bindir 		= @bindir@
+includedir	= @includedir@
+datarootdir     = @datarootdir@
+sysconfdir      = @sysconfdir@
+datarootdir	= @datarootdir@
+localstatedir   = @localstatedir@
+libdir          = @exec_prefix@/lib
+
+APPNAME	        = hello
+
+# Here is where example yang appears
+CLIXON_DATADIR  = @CLIXON_DATADIR@
+# Install here if you want default clixon location:
+CLIXON_DEFAULT_CONFIG = @CLIXON_DEFAULT_CONFIG@
+
+CC		= @CC@
+CFLAGS  	= @CFLAGS@ -rdynamic -fPIC 
+INSTALLFLAGS  	= @INSTALLFLAGS@ 
+with_restconf	= @with_restconf@
+
+INCLUDES 	= -I$(includedir) @INCLUDES@ 
+CPPFLAGS  	= @CPPFLAGS@ -fPIC
+
+BE_PLUGIN       = $(APPNAME)_backend.so
+CLI_PLUGIN      = $(APPNAME)_cli.so
+NETCONF_PLUGIN  = $(APPNAME)_netconf.so
+RESTCONF_PLUGIN = $(APPNAME)_restconf.so
+
+PLUGINS = $(BE_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN)
+ifeq ($(with_restconf),yes)
+PLUGINS += $(RESTCONF_PLUGIN)
+endif
+
+.PHONY: all clean depend install 
+
+all:	$(PLUGINS)
+
+.SUFFIXES: .c .o
+
+# implicit rule
+.c.o:
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
+
+CLISPECS = $(APPNAME)_cli.cli
+
+YANGSPECS	 = clixon-hello@2019-04-17.yang
+
+# CLI frontend plugin (see also install rule)
+#CLI_SRC  = $(APPNAME)_cli.c
+CLI_OBJ  = $(CLI_SRC:%.c=%.o)
+$(CLI_PLUGIN): $(CLI_OBJ)
+	$(CC) -Wall -shared -o $@ -lc $^ 
+
+# Backend plugin (see also install rule)
+#BE_SRC   = $(APPNAME)_backend.c
+BE_OBJ   = $(BE_SRC:%.c=%.o)
+$(BE_PLUGIN): $(BE_OBJ)
+	$(CC) -Wall -shared -o $@ -lc $<
+
+# NETCONF frontend plugin (see also install rule)
+#NETCONF_SRC  = $(APPNAME)_netconf.c
+NETCONF_OBJ  = $(NETCONF_SRC:%.c=%.o)
+$(NETCONF_PLUGIN): $(NETCONF_OBJ)
+	$(CC) -Wall -shared -o $@ -lc $^
+
+# See configure.ac for disabling restconf
+# RESTCONF frontend plugin (see also install rule)
+#RESTCONF_SRC  = $(APPNAME)_restconf.c
+RESTCONF_OBJ  = $(RESTCONF_SRC:%.c=%.o)
+$(RESTCONF_PLUGIN): $(RESTCONF_OBJ)
+	$(CC) -Wall -shared -o $@ -lc $^ 
+
+SRC     = $(BE_SRC) $(CLI_SRC) $(NETCONF_SRC)
+SRC    +=  $(RESTCONF_SRC)
+
+OBJS    = $(BE_OBJ) $(CLI_OBJ) $(NETCONF_OBJ)
+OBJS   += $(RESTCONF_OBJ)
+
+clean:
+	rm -f $(PLUGINS) $(OBJS) 
+
+distclean: clean
+	rm -f Makefile *~ .depend
+
+
+install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml
+	install -m 0644 $(APPNAME).xml $(DESTDIR)$(CLIXON_DEFAULT_CONFIG)
+	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)
+	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/clispec
+	install -m 0644 $(CLISPECS) $(DESTDIR)$(libdir)/$(APPNAME)/clispec
+	install -d -m 0755 $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(DESTDIR)$(CLIXON_DATADIR)
+	install -d -m 0755 $(DESTDIR)$(localstatedir)/$(APPNAME)
+
+# Uncomment for installing config file in /usr/local/etc instead
+#	install -d -m 0755 $(DESTDIR)$(sysconfdir)
+#	install -m 0644 $(APPNAME).xml $(DESTDIR)$(sysconfdir)
+
+# Uncomment for installing cli plugin (see CLI_SRC)
+#	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/cli
+#	install -m 0644 $(INSTALLFLAGS) $(CLI_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/cli
+
+# Uncomment for installing backend plugin (see BE_SRC)
+#	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/backend
+#	install -m 0644 $(INSTALLFLAGS) $(BE_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/backend
+
+# Uncomment for installing netconf plugin (see NETCONF_SRC)
+#	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/netconf
+#	install -m 0644 $(INSTALLFLAGS) $(NETCONF_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/netconf
+
+# Uncomment for installing restconf plugin (see RESTCONF_SRC). The conditional is
+# because it is an option to disable restconf
+#ifeq ($(with_restconf),yes)
+#	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/restconf
+#	install -m 0644 $(INSTALLFLAGS) $(RESTCONF_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/restconf
+#endif
+
+uninstall: 
+	rm -rf $(DESTDIR)$(CLIXON_DEFAULT_CONFIG)
+	rm -rf $(DESTDIR)$(libdir)/$(APPNAME)
+	rm -rf $(DESTDIR)$(localstatedir)/$(APPNAME)
+	rm -rf $(DESTDIR)$(datarootdir)/$(APPNAME)
+
+
+install-include:	
+
+depend:
+	$(CC) $(DEPENDFLAGS) $(INCLUDES) $(CFLAGS) -MM $(SRC) > .depend
+
+#include .depend
+

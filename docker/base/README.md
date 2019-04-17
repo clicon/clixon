@@ -8,7 +8,7 @@ The clixon docker base image can be used to build clixon
 applications. It has all the whole code for a clixon release which it
 downloads from git.
 
-See [clixon-system](../system/README.md) for a more complete clixon image.
+See [clixon-system](../main/README.md) for a more complete clixon image.
 
 ## Build and push
 
@@ -20,7 +20,7 @@ You may also do `make push` if you want to push the image, but you may then cons
 
 ## Example run
 
-The base container is a minimal and primitive example. Look at the [clixon-system](../system) for a more stream-lined application.
+The base container is a minimal and primitive example. Look at the [clixon-system](../main) for a more stream-lined application.
 
 The following shows a simple example of how to run the example
 application. First, the container is started with the backend running:

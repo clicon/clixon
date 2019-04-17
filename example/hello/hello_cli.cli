@@ -1,0 +1,54 @@
+# Common CLI syntax for both server and PMNode operatio mode
+CLICON_MODE="hello";
+CLICON_PROMPT="cli> ";
+
+# Reference generated data model
+set @datamodel, cli_set();
+merge @datamodel, cli_merge();
+create @datamodel, cli_create();
+delete("Delete a configuration item") @datamodel, cli_del();
+
+validate("Validate changes"), cli_validate();
+commit("Commit the changes"), cli_commit();
+quit("Quit"), cli_quit();
+delete("Delete a configuration item")  all("Delete whole candidate configuration"), delete_all("candidate");
+
+startup("Store running as startup config"), db_copy("running", "startup");
+no("Negate or remove") debug("Debugging parts of the system"), cli_debug_cli((int32)0);
+debug("Debugging parts of the system"), cli_debug_cli((int32)1);{
+    level("Set debug level: 1..n") <level:int32>("Set debug level (0..n)"), cli_debug_backend();
+}
+discard("Discard edits (rollback 0)"), discard_changes();
+compare("Compare running and candidate"), compare_dbs((int32)1);
+
+show("Show a particular state of the system"){
+    xpath("Show configuration") <xpath:string>("XPATH expression"), show_conf_xpath("candidate");
+    version("Show version"), cli_show_version("candidate", "text", "/");
+    compare("Compare candidate and running databases"), compare_dbs((int32)0);{
+    		     xml("Show comparison in xml"), compare_dbs((int32)0);
+		     text("Show comparison in text"), compare_dbs((int32)1);
+    }
+    configuration("Show configuration"), cli_show_config("candidate", "text", "/");{
+	    xml("Show configuration as XML"), cli_show_config("candidate", "xml", "/");{
+	        @datamodel, cli_show_auto("candidate", "xml");		   
+	    }
+	    cli("Show configuration as CLI commands"), cli_show_config("candidate", "cli", "/");{
+	        @datamodel, cli_show_auto("candidate", "cli");
+	    }
+	    netconf("Show configuration as netconf edit-config operation"), cli_show_config("candidate", "netconf", "/");{
+	        @datamodel, cli_show_auto("candidate", "netconf");
+	    }
+	    text("Show configuration as text"), cli_show_config("candidate","text","/");{
+	        @datamodel, cli_show_auto("candidate", "text");
+	    }
+	    json("Show configuration as JSON"), cli_show_config("candidate", "json", "/");{
+	    	@datamodel, cli_show_auto("candidate", "json");
+	    }
+    }
+}
+
+save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename");
+load("Load configuration from XML file") <filename:string>("Filename (local filename)"),load_config_file("filename", "replace");{
+    replace("Replace candidate with file contents"), load_config_file("filename", "replace");
+    merge("Merge file with existent candidate"), load_config_file("filename", "merge");
+}

@@ -6,6 +6,7 @@
   * [Is Clixon extendible?](#is-clixon-extendible)
   * [Which programming language is used?](#which-programming-language-is-used)
   * [How to best understand Clixon?](#how-to-best-understand-clixon)
+  * [Hello world?](#hello-world)
   * [How do you build and install Clixon (and the example)?](how-do-you-build-and-install-clixon)
   * [How do I run Clixon example commands?](#how-do-i-run-clixon-example-commands)
   * [Do I need to setup anything? (IMPORTANT)](#do-i-need-to-setup-anything))
@@ -66,6 +67,10 @@ specification uses [CLIgen](http://github.com/olofhagsand/cligen)
 
 ## How to best understand Clixon?
 Run the Clixon example, in the [example](../example) directory.
+
+## Hello world?
+
+One of the examples is [a hello world example](../example/hello). Please start with that.
 
 ## How do you build and install Clixon?
 Clixon: 

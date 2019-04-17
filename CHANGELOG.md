@@ -35,6 +35,7 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* The directory `docker/system` has been moved to `docker/main`, to reflect that it runs the main example.
 * xmldb_get() removed "config" parameter:
   * Change all calls to dbget from: `xmldb_get(h, db, xpath, 0|1, &xret, msd)` to `xmldb_get(h, db, xpath, &xret, msd)`
 * Structural change: removed datastore plugin and directory, and merged into regular clixon lib code.
@@ -101,6 +102,7 @@
 
 ### Minor changes
 
+* A new "hello world" example is added
 * Optimized validation of large lists
   * New xmldb_get1() returning actual cache - not a copy. This has lead to some householding instead of just deleting the copy
   * xml_diff rewritten to work linearly instead of O(2)

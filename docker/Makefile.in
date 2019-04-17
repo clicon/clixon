@@ -41,7 +41,7 @@ LIBS    	= @LIBS@
 SHELL	= /bin/sh
 
 SUBDIRS  = base
-SUBDIRS  += system
+SUBDIRS  += main
 #SUBDIRS += cluster
 
 .PHONY: all clean distclean depend install-include install uninstall test $(SUBDIRS)
