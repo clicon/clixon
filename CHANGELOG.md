@@ -102,6 +102,7 @@
 
 ### Minor changes
 
+* A scaling of [large lists](doc/scaling) report is added
 * A new "hello world" example is added
 * Optimized validation of large lists
   * New xmldb_get1() returning actual cache - not a copy. This has lead to some householding instead of just deleting the copy

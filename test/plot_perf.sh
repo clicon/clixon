@@ -1,39 +1,34 @@
 #!/bin/bash
-# Transactions per second for large lists read/write plotter using gnuplot
-# What do I want to plot?
-# First: on i32, i64, arm32
-# PART 1: Basic load
-# 1. How long to write 100K entries?
-#    - netconf / restconf
-#    - list / leaf-list
-# 2. How long to read 100K entries?
-#    - netconf/ restconf
-#    - list / leaf-list
-# 3. How long to commit 100K entries? (netconf)
-#    - list / leaf-list
-#
-# PART 2: Load 100K entries. Commit.
-# 4. How many read operations per second?
-#    - netconf/ restconf
-#    - list / leaf-list
-# 5. How many write operations per second?
-#    - netconf / restconf
-#    - list / leaf-list
-# 6. How may delete operations per second?
-#    - netconf / restconf
-#    - list / leaf-list
-# The script uses bash builtin "time" command which is somewhat difficult to
-# understand. See: https://linux.die.net/man/1/bash # pipelines
-# You essentially have to do: { time stuff; } 2>&1
-# See: https://stackoverflow.com/questions/26784870/parsing-the-output-of-bashs-time-builtin
+# Performance of large lists. See large-lists.md
+# The parameters are shown below (under Default values)
+# Examples
+# 1. run all measurements up to 10000 entris collect all results in /tmp/plots
+#    run=true plot=false to=10000 resdir=/tmp/plots ./plot_perf.sh 
+# 2. Use existing data plot and show on X11
+#    run=false plot=true resdir=/tmp/plots term=x11 ./plot_perf.sh
+# 3. Use existing data plot i686 and armv7l data as png
+#    archs="i686 armv7l" run=false plot=true resdir=/tmp/plots term=png ./plot_perf.sh 
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-# op from step to reqs
-to=1000 
-step=100
-reqs=100
+arch=$(arch)
+# Default values
+: ${to:=5000}  # Max N
+: ${step=1000} # Iterate in steps (also starting point)
+: ${reqs=100} # Number of requests in each burst
+: ${run:=true} # run tests (or skip them). If false just plot
+: ${term:=x11} # x11 interactive, alt: png
+: ${resdir=$dir} # Result dir (both data and gnuplot)
+: ${plot=false} # Result dir (both data and gnuplot)
+: ${archs=$arch} # Plotting can be made for many architectures (not run)
+
+# 0 prefix to protect against shell dynamic binding)
+to0=$to
+step0=$step
+reqs0=$reqs
+
+ext=$term # gnuplot output file extenstion
 
 # Global variables
 APPNAME=example
@@ -41,6 +36,13 @@ cfg=$dir/plot-conf.xml
 fyang=$dir/plot.yang
 fxml=$dir/data.xml
 fjson=$dir/data.json
+
+# Resultdir - if different from $dir that gets erased
+#resdir=$dir
+
+if [ ! -d $resdir ]; then
+    mkdir $resdir
+fi
 
 # For memcheck
 # clixon_netconf="valgrind --leak-check=full --show-leak-kinds=all clixon_netconf"
@@ -53,19 +55,20 @@ module scaling{
    namespace "urn:example:clixon";
    prefix sc;
    container x {
-    list y {
-      key "a";
-      leaf a {
-        type uint32;
+      description "top-level container";
+      list y {
+         description "List with potential large number of elements";
+         key "a";
+         leaf a {
+            description "key in list";
+            type int32;
+         }
+         leaf b {
+            description "payload data";
+           type string;
+         }
       }
-      leaf b {
-        type string;
-      }
-    }
-    leaf-list c {
-       type string;
-    }
-  }
+   }
 }
 EOF
 
@@ -109,48 +112,49 @@ genfile(){
 # where proto is one of:
 #   netconf, restconf
 # where op is one of:
-#   writeall readall commitall read write 
+#   get put delete commit
 runnet(){
     op=$1
-    n=$2 # Number of entries in DB
+    nr=$2 # Number of entries in DB (keep diff from n due to shell dynamic binding)
     reqs=$3
 
-    echo -n "$n " >>  $dir/$op-netconf-$reqs
+    file=$resdir/$op-netconf-$reqs-$arch
+    echo -n "$nr " >>  $file
     case $op in
-	write)
+	put)
 	    if [ $reqs = 0 ]; then # Write all in one go
-		genfile $n netconf;
-		{ time -p cat $fxml | $clixon_netconf -qf $cfg -y $fyang ; } 2>&1 | awk '/real/ {print $2}' >> $dir/$op-netconf-$reqs
+		genfile $nr netconf;
+		{ time -p cat $fxml | $clixon_netconf -qf $cfg -y $fyang ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
 	    else # reqs != 0
 		{ time -p for (( i=0; i<$reqs; i++ )); do
-	rnd=$(( ( RANDOM % $n ) ));
+	rnd=$(( ( RANDOM % $nr ) ));
 	echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>";
-    done | $clixon_netconf -qf $cfg -y $fyang ; } 2>&1 | awk '/real/ {print $2}' >> $dir/$op-netconf-$reqs
+    done | $clixon_netconf -qf $cfg -y $fyang > /dev/null; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
 	    fi
 	    ;;
-	read)
+	get)
 	    if [ $reqs = 0 ]; then # Read all in one go
-		{ time -p  echo "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" | $clixon_netconf -qf $cfg -y $fyang > /dev/null ; } 2>&1 | awk '/real/ {print $2}' >> $dir/$op-netconf-$reqs
+		{ time -p  echo "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" | $clixon_netconf -qf $cfg -y $fyang > /dev/null ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
 	    else # reqs != 0
 		{ time -p for (( i=0; i<$reqs; i++ )); do
 	rnd=$(( ( RANDOM % $nr ) ))
-	echo "<rpc><edit-config><target><candidate/></target><config><x><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg -y $fyang; } 2>&1 | awk '/real/ {print $2}' >> $dir/$op-netconf-$reqs
+	echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
+		done | $clixon_netconf -qf $cfg -y $fyang > /dev/null; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
 	    fi
 	    ;;
 	delete)
 	    { time -p for (( i=0; i<$reqs; i++ )); do
 	rnd=$(( ( RANDOM % $nr ) ))
-	echo "<rpc><edit-config><target><candidate/></target><config><x><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg -y $fyang; } 2>&1 | awk '/real/ {print $2}' >> $dir/$op-netconf-$reqs
+	echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
+done | $clixon_netconf -qf $cfg -y $fyang; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
 	    ;;
 	commit)
-	    { time -p  echo "<rpc><commit/></rpc>]]>]]>" | $clixon_netconf -qf $cfg -y $fyang > /dev/null ; } 2>&1 | awk '/real/ {print $2}' >> $dir/$op-netconf-$reqs
+	    { time -p  echo "<rpc><commit/></rpc>]]>]]>" | $clixon_netconf -qf $cfg -y $fyang > /dev/null ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
 	    ;;
 	    *)
 	err "Operation not supported" "$op"
 	exit
-		    ;;
+	;;
     esac
 }
 
@@ -159,43 +163,43 @@ done | $clixon_netconf -qf $cfg -y $fyang; } 2>&1 | awk '/real/ {print $2}' >> $
 # where proto is one of:
 #   netconf, restconf
 # where op is one of:
-#   writeall readall commitall read write 
+#   get put delete 
 runrest(){
     op=$1
-    n=$2 # Number of entries in DB
+    nr=$2 # Number of entries in DB
     reqs=$3
     
-    echo -n "$n " >>  $dir/$op-restconf-$reqs
+    file=$resdir/$op-restconf-$reqs-$arch
+    echo -n "$nr " >>  $file
     case $op in
-	write)
+	put)
 	    if [ $reqs = 0 ]; then # Write all in one go
-		genfile $n restconf
+		genfile $nr restconf
 		# restconf @- means from stdin
-		{ time -p curl -sS -X PUT -d @$fjson http://localhost/restconf/data/scaling:x ; } 2>&1 | awk '/real/ {print $2}' >> $dir/$op-restconf-$reqs
+		{ time -p curl -sS -X PUT -d @$fjson http://localhost/restconf/data/scaling:x ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
 	    else # Small requests
 		{ time -p for (( i=0; i<$reqs; i++ )); do
-	rnd=$(( ( RANDOM % $n ) ));
+	rnd=$(( ( RANDOM % $nr ) ));
 	curl -sS -X PUT http://localhost/restconf/data/scaling:x/y=$rnd -d "{\"scaling:y\":{\"a\":$rnd,\"b\":\"$rnd\"}}" 
-    done ; } 2>&1 | awk '/real/ {print $2}' >> $dir/$op-restconf-$reqs
+    done ; } 2>&1 | awk '/real/ {print $2}' | tr , .>> $file
 		# 
 	    fi
 	    ;;
-	read)
+	get)
 	    if [ $reqs = 0 ]; then # Read all in one go
-		{ time -p curl -sS -X GET http://localhost/restconf/data/scaling:x > /dev/null; } 2>&1 | awk '/real/ {print $2}' >> $dir/$op-restconf-$reqs
+		{ time -p curl -sS -X GET http://localhost/restconf/data/scaling:x > /dev/null; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
 	    else # Small requests
 		{ time -p for (( i=0; i<$reqs; i++ )); do
-	rnd=$(( ( RANDOM % $n ) ));
+	rnd=$(( ( RANDOM % $nr ) ));
 	curl -sS -X GET http://localhost/restconf/data/scaling:x/y=$rnd  
-    done ; } 2>&1 | awk '/real/ {print $2}' >> $dir/$op-restconf-$reqs
+    done ; } 2>&1 | awk '/real/ {print $2}' | tr , .>> $file
 	    fi
 	    ;;
-	    delete)
+	delete)
 		{ time -p for (( i=0; i<$reqs; i++ )); do
-	rnd=$(( ( RANDOM % $n ) ));
+	rnd=$(( ( RANDOM % $nr ) ));
 	curl -sS -X GET http://localhost/restconf/data/scaling:x/y=$rnd  
-    done ; } 2>&1 | awk '/real/ {print $2}' >> $dir/$op-restconf-$reqs
-		
+    done ; } 2>&1 | awk '/real/ {print $2}' | tr , .>> $file
 		;;
 	    *)
 	err "Operation not supported" "$op"
@@ -246,8 +250,8 @@ plot(){
     fi
     
     # reset file
-    new "Create file $dir/$op-$proto-$reqs"
-    echo "" > $dir/$op-$proto-$reqs
+    new "Create file $resdir/$op-$proto-$reqs-$arch"
+    echo -n "" > $resdir/$op-$proto-$reqs-$arch
     for (( n=$from; n<=$to; n=$n+$step )); do  
 	reset
 	if [ $can = n ]; then 
@@ -256,7 +260,7 @@ plot(){
 		commit
 	    fi
 	fi
-	new "$op-$proto-$reqs $n"
+	new "$op-$proto-$reqs-$arch $n"
 	if [ $proto = netconf ]; then
 	    runnet $op $n $reqs
 	else
@@ -266,6 +270,7 @@ plot(){
     echo # newline
 }
 
+if $run; then
 new "test params: -f $cfg -y $fyang"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -286,26 +291,35 @@ start_restconf -f $cfg -y $fyang
 new "waiting"
 sleep $RCWAIT
 
+
+to=$to0
+step=$step0
+reqs=$reqs0
+
+# Put all tests
 for proto in netconf restconf; do
-    new "$proto write all entries to candidate (restconf:running)"
-    plot write  $proto  $step $step $to 0 0 0 # all candidate 0 running 0
+    new "$proto put all entries to candidate (restconf:running)"
+    plot put  $proto  $step $step $to 0 0 0 # all candidate 0 running 0
 done
 
+# Get all tests
 for proto in netconf restconf; do
-    new "$proto read all entries from running"
-    plot read   netconf  $step $step $to 0 n n # start w full datastore
+    new "$proto get all entries from running"
+    plot get $proto  $step $step $to 0 n n # start w full datastore
 done
 
+# Netconf commit all
 new "Netconf commit all entries from candidate to running"
 plot commit netconf $step $step $to 0 n 0 # candidate full running empty
 
-reqs=100
+# Transactions get/put/delete
+reqs=$reqs0
 for proto in netconf restconf; do
-    new "$proto read $reqs from full database"
-    plot read $proto $step $step $to $reqs n n 
+    new "$proto get $reqs from full database"
+    plot get $proto $step $step $to $reqs n n 
 
-    new "$proto Write $reqs to full database(replace / alter values)"
-    plot write $proto $step $step $to $reqs n n
+    new "$proto put $reqs to full database(replace / alter values)"
+    plot put $proto $step $step $to $reqs n n
 
     new "$proto delete $reqs from full database(replace / alter values)"
     plot delete $proto $step $step $to $reqs n n
@@ -324,15 +338,127 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
+fi # if run
 
-arch=$(arch)
+if $plot; then
+
+# 1. Get config
+gplot=""
+for a in $archs; do
+    gplot="$gplot \"$resdir/get-restconf-0-$a\" title \"rc-$a\", \"$resdir/get-netconf-0-$a\" title \"nc-$a\","
+done
+
 gnuplot -persist <<EOF
-set title "Clixon transactions per second r/w large lists" font ",14" textcolor rgbcolor "royalblue"
-set xlabel "entries"
-set ylabel "transactions per second"
-set terminal x11  enhanced title "Clixon transactions " persist raise
-plot "$dir/readlist" with linespoints title "read list", "$dir/writelist" with linespoints title "write list", "$dir/writeleaflist" with linespoints title "write leaf-list" , "$dir/restreadlist" with linespoints title "rest get list" 
+set title "Clixon get config"
+set style data linespoint
+set xlabel "Entries"
+set ylabel "Time[s]"
+set grid
+set terminal $term
+set yrange [*:*]
+set output "$resdir/clixon-get-0.$term"
+plot $gplot
 EOF
+
+
+# 2. Put config
+
+gplot=""
+for a in $archs; do
+    gplot="$gplot \"$resdir/put-restconf-0-$a\" title \"rc-$a\", \"$resdir/put-netconf-0-$a\" title \"nc-$a\","
+done
+
+gnuplot -persist <<EOF
+set title "Clixon put config"
+set style data linespoint
+set xlabel "Entries"
+set ylabel "Time[s]"
+set grid
+set terminal $term
+set yrange [*:*]
+set output "$resdir/clixon-put-0.$term"
+plot $gplot
+EOF
+
+# 3. Commit config
+
+gplot=""
+for a in $archs; do
+    gplot="$gplot \"$resdir/commit-netconf-0-$a\" title \"nc-$a\","
+done
+
+gnuplot -persist <<EOF
+set title "Clixon commit config"
+set style data linespoint
+set xlabel "Entries"
+set ylabel "Time[s]"
+set grid
+set terminal $term
+set yrange [*:*]
+set output "$resdir/clixon-commit-0.$term"
+plot $gplot
+EOF
+
+# 4. Get single entry 
+
+gplot=""
+for a in $archs; do
+    gplot="$gplot \"$resdir/get-restconf-100-$a\" using 1:(\$2/$reqs0) title \"rc-$a\", \"$resdir/get-netconf-100-$a\" using 1:(\$2/$reqs0) title \"nc-$a\","
+done
+
+gnuplot -persist <<EOF
+set title "Clixon get single entry"
+set style data linespoint
+set xlabel "Entries"
+set ylabel "Time[s]"
+set grid
+set terminal $term
+set yrange [*:*]
+set output "$resdir/clixon-get-100.$term"
+plot $gplot
+EOF
+
+# 5. Put single entry 
+
+gplot=""
+for a in $archs; do
+    gplot="$gplot \"$resdir/put-restconf-100-$a\" using 1:(\$2/$reqs0) title \"rc-$a\", \"$resdir/put-netconf-100-$a\" using 1:(\$2/$reqs0) title \"nc-$a\","
+done
+
+gnuplot -persist <<EOF
+set title "Clixon put single entry"
+set style data linespoint
+set xlabel "Entries"
+set ylabel "Time[s]"
+set grid
+set terminal $term
+set yrange [*:*]
+set output "$resdir/clixon-put-100.$term"
+plot $gplot
+EOF
+
+# 6. Delete single entry 
+
+gplot=""
+for a in $archs; do
+    gplot="$gplot \"$resdir/delete-restconf-100-$a\" using 1:(\$2/$reqs0) title \"rc-$a\", \"$resdir/delete-netconf-100-$a\" using 1:(\$2/$reqs0) title \"nc-$a\","
+
+done
+
+
+gnuplot -persist <<EOF
+set title "Clixon delete single entry"
+set style data linespoint
+set xlabel "Entries"
+set ylabel "Time[s]"
+set grid
+set terminal $term
+set yrange [*:*]
+set output "$resdir/clixon-delete-100.$term"
+plot $gplot
+EOF
+
+fi # if plot
 
 #rm -rf $dir
 
