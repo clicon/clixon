@@ -139,7 +139,7 @@ This section shows the results of the measurements as defined in [Tests](#tests)
 ### Profiling
 
 An example profiling of the most demanding case was made: Put single restconf for with 5000 existing entries.
-The tool used is valgrind/callgrind with the following approximate result:
+The tool used is valgrind/callgrind with the following approximate result (percentage of total cycles):
 * from_rpc_callback 100%
   * from_client_commit 65%
     * candidate_commit 65%
@@ -155,7 +155,14 @@ The tool used is valgrind/callgrind with the following approximate result:
         * xml_chardata_encode 12%
 
 It can be seen that most cycles are spend in file copying and writing
-to file which explains the linear behaviour.
+the existing datastore to file. This explains the linear behaviour, ie
+the larger existing datastore, the larger number of cycles spent.
+
+Why is the existing datastore accessed in this way? When a small PUT request is received, several things happen:
+* The existing candidate database is modified with the change and written to disk. (35%)
+* The difference between candidate and running is computed (13%)
+* The new candidate is validated (10%)
+* The candidate db is copied to running (29%)
 
 ## 5. Discussion
 
@@ -186,19 +193,18 @@ performance CPUs, such as 100K entries on a x86_64 in the results, but
 it also means that very large lists may not be supported, and that the
 system degrades with the size of the lists.
 
-Examining the profiling of the most demanding Restconf PUT case
+Examining the profiling of the most demanding Restconf PUT case, most
+cycles are spent on handling writing and copying the existing datastore.
 
 Concluding, the 
 
 ## 6. Future work
 
-It is recommended that the following items should be studied:
-* Try to improve the access of single list elements,  to sub-linear perforamnce.
+* Improve access of single list elements to sub-linear performance.
 * CLI access on large lists (not included in this study)
 
 ## 7. References
 
-[RFC6241](https://tools.ietf.org/html/rfc6241) "Network Configuration Protocol (NETCONF)"
-[RFC8040](https://tools.ietf.org/html/rfc8040) "RESTCONF Protocol"
-[i686](https://ark.intel.com/content/www/us/en/ark/products/27235/intel-core-duo-processor-t2400-2m-cache-1-83-ghz-667-mhz-fsb.html)
-[plot_perf.sh](../test/plot_perf.sh) Test script
+* [RFC6241](https://tools.ietf.org/html/rfc6241) "Network Configuration Protocol (NETCONF)"
+* [RFC8040](https://tools.ietf.org/html/rfc8040) "RESTCONF Protocol"
+* [plot_perf.sh](../../test/plot_perf.sh) Test script
