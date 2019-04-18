@@ -180,6 +180,7 @@ startup_common(clicon_handle       h,
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
 	if ((msd = modstate_diff_new()) == NULL)
 	    goto done;
+    clicon_debug(1, "Reading startup config from %s", db);
     if (xmldb_get(h, db, "/", &xt, msd) < 0)
 	goto done;
     if (msd){
@@ -211,6 +212,7 @@ startup_common(clicon_handle       h,
 
     /* 5. Make generic validation on all new or changed data.
        Note this is only call that uses 3-values */
+    clicon_debug(1, "Validating startup %s", db);
     if ((ret = generic_validate(yspec, td, cbret)) < 0)
 	goto done;
     if (ret == 0)
@@ -282,6 +284,7 @@ startup_validate(clicon_handle  h,
  * @retval    -1       Error - or validation failed (but cbret not set)
  * @retval     0       Validation failed (with cbret set)
  * @retval     1       Validation OK       
+ * Only called from startup_mode_startup
  */
 int
 startup_commit(clicon_handle  h, 
@@ -292,6 +295,10 @@ startup_commit(clicon_handle  h,
     int                 ret;
     transaction_data_t *td = NULL;
 
+    if (strcmp(db,"running")==0){
+	clicon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
+	goto done;
+    }
     /* Handcraft a transition with only target and add trees */
     if ((td = transaction_new()) == NULL)
 	goto done;
@@ -302,6 +309,13 @@ startup_commit(clicon_handle  h,
      /* 8. Call plugin transaction commit callbacks */
      if (plugin_transaction_commit(h, td) < 0)
 	 goto done;
+     /* [Delete and] create running db */
+     if (xmldb_exists(h, "running") == 1){
+	if (xmldb_delete(h, "running") != 0 && errno != ENOENT) 
+	    goto done;;
+    }
+    if (xmldb_create(h, "running") < 0)
+	goto done;
      /* 9, write (potentially modified) tree to running
       * XXX note here startup is copied to candidate, which may confuse everything
       */

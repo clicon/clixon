@@ -641,9 +641,6 @@ main(int    argc,
 	/* Copy original running to tmp as backup (restore if error) */
 	if (xmldb_copy(h, "running", "tmp") < 0)
 	    goto done;
-	/* [Delete and] create running db */
-	if (startup_db_reset(h, "running") < 0)
-	    goto done;
 	ret = startup_mode_startup(h, "tmp", cbret);
 	/* If ret fails, copy tmp back to running */
 	if (ret != 1)
@@ -655,9 +652,6 @@ main(int    argc,
     case SM_STARTUP: 
 	/* Copy original running to tmp as backup (restore if error) */
 	if (xmldb_copy(h, "running", "tmp") < 0)
-	    goto done;
-	/* [Delete and] create running db */
-	if (startup_db_reset(h, "running") < 0)
 	    goto done;
 	/* Load and commit from startup */
 	ret = startup_mode_startup(h, "startup", cbret);
