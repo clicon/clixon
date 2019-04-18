@@ -150,9 +150,6 @@ startup_mode_startup(clicon_handle        h,
     int         retval = -1;
     int         ret;
     
-    /* [Delete and] create running db */
-    if (startup_db_reset(h, "running") < 0)
-	goto done;
     /* Load plugins and call plugin_init() */
     if (backend_plugin_initiate(h) != 0) 
 	goto done;
@@ -299,15 +296,22 @@ startup_failsafe(clicon_handle h)
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (startup_db_reset(h, "running") < 0)
-	goto done;
     if ((ret = xmldb_exists(h, db)) < 0)
 	goto done;
     if (ret == 0){ /* No it does not exist, fail */
 	clicon_err(OE_DB, 0, "Startup failed and no Failsafe database found, exiting");
 	goto done;
     }
-    if ((ret = candidate_commit(h, db, cbret)) < 0) /* diff */
+    /* Copy original running to tmp as backup (restore if error) */
+    if (xmldb_copy(h, "running", "tmp") < 0)
+	goto done;
+    if (startup_db_reset(h, "running") < 0)
+	goto done;
+    ret = candidate_commit(h, db, cbret);
+    if (ret != 1)
+	if (xmldb_copy(h, "tmp", "running") < 0)
+	    goto done;
+    if (ret < 0)
 	goto done;
     if (ret == 0){
 	clicon_err(OE_DB, 0, "Startup failed, Failsafe database validation failed %s", cbuf_get(cbret));

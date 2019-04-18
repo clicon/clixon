@@ -134,6 +134,8 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Failure in startup with -m startup or running left running_db cleared.
+  * Running-db should not be changed on failure. Unless failure-db defined. Or if SEGV, etc. In those cases, tmp_db should include the original running-db.
 * Backend plugin returning NULL was still installed - is now logged and skipped.
 * [Parent list key is not validated if not provided via RESTCONF #83](https://github.com/clicon/clixon/issues/83), thanks achernavin22.
 * [Invalid JSON if GET /operations via RESTCONF #82](https://github.com/clicon/clixon/issues/82), thanks achernavin22

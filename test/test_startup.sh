@@ -6,6 +6,9 @@
 # - An extra xml configuration file starts with an "extra" interface
 # - running db starts with a "run" interface
 # - startup db starts with a "start" interface
+# There is also an "invalid" XML and a "broken" XML
+# There are two steps, first run through everything OK
+# Then try with invalid and borken XML and ensure the backend quits and all is untouched
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -36,14 +39,20 @@ cat <<EOF > $cfg
 
 EOF
 
-# Create running-db containin the interface "run"
+# Create running-db containin the interface "run" OK
 runvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces>'
 
-# Create startup-db containing the interface "startup"
+# Create startup-db containing the interface "startup" OK
 startvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces>'
 
-# extra
+# extra OK
 extravar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces>'
+
+# invalid (contains <not-defined/>), but OK XML syntax
+invalidvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><not-defined/><name>invalid</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces>'
+
+# Broken XML (contains </nmae>)
+brokenvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>broken</nmae><type>ex:eth</type><enabled>true</enabled></interface></interfaces>'
 
 # Create a pre-set running, startup and (extra) config.
 # The configs are identified by an interface called run, startup, extra.
@@ -51,12 +60,16 @@ extravar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><inter
 # expect different output of an initial get-config of running
 testrun(){
     mode=$1
-    exprun=$2 # expected running_db after startup
+    rdb=$2    # running db at start
+    sdb=$3    # startup db at start
+    edb=$4    # extradb at start
+    exprun=$5 # expected running_db after startup
+
 
     sudo rm -f  $dir/*_db
-    echo "<config>$runvar</config>" > $dir/running_db
-    echo "<config>$startvar</config>" > $dir/startup_db
-    echo "<config>$extravar</config>" > $dir/extra_db
+    echo "<config>$rdb</config>" > $dir/running_db
+    echo "<config>$sdb</config>" > $dir/startup_db
+    echo "<config>$edb</config>" > $dir/extra_db
 
     if [ $BE -ne 0 ]; then     # Bring your own backend
 	# kill old backend (if any)
@@ -81,7 +94,7 @@ testrun(){
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$exprun</rpc-reply>]]>]]>$"
 
     new "Startup test for $mode mode, check startup is untouched"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$startvar</data></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$sdb</data></rpc-reply>]]>]]>$"
     
     new "Kill backend"
     # Check if premature kill
@@ -93,17 +106,79 @@ testrun(){
     stop_backend -f $cfg
 } # testrun
 
+
+# The backend should fail with 255 and all db:s should be unaffected
+testfail(){
+    mode=$1
+    rdb=$2    # running db at start
+    sdb=$3    # startup db at start
+    edb=$4    # extradb at start
+
+    sudo rm -f  $dir/*_db
+
+    echo "<config>$rdb</config>" > $dir/running_db
+    echo "<config>$sdb</config>" > $dir/startup_db
+    echo "<config>$edb</config>" > $dir/extra_db
+
+    # kill old backend (if any)
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -f $cfg -s $mode -c $dir/extra_db"
+    ret=$(start_backend -1 -s $mode -f $cfg -c $dir/extra_db 2> /dev/null)
+    r=$?
+    if [ $r -ne 255 ]; then
+	err "Unexpected retval" $r
+    fi
+    # permission kludges
+    sudo chmod 666 $dir/running_db
+    sudo chmod 666 $dir/startup_db
+    new "Checking running unchanged"
+    ret=$(diff $dir/running_db <(echo "<config>$rdb</config>"))
+    if [ $? -ne 0 ]; then
+	err "<config>$rdb</config>" "$ret"
+    fi	
+    new "Checking startup unchanged"
+    ret=$(diff $dir/startup_db <(echo "<config>$sdb</config>"))
+    if [ $? -ne 0 ]; then
+	err "<config>$sdb</config>" "$ret"
+    fi
+
+    new "Checking extra unchanged"
+    ret=$(diff $dir/extra_db <(echo "<config>$edb</config>"))
+    if [ $? -ne 0 ]; then
+	err "<config>$edb</config>" "$ret"
+    fi
+}
+
+# 1. Try different modes on OK running/startup/extra
 # Init mode: delete running and reload from scratch (just extra)
-testrun init "<data>$extravar</data>"
+testrun init "$runvar" "$startvar" "$extravar" "<data>$extravar</data>" 
 
 # None mode: do nothing, running remains
-testrun none  "<data>$runvar</data>"
+testrun none  "$runvar" "$startvar" "$extravar" "<data>$runvar</data>"
 
 # Running mode: keep running but load also extra
-testrun running '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+testrun running "$runvar" "$startvar" "$extravar" '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>run</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
 
 # Startup mode: scratch running, load startup with extra on top
-testrun startup '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>'
+testrun startup "$runvar" "$startvar" "$extravar" '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>startup</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data>' 
 
-echo $dir
-#rm -rf $dir
+# 2. Try different modes on Invalid running/startup/extra WITHOUT failsafe
+# ensure all db:s are unchanged after failure.
+
+new "Test invalid running in running mode"
+testfail running "$invalidvar" "$startvar" "$extravar"
+
+new "Run invalid startup in startup mode"
+testfail startup "$runvar" "$invalidvar" "$extravar"
+
+new "Test broken running in running mode"
+testfail running "$brokenvar" "$startvar" "$extravar"
+
+new "Run broken startup in startup mode"
+testfail startup "$runvar" "$brokenvar" "$extravar"
+
+rm -rf $dir
