@@ -49,6 +49,7 @@
 #include <regex.h>
 #include <syslog.h>
 #include <assert.h>
+#include <regex.h>
 #include <netinet/in.h>
 
 /* cligen */
@@ -98,6 +99,74 @@ static const map_str2int ytmap[] = {
     {"union",       CGV_REST},  /* Is replaced by actual type */
     {NULL,         -1}
 };
+
+/*! Regular expression compiling
+ * @retval -1 Error
+ * @retval  0 regex problem (no match?)
+ * @retval  1 OK Match
+ * @see match_regexp the CLIgen original composite function
+ */
+static int
+regex_compile(char    *pattern0,
+	      regex_t *re)
+{
+    int  retval = -1;
+    char pattern[1024];
+    //    char errbuf[1024];
+    int  len0;
+    int  status;
+
+    len0 = strlen(pattern0);
+    if (len0 > sizeof(pattern)-5){
+	clicon_err(OE_XML, EINVAL, "pattern too long");
+	goto done;
+    }
+    strncpy(pattern, "^(", 2);
+    strncpy(pattern+2, pattern0, sizeof(pattern)-2);
+    strncat(pattern, ")$",  sizeof(pattern)-len0-1);
+    if ((status = regcomp(re, pattern, REG_NOSUB|REG_EXTENDED)) != 0) {
+#if 0 /* ignore error msg for now */
+	regerror(status, re, errbuf, sizeof(errbuf));
+#endif
+	goto fail;
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Regular expression execution
+ * @retval -1 Error
+ * @retval  0 regex problem (no match?)
+ * @retval  1 OK Match
+ * @see match_regexp the CLIgen original composite function
+ */
+static int
+regex_exec(regex_t *re,
+	   char    *string)
+{
+    int retval = -1;
+    int status;
+    //    char errbuf[1024];
+    
+    status = regexec(re, string, (size_t) 0, NULL, 0);
+    if (status != 0) {
+#if 0 /* ignore error msg for now */
+	regerror(status, re, errbuf, sizeof(errbuf));
+#endif
+	goto fail;
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 
 /* return 1 if built-in, 0 if not */
 static int
@@ -525,14 +594,41 @@ cv_validate1(cg_var      *cv,
 	}
 	if ((options & YANG_OPTIONS_PATTERN) != 0){
 	    char *posix = NULL;
-	    if (regexp_xsd2posix(pattern, &posix) < 0)
-		goto done;
-	    if ((retval2 = match_regexp(str?str:"", posix)) < 0){
-		clicon_err(OE_DB, 0, "match_regexp: %s", pattern);
-		return -1;
+	    regex_t *re = NULL;
+
+	    if ((re = yang_regex_cache_get(yrestype)) == NULL){
+		/* Transform to posix regex */
+		if (regexp_xsd2posix(pattern, &posix) < 0)
+		    goto done;
+		/* Create regex cache */
+		if ((re = malloc(sizeof(*re))) == NULL){
+		    clicon_err(OE_UNIX, errno, "malloc");		    
+		    goto done;
+		}
+		memset(re, 0, sizeof(*re));
+		/* Compute regex pattern for use in patterns */
+		if ((retval2 = regex_compile(posix, re)) < 0)
+		    goto done;
+		if (retval2 == 0){
+		    if (reason)
+			*reason = cligen_reason("regexp match fail: \"%s\" does not match %s",
+						str, pattern);
+		    goto fail;
+		    break;
+		}
+		yang_regex_cache_set(yrestype, re);
+		if (posix)
+		    free(posix);
 	    }
-	    if (posix)
-		free(posix);
+	    if ((retval2 = regex_exec(re, str?str:"")) < 0)
+		goto done;
+	    if (retval2 == 0){
+		if (reason)
+		    *reason = cligen_reason("regexp match fail: \"%s\" does not match %s",
+					    str, pattern);
+		goto fail;
+		break;
+	    }
 	    if (retval2 == 0){
 		if (reason)
 		    *reason = cligen_reason("regexp match fail: \"%s\" does not match %s",
@@ -667,7 +763,7 @@ ys_cv_validate_union(yang_stmt *ys,
 /*! Validate cligen variable cv using yang statement as spec
  *
  * @param[in]  cv      A cligen variable to validate. This is a correctly parsed cv.
- * @param[in]  ys      A yang statement, must be leaf of leaf-list.
+ * @param[in]  ys      A yang statement, must be leaf or leaf-list.
  * @param[out] reason  If given, and if return value is 0, contains a malloced string
  *                      describing the reason why the validation failed. Must be freed.
  * @retval -1  Error (fatal), with errno set to indicate error

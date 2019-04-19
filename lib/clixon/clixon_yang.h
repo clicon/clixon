@@ -218,7 +218,9 @@ struct yang_stmt{
 					Y_TYPE & identity: store all derived types
 				     */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
+    void             *ys_regex_cache; /* regex cache */
     int               _ys_vector_i;   /* internal use: yn_each */
+
 };
 
 typedef int (yang_applyfn_t)(yang_stmt *ys, void *arg);
@@ -232,6 +234,8 @@ enum rfc_6020 yang_keyword_get(yang_stmt *ys);
 char      *yang_argument_get(yang_stmt *ys);
 cg_var    *yang_cv_get(yang_stmt *ys);
 cvec      *yang_cvec_get(yang_stmt *ys);
+void      *yang_regex_cache_get(yang_stmt *ys);
+int        yang_regex_cache_set(yang_stmt *ys, void *regex);
 
 /* Other functions */
 yang_stmt *yspec_new(void);

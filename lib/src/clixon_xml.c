@@ -127,6 +127,7 @@ struct xml{
 				       reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable 
                                        (eg xml_cmp) */
+    char             *x_ns_cache;   /* Cached namespace */
     int              _x_vector_i;   /* internal use: xml_child_each */
     int              _x_i;          /* internal use for sorting: 
 				       see xml_enumerate and xml_cmp */
@@ -234,6 +235,7 @@ xml_prefix_set(cxobj *xn,
  * @retval     0          OK
  * @retval    -1          Error
  * @see xmlns_check XXX can these be merged?
+ * @note, this function uses a cache. Any case where cache should be cleared?
  */
 int
 xml2ns(cxobj *x,
@@ -241,9 +243,11 @@ xml2ns(cxobj *x,
        char **namespace)
 {
     int    retval = -1;
-    char  *ns;
+    char  *ns = NULL;
     cxobj *xp;
     
+    if ((ns = x->x_ns_cache) != NULL)
+	goto ok;
     if (prefix != NULL) /* xmlns:<prefix>="<uri>" */
 	ns = xml_find_type_value(x, "xmlns", prefix, CX_ATTR);
     else                /* xmlns="<uri>" */
@@ -261,6 +265,11 @@ xml2ns(cxobj *x,
 	    ns = DEFAULT_XML_RPC_NAMESPACE;
 #endif
     }
+    if (ns && (x->x_ns_cache = strdup(ns)) == NULL){
+	clicon_err(OE_XML, errno, "strdup");
+	goto done;
+    }
+ ok:
     if (namespace)
 	*namespace = ns;
     retval = 0;
@@ -1359,6 +1368,8 @@ xml_free(cxobj *x)
 	free(x->x_childvec);
     if (x->x_cv)
 	cv_free(x->x_cv);
+    if (x->x_ns_cache)
+	free(x->x_ns_cache);
     free(x);
     return 0;
 }

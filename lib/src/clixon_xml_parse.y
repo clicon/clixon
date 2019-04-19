@@ -112,6 +112,44 @@ xml_parse_content(struct xml_parse_yacc_arg *ya,
     return retval;
 }
 
+/*! Add whitespace
+ * If text, ie only body, keep as is.
+ * But if there is an element, then skip all whitespace.
+ */
+static int
+xml_parse_whitespace(struct xml_parse_yacc_arg *ya,
+		     char                      *str)
+{
+    cxobj *xn = ya->ya_xelement;
+    cxobj *xp = ya->ya_xparent;
+    int    retval = -1;
+    int    i;
+
+    ya->ya_xelement = NULL; /* init */
+    /* If there is an element already, only add one whitespace child 
+     * otherwise, keep all whitespace.
+     */
+#if 1
+    for (i=0; i<xml_child_nr(xp); i++){
+	if (xml_type(xml_child_i(xp, i)) == CX_ELMNT)
+	    goto ok; /* Skip if already element */
+    }
+#endif
+    if (xn == NULL){
+	if ((xn = xml_new("body", xp, NULL)) == NULL)
+	    goto done; 
+	xml_type_set(xn, CX_BODY);
+    }
+    if (xml_value_append(xn, str)==NULL)
+	goto done; 
+    ya->ya_xelement = xn;
+ ok:
+    retval = 0;
+  done:
+    return retval;
+}
+
+ 
 static int
 xml_parse_version(struct xml_parse_yacc_arg *ya,
 		  char                      *ver)
@@ -243,11 +281,17 @@ xml_parse_bslash1(struct xml_parse_yacc_arg *ya,
 	while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
 	    break;
 	if (xc != NULL){ /* at least one element */
-	    xc = NULL;
-	    while ((xc = xml_child_each(x, xc, CX_BODY)) != NULL) {
-		xml_purge(xc);
-		xc = NULL; /* reset iterator */
-	    }	    
+	    int i;
+	    for (i=0; i<xml_child_nr(x);){
+		xc = xml_child_i(x, i);
+		if (xml_type(xc) != CX_BODY){
+		    i++;
+		    continue;
+		}
+		if (xml_child_rm(x, i) < 0)
+		    goto done;
+		xml_free(xc);
+	    }
 	}
     }
     retval = 0;
@@ -425,7 +469,7 @@ content     : element      { clicon_debug(2, "content -> element"); }
             | pi           { clicon_debug(2, "content -> pi"); }
             | CHARDATA     { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
                              clicon_debug(2, "content -> CHARDATA %s", $1); }
-            | WHITESPACE   { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
+            | WHITESPACE   { if (xml_parse_whitespace(_YA, $1) < 0) YYABORT;  
                              clicon_debug(2, "content -> WHITESPACE %s", $1); }
             |              { clicon_debug(2, "content -> "); }
             ;

@@ -69,6 +69,7 @@
 #include <sys/param.h>
 #include <netinet/in.h>
 #include <libgen.h>
+#include <regex.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -222,6 +223,20 @@ yang_cvec_get(yang_stmt *ys)
     return ys->ys_cvec;
 }
 
+void*
+yang_regex_cache_get(yang_stmt *ys)
+{
+    return ys->ys_regex_cache;
+}
+
+int
+yang_regex_cache_set(yang_stmt *ys,
+		     void      *regex)
+{
+    ys->ys_regex_cache = regex;
+    return 0;
+}
+
 /* End access functions */
 
 /*! Create new yang specification
@@ -266,6 +281,17 @@ ys_new(enum rfc_6020 keyw)
     return ys;
 }
 
+
+static int
+yang_regex_cache_free(yang_stmt *ys)
+{
+    if (ys->ys_regex_cache){
+	regfree(ys->ys_regex_cache);
+	free(ys->ys_regex_cache);
+    }
+    return 0;
+}
+
 /*! Free a single yang statement */
 static int 
 ys_free1(yang_stmt *ys)
@@ -280,6 +306,7 @@ ys_free1(yang_stmt *ys)
 	cvec_free(ys->ys_cvec);
     if (ys->ys_typecache)
 	yang_type_cache_free(ys->ys_typecache);
+    yang_regex_cache_free(ys);
     free(ys);
     return 0;
 }

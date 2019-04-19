@@ -146,7 +146,7 @@ generic_validate(yang_stmt          *yspec,
  * and call application callback validations.
  * @param[in]  h       Clicon handle
  * @param[in]  db      The startup database. The wanted backend state
- * @param[out] xtr     Transformed XML
+ * @param[in]  td      Transaction
  * @param[out] cbret   CLIgen buffer w error stmt if retval = 0
  * @retval    -1       Error - or validation failed (but cbret not set)
  * @retval     0       Validation failed (with cbret set)
@@ -183,6 +183,10 @@ startup_common(clicon_handle       h,
     clicon_debug(1, "Reading startup config from %s", db);
     if (xmldb_get(h, db, "/", &xt, msd) < 0)
 	goto done;
+    if (xml_child_nr(xt) == 0){     /* If empty skip */
+	td->td_target = xt;
+	goto ok;
+    }
     if (msd){
 	if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
 	    goto done;
@@ -225,6 +229,7 @@ startup_common(clicon_handle       h,
     /* 7. Call plugin transaction complete callbacks */
     if (plugin_transaction_complete(h, td) < 0)
 	goto done;
+ ok:
     retval = 1;
  done:
     if (msd)
