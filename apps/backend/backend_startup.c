@@ -260,7 +260,7 @@ startup_extraxml(clicon_handle        h,
 	goto done;
     if (ret == 0)
 	goto fail;
-    if (xt==NULL /* || xml_child_nr(xt)==0 */ ) /* This gives SEGV in test_feature */
+    if (xt==NULL || xml_child_nr(xt)==0) 
 	goto ok;
     /* Write (potentially modified) xml tree xt back to tmp
      */

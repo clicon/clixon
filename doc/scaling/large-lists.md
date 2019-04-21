@@ -12,14 +12,14 @@ Olof Hagsand, 2019-04-17
 
 ## 1. Background
 
-CIixon can handle large configurations. Here, large number of elements
+Clixon can handle large configurations. Here, large number of elements
 in a "flat" list is presented.  There are other scaling usecases,
 such as large configuratin "depth", large number of requesting
 clients, etc.
 
 Thanks to [Netgate](www.netgate.com) for supporting this work.
 
-## 2.Overview
+## 2. Overview
 
 The basic case is a large list, according to the following Yang specification:
 ```

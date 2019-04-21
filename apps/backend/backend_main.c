@@ -694,8 +694,9 @@ main(int    argc,
     /* Call backend plugin_start with user -- options */
     if (clixon_plugin_start(h) < 0)
 	goto done;
+    /* -1 option to run only once */
     if (once)
-	goto done;
+	goto ok;
 
     /* Daemonize and initiate logging. Note error is initiated here to make
        demonized errors OK. Before this stage, errors are logged on stderr 
@@ -733,6 +734,7 @@ main(int    argc,
 	goto done;
     if (event_loop() < 0)
 	goto done;
+ ok:
     retval = 0;
   done:
     if (cbret)

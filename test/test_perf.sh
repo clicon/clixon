@@ -5,7 +5,7 @@
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Number of list/leaf-list entries in file
-: ${perfnr:=2000}
+: ${perfnr:=10000}
 
 # Number of requests made get/put
 : ${perfreq:=100}
@@ -50,8 +50,35 @@ cat <<EOF > $cfg
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
+  <CLICON_CLI_MODE>example</CLICON_CLI_MODE>
+  <CLICON_CLI_DIR>/usr/local/lib/example/cli</CLICON_CLI_DIR>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
+  <CLICON_CLI_GENMODEL_TYPE>VARS</CLICON_CLI_GENMODEL_TYPE>
+  <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
 </clixon-config>
 EOF
+
+# Try startup mode w startup
+for mode in startup running; do
+    file=$dir/${mode}_db
+    sudo touch $file
+    sudo chmod 666 $file
+    new "generate large startup config ($file) with $perfnr list entries in mode $mode"
+    echo -n "<config><x xmlns=\"urn:example:clixon\">" > $file
+    for (( i=0; i<$perfnr; i++ )); do  
+	echo -n "<y><a>$i</a><b>$i</b></y>" >> $file
+    done
+    echo "</x></config>" >> $file
+
+    new "Startup backend once -s $mode -f $cfg -y $fyang"
+    # Cannot use start_backend here due to expected error case
+    time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang # 2> /dev/null
+done
+
+new "Startup backend once -s $mode -f $cfg -y $fyang"
+# Cannot use start_backend here due to expected error case
+time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang # 2> /dev/null
 
 new "test params: -f $cfg -y $fyang"
 if [ $BE -ne 0 ]; then
@@ -183,5 +210,6 @@ if [ -z "$pid" ]; then
 fi
 # kill backend
 stop_backend -f $cfg
+
 
 rm -rf $dir

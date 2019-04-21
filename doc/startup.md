@@ -254,7 +254,8 @@ When the startup process is completed, a startup status is set and is accessible
 
 If the startup fails, the backend looks for a `failsafe` configuration
 in `CLICON_XMLDB_DIR/failsafe_db`. If such a config is not found, the
-backend terminates.
+backend terminates. In this mode, running and startup mode should be
+unchanged.
 
 If the failsafe is found, the failsafe config is loaded and
 committed into the running db.
@@ -405,6 +406,7 @@ running   |--------+------------> GOTO EXTRA XML
 
 ### Running mode
 
+On failure, running is restored to initial state
 ```
 running   ----+                   |----------+--------> GOTO EXTRA XML
                \ copy   parse  validate OK  / commit 
@@ -420,7 +422,7 @@ running                         |--------+------------> GOTO EXTRA XML
 startup -------+--+-------+------------+          
 ```
 
-### Failure
+### Failure if failsafe
 ```
 failsafe      ----------------------+
                             reset    \ commit

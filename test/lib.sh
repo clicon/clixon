@@ -201,6 +201,7 @@ new(){
 # - expected command return value (0 if OK)
 # - expected stdout outcome,
 # - expected2 stdout outcome,
+# Example: expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "^$"
 expectfn(){
     cmd=$1
     retval=$2

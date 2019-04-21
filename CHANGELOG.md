@@ -32,6 +32,15 @@
   * Two config options control:
     * CLICON_XML_CHANGELOG enables the yang changelog feature
     * CLICON_XML_CHANGELOG_FILE where the changelog resides
+* Optimization work
+  * Improved performance of validation of (large) lists
+  * A scaling of [large lists](doc/scaling) report is added
+  * New xmldb_get1() returning actual cache - not a copy. This has lead to some householding instead of just deleting the copy
+  * xml_diff rewritten to work linearly instead of O(2)
+  * New xml_insert function using tree search. The new code uses this in insertion xmldb_put and defaults. (Note previous xml_insert renamed to xml_wrap_all)
+  * A yang type regex cache added, this helps the performance by avoiding re-running the `regcomp` command on every iteration.
+  * An XML namespace cache added (see `xml2ns()`)
+  * Better performance of XML whitespace parsing/scanning.
 	
 ### API changes on existing features (you may need to change your code)
 
@@ -102,12 +111,7 @@
 
 ### Minor changes
 
-* A scaling of [large lists](doc/scaling) report is added
 * A new "hello world" example is added
-* Optimized validation of large lists
-  * New xmldb_get1() returning actual cache - not a copy. This has lead to some householding instead of just deleting the copy
-  * xml_diff rewritten to work linearly instead of O(2)
-  * New xml_insert function using tree search. The new code uses this in insertion xmldb_put and defaults. (Note previous xml_insert renamed to xml_wrap_all)
 * Experimental customized error output strings, see [lib/clixon/clixon_err_string.h]
 * Empty leaf values, eg <a></a> are now checked at validation.
   * Empty values were skipped in validation.

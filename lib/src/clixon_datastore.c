@@ -188,14 +188,15 @@ xmldb_copy(clicon_handle h,
     int                 retval = -1;
     char               *fromfile = NULL;
     char               *tofile = NULL;
-    db_elmnt           *de1 = NULL;
-    db_elmnt           *de2 = NULL;
+    db_elmnt           *de1 = NULL; /* from */
+    db_elmnt           *de2 = NULL; /* to */
     db_elmnt            de0 = {0,};
-    cxobj              *x1 = NULL;
-    cxobj              *x2 = NULL;
+    cxobj              *x1 = NULL;  /* from */
+    cxobj              *x2 = NULL;  /* to */
 		
     /* XXX lock */
     if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
+	/* Copy in-memory cache */
 	/* 1. "to" xml tree in x1 */
 	if ((de1 = clicon_db_elmnt_get(h, from)) != NULL)
 	    x1 = de1->de_xml;
@@ -208,7 +209,7 @@ xmldb_copy(clicon_handle h,
 	    xml_free(x2);
 	    x2 = NULL;
 	}
-	else  if (x2 == NULL){ /* create x2 and copy x1 to it */
+	else  if (x2 == NULL){ /* create x2 and copy from x1 */
 	    if ((x2 = xml_new(xml_name(x1), NULL, xml_spec(x1))) == NULL)
 		goto done;
 	    if (xml_copy(x1, x2) < 0) 
@@ -221,12 +222,13 @@ xmldb_copy(clicon_handle h,
 	    if (xml_copy(x1, x2) < 0) 
 		goto done;
 	}
-	if (x1 || x2){
-	    if (de2)
-		de0 = *de2;
-	    de0.de_xml = x2; /* The new tree */
-	    clicon_db_elmnt_set(h, to, &de0);
-	}
+	/* always set cache although not strictly necessary in case 1
+	 * above, but logic gets complicated due to differences with
+	 * de and de->de_xml */
+	if (de2)
+	    de0 = *de2;
+	de0.de_xml = x2; /* The new tree */
+	clicon_db_elmnt_set(h, to, &de0);
     }
     /* Copy the files themselves (above only in-memory cache) */
     if (xmldb_db2file(h, from, &fromfile) < 0)
