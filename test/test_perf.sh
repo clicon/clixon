@@ -5,7 +5,7 @@
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Number of list/leaf-list entries in file
-: ${perfnr:=10000}
+: ${perfnr:=20000}
 
 # Number of requests made get/put
 : ${perfreq:=100}
@@ -59,6 +59,13 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg -y $fyang
+    if [ $? -ne 0 ]; then
+	err
+    fi
+fi
 # Try startup mode w startup
 for mode in startup running; do
     file=$dir/${mode}_db
@@ -113,7 +120,6 @@ new "netconf write large config"
 expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Here, there are $perfnr entries in candidate
-
 new "netconf write large config again"
 expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 

@@ -270,77 +270,141 @@ plot(){
     echo # newline
 }
 
+# Run an operation, iterate from <from> to <to> in increment of <step> 
+# Each operation do <reqs> times
+# args: <op> <protocol> <from> <step> <to> <reqs> <cand> <run>
+# <reqs>=0 means all in one go
+startup(){
+    from=$1
+    step=$2
+    to=$3
+    mode=startup
+
+    if [ $# -ne 3 ]; then
+	exit "plot should be called with 3 arguments, got $#"
+    fi
+
+    # gnuplot file
+    gfile=$resdir/startup-$arch    
+    new "Create file $gfile"
+    echo -n "" > $gfile
+
+    # Startup db: load with n entries
+    dbfile=$dir/${mode}_db
+    sudo touch $dbfile
+    sudo chmod 666 $dbfile
+    for (( n=$from; n<=$to; n=$n+$step )); do  
+	new "startup-$arch $n"
+	new "Generate $n entries to $dbfile"
+	echo -n "<config><x xmlns=\"urn:example:clixon\">" > $dbfile
+	for (( i=0; i<$n; i++ )); do  
+	    echo -n "<y><a>$i</a><b>$i</b></y>" >> $dbfile
+	done
+	echo "</x></config>" >> $dbfile
+
+	new "Startup backend once -s $mode -f $cfg -y $fyang"
+	echo -n "$n " >>  $gfile
+	{ time -p sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang 2> /dev/null; } 2>&1 |  awk '/real/ {print $2}' | tr , . >> $gfile
+
+    done
+    echo # newline
+}
+
 if $run; then
-new "test params: -f $cfg -y $fyang"
-if [ $BE -ne 0 ]; then
-    new "kill old backend"
-    sudo clixon_backend -zf $cfg -y $fyang
-    if [ $? -ne 0 ]; then
-	err
+
+    # Startup test before regular backend/restconf start since we only start
+    # backend a single time
+    startup $step $step $to
+
+    new "test params: -f $cfg -y $fyang"
+    if [ $BE -ne 0 ]; then
+	new "kill old backend"
+	sudo clixon_backend -zf $cfg -y $fyang
+	if [ $? -ne 0 ]; then
+	    err
+	fi
+	new "start backend -s init -f $cfg -y $fyang"
+	start_backend -s init -f $cfg -y $fyang
     fi
-    new "start backend -s init -f $cfg -y $fyang"
-    start_backend -s init -f $cfg -y $fyang
-fi
 
-new "kill old restconf daemon"
-sudo pkill -u www-data -f "/www-data/clixon_restconf"
+    new "kill old restconf daemon"
+    sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-new "start restconf daemon"
-start_restconf -f $cfg -y $fyang
+    new "start restconf daemon"
+    start_restconf -f $cfg -y $fyang
 
-new "waiting"
-sleep $RCWAIT
+    new "waiting"
+    sleep $RCWAIT
 
 
-to=$to0
-step=$step0
-reqs=$reqs0
+    to=$to0
+    step=$step0
+    reqs=$reqs0
 
-# Put all tests
-for proto in netconf restconf; do
-    new "$proto put all entries to candidate (restconf:running)"
-    plot put  $proto  $step $step $to 0 0 0 # all candidate 0 running 0
-done
 
-# Get all tests
-for proto in netconf restconf; do
-    new "$proto get all entries from running"
-    plot get $proto  $step $step $to 0 n n # start w full datastore
-done
+    # Put all tests
+    for proto in netconf restconf; do
+	new "$proto put all entries to candidate (restconf:running)"
+	plot put  $proto  $step $step $to 0 0 0 # all candidate 0 running 0
+    done
 
-# Netconf commit all
-new "Netconf commit all entries from candidate to running"
-plot commit netconf $step $step $to 0 n 0 # candidate full running empty
+    # Get all tests
+    for proto in netconf restconf; do
+	new "$proto get all entries from running"
+	plot get $proto  $step $step $to 0 n n # start w full datastore
+    done
 
-# Transactions get/put/delete
-reqs=$reqs0
-for proto in netconf restconf; do
-    new "$proto get $reqs from full database"
-    plot get $proto $step $step $to $reqs n n 
+    # Netconf commit all
+    new "Netconf commit all entries from candidate to running"
+    plot commit netconf $step $step $to 0 n 0 # candidate full running empty
 
-    new "$proto put $reqs to full database(replace / alter values)"
-    plot put $proto $step $step $to $reqs n n
+    # Transactions get/put/delete
+    reqs=$reqs0
+    for proto in netconf restconf; do
+	new "$proto get $reqs from full database"
+	plot get $proto $step $step $to $reqs n n 
 
-    new "$proto delete $reqs from full database(replace / alter values)"
-    plot delete $proto $step $step $to $reqs n n
-done
+	new "$proto put $reqs to full database(replace / alter values)"
+	plot put $proto $step $step $to $reqs n n
 
-new "Kill restconf daemon"
-stop_restconf
+	new "$proto delete $reqs from full database(replace / alter values)"
+	plot delete $proto $step $step $to $reqs n n
+    done
 
-if [ $BE -ne 0 ]; then
-    new "Kill backend"
-    # Check if premature kill
-    pid=`pgrep -u root -f clixon_backend`
-    if [ -z "$pid" ]; then
-	err "backend already dead"
+    new "Kill restconf daemon"
+    stop_restconf
+
+    if [ $BE -ne 0 ]; then
+	new "Kill backend"
+	# Check if premature kill
+	pid=`pgrep -u root -f clixon_backend`
+	if [ -z "$pid" ]; then
+	    err "backend already dead"
+	fi
+	# kill backend
+	stop_backend -f $cfg
     fi
-    # kill backend
-    stop_backend -f $cfg
-fi
 fi # if run
 
 if $plot; then
+
+# 0. Startup
+gplot=""
+for a in $archs; do
+    gplot="$gplot \"$resdir/startup-$a\" title \"startup-$a\","
+done
+
+gnuplot -persist <<EOF
+set title "Clixon startup"
+set style data linespoint
+set xlabel "Entries"
+set ylabel "Time[s]"
+set grid
+set terminal $term
+set yrange [*:*]
+set output "$resdir/clixon-startup.$term"
+plot $gplot
+EOF
 
 # 1. Get config
 gplot=""

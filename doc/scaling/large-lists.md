@@ -12,10 +12,17 @@ Olof Hagsand, 2019-04-17
 
 ## 1. Background
 
-Clixon can handle large configurations. Here, large number of elements
-in a "flat" list is presented.  There are other scaling usecases,
-such as large configuratin "depth", large number of requesting
-clients, etc.
+Clixon can handle large configurations. Here, measurements using a
+large number of elements in a simple "flat" list is analysed. This
+includes starting up with alarge existing database; initializing an
+empty database with a large number of entries, accessing single
+entries with a large database, etc.
+
+In short, the results show a linear dependency on the number of
+entries. This is OK for startup scenarions, but single-enrty (transactional) operations need improvement.
+
+There are other scaling usecases, such as large configuratin "depth",
+large number of requesting clients, etc.
 
 Thanks to [Netgate](www.netgate.com) for supporting this work.
 
@@ -41,7 +48,7 @@ The basic case is a large list, according to the following Yang specification:
 ```
 where `a` is a unique key and `b` is a payload, useful in replace operations.
 
-XML lists with `N` elements are generated based on
+With this XML lists with `N` elements are generated based on
 this configuration, eg for `N=10`:
 ```
    <y><a>0</a><b>0</b></y>
@@ -66,6 +73,7 @@ Requests are either made over the _whole_ dataset, or for one specific element. 
 Operations of single elements (transactions) are made in a burst of
 random elements, typically 100. 
 
+
 ## 3. Tests
 
 All details of the setup are in the [test script](../../test/plot_perf.sh).
@@ -76,6 +84,7 @@ All tests measure the "real" time of a command on a lightly loaded
 machine using the Linux command `time(1)`.
 
 The following tests were made (for each architecture and protocol):
+* Write `N` entries into the startup configuration. The clixon_backend was started with options `-1s startup`.
 * Write `N` entries in one single operation. (With an empty datastore)
 * Read `N` entries in one single operation. (With a datastore of `N` entries)
 * Commit `N` entries (With a candidate of `N` entries and empty running)
@@ -83,7 +92,7 @@ The following tests were made (for each architecture and protocol):
 * Write/Replace 1 entry (In a datastore of `N` entries)
 * Delete 1 entry (In a datastore of `N` entries)
 
-The tests are made using Netconf and Restconf, except commit which is made only for Netconf.
+The tests are made using Netconf and Restconf, except commit which is made only for Netconf and startup where protocol is irrelevant.
 
 ### Architecture and OS
 
@@ -118,9 +127,12 @@ The tests were made on the following hardware, all running Ubuntu Linux:
 
 ## 4. Results
 
-### Access of the whole datastore
-
 This section shows the results of the measurements as defined in [Tests](#tests).
+### Startup
+
+![Startup](clixon-startup.png "Startup")
+
+### Access of the whole datastore
 
 ![Get config](clixon-get-0.png "Get config")
 
@@ -196,11 +208,14 @@ system degrades with the size of the lists.
 Examining the profiling of the most demanding Restconf PUT case, most
 cycles are spent on handling writing and copying the existing datastore.
 
-Concluding, the 
+Note that the experiments here contains _very_ simple
+data-structures. A more realistic complex example will require more
+CPU effort. Ad-hoc measurement of a more complex datastructure,
+generated four times the duration of the simple yang model in this work.
 
 ## 6. Future work
 
-* Improve access of single list elements to sub-linear performance.
+* Improve access of individual elements to sub-linear performance.
 * CLI access on large lists (not included in this study)
 
 ## 7. References
