@@ -112,6 +112,7 @@ hash_bucket(const char *str)
  *
  * @retval  hash  Pointer to new hash table.
  * @retval  NULL  Error
+ * @see hash_free  For freeing the hash-table
  */
 clicon_hash_t *
 hash_init(void)

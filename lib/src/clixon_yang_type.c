@@ -80,22 +80,49 @@ static const map_str2int ytmap[] = {
     {"int32",       CGV_INT32},  /* NOTE, first match on right is significant, dont move */
     {"string",      CGV_STRING}, /* NOTE, first match on right is significant, dont move */
     {"string",      CGV_REST},   /* For cv -> yang translation of rest */
-    {"binary",      CGV_STRING},    
-    {"bits",        CGV_STRING},    
+    {"binary",      CGV_STRING},
+    {"bits",        CGV_STRING},
     {"boolean",     CGV_BOOL},
-    {"decimal64",   CGV_DEC64},  
+    {"decimal64",   CGV_DEC64},
     {"empty",       CGV_VOID},  /* May not include any content */
-    {"enumeration", CGV_STRING}, 
+    {"enumeration", CGV_STRING},
     {"identityref", CGV_STRING},  /* XXX */
     {"instance-identifier", CGV_STRING}, /* XXX */
-    {"int8",        CGV_INT8},  
-    {"int16",       CGV_INT16},  
+    {"int8",        CGV_INT8},
+    {"int16",       CGV_INT16},
     {"int64",       CGV_INT64},
     {"leafref",     CGV_STRING},  /* XXX */
-    {"uint8",       CGV_UINT8}, 
+    {"uint8",       CGV_UINT8},
     {"uint16",      CGV_UINT16},
     {"uint32",      CGV_UINT32},
     {"uint64",      CGV_UINT64},
+    {"union",       CGV_REST},  /* Is replaced by actual type */
+    {NULL,         -1}
+};
+
+/*! Mapping from yang string types --> cligen types
+ * @note not 100% same as map_str2int since it has significant order AND
+ *       string->CGV_REST entry removed
+ */
+static const map_str2int ytmap2[] = {
+    {"binary",      CGV_STRING},
+    {"bits",        CGV_STRING},
+    {"boolean",     CGV_BOOL},
+    {"decimal64",   CGV_DEC64},
+    {"empty",       CGV_VOID},  /* May not include any content */
+    {"enumeration", CGV_STRING},
+    {"identityref", CGV_STRING},  /* XXX */
+    {"instance-identifier", CGV_STRING}, /* XXX */
+    {"int16",       CGV_INT16},
+    {"int32",       CGV_INT32},
+    {"int64",       CGV_INT64},
+    {"int8",        CGV_INT8},
+    {"leafref",     CGV_STRING},  /* XXX */
+    {"string",      CGV_STRING},
+    {"uint16",      CGV_UINT16},
+    {"uint32",      CGV_UINT32},
+    {"uint64",      CGV_UINT64},
+    {"uint8",       CGV_UINT8},
     {"union",       CGV_REST},  /* Is replaced by actual type */
     {NULL,         -1}
 };
@@ -172,7 +199,7 @@ regex_exec(regex_t *re,
 static int
 yang_builtin(char *type)
 {
-    if (clicon_str2int(ytmap, type) != -1)
+    if (clicon_str2int_search(ytmap2, type, (sizeof(ytmap)/sizeof(map_str2int))-2) != -1)
 	return 1;
     return 0;
 }
@@ -318,7 +345,7 @@ yang2cv_type(char         *ytype,
 
     *cv_type = CGV_ERR;
     /* built-in types */
-    if ((ret = clicon_str2int(ytmap, ytype)) != -1){
+    if ((ret = clicon_str2int_search(ytmap2, ytype, (sizeof(ytmap)/sizeof(map_str2int))-2)) != -1){
 	*cv_type = ret;
 	return 0;
     }

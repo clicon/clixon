@@ -744,8 +744,10 @@ xml_childvec_get(cxobj *x)
  *   ...
  *   xml_free(x);
  * @endcode
- * @note yspec may be NULL either because it is not known or it is irrelevant, 
- *       eg for body or attribute
+ * @note As a rule, yspec should be given in normal Clixon calls to enable
+ *       proper sorting and insert functionality. Except as follows:
+ *         - type is body or attribute
+ *         - Yang is unknown
  * @see xml_sort_insert
  */
 cxobj *
@@ -828,6 +830,7 @@ xml_cv_set(cxobj  *x,
  * @retval xmlobj     if found.
  * @retval NULL       if no such node found.
  * @see xml_find_type  A more generic function
+ * @note Linear scalability and relies on strcmp
  */
 cxobj *
 xml_find(cxobj *x_up, 
