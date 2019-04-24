@@ -15,7 +15,7 @@
 ## Content
 
 This directory contains a Clixon example which includes a simple example. It contains the following files:
-* `example.xml`       The configuration file. See [yang/clixon-config@<date>.yang](../../yang/clixon-config@2018-10-21.yang) for the documentation of all available fields.
+* `example.xml`       The configuration file. See [yang/clixon-config@<date>.yang](../../yang/clixon-config@2019-03-05.yang) for the documentation of all available fields.
 * `clixon-example@2019-01-13.yang`      The yang spec of the example.
 * `example_cli.cli`   CLIgen specification.
 * `example_cli.c`     CLI callback plugin containing functions called in the cli file above: a generic callback (`mycallback`) and an example RPC call (`example_client_rpc`).

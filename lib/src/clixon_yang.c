@@ -69,6 +69,7 @@
 #include <sys/param.h>
 #include <netinet/in.h>
 #include <libgen.h>
+#include <regex.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -223,6 +224,46 @@ yang_cvec_get(yang_stmt *ys)
     return ys->ys_cvec;
 }
 
+/*! Set yang statement CLIgen variable vector
+ * @param[in] ys   Yang statement node
+ * @param[in] cvec CLIgen vector
+ * @retval    0    OK
+ * @retval   -1    Error
+ */
+int
+yang_cvec_set(yang_stmt *ys,
+	      cvec      *cvv)
+{
+    if (ys->ys_cvec)
+	cvec_free(ys->ys_cvec);
+    ys->ys_cvec = cvv;
+    return 0;
+}
+
+/*! Get regular expression cache - the compiled regex
+ * @param[in] ys  Yang statement node
+ * @retval    re  Compiled regex
+ * @see regcomp
+ */
+void*
+yang_regex_cache_get(yang_stmt *ys)
+{
+    return ys->ys_regex_cache;
+}
+
+/*! Set regular expression cache - the compiled regex
+ * @param[in] ys  Yang statement node
+ * @param[in] re  Compiled regex
+ * @see regcomp
+ */
+int
+yang_regex_cache_set(yang_stmt *ys,
+		     void      *regex)
+{
+    ys->ys_regex_cache = regex;
+    return 0;
+}
+
 /* End access functions */
 
 /*! Create new yang specification
@@ -267,6 +308,17 @@ ys_new(enum rfc_6020 keyw)
     return ys;
 }
 
+
+static int
+yang_regex_cache_free(yang_stmt *ys)
+{
+    if (ys->ys_regex_cache){
+	regfree(ys->ys_regex_cache);
+	free(ys->ys_regex_cache);
+    }
+    return 0;
+}
+
 /*! Free a single yang statement */
 static int 
 ys_free1(yang_stmt *ys)
@@ -281,6 +333,7 @@ ys_free1(yang_stmt *ys)
 	cvec_free(ys->ys_cvec);
     if (ys->ys_typecache)
 	yang_type_cache_free(ys->ys_typecache);
+    yang_regex_cache_free(ys);
     free(ys);
     return 0;
 }
@@ -720,6 +773,30 @@ yang_choice(yang_stmt *y)
     return NULL;
 }
 
+static int
+order1_choice(yang_stmt *yp,
+	      yang_stmt *y)
+{
+    yang_stmt  *ys;
+    yang_stmt  *yc;
+    int         i;
+    int         j;
+
+    for (i=0; i<yp->ys_len; i++){
+	ys = yp->ys_stmt[i];
+	if (ys->ys_keyword == Y_CASE){
+	    for (j=0; j<ys->ys_len; j++){
+		yc = ys->ys_stmt[j];
+		if (yang_datanode(yc) && yc == y)
+		    return 1;
+	    }
+	}
+	else if (yang_datanode(ys) && ys == y)
+	    return 1;
+    }
+    return 0;
+}
+
 /*! Find matching y in yp:s children, return 0 and index or -1 if not found.
  * @param[in]  yp     Parent
  * @param[in]  y      Yang datanode to find
@@ -737,10 +814,16 @@ order1(yang_stmt *yp,
     
     for (i=0; i<yp->ys_len; i++){
 	ys = yp->ys_stmt[i];
-	if (!yang_datanode(ys))
-	    continue;
-	if (ys==y)
-	    return 1;
+	if (ys->ys_keyword == Y_CHOICE){
+	    if (order1_choice(ys, y) == 1) /* If one of the choices is "y" */
+		return 1;
+	}
+	else {
+	    if (!yang_datanode(ys))
+		continue;
+	    if (ys==y)
+		return 1;
+	}
 	(*index)++;
     }
     return 0;
@@ -763,7 +846,14 @@ yang_order(yang_stmt *y)
     int         j=0;
     int         tot = 0;
     
+    /* Some special handling if yp is choice (or case) and maybe union?
+     * if so, the real parent (from an xml point of view) is the parents
+     * parent. 
+     */
     yp = y->ys_parent;
+    while (yp->ys_keyword == Y_CASE || yp->ys_keyword == Y_CHOICE)
+	yp = yp->ys_parent;
+
     /* XML nodes with yang specs that are children of modules are special - 
      * In clixon, they are seen as an "implicit" container where the XML can come from different
      * modules. The order must therefore be global among yang top-symbols to be unique.
@@ -1950,6 +2040,7 @@ yang_parse_str(char         *str,
  * @param[in] ysp    Yang specification. Should have been created by caller using yspec_new
  * @retval ymod      Top-level yang (sub)module
  * @retval NULL      Error 
+ * @note this function simply parse a yang spec, no dependencies or checks
  */
 yang_stmt *
 yang_parse_file(int         fd,

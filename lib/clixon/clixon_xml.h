@@ -118,8 +118,9 @@ cxobj    *xml_child_i_type(cxobj *xn, int i, enum cxobj_type type);
 cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);
 cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 
-cxobj   **xml_childvec_get(cxobj *x);
+int       xml_child_insert_pos(cxobj *x, cxobj *xc, int i);
 int       xml_childvec_set(cxobj *x, int len);
+cxobj   **xml_childvec_get(cxobj *x);
 cxobj    *xml_new(char *name, cxobj *xn_parent, yang_stmt *spec);
 yang_stmt *xml_spec(cxobj *x);
 int       xml_spec_set(cxobj *x, yang_stmt *spec);
@@ -130,7 +131,6 @@ cxobj    *xml_find(cxobj *xn_parent, char *name);
 int       xml_addsub(cxobj *xp, cxobj *xc);
 cxobj    *xml_wrap_all(cxobj *xp, char *tag);
 cxobj    *xml_wrap(cxobj *xc, char *tag);
-#define xml_insert(x,t) xml_wrap_all((x),(t))
 int       xml_purge(cxobj *xc);
 int       xml_child_rm(cxobj *xp, int i);
 int       xml_rm(cxobj *xc);

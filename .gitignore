@@ -14,6 +14,7 @@ docker/Makefile
 docker/*/Makefile
 etc/Makefile
 example/Makefile
+example/*/Makefile
 lib/Makefile
 lib/*/Makefile
 test/Makefile

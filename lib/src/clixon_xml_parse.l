@@ -132,10 +132,10 @@ ncname     {namestart}{namechar}*
 <STATEA>"<?"          { BEGIN(PIDECL); return BQMARK; }
 <STATEA>\<            { BEGIN(START); return *clixon_xml_parsetext; }
 <STATEA>&             { _YA->ya_lex_state =STATEA;BEGIN(AMPERSAND);}
-<STATEA>[ \t]         { clixon_xml_parselval.string = yytext;return WHITESPACE; }
-<STATEA>\r\n          { clixon_xml_parselval.string = "\n";return WHITESPACE; }
+<STATEA>[ \t]+        { clixon_xml_parselval.string = yytext;return WHITESPACE; }
+<STATEA>\r\n          { clixon_xml_parselval.string = "\n"; _YA->ya_linenum++; return WHITESPACE; }
 <STATEA>\r            { clixon_xml_parselval.string = "\n";return WHITESPACE; }
-<STATEA>\n            { clixon_xml_parselval.string = yytext; _YA->ya_linenum++;return WHITESPACE; }
+<STATEA>\n            { clixon_xml_parselval.string = "\n"; _YA->ya_linenum++;return WHITESPACE; }
 <STATEA>.             { clixon_xml_parselval.string = yytext; return CHARDATA; }
 
 	/* @see xml_chardata_encode */

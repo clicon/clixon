@@ -32,9 +32,19 @@
   * Two config options control:
     * CLICON_XML_CHANGELOG enables the yang changelog feature
     * CLICON_XML_CHANGELOG_FILE where the changelog resides
+* Optimization work
+  * Improved performance of validation of (large) lists
+  * A scaling of [large lists](doc/scaling) report is added
+  * New xmldb_get1() returning actual cache - not a copy. This has lead to some householding instead of just deleting the copy
+  * xml_diff rewritten to work linearly instead of O(2)
+  * New xml_insert function using tree search. The new code uses this in insertion xmldb_put and defaults. (Note previous xml_insert renamed to xml_wrap_all)
+  * A yang type regex cache added, this helps the performance by avoiding re-running the `regcomp` command on every iteration.
+  * An XML namespace cache added (see `xml2ns()`)
+  * Better performance of XML whitespace parsing/scanning.
 	
 ### API changes on existing features (you may need to change your code)
 
+* The directory `docker/system` has been moved to `docker/main`, to reflect that it runs the main example.
 * xmldb_get() removed "config" parameter:
   * Change all calls to dbget from: `xmldb_get(h, db, xpath, 0|1, &xret, msd)` to `xmldb_get(h, db, xpath, &xret, msd)`
 * Structural change: removed datastore plugin and directory, and merged into regular clixon lib code.
@@ -51,9 +61,8 @@
     * Change all y->ys_keyword to yang_keyword_get(y)
     * Change all y->ys_argument to yang_argument_get(y)
     * Change all y->ys_cv to yang_cv_get(y)
-    * Change all y->ys_cvec to yang_cvec_get(y)
+    * Change all y->ys_cvec to yang_cvec_get(y) or yang_cvec_set(y, cvv)
   * Removed external direct access to the yang_stmt struct.
-
 * xmldb_get() removed unnecessary config option:
   * Change all calls to dbget from: `xmldb_get(h, db, xpath, 0|1, &xret, msd)` to `xmldb_get(h, db, xpath, &xret, msd)`
 
@@ -101,11 +110,12 @@
 ```
 
 ### Minor changes
+
+* A new "hello world" example is added
 * Experimental customized error output strings, see [lib/clixon/clixon_err_string.h]
 * Empty leaf values, eg <a></a> are now checked at validation.
   * Empty values were skipped in validation.
   * They are now checked and invalid for ints, dec64, etc, but are treated as empty string "" for string types.
-* Optimized validation by making xml_diff work on raw cache tree (not copies)
 * Added syntactic check for yang status: current, deprecated or obsolete.
 * Added `xml_wrap` function that adds an XML node above a node as a wrapper
   * also renamed `xml_insert` to `xml_wrap_all`.
@@ -128,6 +138,8 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Failure in startup with -m startup or running left running_db cleared.
+  * Running-db should not be changed on failure. Unless failure-db defined. Or if SEGV, etc. In those cases, tmp_db should include the original running-db.
 * Backend plugin returning NULL was still installed - is now logged and skipped.
 * [Parent list key is not validated if not provided via RESTCONF #83](https://github.com/clicon/clixon/issues/83), thanks achernavin22.
 * [Invalid JSON if GET /operations via RESTCONF #82](https://github.com/clicon/clixon/issues/82), thanks achernavin22

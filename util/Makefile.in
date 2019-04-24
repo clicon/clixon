@@ -73,6 +73,7 @@ APPSRC   += clixon_util_json.c
 APPSRC   += clixon_util_yang.c
 APPSRC   += clixon_util_xpath.c
 APPSRC   += clixon_util_datastore.c
+APPSRC   += clixon_util_insert.c
 ifeq ($(with_restconf),yes)
 APPSRC   += clixon_util_stream.c # Needs curl
 endif
@@ -105,6 +106,9 @@ clixon_util_stream: clixon_util_stream.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lcurl -o $@
 
 clixon_util_datastore: clixon_util_datastore.c $(LIBDEPS)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
+
+clixon_util_insert: clixon_util_insert.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
 distclean: clean

@@ -60,6 +60,10 @@ The `mem.sh` runs memory checks using valgrind. Start it with no arguments to te
   mem.sh restconf backend # Only backend and cli
 ```
 
+## Performance plots
+
+The script `plot_perf.sh` produces gnuplots for some testcases.
+
 ## Site.sh
 You may add your site-specific modifications in a `site.sh` file. Example:
 ```

@@ -114,6 +114,7 @@ db_merge(clicon_handle h,
 
 /*! Clixon startup startup mode: Commit startup configuration into running state
  * @param[in]  h       Clixon handle
+ * @param[in]  db      tmp or startup
  * @param[out] cbret   If status is invalid contains error message
  * @retval    -1       Error
  * @retval     0       Validation failed
@@ -150,9 +151,10 @@ startup_mode_startup(clicon_handle        h,
     int         retval = -1;
     int         ret;
     
-    /* [Delete and] create running db */
-    if (startup_db_reset(h, "running") < 0)
+    if (strcmp(db, "running")==0){
+	clicon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
 	goto done;
+    }
     /* Load plugins and call plugin_init() */
     if (backend_plugin_initiate(h) != 0) 
 	goto done;
@@ -258,6 +260,8 @@ startup_extraxml(clicon_handle        h,
 	goto done;
     if (ret == 0)
 	goto fail;
+    if (xt==NULL || xml_child_nr(xt)==0) 
+	goto ok;
     /* Write (potentially modified) xml tree xt back to tmp
      */
     if ((ret = xmldb_put(h, "tmp", OP_REPLACE, xt,
@@ -268,6 +272,7 @@ startup_extraxml(clicon_handle        h,
 	goto fail;
     if (ret == 0)
 	goto fail;
+ ok:
     retval = 1;
  done:
     if (xt)
@@ -299,15 +304,22 @@ startup_failsafe(clicon_handle h)
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (startup_db_reset(h, "running") < 0)
-	goto done;
     if ((ret = xmldb_exists(h, db)) < 0)
 	goto done;
     if (ret == 0){ /* No it does not exist, fail */
 	clicon_err(OE_DB, 0, "Startup failed and no Failsafe database found, exiting");
 	goto done;
     }
-    if ((ret = candidate_commit(h, db, cbret)) < 0) /* diff */
+    /* Copy original running to tmp as backup (restore if error) */
+    if (xmldb_copy(h, "running", "tmp") < 0)
+	goto done;
+    if (startup_db_reset(h, "running") < 0)
+	goto done;
+    ret = candidate_commit(h, db, cbret);
+    if (ret != 1)
+	if (xmldb_copy(h, "tmp", "running") < 0)
+	    goto done;
+    if (ret < 0)
 	goto done;
     if (ret == 0){
 	clicon_err(OE_DB, 0, "Startup failed, Failsafe database validation failed %s", cbuf_get(cbret));

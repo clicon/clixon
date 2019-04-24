@@ -5,7 +5,7 @@
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Number of list/leaf-list entries in file
-: ${perfnr:=1000}
+: ${perfnr:=20000}
 
 # Number of requests made get/put
 : ${perfreq:=100}
@@ -15,6 +15,7 @@ APPNAME=example
 cfg=$dir/scaling-conf.xml
 fyang=$dir/scaling.yang
 fconfig=$dir/large.xml
+fconfig2=$dir/large2.xml
 
 cat <<EOF > $fyang
 module scaling{
@@ -43,15 +44,48 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>scaling</CLICON_YANG_MODULE_MAIN>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/example/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
-  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
+  <CLICON_CLI_MODE>example</CLICON_CLI_MODE>
+  <CLICON_CLI_DIR>/usr/local/lib/example/cli</CLICON_CLI_DIR>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
+  <CLICON_CLI_GENMODEL_TYPE>VARS</CLICON_CLI_GENMODEL_TYPE>
+  <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
 </clixon-config>
 EOF
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg -y $fyang
+    if [ $? -ne 0 ]; then
+	err
+    fi
+fi
+# Try startup mode w startup
+for mode in startup running; do
+    file=$dir/${mode}_db
+    sudo touch $file
+    sudo chmod 666 $file
+    new "generate large startup config ($file) with $perfnr list entries in mode $mode"
+    echo -n "<config><x xmlns=\"urn:example:clixon\">" > $file
+    for (( i=0; i<$perfnr; i++ )); do  
+	echo -n "<y><a>$i</a><b>$i</b></y>" >> $file
+    done
+    echo "</x></config>" >> $file
+
+    new "Startup backend once -s $mode -f $cfg -y $fyang"
+    # Cannot use start_backend here due to expected error case
+    time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang # 2> /dev/null
+done
+
+new "Startup backend once -s $mode -f $cfg -y $fyang"
+# Cannot use start_backend here due to expected error case
+time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang # 2> /dev/null
 
 new "test params: -f $cfg -y $fyang"
 if [ $BE -ne 0 ]; then
@@ -86,12 +120,8 @@ new "netconf write large config"
 expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Here, there are $perfnr entries in candidate
-
 new "netconf write large config again"
 expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
-
-# Remove the file, its used for different purposes further down
-rm $fconfig
 
 # Now commit it from candidate to running 
 new "netconf commit large config"
@@ -119,7 +149,7 @@ done | $clixon_netconf -qf $cfg  -y $fyang > /dev/null
 new "restconf get $perfreq small config"
 time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    curl -sG http://localhost/restconf/data/scaling:x/y=$rnd,$rnd > /dev/null
+    curl -sG http://localhost/restconf/data/scaling:x/y=$rnd > /dev/null
 done
 
 new "restconf add $perfreq small config"
@@ -135,19 +165,23 @@ expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg  -y $fyang" 0 "<rpc><get
 new "restconf get large config"
 expecteof "/usr/bin/time -f %e curl -sG http://localhost/restconf/data" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^{"data": {"scaling:x": {"y": \[{"a": 0,"b": 0},{ "a": 1,"b": 1},{ "a": 2,"b": 2},{ "a": 3,"b": 3},'
 
+new "restconf delete $perfreq small config"
+time -p for (( i=0; i<$perfreq; i++ )); do
+    rnd=$(( ( RANDOM % $perfnr ) ))
+    curl -s -X DELETE http://localhost/restconf/data/scaling:x/y=$rnd
+done 
+
 # Now do leaf-lists istead of leafs
 
 new "generate large leaf-list config"
-echo -n "<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fconfig
+echo -n "<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fconfig2
 for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<c>$i</c>" >> $fconfig
+    echo -n "<c>$i</c>" >> $fconfig2
 done
-echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig
+echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig2
 
 new "netconf replace large list-leaf config"
-expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
-
-rm $fconfig
+expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig2" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 new "netconf commit large leaf-list config"
 expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
@@ -182,5 +216,6 @@ if [ -z "$pid" ]; then
 fi
 # kill backend
 stop_backend -f $cfg
+
 
 rm -rf $dir

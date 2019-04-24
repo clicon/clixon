@@ -95,6 +95,7 @@ struct yang_stmt{
 					Y_TYPE & identity: store all derived types
 				     */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
+    void             *ys_regex_cache; /* regex cache */
     int               _ys_vector_i;   /* internal use: yn_each */
 };
 

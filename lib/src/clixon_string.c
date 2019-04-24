@@ -552,7 +552,7 @@ clicon_int2str(const map_str2int *mstab,
  * @param[in] str  Input string
  * @retval    int  Value
  * @retval   -1    Error, not found
- * @note linear search
+ * @see clicon_str2int_search for optimized lookup, but strings must be sorted
  */
 int
 clicon_str2int(const map_str2int *mstab, 
@@ -564,6 +564,65 @@ clicon_str2int(const map_str2int *mstab,
 	if (strcmp(ms->ms_str, str) == 0)
 	    return ms->ms_int;
     return -1;
+}
+
+/*! Map from string to int using binary (alphatical) search
+ * @param[in]  ms    String, integer map
+ * @param[in]  str   Input string
+ * @param[in]  low   Lower bound index
+ * @param[in]  upper Upper bound index
+ * @param[in]  len   Length of array (max)
+ * @param[out] found Integer found (can also be negative)
+ * @retval    0      Not found
+ * @retval    1      Found with "found" value set.
+ * @note Assumes sorted strings, tree search
+ */
+static int
+str2int_search1(const map_str2int *mstab, 
+		char              *str,
+		int                low,
+		int                upper,
+		int                len,
+		int               *found)
+{
+    const struct map_str2int *ms;
+    int                       mid;
+    int                       cmp;
+
+    if (upper < low)
+	return 0; /* not found */
+    mid = (low + upper) / 2;
+    if (mid >= len)  /* beyond range */
+	return 0; /* not found */
+    ms = &mstab[mid];
+    if ((cmp = strcmp(str, ms->ms_str)) == 0){
+	*found = ms->ms_int;
+	return 1; /* found */
+    }
+    else if (cmp < 0)
+	return str2int_search1(mstab, str, low, mid-1, len, found);
+    else
+	return str2int_search1(mstab, str, mid+1, upper, len, found);
+}
+
+/*! Map from string to int using str2int map
+ * @param[in] ms   String, integer map
+ * @param[in] str  Input string
+ * @retval    int  Value
+ * @retval   -1    Error, not found
+ * @note Assumes sorted strings, tree search
+ * @note -1 can not be value
+ */
+int
+clicon_str2int_search(const map_str2int *mstab, 
+		      char              *str,
+		      int                len)
+{
+    int found;
+
+    if (str2int_search1(mstab, str, 0, len, len, &found)) 
+	return found;
+    return -1; /* not found */
 }
 
 /*! Split colon-separated node identifier into prefix and name

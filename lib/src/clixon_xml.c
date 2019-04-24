@@ -127,6 +127,7 @@ struct xml{
 				       reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable 
                                        (eg xml_cmp) */
+    char             *x_ns_cache;   /* Cached namespace */
     int              _x_vector_i;   /* internal use: xml_child_each */
     int              _x_i;          /* internal use for sorting: 
 				       see xml_enumerate and xml_cmp */
@@ -234,6 +235,7 @@ xml_prefix_set(cxobj *xn,
  * @retval     0          OK
  * @retval    -1          Error
  * @see xmlns_check XXX can these be merged?
+ * @note, this function uses a cache. Any case where cache should be cleared?
  */
 int
 xml2ns(cxobj *x,
@@ -241,9 +243,11 @@ xml2ns(cxobj *x,
        char **namespace)
 {
     int    retval = -1;
-    char  *ns;
+    char  *ns = NULL;
     cxobj *xp;
     
+    if ((ns = x->x_ns_cache) != NULL)
+	goto ok;
     if (prefix != NULL) /* xmlns:<prefix>="<uri>" */
 	ns = xml_find_type_value(x, "xmlns", prefix, CX_ATTR);
     else                /* xmlns="<uri>" */
@@ -261,6 +265,11 @@ xml2ns(cxobj *x,
 	    ns = DEFAULT_XML_RPC_NAMESPACE;
 #endif
     }
+    if (ns && (x->x_ns_cache = strdup(ns)) == NULL){
+	clicon_err(OE_XML, errno, "strdup");
+	goto done;
+    }
+ ok:
     if (namespace)
 	*namespace = ns;
     retval = 0;
@@ -562,6 +571,7 @@ xml_child_nr_type(cxobj          *xn,
  * @param[in]  i     the number of the child, eg order in children vector
  * @retval     xml   The child xml node
  * @retval     NULL  if no such child, or empty child
+ * @see xml_child_i_type
  */
 cxobj *
 xml_child_i(cxobj *xn, 
@@ -653,7 +663,7 @@ xml_child_each(cxobj           *xparent,
 }
 
 /*! Extend child vector with one and insert xml node there
- * Note: does not do anything with child, you may need to set its parent, etc
+ * @note does not do anything with child, you may need to set its parent, etc
  */
 static int
 xml_child_append(cxobj *x, 
@@ -669,7 +679,31 @@ xml_child_append(cxobj *x,
     return 0;
 }
 
-/*! Set a a childvec to a specific size, fill with children after
+/*! Insert child xc at position i under parent xp
+ * 
+ * @see xml_child_append
+ * @note does not do anything with child, you may need to set its parent, etc
+ */
+int
+xml_child_insert_pos(cxobj *xp,
+		     cxobj *xc,
+		     int    i)
+{
+    size_t size;
+   
+    xp->x_childvec_len++;
+    xp->x_childvec = realloc(xp->x_childvec, xp->x_childvec_len*sizeof(cxobj*));
+    if (xp->x_childvec == NULL){
+	clicon_err(OE_XML, errno, "realloc");
+	return -1;
+    }
+    size = (xml_child_nr(xp) - i - 1)*sizeof(cxobj *);
+    memmove(&xp->x_childvec[i+1], &xp->x_childvec[i], size);
+    xp->x_childvec[i] = xc;
+    return 0;
+}
+
+/*! Set a childvec to a specific size, fill with children after
  * @code
  *   xml_childvec_set(x, 2);
  *   xml_child_i_set(x, 0, xc0)
@@ -710,8 +744,10 @@ xml_childvec_get(cxobj *x)
  *   ...
  *   xml_free(x);
  * @endcode
- * @note yspec may be NULL either because it is not known or it is irrelevant, 
- *       eg for body or attribute
+ * @note As a rule, yspec should be given in normal Clixon calls to enable
+ *       proper sorting and insert functionality. Except as follows:
+ *         - type is body or attribute
+ *         - Yang is unknown
  * @see xml_sort_insert
  */
 cxobj *
@@ -732,6 +768,7 @@ xml_new(char      *name,
 	xml_parent_set(x, xp);
 	if (xml_child_append(xp, x) < 0) 
 	    return NULL;
+	x->_x_i = xml_child_nr(xp)-1;
     }
     x->x_spec = yspec; /* Can be NULL */
     return x;
@@ -788,11 +825,12 @@ xml_cv_set(cxobj  *x,
  * name "name".
  *
  * @param[in]  x_up   Base XML object
- * @param[in]  name   shell wildcard pattern to match with node name
+ * @param[in]  name   Node name
  *
  * @retval xmlobj     if found.
  * @retval NULL       if no such node found.
  * @see xml_find_type  A more generic function
+ * @note Linear scalability and relies on strcmp
  */
 cxobj *
 xml_find(cxobj *x_up, 
@@ -967,15 +1005,14 @@ xml_child_rm(cxobj *xp,
 int
 xml_rm(cxobj *xc)
 {
-    int    retval = 0;
+    int    retval = -1;
     cxobj *xp;
     cxobj *x;
     int    i;
 
     if ((xp = xml_parent(xc)) == NULL)
-	goto done;
-    retval = -1;
-    /* Find child in parent */
+	goto ok;
+    /* Find child in parent XXX: search? */
     x = NULL; i = 0;
     while ((x = xml_child_each(xp, x, -1)) != NULL) {
 	if (x == xc)
@@ -983,7 +1020,10 @@ xml_rm(cxobj *xc)
 	i++;
     }
     if (x != NULL)
-	retval = xml_child_rm(xp, i);
+	if (xml_child_rm(xp, i) < 0)
+	    goto done;
+ ok:
+    retval = 0;
  done:
     return retval;
 }
@@ -1331,6 +1371,8 @@ xml_free(cxobj *x)
 	free(x->x_childvec);
     if (x->x_cv)
 	cv_free(x->x_cv);
+    if (x->x_ns_cache)
+	free(x->x_ns_cache);
     free(x);
     return 0;
 }

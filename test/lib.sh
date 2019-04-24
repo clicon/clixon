@@ -201,6 +201,7 @@ new(){
 # - expected command return value (0 if OK)
 # - expected stdout outcome,
 # - expected2 stdout outcome,
+# Example: expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "^$"
 expectfn(){
     cmd=$1
     retval=$2
@@ -212,7 +213,7 @@ expectfn(){
 	expect2=
     fi
     ret=$($cmd)
-    r=$? 
+    r=$?
 #    echo "cmd:\"$cmd\""
 #    echo "retval:\"$retval\""
 #    echo "expect:\"$expect\""
@@ -221,7 +222,7 @@ expectfn(){
     if [ $r != $retval ]; then
 	echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
 	echo -e "\e[0m:"
-	return
+	exit -1
     fi
 #    if [ $r != 0 ]; then
 #	return

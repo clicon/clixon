@@ -40,7 +40,7 @@ LIBS    	= @LIBS@
 
 SHELL	= /bin/sh
 
-SUBDIRS  = main
+SUBDIRS  = main hello
 
 .PHONY: all clean depend install $(SUBDIRS)
 

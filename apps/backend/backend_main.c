@@ -638,16 +638,27 @@ main(int    argc,
 	status = STARTUP_OK;
 	break;
     case SM_RUNNING: /* Use running as startup */
-	/* Copy original running to startup and treat as startup */
+	/* Copy original running to tmp as backup (restore if error) */
 	if (xmldb_copy(h, "running", "tmp") < 0)
 	    goto done;
 	ret = startup_mode_startup(h, "tmp", cbret);
+	/* If ret fails, copy tmp back to running */
+	if (ret != 1)
+	    if (xmldb_copy(h, "tmp", "running") < 0)
+		goto done;
 	if (ret2status(ret, &status) < 0)
 	    goto done;
 	break;
     case SM_STARTUP: 
+	/* Copy original running to tmp as backup (restore if error) */
+	if (xmldb_copy(h, "running", "tmp") < 0)
+	    goto done;
 	/* Load and commit from startup */
 	ret = startup_mode_startup(h, "startup", cbret);
+	/* If ret fails, copy tmp back to running */
+	if (ret != 1)
+	    if (xmldb_copy(h, "tmp", "running") < 0)
+		goto done;
 	if (ret2status(ret, &status) < 0)
 	    goto done;
 	/* if status = STARTUP_INVALID, cbret contains info */
@@ -683,8 +694,9 @@ main(int    argc,
     /* Call backend plugin_start with user -- options */
     if (clixon_plugin_start(h) < 0)
 	goto done;
+    /* -1 option to run only once */
     if (once)
-	goto done;
+	goto ok;
 
     /* Daemonize and initiate logging. Note error is initiated here to make
        demonized errors OK. Before this stage, errors are logged on stderr 
@@ -722,6 +734,7 @@ main(int    argc,
 	goto done;
     if (event_loop() < 0)
 	goto done;
+ ok:
     retval = 0;
   done:
     if (cbret)

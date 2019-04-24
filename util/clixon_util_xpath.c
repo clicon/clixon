@@ -33,13 +33,7 @@
 
 See https://www.w3.org/TR/xpath/
 
- * Turn this on to get an xpath test program 
- * Usage: xpath [<xpath>] 
- * read xpath on first line and xml on rest of lines from input
- * Example compile:
- gcc -g -o xpath -I. -I../clixon ./clixon_xsl.c -lclixon -lcligen
- * Example run:
-echo "a\n<a><b/></a>" | xpath
+*
 */
 
 #ifdef HAVE_CONFIG_H
