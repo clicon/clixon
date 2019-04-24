@@ -89,6 +89,7 @@
 #include "clixon_options.h"
 #include "clixon_yang_parse.h"
 #include "clixon_yang_cardinality.h"
+#include "clixon_yang_internal.h" /* internal */
 #include "clixon_yang_type.h"
 
 /* Size of json read buffer when reading from file*/

@@ -208,7 +208,7 @@ array_eval(cxobj *xprev,
 	array = LAST_ARRAY;
     else if (eqnext)
 	array = FIRST_ARRAY;
-    else  if (ys && ys->ys_keyword == Y_LIST)
+    else  if (ys && yang_keyword_get(ys) == Y_LIST)
 	array = SINGLE_ARRAY;
     else
 	array = NO_ARRAY;
@@ -338,7 +338,7 @@ xml2json1_cbuf(cbuf                   *cb,
     /* Find module name associated with namspace URI */
     if (namespace && yspec &&
 	(ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL){
-	modname = ymod->ys_argument;
+	modname = yang_argument_get(ymod);
     }
     childt = child_type(x);
     if (pretty==2)
@@ -427,8 +427,8 @@ xml2json1_cbuf(cbuf                   *cb,
      * This is code for writing <a>42</a> as "a":42 and not "a":"42"
      */
     if (childt == BODY_CHILD && ys!=NULL &&
-	(ys->ys_keyword == Y_LEAF || ys->ys_keyword == Y_LEAF_LIST))
-	switch (cv_type_get(ys->ys_cv)){
+	(yang_keyword_get(ys) == Y_LEAF || yang_keyword_get(ys) == Y_LEAF_LIST))
+	switch (cv_type_get(yang_cv_get(ys))){
 	case CGV_INT8:
 	case CGV_INT16:
 	case CGV_INT32:

@@ -60,10 +60,10 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
-#include "clixon_yang_type.h"
 #include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_xml_map.h"
+#include "clixon_yang_type.h"
 #include "clixon_xml_sort.h"
 
 /*! Get xml body value as cligen variable
@@ -96,10 +96,10 @@ xml_cv_cache(cxobj   *x,
 	goto ok;
     if (yang_type_get(y, NULL, &yrestype, &options, NULL, NULL, &fraction) < 0)
 	goto done;
-    yang2cv_type(yrestype->ys_argument, &cvtype);
+    yang2cv_type(yang_argument_get(yrestype), &cvtype);
     if (cvtype==CGV_ERR){
 	clicon_err(OE_YANG, errno, "yang->cligen type %s mapping failed",
-		   yrestype->ys_argument);
+		   yang_argument_get(yrestype));
 	goto done;
     }
     if ((cv = cv_new(cvtype)) == NULL){
@@ -157,11 +157,10 @@ xml_child_spec(cxobj      *x,
     char      *name;
 	    
     name = xml_name(x);
-
     if (xp && (yparent = xml_spec(xp)) != NULL){
 	/* First case: parent already has an associated yang statement,
 	 * then find matching child of that */
-	if (yparent->ys_keyword == Y_RPC){
+	if (yang_keyword_get(yparent) == Y_RPC){
 	    if ((yi = yang_find(yparent, Y_INPUT, NULL)) != NULL)
 		y = yang_find_datanode(yi, name);
 	}
@@ -179,7 +178,7 @@ xml_child_spec(cxobj      *x,
     else
 	y = NULL;
     /* kludge rpc -> input */
-    if (y && y->ys_keyword == Y_RPC && yang_find(y, Y_INPUT, NULL))
+    if (y && yang_keyword_get(y) == Y_RPC && yang_find(y, Y_INPUT, NULL))
 	y = yang_find(y, Y_INPUT, NULL);
     *yresult = y;
     retval = 0;
@@ -258,7 +257,7 @@ xml_cmp(cxobj *x1,
 	goto done; /* Ordered by user or state data : maintain existing order */
     }
     e=4;
-    switch (y1->ys_keyword){
+    switch (yang_keyword_get(y1)){
     case Y_LEAF_LIST: /* Match with name and value */
 	if ((b1 = xml_body(x1)) == NULL)
 	    equal = -1;
@@ -275,7 +274,7 @@ xml_cmp(cxobj *x1,
     case Y_LIST: /* Match with key values 
 		  * Use Y_LIST cache (see struct yang_stmt)
 		  */
-	cvk = y1->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	cvk = yang_cvec_get(y1); /* Use Y_LIST cache, see ys_populate_list() */
 	cvi = NULL;
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	    keyname = cv_string_get(cvi); /* operational data may have NULL keys*/
@@ -682,7 +681,7 @@ match_base_child(cxobj      *x0,
 	}
 	goto ok; /* What to do if not found? */
     }
-    switch (yc->ys_keyword){
+    switch (yang_keyword_get(yc)){
     case Y_CONTAINER: 	/* Equal regardless */
     case Y_LEAF: 	/* Equal regardless */
 	break;
@@ -702,7 +701,7 @@ match_base_child(cxobj      *x0,
 	    goto done;
 	break;
     case Y_LIST: /* Match with key values */
-	cvk = yc->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	cvk = yang_cvec_get(yc); /* Use Y_LIST cache, see ys_populate_list() */
 	/* Count number of key indexes 
 	 * Then create two vectors one with names and one with values of x1c,
 	 * ec: keyvec: [a,b,c]  keyval: [1,2,3]
@@ -741,7 +740,7 @@ match_base_child(cxobj      *x0,
     }
     /* Get match. */
     yorder = yang_order(yc);
-    x0c = xml_search(x0, xml_name(x1c), yorder, yc->ys_keyword, keynr, keyvec, keyval, keycvec);
+    x0c = xml_search(x0, xml_name(x1c), yorder, yang_keyword_get(yc), keynr, keyvec, keyval, keycvec);
  ok:
     *x0cp = x0c;
     retval = 0;

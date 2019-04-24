@@ -52,6 +52,7 @@
     * Change all y->ys_argument to yang_argument_get(y)
     * Change all y->ys_cv to yang_cv_get(y)
     * Change all y->ys_cvec to yang_cvec_get(y)
+  * Removed external direct access to the yang_stmt struct.
 
 * xmldb_get() removed unnecessary config option:
   * Change all calls to dbget from: `xmldb_get(h, db, xpath, 0|1, &xret, msd)` to `xmldb_get(h, db, xpath, &xret, msd)`

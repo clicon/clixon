@@ -64,6 +64,7 @@
 #include "clixon_handle.h"
 #include "clixon_err.h"
 #include "clixon_yang.h"
+#include "clixon_yang_internal.h" /* internal */
 #include "clixon_yang_cardinality.h"
 
 /*
@@ -499,15 +500,14 @@ yang_cardinality(clicon_handle h,
     const struct ycard *ycplist; /* ycard parent table*/
     const struct ycard *yc;
     
-    pk = yt->ys_keyword;
+    pk = yang_keyword_get(yt);
     /* 0) Find parent sub-parts of cardinality vector */
     if ((ycplist = ycard_find(pk, 0, yclist, 0)) == NULL)
 	goto ok; /* skip */
     /* 1) For all children, if neither in 0..n, 0..1, 1 or 1..n   ->ERROR  */
-    i = 0;
-    while (i<yt->ys_len){
-	ys = yt->ys_stmt[i++];
-	ck = ys->ys_keyword;
+    ys = NULL;
+    while ((ys = yn_each(yt, ys)) != NULL) {
+	ck = yang_keyword_get(ys);
 	if (ck == Y_UNKNOWN) /* special case */
 	    continue;
 	/* Find entry in yang cardinality table from parent/child keyword pair */
@@ -515,9 +515,9 @@ yang_cardinality(clicon_handle h,
 	    clicon_err(OE_YANG, 0, "%s: \"%s\"(%s) is child of \"%s\"(%s), but should not be",
 		       modname,
 		       yang_key2str(ck),
-		       ys->ys_argument,
+		       yang_argument_get(ys),
 		       yang_key2str(pk),
-		       yt->ys_argument);
+		       yang_argument_get(yt));
 	    goto done;
 	}
     }
@@ -546,7 +546,7 @@ yang_cardinality(clicon_handle h,
     
     /* 4) Recurse */
     i = 0;
-    while (i<yt->ys_len){ /* Note, children may be removed */
+    while (i<yt->ys_len){ /* Note, children may be removed cant use yn_each */
 	ys = yt->ys_stmt[i++];
 	if (yang_cardinality(h, ys, modname) < 0)
 	    goto done;

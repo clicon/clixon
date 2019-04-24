@@ -71,11 +71,11 @@
 #include "clixon_data.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
-#include "clixon_xml_map.h"
 #include "clixon_json.h"
 #include "clixon_nacm.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
+#include "clixon_xml_map.h"
 
 #include "clixon_datastore.h"
 #include "clixon_datastore_write.h"
@@ -136,7 +136,7 @@ text_modify(clicon_handle       h,
 	if (xml_operation(opstr, &op) < 0)
 	    goto done;
     x1name = xml_name(x1);
-    if (y0->ys_keyword == Y_LEAF_LIST || y0->ys_keyword == Y_LEAF){
+    if (yang_keyword_get(y0) == Y_LEAF_LIST || yang_keyword_get(y0) == Y_LEAF){
 	x1bstr = xml_body(x1);
 	switch(op){ 
 	case OP_CREATE:
@@ -174,7 +174,7 @@ text_modify(clicon_handle       h,
 
 #if 0
 		/* If it is key I dont want to mark it */
-		if ((iamkey=yang_key_match(y0->ys_parent, x1name)) < 0)
+		if ((iamkey=yang_key_match(yang_parent_get(y0), x1name)) < 0)
 		    goto done;
 		if (!iamkey && op==OP_NONE)
 #else
@@ -255,7 +255,8 @@ text_modify(clicon_handle       h,
 	       can be modified in its entirety only.
 	       Any "operation" attributes present on subelements of an anyxml 
 	       node are ignored by the NETCONF server.*/
-	    if (y0->ys_keyword == Y_ANYXML || y0->ys_keyword == Y_ANYDATA){
+	    if (yang_keyword_get(y0) == Y_ANYXML ||
+		yang_keyword_get(y0) == Y_ANYDATA){
 		if (op == OP_NONE)
 		    break;
 		if (op==OP_MERGE && !permit && xnacm){
@@ -546,7 +547,7 @@ xml_container_presence(cxobj  *x,
 	goto done;
     }
     /* Mark node that is: container, have no children, dont have presence */
-    if (y->ys_keyword == Y_CONTAINER && 
+    if (yang_keyword_get(y) == Y_CONTAINER && 
 	xml_child_nr_notype(x, CX_ATTR)==0 &&
 	yang_find(y, Y_PRESENCE, NULL) == NULL)
 	xml_flag_set(x, XML_FLAG_MARK); /* Mark, remove later */

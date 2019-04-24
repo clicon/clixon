@@ -330,7 +330,7 @@ nacm_rule_datanode(cxobj           *xt,
 	if ((ys = xml_spec(xr)) == NULL)
 	    goto nomatch;
 	ymod = ys_module(ys);
-	module = ymod->ys_argument;
+	module = yang_argument_get(ymod);
 	if (strcmp(module, module_rule) != 0)
 	    goto nomatch;
     }

@@ -70,11 +70,11 @@
 #include "clixon_data.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
-#include "clixon_xml_map.h"
 #include "clixon_json.h"
 #include "clixon_nacm.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
+#include "clixon_xml_map.h"
 
 #include "clixon_datastore.h"
 #include "clixon_datastore_read.h"
@@ -184,7 +184,7 @@ xml_copy_marked(cxobj *x0,
 	}
 	/* (3) Special case: key nodes in lists are copied if any 
 	 * node in list is marked */
-	if (mark && yt && yt->ys_keyword == Y_LIST){
+	if (mark && yt && yang_keyword_get(yt) == Y_LIST){
 	    /* XXX: I think yang_key_match is suboptimal here */
 	    if ((iskey = yang_key_match(yt, name)) < 0)
 		goto done;

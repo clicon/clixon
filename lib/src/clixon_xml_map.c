@@ -80,7 +80,6 @@
 #include "clixon_handle.h"
 #include "clixon_string.h"
 #include "clixon_yang.h"
-#include "clixon_yang_type.h"
 #include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_plugin.h"
@@ -90,6 +89,8 @@
 #include "clixon_err.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_sort.h"
+#include "clixon_yang_internal.h" /* internal */
+#include "clixon_yang_type.h"
 #include "clixon_xml_map.h"
 
 /*! x is element and has eactly one child which in turn has none */
@@ -186,7 +187,7 @@ xml2cli(FILE              *f,
 	goto ok;
     if ((ys = xml_spec(x)) == NULL)
 	goto ok;
-    if (ys->ys_keyword == Y_LEAF || ys->ys_keyword == Y_LEAF_LIST){
+    if (yang_keyword_get(ys) == Y_LEAF || yang_keyword_get(ys) == Y_LEAF_LIST){
 	if (prepend0)
 	    fprintf(f, "%s", prepend0);
 	if (gt == GT_ALL || gt == GT_VARS)
@@ -209,7 +210,7 @@ xml2cli(FILE              *f,
 	cprintf(cbpre, "%s", prepend0);
     cprintf(cbpre, "%s ", xml_name(x));
 
-    if (ys->ys_keyword == Y_LIST){
+    if (yang_keyword_get(ys) == Y_LIST){
 	/* If list then first loop through keys */
 	xe = NULL;
 	while ((xe = xml_child_each(x, xe, -1)) != NULL){
@@ -225,7 +226,7 @@ xml2cli(FILE              *f,
     /* Then loop through all other (non-keys) */
     xe = NULL;
     while ((xe = xml_child_each(x, xe, -1)) != NULL){
-	if (ys->ys_keyword == Y_LIST){
+	if (yang_keyword_get(ys) == Y_LIST){
 	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
 		goto done;
 	    if (match){
@@ -269,11 +270,11 @@ validate_leafref(cxobj     *xt,
     if ((leafrefbody = xml_body(xt)) == NULL)
 	goto ok;
     if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-	if (netconf_missing_element(cbret, "application", ytype->ys_argument, "Leafref requires path statement") < 0)
+	if (netconf_missing_element(cbret, "application", yang_argument_get(ytype), "Leafref requires path statement") < 0)
 	    goto done;
 	goto fail;
     }
-    if (xpath_vec(xt, "%s", &xvec, &xlen, ypath->ys_argument) < 0) 
+    if (xpath_vec(xt, "%s", &xvec, &xlen, yang_argument_get(ypath)) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	x = xvec[i];
@@ -349,23 +350,23 @@ validate_identityref(cxobj     *xt,
     }
     /* This is the type's base reference */
     if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) == NULL){
-	if (netconf_missing_element(cbret, "application", ytype->ys_argument, "Identityref validation failed, no base") < 0)
+	if (netconf_missing_element(cbret, "application", yang_argument_get(ytype), "Identityref validation failed, no base") < 0)
 	    goto done;
 	goto fail;
     }
     /* This is the actual base identity */
-    if ((ybaseid = yang_find_identity(ybaseref, ybaseref->ys_argument)) == NULL){
-	if (netconf_missing_element(cbret, "application", ybaseref->ys_argument, "Identityref validation failed, no base identity") < 0)
+    if ((ybaseid = yang_find_identity(ybaseref, yang_argument_get(ybaseref))) == NULL){
+	if (netconf_missing_element(cbret, "application", yang_argument_get(ybaseref), "Identityref validation failed, no base identity") < 0)
 	    goto done;
 	goto fail;
     }
     /* Here check if node is in the derived node list of the base identity 
      * The derived node list is a cvec computed XXX
      */
-    if (cvec_find(ybaseid->ys_cvec, node) == NULL){
+    if (cvec_find(yang_cvec_get(ybaseid), node) == NULL){
 	cbuf_reset(cb);
 	cprintf(cb, "Identityref validation failed, %s not derived from %s", 
-		node, ybaseid->ys_argument);
+		node, yang_argument_get(ybaseid));
 	if (netconf_operation_failed(cbret, "application", cbuf_get(cb)) < 0)
 	    goto done;
 	goto fail;
@@ -398,11 +399,11 @@ xml_yang_root(cxobj  *x,
     
     while ((xp = xml_parent(x)) != NULL){
 	if ((y = xml_spec(x)) != NULL &&
-	    (yp = (yang_stmt*)y->ys_parent) != NULL)
+	    (yp = yang_parent_get(y)) != NULL)
 	    /* Actually, maybe only the Y_MODULE clause is relevant */
 	    if (yp==NULL ||
-		yp->ys_keyword == Y_MODULE ||
-		yp->ys_keyword == Y_SUBMODULE)
+		yang_keyword_get(yp) == Y_MODULE ||
+		yang_keyword_get(yp) == Y_SUBMODULE)
 		break; /* x is the root */
 	x = xp;
     }
