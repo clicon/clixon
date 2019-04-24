@@ -223,12 +223,38 @@ yang_cvec_get(yang_stmt *ys)
     return ys->ys_cvec;
 }
 
+/*! Set yang statement CLIgen variable vector
+ * @param[in] ys   Yang statement node
+ * @param[in] cvec CLIgen vector
+ * @retval    0    OK
+ * @retval   -1    Error
+ */
+int
+yang_cvec_set(yang_stmt *ys,
+	      cvec      *cvv)
+{
+    if (ys->ys_cvec)
+	cvec_free(ys->ys_cvec);
+    ys->ys_cvec = cvv;
+    return 0;
+}
+
+/*! Get regular expression cache - the compiled regex
+ * @param[in] ys  Yang statement node
+ * @retval    re  Compiled regex
+ * @see regcomp
+ */
 void*
 yang_regex_cache_get(yang_stmt *ys)
 {
     return ys->ys_regex_cache;
 }
 
+/*! Set regular expression cache - the compiled regex
+ * @param[in] ys  Yang statement node
+ * @param[in] re  Compiled regex
+ * @see regcomp
+ */
 int
 yang_regex_cache_set(yang_stmt *ys,
 		     void      *regex)

@@ -234,6 +234,7 @@ enum rfc_6020 yang_keyword_get(yang_stmt *ys);
 char      *yang_argument_get(yang_stmt *ys);
 cg_var    *yang_cv_get(yang_stmt *ys);
 cvec      *yang_cvec_get(yang_stmt *ys);
+int        yang_cvec_set(yang_stmt *ys, cvec *cvv);
 void      *yang_regex_cache_get(yang_stmt *ys);
 int        yang_regex_cache_set(yang_stmt *ys, void *regex);
 
