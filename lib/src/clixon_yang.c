@@ -845,17 +845,15 @@ yang_order(yang_stmt *y)
     int         i;
     int         j=0;
     int         tot = 0;
-    
+
+    if (y == NULL)
+	return -1;
     /* Some special handling if yp is choice (or case) and maybe union?
      * if so, the real parent (from an xml point of view) is the parents
      * parent. 
      */
-    if (y == NULL){
-	    return -1;
-    }
-
-    yp = y->ys_parent;
-    while (yp->ys_keyword == Y_CASE || yp->ys_keyword == Y_CHOICE)
+    yp = yang_parent_get(y);
+    while (yang_keyword_get(yp) == Y_CASE || yang_keyword_get(yp) == Y_CHOICE)
 	yp = yp->ys_parent;
 
     /* XML nodes with yang specs that are children of modules are special - 
@@ -864,8 +862,8 @@ yang_order(yang_stmt *y)
      * Example: <x xmlns="foo"/><y xmlns="bar"/>
      * The order of x and y cannot be compared within a single yang module since they belong to different
      */
-    if (yp->ys_keyword == Y_MODULE || yp->ys_keyword == Y_SUBMODULE){
-	ypp = yp->ys_parent; /* yang spec */
+    if (yang_keyword_get(yp) == Y_MODULE || yang_keyword_get(yp) == Y_SUBMODULE){
+	ypp = yang_parent_get(yp); /* yang spec */
 	for (i=0; i<ypp->ys_len; i++){ /* iterate through other modules */
 	    ym = ypp->ys_stmt[i];
 	    if (yp == ym)
