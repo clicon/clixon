@@ -169,16 +169,19 @@ testrun startup "$runvar" "$startvar" "$extravar" '<data><interfaces xmlns="urn:
 # 2. Try different modes on Invalid running/startup/extra WITHOUT failsafe
 # ensure all db:s are unchanged after failure.
 
-new "Test invalid running in running mode"
-testfail running "$invalidvar" "$startvar" "$extravar"
+# Valgrind backend tests make no sense in backend crash tests
+if [ $valgrindtest -ne 2 ]; then
+    new "Test invalid running in running mode"
+    testfail running "$invalidvar" "$startvar" "$extravar"
 
-new "Run invalid startup in startup mode"
-testfail startup "$runvar" "$invalidvar" "$extravar"
+    new "Run invalid startup in startup mode"
+    testfail startup "$runvar" "$invalidvar" "$extravar"
 
-new "Test broken running in running mode"
-testfail running "$brokenvar" "$startvar" "$extravar"
+    new "Test broken running in running mode"
+    testfail running "$brokenvar" "$startvar" "$extravar"
 
-new "Run broken startup in startup mode"
-testfail startup "$runvar" "$brokenvar" "$extravar"
+    new "Run broken startup in startup mode"
+    testfail startup "$runvar" "$brokenvar" "$extravar"
+fi
 
 rm -rf $dir

@@ -5,7 +5,7 @@
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Number of list/leaf-list entries in file
-: ${perfnr:=20000}
+: ${perfnr:=10000}
 
 # Number of requests made get/put
 : ${perfreq:=100}

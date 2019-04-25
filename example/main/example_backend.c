@@ -203,7 +203,7 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
 {
     int    retval = -1;
 
-    fprintf(stderr, "%s\n", __FUNCTION__);
+    //    fprintf(stderr, "%s\n", __FUNCTION__);
     retval = 0;
     // done:
     return retval;

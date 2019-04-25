@@ -138,17 +138,8 @@ typedef enum yang_class yang_class;
 
 struct xml;
 
-/* Yang data node 
- * See RFC7950 Sec 3:
- *   o  data node: A node in the schema tree that can be instantiated in a
- *      data tree.  One of container, leaf, leaf-list, list, anydata, and
- *      anyxml.
- * XXX move to function
- */
-#define yang_datanode(y) ((y)->ys_keyword == Y_CONTAINER || (y)->ys_keyword == Y_LEAF || (y)->ys_keyword == Y_LIST || (y)->ys_keyword == Y_LEAF_LIST || (y)->ys_keyword == Y_ANYXML || (y)->ys_keyword == Y_ANYDATA)
-
-
 typedef struct yang_stmt yang_stmt; /* Defined in clixon_yang_internal */
+
 
 typedef int (yang_applyfn_t)(yang_stmt *ys, void *arg);
 
@@ -197,6 +188,7 @@ int        ys_populate(yang_stmt *ys, void *arg);
 yang_stmt *yang_parse_file(int fd, const char *name, yang_stmt *ysp);
 int        yang_apply(yang_stmt *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
+int        yang_datanode(yang_stmt *ys);
 int        yang_abs_schema_nodeid(yang_stmt *yspec, yang_stmt *ys,
 				  char *schema_nodeid, 
 				  enum rfc_6020 keyword, yang_stmt **yres);

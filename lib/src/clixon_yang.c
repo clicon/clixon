@@ -2867,6 +2867,26 @@ yang_apply(yang_stmt     *yn,
     return retval;
 }
 
+/*! Check if a node is a yang "data node"
+ * @param[in]  ys  Yang statement node
+ * @retval     0   Yang node is NOT a data node
+ * @retval   !=0   Yang node IS a data noed
+ * @see RFC7950 Sec 3:
+ *   o  data node: A node in the schema tree that can be instantiated in a
+ *      data tree.  One of container, leaf, leaf-list, list, anydata, and
+ *      anyxml.
+ */
+int
+yang_datanode(yang_stmt *ys)
+{
+    return  (yang_keyword_get(ys) == Y_CONTAINER ||
+	     yang_keyword_get(ys) == Y_LEAF ||
+	     yang_keyword_get(ys) == Y_LIST ||
+	     yang_keyword_get(ys) == Y_LEAF_LIST ||
+	     yang_keyword_get(ys) == Y_ANYXML ||
+	     yang_keyword_get(ys) == Y_ANYDATA);
+}
+
 /*! All the work for schema_nodeid functions both absolute and descendant
  *  Ignore prefixes, see _abs 
  * @param[in]  yn    Yang node. Find next yang stmt and return that if match.

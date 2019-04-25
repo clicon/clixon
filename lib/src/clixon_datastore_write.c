@@ -297,7 +297,9 @@ text_modify(clicon_handle       h,
 		}
 #ifdef USE_XML_INSERT
 		/* Add new xml node but without parent - insert when node fully
-		   copied (see changed conditional below) */
+		 * copied (see changed conditional below) 
+		 * Note x0 may dangle cases if exit before changed conditional
+		 */
 		if ((x0 = xml_new(x1name, NULL, (yang_stmt*)y0)) == NULL)
 		    goto done;
 #else
@@ -400,6 +402,11 @@ text_modify(clicon_handle       h,
 #endif
     retval = 1;
  done:
+#ifdef USE_XML_INSERT
+    /* Remove dangling added objects */
+    if (changed && x0 && xml_parent(x0)==NULL)
+	xml_purge(x0);
+#endif
     if (x0vec)
 	free(x0vec);
     return retval;
