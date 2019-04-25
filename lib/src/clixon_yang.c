@@ -850,6 +850,10 @@ yang_order(yang_stmt *y)
      * if so, the real parent (from an xml point of view) is the parents
      * parent. 
      */
+    if (y == NULL){
+	    return -1;
+    }
+
     yp = y->ys_parent;
     while (yp->ys_keyword == Y_CASE || yp->ys_keyword == Y_CHOICE)
 	yp = yp->ys_parent;
