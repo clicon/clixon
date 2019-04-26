@@ -76,6 +76,8 @@
 #define XML_INDENT 3 
 /* Name of xml top object created by xml parse functions */
 #define XML_TOP_SYMBOL "top" 
+/* How many XML children to start with if any (and then add exponentialy) */
+#define XML_CHILDVEC_MAX_DEFAULT 4
 
 /*
  * Types
@@ -119,7 +121,8 @@ struct xml{
     char             *x_prefix;     /* namespace localname N, called prefix */
     struct xml       *x_up;         /* parent node in hierarchy if any */
     struct xml      **x_childvec;   /* vector of children nodes */
-    int               x_childvec_len;/* length of vector */
+    int               x_childvec_len;/* Number of children */
+    int               x_childvec_max;/* Length of allocated vector */
     enum cxobj_type   x_type;       /* type of node: element, attribute, body */
     char             *x_value;      /* attribute and body nodes have values */
     int               x_flags;      /* Flags according to XML_FLAG_* */
@@ -670,7 +673,9 @@ xml_child_append(cxobj *x,
 		 cxobj *xc)
 {
     x->x_childvec_len++;
-    x->x_childvec = realloc(x->x_childvec, x->x_childvec_len*sizeof(cxobj*));
+    if (x->x_childvec_len > x->x_childvec_max)
+	x->x_childvec_max = x->x_childvec_max?2*x->x_childvec_max:XML_CHILDVEC_MAX_DEFAULT;
+    x->x_childvec = realloc(x->x_childvec, x->x_childvec_max*sizeof(cxobj*));
     if (x->x_childvec == NULL){
 	clicon_err(OE_XML, errno, "realloc");
 	return -1;
@@ -692,7 +697,9 @@ xml_child_insert_pos(cxobj *xp,
     size_t size;
    
     xp->x_childvec_len++;
-    xp->x_childvec = realloc(xp->x_childvec, xp->x_childvec_len*sizeof(cxobj*));
+    if (xp->x_childvec_len > xp->x_childvec_max)
+	xp->x_childvec_max = xp->x_childvec_max?2*xp->x_childvec_max:XML_CHILDVEC_MAX_DEFAULT;
+    xp->x_childvec = realloc(xp->x_childvec, xp->x_childvec_max*sizeof(cxobj*));
     if (xp->x_childvec == NULL){
 	clicon_err(OE_XML, errno, "realloc");
 	return -1;
@@ -715,6 +722,9 @@ xml_childvec_set(cxobj *x,
 		 int    len)
 {
     x->x_childvec_len = len;
+    x->x_childvec_max = len;
+    if (x->x_childvec)
+	free(x->x_childvec);
     if ((x->x_childvec = calloc(len, sizeof(cxobj*))) == NULL){
 	clicon_err(OE_XML, errno, "calloc");
 	return -1;
