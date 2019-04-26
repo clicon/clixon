@@ -78,6 +78,7 @@
 
 #include "clixon_datastore.h"
 #include "clixon_datastore_read.h"
+#include "clixon_datastore_tree.h"
 
 #define handle(xh) (assert(text_handle_check(xh)==0),(struct text_handle *)(xh))
 
@@ -322,30 +323,40 @@ xmldb_readfile(clicon_handle      h,
 	clicon_err(OE_XML, 0, "dbfile NULL");
 	goto done;
     }
-    if ((fd = open(dbfile, O_RDONLY)) < 0) {
-	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
+    if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
+	clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
 	goto done;
-    }    
-    /* Parse file into XML tree */
-    format = clicon_option_str(h, "CLICON_XMLDB_FORMAT");
-    if (format && strcmp(format, "json")==0){
-	if ((json_parse_file(fd, yspec, &x0)) < 0)
+    }
+    /* Parse file into internal XML tree from different formats */
+    if (strcmp(format, "tree")==0){
+	if (datastore_tree_read(h, dbfile, &x0) < 0)
 	    goto done;
     }
-    else if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
-	goto done;
-    /* Always assert a top-level called "config". 
-       To ensure that, deal with two cases:
-       1. File is empty <top/> -> rename top-level to "config" */
-    if (xml_child_nr(x0) == 0){ 
-	if (xml_name_set(x0, "config") < 0)
-	    goto done;     
-    }
-    /* 2. File is not empty <top><config>...</config></top> -> replace root */
-    else{ 
-	/* There should only be one element and called config */
-	if (singleconfigroot(x0, &x0) < 0)
+    else{
+	if ((fd = open(dbfile, O_RDONLY)) < 0) {
+	    clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
 	    goto done;
+	}    
+	if (strcmp(format, "json")==0){
+	    if ((json_parse_file(fd, yspec, &x0)) < 0)
+		goto done;
+	}
+	else if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
+	    goto done;
+
+	/* Always assert a top-level called "config". 
+	   To ensure that, deal with two cases:
+	   1. File is empty <top/> -> rename top-level to "config" */
+	if (xml_child_nr(x0) == 0){ 
+	    if (xml_name_set(x0, "config") < 0)
+		goto done;     
+	}
+	/* 2. File is not empty <top><config>...</config></top> -> replace root */
+	else{ 
+	    /* There should only be one element and called config */
+	    if (singleconfigroot(x0, &x0) < 0)
+		goto done;
+	}
     }
     /* From Clixon 3.10,datastore files may contain module-state defining
      * which modules are used in the file. 
@@ -396,43 +407,13 @@ xmldb_get_nocache(clicon_handle       h,
     cxobj         **xvec = NULL;
     size_t          xlen;
     int             i;
-    char           *format;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (xmldb_db2file(h, db, &dbfile) < 0)
+    if (xmldb_readfile(h, db, yspec, &xt, msd) < 0)
 	goto done;
-    if (dbfile==NULL){
-	clicon_err(OE_XML, 0, "dbfile NULL");
-	goto done;
-    }
-    if ((fd = open(dbfile, O_RDONLY)) < 0){
-	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
-	goto done;
-    }    
-    /* Parse file into XML tree */
-    format = clicon_option_str(h, "CLICON_XMLDB_FORMAT");
-    if (format && strcmp(format, "json")==0){
-	if ((json_parse_file(fd, yspec, &xt)) < 0)
-	    goto done;
-    }
-    else if ((xml_parse_file(fd, "</config>", yspec, &xt)) < 0)
-	goto done;
-    /* Always assert a top-level called "config". 
-       To ensure that, deal with two cases:
-       1. File is empty <top/> -> rename top-level to "config" */
-    if (xml_child_nr(xt) == 0){ 
-	if (xml_name_set(xt, "config") < 0)
-	    goto done;     
-    }
-    /* 2. File is not empty <top><config>...</config></top> -> replace root */
-    else{ 
-	/* There should only be one element and called config */
-	if (singleconfigroot(xt, &xt) < 0)
-	    goto done;
-    }
     /* Here xt looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec */
     if (xpath_vec(xt, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
@@ -595,7 +576,7 @@ xmldb_get1_cache(clicon_handle       h,
 		 const char         *db, 
 		 char               *xpath,
 		 cxobj             **xtop,
-		 modstate_diff_t    *modst)
+		 modstate_diff_t    *msd)
 {
     int             retval = -1;
     yang_stmt      *yspec;
@@ -618,7 +599,7 @@ xmldb_get1_cache(clicon_handle       h,
     de = clicon_db_elmnt_get(h, db);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
 	/* If there is no xml x0 tree (in cache), then read it from file */
-	if (xmldb_readfile(h, db, yspec, &x0t, modst) < 0)
+	if (xmldb_readfile(h, db, yspec, &x0t, msd) < 0)
 	    goto done;
 	/* XXX: should we validate file if read from disk? 
 	 * Argument against: we may want to have a semantically wrong file and wish

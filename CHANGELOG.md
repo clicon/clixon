@@ -111,6 +111,7 @@
 
 ### Minor changes
 
+* New XMLDB_FORMAT added: `tree`. An experimental record-based tree database for direct access of records. 
 * A new "hello world" example is added
 * Experimental customized error output strings, see [lib/clixon/clixon_err_string.h]
 * Empty leaf values, eg <a></a> are now checked at validation.

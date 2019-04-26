@@ -126,5 +126,6 @@ typedef struct _qelem_t {
  *  NEXTQ(struct a*, el);
  */
 #define NEXTQ(type, elem)	((type)((elem)?((qelem_t *)(elem))->q_next:NULL))
+#define PREVQ(type, elem)	((type)((elem)?((qelem_t *)(elem))->q_prev:NULL))
 
 #endif	/* _CLIXON_QUEUE_H_ */

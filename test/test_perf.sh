@@ -5,7 +5,7 @@
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Number of list/leaf-list entries in file
-: ${perfnr:=20000}
+: ${perfnr:=10000}
 
 # Number of requests made get/put
 : ${perfreq:=100}
@@ -16,6 +16,8 @@ cfg=$dir/scaling-conf.xml
 fyang=$dir/scaling.yang
 fconfig=$dir/large.xml
 fconfig2=$dir/large2.xml
+
+format=xml
 
 cat <<EOF > $fyang
 module scaling{
@@ -50,6 +52,7 @@ cat <<EOF > $cfg
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
+  <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
   <CLICON_CLI_MODE>example</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/example/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
@@ -66,26 +69,60 @@ if [ $BE -ne 0 ]; then
 	err
     fi
 fi
-# Try startup mode w startup
+
+# First generate large XML file
+# Use it latter to generate startup-db in xml, tree formats
+tmpx=$dir/tmp.xml
+new "generate large startup config ($tmpx) with $perfnr entries"
+echo -n "<config><x xmlns=\"urn:example:clixon\">" > $tmpx
+for (( i=0; i<$perfnr; i++ )); do  
+    echo -n "<y><a>$i</a><b>$i</b></y>" >> $tmpx
+done
+echo "</x></config>" >> $tmpx
+
+if false; then
+# Then generate large JSON file (cant translate namespace - long story)
+tmpj=$dir/tmp.json
+new "generate large startup config ($tmpj) with $perfnr entries"
+echo -n '{"config": {"scaling:x":{"y":[' > $tmpj
+for (( i=0; i<$perfnr; i++ )); do  
+    if [ $i -ne 0 ]; then
+	echo -n ",{\"a\":$i,\"b\":$i}" >> $tmpj
+    else
+	echo -n "{\"a\":$i,\"b\":$i}" >> $tmpj
+    fi
+
+done
+echo "]}}}" >> $tmpj
+fi
+
+# Loop over mode and format
 for mode in startup running; do
     file=$dir/${mode}_db
-    sudo touch $file
-    sudo chmod 666 $file
-    new "generate large startup config ($file) with $perfnr list entries in mode $mode"
-    echo -n "<config><x xmlns=\"urn:example:clixon\">" > $file
-    for (( i=0; i<$perfnr; i++ )); do  
-	echo -n "<y><a>$i</a><b>$i</b></y>" >> $file
+    for format in tree xml; do # json - something w namespaces
+	sudo rm -f $file
+	sudo touch $file
+	sudo chmod 666 $file
+	case $format in
+	    xml)
+		echo "cp $tmpx $file"
+		cp $tmpx $file
+	    ;;
+	    json)
+		cp $tmpj $file
+	    ;;
+	    tree)
+		echo "clixon_util_datastore -d ${mode} -f tree -y $fyang -b $dir -x $tmpx put create"
+
+		clixon_util_datastore -d ${mode} -f tree -y $fyang -b $dir -x $tmpx put create
+	    ;;
+	esac
+	new "Startup backend $format -s $mode -f $cfg -y $fyang"
+	echo "time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang -o CLICON_XMLDB_FORMAT=$format"
+	# Cannot use start_backend here due to expected error case
+	time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang -o CLICON_XMLDB_FORMAT=$format # 2> /dev/null	
     done
-    echo "</x></config>" >> $file
-
-    new "Startup backend once -s $mode -f $cfg -y $fyang"
-    # Cannot use start_backend here due to expected error case
-    time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang # 2> /dev/null
 done
-
-new "Startup backend once -s $mode -f $cfg -y $fyang"
-# Cannot use start_backend here due to expected error case
-time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang # 2> /dev/null
 
 new "test params: -f $cfg -y $fyang"
 if [ $BE -ne 0 ]; then
@@ -152,6 +189,7 @@ time -p for (( i=0; i<$perfreq; i++ )); do
     curl -sG http://localhost/restconf/data/scaling:x/y=$rnd > /dev/null
 done
 
+# Reference: i686 perfnr=10000 time: 27s 20190425 34s WITH startup copying
 new "restconf add $perfreq small config"
 time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))

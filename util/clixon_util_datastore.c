@@ -63,7 +63,7 @@
 #include <clixon/clixon.h>
 
 /* Command line options to be passed to getopt(3) */
-#define DATASTORE_OPTS "hDd:b:y:"
+#define DATASTORE_OPTS "hDd:b:f:x:y:"
 
 /*! usage
  */
@@ -76,11 +76,13 @@ usage(char *argv0)
 		"\t-D\t\tDebug\n"
 		"\t-d <db>\t\tDatabase name. Default: running. Alt: candidate,startup\n"
 		"\t-b <dir>\tDatabase directory. Mandatory\n"
+	        "\t-f <fmt>\tDatabase format: xml, json, tree\n"
+		"\t-x <xml>\tXML file. Alternative to put <xml> argument\n"
 		"\t-y <file>\tYang file. Mandatory\n"
 		"and command is either:\n"
 		"\tget [<xpath>]\n"
  	        "\tmget <nr> [<xpath>]\n"
-		"\tput (merge|replace|create|delete|remove) <xml>\n"
+		"\tput (merge|replace|create|delete|remove) [<xml>]\n"
 		"\tcopy <todb>\n"
 		"\tlock <pid>\n"
 		"\tunlock\n"
@@ -105,6 +107,7 @@ main(int argc, char **argv)
     char               *cmd = NULL;
     yang_stmt          *yspec = NULL;
     char               *yangfilename = NULL;
+    char               *xmlfilename = NULL;
     char               *dbdir = NULL;
     int                 ret;
     int                 pid;
@@ -122,6 +125,7 @@ main(int argc, char **argv)
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
     /* getopt in two steps, first find config-file before over-riding options. */
+    clicon_option_str_set(h, "CLICON_XMLDB_FORMAT", "xml"); /* default */
     while ((c = getopt(argc, argv, DATASTORE_OPTS)) != -1)
 	switch (c) {
 	case '?' :
@@ -140,6 +144,16 @@ main(int argc, char **argv)
 	    if (!optarg)
 	        usage(argv0);
 	    dbdir = optarg;
+	    break;
+	case 'f': /* db format */
+	    if (!optarg)
+	        usage(argv0);
+	    clicon_option_str_set(h, "CLICON_XMLDB_FORMAT", optarg);
+	    break;
+	case 'x': /* XML file */
+	    if (!optarg)
+	        usage(argv0);
+	    xmlfilename = optarg;
 	    break;
 	case 'y': /* Yang file */
 	    if (!optarg)
@@ -213,7 +227,13 @@ main(int argc, char **argv)
 	fprintf(stdout, "\n");
     }
     else if (strcmp(cmd, "put")==0){
-	if (argc != 3){
+	if (argc == 2){
+	    if (xmlfilename == NULL){
+		clicon_err(OE_DB, 0, "XML filename expected");
+		usage(argv0);
+	    }
+	}
+	else if (argc != 3){
 	    clicon_err(OE_DB, 0, "Unexpected nr of args: %d", argc);
 	    usage(argv0);
 	}
@@ -221,8 +241,19 @@ main(int argc, char **argv)
 	    clicon_err(OE_DB, 0, "Unrecognized operation: %s", argv[1]);
 	    usage(argv0);
 	}
-	if (xml_parse_string(argv[2], NULL, &xt) < 0)
-	    goto done;
+	if (argc == 2){
+	    int fd;
+	    if ((fd = open(xmlfilename, O_RDONLY)) < 0){
+		clicon_err(OE_UNIX, errno, "open(%s)", xmlfilename);
+		goto done;
+	    }
+	    if (xml_parse_file(fd, "</config>", yspec, &xt) < 0)
+		goto done;
+	    close(fd);
+	}
+	else
+	    if (xml_parse_string(argv[2], yspec, &xt) < 0)
+		goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)
 	    goto done;
 	if ((cbret = cbuf_new()) == NULL){
@@ -231,7 +262,6 @@ main(int argc, char **argv)
 	}
 	if (xmldb_put(h, db, op, xt, NULL, cbret) < 1)
 	    goto done;
-	    
     }
     else if (strcmp(cmd, "copy")==0){
 	if (argc != 2)
