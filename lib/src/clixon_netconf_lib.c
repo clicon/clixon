@@ -1030,14 +1030,8 @@ netconf_module_load(clicon_handle h)
 	goto done;
     if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:validate</CLICON_FEATURE>", yspec, &xc) < 0)
 	goto done;
-    if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>", yspec, &xc) < 0)
-	goto done;
     if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:xpath</CLICON_FEATURE>", yspec, &xc) < 0)
 	goto done;
-#ifdef NYI
-    if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:confirmed-commit</CLICON_FEATURE>", yspec, &xc) < 0)
-	goto done;
-#endif
     /* Load yang spec */
     if (yang_spec_parse_module(h, "ietf-netconf", NULL, yspec)< 0)
 	goto done;

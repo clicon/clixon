@@ -616,6 +616,13 @@ main(int    argc,
 	clicon_log(LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend."); 
 	goto done;
     }
+    /* Check that netconf :startup is enabled */
+    if (startup_mode == SM_STARTUP &&
+	!if_feature(yspec, "ietf-netconf", "startup")){
+	clicon_log(LOG_ERR, "Startup mode selected but Netconf :startup feature is not enabled. Enable with option: <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>"); 
+	goto done;
+    }
+
     /* Init running db if it is not there
      */
     if (xmldb_exists(h, "running") != 1)

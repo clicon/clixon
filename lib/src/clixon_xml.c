@@ -944,9 +944,9 @@ xml_wrap(cxobj *xc,
  * @retval      0           OK
  * @retval      -1
  * @note you cannot remove xchild in the loop (unless yoy keep track of xprev)
- *
+ * @note Linear complexity - use xml_child_rm if possible
  * @see xml_free      Free, dont remove from parent
- * @see xml_child_rm  Only remove dont free
+ * @see xml_child_rm  Remove if child order is known (does not free)
  * Differs from xml_free it is removed from parent.
  */
 int

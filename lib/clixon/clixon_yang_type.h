@@ -49,7 +49,8 @@
 /*
  * Types
  */
-
+/* declared in clixon_yang_internal */
+typedef struct yang_type_cache yang_type_cache;
 
 /*
  * Prototypes

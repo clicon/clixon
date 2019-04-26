@@ -76,6 +76,7 @@
 #include "clixon_plugin.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
+#include "clixon_yang_internal.h" /* internal */
 
 modstate_diff_t *
 modstate_diff_new(void)

@@ -298,6 +298,17 @@ The example below shows enabling a specific feature; enabling all features in mo
 Features can be probed by using RFC 7895 Yang module library which provides
 information on all modules and which features are enabled.
 
+Clixon have three hardcoded features:
+- :candidate (RFC6241 8.3)
+- :validate (RFC6241 8.6)
+- :xpath (RFC6241 8.9)
+
+You can select the startup feature by including it in the config file:
+```
+      <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+```
+(or just `ietf-netconf:*`).
+
 ## Can I run Clixon as a container?
 
 Yes, Clixon has two examples on how to build docker containers. A [base](../docker/base) image and a complete [example system](../docker/system).

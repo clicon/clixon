@@ -8,7 +8,7 @@
 # - startup db starts with a "start" interface
 # There is also an "invalid" XML and a "broken" XML
 # There are two steps, first run through everything OK
-# Then try with invalid and borken XML and ensure the backend quits and all is untouched
+# Then try with invalid and broken XML and ensure the backend quits and all is untouched
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -20,6 +20,7 @@ cfg=$dir/conf_startup.xml
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
@@ -64,7 +65,6 @@ testrun(){
     sdb=$3    # startup db at start
     edb=$4    # extradb at start
     exprun=$5 # expected running_db after startup
-
 
     sudo rm -f  $dir/*_db
     echo "<config>$rdb</config>" > $dir/running_db
@@ -169,16 +169,19 @@ testrun startup "$runvar" "$startvar" "$extravar" '<data><interfaces xmlns="urn:
 # 2. Try different modes on Invalid running/startup/extra WITHOUT failsafe
 # ensure all db:s are unchanged after failure.
 
-new "Test invalid running in running mode"
-testfail running "$invalidvar" "$startvar" "$extravar"
+# Valgrind backend tests make no sense in backend crash tests
+if [ $valgrindtest -ne 2 ]; then
+    new "Test invalid running in running mode"
+    testfail running "$invalidvar" "$startvar" "$extravar"
 
-new "Run invalid startup in startup mode"
-testfail startup "$runvar" "$invalidvar" "$extravar"
+    new "Run invalid startup in startup mode"
+    testfail startup "$runvar" "$invalidvar" "$extravar"
 
-new "Test broken running in running mode"
-testfail running "$brokenvar" "$startvar" "$extravar"
+    new "Test broken running in running mode"
+    testfail running "$brokenvar" "$startvar" "$extravar"
 
-new "Run broken startup in startup mode"
-testfail startup "$runvar" "$brokenvar" "$extravar"
+    new "Run broken startup in startup mode"
+    testfail startup "$runvar" "$brokenvar" "$extravar"
+fi
 
 rm -rf $dir

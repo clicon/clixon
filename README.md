@@ -162,9 +162,11 @@ Clixon implements the following NETCONF proposals or standards:
 The following RFC6241 capabilities/features are hardcoded in Clixon:
 - :candidate (RFC6241 8.3)
 - :validate (RFC6241 8.6)
-- :startup (RFC6241 8.7)
 - :xpath (RFC6241 8.9)
 - :notification: (RFC5277)
+
+The following features are optional and can be enabled by setting CLICON_FEATURE:
+- :startup (RFC6241 8.7)
 
 Clixon does not support the following netconf features:
 

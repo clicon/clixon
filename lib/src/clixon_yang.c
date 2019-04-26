@@ -90,6 +90,7 @@
 #include "clixon_options.h"
 #include "clixon_yang_parse.h"
 #include "clixon_yang_cardinality.h"
+#include "clixon_yang_internal.h" /* internal */
 #include "clixon_yang_type.h"
 
 /* Size of json read buffer when reading from file*/
@@ -844,13 +845,15 @@ yang_order(yang_stmt *y)
     int         i;
     int         j=0;
     int         tot = 0;
-    
+
+    if (y == NULL)
+	return -1;
     /* Some special handling if yp is choice (or case) and maybe union?
      * if so, the real parent (from an xml point of view) is the parents
      * parent. 
      */
-    yp = y->ys_parent;
-    while (yp->ys_keyword == Y_CASE || yp->ys_keyword == Y_CHOICE)
+    yp = yang_parent_get(y);
+    while (yang_keyword_get(yp) == Y_CASE || yang_keyword_get(yp) == Y_CHOICE)
 	yp = yp->ys_parent;
 
     /* XML nodes with yang specs that are children of modules are special - 
@@ -859,8 +862,8 @@ yang_order(yang_stmt *y)
      * Example: <x xmlns="foo"/><y xmlns="bar"/>
      * The order of x and y cannot be compared within a single yang module since they belong to different
      */
-    if (yp->ys_keyword == Y_MODULE || yp->ys_keyword == Y_SUBMODULE){
-	ypp = yp->ys_parent; /* yang spec */
+    if (yang_keyword_get(yp) == Y_MODULE || yang_keyword_get(yp) == Y_SUBMODULE){
+	ypp = yang_parent_get(yp); /* yang spec */
 	for (i=0; i<ypp->ys_len; i++){ /* iterate through other modules */
 	    ym = ypp->ys_stmt[i];
 	    if (yp == ym)
@@ -1588,6 +1591,33 @@ ys_populate_identity(yang_stmt *ys,
     return retval;
 }
 
+/*! Return 1 if feature is enabled, 0 if not using the populated yang tree
+ *
+ * @param[in] yspec   yang specification
+ * @param[in] module  Name of module
+ * @param[in] feature Name of feature
+ * @retval    0       Not found or not set
+ * @retval    1       Found and set
+ * XXX: should the in-param be h, ymod, or yspec?
+ */
+int
+if_feature(yang_stmt    *yspec,
+	   char         *module,
+	   char         *feature)
+{
+    yang_stmt *ym; /* module */
+    yang_stmt *yf; /* feature */
+    cg_var    *cv;
+
+    if ((ym = yang_find_module_by_name(yspec, module)) == NULL)
+	return 0;
+    if ((yf = yang_find(ym, Y_FEATURE, feature)) == NULL)
+	return 0;
+    if ((cv = yang_cv_get(yf)) == NULL)
+	return 0;
+    return cv_bool_get(cv);
+}
+
 /*! Populate yang feature statement - set cv to 1 if enabled
  *
  * @param[in] ys   Feature yang statement to populate.
@@ -1605,6 +1635,8 @@ ys_populate_feature(clicon_handle h,
     char      *module;
     char      *feature;
     cxobj     *xc;
+    char      *m;
+    char      *f;
 
     /* get clicon config file in xml form */
     if ((x = clicon_conf_xml(h)) == NULL)
@@ -1617,11 +1649,12 @@ ys_populate_feature(clicon_handle h,
     feature = ys->ys_argument;
     xc = NULL;
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL && found == 0) {
-	char *m = NULL;
-	char *f = NULL;
+	m = NULL;
+	f = NULL;
 	if (strcmp(xml_name(xc), "CLICON_FEATURE") != 0)
 	    continue;
-	/* get m and f from configuration feature rules */
+	/* CLICON_FEATURE is on the form <module>:<feature>.
+	 * Split on colon to get module(m) and feature(f) respectively */
 	if (nodeid_split(xml_body(xc), &m, &f) < 0)
 	    goto done;
 	if (m && f &&
@@ -2864,6 +2897,26 @@ yang_apply(yang_stmt     *yn,
     retval = 0;
   done:
     return retval;
+}
+
+/*! Check if a node is a yang "data node"
+ * @param[in]  ys  Yang statement node
+ * @retval     0   Yang node is NOT a data node
+ * @retval   !=0   Yang node IS a data noed
+ * @see RFC7950 Sec 3:
+ *   o  data node: A node in the schema tree that can be instantiated in a
+ *      data tree.  One of container, leaf, leaf-list, list, anydata, and
+ *      anyxml.
+ */
+int
+yang_datanode(yang_stmt *ys)
+{
+    return  (yang_keyword_get(ys) == Y_CONTAINER ||
+	     yang_keyword_get(ys) == Y_LEAF ||
+	     yang_keyword_get(ys) == Y_LIST ||
+	     yang_keyword_get(ys) == Y_LEAF_LIST ||
+	     yang_keyword_get(ys) == Y_ANYXML ||
+	     yang_keyword_get(ys) == Y_ANYDATA);
 }
 
 /*! All the work for schema_nodeid functions both absolute and descendant

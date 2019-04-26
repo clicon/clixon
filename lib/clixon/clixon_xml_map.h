@@ -38,6 +38,9 @@
 #ifndef _CLIXON_XML_MAP_H_
 #define _CLIXON_XML_MAP_H_
 
+/* declared in clixon_yang_internal */
+typedef enum yang_class yang_class;
+
 /*
  * Prototypes
  */

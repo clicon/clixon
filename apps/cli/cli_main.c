@@ -485,6 +485,10 @@ main(int argc, char **argv)
     if (yang_modules_init(h) < 0)
 	goto done;
 
+    /* Add netconf yang spec, used as internal protocol */
+    if (netconf_module_load(h) < 0)
+	goto done;
+    
     /* Create tree generated from dataspec. If no other trees exists, this is
      * the only one.
      * The following code creates the tree @datamodel

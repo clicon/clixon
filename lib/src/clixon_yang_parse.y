@@ -190,6 +190,7 @@
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_yang_parse.h"
+#include "clixon_yang_internal.h" /* internal */
 
 extern int clixon_yang_parseget_lineno  (void);
 

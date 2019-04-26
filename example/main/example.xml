@@ -1,6 +1,6 @@
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>/usr/local/etc/example.xml</CLICON_CONFIGFILE>
-  <CLICON_FEATURE>*:*</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLI_MODE>example</CLICON_CLI_MODE>
