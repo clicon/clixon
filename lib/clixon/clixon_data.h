@@ -70,18 +70,6 @@ int clicon_config_yang_set(clicon_handle h, yang_stmt *ys);
 cxobj *clicon_conf_xml(clicon_handle h);
 int clicon_conf_xml_set(clicon_handle h, cxobj *x);
 
-#ifdef XXX
-plghndl_t clicon_xmldb_plugin_get(clicon_handle h);
-int clicon_xmldb_plugin_set(clicon_handle h, plghndl_t handle);
-
-void *clicon_xmldb_api_get(clicon_handle h);
-int clicon_xmldb_api_set(clicon_handle h, void *xa_api);
-
-
-void *clicon_xmldb_handle_get(clicon_handle h);
-int clicon_xmldb_handle_set(clicon_handle h, void *xh);
-#endif
-
 db_elmnt *clicon_db_elmnt_get(clicon_handle h, const char *db);
 int clicon_db_elmnt_set(clicon_handle h, const char *db, db_elmnt *xc);
 

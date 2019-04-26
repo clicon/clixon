@@ -1591,6 +1591,33 @@ ys_populate_identity(yang_stmt *ys,
     return retval;
 }
 
+/*! Return 1 if feature is enabled, 0 if not using the populated yang tree
+ *
+ * @param[in] yspec   yang specification
+ * @param[in] module  Name of module
+ * @param[in] feature Name of feature
+ * @retval    0       Not found or not set
+ * @retval    1       Found and set
+ * XXX: should the in-param be h, ymod, or yspec?
+ */
+int
+if_feature(yang_stmt    *yspec,
+	   char         *module,
+	   char         *feature)
+{
+    yang_stmt *ym; /* module */
+    yang_stmt *yf; /* feature */
+    cg_var    *cv;
+
+    if ((ym = yang_find_module_by_name(yspec, module)) == NULL)
+	return 0;
+    if ((yf = yang_find(ym, Y_FEATURE, feature)) == NULL)
+	return 0;
+    if ((cv = yang_cv_get(yf)) == NULL)
+	return 0;
+    return cv_bool_get(cv);
+}
+
 /*! Populate yang feature statement - set cv to 1 if enabled
  *
  * @param[in] ys   Feature yang statement to populate.
@@ -1608,6 +1635,8 @@ ys_populate_feature(clicon_handle h,
     char      *module;
     char      *feature;
     cxobj     *xc;
+    char      *m;
+    char      *f;
 
     /* get clicon config file in xml form */
     if ((x = clicon_conf_xml(h)) == NULL)
@@ -1620,11 +1649,12 @@ ys_populate_feature(clicon_handle h,
     feature = ys->ys_argument;
     xc = NULL;
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL && found == 0) {
-	char *m = NULL;
-	char *f = NULL;
+	m = NULL;
+	f = NULL;
 	if (strcmp(xml_name(xc), "CLICON_FEATURE") != 0)
 	    continue;
-	/* get m and f from configuration feature rules */
+	/* CLICON_FEATURE is on the form <module>:<feature>.
+	 * Split on colon to get module(m) and feature(f) respectively */
 	if (nodeid_split(xml_body(xc), &m, &f) < 0)
 	    goto done;
 	if (m && f &&

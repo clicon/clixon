@@ -8,7 +8,7 @@
 # - startup db starts with a "start" interface
 # There is also an "invalid" XML and a "broken" XML
 # There are two steps, first run through everything OK
-# Then try with invalid and borken XML and ensure the backend quits and all is untouched
+# Then try with invalid and broken XML and ensure the backend quits and all is untouched
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -20,6 +20,7 @@ cfg=$dir/conf_startup.xml
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
@@ -64,7 +65,6 @@ testrun(){
     sdb=$3    # startup db at start
     edb=$4    # extradb at start
     exprun=$5 # expected running_db after startup
-
 
     sudo rm -f  $dir/*_db
     echo "<config>$rdb</config>" > $dir/running_db

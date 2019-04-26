@@ -668,6 +668,11 @@ main(int    argc,
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;
+
+    /* Add netconf yang spec, used as internal protocol */
+    if (netconf_module_load(h) < 0)
+	goto done;
+    
     /* Add system modules */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
 	 yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
@@ -675,6 +680,11 @@ main(int    argc,
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
 	 yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
 	 goto done;
+
+     /* Dump configuration options on debug */
+    if (debug)      
+	clicon_option_dump(h, debug);
+
     /* Call start function in all plugins before we go interactive 
      */
      if (clixon_plugin_start(h) < 0)

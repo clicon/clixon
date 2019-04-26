@@ -127,7 +127,7 @@ new "restconf wrong method"
 expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:wrong)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "wrong"},"error-severity": "error","error-message": "RPC not defined"}}}'
 
 new "restconf example missing input"
-expecteq "$(curl -s -X POST -d '{"clixon-example:input":null}' http://localhost/restconf/operations/ietf-netconf:edit-config)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "yang module not found"}}}'
+expecteq "$(curl -s -X POST -d '{"clixon-example:input":null}' http://localhost/restconf/operations/ietf-netconf:edit-config)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "target"},"error-severity": "error","error-message": "Mandatory variable"}}}'
 
 new "netconf kill-session missing session-id mandatory"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><kill-session/></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>session-id</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable</error-message></rpc-error></rpc-reply>]]>]]>$'

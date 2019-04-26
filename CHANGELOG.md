@@ -44,6 +44,9 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* Restconf with startup feature will now copy all edit changes to startup db (as it should according to RFC 8040)
+* Netconf Startup feature is no longer hardcoded, you need to explicitly enable it (See RFC 6241, Section 8.7)
+  * Enable in config file with: `<CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>`, or use `*:*`
 * The directory `docker/system` has been moved to `docker/main`, to reflect that it runs the main example.
 * xmldb_get() removed "config" parameter:
   * Change all calls to dbget from: `xmldb_get(h, db, xpath, 0|1, &xret, msd)` to `xmldb_get(h, db, xpath, &xret, msd)`
@@ -111,7 +114,7 @@
 
 ### Minor changes
 
-* A new "hello world" example is added
+* A new minimal "hello world" example has been added
 * Experimental customized error output strings, see [lib/clixon/clixon_err_string.h]
 * Empty leaf values, eg <a></a> are now checked at validation.
   * Empty values were skipped in validation.
@@ -138,6 +141,7 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* [Restconf does not handle startup datastore according to the RFC](https://github.com/clicon/clixon/issues/74)
 * Failure in startup with -m startup or running left running_db cleared.
   * Running-db should not be changed on failure. Unless failure-db defined. Or if SEGV, etc. In those cases, tmp_db should include the original running-db.
 * Backend plugin returning NULL was still installed - is now logged and skipped.

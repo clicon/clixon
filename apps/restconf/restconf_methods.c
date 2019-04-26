@@ -588,6 +588,25 @@ api_data_post(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+    if (if_feature(yspec, "ietf-netconf", "startup")){
+	/* RFC8040 Sec 1.4:
+	 * If the NETCONF server supports :startup, the RESTCONF server MUST
+	 * automatically update the non-volatile startup configuration
+	 * datastore, after the "running" datastore has been altered as a
+	 * consequence of a RESTCONF edit operation.
+	 */
+	cbuf_reset(cbx);
+	cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
+	cprintf(cbx, "<copy-config><source><running/></source><target><startup/></target></copy-config></rpc>");
+	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
+	    goto done;
+	/* If copy-config failed, log and ignore (already committed) */
+	if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
+
+	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
+	}
+    }
+
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");
@@ -914,6 +933,24 @@ api_data_put(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+    if (if_feature(yspec, "ietf-netconf", "startup")){
+	/* RFC8040 Sec 1.4:
+	 * If the NETCONF server supports :startup, the RESTCONF server MUST
+	 * automatically update the non-volatile startup configuration
+	 * datastore, after the "running" datastore has been altered as a
+	 * consequence of a RESTCONF edit operation.
+	 */
+	cbuf_reset(cbx);
+	cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
+	cprintf(cbx, "<copy-config><source><running/></source><target><startup/></target></copy-config></rpc>");
+	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
+	    goto done;
+	/* If copy-config failed, log and ignore (already committed) */
+	if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
+
+	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
+	}
+    }
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");
@@ -1070,6 +1107,24 @@ api_data_delete(clicon_handle h,
 	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
+    }
+    if (if_feature(yspec, "ietf-netconf", "startup")){
+	/* RFC8040 Sec 1.4:
+	 * If the NETCONF server supports :startup, the RESTCONF server MUST
+	 * automatically update the non-volatile startup configuration
+	 * datastore, after the "running" datastore has been altered as a
+	 * consequence of a RESTCONF edit operation.
+	 */
+	cbuf_reset(cbx);
+	cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
+	cprintf(cbx, "<copy-config><source><running/></source><target><startup/></target></copy-config></rpc>");
+	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
+	    goto done;
+	/* If copy-config failed, log and ignore (already committed) */
+	if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
+
+	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
+	}
     }
     FCGX_SetExitStatus(201, r->out);
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
