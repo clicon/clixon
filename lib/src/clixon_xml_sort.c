@@ -416,11 +416,9 @@ xml_search1(cxobj        *xp,
     cmp = yangi-yang_order(y);
     /* Here is right yang order == same yang? */
     if (cmp == 0){
-	if (userorder){
+	cmp = xml_cmp(x1, xc, 0);
+	if (cmp && userorder) /* Ordered by user (if not equal) */
 	    return xml_search_userorder(xp, x1, y, yangi, mid);	    
-	}
-	else /* Ordered by system */
-	    cmp = xml_cmp(x1, xc, 0);
     }
     if (cmp == 0)
 	return xc;

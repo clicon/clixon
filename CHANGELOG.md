@@ -141,6 +141,7 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Fixed a problem caused by recent sorting patches that made "ordered-by user" lists fail in some cases, causing multiple list entries with same keys. NACM being one example. Thanks vratnikov!
 * [Restconf does not handle startup datastore according to the RFC](https://github.com/clicon/clixon/issues/74)
 * Failure in startup with -m startup or running left running_db cleared.
   * Running-db should not be changed on failure. Unless failure-db defined. Or if SEGV, etc. In those cases, tmp_db should include the original running-db.
