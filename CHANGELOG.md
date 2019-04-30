@@ -141,6 +141,7 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Fixed an ordering problem showing up in validate/commit callbacks. If two new items following each order (yang-wise), only the first showed up in the new-list. Thanks achernavin!
 * Fixed a problem caused by recent sorting patches that made "ordered-by user" lists fail in some cases, causing multiple list entries with same keys. NACM being one example. Thanks vratnikov!
 * [Restconf does not handle startup datastore according to the RFC](https://github.com/clicon/clixon/issues/74)
 * Failure in startup with -m startup or running left running_db cleared.

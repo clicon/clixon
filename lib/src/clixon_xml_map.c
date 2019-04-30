@@ -1126,11 +1126,13 @@ xml_diff1(yang_stmt *ys,
 	    if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
 		goto done;
 	    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+	    continue;
 	}
 	else if (eq > 0){
 	    if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
 		goto done;
 	    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+	    continue;
 	}
 	else{ /* equal */
 	    if ((yc = xml_spec(x0c)) == NULL){
