@@ -112,7 +112,6 @@ Clixon follows:
 However, the following YANG syntax modules are not implemented:
 - deviation
 - min/max-elements
-- unique
 - action
 - refine
 - Yang extended Xpath functions: re-match, deref, derived-from, derived-from-or-self, enum-value, bit-is-set

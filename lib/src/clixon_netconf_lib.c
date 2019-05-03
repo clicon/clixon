@@ -966,6 +966,48 @@ netconf_malformed_message_xml(cxobj **xret,
     return retval;
 }
 
+/*! Create Netconf data-not-unique error message according to RFC 7950 15.1
+ *
+ * A NETCONF operation would result in configuration data where a
+ *   "unique" constraint is invalidated.
+ * @param[out]  cb       CLIgen buf. Error XML is written in this buffer
+ * @param[in]   x        List element containing duplicate
+ * @param[in]   cvk      List of comonents in x that are non-unique
+ * @see RFC7950 Sec 15.1
+ */
+int
+netconf_data_not_unique(cbuf *cb,
+			cxobj *x,
+			cvec  *cvk)
+{
+    int     retval = -1;
+    cg_var *cvi = NULL; 
+    cxobj  *xi;
+    
+    if (cprintf(cb, "<rpc-reply><rpc-error>"
+		"<error-type>protocol</error-type>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-app-tag>data-not-unique</error-app-tag>"
+		"<error-severity>error</error-severity>"
+		"<error-info>") < 0)
+	goto err;
+    while ((cvi = cvec_each(cvk, cvi)) != NULL){
+	if ((xi = xml_find(x, cv_string_get(cvi))) == NULL)
+	    continue; /* ignore, shouldnt happen */
+	cprintf(cb, "<non-unique>");
+	clicon_xml2cbuf(cb, xi, 0, 0);	
+	cprintf(cb, "</non-unique>");
+    }
+    if (cprintf(cb, "</error-info></rpc-error></rpc-reply>") <0)
+	goto err;
+    retval = 0;
+ done:
+    return retval;
+ err:
+    clicon_err(OE_XML, errno, "cprintf");
+    goto done;
+}
+
 /*! Help function: merge - check yang - if error make netconf errmsg 
  * @param[in]     x       XML tree
  * @param[in]     yspec   Yang spec
@@ -1005,6 +1047,7 @@ netconf_trymerge(cxobj       *x,
 	free(reason);
     return retval;
 }
+
 
 /*! Load ietf netconf yang module and set enabled features
  * The features added are (in order):

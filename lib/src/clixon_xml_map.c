@@ -633,6 +633,167 @@ check_mandatory(cxobj     *xt,
     goto done;
 }
 
+/*! New elemnt last in list, check if already exists if sp return -1
+ * @param[in]  vec   Vector of existing entries (new is last)
+ * @param[in]  i1    The new entry is placed at vec[i1]
+ * @param[in]  vlen  Lenght of entry
+ * @retval     0     OK, entry is unique
+ * @retval    -1     Duplicate detected
+ * @note This is currently linear complexity. It could be improved by inserting new element sorted and binary search.
+ */
+static int
+check_insert_duplicate(char **vec,
+		       int    i1,
+		       int    vlen)
+{
+    int i;
+    int v;
+    char *b;
+    
+    for (i=0; i<i1; i++){
+	for (v=0; v<vlen; v++){
+	    b = vec[i*vlen+v];
+	    if (b == NULL || strcmp(b, vec[i1*vlen+v]))
+		break;
+	}
+	if (v==vlen) /* duplicate */
+	    break;
+    }
+    return i==i1?0:-1;
+}
+
+/*! Given a list with unique constraint, detect duplicates
+ * @param[in]  x     The first element in the list (on return the last)
+ * @param[in]  xt    The parent of x
+ * @param[in]  y     Its yang spec (Y_LIST)
+ * @param[in]  yu    A yang unique spec (Y_UNIQUE)
+ * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (cbret set)
+ * @retval    -1     Error
+ * @note It would be possible to cache the vector built below
+ */
+static int
+check_unique_list(cxobj     *x, 
+		  cxobj     *xt, 
+		  yang_stmt *y,
+		  yang_stmt *yu,
+		  cbuf      *cbret)
+{
+    int       retval = -1;
+    cvec      *cvk; /* unique vector */
+    cg_var    *cvi; /* unique node name */
+    cxobj     *xi;
+    char     **vec = NULL; /* 2xmatrix */
+    int        vlen;
+    int        i;
+    int        v;
+    char      *bi;
+    
+    cvk = yang_cvec_get(yu);
+    vlen = cvec_len(cvk); /* nr of unique elements to check */
+    if ((vec = calloc(vlen*xml_child_nr(xt), sizeof(char*))) == NULL){
+	clicon_err(OE_UNIX, errno, "calloc");
+	goto done;
+    }
+    i = 0; /* x element index */
+    do {
+	cvi = NULL;
+	v = 0; /* index in each tuple */
+	while ((cvi = cvec_each(cvk, cvi)) != NULL){
+	    /* RFC7950: Sec 7.8.3.1: entries that do not have value for all
+	     * referenced leafs are not taken into account */
+	    if ((xi = xml_find(x, cv_string_get(cvi))) ==NULL)
+		break;
+	    if ((bi = xml_body(xi)) == NULL)
+		break;
+	    vec[i*vlen + v++] = bi;
+	}
+	if (cvi==NULL){
+	    /* Last element (i) is newly inserted, see if it is already there */
+	    if (check_insert_duplicate(vec, i, vlen) < 0){
+		if (netconf_data_not_unique(cbret, x, cvk) < 0)
+		    goto done;
+		goto fail;
+	    }
+	}
+	x = xml_child_each(xt, x, CX_ELMNT);
+	i++;
+    } while (x && y == xml_spec(x));  /* stop if list ends, others may follow */
+    /* It would be possible to cache vec here as an optimization */
+    retval = 1;
+ done:
+    if (vec)
+	free(vec);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Detect unique constraint for duplicates from parent node
+ * @param[in]  xt    XML parent (may have lists w unique constraints as child)
+ * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (cbret set)
+ * @retval    -1     Error
+ * Assume xt:s children are sorted and yang populated.
+ * The routine finds the lists: ie xt may have several lists in the children, 
+ * example
+ * shows two lists [x1,..] and [x2,..]. 
+ *   xt:  {a, b, [x1, x1, x1], d, e, f, [x2, x2, x2], g}
+ * Then call check_unique_list on each list.
+ * The function does this using a single iteration and uses the fact that the
+ * xml symbols share yang symbols: ie [x1..] has yang y1 and d has yd.
+ * Example, x has an associated yang list node with list of unique constraints
+ *         y-list->y-unique - "a"
+ *      xt->x ->  ab
+ *          x ->  bc
+ *          x ->  ab
+ */
+static int
+check_unique_parent(cxobj *xt,
+		    cbuf  *cbret)
+{
+    int         retval = -1;
+    cxobj      *x = NULL;
+    yang_stmt  *y;
+    yang_stmt  *yp = NULL; /* previous in list */
+    yang_stmt  *yu;
+    int         ret;
+	    
+    /* */
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if ((y = xml_spec(x)) == NULL)
+	    continue;
+	if (y == yp) /* If same yang as previous x, then skip (eg same list) */
+	    continue;
+	yp = y;
+	if (yang_keyword_get(y) != Y_LIST)
+	    continue;
+	yu = NULL;
+	while ((yu = yn_each(y, yu)) != NULL) {
+	    if (yang_keyword_get(yu) != Y_UNIQUE)
+		continue;
+	    /* Here is a list w unique constraints identified by:
+	     * its first element x, its yang spec y, its parent xt, and 
+	     * a unique yang spec yu,
+	     */
+	    if ((ret = check_unique_list(x, xt, y, yu, cbret)) < 0)
+		goto done;
+	    if (ret == 0)
+		goto fail;
+	}
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+
 /*! Validate a single XML node with yang specification for added entry
  * 1. Check if mandatory leafs present as subs.
  * 2. Check leaf values, eg int ranges and string regexps.
@@ -831,6 +992,10 @@ xml_yang_validate_all(cxobj   *xt,
 	default:
 	    break;
 	}
+	if ((ret = check_unique_parent(xt, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
 	/* must sub-node RFC 7950 Sec 7.5.3. Can be several. 
 	* XXX. use yang path instead? */
 	yc = NULL;

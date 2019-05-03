@@ -1213,7 +1213,6 @@ yang_print_cbuf(cbuf      *cb,
     return 0;
 }
 
-
 /*! Populate yang leafs after parsing. Create cv and fill it in.
  *
  * Populate leaf in 2nd round of yang parsing, now that context is complete:
@@ -1308,7 +1307,8 @@ ys_populate_list(yang_stmt *ys,
     
     if ((ykey = yang_find(ys, Y_KEY, NULL)) == NULL)
 	return 0;
-    cvec_free(ys->ys_cvec);
+    if (ys->ys_cvec)
+	cvec_free(ys->ys_cvec);
     if ((ys->ys_cvec = yang_arg2cvec(ykey, " ")) == NULL)
 	return -1;
     return 0;
@@ -1681,6 +1681,18 @@ ys_populate_feature(clicon_handle h,
     return retval;
 }
 
+/*! Populate the unique statement with a cvec
+ */
+static int
+ys_populate_unique(yang_stmt *ys)
+{
+    if (ys->ys_cvec)
+	cvec_free(ys->ys_cvec);
+    if ((ys->ys_cvec = yang_arg2cvec(ys, " ")) == NULL)
+	return -1;
+    return 0;
+}
+
 /*! Populate unknown node with extension
  */
 static int
@@ -1768,6 +1780,10 @@ ys_populate(yang_stmt *ys,
 	break;
     case Y_IDENTITY:
 	if (ys_populate_identity(ys, NULL) < 0)
+	    goto done;
+	break;
+    case Y_UNIQUE:
+	if (ys_populate_unique(ys) < 0)
 	    goto done;
 	break;
     case Y_UNKNOWN:

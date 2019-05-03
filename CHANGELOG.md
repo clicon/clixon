@@ -3,6 +3,8 @@
 ## 3.10.0/4.0.0 (Upcoming)
 
 ### Major New features
+* Yang "unique" feature supported
+  * See RFC 7950 7.8.3
 * Persistent CLI history: [Preserve CLI command history across sessions. The up/down arrows](https://github.com/clicon/clixon/issues/79)
   * The design is similar to bash history:
       * The CLI loads/saves its complete history to a file on entry and exit, respectively
