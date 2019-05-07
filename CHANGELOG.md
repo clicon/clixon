@@ -53,6 +53,9 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* Changed return values in internal functions
+  * These functions are affected: `netconf_trymerge`, `startup_module_state`, `yang_modules_state_get`
+  * They now comply to Clixon validation: Error: -1; Invalid: 0; OK: 1.
 * New Clixon Yang RPC: ping. To check if backup is running.
   * Try with `<rpc xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>`
 * Restconf with startup feature will now copy all edit changes to startup db (as it should according to RFC 8040)

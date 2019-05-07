@@ -158,8 +158,8 @@ backend_client_rm(clicon_handle        h,
  * @param[in]     top     Top symbol, ie netconf or restconf-state
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
- * @retval        0       OK
- * @retval        1       Statedata callback failed
+ * @retval        0       Statedata callback failed
+ * @retval        1       OK
  */
 static int
 client_get_streams(clicon_handle   h,
@@ -174,6 +174,7 @@ client_get_streams(clicon_handle   h,
     yang_stmt     *yns = NULL;  /* yang namespace */
     cxobj         *x = NULL;
     cbuf          *cb = NULL;
+    int            ret;
 
     if ((ystream = yang_find(yspec, Y_MODULE, module)) == NULL){
 	clicon_err(OE_YANG, 0, "%s yang module not found", module);
@@ -195,16 +196,22 @@ client_get_streams(clicon_handle   h,
     if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
 	if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
 	    goto done;
-	retval = 1;
-	goto done;
+	goto fail;
     }
-    retval = netconf_trymerge(x, yspec, xret);
+    if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+    retval = 1;
  done:
     if (cb)
 	cbuf_free(cb);
     if (x)
 	xml_free(x);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Get system state-data, including streams and plugins
@@ -212,8 +219,8 @@ client_get_streams(clicon_handle   h,
  * @param[in]     xpath   Xpath selection, not used but may be to filter early
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
- * @retval        0       OK
- * @retval        1       Statedata callback failed (clicon_err called)
+ * @retval        0       Statedata callback failed (clicon_err called)
+ * @retval        1       OK
  */
 static int
 client_statedata(clicon_handle h,
@@ -225,22 +232,34 @@ client_statedata(clicon_handle h,
     size_t     xlen;
     int        i;
     yang_stmt *yspec;
+    int        ret;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277"))
-	if ((retval = client_get_streams(h, yspec, xpath, "clixon-rfc5277", "netconf", xret)) != 0)
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277")){
+	if ((ret = client_get_streams(h, yspec, xpath, "clixon-rfc5277", "netconf", xret)) < 0)
 	    goto done;
-    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040"))
-	if ((retval = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) != 0)
+	if (ret == 0)
+	    goto fail;
+    }
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040")){
+	if ((ret = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) < 0)
 	    goto done;
-    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895"))
-	if ((retval = yang_modules_state_get(h, yspec, xpath, 0, xret)) != 0)
+	if (ret == 0)
+	    goto fail;
+    }
+    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895")){
+	if ((ret = yang_modules_state_get(h, yspec, xpath, 0, xret)) < 0)
 	    goto done;
-    if ((retval = clixon_plugin_statedata(h, yspec, xpath, xret)) != 0)
+	if (ret == 0)
+	    goto fail;
+    }
+    if ((ret = clixon_plugin_statedata(h, yspec, xpath, xret)) < 0)
 	goto done;
+    if (ret == 0)
+	goto fail;
     /* Code complex to filter out anything that is outside of xpath */
     if (xpath_vec(*xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
@@ -259,12 +278,15 @@ client_statedata(clicon_handle h,
     /* reset flag */
     if (xml_apply(*xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
-    retval = 0; /* OK */
+    retval = 1; /* OK */
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (xvec)
 	free(xvec);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Retrieve all or part of a specified configuration.
@@ -783,7 +805,7 @@ from_client_get(clicon_handle h,
     clicon_err_reset();
     if ((ret = client_statedata(h, xpath, &xret)) < 0)
 	goto done;
-    if (ret == 1){ /* Error from callback (error in xret) */
+    if (ret == 0){ /* Error from callback (error in xret) */
 	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
 	    goto done;
 	goto ok;

@@ -1048,8 +1048,8 @@ netconf_minmax_elements(cbuf *cb,
  * @param[in]     yspec   Yang spec
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
- * @retval        0       OK
- * @retval        1       Statedata callback failed
+ * @retval        0       Statedata callback failed
+ * @retval        1       OK
  */
 int
 netconf_trymerge(cxobj       *x,
@@ -1072,17 +1072,18 @@ netconf_trymerge(cxobj       *x,
 	    xml_purge(xc);	    
 	if (netconf_operation_failed_xml(xret, "rpc", reason)< 0)
 	    goto done;
-	retval = 1;
-	goto done;
+	goto fail;
     }
  ok:
-    retval = 0;
+    retval = 1;
  done:
     if (reason)
 	free(reason);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
-
 
 /*! Load ietf netconf yang module and set enabled features
  * The features added are (in order):
