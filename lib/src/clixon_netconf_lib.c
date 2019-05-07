@@ -1008,6 +1008,41 @@ netconf_data_not_unique(cbuf *cb,
     goto done;
 }
 
+/*! Create Netconf too-many/few-elements err msg according to RFC 7950 15.2/15.3
+ *
+ * A NETCONF operation would result in configuration data where a
+   list or a leaf-list would have too many entries, the following error
+ * @param[out]  cb       CLIgen buf. Error XML is written in this buffer
+ * @param[in]   x        List element containing duplicate
+ * @param[in]   max      If set, return too-many, otherwise too-few
+ * @see RFC7950 Sec 15.1
+ */
+int
+netconf_minmax_elements(cbuf *cb,
+			cxobj *x,
+			int    max)
+{
+    int     retval = -1;
+    
+    if (cprintf(cb, "<rpc-reply><rpc-error>"
+		"<error-type>protocol</error-type>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-app-tag>too-%s-elements</error-app-tag>"
+		"<error-severity>error</error-severity>"
+		"<error-path>%s</error-path>"
+		"</rpc-error></rpc-reply>",
+		max?"many":"few",
+		xml_name(x)) < 0) /* XXX should be xml2xpath */
+	goto err;
+    retval = 0;
+ done:
+    return retval;
+ err:
+    clicon_err(OE_XML, errno, "cprintf");
+    goto done;
+}
+
+
 /*! Help function: merge - check yang - if error make netconf errmsg 
  * @param[in]     x       XML tree
  * @param[in]     yspec   Yang spec

@@ -503,7 +503,6 @@ rpc_callback_call(clicon_handle h,
 		  void         *arg)
 {
     int            retval = -1;
-    int            ret;
     rpc_callback_t *rc;
     char           *name;
     char           *prefix;
@@ -520,7 +519,7 @@ rpc_callback_call(clicon_handle h,
 	if (strcmp(rc->rc_name, name) == 0 &&
 	    namespace && rc->rc_namespace &&
 	    strcmp(rc->rc_namespace, namespace) == 0){
-	    if ((ret = rc->rc_callback(h, xe, cbret, arg, rc->rc_arg)) < 0){
+	    if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
 		clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_name);
 		goto done;
 	    }

@@ -495,6 +495,7 @@ xml_yang_validate_rpc(cxobj *xrpc,
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
+ * Check if xt is part of valid choice
  */
 static int
 check_choice(cxobj     *xt, 
@@ -502,27 +503,59 @@ check_choice(cxobj     *xt,
 	     cbuf      *cbret)
 {
     int        retval = -1;
-    yang_stmt *yc;
     yang_stmt *y;
+    yang_stmt *ytp;      /* yt:s parent */
+    yang_stmt *ytcase = NULL;   /* yt:s parent case if any */
+    yang_stmt *ytchoice = NULL; 
     yang_stmt *yp;
     cxobj     *x;
     cxobj     *xp;
     
-    if ((yc = yang_choice(yt)) == NULL)
+    if ((ytp = yang_parent_get(yt)) == NULL)
 	goto ok;
+    /* Return OK if xt is not choice */
+    switch (yang_keyword_get(ytp)){
+    case Y_CASE:
+	ytcase = ytp;
+	ytchoice = yang_parent_get(ytp);
+	break;
+    case Y_CHOICE:
+	ytchoice = ytp;
+	break;
+    default:
+	goto ok;  /* Not choice */
+	break;
+    }
     if ((xp = xml_parent(xt)) == NULL)
 	goto ok;
-    x = NULL; 		    /* Find a child with same yang spec */
+    x = NULL; /* Find a child with same yang spec */
     while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
-	if ((x != xt) &&
-	    (y = xml_spec(x)) != NULL &&
-	    (yp = yang_choice(y)) != NULL &&
-	    yp == yc){
-	    if (netconf_bad_element(cbret, "application", xml_name(x), "Element in choice statement already exists") < 0)
-		goto done;
-	    goto fail;
+	if (x == xt)
+	    continue;
+	y = xml_spec(x);
+	if (y == yt) /* eg same list */
+	    continue;
+	yp = yang_parent_get(y);
+	switch (yang_keyword_get(yp)){
+	case Y_CASE:
+	    if (yang_parent_get(yp) != ytchoice) /* Not same choice (not releveant)  */
+		continue;
+	    if (yp == ytcase) /* same choice but different case */
+		continue;
+	    break;
+	case Y_CHOICE:
+	    if (yp != ytcase) /* Not same choice (not relevant) */
+		continue;
+	    break;
+	default:
+	    continue; /* not choice */
+	    break;
 	}
-    }
+	if (netconf_bad_element(cbret, "application", xml_name(x), "Element in choice statement already exists") < 0)
+	    goto done;
+	goto fail;
+    } /* while */
+
  ok:
     retval = 1;
  done:
@@ -731,46 +764,168 @@ check_unique_list(cxobj     *x,
     goto done;
 }
 
-/*! Detect unique constraint for duplicates from parent node
+/*! Given a list, check if any min/max-elemants constraints apply
+ * @param[in]  x  One x (the last) of a specific lis
+ * @param[in]  y  Yang spec of x
+ * @param[in]  nr Number of elements (like x) in thlist
+ * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (cbret set)
+ * @retval    -1     Error
+ * @see RFC7950 7.7.5
+ */
+static int
+check_min_max(cxobj     *x,
+	      yang_stmt *y,
+	      int        nr,
+	      cbuf      *cbret)
+{
+    int         retval = -1;
+    yang_stmt  *ymin; /* yang min */
+    yang_stmt  *ymax; /* yang max */
+    cg_var     *cv;
+    
+    if ((ymin = yang_find(y, Y_MIN_ELEMENTS, NULL)) != NULL){
+	cv = yang_cv_get(ymin);
+	if (nr < cv_uint32_get(cv)){
+	    if (netconf_minmax_elements(cbret, x, 0) < 0)
+		goto done;
+	    goto fail;
+	}
+    }
+    if ((ymax = yang_find(y, Y_MAX_ELEMENTS, NULL)) != NULL){
+	cv = yang_cv_get(ymax);
+	if (cv_uint32_get(cv) > 0 && /* 0 means unbounded */
+	    nr > cv_uint32_get(cv)){
+	    if (netconf_minmax_elements(cbret, x, 1) < 0)
+		goto done;
+	    goto fail;
+	}
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Detect unique constraint for duplicates from parent node and minmax
  * @param[in]  xt    XML parent (may have lists w unique constraints as child)
  * @param[out] cbret Error buffer (set w netconf error if retval == 0)
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
  * Assume xt:s children are sorted and yang populated.
- * The routine finds the lists: ie xt may have several lists in the children, 
- * example
- * shows two lists [x1,..] and [x2,..]. 
+ * The function does two different things of the children of an XML node:
+ * (1) Check min/max element constraints
+ * (2) Check unique constraints
+ *
+ * The routine uses a node traversing mechanism as the following example, where
+ * two lists [x1,..] and [x2,..] are embedded:
  *   xt:  {a, b, [x1, x1, x1], d, e, f, [x2, x2, x2], g}
- * Then call check_unique_list on each list.
  * The function does this using a single iteration and uses the fact that the
  * xml symbols share yang symbols: ie [x1..] has yang y1 and d has yd.
+ *
+ * Unique constraints:
+ * Lists are identified, then check_unique_list is called on each list.
  * Example, x has an associated yang list node with list of unique constraints
  *         y-list->y-unique - "a"
  *      xt->x ->  ab
  *          x ->  bc
  *          x ->  ab
+ *
+ * Min-max constraints: 
+ * Find upper and lower bound of existing lists and report violations
+ * Somewhat tricky to find violation of min-elements of empty
+ * lists, but this is done by a "gap-detection" mechanism, which detects
+ * gaps in the xml nodes given the ancestor Yang structure. 
+ * But no gap analysis is done if the yang spec of the top-level xml is unknown
+ * Example: 
+ *   Yang structure:y1, y2, y3,
+ *   XML structure: [x1, x1], [x3, x3] where [x2] list is missing
+ * @note min-element constraints on empty lists are not detected on top-level.
+ * Or more specifically, if no yang spec if associated with the top-level
+ * XML node. This may not be a large problem since it would mean empty configs
+ * are not allowed.
  */
 static int
-check_unique_parent(cxobj *xt,
-		    cbuf  *cbret)
+check_list_unique_minmax(cxobj *xt,
+			 cbuf  *cbret)
 {
     int         retval = -1;
     cxobj      *x = NULL;
     yang_stmt  *y;
+    yang_stmt  *yt;
     yang_stmt  *yp = NULL; /* previous in list */
-    yang_stmt  *yu;
+    yang_stmt  *ye = NULL; /* yang each list to catch emtpy */
+    yang_stmt  *ych; /* y:s parent node (if choice that ye can compare to) */
+    cxobj      *xp = NULL; /* previous in list */
+    yang_stmt  *yu;   /* yang unique */
     int         ret;
+    int         nr=0;   /* Nr of list elements for min/max check */
+    enum rfc_6020 keyw;
 	    
-    /* */
+    /* RFC 7950 7.7.5: regarding min-max elements check
+     * The behavior of the constraint depends on the type of the 
+     * leaf-list's or list's closest ancestor node in the schema tree 
+     * that is not a non-presence container (see Section 7.5.1):
+     * o If no such ancestor exists in the schema tree, the constraint
+     * is enforced.
+     * o Otherwise, if this ancestor is a case node, the constraint is
+     * enforced if any other node from the case exists.
+     * o  Otherwise, it is enforced if the ancestor node exists.
+     */
+    yt = xml_spec(xt); /* If yt == NULL, then no gap-analysis is done */
+    /* Traverse all elemenents */
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	if ((y = xml_spec(x)) == NULL)
 	    continue;
-	if (y == yp) /* If same yang as previous x, then skip (eg same list) */
+	if ((ych=yang_choice(y)) == NULL)
+	    ych = y;
+	keyw = yang_keyword_get(y);
+	if (keyw != Y_LIST && keyw != Y_LEAF_LIST)
 	    continue;
-	yp = y;
-	if (yang_keyword_get(y) != Y_LIST)
+	if (yp != NULL){ /* There exists a previous (leaf)list */
+	    if (y == yp){ /* If same yang as previous x, then skip (eg same list) */
+		nr++;
+		continue;
+	    }
+	    else {
+		/* Check if the list length violates min/max */
+		if ((ret = check_min_max(xp, yp, nr, cbret)) < 0)
+		    goto done;
+		if (ret == 0)
+		    goto fail;
+	    }
+	}
+	yp = y; /* Restart min/max count */
+	xp = x; /* Need a reference to the XML as well */
+	nr = 1;
+	/* Gap analysis: Check if there is any empty list between y and yp 
+	 * Note, does not detect empty choice list (too complicated)
+	 */
+	if (yt != NULL && ych != ye){
+	    /* Skip analysis if Yang spec is unknown OR
+	     * if we are still iterating the same Y_CASE w multiple lists
+	     */
+	    ye = yn_each(yt, ye);
+	    if (ye && ych != ye)
+		do {
+		    if (yang_keyword_get(ye) == Y_LIST || yang_keyword_get(ye) == Y_LEAF_LIST){
+			/* Check if the list length violates min/max */
+			if ((ret = check_min_max(xt, ye, 0, cbret)) < 0)
+			    goto done;
+			if (ret == 0)
+			    goto fail;
+		    }
+		    ye = yn_each(yt, ye);
+		} while(ye != NULL && /* to avoid livelock (shouldnt happen) */
+			ye != ych); 
+	}
+	if (keyw != Y_LIST)
 	    continue;
+	/* Here only lists. test unique constraints */
 	yu = NULL;
 	while ((yu = yn_each(y, yu)) != NULL) {
 	    if (yang_keyword_get(yu) != Y_UNIQUE)
@@ -785,6 +940,29 @@ check_unique_parent(cxobj *xt,
 		goto fail;
 	}
     }
+    /* yp if set, is a list that has been traversed 
+     * This check is made in the loop as well - this is for the last list
+     */
+    if (yp){  
+	/* Check if the list length violates min/max */
+	if ((ret = check_min_max(xp, yp, nr, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
+    /* Check if there is any empty list between after last non-empty list 
+     * Note, does not detect empty lists within choice/case (too complicated)
+     */
+    if ((ye = yn_each(yt, ye)) != NULL)
+	do {
+	    if (yang_keyword_get(ye) == Y_LIST || yang_keyword_get(ye) == Y_LEAF_LIST){
+		/* Check if the list length violates min/max */
+		if ((ret = check_min_max(xt, ye, 0, cbret)) < 0)
+		    goto done;
+		if (ret == 0)
+		    goto fail;
+	    }
+	} while((ye = yn_each(yt, ye)) != NULL);
     retval = 1;
  done:
     return retval;
@@ -792,7 +970,6 @@ check_unique_parent(cxobj *xt,
     retval = 0;
     goto done;
 }
-
 
 /*! Validate a single XML node with yang specification for added entry
  * 1. Check if mandatory leafs present as subs.
@@ -938,9 +1115,9 @@ xml_yang_validate_all(cxobj   *xt,
 	    goto done;
 	goto fail;
     }
-    if (ys != NULL && yang_config(ys) != 0){
+    if (yang_config(ys) != 0){
 	/* Node-specific validation */
-	switch (ys->ys_keyword){
+	switch (yang_keyword_get(ys)){
 	case Y_ANYXML:
 	case Y_ANYDATA:
 	    goto ok;
@@ -961,41 +1138,10 @@ xml_yang_validate_all(cxobj   *xt,
 			goto done;
 		}
 	    }
-	    if ((yc = yang_find(ys, Y_MIN_ELEMENTS, NULL)) != NULL){
-		/* The behavior of the constraint depends on the type of the 
-		 * leaf-list's or list's closest ancestor node in the schema tree 
-		 * that is not a non-presence container (see Section 7.5.1):
-		 * o If no such ancestor exists in the schema tree, the constraint
-		 * is enforced.
-		 * o Otherwise, if this ancestor is a case node, the constraint is
-		 * enforced if any other node from the case exists.
-		 * o  Otherwise, it is enforced if the ancestor node exists.
-		 */
-#if 0
-		cxobj     *xp;
-		cxobj     *x;
-		int        i;
-
-		if ((xp = xml_parent(xt)) != NULL){
-		    nr = atoi(yc->ys_argument);
-		    x = NULL;
-		    i = 0;
-		    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL)
-			i++;
-		}
-#endif
-		}
-	    if ((yc = yang_find(ys, Y_MAX_ELEMENTS, NULL)) != NULL){
-		
-	    }
 	    break;
 	default:
 	    break;
 	}
-	if ((ret = check_unique_parent(xt, cbret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
 	/* must sub-node RFC 7950 Sec 7.5.3. Can be several. 
 	* XXX. use yang path instead? */
 	yc = NULL;
@@ -1033,6 +1179,14 @@ xml_yang_validate_all(cxobj   *xt,
 	if (ret == 0)
 	    goto fail;
     }
+    /* Check unique and min-max after choice test for example*/
+    if (yang_config(ys) != 0){
+	/* Checks if next level contains any unique list constraints */
+	if ((ret = check_list_unique_minmax(xt, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
  ok:
     retval = 1;
  done:
@@ -1053,12 +1207,14 @@ xml_yang_validate_all_top(cxobj   *xt,
 {
     int    ret;
     cxobj *x;
-    
+
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	if ((ret = xml_yang_validate_all(x, cbret)) < 1)
 	    return ret;
     }
+    if ((ret = check_list_unique_minmax(xt, cbret)) < 1)
+	return ret;
     return 1;
 }
 

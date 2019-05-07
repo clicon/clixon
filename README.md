@@ -111,12 +111,11 @@ Clixon follows:
 
 However, the following YANG syntax modules are not implemented:
 - deviation
-- min/max-elements
 - action
 - refine
-- Yang extended Xpath functions: re-match, deref, derived-from, derived-from-or-self, enum-value, bit-is-set
 
-Restrictions on Yang types are as follows:
+The following restrictions on Yang exists:
+- Yang extended Xpath functions: re-match, deref, derived-from, derived-from-or-self, enum-value, bit-is-set
 - Submodules cannot re-use a prefix in an import statement that is already used for another imported module in the module that the submodule belongs to. (see https://github.com/clicon/clixon/issues/60)
 - Default values on leaf-lists are not supported (RFC7950 7.7.2)
 

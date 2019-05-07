@@ -72,8 +72,8 @@ testname=
 # eg logging to a file: RCLOG="-l f/www-data/restconf.log"
 : ${RCLOG:=}
 
-# Wait after daemons (backend/restconf) start. Set to 10 if valgrind
-: ${RCWAIT:=1} 
+# Wait after daemons (backend/restconf) start. See mem.sh for valgrind
+: ${RCWAIT:=2} 
 
 # Parse yangmodels from https://github.com/YangModels/yang
 # Recommended: checkout yangmodels elsewhere in the tree and set the env
@@ -168,6 +168,21 @@ stop_backend(){
     fi
 }
 
+# Wait for restconf to stop sending  502 Bad Gateway
+wait_backend(){
+    reply=$(echo '<rpc message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null) 
+    let i=0;
+    while [[ $reply != "<rpc-reply"* ]]; do
+	sleep 1
+	reply=$(echo '<rpc message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null)
+	let i++;
+#	echo "wait_backend  $i"
+	if [ $i -ge $RCWAIT ]; then
+	    err "backend timeout $RCWAIT seconds"
+	fi
+    done
+}
+
 start_restconf(){
     # Start in background 
     sudo su -c "$clixon_restconf $RCLOG -D $DBG $*" -s /bin/sh www-data &
@@ -182,6 +197,21 @@ stop_restconf(){
 	sleep 1
 	checkvalgrind
     fi
+}
+
+# Wait for restconf to stop sending  502 Bad Gateway
+wait_restconf(){
+    hdr=$(curl --head -sS http://localhost/restconf)
+    let i=0;
+    while [[ $hdr == "HTTP/1.1 502 Bad Gateway"* ]]; do
+	sleep 1
+	hdr=$(curl --head -sS http://localhost/restconf)
+	let i++;
+#	echo "wait_restconf $i"
+	if [ $i -ge $RCWAIT ]; then
+	    err "restconf timeout $RCWAIT seconds"
+	fi
+    done
 }
 
 # Increment test number and print a nice string

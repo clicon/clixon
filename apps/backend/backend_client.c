@@ -1039,6 +1039,26 @@ from_client_debug(clicon_handle h,
     return retval;
 }
 
+/*! Check liveness of backend daemon,  just send a reply
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+from_client_ping(clicon_handle h,
+		 cxobj        *xe,
+		 cbuf         *cbret,
+		 void         *arg,
+		 void         *regarg)
+{
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    return 0;
+}
+
 /*! An internal clicon message has arrived from a client. Receive and dispatch.
  * @param[in]   h    Clicon handle
  * @param[in]   s    Socket where message arrived. read from this.
@@ -1271,9 +1291,12 @@ backend_rpc_init(clicon_handle h)
     if (rpc_callback_register(h, from_client_create_subscription, NULL,
 		      "urn:ietf:params:xml:ns:netmod:notification", "create-subscription") < 0)
 	goto done;
-    /* In backend_client.? Clixon RPC */
+    /* Clixon RPC */
     if (rpc_callback_register(h, from_client_debug, NULL,
 			      "http://clicon.org/lib", "debug") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_ping, NULL,
+			      "http://clicon.org/lib", "ping") < 0)
 	goto done;
     retval =0;
  done:

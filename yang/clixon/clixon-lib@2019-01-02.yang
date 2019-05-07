@@ -52,4 +52,7 @@ module clixon-lib {
 	    }
 	}
     }
+    rpc ping {
+	description "Check aliveness of backend daemon.";
+    }
 }
