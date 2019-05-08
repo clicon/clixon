@@ -106,8 +106,10 @@ EOF
     start_restconf -f $cfg -- -a
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
+    wait_restconf
 
+    
     #----------- First get
     case "$ret1" in
 	0) ret='{"nacm-example:x": 42}
@@ -119,6 +121,7 @@ EOF
 '
 	;;
     esac
+
     new "get startup 42"
     expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 "$ret"
 
@@ -193,6 +196,5 @@ testrun true permit deny permit 0 1 3
 
 new "nacm enabled, exec default permit, write permit (expect fail)"
 testrun true deny permit permit 2 0 2
-
 
 rm -rf $dir

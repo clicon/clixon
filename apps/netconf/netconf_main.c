@@ -71,9 +71,12 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hD:f:l:qa:u:d:p:y:U:t:o:"
+#define NETCONF_OPTS "hD:f:l:qa:u:d:p:y:U:t:eo:"
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
+
+/*! Ignore errors on packet errors: continue */
+static int ignore_packet_errors = 1;
 
 /*! Process incoming packet 
  * @param[in]   h    Clicon handle
@@ -235,8 +238,9 @@ netconf_input_cb(int   s,
 		/* OK, we have an xml string from a client */
 		/* Remove trailer */
 		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
-		if (netconf_input_packet(h, cb) < 0)
-		    ; //goto done; // ignore errors
+		if (netconf_input_packet(h, cb) < 0 &&
+		    !ignore_packet_errors) // default is to ignore errors
+		    goto done; 
 		if (cc_closed)
 		    break;
 		cbuf_reset(cb);
@@ -338,6 +342,7 @@ usage(clicon_handle h,
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
 	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n"
+	    "\t-e \tDont ignore errors on packet input.\n"
 	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_netconf_dir(h)
@@ -349,6 +354,7 @@ int
 main(int    argc,
      char **argv)
 {
+    int              retval = -1;
     int              c;
     char            *argv0 = argv[0];
     int              quiet = 0;
@@ -455,6 +461,9 @@ main(int    argc,
 	case 't': /* timeout in seconds */
 	    tv.tv_sec = atoi(optarg);
 	    break;
+	case 'e': /* dont ignore packet errors */
+	    ignore_packet_errors = 0;
+	    break;
 	case 'o':{ /* Configuration option */
 	    char          *val;
 	    if ((val = index(optarg, '=')) == NULL)
@@ -528,9 +537,12 @@ main(int    argc,
     }
     if (event_loop() < 0)
 	goto done;
+    retval = 0;
   done:
+    if (ignore_packet_errors)
+	retval = 0;
     netconf_terminate(h);
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clicon_log(LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
-    return 0;
+    return retval;
 }

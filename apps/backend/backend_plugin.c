@@ -115,8 +115,8 @@ clixon_plugin_reset(clicon_handle h,
  * @param[in]     xpath   String with XPATH syntax. or NULL for all
  * @param[in,out] xtop    State XML tree is merged with existing tree.
  * @retval       -1       Error
- * @retval        0       OK
- * @retval        1       Statedata callback failed (xret set with netconf-error)
+ * @retval        0       Statedata callback failed (xret set with netconf-error)
+ * @retval        1       OK
  * @note xtop can be replaced
  */
 int
@@ -136,24 +136,25 @@ clixon_plugin_statedata(clicon_handle    h,
 	    continue;
 	if ((x = xml_new("config", NULL, NULL)) == NULL)
 	    goto done;
-	if (fn(h, xpath, x) < 0){
-	    retval = 1;
-	    goto done; /* Dont quit here on user callbacks */
-	}
-	if ((ret = netconf_trymerge(x, yspec, xret)) != 0){
-	    retval = ret;
+	if (fn(h, xpath, x) < 0)
+	    goto fail;  /* Dont quit here on user callbacks */
+	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;
-	}
+	if (ret == 0)
+	    goto fail;
 	if (x){
 	    xml_free(x);
 	    x = NULL;
 	}
     }
-    retval = 0;
+    retval = 1;
  done:
     if (x)
 	xml_free(x);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Create and initialize transaction */

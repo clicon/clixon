@@ -966,13 +966,90 @@ netconf_malformed_message_xml(cxobj **xret,
     return retval;
 }
 
+/*! Create Netconf data-not-unique error message according to RFC 7950 15.1
+ *
+ * A NETCONF operation would result in configuration data where a
+ *   "unique" constraint is invalidated.
+ * @param[out]  cb       CLIgen buf. Error XML is written in this buffer
+ * @param[in]   x        List element containing duplicate
+ * @param[in]   cvk      List of comonents in x that are non-unique
+ * @see RFC7950 Sec 15.1
+ */
+int
+netconf_data_not_unique(cbuf *cb,
+			cxobj *x,
+			cvec  *cvk)
+{
+    int     retval = -1;
+    cg_var *cvi = NULL; 
+    cxobj  *xi;
+    
+    if (cprintf(cb, "<rpc-reply><rpc-error>"
+		"<error-type>protocol</error-type>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-app-tag>data-not-unique</error-app-tag>"
+		"<error-severity>error</error-severity>"
+		"<error-info>") < 0)
+	goto err;
+    while ((cvi = cvec_each(cvk, cvi)) != NULL){
+	if ((xi = xml_find(x, cv_string_get(cvi))) == NULL)
+	    continue; /* ignore, shouldnt happen */
+	cprintf(cb, "<non-unique>");
+	clicon_xml2cbuf(cb, xi, 0, 0);	
+	cprintf(cb, "</non-unique>");
+    }
+    if (cprintf(cb, "</error-info></rpc-error></rpc-reply>") <0)
+	goto err;
+    retval = 0;
+ done:
+    return retval;
+ err:
+    clicon_err(OE_XML, errno, "cprintf");
+    goto done;
+}
+
+/*! Create Netconf too-many/few-elements err msg according to RFC 7950 15.2/15.3
+ *
+ * A NETCONF operation would result in configuration data where a
+   list or a leaf-list would have too many entries, the following error
+ * @param[out]  cb       CLIgen buf. Error XML is written in this buffer
+ * @param[in]   x        List element containing duplicate
+ * @param[in]   max      If set, return too-many, otherwise too-few
+ * @see RFC7950 Sec 15.1
+ */
+int
+netconf_minmax_elements(cbuf *cb,
+			cxobj *x,
+			int    max)
+{
+    int     retval = -1;
+    
+    if (cprintf(cb, "<rpc-reply><rpc-error>"
+		"<error-type>protocol</error-type>"
+		"<error-tag>operation-failed</error-tag>"
+		"<error-app-tag>too-%s-elements</error-app-tag>"
+		"<error-severity>error</error-severity>"
+		"<error-path>%s</error-path>"
+		"</rpc-error></rpc-reply>",
+		max?"many":"few",
+		xml_name(x)) < 0) /* XXX should be xml2xpath */
+	goto err;
+    retval = 0;
+ done:
+    return retval;
+ err:
+    clicon_err(OE_XML, errno, "cprintf");
+    goto done;
+}
+
+
 /*! Help function: merge - check yang - if error make netconf errmsg 
  * @param[in]     x       XML tree
  * @param[in]     yspec   Yang spec
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
- * @retval        0       OK
- * @retval        1       Statedata callback failed
+ * @retval        0       Statedata callback failed
+ * @retval        1       OK
  */
 int
 netconf_trymerge(cxobj       *x,
@@ -995,15 +1072,17 @@ netconf_trymerge(cxobj       *x,
 	    xml_purge(xc);	    
 	if (netconf_operation_failed_xml(xret, "rpc", reason)< 0)
 	    goto done;
-	retval = 1;
-	goto done;
+	goto fail;
     }
  ok:
-    retval = 0;
+    retval = 1;
  done:
     if (reason)
 	free(reason);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Load ietf netconf yang module and set enabled features

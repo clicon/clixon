@@ -255,8 +255,8 @@ yms_build(clicon_handle    h,
  * @param[in]     brief   Just name, revision and uri (no cache)
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
- * @retval        0       OK
- * @retval        1       Statedata callback failed
+ * @retval        0       Statedata callback failed
+ * @retval        1       OK
  * @notes NYI: schema, deviation
 x      +--ro modules-state
 x         +--ro module-set-id    string
@@ -288,6 +288,7 @@ yang_modules_state_get(clicon_handle    h,
     char       *msid; /* modules-set-id */
     cxobj      *x1;
     cbuf       *cb = NULL;
+    int         ret;
 
     msid = clicon_option_str(h, "CLICON_MODULE_SET_ID");
     if ((x = clicon_modst_cache_get(h, brief)) != NULL){
@@ -313,8 +314,7 @@ yang_modules_state_get(clicon_handle    h,
 	if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
 	    if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
 		goto done;
-	    retval = 1;
-	    goto done;
+	    goto fail;
 	}
 	if (xml_rootchild(x, 0, &x) < 0)
 	    goto done;
@@ -326,10 +326,12 @@ yang_modules_state_get(clicon_handle    h,
 	/* Wrap x (again) with new top-level node "top" which merge wants */
 	if ((x = xml_wrap(x, "top")) < 0)
 	    goto done;
-	if (netconf_trymerge(x, yspec, xret) < 0)
+	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;
+	if (ret == 0)
+	    goto fail;
     }
-    retval = 0;
+    retval = 1;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (cb)
@@ -337,6 +339,9 @@ yang_modules_state_get(clicon_handle    h,
     if (x)
         xml_free(x);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! For single module state with namespace, get revisions and send upgrade callbacks

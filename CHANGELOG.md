@@ -3,6 +3,15 @@
 ## 3.10.0/4.0.0 (Upcoming)
 
 ### Major New features
+* Yang "min-element" and "max-element" feature supported
+  * According to RFC 7950 7.7.4 and 7.7.5
+  * See (tests)[test/test_minmax.sh]
+  * The following cornercases are not supported:
+    * Check for min-elements>0 for empty lists on top-level
+    * Check for min-elements>0 for empty lists in choice/case
+* Yang "unique" feature supported
+  * According to RFC 7950 7.8.3
+  * See (tests)[test/test_unique.sh]
 * Persistent CLI history: [Preserve CLI command history across sessions. The up/down arrows](https://github.com/clicon/clixon/issues/79)
   * The design is similar to bash history:
       * The CLI loads/saves its complete history to a file on entry and exit, respectively
@@ -45,6 +54,11 @@
 ### API changes on existing features (you may need to change your code)
 
 * Non-key list now not accepted in edit-config (before only on validation)
+* Changed return values in internal functions
+  * These functions are affected: `netconf_trymerge`, `startup_module_state`, `yang_modules_state_get`
+  * They now comply to Clixon validation: Error: -1; Invalid: 0; OK: 1.
+* New Clixon Yang RPC: ping. To check if backup is running.
+  * Try with `<rpc xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>`
 * Restconf with startup feature will now copy all edit changes to startup db (as it should according to RFC 8040)
 * Netconf Startup feature is no longer hardcoded, you need to explicitly enable it (See RFC 6241, Section 8.7)
   * Enable in config file with: `<CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>`, or use `*:*`
@@ -116,6 +130,8 @@
 ### Minor changes
 
 * New XMLDB_FORMAT added: `tree`. An experimental record-based tree database for direct access of records. 
+* Netconf error handling modified
+  * New option -e added. If set, the netconf client returns -1 on error.
 * A new minimal "hello world" example has been added
 * Experimental customized error output strings, see [lib/clixon/clixon_err_string.h]
 * Empty leaf values, eg <a></a> are now checked at validation.
@@ -143,6 +159,9 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Fixed support for multiple datanodes in a choice/case statement. Only single datanode was supported.
+* Fixed an ordering problem showing up in validate/commit callbacks. If two new items following each order (yang-wise), only the first showed up in the new-list. Thanks achernavin!
+* Fixed a problem caused by recent sorting patches that made "ordered-by user" lists fail in some cases, causing multiple list entries with same keys. NACM being one example. Thanks vratnikov!
 * [Restconf does not handle startup datastore according to the RFC](https://github.com/clicon/clixon/issues/74)
 * Failure in startup with -m startup or running left running_db cleared.
   * Running-db should not be changed on failure. Unless failure-db defined. Or if SEGV, etc. In those cases, tmp_db should include the original running-db.

@@ -588,6 +588,10 @@ api_data_post(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+    if (xretcom){ /* Clear: can be reused again below */
+	xml_free(xretcom);
+	xretcom = NULL;
+    }
     if (if_feature(yspec, "ietf-netconf", "startup")){
 	/* RFC8040 Sec 1.4:
 	 * If the NETCONF server supports :startup, the RESTCONF server MUST
@@ -933,6 +937,10 @@ api_data_put(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+    if (xretcom){ /* Clear: can be reused again below */
+	xml_free(xretcom);
+	xretcom = NULL;
+    }
     if (if_feature(yspec, "ietf-netconf", "startup")){
 	/* RFC8040 Sec 1.4:
 	 * If the NETCONF server supports :startup, the RESTCONF server MUST
@@ -1107,6 +1115,10 @@ api_data_delete(clicon_handle h,
 	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;
 	goto ok;
+    }
+    if (xretcom){ /* Clear: can be reused again below */
+	xml_free(xretcom);
+	xretcom = NULL;
     }
     if (if_feature(yspec, "ietf-netconf", "startup")){
 	/* RFC8040 Sec 1.4:

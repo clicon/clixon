@@ -759,12 +759,12 @@ yang_choice(yang_stmt *y)
     yang_stmt *yp;
 
     if ((yp = y->ys_parent) != NULL){
-	switch (yp->ys_keyword){
+	switch (yang_keyword_get(yp)){
 	case Y_CHOICE:
 	    return yp;
 	    break;
 	case Y_CASE:
-	    return yp->ys_parent;
+	    return yang_parent_get(yp);
 	    break;
 	default:
 	    break;
@@ -773,31 +773,57 @@ yang_choice(yang_stmt *y)
     return NULL;
 }
 
+/*! Find matching y in yp:s children, "yang order" of y when y is choice
+ * @param[in]  yp     Choice node
+ * @param[in]  y      Yang datanode to find
+ * @param[out] index  Index of y in yp:s list of children
+ * @retval     0      not found (must be datanode)
+ * @retval     1      found
+ * @see order1 the main function
+ * There are two distinct cases, either (1) the choice has case statements, or
+ * (2) it uses shortcut mode without case statements.
+ * In (1) we need to count how many sub-statements and keep a max
+ * In (2) we increment with only 1.
+ */
 static int
 order1_choice(yang_stmt *yp,
-	      yang_stmt *y)
+	      yang_stmt *y,
+	      int       *index)
 {
     yang_stmt  *ys;
     yang_stmt  *yc;
     int         i;
     int         j;
+    int         shortcut=0;
+    int         max=0;
 
-    for (i=0; i<yp->ys_len; i++){
+    for (i=0; i<yp->ys_len; i++){ /* Loop through choice */
 	ys = yp->ys_stmt[i];
-	if (ys->ys_keyword == Y_CASE){
+	if (ys->ys_keyword == Y_CASE){ /* Loop through case */
 	    for (j=0; j<ys->ys_len; j++){
 		yc = ys->ys_stmt[j];
-		if (yang_datanode(yc) && yc == y)
+		if (yang_datanode(yc) && yc == y){
+		    *index += j;
 		    return 1;
+		}
 	    }
+	    if (j>max)
+		max = j;
 	}
-	else if (yang_datanode(ys) && ys == y)
-	    return 1;
+	else {
+	    shortcut = 1;   /* Shortcut, no case */
+	    if (yang_datanode(ys) && ys == y) 
+		return 1;
+	}
     }
+    if (shortcut)
+	(*index)++;
+    else
+	*index += max;
     return 0;
 }
 
-/*! Find matching y in yp:s children, return 0 and index or -1 if not found.
+/*! Find matching y in yp:s children, return "yang order" of y or -1 if not found
  * @param[in]  yp     Parent
  * @param[in]  y      Yang datanode to find
  * @param[out] index  Index of y in yp:s list of children
@@ -815,7 +841,7 @@ order1(yang_stmt *yp,
     for (i=0; i<yp->ys_len; i++){
 	ys = yp->ys_stmt[i];
 	if (ys->ys_keyword == Y_CHOICE){
-	    if (order1_choice(ys, y) == 1) /* If one of the choices is "y" */
+	    if (order1_choice(ys, y, index) == 1) /* If one of the choices is "y" */
 		return 1;
 	}
 	else {
@@ -823,8 +849,8 @@ order1(yang_stmt *yp,
 		continue;
 	    if (ys==y)
 		return 1;
+	    (*index)++; 
 	}
-	(*index)++;
     }
     return 0;
 }
@@ -848,7 +874,7 @@ yang_order(yang_stmt *y)
 
     if (y == NULL)
 	return -1;
-    /* Some special handling if yp is choice (or case) and maybe union?
+    /* Some special handling if yp is choice (or case)
      * if so, the real parent (from an xml point of view) is the parents
      * parent. 
      */
@@ -1213,7 +1239,6 @@ yang_print_cbuf(cbuf      *cb,
     return 0;
 }
 
-
 /*! Populate yang leafs after parsing. Create cv and fill it in.
  *
  * Populate leaf in 2nd round of yang parsing, now that context is complete:
@@ -1308,7 +1333,8 @@ ys_populate_list(yang_stmt *ys,
     
     if ((ykey = yang_find(ys, Y_KEY, NULL)) == NULL)
 	return 0;
-    cvec_free(ys->ys_cvec);
+    if (ys->ys_cvec)
+	cvec_free(ys->ys_cvec);
     if ((ys->ys_cvec = yang_arg2cvec(ykey, " ")) == NULL)
 	return -1;
     return 0;
@@ -1681,6 +1707,18 @@ ys_populate_feature(clicon_handle h,
     return retval;
 }
 
+/*! Populate the unique statement with a cvec
+ */
+static int
+ys_populate_unique(yang_stmt *ys)
+{
+    if (ys->ys_cvec)
+	cvec_free(ys->ys_cvec);
+    if ((ys->ys_cvec = yang_arg2cvec(ys, " ")) == NULL)
+	return -1;
+    return 0;
+}
+
 /*! Populate unknown node with extension
  */
 static int
@@ -1768,6 +1806,10 @@ ys_populate(yang_stmt *ys,
 	break;
     case Y_IDENTITY:
 	if (ys_populate_identity(ys, NULL) < 0)
+	    goto done;
+	break;
+    case Y_UNIQUE:
+	if (ys_populate_unique(ys) < 0)
 	    goto done;
 	break;
     case Y_UNKNOWN:
@@ -3202,7 +3244,9 @@ ys_parse(yang_stmt   *ys,
  *
  * The cv:s created in parse-tree as follows:
  * fraction-digits : Create cv as uint8, check limits [1:8] (must be made in 1st pass)
- *
+ * revision: cv as uint32 date: Integer version as YYYYMMDD
+ * min-elements: cv as uint32
+ * max-elements: cv as uint32, '0' means unbounded
  * @see ys_populate
  */
 int
@@ -3212,8 +3256,15 @@ ys_parse_sub(yang_stmt *ys,
     int        retval = -1;
     uint8_t    fd;
     uint32_t   date = 0;
-
-    switch (ys->ys_keyword){
+    char      *arg;
+    enum rfc_6020 keyword;
+    char      *reason = NULL;
+    int        ret;
+    uint32_t   minmax;
+    
+    arg = yang_argument_get(ys);
+    keyword = yang_keyword_get(ys);
+    switch (keyword){
     case Y_FRACTION_DIGITS:
 	if (ys_parse(ys, CGV_UINT8) == NULL) 
 	    goto done;
@@ -3225,7 +3276,7 @@ ys_parse_sub(yang_stmt *ys,
 	break;
     case Y_REVISION:
     case Y_REVISION_DATE:  /* YYYY-MM-DD encoded as uint32 YYYYMMDD */
-	if (ys_parse_date_arg(ys->ys_argument, &date) < 0)
+	if (ys_parse_date_arg(arg, &date) < 0)
 	    goto done;
 	if ((ys->ys_cv = cv_new(CGV_UINT32)) == NULL){
 	    clicon_err(OE_YANG, errno, "cv_new"); 
@@ -3234,12 +3285,35 @@ ys_parse_sub(yang_stmt *ys,
 	cv_uint32_set(ys->ys_cv, date);
 	break;
     case Y_STATUS: /* RFC7950 7.21.2: "current", "deprecated", or "obsolete". */
-	if (strcmp(ys->ys_argument, "current") &&
-	    strcmp(ys->ys_argument, "deprecated") &&
-	    strcmp(ys->ys_argument, "obsolete")){
-	    clicon_err(OE_YANG, errno, "Invalid status: \"%s\", expected current, deprecated, or obsolete", ys->ys_argument); 
+	if (strcmp(arg, "current") &&
+	    strcmp(arg, "deprecated") &&
+	    strcmp(arg, "obsolete")){
+	    clicon_err(OE_YANG, errno, "Invalid status: \"%s\", expected current, deprecated, or obsolete", arg); 
 	    goto done;
 
+	}
+	break;
+    case Y_MAX_ELEMENTS:
+    case Y_MIN_ELEMENTS:
+	if ((ys->ys_cv = cv_new(CGV_UINT32)) == NULL){
+	    clicon_err(OE_YANG, errno, "cv_new"); 
+	    goto done;
+	}
+	if (keyword == Y_MAX_ELEMENTS &&
+	    strcmp(arg, "unbounded") == 0)
+	    cv_uint32_set(ys->ys_cv, 0); /* 0 means unbounded for max */
+	else{
+	    if ((ret = parse_uint32(arg, &minmax, &reason)) < 0){
+		clicon_err(OE_YANG, errno, "parse_uint32"); 
+		goto done;
+	    }
+	    if (ret == 0){
+		clicon_err(OE_YANG, EINVAL, "element-min/max parse error: %s", reason); 
+		if (reason)
+		    free(reason);
+		goto done;
+	    }
+	    cv_uint32_set(ys->ys_cv, minmax);
 	}
 	break;
     case Y_UNKNOWN: /* XXX This code assumes ymod already loaded
@@ -3273,8 +3347,7 @@ int
 yang_mandatory(yang_stmt *ys)
 {
     yang_stmt *ym;
-    char      *reason = NULL;
-    uint8_t   min_elements; /* XXX change to 32 (need new cligen version) */
+    cg_var    *cv;
 
     /* 1) A leaf, choice, anydata, or anyxml node with a "mandatory"
      *    statement with the value "true". */
@@ -3289,12 +3362,8 @@ yang_mandatory(yang_stmt *ys)
      *    value greater than zero. */
     else if (ys->ys_keyword == Y_LIST || ys->ys_keyword == Y_LEAF_LIST){
 	if ((ym = yang_find(ys, Y_MIN_ELEMENTS, NULL)) != NULL){
-	    /* XXX change to 32 (need new cligen version) */
-	    if (parse_uint8(ym->ys_argument, &min_elements, &reason) != 1){
-		clicon_err(OE_YANG, EINVAL, "%s", reason?reason:"parse_uint8");
-		return 0; /* XXX ignore error */
-	    }
-	    return min_elements > 0;
+	    cv = yang_cv_get(ym);
+	    return cv_uint32_get(cv) > 0;
 	}
     }
     /* 3) A container node without a "presence" statement and that has at

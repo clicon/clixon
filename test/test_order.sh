@@ -221,6 +221,24 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><can
 new "verify list user order (as entered)"
 expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/y2"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><y2 xmlns="urn:example:order"><k>c</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>b</k><a>foo</a></y2><y2 xmlns="urn:example:order"><k>a</k><a>fie</a></y2></data></rpc-reply>]]>]]>$'
 
+new "Overwrite existing ordered-by user y2->c"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:order">
+<k>c</k><a>newc</a>
+</y2></config></edit-config></rpc>]]>]]>'
+
+new "Overwrite existing ordered-by user y2->b"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:order">
+<k>b</k><a>newb</a>
+</y2></config></edit-config></rpc>]]>]]>'
+
+new "Overwrite existing ordered-by user y2->a"
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:order">
+<k>a</k><a>newa</a>
+</y2></config></edit-config></rpc>]]>]]>'
+
+new "Tests for no duplicates."
+expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/y2"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><y2 xmlns="urn:example:order"><k>c</k><a>newc</a></y2><y2 xmlns="urn:example:order"><k>b</k><a>newb</a></y2><y2 xmlns="urn:example:order"><k>a</k><a>newa</a></y2></data></rpc-reply>]]>]]>$'
+
 #-- order by type rather than strings.
 # there are three leaf-lists:strings, ints, and decimal64, and two lists:
 # listints and listdecs

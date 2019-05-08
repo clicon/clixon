@@ -85,7 +85,8 @@ new "start restconf daemon"
 start_restconf -f $cfg -y $fyang
 
 new "waiting"
-sleep $RCWAIT
+wait_backend
+wait_restconf
 
 new "restconf tests"
 

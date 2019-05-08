@@ -25,7 +25,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 : ${clixon_util_stream:=clixon_util_stream}
-NCWAIT=5 # Wait (netconf valgrind may need more time)
+NCWAIT=10 # Wait (netconf valgrind may need more time)
 
 DATE=$(date +"%Y-%m-%d")
 
@@ -120,7 +120,8 @@ new "start restconf daemon"
 start_restconf -f $cfg -y $fyang
 
 new "waiting"
-sleep $RCWAIT
+wait_backend
+wait_restconf
 
 #
 # 1. Netconf RFC5277 stream testing
