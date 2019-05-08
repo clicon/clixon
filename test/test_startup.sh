@@ -13,6 +13,9 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+# Which format to use as datastore format internally
+: ${format:=xml}
+
 APPNAME=example
 
 cfg=$dir/conf_startup.xml
@@ -36,6 +39,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
   <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
+  <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
 </clixon-config>
 
 EOF

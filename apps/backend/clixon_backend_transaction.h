@@ -60,5 +60,6 @@ cxobj **transaction_tcvec(transaction_data td);
 size_t  transaction_clen(transaction_data td);
 
 int transaction_print(FILE *f, transaction_data th);
+int transaction_log(clicon_handle h, transaction_data th, int level, const char *id);
 
 #endif /* _CLIXON_BACKEND_TRANSACTION_H_ */

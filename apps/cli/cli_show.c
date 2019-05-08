@@ -656,6 +656,12 @@ cli_show_auto(clicon_handle h,
     //	goto done;
     if (api_path_fmt2xpath(api_path_fmt, cvv, &xpath) < 0)
 	goto done;
+    /* XXX Kludge to overcome a trailing / in show, that I cannot add to
+     * yang2api_path_fmt_1 where it should belong.
+     */
+    if (xpath[strlen(xpath)-1] == '/')
+	xpath[strlen(xpath)-1] = '\0';
+
     /* Get configuration from database */
     if (clicon_rpc_get_config(h, db, xpath, &xt) < 0)
 	goto done;

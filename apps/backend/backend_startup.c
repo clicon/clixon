@@ -262,11 +262,6 @@ startup_extraxml(clicon_handle        h,
 	goto fail;
     if (xt==NULL || xml_child_nr(xt)==0) 
 	goto ok;
-    /* Write (potentially modified) xml tree xt back to tmp
-     */
-    if ((ret = xmldb_put(h, "tmp", OP_REPLACE, xt,
-			 clicon_username_get(h), cbret)) < 0)
-	goto done;
     /* Merge tmp into running (no commit) */
     if ((ret = db_merge(h, db, "running", cbret)) < 0)
 	goto fail;
@@ -275,9 +270,9 @@ startup_extraxml(clicon_handle        h,
  ok:
     retval = 1;
  done:
-    if (xt)
+    if (xt && !clicon_option_bool(h, "CLICON_XMLDB_CACHE"))
 	xml_free(xt);
-    if (xmldb_delete(h, "tmp") != 0 && errno != ENOENT) 
+    if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
 	return -1;
     return retval;
  fail:

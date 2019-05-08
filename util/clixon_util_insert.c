@@ -93,7 +93,7 @@ main(int argc, char **argv)
     char       *x0str = NULL;
     char       *xistr = NULL;
     char       *xpath = NULL;
-    yang_stmt  *yspec;
+    yang_stmt  *yspec = NULL;
     cxobj      *x0 = NULL;
     cxobj      *xb;
     cxobj      *xi = NULL;

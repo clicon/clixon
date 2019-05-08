@@ -10,6 +10,9 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/nacm-example.yang
 
+# Which format to use as datastore format internally
+: ${format:=xml}
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -29,6 +32,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
+  <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
 </clixon-config>
 EOF
 

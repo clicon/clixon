@@ -4,6 +4,9 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+# Which format to use as datastore format internally
+: ${format:=xml}
+
 # Number of list/leaf-list entries in file
 : ${perfnr:=10000}
 
@@ -17,7 +20,6 @@ fyang=$dir/scaling.yang
 fconfig=$dir/large.xml
 fconfig2=$dir/large2.xml
 
-format=xml
 
 cat <<EOF > $fyang
 module scaling{
@@ -59,6 +61,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_CLI_GENMODEL_TYPE>VARS</CLICON_CLI_GENMODEL_TYPE>
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
 </clixon-config>
 EOF
 
@@ -117,10 +120,11 @@ for mode in startup running; do
 		clixon_util_datastore -d ${mode} -f tree -y $fyang -b $dir -x $tmpx put create
 	    ;;
 	esac
-	new "Startup backend $format -s $mode -f $cfg -y $fyang"
-	echo "time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang -o CLICON_XMLDB_FORMAT=$format"
+	new "Startup format: $format mode:$mode"
+#	echo "time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang -o CLICON_XMLDB_FORMAT=$format"
 	# Cannot use start_backend here due to expected error case
-	time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang -o CLICON_XMLDB_FORMAT=$format # 2> /dev/null	
+{ time -p sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang -o CLICON_XMLDB_FORMAT=$format 2> /dev/null; } 2>&1 | awk '/real/ {print $2}'
+
     done
 done
 
@@ -189,7 +193,9 @@ time -p for (( i=0; i<$perfreq; i++ )); do
     curl -sG http://localhost/restconf/data/scaling:x/y=$rnd > /dev/null
 done
 
-# Reference: i686 perfnr=10000 time: 27s 20190425 34s WITH startup copying
+# Reference:
+# i686 format=xml perfnr=10000/100 time: 38/29s 20190425  WITH/OUT startup copying
+# i686 format=tree perfnr=10000/100 time: 72/64s 20190425 WITH/OUT startup copying
 new "restconf add $perfreq small config"
 time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))

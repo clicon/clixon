@@ -72,23 +72,47 @@ static int _state = 0;
  */
 static int _upgrade = 0;
 
+/*! Variable to control transaction logging (for debug)
+ * If set, call syslog for every transaction callback
+ */
+static int _transaction_log = 0;
+
 /* forward */
 static int example_stream_timer_setup(clicon_handle h);
 
+int
+main_begin(clicon_handle    h, 
+	   transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, "begin");
+
+    return 0;
+}
 /*! This is called on validate (and commit). Check validity of candidate
  */
 int
-transaction_validate(clicon_handle    h, 
-		     transaction_data td)
+main_validate(clicon_handle    h, 
+	      transaction_data td)
 {
-    //    transaction_print(stderr, td);
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, "validate");
+    return 0;
+}
+
+int
+main_complete(clicon_handle    h, 
+	      transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, "complete");
     return 0;
 }
 
 /*! This is called on commit. Identify modifications and adjust machine state
  */
 int
-transaction_commit(clicon_handle    h, 
+main_commit(clicon_handle    h, 
 		   transaction_data td)
 {
     cxobj  *target = transaction_target(td); /* wanted XML tree */
@@ -96,7 +120,8 @@ transaction_commit(clicon_handle    h,
     int     i;
     size_t  len;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, "commit");
     /* Get all added i/fs */
     if (xpath_vec_flag(target, "//interface", XML_FLAG_ADD, &vec, &len) < 0)
 	return -1;
@@ -106,6 +131,24 @@ transaction_commit(clicon_handle    h,
   // done:
     if (vec)
 	free(vec);
+    return 0;
+}
+
+int
+main_end(clicon_handle    h, 
+	 transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, "end");
+    return 0;
+}
+
+int
+main_abort(clicon_handle    h, 
+	   transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, "abort");
     return 0;
 }
 
@@ -521,12 +564,12 @@ static clixon_plugin_api api = {
     example_exit,                           /* exit */
     .ca_reset=example_reset,                /* reset */
     .ca_statedata=example_statedata,        /* statedata */
-    .ca_trans_begin=NULL,                   /* trans begin */
-    .ca_trans_validate=transaction_validate,/* trans validate */
-    .ca_trans_complete=NULL,                /* trans complete */
-    .ca_trans_commit=transaction_commit,    /* trans commit */
-    .ca_trans_end=NULL,                     /* trans end */
-    .ca_trans_abort=NULL                    /* trans abort */
+    .ca_trans_begin=main_begin,             /* trans begin */
+    .ca_trans_validate=main_validate,       /* trans validate */
+    .ca_trans_complete=main_complete,       /* trans complete */
+    .ca_trans_commit=main_commit,           /* trans commit */
+    .ca_trans_end=main_end,                 /* trans end */
+    .ca_trans_abort=main_abort              /* trans abort */
 };
 
 /*! Backend plugin initialization
@@ -551,7 +594,7 @@ clixon_plugin_init(clicon_handle h)
 	goto done;
     opterr = 0;
     optind = 1;
-    while ((c = getopt(argc, argv, "rsu")) != -1)
+    while ((c = getopt(argc, argv, "rsut")) != -1)
 	switch (c) {
 	case 'r':
 	    _reset = 1;
@@ -561,6 +604,9 @@ clixon_plugin_init(clicon_handle h)
 	    break;
 	case 'u':
 	    _upgrade = 1;
+	    break;
+	case 't': /* transaction log */
+	    _transaction_log = 1;
 	    break;
 	}
 

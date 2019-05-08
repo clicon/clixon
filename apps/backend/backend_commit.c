@@ -160,6 +160,7 @@ generic_validate(yang_stmt          *yspec,
  * 4. Validate startup db. (valid)
  * 5. If valid fails, call startup-cb(Invalid, msdiff), keep startup in candidate and commit failsafe db. Done.
  * 6. Call startup-cb(OK, msdiff) and commit.
+ * @see from_validate_common   for incoming validate/commit
  */
 static int
 startup_common(clicon_handle       h, 
@@ -181,10 +182,14 @@ startup_common(clicon_handle       h,
 	if ((msd = modstate_diff_new()) == NULL)
 	    goto done;
     clicon_debug(1, "Reading startup config from %s", db);
-    if (xmldb_get(h, db, "/", &xt, msd) < 0)
+    if (xmldb_get1(h, db, "/", &xt, msd) < 0)
 	goto done;
+    /* Clear flags xpath for get */
+    xml_apply0(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+	       (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
     if (xml_child_nr(xt) == 0){     /* If empty skip */
 	td->td_target = xt;
+	xt = NULL;
 	goto ok;
     }
     if (msd){
@@ -204,6 +209,7 @@ startup_common(clicon_handle       h,
 	goto done;
     /* Handcraft transition with with only add tree */
     td->td_target = xt;
+    xt = NULL;
     x = NULL;
     while ((x = xml_child_each(td->td_target, x, CX_ELMNT)) != NULL){
 	if (cxvec_append(x, &td->td_avec, &td->td_alen) < 0) 
@@ -232,6 +238,8 @@ startup_common(clicon_handle       h,
  ok:
     retval = 1;
  done:
+    if (xt)
+	xml_free(xt);
     if (msd)
 	modstate_diff_free(msd);
     return retval;
@@ -267,14 +275,23 @@ startup_validate(clicon_handle  h,
 	goto done;
     if (ret == 0)
 	goto fail;
+     /* Clear cached trees from default values and marking */
+     if (xmldb_get1_clear(h, db) < 0)
+	 goto done;
     if (xtr){
 	*xtr = td->td_target;
 	td->td_target = NULL;
     }
     retval = 1;
  done:
-    if (td)
-	transaction_free(td);
+     if (td){
+	 if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
+	     /* xmldb_get1 requires free only if not cache */
+	     td->td_target = NULL;
+	     td->td_src = NULL;
+	 }
+	 transaction_free(td);
+     }
     return retval;
  fail: /* cbret should be set */
     retval = 0;
@@ -314,6 +331,10 @@ startup_commit(clicon_handle  h,
      /* 8. Call plugin transaction commit callbacks */
      if (plugin_transaction_commit(h, td) < 0)
 	 goto done;
+     /* Clear cached trees from default values and marking */
+     if (xmldb_get1_clear(h, db) < 0)
+	 goto done;
+
      /* [Delete and] create running db */
      if (xmldb_exists(h, "running") == 1){
 	if (xmldb_delete(h, "running") != 0 && errno != ENOENT) 
@@ -334,8 +355,14 @@ startup_commit(clicon_handle  h,
 
     retval = 1;
  done:
-    if (td)
-	transaction_free(td);
+    if (td){
+	 if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
+	     /* xmldb_get1 requires free only if not cache */
+	     td->td_target = NULL;
+	     td->td_src = NULL;
+	 }
+	 transaction_free(td);
+    }
     return retval;
  fail: /* cbret should be set */
     retval = 0;
@@ -352,6 +379,7 @@ startup_commit(clicon_handle  h,
  * @retval    1       Validation OK       
  * @note Need to differentiate between error and validation fail 
  *       (only done for generic_validate)
+ * @see startup_common  for startup scenario
  */
 static int
 from_validate_common(clicon_handle       h, 
@@ -511,6 +539,16 @@ candidate_commit(clicon_handle h,
       */
      if (xmldb_copy(h, candidate, "running") < 0)
 	 goto done;
+     /* Here pointers to old (source) tree are obsolete */
+     if (td->td_dvec){
+	 td->td_dlen = 0;
+	free(td->td_dvec);
+	td->td_dvec = NULL;
+     }
+     if (td->td_scvec){
+	free(td->td_scvec);
+	td->td_scvec = NULL;
+     }
 
     /* 9. Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);

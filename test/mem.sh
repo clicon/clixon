@@ -3,7 +3,7 @@
 # Stop on first error
     
 # Run valgrindtest once, args:
-# what: cli|netconf|restconf|backend
+# what: (cli|netconf|restconf|backend)* # no args means all
 memonce(){
     what=$1
 

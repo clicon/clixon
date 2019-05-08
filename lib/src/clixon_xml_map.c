@@ -633,6 +633,44 @@ check_mandatory(cxobj     *xt,
     goto done;
 }
 
+static int
+check_list_key(cxobj     *xt, 
+	       yang_stmt *yt,
+	       cbuf      *cbret)
+{
+    int        retval = -1;
+    int        i;
+    yang_stmt *yc;
+    cvec      *cvk = NULL; /* vector of index keys */
+    cg_var    *cvi;
+    char      *keyname;
+    
+    for (i=0; i<yt->ys_len; i++){
+	yc = yt->ys_stmt[i];
+	/* Check if a list does not have mandatory key leafs */
+	if (yt->ys_keyword == Y_LIST &&
+	    yc->ys_keyword == Y_KEY &&
+	    yang_config(yt)){
+	    cvk = yt->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	    cvi = NULL;
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+		keyname = cv_string_get(cvi);	    
+		if (xml_find_type(xt, NULL, keyname, CX_ELMNT) == NULL){
+		    if (netconf_missing_element(cbret, "application", keyname, "Mandatory key") < 0)
+			goto done;
+		    goto fail;
+		}
+	    }
+	}
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Validate a single XML node with yang specification for added entry
  * 1. Check if mandatory leafs present as subs.
  * 2. Check leaf values, eg int ranges and string regexps.
@@ -736,6 +774,41 @@ xml_yang_validate_add(cxobj   *xt,
     retval = 0;
     goto done;
 }
+
+/*! Some checks done only at edit_config, eg keys in lists
+ */
+int
+xml_yang_validate_list_key_only(cxobj   *xt, 
+				cbuf    *cbret)
+{
+    int        retval = -1;
+    yang_stmt *yt;   /* yang spec of xt going in */
+    int        ret;
+    cxobj     *x;
+    
+    /* if not given by argument (overide) use default link 
+       and !Node has a config sub-statement and it is false */
+    if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
+	if ((ret = check_list_key(xt, yt, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if ((ret = xml_yang_validate_list_key_only(x, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 
 /*! Validate a single XML node with yang specification for all (not only added) entries
  * 1. Check leafrefs. Eg you delete a leaf and a leafref references it.
@@ -1126,11 +1199,13 @@ xml_diff1(yang_stmt *ys,
 	    if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
 		goto done;
 	    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+	    continue;
 	}
 	else if (eq > 0){
 	    if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
 		goto done;
 	    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+	    continue;
 	}
 	else{ /* equal */
 	    if ((yc = xml_spec(x0c)) == NULL){
@@ -1257,8 +1332,21 @@ yang2api_path_fmt_1(yang_stmt *ys,
 	yp->ys_keyword != Y_SUBMODULE){
 	if (yang2api_path_fmt_1((yang_stmt *)yp, 1, cb) < 0) /* recursive call */
 	    goto done;
-	if (yp->ys_keyword != Y_CHOICE && yp->ys_keyword != Y_CASE)
-	    cprintf(cb, "/");
+	if (yp->ys_keyword != Y_CHOICE && yp->ys_keyword != Y_CASE){
+#if 0
+	    /* In some cases, such as cli_show_auto, a trailing '/' should
+	     * NOT be present if ys is a key in a list.
+	     * But in other cases (I think most), the / should be there,
+	     * so a patch is added in cli_show_auto instead.
+	     */
+	    if (ys->ys_keyword == Y_LEAF && yp && 
+		yp->ys_keyword == Y_LIST &&
+		yang_key_match(yp, ys->ys_argument) == 1)
+		;
+	    else
+#endif
+		cprintf(cb, "/"); 
+	}
     }
     else /* top symbol - mark with name prefix */
 	cprintf(cb, "/%s:", yp->ys_argument);
@@ -2224,6 +2312,112 @@ api_path2xml(char       *api_path,
  fail:
     retval = 0;
     goto done;
+}
+
+/*! Given an XML node, build an xpath to root, internal function
+ * @retval     0      OK
+ * @retval    -1      Error. eg XML malformed
+ */
+static int
+xml2xpath1(cxobj *x,
+	   cbuf  *cb)
+{
+    int           retval = -1;
+    cxobj        *xp;
+    yang_stmt    *y = NULL;
+    cvec         *cvk = NULL; /* vector of index keys */
+    cg_var       *cvi;
+    char         *keyname;
+    cxobj        *xkey;
+    cxobj        *xb;
+    char         *b;
+    enum rfc_6020 keyword;
+    
+    if ((xp = xml_parent(x)) != NULL &&
+	xml_spec(xp) != NULL)
+	xml2xpath1(xp, cb);
+    /* XXX: sometimes there should be a /, sometimes not */
+    cprintf(cb, "/%s", xml_name(x));
+    if ((y = xml_spec(x)) != NULL){
+	keyword = yang_keyword_get(y);
+	if (keyword == Y_LEAF_LIST){
+	    if ((b = xml_body(x)) != NULL)
+		cprintf(cb, "[.=\"%s\"]", b);
+	    else
+		cprintf(cb, "[.=\"\"]");
+	} else if (keyword == Y_LIST){
+	    cvk = yang_cvec_get(y);
+	    cvi = NULL;
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+		keyname = cv_string_get(cvi);
+		if ((xkey = xml_find(x, keyname)) == NULL)
+		    goto done; /* No key in xml */
+		if ((xb = xml_find(x, keyname)) == NULL)
+		    goto done;
+		b = xml_body(xb);
+		cprintf(cb, "[%s=\"%s\"]", keyname, b?b:"");
+	    }
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Given an XML node, build an xpath to root
+ * Builds only unqualified xpaths, ie no predicates []
+ * @param[in]  x      XML object
+ * @param[out] xpath  Malloced xpath string. Need to free() after use
+ * @retval     0      OK
+ * @retval    -1      Error. (eg XML malformed)
+ */
+int
+xml2xpath(cxobj *x,
+	  char **xpathp)
+{
+    int   retval = -1;
+    cbuf *cb;
+    char *xpath = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (xml2xpath1(x, cb) < 0)
+	goto done;
+    /* XXX: see xpath in test statement,.. */
+    xpath = cbuf_get(cb);
+#if 0 /* debug test */
+    {
+	cxobj *xt = x;
+	cxobj *xcp;
+	cxobj *x2;
+	while (xml_parent(xt) != NULL &&
+	       xml_spec(xt) != NULL)
+	    xt = xml_parent(xt);
+	xcp = xml_parent(xt);
+	xml_parent_set(xt, NULL);
+	x2 = xpath_first(xt, "%s", xpath); /* +1: skip first / */
+	xml_parent_set(xt, xcp);
+	assert(x2 && x==x2);
+	if (x==x2)
+	    clicon_debug(1, "%s %s match", __FUNCTION__, xpath);
+	else
+	    clicon_debug(1, "%s %s no match", __FUNCTION__, xpath);
+    }
+#endif
+    if (xpathp){
+	if ((*xpathp = strdup(xpath)) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+	xpath = NULL;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
 }
 
 /*! Check if the module tree x is in is assigned right XML namespace, assign if not

@@ -82,6 +82,16 @@ struct indexhead{
 };
 typedef struct indexhead indexhead;
 
+static int
+indexhead_free(indexhead *ih)
+{
+    indexlist *il;
+
+    while ((il = ih->ih_list) != NULL)
+	DELQ(il, ih->ih_list, indexlist*);
+    return 0;
+}
+
 int
 index_get(indexhead *ih,
 	  size_t     len, /* in bytes */
@@ -178,8 +188,8 @@ index_dump(FILE      *f,
  * @retval     1   OK  xp set (or NULL if empty)
  */
 static int
-buf2xml(FILE     *f,
-	uint32_t  index,
+buf2xml(FILE      *f,
+	uint32_t   index,
 	cxobj    **xp)
 {
     int      retval = -1;
@@ -190,7 +200,7 @@ buf2xml(FILE     *f,
     cxobj   *x = NULL;
     char    *name;
     char    *prefix = NULL;
-    char     hdr[8];
+    char     hdr[8] = {0, };
     char    *buf = NULL;
     int       vlen;
     int       i;
@@ -362,7 +372,8 @@ xml2buf(FILE      *f,
     else{
 	uint32_t index;
 	for (i=0; i< xml_child_nr(x); i++){
-	    if (xml2buf(f, xml_child_i(x, i), ih, &index) < 0)
+	    if (xml2buf(f, xml_child_i(x, i), ih,
+			&index) < 0)
 		goto done;
 	    index = htonl(index);
 	    memcpy(&buf[ptr], &index, sizeof(uint32_t));
@@ -376,10 +387,6 @@ xml2buf(FILE      *f,
 	goto done;
     }
     memcpy(buf0, hdr, sizeof(hdr));
-    if (0 && fwrite(hdr, sizeof(char), sizeof(hdr), f) < 0){
-	clicon_err(OE_UNIX, errno, "fwrite");
-	goto done;
-    }
     if (fwrite(buf0, sizeof(char), len, f) < 0){
 	clicon_err(OE_XML, errno, "fwrite");
 	goto done;
@@ -401,7 +408,6 @@ datastore_tree_write(clicon_handle h,
     int              retval = -1;
     FILE            *f = NULL;
     indexhead       ih = {0,};
-    indexlist      *il;
     
     if ((f = fopen(filename, "w+b")) == NULL){
 	clicon_err(OE_XML, errno, "Opening file %s", filename);
@@ -413,8 +419,7 @@ datastore_tree_write(clicon_handle h,
 	index_dump(stderr, &ih);
     retval = 0;
  done:
-    while ((il = ih.ih_list) != NULL)
-	DELQ(il, ih.ih_list, indexlist*);
+    indexhead_free(&ih);
     if (f != NULL)
 	fclose(f);
     return retval;
@@ -439,7 +444,8 @@ datastore_tree_read(clicon_handle h,
     }
     if ((retval = buf2xml(f, 0, xt)) < 0)
 	goto done;
-    if (retval == 0){ /* fail */
+    if (retval == 0 || /* fail */
+	*xt == NULL){  /* empty */
 	if ((*xt = xml_new("config", NULL, NULL)) == NULL)
 	    goto done;
 	xml_type_set(*xt, CX_ELMNT);

@@ -44,6 +44,7 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* Non-key list now not accepted in edit-config (before only on validation)
 * Restconf with startup feature will now copy all edit changes to startup db (as it should according to RFC 8040)
 * Netconf Startup feature is no longer hardcoded, you need to explicitly enable it (See RFC 6241, Section 8.7)
   * Enable in config file with: `<CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>`, or use `*:*`

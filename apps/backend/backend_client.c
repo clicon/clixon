@@ -433,6 +433,7 @@ from_client_edit_config(clicon_handle h,
 	 */
 	if (xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
+
 	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
 	    goto done;
 	if (non_config){
@@ -440,6 +441,11 @@ from_client_edit_config(clicon_handle h,
 		goto done;
 	    goto ok;
 	}
+	/* xmldb_put (difflist handling) requires list keys */
+	if ((ret = xml_yang_validate_list_key_only(xc, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto ok;
 	/* Cant do this earlier since we dont have a yang spec to
 	 * the upper part of the tree, until we get the "config" tree.
 	 */

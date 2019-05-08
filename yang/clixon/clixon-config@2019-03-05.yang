@@ -92,7 +92,7 @@ module clixon-config {
 	    }
 	    enum tree{
 		description "Save and load xmldb as Clixon record-based tree
-                             file format";
+                             file format (experimental)";
 	    }
 	}
     }
@@ -372,7 +372,7 @@ module clixon-config {
 	    type boolean;
 	    default true;
 	    description
-		"XMLDB datastore cache. 
+		"XMLDB datatsore cache. 
                  If set, XML candidate/running parsed tree is stored in memory
                  If not set, candidate/running is always accessed via disk.";
 	}

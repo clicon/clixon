@@ -9,11 +9,13 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
+# Which format to use as datastore format internally
+: ${format:=xml}
+
 cfg=$dir/conf_yang.xml
 fyang=$dir/type.yang
 fyang2=$dir/example2.yang
 fyang3=$dir/example3.yang
-
 
 # transitive type, exists in fyang3, referenced from fyang2, but not declared in fyang
 cat <<EOF > $fyang3
@@ -214,6 +216,7 @@ testrun(){
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_CACHE>$dbcache</CLICON_XMLDB_CACHE>
+  <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
 </clixon-config>
 EOF
 
@@ -236,6 +239,10 @@ EOF
     new "cli set transitive string error. Wrong type"
     expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c talle 9xx" 255 '^CLI syntax error: "set c talle 9xx": Unknown command$'
 
+    new "netconf discard-changes"
+    expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+    
     new "netconf set transitive string error"
     expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><c xmlns="urn:example:clixon"><talle>9xx</talle></c></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>"
 
@@ -605,10 +612,10 @@ EOF
     fi
 }
 
-# Run with db cache
-testrun true
-
 # Run without db cache
 testrun false
+
+# Run with db cache
+testrun true
 
 rm -rf $dir
