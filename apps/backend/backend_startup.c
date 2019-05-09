@@ -102,13 +102,12 @@ db_merge(clicon_handle h,
     cxobj *xt = NULL;
     
     /* Get data as xml from db1 */
-    if (xmldb_get(h, (char*)db1, NULL, &xt, NULL) < 0)
+    if (xmldb_get(h, (char*)db1, NULL, 0, &xt, NULL) < 0)
 	goto done;
     /* Merge xml into db2. Without commit */
     retval = xmldb_put(h, (char*)db2, OP_MERGE, xt, clicon_username_get(h), cbret);
  done:
-    if (xt)
-	xml_free(xt);
+    xmldb_get_free(h, &xt);
     return retval;
 }
 
@@ -270,8 +269,7 @@ startup_extraxml(clicon_handle        h,
  ok:
     retval = 1;
  done:
-    if (xt && !clicon_option_bool(h, "CLICON_XMLDB_CACHE"))
-	xml_free(xt);
+    xmldb_get_free(h, &xt);
     if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
 	return -1;
     return retval;

@@ -80,9 +80,9 @@ module clixon-config {
 	    }
 	}
     }
-    typedef xmldb_format{
+    typedef datastore_format{
 	description
-	    "Format of TEXT xml database format.";
+	    "Datastore format.";
 	type enumeration{
 	    enum xml{
 		description "Save and load xmldb as XML";
@@ -96,6 +96,24 @@ module clixon-config {
 	    }
 	}
     }
+    typedef datastore_cache{
+	description
+	    "XML configuration, ie running/candididate/ datastore cache behaviour.";
+	type enumeration{
+	    enum nocache{
+		description "No cache always work directly with file";
+	    }
+	    enum cache{
+		description "Use in-memory cache. 
+                             Make copies when accessing internally.";
+	    }
+	    enum cache-zerocopy{
+		description "Use in-memory cache and dont copy.
+                             Fastest but opens up for callbacks changing cache.";
+	    }
+	}
+    }
+
     typedef cli_genmodel_type{
 	description
 	    "How to generate CLI from YANG model, 
@@ -258,7 +276,8 @@ module clixon-config {
 		"If set, generate CLI specification for CLI completion of
                  loaded Yang modules. This CLI tree can be accessed in CLI
                  spec files using the tree reference syntax (eg @datamodel).
-                 See also CLICON_CLI_MODEL_TREENAME.";
+                 See also CLICON_CLI_MODEL_TREENAME.
+                 (Consider boolean)";
 	}
 	leaf CLICON_CLI_MODEL_TREENAME {
 	    type string;
@@ -271,7 +290,8 @@ module clixon-config {
 	leaf CLICON_CLI_GENMODEL_COMPLETION {
 	    type int32;
 	    default 1;
-	    description "Generate code for CLI completion of existing db symbols";
+	    description "Generate code for CLI completion of existing db symbols.
+                         Consider boolean type";
 	}
 	leaf CLICON_CLI_GENMODEL_TYPE {
 	    type cli_genmodel_type;
@@ -368,16 +388,15 @@ module clixon-config {
 	         (see datastore/ and clixon_xml_db.[ch])
 	         Obsolete: Merged with libclixon in 3.10";
 	}
-	leaf CLICON_XMLDB_CACHE {
-	    type boolean;
-	    default true;
+	leaf CLICON_DATASTORE_CACHE {
+	    type datastore_cache;
+	    default cache;
 	    description
-		"XMLDB datatsore cache. 
-                 If set, XML candidate/running parsed tree is stored in memory
-                 If not set, candidate/running is always accessed via disk.";
+		"Clixon datastore cache behaviour. There are three values: no cache, 
+                 cache with copy, or cache without copy.";
 	}
 	leaf CLICON_XMLDB_FORMAT {
-	    type xmldb_format;
+	    type datastore_format;
 	    default xml;
 	    description	"XMLDB datastore format.";
 	}

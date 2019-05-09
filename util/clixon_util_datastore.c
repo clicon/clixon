@@ -198,11 +198,14 @@ main(int argc, char **argv)
 	    xpath = argv[1];
 	else
 	    xpath = "/";
-	if (xmldb_get(h, db, xpath, &xt, NULL) < 0)
+	if (xmldb_get(h, db, xpath, 1, &xt, NULL) < 0)
 	    goto done;
 	clicon_xml2file(stdout, xt, 0, 0);	
-	
 	fprintf(stdout, "\n");
+	if (xt){
+	    xml_free(xt);
+	    xt = NULL;
+	}
     }
     else if (strcmp(cmd, "mget")==0){
 	int nr;
@@ -214,15 +217,17 @@ main(int argc, char **argv)
 	else
 	    xpath = "/";
 	for (i=0;i<nr;i++){
-	    if (xmldb_get(h, db, xpath, &xt, NULL) < 0)
+	    if (xmldb_get(h, db, xpath, 1, &xt, NULL) < 0)
 		goto done;
 	    if (xt == NULL){
 		clicon_err(OE_DB, 0, "xt is NULL");
 		goto done;
 	    }
 	    clicon_xml2file(stdout, xt, 0, 0);
-	    xml_free(xt);
-	    xt = NULL;
+	    if (xt){
+		xml_free(xt);
+		xt = NULL;
+	    }
 	}
 	fprintf(stdout, "\n");
     }

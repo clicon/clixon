@@ -652,8 +652,9 @@ xmldb_put(clicon_handle       h,
 		   xml_name(x1));
 	goto done;
     }
-    if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
-	if ((de = clicon_db_elmnt_get(h, db)) != NULL)
+
+    if ((de = clicon_db_elmnt_get(h, db)) != NULL){
+	if (clicon_datastore_cache(h) != DATASTORE_NOCACHE)
 	    x0 = de->de_xml; 
     }
     /* If there is no xml x0 tree (in cache), then read it from file */
@@ -713,8 +714,9 @@ xmldb_put(clicon_handle       h,
     if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
 #endif
+
     /* Write back to datastore cache if first time */
-    if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
+    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
 	db_elmnt de0 = {0,};
 	if (de != NULL)
 	    de0 = *de;
@@ -770,7 +772,7 @@ xmldb_put(clicon_handle       h,
 	free(dbfile);
     if (cb)
 	cbuf_free(cb);
-    if (!clicon_option_bool(h, "CLICON_XMLDB_CACHE") && x0)
+    if (x0 && clicon_datastore_cache(h) == DATASTORE_NOCACHE)
 	xml_free(x0);
     return retval;
  fail:

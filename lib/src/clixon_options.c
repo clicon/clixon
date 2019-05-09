@@ -543,30 +543,25 @@ clicon_cli_genmodel_completion(clicon_handle h)
 	return 0;
 }
 
+static const map_str2int cli_genmodel_map[] = {
+    {"NONE",                 GT_NONE},
+    {"VARS",                 GT_VARS},
+    {"ALL",                  GT_ALL},
+    {NULL,                   -1}
+};
+
 /*! How to generate and show CLI syntax: VARS|ALL 
  * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL_TYPE
  */
 enum genmodel_type
 clicon_cli_genmodel_type(clicon_handle h)
 {
-    char *s;
-    enum genmodel_type gt = GT_ERR;
+    char *str;
 
-    if (!clicon_option_exists(h, "CLICON_CLI_GENMODEL_TYPE")){
-	gt = GT_VARS;
-	goto done;
-    }
-    s = clicon_option_str(h, "CLICON_CLI_GENMODEL_TYPE");
-    if (strcmp(s, "NONE")==0)
-	gt = GT_NONE;
+    if ((str = clicon_option_str(h, "CLICON_CLI_GENMODEL_TYPE")) == NULL)
+	return GT_VARS;
     else
-    if (strcmp(s, "VARS")==0)
-	gt = GT_VARS;
-    else
-    if (strcmp(s, "ALL")==0)
-	gt = GT_ALL;
-  done:
-    return gt;
+	return clicon_str2int(cli_genmodel_map, str);
 }
 
 /*! Get Dont include keys in cvec in cli vars callbacks
@@ -637,6 +632,28 @@ clicon_startup_mode(clicon_handle h)
 	return -1;
     return clicon_str2int(startup_mode_map, mode);
 }
+
+static const map_str2int datastore_cache_map[] = {
+    {"nocache",               DATASTORE_NOCACHE},
+    {"cache",                 DATASTORE_CACHE},
+    {"cache-zerocopy",        DATASTORE_CACHE_ZEROCOPY},
+    {NULL,                    -1}
+};
+
+/*! How to generate and show CLI syntax: VARS|ALL 
+ * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL_TYPE
+ */
+enum datastore_cache
+clicon_datastore_cache(clicon_handle h)
+{
+    char *str;
+
+    if ((str = clicon_option_str(h, "CLICON_DATASTORE_CACHE")) == NULL)
+	return DATASTORE_CACHE;
+    else
+	return clicon_str2int(datastore_cache_map, str);
+}
+
 
 /*---------------------------------------------------------------------
  * Specific option access functions for non-yang options

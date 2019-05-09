@@ -572,11 +572,11 @@ xmldb_get_cache(clicon_handle       h,
  * @retval     -1     Error
  */
 static int
-xmldb_get1_cache(clicon_handle       h,
-		 const char         *db, 
-		 char               *xpath,
-		 cxobj             **xtop,
-		 modstate_diff_t    *msd)
+xmldb_get_zerocopy(clicon_handle       h,
+		   const char         *db, 
+		   char               *xpath,
+		   cxobj             **xtop,
+		   modstate_diff_t    *msd)
 {
     int             retval = -1;
     yang_stmt      *yspec;
@@ -641,16 +641,29 @@ xmldb_get1_cache(clicon_handle       h,
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
+ * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msd    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
+ * There are two variants of the call:
  * @code
  *   cxobj   *xt;
- *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", &xt, NULL) < 0)
+ *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 0, &xt, NULL) < 0)
+ *      err;
+ *   # Code accessing and setting XML flags on xt, sorting, populate w yang spec,...
+ *   xmldb_get_clear(h, xt); # Clear tree from default values and flags 
+ *                           # (only if cache+zerocopy
+ *   xmldb_get_free(h, &xt);     # Free tree (only if not zero-copy)
+ * @endcode
+ * The second variant only applies to zerocopy cases where you want to force a copy
+ * since it may be too difficult to handle marked subtrees.
+ * @code
+ *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", 1, &xt, NULL) < 0)
  *      err;
  *   xml_free(xt);
  * @endcode
+ * 
  * @note if xvec is given, then purge tree, if not return whole tree.
  * @see xpath_vec
  */
@@ -658,84 +671,83 @@ int
 xmldb_get(clicon_handle    h, 
 	  const char      *db, 
 	  char            *xpath,
+	  int              copy,
 	  cxobj          **xret,
 	  modstate_diff_t *msd)
 {
     int               retval = -1;
 
-    if (clicon_option_bool(h, "CLICON_XMLDB_CACHE"))
+    switch (clicon_datastore_cache(h)){
+    case DATASTORE_NOCACHE:
+	/* Read from file into created/copy tree, prune non-matching xpath 
+	 * Add default values in copy
+	 * Copy deleted by xmldb_free
+	 */
+	retval = xmldb_get_nocache(h, db, xpath, xret, msd);
+	break;
+    case DATASTORE_CACHE_ZEROCOPY:
+	/* Get cache (file if empty) mark xpath match in original tree 
+	 * add default values in original tree and return that.
+	 * Default values and markings removed in xmldb_clear
+	 */
+	if (!copy){
+	    retval = xmldb_get_zerocopy(h, db, xpath, xret, msd);
+	    break;
+	}
+	/* fall through */
+    case DATASTORE_CACHE:
+	/* Get cache (file if empty) mark xpath match and copy marked into copy 
+	 * Add default values in copy, return copy
+	 * Copy deleted by xmldb_free
+	 */
 	retval = xmldb_get_cache(h, db, xpath, xret, msd);
-    else
-	retval = xmldb_get_nocache(h, db, xpath, xret, msd);
+	break;
+    }
     return retval;
 }
 
-/*! Get content of database using xpath. return a set of matching sub-trees
- * The function returns a minimal tree that includes all sub-trees that match
- * xpath.
- * @param[in]  h      Clicon handle
- * @param[in]  db     Name of database to search in (filename including dir path
- * @param[in]  xpath  String with XPATH syntax. or NULL for all
- * @param[out] xret   Single return XML tree. see note
- * @param[out] msd    If set, return modules-state differences
- * @retval     0      OK
- * @retval     -1     Error
- * @code
- *   cxobj   *xt;
- *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", &xt, NULL) < 0)
- *      err;
- *   xml_free(xt);
- * @endcode
- * @note if xvec is given, then purge tree, if not return whole tree.
- * @see xmldb_get This version uses direct cache access and needs to be 
- *      cleanued up after use
- * @see xmldb_get1_clear  Must call after use
- * @note If !CLICON_XMLDB_CACHE you need to free xret after use
- * @note If CLICON_XMLDB_CACHE mark|change flags set, need to clear after call
- */
-int 
-xmldb_get1(clicon_handle    h, 
-	   const char      *db, 
-	   char            *xpath,
-	   cxobj          **xret,
-	   modstate_diff_t *msd)
-{
-    int               retval = -1;
-
-    if (clicon_option_bool(h, "CLICON_XMLDB_CACHE"))
-	retval = xmldb_get1_cache(h, db, xpath, xret, msd);
-    else
-	retval = xmldb_get_nocache(h, db, xpath, xret, msd);
-    return retval;
-}
-
-/*! Clear cached tree after accessed by xmldb_get1
+/*! Clear cached xml tree obtained with xmldb_get, if zerocopy
  *
- * @param[in]  h      Clicon handle
- * @param[in]  dbname Name of database to search in (filename including dir path
- * @see xmldb_get1
+ * @param[in]  h    Clicon handle
+ * @param[in]  db   Name of datastore
+ * "Clear" an xml tree means removing default values and resetting all flags.
+ * @see xmldb_get
  */
 int 
-xmldb_get1_clear(clicon_handle    h, 
-		 const char      *db)
+xmldb_get_clear(clicon_handle    h, 
+		cxobj           *x)
 {
     int        retval = -1;
-    db_elmnt  *de = NULL;
     
-    if (!clicon_option_bool(h, "CLICON_XMLDB_CACHE"))
-	goto ok; /* dont bother, tree is a copy */
-    de = clicon_db_elmnt_get(h, db);    
-    if (de != NULL && de->de_xml != NULL){
-	/* clear XML tree of defaults */
-	if (xml_tree_prune_flagged(de->de_xml, XML_FLAG_DEFAULT, 1) < 0)
-	    goto done;
-	/* clear mark and change */
-	xml_apply0(de->de_xml, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
-		   (void*)(0xff));
-    }
+    if (clicon_datastore_cache(h) != DATASTORE_CACHE_ZEROCOPY)
+	goto ok;
+    if (x == NULL)
+	goto ok;
+    /* clear XML tree of defaults */
+    if (xml_tree_prune_flagged(x, XML_FLAG_DEFAULT, 1) < 0)
+	goto done;
+    /* clear mark and change */
+    xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+	       (void*)(0xff));
  ok:
     retval = 0;
  done:
     return retval;
+}
 
+/*! Free xml tree obtained with xmldb_get, unless zerocopy
+ * @param[in]     h   Clixon handle
+ * @param[in,out] xp  Pointer to XML cache. 
+ * @see xmldb_get
+ */
+int 
+xmldb_get_free(clicon_handle    h, 
+	       cxobj          **xp)
+{
+    if (*xp == NULL ||
+	clicon_datastore_cache(h) == DATASTORE_CACHE_ZEROCOPY)
+	return 0;
+    xml_free(*xp);
+    *xp = NULL;
+    return 0;
 }

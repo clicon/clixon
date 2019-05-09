@@ -53,6 +53,10 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* Clixon config option `CLICON_XMLDB_CACHE` renamed to `CLICON_DATASTORE_CACHE` and changed type from `boolean` to `datastore_cache`
+  * Change code from: `clicon_option_bool(h, "CLICON_XMLDB_CACHE")` to `clicon_datastore_cache(h) == DATASTORE_CACHE`
+  * Type `datastore_cache` have values: nocache, cache, or cache-zerocopy
+  * `xmldb_get1` removed (functionality merged with `xmldb_get`)
 * Non-key list now not accepted in edit-config (before only on validation)
 * Changed return values in internal functions
   * These functions are affected: `netconf_trymerge`, `startup_module_state`, `yang_modules_state_get`

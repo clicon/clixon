@@ -182,7 +182,7 @@ startup_common(clicon_handle       h,
 	if ((msd = modstate_diff_new()) == NULL)
 	    goto done;
     clicon_debug(1, "Reading startup config from %s", db);
-    if (xmldb_get1(h, db, "/", &xt, msd) < 0)
+    if (xmldb_get(h, db, "/", 0, &xt, msd) < 0)
 	goto done;
     /* Clear flags xpath for get */
     xml_apply0(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
@@ -276,7 +276,7 @@ startup_validate(clicon_handle  h,
     if (ret == 0)
 	goto fail;
      /* Clear cached trees from default values and marking */
-     if (xmldb_get1_clear(h, db) < 0)
+    if (xmldb_get_clear(h, td->td_target) < 0)
 	 goto done;
     if (xtr){
 	*xtr = td->td_target;
@@ -285,11 +285,7 @@ startup_validate(clicon_handle  h,
     retval = 1;
  done:
      if (td){
-	 if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
-	     /* xmldb_get1 requires free only if not cache */
-	     td->td_target = NULL;
-	     td->td_src = NULL;
-	 }
+	 xmldb_get_free(h, &td->td_target);
 	 transaction_free(td);
      }
     return retval;
@@ -332,7 +328,7 @@ startup_commit(clicon_handle  h,
      if (plugin_transaction_commit(h, td) < 0)
 	 goto done;
      /* Clear cached trees from default values and marking */
-     if (xmldb_get1_clear(h, db) < 0)
+     if (xmldb_get_clear(h, td->td_target) < 0)
 	 goto done;
 
      /* [Delete and] create running db */
@@ -356,11 +352,7 @@ startup_commit(clicon_handle  h,
     retval = 1;
  done:
     if (td){
-	 if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
-	     /* xmldb_get1 requires free only if not cache */
-	     td->td_target = NULL;
-	     td->td_src = NULL;
-	 }
+	 xmldb_get_free(h, &td->td_target);
 	 transaction_free(td);
     }
     return retval;
@@ -398,7 +390,7 @@ from_validate_common(clicon_handle       h,
 	goto done;
     }	
     /* This is the state we are going to */
-    if (xmldb_get1(h, candidate, "/", &td->td_target, NULL) < 0)
+    if (xmldb_get(h, candidate, "/", 0, &td->td_target, NULL) < 0)
 	goto done;
 
     /* Clear flags xpath for get */
@@ -416,7 +408,7 @@ from_validate_common(clicon_handle       h,
 
     /* 2. Parse xml trees 
      * This is the state we are going from */
-    if (xmldb_get1(h, "running", "/", &td->td_src, NULL) < 0)
+    if (xmldb_get(h, "running", "/", 0, &td->td_src, NULL) < 0)
 	goto done;
     /* Clear flags xpath for get */
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
@@ -521,9 +513,9 @@ candidate_commit(clicon_handle h,
 	 goto done;
 
      /* Clear cached trees from default values and marking */
-     if (xmldb_get1_clear(h, candidate) < 0)
+     if (xmldb_get_clear(h, td->td_target) < 0)
 	 goto done;
-     if (xmldb_get1_clear(h, "running") < 0)
+     if (xmldb_get_clear(h, td->td_src) < 0)
 	 goto done;
 
      /* Optionally write (potentially modified) tree back to candidate 
@@ -559,11 +551,8 @@ candidate_commit(clicon_handle h,
      if (retval < 1 && td)
 	 plugin_transaction_abort(h, td);
      if (td){
-	 if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
-	     /* xmldb_get1 requires free only if not cache */
-	     td->td_target = NULL;
-	     td->td_src = NULL;
-	 }
+	 xmldb_get_free(h, &td->td_target);
+	 xmldb_get_free(h, &td->td_src);
 	 transaction_free(td);
      }
     return retval;
@@ -749,9 +738,9 @@ from_client_validate(clicon_handle h,
 	goto ok;
     }
     /* Clear cached trees from default values and marking */
-    if (xmldb_get1_clear(h, db) < 0)
+    if (xmldb_get_clear(h, td->td_target) < 0)
 	goto done;
-    if (xmldb_get1_clear(h, "running") < 0)
+    if (xmldb_get_clear(h, td->td_src) < 0)
 	goto done;
 
     /* Optionally write (potentially modified) tree back to candidate */
@@ -768,12 +757,9 @@ from_client_validate(clicon_handle h,
     if (retval < 0 && td)
 	plugin_transaction_abort(h, td);
     if (td){
-	if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
-	     /* xmldb_get1 requires free only if not cache */
-	    td->td_target = NULL;
-	    td->td_src = NULL;
-	}
-	transaction_free(td);
+	 xmldb_get_free(h, &td->td_target);
+	 xmldb_get_free(h, &td->td_src);
+	 transaction_free(td);
     }
     return retval;
 } /* from_client_validate */
