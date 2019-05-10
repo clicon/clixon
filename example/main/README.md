@@ -14,7 +14,7 @@
   
 ## Content
 
-This directory contains a Clixon example which includes a simple example. It contains the following files:
+This directory contains a Clixon example used primarily for testing. It can be used as a basis for making new Clixon applications. But please consider also the minimal [hello](../hello) example as well. It contains the following files:
 * `example.xml`       The configuration file. See [yang/clixon-config@<date>.yang](../../yang/clixon-config@2019-03-05.yang) for the documentation of all available fields.
 * `clixon-example@2019-01-13.yang`      The yang spec of the example.
 * `example_cli.cli`   CLIgen specification.

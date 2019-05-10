@@ -32,10 +32,15 @@
   ***** END LICENSE BLOCK *****
 
  * 
- * IETF yang routing example
- * Secondary backend for testing more than one backend plugin
+ * Secondary backend for testing more than one backend plugin, with the following 
+ * features:
+ * - nacm
+ * - transaction test
+ * The transaction test is test/test_transaction.sh where a user-error is triggered
+ * by this plugin if started with -- -t <xpath>. _transaction_xpath is then set
+ * and triggers a validation error if it matches. The error also toggles between
+ * validation and commit errors.
  */
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +60,97 @@
 /* These include signatures for plugin and transaction callbacks. */
 #include <clixon/clixon_backend.h> 
 
+/*! Variable to control transaction logging (for debug)
+ * If set, call syslog for every transaction callback
+ */
+static int _transaction_log = 0;
+
+/*! Variable for failing validate and commit, if set, fail on validate vs commit
+ */
+static char * _transaction_xpath = NULL;
+static int  _transaction_error_toggle = 0; /* fail at validate vs commit */
+
+int
+nacm_begin(clicon_handle    h, 
+	   transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+    return 0;
+}
+/*! This is called on validate (and commit). Check validity of candidate
+ */
+int
+nacm_validate(clicon_handle    h, 
+	      transaction_data td)
+{
+    if (_transaction_log){
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+	if (_transaction_error_toggle==0 &&
+	    xpath_first(transaction_target(td), "%s", _transaction_xpath)){
+	    _transaction_error_toggle=1; /* toggle if triggered */
+	    clicon_err(OE_XML, 0, "User error");
+	    return -1; /* induce fail */
+	}
+    }
+    return 0;
+}
+
+int
+nacm_complete(clicon_handle    h, 
+	      transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+    return 0;
+}
+
+/*! This is called on commit. Identify modifications and adjust machine state
+ */
+int
+nacm_commit(clicon_handle    h, 
+	    transaction_data td)
+{
+    cxobj  *target = transaction_target(td); /* wanted XML tree */
+
+    if (_transaction_log){
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+	if (_transaction_error_toggle==1 &&
+	    xpath_first(target, "%s", _transaction_xpath)){
+	    _transaction_error_toggle=0; /* toggle if triggered */
+	    clicon_err(OE_XML, 0, "User error");
+	    return -1; /* induce fail */
+	}
+    }
+    return 0;
+}
+
+int
+nacm_revert(clicon_handle    h, 
+	    transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+    return 0;
+}
+
+int
+nacm_end(clicon_handle    h, 
+	 transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+    return 0;
+}
+
+int
+nacm_abort(clicon_handle    h, 
+	   transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE,  __FUNCTION__);
+    return 0;
+}
 
 /*! Called to get NACM state data
  * @param[in]    h      Clicon handle
@@ -88,21 +184,21 @@ nacm_statedata(clicon_handle h,
     return retval;
 }
 
-int
-plugin_start(clicon_handle h)
-{
-    return 0;
-}
-
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
     "nacm",             /* name */           /*--- Common fields.  ---*/
     clixon_plugin_init, /* init */
-    plugin_start,       /* start */
+    NULL,               /* start */
     NULL,               /* exit */
-    .ca_reset=NULL,               /* reset */
     .ca_statedata=nacm_statedata, /* statedata */
+    .ca_trans_begin=nacm_begin,             /* trans begin */
+    .ca_trans_validate=nacm_validate,       /* trans validate */
+    .ca_trans_complete=nacm_complete,       /* trans complete */
+    .ca_trans_commit=nacm_commit,           /* trans commit */
+    .ca_trans_revert=nacm_revert,           /* trans revert */
+    .ca_trans_end=nacm_end,                 /* trans end */
+    .ca_trans_abort=nacm_abort              /* trans abort */
 };
 
 /*! Backend plugin initialization
@@ -113,13 +209,34 @@ static clixon_plugin_api api = {
 clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
-    char                *nacm_mode;
+    char  *nacm_mode;
+    int    argc; /* command-line options (after --) */
+    char **argv;
+    int    c;
     
     clicon_debug(1, "%s backend nacm", __FUNCTION__);
+    /* Get user command-line options (after --) */
+    if (clicon_argv_get(h, &argc, &argv) < 0)
+	goto done;
+    opterr = 0;
+    optind = 1;
+    while ((c = getopt(argc, argv, "rsut:")) != -1)
+	switch (c) {
+	case 't': /* transaction log */
+	    _transaction_log = 1;
+	    _transaction_xpath = optarg;
+	    break;
+	}
+
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (nacm_mode==NULL || strcmp(nacm_mode, "disabled") == 0){
 	clicon_log(LOG_DEBUG, "%s CLICON_NACM_MODE not enabled: example nacm module disabled", __FUNCTION__);
-	return NULL;
+	/* Skip nacm module if not enabled _unless_ we use transaction tests */
+	if (_transaction_log == 0) 
+	    return NULL;
     }
+    /* Return plugin API */
     return &api;
+ done:
+    return NULL;
 }
