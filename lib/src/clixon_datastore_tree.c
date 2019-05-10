@@ -206,6 +206,7 @@ buf2xml(FILE      *f,
     int       i;
     uint32_t  ind;
     cxobj    *xc;
+    size_t    ret;
 
     /* Read hdr
      * +-----+-----+-----+-----+-----+-----+-----+-----+
@@ -216,7 +217,7 @@ buf2xml(FILE      *f,
 	clicon_err(OE_UNIX, errno, "fseek");
 	goto done;
     }
-    if (fread(hdr, sizeof(char), sizeof(hdr), f) < 0){
+    if ((ret = fread(hdr, sizeof(char), sizeof(hdr), f)) != sizeof(hdr)){
 	clicon_err(OE_XML, errno, "fread");
 	goto done;
     }
@@ -250,7 +251,7 @@ buf2xml(FILE      *f,
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
-    if (fread(buf, sizeof(char), len-sizeof(hdr), f) < 0){
+    if ((ret = fread(buf, sizeof(char), len-sizeof(hdr), f)) != len-sizeof(hdr)){
 	clicon_err(OE_XML, errno, "fread");
 	goto done;
     }
@@ -318,7 +319,7 @@ xml2buf(FILE      *f,
     int   len1;
     int   ptr;
     int   i;
-    char *buf0;
+    char *buf0 = NULL;
     char *buf;
     uint32_t  myindex;
     
