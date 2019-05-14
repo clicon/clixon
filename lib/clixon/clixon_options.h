@@ -73,6 +73,15 @@ enum startup_mode_t{
     SM_INIT
 };
 
+/*! Datastore cache behaviour, see clixon_datastore.[ch] 
+ * See config option type datastore_cache in clixon-config.yang
+ */
+enum datastore_cache{
+    DATASTORE_NOCACHE,
+    DATASTORE_CACHE,
+    DATASTORE_CACHE_ZEROCOPY
+};
+
 /*
  * Prototypes
  */
@@ -163,6 +172,7 @@ int   clicon_sock_family(clicon_handle h);
 int   clicon_sock_port(clicon_handle h);
 int   clicon_autocommit(clicon_handle h);
 int   clicon_startup_mode(clicon_handle h);
+enum datastore_cache clicon_datastore_cache(clicon_handle h);
 
 /*-- Specific option access functions for non-yang options --*/
 int clicon_quiet_mode(clicon_handle h);

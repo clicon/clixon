@@ -336,7 +336,10 @@ from_client_get_config(clicon_handle h,
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
 	    xpath="/";
-    if (xmldb_get(h, db, xpath, &xret, NULL) < 0){
+    /* Note xret can be pruned by nacm below (and change name),
+     * so zero-copy cant be used
+     */
+    if (xmldb_get(h, db, xpath, 1, &xret, NULL) < 0){
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
@@ -800,14 +803,16 @@ from_client_get(clicon_handle h,
     if ((xfilter = xml_find(xe, "filter")) != NULL)
 	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
 	    xpath="/";
-    /* Get config */
-    if (xmldb_get(h, "running", xpath, &xret, NULL) < 0){
+    /* Get config 
+     * Note xret can be pruned by nacm below and change name and
+     * metrged with state data, so zero-copy cant be used
+     */
+    if (xmldb_get(h, "running", xpath, 1, &xret, NULL) < 0){
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
     }
     /* Get state data from plugins as defined by plugin_statedata(), if any */
-    assert(xret);
     clicon_err_reset();
     if ((ret = client_statedata(h, xpath, &xret)) < 0)
 	goto done;

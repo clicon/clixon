@@ -85,8 +85,7 @@ main_begin(clicon_handle    h,
 	   transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, "begin");
-
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 /*! This is called on validate (and commit). Check validity of candidate
@@ -96,7 +95,7 @@ main_validate(clicon_handle    h,
 	      transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, "validate");
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
@@ -105,7 +104,7 @@ main_complete(clicon_handle    h,
 	      transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, "complete");
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
@@ -113,7 +112,7 @@ main_complete(clicon_handle    h,
  */
 int
 main_commit(clicon_handle    h, 
-		   transaction_data td)
+	    transaction_data td)
 {
     cxobj  *target = transaction_target(td); /* wanted XML tree */
     cxobj **vec = NULL;
@@ -121,7 +120,8 @@ main_commit(clicon_handle    h,
     size_t  len;
 
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, "commit");
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+
     /* Get all added i/fs */
     if (xpath_vec_flag(target, "//interface", XML_FLAG_ADD, &vec, &len) < 0)
 	return -1;
@@ -135,11 +135,20 @@ main_commit(clicon_handle    h,
 }
 
 int
+main_revert(clicon_handle    h, 
+	    transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+    return 0;
+}
+
+int
 main_end(clicon_handle    h, 
 	 transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, "end");
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
@@ -148,7 +157,7 @@ main_abort(clicon_handle    h,
 	   transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, "abort");
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
@@ -568,6 +577,7 @@ static clixon_plugin_api api = {
     .ca_trans_validate=main_validate,       /* trans validate */
     .ca_trans_complete=main_complete,       /* trans complete */
     .ca_trans_commit=main_commit,           /* trans commit */
+    .ca_trans_revert=main_revert,           /* trans revert */
     .ca_trans_end=main_end,                 /* trans end */
     .ca_trans_abort=main_abort              /* trans abort */
 };
@@ -594,7 +604,7 @@ clixon_plugin_init(clicon_handle h)
 	goto done;
     opterr = 0;
     optind = 1;
-    while ((c = getopt(argc, argv, "rsut")) != -1)
+    while ((c = getopt(argc, argv, "rsut:")) != -1)
 	switch (c) {
 	case 'r':
 	    _reset = 1;

@@ -53,6 +53,15 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* Clixon transaction mechanism has changed which may affect your backend plugin callbacks:
+  * Validate-only transactions are terminated by an `end` or `abort` callback. Now all started transactions are terminated either by an `end` or `abort` without exceptions
+    * Validate-only transactions used to be terminated by `complete`
+  * If a commit user callback fails, a new `revert` callback will be made to plugins that have made a succesful commit. 
+    * Clixon used to play the (already made) commit callbacks in reverse order
+* Clixon config option `CLICON_XMLDB_CACHE` renamed to `CLICON_DATASTORE_CACHE` and changed type from `boolean` to `datastore_cache`
+  * Change code from: `clicon_option_bool(h, "CLICON_XMLDB_CACHE")` to `clicon_datastore_cache(h) == DATASTORE_CACHE`
+  * Type `datastore_cache` have values: nocache, cache, or cache-zerocopy
+  * `xmldb_get1` removed (functionality merged with `xmldb_get`)
 * Non-key list now not accepted in edit-config (before only on validation)
 * Changed return values in internal functions
   * These functions are affected: `netconf_trymerge`, `startup_module_state`, `yang_modules_state_get`

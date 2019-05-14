@@ -295,28 +295,14 @@ plugin_transaction_revert(clicon_handle       h,
 			  int                 nr)
 {
     int                retval = 0;
-    transaction_data_t tr; /* revert transaction */
     clixon_plugin     *cp = NULL;
     trans_cb_t        *fn;
     
-    /* Create a new reversed transaction from the original where src and target
-       are swapped */
-    memcpy(&tr, td, sizeof(tr));
-    tr.td_src   = td->td_target;
-    tr.td_target = td->td_src;
-    tr.td_dlen  = td->td_alen;
-    tr.td_dvec  = td->td_avec;
-    tr.td_alen  = td->td_dlen;
-    tr.td_avec  = td->td_dvec;
-    tr.td_clen  = td->td_clen;
-    tr.td_scvec = td->td_tcvec;
-    tr.td_tcvec = td->td_scvec;
-
     while ((cp = clixon_plugin_each_revert(h, cp, nr)) != NULL) {
-	if ((fn = cp->cp_api.ca_trans_commit) == NULL)
+	if ((fn = cp->cp_api.ca_trans_revert) == NULL)
 	    continue;
-	if ((retval = fn(h, (transaction_data)&tr)) < 0){
-		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_commit revert callback failed", 
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_revert callback failed", 
 			   __FUNCTION__, cp->cp_name);
 		break; 
 	}

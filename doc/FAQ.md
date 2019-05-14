@@ -15,7 +15,8 @@
   * [How do I use restconf?](#how-do-i-use-restconf)
   * [What about reference documentation?](#what-about-reference-documentation)
   * [How is configuration data stored?](#how-is-configuration-data-stored)
-  * [What is validate and commit?](#what-is-validate-and-commit)
+  * [What is validate and commit?](#what-is-validate-and-commi)t
+  * [Does Clixon support transactions?](#does-clixon-support-transactions)
   * [What is a Clixon configuration file?](#what-is-a-clixon-configuration-file)
   * [How are Clixon configuration files found?](#how-are-clixon-configuration-files-found)
   * [Can I modify clixon options at runtime?](#can-i-modify-clixon-options-at-runtime)
@@ -227,6 +228,42 @@ A clixon developer writes commit functions to incrementaly upgrade a
 system state based on configuration changes. Writing commit callbacks
 is the core functionality of a clixon system.
 
+## Does Clixon support transactions?
+
+Yes. The netconf validation and commit operation is implemented in
+Clixon by a transaction mechanism, which ensures that user-written
+plugin callbacks are invoked atomically and revert on error.  If you
+have two plugins, for example, a transaction sequence looks like the
+following:
+```
+Backend   Plugin1    Plugin2
+  |          |          |
+  +--------->+--------->+ begin
+  |          |          |
+  +--------->+--------->+ validate
+  |          |          |
+  +--------->+--------->+ commit
+  |          |          |
+  +--------->+--------->+ end
+```
+
+If an error occurs in the commit call of Plugin2, for example,
+the transaction is aborted and the commit reverted:
+```
+Backend   Plugin1    Plugin2
+  |          |          |
+  +--------->+--------->+ begin
+  |          |          |
+  +--------->+--------->+ validate
+  |          |          |
+  +--------->+---->X    + commit error
+  |          |          |
+  +--------->+          + revert
+  |          |          |
+  +--------->+--------->+ abort
+```
+
+
 ## What is a Clixon configuration file?
 
 Clixon options are stored in an XML configuration file. The default
@@ -429,7 +466,6 @@ Each plugin is initiated with an API struct followed by a plugin init function a
    }
 ```
 For more info see [../example/main/README.md]
-
 
 ## How do I write a commit function?
 In the example, you write a commit function in example_backend.c.

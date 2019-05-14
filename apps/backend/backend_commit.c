@@ -182,7 +182,7 @@ startup_common(clicon_handle       h,
 	if ((msd = modstate_diff_new()) == NULL)
 	    goto done;
     clicon_debug(1, "Reading startup config from %s", db);
-    if (xmldb_get1(h, db, "/", &xt, msd) < 0)
+    if (xmldb_get(h, db, "/", 0, &xt, msd) < 0)
 	goto done;
     /* Clear flags xpath for get */
     xml_apply0(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
@@ -271,25 +271,26 @@ startup_validate(clicon_handle  h,
     /* Handcraft a transition with only target and add trees */
     if ((td = transaction_new()) == NULL)
 	goto done;
-    if ((ret = startup_common(h, db, td, cbret)) < 0)
+    if ((ret = startup_common(h, db, td, cbret)) < 0){
+	plugin_transaction_abort(h, td);
 	goto done;
-    if (ret == 0)
+    }
+    if (ret == 0){
+	plugin_transaction_abort(h, td);
 	goto fail;
+    }
+    plugin_transaction_end(h, td);
      /* Clear cached trees from default values and marking */
-     if (xmldb_get1_clear(h, db) < 0)
+    if (xmldb_get_clear(h, td->td_target) < 0)
 	 goto done;
     if (xtr){
-	*xtr = td->td_target;
+	*xtr = td->td_target; 
 	td->td_target = NULL;
     }
     retval = 1;
  done:
      if (td){
-	 if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
-	     /* xmldb_get1 requires free only if not cache */
-	     td->td_target = NULL;
-	     td->td_src = NULL;
-	 }
+	 xmldb_get_free(h, &td->td_target);
 	 transaction_free(td);
      }
     return retval;
@@ -332,7 +333,7 @@ startup_commit(clicon_handle  h,
      if (plugin_transaction_commit(h, td) < 0)
 	 goto done;
      /* Clear cached trees from default values and marking */
-     if (xmldb_get1_clear(h, db) < 0)
+     if (xmldb_get_clear(h, td->td_target) < 0)
 	 goto done;
 
      /* [Delete and] create running db */
@@ -352,15 +353,12 @@ startup_commit(clicon_handle  h,
 	 goto fail;
     /* 10. Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);
-
     retval = 1;
  done:
     if (td){
-	 if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
-	     /* xmldb_get1 requires free only if not cache */
-	     td->td_target = NULL;
-	     td->td_src = NULL;
-	 }
+	if (retval < 1)
+	    plugin_transaction_abort(h, td);
+	 xmldb_get_free(h, &td->td_target);
 	 transaction_free(td);
     }
     return retval;
@@ -398,7 +396,7 @@ from_validate_common(clicon_handle       h,
 	goto done;
     }	
     /* This is the state we are going to */
-    if (xmldb_get1(h, candidate, "/", &td->td_target, NULL) < 0)
+    if (xmldb_get(h, candidate, "/", 0, &td->td_target, NULL) < 0)
 	goto done;
 
     /* Clear flags xpath for get */
@@ -416,7 +414,7 @@ from_validate_common(clicon_handle       h,
 
     /* 2. Parse xml trees 
      * This is the state we are going from */
-    if (xmldb_get1(h, "running", "/", &td->td_src, NULL) < 0)
+    if (xmldb_get(h, "running", "/", 0, &td->td_src, NULL) < 0)
 	goto done;
     /* Clear flags xpath for get */
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
@@ -521,9 +519,9 @@ candidate_commit(clicon_handle h,
 	 goto done;
 
      /* Clear cached trees from default values and marking */
-     if (xmldb_get1_clear(h, candidate) < 0)
+     if (xmldb_get_clear(h, td->td_target) < 0)
 	 goto done;
-     if (xmldb_get1_clear(h, "running") < 0)
+     if (xmldb_get_clear(h, td->td_src) < 0)
 	 goto done;
 
      /* Optionally write (potentially modified) tree back to candidate 
@@ -556,14 +554,11 @@ candidate_commit(clicon_handle h,
     retval = 1;
  done:
      /* In case of failure (or error), call plugin transaction termination callbacks */
-     if (retval < 1 && td)
-	 plugin_transaction_abort(h, td);
      if (td){
-	 if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
-	     /* xmldb_get1 requires free only if not cache */
-	     td->td_target = NULL;
-	     td->td_src = NULL;
-	 }
+	 if (retval < 1)
+	     plugin_transaction_abort(h, td);
+	 xmldb_get_free(h, &td->td_target);
+	 xmldb_get_free(h, &td->td_src);
 	 transaction_free(td);
      }
     return retval;
@@ -741,39 +736,40 @@ from_client_validate(clicon_handle h,
 	goto done;
     /* Common steps (with commit) */
     if ((ret = from_validate_common(h, db, td, cbret)) < 1){
-	clicon_debug(1, "Validate %s failed",  db);
-	if (ret < 0){
-	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
-		goto done;
-	}
+	plugin_transaction_abort(h, td);
+	if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+	    goto done;
 	goto ok;
     }
     /* Clear cached trees from default values and marking */
-    if (xmldb_get1_clear(h, db) < 0)
+    if (xmldb_get_clear(h, td->td_target) < 0)
 	goto done;
-    if (xmldb_get1_clear(h, "running") < 0)
+    if (xmldb_get_clear(h, td->td_src) < 0 ||
+	xmldb_get_clear(h, td->td_target) < 0){
+	plugin_transaction_abort(h, td);
 	goto done;
+    }
 
     /* Optionally write (potentially modified) tree back to candidate */
     if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD")){
+	plugin_transaction_abort(h, td);
 	if ((ret = xmldb_put(h, "candidate", OP_REPLACE, td->td_target,
 			     clicon_username_get(h), cbret)) < 0)
 	    goto done;
 	goto ok;
     }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    /* Call plugin transaction end callbacks */
+    plugin_transaction_end(h, td);
  ok:
     retval = 0;
  done:
-    if (retval < 0 && td)
-	plugin_transaction_abort(h, td);
     if (td){
-	if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
-	     /* xmldb_get1 requires free only if not cache */
-	    td->td_target = NULL;
-	    td->td_src = NULL;
-	}
-	transaction_free(td);
+	if (retval < 0)
+	    plugin_transaction_abort(h, td);
+	 xmldb_get_free(h, &td->td_target);
+	 xmldb_get_free(h, &td->td_src);
+	 transaction_free(td);
     }
     return retval;
 } /* from_client_validate */

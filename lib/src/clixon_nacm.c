@@ -890,7 +890,7 @@ nacm_access_pre(clicon_handle  h,
 		    goto done;
 	}
 	else if (strcmp(mode, "internal")==0){
-	    if (xmldb_get(h, "running", "nacm", &xnacm0, NULL) < 0)
+	    if (xmldb_get(h, "running", "nacm", 1, &xnacm0, NULL) < 0)
 		goto done;
 	}
     }

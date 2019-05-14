@@ -176,7 +176,6 @@ xmldb_disconnect(clicon_handle h)
     return retval;
 }
 
-
 /*! Copy database from db1 to db2
  * @param[in]  h     Clicon handle
  * @param[in]  from  Source database
@@ -199,7 +198,7 @@ xmldb_copy(clicon_handle h,
     cxobj              *x2 = NULL;  /* to */
 
     /* XXX lock */
-    if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
+    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
 	/* Copy in-memory cache */
 	/* 1. "to" xml tree in x1 */
 	if ((de1 = clicon_db_elmnt_get(h, from)) != NULL)
@@ -387,7 +386,7 @@ xmldb_delete(clicon_handle h,
     cxobj              *xt = NULL;
     struct stat         sb;
     
-    if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
+    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
 	if ((de = clicon_db_elmnt_get(h, db)) != NULL){
 	    if ((xt = de->de_xml) != NULL){
 		xml_free(xt);
@@ -425,7 +424,7 @@ xmldb_create(clicon_handle h,
     db_elmnt           *de = NULL;
     cxobj              *xt = NULL;
 
-    if (clicon_option_bool(h, "CLICON_XMLDB_CACHE")){ /* XXX This should not really happen? */
+    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){ 
 	if ((de = clicon_db_elmnt_get(h, db)) != NULL){
 	    if ((xt = de->de_xml) != NULL){
 		xml_free(xt);
