@@ -218,8 +218,7 @@ clixon_yang_parseerror(void *_yy,
 }
 
 int
-yang_parse_init(struct clicon_yang_yacc_arg *yy,
-		yang_stmt                   *ysp)
+    yang_parse_init(struct clicon_yang_yacc_arg *yy)
 {
     return 0;
 }
@@ -1048,6 +1047,7 @@ grouping_substmt : status_stmt          { clicon_debug(2,"grouping-substmt -> st
               | data_def_stmt        { clicon_debug(2,"grouping-substmt -> data-def-stmt"); }
               | action_stmt          { clicon_debug(2,"grouping-substmt -> action-stmt"); }
               | notification_stmt    { clicon_debug(2,"grouping-substmt -> notification-stmt"); }
+              | unknown_stmt        { clicon_debug(2,"container-substmt -> unknown-stmt");} 
               |                      { clicon_debug(2,"grouping-substmt -> "); }
               ;
 
@@ -1539,7 +1539,7 @@ deviate_substmt : type_stmt         { clicon_debug(2,"deviate-substmt -> type-st
                 ;
 
 
-/* For extensions XXX: we just dtop the data */
+/* For extensions XXX: we just drop the data */
 unknown_stmt  : ustring  ':' ustring ';'
                  { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		   if (ysp_add(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); 

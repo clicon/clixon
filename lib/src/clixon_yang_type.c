@@ -935,6 +935,8 @@ yang_find_identity(yang_stmt *ys,
     if (prefix){ /* Go to top and find import that matches */
 	if ((ymodule = yang_find_module_by_prefix(ys, prefix)) == NULL)
 	    goto done;
+	/* if ymodule is a sub-module, the identity may be found in a
+	 * sub-module of ymod */
 	yid = yang_find(ymodule, Y_IDENTITY, id);
     }
     else{

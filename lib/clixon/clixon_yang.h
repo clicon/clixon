@@ -170,6 +170,7 @@ char      *yarg_prefix(yang_stmt *ys);
 char      *yarg_id(yang_stmt *ys);
 int        ys_module_by_xml(yang_stmt *ysp, struct xml *xt, yang_stmt **ymodp);
 yang_stmt *ys_module(yang_stmt *ys);
+yang_stmt *ys_real_module(yang_stmt *ys);
 yang_stmt *ys_spec(yang_stmt *ys);
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
 yang_stmt *yang_find_module_by_namespace(yang_stmt *yspec, char *namespace);

@@ -88,7 +88,7 @@ extern char *clixon_yang_parsetext;
 int yang_scan_init(struct clicon_yang_yacc_arg *ya);
 int yang_scan_exit(struct clicon_yang_yacc_arg *ya);
 
-int yang_parse_init(struct clicon_yang_yacc_arg *ya, yang_stmt *ysp);
+int yang_parse_init(struct clicon_yang_yacc_arg *ya);
 int yang_parse_exit(struct clicon_yang_yacc_arg *ya);
 
 int clixon_yang_parselex(void *_ya);

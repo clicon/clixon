@@ -75,7 +75,7 @@ struct yang_stmt{
 
     char              *ys_argument;  /* String / argument depending on keyword */   
     int                ys_flags;     /* Flags according to YANG_FLAG_* above */
-    yang_stmt         *ys_module;   /* Shortcut to "my" module. Augmented
+    yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Augmented
 				       nodes can belong to other 
 					modules than the ancestor module */
 
