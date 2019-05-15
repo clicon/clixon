@@ -548,21 +548,38 @@ yang_find(yang_stmt  *yn,
 {
     yang_stmt *ys = NULL;
     int        i;
-    int        match = 0;
+    yang_stmt *yret = NULL;
+    char      *name;
+    yang_stmt *yspec;
+    yang_stmt *ym;
 
     for (i=0; i<yn->ys_len; i++){
 	ys = yn->ys_stmt[i];
 	if (keyword == 0 || ys->ys_keyword == keyword){
-	    if (argument == NULL)
-		match++;
-	    else
-		if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
-		    match++;
-	    if (match)
+	    if (argument == NULL ||
+		(ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)){
+		yret = ys;
 		break;
 	    }
+	}
     }
-    return match ? ys : NULL;
+    /* Special case: if not match and yang node is module or submodule, extend
+     * search to include submodules */
+    if (yret == NULL &&
+	(yang_keyword_get(yn) == Y_MODULE ||
+	 yang_keyword_get(yn) == Y_SUBMODULE)){
+	yspec = ys_spec(yn);
+	for (i=0; i<yn->ys_len; i++){
+	    ys = yn->ys_stmt[i];
+	    if (yang_keyword_get(ys) == Y_INCLUDE){
+		name = yang_argument_get(ys);
+		ym = yang_find_module_by_name(yspec, name);
+		if ((yret = yang_find(ym, keyword, argument)) != NULL)
+		    break;
+	    }
+	}
+    }
+    return yret;
 }
 
 /*! Count number of children that matches keyword and argument
@@ -611,7 +628,9 @@ yang_find_datanode(yang_stmt *yn,
 {
     yang_stmt *ys = NULL;
     yang_stmt *yc = NULL;
+    yang_stmt *yspec;
     yang_stmt *ysmatch = NULL;
+    char      *name;
     int        i, j;
 
     for (i=0; i<yn->ys_len; i++){
@@ -644,6 +663,22 @@ yang_find_datanode(yang_stmt *yn,
 		    goto match;
 	    }
     }
+    /* Special case: if not match and yang node is module or submodule, extend
+     * search to include submodules */
+    if (ysmatch == NULL &&
+	(yang_keyword_get(yn) == Y_MODULE ||
+	 yang_keyword_get(yn) == Y_SUBMODULE)){
+	yspec = ys_spec(yn);
+	for (i=0; i<yn->ys_len; i++){
+	    ys = yn->ys_stmt[i];
+	    if (yang_keyword_get(ys) == Y_INCLUDE){
+		name = yang_argument_get(ys);
+		yc = yang_find_module_by_name(yspec, name);
+		if ((ysmatch = yang_find_datanode(yc, argument)) != NULL)
+		    break;
+	    }
+	}
+    }
  match:
     return ysmatch;
 }
@@ -660,7 +695,9 @@ yang_find_schemanode(yang_stmt *yn,
 {
     yang_stmt *ys = NULL;
     yang_stmt *yc = NULL;
+    yang_stmt *yspec;
     yang_stmt *ysmatch = NULL;
+    char      *name;
     int        i, j;
 
     for (i=0; i<yn->ys_len; i++){
@@ -693,6 +730,22 @@ yang_find_schemanode(yang_stmt *yn,
 		    goto match;
 	    }
     }
+    /* Special case: if not match and yang node is module or submodule, extend
+     * search to include submodules */
+    if (ysmatch == NULL &&
+	(yang_keyword_get(yn) == Y_MODULE ||
+	 yang_keyword_get(yn) == Y_SUBMODULE)){
+	yspec = ys_spec(yn);
+	for (i=0; i<yn->ys_len; i++){
+	    ys = yn->ys_stmt[i];
+	    if (yang_keyword_get(ys) == Y_INCLUDE){
+		name = yang_argument_get(ys);
+		yc = yang_find_module_by_name(yspec, name);
+		if ((ysmatch = yang_find_schemanode(yc, argument)) != NULL)
+		    break;
+	    }
+	}
+    }
  match:
     return ysmatch;
 }
@@ -713,7 +766,8 @@ yang_find_myprefix(yang_stmt *ys)
     yang_stmt *yprefix;
     char      *prefix = NULL;
 
-    if ((ymod = ys_module(ys)) == NULL){
+    /* Not good enough with submodule, must be actual module */
+    if ((ymod = ys_real_module(ys)) == NULL){
 	clicon_err(OE_YANG, 0, "My yang module not found");
 	goto done;
     }
@@ -740,7 +794,7 @@ yang_find_mynamespace(yang_stmt *ys)
     yang_stmt *ynamespace;
     char      *namespace = NULL;
 
-    if ((ymod = ys_module(ys)) == NULL){
+    if ((ymod = ys_real_module(ys)) == NULL){
 	clicon_err(OE_YANG, 0, "My yang module not found");
 	goto done;
     }
@@ -926,6 +980,7 @@ yang_key2str(int keyword)
  * @retval     0        OK
  * @retval    -1        Error
  * @note works for xml namespaces (xmlns / xmlns:ns)
+ * Note that xt xml symbol may belong to submodule of ymod
  */
 int
 ys_module_by_xml(yang_stmt  *ysp,
@@ -970,6 +1025,7 @@ ys_module_by_xml(yang_stmt  *ysp,
  * @param[in] ys    Any yang statement in a yang tree
  * @retval    ymod  The top module or sub-module 
  * @see ys_spec
+ * @see ys_real_module find the submodule's belongs-to module
  * @note For an augmented node, the original module is returned
  */
 yang_stmt *
@@ -984,8 +1040,8 @@ ys_module(yang_stmt *ys)
     while (ys != NULL &&
 	   ys->ys_keyword != Y_MODULE &&
 	   ys->ys_keyword != Y_SUBMODULE){
-	if (ys->ys_module){ /* shortcut due to augment */
-	    ys = ys->ys_module;
+	if (ys->ys_mymodule){ /* shortcut due to augment */
+	    ys = ys->ys_mymodule;
 	    break;
 	}
 	yn = ys->ys_parent;
@@ -996,6 +1052,41 @@ ys_module(yang_stmt *ys)
     }
     /* Here it is either NULL or is a typedef-kind yang-stmt */
     return ys;
+}
+
+/*! Find real top module given a statement in a yang tree
+ * With "real" top module means that if sub-module is the top-node,
+ * the module that the sub-module belongs-to is found recursively
+ * @param[in] ys    Any yang statement in a yang tree
+ * @retval    ymod  The top module or sub-module 
+ * @see ys_module
+ * @note For an augmented node, the original module is returned
+ */
+yang_stmt *
+ys_real_module(yang_stmt *ys)
+{
+    yang_stmt *ym = NULL;
+    yang_stmt *yb;
+    char      *name;
+    yang_stmt *yspec;
+
+    if ((ym = ys_module(ys)) != NULL){
+	yspec = ys_spec(ym);
+	while (yang_keyword_get(ym) == Y_SUBMODULE){
+	    if ((yb = yang_find(ym, Y_BELONGS_TO, NULL)) == NULL){
+		clicon_err(OE_YANG, ENOENT, "No belongs-to statement of submodule %s", yang_argument_get(ym)); /* shouldnt happen */
+		goto done;
+	    }
+	    if ((name = yang_argument_get(yb)) == NULL){
+		clicon_err(OE_YANG, ENOENT, "Belongs-to statement of submodule %s has no argument", yang_argument_get(ym)); /* shouldnt happen */
+		goto done;
+	    }
+	    ym = yang_find_module_by_name(yspec, name);
+	}
+    }
+    return ym;
+ done:
+    return NULL;
 }
 
 /*! Find top of tree, the yang specification from within the tree
@@ -1901,7 +1992,7 @@ yang_augment_node(yang_stmt *ys,
     for (i=0; i<ys->ys_len; i++){
 	if ((yc = ys_dup(ys->ys_stmt[i])) == NULL)
 	    goto done;
-	yc->ys_module = ymod;
+	yc->ys_mymodule = ymod;
 	if (yn_insert(ytarget, yc) < 0)
 	    goto done;
     }
@@ -2085,7 +2176,7 @@ yang_parse_str(char         *str,
     if (strlen(str)){ /* Not empty */
 	if (yang_scan_init(&yy) < 0)
 	    goto done;
-	if (yang_parse_init(&yy, yspec) < 0)
+	if (yang_parse_init(&yy) < 0)
 	    goto done;
 	if (clixon_yang_parseparse(&yy) != 0) { /* yacc returns 1 on error */
 	    clicon_log(LOG_NOTICE, "Yang error: %s on line %d", name, yy.yy_linenum);
@@ -2485,70 +2576,6 @@ yang_features(clicon_handle h,
     return retval;
 }
 
-#if 1 /* This will be made OBSOLETE */
-/*! Merge yang submodule into the module it belongs to
- * Skip submodule header fields
- * @param[in] h      Clicon handle
- * @param[in] yspec  Yang spec
- * @param[in] ysubm  Yang submodule 
- */
-static int
-yang_merge_submodules(clicon_handle h,
-		      yang_stmt    *yspec,
-		      yang_stmt    *ysubm)
-{
-    int        retval = -1;
-    yang_stmt *yb;   /* belongs-to */
-    yang_stmt *ymod; /* parent yang module */
-    yang_stmt *yc;   /* yang child */
-    char      *modname;
-    int        i;
-    
-    assert(ysubm->ys_keyword == Y_SUBMODULE);
-    /* Get parent name (via belongs-to) and find parent module */
-    if ((yb = yang_find(ysubm, Y_BELONGS_TO, NULL)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "submodule %s does not have a mandatory belongs-to statement", ysubm->ys_argument);
-	goto done;
-    }
-    modname = yb->ys_argument;
-    if ((ymod = yang_find(yspec, Y_MODULE, modname)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "Submodule %s is loaded before/without its main module %s (you need to load the submodule together with or after the main module)",
-		   ysubm->ys_argument,
-		   modname);
-	goto done;
-    }
-    /* Move sub-module statements to modules 
-     * skip belongs-to, revision, organization, reference, yang-version) 
-     * since main module has its own and may only have one
-     * XXX: use queue,...
-     */
-    for (i=0; i<ysubm->ys_len; i++){
-	yc = ysubm->ys_stmt[i];
-	if (yc->ys_keyword == Y_BELONGS_TO ||
-	    yc->ys_keyword == Y_CONTACT ||
-	    yc->ys_keyword == Y_DESCRIPTION ||
-	    yc->ys_keyword == Y_ORGANIZATION ||
-	    yc->ys_keyword == Y_REVISION ||
-	    yc->ys_keyword == Y_REFERENCE ||
-	    yc->ys_keyword == Y_YANG_VERSION)
-	    ys_free(yc);
-	else{
-	    if (yn_insert(ymod, yc) < 0)
-		goto done;
-	}
-    }
-    if (ysubm->ys_stmt){
-	free(ysubm->ys_stmt);
-	ysubm->ys_stmt = NULL;
-    }
-    ysubm->ys_len = 0;
-    ys_free(ysubm);
-    retval = 0;
- done:
-    return retval;
-}
-#endif 
-
 /*! Parse top yang module including all its sub-modules. Expand and populate yang tree
  *
  * @param[in] h        CLICON handle
@@ -2589,38 +2616,18 @@ yang_parse_post(clicon_handle h,
     for (i=modnr; i<yspec->ys_len; i++) 
 	if (yang_cardinality(h, yspec->ys_stmt[i], yspec->ys_stmt[i]->ys_argument) < 0)
 	    goto done;
-
-#if 1 /* Will be OBSOLETE */
-    /* 3: Merge sub-modules with modules - after this step, no submodules exist
-     * In the merge, remove submodule headers
-     */
-    i = modnr;
-    while (i<yspec->ys_len){
-	int j;
-	if (yspec->ys_stmt[i]->ys_keyword != Y_SUBMODULE){
-	    i++;
-	    continue;
-	}
-	if (yang_merge_submodules(h, yspec, yspec->ys_stmt[i]) < 0)
-	    goto done;
-	/* shift down one step */
-	for (j=i; j<yspec->ys_len-1; j++)
-	    yspec->ys_stmt[j] = yspec->ys_stmt[j+1];
-	yspec->ys_len--;
-    }
-#endif /* OBSOLETE */
     
-    /* 4: Check features: check if enabled and remove disabled features */
+    /* 3: Check features: check if enabled and remove disabled features */
     for (i=modnr; i<yspec->ys_len; i++) /* XXX */
 	if (yang_features(h, yspec->ys_stmt[i]) < 0)
 	    goto done;
     
-    /* 5: Go through parse tree and populate it with cv types */
+    /* 4: Go through parse tree and populate it with cv types */
     for (i=modnr; i<yspec->ys_len; i++)
 	if (yang_apply(yspec->ys_stmt[i], -1, ys_populate, (void*)h) < 0)
 	    goto done;
 
-    /* 6: Resolve all types: populate type caches. Requires eg length/range cvecs
+    /* 5: Resolve all types: populate type caches. Requires eg length/range cvecs
      * from ys_populate step.
      * Must be done using static binding.
      */
@@ -2632,21 +2639,21 @@ yang_parse_post(clicon_handle h,
      * than the context they are used (except for submodules being merged w 
      * modules). Like static scoping. 
      * After this we expand all grouping/uses and unfold all macros into a
-     *single tree as they are used.
+     * single tree as they are used.
      */
 
-    /* 7: Macro expansion of all grouping/uses pairs. Expansion needs marking */
+    /* 6: Macro expansion of all grouping/uses pairs. Expansion needs marking */
     for (i=modnr; i<yspec->ys_len; i++){
 	if (yang_expand(yspec->ys_stmt[i]) < 0)
 	    goto done;
 	yang_apply(yspec->ys_stmt[i], -1, ys_flag_reset, (void*)YANG_FLAG_MARK);
     }
 
-    /* 8: Top-level augmentation of all modules XXX: only new modules? */
+    /* 7: Top-level augmentation of all modules XXX: only new modules? */
     if (yang_augment_spec(yspec, modnr) < 0)
 	goto done;
 
-    /* 9: sanity check of schemanode references, need more here */
+    /* 8: sanity check of schemanode references, need more here */
     for (i=modnr; i<yspec->ys_len; i++)
 	if (yang_apply(yspec->ys_stmt[i], -1, ys_schemanode_check, NULL) < 0)
 	    goto done;

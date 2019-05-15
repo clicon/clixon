@@ -2228,7 +2228,6 @@ xml_spec_populate(cxobj  *x,
 		  void   *arg)
 {
     int        retval = -1;
-    //    clicon_handle h = (clicon_handle)arg;
     yang_stmt *yspec = NULL; /* yang spec */
     yang_stmt *y = NULL;     /* yang node */
     yang_stmt *yparent;      /* yang parent */
@@ -2237,8 +2236,6 @@ xml_spec_populate(cxobj  *x,
     char      *name;
 
     yspec = (yang_stmt*)arg;
-    if (xml_spec(x))
-	;	//	goto ok;
     xp = xml_parent(x);
     name = xml_name(x);
     if (xp && (yparent = xml_spec(xp)) != NULL)
@@ -2246,18 +2243,12 @@ xml_spec_populate(cxobj  *x,
     else if (yspec){
 	if (ys_module_by_xml(yspec, x, &ymod) < 0)
 	    goto done;
+	/* ymod is "real" module, name may belong to included submodule */
 	if (ymod != NULL)
 	    y = yang_find_schemanode(ymod, name);
     }
     if (y) 
 	xml_spec_set(x, y);
-#if 0 /* Add if you want validation error */
-    else {
-	clicon_err(OE_YANG, ENOENT, "No yang top found?");
-	goto done;
-    }
-#endif
-    //    ok:
     retval = 0;
  done:
     return retval;

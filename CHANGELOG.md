@@ -138,7 +138,13 @@
 
 ### Minor changes
 
-* New XMLDB_FORMAT added: `tree`. An experimental record-based tree database for direct access of records. 
+* Improved submodule implementation (as part of [Yang submodule import prefix restrictions #60](https://github.com/clicon/clixon/issues/60)).
+  * Submodules share same namespace as modules, which means that functions looking for symbols under a module were extended to also look in that module's included submodules, also recursively (submodules can include submodules in Yang 1.0).
+  * Submodules are no longer merged with modules in the code. This is necessary to have separate local import prefixes, for example.
+  * New function `ys_real_module()` complements `ys_module()`. The latter gets the top module or submodule, whereas the former gets the ultimate module that a submodule belongs to. 
+  * See [test/test_submodule.sh]
+* New XMLDB_FORMAT added: `tree`. An experimental record-based tree database for
+ direct access of records. 
 * Netconf error handling modified
   * New option -e added. If set, the netconf client returns -1 on error.
 * A new minimal "hello world" example has been added
@@ -168,7 +174,9 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+
 * Yang Enumeration including space did not generate working CLIgen code, see [Choice with space is not working in CLIgen code](https://github.com/olofhagsand/cligen/issues/24)
+* Fixed: [Yang submodule import prefix restrictions #60](https://github.com/clicon/clixon/issues/60)
 * Fixed support for multiple datanodes in a choice/case statement. Only single datanode was supported.
 * Fixed an ordering problem showing up in validate/commit callbacks. If two new items following each order (yang-wise), only the first showed up in the new-list. Thanks achernavin!
 * Fixed a problem caused by recent sorting patches that made "ordered-by user" lists fail in some cases, causing multiple list entries with same keys. NACM being one example. Thanks vratnikov!

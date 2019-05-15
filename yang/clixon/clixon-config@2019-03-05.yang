@@ -200,7 +200,8 @@ module clixon-config {
 	    type string;
 	    description
 		"Option used to construct initial yang file: 
-                 <module>[@<revision>]";
+                 <module>[@<revision>].
+                 Used together with CLICON_YANG_MODULE_MAIN";
 	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;
