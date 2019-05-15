@@ -1,5 +1,6 @@
 #!/bin/bash
-# Testcases for lists, key operations for netconf and restconf
+# Testcases for Restconf list and leaf-list keys, check matching keys for RFC8040 4.5:
+# the key values must match in URL and data
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -39,6 +40,9 @@ module list{
             type string;
          }
       }
+      leaf-list d{
+        type string;
+      }
    }
 }
 EOF
@@ -65,18 +69,23 @@ new "waiting"
 wait_backend
 wait_restconf
 
-new "restconf PUT add entry"
+new "restconf PUT add list entry"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x -d {"list:a":{"b":"x","c":"0"}}' 0 ''
 
-new "restconf PUT change regular entry"
+new "restconf PUT change regular list entry"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x -d {"list:a":{"b":"x","c":"z"}}' 0 ''
 
-new "restconf PUT change key entry"
+new "restconf PUT change list key entry (expect fail)"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x -d {"list:a":{"b":"y"}}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
 
-new "restconf PUT change actual key entry"
+new "restconf PUT change actual list key entry (expect fail)"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x/b -d {"b":"y"}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
-exit
+
+new "restconf PUT add leaf-list entry"
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/d=x -d {"list:d":"x"}' 0 ''
+
+new "restconf PUT change leaf-list entry (expect fail)"
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/d=x -d {"list:d":"y"}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
 
 new "Kill restconf daemon"
 stop_restconf 

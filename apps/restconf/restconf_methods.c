@@ -665,22 +665,35 @@ match_list_keys(yang_stmt *y,
     char      *keya;
     char      *keyd;
 
-    if (yang_keyword_get(y) != Y_LIST && yang_keyword_get(y) != Y_LEAF_LIST)
-	goto done;
-    cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
-    cvi = NULL;
-    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	keyname = cv_string_get(cvi);	    
-	if ((xkeya = xml_find(xapipath, keyname)) == NULL)
+    clicon_debug(1, "%s", __FUNCTION__);
+    switch (yang_keyword_get(y)){
+    case Y_LIST:
+	cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
+	cvi = NULL;
+	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+	    keyname = cv_string_get(cvi);	    
+	    if ((xkeya = xml_find(xapipath, keyname)) == NULL)
+		goto done; /* No key in api-path */
+	    if ((keya = xml_body(xkeya)) == NULL)
+		goto done;
+	    if ((xkeyd = xml_find(xdata, keyname)) == NULL)
+		goto done; /* No key in data */
+	    if ((keyd = xml_body(xkeyd)) == NULL)
+		goto done;
+	    if (strcmp(keya, keyd) != 0)
+		goto done; /* keys dont match */
+	}
+	break;
+    case Y_LEAF_LIST:
+	if ((keya = xml_body(xapipath)) == NULL)
 	    goto done; /* No key in api-path */
-	if ((keya = xml_body(xkeya)) == NULL)
-	    goto done;
-	if ((xkeyd = xml_find(xdata, keyname)) == NULL)
+	if ((keyd = xml_body(xdata)) == NULL)
 	    goto done; /* No key in data */
-	if ((keyd = xml_body(xkeyd)) == NULL)
-	    goto done;
 	if (strcmp(keya, keyd) != 0)
 	    goto done; /* keys dont match */
+	break;
+    default:
+	goto done;
     }
     retval = 0;
  done:
@@ -878,6 +891,21 @@ api_data_put(clicon_handle h,
 	 * That is why the conditional is somewhat hairy
 	 */	    
 	xparent = xml_parent(xbot);
+#if 1
+    if (debug){
+	cbuf *ccc=cbuf_new();
+	if (clicon_xml2cbuf(ccc, xtop, 0, 0) < 0)
+	    goto done;
+	clicon_debug(1, "%s AAA XPATH:%s", __FUNCTION__, cbuf_get(ccc));
+    }
+    if (debug){
+	cbuf *ccc=cbuf_new();
+	if (clicon_xml2cbuf(ccc, xdata, 0, 0) < 0)
+	    goto done;
+	clicon_debug(1, "%s DATA:%s", __FUNCTION__, cbuf_get(ccc));
+    }
+#endif
+
 	if (y){
 	    yp = yang_parent_get(y);
 	    if (((yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST) &&
