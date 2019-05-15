@@ -175,6 +175,9 @@
 	
 ### Corrected Bugs
 
+* Restconf PUT different keys detected (thanks @dcornejo) and fixed
+  * This was accepted but shouldn't be: `PUT http://restconf/data/A=hello/B -d '{"B":"goodbye"}'`
+  * See RFC 8040 Sec 4.5
 * Yang Enumeration including space did not generate working CLIgen code, see [Choice with space is not working in CLIgen code](https://github.com/olofhagsand/cligen/issues/24)
 * Fixed: [Yang submodule import prefix restrictions #60](https://github.com/clicon/clixon/issues/60)
 * Fixed support for multiple datanodes in a choice/case statement. Only single datanode was supported.

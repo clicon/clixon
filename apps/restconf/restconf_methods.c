@@ -734,6 +734,7 @@ api_data_put(clicon_handle h,
     cxobj     *xparent;
     cxobj     *x;
     yang_stmt *y = NULL;
+    yang_stmt *yp; /* yang parent */
     yang_stmt *yspec;
     cxobj     *xa;
     char      *api_path;
@@ -869,9 +870,20 @@ api_data_put(clicon_handle h,
 		goto done;
 	    goto ok;
 	}
-	/* If list or leaf-list, api-path keys must match data keys */	    
-	if (y && (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST)){
-	    if (match_list_keys((yang_stmt*)y, x, xbot) < 0){
+	/* If list or leaf-list, api-path keys must match data keys 
+	 * There are two cases, either the object is the list element itself,
+	 *   eg xpath:obj=a  data:<obj><key>b</key></obj>
+	 * or the object is the key element:
+	 *   eg xpath:obj=a/key  data:<key>b</key>
+	 * That is why the conditional is somewhat hairy
+	 */	    
+	xparent = xml_parent(xbot);
+	if (y){
+	    yp = yang_parent_get(y);
+	    if (((yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST) &&
+		 match_list_keys(y, x, xbot) < 0) ||
+		(yp && yang_keyword_get(yp) == Y_LIST &&
+		 match_list_keys(yp, xml_parent(x), xparent) < 0)){
 		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
 		    goto done;
 		if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -881,9 +893,10 @@ api_data_put(clicon_handle h,
 		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 		    goto done;
 		goto ok;
+		
 	    }
 	}
-	xparent = xml_parent(xbot);
+
 	xml_purge(xbot);
 	if (xml_addsub(xparent, x) < 0)
 	    goto done;
