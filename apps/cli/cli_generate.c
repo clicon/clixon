@@ -311,7 +311,9 @@ yang2cli_var_sub(clicon_handle h,
     char         *type;
     yang_stmt    *yi = NULL;
     int           i = 0;
+    int           j;
     char         *cvtypestr;
+    char         *arg;
 
     if (cvtype == CGV_VOID){
 	retval = 0;
@@ -334,7 +336,13 @@ yang2cli_var_sub(clicon_handle h,
 		    continue;
 		if (i)
 		    cprintf(cb, "|"); 
-		cprintf(cb, "%s", yang_argument_get(yi)); 
+		/* Encode by escaping delimiters */
+		arg = yang_argument_get(yi);
+		for (j=0; j<strlen(arg); j++){
+		    if (index(CLIGEN_DELIMITERS, arg[j]))
+			cprintf(cb, "\\");
+		    cprintf(cb, "%c", arg[j]); 
+		}
 		i++;
 	    }
 	}

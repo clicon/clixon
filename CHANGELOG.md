@@ -168,6 +168,7 @@
 * Added libgen.h for baseline()
 	
 ### Corrected Bugs
+* Yang Enumeration including space did not generate working CLIgen code, see [Choice with space is not working in CLIgen code](https://github.com/olofhagsand/cligen/issues/24)
 * Fixed support for multiple datanodes in a choice/case statement. Only single datanode was supported.
 * Fixed an ordering problem showing up in validate/commit callbacks. If two new items following each order (yang-wise), only the first showed up in the new-list. Thanks achernavin!
 * Fixed a problem caused by recent sorting patches that made "ordered-by user" lists fail in some cases, causing multiple list entries with same keys. NACM being one example. Thanks vratnikov!

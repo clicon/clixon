@@ -109,15 +109,16 @@ Clixon follows:
 - [YANG 1.1 RFC 7950](https://www.rfc-editor.org/rfc/rfc7950.txt).
 - [RFC 7895: YANG module library](http://www.rfc-base.org/txt/rfc-7895.txt)
 
-However, the following YANG syntax modules are not implemented:
-- deviation
-- action
-- refine
-
-The following restrictions on Yang exists:
-- Yang extended Xpath functions: re-match, deref, derived-from, derived-from-or-self, enum-value, bit-is-set
-- Submodules cannot re-use a prefix in an import statement that is already used for another imported module in the module that the submodule belongs to. (see https://github.com/clicon/clixon/issues/60)
-- Default values on leaf-lists are not supported (RFC7950 7.7.2)
+However, the following YANG syntax modules are not implemented (reference to RFC7950 in parenthesis):
+- deviation (7.20.3)
+- action (7.15)
+- refine (7.13.2)
+- status (7.21.2)
+- extension (7.19)
+- modifier (9.4.6)
+- YIN (13)
+- Yang extended Xpath functions: re-match(), deref)(), derived-from(), derived-from-or-self(), enum-value(), bit-is-set() (10.2-10.6)
+- Default values on leaf-lists are not supported (7.7.2)
 
 ## XML
 
