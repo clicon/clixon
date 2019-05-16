@@ -108,8 +108,7 @@ expand_dbvar(void   *h,
     cxobj           *x;
     char            *bodystr;
     int              i;
-    int              j;
-    int              k;
+    char            *bodystr0 = NULL; /* previous */
     cg_var          *cv;
     yang_stmt       *yspec;
     cxobj           *xtop = NULL; /* xpath root */
@@ -153,9 +152,8 @@ expand_dbvar(void   *h,
 	goto done;
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
 	goto done;
-
-    /* XXX read whole configuration, why not send xpath? */
-    if (clicon_rpc_get_config(h, dbstr, "/", &xt) < 0)
+    /* Get configuration */
+    if (clicon_rpc_get_config(h, dbstr, xpath, &xt) < 0)
     	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
@@ -200,45 +198,20 @@ expand_dbvar(void   *h,
 		goto done;
 	    }
 	}
-    /* One round to detect duplicates 
-     */
-    j = 0;
     if (xpath_vec(xcur, "%s", &xvec, &xlen, xpathcur) < 0) 
 	goto done;
+    bodystr0 = NULL; /* Assume sorted XML where duplicates are adjacent */
     for (i = 0; i < xlen; i++) {
-	char *str;
 	x = xvec[i];
 	if (xml_type(x) == CX_BODY)
 	    bodystr = xml_value(x);
 	else
 	    bodystr = xml_body(x);
-	if (bodystr == NULL){
+	if (bodystr == NULL)
 	    continue; /* no body, cornercase */
-	}
-	/* detect duplicates */
-	for (k=0; k<j; k++){
-	    if (xml_type(xvec[k]) == CX_BODY)
-		str = xml_value(xvec[k]);
-	    else
-		str = xml_body(xvec[k]);
-	    if (strcmp(str, bodystr)==0)
-		break;
-	}
-	if (k==j) /* not duplicate */
-	    xvec[j++] = x;
-    }
-    xlen = j;
-    for (i = 0; i < xlen; i++) {
-	x = xvec[i];
-	if (xml_type(x) == CX_BODY)
-	    bodystr = xml_value(x);
-	else
-	    bodystr = xml_body(x);
-	if (bodystr == NULL){
-	    clicon_err(OE_CFG, 0, "No xml body");
-	    goto done;
-	}
-	/* XXX RFC3986 decode */
+	if (bodystr0 && strcmp(bodystr, bodystr0) == 0)
+	    continue; /* duplicate, assume sorted */
+	/* RFC3986 decode */
 	cvec_add_string(commands, NULL, bodystr);
     }
  ok:

@@ -42,6 +42,7 @@
     * CLICON_XML_CHANGELOG enables the yang changelog feature
     * CLICON_XML_CHANGELOG_FILE where the changelog resides
 * Optimization work
+  * Removed O(n^2) in cli expand/completion code
   * Improved performance of validation of (large) lists
   * A scaling of [large lists](doc/scaling) report is added
   * New xmldb_get1() returning actual cache - not a copy. This has lead to some householding instead of just deleting the copy
