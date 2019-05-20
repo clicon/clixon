@@ -33,7 +33,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>$APPNAME</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -73,52 +73,54 @@ module example{
 }
 EOF
 
-new "test params: -f $cfg -y $fyang"
+new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
-    sudo clixon_backend -zf $cfg -y $fyang
+    sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
 	err
     fi
 
-    new "start backend -s init -f $cfg -y $fyang"
-    start_backend -s init -f $cfg -y $fyang
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
 
     new "waiting"
     sleep $RCWAIT
 fi
 
 new "cli enabled feature"
-expectfn "$clixon_cli -1f $cfg -y $fyang set x foo" 0 ""
+expectfn "$clixon_cli -1f $cfg set x foo" 0 ""
 
 new "cli disabled feature"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set y foo" 255 "CLI syntax error: \"set y foo\": Unknown command"
+expectfn "$clixon_cli -1f $cfg -l o set y foo" 255 "CLI syntax error: \"set y foo\": Unknown command"
 
 new "cli enabled feature in other module"
-expectfn "$clixon_cli -1f $cfg -y $fyang set routing router-id 1.2.3.4" 0 ""
+expectfn "$clixon_cli -1f $cfg set routing router-id 1.2.3.4" 0 ""
 
 new "cli disabled feature in other module"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set routing ribs rib default-rib false" 255 "CLI syntax error: \"set routing ribs rib default-rib false\": Unknown command"
+expectfn "$clixon_cli -1f $cfg -l o set routing ribs rib default-rib false" 255 "CLI syntax error: \"set routing ribs rib default-rib false\": Unknown command"
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf enabled feature"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon">foo</x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon">foo</x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate enabled feature"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf disabled feature"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><y xmlns="urn:example:clixon">foo</y></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>y</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y xmlns="urn:example:clixon">foo</y></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>y</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 # This test has been broken up into all different modules instead of one large
 # reply since the modules change so often
 new "netconf schema resource, RFC 7895"
-ret=$($clixon_netconf -qf $cfg -y $fyang<<EOF 
+ret=$($clixon_netconf -qf $cfg<<EOF 
 <rpc><get><filter type="xpath" select="modules-state/module" xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"/></get></rpc>]]>]]>
 EOF
-)
+   )
+#echo $ret
+
 new "netconf modules-state header"
 expect='^<rpc-reply><data><modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"><module><name>'
 match=`echo "$ret" | grep -GZo "$expect"`

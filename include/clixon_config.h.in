@@ -57,6 +57,9 @@
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #undef HAVE_LIBSOCKET
 
+/* Define to 1 if you have the `xml2' library (-lxml2). */
+#undef HAVE_LIBXML2
+
 /* Define to 1 if you have the <linux/if_vlan.h> header file. */
 #undef HAVE_LINUX_IF_VLAN_H
 

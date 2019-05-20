@@ -139,6 +139,14 @@
 
 ### Minor changes
 
+* Regexp improvements
+  * Added check for libxml in configure';
+  * Added clixon_util_regexp utility function
+* Yang state get improvements
+  * Integrated state and config into same tree on retrieval, not separate trees
+  * Added cli functions `cli_show_config_state()` and `cli_show_auto_state()` for showing combined config and state info.
+  * Added integrated state in the main example: `interface/oper-state`.
+  * Added performance tests for getting state, see [test/test_perf_state.sh].
 * Improved submodule implementation (as part of [Yang submodule import prefix restrictions #60](https://github.com/clicon/clixon/issues/60)).
   * Submodules share same namespace as modules, which means that functions looking for symbols under a module were extended to also look in that module's included submodules, also recursively (submodules can include submodules in Yang 1.0).
   * Submodules are no longer merged with modules in the code. This is necessary to have separate local import prefixes, for example.

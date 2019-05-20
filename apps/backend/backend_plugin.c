@@ -138,6 +138,8 @@ clixon_plugin_statedata(clicon_handle    h,
 	    goto done;
 	if (fn(h, xpath, x) < 0)
 	    goto fail;  /* Dont quit here on user callbacks */
+	if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	    goto done;
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;
 	if (ret == 0)

@@ -75,6 +75,7 @@
 #include "clixon_data.h"
 #include "clixon_plugin.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_map.h"
 #include "clixon_yang_module.h"
 #include "clixon_yang_internal.h" /* internal */
 
@@ -289,11 +290,16 @@ yang_modules_state_get(clicon_handle    h,
     cxobj      *x1;
     cbuf       *cb = NULL;
     int         ret;
+    cxobj     **xvec = NULL;
+    size_t      xlen;
+    int         i;
 
     msid = clicon_option_str(h, "CLICON_MODULE_SET_ID");
     if ((x = clicon_modst_cache_get(h, brief)) != NULL){
 	/* x is here: <modules-state>... 
 	 * and x is original tree, need to copy */
+	if ((x = xml_wrap(x, "top")) < 0)
+	    goto done;
         if (xpath_first(x, "%s", xpath)){
             if ((x1 = xml_dup(x)) == NULL)
                 goto done;
@@ -301,6 +307,9 @@ yang_modules_state_get(clicon_handle    h,
         }
         else
             x = NULL;
+	/* unwrap */
+	if (x && xml_rootchild(x, 0, &x) < 0)
+	    goto done;
     }
     else { /* No cache -> build the tree */
 	if ((cb = cbuf_new()) == NULL){
@@ -322,10 +331,21 @@ yang_modules_state_get(clicon_handle    h,
 	if (clicon_modst_cache_set(h, brief, x) < 0) /* move to fn above? */
 	    goto done;
     }
-    if (x){
-	/* Wrap x (again) with new top-level node "top" which merge wants */
+    if (x){ /* x is here a copy (This code is ugly and I think wrong) */
+	/* Wrap x (again) with new top-level node "top" which xpath wants */
 	if ((x = xml_wrap(x, "top")) < 0)
 	    goto done;
+	/* extract xpath part of module-state tree */
+	if (xpath_vec(x, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	    goto done;
+	if (xvec != NULL){
+	    for (i=0; i<xlen; i++)
+		xml_flag_set(xvec[i], XML_FLAG_MARK);
+	}
+	/* Remove everything that is not marked */
+	if (xml_tree_prune_flagged_sub(x, XML_FLAG_MARK, 1, NULL) < 0)
+	    goto done;
+
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;
 	if (ret == 0)
@@ -334,6 +354,8 @@ yang_modules_state_get(clicon_handle    h,
     retval = 1;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    if (xvec)
+	free(xvec);
     if (cb)
         cbuf_free(cb);
     if (x)

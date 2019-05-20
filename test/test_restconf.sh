@@ -1,5 +1,6 @@
 #!/bin/bash
 # Restconf basic functionality
+# also uri encoding using eth/0/0
 # Assume http server setup, such as nginx described in apps/restconf/README.md
 
 # Magic line must be first in script (see README.md)
@@ -35,7 +36,7 @@ EOF
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
 state='{"clixon-example:state": {"op": ["42","41","43"]}}'
 
-new "test params: -f $cfg"
+new "test params: -f $cfg -- -s"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
@@ -114,11 +115,7 @@ new "restconf empty rpc with extra args (should fail)"
 expecteq "$(curl -s -X POST -d {\"clixon-example:input\":{\"extra\":null}} http://localhost/restconf/operations/clixon-example:empty)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "extra"},"error-severity": "error"}}}'
 
 new "restconf get empty config + state json"
-expecteq "$(curl -sSG http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state": {"op": ["42","41","43"]}}
-'
-
-new "restconf get empty config + state json + module"
-expecteq "$(curl -sSG http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state": {"op": ["42","41","43"]}}
+expecteq "$(curl -sS -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state": {"op": ["42","41","43"]}}
 '
 
 new "restconf get empty config + state json with wrong module name"
@@ -136,7 +133,7 @@ new "restconf get data/ json"
 expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" 0 '{"clixon-example:op": ["42","41","43"]}
 '
 
-new "restconf get state operation eth0 xml"
+new "restconf get state operation"
 # Cant get shell macros to work, inline matching from lib.sh
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/clixon-example:state/op=42)
 expect='<op xmlns="urn:example:clixon">42</op>'
@@ -145,11 +142,11 @@ if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
-new "restconf get state operation eth0 type json"
+new "restconf get state operation type json"
 expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" 0 '{"clixon-example:op": ["42","41","43"]}
 '
 
-new "restconf get state operation eth0 type xml"
+new "restconf get state operation type xml"
 # Cant get shell macros to work, inline matching from lib.sh
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/clixon-example:state/op=42)
 expect='<op xmlns="urn:example:clixon">42</op>'
@@ -163,17 +160,18 @@ expecteq "$(curl -s -X GET http://localhost/restconf/data/clixon-example:state)"
 '
 
 # Exact match
-new "restconf Add subtree to datastore using POST"
+new "restconf Add subtree eth/0/0 to datastore using POST"
 expectfn 'curl -s -i -X POST -H "Accept: application/yang-data+json" -d {"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}} http://localhost/restconf/data' 0 'HTTP/1.1 200 OK'
 
-new "restconf Re-add subtree which should give error"
+new "restconf Re-add subtree eth/0/0 which should give error"
 expectfn 'curl -s -X POST -d {"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 # XXX Cant get this to work
 #expecteq "$(curl -s -X POST -d {\"interfaces\":{\"interface\":{\"name\":\"eth/0/0\",\"type\":\"ex:eth\",\"enabled\":true}}} http://localhost/restconf/data)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
 
 new "restconf Check interfaces eth/0/0 added"
-expectfn "curl -s -G http://localhost/restconf/data" 0 '"ietf-interfaces:interfaces": {"interface": \[{"name": "eth/0/0","type": "ex:eth","enabled": true}\]}'
+expectfn "curl -s -X GET http://localhost/restconf/data/ietf-interfaces:interfaces" 0 '{"ietf-interfaces:interfaces": {"interface": [{"name": "eth/0/0","type": "ex:eth","enabled": true,"oper-status": "up"}]}}}
+'
 
 new "restconf delete interfaces"
 expecteq "$(curl -s -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 ""
@@ -190,7 +188,7 @@ expectfn 'curl -s -X POST -d {"ietf-interfaces:interface":{"name":"eth/0/0","typ
 #expecteq "$(curl -s -X POST -d '{"interface":{"name":"eth/0/0","type\":"ex:eth","enabled":true}}' http://localhost/restconf/data/interfaces)" 0 ""
 
 new "restconf Check eth/0/0 added config"
-expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces": {"interface": [{"name": "eth/0/0","type": "ex:eth","enabled": true}]}}
+expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces": {"interface": [{"name": "eth/0/0","type": "ex:eth","enabled": true,"oper-status": "up"}]}}
 '
 
 new "restconf Check eth/0/0 added state"
@@ -207,7 +205,7 @@ new "Add nothing using POST"
 expectfn 'curl -s -X POST http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0' 0 '"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": " on line 1: syntax error at or before:'
 
 new "restconf Check description added"
-expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces": {"interface": [{"name": "eth/0/0","description": "The-first-interface","type": "ex:eth","enabled": true}]}}
+expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces": {"interface": [{"name": "eth/0/0","description": "The-first-interface","type": "ex:eth","enabled": true,"oper-status": "up"}]}}
 '
 
 new "restconf delete eth/0/0"
@@ -223,7 +221,7 @@ new "restconf Add subtree eth/0/0 using PUT"
 expecteq "$(curl -s -X PUT -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 ""
 
 new "restconf get subtree"
-expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces": {"interface": [{"name": "eth/0/0","type": "ex:eth","enabled": true}]}}
+expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces": {"interface": [{"name": "eth/0/0","type": "ex:eth","enabled": true,"oper-status": "up"}]}}
 '
 
 new "restconf rpc using POST json"

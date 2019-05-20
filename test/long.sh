@@ -49,7 +49,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>scaling</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
@@ -61,26 +61,27 @@ EOF
 
 sudo callgrind_control -i off
 
-new "test params: -f $cfg -y $fyang"
+new "test params: -f $cfg 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
-    sudo clixon_backend -zf $cfg -y $fyang
+    sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
 	err
     fi
 
-    new "start backend -s init -f $cfg -y $fyang"
-    start_backend -s init -f $cfg -y $fyang
+    new "start backend -s init -f $cfg
+    start_backend -s init -f $cfg
 fi
 
 new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "start restconf daemon"
-start_restconf -f $cfg -y $fyang
+start_restconf -f $cfg
 
 new "waiting"
-sleep $RCWAIT
+wait_backend
+wait_restconf
 
 new "generate 'large' config with $perfnr list entries"
 echo -n "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\">" > $fconfig
@@ -91,15 +92,17 @@ echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
 new "netconf write large config"
-expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Now commit it from candidate to running 
 new "netconf commit large config"
-expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 #  Zero all event counters
 sudo callgrind_control -i on
 sudo callgrind_control -z
+
+
 
 while [ 1 ] ; do
     new "restconf add $perfreq small config"

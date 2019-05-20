@@ -138,9 +138,12 @@ int show_yang(clicon_handle h, cvec *vars, cvec *argv);
 
 int show_conf_xpath(clicon_handle h, cvec *cvv, cvec *argv);
 
-
 int cli_show_config(clicon_handle h, cvec *cvv, cvec *argv);
 
+int cli_show_config_state(clicon_handle h, cvec *cvv, cvec *argv);
+
 int cli_show_auto(clicon_handle h, cvec *cvv, cvec *argv);
+
+int cli_show_state_auto(clicon_handle h, cvec *cvv, cvec *argv);
 
 #endif /* _CLIXON_CLI_API_H_ */

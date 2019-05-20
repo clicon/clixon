@@ -7,7 +7,6 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 fyang=$dir/ietf-ip.yang
 
-# If set, enable debugging (of backend)
 : ${clixon_util_datastore:=clixon_util_datastore}
 
 cat <<EOF > $fyang

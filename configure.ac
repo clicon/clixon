@@ -220,6 +220,10 @@ AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(nsl, xdr_char)
 AC_CHECK_LIB(dl, dlopen)
 
+# This is for Libxml2 code which we can use for XSD regexp
+# AC_CHECK_HEADERS([libxml2/libxml/xmlexports.h])
+AC_CHECK_LIB(xml2, xmlRegexpCompile)
+
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort)
 
 # CLIXON_DATADIR is where clixon installs the "system" yang files in yang/Makfile

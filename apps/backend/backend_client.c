@@ -260,7 +260,10 @@ client_statedata(clicon_handle h,
 	goto done;
     if (ret == 0)
 	goto fail;
-    /* Code complex to filter out anything that is outside of xpath */
+    /* Code complex to filter out anything that is outside of xpath 
+     * Actually this is a safety catch, should realy be done in plugins
+     * and modules_state functions.
+     */
     if (xpath_vec(*xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
     /* If vectors are specified then mark the nodes found and

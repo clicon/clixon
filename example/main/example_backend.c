@@ -264,7 +264,7 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
 /*! Called to get state data from plugin
  * @param[in]    h      Clicon handle
  * @param[in]    xpath  String with XPATH syntax. or NULL for all
- * @param[in]    xtop   XML tree, <config/> on entry. 
+ * @param[in]    xstate XML tree, <config/> on entry. 
  * @retval       0      OK
  * @retval      -1      Error
  * @see xmldb_get
@@ -285,13 +285,34 @@ example_statedata(clicon_handle h,
 {
     int     retval = -1;
     cxobj **xvec = NULL;
+    size_t  xlen;
+    cbuf   *cb = cbuf_new();
+    int     i;
+    cxobj  *xt = NULL;
+    char   *name;
 
     if (!_state)
 	goto ok;
-    /* Example of (static) statedata, real code would poll state 
-     * Note this state needs to be accomanied by yang snippet
-     * above
-     */
+    
+    /* Example of statedata, in this case merging state data with 
+     * state information. In this case adding dummy interface operation state
+     * to configured interfaces.
+     * Get config according to xpath */
+    if (xmldb_get(h, "running", xpath, 1, &xt, NULL) < 0)
+       goto done;
+    /* From that subset, only get the names */
+   if (xpath_vec(xt, "/interfaces/interface/name", &xvec, &xlen) < 0)
+       goto done;
+   if (xlen){
+       cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
+       for (i=0; i<xlen; i++){
+	   name = xml_body(xvec[i]);
+	   cprintf(cb, "<interface><name>%s</name><oper-status>up</oper-status></interface>", name);
+       }
+       cprintf(cb, "</interfaces>");
+       if (xml_parse_string(cbuf_get(cb), NULL, &xstate) < 0)
+	   goto done;
+   }
     if (xml_parse_string("<state xmlns=\"urn:example:clixon\">"
 			 "<op>42</op>"
 			 "<op>41</op>"
@@ -301,6 +322,10 @@ example_statedata(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (xt)
+	xml_free(xt);
+    if (cb)
+	cbuf_free(cb);
     if (xvec)
 	free(xvec);
     return retval;

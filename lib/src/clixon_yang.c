@@ -69,7 +69,6 @@
 #include <sys/param.h>
 #include <netinet/in.h>
 #include <libgen.h>
-#include <regex.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -3321,6 +3320,12 @@ ys_parse_sub(yang_stmt *ys,
 		goto done;
 	    }
 	    cv_uint32_set(ys->ys_cv, minmax);
+	}
+	break;
+    case Y_MODIFIER:
+	if (strcmp(yang_argument_get(ys), "invert-match")){
+	    clicon_err(OE_YANG, EINVAL, "modifier %s, expected invert-match", yang_argument_get(ys));
+	    goto done;
 	}
 	break;
     case Y_UNKNOWN: /* XXX This code assumes ymod already loaded

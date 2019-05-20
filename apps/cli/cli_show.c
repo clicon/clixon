@@ -381,24 +381,27 @@ show_yang(clicon_handle h,
   return 0;
 }
 
-/*! Generic show configuration CLIGEN callback
- * Utility function used by cligen spec file
+/*! Show configuration and state internal function
+ *
  * @param[in]  h     CLICON handle
+ * @param[in]  state If set, show both config and state, otherwise only config
  * @param[in]  cvv   Vector of variables from CLIgen command-line
  * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
  * Format of argv:
- *   <dbname>  "running"|"candidate"|"startup"
+ *   <dbname>  "running"|"candidate"|"startup" # note only running state=1
  *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
  *   <xpath>   xpath expression, that may contain one %, eg "/sender[name="%s"]"
  *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
  * @code
  *   show config id <n:string>, cli_show_config("running","xml","iface[name="%s"]","n");
  * @endcode
+ * @note if state parameter is set, then db must be running
  */
-int
-cli_show_config(clicon_handle h, 
-		cvec         *cvv, 
-		cvec         *argv)
+static int
+cli_show_config1(clicon_handle h, 
+		 int           state,
+		 cvec         *cvv, 
+		 cvec         *argv)
 {
     int              retval = -1;
     char            *db;
@@ -462,9 +465,19 @@ cli_show_config(clicon_handle h,
     }
     else
 	cprintf(cbxpath, "%s", xpath);	
-    /* Get configuration from database */
-    if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), &xt) < 0)
-	goto done;
+
+    if (state == 0){     /* Get configuration-only from database */
+	if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), &xt) < 0)
+	    goto done;
+    }
+    else {               /* Get configuration and state from database */
+	if (strcmp(db, "running") != 0){
+	    clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
+	    goto done;
+	}
+	if (clicon_rpc_get(h, cbuf_get(cbxpath), &xt) < 0)
+	    goto done;
+    }
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
@@ -516,6 +529,52 @@ done:
     if (cbxpath)
 	cbuf_free(cbxpath);
     return retval;
+}
+
+/*! Show configuration and state CLIGEN callback function
+ *
+ * @param[in]  h     CLICON handle
+ * @param[in]  cvv   Vector of variables from CLIgen command-line
+ * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
+ * Format of argv:
+ *   <dbname>  "running"|"candidate"|"startup"
+ *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
+ *   <xpath>   xpath expression, that may contain one %, eg "/sender[name="%s"]"
+ *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
+ * @code
+ *   show config id <n:string>, cli_show_config("running","xml","iface[name="%s"]","n");
+ * @endcode
+ * @see cli_show_config_state  For config and state data (not only config)
+ */
+int
+cli_show_config(clicon_handle h, 
+		cvec         *cvv, 
+		cvec         *argv)
+{
+    return cli_show_config1(h, 0, cvv, argv);
+}
+
+/*! Show configuration and state CLIgen callback function
+ *
+ * @param[in]  h     CLICON handle
+ * @param[in]  cvv   Vector of variables from CLIgen command-line
+ * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
+ * Format of argv:
+ *   <dbname>  "running"
+ *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
+ *   <xpath>   xpath expression, that may contain one %, eg "/sender[name="%s"]"
+ *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
+ * @code
+ *   show config id <n:string>, cli_show_config_state("running","xml","iface[name="%s"]","n");
+ * @endcode
+ * @see cli_show_config  For config-only, no state
+ */
+int
+cli_show_config_state(clicon_handle h, 
+		      cvec         *cvv, 
+		      cvec         *argv)
+{
+    return cli_show_config1(h, 1, cvv, argv);
 }
 
 /*! Show configuration as text given an xpath
@@ -583,15 +642,21 @@ int cli_show_version(clicon_handle h,
 }
 
 /*! Generic show configuration CLIGEN callback using generated CLI syntax
+ * @param[in]  h     CLICON handle
+ * @param[in]  state If set, show both config and state, otherwise only config
+ * @param[in]  cvv   Vector of variables from CLIgen command-line
+ * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
  * Format of argv:
  *   <api_path_fmt> Generated API PATH
  *   <dbname>  "running"|"candidate"|"startup"
  *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
+ * @note if state parameter is set, then db must be running
  */
-int 
-cli_show_auto(clicon_handle h,
-	      cvec         *cvv,
-	      cvec         *argv)
+static int 
+cli_show_auto1(clicon_handle h,
+	       int           state,
+	       cvec         *cvv,
+	       cvec         *argv)
 {
     int              retval = 1;
     yang_stmt       *yspec;
@@ -635,9 +700,19 @@ cli_show_auto(clicon_handle h,
     if (xpath[strlen(xpath)-1] == '/')
 	xpath[strlen(xpath)-1] = '\0';
 
-    /* Get configuration from database */
-    if (clicon_rpc_get_config(h, db, xpath, &xt) < 0)
-	goto done;
+    if (state == 0){   /* Get configuration-only from database */
+	if (clicon_rpc_get_config(h, db, xpath, &xt) < 0)
+	    goto done;
+    }
+    else{              /* Get configuration and state from database */
+	if (strcmp(db, "running") != 0){
+	    clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
+	    goto done;
+	}
+	if (clicon_rpc_get(h, xpath, &xt) < 0)
+	    goto done;
+    }
+
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
@@ -674,4 +749,33 @@ cli_show_auto(clicon_handle h,
     return retval;
 }
 
+/*! Generic show configuration CLIgen callback using generated CLI syntax
+ * Format of argv:
+ *   <api_path_fmt> Generated API PATH
+ *   <dbname>  "running"|"candidate"|"startup"
+ *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
+ * @see cli_show_auto_state  For config and state
+ */
+int 
+cli_show_auto(clicon_handle h,
+	      cvec         *cvv,
+	      cvec         *argv)
+{
+    return cli_show_auto1(h, 0, cvv, argv);
+}
+
+/*! Generic show config and state CLIgen callback using generated CLI syntax
+ * Format of argv:
+ *   <api_path_fmt> Generated API PATH
+ *   <dbname>  "running"
+ *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
+ * @see cli_show_auto    For config only
+ */
+int 
+cli_show_auto_state(clicon_handle h,
+		    cvec         *cvv,
+		    cvec         *argv)
+{
+    return cli_show_auto1(h, 1, cvv, argv);
+}
 
