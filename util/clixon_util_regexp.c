@@ -41,8 +41,12 @@
 #include <unistd.h> /* unistd */
 #include <string.h>
 #include <regex.h> /* posix regex */
-#include <syslog.h> 
+#include <syslog.h>
+#include <stdlib.h>
+#include <limits.h>
 
+
+#undef HAVE_LIBXML2
 #ifdef HAVE_LIBXML2 /* Actually it should check for  a header file */
 #include <libxml/xmlregexp.h>
 #endif
