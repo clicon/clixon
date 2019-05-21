@@ -212,6 +212,7 @@ startup_common(clicon_handle       h,
     xt = NULL;
     x = NULL;
     while ((x = xml_child_each(td->td_target, x, CX_ELMNT)) != NULL){
+	xml_flag_set(x, XML_FLAG_ADD);
 	if (cxvec_append(x, &td->td_avec, &td->td_alen) < 0) 
 	    goto done;
     }

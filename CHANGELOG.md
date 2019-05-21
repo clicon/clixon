@@ -184,6 +184,7 @@
 	
 ### Corrected Bugs
 
+* Startup transactions did not mark added tree with XML_FLAG_ADD as it should.
 * Restconf PUT different keys detected (thanks @dcornejo) and fixed
   * This was accepted but shouldn't be: `PUT http://restconf/data/A=hello/B -d '{"B":"goodbye"}'`
   * See RFC 8040 Sec 4.5
