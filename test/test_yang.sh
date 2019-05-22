@@ -153,7 +153,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg -y $fyang
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 new "cli defined extension"

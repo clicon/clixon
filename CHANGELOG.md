@@ -140,8 +140,11 @@
 ### Minor changes
 
 * Regexp improvements
-  * Added check for libxml in configure';
+  * Better compliance with XSD regexps (when transforming to Posix regexps)
+    * Added `\p{L}` and `\p{N}`
+    * Added escaping of `$`
   * Added clixon_util_regexp utility function
+  * Added regexp [test/test_pattern.sh]
 * Yang state get improvements
   * Integrated state and config into same tree on retrieval, not separate trees
   * Added cli functions `cli_show_config_state()` and `cli_show_auto_state()` for showing combined config and state info.

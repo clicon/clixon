@@ -96,7 +96,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 %s STRING
 %s STRINGDQ
 %s STRINGSQ
-%s ESCAPE
+%s DQESC
 %s COMMENT1
 %s COMMENT2
 %s UNKNOWN
@@ -228,7 +228,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <STRING>.                 { clixon_yang_parselval.string = strdup(yytext);
                             return CHARS;}
 
-<STRINGDQ>\\              { _YY->yy_lex_state = STRINGDQ; BEGIN(ESCAPE); }
+<STRINGDQ>\\              { _YY->yy_lex_state = STRINGDQ; BEGIN(DQESC); }
 <STRINGDQ>\"              { BEGIN(_YY->yy_lex_string_state); return *yytext; }
 <STRINGDQ>\n              { _YY->yy_linenum++;
                             clixon_yang_parselval.string = strdup(yytext);
@@ -243,7 +243,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <STRINGSQ>[^'\n]+       { clixon_yang_parselval.string = strdup(yytext);
                             return CHARS;}
 
-<ESCAPE>.                 { BEGIN(_YY->yy_lex_state); 
+<DQESC>[nt"\\]            { BEGIN(_YY->yy_lex_state); 
                              clixon_yang_parselval.string = strdup(yytext); 
                              return CHARS; }
 <COMMENT1>[^*\n]*        /* eat anything that's not a '*' */

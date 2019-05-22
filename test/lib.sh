@@ -31,6 +31,7 @@ if [ -f ./site.sh ]; then
     # test skiplist.
     for f in $SKIPLIST; do
 	if [ "$testfile" = "$f" ]; then
+	    echo ...skipped
 	    return -1 # skip
 	fi
     done
