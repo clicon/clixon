@@ -197,7 +197,7 @@ new "restconf delete $perfreq small config"
     rnd=$(( ( RANDOM % $perfnr ) ))
     curl -s -X DELETE http://localhost/restconf/data/scaling:x/y=$rnd
 done > /dev/null; } 2>&1 | awk '/real/ {print $2}'
-exit
+
 # Now do leaf-lists istead of leafs
 
 new "generate large leaf-list config"

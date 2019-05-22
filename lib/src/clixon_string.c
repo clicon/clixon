@@ -709,6 +709,11 @@ clixon_trim(char *str)
  *    "other" characters: #x0000-#x10FFFF]-[\p{P}\p{Z}\p{C}]
  * \i letters + underscore and colon
  * \c XML Namechar, see: https://www.w3.org/TR/2008/REC-xml-20081126/#NT-NameChar
+ *
+ * Not implemented:
+ * \p{X} category escape.  the ones identified in openconfig and yang-models are: 
+ *   \p{L} Letters [ultmo]?
+ *   \p{N} Numbers [dlo]?
  */
 int
 regexp_xsd2posix(char  *xsd,
@@ -718,6 +723,7 @@ regexp_xsd2posix(char  *xsd,
     cbuf *cb = NULL;
     char  x;
     int   i;
+    int   j; /* lookahead */
     int   esc;
     int   minus = 0;
 
@@ -743,18 +749,37 @@ regexp_xsd2posix(char  *xsd,
 	    case 'i': /* initial */
 		cprintf(cb, "[a-zA-Z_:]");
 		break;
-	    case 'w': /* word */
-		//cprintf(cb, "[0-9a-zA-Z_\\\\-]")
-		cprintf(cb, "[^[:punct:][:space:][:cntrl:]]"); 
-		break;
-	    case 'W': /* inverse of \w */
-		cprintf(cb, "[[:punct:][:space:][:cntrl:]]"); 
+	    case 'p': /* category escape: \p{IsCategory} */
+		j = i+1;
+		if (j+2 < strlen(xsd) &&
+		    xsd[j] == '{' &&
+		    xsd[j+2] == '}'){
+		    switch (xsd[j+1]){
+		    case 'L': /* Letters */
+			cprintf(cb, "a-zA-Z"); /* assume in [] */
+			break;
+		    case 'N': /* Numbers */
+			cprintf(cb, "0-9");
+			break;
+		    default:
+			break;
+		    }
+		    i = j+2;
+		}
+		/* if syntax error, just leave it */
 		break;
 	    case 's':
 		cprintf(cb, "[ \t\r\n]");
 		break;
 	    case 'S':
 		cprintf(cb, "[^ \t\r\n]");
+		break;
+	    case 'w': /* word */
+		//cprintf(cb, "[0-9a-zA-Z_\\\\-]")
+		cprintf(cb, "[^[:punct:][:space:][:cntrl:]]"); 
+		break;
+	    case 'W': /* inverse of \w */
+		cprintf(cb, "[[:punct:][:space:][:cntrl:]]"); 
 		break;
 	    default:
 		cprintf(cb, "\\%c", x);
@@ -763,6 +788,8 @@ regexp_xsd2posix(char  *xsd,
 	}
 	else if (x == '\\')
 	    esc++;
+	else if (x == '$')
+	    cprintf(cb, "\\%c", x);
 	else if (x == ']' && minus){
 	    cprintf(cb, "-]");
 	    minus = 0;
