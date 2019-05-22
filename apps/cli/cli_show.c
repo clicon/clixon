@@ -663,7 +663,7 @@ cli_show_auto1(clicon_handle h,
     char            *api_path_fmt;  /* xml key format */
     //    char            *api_path = NULL; /* xml key */
     char            *db;
-    char            *xpath;
+    char            *xpath = NULL;
     char            *formatstr;
     enum format_enum format = FORMAT_XML;
     cxobj           *xt = NULL;
@@ -744,6 +744,8 @@ cli_show_auto1(clicon_handle h,
 	}
     retval = 0;
  done:
+    if (xpath)
+	free(xpath);
     if (xt)
 	xml_free(xt);
     return retval;

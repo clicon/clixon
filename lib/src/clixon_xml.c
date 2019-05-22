@@ -917,9 +917,10 @@ xml_wrap_all(cxobj *xp,
 /*! Wrap a new element above a single xml node (xc) with new tag 
  *  Before:  xp --> xc # specific child (xp can be NULL)
  *  After:   xp --> xt(tag) --> xc
- * @param[in] xp  Parent xml node
- * @param[in] tag Name of new xml child
- * @retval    xc  Return the new child (xc)
+ * @param[in] xp   Parent xml node
+ * @param[in] tag  Name of new xml child
+ * @retval    NULL Error
+ * @retval    xc   Return the new child (xc)
  * @see xml_addsub (give the parent)
  * @see xml_wrap_all  (wrap all children of a node, not just one)
  */
@@ -1038,7 +1039,7 @@ xml_rm(cxobj *xc)
     return retval;
 }
 
-/*! Return a child sub-tree, while removing parent and all other children
+/*! Remove top XML object and all children except a single child
  * Given a root xml node, and the i:th child, remove the child from its parent
  * and return it, remove the parent and all other children. (unwrap)
  * Before: xp-->[..xc..]
@@ -1086,7 +1087,7 @@ xml_rootchild(cxobj  *xp,
     return retval;
 }
 
-/*! Return a child sub-tree, while removing parent and all other children
+/*! Remove top XML object and all children except a single (given) child
  * Given a root xml node, remove the child from its parent
  * , remove the parent and all other children. (unwrap)
  * Before: xp-->[..xc..]

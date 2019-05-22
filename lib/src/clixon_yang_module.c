@@ -287,7 +287,7 @@ yang_modules_state_get(clicon_handle    h,
     int         retval = -1;
     cxobj      *x = NULL; /* Top tree, some juggling w top symbol */
     char       *msid; /* modules-set-id */
-    cxobj      *x1;
+    cxobj      *xc;   /* original cache */
     cbuf       *cb = NULL;
     int         ret;
     cxobj     **xvec = NULL;
@@ -295,20 +295,18 @@ yang_modules_state_get(clicon_handle    h,
     int         i;
 
     msid = clicon_option_str(h, "CLICON_MODULE_SET_ID");
-    if ((x = clicon_modst_cache_get(h, brief)) != NULL){
-	/* x is here: <modules-state>... 
-	 * and x is original tree, need to copy */
-	if ((x = xml_wrap(x, "top")) < 0)
+    if ((xc = clicon_modst_cache_get(h, brief)) != NULL){
+	cxobj *xw; /* tmp top wrap object */
+	/* xc is here: <modules-state>... 
+	 * need to wrap it for xpath: <top><modules-state> */
+	/* xc is also original tree, need to copy it */
+	if ((xw = xml_wrap(xc, "top")) == NULL)
 	    goto done;
-        if (xpath_first(x, "%s", xpath)){
-            if ((x1 = xml_dup(x)) == NULL)
+        if (xpath_first(xw, "%s", xpath)){
+            if ((x = xml_dup(xc)) == NULL) /* Make copy and use below */
                 goto done;
-            x = x1;
         }
-        else
-            x = NULL;
-	/* unwrap */
-	if (x && xml_rootchild(x, 0, &x) < 0)
+	if (xml_rootchild_node(xw, xc) < 0)  /* Unwrap x / free xw */
 	    goto done;
     }
     else { /* No cache -> build the tree */
