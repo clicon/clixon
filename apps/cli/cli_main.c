@@ -446,6 +446,16 @@ main(int argc, char **argv)
     if (help)
 	usage(h, argv[0]);
 
+    if (strcmp(clicon_yang_regexp(h), "libxml2")==0){
+#ifdef HAVE_LIBXML2
+	/* Enable XSD libxml2 */
+	cligen_regex_set(cli_cligen(h), 1);
+#else
+	clicon_err(OE_FATAL, 0, "CLICON_YANG_REGEXP set to libxml2, but HAVE_LIBXM2 not set (Either change CLICON_YANG_REGEXP to posix, or install libxml2?))");
+	goto done;
+#endif
+    }
+
     /* Setup signal handlers */
     cli_signal_init(h);
 

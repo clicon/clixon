@@ -22,12 +22,16 @@ APPNAME=example
 cfg=$dir/pattern.xml
 fyang=$dir/pattern.yang
 
+# Regexp mode: posix or libxml2
+: ${regex:=posix}
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
+  <CLICON_YANG_REGEXP>$regex</CLICON_YANG_REGEXP>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -457,7 +461,9 @@ new "Test for pattern leaf $pnr ipv6-prefix"
 testrun "$pnr" 1 '::9a95::A54:63:e001:6E1:15/17'
 testrun "$pnr" 1 ':::7:fc:c::eDe:/3'
 testrun "$pnr" 1 '7dE::D1e:8:8eBC::/98'
-testrun "$pnr" 1 ':29:F36:6:46.53.251.2/100' # This does not work w libxml2
+if [ $regex != libxml2 ]; then
+    testrun "$pnr" 1 ':29:F36:6:46.53.251.2/100' # This does not work w libxml2
+fi
 testrun "$pnr" 1 '::CE2e:A:AB:234.220.225.250/1'
 
 let pnr=15

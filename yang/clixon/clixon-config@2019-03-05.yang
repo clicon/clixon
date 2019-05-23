@@ -113,7 +113,6 @@ module clixon-config {
 	    }
 	}
     }
-
     typedef cli_genmodel_type{
 	description
 	    "How to generate CLI from YANG model, 
@@ -145,6 +144,30 @@ module clixon-config {
 	    }
 	    enum external{
 		description "NACM is enabled and available in a separate config";
+	    }
+	}
+    }
+    typedef regexp_mode{
+	description
+	    "The regular expression engine Clixon uses in its validation of
+             Yang patterns, and in the CLI.
+             Yang RFC 7950 stipulates XSD XML Schema regexps
+             according to W3 CXML Schema Part 2: Datatypes Second Edition,
+             see http://www.w3.org/TR/2004/REC-xmlschema-2-20041028#regexs";
+	type enumeration{
+	    enum posix {
+		description
+		  "Translate XSD XML Schema regexp:s to Posix regexp. This is 
+                   not a complete translation, but can be considered good-enough
+                   for Yang use-cases as defined by openconfig and yang-models
+                   for example.";
+	    }
+	    enum libxml2 {
+		description
+		  "Use libxml2 XSD XML Schema regexp engine. This is a complete
+                   XSD regexp engine..
+                   Requires libxml2 to be available at configure time 
+                   (HAVE_LIBXML2 should be set)";
 	    }
 	}
     }
@@ -202,6 +225,15 @@ module clixon-config {
 		"Option used to construct initial yang file: 
                  <module>[@<revision>].
                  Used together with CLICON_YANG_MODULE_MAIN";
+	}
+	leaf CLICON_YANG_REGEXP {
+	    type regexp_mode;
+	    default posix;
+	    description
+		"The regular expression engine Clixon uses in its validation of
+                 Yang patterns, and in the CLI.
+                 There is a 'good-enough' posix translation mode and a complete
+                 libxml2 mode";
 	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;

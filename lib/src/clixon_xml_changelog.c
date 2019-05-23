@@ -441,9 +441,9 @@ clixon_xml_changelog_init(clicon_handle h)
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
-	if ((ret = xml_yang_validate_all(xt, cbret)) < 0)
+	if ((ret = xml_yang_validate_all(h, xt, cbret)) < 0)
 	    goto done;
-	if (ret==1 && (ret = xml_yang_validate_add(xt, cbret)) < 0)
+	if (ret==1 && (ret = xml_yang_validate_add(h, xt, cbret)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
 	    clicon_err(OE_YANG, 0, "validation failed: %s", cbuf_get(cbret));

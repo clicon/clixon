@@ -129,6 +129,9 @@ static inline char *clicon_yang_module_main(clicon_handle h){
 static inline char *clicon_yang_module_revision(clicon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MODULE_REVISION");
 }
+static inline char *clicon_yang_regexp(clicon_handle h){
+    return clicon_option_str(h, "CLICON_YANG_REGEXP");
+}
 static inline char *clicon_backend_dir(clicon_handle h){
     return clicon_option_str(h, "CLICON_BACKEND_DIR");
 }

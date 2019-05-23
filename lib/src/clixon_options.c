@@ -198,7 +198,7 @@ parse_configfile(clicon_handle  h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;	
     }
-    if ((ret = xml_yang_validate_add(xc, cbret)) < 0)
+    if ((ret = xml_yang_validate_add(h, xc, cbret)) < 0)
 	goto done;
     if (ret == 0){
 	clicon_err(OE_CFG, 0, "Config file validation: %s", cbuf_get(cbret));

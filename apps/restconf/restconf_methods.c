@@ -1513,7 +1513,7 @@ api_operations_post_output(clicon_handle h,
 	if ((ret = xml_yang_validate_all(xoutput, cbret)) < 0)
 	    goto done;
 	if (ret == 1 &&
-	    (ret = xml_yang_validate_add(xoutput, cbret)) < 0)
+	    (ret = xml_yang_validate_add(h, xoutput, cbret)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
 	    if (xml_parse_string(cbuf_get(cbret), yspec, &xerr) < 0)
@@ -1749,7 +1749,7 @@ api_operations_post(clicon_handle h,
     /* 6. Validate incoming RPC and fill in defaults */
     if (xml_spec_populate_rpc(h, xtop, yspec) < 0) /*  */
 	goto done;
-    if ((ret = xml_yang_validate_rpc(xtop, cbret)) < 0)
+    if ((ret = xml_yang_validate_rpc(h, xtop, cbret)) < 0)
 	goto done;
     if (ret == 0){
 	if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)

@@ -62,6 +62,7 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_regex.h"
 #include "clixon_yang.h"
 #include "clixon_hash.h"
 #include "clixon_xml.h"
@@ -127,74 +128,6 @@ static const map_str2int ytmap2[] = {
     {"union",       CGV_REST},  /* Is replaced by actual type */
     {NULL,         -1}
 };
-
-/*! Regular expression compiling
- * @retval -1 Error
- * @retval  0 regex problem (no match?)
- * @retval  1 OK Match
- * @see match_regexp the CLIgen original composite function
- */
-static int
-regex_compile(char    *pattern0,
-	      regex_t *re)
-{
-    int  retval = -1;
-    char pattern[1024];
-    //    char errbuf[1024];
-    int  len0;
-    int  status;
-
-    len0 = strlen(pattern0);
-    if (len0 > sizeof(pattern)-5){
-	clicon_err(OE_XML, EINVAL, "pattern too long");
-	goto done;
-    }
-    strncpy(pattern, "^(", 2);
-    strncpy(pattern+2, pattern0, sizeof(pattern)-2);
-    strncat(pattern, ")$",  sizeof(pattern)-len0-1);
-    if ((status = regcomp(re, pattern, REG_NOSUB|REG_EXTENDED)) != 0) {
-#if 0 /* ignore error msg for now */
-	regerror(status, re, errbuf, sizeof(errbuf));
-#endif
-	goto fail;
-    }
-    retval = 1;
- done:
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
-/*! Regular expression execution
- * @retval -1 Error
- * @retval  0 regex problem (no match?)
- * @retval  1 OK Match
- * @see match_regexp the CLIgen original composite function
- */
-static int
-regex_exec(regex_t *re,
-	   char    *string)
-{
-    int retval = -1;
-    int status;
-    //    char errbuf[1024];
-    
-    status = regexec(re, string, (size_t) 0, NULL, 0);
-    if (status != 0) {
-#if 0 /* ignore error msg for now */
-	regerror(status, re, errbuf, sizeof(errbuf));
-#endif
-	goto fail;
-    }
-    retval = 1;
- done:
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
 
 /* return 1 if built-in, 0 if not */
 static int
@@ -447,7 +380,8 @@ clicon_type2cv(char         *origtype,
  * @retval 1   Validation OK
  */
 static int
-cv_validate1(cg_var      *cv,
+cv_validate1(clicon_handle h,
+	     cg_var      *cv,
 	     enum cv_type cvtype, 
 	     int          options, 
 	     cvec        *cvv,
@@ -459,7 +393,7 @@ cv_validate1(cg_var      *cv,
     int             retval = 1; /* OK */
     cg_var         *cv1;
     cg_var         *cv2;
-    int             retval2;
+    int             ret;
     yang_stmt      *yi = NULL;
     char           *str = NULL;
     int             found;
@@ -620,51 +554,30 @@ cv_validate1(cg_var      *cv,
 		}
 	    }
 	}
-	if ((options & YANG_OPTIONS_PATTERN) != 0){
-	    char *posix = NULL;
-	    regex_t *re = NULL;
-
-	    if ((re = yang_regex_cache_get(yrestype)) == NULL){
-		/* Transform to posix regex */
-		if (regexp_xsd2posix(pattern, &posix) < 0)
-		    goto done;
-		/* Create regex cache */
-		if ((re = malloc(sizeof(*re))) == NULL){
-		    clicon_err(OE_UNIX, errno, "malloc");		    
-		    goto done;
+	if ((options & YANG_OPTIONS_PATTERN) != 0) {
+		void *re = NULL;
+		if ((re = yang_regex_cache_get(yrestype)) == NULL){
+		    if ((ret = regex_compile(h, pattern, &re)) < 0)
+			goto done;
+		    if (ret == 0){
+			if (reason)
+			    *reason = cligen_reason("regexp compile fail: \"%s\"",
+						    pattern);
+			goto fail;
+			break;
+		    }
+		    yang_regex_cache_set(yrestype, re);
 		}
-		memset(re, 0, sizeof(*re));
-		/* Compute regex pattern for use in patterns */
-		if ((retval2 = regex_compile(posix, re)) < 0)
+		if ((ret = regex_exec(h, re, str?str:"")) < 0)
 		    goto done;
-		if (retval2 == 0){
-		    if (reason)
-			*reason = cligen_reason("regexp match fail: \"%s\" does not match %s",
-						str, pattern);
-		    goto fail;
-		    break;
-		}
-		yang_regex_cache_set(yrestype, re);
-		if (posix)
-		    free(posix);
-	    }
-	    if ((retval2 = regex_exec(re, str?str:"")) < 0)
-		goto done;
-	    if (retval2 == 0){
+	    if (ret == 0){
 		if (reason)
 		    *reason = cligen_reason("regexp match fail: \"%s\" does not match %s",
 					    str, pattern);
 		goto fail;
 		break;
 	    }
-	    if (retval2 == 0){
-		if (reason)
-		    *reason = cligen_reason("regexp match fail: \"%s\" does not match %s",
-					    str, pattern);
-		goto fail;
-		break;
 	    }
-	}
 	break;
     case CGV_VOID:
 	break; /* empty type OK */
@@ -688,8 +601,8 @@ cv_validate1(cg_var      *cv,
 }
 
 /* Forward */
-static int ys_cv_validate_union(yang_stmt *ys, char **reason, yang_stmt *yrestype,
-				char *type, char *val);
+static int ys_cv_validate_union(clicon_handle h,yang_stmt *ys, char **reason,
+				yang_stmt *yrestype, char *type, char *val);
 
 /*!
  * @retval -1  Error (fatal), with errno set to indicate error
@@ -697,7 +610,8 @@ static int ys_cv_validate_union(yang_stmt *ys, char **reason, yang_stmt *yrestyp
  * @retval 1   Validation OK
  */
 static int
-ys_cv_validate_union_one(yang_stmt *ys,
+ys_cv_validate_union_one(clicon_handle h,
+			 yang_stmt *ys,
 			 char     **reason,
 			 yang_stmt *yt,
 			 char      *type,  /* orig type */
@@ -718,7 +632,7 @@ ys_cv_validate_union_one(yang_stmt *ys,
 	goto done;
     restype = yrt?yrt->ys_argument:NULL;
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
-	if ((retval = ys_cv_validate_union(ys, reason, yrt, type, val)) < 0)
+	if ((retval = ys_cv_validate_union(h, ys, reason, yrt, type, val)) < 0)
 	    goto done;
     }
     else {
@@ -735,7 +649,7 @@ ys_cv_validate_union_one(yang_stmt *ys,
 	}
 	if (retval == 0)
 	    goto done;
-	if ((retval = cv_validate1(cvt, cvtype, options, cvv, 
+	if ((retval = cv_validate1(h, cvt, cvtype, options, cvv, 
 				   pattern, yrt, restype, reason)) < 0)
 	    goto done;
     }
@@ -751,7 +665,8 @@ ys_cv_validate_union_one(yang_stmt *ys,
  * @retval 1   Validation OK
  */
 static int
-ys_cv_validate_union(yang_stmt *ys,
+ys_cv_validate_union(clicon_handle h,
+		     yang_stmt *ys,
 		     char     **reason,
 		     yang_stmt *yrestype,
 		     char      *type,  /* orig type */
@@ -764,7 +679,7 @@ ys_cv_validate_union(yang_stmt *ys,
     while ((yt = yn_each(yrestype, yt)) != NULL){
 	if (yt->ys_keyword != Y_TYPE)
 	    continue;
-	if ((retval = ys_cv_validate_union_one(ys, reason, yt, type, val)) < 0)
+	if ((retval = ys_cv_validate_union_one(h, ys, reason, yt, type, val)) < 0)
 	    goto done;
 	/* If validation failed, save reason, reset error and continue,
 	 * save latest reason if noithing validates.
@@ -800,7 +715,8 @@ ys_cv_validate_union(yang_stmt *ys,
  * See also cv_validate - the code is similar.
  */
 int
-ys_cv_validate(cg_var    *cv, 
+ys_cv_validate(clicon_handle h,
+	       cg_var    *cv, 
 	       yang_stmt *ys, 
 	       char     **reason)
 {
@@ -846,12 +762,12 @@ ys_cv_validate(cg_var    *cv,
     if (restype && strcmp(restype, "union") == 0){ 
 	assert(cvtype == CGV_REST);
 	val = cv_string_get(cv);
-	if ((retval2 = ys_cv_validate_union(ys, reason, yrestype, type, val)) < 0)
+	if ((retval2 = ys_cv_validate_union(h, ys, reason, yrestype, type, val)) < 0)
 	    goto done;
 	retval = retval2; /* invalid (0) with latest reason or valid 1 */
     }
     else
-	if ((retval = cv_validate1(cv, cvtype, options, cvv, pattern,
+	if ((retval = cv_validate1(h, cv, cvtype, options, cvv, pattern,
 				   yrestype, restype, reason)) < 0)
 	    goto done;
   done:

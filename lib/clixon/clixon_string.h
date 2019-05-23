@@ -89,7 +89,6 @@ int clicon_str2int(const map_str2int *mstab, char *str);
 int clicon_str2int_search(const map_str2int *mstab, char *str, int upper);
 int nodeid_split(char *nodeid,	char **prefix, char **id);
 char *clixon_trim(char *str);
-int regexp_xsd2posix(char *xsd, char **posix);
 #ifndef HAVE_STRNDUP
 char *clicon_strndup (const char *, size_t);
 #endif /* ! HAVE_STRNDUP */

@@ -359,12 +359,18 @@ yang2cli_var_sub(clicon_handle h,
 	    goto done;
     }
     if (options & YANG_OPTIONS_PATTERN){
-	char *posix = NULL;
-	if (regexp_xsd2posix(pattern, &posix) < 0)
-	    goto done;
-	cprintf(cb, " regexp:\"%s\"", posix);
-	if (posix)
-	    free(posix);
+	char *mode;
+	mode = clicon_yang_regexp(h);
+	if (strcmp(mode, "posix") == 0){
+	    char *posix = NULL;
+	    if (regexp_xsd2posix(pattern, &posix) < 0)
+		goto done;
+	    cprintf(cb, " regexp:\"%s\"", posix);
+	    if (posix)
+		free(posix);
+	}
+	else
+	    cprintf(cb, " regexp:\"%s\"", pattern);
     }
     cprintf(cb, ">");
     if (helptext)

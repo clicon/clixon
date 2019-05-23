@@ -470,7 +470,7 @@ from_client_edit_config(clicon_handle h,
 	    goto ok;
 	}
 	/* xmldb_put (difflist handling) requires list keys */
-	if ((ret = xml_yang_validate_list_key_only(xc, cbret)) < 0)
+	if ((ret = xml_yang_validate_list_key_only(h, xc, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto ok;
@@ -1147,7 +1147,7 @@ from_client_msg(clicon_handle        h,
      * maybe not necessary since it should be */
     if (xml_spec_populate_rpc(h, x, yspec) < 0)
     	goto done;
-    if ((ret = xml_yang_validate_rpc(x, cbret)) < 0)
+    if ((ret = xml_yang_validate_rpc(h, x, cbret)) < 0)
 	goto done;
     if (ret == 0)
 	goto reply;

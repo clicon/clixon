@@ -2162,7 +2162,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-# Default CFLAGS unless set by environment
+# Default CFLAGS and INSTALLFLAGS unless set by environment
 : ${CFLAGS="-O2 -Wall"}
 : ${INSTALLFLAGS="-s"}
 
@@ -4417,8 +4417,7 @@ _ACEOF
 fi
 
 
-# This is for Libxml2 code which we can use for XSD regexp
-# AC_CHECK_HEADERS([libxml2/libxml/xmlexports.h])
+# This is for libxml2 code which we can use for XSD regexp
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for xmlRegexpCompile in -lxml2" >&5
 $as_echo_n "checking for xmlRegexpCompile in -lxml2... " >&6; }
 if ${ac_cv_lib_xml2_xmlRegexpCompile+:} false; then :
@@ -4465,6 +4464,23 @@ _ACEOF
 fi
 
 
+# Libxml2 may hide its include files under /usr/include/libxml2/libxml
+# You may need to prepend CFLAGS="-I/usr/include/libxml2 to configure
+for ac_header in libxml/xmlregexp.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "libxml/xmlregexp.h" "ac_cv_header_libxml_xmlregexp_h" "#include \"libxml/xmlversion.h\"
+"
+if test "x$ac_cv_header_libxml_xmlregexp_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBXML_XMLREGEXP_H 1
+_ACEOF
+
+fi
+
+done
+
+
+#
 for ac_func in inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`

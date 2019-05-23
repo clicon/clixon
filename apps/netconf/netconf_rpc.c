@@ -587,13 +587,13 @@ netconf_application_rpc(clicon_handle h,
 	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
 	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
-	    if ((ret = xml_yang_validate_all_top(xn, cbret)) < 0)
+	    if ((ret = xml_yang_validate_all_top(h, xn, cbret)) < 0)
 		goto done;
 	    if (ret == 0){
 		netconf_output_encap(1, cbret, "rpc-error");
 		goto ok;
 	    }
-	    if ((ret = xml_yang_validate_add(xn, cbret)) < 0)
+	    if ((ret = xml_yang_validate_add(h, xn, cbret)) < 0)
 		goto done;
 	    if (ret == 0){
 		netconf_output_encap(1, cbret, "rpc-error");
@@ -622,13 +622,13 @@ netconf_application_rpc(clicon_handle h,
 	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
 
-	    if ((ret = xml_yang_validate_all_top(xoutput, cbret)) < 0)
+	    if ((ret = xml_yang_validate_all_top(h, xoutput, cbret)) < 0)
 		goto done;
 	    if (ret == 0){
 		clicon_log(LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
 		goto ok;
 	    }
-	    if ((ret = xml_yang_validate_add(xoutput, cbret)) < 0)
+	    if ((ret = xml_yang_validate_add(h, xoutput, cbret)) < 0)
 		goto done;
 	    if (ret == 0){
 		clicon_log(LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));

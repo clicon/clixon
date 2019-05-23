@@ -30,10 +30,7 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
  */
-/* Error handling: dont use clicon_err, treat as unix system calls. That is,
-   ensure errno is set and return -1/NULL */
 
 #ifdef HAVE_CONFIG_H
 #include "clixon_config.h"
@@ -44,7 +41,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <regex.h>
 #include <ctype.h>
 
 #include <cligen/cligen.h>
@@ -692,120 +688,6 @@ clixon_trim(char *str)
 	    break;
     }
     return s;
-}
-
-/*! Transform from XSD regex to posix ERE
- * The usecase is that Yang (RFC7950) supports XSD regular expressions but
- * CLIgen supports POSIX ERE
- * POSIX ERE regexps according to man regex(3).
- * @param[in]  xsd    Input regex string according XSD
- * @param[out] posix  Output (malloced) string according to POSIX ERE
- * @see https://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
- * @see https://www.regular-expressions.info/posixbrackets.html#class translation
- * @see https://www.regular-expressions.info/xml.html
- * Translation is not complete but covers some character sequences:
- * \d decimal digit
- * \w all characters except the set of "punctuation", "separator" and 
- *    "other" characters: #x0000-#x10FFFF]-[\p{P}\p{Z}\p{C}]
- * \i letters + underscore and colon
- * \c XML Namechar, see: https://www.w3.org/TR/2008/REC-xml-20081126/#NT-NameChar
- *
- * Not implemented:
- * \p{X} category escape.  the ones identified in openconfig and yang-models are: 
- *   \p{L} Letters [ultmo]?
- *   \p{N} Numbers [dlo]?
- */
-int
-regexp_xsd2posix(char  *xsd,
-		 char **posix)
-{
-    int   retval = -1;
-    cbuf *cb = NULL;
-    char  x;
-    int   i;
-    int   j; /* lookahead */
-    int   esc;
-    int   minus = 0;
-
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    esc=0;
-    for (i=0; i<strlen(xsd); i++){
-	x = xsd[i];
-	if (esc){
-	    esc = 0;
-	    switch (x){
-	    case '-': /* \- is translated to -], ie must be last in bracket */
-		minus++;
-		break;
-	    case 'c': /* xml namechar */
-		cprintf(cb, "[0-9a-zA-Z._:-]"); /* also interpunct */
-		break;
-	    case 'd':
-		cprintf(cb, "[0-9]");
-		break;
-	    case 'i': /* initial */
-		cprintf(cb, "[a-zA-Z_:]");
-		break;
-	    case 'p': /* category escape: \p{IsCategory} */
-		j = i+1;
-		if (j+2 < strlen(xsd) &&
-		    xsd[j] == '{' &&
-		    xsd[j+2] == '}'){
-		    switch (xsd[j+1]){
-		    case 'L': /* Letters */
-			cprintf(cb, "a-zA-Z"); /* assume in [] */
-			break;
-		    case 'N': /* Numbers */
-			cprintf(cb, "0-9");
-			break;
-		    default:
-			break;
-		    }
-		    i = j+2;
-		}
-		/* if syntax error, just leave it */
-		break;
-	    case 's':
-		cprintf(cb, "[ \t\r\n]");
-		break;
-	    case 'S':
-		cprintf(cb, "[^ \t\r\n]");
-		break;
-	    case 'w': /* word */
-		//cprintf(cb, "[0-9a-zA-Z_\\\\-]")
-		cprintf(cb, "[^[:punct:][:space:][:cntrl:]]"); 
-		break;
-	    case 'W': /* inverse of \w */
-		cprintf(cb, "[[:punct:][:space:][:cntrl:]]"); 
-		break;
-	    default:
-		cprintf(cb, "\\%c", x);
-		break;
-	    }
-	}
-	else if (x == '\\')
-	    esc++;
-	else if (x == '$')
-	    cprintf(cb, "\\%c", x);
-	else if (x == ']' && minus){
-	    cprintf(cb, "-]");
-	    minus = 0;
-	}
-	else
-	    cprintf(cb, "%c", x);
-    }
-    if ((*posix = strdup(cbuf_get(cb))) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
-	goto done;
-    }
-    retval = 0;
- done:
-    if (cb)
-	cbuf_free(cb);
-    return retval;
 }
 
 /*! strndup() for systems without it, such as xBSD

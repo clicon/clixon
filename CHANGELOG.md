@@ -54,6 +54,8 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* Added clicon_handle as parameter to all validate functions
+  * Just add `clixon_handle h` to all calls.
 * Clixon transaction mechanism has changed which may affect your backend plugin callbacks:
   * Validate-only transactions are terminated by an `end` or `abort` callback. Now all started transactions are terminated either by an `end` or `abort` without exceptions
     * Validate-only transactions used to be terminated by `complete`
@@ -140,11 +142,13 @@
 ### Minor changes
 
 * Regexp improvements
+  * Added libxml2 XSD regexp mode as alternative to posix translation
   * Better compliance with XSD regexps (when transforming to Posix regexps)
     * Added `\p{L}` and `\p{N}`
     * Added escaping of `$`
+  * Added `CLICON_YANG_REGEXP`option with possible values libxml2 and posix
   * Added clixon_util_regexp utility function
-  * Added regexp [test/test_pattern.sh]
+  * Added regexp test [test/test_pattern.sh]
 * Yang state get improvements
   * Integrated state and config into same tree on retrieval, not separate trees
   * Added cli functions `cli_show_config_state()` and `cli_show_auto_state()` for showing combined config and state info.

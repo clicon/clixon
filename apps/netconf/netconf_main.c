@@ -125,7 +125,7 @@ netconf_input_packet(clicon_handle h,
         isrpc++;
 	if (xml_spec_populate_rpc(h, xrpc, yspec) < 0)
 	    goto done;
-	if ((ret = xml_yang_validate_rpc(xrpc, cbret)) < 0) 
+	if ((ret = xml_yang_validate_rpc(h, xrpc, cbret)) < 0) 
 	    goto done;
 	if (ret == 0){
 	    netconf_output_encap(1, cbret, "rpc-error");

@@ -67,7 +67,7 @@ CPPFLAGS  	= @CPPFLAGS@
 INCLUDES = -I. @INCLUDES@ -I$(top_srcdir)/lib/clixon -I$(top_srcdir)/include -I$(top_srcdir)
 
 SRC     = clixon_sig.c clixon_log.c clixon_err.c clixon_event.c \
-	  clixon_string.c clixon_handle.c  \
+	  clixon_string.c clixon_regex.c clixon_handle.c  \
 	  clixon_xml.c clixon_xml_sort.c clixon_xml_map.c clixon_file.c \
 	  clixon_json.c clixon_yang.c clixon_yang_type.c clixon_yang_module.c \
           clixon_yang_cardinality.c clixon_xml_changelog.c \

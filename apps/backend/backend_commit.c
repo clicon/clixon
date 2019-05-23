@@ -87,7 +87,8 @@
  * @retval      1       Validation OK       
  */
 static int
-generic_validate(yang_stmt          *yspec,
+generic_validate(clicon_handle       h,
+		 yang_stmt          *yspec,
 		 transaction_data_t *td,
 		 cbuf               *cbret)
 {
@@ -99,7 +100,7 @@ generic_validate(yang_stmt          *yspec,
     int             ret;
 
     /* All entries */
-    if ((ret = xml_yang_validate_all_top(td->td_target, cbret)) < 0) 
+    if ((ret = xml_yang_validate_all_top(h, td->td_target, cbret)) < 0) 
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -108,7 +109,7 @@ generic_validate(yang_stmt          *yspec,
 	x1 = td->td_scvec[i]; /* source changed */
 	x2 = td->td_tcvec[i]; /* target changed */
 	/* Should this be recursive? */
-	if ((ret = xml_yang_validate_add(x2, cbret)) < 0)
+	if ((ret = xml_yang_validate_add(h, x2, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -126,7 +127,7 @@ generic_validate(yang_stmt          *yspec,
     /* added entries */
     for (i=0; i<td->td_alen; i++){
 	x2 = td->td_avec[i];
-	if ((ret = xml_yang_validate_add(x2, cbret)) < 0)
+	if ((ret = xml_yang_validate_add(h, x2, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -224,7 +225,7 @@ startup_common(clicon_handle       h,
     /* 5. Make generic validation on all new or changed data.
        Note this is only call that uses 3-values */
     clicon_debug(1, "Validating startup %s", db);
-    if ((ret = generic_validate(yspec, td, cbret)) < 0)
+    if ((ret = generic_validate(h, yspec, td, cbret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail; /* STARTUP_INVALID */
@@ -408,7 +409,7 @@ from_validate_common(clicon_handle       h,
      * But xml_diff requires some basic validation, at least check that yang-specs
      * have been assigned
      */
-    if ((ret = xml_yang_validate_all_top(td->td_target, cbret)) < 0)
+    if ((ret = xml_yang_validate_all_top(h, td->td_target, cbret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -461,7 +462,7 @@ from_validate_common(clicon_handle       h,
 
     /* 5. Make generic validation on all new or changed data.
        Note this is only call that uses 3-values */
-    if ((ret = generic_validate(yspec, td, cbret)) < 0)
+    if ((ret = generic_validate(h, yspec, td, cbret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;

@@ -453,7 +453,8 @@ xml_yang_root(cxobj  *x,
  * @note Should need a variant accepting cxobj **xret
  */
 int
-xml_yang_validate_rpc(cxobj *xrpc,
+xml_yang_validate_rpc(clicon_handle h,
+		      cxobj *xrpc,
 		      cbuf  *cbret)
 {
     int        retval = -1;
@@ -472,9 +473,9 @@ xml_yang_validate_rpc(cxobj *xrpc,
 		goto done;
 	    goto fail;
 	}
-	if ((retval = xml_yang_validate_all(xn, cbret)) < 1) 
+	if ((retval = xml_yang_validate_all(h, xn, cbret)) < 1) 
 	    goto done; /* error or validation fail */
-	if ((retval = xml_yang_validate_add(xn, cbret)) < 1)
+	if ((retval = xml_yang_validate_add(h, xn, cbret)) < 1)
 	    goto done; /* error or validation fail */
 	if (xml_apply0(xn, CX_ELMNT, xml_default, NULL) < 0)
 	    goto done;
@@ -1020,7 +1021,7 @@ check_list_unique_minmax(cxobj *xt,
  * @code
  *   cxobj *x;
  *   cbuf *cbret = cbuf_new();
- *   if ((ret = xml_yang_validate_add(x, cbret)) < 0)
+ *   if ((ret = xml_yang_validate_add(h, x, cbret)) < 0)
  *      err;
  *   if (ret == 0)
  *      fail;
@@ -1030,7 +1031,8 @@ check_list_unique_minmax(cxobj *xt,
  * @note Should need a variant accepting cxobj **xret
  */
 int
-xml_yang_validate_add(cxobj   *xt, 
+xml_yang_validate_add(clicon_handle h,
+		      cxobj   *xt, 
 		      cbuf    *cbret)
 {
     int        retval = -1;
@@ -1084,7 +1086,7 @@ xml_yang_validate_add(cxobj   *xt,
 		}
 	    }
 
-	    if ((ys_cv_validate(cv, yt, &reason)) != 1){
+	    if ((ys_cv_validate(h, cv, yt, &reason)) != 1){
 		if (netconf_bad_element(cbret, "application",  yt->ys_argument, reason) < 0)
 		    goto done;
 		goto fail;
@@ -1096,7 +1098,7 @@ xml_yang_validate_add(cxobj   *xt,
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_add(x, cbret)) < 0)
+	if ((ret = xml_yang_validate_add(h, x, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1116,7 +1118,8 @@ xml_yang_validate_add(cxobj   *xt,
 /*! Some checks done only at edit_config, eg keys in lists
  */
 int
-xml_yang_validate_list_key_only(cxobj   *xt, 
+xml_yang_validate_list_key_only(clicon_handle h,
+				cxobj   *xt, 
 				cbuf    *cbret)
 {
     int        retval = -1;
@@ -1134,7 +1137,7 @@ xml_yang_validate_list_key_only(cxobj   *xt,
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_list_key_only(x, cbret)) < 0)
+	if ((ret = xml_yang_validate_list_key_only(h, x, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1168,7 +1171,8 @@ xml_yang_validate_list_key_only(cxobj   *xt,
  * @note Should need a variant accepting cxobj **xret
  */
 int
-xml_yang_validate_all(cxobj   *xt, 
+xml_yang_validate_all(clicon_handle h,
+		      cxobj   *xt, 
 		      cbuf    *cbret)
 {
     int        retval = -1;
@@ -1247,7 +1251,7 @@ xml_yang_validate_all(cxobj   *xt,
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_all(x, cbret)) < 0)
+	if ((ret = xml_yang_validate_all(h, x, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1275,7 +1279,8 @@ xml_yang_validate_all(cxobj   *xt,
  * @retval    -1     Error
  */
 int
-xml_yang_validate_all_top(cxobj   *xt, 
+xml_yang_validate_all_top(clicon_handle h,
+			  cxobj   *xt, 
 			  cbuf    *cbret)
 {
     int    ret;
@@ -1283,7 +1288,7 @@ xml_yang_validate_all_top(cxobj   *xt,
 
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_all(x, cbret)) < 1)
+	if ((ret = xml_yang_validate_all(h, x, cbret)) < 1)
 	    return ret;
     }
     if ((ret = check_list_unique_minmax(xt, cbret)) < 1)

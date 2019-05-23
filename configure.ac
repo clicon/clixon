@@ -38,7 +38,7 @@
 
 AC_INIT(lib/clixon/clixon.h.in)
 
-# Default CFLAGS unless set by environment
+# Default CFLAGS and INSTALLFLAGS unless set by environment
 : ${CFLAGS="-O2 -Wall"}
 : ${INSTALLFLAGS="-s"}
 
@@ -220,10 +220,14 @@ AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(nsl, xdr_char)
 AC_CHECK_LIB(dl, dlopen)
 
-# This is for Libxml2 code which we can use for XSD regexp
-# AC_CHECK_HEADERS([libxml2/libxml/xmlexports.h])
+# This is for libxml2 code which we can use for XSD regexp
 AC_CHECK_LIB(xml2, xmlRegexpCompile)
 
+# Libxml2 may hide its include files under /usr/include/libxml2/libxml
+# You may need to prepend CFLAGS="-I/usr/include/libxml2 to configure
+AC_CHECK_HEADERS([libxml/xmlregexp.h], [], [], [#include "libxml/xmlversion.h"])
+
+#
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort)
 
 # CLIXON_DATADIR is where clixon installs the "system" yang files in yang/Makfile

@@ -84,6 +84,7 @@
 #include <clixon/clixon_plugin.h>
 #include <clixon/clixon_options.h>
 #include <clixon/clixon_data.h>
+#include <clixon/clixon_regex.h>
 #include <clixon/clixon_xml_map.h>
 #include <clixon/clixon_datastore.h>
 #include <clixon/clixon_xpath_ctx.h>
