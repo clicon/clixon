@@ -49,10 +49,6 @@
 #include <regex.h>
 #include <ctype.h>
 
-#ifdef HAVE_LIBXML_XMLREGEXP_H
-#include <libxml/xmlregexp.h>
-#endif
-
 #include <cligen/cligen.h>
 
 /* clicon */
