@@ -4473,6 +4473,8 @@ _ACEOF
 
   LIBS="-lxml2 $LIBS"
 
+else
+  as_fn_error $? "libxml2 not found" "$LINENO" 5
 fi
 
 fi
