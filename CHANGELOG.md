@@ -141,14 +141,14 @@
 
 ### Minor changes
 
-* Regexp improvements
-  * Added libxml2 XSD regexp mode as alternative to posix translation
+* Regexp improvements: Added libxml2 XSD regexp mode as alternative to posix translation
+  * Configure with: `./configure --with-libxml2`	
+  * Set `CLICON_YANG_REGEXP` to libxml2 (default is posix)
   * Better compliance with XSD regexps (when transforming to Posix regexps)
     * Added `\p{L}` and `\p{N}`
     * Added escaping of `$`
-  * Added `CLICON_YANG_REGEXP`option with possible values libxml2 and posix
   * Added clixon_util_regexp utility function
-  * Added regexp test [test/test_pattern.sh]
+  * Added regexp test [test/test_pattern.sh] for both posix and libxml2
 * Yang state get improvements
   * Integrated state and config into same tree on retrieval, not separate trees
   * Added cli functions `cli_show_config_state()` and `cli_show_auto_state()` for showing combined config and state info.

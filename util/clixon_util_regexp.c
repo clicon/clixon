@@ -99,7 +99,7 @@ regex_posix(char *regexp,
     int        retval = -1;
     char       *posix = NULL;
     char    pattern[1024];
-    int     status;
+    int     status = 0;
     regex_t re;
     char    errbuf[1024];
     int     len0;

@@ -220,12 +220,14 @@ AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(nsl, xdr_char)
 AC_CHECK_LIB(dl, dlopen)
 
-# This is for libxml2 code which we can use for XSD regexp
-AC_CHECK_LIB(xml2, xmlRegexpCompile)
-
-# Libxml2 may hide its include files under /usr/include/libxml2/libxml
-# You may need to prepend CFLAGS="-I/usr/include/libxml2 to configure
-AC_CHECK_HEADERS([libxml/xmlregexp.h], [], [], [#include "libxml/xmlversion.h"])
+# This is for libxml2 XSD regex engine
+# Note this only enables the compiling of the code. In order to actually
+# use it you need to set Clixon config option CLICON_YANG_REGEXP to libxml2
+AC_ARG_WITH(libxml2,  [  --with-libxml2          use gnome/libxml2 regex engine ] )
+if test "${with_libxml2}"; then
+   # Find libxml2 lib
+   AC_CHECK_LIB(xml2, xmlRegexpCompile)
+fi 
 
 #
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort)

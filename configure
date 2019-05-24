@@ -717,6 +717,7 @@ enable_publish
 with_restconf
 with_wwwuser
 with_configfile
+with_libxml2
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1365,6 +1366,7 @@ Optional Packages:
   --without-restconf      disable support for restconf
   --with-wwwuser=<user>   Set www user different from www-data
   --with-configfile=FILE  set default path to config file
+  --with-libxml2          use gnome/libxml2 regex engine
 
 Some influential environment variables:
   CC          C compiler command
@@ -4417,8 +4419,18 @@ _ACEOF
 fi
 
 
-# This is for libxml2 code which we can use for XSD regexp
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for xmlRegexpCompile in -lxml2" >&5
+# This is for libxml2 XSD regex engine
+# Note this only enables the compiling of the code. In order to actually
+# use it you need to set Clixon config option CLICON_YANG_REGEXP to libxml2
+
+# Check whether --with-libxml2 was given.
+if test "${with_libxml2+set}" = set; then :
+  withval=$with_libxml2;
+fi
+
+if test "${with_libxml2}"; then
+   # Find libxml2 lib
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for xmlRegexpCompile in -lxml2" >&5
 $as_echo_n "checking for xmlRegexpCompile in -lxml2... " >&6; }
 if ${ac_cv_lib_xml2_xmlRegexpCompile+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -4463,22 +4475,7 @@ _ACEOF
 
 fi
 
-
-# Libxml2 may hide its include files under /usr/include/libxml2/libxml
-# You may need to prepend CFLAGS="-I/usr/include/libxml2 to configure
-for ac_header in libxml/xmlregexp.h
-do :
-  ac_fn_c_check_header_compile "$LINENO" "libxml/xmlregexp.h" "ac_cv_header_libxml_xmlregexp_h" "#include \"libxml/xmlversion.h\"
-"
-if test "x$ac_cv_header_libxml_xmlregexp_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBXML_XMLREGEXP_H 1
-_ACEOF
-
 fi
-
-done
-
 
 #
 for ac_func in inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort
