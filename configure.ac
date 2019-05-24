@@ -226,7 +226,7 @@ AC_CHECK_LIB(dl, dlopen)
 AC_ARG_WITH(libxml2,  [  --with-libxml2          use gnome/libxml2 regex engine ] )
 if test "${with_libxml2}"; then
    # Find libxml2 lib
-   AC_CHECK_LIB(xml2, xmlRegexpCompile)
+   AC_CHECK_LIB(xml2, xmlRegexpCompile,[], AC_MSG_ERROR([libxml2 not found]))
 fi 
 
 #
