@@ -811,6 +811,7 @@ ys_cv_validate_union_one(clicon_handle h,
     int          options = 0;
     cvec        *cvv = NULL;
     cvec        *regexps = NULL;
+    cvec        *patterns = NULL;
     uint8_t      fraction = 0; 
     char        *restype;
     enum cv_type cvtype;
@@ -820,9 +821,21 @@ ys_cv_validate_union_one(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto done;
     }
-    if (yang_type_resolve(ys, ys, yt, &yrt, &options, &cvv, NULL, regexps,
+    if ((patterns = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
+    if (yang_type_resolve(ys, ys, yt, &yrt, &options, &cvv, patterns, regexps,
 			  &fraction) < 0)
 	goto done;
+    /* The regexp cache may be invalidated, in that case re-compile
+     * eg due to copying
+     */
+    if (cvec_len(patterns)!=0 && cvec_len(regexps)==0){
+	if (compile_pattern2regexp(h, patterns, regexps) < 1)
+	    goto done;
+	/* XXX reset cache? */
+    }
     restype = yrt?yrt->ys_argument:NULL;
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
 	if ((retval = ys_cv_validate_union(h, ys, reason, yrt, type, val)) < 0)
@@ -847,6 +860,8 @@ ys_cv_validate_union_one(clicon_handle h,
 	    goto done;
     }
  done:
+    if (patterns)
+	cvec_free(patterns);
     if (regexps)
 	cvec_free(regexps);
     if (cvt)
@@ -922,6 +937,7 @@ ys_cv_validate(clicon_handle h,
     cg_var         *ycv;        /* cv of yang-statement */  
     int             options = 0;
     cvec           *cvv = NULL;
+    cvec           *patterns = NULL;
     cvec           *regexps = NULL;
     enum cv_type    cvtype;
     char           *type;  /* orig type */
@@ -943,11 +959,24 @@ ys_cv_validate(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto done;
     }
+    if ((patterns = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
     if (yang_type_get(ys, &type, &yrestype, 
 		      &options, &cvv,
-		      NULL, regexps,
+		      patterns, regexps,
 		      &fraction) < 0)
 	goto done;
+    /* The regexp cache may be invalidated, in that case re-compile
+     * eg due to copying
+     */
+    if (cvec_len(patterns)!=0 && cvec_len(regexps)==0){
+	fprintf(stderr, "%s cache miss\n", __FUNCTION__);
+	if (compile_pattern2regexp(h, patterns, regexps) < 1)
+	    goto done;
+	/* XXX reset cache? */
+    }
     restype = yrestype?yrestype->ys_argument:NULL;
     if (clicon_type2cv(type, restype, ys, &cvtype) < 0)
 	goto done;
@@ -977,6 +1006,8 @@ ys_cv_validate(clicon_handle h,
   done:
     if (regexps)
 	cvec_free(regexps);
+    if (regexps)
+	cvec_free(patterns);
     if (cvt)
 	cv_free(cvt);
     return retval;
