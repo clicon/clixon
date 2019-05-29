@@ -155,6 +155,9 @@ static inline char *clicon_clispec_dir(clicon_handle h){
 static inline char *clicon_cli_mode(clicon_handle h){
     return clicon_option_str(h, "CLICON_CLI_MODE");
 }
+static inline int clicon_cli_tab_mode(clicon_handle h){
+    return clicon_option_int(h, "CLICON_CLI_TAB_MODE");
+}
 static inline char *clicon_cli_model_treename(clicon_handle h){
     return clicon_option_str(h, "CLICON_CLI_MODEL_TREENAME");
 }

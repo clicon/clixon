@@ -541,6 +541,9 @@ main(int argc, char **argv)
     if (cligen_tree_find(cli_cligen(h), cli_syntax_mode(h)) == NULL)
 	clicon_log(LOG_WARNING, "No such cli mode: %s (Specify cli mode with CLICON_CLI_MODE in config file or -m <mode> on command line", cli_syntax_mode(h));
 
+    /* CLIgen tab mode, ie how <tab>s behave */
+    cligen_tabmode_set(cli_cligen(h), clicon_cli_tab_mode(h));
+
     if (logclisyntax)
 	cli_logsyntax_set(h, logclisyntax);
 

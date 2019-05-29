@@ -157,6 +157,7 @@
 
 ### Minor changes
 
+* Added CLIgen tab-modes in config option CLICON_CLI_TAB_MODE, which means you can control the behaviour of `<tab>` in the CLI.
 * Yang state get improvements
   * Integrated state and config into same tree on retrieval, not separate trees
   * Added cli functions `cli_show_config_state()` and `cli_show_auto_state()` for showing combined config and state info.

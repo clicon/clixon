@@ -316,7 +316,7 @@ module clixon-config {
 	    type string;
 	    default "datamodel";
 	    description
-		"If CLICON_CLI_GENMODEL is set, CLI specs can reference the
+		"If set, CLI specs can reference the
                  model syntax using this reference. 
                  Example: set @datamodel, cli_set();";
 	}
@@ -345,6 +345,20 @@ module clixon-config {
 		"Set to 0 if you want CLI to wrap to next line.
                  Set to 1 if you  want CLI to scroll sideways when approaching 
                       right margin";
+	}
+	leaf CLICON_CLI_TAB_MODE {
+	    type int8;
+	    default 0;
+	    description
+		"Set CLI tab mode. This is actually a bitfield of three 
+                 combinations:
+                 bit 1: 0: <tab> shows short info of available commands
+                        1: <tab> has same output as <?>, ie line per command
+                 bit 2: 0: On <tab>, select a command over a <var> if both exist
+                        1: Commands and vars have same preference.
+                 bit 3: 0: On <tab>, never complete more than one level per <tab>
+                        1: Complete all levels at once if possible.
+                ";
 	}
 	leaf CLICON_CLI_UTF8 {
 	    type int8;
