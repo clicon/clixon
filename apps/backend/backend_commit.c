@@ -206,7 +206,7 @@ startup_common(clicon_handle       h,
     /* After upgrading, XML tree needs to be sorted and yang spec populated */
     if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	goto done;
-    if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
+    if (xml_apply0(xt, CX_ELMNT, xml_sort, h) < 0)
 	goto done;
     /* Handcraft transition with with only add tree */
     td->td_target = xt;

@@ -181,7 +181,7 @@ parse_configfile(clicon_handle  h,
 		goto done;
 	    if (xml_apply0(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
-	    if (xml_apply0(xc, CX_ELMNT, xml_sort, NULL) < 0)
+	    if (xml_apply0(xc, CX_ELMNT, xml_sort, h) < 0)
 		goto done;
 	}
 	else
@@ -192,7 +192,7 @@ parse_configfile(clicon_handle  h,
 	    goto done;
 	}
     }
-    if (xml_apply0(xc, CX_ELMNT, xml_default, yspec) < 0)
+    if (xml_apply0(xc, CX_ELMNT, xml_default, h) < 0)
 	goto done;	
     if ((cbret = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");

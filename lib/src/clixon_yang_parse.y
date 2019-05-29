@@ -863,7 +863,7 @@ pattern_substmt : modifier_stmt    { clicon_debug(2,"pattern-substmt -> modifier
               ;
 
 modifier_stmt  : K_MODIFIER string stmtend
-		{ if (ysp_add(_yy, Y_DEFAULT, $2, NULL)== NULL) _YYERROR("modifier_stmt"); 
+		{ if (ysp_add(_yy, Y_MODIFIER, $2, NULL)== NULL) _YYERROR("modifier_stmt"); 
                             clicon_debug(2,"modifier-stmt -> MODIFIER string"); }
               ;
 

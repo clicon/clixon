@@ -43,8 +43,7 @@
  */
 #define YANG_OPTIONS_LENGTH           0x01
 #define YANG_OPTIONS_RANGE            0x02
-#define YANG_OPTIONS_PATTERN          0x04
-#define YANG_OPTIONS_FRACTION_DIGITS  0x08
+#define YANG_OPTIONS_FRACTION_DIGITS  0x04
 
 /*
  * Types
@@ -57,10 +56,11 @@ typedef struct yang_type_cache yang_type_cache;
  */
 int        yang_type_cache_set(yang_type_cache **ycache, 	    
 			       yang_stmt *resolved, int options,
-			       cvec *cvv, char *pattern, uint8_t fraction);
+			       cvec *cvv, cvec *patterns, cvec *regexps,
+			       uint8_t fraction);
 int        yang_type_cache_get(yang_type_cache *ycache, yang_stmt **resolved,
-			       int *options, cvec **cvv, char **pattern,
-			       uint8_t *fraction);
+			       int *options, cvec **cvv, cvec *patterns,
+			       cvec *regexps, uint8_t *fraction);
 int        yang_type_cache_cp(yang_type_cache **ycnew, yang_type_cache *ycold);
 int        yang_type_cache_free(yang_type_cache *ycache);
 int        ys_resolve_type(yang_stmt *ys, void *arg);
@@ -70,11 +70,14 @@ yang_stmt *yang_find_identity(yang_stmt *ys, char *identity);
 int        ys_cv_validate(clicon_handle h, cg_var *cv, yang_stmt *ys, char **reason);
 int        clicon_type2cv(char *type, char *rtype, yang_stmt *ys, enum cv_type *cvtype);
 int        yang_type_get(yang_stmt *ys, char **otype, yang_stmt **restype, 
-			 int *options, cvec **cvv, char **pattern,
+			 int *options, cvec **cvv,
+			 cvec *patterns, cvec *regexps,
                          uint8_t *fraction_digits);
-int        yang_type_resolve(yang_stmt *yorig, yang_stmt *ys, yang_stmt *ytype, 
+int        yang_type_resolve(yang_stmt *yorig, yang_stmt *ys,
+			     yang_stmt *ytype, 
 			     yang_stmt **restype, int *options, 
-			     cvec **cvv, char **pattern, uint8_t *fraction);
+			     cvec **cvv, cvec *patterns, cvec *regexps,
+			     uint8_t *fraction);
 
 
 #endif  /* _CLIXON_YANG_TYPE_H_ */

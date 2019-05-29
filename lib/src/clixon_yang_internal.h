@@ -58,7 +58,8 @@ struct yang_type_cache{
     cvec      *yc_cvv;      /* Range and length restriction. (if YANG_OPTION_
                                LENGTH|RANGE. Can be a vector if multiple 
                                ranges*/
-    char      *yc_pattern;  /* regex (posix) (if YANG_OPTIONS_PATTERN) */
+    cvec      *yc_patterns; /* list of regexp, if cvec_len() > 0 */
+    cvec      *yc_regexps;  /* list of _compiled_ regexp, if cvec_len() > 0 */
     uint8_t    yc_fraction; /* Fraction digits for decimal64 (if 
                                YANG_OPTIONS_FRACTION_DIGITS */
     yang_stmt *yc_resolved; /* Resolved type object, can be NULL - note direct ptr */
@@ -95,7 +96,6 @@ struct yang_stmt{
 					Y_TYPE & identity: store all derived types
 				     */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
-    void             *ys_regex_cache; /* regex cache */
     int               _ys_vector_i;   /* internal use: yn_each */
 };
 

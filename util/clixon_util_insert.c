@@ -192,7 +192,7 @@ main(int argc, char **argv)
 	xml_print(stderr, x0);
     }
     if (sort)
-	xml_sort(xb, NULL);
+	xml_sort(xb, h);
     clicon_xml2file(stdout, xb, 0, 0);
 
     retval = 0;

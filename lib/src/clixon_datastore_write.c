@@ -398,7 +398,7 @@ text_modify(clicon_handle       h,
     } /* else Y_CONTAINER  */
 #ifndef USE_XML_INSERT
     if (changed)
-	xml_sort(x0p, NULL);
+	xml_sort(x0p, h);
 #endif
     retval = 1;
  done:

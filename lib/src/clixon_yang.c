@@ -239,30 +239,6 @@ yang_cvec_set(yang_stmt *ys,
     return 0;
 }
 
-/*! Get regular expression cache - the compiled regex
- * @param[in] ys  Yang statement node
- * @retval    re  Compiled regex
- * @see regcomp
- */
-void*
-yang_regex_cache_get(yang_stmt *ys)
-{
-    return ys->ys_regex_cache;
-}
-
-/*! Set regular expression cache - the compiled regex
- * @param[in] ys  Yang statement node
- * @param[in] re  Compiled regex
- * @see regcomp
- */
-int
-yang_regex_cache_set(yang_stmt *ys,
-		     void      *regex)
-{
-    ys->ys_regex_cache = regex;
-    return 0;
-}
-
 /* End access functions */
 
 /*! Create new yang specification
@@ -307,17 +283,6 @@ ys_new(enum rfc_6020 keyw)
     return ys;
 }
 
-
-static int
-yang_regex_cache_free(yang_stmt *ys)
-{
-    if (ys->ys_regex_cache){
-	regfree(ys->ys_regex_cache);
-	free(ys->ys_regex_cache);
-    }
-    return 0;
-}
-
 /*! Free a single yang statement */
 static int 
 ys_free1(yang_stmt *ys)
@@ -332,7 +297,6 @@ ys_free1(yang_stmt *ys)
 	cvec_free(ys->ys_cvec);
     if (ys->ys_typecache)
 	yang_type_cache_free(ys->ys_typecache);
-    yang_regex_cache_free(ys);
     free(ys);
     return 0;
 }
@@ -1344,8 +1308,8 @@ yang_print_cbuf(cbuf      *cb,
  * @retval    -1   Error with clicon_err called
  */
 static int
-ys_populate_leaf(yang_stmt *ys, 
-		 void      *arg)
+ys_populate_leaf(clicon_handle h,
+		 yang_stmt *ys)
 {
     int             retval = -1;
     cg_var         *cv = NULL;
@@ -1363,7 +1327,7 @@ ys_populate_leaf(yang_stmt *ys,
 
     yparent = ys->ys_parent;     /* Find parent: list/container */
     /* 1. Find type specification and set cv type accordingly */
-    if (yang_type_get(ys, &type, &yrestype, &options, NULL, NULL, &fraction_digits)
+    if (yang_type_get(ys, &type, &yrestype, &options, NULL, NULL, NULL, &fraction_digits)
  < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
@@ -1416,8 +1380,8 @@ ys_populate_leaf(yang_stmt *ys,
 }
 
 static int
-ys_populate_list(yang_stmt *ys, 
-		 void      *arg)
+ys_populate_list(clicon_handle h,
+		 yang_stmt    *ys)
 {
     yang_stmt  *ykey;
     
@@ -1523,8 +1487,8 @@ range_parse(yang_stmt   *ys,
  *  ascending order
  */
 static int
-ys_populate_range(yang_stmt *ys, 
-		  void      *arg)
+ys_populate_range(clicon_handle h,
+		  yang_stmt    *ys)
 {
     int             retval = -1;
     yang_stmt      *yparent;        /* type */
@@ -1541,7 +1505,7 @@ ys_populate_range(yang_stmt *ys,
 	goto done;
     }
     if (yang_type_resolve(ys, ys, (yang_stmt*)yparent, &yrestype, 
-			  &options, NULL, NULL, &fraction_digits) < 0)
+			  &options, NULL, NULL, NULL, &fraction_digits) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
     origtype = yarg_id((yang_stmt*)yparent);
@@ -1572,8 +1536,8 @@ ys_populate_range(yang_stmt *ys,
  *  be disjoint and MUST be in ascending order.
  */
 static int
-ys_populate_length(yang_stmt *ys, 
-		   void      *arg)
+ys_populate_length(clicon_handle h,
+		   yang_stmt    *ys)
 {
     int             retval = -1;
     yang_stmt      *yparent;        /* type */
@@ -1598,8 +1562,9 @@ ys_populate_length(yang_stmt *ys,
  * @
  */
 static int
-ys_populate_type(yang_stmt *ys, 
-		 void      *arg)
+ys_populate_type(clicon_handle h,
+		 yang_stmt    *ys)
+
 {
     int             retval = -1;
     yang_stmt      *ybase;
@@ -1636,8 +1601,9 @@ ys_populate_type(yang_stmt *ys,
  * @see validate_identityref  which in runtime validates actual values
  */
 static int
-ys_populate_identity(yang_stmt *ys, 
-		     char      *idref)
+ys_populate_identity(clicon_handle h,
+		     yang_stmt    *ys, 
+		     char         *idref)
 {
     int             retval = -1;
     yang_stmt      *yc = NULL;
@@ -1695,7 +1661,7 @@ ys_populate_identity(yang_stmt *ys,
 	    cv = NULL;
 	}
 	/* Transitive to the root */
-	if (ys_populate_identity(ybaseid, idref) < 0)
+	if (ys_populate_identity(h, ybaseid, idref) < 0)
 	    goto done;
     }
     retval = 0;
@@ -1800,7 +1766,8 @@ ys_populate_feature(clicon_handle h,
 /*! Populate the unique statement with a cvec
  */
 static int
-ys_populate_unique(yang_stmt *ys)
+ys_populate_unique(clicon_handle h,
+		   yang_stmt    *ys)
 {
     if (ys->ys_cvec)
 	cvec_free(ys->ys_cvec);
@@ -1812,7 +1779,8 @@ ys_populate_unique(yang_stmt *ys)
 /*! Populate unknown node with extension
  */
 static int
-ys_populate_unknown(yang_stmt    *ys)
+ys_populate_unknown(clicon_handle h,
+		    yang_stmt    *ys)
 {
     int retval = -1;
     int        cvret;
@@ -1861,28 +1829,28 @@ ys_populate_unknown(yang_stmt    *ys)
  * After this pass, cv:s are set for LEAFs and LEAF-LISTs
  */
 int
-ys_populate(yang_stmt *ys, 
-	    void      *arg)
+ys_populate(yang_stmt    *ys, 
+	    void         *arg)
 {
     int retval = -1;
-    //    clicon_handle h = (clicon_handle)arg;
+    clicon_handle h = (clicon_handle)arg;
     
     switch(ys->ys_keyword){
     case Y_LEAF:
     case Y_LEAF_LIST:
-	if (ys_populate_leaf(ys, NULL) < 0)
+	if (ys_populate_leaf(h, ys) < 0)
 	    goto done;
 	break;
     case Y_LIST:
-	if (ys_populate_list(ys, NULL) < 0)
+	if (ys_populate_list(h, ys) < 0)
 	    goto done;
 	break;
     case Y_RANGE: 
-	if (ys_populate_range(ys, NULL) < 0)
+	if (ys_populate_range(h, ys) < 0)
 	    goto done;
 	break;
     case Y_LENGTH: 
-	if (ys_populate_length(ys, NULL) < 0)
+	if (ys_populate_length(h, ys) < 0)
 	    goto done;
 	break;
     case Y_MANDATORY: /* call yang_mandatory() to check if set */
@@ -1891,19 +1859,19 @@ ys_populate(yang_stmt *ys,
 	    goto done;
 	break;
     case Y_TYPE:
-	if (ys_populate_type(ys, NULL) < 0)
+	if (ys_populate_type(h, ys) < 0)
 	    goto done;
 	break;
     case Y_IDENTITY:
-	if (ys_populate_identity(ys, NULL) < 0)
+	if (ys_populate_identity(h, ys, NULL) < 0)
 	    goto done;
 	break;
     case Y_UNIQUE:
-	if (ys_populate_unique(ys) < 0)
+	if (ys_populate_unique(h, ys) < 0)
 	    goto done;
 	break;
     case Y_UNKNOWN:
-	if (ys_populate_unknown(ys) < 0)
+	if (ys_populate_unknown(h, ys) < 0)
 	    goto done;
 	break;
     default:
@@ -2631,7 +2599,7 @@ yang_parse_post(clicon_handle h,
      * Must be done using static binding.
      */
     for (i=modnr; i<yspec->ys_len; i++)
-	if (yang_apply(yspec->ys_stmt[i], Y_TYPE, ys_resolve_type, NULL) < 0)
+	if (yang_apply(yspec->ys_stmt[i], Y_TYPE, ys_resolve_type, h) < 0)
 	    goto done;
 
     /* Up to here resolving is made in the context they are defined, rather 

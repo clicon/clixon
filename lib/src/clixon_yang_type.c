@@ -32,6 +32,20 @@
   ***** END LICENSE BLOCK *****
 
  * Yang type related functions
+ * Part of this is type resolving which is pretty complex
+ * 
+ * (called at parse / set cache)
+ * ys_resolve_type  --+     ys_populate_range, yang_enum_int_value(NULL)
+ *                     \    |  cml
+ *                      v   v  v
+ * yang_type_get       -->  yang_type_resolve --> resolve_restrictions
+ * (leaf(list) front)       (recursive core fn)   (regexps, length, ranges, ...)
+ * ^  ^                     ^  ^
+ * |  |                     |  |
+ * |  yang2cli_var          |  yang2cli_var_union_one
+ * ys_cv_validate           ys_cv_validate_union_one
+ * |
+ * ys_populate_leaf, xml_cv_cache (NULL)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -145,7 +159,8 @@ yang_type_cache_set(yang_type_cache **ycache0,
 		    yang_stmt        *resolved,
 		    int               options, 
 		    cvec             *cvv, 
-		    char             *pattern,
+		    cvec             *patterns,
+		    cvec             *regexps,
 		    uint8_t           fraction)
 {
     int              retval = -1;
@@ -166,8 +181,12 @@ yang_type_cache_set(yang_type_cache **ycache0,
 	    goto done;
 	}
     }
-    if (pattern && (ycache->yc_pattern  = strdup(pattern)) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
+    if (patterns && (ycache->yc_patterns  = cvec_dup(patterns)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_dup");
+	goto done;
+    }
+    if (regexps && (ycache->yc_regexps  = cvec_dup(regexps)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_dup");
 	goto done;
     }
     ycache->yc_fraction  = fraction;
@@ -176,26 +195,42 @@ yang_type_cache_set(yang_type_cache **ycache0,
     return retval;
 }
 
-/*! Get individual fields (direct/destructively) from yang type cache. */
+/*! Get individual fields (direct/destructively) from yang type cache. 
+ * @param[out] patterns Initialized cvec of regexp patterns strings
+ */
 int
 yang_type_cache_get(yang_type_cache *ycache,
 		    yang_stmt      **resolved,
 		    int             *options, 
 		    cvec           **cvv, 
-		    char           **pattern,
+		    cvec            *patterns,
+		    cvec            *regexps,
 		    uint8_t         *fraction)
 {
+    int retval = -1;
+    cg_var *cv = NULL;
+    
     if (resolved)
 	*resolved = ycache->yc_resolved;
     if (options)
 	*options  = ycache->yc_options;
     if (cvv)
 	*cvv    = ycache->yc_cvv;
-    if (pattern)
-	*pattern  = ycache->yc_pattern;
+    if (patterns){
+	cv = NULL;
+	while ((cv = cvec_each(ycache->yc_patterns, cv)) != NULL)
+	    cvec_append_var(patterns, cv);
+    }
+    if (regexps){
+	cv = NULL;
+	while ((cv = cvec_each(ycache->yc_regexps, cv)) != NULL)
+	    cvec_append_var(regexps, cv);
+    }
     if (fraction)
 	*fraction = ycache->yc_fraction;
-    return 0;
+    retval = 0;
+    // done:
+    return retval;
 }
 
 int
@@ -205,15 +240,28 @@ yang_type_cache_cp(yang_type_cache **ycnew,
     int        retval = -1;
     int        options;
     cvec      *cvv;
-    char      *pattern;
+    cvec      *patterns = NULL;
+    cvec      *regexps = NULL;
     uint8_t    fraction;
     yang_stmt *resolved;
 
-    yang_type_cache_get(ycold, &resolved, &options, &cvv, &pattern, &fraction);
-    if (yang_type_cache_set(ycnew, resolved, options, cvv, pattern, fraction) < 0)
+    if ((patterns = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
+    if ((regexps = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
+    yang_type_cache_get(ycold, &resolved, &options, &cvv, patterns, regexps, &fraction);
+    if (yang_type_cache_set(ycnew, resolved, options, cvv, patterns, regexps, fraction) < 0)
 	goto done;
     retval = 0;
  done:
+    if (patterns)
+	cvec_free(patterns);
+    if (regexps)
+	cvec_free(regexps);
     return retval;
 }
 
@@ -222,10 +270,57 @@ yang_type_cache_free(yang_type_cache *ycache)
 {
     if (ycache->yc_cvv)
 	cvec_free(ycache->yc_cvv);
-    if (ycache->yc_pattern)
-	free(ycache->yc_pattern);
+    if (ycache->yc_patterns)
+	cvec_free(ycache->yc_patterns);
+    if (ycache->yc_regexps)
+	cvec_free(ycache->yc_regexps);
     free(ycache);
     return 0;
+}
+
+/* Compile yang patterns in string form to regex compiled void* form
+ * and re-store into "patterns" cvec.
+ * This is done here instead of deep in resolve code (resolve_restrictions)
+ * since it id dependent on clicon_handle.
+ * The downside is that all accesses to "patterns" must pass via the cache.
+ * If calls to yang_type_resolve is made without the cache is set, will be
+ * wrong.
+ */
+static int
+compile_pattern2regexp(clicon_handle h,
+		       cvec         *patterns,
+		       cvec         *regexps)
+{
+    int     retval = -1;
+    cg_var *pcv; /* pattern cv */
+    cg_var *rcv; /* regexp cv */
+    void   *re;
+    int     ret;
+    char   *pattern;
+
+    pcv = NULL;
+    while ((pcv = cvec_each(patterns, pcv)) != NULL){
+	if (cv_type_get(pcv) == CGV_VOID)
+	    continue; /* already compiled */
+	pattern = cv_string_get(pcv);
+	/* Compile yang pattern. handle necessary to select regex engine */
+	if ((ret = regex_compile(h, pattern, &re)) < 0)
+	    goto done;
+	if (ret == 0){
+	    clicon_err(OE_YANG, errno, "regexp compile fail: \"%s\"",
+		       pattern);
+	    goto done;
+	    break;
+	}
+	if ((rcv = cvec_add(regexps, CGV_VOID)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cvec_add");
+	    goto done;
+	}
+	cv_void_set(rcv, re);
+    }
+    retval = 1;
+ done:
+    return retval;
 }
 
 /*! Resolve types: populate type caches 
@@ -235,31 +330,58 @@ yang_type_cache_free(yang_type_cache *ycache)
  * @note unions not cached
  */
 int
-ys_resolve_type(yang_stmt *ys, 
-		void      *arg)
+ys_resolve_type(yang_stmt    *ys, 
+		void         *arg)
 {
+    clicon_handle     h = (clicon_handle)arg;
     int               retval = -1;
     int               options = 0x0;
     cvec             *cvv = NULL;
-    char             *pattern = NULL;
+    cvec             *patterns = NULL;
+    cvec             *regexps = NULL;
     uint8_t           fraction = 0;
     yang_stmt        *resolved = NULL;
- 
-    assert(ys->ys_keyword == Y_TYPE);
+
+    if (yang_keyword_get(ys) != Y_TYPE){
+	clicon_err(OE_YANG, EINVAL, "Expected Y_TYPE");
+	goto done;
+    }
+    if ((patterns = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
     /* Recursively resolve ys -> resolve with restrictions(options, etc) 
      * Note that the resolved type could be ys itself.
      */
-    if (yang_type_resolve((yang_stmt*)ys->ys_parent, (yang_stmt*)ys->ys_parent,
+    if (yang_type_resolve(ys->ys_parent, ys->ys_parent,
 			  ys, &resolved,
-			  &options, &cvv, &pattern, &fraction) < 0)
+			  &options, &cvv, patterns, NULL, &fraction) < 0)
 	goto done;
 
-    /* Cache the resolve locally */
+    /* If pattern strings, then compile regexps as well */
+    if (cvec_len(patterns)){
+	if ((regexps = cvec_new(0)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cvec_new");
+	    goto done;
+	}
+	/* Compile from pattern strings to compiled regexps */
+	if (compile_pattern2regexp(h, patterns, regexps) < 1)
+	    goto done;
+    }
+    /* Cache the type resolving locally. Only place where this is done. 
+     * Why not do it in yang_type_resolve? (compile regexps needs clicon_handle)
+     */
     if (yang_type_cache_set(&ys->ys_typecache, 
-			    resolved, options, cvv, pattern, fraction) < 0)
+			    resolved, options, cvv,
+			    patterns, regexps,
+			    fraction) < 0)
 	goto done;
     retval = 0;
  done:
+    if (patterns)
+	cvec_free(patterns);
+    if (regexps)
+	cvec_free(regexps);
     return retval;
 }
 
@@ -368,6 +490,48 @@ clicon_type2cv(char         *origtype,
     return retval;
 }
 
+/*! Validate CLIgen variable with pattern statements
+ * @param[in]  h       Clicon handle
+ * @param[in]  regexps Vector of compiled regexps
+ * @param[out] reason  If given, and return value is 0, contains malloced string
+ * @retval -1  Error (fatal), with errno set to indicate error
+ * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval 1   Validation OK
+ */
+static int
+cv_validate_pattern(clicon_handle h,
+		    cvec         *regexps,
+		    yang_stmt    *yrestype,
+		    char         *str,
+		    char        **reason)
+{
+    int     retval = -1;
+    cg_var *cvr;
+    void   *re = NULL;
+    int     ret;
+
+    cvr = NULL; /* Loop over compiled regexps */
+    while ((cvr = cvec_each(regexps, cvr)) != NULL){
+	re = cv_void_get(cvr);
+	if ((ret = regex_exec(h, re, str?str:"")) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (reason)
+		*reason = cligen_reason("regexp match fail: pattern does not match %s",
+					str);
+	    goto fail;
+	    break;
+	}	
+    }
+    retval = 1; /* match */
+ done:
+    return retval;
+ fail:
+    retval = 0; /* validation failed */
+    goto done;
+
+}
+
 /* cf cligen/cligen_var.c */
 #define range_check(i, rmin, rmax, type)       \
     ((rmin && (i) < cv_##type##_get(rmin)) ||  \
@@ -375,9 +539,17 @@ clicon_type2cv(char         *origtype,
 
 
 /*! Validate CLIgen variable
+ * @param[in]  h       Clicon handle
+ * @param[in]  cv      A cligen variable to validate. This is a correctly parsed cv.
+ * @param[in]  cvtype  Resolved type of cv
+ *                     string describing reason why validation failed. 
+ * @param[in]  regexps Vector of compiled regexps
+ * @param[out] reason  If given, and return value is 0, contains malloced str 
+
  * @retval -1  Error (fatal), with errno set to indicate error
  * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
  * @retval 1   Validation OK
+ * @note reason if given must be freed by caller
  */
 static int
 cv_validate1(clicon_handle h,
@@ -385,7 +557,7 @@ cv_validate1(clicon_handle h,
 	     enum cv_type cvtype, 
 	     int          options, 
 	     cvec        *cvv,
-	     char        *pattern,
+	     cvec        *regexps,
 	     yang_stmt   *yrestype,
 	     char        *restype,
 	     char       **reason)
@@ -554,30 +726,12 @@ cv_validate1(clicon_handle h,
 		}
 	    }
 	}
-	if ((options & YANG_OPTIONS_PATTERN) != 0) {
-		void *re = NULL;
-		if ((re = yang_regex_cache_get(yrestype)) == NULL){
-		    if ((ret = regex_compile(h, pattern, &re)) < 0)
-			goto done;
-		    if (ret == 0){
-			if (reason)
-			    *reason = cligen_reason("regexp compile fail: \"%s\"",
-						    pattern);
-			goto fail;
-			break;
-		    }
-		    yang_regex_cache_set(yrestype, re);
-		}
-		if ((ret = regex_exec(h, re, str?str:"")) < 0)
-		    goto done;
-	    if (ret == 0){
-		if (reason)
-		    *reason = cligen_reason("regexp match fail: \"%s\" does not match %s",
-					    str, pattern);
+	if (regexps && cvec_len(regexps)) {
+	    if ((ret = cv_validate_pattern(h, regexps, yrestype, str, reason)) < 0)
+		goto done;
+	    if (ret == 0)
 		goto fail;
-		break;
-	    }
-	    }
+	}
 	break;
     case CGV_VOID:
 	break; /* empty type OK */
@@ -605,29 +759,34 @@ static int ys_cv_validate_union(clicon_handle h,yang_stmt *ys, char **reason,
 				yang_stmt *yrestype, char *type, char *val);
 
 /*!
+ * @param[out] reason  If given and return val is 0, contains a malloced string
  * @retval -1  Error (fatal), with errno set to indicate error
  * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
  * @retval 1   Validation OK
  */
 static int
 ys_cv_validate_union_one(clicon_handle h,
-			 yang_stmt *ys,
-			 char     **reason,
-			 yang_stmt *yt,
-			 char      *type,  /* orig type */
-			 char      *val)
+			 yang_stmt    *ys,
+			 char        **reason,
+			 yang_stmt    *yt,
+			 char         *type,  /* orig type */
+			 char         *val)
 {
     int          retval = -1;
     yang_stmt   *yrt;      /* union subtype */
     int          options = 0;
     cvec        *cvv = NULL;
-    char        *pattern = NULL;
+    cvec        *regexps = NULL;
     uint8_t      fraction = 0; 
     char        *restype;
     enum cv_type cvtype;
     cg_var      *cvt=NULL;
 
-    if (yang_type_resolve(ys, ys, yt, &yrt, &options, &cvv, &pattern,
+    if ((regexps = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
+    if (yang_type_resolve(ys, ys, yt, &yrt, &options, &cvv, NULL, regexps,
 			  &fraction) < 0)
 	goto done;
     restype = yrt?yrt->ys_argument:NULL;
@@ -650,16 +809,19 @@ ys_cv_validate_union_one(clicon_handle h,
 	if (retval == 0)
 	    goto done;
 	if ((retval = cv_validate1(h, cvt, cvtype, options, cvv, 
-				   pattern, yrt, restype, reason)) < 0)
+				   regexps, yrt, restype, reason)) < 0)
 	    goto done;
     }
  done:
+    if (regexps)
+	cvec_free(regexps);
     if (cvt)
 	cv_free(cvt);
     return retval;
 }
 
 /*!
+ * @param[out] reason  If given, and return value is 0, contains malloced string
  * @retval -1  Error (fatal), with errno set to indicate error
  * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
  * @retval 1   Validation OK
@@ -705,26 +867,28 @@ ys_cv_validate_union(clicon_handle h,
 
 /*! Validate cligen variable cv using yang statement as spec
  *
+ * @param[in]  h       Clicon handle     
  * @param[in]  cv      A cligen variable to validate. This is a correctly parsed cv.
  * @param[in]  ys      A yang statement, must be leaf or leaf-list.
- * @param[out] reason  If given, and if return value is 0, contains a malloced string
- *                      describing the reason why the validation failed. Must be freed.
+ * @param[out] reason  If given, and if return value is 0, contains malloced 
+ *                     string describing reason why validation failed. 
  * @retval -1  Error (fatal), with errno set to indicate error
  * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
  * @retval 1   Validation OK
  * See also cv_validate - the code is similar.
+ * @note reason if given must be freed by caller
  */
 int
 ys_cv_validate(clicon_handle h,
-	       cg_var    *cv, 
-	       yang_stmt *ys, 
-	       char     **reason)
+	       cg_var       *cv, 
+	       yang_stmt    *ys, 
+	       char        **reason)
 {
     int             retval = -1; 
     cg_var         *ycv;        /* cv of yang-statement */  
     int             options = 0;
     cvec           *cvv = NULL;
-    char           *pattern = NULL;
+    cvec           *regexps = NULL;
     enum cv_type    cvtype;
     char           *type;  /* orig type */
     yang_stmt      *yrestype; /* resolved type */
@@ -741,8 +905,14 @@ ys_cv_validate(clicon_handle h,
 	goto done;
     }
     ycv = ys->ys_cv;
+    if ((regexps = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
     if (yang_type_get(ys, &type, &yrestype, 
-		      &options, &cvv, &pattern, &fraction) < 0)
+		      &options, &cvv,
+		      NULL, regexps,
+		      &fraction) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
     if (clicon_type2cv(type, restype, ys, &cvtype) < 0)
@@ -767,10 +937,12 @@ ys_cv_validate(clicon_handle h,
 	retval = retval2; /* invalid (0) with latest reason or valid 1 */
     }
     else
-	if ((retval = cv_validate1(h, cv, cvtype, options, cvv, pattern,
-				   yrestype, restype, reason)) < 0)
+	if ((retval = cv_validate1(h, cv, cvtype, options, cvv,
+				   regexps, yrestype, restype, reason)) < 0)
 	    goto done;
   done:
+    if (regexps)
+	cvec_free(regexps);
     if (cvt)
 	cv_free(cvt);
     return retval;
@@ -876,45 +1048,63 @@ yang_find_identity(yang_stmt *ys,
     return yid;
 }
 
-/*! Resolve type restrictions, return contraining parameters
- * @param[in]  yrange    Yang type range restriction if any
- * @param[in]  ylength   Yang type length restriction if any
- * @param[in]  ypattern  Yang type pattern restriction if any
- * @param[in]  yfraction Yang type fraction restriction if any
+/*! Resolve type restrictions, return constraining parameters
+ *
+ * This is for types with range/length/regexp restrictions of the base type
+ * Also fraction-digits for decimal64 is handled as that.
+ * @param[in]  ytype    yang-stmt object containing currently resolving type
  * @param[out] options   Pointer to flags field of optional values. optional
  * @param[out] cvv       Pointer to cvec with min range or length. 
  *                       If options&YANG_OPTIONS_RANGE or YANG_OPTIONS_LENGTH
- * @param[out] pattern   Pointer to static string of yang string pattern. optional
+ * @param[out] regexps   Pointer to cvec of compiled patterns
  * @param[out] fraction  For decimal64, how many digits after period
- * @retval      0        OK. 
+ * @retval    -1         Error
+ * @retval     0         OK. 
  */
 static int
-resolve_restrictions(yang_stmt   *yrange,
-		     yang_stmt   *ylength,
-		     yang_stmt   *ypattern,
-		     yang_stmt   *yfraction,
+resolve_restrictions(yang_stmt   *ytype,
 		     int         *options, 
 		     cvec       **cvv, 
-		     char       **pattern,
+		     cvec        *regexps,
 		     uint8_t     *fraction)
 {
-    if (options && cvv && yrange != NULL){
-	*cvv = yrange->ys_cvec;
+    int        retval = -1;
+    yang_stmt *ys;
+    cg_var    *cv;
+    char      *pattern;
+
+    if (options && cvv &&
+	(ys = yang_find(ytype, Y_RANGE, NULL)) != NULL){
+	*cvv = ys->ys_cvec;
 	*options  |= YANG_OPTIONS_RANGE;
     }
-    if (options && cvv && ylength != NULL){
-	*cvv = ylength->ys_cvec;
+    if (options && cvv &&
+	(ys = yang_find(ytype, Y_LENGTH, NULL)) != NULL){
+	*cvv = ys->ys_cvec;
 	*options  |= YANG_OPTIONS_LENGTH;
     }
-    if (options && pattern && ypattern != NULL){
-	*pattern   = ypattern->ys_argument;
-	*options  |= YANG_OPTIONS_PATTERN;
+    /* Find all patterns */
+    if (options && regexps){
+	ys = NULL;
+	while ((ys = yn_each(ytype, ys)) != NULL) {
+	    if (yang_keyword_get(ys) != Y_PATTERN)
+		continue;
+	    if ((cv = cvec_add(regexps, CGV_STRING)) == NULL){
+		clicon_err(OE_UNIX, errno, "cvec_add");
+		goto done;
+	    }
+	    pattern = ys->ys_argument; /* clear text pattern */
+	    cv_string_set(cv, pattern);
+	}
     }
-    if (options && fraction && yfraction != NULL){
-	*fraction  = cv_uint8_get(yfraction->ys_cv);
+    if (options && fraction && 
+	(ys = yang_find(ytype, Y_FRACTION_DIGITS, NULL)) != NULL){
+	*fraction  = cv_uint8_get(ys->ys_cv);
 	*options  |= YANG_OPTIONS_FRACTION_DIGITS;
     }
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Recursively resolve a yang type to built-in type with optional restrictions
@@ -926,8 +1116,8 @@ resolve_restrictions(yang_stmt   *yrange,
  * @param[out] cvv      Cvec with min/max range or length. 
  *                      Present if options&YANG_OPTIONS_RANGE|_LENGTH.
  *                      Can be a vector if multiple ranges
- * @param[out] pattern  String of POSIX regexp pattern
- *                      Present if options&YANG_OPTIONS_PATTERN
+ * @param[out] patterns Initialized cvec of regexp patterns strings (if any)
+ * @param[out] regexps  Initialized cvec of compiled regexps (if any)
  * @param[out] fraction for decimal64, how many digits after period
  *                      Present if options&YANG_OPTIONS_FRACTION_DIGITS
  * @retval      0        OK. Note yrestype may still be NULL.
@@ -935,8 +1125,8 @@ resolve_restrictions(yang_stmt   *yrange,
  * The setting of the options argument has the following semantics:
  *   options&YANG_OPTIONS_RANGE or YANG_OPTIONS_LENGTH --> cvv is set containing
  *                   array of range_min, range_max cv:s
- *   options&YANG_OPTIONS_PATTERN --> pattern is set
  *   options&YANG_OPTIONS_FRACTION_DIGITS --> fraction is set
+ *   patterns && cvec_len(patterns) --> there are patterns
  * Note that the static output strings (type, pattern) should be copied if used asap.
  * Note also that for all pointer arguments, if NULL is given, no value is assigned.
  */
@@ -947,15 +1137,12 @@ yang_type_resolve(yang_stmt   *yorig,
 		  yang_stmt  **yrestype, 
 		  int         *options, 
 		  cvec       **cvv, 
-		  char       **pattern,
+		  cvec        *patterns,
+		  cvec        *regexps,
 		  uint8_t     *fraction)
 {
     yang_stmt   *rytypedef = NULL; /* Resolved typedef of ytype */
     yang_stmt   *rytype;           /* Resolved type of ytype */
-    yang_stmt   *yrange;
-    yang_stmt   *ylength;
-    yang_stmt   *ypattern;
-    yang_stmt   *yfraction;
     char        *type;
     char        *prefix = NULL;
     int          retval = -1;
@@ -968,23 +1155,18 @@ yang_type_resolve(yang_stmt   *yorig,
     type      = yarg_id(ytype);     /* This is the type to resolve */
     prefix    = yarg_prefix(ytype); /* And this its prefix */
     /* Cache does not work for eg string length 32? */
-    if (!yang_builtin(type) && ytype->ys_typecache != NULL){
+    if (/*!yang_builtin(type) &&*/ ytype->ys_typecache != NULL){
 	if (yang_type_cache_get(ytype->ys_typecache, yrestype,
-				options, cvv, pattern, fraction) < 0)
+				options, cvv, patterns, regexps, fraction) < 0)
 	    goto done;
 	goto ok;
     }
-    /* Resolving type restrictions */
-    yrange    = yang_find(ytype, Y_RANGE, NULL);
-    ylength   = yang_find(ytype, Y_LENGTH, NULL);
-    ypattern  = yang_find(ytype, Y_PATTERN, NULL);
-    yfraction = yang_find(ytype, Y_FRACTION_DIGITS, NULL);
 
     /* Check if type is basic type. If so, return that */
-    if (prefix == NULL && yang_builtin(type)){
+    if ((prefix == NULL && yang_builtin(type))){
 	*yrestype = ytype; 
-	resolve_restrictions(yrange, ylength, ypattern, yfraction, options, 
-			     cvv, pattern, fraction);
+	if (resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
+	    goto done;
 	goto ok;
     }
 
@@ -1023,11 +1205,13 @@ yang_type_resolve(yang_stmt   *yorig,
 	}
 	/* recursively resolve this new type */
 	if (yang_type_resolve(yorig, ys, rytype, yrestype, 
-			      options, cvv, pattern, fraction) < 0)
+			      options, cvv,
+			      patterns, regexps,
+			      fraction) < 0)
 	    goto done;
-	/* overwrites the resolved if any */
-	resolve_restrictions(yrange, ylength, ypattern, yfraction, options,
-			     cvv, pattern, fraction);
+	/* appends patterns, overwrites others if any */
+	if (resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
+	    goto done;
     }
   ok:
     retval = 0;
@@ -1043,17 +1227,17 @@ yang_type_resolve(yang_stmt   *yorig,
  *   yang_stmt    *yrestype;
  *   int           options;
  *   cvec         *cvv = NULL;
- *   char         *pattern;
+ *   cvec         *patterns = cvec_new(0);
+ *   cvec         *regexps = cvec_new(0);
  *   uint8_t       fraction;
  *
- *   if (yang_type_get(ys, &type, &yrestype, &options, &cvv, &pattern, &fraction) < 0)
+ *   if (yang_type_get(ys, &type, &yrestype, &options, &cvv, 
+ *                     patterns, regexps, &fraction) < 0)
  *      goto err;
  *   if (yrestype == NULL) # unresolved
  *      goto err;
  *   if (options & YANG_OPTIONS_LENGTH != 0)
  *      printf("%d..%d\n", min , max);
- *   if (options & YANG_OPTIONS_PATTERN != 0)
- *      printf("regexp: %s\n", pattern);
  * @endcode
  * @param[in]  ys       yang-stmt, leaf or leaf-list
  * @param[out] origtype original type may be derived or built-in
@@ -1062,8 +1246,8 @@ yang_type_resolve(yang_stmt   *yorig,
  * @param[out] cvv      Cvec with min/max range or length. 
  *                      Present if options&YANG_OPTIONS_RANGE|_LENGTH.
  *                      Can be a vector if multiple ranges
- * @param[out] pattern  yang string pattern POSIX regexp patterns
- *                      Present if options&YANG_OPTIONS_PATTERN
+ * @param[out] pattern  yang cvec pattern POSIX regexp patterns
+ * @param[out] regexps  Initialized cvec of compiled regexps (if any)
  * @param[out] fraction for decimal64, how many digits after period
  *                      Present if options&YANG_OPTIONS_FRACTION_DIGITS
  * @retval      0       OK, but note that restype==NULL means not resolved.
@@ -1071,7 +1255,6 @@ yang_type_resolve(yang_stmt   *yorig,
  * The setting of the options argument has the following semantics:
  *   options&YANG_OPTIONS_RANGE or YANG_OPTIONS_LENGTH --> cvv is set containing
  *                   array of range_min, range_max cv:s
- *   options&YANG_OPTIONS_PATTERN --> pattern is set
  *   options&YANG_OPTIONS_FRACTION_DIGITS --> fraction is set
  * Note that the static output strings (type, pattern) should be copied if used asap.
  * Note also that for all pointer arguments, if NULL is given, no value is assigned.
@@ -1083,7 +1266,8 @@ yang_type_get(yang_stmt    *ys,
 	      yang_stmt   **yrestype, 
 	      int          *options, 
 	      cvec        **cvv, 
-	      char        **pattern,
+	      cvec         *patterns,
+	      cvec         *regexps,
 	      uint8_t      *fraction
     )
 {
@@ -1103,7 +1287,7 @@ yang_type_get(yang_stmt    *ys,
     if (origtype)
 	*origtype = type;
     if (yang_type_resolve(ys, ys, ytype, yrestype, 
-			  options, cvv, pattern, fraction) < 0)
+			  options, cvv, patterns, regexps, fraction) < 0)
 	goto done;
     clicon_debug(3, "%s: %s %s->%s", __FUNCTION__, ys->ys_argument, type, 
 		 *yrestype?(*yrestype)->ys_argument:"null");

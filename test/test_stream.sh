@@ -151,7 +151,7 @@ new "netconf NONEXIST subscription"
 expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>NONEXIST</stream></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></rpc-error></rpc-reply>]]>]]>$' $NCWAIT
 
 new "netconf EXAMPLE subscription with wrong date"
-expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream><startTime>kallekaka</startTime></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>startTime</bad-element></error-info><error-severity>error</error-severity><error-message>regexp match fail: "kallekaka" does not match' 0
+expectwait "$clixon_netconf -qf $cfg -y $fyang" '<rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream><startTime>kallekaka</startTime></create-subscription></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>startTime</bad-element></error-info><error-severity>error</error-severity><error-message>regexp match fail:' 0
 
 #new "netconf EXAMPLE subscription with replay"
 #NOW=$(date +"%Y-%m-%dT%H:%M:%S")

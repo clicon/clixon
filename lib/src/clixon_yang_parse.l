@@ -170,6 +170,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <KEYWORD>key              { BEGIN(STRING);  return K_KEY; }
 <KEYWORD>length           { BEGIN(STRING);  return K_LENGTH; }
 <KEYWORD>max-elements     { BEGIN(STRING);  return K_MAX_ELEMENTS; }
+<KEYWORD>modifier         { BEGIN(STRING);  return K_MODIFIER; }
 <KEYWORD>must             { BEGIN(STRING);  return K_MUST; }
 <KEYWORD>namespace        { BEGIN(STRING);  return K_NAMESPACE; }
 <KEYWORD>ordered-by       { BEGIN(STRING);  return K_ORDERED_BY; }

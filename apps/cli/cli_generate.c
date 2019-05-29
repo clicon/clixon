@@ -272,6 +272,42 @@ yang2cli_var_range(yang_stmt *ys,
     return retval;
 }
 
+/*! Generate CLI code for Yang variable pattern statement
+ * @param[in]  h        Clixon handle
+ * @param[in]  patterns Cvec of regexp patterns
+ * @param[out] cb       Buffer where cligen code is written
+ * @see cv_validate_pattern  for netconf validate code
+ */
+static int
+yang2cli_var_pattern(clicon_handle h,
+		     cvec         *patterns,
+		     cbuf         *cb)
+{
+    int     retval = -1;
+    char   *mode;
+    cg_var *cvp;
+    char   *pattern;
+    
+    mode = clicon_yang_regexp(h);
+    cvp = NULL; /* Loop over compiled regexps */
+    while ((cvp = cvec_each(patterns, cvp)) != NULL){
+	pattern = cv_string_get(cvp);
+	if (strcmp(mode, "posix") == 0){
+	    char   *posix = NULL;
+	    if (regexp_xsd2posix(pattern, &posix) < 0)
+		goto done;
+	    cprintf(cb, " regexp:\"%s\"", posix);
+	    if (posix)
+		free(posix);
+	}
+	else
+	    cprintf(cb, " regexp:\"%s\"", pattern);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /* Forward */
 static int yang2cli_stmt(clicon_handle h, yang_stmt *ys, 
 			 enum genmodel_type gt, int level, cbuf *cb);
@@ -289,7 +325,7 @@ static int yang2cli_var_union(clicon_handle h, yang_stmt *ys, char *origtype,
  * @param[in]  cvtype
  * @param[in]  options  Flags field of optional values, see YANG_OPTIONS_*
  * @param[in]  cvv      Cvec with array of range_min/range_max cv:s
- * @param[in]  pattern  String of POSIX regexp pattern
+ * @param[in]  patterns Cvec of regexp patterns
  * @param[in]  fraction for decimal64, how many digits after period
  * @param[out] cb       Buffer where cligen code is written
  * @see yang_type_resolve for options and other arguments
@@ -302,7 +338,7 @@ yang2cli_var_sub(clicon_handle h,
 		 enum cv_type  cvtype,
 		 int           options,
 		 cvec         *cvv,
-		 char         *pattern,
+		 cvec         *patterns,
 		 uint8_t       fraction_digits,
 		 cbuf         *cb
     )
@@ -358,19 +394,9 @@ yang2cli_var_sub(clicon_handle h,
 	if (yang2cli_var_range(ys, options, cvv, cb) < 0)
 	    goto done;
     }
-    if (options & YANG_OPTIONS_PATTERN){
-	char *mode;
-	mode = clicon_yang_regexp(h);
-	if (strcmp(mode, "posix") == 0){
-	    char *posix = NULL;
-	    if (regexp_xsd2posix(pattern, &posix) < 0)
-		goto done;
-	    cprintf(cb, " regexp:\"%s\"", posix);
-	    if (posix)
-		free(posix);
-	}
-	else
-	    cprintf(cb, " regexp:\"%s\"", pattern);
+    if (patterns && cvec_len(patterns)){
+	if (yang2cli_var_pattern(h, patterns, cb) < 0)
+	    goto done;
     }
     cprintf(cb, ">");
     if (helptext)
@@ -402,16 +428,20 @@ yang2cli_var_union_one(clicon_handle h,
     int          retval = -1;
     int          options = 0;
     cvec        *cvv = NULL; 
-    char        *pattern = NULL;
+    cvec        *patterns = NULL;
     uint8_t      fraction_digits = 0;
     enum cv_type cvtype;
     yang_stmt   *ytype; /* resolved type */
     char        *restype;
 
+    if ((patterns = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
     /* Resolve the sub-union type to a resolved type */
     if (yang_type_resolve(ys, ys, ytsub, /* in */
 			  &ytype, &options, /* resolved type */
-			  &cvv, &pattern, &fraction_digits) < 0)
+			  &cvv, patterns, NULL, &fraction_digits) < 0)
 	goto done;
     restype = ytype?yang_argument_get(ytype):NULL;
 
@@ -423,11 +453,13 @@ yang2cli_var_union_one(clicon_handle h,
 	if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
 	    goto done;
 	if ((retval = yang2cli_var_sub(h, ys, ytype, helptext, cvtype, 
-				       options, cvv, pattern, fraction_digits, cb)) < 0)
+				       options, cvv, patterns, fraction_digits, cb)) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (patterns)
+	cvec_free(patterns);
     return retval;
 }
 
@@ -494,15 +526,19 @@ yang2cli_var(clicon_handle h,
     yang_stmt    *yrestype; /* resolved type */
     char         *restype; /* resolved type */
     cvec         *cvv = NULL; 
-    char         *pattern = NULL;
+    cvec         *patterns = NULL;
     uint8_t       fraction_digits = 0;
     enum cv_type  cvtype;
     int           options = 0;
     int           completionp;
     char         *type;
 
+    if ((patterns = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
     if (yang_type_get(ys, &origtype, &yrestype, 
-		      &options, &cvv, &pattern, &fraction_digits) < 0)
+		      &options, &cvv, patterns, NULL, &fraction_digits) < 0)
 	goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
 
@@ -539,7 +575,7 @@ yang2cli_var(clicon_handle h,
 	if (completionp)
 	    cprintf(cb, "(");
 	if ((retval = yang2cli_var_sub(h, ys, yrestype, helptext, cvtype, 
-				       options, cvv, pattern, fraction_digits, cb)) < 0)
+				       options, cvv, patterns, fraction_digits, cb)) < 0)
 	    goto done;
 	if (completionp){
 	    if (cli_expand_var_generate(h, ys, cvtype, 
@@ -552,6 +588,8 @@ yang2cli_var(clicon_handle h,
     }
     retval = 0;
   done:
+    if (patterns)
+	cvec_free(patterns);
     return retval;
 }
 

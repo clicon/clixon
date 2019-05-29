@@ -3,6 +3,18 @@
 ## 3.10.0/4.0.0 (Upcoming)
 
 ### Major New features
+* Regexp improvements: Libxml2 XSD, multiple patterns, optimization
+  * Support for multiple patterns as described in RFC7950 Section 9.4.7
+  * Libxml2 support for full XSD matching as alternative to Posix translation
+    * Configure with: `./configure --with-libxml2`	
+    * Set `CLICON_YANG_REGEXP` to libxml2 (default is posix)
+    * Note you need to configure cligen as well with `--with-libxml2`
+  * Better compliance with XSD regexps in the default Posix translation regex mode
+    * Added `\p{L}` and `\p{N}`
+    * Added escaping of `$`
+  * Added clixon_util_regexp utility function
+  * Added extensive regexp test [test/test_pattern.sh] for both posix and libxml2
+  * Added regex cache to type resolution
 * Yang "min-element" and "max-element" feature supported
   * According to RFC 7950 7.7.4 and 7.7.5
   * See (tests)[test/test_minmax.sh]
@@ -54,6 +66,9 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* Added compiled regexp parameter as part of internal yang type resolution functions
+  * `yang_type_resolve()`, `yang_type_get()`
+* All internal `ys_populate_*()` functions (except ys_populate()) have switched parameters: `clicon_handle, yang_stmt *)`
 * Added clicon_handle as parameter to all validate functions
   * Just add `clixon_handle h` to all calls.
 * Clixon transaction mechanism has changed which may affect your backend plugin callbacks:
@@ -141,14 +156,6 @@
 
 ### Minor changes
 
-* Regexp improvements: Added libxml2 XSD regexp mode as alternative to posix translation
-  * Configure with: `./configure --with-libxml2`	
-  * Set `CLICON_YANG_REGEXP` to libxml2 (default is posix)
-  * Better compliance with XSD regexps (when transforming to Posix regexps)
-    * Added `\p{L}` and `\p{N}`
-    * Added escaping of `$`
-  * Added clixon_util_regexp utility function
-  * Added regexp test [test/test_pattern.sh] for both posix and libxml2
 * Yang state get improvements
   * Integrated state and config into same tree on retrieval, not separate trees
   * Added cli functions `cli_show_config_state()` and `cli_show_auto_state()` for showing combined config and state info.

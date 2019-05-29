@@ -95,7 +95,7 @@ xml_cv_cache(cxobj   *x,
 	goto ok;
     if ((y = xml_spec(x)) == NULL)
 	goto ok;
-    if (yang_type_get(y, NULL, &yrestype, &options, NULL, NULL, &fraction) < 0)
+    if (yang_type_get(y, NULL, &yrestype, &options, NULL, NULL, NULL, &fraction) < 0)
 	goto done;
     yang2cv_type(yang_argument_get(yrestype), &cvtype);
     if (cvtype==CGV_ERR){

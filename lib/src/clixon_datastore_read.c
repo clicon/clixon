@@ -437,7 +437,7 @@ xmldb_get_nocache(clicon_handle       h,
 	goto done;
 
     /* Add default values (if not set) */
-    if (xml_apply(xt, CX_ELMNT, xml_default, NULL) < 0)
+    if (xml_apply(xt, CX_ELMNT, xml_default, h) < 0)
     	goto done;
 #if 0 /* debug */
     if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
@@ -542,7 +542,7 @@ xmldb_get_cache(clicon_handle       h,
 	goto done;
     /* x1t is wrong here should be <config><system>.. but is <system>.. */
     /* XXX where should we apply default values once? */
-    if (xml_apply(x1t, CX_ELMNT, xml_default, NULL) < 0)
+    if (xml_apply(x1t, CX_ELMNT, xml_default, h) < 0)
 	goto done;
     
     /* Copy the matching parts of the (relevant) XML tree.
@@ -622,7 +622,7 @@ xmldb_get_zerocopy(clicon_handle       h,
 	xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
     /* Apply default values (removed in clear function) */
-    if (xml_apply(x0t, CX_ELMNT, xml_default, NULL) < 0)
+    if (xml_apply(x0t, CX_ELMNT, xml_default, h) < 0)
 	goto done;
     if (debug>1)
     	clicon_xml2file(stderr, x0t, 0, 1);
