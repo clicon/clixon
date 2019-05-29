@@ -33,7 +33,8 @@
  * Yang parser. Hopefully useful but not complete
  * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
  * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
-* 
+ * @note differences in double quoted strings: 1.1 does not allow \x, but 1.0
+ * does (where x is not n|t|"|\). See mode DQESC
  */
 
 %{
@@ -247,6 +248,18 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <DQESC>[nt"\\]            { BEGIN(_YY->yy_lex_state); 
                              clixon_yang_parselval.string = strdup(yytext); 
                              return CHARS; }
+<DQESC>[nt"\\]            { BEGIN(_YY->yy_lex_state); 
+                             clixon_yang_parselval.string = strdup(yytext); 
+                             return CHARS; }
+<DQESC>[^nt"\\]           { char *str = malloc(3);
+                            /* This is for Yang 1.0 double-quoted strings */
+                            BEGIN(_YY->yy_lex_state); 
+                            str[0] = '\\';
+                            str[1] = yytext[0];
+			    str[2] = '\0';
+                            clixon_yang_parselval.string = str; 
+                            return CHARS; }
+			     
 <COMMENT1>[^*\n]*        /* eat anything that's not a '*' */
 <COMMENT1>"*"+[^*/\n]*   /* eat up '*'s not followed by '/'s */
 <COMMENT1>"*"+"/"        BEGIN(_YY->yy_lex_state);

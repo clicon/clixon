@@ -79,7 +79,6 @@
  * \i letters + underscore and colon
  * \c XML Namechar, see: https://www.w3.org/TR/2008/REC-xml-20081126/#NT-NameChar
  *
- * Not implemented:
  * \p{X} category escape.  the ones identified in openconfig and yang-models are: 
  *   \p{L} Letters     [ultmo]?
  *   \p{M} Marks       [nce]?

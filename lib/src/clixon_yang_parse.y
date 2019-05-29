@@ -1288,6 +1288,7 @@ anyxml_substmt  : when_stmt          { clicon_debug(2,"anyxml-substmt -> when-st
               | description_stmt     { clicon_debug(2,"anyxml-substmt -> description-stmt"); }
               | reference_stmt       { clicon_debug(2,"anyxml-substmt -> reference-stmt"); }
               | ustring ':' ustring ';' { free($1); free($3); clicon_debug(2,"anyxml-substmt -> anyxml extension"); }
+              | unknown_stmt         { clicon_debug(2,"anyxml-substmt -> unknown-stmt");} 
               ;
 
 /* uses-stmt = uses-keyword identifier-ref-arg-str */
@@ -1728,7 +1729,8 @@ qstrings      : qstrings '+' qstring
 qstring        : '"' ustring '"'  { $$=$2; clicon_debug(2,"string-> \" ustring \"");}
                | '"' '"'  { $$=strdup(""); clicon_debug(2,"string-> \"  \"");} 
                | SQ ustring SQ  { $$=$2; clicon_debug(2,"string-> ' ustring '"); }
-  ;
+               | SQ SQ  { $$=strdup(""); clicon_debug(2,"string-> '  '");} 
+               ;
 
 /* unquoted string */
 ustring       : ustring CHARS
