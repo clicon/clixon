@@ -250,7 +250,6 @@ yang_type_cache_cp(yang_type_cache **ycnew,
     cvec      *cvv;
     cvec      *patterns = NULL;
     int        rxmode;
-    cvec      *regexps = NULL;
     uint8_t    fraction;
     yang_stmt *resolved;
 
@@ -258,19 +257,16 @@ yang_type_cache_cp(yang_type_cache **ycnew,
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto done;
     }
-    if ((regexps = cvec_new(0)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
-    }
-    yang_type_cache_get(ycold, &resolved, &options, &cvv, patterns, &rxmode, regexps, &fraction);
-    if (yang_type_cache_set(ycnew, resolved, options, cvv, patterns, rxmode, regexps, fraction) < 0)
+    /* Note, regexps are not copied since they are voids, if they were, they
+     * could not be freed in a simple way since copies are made at augment/group
+     */
+    yang_type_cache_get(ycold, &resolved, &options, &cvv, patterns, &rxmode, NULL, &fraction);
+    if (yang_type_cache_set(ycnew, resolved, options, cvv, patterns, rxmode, NULL, fraction) < 0)
 	goto done;
     retval = 0;
  done:
     if (patterns)
 	cvec_free(patterns);
-    if (regexps)
-	cvec_free(regexps);
     return retval;
 }
 
@@ -278,6 +274,7 @@ int
 yang_type_cache_free(yang_type_cache *ycache)
 {
     cg_var *cv;
+    void   *p;
     
     if (ycache->yc_cvv)
 	cvec_free(ycache->yc_cvv);
@@ -296,6 +293,10 @@ yang_type_cache_free(yang_type_cache *ycache)
 		break;
 	    default:
 		break;
+	    }
+	    if ((p = cv_void_get(cv)) != NULL){
+		free(p);
+		cv_void_set(cv, NULL);
 	    }
 	}
 	cvec_free(ycache->yc_regexps);
@@ -322,7 +323,7 @@ compile_pattern2regexp(clicon_handle h,
     int     retval = -1;
     cg_var *pcv; /* pattern cv */
     cg_var *rcv; /* regexp cv */
-    void   *re;
+    void   *re = NULL;
     int     ret;
     char   *pattern;
 
@@ -342,7 +343,9 @@ compile_pattern2regexp(clicon_handle h,
 	    clicon_err(OE_UNIX, errno, "cvec_add");
 	    goto done;
 	}
-	cv_void_set(rcv, re);
+	if (re != NULL)
+	    cv_void_set(rcv, re);
+	re = NULL;
 	/* invert pattern check */
 	if (cv_flag(pcv, V_INVERT))
 	    cv_flag_set(rcv, V_INVERT);
