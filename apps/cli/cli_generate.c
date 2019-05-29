@@ -287,21 +287,30 @@ yang2cli_var_pattern(clicon_handle h,
     char   *mode;
     cg_var *cvp;
     char   *pattern;
+    int     invert;
+    char   *posix;
     
     mode = clicon_yang_regexp(h);
     cvp = NULL; /* Loop over compiled regexps */
     while ((cvp = cvec_each(patterns, cvp)) != NULL){
 	pattern = cv_string_get(cvp);
+	invert = cv_flag(cvp, V_INVERT);
 	if (strcmp(mode, "posix") == 0){
-	    char   *posix = NULL;
+	    posix = NULL;
 	    if (regexp_xsd2posix(pattern, &posix) < 0)
 		goto done;
-	    cprintf(cb, " regexp:\"%s\"", posix);
-	    if (posix)
+	    cprintf(cb, " regexp:%s\"%s\"",
+		    invert?"!":"",
+		    posix);
+	    if (posix){
 		free(posix);
+		posix = NULL;
+	    }
 	}
 	else
-	    cprintf(cb, " regexp:\"%s\"", pattern);
+	    cprintf(cb, " regexp:%s\"%s\"",
+		    invert?"!":"",
+		    pattern);
     }
     retval = 0;
  done:

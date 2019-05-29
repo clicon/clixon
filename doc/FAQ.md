@@ -27,7 +27,6 @@
   * [How should I start the backend daemon?](#how-should-i-start-the-backend-daemon)
   * [Can I use systemd with Clixon?](#can-i-use-systemd-with-clixon)
   * [How can I add extra XML?](#how-can-i-add-extra-xml)
-  * [What about Regexps?](#what-about-regexps)
   * [I want to program. How do I extend the example?](#i-want-to-program-how-do-i-extend-the-example)
   * [How is a plugin initiated?](#how-is-a-plugin-initiated)
   * [How do I write a commit function?](#how-do-i-write-a-commit-function)
@@ -439,26 +438,6 @@ You add this via the -c option:
 The second way is by programming the plugin_reset() in the backend
 plugin. The example code contains an example on how to do this (see plugin_reset() in example_backend.c).
 
-## What about Regexps?
-
-Yang type patterns use regexps defined in [W3C XML XSD
-](http://www.w3.org/TR/2004/REC-xmlschema-2-20041028). XSD regexp:s are
-slightly different from POSIX regexp.
-
-lixon supports two regular expressions engines:
-* "Posix" which is the default method, _translates_ XSD regexp:s to posix before matching with the standard Linux regex engine. This translation is not complete but considered
-"good-enough" for most yang use-cases. For reference, all standard
-Yang models in [https://github.com/YangModels/yang] have been tested.
-* "Libxml2" which uses the XSD regex engine in Libxml2. This is a complete XSD engine but you need to compile and link with libxml2 which may add overhead.
-
-To use libxml2 in clixon you need enable libxml2 in both cligen and clixon:
-```
-> ./configure --with-libxml2 # both cligen and clixon
-```
-You then need to set the following configure option:
-```
-  <CLICON_YANG_REGEXP>libxml2</CLICON_YANG_REGEXP>
-```
 
 ## I want to program. How do I extend the example?
 See [../example/main](../example/main)

@@ -33,8 +33,9 @@
 
  * Yang type related functions
  * Part of this is type resolving which is pretty complex
- * 
- * (called at parse / set cache)
+ *                   +--> yang_type_cache_set
+ *                   +--> compile_pattern2regexp
+ * (called at parse) |
  * ys_resolve_type  --+     ys_populate_range, yang_enum_int_value(NULL)
  *                     \    |  cml
  *                      v   v  v
@@ -43,9 +44,10 @@
  * ^  ^                     ^  ^
  * |  |                     |  |
  * |  yang2cli_var          |  yang2cli_var_union_one
- * ys_cv_validate           ys_cv_validate_union_one
- * |
- * ys_populate_leaf, xml_cv_cache (NULL)
+ * ys_cv_validate----+      ys_cv_validate_union_one
+ * |                  \    /
+ * ys_populate_leaf,   +--> cv_validate1 --> cv_validate_pattern (exec regexps)
+ * xml_cv_cache (NULL)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -278,13 +280,15 @@ yang_type_cache_free(yang_type_cache *ycache)
     return 0;
 }
 
-/* Compile yang patterns in string form to regex compiled void* form
+/*! Compile yang patterns in string form to regex compiled void* form
  * and re-store into "patterns" cvec.
  * This is done here instead of deep in resolve code (resolve_restrictions)
  * since it id dependent on clicon_handle.
  * The downside is that all accesses to "patterns" must pass via the cache.
  * If calls to yang_type_resolve is made without the cache is set, will be
  * wrong.
+ * @see match_regexp  in cligen code
+ * @see yang_type_resolve_restrictions  where patterns is set
  */
 static int
 compile_pattern2regexp(clicon_handle h,
@@ -317,6 +321,9 @@ compile_pattern2regexp(clicon_handle h,
 	    goto done;
 	}
 	cv_void_set(rcv, re);
+	/* invert pattern check */
+	if (cv_flag(pcv, V_INVERT))
+	    cv_flag_set(rcv, V_INVERT);
     }
     retval = 1;
  done:
@@ -515,6 +522,8 @@ cv_validate_pattern(clicon_handle h,
 	re = cv_void_get(cvr);
 	if ((ret = regex_exec(h, re, str?str:"")) < 0)
 	    goto done;
+	if (cv_flag(cvr, V_INVERT))
+	    ret = !ret; /* swap 0 and 1 */
 	if (ret == 0){
 	    if (reason)
 		*reason = cligen_reason("regexp match fail: pattern does not match %s",
@@ -1062,11 +1071,11 @@ yang_find_identity(yang_stmt *ys,
  * @retval     0         OK. 
  */
 static int
-resolve_restrictions(yang_stmt   *ytype,
-		     int         *options, 
-		     cvec       **cvv, 
-		     cvec        *regexps,
-		     uint8_t     *fraction)
+yang_type_resolve_restrictions(yang_stmt   *ytype,
+			       int         *options, 
+			       cvec       **cvv, 
+			       cvec        *regexps,
+			       uint8_t     *fraction)
 {
     int        retval = -1;
     yang_stmt *ys;
@@ -1094,6 +1103,9 @@ resolve_restrictions(yang_stmt   *ytype,
 		goto done;
 	    }
 	    pattern = ys->ys_argument; /* clear text pattern */
+	    /* Check 1.1 invert pattern */
+	    if (yang_find(ys, Y_MODIFIER, "invert-match") != NULL)
+		cv_flag_set(cv, V_INVERT);
 	    cv_string_set(cv, pattern);
 	}
     }
@@ -1165,7 +1177,7 @@ yang_type_resolve(yang_stmt   *yorig,
     /* Check if type is basic type. If so, return that */
     if ((prefix == NULL && yang_builtin(type))){
 	*yrestype = ytype; 
-	if (resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
+	if (yang_type_resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1210,7 +1222,7 @@ yang_type_resolve(yang_stmt   *yorig,
 			      fraction) < 0)
 	    goto done;
 	/* appends patterns, overwrites others if any */
-	if (resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
+	if (yang_type_resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
 	    goto done;
     }
   ok:

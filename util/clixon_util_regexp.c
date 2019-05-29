@@ -96,8 +96,8 @@ regex_posix(char *regexp,
 	    int   nr,
 	    int   debug)
 {
-    int        retval = -1;
-    char       *posix = NULL;
+    int     retval = -1;
+    char   *posix = NULL;
     char    pattern[1024];
     int     status = 0;
     regex_t re;

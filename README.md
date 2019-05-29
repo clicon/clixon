@@ -115,10 +115,26 @@ However, the following YANG syntax modules are not implemented (reference to RFC
 - refine (7.13.2)
 - status (7.21.2)
 - extension (7.19)
-- modifier (9.4.6)
 - YIN (13)
 - Yang extended Xpath functions: re-match(), deref)(), derived-from(), derived-from-or-self(), enum-value(), bit-is-set() (10.2-10.6)
 - Default values on leaf-lists are not supported (7.7.2)
+
+### Yang patterns
+Yang type patterns use regexps defined in [W3C XML XSD](http://www.w3.org/TR/2004/REC-xmlschema-2-20041028). XSD regexp:s are
+slightly different from POSIX regexp.
+
+Clixon supports two regular expressions engines:
+  * "Posix" which is the default method, which _translates_ XSD regexp:s to posix before matching with the standard Linux regex engine. This translation is not complete but can be considered "good-enough" for most yang use-cases. For reference, all standard Yang models in [https://github.com/YangModels/yang] have been tested.
+  * "Libxml2" which uses the XSD regex engine in Libxml2. This is a complete XSD engine but you need to compile and link with libxml2 which may add overhead.
+
+To use libxml2 in clixon you need enable libxml2 in both cligen and clixon:
+```
+> ./configure --with-libxml2 # both cligen and clixon
+```
+You then need to set the following configure option:
+```
+  <CLICON_YANG_REGEXP>libxml2</CLICON_YANG_REGEXP>
+```
 
 ## XML
 

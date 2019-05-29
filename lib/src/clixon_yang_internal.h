@@ -41,10 +41,12 @@
 
 
 /*
- * Actually cligen variable stuff XXX
+ * Clixon-specific cligen variable (cv) flags
+ * CLIgen flags defined are in the range 0x01 -0x0f
+ * An application can use any flags above that
+ * @see cv_flag
  */
-#define V_UNIQUE	0x01	/* Variable flag */
-#define V_UNSET		0x08	/* Variable is unset, ie no default */
+#define V_UNSET	  0x10	/* Used by XML code to denote a value is not default */
 
 
 #define YANG_FLAG_MARK 0x01  /* Marker for dynamic algorithms, eg expand */

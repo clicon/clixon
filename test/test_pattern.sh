@@ -64,11 +64,9 @@ module pattern{
          type string {
             length "1..max";
             pattern '[a-zA-Z_][a-zA-Z0-9\-_.]*';
-/*
             pattern '[xX][mM][lL].*' {
                modifier invert-match;
             }
-*/
          }
       }
       typedef twomatchtype {
@@ -409,7 +407,7 @@ testrun rfc2 0 'xx00'
 new "Test for RFC7950 Sec 9.4.7 pattern example 3 (invert match)"
 testrun rfc3 1 'enabled'
 testrun rfc3 0 '10-mbit'
-#testrun rfc3 0 'xml-element' # invert-match dont work
+testrun rfc3 0 'xml-element' # invert: dont match xml
 
 new "Test for two patterns"
 testrun 'twomatch' 1 'gksdhfsakjhdksa'
@@ -716,6 +714,9 @@ expectfn "$clixon_cli -1f $cfg -l o set c rfc3 enabled" 0 '^$'
 
 new "CLI tests for RFC7950 Sec 9.4.7 ex 3 10-mbit (should fail)"
 expectfn "$clixon_cli -1f $cfg -l o set c rfc3 10-mbit" 255 '^CLI syntax error:'
+
+new "CLI tests for RFC7950 Sec 9.4.7 ex 3 xml-element (should fail)"
+expectfn "$clixon_cli -1f $cfg -l o set c rfc3 xml-element" 255 '^CLI syntax error:'
 
 new "CLI tests for two patterns gksdhfsakjhdks"
 expectfn "$clixon_cli -1f $cfg -l o set c twomatch gksdhfsakjhdks" 0 '^$'

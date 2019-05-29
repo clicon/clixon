@@ -1,10 +1,11 @@
 # Clixon Changelog
 
-## 3.10.0/4.0.0 (Upcoming)
+## 4.0.0 (Upcoming)
 
 ### Major New features
 * Regexp improvements: Libxml2 XSD, multiple patterns, optimization
   * Support for multiple patterns as described in RFC7950 Section 9.4.7
+  * Support for inverted patterns as described in RFC7950 Section 9.4.6
   * Libxml2 support for full XSD matching as alternative to Posix translation
     * Configure with: `./configure --with-libxml2`	
     * Set `CLICON_YANG_REGEXP` to libxml2 (default is posix)

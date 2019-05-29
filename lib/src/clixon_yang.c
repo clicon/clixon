@@ -1368,8 +1368,6 @@ ys_populate_leaf(clicon_handle h,
     if (yparent && yparent->ys_keyword == Y_LIST){
 	if ((ret = yang_key_match(yparent, ys->ys_argument)) < 0)
 	    goto done;
-	if (ret == 1)
-	    cv_flag_set(cv, V_UNIQUE);
     }
     ys->ys_cv = cv;
     retval = 0;
