@@ -82,6 +82,14 @@ enum datastore_cache{
     DATASTORE_CACHE_ZEROCOPY
 };
 
+/*! yang clixon regexp engine
+ * @see regexp_mode in clixon-config.yang
+ */
+enum regexp_mode{
+    REGEXP_POSIX,
+    REGEXP_LIBXML2
+};
+
 /*
  * Prototypes
  */
@@ -129,9 +137,6 @@ static inline char *clicon_yang_module_main(clicon_handle h){
 static inline char *clicon_yang_module_revision(clicon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MODULE_REVISION");
 }
-static inline char *clicon_yang_regexp(clicon_handle h){
-    return clicon_option_str(h, "CLICON_YANG_REGEXP");
-}
 static inline char *clicon_backend_dir(clicon_handle h){
     return clicon_option_str(h, "CLICON_BACKEND_DIR");
 }
@@ -176,7 +181,7 @@ int   clicon_sock_port(clicon_handle h);
 int   clicon_autocommit(clicon_handle h);
 int   clicon_startup_mode(clicon_handle h);
 enum datastore_cache clicon_datastore_cache(clicon_handle h);
-
+enum regexp_mode clicon_yang_regexp(clicon_handle h);
 /*-- Specific option access functions for non-yang options --*/
 int clicon_quiet_mode(clicon_handle h);
 int clicon_quiet_mode_set(clicon_handle h, int val);

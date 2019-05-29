@@ -498,7 +498,7 @@ main(int    argc,
 	usage(h, argv[0]);
 
 #ifndef HAVE_LIBXML2
-    if (strcmp(clicon_yang_regexp(h), "libxml2")==0){
+    if (clicon_yang_regexp(h) ==  REGEXP_LIBXML2){
 	clicon_err(OE_FATAL, 0, "CLICON_YANG_REGEXP set to libxml2, but HAVE_LIBXML2 not set (Either change CLICON_YANG_REGEXP to posix, or run: configure --with-libxml2))");
 	goto done;
     }

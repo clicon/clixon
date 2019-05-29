@@ -61,6 +61,7 @@ struct yang_type_cache{
                                LENGTH|RANGE. Can be a vector if multiple 
                                ranges*/
     cvec      *yc_patterns; /* list of regexp, if cvec_len() > 0 */
+    int        yc_rxmode; /* need to store mode for freeing since handle may not be available */
     cvec      *yc_regexps;  /* list of _compiled_ regexp, if cvec_len() > 0 */
     uint8_t    yc_fraction; /* Fraction digits for decimal64 (if 
                                YANG_OPTIONS_FRACTION_DIGITS */

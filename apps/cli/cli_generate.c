@@ -284,7 +284,7 @@ yang2cli_var_pattern(clicon_handle h,
 		     cbuf         *cb)
 {
     int     retval = -1;
-    char   *mode;
+    enum regexp_mode mode;
     cg_var *cvp;
     char   *pattern;
     int     invert;
@@ -295,7 +295,7 @@ yang2cli_var_pattern(clicon_handle h,
     while ((cvp = cvec_each(patterns, cvp)) != NULL){
 	pattern = cv_string_get(cvp);
 	invert = cv_flag(cvp, V_INVERT);
-	if (strcmp(mode, "posix") == 0){
+	if (mode == REGEXP_POSIX){
 	    posix = NULL;
 	    if (regexp_xsd2posix(pattern, &posix) < 0)
 		goto done;

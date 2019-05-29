@@ -640,8 +640,8 @@ static const map_str2int datastore_cache_map[] = {
     {NULL,                    -1}
 };
 
-/*! How to generate and show CLI syntax: VARS|ALL 
- * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL_TYPE
+/*! Which datastore cache method to use
+ * @see clixon-config@<date>.yang CLICON_DATASTORE_CACHE
  */
 enum datastore_cache
 clicon_datastore_cache(clicon_handle h)
@@ -654,6 +654,25 @@ clicon_datastore_cache(clicon_handle h)
 	return clicon_str2int(datastore_cache_map, str);
 }
 
+static const map_str2int yang_regexp_map[] = {
+    {"posix",               REGEXP_POSIX},
+    {"libxml2",             REGEXP_LIBXML2},
+    {NULL,                 -1}
+};
+
+/*! Which Yang regexp/pattern engine to use
+ * @see clixon-config@<date>.yang CLICON_YANG_REGEXP
+ */
+enum regexp_mode
+clicon_yang_regexp(clicon_handle h)
+{
+    char *str;
+
+    if ((str = clicon_option_str(h, "CLICON_YANG_REGEXP")) == NULL)
+	return REGEXP_POSIX;
+    else
+	return clicon_str2int(yang_regexp_map, str);
+}
 
 /*---------------------------------------------------------------------
  * Specific option access functions for non-yang options

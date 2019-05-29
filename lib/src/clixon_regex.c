@@ -218,21 +218,21 @@ regex_compile(clicon_handle h,
 	      char         *regexp,
 	      void        **recomp)
 {
-    int   retval = -1;
-    char *mode;
-    char *posix = NULL;    /* Transform to posix regex */
+    int              retval = -1;
+    char            *posix = NULL;    /* Transform to posix regex */
 
-    mode = clicon_yang_regexp(h);
-    if (strcmp(mode, "posix") == 0){
+    switch (clicon_yang_regexp(h)){
+    case REGEXP_POSIX:
 	if (regexp_xsd2posix(regexp, &posix) < 0)
 	    goto done;
 	retval = cligen_regex_posix_compile(posix, recomp);
-    }
-    else if (strcmp(mode, "libxml2") == 0)
+	break;
+    case REGEXP_LIBXML2:
 	retval = cligen_regex_libxml2_compile(regexp, recomp);
-    else{
-    	clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %s", mode);
-	goto done;
+	break;
+    default:
+    	clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d", clicon_yang_regexp(h));
+	break;
     }
     /* retval from fns above */
  done:
@@ -242,7 +242,9 @@ regex_compile(clicon_handle h,
 }
 
 /*! Execution of (pre-compiled) regular expression / pattern
- * @param[in]  h   Clicon handle
+ * @param[in]  h       Clicon handle
+ * @param[in]  recomp  Compiled regular expression 
+ * @param[in]  string  Content string to match
  */
 int
 regex_exec(clicon_handle h,
@@ -250,15 +252,43 @@ regex_exec(clicon_handle h,
 	   char         *string)
 {
     int   retval = -1;
-    char *mode;
 
-    mode = clicon_yang_regexp(h);
-    if (strcmp(mode, "posix") == 0)
+    switch (clicon_yang_regexp(h)){
+    case REGEXP_POSIX:
 	retval = cligen_regex_posix_exec(recomp, string);
-    else if (strcmp(mode, "libxml2") == 0)
+	break;
+    case REGEXP_LIBXML2:
 	retval = cligen_regex_libxml2_exec(recomp, string);
-    else{
-    	clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %s", mode);
+	break;
+    default:
+    	clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d",
+		   clicon_yang_regexp(h));
+	goto done;
+    }
+    /* retval from fns above */
+ done:
+    return retval;
+}
+
+/*! Free of (pre-compiled) regular expression / pattern
+ * @param[in]  h       Clicon handle
+ * @param[in]  recomp  Compiled regular expression 
+ */
+int
+regex_free(clicon_handle h,
+	   void         *recomp)
+{
+    int   retval = -1;
+
+    switch (clicon_yang_regexp(h)){
+    case REGEXP_POSIX:
+	retval = cligen_regex_posix_free(recomp);
+	break;
+    case REGEXP_LIBXML2:
+	retval = cligen_regex_libxml2_free(recomp);
+	break;
+    default:
+    	clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d", clicon_yang_regexp(h));
 	goto done;
     }
     /* retval from fns above */

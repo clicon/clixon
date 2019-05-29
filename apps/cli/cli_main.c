@@ -446,7 +446,7 @@ main(int argc, char **argv)
     if (help)
 	usage(h, argv[0]);
 
-    if (strcmp(clicon_yang_regexp(h), "libxml2")==0){
+    if (clicon_yang_regexp(h) == REGEXP_LIBXML2){
 #ifdef HAVE_LIBXML2
 	/* Enable XSD libxml2 regex engine */
 	cligen_regex_xsd_set(cli_cligen(h), 1);

@@ -155,6 +155,7 @@ yang_builtin(char *type)
 }
 
 /*! Set type cache for yang type
+ * @param[in] rxmode  Kludge to know which regexp engine is used
  */
 int
 yang_type_cache_set(yang_type_cache **ycache0,
@@ -162,6 +163,7 @@ yang_type_cache_set(yang_type_cache **ycache0,
 		    int               options, 
 		    cvec             *cvv, 
 		    cvec             *patterns,
+		    int               rxmode,
 		    cvec             *regexps,
 		    uint8_t           fraction)
 {
@@ -187,6 +189,7 @@ yang_type_cache_set(yang_type_cache **ycache0,
 	clicon_err(OE_UNIX, errno, "cvec_dup");
 	goto done;
     }
+    ycache->yc_rxmode = rxmode;
     if (regexps && (ycache->yc_regexps  = cvec_dup(regexps)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_dup");
 	goto done;
@@ -206,6 +209,7 @@ yang_type_cache_get(yang_type_cache *ycache,
 		    int             *options, 
 		    cvec           **cvv, 
 		    cvec            *patterns,
+		    int             *rxmode,
 		    cvec            *regexps,
 		    uint8_t         *fraction)
 {
@@ -228,6 +232,8 @@ yang_type_cache_get(yang_type_cache *ycache,
 	while ((cv = cvec_each(ycache->yc_regexps, cv)) != NULL)
 	    cvec_append_var(regexps, cv);
     }
+    if (rxmode)
+	*rxmode = ycache->yc_rxmode;
     if (fraction)
 	*fraction = ycache->yc_fraction;
     retval = 0;
@@ -243,6 +249,7 @@ yang_type_cache_cp(yang_type_cache **ycnew,
     int        options;
     cvec      *cvv;
     cvec      *patterns = NULL;
+    int        rxmode;
     cvec      *regexps = NULL;
     uint8_t    fraction;
     yang_stmt *resolved;
@@ -255,8 +262,8 @@ yang_type_cache_cp(yang_type_cache **ycnew,
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto done;
     }
-    yang_type_cache_get(ycold, &resolved, &options, &cvv, patterns, regexps, &fraction);
-    if (yang_type_cache_set(ycnew, resolved, options, cvv, patterns, regexps, fraction) < 0)
+    yang_type_cache_get(ycold, &resolved, &options, &cvv, patterns, &rxmode, regexps, &fraction);
+    if (yang_type_cache_set(ycnew, resolved, options, cvv, patterns, rxmode, regexps, fraction) < 0)
 	goto done;
     retval = 0;
  done:
@@ -270,12 +277,29 @@ yang_type_cache_cp(yang_type_cache **ycnew,
 int
 yang_type_cache_free(yang_type_cache *ycache)
 {
+    cg_var *cv;
+    
     if (ycache->yc_cvv)
 	cvec_free(ycache->yc_cvv);
     if (ycache->yc_patterns)
 	cvec_free(ycache->yc_patterns);
-    if (ycache->yc_regexps)
+    if (ycache->yc_regexps){
+	cv = NULL;
+	while ((cv = cvec_each(ycache->yc_regexps, cv)) != NULL){
+	    /* need to store mode since clicon_handle is not available */
+	    switch (ycache->yc_rxmode){
+	    case REGEXP_POSIX:
+		cligen_regex_posix_free(cv_void_get(cv));
+		break;
+	    case REGEXP_LIBXML2:
+		cligen_regex_libxml2_free(cv_void_get(cv));
+		break;
+	    default:
+		break;
+	    }
+	}
 	cvec_free(ycache->yc_regexps);
+    }
     free(ycache);
     return 0;
 }
@@ -304,8 +328,6 @@ compile_pattern2regexp(clicon_handle h,
 
     pcv = NULL;
     while ((pcv = cvec_each(patterns, pcv)) != NULL){
-	if (cv_type_get(pcv) == CGV_VOID)
-	    continue; /* already compiled */
 	pattern = cv_string_get(pcv);
 	/* Compile yang pattern. handle necessary to select regex engine */
 	if ((ret = regex_compile(h, pattern, &re)) < 0)
@@ -380,7 +402,7 @@ ys_resolve_type(yang_stmt    *ys,
      */
     if (yang_type_cache_set(&ys->ys_typecache, 
 			    resolved, options, cvv,
-			    patterns, regexps,
+			    patterns, clicon_yang_regexp(h), regexps,
 			    fraction) < 0)
 	goto done;
     retval = 0;
@@ -1169,7 +1191,7 @@ yang_type_resolve(yang_stmt   *yorig,
     /* Cache does not work for eg string length 32? */
     if (/*!yang_builtin(type) &&*/ ytype->ys_typecache != NULL){
 	if (yang_type_cache_get(ytype->ys_typecache, yrestype,
-				options, cvv, patterns, regexps, fraction) < 0)
+				options, cvv, patterns, NULL, regexps, fraction) < 0)
 	    goto done;
 	goto ok;
     }
