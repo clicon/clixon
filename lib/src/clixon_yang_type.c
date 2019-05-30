@@ -34,7 +34,6 @@
  * Yang type related functions
  * Part of this is type resolving which is pretty complex
  *                   +--> yang_type_cache_set
- *                   +--> compile_pattern2regexp
  * (called at parse) |
  * ys_resolve_type  --+     ys_populate_range, yang_enum_int_value(NULL)
  *                     \    |  cml
@@ -44,10 +43,21 @@
  * ^  ^                     ^  ^
  * |  |                     |  |
  * |  yang2cli_var          |  yang2cli_var_union_one
- * ys_cv_validate----+      ys_cv_validate_union_one
- * |                  \    /
- * ys_populate_leaf,   +--> cv_validate1 --> cv_validate_pattern (exec regexps)
- * xml_cv_cache (NULL)
+ * ys_cv_validate---+      ys_cv_validate_union_one
+ * |                 \    /
+ * |                  \  /    yang_type_cache_regex_set
+ * ys_populate_leaf,   +--> compile_pattern2regexp (compile regexps)
+ * xml_cv_cache (NULL) +--> cv_validate1 --> cv_validate_pattern (exec regexps)
+ *
+ * NOTE
+ * 1) ys_cv_validate/ys_cv_validate_union_one and 
+ *    yang2cli_var/yang2cli_var_union_one can unify?
+ * 2) Cache of regex is set in ys_cv_validate - not in ys_reolve_parse
+ *    This is because trees are copied in yang_parse_post after ys_reolve_type
+ *    is called, and regexps (void*) cannot be copied (COMPLEX)
+ * 3) We know I think when cache is set and when it is not set in the calls
+ *    to yang_type_resolve. maybe we should make code easier by a separate
+ *    yang_type_resolve_cache() call?
  */
 
 #ifdef HAVE_CONFIG_H
@@ -156,15 +166,14 @@ yang_builtin(char *type)
 
 /*! Set type cache for yang type
  * @param[in] rxmode  Kludge to know which regexp engine is used
+ * @see yang_type_cache_regexp_set where cache is extended w compiled regexps
  */
-int
+static int
 yang_type_cache_set(yang_type_cache **ycache0,
 		    yang_stmt        *resolved,
 		    int               options, 
 		    cvec             *cvv, 
 		    cvec             *patterns,
-		    int               rxmode,
-		    cvec             *regexps,
 		    uint8_t           fraction)
 {
     int              retval = -1;
@@ -189,12 +198,33 @@ yang_type_cache_set(yang_type_cache **ycache0,
 	clicon_err(OE_UNIX, errno, "cvec_dup");
 	goto done;
     }
+    ycache->yc_fraction  = fraction;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Extend yang type cache with compiled regexps
+ * Compiled Regexps are computed in validate code - after initial cache set
+ * @param[in] regexps   
+ */
+static int
+yang_type_cache_regexp_set(yang_stmt *ytype,
+			   int        rxmode,
+			   cvec      *regexps)
+{
+    int               retval = -1;
+    yang_type_cache  *ycache;
+
+    assert(regexps);
+    assert(yang_keyword_get(ytype) == Y_TYPE);
+    assert((ycache = ytype->ys_typecache) != NULL);
+    assert(ycache->yc_regexps == NULL);
     ycache->yc_rxmode = rxmode;
-    if (regexps && (ycache->yc_regexps  = cvec_dup(regexps)) == NULL){
+    if ((ycache->yc_regexps  = cvec_dup(regexps)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_dup");
 	goto done;
     }
-    ycache->yc_fraction  = fraction;
     retval = 0;
  done:
     return retval;
@@ -203,7 +233,7 @@ yang_type_cache_set(yang_type_cache **ycache0,
 /*! Get individual fields (direct/destructively) from yang type cache. 
  * @param[out] patterns Initialized cvec of regexp patterns strings
  */
-int
+static int
 yang_type_cache_get(yang_type_cache *ycache,
 		    yang_stmt      **resolved,
 		    int             *options, 
@@ -249,7 +279,6 @@ yang_type_cache_cp(yang_type_cache **ycnew,
     int        options;
     cvec      *cvv;
     cvec      *patterns = NULL;
-    int        rxmode;
     uint8_t    fraction;
     yang_stmt *resolved;
 
@@ -260,8 +289,8 @@ yang_type_cache_cp(yang_type_cache **ycnew,
     /* Note, regexps are not copied since they are voids, if they were, they
      * could not be freed in a simple way since copies are made at augment/group
      */
-    yang_type_cache_get(ycold, &resolved, &options, &cvv, patterns, &rxmode, NULL, &fraction);
-    if (yang_type_cache_set(ycnew, resolved, options, cvv, patterns, rxmode, NULL, fraction) < 0)
+    yang_type_cache_get(ycold, &resolved, &options, &cvv, patterns, NULL, NULL, &fraction);
+    if (yang_type_cache_set(ycnew, resolved, options, cvv, patterns, fraction) < 0)
 	goto done;
     retval = 0;
  done:
@@ -365,12 +394,11 @@ int
 ys_resolve_type(yang_stmt    *ys, 
 		void         *arg)
 {
-    clicon_handle     h = (clicon_handle)arg;
+    //    clicon_handle     h = (clicon_handle)arg;
     int               retval = -1;
     int               options = 0x0;
     cvec             *cvv = NULL;
     cvec             *patterns = NULL;
-    cvec             *regexps = NULL;
     uint8_t           fraction = 0;
     yang_stmt        *resolved = NULL;
 
@@ -379,8 +407,8 @@ ys_resolve_type(yang_stmt    *ys,
 	goto done;
     }
     if ((patterns = cvec_new(0)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
+       clicon_err(OE_UNIX, errno, "cvec_new");
+       goto done;
     }
     /* Recursively resolve ys -> resolve with restrictions(options, etc) 
      * Note that the resolved type could be ys itself.
@@ -390,30 +418,17 @@ ys_resolve_type(yang_stmt    *ys,
 			  &options, &cvv, patterns, NULL, &fraction) < 0)
 	goto done;
 
-    /* If pattern strings, then compile regexps as well */
-    if (cvec_len(patterns)){
-	if ((regexps = cvec_new(0)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cvec_new");
-	    goto done;
-	}
-	/* Compile from pattern strings to compiled regexps */
-	if (compile_pattern2regexp(h, patterns, regexps) < 1)
-	    goto done;
-    }
     /* Cache the type resolving locally. Only place where this is done. 
      * Why not do it in yang_type_resolve? (compile regexps needs clicon_handle)
      */
     if (yang_type_cache_set(&ys->ys_typecache, 
 			    resolved, options, cvv,
-			    patterns, clicon_yang_regexp(h), regexps,
-			    fraction) < 0)
+			    patterns, fraction) < 0)
 	goto done;
     retval = 0;
  done:
     if (patterns)
 	cvec_free(patterns);
-    if (regexps)
-	cvec_free(regexps);
     return retval;
 }
 
@@ -828,14 +843,6 @@ ys_cv_validate_union_one(clicon_handle h,
     if (yang_type_resolve(ys, ys, yt, &yrt, &options, &cvv, patterns, regexps,
 			  &fraction) < 0)
 	goto done;
-    /* The regexp cache may be invalidated, in that case re-compile
-     * eg due to copying
-     */
-    if (cvec_len(patterns)!=0 && cvec_len(regexps)==0){
-	if (compile_pattern2regexp(h, patterns, regexps) < 1)
-	    goto done;
-	/* XXX reset cache? */
-    }
     restype = yrt?yrt->ys_argument:NULL;
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
 	if ((retval = ys_cv_validate_union(h, ys, reason, yrt, type, val)) < 0)
@@ -855,6 +862,17 @@ ys_cv_validate_union_one(clicon_handle h,
 	}
 	if (retval == 0)
 	    goto done;
+	/* The regexp cache may be invalidated, in that case re-compile
+	 * eg due to copying
+	 */
+	if (cvec_len(patterns)!=0 && cvec_len(regexps)==0){
+	    if (compile_pattern2regexp(h, patterns, regexps) < 1)
+		goto done;
+	    if (yang_type_cache_regexp_set(yt,
+					   clicon_yang_regexp(h),
+					   regexps) < 0)
+		goto done;
+	}
 	if ((retval = cv_validate1(h, cvt, cvtype, options, cvv, 
 				   regexps, yrt, restype, reason)) < 0)
 	    goto done;
@@ -968,15 +986,6 @@ ys_cv_validate(clicon_handle h,
 		      patterns, regexps,
 		      &fraction) < 0)
 	goto done;
-    /* The regexp cache may be invalidated, in that case re-compile
-     * eg due to copying
-     */
-    if (cvec_len(patterns)!=0 && cvec_len(regexps)==0){
-	fprintf(stderr, "%s cache miss\n", __FUNCTION__);
-	if (compile_pattern2regexp(h, patterns, regexps) < 1)
-	    goto done;
-	/* XXX reset cache? */
-    }
     restype = yrestype?yrestype->ys_argument:NULL;
     if (clicon_type2cv(type, restype, ys, &cvtype) < 0)
 	goto done;
@@ -999,14 +1008,28 @@ ys_cv_validate(clicon_handle h,
 	    goto done;
 	retval = retval2; /* invalid (0) with latest reason or valid 1 */
     }
-    else
+    else{
+	/* The regexp cache may be invalidated, in that case re-compile
+	 * eg due to copying
+	 */
+	if (cvec_len(patterns)!=0 && cvec_len(regexps)==0){
+	    yang_stmt      *yt;
+	    if (compile_pattern2regexp(h, patterns, regexps) < 1)
+		goto done;
+	    yt = yang_find(ys, Y_TYPE, NULL);
+	    if (yang_type_cache_regexp_set(yt,
+					   clicon_yang_regexp(h),
+					   regexps) < 0)
+		goto done;
+	}
 	if ((retval = cv_validate1(h, cv, cvtype, options, cvv,
 				   regexps, yrestype, restype, reason)) < 0)
 	    goto done;
+    }
   done:
     if (regexps)
 	cvec_free(regexps);
-    if (regexps)
+    if (patterns)
 	cvec_free(patterns);
     if (cvt)
 	cv_free(cvt);
@@ -1223,7 +1246,7 @@ yang_type_resolve(yang_stmt   *yorig,
     type      = yarg_id(ytype);     /* This is the type to resolve */
     prefix    = yarg_prefix(ytype); /* And this its prefix */
     /* Cache does not work for eg string length 32? */
-    if (/*!yang_builtin(type) &&*/ ytype->ys_typecache != NULL){
+    if (ytype->ys_typecache != NULL){
 	if (yang_type_cache_get(ytype->ys_typecache, yrestype,
 				options, cvv, patterns, NULL, regexps, fraction) < 0)
 	    goto done;

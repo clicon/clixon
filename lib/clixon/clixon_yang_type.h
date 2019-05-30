@@ -54,15 +54,6 @@ typedef struct yang_type_cache yang_type_cache;
 /*
  * Prototypes
  */
-int        yang_type_cache_set(yang_type_cache **ycache, 	    
-			       yang_stmt *resolved, int options,
-			       cvec *cvv, cvec *patterns,
-			       int rxmode, cvec *regexps,
-			       uint8_t fraction);
-int        yang_type_cache_get(yang_type_cache *ycache, yang_stmt **resolved,
-			       int *options, cvec **cvv, cvec *patterns,
-			       int *rxmode, 
-			       cvec *regexps, uint8_t *fraction);
 int        yang_type_cache_cp(yang_type_cache **ycnew, yang_type_cache *ycold);
 int        yang_type_cache_free(yang_type_cache *ycache);
 int        ys_resolve_type(yang_stmt *ys, void *arg);
