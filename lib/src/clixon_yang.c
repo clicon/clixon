@@ -2292,7 +2292,7 @@ yang_parse_find_match(clicon_handle h,
  * (cloned from cligen)
  * @param[in] h        CLICON handle
  * @param[in] filename Name of file
- * @param[in] ysp      Yang specification. Should ave been created by caller using yspec_new
+ * @param[in] ysp      Yang specification. Should have been created by caller using yspec_new
  * @retval ymod        Top-level yang (sub)module
  * @retval NULL        Error encountered
 
@@ -2305,9 +2305,9 @@ yang_parse_find_match(clicon_handle h,
  *   yang_parse_str         # Set up yacc parser and call it given a string
  *   clixon_yang_parseparse # Actual yang parsing using yacc
  */
-static yang_stmt *
-yang_parse_filename(const char   *filename, 
-		    yang_stmt    *ysp)
+yang_stmt *
+yang_parse_filename(const char *filename, 
+		    yang_stmt  *ysp)
 {
     yang_stmt    *ymod = NULL;
     int           fd = -1;

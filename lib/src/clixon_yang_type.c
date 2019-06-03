@@ -48,6 +48,7 @@
  * |                  \  /    yang_type_cache_regex_set
  * ys_populate_leaf,   +--> compile_pattern2regexp (compile regexps)
  * xml_cv_cache (NULL) +--> cv_validate1 --> cv_validate_pattern (exec regexps)
+ * yang_type2cv (simplified)
  *
  * NOTE
  * 1) ys_cv_validate/ys_cv_validate_union_one and 
@@ -1387,3 +1388,24 @@ yang_type_get(yang_stmt    *ys,
     return retval;
 }
 
+/*! Utility function to translate a leaf/leaf-list to its base CV-type only
+ * @see yang_type_get  Full leaf/list type api
+ */
+enum cv_type
+yang_type2cv(yang_stmt  *ys)
+{
+    yang_stmt      *yrestype;  /* resolved type */
+    char           *restype;  /* resolved type */
+    char           *type;   /* original type */
+    enum cv_type    cvtype = CGV_ERR;
+    
+    /* Find type specification */
+    if (yang_type_get(ys, &type, &yrestype, NULL, NULL, NULL, NULL, NULL)
+ < 0)
+	goto done;
+    restype = yrestype?yrestype->ys_argument:NULL;
+    if (clicon_type2cv(type, restype, ys, &cvtype) < 0) /* This handles non-resolved also */
+	goto done;
+ done:
+    return cvtype;
+}

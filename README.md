@@ -30,6 +30,7 @@ support.
   * [Scaling: large lists](doc/scaling/large-lists.md)
   * [Containers](docker/README.md)
   * [Roadmap](doc/ROADMAP.md)
+  * [Standard compliance](#standard-compliance)
   * [Reference manual](#reference) 
   
 ## Background
@@ -269,6 +270,24 @@ The functionality is as follows (references to sections in [RFC8341](https://too
 <img src="doc/clixon_example_sdk.png" alt="clixon sdk" style="width: 180px;"/>
 
 The figure shows the SDK runtime of Clixon.
+
+## Standard Compliance
+
+This is work-in-progress on which standards Clixon supports:
+- [RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt) YANG - A Data Modeling Language for the Network Configuration Protocol (NETCONF)
+- [RFC7895](http://www.rfc-base.org/txt/rfc-7895.txt) YANG Module Library
+* [RFC7950](http://www.rfc-base.org/txt/rfc-7950.txt) The YANG 1.1 Data Modeling Language
+* [RFC7951](http://www.rfc-base.org/txt/rfc-7951.txt) JSON Encoding of Data Modeled with YANG
+- [RFC 6241: NETCONF Configuration Protocol](http://www.rfc-base.org/txt/rfc-6241.txt)
+- [RFC 6242: Using the NETCONF Configuration Protocol over Secure Shell (SSH)](http://www.rfc-base.org/txt/rfc-6242.txt)
+- [RFC 5277: NETCONF Event Notifications](http://www.rfc-base.org/txt/rfc-5277.txt)
+- [RFC 8341: Network Configuration Access Control Model](http://www.rfc-base.org/txt/rfc-8341.txt)
+- [RFC 8040: RESTCONF Protocol](https://tools.ietf.org/html/rfc8040).
+- [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341).
+- [XML 1.0](https://www.w3.org/TR/2008/REC-xml-20081126)
+- [Namespaces in XML 1.0](https://www.w3.org/TR/2009/REC-xml-names-20091208)
+- [XPATH 1.0](https://www.w3.org/TR/xpath-10)
+- [W3C XML XSD](http://www.w3.org/TR/2004/REC-xmlschema-2-20041028)
 
 ## Reference
 

@@ -70,12 +70,13 @@
 static int
 usage(char *argv0)
 {
-    fprintf(stderr, "usage:%s [options]\n"
+    fprintf(stderr, "usage:%s [options] JSON as input on stdin\n"
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"
 	    "\t-j \t\tOutput as JSON\n"
-	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n",
+	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n"
+	    "\t-y <filename> \tyang filename to parse (must be stand-alone)\n"	    ,
 	    argv0);
     exit(0);
 }
@@ -84,17 +85,21 @@ int
 main(int    argc,
      char **argv)
 {
-    int   retval = -1;
-    cxobj *xt = NULL;
-    cxobj *xc;
-    cbuf  *cb = cbuf_new();
-    int   c;
-    int   logdst = CLICON_LOG_STDERR;
-    int   json = 0;
+    int        retval = -1;
+    cxobj     *xt = NULL;
+    cxobj     *xc;
+    cbuf      *cb = cbuf_new();
+    int        c;
+    int        logdst = CLICON_LOG_STDERR;
+    int        json = 0;
+    char      *yang_filename = NULL;
+    yang_stmt *yspec = NULL;
+    cxobj     *xerr = NULL; /* malloced must be freed */
+    int        ret;
     
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, "hD:jl:")) != -1)
+    while ((c = getopt(argc, argv, "hD:jl:y:")) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv[0]);
@@ -110,13 +115,28 @@ main(int    argc,
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(argv[0]);
 	    break;
+	case 'y':
+	    yang_filename = optarg;
+	    break;
 	default:
 	    usage(argv[0]);
 	    break;
 	}
     clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, logdst);
-    if (json_parse_file(0, NULL, &xt) < 0)
+    if (yang_filename){
+	if ((yspec = yspec_new()) == NULL)
+	    goto done;
+	if (yang_parse_filename(yang_filename, yspec) == NULL){
+	    fprintf(stderr, "yang parse error %s\n", clicon_err_reason);
+	    return -1;
+	}
+    }
+    if ((ret = json_parse_file(0, yspec, &xt, &xerr)) < 0)
 	goto done;
+    if (ret == 0){
+	xml_print(stderr, xerr);
+	goto done;
+    }
     xc = NULL;
     while ((xc = xml_child_each(xt, xc, -1)) != NULL) 
 	if (json)
@@ -127,6 +147,8 @@ main(int    argc,
     fflush(stdout);
     retval = 0;
  done:
+    if (yspec)
+	yspec_free(yspec);
     if (xt)
 	xml_free(xt);
     if (cb)

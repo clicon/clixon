@@ -186,6 +186,7 @@ int        yang_print_cbuf(cbuf *cb, yang_stmt *yn, int marginal);
 int        if_feature(yang_stmt *yspec, char *module, char *feature);
 int        ys_populate(yang_stmt *ys, void *arg);
 yang_stmt *yang_parse_file(int fd, const char *name, yang_stmt *ysp);
+yang_stmt *yang_parse_filename(const char *filename, yang_stmt  *ysp);
 int        yang_apply(yang_stmt *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
 int        yang_datanode(yang_stmt *ys);

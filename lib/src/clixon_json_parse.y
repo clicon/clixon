@@ -33,6 +33,7 @@
 
  * JSON Parser
  * From http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ * And RFC7951 JSON Encoding of Data Modeled with YANG
 
 Structural tokens: 
  [   left square bracket 
@@ -71,7 +72,6 @@ JSON lists are more difficult to translate since they inbtroduce a top
 object.
 
  */
-
 
 %start json
 
@@ -125,6 +125,7 @@ object.
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_queue.h"
+#include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
@@ -157,26 +158,39 @@ json_parse_init(struct clicon_json_yacc_arg *jy)
     return 0;
 }
 
-
 int
 json_parse_exit(struct clicon_json_yacc_arg *jy)
 {
     return 0;
 }
-
+ 
+/*! Create xml object from json object name (eg "string") 
+ *  Split name into prefix:name (extended JSON RFC7951)
+ */
 static int
 json_current_new(struct clicon_json_yacc_arg *jy,
 		 char                        *name)
 {
-    int retval = -1;
-    cxobj *xn;
+    int        retval = -1;
+    cxobj     *x;
+    char      *prefix = NULL;
+    char      *id = NULL;
 
     clicon_debug(2, "%s", __FUNCTION__);
-    if ((xn = xml_new(name, jy->jy_current, NULL)) == NULL)
+    /* Find colon separator and if found split into prefix:name */
+    if (nodeid_split(name, &prefix, &id) < 0)
+	goto done;
+    if ((x = xml_new(id, jy->jy_current, NULL)) == NULL)
 	goto done; 
-    jy->jy_current = xn;
+    if (prefix && xml_prefix_set(x, prefix) < 0)
+	goto done;
+    jy->jy_current = x;
     retval = 0;
  done:
+    if (prefix)
+	free(prefix);
+    if (id)
+	free(id);
     return retval;
 }
 

@@ -316,6 +316,7 @@ xmldb_readfile(clicon_handle      h,
     char  *dbfile = NULL;
     int    fd = -1;
     char  *format;
+    int    ret;
     
     if (xmldb_db2file(h, db, &dbfile) < 0)
 	goto done;
@@ -338,7 +339,7 @@ xmldb_readfile(clicon_handle      h,
 	    goto done;
 	}    
 	if (strcmp(format, "json")==0){
-	    if ((json_parse_file(fd, yspec, &x0)) < 0)
+	    if ((ret = json_parse_file(fd, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
 		goto done;
 	}
 	else if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)

@@ -498,16 +498,27 @@ api_data_post(clicon_handle h,
 	    goto ok;
 	}
     }
-    else if (json_parse_str(data, &xdata) < 0){
-	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-	    goto done;
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
+    else {
+	if ((ret = json_parse_str(data, yspec, &xdata, &xerr)) < 0){ 
+	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
+	    goto ok;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
-	    goto done;
-	goto ok;
+	if (ret == 0){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
+	    goto ok;
+	}
     }
     /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource. 
@@ -533,19 +544,6 @@ api_data_post(clicon_handle h,
     /* Replace xbot with x, ie bottom of api-path with data */
     if (xml_addsub(xbot, x) < 0)
 	goto done;
-    if (!parse_xml){ /* If JSON, translate namespace from module:name to xmlns=uri */
-	if (json2xml_ns(yspec, x, &xerr) < 0)
-	    goto done;
-	if (xerr){
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
-		goto done;
-	    goto ok;
-	}
-    }
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
@@ -805,9 +803,18 @@ api_data_put(clicon_handle h,
 	}
     }
     else{
-	if (json_parse_str(data, &xdata) < 0){
+	if ((ret = json_parse_str(data, yspec, &xdata, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
+	    goto ok;
+	}
+	if (ret == 0){
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
@@ -832,20 +839,6 @@ api_data_put(clicon_handle h,
 	goto ok;
     }
     x = xml_child_i(xdata,0);
-    if (!parse_xml){ /* If JSON, translate namespace from module:name to xmlns=uri */
-	if (json2xml_ns(yspec, x, &xerr) < 0)
-	    goto done;
-	if (xerr){
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
-		goto done;
-	    goto ok;
-	}
-    }
-    
     /* Add operation (create/replace) as attribute */
     if ((xa = xml_new("operation", x, NULL)) == NULL)
 	goto done;
@@ -1329,6 +1322,7 @@ api_operations_post_input(clicon_handle h,
     cxobj     *xinput;
     cxobj     *x;
     cbuf      *cbret = NULL;
+    int        ret;
 
     clicon_debug(1, "%s %s", __FUNCTION__, data);
     if ((cbret = cbuf_new()) == NULL){
@@ -1350,7 +1344,7 @@ api_operations_post_input(clicon_handle h,
 	}
     }
     else { /* JSON */
-	if (json_parse_str(data, &xdata) < 0){
+	if ((ret = json_parse_str(data, yspec, &xdata, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -1361,12 +1355,7 @@ api_operations_post_input(clicon_handle h,
 		goto done;
 	    goto fail;
 	}
-	/* Special case for JSON: It looks like: <top><module:input>
-	 * Need to translate to <top><input xmlns="">
-	 */
-	if (json2xml_ns(yspec, xdata, &xerr) < 0)
-	    goto done;
-	if (xerr){
+	if (ret == 0){
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;

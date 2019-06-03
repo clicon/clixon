@@ -238,7 +238,8 @@ xml_prefix_set(cxobj *xn,
  * @retval     0          OK
  * @retval    -1          Error
  * @see xmlns_check XXX can these be merged?
- * @note, this function uses a cache. Any case where cache should be cleared?
+ * @see xml2ns_set cache is set
+ * @note, this function uses a cache. 
  */
 int
 xml2ns(cxobj *x,
@@ -286,12 +287,12 @@ xml2ns(cxobj *x,
  * @param[out] namespace  URI namespace (or NULL). Will be copied
  * @retval     0          OK
  * @retval    -1          Error
- * @see xml2ns
+ * @see xml2ns 
  */
 int
 xmlns_set(cxobj *x,
 	  char  *prefix,
-	  char  *namespace)
+	  char  *ns)
 {
     int    retval = -1;
     cxobj *xa;
@@ -307,8 +308,15 @@ xmlns_set(cxobj *x,
 	    goto done;
 	xml_type_set(xa, CX_ATTR);
     }
-    if (xml_value_set(xa, namespace) < 0)
+    if (xml_value_set(xa, ns) < 0)
 	goto done;
+    /* (re)set namespace cache (as used in xml2ns) */
+    if (x->x_ns_cache)
+	free(x->x_ns_cache);
+    if ((x->x_ns_cache = strdup(ns)) == NULL){
+	clicon_err(OE_XML, errno, "strdup");
+	goto done;
+    }
     retval = 0;
  done:
     return retval;
@@ -868,6 +876,9 @@ xml_addsub(cxobj *xp,
 {
     cxobj *oldp;
     int    i;
+    char  *pns = NULL; /* parent namespace */
+    char  *cns = NULL; /* child namespace */
+    cxobj *xa;
 
     if ((oldp = xml_parent(xc)) != NULL){
 	/* Find child order i in old parent*/
@@ -884,6 +895,18 @@ xml_addsub(cxobj *xp,
 	    return -1;
 	/* Set new parent in child */
 	xml_parent_set(xc, xp);
+	/* Ensure default namespace is not duplicated 
+	 * here only remove duplicate default namespace, there may be more */
+	/* 1. Get parent default namespace */
+	xml2ns(xp, NULL, &pns);
+	/* 2. Get child default namespace */
+	if (pns &&
+	    (xa = xml_find_type(xc, NULL, "xmlns", CX_ATTR)) != NULL &&
+	    (cns = xml_value(xa)) != NULL){
+	    /* 3. check if same, if so remove child's */
+	    if (strcmp(pns, cns) == 0)
+		xml_purge(xa); 
+	}
     }
     return 0;
 }
@@ -1704,8 +1727,10 @@ _xml_parse(const char  *str,
     	goto done;
     /* Sort the complete tree after parsing */
     if (yspec){
+	/* Populate, ie associate xml nodes with yang specs */
 	if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
+	/* Sort according to yang */
 	if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
 	    goto done;
     }

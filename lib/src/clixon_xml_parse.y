@@ -166,7 +166,6 @@ xml_parse_version(struct xml_parse_yacc_arg *ya,
 
 /*! Parse Qualified name --> Unprefixed name
  * @param[in] ya        XML parser yacc handler struct 
- * @param[in] prefix    Prefix, namespace, or NULL
  * @param[in] localpart Name
  * @note the call to xml_child_spec() may not have xmlns attribute read yet XXX
  */

@@ -59,7 +59,11 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
+#include "clixon_yang_type.h"
+#include "clixon_options.h"
 #include "clixon_xml.h"
+#include "clixon_xml_sort.h"
+#include "clixon_xml_map.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_json.h"
 #include "clixon_json_parse.h"
@@ -265,6 +269,44 @@ json_str_escape_cdata(cbuf *cb,
     return retval;
 }
 
+/*! If set, quoute the json value with double quotes 
+ * @þaram[in]  xb  XML body object
+ @ @retval     0   Value should not be quouted, XML value is int, boolean,..
+ @ @retval     1   Value should be quouted, XML value is string,..
+ */
+static int
+jsonvaluestr(cxobj *xb)
+{
+    int            retval = 1;
+    cxobj         *xp;
+    yang_stmt     *yp;
+    enum rfc_6020  keyword;
+
+    if ((xp = xml_parent(xb)) == NULL ||
+	(yp = xml_spec(xp)) == NULL)
+	goto done; /* unknown */
+    keyword = yang_keyword_get(yp);
+    if ((keyword == Y_LEAF || keyword == Y_LEAF_LIST))
+	switch (yang_type2cv(yp)){
+	case CGV_INT8:
+	case CGV_INT16:
+	case CGV_INT32:
+	case CGV_INT64:
+	case CGV_UINT8:
+	case CGV_UINT16:
+	case CGV_UINT32:
+	case CGV_UINT64:
+	case CGV_DEC64:
+	case CGV_BOOL:
+	    retval = 0;
+	    break;
+	default:
+	    break;
+	}
+ done:
+    return retval;
+}
+
 /*! Do the actual work of translating XML to JSON 
  * @param[out]   cb        Cligen text buffer containing json on exit
  * @param[in]    x         XML tree structure containing XML to translate
@@ -309,7 +351,7 @@ xml2json1_cbuf(cbuf                   *cb,
 	       int                     level,
 	       int                     pretty,
 	       int                     flat,
-	       int                     bodystr)
+	       char                   *modname0)
 {
     int              retval = -1;
     int              i;
@@ -318,27 +360,16 @@ xml2json1_cbuf(cbuf                   *cb,
     enum array_element_type xc_arraytype;
     yang_stmt       *ys;
     yang_stmt       *ymod; /* yang module */
-    yang_stmt       *yspec = NULL; /* yang spec */
-    int              bodystr0=1;
-    char            *prefix=NULL;    /* prefix / local namespace name */
-    char            *namespace=NULL; /* namespace uri */
-    char            *modname=NULL;   /* Module name */
     int              commas;
+    char            *modname = NULL;
 
-    /* If x is labelled with a default namespace, it should be translated
-     * to a module name. 
-     * Harder if x has a prefix, then that should also be translated to associated
-     * module name
-     */
-    prefix = xml_prefix(x);
-    namespace = xml_find_type_value(x, prefix, "xmlns", CX_ATTR);
-
-    if ((ys = xml_spec(x)) != NULL) /* yang spec associated with x */
-	yspec = ys_spec(ys);
-    /* Find module name associated with namspace URI */
-    if (namespace && yspec &&
-	(ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL){
+    if ((ys = xml_spec(x)) != NULL){
+	ymod = ys_real_module(ys);
 	modname = yang_argument_get(ymod);
+	if (modname0 && strcmp(modname, modname0) == 0)
+	    modname=NULL;
+	else
+	    modname0 = modname; /* modname0 is ancestor ns passed to child */
     }
     childt = child_type(x);
     if (pretty==2)
@@ -347,21 +378,20 @@ xml2json1_cbuf(cbuf                   *cb,
 		childtype2str(childt));
     switch(arraytype){
     case BODY_ARRAY:{
-	if (bodystr){
-	    /* XXX String if right type */
-	    cprintf(cb, "\"");
+	if (jsonvaluestr(x)) { /* Only print quotation if string-type */
+	    cprintf(cb, "\""); 	    
 	    if (json_str_escape_cdata(cb, xml_value(x)) < 0)
 		goto done;
 	    cprintf(cb, "\"");
 	}
-	else
+	else /* No quotation marks */
 	    cprintf(cb, "%s", xml_value(x));
 	break;
     }
     case NO_ARRAY:
 	if (!flat){
 	    cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
-	    if (modname) /* XXX should remove this? */
+	    if (modname) 
 		cprintf(cb, "%s:", modname);
 	    cprintf(cb, "%s\": ", xml_name(x));
 	}
@@ -426,26 +456,6 @@ xml2json1_cbuf(cbuf                   *cb,
      * arraytype=* but child-type is BODY_CHILD 
      * This is code for writing <a>42</a> as "a":42 and not "a":"42"
      */
-    if (childt == BODY_CHILD && ys!=NULL &&
-	(yang_keyword_get(ys) == Y_LEAF || yang_keyword_get(ys) == Y_LEAF_LIST))
-	switch (cv_type_get(yang_cv_get(ys))){
-	case CGV_INT8:
-	case CGV_INT16:
-	case CGV_INT32:
-	case CGV_INT64:
-	case CGV_UINT8:
-	case CGV_UINT16:
-	case CGV_UINT32:
-	case CGV_UINT64:
-	case CGV_DEC64:
-	case CGV_BOOL:
-	    bodystr0 = 0;
-	    break;
-	default:
-	    bodystr0 = 1;
-	    break;
-	}
-
     commas = xml_child_nr_notype(x, CX_ATTR) - 1;
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
@@ -457,7 +467,7 @@ xml2json1_cbuf(cbuf                   *cb,
 	if (xml2json1_cbuf(cb, 
 			   xc, 
 			   xc_arraytype,
-			   level+1, pretty, 0, bodystr0) < 0)
+			   level+1, pretty, 0, modname0) < 0)
 	    goto done;
 	if (commas > 0) {
 	    cprintf(cb, ",%s", pretty?"\n":"");
@@ -528,6 +538,9 @@ xml2json1_cbuf(cbuf                   *cb,
 
 /*! Translate an XML tree to JSON in a CLIgen buffer
  *
+ * XML-style namespace notation in tree, but RFC7951 in output assume yang 
+ * populated 
+ *
  * @param[in,out] cb     Cligen buffer to write to
  * @param[in]     x      XML tree to translate from
  * @param[in]     pretty Set if output is pretty-printed
@@ -551,28 +564,18 @@ xml2json_cbuf(cbuf      *cb,
 {
     int    retval = 1;
     int    level = 0;
-    char  *prefix;
-    char  *namespace;
 
     cprintf(cb, "%*s{%s", 
 	    pretty?level*JSON_INDENT:0,"", 
 	    pretty?"\n":"");
-    /* If x is labelled with a default namespace, it should be translated
-     * to a module name. 
-     * Harder if x has a prefix, then that should also be translated to associated
-     * module name
-     */
-    prefix = xml_prefix(x);
-    if (xml2ns(x, prefix, &namespace) < 0)
-	goto done;
-    /* Some complexities in grafting namespace in existing trees to new */
-    if (xml_find_type_value(x, prefix, "xmlns", CX_ATTR) == NULL && namespace)
-	if (xmlns_set(x, prefix, namespace) < 0)
-		goto done;
     if (xml2json1_cbuf(cb, 
 		       x, 
 		       NO_ARRAY,
-		       level+1, pretty,0,1) < 0)
+		       level+1,
+		       pretty,
+		       0,
+		       NULL /* ancestor modname / namespace */
+		       ) < 0)
 	goto done;
     cprintf(cb, "%s%*s}%s", 
 	    pretty?"\n":"",
@@ -605,24 +608,16 @@ xml2json_cbuf_vec(cbuf      *cb,
 {
     int    retval = -1;
     int    level = 0;
-    int    i;
     cxobj *xp = NULL;
+    int    i;
     cxobj *xc;
-    char  *prefix;
-    char  *namespace;
 
     if ((xp = xml_new("xml2json", NULL, NULL)) == NULL)
 	goto done;
     /* Some complexities in grafting namespace in existing trees to new */
     for (i=0; i<veclen; i++){
-	prefix = xml_prefix(vec[i]);
-	if (xml2ns(vec[i], prefix, &namespace) < 0)
-	    goto done;
 	xc = xml_dup(vec[i]);
 	xml_addsub(xp, xc);
-	if (xml_find_type_value(xc, prefix, "xmlns", CX_ATTR) == NULL && namespace)
-	    if (xmlns_set(xc, prefix, namespace) < 0)
-		goto done;
     }
     if (0){
 	cprintf(cb, "[%s", pretty?"\n":" ");
@@ -631,7 +626,8 @@ xml2json_cbuf_vec(cbuf      *cb,
     if (xml2json1_cbuf(cb, 
 		       xp, 
 		       NO_ARRAY,
-		       level+1, pretty,1, 1) < 0)
+		       level+1, pretty,
+		       1, NULL) < 0)
 	goto done;
 
     if (0){
@@ -683,6 +679,18 @@ xml2json(FILE      *f,
     return retval;
 }
 
+/*! Print an XML tree structure to an output stream as JSON
+ *
+ * @param[in]   f           UNIX output stream
+ * @param[in]   xn          clicon xml tree
+ */
+int
+json_print(FILE  *f, 
+	   cxobj *xn)
+{
+    return xml2json(f, xn, 1);
+}
+
 /*! Translate a vector of xml objects to JSON File.
  * This is done by adding a top pseudo-object, and add the vector as subs,
  * and then not pritning the top pseudo-.object using the 'flat' option.
@@ -719,80 +727,99 @@ xml2json_vec(FILE      *f,
     return retval;
 }
 
-/*! Translate from JSON module:name to XML name xmlns="uri" recursively
+/*! Translate from JSON module:name to XML default ns: xmlns="uri" recursively
+ * Assume an xml tree where prefix:name have been split into "module":"name"
+ * In other words, from JSON RFC7951 to XML namespace trees
+ * 
  * @param[in]     yspec Yang spec
  * @param[in,out] x     XML tree. Translate it in-line
- * @param[out]    xerr  If namespace not set, create xml error tree
- * @retval        0     OK (if xerr set see above)
+ * @param[out]    xerr  Reason for invalid tree returned as netconf err msg or NULL
+ * @retval        1     OK 
+ * @retval        0     Invalid, wrt namespace.  xerr set
  * @retval       -1     Error
  * @note the opposite - xml2ns is made inline in xml2json1_cbuf
+ * Example: <top><module:input> --> <top><input xmlns="">
  */
 int
-json2xml_ns(yang_stmt *yspec,
-	    cxobj     *x,
-	    cxobj    **xerr)
+json_xmlns_translate(yang_stmt *yspec,
+		     cxobj     *x,
+		     cxobj    **xerr)
 {
     int        retval = -1;
     yang_stmt *ymod;
     char      *namespace0;
     char      *namespace;
-    char      *name = NULL;
     char      *prefix = NULL;
     cxobj     *xc;
+    int        ret;
     
-    if (nodeid_split(xml_name(x), &prefix, &name) < 0)
-	goto done;
+    prefix = xml_prefix(x); /* prefix is here module name */
     if (prefix != NULL){
 	if ((ymod = yang_find_module_by_name(yspec, prefix)) == NULL){
-	    if (netconf_unknown_namespace_xml(xerr, "application",
+	    if (xerr &&
+		netconf_unknown_namespace_xml(xerr, "application",
 					      prefix,
 					      "No yang module found corresponding to prefix") < 0)
 		goto done;
-	    goto ok;
+	    goto fail;
 	}
 	namespace = yang_find_mynamespace(ymod);
 	/* Get existing default namespace in tree */
 	if (xml2ns(x, NULL, &namespace0) < 0)
 	    goto done;
 	/* Set xmlns="" default namespace attribute (if diff from default) */
-	if (namespace0==NULL || strcmp(namespace0, namespace))
+	if (namespace0==NULL || strcmp(namespace0, namespace)){
 	    if (xmlns_set(x, NULL, namespace) < 0)
 		goto done;
-	/* Remove prefix from name */
-	if (xml_name_set(x, name) < 0)
-	    goto done;
+	    /* and remove prefix */
+	    xml_prefix_set(x, NULL);
+	}
     }
     xc = NULL;
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL){
-	if (json2xml_ns(yspec, xc, xerr) < 0)
+	if ((ret = json_xmlns_translate(yspec, xc, xerr)) < 0)
 	    goto done;
-	if (*xerr != NULL)
-	    break;
+	if (ret == 0)
+	    goto fail;
     }
- ok:
-    retval = 0;
+    retval = 1;
  done:
-    if (prefix)
-	free(prefix);
-    if (name)
-	free(name);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
-
+ 
 /*! Parse a string containing JSON and return an XML tree
+ *
+ * Parsing using yacc according to JSON syntax. Names with <prefix>:<id>
+ * are split and interpreted as in RFC7951
+ *
  * @param[in]  str    Input string containing JSON
+ * @param[in]  yspec  If set, also do yang validation
  * @param[in]  name   Log string, typically filename
  * @param[out] xt     XML top of tree typically w/o children on entry (but created)
+ * @param[out] xerr  Reason for invalid returned as netconf err msg 
+ * 
+ * @see _xml_parse  for XML variant
+ * @retval        1     OK and valid
+ * @retval        0     Invalid (only if yang spec)
+ * @retval       -1     Error with clicon_err called
+ * @see http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ * @see RFC 7951
  */
 static int 
 json_parse(char       *str, 
-	   const char *name, 
-	   cxobj      *xt)
+	    yang_stmt  *yspec,
+	    const char *name, 
+	    cxobj      *xt,
+	    cxobj     **xerr)
 {
     int                         retval = -1;
     struct clicon_json_yacc_arg jy = {0,};
+    int                          ret;
 
-    //    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(1, "%s", __FUNCTION__);
     jy.jy_parse_string = str;
     jy.jy_name = name;
     jy.jy_linenum = 1;
@@ -807,20 +834,35 @@ json_parse(char       *str,
 	    clicon_err(OE_XML, 0, "JSON parser error with no error code (should not happen)");
 	goto done;
     }
-    retval = 0;
+    if (yspec){
+	/* Names are split into name/prefix, but now add namespace info */
+	if ((ret = json_xmlns_translate(yspec, xt, xerr)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+	/* Populate, ie associate xml nodes with yang specs  */
+	if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	    goto done;
+	if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
+	    goto done;
+    }
+    retval = 1;
  done:
-    //    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     json_parse_exit(&jy);
     json_scan_exit(&jy);
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval; 
+ fail: /* invalid */
+    retval = 0;
+    goto done;
 }
 
 /*! Parse string containing JSON and return an XML tree
  *
- * @param[in]  str   String containing JSON
- * @param[out] xt    On success a top of XML parse tree is created with name 'top'
- * @retval  0  OK
- * @retval -1  Error with clicon_err called. Includes parse errors
+ * @param[in]     str   String containing JSON
+ * @param[in]     yspec Yang specification, or NULL
+ * @param[in,out] xt    On success a top of XML parse tree is created with name 'top'
+ * @param[out]    xerr  Reason for invalid returned as netconf err msg 
  *
  * @code
  *  cxobj *cx = NULL;
@@ -829,39 +871,64 @@ json_parse(char       *str,
  *  xml_free(cx);
  * @endcode
  * @note  you need to free the xml parse tree after use, using xml_free()
+ * @see json_parse_file
+ * @retval        1     OK and valid
+ * @retval        0     Invalid (only if yang spec) w xerr set
+ * @retval       -1     Error with clicon_err called
+ * @see json_parse_file with a file descriptor (and more description)
  */
 int 
-json_parse_str(char   *str, 
-	       cxobj **xt)
+json_parse_str(char      *str, 
+	       yang_stmt *yspec,
+	       cxobj    **xt,
+	       cxobj    **xerr)
 {
+    clicon_debug(1, "%s", __FUNCTION__);
     if (*xt == NULL)
 	if ((*xt = xml_new("top", NULL, NULL)) == NULL)
 	    return -1;
-    return json_parse(str, "", *xt);
+    return json_parse(str, yspec, "", *xt, xerr);
 }
 
 /*! Read a JSON definition from file and parse it into a parse-tree. 
  *
- * @param[in]  fd  A file descriptor containing the JSON file (as ASCII characters)
- * @param[in]  yspec   Yang specification, or NULL XXX Not yet used
- * @param[in,out] xt   Pointer to (XML) parse tree. If empty, create.
- * @retval        0  OK
- * @retval       -1  Error with clicon_err called
+ * File will be parsed as follows:
+ *   (1) parsed according to JSON; # Only this check if yspec is NULL
+ *   (2) sanity checked wrt yang  
+ *   (3) namespaces check (using <ns>:<name> notation
+ *   (4) an xml parse tree will be returned
+ * Note, only (1) and (4) will be done if yspec is NULL.
+ * Part of (3) is to split json names if they contain colon, 
+ *   eg: name="a:b" -> prefix="a", name="b"
+ * But this is not done if yspec=NULL, and is not part of the JSON spec
+ * 
+ * @param[in]     fd    File descriptor to the JSON file (ASCII string)
+ * @param[in]     yspec Yang specification, or NULL
+ * @param[in,out] xt    Pointer to (XML) parse tree. If empty, create.
+ * @param[out]    xerr  Reason for invalid returned as netconf err msg 
  *
  * @code
  *  cxobj *xt = NULL;
- *  if (json_parse_file(0, NULL, &xt) < 0)
+ *  if (json_parse_file(0, yspec, &xt) < 0)
  *    err;
  *  xml_free(xt);
  * @endcode
  * @note  you need to free the xml parse tree after use, using xml_free()
  * @note, If xt empty, a top-level symbol will be added so that <tree../> will be:  <top><tree.../></tree></top>
  * @note May block on file I/O
+ *
+ * @retval        1     OK and valid
+ * @retval        0     Invalid (only if yang spec) w xerr set
+ * @retval       -1     Error with clicon_err called
+ *
+ * @see json_parse_str
+ * @see RFC7951
  */
-int 
+int
 json_parse_file(int        fd,
 		yang_stmt *yspec,
-		cxobj    **xt)
+		cxobj    **xt,
+		cxobj    **xerr)
 {
     int   retval = -1;
     int   ret;
@@ -889,8 +956,12 @@ json_parse_file(int        fd,
 	    if (*xt == NULL)
 		if ((*xt = xml_new(JSON_TOP_SYMBOL, NULL, NULL)) == NULL)
 		    goto done;
-	    if (len && json_parse(ptr, "", *xt) < 0)
-		goto done;
+	    if (len){
+		if ((ret = json_parse(ptr, yspec, "", *xt, xerr)) < 0)
+		    goto done;
+		if (ret == 0)
+		    goto fail;
+	    }
 	    break;
 	}
 	if (len>=jsonbuflen-1){ /* Space: one for the null character */
@@ -904,7 +975,7 @@ json_parse_file(int        fd,
 	    ptr = jsonbuf;
 	}
     }
-    retval = 0;
+    retval = 1;
  done:
     if (retval < 0 && *xt){
 	free(*xt);
@@ -913,6 +984,9 @@ json_parse_file(int        fd,
     if (jsonbuf)
 	free(jsonbuf);
     return retval;    
+ fail:
+    retval = 0;
+    goto done;
 }
 
 

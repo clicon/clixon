@@ -19,4 +19,40 @@ expecteofx "$clixon_util_json" 0 '{"a":[0,1,2,3]}' "<a>0</a><a>1</a><a>2</a><a>3
 new "json parse list json" # should be {"a":[0,1,2,3]}
 expecteofx "$clixon_util_json -j" 0 '{"a":[0,1,2,3]}' '{"a": "0"}{"a": "1"}{"a": "2"}{"a": "3"}'
 
+fyang=$dir/json.yang
+fjson=$dir/json.json
+cat <<EOF > $fyang
+module json{
+   prefix ex;
+   namespace "urn:example:clixon";
+   leaf a{
+     type int32;
+   }
+   container c{
+     leaf a{
+       type int32;
+     }
+     leaf s{
+       type string;
+     }
+   }
+}
+EOF
+
+JSON='{"json:a": -23}'
+
+new "json leaf back to json"
+expecteofx "$clixon_util_json -j -y $fyang" 0 "$JSON" "$JSON"
+
+JSON='{"json:c": {"a": 937}}'
+new "json parse container back to json"
+expecteofx "$clixon_util_json -j -y $fyang" 0 "$JSON" "$JSON"
+
+# This is wrong
+if false; then
+JSON='{"json:c": {"s": "<![CDATA[  z > x  & x < y ]]>"}}'
+new "json parse cdata xml"
+expecteofx "$clixon_util_json -j -y $fyang" 0 "$JSON" "$JSON"
+fi
+
 rm -rf $dir
