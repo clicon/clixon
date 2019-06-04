@@ -298,7 +298,7 @@ example_statedata(clicon_handle h,
      * state information. In this case adding dummy interface operation state
      * to configured interfaces.
      * Get config according to xpath */
-    if (xmldb_get(h, "running", xpath, 1, &xt, NULL) < 0)
+    if (xmldb_get(h, "running", xpath, &xt) < 0)
        goto done;
     /* From that subset, only get the names */
    if (xpath_vec(xt, "/interfaces/interface/name", &xvec, &xlen) < 0)

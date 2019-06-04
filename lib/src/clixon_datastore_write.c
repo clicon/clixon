@@ -611,8 +611,6 @@ xml_container_presence(cxobj  *x,
  *   if (ret==0)
  *     cbret contains netconf error message
  * @endcode
- * @note that you can add both config data and state data. In comparison,
- *  xmldb_get has a parameter to get config data only.
  * @note if xret is non-null, it may contain error message
  */
 int

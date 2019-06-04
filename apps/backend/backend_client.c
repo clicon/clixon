@@ -342,7 +342,7 @@ from_client_get_config(clicon_handle h,
     /* Note xret can be pruned by nacm below (and change name),
      * so zero-copy cant be used
      */
-    if (xmldb_get(h, db, xpath, 1, &xret, NULL) < 0){
+    if (xmldb_get(h, db, xpath, &xret) < 0){
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
@@ -810,7 +810,7 @@ from_client_get(clicon_handle h,
      * Note xret can be pruned by nacm below and change name and
      * metrged with state data, so zero-copy cant be used
      */
-    if (xmldb_get(h, "running", xpath, 1, &xret, NULL) < 0){
+    if (xmldb_get(h, "running", xpath, &xret) < 0){
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;

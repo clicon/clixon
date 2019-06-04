@@ -1843,7 +1843,7 @@ api_path_fmt2api_path(char  *api_path_fmt,
 }
 
 /*! Transform an xml key format and a vector of values to an XML path
- * Used to input xmldb_get() or xmldb_get_vec
+ * Used to input xmldb_get()
  * @param[in]  api_path_fmt  XML key format
  * @param[in]  cvv    cligen variable vector, one for every wildchar in api_path_fmt
  * @param[out] xpath     XPATH
