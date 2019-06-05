@@ -40,6 +40,10 @@ module clixon-lib {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2019-06-05 {
+	description
+	    "ping rpc added for liveness";
+    }
     revision 2019-01-02 {
 	description
 	    "Released in Clixon 3.9";
@@ -52,5 +56,7 @@ module clixon-lib {
 	    }
 	}
     }
-
+    rpc ping {
+        description "Check aliveness of backend daemon.";
+    }
 }

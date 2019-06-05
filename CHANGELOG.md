@@ -69,6 +69,12 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* New clixon-config@2019-06-05.yang revision
+  * Added: `CLICON_YANG_REGEXP, CLICON_CLI_TAB_MODE, CLICON_CLI_HIST_FILE, CLICON_CLI_HIST_SIZE, CLICON_XML_CHANGELOG, CLICON_XML_CHANGELOG_FILE`.
+  * Renamed: `CLICON_XMLDB_CACHE` to `CLICON_DATASTORE_CACHE` and type changed.
+  * Deleted: `CLICON_XMLDB_PLUGIN, CLICON_USE_STARTUP_CONFIG`;
+* New clixon-lib@2019-06-05.yang revision
+  * Added: ping rpc added (for liveness)
 * Added compiled regexp parameter as part of internal yang type resolution functions
   * `yang_type_resolve()`, `yang_type_get()`
 * All internal `ys_populate_*()` functions (except ys_populate()) have switched parameters: `clicon_handle, yang_stmt *)`
@@ -213,6 +219,7 @@
 	
 ### Corrected Bugs
 
+* Check cligen tab mode, dont start if CLICON_CLI_TAB_MODE is undefined
 * Startup transactions did not mark added tree with XML_FLAG_ADD as it should.
 * Restconf PUT different keys detected (thanks @dcornejo) and fixed
   * This was accepted but shouldn't be: `PUT http://restconf/data/A=hello/B -d '{"B":"goodbye"}'`

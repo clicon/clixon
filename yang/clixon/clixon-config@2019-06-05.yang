@@ -39,7 +39,15 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
-    revision 2019-03-05 {
+    revision 2019-06-05 {
+	description
+	    "Added: CLICON_YANG_REGEXP, CLICON_CLI_TAB_MODE, 
+                    CLICON_CLI_HIST_FILE, CLICON_CLI_HIST_SIZE, 
+                    CLICON_XML_CHANGELOG, CLICON_XML_CHANGELOG_FILE;
+             Renamed CLICON_XMLDB_CACHE to CLICON_DATASTORE_CACHE (changed type)
+             Deleted: CLICON_XMLDB_PLUGIN, CLICON_USE_STARTUP_CONFIG";
+    }
+    revision 2019-03-05{ 
 	description
 	    "Changed URN. Changed top-level symbol to clixon-config.
              Released in Clixon 3.10";
@@ -80,15 +88,36 @@ module clixon-config {
 	    }
 	}
     }
-    typedef xmldb_format{
+    typedef datastore_format{
 	description
-	    "Format of TEXT xml database format.";
+	    "Datastore format.";
 	type enumeration{
 	    enum xml{
 		description "Save and load xmldb as XML";
 	    }
 	    enum json{
 		description "Save and load xmldb as JSON";
+	    }
+	    enum tree{
+		description "Save and load xmldb as Clixon record-based tree
+                             file format (experimental)";
+	    }
+	}
+    }
+    typedef datastore_cache{
+	description
+	    "XML configuration, ie running/candididate/ datastore cache behaviour.";
+	type enumeration{
+	    enum nocache{
+		description "No cache always work directly with file";
+	    }
+	    enum cache{
+		description "Use in-memory cache. 
+                             Make copies when accessing internally.";
+	    }
+	    enum cache-zerocopy{
+		description "Use in-memory cache and dont copy.
+                             Fastest but opens up for callbacks changing cache.";
 	    }
 	}
     }
@@ -123,6 +152,30 @@ module clixon-config {
 	    }
 	    enum external{
 		description "NACM is enabled and available in a separate config";
+	    }
+	}
+    }
+    typedef regexp_mode{
+	description
+	    "The regular expression engine Clixon uses in its validation of
+             Yang patterns, and in the CLI.
+             Yang RFC 7950 stipulates XSD XML Schema regexps
+             according to W3 CXML Schema Part 2: Datatypes Second Edition,
+             see http://www.w3.org/TR/2004/REC-xmlschema-2-20041028#regexs";
+	type enumeration{
+	    enum posix {
+		description
+		  "Translate XSD XML Schema regexp:s to Posix regexp. This is 
+                   not a complete translation, but can be considered good-enough
+                   for Yang use-cases as defined by openconfig and yang-models
+                   for example.";
+	    }
+	    enum libxml2 {
+		description
+		  "Use libxml2 XSD XML Schema regexp engine. This is a complete
+                   XSD regexp engine..
+                   Requires libxml2 to be available at configure time 
+                   (HAVE_LIBXML2 should be set)";
 	    }
 	}
     }
@@ -178,7 +231,17 @@ module clixon-config {
 	    type string;
 	    description
 		"Option used to construct initial yang file: 
-                 <module>[@<revision>]";
+                 <module>[@<revision>].
+                 Used together with CLICON_YANG_MODULE_MAIN";
+	}
+	leaf CLICON_YANG_REGEXP {
+	    type regexp_mode;
+	    default posix;
+	    description
+		"The regular expression engine Clixon uses in its validation of
+                 Yang patterns, and in the CLI.
+                 There is a 'good-enough' posix translation mode and a complete
+                 libxml2 mode";
 	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;
@@ -254,20 +317,22 @@ module clixon-config {
 		"If set, generate CLI specification for CLI completion of
                  loaded Yang modules. This CLI tree can be accessed in CLI
                  spec files using the tree reference syntax (eg @datamodel).
-                 See also CLICON_CLI_MODEL_TREENAME.";
+                 See also CLICON_CLI_MODEL_TREENAME.
+                 (Consider boolean)";
 	}
 	leaf CLICON_CLI_MODEL_TREENAME {
 	    type string;
 	    default "datamodel";
 	    description
-		"If CLICON_CLI_GENMODEL is set, CLI specs can reference the
+		"If set, CLI specs can reference the
                  model syntax using this reference. 
                  Example: set @datamodel, cli_set();";
 	}
 	leaf CLICON_CLI_GENMODEL_COMPLETION {
 	    type int32;
 	    default 1;
-	    description "Generate code for CLI completion of existing db symbols";
+	    description "Generate code for CLI completion of existing db symbols.
+                         Consider boolean type";
 	}
 	leaf CLICON_CLI_GENMODEL_TYPE {
 	    type cli_genmodel_type;
@@ -289,6 +354,20 @@ module clixon-config {
                  Set to 1 if you  want CLI to scroll sideways when approaching 
                       right margin";
 	}
+	leaf CLICON_CLI_TAB_MODE {
+	    type int8;
+	    default 0;
+	    description
+		"Set CLI tab mode. This is actually a bitfield of three 
+                 combinations:
+                 bit 1: 0: <tab> shows short info of available commands
+                        1: <tab> has same output as <?>, ie line per command
+                 bit 2: 0: On <tab>, select a command over a <var> if both exist
+                        1: Commands and vars have same preference.
+                 bit 3: 0: On <tab>, never complete more than one level per <tab>
+                        1: Complete all levels at once if possible.
+                ";
+	}
 	leaf CLICON_CLI_UTF8 {
 	    type int8;
 	    default 0;
@@ -296,6 +375,21 @@ module clixon-config {
 		"Set to 1 to enable CLIgen UTF-8 experimental mode.
                  Note that this feature is EXPERIMENTAL and may not properly handle 
                  scrolling, control characters, etc";
+	}
+	leaf CLICON_CLI_HIST_FILE {
+	    type string;
+	    default "~/.clixon_cli_history";
+	    description
+		"Name of CLI history file. If not given, history is not saved.
+                 The number of lines is saved is given by CLICON_CLI_HIST_SIZE.";
+	}
+	leaf CLICON_CLI_HIST_SIZE {
+	    type int32;
+	    default 300;
+	    description
+		"Number of lines to save in CLI history. 
+                 Also, if CLICON_CLI_HIST_FILE is set, also the size in lines
+                 of the saved history.";
 	}
 	leaf CLICON_SOCK_FAMILY {
 	    type string;
@@ -339,25 +433,17 @@ module clixon-config {
 	    type string;
 	    mandatory true;
 	    description
-		"Directory where \"running\", \"candidate\" and \"startup\" are placed";
+		"Directory where \"running\", \"candidate\" and \"startup\" are placed.";
 	}
-	leaf CLICON_XMLDB_PLUGIN {
-	    type string;
-	    mandatory true;
+	leaf CLICON_DATASTORE_CACHE {
+	    type datastore_cache;
+	    default cache;
 	    description
-		"XMLDB datastore plugin filename 
-	         (see datastore/ and clixon_xml_db.[ch])";
-	}
-	leaf CLICON_XMLDB_CACHE {
-	    type boolean;
-	    default true;
-	    description
-		"XMLDB datastore cache. 
-                 If set, XML candidate/running parsed tree is stored in memory
-                 If not set, candidate/running is always accessed via disk.";
+		"Clixon datastore cache behaviour. There are three values: no cache, 
+                 cache with copy, or cache without copy.";
 	}
 	leaf CLICON_XMLDB_FORMAT {
-	    type xmldb_format;
+	    type datastore_format;
 	    default xml;
 	    description	"XMLDB datastore format.";
 	}
@@ -377,13 +463,17 @@ module clixon-config {
                  info. When loaded at startup, a check is made if the system
                  yang modules match";
 	}
-	leaf CLICON_USE_STARTUP_CONFIG {
-	    type int32;
-	    default 0;
-	    description
-		"Enabled uses \"startup\" configuration on boot. It is called
-                 startup_db and exists in XMLDB_DIR. 
-	         NOTE: Obsolete with 1.3.3 and CLICON_STARTUP_MODE";
+	leaf CLICON_XML_CHANGELOG {
+	    type boolean;
+	    default false;
+	    description "If true enable automatic upgrade using yang clixon
+                         changelog.";
+	}
+	leaf CLICON_XML_CHANGELOG_FILE {
+	    type string;
+	    description "Name of file with module revision changelog.
+                         If CLICON_XML_CHANGELOG is true, Clixon
+                         reads the module changelog from this file.";
 	}
 	leaf CLICON_STARTUP_MODE {
 	    type startup_mode;
