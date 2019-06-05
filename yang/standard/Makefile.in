@@ -38,8 +38,8 @@ bindir 		= @bindir@
 includedir	= @includedir@
 datarootdir     = @datarootdir@
 
-# Could place them in separate standards dir?
-CLIXON_DATADIR   = @CLIXON_DATADIR@
+# See also YANG_INSTALLDIR for the clixon-specific yang files
+STD_YANG_INSTALLDIR   = @STD_YANG_INSTALLDIR@
 
 YANGSPECS  = iana-if-type@2014-05-08.yang
 YANGSPECS += ietf-interfaces@2018-02-20.yang
@@ -61,11 +61,11 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 install: $(YANGSPECS) 
-	install -d -m 0755 $(DESTDIR)$(CLIXON_DATADIR)
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(CLIXON_DATADIR)
+	install -d -m 0755 $(DESTDIR)$(STD_YANG_INSTALLDIR)
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(STD_YANG_INSTALLDIR)
 
 uninstall:
-	(cd $(DESTDIR)$(CLIXON_DATADIR); rm -rf *.yang)
+	(cd $(DESTDIR)$(STD_YANG_INSTALLDIR); rm -rf *.yang)
 
 install-include:	
 

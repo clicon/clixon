@@ -69,6 +69,10 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* Replaced `CLIXON_DATADIR` with two configurable options defining where Clixon installs Yang files.
+  * use `--with-yang-installdir=DIR` to install Clixon yang files in DIR
+  * use `--with-std-yang-installdir=DIR` to install standard yang files that Clixon may use in DIR 
+  * Default is (as before) `/usr/local/share/clixon`
 * New clixon-config@2019-06-05.yang revision
   * Added: `CLICON_YANG_REGEXP, CLICON_CLI_TAB_MODE, CLICON_CLI_HIST_FILE, CLICON_CLI_HIST_SIZE, CLICON_XML_CHANGELOG, CLICON_XML_CHANGELOG_FILE`.
   * Renamed: `CLICON_XMLDB_CACHE` to `CLICON_DATASTORE_CACHE` and type changed.

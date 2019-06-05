@@ -89,7 +89,6 @@ AC_SUBST(INSTALLFLAGS)
 AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
-AC_SUBST(RANLIB)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
 AC_SUBST(enable_stdyangs) 
 AC_SUBST(wwwdir,/www-data)
@@ -232,13 +231,29 @@ fi
 #
 AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort)
 
-# CLIXON_DATADIR is where clixon installs the "system" yang files in yang/Makfile
-# This directory should most probably be included in each application,
-# so each application designer may need to place CLIXON_DATADIR in their config
-# (last in yang dir list):
-# <CLIXON-YANG-DIR>$CLIXON_DATADIR</CLIXON-YANG_DIR>
-AC_SUBST(CLIXON_DATADIR)
-CLIXON_DATADIR="${prefix}/share/clixon"
+# YANG_INSTALLDIR is where clixon installs the Clixon yang files
+# (the files in in yang/clixon)
+# Each application designer may need to place CLIXON_YANG_DIR in their config:
+# <CLIXON-YANG-DIR>$YANG_INSTALLDIR</CLIXON-YANG_DIR>
+AC_ARG_WITH(yang-installdir,
+            [  --with-yang-installdir=DIR  Install Clixon yang files here (default: ${prefix}/share/clixon) ],
+	    [YANG_INSTALLDIR="$withval"],
+    	    [YANG_INSTALLDIR="${prefix}/share/clixon"]		
+	    )
+AC_SUBST(YANG_INSTALLDIR)
+AC_MSG_RESULT(Clixon yang files are installed in ${YANG_INSTALLDIR})	
+
+# STD_YANG_INSTALLDIR is where clixon installs standard yang files
+# (the files in in yang/standard)
+# that Clixon needs to run (or examples rely on). These may be retreived from
+# elsewhere (eg yangmodels repo)
+AC_ARG_WITH(std-yang-installdir,
+            [  --with-std-yang-installdir=DIR  Install standard yang files here (default: ${prefix}/share/clixon) ],
+	    [STD_YANG_INSTALLDIR="$withval"],
+    	    [STD_YANG_INSTALLDIR="${prefix}/share/clixon"]		
+	    )
+AC_SUBST(STD_YANG_INSTALLDIR)
+AC_MSG_RESULT(Standard yang files are installed in ${STD_YANG_INSTALLDIR})	
 
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])

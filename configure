@@ -621,7 +621,8 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-CLIXON_DATADIR
+STD_YANG_INSTALLDIR
+YANG_INSTALLDIR
 EGREP
 GREP
 LEXLIB
@@ -637,7 +638,6 @@ wwwuser
 wwwdir
 enable_stdyangs
 with_restconf
-RANLIB
 SH_SUFFIX
 CLIXON_DEFAULT_CONFIG
 INSTALLFLAGS
@@ -718,6 +718,8 @@ with_restconf
 with_wwwuser
 with_configfile
 with_libxml2
+with_yang_installdir
+with_std_yang_installdir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1367,6 +1369,8 @@ Optional Packages:
   --with-wwwuser=<user>   Set www user different from www-data
   --with-configfile=FILE  set default path to config file
   --with-libxml2          use gnome/libxml2 regex engine
+  --with-yang-installdir=DIR  Install Clixon yang files here (default: ${prefix}/share/clixon)
+  --with-std-yang-installdir=DIR  Install standard yang files here (default: ${prefix}/share/clixon)
 
 Some influential environment variables:
   CC          C compiler command
@@ -2455,7 +2459,6 @@ test -z "$INSTALL_PROGRAM" && INSTALL_PROGRAM='${INSTALL}'
 test -z "$INSTALL_SCRIPT" && INSTALL_SCRIPT='${INSTALL}'
 
 test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
-
 
 
 
@@ -4493,13 +4496,39 @@ fi
 done
 
 
-# CLIXON_DATADIR is where clixon installs the "system" yang files in yang/Makfile
-# This directory should most probably be included in each application,
-# so each application designer may need to place CLIXON_DATADIR in their config
-# (last in yang dir list):
-# <CLIXON-YANG-DIR>$CLIXON_DATADIR</CLIXON-YANG_DIR>
+# YANG_INSTALLDIR is where clixon installs the Clixon yang files
+# (the files in in yang/clixon)
+# Each application designer may need to place CLIXON_YANG_DIR in their config:
+# <CLIXON-YANG-DIR>$YANG_INSTALLDIR</CLIXON-YANG_DIR>
 
-CLIXON_DATADIR="${prefix}/share/clixon"
+# Check whether --with-yang-installdir was given.
+if test "${with_yang_installdir+set}" = set; then :
+  withval=$with_yang_installdir; YANG_INSTALLDIR="$withval"
+else
+  YANG_INSTALLDIR="${prefix}/share/clixon"
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Clixon yang files are installed in ${YANG_INSTALLDIR}" >&5
+$as_echo "Clixon yang files are installed in ${YANG_INSTALLDIR}" >&6; }
+
+# STD_YANG_INSTALLDIR is where clixon installs standard yang files
+# (the files in in yang/standard)
+# that Clixon needs to run (or examples rely on). These may be retreived from
+# elsewhere (eg yangmodels repo)
+
+# Check whether --with-std-yang-installdir was given.
+if test "${with_std_yang_installdir+set}" = set; then :
+  withval=$with_std_yang_installdir; STD_YANG_INSTALLDIR="$withval"
+else
+  STD_YANG_INSTALLDIR="${prefix}/share/clixon"
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Standard yang files are installed in ${STD_YANG_INSTALLDIR}" >&5
+$as_echo "Standard yang files are installed in ${STD_YANG_INSTALLDIR}" >&6; }
 
 # Default location for config file
 

@@ -38,7 +38,8 @@ bindir 		= @bindir@
 includedir	= @includedir@
 datarootdir     = @datarootdir@
 
-CLIXON_DATADIR   = @CLIXON_DATADIR@
+# See also STD_YANG_INSTALLDIR for the standard yang files
+YANG_INSTALLDIR   = @YANG_INSTALLDIR@
 
 YANGSPECS	 = clixon-config@2019-06-05.yang
 YANGSPECS	+= clixon-lib@2019-06-05.yang
@@ -55,11 +56,11 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 install: $(YANGSPECS) 
-	install -d -m 0755 $(DESTDIR)$(CLIXON_DATADIR)
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(CLIXON_DATADIR)
+	install -d -m 0755 $(DESTDIR)$(YANG_INSTALLDIR)
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(YANG_INSTALLDIR)
 
 uninstall:
-	(cd $(DESTDIR)$(CLIXON_DATADIR); rm -rf *.yang)
+	(cd $(DESTDIR)$(YANG_INSTALLDIR); rm -rf *.yang)
 
 install-include:	
 
