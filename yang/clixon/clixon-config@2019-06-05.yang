@@ -205,7 +205,7 @@ module clixon-config {
 		"Yang directory path for finding module and submodule files. 
                  A list of these options should be in the configuration. 
                  When loading a Yang module, Clixon searches this list in the order
-                 they appear. Ensure that CLIXON_DATADIR(default 
+                 they appear. Ensure that YANG_INSTALLDIR(default 
                  /usr/local/share/clixon) is present in the path";
 	}
 	leaf CLICON_YANG_MAIN_FILE {

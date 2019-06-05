@@ -39,8 +39,6 @@ includedir	= @includedir@
 datarootdir     = @datarootdir@
 enable_stdyangs	= @enable_stdyangs@
 
-CLIXON_DATADIR   = @CLIXON_DATADIR@
-
 SUBDIRS  = clixon
 # See configure.ac
 ifeq ($(enable_stdyangs),yes)
