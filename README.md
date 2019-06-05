@@ -113,7 +113,7 @@ Clixon follows:
 However, the following YANG syntax modules are not implemented (reference to RFC7950 in parenthesis):
 - deviation (7.20.3)
 - action (7.15)
-- refine (7.13.2)
+- augment in a uses sub-clause (7.17) (module-level augment is implemented)
 - status (7.21.2)
 - extension (7.19)
 - YIN (13)

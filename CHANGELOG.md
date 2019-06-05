@@ -16,6 +16,8 @@
   * Added clixon_util_regexp utility function
   * Added extensive regexp test [test/test_pattern.sh] for both posix and libxml2
   * Added regex cache to type resolution
+* Yang "refine" feature supported
+  * According to RFC 7950 7.13.2
 * Yang "min-element" and "max-element" feature supported
   * According to RFC 7950 7.7.4 and 7.7.5
   * See (tests)[test/test_minmax.sh]
