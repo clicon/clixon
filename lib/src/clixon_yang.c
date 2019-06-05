@@ -2183,10 +2183,14 @@ yang_expand_grouping(yang_stmt *yn)
 		    goto done;
 		ygrouping->ys_flags |= YANG_FLAG_MARK; /* Mark as expanded */
 	    }
+	    /* Make a copy of the grouping, then make refinements to this copy
+	     */
+	    if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
+		goto done;
 	    /* Replace ys with ygrouping,... 
 	     * First enlarge parent vector 
 	     */
-	    glen = ygrouping->ys_len;
+	    glen = ygrouping2->ys_len;
 	    /* 
 	     * yn is parent: the children of ygrouping replaces ys.
 	     * Is there a case when glen == 0?  YES AND THIS BREAKS
@@ -2196,7 +2200,7 @@ yang_expand_grouping(yang_stmt *yn)
 		yn->ys_len += glen - 1;
 		if (glen && (yn->ys_stmt = realloc(yn->ys_stmt, (yn->ys_len)*sizeof(yang_stmt *))) == 0){
 		    clicon_err(OE_YANG, errno, "realloc");
-		    return -1;
+		    goto done;
 		}
 		/* Then move all existing elements up from i+1 (not uses-stmt) */
 		if (size)
@@ -2205,11 +2209,7 @@ yang_expand_grouping(yang_stmt *yn)
 			    size);
 	    }
 
-	    /* Make a copy of the while grouping making it easier to 
-	     * refine it */
-	    if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
-		goto done;
-	    /* Iterate through refinments and modify grouping copy 
+	    /* Iterate through refinements and modify grouping copy 
 	     * See RFC 7950 7.13.2 yrt is the refine target node
 	     */
 	    yr = NULL;
@@ -2241,6 +2241,9 @@ yang_expand_grouping(yang_stmt *yn)
 	    }
 	    /* Remove 'uses' node */
 	    ys_free(ys); 
+	    /* Remove the grouping copy */
+	    ygrouping2->ys_len = 0;
+	    ys_free(ygrouping2);
 	    break; /* Note same child is re-iterated since it may be changed */
 	default:
 	    i++;
@@ -2600,8 +2603,8 @@ ys_schemanode_check(yang_stmt *ys,
 	if (yang_desc_schema_nodeid(yp, ys->ys_argument, -1, &yres) < 0)
 	    goto done;
 	if (yres == NULL){
-	    clicon_err(OE_YANG, 0, "schemanode sanity check of %d %s", 
-		       ys->ys_keyword,
+	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s %s", 
+		       yang_key2str(ys->ys_keyword),
 		       ys->ys_argument);
 	    goto done;
 	}
