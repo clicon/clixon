@@ -1280,8 +1280,8 @@ xml_yang_validate_all(clicon_handle h,
  */
 int
 xml_yang_validate_all_top(clicon_handle h,
-			  cxobj   *xt, 
-			  cbuf    *cbret)
+			  cxobj        *xt, 
+			  cbuf         *cbret)
 {
     int    ret;
     cxobj *x;
@@ -2053,7 +2053,7 @@ xml_tree_prune_flagged(cxobj *xt,
  */
 int
 xml_default(cxobj *xt, 
-	   void   *arg)
+	    void   *arg)
 {
     int        retval = -1;
     yang_stmt *ys;

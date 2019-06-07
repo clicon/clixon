@@ -2,7 +2,7 @@
 # Run valgrind leak test for cli, restconf, netconf or background.
 # Stop on first error
     
-# Pattern to run tests
+# Pattern to run tests, default is all, but you may want to narrow it down
 : ${pattern:=test_*.sh}
 
 # Run valgrindtest once, args:

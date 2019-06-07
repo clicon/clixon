@@ -178,6 +178,7 @@
 
 ### Minor changes
 
+* Extended `util/clixon_util_xml` with yang and validate functionality so it can be used as a stand-alone utility for validating XML/JSON files
 * JSON parse and print improvements
   * Integrated parsing with namespace translation and yang spec lookup
 * Added CLIgen tab-modes in config option CLICON_CLI_TAB_MODE, which means you can control the behaviour of `<tab>` in the CLI.

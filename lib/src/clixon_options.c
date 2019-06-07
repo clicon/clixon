@@ -243,6 +243,7 @@ parse_configfile(clicon_handle  h,
 
 /*! Add configuration option overriding file setting
  * Add to clicon_options hash, and to clicon_conf_xml tree
+ * Assumes clicon_conf_xml_set has been called
  * @param[in]  h      Clicon handle
  * @param[in]  name   Name of configuration option (see clixon-config.yang)
  * @param[in]  value  String value
