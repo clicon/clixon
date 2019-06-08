@@ -174,6 +174,12 @@ expectfn 'curl -s -X PUT -d {"interface":{"name":"TEST","type":"eth0"}} http://l
 new "restconf PUT change key error"
 expectfn 'curl -is -X PUT -d {"interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/example:cont1/interface=TEST' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
 
+new "restconf PUT change type to eth0 (non-key sub-element to list)"
+expectfn 'curl -s -X PUT -d {"example:type":"eth0"} http://localhost/restconf/data/example:cont1/interface=local0/type' 0 ""
+
+new "restconf GET datastore eth"
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=local0" 0 '{"example:interface": \[{"name": "local0","type": "eth0"}\]}'
+
 #--------------- json type tests
 new "restconf POST type x3"
 expectfn 'curl -s -X POST -d {"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}} http://localhost/restconf/data' 0 ''

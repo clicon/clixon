@@ -636,11 +636,14 @@ api_data_post(clicon_handle h,
 
 /*! Check matching keys
  *
+ * Check that x1 and x2 (both of type list/leaf-list) share the same key statements
+ * I.e that if x1=<list><key>b</key></list> then x2 = <list><key>b</key></list> as 
+ * well
  * @param[in] y        Yang statement, should be list or leaf-list
- * @param[in] xdata    XML data tree
- * @param[in] xapipath XML api-path tree
+ * @param[in] x1       First XML tree (eg data tree)
+ * @param[in] x2       Second XML tree (eg api-path tree)
  * @retval    0        Yes, keys match
- * @retval    -1        No keys do not match
+ * @retval    -1       No keys do not match
  * If the target resource represents a YANG leaf-list, then the PUT
  * method MUST NOT change the value of the leaf-list instance.
  *
@@ -651,17 +654,18 @@ api_data_post(clicon_handle h,
  */
 static int
 match_list_keys(yang_stmt *y,
-		cxobj     *xdata,
-		cxobj     *xapipath)
+		cxobj     *x1,
+		cxobj     *x2)
 {
     int        retval = -1;
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
     char      *keyname;
-    cxobj     *xkeya; /* xml key object in api-path */
-    cxobj     *xkeyd; /* xml key object in data */
-    char      *keya;
-    char      *keyd;
+    cxobj     *xkey1; /* xml key object of x1 */
+    cxobj     *xkey2; /* xml key object of x2 */
+    char      *key1;
+    char      *key2;
+
 
     clicon_debug(1, "%s", __FUNCTION__);
     switch (yang_keyword_get(y)){
@@ -670,24 +674,24 @@ match_list_keys(yang_stmt *y,
 	cvi = NULL;
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	    keyname = cv_string_get(cvi);	    
-	    if ((xkeya = xml_find(xapipath, keyname)) == NULL)
+	    if ((xkey2 = xml_find(x2, keyname)) == NULL)
 		goto done; /* No key in api-path */
-	    if ((keya = xml_body(xkeya)) == NULL)
+	    if ((key2 = xml_body(xkey2)) == NULL)
 		goto done;
-	    if ((xkeyd = xml_find(xdata, keyname)) == NULL)
+	    if ((xkey1 = xml_find(x1, keyname)) == NULL)
 		goto done; /* No key in data */
-	    if ((keyd = xml_body(xkeyd)) == NULL)
+	    if ((key1 = xml_body(xkey1)) == NULL)
 		goto done;
-	    if (strcmp(keya, keyd) != 0)
+	    if (strcmp(key2, key1) != 0)
 		goto done; /* keys dont match */
 	}
 	break;
     case Y_LEAF_LIST:
-	if ((keya = xml_body(xapipath)) == NULL)
+	if ((key2 = xml_body(x2)) == NULL)
 	    goto done; /* No key in api-path */
-	if ((keyd = xml_body(xdata)) == NULL)
+	if ((key1 = xml_body(x1)) == NULL)
 	    goto done; /* No key in data */
-	if (strcmp(keya, keyd) != 0)
+	if (strcmp(key2, key1) != 0)
 	    goto done; /* keys dont match */
 	break;
     default:
@@ -884,26 +888,27 @@ api_data_put(clicon_handle h,
 	 * That is why the conditional is somewhat hairy
 	 */	    
 	xparent = xml_parent(xbot);
-#if 1
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xtop, 0, 0) < 0)
-	    goto done;
-	clicon_debug(1, "%s AAA XPATH:%s", __FUNCTION__, cbuf_get(ccc));
-    }
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xdata, 0, 0) < 0)
-	    goto done;
-	clicon_debug(1, "%s DATA:%s", __FUNCTION__, cbuf_get(ccc));
-    }
-#endif
-
 	if (y){
 	    yp = yang_parent_get(y);
+	    /* Ensure list keys match between uri and data */
 	    if (((yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST) &&
-		 match_list_keys(y, x, xbot) < 0) ||
-		(yp && yang_keyword_get(yp) == Y_LIST &&
+		 match_list_keys(y, x, xbot) < 0)){
+		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
+		    goto done;
+		if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		    goto done;
+		}
+		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		    goto done;
+		goto ok;
+		
+	    }
+	    /* Ensure list keys match between uri and data of parents 
+	     * XXX: this may only be a special case of immediate parent
+	     */
+	    if ((yp && yang_keyword_get(yp) == Y_LIST &&
+		 xml_parent(x) != xdata &&
 		 match_list_keys(yp, xml_parent(x), xparent) < 0)){
 		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
 		    goto done;
