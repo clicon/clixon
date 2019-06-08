@@ -636,14 +636,14 @@ api_data_post(clicon_handle h,
 
 /*! Check matching keys
  *
- * Check that x1 and x2 (both of type list/leaf-list) share the same key statements
+ * Check that x1 and x2 are of type list/leaf-list and share the same key statements
  * I.e that if x1=<list><key>b</key></list> then x2 = <list><key>b</key></list> as 
- * well
+ * well. Otherwise return -1.
  * @param[in] y        Yang statement, should be list or leaf-list
- * @param[in] x1       First XML tree (eg data tree)
- * @param[in] x2       Second XML tree (eg api-path tree)
+ * @param[in] x1       First XML tree (eg data)
+ * @param[in] x2       Second XML tree (eg api-path)
  * @retval    0        Yes, keys match
- * @retval    -1       No keys do not match
+ * @retval    -1       No, keys do not match
  * If the target resource represents a YANG leaf-list, then the PUT
  * method MUST NOT change the value of the leaf-list instance.
  *
@@ -665,7 +665,6 @@ match_list_keys(yang_stmt *y,
     cxobj     *xkey2; /* xml key object of x2 */
     char      *key1;
     char      *key2;
-
 
     clicon_debug(1, "%s", __FUNCTION__);
     switch (yang_keyword_get(y)){
@@ -695,8 +694,9 @@ match_list_keys(yang_stmt *y,
 	    goto done; /* keys dont match */
 	break;
     default:
-	goto done;
+	goto ok;
     }
+ ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -742,12 +742,12 @@ api_data_put(clicon_handle h,
     int        retval = -1;
     enum operation_type op = OP_REPLACE;
     int        i;
-    cxobj     *xdata = NULL;
+    cxobj     *xdata0 = NULL; /* Original -d data struct (including top symbol) */
+    cxobj     *xdata;         /* -d data (without top symbol)*/
     cbuf      *cbx = NULL;
     cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xbot = NULL;
     cxobj     *xparent;
-    cxobj     *x;
     yang_stmt *y = NULL;
     yang_stmt *yp; /* yang parent */
     yang_stmt *yspec;
@@ -761,6 +761,7 @@ api_data_put(clicon_handle h,
     char      *username;
     int        ret;
     char      *namespace0;
+    char      *dname;
 
     clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
 		 __FUNCTION__, api_path0, data);
@@ -794,7 +795,7 @@ api_data_put(clicon_handle h,
     }
     /* Parse input data as json or xml into xml */
     if (parse_xml){
-	if (xml_parse_string(data, NULL, &xdata) < 0){
+	if (xml_parse_string(data, NULL, &xdata0) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -807,7 +808,7 @@ api_data_put(clicon_handle h,
 	}
     }
     else{
-	if ((ret = json_parse_str(data, yspec, &xdata, &xerr)) < 0){
+	if ((ret = json_parse_str(data, yspec, &xdata0, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -831,7 +832,7 @@ api_data_put(clicon_handle h,
     /* The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
-    if (xml_child_nr(xdata) != 1){
+    if (xml_child_nr(xdata0) != 1){
 	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -842,9 +843,9 @@ api_data_put(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    x = xml_child_i(xdata,0);
+    xdata = xml_child_i(xdata0,0);
     /* Add operation (create/replace) as attribute */
-    if ((xa = xml_new("operation", x, NULL)) == NULL)
+    if ((xa = xml_new("operation", xdata, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
@@ -852,24 +853,30 @@ api_data_put(clicon_handle h,
 #if 0
     if (debug){
 	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xdata, 0, 0) < 0)
+	if (clicon_xml2cbuf(ccc, xdata0, 0, 0) < 0)
 	    goto done;
 	clicon_debug(1, "%s DATA:%s", __FUNCTION__, cbuf_get(ccc));
     }
 #endif
-    /* Replace xparent with x, ie bottom of api-path with data */	    
-    if (api_path==NULL && strcmp(xml_name(x),"data")==0){
-	if (xml_addsub(NULL, x) < 0)
+    /* Top-of tree, no api-path
+     * Replace xparent with x, ie bottom of api-path with data 
+     */	    
+    dname = xml_name(xdata);
+    if (api_path==NULL && strcmp(dname,"data")==0){
+	if (xml_addsub(NULL, xdata) < 0)
 	    goto done;
 	if (xtop)
 	    xml_free(xtop);
-	xtop = x;
+	xtop = xdata;
 	xml_name_set(xtop, "config");
     }
     else {
-	clicon_debug(1, "%s x:%s xbot:%s",__FUNCTION__, xml_name(x), xml_name(xbot));
+	/* There is an api-path that defines an element in the datastore tree.
+	 * Not top-of-tree.
+	 */
+	clicon_debug(1, "%s x:%s xbot:%s",__FUNCTION__, dname, xml_name(xbot));
 	/* Check same symbol in api-path as data */	    
-	if (strcmp(xml_name(x), xml_name(xbot))){
+	if (strcmp(dname, xml_name(xbot))){
 	    if (netconf_operation_failed_xml(&xerr, "protocol", "Not same symbol in api-path as data") < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -889,27 +896,12 @@ api_data_put(clicon_handle h,
 	 */	    
 	xparent = xml_parent(xbot);
 	if (y){
-	    yp = yang_parent_get(y);
-	    /* Ensure list keys match between uri and data */
-	    if (((yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST) &&
-		 match_list_keys(y, x, xbot) < 0)){
-		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
-		    goto done;
-		if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		    goto done;
-		}
-		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
-		    goto done;
-		goto ok;
-		
-	    }
-	    /* Ensure list keys match between uri and data of parents 
-	     * XXX: this may only be a special case of immediate parent
+	    /* Ensure list keys match between uri and data. That is:
+	     * If data is on the form: -d {"a":{"k":1}} where a is list or leaf-list
+	     * then uri-path must be ../a=1
+	     * match_list_key() checks if this is true
 	     */
-	    if ((yp && yang_keyword_get(yp) == Y_LIST &&
-		 xml_parent(x) != xdata &&
-		 match_list_keys(yp, xml_parent(x), xparent) < 0)){
+	    if (match_list_keys(y, xdata, xbot) < 0){
 		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
 		    goto done;
 		if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -919,15 +911,40 @@ api_data_put(clicon_handle h,
 		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 		    goto done;
 		goto ok;
-		
+	    }
+	    /* Ensure keys in lists are not changed. That is:
+	     * If data is on the form: -d {"k":1} and its parent is a list "a"
+	     * then the uri-path must be "../a=1 (you cannot change a's key)"
+	     */
+	    if ((yp = yang_parent_get(y)) != NULL &&
+		yang_keyword_get(yp) == Y_LIST){
+		if ((ret = yang_key_match(yp, dname)) < 0)
+		    goto done;
+		if (ret == 1){ /* Match: xdata is a key */
+		    char *parbod = xml_find_body(xparent, dname);
+		    /* Check if the key is different from the one in uri-path,
+		     * or does not exist
+		     */
+		    if (parbod == NULL || strcmp(parbod, xml_body(xdata))){
+			if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
+			    goto done;
+			if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+			    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+			    goto done;
+			}
+			if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+			    goto done;
+			goto ok;
+		    }
+		}
 	    }
 	}
 
 	xml_purge(xbot);
-	if (xml_addsub(xparent, x) < 0)
+	if (xml_addsub(xparent, xdata) < 0)
 	    goto done;
 	/* If we already have that default namespace, remove it in child */
-	if ((xa = xml_find_type(x, NULL, "xmlns", CX_ATTR)) != NULL){
+	if ((xa = xml_find_type(xdata, NULL, "xmlns", CX_ATTR)) != NULL){
 	    if (xml2ns(xparent, NULL, &namespace0) < 0)
 		goto done;
 	    /* Set xmlns="" default namespace attribute (if diff from default) */
@@ -1015,8 +1032,8 @@ api_data_put(clicon_handle h,
 	xml_free(xretdis);
     if (xtop)
 	xml_free(xtop);
-    if (xdata)
-	xml_free(xdata);
+    if (xdata0)
+	xml_free(xdata0);
      if (cbx)
 	cbuf_free(cbx); 
    return retval;

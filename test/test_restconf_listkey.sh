@@ -14,7 +14,6 @@ fyang=$dir/list.yang
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/var</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
@@ -32,11 +31,15 @@ module list{
    prefix ex;
    container c{
       list a{
-         key b;
+         key "b c";
          leaf b{
             type string;
          }
          leaf c{
+            type string;
+         }
+         leaf nonkey{
+            description "non-key element";
             type string;
          }
       }
@@ -55,6 +58,8 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
+    sudo pkill clixon_backend # to be sure
+    
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 fi
@@ -69,16 +74,25 @@ new "waiting"
 wait_backend
 wait_restconf
 
-new "restconf PUT add list entry"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x -d {"list:a":{"b":"x","c":"0"}}' 0 ''
+new "restconf PUT add whole list entry"
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y -d {"list:a":{"b":"x","c":"y","nonkey":"0"}}' 0 ''
 
-new "restconf PUT change regular list entry"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x -d {"list:a":{"b":"x","c":"z"}}' 0 ''
+new "restconf PUT change whole list entry (same keys)"
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y -d {"list:a":{"b":"x","c":"y","nonkey":"z"}}' 0 ''
 
-new "restconf PUT change list key entry (expect fail)"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x -d {"list:a":{"b":"y"}}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
+new "restconf PUT change list entry (wrong keys)(expect fail)"
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y -d {"list:a":{"b":"y","c":"x"}}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
 
-new "restconf PUT change actual list key entry (expect fail)"
+new "restconf PUT change list entry (just one key)(expect fail)"
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x -d {"list:a":{"b":"x"}}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
+
+new "restconf PUT sub non-key"
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/nonkey -d {"list:nonkey":"u"}' 0 ''
+
+new "restconf PUT sub key same value"
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x/b -d {"b":"x"}' 0 ''
+
+new "restconf PUT just key other value (should fail)"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x/b -d {"b":"y"}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
 
 new "restconf PUT add leaf-list entry"

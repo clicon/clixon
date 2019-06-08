@@ -14,9 +14,9 @@ fyang=$dir/restconf.yang
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/var</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
@@ -66,7 +66,7 @@ module example{
 }
 EOF
 
-new "test params: -f $cfg -y $fyang"
+new "test params: -f $cfg"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -74,21 +74,20 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend -s init -f $cfg -y $fyang"
-    start_backend -s init -f $cfg -y $fyang
+    sudo pkill clixon_backend # to be sure
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
 fi
 
 new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
 new "start restconf daemon"
-start_restconf -f $cfg -y $fyang
+start_restconf -f $cfg
 
 new "waiting"
 wait_backend
 wait_restconf
-
-new "restconf tests"
 
 new "restconf POST tree without key"
 expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"type":"regular"}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "name"},"error-severity": "error","error-message": "Mandatory key"}}}'
