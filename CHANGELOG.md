@@ -69,6 +69,16 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* RESTCONF strict namespace validation of data in POST and PUT.
+  * Accepted:
+  ```
+    curl -X PUT http://localhost/restconf/data/mod:a -d {"mod:a":"x"}
+  ```
+  * Not accepted (must prefix "a" with module):
+  ```
+    curl -X PUT http://localhost/restconf/data/mod:a -d {"a":"x"}
+  ```
+  * Undefine `RESTCONF_NS_DATA_CHECK` in include/clixon_custom.h to disable strict check.
 * Many validation functions have changed error parameter from cbuf to xml tree. 
   * XML trees are more flexible for utility tools
   * If you use these(mostly internal), you need to change the error function: `generic_validate, from_validate_common, xml_yang_validate_all_top, xml_yang_validate_all, xml_yang_validate_add, xml_yang_validate_rpc, xml_yang_validate_list_key_only`

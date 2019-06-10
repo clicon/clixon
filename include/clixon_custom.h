@@ -44,3 +44,7 @@
 /* Use new xml_insert code on sorted xml lists
  */
 #define USE_XML_INSERT
+
+/* Make namespace check on RESTCONF PUT and POST -d data
+ */
+#define RESTCONF_NS_DATA_CHECK

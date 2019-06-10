@@ -153,7 +153,7 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
 
 #--------------- nacm enabled
 
@@ -256,7 +256,7 @@ expecteof "$clixon_netconf -U guest -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml
 #------------------ Set read-default permit
 
 new "admin set read-default permit"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"read-default": "permit"}' http://localhost/restconf/data/ietf-netconf-acm:nacm/read-default)" 0 ""
+expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:read-default": "permit"}' http://localhost/restconf/data/ietf-netconf-acm:nacm/read-default)" 0 ""
 
 new "limit read ok"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" 0 '{"clixon-example:translate": [{"k": "key42","value": "val42"},{ "k": "key43","value": "val43"}]}

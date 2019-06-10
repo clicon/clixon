@@ -437,13 +437,17 @@ api_data_post(clicon_handle h,
 {
     int        retval = -1;
     enum operation_type op = OP_CREATE;
+    cxobj     *xdata0 = NULL; /* Original -d data struct (including top symbol) */
+    cxobj     *xdata;         /* -d data (without top symbol)*/
     int        i;
-    cxobj     *xdata = NULL;
     cbuf      *cbx = NULL;
-    cxobj     *xtop = NULL; /* xpath root */
-    cxobj     *xbot = NULL;
-    cxobj     *x;
-    yang_stmt *y = NULL;
+    cxobj     *xtop = NULL; /* top of api-path */
+    cxobj     *xbot = NULL; /* bottom of api-path */
+    yang_stmt *ybot = NULL; /* yang of xbot */
+#ifdef RESTCONF_NS_DATA_CHECK
+    yang_stmt *ymodapi = NULL; /* yang module of api-path (if any) */
+    yang_stmt *ymoddata = NULL; /* yang module of data (-d) */
+#endif
     yang_stmt *yspec;
     cxobj     *xa;
     cxobj     *xret = NULL;
@@ -469,8 +473,12 @@ api_data_post(clicon_handle h,
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
     if (api_path){
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y)) < 0)
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot)) < 0)
 	    goto done;
+#ifdef RESTCONF_NS_DATA_CHECK
+	if (ybot)
+	    ymodapi=ys_module(ybot);
+#endif
 	if (ret == 0){ /* validation failed */
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
@@ -486,7 +494,7 @@ api_data_post(clicon_handle h,
     }
     /* Parse input data as json or xml into xml */
     if (parse_xml){
-	if (xml_parse_string(data, NULL, &xdata) < 0){
+	if (xml_parse_string(data, NULL, &xdata0) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -499,7 +507,7 @@ api_data_post(clicon_handle h,
 	}
     }
     else {
-	if ((ret = json_parse_str(data, yspec, &xdata, &xerr)) < 0){ 
+	if ((ret = json_parse_str(data, yspec, &xdata0, &xerr)) < 0){ 
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -523,7 +531,7 @@ api_data_post(clicon_handle h,
     /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
-    if (xml_child_nr(xdata) != 1){
+    if (xml_child_nr(xdata0) != 1){
 	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -534,15 +542,46 @@ api_data_post(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    x = xml_child_i(xdata,0);
+    xdata = xml_child_i(xdata0,0);
+#ifdef RESTCONF_NS_DATA_CHECK
+    /* If the api-path (above) defines a module, then xdata must have a prefix
+     * and it match the module defined in api-path. 
+     * In a POST, maybe there are cornercases where xdata (which is a child) and
+     * xbot (which is the parent) may have non-matching namespaces?
+     * This does not apply if api-path is / (no module)
+     */
+    if (ys_module_by_xml(yspec, xdata, &ymoddata) < 0)
+	goto done;
+    if (ymoddata && ymodapi){
+	if (ymoddata != ymodapi){
+	     if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
+		 goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	    		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+	    		goto done;
+	    }
+    if (debug){
+	cbuf *ccc=cbuf_new();
+	if (clicon_xml2cbuf(ccc, xe, 0, 0) < 0)
+	    goto done;
+	clicon_debug(1, "%s XE:%s", __FUNCTION__, cbuf_get(ccc));
+    }
+
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+#endif  /* RESTCONF_NS_DATA_CHECK */
+
     /* Add operation (create/replace) as attribute */
-    if ((xa = xml_new("operation", x, NULL)) == NULL)
+    if ((xa = xml_new("operation", xdata, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
     /* Replace xbot with x, ie bottom of api-path with data */
-    if (xml_addsub(xbot, x) < 0)
+    if (xml_addsub(xbot, xdata) < 0)
 	goto done;
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
@@ -626,8 +665,8 @@ api_data_post(clicon_handle h,
 	xml_free(xretdis);
     if (xtop)
 	xml_free(xtop);
-    if (xdata)
-	xml_free(xdata);
+    if (xdata0)
+	xml_free(xdata0);
      if (cbx)
 	cbuf_free(cbx); 
    return retval;
@@ -745,10 +784,14 @@ api_data_put(clicon_handle h,
     cxobj     *xdata0 = NULL; /* Original -d data struct (including top symbol) */
     cxobj     *xdata;         /* -d data (without top symbol)*/
     cbuf      *cbx = NULL;
-    cxobj     *xtop = NULL; /* xpath root */
-    cxobj     *xbot = NULL;
+    cxobj     *xtop = NULL; /* top of api-path */
+    cxobj     *xbot = NULL; /* bottom of api-path */
+    yang_stmt *ybot = NULL; /* yang of xbot */
+#ifdef RESTCONF_NS_DATA_CHECK
+    yang_stmt *ymodapi = NULL; /* yang module of api-path (if any) */
+    yang_stmt *ymoddata = NULL; /* yang module of data (-d) */
+#endif
     cxobj     *xparent;
-    yang_stmt *y = NULL;
     yang_stmt *yp; /* yang parent */
     yang_stmt *yspec;
     cxobj     *xa;
@@ -778,8 +821,12 @@ api_data_put(clicon_handle h,
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
     if (api_path){
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y)) < 0)
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot)) < 0)
 	    goto done;
+#ifdef RESTCONF_NS_DATA_CHECK
+	if (ybot)
+	    ymodapi=ys_module(ybot);
+#endif
 	if (ret == 0){ /* validation failed */
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
@@ -793,9 +840,10 @@ api_data_put(clicon_handle h,
 	    goto ok;
 	}
     }
+
     /* Parse input data as json or xml into xml */
     if (parse_xml){
-	if (xml_parse_string(data, NULL, &xdata0) < 0){
+	if (xml_parse_string(data, yspec, &xdata0) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -844,20 +892,35 @@ api_data_put(clicon_handle h,
 	goto ok;
     }
     xdata = xml_child_i(xdata0,0);
+#ifdef RESTCONF_NS_DATA_CHECK
+    /* If the api-path (above) defines a module, then xdata must have a prefix
+     * and it match the module defined in api-path
+     * This does not apply if api-path is / (no module)
+     */
+    if (ys_module_by_xml(yspec, xdata, &ymoddata) < 0)
+	goto done;
+    if (ymoddata && ymodapi){
+	if (ymoddata != ymodapi){
+	    if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
+		goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+#endif /* RESTCONF_NS_DATA_CHECK */
+
     /* Add operation (create/replace) as attribute */
     if ((xa = xml_new("operation", xdata, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
-#if 0
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xdata0, 0, 0) < 0)
-	    goto done;
-	clicon_debug(1, "%s DATA:%s", __FUNCTION__, cbuf_get(ccc));
-    }
-#endif
+
     /* Top-of tree, no api-path
      * Replace xparent with x, ie bottom of api-path with data 
      */	    
@@ -875,6 +938,7 @@ api_data_put(clicon_handle h,
 	 * Not top-of-tree.
 	 */
 	clicon_debug(1, "%s x:%s xbot:%s",__FUNCTION__, dname, xml_name(xbot));
+
 	/* Check same symbol in api-path as data */	    
 	if (strcmp(dname, xml_name(xbot))){
 	    if (netconf_operation_failed_xml(&xerr, "protocol", "Not same symbol in api-path as data") < 0)
@@ -895,13 +959,13 @@ api_data_put(clicon_handle h,
 	 * That is why the conditional is somewhat hairy
 	 */	    
 	xparent = xml_parent(xbot);
-	if (y){
+	if (ybot){
 	    /* Ensure list keys match between uri and data. That is:
 	     * If data is on the form: -d {"a":{"k":1}} where a is list or leaf-list
 	     * then uri-path must be ../a=1
 	     * match_list_key() checks if this is true
 	     */
-	    if (match_list_keys(y, xdata, xbot) < 0){
+	    if (match_list_keys(ybot, xdata, xbot) < 0){
 		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
 		    goto done;
 		if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -916,7 +980,7 @@ api_data_put(clicon_handle h,
 	     * If data is on the form: -d {"k":1} and its parent is a list "a"
 	     * then the uri-path must be "../a=1 (you cannot change a's key)"
 	     */
-	    if ((yp = yang_parent_get(y)) != NULL &&
+	    if ((yp = yang_parent_get(ybot)) != NULL &&
 		yang_keyword_get(yp) == Y_LIST){
 		if ((ret = yang_key_match(yp, dname)) < 0)
 		    goto done;
@@ -967,6 +1031,7 @@ api_data_put(clicon_handle h,
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
+
     if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
 	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;
