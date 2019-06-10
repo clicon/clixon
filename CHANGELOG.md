@@ -69,6 +69,9 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* Many validation functions have changed error parameter from cbuf to xml tree. 
+  * XML trees are more flexible for utility tools
+  * If you use these(mostly internal), you need to change the error function: `generic_validate, from_validate_common, xml_yang_validate_all_top, xml_yang_validate_all, xml_yang_validate_add, xml_yang_validate_rpc, xml_yang_validate_list_key_only`
 * Replaced `CLIXON_DATADIR` with two configurable options defining where Clixon installs Yang files.
   * use `--with-yang-installdir=DIR` to install Clixon yang files in DIR
   * use `--with-std-yang-installdir=DIR` to install standard yang files that Clixon may use in DIR 

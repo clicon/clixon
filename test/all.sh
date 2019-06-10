@@ -15,7 +15,7 @@ testnr=0
 for test in $pattern; do
     if [ $testnr != 0 ]; then echo; fi
     testfile=$test
-    ret=$(./$test) #    . ./$test 
+    . ./$test 
     errcode=$?
     if [ $errcode -ne 0 ]; then
 	err=1

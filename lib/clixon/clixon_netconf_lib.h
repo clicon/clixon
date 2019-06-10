@@ -32,7 +32,8 @@
   ***** END LICENSE BLOCK *****
 
  * Netconf library functions. See RFC6241
- * 
+ * Functions to generate a netconf error message come in two forms: xml-tree and 
+ * cbuf. XML tree is preferred.
  */
 #ifndef _CLIXON_NETCONF_LIB_H
 #define _CLIXON_NETCONF_LIB_H
@@ -60,16 +61,18 @@ int netconf_lock_denied(cbuf *cb, char *info, char *message);
 int netconf_resource_denied(cbuf *cb, char *type, char *message);
 int netconf_rollback_failed(cbuf *cb, char *type, char *message);
 int netconf_data_exists(cbuf *cb, char *message);
-int netconf_data_missing(cbuf *cb, char *message);
+int netconf_data_missing(cbuf *cb, char *missing_choice, char *message);
+int netconf_data_missing_xml(cxobj **xret, char *missing_choice, char *message);
 int netconf_operation_not_supported(cbuf *cb, char *type, char *message);
 int netconf_operation_failed(cbuf *cb, char *type, char *message);
 int netconf_operation_failed_xml(cxobj **xret, char *type, char *message);
 int netconf_malformed_message(cbuf *cb, char *message);
 int netconf_malformed_message_xml(cxobj **xret, char *message);
-int netconf_data_not_unique(cbuf *cb, cxobj *x,	cvec *cvk);
-int netconf_minmax_elements(cbuf *cb, cxobj *x, int max);
+int netconf_data_not_unique_xml(cxobj **xret, cxobj *x,	cvec *cvk);
+int netconf_minmax_elements_xml(cxobj **xret, cxobj *x, int max);
 int netconf_trymerge(cxobj *x, yang_stmt *yspec, cxobj **xret);
 int netconf_module_load(clicon_handle h);
 char *netconf_db_find(cxobj *xn, char *name);
+int netconf_err2cb(cxobj *xerr, cbuf **cberr);
 
 #endif /* _CLIXON_NETCONF_LIB_H */

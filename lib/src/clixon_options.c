@@ -72,6 +72,7 @@
 #include "clixon_data.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_map.h"
 
 /* Mapping between Clicon startup modes string <--> constants, 
@@ -145,6 +146,7 @@ parse_configfile(clicon_handle  h,
     char       *body;
     clicon_hash_t *copt = clicon_options(h);
     cbuf       *cbret = NULL;
+    cxobj      *xret = NULL;
     int         ret;
 
     if (filename == NULL || !strlen(filename)){
@@ -194,13 +196,11 @@ parse_configfile(clicon_handle  h,
     }
     if (xml_apply0(xc, CX_ELMNT, xml_default, h) < 0)
 	goto done;	
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;	
-    }
-    if ((ret = xml_yang_validate_add(h, xc, cbret)) < 0)
+    if ((ret = xml_yang_validate_add(h, xc, &xret)) < 0)
 	goto done;
     if (ret == 0){
+	if (netconf_err2cb(xret, &cbret) < 0)
+	    goto done;
 	clicon_err(OE_CFG, 0, "Config file validation: %s", cbuf_get(cbret));
 	goto done;
     }
@@ -234,6 +234,8 @@ parse_configfile(clicon_handle  h,
   done:
     if (cbret)
 	cbuf_free(cbret);
+    if (xret)
+	xml_free(xret);
     if (xt)
 	xml_free(xt);
     if (f)

@@ -219,7 +219,7 @@ text_modify(clicon_handle       h,
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
-		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+		if (netconf_data_missing(cbret, NULL, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -376,7 +376,7 @@ text_modify(clicon_handle       h,
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
-		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+		if (netconf_data_missing(cbret, NULL, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -488,7 +488,7 @@ text_modify_top(clicon_handle       h,
 	 I.e., curl -u andy:bar -sS -X DELETE http://localhost/restconf/data
       */
 	    case OP_DELETE:
-		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+		if (netconf_data_missing(cbret, NULL, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
 		goto fail;
 		break;

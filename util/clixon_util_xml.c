@@ -118,7 +118,7 @@ main(int    argc,
     struct stat   st;
     int           fd = 0; /* stdin */
     cxobj        *xcfg = NULL;
-    cbuf         *cberr;
+    cbuf         *cbret = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -205,13 +205,13 @@ main(int    argc,
 	if ((ret = json_parse_file(fd, yspec, &xt, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    xml_print(stderr, xerr);
+	    clicon_rpc_generate_error("util_xml", xerr);
 	    goto done;
 	}
     }
     else{
 	if (xml_parse_file(fd, "</config>", NULL, &xt) < 0){
-	    fprintf(stderr, "xml parse error %s\n", clicon_err_reason);
+	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
 	    goto done;
 	}
     }
@@ -227,10 +227,6 @@ main(int    argc,
     /* 3. Validate data (if yspec) */
     if (validate){
 	xc = xml_child_i(xt, 0);
-	if ((cberr = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
 	/* Populate */
 	if (xml_apply0(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
@@ -242,12 +238,14 @@ main(int    argc,
 	    goto done;
 	if (xml_apply0(xc, -1, xml_sort_verify, h) < 0)
 	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
-	if ((ret = xml_yang_validate_all_top(h, xc, cberr)) < 0) 
+	if ((ret = xml_yang_validate_all_top(h, xc, &xerr)) < 0) 
 	    goto done;
-	if (ret > 0 && (ret = xml_yang_validate_add(h, xc, cberr)) < 0)
+	if (ret > 0 && (ret = xml_yang_validate_add(h, xc, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    fprintf(stderr, "%s", cbuf_get(cberr));
+	    if (netconf_err2cb(xerr, &cbret) < 0)
+		goto done;
+	    fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
 	    goto done;
 	}
     }
@@ -264,6 +262,8 @@ main(int    argc,
     }
     retval = 0;
  done:
+    if (cbret)
+	cbuf_free(cbret);
     if (xt)
 	xml_free(xt);
     if (cb)

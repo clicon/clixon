@@ -48,11 +48,11 @@ int xml2txt(FILE *f, cxobj *x, int level);
 int xml2cli(FILE *f, cxobj *x, char *prepend, enum genmodel_type gt);
 int xml_yang_root(cxobj *x, cxobj **xr);
 int xmlns_assign(cxobj *x);
-int xml_yang_validate_rpc(clicon_handle h, cxobj *xrpc, cbuf *cbret);
-int xml_yang_validate_list_key_only(clicon_handle h, cxobj *xt, cbuf *cbret);
-int xml_yang_validate_add(clicon_handle h, cxobj *xt, cbuf *cbret);
-int xml_yang_validate_all(clicon_handle h, cxobj *xt, cbuf *cbret);
-int xml_yang_validate_all_top(clicon_handle h, cxobj *xt, cbuf *cbret);
+int xml_yang_validate_rpc(clicon_handle h, cxobj *xrpc, cxobj **xret);
+int xml_yang_validate_list_key_only(clicon_handle h, cxobj *xt, cxobj **xret);
+int xml_yang_validate_add(clicon_handle h, cxobj *xt, cxobj **xret);
+int xml_yang_validate_all(clicon_handle h, cxobj *xt, cxobj **xret);
+int xml_yang_validate_all_top(clicon_handle h, cxobj *xt, cxobj **xret);
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
 int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
 

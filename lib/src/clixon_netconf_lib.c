@@ -32,6 +32,8 @@
   ***** END LICENSE BLOCK *****
 
  * Netconf library functions. See RFC6241
+ * Functions to generate a netconf error message come in two forms: xml-tree and 
+ * cbuf. XML tree is preferred.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -63,6 +65,8 @@
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_xml_map.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_netconf_lib.h"
 
 /*! Create Netconf in-use error XML tree according to RFC 6241 Appendix A
@@ -752,38 +756,81 @@ netconf_data_exists(cbuf      *cb,
  * does not exist.  For example, a "delete" operation was attempted on
  * data that does not exist.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
+ * @param[in]  missing_choice  If set, see RFC7950: 15.6 violates mandatiry choice
  * @param[in]  message Error message
  */
 int
 netconf_data_missing(cbuf *cb,
+		     char *missing_choice,
 		     char *message)
 {
     int   retval = -1;
-    char *encstr = NULL;
+    cxobj *xret = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>application</error-type>"
-		"<error-tag>data-missing</error-tag>"
-		"<error-severity>error</error-severity>") <0)
-	goto err;
+    if (netconf_data_missing_xml(&xret, missing_choice, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
+/*! Create Netconf data-missing error XML tree according to RFC 6241 App A
+ *
+ * Request could not be completed because the relevant data model content 
+ * does not exist.  For example, a "delete" operation was attempted on
+ * data that does not exist.
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[in]  missing_choice  If set, see RFC7950: 15.6 violates mandatiry choice
+ * @param[in]  message Error message
+ */
+int
+netconf_data_missing_xml(cxobj **xret,
+			 char   *missing_choice,
+			 char   *message)
+{
+    int   retval = -1;
+    char *encstr = NULL;
+    cxobj *xerr;
+
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	    goto done;
+    }
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+	goto done;
+    if (xml_parse_va(&xerr, NULL, 
+		     "<error-type>application</error-type>"
+		     "<error-tag>data-missing</error-tag>") < 0)
+	goto done;
+    if (missing_choice) /* NYI: RFC7950: 15.6 <error-path> */
+	if (xml_parse_va(&xerr, NULL, 
+			 "<error-app-tag>missing-choice</error-app-tag>"
+			 "<error-info><missing-choice>%s</missing-choice></error-info>",
+			 missing_choice) < 0)
+	    goto done;
+    if (xml_parse_va(&xerr, NULL, 
+		"<error-severity>error</error-severity>") < 0)
+	goto done;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
+	if (xml_parse_va(&xerr, NULL,
+			 "<error-message>%s</error-message>", encstr) < 0)
+	    goto done;
     }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
-	goto err;
     retval = 0;
  done:
     if (encstr)
 	free(encstr);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
 }
-
+    
 /*! Create Netconf operation-not-supported error XML according to RFC 6241 App A
  *
  * Request could not be completed because the requested operation is not
@@ -970,78 +1017,96 @@ netconf_malformed_message_xml(cxobj **xret,
  *
  * A NETCONF operation would result in configuration data where a
  *   "unique" constraint is invalidated.
- * @param[out]  cb       CLIgen buf. Error XML is written in this buffer
- * @param[in]   x        List element containing duplicate
- * @param[in]   cvk      List of comonents in x that are non-unique
+ * @param[out]  xret   Error XML tree. Free with xml_free after use
+ * @param[in]   x      List element containing duplicate
+ * @param[in]   cvk    List of comonents in x that are non-unique
  * @see RFC7950 Sec 15.1
  */
 int
-netconf_data_not_unique(cbuf *cb,
-			cxobj *x,
-			cvec  *cvk)
+netconf_data_not_unique_xml(cxobj **xret,
+			    cxobj  *x,
+			    cvec   *cvk)
 {
     int     retval = -1;
     cg_var *cvi = NULL; 
     cxobj  *xi;
+    cxobj  *xerr;
+    cxobj  *xinfo;
+    cbuf   *cb = NULL;
     
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>protocol</error-type>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-app-tag>data-not-unique</error-app-tag>"
-		"<error-severity>error</error-severity>"
-		"<error-info>") < 0)
-	goto err;
-    while ((cvi = cvec_each(cvk, cvi)) != NULL){
-	if ((xi = xml_find(x, cv_string_get(cvi))) == NULL)
-	    continue; /* ignore, shouldnt happen */
-	cprintf(cb, "<non-unique>");
-	clicon_xml2cbuf(cb, xi, 0, 0);	
-	cprintf(cb, "</non-unique>");
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	    goto done;
     }
-    if (cprintf(cb, "</error-info></rpc-error></rpc-reply>") <0)
-	goto err;
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+	goto done;
+    if (xml_parse_va(&xerr, NULL, "<error-type>protocol</error-type>"
+		     "<error-tag>operation-failed</error-tag>"
+     		     "<error-app-tag>data-not-unique</error-app-tag>"
+		     "<error-severity>error</error-severity>") < 0)
+	goto done;
+    if (cvec_len(cvk)){
+	if ((xinfo = xml_new("error-info", xerr, NULL)) == NULL)
+	    goto done;
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	while ((cvi = cvec_each(cvk, cvi)) != NULL){
+	    if ((xi = xml_find(x, cv_string_get(cvi))) == NULL)
+		continue; /* ignore, shouldnt happen */
+	    clicon_xml2cbuf(cb, xi, 0, 0);	
+	    if (xml_parse_va(&xinfo, NULL, "<non-unique>%s</non-unique>", cbuf_get(cb)) < 0)
+		goto done;
+	    cbuf_reset(cb);
+	}
+    }
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
 }
 
 /*! Create Netconf too-many/few-elements err msg according to RFC 7950 15.2/15.3
  *
  * A NETCONF operation would result in configuration data where a
    list or a leaf-list would have too many entries, the following error
- * @param[out]  cb       CLIgen buf. Error XML is written in this buffer
+ * @param[out] xret    Error XML tree. Free with xml_free after use
  * @param[in]   x        List element containing duplicate
  * @param[in]   max      If set, return too-many, otherwise too-few
  * @see RFC7950 Sec 15.1
  */
 int
-netconf_minmax_elements(cbuf *cb,
-			cxobj *x,
-			int    max)
+netconf_minmax_elements_xml(cxobj **xret,
+	                    cxobj  *x,
+	                    int     max)
 {
-    int     retval = -1;
+    int    retval = -1;
+    cxobj *xerr;
     
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>protocol</error-type>"
-		"<error-tag>operation-failed</error-tag>"
-		"<error-app-tag>too-%s-elements</error-app-tag>"
-		"<error-severity>error</error-severity>"
-		"<error-path>%s</error-path>"
-		"</rpc-error></rpc-reply>",
-		max?"many":"few",
-		xml_name(x)) < 0) /* XXX should be xml2xpath */
-	goto err;
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	    goto done;
+    }
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+	goto done;
+    if (xml_parse_va(&xerr, NULL, "<error-type>protocol</error-type>"
+		     "<error-tag>operation-failed</error-tag>"
+		     "<error-app-tag>too-%s-elements</error-app-tag>"
+		     "<error-severity>error</error-severity>"
+		     "<error-path>%s</error-path>",
+		     max?"many":"few",
+		     xml_name(x)) < 0) /* XXX should be xml2xpath */
+	goto done;
     retval = 0;
  done:
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
 }
-
 
 /*! Help function: merge - check yang - if error make netconf errmsg 
  * @param[in]     x       XML tree
@@ -1156,3 +1221,41 @@ netconf_db_find(cxobj *xn,
     return db;
 }
 
+/*! Generate netconf error msg to cbuf to use in string printout or logs
+ * @param[in]  xerr    Netconf error message on the level: <rpc-reply><rpc-error>
+ * @param[out] cberr   Translation from netconf err to cbuf. Free with cbuf_free.
+ * @retval     0       OK, with cberr set
+ * @retval    -1       Error
+ * @code
+ *     cbuf  *cb = NULL;
+ *     if (netconf_err2cb(xerr, &cb) < 0)
+ *        err;
+ *     printf("%s", cbuf_get(cb));
+ * @endcode
+ * @see clicon_rpc_generate_error
+ */
+int
+netconf_err2cb(cxobj *xerr,
+	       cbuf **cberr)
+{
+    int    retval = -1;
+    cbuf  *cb = NULL;
+    cxobj *x;
+
+    if ((cb = cbuf_new()) ==NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if ((x=xpath_first(xerr, "error-type"))!=NULL)
+	cprintf(cb, "%s ", xml_body(x));
+    if ((x=xpath_first(xerr, "error-tag"))!=NULL)
+	cprintf(cb, "%s ", xml_body(x));
+    if ((x=xpath_first(xerr, "error-message"))!=NULL)
+	cprintf(cb, "%s ", xml_body(x));
+    if ((x=xpath_first(xerr, "error-info"))!=NULL)
+	clicon_xml2cbuf(cb, xml_child_i(x,0), 0, 0);
+    *cberr = cb;
+    retval = 0;
+ done:
+    return retval;
+}

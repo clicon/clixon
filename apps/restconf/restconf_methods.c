@@ -1476,14 +1476,9 @@ api_operations_post_output(clicon_handle h,
     cxobj     *xa;          /* xml attribute (xmlns) */
     cxobj     *x;
     cxobj     *xok;
-    cbuf      *cbret = NULL;
     int        isempty;
     
     //    clicon_debug(1, "%s", __FUNCTION__);
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, 0, "cbuf_new");
-	goto done;
-    }
     /* Validate that exactly only <rpc-reply> tag */
     if ((xoutput = xml_child_i_type(xret, 0, CX_ELMNT)) == NULL ||
 	strcmp(xml_name(xoutput),"rpc-reply") != 0 ||
@@ -1521,14 +1516,12 @@ api_operations_post_output(clicon_handle h,
 #if 0
 	if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
-	if ((ret = xml_yang_validate_all(xoutput, cbret)) < 0)
+	if ((ret = xml_yang_validate_all(xoutput, &xerr)) < 0)
 	    goto done;
 	if (ret == 1 &&
-	    (ret = xml_yang_validate_add(h, xoutput, cbret)) < 0)
+	    (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
-	    if (xml_parse_string(cbuf_get(cbret), yspec, &xerr) < 0)
-		goto done;
 	    if ((xe = xpath_first(xerr, "rpc-reply/rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
@@ -1573,8 +1566,6 @@ api_operations_post_output(clicon_handle h,
     retval = 1;
  done:
     clicon_debug(1, "%s retval: %d", __FUNCTION__, retval);
-    if (cbret)
-	cbuf_free(cbret);
     if (xerr)
 	xml_free(xerr);
     return retval;
@@ -1760,14 +1751,12 @@ api_operations_post(clicon_handle h,
     /* 6. Validate incoming RPC and fill in defaults */
     if (xml_spec_populate_rpc(h, xtop, yspec) < 0) /*  */
 	goto done;
-    if ((ret = xml_yang_validate_rpc(h, xtop, cbret)) < 0)
+    if ((ret = xml_yang_validate_rpc(h, xtop, &xret)) < 0)
 	goto done;
     if (ret == 0){
-	if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)
-	    goto done;
-	if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) == NULL){
+	if ((xe = xpath_first(xret, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
+	    goto ok;
 	}
 	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
 	    goto done;

@@ -81,7 +81,7 @@
  * are if code comes via XML/NETCONF.
  * @param[in]   yspec   Yang spec
  * @param[in]   td      Transaction data
- * @param[out]  cbret   Cligen buffer containing netconf error (if retval == 0)
+ * @param[out]  xret    Error XML tree. Free with xml_free after use
  * @retval     -1       Error
  * @retval      0       Validation failed (with cbret set)
  * @retval      1       Validation OK       
@@ -90,7 +90,7 @@ static int
 generic_validate(clicon_handle       h,
 		 yang_stmt          *yspec,
 		 transaction_data_t *td,
-		 cbuf               *cbret)
+		 cxobj             **xret)
 {
     int             retval = -1;
     cxobj          *x1;
@@ -100,7 +100,7 @@ generic_validate(clicon_handle       h,
     int             ret;
 
     /* All entries */
-    if ((ret = xml_yang_validate_all_top(h, td->td_target, cbret)) < 0) 
+    if ((ret = xml_yang_validate_all_top(h, td->td_target, xret)) < 0) 
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -109,7 +109,7 @@ generic_validate(clicon_handle       h,
 	x1 = td->td_scvec[i]; /* source changed */
 	x2 = td->td_tcvec[i]; /* target changed */
 	/* Should this be recursive? */
-	if ((ret = xml_yang_validate_add(h, x2, cbret)) < 0)
+	if ((ret = xml_yang_validate_add(h, x2, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -119,7 +119,7 @@ generic_validate(clicon_handle       h,
 	x1 = td->td_dvec[i];
 	ys = xml_spec(x1);
 	if (ys && yang_mandatory(ys) && yang_config(ys)==0){
-	    if (netconf_missing_element(cbret, "protocol", xml_name(x1), "Missing mandatory variable") < 0)
+	    if (netconf_missing_element_xml(xret, "protocol", xml_name(x1), "Missing mandatory variable") < 0)
 		goto done;
 	    goto fail;
 	}
@@ -127,7 +127,7 @@ generic_validate(clicon_handle       h,
     /* added entries */
     for (i=0; i<td->td_alen; i++){
 	x2 = td->td_avec[i];
-	if ((ret = xml_yang_validate_add(h, x2, cbret)) < 0)
+	if ((ret = xml_yang_validate_add(h, x2, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -175,6 +175,7 @@ startup_common(clicon_handle       h,
     modstate_diff_t    *msd = NULL;
     cxobj              *xt = NULL;
     cxobj              *x;
+    cxobj              *xret = NULL;
     
     /* If CLICON_XMLDB_MODSTATE is enabled, then get the db XML with 
      * potentially non-matching module-state in msd
@@ -225,11 +226,13 @@ startup_common(clicon_handle       h,
     /* 5. Make generic validation on all new or changed data.
        Note this is only call that uses 3-values */
     clicon_debug(1, "Validating startup %s", db);
-    if ((ret = generic_validate(h, yspec, td, cbret)) < 0)
+    if ((ret = generic_validate(h, yspec, td, &xret)) < 0)
 	goto done;
-    if (ret == 0)
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
 	goto fail; /* STARTUP_INVALID */
-
+    }
     /* 6. Call plugin transaction validate callbacks */
     if (plugin_transaction_validate(h, td) < 0)
 	goto done;
@@ -240,6 +243,8 @@ startup_common(clicon_handle       h,
  ok:
     retval = 1;
  done:
+    if (xret)
+	xml_free(xret);
     if (xt)
 	xml_free(xt);
     if (msd)
@@ -374,6 +379,7 @@ startup_commit(clicon_handle  h,
  * and call application callback validations.
  * @param[in] h         Clicon handle
  * @param[in] candidate The candidate database. The wanted backend state
+ * @param[out] xret    Error XML tree. Free with xml_free after use
  * @retval   -1       Error - or validation failed (but cbret not set)
  * @retval    0       Validation failed (with cbret set)
  * @retval    1       Validation OK       
@@ -385,7 +391,7 @@ static int
 from_validate_common(clicon_handle       h, 
 		     char               *candidate,
 		     transaction_data_t *td,
-		     cbuf               *cbret)
+		     cxobj             **xret)
 {
     int         retval = -1;
     yang_stmt  *yspec;
@@ -409,7 +415,7 @@ from_validate_common(clicon_handle       h,
      * But xml_diff requires some basic validation, at least check that yang-specs
      * have been assigned
      */
-    if ((ret = xml_yang_validate_all_top(h, td->td_target, cbret)) < 0)
+    if ((ret = xml_yang_validate_all_top(h, td->td_target, xret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -462,7 +468,7 @@ from_validate_common(clicon_handle       h,
 
     /* 5. Make generic validation on all new or changed data.
        Note this is only call that uses 3-values */
-    if ((ret = generic_validate(h, yspec, td, cbret)) < 0)
+    if ((ret = generic_validate(h, yspec, td, xret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -503,6 +509,7 @@ candidate_commit(clicon_handle h,
     int                 retval = -1;
     transaction_data_t *td = NULL;
     int                 ret;
+    cxobj              *xret = NULL;
 
      /* 1. Start transaction */
     if ((td = transaction_new()) == NULL)
@@ -511,10 +518,13 @@ candidate_commit(clicon_handle h,
     /* Common steps (with validate). Load candidate and running and compute diffs
      * Note this is only call that uses 3-values
      */
-    if ((ret = from_validate_common(h, candidate, td, cbret)) < 0)
+    if ((ret = from_validate_common(h, candidate, td, &xret)) < 0)
 	goto done;
-    if (ret == 0)
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
 	goto fail;
+    }
 
      /* 7. Call plugin transaction commit callbacks */
      if (plugin_transaction_commit(h, td) < 0)
@@ -563,7 +573,9 @@ candidate_commit(clicon_handle h,
 	 xmldb_get0_free(h, &td->td_src);
 	 transaction_free(td);
      }
-    return retval;
+     if (xret)
+	 xml_free(xret);
+     return retval;
  fail:
     retval = 0;
     goto done;
@@ -725,6 +737,7 @@ from_client_validate(clicon_handle h,
     transaction_data_t *td = NULL;
     int                 ret;
     char               *db;
+    cxobj             *xret = NULL;
 
     if ((db = netconf_db_find(xe, "source")) == NULL){
 	if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
@@ -737,9 +750,15 @@ from_client_validate(clicon_handle h,
     if ((td = transaction_new()) == NULL)
 	goto done;
     /* Common steps (with commit) */
-    if ((ret = from_validate_common(h, db, td, cbret)) < 1){
+    if ((ret = from_validate_common(h, db, td, &xret)) < 1){
+	/* A little complex due to several sources of validation fails or errors.
+	 * (1) xerr is set -> translate to cbret; (2) cbret set use that; otherwise
+	 * use clicon_err. */
+	if (xret && clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
 	plugin_transaction_abort(h, td);
-	if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+	if (!cbuf_len(cbret) &&
+	    netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 	    goto done;
 	goto ok;
     }
@@ -773,6 +792,8 @@ from_client_validate(clicon_handle h,
 	 xmldb_get0_free(h, &td->td_src);
 	 transaction_free(td);
     }
+    if (xret)
+	xml_free(xret);
     return retval;
 } /* from_client_validate */
 
