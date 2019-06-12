@@ -149,7 +149,8 @@ new "start restconf daemon (-a is enable http basic auth)"
 start_restconf -f $cfg -- -a
 
 new "waiting"
-sleep $RCWAIT
+wait_backend
+wait_restconf
 
 new "auth get"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data)" 0 '{"data": {"clixon-example:state": {"op": ["42","41","43"]}}}

@@ -74,7 +74,7 @@
  * The request requires a resource that already is in use.
  * @param[out] cb       CLIgen buf. Error XML is written in this buffer
  * @param[in]  type     Error type: "application" or "protocol"
- * @param[in]  message  Error message
+ * @param[in]  message  Error message (will be XML encoded)
  */
 int
 netconf_in_use(cbuf *cb,
@@ -113,7 +113,7 @@ netconf_in_use(cbuf *cb,
  * The request specifies an unacceptable value for one or more parameters.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
- * @param[in]  message Error message
+ * @param[in]  message Error message (will be XML encoded)
  */
 int
 netconf_invalid_value(cbuf *cb,
@@ -153,7 +153,7 @@ netconf_invalid_value(cbuf *cb,
  * too large for the implementation to handle.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "transport", "rpc", "application", "protocol"
- * @param[in]  message Error message
+ * @param[in]  message Error message (will be XML encoded)
  */
 int
 netconf_too_big(cbuf *cb,
@@ -193,7 +193,7 @@ netconf_too_big(cbuf *cb,
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
  * @param[in]  info    bad-attribute or bad-element xml
- * @param[in]  message Error message
+ * @param[in]  message Error message (will be XML encoded)
  */
 int
 netconf_missing_attribute(cbuf *cb,
@@ -234,7 +234,7 @@ netconf_missing_attribute(cbuf *cb,
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
  * @param[in]  info    bad-attribute or bad-element xml
- * @param[in]  message Error message
+ * @param[in]  message Error message (will be XML encoded)
  */
 int
 netconf_bad_attribute(cbuf *cb,
@@ -317,7 +317,7 @@ netconf_unknown_attribute(cbuf *cb,
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  tag     Error tag
  * @param[in]  element bad-element xml
- * @param[in]  message Error message
+ * @param[in]  message Error message (will be XML encoded)
  */
 static int
 netconf_common_xml(cxobj **xret,
@@ -327,8 +327,9 @@ netconf_common_xml(cxobj **xret,
 		   char   *element,
 		   char   *message)
 {
-    int   retval =-1;
+    int    retval =-1;
     cxobj *xerr;
+    char  *encstr = NULL;
     
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
@@ -344,11 +345,17 @@ netconf_common_xml(cxobj **xret,
 		     "<error-severity>error</error-severity>",
 		     type, tag, infotag, element, infotag) < 0)
 	goto done;
-    if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
-			 message) < 0)
-	goto done;
+    if (message){
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
+	    goto done;
+	if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
+			 encstr) < 0)
+	    goto done;
+    }
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
 }    
 
@@ -555,7 +562,7 @@ netconf_access_denied(cbuf *cb,
  * authorization failed.
  * @param[out] xret    Error XML tree. Free with xml_free after use
  * @param[in]  type    Error type: "application" or "protocol"
- * @param[in]  message Error message
+ * @param[in]  message Error message  (will be XML encoded)
  * @code
  *  cxobj *xret = NULL;
  *  if (netconf_access_denied_xml(&xret, "protocol", "Unauthorized") < 0)
@@ -569,9 +576,10 @@ netconf_access_denied_xml(cxobj **xret,
 			  char   *type,
 			  char   *message)
 {
-    int   retval =-1;
+    int    retval =-1;
     cxobj *xerr;
-    
+    char  *encstr = NULL;
+
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
 	    goto done;
@@ -584,11 +592,17 @@ netconf_access_denied_xml(cxobj **xret,
 		     "<error-tag>access-denied</error-tag>"
 		     "<error-severity>error</error-severity>", type) < 0)
 	goto done;
-    if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
-			 message) < 0)
-	goto done;
+    if (message){
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
+	    goto done;
+	if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
+			 encstr) < 0)
+	    goto done;
+    }
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
 }
 
@@ -905,7 +919,7 @@ netconf_operation_failed(cbuf  *cb,
  * some reason not covered by any other error condition.
  * @param[out] xret    Error XML tree 
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
- * @param[in]  message Error message
+ * @param[in]  message Error message (will be XML encoded)
  * @code
  *  cxobj *xret = NULL;
  *  if (netconf_operation_failed_xml(&xret, "protocol", "Unauthorized") < 0)
@@ -921,6 +935,7 @@ netconf_operation_failed_xml(cxobj **xret,
 {
     int   retval =-1;
     cxobj *xerr;
+    char  *encstr = NULL;
     
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
@@ -934,11 +949,17 @@ netconf_operation_failed_xml(cxobj **xret,
 		     "<error-tag>operation-failed</error-tag>"
 		     "<error-severity>error</error-severity>", type) < 0)
 	goto done;
-    if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
-			 message) < 0)
+    if (message){
+	 if (xml_chardata_encode(&encstr, "%s", message) < 0)
+	     goto done;
+	 if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
+			 encstr) < 0)
 	goto done;
+    }
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
 }
 
@@ -976,7 +997,7 @@ netconf_malformed_message(cbuf  *cb,
  * For example, the message is not well-formed XML or it uses an
  * invalid character set.
  * @param[out] xret    Error XML tree 
- * @param[in]  message Error message
+ * @param[in]  message Error message (will be XML encoded)
  * @note New in :base:1.1
  * @code
  *  cxobj *xret = NULL;
@@ -990,8 +1011,9 @@ int
 netconf_malformed_message_xml(cxobj **xret,
 			      char   *message)
 {
-    int   retval =-1;
+    int    retval =-1;
     cxobj *xerr;
+    char  *encstr = NULL;
     
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
@@ -1005,11 +1027,17 @@ netconf_malformed_message_xml(cxobj **xret,
 		     "<error-tag>malformed-message</error-tag>"
 		     "<error-severity>error</error-severity>") < 0)
 	goto done;
-    if (message && xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
-			 message) < 0)
-	goto done;
+     if (message){
+	 if (xml_chardata_encode(&encstr, "%s", message) < 0)
+	     goto done;
+	 if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
+			  encstr) < 0)
+	     goto done;
+     }
     retval = 0;
  done:
+    if (encstr)
+	free(encstr);
     return retval;
 }
 

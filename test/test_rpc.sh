@@ -77,11 +77,11 @@ expecteq "$(curl -s -X POST -d '{"clixon-example:input":{"x":"0","y":"99"}}' htt
 
 new "restconf example rpc json/json"
 # XXX example:input example:output
-expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+json' -H 'Content-Type: application/yang-data+json' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"clixon-example:output": {"x": "0","y": "42"}}
+expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+json' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"clixon-example:output": {"x": "0","y": "42"}}
 '
 
 new "restconf example rpc xml/json"
-expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' -H 'Content-Type: application/yang-data+json' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)"  0 '{"clixon-example:output": {"x": "0","y": "42"}}
+expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+json' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)"  0 '{"clixon-example:output": {"x": "0","y": "42"}}
 '
 
 new "restconf example rpc json/xml"

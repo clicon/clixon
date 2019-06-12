@@ -2212,7 +2212,9 @@ xml_spec_populate_rpc(clicon_handle h,
 	if (yrpc){
 	    xml_spec_set(x, yrpc);
 	    if ((yi = yang_find(yrpc, Y_INPUT, NULL)) != NULL){
-		/* kludge rpc -> input XXX THIS HIDES AN ERROR IN xml_spec_populate */
+		/* xml_spec_populate need to have parent with yang spec for
+		 * recursive population to work. Therefore, assign input yang
+		 * to rpc level although not 100% intuitive */
 		xml_spec_set(x, yi); 
 		if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		    goto done;
