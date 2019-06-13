@@ -149,23 +149,22 @@ The standards covered include:
 Not supported:
 - !DOCTYPE (ie DTD)
 
-Historically, Clixon has not until 3.9 made strict namespace
-enforcing. For example, the following non-strict netconf was
-previously accepted:
+The following xpath axes are supported:
+- CHILD, DESCENDANT, DESCENDANT_OR_SELF, SELF, and PARENT
+
+The following xpath axes are _not_ supported:
+- PRECEEDING, PRECEEDING_SIBLING, NAMESPACE, FOLLOWING_SIBLING, FOLLOWING, ANCESTOR,ANCESTOR_OR_SELF, ATTRIBUTE 
+
+Note that base netconf namespace syntax is not enforced but recommended, which means that the following two expressions are treated equivalently:
 ```
-     <rpc><my-own-method/></rpc> 
-```
-In 3.9, the same statement should be, for example:
-```
-     <rpc><my-own-method xmlns="urn:example:my-own"/></rpc> 
-```
-Note that base netconf syntax is still not enforced but recommended:
-```
+     <rpc>
+        <my-own-method xmlns="urn:example:my-own"/>
+     </rpc> 
      <rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
         <my-own-method xmlns="urn:example:my-own"/>
      </rpc> 
 ```
-
+All other namespaces are enforced.
 
 ## Netconf
 

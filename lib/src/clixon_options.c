@@ -90,6 +90,7 @@ static const map_str2int startup_mode_map[] = {
  * @param[in] dbglevel Debug level
  * @retval    0        OK
  * @retval   -1        Error
+ * @note CLICON_FEATURE and CLICON_YANG_DIR are treated specially since they are lists
  */
 int
 clicon_option_dump(clicon_handle h, 
@@ -102,6 +103,7 @@ clicon_option_dump(clicon_handle h,
     void          *val;
     size_t         klen;
     size_t         vlen;
+    cxobj         *x = NULL;
     
     if (hash_keys(hash, &keys, &klen) < 0)
 	goto done;
@@ -116,7 +118,22 @@ clicon_option_dump(clicon_handle h,
 	else
 	    clicon_debug(dbglevel, "%s = NULL", keys[i]);
     }
-    retval = 0;
+    /* Next print CLICON_FEATURE and CLICON_YANG_DIR from config tree
+     * Since they are lists they are placed in the config tree.
+     */
+    x = NULL;
+    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+	if (strcmp(xml_name(x), "CLICON_YANG_DIR") != 0)
+	    continue;
+	clicon_debug(dbglevel, "%s =\t \"%s\"", xml_name(x), xml_body(x));
+    }
+    x = NULL;
+    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+	if (strcmp(xml_name(x), "CLICON_FEATURE") != 0)
+	    continue;
+	clicon_debug(dbglevel, "%s =\t \"%s\"", xml_name(x), xml_body(x));
+    }
+   retval = 0;
  done:
     if (keys)
 	free(keys);

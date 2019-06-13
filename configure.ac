@@ -233,8 +233,8 @@ AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versi
 
 # YANG_INSTALLDIR is where clixon installs the Clixon yang files
 # (the files in in yang/clixon)
-# Each application designer may need to place CLIXON_YANG_DIR in their config:
-# <CLIXON-YANG-DIR>$YANG_INSTALLDIR</CLIXON-YANG_DIR>
+# Each application designer may need to place YANG_INSTALLDIR in their config:
+# <CLICON_YANG_DIR>$YANG_INSTALLDIR</CLICON_YANG_DIR>
 AC_ARG_WITH(yang-installdir,
             [  --with-yang-installdir=DIR  Install Clixon yang files here (default: ${prefix}/share/clixon) ],
 	    [YANG_INSTALLDIR="$withval"],
