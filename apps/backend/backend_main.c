@@ -642,7 +642,7 @@ main(int    argc,
     switch (startup_mode){
     case SM_INIT: /* Scratch running and start from empty */
 	/* [Delete and] create running db */
-	if (startup_db_reset(h, "running") < 0)
+	if (xmldb_db_reset(h, "running") < 0)
 	    goto done;
     case SM_NONE: /* Fall through *
 		   * Load plugins and call plugin_init() */

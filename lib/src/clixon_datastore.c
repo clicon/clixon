@@ -78,6 +78,7 @@
 #include "clixon_datastore_write.h"
 #include "clixon_datastore_read.h"
 
+
 /*! Translate from symbolic database name to actual filename in file-system
  * @param[in]   th       text handle handle
  * @param[in]   db       Symbolic database name, eg "candidate", "running"
@@ -445,4 +446,22 @@ xmldb_create(clicon_handle h,
     if (fd != -1)
 	close(fd);
     return retval;
+}
+
+/*! Create an XML database. If it exists already, delete it before creating
+ * Utility function.
+ * @param[in]  h   Clixon handle
+ * @param[in]  db  Symbolic database name, eg "candidate", "running"
+ */
+int
+xmldb_db_reset(clicon_handle h, 
+	       char         *db)
+{
+    if (xmldb_exists(h, db) == 1){
+	if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
+	    return -1;
+    }
+    if (xmldb_create(h, db) < 0)
+	return -1;
+    return 0;
 }

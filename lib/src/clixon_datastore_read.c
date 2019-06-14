@@ -641,7 +641,8 @@ xmldb_get_zerocopy(clicon_handle       h,
  * @param[in]  db     Name of database to search in (filename including dir path
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
-
+ * @retval     0      OK
+ * @retval     -1     Error
  * @code
  *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", &xt) < 0)
  *      err;

@@ -191,6 +191,9 @@
 
 ### Minor changes
 
+* `startup_extraxml` triggers unnecessary validation
+  * Renamed startup_db_reset -> xmldb_db_reset (its a general function)
+  * In startup_extraxml(), check if reset callbacks or extraxml file actually makes and changes to the tmp db.
 * Print CLICON_YANG_DIR and CLICON_FEATURE lists on startup with debug flag 
 * Extended `util/clixon_util_xml` with yang and validate functionality so it can be used as a stand-alone utility for validating XML/JSON files
 * JSON parse and print improvements

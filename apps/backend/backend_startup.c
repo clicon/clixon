@@ -70,22 +70,6 @@
 #include "backend_commit.h"
 #include "backend_startup.h"
 
-/*! Create an XML database. If it exists already, delete it before creating
- * @param[in]  h   Clixon handle
- * @param[in]  db  Symbolic database name, eg "candidate", "running"
- */
-int
-startup_db_reset(clicon_handle h, 
-		 char         *db)
-{
-    if (xmldb_exists(h, db) == 1){
-	if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
-	    return -1;
-    }
-    if (xmldb_create(h, db) < 0)
-	return -1;
-    return 0;
-}
 
 /*! Merge db1 into db2 without commit 
  * @retval   -1       Error
@@ -235,34 +219,45 @@ startup_extraxml(clicon_handle        h,
 		 cbuf                *cbret)
 {
     int         retval = -1;
-    char       *db = "tmp";
+    char       *tmp_db = "tmp";
     int         ret;
     cxobj	*xt = NULL; /* Potentially upgraded XML */
     
     /* Clear tmp db */
-    if (startup_db_reset(h, db) < 0)
+    if (xmldb_db_reset(h, tmp_db) < 0)
 	goto done;
     /* Application may define extra xml in its reset function*/
-    if (clixon_plugin_reset(h, db) < 0)   
+    if (clixon_plugin_reset(h, tmp_db) < 0)   
 	goto done;
     /* Extra XML can also be added via file */
     if (file){
 	/* Parse and load file into tmp db */
-	if ((ret = load_extraxml(h, file, db, cbret)) < 0)
+	if ((ret = load_extraxml(h, file, tmp_db, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
     }
+    /* 
+     * Check if tmp db is empty.
+     * It should be empty if extra-xml is null and reset plugins did nothing
+     * then skip validation.
+     */
+    if (xmldb_get(h, tmp_db, NULL, &xt) < 0)
+	goto done;
+    if (xt==NULL || xml_child_nr(xt)==0) 
+	goto ok;
+    xml_free(xt);
+    xt = NULL;
     /* Validate the tmp db and return possibly upgraded xml in xt
      */
-    if ((ret = startup_validate(h, db, &xt, cbret)) < 0)
+    if ((ret = startup_validate(h, tmp_db, &xt, cbret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
     if (xt==NULL || xml_child_nr(xt)==0) 
 	goto ok;
     /* Merge tmp into running (no commit) */
-    if ((ret = db_merge(h, db, "running", cbret)) < 0)
+    if ((ret = db_merge(h, tmp_db, "running", cbret)) < 0)
 	goto fail;
     if (ret == 0)
 	goto fail;
@@ -270,7 +265,7 @@ startup_extraxml(clicon_handle        h,
     retval = 1;
  done:
     xmldb_get0_free(h, &xt);
-    if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
+    if (xmldb_delete(h, tmp_db) != 0 && errno != ENOENT) 
 	return -1;
     return retval;
  fail:
@@ -306,7 +301,7 @@ startup_failsafe(clicon_handle h)
     /* Copy original running to tmp as backup (restore if error) */
     if (xmldb_copy(h, "running", "tmp") < 0)
 	goto done;
-    if (startup_db_reset(h, "running") < 0)
+    if (xmldb_db_reset(h, "running") < 0)
 	goto done;
     ret = candidate_commit(h, db, cbret);
     if (ret != 1)

@@ -87,6 +87,7 @@ checklog(){
     s=$1 # statement
     l0=$2 # linenr
     new "Check $s in log"
+#    echo "grep \"transaction_log $s\"  $flog"
     t=$(grep -n "transaction_log $s" $flog)
     if [ -z "$t" ]; then
 	echo -e "\e[31m\nError in Test$testnr [$testname]:"
@@ -124,7 +125,7 @@ if [ $BE -ne 0 ]; then
     sleep $RCWAIT
 fi
 
-let nr=1
+let nr=0
 
 new "Basic transaction to add top-level x"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><y><a>$nr</a></y></x></config></edit-config></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
