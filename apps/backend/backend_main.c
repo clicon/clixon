@@ -678,7 +678,7 @@ main(int    argc,
     }
     /* Merge extra XML from file and reset function to running  
      */
-    if (status == STARTUP_OK && startup_mode != SM_NONE){
+    if (status == STARTUP_OK && startup_mode != SM_NONE && extraxml_file){
 	if ((ret = startup_extraxml(h, extraxml_file, cbret)) < 0)
 	    goto done;
 	if (ret2status(ret, &status) < 0)
