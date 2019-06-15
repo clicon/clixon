@@ -2085,13 +2085,8 @@ xml_default(cxobj *xt,
 	    if (!cv_flag(y->ys_cv, V_UNSET)){  /* Default value exists */
 		if (!xml_find(xt, y->ys_argument)){
 
-#ifdef USE_XML_INSERT
 		    if ((xc = xml_new(y->ys_argument, NULL, y)) == NULL)
 			goto done;
-#else
-		    if ((xc = xml_new(y->ys_argument, xt, y)) == NULL)
-			goto done;
-#endif
 		    xml_flag_set(xc, XML_FLAG_DEFAULT);
 		    if ((xb = xml_new("body", xc, NULL)) == NULL)
 			goto done;
@@ -2104,18 +2099,12 @@ xml_default(cxobj *xt,
 			goto done;
 		    free(str);
 		    added++;
-#ifdef USE_XML_INSERT
 		    if (xml_insert(xt, xc) < 0)
 			goto done;
-#endif
 		}
 	    }
 	}
     }
-#ifndef USE_XML_INSERT
-    if (added)
-	xml_sort(xt, NULL);
-#endif
     retval = 0;
  done:
     return retval;
