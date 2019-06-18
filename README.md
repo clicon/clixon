@@ -10,7 +10,7 @@ support.
   * [Frequently asked questions (FAQ)](doc/FAQ.md)
   * [Hello world](example/hello/README.md)
   * [Changelog](CHANGELOG.md)
-  * [Installation](#installation)
+  * [Installation](doc/INSTALL.md)
   * [Licenses](#licenses)
   * [Support](#support)
   * [Dependencies](#dependencies)
@@ -46,21 +46,6 @@ Users of Clixon currently include:
   * [Prosilient's PTAnalyzer](https://prosilient.com) # only CLIgen
 
 See also [Clicon project page](http://clicon.org).
-
-Clixon runs on Linux, [FreeBSD port](https://www.freshports.org/devel/clixon) and Mac/Apple. CPU architecures include x86_64, i686, ARM32.
-
-## Installation
-
-A typical installation is as follows:
-```
-     configure	       	       # Configure clixon to platform
-     make                      # Compile
-     sudo make install         # Install libs, binaries, and config-files
-     sudo make install-include # Install include files (for compiling)
-```
-
-One [example application](example/README.md) is provided, a IETF IP YANG datamodel with
-generated CLI, Netconf and restconf interface.
 
 ## Licenses
 
