@@ -72,6 +72,7 @@
 #include "clixon_data.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_map.h"
 
 /* Mapping between Clicon startup modes string <--> constants, 
@@ -89,6 +90,7 @@ static const map_str2int startup_mode_map[] = {
  * @param[in] dbglevel Debug level
  * @retval    0        OK
  * @retval   -1        Error
+ * @note CLICON_FEATURE and CLICON_YANG_DIR are treated specially since they are lists
  */
 int
 clicon_option_dump(clicon_handle h, 
@@ -101,6 +103,7 @@ clicon_option_dump(clicon_handle h,
     void          *val;
     size_t         klen;
     size_t         vlen;
+    cxobj         *x = NULL;
     
     if (clicon_hash_keys(hash, &keys, &klen) < 0)
 	goto done;
@@ -115,7 +118,22 @@ clicon_option_dump(clicon_handle h,
 	else
 	    clicon_debug(dbglevel, "%s = NULL", keys[i]);
     }
-    retval = 0;
+    /* Next print CLICON_FEATURE and CLICON_YANG_DIR from config tree
+     * Since they are lists they are placed in the config tree.
+     */
+    x = NULL;
+    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+	if (strcmp(xml_name(x), "CLICON_YANG_DIR") != 0)
+	    continue;
+	clicon_debug(dbglevel, "%s =\t \"%s\"", xml_name(x), xml_body(x));
+    }
+    x = NULL;
+    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+	if (strcmp(xml_name(x), "CLICON_FEATURE") != 0)
+	    continue;
+	clicon_debug(dbglevel, "%s =\t \"%s\"", xml_name(x), xml_body(x));
+    }
+   retval = 0;
  done:
     if (keys)
 	free(keys);
@@ -145,6 +163,7 @@ parse_configfile(clicon_handle  h,
     char       *body;
     clicon_hash_t *copt = clicon_options(h);
     cbuf       *cbret = NULL;
+    cxobj      *xret = NULL;
     int         ret;
 
     if (filename == NULL || !strlen(filename)){
@@ -194,13 +213,11 @@ parse_configfile(clicon_handle  h,
     }
     if (xml_apply0(xc, CX_ELMNT, xml_default, h) < 0)
 	goto done;	
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;	
-    }
-    if ((ret = xml_yang_validate_add(h, xc, cbret)) < 0)
+    if ((ret = xml_yang_validate_add(h, xc, &xret)) < 0)
 	goto done;
     if (ret == 0){
+	if (netconf_err2cb(xret, &cbret) < 0)
+	    goto done;
 	clicon_err(OE_CFG, 0, "Config file validation: %s", cbuf_get(cbret));
 	goto done;
     }
@@ -234,6 +251,8 @@ parse_configfile(clicon_handle  h,
   done:
     if (cbret)
 	cbuf_free(cbret);
+    if (xret)
+	xml_free(xret);
     if (xt)
 	xml_free(xt);
     if (f)
@@ -243,6 +262,7 @@ parse_configfile(clicon_handle  h,
 
 /*! Add configuration option overriding file setting
  * Add to clicon_options hash, and to clicon_conf_xml tree
+ * Assumes clicon_conf_xml_set has been called
  * @param[in]  h      Clicon handle
  * @param[in]  name   Name of configuration option (see clixon-config.yang)
  * @param[in]  value  String value

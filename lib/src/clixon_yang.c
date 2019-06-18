@@ -301,7 +301,38 @@ ys_free1(yang_stmt *ys)
     return 0;
 }
 
-/*! Free a tree of yang statements recursively */
+/*! Remove child i from parent yp (dont free) 
+ * @param[in]  yp   Parent node
+ * @param[in]  i    Order of child to remove
+ * @retval     NULL No such node, nothing done
+ * @retval     yc   returned orphaned yang node
+ * @see ys_free Deallocate yang node
+ * @note Do not call this in a loop of yang children (unless you know what you are doing)
+ */
+static yang_stmt *
+ys_prune(yang_stmt *yp,
+	 int        i)
+{
+    size_t     size;
+    yang_stmt *yc = NULL;
+    
+    if (i >= yp->ys_len)
+	goto done;
+    size = (yp->ys_len - i - 1)*sizeof(struct yang_stmt *);
+    yc = yp->ys_stmt[i];
+    memmove(&yp->ys_stmt[i],
+	    &yp->ys_stmt[i+1],
+	    size);
+    yc = yp->ys_stmt[yp->ys_len--] = NULL;;
+ done:
+    return yc;
+}
+
+/*! Free a yang statement tree recursively 
+ * @param[in]  ys   Yang node to remove and all its children recursively
+ * @note does not remove yang node from tree
+ * @see ys_prune  Remove from parent
+ */
 int 
 ys_free(yang_stmt *ys)
 {
@@ -1363,7 +1394,6 @@ ys_populate_leaf(clicon_handle h,
 	/* 3b. If not default value, indicate empty cv. */
 	cv_flag_set(cv, V_UNSET); /* no value (no default) */
     }
-
     /* 4. Check if leaf is part of list, if key exists mark leaf as key/unique */
     if (yparent && yparent->ys_keyword == Y_LIST){
 	if ((ret = yang_key_match(yparent, ys->ys_argument)) < 0)
@@ -1822,23 +1852,25 @@ ys_populate_unknown(clicon_handle h,
 
 /*! Populate with cligen-variables, default values, etc. Sanity checks on complete tree.
  *
- * We do this in 2nd pass after complete parsing to be sure to have a complete parse-tree
- * See ys_parse_sub for first pass and what can be assumed
+ * @param[in]  ys  Yang statement
+ * @param[in]  h   Clicon handle
+ * Preferably run this command using yang_apply
+ * Done in 2nd pass after complete parsing to be sure to have a complete
+ * parse-tree
+
  * After this pass, cv:s are set for LEAFs and LEAF-LISTs
+ * @see ys_parse_sub   for first pass and what can be assumed
+ * @see ys_populate2   for after grouping expand and augment
+ * (there may be more functions (all?) that may be moved to ys_populate2)
  */
 int
 ys_populate(yang_stmt    *ys, 
 	    void         *arg)
 {
-    int retval = -1;
+    int           retval = -1;
     clicon_handle h = (clicon_handle)arg;
     
     switch(ys->ys_keyword){
-    case Y_LEAF:
-    case Y_LEAF_LIST:
-	if (ys_populate_leaf(h, ys) < 0)
-	    goto done;
-	break;
     case Y_LIST:
 	if (ys_populate_list(h, ys) < 0)
 	    goto done;
@@ -1849,11 +1881,6 @@ ys_populate(yang_stmt    *ys,
 	break;
     case Y_LENGTH: 
 	if (ys_populate_length(h, ys) < 0)
-	    goto done;
-	break;
-    case Y_MANDATORY: /* call yang_mandatory() to check if set */
-    case Y_CONFIG:
-	if (ys_parse(ys, CGV_BOOL) == NULL) 
 	    goto done;
 	break;
     case Y_TYPE:
@@ -1880,9 +1907,42 @@ ys_populate(yang_stmt    *ys,
     return retval;
 }
 
+/*! Run after grouping expand and augment 
+ * @see ys_populate   run before grouping expand and augment
+ */
+static int
+ys_populate2(yang_stmt    *ys, 
+	    void         *arg)
+{
+    int           retval = -1;
+    clicon_handle h = (clicon_handle)arg;
+    
+    switch(ys->ys_keyword){
+    case Y_LEAF:
+    case Y_LEAF_LIST:
+	if (ys_populate_leaf(h, ys) < 0)
+	    goto done;
+	break;
+    case Y_MANDATORY: /* call yang_mandatory() to check if set */
+    case Y_CONFIG:
+	if (ys_parse(ys, CGV_BOOL) == NULL) 
+	    goto done;
+	break;
+    default:
+	break;
+    }
+    retval = 0;
+  done:
+    return retval;
+}
+
 /*! Resolve a grouping name from a point in the yang tree 
- * @retval  0  OK, but ygrouping determines if a grouping was resolved or not
- * @retval -1  Error, with clicon_err called
+ * @param[in]  ys         Yang statement of "uses" statement doing the lookup
+ * @param[in]  prefix     Prefix of grouping to look for
+ * @param[in]  name       Name of grouping to look for
+ * @param[out] ygrouping0 A found grouping yang structure as result
+ * @retval     0          OK, ygrouping may be NULL
+ * @retval    -1          Error, with clicon_err called
  */
 static int
 ys_grouping_resolve(yang_stmt  *ys, 
@@ -1999,23 +2059,94 @@ yang_augment_spec(yang_stmt *ysp,
     return retval;
 }
 
-/*! Macro expansion of grouping/uses done in step 2 of yang parsing 
-  NOTE
-  RFC6020 says this:
-    Identifiers appearing inside the grouping are resolved relative to the scope in which the 
-    grouping is defined, not where it is used.  Prefix mappings, type names, grouping
-    names, and extension usage are evaluated in the hierarchy where the
-    "grouping" statement appears. 
-  But it will be very difficult to generate keys etc with this semantics. So for now I
-  macro-expand them
-*/
+/*! Given a refine node, perform the refinement action on the target refine node
+ * The RFC is somewhat complicate in the rules for refine.
+ * Most nodes will be replaced, but some are added
+ * @param[in]  yr   Refine node
+ * @param[in]  yt   Refine target node (will be modified)
+ * @see RFC7950 Sec 7.13.2
+ * There may be some missed cornercases
+ */
 static int
-yang_expand(yang_stmt *yn)
+ys_do_refine(yang_stmt *yr,
+	     yang_stmt *yt)
+{
+    int           retval = -1;
+    yang_stmt    *yrc; /* refine child */
+    yang_stmt    *yrc1;
+    yang_stmt    *ytc; /* target child */
+    enum rfc_6020 keyw;
+    int           i;
+    
+    /* Loop through refine node children. First if remove do that first 
+     * In some cases remove a set of nodes.
+     */
+    yrc = NULL;
+    while ((yrc = yn_each(yr, yrc)) != NULL) {
+	keyw = yang_keyword_get(yrc);
+	switch (keyw){
+	case Y_DEFAULT: /* remove old, add new */
+	case Y_DESCRIPTION:
+	case Y_REFERENCE:
+	case Y_CONFIG:
+	case Y_MANDATORY:
+	case Y_PRESENCE:
+	case Y_MIN_ELEMENTS:
+	case Y_MAX_ELEMENTS:
+	case Y_EXTENSION:
+	    /* Remove old matching, dont increment due to prune in loop */
+	    for (i=0; i<yt->ys_len; ){
+		ytc = yt->ys_stmt[i];
+		if (keyw != yang_keyword_get(ytc)){
+		    i++;
+		    continue;
+		}
+		ys_prune(yt, i);
+		ys_free(ytc);
+	    }
+	    /* fall through and add if not found */
+	case Y_MUST:   /* keep old, add new */
+	case Y_IF_FEATURE:  
+	    break;
+	default:
+	    break;
+	}
+    }
+    /* Second, add the node(s) */
+    yrc = NULL;
+    while ((yrc = yn_each(yr, yrc)) != NULL) {
+	keyw = yang_keyword_get(yrc);
+	/* Make copy */
+	if ((yrc1 = ys_dup(yrc)) == NULL)
+	    goto done;
+	if (yn_insert(yt, yrc1) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Macro expansion of grouping/uses done in step 2 of yang parsing 
+ * RFC7950:
+ * Identifiers appearing inside the grouping are resolved
+ * relative to the scope in which the  grouping is defined, not where it is
+ * used.  Prefix mappings, type names, grouping  names, and extension usage are
+ * evaluated in the hierarchy where the "grouping" statement appears. 
+ *   The identifiers defined in the grouping are not bound to a namespace
+ * until the contents of the grouping are added to the schema tree via a
+ * "uses" statement that does not appear inside a "grouping" statement,
+ * at which point they are bound to the namespace of the current module.
+ */
+static int
+yang_expand_grouping(yang_stmt *yn)
 {
     int        retval = -1;
     yang_stmt *ys = NULL;
-    yang_stmt *ygrouping;
-    yang_stmt *yg;
+    yang_stmt *ygrouping;  /* grouping original */
+    yang_stmt *ygrouping2; /* grouping copy */
+    yang_stmt *yg;         /* grouping child */
+    yang_stmt *yr;         /* refinement */
     int        glen;
     int        i;
     int        j;
@@ -2034,27 +2165,32 @@ yang_expand(yang_stmt *yn)
 	    prefix  = yarg_prefix(ys); /* And this its prefix */
 	    if (ys_grouping_resolve(ys, prefix, name, &ygrouping) < 0)
 		goto done;
-
+	    if (prefix){
+		free(prefix); 
+		prefix = NULL;
+	    }
 	    if (ygrouping == NULL){
 		clicon_log(LOG_NOTICE, "%s: Yang error : grouping \"%s\" not found in module \"%s\"", 
 			   __FUNCTION__, ys->ys_argument, ys_module(ys)->ys_argument);
 		goto done;
 		break;
 	    }
-	    if (prefix)
-		free(prefix); /* XXX move up */
 	    /* Check mark flag to see if this grouping (itself) has been expanded
 	       If not, this needs to be done before we can insert it into
 	       the 'uses' place */
 	    if ((ygrouping->ys_flags & YANG_FLAG_MARK) == 0){ 
-		if (yang_expand(ygrouping) < 0)
+		if (yang_expand_grouping(ygrouping) < 0)
 		    goto done;
 		ygrouping->ys_flags |= YANG_FLAG_MARK; /* Mark as expanded */
 	    }
+	    /* Make a copy of the grouping, then make refinements to this copy
+	     */
+	    if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
+		goto done;
 	    /* Replace ys with ygrouping,... 
 	     * First enlarge parent vector 
 	     */
-	    glen = ygrouping->ys_len;
+	    glen = ygrouping2->ys_len;
 	    /* 
 	     * yn is parent: the children of ygrouping replaces ys.
 	     * Is there a case when glen == 0?  YES AND THIS BREAKS
@@ -2064,7 +2200,7 @@ yang_expand(yang_stmt *yn)
 		yn->ys_len += glen - 1;
 		if (glen && (yn->ys_stmt = realloc(yn->ys_stmt, (yn->ys_len)*sizeof(yang_stmt *))) == 0){
 		    clicon_err(OE_YANG, errno, "realloc");
-		    return -1;
+		    goto done;
 		}
 		/* Then move all existing elements up from i+1 (not uses-stmt) */
 		if (size)
@@ -2072,16 +2208,42 @@ yang_expand(yang_stmt *yn)
 			    &yn->ys_stmt[i+1],
 			    size);
 	    }
+
+	    /* Iterate through refinements and modify grouping copy 
+	     * See RFC 7950 7.13.2 yrt is the refine target node
+	     */
+	    yr = NULL;
+	    while ((yr = yn_each(ys, yr)) != NULL) {
+		yang_stmt *yrt; /* refine target node */
+		if (yang_keyword_get(yr) != Y_REFINE)
+		    continue;
+		/* Find a node */
+		if (yang_desc_schema_nodeid(ygrouping2,
+					    yang_argument_get(yr),
+					    -1,
+					    &yrt) < 0)
+		    goto done;
+		/* Not found, try next */
+		if (yrt == NULL) 		
+		    continue;
+		/* Do the actual refinement */
+		if (ys_do_refine(yr, yrt) < 0)
+		    goto done;
+		/* RFC: The argument is a string that identifies a node in the 
+		 * grouping.  I interpret that as only one node --> break */
+		break;
+	    }
 	    /* Then copy and insert each child element */
 	    for (j=0; j<glen; j++){
-		if ((yg = ys_dup(ygrouping->ys_stmt[j])) == NULL)
-		    goto done;
+		yg = ygrouping2->ys_stmt[j]; /* Child of refined copy */
 		yn->ys_stmt[i+j] = yg;
 		yg->ys_parent = yn;
 	    }
-	    /* XXX: refine */
 	    /* Remove 'uses' node */
 	    ys_free(ys); 
+	    /* Remove the grouping copy */
+	    ygrouping2->ys_len = 0;
+	    ys_free(ygrouping2);
 	    break; /* Note same child is re-iterated since it may be changed */
 	default:
 	    i++;
@@ -2091,7 +2253,7 @@ yang_expand(yang_stmt *yn)
     /* Second pass since length may have changed */
     for (i=0; i<yn->ys_len; i++){
 	ys = yn->ys_stmt[i];
-	if (yang_expand(ys) < 0)
+	if (yang_expand_grouping(ys) < 0)
 	    goto done;
     }
     retval = 0;
@@ -2441,8 +2603,8 @@ ys_schemanode_check(yang_stmt *ys,
 	if (yang_desc_schema_nodeid(yp, ys->ys_argument, -1, &yres) < 0)
 	    goto done;
 	if (yres == NULL){
-	    clicon_err(OE_YANG, 0, "schemanode sanity check of %d %s", 
-		       ys->ys_keyword,
+	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s %s", 
+		       yang_key2str(ys->ys_keyword),
 		       ys->ys_argument);
 	    goto done;
 	}
@@ -2609,14 +2771,19 @@ yang_parse_post(clicon_handle h,
 
     /* 6: Macro expansion of all grouping/uses pairs. Expansion needs marking */
     for (i=modnr; i<yspec->ys_len; i++){
-	if (yang_expand(yspec->ys_stmt[i]) < 0)
+	if (yang_expand_grouping(yspec->ys_stmt[i]) < 0)
 	    goto done;
 	yang_apply(yspec->ys_stmt[i], -1, ys_flag_reset, (void*)YANG_FLAG_MARK);
     }
 
-    /* 7: Top-level augmentation of all modules XXX: only new modules? */
+    /* 7: Top-level augmentation of all modules. (Augment also in uses) */
     if (yang_augment_spec(yspec, modnr) < 0)
 	goto done;
+
+    /* 4: Go through parse tree and do 2nd step populate (eg default) */
+    for (i=modnr; i<yspec->ys_len; i++)
+	if (yang_apply(yspec->ys_stmt[i], -1, ys_populate2, (void*)h) < 0)
+	    goto done;
 
     /* 8: sanity check of schemanode references, need more here */
     for (i=modnr; i<yspec->ys_len; i++)
@@ -2829,19 +2996,13 @@ yang_spec_load_dir(clicon_handle h,
 	 * This is a failsafe in case anything else fails
 	 */
 	if (revm && rev0){
-	    int size;
 	    if (revm > rev0) /* Loaded module is older or eq -> remove ym */
 		ym = ym0;
 	    for (j=0; j<yspec->ys_len; j++)
 		if (yspec->ys_stmt[j] == ym)
 		    break;
-	    size = (yspec->ys_len - j - 1)*sizeof(struct yang_stmt *);
-	    memmove(&yspec->ys_stmt[j],
-		    &yspec->ys_stmt[j+1],
-		    size);
+	    ys_prune(yspec, j);
 	    ys_free(ym);
-	    yspec->ys_len--;
-	    yspec->ys_stmt[yspec->ys_len] = NULL;
 	}
     }
     if (yang_parse_post(h, yspec, modnr) < 0)
@@ -3101,7 +3262,7 @@ yang_abs_schema_nodeid(yang_stmt    *yspec,
  * @param[out] yres          First yang node matching schema nodeid
  * @retval     0             OK
  * @retval    -1             Error, with clicon_err called
- * @see yang_schema_nodeid
+ * @see yang_abs_schema_nodeid
  * Used in yang: unique, refine, uses augment
  */
 int
@@ -3429,6 +3590,7 @@ yang_arg2cvec(yang_stmt *ys,
 
 /*! Check if yang node yn has key-stmt as child which matches name
  *
+ * The function looks at the LIST argument string (not actual children)
  * @param[in]  yn   Yang node with sub-statements (look for a key child)
  * @param[in]  name Check if this name (eg "b") is a key in the yang key statement
  *

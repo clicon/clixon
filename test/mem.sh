@@ -2,6 +2,9 @@
 # Run valgrind leak test for cli, restconf, netconf or background.
 # Stop on first error
     
+# Pattern to run tests, default is all, but you may want to narrow it down
+: ${pattern:=test_*.sh}
+
 # Run valgrindtest once, args:
 # what: (cli|netconf|restconf|backend)* # no args means all
 memonce(){
@@ -45,7 +48,7 @@ memonce(){
     esac
 
     err=0
-    for test in test_*.sh; do
+    for test in $pattern; do
 	if [ $testnr != 0 ]; then echo; fi
 	testfile=$test
 	. ./$test 

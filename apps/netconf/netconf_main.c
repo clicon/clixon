@@ -84,7 +84,7 @@ static int ignore_packet_errors = 1;
  */
 static int
 netconf_input_packet(clicon_handle h, 
-			cbuf         *cb)
+		     cbuf         *cb)
 {
     int        retval = -1;
     char      *str;
@@ -125,9 +125,10 @@ netconf_input_packet(clicon_handle h,
         isrpc++;
 	if (xml_spec_populate_rpc(h, xrpc, yspec) < 0)
 	    goto done;
-	if ((ret = xml_yang_validate_rpc(h, xrpc, cbret)) < 0) 
+	if ((ret = xml_yang_validate_rpc(h, xrpc, &xret)) < 0) 
 	    goto done;
 	if (ret == 0){
+	    clicon_xml2cbuf(cbret, xret, 0, 0);
 	    netconf_output_encap(1, cbret, "rpc-error");
 	    goto ok;
 	}
@@ -155,7 +156,7 @@ netconf_input_packet(clicon_handle h,
 		netconf_output_encap(1, cbret, "rpc-error");
 		goto done;
 	    }
-	    if ((xc = xml_child_i(xret,0))!=NULL){
+	    if ((xc = xml_child_i(xret, 0))!=NULL){
 		xa=NULL;
 		/* Copy message-id attribute from incoming to reply. 
 		 * RFC 6241:

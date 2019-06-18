@@ -154,17 +154,10 @@ text_modify(clicon_handle       h,
 			goto fail;
 		    permit = 1;
 		}
-		//		int iamkey=0;
-
-#ifdef USE_XML_INSERT
 		/* Add new xml node but without parent - insert when node fully
 		   copied (see changed conditional below) */
 		if ((x0 = xml_new(x1name, NULL, (yang_stmt*)y0)) == NULL)
 		    goto done;
-#else
-		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
-		    goto done;		
-#endif
 		changed++;
 
 		/* Copy xmlns attributes  */
@@ -210,16 +203,14 @@ text_modify(clicon_handle       h,
 		    }
 		}
 	    }
-#ifdef USE_XML_INSERT
 	    if (changed){
 		if (xml_insert(x0p, x0) < 0)
 		    goto done;
 	    }
-#endif
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
-		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+		if (netconf_data_missing(cbret, NULL, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -295,17 +286,12 @@ text_modify(clicon_handle       h,
 			goto fail;
 		    permit = 1;
 		}
-#ifdef USE_XML_INSERT
 		/* Add new xml node but without parent - insert when node fully
 		 * copied (see changed conditional below) 
 		 * Note x0 may dangle cases if exit before changed conditional
 		 */
 		if ((x0 = xml_new(x1name, NULL, (yang_stmt*)y0)) == NULL)
 		    goto done;
-#else
-		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
-		    goto done;
-#endif
 		changed++;
 		/* Copy xmlns attributes  */
 		x1a = NULL;
@@ -367,16 +353,14 @@ text_modify(clicon_handle       h,
 		if (ret == 0)
 		    goto fail;
 	    }
-#ifdef USE_XML_INSERT
 	    if (changed){
 		if (xml_insert(x0p, x0) < 0)
 		    goto done;
 	    }
-#endif
 	    break;
 	case OP_DELETE:
 	    if (x0==NULL){
-		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+		if (netconf_data_missing(cbret, NULL, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -396,17 +380,11 @@ text_modify(clicon_handle       h,
 	    break;
 	} /* CONTAINER switch op */
     } /* else Y_CONTAINER  */
-#ifndef USE_XML_INSERT
-    if (changed)
-	xml_sort(x0p, h);
-#endif
     retval = 1;
  done:
-#ifdef USE_XML_INSERT
     /* Remove dangling added objects */
     if (changed && x0 && xml_parent(x0)==NULL)
 	xml_purge(x0);
-#endif
     if (x0vec)
 	free(x0vec);
     return retval;
@@ -488,7 +466,7 @@ text_modify_top(clicon_handle       h,
 	 I.e., curl -u andy:bar -sS -X DELETE http://localhost/restconf/data
       */
 	    case OP_DELETE:
-		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+		if (netconf_data_missing(cbret, NULL, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
 		goto fail;
 		break;

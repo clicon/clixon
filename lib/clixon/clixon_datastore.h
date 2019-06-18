@@ -62,5 +62,7 @@ int xmldb_islocked(clicon_handle h, const char *db);
 int xmldb_exists(clicon_handle h, const char *db);
 int xmldb_delete(clicon_handle h, const char *db);
 int xmldb_create(clicon_handle h, const char *db);
+/* utility functions */
+int xmldb_db_reset(clicon_handle h, char *db);
 
 #endif /* _CLIXON_DATASTORE_H */

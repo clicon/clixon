@@ -41,6 +41,6 @@
  */
 #undef RPC_USERNAME_ASSERT
 
-/* Use new xml_insert code on sorted xml lists
+/* Make namespace check on RESTCONF PUT and POST -d data
  */
-#define USE_XML_INSERT
+#define RESTCONF_NS_DATA_CHECK

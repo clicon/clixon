@@ -283,6 +283,7 @@ main(int argc, char **argv)
     yang_stmt     *yspecfg = NULL; /* For config XXX clixon bug */
     struct passwd *pw;
     char          *str;
+    int            tabmode;
     
     /* Defaults */
     once = 0;
@@ -542,7 +543,11 @@ main(int argc, char **argv)
 	clicon_log(LOG_WARNING, "No such cli mode: %s (Specify cli mode with CLICON_CLI_MODE in config file or -m <mode> on command line", cli_syntax_mode(h));
 
     /* CLIgen tab mode, ie how <tab>s behave */
-    cligen_tabmode_set(cli_cligen(h), clicon_cli_tab_mode(h));
+    if ((tabmode = clicon_cli_tab_mode(h)) < 0){
+	fprintf(stderr, "FATAL: CLICON_CLI_TAB_MODE not set\n");
+	goto done;
+    }
+    cligen_tabmode_set(cli_cligen(h), tabmode);
 
     if (logclisyntax)
 	cli_logsyntax_set(h, logclisyntax);

@@ -18,6 +18,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -76,7 +77,7 @@ module example{
 }
 EOF
 
-new "test params: -f $cfg -y $fyang"
+new "test params: -f $cfg"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -84,21 +85,21 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend -s init -f $cfg -y $fyang"
-    start_backend -s init -f $cfg -y $fyang
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
 
     new "waiting"
     sleep $RCWAIT
 fi
 
 new "cli set transitive string"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c talle x" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o set c talle x" 0 "^$"
 
 new "cli set transitive union"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle 33" 0 "^$"
+expectfn "$clixon_cli -1f $cfg -l o set c ulle 33" 0 "^$"
 
 new "cli set transitive union error"
-expectfn "$clixon_cli -1f $cfg -l o -y $fyang set c ulle kalle" 255 '^CLI syntax error: "set c ulle kalle": Unknown command$'
+expectfn "$clixon_cli -1f $cfg -l o set c ulle kalle" 255 '^CLI syntax error: "set c ulle kalle": Unknown command$'
 
 if [ $BE -eq 0 ]; then
     exit # BE

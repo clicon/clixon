@@ -44,7 +44,7 @@ libdir          = @exec_prefix@/lib
 
 APPNAME	        = example
 # Here is where example yang appears
-CLIXON_DATADIR  = @CLIXON_DATADIR@
+YANG_INSTALLDIR  = @YANG_INSTALLDIR@
 # Install here if you want default clixon location:
 CLIXON_DEFAULT_CONFIG = @CLIXON_DEFAULT_CONFIG@
 
@@ -129,7 +129,7 @@ install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml
 	install -m 0644 $(APPNAME).xml $(DESTDIR)$(sysconfdir)
 #	install -m 0644 $(APPNAME).xml $(DESTDIR)$(CLIXON_DEFAULT_CONFIG)
 	install -d -m 0755 $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(DESTDIR)$(CLIXON_DATADIR)
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(DESTDIR)$(YANG_INSTALLDIR)
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/cli
 	install -m 0644 $(INSTALLFLAGS) $(CLI_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/cli
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/backend

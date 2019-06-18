@@ -2,6 +2,9 @@
 # Run, eg as:
 # ./all.sh 2>&1 | tee test.log # break on first test
 
+# Pattern to run tests, default is all, but you may want to narrow it down
+: ${pattern:=test_*.sh}
+
 if [ $# -gt 0 ]; then 
     echo "usage: $0 # detailed logs and stopon first error"
     exit -1
@@ -9,7 +12,7 @@ fi
 
 err=0
 testnr=0
-for test in test_*.sh; do
+for test in $pattern; do
     if [ $testnr != 0 ]; then echo; fi
     testfile=$test
     . ./$test 

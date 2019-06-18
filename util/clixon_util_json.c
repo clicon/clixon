@@ -59,7 +59,7 @@
 #include "clixon/clixon.h"
 
 /*
- * Turn this on to get a json parse and pretty print test program
+ * JSON parse and pretty print test program
  * Usage: xpath
  * read json from input
  * Example compile:

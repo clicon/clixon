@@ -22,6 +22,7 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>a:test</CLICON_FEATURE>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -66,14 +67,14 @@ module ietf-interfaces {
     }
   }
   grouping endpoint {
-       description "A reusable endpoint group.";
-       leaf mip {
+       description "A reusable endpoint group. From rf7950 Sec 7.12.2";
+       leaf ip {
          type string;
        }
-       leaf mport {
+       leaf port {
          type uint16;
        }
-  }
+   }
 }
 EOF
 
@@ -98,12 +99,14 @@ module example-augment {
        identity you {
           base my-type;
        }
-       grouping mypoint {
-         description "A reusable endpoint group.";
-         leaf ip {
-           type string;
+       grouping localgroup {
+         description "Local grouping defining lid and lport";
+         leaf lid {
+            description "this will be kept as-is";
+            type string;
          }
-         leaf port {
+         leaf lport {
+           description "this will be refined";
            type uint16;
          }
        }
@@ -124,12 +127,14 @@ module example-augment {
               }
           }
           uses if:endpoint {
+            description "Use an external grouping defining ip and port";
             refine port {
               default 80;
             }
           }
-          uses mypoint {
-            refine mport {
+          uses localgroup {
+            description "Use a local grouping defining lip and lport";
+            refine lport {
               default 8080;
             }
           }
@@ -137,37 +142,35 @@ module example-augment {
 }
 EOF
 
-new "test params: -f $cfg -y $fyang"
+new "test params: -f $cfg"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
-    sudo clixon_backend -zf $cfg -y $fyang
+    sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend -s init -f $cfg -y $fyang"
-    start_backend -s init -f $cfg -y $fyang
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
 
     new "waiting"
     sleep $RCWAIT
 fi
 
 # mandatory-leaf See RFC7950 Sec 7.17
-# Error1: the xml should have xmlns for "mymod"
-#                XMLNS_YANG_ONLY must be undeffed
 new "netconf set interface with augmented type and mandatory leaf"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
   <interface xmlns:mymod="urn:example:augment">
     <name>e1</name>
     <type>mymod:some-new-iftype</type>
     <mymod:mandatory-leaf>true</mymod:mandatory-leaf>
   </interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "netconf validate ok"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+new "netconf verify get with refined ports"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:mymod="urn:example:augment"><name>e1</name><type>mymod:some-new-iftype</type><mandatory-leaf>true</mandatory-leaf><port>80</port><lport>8080</lport></interface></interfaces></data></rpc-reply>]]>]]>$'
 
 new "netconf set identity defined in other"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
   <interface xmlns:mymod="urn:example:augment">
     <name>e2</name>
     <type>fddi</type>
@@ -176,10 +179,10 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><can
   </interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate ok"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 new "netconf set identity defined in main"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
 <interface xmlns:mymod="urn:example:augment">
    <name>e3</name>
    <type>fddi</type>
@@ -188,9 +191,11 @@ expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 '<rpc><edit-config><target><can
  </interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate ok"
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
-expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+new "discard"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
 
 if [ $BE -eq 0 ]; then
     exit # BE

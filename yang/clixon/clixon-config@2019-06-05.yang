@@ -39,7 +39,15 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
-    revision 2019-03-05 {
+    revision 2019-06-05 {
+	description
+	    "Added: CLICON_YANG_REGEXP, CLICON_CLI_TAB_MODE, 
+                    CLICON_CLI_HIST_FILE, CLICON_CLI_HIST_SIZE, 
+                    CLICON_XML_CHANGELOG, CLICON_XML_CHANGELOG_FILE;
+             Renamed CLICON_XMLDB_CACHE to CLICON_DATASTORE_CACHE (changed type)
+             Deleted: CLICON_XMLDB_PLUGIN, CLICON_USE_STARTUP_CONFIG";
+    }
+    revision 2019-03-05{ 
 	description
 	    "Changed URN. Changed top-level symbol to clixon-config.
              Released in Clixon 3.10";
@@ -197,7 +205,7 @@ module clixon-config {
 		"Yang directory path for finding module and submodule files. 
                  A list of these options should be in the configuration. 
                  When loading a Yang module, Clixon searches this list in the order
-                 they appear. Ensure that CLIXON_DATADIR(default 
+                 they appear. Ensure that YANG_INSTALLDIR(default 
                  /usr/local/share/clixon) is present in the path";
 	}
 	leaf CLICON_YANG_MAIN_FILE {
@@ -426,14 +434,6 @@ module clixon-config {
 	    mandatory true;
 	    description
 		"Directory where \"running\", \"candidate\" and \"startup\" are placed.";
-	}
-	leaf CLICON_XMLDB_PLUGIN {
-	    type string;
-	    status obsolete;
-	    description
-		"XMLDB datastore plugin filename 
-	         (see datastore/ and clixon_xml_db.[ch])
-	         Obsolete: Merged with libclixon in 3.10";
 	}
 	leaf CLICON_DATASTORE_CACHE {
 	    type datastore_cache;

@@ -6,7 +6,7 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-: ${clixon_util_xml:=clixon_util_xml}
+: ${clixon_util_xml:=clixon_util_xml -o} # -o is output
 
 new "xml parse"
 expecteof "$clixon_util_xml" 0 "<a><b/></a>" "^<a><b/></a>$"

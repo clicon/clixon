@@ -43,6 +43,7 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
+    sudo pkill clixon_backend # to be sure
     new "start backend -s init -f $cfg -- -s"
     start_backend -s init -f $cfg -- -s
 fi
@@ -56,8 +57,6 @@ start_restconf -f $cfg
 new "waiting"
 wait_backend
 wait_restconf
-
-new "restconf tests"
 
 new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
 expecteq "$(curl -s -X GET http://localhost/.well-known/host-meta)" 0 "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>

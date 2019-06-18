@@ -71,6 +71,7 @@
 #include "clixon_proto.h"
 #include "clixon_err.h"
 #include "clixon_err_string.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_proto_client.h"
 
 /*! Send internal netconf rpc from client to backend
@@ -224,29 +225,22 @@ clicon_rpc_netconf_xml(clicon_handle  h,
 }
 
 /*! Generate and log clicon error function call from Netconf error message
+ * @param[in]  prefix  Print this string (if given) before: "<prefix>: <error>"
  * @param[in]  xerr    Netconf error message on the level: <rpc-reply><rpc-error>
  */
 int
-clicon_rpc_generate_error(char  *format, 
+clicon_rpc_generate_error(char  *prefix, 
 			  cxobj *xerr)
 {
     int    retval = -1;
     cbuf  *cb = NULL;
-    cxobj *x;
 
-    if ((cb = cbuf_new()) ==NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
+    if (netconf_err2cb(xerr, &cb) < 0)
 	goto done;
-    }
-    if ((x=xpath_first(xerr, "error-type"))!=NULL)
-	cprintf(cb, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-tag"))!=NULL)
-	cprintf(cb, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-message"))!=NULL)
-	cprintf(cb, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-info"))!=NULL)
-	clicon_xml2cbuf(cb, xml_child_i(x,0), 0, 0);
-    clicon_log(LOG_ERR, "%s: %s", format, cbuf_get(cb));
+    if (prefix)
+	clicon_log(LOG_ERR, "%s: %s", prefix, cbuf_get(cb));
+    else
+	clicon_log(LOG_ERR, "%s", cbuf_get(cb));
     retval = 0;
  done:
     if (cb)

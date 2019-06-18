@@ -411,6 +411,7 @@ from_client_edit_config(clicon_handle h,
     cbuf               *cbx = NULL; /* Assist cbuf */
     int                 ret;
     char               *username;
+    cxobj              *xret = NULL;
 
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -470,10 +471,13 @@ from_client_edit_config(clicon_handle h,
 	    goto ok;
 	}
 	/* xmldb_put (difflist handling) requires list keys */
-	if ((ret = xml_yang_validate_list_key_only(h, xc, cbret)) < 0)
+	if ((ret = xml_yang_validate_list_key_only(h, xc, &xret)) < 0)
 	    goto done;
-	if (ret == 0)
+	if (ret == 0){
+	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+		goto done;
 	    goto ok;
+	}
 	/* Cant do this earlier since we dont have a yang spec to
 	 * the upper part of the tree, until we get the "config" tree.
 	 */
@@ -493,6 +497,8 @@ from_client_edit_config(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (xret)
+	xml_free(xret);
     if (cbx)
 	cbuf_free(cbx);
     clicon_debug(1, "%s done cbret:%s", __FUNCTION__, cbuf_get(cbret));	
@@ -1121,6 +1127,7 @@ from_client_msg(clicon_handle        h,
     yang_stmt           *ye;
     yang_stmt           *ymod;
     cxobj               *xnacm = NULL;
+    cxobj               *xret = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h); 
@@ -1147,10 +1154,13 @@ from_client_msg(clicon_handle        h,
      * maybe not necessary since it should be */
     if (xml_spec_populate_rpc(h, x, yspec) < 0)
     	goto done;
-    if ((ret = xml_yang_validate_rpc(h, x, cbret)) < 0)
+    if ((ret = xml_yang_validate_rpc(h, x, &xret)) < 0)
 	goto done;
-    if (ret == 0)
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
 	goto reply;
+    }
     xe = NULL;
     username = xml_find_value(x, "username");
     /* May be used by callbacks, etc */
@@ -1222,6 +1232,8 @@ from_client_msg(clicon_handle        h,
     retval = 0;
   done:  
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xret)
+	xml_free(xret);
     if (xt)
 	xml_free(xt);
     if (cbret)

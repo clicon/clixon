@@ -149,7 +149,8 @@ new "start restconf daemon (-a is enable http basic auth)"
 start_restconf -f $cfg -- -a
 
 new "waiting"
-sleep $RCWAIT
+wait_backend
+wait_restconf
 
 new "auth get"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data)" 0 '{"data": {"clixon-example:state": {"op": ["42","41","43"]}}}
@@ -183,10 +184,10 @@ new "admin edit nacm"
 expecteq "$(curl -u andy:bar -sS -X PUT -d '{"nacm-example:x": 1}' http://localhost/restconf/data/nacm-example:x)" 0 ""
 
 new "limited edit nacm"
-expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"x": 2}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"nacm-example:x": 2}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 
 new "guest edit nacm"
-expecteq "$(curl -u guest:bar -sS -X PUT -d '{"x": 3}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X PUT -d '{"nacm-example:x": 3}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
 
 new "cli show conf as admin"
 expectfn "$clixon_cli -1 -U andy -l o -f $cfg show conf" 0 "^x 1;$"

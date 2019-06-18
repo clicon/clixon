@@ -248,7 +248,7 @@ xml2cli(FILE              *f,
 /*! Validate xml node of type leafref, ensure the value is one of that path's reference
  * @param[in]  xt    XML leaf node of type leafref
  * @param[in]  ytype Yang type statement belonging to the XML node
- * @param[out] cbret Error buffer
+ * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed
  * @retval    -1     Error
@@ -256,7 +256,7 @@ xml2cli(FILE              *f,
 static int
 validate_leafref(cxobj     *xt,
 		 yang_stmt *ytype,
-		 cbuf      *cbret)
+		 cxobj    **xret)
 {
     int          retval = -1;
     yang_stmt   *ypath;
@@ -270,7 +270,7 @@ validate_leafref(cxobj     *xt,
     if ((leafrefbody = xml_body(xt)) == NULL)
 	goto ok;
     if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-	if (netconf_missing_element(cbret, "application", yang_argument_get(ytype), "Leafref requires path statement") < 0)
+	if (netconf_missing_element_xml(xret, "application", yang_argument_get(ytype), "Leafref requires path statement") < 0)
 	    goto done;
 	goto fail;
     }
@@ -284,12 +284,12 @@ validate_leafref(cxobj     *xt,
 	    break;
     }
     if (i==xlen){
-	if (netconf_bad_element(cbret, "application", leafrefbody, "Leafref validation failed: No such leaf") < 0)
+	if (netconf_bad_element_xml(xret, "application", leafrefbody, "Leafref validation failed: No such leaf") < 0)
 	    goto done;
 	goto fail;
     }
  ok:
-    retval = 0;
+    retval = 1;
  done:
     if (xvec)
 	free(xvec);
@@ -312,7 +312,7 @@ validate_leafref(cxobj     *xt,
  * @param[in]  xt    XML leaf node of type identityref
  * @param[in]  ys    Yang spec of leaf
  * @param[in]  ytype Yang type field of type identityref
- * @param[out] cbret Error buffer
+ * @param[out] xret    Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed
  * @retval    -1     Error
@@ -324,7 +324,8 @@ static int
 validate_identityref(cxobj     *xt,
 		     yang_stmt *ys,
 		     yang_stmt *ytype,
-		     cbuf      *cbret)
+		     cxobj    **xret)
+
 {
     int         retval = -1;
     char       *node;
@@ -350,13 +351,13 @@ validate_identityref(cxobj     *xt,
     }
     /* This is the type's base reference */
     if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) == NULL){
-	if (netconf_missing_element(cbret, "application", yang_argument_get(ytype), "Identityref validation failed, no base") < 0)
+	if (netconf_missing_element_xml(xret, "application", yang_argument_get(ytype), "Identityref validation failed, no base") < 0)
 	    goto done;
 	goto fail;
     }
     /* This is the actual base identity */
     if ((ybaseid = yang_find_identity(ybaseref, yang_argument_get(ybaseref))) == NULL){
-	if (netconf_missing_element(cbret, "application", yang_argument_get(ybaseref), "Identityref validation failed, no base identity") < 0)
+	if (netconf_missing_element_xml(xret, "application", yang_argument_get(ybaseref), "Identityref validation failed, no base identity") < 0)
 	    goto done;
 	goto fail;
     }
@@ -367,7 +368,7 @@ validate_identityref(cxobj     *xt,
 	cbuf_reset(cb);
 	cprintf(cb, "Identityref validation failed, %s not derived from %s", 
 		node, yang_argument_get(ybaseid));
-	if (netconf_operation_failed(cbret, "application", cbuf_get(cb)) < 0)
+	if (netconf_operation_failed_xml(xret, "application", cbuf_get(cb)) < 0)
 	    goto done;
 	goto fail;
     }
@@ -413,10 +414,12 @@ xml_yang_root(cxobj  *x,
 }
 
 /*! Validate an RPC node
- * @param[in]  xt  XML node to be validated
- * @retval     1   Validation OK
- * @retval     0   Validation failed
- * @retval    -1   Error
+ * @param[in]  h     Clicon handle
+ * @param[in]  xrpc  XML node to be validated
+ * @param[out] xret  Error XML tree. Free with xml_free after use
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed
+ * @retval    -1     Error
  * rfc7950
  * 7.14.2
  * If a leaf in the input tree has a "mandatory" statement with the
@@ -454,8 +457,8 @@ xml_yang_root(cxobj  *x,
  */
 int
 xml_yang_validate_rpc(clicon_handle h,
-		      cxobj *xrpc,
-		      cbuf  *cbret)
+		      cxobj        *xrpc,
+		      cxobj       **xret)
 {
     int        retval = -1;
     yang_stmt *yn=NULL;  /* rpc name */
@@ -469,15 +472,15 @@ xml_yang_validate_rpc(clicon_handle h,
     /* xn is name of rpc, ie <rcp><xn/></rpc> */
     while ((xn = xml_child_each(xrpc, xn, CX_ELMNT)) != NULL) {
 	if ((yn = xml_spec(xn)) == NULL){
-	    if (netconf_unknown_element(cbret, "application", xml_name(xn), NULL) < 0)
+	    if (netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
 		goto done;
 	    goto fail;
 	}
-	if ((retval = xml_yang_validate_all(h, xn, cbret)) < 1) 
+	if ((retval = xml_yang_validate_all(h, xn, xret)) < 1) 
 	    goto done; /* error or validation fail */
-	if ((retval = xml_yang_validate_add(h, xn, cbret)) < 1)
+	if ((retval = xml_yang_validate_add(h, xn, xret)) < 1)
 	    goto done; /* error or validation fail */
-	if (xml_apply0(xn, CX_ELMNT, xml_default, NULL) < 0)
+	if (xml_apply0(xn, CX_ELMNT, xml_default, h) < 0)
 	    goto done;
     }
     // ok: /* pass validation */
@@ -492,7 +495,7 @@ xml_yang_validate_rpc(clicon_handle h,
 /*! Check if an xml node is a part of a choice and have >1 siblings 
  * @param[in]  xt    XML node to be validated
  * @param[in]  yt    xt:s yang statement
- * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @param[out] xret    Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
@@ -501,7 +504,7 @@ xml_yang_validate_rpc(clicon_handle h,
 static int
 check_choice(cxobj     *xt, 
 	     yang_stmt *yt,
-	     cbuf      *cbret)
+	     cxobj    **xret)
 {
     int        retval = -1;
     yang_stmt *y;
@@ -552,7 +555,7 @@ check_choice(cxobj     *xt,
 	    continue; /* not choice */
 	    break;
 	}
-	if (netconf_bad_element(cbret, "application", xml_name(x), "Element in choice statement already exists") < 0)
+	if (netconf_bad_element_xml(xret, "application", xml_name(x), "Element in choice statement already exists") < 0)
 	    goto done;
 	goto fail;
     } /* while */
@@ -569,7 +572,7 @@ check_choice(cxobj     *xt,
 /*! Check if an xml node lacks mandatory children
  * @param[in]  xt    XML node to be validated
  * @param[in]  yt    xt:s yang statement
- * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
@@ -577,7 +580,8 @@ check_choice(cxobj     *xt,
 static int
 check_mandatory(cxobj     *xt, 
 		yang_stmt *yt,
-		cbuf      *cbret)
+		cxobj    **xret)
+
 {
     int        retval = -1;
     int        i;
@@ -600,7 +604,7 @@ check_mandatory(cxobj     *xt,
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 		keyname = cv_string_get(cvi);	    
 		if (xml_find_type(xt, NULL, keyname, CX_ELMNT) == NULL){
-		    if (netconf_missing_element(cbret, "application", keyname, "Mandatory key") < 0)
+		    if (netconf_missing_element_xml(xret, "application", keyname, "Mandatory key") < 0)
 			goto done;
 		    goto fail;
 		}
@@ -623,7 +627,7 @@ check_mandatory(cxobj     *xt,
 		    break; /* got it */
 	    }
 	    if (x == NULL){
-		if (netconf_missing_element(cbret, "application", yc->ys_argument, "Mandatory variable") < 0)
+		if (netconf_missing_element_xml(xret, "application", yc->ys_argument, "Mandatory variable") < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -640,17 +644,7 @@ check_mandatory(cxobj     *xt,
 	    if (x == NULL){
 		/* @see RFC7950: 15.6 Error Message for Data That Violates 
 		 * a Mandatory "choice" Statement */
-		if (cprintf(cbret, "<rpc-reply><rpc-error>"
-			    "<error-type>application</error-type>"
-			    "<error-tag>data-missing</error-tag>"
-			    "<error-app-tag>missing-choice</error-app-tag>"
-#ifdef NYI
-			    //  "<error-path></error-path>"
-#endif
-			    "<error-info><missing-choice>%s</missing-choice></error-info>"
-			    "<error-severity>error</error-severity>"
-			    "</rpc-error></rpc-reply>",
-			    yc->ys_argument) <0)
+		if (netconf_data_missing_xml(xret, yc->ys_argument, NULL) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -667,10 +661,14 @@ check_mandatory(cxobj     *xt,
     goto done;
 }
 
+/*!
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ */
 static int
 check_list_key(cxobj     *xt, 
 	       yang_stmt *yt,
-	       cbuf      *cbret)
+	       cxobj    **xret)
+
 {
     int        retval = -1;
     int        i;
@@ -690,7 +688,7 @@ check_list_key(cxobj     *xt,
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 		keyname = cv_string_get(cvi);	    
 		if (xml_find_type(xt, NULL, keyname, CX_ELMNT) == NULL){
-		    if (netconf_missing_element(cbret, "application", keyname, "Mandatory key") < 0)
+		    if (netconf_missing_element_xml(xret, "application", keyname, "Mandatory key") < 0)
 			goto done;
 		    goto fail;
 		}
@@ -739,7 +737,7 @@ check_insert_duplicate(char **vec,
  * @param[in]  xt    The parent of x
  * @param[in]  y     Its yang spec (Y_LIST)
  * @param[in]  yu    A yang unique spec (Y_UNIQUE)
- * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @param[out] xret    Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
@@ -750,7 +748,8 @@ check_unique_list(cxobj     *x,
 		  cxobj     *xt, 
 		  yang_stmt *y,
 		  yang_stmt *yu,
-		  cbuf      *cbret)
+		  cxobj    **xret)
+
 {
     int       retval = -1;
     cvec      *cvk; /* unique vector */
@@ -784,7 +783,7 @@ check_unique_list(cxobj     *x,
 	if (cvi==NULL){
 	    /* Last element (i) is newly inserted, see if it is already there */
 	    if (check_insert_duplicate(vec, i, vlen) < 0){
-		if (netconf_data_not_unique(cbret, x, cvk) < 0)
+		if (netconf_data_not_unique_xml(xret, x, cvk) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -807,7 +806,7 @@ check_unique_list(cxobj     *x,
  * @param[in]  x  One x (the last) of a specific lis
  * @param[in]  y  Yang spec of x
  * @param[in]  nr Number of elements (like x) in thlist
- * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @param[out] xret    Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
@@ -817,7 +816,7 @@ static int
 check_min_max(cxobj     *x,
 	      yang_stmt *y,
 	      int        nr,
-	      cbuf      *cbret)
+	      cxobj     **xret)
 {
     int         retval = -1;
     yang_stmt  *ymin; /* yang min */
@@ -827,7 +826,7 @@ check_min_max(cxobj     *x,
     if ((ymin = yang_find(y, Y_MIN_ELEMENTS, NULL)) != NULL){
 	cv = yang_cv_get(ymin);
 	if (nr < cv_uint32_get(cv)){
-	    if (netconf_minmax_elements(cbret, x, 0) < 0)
+	    if (netconf_minmax_elements_xml(xret, x, 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -836,7 +835,7 @@ check_min_max(cxobj     *x,
 	cv = yang_cv_get(ymax);
 	if (cv_uint32_get(cv) > 0 && /* 0 means unbounded */
 	    nr > cv_uint32_get(cv)){
-	    if (netconf_minmax_elements(cbret, x, 1) < 0)
+	    if (netconf_minmax_elements_xml(xret, x, 1) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -851,9 +850,9 @@ check_min_max(cxobj     *x,
 
 /*! Detect unique constraint for duplicates from parent node and minmax
  * @param[in]  xt    XML parent (may have lists w unique constraints as child)
- * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @param[out] xret    Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
- * @retval     0     Validation failed (cbret set)
+ * @retval     0     Validation failed (xret set)
  * @retval    -1     Error
  * Assume xt:s children are sorted and yang populated.
  * The function does two different things of the children of an XML node:
@@ -889,8 +888,8 @@ check_min_max(cxobj     *x,
  * are not allowed.
  */
 static int
-check_list_unique_minmax(cxobj *xt,
-			 cbuf  *cbret)
+check_list_unique_minmax(cxobj  *xt,
+			 cxobj **xret)
 {
     int         retval = -1;
     cxobj      *x = NULL;
@@ -932,7 +931,7 @@ check_list_unique_minmax(cxobj *xt,
 	    }
 	    else {
 		/* Check if the list length violates min/max */
-		if ((ret = check_min_max(xp, yp, nr, cbret)) < 0)
+		if ((ret = check_min_max(xp, yp, nr, xret)) < 0)
 		    goto done;
 		if (ret == 0)
 		    goto fail;
@@ -953,7 +952,7 @@ check_list_unique_minmax(cxobj *xt,
 		do {
 		    if (yang_keyword_get(ye) == Y_LIST || yang_keyword_get(ye) == Y_LEAF_LIST){
 			/* Check if the list length violates min/max */
-			if ((ret = check_min_max(xt, ye, 0, cbret)) < 0)
+			if ((ret = check_min_max(xt, ye, 0, xret)) < 0)
 			    goto done;
 			if (ret == 0)
 			    goto fail;
@@ -973,7 +972,7 @@ check_list_unique_minmax(cxobj *xt,
 	     * its first element x, its yang spec y, its parent xt, and 
 	     * a unique yang spec yu,
 	     */
-	    if ((ret = check_unique_list(x, xt, y, yu, cbret)) < 0)
+	    if ((ret = check_unique_list(x, xt, y, yu, xret)) < 0)
 		goto done;
 	    if (ret == 0)
 		goto fail;
@@ -984,7 +983,7 @@ check_list_unique_minmax(cxobj *xt,
      */
     if (yp){  
 	/* Check if the list length violates min/max */
-	if ((ret = check_min_max(xp, yp, nr, cbret)) < 0)
+	if ((ret = check_min_max(xp, yp, nr, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -996,7 +995,7 @@ check_list_unique_minmax(cxobj *xt,
 	do {
 	    if (yang_keyword_get(ye) == Y_LIST || yang_keyword_get(ye) == Y_LEAF_LIST){
 		/* Check if the list length violates min/max */
-		if ((ret = check_min_max(xt, ye, 0, cbret)) < 0)
+		if ((ret = check_min_max(xt, ye, 0, xret)) < 0)
 		    goto done;
 		if (ret == 0)
 		    goto fail;
@@ -1014,14 +1013,14 @@ check_list_unique_minmax(cxobj *xt,
  * 1. Check if mandatory leafs present as subs.
  * 2. Check leaf values, eg int ranges and string regexps.
  * @param[in]  xt    XML node to be validated
- * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @param[out] xret    Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
  * @code
  *   cxobj *x;
- *   cbuf *cbret = cbuf_new();
- *   if ((ret = xml_yang_validate_add(h, x, cbret)) < 0)
+ *   cbuf *xret = NULL;
+ *   if ((ret = xml_yang_validate_add(h, x, &xret)) < 0)
  *      err;
  *   if (ret == 0)
  *      fail;
@@ -1032,8 +1031,8 @@ check_list_unique_minmax(cxobj *xt,
  */
 int
 xml_yang_validate_add(clicon_handle h,
-		      cxobj   *xt, 
-		      cbuf    *cbret)
+		      cxobj        *xt, 
+		      cxobj       **xret)
 {
     int        retval = -1;
     cg_var    *cv = NULL;
@@ -1047,11 +1046,11 @@ xml_yang_validate_add(clicon_handle h,
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
-	if ((ret = check_choice(xt, yt, cbret)) < 0)
+	if ((ret = check_choice(xt, yt, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
-	if ((ret = check_mandatory(xt, yt, cbret)) < 0)
+	if ((ret = check_mandatory(xt, yt, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1073,21 +1072,21 @@ xml_yang_validate_add(clicon_handle h,
 		 * are considered as "" */
 		cvtype = cv_type_get(cv);
 		if (cv_isint(cvtype) || cvtype == CGV_BOOL || cvtype == CGV_DEC64){
-		    if (netconf_bad_element(cbret, "application",  yt->ys_argument, "Invalid NULL value") < 0)
+		    if (netconf_bad_element_xml(xret, "application",  yt->ys_argument, "Invalid NULL value") < 0)
 			goto done;
 		    goto fail;
 		}
 	    }
 	    else{
 		if (cv_parse1(body, cv, &reason) != 1){
-		    if (netconf_bad_element(cbret, "application",  yt->ys_argument, reason) < 0)
+		    if (netconf_bad_element_xml(xret, "application",  yt->ys_argument, reason) < 0)
 			goto done;
 		    goto fail;
 		}
 	    }
 
 	    if ((ys_cv_validate(h, cv, yt, &reason)) != 1){
-		if (netconf_bad_element(cbret, "application",  yt->ys_argument, reason) < 0)
+		if (netconf_bad_element_xml(xret, "application",  yt->ys_argument, reason) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -1098,7 +1097,7 @@ xml_yang_validate_add(clicon_handle h,
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_add(h, x, cbret)) < 0)
+	if ((ret = xml_yang_validate_add(h, x, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1116,11 +1115,12 @@ xml_yang_validate_add(clicon_handle h,
 }
 
 /*! Some checks done only at edit_config, eg keys in lists
+ * @param[out] xret    Error XML tree. Free with xml_free after use
  */
 int
 xml_yang_validate_list_key_only(clicon_handle h,
-				cxobj   *xt, 
-				cbuf    *cbret)
+				cxobj        *xt, 
+				cxobj       **xret)
 {
     int        retval = -1;
     yang_stmt *yt;   /* yang spec of xt going in */
@@ -1130,14 +1130,14 @@ xml_yang_validate_list_key_only(clicon_handle h,
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
-	if ((ret = check_list_key(xt, yt, cbret)) < 0)
+	if ((ret = check_list_key(xt, yt, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_list_key_only(h, x, cbret)) < 0)
+	if ((ret = xml_yang_validate_list_key_only(h, x, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1154,17 +1154,18 @@ xml_yang_validate_list_key_only(clicon_handle h,
 /*! Validate a single XML node with yang specification for all (not only added) entries
  * 1. Check leafrefs. Eg you delete a leaf and a leafref references it.
  * @param[in]  xt  XML node to be validated
- * @param[out] cbret Error buffer (set w netconf error if retval == 0)
+ * @param[out] xret  Error XML tree (if retval=0). Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
  * @code
  *   cxobj *x;
- *   cbuf *cbret = cbuf_new();
- *   if ((ret = xml_yang_validate_all(x, cbret)) < 0)
+ *   cbuf *xret = NULL;
+ *   if ((ret = xml_yang_validate_all(h, x, &xret)) < 0)
  *      err;
  *   if (ret == 0)
  *      fail;
+ *   xml_free(xret);
  * @endcode
  * @see xml_yang_validate_add
  * @see xml_yang_validate_rpc
@@ -1172,8 +1173,8 @@ xml_yang_validate_list_key_only(clicon_handle h,
  */
 int
 xml_yang_validate_all(clicon_handle h,
-		      cxobj   *xt, 
-		      cbuf    *cbret)
+		      cxobj        *xt, 
+		      cxobj       **xret)
 {
     int        retval = -1;
     yang_stmt *ys;  /* yang node */
@@ -1188,7 +1189,7 @@ xml_yang_validate_all(clicon_handle h,
        and !Node has a config sub-statement and it is false */
     ys=xml_spec(xt);
     if (ys==NULL){
-	if (netconf_unknown_element(cbret, "application", xml_name(xt), NULL) < 0)
+	if (netconf_unknown_element_xml(xret, "application", xml_name(xt), NULL) < 0)
 	    goto done;
 	goto fail;
     }
@@ -1207,12 +1208,16 @@ xml_yang_validate_all(clicon_handle h,
  	    */
 	    if ((yc = yang_find(ys, Y_TYPE, NULL)) != NULL){
 		if (strcmp(yc->ys_argument, "leafref") == 0){
-		    if (validate_leafref(xt, yc, cbret) < 0)
+		    if ((ret = validate_leafref(xt, yc, xret)) < 0)
 			goto done;
+		    if (ret == 0)
+			goto fail;
 		}
 		else if (strcmp(yc->ys_argument, "identityref") == 0){
-		    if (validate_identityref(xt, ys, yc, cbret) < 0)
+		    if ((ret = validate_identityref(xt, ys, yc, xret)) < 0)
 			goto done;
+		    if (ret == 0)
+			goto fail;
 		}
 	    }
 	    break;
@@ -1230,7 +1235,7 @@ xml_yang_validate_all(clicon_handle h,
 		goto done;
 	    if (!nr){
 		ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
-		if (netconf_operation_failed(cbret, "application",
+		if (netconf_operation_failed_xml(xret, "application",
 					     ye?ye->ys_argument:"must xpath validation failed") < 0)
 		    goto done;
 		goto fail;
@@ -1242,7 +1247,7 @@ xml_yang_validate_all(clicon_handle h,
 	    if ((nr = xpath_vec_bool(xt, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){
-		if (netconf_operation_failed(cbret, "application",
+		if (netconf_operation_failed_xml(xret, "application",
 					     "when xpath validation failed") < 0)
 		    goto done;
 		goto fail;
@@ -1251,7 +1256,7 @@ xml_yang_validate_all(clicon_handle h,
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_all(h, x, cbret)) < 0)
+	if ((ret = xml_yang_validate_all(h, x, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1259,7 +1264,7 @@ xml_yang_validate_all(clicon_handle h,
     /* Check unique and min-max after choice test for example*/
     if (yang_config(ys) != 0){
 	/* Checks if next level contains any unique list constraints */
-	if ((ret = check_list_unique_minmax(xt, cbret)) < 0)
+	if ((ret = check_list_unique_minmax(xt, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1274,24 +1279,25 @@ xml_yang_validate_all(clicon_handle h,
 }
 
 /*! Translate a single xml node to a cligen variable vector. Note not recursive 
+ * @param[out] xret    Error XML tree (if ret == 0). Free with xml_free after use
  * @retval     1     Validation OK
- * @retval     0     Validation failed (cbret set)
+ * @retval     0     Validation failed (xret set)
  * @retval    -1     Error
  */
 int
 xml_yang_validate_all_top(clicon_handle h,
-			  cxobj   *xt, 
-			  cbuf    *cbret)
+			  cxobj        *xt, 
+			  cxobj       **xret)
 {
     int    ret;
     cxobj *x;
 
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_all(h, x, cbret)) < 1)
+	if ((ret = xml_yang_validate_all(h, x, xret)) < 1)
 	    return ret;
     }
-    if ((ret = check_list_unique_minmax(xt, cbret)) < 1)
+    if ((ret = check_list_unique_minmax(xt, xret)) < 1)
 	return ret;
     return 1;
 }
@@ -2053,7 +2059,7 @@ xml_tree_prune_flagged(cxobj *xt,
  */
 int
 xml_default(cxobj *xt, 
-	   void   *arg)
+	    void   *arg)
 {
     int        retval = -1;
     yang_stmt *ys;
@@ -2079,13 +2085,8 @@ xml_default(cxobj *xt,
 	    if (!cv_flag(y->ys_cv, V_UNSET)){  /* Default value exists */
 		if (!xml_find(xt, y->ys_argument)){
 
-#ifdef USE_XML_INSERT
 		    if ((xc = xml_new(y->ys_argument, NULL, y)) == NULL)
 			goto done;
-#else
-		    if ((xc = xml_new(y->ys_argument, xt, y)) == NULL)
-			goto done;
-#endif
 		    xml_flag_set(xc, XML_FLAG_DEFAULT);
 		    if ((xb = xml_new("body", xc, NULL)) == NULL)
 			goto done;
@@ -2098,18 +2099,12 @@ xml_default(cxobj *xt,
 			goto done;
 		    free(str);
 		    added++;
-#ifdef USE_XML_INSERT
 		    if (xml_insert(xt, xc) < 0)
 			goto done;
-#endif
 		}
 	    }
 	}
     }
-#ifndef USE_XML_INSERT
-    if (added)
-	xml_sort(xt, NULL);
-#endif
     retval = 0;
  done:
     return retval;
@@ -2206,7 +2201,9 @@ xml_spec_populate_rpc(clicon_handle h,
 	if (yrpc){
 	    xml_spec_set(x, yrpc);
 	    if ((yi = yang_find(yrpc, Y_INPUT, NULL)) != NULL){
-		/* kludge rpc -> input XXX THIS HIDES AN ERROR IN xml_spec_populate */
+		/* xml_spec_populate need to have parent with yang spec for
+		 * recursive population to work. Therefore, assign input yang
+		 * to rpc level although not 100% intuitive */
 		xml_spec_set(x, yi); 
 		if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		    goto done;
@@ -2497,7 +2494,7 @@ api_path2xml_vec(char             **vec,
 	else{
 	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
 		goto done;
-	    if (nvalvec > cvec_len(cvk)){ 	    
+	    if (nvalvec != cvec_len(cvk)){ 	    
 		clicon_err(OE_XML, EINVAL, "List key %s length mismatch", name);
 		goto fail;
 	    }

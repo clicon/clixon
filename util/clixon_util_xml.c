@@ -34,6 +34,11 @@
  * XML support functions.
  * @see https://www.w3.org/TR/2008/REC-xml-20081126
  *      https://www.w3.org/TR/2009/REC-xml-names-20091208
+ * The function can do yang validation, process xml and json, etc.
+ * On success, nothing is printed and exitcode 0
+ * On failure, an error is printed on stderr and exitcode != 0
+ * Failure error prints are different, it would be nice to make them more
+ * uniform. (see clicon_rpc_generate_error)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -49,7 +54,9 @@
 #include <stdint.h>
 #include <syslog.h>
 #include <assert.h>
+#include <fcntl.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -69,12 +76,20 @@
 static int
 usage(char *argv0)
 {
-    fprintf(stderr, "usage:%s [options]\n"
+    fprintf(stderr, "usage:%s [options] with xml on stdin\n"
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"
+	    "\t-f <file>\tXML input file (overrides stdin)\n"
+	    "\t-J \t\tInput as JSON\n"
 	    "\t-j \t\tOutput as JSON\n"
-	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n",
+	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n"
+	    "\t-o \t\tOutput the file\n"
+	    "\t-v \t\tValidate the result in terms of Yang model (requires -y)\n"
+	    "\t-p \t\tPretty-print output\n"
+	    "\t-y <filename> \tYang filename or dir (load all files)\n"
+    	    "\t-Y <dir> \tYang dirs (can be several)\n"
+	    ,
 	    argv0);
     exit(0);
 }
@@ -83,17 +98,39 @@ int
 main(int    argc,
      char **argv)
 {
-    int   retval = -1;
-    cxobj *xt = NULL;
-    cxobj *xc;
-    cbuf  *cb = cbuf_new();
-    int   c;
-    int   logdst = CLICON_LOG_STDERR;
-    int   json = 0;
+    int           retval = -1;
+    cxobj        *xt = NULL;
+    cxobj        *xc;
+    cbuf         *cb = cbuf_new();
+    int           c;
+    int           logdst = CLICON_LOG_STDERR;
+    int           jsonin = 0;
+    int           jsonout = 0;
+    char         *input_filename = NULL;
+    char         *yang_file_dir = NULL;
+    yang_stmt    *yspec = NULL;
+    cxobj        *xerr = NULL; /* malloced must be freed */
+    int           ret;
+    int           pretty = 0;
+    int           validate = 0;
+    int           output = 0;
+    clicon_handle h;
+    struct stat   st;
+    int           fd = 0; /* stdin */
+    cxobj        *xcfg = NULL;
+    cbuf         *cbret = NULL;
 
+    /* In the startup, logs to stderr & debug flag set later */
+    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
+
+    if ((h = clicon_handle_init()) == NULL)
+	goto done;
+
+    xcfg = xml_new("clixon-config", NULL, NULL);
+    clicon_conf_xml_set(h, xcfg);
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, "hD:jl:")) != -1)
+    while ((c = getopt(argc, argv, "hD:f:Jjl:pvoy:Y:")) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv[0]);
@@ -102,37 +139,131 @@ main(int    argc,
 	    if (sscanf(optarg, "%d", &debug) != 1)
 		usage(argv[0]);
 	    break;
+	case 'f':
+	    input_filename = optarg;
+	    break;
+	case 'J':
+	    jsonin++;
+	    break;
 	case 'j':
-	    json++;
+	    jsonout++;
 	    break;
 	case 'l': /* Log destination: s|e|o|f */
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(argv[0]);
 	    break;
+	case 'o':
+	    output++;
+	    break;
+	case 'v':
+	    validate++;
+	    break;
+	case 'p':
+	    pretty++;
+	    break;
+	case 'y':
+	    yang_file_dir = optarg;
+	    break;
+	case 'Y':
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
+	    break;
 	default:
 	    usage(argv[0]);
 	    break;
 	}
-    clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, logdst);
-    if (xml_parse_file(0, "</config>", NULL, &xt) < 0){
-	fprintf(stderr, "xml parse error %s\n", clicon_err_reason);
-	goto done;
+    if (validate && !yang_file_dir){
+	fprintf(stderr, "-v requires -y\n");
+	usage(argv[0]);
     }
-    xc = NULL;
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL) 
-	if (json)
-	    xml2json_cbuf(cb, xc, 0); /* print xml */
-	else
-	    clicon_xml2cbuf(cb, xc, 0, 0); /* print xml */
-    fprintf(stdout, "%s", cbuf_get(cb));
-    fflush(stdout);
-#if 0
-    cbuf_reset(cb);
-    xmltree2cbuf(cb, xt, 0);       /* dump data structures */
-    fprintf(stderr, "%s\n", cbuf_get(cb));
-#endif
+    clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, logdst);
+    /* 1. Parse yang */
+    if (yang_file_dir){
+	if ((yspec = yspec_new()) == NULL)
+	    goto done;
+	if (stat(yang_file_dir, &st) < 0){
+	    clicon_err(OE_YANG, errno, "%s not found", yang_file_dir);
+	    goto done;
+	}
+	if (S_ISDIR(st.st_mode)){
+	    if (yang_spec_load_dir(h, yang_file_dir, yspec) < 0)
+		goto done;
+	}
+	else{
+	    if (yang_spec_parse_file(h, yang_file_dir, yspec) < 0)
+		goto done;
+	}
+    }
+    if (input_filename){
+	if ((fd = open(input_filename, O_RDONLY)) < 0){
+	    clicon_err(OE_YANG, errno, "open(%s)", input_filename);	
+	    goto done;
+	}
+    }
+    /* 2. Parse data (xml/json) */
+    if (jsonin){
+	if ((ret = json_parse_file(fd, yspec, &xt, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    clicon_rpc_generate_error("util_xml", xerr);
+	    goto done;
+	}
+    }
+    else{
+	if (xml_parse_file(fd, "</config>", NULL, &xt) < 0){
+	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
+	    goto done;
+	}
+    }
+
+    /* Dump data structures (for debug) */
+    if (debug){
+	cbuf_reset(cb);
+	xmltree2cbuf(cb, xt, 0);       
+	fprintf(stderr, "%s\n", cbuf_get(cb));
+	cbuf_reset(cb);
+    }
+
+    /* 3. Validate data (if yspec) */
+    if (validate){
+	xc = xml_child_i(xt, 0);
+	/* Populate */
+	if (xml_apply0(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	    goto done;
+	/* Sort */
+	if (xml_apply0(xc, CX_ELMNT, xml_sort, h) < 0)
+	    goto done;
+	/* Add default values */
+	if (xml_apply(xc, CX_ELMNT, xml_default, h) < 0)
+	    goto done;
+	if (xml_apply0(xc, -1, xml_sort_verify, h) < 0)
+	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
+	if ((ret = xml_yang_validate_all_top(h, xc, &xerr)) < 0) 
+	    goto done;
+	if (ret > 0 && (ret = xml_yang_validate_add(h, xc, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (netconf_err2cb(xerr, &cbret) < 0)
+		goto done;
+	    fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
+	    goto done;
+	}
+    }
+    /* 4. Output data (xml/json) */
+    if (output){
+	xc = NULL;
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL) 
+	    if (jsonout)
+		xml2json_cbuf(cb, xc, pretty); /* print xml */
+	    else
+		clicon_xml2cbuf(cb, xc, 0, pretty); /* print xml */
+	fprintf(stdout, "%s", cbuf_get(cb));
+	fflush(stdout);
+    }
     retval = 0;
  done:
+    if (cbret)
+	cbuf_free(cbret);
     if (xt)
 	xml_free(xt);
     if (cb)

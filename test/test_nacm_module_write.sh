@@ -164,7 +164,7 @@ nacm(){
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
     new "enable nacm"
-    expecteq "$(curl -u andy:bar -sS -X PUT -d '{"enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
+    expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
 }
 
 #--------------- enable nacm

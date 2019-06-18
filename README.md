@@ -10,7 +10,7 @@ support.
   * [Frequently asked questions (FAQ)](doc/FAQ.md)
   * [Hello world](example/hello/README.md)
   * [Changelog](CHANGELOG.md)
-  * [Installation](#installation)
+  * [Installation](doc/INSTALL.md)
   * [Licenses](#licenses)
   * [Support](#support)
   * [Dependencies](#dependencies)
@@ -46,21 +46,6 @@ Users of Clixon currently include:
   * [Prosilient's PTAnalyzer](https://prosilient.com) # only CLIgen
 
 See also [Clicon project page](http://clicon.org).
-
-Clixon runs on Linux, [FreeBSD port](https://www.freshports.org/devel/clixon) and Mac/Apple. CPU architecures include x86_64, i686, ARM32.
-
-## Installation
-
-A typical installation is as follows:
-```
-     configure	       	       # Configure clixon to platform
-     make                      # Compile
-     sudo make install         # Install libs, binaries, and config-files
-     sudo make install-include # Install include files (for compiling)
-```
-
-One [example application](example/README.md) is provided, a IETF IP YANG datamodel with
-generated CLI, Netconf and restconf interface.
 
 ## Licenses
 
@@ -113,7 +98,7 @@ Clixon follows:
 However, the following YANG syntax modules are not implemented (reference to RFC7950 in parenthesis):
 - deviation (7.20.3)
 - action (7.15)
-- refine (7.13.2)
+- augment in a uses sub-clause (7.17) (module-level augment is implemented)
 - status (7.21.2)
 - extension (7.19)
 - YIN (13)
@@ -149,23 +134,22 @@ The standards covered include:
 Not supported:
 - !DOCTYPE (ie DTD)
 
-Historically, Clixon has not until 3.9 made strict namespace
-enforcing. For example, the following non-strict netconf was
-previously accepted:
+The following xpath axes are supported:
+- CHILD, DESCENDANT, DESCENDANT_OR_SELF, SELF, and PARENT
+
+The following xpath axes are _not_ supported:
+- PRECEEDING, PRECEEDING_SIBLING, NAMESPACE, FOLLOWING_SIBLING, FOLLOWING, ANCESTOR,ANCESTOR_OR_SELF, ATTRIBUTE 
+
+Note that base netconf namespace syntax is not enforced but recommended, which means that the following two expressions are treated equivalently:
 ```
-     <rpc><my-own-method/></rpc> 
-```
-In 3.9, the same statement should be, for example:
-```
-     <rpc><my-own-method xmlns="urn:example:my-own"/></rpc> 
-```
-Note that base netconf syntax is still not enforced but recommended:
-```
+     <rpc>
+        <my-own-method xmlns="urn:example:my-own"/>
+     </rpc> 
      <rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
         <my-own-method xmlns="urn:example:my-own"/>
      </rpc> 
 ```
-
+All other namespaces are enforced.
 
 ## Netconf
 

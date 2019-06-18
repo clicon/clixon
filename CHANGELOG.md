@@ -16,6 +16,8 @@
   * Added clixon_util_regexp utility function
   * Added extensive regexp test [test/test_pattern.sh] for both posix and libxml2
   * Added regex cache to type resolution
+* Yang "refine" feature supported
+  * According to RFC 7950 7.13.2
 * Yang "min-element" and "max-element" feature supported
   * According to RFC 7950 7.7.4 and 7.7.5
   * See (tests)[test/test_minmax.sh]
@@ -68,6 +70,29 @@
 ### API changes on existing features (you may need to change your code)
 
 * All hash_ functions have been prefixed with `clicon_` to avoid name collision with other packages (frr)
+* RESTCONF strict namespace validation of data in POST and PUT.
+  * Accepted:
+  ```
+    curl -X PUT http://localhost/restconf/data/mod:a -d {"mod:a":"x"}
+  ```
+  * Not accepted (must prefix "a" with module):
+  ```
+    curl -X PUT http://localhost/restconf/data/mod:a -d {"a":"x"}
+  ```
+  * Undefine `RESTCONF_NS_DATA_CHECK` in include/clixon_custom.h to disable strict check.
+* Many validation functions have changed error parameter from cbuf to xml tree. 
+  * XML trees are more flexible for utility tools
+  * If you use these(mostly internal), you need to change the error function: `generic_validate, from_validate_common, xml_yang_validate_all_top, xml_yang_validate_all, xml_yang_validate_add, xml_yang_validate_rpc, xml_yang_validate_list_key_only`
+* Replaced `CLIXON_DATADIR` with two configurable options defining where Clixon installs Yang files.
+  * use `--with-yang-installdir=DIR` to install Clixon yang files in DIR
+  * use `--with-std-yang-installdir=DIR` to install standard yang files that Clixon may use in DIR 
+  * Default is (as before) `/usr/local/share/clixon`
+* New clixon-config@2019-06-05.yang revision
+  * Added: `CLICON_YANG_REGEXP, CLICON_CLI_TAB_MODE, CLICON_CLI_HIST_FILE, CLICON_CLI_HIST_SIZE, CLICON_XML_CHANGELOG, CLICON_XML_CHANGELOG_FILE`.
+  * Renamed: `CLICON_XMLDB_CACHE` to `CLICON_DATASTORE_CACHE` and type changed.
+  * Deleted: `CLICON_XMLDB_PLUGIN, CLICON_USE_STARTUP_CONFIG`;
+* New clixon-lib@2019-06-05.yang revision
+  * Added: ping rpc added (for liveness)
 * Added compiled regexp parameter as part of internal yang type resolution functions
   * `yang_type_resolve()`, `yang_type_get()`
 * All internal `ys_populate_*()` functions (except ys_populate()) have switched parameters: `clicon_handle, yang_stmt *)`
@@ -167,6 +192,11 @@
 
 ### Minor changes
 
+* `startup_extraxml` triggers unnecessary validation
+  * Renamed startup_db_reset -> xmldb_db_reset (its a general function)
+  * In startup_extraxml(), check if reset callbacks or extraxml file actually makes and changes to the tmp db.
+* Print CLICON_YANG_DIR and CLICON_FEATURE lists on startup with debug flag 
+* Extended `util/clixon_util_xml` with yang and validate functionality so it can be used as a stand-alone utility for validating XML/JSON files
 * JSON parse and print improvements
   * Integrated parsing with namespace translation and yang spec lookup
 * Added CLIgen tab-modes in config option CLICON_CLI_TAB_MODE, which means you can control the behaviour of `<tab>` in the CLI.
@@ -212,6 +242,8 @@
 	
 ### Corrected Bugs
 
+* Fixed a problem with some netconf error messages caused restconf daemon to exit due to no XML encoding
+* Check cligen tab mode, dont start if CLICON_CLI_TAB_MODE is undefined
 * Startup transactions did not mark added tree with XML_FLAG_ADD as it should.
 * Restconf PUT different keys detected (thanks @dcornejo) and fixed
   * This was accepted but shouldn't be: `PUT http://restconf/data/A=hello/B -d '{"B":"goodbye"}'`

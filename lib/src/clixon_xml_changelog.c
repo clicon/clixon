@@ -67,6 +67,7 @@
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_yang_module.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_changelog.h"
 #include "clixon_xpath_ctx.h"
@@ -424,8 +425,9 @@ clixon_xml_changelog_init(clicon_handle h)
     int        fd = -1;
     cxobj     *xt = NULL;
     yang_stmt *yspec;
-    cbuf      *cbret = NULL;
     int        ret;
+    cxobj     *xret = NULL;
+    cbuf      *cbret = NULL;
 
     yspec = clicon_dbspec_yang(h);
     if ((filename = clicon_option_str(h, "CLICON_XML_CHANGELOG_FILE")) != NULL){
@@ -437,15 +439,13 @@ clixon_xml_changelog_init(clicon_handle h)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)
 	    goto done;
-	if ((cbret = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	if ((ret = xml_yang_validate_all(h, xt, &xret)) < 0)
 	    goto done;
-	}
-	if ((ret = xml_yang_validate_all(h, xt, cbret)) < 0)
-	    goto done;
-	if (ret==1 && (ret = xml_yang_validate_add(h, xt, cbret)) < 0)
+	if (ret==1 && (ret = xml_yang_validate_add(h, xt, &xret)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
+	    if (netconf_err2cb(xret, &cbret) < 0)
+		goto done;
 	    clicon_err(OE_YANG, 0, "validation failed: %s", cbuf_get(cbret));
 	    goto done;
 	}   
@@ -455,12 +455,14 @@ clixon_xml_changelog_init(clicon_handle h)
     }
     retval = 0;
  done:
+    if (cbret)
+	cbuf_free(cbret);
+    if (xret)
+	xml_free(xret);
     if (fd != -1)
 	close(fd);
     if (xt)
 	xml_free(xt);
-    if (cbret)
-	cbuf_free(cbret);
     return retval;
 }
 
