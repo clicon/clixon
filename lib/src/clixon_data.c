@@ -83,7 +83,7 @@ clicon_dbspec_yang(clicon_handle h)
     size_t          len;
     void           *p;
 
-    if ((p = hash_value(cdat, "dbspec_yang", &len)) != NULL)
+    if ((p = clicon_hash_value(cdat, "dbspec_yang", &len)) != NULL)
 	return *(yang_stmt **)p;
     return NULL;
 }
@@ -100,7 +100,7 @@ clicon_dbspec_yang_set(clicon_handle h,
     /* It is the pointer to ys that should be copied by hash,
        so we send a ptr to the ptr to indicate what to copy.
      */
-    if (hash_add(cdat, "dbspec_yang", &ys, sizeof(ys)) == NULL)
+    if (clicon_hash_add(cdat, "dbspec_yang", &ys, sizeof(ys)) == NULL)
 	return -1;
     return 0;
 }
@@ -118,7 +118,7 @@ clicon_nacm_ext(clicon_handle h)
     size_t         len;
     void          *p;
 
-    if ((p = hash_value(cdat, "nacm_xml", &len)) != NULL)
+    if ((p = clicon_hash_value(cdat, "nacm_xml", &len)) != NULL)
 	return *(cxobj **)p;
     return NULL;
 }
@@ -141,7 +141,7 @@ clicon_nacm_ext_set(clicon_handle h,
     /* It is the pointer to xn that should be copied by hash,
        so we send a ptr to the ptr to indicate what to copy.
      */
-    if (hash_add(cdat, "nacm_xml", &xn, sizeof(xn)) == NULL)
+    if (clicon_hash_add(cdat, "nacm_xml", &xn, sizeof(xn)) == NULL)
 	return -1;
     return 0;
 }
@@ -158,7 +158,7 @@ clicon_config_yang(clicon_handle h)
     size_t          len;
     void           *p;
 
-    if ((p = hash_value(cdat, "control_yang", &len)) != NULL)
+    if ((p = clicon_hash_value(cdat, "control_yang", &len)) != NULL)
 	return *(yang_stmt **)p;
     return NULL;
 }
@@ -175,7 +175,7 @@ clicon_config_yang_set(clicon_handle   h,
     /* It is the pointer to ys that should be copied by hash,
        so we send a ptr to the ptr to indicate what to copy.
      */
-    if (hash_add(cdat, "control_yang", &ys, sizeof(ys)) == NULL)
+    if (clicon_hash_add(cdat, "control_yang", &ys, sizeof(ys)) == NULL)
 	return -1;
     return 0;
 }
@@ -192,7 +192,7 @@ clicon_conf_xml(clicon_handle h)
     size_t         len;
     void          *p;
 
-    if ((p = hash_value(cdat, "clixon_conf", &len)) != NULL)
+    if ((p = clicon_hash_value(cdat, "clixon_conf", &len)) != NULL)
 	return *(cxobj **)p;
     return NULL;
 }
@@ -209,7 +209,7 @@ clicon_conf_xml_set(clicon_handle h,
     /* It is the pointer to x that should be copied by hash,
      * so we send a ptr to the ptr to indicate what to copy.
      */
-    if (hash_add(cdat, "clixon_conf", &x, sizeof(x)) == NULL)
+    if (clicon_hash_add(cdat, "clixon_conf", &x, sizeof(x)) == NULL)
 	return -1;
     return 0;
 }
@@ -223,7 +223,7 @@ clicon_username_get(clicon_handle h)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
-    return (char*)hash_value(cdat, "username", NULL);
+    return (char*)clicon_hash_value(cdat, "username", NULL);
 }
 
 /*! Set authorized user name
@@ -238,8 +238,8 @@ clicon_username_set(clicon_handle h,
     clicon_hash_t  *cdat = clicon_data(h);
 
     if (username == NULL)
-	return hash_del(cdat, "username");
-    return hash_add(cdat, "username", username, strlen(username)+1)==NULL?-1:0;
+	return clicon_hash_del(cdat, "username");
+    return clicon_hash_add(cdat, "username", username, strlen(username)+1)==NULL?-1:0;
 }
 
 /*! Get backend daemon startup status
@@ -252,7 +252,7 @@ clicon_startup_status_get(clicon_handle h)
     clicon_hash_t *cdat = clicon_data(h);
     void           *p;
 
-    if ((p = hash_value(cdat, "startup_status", NULL)) != NULL)
+    if ((p = clicon_hash_value(cdat, "startup_status", NULL)) != NULL)
         return *(enum startup_status *)p;
     return STARTUP_ERR;
 }
@@ -268,7 +268,7 @@ clicon_startup_status_set(clicon_handle       h,
 			  enum startup_status status)
 {
     clicon_hash_t  *cdat = clicon_data(h);
-    if (hash_add(cdat, "startup_status", &status, sizeof(status))==NULL)
+    if (clicon_hash_add(cdat, "startup_status", &status, sizeof(status))==NULL)
         return -1;
     return 0;
 }
@@ -284,7 +284,7 @@ clicon_socket_get(clicon_handle h)
     clicon_hash_t *cdat = clicon_data(h);
     void           *p;
 
-    if ((p = hash_value(cdat, "socket", NULL)) == NULL)
+    if ((p = clicon_hash_value(cdat, "socket", NULL)) == NULL)
 	return -1;
     return *(int*)p;
 }
@@ -302,8 +302,8 @@ clicon_socket_set(clicon_handle h,
     clicon_hash_t  *cdat = clicon_data(h);
 
     if (s == -1)
-	return hash_del(cdat, "socket");
-    return hash_add(cdat, "socket", &s, sizeof(int))==NULL?-1:0;
+	return clicon_hash_del(cdat, "socket");
+    return clicon_hash_add(cdat, "socket", &s, sizeof(int))==NULL?-1:0;
 }
 
 /*! Get module state cache
@@ -319,7 +319,7 @@ clicon_modst_cache_get(clicon_handle h,
     clicon_hash_t *cdat = clicon_data(h);
     void           *p;
 
-    if ((p = hash_value(cdat, brief?"modst_brief":"modst_full", NULL)) != NULL)
+    if ((p = clicon_hash_value(cdat, brief?"modst_brief":"modst_full", NULL)) != NULL)
 	return *(cxobj **)p;
     return NULL;
 }
@@ -346,7 +346,7 @@ clicon_modst_cache_set(clicon_handle h,
     assert(strcmp(xml_name(xms),"modules-state")==0);
     if ((x = xml_dup(xms)) == NULL)
 	return -1;
-    if (hash_add(cdat, brief?"modst_brief":"modst_full", &x, sizeof(x))==NULL)
+    if (clicon_hash_add(cdat, brief?"modst_brief":"modst_full", &x, sizeof(x))==NULL)
 	return -1;
  ok:
     return 0;
@@ -363,7 +363,7 @@ clicon_xml_changelog_get(clicon_handle h)
     clicon_hash_t *cdat = clicon_data(h);
     void          *p;
 
-    if ((p = hash_value(cdat, "xml-changelog", NULL)) != NULL)
+    if ((p = clicon_hash_value(cdat, "xml-changelog", NULL)) != NULL)
 	return *(cxobj **)p;
     return NULL;
 }
@@ -381,7 +381,7 @@ clicon_xml_changelog_set(clicon_handle h,
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
-    if (hash_add(cdat, "xml-changelog", &xchlog, sizeof(xchlog))==NULL)
+    if (clicon_hash_add(cdat, "xml-changelog", &xchlog, sizeof(xchlog))==NULL)
 	return -1;
     return 0;
 }
@@ -403,12 +403,12 @@ clicon_argv_get(clicon_handle h,
     void          *p;
 
     if (argc){
-	if ((p = hash_value(cdat, "argc", NULL)) == NULL)
+	if ((p = clicon_hash_value(cdat, "argc", NULL)) == NULL)
 	    return -1;
 	*argc = *(int*)p;
     }
     if (argv){
-	if ((p = hash_value(cdat, "argv", NULL)) == NULL)
+	if ((p = clicon_hash_value(cdat, "argv", NULL)) == NULL)
 	    return -1;
 	*argv = (char**)p;
     }
@@ -444,10 +444,10 @@ clicon_argv_set(clicon_handle h,
     memcpy(argvv+1, argv, argc*sizeof(char*));
     argvv[0] = prgm;
     /* Note the value is the argv vector (which is copied) */
-    if (hash_add(cdat, "argv", argvv, len*sizeof(char*))==NULL) 
+    if (clicon_hash_add(cdat, "argv", argvv, len*sizeof(char*))==NULL) 
 	goto done;
     argc += 1;
-    if (hash_add(cdat, "argc", &argc, sizeof(argc))==NULL)
+    if (clicon_hash_add(cdat, "argc", &argc, sizeof(argc))==NULL)
 	goto done;
     retval = 0;
  done:
@@ -470,7 +470,7 @@ clicon_db_elmnt_get(clicon_handle h,
     clicon_hash_t *cdat = clicon_db_elmnt(h);
     void          *p;
 
-    if ((p = hash_value(cdat, db, NULL)) != NULL)
+    if ((p = clicon_hash_value(cdat, db, NULL)) != NULL)
 	return (db_elmnt *)p;
     return NULL;
 }
@@ -491,7 +491,7 @@ clicon_db_elmnt_set(clicon_handle h,
 {
     clicon_hash_t  *cdat = clicon_db_elmnt(h);
 
-    if (hash_add(cdat, db, de, sizeof(*de))==NULL)
+    if (clicon_hash_add(cdat, db, de, sizeof(*de))==NULL)
 	return -1;
     return 0;
 }

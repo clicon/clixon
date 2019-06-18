@@ -107,7 +107,7 @@ cli_notification_register(clicon_handle    h,
 	goto done;
     }	
     snprintf(logname, len, "log_socket_%s", stream);
-    if ((p = hash_value(cdat, logname, &len)) != NULL)
+    if ((p = clicon_hash_value(cdat, logname, &len)) != NULL)
 	s_exist = *(int*)p;
 
     if (status){ /* start */
@@ -119,14 +119,14 @@ cli_notification_register(clicon_handle    h,
 	    goto done;
 	if (cligen_regfd(s, fn, arg) < 0)
 	    goto done;
-	if (hash_add(cdat, logname, &s, sizeof(s)) == NULL)
+	if (clicon_hash_add(cdat, logname, &s, sizeof(s)) == NULL)
 	    goto done;
     }
     else{ /* stop */
 	if (s_exist != -1){
 	    cligen_unregfd(s_exist);
 	}
-	hash_del(cdat, logname);
+	clicon_hash_del(cdat, logname);
 #if 0 /* cant turn off */
 	if (clicon_rpc_create_subscription(h, status, stream, format, filter, NULL) < 0)
 	    goto done;

@@ -111,15 +111,15 @@ clicon_handle_init0(int size)
     }
     memset(ch, 0, size);
     ch->ch_magic = CLICON_MAGIC;
-    if ((ch->ch_copt = hash_init()) == NULL){
+    if ((ch->ch_copt = clicon_hash_init()) == NULL){
 	clicon_handle_exit((clicon_handle)ch);
 	goto done;
     }
-    if ((ch->ch_data = hash_init()) == NULL){
+    if ((ch->ch_data = clicon_hash_init()) == NULL){
 	clicon_handle_exit((clicon_handle)ch);
 	goto done;
     }
-    if ((ch->ch_db_elmnt = hash_init()) == NULL){
+    if ((ch->ch_db_elmnt = clicon_hash_init()) == NULL){
 	clicon_handle_exit((clicon_handle)ch);
 	goto done;
     }
@@ -154,12 +154,12 @@ clicon_handle_exit(clicon_handle h)
     clicon_hash_t        *ha;
 
     if ((ha = clicon_options(h)) != NULL)
-	hash_free(ha);
+	clicon_hash_free(ha);
     if ((ha = clicon_data(h)) != NULL)
-	hash_free(ha);
+	clicon_hash_free(ha);
 
     if ((ha = clicon_db_elmnt(h)) != NULL)
-	hash_free(ha);
+	clicon_hash_free(ha);
     stream_delete_all(h, 1);
     free(ch);
     retval = 0;

@@ -67,6 +67,7 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* All hash_ functions have been prefixed with `clicon_` to avoid name collision with other packages (frr)
 * Added compiled regexp parameter as part of internal yang type resolution functions
   * `yang_type_resolve()`, `yang_type_get()`
 * All internal `ys_populate_*()` functions (except ys_populate()) have switched parameters: `clicon_handle, yang_stmt *)`

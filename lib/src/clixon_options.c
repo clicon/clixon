@@ -102,10 +102,10 @@ clicon_option_dump(clicon_handle h,
     size_t         klen;
     size_t         vlen;
     
-    if (hash_keys(hash, &keys, &klen) < 0)
+    if (clicon_hash_keys(hash, &keys, &klen) < 0)
 	goto done;
     for(i = 0; i < klen; i++) {
-	val = hash_value(hash, keys[i], &vlen);
+	val = clicon_hash_value(hash, keys[i], &vlen);
 	if (vlen){
 	    if (((char*)val)[vlen-1]=='\0') /* assume string */
 		clicon_debug(dbglevel, "%s =\t \"%s\"", keys[i], (char*)val);
@@ -222,7 +222,7 @@ parse_configfile(clicon_handle  h,
 	/* Used as an arg to this fn */
 	if (strcmp(name,"CLICON_CONFIGFILE")==0)
 	    continue;
-	if (hash_add(copt, 
+	if (clicon_hash_add(copt, 
 		     name,
 		     body,
 		     strlen(body)+1) == NULL)
@@ -267,7 +267,7 @@ clicon_option_add(clicon_handle h,
 			 name, value, name) < 0)
 	    goto done;
     }
-    if (hash_add(copt, 
+    if (clicon_hash_add(copt, 
 		 name,
 		 value,
 		 strlen(value)+1) == NULL)
@@ -302,10 +302,10 @@ clicon_options_main(clicon_handle h,
     /*
      * Set configure file if not set by command-line above
      */
-    if (!hash_lookup(copt, "CLICON_CONFIGFILE")){ 
+    if (!clicon_hash_lookup(copt, "CLICON_CONFIGFILE")){ 
 	clicon_option_str_set(h, "CLICON_CONFIGFILE", CLIXON_DEFAULT_CONFIG);
     }
-    configfile = hash_value(copt, "CLICON_CONFIGFILE", NULL);
+    configfile = clicon_hash_value(copt, "CLICON_CONFIGFILE", NULL);
     clicon_debug(1, "CLICON_CONFIGFILE=%s", configfile);
     /* File must end with .xml */
     if ((suffix = rindex(configfile, '.')) != NULL){
@@ -368,7 +368,7 @@ clicon_option_exists(clicon_handle h,
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    return (hash_lookup(copt, (char*)name) != NULL);
+    return (clicon_hash_lookup(copt, (char*)name) != NULL);
 }
 
 /*! Get a single string option string via handle
@@ -387,9 +387,9 @@ clicon_option_str(clicon_handle h,
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    if (hash_lookup(copt, (char*)name) == NULL)
+    if (clicon_hash_lookup(copt, (char*)name) == NULL)
 	return NULL;
-    return hash_value(copt, (char*)name, NULL);
+    return clicon_hash_value(copt, (char*)name, NULL);
 }
 
 /*! Set a single string option via handle 
@@ -406,7 +406,7 @@ clicon_option_str_set(clicon_handle h,
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    return hash_add(copt, (char*)name, val, strlen(val)+1)==NULL?-1:0;
+    return clicon_hash_add(copt, (char*)name, val, strlen(val)+1)==NULL?-1:0;
 }
 
 /*! Get options as integer but stored as string
@@ -501,7 +501,7 @@ clicon_option_del(clicon_handle h,
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    return hash_del(copt, (char*)name);
+    return clicon_hash_del(copt, (char*)name);
 }
 
 /*-----------------------------------------------------------------
