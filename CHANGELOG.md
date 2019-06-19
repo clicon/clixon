@@ -69,7 +69,9 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* On validation callbacks, XML_FLAG_ADD is added to all nodes at startup validation, not just the top-level. This is the same behaviour as for steady-state validation.
 * All hash_ functions have been prefixed with `clicon_` to avoid name collision with other packages (frr)
+  * All calls to the following functions must be changed: `hash_init`, `hash_free`, `hash_lookup`, `hash_value`, `hash_add`, `hash_del`, `hash_dump`, and `hash_keys`.
 * RESTCONF strict namespace validation of data in POST and PUT.
   * Accepted:
   ```
