@@ -2494,7 +2494,7 @@ api_path2xml_vec(char             **vec,
 	else{
 	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
 		goto done;
-	    if (nvalvec != cvec_len(cvk)){ 	    
+	    if (nvalvec != cvec_len(cvk)) && strict){ 	    
 		clicon_err(OE_XML, EINVAL, "List key %s length mismatch", name);
 		goto fail;
 	    }
