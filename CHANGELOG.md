@@ -194,6 +194,7 @@
 
 ### Minor changes
 
+* `api_path2xml_vec` strict mode check added if list key length mismatch 
 * `startup_extraxml` triggers unnecessary validation
   * Renamed startup_db_reset -> xmldb_db_reset (its a general function)
   * In startup_extraxml(), check if reset callbacks or extraxml file actually makes and changes to the tmp db.
