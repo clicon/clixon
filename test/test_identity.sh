@@ -130,6 +130,12 @@ cat <<EOF > $fyang
              }
           } 
        }
+       identity empty; /* some errors with an empty identity set */
+       leaf e {
+          type identityref {
+             base mc:empty;
+          }
+       }
    }
 EOF
 
@@ -237,6 +243,15 @@ expectfn "$clixon_cli -1 -f $cfg -l o set acls acl x type undefined" 0 "^$"
 new "cli validate"
 expectfn "$clixon_cli -1 -f $cfg -l o validate" 255 "Identityref validation failed"
 
+# test empty identityref list
+new "cli set empty"
+expectfn "$clixon_cli -1 -f $cfg -l o set e undefined" 0 "^$"
+
+new "cli validate"
+expectfn "$clixon_cli -1 -f $cfg -l o validate" 255 "Identityref validation failed"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 if [ $BE -eq 0 ]; then
     exit # BE

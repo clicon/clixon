@@ -185,14 +185,15 @@ yang2cli_var_identityref(yang_stmt *ys,
     char      *name;
     char      *id;
     int        i;
+    int        len;
     
-    /* Add a wildchar string first -let validate take it for default prefix */
-    cprintf(cb, ">");
-    if (helptext)
-	cprintf(cb, "(\"%s\")", helptext);
     if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) != NULL &&
 	(ybaseid = yang_find_identity(ys, yang_argument_get(ybaseref))) != NULL){
 	if (cvec_len(yang_cvec_get(ybaseid)) > 0){
+	    /* Add a wildchar string first -let validate take it for default prefix */
+	    cprintf(cb, ">");
+	    if (helptext)
+		cprintf(cb, "(\"%s\")", helptext);
 	    cprintf(cb, "|<%s:%s choice:", yang_argument_get(ys), cvtypestr);
 	    i = 0;
 	    while ((cv = cvec_each(yang_cvec_get(ybaseid), cv)) != NULL){
