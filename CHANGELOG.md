@@ -251,6 +251,7 @@
 	
 ### Corrected Bugs
 
+* Fixed [identityref validation fails when using typedef #87](https://github.com/clicon/clixon/issues/87)
 * Fixed a problem with some netconf error messages caused restconf daemon to exit due to no XML encoding
 * Check cligen tab mode, dont start if CLICON_CLI_TAB_MODE is undefined
 * Startup transactions did not mark added tree with XML_FLAG_ADD as it should.

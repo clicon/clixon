@@ -1206,19 +1206,20 @@ xml_yang_validate_all(clicon_handle h,
 	    /* Special case if leaf is leafref, then first check against
 	       current xml tree
  	    */
-	    if ((yc = yang_find(ys, Y_TYPE, NULL)) != NULL){
-		if (strcmp(yc->ys_argument, "leafref") == 0){
-		    if ((ret = validate_leafref(xt, yc, xret)) < 0)
-			goto done;
-		    if (ret == 0)
-			goto fail;
+	    /* Get base type yc */
+	    if (yang_type_get(ys, NULL, &yc, NULL, NULL, NULL, NULL, NULL) < 0)
+		goto done;
+	    if (strcmp(yang_argument_get(yc), "leafref") == 0){
+		if ((ret = validate_leafref(xt, yc, xret)) < 0)
+		    goto done;
+		if (ret == 0)
+		    goto fail;
 		}
-		else if (strcmp(yc->ys_argument, "identityref") == 0){
-		    if ((ret = validate_identityref(xt, ys, yc, xret)) < 0)
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		}
+	    else if (strcmp(yang_argument_get(yc), "identityref") == 0){
+		if ((ret = validate_identityref(xt, ys, yc, xret)) < 0)
+		    goto done;
+		if (ret == 0)
+		    goto fail;
 	    }
 	    break;
 	default:

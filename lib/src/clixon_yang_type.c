@@ -1416,13 +1416,14 @@ yang_type_resolve(yang_stmt   *yorig,
  *
  * @code
  *   yang_stmt    *yrestype;
+ *   char         *origtype = NULL;
  *   int           options;
  *   cvec         *cvv = NULL;
  *   cvec         *patterns = cvec_new(0);
  *   cvec         *regexps = cvec_new(0);
  *   uint8_t       fraction;
  *
- *   if (yang_type_get(ys, &type, &yrestype, &options, &cvv, 
+ *   if (yang_type_get(ys, &origtype, &yrestype, &options, &cvv, 
  *                     patterns, regexps, &fraction) < 0)
  *      goto err;
  *   if (yrestype == NULL) # unresolved
