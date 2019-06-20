@@ -328,11 +328,12 @@ validate_identityref(cxobj     *xt,
 
 {
     int         retval = -1;
-    char       *node;
+    char       *node = NULL;
     yang_stmt  *ybaseref; /* This is the type's base reference */
     yang_stmt  *ybaseid;
     char       *prefix = NULL;
     cbuf       *cb = NULL;
+    cbuf       *cb2 = NULL;
 
     /* Get idref value. Then see if this value is derived from ytype.
      * Always add default prefix because derived identifiers are stored with
@@ -365,10 +366,13 @@ validate_identityref(cxobj     *xt,
      * The derived node list is a cvec computed XXX
      */
     if (cvec_find(yang_cvec_get(ybaseid), node) == NULL){
-	cbuf_reset(cb);
-	cprintf(cb, "Identityref validation failed, %s not derived from %s", 
+	if ((cb2 = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new"); 
+	    goto done;
+	}
+	cprintf(cb2, "Identityref validation failed, %s not derived from %s", 
 		node, yang_argument_get(ybaseid));
-	if (netconf_operation_failed_xml(xret, "application", cbuf_get(cb)) < 0)
+	if (netconf_operation_failed_xml(xret, "application", cbuf_get(cb2)) < 0)
 	    goto done;
 	goto fail;
     }
@@ -376,6 +380,8 @@ validate_identityref(cxobj     *xt,
  done:
     if (cb)
 	cbuf_free(cb);
+    if (cb2)
+	cbuf_free(cb2);
     return retval;
  fail:
     retval = 0;
