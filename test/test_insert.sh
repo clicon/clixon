@@ -3,7 +3,6 @@
 # First a list with 0-5 base elements, insert in different places
 # Second varying yangs: container, leaf, list, leaf-list, choice, user-order list
 
-
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
@@ -27,7 +26,6 @@ cat <<EOF > $cfg
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
-  <CLICON_XMLDB_CACHE>true</CLICON_XMLDB_CACHE>
 </clixon-config>
 EOF
 

@@ -69,6 +69,12 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* Error messages for invalid number ranges and string lengths have been uniformed and changed.
+  * Error messages for invalid ranges are now on the form:
+  ```
+    Number 23 out of range: 1-10
+    String length 23 out of range: 1-10
+  ```
 * On validation callbacks, XML_FLAG_ADD is added to all nodes at startup validation, not just the top-level. This is the same behaviour as for steady-state validation.
 * All hash_ functions have been prefixed with `clicon_` to avoid name collision with other packages (frr)
   * All calls to the following functions must be changed: `hash_init`, `hash_free`, `hash_lookup`, `hash_value`, `hash_add`, `hash_del`, `hash_dump`, and `hash_keys`.

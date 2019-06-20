@@ -6,7 +6,8 @@
 : ${pattern:=test_*.sh}
 
 if [ $# -gt 0 ]; then 
-    echo "usage: $0 # detailed logs and stopon first error"
+    echo "usage: $0 # detailed logs and stop on first error. Use pattern=\"\" $0 to"
+    echo "     Use pattern=<pattern> $0 to narrow down test cases"
     exit -1
 fi
 

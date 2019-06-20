@@ -588,6 +588,105 @@ cv_validate_pattern(clicon_handle h,
      (rmax && (i) > cv_##type##_get(rmax)))
 
 
+/*! Error messsage for int violating ranges 
+ * @note contains kludge - duplicate loop
+ */
+static int
+outofrange(cg_var *cv0,
+	   cvec   *cvv,
+	   char  **reason)
+{
+    int     retval = -1;
+    cbuf   *cb = NULL;
+    cg_var *cv1;
+    cg_var *cv2;
+    int     i;
+
+    if ((cb = cbuf_new()) == NULL)
+	goto done;
+    cprintf(cb, "Number ");
+    cv2cbuf(cv0, cb);
+    cprintf(cb, " out of range: ");
+    /* Kludge: need to repeat the same loop as in the main function in 
+       cv_validate1 */
+    i = 0;
+    while (i<cvec_len(cvv)){
+	cv1 = cvec_i(cvv, i++); /* Increment to check for max pair */
+	if (strcmp(cv_name_get(cv1),"range_min") != 0){
+	    clicon_err(OE_YANG, EINVAL, "Internal error, expected range_min");
+	    goto done;
+	}
+	if (i<cvec_len(cvv) &&
+	    (cv2 = cvec_i(cvv, i)) != NULL &&
+	    strcmp(cv_name_get(cv2),"range_max") == 0){
+	    i++;
+	}
+	else
+	    cv2 = cv1;
+	if (i>2)
+	    cprintf(cb, ", ");
+	cv2cbuf(cv1, cb);
+	cprintf(cb, "-");
+	cv2cbuf(cv2, cb);
+    }
+    if (reason && (*reason = strdup(cbuf_get(cb))) == NULL)
+	goto done;
+    if (cb)
+	cbuf_free(cb);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Error messsage for string violating string limits 
+ * @note contains kludge - duplicate loop
+ */
+static int
+outoflength(uint64_t    u64,
+	    cvec       *cvv,
+	    char      **reason)
+{
+    int     retval = -1;
+    cbuf   *cb = NULL;
+    cg_var *cv1;
+    cg_var *cv2;
+    int     i;
+
+    if ((cb = cbuf_new()) == NULL)
+	goto done;
+    cprintf(cb, "String length %" PRIu64 " out of range: ", u64);
+
+    /* Kludge: need to repeat the same loop as in the main function in 
+       cv_validate1 */
+    i = 0;
+    while (i<cvec_len(cvv)){
+	cv1 = cvec_i(cvv, i++); /* Increment to check for max pair */
+	if (strcmp(cv_name_get(cv1),"range_min") != 0){
+	    clicon_err(OE_YANG, EINVAL, "Internal error, expected range_min");
+	    goto done;
+	}
+	if (i<cvec_len(cvv) &&
+	    (cv2 = cvec_i(cvv, i)) != NULL &&
+	    strcmp(cv_name_get(cv2),"range_max") == 0){
+	    i++;
+	}
+	else
+	    cv2 = cv1;
+	if (i>2)
+	    cprintf(cb, ", ");
+	cv2cbuf(cv1, cb);
+	cprintf(cb, "-");
+	cv2cbuf(cv2, cb);
+    }
+    if (reason && (*reason = strdup(cbuf_get(cb))) == NULL)
+	goto done;
+    if (cb)
+	cbuf_free(cb);
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Validate CLIgen variable
  * @param[in]  h       Clicon handle
  * @param[in]  cv      A cligen variable to validate. This is a correctly parsed cv.
@@ -600,6 +699,7 @@ cv_validate_pattern(clicon_handle h,
  * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
  * @retval 1   Validation OK
  * @note reason if given must be freed by caller
+ * @see cv_validate Corresponding type check in cligen
  */
 static int
 cv_validate1(clicon_handle h,
@@ -705,14 +805,13 @@ cv_validate1(clicon_handle h,
 	    /* Check fails */
 	    if (i==cvec_len(cvv)){ /* And it is last */
 		if (reason){
-		    if (reti)
-			*reason = cligen_reason("Number out of range: %"
-						PRId64,	ii);
-		    else if (retu)
-			*reason = cligen_reason("Number out of range: %"
-						PRIu64, uu);
+		    if (reti || retu){
+			if (outofrange(cv, cvv, reason) < 0)
+			    goto done;
+		    }
 		    else 
-			*reason = cligen_reason("string length out of range: %" PRIu64, uu);
+			if (outoflength(uu, cvv, reason) < 0)
+			    goto done;
 		}
 		goto fail;
 	    }

@@ -589,10 +589,6 @@ xmldb_get_zerocopy(clicon_handle       h,
     db_elmnt       *de = NULL;
     db_elmnt        de0 = {0,};
 
-    if (!clicon_option_bool(h, "CLICON_XMLDB_CACHE")){
-	clicon_err(OE_CFG, 0, "CLICON_XMLDB_CACHE must be set");
-	goto done;
-    }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
