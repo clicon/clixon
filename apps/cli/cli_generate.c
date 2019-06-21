@@ -163,7 +163,6 @@ cli_callback_generate(clicon_handle h,
     return retval;
 }
 
-
 /*! Generate identityref statements for CLI variables
  * @param[in]  ys        Yang statement
  * @param[in]  ytype     Yang union type being resolved
@@ -185,7 +184,6 @@ yang2cli_var_identityref(yang_stmt *ys,
     char      *name;
     char      *id;
     int        i;
-    int        len;
     
     if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) != NULL &&
 	(ybaseid = yang_find_identity(ys, yang_argument_get(ybaseref))) != NULL){

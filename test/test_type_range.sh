@@ -186,15 +186,15 @@ testrange(){
     # olof@vandal> set luint8 0
     # CLI syntax error: "set luint8 0": Unknown command
 # (SAME AS FIRST ^)
-#    new "generated cli set $t leaf invalid"
-#    expectfn "$clixon_cli -1f $cfg -l o set l$t $eval" 255 "\"set l$t $eval\": Number $eval out of range: 1-10, 14-20";
+    new "generated cli set $t leaf invalid"
+    expectfn "$clixon_cli -1f $cfg -l o set l$t $eval" 255 "$errmsg"
     
     new "manual cli set $t leaf OK"
     expectfn "$clixon_cli -1f $cfg -l o man h$t $val" 0 '^$'
 
     new "manual cli set $t leaf invalid"
     echo "$clixon_cli -1f $cfg -l o set h$t $eval"
-    expectfn "$clixon_cli -1f $cfg -l o set l$t $eval" 255 'Unknown command'
+    expectfn "$clixon_cli -1f $cfg -l o set l$t $eval" 255 "$errmsg"
     
     new "discard"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
