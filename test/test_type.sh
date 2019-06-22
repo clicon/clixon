@@ -192,6 +192,10 @@ module example{
          pattern '[a-zA-Z_][a-zA-Z0-9_\-.]*';
       }
   }
+  leaf bool {
+     description "For testing different truth values in CLI";
+     type boolean;
+  }
 }
 EOF
 
@@ -589,7 +593,6 @@ EOF
     new "netconf discard-changes"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-
     #------ minus
 
     new "type with minus"
@@ -601,6 +604,27 @@ EOF
     #new "cli type with minus"
     #expectfn "$clixon_cli -1f $cfg -l o set name my-name" 0 '^$'
 
+    #------ cli truth-values: true/on/enable false/off/disable
+
+    new "cli truth: true"
+    expectfn "$clixon_cli -1f $cfg -l o set bool true" 0 '^$'
+    new "cli truth: false"
+    expectfn "$clixon_cli -1f $cfg -l o set bool false" 0 '^$'
+    new "cli truth: on"
+    expectfn "$clixon_cli -1f $cfg -l o set bool on" 0 '^$'
+    new "cli verify on translates to true"
+    expectfn "$clixon_cli -1f $cfg -l o show conf" 0 'bool true;'
+    new "cli truth: off"
+    expectfn "$clixon_cli -1f $cfg -l o set bool off" 0 '^$'
+    new "cli verify off translates to false"
+    expectfn "$clixon_cli -1f $cfg -l o show conf" 0 'bool false;'
+    new "cli truth: enable"
+    expectfn "$clixon_cli -1f $cfg -l o set bool enable" 0 '^$'
+    new "cli truth: disable"
+    expectfn "$clixon_cli -1f $cfg -l o set bool disable" 0 '^$'
+    new "cli truth: wrong"
+    expectfn "$clixon_cli -1f $cfg -l o set bool wrong" 255 "'wrong' is not a boolean value"
+    
     if [ $BE -ne 0 ]; then
 	new "Kill backend"
 	# Check if premature kill
