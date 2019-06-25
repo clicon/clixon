@@ -73,6 +73,7 @@ module example{
          length "1..10 | 14..20";
       }
    }
+  /* here follows constrained ints */
    leaf lint8 {
        type tint8;
    }
@@ -102,6 +103,36 @@ module example{
    }
    leaf lstring {
        type tstring;
+   }
+  /* here follows unlimited ints */
+   leaf rint8 {
+       type int8;
+   }
+   leaf rint16 {
+       type int16;
+   }
+   leaf rint32 {
+       type int32;
+   }
+   leaf rint64 {
+       type int64;
+   }
+   leaf ruint8 {
+       type uint8;
+   }
+   leaf ruint16 {
+       type uint16;
+   }
+   leaf ruint32 {
+       type uint32;
+   }
+   leaf ruint64 {
+       type uint64;
+   }
+   leaf rdecimal64 {
+       type decimal64{
+          fraction-digits 3;
+       }
    }
 }
 EOF
@@ -168,9 +199,9 @@ testrange(){
 
     if [ $t = "string" ]; then # special case for string type error msg
 	len=$(echo -n "$eval" | wc -c)
-	errmsg="String length $len out of range: 1$post-10$post, 14$post-20$post"
+	errmsg="String length $len out of range: 1$post - 10$post, 14$post - 20$post"
     else
-	errmsg="Number $eval$post out of range: 1$post-10$post, 14$post-20$post"
+	errmsg="Number $eval$post out of range: 1$post - 10$post, 14$post - 20$post"
     fi
 
     new "generated cli set $t leaf invalid"
@@ -212,6 +243,29 @@ testrange(){
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 }
 
+# Type unlimited value range test. Only test invalid number out of range of type
+# Parameters: 1: type (eg uint8)
+#             2: val 
+#             3: post (eg .000 - special for decimal64, others should have "")
+testunlimit(){
+    t=$1
+    val=$2
+    rmin=$3
+    rmax=$4
+    post=$5
+    
+    errmsg="Number $val$post out of range: $rmin$post - $rmax$post"
+    
+    new "Netconf set invalid $t leaf"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><l$t xmlns=\"urn:example:clixon\">$val</l$t></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+    
+    new "netconf validate invalid range"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>l$t</bad-element></error-info><error-severity>error</error-severity><error-message>$errmsg</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+    new "discard"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+}
+
 if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
@@ -226,6 +280,17 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "test params: -f $cfg"
+
+# Test all int types
+testunlimit int8 300 -128 127 ""
+testunlimit int16 73000 -32768 32767 ""
+testunlimit int32 4900000000 -2147483648 2147483647 ""
+testunlimit int64 49739274983274983274983274 -9223372036854775808 9223372036854775807 ""
+testunlimit uint8 300 0 255 ""
+testunlimit uint16 73000 0 65535 ""
+testunlimit uint32 4900000000 0 4294967295 ""
+testunlimit uint64 49739274983274983274983274 0 18446744073709551615 ""
+#testunlimit decimal64 49739274983274983274983274  -9223372036854775808 9223372036854775807 ".000"
 
 # Test all int types
 for t in int8 int16 int32 int64 uint8 uint16 uint32 uint64; do

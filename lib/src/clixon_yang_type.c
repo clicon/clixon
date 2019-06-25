@@ -626,7 +626,7 @@ outofrange(cg_var *cv0,
 	if (i>2)
 	    cprintf(cb, ", ");
 	cv2cbuf(cv1, cb);
-	cprintf(cb, "-");
+	cprintf(cb, " - ");
 	cv2cbuf(cv2, cb);
     }
     if (reason && (*reason = strdup(cbuf_get(cb))) == NULL)
@@ -675,7 +675,7 @@ outoflength(uint64_t    u64,
 	if (i>2)
 	    cprintf(cb, ", ");
 	cv2cbuf(cv1, cb);
-	cprintf(cb, "-");
+	cprintf(cb, " - ");
 	cv2cbuf(cv2, cb);
     }
     if (reason && (*reason = strdup(cbuf_get(cb))) == NULL)

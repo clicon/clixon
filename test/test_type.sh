@@ -407,7 +407,7 @@ EOF
     expectfn "$clixon_cli -1f $cfg -l o set num3 42" 0 '^$'
 
     new "cli range test num3 260 fail"
-    expectfn "$clixon_cli -1f $cfg -l o set num3 260" 255 '^CLI syntax error: "set num3 260": 260 is out of range\(type is uint8\)$'
+    expectfn "$clixon_cli -1f $cfg -l o set num3 260" 255 '^CLI syntax error: "set num3 260": Number 260 out of range: 0-255$'
 
     new "cli range test num3 -1 fail"
     expectfn "$clixon_cli -1f $cfg -l o set num3 -1" 255 "CLI syntax error:"
@@ -416,7 +416,7 @@ EOF
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><num3 xmlns="urn:example:clixon">260</num3></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
     new "netconf validate num3 260 fail"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num3</bad-element></error-info><error-severity>error</error-severity><error-message>260 is out of range(type is uint8)</error-message></rpc-error></rpc-reply>]]>]]>$'
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num3</bad-element></error-info><error-severity>error</error-severity><error-message>Number 260 out of range: 0-255</error-message></rpc-error></rpc-reply>]]>]]>$'
 
     new "netconf discard-changes"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
