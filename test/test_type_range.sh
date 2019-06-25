@@ -257,10 +257,10 @@ testunlimit(){
     errmsg="Number $val$post out of range: $rmin$post - $rmax$post"
     
     new "Netconf set invalid $t leaf"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><l$t xmlns=\"urn:example:clixon\">$val</l$t></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><r$t xmlns=\"urn:example:clixon\">$val</r$t></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
     
     new "netconf validate invalid range"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>l$t</bad-element></error-info><error-severity>error</error-severity><error-message>$errmsg</error-message></rpc-error></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>r$t</bad-element></error-info><error-severity>error</error-severity><error-message>$errmsg</error-message></rpc-error></rpc-reply>]]>]]>$"
 
     new "discard"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
