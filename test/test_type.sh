@@ -273,7 +273,7 @@ EOF
     expectfn "$clixon_cli -1f $cfg -l o set c ulle kalle" 255 "^CLI syntax error: \"set c ulle kalle\": 'kalle' is not a number$"
 
     new "cli set transitive union error int"
-    expectfn "$clixon_cli -1f $cfg -l o set c ulle 55" 255 '^CLI syntax error: "set c ulle 55": Number 55 out of range: 4-44$'
+    expectfn "$clixon_cli -1f $cfg -l o set c ulle 55" 255 '^CLI syntax error: "set c ulle 55": Number 55 out of range: 4 - 44$'
 
     new "netconf set transitive union error int"
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><c xmlns="urn:example:clixon"><ulle>55</ulle></c></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>"
@@ -358,13 +358,13 @@ EOF
     #expectfn "$clixon_cli -1f $cfg -l o set num1 \-100" 0 '^$'
 
     new "cli range test num1 2 error"
-    expectfn "$clixon_cli -1f $cfg -l o set num1 2" 255 '^CLI syntax error: "set num1 2": Number 2 out of range: 1-1$'
+    expectfn "$clixon_cli -1f $cfg -l o set num1 2" 255 '^CLI syntax error: "set num1 2": Number 2 out of range: 1 - 1$'
 
     new "netconf range set num1 -1"
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><num1 xmlns="urn:example:clixon">-1</num1></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
     new "netconf validate num1 -1 wrong"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num1</bad-element></error-info><error-severity>error</error-severity><error-message>Number -1 out of range: 1-1</error-message></rpc-error></rpc-reply>]]>]]>$'
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num1</bad-element></error-info><error-severity>error</error-severity><error-message>Number -1 out of range: 1 - 1</error-message></rpc-error></rpc-reply>]]>]]>$'
 
     new "netconf discard-changes"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -372,19 +372,19 @@ EOF
     #-------- num2 range and blanks
 
     new "cli range test num2 3 error"
-    expectfn "$clixon_cli -1f $cfg -l o set num2 3" 255 '^CLI syntax error: "set num2 3": Number 3 out of range: 4-4000$'
+    expectfn "$clixon_cli -1f $cfg -l o set num2 3" 255 '^CLI syntax error: "set num2 3": Number 3 out of range: 4 - 4000$'
 
     new "cli range test num2 1000 ok"
     expectfn "$clixon_cli -1f $cfg -l o set num2 1000" 0 '^$'
 
     new "cli range test num2 5000 error"
-    expectfn "$clixon_cli -1f $cfg -l o set num2 5000" 255 '^CLI syntax error: "set num2 5000": Number 5000 out of range: 4-4000$'
+    expectfn "$clixon_cli -1f $cfg -l o set num2 5000" 255 '^CLI syntax error: "set num2 5000": Number 5000 out of range: 4 - 4000$'
 
     new "netconf range set num2 3 fail"
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><num2 xmlns="urn:example:clixon">3</num2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
     new "netconf validate num2 3 fail"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num2</bad-element></error-info><error-severity>error</error-severity><error-message>Number 3 out of range: 4-4000</error-message></rpc-error></rpc-reply>]]>]]>$'
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num2</bad-element></error-info><error-severity>error</error-severity><error-message>Number 3 out of range: 4 - 4000</error-message></rpc-error></rpc-reply>]]>]]>$'
 
     new "netconf range set num2 1000 ok"
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><num2 xmlns="urn:example:clixon">1000</num2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -396,7 +396,7 @@ EOF
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><num2 xmlns="urn:example:clixon">5000</num2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
     new "netconf validate num2 5000 fail"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num2</bad-element></error-info><error-severity>error</error-severity><error-message>Number 5000 out of range: 4-4000</error-message></rpc-error></rpc-reply>]]>]]>$'
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num2</bad-element></error-info><error-severity>error</error-severity><error-message>Number 5000 out of range: 4 - 4000</error-message></rpc-error></rpc-reply>]]>]]>$'
 
     new "netconf discard-changes"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -407,7 +407,7 @@ EOF
     expectfn "$clixon_cli -1f $cfg -l o set num3 42" 0 '^$'
 
     new "cli range test num3 260 fail"
-    expectfn "$clixon_cli -1f $cfg -l o set num3 260" 255 '^CLI syntax error: "set num3 260": Number 260 out of range: 0-255$'
+    expectfn "$clixon_cli -1f $cfg -l o set num3 260" 255 '^CLI syntax error: "set num3 260": Number 260 out of range: 0 - 255$'
 
     new "cli range test num3 -1 fail"
     expectfn "$clixon_cli -1f $cfg -l o set num3 -1" 255 "CLI syntax error:"
@@ -416,7 +416,7 @@ EOF
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><num3 xmlns="urn:example:clixon">260</num3></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
     new "netconf validate num3 260 fail"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num3</bad-element></error-info><error-severity>error</error-severity><error-message>Number 260 out of range: 0-255</error-message></rpc-error></rpc-reply>]]>]]>$'
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>num3</bad-element></error-info><error-severity>error</error-severity><error-message>Number 260 out of range: 0 - 255</error-message></rpc-error></rpc-reply>]]>]]>$'
 
     new "netconf discard-changes"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -424,19 +424,19 @@ EOF
     #-------- num4 multiple ranges 1..2 |  42..50
 
     new "cli range test num4 multiple 0 fail"
-    expectfn "$clixon_cli -1f $cfg -l o set num4 0" 255 '^CLI syntax error: "set num4 0": Number 0 out of range: 1-2, 42-50$'
+    expectfn "$clixon_cli -1f $cfg -l o set num4 0" 255 '^CLI syntax error: "set num4 0": Number 0 out of range: 1 - 2, 42 - 50$'
 
     new "cli range test num4 multiple 2 ok"
     expectfn "$clixon_cli -1f $cfg -l e set num4 2" 0 '^$'
 
     new "cli range test num4 multiple 20 fail"
-    expectfn "$clixon_cli -1f $cfg -l o set num4 20" 255 '^CLI syntax error: "set num4 20": Number 20 out of range: 1-2, 42-50$'
+    expectfn "$clixon_cli -1f $cfg -l o set num4 20" 255 '^CLI syntax error: "set num4 20": Number 20 out of range: 1 - 2, 42 - 50$'
 
     new "cli range test num4 multiple 42 ok"
     expectfn "$clixon_cli -1f $cfg -l o set num4 42" 0 '^$'
 
     new "cli range test num4 multiple 99 fail"
-    expectfn "$clixon_cli -1f $cfg -l o set num4 99" 255 '^CLI syntax error: "set num4 99": Number 99 out of range: 1-2, 42-50$'
+    expectfn "$clixon_cli -1f $cfg -l o set num4 99" 255 '^CLI syntax error: "set num4 99": Number 99 out of range: 1 - 2, 42 - 50$'
 
     new "netconf range set num4 multiple 2"
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><num4 xmlns="urn:example:clixon">42</num4></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -471,7 +471,7 @@ EOF
     expectfn "$clixon_cli -1f $cfg -l o set dec 15.0" 0 '^$'
 
     new "cli range dec64 multiple 30.0 fail"
-    expectfn "$clixon_cli -1f $cfg -l o set dec 30.0" 255 '^CLI syntax error: "set dec 30.0": Number 30.000 out of range: -3.500--2.500, 0.000-0.000, 10.000-20.000$'
+    expectfn "$clixon_cli -1f $cfg -l o set dec 30.0" 255 '^CLI syntax error: "set dec 30.0": Number 30.000 out of range: -3.500 - -2.500, 0.000 - 0.000, 10.000 - 20.000$'
 
     new "dec64 discard-changes"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -516,13 +516,13 @@ EOF
     #----------------string ranges---------------------
     #-------- len1 single range (2)
     new "cli length test len1 1 fail"
-    expectfn "$clixon_cli -1f $cfg -l o set len1 x" 255 '^CLI syntax error: "set len1 x": String length 1 out of range: 2-2$'
+    expectfn "$clixon_cli -1f $cfg -l o set len1 x" 255 '^CLI syntax error: "set len1 x": String length 1 out of range: 2 - 2$'
 
     new "cli length test len1 2 OK"
     expectfn "$clixon_cli -1f $cfg -l o set len1 xy" 0 '^$'
 
     new "cli length test len1 3 error"
-    expectfn "$clixon_cli -1f $cfg -l o set len1 hej" 255 '^CLI syntax error: "set len1 hej": String length 3 out of range: 2-2$'
+    expectfn "$clixon_cli -1f $cfg -l o set len1 hej" 255 '^CLI syntax error: "set len1 hej": String length 3 out of range: 2 - 2$'
 
     new "netconf discard-changes"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -531,12 +531,12 @@ EOF
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><len1 xmlns="urn:example:clixon">x</len1></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
     new "netconf validate len1 1 wrong"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>len1</bad-element></error-info><error-severity>error</error-severity><error-message>String length 1 out of range: 2-2</error-message></rpc-error></rpc-reply>]]>]]>$'
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>len1</bad-element></error-info><error-severity>error</error-severity><error-message>String length 1 out of range: 2 - 2</error-message></rpc-error></rpc-reply>]]>]]>$'
 
     #-------- len2 range and blanks
 
     new "cli length test len2 3 error"
-    expectfn "$clixon_cli -1f $cfg -l o set len2 ab" 255 '^CLI syntax error: "set len2 ab": String length 2 out of range: 4-4000$'
+    expectfn "$clixon_cli -1f $cfg -l o set len2 ab" 255 '^CLI syntax error: "set len2 ab": String length 2 out of range: 4 - 4000$'
 
     new "cli length test len2 42 ok"
     expectfn "$clixon_cli -1f $cfg -l o set len2 hejhophdsakjhkjsadhkjsahdkjsad" 0 '^$'
@@ -551,19 +551,19 @@ EOF
 
     #-------- len4 multiple ranges 2..3 |  20-29
     new "cli length test len4 1 error"
-    expectfn "$clixon_cli -1f $cfg -l o set len4 a" 255 '^CLI syntax error: "set len4 a": String length 1 out of range: 2-3, 20-29$'
+    expectfn "$clixon_cli -1f $cfg -l o set len4 a" 255 '^CLI syntax error: "set len4 a": String length 1 out of range: 2 - 3, 20 - 29$'
 
     new "cli length test len4 2 ok"
     expectfn "$clixon_cli -1f $cfg -l o set len4 ab" 0 '^$'
 
     new "cli length test len4 10 error"
-    expectfn "$clixon_cli -1f $cfg -l o set len4 abcdefghij" 255 '^CLI syntax error: "set len4 abcdefghij": String length 10 out of range: 2-3, 20-29$'
+    expectfn "$clixon_cli -1f $cfg -l o set len4 abcdefghij" 255 '^CLI syntax error: "set len4 abcdefghij": String length 10 out of range: 2 - 3, 20 - 29$'
 
     new "cli length test len4 20 ok"
     expectfn "$clixon_cli -1f $cfg -l o set len4 abcdefghijabcdefghija" 0 '^$'
 
     new "cli length test len4 30 error"
-    expectfn "$clixon_cli -1f $cfg -l o set len4 abcdefghijabcdefghijabcdefghij" 255 '^CLI syntax error: "set len4 abcdefghijabcdefghijabcdefghij": String length 30 out of range: 2-3, 20-29$'
+    expectfn "$clixon_cli -1f $cfg -l o set len4 abcdefghijabcdefghijabcdefghij" 255 '^CLI syntax error: "set len4 abcdefghijabcdefghijabcdefghij": String length 30 out of range: 2 - 3, 20 - 29$'
 
     # XSD schema -> POSIX ECE translation
     new "cli yang pattern \d ok"

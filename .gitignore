@@ -49,6 +49,7 @@ build-root/*.rpm
 build-root/rpmbuild
 
 util/clixon_util_datastore
+util/clixon_util_insert
 util/clixon_util_json
 util/clixon_util_stream
 util/clixon_util_xml
