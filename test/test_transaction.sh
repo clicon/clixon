@@ -121,8 +121,9 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend  -s init -f $cfg -l f$flog -- -t /x/y[a=$errnr]"
     start_backend -s init -f $cfg -l f$flog -- -t /x/y[a=$errnr] # -t means transaction logging
+
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 let nr=0

@@ -124,12 +124,12 @@ fi
 new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-sleep 1
 new "start restconf daemon (-a is enable basic authentication)"
 start_restconf -f $cfg -- -a
 
 new "waiting"
-sleep $RCWAIT
+wait_backend
+wait_restconf
 
 new "auth get"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 'null

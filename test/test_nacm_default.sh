@@ -101,14 +101,12 @@ EOF
     new "kill old restconf daemon"
     sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-    sleep 1
     new "start restconf daemon (-a is enable basic authentication)"
     start_restconf -f $cfg -- -a
 
     new "waiting"
     wait_backend
     wait_restconf
-
     
     #----------- First get
     case "$ret1" in

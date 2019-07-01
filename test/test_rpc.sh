@@ -50,7 +50,9 @@ new "start restconf daemon"
 start_restconf -f $cfg
 
 new "waiting"
-sleep $RCWAIT
+wait_backend
+wait_restconf
+
 
 new "rpc tests"
 

@@ -265,8 +265,6 @@ testrun(){
 	new "start backend -s startup -f $cfg -- -u"
 	start_backend -s startup -f $cfg -- -u
     fi
-    new "waiting"
-    sleep $RCWAIT
 
     new "kill old restconf daemon"
     sudo pkill -u www-data clixon_restconf
@@ -275,7 +273,8 @@ testrun(){
     start_restconf -f $cfg
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
+    wait_restconf
 
     new "Check running db content"
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$runxml</data></rpc-reply>]]>]]>$"

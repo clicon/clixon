@@ -85,7 +85,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 new "1. Set newex"
@@ -134,7 +134,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
     
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 new "Set oldex"
@@ -178,7 +178,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 new "Set newex"
@@ -222,7 +222,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
     
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 new "Set oldex"
@@ -266,7 +266,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 new "Set newex"
@@ -312,7 +312,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 new "Set oldex"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><oldex xmlns="urn:example:clixon">str</oldex></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
@@ -357,7 +357,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 new "Set oldex"
@@ -403,7 +403,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 new "Set oldex"
