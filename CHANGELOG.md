@@ -251,6 +251,7 @@
 	
 ### Corrected Bugs
 
+* Return 404 Not found error if restconf GET does not return requested instance
 * Fixed [Wrong yang-generated cli code for typeref identityref combination #88](https://github.com/clicon/clixon/issues/88)
 * Fixed [identityref validation fails when using typedef #87](https://github.com/clicon/clixon/issues/87)
 * Fixed a problem with some netconf error messages caused restconf daemon to exit due to no XML encoding

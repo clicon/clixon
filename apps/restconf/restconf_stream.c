@@ -269,7 +269,7 @@ restconf_stream(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, &s) < 0)
 	goto done;
     if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -417,7 +417,7 @@ api_stream(clicon_handle h,
 	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
 	    goto done;
 	if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xerr, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}

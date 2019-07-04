@@ -111,6 +111,48 @@ netconf_in_use(cbuf *cb,
 /*! Create Netconf invalid-value error XML tree according to RFC 6241 Appendix A
  *
  * The request specifies an unacceptable value for one or more parameters.
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[in]  type    Error type: "application" or "protocol"
+ * @param[in]  message Error message (will be XML encoded)
+ */
+int
+netconf_invalid_value_xml(cxobj **xret,
+			  char   *type,
+			  char   *message)
+{
+    int    retval =-1;
+    cxobj *xerr;
+    char  *encstr = NULL;
+
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	    goto done;
+    }
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+	goto done;
+    if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
+		     "<error-tag>invalid-value</error-tag>"
+		     "<error-severity>error</error-severity>", type) < 0)
+	goto done;
+    if (message){
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
+	    goto done;
+	if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
+			 encstr) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    if (encstr)
+	free(encstr);
+    return retval;
+}
+
+/*! Create Netconf invalid-value error XML tree according to RFC 6241 Appendix A
+ *
+ * The request specifies an unacceptable value for one or more parameters.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message (will be XML encoded)
@@ -120,6 +162,20 @@ netconf_invalid_value(cbuf *cb,
 		      char *type,
 		      char *message)
 {
+#if 1
+    int    retval = -1;
+    cxobj *xret = NULL;
+
+    if (netconf_invalid_value_xml(&xret, type, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (xret)
+	xml_free(xret);
+    return retval;
+#else
     int   retval = -1;
     char *encstr = NULL;
 
@@ -145,6 +201,7 @@ netconf_invalid_value(cbuf *cb,
  err:
     clicon_err(OE_XML, errno, "cprintf");
     goto done;
+#endif
 }
 
 /*! Create Netconf too-big error XML tree according to RFC 6241 Appendix A

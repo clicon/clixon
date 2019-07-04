@@ -191,9 +191,8 @@ expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data)" 0 '
 new "deny-delete-config: limited fail (restconf) ok"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data)" 0 ''
 
-new "admin get nacm (should be null)"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 'null
-'
+new "admin get nacm (should fail)"
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-type": "application","error-tag": "invalid-value","error-severity": "error","error-message": "Instance does not exist"}}}}'
 
 new "deny-delete-config: admin ok (restconf)"
 expecteq "$(curl -u andy:bar -sS -X DELETE http://localhost/restconf/data)" 0 ''
