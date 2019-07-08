@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -65,7 +65,7 @@ int yang_modules_init(clicon_handle h);
 char *yang_modules_revision(clicon_handle h);
 
 int yang_modules_state_get(clicon_handle h, yang_stmt *yspec, char *xpath,
-			   int brief, cxobj **xret);
+			   cvec *nsc, int brief, cxobj **xret);
 
 int clixon_module_upgrade(clicon_handle h, cxobj *xt, modstate_diff_t *msd, cbuf *cb);
 

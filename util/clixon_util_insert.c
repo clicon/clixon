@@ -91,7 +91,7 @@ main(int argc, char **argv)
     cxobj      *xi = NULL;
     int         sort = 0;
     clicon_handle h;
-
+    
     clicon_log_init("clixon_insert", LOG_DEBUG, CLICON_LOG_STDERR); 
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
@@ -154,7 +154,7 @@ main(int argc, char **argv)
     }
     if (xml_apply(x0, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	goto done;
-    if ((xb = xpath_first(x0, "%s", xpath)) == NULL){
+    if ((xb = xpath_first(x0, NULL, "%s", xpath)) == NULL){
 	clicon_err(OE_XML, 0, "xpath: %s not found in x0", xpath);
 	goto done;
     }
@@ -169,7 +169,7 @@ main(int argc, char **argv)
     }
     if (xml_apply(xi, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	goto done;
-    if ((xi = xpath_first(xi, "%s", xpath)) == NULL){
+    if ((xi = xpath_first(xi, NULL, "%s", xpath)) == NULL){
 	clicon_err(OE_XML, 0, "xpath: %s not found in xi", xpath);
 	goto done;
     }

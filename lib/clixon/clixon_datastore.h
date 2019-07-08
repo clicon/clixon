@@ -50,7 +50,9 @@ int xmldb_connect(clicon_handle h);
 int xmldb_disconnect(clicon_handle h);
  /* in clixon_datastore_read.[ch] */
 int xmldb_get(clicon_handle h, const char *db, char *xpath, cxobj **xtop);
-int xmldb_get0(clicon_handle h, const char *db, char *xpath, int copy, cxobj **xtop, modstate_diff_t *msd); 
+int xmldb_get0(clicon_handle h, const char *db,
+	       cvec *nc, char *xpath,
+	       int copy, cxobj **xtop, modstate_diff_t *msd); 
 int xmldb_get0_clear(clicon_handle h, cxobj *x);
 int xmldb_get0_free(clicon_handle h, cxobj **xp);
 int xmldb_put(clicon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret); /* in clixon_datastore_write.[ch] */

@@ -69,6 +69,24 @@
 	
 ### API changes on existing features (you may need to change your code)
 
+* The Clixon API has been extended with namespaces, or namespace contexts in the following cases:
+  * CLIspec functions have added namespace parameter:
+    * `cli_show_config <db> <format> <xpath>` --> `cli_show_config <db> <format> <xpath> <namespace>`
+    * `cli_copy_config <db> <xpath> ...` --> `cli_copy_config <db> <xpath> <namespace> ...`
+  * Xpath API
+    * `xpath_first(x, format, ...)` --> `xpath_first(x, nsc, format, ...)`
+    * `xpath_vec(x, format, vec, veclen, ...)` --> `xpath_vec(x, nsc, format, vec, veclen, ...)`
+    * `xpath_vec_flag(x, format, flags, vec, veclen, ...)` --> `xpath_vec_flag(x, format, flags, vec, veclen, ...)`
+    * `xpath_vec_bool(x, format, ...)` --> `xpath_vec_bool(x, nsc, format, ...)`
+    * `xpath_vec_ctx(x, xpath, xp)` --> `xpath_vec_ctx(x, nsc, xpath, xp)`
+  * xmldb_get0 has an added `nsc` parameter:
+    * `xmldb_get0(h, db, xpath, copy, xret, msd)` --> `xmldb_get0(h, db, nsc, xpath, copy, xret, msd)`
+  * The plugin statedata callback (ca_statedata) has been extended with an nsc parameter:
+    * `int example_statedata(clicon_handle h, cvec *nsc, char *xpath, cxobj *xstate);`
+  * rpc get and get-config api function has an added namespace argument:
+    * `clicon_rpc_get_config(clicon_handle h, char *db, char *xpath, char *namespace, cxobj **xt);`
+    * `int clicon_rpc_get(clicon_handle h, char *xpath, char *namespace, cxobj **xt);`
+    
 * RESTCONF strict namespace validation of data in POST and PUT.
   * Accepted:
   ```
@@ -191,6 +209,7 @@
 
 ### Minor changes
 
+* Rewrote `api_path2xpath` to handle namespaces.
 * `startup_extraxml` triggers unnecessary validation
   * Renamed startup_db_reset -> xmldb_db_reset (its a general function)
   * In startup_extraxml(), check if reset callbacks or extraxml file actually makes and changes to the tmp db.

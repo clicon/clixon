@@ -68,6 +68,7 @@
 #include "clixon_data.h"
 #include "clixon_yang_module.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_changelog.h"
 #include "clixon_xpath_ctx.h"
@@ -77,6 +78,7 @@ static int
 changelog_rename(clicon_handle h,
 		 cxobj        *xt,
 		 cxobj        *xw,
+		 cvec         *nsc,
 		 char         *tag)
 {
     int     retval = -1;
@@ -87,7 +89,7 @@ changelog_rename(clicon_handle h,
 	clicon_err(OE_XML, 0, "tag required");
 	goto done;
     }
-    if (xpath_vec_ctx(xw, tag, &xctx) < 0)
+    if (xpath_vec_ctx(xw, nsc, tag, &xctx) < 0)
 	goto done;
     if (ctx2string(xctx, &str) < 0)
 	goto done;
@@ -192,12 +194,13 @@ static int
 changelog_move(clicon_handle h,
 	       cxobj        *xt,
 	       cxobj        *xw,
+	       cvec         *nsc,
 	       char         *dst)
 {
     int    retval = -1;
     cxobj *xp;       /* destination parent node */
 
-    if ((xp = xpath_first(xt, "%s", dst)) == NULL){
+    if ((xp = xpath_first(xt, nsc, "%s", dst)) == NULL){
 	clicon_err(OE_XML, 0, "path required");
 	goto done;
     }
@@ -235,7 +238,11 @@ changelog_op(clicon_handle h,
     int     ret;
     xp_ctx *xctx = NULL;
     int     i;
+    cvec   *nsc = NULL;
 
+    /* Get namespace context from changelog item */
+    if (xml_nsctx_node(xi, &nsc) < 0)
+	goto done;
     if ((op = xml_find_body(xi, "op")) == NULL)
 	goto ok;
     /* get common variables that may be used in the operations below */
@@ -246,13 +253,13 @@ changelog_op(clicon_handle h,
     if ((wxpath = xml_find_body(xi, "where")) == NULL)
 	goto ok;
     /* Get vector of target nodes meeting the where requirement */
-    if (xpath_vec(xt, "%s", &wvec, &wlen, wxpath) < 0)
+    if (xpath_vec(xt, nsc, "%s", &wvec, &wlen, wxpath) < 0)
        goto done;
    for (i=0; i<wlen; i++){
        xw = wvec[i];
        /* If 'when' exists and is false, skip this target */
        if (whenxpath){
-	   if (xpath_vec_ctx(xw, whenxpath, &xctx) < 0)
+	   if (xpath_vec_ctx(xw, nsc, whenxpath, &xctx) < 0)
 	       goto done;
 	   if ((ret = ctx2boolean(xctx)) < 0)
 	       goto done;
@@ -265,7 +272,7 @@ changelog_op(clicon_handle h,
        }
        /* Now switch on operation */
        if (strcmp(op, "rename") == 0){
-	   ret = changelog_rename(h, xt, xw, tag);
+	   ret = changelog_rename(h, xt, xw, nsc, tag);
        }
        else if (strcmp(op, "replace") == 0){
 	   ret = changelog_replace(h, xt, xw, xnew);
@@ -277,7 +284,7 @@ changelog_op(clicon_handle h,
 	   ret = changelog_delete(h, xt, xw);
        }
        else if (strcmp(op, "move") == 0){
-	   ret = changelog_move(h, xt, xw, dst);
+	   ret = changelog_move(h, xt, xw, nsc, dst);
        }
        else{
 	   clicon_err(OE_XML, 0, "Unknown operation: %s", op);
@@ -288,10 +295,11 @@ changelog_op(clicon_handle h,
        if (ret == 0)
 	   goto fail;
    }
-
  ok:
     retval = 1;
  done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (wvec)
 	free(wvec);
     if (xctx)
@@ -320,7 +328,7 @@ changelog_iterate(clicon_handle h,
     int        ret;
     int        i;
     
-    if (xpath_vec(xch, "step", &vec, &veclen) < 0)
+    if (xpath_vec(xch, NULL, "step", &vec, &veclen) < 0)
 	goto done;
     /* Iterate through changelog items */
     for (i=0; i<veclen; i++){
@@ -384,7 +392,7 @@ xml_changelog_upgrade(clicon_handle h,
      * - find all changelogs in the interval: [from, to]
      * - note it t=0 then no changelog is applied
      */
-    if (xpath_vec(xchlog, "changelog[namespace=\"%s\"]",
+    if (xpath_vec(xchlog, NULL, "changelog[namespace=\"%s\"]", 
 		  &vec, &veclen, namespace) < 0)
 	goto done;
     /* Get all changelogs in the interval [from,to]*/

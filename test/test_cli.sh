@@ -84,13 +84,13 @@ new "cli configure ip type"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 type ex:eth" 0 "^$"
 
 new "cli show xpath description"
-expectfn "$clixon_cli -1 -f $cfg -l o show xpath /interfaces/interface/description" 0 "<description>mydesc</description>"
+expectfn "$clixon_cli -1 -f $cfg -l o show xpath /interfaces/interface/description urn:ietf:params:xml:ns:yang:ietf-interfaces" 0 "<description>mydesc</description>"
 
 new "cli delete description"
 expectfn "$clixon_cli -1 -f $cfg -l o delete interfaces interface eth/0/0 description mydesc" 0 ""
 
 new "cli show xpath no description"
-expectfn "$clixon_cli -1 -f $cfg -l o show xpath /interfaces/interface/description" 0 "^$"
+expectfn "$clixon_cli -1 -f $cfg -l o show xpath /interfaces/interface/description urn:ietf:params:xml:ns:yang:ietf-interfaces" 0 "^$"
 
 new "cli copy interface"
 expectfn "$clixon_cli -1 -f $cfg copy interface eth/0/0 to eth99" 0 "^$"

@@ -139,7 +139,7 @@ new "xpath ../type='rt:static'"
 expecteof "$clixon_util_xpath -f $xml2 -i /aaa/bbb/here" 0 "../type='rt:static'" "^bool:true$"
 
 new "xpath rib-name != ../../name"
-expecteof "$clixon_util_xpath -f $xml2 -i /aaa/bbb" 0 "rib-name != ../../name" "^bool:true$"
+expecteof "$clixon_util_xpath -f $xml2 -i /aaa/bbb" 0 "rib-name != ../name" "^bool:true$"
 
 new "xpath routing/ribs/rib[name=current()/rib-name]/address-family=../../address-family"
 expecteof "$clixon_util_xpath -f $xml2 -i /aaa/bbb" 0 "routing/ribs/rib[name=current()/rib-name]/address-family=../../address-family" "^bool:true$"

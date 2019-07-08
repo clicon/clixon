@@ -86,7 +86,7 @@ db_merge(clicon_handle h,
     cxobj *xt = NULL;
     
     /* Get data as xml from db1 */
-    if (xmldb_get0(h, (char*)db1, NULL, 0, &xt, NULL) < 0)
+    if (xmldb_get0(h, (char*)db1, NULL, NULL, 0, &xt, NULL) < 0)
 	goto done;
     /* Merge xml into db2. Without commit */
     retval = xmldb_put(h, (char*)db2, OP_MERGE, xt, clicon_username_get(h), cbret);
@@ -339,7 +339,7 @@ startup_module_state(clicon_handle h,
 	goto ok;
     /* Set up cache 
      * Now, access brief module cache with clicon_modst_cache_get(h, 1) */
-    if ((ret = yang_modules_state_get(h, yspec, NULL, 1, &x)) < 0)
+    if ((ret = yang_modules_state_get(h, yspec, NULL, NULL, 1, &x)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;

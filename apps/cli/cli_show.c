@@ -119,6 +119,8 @@ expand_dbvar(void   *h,
     cxobj           *xcur;
     char            *xpathcur;
     char            *reason = NULL;
+    char            *namespace = NULL;
+    cvec            *nsc = NULL;
     
     if (argv == NULL || cvec_len(argv) != 2){
 	clicon_err(OE_PLUGIN, 0, "requires arguments: <db> <xmlkeyfmt>");
@@ -148,14 +150,14 @@ expand_dbvar(void   *h,
        --> ^/interface/eth0/address/.*$
        --> /interface/[name="eth0"]/address
     */
-    if (api_path_fmt2xpath(api_path_fmt, cvv, &xpath) < 0)
-	goto done;
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
 	goto done;
+    if (api_path2xpath(api_path, yspec, &xpath, &namespace) < 0)
+	goto done;
     /* Get configuration */
-    if (clicon_rpc_get_config(h, dbstr, xpath, &xt) < 0)
+    if (clicon_rpc_get_config(h, dbstr, xpath, namespace, &xt) < 0) /* XXX */
     	goto done;
-    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto ok; 
     }
@@ -172,6 +174,9 @@ expand_dbvar(void   *h,
 	goto done;
     if (y==NULL)
 	goto ok;
+    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
+	goto done;
+
     /* Special case for leafref. Detect leafref via Yang-type, 
      * Get Yang path element, tentatively add the new syntax to the whole
      * tree and apply the path to that.
@@ -193,12 +198,12 @@ expand_dbvar(void   *h,
 		fprintf(stderr, "%s\n", reason);
 		goto done;
 	    }	    
-	    if ((xcur = xpath_first(xt, "%s", xpath)) == NULL){
+	    if ((xcur = xpath_first(xt, nsc, "%s", xpath)) == NULL){
 		clicon_err(OE_DB, 0, "xpath %s should return merged content", xpath);
 		goto done;
 	    }
 	}
-    if (xpath_vec(xcur, "%s", &xvec, &xlen, xpathcur) < 0) 
+    if (xpath_vec(xcur, nsc, "%s", &xvec, &xlen, xpathcur) < 0) 
 	goto done;
     bodystr0 = NULL; /* Assume sorted XML where duplicates are adjacent */
     for (i = 0; i < xlen; i++) {
@@ -217,6 +222,8 @@ expand_dbvar(void   *h,
  ok:
     retval = 0;
   done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (reason)
 	free(reason);
     if (api_path)
@@ -231,6 +238,7 @@ expand_dbvar(void   *h,
 	free(xpath);
     return retval;
 }
+
 int
 expandv_dbvar(void   *h, 
 	      char   *name, 
@@ -241,6 +249,7 @@ expandv_dbvar(void   *h,
 {
     return expand_dbvar(h, name, cvv, argv, commands, helptexts);
 }
+
 /*! List files in a directory
  */
 int
@@ -390,10 +399,10 @@ show_yang(clicon_handle h,
  * Format of argv:
  *   <dbname>  "running"|"candidate"|"startup" # note only running state=1
  *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
- *   <xpath>   xpath expression, that may contain one %, eg "/sender[name="%s"]"
- *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
+ *   <xpath>   xpath expression, that may contain one %, eg "/sender[name='foo']"
+ *   <namespace> If xpath set, the namespace the symbols in xpath belong to (optional)
  * @code
- *   show config id <n:string>, cli_show_config("running","xml","iface[name="%s"]","n");
+ *   show config id <n:string>, cli_show_config("running","xml","iface[name='foo']","urn:example:example");
  * @endcode
  * @note if state parameter is set, then db must be running
  */
@@ -409,16 +418,13 @@ cli_show_config1(clicon_handle h,
     char            *xpath;
     enum format_enum format;
     cbuf            *cbxpath = NULL;
-    char            *attr = NULL;
-    int              i;
-    int              j;
-    cg_var          *cvattr;
     char            *val = NULL;
     cxobj           *xt = NULL;
     cxobj           *xc;
     cxobj           *xerr;
     enum genmodel_type gt;
     yang_stmt       *yspec;
+    char            *namespace = NULL;
     
     if (cvec_len(argv) != 3 && cvec_len(argv) != 4){
 	clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <dbname>,<format>,<xpath>[,<attr>]", cvec_len(argv));
@@ -441,33 +447,12 @@ cli_show_config1(clicon_handle h,
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
 	goto done;
     }
-    /* Fourth argument is stdarg to xpath format string */
-    if (cvec_len(argv) == 4){
-	attr = cv_string_get(cvec_i(argv, 3));
-	j = 0;
-	for (i=0; i<strlen(xpath); i++)
-	    if (xpath[i] == '%')
-		j++;
-	if (j != 1){
-	    clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have a single '%%'",
-		       xpath);	
-	    goto done;
-	}
-	if ((cvattr = cvec_find(cvv, attr)) == NULL){
-	    clicon_err(OE_PLUGIN, 0, "attr '%s' not found in cligen var list", attr);	
-	    goto done;
-	}
-	if ((val = cv2str_dup(cvattr)) == NULL){
-	    clicon_err(OE_PLUGIN, errno, "cv2str_dup");	
-	    goto done;
-	}
-	cprintf(cbxpath, xpath, val);	
-    }
-    else
-	cprintf(cbxpath, "%s", xpath);	
-
+    cprintf(cbxpath, "%s", xpath);	
+    /* Fourth argument is namespace */
+    if (cvec_len(argv) == 4)
+	namespace = cv_string_get(cvec_i(argv, 3));
     if (state == 0){     /* Get configuration-only from database */
-	if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), &xt) < 0)
+	if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), namespace, &xt) < 0)
 	    goto done;
     }
     else {               /* Get configuration and state from database */
@@ -475,10 +460,10 @@ cli_show_config1(clicon_handle h,
 	    clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
 	    goto done;
 	}
-	if (clicon_rpc_get(h, cbuf_get(cbxpath), &xt) < 0)
+	if (clicon_rpc_get(h, cbuf_get(cbxpath), namespace, &xt) < 0)
 	    goto done;
     }
-    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
@@ -540,9 +525,9 @@ done:
  *   <dbname>  "running"|"candidate"|"startup"
  *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
  *   <xpath>   xpath expression, that may contain one %, eg "/sender[name="%s"]"
- *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
+ *   <namespace> If xpath set, the namespace the symbols in xpath belong to (optional)
  * @code
- *   show config id <n:string>, cli_show_config("running","xml","iface[name="%s"]","n");
+ *   show config id <n:string>, cli_show_config("running","xml","iface[name='foo']","urn:example:example");
  * @endcode
  * @see cli_show_config_state  For config and state data (not only config)
  */
@@ -565,7 +550,7 @@ cli_show_config(clicon_handle h,
  *   <xpath>   xpath expression, that may contain one %, eg "/sender[name="%s"]"
  *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
  * @code
- *   show config id <n:string>, cli_show_config_state("running","xml","iface[name="%s"]","n");
+ *   show state id <n:string>, cli_show_config_state("running","xml","iface[name='foo']","urn:example:example");
  * @endcode
  * @see cli_show_config  For config-only, no state
  */
@@ -580,9 +565,9 @@ cli_show_config_state(clicon_handle h,
 /*! Show configuration as text given an xpath
  * Utility function used by cligen spec file
  * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  arg   A string: <dbname> <xpath>
- * @note Hardcoded that a variable in cvv is named "xpath"
+ * @param[in]  cvv   Vector of variables from CLIgen command-line must contain xpath and ns variables
+ * @param[in]  argv  A string: <dbname>
+ * @note  Hardcoded that variable xpath and ns cvv must exist. (kludge)
  */
 int
 show_conf_xpath(clicon_handle h, 
@@ -598,6 +583,8 @@ show_conf_xpath(clicon_handle h,
     cxobj          **xv = NULL;
     size_t           xlen;
     int              i;
+    char            *namespace = NULL;
+    cvec            *nsc = NULL;
 
     if (cvec_len(argv) != 1){
 	clicon_err(OE_PLUGIN, 0, "Requires one element to be <dbname>");
@@ -611,21 +598,31 @@ show_conf_xpath(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", str);	
 	goto done;
     }
+    /* Look for xpath in command (kludge: cv must be called "xpath") */
     cv = cvec_find(cvv, "xpath");
     xpath = cv_string_get(cv);
-    if (clicon_rpc_get_config(h, str, xpath, &xt) < 0)
+
+    /* Look for namespace in command (kludge: cv must be called "ns") */
+    cv = cvec_find(cvv, "ns");
+    namespace = cv_string_get(cv);
+
+    if (clicon_rpc_get_config(h, str, xpath, namespace, &xt) < 0)
     	goto done;
-    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
-    if (xpath_vec(xt, "%s", &xv, &xlen, xpath) < 0) 
+    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
+	goto done;
+    if (xpath_vec(xt, nsc, "%s", &xv, &xlen, xpath) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)
 	xml_print(stdout, xv[i]);
 
     retval = 0;
 done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (xv)
 	free(xv);
     if (xt)
@@ -641,7 +638,7 @@ int cli_show_version(clicon_handle h,
     return 0;
 }
 
-/*! Generic show configuration CLIGEN callback using generated CLI syntax
+/*! Generic show configuration CLIgen callback using generated CLI syntax
  * @param[in]  h     CLICON handle
  * @param[in]  state If set, show both config and state, otherwise only config
  * @param[in]  cvv   Vector of variables from CLIgen command-line
@@ -651,6 +648,7 @@ int cli_show_version(clicon_handle h,
  *   <dbname>  "running"|"candidate"|"startup"
  *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
  * @note if state parameter is set, then db must be running
+ * @note that first argument is generated by code.
  */
 static int 
 cli_show_auto1(clicon_handle h,
@@ -664,12 +662,15 @@ cli_show_auto1(clicon_handle h,
     //    char            *api_path = NULL; /* xml key */
     char            *db;
     char            *xpath = NULL;
+    cvec            *nsc = NULL;
     char            *formatstr;
     enum format_enum format = FORMAT_XML;
     cxobj           *xt = NULL;
     cxobj           *xp;
     cxobj           *xerr;
     enum genmodel_type gt;
+    char            *namespace = NULL;
+    char            *api_path = NULL;
 
     if (cvec_len(argv) != 3){
 	clicon_err(OE_PLUGIN, 0, "Usage: <api-path-fmt>* <database> <format>. (*) generated.");
@@ -689,19 +690,20 @@ cli_show_auto1(clicon_handle h,
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
-
-    //    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
-    //	goto done;
-    if (api_path_fmt2xpath(api_path_fmt, cvv, &xpath) < 0)
+    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
+	goto done;
+    if (api_path2xpath(api_path, yspec, &xpath, &namespace) < 0)
 	goto done;
     /* XXX Kludge to overcome a trailing / in show, that I cannot add to
      * yang2api_path_fmt_1 where it should belong.
      */
     if (xpath[strlen(xpath)-1] == '/')
 	xpath[strlen(xpath)-1] = '\0';
+    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
+	goto done;
 
     if (state == 0){   /* Get configuration-only from database */
-	if (clicon_rpc_get_config(h, db, xpath, &xt) < 0)
+	if (clicon_rpc_get_config(h, db, xpath, namespace, &xt) < 0)
 	    goto done;
     }
     else{              /* Get configuration and state from database */
@@ -709,15 +711,15 @@ cli_show_auto1(clicon_handle h,
 	    clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
 	    goto done;
 	}
-	if (clicon_rpc_get(h, xpath, &xt) < 0)
+	if (clicon_rpc_get(h, xpath, namespace, &xt) < 0)
 	    goto done;
     }
 
-    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
-    if ((xp = xpath_first(xt, "%s", xpath)) != NULL)
+    if ((xp = xpath_first(xt, nsc, "%s", xpath)) != NULL)
 	/* Print configuration according to format */
 	switch (format){
 	case FORMAT_XML:
@@ -744,6 +746,10 @@ cli_show_auto1(clicon_handle h,
 	}
     retval = 0;
  done:
+    if (nsc)
+	xml_nsctx_free(nsc);
+    if (api_path)
+	free(api_path);
     if (xpath)
 	free(xpath);
     if (xt)

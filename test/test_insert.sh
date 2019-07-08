@@ -1,15 +1,14 @@
 #!/bin/bash
-# XML Insert unit test
+# XML Insert elements and test if they are sorted according to yang
 # First a list with 0-5 base elements, insert in different places
 # Second varying yangs: container, leaf, list, leaf-list, choice, user-order list
-
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 : ${clixon_util_insert:=clixon_util_insert}
 
-OPTS="-D $DBG -s"
+OPTS="-D $DBG"
 
 APPNAME=example
 
@@ -63,7 +62,7 @@ testrun(){
 	err "length of retval is zero"
     fi
  #   echo "rs:$rs"
-#    echo "r0:$r0"
+ #   echo "r0:$r0"
     # Check they are equal
     if [[ "$r0" != "$rs" ]]; then
 	err "$rs" "$r0"

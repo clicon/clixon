@@ -191,9 +191,10 @@ main(int argc, char **argv)
 	fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
 	return -1;
     }
+
     /* If xpath0 given, position current x */
     if (xpath0){
-	if ((x = xpath_first(x0, "%s", xpath0)) == NULL){
+	if ((x = xpath_first(x0, NULL, "%s", xpath0)) == NULL){
 	    fprintf(stderr, "Error: xpath0 returned NULL\n");
 	    return -1;
 	}
@@ -201,8 +202,8 @@ main(int argc, char **argv)
     else
 	x = x0;
 
-    /* Parse XML */
-    if (xpath_vec_ctx(x, xpath, &xc) < 0)
+    /* Parse XML (use nsc == NULL to indicate dont use) */
+    if (xpath_vec_ctx(x, NULL, xpath, &xc) < 0)
 	return -1;
     /* Print results */
     cb = cbuf_new();

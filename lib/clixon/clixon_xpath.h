@@ -80,24 +80,26 @@ enum axis_type{
  */
 extern const map_str2int xpopmap[];
 
+extern int xpatherrordiff;
+
 /*
  * Prototypes
  */
 #if defined(__GNUC__) && __GNUC__ >= 3
-int xpath_vec(cxobj *xcur, char *format, cxobj  ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 2, 5)));
-int xpath_vec_flag(cxobj *xcur, char *format, uint16_t flags, 
-		   cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 2, 6)));
-cxobj *xpath_first(cxobj *xcur, char *format, ...) __attribute__ ((format (printf, 2, 3)));
-int xpath_vec_bool(cxobj *xcur, char *format, ...) __attribute__ ((format (printf, 2, 3)));
+int    xpath_vec(cxobj *xcur, cvec *nsc, char *format, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 6)));
+int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *format, uint16_t flags, 
+		   cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 7)));
+cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *format,  ...) __attribute__ ((format (printf, 3, 4)));
+int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *format, ...) __attribute__ ((format (printf, 3, 4)));
 
 #else
-int xpath_vec(cxobj *xcur, char *format, cxobj  ***vec, size_t *veclen, ...);
-int xpath_vec_flag(cxobj *xcur, char *format, uint16_t flags, 
-		   cxobj ***vec, size_t *veclen, ...);
-cxobj *xpath_first(cxobj *xcur, char *format, ...);
-int xpath_vec_bool(cxobj *xcur, char *format, ...);
-
+int    xpath_vec(cxobj *xcur, cvec *nsc, char *format, cxobj  ***vec, size_t *veclen, ...);
+int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *format, uint16_t flags, 
+		      cxobj ***vec, size_t *veclen, ...);
+cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *format, ...);
+int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *format, ...);
 #endif
-int xpath_vec_ctx(cxobj *xcur, char *xpath, xp_ctx  **xrp);
+
+int xpath_vec_ctx(cxobj *xcur, cvec *nsc, char *xpath, xp_ctx  **xrp);
 
 #endif /* _CLIXON_XPATH_H */

@@ -66,6 +66,7 @@
 #include "clixon_xml_map.h" /* xml_spec_populate */
 #include "clixon_xml_sort.h"
 #include "clixon_xml_parse.h"
+#include "clixon_xml_nsctx.h"
 
 /*
  * Constants
@@ -130,7 +131,7 @@ struct xml{
 				       reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable 
                                        (eg xml_cmp) */
-    char             *x_ns_cache;   /* Cached namespace */
+    cvec             *x_ns_cache;   /* Cached vector of namespaces */
     int              _x_vector_i;   /* internal use: xml_child_each */
     int              _x_i;          /* internal use for sorting: 
 				       see xml_enumerate and xml_cmp */
@@ -229,6 +230,47 @@ xml_prefix_set(cxobj *xn,
     return 0;
 }
 
+/*! Get cached namespace
+ * @param[in] x      XML node
+ * @param[in] prefix Namespace prefix, or NULL for default
+ * @retval    ns     Cached namespace
+ * @retval    NULL   No namespace found (not cached or not found)
+ * @note may want to distinguish between not set cache and no namespace?
+ */
+static char*
+nscache_get(cxobj *x,
+	    char  *prefix)
+{
+    if (x->x_ns_cache != NULL)
+	return xml_nsctx_get(x->x_ns_cache, prefix);
+    return NULL;
+}
+
+/*! Set cached namespace. Replace if necessary
+ * @param[in] x         XML node
+ * @param[in] prefix    Namespace prefix, or NULL for default
+ * @param[in] namespace Cached namespace to set (assume non-null?)
+ * @retval    0         OK
+ * @retval   -1         Error
+ */
+static int
+nscache_set(cxobj *x,
+	    char  *prefix,
+	    char  *namespace)
+{
+    int     retval = -1;
+
+    if (x->x_ns_cache == NULL){
+	if ((x->x_ns_cache = xml_nsctx_init(prefix, namespace)) == NULL)
+	    goto done;
+    }
+    else 
+	return xml_nsctx_set(x->x_ns_cache, prefix, namespace);
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Given an xml tree return URI namespace recursively : default or localname given
  *
  * Given an XML tree and a prefix (or NULL) return URI namespace.
@@ -238,7 +280,7 @@ xml_prefix_set(cxobj *xn,
  * @retval     0          OK
  * @retval    -1          Error
  * @see xmlns_check XXX can these be merged?
- * @see xml2ns_set cache is set
+ * @see xmlns_set cache is set
  * @note, this function uses a cache. 
  */
 int
@@ -250,13 +292,13 @@ xml2ns(cxobj *x,
     char  *ns = NULL;
     cxobj *xp;
     
-    if ((ns = x->x_ns_cache) != NULL)
+    if ((ns = nscache_get(x, prefix)) != NULL)
 	goto ok;
     if (prefix != NULL) /* xmlns:<prefix>="<uri>" */
 	ns = xml_find_type_value(x, "xmlns", prefix, CX_ATTR);
-    else                /* xmlns="<uri>" */
+    else{                /* xmlns="<uri>" */
     	ns = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
-
+    }
     /* namespace not found, try parent */
     if (ns == NULL){
 	if ((xp = xml_parent(x)) != NULL){
@@ -264,15 +306,15 @@ xml2ns(cxobj *x,
 		goto done;
 	}
 	/* If no parent, return default namespace if defined */
-#if defined(DEFAULT_XML_RPC_NAMESPACE)
+#ifdef USE_NETCONF_NS_AS_DEFAULT
 	else
-	    ns = DEFAULT_XML_RPC_NAMESPACE;
+	    ns = NETCONF_BASE_NAMESPACE;
 #endif
     }
-    if (ns && (x->x_ns_cache = strdup(ns)) == NULL){
-	clicon_err(OE_XML, errno, "strdup");
+    /* Set default namespace cache (since code is at this point,
+     * no cache was found */
+    if (ns && nscache_set(x, prefix, ns) < 0)
 	goto done;
-    }
  ok:
     if (namespace)
 	*namespace = ns;
@@ -311,12 +353,8 @@ xmlns_set(cxobj *x,
     if (xml_value_set(xa, ns) < 0)
 	goto done;
     /* (re)set namespace cache (as used in xml2ns) */
-    if (x->x_ns_cache)
-	free(x->x_ns_cache);
-    if ((x->x_ns_cache = strdup(ns)) == NULL){
-	clicon_err(OE_XML, errno, "strdup");
+    if (ns && nscache_set(x, prefix, ns) < 0)
 	goto done;
-    }
     retval = 0;
  done:
     return retval;
@@ -1406,7 +1444,7 @@ xml_free(cxobj *x)
     if (x->x_cv)
 	cv_free(x->x_cv);
     if (x->x_ns_cache)
-	free(x->x_ns_cache);
+	xml_nsctx_free(x->x_ns_cache);
     free(x);
     return 0;
 }

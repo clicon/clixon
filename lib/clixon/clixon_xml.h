@@ -41,12 +41,11 @@
 /*
  * Constants
  */
-/* If rpc call does not have a namespace (eg w xmlns) then use the default NETCONF
- * namespace (rfc6241 3.1)
+
+/* Default NETCONF namespace (see rfc6241 3.1)
+ * See USE_NETCONF_NS_AS_DEFAULT for use of this namespace as default
  */
-#define DEFAULT_XML_RPC_NAMESPACE "urn:ietf:params:xml:ns:netconf:base:1.0"
-/* default namespace statement, such as in <rpc xmlns="..."> */
-#define DEFAULT_XMLNS "xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\""
+#define NETCONF_BASE_NAMESPACE "urn:ietf:params:xml:ns:netconf:base:1.0"
 
 /*
  * Types

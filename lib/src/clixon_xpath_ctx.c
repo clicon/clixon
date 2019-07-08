@@ -32,7 +32,7 @@
   ***** END LICENSE BLOCK *****
 
  * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
- * This file defines XPATH contexts using in traversing the XPATH parse tree.
+ * This file defines XPATH contexts used in traversing the XPATH parse tree.
  */
 #include <stdio.h>
 #include <stdlib.h>

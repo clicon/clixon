@@ -83,23 +83,22 @@ new "netconf commit large config"
 expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 # START actual tests
-
 # Having a large db, get single entries many times
 # NETCONF get
 new "netconf get test single req"
-sel="/ietf-interfaces:interfaces/interface[name='e1']"
-msg="<rpc><get><filter type=\"xpath\" select=\"$sel\" /></get></rpc>]]>]]>"
+sel="/if:interfaces/if:interface[if:name='e1']"
+msg="<rpc><get><filter type=\"xpath\" select=\"$sel\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"/></get></rpc>]]>]]>"
 expecteof "$clixon_netconf -qf $cfg" 0 "$msg" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><oper-status>up</oper-status></interface></interfaces></data></rpc-reply>]]>]]>$'
 
 new "netconf get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    sel="/ietf-interfaces:interfaces/interface[name='e$rnd']"
-    echo "<rpc><get><filter type=\"xpath\" select=\"$sel\" /></get></rpc>]]>]]>"
+    sel="/if:interfaces/if:interface[if:name='e$rnd']"
+    echo "<rpc><get><filter type=\"xpath\" select=\"$sel\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"/></get></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
-new "restconf get test single req"
+new "restconf get test single req XXX"
 expecteq "$(curl -s -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1)" 0 '{"ietf-interfaces:interface": [{"name": "e1","type": "ex:eth","enabled": true,"oper-status": "up"}]}
 '
 
@@ -129,7 +128,7 @@ done } 2>&1 | awk '/real/ {print $2}'
 
 # Get config in one large get
 new "netconf get large config"
-/usr/bin/time -f %e echo "<rpc><get> <filter type=\"xpath\" select=\"/ietf-interfaces:interfaces\" /></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg > /tmp/netconf
+/usr/bin/time -f %e echo "<rpc><get> <filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg > /tmp/netconf
 
 new "restconf get large config"
 /usr/bin/time -f %e curl -sG http://localhost/restconf/data/ietf-interfaces:interfaces | wc

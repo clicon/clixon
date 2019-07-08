@@ -75,6 +75,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
 #include "clixon_xml_map.h"
+#include "clixon_xml_nsctx.h"
 
 #include "clixon_datastore.h"
 #include "clixon_datastore_read.h"
@@ -257,7 +258,7 @@ text_read_modstate(clicon_handle       h,
 	    if ((name = xml_find_body(xm, "name")) == NULL)
 		continue;
 	    /* 3a) There is no such module in the system */
-	    if ((xs = xpath_first(xmcache, "module[name=\"%s\"]", name)) == NULL){
+	    if ((xs = xpath_first(xmcache, NULL, "module[name=\"%s\"]", name)) == NULL){
 		//		fprintf(stderr, "%s: Module %s: not in system\n", __FUNCTION__, name);
 		if ((xm2 = xml_dup(xm)) == NULL)
 		    goto done;
@@ -385,6 +386,7 @@ xmldb_readfile(clicon_handle      h,
  * This is a clixon datastore plugin of the the xmldb api
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msd    If set, return modules-state differences
@@ -395,6 +397,7 @@ xmldb_readfile(clicon_handle      h,
 static int
 xmldb_get_nocache(clicon_handle       h,
 		  const char         *db, 
+		  cvec               *nsc,
 		  char               *xpath,
 		  cxobj             **xtop,
 		  modstate_diff_t    *msd)
@@ -417,7 +420,7 @@ xmldb_get_nocache(clicon_handle       h,
 	goto done;
     /* Here xt looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec */
-    if (xpath_vec(xt, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
 
     /* If vectors are specified then mark the nodes found with all ancestors
@@ -467,6 +470,7 @@ xmldb_get_nocache(clicon_handle       h,
  * This is a clixon datastore plugin of the the xmldb api
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msd    If set, return modules-state differences
@@ -475,11 +479,12 @@ xmldb_get_nocache(clicon_handle       h,
  * @see xmldb_get  the generic API function
  */
 static int
-xmldb_get_cache(clicon_handle       h,
-		const char         *db, 
-		char               *xpath,
-		cxobj             **xtop,
-		modstate_diff_t    *msd)
+xmldb_get_cache(clicon_handle    h,
+		const char      *db, 
+		cvec            *nsc,
+		char            *xpath,
+		cxobj          **xtop,
+		modstate_diff_t *msd)
 {
     int             retval = -1;
     yang_stmt      *yspec;
@@ -521,7 +526,7 @@ xmldb_get_cache(clicon_handle       h,
      */
 
     /* Here xt looks like: <config>...</config> */
-    if (xpath_vec(x0t, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
 
     /* Make new tree by copying top-of-tree from x0t to x1t */
@@ -565,6 +570,7 @@ xmldb_get_cache(clicon_handle       h,
  * This is a clixon datastore plugin of the the xmldb api
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
@@ -573,11 +579,12 @@ xmldb_get_cache(clicon_handle       h,
  * @retval     -1     Error
  */
 static int
-xmldb_get_zerocopy(clicon_handle       h,
-		   const char         *db, 
-		   char               *xpath,
-		   cxobj             **xtop,
-		   modstate_diff_t    *msd)
+xmldb_get_zerocopy(clicon_handle    h,
+		   const char      *db, 
+		   cvec            *nsc,
+		   char            *xpath,
+		   cxobj          **xtop,
+		   modstate_diff_t *msd)
 {
     int             retval = -1;
     yang_stmt      *yspec;
@@ -612,7 +619,7 @@ xmldb_get_zerocopy(clicon_handle       h,
     else
 	x0t = de->de_xml;
     /* Here xt looks like: <config>...</config> */
-    if (xpath_vec(x0t, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
     /* Iterate through the match vector
      * For every node found in x0, mark the tree up to t1
@@ -656,7 +663,7 @@ xmldb_get(clicon_handle    h,
 	  char            *xpath,
 	  cxobj          **xret)
 {
-    return xmldb_get0(h, db, xpath, 1, xret, NULL);
+    return xmldb_get0(h, db, NULL, xpath, 1, xret, NULL);
 }
 
 /*! Zero-copy variant of get content of database
@@ -669,6 +676,7 @@ xmldb_get(clicon_handle    h,
  * freeing tree must be made after use.
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache 
  * @param[out] xret   Single return XML tree. Free with xml_free()
@@ -677,17 +685,19 @@ xmldb_get(clicon_handle    h,
  * @retval     -1     Error
  * @code
  *   cxobj   *xt;
- *   if (xmldb_get0(xh, "running", "/interface[name="eth"]", 0, &xt, NULL) < 0)
+ *   if (xmldb_get0(xh, "running", nsc, "/interface[name="eth"]", 0, &xt, NULL) < 0)
  *      err;
  *   ...
  *   xmldb_get0_clear(h, xt);   # Clear tree from default values and flags 
  *   xmldb_get0_free(h, &xt);   # Free tree
  * @endcode
+ * @see xml_nsctx_node  to get a XML namespace context from XML tree
  * @see xmldb_get for a copy version (old-style)
  */
 int 
 xmldb_get0(clicon_handle    h, 
 	   const char      *db, 
+	   cvec            *nsc,
 	   char            *xpath,
 	   int              copy,
 	   cxobj          **xret,
@@ -701,7 +711,7 @@ xmldb_get0(clicon_handle    h,
 	 * Add default values in copy
 	 * Copy deleted by xmldb_free
 	 */
-	retval = xmldb_get_nocache(h, db, xpath, xret, msd);
+	retval = xmldb_get_nocache(h, db, nsc, xpath, xret, msd);
 	break;
     case DATASTORE_CACHE_ZEROCOPY:
 	/* Get cache (file if empty) mark xpath match in original tree 
@@ -709,7 +719,7 @@ xmldb_get0(clicon_handle    h,
 	 * Default values and markings removed in xmldb_clear
 	 */
 	if (!copy){
-	    retval = xmldb_get_zerocopy(h, db, xpath, xret, msd);
+	    retval = xmldb_get_zerocopy(h, db, nsc, xpath, xret, msd);
 	    break;
 	}
 	/* fall through */
@@ -718,7 +728,7 @@ xmldb_get0(clicon_handle    h,
 	 * Add default values in copy, return copy
 	 * Copy deleted by xmldb_free
 	 */
-	retval = xmldb_get_cache(h, db, xpath, xret, msd);
+	retval = xmldb_get_cache(h, db, nsc, xpath, xret, msd);
 	break;
     }
     return retval;

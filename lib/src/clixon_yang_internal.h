@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -80,7 +80,7 @@ struct yang_stmt{
     char              *ys_argument;  /* String / argument depending on keyword */   
     int                ys_flags;     /* Flags according to YANG_FLAG_* above */
     yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Augmented
-				       nodes can belong to other 
+					nodes can belong to other 
 					modules than the ancestor module */
 
     char              *ys_extra;     /* For unknown */

@@ -91,7 +91,7 @@ EOF
 	if [ $? -ne 0 ]; then
 	    err
 	fi
-	new "start backend -s init -f $cfg"
+	new "start backend -s startup -f $cfg"
 	start_backend -s startup -f $cfg
     else
 	new "Restart backend as eg follows: -Ff $cfg -s startup"

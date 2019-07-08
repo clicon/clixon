@@ -76,7 +76,7 @@ module nacm-example{
 EOF
 
 cat <<EOF > $nacmfile
-   <nacm>
+   <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
      <enable-nacm>true</enable-nacm>
      <read-default>permit</read-default>
      <write-default>deny</write-default>

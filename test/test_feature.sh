@@ -116,7 +116,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 # reply since the modules change so often
 new "netconf schema resource, RFC 7895"
 ret=$($clixon_netconf -qf $cfg<<EOF 
-<rpc><get><filter type="xpath" select="modules-state/module" xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"/></get></rpc>]]>]]>
+<rpc><get><filter type="xpath" select="l:modules-state/l:module" xmlns:l="urn:ietf:params:xml:ns:yang:ietf-yang-library"/></get></rpc>]]>]]>
 EOF
    )
 #echo $ret

@@ -69,7 +69,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 
 # Too many quotes, (single inside double inside single) need to fool bash
 cat <<EOF > $tmp # new
-<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name='eth/0/0']"/></get-config></rpc>]]>]]>
+<rpc><get-config><source><candidate/></source><filter type="xpath" select="/if:interfaces/if:interface[if:name='eth/0/0']" xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"/></get-config></rpc>]]>]]>
 EOF
 
 new "Check eth/0/0 added using xpath"
@@ -98,7 +98,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 
 # Too many quotes
 cat <<EOF > $tmp # new
-<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name='eth1']/enabled"/></get-config></rpc>]]>]]>
+<rpc><get-config><source><candidate/></source><filter type="xpath" select="/if:interfaces/if:interface[if:name='eth1']/if:enabled" xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"/></get-config></rpc>]]>]]>
 EOF
 
 new "netconf get config xpath"
@@ -106,7 +106,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$(cat $tmp)" '^<rpc-reply><data><interfa
 
 # Too many quotes
 cat <<EOF > $tmp # new
-<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface[name='eth1']/enabled/../.."/></get-config></rpc>]]>]]>
+<rpc><get-config><source><candidate/></source><filter type="xpath" select="/if:interfaces/if:interface[if:name='eth1']/if:enabled/../.." xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"/></get-config></rpc>]]>]]>
 EOF
 
 new "netconf get config xpath parent"
@@ -162,7 +162,7 @@ new "netconf edit state operation should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>e0</name><oper-status>up</oper-status></interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>State data not allowed</error-message></rpc-error></rpc-reply>]]>]]>"
 
 new "netconf get state operation"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get><filter type=\"xpath\" select=\"/interfaces\"/></get></rpc>]]>]]>" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled><oper-status>up</oper-status></interface></interfaces></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get><filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" /></get></rpc>]]>]]>" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled><oper-status>up</oper-status></interface></interfaces></data></rpc-reply>]]>]]>$'
 
 new "netconf lock/unlock"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]><rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><rpc-reply><ok/></rpc-reply>]]>]]>$"

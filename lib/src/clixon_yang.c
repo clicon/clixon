@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -789,12 +789,12 @@ yang_find_mynamespace(yang_stmt *ys)
     char      *namespace = NULL;
 
     if ((ymod = ys_real_module(ys)) == NULL){
-	clicon_err(OE_YANG, 0, "My yang module not found");
+	clicon_err(OE_YANG, ENOENT, "My yang module not found");
 	goto done;
     }
     if ((ynamespace = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL)
 	goto done;
-    namespace = ynamespace->ys_argument;
+    namespace = yang_argument_get(ynamespace);
  done:
     return namespace;
 }
@@ -1176,17 +1176,17 @@ yang_find_module_by_prefix(yang_stmt *ys,
     }
     yimport = NULL;
     while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
-	if (yimport->ys_keyword != Y_IMPORT &&
-	    yimport->ys_keyword != Y_INCLUDE)
+	if (yang_keyword_get(yimport) != Y_IMPORT &&
+	    yang_keyword_get(yimport) != Y_INCLUDE)
 	    continue;
 	if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) != NULL &&
-	    strcmp(yprefix->ys_argument, prefix) == 0){
+	    strcmp(yang_argument_get(yprefix), prefix) == 0){
 	    break;
 	}
     }
     if (yimport){
-	if ((ymod = yang_find(yspec, Y_MODULE, yimport->ys_argument)) == NULL &&
-	    (ymod = yang_find(yspec, Y_SUBMODULE, yimport->ys_argument)) == NULL){
+	if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yimport))) == NULL &&
+	    (ymod = yang_find(yspec, Y_SUBMODULE, yang_argument_get(yimport))) == NULL){
 	    clicon_err(OE_YANG, 0, "No module or sub-module found with prefix %s", 
 		       prefix);	
 	    yimport = NULL;
@@ -1222,7 +1222,7 @@ yang_find_module_by_namespace(yang_stmt *yspec,
     return ymod;
 }
 
-/*! Given a yang spec and a module name, return yang module
+/*! Given a yang spec and a module name, return yang module or submodule
  *
  * @param[in]  yspec      A yang specification
  * @param[in]  name       Name of module

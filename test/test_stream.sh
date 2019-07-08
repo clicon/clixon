@@ -129,10 +129,10 @@ wait_restconf
 new "1. Netconf RFC5277 stream testing"
 # 1.1 Stream discovery
 new "netconf event stream discovery RFC5277 Sec 3.2.5"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get><filter type="xpath" select="netconf/streams" xmlns="urn:ietf:params:xml:ns:netmod:notification"/></get></rpc>]]>]]>' '<rpc-reply><data><netconf xmlns="urn:ietf:params:xml:ns:netmod:notification"><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>true</replay-support></stream></streams></netconf></data></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get><filter type="xpath" select="n:netconf/n:streams" xmlns:n="urn:ietf:params:xml:ns:netmod:notification"/></get></rpc>]]>]]>' '<rpc-reply><data><netconf xmlns="urn:ietf:params:xml:ns:netmod:notification"><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>true</replay-support></stream></streams></netconf></data></rpc-reply>]]>]]>'
 
 new "netconf event stream discovery RFC8040 Sec 6.2"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get><filter type="xpath" select="restconf-state/streams"/></get></rpc>]]>]]>' '<rpc-reply><data><restconf-state xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>true</replay-support><access><encoding>xml</encoding><location>https://localhost/streams/EXAMPLE</location></access></stream></streams></restconf-state></data></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get><filter type="xpath" select="r:restconf-state/r:streams" xmlns:r="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"/></get></rpc>]]>]]>' '<rpc-reply><data><restconf-state xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>true</replay-support><access><encoding>xml</encoding><location>https://localhost/streams/EXAMPLE</location></access></stream></streams></restconf-state></data></rpc-reply>]]>]]>'
 
 #
 # 1.2 Netconf stream subscription

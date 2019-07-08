@@ -217,6 +217,7 @@ client_get_streams(clicon_handle   h,
 /*! Get system state-data, including streams and plugins
  * @param[in]     h       Clicon handle
  * @param[in]     xpath   Xpath selection, not used but may be to filter early
+ * @param[in]     nsc     XML Namespace context for xpath
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
  * @retval        0       Statedata callback failed (clicon_err called)
@@ -225,6 +226,7 @@ client_get_streams(clicon_handle   h,
 static int
 client_statedata(clicon_handle h,
 		 char         *xpath,
+		 cvec         *nsc,
 		 cxobj       **xret)
 {
     int        retval = -1;
@@ -251,12 +253,12 @@ client_statedata(clicon_handle h,
 	    goto fail;
     }
     if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895")){
-	if ((ret = yang_modules_state_get(h, yspec, xpath, 0, xret)) < 0)
+	if ((ret = yang_modules_state_get(h, yspec, xpath, nsc, 0, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
     }
-    if ((ret = clixon_plugin_statedata(h, yspec, xpath, xret)) < 0)
+    if ((ret = clixon_plugin_statedata(h, yspec, nsc, xpath, xret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -264,7 +266,7 @@ client_statedata(clicon_handle h,
      * Actually this is a safety catch, should realy be done in plugins
      * and modules_state functions.
      */
-    if (xpath_vec(*xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (xpath_vec(*xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
     /* If vectors are specified then mark the nodes found and
      * then filter out everything else,
@@ -320,6 +322,7 @@ from_client_get_config(clicon_handle h,
     size_t  xlen;    
     int     ret;
     char   *username;
+    cvec   *nsc = NULL; /* Create a netconf namespace context from filter */
 
     username = clicon_username_get(h);
     if ((db = netconf_db_find(xe, "source")) == NULL){
@@ -336,13 +339,22 @@ from_client_get_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if ((xfilter = xml_find(xe, "filter")) != NULL)
+    if ((xfilter = xml_find(xe, "filter")) != NULL){
 	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
 	    xpath="/";
+	/* Create namespace context for xpath from <filter>
+	 *  The set of namespace declarations are those in scope on the
+	 * <filter> element.
+	 */
+	else
+	    if (xml_nsctx_node(xfilter, &nsc) < 0)
+		goto done;
+    }
     /* Note xret can be pruned by nacm below (and change name),
      * so zero-copy cant be used
+     * Also, must use external namespace context here due to <filter stmt
      */
-    if (xmldb_get(h, db, xpath, &xret) < 0){
+    if (xmldb_get0(h, db, nsc, xpath, 1, &xret, NULL) < 0) {
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
@@ -351,7 +363,7 @@ from_client_get_config(clicon_handle h,
     if ((ret = nacm_access_pre(h, username, NACM_DATA, &xnacm)) < 0)
 	goto done;
     if (ret == 0){ /* Do NACM validation */
-	if (xpath_vec(xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	    goto done;
 	/* NACM datanode/module read validation */
 	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
@@ -374,6 +386,8 @@ from_client_get_config(clicon_handle h,
 	xml_free(xnacm);
     if (xvec)
 	free(xvec);
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (cbx)
 	cbuf_free(cbx);
     if (xret)
@@ -441,14 +455,14 @@ from_client_edit_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if ((x = xpath_first(xn, "default-operation")) != NULL){
+    if ((x = xpath_first(xn, NULL, "default-operation")) != NULL){
 	if (xml_operation(xml_body(x), &operation) < 0){
 	    if (netconf_invalid_value(cbret, "protocol", "Wrong operation")< 0)
 		goto done;
 	    goto ok;
 	}
     }
-    if ((xc = xpath_first(xn, "config")) == NULL){
+    if ((xc = xpath_first(xn, NULL, "config")) == NULL){
 	if (netconf_missing_element(cbret, "protocol", "config", NULL) < 0)
 	    goto done;
 	goto ok;
@@ -806,24 +820,34 @@ from_client_get(clicon_handle h,
     cxobj **xvec = NULL;
     size_t  xlen;    
     cxobj  *xnacm = NULL;
-    char               *username;
-
+    char   *username;
+    cvec   *nsc = NULL; /* Create a netconf namespace context from filter */
+    
     username = clicon_username_get(h);
-    if ((xfilter = xml_find(xe, "filter")) != NULL)
+    if ((xfilter = xml_find(xe, "filter")) != NULL){
 	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
 	    xpath="/";
+	/* Create namespace context for xpath from <filter>
+	 *  The set of namespace declarations are those in scope on the
+	 * <filter> element.
+	 */
+	else
+	    if (xml_nsctx_node(xfilter, &nsc) < 0)
+		goto done;
+    }
     /* Get config 
      * Note xret can be pruned by nacm below and change name and
      * metrged with state data, so zero-copy cant be used
+     * Also, must use external namespace context here due to <filter stmt
      */
-    if (xmldb_get(h, "running", xpath, &xret) < 0){
+    if (xmldb_get0(h, "running", nsc, xpath, 1, &xret, NULL) < 0) {
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
     }
     /* Get state data from plugins as defined by plugin_statedata(), if any */
     clicon_err_reset();
-    if ((ret = client_statedata(h, xpath, &xret)) < 0)
+    if ((ret = client_statedata(h, xpath, nsc, &xret)) < 0)
 	goto done;
     if (ret == 0){ /* Error from callback (error in xret) */
 	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
@@ -834,7 +858,7 @@ from_client_get(clicon_handle h,
     if ((ret = nacm_access_pre(h, username, NACM_DATA, &xnacm)) < 0)
 	goto done;
     if (ret == 0){ /* Do NACM validation */
-	if (xpath_vec(xret, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	    goto done;
 	/* NACM datanode/module read validation */
 	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
@@ -858,6 +882,8 @@ from_client_get(clicon_handle h,
 	xml_free(xnacm);
     if (xvec)
 	free(xvec);
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (xret)
 	xml_free(xret);
     return retval;
@@ -986,10 +1012,13 @@ from_client_create_subscription(clicon_handle h,
     char                *selector = NULL;
     struct timeval       start;
     struct timeval       stop;
+    cvec                *nsc = NULL;
     
-    if ((x = xpath_first(xe, "//stream")) != NULL)
+    if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:netmod:notification")) == NULL)
+	goto done;
+    if ((x = xpath_first(xe, nsc, "//stream")) != NULL)
 	stream = xml_find_value(x, "body");
-    if ((x = xpath_first(xe, "//stopTime")) != NULL){
+    if ((x = xpath_first(xe, nsc, "//stopTime")) != NULL){
 	if ((stoptime = xml_find_value(x, "body")) != NULL &&
 	    str2time(stoptime, &stop) < 0){
 	    if (netconf_bad_element(cbret, "application", "stopTime", "Expected timestamp") < 0)
@@ -997,7 +1026,7 @@ from_client_create_subscription(clicon_handle h,
 	    goto ok;	
 	}
     }
-    if ((x = xpath_first(xe, "//startTime")) != NULL){
+    if ((x = xpath_first(xe, nsc, "//startTime")) != NULL){
 	if ((starttime = xml_find_value(x, "body")) != NULL &&
 	    str2time(starttime, &start) < 0){
 	    if (netconf_bad_element(cbret, "application", "startTime", "Expected timestamp") < 0)
@@ -1005,7 +1034,7 @@ from_client_create_subscription(clicon_handle h,
 	    goto ok;	
 	}	
     }
-    if ((xfilter = xpath_first(xe, "//filter")) != NULL){
+    if ((xfilter = xpath_first(xe, nsc, "//filter")) != NULL){
 	if ((ftype = xml_find_value(xfilter, "type")) != NULL){
 	    /* Only accept xpath as filter type */
 	    if (strcmp(ftype, "xpath") != 0){
@@ -1041,6 +1070,8 @@ from_client_create_subscription(clicon_handle h,
  ok:
     retval = 0;
   done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     return retval;
 }
 
@@ -1144,7 +1175,7 @@ from_client_msg(clicon_handle        h,
 	goto reply;
     }
 
-    if ((x = xpath_first(xt, "/rpc")) == NULL){
+    if ((x = xpath_first(xt, NULL, "/rpc")) == NULL){
 	if (netconf_malformed_message(cbret, "rpc keyword expected")< 0)
 	    goto done;
 	goto reply;

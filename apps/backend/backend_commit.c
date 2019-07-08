@@ -184,7 +184,7 @@ startup_common(clicon_handle       h,
 	if ((msd = modstate_diff_new()) == NULL)
 	    goto done;
     clicon_debug(1, "Reading startup config from %s", db);
-    if (xmldb_get0(h, db, "/", 0, &xt, msd) < 0)
+    if (xmldb_get0(h, db, NULL, "/", 0, &xt, msd) < 0)
 	goto done;
     /* Clear flags xpath for get */
     xml_apply0(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
@@ -404,7 +404,7 @@ from_validate_common(clicon_handle       h,
 	goto done;
     }	
     /* This is the state we are going to */
-    if (xmldb_get0(h, candidate, "/", 0, &td->td_target, NULL) < 0)
+    if (xmldb_get0(h, candidate, NULL, "/", 0, &td->td_target, NULL) < 0)
 	goto done;
 
     /* Clear flags xpath for get */
@@ -422,7 +422,7 @@ from_validate_common(clicon_handle       h,
 
     /* 2. Parse xml trees 
      * This is the state we are going from */
-    if (xmldb_get0(h, "running", "/", 0, &td->td_src, NULL) < 0)
+    if (xmldb_get0(h, "running", NULL, "/", 0, &td->td_src, NULL) < 0)
 	goto done;
     /* Clear flags xpath for get */
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,

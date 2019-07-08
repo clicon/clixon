@@ -83,6 +83,7 @@
 #include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_plugin.h"
+#include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_log.h"
@@ -252,6 +253,14 @@ xml2cli(FILE              *f,
  * @retval     1     Validation OK
  * @retval     0     Validation failed
  * @retval    -1     Error
+ * From rfc7950 Sec 9.9.2
+ *  The "path" XPath expression is  evaluated in the following context,
+ *  in addition to the definition in Section 6.4.1:
+ *   o  If the "path" statement is defined within a typedef, the context
+ *      node is the leaf or leaf-list node in the data tree that
+ *      references the typedef.
+ *   o  Otherwise, the context node is the node in the data tree for which
+ *      the "path" statement is defined.
  */
 static int
 validate_leafref(cxobj     *xt,
@@ -266,7 +275,8 @@ validate_leafref(cxobj     *xt,
     size_t       xlen = 0;
     char        *leafrefbody;
     char        *leafbody;
-
+    cvec        *nsc = NULL;
+    
     if ((leafrefbody = xml_body(xt)) == NULL)
 	goto ok;
     if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
@@ -274,7 +284,10 @@ validate_leafref(cxobj     *xt,
 	    goto done;
 	goto fail;
     }
-    if (xpath_vec(xt, "%s", &xvec, &xlen, yang_argument_get(ypath)) < 0) 
+    /* XXX see comment above regarding typeref or not */
+    if (xml_nsctx_yang(ytype, &nsc) < 0)
+	goto done;
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, yang_argument_get(ypath)) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	x = xvec[i];
@@ -291,6 +304,8 @@ validate_leafref(cxobj     *xt,
  ok:
     retval = 1;
  done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (xvec)
 	free(xvec);
     return retval;
@@ -1231,7 +1246,7 @@ xml_yang_validate_all(clicon_handle h,
 	    if (yc->ys_keyword != Y_MUST)
 		continue;
 	    xpath = yc->ys_argument; /* "must" has xpath argument */
-	    if ((nr = xpath_vec_bool(xt, "%s", xpath)) < 0)
+	    if ((nr = xpath_vec_bool(xt, NULL, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){
 		ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
@@ -1244,7 +1259,7 @@ xml_yang_validate_all(clicon_handle h,
 	/* "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
 	if ((yc = yang_find(ys, Y_WHEN, NULL)) != NULL){
 	    xpath = yc->ys_argument; /* "when" has xpath argument */
-	    if ((nr = xpath_vec_bool(xt, "%s", xpath)) < 0)
+	    if ((nr = xpath_vec_bool(xt, NULL, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){
 		if (netconf_operation_failed_xml(xret, "application",
@@ -1768,7 +1783,6 @@ yang2api_path_fmt(yang_stmt *ys,
  * @param[in]  cvv           cligen variable vector, one for every wildchar in 
  *                           api_path_fmt
  * @param[out] api_path      api_path, eg /aaa/17. Free after use
- * @param[out] yang_arg      yang-stmt argument name. Free after use
  * @note first and last elements of cvv are not used,..
  * @see api_path_fmt2xpath
  * @example
@@ -1866,7 +1880,9 @@ api_path_fmt2api_path(char  *api_path_fmt,
  *   api_path_fmt: /subif-entry=%s,%s/subid
  *   cvv:          foo
  *   xpath:        /subif-entry[if-name=foo]/subid"
- *
+ * @example 
+ *   api_path_fmt: /a:b/c
+ *   xpath       : /b/c prefix:a
  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  */ 
 int
@@ -2259,13 +2275,14 @@ xml_spec_populate(cxobj  *x,
 /*! Translate from restconf api-path in cvv form to xml xpath
  * eg a/b=c -> a/[b=c] 
  * eg example:a/b -> ex:a/b
- * @param[in]  yspec  Yang spec
- * @param[in]  cvv    api-path as cvec
- * @param[in]  offset Offset of cvec, where api-path starts
- * @param[out] xpath  The xpath as cbuf variable string, must be initializeed
- * @retval     1      OK
- * @retval     0      Invalid api_path or associated XML, clicon_err called
- * @retval    -1      Fatal error, clicon_err called
+ * @param[in]     api_path api-path as cvec
+ * @param[in]     offset   Offset of cvec, where api-path starts
+ * @param[in]     yspec    Yang spec
+ * @param[in,out] xpath    The xpath as cbuf (must be created and may have content)
+ * @param[out]    namespace Namespace of xpath (direct pointer don't free)
+ * @retval        1        OK
+ * @retval        0        Invalid api_path or associated XML, clicon_err called
+ * @retval       -1        Fatal error, clicon_err called
  *
  * @note both retval 0 and -1 set clicon_err, but the later is fatal
  * @note Not proper namespace translation from api-path 2 xpath
@@ -2279,7 +2296,7 @@ xml_spec_populate(cxobj  *x,
  *   cvec *cvv = NULL; 
  *   if (str2cvec("www.foo.com/restconf/a/b=c", '/', '=', &cvv) < 0)
  *      err;
- *   if ((ret = api_path2xpath(yspec, cvv, 0, cxpath)) < 0)
+ *   if ((ret = api_path2xpath(yspec, cvv, 0, cxpath, NULL)) < 0)
  *      err;
  *   if (ret == 0){
  *      ... access error string in clicon_err_reason
@@ -2293,10 +2310,11 @@ xml_spec_populate(cxobj  *x,
  * @see api_path2xml  For api-path to xml tree
  */
 int
-api_path2xpath(yang_stmt *yspec,
-	       cvec      *cvv,
-	       int        offset,
-	       cbuf      *xpath)
+api_path2xpath_cvv(cvec       *api_path,
+		   int         offset,
+		   yang_stmt  *yspec,
+		   cbuf       *xpath,
+		   char      **namespace)
 {
     int        retval = -1;
     int        i;
@@ -2306,13 +2324,13 @@ api_path2xpath(yang_stmt *yspec,
     char      *name = NULL;
     cvec      *cvk = NULL; /* vector of index keys */
     yang_stmt *y = NULL;
-    yang_stmt *ymod;
+    yang_stmt *ymod = NULL;
     char      *val;
     char      *v;
     cg_var    *cvi;
 
-    for (i=offset; i<cvec_len(cvv); i++){
-        cv = cvec_i(cvv, i);
+    for (i=offset; i<cvec_len(api_path); i++){
+        cv = cvec_i(api_path, i);
 	nodeid = cv_name_get(cv);
 	if (nodeid_split(nodeid, &prefix, &name) < 0)
 	    goto done;
@@ -2368,12 +2386,57 @@ api_path2xpath(yang_stmt *yspec,
 	    name = NULL;
 	}
     } /* for */
+    /* return values: yang module */
+    if (namespace)
+	*namespace = yang_find_mynamespace(ymod);
     retval = 1; /* OK */
  done:
     if (prefix)
 	free(prefix);
     if (name)
 	free(name);
+    return retval;
+ fail:
+    retval = 0; /* Validation failed */
+    goto done;
+}
+
+/*! Translate from restconf api-path to xml xpath as cbuf and yang module
+ * @retval     1      OK
+ * @retval     0      Invalid api_path or associated XML, clicon_err called
+ * @retval    -1      Fatal error, clicon_err called
+ */
+int
+api_path2xpath(char       *api_path,
+	       yang_stmt  *yspec,
+	       char      **xpathp,
+	       char      **namespace)
+{
+    int    retval = -1;
+    cvec  *cvv = NULL; /* api-path vector */
+    cbuf  *xpath = NULL; /* xpath as cbuf (sub-function uses that) */
+
+    /* Split api-path into cligen variable vector */
+    if (str2cvec(api_path, '/', '=', &cvv) < 0)
+	goto done;
+    if ((xpath = cbuf_new()) == NULL)
+        goto done;
+    if ((retval = api_path2xpath_cvv(cvv, 0, yspec, xpath, namespace)) < 0)
+	goto done;
+    if (retval == 0)
+	goto fail;
+    /* prepare output xpath parameter */
+    if (xpathp)
+	if ((*xpathp = strdup(cbuf_get(xpath))) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+    retval = 1;
+ done:
+    if (cvv)
+	cvec_free(cvv);
+    if (xpath)
+	cbuf_free(xpath);
     return retval;
  fail:
     retval = 0; /* Validation failed */
@@ -2711,7 +2774,7 @@ xml2xpath(cxobj *x,
 	    xt = xml_parent(xt);
 	xcp = xml_parent(xt);
 	xml_parent_set(xt, NULL);
-	x2 = xpath_first(xt, "%s", xpath); /* +1: skip first / */
+	x2 = xpath_first(xt, NULL, "%s", xpath); /* +1: skip first / */
 	xml_parent_set(xt, xcp);
 	assert(x2 && x==x2);
 	if (x==x2)

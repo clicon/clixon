@@ -45,20 +45,28 @@ module example{
     }
     container default-address {
          leaf absname {
+             description "Absolute references existing interfaces in if module";
              type leafref {
-                 path "/ip:interfaces/ip:interface/ip:name";
+                 path "/if:interfaces/if:interface/if:name";
              }
          }
          leaf relname {
              type leafref {
-                 path "../../interfaces/interface/name";
+                 path "../../if:interfaces/if:interface/if:name";
              }
          }
          leaf address {
+             description "From RFC7950 9.9.5";
              type leafref {
-                 path "../../interfaces/interface[name = current()/../relname]"
-                    + "/ipv4/address/ip";
+                 path "../../if:interfaces/if:interface[if:name = current()/../relname]"
+                    + "/if:ipv4/if:address/if:ip";
             }
+         }
+         leaf wrong {
+             description "References leading nowhere in yang";
+             type leafref {
+                 path "/ip:interfaces/ip:interface/ip:name";
+             }
          }
     }
     list sender{
@@ -74,6 +82,36 @@ module example{
     }
 }
 EOF
+
+BASEXML=$(cat <<EOF
+<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+   <interface>
+      <name>eth0</name>
+      <type>ex:eth</type>
+      <ipv4>
+         <address>
+            <ip>192.0.2.1</ip>
+            <prefix-length>24</prefix-length>
+         </address>
+         <address>
+            <ip>192.0.2.2</ip>
+            <prefix-length>24</prefix-length>
+         </address>
+      </ipv4>
+   </interface>
+   <interface>
+      <name>lo</name>
+      <type>ex:lo</type>
+      <ipv4>
+         <address>
+            <ip>127.0.0.1</ip>
+            <prefix-length>32</prefix-length>
+         </address>
+      </ipv4>
+   </interface>
+</interfaces>
+EOF
+)
 
 new "test params: -f $cfg"
 
@@ -91,22 +129,22 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "leafref base config"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth0</name><type>ex:eth</type><ipv4><address><ip>192.0.2.1</ip><prefix-length>24</prefix-length></address><address><ip>192.0.2.2</ip><prefix-length>24</prefix-length></address></ipv4></interface><interface><name>lo</name><type>ex:lo</type><ipv4><address><ip>127.0.0.1</ip><prefix-length>32</prefix-length></address></ipv4></interface></interfaces></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$BASEXML</config></edit-config></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 new "leafref get config"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth0</name>'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$BASEXML</data></rpc-reply>]]>]]>"
 
 new "leafref base commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "leafref get config"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth0</name>'
-
-new "leafref add wrong ref"
+new "leafref add non-existing ref"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><default-address xmlns="urn:example:clixon"><absname>eth3</absname><address>10.0.4.6</address></default-address></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 new "leafref validate"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>eth3</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No such leaf</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+#new "leafref wrong ref"
+#expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><default-address xmlns="urn:example:clixon"><wrong>eth3</wrong><address>10.0.4.6</address></default-address></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 new "leafref discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -114,10 +152,17 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<
 new "leafref add correct absref"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><default-address xmlns="urn:example:clixon"><absname>eth0</absname></default-address></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
+new "leafref validate (ok)"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>"
+
 new "leafref add correct relref"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><default-address xmlns="urn:example:clixon"><relname>eth0</relname></default-address></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
-# XXX add address
+new "leafref validate (ok)"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>"
+
+new "leafref add correct address"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><default-address xmlns="urn:example:clixon"><address>192.0.2.1</address></default-address></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 new "leafref validate (ok)"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>"

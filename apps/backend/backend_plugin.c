@@ -122,6 +122,7 @@ clixon_plugin_reset(clicon_handle h,
 int
 clixon_plugin_statedata(clicon_handle    h,
 			yang_stmt       *yspec,
+			cvec            *nsc,
 			char            *xpath,
 			cxobj          **xret)
 {
@@ -136,7 +137,7 @@ clixon_plugin_statedata(clicon_handle    h,
 	    continue;
 	if ((x = xml_new("config", NULL, NULL)) == NULL)
 	    goto done;
-	if (fn(h, xpath, x) < 0)
+	if (fn(h, nsc, xpath, x) < 0)
 	    goto fail;  /* Dont quit here on user callbacks */
 	if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;

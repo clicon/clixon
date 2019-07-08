@@ -118,17 +118,24 @@ main_commit(clicon_handle    h,
     cxobj **vec = NULL;
     int     i;
     size_t  len;
+    cvec   *nsc = NULL;
 
     if (_transaction_log)
 	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
 
+    /* Create namespace context for xpath */
+    if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
+	goto done;
+
     /* Get all added i/fs */
-    if (xpath_vec_flag(target, "//interface", XML_FLAG_ADD, &vec, &len) < 0)
+    if (xpath_vec_flag(target, NULL, "//interface", XML_FLAG_ADD, &vec, &len) < 0)
 	return -1;
     if (debug)
 	for (i=0; i<len; i++)             /* Loop over added i/fs */
 	    xml_print(stdout, vec[i]); /* Print the added interface */
-  // done:
+  done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (vec)
 	free(vec);
     return 0;
@@ -263,6 +270,7 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
 
 /*! Called to get state data from plugin
  * @param[in]    h      Clicon handle
+ * @param[in]    nsc    External XML namespace context, or NULL
  * @param[in]    xpath  String with XPATH syntax. or NULL for all
  * @param[in]    xstate XML tree, <config/> on entry. 
  * @retval       0      OK
@@ -280,16 +288,18 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
  */
 int 
 example_statedata(clicon_handle h, 
-		 char         *xpath,
-		 cxobj        *xstate)
+		  cvec         *nsc,
+		  char         *xpath,
+		  cxobj        *xstate)
 {
     int     retval = -1;
     cxobj **xvec = NULL;
-    size_t  xlen;
+    size_t  xlen = 0;
     cbuf   *cb = cbuf_new();
     int     i;
     cxobj  *xt = NULL;
     char   *name;
+    cvec   *nsc1 = NULL;
 
     if (!_state)
 	goto ok;
@@ -298,10 +308,18 @@ example_statedata(clicon_handle h,
      * state information. In this case adding dummy interface operation state
      * to configured interfaces.
      * Get config according to xpath */
-    if (xmldb_get(h, "running", xpath, &xt) < 0)
-       goto done;
-    /* From that subset, only get the names */
-   if (xpath_vec(xt, "/interfaces/interface/name", &xvec, &xlen) < 0)
+    if (xmldb_get0(h, "running", nsc, xpath, 1, &xt, NULL) < 0)
+	goto done;
+
+    /* Here a separate namespace context nsc1 is created. The original nsc 
+     * created by the system cannot be used trivially, since we dont know
+     * the prefixes, although we could by a complex mechanism find the prefix 
+     * (if it exists) and use that when creating our xpath.
+     * But it is easier creating a new namespace context nsc1.
+     */
+    if ((nsc1 = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
+	goto done;
+    if (xpath_vec(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
        goto done;
    if (xlen){
        cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
@@ -322,6 +340,8 @@ example_statedata(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (nsc1)
+	xml_nsctx_free(nsc1);
     if (xt)
 	xml_free(xt);
     if (cb)
@@ -395,7 +415,7 @@ upgrade_2016(clicon_handle h,
 		if ((name = xml_find_body(xi, "name")) == NULL)
 		    continue; /* shouldnt happen */
 		/* Get corresponding /interfaces/interface entry */
-		xif = xpath_first(xt, "/interfaces/interface[name=\"%s\"]", name);
+		xif = xpath_first(xt, NULL, "/interfaces/interface[name=\"%s\"]", name);
 		/* - Move /if:interfaces-state/if:interface/if:admin-status to 
 		 *        /if:interfaces/if:interface/ */
 		if ((x = xml_find(xi, "admin-status")) != NULL && xif){
@@ -498,7 +518,7 @@ upgrade_2018(clicon_handle h,
 		/* Change type /interfaces/interface/statistics/in-octets to 
 		 * decimal64 with fraction-digits 3 and divide values with 1000 
 		 */
-		if ((x = xpath_first(xi, "statistics/in-octets")) != NULL){
+		if ((x = xpath_first(xi, NULL, "statistics/in-octets")) != NULL){
 		    if ((xb = xml_body_get(x)) != NULL){
 			uint64_t u64;
 			cbuf *cb = cbuf_new();

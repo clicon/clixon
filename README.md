@@ -4,7 +4,7 @@
 
 Clixon is a YANG-based configuration manager, with interactive CLI,
 NETCONF and RESTCONF interfaces, an embedded database and transaction
-support.
+mechanism.
 
   * [Background](#background)
   * [Frequently asked questions (FAQ)](doc/FAQ.md)
@@ -17,7 +17,7 @@ support.
   * [Extending](#extending)
   * [Yang](#yang)
   * [CLI](doc/CLI.md)
-  * [XML and XPATH](#xml)
+  * [XML and XPATH](#xml-and-xpath)
   * [Netconf](#netconf)
   * [Restconf](#restconf)
   * [Datastore](datastore/README.md)
@@ -36,10 +36,10 @@ support.
 ## Background
 
 Clixon was implemented to provide an open-source generic configuration
-tool. The existing [CLIgen](http://www.cligen.se) tool was for command-lines only, while Clixon is a system with configuration database, xml and rest interfaces all defined by Yang. Most of the projects using Clixon are for embedded network and measuring devices. But Clixon can be used for other systems as well due to its modular and pluggable architecture.
+tool. The existing [CLIgen](http://www.cligen.se) tool was for command-lines only, while Clixon is a system with configuration database, XML and REST interfaces all defined by Yang. Most of the projects using Clixon are for embedded network and measuring devices. But Clixon can be used for other systems as well due to its modular and pluggable architecture.
 
 Users of Clixon currently include:
-  * [Netgate](https://www.netgate.com)
+  * [Netgate](https://www.netgate.com) in particular the [Tnsr product](https://www.tnsr.com/product#architecture)
   * [CloudMon360](http://cloudmon360.com)
   * [Grideye](http://hagsand.se/grideye)	
   * [Netclean](https://www.netclean.com/solutions/whitebox) # only CLIgen
@@ -122,7 +122,7 @@ You then need to set the following configure option:
   <CLICON_YANG_REGEXP>libxml2</CLICON_YANG_REGEXP>
 ```
 
-## XML
+## XML and XPATH
 
 Clixon has its own implementation of XML and XPATH implementation.
 
@@ -151,6 +151,53 @@ Note that base netconf namespace syntax is not enforced but recommended, which m
 ```
 All other namespaces are enforced.
 
+### XPATH and Namespaces
+
+XPATHs may contain prefixes. Example: `/if:a/if:b`. The prefixes have
+associated namespaces. For example, `if` may be bound to
+`urn:ietf:params:xml:ns:yang:ietf-interfaces`. The prefix to namespace binding is called a _namespace context_ (nsc).
+
+In the Clixon API, there are two variants on namespace contexts: _implicit_ (given by the XML); or _explicit_ given by an external mapping.
+#### 1. Implicit namespace mapping
+
+Implicit mapping is typical for basic known XML, where the context is
+given implicitly by the XML being evaluated. In node comparisons (eg
+of `if:a`) only name and prefixes are compared.
+
+Example:
+```
+   XML: <if:a xmlns:if="urn:example:if" xmlns:ip="urn:example:ip"><ip:b/></if>
+   XPATH: /if:a/ip:b
+```
+When you call an xpath API function, call it with nsc set to NULL. This is the default.
+
+#### 2. Explicit namespace mapping
+
+Explicit binding is typical if the namespace context is independent
+from the XML. Examples include NETCONF GET using :xpath when the XML
+is not known so that xpath and XML may use different prefixes for the
+same namespace.  In that case you cannot rely on the prefix but must
+compare namespaces.  The namespace context of the XML is given (by the
+XML), but the xpath nsc must then be explicitly given in the xpath
+call.  Example:
+```
+XML: <if:a xmlns:if="urn:example:if" xmlns:ip="urn:example:ip"><ip:b/></if>
+NETCONF:<get-config><filter select="/x:a/y:b" xmlns:x="urn:example:if" xmlns:y="urn:example:ip/>
+```
+Here, x,y are prefixes used for two namespaces that are given by if,ip
+in the xml. In this case, the namespaces (eg `urn:example:if`) must be
+compared instead.
+
+Another case is Yang path expressions.
+
+#### How to create namespace contexts
+
+You can create namespace in three ways:
+* `xml_nsctx_init()` by explicitly giving a default namespace
+* `xml_nsctx_node()` by copying an XML namespace context from an existing XML node.
+* `xml_nsctx_yang()` by computing an XML namespace context a yang module import statements.
+
+
 ## Netconf
 
 Clixon implements the following NETCONF proposals or standards:
@@ -176,9 +223,6 @@ Clixon does not support the following netconf features:
 - edit-config erropts
 - edit-config config-text
 - edit-config operation
-
-Some other deviations from the RFC:
-- edit-config xpath select statement does not support namespaces
 
 ## Restconf
 

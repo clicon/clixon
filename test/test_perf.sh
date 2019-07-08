@@ -11,7 +11,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 : ${format:=xml}
 
 # Number of list/leaf-list entries in file
-: ${perfnr:=5000}
+: ${perfnr:=1000}
 
 # Number of requests made get/put
 : ${perfreq:=100}
@@ -27,7 +27,7 @@ cat <<EOF > $fyang
 module scaling{
    yang-version 1.1;
    namespace "urn:example:clixon";
-   prefix ip;
+   prefix ex;
    container x {
     list y {
       key "a";
@@ -120,7 +120,7 @@ expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>
 new "netconf get $perfreq small config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    echo "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=$rnd][b=$rnd]\" /></get-config></rpc>]]>]]>"
+    echo "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:x/ex:y[ex:a=$rnd][ex:b=$rnd]\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # NETCONF add

@@ -31,6 +31,7 @@
 
   ***** END LICENSE BLOCK *****
 
+ * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
  */
 #ifndef _CLIXON_XPATH_PARSE_H_
 #define _CLIXON_XPATH_PARSE_H_
@@ -50,7 +51,7 @@ enum xp_type{
     XP_ABSPATH,
     XP_RELLOCPATH,
     XP_STEP,
-    XP_NODE,
+    XP_NODE, /* s0 is namespace prefix, s1 is name */
     XP_NODE_FN,
     XP_PRED,
     XP_PRI0,

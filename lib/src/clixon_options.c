@@ -73,7 +73,14 @@
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
+
+/*! Clixon configuration namespace
+ * Probably should be defined somewhere else or extracted from yang
+ * @see clixon-config.yang
+ */
+#define CLIXON_CONF_NS "http://clicon.org/config"
 
 /* Mapping between Clicon startup modes string <--> constants, 
    see clixon-config.yang type startup_mode */
@@ -165,6 +172,7 @@ parse_configfile(clicon_handle  h,
     cbuf       *cbret = NULL;
     cxobj      *xret = NULL;
     int         ret;
+    cvec       *nsc = NULL;
 
     if (filename == NULL || !strlen(filename)){
 	clicon_err(OE_UNIX, 0, "Not specified");
@@ -191,25 +199,12 @@ parse_configfile(clicon_handle  h,
 	goto done;
     }
     /* Hard-coded config for < 3.10 and clixon-config for >= 3.10 */
-    if ((xc = xpath_first(xt, "clixon-config")) == NULL){
-	/* Backward compatible code to accept "config" as top-level symbol.
-	   This cannot be controlled by config option due to bootstrap */
-#if 0
-	if ((xc = xpath_first(xt, "config")) != NULL){
-	    if (xml_name_set(xc, "clixon-config") < 0)
-		goto done;
-	    if (xml_apply0(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
-		goto done;
-	    if (xml_apply0(xc, CX_ELMNT, xml_sort, h) < 0)
-		goto done;
-	}
-	else
-#endif
-	{
-	    clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"clixon-config\" element\nClixon config files should begin with: <clixon-config xmlns=\"http://clicon.org/config\" (See Changelog in Clixon 3.10)>", filename);
+    if ((nsc = xml_nsctx_init(NULL, CLIXON_CONF_NS)) == NULL)
+	goto done;
+    if ((xc = xpath_first(xt, nsc, "clixon-config")) == NULL){
+	clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"clixon-config\" element\nClixon config files should begin with: <clixon-config xmlns=\"%s\" (See Changelog in Clixon 3.10)>", filename, CLIXON_CONF_NS);
 	    
-	    goto done;
-	}
+	goto done;
     }
     if (xml_apply0(xc, CX_ELMNT, xml_default, h) < 0)
 	goto done;	
@@ -249,6 +244,8 @@ parse_configfile(clicon_handle  h,
     *xconfig = xt;
     xt = NULL;
   done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (cbret)
 	cbuf_free(cbret);
     if (xret)
@@ -364,7 +361,7 @@ clicon_options_main(clicon_handle h,
     if (xml_rootchild(xconfig, 0, &xconfig) < 0)
 	goto done;
     if (xml_spec(xconfig) == NULL){
-	clicon_err(OE_CFG, 0, "Config file %s: did not find corresponding Yang specification\nHint: File does not begin with: <clixon-config xmlns=\"http://clicon.org/config\"> or clixon-config.yang not found?", configfile);
+	clicon_err(OE_CFG, 0, "Config file %s: did not find corresponding Yang specification\nHint: File does not begin with: <clixon-config xmlns=\"%s\"> or clixon-config.yang not found?", configfile, CLIXON_CONF_NS);
 
 	goto done;
     }

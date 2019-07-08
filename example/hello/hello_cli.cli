@@ -22,7 +22,7 @@ discard("Discard edits (rollback 0)"), discard_changes();
 compare("Compare running and candidate"), compare_dbs((int32)1);
 
 show("Show a particular state of the system"){
-    xpath("Show configuration") <xpath:string>("XPATH expression"), show_conf_xpath("candidate");
+    xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
     version("Show version"), cli_show_version("candidate", "text", "/");
     compare("Compare candidate and running databases"), compare_dbs((int32)0);{
     		     xml("Show comparison in xml"), compare_dbs((int32)0);

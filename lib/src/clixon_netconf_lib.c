@@ -1274,13 +1274,13 @@ netconf_err2cb(cxobj *xerr,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if ((x=xpath_first(xerr, "error-type"))!=NULL)
+    if ((x=xpath_first(xerr, NULL, "error-type"))!=NULL)
 	cprintf(cb, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-tag"))!=NULL)
+    if ((x=xpath_first(xerr, NULL, "error-tag"))!=NULL)
 	cprintf(cb, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-message"))!=NULL)
+    if ((x=xpath_first(xerr, NULL, "error-message"))!=NULL)
 	cprintf(cb, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-info"))!=NULL)
+    if ((x=xpath_first(xerr, NULL, "error-info"))!=NULL)
 	clicon_xml2cbuf(cb, xml_child_i(x,0), 0, 0);
     *cberr = cb;
     retval = 0;

@@ -119,7 +119,16 @@ typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
 typedef int (plgauth_t)(clicon_handle, void *);
 
 typedef int (plgreset_t)(clicon_handle h, const char *db); /* Reset system status */
-typedef int (plgstatedata_t)(clicon_handle h, char *xpath, cxobj *xtop);
+
+/* Plugin statedata
+ * @param[in]  Clicon handle
+ * @param[in]  xpath  Part of state requested
+ * @param[in]  nsc    XPATH namespace context.
+ * @param[in]  xtop   XML tree where statedata is added
+ * @retval    -1      Fatal error
+ * @retval     0      OK
+ */
+typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
 
 typedef void *transaction_data;
 

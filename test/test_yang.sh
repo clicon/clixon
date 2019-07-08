@@ -193,16 +193,16 @@ new "netconf commit 2nd"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get config xpath"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/y[a=1][b=2][c=5]\"/></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><y><a>1</a><b>2</b><c>5</c><val>one</val></y></x></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/c:x/c:y[c:a=1][c:b=2][c:c=5]\" xmlns:c=\"urn:example:clixon\"/></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><y><a>1</a><b>2</b><c>5</c><val>one</val></y></x></data></rpc-reply>]]>]]>$'
 
 new "netconf edit leaf-list"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon"><f><e>hej</e><e>hopp</e></f></x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get leaf-list"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/x/f/e"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><x xmlns="urn:example:clixon"><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/c:x/c:f/c:e" xmlns:c="urn:example:clixon"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><x xmlns="urn:example:clixon"><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$'
 
 new "netconf get leaf-list path"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/x/f[e='hej']\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x xmlns=\"urn:example:clixon\"><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/c:x/c:f[c:e='hej']\" xmlns:c=\"urn:example:clixon\"/></get-config></rpc>]]>]]>" "^<rpc-reply><data><x xmlns=\"urn:example:clixon\"><f><e>hej</e><e>hopp</e></f></x></data></rpc-reply>]]>]]>$"
 
 new "netconf get (should be some)"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><y><a>1</a><b>2</b><c>5</c><val>one</val></y><d/></x>'
@@ -211,7 +211,7 @@ new "cli set leaf-list"
 expectfn "$clixon_cli -1f $cfg set x f e foo" 0 ""
 
 new "cli show leaf-list"
-expectfn "$clixon_cli -1f $cfg show xpath /x/f/e" 0 "<e>foo</e>"
+expectfn "$clixon_cli -1f $cfg show xpath /x/f/e urn:example:clixon" 0 "<e>foo</e>"
 
 new "netconf set state data (not allowed)"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><state xmlns="urn:example:clixon"><op>42</op></state></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>State data not allowed</error-message></rpc-error></rpc-reply>]]>]]>$'
@@ -220,10 +220,10 @@ new "netconf set presence and not present"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon"><nopresence/><presence/></x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get presence only"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/x/presence"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><x xmlns="urn:example:clixon"><presence/></x></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/c:x/c:presence" xmlns:c="urn:example:clixon"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><x xmlns="urn:example:clixon"><presence/></x></data></rpc-reply>]]>]]>$'
 
 new "netconf get presence only"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/x/nopresence"/></get-config></rpc>]]>]]>' "^<rpc-reply><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/c:x/c:nopresence" xmlns:c="urn:example:clixon"/></get-config></rpc>]]>]]>' "^<rpc-reply><data/></rpc-reply>]]>]]>$"
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

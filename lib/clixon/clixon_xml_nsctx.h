@@ -1,4 +1,5 @@
 /*
+ *
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
@@ -29,14 +30,30 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
- * Yang cardinality functions according to RFC 7950 
+
+ * XML support functions.
+ * @see     https://www.w3.org/TR/2009/REC-xml-names-20091208/
  */
-#ifndef _CLIXON_YANG_CARDINALITY_H_
-#define _CLIXON_YANG_CARDINALITY_H_
+#ifndef _CLIXON_XML_NSCTX_H
+#define _CLIXON_XML_NSCTX_H
+
+/*
+ * An xml namespace context is a cligen variable vector containing a list of
+ * <prefix,namespace> pairs.
+ * It is encoded in a cvv as a list of string values, where the c name is the 
+ * prefix and the string values are the namespace URI.
+ * The default namespace is decoded as having the name NULL
+ */
 
 /*
  * Prototypes
  */
-int yang_cardinality(clicon_handle h, yang_stmt *yt, char *modname);
+char   *xml_nsctx_get(cvec *nsc, char *prefix);
+int     xml_nsctx_get_prefix(cvec *cvv,	char *namespace, char **prefix);
+int     xml_nsctx_set(cvec *nsc, char *prefix, char *namespace);
+cvec   *xml_nsctx_init(char *prefix, char *namespace);
+int     xml_nsctx_node(cxobj *x, cvec **ncp);
+int     xml_nsctx_yang(yang_stmt *yn, cvec **ncp);
+int     xml_nsctx_free(cvec *ncs);
 
-#endif	/* _CLIXON_YANG_CARDINALITY_H_ */
+#endif /* _CLIXON_XML_NSCTX_H */

@@ -69,6 +69,7 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
     /* Show eth0 interfaces config using XPATH */
     if (clicon_rpc_get_config(h, "running",
 			      "/interfaces/interface[name='eth0']",
+			      "urn:example:clixon",
 			      &xret) < 0)
 	goto done;
     xml_print(stdout, xret);
@@ -104,7 +105,7 @@ example_client_rpc(clicon_handle h,
     /* Send to backend */
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
 	goto done;
-    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }

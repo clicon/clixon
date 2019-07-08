@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -69,6 +69,7 @@
 #include "clixon_file.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_options.h"
@@ -253,6 +254,7 @@ yms_build(clicon_handle    h,
  * @param[in]     h       Clicon handle
  * @param[in]     yspec   Yang spec
  * @param[in]     xpath   XML Xpath
+ * @param[in]     nsc     XML Namespace context for xpath
  * @param[in]     brief   Just name, revision and uri (no cache)
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
@@ -281,6 +283,7 @@ int
 yang_modules_state_get(clicon_handle    h,
                        yang_stmt       *yspec,
                        char            *xpath,
+		       cvec            *nsc,
 		       int              brief,
                        cxobj          **xret)
 {
@@ -302,7 +305,7 @@ yang_modules_state_get(clicon_handle    h,
 	/* xc is also original tree, need to copy it */
 	if ((xw = xml_wrap(xc, "top")) == NULL)
 	    goto done;
-        if (xpath_first(xw, "%s", xpath)){
+        if (xpath_first(xw, NULL, "%s", xpath)){
             if ((x = xml_dup(xc)) == NULL) /* Make copy and use below */
                 goto done;
         }
@@ -334,7 +337,7 @@ yang_modules_state_get(clicon_handle    h,
 	if ((x = xml_wrap(x, "top")) < 0)
 	    goto done;
 	/* extract xpath part of module-state tree */
-	if (xpath_vec(x, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	if (xpath_vec(x, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	    goto done;
 	if (xvec != NULL){
 	    for (i=0; i<xlen; i++)

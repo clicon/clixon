@@ -191,7 +191,7 @@ EOF
 
 # Changelog of example-a: 
 cat <<EOF > $changelog
-<changelogs xmlns="http://clicon.org/xml-changelog">
+<changelogs xmlns="http://clicon.org/xml-changelog" xmlns:a="urn:example:a" xmlns:b="urn:example:b" >
   <changelog>
     <namespace>urn:example:b</namespace>
     <revfrom>2017-12-01</revfrom>

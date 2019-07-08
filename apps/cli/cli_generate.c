@@ -178,7 +178,7 @@ yang2cli_var_identityref(yang_stmt *ys,
 			 char      *helptext,
 			 cbuf      *cb)
 {
-    int     retval = -1;
+    int        retval = -1;
     yang_stmt *ybaseref;
     yang_stmt *ybaseid;
     cg_var    *cv = NULL;

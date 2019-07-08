@@ -75,6 +75,7 @@
 #include "clixon_nacm.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
+#include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
 
 #include "clixon_datastore.h"
@@ -614,6 +615,7 @@ xmldb_put(clicon_handle       h,
     cxobj              *x;
     int                 permit = 0; /* nacm permit all */
     char               *format;
+    cvec               *nsc = NULL; /* nacm namespace context */
 
     if (cbret == NULL){
 	clicon_err(OE_XML, EINVAL, "cbret is NULL");
@@ -656,8 +658,11 @@ xmldb_put(clicon_handle       h,
 	else if (strcmp(mode, "internal")==0)
 	    xnacm0 = x0;
     }
+    /* Create namespace context for with nacm namespace as default */
+    if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-netconf-acm")) == NULL)
+	goto done;
     if (xnacm0 != NULL &&
-	(xnacm = xpath_first(xnacm0, "nacm")) != NULL){
+	(xnacm = xpath_first(xnacm0, nsc, "nacm")) != NULL){
 	/* Pre-NACM access step, if permit, then dont do any nacm checks in 
 	 * text_modify_* below */
 	if ((permit = nacm_access(mode, xnacm, username)) < 0)
@@ -744,6 +749,8 @@ xmldb_put(clicon_handle       h,
  done:
     if (f != NULL)
 	fclose(f);
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (dbfile)
 	free(dbfile);
     if (cb)

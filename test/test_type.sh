@@ -197,7 +197,7 @@ EOF
 
 # Type tests.
 # Parameters:
-# 1: dbcache true/false
+# 1: dbcache: cache, nocache, cache-zerocopy
 testrun(){
     dbcache=$1
     new "test params: -f $cfg  # dbcache: $dbcache"
@@ -216,7 +216,7 @@ testrun(){
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_XMLDB_CACHE>$dbcache</CLICON_XMLDB_CACHE>
+  <CLICON_DATASTORE_CACHE>$dbcache</CLICON_DATASTORE_CACHE>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
 </clixon-config>
 EOF
@@ -614,9 +614,12 @@ EOF
 }
 
 # Run without db cache
-testrun false
+testrun nocache
 
 # Run with db cache
-testrun true
+testrun cache
+
+# Run with 
+testrun cache-zerocopy
 
 rm -rf $dir

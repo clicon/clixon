@@ -171,7 +171,7 @@ stop_backend(){
 
 # Wait for restconf to stop sending  502 Bad Gateway
 wait_backend(){
-    reply=$(echo '<rpc message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null) 
+    reply=$(echo '<rpc message-id="101"><ping xmlns="http://clicon.org/lib"/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null) 
     let i=0;
     while [[ $reply != "<rpc-reply"* ]]; do
 	sleep 1

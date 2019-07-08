@@ -68,7 +68,11 @@
 #include "clixon_xpath.h"
 #include "clixon_yang_module.h"
 #include "clixon_datastore.h"
+#include "clixon_xml_nsctx.h"
 #include "clixon_nacm.h"
+
+/* NACM namespace for use with xml namespace contexts and xpath */
+#define NACM_NS "urn:ietf:params:xml:ns:yang:ietf-netconf-acm"
 
 /*! Match nacm access operations according to RFC8341 3.4.4.  
  * Incoming RPC Message Validation Step 7 (c)
@@ -191,7 +195,11 @@ nacm_rpc(char         *rpc,
     char   *gname;
     char   *action;
     int     match= 0;
+    cvec   *nsc = NULL;
     
+    /* Create namespace context for with nacm namespace as default */
+    if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
+	goto done;
     /* 3.   If the requested operation is the NETCONF <close-session>
        protocol operation, then the protocol operation is permitted.
     */
@@ -204,8 +212,9 @@ nacm_rpc(char         *rpc,
        transport layer.)	       */
     if (username == NULL)
 	goto step10;
+
     /* User's group */
-    if (xpath_vec(xnacm, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
+    if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
 	goto done;
     /* 5. If no groups are found, continue with step 10. */
     if (glen == 0)
@@ -214,14 +223,14 @@ nacm_rpc(char         *rpc,
         configuration.  If a rule-list's "group" leaf-list does not
         match any of the user's groups, proceed to the next rule-list
         entry. */
-    if (xpath_vec(xnacm, "rule-list", &rlistvec, &rlistlen) < 0)
+    if (xpath_vec(xnacm, nsc, "rule-list", &rlistvec, &rlistlen) < 0)
 	goto done;
     for (i=0; i<rlistlen; i++){
 	rlist = rlistvec[i];
 	/* Loop through user's group to find match in this rule-list */
 	for (j=0; j<glen; j++){
 	    gname = xml_find_body(gvec[j], "name");
-	    if (xpath_first(rlist, ".[group='%s']", gname)!=NULL)
+	    if (xpath_first(rlist, nsc, ".[group='%s']", gname)!=NULL)
 		break; /* found */
 	}
 	if (j==glen) /* not found */
@@ -230,7 +239,7 @@ nacm_rpc(char         *rpc,
 	   until a rule that matches the requested access operation is
 	   found. 
 	*/
-	if (xpath_vec(rlist, "rule", &rvec, &rlen) < 0)
+	if (xpath_vec(rlist, nsc, "rule", &rvec, &rlen) < 0)
 	    goto done;
 	for (j=0; j<rlen; j++){
 	    xrule = rvec[j];
@@ -283,6 +292,8 @@ nacm_rpc(char         *rpc,
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (gvec)
 	free(gvec);
     if (rlistvec)
@@ -321,7 +332,11 @@ nacm_rule_datanode(cxobj           *xt,
     char      *module;
     cxobj     *xpath; /* xpath match */
     cxobj     *xp; /* parent */
-   
+    cvec      *nsc = NULL;
+
+    /* Create namespace context for with nacm namespace as default */
+    if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
+	goto done;
     /* 6a) The rule's "module-name" leaf is "*" or equals the name of
      * the YANG module where the requested data node is defined. */
     if ((module_rule = xml_find_body(xrule, "module-name")) == NULL)
@@ -375,7 +390,7 @@ nacm_rule_datanode(cxobj           *xt,
     }
     /* Here module is matched, now check for path if any NYI */
     if (path){ 
-	if ((xpath = xpath_first(xt, "%s", path)) == NULL)
+	if ((xpath = xpath_first(xt, nsc, "%s", path)) == NULL)
 	    goto nomatch;
 	/* The requested node xr is the node specified by the path or is a 
 	 * descendant node of the path:
@@ -390,6 +405,8 @@ nacm_rule_datanode(cxobj           *xt,
  match:
     retval = 1;
  done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     return retval;
  nomatch:
     retval = 0;
@@ -403,7 +420,8 @@ nacm_rule_datanode(cxobj           *xt,
  * @param[in]  glen     Length of gvec
  * @param[in]  rlistvec NACM rule-list entries
  * @param[in]  rlistlen Length of rlistvec
- * @param[out] xrulep  If set, then points to matching rule
+ * @param[in]  nsc      NACM namespace context for xpaths
+ * @param[out] xrulep   If set, then points to matching rule
  */
 static int
 nacm_data_read_xr(cxobj  *xt,
@@ -412,6 +430,7 @@ nacm_data_read_xr(cxobj  *xt,
 		  size_t  glen,
 		  cxobj **rlistvec,
 		  size_t  rlistlen,
+		  cvec   *nsc,
 		  cxobj **xrulep)
 {
     int retval = -1;
@@ -428,7 +447,7 @@ nacm_data_read_xr(cxobj  *xt,
 	/* Loop through user's group to find match in this rule-list */
 	for (j=0; j<glen; j++){
 	    gname = xml_find_body(gvec[j], "name");
-	    if (xpath_first(rlist, ".[group='%s']", gname)!=NULL)
+	    if (xpath_first(rlist, nsc, ".[group='%s']", gname)!=NULL)
 		break; /* found */
 	}
 	if (j==glen) /* not found */
@@ -437,7 +456,7 @@ nacm_data_read_xr(cxobj  *xt,
 	   until a rule that matches the requested access operation is
 	   found. (see 6 sub rules in nacm_rule_datanode
 	*/
-	if (xpath_vec(rlist, "rule", &rvec, &rlen) < 0)
+	if (xpath_vec(rlist, nsc, "rule", &rvec, &rlen) < 0)
 	    goto done;
 	for (j=0; j<rlen; j++){ /* Loop through rules */
 	    xrule = rvec[j];
@@ -556,7 +575,11 @@ nacm_datanode_read(cxobj  *xt,
     char   *read_default = NULL;
     cxobj  *xrule;
     char   *action;
+    cvec   *nsc = NULL;
     
+    /* Create namespace context for with nacm namespace as default */
+    if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
+	goto done;
     /* 3.   Check all the "group" entries to see if any of them contain a
        "user-name" entry that equals the username for the session
        making the request.  (If the "enable-external-groups" leaf is
@@ -565,7 +588,7 @@ nacm_datanode_read(cxobj  *xt,
     if (username == NULL)
 	goto step9;
     /* User's group */
-    if (xpath_vec(xnacm, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
+    if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
 	goto done;
     /* 4. If no groups are found (glen=0), continue and check read-default 
           in step 11. */
@@ -573,7 +596,7 @@ nacm_datanode_read(cxobj  *xt,
         configuration.  If a rule-list's "group" leaf-list does not
         match any of the user's groups, proceed to the next rule-list
         entry. */
-    if (xpath_vec(xnacm, "rule-list", &rlistvec, &rlistlen) < 0)
+    if (xpath_vec(xnacm, nsc, "rule-list", &rlistvec, &rlistlen) < 0)
 	goto done;
     /* read-default has default permit so should never be NULL */
     if ((read_default = xml_find_body(xnacm, "read-default")) == NULL){
@@ -587,7 +610,7 @@ nacm_datanode_read(cxobj  *xt,
 	xrule = NULL;
 	/* Skip if no groups */
 	if (glen && nacm_data_read_xr(xt, xr, gvec, glen, rlistvec, rlistlen,
-				      &xrule) < 0) 
+				      nsc, &xrule) < 0) 
 	    goto done;
 	if (xrule){ /* xrule match requested node xr */
 	    if ((action = xml_find_body(xrule, "action")) == NULL)
@@ -628,6 +651,8 @@ nacm_datanode_read(cxobj  *xt,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (gvec)
 	free(gvec);
     if (rlistvec)
@@ -673,7 +698,11 @@ nacm_datanode_write(cxobj           *xt,
     int     match = 0;
     char   *action;
     char   *write_default = NULL;
-    
+    cvec   *nsc = NULL;
+
+    /* Create namespace context for with nacm namespace as default */
+    if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
+	goto done;
     if (xnacm == NULL)
 	goto permit;
     /* 3.   Check all the "group" entries to see if any of them contain a
@@ -684,7 +713,7 @@ nacm_datanode_write(cxobj           *xt,
     if (username == NULL)
 	goto step9;
     /* User's group */
-    if (xpath_vec(xnacm, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
+    if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
 	goto done;
     /* 4. If no groups are found, continue with step 9. */
     if (glen == 0)
@@ -693,19 +722,19 @@ nacm_datanode_write(cxobj           *xt,
         configuration.  If a rule-list's "group" leaf-list does not
         match any of the user's groups, proceed to the next rule-list
         entry. */
-    if (xpath_vec(xnacm, "rule-list", &rlistvec, &rlistlen) < 0)
+    if (xpath_vec(xnacm, nsc, "rule-list", &rlistvec, &rlistlen) < 0)
 	goto done;
     for (i=0; i<rlistlen; i++){
 	rlist = rlistvec[i];
     	/* Loop through user's group to find match in this rule-list */
 	for (j=0; j<glen; j++){
 	    gname = xml_find_body(gvec[j], "name");
-	    if (xpath_first(rlist, ".[group='%s']", gname)!=NULL)
+	    if (xpath_first(rlist, nsc, ".[group='%s']", gname)!=NULL)
 		break; /* found */
 	}
 	if (j==glen) /* not found */
 	    continue;
-	if (xpath_vec(rlist, "rule", &rvec, &rlen) < 0)
+	if (xpath_vec(rlist, nsc, "rule", &rvec, &rlen) < 0)
 	    goto done;
 	/* 6. For each rule-list entry found, process all rules, in order,
 	   until a rule that matches the requested access operation is
@@ -765,6 +794,8 @@ nacm_datanode_write(cxobj           *xt,
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (gvec)
 	free(gvec);
     if (rlistvec)
@@ -811,8 +842,11 @@ nacm_access(char          *mode,
     cxobj  *xnacm0 = NULL;
     char   *enabled;
     cxobj  *x;
+    cvec  *nsc = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
+    if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
+	goto done;
     if (mode == NULL || strcmp(mode, "disabled") == 0)
 	goto permit;
     /* 0. If nacm-mode is external, get NACM defintion from separet tree,
@@ -828,7 +862,7 @@ nacm_access(char          *mode,
      * RFC8341 3.4 */
     /* 1.   If the "enable-nacm" leaf is set to "false", then the protocol
        operation is permitted. */
-    if ((x = xpath_first(xnacm, "enable-nacm")) == NULL)
+    if ((x = xpath_first(xnacm, nsc, "enable-nacm")) == NULL)
 	goto permit;
     enabled = xml_body(x);
     if (strcmp(enabled, "true") != 0)
@@ -840,6 +874,8 @@ nacm_access(char          *mode,
 
     retval = 0; /* not permitted yet. continue with next NACM step */
  done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (retval != 0 && xnacm0)
 	xml_free(xnacm0);
     clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
@@ -882,7 +918,10 @@ nacm_access_pre(clicon_handle  h,
     cxobj *x;
     cxobj *xnacm0 = NULL;
     cxobj *xnacm = NULL;
+    cvec  *nsc = NULL;
     
+    if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
+	goto done;
     if ((mode = clicon_option_str(h, "CLICON_NACM_MODE")) != NULL){
 	if (strcmp(mode, "external")==0){
 	    if ((x = clicon_nacm_ext(h)))
@@ -890,7 +929,7 @@ nacm_access_pre(clicon_handle  h,
 		    goto done;
 	}
 	else if (strcmp(mode, "internal")==0){
-	    if (xmldb_get(h, "running", "nacm", &xnacm0) < 0)
+	    if (xmldb_get0(h, "running", nsc, "nacm", 1, &xnacm0, NULL) < 0)
 		goto done;
 	}
     }
@@ -898,7 +937,7 @@ nacm_access_pre(clicon_handle  h,
     if (xnacm0 == NULL)
 	goto permit;
     /* If config does not exist then the operation is permitted(?) */
-    if ((xnacm = xpath_first(xnacm0, "nacm")) == NULL)
+    if ((xnacm = xpath_first(xnacm0, nsc, "nacm")) == NULL)
 	goto permit;
     if (xml_rootchild_node(xnacm0, xnacm) < 0)
 	goto done;
@@ -910,6 +949,8 @@ nacm_access_pre(clicon_handle  h,
 	xnacm = NULL;
     }
  done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (xnacm0)
 	xml_free(xnacm0);
     else if (xnacm)

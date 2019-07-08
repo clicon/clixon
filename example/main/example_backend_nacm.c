@@ -87,7 +87,7 @@ nacm_validate(clicon_handle    h,
     if (_transaction_log){
 	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
 	if (_transaction_error_toggle==0 &&
-	    xpath_first(transaction_target(td), "%s", _transaction_xpath)){
+	    xpath_first(transaction_target(td), NULL, "%s", _transaction_xpath)){
 	    _transaction_error_toggle=1; /* toggle if triggered */
 	    clicon_err(OE_XML, 0, "User error");
 	    return -1; /* induce fail */
@@ -116,7 +116,7 @@ nacm_commit(clicon_handle    h,
     if (_transaction_log){
 	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
 	if (_transaction_error_toggle==1 &&
-	    xpath_first(target, "%s", _transaction_xpath)){
+	    xpath_first(target, NULL, "%s", _transaction_xpath)){
 	    _transaction_error_toggle=0; /* toggle if triggered */
 	    clicon_err(OE_XML, 0, "User error");
 	    return -1; /* induce fail */
@@ -154,6 +154,7 @@ nacm_abort(clicon_handle    h,
 
 /*! Called to get NACM state data
  * @param[in]    h      Clicon handle
+ * @param[in]    nsc    External XML namespace context, or NULL
  * @param[in]    xpath  String with XPATH syntax. or NULL for all
  * @param[in]    xtop   XML tree, <config/> on entry. 
  * @retval       0      OK
@@ -164,6 +165,7 @@ nacm_abort(clicon_handle    h,
  */
 int 
 nacm_statedata(clicon_handle h, 
+	       cvec         *nsc,
 	       char         *xpath,
 	       cxobj        *xstate)
 {

@@ -41,6 +41,16 @@
  */
 #undef RPC_USERNAME_ASSERT
 
+/* If rpc call does not have a namespace (eg using xmlns) then use the default 
+ * NETCONF namespace (see rfc6241 3.1)
+ * Undefine it if you want to ensure strict namespace assignment on all netconf and
+ * XML statements.
+ */
+#define USE_NETCONF_NS_AS_DEFAULT
+
 /* Make namespace check on RESTCONF PUT and POST -d data
+ * Should be defined according to standard
+ * Undefine it if you want allow no namespace (pick first name it finds in list
+ * of loaded modules).
  */
 #define RESTCONF_NS_DATA_CHECK

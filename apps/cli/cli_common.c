@@ -680,15 +680,15 @@ compare_dbs(clicon_handle h,
 	astext = cv_int32_get(cvec_i(argv, 0));
     else
 	astext = 0;
-    if (clicon_rpc_get_config(h, "running", "/", &xc1) < 0)
+    if (clicon_rpc_get_config(h, "running", "/", NULL, &xc1) < 0)
 	goto done;
-    if ((xerr = xpath_first(xc1, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
-    if (clicon_rpc_get_config(h, "candidate", "/", &xc2) < 0)
+    if (clicon_rpc_get_config(h, "candidate", "/", NULL, &xc2) < 0)
 	goto done;
-    if ((xerr = xpath_first(xc2, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
@@ -847,13 +847,13 @@ save_config_file(clicon_handle h,
 	goto done;
     }
     filename = cv_string_get(cv);
-    if (clicon_rpc_get_config(h, dbstr,"/", &xt) < 0)
+    if (clicon_rpc_get_config(h, dbstr,"/", NULL, &xt) < 0)
 	goto done;
     if (xt == NULL){
 	clicon_err(OE_CFG, 0, "get config: empty tree"); /* Shouldnt happen */
 	goto done;
     }
-    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
@@ -961,7 +961,7 @@ cli_notification_cb(int   s,
     }
     if (clicon_msg_decode(reply, NULL, &xt) < 0) /* XXX pass yang_spec */
 	goto done;
-    if ((xe = xpath_first(xt, "//event")) != NULL){
+    if ((xe = xpath_first(xt, NULL, "//event")) != NULL){
 	x = NULL;
 	while ((x = xml_child_each(xe, x, -1)) != NULL) {
 	    switch (format){
@@ -1110,14 +1110,15 @@ cli_unlock(clicon_handle h,
  * @param[in]  cvv  Vector of variables from CLIgen command-line
  * @param[in]  argv Vector: <db>, <xpath>, <field>, <fromvar>, <tovar>
  * Explanation of argv fields:
- *  db:     Database name, eg candidate|tmp|startup
- *  xpath:  XPATH expression with exactly two %s pointing to field and from name
- *  field:  Name of list key, eg name
- *  fromvar:Name of variable containing name of object to copy from (given by xpath)
- *  tovar:  Name of variable containing name of object to copy to.
+ *  db:        Database name, eg candidate|tmp|startup
+ *  xpath:     XPATH expression with exactly two %s pointing to field and from name
+ *  namespace: XPATH default namespace
+ *  field:     Name of list key, eg name
+ *  fromvar:   Name of variable containing name of object to copy from (given by xpath)
+ *  tovar:     Name of variable containing name of object to copy to.
  * @code
  * cli spec:
- *  copy snd <n1:string> to <n2:string>, cli_copy_config("candidate", "/sender[%s='%s']", "from", "n1", "n2");
+ *  copy snd <n1:string> to <n2:string>, cli_copy_config("candidate", "/sender[%s='%s']", "urn:example:clixon", "from", "n1", "n2");
  * cli command:
  *  copy snd from to to
  * @endcode
@@ -1133,6 +1134,7 @@ cli_copy_config(clicon_handle h,
     cxobj       *x2 = NULL; 
     cxobj       *x;
     char        *xpath;
+    char        *namespace;
     int          i;
     int          j;
     cbuf        *cb = NULL;
@@ -1144,21 +1146,24 @@ cli_copy_config(clicon_handle h,
     cg_var      *tocv;
     char        *toname;
     cxobj       *xerr;
+    cvec        *nsc = NULL;
 
-    if (cvec_len(argv) != 5){
-	clicon_err(OE_PLUGIN, 0, "Requires four elements: <db> <xpath> <keyname> <from> <to>");
+    if (cvec_len(argv) != 6){
+	clicon_err(OE_PLUGIN, 0, "Requires 6 elements: <db> <xpath> <namespace> <keyname> <from> <to>");
 	goto done;
     }
     /* First argv argument: Database */
     db = cv_string_get(cvec_i(argv, 0));
     /* Second argv argument: xpath */
     xpath = cv_string_get(cvec_i(argv, 1));
+    /* Third argv argument: namespace */
+    namespace = cv_string_get(cvec_i(argv, 2));
     /* Third argv argument: name of keyname */
-    keyname = cv_string_get(cvec_i(argv, 2));
+    keyname = cv_string_get(cvec_i(argv, 3));
     /* Fourth argv argument: from variable */
-    fromvar = cv_string_get(cvec_i(argv, 3));
+    fromvar = cv_string_get(cvec_i(argv, 4));
     /* Fifth argv argument: to variable */
-    tovar = cv_string_get(cvec_i(argv, 4));
+    tovar = cv_string_get(cvec_i(argv, 5));
     
     /* Get from variable -> cv -> from name */
     if ((fromcv = cvec_find(cvv, fromvar)) == NULL){
@@ -1184,9 +1189,9 @@ cli_copy_config(clicon_handle h,
     }
     cprintf(cb, xpath, keyname, fromname);	
     /* Get from object configuration and store in x1 */
-    if (clicon_rpc_get_config(h, db, cbuf_get(cb), &x1) < 0)
+    if (clicon_rpc_get_config(h, db, cbuf_get(cb), namespace, &x1) < 0)
 	goto done;
-    if ((xerr = xpath_first(x1, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(x1, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
@@ -1204,7 +1209,9 @@ cli_copy_config(clicon_handle h,
 	goto done;
     xml_name_set(x2, "config");
     cprintf(cb, "/%s", keyname);	
-    if ((x = xpath_first(x2, "%s", cbuf_get(cb))) == NULL){
+    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
+	goto done;
+    if ((x = xpath_first(x2, nsc, "%s", cbuf_get(cb))) == NULL){
 	clicon_err(OE_PLUGIN, 0, "Field %s not found in copy tree", keyname);
 	goto done;
     }
@@ -1218,6 +1225,8 @@ cli_copy_config(clicon_handle h,
 	goto done;
     retval = 0;
  done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (cb)
 	cbuf_free(cb);
     if (x1 != NULL)
