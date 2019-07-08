@@ -121,7 +121,7 @@ netconf_invalid_value_xml(cxobj **xret,
 			  char   *message)
 {
     int    retval =-1;
-    cxobj *xerr;
+    cxobj *xerr = NULL;
     char  *encstr = NULL;
 
     if (*xret == NULL){
@@ -162,7 +162,6 @@ netconf_invalid_value(cbuf *cb,
 		      char *type,
 		      char *message)
 {
-#if 1
     int    retval = -1;
     cxobj *xret = NULL;
 
@@ -175,33 +174,6 @@ netconf_invalid_value(cbuf *cb,
     if (xret)
 	xml_free(xret);
     return retval;
-#else
-    int   retval = -1;
-    char *encstr = NULL;
-
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>%s</error-type>"
-		"<error-tag>invalid-value</error-tag>"
-		"<error-severity>error</error-severity>",
-		type) <0)
-	goto err;
-    if (message){
-	if (xml_chardata_encode(&encstr, "%s", message) < 0)
-	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
-    }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
-	goto err;
-    retval = 0;
- done:
-    if (encstr)
-	free(encstr);
-    return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
-#endif
 }
 
 /*! Create Netconf too-big error XML tree according to RFC 6241 Appendix A

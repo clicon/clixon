@@ -69,7 +69,7 @@
 	
 ### API changes on existing features (you may need to change your code)
 
-* The Clixon API has been extended with namespaces, or namespace contexts in the following cases:
+* The Clixon API has been extended with namespaces, or namespace contexts in the following cases [Netconf get/get-config :xpath capability does not support namespaces](https://github.com/clicon/clixon/issues/75)
   * CLIspec functions have added namespace parameter:
     * `cli_show_config <db> <format> <xpath>` --> `cli_show_config <db> <format> <xpath> <namespace>`
     * `cli_copy_config <db> <xpath> ...` --> `cli_copy_config <db> <xpath> <namespace> ...`

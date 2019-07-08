@@ -191,7 +191,7 @@ api_data_get2(clicon_handle h,
     yang_stmt *yspec;
     cxobj     *xret = NULL;
     cxobj     *xerr = NULL; /* malloced */
-    cxobj     *xe = NULL;
+    cxobj     *xe = NULL;   /* not malloced */
     cxobj    **xvec = NULL;
     size_t     xlen;
     int        i;
@@ -293,10 +293,10 @@ api_data_get2(clicon_handle h,
 	       instance that does not exist, then an error response containing 
 	       a "404 Not Found" status-line MUST be returned by the server.  
 	       The error-tag value "invalid-value" is used in this case. */
-	    if (netconf_invalid_value_xml(&xe, "application", "Instance does not exist") < 0)
+	    if (netconf_invalid_value_xml(&xerr, "application", "Instance does not exist") < 0)
 		goto done;
 	    /* override invalid-value default 400 with 404 */
-	    if (api_return_err(h, r, xe, pretty, use_xml, 404) < 0)
+	    if (api_return_err(h, r, xerr, pretty, use_xml, 404) < 0)
 		goto done;
 	    goto ok;
 	}
