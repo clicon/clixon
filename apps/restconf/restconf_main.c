@@ -397,7 +397,7 @@ api_restconf(clicon_handle h,
 	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
 	    goto done;
 	if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	    if (api_return_err(h, r, xerr, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xerr, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}

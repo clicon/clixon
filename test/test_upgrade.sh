@@ -265,7 +265,7 @@ runtest(){
 	start_backend -s $mode -f $cfg -o "CLICON_XMLDB_MODSTATE=$modstate"
 
 	new "waiting"
-	sleep $RCWAIT
+	wait_backend
     else
 	new "Restart backend as eg follows: -Ff $cfg -s $mode -o \"CLICON_XMLDB_MODSTATE=$modstate\" ($BETIMEOUT s)"
 	sleep $BETIMEOUT

@@ -57,6 +57,7 @@
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_parse.h"
+#include "clixon_xpath_eval.h"
 
 /* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
 #define YY_DECL int clixon_xpath_parselex(void *_yy)

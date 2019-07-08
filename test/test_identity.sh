@@ -106,7 +106,37 @@ cat <<EOF > $fyang
        container aes-parameters {
          when "../crypto = 'mc:aes'";
        }
-     }
+       identity acl-base;
+       typedef acl-type {
+          description "problem detected in ietf-access-control-list.yang";
+          type identityref {
+             base acl-base;
+          }
+       }
+       identity ipv4-acl-type {
+          base mc:acl-base;
+       }
+       identity ipv6-acl-type {
+          base mc:acl-base;
+       }
+       container acls { 
+          list acl {
+             key name;
+             leaf name {
+                type string;
+             }
+             leaf type {
+	        type acl-type;
+             }
+          } 
+       }
+       identity empty; /* some errors with an empty identity set */
+       leaf e {
+          type identityref {
+             base mc:empty;
+          }
+       }
+   }
 EOF
 
 new "test params: -f $cfg"
@@ -120,7 +150,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 new "Set crypto to aes"
@@ -185,6 +215,43 @@ expectfn "$clixon_cli -1 -f $cfg -l o set crypto des:des3" 0 "^$"
 
 new "cli validate"
 expectfn "$clixon_cli -1 -f $cfg -l o validate" 0 "^$"
+
+new "Netconf set acl-type"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><acls xmlns="urn:example:my-crypto"><acl><name>x</name><type>mc:ipv4-acl-type</type></acl></acls></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+
+new "netconf validate "
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "Netconf set undefined acl-type"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><acls xmlns="urn:example:my-crypto"><acl><name>x</name><type>undefined</type></acl></acls></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+
+new "netconf validate fail"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Identityref validation failed, mc:undefined not derived from acl-base</error-message></rpc-error></rpc-reply>]]>]]>'
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "CLI set acl-type"
+expectfn "$clixon_cli -1 -f $cfg -l o set acls acl x type mc:ipv4-acl-type" 0 "^$"
+
+new "cli validate"
+expectfn "$clixon_cli -1 -f $cfg -l o validate" 0 "^$"
+
+new "CLI set wrong acl-type"
+expectfn "$clixon_cli -1 -f $cfg -l o set acls acl x type undefined" 0 "^$"
+
+new "cli validate"
+expectfn "$clixon_cli -1 -f $cfg -l o validate" 255 "Identityref validation failed"
+
+# test empty identityref list
+new "cli set empty"
+expectfn "$clixon_cli -1 -f $cfg -l o set e undefined" 0 "^$"
+
+new "cli validate"
+expectfn "$clixon_cli -1 -f $cfg -l o validate" 255 "Identityref validation failed"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 if [ $BE -eq 0 ]; then
     exit # BE

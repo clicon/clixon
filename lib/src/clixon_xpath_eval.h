@@ -31,31 +31,19 @@
 
   ***** END LICENSE BLOCK *****
 
- * The exported interface to plugins. External apps (eg frontend restconf plugins)
- * should only include this file (not the restconf_*.h)
+ * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
  */
-
-#ifndef _CLIXON_RESTCONF_H_
-#define _CLIXON_RESTCONF_H_
+#ifndef _CLIXON_XPATH_EVAL_H
+#define _CLIXON_XPATH_EVAL_H
 
 /*
- * Prototypes (also in restconf_lib.h)
+ * Variables
  */
-int restconf_err2code(char *tag);
-const char *restconf_code2reason(int code);
+extern const map_str2int xpopmap[];
 
-int badrequest(FCGX_Request *r);
-int unauthorized(FCGX_Request *r);
-int forbidden(FCGX_Request *r);
-int notfound(FCGX_Request *r);
-int conflict(FCGX_Request *r);
-int internal_server_error(FCGX_Request *r);
-int notimplemented(FCGX_Request *r);
-int test(FCGX_Request *r, int dbg);
-cbuf *readdata(FCGX_Request *r);
-int get_user_cookie(char *cookiestr, char  *attribute, char **val);
-int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
-		   int pretty, int use_xml, int code);
+/*
+ * Prototypes
+ */
+int xp_eval(xp_ctx *xc, xpath_tree *xs,	cvec *nsc, xp_ctx **xrp);
 
-
-#endif /* _CLIXON_RESTCONF_H_ */
+#endif /* _CLIXON_XPATH_EVAL_H */

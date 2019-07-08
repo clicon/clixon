@@ -86,7 +86,15 @@
   * rpc get and get-config api function has an added namespace argument:
     * `clicon_rpc_get_config(clicon_handle h, char *db, char *xpath, char *namespace, cxobj **xt);`
     * `int clicon_rpc_get(clicon_handle h, char *xpath, char *namespace, cxobj **xt);`
-    
+* Error messages for invalid number ranges and string lengths have been uniformed and changed.
+  * Error messages for invalid ranges are now on the form:
+  ```
+    Number 23 out of range: 1 - 10
+    String length 23 out of range: 1 - 10
+  ```
+* On validation callbacks, XML_FLAG_ADD is added to all nodes at startup validation, not just the top-level. This is the same behaviour as for steady-state validation.
+* All hash_ functions have been prefixed with `clicon_` to avoid name collision with other packages (frr)
+  * All calls to the following functions must be changed: `hash_init`, `hash_free`, `hash_lookup`, `hash_value`, `hash_add`, `hash_del`, `hash_dump`, and `hash_keys`.
 * RESTCONF strict namespace validation of data in POST and PUT.
   * Accepted:
   ```
@@ -209,7 +217,9 @@
 
 ### Minor changes
 
+* Added new API function `xpath_parse()` to split parsing and xml evaluation.
 * Rewrote `api_path2xpath` to handle namespaces.
+* `api_path2xml_vec` strict mode check added if list key length mismatch 
 * `startup_extraxml` triggers unnecessary validation
   * Renamed startup_db_reset -> xmldb_db_reset (its a general function)
   * In startup_extraxml(), check if reset callbacks or extraxml file actually makes and changes to the tmp db.
@@ -260,6 +270,9 @@
 	
 ### Corrected Bugs
 
+* Return 404 Not found error if restconf GET does not return requested instance
+* Fixed [Wrong yang-generated cli code for typeref identityref combination #88](https://github.com/clicon/clixon/issues/88)
+* Fixed [identityref validation fails when using typedef #87](https://github.com/clicon/clixon/issues/87)
 * Fixed a problem with some netconf error messages caused restconf daemon to exit due to no XML encoding
 * Check cligen tab mode, dont start if CLICON_CLI_TAB_MODE is undefined
 * Startup transactions did not mark added tree with XML_FLAG_ADD as it should.

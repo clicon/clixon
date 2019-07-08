@@ -39,40 +39,6 @@
 /*
  * Types
  */
-/* used as non-terminal type in yacc rules */
-enum xp_type{
-    XP_EXP,
-    XP_AND,
-    XP_RELEX,
-    XP_ADD,
-    XP_UNION,
-    XP_PATHEXPR,
-    XP_LOCPATH,
-    XP_ABSPATH,
-    XP_RELLOCPATH,
-    XP_STEP,
-    XP_NODE, /* s0 is namespace prefix, s1 is name */
-    XP_NODE_FN,
-    XP_PRED,
-    XP_PRI0,
-    XP_PRIME_NR,
-    XP_PRIME_STR,
-    XP_PRIME_FN,
-};
-
-/*! XPATH Parsing generates a tree of nodes that is later traversed
- */
-struct xpath_tree{
-    enum xp_type      xs_type;
-    int               xs_int;
-    double            xs_double;
-    char             *xs_s0;
-    char             *xs_s1;
-    struct xpath_tree *xs_c0; /* child 0 */
-    struct xpath_tree *xs_c1; /* child 1 */
-};
-typedef struct xpath_tree xpath_tree;
-
 struct clicon_xpath_yacc_arg{ /* XXX: mostly unrelevant */
     const char           *xy_name;         /* Name of syntax (for error string) */
     int                   xy_linenum;      /* Number of \n in parsed buffer */

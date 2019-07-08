@@ -254,8 +254,6 @@ if [ $BE -ne 0 ]; then
     new "start backend -s $mode -f $cfg"
     start_backend -s $mode -f $cfg
 fi
-new "waiting"
-sleep $RCWAIT
 
 new "kill old restconf daemon"
 sudo pkill -u www-data clixon_restconf
@@ -264,7 +262,8 @@ new "start restconf daemon"
 start_restconf -f $cfg
 
 new "waiting"
-sleep $RCWAIT
+wait_backend
+wait_restconf
 
 new "Check running db content"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"

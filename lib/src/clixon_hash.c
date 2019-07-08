@@ -115,7 +115,7 @@ hash_bucket(const char *str)
  * @see hash_free  For freeing the hash-table
  */
 clicon_hash_t *
-hash_init(void)
+clicon_hash_init(void)
 {
   clicon_hash_t *hash;
 
@@ -133,7 +133,7 @@ hash_init(void)
  * @retval    void
  */
 void
-hash_free(clicon_hash_t *hash)
+clicon_hash_free(clicon_hash_t *hash)
 {
     int i;
     clicon_hash_t tmp;
@@ -157,8 +157,8 @@ hash_free(clicon_hash_t *hash)
  * @retval    NULL     Not found
  */
 clicon_hash_t
-hash_lookup(clicon_hash_t *hash, 
-	    const char    *key)
+clicon_hash_lookup(clicon_hash_t *hash, 
+		   const char    *key)
 {
     uint32_t      bkt;
     clicon_hash_t h;
@@ -183,13 +183,13 @@ hash_lookup(clicon_hash_t *hash,
  * @retval     NULL   Key not found or value NULL
  */
 void *
-hash_value(clicon_hash_t *hash, 
-	   const char    *key, 
-	   size_t        *vlen)
+clicon_hash_value(clicon_hash_t *hash, 
+		  const char    *key, 
+		  size_t        *vlen)
 {
     clicon_hash_t h;
 
-    h = hash_lookup(hash, key);
+    h = clicon_hash_lookup(hash, key);
     if (h == NULL)
 	return NULL; /* OK, key not found */
 
@@ -209,10 +209,10 @@ hash_value(clicon_hash_t *hash,
  * @note special case val is NULL and vlen==0
  */
 clicon_hash_t
-hash_add(clicon_hash_t *hash, 
-	 const char    *key, 
-	 void          *val, 
-	 size_t         vlen)
+clicon_hash_add(clicon_hash_t *hash, 
+		const char    *key, 
+		void          *val, 
+		size_t         vlen)
 {
     void         *newval = NULL;
     clicon_hash_t h;
@@ -225,7 +225,7 @@ hash_add(clicon_hash_t *hash,
 	goto catch;
     }
     /* If variable exist, don't allocate a new. just replace value */
-    h = hash_lookup(hash, key);
+    h = clicon_hash_lookup(hash, key);
     if (h == NULL) {
 	if ((new = (clicon_hash_t)malloc(sizeof(*new))) == NULL){
 	    clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
@@ -283,12 +283,12 @@ catch:
  * @retval   -1       Key not found
  */
 int
-hash_del(clicon_hash_t *hash, 
-	 const char    *key)
+clicon_hash_del(clicon_hash_t *hash, 
+		const char    *key)
 {
     clicon_hash_t h;
 
-    h = hash_lookup(hash, key);
+    h = clicon_hash_lookup(hash, key);
     if (h == NULL)
 	return -1;
     
@@ -311,9 +311,9 @@ hash_del(clicon_hash_t *hash,
  * @note: vector needs to be deallocated with free
  */
 int
-hash_keys(clicon_hash_t *hash, 
-	  char        ***vector,
-	  size_t        *nkeys)
+clicon_hash_keys(clicon_hash_t *hash, 
+		 char        ***vector,
+		 size_t        *nkeys)
 {
     int           retval = -1;
     int           bkt;
@@ -357,8 +357,8 @@ catch:
  * @retval     -1       Error
  */
 int
-hash_dump(clicon_hash_t *hash, 
-	  FILE          *f)
+clicon_hash_dump(clicon_hash_t *hash, 
+		 FILE          *f)
 {
     int    retval = -1;
     int    i;
@@ -369,10 +369,10 @@ hash_dump(clicon_hash_t *hash,
     
     if (hash == NULL)
 	goto ok;
-    if (hash_keys(hash, &keys, &klen) < 0)
+    if (clicon_hash_keys(hash, &keys, &klen) < 0)
 	goto done;
     for(i = 0; i < klen; i++) {
-	val = hash_value(hash, keys[i], &vlen);
+	val = clicon_hash_value(hash, keys[i], &vlen);
 	printf("%s =\t 0x%p , length %zu\n", keys[i], val, vlen);
     }
 

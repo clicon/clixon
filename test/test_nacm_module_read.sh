@@ -139,12 +139,12 @@ fi
 new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-sleep 1
 new "start restconf daemon (-a is enable basic authentication)"
 start_restconf -f $cfg -- -a
 
 new "waiting"
-sleep $RCWAIT
+wait_backend
+wait_restconf
 
 new "auth set authentication config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -200,8 +200,7 @@ expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-e
 '
 
 new "limit read other module fail"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 'null
-'
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-type": "application","error-tag": "invalid-value","error-severity": "error","error-message": "Instance does not exist"}}}}'
 
 new "limit read state OK"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state": {"op": ["42","41","43"]}}

@@ -121,8 +121,9 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend  -s init -f $cfg -l f$flog -- -t /x/y[a=$errnr]"
     start_backend -s init -f $cfg -l f$flog -- -t /x/y[a=$errnr] # -t means transaction logging
+
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 let nr=0
@@ -177,7 +178,7 @@ new "3. Validate system-error config (9999 not in range)"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><y><a>$nr</a><b>9999</b></y></x></config></edit-config></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 new "Validate system-error validate (should fail)"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>b</bad-element></error-info><error-severity>error</error-severity><error-message>Number out of range: 9999</error-message></rpc-error></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>b</bad-element></error-info><error-severity>error</error-severity><error-message>Number 9999 out of range: 0 - 100</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 new "Validate system-error discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

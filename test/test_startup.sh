@@ -86,7 +86,7 @@ testrun(){
 	start_backend -s $mode -f $cfg -c $dir/extra_db
 
 	new "waiting"
-	sleep $RCWAIT
+	wait_backend
     else
 	new "Restart backend as eg follows: -Ff $cfg -s $mode -c $dir/extra_db # $BETIMEOUT s"
 	sleep $BETIMEOUT

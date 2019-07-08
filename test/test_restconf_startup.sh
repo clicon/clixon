@@ -68,7 +68,8 @@ testrun(){
     start_restconf -f $cfg -y $fyang $option
     
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
+    wait_restconf
 
     new "restconf put 42"
     expecteq "$(curl -s -X PUT http://localhost/restconf/data/example:x/y=42 -d '{"example:y":{"a":"42","b":"42"}}')" 0 ""

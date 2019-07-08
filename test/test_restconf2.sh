@@ -137,7 +137,7 @@ new "restconf DELETE"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data/example:cont1' 0 ""
 
 new "restconf GET null datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 'null'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-type": "application","error-tag": "invalid-value","error-severity": "error","error-message": "Instance does not exist"}}}}'
 
 new "restconf POST initial tree"
 expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 ""
@@ -149,7 +149,7 @@ new "restconf DELETE whole datastore"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
 
 new "restconf GET null datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 'null'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-type": "application","error-tag": "invalid-value","error-severity": "error","error-message": "Instance does not exist"}}}}'
 
 new "restconf PUT initial datastore" 
 expectfn 'curl -s -X PUT -d {"data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' 0 ""

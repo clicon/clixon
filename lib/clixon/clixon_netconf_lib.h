@@ -43,6 +43,7 @@
  */
 int netconf_in_use(cbuf *cb, char *type, char *message);
 int netconf_invalid_value(cbuf *cb, char *type, char *message);
+int netconf_invalid_value_xml(cxobj **xret, char *type, char *message);
 int netconf_too_big(cbuf *cb, char *type, char *message);
 int netconf_missing_attribute(cbuf *cb,	char *type, char *info, char *message);
 int netconf_bad_attribute(cbuf *cb, char *type, char *info, char *message);

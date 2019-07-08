@@ -148,12 +148,12 @@ fi
 new "kill old restconf daemon"
 sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-sleep 1
 new "start restconf daemon (-a is enable basic authentication)"
 start_restconf -f $cfg -- -a
 
 new "waiting"
-sleep $RCWAIT
+wait_backend
+wait_restconf
 
 new "auth set authentication config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -191,9 +191,8 @@ expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data)" 0 '
 new "deny-delete-config: limited fail (restconf) ok"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data)" 0 ''
 
-new "admin get nacm (should be null)"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 'null
-'
+new "admin get nacm (should fail)"
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-type": "application","error-tag": "invalid-value","error-severity": "error","error-message": "Instance does not exist"}}}}'
 
 new "deny-delete-config: admin ok (restconf)"
 expecteq "$(curl -u andy:bar -sS -X DELETE http://localhost/restconf/data)" 0 ''

@@ -92,7 +92,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 # RFC test two-field caes

@@ -216,7 +216,7 @@ api_data_get2(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -233,7 +233,7 @@ api_data_get2(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -252,7 +252,7 @@ api_data_get2(clicon_handle h,
 #endif
     /* Check if error return  */
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -283,7 +283,20 @@ api_data_get2(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+	/* Check if not exists */
+	if (xlen == 0){
+	    /* 4.3: If a retrieval request for a data resource represents an 
+	       instance that does not exist, then an error response containing 
+	       a "404 Not Found" status-line MUST be returned by the server.  
+	       The error-tag value "invalid-value" is used in this case. */
+	    if (netconf_invalid_value_xml(&xe, "application", "Instance does not exist") < 0)
+		goto done;
+	    /* override invalid-value default 400 with 404 */
+	    if (api_return_err(h, r, xe, pretty, use_xml, 404) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -495,7 +508,7 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -509,7 +522,7 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -522,7 +535,7 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -531,7 +544,7 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -546,7 +559,7 @@ api_data_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -568,14 +581,15 @@ api_data_post(clicon_handle h,
 	    		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    		goto done;
 	    }
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xe, 0, 0) < 0)
-	    goto done;
-	clicon_debug(1, "%s XE:%s", __FUNCTION__, cbuf_get(ccc));
-    }
-
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+#if 0
+	    if (debug){
+		cbuf *ccc=cbuf_new();
+		if (clicon_xml2cbuf(ccc, xe, 0, 0) < 0)
+		    goto done;
+		clicon_debug(1, "%s XE:%s", __FUNCTION__, cbuf_get(ccc));
+	    }
+#endif
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -607,7 +621,7 @@ api_data_post(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -629,7 +643,7 @@ api_data_post(clicon_handle h,
 	/* log errors from discard, but ignore */
 	if ((xpath_first(xretdis, NULL, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0) /* Use original xe */
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0) /* Use original xe */
 	    goto done;
 	goto ok;
     }
@@ -843,7 +857,7 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -858,7 +872,7 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -871,7 +885,7 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -880,7 +894,7 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -895,7 +909,7 @@ api_data_put(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -915,7 +929,7 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -955,7 +969,7 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -980,7 +994,7 @@ api_data_put(clicon_handle h,
 		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		    goto done;
 		}
-		if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+		if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		    goto done;
 		goto ok;
 	    }
@@ -1004,7 +1018,7 @@ api_data_put(clicon_handle h,
 			    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 			    goto done;
 			}
-			if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+			if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 			    goto done;
 			goto ok;
 		    }
@@ -1039,9 +1053,8 @@ api_data_put(clicon_handle h,
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
-
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1062,7 +1075,7 @@ api_data_put(clicon_handle h,
 	/* log errors from discard, but ignore */
 	if ((xpath_first(xretdis, NULL, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1195,7 +1208,7 @@ api_data_delete(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -1219,7 +1232,7 @@ api_data_delete(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1241,7 +1254,7 @@ api_data_delete(clicon_handle h,
 	/* log errors from discard, but ignore */
 	if ((xpath_first(xretdis, NULL, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1433,7 +1446,7 @@ api_operations_post_input(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -1446,7 +1459,7 @@ api_operations_post_input(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -1455,7 +1468,7 @@ api_operations_post_input(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -1488,7 +1501,7 @@ api_operations_post_input(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto fail;
     }
@@ -1562,7 +1575,7 @@ api_operations_post_output(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto fail;
     }
@@ -1599,7 +1612,7 @@ api_operations_post_output(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -1732,7 +1745,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1751,7 +1764,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1762,7 +1775,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1791,7 +1804,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1831,7 +1844,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto ok;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1860,7 +1873,7 @@ api_operations_post(clicon_handle h,
 	    goto done;
 	/* Local error: return it and quit */
 	if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -1869,7 +1882,7 @@ api_operations_post(clicon_handle h,
 	if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	    goto done;
 	if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
-	    if (api_return_err(h, r, xe, pretty, use_xml) < 0)
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
 	}

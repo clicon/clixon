@@ -101,14 +101,12 @@ EOF
     new "kill old restconf daemon"
     sudo pkill -u www-data -f "/www-data/clixon_restconf"
 
-    sleep 1
     new "start restconf daemon (-a is enable basic authentication)"
     start_restconf -f $cfg -- -a
 
     new "waiting"
     wait_backend
     wait_restconf
-
     
     #----------- First get
     case "$ret1" in
@@ -117,8 +115,7 @@ EOF
 	;;
 	1) ret='{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
 	   ;;
-	2) ret='null
-'
+	2) ret='{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-type": "application","error-tag": "invalid-value","error-severity": "error","error-message": "Instance does not exist"}}}}'
 	;;
     esac
 
@@ -142,8 +139,7 @@ EOF
 	;;
 	1) ret='{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
         ;;
-	2) ret='null
-'
+	2) ret='{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-type": "application","error-tag": "invalid-value","error-severity": "error","error-message": "Instance does not exist"}}}}'
 	   ;;
 	3) ret='{"nacm-example:x": 42}
 '

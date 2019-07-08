@@ -394,13 +394,16 @@ get_user_cookie(char  *cookiestr,
  * @param[in]  xerr   XML error message from backend
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ * @param[in]  code    If 0 use rfc8040 sec 7 netconf2restconf error-tag mapping
+ *                     otherwise use this code
  */
 int
 api_return_err(clicon_handle h,
 	       FCGX_Request *r,
 	       cxobj        *xerr,
 	       int           pretty,
-	       int           use_xml)
+	       int           use_xml,
+	       int           code0)
 {
     int        retval = -1;
     cbuf      *cb = NULL;
@@ -417,8 +420,12 @@ api_return_err(clicon_handle h,
 	goto ok;
     }
     tagstr = xml_body(xtag);
-    if ((code = restconf_err2code(tagstr)) < 0)
-	code = 500; /* internal server error */
+    if (code0 != 0)
+	code = code0;
+    else{
+	if ((code = restconf_err2code(tagstr)) < 0)
+	    code = 500; /* internal server error */
+    }
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
 	reason_phrase="";
     if (xml_name_set(xerr, "error") < 0)

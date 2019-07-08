@@ -83,7 +83,8 @@ new "start restconf daemon"
 start_restconf -f $cfg 
 
 new "waiting"
-sleep $RCWAIT
+wait_backend
+wait_restconf
 
 new "netconf set x in example1"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon1">42</x></config></edit-config></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><ok/></rpc-reply>]]>]]>$'

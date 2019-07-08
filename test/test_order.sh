@@ -162,7 +162,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s running -f $cfg -- -s
 
     new "waiting"
-    sleep $RCWAIT
+    wait_backend
 fi
 
 # STATE (should not be ordered)

@@ -86,7 +86,20 @@ done
 testnr=0
 for c in $cmds; do
     if [ $testnr != 0 ]; then echo; fi
-    echo "Mem test for $c"
-    echo "================="
+    echo "Mem test $c begin"
+    length=$(echo "Mem test $c begin" | wc -c)
+    let i=1
+    while [ $i -lt $length ]; do
+	echo -n "="
+	let i++
+    done
+    echo
     memonce $c
+    echo "Mem test $c done"
+    let i=1
+    while [ $i -lt $length ]; do
+	echo -n "="
+	let i++
+    done
+    echo
 done

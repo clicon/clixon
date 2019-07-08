@@ -161,10 +161,10 @@ xmldb_disconnect(clicon_handle h)
     int       i;
     db_elmnt *de;
     
-    if (hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
+    if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
 	goto done;
     for(i = 0; i < klen; i++) 
-	if ((de = hash_value(clicon_db_elmnt(h), keys[i], NULL)) != NULL){
+	if ((de = clicon_hash_value(clicon_db_elmnt(h), keys[i], NULL)) != NULL){
 	    if (de->de_xml){
 		xml_free(de->de_xml);
 		de->de_xml = NULL;
@@ -311,7 +311,7 @@ xmldb_unlock_all(clicon_handle h,
     int                 i;
     db_elmnt           *de;
 
-    if (hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
+    if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
 	goto done;
     for (i = 0; i < klen; i++) 
 	if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
