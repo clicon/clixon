@@ -200,7 +200,7 @@ changelog_move(clicon_handle h,
     int    retval = -1;
     cxobj *xp;       /* destination parent node */
 
-    if ((xp = xpath_first(xt, nsc, "%s", dst)) == NULL){
+    if ((xp = xpath_first_nsc(xt, nsc, "%s", dst)) == NULL){
 	clicon_err(OE_XML, 0, "path required");
 	goto done;
     }
@@ -253,7 +253,7 @@ changelog_op(clicon_handle h,
     if ((wxpath = xml_find_body(xi, "where")) == NULL)
 	goto ok;
     /* Get vector of target nodes meeting the where requirement */
-    if (xpath_vec(xt, nsc, "%s", &wvec, &wlen, wxpath) < 0)
+    if (xpath_vec_nsc(xt, nsc, "%s", &wvec, &wlen, wxpath) < 0)
        goto done;
    for (i=0; i<wlen; i++){
        xw = wvec[i];
@@ -328,7 +328,7 @@ changelog_iterate(clicon_handle h,
     int        ret;
     int        i;
     
-    if (xpath_vec(xch, NULL, "step", &vec, &veclen) < 0)
+    if (xpath_vec(xch, "step", &vec, &veclen) < 0)
 	goto done;
     /* Iterate through changelog items */
     for (i=0; i<veclen; i++){
@@ -392,7 +392,7 @@ xml_changelog_upgrade(clicon_handle h,
      * - find all changelogs in the interval: [from, to]
      * - note it t=0 then no changelog is applied
      */
-    if (xpath_vec(xchlog, NULL, "changelog[namespace=\"%s\"]", 
+    if (xpath_vec(xchlog, "changelog[namespace=\"%s\"]", 
 		  &vec, &veclen, namespace) < 0)
 	goto done;
     /* Get all changelogs in the interval [from,to]*/

@@ -194,7 +194,7 @@ main(int argc, char **argv)
 
     /* If xpath0 given, position current x */
     if (xpath0){
-	if ((x = xpath_first(x0, NULL, "%s", xpath0)) == NULL){
+	if ((x = xpath_first(x0, "%s", xpath0)) == NULL){
 	    fprintf(stderr, "Error: xpath0 returned NULL\n");
 	    return -1;
 	}

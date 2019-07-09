@@ -116,20 +116,39 @@ char* xpath_tree_int2str(int nodetype);
 int   xpath_tree_print(cbuf *cb, xpath_tree *xs);
 int   xpath_tree_free(xpath_tree *xs);
 int   xpath_parse(cvec *nsc, char *xpath, xpath_tree **xptree);
+int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, char *xpath, xp_ctx  **xrp);
 
 #if defined(__GNUC__) && __GNUC__ >= 3
-cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *format,  ...) __attribute__ ((format (printf, 3, 4)));
-int    xpath_vec(cxobj *xcur, cvec *nsc, char *format, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 6)));
-int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *format, uint16_t flags, 
+int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *xpformat, ...) __attribute__ ((format (printf, 3, 4)));
+int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags, 
 		   cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 7)));
-int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *format, ...) __attribute__ ((format (printf, 3, 4)));
+
 #else
-cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *format, ...);
-int    xpath_vec(cxobj *xcur, cvec *nsc, char *format, cxobj  ***vec, size_t *veclen, ...);
-int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *format, uint16_t flags, 
+int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *xpformat, ...);
+int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags, 
 		      cxobj ***vec, size_t *veclen, ...);
-int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *format, ...);
 #endif
-int xpath_vec_ctx(cxobj *xcur, cvec *nsc, char *xpath, xp_ctx  **xrp);
+
+/* Functions with explicit namespace context (nsc) set. If you do not need 
+ * explicit namespace contexts (most do not) consider using the API functions
+ * below without nsc set.
+ * If you do not know what a namespace context is, see README.md#xml-and-xpath
+ */
+#if defined(__GNUC__) && __GNUC__ >= 3
+cxobj *xpath_first_nsc(cxobj *xcur, cvec *nsc, char *xpformat,  ...) __attribute__ ((format (printf, 3, 4)));
+int    xpath_vec_nsc(cxobj *xcur, cvec *nsc, char *xpformat, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 6)));
+#else
+cxobj *xpath_first_nsc(cxobj *xcur, cvec *nsc, char *xpformat, ...);
+int    xpath_vec_nsc(cxobj *xcur, cvec *nsc, char *xpformat, cxobj  ***vec, size_t *veclen, ...);
+#endif
+
+/* Functions with nsc == NULL (implicit xpath context). */
+#if defined(__GNUC__) && __GNUC__ >= 3
+cxobj *xpath_first(cxobj *xcur, char *xpformat,  ...) __attribute__ ((format (printf, 2, 3)));
+int    xpath_vec(cxobj *xcur, char *xpformat, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 2, 5)));
+#else
+cxobj *xpath_first(cxobj *xcur, char *xpformat, ...);
+int    xpath_vec(cxobj *xcur, char *xpformat, cxobj  ***vec, size_t *veclen, ...);
+#endif
 
 #endif /* _CLIXON_XPATH_H */

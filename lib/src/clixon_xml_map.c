@@ -287,7 +287,7 @@ validate_leafref(cxobj     *xt,
     /* XXX see comment above regarding typeref or not */
     if (xml_nsctx_yang(ytype, &nsc) < 0)
 	goto done;
-    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, yang_argument_get(ypath)) < 0) 
+    if (xpath_vec_nsc(xt, nsc, "%s", &xvec, &xlen, yang_argument_get(ypath)) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	x = xvec[i];
@@ -2781,7 +2781,7 @@ xml2xpath(cxobj *x,
 	    xt = xml_parent(xt);
 	xcp = xml_parent(xt);
 	xml_parent_set(xt, NULL);
-	x2 = xpath_first(xt, NULL, "%s", xpath); /* +1: skip first / */
+	x2 = xpath_first(xt, "%s", xpath); /* +1: skip first / */
 	xml_parent_set(xt, xcp);
 	assert(x2 && x==x2);
 	if (x==x2)

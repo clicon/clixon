@@ -212,7 +212,7 @@ api_data_get2(clicon_handle h,
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
 	clicon_err_reset();
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -229,7 +229,7 @@ api_data_get2(clicon_handle h,
     if (clicon_rpc_get(h, xpath, namespace, &xret) < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -251,7 +251,7 @@ api_data_get2(clicon_handle h,
     }
 #endif
     /* Check if error return  */
-    if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+    if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
 	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
@@ -276,10 +276,10 @@ api_data_get2(clicon_handle h,
 	}
     }
     else{
-	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0){
+	if (xpath_vec_nsc(xret, nsc, "%s", &xvec, &xlen, xpath) < 0){
 	    if (netconf_operation_failed_xml(&xerr, "application", clicon_err_reason) < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -465,10 +465,8 @@ api_data_post(clicon_handle h,
     cxobj     *xtop = NULL; /* top of api-path */
     cxobj     *xbot = NULL; /* bottom of api-path */
     yang_stmt *ybot = NULL; /* yang of xbot */
-#ifdef RESTCONF_NS_DATA_CHECK
     yang_stmt *ymodapi = NULL; /* yang module of api-path (if any) */
     yang_stmt *ymoddata = NULL; /* yang module of data (-d) */
-#endif
     yang_stmt *yspec;
     cxobj     *xa;
     cxobj     *xret = NULL;
@@ -496,15 +494,13 @@ api_data_post(clicon_handle h,
     if (api_path){
 	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot)) < 0)
 	    goto done;
-#ifdef RESTCONF_NS_DATA_CHECK
 	if (ybot)
 	    ymodapi=ys_module(ybot);
-#endif
 	if (ret == 0){ /* validation failed */
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    clicon_err_reset();
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -518,7 +514,7 @@ api_data_post(clicon_handle h,
 	if (xml_parse_string(data, NULL, &xdata0) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -531,7 +527,7 @@ api_data_post(clicon_handle h,
 	if ((ret = json_parse_str(data, yspec, &xdata0, &xerr)) < 0){ 
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -540,7 +536,7 @@ api_data_post(clicon_handle h,
 	    goto ok;
 	}
 	if (ret == 0){
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -555,7 +551,7 @@ api_data_post(clicon_handle h,
     if (xml_child_nr(xdata0) != 1){
 	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 	    goto done;
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -564,7 +560,6 @@ api_data_post(clicon_handle h,
 	goto ok;
     }
     xdata = xml_child_i(xdata0,0);
-#ifdef RESTCONF_NS_DATA_CHECK
     /* If the api-path (above) defines a module, then xdata must have a prefix
      * and it match the module defined in api-path. 
      * In a POST, maybe there are cornercases where xdata (which is a child) and
@@ -577,7 +572,7 @@ api_data_post(clicon_handle h,
 	if (ymoddata != ymodapi){
 	     if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
 		 goto done;
-	     if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	     if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    		goto done;
 	    }
@@ -594,7 +589,6 @@ api_data_post(clicon_handle h,
 	    goto ok;
 	}
     }
-#endif  /* RESTCONF_NS_DATA_CHECK */
 
     /* Add operation (create/replace) as attribute */
     if ((xa = xml_new("operation", xdata, NULL)) == NULL)
@@ -620,7 +614,7 @@ api_data_post(clicon_handle h,
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
-    if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+    if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
 	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
@@ -634,14 +628,14 @@ api_data_post(clicon_handle h,
     cprintf(cbx, "<commit/></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
-    if ((xe = xpath_first(xretcom, NULL, "//rpc-error")) != NULL){
+    if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
 	cbuf_reset(cbx);
 	cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
 	cprintf(cbx, "<discard-changes/></rpc>");
 	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretdis, NULL) < 0)
 	    goto done;
 	/* log errors from discard, but ignore */
-	if ((xpath_first(xretdis, NULL, "//rpc-error")) != NULL)
+	if ((xpath_first(xretdis, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
 	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0) /* Use original xe */
 	    goto done;
@@ -664,7 +658,7 @@ api_data_post(clicon_handle h,
 	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	    goto done;
 	/* If copy-config failed, log and ignore (already committed) */
-	if ((xe = xpath_first(xretcom, NULL, "//rpc-error")) != NULL){
+	if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
 
 	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
 	}
@@ -809,10 +803,8 @@ api_data_put(clicon_handle h,
     cxobj     *xtop = NULL; /* top of api-path */
     cxobj     *xbot = NULL; /* bottom of api-path */
     yang_stmt *ybot = NULL; /* yang of xbot */
-#ifdef RESTCONF_NS_DATA_CHECK
     yang_stmt *ymodapi = NULL; /* yang module of api-path (if any) */
     yang_stmt *ymoddata = NULL; /* yang module of data (-d) */
-#endif
     cxobj     *xparent;
     yang_stmt *yp; /* yang parent */
     yang_stmt *yspec;
@@ -845,15 +837,13 @@ api_data_put(clicon_handle h,
     if (api_path){
 	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot)) < 0)
 	    goto done;
-#ifdef RESTCONF_NS_DATA_CHECK
 	if (ybot)
 	    ymodapi=ys_module(ybot);
-#endif
 	if (ret == 0){ /* validation failed */
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    clicon_err_reset();
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -868,7 +858,7 @@ api_data_put(clicon_handle h,
 	if (xml_parse_string(data, yspec, &xdata0) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -881,7 +871,7 @@ api_data_put(clicon_handle h,
 	if ((ret = json_parse_str(data, yspec, &xdata0, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -890,7 +880,7 @@ api_data_put(clicon_handle h,
 	    goto ok;
 	}
 	if (ret == 0){
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -905,7 +895,7 @@ api_data_put(clicon_handle h,
     if (xml_child_nr(xdata0) != 1){
 	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 	    goto done;
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -914,7 +904,6 @@ api_data_put(clicon_handle h,
 	goto ok;
     }
     xdata = xml_child_i(xdata0,0);
-#ifdef RESTCONF_NS_DATA_CHECK
     /* If the api-path (above) defines a module, then xdata must have a prefix
      * and it match the module defined in api-path
      * This does not apply if api-path is / (no module)
@@ -925,7 +914,7 @@ api_data_put(clicon_handle h,
 	if (ymoddata != ymodapi){
 	    if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -934,7 +923,6 @@ api_data_put(clicon_handle h,
 	    goto ok;
 	}
     }
-#endif /* RESTCONF_NS_DATA_CHECK */
 
     /* Add operation (create/replace) as attribute */
     if ((xa = xml_new("operation", xdata, NULL)) == NULL)
@@ -965,7 +953,7 @@ api_data_put(clicon_handle h,
 	if (strcmp(dname, xml_name(xbot))){
 	    if (netconf_operation_failed_xml(&xerr, "protocol", "Not same symbol in api-path as data") < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -990,7 +978,7 @@ api_data_put(clicon_handle h,
 	    if (match_list_keys(ybot, xdata, xbot) < 0){
 		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
 		    goto done;
-		if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		    goto done;
 		}
@@ -1014,7 +1002,7 @@ api_data_put(clicon_handle h,
 		    if (parbod == NULL || strcmp(parbod, xml_body(xdata))){
 			if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
 			    goto done;
-			if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+			if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 			    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 			    goto done;
 			}
@@ -1053,7 +1041,7 @@ api_data_put(clicon_handle h,
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
-    if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+    if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
 	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
@@ -1066,14 +1054,14 @@ api_data_put(clicon_handle h,
     cprintf(cbx, "<commit/></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
-    if ((xe = xpath_first(xretcom, NULL, "//rpc-error")) != NULL){
+    if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
 	cbuf_reset(cbx);
 	cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
 	cprintf(cbx, "<discard-changes/></rpc>");
 	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretdis, NULL) < 0)
 	    goto done;
 	/* log errors from discard, but ignore */
-	if ((xpath_first(xretdis, NULL, "//rpc-error")) != NULL)
+	if ((xpath_first(xretdis, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
 	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
@@ -1096,7 +1084,7 @@ api_data_put(clicon_handle h,
 	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	    goto done;
 	/* If copy-config failed, log and ignore (already committed) */
-	if ((xe = xpath_first(xretcom, NULL, "//rpc-error")) != NULL){
+	if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
 
 	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
 	}
@@ -1204,7 +1192,7 @@ api_data_delete(clicon_handle h,
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    clicon_err_reset();
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -1231,7 +1219,7 @@ api_data_delete(clicon_handle h,
     cprintf(cbx, "</edit-config></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
-    if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+    if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
 	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
 	goto ok;
@@ -1245,14 +1233,14 @@ api_data_delete(clicon_handle h,
     cprintf(cbx, "<commit/></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
-    if ((xe = xpath_first(xretcom, NULL, "//rpc-error")) != NULL){
+    if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
 	cbuf_reset(cbx);
 	cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
 	cprintf(cbx, "<discard-changes/></rpc>");
 	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretdis, NULL) < 0)
 	    goto done;
 	/* log errors from discard, but ignore */
-	if ((xpath_first(xretdis, NULL, "//rpc-error")) != NULL)
+	if ((xpath_first(xretdis, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
 	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 	    goto done;
@@ -1275,7 +1263,7 @@ api_data_delete(clicon_handle h,
 	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	    goto done;
 	/* If copy-config failed, log and ignore (already committed) */
-	if ((xe = xpath_first(xretcom, NULL, "//rpc-error")) != NULL){
+	if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
 
 	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
 	}
@@ -1442,7 +1430,7 @@ api_operations_post_input(clicon_handle h,
 	if (xml_parse_string(data, yspec, &xdata) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -1455,7 +1443,7 @@ api_operations_post_input(clicon_handle h,
 	if ((ret = json_parse_str(data, yspec, &xdata, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -1464,7 +1452,7 @@ api_operations_post_input(clicon_handle h,
 	    goto fail;
 	}
 	if (ret == 0){
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -1497,7 +1485,7 @@ api_operations_post_input(clicon_handle h,
 	else
 	    if (netconf_malformed_message_xml(&xerr, "restconf RPC has malformed input statement (multiple or not called input)") < 0)
 		goto done;	
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -1571,7 +1559,7 @@ api_operations_post_output(clicon_handle h,
 	xml_child_nr_type(xret, CX_ELMNT) != 1){
 	if (netconf_malformed_message_xml(&xerr, "restconf RPC does not have single input") < 0)
 	    goto done;	
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -1608,7 +1596,7 @@ api_operations_post_output(clicon_handle h,
 	    (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
-	    if ((xe = xpath_first(xerr, NULL, "rpc-reply/rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, "rpc-reply/rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -1741,7 +1729,7 @@ api_operations_post(clicon_handle h,
     if (oppath == NULL || strcmp(oppath,"/")==0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", "Operation name expected") < 0)
 	    goto done;
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -1760,7 +1748,7 @@ api_operations_post(clicon_handle h,
     if ((ys = yang_find(yspec, Y_MODULE, prefix)) == NULL){
 	if (netconf_operation_failed_xml(&xerr, "protocol", "yang module not found") < 0)
 	    goto done;
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -1771,7 +1759,7 @@ api_operations_post(clicon_handle h,
     if ((yrpc = yang_find(ys, Y_RPC, id)) == NULL){
 	if (netconf_missing_element_xml(&xerr, "application", id, "RPC not defined") < 0)
 	    goto done;
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -1800,7 +1788,7 @@ api_operations_post(clicon_handle h,
 	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 	    goto done;
 	clicon_err_reset();
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -1840,7 +1828,7 @@ api_operations_post(clicon_handle h,
     if ((ret = xml_yang_validate_rpc(h, xtop, &xret)) < 0)
 	goto done;
     if (ret == 0){
-	if ((xe = xpath_first(xret, NULL, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xret, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto ok;
 	}
@@ -1872,7 +1860,7 @@ api_operations_post(clicon_handle h,
 	if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)
 	    goto done;
 	/* Local error: return it and quit */
-	if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
+	if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
 	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;
@@ -1881,7 +1869,7 @@ api_operations_post(clicon_handle h,
     else {    /* Send to backend */
 	if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	    goto done;
-	if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
+	if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
 	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
 		goto done;
 	    goto ok;

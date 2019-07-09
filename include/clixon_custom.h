@@ -48,9 +48,3 @@
  */
 #define USE_NETCONF_NS_AS_DEFAULT
 
-/* Make namespace check on RESTCONF PUT and POST -d data
- * Should be defined according to standard
- * Undefine it if you want allow no namespace (pick first name it finds in list
- * of loaded modules).
- */
-#define RESTCONF_NS_DATA_CHECK

@@ -69,17 +69,18 @@
 	
 ### API changes on existing features (you may need to change your code)
 
-* The Clixon API has been extended with namespaces, or namespace contexts in the following cases [Netconf get/get-config :xpath capability does not support namespaces](https://github.com/clicon/clixon/issues/75)
-  * CLIspec functions have added namespace parameter:
+* The Clixon API has been extended with namespaces, or namespace contexts in the following cases (see [README.md#xml-and-xpath] for explanation):
+  * CLIspec functions have added optional namespace parameter:
     * `cli_show_config <db> <format> <xpath>` --> `cli_show_config <db> <format> <xpath> <namespace>`
     * `cli_copy_config <db> <xpath> ...` --> `cli_copy_config <db> <xpath> <namespace> ...`
-  * Xpath API
-    * `xpath_first(x, format, ...)` --> `xpath_first(x, nsc, format, ...)`
-    * `xpath_vec(x, format, vec, veclen, ...)` --> `xpath_vec(x, nsc, format, vec, veclen, ...)`
-    * `xpath_vec_flag(x, format, flags, vec, veclen, ...)` --> `xpath_vec_flag(x, format, flags, vec, veclen, ...)`
+  * Change the following Xpath API functions (xpath_first and xpath_vec remain as-is):
+    * `xpath_vec_flag(x, format, flags, vec, veclen, ...)` --> `xpath_vec_flag(x, nsc, format, flags, vec, veclen, ...)`
     * `xpath_vec_bool(x, format, ...)` --> `xpath_vec_bool(x, nsc, format, ...)`
     * `xpath_vec_ctx(x, xpath, xp)` --> `xpath_vec_ctx(x, nsc, xpath, xp)`
-  * xmldb_get0 has an added `nsc` parameter:
+  * New Xpath API functions with namespace contexts:
+    * `xpath_first_nsc(x, nsc, format, ...)`
+    * `xpath_vec_nsc(x, nsc, format, vec, veclen, ...)`
+  * Change xmldb_get0 with added `nsc` parameter:
     * `xmldb_get0(h, db, xpath, copy, xret, msd)` --> `xmldb_get0(h, db, nsc, xpath, copy, xret, msd)`
   * The plugin statedata callback (ca_statedata) has been extended with an nsc parameter:
     * `int example_statedata(clicon_handle h, cvec *nsc, char *xpath, cxobj *xstate);`
@@ -104,7 +105,6 @@
   ```
     curl -X PUT http://localhost/restconf/data/mod:a -d {"a":"x"}
   ```
-  * Undefine `RESTCONF_NS_DATA_CHECK` in include/clixon_custom.h to disable strict check.
 * Many validation functions have changed error parameter from cbuf to xml tree. 
   * XML trees are more flexible for utility tools
   * If you use these(mostly internal), you need to change the error function: `generic_validate, from_validate_common, xml_yang_validate_all_top, xml_yang_validate_all, xml_yang_validate_add, xml_yang_validate_rpc, xml_yang_validate_list_key_only`

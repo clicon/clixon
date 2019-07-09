@@ -514,7 +514,7 @@ stream_notify1(clicon_handle   h,
 	    else{  /* xpath match */
 		if (ss->ss_xpath == NULL ||
 		    strlen(ss->ss_xpath)==0 ||
-		    xpath_first(xevent, NULL, "%s", ss->ss_xpath) != NULL)
+		    xpath_first(xevent, "%s", ss->ss_xpath) != NULL)
 		    if ((*ss->ss_fn)(h, 0, xevent, ss->ss_arg) < 0)
 			goto done;
 		ss = NEXTQ(struct stream_subscription *, ss);

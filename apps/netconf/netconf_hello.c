@@ -100,7 +100,7 @@ netconf_hello_dispatch(cxobj *xn)
     cxobj *xp;
     int retval = -1;
 
-    if ((xp = xpath_first(xn, NULL, "//hello")) != NULL)
+    if ((xp = xpath_first(xn, "//hello")) != NULL)
 	retval = netconf_hello(xp);
     return retval;
 }

@@ -201,8 +201,8 @@ parse_configfile(clicon_handle  h,
     /* Hard-coded config for < 3.10 and clixon-config for >= 3.10 */
     if ((nsc = xml_nsctx_init(NULL, CLIXON_CONF_NS)) == NULL)
 	goto done;
-    if ((xc = xpath_first(xt, nsc, "clixon-config")) == NULL){
-	clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"clixon-config\" element\nClixon config files should begin with: <clixon-config xmlns=\"%s\" (See Changelog in Clixon 3.10)>", filename, CLIXON_CONF_NS);
+    if ((xc = xpath_first_nsc(xt, nsc, "clixon-config")) == NULL){
+	clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"clixon-config\" element\nClixon config files should begin with: <clixon-config xmlns=\"%s\">", filename, CLIXON_CONF_NS);
 	    
 	goto done;
     }
@@ -362,7 +362,6 @@ clicon_options_main(clicon_handle h,
 	goto done;
     if (xml_spec(xconfig) == NULL){
 	clicon_err(OE_CFG, 0, "Config file %s: did not find corresponding Yang specification\nHint: File does not begin with: <clixon-config xmlns=\"%s\"> or clixon-config.yang not found?", configfile, CLIXON_CONF_NS);
-
 	goto done;
     }
     /* Set clixon_conf pointer to handle */

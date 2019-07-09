@@ -131,14 +131,14 @@ The standards covered include:
 - [Namespaces in XML 1.0](https://www.w3.org/TR/2009/REC-xml-names-20091208)
 - [XPATH 1.0](https://www.w3.org/TR/xpath-10)
 
-Not supported:
+Not supported in the XML:
 - !DOCTYPE (ie DTD)
 
-The following xpath axes are supported:
-- CHILD, DESCENDANT, DESCENDANT_OR_SELF, SELF, and PARENT
+The following XPATH axes are supported:
+- child, descendant, descendant_or_self, self, and parent
 
 The following xpath axes are _not_ supported:
-- PRECEEDING, PRECEEDING_SIBLING, NAMESPACE, FOLLOWING_SIBLING, FOLLOWING, ANCESTOR,ANCESTOR_OR_SELF, ATTRIBUTE 
+- preceeding, preceeding_sibling, namespace, following_sibling, following, ancestor,ancestor_or_self, and attribute 
 
 Note that base netconf namespace syntax is not enforced but recommended, which means that the following two expressions are treated equivalently:
 ```
@@ -157,7 +157,10 @@ XPATHs may contain prefixes. Example: `/if:a/if:b`. The prefixes have
 associated namespaces. For example, `if` may be bound to
 `urn:ietf:params:xml:ns:yang:ietf-interfaces`. The prefix to namespace binding is called a _namespace context_ (nsc).
 
+In yang, the xpath and xml prefixes may not be well-known. For example, the import statement specifies a prefix to an imported module that is local in scope. Other modules may use another prefix. The module name and namespace however are unique.
+
 In the Clixon API, there are two variants on namespace contexts: _implicit_ (given by the XML); or _explicit_ given by an external mapping.
+
 #### 1. Implicit namespace mapping
 
 Implicit mapping is typical for basic known XML, where the context is
@@ -169,7 +172,8 @@ Example:
    XML: <if:a xmlns:if="urn:example:if" xmlns:ip="urn:example:ip"><ip:b/></if>
    XPATH: /if:a/ip:b
 ```
-When you call an xpath API function, call it with nsc set to NULL. This is the default.
+When you call an xpath API function, call it with nsc set to NULL, or use an API function without an nsc parameter.
+This is the default and normal case.
 
 #### 2. Explicit namespace mapping
 
@@ -184,7 +188,7 @@ call.  Example:
 XML: <if:a xmlns:if="urn:example:if" xmlns:ip="urn:example:ip"><ip:b/></if>
 NETCONF:<get-config><filter select="/x:a/y:b" xmlns:x="urn:example:if" xmlns:y="urn:example:ip/>
 ```
-Here, x,y are prefixes used for two namespaces that are given by if,ip
+Here, x,y are prefixes used for two namespaces that are given by `if,ip`
 in the xml. In this case, the namespaces (eg `urn:example:if`) must be
 compared instead.
 

@@ -183,17 +183,17 @@ xpath_tree_free(xpath_tree *xs)
 /*! Given XML tree and xpath, parse xpath, eval it and return xpath context, 
  * This is a raw form of xpath where you can do type conversion, etc,
  * not just a nodeset.
- * @param[in]  nsc    XML Namespace context
+ * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH 1.0 syntax
  * @param[out] xptree Xpath-tree, parsed, structured XPATH, free:xpath_tree_free
  * @retval     0      OK
  * @retval    -1      Error
  * @code
- *   xp_ctx     *xc = NULL;
- *   if (xpath_vec_ctx(x, NULL, xpath, &xc) < 0)
+ *   xpath_tree     *xpt = NULL;
+ *   if (xpath_parse(NULL, xpath, &xpt) < 0)
  *     err;
- *   if (xc)
- *	ctx_free(xc);
+ *   if (xpt)
+ *	xptree_free(xpt);
  * @endcode
  * @see xpath_tree_free 
  */
@@ -238,7 +238,7 @@ xpath_parse(cvec        *nsc,
  * This is a raw form of xpath where you can do type conversion of the return
  * value, etc, not just a nodeset.
  * @param[in]  xcur   XML-tree where to search
- * @param[in]  nsc    XML Namespace context
+ * @param[in]  nsc     External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH 1.0 syntax
  * @param[out] xrp    Return XPATH context
  * @retval     0      OK
@@ -278,35 +278,33 @@ xpath_vec_ctx(cxobj    *xcur,
  done:
     if (xptree)
 	xpath_tree_free(xptree);
-
     return retval;
 }
 
 /*! Xpath nodeset function where only the first matching entry is returned
- * args:
+ *
  * @param[in]  xcur      XML tree where to search
- * @param[in]  nsc        XML Namespace context
- * @param[in]  format    string with XPATH syntax
+ * @param[in]  nsc       External XML namespace context, or NULL
+ * @param[in]  xpformat  Format string for XPATH syntax
  * @retval     xml-tree  XML tree of first match
  * @retval     NULL      Error or not found
  *
  * @code
  *   cxobj *x;
  *   cvec  *nsc; // namespace context
- *   if ((x = xpath_first(xtop, nsc, "//symbol/foo")) != NULL) {
+ *   if ((x = xpath_first_nsc(xtop, nsc, "//symbol/foo")) != NULL) {
  *         ...
  *   }
  * @endcode
- * @note  the returned pointer points into the original tree so should not be freed fter use.
+ * @note  the returned pointer points into the original tree so should not be freed after use.
  * @note return value does not see difference between error and not found
  * @see also xpath_vec.
- * @experimental
  */
 cxobj *
-xpath_first(cxobj    *xcur, 
-	    cvec     *nsc,
-	    char     *format, 
-	    ...)
+xpath_first_nsc(cxobj    *xcur, 
+		cvec     *nsc,
+		char     *xpformat, 
+		...)
 {
     cxobj     *cx = NULL;
     va_list    ap;
@@ -314,8 +312,8 @@ xpath_first(cxobj    *xcur,
     char      *xpath = NULL;
     xp_ctx    *xr = NULL;
     
-    va_start(ap, format);    
-    len = vsnprintf(NULL, 0, format, ap);
+    va_start(ap, xpformat);    
+    len = vsnprintf(NULL, 0, xpformat, ap);
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
@@ -323,8 +321,8 @@ xpath_first(cxobj    *xcur,
 	goto done;
     }
     /* second round: compute write message from reason and args */
-    va_start(ap, format);    
-    if (vsnprintf(xpath, len+1, format, ap) < 0){
+    va_start(ap, xpformat);    
+    if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
 	clicon_err(OE_UNIX, errno, "vsnprintf");
 	va_end(ap);
 	goto done;
@@ -342,20 +340,77 @@ xpath_first(cxobj    *xcur,
     return cx;
 }
 
+/*! Xpath nodeset function where only the first matching entry is returned
+ *
+ * @param[in]  xcur      XML tree where to search
+ * @param[in]  xpformat  Format string for XPATH syntax
+ * @retval     xml-tree  XML tree of first match
+ * @retval     NULL      Error or not found
+ *
+ * @code
+ *   cxobj *x;
+ *   if ((x = xpath_first(xtop, "//symbol/foo")) != NULL) {
+ *         ...
+ *   }
+ * @endcode
+ * @note  the returned pointer points into the original tree so should not be freed after use.
+ * @note return value does not see difference between error and not found
+ * @see also xpath_vec.
+ * @see xpath_first_nsc which is more generic with namespace context
+ */
+cxobj *
+xpath_first(cxobj    *xcur, 
+	    char     *xpformat, 
+	    ...)
+{
+    cxobj     *cx = NULL;
+    va_list    ap;
+    size_t     len;
+    char      *xpath = NULL;
+    xp_ctx    *xr = NULL;
+    
+    va_start(ap, xpformat);    
+    len = vsnprintf(NULL, 0, xpformat, ap);
+    va_end(ap);
+    /* allocate a message string exactly fitting the message length */
+    if ((xpath = malloc(len+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    /* second round: compute write message from reason and args */
+    va_start(ap, xpformat);    
+    if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
+	clicon_err(OE_UNIX, errno, "vsnprintf");
+	va_end(ap);
+	goto done;
+    }
+    va_end(ap);
+    if (xpath_vec_ctx(xcur, NULL, xpath, &xr) < 0)
+	goto done;
+    if (xr && xr->xc_type == XT_NODESET && xr->xc_size)
+	cx = xr->xc_nodeset[0];
+ done:
+    if (xr)
+	ctx_free(xr);
+    if (xpath)
+	free(xpath);
+    return cx;
+}
+
 /*! Given XML tree and xpath, returns nodeset as xml node vector
  * If result is not nodeset, return empty nodeset
- * @param[in]  xcur    xml-tree where to search
- * @param[in]  format  stdarg string with XPATH 1.0 syntax
- * @param[in]  nsc     XML Namespace context for XPATH
- * @param[out] vec     vector of xml-trees. Vector must be free():d after use
- * @param[out] veclen  returns length of vector in return value
- * @retval     0       OK
- * @retval    -1       Error
+ * @param[in]  xcur     xml-tree where to search
+ * @param[in]  nsc      External XML namespace context, or NULL
+ * @param[in]  xpformat  Format string for XPATH syntax
+ * @param[out] vec      vector of xml-trees. Vector must be free():d after use
+ * @param[out] veclen   returns length of vector in return value
+ * @retval     0        OK
+ * @retval    -1        Error
  * @code
  *   cvec   *nsc; // namespace context
  *   cxobj **vec;
  *   size_t  veclen;
- *   if (xpath_vec(xcur, nsc, "//symbol/foo", &vec, &veclen) < 0) 
+ *   if (xpath_vec_nsc(xcur, nsc, "//symbol/foo", &vec, &veclen) < 0) 
  *      goto err;
  *   for (i=0; i<veclen; i++){
  *      xn = vec[i];
@@ -363,15 +418,14 @@ xpath_first(cxobj    *xcur,
  *   }
  *   free(vec);
  * @endcode
- * @note Namespace prefix checking is not properly implemented
  */
 int
-xpath_vec(cxobj    *xcur, 
-	  cvec     *nsc,
-	  char     *format, 
-	  cxobj  ***vec, 
-	  size_t   *veclen,
-	  ...)
+xpath_vec_nsc(cxobj    *xcur, 
+	      cvec     *nsc,
+	      char     *xpformat, 
+	      cxobj  ***vec, 
+	      size_t   *veclen,
+	      ...)
 {
     int        retval = -1;
     va_list    ap;
@@ -380,7 +434,7 @@ xpath_vec(cxobj    *xcur,
     xp_ctx    *xr = NULL; 
 	
     va_start(ap, veclen);    
-    len = vsnprintf(NULL, 0, format, ap);
+    len = vsnprintf(NULL, 0, xpformat, ap);
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
@@ -389,7 +443,7 @@ xpath_vec(cxobj    *xcur,
     }
     /* second round: compute write message from reason and args */
     va_start(ap, veclen);    
-    if (vsnprintf(xpath, len+1, format, ap) < 0){
+    if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
 	clicon_err(OE_UNIX, errno, "vsnprintf");
 	va_end(ap);
 	goto done;
@@ -413,15 +467,83 @@ xpath_vec(cxobj    *xcur,
     return retval;
 }
 
+/*! Given XML tree and xpath, returns nodeset as xml node vector
+ * If result is not nodeset, return empty nodeset
+ * @param[in]  xcur     xml-tree where to search
+ * @param[in]  xpformat  Format string for XPATH syntax
+ * @param[out] vec      vector of xml-trees. Vector must be free():d after use
+ * @param[out] veclen   returns length of vector in return value
+ * @retval     0        OK
+ * @retval    -1        Error
+ * @code
+ *   cxobj **vec;
+ *   size_t  veclen;
+ *   if (xpath_vec(xcur, "//symbol/foo", &vec, &veclen) < 0) 
+ *      goto err;
+ *   for (i=0; i<veclen; i++){
+ *      xn = vec[i];
+ *         ...
+ *   }
+ *   free(vec);
+ * @endcode
+ * @see xpath_vec_nsc which is more generic with namespace context
+ */
+int
+xpath_vec(cxobj    *xcur, 
+	  char     *xpformat, 
+	  cxobj  ***vec, 
+	  size_t   *veclen,
+	  ...)
+{
+    int        retval = -1;
+    va_list    ap;
+    size_t     len;
+    char      *xpath = NULL;
+    xp_ctx    *xr = NULL; 
+	
+    va_start(ap, veclen);    
+    len = vsnprintf(NULL, 0, xpformat, ap);
+    va_end(ap);
+    /* allocate a message string exactly fitting the message length */
+    if ((xpath = malloc(len+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    /* second round: compute write message from reason and args */
+    va_start(ap, veclen);    
+    if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
+	clicon_err(OE_UNIX, errno, "vsnprintf");
+	va_end(ap);
+	goto done;
+    }
+    va_end(ap);
+    *vec=NULL;
+    *veclen = 0;
+    if (xpath_vec_ctx(xcur, NULL, xpath, &xr) < 0)
+	goto done;
+    if (xr && xr->xc_type == XT_NODESET){
+	*vec    = xr->xc_nodeset;
+	xr->xc_nodeset = NULL;
+	*veclen = xr->xc_size;
+    }
+    retval = 0;
+ done:
+    if (xr)
+	ctx_free(xr);
+    if (xpath)
+	free(xpath);
+    return retval;
+}
+
 /* Xpath that returns a vector of matches (only nodes marked with flags)
- * @param[in]  xcur  xml-tree where to search
- * @param[in]  xpath   string with XPATH syntax
- * @param[in]  nsc     External XML namespace context, or NULL
- * @param[in]  flags   Set of flags that return nodes must match (0 if all)
- * @param[out] vec     vector of xml-trees. Vector must be free():d after use
- * @param[out] veclen  returns length of vector in return value
- * @retval     0       OK
- * @retval     -1      error.
+ * @param[in]  xcur     xml-tree where to search
+ * @param[in]  xpformat Format string for XPATH syntax
+ * @param[in]  nsc      External XML namespace context, or NULL
+ * @param[in]  flags    Set of flags that return nodes must match (0 if all)
+ * @param[out] vec      vector of xml-trees. Vector must be free():d after use
+ * @param[out] veclen   returns length of vector in return value
+ * @retval     0        OK
+ * @retval     -1       error.
  * @code
  *   cxobj **vec;
  *   size_t  veclen;
@@ -434,14 +556,13 @@ xpath_vec(cxobj    *xcur,
  *   }
  *   free(vec);
  * @endcode
- * @Note that although the returned vector must be freed after use, the returned xml
- * trees need not be.
- * @see also xpath_vec This is a specialized version.
+ * @Note that although the returned vector must be freed after use, the returned xml trees need not be.
+ * @see also xpath_vec  This is a specialized version.
  */
 int
 xpath_vec_flag(cxobj    *xcur, 
 	       cvec     *nsc,
-	       char     *format, 
+	       char     *xpformat, 
 	       uint16_t  flags,
 	       cxobj  ***vec, 
 	       size_t   *veclen,
@@ -456,7 +577,7 @@ xpath_vec_flag(cxobj    *xcur,
     cxobj     *x;
     
     va_start(ap, veclen);    
-    len = vsnprintf(NULL, 0, format, ap);
+    len = vsnprintf(NULL, 0, xpformat, ap);
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
@@ -465,7 +586,7 @@ xpath_vec_flag(cxobj    *xcur,
     }
     /* second round: compute write message from reason and args */
     va_start(ap, veclen);    
-    if (vsnprintf(xpath, len+1, format, ap) < 0){
+    if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
 	clicon_err(OE_UNIX, errno, "vsnprintf");
 	va_end(ap);
 	goto done;
@@ -494,17 +615,17 @@ xpath_vec_flag(cxobj    *xcur,
 
 /*! Given XML tree and xpath, returns boolean
  * Returns true if the nodeset is non-empty
- * @param[in]  xcur    xml-tree where to search
- * @param[in]  nsc     External XML namespace context, or NULL
- * @param[in]  xpath   stdarg string with XPATH 1.0 syntax
- * @retval     1       True
- * @retval     0       False
- * @retval    -1       Error
+ * @param[in]  xcur     xml-tree where to search
+ * @param[in]  nsc      External XML namespace context, or NULL
+ * @param[in]  xpformat Format string for XPATH syntax
+ * @retval     1        True
+ * @retval     0        False
+ * @retval    -1        Error
  */
 int
 xpath_vec_bool(cxobj *xcur, 
 	       cvec  *nsc,
-	       char  *format, 
+	       char  *xpformat, 
 	       ...)
 {
     int        retval = -1;
@@ -513,8 +634,8 @@ xpath_vec_bool(cxobj *xcur,
     char      *xpath = NULL;
     xp_ctx    *xr = NULL;
     
-    va_start(ap, format);    
-    len = vsnprintf(NULL, 0, format, ap);
+    va_start(ap, xpformat);    
+    len = vsnprintf(NULL, 0, xpformat, ap);
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
@@ -522,8 +643,8 @@ xpath_vec_bool(cxobj *xcur,
 	goto done;
     }
     /* second round: compute write message from reason and args */
-    va_start(ap, format);    
-    if (vsnprintf(xpath, len+1, format, ap) < 0){
+    va_start(ap, xpformat);    
+    if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
 	clicon_err(OE_UNIX, errno, "vsnprintf");
 	va_end(ap);
 	goto done;

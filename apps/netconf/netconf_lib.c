@@ -164,14 +164,14 @@ netconf_get_target(cxobj        *xn,
     cxobj *x;    
     char  *target = NULL;
 
-    if ((x = xpath_first(xn, NULL, "%s", path)) != NULL){
-	if (xpath_first(x, NULL, "candidate") != NULL)
+    if ((x = xpath_first(xn, "%s", path)) != NULL){
+	if (xpath_first(x, "candidate") != NULL)
 	    target = "candidate";
 	else
-	    if (xpath_first(x, NULL, "running") != NULL)
+	    if (xpath_first(x, "running") != NULL)
 		target = "running";
 	else
-	    if (xpath_first(x, NULL, "startup") != NULL)
+	    if (xpath_first(x, "startup") != NULL)
 		target = "startup";
     }
     return target;

@@ -305,7 +305,7 @@ yang_modules_state_get(clicon_handle    h,
 	/* xc is also original tree, need to copy it */
 	if ((xw = xml_wrap(xc, "top")) == NULL)
 	    goto done;
-        if (xpath_first(xw, NULL, "%s", xpath)){
+        if (xpath_first(xw, "%s", xpath)){
             if ((x = xml_dup(xc)) == NULL) /* Make copy and use below */
                 goto done;
         }
@@ -337,7 +337,7 @@ yang_modules_state_get(clicon_handle    h,
 	if ((x = xml_wrap(x, "top")) < 0)
 	    goto done;
 	/* extract xpath part of module-state tree */
-	if (xpath_vec(x, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	if (xpath_vec_nsc(x, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	    goto done;
 	if (xvec != NULL){
 	    for (i=0; i<xlen; i++)
