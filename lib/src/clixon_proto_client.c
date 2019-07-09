@@ -262,7 +262,7 @@ clicon_rpc_generate_error(char  *prefix,
  *    cxobj *xt = NULL;
  *    if (clicon_rpc_get_config(h, "running", "/hello/world", "urn:example:hello", &xt) < 0)
  *       err;
- *   if ((xerr = xpath_first(xt,  "/rpc-error")) != NULL){
+ *   if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
  *	clicon_rpc_generate_error("", xerr);
  *      err;
  *  }
@@ -297,7 +297,7 @@ clicon_rpc_get_config(clicon_handle       h,
 	if (namespace)
 	    cprintf(cb, "<nc:filter nc:type=\"xpath\" nc:select=\"%s\" xmlns=\"%s\"/>",
 		    xpath, namespace);
-	else /* XXX shouldnt happen */
+	else /* If xpath != /, this will probably yield an error later */
 	    cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
     }
     cprintf(cb, "</get-config></rpc>");
@@ -584,7 +584,7 @@ clicon_rpc_get(clicon_handle       h,
 	if (namespace)
 	    cprintf(cb, "<nc:filter nc:type=\"xpath\" nc:select=\"%s\" xmlns=\"%s\"/>",
 		    xpath, namespace);
-	else /* XXX shouldnt happen */
+	else /* If xpath != /, this will probably yield an error later */
 	    cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
     }
     cprintf(cb, "</get></rpc>");

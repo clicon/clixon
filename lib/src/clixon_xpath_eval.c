@@ -159,13 +159,15 @@ nodetest_eval_node(cxobj      *x,
 	else
 	    retval = strcmp(prefix1, prefix2) == 0;
     }
+#if 0 /* debugging */
     /* If retval == 0 here, then there is name match, but not ns match */
     if (retval == 0){
 	fprintf(stderr, "%s NOMATCH xml: (%s)%s\n\t\t xpath: (%s)%s\n", __FUNCTION__,
 		name1, nsxml,
 		name2, nsxpath);
     }
-    done:	
+#endif
+ done:	/* retval set in preceeding statement */
     return retval;
 }
     

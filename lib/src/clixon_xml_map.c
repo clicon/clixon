@@ -2279,10 +2279,9 @@ xml_spec_populate(cxobj  *x,
     return retval;
 }
 
-/*! Translate from restconf api-path in cvv form to xml xpath
- * eg a/b=c -> a/[b=c] 
- * eg example:a/b -> ex:a/b
- * @param[in]     api_path api-path as cvec
+/*! Translate from restconf api-path(cvv) to xml xpath(cbuf) and namespace
+ * 
+ * @param[in]     api_path URI-encoded path expression" (RFC8040 3.5.3) as cvec
  * @param[in]     offset   Offset of cvec, where api-path starts
  * @param[in]     yspec    Yang spec
  * @param[in,out] xpath    The xpath as cbuf (must be created and may have content)
@@ -2303,18 +2302,15 @@ xml_spec_populate(cxobj  *x,
  *   cvec *cvv = NULL; 
  *   if (str2cvec("www.foo.com/restconf/a/b=c", '/', '=', &cvv) < 0)
  *      err;
- *   if ((ret = api_path2xpath(yspec, cvv, 0, cxpath, NULL)) < 0)
+ *   if ((ret = api_path2xpath_cvv(yspec, cvv, 0, cxpath, NULL)) < 0)
  *      err;
- *   if (ret == 0){
- *      ... access error string in clicon_err_reason
- *      clicon_err_reset();
- *      return;
- *   }
- *   ... access xpath as cbuf_get(xpath) 
+ *   if (ret == 1)
+ *     ... access xpath as cbuf_get(xpath) 
  *   cbuf_free(xpath)
  * @endcode
  * @note "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  * @see api_path2xml  For api-path to xml tree
+ * @see api_path2xpath  Using strings as parameters
  */
 int
 api_path2xpath_cvv(cvec       *api_path,
@@ -2408,10 +2404,24 @@ api_path2xpath_cvv(cvec       *api_path,
     goto done;
 }
 
-/*! Translate from restconf api-path to xml xpath as cbuf and yang module
- * @retval     1      OK
- * @retval     0      Invalid api_path or associated XML, clicon_err called
- * @retval    -1      Fatal error, clicon_err called
+/*! Translate from restconf api-path to xml xpath and namespace
+ * @param[in]  api_path  URI-encoded path expression" (RFC8040 3.5.3)
+ * @param[in]  yspec     Yang spec
+ * @param[out] xpath     xpath (use free() to deallocate)
+ * @param[out] namespace Namespace of xpath (direct pointer don't free)
+ * @retval     1         OK
+ * @retval     0         Invalid api_path or associated XML, clicon_err called
+ * @retval    -1         Fatal error, clicon_err called
+ * @code
+ *   char *xpath = NULL;
+ *   if ((ret = api_path2xpath("/module:a/b", yspec, &xpath, &namespace)) < 0)
+ *      err;
+ *   if (ret == 1)
+ *      ... access xpath as cbuf_get(xpath) 
+ *   free(xpath)
+ * @endcode
+
+ * @see api_path2xml_cvv  which uses other parameter formats
  */
 int
 api_path2xpath(char       *api_path,
