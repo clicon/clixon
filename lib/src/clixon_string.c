@@ -623,8 +623,8 @@ clicon_str2int_search(const map_str2int *mstab,
 
 /*! Split colon-separated node identifier into prefix and name
  * @param[in]  node-id
- * @param[out] prefix  Malloced string. May be NULL.
- * @param[out] id      Malloced identifier.
+ * @param[out] prefix  If non-NULL, return malloced string, or NULL.
+ * @param[out] id      If non-NULL, return malloced identifier.
  * @retval     0       OK
  * @retval    -1       Error
  * @code
@@ -647,19 +647,21 @@ nodeid_split(char  *nodeid,
     char *str;
     
     if ((str = strchr(nodeid, ':')) == NULL){
-	if ((*id = strdup(nodeid)) == NULL){
+	if (id && (*id = strdup(nodeid)) == NULL){
 	    clicon_err(OE_YANG, errno, "strdup");
 	    goto done;
 	}
     }
-    else{
-	if ((*prefix = strdup(nodeid)) == NULL){
-	    clicon_err(OE_YANG, errno, "strdup");
-	    goto done;
+    else {
+	if (prefix){
+	    if ((*prefix = strdup(nodeid)) == NULL){
+		clicon_err(OE_YANG, errno, "strdup");
+		goto done;
+	    }
+	    (*prefix)[str-nodeid] = '\0';
 	}
-	(*prefix)[str-nodeid] = '\0';
 	str++;
-	if ((*id = strdup(str)) == NULL){
+	if (id && (*id = strdup(str)) == NULL){
 	    clicon_err(OE_YANG, errno, "strdup");
 	    goto done;
 	}

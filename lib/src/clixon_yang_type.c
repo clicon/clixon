@@ -1058,7 +1058,7 @@ ys_cv_validate(clicon_handle h,
     cvec           *patterns = NULL;
     cvec           *regexps = NULL;
     enum cv_type    cvtype;
-    char           *type;  /* orig type */
+    char           *origtype = NULL;  /* orig type */
     yang_stmt      *yrestype; /* resolved type */
     char           *restype;
     uint8_t         fraction = 0; 
@@ -1081,13 +1081,13 @@ ys_cv_validate(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto done;
     }
-    if (yang_type_get(ys, &type, &yrestype, 
+    if (yang_type_get(ys, &origtype, &yrestype, 
 		      &options, &cvv,
 		      patterns, regexps,
 		      &fraction) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
-    if (clicon_type2cv(type, restype, ys, &cvtype) < 0)
+    if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
 	goto done;
 
     if (cv_type_get(ycv) != cvtype){
@@ -1104,7 +1104,7 @@ ys_cv_validate(clicon_handle h,
     if (restype && strcmp(restype, "union") == 0){ 
 	assert(cvtype == CGV_REST);
 	val = cv_string_get(cv);
-	if ((retval2 = ys_cv_validate_union(h, ys, reason, yrestype, type, val)) < 0)
+	if ((retval2 = ys_cv_validate_union(h, ys, reason, yrestype, origtype, val)) < 0)
 	    goto done;
 	retval = retval2; /* invalid (0) with latest reason or valid 1 */
     }
@@ -1127,6 +1127,8 @@ ys_cv_validate(clicon_handle h,
 	    goto done;
     }
   done:
+    if (origtype)
+	free(origtype);
     if (regexps)
 	cvec_free(regexps);
     if (patterns)
@@ -1165,48 +1167,43 @@ ys_typedef_up(yang_stmt *ys)
 }
 
 /*! Find identity yang-stmt
-  This is a sanity check of base identity of identity-ref and for identity 
-  statements when parsing.
-
-  Return true if node is identityref and is derived from identity_name
-  The derived-from() function returns true if the (first) node (in
-   document order in the argument "nodes") is a node of type identityref,
-   and its value is an identity that is derived from the identity
-   "identity-name" defined in the YANG module "module-name"; otherwise
-   it returns false.
-
- Valid values for an identityref are any identities derived from the
-   identityref's base identity. 
-   1. (base) identity must exist (be found). This is a sanity check
-     of the specification and also necessary for identity statements.
-   (This is what is done here)
-   2. Check if a given node has value derived from base identity. This is
-      a run-time check necessary when validating eg netconf.
-   (This is validation)
-   3. Find all valid derived identities from a identityref base identity.
-   (This is for cli generation)
-   * @param[in] ys        Yang spec of id statement
-   * @param[in] identity  Identity string -check if it exists
-   * @retval    0        OK
- *  @see validate_identityref for (2) above
+ *  This is a sanity check of base identity of identity-ref and for identity 
+ *  statements when parsing.
+ *
+ * Return true if node is identityref and is derived from identity_name
+ * The derived-from() function returns true if the (first) node (in
+ * document order in the argument "nodes") is a node of type identityref,
+ * and its value is an identity that is derived from the identity
+ * "identity-name" defined in the YANG module "module-name"; otherwise
+ *  it returns false.
+ *
+ * Valid values for an identityref are any identities derived from the
+ *  identityref's base identity. 
+ *   1. (base) identity must exist (be found). This is a sanity check
+ *   of the specification and also necessary for identity statements.
+ *  (This is what is done here)
+ *  2. Check if a given node has value derived from base identity. This is
+ *     a run-time check necessary when validating eg netconf.
+ *  (This is validation)
+ *  3. Find all valid derived identities from a identityref base identity.
+ *  (This is for cli generation)
+ * @param[in] ys        Yang spec of id statement
+ * @param[in] identity  Identity string -check if it exists
+ * @retval    0        OK
+ * @see validate_identityref for (2) above
  */
 yang_stmt *
 yang_find_identity(yang_stmt *ys, 
 		   char      *identity)
 {
-    char        *id;
+    char        *id = NULL;
     char        *prefix = NULL;
     yang_stmt   *ymodule;
     yang_stmt   *yid = NULL;
     yang_stmt   *yn;
 
-    if ((id = strchr(identity, ':')) == NULL)
-	id = identity;
-    else{
-	prefix = strdup(identity);
-	prefix[id-identity] = '\0';
-	id++;
-    }
+    if (nodeid_split(identity, &prefix, &id) < 0)
+	goto done;
     /* No, now check if identityref is derived from base */
     if (prefix){ /* Go to top and find import that matches */
 	if ((ymodule = yang_find_module_by_prefix(ys, prefix)) == NULL)
@@ -1231,6 +1228,8 @@ yang_find_identity(yang_stmt *ys,
 	}
     }
   done:
+    if (id)
+	free(id);
     if (prefix)
 	free(prefix);
     return yid;
@@ -1334,7 +1333,7 @@ yang_type_resolve(yang_stmt   *yorig,
 {
     yang_stmt   *rytypedef = NULL; /* Resolved typedef of ytype */
     yang_stmt   *rytype;           /* Resolved type of ytype */
-    char        *type;
+    char        *type = NULL;
     char        *prefix = NULL;
     int          retval = -1;
     yang_stmt   *yn;
@@ -1343,8 +1342,9 @@ yang_type_resolve(yang_stmt   *yorig,
     if (options)
 	*options = 0x0;
     *yrestype    = NULL; /* Initialization of resolved type that may not be necessary */
-    type      = yarg_id(ytype);     /* This is the type to resolve */
-    prefix    = yarg_prefix(ytype); /* And this its prefix */
+
+    if (nodeid_split(yang_argument_get(ytype), &prefix, &type) < 0)
+	goto done;
     /* Cache does not work for eg string length 32? */
     if (ytype->ys_typecache != NULL){
 	if (yang_type_cache_get(ytype->ys_typecache, yrestype,
@@ -1409,6 +1409,8 @@ yang_type_resolve(yang_stmt   *yorig,
   done:
     if (prefix)
 	free(prefix);
+    if (type)
+	free(type);
     return retval;
 }
 
@@ -1432,7 +1434,7 @@ yang_type_resolve(yang_stmt   *yorig,
  *      printf("%d..%d\n", min , max);
  * @endcode
  * @param[in]  ys       yang-stmt, leaf or leaf-list
- * @param[out] origtype original type may be derived or built-in
+ * @param[out] origtype original type may be derived or built-in (malloced)
  * @param[out] yrestype Resolved type. return built-in type or NULL. 
  * @param[out] options  Flags field of optional values, see YANG_OPTIONS_*
  * @param[out] cvv      Cvec with min/max range or length. 
@@ -1465,19 +1467,23 @@ yang_type_get(yang_stmt    *ys,
 {
     int retval = -1;
     yang_stmt    *ytype;        /* type */
-    char         *type;
+    char         *type = NULL;
 
     if (options)
 	*options = 0x0;
     /* Find mandatory type */
     if ((ytype = yang_find(ys, Y_TYPE, NULL)) == NULL){
-	clicon_err(OE_DB, 0, "mandatory type object is not found");
+	clicon_err(OE_DB, ENOENT, "mandatory type object is not found");
 	goto done;
     }
     /* XXX: here we seem to have some problems if type is union */
-    type = yarg_id(ytype);
-    if (origtype)
-	*origtype = type;
+    if (nodeid_split(yang_argument_get(ytype), NULL, &type) < 0)
+	goto done;
+    if (origtype &&
+	(*origtype = strdup(type)) == NULL){
+	clicon_err(OE_XML, errno, "stdup");
+	goto done;
+    }
     if (yang_type_resolve(ys, ys, ytype, yrestype, 
 			  options, cvv, patterns, regexps, fraction) < 0)
 	goto done;
@@ -1485,6 +1491,8 @@ yang_type_get(yang_stmt    *ys,
 		 *yrestype?(*yrestype)->ys_argument:"null");
     retval = 0;
   done:
+    if (type)
+	free(type);
     return retval;
 }
 
@@ -1496,16 +1504,18 @@ yang_type2cv(yang_stmt  *ys)
 {
     yang_stmt      *yrestype;  /* resolved type */
     char           *restype;  /* resolved type */
-    char           *type;   /* original type */
+    char           *origtype=NULL;   /* original type */
     enum cv_type    cvtype = CGV_ERR;
     
     /* Find type specification */
-    if (yang_type_get(ys, &type, &yrestype, NULL, NULL, NULL, NULL, NULL)
+    if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL)
  < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
-    if (clicon_type2cv(type, restype, ys, &cvtype) < 0) /* This handles non-resolved also */
+    if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0) /* This handles non-resolved also */
 	goto done;
  done:
+    if (origtype)
+	free(origtype);
     return cvtype;
 }

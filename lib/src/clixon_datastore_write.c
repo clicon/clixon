@@ -83,6 +83,45 @@
 #include "clixon_datastore_read.h"
 #include "clixon_datastore_tree.h"
 
+/*! Replace all xmlns attributes in x0 with xmlns attributes in x1
+ * This is an embryo of code to actually check if namespace binding is canonical
+ * and if it is not, either return error or transform to canonical.
+ * "Canonical" meaning comply to the yang module prefixes.
+ * The current code does not really do anything useful
+ */
+static int
+replace_xmlns(cxobj *x0,
+	      cxobj *x1)
+{
+    int    retval = -1;
+    cxobj *x = NULL;
+    cxobj *xcopy;
+    int    i;
+
+    for (i=0; i<xml_child_nr(x0); ){
+	x = xml_child_i(x0, i);
+	if (!isxmlns(x)){
+	    i++;
+	    continue;
+	}
+	xml_rm(x);
+	xml_free(x);
+    }
+    x = NULL;
+    while ((x = xml_child_each(x1, x, CX_ATTR)) != NULL) {
+	/* split and only add xmlns= and xmlns:x= attributes! */
+	if (!isxmlns(x))
+	    continue;
+	if ((xcopy = xml_new(xml_name(x), x0, xml_spec(x))) == NULL)
+	    goto done;
+	if (xml_copy(x, xcopy) < 0) /* recursion */
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
  * @param[in]  th       Datastore text handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
@@ -186,6 +225,16 @@ text_modify(clicon_handle       h,
 			goto done; 
 		    xml_type_set(x0b, CX_BODY);
 		}
+	    }
+	    else {  /* if change existing node, replace xmlns attributes 
+		     * This is only done for leaf/leaf-list now, eg terminals
+		     * and is only an embryo of checking canonical namespace
+		     * bindings.
+		     * But it does catch some cornercases where a new
+		     * namespace binding is replacing an old for eg identityref
+		     */
+		if (replace_xmlns(x0, x1) < 0)
+		    goto done;
 	    }
 	    if (x1bstr){
 		if ((x0b = xml_body_get(x0)) != NULL){

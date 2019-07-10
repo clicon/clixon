@@ -530,7 +530,7 @@ yang2cli_var(clicon_handle h,
 	     cbuf         *cb)
 {
     int           retval = -1;
-    char         *origtype;
+    char         *origtype = NULL;
     yang_stmt    *yrestype; /* resolved type */
     char         *restype; /* resolved type */
     cvec         *cvv = NULL; 
@@ -596,6 +596,8 @@ yang2cli_var(clicon_handle h,
     }
     retval = 0;
   done:
+    if (origtype)
+	free(origtype);
     if (patterns)
 	cvec_free(patterns);
     return retval;

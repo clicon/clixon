@@ -184,6 +184,40 @@ cli_signal_flush(clicon_handle h)
     cli_signal_block (h);
 }
 
+/*! Transform data 
+ * Add next-last cvv (resolved variable) as body to xml bottom for leaf and 
+ * leaf-list.
+ * There may be some translation necessary.
+ */
+static int
+dbxml_body(cxobj     *xbot,
+	   yang_stmt *ybot,
+	   cvec      *cvv)
+{
+    int     retval = -1;
+    char   *str = NULL;
+    cxobj  *xb;
+    cg_var *cval;
+    int     len;
+
+    len = cvec_len(cvv);
+    cval = cvec_i(cvv, len-1); 
+    if ((str = cv2str_dup(cval)) == NULL){
+	clicon_err(OE_UNIX, errno, "cv2str_dup");
+	goto done;
+    }
+    if ((xb = xml_new("body", xbot, NULL)) == NULL)
+	goto done; 
+    xml_type_set(xb, CX_BODY);
+    if (xml_value_set(xb,  str) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (str)
+	free(str);
+    return retval;
+}
+
 /*! Modify xml datastore from a callback using xml key format strings
  * @param[in]  h    Clicon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
@@ -206,11 +240,11 @@ cli_dbxml(clicon_handle       h,
 	  enum operation_type op)
 {
     int        retval = -1;
-    char      *str = NULL;
+    //    char      *str = NULL;
     char      *api_path_fmt;  /* xml key format */
     char      *api_path = NULL; /* xml key */
-    cg_var    *cval;
-    int        len;
+    //    cg_var    *cval;
+    //    int        len;
     cg_var    *arg;
     cbuf      *cb = NULL;
     yang_stmt *yspec;
@@ -218,7 +252,7 @@ cli_dbxml(clicon_handle       h,
     yang_stmt *y = NULL; /* yang spec of xpath */
     cxobj     *xtop = NULL; /* xpath root */
     cxobj     *xa;           /* attribute */
-    cxobj     *xb;           /* body */
+    //    cxobj     *xb;           /* body */
 
     if (cvec_len(argv) != 1){
 	clicon_err(OE_PLUGIN, 0, "Requires one element to be xml key format string");
@@ -241,22 +275,12 @@ cli_dbxml(clicon_handle       h,
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
-    if (xml_value_set(xa,  xml_operation2str(op)) < 0)
+    if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
     if (yang_keyword_get(y) != Y_LIST && yang_keyword_get(y) != Y_LEAF_LIST){
-	len = cvec_len(cvv);
-	if (len > 1){
-	    cval = cvec_i(cvv, len-1); 
-	    if ((str = cv2str_dup(cval)) == NULL){
-		clicon_err(OE_UNIX, errno, "cv2str_dup");
-		goto done;
-	    }
-	    if ((xb = xml_new("body", xbot, NULL)) == NULL)
-		goto done; 
-	    xml_type_set(xb, CX_BODY);
-	    if (xml_value_set(xb,  str) < 0)
-		goto done;
-	}
+	if (cvec_len(cvv) > 1 &&
+	    dbxml_body(xbot, y, cvv) < 0)
+	    goto done;
     }
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
@@ -274,8 +298,6 @@ cli_dbxml(clicon_handle       h,
  done:
     if (cb)
 	cbuf_free(cb);
-    if (str)
-	free(str);
     if (api_path)
 	free(api_path);  
     if (xtop)

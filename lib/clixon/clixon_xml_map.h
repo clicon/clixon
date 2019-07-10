@@ -44,6 +44,7 @@ typedef enum yang_class yang_class;
 /*
  * Prototypes
  */
+int isxmlns(cxobj *x);
 int xml2txt(FILE *f, cxobj *x, int level);
 int xml2cli(FILE *f, cxobj *x, char *prepend, enum genmodel_type gt);
 int xml_yang_root(cxobj *x, cxobj **xr);

@@ -94,6 +94,22 @@
 #include "clixon_yang_type.h"
 #include "clixon_xml_map.h"
 
+/*! Is attribute and is either of form xmlns="", or xmlns:x="" */
+int
+isxmlns(cxobj *x)
+{
+    char *prefix = NULL;
+
+    if (xml_type(x) != CX_ATTR)
+	return 0;
+    if (strcmp(xml_name(x), "xmlns")==0)
+	return 1;
+    if ((prefix = xml_prefix(x)) != NULL
+	&& strcmp(xml_prefix(x), "xmlns")==0)
+	return 1;
+    return 0;
+}
+
 /*! x is element and has eactly one child which in turn has none */
 static int
 tleaf(cxobj *x)
@@ -344,27 +360,28 @@ validate_identityref(cxobj     *xt,
 {
     int         retval = -1;
     char       *node = NULL;
+    char       *idref = NULL;
     yang_stmt  *ybaseref; /* This is the type's base reference */
     yang_stmt  *ybaseid;
     char       *prefix = NULL;
+    char       *id = NULL;
+    cbuf       *cberr = NULL;
     cbuf       *cb = NULL;
-    cbuf       *cb2 = NULL;
-
-    /* Get idref value. Then see if this value is derived from ytype.
-     * Always add default prefix because derived identifiers are stored with
-     * prefixes in the base identifiers derived-list.
-     */
+    
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new"); 
 	goto done;
     }
+    if ((cberr = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new"); 
+	goto done;
+    }
+    /* Get idref value. Then see if this value is derived from ytype.
+     */
     if ((node = xml_body(xt)) == NULL)
 	return 0;
-    if (strchr(node, ':') == NULL){
-	prefix = yang_find_myprefix(ys);
-	cprintf(cb, "%s:%s", prefix, node);
-	node = cbuf_get(cb);
-    }
+    if (nodeid_split(node, &prefix, &id) < 0)
+	goto done;
     /* This is the type's base reference */
     if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) == NULL){
 	if (netconf_missing_element_xml(xret, "application", yang_argument_get(ytype), "Identityref validation failed, no base") < 0)
@@ -377,26 +394,73 @@ validate_identityref(cxobj     *xt,
 	    goto done;
 	goto fail;
     }
+
+#if 0 /* Assume proper namespace, otherwise we assume module prefixes */
+    {
+	char       *namespace;
+	yang_stmt  *ymod;
+	yang_stmt  *yspec;    
+
+	/* Create an idref as <module>:<id> which is the format of the derived
+	 * identityref list associated with the base identities.
+	 */
+	/* Get namespace (of idref) from xml */
+	if (xml2ns(xt, prefix, &namespace) < 0)
+	    goto done;
+	yspec = ys_spec(ys);
+	/* Get module of that namespace */
+	if ((ymod = yang_find_module_by_namespace(yspec,  namespace)) == NULL){
+	    clicon_err(OE_YANG, ENOENT, "No module found"); 
+	    goto done;
+	}
+	cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
+    }
+#else
+#ifdef USE_IDREF_LIST_MODULE
+    {
+	yang_stmt  *ymod;
+	/* idref from prefix:id to module:id */
+	if (prefix == NULL)
+	    ymod = ys_module(ys);
+	else /* from prefix to name */
+	    ymod = yang_find_module_by_prefix(ys, prefix);
+	if (ymod == NULL){
+	    cprintf(cberr, "Identityref validation failed, %s not derived from %s", 
+		    node, yang_argument_get(ybaseid));
+	    if (netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
+		goto done;
+	    goto fail;
+	}
+	cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
+    }
+#else
+    if (prefix == NULL)
+       cprintf(cb, "%s:%s", yang_find_myprefix(ys), id);
+    else
+       cprintf(cb, "%s:%s", prefix, id);
+#endif
+#endif
+    idref = cbuf_get(cb);	
     /* Here check if node is in the derived node list of the base identity 
      * The derived node list is a cvec computed XXX
      */
-    if (cvec_find(yang_cvec_get(ybaseid), node) == NULL){
-	if ((cb2 = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new"); 
-	    goto done;
-	}
-	cprintf(cb2, "Identityref validation failed, %s not derived from %s", 
+    if (cvec_find(yang_cvec_get(ybaseid), idref) == NULL){
+	cprintf(cberr, "Identityref validation failed, %s not derived from %s", 
 		node, yang_argument_get(ybaseid));
-	if (netconf_operation_failed_xml(xret, "application", cbuf_get(cb2)) < 0)
+	if (netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
 	    goto done;
 	goto fail;
     }
     retval = 1;
  done:
+    if (cberr)
+	cbuf_free(cberr);
     if (cb)
 	cbuf_free(cb);
-    if (cb2)
-	cbuf_free(cb2);
+    if (id)
+	free(id);
+    if (prefix)
+	free(prefix);
     return retval;
  fail:
     retval = 0;

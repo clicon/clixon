@@ -48,3 +48,9 @@
  */
 #define USE_NETCONF_NS_AS_DEFAULT
 
+/* Use modulename:id instead of prefix:id in derived identityref list
+ * Modulenames are global/canonical but prefixes are not.
+ * Experimental since there is some mapping between prefixes and module names
+ * that needs to be done
+ */
+#undef USE_IDREF_LIST_MODULE

@@ -1102,44 +1102,6 @@ ys_spec(yang_stmt *ys)
     return (yang_stmt*)ys;
 }
 
-/* Assume argument is id on the type: <[prefix:]id>, return 'id'
- * Just return string from id
- * @param[in] ys      A yang statement
- * @retval    NULL    No id (argument is NULL)
- * @retval    id      Pointer to identifier
- * @see yarg_prefix
- */
-char*
-yarg_id(yang_stmt *ys)
-{
-    char   *id;
-    
-    if ((id = strchr(ys->ys_argument, ':')) == NULL)
-	id = ys->ys_argument;
-    else
-	id++;
-    return id;
-}
-
-/*! Assume argument is id on the type: <[prefix:]id>, return 'prefix'
- * @param[in] ys      A yang statement
- * @retval    NULL    No prefix
- * @retval    prefix  Malloced string that needs to be freed by caller.
- * @see yarg_id
- */
-char*
-yarg_prefix(yang_stmt *ys)
-{
-    char   *id;
-    char   *prefix = NULL;
-    
-    if ((id = strchr(ys->ys_argument, ':')) != NULL){
-	prefix = strdup(ys->ys_argument);
-	prefix[id-ys->ys_argument] = '\0';
-    }
-    return prefix;
-}
-
 /*! Given a yang statement and a prefix, return yang module to that relative prefix
  * Note, not the other module but the proxy import statement only
  * @param[in]  ys      A yang statement
@@ -1333,8 +1295,8 @@ yang_print_cbuf(cbuf      *cb,
  * 4. Check if leaf is part of list, if key exists mark leaf as key/unique 
  * XXX: extend type search
  *
+ * @param[in] h    Clicon handle
  * @param[in] ys   The yang statement to populate.
- * @param[in] arg  A void argument not used
  * @retval    0    OK
  * @retval    -1   Error with clicon_err called
  */
@@ -1352,17 +1314,17 @@ ys_populate_leaf(clicon_handle h,
     char           *reason = NULL;
     yang_stmt      *yrestype;  /* resolved type */
     char           *restype;  /* resolved type */
-    char           *type;   /* original type */
+    char           *origtype=NULL;   /* original type */
     uint8_t         fraction_digits;
     int             options = 0x0;
 
     yparent = ys->ys_parent;     /* Find parent: list/container */
     /* 1. Find type specification and set cv type accordingly */
-    if (yang_type_get(ys, &type, &yrestype, &options, NULL, NULL, NULL, &fraction_digits)
+    if (yang_type_get(ys, &origtype, &yrestype, &options, NULL, NULL, NULL, &fraction_digits)
  < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
-    if (clicon_type2cv(type, restype, ys, &cvtype) < 0) /* This handles non-resolved also */
+    if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0) /* This handles non-resolved also */
 	goto done;
     /* 2. Create the CV using cvtype and name it */
     if ((cv = cv_new(cvtype)) == NULL){
@@ -1402,11 +1364,17 @@ ys_populate_leaf(clicon_handle h,
     ys->ys_cv = cv;
     retval = 0;
   done:
+    if (origtype)
+	free(origtype);
     if (cv && retval < 0)
 	cv_free(cv);
     return retval;
 }
 
+/*! Populate list yang statement
+ * @param[in] h    Clicon handle
+ * @param[in] ys   The yang statement (type) to populate.
+ */
 static int
 ys_populate_list(clicon_handle h,
 		 yang_stmt    *ys)
@@ -1505,6 +1473,8 @@ range_parse(yang_stmt   *ys,
 /*! Populate string built-in range statement
  *
  * Create cvec variables "range_min" and "range_max". Assume parent is type.
+ * @param[in] h    Clicon handle
+ * @param[in] ys   The yang statement (range) to populate.
  * Actually: bound[..bound] (| bound[..bound])*  
  *   where bound is integer, decimal or keywords 'min' or 'max. 
  * RFC 7950 9.2.4:
@@ -1519,10 +1489,10 @@ ys_populate_range(clicon_handle h,
 		  yang_stmt    *ys)
 {
     int             retval = -1;
-    yang_stmt      *yparent;        /* type */
-    char           *origtype;  /* orig type */
-    yang_stmt      *yrestype;   /* resolved type */
-    char           *restype;   /* resolved type */
+    yang_stmt      *yparent;         /* type */
+    char           *origtype = NULL; /* orig type */
+    yang_stmt      *yrestype;        /* resolved type */
+    char           *restype;         /* resolved type */
     int             options = 0x0;
     uint8_t         fraction_digits;
     enum cv_type    cvtype = CGV_ERR;
@@ -1536,7 +1506,8 @@ ys_populate_range(clicon_handle h,
 			  &options, NULL, NULL, NULL, &fraction_digits) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
-    origtype = yarg_id((yang_stmt*)yparent);
+    if (nodeid_split(yang_argument_get(yparent), NULL, &origtype) < 0)
+	 goto done;
     /* This handles non-resolved also */
     if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0) 
 	goto done;
@@ -1548,15 +1519,21 @@ ys_populate_range(clicon_handle h,
 	goto done;
     retval = 0;
   done:
+    if (origtype)
+	free(origtype);
     return retval;
 }
 
 /*! Populate integer built-in length statement
  *
  * Create cvec variables "range_min" and "range_max". Assume parent is type.
+ * @param[in] h    Clicon handle
+ * @param[in] ys   The yang statement (length) to populate.
+ *
  * Actually: len[..len] (| len[..len])*  
- *   len is unsigned integer or keywords 'min' or 'max. 
- * RFC 7950 9.4.4
+ *   len is unsigned integer or keywords 'min' or 'max'
+ *
+ * From RFC 7950 Sec 9.4.4:
  *  A length range consists of an explicit value, or a lower bound, two
  *  consecutive dots "..", and an upper bound.  Multiple values or ranges
  *  can be given, separated by "|".  Length-restricting values MUST NOT
@@ -1586,8 +1563,8 @@ ys_populate_length(clicon_handle h,
 
 /*! Sanity check yang type statement
  * XXX: Replace with generic parent/child type-check
+ * @param[in] h    Clicon handle
  * @param[in] ys   The yang statement (type) to populate.
- * @
  */
 static int
 ys_populate_type(clicon_handle h,
@@ -1620,12 +1597,15 @@ ys_populate_type(clicon_handle h,
     return retval;
 }
 
-/*! Sanity check yang identity statement recursively
+/*! Sanity check yang identity statement recursively and create derived id list
  *
- * Find base identities if any and add this identity to derived list.
+ * Find base identities if any and add this identity to derived identity list.
  * Do this recursively
- * @param[in] ys   The yang identity to populate.
- * @param[in] arg  If set contains a derived identifier
+ * The derived identity list is a list of <module>:<id> pairs. Prefixes cannot
+ * be used since they are local in scope.
+ * @param[in] h     Clicon handle
+ * @param[in] ys    The yang identity to populate.
+ * @param[in] idref If set contains the derived identifier(NULL on top call)
  * @see validate_identityref  which in runtime validates actual values
  */
 static int
@@ -1636,28 +1616,40 @@ ys_populate_identity(clicon_handle h,
     int             retval = -1;
     yang_stmt      *yc = NULL;
     yang_stmt      *ybaseid;
+    //    yang_stmt      *ymod;
     cg_var         *cv;
-    char           *derid;
     char           *baseid;
     char           *prefix = NULL;
+    char           *id = NULL;
     cbuf           *cb = NULL;
-    char           *p;
 
+    /* Top-call (no recursion) create idref 
+     * The idref is (here) in "canonical form": <module>:<id>
+     */
     if (idref == NULL){
 	/* Create derived identity through prefix:id if not recursively called*/
-	derid = ys->ys_argument; /* derived id */
-	if ((prefix = yarg_prefix(ys)) == NULL){
-	    if ((p = yang_find_myprefix(ys)) != NULL)
-		prefix = strdup(yang_find_myprefix(ys));
-	}
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new"); 
 	    goto done;
 	}
-	if (prefix)
-	    cprintf(cb, "%s:%s", prefix, derid);
-	else
-	    cprintf(cb, "%s", derid);
+#if 0 /* Use module:id instead of prefix:id in derived list */
+	if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
+	    goto done;
+	if ((ymod = ys_module(ys)) == NULL){
+	    clicon_err(OE_YANG, ENOENT, "No module found"); 
+	    goto done;
+	}
+	cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
+#else
+	{
+	    if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
+		goto done;
+	    if (prefix)
+		cprintf(cb, "%s:%s", prefix, id);
+	    else
+		cprintf(cb, "%s:%s", yang_find_myprefix(ys), id);
+	}
+#endif
 	idref = cbuf_get(cb);
     }
     /* Iterate through all base statements and check the base identity exists 
@@ -1667,9 +1659,9 @@ ys_populate_identity(clicon_handle h,
     while ((yc = yn_each(ys, yc)) != NULL) {
 	if (yc->ys_keyword != Y_BASE)
 	    continue;
-	baseid = yc->ys_argument;
+	baseid = yang_argument_get(yc); /* on the form: prefix:id */
 	if (((ybaseid = yang_find_identity(ys, baseid))) == NULL){
-	    clicon_err(OE_YANG, 0, "No such identity: %s", baseid); 
+	    clicon_err(OE_YANG, ENOENT, "No such identity: %s", baseid); 
 	    goto done;
 	}
 	//	    continue; /* root identity */
@@ -1696,6 +1688,8 @@ ys_populate_identity(clicon_handle h,
   done:
     if (prefix)
 	free(prefix);
+    if (id)
+	free(id);
     if (cb)
 	cbuf_free(cb);
     return retval;
@@ -1730,8 +1724,8 @@ if_feature(yang_stmt    *yspec,
 
 /*! Populate yang feature statement - set cv to 1 if enabled
  *
- * @param[in] ys   Feature yang statement to populate.
  * @param[in] h    Clicon handle
+ * @param[in] ys   Feature yang statement to populate.
  */
 static int
 ys_populate_feature(clicon_handle h,
@@ -1792,6 +1786,8 @@ ys_populate_feature(clicon_handle h,
 }
 
 /*! Populate the unique statement with a cvec
+ * @param[in] h    Clicon handle
+ * @param[in] ys   The yang statement (unique) to populate.
  */
 static int
 ys_populate_unique(clicon_handle h,
@@ -1805,6 +1801,8 @@ ys_populate_unique(clicon_handle h,
 }
 
 /*! Populate unknown node with extension
+ * @param[in] h    Clicon handle
+ * @param[in] ys   The yang statement (unknown) to populate.
  */
 static int
 ys_populate_unknown(clicon_handle h,
@@ -1815,19 +1813,19 @@ ys_populate_unknown(clicon_handle h,
     char      *reason = NULL;
     yang_stmt *ymod;
     char      *prefix = NULL;
-    char      *name;
+    char      *id = NULL;
     char      *extra;
 
     if ((extra = ys->ys_extra) == NULL)
 	goto ok;
     /* Find extension, if found, store it as unknown, if not,
        break for error */
-    prefix  = yarg_prefix(ys); /* And this its prefix */
-    name    = yarg_id(ys);     /* This is the type to resolve */
+    if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
+	goto done;
     if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL)
 	goto ok; /* shouldnt happen */
-    if (yang_find(ymod, Y_EXTENSION, name) == NULL){
-	clicon_err(OE_YANG, errno, "Extension %s:%s not found", prefix, name);
+    if (yang_find(ymod, Y_EXTENSION, id) == NULL){
+	clicon_err(OE_YANG, errno, "Extension %s:%s not found", prefix, id);
 	goto done;
     }
     if ((ys->ys_cv = cv_new(CGV_STRING)) == NULL){
@@ -1847,13 +1845,15 @@ ys_populate_unknown(clicon_handle h,
  done:
     if (prefix)
 	free(prefix);
+    if (id)
+	free(id);
     return retval;
 }
 
 /*! Populate with cligen-variables, default values, etc. Sanity checks on complete tree.
  *
  * @param[in]  ys  Yang statement
- * @param[in]  h   Clicon handle
+ * @param[in]  arg Argument - in effect Clicon handle
  * Preferably run this command using yang_apply
  * Done in 2nd pass after complete parsing to be sure to have a complete
  * parse-tree
@@ -2150,8 +2150,8 @@ yang_expand_grouping(yang_stmt *yn)
     int        glen;
     int        i;
     int        j;
-    char      *name;
-    char      *prefix;
+    char      *id = NULL;
+    char      *prefix = NULL;
     size_t     size;
 
     /* Cannot use yang_apply here since child-list is modified (is destructive) */
@@ -2161,13 +2161,17 @@ yang_expand_grouping(yang_stmt *yn)
 	switch(ys->ys_keyword){
 	case Y_USES:
 	    /* Split argument into prefix and name */
-	    name = yarg_id(ys);     /* This is uses/grouping name to resolve */
-	    prefix  = yarg_prefix(ys); /* And this its prefix */
-	    if (ys_grouping_resolve(ys, prefix, name, &ygrouping) < 0)
+	    if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
+		goto done;
+	    if (ys_grouping_resolve(ys, prefix, id, &ygrouping) < 0)
 		goto done;
 	    if (prefix){
 		free(prefix); 
 		prefix = NULL;
+	    }
+	    if (id){
+		free(id); 
+		id = NULL;
 	    }
 	    if (ygrouping == NULL){
 		clicon_log(LOG_NOTICE, "%s: Yang error : grouping \"%s\" not found in module \"%s\"", 
@@ -2258,6 +2262,10 @@ yang_expand_grouping(yang_stmt *yn)
     }
     retval = 0;
  done:
+    if (prefix)
+	free(prefix); 
+    if (id)
+	free(id); 
     return retval;
 }
 

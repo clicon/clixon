@@ -99,11 +99,14 @@ However, the following YANG syntax modules are not implemented (reference to RFC
 - deviation (7.20.3)
 - action (7.15)
 - augment in a uses sub-clause (7.17) (module-level augment is implemented)
+- require-instance
+- instance-identifier type
 - status (7.21.2)
-- extension (7.19)
+- extension (7.19) supported syntactically, but no hooks/plugins for extenstions
 - YIN (13)
 - Yang extended Xpath functions: re-match(), deref)(), derived-from(), derived-from-or-self(), enum-value(), bit-is-set() (10.2-10.6)
 - Default values on leaf-lists are not supported (7.7.2)
+- instance-identifier type
 
 ### Yang patterns
 Yang type patterns use regexps defined in [W3C XML XSD](http://www.w3.org/TR/2004/REC-xmlschema-2-20041028). XSD regexp:s are
