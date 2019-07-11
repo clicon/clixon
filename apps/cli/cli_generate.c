@@ -181,33 +181,56 @@ yang2cli_var_identityref(yang_stmt *ys,
     yang_stmt *ybaseref;
     yang_stmt *ybaseid;
     cg_var    *cv = NULL;
-    char      *name;
-    char      *id;
+    char      *prefix = NULL;
+    char      *id = NULL;
     int        i;
+    cvec      *idrefvec;
+    yang_stmt *ymod;
+    yang_stmt *yprefix;
+    yang_stmt *yspec;
     
     if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) != NULL &&
 	(ybaseid = yang_find_identity(ys, yang_argument_get(ybaseref))) != NULL){
-	if (cvec_len(yang_cvec_get(ybaseid)) > 0){
+	idrefvec = yang_cvec_get(ybaseid);
+	if (cvec_len(idrefvec) > 0){
 	    /* Add a wildchar string first -let validate take it for default prefix */
 	    cprintf(cb, ">");
 	    if (helptext)
 		cprintf(cb, "(\"%s\")", helptext);
 	    cprintf(cb, "|<%s:%s choice:", yang_argument_get(ys), cvtypestr);
+	    yspec = ys_spec(ys);
 	    i = 0;
-	    while ((cv = cvec_each(yang_cvec_get(ybaseid), cv)) != NULL){
-		if (i++)
-		    cprintf(cb, "|"); 
-		name = strdup(cv_name_get(cv));
-		if ((id=strchr(name, ':')) != NULL)
-		    *id = '\0';
-		cprintf(cb, "%s:%s", name, id+1);
-		if (name)
-		    free(name);
-	    }
+	    while ((cv = cvec_each(idrefvec, cv)) != NULL){
+		if (nodeid_split(cv_name_get(cv), &prefix, &id) < 0)
+		    goto done;
+		/* Translate from module-name(prefix) to global prefix
+		 * This is really a kludge for true identityref prefix handling
+		 * IDENTITYREF_KLUDGE 
+		 * This is actually quite complicated: the cli needs to generate
+		 * a netconf statement with correct xmlns binding
+		 */
+		if ((ymod = yang_find_module_by_name(yspec, prefix)) != NULL &&
+		    (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL)
+		    if (i++)
+			cprintf(cb, "|"); 
+		    cprintf(cb, "%s:%s", yang_argument_get(yprefix), id);
+		}
+		if (prefix){
+		    free(prefix);
+		    prefix = NULL;
+		}
+		if (id){
+		    free(id);
+		    id = NULL;
+		}
 	}
     }
     retval = 0;
-    // done:
+ done:
+    if (prefix)
+	free(prefix);
+    if (id)
+	free(id);
     return retval;
 }
     

@@ -48,9 +48,13 @@
  */
 #define USE_NETCONF_NS_AS_DEFAULT
 
-/* Use modulename:id instead of prefix:id in derived identityref list
- * Modulenames are global/canonical but prefixes are not.
- * Experimental since there is some mapping between prefixes and module names
- * that needs to be done
+/*! Tag for wrong handling of identityref prefixes (XML encoding)
+ * See https://github.com/clicon/clixon/issues/90
+ * Instead of using generic xmlns prefix bindings, the module's own prefix
+ * is used.
+ * In the CLI generation case, this is actually quite complicated: the cli 
+ * needs to generate a netconf statement with correct xmlns binding.
+ * The easy way to do this is to always generate all prefix/namespace bindings 
+ * on the top-level for the modules involved in the netconf operation.
  */
-#undef USE_IDREF_LIST_MODULE
+#undef IDENTITYREF_KLUDGE

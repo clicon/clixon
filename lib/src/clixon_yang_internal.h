@@ -97,7 +97,7 @@ struct yang_stmt{
 					Y_RANGE: range_min, range_max 
 					Y_LIST: vector of keys
 					Y_TYPE & identity: store all derived 
-					   types as <prefix>:<id> list
+					   types as <module>:<id> list
 				     */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
     int               _ys_vector_i;   /* internal use: yn_each */

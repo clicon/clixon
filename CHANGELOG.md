@@ -217,6 +217,7 @@
 
 ### Minor changes
 
+* Documented bug [Yang identityref XML encoding is not general #90](https://github.com/clicon/clixon/issues/90)
 * Added new API function `xpath_parse()` to split parsing and xml evaluation.
 * Rewrote `api_path2xpath` to handle namespaces.
 * `api_path2xml_vec` strict mode check added if list key length mismatch 

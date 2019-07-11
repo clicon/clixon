@@ -1616,12 +1616,13 @@ ys_populate_identity(clicon_handle h,
     int             retval = -1;
     yang_stmt      *yc = NULL;
     yang_stmt      *ybaseid;
-    //    yang_stmt      *ymod;
     cg_var         *cv;
     char           *baseid;
     char           *prefix = NULL;
     char           *id = NULL;
     cbuf           *cb = NULL;
+    yang_stmt      *ymod;
+    cvec           *idrefvec; /* Derived identityref list: (module:id)**/
 
     /* Top-call (no recursion) create idref 
      * The idref is (here) in "canonical form": <module>:<id>
@@ -1632,7 +1633,6 @@ ys_populate_identity(clicon_handle h,
 	    clicon_err(OE_UNIX, errno, "cbuf_new"); 
 	    goto done;
 	}
-#if 0 /* Use module:id instead of prefix:id in derived list */
 	if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
 	    goto done;
 	if ((ymod = ys_module(ys)) == NULL){
@@ -1640,16 +1640,6 @@ ys_populate_identity(clicon_handle h,
 	    goto done;
 	}
 	cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
-#else
-	{
-	    if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
-		goto done;
-	    if (prefix)
-		cprintf(cb, "%s:%s", prefix, id);
-	    else
-		cprintf(cb, "%s:%s", yang_find_myprefix(ys), id);
-	}
-#endif
 	idref = cbuf_get(cb);
     }
     /* Iterate through all base statements and check the base identity exists 
@@ -1666,7 +1656,8 @@ ys_populate_identity(clicon_handle h,
 	}
 	//	    continue; /* root identity */
 	/* Check if derived id is already in base identifier */
-	if (cvec_find(ybaseid->ys_cvec, idref) != NULL)
+	idrefvec = yang_cvec_get(ybaseid);
+	if (cvec_find(idrefvec, idref) != NULL)
 	    continue;
 	/* Add derived id to ybaseid */
 	if ((cv = cv_new(CGV_STRING)) == NULL){
@@ -1675,7 +1666,7 @@ ys_populate_identity(clicon_handle h,
 	}
 	/* add prefix */
 	cv_name_set(cv, idref);
-	cvec_append_var(ybaseid->ys_cvec, cv); /* cv copied */
+	cvec_append_var(idrefvec, cv); /* cv copied */
 	if (cv){
 	    cv_free(cv);
 	    cv = NULL;
