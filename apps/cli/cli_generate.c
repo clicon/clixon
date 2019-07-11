@@ -210,7 +210,7 @@ yang2cli_var_identityref(yang_stmt *ys,
 		 * a netconf statement with correct xmlns binding
 		 */
 		if ((ymod = yang_find_module_by_name(yspec, prefix)) != NULL &&
-		    (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL)
+		    (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL){
 		    if (i++)
 			cprintf(cb, "|"); 
 		    cprintf(cb, "%s:%s", yang_argument_get(yprefix), id);
@@ -223,6 +223,7 @@ yang2cli_var_identityref(yang_stmt *ys,
 		    free(id);
 		    id = NULL;
 		}
+	    }
 	}
     }
     retval = 0;
