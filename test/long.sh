@@ -61,7 +61,7 @@ EOF
 
 sudo callgrind_control -i off
 
-new "test params: -f $cfg 
+new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
@@ -69,7 +69,7 @@ if [ $BE -ne 0 ]; then
 	err
     fi
 
-    new "start backend -s init -f $cfg
+    new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 fi
 

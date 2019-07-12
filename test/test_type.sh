@@ -643,7 +643,7 @@ testrun nocache
 # Run with db cache
 testrun cache
 
-# Run with zero-copy XXX does not work
-#testrun cache-zerocopy
+# Run with zero-copy
+testrun cache-zerocopy
 
 rm -rf $dir

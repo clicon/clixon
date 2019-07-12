@@ -1,9 +1,40 @@
 # Clixon Changelog
 
-## 4.0.0 (Upcoming)
+## 4.0.0 (Expected: 13 July 2019)
+
+### Summary
+
+This is a major uplift of Yang and XML features which motivates a
+major number increment. Thanks Netgate for allowing me to spend full
+time on increasing the feature-set, the stability and performance.
+
+In short, I consider the Yang and XML support good enough for most
+use-cases. There are still some features not supported, but they are
+relatively uncommon (see [README](https://github.com/clicon/clixon/#yang).
+
+The next project is to fix compiance of RESTCONF and NETCONF where
+there is some work to lift it to the same level.
+
+Going forward I plan to make more regular minor releases. With the
+current Trevor CI in place, making releases should not be a large
+thing, and it is also safer to just pull a master commit. However, for
+synchronizing and tracing I will try to make monthly releases.
+
+--Olof
 
 ### Major New features
-* Regexp improvements: Libxml2 XSD, multiple patterns, optimization
+* Yang "refine" feature supported
+  * According to RFC 7950 7.13.2
+* Yang "min-element" and "max-element" feature supported
+  * According to RFC 7950 7.7.4 and 7.7.5
+  * See (tests)[test/test_minmax.sh]
+  * The following cornercases are not supported:
+    * Check for min-elements>0 for empty lists on top-level
+    * Check for min-elements>0 for empty lists in choice/case
+* Yang "unique" feature supported
+  * According to RFC 7950 7.8.3
+  * See (tests)[test/test_unique.sh]
+* Improvements of yang pattern (regular expressions)
   * Support for multiple patterns as described in RFC7950 Section 9.4.7
   * Support for inverted patterns as described in RFC7950 Section 9.4.6
   * Libxml2 support for full XSD matching as alternative to Posix translation
@@ -16,18 +47,18 @@
   * Added clixon_util_regexp utility function
   * Added extensive regexp test [test/test_pattern.sh] for both posix and libxml2
   * Added regex cache to type resolution
-* Yang "refine" feature supported
-  * According to RFC 7950 7.13.2
-* Yang "min-element" and "max-element" feature supported
-  * According to RFC 7950 7.7.4 and 7.7.5
-  * See (tests)[test/test_minmax.sh]
-  * The following cornercases are not supported:
-    * Check for min-elements>0 for empty lists on top-level
-    * Check for min-elements>0 for empty lists in choice/case
-* Yang "unique" feature supported
-  * According to RFC 7950 7.8.3
-  * See (tests)[test/test_unique.sh]
-* Persistent CLI history: [Preserve CLI command history across sessions. The up/down arrows](https://github.com/clicon/clixon/issues/79)
+* Optimization work
+  * Removed O(n^2) in cli expand/completion code
+  * Improved performance of validation of (large) lists
+  * A scaling of [large lists](doc/scaling) report is added
+  * New xmldb_get1() returning actual cache - not a copy. This has lead to some householding instead of just deleting the copy
+  * xml_diff rewritten to work linearly instead of O(2)
+  * New xml_insert function using tree search. The new code uses this in insertion xmldb_put and defaults. (Note previous xml_insert renamed to xml_wrap_all)
+  * A yang type regex cache added, this helps the performance by avoiding re-running the `regcomp` command on every iteration.
+  * An XML namespace cache added (see `xml2ns()`)
+  * Better performance of XML whitespace parsing/scanning.
+* Persistent CLI history supported
+  * See [Preserve CLI command history across sessions. The up/down arrows](https://github.com/clicon/clixon/issues/79)
   * The design is similar to bash history:
       * The CLI loads/saves its complete history to a file on entry and exit, respectively
       * The size (number of lines) of the file is the same as the history in memory
@@ -36,7 +67,8 @@
       * Files not found or without appropriate access will not cause an exit but will be logged at debug level
   * New config options: CLICON_CLI_HIST_FILE with default value `~/.clixon_cli_history`
   * New config options: CLICON_CLI_HIST_SIZE with default value 300.
-* New backend startup and upgrade support, see [doc/startup.md] for details
+* New backend startup and upgrade support,
+  * See (doc/startup.md) for details
   * Enable with CLICON_XMLDB_MODSTATE config option
   * Check modules-state tags when loading a datastore at startup
     * Check which modules match, and which do not.
@@ -56,24 +88,23 @@
   * Two config options control:
     * CLICON_XML_CHANGELOG enables the yang changelog feature
     * CLICON_XML_CHANGELOG_FILE where the changelog resides
-* Optimization work
-  * Removed O(n^2) in cli expand/completion code
-  * Improved performance of validation of (large) lists
-  * A scaling of [large lists](doc/scaling) report is added
-  * New xmldb_get1() returning actual cache - not a copy. This has lead to some householding instead of just deleting the copy
-  * xml_diff rewritten to work linearly instead of O(2)
-  * New xml_insert function using tree search. The new code uses this in insertion xmldb_put and defaults. (Note previous xml_insert renamed to xml_wrap_all)
-  * A yang type regex cache added, this helps the performance by avoiding re-running the `regcomp` command on every iteration.
-  * An XML namespace cache added (see `xml2ns()`)
-  * Better performance of XML whitespace parsing/scanning.
 	
 ### API changes on existing features (you may need to change your code)
 
-* The Clixon API has been extended with namespaces, or namespace contexts in the following cases (see [README.md#xml-and-xpath] for explanation):
+* RESTCONF strict namespace validation of data in POST and PUT.
+  * Accepted:
+  ```
+    curl -X PUT http://localhost/restconf/data/mod:a -d {"mod:a":"x"}
+  ```
+  * Not accepted (must prefix "a" with module):
+  ```
+    curl -X PUT http://localhost/restconf/data/mod:a -d {"a":"x"}
+  ```
+* XPATH API is extended with namespaces, in the following cases (see [README](README.md#xml-and-xpath)):
   * CLIspec functions have added optional namespace parameter:
     * `cli_show_config <db> <format> <xpath>` --> `cli_show_config <db> <format> <xpath> <namespace>`
     * `cli_copy_config <db> <xpath> ...` --> `cli_copy_config <db> <xpath> <namespace> ...`
-  * Change the following Xpath API functions (xpath_first and xpath_vec remain as-is):
+  * Change the following XPATH API functions (xpath_first and xpath_vec remain as-is):
     * `xpath_vec_flag(x, format, flags, vec, veclen, ...)` --> `xpath_vec_flag(x, nsc, format, flags, vec, veclen, ...)`
     * `xpath_vec_bool(x, format, ...)` --> `xpath_vec_bool(x, nsc, format, ...)`
     * `xpath_vec_ctx(x, xpath, xp)` --> `xpath_vec_ctx(x, nsc, xpath, xp)`
@@ -96,18 +127,6 @@
 * On validation callbacks, XML_FLAG_ADD is added to all nodes at startup validation, not just the top-level. This is the same behaviour as for steady-state validation.
 * All hash_ functions have been prefixed with `clicon_` to avoid name collision with other packages (frr)
   * All calls to the following functions must be changed: `hash_init`, `hash_free`, `hash_lookup`, `hash_value`, `hash_add`, `hash_del`, `hash_dump`, and `hash_keys`.
-* RESTCONF strict namespace validation of data in POST and PUT.
-  * Accepted:
-  ```
-    curl -X PUT http://localhost/restconf/data/mod:a -d {"mod:a":"x"}
-  ```
-  * Not accepted (must prefix "a" with module):
-  ```
-    curl -X PUT http://localhost/restconf/data/mod:a -d {"a":"x"}
-  ```
-* Many validation functions have changed error parameter from cbuf to xml tree. 
-  * XML trees are more flexible for utility tools
-  * If you use these(mostly internal), you need to change the error function: `generic_validate, from_validate_common, xml_yang_validate_all_top, xml_yang_validate_all, xml_yang_validate_add, xml_yang_validate_rpc, xml_yang_validate_list_key_only`
 * Replaced `CLIXON_DATADIR` with two configurable options defining where Clixon installs Yang files.
   * use `--with-yang-installdir=DIR` to install Clixon yang files in DIR
   * use `--with-std-yang-installdir=DIR` to install standard yang files that Clixon may use in DIR 
@@ -128,6 +147,9 @@
     * Validate-only transactions used to be terminated by `complete`
   * If a commit user callback fails, a new `revert` callback will be made to plugins that have made a succesful commit. 
     * Clixon used to play the (already made) commit callbacks in reverse order
+* Many validation functions have changed error parameter from cbuf to xml tree. 
+  * XML trees are more flexible for utility tools
+  * If you use these(mostly internal), you need to change the error function: `generic_validate, from_validate_common, xml_yang_validate_all_top, xml_yang_validate_all, xml_yang_validate_add, xml_yang_validate_rpc, xml_yang_validate_list_key_only`
 * Datastore cache and xmldb_get() changes:
   * You need to remove `msd` (last) parameter of `xmldb_get()`:
     * `xmldb_get(h, "running", "/", &xt, NULL)` --> `xmldb_get(h, "running", "/", &xt)`
@@ -271,7 +293,7 @@
 	
 ### Corrected Bugs
 
-* Return 404 Not found error if restconf GET does not return requested instance
+* Fixed: Return 404 Not found error if restconf GET does not return requested instance
 * Fixed [Wrong yang-generated cli code for typeref identityref combination #88](https://github.com/clicon/clixon/issues/88)
 * Fixed [identityref validation fails when using typedef #87](https://github.com/clicon/clixon/issues/87)
 * Fixed a problem with some netconf error messages caused restconf daemon to exit due to no XML encoding

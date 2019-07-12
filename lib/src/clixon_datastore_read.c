@@ -768,10 +768,10 @@ int
 xmldb_get0_free(clicon_handle    h, 
 	       cxobj          **xp)
 {
-    if (*xp == NULL ||
-	clicon_datastore_cache(h) == DATASTORE_CACHE_ZEROCOPY)
+    if (*xp == NULL)
 	return 0;
-    xml_free(*xp);
+    if (clicon_datastore_cache(h) != DATASTORE_CACHE_ZEROCOPY)
+	xml_free(*xp);
     *xp = NULL;
     return 0;
 }
