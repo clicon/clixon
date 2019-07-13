@@ -53,21 +53,21 @@ EOF
 new "yangmodels parse: -f $cfg"
 
 new "yangmodel Experimental IEEE 802.1: $YANGMODELS/experimental/ieee/802.1"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/experimental/ieee/802.1 -p $YANGMODELS/experimental/ieee/1588 show version" 0 "3."
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/experimental/ieee/802.1 -p $YANGMODELS/experimental/ieee/1588 show version" 0 "$version."
 
 new "yangmodel Experimental IEEE 1588: $YANGMODELS/experimental/ieee/1588"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/experimental/ieee/1588 show version" 0 "3."
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/experimental/ieee/1588 show version" 0 "$version."
 
 # Standard IEEE
 new "yangmodel Standard IEEE 802.1: $YANGMODELS/standard/ieee/draft/802.1"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.1 show version" 0 "3."
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.1 show version" 0 "$version."
 
 new "yangmodel Standard IEEE 802.3: $YANGMODELS/standard/ieee/draft/802.3"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.3 show version" 0 "3."
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.3 show version" 0 "$version."
 
 # Standard IETF
 new "yangmodel Standard IETF: $YANGMODELS/standard/ietf/RFC"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ietf/RFC show version" 0 "3."
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ietf/RFC show version" 0 "$version."
 
 # vendor/junos
 #junos           : M/MX, T/TX, Some EX platforms, ACX
@@ -90,7 +90,7 @@ let i=0;
 for f in $files; do
     if [ -n "$(head -5 $f|grep '^ module')" ]; then
 	new "$clixon_cli -1f $cfg -o CLICON_YANG_MAIN_FILE=$f -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf show version"
-	expectfn "$clixon_cli -1f $cfg -o CLICON_YANG_MAIN_FILE=$f -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -o CLICON_CLI_GENMODEL=0 show version" 0 "3."
+	expectfn "$clixon_cli -1f $cfg -o CLICON_YANG_MAIN_FILE=$f -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -o CLICON_CLI_GENMODEL=0 show version" 0 "$version."
 	let i++;
 	sleep 1
     fi
@@ -103,16 +103,16 @@ done
 if false; then
 # vendor/cisco/xr
 new "yangmodel vendor cisco xr 623: $YANGMODELS/vendor/cisco/xr/623"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/cisco/xr/623 show version" 0 "3."
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/cisco/xr/623 show version" 0 "$version."
 
 new "yangmodel vendor cisco xr 632: $YANGMODELS/vendor/cisco/xr/632"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/cisco/xr/632 show version" 0 "3."
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/cisco/xr/632 show version" 0 "$version."
 
 new "yangmodel vendor cisco xr 623: $YANGMODELS/vendor/cisco/xr/642"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/cisco/xr/642 show version" 0 "3."
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/cisco/xr/642 show version" 0 "$version."
 
 new "yangmodel vendor cisco xr 651: $YANGMODELS/vendor/cisco/xr/651"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/cisco/xr/651 show version" 0 "3."
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/vendor/cisco/xr/651 show version" 0 "$version."
 fi ### cisco
 
 rm -rf $dir

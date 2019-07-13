@@ -23,7 +23,6 @@ fi
 
 OCDIR=$OPENCONFIG/release/models
 
-
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -104,7 +103,7 @@ new "Openconfig test: $clixon_cli -1f $cfg -y $f show version ($m modules)"
 for f in $files; do
     if [ -n "$(head -1 $f|grep '^module')" ]; then
 	new "$clixon_cli -1f $cfg -y $f show version"
-	expectfn "$clixon_cli -1f $cfg -y $f show version" 0 "3."
+	expectfn "$clixon_cli -1f $cfg -y $f show version" 0 "$version."
     fi
 
 done

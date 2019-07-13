@@ -20,6 +20,9 @@
 # Typically add them in your site file
 : ${SKIPLIST:=""}
 
+# Some tests (openconfig/yang_models) just test for the cli to return a version
+version=4
+
 >&2 echo "Running $testfile"
 
 # Site file, an example of this file in README.md

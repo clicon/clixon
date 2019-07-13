@@ -239,17 +239,6 @@ expand_dbvar(void   *h,
     return retval;
 }
 
-int
-expandv_dbvar(void   *h, 
-	      char   *name, 
-	      cvec   *cvv, 
-	      cvec   *argv, 
-	      cvec  *commands,
-	      cvec  *helptexts)
-{
-    return expand_dbvar(h, name, cvv, argv, commands, helptexts);
-}
-
 /*! List files in a directory
  */
 int

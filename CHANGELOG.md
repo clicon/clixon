@@ -4,23 +4,26 @@
 
 ### Summary
 
-This is a major uplift of Yang and XML features which motivates a
-major number increment. Thanks Netgate for allowing me to spend full
-time on increasing the feature-set, the stability and performance.
+This release is a major uplift of Yang and XML features which
+motivates a major version number increment.
 
 In short, I consider the Yang and XML support good enough for most
-use-cases. There are still some features not supported, but they are
-relatively uncommon (see [README](https://github.com/clicon/clixon/#yang).
+use-cases. There are still features not supported, but hopefully they
+are relatively uncommon (see [README](https://github.com/clicon/clixon/#yang).
 
-The next project is to fix compiance of RESTCONF and NETCONF where
-there is some work to lift it to the same level.
+The next task for uplifting is RESTCONF where several use-cases are
+not supported. There is also a need for NETCONF modernization and
+added optional features.
 
 Going forward I plan to make more regular minor releases. With the
 current Trevor CI in place, making releases should not be a large
 thing, and it is also safer to just pull a master commit. However, for
 synchronizing and tracing I will try to make monthly releases.
 
---Olof
+Thanks to Netgate for that enabled me to spend full time on Clixon!
+
+Stockholm 13 July 2019
+Olof Hagsand
 
 ### Major New features
 * Yang "refine" feature supported

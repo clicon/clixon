@@ -129,8 +129,6 @@ int cli_help(clicon_handle h, cvec *vars, cvec *argv);
 int expand_dir(char *dir, int *nr, char ***commands, mode_t flags, int detail);
 int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv, 
 		  cvec *commands, cvec *helptexts);
-int expandv_dbvar(void *h, char *name, cvec *cvv, cvec *argv, 
-		  cvec *commands, cvec *helptexts);
 
 /* cli_show.c: CLIgen new vector arg callbacks */
 int show_yang(clicon_handle h, cvec *vars, cvec *argv);

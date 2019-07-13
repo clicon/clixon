@@ -158,7 +158,7 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "cli defined extension"
-expectfn "$clixon_cli -1f $cfg show version" 0 "3."
+expectfn "$clixon_cli -1f $cfg show version" 0 "$version."
 
 new "empty values in leaf-list"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon"><f><e>a</e></f></x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

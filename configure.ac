@@ -42,13 +42,12 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${CFLAGS="-O2 -Wall"}
 : ${INSTALLFLAGS="-s"}
 
-CLIXON_VERSION_MAJOR="3"
-CLIXON_VERSION_MINOR="10"
+CLIXON_VERSION_MAJOR="4"
+CLIXON_VERSION_MINOR="0"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 
-# Fix to specific CLIgen version (eg 3.5) or head (3) 
-CLIGEN_VERSION="3" 
+# Check CLIgen
 if test "$prefix" = "NONE"; then
 	CLIGEN_PREFIX="$ac_default_prefix"
 else
@@ -69,7 +68,6 @@ AC_SUBST(CLIXON_VERSION)
 AC_SUBST(CLIXON_VERSION_STRING)
 AC_SUBST(CLIXON_VERSION_MAJOR)
 AC_SUBST(CLIXON_VERSION_MINOR)
-AC_SUBST(CLIGEN_VERSION) # Bind to specific CLIgen version
 AC_SUBST(CLIGEN_PREFIX)
 
 AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION})
@@ -178,7 +176,7 @@ fi
 
 AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR(cligen missing. Try: git clone https://github.com/olofhagsand/cligen.git))
 
-AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen${CLIGEN_VERSION} missing. Try: git clone https://github.com/olofhagsand/cligen.git]))
+AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen missing. Try: git clone https://github.com/olofhagsand/cligen.git]))
 
 # This is for restconf (and fastcgi)
 AC_ARG_WITH([restconf],

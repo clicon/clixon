@@ -59,14 +59,4 @@ int plugin_start(clicon_handle h, int argc, char **argv);
  */
 int plugin_exit(clicon_handle h);
 
-
-/* Called before prompt is printed, return a customized prompt. */
-char *plugin_prompt_hook(clicon_handle h, char *mode);
-
-/* Called if a command is not matched w current mode. Return name of next syntax mode to check until NULL */
-char *plugin_parse_hook(clicon_handle h, char *cmd, char *name);
-
-/* Called if ^Z entered. Can modify cli command buffer and position */
-int plugin_susp_hook(clicon_handle h, char *buf, int prompt_width, int *cursor_loc);
-
 #endif  /* _CLIXON_CLI_H_ */
