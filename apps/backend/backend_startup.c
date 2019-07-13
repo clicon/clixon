@@ -221,7 +221,8 @@ startup_extraxml(clicon_handle        h,
     int         retval = -1;
     char       *tmp_db = "tmp";
     int         ret;
-    cxobj	*xt = NULL; /* Potentially upgraded XML */
+    cxobj	*xt0 = NULL; 
+    cxobj	*xt = NULL; 
     
     /* Clear tmp db */
     if (xmldb_db_reset(h, tmp_db) < 0)
@@ -242,11 +243,10 @@ startup_extraxml(clicon_handle        h,
      * It should be empty if extra-xml is null and reset plugins did nothing
      * then skip validation.
      */
-    if (xmldb_get(h, tmp_db, NULL, &xt) < 0)
+    if (xmldb_get(h, tmp_db, NULL, &xt0) < 0)
 	goto done;
-    if (xt==NULL || xml_child_nr(xt)==0) 
+    if (xt0==NULL || xml_child_nr(xt0)==0) 
 	goto ok;
-    xml_free(xt);
     xt = NULL;
     /* Validate the tmp db and return possibly upgraded xml in xt
      */
@@ -264,6 +264,8 @@ startup_extraxml(clicon_handle        h,
  ok:
     retval = 1;
  done:
+    if (xt0)
+	xml_free(xt0);
     xmldb_get0_free(h, &xt);
     if (xmldb_delete(h, tmp_db) != 0 && errno != ENOENT) 
 	return -1;
