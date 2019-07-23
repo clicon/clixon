@@ -289,8 +289,6 @@ ys_free1(yang_stmt *ys)
 {
     if (ys->ys_argument)
 	free(ys->ys_argument);
-    if (ys->ys_extra)
-	free(ys->ys_extra);
     if (ys->ys_cv)
 	cv_free(ys->ys_cv);
     if (ys->ys_cvec)
@@ -309,7 +307,7 @@ ys_free1(yang_stmt *ys)
  * @see ys_free Deallocate yang node
  * @note Do not call this in a loop of yang children (unless you know what you are doing)
  */
-static yang_stmt *
+yang_stmt *
 ys_prune(yang_stmt *yp,
 	 int        i)
 {
@@ -323,7 +321,7 @@ ys_prune(yang_stmt *yp,
     memmove(&yp->ys_stmt[i],
 	    &yp->ys_stmt[i+1],
 	    size);
-    yc = yp->ys_stmt[yp->ys_len--] = NULL;;
+    yp->ys_stmt[yp->ys_len--] = NULL;;
  done:
     return yc;
 }
@@ -411,11 +409,6 @@ ys_cp(yang_stmt *ynew,
 	    clicon_err(OE_YANG, errno, "strdup");
 	    goto done;
 	}
-    if (yold->ys_extra)
-	if ((ynew->ys_extra = strdup(yold->ys_extra)) == NULL){
-	    clicon_err(OE_YANG, errno, "strdup");
-	    goto done;
-	}
     if (yold->ys_cv)
 	if ((ynew->ys_cv = cv_dup(yold->ys_cv)) == NULL){
 	    clicon_err(OE_YANG, errno, "cv_dup");
@@ -473,6 +466,8 @@ ys_dup(yang_stmt *old)
  *
  * @param[in] ys_parent  Add child to this parent
  * @param[in] ys_child   Add this child
+ * @retval    0          OK
+ * @retval   -1          Error
  * Also add parent to child as up-pointer
  */
 int
@@ -646,7 +641,7 @@ yang_find_datanode(yang_stmt *yn,
 		    goto match;
 	    }
 	} /* Y_CHOICE */
-	else
+	else{
 	    if (yang_datanode(ys)){
 		if (argument == NULL)
 		    ysmatch = ys;
@@ -656,6 +651,7 @@ yang_find_datanode(yang_stmt *yn,
 		if (ysmatch)
 		    goto match;
 	    }
+	}
     }
     /* Special case: if not match and yang node is module or submodule, extend
      * search to include submodules */
@@ -1794,44 +1790,46 @@ ys_populate_unique(clicon_handle h,
 /*! Populate unknown node with extension
  * @param[in] h    Clicon handle
  * @param[in] ys   The yang statement (unknown) to populate.
+ * RFC 7950 Sec 7.19:
+ * If no "argument" statement is present, the keyword expects no argument when
+ * it is used.
  */
 static int
 ys_populate_unknown(clicon_handle h,
 		    yang_stmt    *ys)
 {
-    int retval = -1;
-    int        cvret;
-    char      *reason = NULL;
+    int        retval = -1;
     yang_stmt *ymod;
+    yang_stmt *yext;  /* extension */
     char      *prefix = NULL;
     char      *id = NULL;
-    char      *extra;
+    char      *argument; /* This is the unknown optional argument */
+    cg_var    *cv;
 
-    if ((extra = ys->ys_extra) == NULL)
-	goto ok;
     /* Find extension, if found, store it as unknown, if not,
        break for error */
     if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
 	goto done;
-    if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL)
-	goto ok; /* shouldnt happen */
-    if (yang_find(ymod, Y_EXTENSION, id) == NULL){
-	clicon_err(OE_YANG, errno, "Extension %s:%s not found", prefix, id);
+    if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "Extension %s:%s, module not found", prefix, id);
 	goto done;
     }
-    if ((ys->ys_cv = cv_new(CGV_STRING)) == NULL){
-	clicon_err(OE_YANG, errno, "cv_new"); 
+    if ((yext = yang_find(ymod, Y_EXTENSION, id)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "Extension %s:%s not found", prefix, id);
 	goto done;
     }
-    if ((cvret = cv_parse1(extra, ys->ys_cv, &reason)) < 0){ /* error */
-	clicon_err(OE_YANG, errno, "parsing cv");
-	goto done;
+    /* Optional argument (only if "argument") - save it in ys_cv */
+    if ((cv = yang_cv_get(ys)) != NULL &&
+	(argument = cv_string_get(cv)) != NULL){
+	if (yang_find(yext, Y_ARGUMENT, NULL) == NULL &&
+	    argument != NULL){
+	    clicon_err(OE_YANG, 0, "No argument specified in extension %s, but argument %s present when used", yang_argument_get(ys), argument); 
+	    goto done;
+	}
     }
-    if (cvret == 0){ /* parsing failed */
-	clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+    /* Make extension callbacks that may alter yang structure */
+    if (clixon_plugin_extension(h, yext, ys) < 0)
 	goto done;
-    }
- ok:
     retval = 0;
  done:
     if (prefix)
@@ -2581,39 +2579,62 @@ yang_parse_recurse(clicon_handle h,
     return retval; /* top-level (sub)module */
 }
 
-int 
+static int 
 ys_schemanode_check(yang_stmt *ys, 
-		    void      *arg)
+		    void      *dummy)
 {
-    int        retval = -1;
-    yang_stmt *yspec;
-    yang_stmt *yres;
-    yang_stmt *yp;
+    int           retval = -1;
+    yang_stmt    *yspec;
+    yang_stmt    *yres = NULL;
+    yang_stmt    *yp;
+    char         *arg;
+    enum rfc_6020 keyword;
 
-    yp = ys->ys_parent;
-    switch (ys->ys_keyword){
+    yp = yang_parent_get(ys);
+    arg = yang_argument_get(ys);
+    keyword = yang_keyword_get(ys);
+    switch (yang_keyword_get(ys)){
     case Y_AUGMENT:
-	if (yp->ys_keyword == Y_MODULE || /* Not top-level */
-	    yp->ys_keyword == Y_SUBMODULE) 
+	if (yang_keyword_get(yp) == Y_MODULE || /* Not top-level */
+	    yang_keyword_get(yp) == Y_SUBMODULE) 
 	    break;
 	/* fallthru */
     case Y_REFINE:
-    case Y_UNIQUE:
-	if (yang_desc_schema_nodeid(yp, ys->ys_argument, -1, &yres) < 0)
+	if (yang_desc_schema_nodeid(yp, arg, -1, &yres) < 0)
 	    goto done;
 	if (yres == NULL){
 	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s %s", 
-		       yang_key2str(ys->ys_keyword),
-		       ys->ys_argument);
+		       yang_key2str(keyword), arg);
 	    goto done;
 	}
 	break;
+    case Y_UNIQUE:{
+	char **vec = NULL;
+	char  *v;
+	int    nvec;
+	int    i;
+	/* Unique: Sec 7.8.3 It takes as an argument a string that contains a space-
+	   separated list of schema node identifiers */
+	if ((vec = clicon_strsep(arg, " \t\n", &nvec)) == NULL)
+	    goto done;
+	for (i=0; i<nvec; i++){
+	    v = vec[i]; 
+	    if (yang_desc_schema_nodeid(yp, v, -1, &yres) < 0)
+		goto done;
+	    if (yres == NULL){
+		clicon_err(OE_YANG, 0, "schemanode sanity check of %s %s", 
+			   yang_key2str(yang_keyword_get(ys)), v);
+		goto done;
+	    }
+	}
+	break;
+    }
     case Y_DEVIATION:
 	yspec = ys_spec(ys);
-	if (yang_abs_schema_nodeid(yspec, ys, ys->ys_argument, -1, &yres) < 0)
+	if (yang_abs_schema_nodeid(yspec, ys, arg, -1, &yres) < 0)
 	    goto done;
 	if (yres == NULL){
-	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s", ys->ys_argument);
+	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s", arg);
 	    goto done;
 	}
 	break;
@@ -3104,11 +3125,11 @@ yang_datanode(yang_stmt *ys)
  * @retval     0     OK
  */
 static int
-schema_nodeid_vec(yang_stmt  *yn,
-		  char      **vec, 
-		  int         nvec,
+schema_nodeid_vec(yang_stmt    *yn,
+		  char        **vec, 
+		  int           nvec,
 		  enum rfc_6020 keyword,
-		  yang_stmt **yres)
+		  yang_stmt   **yres)
 {
     int              retval = -1;
     char            *arg;
@@ -3205,6 +3226,7 @@ yang_abs_schema_nodeid(yang_stmt    *yspec,
     char            *prefix = NULL;
     yang_stmt       *yprefix;
 
+    *yres = NULL;
     /* check absolute schema_nodeid */
     if (schema_nodeid[0] != '/'){
 	clicon_err(OE_YANG, EINVAL, "absolute schema nodeid should start with /");
@@ -3265,15 +3287,16 @@ yang_abs_schema_nodeid(yang_stmt    *yspec,
  * Used in yang: unique, refine, uses augment
  */
 int
-yang_desc_schema_nodeid(yang_stmt  *yn, 
-			char       *schema_nodeid,
+yang_desc_schema_nodeid(yang_stmt    *yn, 
+			char         *schema_nodeid,
 			enum rfc_6020 keyword,
-			yang_stmt **yres)
+			yang_stmt   **yres)
 {
     int              retval = -1;
     char           **vec = NULL;
     int              nvec;
 
+    *yres = NULL;
     if (strlen(schema_nodeid) == 0)
 	goto done;
     /* check absolute schema_nodeid */
@@ -3454,12 +3477,23 @@ ys_parse_sub(yang_stmt *ys,
 	    goto done;
 	}
 	break;
-    case Y_UNKNOWN: /* XXX This code assumes ymod already loaded
-		       but it may not be */
+    case Y_UNKNOWN:{ /* save (optional) argument in ys_cv */
 	if (extra == NULL)
 	    break;
-	ys->ys_extra = extra;
+	if ((ys->ys_cv = cv_new(CGV_STRING)) == NULL){
+	    clicon_err(OE_YANG, errno, "cv_new"); 
+	    goto done;
+	}
+	if ((ret = cv_parse1(extra, ys->ys_cv, &reason)) < 0){ /* error */
+	    clicon_err(OE_YANG, errno, "parsing cv");
+	    goto done;
+	}
+	if (ret == 0){ /* parsing failed */
+	    clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+	    goto done;
+	}
 	break;
+    }
     default:
 	break;
     }
@@ -3629,3 +3663,4 @@ yang_key_match(yang_stmt *yn,
 	cvec_free(cvv);
     return retval;
 }
+

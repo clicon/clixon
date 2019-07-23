@@ -464,7 +464,7 @@ api_return_err(clicon_handle h,
 	}
 	else{
 	    FCGX_FPrintF(r->out, "{");
-	    FCGX_FPrintF(r->out, "\"ietf-restconf:errors\" : ");
+	    FCGX_FPrintF(r->out, "\"ietf-restconf:errors\":");
 	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
 	    FCGX_FPrintF(r->out, "}\r\n");
 	}

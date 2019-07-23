@@ -63,23 +63,6 @@
 #include "backend_plugin.h"
 #include "backend_commit.h"
 
-/*! Load a plugin group.
- * @param[in]  h       Clicon handle
- * @retval     0       OK
- * @retval    -1       Error
- */
-int
-backend_plugin_initiate(clicon_handle h)
-{
-    char *dir;
-
-    /* Load application plugins */
-    if ((dir = clicon_backend_dir(h)) == NULL)
-	return 0;
-    return clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir,
-			       clicon_option_str(h, "CLICON_BACKEND_REGEXP"));
-}
-
 /*! Request plugins to reset system state
  * The system 'state' should be the same as the contents of running_db
  * @param[in]  h       Clicon handle

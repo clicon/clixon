@@ -12,7 +12,7 @@ new "xml parse"
 expecteof "$clixon_util_xml" 0 "<a><b/></a>" "^<a><b/></a>$"
 
 new "xml parse to json"
-expecteof "$clixon_util_xml -j" 0 "<a><b/></a>" '{"a": {"b": null}}'
+expecteof "$clixon_util_xml -j" 0 "<a><b/></a>" '{"a":{"b":null}}'
 
 new "xml parse strange names"
 expecteof "$clixon_util_xml" 0 "<_-><b0.><c-.-._/></b0.></_->" "<_-><b0.><c-.-._/></b0.></_->"
@@ -38,7 +38,7 @@ new "xml simple CDATA"
 expecteofx "$clixon_util_xml" 0 '<a><![CDATA[a text]]></a>' '<a><![CDATA[a text]]></a>'
 
 new "xml simple CDATA to json"
-expecteofx "$clixon_util_xml -j" 0 '<a><![CDATA[a text]]></a>' '{"a": "a text"}' 
+expecteofx "$clixon_util_xml -j" 0 '<a><![CDATA[a text]]></a>' '{"a":"a text"}' 
 
 new "xml complex CDATA"
 XML=$(cat <<EOF
@@ -60,7 +60,7 @@ expecteof "$clixon_util_xml" 0 "$XML" "^<a><description>An example of escaped CE
 </sometext><data><![CDATA[This text contains a CEND ]]]]><![CDATA[>]]></data><alternative><![CDATA[This text contains a CEND ]]]><![CDATA[]>]]></alternative></a>$"
 
 JSON=$(cat <<EOF
-{"a": {"description": "An example of escaped CENDs","sometext": " They're saying \"x < y\" & that \"z > y\" so I guess that means that z > x ","data": "This text contains a CEND ]]>","alternative": "This text contains a CEND ]]>"}}
+{"a":{"description":"An example of escaped CENDs","sometext":" They're saying \"x < y\" & that \"z > y\" so I guess that means that z > x ","data":"This text contains a CEND ]]>","alternative":"This text contains a CEND ]]>"}}
 EOF
 )       
 new "xml complex CDATA to json"
@@ -74,7 +74,7 @@ new "xml encode <>&"
 expecteof "$clixon_util_xml" 0 "$XML" "$XML"
 
 new "xml encode <>& to json"
-expecteof "$clixon_util_xml -j" 0 "$XML" '{"message": "Less than: < , greater than: > ampersand: & "}'
+expecteof "$clixon_util_xml -j" 0 "$XML" '{"message":"Less than: < , greater than: > ampersand: & "}'
 
 XML=$(cat <<EOF
 <message>single-quote character ' represented as &apos; and double-quote character as &quot;</message>
@@ -84,7 +84,7 @@ new "xml single and double quote"
 expecteof "$clixon_util_xml" 0 "$XML" "<message>single-quote character ' represented as ' and double-quote character as \"</message>"
 
 JSON=$(cat <<EOF
-{"message": "single-quote character ' represented as ' and double-quote character as \""}
+{"message":"single-quote character ' represented as ' and double-quote character as \""}
 EOF
 )
 new "xml single and double quotes to json"
@@ -94,7 +94,7 @@ new "xml backspace"
 expecteofx "$clixon_util_xml" 0 "<a>a\b</a>" "<a>a\b</a>"
 
 new "xml backspace to json"
-expecteofx "$clixon_util_xml -j" 0 "<a>a\b</a>" '{"a": "a\\b"}'
+expecteofx "$clixon_util_xml -j" 0 "<a>a\b</a>" '{"a":"a\\b"}'
 
 new "Double quotes for attributes"
 expecteof "$clixon_util_xml" 0 '<x a="t"/>' '<x a="t"/>'

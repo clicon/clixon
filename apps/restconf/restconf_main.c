@@ -190,6 +190,7 @@ api_well_known(clicon_handle h,
 	       FCGX_Request *r)
 {
     clicon_debug(1, "%s", __FUNCTION__);
+    FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
     FCGX_FPrintF(r->out, "Content-Type: application/xrd+xml\r\n");
     FCGX_FPrintF(r->out, "\r\n");
     FCGX_SetExitStatus(200, r->out); /* OK */
@@ -210,24 +211,32 @@ static int
 api_root(clicon_handle h,
 	 FCGX_Request *r)
 {
-    int    retval = -1;
-    char  *media_accept;
-    int   use_xml = 0; /* By default use JSON */
-    cxobj *xt = NULL;
-    cbuf  *cb = NULL;
-    int    pretty;
+    int        retval = -1;
+    char      *media_accept;
+    int        use_xml = 0; /* By default use JSON */
+    cxobj     *xt = NULL;
+    cbuf      *cb = NULL;
+    int        pretty;
+    yang_stmt *yspec;
     
     clicon_debug(1, "%s", __FUNCTION__);
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
     if (strcmp(media_accept, "application/yang-data+xml")==0)
 	use_xml++;
     clicon_debug(1, "%s use-xml:%d media-accept:%s", __FUNCTION__, use_xml, media_accept);
     FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
     FCGX_FPrintF(r->out, "\r\n");
 
-    if (xml_parse_string("<restconf><data></data><operations></operations><yang-library-version>2016-06-21</yang-library-version></restconf>", NULL, &xt) < 0)
+    if (xml_parse_string("<restconf xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>", NULL, &xt) < 0)
+	goto done;
+    if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	goto done;
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
@@ -274,6 +283,7 @@ api_yang_library_version(clicon_handle h,
     if (strcmp(media_accept, "application/yang-data+xml")==0)
 	use_xml++;
     FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
     FCGX_FPrintF(r->out, "\r\n");
     if (xml_parse_va(&xt, NULL, "<yang-library-version>%s</yang-library-version>", ietf_yang_library_revision) < 0)
@@ -467,6 +477,41 @@ restconf_sig_term(int arg)
     exit(-1);
 }
 
+/*! Callback for yang extensions ietf-restconf:yang-data
+ * @see ietf-restconf.yang
+ * @param[in] h    Clixon handle
+ * @param[in] yext Yang node of extension 
+ * @param[in] ys   Yang node of (unknown) statement belonging to extension
+ * @retval     0   OK, all callbacks executed OK
+ * @retval    -1   Error in one callback
+ */
+static int
+restconf_main_extension_cb(clicon_handle h,
+			   yang_stmt    *yext,
+			   yang_stmt    *ys)
+{
+    int        retval = -1;
+    char      *extname;
+    char      *modname;
+    yang_stmt *ymod;
+    yang_stmt *yc;
+    
+    ymod = ys_module(yext);
+    modname = yang_argument_get(ymod);
+    extname = yang_argument_get(yext);
+    if (strcmp(modname, "ietf-restconf") != 0 || strcmp(extname, "yang-data") != 0)
+	goto ok;
+    clicon_debug(1, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
+    if ((yc = ys_prune(ys, 0)) == NULL)
+	goto done;
+    if (yn_insert(yang_parent_get(ys), yc) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 static void
 restconf_sig_child(int arg)
 {
@@ -510,22 +555,23 @@ int
 main(int    argc, 
      char **argv) 
 {
-    int           retval = -1;
-    int           sock;
-    char	 *argv0 = argv[0];
-    FCGX_Request  request;
-    FCGX_Request *r = &request;
-    int           c;
-    char         *sockpath;
-    char         *path;
-    clicon_handle h;
-    char         *dir;
-    int          logdst = CLICON_LOG_SYSLOG;
-    yang_stmt   *yspec = NULL;
-    yang_stmt   *yspecfg = NULL; /* For config XXX clixon bug */
-    char        *stream_path;
-    int          finish;
-    char        *str;
+    int            retval = -1;
+    int            sock;
+    char	  *argv0 = argv[0];
+    FCGX_Request   request;
+    FCGX_Request  *r = &request;
+    int            c;
+    char          *sockpath;
+    char          *path;
+    clicon_handle  h;
+    char          *dir;
+    int            logdst = CLICON_LOG_SYSLOG;
+    yang_stmt     *yspec = NULL;
+    yang_stmt     *yspecfg = NULL; /* For config XXX clixon bug */
+    char          *stream_path;
+    int            finish;
+    char          *str;
+    clixon_plugin *cp = NULL;
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -635,15 +681,21 @@ main(int    argc,
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
     
-    /* Initialize plugins group */
-    if ((dir = clicon_restconf_dir(h)) != NULL)
-	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
-	    return -1;
-
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
-    clicon_dbspec_yang_set(h, yspec);	
+    clicon_dbspec_yang_set(h, yspec);
+    
+    /* Load restconf plugins before yangs are loaded (eg extension callbacks) */
+    if ((dir = clicon_restconf_dir(h)) != NULL)
+	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
+	    return -1;
+    /* Create a pseudo-plugin to create extension callback to set the ietf-routing
+     * yang-data extension for api-root top-level restconf function.
+     */
+    if (clixon_pseudo_plugin(h, "pseudo restconf", &cp) < 0)
+	goto done;
+    cp->cp_api.ca_extension = restconf_main_extension_cb;
 
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
@@ -669,6 +721,10 @@ main(int    argc,
     if (yang_modules_init(h) < 0)
 	goto done;
 
+    /* Load yang restconf module */
+    if (yang_spec_parse_module(h, "ietf-restconf", NULL, yspec)< 0)
+	goto done;
+    
     /* Add netconf yang spec, used as internal protocol */
     if (netconf_module_load(h) < 0)
 	goto done;

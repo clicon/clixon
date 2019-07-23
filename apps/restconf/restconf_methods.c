@@ -326,6 +326,7 @@ api_data_get2(clicon_handle h,
     }
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
     FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
     FCGX_FPrintF(r->out, "\r\n");
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
@@ -663,7 +664,6 @@ api_data_post(clicon_handle h,
 	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
 	}
     }
-
     FCGX_SetExitStatus(201, r->out); /* Created */
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");

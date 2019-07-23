@@ -105,7 +105,7 @@ new "restconf set x in example1"
 expecteq "$(curl -s -X POST -d '{"example1:x":42}' http://localhost/restconf/data)" 0 ''
 
 new "restconf get config example1"
-expecteq "$(curl -s -X GET http://localhost/restconf/data/example1:x)" 0 '{"example1:x": 42}
+expecteq "$(curl -s -X GET http://localhost/restconf/data/example1:x)" 0 '{"example1:x":42}
 '
 
 new "restconf set x in example2"
@@ -113,17 +113,17 @@ expecteq "$(curl -s -X POST -d '{"example2:x":{"y":99}}' http://localhost/restco
 
 # XXX GET ../example1:x is translated to select=/x which gets both example1&2
 #new "restconf get config example1"
-#expecteq "$(curl -s -X GET http://localhost/restconf/data/example1:x)" 0 '{"example1:x": 42}
+#expecteq "$(curl -s -X GET http://localhost/restconf/data/example1:x)" 0 '{"example1:x":42}
 #'
 
 # XXX GET ../example2:x is translated to select=/x which gets both example1&2
 #new "restconf get config example2"
-#expecteq "$(curl -s -X GET http://localhost/restconf/data/example2:x)" 0 '{"example2:x": {"y":42}}
+#expecteq "$(curl -s -X GET http://localhost/restconf/data/example2:x)" 0 '{"example2:x":{"y":42}}
 #'
 
 new "restconf get config example1 and example2"
 ret=$(curl -s -X GET http://localhost/restconf/data)
-expect='"example1:x": 42,"example2:x": {"y": 99}'
+expect='"example1:x":42,"example2:x":{"y":99}'
 match=`echo $ret | grep -EZo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"

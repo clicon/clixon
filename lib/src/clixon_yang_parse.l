@@ -104,7 +104,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 
 %%
  /* Common tokens */
-<KEYWORD,BOOLEAN,INTEGER,STRARG,STRING,UNKNOWN>[ \t]            
+<KEYWORD,BOOLEAN,INTEGER,STRARG,STRING>[ \t]            
 <KEYWORD,STRING,UNKNOWN,COMMENT2><<EOF>> { return MY_EOF; }
 <KEYWORD,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN>\n   { _YY->yy_linenum++; }
 <KEYWORD,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN>\r   
@@ -199,7 +199,8 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <UNKNOWN>;                { BEGIN(KEYWORD); return *yytext; }
 <UNKNOWN>\"               { _YY->yy_lex_string_state =UNKNOWN; BEGIN(STRINGDQ); return *yytext; }
 <UNKNOWN>\{               { BEGIN(KEYWORD); return *yytext; }
-<UNKNOWN>.                { clixon_yang_parselval.string = strdup(yytext);
+<UNKNOWN>[ \t]+           { return SEP; }
+<UNKNOWN>[^{";: \t]+      { clixon_yang_parselval.string = strdup(yytext);
                             return CHARS; }
 
 <BOOLEAN>true             { clixon_yang_parselval.string = strdup(yytext);

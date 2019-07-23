@@ -110,7 +110,9 @@ isxmlns(cxobj *x)
     return 0;
 }
 
-/*! x is element and has eactly one child which in turn has none */
+/*! x is element and has eactly one child which in turn has none 
+ * @see child_type in clixon_json.c
+ */
 static int
 tleaf(cxobj *x)
 {
@@ -2420,7 +2422,7 @@ api_path2xpath_cvv(cvec       *api_path,
 	nodeid = cv_name_get(cv);
 	if (nodeid_split(nodeid, &prefix, &name) < 0)
 	    goto done;
-	clicon_debug(1, "%s [%d] cvname:%s", __FUNCTION__, i, name);
+	clicon_debug(1, "%s [%d] cvname: %s:%s", __FUNCTION__, i, prefix?prefix:"", name);
 	if (i == offset){ /* top-node */
 	    if (prefix == NULL){
 		clicon_err(OE_XML, EINVAL, "'%s': Expected prefix:name", nodeid);

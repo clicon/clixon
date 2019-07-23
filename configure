@@ -2172,9 +2172,9 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 : ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="4"
-CLIXON_VERSION_MINOR="0"
+CLIXON_VERSION_MINOR="1"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Check CLIgen
 if test "$prefix" = "NONE"; then
@@ -3645,45 +3645,6 @@ if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lm" >&5
-$as_echo_n "checking for main in -lm... " >&6; }
-if ${ac_cv_lib_m_main+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lm  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-int
-main ()
-{
-return main ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_m_main=yes
-else
-  ac_cv_lib_m_main=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_m_main" >&5
-$as_echo "$ac_cv_lib_m_main" >&6; }
-if test "x$ac_cv_lib_m_main" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBM 1
-_ACEOF
-
-  LIBS="-lm $LIBS"
-
-fi
-
 SH_SUFFIX=".so"
 
 # This is for cligen
@@ -4195,63 +4156,6 @@ if test "${with_configfile+set}" = set; then :
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for crypt in -lcrypt" >&5
-$as_echo_n "checking for crypt in -lcrypt... " >&6; }
-if ${ac_cv_lib_crypt_crypt+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcrypt  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char crypt ();
-int
-main ()
-{
-return crypt ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_crypt_crypt=yes
-else
-  ac_cv_lib_crypt_crypt=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypt_crypt" >&5
-$as_echo "$ac_cv_lib_crypt_crypt" >&6; }
-if test "x$ac_cv_lib_crypt_crypt" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBCRYPT 1
-_ACEOF
-
-  LIBS="-lcrypt $LIBS"
-
-fi
-
-for ac_header in crypt.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "crypt.h" "ac_cv_header_crypt_h" "$ac_includes_default"
-if test "x$ac_cv_header_crypt_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_CRYPT_H 1
-_ACEOF
-
-fi
-
-done
-
 
 # user credentials for unix sockets
 for ac_header in sys/ucred.h
@@ -4262,20 +4166,6 @@ do :
 if test "x$ac_cv_header_sys_ucred_h" = xyes; then :
   cat >>confdefs.h <<_ACEOF
 #define HAVE_SYS_UCRED_H 1
-_ACEOF
-
-fi
-
-done
-
-
-# This is for Linux vlan code
-for ac_header in linux/if_vlan.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "linux/if_vlan.h" "ac_cv_header_linux_if_vlan_h" "$ac_includes_default"
-if test "x$ac_cv_header_linux_if_vlan_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LINUX_IF_VLAN_H 1
 _ACEOF
 
 fi
@@ -4325,51 +4215,6 @@ if test "x$ac_cv_lib_socket_socket" = xyes; then :
 _ACEOF
 
   LIBS="-lsocket $LIBS"
-
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for xdr_char in -lnsl" >&5
-$as_echo_n "checking for xdr_char in -lnsl... " >&6; }
-if ${ac_cv_lib_nsl_xdr_char+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lnsl  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char xdr_char ();
-int
-main ()
-{
-return xdr_char ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_nsl_xdr_char=yes
-else
-  ac_cv_lib_nsl_xdr_char=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_nsl_xdr_char" >&5
-$as_echo "$ac_cv_lib_nsl_xdr_char" >&6; }
-if test "x$ac_cv_lib_nsl_xdr_char" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBNSL 1
-_ACEOF
-
-  LIBS="-lnsl $LIBS"
 
 fi
 

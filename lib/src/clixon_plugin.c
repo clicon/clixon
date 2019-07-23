@@ -169,14 +169,14 @@ clixon_plugin_find(clicon_handle h,
 }
 
 /*! Load a dynamic plugin object and call its init-function
- * @param[in]  h       Clicon handle
- * @param[in]  file    Which plugin to load
+ * @param[in]  h        Clicon handle
+ * @param[in]  file     Which plugin to load
  * @param[in]  function Which function symbol to load and call
- * @param[in]  dlflags See man(3) dlopen
+ * @param[in]  dlflags  See man(3) dlopen
  * @param[out] cpp      Clixon plugin structure (if retval is 1)
- * @retval     1     OK
- * @retval     0     Failed load, log, skip and continue with other plugins
- * @retval     -1    Error
+ * @retval     1        OK
+ * @retval     0        Failed load, log, skip and continue with other plugins
+ * @retval    -1        Error
  * @see clixon_plugins_load  Load all plugins
  */
 static int
@@ -236,8 +236,6 @@ plugin_load_one(clicon_handle   h,
     if ((p=strrchr(name, '.')) != NULL)
 	*p = '\0';
     /* Copy name to struct */
-    memcpy(cp->cp_name, name, strlen(name)+1);
-
     snprintf(cp->cp_name, sizeof(cp->cp_name), "%*s",
 	     (int)strlen(name), name);
     cp->cp_api = *api;
@@ -274,7 +272,7 @@ clixon_plugins_load(clicon_handle h,
     struct dirent *dp = NULL;
     int            i;
     char           filename[MAXPATHLEN];
-    clixon_plugin *cp;
+    clixon_plugin *cp = NULL;
     int            ret;
 
     clicon_debug(1, "%s", __FUNCTION__); 
@@ -302,6 +300,47 @@ clixon_plugins_load(clicon_handle h,
 done:
     if (dp)
 	free(dp);
+    return retval;
+}
+
+/*! Create a pseudo plugin so that a main function can register callbacks
+ * @param[in]  h     Clicon handle
+ * @param[in]  name  Plugin name
+ * @param[out] cpp   Clixon plugin structure (direct pointer)
+ * @retval     0     OK, with cpp set
+ * @retval    -1     Error
+ */
+int
+clixon_pseudo_plugin(clicon_handle   h,
+		     char           *name,
+		     clixon_plugin **cpp)
+{
+    int            retval = -1;
+    clixon_plugin *cp = NULL;
+
+    clicon_debug(1, "%s", __FUNCTION__); 
+
+    /* Create a pseudo plugins */
+    /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
+    if ((cp = (clixon_plugin *)malloc(sizeof(struct clixon_plugin))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(cp, 0, sizeof(struct clixon_plugin));
+    snprintf(cp->cp_name, sizeof(cp->cp_name), "%*s", (int)strlen(name), name);
+
+    _clixon_nplugins++;
+    if ((_clixon_plugins = realloc(_clixon_plugins, _clixon_nplugins*sizeof(clixon_plugin))) == NULL) {
+	clicon_err(OE_UNIX, errno, "realloc");
+	goto done;
+    }
+    _clixon_plugins[_clixon_nplugins-1] = *cp;
+    *cpp = &_clixon_plugins[_clixon_nplugins-1];
+
+    retval = 0;
+done:
+    if (cp)
+	free(cp);
     return retval;
 }
 
@@ -395,11 +434,45 @@ clixon_plugin_auth(clicon_handle h,
     return retval;
 }
 
+/*! Callback for a yang extension (unknown) statement
+ * Called at parsing of yang module containing a statement of an extension.
+ * A plugin may identify the extension and perform actions
+ * on the yang statement, such as transforming the yang.
+ * A callback is made for every statement, which means that several calls per
+ * extension can be made.
+ * @param[in] h    Clixon handle
+ * @param[in] yext Yang node of extension 
+ * @param[in] ys   Yang node of (unknown) statement belonging to extension
+ * @retval     0   OK, all callbacks executed OK
+ * @retval    -1   Error in one callback
+ */
+int
+clixon_plugin_extension(clicon_handle h, 
+			yang_stmt    *yext,
+			yang_stmt    *ys)
+{
+    clixon_plugin  *cp;
+    int             i;
+    plgextension_t *extfn;          /* Plugin extension fn */
+    int             retval = 1;
+    
+    for (i = 0; i < _clixon_nplugins; i++) {
+	cp = &_clixon_plugins[i];
+	if ((extfn = cp->cp_api.ca_extension) == NULL)
+	    continue;
+	if ((retval = extfn(h, yext, ys)) < 0) {
+	    clicon_debug(1, "plugin_extension() failed");
+	    return -1;
+	}
+    }
+    return retval;
+}
+
 /*--------------------------------------------------------------------
  * RPC callbacks for both client/frontend and backend plugins.
  * RPC callbacks are explicitly registered in the plugin_init() function
  * with a tag and a function
- * WHen the the tag is encountered, the callback is called.
+ * When the the tag is encountered, the callback is called.
  * Primarily backend, but also netconf and restconf frontend plugins.
  * CLI frontend so far have direct callbacks, ie functions in the cligen
  * specification are directly dlsym:ed to the CLI plugin.
@@ -511,11 +584,11 @@ rpc_callback_call(clicon_handle h,
 
     if (rpc_cb_list == NULL)
 	return 0;
+    name = xml_name(xe);
+    prefix = xml_prefix(xe);
+    xml2ns(xe, prefix, &namespace);
     rc = rpc_cb_list;
     do {
-	name = xml_name(xe);
-	prefix = xml_prefix(xe);
-	xml2ns(xe, prefix, &namespace);
 	if (strcmp(rc->rc_name, name) == 0 &&
 	    namespace && rc->rc_namespace &&
 	    strcmp(rc->rc_namespace, namespace) == 0){

@@ -1,6 +1,31 @@
 # Clixon Changelog
 
-## 4.0.0 (Expected: 13 July 2019)
+## 4.1.0 (Expected: August 2019)
+
+### Major New features
+* Restconf RFC 8040 increased feature compliance
+  * Cache-Control: no-cache added in HTTP responses (RFC Section 5.5)
+  * Restconf monitoring capabilities (RFC Section 9.1)
+* Added support for Yang extensions
+  * New plugin callback: ca_extension
+  * Main backend example includes example code on how to implement a Yang extension in a plugin.
+
+### API changes on existing features (you may need to change your code)
+* JSON changes
+  * Non-pretty-print output removed all extra spaces.
+    * Example: `{"nacm-example:x": 42}` --> {"nacm-example:x":42}`
+  * Empty JSON container changed from `null` to `{}`.
+    * Empty list and leafs remain as `null`
+
+### Minor changes
+* Removed unnecessary configure dependencies
+  * libnsl, libcrypt, libm, if_vlan,...
+* pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions
+
+### Corrected Bugs
+* Yang Unique statements with multiple schema identifiers did not work on some platforms due to memory error.
+
+## 4.0.0 (13 July 2019)
 
 ### Summary
 

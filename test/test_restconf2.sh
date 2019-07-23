@@ -90,19 +90,19 @@ wait_backend
 wait_restconf
 
 new "restconf POST tree without key"
-expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"type":"regular"}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "name"},"error-severity": "error","error-message": "Mandatory key"}}}'
+expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"type":"regular"}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"name"},"error-severity":"error","error-message":"Mandatory key"}}}'
 
 new "restconf POST initial tree"
 expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 ""
 
 new "restconf POST top without namespace"
-expectfn 'curl -s -X POST -d {"cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "unknown-element","error-info": {"bad-element": "cont1"},"error-severity": "error","error-message": "Unassigned yang spec"}}}'
+expectfn 'curl -s -X POST -d {"cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"cont1"},"error-severity":"error","error-message":"Unassigned yang spec"}}}'
 
 new "restconf GET datastore initial"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
 
 new "restconf GET interface subtree"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=local0" 0 '{"example:interface": \[{"name": "local0","type": "regular"}\]}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=local0" 0 '{"example:interface":\[{"name":"local0","type":"regular"}\]}'
 
 new "restconf GET interface subtree xml"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/example:cont1/interface=local0)
@@ -113,55 +113,55 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf GET if-type"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=local0/type" 0 '{"example:type": "regular"}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=local0/type" 0 '{"example:type":"regular"}'
 
 new "restconf POST interface without mandatory type"
-expectfn 'curl -s -X POST http://localhost/restconf/data/example:cont1 -d {"example:interface":{"name":"TEST"}}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "type"},"error-severity": "error","error-message": "Mandatory variable"}}}'
+expectfn 'curl -s -X POST http://localhost/restconf/data/example:cont1 -d {"example:interface":{"name":"TEST"}}' 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"type"},"error-severity":"error","error-message":"Mandatory variable"}}}'
 
 new "restconf POST interface without mandatory key"
-expectfn 'curl -s -X POST http://localhost/restconf/data/example:cont1 -d {"example:interface":{"type":"regular"}}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "missing-element","error-info": {"bad-element": "name"},"error-severity": "error","error-message": "Mandatory key"}}}'
+expectfn 'curl -s -X POST http://localhost/restconf/data/example:cont1 -d {"example:interface":{"type":"regular"}}' 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"name"},"error-severity":"error","error-message":"Mandatory key"}}}'
 
 new "restconf POST interface"
 expectfn 'curl -s -X POST -d {"example:interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/example:cont1' 0 ""
 
 new "restconf POST interface without namespace"
-expectfn 'curl -s -X POST -d {"interface":{"name":"TEST2","type":"eth0"}} http://localhost/restconf/data/example:cont1' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": "Data is not prefixed with matching namespace"}}}'
+expectfn 'curl -s -X POST -d {"interface":{"name":"TEST2","type":"eth0"}} http://localhost/restconf/data/example:cont1' 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Data is not prefixed with matching namespace"}}}'
 
 new "restconf POST again"
-expecteq "$(curl -s -X POST -d '{"example:interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/example:cont1)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+expecteq "$(curl -s -X POST -d '{"example:interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/example:cont1)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
 new "restconf POST from top"
-expecteq "$(curl -s -X POST -d '{"example:cont1":{"interface":{"name":"TEST","type":"eth0"}}}' http://localhost/restconf/data)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "data-exists","error-severity": "error","error-message": "Data already exists; cannot create new resource"}}}'
+expecteq "$(curl -s -X POST -d '{"example:cont1":{"interface":{"name":"TEST","type":"eth0"}}}' http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
 new "restconf DELETE"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data/example:cont1' 0 ""
 
 new "restconf GET null datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-type": "application","error-tag": "invalid-value","error-severity": "error","error-message": "Instance does not exist"}}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
 
 new "restconf POST initial tree"
 expectfn 'curl -s -X POST -d {"example:cont1":{"interface":{"name":"local0","type":"regular"}}} http://localhost/restconf/data' 0 ""
 
 new "restconf GET initial tree"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
 
 new "restconf DELETE whole datastore"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
 
 new "restconf GET null datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-type": "application","error-tag": "invalid-value","error-severity": "error","error-message": "Instance does not exist"}}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
 
 new "restconf PUT initial datastore" 
 expectfn 'curl -s -X PUT -d {"data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' 0 ""
 
 new "restconf GET datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1": {"interface": \[{"name": "local0","type": "regular"}\]}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
 
 new "restconf PUT replace datastore" 
 expectfn 'curl -s -X PUT -d {"data":{"example:cont2":{"name":"foo"}}} http://localhost/restconf/data' 0 ""
 
 new "restconf GET replaced datastore"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont2" 0 '{"example:cont2": {"name": "foo"}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont2" 0 '{"example:cont2":{"name":"foo"}}'
 
 new "restconf PUT initial datastore again" 
 expectfn 'curl -s -X PUT -d {"data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}} http://localhost/restconf/data' 0 ""
@@ -170,26 +170,26 @@ new "restconf PUT change interface"
 expectfn 'curl -s -X PUT -d {"example:interface":{"name":"local0","type":"atm0"}} http://localhost/restconf/data/example:cont1/interface=local0' 0 ""
 
 new "restconf GET datastore atm"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1": {"interface": \[{"name": "local0","type": "atm0"}\]}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1":{"interface":\[{"name":"local0","type":"atm0"}\]}}'
 
 new "restconf PUT add interface"
 expectfn 'curl -s -X PUT -d {"example:interface":{"name":"TEST","type":"eth0"}} http://localhost/restconf/data/example:cont1/interface=TEST' 0 ""
 
 new "restconf PUT change key error"
-expectfn 'curl -is -X PUT -d {"example:interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/example:cont1/interface=TEST' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
+expectfn 'curl -is -X PUT -d {"example:interface":{"name":"ALPHA","type":"eth0"}} http://localhost/restconf/data/example:cont1/interface=TEST' 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
 new "restconf PUT change type to eth0 (non-key sub-element to list)"
 expectfn 'curl -s -X PUT -d {"example:type":"eth0"} http://localhost/restconf/data/example:cont1/interface=local0/type' 0 ""
 
 new "restconf GET datastore eth"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=local0" 0 '{"example:interface": \[{"name": "local0","type": "eth0"}\]}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=local0" 0 '{"example:interface":\[{"name":"local0","type":"eth0"}\]}'
 
 #--------------- json type tests
 new "restconf POST type x3"
 expectfn 'curl -s -X POST -d {"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}} http://localhost/restconf/data' 0 ''
 
 new "restconf POST type x3"
-expectfn 'curl -s -X GET http://localhost/restconf/data/example:types' 0 '{"example:types": {"tint": 42,"tdec64": 42.123,"tbool": false,"tstr": "str"}}'
+expectfn 'curl -s -X GET http://localhost/restconf/data/example:types' 0 '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}'
 
 new "Kill restconf daemon"
 stop_restconf 

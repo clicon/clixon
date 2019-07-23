@@ -24,9 +24,6 @@
 /* Define to 1 if you have the <cligen/cligen.h> header file. */
 #undef HAVE_CLIGEN_CLIGEN_H
 
-/* Define to 1 if you have the <crypt.h> header file. */
-#undef HAVE_CRYPT_H
-
 /* Define to 1 if you have the `inet_aton' function. */
 #undef HAVE_INET_ATON
 
@@ -35,9 +32,6 @@
 
 /* Define to 1 if you have the `cligen' library (-lcligen). */
 #undef HAVE_LIBCLIGEN
-
-/* Define to 1 if you have the `crypt' library (-lcrypt). */
-#undef HAVE_LIBCRYPT
 
 /* Define to 1 if you have the `curl' library (-lcurl). */
 #undef HAVE_LIBCURL
@@ -48,20 +42,11 @@
 /* Define to 1 if you have the `fcgi' library (-lfcgi). */
 #undef HAVE_LIBFCGI
 
-/* Define to 1 if you have the `m' library (-lm). */
-#undef HAVE_LIBM
-
-/* Define to 1 if you have the `nsl' library (-lnsl). */
-#undef HAVE_LIBNSL
-
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #undef HAVE_LIBSOCKET
 
 /* Define to 1 if you have the `xml2' library (-lxml2). */
 #undef HAVE_LIBXML2
-
-/* Define to 1 if you have the <linux/if_vlan.h> header file. */
-#undef HAVE_LINUX_IF_VLAN_H
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H

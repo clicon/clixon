@@ -140,7 +140,6 @@ struct xml;
 
 typedef struct yang_stmt yang_stmt; /* Defined in clixon_yang_internal */
 
-
 typedef int (yang_applyfn_t)(yang_stmt *ys, void *arg);
 
 /*
@@ -157,6 +156,8 @@ int        yang_cvec_set(yang_stmt *ys, cvec *cvv);
 /* Other functions */
 yang_stmt *yspec_new(void);
 yang_stmt *ys_new(enum rfc_6020 keyw);
+yang_stmt *ys_prune(yang_stmt *yp, int i);
+
 int        ys_free(yang_stmt *ys);
 int        yspec_free(yang_stmt *yspec);
 int        ys_cp(yang_stmt *new, yang_stmt *old);

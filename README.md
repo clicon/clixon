@@ -102,7 +102,6 @@ However, the following YANG syntax modules are not implemented (reference to RFC
 - require-instance
 - instance-identifier type
 - status (7.21.2)
-- extension (7.19) supported syntactically, but no hooks/plugins for extenstions
 - YIN (13)
 - Yang extended Xpath functions: re-match(), deref)(), derived-from(), derived-from-or-self(), enum-value(), bit-is-set() (10.2-10.6)
 - Default values on leaf-lists are not supported (7.7.2)
@@ -203,7 +202,6 @@ You can create namespace in three ways:
 * `xml_nsctx_init()` by explicitly giving a default namespace
 * `xml_nsctx_node()` by copying an XML namespace context from an existing XML node.
 * `xml_nsctx_yang()` by computing an XML namespace context a yang module import statements.
-
 
 ## Netconf
 
@@ -308,17 +306,16 @@ The figure shows the SDK runtime of Clixon.
 
 ## Standard Compliance
 
-This is work-in-progress on which standards Clixon supports:
-- [RFC 6020](https://www.rfc-editor.org/rfc/rfc6020.txt) YANG - A Data Modeling Language for the Network Configuration Protocol (NETCONF)
+Standards Clixon partially supports:
+- [RFC5277](http://www.rfc-base.org/txt/rfc-5277.txt) NETCONF Event Notifications
+- [RFC6020](https://www.rfc-editor.org/rfc/rfc6020.txt) YANG - A Data Modeling Language for the Network Configuration Protocol (NETCONF)
+- [RFC6241](http://www.rfc-base.org/txt/rfc-6241.txt) NETCONF Configuration Protocol
+- [RFC6242](http://www.rfc-base.org/txt/rfc-6242.txt) Using the NETCONF Configuration Protocol over Secure Shell (SSH)
 - [RFC7895](http://www.rfc-base.org/txt/rfc-7895.txt) YANG Module Library
 * [RFC7950](http://www.rfc-base.org/txt/rfc-7950.txt) The YANG 1.1 Data Modeling Language
 * [RFC7951](http://www.rfc-base.org/txt/rfc-7951.txt) JSON Encoding of Data Modeled with YANG
-- [RFC 6241: NETCONF Configuration Protocol](http://www.rfc-base.org/txt/rfc-6241.txt)
-- [RFC 6242: Using the NETCONF Configuration Protocol over Secure Shell (SSH)](http://www.rfc-base.org/txt/rfc-6242.txt)
-- [RFC 5277: NETCONF Event Notifications](http://www.rfc-base.org/txt/rfc-5277.txt)
-- [RFC 8341: Network Configuration Access Control Model](http://www.rfc-base.org/txt/rfc-8341.txt)
-- [RFC 8040: RESTCONF Protocol](https://tools.ietf.org/html/rfc8040).
-- [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341).
+- [RFC8040](https://tools.ietf.org/html/rfc8040) RESTCONF Protocol
+- [RFC8341](http://www.rfc-base.org/txt/rfc-8341.txt) Network Configuration Access Control Model
 - [XML 1.0](https://www.w3.org/TR/2008/REC-xml-20081126)
 - [Namespaces in XML 1.0](https://www.w3.org/TR/2009/REC-xml-names-20091208)
 - [XPATH 1.0](https://www.w3.org/TR/xpath-10)

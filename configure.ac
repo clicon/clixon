@@ -43,9 +43,9 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="4"
-CLIXON_VERSION_MINOR="0"
+CLIXON_VERSION_MINOR="1"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Check CLIgen
 if test "$prefix" = "NONE"; then
@@ -131,7 +131,6 @@ if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}
 fi
 
-AC_CHECK_LIB(m, main)
 SH_SUFFIX=".so"
 
 # This is for cligen
@@ -202,19 +201,13 @@ AC_ARG_WITH([configfile],
 	    [AS_HELP_STRING([--with-configfile=FILE],[set default path to config file])],
 	    [CLIXON_DEFAULT_CONFIG="$withval"],)
 
-AC_CHECK_LIB(crypt, crypt)
-AC_CHECK_HEADERS(crypt.h)
 
 # user credentials for unix sockets
 AC_CHECK_HEADERS([sys/ucred.h],[],[],
      [[# include <sys/param.h>]]
 )
 
-# This is for Linux vlan code
-AC_CHECK_HEADERS(linux/if_vlan.h)
-
 AC_CHECK_LIB(socket, socket)
-AC_CHECK_LIB(nsl, xdr_char)
 AC_CHECK_LIB(dl, dlopen)
 
 # This is for libxml2 XSD regex engine

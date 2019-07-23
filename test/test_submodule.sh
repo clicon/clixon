@@ -213,7 +213,7 @@ new "restconf edit sub2"
 expectfn 'curl -s -i -X POST http://localhost/restconf/data -d {"main:sub2":{"x":"foo","ext2":"foo"}}' 0 'HTTP/1.1 200 OK'
 
 new "restconf check main/sub1/sub2 contents"
-expectfn "curl -s -X GET http://localhost/restconf/data" 0 '{"data": {"main:main": {"ext": "foo","x": "foo"},"main:sub1": {"ext1": "foo","x": "foo"},"main:sub2": {"ext2": "foo","x": "foo"}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data" 0 '{"data":{"main:main":{"ext":"foo","x":"foo"},"main:sub1":{"ext1":"foo","x":"foo"},"main:sub2":{"ext2":"foo","x":"foo"}}}'
 
 new "Kill restconf daemon"
 stop_restconf 

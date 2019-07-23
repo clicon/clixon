@@ -165,11 +165,11 @@ sleep 2
 new "2. Restconf RFC8040 stream testing"
 # 2.1 Stream discovery
 new "restconf event stream discovery RFC8040 Sec 6.2"
-expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams" 0 '{"ietf-restconf-monitoring:streams": {"stream": \[{"name": "EXAMPLE","description": "Example event stream","replay-support": true,"access": \[{"encoding": "xml","location": "https://localhost/streams/EXAMPLE"}\]}\]}'
+expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams" 0 '{"ietf-restconf-monitoring:streams":{"stream":\[{"name":"EXAMPLE","description":"Example event stream","replay-support":true,"access":\[{"encoding":"xml","location":"https://localhost/streams/EXAMPLE"}\]}\]}'
 
 sleep 2
 new "restconf subscribe RFC8040 Sec 6.3, get location"
-expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location" 0 '{"ietf-restconf-monitoring:location": "https://localhost/streams/EXAMPLE"}'
+expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location" 0 '{"ietf-restconf-monitoring:location":"https://localhost/streams/EXAMPLE"}'
 
 sleep 2
 # Restconf stream subscription RFC8040 Sec 6.3

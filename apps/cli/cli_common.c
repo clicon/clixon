@@ -47,9 +47,6 @@
 #include <ctype.h>
 
 #include <unistd.h>
-#ifdef HAVE_CRYPT_H
-#include <crypt.h>
-#endif 
 #include <dirent.h>
 #include <syslog.h>
 #include <arpa/inet.h>

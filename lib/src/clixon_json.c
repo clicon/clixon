@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -91,14 +91,17 @@ enum array_element_type{
 };
 
 enum childtype{
-    NULL_CHILD=0, /* eg <a/> no children */
+    NULL_CHILD=0, /* eg <a/> no children. Translated to null if in 
+		   * array or leaf terminal, and to {} if proper object, ie container.
+		   * anyxml/anydata?
+		   */
     BODY_CHILD,   /* eg one child which is a body, eg <a>1</a> */
     ANY_CHILD,    /* eg <a><b/></a> or <a><b/><c/></a> */
 };
 
 /*! x is element and has exactly one child which in turn has none 
  * remove attributes from x
- * Clone from clixon_xml_map.c
+ * @see tleaf in clixon_xml_map.c
  */
 static enum childtype
 child_type(cxobj *x)
@@ -372,6 +375,7 @@ xml2json1_cbuf(cbuf                   *cb,
 	    modname0 = modname; /* modname0 is ancestor ns passed to child */
     }
     childt = child_type(x);
+
     if (pretty==2)
 	cprintf(cb, "#%s_array, %s_child ", 
 		arraytype2str(arraytype),
@@ -393,11 +397,17 @@ xml2json1_cbuf(cbuf                   *cb,
 	    cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
 	    if (modname) 
 		cprintf(cb, "%s:", modname);
-	    cprintf(cb, "%s\": ", xml_name(x));
+	    cprintf(cb, "%s\":%s", xml_name(x), pretty?" ":"");
 	}
 	switch (childt){
 	case NULL_CHILD:
-	    cprintf(cb, "null");
+	    /* If x is a container, use {} instead of null 
+	     * That is, x is not a list or leaf
+	     */
+	    if (ys && yang_keyword_get(ys) == Y_CONTAINER)
+		cprintf(cb, "{}");
+	    else
+		cprintf(cb, "null");
 	    break;
 	case BODY_CHILD:
 	    break;
@@ -413,7 +423,7 @@ xml2json1_cbuf(cbuf                   *cb,
 	cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
 	if (modname)
 	    cprintf(cb, "%s:", modname);
-	cprintf(cb, "%s\": ", xml_name(x));
+	cprintf(cb, "%s\":%s", xml_name(x), pretty?" ":"");
 	level++;
 	cprintf(cb, "[%s%*s", 
 		pretty?"\n":"",
@@ -443,7 +453,7 @@ xml2json1_cbuf(cbuf                   *cb,
 	case BODY_CHILD:
 	    break;
 	case ANY_CHILD:
-	    cprintf(cb, "{ %s", pretty?"\n":"");
+	    cprintf(cb, "{%s", pretty?"\n":"");
 	    break;
 	default:
 	    break;

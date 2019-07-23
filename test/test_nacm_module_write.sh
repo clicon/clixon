@@ -178,7 +178,7 @@ nacm
 
 #----------root
 new "update root list default deny"
-expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data -d '<data><x xmlns="urn:example:nacm">42</x>$RULES</data>')" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data -d '<data><x xmlns="urn:example:nacm">42</x>$RULES</data>')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 # replace all, then must include NACM rules as well
 MSG="<data>$RULES</data>"
@@ -186,7 +186,7 @@ new "update root list permit"
 expecteq "$(curl -u andy:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data -d "$MSG")" 0 ''
 
 new "delete root list deny"
-expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "delete root permit"
 expecteq "$(curl -u andy:bar -sS -X DELETE http://localhost/restconf/data)" 0 ''
@@ -196,62 +196,62 @@ nacm
 
 #----------leaf
 new "create leaf deny"
-expecteq "$(curl -u guest:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:x -d '<x xmlns="urn:example:nacm">42</x>')" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:x -d '<x xmlns="urn:example:nacm">42</x>')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "create leaf permit"
 expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:x -d '<x xmlns="urn:example:nacm">42</x>')" 0 ''
 
 new "update leaf deny"
-expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:x -d '<x xmlns="urn:example:nacm">99</x>')" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:x -d '<x xmlns="urn:example:nacm">99</x>')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "update leaf permit"
 expecteq "$(curl -u guest:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:x -d '<x xmlns="urn:example:nacm">99</x>')" 0 ''
 
 new "read leaf check"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"nacm-example:x": 99}
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"nacm-example:x":99}
 '
 
 new "delete leaf deny"
-expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "delete leaf permit"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/nacm-example:x)" 0 ''
 
 #-----  list/container
 new "create list deny"
-expecteq "$(curl -u guest:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:a=key42 -d '<a xmlns="urn:example:nacm"><k>key42</k><b><c>str</c></b></a>')" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:a=key42 -d '<a xmlns="urn:example:nacm"><k>key42</k><b><c>str</c></b></a>')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "create list permit"
 expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:a=key42 -d '<a xmlns="urn:example:nacm"><k>key42</k><b><c>str</c></b></a>')" 0 ''
 
 new "update list deny"
-expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:a=key42 -d '<a xmlns="urn:example:nacm"><k>key42</k><b><c>update</c></b></a>')" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:a=key42 -d '<a xmlns="urn:example:nacm"><k>key42</k><b><c>update</c></b></a>')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "update list permit"
 expecteq "$(curl -u guest:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:a=key42 -d '<a xmlns="urn:example:nacm"><k>key42</k><b><c>update</c></b></a>')" 0 ''
 
 new "read list check"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:a)" 0 '{"nacm-example:a": [{"k": "key42","b": {"c": "update"}}]}
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:a)" 0 '{"nacm-example:a":[{"k":"key42","b":{"c":"update"}}]}
 '
 
 new "delete list deny"
-expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data/nacm-example:a=key42)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X DELETE http://localhost/restconf/data/nacm-example:a=key42)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "delete list permit"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/nacm-example:a=key42)" 0 ''
 
 #----- default deny (clixon-example limit and guest have default access)
 new "default create list deny"
-expecteq "$(curl -u wilma:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k": "key42","value": "val42"}]}')" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val42"}]}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "create list permit"
-expecteq "$(curl -u andy:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k": "key42","value": "val42"}]}')" 0 ''
+expecteq "$(curl -u andy:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val42"}]}')" 0 ''
 
 new "default update list deny"
-expecteq "$(curl -u wilma:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k": "key42","value": "val99"}]}')" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val99"}]}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "default delete list deny"
-expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/clixon-example:translate=key42)" 0 '{"ietf-restconf:errors" : {"error": {"error-type": "application","error-tag": "access-denied","error-severity": "error","error-message": "default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/clixon-example:translate=key42)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "Kill restconf daemon"
 stop_restconf 

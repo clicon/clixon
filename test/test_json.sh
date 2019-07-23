@@ -1,5 +1,7 @@
 #!/bin/bash
-# Test: JSON parser tests
+# Test: JSON parser tests. See RFC7951
+# - Multi-line + pretty-print 
+# - Empty values
 # Note that members should not be quoted. See test_restconf2.sh for typed
 #PROG="valgrind --leak-check=full --show-leak-kinds=all ../util/clixon_util_json"
 # Magic line must be first in script (see README.md)
@@ -7,20 +9,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 : ${clixon_util_json:=clixon_util_json}
 
-new "json parse to xml"
-expecteofx "$clixon_util_json" 0 '{"foo": -23}' "<foo>-23</foo>"
-
-new "json parse to json" # should be {"foo": -23}
-expecteofx "$clixon_util_json -j" 0 '{"foo": -23}' '{"foo": "-23"}'
-
-new "json parse list xml"
-expecteofx "$clixon_util_json" 0 '{"a":[0,1,2,3]}' "<a>0</a><a>1</a><a>2</a><a>3</a>"
-
-new "json parse list json" # should be {"a":[0,1,2,3]}
-expecteofx "$clixon_util_json -j" 0 '{"a":[0,1,2,3]}' '{"a": "0"}{"a": "1"}{"a": "2"}{"a": "3"}'
-
 fyang=$dir/json.yang
-fjson=$dir/json.json
 cat <<EOF > $fyang
 module json{
    prefix ex;
@@ -39,20 +28,58 @@ module json{
 }
 EOF
 
-JSON='{"json:a": -23}'
+new "test params: -y $fyang"
+
+# No yang
+new "json parse to xml"
+expecteofx "$clixon_util_json" 0 '{"foo": -23}' "<foo>-23</foo>"
+
+new "json parse to json" # should be {"foo": -23}
+expecteofx "$clixon_util_json -j" 0 '{"foo": -23}' '{"foo":"-23"}'
+
+new "json parse list xml"
+expecteofx "$clixon_util_json" 0 '{"a":[0,1,2,3]}' "<a>0</a><a>1</a><a>2</a><a>3</a>"
+
+new "json parse list json" # should be {"a":[0,1,2,3]}
+expecteofx "$clixon_util_json -j" 0 '{"a":[0,1,2,3]}' '{"a":"0"}{"a":"1"}{"a":"2"}{"a":"3"}'
+
+# Multi-line JOSN not pretty-print
+JSON='{"json:c":{"a":42,"s":"string"}}'
+# Same with pretty-print
+JSONP='{
+  "json:c": {
+    "a": 42,
+    "s": "string"
+  }
+}'
+
+new "json no pp in/out"
+expecteofx "$clixon_util_json -jy $fyang" 0 "$JSON" "$JSON"
+
+new "json pp in/out"
+expecteofeq "$clixon_util_json -jpy $fyang" 0 "$JSONP" "$JSONP"
+
+new "json pp in/ no pp out"
+expecteofeq "$clixon_util_json -jy $fyang" 0 "$JSONP" "$JSON"
+
+new "json no pp in/ pp out"
+expecteofeq "$clixon_util_json -jpy $fyang" 0 "$JSON" "$JSONP"
+
+JSON='{"json:a":-23}'
 
 new "json leaf back to json"
 expecteofx "$clixon_util_json -j -y $fyang" 0 "$JSON" "$JSON"
 
-JSON='{"json:c": {"a": 937}}'
+JSON='{"json:c":{"a":937}}'
 new "json parse container back to json"
 expecteofx "$clixon_util_json -j -y $fyang" 0 "$JSON" "$JSON"
 
-# This is wrong
+# This should work
 if false; then
 JSON='{"json:c": {"s": "<![CDATA[  z > x  & x < y ]]>"}}'
 new "json parse cdata xml"
 expecteofx "$clixon_util_json -j -y $fyang" 0 "$JSON" "$JSON"
 fi
+
 
 rm -rf $dir
