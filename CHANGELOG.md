@@ -19,7 +19,7 @@
 
 ### Minor changes
 * Removed unnecessary configure dependencies
-  * libnsl, libcrypt, libm, if_vlan,...
+  * libnsl, libcrypt, if_vlan,...
 * pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions
 
 ### Corrected Bugs

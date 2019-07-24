@@ -45,7 +45,7 @@
 #include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
-#include <math.h>
+#include <math.h>  /* NaN */
 
 /* cligen */
 #include <cligen/cligen.h>
