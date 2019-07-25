@@ -39,7 +39,6 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <assert.h>
-#include <math.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/param.h>

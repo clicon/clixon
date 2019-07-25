@@ -61,6 +61,7 @@ AC_DEFINE_UNQUOTED(CLIXON_VERSION_MAJOR, $CLIXON_VERSION_MAJOR, [Clixon major re
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_MINOR, $CLIXON_VERSION_MINOR, [Clixon minor release])
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_PATCH, $CLIXON_VERSION_PATCH, [Clixon path version])
 
+AC_CHECK_LIB(m, main)
 
 # AC_SUBST(var) makes @var@ appear in makefiles.
 # clixon versions spread to Makefile's (.so files) and variable in build.c
@@ -91,6 +92,7 @@ AC_SUBST(with_restconf) # If yes, compile apps/restconf
 AC_SUBST(enable_stdyangs) 
 AC_SUBST(wwwdir,/www-data)
 AC_SUBST(wwwuser,www-data)
+
 #
 AC_PROG_CC()
 AC_PROG_CPP

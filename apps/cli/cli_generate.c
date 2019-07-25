@@ -52,7 +52,6 @@
 #include <fcntl.h>
 #include <syslog.h>
 #include <sys/param.h>
-#include <math.h> /* For pow() kludge in cvtype_max2str_dup2 */
 
 /* cligen */
 #include <cligen/cligen.h>
