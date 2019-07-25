@@ -2589,6 +2589,10 @@ ys_schemanode_check(yang_stmt *ys,
     yang_stmt    *yp;
     char         *arg;
     enum rfc_6020 keyword;
+    char **vec = NULL;
+    char  *v;
+    int    nvec;
+    int    i;
 
     yp = yang_parent_get(ys);
     arg = yang_argument_get(ys);
@@ -2609,10 +2613,6 @@ ys_schemanode_check(yang_stmt *ys,
 	}
 	break;
     case Y_UNIQUE:{
-	char **vec = NULL;
-	char  *v;
-	int    nvec;
-	int    i;
 	/* Unique: Sec 7.8.3 It takes as an argument a string that contains a space-
 	   separated list of schema node identifiers */
 	if ((vec = clicon_strsep(arg, " \t\n", &nvec)) == NULL)
@@ -2643,6 +2643,8 @@ ys_schemanode_check(yang_stmt *ys,
     }
     retval = 0;
  done:
+    if (vec)
+	free(vec);
     return retval;
 }
 
@@ -3395,7 +3397,7 @@ ys_parse(yang_stmt   *ys,
  * That is, siblings, etc, may not be there. Complete checks are made in
  * ys_populate instead.
  * @param[in] ys    yang statement
- * @param[in] extra Yang extra for cornercases (unknown/extension). 
+ * @param[in] extra Yang extra for cornercases (unknown/extension). Is consumed
  *
  * The cv:s created in parse-tree as follows:
  * fraction-digits : Create cv as uint8, check limits [1:8] (must be made in 1st pass)
@@ -3499,6 +3501,8 @@ ys_parse_sub(yang_stmt *ys,
     }
     retval = 0;
   done:
+    if (extra)
+	free(extra);
     return retval;
 }
 

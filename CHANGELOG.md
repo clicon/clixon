@@ -8,7 +8,7 @@
   * Restconf monitoring capabilities (RFC Section 9.1)
 * Added support for Yang extensions
   * New plugin callback: ca_extension
-  * Main backend example includes example code on how to implement a Yang extension in a plugin.
+  * The main example explains how to implement a Yang extension in a backend plugin.
 
 ### API changes on existing features (you may need to change your code)
 * JSON changes
