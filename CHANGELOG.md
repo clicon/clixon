@@ -15,7 +15,7 @@
   *
 * Yang extensions support
   * New plugin callback: ca_extension
-  * Main backend example includes example code on how to implement a Yang extension in a plugin.
+  * The main example explains how to implement a Yang extension in a backend plugin.
 
 ### API changes on existing features (you may need to change your code)
 * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:

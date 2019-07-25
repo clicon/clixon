@@ -231,12 +231,15 @@ yang_parse_exit(struct clicon_yang_yacc_arg *yy)
     return 0;
 }
 
+/*! Pop a yang parse context on stack
+ * @param[in]  yy        Yang yacc argument
+ */
 int
 ystack_pop(struct clicon_yang_yacc_arg *yy)
 {
     struct ys_stack *ystack; 
 
-    if ((ystack =  yy->yy_stack) == NULL){
+    if ((ystack = yy->yy_stack) == NULL){
 	clicon_err(OE_YANG, 0, "ystack is NULL");
 	return -1;
     }
@@ -245,6 +248,10 @@ ystack_pop(struct clicon_yang_yacc_arg *yy)
     return 0;
 }
 
+/*! Push a yang parse context on stack
+ * @param[in]  yy        Yang yacc argument
+ * @param[in]  yn        Yang node to push
+ */
 struct ys_stack *
 ystack_push(struct clicon_yang_yacc_arg *yy,
 	    yang_stmt                   *yn)
@@ -307,7 +314,13 @@ ysp_add(struct clicon_yang_yacc_arg *yy,
     return NULL;
 }
 
-/*! combination of ysp_add and ysp_push for sub-modules */
+/*! Add a yang statement to existing top-of-stack and then push it on stack
+ *
+ * @param[in]  yy        Yang yacc argument
+ * @param[in]  keyword   Yang keyword
+ * @param[in]  argument  Yang argument
+ * @param[in]  extra     Yang extra for cornercases (unknown/extension)
+ */
 static yang_stmt *
 ysp_add_push(struct clicon_yang_yacc_arg *yy,
 	     enum rfc_6020                keyword, 

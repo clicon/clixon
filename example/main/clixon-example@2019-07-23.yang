@@ -45,9 +45,9 @@ module clixon-example {
     /* yang extension implemented by the example backend code. */
     extension e4 {
        description
-	   "The first child of the ex:e4 (unknown) statement is replaced with its first
-            child. This means that 'uses bar;' in the ex:e4 statement below is a valid
-            data node";
+	   "The first child of the ex:e4 (unknown) statement is inserted into 
+	    the module as a regular data statement. This means that 'uses bar;'
+	    in the ex:e4 statement below is a valid data node";
        argument arg;
     }
     grouping bar {

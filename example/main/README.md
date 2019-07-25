@@ -183,11 +183,11 @@ Restconf support is also supported, see (restc)[../../apps/restconf/README.md].
 
 ## RPC Operations
 
-Clixon implements Yang RPC operations by an extension mechanism. The
-extension mechanism enables you to add application-specific
-operations. It works by adding user-defined callbacks for added
-netconf operations. It is possible to use the extension mechanism
-independent of the yang rpc construct, but it is recommended. The example includes an example:
+Clixon implements Yang RPC operations by a mechanism that enables you
+to add application-specific operations.  It works by adding
+user-defined callbacks for added netconf operations. It is possible to
+use the extension mechanism independent of the yang rpc construct, but
+not recommended . The example includes an example:
 
 Example using CLI:
 ```
@@ -273,14 +273,14 @@ The example contains some stubs for authorization according to [RFC8341(NACM)](h
 
 ## Extensions
 
-Clixon supports Yang extensions, but you need to write plugin code.
+Clixon supports Yang extensions by writing plugin callback code.
 The example backend implements an "example:e4" Yang extension, as follows:
 ```
     extension e4 {
        description
-	   "The first child of the ex:e4 (unknown) statement is replaced with its first
-            child. This means that 'uses bar;' in the ex:e4 statement below is a valid
-            data node";
+	   "The first child of the ex:e4 (unknown) statement is inserted into 
+	    the module as a regular data statement. This means that 'uses bar;'
+	    in the ex:e4 statement below is a valid data node";
        argument arg;
     }
     ex:e4 arg1{
@@ -295,8 +295,8 @@ The backend plugin code registers an extension callback in the init struct:
 
 The callback then receives a callback on all "unknown" Yang statements
 during yang parsing. If the extension matches "example:e4", it applies
-the extension. In the example, it replaces the "ex:e4" statements with
-its first child, making it a proper yang statement.
+the extension. In the example, it copies the child of the "ex:e4" statement and
+inserts in as a proper yang statement in the example module.
 
 ## Systemd
 

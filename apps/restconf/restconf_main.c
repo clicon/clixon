@@ -497,6 +497,7 @@ restconf_main_extension_cb(clicon_handle h,
     char      *modname;
     yang_stmt *ymod;
     yang_stmt *yc;
+    yang_stmt *yn = NULL;
     
     ymod = ys_module(yext);
     modname = yang_argument_get(ymod);
@@ -504,9 +505,11 @@ restconf_main_extension_cb(clicon_handle h,
     if (strcmp(modname, "ietf-restconf") != 0 || strcmp(extname, "yang-data") != 0)
 	goto ok;
     clicon_debug(1, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
-    if ((yc = ys_prune(ys, 0)) == NULL)
+    if ((yc = yang_find(ys, 0, NULL)) == NULL)
+	goto ok;
+    if ((yn = ys_dup(yc)) == NULL)
 	goto done;
-    if (yn_insert(yang_parent_get(ys), yc) < 0)
+    if (yn_insert(yang_parent_get(ys), yn) < 0)
 	goto done;
  ok:
     retval = 0;

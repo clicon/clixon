@@ -206,6 +206,8 @@ if [ $nr -lt 1 -o $nr -gt 2 ]; then
     err 1 "$nr"
 fi
 
+sleep 2
+
 # 2c
 new "2c) start sub 8s - replay from start -8s - expect 3-4 notifications"
 ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 10 -s -8)
@@ -218,6 +220,8 @@ nr=$(echo "$ret" | grep -c "data:")
 if [ $nr -lt 3 -o $nr -gt 4 ]; then
     err 4 "$nr"
 fi
+
+sleep 2
 
 # 2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications
 new "2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications"
@@ -232,6 +236,8 @@ if [ $nr -lt 4 -o $nr -gt 10 ]; then
     err 6 "$nr"
 fi
 
+sleep 2
+
 # 2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications
 new "2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications"
 ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 10 -s -90 -e +0)
@@ -245,6 +251,8 @@ nr=$(echo "$ret" | grep -c "data:")
 if [ $nr -lt 9 -o $nr -gt 14 ]; then
     err 10 "$nr"
 fi
+
+sleep 2
 
 # Try parallell
 # start background job

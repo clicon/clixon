@@ -665,6 +665,7 @@ xmldb_put(clicon_handle       h,
     int                 permit = 0; /* nacm permit all */
     char               *format;
     cvec               *nsc = NULL; /* nacm namespace context */
+    int                 firsttime = 0;
 
     if (cbret == NULL){
 	clicon_err(OE_XML, EINVAL, "cbret is NULL");
@@ -686,6 +687,7 @@ xmldb_put(clicon_handle       h,
     }
     /* If there is no xml x0 tree (in cache), then read it from file */
     if (x0 == NULL){
+	firsttime++; /* to avoid leakage on error, see fail from text_modify */
 	if (xmldb_readfile(h, db, yspec, &x0, NULL) < 0)
 	    goto done;
     }
@@ -725,8 +727,14 @@ xmldb_put(clicon_handle       h,
     if ((ret = text_modify_top(h, x0, x1, yspec, op, username, xnacm, permit, cbret)) < 0)
 	goto done;
     /* If xml return - ie netconf error xml tree, then stop and return OK */
-    if (ret == 0)
+    if (ret == 0){
+	/* If first time and quit here, x0 is not written back into cache and leaks */
+	if (firsttime && x0){
+	    xml_free(x0);
+	    x0 = NULL;
+	}
 	goto fail;
+    }
 
     /* Remove NONE nodes if all subs recursively are also NONE */
     if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) <0)
