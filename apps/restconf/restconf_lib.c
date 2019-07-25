@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -31,6 +31,7 @@
 
   ***** END LICENSE BLOCK *****
   
+  * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
  */
 
 #include <stdlib.h>
@@ -302,12 +303,12 @@ printparam(FCGX_Request *r,
     return 0;
 }
 
-/*!
+/*! Print all FCGI headers
  * @param[in]  r        Fastcgi request handle
  */
 int
-test(FCGX_Request *r, 
-     int           dbg)
+restconf_test(FCGX_Request *r, 
+	      int           dbg)
 {
     printparam(r, "QUERY_STRING", dbg);
     printparam(r, "REQUEST_METHOD", dbg);	
@@ -328,6 +329,7 @@ test(FCGX_Request *r,
     printparam(r, "SERVER_NAME", dbg);
     printparam(r, "HTTP_COOKIE", dbg);
     printparam(r, "HTTPS", dbg);
+    printparam(r, "HTTP_HOST", dbg);
     printparam(r, "HTTP_ACCEPT", dbg);
     printparam(r, "HTTP_CONTENT_TYPE", dbg);
     printparam(r, "HTTP_AUTHORIZATION", dbg);
@@ -475,6 +477,50 @@ api_return_err(clicon_handle h,
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
+    return retval;
+}
+
+/*! Print location header from FCGI environment
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  xobj   If set (eg POST) add to api-path
+ * $https  “on” if connection operates in SSL mode, or an empty string otherwise 
+ * @note ports are ignored
+ */
+int
+http_location(FCGX_Request *r,
+	      cxobj        *xobj)
+{
+    int   retval = -1;
+    char *https;
+    char *host;
+    char *request_uri;
+    cbuf *cb = NULL;
+
+    https = FCGX_GetParam("HTTPS", r->envp);
+    host = FCGX_GetParam("HTTP_HOST", r->envp);
+    request_uri = FCGX_GetParam("REQUEST_URI", r->envp);
+    if (xobj != NULL){
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, 0, "cbuf_new");
+	    goto done;
+	}
+	if (xml2api_path_1(xobj, cb) < 0)
+	    goto done;
+	FCGX_FPrintF(r->out, "Location: http%s://%s%s%s\r\n",
+		     https?"s":"",
+		     host,
+		     request_uri,
+		     cbuf_get(cb));
+    }
+    else
+	FCGX_FPrintF(r->out, "Location: http%s://%s%s\r\n",
+		     https?"s":"",
+		     host,
+		     request_uri);
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 

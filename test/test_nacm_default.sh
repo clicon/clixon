@@ -1,5 +1,5 @@
 #!/bin/bash
-# Basic NACM default rulw without any groups
+# Basic NACM default rule without any groups
 # Start from startup db
 
 # Magic line must be first in script (see README.md)

@@ -176,10 +176,6 @@ nacm
 # update    |  p/d   | xp/dx  |  p/d
 # delete    |  p/d   | xp/dx  |  p/d
 
-#----------root
-new "update root list default deny"
-expecteq "$(curl -u wilma:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data -d '<data><x xmlns="urn:example:nacm">42</x>$RULES</data>')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
-
 # replace all, then must include NACM rules as well
 MSG="<data>$RULES</data>"
 new "update root list permit"

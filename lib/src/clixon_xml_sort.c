@@ -207,6 +207,15 @@ xml_child_spec(cxobj      *x,
  * @note empty value/NULL is smallest value
  * @note some error cases return as -1 (qsort cant handle errors)
  * @note some error cases return as -1 (qsort cant handle errors)
+ * 
+ * NOTE: "comparing" x1 and x2 here judges equality from a structural (model)
+ * perspective, ie both have the same yang spec, if they are lists, they have the
+ * the same keys. NOT that the values are equal!
+ * In other words, if x is a leaf with the same yang spec, <x>1</x> and <x>2</x> are
+ * "equal". 
+ * If x is a list element (with key "k"), 
+ * <x><k>42</42><y>foo</y></x> and <x><k>42</42><y>bar</y></x> are equal, 
+ * but is not equal to <x><k>71</42><y>bar</y></x>
  */
 int
 xml_cmp(cxobj *x1,
@@ -299,10 +308,10 @@ xml_cmp(cxobj *x1,
 	    else{
 		if (xml_cv_cache(x1b, &cv1) < 0) /* error case */
 		    goto done;
-		assert(cv1); 		
+		//		assert(cv1); 		
 		if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
 		    goto done;
-		assert(cv2);
+		//		assert(cv2);
 		if ((equal = cv_cmp(cv1, cv2)) != 0)
 		    goto done;
 	    }

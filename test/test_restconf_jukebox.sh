@@ -7,7 +7,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 APPNAME=example
 
 cfg=$dir/conf.xml
-fyang=$dir/restconf.yang
+fyang=$dir/example-jukebox.yang
 fxml=$dir/initial.xml
 
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
@@ -326,9 +326,28 @@ expectpart "$(curl -s -i -X GET -H 'Accept: application/yang-data+json' http://l
 new "B.1.3.  Retrieve the Server Capability Information"
 expectpart "$(curl -s -i -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/capabilities)" 0 "HTTP/1.1 200 OK" "Content-Type: application/yang-data+xml" 'Cache-Control: no-cache' '<capabilities xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"><capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability></capabilities>'
 
+new "B.2.1.  Create New Data Resources (artist+json)"
+expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/library -d '{"example-jukebox:artist":[{"name":"Foo Fighters"}]}')" 0 "HTTP/1.1 201 Created" "Location: http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters"
+
+new "B.2.1.  Create New Data Resources (album+xml)"
+expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters -d '<album xmlns="http://example.com/ns/example-jukebox"><name>Wasting Light</name><year>2011</year></album>')" 0 "HTTP/1.1 201 Created" "Location: http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light"
+
+new "B.2.1.  Add Data Resources again (conflict - not in RFC)"
+expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters -d '<album xmlns="http://example.com/ns/example-jukebox"><name>Wasting Light</name><year>2011</year></album>')" 0 "HTTP/1.1 409 Conflict"
+
+new "4.5. PUT replace content"
+# XXX should be: jbox:alternative --> example-jukebox:alternative
+expectpart "$(curl -s -i -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d '{"example-jukebox:album":[{"name":"Wasting Light","genre":"jbox:alternative","year":2011}]}')" 0 "HTTP/1.1 204 No Content"
+
+new "4.5. PUT replace content (xml encoding)"
+expectpart "$(curl -s -i -X PUT -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d '<album xmlns="http://example.com/ns/example-jukebox" xmlns:jbox="http://example.com/ns/example-jukebox"><name>Wasting Light</name><genre>jbox:alternative</genre><year>2011</year></album>')" 0 "HTTP/1.1 204 No Content"
+
+new "4.5. PUT create new"
+# XXX should be: jbox:alternative --> example-jukebox:alternative
+expectpart "$(curl -s -i -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":[{"name":"London Calling","year":1979}]}')" 0 "HTTP/1.1 201 Created"
+
+
 if false; then # NYI
-new "B.2.1.  Create New Data Resources"
-expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/library -d '{"example-jukebox:artist":[{"name":"Foo Fighters"}]}')" 0 "HTTP/1.1 201 Created" "Location:" #  etc
 
 new "B.2.2.  Detect Datastore Resource Entity-Tag Change"
 new "B.2.3.  Edit a Datastore Resource"

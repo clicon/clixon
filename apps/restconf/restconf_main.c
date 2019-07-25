@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -78,6 +78,8 @@
 /* restconf */
 #include "restconf_lib.h"
 #include "restconf_methods.h"
+#include "restconf_methods_post.h"
+#include "restconf_methods_get.h"
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
@@ -368,7 +370,7 @@ api_restconf(clicon_handle h,
 	retval = notfound(r);
 	goto done;
     }
-    test(r, 1);
+    restconf_test(r, 1);
 
     if (pn == 2){
 	retval = api_root(h, r);
@@ -429,7 +431,7 @@ api_restconf(clicon_handle h,
 	    goto done;
     }
     else if (strcmp(method, "test") == 0)
-	test(r, 0);
+	restconf_test(r, 0);
     else
 	notfound(r);
  ok:

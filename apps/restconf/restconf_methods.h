@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -30,7 +30,8 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-  
+
+ * Restconf method implementation  
  */
 
 
@@ -38,21 +39,9 @@
 #define _RESTCONF_METHODS_H_
 
 /*
- * Constants
- */
-
-/*
  * Prototypes
  */
 int api_data_options(clicon_handle h, FCGX_Request *r);
-int api_data_head(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
-		  cvec *qvec, int pretty, int use_xml);
-int api_data_get(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
-		 cvec *qvec, int pretty, int use_xml);
-int api_data_post(clicon_handle h, FCGX_Request *r, char *api_path,
-		  cvec *pcvec, int pi, 
-		  cvec *qvec, char *data,
-		  int pretty, int use_xml, int parse_xml);
 int api_data_put(clicon_handle h, FCGX_Request *r, char *api_path, 
 		 cvec *pcvec, int pi, 
 		 cvec *qvec, char *data,
@@ -62,15 +51,5 @@ int api_data_patch(clicon_handle h, FCGX_Request *r, char *api_path,
 		   cvec *qvec, char *data);
 int api_data_delete(clicon_handle h, FCGX_Request *r, char *api_path, int pi,
 		    int pretty, int use_xml);
-
-int api_operations_get(clicon_handle h, FCGX_Request *r, 
-		       char *path,
-		       cvec *pcvec, int pi, cvec *qvec, char *data,
-		       int pretty, int use_xml);
-
-int api_operations_post(clicon_handle h, FCGX_Request *r, 
-			char *path,
-			cvec *pcvec, int pi, cvec *qvec, char *data,
-			int pretty, int use_xml, int parse_xml);
 
 #endif /* _RESTCONF_METHODS_H_ */

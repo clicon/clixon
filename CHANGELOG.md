@@ -4,13 +4,23 @@
 
 ### Major New features
 * Restconf RFC 8040 increased feature compliance
-  * Cache-Control: no-cache added in HTTP responses (RFC Section 5.5)
+  * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
+    * `201 Created` for created resources
+    * `204 No Content` for replaced resources.
+    * See [RESTCONF: HTTP return codes are not according to RFC 8040](https://github.com/clicon/clixon/issues/56)
+    * Implementation detail: due to difference between RESTCONF and NETCONF semantics, a PUT first to make en internal netconf edit-config create operation; if that fails, a replace operation is tried.
+  * HTTP `Location:` fields added in RESTCONF POST replies
+  * HTTP `Cache-Control: no-cache` fields added in HTTP responses (RFC Section 5.5)
   * Restconf monitoring capabilities (RFC Section 9.1)
-* Added support for Yang extensions
+  *
+* Yang extensions support
   * New plugin callback: ca_extension
   * Main backend example includes example code on how to implement a Yang extension in a plugin.
 
 ### API changes on existing features (you may need to change your code)
+* RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
+  * `201 Created` for created resources
+  * `204 No Content` for replaced resources.
 * JSON changes
   * Non-pretty-print output removed all extra spaces.
     * Example: `{"nacm-example:x": 42}` --> {"nacm-example:x":42}`
@@ -23,6 +33,7 @@
 * pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions
 
 ### Corrected Bugs
+* See [RESTCONF: HTTP return codes are not according to RFC 8040](https://github.com/clicon/clixon/issues/56)
 * Yang Unique statements with multiple schema identifiers did not work on some platforms due to memory error.
 
 ## 4.0.0 (13 July 2019)

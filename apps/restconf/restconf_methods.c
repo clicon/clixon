@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -146,549 +146,6 @@ api_data_options(clicon_handle h,
     return 0;
 }
 
-
-/*! Generic GET (both HEAD and GET)
- * According to restconf 
- * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
- * @param[in]  pi     Offset, where path starts  
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML
- * @param[in]  head   If 1 is HEAD, otherwise GET
- * @code
- *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
- * @endcode                                     
- * See RFC8040 Sec 4.2 and 4.3
- * XXX: cant find a way to use Accept request field to choose Content-Type  
- *      I would like to support both xml and json.           
- * Request may contain                                        
- *     Accept: application/yang.data+json,application/yang.data+xml   
- * Response contains one of:                           
- *     Content-Type: application/yang-data+xml    
- *     Content-Type: application/yang-data+json  
- * NOTE: If a retrieval request for a data resource representing a YANG leaf-
- * list or list object identifies more than one instance, and XML
- * encoding is used in the response, then an error response containing a
- * "400 Bad Request" status-line MUST be returned by the server.
- * Netconf: <get-config>, <get>                        
- */
-static int
-api_data_get2(clicon_handle h,
-	      FCGX_Request *r,
-	      cvec         *pcvec,
-	      int           pi,
-	      cvec         *qvec,
-	      int           pretty,
-	      int           use_xml,
-	      int           head)
-{
-    int        retval = -1;
-    cbuf      *cbpath = NULL;
-    char      *xpath = NULL;
-    cbuf      *cbx = NULL;
-    yang_stmt *yspec;
-    cxobj     *xret = NULL;
-    cxobj     *xerr = NULL; /* malloced */
-    cxobj     *xe = NULL;   /* not malloced */
-    cxobj    **xvec = NULL;
-    size_t     xlen;
-    int        i;
-    cxobj     *x;
-    int        ret;
-    char      *namespace = NULL;
-    cvec      *nsc = NULL;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    yspec = clicon_dbspec_yang(h);
-    if ((cbpath = cbuf_new()) == NULL)
-        goto done;
-    cprintf(cbpath, "/");
-    /* We know "data" is element pi-1 */
-    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &namespace)) < 0)
-	goto done;
-    if (ret == 0){
-	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
-	    goto done;
-	clicon_err_reset();
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    xpath = cbuf_get(cbpath);
-    clicon_debug(1, "%s path:%s", __FUNCTION__, xpath);
-    /* Create a namespace context for ymod as the default namespace to use with
-     * xpath expressions */
-    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
-	goto done;
-    if (clicon_rpc_get(h, xpath, namespace, &xret) < 0){
-	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
-	    goto done;
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    if (xml_apply(xret, CX_ELMNT, xml_spec_populate, yspec) < 0)
-	goto done;
-    /* We get return via netconf which is complete tree from root 
-     * We need to cut that tree to only the object.
-     */
-#if 0 /* DEBUG */
-    if (debug){
-	cbuf *cb = cbuf_new();
-	clicon_xml2cbuf(cb, xret, 0, 0);
-	clicon_debug(1, "%s xret:%s", __FUNCTION__, cbuf_get(cb));
-	cbuf_free(cb);
-    }
-#endif
-    /* Check if error return  */
-    if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    /* Normal return, no error */
-    if ((cbx = cbuf_new()) == NULL)
-	goto done;
-    if (head){
-	FCGX_SetExitStatus(200, r->out); /* OK */
-	FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
-	FCGX_FPrintF(r->out, "\r\n");
-	goto ok;
-    }
-    if (xpath==NULL || strcmp(xpath,"/")==0){ /* Special case: data root */
-	if (use_xml){
-	    if (clicon_xml2cbuf(cbx, xret, 0, pretty) < 0) /* Dont print top object?  */
-		goto done;
-	}
-	else{
-	    if (xml2json_cbuf(cbx, xret, pretty) < 0)
-		goto done;
-	}
-    }
-    else{
-	if (xpath_vec_nsc(xret, nsc, "%s", &xvec, &xlen, xpath) < 0){
-	    if (netconf_operation_failed_xml(&xerr, "application", clicon_err_reason) < 0)
-		goto done;
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	/* Check if not exists */
-	if (xlen == 0){
-	    /* 4.3: If a retrieval request for a data resource represents an 
-	       instance that does not exist, then an error response containing 
-	       a "404 Not Found" status-line MUST be returned by the server.  
-	       The error-tag value "invalid-value" is used in this case. */
-	    if (netconf_invalid_value_xml(&xerr, "application", "Instance does not exist") < 0)
-		goto done;
-	    /* override invalid-value default 400 with 404 */
-	    if (api_return_err(h, r, xerr, pretty, use_xml, 404) < 0)
-		goto done;
-	    goto ok;
-	}
-	if (use_xml){
-	    for (i=0; i<xlen; i++){
-		char *prefix, *namespace2; /* Same as namespace? */
-		x = xvec[i];
-		/* Some complexities in grafting namespace in existing trees to new */
-		prefix = xml_prefix(x);
-		if (xml_find_type_value(x, prefix, "xmlns", CX_ATTR) == NULL){
-		    if (xml2ns(x, prefix, &namespace2) < 0)
-			goto done;
-		    if (namespace2 && xmlns_set(x, prefix, namespace2) < 0)
-			goto done;
-		}
-		if (clicon_xml2cbuf(cbx, x, 0, pretty) < 0) /* Dont print top object?  */
-		    goto done;
-	    }
-	}
-	else{
-	    /* In: <x xmlns="urn:example:clixon">0</x>
-	     * Out: {"example:x": {"0"}}
-	     */
-	    if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
-		goto done;
-	}
-    }
-    clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
-    FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
-    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
-    FCGX_FPrintF(r->out, "\r\n");
-    FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
-    FCGX_FPrintF(r->out, "\r\n\r\n");
- ok:
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (nsc)
-	xml_nsctx_free(nsc);
-    if (cbx)
-        cbuf_free(cbx);
-    if (cbpath)
-	cbuf_free(cbpath);
-    if (xret)
-	xml_free(xret);
-    if (xerr)
-	xml_free(xerr);
-    if (xvec)
-	free(xvec);
-    return retval;
-}
-
-/*! REST HEAD method
- * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
- * @param[in]  pi     Offset, where path starts  
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML
- *
- * The HEAD method is sent by the client to retrieve just the header fields 
- * that would be returned for the comparable GET method, without the 
- * response message-body. 
- * Relation to netconf: none                        
- */
-int
-api_data_head(clicon_handle h,
-	      FCGX_Request *r,
-	      cvec         *pcvec,
-	      int           pi,
-	      cvec         *qvec,
-	      int           pretty,
-	      int           use_xml)
-{
-    return api_data_get2(h, r, pcvec, pi, qvec, pretty, use_xml, 1);
-}
-
-/*! REST GET method
- * According to restconf 
- * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
- * @param[in]  pi     Offset, where path starts  
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML
- * @code
- *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
- * @endcode                                     
- * XXX: cant find a way to use Accept request field to choose Content-Type  
- *      I would like to support both xml and json.           
- * Request may contain                                        
- *     Accept: application/yang.data+json,application/yang.data+xml   
- * Response contains one of:                           
- *     Content-Type: application/yang-data+xml    
- *     Content-Type: application/yang-data+json  
- * NOTE: If a retrieval request for a data resource representing a YANG leaf-
- * list or list object identifies more than one instance, and XML
- * encoding is used in the response, then an error response containing a
- * "400 Bad Request" status-line MUST be returned by the server.
- * Netconf: <get-config>, <get>                        
- */
-int
-api_data_get(clicon_handle h,
-	     FCGX_Request *r,
-             cvec         *pcvec,
-             int           pi,
-             cvec         *qvec,
-	     int           pretty,
-	     int           use_xml)
-{
-    return api_data_get2(h, r, pcvec, pi, qvec, pretty, use_xml, 0);
-}
-
-/*! Generic REST POST  method 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
- * @param[in]  pi     Offset, where to start pcvec
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  data   Stream input data
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
- * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
-
- * @note restconf POST is mapped to edit-config create. 
- * See RFC8040 Sec 4.4.1
-
- POST:
-   target resource type is datastore --> create a top-level resource
-   target resource type is  data resource --> create child resource
-
-   The message-body MUST contain exactly one instance of the
-   expected data resource.  The data model for the child tree is the
-   subtree, as defined by YANG for the child resource.
-
-   If the POST method succeeds, a "201 Created" status-line is returned
-   and there is no response message-body.  A "Location" header
-   identifying the child resource that was created MUST be present in
-   the response in this case.
-
-   If the data resource already exists, then the POST request MUST fail
-   and a "409 Conflict" status-line MUST be returned.
- * Netconf:  <edit-config> (nc:operation="create") | invoke an RPC operation        * @example
- */
-int
-api_data_post(clicon_handle h,
-	      FCGX_Request *r, 
-	      char         *api_path, 
-	      cvec         *pcvec, 
-	      int           pi,
-	      cvec         *qvec, 
-	      char         *data,
-	      int           pretty,
-	      int           use_xml,
-    	      int           parse_xml)
-{
-    int        retval = -1;
-    enum operation_type op = OP_CREATE;
-    cxobj     *xdata0 = NULL; /* Original -d data struct (including top symbol) */
-    cxobj     *xdata;         /* -d data (without top symbol)*/
-    int        i;
-    cbuf      *cbx = NULL;
-    cxobj     *xtop = NULL; /* top of api-path */
-    cxobj     *xbot = NULL; /* bottom of api-path */
-    yang_stmt *ybot = NULL; /* yang of xbot */
-    yang_stmt *ymodapi = NULL; /* yang module of api-path (if any) */
-    yang_stmt *ymoddata = NULL; /* yang module of data (-d) */
-    yang_stmt *yspec;
-    cxobj     *xa;
-    cxobj     *xret = NULL;
-    cxobj     *xretcom = NULL; /* return from commit */
-    cxobj     *xretdis = NULL; /* return from discard-changes */
-    cxobj     *xerr = NULL; /* malloced must be freed */
-    cxobj     *xe;            /* dont free */
-    char      *username;
-    int        ret;
-    
-    clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
-		 __FUNCTION__, 
-		 api_path, data);
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
-    }
-    for (i=0; i<pi; i++)
-	api_path = index(api_path+1, '/');
-    /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL, NULL)) == NULL)
-	goto done;
-    /* Translate api_path to xtop/xbot */
-    xbot = xtop;
-    if (api_path){
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot)) < 0)
-	    goto done;
-	if (ybot)
-	    ymodapi=ys_module(ybot);
-	if (ret == 0){ /* validation failed */
-	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-		goto done;
-	    clicon_err_reset();
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-    }
-    /* Parse input data as json or xml into xml */
-    if (parse_xml){
-	if (xml_parse_string(data, NULL, &xdata0) < 0){
-	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-		goto done;
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-    }
-    else {
-	if ((ret = json_parse_str(data, yspec, &xdata0, &xerr)) < 0){ 
-	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-		goto done;
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	if (ret == 0){
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-    }
-    /* 4.4.1: The message-body MUST contain exactly one instance of the
-     * expected data resource. 
-     */
-    if (xml_child_nr(xdata0) != 1){
-	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-	    goto done;
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    xdata = xml_child_i(xdata0,0);
-    /* If the api-path (above) defines a module, then xdata must have a prefix
-     * and it match the module defined in api-path. 
-     * In a POST, maybe there are cornercases where xdata (which is a child) and
-     * xbot (which is the parent) may have non-matching namespaces?
-     * This does not apply if api-path is / (no module)
-     */
-    if (ys_module_by_xml(yspec, xdata, &ymoddata) < 0)
-	goto done;
-    if (ymoddata && ymodapi){
-	if (ymoddata != ymodapi){
-	     if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
-		 goto done;
-	     if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    		goto done;
-	    }
-#if 0
-	    if (debug){
-		cbuf *ccc=cbuf_new();
-		if (clicon_xml2cbuf(ccc, xe, 0, 0) < 0)
-		    goto done;
-		clicon_debug(1, "%s XE:%s", __FUNCTION__, cbuf_get(ccc));
-	    }
-#endif
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-    }
-
-    /* Add operation (create/replace) as attribute */
-    if ((xa = xml_new("operation", xdata, NULL)) == NULL)
-	goto done;
-    xml_type_set(xa, CX_ATTR);
-    if (xml_value_set(xa, xml_operation2str(op)) < 0)
-	goto done;
-    /* Replace xbot with x, ie bottom of api-path with data */
-    if (xml_addsub(xbot, xdata) < 0)
-	goto done;
-    /* Create text buffer for transfer to backend */
-    if ((cbx = cbuf_new()) == NULL)
-	goto done;
-    /* For internal XML protocol: add username attribute for access control
-     */
-    username = clicon_username_get(h);
-    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
-    cprintf(cbx, "<edit-config><target><candidate /></target>");
-    cprintf(cbx, "<default-operation>none</default-operation>");
-    if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
-	goto done;
-    cprintf(cbx, "</edit-config></rpc>");
-    clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
-    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
-	goto done;
-    if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    /* Assume this is validation failed since commit includes validate */
-    cbuf_reset(cbx);
-    /* commit/discard should be done automaticaly by the system, therefore
-     * recovery user is used here (edit-config but not commit may be permitted
-     by NACM */
-    cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
-    cprintf(cbx, "<commit/></rpc>");
-    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
-	goto done;
-    if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
-	cbuf_reset(cbx);
-	cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
-	cprintf(cbx, "<discard-changes/></rpc>");
-	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretdis, NULL) < 0)
-	    goto done;
-	/* log errors from discard, but ignore */
-	if ((xpath_first(xretdis, "//rpc-error")) != NULL)
-	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0) /* Use original xe */
-	    goto done;
-	goto ok;
-    }
-    if (xretcom){ /* Clear: can be reused again below */
-	xml_free(xretcom);
-	xretcom = NULL;
-    }
-    if (if_feature(yspec, "ietf-netconf", "startup")){
-	/* RFC8040 Sec 1.4:
-	 * If the NETCONF server supports :startup, the RESTCONF server MUST
-	 * automatically update the non-volatile startup configuration
-	 * datastore, after the "running" datastore has been altered as a
-	 * consequence of a RESTCONF edit operation.
-	 */
-	cbuf_reset(cbx);
-	cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
-	cprintf(cbx, "<copy-config><source><running/></source><target><startup/></target></copy-config></rpc>");
-	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
-	    goto done;
-	/* If copy-config failed, log and ignore (already committed) */
-	if ((xe = xpath_first(xretcom, "//rpc-error")) != NULL){
-
-	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
-	}
-    }
-    FCGX_SetExitStatus(201, r->out); /* Created */
-    FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
- ok:
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (xret)
-	xml_free(xret);
-    if (xerr)
-	xml_free(xerr);
-    if (xretcom)
-	xml_free(xretcom);
-    if (xretdis)
-	xml_free(xretdis);
-    if (xtop)
-	xml_free(xtop);
-    if (xdata0)
-	xml_free(xdata0);
-     if (cbx)
-	cbuf_free(cbx); 
-   return retval;
-} /* api_data_post */
-
-
 /*! Check matching keys
  *
  * Check that x1 and x2 are of type list/leaf-list and share the same key statements
@@ -771,16 +228,27 @@ match_list_keys(yang_stmt *y,
  * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
 
  * @note restconf PUT is mapped to edit-config replace. 
- * See RFC8040 Sec 4.5
+ * @see RFC8040 Sec 4.5  PUT
  * @example
       curl -X PUT -d '{"enabled":"false"}' http://127.0.0.1/restconf/data/interfaces/interface=eth1
  *
  PUT:
-  if the PUT request creates a new resource,
-   a "201 Created" status-line is returned.  If an existing resource is
-   modified, a "204 No Content" status-line is returned.
+   A request message-body MUST be present, representing the new data resource, or the server
+   MUST return a "400 Bad Request" status-line.
+
+   ...if the PUT request creates a new resource, a "201 Created" status-line is returned.  
+   If an existing resource is modified, a "204 No Content" status-line is returned.
 
  * Netconf:  <edit-config> (nc:operation="create/replace")
+ * Note RFC8040 says that if an object is created, 201 is returned, if replaced 204
+ * is returned. But the restconf client does not know if it is replaced or created,
+ * only the server knows that. Solutions:
+ * 1) extend the netconf <ok/> so it returns if created/replaced. But that would lead
+ *    to extension of netconf that may hit other places.
+ * 2) Send a get first and see if the resource exists, and then send replace/create.
+ *    Will always produce an extra message and the GET may potetnially waste bw.
+ * 3) Try to create first, if that fails (with conflict) then try replace.
+ *    --> Best solution and applied here
  */
 int
 api_data_put(clicon_handle h,
@@ -795,7 +263,7 @@ api_data_put(clicon_handle h,
 	     int           parse_xml)
 {
     int        retval = -1;
-    enum operation_type op = OP_REPLACE;
+    enum operation_type op;
     int        i;
     cxobj     *xdata0 = NULL; /* Original -d data struct (including top symbol) */
     cxobj     *xdata;         /* -d data (without top symbol)*/
@@ -924,10 +392,12 @@ api_data_put(clicon_handle h,
 	}
     }
 
-    /* Add operation (create/replace) as attribute */
+    /* Add operation create as attribute. If that fails with Conflict, then try 
+       "replace" */
     if ((xa = xml_new("operation", xdata, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
+    op = OP_CREATE;
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
 
@@ -1032,6 +502,7 @@ api_data_put(clicon_handle h,
     /* For internal XML protocol: add username attribute for access control
      */
     username = clicon_username_get(h);
+ again:
     cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
     cprintf(cbx, "<edit-config><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
@@ -1042,9 +513,30 @@ api_data_put(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	/* If the error is not data-exists, then return error now 
+	 * OR we have run again with replace
+	 */
+	if (xpath_first(xe, ".[error-tag=\"data-exists\"]") == NULL ||
+	    op == OP_REPLACE){
+	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+		goto done;	    
+	    goto ok;
+	}
+	/* If it is data-exists, then set operator to replace and try again */
+	if (xret){
+	    xml_free(xret);
+	    xret = NULL;
+	}
+	if ((xa = xml_find_type(xdata, NULL, "operation", CX_ATTR)) == NULL){
+	    clicon_err(OE_XML, ENOENT, "operation attr not found (shouldnt happen)");
 	    goto done;
-	goto ok;
+	}
+	op = OP_REPLACE;
+	if (xml_value_set(xa, xml_operation2str(op)) < 0)
+	    goto done;
+	cbuf_reset(cbx);
+	clicon_debug(1, "%s Failed with create, trying replace",__FUNCTION__);
+	goto again;
     }
     cbuf_reset(cbx);
     /* commit/discard should be done automaticaly by the system, therefore
@@ -1089,7 +581,15 @@ api_data_put(clicon_handle h,
 	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
 	}
     }
-    FCGX_SetExitStatus(201, r->out); /* Created */
+    /* Check if it was created, or if we tried again and replaced it */
+    if (op == OP_CREATE){
+	FCGX_SetExitStatus(201, r->out); /* Created */
+	FCGX_FPrintF(r->out, "Status: 201 Created\r\n");
+    }
+    else{
+	FCGX_SetExitStatus(204, r->out); /* Replaced */
+	FCGX_FPrintF(r->out, "Status: 204 No Content\r\n");
+    }
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");
  ok:
@@ -1226,7 +726,7 @@ api_data_delete(clicon_handle h,
     }
     /* Assume this is validation failed since commit includes validate */
     cbuf_reset(cbx);
-    /* commit/discard should be done automaticaly by the system, therefore
+    /* commit/discard should be done automatically by the system, therefore
      * recovery user is used here (edit-config but not commit may be permitted
      by NACM */
     cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
@@ -1268,7 +768,8 @@ api_data_delete(clicon_handle h,
 	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
 	}
     }
-    FCGX_SetExitStatus(201, r->out);
+    FCGX_SetExitStatus(204, r->out);
+    FCGX_FPrintF(r->out, "Status: 204 No Content\r\n");
     FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");
  ok:
@@ -1288,642 +789,3 @@ api_data_delete(clicon_handle h,
    return retval;
 }
 
-/*! GET restconf/operations resource
- * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
- * @param[in]  pi     Offset, where path starts  
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  data   Stream input data
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML
- *
- * @code
- *  curl -G http://localhost/restconf/operations
- * @endcode                                     
- * RFC8040 Sec 3.3.2:
- * This optional resource is a container that provides access to the
- * data-model-specific RPC operations supported by the server.  The
- * server MAY omit this resource if no data-model-specific RPC
- * operations are advertised.
- * From ietf-restconf.yang:
- * In XML, the YANG module namespace identifies the module:
- *      <system-restart xmlns='urn:ietf:params:xml:ns:yang:ietf-system'/>
- * In JSON, the YANG module name identifies the module:
- *       { 'ietf-system:system-restart' : [null] }
- */
-int
-api_operations_get(clicon_handle h,
-		   FCGX_Request *r, 
-		   char         *path, 
-		   cvec         *pcvec, 
-		   int           pi,
-		   cvec         *qvec, 
-		   char         *data,
-		   int           pretty,
-		   int           use_xml)
-{
-    int        retval = -1;
-    yang_stmt *yspec;
-    yang_stmt *ymod; /* yang module */
-    yang_stmt *yc;
-    char      *namespace;
-    cbuf      *cbx = NULL;
-    cxobj     *xt = NULL;
-    int        i;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    yspec = clicon_dbspec_yang(h);
-    if ((cbx = cbuf_new()) == NULL)
-	goto done;
-    if (use_xml)
-	cprintf(cbx, "<operations>");
-    else
-	cprintf(cbx, "{\"operations\": {");
-    ymod = NULL;
-    i = 0;
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	namespace = yang_find_mynamespace(ymod);
-	yc = NULL; 
-	while ((yc = yn_each(ymod, yc)) != NULL) {
-	    if (yang_keyword_get(yc) != Y_RPC)
-		continue;
-	    if (use_xml)
-		cprintf(cbx, "<%s xmlns=\"%s\"/>", yang_argument_get(yc), namespace);
-	    else{
-		if (i++)
-		    cprintf(cbx, ",");
-		cprintf(cbx, "\"%s:%s\": null", yang_argument_get(ymod), yang_argument_get(yc));
-	    }
-	}
-    }
-    if (use_xml)
-	cprintf(cbx, "</operations>");
-    else
-	cprintf(cbx, "}}");
-    FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
-    FCGX_FPrintF(r->out, "\r\n");
-    FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
-    FCGX_FPrintF(r->out, "\r\n\r\n");
-    // ok:
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (cbx)
-        cbuf_free(cbx);
-    if (xt)
-	xml_free(xt);
-    return retval;
-}
-
-/*! Handle input data to api_operations_post 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  data   Stream input data
- * @param[in]  yspec  Yang top-level specification 
- * @param[in]  yrpc   Yang rpc spec
- * @param[in]  xrpc   XML pointer to rpc method
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
- * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
- * @retval     1      OK
- * @retval     0      Fail, Error message sent
- * @retval    -1      Fatal error, clicon_err called
- *
- * RFC8040 3.6.1
- *  If the "rpc" or "action" statement has an "input" section, then
- *  instances of these input parameters are encoded in the module
- *  namespace where the "rpc" or "action" statement is defined, in an XML
- *  element or JSON object named "input", which is in the module
- *  namespace where the "rpc" or "action" statement is defined.
- * (Any other input is assumed as error.)
- */
-static int
-api_operations_post_input(clicon_handle h,
-			  FCGX_Request *r, 
-			  char         *data,
-			  yang_stmt    *yspec,
-			  yang_stmt    *yrpc,
-			  cxobj        *xrpc,
-			  int           pretty,
-			  int           use_xml,
-			  int           parse_xml)
-{
-    int        retval = -1;
-    cxobj     *xdata = NULL;
-    cxobj     *xerr = NULL; /* malloced must be freed */
-    cxobj     *xe;
-    cxobj     *xinput;
-    cxobj     *x;
-    cbuf      *cbret = NULL;
-    int        ret;
-
-    clicon_debug(1, "%s %s", __FUNCTION__, data);
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, 0, "cbuf_new");
-	goto done;
-    }
-    /* Parse input data as json or xml into xml */
-    if (parse_xml){
-	if (xml_parse_string(data, yspec, &xdata) < 0){
-	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-		goto done;
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto fail;
-	}
-    }
-    else { /* JSON */
-	if ((ret = json_parse_str(data, yspec, &xdata, &xerr)) < 0){
-	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-		goto done;
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto fail;
-	}
-	if (ret == 0){
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto fail;
-	}
-    }
-    xml_name_set(xdata, "data");
-    /* Here xdata is: 
-     * <data><input xmlns="urn:example:clixon">...</input></data>
-     */
-#if 1
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xdata, 0, 0) < 0)
-	    goto done;
-	clicon_debug(1, "%s DATA:%s", __FUNCTION__, cbuf_get(ccc));
-    }
-#endif
-    /* Validate that exactly only <input> tag */
-    if ((xinput = xml_child_i_type(xdata, 0, CX_ELMNT)) == NULL ||
-	strcmp(xml_name(xinput),"input") != 0 ||
-	xml_child_nr_type(xdata, CX_ELMNT) != 1){
-
-	if (xml_child_nr_type(xdata, CX_ELMNT) == 0){
-	    if (netconf_malformed_message_xml(&xerr, "restconf RPC does not have input statement") < 0)
-		goto done;
-	}
-	else
-	    if (netconf_malformed_message_xml(&xerr, "restconf RPC has malformed input statement (multiple or not called input)") < 0)
-		goto done;	
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto fail;
-    }
-    //    clicon_debug(1, "%s input validation passed", __FUNCTION__);
-    /* Add all input under <rpc>path */
-    x = NULL;
-    while ((x = xml_child_i_type(xinput, 0, CX_ELMNT)) != NULL)
-	if (xml_addsub(xrpc, x) < 0) 	
-	    goto done;
-    /* Here xrpc is:  <myfn xmlns="uri"><x>42</x></myfn>
-     */
-    // ok:
-    retval = 1;
- done:
-    clicon_debug(1, "%s retval: %d", __FUNCTION__, retval);
-    if (cbret)
-	cbuf_free(cbret);
-    if (xerr)
-	xml_free(xerr);
-    if (xdata)
-	xml_free(xdata);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
-/*! Handle output data to api_operations_post 
- * @param[in]  h        CLIXON handle
- * @param[in]  r        Fastcgi request handle
- * @param[in]  xret     XML reply messages from backend/handler
- * @param[in]  yspec    Yang top-level specification 
- * @param[in]  youtput  Yang rpc output specification
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
- * @param[out] xoutputp Restconf JSON/XML output
- * @retval     1        OK
- * @retval     0        Fail, Error message sent
- * @retval    -1        Fatal error, clicon_err called
- * xret should like: <top><rpc-reply><x xmlns="uri">0</x></rpc-reply></top>
- */
-static int
-api_operations_post_output(clicon_handle h,
-			   FCGX_Request *r, 
-			   cxobj        *xret,
-			   yang_stmt    *yspec,
-			   yang_stmt    *youtput,
-			   char         *namespace,
-			   int           pretty,
-			   int           use_xml,
-			   cxobj       **xoutputp)
-    
-{
-    int        retval = -1;
-    cxobj     *xoutput = NULL;
-    cxobj     *xerr = NULL; /* assumed malloced, will be freed */
-    cxobj     *xe;          /* just pointer */
-    cxobj     *xa;          /* xml attribute (xmlns) */
-    cxobj     *x;
-    cxobj     *xok;
-    int        isempty;
-    
-    //    clicon_debug(1, "%s", __FUNCTION__);
-    /* Validate that exactly only <rpc-reply> tag */
-    if ((xoutput = xml_child_i_type(xret, 0, CX_ELMNT)) == NULL ||
-	strcmp(xml_name(xoutput),"rpc-reply") != 0 ||
-	xml_child_nr_type(xret, CX_ELMNT) != 1){
-	if (netconf_malformed_message_xml(&xerr, "restconf RPC does not have single input") < 0)
-	    goto done;	
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto fail;
-    }
-    /* xoutput should now look: <rpc-reply><x xmlns="uri">0</x></rpc-reply> */
-    /* 9. Translate to restconf RPC data */
-    xml_name_set(xoutput, "output");
-    /* xoutput should now look: <output><x xmlns="uri">0</x></output> */
-#if 1
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xoutput, 0, 0) < 0)
-	    goto done;
-	clicon_debug(1, "%s XOUTPUT:%s", __FUNCTION__, cbuf_get(ccc));
-    }
-#endif
-
-    /* Sanity check of outgoing XML 
-     * For now, skip outgoing checks.
-     * (1) Does not handle <ok/> properly
-     * (2) Uncertain how validation errors should be logged/handled
-     */
-    if (youtput!=NULL){
-	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
-#if 0
-	if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
-	    goto done;
-	if ((ret = xml_yang_validate_all(xoutput, &xerr)) < 0)
-	    goto done;
-	if (ret == 1 &&
-	    (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){ /* validation failed */
-	    if ((xe = xpath_first(xerr, "rpc-reply/rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto fail;
-	}
-#endif
-    }
-    /* Special case, no yang output (single <ok/> - or empty body?)
-     * RFC 7950 7.14.4
-     * If the RPC operation invocation succeeded and no output parameters
-     * are returned, the <rpc-reply> contains a single <ok/> element
-     * RFC 8040 3.6.2
-     * If the "rpc" statement has no "output" section, the response message
-     * MUST NOT include a message-body and MUST send a "204 No Content"
-     * status-line instead.
-     */
-    isempty = xml_child_nr_type(xoutput, CX_ELMNT) == 0 ||
-	(xml_child_nr_type(xoutput, CX_ELMNT) == 1 &&
-	 (xok = xml_child_i_type(xoutput, 0, CX_ELMNT)) != NULL &&
-	 strcmp(xml_name(xok),"ok")==0);
-    if (isempty) {
-	/* Internal error - invalid output from rpc handler */
-	FCGX_SetExitStatus(204, r->out); /* OK */
-	FCGX_FPrintF(r->out, "Status: 204 No Content\r\n");
-	FCGX_FPrintF(r->out, "\r\n");
-	goto fail;
-    }
-    /* Clear namespace of parameters */
-    x = NULL;
-    while ((x = xml_child_each(xoutput, x, CX_ELMNT)) != NULL) {
-	if ((xa = xml_find_type(x, NULL, "xmlns", CX_ATTR)) != NULL)
-	    if (xml_purge(xa) < 0)
-		goto done;
-    }
-    /* Set namespace on output */
-    if (xmlns_set(xoutput, NULL, namespace) < 0)
-	goto done;
-    *xoutputp = xoutput;
-    retval = 1;
- done:
-    clicon_debug(1, "%s retval: %d", __FUNCTION__, retval);
-    if (xerr)
-	xml_free(xerr);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
-/*! REST operation POST method 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
- * @param[in]  pi     Offset, where to start pcvec
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  data   Stream input data
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
- * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
- * See RFC 8040 Sec 3.6 / 4.4.2
- * @note We map post to edit-config create. 
- *      POST {+restconf}/operations/<operation>
- * 1. Initialize
- * 2. Get rpc module and name from uri (oppath) and find yang spec
- * 3. Build xml tree with user and rpc: <rpc username="foo"><myfn xmlns="uri"/>
- * 4. Parse input data (arguments):
- *             JSON: {"example:input":{"x":0}}
- *             XML:  <input xmlns="uri"><x>0</x></input>
- * 5. Translate input args to Netconf RPC, add to xml tree:
- *             <rpc username="foo"><myfn xmlns="uri"><x>42</x></myfn></rpc>
- * 6. Validate outgoing RPC and fill in default values
- *  <rpc username="foo"><myfn xmlns="uri"><x>42</x><y>99</y></myfn></rpc>
- * 7. Send to RPC handler, either local or backend
- * 8. Receive reply from local/backend handler as Netconf RPC
- *       <rpc-reply><x xmlns="uri">0</x></rpc-reply>
- * 9. Translate to restconf RPC data:
- *             JSON: {"example:output":{"x":0}}
- *             XML:  <output xmlns="uri"><x>0</x></input>
- * 10. Validate and send reply to originator
- */
-int
-api_operations_post(clicon_handle h,
-		    FCGX_Request *r, 
-		    char         *path, 
-		    cvec         *pcvec, 
-		    int           pi,
-		    cvec         *qvec, 
-		    char         *data,
-		    int           pretty,
-		    int           use_xml,
-		    int           parse_xml)
-{
-    int        retval = -1;
-    int        i;
-    char      *oppath = path;
-    yang_stmt *yspec;
-    yang_stmt *youtput = NULL;
-    yang_stmt *yrpc = NULL;
-    cxobj     *xret = NULL;
-    cxobj     *xerr = NULL; /* malloced must be freed */
-    cxobj     *xtop = NULL; /* xpath root */
-    cxobj     *xbot = NULL;
-    yang_stmt *y = NULL;
-    cxobj     *xoutput = NULL;
-    cxobj     *xa;
-    cxobj     *xe;
-    char      *username;
-    cbuf      *cbret = NULL;
-    int        ret = 0;
-    char      *prefix = NULL;
-    char      *id = NULL;
-    yang_stmt *ys = NULL;
-    char      *namespace = NULL;
-    
-    clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, path);
-    /* 1. Initialize */
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
-    }
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, 0, "cbuf_new");
-	goto done;
-    }
-    for (i=0; i<pi; i++)
-	oppath = index(oppath+1, '/');
-    if (oppath == NULL || strcmp(oppath,"/")==0){
-	if (netconf_operation_failed_xml(&xerr, "protocol", "Operation name expected") < 0)
-	    goto done;
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    /* 2. Get rpc module and name from uri (oppath) and find yang spec 
-     *       POST {+restconf}/operations/<operation>
-     *
-     * The <operation> field identifies the module name and rpc identifier
-     * string for the desired operation.
-     */
-    if (nodeid_split(oppath+1, &prefix, &id) < 0) /* +1 skip / */
-	goto done;
-    if ((ys = yang_find(yspec, Y_MODULE, prefix)) == NULL){
-	if (netconf_operation_failed_xml(&xerr, "protocol", "yang module not found") < 0)
-	    goto done;
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    if ((yrpc = yang_find(ys, Y_RPC, id)) == NULL){
-	if (netconf_missing_element_xml(&xerr, "application", id, "RPC not defined") < 0)
-	    goto done;
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    /* 3. Build xml tree with user and rpc: 
-     * <rpc username="foo"><myfn xmlns="uri"/>
-     */
-    if ((xtop = xml_new("rpc", NULL, NULL)) == NULL)
-	goto done;
-    xbot = xtop;
-    /* Here xtop is: <rpc/> */
-    if ((username = clicon_username_get(h)) != NULL){
-	if ((xa = xml_new("username", xtop, NULL)) == NULL)
-	    goto done;
-	xml_type_set(xa, CX_ATTR);
-	if (xml_value_set(xa, username) < 0)
-	    goto done;
-	/* Here xtop is: <rpc username="foo"/> */
-    }
-    if ((ret = api_path2xml(oppath, yspec, xtop, YC_SCHEMANODE, 1, &xbot, &y)) < 0)
-	goto done;
-    if (ret == 0){ /* validation failed */
-	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-	    goto done;
-	clicon_err_reset();
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    /* Here xtop is: <rpc username="foo"><myfn xmlns="uri"/></rpc> 
-     * xbot is <myfn xmlns="uri"/>
-     * 4. Parse input data (arguments):
-     *             JSON: {"example:input":{"x":0}}
-     *             XML:  <input xmlns="uri"><x>0</x></input>
-     */
-    namespace = xml_find_type_value(xbot, NULL, "xmlns", CX_ATTR);
-    clicon_debug(1, "%s : 4. Parse input data: %s", __FUNCTION__, data);
-    if (data && strlen(data)){
-	if ((ret = api_operations_post_input(h, r, data, yspec, yrpc, xbot,
-					     pretty, use_xml, parse_xml)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto ok;
-    }
-    /* Here xtop is: 
-      <rpc username="foo"><myfn xmlns="uri"><x>42</x></myfn></rpc> */
-#if 1
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xtop, 0, 0) < 0)
-	    goto done;
-	clicon_debug(1, "%s 5. Translate input args: %s",
-		     __FUNCTION__, cbuf_get(ccc));
-    }
-#endif
-    /* 6. Validate incoming RPC and fill in defaults */
-    if (xml_spec_populate_rpc(h, xtop, yspec) < 0) /*  */
-	goto done;
-    if ((ret = xml_yang_validate_rpc(h, xtop, &xret)) < 0)
-	goto done;
-    if (ret == 0){
-	if ((xe = xpath_first(xret, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto ok;
-	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    /* Here xtop is (default values):
-     * <rpc username="foo"><myfn xmlns="uri"><x>42</x><y>99</y></myfn></rpc>
-    */
-#if 0
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xtop, 0, 0) < 0)
-	    goto done;
-	clicon_debug(1, "%s 6. Validate and defaults:%s", __FUNCTION__, cbuf_get(ccc));
-    }
-#endif
-    /* 7. Send to RPC handler, either local or backend
-     * Note (1) xtop is <rpc><method> xbot is <method>
-     *      (2) local handler wants <method> and backend wants <rpc><method>
-     */
-    /* Look for local (client-side) restconf plugins. 
-     * -1:Error, 0:OK local, 1:OK backend 
-     */
-    if ((ret = rpc_callback_call(h, xbot, cbret, r)) < 0)
-	goto done;
-    if (ret > 0){ /* Handled locally */
-	if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)
-	    goto done;
-	/* Local error: return it and quit */
-	if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-    }
-    else {    /* Send to backend */
-	if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
-	    goto done;
-	if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-    }
-    /* 8. Receive reply from local/backend handler as Netconf RPC
-     *       <rpc-reply><x xmlns="uri">0</x></rpc-reply>
-     */
-#if 1
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xret, 0, 0) < 0)
-	    goto done;
-	clicon_debug(1, "%s 8. Receive reply:%s", __FUNCTION__, cbuf_get(ccc));
-    }
-#endif
-    youtput = yang_find(yrpc, Y_OUTPUT, NULL);
-    if ((ret = api_operations_post_output(h, r, xret, yspec, youtput, namespace,
-					  pretty, use_xml, &xoutput)) < 0)
-	goto done;
-    if (ret == 0)
-	goto ok;
-    /* xoutput should now look: <output xmlns="uri"><x>0</x></output> */
-    FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
-    FCGX_FPrintF(r->out, "\r\n");
-    cbuf_reset(cbret);
-    if (use_xml){
-	if (clicon_xml2cbuf(cbret, xoutput, 0, pretty) < 0)
-	    goto done;
-	/* xoutput should now look: <output xmlns="uri"><x>0</x></output> */
-    }
-    else{
-	if (xml2json_cbuf(cbret, xoutput, pretty) < 0)
-	    goto done;
-	/* xoutput should now look: {"example:output": {"x":0,"y":42}} */
-    }
-    FCGX_FPrintF(r->out, "%s", cbuf_get(cbret));
-    FCGX_FPrintF(r->out, "\r\n\r\n");
- ok:
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (prefix)
-	free(prefix);
-    if (id)
-	free(id);
-    if (xtop)
-	xml_free(xtop);
-    if (xret)
-	xml_free(xret);
-    if (xerr)
-	xml_free(xerr);
-    if (cbret)
-	cbuf_free(cbret);
-   return retval;
-}

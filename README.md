@@ -241,6 +241,7 @@ The following features are supported:
 - query parameters start-time and stop-time(RFC8040 section 4.9)
 
 The following features are not implemented:
+- ETag/Last-Modified
 - PATCH
 - query parameters other than start/stop-time.
 

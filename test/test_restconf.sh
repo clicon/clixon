@@ -160,7 +160,7 @@ expecteq "$(curl -s -X GET http://localhost/restconf/data/clixon-example:state)"
 
 # Exact match
 new "restconf Add subtree eth/0/0 to datastore using POST"
-expectfn 'curl -s -i -X POST -H "Accept: application/yang-data+json" -d {"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}} http://localhost/restconf/data' 0 'HTTP/1.1 200 OK'
+expectfn 'curl -s -i -X POST -H "Accept: application/yang-data+json" -d {"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}} http://localhost/restconf/data' 0 'HTTP/1.1 201 Created'
 
 new "restconf Re-add subtree eth/0/0 which should give error"
 expectfn 'curl -s -X POST -d {"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
