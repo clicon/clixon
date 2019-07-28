@@ -8,12 +8,26 @@
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 : ${clixon_util_json:=clixon_util_json}
+: ${clixon_util_xml:=clixon_util_xml}
 
 fyang=$dir/json.yang
 cat <<EOF > $fyang
 module json{
    prefix ex;
    namespace "urn:example:clixon";
+   identity genre {
+      description
+        "From RFC8040 jukebox example. 
+         Identity prefixes are translated from module-name to xml prefix";
+   }
+   identity blues {
+      base genre;
+   }
+   typedef gtype{
+      type identityref{
+         base genre;
+      }
+   }
    leaf a{
      type int32;
    }
@@ -24,6 +38,14 @@ module json{
      leaf s{
        type string;
      }
+   }
+   leaf g1 {
+      description "direct type";
+      type identityref { base genre; }
+   }
+   leaf g2 {
+      description "indirect type";
+      type gtype;
    }
 }
 EOF
@@ -68,18 +90,42 @@ expecteofeq "$clixon_util_json -jpy $fyang" 0 "$JSON" "$JSONP"
 JSON='{"json:a":-23}'
 
 new "json leaf back to json"
-expecteofx "$clixon_util_json -j -y $fyang" 0 "$JSON" "$JSON"
+expecteofx "$clixon_util_json -jy $fyang" 0 "$JSON" "$JSON"
 
 JSON='{"json:c":{"a":937}}'
 new "json parse container back to json"
-expecteofx "$clixon_util_json -j -y $fyang" 0 "$JSON" "$JSON"
+expecteofx "$clixon_util_json -jy $fyang" 0 "$JSON" "$JSON"
 
-# This should work
+# identities translation json -> xml is tricky wrt prefixes, json uses module
+# name, xml uses xml namespace prefixes (or default)
+JSON='{"json:g1":"json:blues"}'
+
+new "json identity to xml"
+expecteofx "$clixon_util_json -y $fyang" 0 "$JSON" '<g1 xmlns="urn:example:clixon">blues</g1>'
+
+new "json identity back to json"
+expecteofx "$clixon_util_json -jy $fyang" 0 "$JSON" '{"json:g1":"blues"}'
+
+new "xml identity with explicit ns to json"
+expecteofx "$clixon_util_xml -ovjy $fyang" 0 '<g1 xmlns="urn:example:clixon" xmlns:ex="urn:example:clixon">ex:blues</g1>' '{"json:g1":"blues"}'
+
+# Same with indirect type
+JSON='{"json:g2":"json:blues"}'
+
+new "json indirect identity to xml"
+expecteofx "$clixon_util_json -y $fyang" 0 "$JSON" '<g2 xmlns="urn:example:clixon">blues</g2>'
+
+new "json indirect identity back to json"
+expecteofx "$clixon_util_json -jy $fyang" 0 "$JSON" '{"json:g2":"blues"}'
+
+new "xml indirect identity with explicit ns to json"
+expecteofx "$clixon_util_xml -ojvy $fyang" 0 '<g2 xmlns="urn:example:clixon" xmlns:ex="urn:example:clixon">ex:blues</g2>' '{"json:g2":"blues"}'
+
+# XXX CDATA translation, should work bit does not
 if false; then
 JSON='{"json:c": {"s": "<![CDATA[  z > x  & x < y ]]>"}}'
 new "json parse cdata xml"
 expecteofx "$clixon_util_json -j -y $fyang" 0 "$JSON" "$JSON"
 fi
-
 
 rm -rf $dir

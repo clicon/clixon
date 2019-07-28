@@ -160,16 +160,16 @@ expecteq "$(curl -s -X GET http://localhost/restconf/data/clixon-example:state)"
 
 # Exact match
 new "restconf Add subtree eth/0/0 to datastore using POST"
-expectfn 'curl -s -i -X POST -H "Accept: application/yang-data+json" -d {"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}} http://localhost/restconf/data' 0 'HTTP/1.1 201 Created'
+expectfn 'curl -s -i -X POST -H "Accept: application/yang-data+json" -d {"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}} http://localhost/restconf/data' 0 'HTTP/1.1 201 Created'
 
 new "restconf Re-add subtree eth/0/0 which should give error"
-expectfn 'curl -s -X POST -d {"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
+expectfn 'curl -s -X POST -d {"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}} http://localhost/restconf/data' 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
 # XXX Cant get this to work
-#expecteq "$(curl -s -X POST -d {\"interfaces\":{\"interface\":{\"name\":\"eth/0/0\",\"type\":\"ex:eth\",\"enabled\":true}}} http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
+#expecteq "$(curl -s -X POST -d {\"interfaces\":{\"interface\":{\"name\":\"eth/0/0\",\"type\":\"clixon-example:eth\",\"enabled\":true}}} http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
 new "restconf Check interfaces eth/0/0 added"
-expectfn "curl -s -X GET http://localhost/restconf/data/ietf-interfaces:interfaces" 0 '{"ietf-interfaces:interfaces":{"interface":[{"name":"eth/0/0","type":"ex:eth","enabled":true,"oper-status":"up"}]}}}
+expectfn "curl -s -X GET http://localhost/restconf/data/ietf-interfaces:interfaces" 0 '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up"}\]}}}
 '
 
 new "restconf delete interfaces"
@@ -179,15 +179,12 @@ new "restconf Check empty config"
 expectfn "curl -sG http://localhost/restconf/data/clixon-example:state" 0 "$state
 "
 
-# XXX: gives  <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
-#      <interface xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
 new "restconf Add interfaces subtree eth/0/0 using POST"
-expectfn 'curl -s -X POST -d {"ietf-interfaces:interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}} http://localhost/restconf/data/ietf-interfaces:interfaces' 0 ""
-# XXX cant get this to work
-#expecteq "$(curl -s -X POST -d '{"interface":{"name":"eth/0/0","type\":"ex:eth","enabled":true}}' http://localhost/restconf/data/interfaces)" 0 ""
+expectpart "$(curl -s -X POST http://localhost/restconf/data/ietf-interfaces:interfaces -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}')" 0 ""
+#expectfn 'curl -s -X POST http://localhost/restconf/data/ietf-interfaces:interfaces -d {"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' 0 ""
 
 new "restconf Check eth/0/0 added config"
-expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces":{"interface":[{"name":"eth/0/0","type":"ex:eth","enabled":true,"oper-status":"up"}]}}
+expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces":{"interface":[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up"}]}}
 '
 
 new "restconf Check eth/0/0 added state"
@@ -195,7 +192,7 @@ expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state)" 0 '
 '
 
 new "restconf Re-post eth/0/0 which should generate error"
-expecteq "$(curl -s -X POST -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
+expecteq "$(curl -s -X POST -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
 new "Add leaf description using POST"
 expecteq "$(curl -s -X POST -d '{"ietf-interfaces:description":"The-first-interface"}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 ""
@@ -204,7 +201,7 @@ new "Add nothing using POST"
 expectfn 'curl -s -X POST http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0' 0 '"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":" on line 1: syntax error at or before:'
 
 new "restconf Check description added"
-expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces":{"interface":[{"name":"eth/0/0","description":"The-first-interface","type":"ex:eth","enabled":true,"oper-status":"up"}]}}
+expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces":{"interface":[{"name":"eth/0/0","description":"The-first-interface","type":"clixon-example:eth","enabled":true,"oper-status":"up"}]}}
 '
 
 new "restconf delete eth/0/0"
@@ -217,10 +214,10 @@ new "restconf Re-Delete eth/0/0 using none should generate error"
 expecteq "$(curl -s -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-missing","error-severity":"error","error-message":"Data does not exist; cannot delete resource"}}}'
 
 new "restconf Add subtree eth/0/0 using PUT"
-expecteq "$(curl -s -X PUT -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 ""
+expecteq "$(curl -s -X PUT -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 ""
 
 new "restconf get subtree"
-expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces":{"interface":[{"name":"eth/0/0","type":"ex:eth","enabled":true,"oper-status":"up"}]}}
+expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces":{"interface":[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up"}]}}
 '
 
 new "restconf rpc using POST json"
@@ -262,10 +259,10 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf Add subtree without key (expected error)"
-expecteq "$(curl -s -X PUT -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"malformed key, expected '"'"'=restval'"'"'"}}}'
+expecteq "$(curl -s -X PUT -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"malformed key, expected '"'"'=restval'"'"'"}}}'
 
 new "restconf Add subtree with too many keys (expected error)"
-expecteq "$(curl -s -X PUT -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"ex:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=a,b)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"List key interface length mismatch"}}}'
+expecteq "$(curl -s -X PUT -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=a,b)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"List key interface length mismatch"}}}'
 
 new "Kill restconf daemon"
 stop_restconf 

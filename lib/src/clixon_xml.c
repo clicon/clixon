@@ -279,7 +279,7 @@ nscache_set(cxobj *x,
  * @param[out] namespace  URI namespace (or NULL). Note pointer into xml tree
  * @retval     0          OK
  * @retval    -1          Error
- * @see xmlns_check XXX can these be merged?
+ * @see xmlns_check 
  * @see xmlns_set cache is set
  * @note, this function uses a cache. 
  */
@@ -307,8 +307,12 @@ xml2ns(cxobj *x,
 	}
 	/* If no parent, return default namespace if defined */
 #ifdef USE_NETCONF_NS_AS_DEFAULT
-	else
-	    ns = NETCONF_BASE_NAMESPACE;
+	else{
+	    if (prefix == NULL)
+		ns = NETCONF_BASE_NAMESPACE;
+	    else
+		ns = NULL;
+	}
 #endif
     }
     /* Set default namespace cache (since code is at this point,

@@ -62,7 +62,6 @@
 #include <fcgiapp.h> /* Need to be after clixon_xml.h due to attribute format */
 
 #include "restconf_lib.h"
-#include "restconf_methods.h"
 #include "restconf_methods_post.h"
 
 /*! Generic REST POST  method 
@@ -129,9 +128,10 @@ api_data_post(clicon_handle h,
     cxobj     *xerr = NULL; /* malloced must be freed */
     cxobj     *xe;            /* dont free */
     char      *username;
+    int        nullspec = 0;
     int        ret;
     
-    clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
+    clicon_debug(1, "%s api_path:\"%s\" data:\"%s\"",
 		 __FUNCTION__, 
 		 api_path, data);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -178,6 +178,15 @@ api_data_post(clicon_handle h,
 	}
     }
     else {
+	/* Data here cannot cannot (always) be Yang populated since it is
+	 * loosely hanging without top symbols.
+	 * And if it is not yang populated, it cant be translated properly
+	 * from JSON to XML.
+	 * Therefore, yang population is done later after addsub below
+	 * Further complication is that if data is root resource, then it will
+	 * work, so I need to check below that it didnt.
+	 * THIS could be simplified.
+	 */
 	if ((ret = json_parse_str(data, yspec, &xdata0, &xerr)) < 0){ 
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
@@ -245,9 +254,24 @@ api_data_post(clicon_handle h,
     /* Replace xbot with x, ie bottom of api-path with data */
     if (xml_addsub(xbot, xdata) < 0)
 	goto done;
-    /* xbot is already populated, resolve yang for added xdata too */
-    if (xml_spec_populate(xdata, yspec) < 0)
+    /* xbot is already populated, resolve yang for added xdata too 
+     */
+    nullspec = (xml_spec(xdata) == NULL);
+    if (xml_apply0(xdata, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	goto done;
+    if (!parse_xml && nullspec){
+	/* json2xml decode may not have been done above in json_parse,
+	   need to be done here instead 
+	   UNLESS it is a root resource, then json-parse does right
+	*/
+	if ((ret = json2xml_decode(xdata, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (api_return_err(h, r, xerr, pretty, use_xml, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
 
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL){

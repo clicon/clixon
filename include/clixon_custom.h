@@ -57,4 +57,4 @@
  * The easy way to do this is to always generate all prefix/namespace bindings 
  * on the top-level for the modules involved in the netconf operation.
  */
-#undef IDENTITYREF_KLUDGE
+#define IDENTITYREF_KLUDGE

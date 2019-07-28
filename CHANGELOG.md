@@ -7,12 +7,13 @@
   * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
     * `201 Created` for created resources
     * `204 No Content` for replaced resources.
+    * identity/identityref mapped between XML and JSON
+      * XML uses prefixes, JSON uses module-names (previously prefixes were used in both cases)
     * See [RESTCONF: HTTP return codes are not according to RFC 8040](https://github.com/clicon/clixon/issues/56)
     * Implementation detail: due to difference between RESTCONF and NETCONF semantics, a PUT first to make en internal netconf edit-config create operation; if that fails, a replace operation is tried.
   * HTTP `Location:` fields added in RESTCONF POST replies
   * HTTP `Cache-Control: no-cache` fields added in HTTP responses (RFC Section 5.5)
   * Restconf monitoring capabilities (RFC Section 9.1)
-  *
 * Yang extensions support
   * New plugin callback: ca_extension
   * The main example explains how to implement a Yang extension in a backend plugin.
@@ -21,6 +22,8 @@
 * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
   * `201 Created` for created resources
   * `204 No Content` for replaced resources.
+* RESTCONF identities has been changed to use module names instead of prefixes.
+  * Eg, `curl -X POST -d '{"type":"ex:eth"}` --> `curl -X POST -d '{"type":"ietf-interfaces:eth"`}
 * JSON changes
   * Non-pretty-print output removed all extra spaces.
     * Example: `{"nacm-example:x": 42}` --> {"nacm-example:x":42}`

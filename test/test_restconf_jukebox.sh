@@ -337,13 +337,12 @@ expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+xml' ht
 
 new "4.5. PUT replace content"
 # XXX should be: jbox:alternative --> example-jukebox:alternative
-expectpart "$(curl -s -i -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d '{"example-jukebox:album":[{"name":"Wasting Light","genre":"jbox:alternative","year":2011}]}')" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -s -i -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d '{"example-jukebox:album":[{"name":"Wasting Light","genre":"example-jukebox:alternative","year":2011}]}')" 0 "HTTP/1.1 204 No Content"
 
 new "4.5. PUT replace content (xml encoding)"
 expectpart "$(curl -s -i -X PUT -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d '<album xmlns="http://example.com/ns/example-jukebox" xmlns:jbox="http://example.com/ns/example-jukebox"><name>Wasting Light</name><genre>jbox:alternative</genre><year>2011</year></album>')" 0 "HTTP/1.1 204 No Content"
 
-new "4.5. PUT create new"
-# XXX should be: jbox:alternative --> example-jukebox:alternative
+new "4.5. PUT create new identity"
 expectpart "$(curl -s -i -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":[{"name":"London Calling","year":1979}]}')" 0 "HTTP/1.1 201 Created"
 
 

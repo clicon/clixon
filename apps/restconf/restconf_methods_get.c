@@ -60,7 +60,6 @@
 #include <fcgiapp.h> /* Need to be after clixon_xml-h due to attribute format */
 
 #include "restconf_lib.h"
-#include "restconf_methods.h"
 #include "restconf_methods_get.h"
 
 /*! Generic GET (both HEAD and GET)
@@ -187,6 +186,17 @@ api_data_get2(clicon_handle h,
 		goto done;
 	}
 	else{
+#if 0
+    if (debug){
+	cbuf *ccc=cbuf_new();
+	if (clicon_xml2cbuf(ccc, xret, 0, 0) < 0)
+	    goto done;
+	clicon_debug(1, "%s xret: %s",
+		     __FUNCTION__, cbuf_get(ccc));
+	cbuf_free(ccc);
+    }
+#endif
+
 	    if (xml2json_cbuf(cbx, xret, pretty) < 0)
 		goto done;
 	}

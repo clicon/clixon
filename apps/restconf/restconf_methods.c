@@ -288,7 +288,7 @@ api_data_put(clicon_handle h,
     char      *namespace0;
     char      *dname;
 
-    clicon_debug(1, "%s api_path:\"%s\" json:\"%s\"",
+    clicon_debug(1, "%s api_path:\"%s\" data:\"%s\"",
 		 __FUNCTION__, api_path0, data);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -336,6 +336,12 @@ api_data_put(clicon_handle h,
 	}
     }
     else{
+	/* Data here cannot cannot be Yang populated since it is loosely
+	 * hanging without top symbols.
+	 * And if it is not yang populated, it cant be translated properly
+	 * from JSON to XML.
+	 * Therefore, yang population is done later after addsub below
+	 */
 	if ((ret = json_parse_str(data, yspec, &xdata0, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
@@ -487,6 +493,21 @@ api_data_put(clicon_handle h,
 	xml_purge(xbot);
 	if (xml_addsub(xparent, xdata) < 0)
 	    goto done;
+	/* xbot is already populated, resolve yang for added xdata too */
+	if (xml_apply0(xdata, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	    goto done;
+	if (!parse_xml){
+	    /* json2xml decode could not be done above in json_parse,
+	       need to be done here instead */
+	    if ((ret = json2xml_decode(xdata, &xerr)) < 0)
+		goto done;
+	    if (ret == 0){
+		if (api_return_err(h, r, xerr, pretty, use_xml, 0) < 0)
+		    goto done;
+		goto ok;
+	    }
+	}
+
 	/* If we already have that default namespace, remove it in child */
 	if ((xa = xml_find_type(xdata, NULL, "xmlns", CX_ATTR)) != NULL){
 	    if (xml2ns(xparent, NULL, &namespace0) < 0)
@@ -495,6 +516,7 @@ api_data_put(clicon_handle h,
 	    if (strcmp(namespace0, xml_value(xa))==0)
 		xml_purge(xa);
 	}		
+
     }
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
@@ -613,29 +635,6 @@ api_data_put(clicon_handle h,
    return retval;
 } /* api_data_put */
 
-/*! Generic REST PATCH  method 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
- * @param[in]  pi     Offset, where to start pcvec
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  data   Stream input data
- * Netconf:  <edit-config> (nc:operation="merge")      
- * See RFC8040 Sec 4.6
- */
-int
-api_data_patch(clicon_handle h,
-	       FCGX_Request *r, 
-	       char         *api_path, 
-	       cvec         *pcvec, 
-	       int           pi,
-	       cvec         *qvec, 
-	       char         *data)
-{
-    notimplemented(r);
-    return 0;
-}
 
 /*! Generic REST DELETE method translated to edit-config
  * @param[in]  h      CLIXON handle

@@ -795,6 +795,64 @@ yang_find_mynamespace(yang_stmt *ys)
     return namespace;
 }
 
+/*! Given a yang statement and namespace, find local prefix valid in module
+ * This is useful if you want to make a "reverse" lookup, you know the
+ * (global) namespace of a module, but you do not know the local prefix
+ * used to access it in XML.
+ * @param[in]  ys        Yang statement in module tree (or module itself)
+ * @param[in]  namespace Namspace URI as char* pointer into yang tree
+ * @param[out] prefix    Local prefix to access module with (direct pointer)
+ * @retval     0         not found
+ * @retval    -1         found
+ * @code
+ * @note  prefix NULL is not returned, if own module, then return its prefix
+ * char *pfx = yang_find_prefix_by_namespace(ys, "urn:example:clixon", &prefix);
+ * @endcode
+ */
+int
+yang_find_prefix_by_namespace(yang_stmt *ys,
+			      char      *namespace,
+			      char     **prefix)
+{
+    int        retval = 0; /* not found */
+    yang_stmt *my_ymod; /* My module */
+    char      *myns;   /* My ns */
+    yang_stmt *yspec;
+    yang_stmt *ymod;
+    char      *modname = NULL;
+    yang_stmt *yimport;
+    yang_stmt *yprefix; 
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    /* First check if namespace is my own module */
+    myns = yang_find_mynamespace(ys);
+    if (strcmp(myns, namespace) == 0){
+	*prefix = yang_find_myprefix(ys); /* or NULL? */
+	goto found;
+    }
+    /* Next, find namespaces in imported modules */
+    yspec = ys_spec(ys);
+    if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL)
+	goto notfound;
+    modname = yang_argument_get(ymod);
+    my_ymod = ys_module(ys);
+    /* Loop through import statements to find a match with ymod */
+    yimport = NULL;
+    while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
+	if (yang_keyword_get(yimport) == Y_IMPORT &&
+	    strcmp(modname, yang_argument_get(yimport)) == 0){ /* match */
+	    yprefix = yang_find(yimport, Y_PREFIX, NULL);
+	    *prefix = yang_argument_get(yprefix);
+	    goto found;
+	}
+    }
+ notfound:
+    return retval;
+ found:
+    assert(*prefix);
+    return 1;
+}
+
 /*! If a given yang stmt has a choice/case as parent, return the choice statement 
  */
 yang_stmt *
@@ -985,16 +1043,8 @@ ys_module_by_xml(yang_stmt  *ysp,
     if (ymodp)
 	*ymodp = NULL;
     prefix = xml_prefix(xt);
-    if (prefix){
-	/* Get namespace for prefix */
-	if (xml2ns(xt, prefix, &namespace) < 0)
-	    goto done;
-    }
-    else{
-	/* Get default namespace */
-	if (xml2ns(xt, NULL, &namespace) < 0)
-	    goto done;
-    }
+    if (xml2ns(xt, prefix, &namespace) < 0) /* prefix may be NULL */
+	goto done;
     /* No namespace found, give up */
     if (namespace == NULL)
 	goto ok;
@@ -1134,8 +1184,7 @@ yang_find_module_by_prefix(yang_stmt *ys,
     }
     yimport = NULL;
     while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
-	if (yang_keyword_get(yimport) != Y_IMPORT &&
-	    yang_keyword_get(yimport) != Y_INCLUDE)
+	if (yang_keyword_get(yimport) != Y_IMPORT)
 	    continue;
 	if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) != NULL &&
 	    strcmp(yang_argument_get(yprefix), prefix) == 0){
@@ -1143,8 +1192,7 @@ yang_find_module_by_prefix(yang_stmt *ys,
 	}
     }
     if (yimport){
-	if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yimport))) == NULL &&
-	    (ymod = yang_find(yspec, Y_SUBMODULE, yang_argument_get(yimport))) == NULL){
+	if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yimport))) == NULL){
 	    clicon_err(OE_YANG, 0, "No module or sub-module found with prefix %s", 
 		       prefix);	
 	    yimport = NULL;
@@ -1153,6 +1201,25 @@ yang_find_module_by_prefix(yang_stmt *ys,
     }
  done:
     return ymod;
+}
+
+/* Get module from its own prefix 
+ * This is really not a valid usecase, a kludge for the identityref derived
+ * list workaround (IDENTITYREF_KLUDGE)
+ */ 
+yang_stmt *
+yang_find_module_by_prefix_yspec(yang_stmt *yspec, 
+				 char      *prefix)
+{
+    yang_stmt *ymod = NULL;
+    yang_stmt *yprefix;
+    
+    while ((ymod = yn_each(yspec, ymod)) != NULL) 
+	if (ymod->ys_keyword == Y_MODULE &&
+	    (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
+	    strcmp(yang_argument_get(yprefix), prefix) == 0)
+	    return ymod;
+    return NULL;
 }
 
 /*! Given a yang spec and a namespace, return yang module 

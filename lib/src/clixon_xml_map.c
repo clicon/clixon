@@ -332,24 +332,6 @@ validate_leafref(cxobj     *xt,
     goto done;
 }
 
-/* Get module from its own prefix 
- * This is really not a valid usecase, a kludge for the identityref derived
- * list workaround (IDENTITYREF_KLUDGE)
- */ 
-static yang_stmt *
-yang_find_module_by_prefix_yspec(yang_stmt *yspec, 
-				 char      *prefix)
-{
-    yang_stmt *ymod = NULL;
-    yang_stmt *yprefix;
-    
-    while ((ymod = yn_each(yspec, ymod)) != NULL) 
-	if (ymod->ys_keyword == Y_MODULE &&
-	    (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
-	    strcmp(yang_argument_get(yprefix), prefix) == 0)
-	    return ymod;
-    return NULL;
-}
 
 /*! Validate xml node of type identityref, ensure value is a defined identity
  * Check if a given node has value derived from base identity. This is
@@ -2340,6 +2322,7 @@ xml_spec_populate_rpc(clicon_handle h,
  * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
  * @endcode
  */
+#undef DEBUG
 int
 xml_spec_populate(cxobj  *x, 
 		  void   *arg)
@@ -2355,17 +2338,36 @@ xml_spec_populate(cxobj  *x,
     yspec = (yang_stmt*)arg;
     xp = xml_parent(x);
     name = xml_name(x);
+#ifdef DEBUG
+    clicon_debug(1, "%s name:%s", __FUNCTION__, name);
+#endif
     if (xp && (yparent = xml_spec(xp)) != NULL)
 	y = yang_find_datanode(yparent, name);
     else if (yspec){
 	if (ys_module_by_xml(yspec, x, &ymod) < 0)
 	    goto done;
 	/* ymod is "real" module, name may belong to included submodule */
-	if (ymod != NULL)
+	if (ymod != NULL){
+#ifdef DEBUG
+	    clicon_debug(1, "%s %s mod:%s", __FUNCTION__, name, yang_argument_get(ymod));
+#endif
 	    y = yang_find_schemanode(ymod, name);
+	}
+#ifdef DEBUG
+	else
+	    clicon_debug(1, "%s %s mod:NULL", __FUNCTION__, name);
+#endif
     }
-    if (y) 
+    if (y) {
+#ifdef DEBUG
+	clicon_debug(1, "%s y:%s", __FUNCTION__, yang_argument_get(y));
+#endif
 	xml_spec_set(x, y);
+    }
+#ifdef DEBUG
+    else
+    	clicon_debug(1, "%s y:NULL", __FUNCTION__);
+#endif
     retval = 0;
  done:
     return retval;

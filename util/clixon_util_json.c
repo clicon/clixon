@@ -74,7 +74,7 @@ usage(char *argv0)
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"
-	    "\t-j \t\tOutput as JSON\n"
+	    "\t-j \t\tOutput as JSON (default is as XML)\n"
 	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n"
 	    "\t-p \t\tPretty-print output\n"
 	    "\t-y <filename> \tyang filename to parse (must be stand-alone)\n"	    ,

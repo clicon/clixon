@@ -78,8 +78,9 @@
 /* restconf */
 #include "restconf_lib.h"
 #include "restconf_methods.h"
-#include "restconf_methods_post.h"
 #include "restconf_methods_get.h"
+#include "restconf_methods_post.h"
+#include "restconf_methods_patch.h"
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */

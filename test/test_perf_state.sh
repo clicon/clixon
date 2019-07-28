@@ -98,8 +98,8 @@ new "netconf get $perfreq single reqs"
 done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
-new "restconf get test single req XXX"
-expecteq "$(curl -s -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1)" 0 '{"ietf-interfaces:interface":[{"name":"e1","type":"ex:eth","enabled":true,"oper-status":"up"}]}
+new "restconf get test single req"
+expecteq "$(curl -s -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1)" 0 '{"ietf-interfaces:interface":[{"name":"e1","type":"clixon-example:eth","enabled":true,"oper-status":"up"}]}
 '
 
 new "restconf get $perfreq single reqs"
