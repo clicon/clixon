@@ -229,6 +229,7 @@ match_list_keys(yang_stmt *y,
 
  * @note restconf PUT is mapped to edit-config replace. 
  * @see RFC8040 Sec 4.5  PUT
+ * @see api_data_post
  * @example
       curl -X PUT -d '{"enabled":"false"}' http://127.0.0.1/restconf/data/interfaces/interface=eth1
  *
@@ -287,6 +288,7 @@ api_data_put(clicon_handle h,
     int        ret;
     char      *namespace0;
     char      *dname;
+    int        nullspec = 0;
 
     clicon_debug(1, "%s api_path:\"%s\" data:\"%s\"",
 		 __FUNCTION__, api_path0, data);
@@ -363,6 +365,7 @@ api_data_put(clicon_handle h,
 	    goto ok;
 	}
     }
+
     /* The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
@@ -378,6 +381,15 @@ api_data_put(clicon_handle h,
 	goto ok;
     }
     xdata = xml_child_i(xdata0,0);
+#if 0
+    if (debug){
+	cbuf *ccc=cbuf_new();
+	if (clicon_xml2cbuf(ccc, xdata, 0, 0) < 0)
+	    goto done;
+	clicon_debug(1, "%s DATA:%s", __FUNCTION__, cbuf_get(ccc));
+	cbuf_free(ccc);
+    }
+#endif
     /* If the api-path (above) defines a module, then xdata must have a prefix
      * and it match the module defined in api-path
      * This does not apply if api-path is / (no module)
@@ -493,12 +505,15 @@ api_data_put(clicon_handle h,
 	xml_purge(xbot);
 	if (xml_addsub(xparent, xdata) < 0)
 	    goto done;
+	nullspec = (xml_spec(xdata) == NULL);
 	/* xbot is already populated, resolve yang for added xdata too */
 	if (xml_apply0(xdata, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
-	if (!parse_xml){
+	if (!parse_xml && nullspec){
 	    /* json2xml decode could not be done above in json_parse,
-	       need to be done here instead */
+	     * need to be done here instead 
+	     * UNLESS it is root resource, then json-parse has already done it
+	     */
 	    if ((ret = json2xml_decode(xdata, &xerr)) < 0)
 		goto done;
 	    if (ret == 0){

@@ -382,8 +382,11 @@ validate_identityref(cxobj     *xt,
     }
     /* Get idref value. Then see if this value is derived from ytype.
      */
-    if ((node = xml_body(xt)) == NULL)
-	return 0;
+    if ((node = xml_body(xt)) == NULL){ /* It may not be empty */
+	if (netconf_bad_element_xml(xret, "application", xml_name(xt), "Identityref should not be empty") < 0)
+	    goto done;
+	goto fail;
+    }
     if (nodeid_split(node, &prefix, &id) < 0)
 	goto done;
     /* This is the type's base reference */
@@ -1237,7 +1240,6 @@ xml_yang_validate_list_key_only(clicon_handle h,
     retval = 0;
     goto done;
 }
-
 
 /*! Validate a single XML node with yang specification for all (not only added) entries
  * 1. Check leafrefs. Eg you delete a leaf and a leafref references it.

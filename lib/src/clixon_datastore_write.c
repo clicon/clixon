@@ -175,6 +175,14 @@ text_modify(clicon_handle       h,
 	    goto done;
     x1name = xml_name(x1);
     if (yang_keyword_get(y0) == Y_LEAF_LIST || yang_keyword_get(y0) == Y_LEAF){
+	/* This is a check on no further elements as a sanity check for eg
+	 * <leaf>a<leaf>b</leaf></leaf> 
+	 */
+	if (xml_child_nr_type(x1, CX_ELMNT)){
+	    if (netconf_unknown_element(cbret, "application", x1name, "Leaf contains sub-element") < 0)
+		goto done;
+	    goto fail;
+	}
 	x1bstr = xml_body(x1);
 	switch(op){ 
 	case OP_CREATE:

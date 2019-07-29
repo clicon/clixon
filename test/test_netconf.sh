@@ -139,6 +139,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply
 new "netconf edit config merge"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth2</name><type>ex:eth</type></interface></interfaces></config><default-operation>merge</default-operation></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
+# Note, the type here is non-existant identityref, fails on validation
 new "netconf edit ampersand encoding(<&): name:'eth&' type:'t<>'"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth&amp;</name><type>t&lt;&gt;</type></interface></interfaces></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
@@ -200,6 +201,9 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><empty xmlns="urn:example:clixon"/>
 
 new "netconf client-side rpc"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><client-rpc xmlns="urn:example:clixon"><x>val42</x></client-rpc></rpc>]]>]]>' '^<rpc-reply><x xmlns="urn:example:clixon">val42</x></rpc-reply>]]>]]>$'
+
+new "netconf extra leaf in leaf should fail"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>e0<name>e1</name></name></interface></interfaces></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>name</bad-element></error-info><error-severity>error</error-severity><error-message>Leaf contains sub-element</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 if [ $BE -eq 0 ]; then
     exit # BE

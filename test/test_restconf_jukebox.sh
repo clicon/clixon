@@ -336,7 +336,6 @@ new "B.2.1.  Add Data Resources again (conflict - not in RFC)"
 expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters -d '<album xmlns="http://example.com/ns/example-jukebox"><name>Wasting Light</name><year>2011</year></album>')" 0 "HTTP/1.1 409 Conflict"
 
 new "4.5. PUT replace content"
-# XXX should be: jbox:alternative --> example-jukebox:alternative
 expectpart "$(curl -s -i -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d '{"example-jukebox:album":[{"name":"Wasting Light","genre":"example-jukebox:alternative","year":2011}]}')" 0 "HTTP/1.1 204 No Content"
 
 new "4.5. PUT replace content (xml encoding)"

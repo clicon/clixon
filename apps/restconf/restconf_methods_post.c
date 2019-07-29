@@ -96,6 +96,7 @@
    and a "409 Conflict" status-line MUST be returned.
 
  * @see RFC8040 Section 4.4
+ * @see api_data_put
  */
 int
 api_data_post(clicon_handle h,
@@ -262,7 +263,7 @@ api_data_post(clicon_handle h,
     if (!parse_xml && nullspec){
 	/* json2xml decode may not have been done above in json_parse,
 	   need to be done here instead 
-	   UNLESS it is a root resource, then json-parse does right
+	   UNLESS it is a root resource, then json-parse has already done it
 	*/
 	if ((ret = json2xml_decode(xdata, &xerr)) < 0)
 	    goto done;
