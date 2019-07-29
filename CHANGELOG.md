@@ -27,8 +27,10 @@
 * JSON changes
   * Non-pretty-print output removed all extra spaces.
     * Example: `{"nacm-example:x": 42}` --> {"nacm-example:x":42}`
-  * Empty JSON container changed from `null` to `{}`.
-    * Empty list and leafs remain as `null`
+  * Empty JSON values changed from `null` to:
+    * Empty yang container encoded as `{}`
+    * Empty leaf/leaf-list of type empty encoded as `[null]`
+    * Other empty values remain as `null`
 
 ### Minor changes
 * Removed unnecessary configure dependencies

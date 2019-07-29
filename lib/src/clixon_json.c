@@ -193,14 +193,14 @@ array_eval(cxobj *xprev,
     char                   *ns2;
 
     nsx = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
-    if (xml_type(x)!=CX_ELMNT){
+    if (xml_type(x) != CX_ELMNT){
 	array=BODY_ARRAY;
 	goto done;
     }
     ys = xml_spec(x);
     if (xnext && 
 	xml_type(xnext)==CX_ELMNT &&
-	strcmp(xml_name(x),xml_name(xnext))==0){
+	strcmp(xml_name(x), xml_name(xnext))==0){
         ns2 = xml_find_type_value(xnext, NULL, "xmlns", CX_ATTR);
 	if ((!nsx && !ns2)
 	    || (nsx && ns2 && strcmp(nsx,ns2)==0))
@@ -420,13 +420,17 @@ json2xml_decode(cxobj     *x,
 	if (keyword == Y_LEAF || keyword == Y_LEAF_LIST){
 	    if (yang_type_get(y, NULL, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
 		goto done;
-	    if (ytype)
+
+	    if (ytype){
 		if (strcmp(yang_argument_get(ytype),"identityref")==0){
 		    if ((ret = json2xml_decode_identityref(x, y, xerr)) < 0)
 			goto done;
 		    if (ret == 0)
 			goto fail;
 		}
+		else if (strcmp(yang_argument_get(ytype), "empty")==0)
+		    ; /* dont need to do anything */
+	    }
 	}
     }
     xc = NULL;
@@ -464,6 +468,7 @@ xml2json_encode_identityref(cxobj     *xb,
     yang_stmt *yspec;
     yang_stmt *my_ymod;
 
+    clicon_debug(1, "%s %s", __FUNCTION__, body);
     my_ymod = ys_module(yp);
     yspec = ys_spec(yp);
     if (nodeid_split(body, &prefix, &id) < 0)
@@ -667,7 +672,6 @@ xml2json1_cbuf(cbuf                   *cb,
 	    modname0 = modname; /* modname0 is ancestor ns passed to child */
     }
     childt = child_type(x);
-
     if (pretty==2)
 	cprintf(cb, "#%s_array, %s_child ", 
 		arraytype2str(arraytype),
@@ -687,12 +691,18 @@ xml2json1_cbuf(cbuf                   *cb,
 	switch (childt){
 	case NULL_CHILD:
 	    /* If x is a container, use {} instead of null 
-	     * That is, x is not a list or leaf
+	     * if leaf or leaf-list then assume EMPTY type, then [null]
+	     * else null
 	     */
 	    if (ys && yang_keyword_get(ys) == Y_CONTAINER)
 		cprintf(cb, "{}");
-	    else
-		cprintf(cb, "null");
+	    else{
+		if (ys &&
+		    (yang_keyword_get(ys) == Y_LEAF || yang_keyword_get(ys) == Y_LEAF_LIST))
+		    cprintf(cb, "[null]");
+		else
+		    cprintf(cb, "null");
+	    }
 	    break;
 	case BODY_CHILD:
 	    break;
@@ -756,6 +766,7 @@ xml2json1_cbuf(cbuf                   *cb,
 	xc = xml_child_i(x, i);
 	if (xml_type(xc) == CX_ATTR)
 	    continue; /* XXX Only xmlns attributes mapped */
+
 	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
 				xc, 
 				xml_child_i(x, i+1));
