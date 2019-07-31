@@ -345,7 +345,7 @@ api_restconf(clicon_handle h,
     cxobj *xerr;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    path = FCGX_GetParam("REQUEST_URI", r->envp);
+    path = restconf_uripath(r);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     /* get xml/json in put and output */

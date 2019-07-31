@@ -128,8 +128,8 @@ if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
-new "restconf get data/ json"
-expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" 0 '{"clixon-example:op":["42","41","43"]}
+new "restconf get data type json"
+expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" 0 '{"clixon-example:op":"42"}
 '
 
 new "restconf get state operation"
@@ -142,7 +142,7 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf get state operation type json"
-expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" 0 '{"clixon-example:op":["42","41","43"]}
+expecteq "$(curl -s -G http://localhost/restconf/data/clixon-example:state/op=42)" 0 '{"clixon-example:op":"42"}
 '
 
 new "restconf get state operation type xml"

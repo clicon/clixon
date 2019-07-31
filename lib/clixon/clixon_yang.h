@@ -62,7 +62,7 @@ enum rfc_6020{
     Y_BELONGS_TO,
     Y_BIT,
     Y_CASE,
-    Y_CHOICE,
+    Y_CHOICE,          /* 10 */
     Y_CONFIG,
     Y_CONTACT,
     Y_CONTAINER,
@@ -72,7 +72,7 @@ enum rfc_6020{
     Y_DEVIATION,
     Y_ENUM,
     Y_ERROR_APP_TAG,
-    Y_ERROR_MESSAGE,
+    Y_ERROR_MESSAGE,   /* 20 */
     Y_EXTENSION,
     Y_FEATURE,
     Y_FRACTION_DIGITS,
@@ -82,17 +82,17 @@ enum rfc_6020{
     Y_IMPORT,
     Y_INCLUDE,
     Y_INPUT,
-    Y_KEY,
+    Y_KEY,             /* 30 */
     Y_LEAF,
     Y_LEAF_LIST,
     Y_LENGTH,
-    Y_LIST,
+    Y_LIST, 
     Y_MANDATORY,
     Y_MAX_ELEMENTS,
     Y_MIN_ELEMENTS,
     Y_MODIFIER,
     Y_MODULE,
-    Y_MUST,
+    Y_MUST,             /* 40 */
     Y_NAMESPACE,
     Y_NOTIFICATION,
     Y_ORDERED_BY,
@@ -102,7 +102,7 @@ enum rfc_6020{
     Y_PATTERN,
     Y_POSITION,
     Y_PREFIX,
-    Y_PRESENCE,
+    Y_PRESENCE,         /* 50 */
     Y_RANGE,
     Y_REFERENCE,
     Y_REFINE,
@@ -112,7 +112,7 @@ enum rfc_6020{
     Y_RPC,
     Y_STATUS,
     Y_SUBMODULE,
-    Y_TYPE,
+    Y_TYPE,            /* 60 */
     Y_TYPEDEF,
     Y_UNIQUE,
     Y_UNITS,

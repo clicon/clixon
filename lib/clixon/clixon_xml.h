@@ -51,13 +51,21 @@
  * Types
  */
 /* Netconf operation type */
-enum operation_type{ /* edit-configo */
+enum operation_type{ /* edit-config operation */
     OP_MERGE,  /* merge config-data */
     OP_REPLACE,/* replace or create config-data */
     OP_CREATE, /* create config data, error if exist */
     OP_DELETE, /* delete config data, error if it does not exist */
     OP_REMOVE, /* delete config data (not a netconf feature) */
     OP_NONE
+};
+
+/* Netconf insert type (see RFC7950 Sec 7.8.6) */
+enum insert_type{ /* edit-config insert */
+    INS_FIRST, 
+    INS_LAST,  
+    INS_BEFORE, 
+    INS_AFTER,  
 };
 
 enum cxobj_type {CX_ERROR=-1, 
@@ -115,6 +123,7 @@ int       xml_child_nr_notype(cxobj *xn, enum cxobj_type type);
 cxobj    *xml_child_i(cxobj *xn, int i);
 cxobj    *xml_child_i_type(cxobj *xn, int i, enum cxobj_type type);
 cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);
+int       xml_child_order(cxobj *xn, cxobj *xc);
 cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 
 int       xml_child_insert_pos(cxobj *x, cxobj *xc, int i);
@@ -178,6 +187,7 @@ int       xml_body_int32(cxobj *xb, int32_t *val);
 int       xml_body_uint32(cxobj *xb, uint32_t *val);
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
+int       xml_attr_insert2val(char *instr, enum insert_type *ins);
 #if defined(__GNUC__) && __GNUC__ >= 3
 int       clicon_log_xml(int level, cxobj *x, char *format, ...)  __attribute__ ((format (printf, 3, 4)));
 #else

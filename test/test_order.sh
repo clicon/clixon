@@ -5,6 +5,7 @@
 # The ordered-by user MUST be the order it is entered.
 # No test of ordered-by system is done yet
 # (we may want to sort them alphabetically for better performance).
+# Also: ordered-by-user and "insert" and "key"/"value" attributes
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -285,6 +286,108 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 
 new "check list decimal64 order (1,2,10)"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/exo:types/exo:listdecs" xmlns:exo="urn:example:order"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><types xmlns="urn:example:order"><listdecs><a>1.0</a></listdecs><listdecs><a>2.0</a></listdecs><listdecs><a>10.0</a></listdecs></types></data></rpc-reply>]]>]]>$'
+
+new "delete candidate"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config operation="delete"/></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+# leaf-list ordered-by-user, "insert" and "value" attributes
+# y0 is leaf-list ordered by user
+new "add one entry (c) to leaf-list"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:order">c</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "add one entry (a) to leaf-list first (with no yang namespace - error)"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:order" yang:insert="first">a</y0></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-attribute</error-tag><error-info>insert</error-info><error-severity>error</error-severity><error-message>Unresolved attribute prefix (no namespace?)</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+new "add one entry (b) to leaf-list first"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="first">b</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "add one entry (d) to leaf-list last"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="last">d</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "add one entry (a) to leaf-list first"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="first">a</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "add one entry (e) to leaf-list last"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y0 xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="last">e</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "check ordered-by-user: a,b,c,d,e"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><y0 xmlns="urn:example:order">a</y0><y0 xmlns="urn:example:order">b</y0><y0 xmlns="urn:example:order">c</y0><y0 xmlns="urn:example:order">d</y0><y0 xmlns="urn:example:order">e</y0></data></rpc-reply>]]>]]>$'
+
+new "move one entry (e) to leaf-list first"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y0 operation="replace" xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="first">e</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "check ordered-by-user: e,a,b,c,d"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><y0 xmlns="urn:example:order">e</y0><y0 xmlns="urn:example:order">a</y0><y0 xmlns="urn:example:order">b</y0><y0 xmlns="urn:example:order">c</y0><y0 xmlns="urn:example:order">d</y0></data></rpc-reply>]]>]]>$'
+
+# before and after and value attribute
+new "add one leaf-list entry 71 before b"
+XML="<rpc><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"before\" yang:value=\"y0[.='b']\">71</y0></config></edit-config></rpc>]]>]]>"
+expecteof "$clixon_netconf -qf $cfg" 0 "$XML" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "add one entry 42 after b"
+XML="<rpc><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"after\" yang:value=\"y0[.='b']\">42</y0></config></edit-config></rpc>]]>]]>"
+expecteof "$clixon_netconf -qf $cfg" 0 "$XML"  "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+# XXX actually not right error message, should be as RFC7950 Sec 15.7
+new "add one entry 99 after Q (not found, error)"
+XML="<rpc><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"after\" yang:value=\"y0[.='Q']\">99</y0></config></edit-config></rpc>]]>]]>"
+RES="^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>bad-attribute: value, missing-instance: y0\[.='Q'\]</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$XML" "$RES"
+
+new "check ordered-by-user: e,a,71,b,42,c,d"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><y0 xmlns="urn:example:order">e</y0><y0 xmlns="urn:example:order">a</y0><y0 xmlns="urn:example:order">71</y0><y0 xmlns="urn:example:order">b</y0><y0 xmlns="urn:example:order">42</y0><y0 xmlns="urn:example:order">c</y0><y0 xmlns="urn:example:order">d</y0></data></rpc-reply>]]>]]>$'
+
+new "delete candidate"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config operation="delete"/></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+# list ordered-by-user, "insert" and "value" attributes
+# y2 is list ordered by user
+new "add one entry (key c) to list"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:order"><k>c</k><a>foo</a></y2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "add one entry (key a) to list first (with no yang namespace - error)"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:order" yang:insert="first"><k>a</k><a>foo</a></y2></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-attribute</error-tag><error-info>insert</error-info><error-severity>error</error-severity><error-message>Unresolved attribute prefix (no namespace?)</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+new "add one entry (key b) to list first"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="first"><k>b</k><a>bar</a></y2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "add one entry (d) to list last"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="last"><k>d</k><a>fie</a></y2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "add one entry (a) to list first"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="first"><k>a</k><a>foo</a></y2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "add one entry (e) to list last"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="last"><k>e</k><a>bar</a></y2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "check ordered-by-user: a,b,c,d,e"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><y2 xmlns="urn:example:order"><k>a</k><a>foo</a></y2><y2 xmlns="urn:example:order"><k>b</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>c</k><a>foo</a></y2><y2 xmlns="urn:example:order"><k>d</k><a>fie</a></y2><y2 xmlns="urn:example:order"><k>e</k><a>bar</a></y2></data></rpc-reply>]]>]]>$'
+
+new "move one entry (e) to list first"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y2 xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="first"><k>e</k><a>bar</a></y2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "check ordered-by-user: e,a,b,c,d"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><y2 xmlns="urn:example:order"><k>e</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>a</k><a>foo</a></y2><y2 xmlns="urn:example:order"><k>b</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>c</k><a>foo</a></y2><y2 xmlns="urn:example:order"><k>d</k><a>fie</a></y2></data></rpc-reply>]]>]]>$'
+
+# before and after and key attribute
+new "add one entry 71 before key b"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><y2 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"before\" yang:key=\"[k='b']\"><k>71</k><a>fie</a></y2></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "add one entry 42 after key b"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><y2 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"after\" yang:key=\"[k='b']\"><k>42</k><a>fum</a></y2></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+# XXX actually not right error message, should be as RFC7950 Sec 15.7
+new "add one entry key 99 after Q (not found, error)"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><y2 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"after\" yang:key=\"[k='Q']\"><k>99</k><a>bar</a></y2></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>bad-attribute: key, missing-instance: y2\[k='Q'\]</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+new "check ordered-by-user: e,a,71,b,42,c,d"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><y2 xmlns="urn:example:order"><k>e</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>a</k><a>foo</a></y2><y2 xmlns="urn:example:order"><k>71</k><a>fie</a></y2><y2 xmlns="urn:example:order"><k>b</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>42</k><a>fum</a></y2><y2 xmlns="urn:example:order"><k>c</k><a>foo</a></y2><y2 xmlns="urn:example:order"><k>d</k><a>fie</a></y2></data></rpc-reply>]]>]]>$'
 
 if [ $BE -eq 0 ]; then
     exit # BE

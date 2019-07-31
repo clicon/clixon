@@ -305,6 +305,7 @@ printparam(FCGX_Request *r,
 
 /*! Print all FCGI headers
  * @param[in]  r        Fastcgi request handle
+ * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
  */
 int
 restconf_test(FCGX_Request *r, 
@@ -552,3 +553,96 @@ restconf_terminate(clicon_handle h)
     return 0;
 }
 
+/*! If restconf insert/point attributes are present, translate to netconf 
+ * @param[in] xdata  URI->XML to translate
+ * @param[in] qvec   Query parameters (eg where insert/point should be)
+ * @retval    0      OK 
+ * @retval   -1      Error
+ */
+int
+restconf_insert_attributes(cxobj *xdata,
+			   cvec  *qvec)
+{
+    int        retval = -1;
+    cxobj     *xa;
+    char      *instr;
+    char      *pstr;
+    yang_stmt *y;
+    char      *attrname;
+    int        ret;
+    
+    y = xml_spec(xdata);
+    if ((instr = cvec_find_str(qvec, "insert")) != NULL){
+	/* First add xmlns:yang attribute */
+	if ((xa = xml_new("yang", xdata, NULL)) == NULL)
+	    goto done;
+	if (xml_prefix_set(xa, "xmlns") < 0)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (xml_value_set(xa, "urn:ietf:params:xml:ns:yang:1") < 0)
+	    goto done;
+	/* Then add insert attribute */
+	if ((xa = xml_new("insert", xdata, NULL)) == NULL)
+	    goto done;
+	if (xml_prefix_set(xa, "yang") < 0)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (xml_value_set(xa, instr) < 0)
+	    goto done;
+    }
+    if ((pstr = cvec_find_str(qvec, "point")) != NULL){
+	char *xpath = NULL;
+	char *namespace = NULL;
+	cbuf *cb = NULL;
+	if (y == NULL){
+	    clicon_err(OE_YANG, 0, "Cannot yang resolve %s", xml_name(xdata));
+	    goto done;
+	}
+	if (yang_keyword_get(y) == Y_LIST)
+	    attrname="key";
+	else
+	    attrname="value";
+	/* Then add value/key attribute */
+	if ((xa = xml_new(attrname, xdata, NULL)) == NULL)
+	    goto done;
+	if (xml_prefix_set(xa, "yang") < 0)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if ((ret = api_path2xpath(pstr, ys_spec(y), &xpath, &namespace)) < 0)
+	    goto done;
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "/%s", xpath); /* XXX: also prefix/namespace? */
+	if (xml_value_set(xa, cbuf_get(cb)) < 0)
+	    goto done;
+	if (xpath)
+	    free(xpath);
+	if (cb)
+	    cbuf_free(cb);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Extract uri-encoded uri-path from fastcgi parameters
+ * Use REQUEST_URI parameter and strip ?args
+ * REQUEST_URI have args and is encoded
+ *   eg /interface=eth%2f0%2f0?insert=first
+ * DOCUMENT_URI dont have args and is not encoded
+ *   eg /interface=eth/0/0
+ *  causes problems with eg /interface=eth%2f0%2f0
+ */
+char *
+restconf_uripath(FCGX_Request *r)
+{
+    char *path;
+    char *q;
+
+    path = FCGX_GetParam("REQUEST_URI", r->envp); 
+    if ((q = index(path, '?')) != NULL)
+	*q = '\0';
+    return path;
+}

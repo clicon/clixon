@@ -4,6 +4,7 @@
 
 ### Major New features
 * Restconf RFC 8040 increased feature compliance
+  * RESTCONF "insert" and "point" query parameters supported
   * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
     * `201 Created` for created resources
     * `204 No Content` for replaced resources.
@@ -14,6 +15,8 @@
   * HTTP `Location:` fields added in RESTCONF POST replies
   * HTTP `Cache-Control: no-cache` fields added in HTTP responses (RFC Section 5.5)
   * Restconf monitoring capabilities (RFC Section 9.1)
+* Yang Netconf leaf/leaf-list insert support
+  * For "ordered-by user" leafs and leaf-lists, the insert and value/key attributes are supported according to RFC7950 Sections 7.7.9 and 7.8.6
 * Yang extensions support
   * New plugin callback: ca_extension
   * The main example explains how to implement a Yang extension in a backend plugin.
@@ -38,6 +41,8 @@
 * pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions
 
 ### Corrected Bugs
+* Fixed RESTCONF api-path leaf-list selection was not made properly
+  * Requesting eg `mod:x/y=42` returned the whole list: `{"y":[41,42,43]}` whereas it should only return one element: `{"y":42}`
 * See [RESTCONF: HTTP return codes are not according to RFC 8040](https://github.com/clicon/clixon/issues/56)
 * Yang Unique statements with multiple schema identifiers did not work on some platforms due to memory error.
 

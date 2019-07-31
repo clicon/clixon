@@ -122,6 +122,55 @@ replace_xmlns(cxobj *x0,
     return retval;
 }
 
+/*! Given an attribute name and its expected namespace, find its value
+ * 
+ * An attribute may have a prefix(or NULL). The routine finds the associated
+ * xmlns binding to find the namespace: <namespace>:<name>.
+ * If such an attribute is not found, failure is returned with cbret set,
+ * If such an attribute its found, its string value is returned.
+ * @param[in]  x         XML node (where to look for attribute)
+ * @param[in]  name      Attribute name
+ * @param[in]  namespace (Expected)Namespace of attribute
+ * @param[out] cbret     Error message (if retval=0)
+ * @param[out] valp      Pointer to value (if retval=1)
+ * @retval    -1         Error
+ * @retval     0         Failed (cbret set)
+ * @retval     1         OK
+ */
+static int
+attr_ns_value(cxobj *x,
+	      char  *name,
+	      char  *namespace,
+	      cbuf  *cbret,
+	      char **valp)
+{
+    int    retval = -1;
+    cxobj *xa;
+    char  *ans = NULL; /* attribute namespace */
+    char  *val = NULL;
+
+    /* prefix=NULL since we do not know the prefix */
+    if ((xa = xml_find_type(x, NULL, name, CX_ATTR)) != NULL){ 
+	if (xml2ns(xa, xml_prefix(xa), &ans) < 0)
+	    goto done;
+	if (ans == NULL){ /* the attribute exists, but no namespace */
+	    if (netconf_bad_attribute(cbret, "application", name, "Unresolved attribute prefix (no namespace?)") < 0)
+		goto done;
+	    goto fail;
+	}
+	/* the attribute exists, but not w expected namespace */
+	if (strcmp(ans, namespace) == 0)
+	    val = xml_value(xa);
+    }
+    *valp = val;
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
  * @param[in]  th       Datastore text handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
@@ -138,6 +187,10 @@ replace_xmlns(cxobj *x0,
  * @retval     1        OK
  * Assume x0 and x1 are same on entry and that y is the spec
  * @see text_modify_top
+ * RFC 7950 Sec 7.7.9(leaf-list), 7.8.6(lists)
+ * In an "ordered-by user" list, the attributes "insert" and "key" in
+ * the YANG XML namespace can be used to control where
+ * in the list the entry is inserted.
  */
 static int
 text_modify(clicon_handle       h,
@@ -152,7 +205,7 @@ text_modify(clicon_handle       h,
 	    cbuf               *cbret)
 {
     int        retval = -1;
-    char      *opstr;
+    char      *opstr = NULL;
     char      *x1name;
     char      *x1cname; /* child name */
     cxobj     *x0a; /* attribute */
@@ -167,21 +220,65 @@ text_modify(clicon_handle       h,
     cxobj    **x0vec = NULL;
     int        i;
     int        ret;
+    char      *instr = NULL;
+    char      *keystr = NULL;
+    char      *valstr = NULL;
+    enum insert_type insert = INS_LAST;
     int        changed = 0; /* Only if x0p's children have changed-> sort is necessary */
-    
+
     /* Check for operations embedded in tree according to netconf */
+#ifdef notyet /* XXX breaks in test_cohoice.sh */
+    if ((ret = attr_ns_value(x1,
+			     "operation", "urn:ietf:params:xml:ns:netconf:base:1.0",
+			     cbret, &opstr)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+    if (opstr != NULL)
+	if (xml_operation(opstr, &op) < 0)
+	    goto done;
+#else
     if ((opstr = xml_find_value(x1, "operation")) != NULL)
 	if (xml_operation(opstr, &op) < 0)
 	    goto done;
+#endif
+
     x1name = xml_name(x1);
-    if (yang_keyword_get(y0) == Y_LEAF_LIST || yang_keyword_get(y0) == Y_LEAF){
-	/* This is a check on no further elements as a sanity check for eg
-	 * <leaf>a<leaf>b</leaf></leaf> 
-	 */
+    if (yang_keyword_get(y0) == Y_LEAF_LIST ||
+	yang_keyword_get(y0) == Y_LEAF){
+	/* This is a check that a leaf does not have sub-elements 
+	 * such as: <leaf>a <leaf>b</leaf> </leaf> 
+	 */	    
 	if (xml_child_nr_type(x1, CX_ELMNT)){
 	    if (netconf_unknown_element(cbret, "application", x1name, "Leaf contains sub-element") < 0)
 		goto done;
 	    goto fail;
+	}
+	/* If leaf-list and ordered-by user, then get yang:insert attribute
+	 * See RFC 7950 Sec 7.7.9
+	 */
+	if (yang_keyword_get(y0) == Y_LEAF_LIST &&
+	    yang_find(y0, Y_ORDERED_BY, "user") != NULL){
+	    if ((ret = attr_ns_value(x1,
+				     "insert", "urn:ietf:params:xml:ns:yang:1",
+				     cbret, &instr)) < 0)
+		goto done;
+	    if (ret == 0)
+		goto fail;
+	    if (instr != NULL &&
+		xml_attr_insert2val(instr, &insert) < 0)
+		goto done;
+	    if ((ret = attr_ns_value(x1,
+				     "value", "urn:ietf:params:xml:ns:yang:1",
+				     cbret, &valstr)) < 0)
+		goto done;
+	    /* if insert/before, value attribute must be there */
+	    if ((insert == INS_AFTER || insert == INS_BEFORE) &&
+		valstr == NULL){
+		if (netconf_missing_attribute(cbret, "application", "<bad-attribute>value</bad-attribute>", "Missing value attribute when insert is before or after") < 0)
+		    goto done;
+		goto fail;
+	    }
 	}
 	x1bstr = xml_body(x1);
 	switch(op){ 
@@ -191,9 +288,29 @@ text_modify(clicon_handle       h,
 		    goto done;
 		goto fail;
 	    }
-	case OP_NONE: /* fall thru */
+	case OP_REPLACE: /* fall thru */
 	case OP_MERGE:
-	case OP_REPLACE:
+	    if (!(op == OP_MERGE && instr==NULL)){
+		/* Remove existing, also applies to merge in the special case
+		 * of ordered-by user and (changed) insert attribute.
+		 */
+		if (!permit && xnacm){
+		    if ((ret = nacm_datanode_write(NULL, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+			goto done;
+		    if (ret == 0)
+			goto fail;
+		    permit = 1;
+		}
+		/* XXX: Note, if there is an error in adding the object later, the
+		 * original object is not reverted.
+		 */
+		if (x0){
+		    xml_purge(x0);
+		    x0 = NULL;
+		}
+	    } /* OP_MERGE & insert */
+	case OP_NONE: /* fall thru */
+
 	    if (x0==NULL){
 		if ((op != OP_NONE) && !permit && xnacm){
 		    if ((ret = nacm_datanode_write(NULL, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 
@@ -208,11 +325,15 @@ text_modify(clicon_handle       h,
 		    goto done;
 		changed++;
 
-		/* Copy xmlns attributes  */
+		/* Copy xmlns attributes ONLY, not op/insert etc */
 		x1a = NULL;
 		while ((x1a = xml_child_each(x1, x1a, CX_ATTR)) != NULL) 
 		    if (strcmp(xml_name(x1a),"xmlns")==0 ||
 			((xns = xml_prefix(x1a)) && strcmp(xns, "xmlns")==0)){
+#if 1 /* XXX Kludge to NOT copy RFC7950 xmlns:yang insert/key/value namespaces */
+			if (strcmp(xml_value(x1a),"urn:ietf:params:xml:ns:yang:1")==0)
+			    continue;
+#endif
 			if ((x0a = xml_dup(x1a)) == NULL)
 			    goto done;
 			if (xml_addsub(x0, x0a) < 0)
@@ -261,8 +382,8 @@ text_modify(clicon_handle       h,
 		    }
 		}
 	    }
-	    if (changed){
-		if (xml_insert(x0p, x0) < 0)
+	    if (changed){ 
+		if (xml_insert(x0p, x0, insert, valstr) < 0) 
 		    goto done;
 	    }
 	    break;
@@ -289,6 +410,37 @@ text_modify(clicon_handle       h,
 	} /* switch op */
     } /* if LEAF|LEAF_LIST */
     else { /* eg Y_CONTAINER, Y_LIST, Y_ANYXML  */
+	/* If list and ordered-by user, then get insert attribute
+             <user nc:operation="create"
+                   yang:insert="after"
+                   yang:key="[ex:first-name='fred']
+                             [ex:surname='flintstone']">
+	 * See RFC 7950 Sec 7.8.6
+	 */
+	if (yang_keyword_get(y0) == Y_LIST &&
+	    yang_find(y0, Y_ORDERED_BY, "user") != NULL){
+	    if ((ret = attr_ns_value(x1,
+				     "insert", "urn:ietf:params:xml:ns:yang:1",
+				     cbret, &instr)) < 0)
+		goto done;
+	    if (ret == 0)
+		goto fail;
+	    if (instr != NULL &&
+		xml_attr_insert2val(instr, &insert) < 0)
+		goto done;
+	    if ((ret = attr_ns_value(x1,
+				     "key", "urn:ietf:params:xml:ns:yang:1",
+				     cbret, &keystr)) < 0)
+		goto done;
+	    /* if insert/before, key attribute must be there */
+	    if ((insert == INS_AFTER || insert == INS_BEFORE) &&
+		keystr == NULL){
+		if (netconf_missing_attribute(cbret, "application", "<bad-attribute>key</bad-attribute>", "Missing key attribute when insert is before or after") < 0)
+		    goto done;
+		goto fail;
+	    }
+
+	}
 	switch(op){ 
 	case OP_CREATE:
 	    if (x0){
@@ -297,19 +449,27 @@ text_modify(clicon_handle       h,
 		goto fail;
 	    }
 	case OP_REPLACE: /* fall thru */
-	    if (!permit && xnacm){
-		if ((ret = nacm_datanode_write(NULL, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
-		    goto done;
-		if (ret == 0)
-		    goto fail;
-		permit = 1;
-	    }
-	    if (x0){
-		xml_purge(x0);
-		x0 = NULL;
-	    }
-	case OP_MERGE:  /* fall thru */
-	case OP_NONE: 
+	case OP_MERGE:  
+	    if (!(op == OP_MERGE && instr==NULL)){
+		/* Remove existing, also applies to merge in the special case
+		 * of ordered-by user and (changed) insert attribute.
+		 */
+		if (!permit && xnacm){
+		    if ((ret = nacm_datanode_write(NULL, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+			goto done;
+		    if (ret == 0)
+			goto fail;
+		    permit = 1;
+		}
+		/* XXX: Note, if there is an error in adding the object later, the
+		 * original object is not reverted.
+		 */
+		if (x0){
+		    xml_purge(x0);
+		    x0 = NULL;
+		}
+	    } /* OP_MERGE & insert */
+	case OP_NONE: /* fall thru */
 	    /* Special case: anyxml, just replace tree, 
 	       See rfc6020 7.10.3:n
 	       An anyxml node is treated as an opaque chunk of data.  This data
@@ -356,6 +516,10 @@ text_modify(clicon_handle       h,
 		while ((x1a = xml_child_each(x1, x1a, CX_ATTR)) != NULL) 
 		    if (strcmp(xml_name(x1a),"xmlns")==0 ||
 			((xns = xml_prefix(x1a)) && strcmp(xns, "xmlns")==0)){
+#if 1 /* XXX Kludge to NOT copy RFC7950 xmlns:yang insert/key/value namespaces */
+			if (strcmp(xml_value(x1a),"urn:ietf:params:xml:ns:yang:1")==0)
+			    continue;
+#endif
 			if ((x0a = xml_dup(x1a)) == NULL)
 			    goto done;
 			if (xml_addsub(x0, x0a) < 0)
@@ -412,7 +576,7 @@ text_modify(clicon_handle       h,
 		    goto fail;
 	    }
 	    if (changed){
-		if (xml_insert(x0p, x0) < 0)
+		if (xml_insert(x0p, x0, insert, keystr) < 0)
 		    goto done;
 	    }
 	    break;

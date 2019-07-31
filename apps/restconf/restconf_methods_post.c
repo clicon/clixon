@@ -132,9 +132,8 @@ api_data_post(clicon_handle h,
     int        nullspec = 0;
     int        ret;
     
-    clicon_debug(1, "%s api_path:\"%s\" data:\"%s\"",
-		 __FUNCTION__, 
-		 api_path, data);
+    clicon_debug(1, "%s api_path:\"%s\"", __FUNCTION__, api_path);
+    clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
@@ -164,6 +163,15 @@ api_data_post(clicon_handle h,
 	    goto ok;
 	}
     }
+#if 1
+    if (debug){
+	cbuf *ccc=cbuf_new();
+	if (clicon_xml2cbuf(ccc, xtop, 0, 0) < 0)
+	    goto done;
+	clicon_debug(1, "%s XURI:%s", __FUNCTION__, cbuf_get(ccc));
+	cbuf_free(ccc);
+    }
+#endif
     /* Parse input data as json or xml into xml */
     if (parse_xml){
 	if (xml_parse_string(data, NULL, &xdata0) < 0){
@@ -224,6 +232,7 @@ api_data_post(clicon_handle h,
 	goto ok;
     }
     xdata = xml_child_i(xdata0,0);
+
     /* If the api-path (above) defines a module, then xdata must have a prefix
      * and it match the module defined in api-path. 
      * In a POST, maybe there are cornercases where xdata (which is a child) and
@@ -273,6 +282,19 @@ api_data_post(clicon_handle h,
 	    goto ok;
 	}
     }
+
+    /* If restconf insert/point attributes are present, translate to netconf */
+    if (restconf_insert_attributes(xdata, qvec) < 0)
+	goto done;
+#if 1
+    if (debug){
+	cbuf *ccc=cbuf_new();
+	if (clicon_xml2cbuf(ccc, xdata, 0, 0) < 0)
+	    goto done;
+	clicon_debug(1, "%s XDATA:%s", __FUNCTION__, cbuf_get(ccc));
+	cbuf_free(ccc);
+    }
+#endif
 
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL){

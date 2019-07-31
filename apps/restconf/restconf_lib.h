@@ -63,5 +63,7 @@ int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
 		   int pretty, int use_xml, int code);
 int http_location(FCGX_Request *r, cxobj *xobj);
 int restconf_terminate(clicon_handle h);
+int restconf_insert_attributes(cxobj *xdata, cvec *qvec);
+char *restconf_uripath(FCGX_Request *r);
 
 #endif /* _RESTCONF_LIB_H_ */

@@ -625,6 +625,7 @@ xml_child_nr_type(cxobj          *xn,
  * @retval     xml   The child xml node
  * @retval     NULL  if no such child, or empty child
  * @see xml_child_i_type
+ * @see xml_child_order
  */
 cxobj *
 xml_child_i(cxobj *xn, 
@@ -671,6 +672,29 @@ xml_child_i_set(cxobj *xt,
     if (i < xt->x_childvec_len)
 	xt->x_childvec[i] = xc;
     return 0;
+}
+
+/*! Get the order of child
+ * @param[in]  xp    xml parent node
+ * @param[in]  xc    the xml child to look for
+ * @retval     xml   The child xml node
+ * @retval     i     The order of the child
+ * @retval     -1    if no such child, or empty child
+ * @see xml_child_i
+ */
+int
+xml_child_order(cxobj *xp, 
+		cxobj *xc)
+{
+    cxobj *x = NULL;
+    int    i = 0;
+
+    while ((x = xml_child_each(xp, x, -1)) != NULL) {
+	if (x == xc)
+	    return i;
+	i++;
+    }
+    return -1;
 }
 
 /*! Iterator over xml children objects
@@ -2375,6 +2399,8 @@ xml_operation(char                *opstr,
     return 0;
 }
 
+
+
 /*! Map xml operation from enumeration to string
  * @param[in]   op   enumeration operation, eg OP_MERGE,...
  * @retval      str  String, eg "merge". Static string, no free necessary
@@ -2405,6 +2431,32 @@ xml_operation2str(enum operation_type op)
     default:
 	return "none";
     }
+}
+/*! Map xml insert attribute from string to enumeration
+ * @param[in]   instr String, eg "first"
+ * @param[out]  ins   Enumeration, eg INS_FIRST
+ * @code
+ *   enum insert_type ins;
+ *   xml_operation("last", &ins)
+ * @endcode
+ */
+int
+xml_attr_insert2val(char             *instr, 
+		    enum insert_type *ins)
+{
+    if (strcmp("first", instr) == 0)
+	*ins = INS_FIRST;
+    else if (strcmp("last", instr) == 0)
+	*ins = INS_LAST;
+    else if (strcmp("before", instr) == 0)
+	*ins = INS_BEFORE;
+    else if (strcmp("after", instr) == 0)
+	*ins = INS_AFTER;
+    else{
+	clicon_err(OE_XML, 0, "Bad-attribute operation: %s", instr);
+	return -1;
+    }
+    return 0;
 }
 
 /*! Specialization of clicon_debug with xml tree 

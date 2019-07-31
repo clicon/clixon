@@ -2198,7 +2198,7 @@ xml_default(cxobj *xt,
 			goto done;
 		    free(str);
 		    added++;
-		    if (xml_insert(xt, xc) < 0)
+		    if (xml_insert(xt, xc, INS_LAST, NULL) < 0)
 			goto done;
 		}
 	    }
@@ -2455,21 +2455,33 @@ api_path2xpath_cvv(cvec       *api_path,
         if (cv2str(cv, NULL, 0) > 0){
             if ((val = cv2str_dup(cv)) == NULL)
                 goto done;
-	    v = val;
-	    /* XXX sync with yang */
-	    while((v=index(v, ',')) != NULL){
-		*v = '\0';
-		v++;
-	    }
-	    cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
-	    cvi = NULL;
-	    /* Iterate over individual yang keys  */
-
-	    cprintf(xpath, "/%s", name);
-	    v = val;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
-		cprintf(xpath, "[%s='%s']", cv_string_get(cvi), v);
-		v += strlen(v)+1;
+	    switch (yang_keyword_get(y)){
+	    case Y_LIST:
+		v = val;
+		while((v=index(v, ',')) != NULL){
+		    *v = '\0';
+		    v++;
+		}
+		cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+		cvi = NULL;
+		/* Iterate over individual yang keys  */
+		cprintf(xpath, "/%s", name);
+		v = val;
+		while ((cvi = cvec_each(cvk, cvi)) != NULL){
+		    cprintf(xpath, "[%s='%s']", cv_string_get(cvi), v);
+		    v += strlen(v)+1;
+		}
+		break;
+	    case Y_LEAF_LIST: /* XXX: LOOP? */
+		cprintf(xpath, "/%s", name);
+		if (val)
+		    cprintf(xpath, "[.='%s']", val);
+		else
+		    cprintf(xpath, "[.='']");
+		break;
+	    default:
+		cprintf(xpath, "%s%s", (i==offset?"":"/"), name);
+		break;
 	    }
 	    if (val)
 		free(val);
@@ -2516,7 +2528,7 @@ api_path2xpath_cvv(cvec       *api_path,
  *      ... access xpath as cbuf_get(xpath) 
  *   free(xpath)
  * @endcode
-
+ *
  * @see api_path2xml_cvv  which uses other parameter formats
  */
 int

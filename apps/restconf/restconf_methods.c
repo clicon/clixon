@@ -418,7 +418,6 @@ api_data_put(clicon_handle h,
     op = OP_CREATE;
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
-
     /* Top-of tree, no api-path
      * Replace xparent with x, ie bottom of api-path with data 
      */	    
@@ -522,6 +521,9 @@ api_data_put(clicon_handle h,
 		goto ok;
 	    }
 	}
+	/* If restconf insert/point attributes are present, translate to netconf */
+	if (restconf_insert_attributes(xdata, qvec) < 0)
+	    goto done;
 
 	/* If we already have that default namespace, remove it in child */
 	if ((xa = xml_find_type(xdata, NULL, "xmlns", CX_ATTR)) != NULL){

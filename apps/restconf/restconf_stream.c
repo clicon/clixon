@@ -366,7 +366,7 @@ api_stream(clicon_handle h,
 #endif
 
     clicon_debug(1, "%s", __FUNCTION__);
-    path = FCGX_GetParam("DOCUMENT_URI", r->envp);
+    path = restconf_uripath(r);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     restconf_test(r, 1);
