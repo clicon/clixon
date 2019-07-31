@@ -135,14 +135,14 @@ new "netconf validate ok"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "make it invalid by adding port to ftp entry"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config><c xmlns="urn:example:clixon"><server><name>ftp</name><port operation="create">25</port></server>
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config><c xmlns="urn:example:clixon" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0"><server><name>ftp</name><port nc:operation="create">25</port></server>
 </c></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate (should fail)"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique><ip>192.0.2.1</ip></non-unique><non-unique><port>25</port></non-unique></error-info></rpc-error></rpc-reply>]]>]]>$'
 
 new "make it valid by deleting port from smtp entry"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config><c xmlns="urn:example:clixon"><server><name>smtp</name><port operation="delete">25</port></server>
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config><c xmlns="urn:example:clixon" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0"><server><name>smtp</name><port nc:operation="delete">25</port></server>
 </c></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 new "netconf validate ok"

@@ -749,7 +749,7 @@ clixon_plugin_init(clicon_handle h)
     /* Called after the regular system copy_config callback */
     if (rpc_callback_register(h, example_copy_extra, 
 			      NULL, 
-			      "urn:ietf:params:xml:ns:netconf:base:1.0",
+			      NETCONF_BASE_NAMESPACE,
 			      "copy-config"
 			      ) < 0)
 	goto done;

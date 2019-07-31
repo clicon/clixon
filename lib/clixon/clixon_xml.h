@@ -44,9 +44,15 @@
 
 /* Default NETCONF namespace (see rfc6241 3.1)
  * See USE_NETCONF_NS_AS_DEFAULT for use of this namespace as default
+ * Also, bind it to prefix:nc as used by, for example, the operation attribute
  */
 #define NETCONF_BASE_NAMESPACE "urn:ietf:params:xml:ns:netconf:base:1.0"
+#define NETCONF_BASE_PREFIX "nc"
 
+/* See RFC 7950 Sec 5.3.1: YANG defines an XML namespace for NETCONF <edit-config> 
+ * operations, <error-info> content, and the <action> element.
+ */
+#define YANG_XML_NAMESPACE "urn:ietf:params:xml:ns:yang:1"
 /*
  * Types
  */

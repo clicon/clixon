@@ -227,9 +227,8 @@ text_modify(clicon_handle       h,
     int        changed = 0; /* Only if x0p's children have changed-> sort is necessary */
 
     /* Check for operations embedded in tree according to netconf */
-#ifdef notyet /* XXX breaks in test_cohoice.sh */
     if ((ret = attr_ns_value(x1,
-			     "operation", "urn:ietf:params:xml:ns:netconf:base:1.0",
+			     "operation", NETCONF_BASE_NAMESPACE,
 			     cbret, &opstr)) < 0)
 	goto done;
     if (ret == 0)
@@ -237,12 +236,6 @@ text_modify(clicon_handle       h,
     if (opstr != NULL)
 	if (xml_operation(opstr, &op) < 0)
 	    goto done;
-#else
-    if ((opstr = xml_find_value(x1, "operation")) != NULL)
-	if (xml_operation(opstr, &op) < 0)
-	    goto done;
-#endif
-
     x1name = xml_name(x1);
     if (yang_keyword_get(y0) == Y_LEAF_LIST ||
 	yang_keyword_get(y0) == Y_LEAF){
@@ -260,7 +253,7 @@ text_modify(clicon_handle       h,
 	if (yang_keyword_get(y0) == Y_LEAF_LIST &&
 	    yang_find(y0, Y_ORDERED_BY, "user") != NULL){
 	    if ((ret = attr_ns_value(x1,
-				     "insert", "urn:ietf:params:xml:ns:yang:1",
+				     "insert", YANG_XML_NAMESPACE,
 				     cbret, &instr)) < 0)
 		goto done;
 	    if (ret == 0)
@@ -269,7 +262,7 @@ text_modify(clicon_handle       h,
 		xml_attr_insert2val(instr, &insert) < 0)
 		goto done;
 	    if ((ret = attr_ns_value(x1,
-				     "value", "urn:ietf:params:xml:ns:yang:1",
+				     "value", YANG_XML_NAMESPACE,
 				     cbret, &valstr)) < 0)
 		goto done;
 	    /* if insert/before, value attribute must be there */
@@ -331,7 +324,8 @@ text_modify(clicon_handle       h,
 		    if (strcmp(xml_name(x1a),"xmlns")==0 ||
 			((xns = xml_prefix(x1a)) && strcmp(xns, "xmlns")==0)){
 #if 1 /* XXX Kludge to NOT copy RFC7950 xmlns:yang insert/key/value namespaces */
-			if (strcmp(xml_value(x1a),"urn:ietf:params:xml:ns:yang:1")==0)
+			if (strcmp(xml_value(x1a), YANG_XML_NAMESPACE)==0  ||
+			    strcmp(xml_value(x1a), NETCONF_BASE_NAMESPACE)==0)
 			    continue;
 #endif
 			if ((x0a = xml_dup(x1a)) == NULL)
@@ -420,7 +414,7 @@ text_modify(clicon_handle       h,
 	if (yang_keyword_get(y0) == Y_LIST &&
 	    yang_find(y0, Y_ORDERED_BY, "user") != NULL){
 	    if ((ret = attr_ns_value(x1,
-				     "insert", "urn:ietf:params:xml:ns:yang:1",
+				     "insert", YANG_XML_NAMESPACE,
 				     cbret, &instr)) < 0)
 		goto done;
 	    if (ret == 0)
@@ -429,7 +423,7 @@ text_modify(clicon_handle       h,
 		xml_attr_insert2val(instr, &insert) < 0)
 		goto done;
 	    if ((ret = attr_ns_value(x1,
-				     "key", "urn:ietf:params:xml:ns:yang:1",
+				     "key", YANG_XML_NAMESPACE,
 				     cbret, &keystr)) < 0)
 		goto done;
 	    /* if insert/before, key attribute must be there */
@@ -517,7 +511,8 @@ text_modify(clicon_handle       h,
 		    if (strcmp(xml_name(x1a),"xmlns")==0 ||
 			((xns = xml_prefix(x1a)) && strcmp(xns, "xmlns")==0)){
 #if 1 /* XXX Kludge to NOT copy RFC7950 xmlns:yang insert/key/value namespaces */
-			if (strcmp(xml_value(x1a),"urn:ietf:params:xml:ns:yang:1")==0)
+			if (strcmp(xml_value(x1a), YANG_XML_NAMESPACE)==0 ||
+			    strcmp(xml_value(x1a), NETCONF_BASE_NAMESPACE)==0)
 			    continue;
 #endif
 			if ((x0a = xml_dup(x1a)) == NULL)
@@ -650,12 +645,14 @@ text_modify_top(clicon_handle       h,
     char      *opstr;
     int        ret;
 
-    /* Assure top-levels are 'config' */
-    //    assert(x0 && strcmp(xml_name(x0),"config")==0);
-    //    assert(x1 && strcmp(xml_name(x1),"config")==0);
-
     /* Check for operations embedded in tree according to netconf */
-    if ((opstr = xml_find_value(x1, "operation")) != NULL)
+    if ((ret = attr_ns_value(x1,
+			     "operation", NETCONF_BASE_NAMESPACE,
+			     cbret, &opstr)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+    if (opstr != NULL)
 	if (xml_operation(opstr, &op) < 0)
 	    goto done;
     /* Special case if x1 is empty, top-level only <config/> */

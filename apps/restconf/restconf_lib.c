@@ -579,7 +579,7 @@ restconf_insert_attributes(cxobj *xdata,
 	if (xml_prefix_set(xa, "xmlns") < 0)
 	    goto done;
 	xml_type_set(xa, CX_ATTR);
-	if (xml_value_set(xa, "urn:ietf:params:xml:ns:yang:1") < 0)
+	if (xml_value_set(xa, YANG_XML_NAMESPACE) < 0)
 	    goto done;
 	/* Then add insert attribute */
 	if ((xa = xml_new("insert", xdata, NULL)) == NULL)

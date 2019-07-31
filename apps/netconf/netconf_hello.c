@@ -161,7 +161,7 @@ netconf_create_hello(clicon_handle h,
     if ((ietf_yang_library_revision = yang_modules_revision(h)) == NULL)
 	goto done;
     add_preamble(cb);
-    cprintf(cb, "<hello xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">");
+    cprintf(cb, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cb, "<capabilities>");
         cprintf(cb, "<capability>urn:ietf:params:netconf:base:1.0</capability>");
     if (xml_chardata_encode(&encstr, "urn:ietf:params:netconf:capability:yang-library:1.0?revision=%s&module-set-id=%s",

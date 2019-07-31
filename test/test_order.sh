@@ -317,7 +317,7 @@ new "check ordered-by-user: a,b,c,d,e"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><y0 xmlns="urn:example:order">a</y0><y0 xmlns="urn:example:order">b</y0><y0 xmlns="urn:example:order">c</y0><y0 xmlns="urn:example:order">d</y0><y0 xmlns="urn:example:order">e</y0></data></rpc-reply>]]>]]>$'
 
 new "move one entry (e) to leaf-list first"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y0 operation="replace" xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="first">e</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y0 nc:operation="replace" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns="urn:example:order" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:insert="first">e</y0></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "check ordered-by-user: e,a,b,c,d"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><y0 xmlns="urn:example:order">e</y0><y0 xmlns="urn:example:order">a</y0><y0 xmlns="urn:example:order">b</y0><y0 xmlns="urn:example:order">c</y0><y0 xmlns="urn:example:order">d</y0></data></rpc-reply>]]>]]>$'

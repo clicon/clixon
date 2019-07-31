@@ -1377,46 +1377,46 @@ backend_rpc_init(clicon_handle h)
 
     /* In backend_client.? RFC 6241 */
     if (rpc_callback_register(h, from_client_get_config, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "get-config") < 0)
+		      NETCONF_BASE_NAMESPACE, "get-config") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_edit_config, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "edit-config") < 0)
+		      NETCONF_BASE_NAMESPACE, "edit-config") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_copy_config, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "copy-config") < 0)
+		      NETCONF_BASE_NAMESPACE, "copy-config") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_delete_config, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "delete-config") < 0)
+		      NETCONF_BASE_NAMESPACE, "delete-config") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_lock, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "lock") < 0)
+		      NETCONF_BASE_NAMESPACE, "lock") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_unlock, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "unlock") < 0)
+		      NETCONF_BASE_NAMESPACE, "unlock") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_get, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "get") < 0)
+		      NETCONF_BASE_NAMESPACE, "get") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_close_session, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "close-session") < 0)
+		      NETCONF_BASE_NAMESPACE, "close-session") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_kill_session, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "kill-session") < 0)
+		      NETCONF_BASE_NAMESPACE, "kill-session") < 0)
 	goto done;
     /* In backend_commit.? */
     if (rpc_callback_register(h, from_client_commit, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "commit") < 0)
+		      NETCONF_BASE_NAMESPACE, "commit") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_discard_changes, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "discard-changes") < 0)
+		      NETCONF_BASE_NAMESPACE, "discard-changes") < 0)
 	goto done;
     /* if-feature confirmed-commit */
     if (rpc_callback_register(h, from_client_cancel_commit, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "cancel-commit") < 0)
+		      NETCONF_BASE_NAMESPACE, "cancel-commit") < 0)
 	goto done;
     /* if-feature validate */
     if (rpc_callback_register(h, from_client_validate, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "validate") < 0)
+		      NETCONF_BASE_NAMESPACE, "validate") < 0)
 	goto done;
 
     /* In backend_client.? RPC from RFC 5277 */

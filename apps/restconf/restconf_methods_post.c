@@ -259,6 +259,7 @@ api_data_post(clicon_handle h,
     if ((xa = xml_new("operation", xdata, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
+    xml_prefix_set(xa, NETCONF_BASE_PREFIX);
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
     /* Replace xbot with x, ie bottom of api-path with data */
@@ -304,7 +305,10 @@ api_data_post(clicon_handle h,
     /* For internal XML protocol: add username attribute for access control
      */
     username = clicon_username_get(h);
-    cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
+    cprintf(cbx, "<rpc username=\"%s\" xmlns:%s=\"%s\">",
+	    username?username:"",
+	    NETCONF_BASE_PREFIX,
+	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
     cprintf(cbx, "<edit-config><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
