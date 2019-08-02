@@ -110,7 +110,9 @@ isxmlns(cxobj *x)
     return 0;
 }
 
-/*! x is element and has eactly one child which in turn has none */
+/*! x is element and has eactly one child which in turn has none 
+ * @see child_type in clixon_json.c
+ */
 static int
 tleaf(cxobj *x)
 {
@@ -330,24 +332,6 @@ validate_leafref(cxobj     *xt,
     goto done;
 }
 
-/* Get module from its own prefix 
- * This is really not a valid usecase, a kludge for the identityref derived
- * list workaround (IDENTITYREF_KLUDGE)
- */ 
-static yang_stmt *
-yang_find_module_by_prefix_yspec(yang_stmt *yspec, 
-				 char      *prefix)
-{
-    yang_stmt *ymod = NULL;
-    yang_stmt *yprefix;
-    
-    while ((ymod = yn_each(yspec, ymod)) != NULL) 
-	if (ymod->ys_keyword == Y_MODULE &&
-	    (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
-	    strcmp(yang_argument_get(yprefix), prefix) == 0)
-	    return ymod;
-    return NULL;
-}
 
 /*! Validate xml node of type identityref, ensure value is a defined identity
  * Check if a given node has value derived from base identity. This is
@@ -398,8 +382,11 @@ validate_identityref(cxobj     *xt,
     }
     /* Get idref value. Then see if this value is derived from ytype.
      */
-    if ((node = xml_body(xt)) == NULL)
-	return 0;
+    if ((node = xml_body(xt)) == NULL){ /* It may not be empty */
+	if (netconf_bad_element_xml(xret, "application", xml_name(xt), "Identityref should not be empty") < 0)
+	    goto done;
+	goto fail;
+    }
     if (nodeid_split(node, &prefix, &id) < 0)
 	goto done;
     /* This is the type's base reference */
@@ -1254,7 +1241,6 @@ xml_yang_validate_list_key_only(clicon_handle h,
     goto done;
 }
 
-
 /*! Validate a single XML node with yang specification for all (not only added) entries
  * 1. Check leafrefs. Eg you delete a leaf and a leafref references it.
  * @param[in]  xt  XML node to be validated
@@ -1574,22 +1560,28 @@ cvec2xml_1(cvec   *cvv,
 }
 
 /*! Recursive help function to compute differences between two xml trees
- * @param[in]  x0        First XML tree
- * @param[in]  x1        Second XML tree
- * @param[out] x0vec     Pointervector to XML nodes existing in only first tree
- * @param[out] x0veclen  Length of first vector
- * @param[out] x1vec     Pointervector to XML nodes existing in only second tree
- * @param[out] x1veclen  Length of x1vec vector
- * @param[out] changed_x0  Pointervector to XML nodes changed orig value
- * @param[out] changed_x1  Pointervector to XML nodes changed wanted value
+ * @param[in]  x0         First XML tree
+ * @param[in]  x1         Second XML tree
+ * @param[out] x0vec      Pointervector to XML nodes existing in only first tree
+ * @param[out] x0veclen   Length of first vector
+ * @param[out] x1vec      Pointervector to XML nodes existing in only second tree
+ * @param[out] x1veclen   Length of x1vec vector
+ * @param[out] changed_x0 Pointervector to XML nodes changed orig value
+ * @param[out] changed_x1 Pointervector to XML nodes changed wanted value
  * @param[out] changedlen Length of changed vector
  * Algorithm to compare two sorted lists A, B:
- * A 0 1 2 3 5 6
- * B 0 2 4 5 6
- * Let a,b be first elements of A,B respectively
- * a = b : recurse; get next a,b
- * a < b : add a in x0, get next a 
- * a > b : add b in x1, get next b
+ *   A 0 1 2 3 5 6
+ *   B 0 2 4 5 6
+ * Let (a, b) be first elements of (A, B) respectively(*)
+ *   a = b :  EITHER leafs: a!=b : add a in changed_x0, b in changed_x1,
+ *            OR: Set (A,B) to children of (a,b) and call algorithm recursively
+ *         , get next (a,b)
+ *   a < b : add a in x0, get next a 
+ *   a > b : add b in x1, get next b
+ * (*) "comparing" a&b here is made by xml_cmp() which judges equality from a structural
+ *     perspective, ie both have the same yang spec, if they are lists, they have the
+ *     the same keys. NOT that the values are equal!
+ * @see xml_diff  API function, this one is internal and recursive
  */
 static int
 xml_diff1(yang_stmt *ys, 
@@ -1687,18 +1679,17 @@ xml_diff1(yang_stmt *ys,
 }
 
 /*! Compute differences between two xml trees
- * @param[in]  yspec     Yang specification
- * @param[in]  x0        First XML tree
- * @param[in]  x1        Second XML tree
- * @param[out] first     Pointervector to XML nodes existing in only first tree
- * @param[out] firstlen  Length of first vector
- * @param[out] second    Pointervector to XML nodes existing in only second tree
- * @param[out] secondlen Length of second vector
- * @param[out] changed_x0  Pointervector to XML nodes changed orig value
- * @param[out] changed_x1  Pointervector to XML nodes changed wanted value
+ * @param[in]  yspec      Yang specification
+ * @param[in]  x0         First XML tree
+ * @param[in]  x1         Second XML tree
+ * @param[out] first      Pointervector to XML nodes existing in only first tree
+ * @param[out] firstlen   Length of first vector
+ * @param[out] second     Pointervector to XML nodes existing in only second tree
+ * @param[out] secondlen  Length of second vector
+ * @param[out] changed_x0 Pointervector to XML nodes changed orig value
+ * @param[out] changed_x1 Pointervector to XML nodes changed wanted value
  * @param[out] changedlen Length of changed vector
  * All xml vectors should be freed after use.
- * Bot xml trees should be freed with xml_free()
  */
 int
 xml_diff(yang_stmt *yspec, 
@@ -1748,7 +1739,9 @@ xml_diff(yang_stmt *yspec,
  * @param[in]  ys      Yang statement
  * @param[in]  inclkey If set include key leaf (eg last leaf d in ex)
  * @param[out] cb      api_path_fmt,
- * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
+ * @retval     0    OK
+ * @retval    -1    Error
+ * @see RFC8040 3.5.3 where "api-path" is defined as "URI-encoded path expression"
  */ 
 static int
 yang2api_path_fmt_1(yang_stmt *ys, 
@@ -2205,7 +2198,7 @@ xml_default(cxobj *xt,
 			goto done;
 		    free(str);
 		    added++;
-		    if (xml_insert(xt, xc) < 0)
+		    if (xml_insert(xt, xc, INS_LAST, NULL) < 0)
 			goto done;
 		}
 	    }
@@ -2331,6 +2324,7 @@ xml_spec_populate_rpc(clicon_handle h,
  * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
  * @endcode
  */
+#undef DEBUG
 int
 xml_spec_populate(cxobj  *x, 
 		  void   *arg)
@@ -2346,17 +2340,36 @@ xml_spec_populate(cxobj  *x,
     yspec = (yang_stmt*)arg;
     xp = xml_parent(x);
     name = xml_name(x);
+#ifdef DEBUG
+    clicon_debug(1, "%s name:%s", __FUNCTION__, name);
+#endif
     if (xp && (yparent = xml_spec(xp)) != NULL)
 	y = yang_find_datanode(yparent, name);
     else if (yspec){
 	if (ys_module_by_xml(yspec, x, &ymod) < 0)
 	    goto done;
 	/* ymod is "real" module, name may belong to included submodule */
-	if (ymod != NULL)
+	if (ymod != NULL){
+#ifdef DEBUG
+	    clicon_debug(1, "%s %s mod:%s", __FUNCTION__, name, yang_argument_get(ymod));
+#endif
 	    y = yang_find_schemanode(ymod, name);
+	}
+#ifdef DEBUG
+	else
+	    clicon_debug(1, "%s %s mod:NULL", __FUNCTION__, name);
+#endif
     }
-    if (y) 
+    if (y) {
+#ifdef DEBUG
+	clicon_debug(1, "%s y:%s", __FUNCTION__, yang_argument_get(y));
+#endif
 	xml_spec_set(x, y);
+    }
+#ifdef DEBUG
+    else
+    	clicon_debug(1, "%s y:NULL", __FUNCTION__);
+#endif
     retval = 0;
  done:
     return retval;
@@ -2420,7 +2433,7 @@ api_path2xpath_cvv(cvec       *api_path,
 	nodeid = cv_name_get(cv);
 	if (nodeid_split(nodeid, &prefix, &name) < 0)
 	    goto done;
-	clicon_debug(1, "%s [%d] cvname:%s", __FUNCTION__, i, name);
+	clicon_debug(1, "%s [%d] cvname: %s:%s", __FUNCTION__, i, prefix?prefix:"", name);
 	if (i == offset){ /* top-node */
 	    if (prefix == NULL){
 		clicon_err(OE_XML, EINVAL, "'%s': Expected prefix:name", nodeid);
@@ -2442,21 +2455,33 @@ api_path2xpath_cvv(cvec       *api_path,
         if (cv2str(cv, NULL, 0) > 0){
             if ((val = cv2str_dup(cv)) == NULL)
                 goto done;
-	    v = val;
-	    /* XXX sync with yang */
-	    while((v=index(v, ',')) != NULL){
-		*v = '\0';
-		v++;
-	    }
-	    cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
-	    cvi = NULL;
-	    /* Iterate over individual yang keys  */
-
-	    cprintf(xpath, "/%s", name);
-	    v = val;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL){
-		cprintf(xpath, "[%s='%s']", cv_string_get(cvi), v);
-		v += strlen(v)+1;
+	    switch (yang_keyword_get(y)){
+	    case Y_LIST:
+		v = val;
+		while((v=index(v, ',')) != NULL){
+		    *v = '\0';
+		    v++;
+		}
+		cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+		cvi = NULL;
+		/* Iterate over individual yang keys  */
+		cprintf(xpath, "/%s", name);
+		v = val;
+		while ((cvi = cvec_each(cvk, cvi)) != NULL){
+		    cprintf(xpath, "[%s='%s']", cv_string_get(cvi), v);
+		    v += strlen(v)+1;
+		}
+		break;
+	    case Y_LEAF_LIST: /* XXX: LOOP? */
+		cprintf(xpath, "/%s", name);
+		if (val)
+		    cprintf(xpath, "[.='%s']", val);
+		else
+		    cprintf(xpath, "[.='']");
+		break;
+	    default:
+		cprintf(xpath, "%s%s", (i==offset?"":"/"), name);
+		break;
 	    }
 	    if (val)
 		free(val);
@@ -2503,7 +2528,7 @@ api_path2xpath_cvv(cvec       *api_path,
  *      ... access xpath as cbuf_get(xpath) 
  *   free(xpath)
  * @endcode
-
+ *
  * @see api_path2xml_cvv  which uses other parameter formats
  */
 int
@@ -2817,12 +2842,14 @@ xml2xpath1(cxobj *x,
     cprintf(cb, "/%s", xml_name(x));
     if ((y = xml_spec(x)) != NULL){
 	keyword = yang_keyword_get(y);
-	if (keyword == Y_LEAF_LIST){
+	switch (keyword){
+	case Y_LEAF_LIST:
 	    if ((b = xml_body(x)) != NULL)
 		cprintf(cb, "[.=\"%s\"]", b);
 	    else
 		cprintf(cb, "[.=\"\"]");
-	} else if (keyword == Y_LIST){
+	    break;
+	case Y_LIST:
 	    cvk = yang_cvec_get(y);
 	    cvi = NULL;
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
@@ -2834,6 +2861,9 @@ xml2xpath1(cxobj *x,
 		b = xml_body(xb);
 		cprintf(cb, "[%s=\"%s\"]", keyname, b?b:"");
 	    }
+	    break;
+	default:
+	    break;
 	}
     }
     retval = 0;
@@ -2864,25 +2894,6 @@ xml2xpath(cxobj *x,
 	goto done;
     /* XXX: see xpath in test statement,.. */
     xpath = cbuf_get(cb);
-#if 0 /* debug test */
-    {
-	cxobj *xt = x;
-	cxobj *xcp;
-	cxobj *x2;
-	while (xml_parent(xt) != NULL &&
-	       xml_spec(xt) != NULL)
-	    xt = xml_parent(xt);
-	xcp = xml_parent(xt);
-	xml_parent_set(xt, NULL);
-	x2 = xpath_first(xt, "%s", xpath); /* +1: skip first / */
-	xml_parent_set(xt, xcp);
-	assert(x2 && x==x2);
-	if (x==x2)
-	    clicon_debug(1, "%s %s match", __FUNCTION__, xpath);
-	else
-	    clicon_debug(1, "%s %s no match", __FUNCTION__, xpath);
-    }
-#endif
     if (xpathp){
 	if ((*xpathp = strdup(xpath)) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
@@ -2894,6 +2905,94 @@ xml2xpath(cxobj *x,
  done:
     if (cb)
 	cbuf_free(cb);
+    return retval;
+}
+
+/*! Construct an api_path from an XML node (single level not recursive)
+ * @param[in]  x     XML node (need to be yang populated)
+ * @param[out] cb    api_path, must be initialized
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @see yang2api_path_fmt
+ * @see xml2xpath
+ */
+int
+xml2api_path_1(cxobj *x,
+	       cbuf  *cb)
+{
+    int           retval = -1;
+    yang_stmt    *y = NULL;
+    cvec         *cvk = NULL; /* vector of index keys */
+    cg_var       *cvi;
+    enum rfc_6020 keyword;
+    int           i;
+    char         *keyname;
+    cxobj        *xkey;
+    cxobj        *xb;
+    char         *b;
+    char         *enc;
+    yang_stmt    *ymod;
+    cxobj        *xp;
+    
+    if ((y = xml_spec(x)) == NULL){
+	cprintf(cb, "/%s", xml_name(x));
+	goto ok;
+    }
+    ymod = ys_module(y);
+    xp = xml_parent(x);
+    if (ymod && xp && xml_spec(xp)==NULL) /* Add prefix only if root */
+	cprintf(cb, "/%s:%s", yang_argument_get(ymod), xml_name(x));
+    else
+	cprintf(cb, "/%s", xml_name(x));
+    keyword = yang_keyword_get(y);
+    switch (keyword){
+    case Y_LEAF_LIST:
+	b = xml_body(x);
+	enc = NULL;
+	if (uri_percent_encode(&enc, "%s", b) < 0)
+	    goto done;
+	cprintf(cb, "=%s", enc?enc:"");
+	if (enc)
+	    free(enc);
+	break;
+    case Y_LIST:
+	cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	if (cvec_len(cvk))
+	    cprintf(cb, "=");
+	/* Iterate over individual keys  */
+	cvi = NULL;
+	i = 0;
+	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+	    keyname = cv_string_get(cvi);
+	    if ((xkey = xml_find(x, keyname)) == NULL)
+		goto done; /* No key in xml */
+	    if ((xb = xml_find(x, keyname)) == NULL)
+		goto done;
+	    if (i++)
+		cprintf(cb, ",");
+	    b = xml_body(xb);
+	    enc = NULL;
+	    if (uri_percent_encode(&enc, "%s", b) < 0)
+		goto done;
+	    cprintf(cb, "%s", enc?enc:"");
+	    if (enc)
+		free(enc);
+	}
+	break;
+    default:
+	break;
+    }
+#if 0
+    { /* Just for testing */
+	cxobj *xc;
+	if ((xc = xml_child_i_type(x, 0, CX_ELMNT)) != NULL)
+	    if (xml2api_path_1(xc, cb) < 0)
+		goto done;
+    }
+#endif
+ ok:
+    retval = 0;
+ done:
     return retval;
 }
 

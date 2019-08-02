@@ -82,8 +82,6 @@ struct yang_stmt{
     yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Augmented
 					nodes can belong to other 
 					modules than the ancestor module */
-
-    char              *ys_extra;     /* For unknown */
     cg_var            *ys_cv;        /* cligen variable. See ys_populate()
 					Following stmts have cv:s:
 				        leaf: for default value
@@ -91,7 +89,7 @@ struct yang_stmt{
 					config: boolean true or false
 					mandatory: boolean true or false
 					fraction-digits for fraction-digits
-					unknown-stmt (argument)
+					unknown-stmt (optional argument)
 				     */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
 					Y_RANGE: range_min, range_max 

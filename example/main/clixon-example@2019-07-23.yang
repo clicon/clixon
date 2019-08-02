@@ -2,9 +2,11 @@ module clixon-example {
     yang-version 1.1;
     namespace "urn:example:clixon";
     prefix ex;
+    revision 2019-07-23 {
+	description "Extension e4. Released in Clixon 4.1.0";
+    }
     revision 2019-01-13 {
-	description
-	    "Released in Clixon 3.9";
+	description "Released in Clixon 3.9";
     }
     import ietf-interfaces {
 	prefix if;
@@ -40,6 +42,23 @@ module clixon-example {
             type string;
          }
     }
+    /* yang extension implemented by the example backend code. */
+    extension e4 {
+       description
+	   "The first child of the ex:e4 (unknown) statement is inserted into 
+	    the module as a regular data statement. This means that 'uses bar;'
+	    in the ex:e4 statement below is a valid data node";
+       argument arg;
+    }
+    grouping bar {
+      leaf bar{
+        type string;
+      }
+    }
+    ex:e4 arg1{
+      uses bar;
+    }
+
     /* Example notification as used in RFC 5277 and RFC 8040 */
     notification event {
          description "Example notification event.";

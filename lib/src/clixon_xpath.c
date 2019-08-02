@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -70,7 +70,6 @@
 #include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
-#include <math.h>
 
 /* cligen */
 #include <cligen/cligen.h>

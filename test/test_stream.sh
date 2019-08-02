@@ -158,20 +158,20 @@ expectwait "$clixon_netconf -qf $cfg" '<rpc><create-subscription xmlns="urn:ietf
 #NOW=$(date +"%Y-%m-%dT%H:%M:%S")
 #sleep 10
 #expectwait "$clixon_netconf -qf $cfg" "<rpc><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>EXAMPLE</stream><startTime>$NOW</startTime></create-subscription></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]><notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>20' 10
-sleep 2
+sleep 1
 
 #
 # 2. Restconf RFC8040 stream testing
 new "2. Restconf RFC8040 stream testing"
 # 2.1 Stream discovery
 new "restconf event stream discovery RFC8040 Sec 6.2"
-expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams" 0 '{"ietf-restconf-monitoring:streams": {"stream": \[{"name": "EXAMPLE","description": "Example event stream","replay-support": true,"access": \[{"encoding": "xml","location": "https://localhost/streams/EXAMPLE"}\]}\]}'
+expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams" 0 '{"ietf-restconf-monitoring:streams":{"stream":\[{"name":"EXAMPLE","description":"Example event stream","replay-support":true,"access":\[{"encoding":"xml","location":"https://localhost/streams/EXAMPLE"}\]}\]}'
 
-sleep 2
+sleep 1
 new "restconf subscribe RFC8040 Sec 6.3, get location"
-expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location" 0 '{"ietf-restconf-monitoring:location": "https://localhost/streams/EXAMPLE"}'
+expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location" 0 '{"ietf-restconf-monitoring:location":"https://localhost/streams/EXAMPLE"}'
 
-sleep 2
+sleep 1
 # Restconf stream subscription RFC8040 Sec 6.3
 # Start Subscription w error
 new "restconf monitor event nonexist stream"
@@ -191,7 +191,7 @@ if [ $nr -lt 1 -o $nr -gt 2 ]; then
     err 2 "$nr"
 fi
 
-sleep 2
+sleep 1
 
 # 2b) start subscription 8s - stoptime after 5s - expect 1-2 notifications
 new "2b) start subscriptions 8s - stoptime after 5s - expect 1-2 notifications"
@@ -206,6 +206,8 @@ if [ $nr -lt 1 -o $nr -gt 2 ]; then
     err 1 "$nr"
 fi
 
+sleep 1
+
 # 2c
 new "2c) start sub 8s - replay from start -8s - expect 3-4 notifications"
 ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 10 -s -8)
@@ -218,6 +220,8 @@ nr=$(echo "$ret" | grep -c "data:")
 if [ $nr -lt 3 -o $nr -gt 4 ]; then
     err 4 "$nr"
 fi
+
+sleep 1
 
 # 2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications
 new "2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications"
@@ -232,6 +236,8 @@ if [ $nr -lt 4 -o $nr -gt 10 ]; then
     err 6 "$nr"
 fi
 
+sleep 1
+
 # 2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications
 new "2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications"
 ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 10 -s -90 -e +0)
@@ -245,6 +251,8 @@ nr=$(echo "$ret" | grep -c "data:")
 if [ $nr -lt 9 -o $nr -gt 14 ]; then
     err 10 "$nr"
 fi
+
+sleep 1
 
 # Try parallell
 # start background job

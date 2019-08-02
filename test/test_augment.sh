@@ -28,6 +28,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
@@ -152,10 +153,17 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "kill old restconf daemon"
+sudo pkill -u www-data clixon_restconf
+
+new "start restconf daemon"
+start_restconf -f $cfg
+
+new "waiting"
+wait_backend
+wait_restconf
 
 # mandatory-leaf See RFC7950 Sec 7.17
 new "netconf set interface with augmented type and mandatory leaf"
@@ -190,12 +198,19 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
    <me>mymod:you</me>
  </interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "netconf validate ok"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+new "netconf commit ok"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
-new "discard"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+# restconf and augment
 
+new "restconf get augment"
+expectpart "$(curl -s -i -X GET http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
+
+new "restconf get augment xml"
+expectpart "$(curl -s -i -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:mymod="urn:example:augment"><name>e1</name><type>mymod:some-new-iftype</type><mandatory-leaf>true</mandatory-leaf><port>80</port><lport>8080</lport></interface><interface xmlns:mymod="urn:example:augment"><name>e2</name><type>fddi</type><mandatory-leaf>true</mandatory-leaf><other>if:fddi</other><port>80</port><lport>8080</lport></interface><interface xmlns:mymod="urn:example:augment"><name>e3</name><type>fddi</type><mandatory-leaf>true</mandatory-leaf><me>mymod:you</me><port>80</port><lport>8080</lport></interface></interfaces>'
+
+new "Kill restconf daemon"
+stop_restconf 
 
 if [ $BE -eq 0 ]; then
     exit # BE

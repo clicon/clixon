@@ -186,7 +186,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<
 new "netconf delete $perfreq small config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y operation=\"delete\"><a>$rnd</a></y></x></config></edit-config></rpc>]]>]]>"
+    echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><y nc:operation=\"delete\"><a>$rnd</a></y></x></config></edit-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg  > /dev/null; }  2>&1 | awk '/real/ {print $2}'
 
 new "netconf discard-changes"

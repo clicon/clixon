@@ -98,16 +98,16 @@ new "restconf PUT change whole list entry (same keys)"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y -d {"list:a":{"b":"x","c":"y","nonkey":"z"}}' 0 ''
 
 new "restconf PUT change whole list entry (no namespace)(expect fail)"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y -d {"a":{"b":"x","c":"y","nonkey":"z"}}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": "Data is not prefixed with matching namespace"}}}'
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y -d {"a":{"b":"x","c":"y","nonkey":"z"}}' 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Data is not prefixed with matching namespace"}}}'
 
 new "restconf PUT change list entry (wrong keys)(expect fail)"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y -d {"list:a":{"b":"y","c":"x"}}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y -d {"list:a":{"b":"y","c":"x"}}' 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
 new "restconf PUT change list entry (wrong keys)(expect fail) XML"
 expecteq "$(curl -s -X PUT -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '<a xmlns="urn:example:clixon"><b>xy</b><c>xz</c><nonkey>0</nonkey></a>' http://localhost/restconf/data/list:c/a=xx,xy)" 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>api-path keys do not match data keys</error-message></error></errors>'
 
 new "restconf PUT change list entry (just one key)(expect fail)"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x -d {"list:a":{"b":"x"}}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": "List key a length mismatch"}}}'
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x -d {"list:a":{"b":"x"}}' 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"List key a length mismatch"}}}'
 
 new "restconf PUT sub non-key"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/nonkey -d {"list:nonkey":"u"}' 0 ''
@@ -116,37 +116,37 @@ new "restconf PUT sub key same value"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/b -d {"list:b":"x"}' 0 ''
 
 new "restconf PUT just key other value (should fail)ZX"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x/b -d {"b":"y"}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": "List key a length mismatch"}}}'
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x/b -d {"b":"y"}' 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"List key a length mismatch"}}}'
 
 new "restconf PUT add leaf-list entry"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/d=x -d {"list:d":"x"}' 0 ''
 
 new "restconf PUT change leaf-list entry (expect fail)"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/d=x -d {"list:d":"y"}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/d=x -d {"list:d":"y"}' 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
 new "restconf PUT list-list"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/e=z -d {"list:e":{"f":"z","nonkey":"0"}}' 0 ''
 
 new "restconf PUT change list-lst entry (wrong keys)(expect fail)"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/e=z -d {"list:e":{"f":"wrong","nonley":"0"}}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/e=z -d {"list:e":{"f":"wrong","nonley":"0"}}' 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
 new "restconf PUT list-list sub non-key"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/e=z/nonkey -d {"list:nonkey":"u"}' 0 ''
 
 new "restconf PUT list-list single first key"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x/e=z/f -d {"f":"z"}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "rpc","error-tag": "malformed-message","error-severity": "error","error-message": "List key a length mismatch"}}}'
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x/e=z/f -d {"f":"z"}' 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"List key a length mismatch"}}}'
 
 new "restconf PUT list-list just key ok"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/e=z/f -d {"list:f":"z"}' 0 ''
 
 new "restconf PUT list-list just key just key wrong value (should fail)"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/e=z/f -d {"list:f":"wrong"}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/e=z/f -d {"list:f":"wrong"}' 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
 new "restconf PUT add list+leaf-list entry"
 expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/f=u -d {"list:f":"u"}' 0 ''
 
 new "restconf PUT change list+leaf-list entry (expect fail)"
-expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/f=u -d {"list:f":"w"}' 0 '{"ietf-restconf:errors" : {"error": {"error-type": "protocol","error-tag": "operation-failed","error-severity": "error","error-message": "api-path keys do not match data keys"}}}'
+expectfn 'curl -s -X PUT http://localhost/restconf/data/list:c/a=x,y/f=u -d {"list:f":"w"}' 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
 
 new "Kill restconf daemon"

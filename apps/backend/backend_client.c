@@ -149,6 +149,37 @@ backend_client_rm(clicon_handle        h,
     return backend_client_delete(h, ce); /* actually purge it */
 }
 
+/*!
+ * Maybe should be in the restconf client instead of backend?
+ * @param[in]     h       Clicon handle
+ * @param[in]     yspec   Yang spec
+ * @param[in]     xpath   Xpath selection, not used but may be to filter early
+ * @param[out]    xrs     XML restconf-state node
+ * @see netconf_create_hello
+ * @see rfc8040 Sections 9.1
+ */
+static int
+client_get_capabilities(clicon_handle h,
+			yang_stmt    *yspec,
+			char         *xpath,
+			cxobj       **xret)
+{
+    int    retval = -1;
+    cxobj *xrstate = NULL; /* xml restconf-state node */
+    cxobj *xcap = NULL;    /* xml capabilities node */
+    
+    if ((xrstate = xpath_first(*xret, "restconf-state")) == NULL){
+	clicon_err(OE_YANG, ENOENT, "restconf-state not found in config node");
+	goto done;
+    }
+    if ((xcap = xml_new("capabilities", xrstate, yspec)) == NULL)
+	goto done;
+    if (xml_parse_va(&xcap, yspec, "<capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability>") < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
 
 /*! Get streams state according to RFC 8040 or RFC5277 common function
  * @param[in]     h       Clicon handle
@@ -165,23 +196,18 @@ static int
 client_get_streams(clicon_handle   h,
 		   yang_stmt      *yspec,
 		   char           *xpath,
-		   char           *module,
+		   yang_stmt      *ymod,
 		   char           *top,
 		   cxobj         **xret)
 {
     int            retval = -1;
-    yang_stmt     *ystream = NULL; /* yang stream module */
     yang_stmt     *yns = NULL;  /* yang namespace */
     cxobj         *x = NULL;
     cbuf          *cb = NULL;
     int            ret;
 
-    if ((ystream = yang_find(yspec, Y_MODULE, module)) == NULL){
-	clicon_err(OE_YANG, 0, "%s yang module not found", module);
-	goto done;
-    }
-    if ((yns = yang_find(ystream, Y_NAMESPACE, NULL)) == NULL){
-	clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
+    if ((yns = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL){
+	clicon_err(OE_YANG, 0, "%s yang namespace not found", yang_argument_get(ymod));
 	goto done;
     }
     if ((cb = cbuf_new()) == NULL){
@@ -189,6 +215,9 @@ client_get_streams(clicon_handle   h,
 	goto done;
     }
     cprintf(cb,"<%s xmlns=\"%s\">", top, yang_argument_get(yns));
+    /* Second argument is a hack to have the same function for the
+     * RFC5277 and 8040 stream cases
+     */
     if (stream_get_xml(h, strcmp(top,"restconf-state")==0, cb) < 0)
 	goto done;
     cprintf(cb,"</%s>", top);
@@ -234,23 +263,47 @@ client_statedata(clicon_handle h,
     size_t     xlen;
     int        i;
     yang_stmt *yspec;
+    yang_stmt *ymod;
     int        ret;
+    char      *namespace;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277")){
-	if ((ret = client_get_streams(h, yspec, xpath, "clixon-rfc5277", "netconf", xret)) < 0)
+	if ((ymod = yang_find_module_by_name(yspec, "clixon-rfc5277")) == NULL){
+	    clicon_err(OE_YANG, ENOENT, "yang module clixon-rfc5277 not found");
+	    goto done;
+	}
+	if ((namespace = yang_find_mynamespace(ymod)) == NULL){
+	    clicon_err(OE_YANG, ENOENT, "clixon-rfc5277 namespace not found");
+	    goto done;
+	}
+	if (xml_parse_va(xret, yspec, "<netconf xmlns=\"%s\"/>", namespace) < 0)
+	    goto done;
+	if ((ret = client_get_streams(h, yspec, xpath, ymod, "netconf", xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
     }
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040")){
-	if ((ret = client_get_streams(h, yspec, xpath, "ietf-restconf-monitoring", "restconf-state", xret)) < 0)
+	if ((ymod = yang_find_module_by_name(yspec, "ietf-restconf-monitoring")) == NULL){
+	    clicon_err(OE_YANG, ENOENT, "yang module ietf-restconf-monitoring not found");
+	    goto done;
+	}
+	if ((namespace = yang_find_mynamespace(ymod)) == NULL){
+	    clicon_err(OE_YANG, ENOENT, "ietf-restconf-monitoring namespace not found");
+	    goto done;
+	}
+	if (xml_parse_va(xret, yspec, "<restconf-state xmlns=\"%s\"/>", namespace) < 0)
+	    goto done;
+	if ((ret = client_get_streams(h, yspec, xpath, ymod, "restconf-state", xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
+	if ((ret = client_get_capabilities(h, yspec, xpath, xret)) < 0)
+	    goto done;
     }
     if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895")){
 	if ((ret = yang_modules_state_get(h, yspec, xpath, nsc, 0, xret)) < 0)
@@ -1324,46 +1377,46 @@ backend_rpc_init(clicon_handle h)
 
     /* In backend_client.? RFC 6241 */
     if (rpc_callback_register(h, from_client_get_config, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "get-config") < 0)
+		      NETCONF_BASE_NAMESPACE, "get-config") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_edit_config, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "edit-config") < 0)
+		      NETCONF_BASE_NAMESPACE, "edit-config") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_copy_config, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "copy-config") < 0)
+		      NETCONF_BASE_NAMESPACE, "copy-config") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_delete_config, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "delete-config") < 0)
+		      NETCONF_BASE_NAMESPACE, "delete-config") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_lock, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "lock") < 0)
+		      NETCONF_BASE_NAMESPACE, "lock") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_unlock, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "unlock") < 0)
+		      NETCONF_BASE_NAMESPACE, "unlock") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_get, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "get") < 0)
+		      NETCONF_BASE_NAMESPACE, "get") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_close_session, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "close-session") < 0)
+		      NETCONF_BASE_NAMESPACE, "close-session") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_kill_session, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "kill-session") < 0)
+		      NETCONF_BASE_NAMESPACE, "kill-session") < 0)
 	goto done;
     /* In backend_commit.? */
     if (rpc_callback_register(h, from_client_commit, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "commit") < 0)
+		      NETCONF_BASE_NAMESPACE, "commit") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_discard_changes, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "discard-changes") < 0)
+		      NETCONF_BASE_NAMESPACE, "discard-changes") < 0)
 	goto done;
     /* if-feature confirmed-commit */
     if (rpc_callback_register(h, from_client_cancel_commit, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "cancel-commit") < 0)
+		      NETCONF_BASE_NAMESPACE, "cancel-commit") < 0)
 	goto done;
     /* if-feature validate */
     if (rpc_callback_register(h, from_client_validate, NULL,
-		      "urn:ietf:params:xml:ns:netconf:base:1.0", "validate") < 0)
+		      NETCONF_BASE_NAMESPACE, "validate") < 0)
 	goto done;
 
     /* In backend_client.? RPC from RFC 5277 */

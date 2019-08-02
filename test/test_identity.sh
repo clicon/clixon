@@ -1,5 +1,6 @@
 #!/bin/bash
 # Identity and identityref tests
+# Example from RFC7950 Sec 7.18 and 9.10
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -21,6 +22,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_NETCONF_DIR>/usr/local/lib/$APPNAME/netconf</CLICON_NETCONF_DIR>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
+  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
@@ -148,10 +150,17 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "kill old restconf daemon"
+sudo pkill -u www-data clixon_restconf
+
+new "start restconf daemon"
+start_restconf -f $cfg
+
+new "waiting"
+wait_backend
+wait_restconf
 
 new "Set crypto to aes"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><crypto xmlns="urn:example:my-crypto">aes</crypto></config></edit-config></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><ok/></rpc-reply>]]>]]>$'
@@ -252,6 +261,54 @@ expectfn "$clixon_cli -1 -f $cfg -l o validate" 255 "Identityref validation fail
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+# restconf and identities:
+# 1. set identity in own module with restconf (PUT and POST), read it with restconf and netconf
+# 2. set identity in other module with restconf , read it with restconf and netconf
+# 3. set identity in other module with netconf, read it with restconf and netconf
+new "restconf add own identity"
+expectpart "$(curl -s -i -X PUT http://localhost/restconf/data/example:crypto  -d '{"example:crypto":"example:aes"}')" 0 'HTTP/1.1 201 Created'
+
+new "restconf get own identity"
+expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"aes"}'
+
+new "netconf get own identity as set by restconf"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><crypto xmlns="urn:example:my-crypto">aes</crypto></data></rpc-reply>]]>]]>$'
+
+new "restconf delete identity"
+expectpart "$(curl -s -i -X DELETE  http://localhost/restconf/data/example:crypto)" 0 "HTTP/1.1 204 No Content"
+
+# 2. set identity in other module with restconf , read it with restconf and netconf
+new "restconf add POST instead of PUT (should fail)"
+expectpart "$(curl -s -i -X POST http://localhost/restconf/data/example:crypto -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"crypto"},"error-severity":"error","error-message":"Leaf contains sub-element"}}}'
+
+new "restconf add other (des) identity using POST"
+expectpart "$(curl -s -i -X POST http://localhost/restconf/data  -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 201 Created' 'Location: http://localhost/restconf/data/example:crypto'
+
+new "restconf get other identity"
+expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"example-des:des3"}'
+
+new "netconf get other identity"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><crypto xmlns="urn:example:my-crypto" xmlns:des="urn:example:des">des:des3</crypto></data></rpc-reply>]]>]]>$'
+
+new "restconf delete identity"
+expectpart "$(curl -s -i -X DELETE  http://localhost/restconf/data/example:crypto)" 0 "HTTP/1.1 204 No Content"
+
+# 3. set identity in other module with netconf, read it with restconf and netconf
+new "netconf set other identity"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><crypto xmlns="urn:example:my-crypto" xmlns:des="urn:example:des">des:des3</crypto></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "restconf get other identity (set by netconf)"
+expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"example-des:des3"}'
+
+new "netconf get other identity"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><crypto xmlns="urn:example:my-crypto" xmlns:des="urn:example:des">des:des3</crypto></data></rpc-reply>]]>]]>$'
+
+new "Kill restconf daemon"
+stop_restconf 
 
 if [ $BE -eq 0 ]; then
     exit # BE

@@ -284,6 +284,7 @@ main(int argc, char **argv)
     struct passwd *pw;
     char          *str;
     int            tabmode;
+    char          *dir;
     
     /* Defaults */
     once = 0;
@@ -465,6 +466,11 @@ main(int argc, char **argv)
        Test legacy before shifting default to 0
      */
     cv_exclude_keys(clicon_cli_varonly(h)); 
+
+    /* Load cli plugins before yangs are loaded (eg extension callbacks) */
+    if ((dir = clicon_cli_dir(h)) != NULL &&
+	clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
+	goto done;
 
     /* Create top-level and store as option */
     if ((yspec = yspec_new()) == NULL)

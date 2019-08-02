@@ -332,6 +332,7 @@ main(int    argc,
     cbuf         *cbret = NULL; /* startup cbuf if invalid */
     enum startup_status status = STARTUP_ERR; /* Startup status */
     int           ret;
+    char         *dir;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -573,6 +574,13 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
+
+    /* Load backend plugins before yangs are loaded (eg extension callbacks) */
+    if ((dir = clicon_backend_dir(h)) != NULL &&
+	clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir,
+			    clicon_option_str(h, "CLICON_BACKEND_REGEXP")) < 0)
+	goto done;
+
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
     if ((str = clicon_yang_main_file(h)) != NULL)
@@ -595,6 +603,9 @@ main(int    argc,
 	goto done;
     /* Add netconf yang spec, used by netconf client and as internal protocol */
     if (netconf_module_load(h) < 0)
+	goto done;
+    /* Load yang restconf module */
+    if (yang_spec_parse_module(h, "ietf-restconf", NULL, yspec)< 0)
 	goto done;
     /* Load yang Restconf stream discovery */
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
@@ -646,8 +657,6 @@ main(int    argc,
 	    goto done;
     case SM_NONE: /* Fall through *
 		   * Load plugins and call plugin_init() */
-	if (backend_plugin_initiate(h) != 0) 
-	    goto done;
 	status = STARTUP_OK;
 	break;
     case SM_RUNNING: /* Use running as startup */
@@ -735,7 +744,6 @@ main(int    argc,
 	clicon_err(OE_DEMON, errno, "Setting signal");
 	goto done;
     }
-	
     /* Initialize server socket and save it to handle */
     if ((ss = backend_server_socket(h)) < 0)
 	goto done;

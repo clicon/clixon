@@ -61,6 +61,7 @@ General Public License Version 2.
 ## Is Clixon extendible?
 Yes. All application semantics is defined in plugins with well-defined
 APIs. There are currently plugins for: CLI, Netconf,  Restconf, the datastore and the backend.
+Clixon also supports Yang extensions, see main example.
 
 ## Which programming language is used?
 Clixon is written in C. The plugins are written in C. The CLI

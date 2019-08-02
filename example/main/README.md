@@ -7,6 +7,7 @@
   * [Streams](#streams)
   * [RPC Operations](#rpc-operations)
   * [State data](#state-data)
+  * [Extensions](#extension)
   * [Authentication and NACM](#authentication-and-nacm)
   * [Systemd](#systemd)
   * [Docker](#docker)
@@ -182,11 +183,11 @@ Restconf support is also supported, see (restc)[../../apps/restconf/README.md].
 
 ## RPC Operations
 
-Clixon implements Yang RPC operations by an extension mechanism. The
-extension mechanism enables you to add application-specific
-operations. It works by adding user-defined callbacks for added
-netconf operations. It is possible to use the extension mechanism
-independent of the yang rpc construct, but it is recommended. The example includes an example:
+Clixon implements Yang RPC operations by a mechanism that enables you
+to add application-specific operations.  It works by adding
+user-defined callbacks for added netconf operations. It is possible to
+use the extension mechanism independent of the yang rpc construct, but
+not recommended . The example includes an example:
 
 Example using CLI:
 ```
@@ -269,6 +270,33 @@ The state data is enabled by starting the backend with: `-- -s`.
 The example contains some stubs for authorization according to [RFC8341(NACM)](https://tools.ietf.org/html/rfc8341):
 * A basic auth HTTP callback, see: example_restconf_credentials() containing three example users: andy, wilma, and guest, according to the examples in Appendix A in [RFC8341](https://tools.ietf.org/html/rfc8341).
 * A NACM backend plugin reporting the mandatory NACM state variables.
+
+## Extensions
+
+Clixon supports Yang extensions by writing plugin callback code.
+The example backend implements an "example:e4" Yang extension, as follows:
+```
+    extension e4 {
+       description
+	   "The first child of the ex:e4 (unknown) statement is inserted into 
+	    the module as a regular data statement. This means that 'uses bar;'
+	    in the ex:e4 statement below is a valid data node";
+       argument arg;
+    }
+    ex:e4 arg1{
+      uses bar;
+    }
+```
+
+The backend plugin code registers an extension callback in the init struct:
+```
+    .ca_extension=example_extension,        /* yang extensions */
+```
+
+The callback then receives a callback on all "unknown" Yang statements
+during yang parsing. If the extension matches "example:e4", it applies
+the extension. In the example, it copies the child of the "ex:e4" statement and
+inserts in as a proper yang statement in the example module.
 
 ## Systemd
 

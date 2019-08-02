@@ -138,9 +138,6 @@ startup_mode_startup(clicon_handle        h,
 	clicon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
 	goto done;
     }
-    /* Load plugins and call plugin_init() */
-    if (backend_plugin_initiate(h) != 0) 
-	goto done;
     /* If startup does not exist, create it empty */
     if (xmldb_exists(h, db) != 1){ /* diff */
 	if (xmldb_create(h, db) < 0) /* diff */

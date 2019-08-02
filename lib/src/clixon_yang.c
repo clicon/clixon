@@ -289,8 +289,6 @@ ys_free1(yang_stmt *ys)
 {
     if (ys->ys_argument)
 	free(ys->ys_argument);
-    if (ys->ys_extra)
-	free(ys->ys_extra);
     if (ys->ys_cv)
 	cv_free(ys->ys_cv);
     if (ys->ys_cvec)
@@ -309,7 +307,7 @@ ys_free1(yang_stmt *ys)
  * @see ys_free Deallocate yang node
  * @note Do not call this in a loop of yang children (unless you know what you are doing)
  */
-static yang_stmt *
+yang_stmt *
 ys_prune(yang_stmt *yp,
 	 int        i)
 {
@@ -323,7 +321,7 @@ ys_prune(yang_stmt *yp,
     memmove(&yp->ys_stmt[i],
 	    &yp->ys_stmt[i+1],
 	    size);
-    yc = yp->ys_stmt[yp->ys_len--] = NULL;;
+    yp->ys_stmt[yp->ys_len--] = NULL;;
  done:
     return yc;
 }
@@ -411,11 +409,6 @@ ys_cp(yang_stmt *ynew,
 	    clicon_err(OE_YANG, errno, "strdup");
 	    goto done;
 	}
-    if (yold->ys_extra)
-	if ((ynew->ys_extra = strdup(yold->ys_extra)) == NULL){
-	    clicon_err(OE_YANG, errno, "strdup");
-	    goto done;
-	}
     if (yold->ys_cv)
 	if ((ynew->ys_cv = cv_dup(yold->ys_cv)) == NULL){
 	    clicon_err(OE_YANG, errno, "cv_dup");
@@ -473,6 +466,8 @@ ys_dup(yang_stmt *old)
  *
  * @param[in] ys_parent  Add child to this parent
  * @param[in] ys_child   Add this child
+ * @retval    0          OK
+ * @retval   -1          Error
  * Also add parent to child as up-pointer
  */
 int
@@ -646,7 +641,7 @@ yang_find_datanode(yang_stmt *yn,
 		    goto match;
 	    }
 	} /* Y_CHOICE */
-	else
+	else{
 	    if (yang_datanode(ys)){
 		if (argument == NULL)
 		    ysmatch = ys;
@@ -656,6 +651,7 @@ yang_find_datanode(yang_stmt *yn,
 		if (ysmatch)
 		    goto match;
 	    }
+	}
     }
     /* Special case: if not match and yang node is module or submodule, extend
      * search to include submodules */
@@ -797,6 +793,64 @@ yang_find_mynamespace(yang_stmt *ys)
     namespace = yang_argument_get(ynamespace);
  done:
     return namespace;
+}
+
+/*! Given a yang statement and namespace, find local prefix valid in module
+ * This is useful if you want to make a "reverse" lookup, you know the
+ * (global) namespace of a module, but you do not know the local prefix
+ * used to access it in XML.
+ * @param[in]  ys        Yang statement in module tree (or module itself)
+ * @param[in]  namespace Namspace URI as char* pointer into yang tree
+ * @param[out] prefix    Local prefix to access module with (direct pointer)
+ * @retval     0         not found
+ * @retval    -1         found
+ * @code
+ * @note  prefix NULL is not returned, if own module, then return its prefix
+ * char *pfx = yang_find_prefix_by_namespace(ys, "urn:example:clixon", &prefix);
+ * @endcode
+ */
+int
+yang_find_prefix_by_namespace(yang_stmt *ys,
+			      char      *namespace,
+			      char     **prefix)
+{
+    int        retval = 0; /* not found */
+    yang_stmt *my_ymod; /* My module */
+    char      *myns;   /* My ns */
+    yang_stmt *yspec;
+    yang_stmt *ymod;
+    char      *modname = NULL;
+    yang_stmt *yimport;
+    yang_stmt *yprefix; 
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    /* First check if namespace is my own module */
+    myns = yang_find_mynamespace(ys);
+    if (strcmp(myns, namespace) == 0){
+	*prefix = yang_find_myprefix(ys); /* or NULL? */
+	goto found;
+    }
+    /* Next, find namespaces in imported modules */
+    yspec = ys_spec(ys);
+    if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL)
+	goto notfound;
+    modname = yang_argument_get(ymod);
+    my_ymod = ys_module(ys);
+    /* Loop through import statements to find a match with ymod */
+    yimport = NULL;
+    while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
+	if (yang_keyword_get(yimport) == Y_IMPORT &&
+	    strcmp(modname, yang_argument_get(yimport)) == 0){ /* match */
+	    yprefix = yang_find(yimport, Y_PREFIX, NULL);
+	    *prefix = yang_argument_get(yprefix);
+	    goto found;
+	}
+    }
+ notfound:
+    return retval;
+ found:
+    assert(*prefix);
+    return 1;
 }
 
 /*! If a given yang stmt has a choice/case as parent, return the choice statement 
@@ -989,16 +1043,8 @@ ys_module_by_xml(yang_stmt  *ysp,
     if (ymodp)
 	*ymodp = NULL;
     prefix = xml_prefix(xt);
-    if (prefix){
-	/* Get namespace for prefix */
-	if (xml2ns(xt, prefix, &namespace) < 0)
-	    goto done;
-    }
-    else{
-	/* Get default namespace */
-	if (xml2ns(xt, NULL, &namespace) < 0)
-	    goto done;
-    }
+    if (xml2ns(xt, prefix, &namespace) < 0) /* prefix may be NULL */
+	goto done;
     /* No namespace found, give up */
     if (namespace == NULL)
 	goto ok;
@@ -1138,8 +1184,7 @@ yang_find_module_by_prefix(yang_stmt *ys,
     }
     yimport = NULL;
     while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
-	if (yang_keyword_get(yimport) != Y_IMPORT &&
-	    yang_keyword_get(yimport) != Y_INCLUDE)
+	if (yang_keyword_get(yimport) != Y_IMPORT)
 	    continue;
 	if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) != NULL &&
 	    strcmp(yang_argument_get(yprefix), prefix) == 0){
@@ -1147,8 +1192,7 @@ yang_find_module_by_prefix(yang_stmt *ys,
 	}
     }
     if (yimport){
-	if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yimport))) == NULL &&
-	    (ymod = yang_find(yspec, Y_SUBMODULE, yang_argument_get(yimport))) == NULL){
+	if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yimport))) == NULL){
 	    clicon_err(OE_YANG, 0, "No module or sub-module found with prefix %s", 
 		       prefix);	
 	    yimport = NULL;
@@ -1157,6 +1201,25 @@ yang_find_module_by_prefix(yang_stmt *ys,
     }
  done:
     return ymod;
+}
+
+/* Get module from its own prefix 
+ * This is really not a valid usecase, a kludge for the identityref derived
+ * list workaround (IDENTITYREF_KLUDGE)
+ */ 
+yang_stmt *
+yang_find_module_by_prefix_yspec(yang_stmt *yspec, 
+				 char      *prefix)
+{
+    yang_stmt *ymod = NULL;
+    yang_stmt *yprefix;
+    
+    while ((ymod = yn_each(yspec, ymod)) != NULL) 
+	if (ymod->ys_keyword == Y_MODULE &&
+	    (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
+	    strcmp(yang_argument_get(yprefix), prefix) == 0)
+	    return ymod;
+    return NULL;
 }
 
 /*! Given a yang spec and a namespace, return yang module 
@@ -1794,44 +1857,46 @@ ys_populate_unique(clicon_handle h,
 /*! Populate unknown node with extension
  * @param[in] h    Clicon handle
  * @param[in] ys   The yang statement (unknown) to populate.
+ * RFC 7950 Sec 7.19:
+ * If no "argument" statement is present, the keyword expects no argument when
+ * it is used.
  */
 static int
 ys_populate_unknown(clicon_handle h,
 		    yang_stmt    *ys)
 {
-    int retval = -1;
-    int        cvret;
-    char      *reason = NULL;
+    int        retval = -1;
     yang_stmt *ymod;
+    yang_stmt *yext;  /* extension */
     char      *prefix = NULL;
     char      *id = NULL;
-    char      *extra;
+    char      *argument; /* This is the unknown optional argument */
+    cg_var    *cv;
 
-    if ((extra = ys->ys_extra) == NULL)
-	goto ok;
     /* Find extension, if found, store it as unknown, if not,
        break for error */
     if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
 	goto done;
-    if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL)
-	goto ok; /* shouldnt happen */
-    if (yang_find(ymod, Y_EXTENSION, id) == NULL){
-	clicon_err(OE_YANG, errno, "Extension %s:%s not found", prefix, id);
+    if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "Extension %s:%s, module not found", prefix, id);
 	goto done;
     }
-    if ((ys->ys_cv = cv_new(CGV_STRING)) == NULL){
-	clicon_err(OE_YANG, errno, "cv_new"); 
+    if ((yext = yang_find(ymod, Y_EXTENSION, id)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "Extension %s:%s not found", prefix, id);
 	goto done;
     }
-    if ((cvret = cv_parse1(extra, ys->ys_cv, &reason)) < 0){ /* error */
-	clicon_err(OE_YANG, errno, "parsing cv");
-	goto done;
+    /* Optional argument (only if "argument") - save it in ys_cv */
+    if ((cv = yang_cv_get(ys)) != NULL &&
+	(argument = cv_string_get(cv)) != NULL){
+	if (yang_find(yext, Y_ARGUMENT, NULL) == NULL &&
+	    argument != NULL){
+	    clicon_err(OE_YANG, 0, "No argument specified in extension %s, but argument %s present when used", yang_argument_get(ys), argument); 
+	    goto done;
+	}
     }
-    if (cvret == 0){ /* parsing failed */
-	clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+    /* Make extension callbacks that may alter yang structure */
+    if (clixon_plugin_extension(h, yext, ys) < 0)
 	goto done;
-    }
- ok:
     retval = 0;
  done:
     if (prefix)
@@ -2581,39 +2646,62 @@ yang_parse_recurse(clicon_handle h,
     return retval; /* top-level (sub)module */
 }
 
-int 
+static int 
 ys_schemanode_check(yang_stmt *ys, 
-		    void      *arg)
+		    void      *dummy)
 {
-    int        retval = -1;
-    yang_stmt *yspec;
-    yang_stmt *yres;
-    yang_stmt *yp;
+    int           retval = -1;
+    yang_stmt    *yspec;
+    yang_stmt    *yres = NULL;
+    yang_stmt    *yp;
+    char         *arg;
+    enum rfc_6020 keyword;
+    char **vec = NULL;
+    char  *v;
+    int    nvec;
+    int    i;
 
-    yp = ys->ys_parent;
-    switch (ys->ys_keyword){
+    yp = yang_parent_get(ys);
+    arg = yang_argument_get(ys);
+    keyword = yang_keyword_get(ys);
+    switch (yang_keyword_get(ys)){
     case Y_AUGMENT:
-	if (yp->ys_keyword == Y_MODULE || /* Not top-level */
-	    yp->ys_keyword == Y_SUBMODULE) 
+	if (yang_keyword_get(yp) == Y_MODULE || /* Not top-level */
+	    yang_keyword_get(yp) == Y_SUBMODULE) 
 	    break;
 	/* fallthru */
     case Y_REFINE:
-    case Y_UNIQUE:
-	if (yang_desc_schema_nodeid(yp, ys->ys_argument, -1, &yres) < 0)
+	if (yang_desc_schema_nodeid(yp, arg, -1, &yres) < 0)
 	    goto done;
 	if (yres == NULL){
 	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s %s", 
-		       yang_key2str(ys->ys_keyword),
-		       ys->ys_argument);
+		       yang_key2str(keyword), arg);
 	    goto done;
 	}
 	break;
+    case Y_UNIQUE:{
+	/* Unique: Sec 7.8.3 It takes as an argument a string that contains a space-
+	   separated list of schema node identifiers */
+	if ((vec = clicon_strsep(arg, " \t\n", &nvec)) == NULL)
+	    goto done;
+	for (i=0; i<nvec; i++){
+	    v = vec[i]; 
+	    if (yang_desc_schema_nodeid(yp, v, -1, &yres) < 0)
+		goto done;
+	    if (yres == NULL){
+		clicon_err(OE_YANG, 0, "schemanode sanity check of %s %s", 
+			   yang_key2str(yang_keyword_get(ys)), v);
+		goto done;
+	    }
+	}
+	break;
+    }
     case Y_DEVIATION:
 	yspec = ys_spec(ys);
-	if (yang_abs_schema_nodeid(yspec, ys, ys->ys_argument, -1, &yres) < 0)
+	if (yang_abs_schema_nodeid(yspec, ys, arg, -1, &yres) < 0)
 	    goto done;
 	if (yres == NULL){
-	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s", ys->ys_argument);
+	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s", arg);
 	    goto done;
 	}
 	break;
@@ -2622,6 +2710,8 @@ ys_schemanode_check(yang_stmt *ys,
     }
     retval = 0;
  done:
+    if (vec)
+	free(vec);
     return retval;
 }
 
@@ -3104,11 +3194,11 @@ yang_datanode(yang_stmt *ys)
  * @retval     0     OK
  */
 static int
-schema_nodeid_vec(yang_stmt  *yn,
-		  char      **vec, 
-		  int         nvec,
+schema_nodeid_vec(yang_stmt    *yn,
+		  char        **vec, 
+		  int           nvec,
 		  enum rfc_6020 keyword,
-		  yang_stmt **yres)
+		  yang_stmt   **yres)
 {
     int              retval = -1;
     char            *arg;
@@ -3205,6 +3295,7 @@ yang_abs_schema_nodeid(yang_stmt    *yspec,
     char            *prefix = NULL;
     yang_stmt       *yprefix;
 
+    *yres = NULL;
     /* check absolute schema_nodeid */
     if (schema_nodeid[0] != '/'){
 	clicon_err(OE_YANG, EINVAL, "absolute schema nodeid should start with /");
@@ -3265,15 +3356,16 @@ yang_abs_schema_nodeid(yang_stmt    *yspec,
  * Used in yang: unique, refine, uses augment
  */
 int
-yang_desc_schema_nodeid(yang_stmt  *yn, 
-			char       *schema_nodeid,
+yang_desc_schema_nodeid(yang_stmt    *yn, 
+			char         *schema_nodeid,
 			enum rfc_6020 keyword,
-			yang_stmt **yres)
+			yang_stmt   **yres)
 {
     int              retval = -1;
     char           **vec = NULL;
     int              nvec;
 
+    *yres = NULL;
     if (strlen(schema_nodeid) == 0)
 	goto done;
     /* check absolute schema_nodeid */
@@ -3372,7 +3464,7 @@ ys_parse(yang_stmt   *ys,
  * That is, siblings, etc, may not be there. Complete checks are made in
  * ys_populate instead.
  * @param[in] ys    yang statement
- * @param[in] extra Yang extra for cornercases (unknown/extension). 
+ * @param[in] extra Yang extra for cornercases (unknown/extension). Is consumed
  *
  * The cv:s created in parse-tree as follows:
  * fraction-digits : Create cv as uint8, check limits [1:8] (must be made in 1st pass)
@@ -3454,17 +3546,30 @@ ys_parse_sub(yang_stmt *ys,
 	    goto done;
 	}
 	break;
-    case Y_UNKNOWN: /* XXX This code assumes ymod already loaded
-		       but it may not be */
+    case Y_UNKNOWN:{ /* save (optional) argument in ys_cv */
 	if (extra == NULL)
 	    break;
-	ys->ys_extra = extra;
+	if ((ys->ys_cv = cv_new(CGV_STRING)) == NULL){
+	    clicon_err(OE_YANG, errno, "cv_new"); 
+	    goto done;
+	}
+	if ((ret = cv_parse1(extra, ys->ys_cv, &reason)) < 0){ /* error */
+	    clicon_err(OE_YANG, errno, "parsing cv");
+	    goto done;
+	}
+	if (ret == 0){ /* parsing failed */
+	    clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+	    goto done;
+	}
 	break;
+    }
     default:
 	break;
     }
     retval = 0;
   done:
+    if (extra)
+	free(extra);
     return retval;
 }
 
@@ -3629,3 +3734,4 @@ yang_key_match(yang_stmt *yn,
 	cvec_free(cvv);
     return retval;
 }
+

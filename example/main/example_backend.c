@@ -351,6 +351,45 @@ example_statedata(clicon_handle h,
     return retval;
 }
 
+/*! Callback for yang extensions example:e4
+ * 
+ * @param[in] h    Clixon handle
+ * @param[in] yext Yang node of extension 
+ * @param[in] ys   Yang node of (unknown) statement belonging to extension
+ * @retval     0   OK, all callbacks executed OK
+ * @retval    -1   Error in one callback
+ */
+int
+example_extension(clicon_handle h,     
+		  yang_stmt    *yext,
+		  yang_stmt    *ys)
+{
+    int        retval = -1;
+    char      *extname;
+    char      *modname;
+    yang_stmt *ymod;
+    yang_stmt *yc;
+    yang_stmt *yn = NULL;
+    
+    ymod = ys_module(yext);
+    modname = yang_argument_get(ymod);
+    extname = yang_argument_get(yext);
+    if (strcmp(modname, "example") != 0 || strcmp(extname, "e4") != 0)
+	goto ok;
+    clicon_debug(1, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
+    if ((yc = yang_find(ys, 0, NULL)) == NULL)
+	goto ok;
+    if ((yn = ys_dup(yc)) == NULL)
+	goto done;
+    if (yn_insert(yang_parent_get(ys), yn) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+
 /*! Testcase upgrade function moving interfaces-state to interfaces
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
@@ -616,6 +655,7 @@ static clixon_plugin_api api = {
     clixon_plugin_init,                     /* init - must be called clixon_plugin_init */
     example_start,                          /* start */
     example_exit,                           /* exit */
+    .ca_extension=example_extension,        /* yang extensions */
     .ca_reset=example_reset,                /* reset */
     .ca_statedata=example_statedata,        /* statedata */
     .ca_trans_begin=main_begin,             /* trans begin */
@@ -709,7 +749,7 @@ clixon_plugin_init(clicon_handle h)
     /* Called after the regular system copy_config callback */
     if (rpc_callback_register(h, example_copy_extra, 
 			      NULL, 
-			      "urn:ietf:params:xml:ns:netconf:base:1.0",
+			      NETCONF_BASE_NAMESPACE,
 			      "copy-config"
 			      ) < 0)
 	goto done;

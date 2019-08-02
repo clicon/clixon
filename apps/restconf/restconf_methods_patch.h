@@ -31,31 +31,18 @@
 
   ***** END LICENSE BLOCK *****
 
- * The exported interface to plugins. External apps (eg frontend restconf plugins)
- * should only include this file (not the restconf_*.h)
+ * Restconf method implementation  
  */
 
-#ifndef _CLIXON_RESTCONF_H_
-#define _CLIXON_RESTCONF_H_
+
+#ifndef _RESTCONF_METHODS_PATCH_H_
+#define _RESTCONF_METHODS_PATCH_H_
 
 /*
- * Prototypes (also in restconf_lib.h)
+ * Prototypes
  */
-int restconf_err2code(char *tag);
-const char *restconf_code2reason(int code);
+int api_data_patch(clicon_handle h, FCGX_Request *r, char *api_path, 
+		   cvec *pcvec, int pi, 
+		   cvec *qvec, char *data);
 
-int badrequest(FCGX_Request *r);
-int unauthorized(FCGX_Request *r);
-int forbidden(FCGX_Request *r);
-int notfound(FCGX_Request *r);
-int conflict(FCGX_Request *r);
-int internal_server_error(FCGX_Request *r);
-int notimplemented(FCGX_Request *r);
-int restconf_test(FCGX_Request *r, int dbg);
-cbuf *readdata(FCGX_Request *r);
-int get_user_cookie(char *cookiestr, char  *attribute, char **val);
-int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
-		   int pretty, int use_xml, int code);
-
-
-#endif /* _CLIXON_RESTCONF_H_ */
+#endif /* _RESTCONF_METHODS_PATCH_H_ */

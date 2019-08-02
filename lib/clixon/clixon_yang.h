@@ -62,7 +62,7 @@ enum rfc_6020{
     Y_BELONGS_TO,
     Y_BIT,
     Y_CASE,
-    Y_CHOICE,
+    Y_CHOICE,          /* 10 */
     Y_CONFIG,
     Y_CONTACT,
     Y_CONTAINER,
@@ -72,7 +72,7 @@ enum rfc_6020{
     Y_DEVIATION,
     Y_ENUM,
     Y_ERROR_APP_TAG,
-    Y_ERROR_MESSAGE,
+    Y_ERROR_MESSAGE,   /* 20 */
     Y_EXTENSION,
     Y_FEATURE,
     Y_FRACTION_DIGITS,
@@ -82,17 +82,17 @@ enum rfc_6020{
     Y_IMPORT,
     Y_INCLUDE,
     Y_INPUT,
-    Y_KEY,
+    Y_KEY,             /* 30 */
     Y_LEAF,
     Y_LEAF_LIST,
     Y_LENGTH,
-    Y_LIST,
+    Y_LIST, 
     Y_MANDATORY,
     Y_MAX_ELEMENTS,
     Y_MIN_ELEMENTS,
     Y_MODIFIER,
     Y_MODULE,
-    Y_MUST,
+    Y_MUST,             /* 40 */
     Y_NAMESPACE,
     Y_NOTIFICATION,
     Y_ORDERED_BY,
@@ -102,7 +102,7 @@ enum rfc_6020{
     Y_PATTERN,
     Y_POSITION,
     Y_PREFIX,
-    Y_PRESENCE,
+    Y_PRESENCE,         /* 50 */
     Y_RANGE,
     Y_REFERENCE,
     Y_REFINE,
@@ -112,7 +112,7 @@ enum rfc_6020{
     Y_RPC,
     Y_STATUS,
     Y_SUBMODULE,
-    Y_TYPE,
+    Y_TYPE,            /* 60 */
     Y_TYPEDEF,
     Y_UNIQUE,
     Y_UNITS,
@@ -140,7 +140,6 @@ struct xml;
 
 typedef struct yang_stmt yang_stmt; /* Defined in clixon_yang_internal */
 
-
 typedef int (yang_applyfn_t)(yang_stmt *ys, void *arg);
 
 /*
@@ -157,6 +156,8 @@ int        yang_cvec_set(yang_stmt *ys, cvec *cvv);
 /* Other functions */
 yang_stmt *yspec_new(void);
 yang_stmt *ys_new(enum rfc_6020 keyw);
+yang_stmt *ys_prune(yang_stmt *yp, int i);
+
 int        ys_free(yang_stmt *ys);
 int        yspec_free(yang_stmt *yspec);
 int        ys_cp(yang_stmt *new, yang_stmt *old);
@@ -169,6 +170,7 @@ yang_stmt *ys_module(yang_stmt *ys);
 yang_stmt *ys_real_module(yang_stmt *ys);
 yang_stmt *ys_spec(yang_stmt *ys);
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
+yang_stmt *yang_find_module_by_prefix_yspec(yang_stmt *yspec, char *prefix);
 yang_stmt *yang_find_module_by_namespace(yang_stmt *yspec, char *namespace);
 yang_stmt *yang_find_module_by_name(yang_stmt *yspec, char *name);
 yang_stmt *yang_find(yang_stmt *yn, int keyword, const char *argument);
@@ -177,6 +179,7 @@ yang_stmt *yang_find_datanode(yang_stmt *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_stmt *yn, char *argument);
 char      *yang_find_myprefix(yang_stmt *ys);
 char      *yang_find_mynamespace(yang_stmt *ys);
+int        yang_find_prefix_by_namespace(yang_stmt *ys, char *namespace, char **prefix);
 yang_stmt *yang_choice(yang_stmt *y);
 int        yang_order(yang_stmt *y);
 int        yang_print(FILE *f, yang_stmt *yn);

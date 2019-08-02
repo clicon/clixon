@@ -57,6 +57,7 @@
 
 %token MY_EOF 
 %token SQ           /* Single quote: ' */
+%token SEP          /* Separators (at least one) */
 %token <string>   CHARS
 %token <string>   IDENTIFIER
 %token <string>   BOOL
@@ -230,12 +231,15 @@ yang_parse_exit(struct clicon_yang_yacc_arg *yy)
     return 0;
 }
 
+/*! Pop a yang parse context on stack
+ * @param[in]  yy        Yang yacc argument
+ */
 int
 ystack_pop(struct clicon_yang_yacc_arg *yy)
 {
     struct ys_stack *ystack; 
 
-    if ((ystack =  yy->yy_stack) == NULL){
+    if ((ystack = yy->yy_stack) == NULL){
 	clicon_err(OE_YANG, 0, "ystack is NULL");
 	return -1;
     }
@@ -244,6 +248,10 @@ ystack_pop(struct clicon_yang_yacc_arg *yy)
     return 0;
 }
 
+/*! Push a yang parse context on stack
+ * @param[in]  yy        Yang yacc argument
+ * @param[in]  yn        Yang node to push
+ */
 struct ys_stack *
 ystack_push(struct clicon_yang_yacc_arg *yy,
 	    yang_stmt                   *yn)
@@ -306,7 +314,13 @@ ysp_add(struct clicon_yang_yacc_arg *yy,
     return NULL;
 }
 
-/*! combination of ysp_add and ysp_push for sub-modules */
+/*! Add a yang statement to existing top-of-stack and then push it on stack
+ *
+ * @param[in]  yy        Yang yacc argument
+ * @param[in]  keyword   Yang keyword
+ * @param[in]  argument  Yang argument
+ * @param[in]  extra     Yang extra for cornercases (unknown/extension)
+ */
 static yang_stmt *
 ysp_add_push(struct clicon_yang_yacc_arg *yy,
 	     enum rfc_6020                keyword, 
@@ -1540,26 +1554,33 @@ deviate_substmt : type_stmt         { clicon_debug(2,"deviate-substmt -> type-st
                 ;
 
 
-/* For extensions XXX: we just drop the data */
-unknown_stmt  : ustring  ':' ustring ';'
+/* Represents the usage of an extension
+   unknown-statement   = prefix ":" identifier [sep string] optsep
+                         (";" /
+                          "{" optsep
+                              *((yang-stmt / unknown-statement) optsep)
+                           "}") stmt
+ *
+ */
+unknown_stmt  : ustring ':' ustring optsep ';'
                  { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		   if (ysp_add(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); 
 		   clicon_debug(2,"unknown-stmt -> ustring : ustring");
 	       }
-              | ustring  ':' ustring string ';'
+              | ustring ':' ustring SEP string optsep ';'
 	        { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
-		   if (ysp_add(_yy, Y_UNKNOWN, id, $4) == NULL){ _YYERROR("unknwon_stmt"); }
+		   if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL){ _YYERROR("unknwon_stmt"); }
 		   clicon_debug(2,"unknown-stmt -> ustring : ustring string");
 	       }
-              | ustring  ':' ustring
+              | ustring ':' ustring optsep
                  { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		     if (ysp_add_push(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); }
 	         '{' yang_stmts '}'
 	               { if (ystack_pop(_yy) < 0) _YYERROR("unknown_stmt");
 			 clicon_debug(2,"unknown-stmt -> ustring : ustring { yang-stmts }"); }
-              | ustring  ':' ustring string
+              | ustring ':' ustring SEP string optsep
  	         { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
-		     if (ysp_add_push(_yy, Y_UNKNOWN, id, $4) == NULL) _YYERROR("unknown_stmt"); }
+		     if (ysp_add_push(_yy, Y_UNKNOWN, id, $5) == NULL) _YYERROR("unknown_stmt"); }
 	         '{' yang_stmts '}'
 	               { if (ystack_pop(_yy) < 0) _YYERROR("unknown_stmt");
 			 clicon_debug(2,"unknown-stmt -> ustring : ustring string { yang-stmts }"); }
@@ -1814,6 +1835,11 @@ node_identifier : IDENTIFIER
 /* identifier-ref = [prefix ":"] identifier */
 identifier_ref : node_identifier { $$=$1;}
                ;
+
+optsep :       SEP
+               |
+               ;
+
 
 stmtend        : ';'
                | '{' '}'

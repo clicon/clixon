@@ -106,6 +106,20 @@ typedef int (plgstart_t)(clicon_handle); /* Plugin start */
  */
 typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
 
+/* For yang extension handling. 
+ * Called at parsing of yang module containing a statement of an extension.
+ * A plugin may identify the extension by its name, and perform actions
+ * on the yang statement, such as transforming the yang.
+ * A callback is made for every statement, which means that several calls per
+ * extension can be made.
+ * @param[in] h    Clixon handle
+ * @param[in] yext Yang node of extension 
+ * @param[in] ys   Yang node of (unknown) statement belonging to extension
+ * @retval     0   OK, all callbacks executed OK
+ * @retval    -1   Error in one callback
+ */
+typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+
 /*! Called by restconf to check credentials and return username
  */
 
@@ -168,6 +182,7 @@ struct clixon_plugin_api{
     plginit2_t       *ca_init;           /* Clixon plugin Init (implicit) */
     plgstart_t       *ca_start;          /* Plugin start */
     plgexit_t        *ca_exit;	         /* Plugin exit */
+    plgextension_t   *ca_extension;      /* Yang extension handler */
     union {
 	struct { /* cli-specific */
 	    cli_prompthook_t *ci_prompt;         /* Prompt hook */
@@ -189,7 +204,6 @@ struct clixon_plugin_api{
 	    trans_cb_t       *cb_trans_revert;   /* Transaction revert */
 	    trans_cb_t       *cb_trans_end;	 /* Transaction completed  */
     	    trans_cb_t       *cb_trans_abort;	 /* Transaction aborted */    
-
 	} cau_backend;
 
     } u;
@@ -245,11 +259,15 @@ clixon_plugin *clixon_plugin_find(clicon_handle h, char *name);
 
 int clixon_plugins_load(clicon_handle h, char *function, char *dir, char *regexp);
 
+int clixon_pseudo_plugin(clicon_handle h, char *name, clixon_plugin **cpp);
+
 int clixon_plugin_start(clicon_handle h);
 
 int clixon_plugin_exit(clicon_handle h);
 
 int clixon_plugin_auth(clicon_handle h, void *arg);
+
+int clixon_plugin_extension(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *namespace, char *name);

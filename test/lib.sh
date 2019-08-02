@@ -34,7 +34,7 @@ if [ -f ./site.sh ]; then
     # test skiplist.
     for f in $SKIPLIST; do
 	if [ "$testfile" = "$f" ]; then
-	    echo ...skipped
+	    echo "...skipped (see site.sh)"
 	    return -1 # skip
 	fi
     done
@@ -233,9 +233,11 @@ new(){
 # Arguments:
 # - command,
 # - expected command return value (0 if OK)
-# - expected stdout outcome,
-# - expected2 stdout outcome,
-# Example: expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "^$"
+# - expected* stdout outcome, (can be many)
+# Example: expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "line1" "line2" 
+# XXX: for some reason some curl commands dont work here, eg
+#   curl -H 'Accept: application/xrd+xml'
+# instead use expectpart
 expectfn(){
     cmd=$1
     retval=$2
@@ -258,32 +260,30 @@ expectfn(){
 	echo -e "\e[0m:"
 	exit -1
     fi
-#    if [ $r != 0 ]; then
-#	return
-#    fi
     #  if [ $ret -ne $retval ]; then
     #      echo -e "\e[31m\nError in Test$testnr [$testname]:"
     #      echo -e "\e[0m:"
     #      exit -1
     #  fi
-    # Match if both are empty string
+    # Match if both are empty string (special case)
     if [ -z "$ret" -a -z "$expect" ]; then
 	return
     fi
     if [ -z "$ret" -a "$expect" = "^$" ]; then
 	return
     fi
-    # grep extended grep 
-    match=`echo $ret | grep -EZo "$expect"`
-    if [ -z "$match" ]; then
-	err "$expect" "$ret"
-    fi
-    if [ -n "$expect2" ]; then
-	match=`echo "$ret" | grep -EZo "$expect2"`
-	if [ -z "$match" ]; then
-	    err $expect "$ret"
+    # Loop over all variable args expect strings
+    let i=0;
+    for exp in "$@"; do
+	if [ $i -gt 1 ]; then
+	    match=`echo $ret | grep -EZo "$exp"`
+	    if [ -z "$match" ]; then
+		err "$exp" "$ret"
+	    fi
 	fi
-    fi
+	let i++;
+	
+    done
 }
 
 # Evaluate and return
@@ -312,6 +312,48 @@ expecteq(){
       err "$expect" "$ret"
   fi
 }
+
+# Evaluate and return
+# like expecteq but partial match is OK
+# Example: expecteq $(fn arg) 0 "my return"
+# - evaluated expression
+# - expected command return value (0 if OK)
+# - expected stdout outcome
+expectpart(){
+  r=$?
+  ret=$1
+  retval=$2
+  expect=$3
+#  echo "r:$r"
+#  echo "ret:\"$ret\""
+#  echo "retval:$retval"
+#  echo "expect:$expect"
+  if [ $r != $retval ]; then
+      echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+      echo -e "\e[0m:"
+      exit -1
+  fi
+  if [ -z "$ret" -a -z "$expect" ]; then
+      return
+  fi
+  # Loop over all variable args expect strings
+  let i=0;
+  for exp in "$@"; do
+       if [ $i -gt 1 ]; then
+#      echo "exp:$exp"
+	  match=`echo $ret | grep -Zo "$exp"` # XXX -EZo: -E cant handle {}
+	  if [ -z "$match" ]; then
+	      err "$exp" "$ret"
+	  fi
+      fi
+      let i++;
+    done
+
+#  if [[ "$ret" != "$expect" ]]; then
+#      err "$expect" "$ret"
+#  fi
+}
+
 
 # Pipe stdin to command
 # Arguments:
@@ -400,6 +442,43 @@ EOF
       err "$expect" "$ret"
   fi
 }
+
+# Like expecteof/expecteofx but with test == instead of grep.
+# No wildcards
+# Use this for multi-lines
+expecteofeq(){
+  cmd=$1
+  retval=$2
+  input=$3
+  expect=$4
+
+# Do while read stuff
+ret=$($cmd<<EOF 
+$input
+EOF
+)
+  r=$? 
+  if [ $r != $retval ]; then
+      echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+      echo -e "\e[0m:"
+      exit -1
+  fi
+  # If error dont match output strings (why not?)
+#  if [ $r != 0 ]; then
+#      return
+#  fi
+  # Match if both are empty string
+  if [ -z "$ret" -a -z "$expect" ]; then
+      return
+  fi
+#  echo "ret:\"$ret\""
+#  echo "expect:\"$expect\""
+#  echo "match:\"$match\""
+  if [ "$ret" != "$expect" ]; then
+     err "$expect" "$ret"
+  fi
+}
+
 
 # clixon tester read from file for large tests
 expecteof_file(){

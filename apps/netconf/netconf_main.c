@@ -488,6 +488,12 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
+
+    /* Load netconf plugins before yangs are loaded (eg extension callbacks) */
+    if ((dir = clicon_netconf_dir(h)) != NULL &&
+	clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
+	goto done;
+    
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
     if ((str = clicon_yang_main_file(h)) != NULL){
@@ -514,15 +520,9 @@ main(int    argc,
     /* Add netconf yang spec, used by netconf client and as internal protocol */
     if (netconf_module_load(h) < 0)
 	goto done;
-    /* Initialize plugins group */
-    if ((dir = clicon_netconf_dir(h)) != NULL)
-	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
-	    goto done;
-
     /* Call start function is all plugins before we go interactive */
     if (clixon_plugin_start(h) < 0)
 	goto done;
-
     if (!quiet)
 	send_hello(h, 1);
     if (event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)

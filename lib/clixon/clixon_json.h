@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -32,6 +32,8 @@
   ***** END LICENSE BLOCK *****
 
  * JSON support functions.
+ * JSON syntax is according to:
+ * http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
  */
 #ifndef _CLIXON_JSON_H
 #define _CLIXON_JSON_H
@@ -39,6 +41,7 @@
 /*
  * Prototypes
  */
+int json2xml_decode(cxobj *x, cxobj **xerr);
 int xml2json_cbuf(cbuf *cb, cxobj *x, int pretty);
 int xml2json_cbuf_vec(cbuf *cb, cxobj **vec, size_t veclen, int pretty);
 int xml2json(FILE *f, cxobj *x, int pretty);

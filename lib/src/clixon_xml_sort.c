@@ -61,6 +61,8 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_options.h"
 #include "clixon_xml_map.h"
 #include "clixon_yang_type.h"
@@ -207,6 +209,15 @@ xml_child_spec(cxobj      *x,
  * @note empty value/NULL is smallest value
  * @note some error cases return as -1 (qsort cant handle errors)
  * @note some error cases return as -1 (qsort cant handle errors)
+ * 
+ * NOTE: "comparing" x1 and x2 here judges equality from a structural (model)
+ * perspective, ie both have the same yang spec, if they are lists, they have the
+ * the same keys. NOT that the values are equal!
+ * In other words, if x is a leaf with the same yang spec, <x>1</x> and <x>2</x> are
+ * "equal". 
+ * If x is a list element (with key "k"), 
+ * <x><k>42</42><y>foo</y></x> and <x><k>42</42><y>bar</y></x> are equal, 
+ * but is not equal to <x><k>71</42><y>bar</y></x>
  */
 int
 xml_cmp(cxobj *x1,
@@ -299,10 +310,10 @@ xml_cmp(cxobj *x1,
 	    else{
 		if (xml_cv_cache(x1b, &cv1) < 0) /* error case */
 		    goto done;
-		assert(cv1); 		
+		//		assert(cv1); 		
 		if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
 		    goto done;
-		assert(cv2);
+		//		assert(cv2);
 		if ((equal = cv_cmp(cv1, cv2)) != 0)
 		    goto done;
 	    }
@@ -352,30 +363,35 @@ xml_sort(cxobj *x,
 }
 
 /*! Special case search for ordered-by user where linear sort is used
+ * @param[in] xp     Parent XML node (go through its childre)
+ * @param[in] x1     XML node to match
+ * @param[in] yangi  Yang order number (according to spec)
+ * @param[in] mid    Where to start from (may be in middle of interval)
+ * @retval    NULL   Not found
+ * @retval    x      XML element that matches x1
  */
 static cxobj *
 xml_search_userorder(cxobj        *xp,
 		     cxobj        *x1,
-		     yang_stmt    *y,
 		     int           yangi,
 		     int           mid)
-
 {
-    int    i;
-    cxobj *xc;
+    int        i;
+    cxobj     *xc;
+    yang_stmt *yc;
     
     for (i=mid+1; i<xml_child_nr(xp); i++){ /* First increment */
 	xc = xml_child_i(xp, i);
-	y = xml_spec(xc);
-	if (yangi!=yang_order(y))
+	yc = xml_spec(xc);
+	if (yangi!=yang_order(yc))
 	    break;
 	if (xml_cmp(xc, x1, 0) == 0)
 	    return xc;
     }
     for (i=mid-1; i>=0; i--){ /* Then decrement */
 	xc = xml_child_i(xp, i);
-	y = xml_spec(xc);
-	if (yangi!=yang_order(y))
+	yc = xml_spec(xc);
+	if (yangi!=yang_order(yc))
 	    break;
 	if (xml_cmp(xc, x1, 0) == 0)
 	    return xc;
@@ -418,7 +434,7 @@ xml_search1(cxobj        *xp,
     if (cmp == 0){
 	cmp = xml_cmp(x1, xc, 0);
 	if (cmp && userorder) /* Ordered by user (if not equal) */
-	    return xml_search_userorder(xp, x1, y, yangi, mid);	    
+	    return xml_search_userorder(xp, x1, yangi, mid);	    
     }
     if (cmp == 0)
 	return xc;
@@ -463,25 +479,123 @@ xml_search(cxobj        *xp,
     return xret;
 }
 
+/*! Insert xn in xp:s sorted child list (special case of ordered-by user)
+ * @param[in] xp      Parent xml node. If NULL just remove from old parent.
+ * @param[in] xn      Child xml node to insert under xp
+ * @param[in] yn      Yang stmt of xml child node
+ * @param[in] ins     Insert operation (if ordered-by user)
+ * @param[in] key_val Key if LIST and ins is before/after, val if LEAF_LIST
+ * @retval    i       Order where xn should be inserted into xp:s children
+ * @retval   -1       Error
+ */
+
+static int
+xml_insert_userorder(cxobj           *xp,
+		     cxobj           *xn,
+		     yang_stmt       *yn,
+		     int              mid,
+		     enum insert_type ins,
+		     char            *key_val)
+{
+    int        retval = -1;
+    int        i;
+    cxobj     *xc;
+    yang_stmt *yc;
+    char      *kludge = ""; /* Cant get instance-id generic of [.. and /.. case */
+
+    switch (ins){
+    case INS_FIRST:
+	for (i=mid-1; i>=0; i--){ /* decrement */
+	    xc = xml_child_i(xp, i);
+	    yc = xml_spec(xc);
+	    if (yc != yn){
+		retval = i+1;
+		goto done;
+	    }
+	}
+	retval = i+1;
+	break;
+    case INS_LAST:
+	for (i=mid+1; i<xml_child_nr(xp); i++){ /* First increment */
+	    xc = xml_child_i(xp, i);
+	    yc = xml_spec(xc);
+	    if (yc != yn){
+		retval = i;
+		goto done;
+	    }
+	}
+	retval = i;
+	break;
+    case INS_BEFORE:
+    case INS_AFTER: /* see retval handling different between before and after */
+	if (key_val == NULL)
+	    /* shouldnt happen */
+	    clicon_err(OE_YANG, 0, "Missing key/value attribute when insert is before");
+	else{
+	    switch (yang_keyword_get(yn)){
+	    case Y_LEAF_LIST:
+		if ((xc = xpath_first(xp, "%s", key_val)) == NULL)
+		    clicon_err(OE_YANG, 0, "bad-attribute: value, missing-instance: %s", key_val);				    
+		else {
+		    if ((i = xml_child_order(xp, xc)) < 0)
+			clicon_err(OE_YANG, 0, "internal error xpath found but not in child list");
+		    else
+			retval = (ins==INS_BEFORE)?i:i+1; 
+		}
+		break;
+	    case Y_LIST:
+		if (strlen(key_val) && key_val[0] == '[')
+		    kludge = xml_name(xn);
+		if ((xc = xpath_first(xp, "%s%s", kludge, key_val)) == NULL)
+		    clicon_err(OE_YANG, 0, "bad-attribute: key, missing-instance: %s%s", xml_name(xn), key_val);				    
+		else {
+		    if ((i = xml_child_order(xp, xc)) < 0)
+			clicon_err(OE_YANG, 0, "internal error xpath found but not in child list");
+		    else
+			retval = (ins==INS_BEFORE)?i:i+1; 
+		}
+		break;
+	    default:
+		clicon_err(OE_YANG, 0, "insert only for leaf or leaf-list");
+		break;
+	    } /* switch */
+	}
+    }
+ done:
+    return retval;
+}
+
 /*! Insert xn in xp:s sorted child list
  * Find a point in xp childvec with two adjacent nodes xi,xi+1 such that
  * xi<=xn<=xi+1 or xn<=x0 or xmax<=xn
+ * @param[in] xp      Parent xml node. If NULL just remove from old parent.
+ * @param[in] xn      Child xml node to insert under xp
+ * @param[in] yn      Yang stmt of xml child node
+ * @param[in] yni     yang order
+ * @param[in] userorder Set if ordered-by user, otherwise 0
+ * @param[in] ins     Insert operation (if ordered-by user)
+ * @param[in] key_val Key if LIST and ins is before/after, val if LEAF_LIST
+ * @param[in] low     Lower range limit
+ * @param[in] upper   Upper range limit
+ * @retval    i       Order where xn should be inserted into xp:s children
+ * @retval   -1       Error
  */
 static int
-xml_insert2(cxobj     *xp,
-	    cxobj     *xn,
-	    yang_stmt *yn,
-	    int        yni,
-	    int        userorder,
-	    int        low, 
-	    int        upper)
+xml_insert2(cxobj           *xp,
+	    cxobj           *xn,
+	    yang_stmt       *yn,
+	    int              yni,
+	    int              userorder,
+	    enum insert_type ins,
+	    char            *key_val,
+	    int              low, 
+	    int              upper)
 {
     int        retval = -1;
     int        mid;
     int        cmp;
     cxobj     *xc;
     yang_stmt *yc;
-    int        i;
     
     if (low > upper){  /* beyond range */
 	clicon_err(OE_XML, 0, "low>upper %d %d", low, upper);	
@@ -503,15 +617,7 @@ xml_insert2(cxobj     *xp,
     }
     if (yc == yn){ /* Same yang */
 	if (userorder){ /* append: increment linearly until no longer equal */
-	    for (i=mid+1; i<xml_child_nr(xp); i++){ /* First increment */
-		xc = xml_child_i(xp, i);
-		yc = xml_spec(xc);
-		if (yc != yn){
-		    retval = i;
-		    goto done;
-		}
-	    }
-	    retval = i;
+	    retval = xml_insert_userorder(xp, xn, yn, mid, ins, key_val);
 	    goto done;
 	}
 	else /* Ordered by system */
@@ -537,23 +643,27 @@ xml_insert2(cxobj     *xp,
 	goto done;
     }
     else if (cmp < 0)
-	return xml_insert2(xp, xn, yn, yni, userorder, low, mid);
+	return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, low, mid);
     else 
-	return xml_insert2(xp, xn, yn, yni, userorder, mid+1, upper);
+	return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, mid+1, upper);
  done:
     return retval;
 }
 
 /*! Insert xc as child to xp in sorted place. Remove xc from previous parent.
- * @param[in] xp  Parent xml node. If NULL just remove from old parent.
- * @param[in] x   Child xml node to insert under xp
- * @retval    0   OK
- * @retval   -1   Error
+ * @param[in] xp      Parent xml node. If NULL just remove from old parent.
+ * @param[in] x       Child xml node to insert under xp
+ * @param[in] ins     Insert operation (if ordered-by user)
+ * @param[in] key_val Key if LIST and ins is before/after, val if LEAF_LIST
+ * @retval    0       OK
+ * @retval   -1       Error
  * @see xml_addsub where xc is appended. xml_insert is xml_addsub();xml_sort()
  */
 int
-xml_insert(cxobj        *xp,
-	   cxobj        *xi)
+xml_insert(cxobj           *xp,
+	   cxobj           *xi,
+	   enum insert_type ins,
+	   char            *key_val)
 {
     int        retval = -1;
     cxobj     *xa;
@@ -587,7 +697,9 @@ xml_insert(cxobj        *xp,
     else if (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST)
 	userorder = (yang_find(y, Y_ORDERED_BY, "user") != NULL);
     yi = yang_order(y);
-    if ((i = xml_insert2(xp, xi, y, yi, userorder, low, upper)) < 0)
+    if ((i = xml_insert2(xp, xi, y, yi,
+			 userorder, ins, key_val,
+			 low, upper)) < 0)
 	goto done;
     if (xml_child_insert_pos(xp, xi, i) < 0)
 	goto done;

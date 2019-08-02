@@ -39,7 +39,6 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <assert.h>
-#include <math.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/param.h>
@@ -96,7 +95,8 @@ example_client_rpc(clicon_handle h,
     /* User supplied variable in CLI command */
     cva = cvec_find(cvv, "a"); /* get a cligen variable from vector */
     /* Create XML for example netconf RPC */
-    if (xml_parse_va(&xtop, NULL, "<rpc message-id=\"101\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" username=\"%s\"><example xmlns=\"urn:example:clixon\"><x>%s</x></example></rpc>",
+    if (xml_parse_va(&xtop, NULL, "<rpc message-id=\"101\" xmlns=\"%s\" username=\"%s\"><example xmlns=\"urn:example:clixon\"><x>%s</x></example></rpc>",
+		     NETCONF_BASE_NAMESPACE,
 		     clicon_username_get(h),
 		     cv_string_get(cva)) < 0)
 	goto done;

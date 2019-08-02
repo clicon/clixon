@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -275,6 +275,7 @@ restconf_stream(clicon_handle h,
     }
     /* Setting up stream */
     FCGX_SetExitStatus(201, r->out); /* Created */
+    FCGX_FPrintF(r->out, "Status: 201 Created\r\n");
     FCGX_FPrintF(r->out, "Content-Type: text/event-stream\r\n");
     FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
     FCGX_FPrintF(r->out, "Connection: keep-alive\r\n");
@@ -365,10 +366,10 @@ api_stream(clicon_handle h,
 #endif
 
     clicon_debug(1, "%s", __FUNCTION__);
-    path = FCGX_GetParam("DOCUMENT_URI", r->envp);
+    path = restconf_uripath(r);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    test(r, 1);
+    restconf_test(r, 1);
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
     /* Sanity check of path. Should be /stream/<name> */

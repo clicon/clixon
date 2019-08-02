@@ -319,7 +319,6 @@ int
 cli_syntax_load(clicon_handle h)
 {
     int                retval = -1;
-    char              *plugin_dir = NULL;
     char              *clispec_dir = NULL;
     char              *clispec_file = NULL;
     int                ndp;
@@ -336,7 +335,6 @@ cli_syntax_load(clicon_handle h)
 	return 0;
 
     /* Format plugin directory path */
-    plugin_dir = clicon_cli_dir(h);
     clispec_dir = clicon_clispec_dir(h);
     clispec_file = clicon_option_str(h, "CLICON_CLISPEC_FILE");
 
@@ -349,10 +347,6 @@ cli_syntax_load(clicon_handle h)
 
     cli_syntax_set(h, stx);
 
-    /* Load cli plugins */
-    if (plugin_dir &&
-	clixon_plugins_load(h, CLIXON_PLUGIN_INIT, plugin_dir, NULL)< 0)
-	goto done;
     if (clispec_file){
 	if (cli_load_syntax(h, clispec_file, NULL) < 0)
 	    goto done;

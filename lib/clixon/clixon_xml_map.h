@@ -56,7 +56,6 @@ int xml_yang_validate_all(clicon_handle h, cxobj *xt, cxobj **xret);
 int xml_yang_validate_all_top(clicon_handle h, cxobj *xt, cxobj **xret);
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
 int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
-
 int xml_diff(yang_stmt *yspec, cxobj *x0, cxobj *x1, 	 
 	     cxobj ***first, size_t *firstlen, 
 	     cxobj ***second, size_t *secondlen, 
@@ -77,6 +76,7 @@ int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop,
 		 yang_class nodeclass, int strict, cxobj **xpathp, yang_stmt **ypathp);
 
 int xml2xpath(cxobj *x, char **xpath);
+int xml2api_path_1(cxobj *x, cbuf *cb);
 int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 

@@ -74,8 +74,9 @@ usage(char *argv0)
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"
-	    "\t-j \t\tOutput as JSON\n"
+	    "\t-j \t\tOutput as JSON (default is as XML)\n"
 	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n"
+	    "\t-p \t\tPretty-print output\n"
 	    "\t-y <filename> \tyang filename to parse (must be stand-alone)\n"	    ,
 	    argv0);
     exit(0);
@@ -96,10 +97,11 @@ main(int    argc,
     yang_stmt *yspec = NULL;
     cxobj     *xerr = NULL; /* malloced must be freed */
     int        ret;
+    int        pretty = 0;
     
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, "hD:jl:y:")) != -1)
+    while ((c = getopt(argc, argv, "hD:jl:py:")) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv[0]);
@@ -114,6 +116,9 @@ main(int    argc,
 	case 'l': /* Log destination: s|e|o|f */
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(argv[0]);
+	    break;
+	case 'p':
+	    pretty++;
 	    break;
 	case 'y':
 	    yang_filename = optarg;
@@ -140,9 +145,9 @@ main(int    argc,
     xc = NULL;
     while ((xc = xml_child_each(xt, xc, -1)) != NULL) 
 	if (json)
-	    xml2json_cbuf(cb, xc, 0); /* print xml */
+	    xml2json_cbuf(cb, xc, pretty); /* print xml */
 	else
-	    clicon_xml2cbuf(cb, xc, 0, 0); /* print xml */
+	    clicon_xml2cbuf(cb, xc, 0, pretty); /* print xml */
     fprintf(stdout, "%s", cbuf_get(cb));
     fflush(stdout);
     retval = 0;

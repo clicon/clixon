@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -31,6 +31,7 @@
 
   ***** END LICENSE BLOCK *****
   
+  * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
  */
 
 #include <stdlib.h>
@@ -302,12 +303,13 @@ printparam(FCGX_Request *r,
     return 0;
 }
 
-/*!
+/*! Print all FCGI headers
  * @param[in]  r        Fastcgi request handle
+ * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
  */
 int
-test(FCGX_Request *r, 
-     int           dbg)
+restconf_test(FCGX_Request *r, 
+	      int           dbg)
 {
     printparam(r, "QUERY_STRING", dbg);
     printparam(r, "REQUEST_METHOD", dbg);	
@@ -328,6 +330,7 @@ test(FCGX_Request *r,
     printparam(r, "SERVER_NAME", dbg);
     printparam(r, "HTTP_COOKIE", dbg);
     printparam(r, "HTTPS", dbg);
+    printparam(r, "HTTP_HOST", dbg);
     printparam(r, "HTTP_ACCEPT", dbg);
     printparam(r, "HTTP_CONTENT_TYPE", dbg);
     printparam(r, "HTTP_AUTHORIZATION", dbg);
@@ -464,7 +467,7 @@ api_return_err(clicon_handle h,
 	}
 	else{
 	    FCGX_FPrintF(r->out, "{");
-	    FCGX_FPrintF(r->out, "\"ietf-restconf:errors\" : ");
+	    FCGX_FPrintF(r->out, "\"ietf-restconf:errors\":");
 	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
 	    FCGX_FPrintF(r->out, "}\r\n");
 	}
@@ -475,6 +478,50 @@ api_return_err(clicon_handle h,
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
+    return retval;
+}
+
+/*! Print location header from FCGI environment
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  xobj   If set (eg POST) add to api-path
+ * $https  “on” if connection operates in SSL mode, or an empty string otherwise 
+ * @note ports are ignored
+ */
+int
+http_location(FCGX_Request *r,
+	      cxobj        *xobj)
+{
+    int   retval = -1;
+    char *https;
+    char *host;
+    char *request_uri;
+    cbuf *cb = NULL;
+
+    https = FCGX_GetParam("HTTPS", r->envp);
+    host = FCGX_GetParam("HTTP_HOST", r->envp);
+    request_uri = FCGX_GetParam("REQUEST_URI", r->envp);
+    if (xobj != NULL){
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, 0, "cbuf_new");
+	    goto done;
+	}
+	if (xml2api_path_1(xobj, cb) < 0)
+	    goto done;
+	FCGX_FPrintF(r->out, "Location: http%s://%s%s%s\r\n",
+		     https?"s":"",
+		     host,
+		     request_uri,
+		     cbuf_get(cb));
+    }
+    else
+	FCGX_FPrintF(r->out, "Location: http%s://%s%s\r\n",
+		     https?"s":"",
+		     host,
+		     request_uri);
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
@@ -506,3 +553,96 @@ restconf_terminate(clicon_handle h)
     return 0;
 }
 
+/*! If restconf insert/point attributes are present, translate to netconf 
+ * @param[in] xdata  URI->XML to translate
+ * @param[in] qvec   Query parameters (eg where insert/point should be)
+ * @retval    0      OK 
+ * @retval   -1      Error
+ */
+int
+restconf_insert_attributes(cxobj *xdata,
+			   cvec  *qvec)
+{
+    int        retval = -1;
+    cxobj     *xa;
+    char      *instr;
+    char      *pstr;
+    yang_stmt *y;
+    char      *attrname;
+    int        ret;
+    
+    y = xml_spec(xdata);
+    if ((instr = cvec_find_str(qvec, "insert")) != NULL){
+	/* First add xmlns:yang attribute */
+	if ((xa = xml_new("yang", xdata, NULL)) == NULL)
+	    goto done;
+	if (xml_prefix_set(xa, "xmlns") < 0)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (xml_value_set(xa, YANG_XML_NAMESPACE) < 0)
+	    goto done;
+	/* Then add insert attribute */
+	if ((xa = xml_new("insert", xdata, NULL)) == NULL)
+	    goto done;
+	if (xml_prefix_set(xa, "yang") < 0)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if (xml_value_set(xa, instr) < 0)
+	    goto done;
+    }
+    if ((pstr = cvec_find_str(qvec, "point")) != NULL){
+	char *xpath = NULL;
+	char *namespace = NULL;
+	cbuf *cb = NULL;
+	if (y == NULL){
+	    clicon_err(OE_YANG, 0, "Cannot yang resolve %s", xml_name(xdata));
+	    goto done;
+	}
+	if (yang_keyword_get(y) == Y_LIST)
+	    attrname="key";
+	else
+	    attrname="value";
+	/* Then add value/key attribute */
+	if ((xa = xml_new(attrname, xdata, NULL)) == NULL)
+	    goto done;
+	if (xml_prefix_set(xa, "yang") < 0)
+	    goto done;
+	xml_type_set(xa, CX_ATTR);
+	if ((ret = api_path2xpath(pstr, ys_spec(y), &xpath, &namespace)) < 0)
+	    goto done;
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "/%s", xpath); /* XXX: also prefix/namespace? */
+	if (xml_value_set(xa, cbuf_get(cb)) < 0)
+	    goto done;
+	if (xpath)
+	    free(xpath);
+	if (cb)
+	    cbuf_free(cb);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Extract uri-encoded uri-path from fastcgi parameters
+ * Use REQUEST_URI parameter and strip ?args
+ * REQUEST_URI have args and is encoded
+ *   eg /interface=eth%2f0%2f0?insert=first
+ * DOCUMENT_URI dont have args and is not encoded
+ *   eg /interface=eth/0/0
+ *  causes problems with eg /interface=eth%2f0%2f0
+ */
+char *
+restconf_uripath(FCGX_Request *r)
+{
+    char *path;
+    char *q;
+
+    path = FCGX_GetParam("REQUEST_URI", r->envp); 
+    if ((q = index(path, '?')) != NULL)
+	*q = '\0';
+    return path;
+}

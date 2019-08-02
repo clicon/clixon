@@ -99,7 +99,7 @@ new "restconf GET non-existent container header"
 expectfn "curl -s -I -X GET http://localhost/restconf/data/example:a/c" 0 "HTTP/1.1 404 Not Found"
 
 new "restconf GET non-existent container body"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:a/c" 0 '{"ietf-restconf:errors" : {"error": {"rpc-error": {"error-type": "application","error-tag": "invalid-value","error-severity": "error","error-message": "Instance does not exist"}}}}'
+expectfn "curl -s -X GET http://localhost/restconf/data/example:a/c" 0 '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
 
 new "Kill restconf daemon"
 stop_restconf 

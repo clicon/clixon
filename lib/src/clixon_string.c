@@ -65,7 +65,7 @@
  * if ((vec = clicon_strsep("/home/user/src/clixon", "/", &nvec)) == NULL)
  *    err;
  * for (i=0; i<nvec; i++){
- *    v = vec[i++]; 
+ *    v = vec[i]; 
  *    ...
  * }
  * free(vec); 

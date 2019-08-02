@@ -168,7 +168,7 @@ new "leafref validate (ok)"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>"
 
 new "leafref delete leaf"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface operation="delete"><name>eth0</name></interface></interfaces></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0"><interface nc:operation="delete"><name>eth0</name></interface></interfaces></config></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>'
 
 new "leafref validate (should fail)"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>"  '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>eth0</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No such leaf</error-message></rpc-error></rpc-reply>]]>]]>$'

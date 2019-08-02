@@ -47,9 +47,6 @@
 #include <ctype.h>
 
 #include <unistd.h>
-#ifdef HAVE_CRYPT_H
-#include <crypt.h>
-#endif 
 #include <dirent.h>
 #include <syslog.h>
 #include <arpa/inet.h>
@@ -239,19 +236,15 @@ cli_dbxml(clicon_handle       h,
 	  enum operation_type op)
 {
     int        retval = -1;
-    //    char      *str = NULL;
-    char      *api_path_fmt;  /* xml key format */
+    char      *api_path_fmt;    /* xml key format */
     char      *api_path = NULL; /* xml key */
-    //    cg_var    *cval;
-    //    int        len;
     cg_var    *arg;
     cbuf      *cb = NULL;
     yang_stmt *yspec;
-    cxobj     *xbot = NULL; /* xpath, NULL if datastore */
-    yang_stmt *y = NULL; /* yang spec of xpath */
-    cxobj     *xtop = NULL; /* xpath root */
-    cxobj     *xa;           /* attribute */
-    //    cxobj     *xb;           /* body */
+    cxobj     *xbot = NULL;     /* xpath, NULL if datastore */
+    yang_stmt *y = NULL;        /* yang spec of xpath */
+    cxobj     *xtop = NULL;     /* xpath root */
+    cxobj     *xa;              /* attribute */
 
     if (cvec_len(argv) != 1){
 	clicon_err(OE_PLUGIN, 0, "Requires one element to be xml key format string");
@@ -274,6 +267,7 @@ cli_dbxml(clicon_handle       h,
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
+    xml_prefix_set(xa, NETCONF_BASE_PREFIX); 
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
     if (yang_keyword_get(y) != Y_LIST && yang_keyword_get(y) != Y_LEAF_LIST){
