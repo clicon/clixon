@@ -558,6 +558,22 @@ restconf_terminate(clicon_handle h)
  * @param[in] qvec   Query parameters (eg where insert/point should be)
  * @retval    0      OK 
  * @retval   -1      Error
+ * A difficulty is that RESTCONF 'point' is a complete identity-identifier encoded
+ * as an uri-path
+ * wheras NETCONF key and value are:
+ * The value of the "key" attribute is the key predicates of the full instance identifier
+ * the "value" attribute MUST also be used to specify an existing entry in the
+ * leaf-list.
+ * This means that api-path is first translated to xpath, and then strip everything
+ * except the key values (or leaf-list values).
+ * Example:
+ * RESTCONF URI: point=%2Fexample-jukebox%3Ajukebox%2Fplaylist%3DFoo-One%2Fsong%3D1
+ * Leaf example:
+ *   instance-id: /ex:system/ex:service[ex:name='foo'][ex:enabled='']
+ *   NETCONF: yang:key="[ex:name='foo'][ex:enabled='']
+ * Leaf-list example:
+ *   instance-id: /ex:system/ex:service[.='foo']
+ *   NETCONF: yang:value="foo"
  */
 int
 restconf_insert_attributes(cxobj *xdata,
@@ -570,7 +586,11 @@ restconf_insert_attributes(cxobj *xdata,
     yang_stmt *y;
     char      *attrname;
     int        ret;
-    
+    char      *xpath = NULL;
+    char      *namespace = NULL;
+    cbuf      *cb = NULL;
+    char      *p;
+
     y = xml_spec(xdata);
     if ((instr = cvec_find_str(qvec, "insert")) != NULL){
 	/* First add xmlns:yang attribute */
@@ -591,9 +611,6 @@ restconf_insert_attributes(cxobj *xdata,
 	    goto done;
     }
     if ((pstr = cvec_find_str(qvec, "point")) != NULL){
-	char *xpath = NULL;
-	char *namespace = NULL;
-	cbuf *cb = NULL;
 	if (y == NULL){
 	    clicon_err(OE_YANG, 0, "Cannot yang resolve %s", xml_name(xdata));
 	    goto done;
@@ -614,16 +631,36 @@ restconf_insert_attributes(cxobj *xdata,
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
-	cprintf(cb, "/%s", xpath); /* XXX: also prefix/namespace? */
+	if (yang_keyword_get(y) == Y_LIST){
+	    /* translate /../x[] --> []*/
+	    if ((p = rindex(xpath,'/')) == NULL)
+		p = xpath;
+	    p = index(p, '[');
+	    cprintf(cb, "%s", p);
+	}
+	else{ /* LEAF_LIST */
+	    /* translate /../x[.='x'] --> x */
+	    if ((p = rindex(xpath,'\'')) == NULL){
+		clicon_err(OE_YANG, 0, "Translated api->xpath %s->%s not on leaf-list canonical form: ../[.='x']", pstr, xpath);
+		goto done;
+	    }
+	    *p = '\0';
+	    if ((p = rindex(xpath,'\'')) == NULL){
+		clicon_err(OE_YANG, 0, "Translated api->xpath %s->%s not on leaf-list canonical form: ../[.='x']", pstr, xpath);
+		goto done;
+	    }
+	    p++;
+	    cprintf(cb, "%s", p);
+	}
 	if (xml_value_set(xa, cbuf_get(cb)) < 0)
 	    goto done;
-	if (xpath)
-	    free(xpath);
-	if (cb)
-	    cbuf_free(cb);
     }
     retval = 0;
  done:
+    if (xpath)
+	free(xpath);
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
