@@ -2612,7 +2612,7 @@ api_path2xml_vec(char             **vec,
     cg_var    *cvi;
     char      *keyname;
     char     **valvec = NULL;
-    int        nvalvec;
+    int        nvalvec = 0;
     int        vi;
     cxobj     *x = NULL;
     yang_stmt *y = NULL;
@@ -2713,11 +2713,12 @@ api_path2xml_vec(char             **vec,
 		goto done; 
 	    xml_type_set(xn, CX_ELMNT);
 	    if ((xb = xml_new("body", xn, NULL)) == NULL)
-		goto done; 
+		goto done;
 	    xml_type_set(xb, CX_BODY);
-	    if (vi < nvalvec)
-		if (xml_value_set(xb, valvec[vi++]) < 0)
+	    if (vi++ < nvalvec){
+		if (xml_value_set(xb, valvec[vi-1]) < 0)
 		    goto done;
+	    }
 	}
 	break;
     default: /* eg Y_CONTAINER, Y_LEAF */
