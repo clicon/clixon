@@ -111,6 +111,7 @@ expand_dbvar(void   *h,
     cxobj           *xtop = NULL; /* xpath root */
     cxobj           *xbot = NULL; /* xpath, NULL if datastore */
     yang_stmt       *y = NULL; /* yang spec of xpath */
+    yang_stmt       *yp;
     yang_stmt       *ytype;
     yang_stmt       *ypath;
     cxobj           *xcur;
@@ -167,11 +168,13 @@ expand_dbvar(void   *h,
     xbot = xtop;
     /* This is primarily to get "y", 
      * xpath2xml would have worked!!
+     * XXX: but y is just the first in this list, there could be other y:s?
      */
     if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y) < 1)
 	goto done;
     if (y==NULL)
 	goto ok;
+
     if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
 	goto done;
 
@@ -203,7 +206,12 @@ expand_dbvar(void   *h,
 	}
     if (xpath_vec_nsc(xcur, nsc, "%s", &xvec, &xlen, xpathcur) < 0) 
 	goto done;
-    bodystr0 = NULL; /* Assume sorted XML where duplicates are adjacent */
+    /* Loop for inserting into commands cvec. 
+     * Detect duplicates: for ordered-by system assume list is ordered, so you need
+     * just remember previous
+     * but for ordered-by system, check the whole list
+     */
+    bodystr0 = NULL;
     for (i = 0; i < xlen; i++) {
 	x = xvec[i];
 	if (xml_type(x) == CX_BODY)
@@ -212,11 +220,27 @@ expand_dbvar(void   *h,
 	    bodystr = xml_body(x);
 	if (bodystr == NULL)
 	    continue; /* no body, cornercase */
-	if (bodystr0 && strcmp(bodystr, bodystr0) == 0)
-	    continue; /* duplicate, assume sorted */
-	/* RFC3986 decode */
-	cvec_add_string(commands, NULL, bodystr);
-	bodystr0 = bodystr;
+	if ((y = xml_spec(x)) != NULL &&
+	    (yp = yang_parent_get(y)) != NULL &&
+	    yang_keyword_get(yp) == Y_LIST &&
+	    yang_find(yp, Y_ORDERED_BY, "user") != NULL){
+	    /* Detect duplicates linearly in existing values */
+	    {
+		cg_var *cv = NULL;
+		while ((cv = cvec_each(commands, cv)) != NULL)
+		    if (strcmp(cv_string_get(cv), bodystr) == 0)
+			break;
+		if (cv == NULL)
+		    cvec_add_string(commands, NULL, bodystr);
+	    }
+	}
+	else{
+	    if (bodystr0 && strcmp(bodystr, bodystr0) == 0)
+		continue; /* duplicate, assume sorted */
+	    bodystr0 = bodystr;
+	    /* RFC3986 decode */
+	    cvec_add_string(commands, NULL, bodystr);
+	}
     }
  ok:
     retval = 0;

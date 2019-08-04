@@ -1,5 +1,6 @@
 #!/bin/bash
 # CLI test for multi-key lists
+# Had bugs in duplicate detection
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -38,6 +39,20 @@ module $APPNAME{
    container ex {
       list x{
          key "a b" ;
+	 leaf a {
+	    type string;
+	 }
+	 leaf b {
+	    type enumeration{
+		enum v1;
+		enum v2;
+		enum v3;
+	    }
+	}
+      }
+      list y{
+         key "a b" ;
+         ordered-by user;
 	 leaf a {
 	    type string;
 	 }
@@ -90,6 +105,26 @@ expectfn "$clixon_cli -1 -f $cfg set ex x a 1 b v2" 0 ""
 
 new "show conf"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><ex xmlns="urn:example:clixon"><x><a>1</a><b>v1</b></x><x><a>1</a><b>v2</b></x><x><a>1</a><b>v3</b></x><x><a>2</a><b>v1</b></x><x><a>2</a><b>v2</b></x><x><a>2</a><b>v3</b></x></ex></data></rpc-reply>]]>]]>$'
+
+
+# ordered-by user
+new "set 1 v1"
+expectfn "$clixon_cli -1 -f $cfg set ex y a 1 b v1" 0 ""
+
+new "set 2 v1"
+expectfn "$clixon_cli -1 -f $cfg set ex y a 2 b v1" 0 ""
+
+new "set 1 v2"
+expectfn "$clixon_cli -1 -f $cfg set ex y a 1 b v2" 0 ""
+
+new "set 1 v3"
+expectfn "$clixon_cli -1 -f $cfg set ex y a 1 b v3" 0 ""
+
+new "set 2 v2"
+expectfn "$clixon_cli -1 -f $cfg set ex y a 2 b v2" 0 ""
+
+new "show conf"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><ex xmlns="urn:example:clixon"><x><a>1</a><b>v1</b></x><x><a>1</a><b>v2</b></x><x><a>1</a><b>v3</b></x><x><a>2</a><b>v1</b></x><x><a>2</a><b>v2</b></x><x><a>2</a><b>v3</b></x><y><a>1</a><b>v1</b></y><y><a>2</a><b>v1</b></y><y><a>1</a><b>v2</b></y><y><a>1</a><b>v3</b></y><y><a>2</a><b>v2</b></y></ex></data></rpc-reply>]]>]]>$'
 
 if [ $BE -eq 0 ]; then
     exit # BE
