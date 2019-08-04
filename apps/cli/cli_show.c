@@ -144,8 +144,8 @@ expand_dbvar(void   *h,
     }
     api_path_fmt = cv_string_get(cv);
     /* api_path_fmt = /interface/%s/address/%s
-       --> ^/interface/eth0/address/.*$
-       --> /interface/[name="eth0"]/address
+      api_path: --> /interface/eth0/address/.*
+      xpath:    --> /interface/[name="eth0"]/address
     */
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
 	goto done;

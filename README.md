@@ -77,8 +77,7 @@ Clixon interaction is best done posting issues, pull requests, or joining the
 Clixon provides a core system and can be used as-is using available
 Yang specifications.  However, an application very quickly needs to
 specialize functions.  Clixon is extended by writing
-plugins for cli and backend. Extensions for netconf and restconf
-are also available.
+plugins for cli, backend, netconf and restconf.
 
 Plugins are written in C and easiest is to look at
 [example](example/README.md) or consulting the [FAQ](doc/FAQ.md).
@@ -100,12 +99,12 @@ However, the following YANG syntax modules are not implemented (reference to RFC
 - action (7.15)
 - augment in a uses sub-clause (7.17) (module-level augment is implemented)
 - require-instance
-- instance-identifier type
+- instance-identifier type (9.13)
 - status (7.21.2)
 - YIN (13)
 - Yang extended Xpath functions: re-match(), deref)(), derived-from(), derived-from-or-self(), enum-value(), bit-is-set() (10.2-10.6)
 - Default values on leaf-lists are not supported (7.7.2)
-- instance-identifier type
+- Lists without keys (non-config lists may lack keys)
 
 ### Yang patterns
 Yang type patterns use regexps defined in [W3C XML XSD](http://www.w3.org/TR/2004/REC-xmlschema-2-20041028). XSD regexp:s are

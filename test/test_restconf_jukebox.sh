@@ -360,11 +360,11 @@ expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
 
 new 'B.3.4.  "insert" Parameter'
 JSON="{\"example-jukebox:song\":[{\"index\":1,\"id\":\"/example-jukebox:jukebox/library/artist[name='Foo Fighters']/album[name='Wasting Light']/song[name='Rope']\"}]}"
-expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=first -d "$JSON")" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=first -d "$JSON")" 0 "HTTP/1.1 201 Created" 'Location: http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One/song=1'
 
 new 'B.3.4.  "insert" Parameter first (RFC example says after)'
 JSON="{\"example-jukebox:song\":[{\"index\":0,\"id\":\"/example-jukebox:jukebox/library/artist[name='Foo Fighters']/album[name='Wasting Light']/song[name='Bridge Burning']\"}]}"
-expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=first -d "$JSON")" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=first -d "$JSON")" 0 "HTTP/1.1 201 Created" 'Location: http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One/song=0'
 
 new 'B.3.4.  "insert" Parameter check order'
 RES="<playlist xmlns=\"http://example.com/ns/example-jukebox\"><name>Foo-One</name><song><index>0</index><id>/example-jukebox:jukebox/library/artist\[name='Foo Fighters'\]/album\[name='Wasting Light'\]/song\[name='Bridge Burning'\]</id></song><song><index>1</index><id>/example-jukebox:jukebox/library/artist\[name='Foo Fighters'\]/album\[name='Wasting Light'\]/song\[name='Rope'\]</id></song></playlist>"
@@ -372,13 +372,11 @@ expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example-jukebox:j
 
 new 'B.3.5.  "point" Parameter (before for more interesting order: 0,2,1)'
 JSON="{\"example-jukebox:song\":[{\"index\":2,\"id\":\"/example-jukebox:jukebox/library/artist[name='Foo Fighters']/album[name='Wasting Light']/song[name='Bridge Burning']\"}]}"
-expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' -d "$JSON" http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=before\&point=%2Fexample-jukebox%3Ajukebox%2Fplaylist%3DFoo-One%2Fsong%3D1 )" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' -d "$JSON" http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=before\&point=%2Fexample-jukebox%3Ajukebox%2Fplaylist%3DFoo-One%2Fsong%3D1 )" 0 "HTTP/1.1 201 Created" 'Location: http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One/song=2'
 
 new 'B.3.5.  "point" check order (0,2,1)'
 RES="<playlist xmlns=\"http://example.com/ns/example-jukebox\"><name>Foo-One</name><song><index>0</index><id>/example-jukebox:jukebox/library/artist\[name='Foo Fighters'\]/album\[name='Wasting Light'\]/song\[name='Bridge Burning'\]</id></song><song><index>2</index><id>/example-jukebox:jukebox/library/artist\[name='Foo Fighters'\]/album\[name='Wasting Light'\]/song\[name='Bridge Burning'\]</id></song><song><index>1</index><id>/example-jukebox:jukebox/library/artist\[name='Foo Fighters'\]/album\[name='Wasting Light'\]/song\[name='Rope'\]</id></song></playlist>"
-expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$RES"
-
-#XXX 'Location: https://example.com/restconf/data/example-jukebox:jukebox/playlist=Foo-One/song=2'
+expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$RES" 
 
 new 'B.3.5.  "point" Parameter 3 after 2 (using PUT)'
 JSON="{\"example-jukebox:song\":[{\"index\":3,\"id\":\"/example-jukebox:jukebox/library/artist[name='Foo Fighters']/album[name='Wasting Light']/song[name='Something else']\"}]}"
@@ -392,23 +390,23 @@ new "restconf DELETE whole datastore"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
 
 new 'B.3.4.  "insert/point" leaf-list 3 (not in RFC)'
-expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data?insert=last -d '{"example-jukebox:extra":"3"}')" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data?insert=last -d '{"example-jukebox:extra":"3"}')" 0 "HTTP/1.1 201 Created" 'Location: http://localhost/restconf/data/example-jukebox:extra=3'
 
 new 'B.3.4.  "insert/point" leaf-list 2 first'
-expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data?insert=first -d '{"example-jukebox:extra":"2"}')" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data?insert=first -d '{"example-jukebox:extra":"2"}')" 0 "HTTP/1.1 201 Created" 'Location: http://localhost/restconf/data/example-jukebox:extra=2'
 
 new 'B.3.4.  "insert/point" leaf-list 1 last'
-expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data?insert=last -d '{"example-jukebox:extra":"1"}')" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data?insert=last -d '{"example-jukebox:extra":"1"}')" 0 "HTTP/1.1 201 Created" 'Location: http://localhost/restconf/data/example-jukebox:extra=1'
 
 #new 'B.3.4.  "insert/point" move leaf-list 1 last'
 #- restconf cannot move a leaf-list(list?) item
-#expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data?insert=last -d '{"example-jukebox:extra":"1"}')" 0 "HTTP/1.1 201 Created"
+#expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data?insert=last -d '{"example-jukebox:extra":"1"}')" 0 "HTTP/1.1 201 Created" 'Location: http://localhost/restconf/data/example-jukebox:extra=1'
 
 new 'B.3.5.  "insert/point" leaf-list check order (2,3,1)'
 expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example-jukebox:extra -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<extra xmlns="http://example.com/ns/example-jukebox">2</extra><extra xmlns="http://example.com/ns/example-jukebox">3</extra><extra xmlns="http://example.com/ns/example-jukebox">1</extra>'
 
 new 'B.3.5.  "point" Parameter leaf-list 4 before 3'
-expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' -d '{"example-jukebox:extra":"4"}' http://localhost/restconf/data?insert=before\&point=%2Fexample-jukebox%3Aextra%3D3 )" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -s -i -X POST -H 'Content-Type: application/yang-data+json' -d '{"example-jukebox:extra":"4"}' http://localhost/restconf/data?insert=before\&point=%2Fexample-jukebox%3Aextra%3D3 )" 0 "HTTP/1.1 201 Created" 'Location: http://localhost/restconf/data/example-jukebox:extra=4'
 
 new 'B.3.5.  "insert/point" leaf-list check order (2,4,3,1)'
 expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example-jukebox:extra -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<extra xmlns="http://example.com/ns/example-jukebox">2</extra><extra xmlns="http://example.com/ns/example-jukebox">4</extra><extra xmlns="http://example.com/ns/example-jukebox">3</extra><extra xmlns="http://example.com/ns/example-jukebox">1</extra>'

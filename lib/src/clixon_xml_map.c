@@ -2425,8 +2425,10 @@ api_path2xpath_cvv(cvec       *api_path,
     yang_stmt *y = NULL;
     yang_stmt *ymod = NULL;
     char      *val;
-    char      *v;
     cg_var    *cvi;
+    char     **valvec = NULL;
+    int        vi;
+    int        nvalvec;
 
     for (i=offset; i<cvec_len(api_path); i++){
         cv = cvec_i(api_path, i);
@@ -2457,20 +2459,22 @@ api_path2xpath_cvv(cvec       *api_path,
                 goto done;
 	    switch (yang_keyword_get(y)){
 	    case Y_LIST:
-		v = val;
-		while((v=index(v, ',')) != NULL){
-		    *v = '\0';
-		    v++;
+		/* Transform value "a,b,c" to "a" "b" "c" (nvalvec=3)
+		 * Note that vnr can be < length of cvk, due to empty or unset values
+		 */
+		if (valvec){ /* loop, valvec may have been used before */
+		    free(valvec);
+		    valvec = NULL;
 		}
+		if ((valvec = clicon_strsep(val, ",", &nvalvec)) == NULL)
+		    goto done;
 		cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
 		cvi = NULL;
 		/* Iterate over individual yang keys  */
 		cprintf(xpath, "/%s", name);
-		v = val;
-		while ((cvi = cvec_each(cvk, cvi)) != NULL){
-		    cprintf(xpath, "[%s='%s']", cv_string_get(cvi), v);
-		    v += strlen(v)+1;
-		}
+		vi = 0;
+		while ((cvi = cvec_each(cvk, cvi)) != NULL && vi<nvalvec)
+		    cprintf(xpath, "[%s='%s']", cv_string_get(cvi), valvec[vi++]);
 		break;
 	    case Y_LEAF_LIST: /* XXX: LOOP? */
 		cprintf(xpath, "/%s", name);
@@ -2502,6 +2506,8 @@ api_path2xpath_cvv(cvec       *api_path,
 	*namespace = yang_find_mynamespace(ymod);
     retval = 1; /* OK */
  done:
+    if (valvec)
+	free(valvec);
     if (prefix)
 	free(prefix);
     if (name)
@@ -2595,7 +2601,6 @@ api_path2xml_vec(char             **vec,
 		 yang_stmt        **ypathp)
 {
     int        retval = -1;
-    int        j;
     char      *nodeid;
     char      *name = NULL;
     char      *prefix = NULL;
@@ -2606,9 +2611,9 @@ api_path2xml_vec(char             **vec,
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
     char      *keyname;
-    char      *val2;
     char     **valvec = NULL;
-    int        nvalvec;
+    int        nvalvec = 0;
+    int        vi;
     cxobj     *x = NULL;
     yang_stmt *y = NULL;
     yang_stmt *ymod;
@@ -2669,7 +2674,7 @@ api_path2xml_vec(char             **vec,
 	break;
     case Y_LIST:
 	cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
-	if (valvec){
+	if (valvec){ /* loop, valvec may have been used before */
 	    free(valvec);
 	    valvec = NULL;
 	}
@@ -2680,6 +2685,9 @@ api_path2xml_vec(char             **vec,
 	    }
 	}
 	else{
+	    /* Transform restval "a,b,c" to "a" "b" "c" (nvalvec=3) 
+	     * Note that vnr can be < length of cvk, due to empty or unset values
+	     */
 	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
 		goto done;
 	    if ((nvalvec != cvec_len(cvk)) && strict){ 	    
@@ -2692,9 +2700,9 @@ api_path2xml_vec(char             **vec,
 	if ((x = xml_new(name, x0, y)) == NULL)
 	    goto done;
 	xml_type_set(x, CX_ELMNT);
-	j = 0;
+	vi = 0;
 	/* Create keys */
-	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+	while ((cvi = cvec_each(cvk, cvi)) != NULL){
 	    keyname = cv_string_get(cvi);
 	    if ((ykey = yang_find(y, Y_LEAF, keyname)) == NULL){
 		clicon_err(OE_XML, 0, "List statement \"%s\" has no key leaf \"%s\"", 
@@ -2705,11 +2713,12 @@ api_path2xml_vec(char             **vec,
 		goto done; 
 	    xml_type_set(xn, CX_ELMNT);
 	    if ((xb = xml_new("body", xn, NULL)) == NULL)
-		goto done; 
-	    xml_type_set(xb, CX_BODY);
-	    val2 = valvec?valvec[j++]:NULL;
-	    if (xml_value_set(xb, val2) <0)
 		goto done;
+	    xml_type_set(xb, CX_BODY);
+	    if (vi++ < nvalvec){
+		if (xml_value_set(xb, valvec[vi-1]) < 0)
+		    goto done;
+	    }
 	}
 	break;
     default: /* eg Y_CONTAINER, Y_LEAF */

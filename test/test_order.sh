@@ -324,17 +324,17 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></s
 
 # before and after and value attribute
 new "add one leaf-list entry 71 before b"
-XML="<rpc><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"before\" yang:value=\"y0[.='b']\">71</y0></config></edit-config></rpc>]]>]]>"
+XML="<rpc><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"before\" yang:value=\"b\">71</y0></config></edit-config></rpc>]]>]]>"
 expecteof "$clixon_netconf -qf $cfg" 0 "$XML" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "add one entry 42 after b"
-XML="<rpc><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"after\" yang:value=\"y0[.='b']\">42</y0></config></edit-config></rpc>]]>]]>"
+XML="<rpc><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"after\" yang:value=\"b\">42</y0></config></edit-config></rpc>]]>]]>"
 expecteof "$clixon_netconf -qf $cfg" 0 "$XML"  "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # XXX actually not right error message, should be as RFC7950 Sec 15.7
 new "add one entry 99 after Q (not found, error)"
-XML="<rpc><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"after\" yang:value=\"y0[.='Q']\">99</y0></config></edit-config></rpc>]]>]]>"
-RES="^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>bad-attribute: value, missing-instance: y0\[.='Q'\]</error-message></rpc-error></rpc-reply>]]>]]>$"
+XML="<rpc><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"after\" yang:value=\"Q\">99</y0></config></edit-config></rpc>]]>]]>"
+RES="^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>bad-attribute: value, missing-instance: Q</error-message></rpc-error></rpc-reply>]]>]]>$"
 expecteof "$clixon_netconf -qf $cfg" 0 "$XML" "$RES"
 
 new "check ordered-by-user: e,a,71,b,42,c,d"
@@ -384,7 +384,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></
 
 # XXX actually not right error message, should be as RFC7950 Sec 15.7
 new "add one entry key 99 after Q (not found, error)"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><y2 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"after\" yang:key=\"[k='Q']\"><k>99</k><a>bar</a></y2></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>bad-attribute: key, missing-instance: y2\[k='Q'\]</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><y2 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"after\" yang:key=\"Q\"><k>99</k><a>bar</a></y2></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>bad-attribute: key, missing-instance: Q</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "check ordered-by-user: e,a,71,b,42,c,d"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><y2 xmlns="urn:example:order"><k>e</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>a</k><a>foo</a></y2><y2 xmlns="urn:example:order"><k>71</k><a>fie</a></y2><y2 xmlns="urn:example:order"><k>b</k><a>bar</a></y2><y2 xmlns="urn:example:order"><k>42</k><a>fum</a></y2><y2 xmlns="urn:example:order"><k>c</k><a>foo</a></y2><y2 xmlns="urn:example:order"><k>d</k><a>fie</a></y2></data></rpc-reply>]]>]]>$'

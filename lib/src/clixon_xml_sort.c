@@ -487,6 +487,15 @@ xml_search(cxobj        *xp,
  * @param[in] key_val Key if LIST and ins is before/after, val if LEAF_LIST
  * @retval    i       Order where xn should be inserted into xp:s children
  * @retval   -1       Error
+ * LIST: RFC 7950 7.8.6:
+ * The value of the "key" attribute is the key predicates of the
+ *  full instance identifier (see Section 9.13) for the list entry.
+ * This means the value can be [x='a'] but the full instance-id should be prepended,
+ * such as /ex:system/ex:services[x='a']
+ * 
+ * LEAF-LIST: RFC7950 7.7.9 
+ *                       yang:insert="after"
+ *                       yang:value="3des-cbc">blowfish-cbc</cipher>)
  */
 
 static int
@@ -501,7 +510,6 @@ xml_insert_userorder(cxobj           *xp,
     int        i;
     cxobj     *xc;
     yang_stmt *yc;
-    char      *kludge = ""; /* Cant get instance-id generic of [.. and /.. case */
 
     switch (ins){
     case INS_FIRST:
@@ -534,7 +542,7 @@ xml_insert_userorder(cxobj           *xp,
 	else{
 	    switch (yang_keyword_get(yn)){
 	    case Y_LEAF_LIST:
-		if ((xc = xpath_first(xp, "%s", key_val)) == NULL)
+		if ((xc = xpath_first(xp, "%s[.='%s']", xml_name(xn),key_val)) == NULL)
 		    clicon_err(OE_YANG, 0, "bad-attribute: value, missing-instance: %s", key_val);				    
 		else {
 		    if ((i = xml_child_order(xp, xc)) < 0)
@@ -544,10 +552,8 @@ xml_insert_userorder(cxobj           *xp,
 		}
 		break;
 	    case Y_LIST:
-		if (strlen(key_val) && key_val[0] == '[')
-		    kludge = xml_name(xn);
-		if ((xc = xpath_first(xp, "%s%s", kludge, key_val)) == NULL)
-		    clicon_err(OE_YANG, 0, "bad-attribute: key, missing-instance: %s%s", xml_name(xn), key_val);				    
+		if ((xc = xpath_first(xp, "%s%s", xml_name(xn), key_val)) == NULL)
+		    clicon_err(OE_YANG, 0, "bad-attribute: key, missing-instance: %s", key_val);				    
 		else {
 		    if ((i = xml_child_order(xp, xc)) < 0)
 			clicon_err(OE_YANG, 0, "internal error xpath found but not in child list");

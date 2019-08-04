@@ -5,6 +5,7 @@
 ### Major New features
 * Restconf RFC 8040 increased feature compliance
   * RESTCONF "insert" and "point" query parameters supported
+    * Applies to ordered-by-user leaf and leaf-lists
   * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
     * `201 Created` for created resources
     * `204 No Content` for replaced resources.
@@ -22,6 +23,9 @@
   * The main example explains how to implement a Yang extension in a backend plugin.
 
 ### API changes on existing features (you may need to change your code)
+* Netconf edit-config "operation" attribute namespace check is enforced
+  * This is enforced: `<a xmlns="uri:example" nc:operation="merge" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+  * This was previously allowed: `<a xmlns="uri:example" operation="merge">
 * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
   * `201 Created` for created resources
   * `204 No Content` for replaced resources.
