@@ -144,13 +144,14 @@ expand_dbvar(void   *h,
     }
     api_path_fmt = cv_string_get(cv);
     /* api_path_fmt = /interface/%s/address/%s
-      api_path: --> /interface/eth0/address/.*
-      xpath:    --> /interface/[name="eth0"]/address
-    */
+     * api_path: -->  /interface/eth0/address/.*
+     * xpath:    -->  /interface/[name="eth0"]/address
+     */
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
 	goto done;
     if (api_path2xpath(api_path, yspec, &xpath, &namespace) < 0)
 	goto done;
+
     /* Get configuration */
     if (clicon_rpc_get_config(h, dbstr, xpath, namespace, &xt) < 0) /* XXX */
     	goto done;
@@ -215,6 +216,7 @@ expand_dbvar(void   *h,
 	    continue; /* duplicate, assume sorted */
 	/* RFC3986 decode */
 	cvec_add_string(commands, NULL, bodystr);
+	bodystr0 = bodystr;
     }
  ok:
     retval = 0;
