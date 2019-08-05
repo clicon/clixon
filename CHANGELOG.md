@@ -1,6 +1,20 @@
 # Clixon Changelog
 
-## 4.0.0 (Expected: 13 July 2019)
+## 4.0.1 (5 Aug 2019)
+
+This is a hotfix for a bug that appeared in 4.0.0 (worked in 3.10).
+
+### Corrected Bugs
+* Corrected CLI bug with lists of multiple keys (netconf/restconf works).
+  * Example: `yang list x { key "a b";...}`
+    CLI error example:
+    ```
+      set x a 1 b 1; #OK
+      set x a 1 b 2; #OK
+      set x a 1 b <anything> # Error
+    ```
+
+## 4.0.0 (13 July 2019)
 
 ### Summary
 
