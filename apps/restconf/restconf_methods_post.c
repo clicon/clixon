@@ -73,9 +73,8 @@
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
- * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
-
+ * @param[in]  media_in  Input media 
+ * @param[in]  media_out Output media
  * restconf POST is mapped to edit-config create. 
  * @see RFC8040 Sec 4.4.1
 
@@ -107,8 +106,8 @@ api_data_post(clicon_handle h,
 	      cvec         *qvec, 
 	      char         *data,
 	      int           pretty,
-	      int           use_xml,
-    	      int           parse_xml)
+	      restconf_media media_in,
+	      restconf_media media_out)
 {
     int        retval = -1;
     enum operation_type op = OP_CREATE;
@@ -158,7 +157,7 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -173,7 +172,8 @@ api_data_post(clicon_handle h,
     }
 #endif
     /* Parse input data as json or xml into xml */
-    if (parse_xml){
+    switch (media_in){
+    case YANG_DATA_XML:
 	if (xml_parse_string(data, NULL, &xdata0) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
@@ -181,12 +181,12 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
-    }
-    else {
+	break;
+    case YANG_DATA_JSON:	
 	/* Data here cannot cannot (always) be Yang populated since it is
 	 * loosely hanging without top symbols.
 	 * And if it is not yang populated, it cant be translated properly
@@ -203,7 +203,7 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -212,11 +212,12 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
-    }
+	break;
+    } /* switch media_in */
     /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
@@ -227,7 +228,7 @@ api_data_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -249,7 +250,7 @@ api_data_post(clicon_handle h,
 	    		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -270,7 +271,7 @@ api_data_post(clicon_handle h,
     nullspec = (xml_spec(xdata) == NULL);
     if (xml_apply0(xdata, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	goto done;
-    if (!parse_xml && nullspec){
+    if (media_in == YANG_DATA_JSON && nullspec){
 	/* json2xml decode may not have been done above in json_parse,
 	   need to be done here instead 
 	   UNLESS it is a root resource, then json-parse has already done it
@@ -278,7 +279,7 @@ api_data_post(clicon_handle h,
 	if ((ret = json2xml_decode(xdata, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    if (api_return_err(h, r, xerr, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -318,7 +319,7 @@ api_data_post(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -340,7 +341,7 @@ api_data_post(clicon_handle h,
 	/* log errors from discard, but ignore */
 	if ((xpath_first(xretdis, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0) /* Use original xe */
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0) /* Use original xe */
 	    goto done;
 	goto ok;
     }
@@ -400,8 +401,8 @@ api_data_post(clicon_handle h,
  * @param[in]  yrpc   Yang rpc spec
  * @param[in]  xrpc   XML pointer to rpc method
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
- * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
+ * @param[in]  media_in  Input media 
+ * @param[in]  media_out Output media
  * @retval     1      OK
  * @retval     0      Fail, Error message sent
  * @retval    -1      Fatal error, clicon_err called
@@ -422,8 +423,8 @@ api_operations_post_input(clicon_handle h,
 			  yang_stmt    *yrpc,
 			  cxobj        *xrpc,
 			  int           pretty,
-			  int           use_xml,
-			  int           parse_xml)
+			  restconf_media media_in,
+			  restconf_media media_out)
 {
     int        retval = -1;
     cxobj     *xdata = NULL;
@@ -440,7 +441,8 @@ api_operations_post_input(clicon_handle h,
 	goto done;
     }
     /* Parse input data as json or xml into xml */
-    if (parse_xml){
+    switch (media_in){
+    case YANG_DATA_XML:
 	if (xml_parse_string(data, yspec, &xdata) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
@@ -448,12 +450,12 @@ api_operations_post_input(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto fail;
 	}
-    }
-    else { /* JSON */
+	break;
+    case YANG_DATA_JSON:
 	if ((ret = json_parse_str(data, yspec, &xdata, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
@@ -461,7 +463,7 @@ api_operations_post_input(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -470,11 +472,12 @@ api_operations_post_input(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto fail;
 	}
-    }
+	break;
+    } /* switch media_in */
     xml_name_set(xdata, "data");
     /* Here xdata is: 
      * <data><input xmlns="urn:example:clixon">...</input></data>
@@ -504,7 +507,7 @@ api_operations_post_input(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto fail;
     }
@@ -539,7 +542,7 @@ api_operations_post_input(clicon_handle h,
  * @param[in]  yspec    Yang top-level specification 
  * @param[in]  youtput  Yang rpc output specification
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
+ * @param[in]  media_out Output media
  * @param[out] xoutputp Restconf JSON/XML output
  * @retval     1        OK
  * @retval     0        Fail, Error message sent
@@ -554,7 +557,7 @@ api_operations_post_output(clicon_handle h,
 			   yang_stmt    *youtput,
 			   char         *namespace,
 			   int           pretty,
-			   int           use_xml,
+			   restconf_media media_out,
 			   cxobj       **xoutputp)
     
 {
@@ -578,7 +581,7 @@ api_operations_post_output(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto fail;
     }
@@ -616,7 +619,7 @@ api_operations_post_output(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -673,8 +676,8 @@ api_operations_post_output(clicon_handle h,
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
- * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
+ * @param[in]  media_in  Input media media
+ * @param[in]  media_out Output media
  * See RFC 8040 Sec 3.6 / 4.4.2
  * @note We map post to edit-config create. 
  *      POST {+restconf}/operations/<operation>
@@ -705,8 +708,8 @@ api_operations_post(clicon_handle h,
 		    cvec         *qvec, 
 		    char         *data,
 		    int           pretty,
-		    int           use_xml,
-		    int           parse_xml)
+		    restconf_media media_in,
+		    restconf_media media_out)
 {
     int        retval = -1;
     int        i;
@@ -749,7 +752,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -768,7 +771,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -779,7 +782,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -808,7 +811,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -822,7 +825,7 @@ api_operations_post(clicon_handle h,
     clicon_debug(1, "%s : 4. Parse input data: %s", __FUNCTION__, data);
     if (data && strlen(data)){
 	if ((ret = api_operations_post_input(h, r, data, yspec, yrpc, xbot,
-					     pretty, use_xml, parse_xml)) < 0)
+					     pretty, media_in, media_out)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto ok;
@@ -849,7 +852,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto ok;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -879,7 +882,7 @@ api_operations_post(clicon_handle h,
 	    goto done;
 	/* Local error: return it and quit */
 	if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -888,7 +891,7 @@ api_operations_post(clicon_handle h,
 	if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	    goto done;
 	if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -907,24 +910,27 @@ api_operations_post(clicon_handle h,
 #endif
     youtput = yang_find(yrpc, Y_OUTPUT, NULL);
     if ((ret = api_operations_post_output(h, r, xret, yspec, youtput, namespace,
-					  pretty, use_xml, &xoutput)) < 0)
+					  pretty, media_out, &xoutput)) < 0)
 	goto done;
     if (ret == 0)
 	goto ok;
     /* xoutput should now look: <output xmlns="uri"><x>0</x></output> */
     FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
+
+    FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
     FCGX_FPrintF(r->out, "\r\n");
     cbuf_reset(cbret);
-    if (use_xml){
+    switch (media_out){
+    case YANG_DATA_XML:
 	if (clicon_xml2cbuf(cbret, xoutput, 0, pretty) < 0)
 	    goto done;
 	/* xoutput should now look: <output xmlns="uri"><x>0</x></output> */
-    }
-    else{
+	break;
+    case YANG_DATA_JSON:
 	if (xml2json_cbuf(cbret, xoutput, pretty) < 0)
 	    goto done;
 	/* xoutput should now look: {"example:output": {"x":0,"y":42}} */
+	break;
     }
     FCGX_FPrintF(r->out, "%s", cbuf_get(cbret));
     FCGX_FPrintF(r->out, "\r\n\r\n");

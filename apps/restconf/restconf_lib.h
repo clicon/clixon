@@ -42,25 +42,42 @@
 #define RESTCONF_API       "restconf"
 
 /*
+ * Types
+ */
+
+/*! RESTCONF media types 
+ * @see http_media_map
+ */
+enum restconf_media{
+    YANG_DATA_JSON,  /* "application/yang-data+json" (default for RESTCONF) */
+    YANG_DATA_XML   /* "application/yang-data+xml" */
+};
+typedef enum restconf_media restconf_media;
+
+/*
  * Prototypes (also in clixon_restconf.h)
  */
 int restconf_err2code(char *tag);
 const char *restconf_code2reason(int code);
 
-int badrequest(FCGX_Request *r);
-int unauthorized(FCGX_Request *r);
-int forbidden(FCGX_Request *r);
-int notfound(FCGX_Request *r);
-int notacceptable(FCGX_Request *r);
-int conflict(FCGX_Request *r);
-int internal_server_error(FCGX_Request *r);
-int notimplemented(FCGX_Request *r);
+const restconf_media restconf_media_str2int(char *media);
+const char *restconf_media_int2str(restconf_media media);
+
+int restconf_badrequest(FCGX_Request *r);
+int restconf_unauthorized(FCGX_Request *r);
+int restconf_forbidden(FCGX_Request *r);
+int restconf_notfound(FCGX_Request *r);
+int restconf_notacceptable(FCGX_Request *r);
+int restconf_conflict(FCGX_Request *r);
+int restconf_unsupported_media(FCGX_Request *r);
+int restconf_internal_server_error(FCGX_Request *r);
+int restconf_notimplemented(FCGX_Request *r);
 
 int restconf_test(FCGX_Request *r, int dbg);
 cbuf *readdata(FCGX_Request *r);
 int get_user_cookie(char *cookiestr, char  *attribute, char **val);
 int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
-		   int pretty, int use_xml, int code);
+		   int pretty, enum restconf_media media, int code);
 int http_location(FCGX_Request *r, cxobj *xobj);
 int restconf_terminate(clicon_handle h);
 int restconf_insert_attributes(cxobj *xdata, cvec *qvec);

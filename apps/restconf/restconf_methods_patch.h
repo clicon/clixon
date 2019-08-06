@@ -43,6 +43,7 @@
  */
 int api_data_patch(clicon_handle h, FCGX_Request *r, char *api_path, 
 		   cvec *pcvec, int pi, 
-		   cvec *qvec, char *data);
+		   cvec *qvec, char *data, int pretty,
+		   restconf_media media_in, restconf_media media_out);
 
 #endif /* _RESTCONF_METHODS_PATCH_H_ */

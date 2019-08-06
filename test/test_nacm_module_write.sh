@@ -164,7 +164,8 @@ nacm(){
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
     new "enable nacm"
-    expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
+    expectpart "$(curl -u andy:bar -sS -X PUT -H 'Content-Type: application/yang-data+json' -d '{"ietf-netconf-acm:enable-nacm":true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
+#    -H 'Content-Type: application/yang-data+json'
 }
 
 #--------------- enable nacm
@@ -179,7 +180,7 @@ nacm
 # replace all, then must include NACM rules as well
 MSG="<data>$RULES</data>"
 new "update root list permit"
-expecteq "$(curl -u andy:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data -d "$MSG")" 0 ''
+expectpart "$(curl -u andy:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data -d "$MSG")" 0 ''
 
 new "delete root list deny"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
@@ -238,13 +239,13 @@ expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/nacm-
 
 #----- default deny (clixon-example limit and guest have default access)
 new "default create list deny"
-expecteq "$(curl -u wilma:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val42"}]}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val42"}]}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "create list permit"
-expecteq "$(curl -u andy:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val42"}]}')" 0 ''
+expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val42"}]}')" 0 ''
 
 new "default update list deny"
-expecteq "$(curl -u wilma:bar -sS -X PUT http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val99"}]}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val99"}]}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "default delete list deny"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/clixon-example:translate=key42)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'

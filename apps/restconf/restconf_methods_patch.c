@@ -125,7 +125,7 @@ Mapping netconf error-tag -> status code
 #include "restconf_methods_patch.h"
 
 
-/*! Generic REST PATCH  method 
+/*! Generic REST PATCH method for plain patch 
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
@@ -133,19 +133,117 @@ Mapping netconf error-tag -> status code
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out Output media
  * Netconf:  <edit-config> (nc:operation="merge")      
- * See RFC8040 Sec 4.6
+ * See RFC8040 Sec 4.6.1
  */
 int
 api_data_patch(clicon_handle h,
 	       FCGX_Request *r, 
-	       char         *api_path, 
+	       char         *api_path0, 
 	       cvec         *pcvec, 
 	       int           pi,
 	       cvec         *qvec, 
-	       char         *data)
+	       char         *data,
+	       int           pretty,
+	       restconf_media media_in,
+	       restconf_media media_out)
 {
-    notimplemented(r);
-    return 0;
+    int        retval = -1;
+    yang_stmt *yspec;
+    //    yang_stmt *ymodapi = NULL; /* yang module of api-path (if any) */
+    cxobj     *xdata0 = NULL; /* Original -d data struct (including top symbol) */
+    int        i;
+    char      *api_path;
+    cxobj     *xtop = NULL; /* top of api-path */
+    cxobj     *xbot = NULL; /* bottom of api-path */
+    yang_stmt *ybot = NULL; /* yang of xbot */
+    cxobj     *xerr = NULL; /* malloced must be freed */
+    cxobj     *xe;
+    int        ret;
+    
+    clicon_debug(1, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
+    clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    api_path=api_path0;
+    for (i=0; i<pi; i++)
+	api_path = index(api_path+1, '/');
+    /* Create config top-of-tree */
+    if ((xtop = xml_new("config", NULL, NULL)) == NULL)
+	goto done;
+    /* Translate api_path to xml in the form of xtop/xbot */
+    xbot = xtop;
+    if (api_path){ /* If URI, otherwise top data/config object */
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot)) < 0)
+	    goto done;
+	//	if (ybot)
+	//	    ymodapi = ys_module(ybot);
+	if (ret == 0){ /* validation failed */
+	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		goto done;
+	    clicon_err_reset();
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+    /* Parse input data as json or xml into xml */
+    switch (media_in){
+    case YANG_DATA_XML:
+	if (xml_parse_string(data, yspec, &xdata0) < 0){
+	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+	break;
+    case YANG_DATA_JSON:
+	/* Data here cannot cannot be Yang populated since it is loosely
+	 * hanging without top symbols.
+	 * And if it is not yang populated, it cant be translated properly
+	 * from JSON to XML.
+	 * Therefore, yang population is done later after addsub below
+	 */
+	if ((ret = json_parse_str(data, yspec, &xdata0, &xerr)) < 0){
+	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+		goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+	if (ret == 0){
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+    } /* switch media_in */
+    restconf_notimplemented(r);
+ ok:
+    retval = 0;
+ done:
+    if (xtop)
+	xml_free(xtop);
+    return retval;
 }
 

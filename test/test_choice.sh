@@ -170,17 +170,17 @@ new "restconf DELETE whole datastore"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
 
 new "restconf set protocol tcp+udp fail"
-expecteq "$(curl -s -X PUT http://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": [null], "udp": [null]}}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"udp"},"error-severity":"error","error-message":"Element in choice statement already exists"}}}'
+expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": [null], "udp": [null]}}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"udp"},"error-severity":"error","error-message":"Element in choice statement already exists"}}}'
 
 new "restconf set protocol tcp"
-expecteq "$(curl -s -X PUT http://localhost/restconf/data/system:system/protocol -d {\"system:protocol\":{\"tcp\":[null]}})" 0 ""
+expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/system:system/protocol -d {\"system:protocol\":{\"tcp\":[null]}})" 0 ""
 
 new "restconf get protocol tcp"
 expecteq "$(curl -s -X GET http://localhost/restconf/data/system:system)" 0 '{"system:system":{"protocol":{"tcp":[null]}}}
 '
 
 new "restconf set protocol tcp+udp fail"
-expecteq "$(curl -s -X PUT http://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": [null], "udp": [null]}}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"udp"},"error-severity":"error","error-message":"Element in choice statement already exists"}}}'
+expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": [null], "udp": [null]}}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"udp"},"error-severity":"error","error-message":"Element in choice statement already exists"}}}'
 
 new "cli set protocol udp"
 expectfn "$clixon_cli -1 -f $cfg -l o set system protocol udp" 0 "^$"

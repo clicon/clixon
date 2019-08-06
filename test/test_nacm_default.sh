@@ -130,7 +130,7 @@ EOF
 	;;
     esac
     new "edit new 99"
-    expecteq "$(curl -u guest:bar -sS -X PUT -d '{"nacm-example:x": 99}' http://localhost/restconf/data/nacm-example:x)" 0 "$ret"
+    expecteq "$(curl -u guest:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 99}' http://localhost/restconf/data/nacm-example:x)" 0 "$ret"
 
     #----------- Then second get
     case "$ret3" in

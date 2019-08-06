@@ -224,8 +224,8 @@ match_list_keys(yang_stmt *y,
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML for output data
- * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
+ * @param[in]  media_in  Input media media
+ * @param[in]  media_out Output media
 
  * @note restconf PUT is mapped to edit-config replace. 
  * @see RFC8040 Sec 4.5  PUT
@@ -260,8 +260,8 @@ api_data_put(clicon_handle h,
 	     cvec         *qvec, 
 	     char         *data,
 	     int           pretty,
-	     int           use_xml,
-	     int           parse_xml)
+	     restconf_media media_in,
+	     restconf_media media_out)
 {
     int        retval = -1;
     enum operation_type op;
@@ -302,13 +302,13 @@ api_data_put(clicon_handle h,
     /* Create config top-of-tree */
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
-    /* Translate api_path to xtop/xbot */
+    /* Translate api_path to xml in the form of xtop/xbot */
     xbot = xtop;
-    if (api_path){
+    if (api_path){ /* If URI, otherwise top data/config object */
 	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot)) < 0)
 	    goto done;
 	if (ybot)
-	    ymodapi=ys_module(ybot);
+	    ymodapi = ys_module(ybot);
 	if (ret == 0){ /* validation failed */
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
@@ -317,14 +317,15 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
     }
 
     /* Parse input data as json or xml into xml */
-    if (parse_xml){
+    switch (media_in){
+    case YANG_DATA_XML:
 	if (xml_parse_string(data, yspec, &xdata0) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
@@ -332,12 +333,12 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
-    }
-    else{
+	break;
+    case YANG_DATA_JSON:
 	/* Data here cannot cannot be Yang populated since it is loosely
 	 * hanging without top symbols.
 	 * And if it is not yang populated, it cant be translated properly
@@ -351,7 +352,7 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -360,11 +361,11 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
-    }
+    } /* switch media_in */
 
     /* The message-body MUST contain exactly one instance of the
      * expected data resource. 
@@ -376,7 +377,7 @@ api_data_put(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -404,7 +405,7 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -445,7 +446,7 @@ api_data_put(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -470,7 +471,7 @@ api_data_put(clicon_handle h,
 		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		    goto done;
 		}
-		if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+		if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		    goto done;
 		goto ok;
 	    }
@@ -494,7 +495,7 @@ api_data_put(clicon_handle h,
 			    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 			    goto done;
 			}
-			if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+			if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 			    goto done;
 			goto ok;
 		    }
@@ -509,7 +510,7 @@ api_data_put(clicon_handle h,
 	/* xbot is already populated, resolve yang for added xdata too */
 	if (xml_apply0(xdata, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
-	if (!parse_xml && nullspec){
+	if (media_in == YANG_DATA_JSON && nullspec){
 	    /* json2xml decode could not be done above in json_parse,
 	     * need to be done here instead 
 	     * UNLESS it is root resource, then json-parse has already done it
@@ -517,7 +518,7 @@ api_data_put(clicon_handle h,
 	    if ((ret = json2xml_decode(xdata, &xerr)) < 0)
 		goto done;
 	    if (ret == 0){
-		if (api_return_err(h, r, xerr, pretty, use_xml, 0) < 0)
+		if (api_return_err(h, r, xerr, pretty, media_out, 0) < 0)
 		    goto done;
 		goto ok;
 	    }
@@ -561,7 +562,7 @@ api_data_put(clicon_handle h,
 	 */
 	if (xpath_first(xe, ".[error-tag=\"data-exists\"]") == NULL ||
 	    op == OP_REPLACE){
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;	    
 	    goto ok;
 	}
@@ -598,7 +599,7 @@ api_data_put(clicon_handle h,
 	/* log errors from discard, but ignore */
 	if ((xpath_first(xretdis, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -656,14 +657,13 @@ api_data_put(clicon_handle h,
    return retval;
 } /* api_data_put */
 
-
 /*! Generic REST DELETE method translated to edit-config
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
  * @param[in]  pi     Offset, where path starts
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ * @param[in]  media_out Output media
  * See RFC 8040 Sec 4.7
  * Example:
  *  curl -X DELETE http://127.0.0.1/restconf/data/interfaces/interface=eth0
@@ -675,7 +675,7 @@ api_data_delete(clicon_handle h,
 		char         *api_path,
 		int           pi,
 		int           pretty,
-		int           use_xml)
+		restconf_media media_out)
 {
     int        retval = -1;
     int        i;
@@ -716,7 +716,7 @@ api_data_delete(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -744,7 +744,7 @@ api_data_delete(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -766,7 +766,7 @@ api_data_delete(clicon_handle h,
 	/* log errors from discard, but ignore */
 	if ((xpath_first(xretdis, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }

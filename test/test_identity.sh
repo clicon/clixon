@@ -267,7 +267,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<
 # 2. set identity in other module with restconf , read it with restconf and netconf
 # 3. set identity in other module with netconf, read it with restconf and netconf
 new "restconf add own identity"
-expectpart "$(curl -s -i -X PUT http://localhost/restconf/data/example:crypto  -d '{"example:crypto":"example:aes"}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl -s -i -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/example:crypto  -d '{"example:crypto":"example:aes"}')" 0 'HTTP/1.1 201 Created'
 
 new "restconf get own identity"
 expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"aes"}'
@@ -280,10 +280,10 @@ expectpart "$(curl -s -i -X DELETE  http://localhost/restconf/data/example:crypt
 
 # 2. set identity in other module with restconf , read it with restconf and netconf
 new "restconf add POST instead of PUT (should fail)"
-expectpart "$(curl -s -i -X POST http://localhost/restconf/data/example:crypto -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"crypto"},"error-severity":"error","error-message":"Leaf contains sub-element"}}}'
+expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/example:crypto -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"crypto"},"error-severity":"error","error-message":"Leaf contains sub-element"}}}'
 
 new "restconf add other (des) identity using POST"
-expectpart "$(curl -s -i -X POST http://localhost/restconf/data  -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 201 Created' 'Location: http://localhost/restconf/data/example:crypto'
+expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data  -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 201 Created' 'Location: http://localhost/restconf/data/example:crypto'
 
 new "restconf get other identity"
 expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"example-des:des3"}'

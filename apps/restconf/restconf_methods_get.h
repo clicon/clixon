@@ -34,7 +34,6 @@
  * Restconf method implementation for operations get and data get and head
  */
 
-
 #ifndef _RESTCONF_METHODS_GET_H_
 #define _RESTCONF_METHODS_GET_H_
 
@@ -42,12 +41,12 @@
  * Prototypes
  */
 int api_data_head(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
-		  cvec *qvec, int pretty, int use_xml);
+		  cvec *qvec, int pretty, restconf_media media_out);
 int api_data_get(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
-		 cvec *qvec, int pretty, int use_xml);
+		 cvec *qvec, int pretty, restconf_media media_out);
 int api_operations_get(clicon_handle h, FCGX_Request *r, 
 		       char *path,
 		       cvec *pcvec, int pi, cvec *qvec, char *data,
-		       int pretty, int use_xml);
+		       int pretty, restconf_media media_out);
 
 #endif /* _RESTCONF_METHODS_GET_H_ */

@@ -102,14 +102,14 @@ new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "restconf set x in example1"
-expecteq "$(curl -s -X POST -d '{"example1:x":42}' http://localhost/restconf/data)" 0 ''
+expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"example1:x":42}' http://localhost/restconf/data)" 0 ''
 
 new "restconf get config example1"
 expecteq "$(curl -s -X GET http://localhost/restconf/data/example1:x)" 0 '{"example1:x":42}
 '
 
 new "restconf set x in example2"
-expecteq "$(curl -s -X POST -d '{"example2:x":{"y":99}}' http://localhost/restconf/data)" 0 ''
+expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"example2:x":{"y":99}}' http://localhost/restconf/data)" 0 ''
 
 # XXX GET ../example1:x is translated to select=/x which gets both example1&2
 #new "restconf get config example1"

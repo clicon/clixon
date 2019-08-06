@@ -231,7 +231,7 @@ restconf_stream(clicon_handle h,
 		char         *name,
 		cvec         *qvec, 
 		int           pretty,
-		int           use_xml,
+		restconf_media media_out,
 		int          *sp)
 {
     int     retval = -1;
@@ -269,7 +269,7 @@ restconf_stream(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, &s) < 0)
 	goto done;
     if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -355,7 +355,7 @@ api_stream(clicon_handle h,
     char  *data;
     int    authenticated = 0;
     int    pretty;
-    int    use_xml = 1; /* default */
+    restconf_media media_out = YANG_DATA_XML; /* XXX default */
     cbuf  *cbret = NULL;
     cxobj *xret = NULL;
     cxobj *xerr;
@@ -374,20 +374,20 @@ api_stream(clicon_handle h,
 	goto done;
     /* Sanity check of path. Should be /stream/<name> */
     if (pn != 3){
-	notfound(r);
+	restconf_notfound(r);
 	goto ok;
     }
     if (strlen(pvec[0]) != 0){
-	retval = notfound(r);
+	retval = restconf_notfound(r);
 	goto done;
     }
     if (strcmp(pvec[1], streampath)){
-	retval = notfound(r);
+	retval = restconf_notfound(r);
 	goto done;
     }
 
     if ((method = pvec[2]) == NULL){
-	retval = notfound(r);
+	retval = restconf_notfound(r);
 	goto done;
     }
     clicon_debug(1, "%s: method=%s", __FUNCTION__, method);
@@ -418,14 +418,14 @@ api_stream(clicon_handle h,
 	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
 	    goto done;
 	if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	    if (api_return_err(h, r, xerr, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
 	goto ok;
     }
     clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
-    if (restconf_stream(h, r, method, qvec, pretty, use_xml, &s) < 0)
+    if (restconf_stream(h, r, method, qvec, pretty, media_out, &s) < 0)
 	goto done;
     if (s != -1){
 #ifdef STREAM_FORK

@@ -1,7 +1,7 @@
 # README for Clixon developers
 
   * [Code documentation](#documentation)
-  * [How to work in git (branching)](#branching)
+  * [How to work in git (how-to-work-in-git)](#how-to-work-in-git)
   * [How the meta-configure stuff works](#meta-configure)
   * [How to debug](#debug)
   * [New release](#new-release)
@@ -28,12 +28,15 @@ How to document the code
  */
 ```
 
-## Branching
-How to work in git (branching)
+## How to work in git
+
+Clixon uses semantic versioning (https://semver.org).
 
 Try to keep a single master branch always working. Currently testing is made using [Travis CI](https://travis-ci.org/clicon/clixon).
 
-However, releases are made periodically (ca every 3 months) which is more tested.
+However, releases are made periodically (ca every 1 month) which is more tested.
+
+A release branch can be made, eg release-4.0 where 4.0.0, 4.0.1 are tagged
 
 ## How the meta-configure stuff works
 ```

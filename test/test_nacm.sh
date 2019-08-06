@@ -136,7 +136,7 @@ expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-exam
 
 # explicitly disable nacm (regression on netgate bug)
 new "disable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": false}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
+expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": false}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
 
 new "auth set authentication config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -157,7 +157,7 @@ expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-exam
 #----------------Enable NACM
 
 new "enable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
+expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
 
 new "admin get nacm"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"nacm-example:x":0}
@@ -171,13 +171,13 @@ new "guest get nacm"
 expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "admin edit nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"nacm-example:x":1}' http://localhost/restconf/data/nacm-example:x)" 0 ""
+expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x":1}' http://localhost/restconf/data/nacm-example:x)" 0 ""
 
 new "limited edit nacm"
-expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"nacm-example:x": 2}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 2}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "guest edit nacm"
-expecteq "$(curl -u guest:bar -sS -X PUT -d '{"nacm-example:x": 3}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
+expecteq "$(curl -u guest:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 3}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "Kill restconf daemon"
 stop_restconf 

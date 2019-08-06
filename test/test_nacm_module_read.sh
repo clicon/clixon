@@ -153,7 +153,7 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
+expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
 
 #--------------- nacm enabled
 
@@ -233,21 +233,21 @@ expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data)" 0 '{"i
 #------- RPC operation
 
 new "admin rpc ok"
-expecteq "$(curl -u andy:bar -s -X POST  -d '{"clixon-example:input":{"x":"78"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"clixon-example:output":{"x":"78","y":"42"}}
+expecteq "$(curl -u andy:bar -s -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"78"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"clixon-example:output":{"x":"78","y":"42"}}
 '
 
 new "admin rpc netconf ok"
 expecteof "$clixon_netconf -U andy -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' 0 '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">0</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>$'
 
 new "limit rpc ok"
-expecteq "$(curl -u wilma:bar -s -X POST http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":42}}' )" 0 '{"clixon-example:output":{"x":"42","y":"42"}}
+expecteq "$(curl -u wilma:bar -s -X POST http://localhost/restconf/operations/clixon-example:example -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":42}}' )" 0 '{"clixon-example:output":{"x":"42","y":"42"}}
 '
 
 new "limit rpc netconf ok"
 expecteof "$clixon_netconf -U wilma -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' 0 '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">0</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>$'
 
 new "guest rpc fail"
-expecteq "$(curl -u guest:bar -s -X POST http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":42}}' )" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
+expecteq "$(curl -u guest:bar -s -X POST http://localhost/restconf/operations/clixon-example:example -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":42}}' )" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "guest rpc netconf fail"
 expecteof "$clixon_netconf -U guest -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' 0 '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$'
@@ -255,7 +255,7 @@ expecteof "$clixon_netconf -U guest -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml
 #------------------ Set read-default permit
 
 new "admin set read-default permit"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:read-default":"permit"}' http://localhost/restconf/data/ietf-netconf-acm:nacm/read-default)" 0 ""
+expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:read-default":"permit"}' http://localhost/restconf/data/ietf-netconf-acm:nacm/read-default)" 0 ""
 
 new "limit read ok"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" 0 '{"clixon-example:translate":[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}]}

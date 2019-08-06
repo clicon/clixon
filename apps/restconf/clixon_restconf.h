@@ -39,6 +39,15 @@
 #define _CLIXON_RESTCONF_H_
 
 /*
+ * Types (also in restconf_lib.h)
+ */
+enum restconf_media{
+    YANG_DATA_JSON,  /* "application/yang-data+json" (default for RESTCONF) */
+    YANG_DATA_XML   /* "application/yang-data+xml" */
+};
+typedef enum restconf_media restconf_media;
+
+/*
  * Prototypes (also in restconf_lib.h)
  */
 int restconf_err2code(char *tag);
@@ -55,7 +64,7 @@ int restconf_test(FCGX_Request *r, int dbg);
 cbuf *readdata(FCGX_Request *r);
 int get_user_cookie(char *cookiestr, char  *attribute, char **val);
 int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
-		   int pretty, int use_xml, int code);
+		   int pretty, restconf_media media, int code);
 
 
 #endif /* _CLIXON_RESTCONF_H_ */

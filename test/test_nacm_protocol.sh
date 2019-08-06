@@ -162,7 +162,7 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
+expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
 
 #--------------- nacm enabled
 
@@ -205,14 +205,14 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
+expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 ""
 
 # Rule 3: permit-edit-config
 new "permit-edit-config: limited ok restconf"
-expecteq "$(curl -u wilma:bar -sS -X PUT -d '{"nacm-example:x":2}' http://localhost/restconf/data/nacm-example:x)" 0 ''
+expecteq "$(curl -u wilma:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x":2}' http://localhost/restconf/data/nacm-example:x)" 0 ''
 
 new "permit-edit-config: guest fail restconf"
-expecteq "$(curl -u guest:bar -sS -X PUT -d '{"nacm-example:x":2}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expecteq "$(curl -u guest:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x":2}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "Kill restconf daemon"
 stop_restconf 

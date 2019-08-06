@@ -6,6 +6,12 @@
 # instance that does not exist, then an error response containing a "404 Not
 # Found" status-line MUST be returned by the server.  The error-tag
 # value "invalid-value" is used in this case.
+# RFC 7231:
+# Response messages with an error status code
+# usually contain a payload that represents the error condition, such
+# that it describes the error state and what next steps are suggested
+# for resolving it.
+
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

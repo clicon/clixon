@@ -321,7 +321,7 @@ ys_prune(yang_stmt *yp,
     memmove(&yp->ys_stmt[i],
 	    &yp->ys_stmt[i+1],
 	    size);
-    yp->ys_stmt[yp->ys_len--] = NULL;;
+    yp->ys_stmt[yp->ys_len--] = NULL;
  done:
     return yc;
 }

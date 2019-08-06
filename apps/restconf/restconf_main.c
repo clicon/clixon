@@ -101,8 +101,8 @@
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  dvec   Stream input daat
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML
- * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
+ * @param[in]  media_in  Input media
+ * @param[in]  media_out Output media
  */
 static int
 api_data(clicon_handle h,
@@ -113,8 +113,8 @@ api_data(clicon_handle h,
 	 cvec         *qvec, 
 	 char         *data,
 	 int           pretty,
-	 int           use_xml,
-	 int           parse_xml)
+	 restconf_media media_in,
+	 restconf_media media_out)
 {
     int     retval = -1;
     char   *request_method;
@@ -125,19 +125,19 @@ api_data(clicon_handle h,
     if (strcmp(request_method, "OPTIONS")==0)
 	retval = api_data_options(h, r);
     else if (strcmp(request_method, "HEAD")==0)
-	retval = api_data_head(h, r, pcvec, pi, qvec, pretty, use_xml);
+	retval = api_data_head(h, r, pcvec, pi, qvec, pretty, media_out);
     else if (strcmp(request_method, "GET")==0)
-	retval = api_data_get(h, r, pcvec, pi, qvec, pretty, use_xml);
+	retval = api_data_get(h, r, pcvec, pi, qvec, pretty, media_out);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data, pretty, use_xml, parse_xml);
+	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data, pretty, media_in, media_out);
     else if (strcmp(request_method, "PUT")==0)
-	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, pretty, use_xml, parse_xml);
+	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, pretty, media_in, media_out);
     else if (strcmp(request_method, "PATCH")==0)
-	retval = api_data_patch(h, r, api_path, pcvec, pi, qvec, data);
+	retval = api_data_patch(h, r, api_path, pcvec, pi, qvec, data, pretty, media_in, media_out);
     else if (strcmp(request_method, "DELETE")==0)
-	retval = api_data_delete(h, r, api_path, pi, pretty, use_xml);
+	retval = api_data_delete(h, r, api_path, pi, pretty, media_out);
     else
-	retval = notfound(r);
+	retval = restconf_notfound(r);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
@@ -150,7 +150,8 @@ api_data(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * @param[in]  parse_xml Set to 0 for JSON and 1 for XML for input data
+ * @param[in]  media_in  Input media media
+ * @param[in]  media_out Output media
  */
 static int
 api_operations(clicon_handle h,
@@ -161,8 +162,8 @@ api_operations(clicon_handle h,
 	       cvec         *qvec, 
 	       char         *data,
 	       int           pretty,
-	       int           use_xml,
-	       int           parse_xml)
+	       restconf_media media_in,
+	       restconf_media media_out)
 {
     int     retval = -1;
     char   *request_method;
@@ -171,12 +172,12 @@ api_operations(clicon_handle h,
     request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
     if (strcmp(request_method, "GET")==0)
-	retval = api_operations_get(h, r, path, pcvec, pi, qvec, data, pretty, use_xml);
+	retval = api_operations_get(h, r, path, pcvec, pi, qvec, data, pretty, media_out);
     else if (strcmp(request_method, "POST")==0)
 	retval = api_operations_post(h, r, path, pcvec, pi, qvec, data,
-				     pretty, use_xml, parse_xml);
+				     pretty, media_in, media_out);
     else
-	retval = notfound(r);
+	retval = restconf_notfound(r);
     return retval;
 }
 
@@ -211,15 +212,15 @@ api_well_known(clicon_handle h,
  * See RFC8040 3.3
  */
 static int
-api_root(clicon_handle h,
-	 FCGX_Request *r)
+api_root(clicon_handle  h,
+	 FCGX_Request  *r,
+	 int            pretty,
+	 restconf_media media_out)
+
 {
     int        retval = -1;
-    char      *media_accept;
-    int        use_xml = 0; /* By default use JSON */
     cxobj     *xt = NULL;
     cbuf      *cb = NULL;
-    int        pretty;
     yang_stmt *yspec;
     
     clicon_debug(1, "%s", __FUNCTION__);
@@ -227,14 +228,10 @@ api_root(clicon_handle h,
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
-    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
-    if (strcmp(media_accept, "application/yang-data+xml")==0)
-	use_xml++;
-    clicon_debug(1, "%s use-xml:%d media-accept:%s", __FUNCTION__, use_xml, media_accept);
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
-    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
+
+    FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
     FCGX_FPrintF(r->out, "\r\n");
 
     if (xml_parse_string("<restconf xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>", NULL, &xt) < 0)
@@ -247,13 +244,16 @@ api_root(clicon_handle h,
     }
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
-    if (use_xml){
+    switch (media_out){
+    case YANG_DATA_XML:
 	if (clicon_xml2cbuf(cb, xt, 0, pretty) < 0)
 	    goto done;
-    }
-    else
+	break;
+    case YANG_DATA_JSON:
 	if (xml2json_cbuf(cb, xt, pretty) < 0)
 	    goto done;
+	break;
+    }
     FCGX_FPrintF(r->out, "%s", cb?cbuf_get(cb):"");
     FCGX_FPrintF(r->out, "\r\n\r\n");
     retval = 0;
@@ -270,24 +270,20 @@ api_root(clicon_handle h,
  */
 static int
 api_yang_library_version(clicon_handle h,
-			 FCGX_Request *r)
+			 FCGX_Request *r,
+			 int           pretty,
+			 restconf_media media_out)
+    
 {
     int    retval = -1;
-    char  *media_accept;
-    int    use_xml = 0; /* By default use JSON */
     cxobj *xt = NULL;
     cbuf  *cb = NULL;
-    int    pretty;
     char  *ietf_yang_library_revision = "2016-06-21"; /* XXX */
 
     clicon_debug(1, "%s", __FUNCTION__);
-    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
-    if (strcmp(media_accept, "application/yang-data+xml")==0)
-	use_xml++;
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
-    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
+    FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
     FCGX_FPrintF(r->out, "\r\n");
     if (xml_parse_va(&xt, NULL, "<yang-library-version>%s</yang-library-version>", ietf_yang_library_revision) < 0)
 	goto done;
@@ -296,13 +292,15 @@ api_yang_library_version(clicon_handle h,
     if ((cb = cbuf_new()) == NULL){
 	goto done;
     }
-    if (use_xml){
+    switch (media_out){
+    case YANG_DATA_XML:
 	if (clicon_xml2cbuf(cb, xt, 0, pretty) < 0)
 	    goto done;
-    }
-    else{
+	break;
+    case YANG_DATA_JSON:
 	if (xml2json_cbuf(cb, xt, pretty) < 0)
 	    goto done;
+	break;
     }
     clicon_debug(1, "%s cb%s", __FUNCTION__, cbuf_get(cb));
     FCGX_FPrintF(r->out, "%s\n", cb?cbuf_get(cb):"");
@@ -335,11 +333,10 @@ api_restconf(clicon_handle h,
     cbuf  *cb = NULL;
     char  *data;
     int    authenticated = 0;
-    char  *media_accept;
-    char  *media_content_type;
+    char  *media_str = NULL;
+    restconf_media media_in = YANG_DATA_JSON; /* XXX defaults should be set in methods, here is too generic */
+    restconf_media media_out = YANG_DATA_JSON;
     int    pretty;
-    int    parse_xml = 0; /* By default expect and parse JSON */
-    int    use_xml = 0;   /* By default use JSON */
     cbuf  *cbret = NULL;
     cxobj *xret = NULL;
     cxobj *xerr;
@@ -348,37 +345,61 @@ api_restconf(clicon_handle h,
     path = restconf_uripath(r);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    /* get xml/json in put and output */
-    media_accept = FCGX_GetParam("HTTP_ACCEPT", r->envp);
-    if (media_accept && strcmp(media_accept, "application/yang-data+xml")==0)
-	use_xml++;
-    media_content_type = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp);
-    if (media_content_type &&
-	strcmp(media_content_type, "application/yang-data+xml")==0)
-	parse_xml++;
+    /* Get media for input (Content-Type)
+     * This is for methods that have input, such as PUT/POST, etc
+     */
+    if ((media_str = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp)) == NULL){
+	retval = restconf_unsupported_media(r);
+	goto done;
+    }
+    else if ((media_in = restconf_media_str2int(media_str)) == -1){
+	clicon_debug(1, "%s Content_Type: %s (unsupported)", __FUNCTION__, media_str);
+	retval = restconf_unsupported_media(r);
+	goto done;
+    }
+    clicon_debug(1, "%s CONTENT_TYPE: %s %s", __FUNCTION__, media_str, restconf_media_int2str(media_in));
+    /* Get media for output (proactive negotiation) RFC7231 by using
+     * Accept:. This is for methods that have output, such as GET, 
+     * operation POST, etc
+     * If accept is * default is yang-json
+     */
+    if ((media_str = FCGX_GetParam("HTTP_ACCEPT", r->envp)) == NULL){
+	// retval = restconf_unsupported_media(r);
+	// goto done;
+    }
+    else    if ((media_out = restconf_media_str2int(media_str)) == -1){
+	if (strcmp(media_str, "*/*") == 0) /* catch-all */
+	    media_out = YANG_DATA_JSON;
+	else{
+	    retval = restconf_unsupported_media(r);
+	    goto done;
+	}
+    }
+    clicon_debug(1, "%s ACCEPT: %s %s", __FUNCTION__, media_str, restconf_media_int2str(media_out));
+
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
     /* Sanity check of path. Should be /restconf/ */
     if (pn < 2){
-	notfound(r);
+	restconf_notfound(r);
 	goto ok;
     }
     if (strlen(pvec[0]) != 0){
-	retval = notfound(r);
+	retval = restconf_notfound(r);
 	goto done;
     }
     if (strcmp(pvec[1], RESTCONF_API)){
-	retval = notfound(r);
+	retval = restconf_notfound(r);
 	goto done;
     }
     restconf_test(r, 1);
 
     if (pn == 2){
-	retval = api_root(h, r);
+	retval = api_root(h, r, pretty, media_out);
 	goto done;
     }
     if ((method = pvec[2]) == NULL){
-	retval = notfound(r);
+	retval = restconf_notfound(r);
 	goto done;
     }
     clicon_debug(1, "%s: method=%s", __FUNCTION__, method);
@@ -410,7 +431,7 @@ api_restconf(clicon_handle h,
 	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
 	    goto done;
 	if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
-	    if (api_return_err(h, r, xerr, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -418,23 +439,23 @@ api_restconf(clicon_handle h,
     }
     clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
     if (strcmp(method, "yang-library-version")==0){
-	if (api_yang_library_version(h, r) < 0)
+	if (api_yang_library_version(h, r, pretty, media_out) < 0)
 	    goto done;
     }
     else if (strcmp(method, "data") == 0){ /* restconf, skip /api/data */
 	if (api_data(h, r, path, pcvec, 2, qvec, data,
-		     pretty, use_xml, parse_xml) < 0)
+		     pretty, media_in, media_out) < 0)
 	    goto done;
     }
     else if (strcmp(method, "operations") == 0){ /* rpc */
 	if (api_operations(h, r, path, pcvec, 2, qvec, data,
-			   pretty, use_xml, parse_xml) < 0)
+			   pretty, media_in, media_out) < 0)
 	    goto done;
     }
     else if (strcmp(method, "test") == 0)
 	restconf_test(r, 0);
     else
-	notfound(r);
+	restconf_notfound(r);
  ok:
     retval = 0;
  done:
@@ -796,7 +817,7 @@ main(int    argc,
 	    }
 	    else{
 		clicon_debug(1, "top-level %s not found", path);
-		notfound(r);
+		restconf_notfound(r);
 	    }
 	}
 	else

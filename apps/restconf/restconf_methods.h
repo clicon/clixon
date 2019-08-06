@@ -45,8 +45,9 @@ int api_data_options(clicon_handle h, FCGX_Request *r);
 int api_data_put(clicon_handle h, FCGX_Request *r, char *api_path, 
 		 cvec *pcvec, int pi, 
 		 cvec *qvec, char *data,
-		 int pretty, int use_xml, int parse_xml);
+		 int pretty,
+		 restconf_media media_in,     restconf_media media_out);
 int api_data_delete(clicon_handle h, FCGX_Request *r, char *api_path, int pi,
-		    int pretty, int use_xml);
+		    int pretty, restconf_media media_out);
 
 #endif /* _RESTCONF_METHODS_H_ */

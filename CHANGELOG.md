@@ -29,6 +29,8 @@
 * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
   * `201 Created` for created resources
   * `204 No Content` for replaced resources.
+* RESTCONF PUT/POST -d {} media is enforced
+  * Before accepted JSON as default, now Content-Type must be explicit, such as `Content-Type: application/yang-data+json`
 * RESTCONF identities has been changed to use module names instead of prefixes.
   * Eg, `curl -X POST -d '{"type":"ex:eth"}` --> `curl -X POST -d '{"type":"ietf-interfaces:eth"`}
 * JSON changes
@@ -45,6 +47,15 @@
 * pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions
 
 ### Corrected Bugs
+* Corrected CLI bug with lists of multiple keys (netconf/restconf works).
+  * Worked in 3.10, but broke in 4.0
+  * Example: `yang list x { key "a b";...}`
+    CLI error example:
+    ```
+      set x a 1 b 1; #OK
+      set x a 1 b 2; #OK
+      set x a 1 b <anything> # Error
+    ```
 * Fixed RESTCONF api-path leaf-list selection was not made properly
   * Requesting eg `mod:x/y=42` returned the whole list: `{"y":[41,42,43]}` whereas it should only return one element: `{"y":42}`
 * See [RESTCONF: HTTP return codes are not according to RFC 8040](https://github.com/clicon/clixon/issues/56)

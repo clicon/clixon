@@ -139,6 +139,14 @@ static const map_str2int http_reason_phrase_map[] = {
     {NULL,                            -1}
 };
 
+/* See RFC 8040
+ */
+static const map_str2int http_media_map[] = {
+    {"application/yang-data+xml",     YANG_DATA_XML},
+    {"application/yang-data+json",    YANG_DATA_JSON},
+    {NULL,                            -1}
+};
+
 int
 restconf_err2code(char *tag)
 {
@@ -151,11 +159,23 @@ restconf_code2reason(int code)
     return clicon_int2str(http_reason_phrase_map, code);
 }
 
+const restconf_media
+restconf_media_str2int(char *media)
+{
+    return clicon_str2int(http_media_map, media);
+}
+
+const char *
+restconf_media_int2str(restconf_media media)
+{
+    return clicon_int2str(http_media_map, media);
+}
+
 /*! HTTP error 400
  * @param[in]  r        Fastcgi request handle
  */
 int
-badrequest(FCGX_Request *r)
+restconf_badrequest(FCGX_Request *r)
 {
     char *path;
 
@@ -173,7 +193,7 @@ badrequest(FCGX_Request *r)
  * @param[in]  r        Fastcgi request handle
  */
 int
-unauthorized(FCGX_Request *r)
+restconf_unauthorized(FCGX_Request *r)
 {
     char *path;
 
@@ -190,7 +210,7 @@ unauthorized(FCGX_Request *r)
  * @param[in]  r        Fastcgi request handle
  */
 int
-forbidden(FCGX_Request *r)
+restconf_forbidden(FCGX_Request *r)
 {
     char *path;
 
@@ -207,7 +227,7 @@ forbidden(FCGX_Request *r)
  * @param[in]  r        Fastcgi request handle
  */
 int
-notfound(FCGX_Request *r)
+restconf_notfound(FCGX_Request *r)
 {
     char *path;
 
@@ -227,7 +247,7 @@ notfound(FCGX_Request *r)
  * @param[in]  r        Fastcgi request handle
  */
 int
-notacceptable(FCGX_Request *r)
+restconf_notacceptable(FCGX_Request *r)
 {
     char *path;
 
@@ -247,7 +267,7 @@ notacceptable(FCGX_Request *r)
  * @param[in]  r        Fastcgi request handle
  */
 int
-conflict(FCGX_Request *r)
+restconf_conflict(FCGX_Request *r)
 {
     clicon_debug(1, "%s", __FUNCTION__);
     FCGX_FPrintF(r->out, "Status: 409\r\n"); /* 409 Conflict */
@@ -256,11 +276,25 @@ conflict(FCGX_Request *r)
     return 0;
 }
 
+/*! HTTP error 409
+ * @param[in]  r        Fastcgi request handle
+ */
+int
+restconf_unsupported_media(FCGX_Request *r)
+{
+    clicon_debug(1, "%s", __FUNCTION__);
+    FCGX_SetExitStatus(415, r->out);
+    FCGX_FPrintF(r->out, "Status: 415 Unsupported Media Type\r\n"); 
+    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(r->out, "<h1>Unsupported Media Type</h1>\n");
+    return 0;
+}
+
 /*! HTTP error 500
  * @param[in]  r        Fastcgi request handle
  */
 int
-internal_server_error(FCGX_Request *r)
+restconf_internal_server_error(FCGX_Request *r)
 {
     char *path;
 
@@ -276,7 +310,7 @@ internal_server_error(FCGX_Request *r)
  * @param[in]  r        Fastcgi request handle
  */
 int
-notimplemented(FCGX_Request *r)
+restconf_notimplemented(FCGX_Request *r)
 {
     clicon_debug(1, "%s", __FUNCTION__);
     FCGX_FPrintF(r->out, "Status: 501\r\n"); 
@@ -284,7 +318,6 @@ notimplemented(FCGX_Request *r)
     FCGX_FPrintF(r->out, "<h1>Not Implemented/h1>\n");
     return 0;
 }
-
 
 /*!
  * @param[in]  r        Fastcgi request handle
@@ -396,16 +429,16 @@ get_user_cookie(char  *cookiestr,
  * @param[in]  r      Fastcgi request handle
  * @param[in]  xerr   XML error message from backend
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML
- * @param[in]  code    If 0 use rfc8040 sec 7 netconf2restconf error-tag mapping
- *                     otherwise use this code
+ * @param[in]  media  Output media
+ * @param[in]  code   If 0 use rfc8040 sec 7 netconf2restconf error-tag mapping
+ *                    otherwise use this code
  */
 int
 api_return_err(clicon_handle h,
 	       FCGX_Request *r,
 	       cxobj        *xerr,
 	       int           pretty,
-	       int           use_xml,
+	       restconf_media media,
 	       int           code0)
 {
     int        retval = -1;
@@ -419,7 +452,7 @@ api_return_err(clicon_handle h,
     if ((cb = cbuf_new()) == NULL)
 	goto done;
     if ((xtag = xpath_first(xerr, "//error-tag")) == NULL){
-	notfound(r);
+	restconf_notfound(r);
 	goto ok;
     }
     tagstr = xml_body(xtag);
@@ -433,20 +466,14 @@ api_return_err(clicon_handle h,
 	reason_phrase="";
     if (xml_name_set(xerr, "error") < 0)
 	goto done;
-    if (use_xml){
-	if (clicon_xml2cbuf(cb, xerr, 2, pretty) < 0)
-	    goto done;
-    }
-    else
-	if (xml2json_cbuf(cb, xerr, pretty) < 0)
-	    goto done;
-    clicon_debug(1, "%s code:%d err:%s", __FUNCTION__, code, cbuf_get(cb));
     FCGX_SetExitStatus(code, r->out); /* Created */
     FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
-    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n\r\n",
-		 use_xml?"xml":"json");
-
-    if (use_xml){
+    FCGX_FPrintF(r->out, "Content-Type: %s\r\n\r\n", restconf_media_int2str(media));
+    switch (media){
+    case YANG_DATA_XML:
+	if (clicon_xml2cbuf(cb, xerr, 2, pretty) < 0)
+	    goto done;
+	clicon_debug(1, "%s code:%d err:%s", __FUNCTION__, code, cbuf_get(cb));
 	if (pretty){
 	    FCGX_FPrintF(r->out, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n", cbuf_get(cb));
 	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
@@ -457,8 +484,11 @@ api_return_err(clicon_handle h,
 	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
 	    FCGX_FPrintF(r->out, "</errors>\r\n");
 	}
-    }
-    else{
+	break;
+    case YANG_DATA_JSON:
+	if (xml2json_cbuf(cb, xerr, pretty) < 0)
+	    goto done;
+	clicon_debug(1, "%s code:%d err:%s", __FUNCTION__, code, cbuf_get(cb));
 	if (pretty){
 	    FCGX_FPrintF(r->out, "{\n");
 	    FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : %s\n",
@@ -471,7 +501,7 @@ api_return_err(clicon_handle h,
 	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
 	    FCGX_FPrintF(r->out, "}\r\n");
 	}
-    }
+    } /* switch media */
  ok:
     retval = 0;
  done:
@@ -683,3 +713,4 @@ restconf_uripath(FCGX_Request *r)
 	*q = '\0';
     return path;
 }
+

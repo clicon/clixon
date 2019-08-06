@@ -70,7 +70,7 @@
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ * @param[in]  media_out Output media
  * @param[in]  head   If 1 is HEAD, otherwise GET
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
@@ -96,7 +96,7 @@ api_data_get2(clicon_handle h,
 	      int           pi,
 	      cvec         *qvec,
 	      int           pretty,
-	      int           use_xml,
+	      restconf_media media_out,
 	      int           head)
 {
     int        retval = -1;
@@ -131,7 +131,7 @@ api_data_get2(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -148,7 +148,7 @@ api_data_get2(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -167,7 +167,7 @@ api_data_get2(clicon_handle h,
 #endif
     /* Check if error return  */
     if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -176,28 +176,20 @@ api_data_get2(clicon_handle h,
 	goto done;
     if (head){
 	FCGX_SetExitStatus(200, r->out); /* OK */
-	FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
+	FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
 	FCGX_FPrintF(r->out, "\r\n");
 	goto ok;
     }
     if (xpath==NULL || strcmp(xpath,"/")==0){ /* Special case: data root */
-	if (use_xml){
+	switch (media_out){
+	case YANG_DATA_XML:
 	    if (clicon_xml2cbuf(cbx, xret, 0, pretty) < 0) /* Dont print top object?  */
 		goto done;
-	}
-	else{
-#if 0
-	    if (debug){
-		cbuf *ccc=cbuf_new();
-		if (clicon_xml2cbuf(ccc, xret, 0, 0) < 0)
-		    goto done;
-		clicon_debug(1, "%s xret: %s",
-			     __FUNCTION__, cbuf_get(ccc));
-		cbuf_free(ccc);
-    }
-#endif
-		if (xml2json_cbuf(cbx, xret, pretty) < 0)
-		    goto done;
+	    break;
+	case YANG_DATA_JSON:
+	    if (xml2json_cbuf(cbx, xret, pretty) < 0)
+		goto done;
+	    break;
 	}
     }
     else{
@@ -208,7 +200,7 @@ api_data_get2(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, use_xml, 0) < 0)
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -221,11 +213,12 @@ api_data_get2(clicon_handle h,
 	    if (netconf_invalid_value_xml(&xerr, "application", "Instance does not exist") < 0)
 		goto done;
 	    /* override invalid-value default 400 with 404 */
-	    if (api_return_err(h, r, xerr, pretty, use_xml, 404) < 0)
+	    if (api_return_err(h, r, xerr, pretty, media_out, 404) < 0)
 		goto done;
 	    goto ok;
 	}
-	if (use_xml){
+	switch (media_out){
+	case YANG_DATA_XML:
 	    for (i=0; i<xlen; i++){
 		char *prefix, *namespace2; /* Same as namespace? */
 		x = xvec[i];
@@ -240,19 +233,20 @@ api_data_get2(clicon_handle h,
 		if (clicon_xml2cbuf(cbx, x, 0, pretty) < 0) /* Dont print top object?  */
 		    goto done;
 	    }
-	}
-	else{
+	    break;
+	case YANG_DATA_JSON:
 	    /* In: <x xmlns="urn:example:clixon">0</x>
 	     * Out: {"example:x": {"0"}}
 	     */
 	    if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
 		goto done;
+	    break;
 	}
     }
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     FCGX_SetExitStatus(200, r->out); /* OK */
     FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
-    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
+    FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
     FCGX_FPrintF(r->out, "\r\n");
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
     FCGX_FPrintF(r->out, "\r\n\r\n");
@@ -282,7 +276,7 @@ api_data_get2(clicon_handle h,
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ * @param[in]  media_out Output media
  *
  * The HEAD method is sent by the client to retrieve just the header fields 
  * that would be returned for the comparable GET method, without the 
@@ -296,9 +290,9 @@ api_data_head(clicon_handle h,
 	      int           pi,
 	      cvec         *qvec,
 	      int           pretty,
-	      int           use_xml)
+	      restconf_media media_out)
 {
-    return api_data_get2(h, r, pcvec, pi, qvec, pretty, use_xml, 1);
+    return api_data_get2(h, r, pcvec, pi, qvec, pretty, media_out, 1);
 }
 
 /*! REST GET method
@@ -309,7 +303,7 @@ api_data_head(clicon_handle h,
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ * @param[in]  media_out Output media
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
  * @endcode                                     
@@ -333,9 +327,9 @@ api_data_get(clicon_handle h,
              int           pi,
              cvec         *qvec,
 	     int           pretty,
-	     int           use_xml)
+	     restconf_media media_out)
 {
-    return api_data_get2(h, r, pcvec, pi, qvec, pretty, use_xml, 0);
+    return api_data_get2(h, r, pcvec, pi, qvec, pretty, media_out, 0);
 }
 
 /*! GET restconf/operations resource
@@ -347,7 +341,7 @@ api_data_get(clicon_handle h,
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  use_xml Set to 0 for JSON and 1 for XML
+ * @param[in]  media_out Output media
  *
  * @code
  *  curl -G http://localhost/restconf/operations
@@ -372,7 +366,7 @@ api_operations_get(clicon_handle h,
 		   cvec         *qvec, 
 		   char         *data,
 		   int           pretty,
-		   int           use_xml)
+		   restconf_media media_out)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -387,10 +381,14 @@ api_operations_get(clicon_handle h,
     yspec = clicon_dbspec_yang(h);
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
-    if (use_xml)
+    switch (media_out){
+    case YANG_DATA_XML:
 	cprintf(cbx, "<operations>");
-    else
+	break;
+    case YANG_DATA_JSON:
 	cprintf(cbx, "{\"operations\": {");
+	break;
+    }
     ymod = NULL;
     i = 0;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
@@ -399,21 +397,28 @@ api_operations_get(clicon_handle h,
 	while ((yc = yn_each(ymod, yc)) != NULL) {
 	    if (yang_keyword_get(yc) != Y_RPC)
 		continue;
-	    if (use_xml)
+	    switch (media_out){
+	    case YANG_DATA_XML:
 		cprintf(cbx, "<%s xmlns=\"%s\"/>", yang_argument_get(yc), namespace);
-	    else{
+		break;
+	    case YANG_DATA_JSON:
 		if (i++)
 		    cprintf(cbx, ",");
 		cprintf(cbx, "\"%s:%s\": null", yang_argument_get(ymod), yang_argument_get(yc));
+		break;
 	    }
 	}
     }
-    if (use_xml)
+    switch (media_out){
+    case YANG_DATA_XML:
 	cprintf(cbx, "</operations>");
-    else
+	break;
+    case YANG_DATA_JSON:
 	cprintf(cbx, "}}");
+	break;
+    }
     FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Content-Type: application/yang-data+%s\r\n", use_xml?"xml":"json");
+    FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
     FCGX_FPrintF(r->out, "\r\n");
     FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
     FCGX_FPrintF(r->out, "\r\n\r\n");
