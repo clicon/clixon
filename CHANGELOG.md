@@ -4,7 +4,8 @@
 
 ### Major New features
 * Restconf RFC 8040 increased feature compliance
-  * RESTCONF PATCH (plain patch) is supported according to RFC 8040 4.6.1
+  * RESTCONF PATCH (plain patch) is being implemented according to RFC 8040 4.6.1
+    * Work-in-progress, expected done by 4.1.0
   * RESTCONF "insert" and "point" query parameters supported
     * Applies to ordered-by-user leaf and leaf-lists
   * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:

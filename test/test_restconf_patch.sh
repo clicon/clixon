@@ -1,5 +1,5 @@
 #!/bin/bash
-# Restconf RFC8040 plain patch 
+# Restconf RFC8040 plain patch Sec 4.6 / 4.6.1
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -48,6 +48,22 @@ start_restconf -f $cfg
 new "waiting"
 wait_backend
 wait_restconf
+
+# also in test_restconf.sh
+new "MUST support the PATCH method for a plain patch" 
+expectpart "$(curl -is -X OPTIONS http://localhost/restconf/data)" 0 "HTTP/1.1 200 OK" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE" "Accept-Patch: application/yang-data+xml,application/yang-data+json"
+
+new "If the target resource instance does not exist, the server MUST NOT create it."
+expectpart "$(curl -si -X PATCH -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox -d '{"example-jukebox:jukebox":null}')" 0 "HTTP/1.1 400 Bad Request"
+
+new "Create it with PUT instead"
+expectpart "$(curl -si -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox -d '{"example-jukebox:jukebox":null}')" 0 "HTTP/1.1 201 Created"
+
+new "THEN change it with PATCH"
+expectpart "$(curl -si -X PATCH -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox -d '{"example-jukebox:jukebox":{"library":{"artist":{"name":"Clash"}}}}')" 0 "HTTP/1.1 204 No Content"
+
+new "Check content"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-jukebox:jukebox":{"library":{"artist":\[{"name":"Clash"}\]}}}'
 
 
 new "Kill restconf daemon"

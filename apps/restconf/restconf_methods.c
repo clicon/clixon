@@ -134,6 +134,7 @@ Mapping netconf error-tag -> status code
  * Minimal support: 
  * 200 OK
  * Allow: HEAD,GET,PUT,DELETE,OPTIONS              
+ * @see RFC5789 PATCH Method for HTTP Section 3.2
  */
 int
 api_data_options(clicon_handle h,
@@ -141,7 +142,8 @@ api_data_options(clicon_handle h,
 {
     clicon_debug(1, "%s", __FUNCTION__);
     FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Allow: OPTIONS,HEAD,GET,POST,PUT,DELETE\r\n");
+    FCGX_FPrintF(r->out, "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE\r\n");
+    FCGX_FPrintF(r->out, "Accept-Patch: application/yang-data+xml,application/yang-data+json\r\n");
     FCGX_FPrintF(r->out, "\r\n");
     return 0;
 }

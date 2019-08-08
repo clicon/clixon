@@ -101,11 +101,11 @@ expecteq "$(curl -s -H 'Accept: application/yang-data+json' -G http://localhost/
 '
 
 new "restconf options. RFC 8040 4.1"
-expectfn "curl -i -s -X OPTIONS http://localhost/restconf/data" 0 "Allow: OPTIONS,HEAD,GET,POST,PUT,DELETE"
+expectpart "$(curl -is -X OPTIONS http://localhost/restconf/data)" 0 "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"
 
-new "restconf head. RFC 8040 4.2"
-expectfn "curl -s -I http://localhost/restconf/data" 0 "HTTP/1.1 200 OK"
-#Content-Type: application/yang-data+json"
+# -I means HEAD
+new "restconf HEAD. RFC 8040 4.2"
+expectpart "$(curl -si -I -H "Accept: application/yang-data+json" http://localhost/restconf/data)" 0 "HTTP/1.1 200 OK" "Content-Type: application/yang-data+json"
 
 new "restconf empty rpc"
 expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":null} http://localhost/restconf/operations/clixon-example:empty)" 0  "HTTP/1.1 204 No Content"

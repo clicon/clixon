@@ -1,6 +1,6 @@
 #!/bin/bash
 # Restconf RFC8040 Appendix A and B "jukebox" example
-
+# Not supported: B.2.2 if-unmodified
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
@@ -92,10 +92,6 @@ new "B.2.1.  Add Data Resources again (conflict - not in RFC)"
 expectpart "$(curl -si -X POST -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters -d '<album xmlns="http://example.com/ns/example-jukebox"><name>Wasting Light</name><year>2011</year></album>')" 0 "HTTP/1.1 409 Conflict"
 
 
-new "B.2.2.  Added genre"
-# Here the jbox identity is added
-expectpart "$(curl -si -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d '{"example-jukebox:album":[{"name":"Wasting Light","genre":"example-jukebox:alternative","year":2011}]}')" 0 "HTTP/1.1 204 No Content"
-
 new "4.5. PUT replace content (xml encoding)"
 expectpart "$(curl -si -X PUT -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d '<album xmlns="http://example.com/ns/example-jukebox" xmlns:jbox="http://example.com/ns/example-jukebox"><name>Wasting Light</name><genre>jbox:alternative</genre><year>2011</year></album>')" 0 "HTTP/1.1 204 No Content"
 
@@ -104,6 +100,9 @@ expectpart "$(curl -si -X PUT -H 'Content-Type: application/yang-data+json' http
 
 new "4.5.  Check jukebox content: 1 Clash and 1 Foo fighters album"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Clash</name><album><name>London Calling</name><year>1979</year></album></artist><artist><name>Foo Fighters</name><album xmlns:jbox="http://example.com/ns/example-jukebox"><name>Wasting Light</name><genre>jbox:alternative</genre><year>2011</year></album></artist></library></jukebox>'
+
+new "B.2.2.  Added genre (preamble to actual test)"
+expectpart "$(curl -si -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d '{"example-jukebox:album":[{"name":"Wasting Light","genre":"example-jukebox:alternative","year":2011}]}')" 0 "HTTP/1.1 204 No Content"
 
 # First use of PATCH
 new "B.2.2.  Detect Datastore Resource Entity-Tag Change (XXX if-unmodified)"
@@ -116,13 +115,19 @@ new "B.2.3.  Check patch system"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/example-system:system -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<system xmlns="http://example.com/ns/example-system"><enable-jukebox-streaming>true</enable-jukebox-streaming></system>'
 
 new "B.2.3.  Check jukebox: 1 Clash, 2 Foo Fighters, 1 Nick Cave"
-expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Clash</name><album><name>London Calling</name><year>1979</year></album></artist><artist><name>Foo Fighters</name><album><name>One by One</name><year>2012</year></album><album xmlns:jbox="http://example.com/ns/example-jukebox"><name>Wasting Light</name><genre>alternative</genre><year>2011</year></album></artist><artist><name>Nick Cave and the Bad Seeds</name><album><name>Tender Prey</name><year>1988</year></album></artist></library></jukebox>'
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Clash</name><album><name>London Calling</name><year>1979</year></album></artist><artist><name>Foo Fighters</name><album><name>One by One</name><year>2012</year></album><album><name>Wasting Light</name><genre>alternative</genre><year>2011</year></album></artist><artist><name>Nick Cave and the Bad Seeds</name><album><name>Tender Prey</name><year>1988</year></album></artist></library></jukebox>'
 
 new "B.2.4.  Replace a Datastore Resource"
 expectpart "$(curl -si -X PUT -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data -d '<data xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Foo Fighters</name><album><name>One by One</name><year>2012</year></album></artist><artist><name>Nick Cave and the Bad Seeds</name><album><name>Tender Prey</name><year>1988</year></album></artist></library></jukebox></data>')" 0 "HTTP/1.1 204 No Content"
 
 new "B.2.4.  Check replace"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Foo Fighters</name><album><name>One by One</name><year>2012</year></album></artist><artist><name>Nick Cave and the Bad Seeds</name><album><name>Tender Prey</name><year>1988</year></album></artist></library></jukebox>'
+
+new "B.2.5.  Edit a Data Resource (add Nick cave album The good son)"
+expectpart "$(curl -si -X PATCH http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Nick%20Cave%20and%20the%20Bad%20Seeds -H 'Content-Type: application/yang-data+xml' -d '<artist xmlns="http://example.com/ns/example-jukebox"><name>Nick Cave and the Bad Seeds</name><album><name>The Good Son</name><year>1990</year></album></artist>')" 0 'HTTP/1.1 204 No Content'
+
+new "B.2.5.  Check edit"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Nick%20Cave%20and%20the%20Bad%20Seeds -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<artist xmlns="http://example.com/ns/example-jukebox"><name>Nick Cave and the Bad Seeds</name><album><name>Tender Prey</name><year>1988</year></album><album><name>The Good Son</name><year>1990</year></album></artist>'
 
 new "restconf DELETE whole datastore"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
@@ -182,9 +187,7 @@ expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:ext
 
 if false; then # NYI
 
-new "B.2.2.  Detect Datastore Resource Entity-Tag Change"
-new "B.2.3.  Edit a Datastore Resource"
-new "B.2.5.  Edit a Data Resource"
+new "B.2.2.  Detect Datastore Resource Entity-Tag Change" # XXX done except entity-changed
 new 'B.3.1.  "content" Parameter'
 new 'B.3.2.  "depth" Parameter'
 new 'B.3.3.  "fields" Parameter'
