@@ -116,7 +116,10 @@ api_data_get2(clicon_handle h,
     cvec      *nsc = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    yspec = clicon_dbspec_yang(h);
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
     if ((cbpath = cbuf_new()) == NULL)
         goto done;
     cprintf(cbpath, "/");

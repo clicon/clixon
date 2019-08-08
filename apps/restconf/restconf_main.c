@@ -80,7 +80,6 @@
 #include "restconf_methods.h"
 #include "restconf_methods_get.h"
 #include "restconf_methods_post.h"
-#include "restconf_methods_patch.h"
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
@@ -113,7 +112,6 @@ api_data(clicon_handle h,
 	 cvec         *qvec, 
 	 char         *data,
 	 int           pretty,
-	 restconf_media media_in,
 	 restconf_media media_out)
 {
     int     retval = -1;
@@ -129,11 +127,11 @@ api_data(clicon_handle h,
     else if (strcmp(request_method, "GET")==0)
 	retval = api_data_get(h, r, pcvec, pi, qvec, pretty, media_out);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data, pretty, media_in, media_out);
+	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data, pretty, media_out);
     else if (strcmp(request_method, "PUT")==0)
-	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, pretty, media_in, media_out);
+	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, pretty, media_out);
     else if (strcmp(request_method, "PATCH")==0)
-	retval = api_data_patch(h, r, api_path, pcvec, pi, qvec, data, pretty, media_in, media_out);
+	retval = api_data_patch(h, r, api_path, pcvec, pi, qvec, data, pretty, media_out);
     else if (strcmp(request_method, "DELETE")==0)
 	retval = api_data_delete(h, r, api_path, pi, pretty, media_out);
     else
@@ -150,7 +148,6 @@ api_data(clicon_handle h,
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
- * @param[in]  media_in  Input media media
  * @param[in]  media_out Output media
  */
 static int
@@ -162,7 +159,6 @@ api_operations(clicon_handle h,
 	       cvec         *qvec, 
 	       char         *data,
 	       int           pretty,
-	       restconf_media media_in,
 	       restconf_media media_out)
 {
     int     retval = -1;
@@ -175,7 +171,7 @@ api_operations(clicon_handle h,
 	retval = api_operations_get(h, r, path, pcvec, pi, qvec, data, pretty, media_out);
     else if (strcmp(request_method, "POST")==0)
 	retval = api_operations_post(h, r, path, pcvec, pi, qvec, data,
-				     pretty, media_in, media_out);
+				     pretty, media_out);
     else
 	retval = restconf_notfound(r);
     return retval;
@@ -334,7 +330,6 @@ api_restconf(clicon_handle h,
     char  *data;
     int    authenticated = 0;
     char  *media_str = NULL;
-    restconf_media media_in = YANG_DATA_JSON; /* XXX defaults should be set in methods, here is too generic */
     restconf_media media_out = YANG_DATA_JSON;
     int    pretty;
     cbuf  *cbret = NULL;
@@ -345,19 +340,7 @@ api_restconf(clicon_handle h,
     path = restconf_uripath(r);
     query = FCGX_GetParam("QUERY_STRING", r->envp);
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    /* Get media for input (Content-Type)
-     * This is for methods that have input, such as PUT/POST, etc
-     */
-    if ((media_str = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp)) == NULL){
-	retval = restconf_unsupported_media(r);
-	goto done;
-    }
-    else if ((media_in = restconf_media_str2int(media_str)) == -1){
-	clicon_debug(1, "%s Content_Type: %s (unsupported)", __FUNCTION__, media_str);
-	retval = restconf_unsupported_media(r);
-	goto done;
-    }
-    clicon_debug(1, "%s CONTENT_TYPE: %s %s", __FUNCTION__, media_str, restconf_media_int2str(media_in));
+
     /* Get media for output (proactive negotiation) RFC7231 by using
      * Accept:. This is for methods that have output, such as GET, 
      * operation POST, etc
@@ -444,12 +427,12 @@ api_restconf(clicon_handle h,
     }
     else if (strcmp(method, "data") == 0){ /* restconf, skip /api/data */
 	if (api_data(h, r, path, pcvec, 2, qvec, data,
-		     pretty, media_in, media_out) < 0)
+		     pretty, media_out) < 0)
 	    goto done;
     }
     else if (strcmp(method, "operations") == 0){ /* rpc */
 	if (api_operations(h, r, path, pcvec, 2, qvec, data,
-			   pretty, media_in, media_out) < 0)
+			   pretty, media_out) < 0)
 	    goto done;
     }
     else if (strcmp(method, "test") == 0)

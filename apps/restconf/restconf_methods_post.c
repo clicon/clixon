@@ -73,7 +73,6 @@
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  media_in  Input media 
  * @param[in]  media_out Output media
  * restconf POST is mapped to edit-config create. 
  * @see RFC8040 Sec 4.4.1
@@ -106,7 +105,6 @@ api_data_post(clicon_handle h,
 	      cvec         *qvec, 
 	      char         *data,
 	      int           pretty,
-	      restconf_media media_in,
 	      restconf_media media_out)
 {
     int        retval = -1;
@@ -130,6 +128,7 @@ api_data_post(clicon_handle h,
     char      *username;
     int        nullspec = 0;
     int        ret;
+    restconf_media media_in;
     
     clicon_debug(1, "%s api_path:\"%s\"", __FUNCTION__, api_path);
     clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
@@ -148,7 +147,7 @@ api_data_post(clicon_handle h,
 	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot)) < 0)
 	    goto done;
 	if (ybot)
-	    ymodapi=ys_module(ybot);
+	    ymodapi = ys_module(ybot);
 	if (ret == 0){ /* validation failed */
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
@@ -171,7 +170,22 @@ api_data_post(clicon_handle h,
 	cbuf_free(ccc);
     }
 #endif
+    /* 4.4.1: The message-body MUST contain exactly one instance of the
+     * expected data resource.  (tested again below)
+     */
+    if (data == NULL || strlen(data) == 0){
+	if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
+	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+	    goto done;
+	}
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
+    }
     /* Parse input data as json or xml into xml */
+    media_in = restconf_content_type(r);
     switch (media_in){
     case YANG_DATA_XML:
 	if (xml_parse_string(data, NULL, &xdata0) < 0){
@@ -217,12 +231,16 @@ api_data_post(clicon_handle h,
 	    goto ok;
 	}
 	break;
+    default:
+	restconf_unsupported_media(r);
+	goto ok;
+	break;
     } /* switch media_in */
     /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
     if (xml_child_nr(xdata0) != 1){
-	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+	if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
@@ -401,7 +419,6 @@ api_data_post(clicon_handle h,
  * @param[in]  yrpc   Yang rpc spec
  * @param[in]  xrpc   XML pointer to rpc method
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  media_in  Input media 
  * @param[in]  media_out Output media
  * @retval     1      OK
  * @retval     0      Fail, Error message sent
@@ -423,7 +440,6 @@ api_operations_post_input(clicon_handle h,
 			  yang_stmt    *yrpc,
 			  cxobj        *xrpc,
 			  int           pretty,
-			  restconf_media media_in,
 			  restconf_media media_out)
 {
     int        retval = -1;
@@ -434,6 +450,7 @@ api_operations_post_input(clicon_handle h,
     cxobj     *x;
     cbuf      *cbret = NULL;
     int        ret;
+    restconf_media media_in;
 
     clicon_debug(1, "%s %s", __FUNCTION__, data);
     if ((cbret = cbuf_new()) == NULL){
@@ -441,6 +458,7 @@ api_operations_post_input(clicon_handle h,
 	goto done;
     }
     /* Parse input data as json or xml into xml */
+    media_in = restconf_content_type(r);
     switch (media_in){
     case YANG_DATA_XML:
 	if (xml_parse_string(data, yspec, &xdata) < 0){
@@ -476,6 +494,10 @@ api_operations_post_input(clicon_handle h,
 		goto done;
 	    goto fail;
 	}
+	break;
+    default:
+	restconf_unsupported_media(r);
+	goto fail;
 	break;
     } /* switch media_in */
     xml_name_set(xdata, "data");
@@ -676,7 +698,6 @@ api_operations_post_output(clicon_handle h,
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  media_in  Input media media
  * @param[in]  media_out Output media
  * See RFC 8040 Sec 3.6 / 4.4.2
  * @note We map post to edit-config create. 
@@ -708,7 +729,6 @@ api_operations_post(clicon_handle h,
 		    cvec         *qvec, 
 		    char         *data,
 		    int           pretty,
-		    restconf_media media_in,
 		    restconf_media media_out)
 {
     int        retval = -1;
@@ -825,7 +845,7 @@ api_operations_post(clicon_handle h,
     clicon_debug(1, "%s : 4. Parse input data: %s", __FUNCTION__, data);
     if (data && strlen(data)){
 	if ((ret = api_operations_post_input(h, r, data, yspec, yrpc, xbot,
-					     pretty, media_in, media_out)) < 0)
+					     pretty, media_out)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto ok;

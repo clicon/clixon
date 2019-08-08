@@ -62,7 +62,7 @@ const char *restconf_code2reason(int code);
 
 const restconf_media restconf_media_str2int(char *media);
 const char *restconf_media_int2str(restconf_media media);
-
+restconf_media restconf_content_type(FCGX_Request *r);
 int restconf_badrequest(FCGX_Request *r);
 int restconf_unauthorized(FCGX_Request *r);
 int restconf_forbidden(FCGX_Request *r);

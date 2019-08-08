@@ -1,6 +1,7 @@
 #!/bin/bash
 # Jukebox example from rfc 8040 Appendix A.1
-# ASsumes fjukebox is set to name of yang file
+# Assumes fjukebox is set to name of yang file
+# An extra leaf-list is added (clixon)
 
 cat <<EOF > $fjukebox
    module example-jukebox {

@@ -202,8 +202,8 @@ expectpart "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '
 new "Add leaf description using POST"
 expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:description":"The-first-interface"}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 ""
 
-new "Add nothing using POST"
-expectfn 'curl -s -X POST http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0' 0 '"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":" on line 1: syntax error at or before:'
+new "Add nothing using POST (expect fail)"
+expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0  'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"The message-body MUST contain exactly one instance of the expected data resource"}}}'
 
 new "restconf Check description added"
 expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces":{"interface":[{"name":"eth/0/0","description":"The-first-interface","type":"clixon-example:eth","enabled":true,"oper-status":"up"}]}}

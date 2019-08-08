@@ -215,53 +215,24 @@ match_list_keys(yang_stmt *y,
     return retval;
 }
 
-/*! Generic REST PUT  method 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
- * @param[in]  pi     Offset, where to start pcvec
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  data   Stream input data
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  media_in  Input media media
- * @param[in]  media_out Output media
-
- * @note restconf PUT is mapped to edit-config replace. 
- * @see RFC8040 Sec 4.5  PUT
- * @see api_data_post
- * @example
-      curl -X PUT -d '{"enabled":"false"}' http://127.0.0.1/restconf/data/interfaces/interface=eth1
- *
- PUT:
-   A request message-body MUST be present, representing the new data resource, or the server
-   MUST return a "400 Bad Request" status-line.
-
-   ...if the PUT request creates a new resource, a "201 Created" status-line is returned.  
-   If an existing resource is modified, a "204 No Content" status-line is returned.
-
- * Netconf:  <edit-config> (nc:operation="create/replace")
- * Note RFC8040 says that if an object is created, 201 is returned, if replaced 204
- * is returned. But the restconf client does not know if it is replaced or created,
- * only the server knows that. Solutions:
- * 1) extend the netconf <ok/> so it returns if created/replaced. But that would lead
- *    to extension of netconf that may hit other places.
- * 2) Send a get first and see if the resource exists, and then send replace/create.
- *    Will always produce an extra message and the GET may potetnially waste bw.
- * 3) Try to create first, if that fails (with conflict) then try replace.
- *    --> Best solution and applied here
- */
-int
-api_data_put(clicon_handle h,
-	     FCGX_Request *r, 
-	     char         *api_path0, 
-	     cvec         *pcvec, 
-	     int           pi,
-	     cvec         *qvec, 
-	     char         *data,
-	     int           pretty,
-	     restconf_media media_in,
-	     restconf_media media_out)
+/*! Common PUT plain PATCH method 
+ * Code checks if object exists.
+ * PUT:   If it does not, set op to create, otherwise replace
+ * PATCH: If it does not, fail, otherwise replace/merge
+ * @param[in] plain_patch  fail if object does not exists AND merge (not replace)
+ */ 
+static int
+api_data_write(clicon_handle h,
+	       FCGX_Request *r, 
+	       char         *api_path0, 
+	       cvec         *pcvec, 
+	       int           pi,
+	       cvec         *qvec, 
+	       char         *data,
+	       int           pretty,
+	       restconf_media media_in,
+	       restconf_media media_out,
+	       int            plain_patch)
 {
     int        retval = -1;
     enum operation_type op;
@@ -282,13 +253,15 @@ api_data_put(clicon_handle h,
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL; /* return from commit */
     cxobj     *xretdis = NULL; /* return from discard-changes */
-    cxobj     *xerr = NULL; /* malloced must be freed */
-    cxobj     *xe;
+    cxobj     *xerr = NULL;    /* malloced must be freed */
+    cxobj     *xe;             /* direct pointer into tree, dont free */
     char      *username;
     int        ret;
-    char      *namespace0;
+    char      *namespace = NULL;
     char      *dname;
     int        nullspec = 0;
+    char      *xpath = NULL;
+    cbuf      *cbpath = NULL;    
 
     clicon_debug(1, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
     clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
@@ -299,6 +272,84 @@ api_data_put(clicon_handle h,
     api_path=api_path0;
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
+    /* Check if object exists in backend.
+     * Translate api-path to xpath */
+    namespace = NULL;
+    if ((cbpath = cbuf_new()) == NULL)
+	goto done;
+    cprintf(cbpath, "/");
+    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &namespace)) < 0)
+	goto done;
+    if (ret == 0){
+	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+	    goto done;
+	clicon_err_reset();
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+	    goto done;
+	}
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
+    }
+    xpath = cbuf_get(cbpath);
+
+    /* Create text buffer for transfer to backend */
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
+    /* show done automaticaly by the system, therefore recovery user is used
+     * here */
+    cprintf(cbx, "<rpc username=\"%s\"", NACM_RECOVERY_USER);
+    if (namespace)
+	cprintf(cbx, " xmlns:nc=\"%s\">", NETCONF_BASE_NAMESPACE);
+    cprintf(cbx, "><get-config><source><candidate/></source>");
+    if (namespace)
+	cprintf(cbx, "<nc:filter nc:type=\"xpath\" nc:select=\"%s\" xmlns=\"%s\"/>",
+		xpath, namespace);
+    else /* If xpath != /, this will probably yield an error later */
+	cprintf(cbx, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
+    cprintf(cbx, "</get-config></rpc>");
+    xret = NULL;
+    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0){
+	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+	    goto done;
+	}
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
+    }
+#if 0
+    if (debug){
+	cbuf *ccc=cbuf_new();
+	if (clicon_xml2cbuf(ccc, xret, 0, 0) < 0)
+	    goto done;
+	clicon_debug(1, "%s XRET: %s", __FUNCTION__, cbuf_get(ccc));
+	cbuf_free(ccc);
+    }
+#endif
+    if ((xe = xpath_first(xret, "/rpc-reply/data")) == NULL ||
+	xml_child_nr(xe) == 0){ /* Object does not exist */
+	if (plain_patch){    /* If the target resource instance does not exist, the server MUST NOT create it. */
+	    restconf_badrequest(r);
+	    goto ok;
+	}
+	else
+	    op = OP_CREATE;
+    }
+    else{
+	if (plain_patch)
+	    op = OP_MERGE;
+	else
+	    op = OP_REPLACE;	
+    }
+    if (xret){
+	xml_free(xret);
+	xret = NULL;
+    }
+
     /* Create config top-of-tree */
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
@@ -321,6 +372,20 @@ api_data_put(clicon_handle h,
 		goto done;
 	    goto ok;
 	}
+    }
+    /* 4.4.1: The message-body MUST contain exactly one instance of the
+     * expected data resource.  (tested again below)
+     */
+    if (data == NULL || strlen(data) == 0){
+	if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
+	    goto done;
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+	    goto done;
+	}
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
     }
 
     /* Parse input data as json or xml into xml */
@@ -365,13 +430,18 @@ api_data_put(clicon_handle h,
 		goto done;
 	    goto ok;
 	}
+	break;
+    default:
+	restconf_unsupported_media(r);
+	goto ok;
+	break;
     } /* switch media_in */
 
     /* The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
     if (xml_child_nr(xdata0) != 1){
-	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+	if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
@@ -411,15 +481,17 @@ api_data_put(clicon_handle h,
 	}
     }
 
-    /* Add operation create as attribute. If that fails with Conflict, then try 
-       "replace" */
+    /* Add operation create as attribute. If that fails with Conflict, then 
+     * try "replace" (see comment in function header)
+     */
     if ((xa = xml_new("operation", xdata, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
     xml_prefix_set(xa, NETCONF_BASE_PREFIX); 
-    op = OP_CREATE;
+
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
+
     /* Top-of tree, no api-path
      * Replace xparent with x, ie bottom of api-path with data 
      */	    
@@ -529,21 +601,17 @@ api_data_put(clicon_handle h,
 
 	/* If we already have that default namespace, remove it in child */
 	if ((xa = xml_find_type(xdata, NULL, "xmlns", CX_ATTR)) != NULL){
-	    if (xml2ns(xparent, NULL, &namespace0) < 0)
+	    if (xml2ns(xparent, NULL, &namespace) < 0)
 		goto done;
 	    /* Set xmlns="" default namespace attribute (if diff from default) */
-	    if (strcmp(namespace0, xml_value(xa))==0)
+	    if (strcmp(namespace, xml_value(xa))==0)
 		xml_purge(xa);
 	}		
-
     }
-    /* Create text buffer for transfer to backend */
-    if ((cbx = cbuf_new()) == NULL)
-	goto done;
     /* For internal XML protocol: add username attribute for access control
      */
     username = clicon_username_get(h);
- again:
+    cbuf_reset(cbx);
     cprintf(cbx, "<rpc username=\"%s\" xmlns:%s=\"%s\">",
 	    username?username:"",
 	    NETCONF_BASE_PREFIX,
@@ -557,30 +625,9 @@ api_data_put(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
-	/* If the error is not data-exists, then return error now 
-	 * OR we have run again with replace
-	 */
-	if (xpath_first(xe, ".[error-tag=\"data-exists\"]") == NULL ||
-	    op == OP_REPLACE){
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
-		goto done;	    
-	    goto ok;
-	}
-	/* If it is data-exists, then set operator to replace and try again */
-	if (xret){
-	    xml_free(xret);
-	    xret = NULL;
-	}
-	if ((xa = xml_find_type(xdata, NULL, "operation", CX_ATTR)) == NULL){
-	    clicon_err(OE_XML, ENOENT, "operation attr not found (shouldnt happen)");
-	    goto done;
-	}
-	op = OP_REPLACE;
-	if (xml_value_set(xa, xml_operation2str(op)) < 0)
-	    goto done;
-	cbuf_reset(cbx);
-	clicon_debug(1, "%s Failed with create, trying replace",__FUNCTION__);
-	goto again;
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    goto done;	    
+	goto ok;
     }
     cbuf_reset(cbx);
     /* commit/discard should be done automaticaly by the system, therefore
@@ -640,6 +687,8 @@ api_data_put(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (cbpath)
+	cbuf_reset(cbpath);
     if (xret)
 	xml_free(xret);
     if (xerr)
@@ -656,6 +705,103 @@ api_data_put(clicon_handle h,
 	cbuf_free(cbx); 
    return retval;
 } /* api_data_put */
+
+
+/*! Generic REST PUT  method 
+ * @param[in]  h      CLIXON handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi     Offset, where to start pcvec
+ * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  data   Stream input data
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out Output media
+
+ * @note restconf PUT is mapped to edit-config replace. 
+ * @see RFC8040 Sec 4.5  PUT
+ * @see api_data_post
+ * @example
+      curl -X PUT -d '{"enabled":"false"}' http://127.0.0.1/restconf/data/interfaces/interface=eth1
+ *
+ PUT:
+   A request message-body MUST be present, representing the new data resource, or the server
+   MUST return a "400 Bad Request" status-line.
+
+   ...if the PUT request creates a new resource, a "201 Created" status-line is returned.  
+   If an existing resource is modified, a "204 No Content" status-line is returned.
+
+ * Netconf:  <edit-config> (nc:operation="create/replace")
+ * Note RFC8040 says that if an object is created, 201 is returned, if replaced 204
+ * is returned. But the restconf client does not know if it is replaced or created,
+ * only the server knows that. Solutions:
+ * 1) extend the netconf <ok/> so it returns if created/replaced. But that would lead
+ *    to extension of netconf that may hit other places.
+ * 2) Send a get first and see if the resource exists, and then send replace/create.
+ *    Will always produce an extra message and the GET may potetnially waste bw.
+ * 3) Try to create first, if that fails (with conflict) then try replace.
+ *    --> Best solution and applied here
+ */
+int
+api_data_put(clicon_handle h,
+	     FCGX_Request *r, 
+	     char         *api_path0, 
+	     cvec         *pcvec, 
+	     int           pi,
+	     cvec         *qvec, 
+	     char         *data,
+	     int           pretty,
+	     restconf_media media_out)
+{
+    restconf_media media_in;
+
+    media_in = restconf_content_type(r);
+    return api_data_write(h, r, api_path0, pcvec, pi, qvec, data, pretty,
+			  media_in, media_out, 0);
+} 
+
+/*! Generic REST PATCH method for plain patch 
+ * @param[in]  h      CLIXON handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi     Offset, where to start pcvec
+ * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  data   Stream input data
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out Output media
+ * Netconf:  <edit-config> (nc:operation="merge")      
+ * See RFC8040 Sec 4.6.1
+ * Plain patch can be used to create or update, but not delete, a child
+ * resource within the target resource.
+ * NOTE:    If the target resource instance does not exist, the server MUST NOT
+ *   create it. (CANT BE DONE WITH NETCONF)
+ */
+int
+api_data_patch(clicon_handle h,
+	       FCGX_Request *r, 
+	       char         *api_path0, 
+	       cvec         *pcvec, 
+	       int           pi,
+	       cvec         *qvec, 
+	       char         *data,
+	       int           pretty,
+	       restconf_media media_out)
+{
+    restconf_media media_in;
+    int ret;
+
+    media_in = restconf_content_type(r);
+    if (media_in == YANG_DATA_XML || media_in == YANG_DATA_JSON){
+	/* plain patch */
+	ret = api_data_write(h, r, api_path0, pcvec, pi, qvec, data, pretty,
+			     media_in, media_out, 1);
+    }
+    else{ /* Other patches are NYI */
+	ret = restconf_notimplemented(r);
+    }
+    return ret;
+} 
 
 /*! Generic REST DELETE method translated to edit-config
  * @param[in]  h      CLIXON handle

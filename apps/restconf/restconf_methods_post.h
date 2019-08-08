@@ -45,15 +45,12 @@ int api_data_post(clicon_handle h, FCGX_Request *r, char *api_path,
 		  cvec *pcvec, int pi, 
 		  cvec *qvec, char *data,
 		  int pretty,
-		  restconf_media media_in,
 		  restconf_media media_out);
 
 int api_operations_post(clicon_handle h, FCGX_Request *r, 
 			char *path,
 			cvec *pcvec, int pi, cvec *qvec, char *data,
-			int pretty,
-			restconf_media media_in,
-			restconf_media media_out);
+			int pretty, restconf_media media_out);
 
 
 #endif /* _RESTCONF_METHODS_POST_H_ */

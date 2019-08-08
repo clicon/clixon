@@ -78,7 +78,6 @@ APPSRC    = restconf_main.c
 APPSRC   += restconf_methods.c
 APPSRC   += restconf_methods_post.c
 APPSRC   += restconf_methods_get.c
-APPSRC   += restconf_methods_patch.c
 APPSRC   += restconf_stream.c
 APPOBJ    = $(APPSRC:.c=.o)
 

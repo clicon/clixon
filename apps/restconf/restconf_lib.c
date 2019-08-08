@@ -171,6 +171,21 @@ restconf_media_int2str(restconf_media media)
     return clicon_int2str(http_media_map, media);
 }
 
+/*! Return media_in from Content-Type, -1 if not found or unrecognized
+ */
+restconf_media
+restconf_content_type(FCGX_Request *r)
+{
+    char          *str;
+    restconf_media m;
+
+    if ((str = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp)) == NULL)
+	return -1;
+    if ((m = restconf_media_str2int(str)) == -1)
+	return -1;
+    return m;
+}
+
 /*! HTTP error 400
  * @param[in]  r        Fastcgi request handle
  */
@@ -179,9 +194,9 @@ restconf_badrequest(FCGX_Request *r)
 {
     char *path;
 
-    clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
-    FCGX_FPrintF(r->out, "Status: 400\r\n"); /* 400 bad request */
+    FCGX_SetExitStatus(400, r->out);
+    FCGX_FPrintF(r->out, "Status: 400 Bad Request\r\n"); /* 400 bad request */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<h1>Clixon Bad request/h1>\n");
     FCGX_FPrintF(r->out, "The requested URL %s or data is in some way badly formed.\n",
@@ -197,9 +212,9 @@ restconf_unauthorized(FCGX_Request *r)
 {
     char *path;
 
-    clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
-    FCGX_FPrintF(r->out, "Status: 401\r\n"); /* 401 unauthorized */
+    FCGX_SetExitStatus(401, r->out);
+    FCGX_FPrintF(r->out, "Status: 401 Unauthorized\r\n"); /* 401 unauthorized */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<error-tag>access-denied</error-tag>\n");
     FCGX_FPrintF(r->out, "The requested URL %s was unauthorized.\n", path);
@@ -214,9 +229,9 @@ restconf_forbidden(FCGX_Request *r)
 {
     char *path;
 
-    clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
-    FCGX_FPrintF(r->out, "Status: 403\r\n"); /* 403 forbidden */
+    FCGX_SetExitStatus(403, r->out);
+    FCGX_FPrintF(r->out, "Status: 403 Forbidden\r\n"); /* 403 forbidden */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<h1>Forbidden</h1>\n");
     FCGX_FPrintF(r->out, "The requested URL %s was forbidden.\n", path);
@@ -231,10 +246,9 @@ restconf_notfound(FCGX_Request *r)
 {
     char *path;
 
-    clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
-    FCGX_FPrintF(r->out, "Status: 404\r\n"); /* 404 not found */
-
+    FCGX_SetExitStatus(404, r->out);
+    FCGX_FPrintF(r->out, "Status: 404 Not Found\r\n"); /* 404 not found */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<h1>Not Found</h1>\n");
     FCGX_FPrintF(r->out, "Not Found\n");
@@ -251,9 +265,9 @@ restconf_notacceptable(FCGX_Request *r)
 {
     char *path;
 
-    clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
-    FCGX_FPrintF(r->out, "Status: 406\r\n"); /* 406 not acceptible */
+    FCGX_SetExitStatus(406, r->out);
+    FCGX_FPrintF(r->out, "Status: 406 Not Acceptable\r\n"); /* 406 not acceptible */
 
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<h1>Not Acceptable</h1>\n");
@@ -269,8 +283,8 @@ restconf_notacceptable(FCGX_Request *r)
 int
 restconf_conflict(FCGX_Request *r)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
-    FCGX_FPrintF(r->out, "Status: 409\r\n"); /* 409 Conflict */
+    FCGX_SetExitStatus(409, r->out);
+    FCGX_FPrintF(r->out, "Status: 409 Conflict\r\n"); /* 409 Conflict */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<h1>Data resource already exists</h1>\n");
     return 0;
@@ -282,7 +296,6 @@ restconf_conflict(FCGX_Request *r)
 int
 restconf_unsupported_media(FCGX_Request *r)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
     FCGX_SetExitStatus(415, r->out);
     FCGX_FPrintF(r->out, "Status: 415 Unsupported Media Type\r\n"); 
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
@@ -300,7 +313,7 @@ restconf_internal_server_error(FCGX_Request *r)
 
     clicon_debug(1, "%s", __FUNCTION__);
     path = FCGX_GetParam("DOCUMENT_URI", r->envp);
-    FCGX_FPrintF(r->out, "Status: 500\r\n"); /* 500 internal server error */
+    FCGX_FPrintF(r->out, "Status: 500 Internal Server Error\r\n"); /* 500 internal server error */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<h1>Internal server error when accessing %s</h1>\n", path);
     return 0;
@@ -313,7 +326,7 @@ int
 restconf_notimplemented(FCGX_Request *r)
 {
     clicon_debug(1, "%s", __FUNCTION__);
-    FCGX_FPrintF(r->out, "Status: 501\r\n"); 
+    FCGX_FPrintF(r->out, "Status: 501 Not Implemented\r\n"); 
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<h1>Not Implemented/h1>\n");
     return 0;
