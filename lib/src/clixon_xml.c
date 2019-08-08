@@ -271,6 +271,23 @@ nscache_set(cxobj *x,
     return retval;
 }
 
+/*! Clear cached namespace context
+ * Clear the whole namespace context, not just single cache lines
+ * @param[in] x         XML node
+ * @retval    0         OK
+ * @see nscache_set  For setting specific namespace cache lines
+ * @see xml_addsub
+ */
+int
+nscache_clear(cxobj *x)
+{
+    if (x->x_ns_cache != NULL){
+	xml_nsctx_free(x->x_ns_cache);
+	x->x_ns_cache = NULL;
+    }
+    return 0;
+}
+
 /*! Given an xml tree return URI namespace recursively : default or localname given
  *
  * Given an XML tree and a prefix (or NULL) return URI namespace.
@@ -934,6 +951,7 @@ xml_find(cxobj *x_up,
  * @retval    0   OK
  * @retval    -1  Error
  * @see xml_wrap
+ * @see xml_insert
  * @note xc is not sorted correctly, need to call xml_sort on parent
  */
 int
@@ -973,6 +991,8 @@ xml_addsub(cxobj *xp,
 	    if (strcmp(pns, cns) == 0)
 		xml_purge(xa); 
 	}
+	/* clear namespace context cache of child */
+	nscache_clear(xp);
     }
     return 0;
 }

@@ -710,6 +710,9 @@ xml_insert(cxobj           *xp,
     if (xml_child_insert_pos(xp, xi, i) < 0)
 	goto done;
     xml_parent_set(xi, xp);
+    /* clear namespace context cache of child */
+    nscache_clear(xi);
+
     retval = 0;
  done:
     return retval;

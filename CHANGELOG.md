@@ -47,6 +47,7 @@
 * pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions
 
 ### Corrected Bugs
+* Corrected problem with namespace context cache, was not always cleared when adding new subtrees.
 * Corrected CLI bug with lists of multiple keys (netconf/restconf works).
   * Worked in 3.10, but broke in 4.0
   * Example: `yang list x { key "a b";...}`

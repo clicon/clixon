@@ -108,6 +108,7 @@ char     *xml_name(cxobj *xn);
 int       xml_name_set(cxobj *xn, char *name);
 char     *xml_prefix(cxobj *xn);
 int       xml_prefix_set(cxobj *xn, char *name);
+int       nscache_clear(cxobj *x);
 int       xml2ns(cxobj *x, char *localname, char **namespace);
 int       xmlns_set(cxobj *x, char *prefix, char *namespace);
 cxobj    *xml_parent(cxobj *xn);
