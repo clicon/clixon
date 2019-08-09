@@ -689,7 +689,7 @@ api_data_write(clicon_handle h,
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cbpath)
-	cbuf_reset(cbpath);
+	cbuf_free(cbpath);
     if (xret)
 	xml_free(xret);
     if (xerr)

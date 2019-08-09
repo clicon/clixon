@@ -204,9 +204,10 @@ You can create namespace in three ways:
 
 ## Netconf
 
-Clixon implements the following NETCONF proposals or standards:
+Clixon relates to the following NETCONF proposals or standards:
 - [RFC 6241: NETCONF Configuration Protocol](http://www.rfc-base.org/txt/rfc-6241.txt)
 - [RFC 6242: Using the NETCONF Configuration Protocol over Secure Shell (SSH)](http://www.rfc-base.org/txt/rfc-6242.txt)
+- [RFC 6243: With-defaults Capability for NETCONF](http://www.rfc-base.org/txt/rfc-6243.txt). Clixon implements "explicit" default handling, but does not implement the RFC.
 - [RFC 5277: NETCONF Event Notifications](http://www.rfc-base.org/txt/rfc-5277.txt)
 - [RFC 8341: Network Configuration Access Control Model](http://www.rfc-base.org/txt/rfc-8341.txt)
 

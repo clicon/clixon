@@ -4,8 +4,8 @@
 
 ### Major New features
 * Restconf RFC 8040 increased feature compliance
-  * RESTCONF PATCH (plain patch) is being implemented according to RFC 8040 4.6.1
-    * Work-in-progress, expected done by 4.1.0
+  * RESTCONF PATCH (plain patch) is being implemented according to RFC 8040 Section 4.6.1
+    * Note RESTCONF plain patch is different from RFC 8072 "YANG Patch Media Type" which is not implemented
   * RESTCONF "insert" and "point" query parameters supported
     * Applies to ordered-by-user leaf and leaf-lists
   * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
@@ -28,6 +28,8 @@
 * Netconf edit-config "operation" attribute namespace check is enforced
   * This is enforced: `<a xmlns="uri:example" nc:operation="merge" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
   * This was previously allowed: `<a xmlns="uri:example" operation="merge">
+* RESTCONF NACM access-denied error code changed from "401 Unauthorized" to "403 Forbidden"
+  * See RFC 8040 (eg 4.4.1, 4.4.2, 4.5, 4.6, 4.7)
 * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
   * `201 Created` for created resources
   * `204 No Content` for replaced resources.
@@ -67,6 +69,21 @@
   * Requesting eg `mod:x/y=42` returned the whole list: `{"y":[41,42,43]}` whereas it should only return one element: `{"y":42}`
 * See [RESTCONF: HTTP return codes are not according to RFC 8040](https://github.com/clicon/clixon/issues/56)
 * Yang Unique statements with multiple schema identifiers did not work on some platforms due to memory error.
+
+## 4.0.1 (5 Aug 2019)
+
+This is a hotfix for a multi-key CLI bug that appeared in 4.0.0
+(worked in 3.10).
+
+### Corrected Bugs
+* Corrected CLI bug with lists of multiple keys (netconf/restconf works).
+  * Example: `yang list x { key "a b";...}`
+    CLI error example:
+    ```
+      set x a 1 b 1; #OK
+      set x a 1 b 2; #OK
+      set x a 1 b <anything> # Error
+    ```
 
 ## 4.0.0 (13 July 2019)
 
