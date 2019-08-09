@@ -193,6 +193,8 @@ api_data_get2(clicon_handle h,
 	    if (xml2json_cbuf(cbx, xret, pretty) < 0)
 		goto done;
 	    break;
+	default:
+	    break;
 	}
     }
     else{
@@ -243,6 +245,8 @@ api_data_get2(clicon_handle h,
 	     */
 	    if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
 		goto done;
+	    break;
+	default:
 	    break;
 	}
     }
@@ -391,6 +395,8 @@ api_operations_get(clicon_handle h,
     case YANG_DATA_JSON:
 	cprintf(cbx, "{\"operations\": {");
 	break;
+    default:
+	break;
     }
     ymod = NULL;
     i = 0;
@@ -409,7 +415,10 @@ api_operations_get(clicon_handle h,
 		    cprintf(cbx, ",");
 		cprintf(cbx, "\"%s:%s\": null", yang_argument_get(ymod), yang_argument_get(yc));
 		break;
+	    default:
+		break;
 	    }
+
 	}
     }
     switch (media_out){
@@ -418,6 +427,8 @@ api_operations_get(clicon_handle h,
 	break;
     case YANG_DATA_JSON:
 	cprintf(cbx, "}}");
+	break;
+    default:
 	break;
     }
     FCGX_SetExitStatus(200, r->out); /* OK */

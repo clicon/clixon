@@ -510,7 +510,7 @@ api_data_write(clicon_handle h,
 	/* There is an api-path that defines an element in the datastore tree.
 	 * Not top-of-tree.
 	 */
-	clicon_debug(1, "%s x:%s xbot:%s",__FUNCTION__, dname, xml_name(xbot));
+	clicon_debug(1, "%s Comparing bottom-of api-path (%s) with top-of-data (%s)",__FUNCTION__, xml_name(xbot), dname);
 
 	/* Check same symbol in api-path as data */	    
 	if (strcmp(dname, xml_name(xbot))){
@@ -683,7 +683,6 @@ api_data_write(clicon_handle h,
 	FCGX_SetExitStatus(204, r->out); /* Replaced */
 	FCGX_FPrintF(r->out, "Status: 204 No Content\r\n");
     }
-    FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
     FCGX_FPrintF(r->out, "\r\n");
  ok:
     retval = 0;
@@ -794,13 +793,19 @@ api_data_patch(clicon_handle h,
     int ret;
 
     media_in = restconf_content_type(r);
-    if (media_in == YANG_DATA_XML || media_in == YANG_DATA_JSON){
-	/* plain patch */
+    switch (media_in){
+    case YANG_DATA_XML:
+    case YANG_DATA_JSON: 	/* plain patch */
 	ret = api_data_write(h, r, api_path0, pcvec, pi, qvec, data, pretty,
 			     media_in, media_out, 1);
-    }
-    else{ /* Other patches are NYI */
+	break;
+    case YANG_PATCH_XML:
+    case YANG_PATCH_JSON: 	/* RFC 8072 patch */
 	ret = restconf_notimplemented(r);
+	break;
+    default:
+	ret = restconf_unsupported_media(r);
+	break;
     }
     return ret;
 } 

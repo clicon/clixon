@@ -169,7 +169,7 @@ xml_nsctx_init(char  *prefix,
 
 static int
 xml_nsctx_node1(cxobj *xn,
-		cvec   *ncs)
+		cvec   *nsc)
 {
     int    retval = -1;
     cxobj *xa = NULL;
@@ -186,30 +186,30 @@ xml_nsctx_node1(cxobj *xn,
 	nm = xml_name(xa);
 	if (pf == NULL){
 	    if (strcmp(nm, "xmlns")==0 && /* set default namespace context */
-		xml_nsctx_get(ncs, NULL) == NULL){
+		xml_nsctx_get(nsc, NULL) == NULL){
 		val = xml_value(xa);
-		if (xml_nsctx_set(ncs, NULL, val) < 0)
+		if (xml_nsctx_set(nsc, NULL, val) < 0)
 		    goto done;
 	    }
 	}
 	else
 	    if (strcmp(pf, "xmlns")==0 && /* set prefixed namespace context */
-		xml_nsctx_get(ncs, nm) == NULL){
+		xml_nsctx_get(nsc, nm) == NULL){
 		val = xml_value(xa);
-		if (xml_nsctx_set(ncs, nm, val) < 0)
+		if (xml_nsctx_set(nsc, nm, val) < 0)
 		    goto done;
 	    }
     }
     if ((xp = xml_parent(xn)) == NULL){
 #ifdef USE_NETCONF_NS_AS_DEFAULT
 	/* If not default namespace defined, use the base netconf ns as default */
-	if (xml_nsctx_get(ncs, NULL) == NULL)
-	    if (xml_nsctx_set(ncs, NULL, NETCONF_BASE_NAMESPACE) < 0)
+	if (xml_nsctx_get(nsc, NULL) == NULL)
+	    if (xml_nsctx_set(nsc, NULL, NETCONF_BASE_NAMESPACE) < 0)
 		goto done;
 #endif
     }
     else
-	if (xml_nsctx_node1(xp, ncs) < 0)
+	if (xml_nsctx_node1(xp, nsc) < 0)
 	    goto done;
     retval = 0;
  done:
@@ -345,9 +345,9 @@ xml_nsctx_yang(yang_stmt *yn,
  * @retval    NULL      Error
  */
 int
-xml_nsctx_free(cvec *ncs)
+xml_nsctx_free(cvec *nsc)
 {
-    cvec *cvv = (cvec*)ncs;
+    cvec *cvv = (cvec*)nsc;
 
     if (cvv)
 	cvec_free(cvv);

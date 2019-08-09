@@ -42,8 +42,10 @@
  * Types (also in restconf_lib.h)
  */
 enum restconf_media{
-    YANG_DATA_JSON,  /* "application/yang-data+json" (default for RESTCONF) */
-    YANG_DATA_XML   /* "application/yang-data+xml" */
+    YANG_DATA_JSON,  /* "application/yang-data+json" */
+    YANG_DATA_XML,   /* "application/yang-data+xml" */
+    YANG_PATCH_JSON, /* "application/yang-patch+json" */
+    YANG_PATCH_XML   /* "application/yang-patch+xml" */
 };
 typedef enum restconf_media restconf_media;
 

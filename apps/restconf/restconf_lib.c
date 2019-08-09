@@ -32,6 +32,9 @@
   ***** END LICENSE BLOCK *****
   
   * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
+  * @note The response payload for errors uses text_html. RFC7231 is vague
+  * on the response payload (and its media). Maybe it should be omitted 
+  * altogether?
  */
 
 #include <stdlib.h>
@@ -76,8 +79,8 @@ static const map_str2int netconf_restconf_map[] = {
     {"bad-element",            400},
     {"unknown-element",        400},
     {"unknown-namespace",      400},
-    {"access-denied",          401}, /* or 403 */
     {"access-denied",          403}, 
+    {"access-denied",          401}, /* or 403 */
     {"lock-denied",            409},
     {"resource-denied",        409},
     {"rollback-failed",        500},
@@ -144,6 +147,8 @@ static const map_str2int http_reason_phrase_map[] = {
 static const map_str2int http_media_map[] = {
     {"application/yang-data+xml",     YANG_DATA_XML},
     {"application/yang-data+json",    YANG_DATA_JSON},
+    {"application/yang-patch+xml",    YANG_PATCH_XML},
+    {"application/yang-patch+json",   YANG_PATCH_JSON},
     {NULL,                            -1}
 };
 
@@ -172,6 +177,12 @@ restconf_media_int2str(restconf_media media)
 }
 
 /*! Return media_in from Content-Type, -1 if not found or unrecognized
+ * @note media-type syntax does not support parameters
+ * @see RFC7231 Sec 3.1.1.1 for media-type syntax type:
+ *    media-type = type "/" subtype *( OWS ";" OWS parameter )
+ *     type       = token
+ *    subtype    = token
+ * 
  */
 restconf_media
 restconf_content_type(FCGX_Request *r)
@@ -514,6 +525,10 @@ api_return_err(clicon_handle h,
 	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
 	    FCGX_FPrintF(r->out, "}\r\n");
 	}
+    default:
+	clicon_err(OE_YANG, EINVAL, "Invalid media type %d", media);
+	goto done;
+	break;
     } /* switch media */
  ok:
     retval = 0;

@@ -249,6 +249,8 @@ api_root(clicon_handle  h,
 	if (xml2json_cbuf(cb, xt, pretty) < 0)
 	    goto done;
 	break;
+    default:
+	break;
     }
     FCGX_FPrintF(r->out, "%s", cb?cbuf_get(cb):"");
     FCGX_FPrintF(r->out, "\r\n\r\n");
@@ -296,6 +298,8 @@ api_yang_library_version(clicon_handle h,
     case YANG_DATA_JSON:
 	if (xml2json_cbuf(cb, xt, pretty) < 0)
 	    goto done;
+	break;
+    default:
 	break;
     }
     clicon_debug(1, "%s cb%s", __FUNCTION__, cbuf_get(cb));

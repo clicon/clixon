@@ -101,7 +101,7 @@ expecteq "$(curl -s -H 'Accept: application/yang-data+json' -G http://localhost/
 '
 
 new "restconf options. RFC 8040 4.1"
-expectpart "$(curl -is -X OPTIONS http://localhost/restconf/data)" 0 "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"
+expectpart "$(curl -is -X OPTIONS http://localhost/restconf/data)" 0 "HTTP/1.1 200 OK" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"
 
 # -I means HEAD
 new "restconf HEAD. RFC 8040 4.2"

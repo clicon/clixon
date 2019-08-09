@@ -54,6 +54,6 @@ int     xml_nsctx_set(cvec *nsc, char *prefix, char *namespace);
 cvec   *xml_nsctx_init(char *prefix, char *namespace);
 int     xml_nsctx_node(cxobj *x, cvec **ncp);
 int     xml_nsctx_yang(yang_stmt *yn, cvec **ncp);
-int     xml_nsctx_free(cvec *ncs);
+int     xml_nsctx_free(cvec *nsc);
 
 #endif /* _CLIXON_XML_NSCTX_H */

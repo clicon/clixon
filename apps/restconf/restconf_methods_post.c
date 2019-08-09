@@ -951,6 +951,8 @@ api_operations_post(clicon_handle h,
 	    goto done;
 	/* xoutput should now look: {"example:output": {"x":0,"y":42}} */
 	break;
+    default:
+	break;
     }
     FCGX_FPrintF(r->out, "%s", cbuf_get(cbret));
     FCGX_FPrintF(r->out, "\r\n\r\n");
