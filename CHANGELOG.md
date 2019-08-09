@@ -49,6 +49,8 @@
 * pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions
 
 ### Corrected Bugs
+* Fixed Segv in nacm write when MERGE and creating object
+  * Should only be applicable on netconf MERGE and restconf PATCH
 * Corrected problem with namespace context cache, was not always cleared when adding new subtrees.
 * Corrected CLI bug with lists of multiple keys (netconf/restconf works).
   * Worked in 3.10, but broke in 4.0

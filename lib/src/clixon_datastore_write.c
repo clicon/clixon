@@ -492,7 +492,7 @@ text_modify(clicon_handle       h,
 	    }
 	    if (x0==NULL){
 		if (op==OP_MERGE && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(NULL, x0, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(NULL, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
