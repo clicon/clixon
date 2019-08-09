@@ -917,13 +917,20 @@ xml2json_cbuf_vec(cbuf      *cb,
     cxobj *xp = NULL;
     int    i;
     cxobj *xc;
+    cvec  *nsc = NULL; 
 
     if ((xp = xml_new("xml2json", NULL, NULL)) == NULL)
 	goto done;
-    /* Some complexities in grafting namespace in existing trees to new */
+    /* Make a copy of old and graft it into new top-object
+     * Also copy namespace context */
     for (i=0; i<veclen; i++){
-	xc = xml_dup(vec[i]);
+	if (xml_nsctx_node(vec[i], &nsc) < 0)
+	    goto done;
+	if ((xc = xml_dup(vec[i])) == NULL)
+	    goto done;
 	xml_addsub(xp, xc);
+	nscache_replace(xc, nsc); 
+	nsc = NULL; /* nsc consumed */
     }
     if (0){
 	cprintf(cb, "[%s", pretty?"\n":" ");
@@ -944,6 +951,8 @@ xml2json_cbuf_vec(cbuf      *cb,
     }
     retval = 0;
  done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (xp)
 	xml_free(xp);
     return retval;

@@ -246,12 +246,13 @@ nscache_get(cxobj *x,
     return NULL;
 }
 
-/*! Set cached namespace. Replace if necessary
+/*! Set cached namespace for specific namespace. Replace if necessary
  * @param[in] x         XML node
  * @param[in] prefix    Namespace prefix, or NULL for default
  * @param[in] namespace Cached namespace to set (assume non-null?)
  * @retval    0         OK
  * @retval   -1         Error
+ * @see nscache_replace  to replace the whole context
  */
 static int
 nscache_set(cxobj *x,
@@ -268,6 +269,29 @@ nscache_set(cxobj *x,
 	return xml_nsctx_set(x->x_ns_cache, prefix, namespace);
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Set complete cached namespace context
+ * @param[in] x      XML node
+ * @param[in] nsc    Namespace context (note consumed, dont free)
+ * @retval    0      OK
+ * @retval   -1      Error
+ * @see nscache_set  set a single cache line
+ */
+int
+nscache_replace(cxobj *x,
+		cvec *nsc)
+{
+    int     retval = -1;
+
+    if (x->x_ns_cache != NULL){
+	xml_nsctx_free(x->x_ns_cache);
+	x->x_ns_cache = NULL;
+    }
+    x->x_ns_cache = nsc;
+    retval = 0;
+    // done:
     return retval;
 }
 

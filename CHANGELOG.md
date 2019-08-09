@@ -49,6 +49,8 @@
 * pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions
 
 ### Corrected Bugs
+* RESTCONF JSON identity had wrong namespace in sub-objetcs
+  * Showed if you GET an object with JSON encoding that have identities
 * Fixed Segv in nacm write when MERGE and creating object
   * Should only be applicable on netconf MERGE and restconf PATCH
 * Corrected problem with namespace context cache, was not always cleared when adding new subtrees.
