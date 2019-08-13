@@ -114,12 +114,31 @@ api_data_get2(clicon_handle h,
     int        ret;
     char      *namespace = NULL;
     cvec      *nsc = NULL;
+    char      *str;
+    query_content content = CONTENT_ALL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
+    /* Check for content attribute */
+    if ((str = cvec_find_str(qvec, "content")) != NULL){
+	clicon_debug(1, "%s content=%s", __FUNCTION__, str);
+	if ((content = query_content_str2int(str)) == -1){
+	    if (netconf_bad_attribute_xml(&xerr, "application",
+					  "<bad-attribute>content</bad-attribute>", "Unrecognized value of content attribute") < 0)
+		goto done;
+	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+
     if ((cbpath = cbuf_new()) == NULL)
         goto done;
     cprintf(cbpath, "/");
@@ -144,7 +163,21 @@ api_data_get2(clicon_handle h,
      * xpath expressions */
     if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
 	goto done;
-    if (clicon_rpc_get(h, xpath, namespace, &xret) < 0){
+    switch (content){
+    case CONTENT_CONFIG:
+	ret = clicon_rpc_get_config(h, "running", xpath, namespace, &xret);
+	break;
+    case CONTENT_NONCONFIG:
+	ret = clicon_rpc_get_state(h, xpath, namespace, &xret);
+	break;
+    case CONTENT_ALL:
+	ret = clicon_rpc_get(h, xpath, namespace, &xret);
+	break;
+    default:
+	clicon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
+	break;
+    }
+    if (ret < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){

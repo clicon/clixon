@@ -942,6 +942,94 @@ from_client_get(clicon_handle h,
     return retval;
 }
 
+/*! Retrieve device state information only
+ * 
+ * This is a CLIXON specific RPC
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ *
+ * @see from_client_get
+ */
+static int
+from_client_get_state(clicon_handle h,
+		      cxobj        *xe,
+		      cbuf         *cbret,
+		      void         *arg, 
+		      void         *regarg)
+{
+    int     retval = -1;
+    cxobj  *xfilter;
+    char   *xpath = "/";
+    cxobj  *xret = NULL;
+    int     ret;
+    cxobj **xvec = NULL;
+    size_t  xlen;    
+    cxobj  *xnacm = NULL;
+    char   *username;
+    cvec   *nsc = NULL; /* Create a netconf namespace context from filter */
+    
+    username = clicon_username_get(h);
+    if ((xfilter = xml_find(xe, "filter")) != NULL){
+	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
+	    xpath="/";
+	/* Create namespace context for xpath from <filter>
+	 *  The set of namespace declarations are those in scope on the
+	 * <filter> element.
+	 */
+	else
+	    if (xml_nsctx_node(xfilter, &nsc) < 0)
+		goto done;
+    }
+    /* Get state data from plugins as defined by plugin_statedata(), if any */
+    clicon_err_reset();
+    if ((ret = client_statedata(h, xpath, nsc, &xret)) < 0)
+	goto done;
+    if (ret == 0){ /* Error from callback (error in xret) */
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
+	goto ok;
+    }
+    /* Pre-NACM access step */
+    if ((ret = nacm_access_pre(h, username, NACM_DATA, &xnacm)) < 0)
+	goto done;
+    if (ret == 0){ /* Do NACM validation */
+	if (xpath_vec_nsc(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	    goto done;
+	/* NACM datanode/module read validation */
+	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
+	    goto done;
+    }
+    cprintf(cbret, "<rpc-reply>");     /* OK */
+    if (xret==NULL)
+	cprintf(cbret, "<data/>");
+    else{
+	if (xml_name_set(xret, "data") < 0)
+	    goto done;
+	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    goto done;
+    }
+    cprintf(cbret, "</rpc-reply>");
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xnacm)
+	xml_free(xnacm);
+    if (xvec)
+	free(xvec);
+    if (nsc)
+	xml_nsctx_free(nsc);
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
+
 /*! Request graceful termination of a NETCONF session.
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
@@ -1283,7 +1371,7 @@ from_client_msg(clicon_handle        h,
 	    goto reply; /* Dont quit here on user callbacks */
 	}
 	if (ret == 0){ /* not handled by callback */
-	    if (netconf_operation_failed(cbret, "application", "Callback not recognized")< 0)
+	    if (netconf_operation_not_supported(cbret, "application", "RPC operation not supported")< 0)
 		goto done;
 	    goto reply;
 	}
@@ -1424,6 +1512,9 @@ backend_rpc_init(clicon_handle h)
 		      "urn:ietf:params:xml:ns:netmod:notification", "create-subscription") < 0)
 	goto done;
     /* Clixon RPC */
+    if (rpc_callback_register(h, from_client_get_state, NULL,
+			      "http://clicon.org/lib", "get-state") < 0)
+	goto done;
     if (rpc_callback_register(h, from_client_debug, NULL,
 			      "http://clicon.org/lib", "debug") < 0)
 	goto done;

@@ -271,33 +271,66 @@ netconf_bad_attribute(cbuf *cb,
 		      char *info,
 		      char *message)
 {
-    int   retval = -1;
-    char *encstr = NULL;
+    int    retval = -1;
+    cxobj *xret = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
-		"<error-type>%s</error-type>"
-		"<error-tag>bad-attribute</error-tag>"
-		"<error-info>%s</error-info>"
-		"<error-severity>error</error-severity>",
-		type, info) <0)
-	goto err;
+    if (netconf_bad_attribute_xml(&xret, type, info, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
+/*! Create Netconf bad-attribute error XML tree according to RFC 6241 App A
+ *
+ * An attribute value is not correct; e.g., wrong type,
+ * out of range, pattern mismatch.
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[in]  type    Error type: "rpc", "application" or "protocol"
+ * @param[in]  info    bad-attribute or bad-element xml
+ * @param[in]  message Error message (will be XML encoded)
+ */
+int
+netconf_bad_attribute_xml(cxobj **xret,
+			  char   *type,
+			  char   *info,
+			  char   *message)
+{
+    int   retval = -1;
+    cxobj *xerr = NULL;
+    char  *encstr = NULL;
+
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	    goto done;
+    }
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+	goto done;
+    if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
+		     "<error-tag>bad-attribute</error-tag>"
+		     "<error-info>%s</error-info>"
+		     "<error-severity>error</error-severity>", type, info) < 0)
+	goto done;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
+	if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
+			 encstr) < 0)
+	    goto done;
     }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
-	goto err;
     retval = 0;
  done:
     if (encstr)
 	free(encstr);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
 }
+
 
 /*! Create Netconf unknwon-attribute error XML tree according to RFC 6241 App A
  *
@@ -462,6 +495,7 @@ netconf_bad_element(cbuf *cb,
 	xml_free(xret);
     return retval;
 }
+
 int
 netconf_bad_element_xml(cxobj **xret,
 			char   *type,
@@ -1208,19 +1242,26 @@ netconf_trymerge(cxobj       *x,
 }
 
 /*! Load ietf netconf yang module and set enabled features
- * The features added are (in order):
+ *
+ * This function should be called after options loaded but before yang modules.
+ * (a yang module may import ietf-netconf and then features must be set)
+ * @param[in] h  Clixon handle
+ * @retval    0  OK
+ * @retval   -1  Error
+ * The features added are (in order) (numbers are section# in RFC6241):
  *   candidate (8.3)
  *   validate (8.6)
  *   startup (8.7)
  *   xpath (8.9)
+ * @see netconf_module_load  that is called later
  */
 int
-netconf_module_load(clicon_handle h)
+netconf_module_features(clicon_handle h)
 {
     int        retval = -1;
     cxobj     *xc;
     yang_stmt *yspec;
-
+    
     yspec = clicon_dbspec_yang(h);
     if ((xc = clicon_conf_xml(h)) == NULL){
 	clicon_err(OE_CFG, ENOENT, "Clicon configuration not loaded");
@@ -1233,6 +1274,24 @@ netconf_module_load(clicon_handle h)
 	goto done;
     if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:xpath</CLICON_FEATURE>", yspec, &xc) < 0)
 	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Load ietf netconf yang module and set enabled features
+ * @param[in] h  Clixon handle
+ * @retval    0  OK
+ * @retval   -1  Error
+ * @see netconf_module_feature  should be called before any yang modules
+ */
+int
+netconf_module_load(clicon_handle h)
+{
+    int        retval = -1;
+    yang_stmt *yspec;
+    
+    yspec = clicon_dbspec_yang(h);
     /* Load yang spec */
     if (yang_spec_parse_module(h, "ietf-netconf", NULL, yspec)< 0)
 	goto done;

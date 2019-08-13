@@ -2,7 +2,7 @@
 # Yang test: multi-keys and empty type
 
 # Magic line must be first in script (see README.md)
-s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+s="$_" ; . ./lib.sh || if [ "$s" = "$0" ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
@@ -143,14 +143,14 @@ EOF
 
 new "test params: -f $cfg"
 
-if [ $BE -ne 0 ]; then
+if [ "$BE" -ne 0 ]; then
     new "kill old backend"
-    sudo clixon_backend -zf $cfg
+    sudo clixon_backend -zf "$cfg"
     if [ $? -ne 0 ]; then
 	err
     fi
     new "start backend -s init -f $cfg"
-    start_backend -s init -f $cfg
+    start_backend -s init -f "$cfg"
 
     new "waiting"
     wait_backend
@@ -280,18 +280,18 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></sou
 new "netconf submodule discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-if [ $BE -eq 0 ]; then
+if [ "$BE" -eq 0 ]; then
     exit # BE
 fi
 
 new "Kill backend"
 # Check if premature kill
-pid=`pgrep -u root -f clixon_backend`
+pid=$(pgrep -u root -f clixon_backend)
 if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
-stop_backend -f $cfg
+stop_backend -f "$cfg"
 sudo pkill -u root -f clixon_backend
 
-rm -rf $dir
+rm -rf "$dir"

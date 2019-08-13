@@ -8,6 +8,7 @@ APPNAME=example
 
 cfg=$dir/conf.xml
 fjukebox=$dir/example-jukebox.yang
+fcontent=$dir/example-events.yang
 
 # A "system" module as defined in B.2.4 
 cat <<EOF > $dir/example-system.yang
@@ -38,6 +39,25 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
+# yang B.3.1. "content" Parameter
+cat <<EOF > $fcontent
+   module example-events {
+      namespace "urn:example:events";
+      prefix "ex";
+     container events {
+       list event {
+         key name;
+         leaf name { type string; }
+         leaf description { type string; }
+         leaf event-count {
+           type uint32;
+           config false;
+         }
+       }
+     }
+}
+EOF
+
 # Common Jukebox spec (fjukebox must be set)
 . ./jukebox.sh
 
@@ -50,8 +70,8 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     sudo pkill clixon_backend # to be sure
-    new "start backend -s init -f $cfg"
-    start_backend -s init -f $cfg
+    new "start backend -s init -f $cfg -- -s"
+    start_backend -s init -f "$cfg" -- -s
 fi
 
 new "kill old restconf daemon"
@@ -77,7 +97,7 @@ expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+xml' http://loca
 # This just catches the header and the jukebox module, the RFC has foo and bar which
 # seems wrong to recreate
 new "B.1.2.  Retrieve the Server Module Information"
-expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-yang-library:modules-state)" 0 "HTTP/1.1 200 OK" 'Cache-Control: no-cache' "Content-Type: application/yang-data+json" '{"ietf-yang-library:modules-state":{"module-set-id":' '"module":\[{"name":"example-jukebox","revision":"2016-08-15","namespace":"http://example.com/ns/example-jukebox","conformance-type":"implement"}'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-yang-library:modules-state)" 0 "HTTP/1.1 200 OK" 'Cache-Control: no-cache' "Content-Type: application/yang-data+json" '{"ietf-yang-library:modules-state":{"module-set-id":' '"module":\[{"name":"example-events","revision":\[null\],"namespace":"urn:example:events","conformance-type":"implement"},{"name":"example-jukebox","revision":"2016-08-15","namespace":"http://example.com/ns/example-jukebox","conformance-type":"implement"}'
 
 new "B.1.3.  Retrieve the Server Capability Information"
 expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/capabilities)" 0 "HTTP/1.1 200 OK" "Content-Type: application/yang-data+xml" 'Cache-Control: no-cache' '<capabilities xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"><capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability></capabilities>'
@@ -128,6 +148,22 @@ expectpart "$(curl -si -X PATCH http://localhost/restconf/data/example-jukebox:j
 
 new "B.2.5.  Check edit"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Nick%20Cave%20and%20the%20Bad%20Seeds -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<artist xmlns="http://example.com/ns/example-jukebox"><name>Nick Cave and the Bad Seeds</name><album><name>Tender Prey</name><year>1988</year></album><album><name>The Good Son</name><year>1990</year></album></artist>'
+
+# note reverse order of down/up as it is ordered by system and down is before up
+new 'B.3.1.  "content" Parameter (preamble, add content)'
+expectpart "$(curl -si -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-events:events -d '{"example-events:events":{"event":[{"name":"interface-down","description":"Interface down notification count"},{"name":"interface-up","description":"Interface up notification count"}]}}')" 0 "HTTP/1.1 201 Created"
+
+new 'B.3.1.  "content" Parameter (wrong content)'
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example-events:events?content=kalle -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-attribute","error-info":{"bad-attribute":"content"},"error-severity":"error","error-message":"Unrecognized value of content attribute"}}}'
+
+new 'B.3.1.  "content" Parameter example 1: content=all'
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example-events:events?content=all -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-events:events":{"event":\[{"name":"interface-down","description":"Interface down notification count","event-count":90},{"name":"interface-up","description":"Interface up notification count","event-count":77}\]}}'
+
+new 'B.3.1.  "content" Parameter example 2: content=config'
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example-events:events?content=config -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-events:events":{"event":\[{"name":"interface-down","description":"Interface down notification count"},{"name":"interface-up","description":"Interface up notification count"}\]}}'
+
+new 'B.3.1.  "content" Parameter example 3: content=nonconfig'
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example-events:events?content=nonconfig -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-events:events":{"event":\[{"name":"interface-down","event-count":90},{"name":"interface-up","event-count":77}\]}}'
 
 new "restconf DELETE whole datastore"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
@@ -188,7 +224,6 @@ expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:ext
 if false; then # NYI
 
 new "B.2.2.  Detect Datastore Resource Entity-Tag Change" # XXX done except entity-changed
-new 'B.3.1.  "content" Parameter'
 new 'B.3.2.  "depth" Parameter'
 new 'B.3.3.  "fields" Parameter'
 new 'B.3.6.  "filter" Parameter'

@@ -472,6 +472,12 @@ main(int argc, char **argv)
 	clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
 	goto done;
 
+    /* Add (hardcoded) netconf features in case ietf-netconf loaded here
+     * Otherwise it is loaded in netconf_module_load below
+     */
+    if (netconf_module_features(h) < 0)
+	goto done;
+
     /* Create top-level and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;

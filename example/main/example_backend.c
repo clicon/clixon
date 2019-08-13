@@ -31,6 +31,12 @@
 
   ***** END LICENSE BLOCK *****
 
+  * The example have the following optional arguments that you can pass as 
+  * argc/argv after -- in clixon_backend:
+  *  -r  enable the reset function 
+  *  -s  enable the state function
+  *  -u  enable upgrade function - auto-upgrade testing
+  *  -t  enable transaction logging (cal syslog for every transaction)
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -284,7 +290,7 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
             type string;
          }
        }
- * This yang snippet is present in clixon-example.yang for exampl.
+ * This yang snippet is present in clixon-example.yang for example.
  */
 int 
 example_statedata(clicon_handle h, 
@@ -300,9 +306,12 @@ example_statedata(clicon_handle h,
     cxobj  *xt = NULL;
     char   *name;
     cvec   *nsc1 = NULL;
+    cvec   *nsc2 = NULL;
+    yang_stmt *yspec = NULL;
 
     if (!_state)
 	goto ok;
+    yspec = clicon_dbspec_yang(h);
     
     /* Example of statedata, in this case merging state data with 
      * state information. In this case adding dummy interface operation state
@@ -311,37 +320,75 @@ example_statedata(clicon_handle h,
     if (xmldb_get0(h, "running", nsc, xpath, 1, &xt, NULL) < 0)
 	goto done;
 
-    /* Here a separate namespace context nsc1 is created. The original nsc 
-     * created by the system cannot be used trivially, since we dont know
-     * the prefixes, although we could by a complex mechanism find the prefix 
-     * (if it exists) and use that when creating our xpath.
-     * But it is easier creating a new namespace context nsc1.
-     */
-    if ((nsc1 = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
-	goto done;
-    if (xpath_vec_nsc(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
-       goto done;
-   if (xlen){
-       cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
-       for (i=0; i<xlen; i++){
-	   name = xml_body(xvec[i]);
-	   cprintf(cb, "<interface><name>%s</name><oper-status>up</oper-status></interface>", name);
-       }
-       cprintf(cb, "</interfaces>");
-       if (xml_parse_string(cbuf_get(cb), NULL, &xstate) < 0)
-	   goto done;
-   }
-    if (xml_parse_string("<state xmlns=\"urn:example:clixon\">"
+    if (yang_find_module_by_namespace(yspec, "urn:ietf:params:xml:ns:yang:ietf-interfaces") != NULL){
+	/* Here a separate namespace context nsc1 is created. The original nsc 
+	 * created by the system cannot be used trivially, since we dont know
+	 * the prefixes, although we could by a complex mechanism find the prefix 
+	 * (if it exists) and use that when creating our xpath.
+	 * But it is easier creating a new namespace context nsc1.
+	 */
+	if ((nsc1 = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
+	    goto done;
+	if (xpath_vec_nsc(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
+	    goto done;
+	if (xlen){
+	    cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
+	    for (i=0; i<xlen; i++){
+		name = xml_body(xvec[i]);
+		cprintf(cb, "<interface><name>%s</name><oper-status>up</oper-status></interface>", name);
+	    }
+	    cprintf(cb, "</interfaces>");
+	    if (xml_parse_string(cbuf_get(cb), NULL, &xstate) < 0)
+		goto done;
+	}
+    }
+   /* State in test_yang.sh , test_restconf.sh and test_order.sh */
+   if (yang_find_module_by_namespace(yspec, "urn:example:clixon") != NULL){
+       if (xml_parse_string("<state xmlns=\"urn:example:clixon\">"
 			 "<op>42</op>"
 			 "<op>41</op>"
 			 "<op>43</op>" /* should not be ordered */
 			 "</state>", NULL, &xstate) < 0)
-	goto done;
+	goto done; /* For the case when urn:example:clixon is not loaded */
+   }
+    /* Event state from RFC8040 Appendix B.3.1 
+     * Note: (1) order is by-system so is different, 
+     *       (2) event-count is XOR on name, so is not 42 and 4
+     */
+   if (yang_find_module_by_namespace(yspec, "urn:example:events") != NULL){
+       if ((nsc2 = xml_nsctx_init(NULL, "urn:example:events")) == NULL)
+	   goto done;
+       if (xvec){
+	   free(xvec);
+	   xvec = NULL;
+       }
+       if (xpath_vec_nsc(xt, nsc2, "/events/event/name", &xvec, &xlen) < 0)
+	   goto done;
+       if (xlen){
+	   int j = 0;
+	   int c;
+	   cprintf(cb, "<events xmlns=\"urn:example:events\">");
+	   
+	   for (i=0; i<xlen; i++){
+	       name = xml_body(xvec[i]);
+	       c = 0;
+	       for (j=0; j<strlen(name); j++)
+		   c ^= name[j];
+	       cprintf(cb, "<event><name>%s</name><event-count>%d</event-count></event>", name, c);
+	   }
+	   cprintf(cb, "</events>");
+	   if (xml_parse_string(cbuf_get(cb), NULL, &xstate) < 0)
+	       goto done;
+       }
+   }
+
  ok:
     retval = 0;
  done:
     if (nsc1)
 	xml_nsctx_free(nsc1);
+    if (nsc2)
+	xml_nsctx_free(nsc2);
     if (xt)
 	xml_free(xt);
     if (cb)
@@ -388,7 +435,6 @@ example_extension(clicon_handle h,
  done:
     return retval;
 }
-
 
 /*! Testcase upgrade function moving interfaces-state to interfaces
  * @param[in]  h       Clicon handle 

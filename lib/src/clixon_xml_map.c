@@ -3196,7 +3196,7 @@ xml_merge(cxobj     *x0,
 	    goto done;
 	if (ymod == NULL){
 	    if (reason &&
-		(*reason = strdup("No namespace in XML tree found")) == NULL){
+		(*reason = strdup("Namespace not found or yang spec not loaded")) == NULL){
 		    clicon_err(OE_UNIX, errno, "strdup");
 		    goto done;
 	    }

@@ -695,6 +695,12 @@ main(int    argc,
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
     
+    /* Add (hardcoded) netconf features in case ietf-netconf loaded here
+     * Otherwise it is loaded in netconf_module_load below
+     */
+    if (netconf_module_features(h) < 0)
+	goto done;
+
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;

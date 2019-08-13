@@ -615,6 +615,85 @@ clicon_rpc_get(clicon_handle       h,
     return retval;
 }
 
+/*! Get database state data, clixon extension
+ * @param[in]  h         Clicon handle
+ * @param[in]  xpath     XPath in a filter stmt (or NULL/"" for no filter)
+ * @param[in]  namespace Namespace associated w xpath
+ * @param[out] xt        XML tree. Free with xml_free. 
+ *                       Either <config> or <rpc-error>. 
+ * @retval    0          OK
+ * @retval   -1          Error, fatal or xml
+ * @note if xpath is set but namespace is NULL, the default, netconf base 
+ *       namespace will be used which is most probably wrong.
+ * @code
+ *    cxobj *xt = NULL;
+ *    if (clicon_rpc_get_state(h, "/hello/world", "urn:example:hello", &xt) < 0)
+ *       err;
+ *   if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+ *	clicon_rpc_generate_error(xerr);
+ *      err;
+ *  }
+ *    if (xt)
+ *       xml_free(xt);
+ * @endcode
+ * @see clicon_rpc_generate_error
+ */
+int
+clicon_rpc_get_state(clicon_handle       h, 
+		     char               *xpath,
+		     char               *namespace,
+		     cxobj             **xt)
+{
+    int                retval = -1;
+    struct clicon_msg *msg = NULL;
+    cbuf              *cb = NULL;
+    cxobj             *xret = NULL;
+    cxobj             *xd;
+    char              *username;
+
+    if ((cb = cbuf_new()) == NULL)
+	goto done;
+    cprintf(cb, "<rpc");
+    if ((username = clicon_username_get(h)) != NULL)
+	cprintf(cb, " username=\"%s\"", username);
+    if (namespace)
+	cprintf(cb, " xmlns:nc=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, "><cl:get-state xmlns:cl=\"http://clicon.org/lib\">");
+    if (xpath && strlen(xpath)) {
+	if (namespace)
+	    cprintf(cb, "<nc:filter nc:type=\"xpath\" nc:select=\"%s\" xmlns=\"%s\"/>",
+		    xpath, namespace);
+	else /* If xpath != /, this will probably yield an error later */
+	    cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
+    }
+    cprintf(cb, "</cl:get-state></rpc>");
+    if ((msg = clicon_msg_encode("%s", cbuf_get(cb))) == NULL)
+	goto done;
+    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+	goto done;
+    /* Send xml error back: first check error, then ok */
+    if ((xd = xpath_first(xret, "/rpc-reply/rpc-error")) != NULL)
+	xd = xml_parent(xd); /* point to rpc-reply */
+    else if ((xd = xpath_first(xret, "/rpc-reply/data")) == NULL)
+	if ((xd = xml_new("data", NULL, NULL)) == NULL)
+	    goto done;
+    if (xt){
+	if (xml_rm(xd) < 0)
+	    goto done;
+	*xt = xd;
+    }
+    retval = 0;
+  done:
+    if (cb)
+	cbuf_free(cb);
+    if (xret)
+	xml_free(xret);
+    if (msg)
+	free(msg);
+    return retval;
+}
+
+
 /*! Close a (user) session
  * @param[in] h        CLICON handle
  * @retval    0        OK

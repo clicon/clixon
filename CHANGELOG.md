@@ -6,6 +6,7 @@
 * Restconf RFC 8040 increased feature compliance
   * RESTCONF PATCH (plain patch) is being implemented according to RFC 8040 Section 4.6.1
     * Note RESTCONF plain patch is different from RFC 8072 "YANG Patch Media Type" which is not implemented
+  * RESTCONF "content" query parameter supported
   * RESTCONF "insert" and "point" query parameters supported
     * Applies to ordered-by-user leaf and leaf-lists
   * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
@@ -25,6 +26,8 @@
   * The main example explains how to implement a Yang extension in a backend plugin.
 
 ### API changes on existing features (you may need to change your code)
+* New clixon-lib@2019-08-13.yang revision
+  * Added new rpc: `get-state` to get only state info in the internal Restconf/backend communication
 * Netconf edit-config "operation" attribute namespace check is enforced
   * This is enforced: `<a xmlns="uri:example" nc:operation="merge" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
   * This was previously allowed: `<a xmlns="uri:example" operation="merge">
@@ -51,6 +54,8 @@
 * pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions
 
 ### Corrected Bugs
+* If `ietf-netconf.yang` was imported from any yang module, client/backend communication stops working.
+  * Fixed by adding supported netconf features before loading other yang modules
 * RESTCONF JSON identity had wrong namespace in sub-objetcs
   * Showed if you GET an object with JSON encoding that have identities
 * Fixed Segv in nacm write when MERGE and creating object

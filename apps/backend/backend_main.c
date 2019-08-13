@@ -570,6 +570,12 @@ main(int    argc,
     if (xmldb_connect(h) < 0)
 	goto done;
 
+    /* Add (hardcoded) netconf features in case ietf-netconf loaded here
+     * Otherwise it is loaded in netconf_module_load below
+     */
+    if (netconf_module_features(h) < 0)
+	goto done;
+
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
@@ -601,7 +607,8 @@ main(int    argc,
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;
-    /* Add netconf yang spec, used by netconf client and as internal protocol */
+    /* Add netconf yang spec, used by netconf client and as internal protocol 
+     */
     if (netconf_module_load(h) < 0)
 	goto done;
     /* Load yang restconf module */
