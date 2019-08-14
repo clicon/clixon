@@ -216,7 +216,7 @@ clicon_conf_xml_set(clicon_handle h,
 
 /*! Get authorized user name
  * @param[in]  h   Clicon handle
- * @retval     xh  XMLDB storage handle. If not connected return NULL
+ * @retval     username
  */
 char *
 clicon_username_get(clicon_handle h)
@@ -228,7 +228,7 @@ clicon_username_get(clicon_handle h)
 
 /*! Set authorized user name
  * @param[in]  h   Clicon handle
- * @param[in]  xh  XMLDB storage handle. If NULL reset it
+ * @param[in]  username
  * @note Just keep note of it, dont allocate it or so.
  */
 int

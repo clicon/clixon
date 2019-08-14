@@ -26,8 +26,6 @@
   * The main example explains how to implement a Yang extension in a backend plugin.
 
 ### API changes on existing features (you may need to change your code)
-* New clixon-lib@2019-08-13.yang revision
-  * Added new rpc: `get-state` to get only state info in the internal Restconf/backend communication
 * Netconf edit-config "operation" attribute namespace check is enforced
   * This is enforced: `<a xmlns="uri:example" nc:operation="merge" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
   * This was previously allowed: `<a xmlns="uri:example" operation="merge">
@@ -49,6 +47,8 @@
     * Other empty values remain as `null`
 
 ### Minor changes
+* Added experimental binary search API function: `xml_binsearch`
+* Added content parameter to `clicon_rpc_get` (-1 or CONTENT_ALL is default)
 * Removed unnecessary configure dependencies
   * libnsl, libcrypt, if_vlan,...
 * pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions

@@ -52,6 +52,11 @@ module clixon-lib {
 	description
 	    "Released in Clixon 3.9";
     }
+    import ietf-netconf {
+	description "for the get-state extension";
+	prefix nc;
+    }
+
     rpc debug {
 	description "Set debug level of backend.";
 	input {
@@ -92,5 +97,4 @@ module clixon-lib {
         }
       }
     }
-
 }

@@ -61,7 +61,7 @@ EOF
 # Common Jukebox spec (fjukebox must be set)
 . ./jukebox.sh
 
-new "test params: -f $cfg"
+new "test params: -f $cfg -- -s"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"

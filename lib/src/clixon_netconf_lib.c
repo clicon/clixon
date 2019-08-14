@@ -1375,3 +1375,25 @@ netconf_err2cb(cxobj *xerr,
  done:
     return retval;
 }
+
+/* See RFC 8040 4.8.1
+ * @see netconf_content_str2int
+ */
+static const map_str2int netconf_content_map[] = {
+    {"config",     CONTENT_CONFIG},
+    {"nonconfig",  CONTENT_NONCONFIG},
+    {"all",        CONTENT_ALL},
+    {NULL,        -1}
+};
+
+const netconf_content
+netconf_content_str2int(char *str)
+{
+    return clicon_str2int(netconf_content_map, str);
+}
+
+const char *
+netconf_content_int2str(netconf_content nr)
+{
+    return clicon_int2str(netconf_content_map, nr);
+}

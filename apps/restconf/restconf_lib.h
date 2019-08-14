@@ -57,16 +57,6 @@ enum restconf_media{
 };
 typedef enum restconf_media restconf_media;
 
-/*! Content query parameter RFC 8040 Sec 4.8.1 
- */
-enum query_content{
-    CONTENT_CONFIG,
-    CONTENT_NONCONFIG,
-    CONTENT_ALL         /* default */
-
-};
-typedef enum query_content query_content;
-
 /*
  * Prototypes (also in clixon_restconf.h)
  */
@@ -76,8 +66,6 @@ const char *restconf_code2reason(int code);
 const restconf_media restconf_media_str2int(char *media);
 const char *restconf_media_int2str(restconf_media media);
 restconf_media restconf_content_type(FCGX_Request *r);
-const query_content query_content_str2int(char *str);
-const char *query_content_int2str(query_content nr);
 int restconf_badrequest(FCGX_Request *r);
 int restconf_unauthorized(FCGX_Request *r);
 int restconf_forbidden(FCGX_Request *r);

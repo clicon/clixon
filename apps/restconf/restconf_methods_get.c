@@ -115,7 +115,7 @@ api_data_get2(clicon_handle h,
     char      *namespace = NULL;
     cvec      *nsc = NULL;
     char      *str;
-    query_content content = CONTENT_ALL;
+    netconf_content content = CONTENT_ALL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -125,7 +125,7 @@ api_data_get2(clicon_handle h,
     /* Check for content attribute */
     if ((str = cvec_find_str(qvec, "content")) != NULL){
 	clicon_debug(1, "%s content=%s", __FUNCTION__, str);
-	if ((content = query_content_str2int(str)) == -1){
+	if ((content = netconf_content_str2int(str)) == -1){
 	    if (netconf_bad_attribute_xml(&xerr, "application",
 					  "<bad-attribute>content</bad-attribute>", "Unrecognized value of content attribute") < 0)
 		goto done;
@@ -168,10 +168,10 @@ api_data_get2(clicon_handle h,
 	ret = clicon_rpc_get_config(h, "running", xpath, namespace, &xret);
 	break;
     case CONTENT_NONCONFIG:
-	ret = clicon_rpc_get_state(h, xpath, namespace, &xret);
+	ret = clicon_rpc_get(h, xpath, namespace, CONTENT_NONCONFIG, &xret);
 	break;
     case CONTENT_ALL:
-	ret = clicon_rpc_get(h, xpath, namespace, &xret);
+	ret = clicon_rpc_get(h, xpath, namespace, CONTENT_ALL, &xret);
 	break;
     default:
 	clicon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);

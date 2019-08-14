@@ -153,16 +153,6 @@ static const map_str2int http_media_map[] = {
     {NULL,                            -1}
 };
 
-/* See RFC 8040 4.8.1
- * @see query_content_str2int
- */
-static const map_str2int query_content_map[] = {
-    {"config",     CONTENT_CONFIG},
-    {"nonconfig",  CONTENT_NONCONFIG},
-    {"all",        CONTENT_ALL},
-    {NULL,        -1}
-};
-
 int
 restconf_err2code(char *tag)
 {
@@ -185,18 +175,6 @@ const char *
 restconf_media_int2str(restconf_media media)
 {
     return clicon_int2str(http_media_map, media);
-}
-
-const query_content
-query_content_str2int(char *str)
-{
-    return clicon_str2int(query_content_map, str);
-}
-
-const char *
-query_content_int2str(query_content nr)
-{
-    return clicon_int2str(query_content_map, nr);
 }
 
 /*! Return media_in from Content-Type, -1 if not found or unrecognized

@@ -401,10 +401,9 @@ xml_search_userorder(cxobj        *xp,
 
 /*!
  * @param[in] xp       Parent xml node. 
+ * @param[in] x1       Find this object among xp:s children
+ * @param[in] userorder If x1 is ordered by user
  * @param[in] yangi    Yang order
- * @param[in] keynr    Length of keyvec/keyval vector when applicable
- * @param[in] keyvec   Array of of yang key identifiers
- * @param[in] keyval   Array of of yang key values
  * @param[in] low      Lower bound of childvec search interval 
  * @param[in] upper    Lower bound of childvec search interval 
  */
@@ -447,10 +446,8 @@ xml_search1(cxobj        *xp,
 
 /*! Find XML child under xp matching x1 using binary search
  * @param[in] xp     Parent xml node. 
- * @param[in] yangi  Yang child order
- * @param[in] keynr  Length of keyvec/keyval vector when applicable
- * @param[in] keyvec Array of of yang key identifiers
- * @param[in] keyval Array of of yang key values
+ * @param[in] x1     Find this object among xp:s children
+ * @param[in] yc     Yang spec of x1
  */
 static cxobj *
 xml_search(cxobj        *xp,
@@ -826,3 +823,37 @@ match_base_child(cxobj      *x0,
     return retval;
 }
 	   
+/*! Experimental API for binary search
+ */
+cxobj *
+xml_binsearch(cxobj *xp,
+	      char  *name,
+	      char  *keyname,
+	      char  *keyval)
+{
+    cxobj     *xc = NULL;
+    cxobj     *xa = NULL;
+    cxobj     *xret = NULL;
+    yang_stmt *yp;
+    yang_stmt *yc;
+    
+    if ((yp = xml_spec(xp)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "yang spec not found");
+	goto done;
+    }
+    if ((yc = yang_find(yp, 0, name)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "yang not found");
+	goto done;
+    }
+    if ((xc = xml_new(name, xp, yc)) == NULL)
+	goto done;
+    if ((xa = xml_new(keyname, xc, NULL)) == NULL)
+	goto done;
+    if (xml_value_set(xa, keyval) < 0)
+	goto done;
+    xret = xml_search(xp, xc, yc);
+ done:
+    if (xc)
+	xml_free(xc);
+    return xret;
+}

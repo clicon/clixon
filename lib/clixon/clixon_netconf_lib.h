@@ -39,6 +39,20 @@
 #define _CLIXON_NETCONF_LIB_H
 
 /*
+ * Types
+ */
+/*! Content query parameter RFC 8040 Sec 4.8.1 
+ * Clixon extention: content so that RFC8040 content attribute can be conveyed
+ * internally used in <get>
+ */
+enum netconf_content{
+    CONTENT_CONFIG,    /* config data only */
+    CONTENT_NONCONFIG, /* state data only */
+    CONTENT_ALL        /* default */
+};
+typedef enum netconf_content netconf_content;
+
+/*
  * Prototypes
  */
 int netconf_in_use(cbuf *cb, char *type, char *message);
@@ -77,5 +91,7 @@ int netconf_module_features(clicon_handle h);
 int netconf_module_load(clicon_handle h);
 char *netconf_db_find(cxobj *xn, char *name);
 int netconf_err2cb(cxobj *xerr, cbuf **cberr);
+const netconf_content netconf_content_str2int(char *str);
+const char *netconf_content_int2str(netconf_content nr);
 
 #endif /* _CLIXON_NETCONF_LIB_H */

@@ -80,6 +80,7 @@
 #include <clixon/clixon_yang_module.h>
 #include <clixon/clixon_stream.h>
 #include <clixon/clixon_proto.h>
+#include <clixon/clixon_netconf_lib.h>
 #include <clixon/clixon_proto_client.h>
 #include <clixon/clixon_plugin.h>
 #include <clixon/clixon_options.h>
@@ -90,7 +91,6 @@
 #include <clixon/clixon_xpath_ctx.h>
 #include <clixon/clixon_xpath.h>
 #include <clixon/clixon_json.h>
-#include <clixon/clixon_netconf_lib.h>
 #include <clixon/clixon_nacm.h>
 #include <clixon/clixon_xml_changelog.h>
 #include <clixon/clixon_xml_nsctx.h>
