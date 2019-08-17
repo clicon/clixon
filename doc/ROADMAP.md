@@ -1,7 +1,6 @@
 # Clixon roadmap
 
 - Support for restconf call-home (RFC 8071)
-- Support for restconf PATCH method
 - NETCONF
   - Support for additional Netconf [edit-config modes](https://github.com/clicon/clixon/issues/53)
   - Netconf [framing](https://github.com/clicon/clixon/issues/50)

@@ -1,6 +1,12 @@
 # Clixon Changelog
 
-## 4.1.0 (Expected: August 2019)
+## 4.1.0 (18 August 2019)
+
+### Summary
+
+The 4.1.0 release is a RESTCONF feature upgrade release. Highlights are
+RFC8040 plan PATCH, many query parameters, compliant return codes, and
+more.
 
 ### Major New features
 * Restconf RFC 8040 increased feature compliance

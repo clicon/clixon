@@ -5,7 +5,7 @@ container. By default it is pushed to docker hub clixon/clixon, but you can chan
 the IMAGE in Makefile.in and push it to another name.
 
 The clixon docker base image can be used to build clixon
-applications. It has all the whole code for a clixon release which it
+applications. It has the whole code for a clixon release which it
 downloads from git.
 
 See [clixon-system](../main/README.md) for a more complete clixon image.
