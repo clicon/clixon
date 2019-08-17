@@ -170,7 +170,7 @@ int       xml_free(cxobj *xn);
 
 int       xml_print(FILE  *f, cxobj *xn);
 int       clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint);
-int       clicon_xml2cbuf(cbuf *xf, cxobj *xn, int level, int prettyprint);
+int       clicon_xml2cbuf(cbuf *xf, cxobj *xn, int level, int prettyprint, int32_t depth);
 int       xml_parse_file(int fd, char *endtag, yang_stmt *yspec, cxobj **xt);
 int       xml_parse_string(const char *str, yang_stmt *yspec, cxobj **xml_top);
 #if defined(__GNUC__) && __GNUC__ >= 3

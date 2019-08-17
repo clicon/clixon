@@ -114,8 +114,9 @@ api_data_get2(clicon_handle h,
     int        ret;
     char      *namespace = NULL;
     cvec      *nsc = NULL;
-    char      *str;
+    char      *attr; /* attribute value string */
     netconf_content content = CONTENT_ALL;
+    int32_t    depth = -1;  /* Nr of levels to print, -1 is all, 0 is none */
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -123,9 +124,9 @@ api_data_get2(clicon_handle h,
 	goto done;
     }
     /* Check for content attribute */
-    if ((str = cvec_find_str(qvec, "content")) != NULL){
-	clicon_debug(1, "%s content=%s", __FUNCTION__, str);
-	if ((content = netconf_content_str2int(str)) == -1){
+    if ((attr = cvec_find_str(qvec, "content")) != NULL){
+	clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
+	if ((content = netconf_content_str2int(attr)) == -1){
 	    if (netconf_bad_attribute_xml(&xerr, "application",
 					  "<bad-attribute>content</bad-attribute>", "Unrecognized value of content attribute") < 0)
 		goto done;
@@ -138,7 +139,29 @@ api_data_get2(clicon_handle h,
 	    goto ok;
 	}
     }
-
+    /* Check for depth attribute */
+    if ((attr = cvec_find_str(qvec, "depth")) != NULL){
+	clicon_debug(1, "%s depth=%s", __FUNCTION__, attr);
+	if (strcmp(attr, "unbounded") != 0){
+	    char *reason = NULL;
+	    if ((ret = parse_int32(attr, &depth, &reason)) < 0){
+		clicon_err(OE_XML, errno, "parse_int32");
+		goto done;
+	    }
+	    if (ret==0){
+		if (netconf_bad_attribute_xml(&xerr, "application",
+					      "<bad-attribute>depth</bad-attribute>", "Unrecognized value of depth attribute") < 0)
+		    goto done;
+		if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		    goto done;
+		}
+		if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		    goto done;
+		goto ok;
+	    }
+	}
+    }
     if ((cbpath = cbuf_new()) == NULL)
         goto done;
     cprintf(cbpath, "/");
@@ -165,13 +188,13 @@ api_data_get2(clicon_handle h,
 	goto done;
     switch (content){
     case CONTENT_CONFIG:
-	ret = clicon_rpc_get_config(h, "running", xpath, namespace, &xret);
+	ret = clicon_rpc_get(h, xpath, namespace, CONTENT_CONFIG, depth, &xret);
 	break;
     case CONTENT_NONCONFIG:
-	ret = clicon_rpc_get(h, xpath, namespace, CONTENT_NONCONFIG, &xret);
+	ret = clicon_rpc_get(h, xpath, namespace, CONTENT_NONCONFIG, depth, &xret);
 	break;
     case CONTENT_ALL:
-	ret = clicon_rpc_get(h, xpath, namespace, CONTENT_ALL, &xret);
+	ret = clicon_rpc_get(h, xpath, namespace, CONTENT_ALL, depth, &xret);
 	break;
     default:
 	clicon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
@@ -196,7 +219,7 @@ api_data_get2(clicon_handle h,
 #if 0 /* DEBUG */
     if (debug){
 	cbuf *cb = cbuf_new();
-	clicon_xml2cbuf(cb, xret, 0, 0);
+	clicon_xml2cbuf(cb, xret, 0, 0, -1);
 	clicon_debug(1, "%s xret:%s", __FUNCTION__, cbuf_get(cb));
 	cbuf_free(cb);
     }
@@ -219,7 +242,7 @@ api_data_get2(clicon_handle h,
     if (xpath==NULL || strcmp(xpath,"/")==0){ /* Special case: data root */
 	switch (media_out){
 	case YANG_DATA_XML:
-	    if (clicon_xml2cbuf(cbx, xret, 0, pretty) < 0) /* Dont print top object?  */
+	    if (clicon_xml2cbuf(cbx, xret, 0, pretty, -1) < 0) /* Dont print top object?  */
 		goto done;
 	    break;
 	case YANG_DATA_JSON:
@@ -268,7 +291,7 @@ api_data_get2(clicon_handle h,
 		    if (namespace2 && xmlns_set(x, prefix, namespace2) < 0)
 			goto done;
 		}
-		if (clicon_xml2cbuf(cbx, x, 0, pretty) < 0) /* Dont print top object?  */
+		if (clicon_xml2cbuf(cbx, x, 0, pretty, -1) < 0) /* Dont print top object?  */
 		    goto done;
 	    }
 	    break;

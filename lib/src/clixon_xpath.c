@@ -148,16 +148,39 @@ xpath_tree_print0(cbuf       *cb,
     return 0;
 }
 
-/*! Print a xpath_tree
+/*! Print a xpath_tree to CLIgen buf
  * @param[out] cb  CLIgen buffer
  * @param[in]  xs  XPATH tree
  */
 int
-xpath_tree_print(cbuf       *cb,
-		 xpath_tree *xs)
+xpath_tree_print_cb(cbuf       *cb,
+		    xpath_tree *xs)
 {
     xpath_tree_print0(cb, xs, 0);
     return 0;
+}
+
+/*! Print a xpath_tree
+ * @param[in]  f   UNIX output stream
+ * @param[in]  xs  XPATH tree
+ */
+int
+xpath_tree_print(FILE  *f, 
+		 xpath_tree *xs)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    if (xpath_tree_print0(cb, xs, 0) < 0)
+	goto done;
+    fprintf(f, "%s", cbuf_get(cb));
+    retval = 0;
+ done:
+    return retval;
 }
 	
 /*! Free a xpath_tree
@@ -203,7 +226,8 @@ xpath_parse(cvec        *nsc,
 {
     int                          retval = -1;
     struct clicon_xpath_yacc_arg xy = {0,};
-    
+    cbuf                        *cb = NULL;    
+
     xy.xy_parse_string = xpath;
     xy.xy_name = "xpath parser";
     xy.xy_linenum = 1;
@@ -219,17 +243,20 @@ xpath_parse(cvec        *nsc,
 	goto done;
     }
     if (debug > 1){
-	cbuf *cb = cbuf_new();
-	xpath_tree_print(cb, xy.xy_top);
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	xpath_tree_print_cb(cb, xy.xy_top);
 	clicon_debug(2, "xpath parse tree:\n%s", cbuf_get(cb));
-	cbuf_free(cb);
     }
-    /* done: */
     xpath_parse_exit(&xy);
     xpath_scan_exit(&xy);
     *xptree = xy.xy_top;
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 

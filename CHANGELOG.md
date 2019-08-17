@@ -7,6 +7,9 @@
   * RESTCONF PATCH (plain patch) is being implemented according to RFC 8040 Section 4.6.1
     * Note RESTCONF plain patch is different from RFC 8072 "YANG Patch Media Type" which is not implemented
   * RESTCONF "content" query parameter supported
+    * Extended Netconf with content attribute for internal use
+  * RESTCONF "depth" query parameter supported
+    * Extended Netconf with depth attribute for internal use
   * RESTCONF "insert" and "point" query parameters supported
     * Applies to ordered-by-user leaf and leaf-lists
   * RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
@@ -45,10 +48,15 @@
     * Empty yang container encoded as `{}`
     * Empty leaf/leaf-list of type empty encoded as `[null]`
     * Other empty values remain as `null`
+* C API changes:
+  * Added `depth` parameter to function `clicon_xml2cbuf`, default is -1.
+  * Added two parameters to function `clicon_rpc_get`
+    * `content`: to select state or config. Allowed values: CONTENT_CONFIG,CONTENT_NOCONFIG, CONTENT_ALL (default)
+    * `depth`: Get levels of XML in get function: -1 is unbounded, 0 is nothing, 1 is top-level node only.
+
 
 ### Minor changes
 * Added experimental binary search API function: `xml_binsearch`
-* Added content parameter to `clicon_rpc_get` (-1 or CONTENT_ALL is default)
 * Removed unnecessary configure dependencies
   * libnsl, libcrypt, if_vlan,...
 * pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions

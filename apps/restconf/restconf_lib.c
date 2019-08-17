@@ -496,7 +496,7 @@ api_return_err(clicon_handle h,
     FCGX_FPrintF(r->out, "Content-Type: %s\r\n\r\n", restconf_media_int2str(media));
     switch (media){
     case YANG_DATA_XML:
-	if (clicon_xml2cbuf(cb, xerr, 2, pretty) < 0)
+	if (clicon_xml2cbuf(cb, xerr, 2, pretty, -1) < 0)
 	    goto done;
 	clicon_debug(1, "%s code:%d err:%s", __FUNCTION__, code, cbuf_get(cb));
 	if (pretty){

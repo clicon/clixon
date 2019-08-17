@@ -147,7 +147,7 @@ main(int    argc,
 	if (json)
 	    xml2json_cbuf(cb, xc, pretty); /* print xml */
 	else
-	    clicon_xml2cbuf(cb, xc, 0, pretty); /* print xml */
+	    clicon_xml2cbuf(cb, xc, 0, pretty, -1); /* print xml */
     fprintf(stdout, "%s", cbuf_get(cb));
     fflush(stdout);
     retval = 0;

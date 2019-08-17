@@ -279,7 +279,7 @@ cli_dbxml(clicon_handle       h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_xml2cbuf(cb, xtop, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xtop, 0, 0, -1) < 0)
 	goto done;
     if (clicon_rpc_edit_config(h, "candidate", OP_NONE, cbuf_get(cb)) < 0)
 	goto done;
@@ -792,7 +792,7 @@ load_config_file(clicon_handle h,
     while ((x = xml_child_each(xt, x, -1)) != NULL) {
 	/* Ensure top-level is "config", maybe this is too rough? */
 	xml_name_set(x, "config");
-	if (clicon_xml2cbuf(cbxml, x, 0, 0) < 0)
+	if (clicon_xml2cbuf(cbxml, x, 0, 0, -1) < 0)
 	    goto done;
     }
     if (clicon_rpc_edit_config(h, "candidate",
@@ -1235,7 +1235,7 @@ cli_copy_config(clicon_handle h,
     /* resuse cb */
     cbuf_reset(cb);
     /* create xml copy tree and merge it with database configuration */
-    clicon_xml2cbuf(cb, x2, 0, 0);
+    clicon_xml2cbuf(cb, x2, 0, 0, -1);
     if (clicon_rpc_edit_config(h, db, OP_MERGE, cbuf_get(cb)) < 0)
 	goto done;
     retval = 0;

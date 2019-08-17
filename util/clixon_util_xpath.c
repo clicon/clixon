@@ -51,6 +51,7 @@ See https://www.w3.org/TR/xpath/
 #include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -68,6 +69,8 @@ usage(char *argv0)
 	    "\t-f <file>  \tXML file\n"
 	    "\t-p <xpath> \tPrimary XPATH string\n"
 	    "\t-i <xpath0>\t(optional) Initial XPATH string\n"
+	    "\t-y <filename> \tYang filename or dir (load all files)\n"
+    	    "\t-Y <dir> \tYang dirs (can be several)\n"
 	    "and the following extra rules:\n"
 	    "\tif -f is not given, XML input is expected on stdin\n"
 	    "\tif -p is not given, <xpath> is expected as the first line on stdin\n"
@@ -88,7 +91,7 @@ ctx_print2(cbuf   *cb,
     case XT_NODESET:
 	for (i=0; i<xc->xc_size; i++){
 	    cprintf(cb, "%d:", i);
-	    clicon_xml2cbuf(cb, xc->xc_nodeset[i], 0, 0);
+	    clicon_xml2cbuf(cb, xc->xc_nodeset[i], 0, 0, -1);
 	}
 	break;
     case XT_BOOL:
@@ -105,7 +108,8 @@ ctx_print2(cbuf   *cb,
 }
 
 int
-main(int argc, char **argv)
+main(int    argc,
+     char **argv)
 {
     int         retval = -1;
     char       *argv0 = argv[0];
@@ -118,16 +122,24 @@ main(int argc, char **argv)
     char       *buf = NULL;
     int         ret;
     int         fd = 0; /* unless overriden by argv[1] */
+    char       *yang_file_dir = NULL;
+    yang_stmt  *yspec = NULL;
     char       *xpath = NULL;
     char       *xpath0 = NULL;
     char       *filename;
     xp_ctx     *xc = NULL;
     cbuf       *cb = NULL;
-    
+    clicon_handle h;
+    struct stat   st;
+
     clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
+
+    if ((h = clicon_handle_init()) == NULL)
+	goto done;
+
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, "hD:f:p:i:")) != -1)
+    while ((c = getopt(argc, argv, "hD:f:p:i:y:Y:")) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv0);
@@ -149,10 +161,35 @@ main(int argc, char **argv)
 	case 'i': /* Optional initial XPATH string */
 	    xpath0 = optarg;
 	    break;
+	case 'y':
+	    yang_file_dir = optarg;
+	    break;
+	case 'Y':
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
+	    break;
 	default:
 	    usage(argv[0]);
 	    break;
 	}
+    /* Parse yang */
+    if (yang_file_dir){
+	if ((yspec = yspec_new()) == NULL)
+	    goto done;
+	if (stat(yang_file_dir, &st) < 0){
+	    clicon_err(OE_YANG, errno, "%s not found", yang_file_dir);
+	    goto done;
+	}
+	if (S_ISDIR(st.st_mode)){
+	    if (yang_spec_load_dir(h, yang_file_dir, yspec) < 0)
+		goto done;
+	}
+	else{
+	    if (yang_spec_parse_file(h, yang_file_dir, yspec) < 0)
+		goto done;
+	}
+    }
+
     if (xpath==NULL){
 	/* First read xpath */
 	len = 1024; /* any number is fine */
@@ -192,7 +229,37 @@ main(int argc, char **argv)
 	return -1;
     }
 
-    /* If xpath0 given, position current x */
+    /* Validate XML as well */
+    if (yang_file_dir){
+	cbuf  *cbret = NULL;
+	cxobj *x1;
+	cxobj *xerr = NULL; /* malloced must be freed */
+
+	x1 = xml_child_i(x0, 0);
+	/* Populate */
+	if (xml_apply0(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	    goto done;
+	/* Sort */
+	if (xml_apply0(x1, CX_ELMNT, xml_sort, h) < 0)
+	    goto done;
+	/* Add default values */
+	if (xml_apply(x1, CX_ELMNT, xml_default, h) < 0)
+	    goto done;
+	if (xml_apply0(x1, -1, xml_sort_verify, h) < 0)
+	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
+	if ((ret = xml_yang_validate_all_top(h, x1, &xerr)) < 0) 
+	    goto done;
+	if (ret > 0 && (ret = xml_yang_validate_add(h, x1, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (netconf_err2cb(xerr, &cbret) < 0)
+		goto done;
+	    fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
+	    goto done;
+	}
+    }
+    
+    /* If xpath0 given, position current x (ie somewhere else than root) */
     if (xpath0){
 	if ((x = xpath_first(x0, "%s", xpath0)) == NULL){
 	    fprintf(stderr, "Error: xpath0 returned NULL\n");
@@ -202,7 +269,7 @@ main(int argc, char **argv)
     else
 	x = x0;
 
-    /* Parse XML (use nsc == NULL to indicate dont use) */
+    /* Parse XPATH (use nsc == NULL to indicate dont use) */
     if (xpath_vec_ctx(x, NULL, xpath, &xc) < 0)
 	return -1;
     /* Print results */

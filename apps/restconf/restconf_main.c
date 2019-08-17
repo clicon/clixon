@@ -242,7 +242,7 @@ api_root(clicon_handle  h,
 	goto done;
     switch (media_out){
     case YANG_DATA_XML:
-	if (clicon_xml2cbuf(cb, xt, 0, pretty) < 0)
+	if (clicon_xml2cbuf(cb, xt, 0, pretty, -1) < 0)
 	    goto done;
 	break;
     case YANG_DATA_JSON:
@@ -292,7 +292,7 @@ api_yang_library_version(clicon_handle h,
     }
     switch (media_out){
     case YANG_DATA_XML:
-	if (clicon_xml2cbuf(cb, xt, 0, pretty) < 0)
+	if (clicon_xml2cbuf(cb, xt, 0, pretty, -1) < 0)
 	    goto done;
 	break;
     case YANG_DATA_JSON:

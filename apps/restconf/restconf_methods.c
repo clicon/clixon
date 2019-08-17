@@ -326,7 +326,7 @@ api_data_write(clicon_handle h,
 #if 0
     if (debug){
 	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xret, 0, 0) < 0)
+	if (clicon_xml2cbuf(ccc, xret, 0, 0, -1) < 0)
 	    goto done;
 	clicon_debug(1, "%s XRET: %s", __FUNCTION__, cbuf_get(ccc));
 	cbuf_free(ccc);
@@ -457,7 +457,7 @@ api_data_write(clicon_handle h,
 #if 0
     if (debug){
 	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xdata, 0, 0) < 0)
+	if (clicon_xml2cbuf(ccc, xdata, 0, 0, -1) < 0)
 	    goto done;
 	clicon_debug(1, "%s DATA:%s", __FUNCTION__, cbuf_get(ccc));
 	cbuf_free(ccc);
@@ -620,7 +620,7 @@ api_data_write(clicon_handle h,
 	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
     cprintf(cbx, "<edit-config><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
-    if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
+    if (clicon_xml2cbuf(cbx, xtop, 0, 0, -1) < 0)
 	goto done;
     cprintf(cbx, "</edit-config></rpc>");
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
@@ -891,7 +891,7 @@ api_data_delete(clicon_handle h,
 	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
     cprintf(cbx, "<edit-config><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
-    if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
+    if (clicon_xml2cbuf(cbx, xtop, 0, 0, -1) < 0)
 	goto done;
     cprintf(cbx, "</edit-config></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)

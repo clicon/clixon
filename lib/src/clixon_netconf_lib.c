@@ -167,7 +167,7 @@ netconf_invalid_value(cbuf *cb,
 
     if (netconf_invalid_value_xml(&xret, type, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
 	goto done;
     retval = 0;
  done:
@@ -276,7 +276,7 @@ netconf_bad_attribute(cbuf *cb,
 
     if (netconf_bad_attribute_xml(&xret, type, info, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
 	goto done;
     retval = 0;
  done:
@@ -441,7 +441,7 @@ netconf_missing_element(cbuf      *cb,
     if (netconf_common_xml(&xret, type, "missing-element",
 			   "bad-element", element, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
 	goto done;
     retval = 0;
  done:
@@ -487,7 +487,7 @@ netconf_bad_element(cbuf *cb,
     if (netconf_common_xml(&xret, type, "bad-element",
 			   "bad-element",element, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
 	goto done;
     retval = 0;
  done:
@@ -525,7 +525,7 @@ netconf_unknown_element(cbuf *cb,
     if (netconf_common_xml(&xret, type, "unknown-element",
 			   "bad-element", element, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
 	goto done;
     retval = 0;
  done:
@@ -572,7 +572,7 @@ netconf_unknown_namespace(cbuf *cb,
     if (netconf_common_xml(&xret, type, "unknown-namespace",
 			   "bad-namespace", namespace, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
 	goto done;
     retval = 0;
  done:
@@ -610,7 +610,7 @@ netconf_access_denied(cbuf *cb,
 
     if (netconf_access_denied_xml(&xret, type, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
 	goto done;
     retval = 0;
  done:
@@ -846,7 +846,7 @@ netconf_data_missing(cbuf *cb,
 
     if (netconf_data_missing_xml(&xret, missing_choice, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
 	goto done;
     retval = 0;
  done:
@@ -967,7 +967,7 @@ netconf_operation_failed(cbuf  *cb,
 
     if (netconf_operation_failed_xml(&xret, type, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1045,7 +1045,7 @@ netconf_malformed_message(cbuf  *cb,
 
     if (netconf_malformed_message_xml(&xret, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1148,7 +1148,7 @@ netconf_data_not_unique_xml(cxobj **xret,
 	while ((cvi = cvec_each(cvk, cvi)) != NULL){
 	    if ((xi = xml_find(x, cv_string_get(cvi))) == NULL)
 		continue; /* ignore, shouldnt happen */
-	    clicon_xml2cbuf(cb, xi, 0, 0);	
+	    clicon_xml2cbuf(cb, xi, 0, 0, -1);	
 	    if (xml_parse_va(&xinfo, NULL, "<non-unique>%s</non-unique>", cbuf_get(cb)) < 0)
 		goto done;
 	    cbuf_reset(cb);
@@ -1369,7 +1369,7 @@ netconf_err2cb(cxobj *xerr,
     if ((x=xpath_first(xerr, "error-message"))!=NULL)
 	cprintf(cb, "%s ", xml_body(x));
     if ((x=xpath_first(xerr, "error-info"))!=NULL)
-	clicon_xml2cbuf(cb, xml_child_i(x,0), 0, 0);
+	clicon_xml2cbuf(cb, xml_child_i(x,0), 0, 0, -1);
     *cberr = cb;
     retval = 0;
  done:

@@ -100,7 +100,8 @@ new "B.1.2.  Retrieve the Server Module Information"
 expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-yang-library:modules-state)" 0 "HTTP/1.1 200 OK" 'Cache-Control: no-cache' "Content-Type: application/yang-data+json" '{"ietf-yang-library:modules-state":{"module-set-id":' '"module":\[{"name":"example-events","revision":\[null\],"namespace":"urn:example:events","conformance-type":"implement"},{"name":"example-jukebox","revision":"2016-08-15","namespace":"http://example.com/ns/example-jukebox","conformance-type":"implement"}'
 
 new "B.1.3.  Retrieve the Server Capability Information"
-expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/capabilities)" 0 "HTTP/1.1 200 OK" "Content-Type: application/yang-data+xml" 'Cache-Control: no-cache' '<capabilities xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"><capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability></capabilities>'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/capabilities)" 0 "HTTP/1.1 200 OK" "Content-Type: application/yang-data+xml" 'Cache-Control: no-cache' '<capabilities xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"><capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability><capability>urn:ietf:params:restconf:capability:depth</capability>
+</capabilities>'
 
 new "B.2.1.  Create New Data Resources (artist+json)"
 expectpart "$(curl -si -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox/library -d '{"example-jukebox:artist":[{"name":"Foo Fighters"}]}')" 0 "HTTP/1.1 201 Created" "Location: http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters"
@@ -165,8 +166,27 @@ expectpart "$(curl -si -X GET http://localhost/restconf/data/example-events:even
 new 'B.3.1.  "content" Parameter example 3: content=nonconfig'
 expectpart "$(curl -si -X GET http://localhost/restconf/data/example-events:events?content=nonconfig -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-events:events":{"event":\[{"name":"interface-down","event-count":90},{"name":"interface-up","event-count":77}\]}}'
 
+#new "restconf DELETE whole datastore"
+#expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
+
+new 'B.3.2.  "depth" Parameter example 1 unbound'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox?depth=unbounded)" 0 "HTTP/1.1 200 OK" '{"example-jukebox:jukebox":{"library":{"artist":\[{"name":"Foo Fighters","album":\[{"name":"One by One","year":2012}\]},{"name":"Nick Cave and the Bad Seeds","album":\[{"name":"Tender Prey","year":1988},{"name":"The Good Son","year":1990}\]}\]}}}'
+
+new 'B.3.2.  "depth" Parameter example 2 depth=1'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox?depth=1)" 0 "HTTP/1.1 200 OK" '{"example-jukebox:jukebox":{}}'
+
+new 'B.3.2.  "depth" Parameter depth=2'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox?depth=2)" 0 "HTTP/1.1 200 OK" '{"example-jukebox:jukebox":{"library":{}}}'
+
+# Maybe this is not correct w [null,null]but I have no good examples
+new 'B.3.2.  "depth" Parameter depth=3'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/example-jukebox:jukebox?depth=3)" 0 "HTTP/1.1 200 OK" '{"example-jukebox:jukebox":{"artist":\[null,null\]}}}
+'
+
 new "restconf DELETE whole datastore"
 expectfn 'curl -s -X DELETE http://localhost/restconf/data' 0 ""
+
+#new 'B.3.3.  "fields" Parameter'
 
 new 'B.3.4.  "insert" Parameter'
 JSON="{\"example-jukebox:song\":[{\"index\":1,\"id\":\"/example-jukebox:jukebox/library/artist[name='Foo Fighters']/album[name='Wasting Light']/song[name='Rope']\"}]}"
@@ -224,7 +244,6 @@ expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:ext
 if false; then # NYI
 
 new "B.2.2.  Detect Datastore Resource Entity-Tag Change" # XXX done except entity-changed
-new 'B.3.2.  "depth" Parameter'
 new 'B.3.3.  "fields" Parameter'
 new 'B.3.6.  "filter" Parameter'
 new 'B.3.7.  "start-time" Parameter'

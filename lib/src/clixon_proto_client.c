@@ -213,7 +213,7 @@ clicon_rpc_netconf_xml(clicon_handle  h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_xml2cbuf(cb, xml, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xml, 0, 0, -1) < 0)
 	goto done;
     if (clicon_rpc_netconf(h, cbuf_get(cb), xret, sp) < 0)
 	goto done;
@@ -541,7 +541,8 @@ clicon_rpc_unlock(clicon_handle h,
  * @param[in]  h         Clicon handle
  * @param[in]  xpath     XPath in a filter stmt (or NULL/"" for no filter)
  * @param[in]  namespace Namespace associated w xpath
- * @param[in]  content   CLixon extension: all, config, noconfig. -1 means all
+ * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
+ * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
  * @param[out] xt        XML tree. Free with xml_free. 
  *                       Either <config> or <rpc-error>. 
  * @retval    0          OK
@@ -550,7 +551,7 @@ clicon_rpc_unlock(clicon_handle h,
  *       namespace will be used which is most probably wrong.
  * @code
  *    cxobj *xt = NULL;
- *    if (clicon_rpc_get(h, "/hello/world", "urn:example:hello", CONTENT_ALL, &xt) < 0)
+ *    if (clicon_rpc_get(h, "/hello/world", "urn:example:hello", CONTENT_ALL, -1, &xt) < 0)
  *       err;
  *   if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
  *	clicon_rpc_generate_error(xerr);
@@ -563,11 +564,12 @@ clicon_rpc_unlock(clicon_handle h,
  * @see clicon_rpc_generate_error
  */
 int
-clicon_rpc_get(clicon_handle h, 
-	       char         *xpath,
-	       char         *namespace,
+clicon_rpc_get(clicon_handle   h, 
+	       char           *xpath,
+	       char           *namespace,
 	       netconf_content content,
-	       cxobj       **xt)
+	       int32_t         depth,
+	       cxobj         **xt)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;
@@ -584,11 +586,12 @@ clicon_rpc_get(clicon_handle h,
     if (namespace)
 	cprintf(cb, " xmlns:nc=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, "><get");
-#if 1
-    /* Clixon extension, content all, config, nonconfig */
+    /* Clixon extension, content=all,config, or nonconfig */
     if (content != -1)
 	cprintf(cb, " content=\"%s\"", netconf_content_int2str(content));
-#endif
+    /* Clixon extension, depth=<level> */
+    if (depth != -1)
+	cprintf(cb, " depth=\"%d\"", depth);
     cprintf(cb, ">");
     if (xpath && strlen(xpath)) {
 	if (namespace)

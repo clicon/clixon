@@ -984,7 +984,7 @@ stream_publish_cb(clicon_handle h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_xml2cbuf(d, event, 0, 0) < 0)
+    if (clicon_xml2cbuf(d, event, 0, 0, -1) < 0)
 	goto done;
     if (url_post(cbuf_get(u),     /* url+stream */
 		 cbuf_get(d),     /* postfields */

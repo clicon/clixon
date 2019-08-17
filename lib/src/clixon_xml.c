@@ -1651,13 +1651,14 @@ xml_print(FILE  *f,
  *
  * @param[in,out] cb          Cligen buffer to write to
  * @param[in]     xn          Clicon xml tree
- * @param[in]     level       Indentation level
+ * @param[in]     level       Indentation level for prettyprint
  * @param[in]     prettyprint insert \n and spaces tomake the xml more readable.
+ * @param[in]     depth       Limit levels of child resources: -1 is all, 0 is none, 1 is node itself
  *
  * @code
  * cbuf *cb;
  * cb = cbuf_new();
- * if (clicon_xml2cbuf(cb, xn, 0, 1) < 0)
+ * if (clicon_xml2cbuf(cb, xn, 0, 1, -1) < 0)
  *   goto err;
  * fprintf(stderr, "%s", cbuf_get(cb));
  * cbuf_free(cb);
@@ -1665,10 +1666,11 @@ xml_print(FILE  *f,
  * @see  clicon_xml2file
  */
 int
-clicon_xml2cbuf(cbuf  *cb, 
-		cxobj *x, 
-		int    level, 
-		int    prettyprint)
+clicon_xml2cbuf(cbuf   *cb, 
+		cxobj  *x, 
+		int     level,
+		int     prettyprint,
+		int32_t depth)
 {
     int    retval = -1;
     cxobj *xc;
@@ -1679,6 +1681,8 @@ clicon_xml2cbuf(cbuf  *cb,
     char  *encstr = NULL; /* xml encoded string */
     char  *val;
     
+    if (depth == 0)
+	goto ok;
     name = xml_name(x);
     namespace = xml_prefix(x);
     switch(xml_type(x)){
@@ -1707,7 +1711,7 @@ clicon_xml2cbuf(cbuf  *cb,
 	while ((xc = xml_child_each(x, xc, -1)) != NULL) 
 	    switch (xc->x_type){
 	    case CX_ATTR:
-		if (clicon_xml2cbuf(cb, xc, level+1, prettyprint) < 0)
+		if (clicon_xml2cbuf(cb, xc, level+1, prettyprint, -1) < 0)
 		    goto done;
 		break;
 	    case CX_BODY:
@@ -1729,7 +1733,7 @@ clicon_xml2cbuf(cbuf  *cb,
 	    xc = NULL;
 	    while ((xc = xml_child_each(x, xc, -1)) != NULL) 
 		if (xml_type(xc) != CX_ATTR)
-		    if (clicon_xml2cbuf(cb, xc, level+1, prettyprint) < 0)
+		    if (clicon_xml2cbuf(cb, xc, level+1, prettyprint, depth-1) < 0)
 			goto done;
 	    if (prettyprint && hasbody == 0)
 		cprintf(cb, "%*s", level*XML_INDENT, "");
@@ -1744,6 +1748,7 @@ clicon_xml2cbuf(cbuf  *cb,
     default:
 	break;
     }/* switch */
+ ok:
     retval = 0;
  done:
     if (encstr)
@@ -2522,7 +2527,7 @@ clicon_log_xml(int    level,
     /* Print xml as cbuf */
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    if (clicon_xml2cbuf(cb, x, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, x, 0, 0, -1) < 0)
 	goto done;
     
     /* first round: compute length of debug message */

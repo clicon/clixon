@@ -236,15 +236,14 @@ run with NGINX.
 The implementatation is based on [RFC 8040: RESTCONF Protocol](https://tools.ietf.org/html/rfc8040).
 
 The following features of RFC8040 are supported:
-- OPTIONS, HEAD, GET, POST, PUT, DELETE
+- OPTIONS, HEAD, GET, POST, PUT, DELETE, PATCH
 - stream notifications (Sec 6)
-- query parameters: "insert", "point", "start-time" and "stop-time".
+- query parameters: "insert", "point", "content", "depth", "start-time" and "stop-time".
 - Monitoring (Sec 9)
 
 The following features are not implemented:
 - ETag/Last-Modified
-- PATCH
-- Query parameters: "content", "depth", "fields", "filter", "with-defaults"
+- Query parameters: "fields", "filter", "with-defaults"
 
 See [more detailed instructions](apps/restconf/README.md).
 

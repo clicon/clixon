@@ -455,7 +455,7 @@ netconf_notification_cb(int   s,
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_xml2cbuf(cb, xn, 0, 0) < 0)
+    if (clicon_xml2cbuf(cb, xn, 0, 0, -1) < 0)
 	goto done;
     /* Send it to listening client on stdout */
     if (netconf_output_encap(1, cb, "notification") < 0){
@@ -599,7 +599,7 @@ netconf_application_rpc(clicon_handle h,
 	    if (ret > 0 && (ret = xml_yang_validate_add(h, xn, &xerr)) < 0)
 		goto done;
 	    if (ret == 0){
-		if (clicon_xml2cbuf(cbret, xerr, 0, 0) < 0)
+		if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
 		    goto done;		
 		netconf_output_encap(1, cbret, "rpc-error");
 		goto ok;
@@ -632,7 +632,7 @@ netconf_application_rpc(clicon_handle h,
 	    if (ret > 0 && (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)
 		goto done;
 	    if (ret == 0){
-		if (clicon_xml2cbuf(cbret, xerr, 0, 0) < 0)
+		if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
 		    goto done;		
 		clicon_log(LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
 		goto ok;

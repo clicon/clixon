@@ -287,7 +287,7 @@ restconf_client_rpc(clicon_handle h,
     else while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
 	    if (xmlns_set(x, NULL, namespace) < 0)
 		goto done;
-	    if (clicon_xml2cbuf(cbret, x, 0, 0) < 0)
+	    if (clicon_xml2cbuf(cbret, x, 0, 0, -1) < 0)
 		goto done;
 	}
     cprintf(cbret, "</rpc-reply>");

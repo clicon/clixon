@@ -128,7 +128,7 @@ netconf_input_packet(clicon_handle h,
 	if ((ret = xml_yang_validate_rpc(h, xrpc, &xret)) < 0) 
 	    goto done;
 	if (ret == 0){
-	    clicon_xml2cbuf(cbret, xret, 0, 0);
+	    clicon_xml2cbuf(cbret, xret, 0, 0, -1);
 	    netconf_output_encap(1, cbret, "rpc-error");
 	    goto ok;
 	}
@@ -170,7 +170,7 @@ netconf_input_packet(clicon_handle h,
 		    if (xml_addsub(xc, xa2) < 0)
 			goto done;
 		}
-		clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0);
+		clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0, -1);
 		if (netconf_output_encap(1, cbret, "rpc-reply") < 0){
 		    cbuf_free(cbret);
 		    goto done;

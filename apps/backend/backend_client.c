@@ -176,6 +176,8 @@ client_get_capabilities(clicon_handle h,
 	goto done;
     if (xml_parse_va(&xcap, yspec, "<capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability>") < 0)
 	goto done;
+    if (xml_parse_va(&xcap, yspec, "<capability>urn:ietf:params:restconf:capability:depth:1.0</capability>") < 0)
+	goto done;
     retval = 0;
  done:
     return retval;
@@ -428,7 +430,7 @@ from_client_get_config(clicon_handle h,
     else{
 	if (xml_name_set(xret, "data") < 0)
 	    goto done;
-	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 	    goto done;
     }
     cprintf(cbret, "</rpc-reply>");
@@ -541,7 +543,7 @@ from_client_edit_config(clicon_handle h,
 	if ((ret = xml_yang_validate_list_key_only(h, xc, &xret)) < 0)
 	    goto done;
 	if (ret == 0){
-	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -877,6 +879,7 @@ from_client_get(clicon_handle h,
     cvec   *nsc = NULL; /* Create a netconf namespace context from filter */
     char   *attr;
     netconf_content content = CONTENT_ALL;
+    int32_t depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
     
     username = clicon_username_get(h);
     if ((xfilter = xml_find(xe, "filter")) != NULL){
@@ -890,8 +893,23 @@ from_client_get(clicon_handle h,
 	    if (xml_nsctx_node(xfilter, &nsc) < 0)
 		goto done;
     }
+    /* Clixon extensions: depth and content */
     if ((attr = xml_find_value(xe, "content")) != NULL)
 	content = netconf_content_str2int(attr);
+    
+    if ((attr = xml_find_value(xe, "depth")) != NULL){
+	    char *reason = NULL;
+	if ((ret = parse_int32(attr, &depth, &reason)) < 0){
+	    clicon_err(OE_XML, errno, "parse_int32");
+	    goto done;
+	}
+	if (ret == 0){
+	    if (netconf_bad_attribute(cbret, "application",
+				      "<bad-attribute>depth</bad-attribute>", "Unrecognized value of depth attribute") < 0)
+		goto done;
+	    goto ok;
+	}
+    }
     
     if (content != CONTENT_NONCONFIG){
 	/* Get config 
@@ -911,7 +929,7 @@ from_client_get(clicon_handle h,
 	if ((ret = client_statedata(h, xpath, nsc, &xret)) < 0)
 	    goto done;
 	if (ret == 0){ /* Error from callback (error in xret) */
-	    if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	    if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -932,7 +950,8 @@ from_client_get(clicon_handle h,
     else{
 	if (xml_name_set(xret, "data") < 0)
 	    goto done;
-	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	/* Top level is data, so add 1 to depth if significant */
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth) < 0)
 	    goto done;
     }
     cprintf(cbret, "</rpc-reply>");
@@ -1250,7 +1269,7 @@ from_client_msg(clicon_handle        h,
     if ((ret = xml_yang_validate_rpc(h, x, &xret)) < 0)
 	goto done;
     if (ret == 0){
-	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 	    goto done;
 	goto reply;
     }

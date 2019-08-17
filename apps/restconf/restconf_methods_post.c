@@ -164,7 +164,7 @@ api_data_post(clicon_handle h,
 #if 1
     if (debug){
 	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xtop, 0, 0) < 0)
+	if (clicon_xml2cbuf(ccc, xtop, 0, 0, -1) < 0)
 	    goto done;
 	clicon_debug(1, "%s XURI:%s", __FUNCTION__, cbuf_get(ccc));
 	cbuf_free(ccc);
@@ -309,7 +309,7 @@ api_data_post(clicon_handle h,
 #if 1
     if (debug){
 	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xdata, 0, 0) < 0)
+	if (clicon_xml2cbuf(ccc, xdata, 0, 0, -1) < 0)
 	    goto done;
 	clicon_debug(1, "%s XDATA:%s", __FUNCTION__, cbuf_get(ccc));
 	cbuf_free(ccc);
@@ -330,7 +330,7 @@ api_data_post(clicon_handle h,
 	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
     cprintf(cbx, "<edit-config><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
-    if (clicon_xml2cbuf(cbx, xtop, 0, 0) < 0)
+    if (clicon_xml2cbuf(cbx, xtop, 0, 0, -1) < 0)
 	goto done;
     cprintf(cbx, "</edit-config></rpc>");
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
@@ -507,7 +507,7 @@ api_operations_post_input(clicon_handle h,
 #if 1
     if (debug){
 	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xdata, 0, 0) < 0)
+	if (clicon_xml2cbuf(ccc, xdata, 0, 0, -1) < 0)
 	    goto done;
 	clicon_debug(1, "%s DATA:%s", __FUNCTION__, cbuf_get(ccc));
 	cbuf_free(ccc);
@@ -614,7 +614,7 @@ api_operations_post_output(clicon_handle h,
 #if 1
     if (debug){
 	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xoutput, 0, 0) < 0)
+	if (clicon_xml2cbuf(ccc, xoutput, 0, 0, -1) < 0)
 	    goto done;
 	clicon_debug(1, "%s XOUTPUT:%s", __FUNCTION__, cbuf_get(ccc));
 	cbuf_free(ccc);
@@ -855,7 +855,7 @@ api_operations_post(clicon_handle h,
 #if 1
     if (debug){
 	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xtop, 0, 0) < 0)
+	if (clicon_xml2cbuf(ccc, xtop, 0, 0, -1) < 0)
 	    goto done;
 	clicon_debug(1, "%s 5. Translate input args: %s",
 		     __FUNCTION__, cbuf_get(ccc));
@@ -882,7 +882,7 @@ api_operations_post(clicon_handle h,
 #if 0
     if (debug){
 	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xtop, 0, 0) < 0)
+	if (clicon_xml2cbuf(ccc, xtop, 0, 0, -1) < 0)
 	    goto done;
 	clicon_debug(1, "%s 6. Validate and defaults:%s", __FUNCTION__, cbuf_get(ccc));
 	cbuf_free(ccc);
@@ -922,7 +922,7 @@ api_operations_post(clicon_handle h,
 #if 1
     if (debug){
 	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xret, 0, 0) < 0)
+	if (clicon_xml2cbuf(ccc, xret, 0, 0, -1) < 0)
 	    goto done;
 	clicon_debug(1, "%s 8. Receive reply:%s", __FUNCTION__, cbuf_get(ccc));
 	cbuf_free(ccc);
@@ -942,7 +942,7 @@ api_operations_post(clicon_handle h,
     cbuf_reset(cbret);
     switch (media_out){
     case YANG_DATA_XML:
-	if (clicon_xml2cbuf(cbret, xoutput, 0, pretty) < 0)
+	if (clicon_xml2cbuf(cbret, xoutput, 0, pretty, -1) < 0)
 	    goto done;
 	/* xoutput should now look: <output xmlns="uri"><x>0</x></output> */
 	break;

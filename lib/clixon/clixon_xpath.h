@@ -113,7 +113,8 @@ typedef struct xpath_tree xpath_tree;
  * Prototypes
  */
 char* xpath_tree_int2str(int nodetype);
-int   xpath_tree_print(cbuf *cb, xpath_tree *xs);
+int   xpath_tree_print_cb(cbuf *cb, xpath_tree *xs);
+int   xpath_tree_print(FILE *f, xpath_tree *xs);
 int   xpath_tree_free(xpath_tree *xs);
 int   xpath_parse(cvec *nsc, char *xpath, xpath_tree **xptree);
 int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, char *xpath, xp_ctx  **xrp);

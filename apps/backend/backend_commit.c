@@ -230,7 +230,7 @@ startup_common(clicon_handle       h,
     if ((ret = generic_validate(h, yspec, td, &xret)) < 0)
 	goto done;
     if (ret == 0){
-	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 	    goto done;
 	goto fail; /* STARTUP_INVALID */
     }
@@ -522,7 +522,7 @@ candidate_commit(clicon_handle h,
     if ((ret = from_validate_common(h, candidate, td, &xret)) < 0)
 	goto done;
     if (ret == 0){
-	if (clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 	    goto done;
 	goto fail;
     }
@@ -755,7 +755,7 @@ from_client_validate(clicon_handle h,
 	/* A little complex due to several sources of validation fails or errors.
 	 * (1) xerr is set -> translate to cbret; (2) cbret set use that; otherwise
 	 * use clicon_err. */
-	if (xret && clicon_xml2cbuf(cbret, xret, 0, 0) < 0)
+	if (xret && clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 	    goto done;
 	plugin_transaction_abort(h, td);
 	if (!cbuf_len(cbret) &&
