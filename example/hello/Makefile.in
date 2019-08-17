@@ -118,8 +118,8 @@ clean:
 distclean: clean
 	rm -f Makefile *~ .depend
 
-
 install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml
+	install -d -m 0755 $(dir $(DESTDIR)$(CLIXON_DEFAULT_CONFIG))
 	install -m 0644 $(APPNAME).xml $(DESTDIR)$(CLIXON_DEFAULT_CONFIG)
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/clispec

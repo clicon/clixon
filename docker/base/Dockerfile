@@ -67,11 +67,11 @@ RUN make
 RUN make install
 RUN make install-include
 
-# Build and install the clixon example (not really necessary for base)
-WORKDIR /clixon/clixon/example
+# Build and install the clixon hello example (not really necessary for base)
+WORKDIR /clixon/clixon/example/hello
 RUN make
 RUN make install
-RUN install example.xml /clixon/build/etc/clixon.xml
+RUN install hello.xml /clixon/build/etc/clixon.xml # For 2nd level
 
 #
 # Stage 2
@@ -86,9 +86,6 @@ RUN apk add --update flex bison fcgi-dev
 RUN adduser -D -H www-data
 # nginx adds group www-data
 RUN apk add --update nginx
-
-# Test-specific (for test scripts)
-#RUN apk add --update sudo curl bash
 
 # Expose nginx port for restconf
 EXPOSE 80
