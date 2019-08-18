@@ -6,6 +6,8 @@ Clixon is a YANG-based configuration manager, with interactive CLI,
 NETCONF and RESTCONF interfaces, an embedded database and transaction
 mechanism.
 
+Work-in-progress move to [new documentation](https://clixon-docs.readthedocs.io).
+
   * [Background](#background)
   * [Frequently asked questions (FAQ)](doc/FAQ.md)
   * [Hello world](example/hello/README.md)

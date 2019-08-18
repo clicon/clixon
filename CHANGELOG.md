@@ -4,9 +4,10 @@
 
 ### Summary
 
-The 4.1.0 release is a RESTCONF feature upgrade release. Highlights are
-RFC8040 plan PATCH, many query parameters, compliant return codes, and
-more.
+4.1.0 is focussed on RFC 8040 RESTCONF features. Highlights include:
+- RFC8040 plain PATCH,
+- Query parameters: content, depth, insert, position
+- Standard return codes 
 
 ### Major New features
 * Restconf RFC 8040 increased feature compliance
@@ -35,37 +36,39 @@ more.
   * The main example explains how to implement a Yang extension in a backend plugin.
 
 ### API changes on existing features (you may need to change your code)
-* Netconf edit-config "operation" attribute namespace check is enforced
-  * This is enforced: `<a xmlns="uri:example" nc:operation="merge" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-  * This was previously allowed: `<a xmlns="uri:example" operation="merge">
-* RESTCONF NACM access-denied error code changed from "401 Unauthorized" to "403 Forbidden"
-  * See RFC 8040 (eg 4.4.1, 4.4.2, 4.5, 4.6, 4.7)
-* RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
-  * `201 Created` for created resources
-  * `204 No Content` for replaced resources.
-* RESTCONF PUT/POST -d {} media is enforced
-  * Before accepted JSON as default, now Content-Type must be explicit, such as `Content-Type: application/yang-data+json`
-* RESTCONF identities has been changed to use module names instead of prefixes.
-  * Eg, `curl -X POST -d '{"type":"ex:eth"}` --> `curl -X POST -d '{"type":"ietf-interfaces:eth"`}
-* JSON changes
-  * Non-pretty-print output removed all extra spaces.
-    * Example: `{"nacm-example:x": 42}` --> {"nacm-example:x":42}`
-  * Empty JSON values changed from `null` to:
-    * Empty yang container encoded as `{}`
-    * Empty leaf/leaf-list of type empty encoded as `[null]`
-    * Other empty values remain as `null`
 * C API changes:
   * Added `depth` parameter to function `clicon_xml2cbuf`, default is -1.
   * Added two parameters to function `clicon_rpc_get`
     * `content`: to select state or config. Allowed values: CONTENT_CONFIG,CONTENT_NOCONFIG, CONTENT_ALL (default)
     * `depth`: Get levels of XML in get function: -1 is unbounded, 0 is nothing, 1 is top-level node only.
-
+* Netconf edit-config "operation" attribute namespace check is enforced
+  * E.g.: `<a xmlns="uri:example" operation="merge">` --> `<a xmlns="uri:example" nc:operation="merge" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">`
+* RESTCONF NACM access-denied error code changed from "401 Unauthorized" to "403 Forbidden"
+  * See RFC 8040 (eg 4.4.1, 4.4.2, 4.5, 4.6, 4.7)
+* RESTCONF PUT/POST erroneously returned 200 OK. Instead restconf now returns:
+  * `201 Created` for created resources
+  * `204 No Content` for replaced resources.
+* RESTCONF PUT/POST `Content-Type` is enforced
+  * Before accepted JSON as default, now Content-Type must be explicit, such as `Content-Type: application/yang-data+json`
+* RESTCONF identities has changed to use module names instead of prefixes following RFC8040:
+  * Eg, `curl -X POST -d '{"type":"ex:eth"}` --> `curl -X POST -d '{"type":"ietf-interfaces:eth"`}
+* JSON changes
+  * Non-pretty-print output removed all extra spaces.
+    * Example: `{"nacm-example:x": 42}` --> `{"nacm-example:x":42}`
+  * Empty JSON values changed from `null` to:
+    * Empty yang container encoded as `{}`
+    * Empty leaf/leaf-list of type empty encoded as `[null]`
+    * Other empty values remain as `null`
 
 ### Minor changes
-* Added experimental binary search API function: `xml_binsearch`
+* New [clixon-doc sphinx/read-the-docs](https://clixon-docs.readthedocs.io) started
+  * The goal is to move all clixon documentation there
+* Added experimental binary search API function: `xml_binsearch` that can be used by plugin developers.
+  * This provides binary search of list/leaf-lists as described here: <https://en.wikipedia.org/wiki/Binary_search_algorithm>
 * Removed unnecessary configure dependencies
   * libnsl, libcrypt, if_vlan,...
-* pseudo-plugin added, to enable callbacks also for main programs. Useful for extensions
+* "pseudo-plugins" added, ie virtual plugins to enable callbacks also for main programs. Useful for extensions.
+  * See `clixon_pseudo_plugin`
 
 ### Corrected Bugs
 * If `ietf-netconf.yang` was imported from any yang module, client/backend communication stops working.
@@ -76,7 +79,7 @@ more.
   * Should only be applicable on netconf MERGE and restconf PATCH
 * Corrected problem with namespace context cache, was not always cleared when adding new subtrees.
 * Corrected CLI bug with lists of multiple keys (netconf/restconf works).
-  * Worked in 3.10, but broke in 4.0
+  * Worked in 3.10, but broke in 4.0.0. Fixed in 4.0.1
   * Example: `yang list x { key "a b";...}`
     CLI error example:
     ```
@@ -86,7 +89,8 @@ more.
     ```
 * Fixed RESTCONF api-path leaf-list selection was not made properly
   * Requesting eg `mod:x/y=42` returned the whole list: `{"y":[41,42,43]}` whereas it should only return one element: `{"y":42}`
-* See [RESTCONF: HTTP return codes are not according to RFC 8040](https://github.com/clicon/clixon/issues/56)
+* Fixed [RESTCONF: HTTP return codes are not according to RFC 8040](https://github.com/clicon/clixon/issues/56)
+  * See also API changes above
 * Yang Unique statements with multiple schema identifiers did not work on some platforms due to memory error.
 
 ## 4.0.1 (5 Aug 2019)

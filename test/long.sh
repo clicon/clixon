@@ -99,10 +99,8 @@ new "netconf commit large config"
 expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 #  Zero all event counters
-sudo callgrind_control -i on
-sudo callgrind_control -z
-
-
+#sudo callgrind_control -i on
+#sudo callgrind_control -z
 
 while [ 1 ] ; do
     new "restconf add $perfreq small config"
@@ -110,14 +108,14 @@ while [ 1 ] ; do
 time -p    for (( i=0; i<$perfreq; i++ )); do
 #echo "i $i"
     rnd=$(( ( RANDOM % $perfnr ) ))
-    curl -s -X PUT http://localhost/restconf/data/scaling:x/y=$rnd  -d '{"scaling:y":{"a":"'$rnd'","b":"'$rnd'"}}'
+    curl -s -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/scaling:x/y=$rnd  -d '{"scaling:y":{"a":"'$rnd'","b":"'$rnd'"}}'
 done
 
 done
 new "restconf get $perfreq small config"
 time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    curl -sG http://localhost/restconf/data/scaling:x/y=$rnd,42 > /dev/null
+    curl -sG -H 'Accept: application/yang-data+json'http://localhost/restconf/data/scaling:x/y=$rnd,42 > /dev/null
 done
 done
 
