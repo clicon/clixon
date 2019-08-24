@@ -1,5 +1,21 @@
 # Clixon Changelog
 
+## 4.2.0 (Expected: September)
+
+### API changes on existing features (you may need to change your code)
+* Restconf top-level operations GET root resource modified to comply with RFC 8040 Sec 3.1 
+  * non-pretty print remove all spaces, eg `{"operations":{"clixon-example:client-rpc":[null]`
+  * Replaced JSON `null` with `[null]` as proper empty JSON leaf/leaf-list encoding.
+  
+### Corrected Bugs
+* [Cannot write to config using restconf example #91](https://github.com/clicon/clixon/issues/91)
+  * Updated restconf documentation (the example was wrong)
+* [clixon-lib yang revision file name update #92](https://github.com/clicon/clixon/issues/92)
+  * Clixon-lib yang file had conflicting filename and internal yang revision.
+  * This was only detected in the use-case when a whole dir was loaded.
+  * Inserted sanity check in all yang parse routines.
+  * Committed updated clixon-lib yang file that triggered the error
+
 ## 4.1.0 (18 August 2019)
 
 ### Summary

@@ -151,8 +151,10 @@ Start the clixon restconf daemon
 ```
 then access using curl or wget:
 ```
-   curl -G http://127.0.0.1/restconf/data/ietf-interfaces:interfaces/interface=eth9/type
+   curl -X GET http://127.0.0.1/restconf/data/ietf-interfaces:interfaces/interface=eth1/type
 ```
+
+More info: (restconf)[../../apps/restconf/README.md].
 
 ## Streams
 
@@ -178,7 +180,7 @@ cli> no notify
 cli>
 ```
 
-Restconf support is also supported, see (restc)[../../apps/restconf/README.md].
+Restconf support is also supported, see (restconf)[../../apps/restconf/README.md].
 
 
 ## RPC Operations

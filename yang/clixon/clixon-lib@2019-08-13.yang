@@ -42,7 +42,7 @@ module clixon-lib {
 
     revision 2019-08-13 {
 	description
-	    "get-state added for restconf content=nonconfig internal rpc";
+	    "No changes (reverted change)";
     }
     revision 2019-06-05 {
 	description
@@ -52,11 +52,6 @@ module clixon-lib {
 	description
 	    "Released in Clixon 3.9";
     }
-    import ietf-netconf {
-	description "for the get-state extension";
-	prefix nc;
-    }
-
     rpc debug {
 	description "Set debug level of backend.";
 	input {
@@ -67,34 +62,5 @@ module clixon-lib {
     }
     rpc ping {
         description "Check aliveness of backend daemon.";
-    }
-    rpc get-state {
-      description
-        "Retrieve device state information only. This is a clixon extension
-         to ietf-netconf to implement RESTCONF GET with attribute 
-         content=nonconfig. 
-         The reason is that netconf only has <get> and <get-config> neither
-         which retrieves state only";
-
-      reference "RFC 8040 4.8.1";
-
-      input {
-        anyxml filter {
-          description
-            "This parameter specifies the portion of the system
-             configuration and state data to retrieve.";
-          nc:get-filter-element-attributes;
-        }
-      }
-
-      output {
-        anyxml data {
-          description
-            "Copy of the running datastore subset and/or state
-             data that matched the filter criteria (if any).
-             An empty data container indicates that the request did not
-             produce any results.";
-        }
-      }
     }
 }

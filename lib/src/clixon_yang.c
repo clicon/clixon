@@ -35,8 +35,11 @@
  * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
  * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
  *
- * yang_spec_parse_module
- *                       \
+ * CALLING ORDER OF YANG PARSE FILES
+ * =================================
+ *                                      yang_spec_parse_module
+ *                                     |                       | 
+ *                                     v                       v   v
  * yang_spec_parse_file-> yang_parse_post->yang_parse_recurse->yang_parse_module
  *                    \   /                                         v
  * yang_spec_load_dir ------------------------------------> yang_parse_filename
@@ -562,8 +565,8 @@ yang_find(yang_stmt  *yn,
 	    ys = yn->ys_stmt[i];
 	    if (yang_keyword_get(ys) == Y_INCLUDE){
 		name = yang_argument_get(ys);
-		ym = yang_find_module_by_name(yspec, name);
-		if ((yret = yang_find(ym, keyword, argument)) != NULL)
+		if ((ym = yang_find_module_by_name(yspec, name)) != NULL &&
+		    (yret = yang_find(ym, keyword, argument)) != NULL)
 		    break;
 	    }
 	}
@@ -2330,20 +2333,12 @@ yang_expand_grouping(yang_stmt *yn)
  * Syntax parsing. A string is input and a syntax-tree is returned (or error). 
  * A variable record is also returned containing a list of (global) variable values.
  * (cloned from cligen)
- * @param[in] h      CLICON handle
  * @param[in] str    String of yang statements
  * @param[in] name   Log string, typically filename
- * @param[in] ysp    Yang specification. Should ave been created by caller 
- *                   using yspec_new
- * @retval ymod      Top-level yang (sub)module
- * @retval NULL      Error encountered
- * Calling order:
- *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
- *   yang_parse_recurse     # Parse one yang module, go through its (sub)modules, parse them and then recursively parse them
- *   yang_parse_filename    # Read yang file into a string
- *   yang_parse_file        # Read yang open file descriptor into a string
- *   yang_parse_str         # Set up yacc parser and call it given a string
- *   clixon_yang_parseparse # Actual yang parsing using yacc
+ * @param[in] yspec  Yang specification. 
+ * @retval    ymod   Top-level yang (sub)module
+ * @retval    NULL   Error encountered
+ * See top of file for diagram of calling order
  */
 static yang_stmt *
 yang_parse_str(char         *str,
@@ -2442,21 +2437,60 @@ yang_parse_file(int         fd,
     return ymod; /* top-level (sub)module */
 }
 
+/*! Given a yang filename, extract the revision as an integer as YYYYMMDD
+ * @param[in]  filename  Filename on the form: name [+ @rev ] + .yang  
+ * @param[out] basep     "Base" filename, stripped: [+ @rev ] + .yang
+ * @param[out] revp      Revision as YYYYMMDD (0 if not found)
+ */
+static int
+filename2revision(const char *filename,
+		  char      **basep,
+		  uint32_t   *revp)
+{
+    int      retval = -1;
+    char    *base = NULL;
+    char    *p;
+    
+    /* base = module name [+ @rev ] + .yang */
+    if ((base = strdup(filename)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    clicon_debug(1, "%s %s", __FUNCTION__, base);
+    if ((p = rindex(base, '.')) != NULL) /* strip postfix .yang */
+	*p = '\0';
+    if ((p = index(base, '@')) != NULL){ /* extract revision date */
+	*p++ = '\0';
+	if (ys_parse_date_arg(p, revp) < 0)
+	    goto done;
+    }
+    if (basep){
+	*basep = base;
+	base = NULL;
+    }
+    retval = 0;
+ done:
+    if (base)
+	free(base);
+    return retval;
+}
+
 /*! No specific revision give. Match a yang file given module 
  * @param[in]  h        CLICON handle
- * @param[in]  dir      Directory, if NULL, look in YANG_DIR path
  * @param[in]  module   Name of main YANG module. 
  * @param[in]  revision Revision or NULL
- * @param[out] fbuf     Buffer containing filename
+ * @param[out] revactual Actual revision (if retval=1)
+ * @param[out] fbuf     Buffer containing filename (if retval=1)
+ * @retval     1        Match found, Most recent entry returned in fbuf and revactual
+ * @retval     0        No matching entry found
+ * @retval    -1        Error 
  * @note for bootstrapping, dir may have to be set.
- * @retval 1            Match found, Most recent entry returned in fbuf
- * @retval 0            No matching entry found
- * @retval -1           Error 
 */
 static int
 yang_parse_find_match(clicon_handle h, 
 		      const char   *module,
-		      const char   *revision, 
+		      const char   *revision,
+		      uint32_t     *revactual, 
 		      cbuf         *fbuf)    
 {
     int            retval = -1;
@@ -2515,21 +2549,13 @@ yang_parse_find_match(clicon_handle h,
 /*! Open a file, read into a string and invoke yang parsing
  *
  * Similar to clicon_yang_str(), just read a file first
- * (cloned from cligen)
- * @param[in] h        CLICON handle
  * @param[in] filename Name of file
  * @param[in] ysp      Yang specification. Should have been created by caller using yspec_new
  * @retval ymod        Top-level yang (sub)module
  * @retval NULL        Error encountered
 
  * The database symbols are inserted in alphabetical order.
- * Calling order:
- *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
- *   yang_parse_recurse   # Parse one yang module, go through its (sub)modules, parse them and then recursively parse them
- *   yang_parse_filename    # Read yang file into a string
- *   yang_parse_file        # Read yang open file descriptor into a string
- *   yang_parse_str         # Set up yacc parser and call it given a string
- *   clixon_yang_parseparse # Actual yang parsing using yacc
+ * See top of file for diagram of calling order
  */
 yang_stmt *
 yang_parse_filename(const char *filename, 
@@ -2556,6 +2582,18 @@ yang_parse_filename(const char *filename,
     return ymod; /* top-level (sub)module */
 }
 
+/*! Given a (sub)module, parse all (sub)modules in turn recursively
+ *
+ * Find a yang module file, and then recursively parse all its imported modules.
+ * @param[in] h        CLICON handle
+ * @param[in] module   Module name
+ * @param[in] revision Revision (or NULL)
+ * @param[in] ysp      Yang statement
+ * @retval    0        OK
+ * @retval   -1        Error
+ *
+ * See top of file for diagram of calling order
+ */
 static yang_stmt *
 yang_parse_module(clicon_handle h,
 		  const char   *module, 
@@ -2563,22 +2601,37 @@ yang_parse_module(clicon_handle h,
 		  yang_stmt    *ysp)
 {
     cbuf      *fbuf = NULL;
+    char      *filename;
     int        nr;
     yang_stmt *ymod = NULL;
+    yang_stmt *yrev; /* yang revision */
+    uint32_t   revf = 0; /* revision in filename */
+    uint32_t   revm = 0; /* revision in parsed new module (should be same as revf) */
 
     if ((fbuf = cbuf_new()) == NULL){
 	clicon_err(OE_YANG, errno, "cbuf_new");
 	goto done;
     }
     /* Match a yang file with or without revision in yang-dir list */
-    if ((nr = yang_parse_find_match(h, module, revision, fbuf)) < 0)
+    if ((nr = yang_parse_find_match(h, module, revision, &revf, fbuf)) < 0)
 	goto done;
     if (nr == 0){
 	clicon_err(OE_YANG, errno, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs", module);
 	goto done;
     }
-    if ((ymod = yang_parse_filename(cbuf_get(fbuf), ysp)) == NULL)
+    filename = cbuf_get(fbuf);
+    if ((ymod = yang_parse_filename(filename, ysp)) == NULL)
 	goto done;
+    if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL)
+	revm = cv_uint32_get(yrev->ys_cv);
+    if (filename2revision(filename, NULL, &revf) < 0)
+	goto done;
+    /* Sanity check that file revision does not match internal rev stmt */
+    if (revf && revm && revm != revf){ 
+	clicon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s vs %u", filename, revm); 
+	ymod = NULL;
+	goto done;
+    }
   done:
     if (fbuf)
 	cbuf_free(fbuf);
@@ -2587,20 +2640,14 @@ yang_parse_module(clicon_handle h,
 
 /*! Given a (sub)module, parse all (sub)modules in turn recursively
  *
- * @param[in] h        CLICON handle
- * @param[in] module   Name of main YANG module. Or absolute file name.
- * @param[in] revision Module revision date or NULL
- * @param[in] ysp      Yang specification. Should have been created by caller using yspec_new
- * @retval    ymod    Top-level yang (sub)module
- * @retval    NULL    Error encountered
  * Find a yang module file, and then recursively parse all its imported modules.
- * Calling order:
- *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
- *   yang_parse_recurse   # Parse one yang module, go through its (sub)modules, parse them and then recursively parse them
- *   yang_parse_filename    # Read yang file into a string
- *   yang_parse_file        # Read yang open file descriptor into a string
- *   yang_parse_str         # Set up yacc parser and call it given a string
- *   clixon_yang_parseparse # Actual yang parsing using yacc
+ * @param[in] h        CLICON handle
+ * @param[in] ymod     Yang module. 
+ * @param[in] yspec    Yang specification.
+ * @retval    0        OK
+ * @retval   -1        Error
+ *
+ * See top of file for diagram of calling order
  */
 static int
 yang_parse_recurse(clicon_handle h,
@@ -2646,6 +2693,11 @@ yang_parse_recurse(clicon_handle h,
     return retval; /* top-level (sub)module */
 }
 
+/*!
+ * @param[in] ys      Yang statement
+ * @param[in] dummy   Necessary for called in yang_apply
+ * @see yang_apply_fn
+ */
 static int 
 ys_schemanode_check(yang_stmt *ys, 
 		    void      *dummy)
@@ -2716,9 +2768,11 @@ ys_schemanode_check(yang_stmt *ys,
 }
 
 /*! Find feature and if-feature nodes, check features and remove disabled nodes
- * @retval -1  Error
- * @retval  0  Feature not enabled: remove yt
- * @retval  1  OK
+ * @param[in] h   CLICON handle
+ * @param[in] yt  Yang statement
+ * @retval   -1   Error
+ * @retval    0   Feature not enabled: remove yt
+ * @retval    1   OK
  * @note On return 1 the over-lying function need to remove yt from its parent
  * @note cannot use yang_apply here since child-list is modified (destructive) 
  */
@@ -2794,24 +2848,22 @@ yang_features(clicon_handle h,
 
 /*! Parse top yang module including all its sub-modules. Expand and populate yang tree
  *
- * @param[in] h        CLICON handle
- * @param[in] filename File name containing Yang specification. Overrides module
- * @param[in] module   Name of main YANG module. Or absolute file name.
- * @param[in] revision Main module revision date string or NULL
- * @param[in,out] ysp  Yang specification. Should have been created by caller using yspec_new
- * @retval 0  Everything OK
- * @retval -1 Error encountered
- * The database symbols are inserted in alphabetical order.
- * Find a yang module file, and then recursively parse all its imported modules.
- * @note if mainmod is filename, revision is not considered.
- * Calling order:
- *   yang_parse             # Parse top-level yang module. Expand and populate yang tree
- *   yang_parse_recurse     # Parse one yang module, go through its (sub)modules,
- *                            parse them and then recursively parse them
- *   yang_parse_filename    # Read yang file into a string
- *   yang_parse_file        # Read yang open file descriptor into a string
- *   yang_parse_str         # Set up yacc parser and call it given a string
- *   clixon_yang_parseparse # Actual yang parsing using yacc
+ * Perform secondary actions after yang parsing. These actions cannot be made at
+ * compile-time for various reasons.
+ * These includes:
+ * - Detect imported yang specs that are not loaded and load and parse them too
+ * - Check cardinality of yang (that nr of children match)
+ * - Check features: remove disabled
+ * - "Populate" yang, which means things like initiating caches, resolving references
+ * - Resolve types
+ * - Augments
+ * - Defaults
+ * 
+ * @param[in] h      CLICON handle
+ * @param[in] yspec  Yang specification. 
+ * @param[in] modnr  Perform checks after this number, prior are already complete
+ * @retval    0      Everything OK
+ * @retval   -1      Error encountered
  */
 static int
 yang_parse_post(clicon_handle h,
@@ -2884,13 +2936,12 @@ yang_parse_post(clicon_handle h,
 }
 
 /*! Parse yang specification and its dependencies recursively given module
- * @param[in]     h         clicon handle
- * @param[in]     module    Module name, or absolute filename (including dir)
- * @param[in]     dir       Directory where to look for modules and sub-modules
- * @param[in]     revision  Revision, or NULL
- * @param[in,out] yspec     Modules parse are added to this yangspec
- * @retval        0         OK
- * @retval       -1         Error
+ * @param[in]  h         clicon handle
+ * @param[in]  module    Module name, or absolute filename (including dir)
+ * @param[in]  revision  Revision, or NULL
+ * @param[in]  yspec     Modules parse are added to this yangspec
+ * @retval     0         OK
+ * @retval    -1         Error
  * @see yang_spec_parse_file
  */
 int
@@ -2929,12 +2980,11 @@ yang_spec_parse_module(clicon_handle h,
 }
 
 /*! Parse yang specification and its dependencies recursively given filename
- * @param[in]     h         clicon handle
- * @param[in]     filename  Actual filename (including dir and revision)
- * @param[in]     dir       Directory for sub-modules
- * @param[in,out] yspec     Modules parse are added to this yangspec
- * @retval        0         OK
- * @retval       -1         Error
+ * @param[in]  h         clicon handle
+ * @param[in]  filename  Actual filename (including dir and revision)
+ * @param[in]  yspec     Modules parse are added to this yangspec
+ * @retval     0         OK
+ * @retval    -1         Error
  * @see yang_spec_parse_module for yang dir,module,revision instead of 
  *       actual filename
  * @see yang_spec_load_dir For loading all files in a directory
@@ -2976,11 +3026,11 @@ yang_spec_parse_file(clicon_handle h,
 }
 
 /*! Load all yang modules in directory
- * @param[in]  h   Clicon handle
- * @param[in]  dir Load all yang modules in this directory
- * @param[in,out] yspec     Modules parse are added to this yangspec
- * @retval        0         OK
- * @retval       -1         Error
+ * @param[in]  h     Clicon handle
+ * @param[in]  dir   Load all yang modules in this directory
+ * @param[in]  yspec Modules parse are added to this yangspec
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see yang_spec_parse_file
  * Load all yang files in a directory as primary objects.
  * Some details if several same yang module x exists:
@@ -3006,10 +3056,9 @@ yang_spec_load_dir(clicon_handle h,
     yang_stmt     *ym;   /* yang module */
     yang_stmt     *ym0;  /* (existing) yang module */
     yang_stmt     *yrev; /* yang revision */
-    uint32_t       revf; /* revision in filename */
-    uint32_t       revm; /* revision in parsed new module (same as revf) */
+    uint32_t       revf = 0; /* revision in filename */
+    uint32_t       revm = 0; /* revision in parsed new module (should be same as revf) */
     uint32_t       rev0; /* revision in existing module */
-    char          *s;
     char          *oldbase = NULL;
     int            taken = 0;
     
@@ -3031,31 +3080,19 @@ yang_spec_load_dir(clicon_handle h,
 	/* base = module name [+ @rev ] + .yang */
 	if (oldbase)
 	    free(oldbase);
-	oldbase = base; base = NULL;
-	if ((base = strdup(dp[i].d_name)) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
-	clicon_debug(1, "%s %s", __FUNCTION__, base);
-	*rindex(base, '.') = '\0'; /* strip postfix .yang */
-	/* base = module name [+ @rev] 
-	 * if it hasnt @rev then prefer it (dont check other files w @rev)
-	 */
+	oldbase = base;
+	base = NULL;
 	revf = 0;
-	if ((s = index(base, '@')) != NULL){
-	    *s++ = '\0';
-	    if (ys_parse_date_arg(s, &revf) < 0)
-		goto done;
-	}
+	if (filename2revision(dp[i].d_name, &base, &revf) < 0)
+	    goto done;
 	if (oldbase && strcmp(base, oldbase)) /* new yang file basename */
 	    taken = 0;
-	if (revf == 0){ /* No revision: a.yang - take that */
+	if (revf == 0) /* No revision: a.yang - take that */
 	    taken = 1;
-	}
 	else{ /* a@xxx.yang */
 	    if (taken)
 		continue; /* skip if already taken */
-	    /* is there anyone else later? */
+	    /* Look forward: is there anyone else later? */
 	    if (i+1<ndp && strncmp(base, dp[i+1].d_name, strlen(base)) == 0)
 		continue; /* same base: skip; */
 	    taken = 1; /* last in line and not taken */
@@ -3077,8 +3114,8 @@ yang_spec_load_dir(clicon_handle h,
 	if ((yrev = yang_find(ym, Y_REVISION, NULL)) != NULL)
 	    revm = cv_uint32_get(yrev->ys_cv);
 	/* Sanity check that file revision does not match internal rev stmt */
-	if (revf && revm && revm != revf){
-	    clicon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s vs %u", filename, revm); 
+	if (revf && revm && revm != revf){ /* XXX */
+	    clicon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s(%u) vs %u", filename, revf, revm); 
 	    goto done;
 	}
 	/* If ym0 and ym exists, delete the yang with oldest revision 

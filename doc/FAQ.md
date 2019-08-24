@@ -91,11 +91,11 @@ The main example:
 
 ## How do I run Clixon example commands?
 
-- Start a backend server: `clixon_backend -F -s init -f /usr/local/etc/example.xml`
+- Start a backend server: `sudo clixon_backend -s init -f /usr/local/etc/example.xml`
 - Start a cli session: `clixon_cli -f /usr/local/etc/example.xml`
 - Start a netconf session: `clixon_netconf -f /usr/local/etc/example.xml`
 - Start a restconf daemon: `sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data`
-- Send a restconf command: `curl -G http://127.0.0.1/restconf/data`
+- Send a restconf command: `curl -X GET http://127.0.0.1/restconf/data`
 
 More info in the [example](../example) directory.
 
@@ -195,12 +195,12 @@ Start the clixon restconf daemon
 sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
 ```
 
-Then acess:
+Then access:
 ```
-   curl -G http://127.0.0.1/restconf/data/ietf-interfaces:interfaces/interface=eth9/type
+   curl -X GET http://127.0.0.1/restconf/data/ietf-interfaces:interfaces/interface=eth0/type
    [
      {
-       "ietf-interfaces:type": "ex:eth" 
+       "ietf-interfaces:type": "clixon-example:eth" 
      }
    ]
 ```

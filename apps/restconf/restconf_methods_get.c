@@ -449,7 +449,10 @@ api_operations_get(clicon_handle h,
 	cprintf(cbx, "<operations>");
 	break;
     case YANG_DATA_JSON:
-	cprintf(cbx, "{\"operations\": {");
+	if (pretty)
+	    cprintf(cbx, "{\"operations\": {\n");
+	else
+	    cprintf(cbx, "{\"operations\":{");
 	break;
     default:
 	break;
@@ -467,14 +470,19 @@ api_operations_get(clicon_handle h,
 		cprintf(cbx, "<%s xmlns=\"%s\"/>", yang_argument_get(yc), namespace);
 		break;
 	    case YANG_DATA_JSON:
-		if (i++)
+		if (i++){
 		    cprintf(cbx, ",");
-		cprintf(cbx, "\"%s:%s\": null", yang_argument_get(ymod), yang_argument_get(yc));
+		    if (pretty)
+			cprintf(cbx, "\n\t");
+		}
+		if (pretty)
+		    cprintf(cbx, "\"%s:%s\": [null]", yang_argument_get(ymod), yang_argument_get(yc));
+		else
+		    cprintf(cbx, "\"%s:%s\":[null]", yang_argument_get(ymod), yang_argument_get(yc));
 		break;
 	    default:
 		break;
 	    }
-
 	}
     }
     switch (media_out){
@@ -482,7 +490,10 @@ api_operations_get(clicon_handle h,
 	cprintf(cbx, "</operations>");
 	break;
     case YANG_DATA_JSON:
-	cprintf(cbx, "}}");
+	if (pretty)
+	    cprintf(cbx, "}\n}");
+	else
+	    cprintf(cbx, "}}");
 	break;
     default:
 	break;

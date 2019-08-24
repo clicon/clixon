@@ -1028,7 +1028,7 @@ xml2json_vec(FILE      *f,
     int   retval = 1;
     cbuf *cb = NULL;
 
-    if ((cb = cbuf_new()) ==NULL){
+    if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
@@ -1084,7 +1084,8 @@ json_xmlns_translate(yang_stmt *yspec,
 	if (xml2ns(x, NULL, &namespace0) < 0)
 	    goto done;
 	/* Set xmlns="" default namespace attribute (if diff from default) */
-	if (namespace0==NULL || strcmp(namespace0, namespace)){
+	if (namespace0 == NULL ||
+	    strcmp(namespace0, namespace)){
 	    if (xmlns_set(x, NULL, namespace) < 0)
 		goto done;
 	    /* and remove prefix */

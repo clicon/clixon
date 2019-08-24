@@ -23,57 +23,62 @@ Download and start nginx. For example on ubuntu:
 
 Define nginx config file: /etc/nginx/sites-available/default
 ```
-server {
-  ...
-  location /restconf {
-     fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-     include fastcgi_params;
+  server {
+    ...
+    location /restconf {
+      fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+      include fastcgi_params;
+    }
   }
-}
 ```
 
 Start nginx daemon
 ```
-sudo /etc/init.d nginx start
+  sudo /etc/init.d nginx start
 ```
 Alternatively, start it via systemd:
 ```
-sudo /etc/init.d/nginx start
-sudo systemctl start start.service
+  sudo systemctl start nginx.service
+```
+
+Start clixon backend daemon (if not already started)
+```
+  sudo clixon_backend -s init -f /usr/local/etc/example.xml
 ```
 
 Start clixon restconf daemon
 ```
-> sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+
+  sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
 ```
 
-Make restconf calls with curl
+Make restconf calls with curl (or other http client). Example of writing a new interface specification:
 ```
-> curl -G http://127.0.0.1/restconf/data/ietf-interfaces:interfaces
-[
+  curl -sX PUT http://localhost/restconf/data/ietf-interfaces:interfaces -H 'Content-Type: application/yang-data+json' -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth1","type":"clixon-example:eth","enabled":true}}}'
+```
+
+Get the data
+```
+  curl -X GET http://127.0.0.1/restconf/data/ietf-interfaces:interfaces
   {
     "ietf-interfaces:interfaces": {
-      "interface":[
+      "interface": [
         {
-          "name": "eth9",
-          "type": "ex:eth",
-          "enabled": true,
-         }
+          "name": "eth1",
+          "type": "clixon-example:eth",
+          "enabled": true
+        }
       ]
     }
   }
-]
+
 ```
 Get the type of a specific interface:
 ```
-> curl -G http://127.0.0.1/restconf/data/interfaces/interface=eth9/type
-{
-  "ietf-interfaces:type": "eth" 
-}
-```
-Example of writing a new interfaces specification:
-```
-curl -sX PUT http://localhost/restconf/data -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth1","type":"ex:eth","enabled":true}}}' 
+  curl -X GET http://127.0.0.1/restconf/data/ietf-interfacesinterfaces/interface=eth1/type
+  {
+    "ietf-interfaces:type": "clixon-example:eth" 
+  }
 ```
 
 ## Streams
@@ -83,7 +88,7 @@ RFC8040 Section 6 using SSE.  One native and one using Nginx
 nchan. The Nchan alternaitve is described in the
 next section.
 
-The (example)[../../example/README.md] creates an EXAMPLE stream.
+The [example](../../example/main/README.md) creates an EXAMPLE stream.
 
 Set the Clixon configuration options:
 ```
