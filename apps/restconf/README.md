@@ -115,7 +115,7 @@ Add the following to extend the nginx configuration file with the following stat
         }
 ```
 
-AN example of a stream access is as follows:
+An example of a stream access is as follows:
 ```
 > curl -H "Accept: text/event-stream" -s -X GET http://localhost/streams/EXAMPLE
 data: <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-11-04T14:47:11.373124</eventTime><event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>

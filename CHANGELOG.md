@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-## 4.2.0 (Expected: September)
+## 4.2.0 (Expected: October)
 
 ### API changes on existing features (you may need to change your code)
 * Restconf top-level operations GET root resource modified to comply with RFC 8040 Sec 3.1 
