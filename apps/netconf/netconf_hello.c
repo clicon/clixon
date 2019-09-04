@@ -133,7 +133,7 @@ netconf_hello_dispatch(cxobj *xn)
  *
  * Question: should the NETCONF in RFC6241 sections 8.2-8.9 be announced both 
  * as features and as capabilities in the <hello> message according to RFC6241?
- *   urn:ietf:params:netconf:capability:candidate:1:0 (8.3)
+ *   urn:ietf:params:netconf:capability:candidate:1.0 (8.3)
  *   urn:ietf:params:netconf:capability:validate:1.1 (8.6)
  *   urn:ietf:params:netconf:capability:startup:1.0 (8.7)
  *   urn:ietf:params:netconf:capability:xpath:1.0 (8.9)
@@ -169,7 +169,7 @@ netconf_create_hello(clicon_handle h,
 			    module_set_id) < 0)
 	goto done;
     cprintf(cb, "<capability>%s</capability>", encstr);
-    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:candidate:1:0</capability>");
+    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:candidate:1.0</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:validate:1.1</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:startup:1.0</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>");

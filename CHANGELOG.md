@@ -8,6 +8,7 @@
   * Replaced JSON `null` with `[null]` as proper empty JSON leaf/leaf-list encoding.
   
 ### Corrected Bugs
+* Hello netconf candidate capability misspelled, mentioned in [Can clixon_netconf receive netconf packets as a server? #93](https://github.com/clicon/clixon/issues/93)
 * [Cannot write to config using restconf example #91](https://github.com/clicon/clixon/issues/91)
   * Updated restconf documentation (the example was wrong)
 * [clixon-lib yang revision file name update #92](https://github.com/clicon/clixon/issues/92)
