@@ -42,7 +42,7 @@ module clixon-config {
     revision 2019-09-11 {
 	description
 	    "Added: CLICON_USER: user that backend daemon drops privileges to";
-
+    }
     revision 2019-06-05 {
 	description
 	    "Added: CLICON_YANG_REGEXP, CLICON_CLI_TAB_MODE, 

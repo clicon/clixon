@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-## 4.2.0 (Expected: October)
+## 4.2.0 (Expected: September)
 
 ### Major New features
 * Backend daemon drops privileges after initialization (to not run as root)
