@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # yang augment and identityref tests in different modules
 # See RFC7950 Sec 7.17
 # This test defines an example-augment module which augments an interface
@@ -218,12 +218,11 @@ fi
 
 new "Kill backend"
 # Check if premature kill
-pid=`pgrep -u root -f clixon_backend`
+pid=$(pgrep -u $BUSER -f clixon_backend)
 if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 # kill backend
 stop_backend -f $cfg
-sudo pkill -u root -f clixon_backend
 
 rm -rf $dir

@@ -467,7 +467,7 @@ Each plugin is initiated with an API struct followed by a plugin init function a
       return &api; /* Return NULL on error */
    }
 ```
-For more info see [../example/main/README.md]
+For more info see [the main example](../example/main/README.md)
 
 ## How do I write a commit function?
 In the example, you write a commit function in example_backend.c.

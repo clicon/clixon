@@ -74,7 +74,7 @@
 #include "backend_startup.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:l:d:p:b:Fza:u:P:1s:c:g:y:o:"
+#define BACKEND_OPTS "hD:f:l:d:p:b:Fza:u:P:1s:c:U:g:y:o:"
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
@@ -220,6 +220,72 @@ nacm_load_external(clicon_handle h)
     return retval;
 }
 
+static int 
+xmldb_drop_priv(clicon_handle h, 
+		const char   *db, 
+		uid_t         uid,
+		gid_t         gid)
+{
+    int         retval = -1;
+    char       *filename = NULL;
+
+    if (xmldb_db2file(h, db, &filename) < 0)
+	goto done;
+    if (chown(filename, uid, gid) < 0){
+	clicon_err(OE_UNIX, errno, "chown");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (filename)
+	free(filename);
+    return retval;
+}
+
+/*! Drop root privileges uid and gid to Clixon user/group
+ *  @param[in] h   Clicon handle
+ */
+static int
+drop_priv(clicon_handle h,
+	   uid_t         uid,
+	   gid_t         gid)
+{
+    int retval = -1;
+    
+    if (xmldb_exists(h, "running") != 1)
+	if (xmldb_create(h, "running") < 0)
+	    goto done;
+    if (xmldb_drop_priv(h, "running", uid, gid) < 0)
+	goto done;
+    if (xmldb_exists(h, "candidate") != 1)
+	if (xmldb_create(h, "candidate") < 0)
+	    goto done;
+    if (xmldb_drop_priv(h, "candidate", uid, gid) < 0)
+	goto done;
+    if (xmldb_exists(h, "startup") != 1)
+	if (xmldb_create(h, "startup") < 0)
+	    goto done;
+    if (xmldb_drop_priv(h, "startup", uid, gid) < 0)
+	goto done;
+
+    if (setgid(gid) == -1) {
+	clicon_err(OE_DEMON, errno, "setgid %d", gid);
+	goto done;
+    }
+    if (setuid(uid) == -1) {
+	clicon_err(OE_DEMON, errno, "setuid %d", uid);
+	goto done;
+    }
+    /* Verify you cannot regain root privileges */
+    if (setuid(0) != -1){
+	clicon_err(OE_DEMON, EPERM, "Could regain root privilieges");
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Given a retval, transform to status or fatal error
  *
  * @param[in]  ret    Return value from xml validation function
@@ -290,6 +356,7 @@ usage(clicon_handle h,
     	    "\t-1\t\tRun once and then quit (dont wait for events)\n"
 	    "\t-s <mode>\tSpecify backend startup mode: none|startup|running|init)\n"
 	    "\t-c <file>\tLoad extra xml configuration, but don't commit.\n"
+	    "\t-U <user>\tRun backend daemon as this user\n"
 	    "\t-g <group>\tClient membership required to this group (default: %s)\n"
 
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
@@ -303,6 +370,7 @@ usage(clicon_handle h,
     exit(-1);
 }
 
+
 int
 main(int    argc,
      char **argv)
@@ -314,7 +382,8 @@ main(int    argc,
     int           once;
     enum startup_mode_t startup_mode;
     char         *extraxml_file;
-    char         *config_group;
+    char         *backend_user = NULL;
+    char         *backend_group = NULL;
     char         *argv0 = argv[0];
     struct stat   st;
     clicon_handle h;
@@ -333,6 +402,8 @@ main(int    argc,
     enum startup_status status = STARTUP_ERR; /* Startup status */
     int           ret;
     char         *dir;
+    gid_t         gid = -1;
+    uid_t         uid = -1;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -464,6 +535,10 @@ main(int    argc,
 	case 'c': /* Load application config */
 	    extraxml_file = optarg;
 	    break;
+	case 'U': /* config user (for socket and drop privileges) */
+	    if (clicon_option_add(h, "CLICON_SOCK", optarg) < 0)
+		goto done;
+	    break;
 	case 'g': /* config socket group */
 	    if (clicon_option_add(h, "CLICON_SOCK_GROUP", optarg) < 0)
 		goto done;
@@ -541,22 +616,32 @@ main(int    argc,
     if (sockfamily==AF_UNIX && lstat(sock, &st) == 0)
 	unlink(sock);   
 
-    /* Sanity check: config group exists */
-    if ((config_group = clicon_sock_group(h)) == NULL){
+    /* XXX maybe only if !foreground */
+    /* Sanity check: backend user exists */
+    if ((backend_user = clicon_user(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "clicon_user option not set");
+	return -1;
+    }
+    if (name2uid(backend_user, &uid) < 0){
+	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user .\n", backend_user);
+	goto done;
+    }
+
+    /* Sanity check: backend group exists */
+    if ((backend_group = clicon_sock_group(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "clicon_sock_group option not set");
 	return -1;
     }
-
-    if (group_name2gid(config_group, NULL) < 0){
+    if (group_name2gid(backend_group, &gid) < 0){
 	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.\n" /* \n required here due to multi-line log */
 		"The config demon requires a valid group to create a server UNIX socket\n"
 		"Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
 		"or create the group and add the user to it. On linux for example:"
 		"  sudo groupadd %s\n" 
 		"  sudo usermod -a -G %s user\n", 
-		   config_group, clicon_configfile(h),
-		   config_group, config_group);
-	return -1;
+		   backend_group, clicon_configfile(h),
+		   backend_group, backend_group);
+	goto done;
     }
 
     /* Publish stream on pubsub channels.
@@ -737,6 +822,7 @@ main(int    argc,
 	    fprintf(stderr, "config: daemon");
 	    exit(-1);
 	}
+	    
     }
     /* Write pid-file */
     if ((pid = pidfile_write(pidfile)) <  0)
@@ -751,6 +837,7 @@ main(int    argc,
 	clicon_err(OE_DEMON, errno, "Setting signal");
 	goto done;
     }
+
     /* Initialize server socket and save it to handle */
     if ((ss = backend_server_socket(h)) < 0)
 	goto done;
@@ -758,6 +845,10 @@ main(int    argc,
 	goto done;
     if (debug)
 	clicon_option_dump(h, debug);
+    /* Drop root privileges (unless root) */
+    if (uid != 0)
+	if (drop_priv(h, uid, gid) < 0)
+	    goto done;
 
     if (stream_timer_setup(0, h) < 0)
 	goto done;

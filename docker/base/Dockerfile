@@ -90,8 +90,8 @@ RUN apk add --update nginx
 # Expose nginx port for restconf
 EXPOSE 80
 
-# Create clicon group
-RUN addgroup clicon
+# Create clicon user and group
+RUN adduser -D -H clicon
 RUN adduser nginx clicon
 RUN adduser www-data clicon
 

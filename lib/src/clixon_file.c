@@ -219,9 +219,10 @@ clicon_file_copy(char *src,
  * @retval -1   Error. or not found
  */
 int
-group_name2gid(char *name, 
-	       gid_t *gid)
+group_name2gid(const char *name, 
+	       gid_t      *gid)
 {
+    int           retval = -1;
     char          buf[1024]; 
     struct group  g0;
     struct group *gr = &g0;
@@ -231,14 +232,39 @@ group_name2gid(char *name,
     /* This leaks memory in ubuntu */
     if (getgrnam_r(name, gr, buf, sizeof(buf), &gtmp) < 0){
 	clicon_err(OE_UNIX, errno, "getgrnam_r(%s)", name);
-	return -1;
+	goto done;
     }
     if (gtmp == NULL){
 	clicon_err(OE_UNIX, 0, "No such group: %s", name);
-	fprintf(stderr, "No such group %s\n", name);
-	return -1;
+	goto done;
     }
     if (gid)
 	*gid = gr->gr_gid;
-    return 0;
+    retval = 0;
+ done:
+    return retval;
+}
+
+int
+name2uid(const char *name,
+	    uid_t      *uid)
+{
+    int            retval = -1;
+    char           buf[1024]; 
+    struct passwd  pwbuf;
+    struct passwd *pwbufp = NULL;
+
+    if (getpwnam_r(name, &pwbuf, buf, sizeof(buf), &pwbufp) != 0){
+	clicon_err(OE_UNIX, errno, "getpwnam_r(%s)", name);
+	goto done;
+    }
+    if (pwbufp == NULL){
+	clicon_err(OE_UNIX, 0, "No such user: %s", name);
+	goto done;
+    }
+    if (uid)
+	*uid = pwbufp->pw_uid;
+    retval = 0;
+ done:
+    return retval;
 }

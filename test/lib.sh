@@ -91,6 +91,9 @@ testname=
 : ${IETFRFC=../yang/standard}
 #: ${IETFRFC=$YANGMODELS/standard/ietf/RFC}
 
+# Backend user
+BUSER=clicon
+
 # Follow the binary programs that can be parametrized (eg with valgrind)
 
 : ${clixon_cli:=clixon_cli}
@@ -170,6 +173,7 @@ stop_backend(){
 	sleep 1
 	checkvalgrind
     fi
+    sudo pkill -f clixon_backend # extra ($BUSER?)
 }
 
 # Wait for restconf to stop sending  502 Bad Gateway

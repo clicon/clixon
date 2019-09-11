@@ -398,8 +398,8 @@ xmldb_delete(clicon_handle h,
     if (xmldb_db2file(h, db, &filename) < 0)
 	goto done;
     if (lstat(filename, &sb) == 0)
-	if (unlink(filename) < 0){
-	    clicon_err(OE_DB, errno, "unlink %s", filename);
+	if (truncate(filename, 0) < 0){
+	    clicon_err(OE_DB, errno, "truncate %s", filename);
 	    goto done;
 	}
     retval = 0;

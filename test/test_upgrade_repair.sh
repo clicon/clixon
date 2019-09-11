@@ -151,7 +151,7 @@ stop_restconf
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
-    pid=`pgrep -u root -f clixon_backend`
+    pid=$(pgrep -u $BUSER -f clixon_backend)
     if [ -z "$pid" ]; then
 	err "backend already dead"
     fi

@@ -89,7 +89,7 @@ testrun(){
     if [ $BE -ne 0 ]; then
 	new "Kill backend"
 	# Check if premature kill
-	pid=`pgrep -u root -f clixon_backend`
+	pid=$(pgrep -u $BUSER -f clixon_backend)
 	if [ -z "$pid" ]; then
 	    err "backend already dead"
 	fi
@@ -120,8 +120,11 @@ sudo rm -f $dir/startup_db;
 new "Run without startup option, check running is copied"
 testrun ""
 
-new "Check startup should not exist"
-if [ -f $dir/startup_db ]; then
-    err "startup should not exist"
+new "Check startup is empty"
+if [ ! -f $dir/startup_db ]; then
+    err "startup does not exist"
+fi
+if [ -s $dir/startup_db ]; then
+    err "startup is not empty"
 fi
 rm -rf $dir

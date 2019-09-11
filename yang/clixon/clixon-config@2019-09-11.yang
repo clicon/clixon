@@ -39,6 +39,10 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2019-09-11 {
+	description
+	    "Added: CLICON_USER: user that backend daemon drops privileges to";
+
     revision 2019-06-05 {
 	description
 	    "Added: CLICON_YANG_REGEXP, CLICON_CLI_TAB_MODE, 
@@ -415,7 +419,15 @@ module clixon-config {
 	leaf CLICON_SOCK_GROUP {
 	    type string;
 	    default "clicon";
-	    description "Group membership to access clixon_backend unix socket";
+	    description
+		"Group membership to access clixon_backend unix socket and gid for 
+                 deamon";
+	}
+	leaf CLICON_USER {
+	    type string;
+	    default "clicon";
+	    description 
+		"User to access clixon_backend unix socket and uid for deamon";
 	}
 	leaf CLICON_BACKEND_PIDFILE {
 	    type string;

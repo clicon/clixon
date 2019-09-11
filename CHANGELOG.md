@@ -2,6 +2,11 @@
 
 ## 4.2.0 (Expected: October)
 
+### Major New features
+* Backend daemon drops privileges after initialization (to not run as root)
+  * New config option `CLICON_USER` with default value `clicon`
+  * Can also be set with `-U <user>` clixon_backend command-line option
+
 ### API changes on existing features (you may need to change your code)
 * Restconf top-level operations GET root resource modified to comply with RFC 8040 Sec 3.1 
   * non-pretty print remove all spaces, eg `{"operations":{"clixon-example:client-rpc":[null]`
@@ -67,6 +72,7 @@
   * `204 No Content` for replaced resources.
 * RESTCONF PUT/POST `Content-Type` is enforced
   * Before accepted JSON as default, now Content-Type must be explicit, such as `Content-Type: application/yang-data+json`
+  * If not, you will get 415 unsupported media type
 * RESTCONF identities has changed to use module names instead of prefixes following RFC8040:
   * Eg, `curl -X POST -d '{"type":"ex:eth"}` --> `curl -X POST -d '{"type":"ietf-interfaces:eth"`}
 * JSON changes

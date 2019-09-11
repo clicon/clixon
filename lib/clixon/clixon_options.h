@@ -167,6 +167,9 @@ static inline char *clicon_sock(clicon_handle h){
 static inline char *clicon_sock_group(clicon_handle h){
     return clicon_option_str(h, "CLICON_SOCK_GROUP");
 }
+static inline char *clicon_user(clicon_handle h){
+    return clicon_option_str(h, "CLICON_USER");
+}
 static inline char *clicon_backend_pidfile(clicon_handle h){
     return clicon_option_str(h, "CLICON_BACKEND_PIDFILE");
 }

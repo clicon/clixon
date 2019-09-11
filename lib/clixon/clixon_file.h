@@ -43,6 +43,8 @@ int clicon_file_dirent(const char *dir, struct dirent **ent,
 
 int clicon_file_copy(char *src, char *target);
 
-int group_name2gid(char *name, gid_t *gid);
+int group_name2gid(const char *name, gid_t *gid);
+
+int name2uid(const char *name, uid_t *uid);
 
 #endif /* _CLIXON_FILE_H_ */

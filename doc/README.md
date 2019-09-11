@@ -8,16 +8,16 @@ NETCONF and RESTCONF interfaces, an embedded database and transaction
 mechanism.
 
   * [Background](#background)
-  * [Frequently asked questions (FAQ)](doc/FAQ.md)
+  * [Frequently asked questions (FAQ)](FAQ.md)
   * [Hello world](example/hello/README.md)
   * [Changelog](CHANGELOG.md)
-  * [Installation](doc/INSTALL.md)
+  * [Installation](INSTALL.md)
   * [Licenses](#licenses)
   * [Support](#support)
   * [Dependencies](#dependencies)
   * [Extending](#extending)
   * [Yang](#yang)
-  * [CLI](doc/CLI.md)
+  * [CLI](CLI.md)
   * [XML and XPATH](#xml-and-xpath)
   * [Netconf](#netconf)
   * [Restconf](#restconf)
@@ -28,9 +28,9 @@ mechanism.
   * [Runtime](#runtime)
   * [Clixon project page](http://www.clicon.org)
   * [Tests and CI](test/README.md)
-  * [Scaling: large lists](doc/scaling/large-lists.md)
+  * [Scaling: large lists](scaling/large-lists.md)
   * [Containers](docker/README.md)
-  * [Roadmap](doc/ROADMAP.md)
+  * [Roadmap](ROADMAP.md)
   * [Standard compliance](#standard-compliance)
   * [Reference manual](#reference) 
   
@@ -81,7 +81,7 @@ specialize functions.  Clixon is extended by writing
 plugins for cli, backend, netconf and restconf.
 
 Plugins are written in C and easiest is to look at
-[example](example/README.md) or consulting the [FAQ](doc/FAQ.md).
+[example](example/README.md) or consulting the [FAQ](FAQ.md).
 
 ## Yang
 
@@ -265,7 +265,7 @@ For CLI, login is typically made via SSH. For netconf, SSH netconf
 subsystem can be used. 
   
 Restconf however needs credentials.  This is done by writing a credentials callback in a restconf plugin. See:
-  * [FAQ](doc/FAQ.md#how-do-i-write-an-authentication-callback).
+  * [FAQ](FAQ.md#how-do-i-write-an-authentication-callback).
   * [Example](example/README.md) has an example how to do this with HTTP basic auth.
   * It has been done for other projects using Oauth2 or (https://github.com/CESNET/Netopeer2/tree/master/server/configuration)
 
@@ -300,7 +300,7 @@ The functionality is as follows (references to sections in [RFC8341](https://too
 
 ## Runtime
 
-<img src="doc/clixon_example_sdk.png" alt="clixon sdk" style="width: 180px;"/>
+<img src="clixon_example_sdk.png" alt="clixon sdk" style="width: 180px;"/>
 
 The figure shows the SDK runtime of Clixon.
 
