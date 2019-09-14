@@ -82,6 +82,15 @@
  */
 #define CLIXON_CONF_NS "http://clicon.org/config"
 
+/* Mapping between Cli generation from Yang string <--> constants, 
+   see clixon-config.yang type cli_genmodel_type */
+static const map_str2int cli_genmodel_map[] = {
+    {"NONE",                 GT_NONE},
+    {"VARS",                 GT_VARS},
+    {"ALL",                  GT_ALL},
+    {NULL,                   -1}
+};
+
 /* Mapping between Clicon startup modes string <--> constants, 
    see clixon-config.yang type startup_mode */
 static const map_str2int startup_mode_map[] = {
@@ -90,6 +99,32 @@ static const map_str2int startup_mode_map[] = {
     {"startup",  SM_STARTUP}, 
     {"init",     SM_INIT}, 
     {NULL,       -1}
+};
+
+/* Mapping between Clicon privilegese modes string <--> constants, 
+ * see clixon-config.yang type priv_mode */
+static const map_str2int priv_mode_map[] = {
+    {"none",      PM_NONE}, 
+    {"drop_perm", PM_DROP_PERM}, 
+    {"drop_temp", PM_DROP_TEMP}, 
+    {NULL,        -1}
+};
+
+/* Mapping between datastore cache string <--> constants, 
+ * see clixon-config.yang type datastore_cache */
+static const map_str2int datastore_cache_map[] = {
+    {"nocache",               DATASTORE_NOCACHE},
+    {"cache",                 DATASTORE_CACHE},
+    {"cache-zerocopy",        DATASTORE_CACHE_ZEROCOPY},
+    {NULL,                    -1}
+};
+
+/* Mapping between regular expression type string <--> constants, 
+ * see clixon-config.yang type regexp_mode */
+static const map_str2int yang_regexp_map[] = {
+    {"posix",               REGEXP_POSIX},
+    {"libxml2",             REGEXP_LIBXML2},
+    {NULL,                 -1}
 };
 
 /*! Print registry on file. For debugging.
@@ -453,6 +488,9 @@ clicon_option_int(clicon_handle h,
 }
 
 /*! Set option given as int.
+ * @param[in] h     Clicon handle
+ * @param[in] name  Name of option to set
+ * @param[in] val   Integer value
  */
 int
 clicon_option_int_set(clicon_handle h,
@@ -468,7 +506,7 @@ clicon_option_int_set(clicon_handle h,
 
 /*! Get options as bool but stored as string
  *
- * @param[in] h    clicon handle
+ * @param[in] h    Clicon handle
  * @param[in] name name of option
  * @retval    0    false, or does not exist, or does not have a boolean value
  * @retval    1    true
@@ -496,6 +534,9 @@ clicon_option_bool(clicon_handle h,
 }
 
 /*! Set option given as bool
+ * @param[in] h     Clicon handle
+ * @param[in] name  Name of option to set
+ * @param[in] val   Boolean value, 0 or 1
  */
 int
 clicon_option_bool_set(clicon_handle h,
@@ -510,6 +551,8 @@ clicon_option_bool_set(clicon_handle h,
 }
 
 /*! Delete option 
+ * @param[in] h     Clicon handle
+ * @param[in] name  Name of option to delete
  */
 int
 clicon_option_del(clicon_handle h,
@@ -530,8 +573,10 @@ clicon_option_del(clicon_handle h,
  * But sometimes there are type conversions, etc which makes it more
  * convenient to make wrapper functions. Or not?
  *-----------------------------------------------------------------*/
-/*! Whether to generate CLIgen syntax from datamodel or not (0 or 1)
+/*! Wether to generate CLIgen syntax from datamodel or not (0 or 1)
  * Must be used with a previous clicon_option_exists().
+ * @param[in] h     Clicon handle
+ * @retval    flag  If set, generate CLI code from yang model, otherwise not
  * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL
  */
 int
@@ -546,6 +591,8 @@ clicon_cli_genmodel(clicon_handle h)
 }
 
 /*! Generate code for CLI completion of existing db symbols
+ * @param[in] h     Clicon handle
+ * @retval    flag  If set, generate auto-complete CLI specs
  * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL_COMPLETION
  */
 int
@@ -559,14 +606,9 @@ clicon_cli_genmodel_completion(clicon_handle h)
 	return 0;
 }
 
-static const map_str2int cli_genmodel_map[] = {
-    {"NONE",                 GT_NONE},
-    {"VARS",                 GT_VARS},
-    {"ALL",                  GT_ALL},
-    {NULL,                   -1}
-};
-
 /*! How to generate and show CLI syntax: VARS|ALL 
+ * @param[in] h     Clicon handle
+ * @retval    mode
  * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL_TYPE
  */
 enum genmodel_type
@@ -580,7 +622,9 @@ clicon_cli_genmodel_type(clicon_handle h)
 	return clicon_str2int(cli_genmodel_map, str);
 }
 
-/*! Get Dont include keys in cvec in cli vars callbacks
+/*! Get "do not include keys in cvec" in cli vars callbacks
+ * @param[in] h     Clicon handle
+ * @retval    flag  If set, get only vars
  * @see clixon-config@<date>.yang CLICON_CLI_VARONLY
  */
 int
@@ -596,6 +640,8 @@ clicon_cli_varonly(clicon_handle h)
 
 /*! Get family of backend socket: AF_UNIX, AF_INET or AF_INET6 
  * @see clixon-config@<date>.yang CLICON_SOCK_FAMILY
+ * @param[in] h     Clicon handle
+ * @retval    fam   Socket family
  */
 int
 clicon_sock_family(clicon_handle h)
@@ -613,6 +659,8 @@ clicon_sock_family(clicon_handle h)
 }
 
 /*! Get port for backend socket in case of AF_INET or AF_INET6 
+ * @param[in] h     Clicon handle
+ * @retval    port  Socket port
  * @see clixon-config@<date>.yang CLICON_SOCK_PORT
  */
 int
@@ -626,6 +674,8 @@ clicon_sock_port(clicon_handle h)
 }
 
 /*! Set if all configuration changes are committed automatically 
+ * @param[in] h     Clicon handle
+ * @retval    flag  Autocommit (or not)
  */
 int
 clicon_autocommit(clicon_handle h)
@@ -638,25 +688,37 @@ clicon_autocommit(clicon_handle h)
 	return 0;
 }
 
-/*! Which method to boot/start clicon backen
+/*! Which method to boot/start clicon backend
+ * @param[in] h     Clicon handle
+ * @retval    mode  Startup mode
  */
 int
 clicon_startup_mode(clicon_handle h)
 {
     char *mode;
+
     if ((mode = clicon_option_str(h, "CLICON_STARTUP_MODE")) == NULL)
 	return -1;
     return clicon_str2int(startup_mode_map, mode);
 }
 
-static const map_str2int datastore_cache_map[] = {
-    {"nocache",               DATASTORE_NOCACHE},
-    {"cache",                 DATASTORE_CACHE},
-    {"cache-zerocopy",        DATASTORE_CACHE_ZEROCOPY},
-    {NULL,                    -1}
-};
+/*! Which privileges drop method to use
+ * @param[in] h     Clicon handle
+ * @retval    mode  Privileges mode
+ */
+int
+clicon_backend_privileges_mode(clicon_handle h)
+{
+    char *mode;
+
+    if ((mode = clicon_option_str(h, "CLICON_BACKEND_PRIVILEGES")) == NULL)
+	return -1;
+    return clicon_str2int(priv_mode_map, mode);
+}
 
 /*! Which datastore cache method to use
+ * @param[in] h      Clicon handle
+ * @retval    method Datastore cache method
  * @see clixon-config@<date>.yang CLICON_DATASTORE_CACHE
  */
 enum datastore_cache
@@ -670,13 +732,9 @@ clicon_datastore_cache(clicon_handle h)
 	return clicon_str2int(datastore_cache_map, str);
 }
 
-static const map_str2int yang_regexp_map[] = {
-    {"posix",               REGEXP_POSIX},
-    {"libxml2",             REGEXP_LIBXML2},
-    {NULL,                 -1}
-};
-
 /*! Which Yang regexp/pattern engine to use
+ * @param[in] h     Clicon handle
+ * @retval    mode  Regexp engine to use
  * @see clixon-config@<date>.yang CLICON_YANG_REGEXP
  */
 enum regexp_mode
@@ -696,7 +754,10 @@ clicon_yang_regexp(clicon_handle h)
  * Such as handles to plugins, API:s and parsed structures
  *--------------------------------------------------------------------*/
 
-/* eg -q option, dont print notifications on stdout */
+/*! Get quiet mode eg -q option, do not print notifications on stdout 
+ * @param[in] h      Clicon handle
+ * @retval    flag   quiet mode on or off
+ */
 int
 clicon_quiet_mode(clicon_handle h)
 {
@@ -705,8 +766,14 @@ clicon_quiet_mode(clicon_handle h)
 	return 0; /* default */
     return atoi(s);
 }
+
+/*! Set quiet mode
+ * @param[in] h      Clicon handle
+ * @param[in] val    Flag value
+ */
 int
-clicon_quiet_mode_set(clicon_handle h, int val)
+clicon_quiet_mode_set(clicon_handle h,
+		      int           val)
 {
     return clicon_option_int_set(h, "CLICON_QUIET", val);
 }

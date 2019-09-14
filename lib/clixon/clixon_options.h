@@ -73,6 +73,13 @@ enum startup_mode_t{
     SM_INIT
 };
 
+/*! See clixon-config.yang type priv_mode (privileges mode) */
+enum priv_mode_t{
+    PM_NONE=0,        /* Make no drop/change in privileges */
+    PM_DROP_PERM,     /* Drop privileges permanently */
+    PM_DROP_TEMP,     /* Drop privileges temporary */
+};
+
 /*! Datastore cache behaviour, see clixon_datastore.[ch] 
  * See config option type datastore_cache in clixon-config.yang
  */
@@ -167,8 +174,8 @@ static inline char *clicon_sock(clicon_handle h){
 static inline char *clicon_sock_group(clicon_handle h){
     return clicon_option_str(h, "CLICON_SOCK_GROUP");
 }
-static inline char *clicon_user(clicon_handle h){
-    return clicon_option_str(h, "CLICON_USER");
+static inline char *clicon_backend_user(clicon_handle h){
+    return clicon_option_str(h, "CLICON_BACKEND_USER");
 }
 static inline char *clicon_backend_pidfile(clicon_handle h){
     return clicon_option_str(h, "CLICON_BACKEND_PIDFILE");
@@ -186,6 +193,7 @@ int   clicon_sock_family(clicon_handle h);
 int   clicon_sock_port(clicon_handle h);
 int   clicon_autocommit(clicon_handle h);
 int   clicon_startup_mode(clicon_handle h);
+int   clicon_backend_privileges_mode(clicon_handle h);
 enum datastore_cache clicon_datastore_cache(clicon_handle h);
 enum regexp_mode clicon_yang_regexp(clicon_handle h);
 /*-- Specific option access functions for non-yang options --*/

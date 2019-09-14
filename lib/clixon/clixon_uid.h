@@ -31,16 +31,20 @@
 
   ***** END LICENSE BLOCK *****
 
-  * This file requires dirent.h
+  * uid, gid, privileges
  */
 
-#ifndef _CLIXON_FILE_H_
-#define _CLIXON_FILE_H_
+#ifndef _CLIXON_UID_H_
+#define _CLIXON_UID_H_
 
+/*
+ * Prototypes
+ */ 
+int group_name2gid(const char *name, gid_t *gid);
 
-int clicon_file_dirent(const char *dir, struct dirent **ent, 
-		       const char *regexp, mode_t type);
+int name2uid(const char *name, uid_t *uid);
+int drop_priv_temp(uid_t new_uid);
+int drop_priv_perm(uid_t new_uid);
+int restore_priv(void);
 
-int clicon_file_copy(char *src, char *target);
-
-#endif /* _CLIXON_FILE_H_ */
+#endif  /* _CLIXON_UID_H_ */

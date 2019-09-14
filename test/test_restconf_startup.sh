@@ -89,7 +89,7 @@ testrun(){
     if [ $BE -ne 0 ]; then
 	new "Kill backend"
 	# Check if premature kill
-	pid=$(pgrep -u $BUSER -f clixon_backend)
+	pid=$(pgrep -u root -f clixon_backend)
 	if [ -z "$pid" ]; then
 	    err "backend already dead"
 	fi
@@ -108,7 +108,7 @@ new "Check running and startup exists and are same"
 if [ ! -f $dir/startup_db ]; then
     err "startup should exist but does not"
 fi
-echo "diff $dir/startup_db $dir/running_db"
+
 d=$(sudo diff $dir/startup_db $dir/running_db)
 if [ -n "$d" ]; then
     err "running and startup should be equal" "$d"
@@ -117,14 +117,12 @@ fi
 # clear startup
 sudo rm -f $dir/startup_db; 
 
-new "Run without startup option, check running is copied"
+new "Run without startup option, check running is not copied"
 testrun ""
 
 new "Check startup is empty"
-if [ ! -f $dir/startup_db ]; then
-    err "startup does not exist"
+if [ -f $dir/startup_db ]; then
+    err "startup should not exist"
 fi
-if [ -s $dir/startup_db ]; then
-    err "startup is not empty"
-fi
+
 rm -rf $dir

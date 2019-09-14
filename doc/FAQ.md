@@ -106,15 +106,15 @@ Define a valid CLICON_SOCK_GROUP in the config file or via the -g option
 or create the group and add the user to it. The default group is 'clicon'.
 Add yourself and www-data, if you intend to use restconf.
 
-Using groupadd and usermod:
+Using useradd and usermod:
 ```
-  sudo groupadd clicon # 
+  sudo useradd clicon # 
   sudo usermod -a -G clicon <user>
   sudo usermod -a -G clicon www-data
 ```
-Using addgroup and adduser (eg on busybox):
+Using adduser (eg on busybox):
 ```
-  sudo addgroup clicon
+  sudo adduser -D -H clicon
   sudo adduser <user> clicon
 ```
 (you may have to restart shell)

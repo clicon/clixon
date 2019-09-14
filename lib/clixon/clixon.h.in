@@ -65,6 +65,7 @@
 #define LIBCLIXON_API 1
 
 #include <clixon/clixon_sig.h>
+#include <clixon/clixon_uid.h>
 #include <clixon/clixon_err.h>
 #include <clixon/clixon_queue.h>
 #include <clixon/clixon_hash.h>

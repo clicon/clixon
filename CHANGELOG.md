@@ -3,11 +3,17 @@
 ## 4.2.0 (Expected: September)
 
 ### Major New features
-* Backend daemon drops privileges after initialization (to not run as root)
-  * New config option `CLICON_USER` with default value `clicon`
+* Backend daemon can drop privileges after initialization to run as non-privileged user
+  * You can start as root and drop privileges either permanently or temporary
+  * Controlled by options: CLICON_BACKEND_USER and CLICON_BACKEND_PRIVELEGES
   * Can also be set with `-U <user>` clixon_backend command-line option
+  * If dropped temporary, you can restore privileges with `restore_priv()`
 
 ### API changes on existing features (you may need to change your code)
+* Typical installation should now add a `clicon` user (as well as group)
+* New clixon-config@2019-09-11.yang revision
+  * Added: CLICON_BACKEND_USER: drop of privileges to user,
+  * Added: CLICON_BACKEND_PRIVELEGES: how to drop privileges
 * Restconf top-level operations GET root resource modified to comply with RFC 8040 Sec 3.1 
   * non-pretty print remove all spaces, eg `{"operations":{"clixon-example:client-rpc":[null]`
   * Replaced JSON `null` with `[null]` as proper empty JSON leaf/leaf-list encoding.

@@ -242,45 +242,94 @@ xmldb_drop_priv(clicon_handle h,
     return retval;
 }
 
-/*! Drop root privileges uid and gid to Clixon user/group
- *  @param[in] h   Clicon handle
+/*! Drop root privileges uid and gid to Clixon user/group and 
+ * 
+ * If config options are right, drop process uid/guid privileges and change some 
+ * file ownerships.
+ * "Right" means:
+ * - uid is currently 0 (started as root)
+ * - CLICON_BACKEND_USER is set
+ * - CLICON_BACKEND_PRIVILEGES is not "none"
+ * @param[in] h   Clicon handle
+ * @param[in] gid Group id (assume already known)
+ * @retval    0   OK
+ * @retval   -1   Error
  */
 static int
-drop_priv(clicon_handle h,
-	   uid_t         uid,
-	   gid_t         gid)
+check_drop_priv(clicon_handle h,
+		gid_t         gid)
 {
-    int retval = -1;
-    
+    int              retval = -1;
+    uid_t            uid;
+    uid_t            newuid = -1;
+    enum priv_mode_t priv_mode = PM_NONE;
+    char            *backend_user = NULL;
+
+    /* Get privileges mode (for dropping privileges) */
+    priv_mode = clicon_backend_privileges_mode(h);
+    if (priv_mode == PM_NONE)
+	goto ok;
+
+    /* From here, drop privileges */
+    /* Check backend user exists */
+    if ((backend_user = clicon_backend_user(h)) == NULL){
+	clicon_err(OE_DEMON, EPERM, "Privileges cannot be dropped without specifying CLICON_BACKEND_USER\n");
+	goto done;
+    }
+    /* Get (wanted) new backend user id */
+    if (name2uid(backend_user, &newuid) < 0){
+	clicon_err(OE_DEMON, errno, "'%s' is not a valid user .\n", backend_user);
+	goto done;
+    }
+    /* get current backend userid, if already at this level OK */
+    if ((uid = getuid()) == newuid)
+	goto ok;
+    if (uid != 0){
+	clicon_err(OE_DEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
+	goto done;
+    }
+    /* When dropping priveleges, datastores are created if they do not exist.
+     * But when drops are not made, datastores are created on demand.
+     * XXX: move the creation to top-level so they are always created at init?
+     */
     if (xmldb_exists(h, "running") != 1)
 	if (xmldb_create(h, "running") < 0)
 	    goto done;
-    if (xmldb_drop_priv(h, "running", uid, gid) < 0)
+    if (xmldb_drop_priv(h, "running", newuid, gid) < 0)
 	goto done;
     if (xmldb_exists(h, "candidate") != 1)
 	if (xmldb_create(h, "candidate") < 0)
 	    goto done;
-    if (xmldb_drop_priv(h, "candidate", uid, gid) < 0)
+    if (xmldb_drop_priv(h, "candidate", newuid, gid) < 0)
 	goto done;
     if (xmldb_exists(h, "startup") != 1)
 	if (xmldb_create(h, "startup") < 0)
 	    goto done;
-    if (xmldb_drop_priv(h, "startup", uid, gid) < 0)
+    if (xmldb_drop_priv(h, "startup", newuid, gid) < 0)
 	goto done;
 
     if (setgid(gid) == -1) {
 	clicon_err(OE_DEMON, errno, "setgid %d", gid);
 	goto done;
     }
-    if (setuid(uid) == -1) {
-	clicon_err(OE_DEMON, errno, "setuid %d", uid);
-	goto done;
+    switch (priv_mode){
+    case PM_DROP_PERM:
+	if (drop_priv_perm(newuid) < 0)
+	    goto done;
+	/* Verify you cannot regain root privileges */
+	if (setuid(0) != -1){
+	    clicon_err(OE_DEMON, EPERM, "Could regain root privilieges");
+	    goto done;
+	}
+	break;
+    case PM_DROP_TEMP:
+	if (drop_priv_temp(newuid) < 0)
+	    goto done;
+	break;
+    case PM_NONE:
+	break; /* catched above */
     }
-    /* Verify you cannot regain root privileges */
-    if (setuid(0) != -1){
-	clicon_err(OE_DEMON, EPERM, "Could regain root privilieges");
-	goto done;
-    }
+ ok:
     retval = 0;
  done:
     return retval;
@@ -356,7 +405,7 @@ usage(clicon_handle h,
     	    "\t-1\t\tRun once and then quit (dont wait for events)\n"
 	    "\t-s <mode>\tSpecify backend startup mode: none|startup|running|init)\n"
 	    "\t-c <file>\tLoad extra xml configuration, but don't commit.\n"
-	    "\t-U <user>\tRun backend daemon as this user\n"
+	    "\t-U <user>\tRun backend daemon as this user AND drop privileges permanently\n"
 	    "\t-g <group>\tClient membership required to this group (default: %s)\n"
 
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
@@ -382,7 +431,6 @@ main(int    argc,
     int           once;
     enum startup_mode_t startup_mode;
     char         *extraxml_file;
-    char         *backend_user = NULL;
     char         *backend_group = NULL;
     char         *argv0 = argv[0];
     struct stat   st;
@@ -403,7 +451,6 @@ main(int    argc,
     int           ret;
     char         *dir;
     gid_t         gid = -1;
-    uid_t         uid = -1;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -536,7 +583,9 @@ main(int    argc,
 	    extraxml_file = optarg;
 	    break;
 	case 'U': /* config user (for socket and drop privileges) */
-	    if (clicon_option_add(h, "CLICON_SOCK", optarg) < 0)
+	    if (clicon_option_add(h, "CLICON_USER", optarg) < 0)
+		goto done;
+	    if (clicon_option_add(h, "CLICON_BACKEND_PRIVILEGES", "drop_permanent") < 0)
 		goto done;
 	    break;
 	case 'g': /* config socket group */
@@ -616,17 +665,6 @@ main(int    argc,
     if (sockfamily==AF_UNIX && lstat(sock, &st) == 0)
 	unlink(sock);   
 
-    /* XXX maybe only if !foreground */
-    /* Sanity check: backend user exists */
-    if ((backend_user = clicon_user(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "clicon_user option not set");
-	return -1;
-    }
-    if (name2uid(backend_user, &uid) < 0){
-	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user .\n", backend_user);
-	goto done;
-    }
-
     /* Sanity check: backend group exists */
     if ((backend_group = clicon_sock_group(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "clicon_sock_group option not set");
@@ -634,13 +672,11 @@ main(int    argc,
     }
     if (group_name2gid(backend_group, &gid) < 0){
 	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.\n" /* \n required here due to multi-line log */
-		"The config demon requires a valid group to create a server UNIX socket\n"
-		"Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
-		"or create the group and add the user to it. On linux for example:"
-		"  sudo groupadd %s\n" 
-		"  sudo usermod -a -G %s user\n", 
-		   backend_group, clicon_configfile(h),
-		   backend_group, backend_group);
+		   "The config demon requires a valid group to create a server UNIX socket\n"
+		   "Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
+		   "or create the group and add the user to it. Check documentation for how to do this on your platform",
+		   backend_group,
+		   clicon_configfile(h));
 	goto done;
     }
 
@@ -845,10 +881,10 @@ main(int    argc,
 	goto done;
     if (debug)
 	clicon_option_dump(h, debug);
-    /* Drop root privileges (unless root) */
-    if (uid != 0)
-	if (drop_priv(h, uid, gid) < 0)
-	    goto done;
+    /* Depending on configure setting, privileges may be dropped here after
+     * initializations */
+    if (check_drop_priv(h, gid) < 0)
+	goto done;
 
     if (stream_timer_setup(0, h) < 0)
 	goto done;

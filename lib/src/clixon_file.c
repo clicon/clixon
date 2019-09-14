@@ -43,14 +43,12 @@
 #include <errno.h>
 #include <dirent.h>
 #include <regex.h>
-#include <pwd.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <unistd.h>
 #include <netinet/in.h>
-#include <grp.h>
  
 /* cligen */
 #include <cligen/cligen.h>
@@ -208,63 +206,5 @@ clicon_file_copy(char *src,
 	close(ouF);
     if (retval < 0)
 	errno = err;
-    return retval;
-}
-
-
-/*! Translate group name to gid. Return -1 if error or not found.
- * @param[in]   name  Name of group
- * @param[out]  gid   Group id
- * @retval  0   OK
- * @retval -1   Error. or not found
- */
-int
-group_name2gid(const char *name, 
-	       gid_t      *gid)
-{
-    int           retval = -1;
-    char          buf[1024]; 
-    struct group  g0;
-    struct group *gr = &g0;
-    struct group *gtmp;
-    
-    gr = &g0; 
-    /* This leaks memory in ubuntu */
-    if (getgrnam_r(name, gr, buf, sizeof(buf), &gtmp) < 0){
-	clicon_err(OE_UNIX, errno, "getgrnam_r(%s)", name);
-	goto done;
-    }
-    if (gtmp == NULL){
-	clicon_err(OE_UNIX, 0, "No such group: %s", name);
-	goto done;
-    }
-    if (gid)
-	*gid = gr->gr_gid;
-    retval = 0;
- done:
-    return retval;
-}
-
-int
-name2uid(const char *name,
-	    uid_t      *uid)
-{
-    int            retval = -1;
-    char           buf[1024]; 
-    struct passwd  pwbuf;
-    struct passwd *pwbufp = NULL;
-
-    if (getpwnam_r(name, &pwbuf, buf, sizeof(buf), &pwbufp) != 0){
-	clicon_err(OE_UNIX, errno, "getpwnam_r(%s)", name);
-	goto done;
-    }
-    if (pwbufp == NULL){
-	clicon_err(OE_UNIX, 0, "No such user: %s", name);
-	goto done;
-    }
-    if (uid)
-	*uid = pwbufp->pw_uid;
-    retval = 0;
- done:
     return retval;
 }

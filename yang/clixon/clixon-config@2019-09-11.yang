@@ -41,7 +41,8 @@ module clixon-config {
 
     revision 2019-09-11 {
 	description
-	    "Added: CLICON_USER: user that backend daemon drops privileges to";
+	    "Added: CLICON_BACKEND_USER: drop of privileges to user,
+                    CLICON_BACKEND_PRIVILEGES: how to drop privileges";
     }
     revision 2019-06-05 {
 	description
@@ -183,6 +184,26 @@ module clixon-config {
 	    }
 	}
     }
+    typedef priv_mode{
+	description
+	    "Privilege mode, used for dropping (or not) priveleges to a non-provileged
+             user after initialization";
+	type enumeration{
+	    enum none {
+		description
+		  "Make no drop/change in privileges.";
+	    }
+	    enum drop_perm {
+		description
+		  "After initialization, drop privileges permanently to a uid";
+	    }
+	    enum drop_temp {
+		description
+		  "After initialization, drop privileges temporarily to a euid";
+	    }
+	}
+    }
+
     container clixon-config {
        leaf-list CLICON_FEATURE {
            description
@@ -423,11 +444,25 @@ module clixon-config {
 		"Group membership to access clixon_backend unix socket and gid for 
                  deamon";
 	}
-	leaf CLICON_USER {
+	leaf CLICON_BACKEND_USER {
 	    type string;
-	    default "clicon";
 	    description 
-		"User to access clixon_backend unix socket and uid for deamon";
+		"User name for backend (both foreground and daemonized).
+                 If you set this value the backend if started as root will lower 
+                 the privileges after initialization. 
+                 The ownership of files created by the backend will also be set to this
+                 user (eg datastores).
+                 It also sets the backend unix socket owner to this user, but its group
+                 is set by CLICON_SOCK_GROUP.
+                 See also CLICON_PRIVILEGES setting";
+	}
+	leaf CLICON_BACKEND_PRIVILEGES {
+	    type priv_mode;
+	    default none;
+	    description 
+		"Backend privileges mode. 
+                 If CLICON_BACKEND_USER user is set, mode can be set to drop_perm or 
+                 drop_temp.";
 	}
 	leaf CLICON_BACKEND_PIDFILE {
 	    type string;

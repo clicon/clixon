@@ -109,6 +109,14 @@ if [ ! -d $dir ]; then
     mkdir $dir
 fi
 
+# Some tests may set owner of testdir to something strange and quit, need
+# to reset to me
+if [ ! -G $dir ]; then 
+    u=$(whoami)
+    sudo chown $u $dir
+    sudo chgrp $u $dir
+fi
+
 # If you bring your own backend BE=0 (it is already started),the backend may
 # have created some files (eg unix socket) in $dir and therefore cannot
 # be deleted
