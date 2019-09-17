@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Auto-upgrade using draft-wang-netmod-module-revision-management
 # Ways of changes (operation-type) are:
 # create, delete, move, modify

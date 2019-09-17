@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Yang test: multi-keys and empty type
 
 # Magic line must be first in script (see README.md)

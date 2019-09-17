@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Install system test
 
 # Magic line must be first in script (see README.md)

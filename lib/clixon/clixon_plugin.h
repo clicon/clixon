@@ -98,7 +98,9 @@ typedef int (*clicon_upgrade_cb)(
  *   Backend see config_plugin.c
  */
 
-/* Called when application started (eg after daemon call). 
+/* Called when application is "started", (almost) all initialization is complete 
+ * Backend: daemon is in the background. If daemon privileges are dropped 
+ *          this callback is called *before* privileges are dropped.
  */
 typedef int (plgstart_t)(clicon_handle); /* Plugin start */
 

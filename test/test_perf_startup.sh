@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Startup performance tests for different formats and startup modes.
 
 # Magic line must be first in script (see README.md)

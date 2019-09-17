@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Choice type and mandatory
 # Example from RFC7950 Sec 7.9.6
 # Also test mandatory behaviour as in 7.6.5

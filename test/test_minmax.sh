@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Yang list / leaf-list min/max-element tests.
 
 # Magic line must be first in script (see README.md)

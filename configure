@@ -4216,9 +4216,13 @@ fi
 if test "$LEX" = ":"; then
    as_fn_error $? "CLIXON does not find lex or flex." "$LINENO" 5
 fi
-if test "$YACC" != "bison -y"; then
-   as_fn_error $? "CLIXON does not find bison.  There are several problems with yacc and byacc. Please install bison." "$LINENO" 5
+
+# Get "bison" from bison -y or other string
+bisonstr=$(expr substr "$YACC" 1 5)
+if test "$bisonstr" != "bison"; then
+   as_fn_error $? "CLIXON does not find bison.  There are several problems with yacc and byacc. Please install bison. YACC=\"$YACC\"" "$LINENO" 5
 fi
+
 
 if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}

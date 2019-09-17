@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Starting clixon with outdated (or not) modules
 # This relieas on storing RFC7895 YANG Module Library modules-state info
 # in the datastore (or XML files?)

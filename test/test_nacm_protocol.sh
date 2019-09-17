@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Authentication and authorization and IETF NACM
 # NACM protocol operation rules
 # @see RFC 8341 A.1 and A.3 (and permit-all from A.2)

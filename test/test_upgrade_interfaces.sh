@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Upgrade a module by registering a manually programmed callback
 # The usecase is insipred by the ietf-interfaces upgrade from
 # 2014-05-08 to 2018-02-20.

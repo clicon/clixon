@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Start clixon backend as root and unprivileged user (clicon)
 # Drop privileges from root to clicon
 # Test could do more:

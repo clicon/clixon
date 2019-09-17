@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Jukebox example from rfc 8040 Appendix A.1
 # Assumes fjukebox is set to name of yang file
 # An extra leaf-list is added (clixon)

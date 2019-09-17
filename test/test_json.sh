@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Test: JSON parser tests. See RFC7951
 # - Multi-line + pretty-print 
 # - Empty values

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # CLI test for multi-key lists
 # Had bugs in duplicate detection
 

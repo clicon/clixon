@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Testcases for Restconf list and leaf-list keys, check matching keys for RFC8040 4.5:
 # the key values must match in URL and data
 

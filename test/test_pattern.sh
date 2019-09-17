@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Regexps appear in Yang string patterns, see RFC7950 Sec 9.4.5
 # in turn defined in http://www.w3.org/TR/2004/REC-xmlschema-2-20041028
 # Current implementation uses posix regex(3) which is not correct so

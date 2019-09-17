@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Scaling/ performance tests
 # Config + state data, only get
 # Restconf/Netconf/CLI

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Restconf RFC8040 plain patch Sec 4.6 / 4.6.1
 # Use nacm module in example/main/example_restconf.c hardcoded to
 # andy:bar and wilma:bar

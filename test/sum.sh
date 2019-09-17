@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Run, eg as:
 # ./sum.sh # to run all tests and print 
 

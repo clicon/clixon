@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # RPC tests
 # Validate parameters in restconf and netconf, check namespaces, etc
 # See rfc8040 3.6

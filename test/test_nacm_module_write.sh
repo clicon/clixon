@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Authentication and authorization and IETF NACM
 # NACM module rules
 # A module rule has the "module-name" leaf set but no nodes from the

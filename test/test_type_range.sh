@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Range type tests.
 # Mainly error messages and multiple ranges
 # Tests all int types including decimal64 and string length ranges

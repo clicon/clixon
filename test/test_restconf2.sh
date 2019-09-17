@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Restconf basic functionality
 # Assume http server setup, such as nginx described in apps/restconf/README.md
 

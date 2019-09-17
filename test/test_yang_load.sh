@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Load yang files. Test the different options 
 # CLICON_YANG_MODULE_DIR vs CLICON_YANG_MAIN_FILE vs CLICON_YANG_MAIN_DIR
 # as well as revisions

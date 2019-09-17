@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Authentication and authorization and IETF NACM
 # Library variable and functions
 

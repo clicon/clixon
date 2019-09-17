@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # RFC 6241:
 # 7.3   - Even if it advertises the :writable-running capability, a device
 #         MAY choose not to support the <running/> configuration datastore

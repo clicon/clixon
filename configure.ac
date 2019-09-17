@@ -125,9 +125,13 @@ AC_PROG_LEX
 if test "$LEX" = ":"; then
    AC_MSG_ERROR(CLIXON does not find lex or flex.)
 fi
-if test "$YACC" != "bison -y"; then
-   AC_MSG_ERROR(CLIXON does not find bison.  There are several problems with yacc and byacc. Please install bison.)
+
+# Get "bison" from bison -y or other string
+bisonstr=$(expr substr "$YACC" 1 5)
+if test "$bisonstr" != "bison"; then
+   AC_MSG_ERROR(CLIXON does not find bison.  There are several problems with yacc and byacc. Please install bison. YACC="$YACC")
 fi
+
 
 if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}

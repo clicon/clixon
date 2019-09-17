@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Test restconf :startup
 # RFC 8040 Sec 1.4 says:
 # the NETCONF server supports :startup, the RESTCONF server MUST

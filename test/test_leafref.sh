@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Yang leafref test
 
 # Magic line must be first in script (see README.md)

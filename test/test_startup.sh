@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Startup test: Start clicon daemon in the (four) different startup modes
 # (init, none, running, or startup)
 # The dbs and files are setup as follows:

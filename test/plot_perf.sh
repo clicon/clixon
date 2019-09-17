@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Performance of large lists. See large-lists.md
 # The parameters are shown below (under Default values)
 # Examples

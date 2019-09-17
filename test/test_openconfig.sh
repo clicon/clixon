@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Parse yang openconfig yangs from https://github.com/openconfig/public
 # Notes:
 # - openconfig test suites are patched to counter Clixon issues as follows:

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Restconf RFC8040 Appendix A and B "jukebox" example
 # Not supported: B.2.2 if-unmodified
 # Magic line must be first in script (see README.md)

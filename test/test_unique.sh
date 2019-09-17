@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Yang list unique tests
 # Use example in RFC7890 7.8.3.1, modify fields and also test a variant with
 # a single unique identifier (rfc example has two)

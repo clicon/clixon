@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Restconf error-code functionality
 # See RFC8040
 # Testcases:

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Run, eg as:
 # ./all.sh 2>&1 | tee test.log # break on first test
 

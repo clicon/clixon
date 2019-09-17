@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Yang extensions and unknown statements.
 # 1) First test syntax
 # Assuming the following extension definition:

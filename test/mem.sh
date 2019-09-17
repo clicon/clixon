@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Run valgrind leak test for cli, restconf, netconf or background.
 # Stop on first error
     

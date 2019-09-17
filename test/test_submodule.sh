@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Yang test of submodules
 # Test included submodules and imported extra modules.
 # Structure is:

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Advanced union types and generated code
 # and enum w values
 # The test is run twice, first with dbcache turned on, then turned off.

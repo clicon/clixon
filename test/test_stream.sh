@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Tests for event streams using notifications
 # Assumptions:
 # 1. http server setup, such as nginx described in apps/restconf/README.md

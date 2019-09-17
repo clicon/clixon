@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Transaction functionality
 # The test uses two backend plugins (main and nacm) that logs to a file and a
 # netconf client to push operation. The tests then look at the log.

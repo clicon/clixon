@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Test: XPATH tests
 #PROG="valgrind --leak-check=full --show-leak-kinds=all ../util/clixon_util_xpath"
 

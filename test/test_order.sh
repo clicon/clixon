@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Order test. test ordered-by user and ordered-by system.
 # For each leaf and leaf-lists, there are two lists,
 # one ordered-by user and one ordered by system.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Basic CLI history test
 
 # Magic line must be first in script (see README.md)

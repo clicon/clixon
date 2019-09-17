@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Parse yangmodels from https://github.com/YangModels/yang
 # Notes:
 # - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)

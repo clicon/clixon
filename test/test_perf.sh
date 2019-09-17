@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Scaling/ performance tests
 # CLI/Netconf/Restconf
 # Lists (and leaf-lists)

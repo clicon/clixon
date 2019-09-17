@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # XML Insert elements and test if they are sorted according to yang
 # First a list with 0-5 base elements, insert in different places
 # Second varying yangs: container, leaf, list, leaf-list, choice, user-order list

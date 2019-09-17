@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Identity and identityref tests
 # Example from RFC7950 Sec 7.18 and 9.10
 

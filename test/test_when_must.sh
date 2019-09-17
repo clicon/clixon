@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Yang  when and must conditional xpath specification
 # Testing of validation phase.
 

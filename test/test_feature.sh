@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Yang features. if-feature.
 # The test has a example module with FEATURES A and B, where A is enabled and
 # B is disabled.

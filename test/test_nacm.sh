@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Authentication and authorization and IETF NACM
 # See RFC 8341 A.2
 # But replaced ietf-netconf-monitoring with *

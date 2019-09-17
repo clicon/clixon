@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Long-time test with restconf and get/sets
 # for callgrind:
 # Run add 100 4 times

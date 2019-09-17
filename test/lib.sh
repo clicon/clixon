@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Define test functions.
 # Create working dir as variable "dir"
 # The functions are somewhat wildgrown, a little too many:

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Netconf with default capability See RFC 6243
 # Test what clixon has
 # These are the modes defined in RFC 6243:

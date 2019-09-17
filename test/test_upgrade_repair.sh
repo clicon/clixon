@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Load startup with non-compatible and invalid module A with rev 0814-01-28
 # Go into fail-safe with invalid startup
 # Repair by copying startup into candidate, editing and commit it

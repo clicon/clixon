@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Basic NACM default rule without any groups
 # Start from startup db
 

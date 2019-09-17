@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Test two modules example1 and example2 with overlapping statements x.
 # x is leaf in example1 and list on example2.
 # Test netconf and restconf

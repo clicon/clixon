@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Backend and cli basic functionality
 # Start backend server
 # Add an ethernet interface and an address
