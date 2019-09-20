@@ -77,7 +77,11 @@ testname=
 : ${RCLOG:=}
 
 # Wait after daemons (backend/restconf) start. See mem.sh for valgrind
-: ${RCWAIT:=2} 
+: ${RCWAIT:=2}
+
+# www user (on linux typically www-data, freebsd www)
+# could be taken from configure
+: ${wwwuser:=www-data} 
 
 # Parse yangmodels from https://github.com/YangModels/yang
 # Recommended: checkout yangmodels elsewhere in the tree and set the env

@@ -78,6 +78,7 @@
 #include <assert.h>
 #include <regex.h>
 #include <netinet/in.h>
+#include <sys/param.h>
 
 /* cligen */
 #include <cligen/cligen.h>

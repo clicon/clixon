@@ -121,3 +121,7 @@ After release:
   CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 ```
 * Run autoconf
+
+## Use of constants etc
+
+Use MAXPATHLEN (not PATH_MAX)

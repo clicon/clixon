@@ -55,6 +55,7 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include <netinet/in.h>
+#include <sys/param.h>
 
 /* cligen */
 #include <cligen/cligen.h>

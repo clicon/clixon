@@ -127,11 +127,11 @@ if test "$LEX" = ":"; then
 fi
 
 # Get "bison" from bison -y or other string
-bisonstr=$(expr substr "$YACC" 1 5)
-if test "$bisonstr" != "bison"; then
+if test "$YACC" = "${YACC##bison}" ; then
    AC_MSG_ERROR(CLIXON does not find bison.  There are several problems with yacc and byacc. Please install bison. YACC="$YACC")
 fi
-
+# Hardcoded to bison -y, seems to work in all bisons?
+YACC="bison -y"
 
 if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}

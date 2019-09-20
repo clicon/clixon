@@ -180,7 +180,7 @@ typedef struct clixon_plugin_api* (plginit2_t)(clicon_handle);    /* Clixon plug
 
 struct clixon_plugin_api{
     /*--- Common fields.  ---*/
-    char              ca_name[PATH_MAX]; /* Name of plugin (given by plugin) */
+    char              ca_name[MAXPATHLEN]; /* Name of plugin (given by plugin) */
     plginit2_t       *ca_init;           /* Clixon plugin Init (implicit) */
     plgstart_t       *ca_start;          /* Plugin start */
     plgexit_t        *ca_exit;	         /* Plugin exit */
@@ -235,7 +235,7 @@ typedef struct clixon_plugin_api clixon_plugin_api;
 /* Internal plugin structure with dlopen() handle and plugin_api
  */
 struct clixon_plugin{
-    char              cp_name[PATH_MAX]; /* Plugin filename. Note api ca_name is given by plugin itself */
+    char              cp_name[MAXPATHLEN]; /* Plugin filename. Note api ca_name is given by plugin itself */
     plghndl_t         cp_handle;  /* Handle to plugin using dlopen(3) */
     clixon_plugin_api cp_api;
 };

@@ -160,7 +160,7 @@ main(int    argc,
     int         c;
     char       *regexp = NULL;
     char       *content = NULL;
-    int         ret;
+    int         ret = 0;
     int         nr = 1;
     int         mode = 0; /* 0 is posix, 1 is libxml */
 

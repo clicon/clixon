@@ -509,7 +509,7 @@ rpc_callback_register(clicon_handle  h,
     		      char          *namespace,
 		      char          *name)
 {
-    rpc_callback_t *rc;
+    rpc_callback_t *rc = NULL;
 
     if (name == NULL || namespace == NULL){
 	clicon_err(OE_DB, EINVAL, "name or namespace NULL");

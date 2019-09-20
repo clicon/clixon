@@ -17,7 +17,10 @@
 * Restconf top-level operations GET root resource modified to comply with RFC 8040 Sec 3.1 
   * non-pretty print remove all spaces, eg `{"operations":{"clixon-example:client-rpc":[null]`
   * Replaced JSON `null` with `[null]` as proper empty JSON leaf/leaf-list encoding.
-  
+	
+### Minor changes
+* Configure and test modification for better Freebsd port
+	
 ### Corrected Bugs
 * Hello netconf candidate capability misspelled, mentioned in [Can clixon_netconf receive netconf packets as a server? #93](https://github.com/clicon/clixon/issues/93)
 * [Cannot write to config using restconf example #91](https://github.com/clicon/clixon/issues/91)
