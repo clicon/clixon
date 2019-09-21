@@ -11,14 +11,14 @@
 
 ### API changes on existing features (you may need to change your code)
 * RESTCONF error reporting
-  * Invalid api-path syntax error changed from 412 operation-failed to 404 invalid-value. For example, change from
+  * Invalid api-path syntax (eg non-matching yang) error changed from 412 operation-failed to 400 unknown-element / invalid-value. For example, change from
     ```
     HTTP/1.1 412 Precondition Failed
     {"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"No such yang module: badmodule"}}}
     ```
     to:
     ```
-    HTTP/1.1 404 Not Found
+    HTTP/1.1 400 Bad Request
     {"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"No such yang module: badmodule"}}}
     ```    
 * Typical installation should now add a `clicon` user (as well as group)

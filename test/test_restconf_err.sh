@@ -19,7 +19,8 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 APPNAME=example
 
 cfg=$dir/conf.xml
-fyang=$dir/restconf.yang
+fyang=$dir/example.yang
+fyang2=$dir/aug.yang
 fxml=$dir/initial.xml
 
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
@@ -27,7 +28,7 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
@@ -36,11 +37,32 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
+cat <<EOF > $fyang2
+module augm{
+   yang-version 1.1;
+   namespace "urn:example:aug";
+   prefix aug;
+   description "Used as a base for augment";
+   container route-state {
+	description
+	    "Root container for routing models";
+	config "false";
+	container dynamic {
+	}
+   }
+}
+EOF
+
 cat <<EOF > $fyang
 module example{
    yang-version 1.1;
    namespace "urn:example:clixon";
    prefix ex;
+   import aug {
+        description "Just for augment";
+	prefix "aug";
+   }
+
    list a {
       key k;
       leaf k {
@@ -59,6 +81,17 @@ module example{
          key k;
          leaf k {
             type string;
+         }
+      }
+   }
+   augment "/aug:route-config/aug:dynamic" {
+      container ospf {
+         container routers {
+	    container auto-cost {
+            	leaf reference-bandwidth {
+			    type uint32;
+                }
+            }
          }
       }
    }
@@ -101,12 +134,26 @@ new "restconf GET initial datastore"
 expecteq "$(curl -s -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/example:a)" 0 "$XML
 "
 
-new "restconf GET non-existent container header"
-expectfn "curl -s -I -X GET http://localhost/restconf/data/example:a/c" 0 "HTTP/1.1 404 Not Found"
-
 new "restconf GET non-existent container body"
-expectfn "curl -s -X GET http://localhost/restconf/data/example:a/c" 0 '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a/c)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
 
+new "restconf GET invalid (no yang) container body"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a/xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
+
+new "restconf GET invalid (no yang) element"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example:xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
+
+if false; then
+new "restconf POST non-existent (no yang) element"
+# should be invalid element
+expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" http://localhost/restconf/data/example:a=23/xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Unknown element: '
+
+
+new "restconf GET multi-namespace path"
+# simplify yang
+# works for config?
+expectpart "$(curl -si -X GET http://localhost/restconf/data/augm:route-state/dynamic/ospf/routers/auto-cost/reference-bandwidth)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Unknown element: 'xxx'"}}}}'
+fi
 new "Kill restconf daemon"
 stop_restconf 
 

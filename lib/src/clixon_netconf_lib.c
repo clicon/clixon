@@ -332,7 +332,7 @@ netconf_bad_attribute_xml(cxobj **xret,
 }
 
 
-/*! Create Netconf unknwon-attribute error XML tree according to RFC 6241 App A
+/*! Create Netconf unknown-attribute error XML tree according to RFC 6241 App A
  *
  * An unexpected attribute is present.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer

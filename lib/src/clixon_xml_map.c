@@ -2465,12 +2465,7 @@ api_path2xpath_cvv(cvec       *api_path,
 	else
 	    y = yang_find_datanode(y, name);
 	if (y == NULL){
-	    if ((cberr = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    cprintf(cberr, "Unknown element: '%s'", name);
-	    if (netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+	    if (netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
 		goto done;
 	    goto fail;
 	}
