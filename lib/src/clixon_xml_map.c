@@ -2382,11 +2382,12 @@ xml_spec_populate(cxobj  *x,
  * @param[in]     yspec    Yang spec
  * @param[in,out] xpath    The xpath as cbuf (must be created and may have content)
  * @param[out]    namespace Namespace of xpath (direct pointer don't free)
+ * @param[out]    xerr     Netconf error message
  * @retval        1        OK
- * @retval        0        Invalid api_path or associated XML, clicon_err called
+ * @retval        0        Invalid api_path or associated XML, netconf error xml set
  * @retval       -1        Fatal error, clicon_err called
  *
- * @note both retval 0 and -1 set clicon_err, but the later is fatal
+ * @note both retval -1 set clicon_err, retval 0 sets netconf xml msg
  * @note Not proper namespace translation from api-path 2 xpath
  * It works like this:
  * Assume origin incoming path is 
@@ -2413,7 +2414,8 @@ api_path2xpath_cvv(cvec       *api_path,
 		   int         offset,
 		   yang_stmt  *yspec,
 		   cbuf       *xpath,
-		   char      **namespace)
+		   char      **namespace,
+		   cxobj     **xerr)
 {
     int        retval = -1;
     int        i;
@@ -2429,6 +2431,7 @@ api_path2xpath_cvv(cvec       *api_path,
     char     **valvec = NULL;
     int        vi;
     int        nvalvec;
+    cbuf      *cberr = NULL;
 
     for (i=offset; i<cvec_len(api_path); i++){
         cv = cvec_i(api_path, i);
@@ -2438,11 +2441,23 @@ api_path2xpath_cvv(cvec       *api_path,
 	clicon_debug(1, "%s [%d] cvname: %s:%s", __FUNCTION__, i, prefix?prefix:"", name);
 	if (i == offset){ /* top-node */
 	    if (prefix == NULL){
-		clicon_err(OE_XML, EINVAL, "'%s': Expected prefix:name", nodeid);
+		if ((cberr = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cberr, "'%s': Expected prefix:name", nodeid);
+		if (netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+		    goto done;
 		goto fail;
 	    }
 	    if ((ymod = yang_find_module_by_name(yspec, prefix)) == NULL){
-		clicon_err(OE_YANG, ENOENT, "No such yang module: %s", prefix);
+		if ((cberr = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cberr, "No such yang module: %s", prefix);
+		if (netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+		    goto done;
 		goto fail;
 	    }
 	    y = yang_find_datanode(ymod, name);
@@ -2450,7 +2465,13 @@ api_path2xpath_cvv(cvec       *api_path,
 	else
 	    y = yang_find_datanode(y, name);
 	if (y == NULL){
-	    clicon_err(OE_YANG, errno, "Unknown element: '%s'", name);
+	    if ((cberr = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cberr, "Unknown element: '%s'", name);
+	    if (netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+		goto done;
 	    goto fail;
 	}
 	/* Check if has value, means '=' */
@@ -2506,6 +2527,8 @@ api_path2xpath_cvv(cvec       *api_path,
 	*namespace = yang_find_mynamespace(ymod);
     retval = 1; /* OK */
  done:
+    if (cberr != NULL)
+	cbuf_free(cberr);
     if (valvec)
 	free(valvec);
     if (prefix)
@@ -2524,7 +2547,7 @@ api_path2xpath_cvv(cvec       *api_path,
  * @param[out] xpath     xpath (use free() to deallocate)
  * @param[out] namespace Namespace of xpath (direct pointer don't free)
  * @retval     1         OK
- * @retval     0         Invalid api_path or associated XML, clicon_err called
+ * @retval     0         Invalid api_path or associated XML, netconf called
  * @retval    -1         Fatal error, clicon_err called
  * @code
  *   char *xpath = NULL;
@@ -2546,16 +2569,22 @@ api_path2xpath(char       *api_path,
     int    retval = -1;
     cvec  *cvv = NULL; /* api-path vector */
     cbuf  *xpath = NULL; /* xpath as cbuf (sub-function uses that) */
+    cxobj *xerr = NULL; /* ignored */
 
     /* Split api-path into cligen variable vector */
     if (str2cvec(api_path, '/', '=', &cvv) < 0)
 	goto done;
     if ((xpath = cbuf_new()) == NULL)
         goto done;
-    if ((retval = api_path2xpath_cvv(cvv, 0, yspec, xpath, namespace)) < 0)
+    if ((retval = api_path2xpath_cvv(cvv, 0, yspec, xpath, namespace, &xerr)) < 0){
+	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
-    if (retval == 0)
+    }
+    if (retval == 0){
+	/* XXX: xerr ignored */
+	clicon_err(OE_XML, EINVAL, "xml does not adhere to yang");     
 	goto fail;
+    }
     /* prepare output xpath parameter */
     if (xpathp)
 	if ((*xpathp = strdup(cbuf_get(xpath))) == NULL){
@@ -2564,6 +2593,8 @@ api_path2xpath(char       *api_path,
 	}
     retval = 1;
  done:
+    if (xerr)
+	xml_free(xerr);
     if (cvv)
 	cvec_free(cvv);
     if (xpath)

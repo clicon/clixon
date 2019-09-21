@@ -124,7 +124,7 @@ expecteq "$(curl -sS -X GET http://localhost/restconf/data/clixon-example:state)
 '
 
 new "restconf get empty config + state json with wrong module name"
-expecteq "$(curl -sSG http://localhost/restconf/data/badmodule:state)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"No such yang module: badmodule"}}}'
+expectpart "$(curl -siSG http://localhost/restconf/data/badmodule:state)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"No such yang module: badmodule"}}}'
 
 new "restconf get empty config + state xml"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/clixon-example:state)

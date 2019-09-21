@@ -67,8 +67,8 @@
  */
 static const map_str2int netconf_restconf_map[] = {
     {"in-use",                 409},
-    {"invalid-value",          400},
     {"invalid-value",          404},
+    {"invalid-value",          400},
     {"invalid-value",          406},
     {"too-big",                413}, /* request */
     {"too-big",                400}, /* response */

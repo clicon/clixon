@@ -166,8 +166,18 @@ api_data_get2(clicon_handle h,
         goto done;
     cprintf(cbpath, "/");
     /* We know "data" is element pi-1 */
-    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &namespace)) < 0)
+    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &namespace, &xerr)) < 0)
 	goto done;
+    if (ret == 0){
+	clicon_err_reset();
+	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+	    goto done;
+	}
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
+    }
     if (ret == 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;

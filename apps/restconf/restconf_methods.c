@@ -280,12 +280,9 @@ api_data_write(clicon_handle h,
     if ((cbpath = cbuf_new()) == NULL)
 	goto done;
     cprintf(cbpath, "/");
-    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &namespace)) < 0)
+    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &namespace, &xerr)) < 0)
 	goto done;
     if (ret == 0){
-	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
-	    goto done;
-	clicon_err_reset();
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
