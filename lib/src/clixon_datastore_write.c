@@ -330,6 +330,8 @@ check_identityref(cxobj     *x0,
  ok:
     retval = 0;
  done:
+    if (prefix)
+	free(prefix);
     return retval;
 }
 
