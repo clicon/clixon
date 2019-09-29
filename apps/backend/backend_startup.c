@@ -70,7 +70,6 @@
 #include "backend_commit.h"
 #include "backend_startup.h"
 
-
 /*! Merge db1 into db2 without commit 
  * @retval   -1       Error
  * @retval    0       Validation failed (with cbret set)
@@ -166,9 +165,10 @@ load_extraxml(clicon_handle h,
 	      const char   *db,
 	      cbuf         *cbret)
 {
-    int    retval =  -1;
-    cxobj *xt = NULL;
-    int    fd = -1;
+    int        retval =  -1;
+    cxobj     *xt = NULL;
+    int        fd = -1;
+    yang_stmt *yspec = NULL;
 
     if (filename == NULL)
 	return 1;
@@ -176,7 +176,8 @@ load_extraxml(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
     }
-    if (xml_parse_file(fd, "</config>", NULL, &xt) < 0)
+    yspec = clicon_dbspec_yang(h);
+    if (xml_parse_file(fd, "</config>", yspec, &xt) < 0)
 	goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)

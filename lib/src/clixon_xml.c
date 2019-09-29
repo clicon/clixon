@@ -197,9 +197,9 @@ xml_name_set(cxobj *xn,
     return 0;
 }
 
-/*! Get namespace of xnode
- * @param[in]  xn    xml node
- * @retval     namespace of xml node
+/*! Get prefix of xnode
+ * @param[in]  xn     xml node
+ * @retval     prefix of xml node
  */
 char*
 xml_prefix(cxobj *xn)
@@ -207,9 +207,9 @@ xml_prefix(cxobj *xn)
     return xn->x_prefix;
 }
 
-/*! Set name space of xnode, namespace is copied
+/*! Set prefix of xnode, prefix is copied
  * @param[in]  xn         xml node
- * @param[in]  localname  new namespace, null-terminated string, copied by function
+ * @param[in]  localname  new prefix, null-terminated string, copied by function
  * @retval     -1         on error with clicon-err set
  * @retval     0          OK
  */
@@ -230,20 +230,49 @@ xml_prefix_set(cxobj *xn,
     return 0;
 }
 
-/*! Get cached namespace
+/*! Get cached namespace (given prefix)
  * @param[in] x      XML node
  * @param[in] prefix Namespace prefix, or NULL for default
  * @retval    ns     Cached namespace
  * @retval    NULL   No namespace found (not cached or not found)
  * @note may want to distinguish between not set cache and no namespace?
  */
-static char*
+char*
 nscache_get(cxobj *x,
 	    char  *prefix)
 {
     if (x->x_ns_cache != NULL)
 	return xml_nsctx_get(x->x_ns_cache, prefix);
     return NULL;
+}
+
+/*! Get cached prefix (given namespace) 
+ * @param[in]  x         XML node
+ * @param[in]  namespace
+ * @param[out] prefix
+ * @retval     0      No prefix found
+ * @retval     1      Prefix found
+ */
+int
+nscache_get_prefix(cxobj *x,
+		   char  *namespace,
+		   char **prefix)
+{
+    if (x->x_ns_cache != NULL)
+	return xml_nsctx_get_prefix(x->x_ns_cache, namespace, prefix);
+    return 0;
+}
+
+/*! Dump whole namespacet context cache of one xml node 
+ * @param[in]  x    XML node
+ * @retval     nsc  Whole namespace context of x
+ * @retval     NULL Empty nsc
+ * @see nscache_get  For a single prefix
+ */
+cvec *
+nscache_get_all(cxobj *x)
+{
+    return x->x_ns_cache;
 }
 
 /*! Set cached namespace for specific namespace. Replace if necessary
@@ -254,7 +283,7 @@ nscache_get(cxobj *x,
  * @retval   -1         Error
  * @see nscache_replace  to replace the whole context
  */
-static int
+int
 nscache_set(cxobj *x,
 	    char  *prefix,
 	    char  *namespace)
@@ -281,7 +310,7 @@ nscache_set(cxobj *x,
  */
 int
 nscache_replace(cxobj *x,
-		cvec *nsc)
+		cvec  *nsc)
 {
     int     retval = -1;
 
@@ -403,6 +432,63 @@ xmlns_set(cxobj *x,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Get namespace given prefix recursively 
+ * @param[in]  xn        XML node
+ * @param[in]  namespace Namespace
+ * @param[out] prefixp   Pointer to prefix if found
+ * @retval    -1         Error
+ * @retval     0         No namespace found
+ * @retval     1         Namespace found
+ */
+int
+xml2prefix(cxobj *xn,
+	   char  *namespace,
+	   char **prefixp)
+{
+    int    retval = -1;
+    cxobj *xa = NULL;
+    char  *prefix = NULL;
+
+    while (xn != NULL){
+	if (nscache_get_prefix(xn, namespace, &prefix) == 1) /* found */
+	    goto found;
+	//	if (xn->x_ns_cache == NULL){ /* Look in node */
+	    xa = NULL;
+	    while ((xa = xml_child_each(xn, xa, CX_ATTR)) != NULL) {
+		/* xmlns=namespace */
+		if (strcmp("xmlns", xml_name(xa)) == 0){ 
+		    if (strcmp(xml_value(xa), namespace) == 0){
+    clicon_debug(1, "%sA NULL %s", __FUNCTION__, namespace);
+			if (nscache_set(xn, NULL, namespace) < 0)
+			    goto done;
+			prefix = NULL;
+			goto found;
+		    }
+
+		}
+		/* xmlns:prefix=namespace */
+		else if (strcmp("xmlns", xml_prefix(xa)) == 0){ 
+		    if (strcmp(xml_value(xa), namespace) == 0){
+			prefix = xml_name(xa);
+			assert(strcmp(prefix, "xmlns"));
+			if (nscache_set(xn, prefix, namespace) < 0)
+			    goto done;
+			goto found;
+		    }
+		}
+	    }
+	    // }
+	xn = xml_parent(xn);
+    }
+    retval = 0;
+ done:
+    return retval;
+ found:
+    *prefixp = prefix;
+    retval = 1;
+    goto done;
 }
 
 /*! See if xmlns:[<localname>=]<uri> exists, if so return <uri>
@@ -982,6 +1068,7 @@ int
 xml_addsub(cxobj *xp, 
 	   cxobj *xc)
 {
+    int retval = -1;
     cxobj *oldp;
     int    i;
     char  *pns = NULL; /* parent namespace */
@@ -1000,13 +1087,14 @@ xml_addsub(cxobj *xp,
     /* Add xc to new parent */
     if (xp){
 	if (xml_child_append(xp, xc) < 0)
-	    return -1;
+	    goto done;
 	/* Set new parent in child */
 	xml_parent_set(xc, xp);
 	/* Ensure default namespace is not duplicated 
 	 * here only remove duplicate default namespace, there may be more */
 	/* 1. Get parent default namespace */
-	xml2ns(xp, NULL, &pns);
+	if (xml2ns(xp, NULL, &pns) < 0)
+	    goto done;
 	/* 2. Get child default namespace */
 	if (pns &&
 	    (xa = xml_find_type(xc, NULL, "xmlns", CX_ATTR)) != NULL &&
@@ -1016,9 +1104,11 @@ xml_addsub(cxobj *xp,
 		xml_purge(xa); 
 	}
 	/* clear namespace context cache of child */
-	nscache_clear(xp);
+	nscache_clear(xc);
     }
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Wrap a new node between a parent xml node (xp) and all its children

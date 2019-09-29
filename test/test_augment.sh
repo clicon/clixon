@@ -6,7 +6,12 @@
 # both defined in the basic ietf-interfaces module (type) as well as the main
 # module through the augmented module ()
 # The ietf-interfaces is very restricted (not original).
-
+# From a namespace perspective, there are two modules, with symbols as follows:
+# 1. ietf-interface - urn:ietf:params:xml:ns:yang:ietf-interfaces
+#    interfaces, interface, name, type
+# 2. example-augment - urn:example:augment - mymod
+#    (augmented):     mandatory-leaf, me, other,
+#    (uses/grouping): ip, port, lid, lport
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
@@ -175,7 +180,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
   </interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf verify get with refined ports"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:mymod="urn:example:augment"><name>e1</name><type>mymod:some-new-iftype</type><mandatory-leaf>true</mandatory-leaf><port>80</port><lport>8080</lport></interface></interfaces></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:mymod="urn:example:augment"><name>e1</name><type>mymod:some-new-iftype</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf><mymod:port>80</mymod:port><mymod:lport>8080</mymod:lport></interface></interfaces></data></rpc-reply>]]>]]>$'
 
 new "netconf set identity defined in other"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
@@ -183,7 +188,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
     <name>e2</name>
     <type>fddi</type>
     <mymod:mandatory-leaf>true</mymod:mandatory-leaf>
-    <other>if:fddi</other>
+    <mymod:other>if:fddi</mymod:other>
   </interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate ok"
@@ -195,7 +200,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
    <name>e3</name>
    <type>fddi</type>
    <mymod:mandatory-leaf>true</mymod:mandatory-leaf>
-   <me>mymod:you</me>
+   <mymod:me>mymod:you</mymod:me>
  </interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit ok"
@@ -203,11 +208,11 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" '^<rpc-reply
 
 # restconf and augment
 
-new "restconf get augment"
+new "restconf get augment json"
 expectpart "$(curl -s -i -X GET http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
 
 new "restconf get augment xml"
-expectpart "$(curl -s -i -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:mymod="urn:example:augment"><name>e1</name><type>mymod:some-new-iftype</type><mandatory-leaf>true</mandatory-leaf><port>80</port><lport>8080</lport></interface><interface xmlns:mymod="urn:example:augment"><name>e2</name><type>fddi</type><mandatory-leaf>true</mandatory-leaf><other>if:fddi</other><port>80</port><lport>8080</lport></interface><interface xmlns:mymod="urn:example:augment"><name>e3</name><type>fddi</type><mandatory-leaf>true</mandatory-leaf><me>mymod:you</me><port>80</port><lport>8080</lport></interface></interfaces>'
+expectpart "$(curl -s -i -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:mymod="urn:example:augment"><name>e1</name><type>mymod:some-new-iftype</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf><mymod:port>80</mymod:port><mymod:lport>8080</mymod:lport></interface><interface xmlns:mymod="urn:example:augment"><name>e2</name><type>fddi</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf><mymod:other>if:fddi</mymod:other><mymod:port>80</mymod:port><mymod:lport>8080</mymod:lport></interface><interface xmlns:mymod="urn:example:augment"><name>e3</name><type>fddi</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf><mymod:me>mymod:you</mymod:me><mymod:port>80</mymod:port><mymod:lport>8080</mymod:lport></interface></interfaces>'
 
 new "Kill restconf daemon"
 stop_restconf 

@@ -94,8 +94,8 @@ xml_nsctx_get(cvec *cvv,
  * @note NULL is a valid prefix (default)
  */
 int
-xml_nsctx_get_prefix(cvec *cvv,
-		     char *namespace,
+xml_nsctx_get_prefix(cvec  *cvv,
+		     char  *namespace,
 		     char **prefix)
 {
     cg_var *cv = NULL;

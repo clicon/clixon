@@ -526,6 +526,7 @@ api_return_err(clicon_handle h,
 	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
 	    FCGX_FPrintF(r->out, "}\r\n");
 	}
+	break;
     default:
 	clicon_err(OE_YANG, EINVAL, "Invalid media type %d", media);
 	goto done;

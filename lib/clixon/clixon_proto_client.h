@@ -53,6 +53,7 @@ int clicon_rpc_delete_config(clicon_handle h, char *db);
 int clicon_rpc_lock(clicon_handle h, char *db);
 int clicon_rpc_unlock(clicon_handle h, char *db);
 int clicon_rpc_get(clicon_handle h, char *xpath, char *namespace, netconf_content content, int32_t depth, cxobj **xret);
+int clicon_rpc_get_nsc(clicon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, cxobj **xret);
 int clicon_rpc_close_session(clicon_handle h);
 int clicon_rpc_kill_session(clicon_handle h, int session_id);
 int clicon_rpc_validate(clicon_handle h, char *db);

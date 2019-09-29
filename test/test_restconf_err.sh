@@ -11,7 +11,10 @@
 # usually contain a payload that represents the error condition, such
 # that it describes the error state and what next steps are suggested
 # for resolving it.
-
+#
+# Note this is different from an api-path that is invalid from a yang point
+# of view, this is interpreted as 400 Bad Request invalid-value/unknown-element
+# XXX: complete non-existent yang with unknown-element for all PUT/POST/GET api-paths
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -20,7 +23,7 @@ APPNAME=example
 
 cfg=$dir/conf.xml
 fyang=$dir/example.yang
-fyang2=$dir/aug.yang
+fyang2=$dir/augment.yang
 fxml=$dir/initial.xml
 
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
@@ -34,15 +37,24 @@ cat <<EOF > $cfg
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
 </clixon-config>
 EOF
 
 cat <<EOF > $fyang2
-module augm{
+module augment{
    yang-version 1.1;
    namespace "urn:example:aug";
    prefix aug;
    description "Used as a base for augment";
+   container route-config {
+	description
+	    "Root container for routing models";
+	container dynamic {
+	}
+   }
    container route-state {
 	description
 	    "Root container for routing models";
@@ -58,7 +70,7 @@ module example{
    yang-version 1.1;
    namespace "urn:example:clixon";
    prefix ex;
-   import aug {
+   import augment {
         description "Just for augment";
 	prefix "aug";
    }
@@ -86,12 +98,15 @@ module example{
    }
    augment "/aug:route-config/aug:dynamic" {
       container ospf {
-         container routers {
-	    container auto-cost {
-            	leaf reference-bandwidth {
-			    type uint32;
-                }
-            }
+         leaf reference-bandwidth {
+	    type uint32;
+         }
+      }
+   }
+   augment "/aug:route-config/aug:dynamic" {
+      container ospf {
+         leaf reference-bandwidth {
+	    type uint32;
          }
       }
    }
@@ -147,13 +162,28 @@ if false; then
 new "restconf POST non-existent (no yang) element"
 # should be invalid element
 expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" http://localhost/restconf/data/example:a=23/xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Unknown element: '
-
-
-new "restconf GET multi-namespace path"
-# simplify yang
-# works for config?
-expectpart "$(curl -si -X GET http://localhost/restconf/data/augm:route-state/dynamic/ospf/routers/auto-cost/reference-bandwidth)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Unknown element: 'xxx'"}}}}'
 fi
+
+# Test for multi-module path where an augment stretches across modules
+new "restconf POST augment multi-namespace path"
+expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' -d '<route-config xmlns="urn:example:aug"><dynamic><ospf xmlns="urn:example:clixon"><reference-bandwidth>23</reference-bandwidth></ospf></dynamic></route-config>' http://localhost/restconf/data)" 0 ''
+
+new "restconf GET augment multi-namespace top"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config)" 0 'HTTP/1.1 200 OK' '{"augment:route-config":{"dynamic":{"example:ospf":{"reference-bandwidth":23}}}}'
+
+new "restconf GET augment multi-namespace level 1"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config/dynamic)" 0 'HTTP/1.1 200 OK' '{"augment:dynamic":{"example:ospf":{"reference-bandwidth":23}}}'
+
+new "restconf GET augment multi-namespace cross"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config/dynamic/example:ospf)" 0 'HTTP/1.1 200 OK' '{"example:ospf":{"reference-bandwidth":23}}'
+
+new "restconf GET augment multi-namespace cross level 2"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config/dynamic/example:ospf/reference-bandwidth)" 0 'HTTP/1.1 200 OK' '{"example:reference-bandwidth":23}'
+
+# XXX actually no such element
+#new "restconf GET augment multi-namespace, no 2nd module in api-path, fail"
+#expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config/dynamic/ospf)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
+
 new "Kill restconf daemon"
 stop_restconf 
 

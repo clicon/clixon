@@ -56,10 +56,10 @@ module example{
              }
          }
          leaf address {
-             description "From RFC7950 9.9.5";
+             description "From RFC7950 9.9.6";
              type leafref {
                  path "../../if:interfaces/if:interface[if:name = current()/../relname]"
-                    + "/if:ipv4/if:address/if:ip";
+                    + "/ip:ipv4/ip:address/ip:ip";
             }
          }
          leaf wrong {
@@ -85,29 +85,29 @@ EOF
 
 BASEXML=$(cat <<EOF
 <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
-   <interface>
+   <interface xmlns:ip="urn:ietf:params:xml:ns:yang:ietf-ip">
       <name>eth0</name>
       <type>ex:eth</type>
-      <ipv4>
-         <address>
-            <ip>192.0.2.1</ip>
-            <prefix-length>24</prefix-length>
-         </address>
-         <address>
-            <ip>192.0.2.2</ip>
-            <prefix-length>24</prefix-length>
-         </address>
-      </ipv4>
+      <ip:ipv4>
+         <ip:address>
+            <ip:ip>192.0.2.1</ip:ip>
+            <ip:prefix-length>24</ip:prefix-length>
+         </ip:address>
+         <ip:address>
+            <ip:ip>192.0.2.2</ip:ip>
+            <ip:prefix-length>24</ip:prefix-length>
+         </ip:address>
+      </ip:ipv4>
    </interface>
-   <interface>
+   <interface xmlns:ip="urn:ietf:params:xml:ns:yang:ietf-ip">
       <name>lo</name>
       <type>ex:lo</type>
-      <ipv4>
-         <address>
-            <ip>127.0.0.1</ip>
-            <prefix-length>32</prefix-length>
-         </address>
-      </ipv4>
+      <ip:ipv4>
+         <ip:address>
+            <ip:ip>127.0.0.1</ip:ip>
+            <ip:prefix-length>32</ip:prefix-length>
+         </ip:address>
+      </ip:ipv4>
    </interface>
 </interfaces>
 EOF

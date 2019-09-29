@@ -338,7 +338,6 @@ xml_cmp_qsort(const void* arg1,
     return xml_cmp(*(struct xml**)arg1, *(struct xml**)arg2, 1);
 }
 
-
 /*! Sort children of an XML node 
  * Assume populated by yang spec.
  * @param[in] x0   XML node
@@ -615,7 +614,11 @@ xml_insert2(cxobj           *xp,
     }
     xc = xml_child_i(xp, mid);
     if ((yc = xml_spec(xc)) == NULL){
-	clicon_err(OE_XML, 0, "No spec found %s", xml_name(xc));	
+	if (xml_type(xc) != CX_ELMNT)
+	    clicon_err(OE_XML, 0, "No spec found %s (wrong xml type:%d)",
+		       xml_name(xc), xml_type(xc));	
+	else
+	    clicon_err(OE_XML, 0, "No spec found %s", xml_name(xc));	
 	goto done;
     }
     if (yc == yn){ /* Same yang */

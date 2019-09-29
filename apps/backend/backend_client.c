@@ -527,11 +527,10 @@ from_client_edit_config(clicon_handle h,
 	if (xml_spec(xc) != NULL)
 	    xml_spec_set(xc, NULL);
 	/* Populate XML with Yang spec (why not do this in parser?) 
-	 * Maybe validate xml here as in text_modify_top?
 	 */
 	if (xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
-
+	/* Maybe validate xml here as in text_modify_top? */
 	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
 	    goto done;
 	if (non_config){

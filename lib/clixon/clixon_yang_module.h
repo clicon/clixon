@@ -46,9 +46,9 @@
  * Types
  */
 
-/* Struct contataining module state differences between two modules or two 
+/* Struct containing module state differences between two modules or two 
  * revisions of same module. 
- * This is in state of flux so it needss to be conatained and easily changed.
+ * This is in state of flux so it needs to be contained and easily changed.
  */
 typedef struct {
     cxobj *md_del;   /* yang module state deletes */

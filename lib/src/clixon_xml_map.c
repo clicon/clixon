@@ -1749,54 +1749,59 @@ yang2api_path_fmt_1(yang_stmt *ys,
 		    cbuf      *cb)
 {
     yang_stmt *yp; /* parent */
+    yang_stmt *ymod;
     int        i;
     cvec      *cvk = NULL; /* vector of index keys */
     int        retval = -1;
 
-    if ((yp = ys->ys_parent) == NULL){
-	clicon_err(OE_YANG, EINVAL, "yang expected parent %s", ys->ys_argument);
+    if ((yp = yang_parent_get(ys)) == NULL){
+	clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
 	goto done;
     }
     if (yp != NULL && /* XXX rm */
-	yp->ys_keyword != Y_MODULE && 
-	yp->ys_keyword != Y_SUBMODULE){
+	yang_keyword_get(yp) != Y_MODULE && 
+	yang_keyword_get(yp) != Y_SUBMODULE){
+
 	if (yang2api_path_fmt_1((yang_stmt *)yp, 1, cb) < 0) /* recursive call */
 	    goto done;
-	if (yp->ys_keyword != Y_CHOICE && yp->ys_keyword != Y_CASE){
+	if (yang_keyword_get(yp) != Y_CHOICE && yang_keyword_get(yp) != Y_CASE){
 #if 0
 	    /* In some cases, such as cli_show_auto, a trailing '/' should
 	     * NOT be present if ys is a key in a list.
 	     * But in other cases (I think most), the / should be there,
 	     * so a patch is added in cli_show_auto instead.
 	     */
-	    if (ys->ys_keyword == Y_LEAF && yp && 
-		yp->ys_keyword == Y_LIST &&
+		if (yang_keyword_get(ys) == Y_LEAF && yp && 
+		    yang_keyword_get(yp) == Y_LIST &&
 		yang_key_match(yp, ys->ys_argument) == 1)
 		;
 	    else
 #endif
-		cprintf(cb, "/"); 
+		cprintf(cb, "/");
 	}
+	/* If parent namespace/module is different from child -> add child prefix */
+	if (ys_real_module(yp) != (ymod = ys_real_module(ys)))
+	    cprintf(cb, "%s:", yang_argument_get(ymod));
     }
     else /* top symbol - mark with name prefix */
-	cprintf(cb, "/%s:", yp->ys_argument);
+	cprintf(cb, "/%s:", yang_argument_get(yp));
 
     if (inclkey){
-	if (ys->ys_keyword != Y_CHOICE && ys->ys_keyword != Y_CASE)
-	    cprintf(cb, "%s", ys->ys_argument);
+	if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
+	    cprintf(cb, "%s", yang_argument_get(ys));
     }
     else{
-	if (ys->ys_keyword == Y_LEAF && yp && 
-	    yp->ys_keyword == Y_LIST){
-	    if (yang_key_match(yp, ys->ys_argument) == 0)
-		cprintf(cb, "%s", ys->ys_argument); /* Not if leaf and key */
+	if (yang_keyword_get(ys) == Y_LEAF && yp && 
+	    yang_keyword_get(yp) == Y_LIST){
+	    if (yang_key_match(yp, yang_argument_get(ys)) == 0)
+		cprintf(cb, "%s", yang_argument_get(ys)); /* Not if leaf and key */
 	}
 	else  
-	    if (ys->ys_keyword != Y_CHOICE && ys->ys_keyword != Y_CASE)
-		cprintf(cb, "%s", ys->ys_argument);
+	    if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
+		cprintf(cb, "%s", yang_argument_get(ys));
     }
 
-    switch (ys->ys_keyword){
+    switch (yang_keyword_get(ys)){
     case Y_LIST:
 	cvk = ys->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
 	if (cvec_len(cvk))
@@ -2168,6 +2173,8 @@ xml_default(cxobj *xt,
     cxobj     *xb;
     char      *str;
     int        added=0;
+    char      *namespace;
+    char      *prefix;
     
     if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
 	retval = 0;
@@ -2183,9 +2190,16 @@ xml_default(cxobj *xt,
 	    assert(y->ys_cv);
 	    if (!cv_flag(y->ys_cv, V_UNSET)){  /* Default value exists */
 		if (!xml_find(xt, y->ys_argument)){
-
 		    if ((xc = xml_new(y->ys_argument, NULL, y)) == NULL)
 			goto done;
+		    /* assign right prefix */
+		    if ((namespace = yang_find_mynamespace(y)) != NULL){
+			prefix = NULL;
+			if (xml2prefix(xt, namespace, &prefix))
+			    if (xml_prefix_set(xc, prefix) < 0)
+				goto done;
+		    }
+
 		    xml_flag_set(xc, XML_FLAG_DEFAULT);
 		    if ((xb = xml_new("body", xc, NULL)) == NULL)
 			goto done;
@@ -2336,6 +2350,8 @@ xml_spec_populate(cxobj  *x,
     yang_stmt *ymod;         /* yang module */
     cxobj     *xp = NULL;    /* xml parent */
     char      *name;
+    char      *ns = NULL;    /* XML namespace of x */
+    char      *nsy = NULL;   /* Yang namespace of x */
 
     yspec = (yang_stmt*)arg;
     xp = xml_parent(x);
@@ -2343,8 +2359,11 @@ xml_spec_populate(cxobj  *x,
 #ifdef DEBUG
     clicon_debug(1, "%s name:%s", __FUNCTION__, name);
 #endif
-    if (xp && (yparent = xml_spec(xp)) != NULL)
+    if (xml2ns(x, xml_prefix(x), &ns) < 0)
+	goto done;
+    if (xp && (yparent = xml_spec(xp)) != NULL){
 	y = yang_find_datanode(yparent, name);
+    }
     else if (yspec){
 	if (ys_module_by_xml(yspec, x, &ymod) < 0)
 	    goto done;
@@ -2361,10 +2380,17 @@ xml_spec_populate(cxobj  *x,
 #endif
     }
     if (y) {
+	nsy = yang_find_mynamespace(y);
+	if (ns == NULL || nsy == NULL){
+	    clicon_err(OE_XML, EFAULT, "Namespace NULL");
+	    goto done;
+	}
 #ifdef DEBUG
 	clicon_debug(1, "%s y:%s", __FUNCTION__, yang_argument_get(y));
 #endif
-	xml_spec_set(x, y);
+	/* Assign spec only if namespaces match */
+	if (strcmp(ns, nsy) == 0)
+	    xml_spec_set(x, y);	    
     }
 #ifdef DEBUG
     else
@@ -2387,13 +2413,7 @@ xml_spec_populate(cxobj  *x,
  * @retval        0        Invalid api_path or associated XML, netconf error xml set
  * @retval       -1        Fatal error, clicon_err called
  *
- * @note both retval -1 set clicon_err, retval 0 sets netconf xml msg
- * @note Not proper namespace translation from api-path 2 xpath
- * It works like this:
- * Assume origin incoming path is 
- * "www.foo.com/restconf/a/b=c",  pi is 2 and pcvec is:
- *   ["www.foo.com" "restconf" "a" "b=c"]
- * which means the api-path is ["a" "b=c"] corresponding to "a/b=c"
+
  * @code
  *   cbuf *xpath = cbuf_new();
  *   cvec *cvv = NULL; 
@@ -2405,7 +2425,14 @@ xml_spec_populate(cxobj  *x,
  *     ... access xpath as cbuf_get(xpath) 
  *   cbuf_free(xpath)
  * @endcode
+ * It works like this:
+ * Assume origin incoming path is 
+ * "www.foo.com/restconf/a/b=c",  pi is 2 and pcvec is:
+ *   ["www.foo.com" "restconf" "a" "b=c"]
+ * which means the api-path is ["a" "b=c"] corresponding to "a/b=c"
  * @note "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
+ * @note retval -1 sets clicon_err, retval 0 sets netconf xml msg
+ * @note Not proper namespace translation from api-path 2 xpath!!!
  * @see api_path2xml  For api-path to xml tree
  * @see api_path2xpath  Using strings as parameters
  */
@@ -2438,7 +2465,8 @@ api_path2xpath_cvv(cvec       *api_path,
 	nodeid = cv_name_get(cv);
 	if (nodeid_split(nodeid, &prefix, &name) < 0)
 	    goto done;
-	clicon_debug(1, "%s [%d] cvname: %s:%s", __FUNCTION__, i, prefix?prefix:"", name);
+	clicon_debug(1, "%s [%d] cvname: %s:%s",
+		     __FUNCTION__, i, prefix?prefix:"", name);
 	if (i == offset){ /* top-node */
 	    if (prefix == NULL){
 		if ((cberr = cbuf_new()) == NULL){
@@ -2522,6 +2550,170 @@ api_path2xpath_cvv(cvec       *api_path,
 	*namespace = yang_find_mynamespace(ymod);
     retval = 1; /* OK */
  done:
+    if (cberr != NULL)
+	cbuf_free(cberr);
+    if (valvec)
+	free(valvec);
+    if (prefix)
+	free(prefix);
+    if (name)
+	free(name);
+    return retval;
+ fail:
+    retval = 0; /* Validation failed */
+    goto done;
+}
+
+/*! Temp alternative to api_path2xpath_cvv */
+int
+api_path2xpath_cvv2(cvec       *api_path,
+		    int         offset,
+		    yang_stmt  *yspec,
+		    cbuf       *xpath,
+		    cvec       *nsc,
+		    cxobj     **xerr)
+{
+    int        retval = -1;
+    int        i;
+    cg_var    *cv;
+    char      *nodeid;
+    char      *prefix = NULL;  /* api-path (module) prefix */
+    char      *xprefix = NULL; /* xml xpath prefix */
+    char      *name = NULL;
+    cvec      *cvk = NULL; /* vector of index keys */
+    yang_stmt *y = NULL;
+    yang_stmt *ymod = NULL;
+    char      *val;
+    cg_var    *cvi;
+    char     **valvec = NULL;
+    int        vi;
+    int        nvalvec;
+    cbuf      *cberr = NULL;
+    char      *namespace = NULL;
+			
+    for (i=offset; i<cvec_len(api_path); i++){
+        cv = cvec_i(api_path, i);
+	nodeid = cv_name_get(cv);
+	/* api-path: prefix points to module */
+	if (nodeid_split(nodeid, &prefix, &name) < 0)
+	    goto done;
+	clicon_debug(1, "%s [%d] cvname: %s:%s",
+		     __FUNCTION__, i, prefix?prefix:"", name);
+	/* top-node must have prefix */
+	if (i == offset && prefix == NULL){
+	    if ((cberr = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cberr, "'%s': Expected prefix:name", nodeid);
+	    if (netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+		goto done;
+	    goto fail;
+	}
+	ymod = NULL;
+	if (prefix){ /* if prefix -> get module + change namespace */
+	    if ((ymod = yang_find_module_by_name(yspec, prefix)) == NULL){
+		if ((cberr = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cberr, "No such yang module: %s", prefix);
+		if (netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+		    goto done;
+		goto fail;
+	    }
+	    namespace = yang_find_mynamespace(ymod); /* change namespace */
+	}
+	if (i == offset && ymod) /* root */
+	    y = yang_find_datanode(ymod, name);
+	else
+	    y = yang_find_datanode(y, name);
+	if (y == NULL){
+	    if (netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
+		goto done;
+	    goto fail;
+	}
+	/* Get XML/xpath prefix given namespace.
+	 * note different from api-path prefix
+	 */
+	if (xml_nsctx_get_prefix(nsc, namespace, &xprefix) == 0){
+
+	    xprefix = yang_find_myprefix(y);
+	    clicon_debug(1, "%s prefix not found add it %s", __FUNCTION__, xprefix);
+	    /* not found, add it to nsc  */
+	    if (xml_nsctx_set(nsc, xprefix, namespace) < 0)
+		goto done;
+	}
+	/* Check if has value, means '=' */
+        if (cv2str(cv, NULL, 0) > 0){
+            if ((val = cv2str_dup(cv)) == NULL)
+                goto done;
+	    switch (yang_keyword_get(y)){
+	    case Y_LIST:
+		/* Transform value "a,b,c" to "a" "b" "c" (nvalvec=3)
+		 * Note that vnr can be < length of cvk, due to empty or unset values
+		 */
+		if (valvec){ /* loop, valvec may have been used before */
+		    free(valvec);
+		    valvec = NULL;
+		}
+		if ((valvec = clicon_strsep(val, ",", &nvalvec)) == NULL)
+		    goto done;
+		cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+		cvi = NULL;
+		/* Iterate over individual yang keys  */
+		cprintf(xpath, "/");
+		if (xprefix)
+		    cprintf(xpath, "%s:", xprefix);
+		cprintf(xpath, "%s", name);
+		vi = 0;
+		while ((cvi = cvec_each(cvk, cvi)) != NULL && vi<nvalvec){
+		    cprintf(xpath, "[");
+		    if (xprefix)
+			cprintf(xpath, "%s:", xprefix);
+		    cprintf(xpath, "%s='%s']", cv_string_get(cvi), valvec[vi++]);
+		}
+		break;
+	    case Y_LEAF_LIST: /* XXX: LOOP? */
+		cprintf(xpath, "/");
+		if (xprefix)
+		    cprintf(xpath, "%s:", xprefix);
+		cprintf(xpath, "%s", name);
+		if (val)
+		    cprintf(xpath, "[.='%s']", val);
+		else
+		    cprintf(xpath, "[.='']");
+		break;
+	    default:
+		if (i != offset)
+		    cprintf(xpath, "/");
+		if (xprefix)
+		    cprintf(xpath, "%s:", xprefix);
+		cprintf(xpath, "%s", name);
+		break;
+	    }
+	    if (val)
+		free(val);
+        }
+        else{
+	    if (i != offset)
+		cprintf(xpath, "/");
+	    if (xprefix)
+		cprintf(xpath, "%s:", xprefix);
+	    cprintf(xpath, "%s", name);
+	}
+	if (prefix){
+	    free(prefix);
+	    prefix = NULL;
+	}
+	if (name){
+	    free(name);
+	    name = NULL;
+	}
+    } /* for */
+    retval = 1; /* OK */
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cberr != NULL)
 	cbuf_free(cberr);
     if (valvec)
@@ -2674,7 +2866,6 @@ api_path2xml_vec(char             **vec,
 	}
 	namespace = yang_find_mynamespace(ymod);
 	y0 = ymod;
-
     }
     y = (nodeclass==YC_SCHEMANODE)?
 	yang_find_schemanode(y0, name):
@@ -2682,6 +2873,13 @@ api_path2xml_vec(char             **vec,
     if (y == NULL){
 	clicon_err(OE_YANG, EINVAL, "api-path name: '%s', no such yang element", name);
 	goto fail;
+    }
+    if (prefix && namespace == NULL){
+	if ((ymod = yang_find_module_by_name(ys_spec(y0), prefix)) == NULL){
+	    clicon_err(OE_YANG, EINVAL, "api-path element prefix: '%s', no such yang module", prefix);
+	    goto fail;
+	}
+	namespace = yang_find_mynamespace(ymod);
     }
     switch (y->ys_keyword){
     case Y_LEAF_LIST:

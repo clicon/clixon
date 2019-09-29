@@ -165,22 +165,18 @@ api_data_get2(clicon_handle h,
     if ((cbpath = cbuf_new()) == NULL)
         goto done;
     cprintf(cbpath, "/");
-    /* We know "data" is element pi-1 */
-    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &namespace, &xerr)) < 0)
+    /* Create a namespace context for ymod as the default namespace to use with
+     * xpath expressions */
+    if ((nsc = cvec_new(0)) == NULL){
+	clicon_err(OE_XML, errno, "cvec_new");
+	goto done;
+    }
+    /* We know "data" is element pi-1.
+     * Translate api-path to xpath: xpath (cbpath) and namespace context (nsc)
+     */
+    if ((ret = api_path2xpath_cvv2(pcvec, pi, yspec, cbpath, nsc, &xerr)) < 0)
 	goto done;
     if (ret == 0){
-	clicon_err_reset();
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    if (ret == 0){
-	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
-	    goto done;
 	clicon_err_reset();
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
@@ -192,22 +188,15 @@ api_data_get2(clicon_handle h,
     }
     xpath = cbuf_get(cbpath);
     clicon_debug(1, "%s path:%s", __FUNCTION__, xpath);
-    /* Create a namespace context for ymod as the default namespace to use with
-     * xpath expressions */
-    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
-	goto done;
     switch (content){
     case CONTENT_CONFIG:
-	ret = clicon_rpc_get(h, xpath, namespace, CONTENT_CONFIG, depth, &xret);
-	break;
     case CONTENT_NONCONFIG:
-	ret = clicon_rpc_get(h, xpath, namespace, CONTENT_NONCONFIG, depth, &xret);
-	break;
     case CONTENT_ALL:
-	ret = clicon_rpc_get(h, xpath, namespace, CONTENT_ALL, depth, &xret);
+	ret = clicon_rpc_get_nsc(h, xpath, nsc, content, depth, &xret);
 	break;
     default:
 	clicon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
+	goto done;
 	break;
     }
     if (ret < 0){
@@ -291,14 +280,14 @@ api_data_get2(clicon_handle h,
 	switch (media_out){
 	case YANG_DATA_XML:
 	    for (i=0; i<xlen; i++){
-		char *prefix, *namespace2; /* Same as namespace? */
+		char *prefix;
 		x = xvec[i];
 		/* Some complexities in grafting namespace in existing trees to new */
 		prefix = xml_prefix(x);
 		if (xml_find_type_value(x, prefix, "xmlns", CX_ATTR) == NULL){
-		    if (xml2ns(x, prefix, &namespace2) < 0)
+		    if (xml2ns(x, prefix, &namespace) < 0)
 			goto done;
-		    if (namespace2 && xmlns_set(x, prefix, namespace2) < 0)
+		    if (namespace && xmlns_set(x, prefix, namespace) < 0)
 			goto done;
 		}
 		if (clicon_xml2cbuf(cbx, x, 0, pretty, -1) < 0) /* Dont print top object?  */

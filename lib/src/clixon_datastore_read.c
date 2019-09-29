@@ -141,9 +141,15 @@ xml_copy_marked(cxobj *x0,
     int        iskey;
     yang_stmt *yt;
     char      *name;
+    char      *prefix;
 
     assert(x0 && x1);
     yt = xml_spec(x0); /* can be null */
+    /* Copy prefix*/
+    if ((prefix = xml_prefix(x0)) != NULL)
+	if (xml_prefix_set(x1, prefix) < 0)
+	    goto done;
+    
     /* Copy all attributes */
     x = NULL;
     while ((x = xml_child_each(x0, x, CX_ATTR)) != NULL) {

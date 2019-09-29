@@ -195,10 +195,12 @@ startup_common(clicon_handle       h,
 	goto ok;
     }
     if (msd){
+	/* Here xt is old syntax */
 	if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
+	/* Here xt is new syntax */
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, 0, "Yang spec not set");

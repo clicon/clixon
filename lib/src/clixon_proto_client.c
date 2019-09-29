@@ -584,7 +584,8 @@ clicon_rpc_get(clicon_handle   h,
     if ((username = clicon_username_get(h)) != NULL)
 	cprintf(cb, " username=\"%s\"", username);
     if (namespace)
-	cprintf(cb, " xmlns:nc=\"%s\"", NETCONF_BASE_NAMESPACE);
+	cprintf(cb, " xmlns:%s=\"%s\"",
+		NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
     cprintf(cb, "><get");
     /* Clixon extension, content=all,config, or nonconfig */
     if (content != -1)
@@ -626,6 +627,79 @@ clicon_rpc_get(clicon_handle   h,
 	free(msg);
     return retval;
 }
+
+int
+clicon_rpc_get_nsc(clicon_handle   h, 
+		   char           *xpath,
+		   cvec           *nsc, /* namespace context for filter */
+		   netconf_content content,
+		   int32_t         depth,
+		   cxobj         **xt)
+{
+    int                retval = -1;
+    struct clicon_msg *msg = NULL;
+    cbuf              *cb = NULL;
+    cxobj             *xret = NULL;
+    cxobj             *xd;
+    char              *username;
+    cg_var            *cv = NULL;
+    char              *prefix;
+
+    if ((cb = cbuf_new()) == NULL)
+	goto done;
+    cprintf(cb, "<rpc");
+    if ((username = clicon_username_get(h)) != NULL)
+	cprintf(cb, " username=\"%s\"", username);
+    cprintf(cb, " xmlns:%s=\"%s\"",
+	    NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    cprintf(cb, "><get");
+    /* Clixon extension, content=all,config, or nonconfig */
+    if (content != -1)
+	cprintf(cb, " content=\"%s\"", netconf_content_int2str(content));
+    /* Clixon extension, depth=<level> */
+    if (depth != -1)
+	cprintf(cb, " depth=\"%d\"", depth);
+    cprintf(cb, ">");
+    if (xpath && strlen(xpath)) {
+	cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
+		NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
+		xpath);
+
+	while ((cv = cvec_each(nsc, cv)) != NULL){
+	    cprintf(cb, " xmlns");
+	    if ((prefix = cv_name_get(cv)))
+		cprintf(cb, ":%s", prefix);
+	    cprintf(cb, "=\"%s\"", cv_string_get(cv));
+	}
+	cprintf(cb, "/>");
+    }
+    cprintf(cb, "</get></rpc>");
+    if ((msg = clicon_msg_encode("%s", cbuf_get(cb))) == NULL)
+	goto done;
+    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+	goto done;
+    /* Send xml error back: first check error, then ok */
+    if ((xd = xpath_first(xret, "/rpc-reply/rpc-error")) != NULL)
+	xd = xml_parent(xd); /* point to rpc-reply */
+    else if ((xd = xpath_first(xret, "/rpc-reply/data")) == NULL)
+	if ((xd = xml_new("data", NULL, NULL)) == NULL)
+	    goto done;
+    if (xt){
+	if (xml_rm(xd) < 0)
+	    goto done;
+	*xt = xd;
+    }
+    retval = 0;
+  done:
+    if (cb)
+	cbuf_free(cb);
+    if (xret)
+	xml_free(xret);
+    if (msg)
+	free(msg);
+    return retval;
+}
+
 
 /*! Close a (user) session
  * @param[in] h        CLICON handle

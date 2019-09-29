@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-## 4.2.0 (Expected: September)
+## 4.2.0 (Expected: October)
 
 ### Major New features
 * Backend daemon can drop privileges after initialization to run as non-privileged user
@@ -10,17 +10,15 @@
   * If dropped temporary, you can restore privileges with `restore_priv()`
 
 ### API changes on existing features (you may need to change your code)
+* Stricter handling of multi-namespace handling
+  * This occurs in cases where there are more than one XML namespaces in a config tree, such as `augment`:ed trees.
+  * Affects all parts of the system, including datastore, backend, restconf and cli.
+  * Examples of a mandated stricter usage of a simple augment `b` of symbol `a`. Assume `a` is in module `mod1` with namespace `urn:example:a` and `b` is in module `mod2` with namespace `urn:example:b`:
+    * RESTCONF: `GET http://localhost/restconf/data/mod1:a/mod2:b`
+    * NETCONF: `<a xmlns="urn:example:a" xmlns:b="urn:example:b"><b:b>42</b:b></a>`
+    * XPATH (in edit-config filter): `<filter type="xpath" select="a:a/b:b" xmlns:a="urn:example:a" xmlns:b="urn:example:b"/>`
 * RESTCONF error reporting
-  * Invalid api-path syntax (eg non-matching yang) error changed from 412 operation-failed to 400 unknown-element / invalid-value. For example, change from
-    ```
-    HTTP/1.1 412 Precondition Failed
-    {"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"No such yang module: badmodule"}}}
-    ```
-    to:
-    ```
-    HTTP/1.1 400 Bad Request
-    {"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"No such yang module: badmodule"}}}
-    ```    
+  * Invalid api-path syntax (eg non-matching yang) error changed from 412 operation-failed to 400 Bad request invalid-value, or unknown-element.
 * Typical installation should now add a `clicon` user (as well as group)
 * New clixon-config@2019-09-11.yang revision
   * Added: CLICON_BACKEND_USER: drop of privileges to user,
@@ -33,6 +31,7 @@
 * Configure and test modification for better Freebsd port
 	
 ### Corrected Bugs
+* See "Stricter handling of multi-namespace handling" in API-changes above.
 * Hello netconf candidate capability misspelled, mentioned in [Can clixon_netconf receive netconf packets as a server? #93](https://github.com/clicon/clixon/issues/93)
 * [Cannot write to config using restconf example #91](https://github.com/clicon/clixon/issues/91)
   * Updated restconf documentation (the example was wrong)
