@@ -647,19 +647,15 @@ restconf_insert_attributes(cxobj *xdata,
     char      *attrname;
     int        ret;
     char      *xpath = NULL;
-    char      *namespace = NULL;
+    cvec      *nsc = NULL;
     cbuf      *cb = NULL;
     char      *p;
+    cg_var    *cv = NULL;
 
     y = xml_spec(xdata);
     if ((instr = cvec_find_str(qvec, "insert")) != NULL){
 	/* First add xmlns:yang attribute */
-	if ((xa = xml_new("yang", xdata, NULL)) == NULL)
-	    goto done;
-	if (xml_prefix_set(xa, "xmlns") < 0)
-	    goto done;
-	xml_type_set(xa, CX_ATTR);
-	if (xml_value_set(xa, YANG_XML_NAMESPACE) < 0)
+	if (xmlns_set(xdata, "yang", YANG_XML_NAMESPACE) < 0)
 	    goto done;
 	/* Then add insert attribute */
 	if ((xa = xml_new("insert", xdata, NULL)) == NULL)
@@ -685,7 +681,7 @@ restconf_insert_attributes(cxobj *xdata,
 	if (xml_prefix_set(xa, "yang") < 0)
 	    goto done;
 	xml_type_set(xa, CX_ATTR);
-	if ((ret = api_path2xpath(pstr, ys_spec(y), &xpath, &namespace)) < 0)
+	if ((ret = api_path2xpath(pstr, ys_spec(y), &xpath, &nsc)) < 0)
 	    goto done;
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -715,10 +711,20 @@ restconf_insert_attributes(cxobj *xdata,
 	if (xml_value_set(xa, cbuf_get(cb)) < 0)
 	    goto done;
     }
+    /* Add prefix/namespaces used in attributes */
+    cv = NULL;
+    while ((cv = cvec_each(nsc, cv)) != NULL)
+	if (xmlns_set(xdata, cv_name_get(cv), cv_string_get(cv)) < 0)
+	    goto done;
+    if (nsc)
+	xml_sort(xdata, NULL); /* Ensure attr is first */
+    cprintf(cb, "/>");
     retval = 0;
  done:
     if (xpath)
 	free(xpath);
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (cb)
 	cbuf_free(cb);
     return retval;

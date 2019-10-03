@@ -262,8 +262,8 @@ api_data_write(clicon_handle h,
     char      *namespace = NULL;
     char      *dname;
     int        nullspec = 0;
-    char      *xpath = NULL;
     cbuf      *cbpath = NULL;    
+    cvec      *nsc = NULL;
 
     clicon_debug(1, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
     clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
@@ -276,11 +276,11 @@ api_data_write(clicon_handle h,
 	api_path = index(api_path+1, '/');
     /* Check if object exists in backend.
      * Translate api-path to xpath */
-    namespace = NULL;
     if ((cbpath = cbuf_new()) == NULL)
 	goto done;
     cprintf(cbpath, "/");
-    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &namespace, &xerr)) < 0)
+
+    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &nsc, &xerr)) < 0)
 	goto done;
     if (ret == 0){
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -291,25 +291,9 @@ api_data_write(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    xpath = cbuf_get(cbpath);
-
-    /* Create text buffer for transfer to backend */
-    if ((cbx = cbuf_new()) == NULL)
-	goto done;
-    /* show done automaticaly by the system, therefore recovery user is used
-     * here */
-    cprintf(cbx, "<rpc username=\"%s\"", NACM_RECOVERY_USER);
-    if (namespace)
-	cprintf(cbx, " xmlns:nc=\"%s\">", NETCONF_BASE_NAMESPACE);
-    cprintf(cbx, "><get-config><source><candidate/></source>");
-    if (namespace)
-	cprintf(cbx, "<nc:filter nc:type=\"xpath\" nc:select=\"%s\" xmlns=\"%s\"/>",
-		xpath, namespace);
-    else /* If xpath != /, this will probably yield an error later */
-	cprintf(cbx, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
-    cprintf(cbx, "</get-config></rpc>");
     xret = NULL;
-    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0){
+    if (clicon_rpc_get_config(h, NACM_RECOVERY_USER,
+			      "candidate", cbuf_get(cbpath), nsc, &xret) < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
@@ -319,6 +303,7 @@ api_data_write(clicon_handle h,
 	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
+
     }
 #if 0
     if (debug){
@@ -329,8 +314,7 @@ api_data_write(clicon_handle h,
 	cbuf_free(ccc);
     }
 #endif
-    if ((xe = xpath_first(xret, "/rpc-reply/data")) == NULL ||
-	xml_child_nr(xe) == 0){ /* Object does not exist */
+    if (xml_child_nr(xret) == 0){ /* Object does not exist */
 	if (plain_patch){    /* If the target resource instance does not exist, the server MUST NOT create it. */
 	    restconf_badrequest(r);
 	    goto ok;
@@ -342,13 +326,12 @@ api_data_write(clicon_handle h,
 	if (plain_patch)
 	    op = OP_MERGE;
 	else
-	    op = OP_REPLACE;	
+	    op = OP_REPLACE;
     }
     if (xret){
 	xml_free(xret);
 	xret = NULL;
     }
-
     /* Create config top-of-tree */
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
@@ -573,7 +556,6 @@ api_data_write(clicon_handle h,
 		}
 	    }
 	}
-
 	xml_purge(xbot);
 	if (xml_addsub(xparent, xdata) < 0)
 	    goto done;
@@ -597,7 +579,6 @@ api_data_write(clicon_handle h,
 	/* If restconf insert/point attributes are present, translate to netconf */
 	if (restconf_insert_attributes(xdata, qvec) < 0)
 	    goto done;
-
 	/* If we already have that default namespace, remove it in child */
 	if ((xa = xml_find_type(xdata, NULL, "xmlns", CX_ATTR)) != NULL){
 	    if (xml2ns(xparent, NULL, &namespace) < 0)
@@ -610,7 +591,9 @@ api_data_write(clicon_handle h,
     /* For internal XML protocol: add username attribute for access control
      */
     username = clicon_username_get(h);
-    cbuf_reset(cbx);
+    /* Create text buffer for transfer to backend */
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
     cprintf(cbx, "<rpc username=\"%s\" xmlns:%s=\"%s\">",
 	    username?username:"",
 	    NETCONF_BASE_PREFIX,
@@ -685,6 +668,8 @@ api_data_write(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (cbpath)
 	cbuf_free(cbpath);
     if (xret)

@@ -422,8 +422,8 @@ xmlns_set(cxobj *x,
     else{                /* xmlns="<uri>" */
 	if ((xa = xml_new("xmlns", x, NULL)) == NULL)
 	    goto done;
-	xml_type_set(xa, CX_ATTR);
     }
+    xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa, ns) < 0)
 	goto done;
     /* (re)set namespace cache (as used in xml2ns) */
@@ -449,38 +449,41 @@ xml2prefix(cxobj *xn,
 {
     int    retval = -1;
     cxobj *xa = NULL;
+    cxobj *xp;
     char  *prefix = NULL;
+    int    ret;
 
-    while (xn != NULL){
-	if (nscache_get_prefix(xn, namespace, &prefix) == 1) /* found */
-	    goto found;
-	//	if (xn->x_ns_cache == NULL){ /* Look in node */
-	    xa = NULL;
-	    while ((xa = xml_child_each(xn, xa, CX_ATTR)) != NULL) {
-		/* xmlns=namespace */
-		if (strcmp("xmlns", xml_name(xa)) == 0){ 
-		    if (strcmp(xml_value(xa), namespace) == 0){
-    clicon_debug(1, "%sA NULL %s", __FUNCTION__, namespace);
-			if (nscache_set(xn, NULL, namespace) < 0)
-			    goto done;
-			prefix = NULL;
-			goto found;
-		    }
-
-		}
-		/* xmlns:prefix=namespace */
-		else if (strcmp("xmlns", xml_prefix(xa)) == 0){ 
-		    if (strcmp(xml_value(xa), namespace) == 0){
-			prefix = xml_name(xa);
-			assert(strcmp(prefix, "xmlns"));
-			if (nscache_set(xn, prefix, namespace) < 0)
-			    goto done;
-			goto found;
-		    }
-		}
+    if (nscache_get_prefix(xn, namespace, &prefix) == 1) /* found */
+	goto found;
+    xa = NULL;
+    while ((xa = xml_child_each(xn, xa, CX_ATTR)) != NULL) {
+	/* xmlns=namespace */
+	if (strcmp("xmlns", xml_name(xa)) == 0){ 
+	    if (strcmp(xml_value(xa), namespace) == 0){
+		if (nscache_set(xn, NULL, namespace) < 0)
+		    goto done;
+		prefix = NULL; /* Maybe should set all caches in ns:s children? */
+		goto found;
 	    }
-	    // }
-	xn = xml_parent(xn);
+	}
+	/* xmlns:prefix=namespace */
+	else if (strcmp("xmlns", xml_prefix(xa)) == 0){ 
+	    if (strcmp(xml_value(xa), namespace) == 0){
+		prefix = xml_name(xa);
+		if (nscache_set(xn, prefix, namespace) < 0)
+		    goto done;
+		goto found;
+	    }
+	}
+    }
+    if ((xp = xml_parent(xn)) != NULL){
+	if ((ret = xml2prefix(xp, namespace, &prefix)) < 0)
+	    goto done;
+	if (ret == 1){
+	    if (nscache_set(xn, prefix, namespace) < 0)
+		goto done;
+	    goto found;
+	}
     }
     retval = 0;
  done:

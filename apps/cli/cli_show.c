@@ -117,7 +117,6 @@ expand_dbvar(void   *h,
     cxobj           *xcur;
     char            *xpathcur;
     char            *reason = NULL;
-    char            *namespace = NULL;
     cvec            *nsc = NULL;
     
     if (argv == NULL || cvec_len(argv) != 2){
@@ -150,11 +149,11 @@ expand_dbvar(void   *h,
      */
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
 	goto done;
-    if (api_path2xpath(api_path, yspec, &xpath, &namespace) < 0)
+    if (api_path2xpath(api_path, yspec, &xpath, &nsc) < 0)
 	goto done;
 
     /* Get configuration */
-    if (clicon_rpc_get_config(h, dbstr, xpath, namespace, &xt) < 0) /* XXX */
+    if (clicon_rpc_get_config(h, NULL, dbstr, xpath, nsc, &xt) < 0) /* XXX */
     	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
@@ -175,8 +174,6 @@ expand_dbvar(void   *h,
     if (y==NULL)
 	goto ok;
 
-    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
-	goto done;
 
     /* Special case for leafref. Detect leafref via Yang-type, 
      * Get Yang path element, tentatively add the new syntax to the whole
@@ -437,6 +434,7 @@ cli_show_config1(clicon_handle h,
     enum genmodel_type gt;
     yang_stmt       *yspec;
     char            *namespace = NULL;
+    cvec            *nsc = NULL;
     
     if (cvec_len(argv) != 3 && cvec_len(argv) != 4){
 	clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <dbname>,<format>,<xpath>[,<attr>]", cvec_len(argv));
@@ -461,10 +459,13 @@ cli_show_config1(clicon_handle h,
     }
     cprintf(cbxpath, "%s", xpath);	
     /* Fourth argument is namespace */
-    if (cvec_len(argv) == 4)
+    if (cvec_len(argv) == 4){
 	namespace = cv_string_get(cvec_i(argv, 3));
+	if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
+	    goto done;
+    }
     if (state == 0){     /* Get configuration-only from database */
-	if (clicon_rpc_get_config(h, db, cbuf_get(cbxpath), namespace, &xt) < 0)
+	if (clicon_rpc_get_config(h, NULL, db, cbuf_get(cbxpath), nsc, &xt) < 0)
 	    goto done;
     }
     else {               /* Get configuration and state from database */
@@ -472,7 +473,7 @@ cli_show_config1(clicon_handle h,
 	    clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
 	    goto done;
 	}
-	if (clicon_rpc_get(h, cbuf_get(cbxpath), namespace, CONTENT_ALL, -1, &xt) < 0)
+	if (clicon_rpc_get(h, cbuf_get(cbxpath), nsc, CONTENT_ALL, -1, &xt) < 0)
 	    goto done;
     }
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
@@ -519,6 +520,8 @@ cli_show_config1(clicon_handle h,
     }
     retval = 0;
 done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (xt)
 	xml_free(xt);
     if (val)
@@ -617,15 +620,15 @@ show_conf_xpath(clicon_handle h,
     /* Look for namespace in command (kludge: cv must be called "ns") */
     cv = cvec_find(cvv, "ns");
     namespace = cv_string_get(cv);
-
-    if (clicon_rpc_get_config(h, str, xpath, namespace, &xt) < 0)
+    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
+	goto done;
+    if (clicon_rpc_get_config(h, NULL, str, xpath, nsc, &xt) < 0)
     	goto done;
     if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
-    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
-	goto done;
+
     if (xpath_vec_nsc(xt, nsc, "%s", &xv, &xlen, xpath) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)
@@ -681,7 +684,6 @@ cli_show_auto1(clicon_handle h,
     cxobj           *xp;
     cxobj           *xerr;
     enum genmodel_type gt;
-    char            *namespace = NULL;
     char            *api_path = NULL;
 
     if (cvec_len(argv) != 3){
@@ -704,18 +706,16 @@ cli_show_auto1(clicon_handle h,
     }
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
 	goto done;
-    if (api_path2xpath(api_path, yspec, &xpath, &namespace) < 0)
+    if (api_path2xpath(api_path, yspec, &xpath, &nsc) < 0)
 	goto done;
     /* XXX Kludge to overcome a trailing / in show, that I cannot add to
      * yang2api_path_fmt_1 where it should belong.
      */
     if (xpath[strlen(xpath)-1] == '/')
 	xpath[strlen(xpath)-1] = '\0';
-    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
-	goto done;
 
     if (state == 0){   /* Get configuration-only from database */
-	if (clicon_rpc_get_config(h, db, xpath, namespace, &xt) < 0)
+	if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, &xt) < 0)
 	    goto done;
     }
     else{              /* Get configuration and state from database */
@@ -723,7 +723,7 @@ cli_show_auto1(clicon_handle h,
 	    clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
 	    goto done;
 	}
-	if (clicon_rpc_get(h, xpath, namespace, CONTENT_ALL, -1, &xt) < 0)
+	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
 	    goto done;
     }
 

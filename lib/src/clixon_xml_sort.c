@@ -481,6 +481,7 @@ xml_search(cxobj        *xp,
  * @param[in] yn      Yang stmt of xml child node
  * @param[in] ins     Insert operation (if ordered-by user)
  * @param[in] key_val Key if LIST and ins is before/after, val if LEAF_LIST
+ * @param[in] nsc_key Network namespace for key
  * @retval    i       Order where xn should be inserted into xp:s children
  * @retval   -1       Error
  * LIST: RFC 7950 7.8.6:
@@ -493,14 +494,14 @@ xml_search(cxobj        *xp,
  *                       yang:insert="after"
  *                       yang:value="3des-cbc">blowfish-cbc</cipher>)
  */
-
 static int
 xml_insert_userorder(cxobj           *xp,
 		     cxobj           *xn,
 		     yang_stmt       *yn,
 		     int              mid,
 		     enum insert_type ins,
-		     char            *key_val)
+		     char            *key_val,
+		     cvec            *nsc_key)
 {
     int        retval = -1;
     int        i;
@@ -538,7 +539,7 @@ xml_insert_userorder(cxobj           *xp,
 	else{
 	    switch (yang_keyword_get(yn)){
 	    case Y_LEAF_LIST:
-		if ((xc = xpath_first(xp, "%s[.='%s']", xml_name(xn),key_val)) == NULL)
+		if ((xc = xpath_first_nsc(xp, nsc_key, "%s[.='%s']", xml_name(xn), key_val)) == NULL)
 		    clicon_err(OE_YANG, 0, "bad-attribute: value, missing-instance: %s", key_val);				    
 		else {
 		    if ((i = xml_child_order(xp, xc)) < 0)
@@ -548,7 +549,7 @@ xml_insert_userorder(cxobj           *xp,
 		}
 		break;
 	    case Y_LIST:
-		if ((xc = xpath_first(xp, "%s%s", xml_name(xn), key_val)) == NULL)
+		if ((xc = xpath_first_nsc(xp, nsc_key, "%s%s", xml_name(xn), key_val)) == NULL)
 		    clicon_err(OE_YANG, 0, "bad-attribute: key, missing-instance: %s", key_val);				    
 		else {
 		    if ((i = xml_child_order(xp, xc)) < 0)
@@ -577,6 +578,7 @@ xml_insert_userorder(cxobj           *xp,
  * @param[in] userorder Set if ordered-by user, otherwise 0
  * @param[in] ins     Insert operation (if ordered-by user)
  * @param[in] key_val Key if LIST and ins is before/after, val if LEAF_LIST
+ * @param[in] nsc_key Network namespace for key
  * @param[in] low     Lower range limit
  * @param[in] upper   Upper range limit
  * @retval    i       Order where xn should be inserted into xp:s children
@@ -590,6 +592,7 @@ xml_insert2(cxobj           *xp,
 	    int              userorder,
 	    enum insert_type ins,
 	    char            *key_val,
+	    cvec            *nsc_key,
 	    int              low, 
 	    int              upper)
 {
@@ -623,7 +626,7 @@ xml_insert2(cxobj           *xp,
     }
     if (yc == yn){ /* Same yang */
 	if (userorder){ /* append: increment linearly until no longer equal */
-	    retval = xml_insert_userorder(xp, xn, yn, mid, ins, key_val);
+	    retval = xml_insert_userorder(xp, xn, yn, mid, ins, key_val, nsc_key);
 	    goto done;
 	}
 	else /* Ordered by system */
@@ -649,9 +652,9 @@ xml_insert2(cxobj           *xp,
 	goto done;
     }
     else if (cmp < 0)
-	return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, low, mid);
+	return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, nsc_key, low, mid);
     else 
-	return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, mid+1, upper);
+	return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, nsc_key, mid+1, upper);
  done:
     return retval;
 }
@@ -660,7 +663,8 @@ xml_insert2(cxobj           *xp,
  * @param[in] xp      Parent xml node. If NULL just remove from old parent.
  * @param[in] x       Child xml node to insert under xp
  * @param[in] ins     Insert operation (if ordered-by user)
- * @param[in] key_val Key if LIST and ins is before/after, val if LEAF_LIST
+ * @param[in] key_val Key if x is LIST and ins is before/after, val if LEAF_LIST
+ * @param[in] nsc_key Network namespace for key
  * @retval    0       OK
  * @retval   -1       Error
  * @see xml_addsub where xc is appended. xml_insert is xml_addsub();xml_sort()
@@ -669,7 +673,8 @@ int
 xml_insert(cxobj           *xp,
 	   cxobj           *xi,
 	   enum insert_type ins,
-	   char            *key_val)
+	   char            *key_val,
+	   cvec            *nsc_key)
 {
     int        retval = -1;
     cxobj     *xa;
@@ -704,7 +709,7 @@ xml_insert(cxobj           *xp,
 	userorder = (yang_find(y, Y_ORDERED_BY, "user") != NULL);
     yi = yang_order(y);
     if ((i = xml_insert2(xp, xi, y, yi,
-			 userorder, ins, key_val,
+			 userorder, ins, key_val, nsc_key,
 			 low, upper)) < 0)
 	goto done;
     if (xml_child_insert_pos(xp, xi, i) < 0)

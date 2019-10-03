@@ -17,6 +17,16 @@
     * RESTCONF: `GET http://localhost/restconf/data/mod1:a/mod2:b`
     * NETCONF: `<a xmlns="urn:example:a" xmlns:b="urn:example:b"><b:b>42</b:b></a>`
     * XPATH (in edit-config filter): `<filter type="xpath" select="a:a/b:b" xmlns:a="urn:example:a" xmlns:b="urn:example:b"/>`
+* Changed `clicon_rpc_get` and `clicon_rpc_get_config` as follows:
+  * Added `username` as second parameter, default NULL
+  * Changed `namespace` to namespace context, which needs to be created
+  * Example new usage:
+  ```
+  cvec *nsc = xml_nsctx_init(NULL, "urn:example:clixon")
+  if (clicon_rpc_get_config(h, NULL, "running", "/interfaces", nsc, &xret) < 0)
+    err;
+  ```
+  See function reference how to make a call.
 * RESTCONF error reporting
   * Invalid api-path syntax (eg non-matching yang) error changed from 412 operation-failed to 400 Bad request invalid-value, or unknown-element.
 * Typical installation should now add a `clicon` user (as well as group)

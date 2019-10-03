@@ -165,16 +165,11 @@ api_data_get2(clicon_handle h,
     if ((cbpath = cbuf_new()) == NULL)
         goto done;
     cprintf(cbpath, "/");
-    /* Create a namespace context for ymod as the default namespace to use with
-     * xpath expressions */
-    if ((nsc = cvec_new(0)) == NULL){
-	clicon_err(OE_XML, errno, "cvec_new");
-	goto done;
-    }
+
     /* We know "data" is element pi-1.
      * Translate api-path to xpath: xpath (cbpath) and namespace context (nsc)
      */
-    if ((ret = api_path2xpath_cvv2(pcvec, pi, yspec, cbpath, nsc, &xerr)) < 0)
+    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &nsc, &xerr)) < 0)
 	goto done;
     if (ret == 0){
 	clicon_err_reset();
@@ -192,7 +187,7 @@ api_data_get2(clicon_handle h,
     case CONTENT_CONFIG:
     case CONTENT_NONCONFIG:
     case CONTENT_ALL:
-	ret = clicon_rpc_get_nsc(h, xpath, nsc, content, depth, &xret);
+	ret = clicon_rpc_get(h, xpath, nsc, content, depth, &xret);
 	break;
     default:
 	clicon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);

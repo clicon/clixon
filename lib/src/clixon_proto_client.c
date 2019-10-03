@@ -71,6 +71,7 @@
 #include "clixon_proto.h"
 #include "clixon_err.h"
 #include "clixon_err_string.h"
+#include "clixon_xml_nsctx.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_proto_client.h"
 
@@ -251,54 +252,70 @@ clicon_rpc_generate_error(char  *prefix,
 /*! Get database configuration
  * Same as clicon_proto_change just with a cvec instead of lvec
  * @param[in]  h        CLICON handle
+ * @param[in]  username If NULL, use default
  * @param[in]  db       Name of database
  * @param[in]  xpath    XPath (or "")
- * @param[in]  namespace Namespace associated w xpath
+ * @param[in]  nsc       Namespace context for filter
  * @param[out] xt       XML tree. Free with xml_free. 
  *                      Either <config> or <rpc-error>. 
  * @retval    0         OK
  * @retval   -1         Error, fatal or xml
  * @code
- *    cxobj *xt = NULL;
- *    if (clicon_rpc_get_config(h, "running", "/hello/world", "urn:example:hello", &xt) < 0)
+ *   cxobj *xt = NULL;
+ *   cvec *nsc = NULL;
+ *
+ *   if ((nsc = xml_nsctx_init(NULL, "urn:example:hello")) == NULL)
+ *       err;
+ *   if (clicon_rpc_get_config(h, NULL, "running", "/hello/world", nsc, &xt) < 0)
  *       err;
  *   if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
  *	clicon_rpc_generate_error("", xerr);
  *      err;
- *  }
- *    if (xt)
- *       xml_free(xt);
+ *   }
+ *   if (xt)
+ *      xml_free(xt);
+ *  if (nsc)
+ *     xml_nsctx_free(nsc);
  * @endcode
  * @see clicon_rpc_generate_error
  */
 int
-clicon_rpc_get_config(clicon_handle       h, 
-		      char               *db, 
-		      char               *xpath,
-		      char               *namespace,
-		      cxobj             **xt)
+clicon_rpc_get_config(clicon_handle h, 
+		      char         *username,
+		      char         *db, 
+		      char         *xpath,
+		      cvec         *nsc,
+		      cxobj       **xt)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xd;
-    char              *username;
+    cg_var            *cv = NULL;
+    char              *prefix;
     
     if ((cb = cbuf_new()) == NULL)
 	goto done;
     cprintf(cb, "<rpc");
-    if ((username = clicon_username_get(h)) != NULL)
+    if (username == NULL)
+	username = clicon_username_get(h);
+    if (username != NULL)
 	cprintf(cb, " username=\"%s\"", username);
-    if (namespace)
-	cprintf(cb, " xmlns:nc=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " xmlns:%s=\"%s\"",
+	    NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
     cprintf(cb, "><get-config><source><%s/></source>", db);
     if (xpath && strlen(xpath)){
-	if (namespace)
-	    cprintf(cb, "<nc:filter nc:type=\"xpath\" nc:select=\"%s\" xmlns=\"%s\"/>",
-		    xpath, namespace);
-	else /* If xpath != /, this will probably yield an error later */
-	    cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
+	cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
+		NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
+		xpath);
+	while ((cv = cvec_each(nsc, cv)) != NULL){
+	    cprintf(cb, " xmlns");
+	    if ((prefix = cv_name_get(cv)))
+		cprintf(cb, ":%s", prefix);
+	    cprintf(cb, "=\"%s\"", cv_string_get(cv));
+	}
+	cprintf(cb, "/>");
     }
     cprintf(cb, "</get-config></rpc>");
     if ((msg = clicon_msg_encode("%s", cbuf_get(cb))) == NULL)
@@ -326,6 +343,7 @@ clicon_rpc_get_config(clicon_handle       h,
 	free(msg);
     return retval;
 }
+
 
 /*! Send database entries as XML to backend daemon
  * @param[in] h          CLICON handle
@@ -541,6 +559,7 @@ clicon_rpc_unlock(clicon_handle h,
  * @param[in]  h         Clicon handle
  * @param[in]  xpath     XPath in a filter stmt (or NULL/"" for no filter)
  * @param[in]  namespace Namespace associated w xpath
+ * @param[in]  nsc       Namespace context for filter
  * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
  * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
  * @param[out] xt        XML tree. Free with xml_free. 
@@ -550,15 +569,21 @@ clicon_rpc_unlock(clicon_handle h,
  * @note if xpath is set but namespace is NULL, the default, netconf base 
  *       namespace will be used which is most probably wrong.
  * @code
- *    cxobj *xt = NULL;
- *    if (clicon_rpc_get(h, "/hello/world", "urn:example:hello", CONTENT_ALL, -1, &xt) < 0)
- *       err;
- *   if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
- *	clicon_rpc_generate_error(xerr);
- *      err;
+ *  cxobj *xt = NULL;
+ *  cvec *nsc = NULL;
+ *
+ *  if ((nsc = xml_nsctx_init(NULL, "urn:example:hello")) == NULL)
+ *     err;
+ *  if (clicon_rpc_get(h, "/hello/world", nsc, CONTENT_ALL, -1, &xt) < 0)
+ *     err;
+ *  if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+ *     clicon_rpc_generate_error(xerr);
+ *     err;
  *  }
- *    if (xt)
- *       xml_free(xt);
+ *  if (xt)
+ *     xml_free(xt);
+ *  if (nsc)
+ *     xml_nsctx_free(nsc);
  * @endcode
  * @see clicon_rpc_get_config which is almost the same as with content=config, but you can also select dbname
  * @see clicon_rpc_generate_error
@@ -566,75 +591,10 @@ clicon_rpc_unlock(clicon_handle h,
 int
 clicon_rpc_get(clicon_handle   h, 
 	       char           *xpath,
-	       char           *namespace,
+	       cvec           *nsc, /* namespace context for filter */
 	       netconf_content content,
 	       int32_t         depth,
 	       cxobj         **xt)
-{
-    int                retval = -1;
-    struct clicon_msg *msg = NULL;
-    cbuf              *cb = NULL;
-    cxobj             *xret = NULL;
-    cxobj             *xd;
-    char              *username;
-
-    if ((cb = cbuf_new()) == NULL)
-	goto done;
-    cprintf(cb, "<rpc");
-    if ((username = clicon_username_get(h)) != NULL)
-	cprintf(cb, " username=\"%s\"", username);
-    if (namespace)
-	cprintf(cb, " xmlns:%s=\"%s\"",
-		NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    cprintf(cb, "><get");
-    /* Clixon extension, content=all,config, or nonconfig */
-    if (content != -1)
-	cprintf(cb, " content=\"%s\"", netconf_content_int2str(content));
-    /* Clixon extension, depth=<level> */
-    if (depth != -1)
-	cprintf(cb, " depth=\"%d\"", depth);
-    cprintf(cb, ">");
-    if (xpath && strlen(xpath)) {
-	if (namespace)
-	    cprintf(cb, "<nc:filter nc:type=\"xpath\" nc:select=\"%s\" xmlns=\"%s\"/>",
-		    xpath, namespace);
-	else /* If xpath != /, this will probably yield an error later */
-	    cprintf(cb, "<filter type=\"xpath\" select=\"%s\"/>", xpath);
-    }
-    cprintf(cb, "</get></rpc>");
-    if ((msg = clicon_msg_encode("%s", cbuf_get(cb))) == NULL)
-	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
-	goto done;
-    /* Send xml error back: first check error, then ok */
-    if ((xd = xpath_first(xret, "/rpc-reply/rpc-error")) != NULL)
-	xd = xml_parent(xd); /* point to rpc-reply */
-    else if ((xd = xpath_first(xret, "/rpc-reply/data")) == NULL)
-	if ((xd = xml_new("data", NULL, NULL)) == NULL)
-	    goto done;
-    if (xt){
-	if (xml_rm(xd) < 0)
-	    goto done;
-	*xt = xd;
-    }
-    retval = 0;
-  done:
-    if (cb)
-	cbuf_free(cb);
-    if (xret)
-	xml_free(xret);
-    if (msg)
-	free(msg);
-    return retval;
-}
-
-int
-clicon_rpc_get_nsc(clicon_handle   h, 
-		   char           *xpath,
-		   cvec           *nsc, /* namespace context for filter */
-		   netconf_content content,
-		   int32_t         depth,
-		   cxobj         **xt)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;

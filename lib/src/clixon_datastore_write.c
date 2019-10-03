@@ -146,18 +146,18 @@ attr_ns_value(cxobj *x,
  * @see xml2ns
  * XXX: fail handling: 		if (netconf_data_missing(cbret, NULL, "Data does not exist; cannot delete resource") < 0)
 		    goto done;
-
  */
 static int
-check_namespaces(cxobj *x0,
-		 cxobj *x1,
-		 cxobj *x1p)
+check_namespaces(cxobj     *x0,
+		 cxobj     *x1,
+		 cxobj     *x1p)
 {
     int   retval = -1;
     char  *namespace = NULL;
     char  *prefix0 = NULL;;
     char  *prefix10 = NULL; /* extra just for malloc problem */
     char  *prefix1 = NULL;;
+    char  *prefixb = NULL; /* identityref body prefix */
     cvec  *nsc0 = NULL;
     cvec  *nsc = NULL;
     cxobj *xa = NULL;
@@ -258,6 +258,8 @@ check_namespaces(cxobj *x0,
     /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
     retval = 0;
  done:
+    if (prefixb)
+	free(prefixb);
     if (prefix1)
 	free(prefix1);
     return retval;
@@ -372,12 +374,9 @@ text_modify(clicon_handle       h,
     char      *opstr = NULL;
     char      *x1name;
     char      *x1cname; /* child name */
-    //    cxobj     *x0a; /* attribute */
-    //    cxobj     *x1a; /* attribute */
     cxobj     *x0c; /* base child */
     cxobj     *x0b; /* base body */
     cxobj     *x1c; /* mod child */
-    //    char      *xns;  /* namespace */
     char      *x0bstr; /* mod body string */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
@@ -388,8 +387,9 @@ text_modify(clicon_handle       h,
     char      *keystr = NULL;
     char      *valstr = NULL;
     enum insert_type insert = INS_LAST;
-    int        changed = 0; /* Only if x0p's children have changed-> sort is necessary */
-
+    int        changed = 0; /* Only if x0p's children have changed-> sort necessary */
+    cvec      *nscx1 = NULL;
+    
     /* Check for operations embedded in tree according to netconf */
     if ((ret = attr_ns_value(x1,
 			     "operation", NETCONF_BASE_NAMESPACE,
@@ -514,7 +514,7 @@ text_modify(clicon_handle       h,
 		}
 	    }
 	    if (changed){ 
-		if (xml_insert(x0p, x0, insert, valstr) < 0) 
+		if (xml_insert(x0p, x0, insert, valstr, NULL) < 0) 
 		    goto done;
 	    }
 	    break;
@@ -563,6 +563,7 @@ text_modify(clicon_handle       h,
 				     "key", YANG_XML_NAMESPACE,
 				     cbret, &keystr)) < 0)
 		goto done;
+
 	    /* if insert/before, key attribute must be there */
 	    if ((insert == INS_AFTER || insert == INS_BEFORE) &&
 		keystr == NULL){
@@ -570,7 +571,9 @@ text_modify(clicon_handle       h,
 		    goto done;
 		goto fail;
 	    }
-
+	    /* If keystr is set, need a full namespace context */
+	    if (keystr && xml_nsctx_node(x1, &nscx1) < 0)
+		goto done;
 	}
 	switch(op){ 
 	case OP_CREATE:
@@ -623,8 +626,6 @@ text_modify(clicon_handle       h,
 		}
 		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
 		    goto done;
-		// XXX		if (check_namespaces(x1, x0) < 0)
-		//		    goto done;
 		if (xml_copy(x1, x0) < 0)
 		    goto done;
 		break;
@@ -708,7 +709,7 @@ text_modify(clicon_handle       h,
 		    goto fail;
 	    }
 	    if (changed){
-		if (xml_insert(x0p, x0, insert, keystr) < 0)
+		if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
 		    goto done;
 	    }
 	    break;

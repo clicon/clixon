@@ -56,24 +56,29 @@
 int
 mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 {
-    int        retval = -1;
-    cxobj     *xret = NULL;
-    cg_var    *myvar;
+    int      retval = -1;
+    cxobj   *xret = NULL;
+    cg_var  *myvar;
+    cvec    *nsc = NULL;
 
     /* Access cligen callback variables */
     myvar = cvec_find(cvv, "var"); /* get a cligen variable from vector */
     fprintf(stderr, "%s: %d\n", __FUNCTION__, cv_int32_get(myvar)); /* get int value */
     fprintf(stderr, "arg = %s\n", cv_string_get(cvec_i(argv,0))); /* get string value */
 
+    if ((nsc = xml_nsctx_init(NULL, "urn:example:clixon")) == NULL)
+	goto done;
     /* Show eth0 interfaces config using XPATH */
-    if (clicon_rpc_get_config(h, "running",
+    if (clicon_rpc_get_config(h, NULL, "running",
 			      "/interfaces/interface[name='eth0']",
-			      "urn:example:clixon",
+			      nsc,
 			      &xret) < 0)
 	goto done;
     xml_print(stdout, xret);
     retval = 0;
  done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (xret)
 	xml_free(xret);
     return retval;

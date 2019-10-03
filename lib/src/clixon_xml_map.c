@@ -2212,7 +2212,7 @@ xml_default(cxobj *xt,
 			goto done;
 		    free(str);
 		    added++;
-		    if (xml_insert(xt, xc, INS_LAST, NULL) < 0)
+		    if (xml_insert(xt, xc, INS_LAST, NULL, NULL) < 0)
 			goto done;
 		}
 	    }
@@ -2401,29 +2401,30 @@ xml_spec_populate(cxobj  *x,
     return retval;
 }
 
-/*! Translate from restconf api-path(cvv) to xml xpath(cbuf) and namespace
+/*! Translate from restconf api-path(cvv) to xml xpath(cbuf) and namespace context
  * 
  * @param[in]     api_path URI-encoded path expression" (RFC8040 3.5.3) as cvec
  * @param[in]     offset   Offset of cvec, where api-path starts
  * @param[in]     yspec    Yang spec
  * @param[in,out] xpath    The xpath as cbuf (must be created and may have content)
- * @param[out]    namespace Namespace of xpath (direct pointer don't free)
+ * @param[out]    nsc      Namespace context of xpath (free w xml_nsctx_free)
  * @param[out]    xerr     Netconf error message
  * @retval        1        OK
  * @retval        0        Invalid api_path or associated XML, netconf error xml set
  * @retval       -1        Fatal error, clicon_err called
  *
-
  * @code
  *   cbuf *xpath = cbuf_new();
  *   cvec *cvv = NULL; 
+ *   cvec *nsc = NULL;
  *   if (str2cvec("www.foo.com/restconf/a/b=c", '/', '=', &cvv) < 0)
  *      err;
- *   if ((ret = api_path2xpath_cvv(yspec, cvv, 0, cxpath, NULL)) < 0)
+ *   if ((ret = api_path2xpath_cvv(yspec, cvv, 0, cxpath, &nsc, NULL)) < 0)
  *      err;
  *   if (ret == 1)
  *     ... access xpath as cbuf_get(xpath) 
- *   cbuf_free(xpath)
+ *   cbuf_free(xpath);
+ *   cvec_free(nsc);
  * @endcode
  * It works like this:
  * Assume origin incoming path is 
@@ -2441,137 +2442,8 @@ api_path2xpath_cvv(cvec       *api_path,
 		   int         offset,
 		   yang_stmt  *yspec,
 		   cbuf       *xpath,
-		   char      **namespace,
+		   cvec      **nscp,
 		   cxobj     **xerr)
-{
-    int        retval = -1;
-    int        i;
-    cg_var    *cv;
-    char      *nodeid;
-    char      *prefix = NULL;
-    char      *name = NULL;
-    cvec      *cvk = NULL; /* vector of index keys */
-    yang_stmt *y = NULL;
-    yang_stmt *ymod = NULL;
-    char      *val;
-    cg_var    *cvi;
-    char     **valvec = NULL;
-    int        vi;
-    int        nvalvec;
-    cbuf      *cberr = NULL;
-
-    for (i=offset; i<cvec_len(api_path); i++){
-        cv = cvec_i(api_path, i);
-	nodeid = cv_name_get(cv);
-	if (nodeid_split(nodeid, &prefix, &name) < 0)
-	    goto done;
-	clicon_debug(1, "%s [%d] cvname: %s:%s",
-		     __FUNCTION__, i, prefix?prefix:"", name);
-	if (i == offset){ /* top-node */
-	    if (prefix == NULL){
-		if ((cberr = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cberr, "'%s': Expected prefix:name", nodeid);
-		if (netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
-		    goto done;
-		goto fail;
-	    }
-	    if ((ymod = yang_find_module_by_name(yspec, prefix)) == NULL){
-		if ((cberr = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cberr, "No such yang module: %s", prefix);
-		if (netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
-		    goto done;
-		goto fail;
-	    }
-	    y = yang_find_datanode(ymod, name);
-	}
-	else
-	    y = yang_find_datanode(y, name);
-	if (y == NULL){
-	    if (netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
-		goto done;
-	    goto fail;
-	}
-	/* Check if has value, means '=' */
-        if (cv2str(cv, NULL, 0) > 0){
-            if ((val = cv2str_dup(cv)) == NULL)
-                goto done;
-	    switch (yang_keyword_get(y)){
-	    case Y_LIST:
-		/* Transform value "a,b,c" to "a" "b" "c" (nvalvec=3)
-		 * Note that vnr can be < length of cvk, due to empty or unset values
-		 */
-		if (valvec){ /* loop, valvec may have been used before */
-		    free(valvec);
-		    valvec = NULL;
-		}
-		if ((valvec = clicon_strsep(val, ",", &nvalvec)) == NULL)
-		    goto done;
-		cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
-		cvi = NULL;
-		/* Iterate over individual yang keys  */
-		cprintf(xpath, "/%s", name);
-		vi = 0;
-		while ((cvi = cvec_each(cvk, cvi)) != NULL && vi<nvalvec)
-		    cprintf(xpath, "[%s='%s']", cv_string_get(cvi), valvec[vi++]);
-		break;
-	    case Y_LEAF_LIST: /* XXX: LOOP? */
-		cprintf(xpath, "/%s", name);
-		if (val)
-		    cprintf(xpath, "[.='%s']", val);
-		else
-		    cprintf(xpath, "[.='']");
-		break;
-	    default:
-		cprintf(xpath, "%s%s", (i==offset?"":"/"), name);
-		break;
-	    }
-	    if (val)
-		free(val);
-        }
-        else
-            cprintf(xpath, "%s%s", (i==offset?"":"/"), name);
-	if (prefix){
-	    free(prefix);
-	    prefix = NULL;
-	}
-	if (name){
-	    free(name);
-	    name = NULL;
-	}
-    } /* for */
-    /* return values: yang module */
-    if (namespace)
-	*namespace = yang_find_mynamespace(ymod);
-    retval = 1; /* OK */
- done:
-    if (cberr != NULL)
-	cbuf_free(cberr);
-    if (valvec)
-	free(valvec);
-    if (prefix)
-	free(prefix);
-    if (name)
-	free(name);
-    return retval;
- fail:
-    retval = 0; /* Validation failed */
-    goto done;
-}
-
-/*! Temp alternative to api_path2xpath_cvv */
-int
-api_path2xpath_cvv2(cvec       *api_path,
-		    int         offset,
-		    yang_stmt  *yspec,
-		    cbuf       *xpath,
-		    cvec       *nsc,
-		    cxobj     **xerr)
 {
     int        retval = -1;
     int        i;
@@ -2590,7 +2462,11 @@ api_path2xpath_cvv2(cvec       *api_path,
     int        nvalvec;
     cbuf      *cberr = NULL;
     char      *namespace = NULL;
+    cvec      *nsc = NULL;
 			
+    /* Initialize namespace context */
+    if ((nsc = xml_nsctx_init(NULL, NULL)) == NULL)
+	goto done;
     for (i=offset; i<cvec_len(api_path); i++){
         cv = cvec_i(api_path, i);
 	nodeid = cv_name_get(cv);
@@ -2633,6 +2509,7 @@ api_path2xpath_cvv2(cvec       *api_path,
 		goto done;
 	    goto fail;
 	}
+
 	/* Get XML/xpath prefix given namespace.
 	 * note different from api-path prefix
 	 */
@@ -2712,6 +2589,10 @@ api_path2xpath_cvv2(cvec       *api_path,
 	}
     } /* for */
     retval = 1; /* OK */
+    if (nscp){
+	*nscp = nsc;
+	nsc = NULL;
+    }
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cberr != NULL)
@@ -2720,6 +2601,8 @@ api_path2xpath_cvv2(cvec       *api_path,
 	free(valvec);
     if (prefix)
 	free(prefix);
+    if (nsc)
+	cvec_free(nsc);
     if (name)
 	free(name);
     return retval;
@@ -2732,17 +2615,19 @@ api_path2xpath_cvv2(cvec       *api_path,
  * @param[in]  api_path  URI-encoded path expression" (RFC8040 3.5.3)
  * @param[in]  yspec     Yang spec
  * @param[out] xpath     xpath (use free() to deallocate)
- * @param[out] namespace Namespace of xpath (direct pointer don't free)
+ * @param[out] nsc       Namespace context of xpath (free w xml_nsctx_free)
  * @retval     1         OK
  * @retval     0         Invalid api_path or associated XML, netconf called
  * @retval    -1         Fatal error, clicon_err called
  * @code
  *   char *xpath = NULL;
- *   if ((ret = api_path2xpath("/module:a/b", yspec, &xpath, &namespace)) < 0)
+ *   cvec *nsc = NULL;
+ *   if ((ret = api_path2xpath("/module:a/b", yspec, &xpath, &nsc)) < 0)
  *      err;
  *   if (ret == 1)
  *      ... access xpath as cbuf_get(xpath) 
  *   free(xpath)
+ *   cvec_free(nsc);
  * @endcode
  *
  * @see api_path2xml_cvv  which uses other parameter formats
@@ -2751,7 +2636,7 @@ int
 api_path2xpath(char       *api_path,
 	       yang_stmt  *yspec,
 	       char      **xpathp,
-	       char      **namespace)
+	       cvec      **nsc)
 {
     int    retval = -1;
     cvec  *cvv = NULL; /* api-path vector */
@@ -2763,7 +2648,7 @@ api_path2xpath(char       *api_path,
 	goto done;
     if ((xpath = cbuf_new()) == NULL)
         goto done;
-    if ((retval = api_path2xpath_cvv(cvv, 0, yspec, xpath, namespace, &xerr)) < 0){
+    if ((retval = api_path2xpath_cvv(cvv, 0, yspec, xpath, nsc, &xerr)) < 0){
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
     }

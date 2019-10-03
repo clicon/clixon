@@ -70,9 +70,8 @@ int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, void *arg);
 int xml_spec_populate_rpc(clicon_handle h, cxobj *x, yang_stmt *yspec);
 int xml_spec_populate(cxobj *x, void *arg);
-int api_path2xpath_cvv(cvec *api_path, int offset, yang_stmt *yspec, cbuf *xpath, char **namespace, cxobj **xerr);
-int api_path2xpath_cvv2(cvec *api_path, int offset, yang_stmt *yspec, cbuf *xpath, cvec *nsc, cxobj **xerr);
-int api_path2xpath(char *api_path, yang_stmt *yspec, char **xpath, char **namespace);
+int api_path2xpath_cvv(cvec *api_path, int offset, yang_stmt *yspec, cbuf *xpath, cvec **nsc, cxobj **xerr);
+int api_path2xpath(char *api_path, yang_stmt *yspec, char **xpath, cvec **nsc);
 int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop, 
 		 yang_class nodeclass, int strict, cxobj **xpathp, yang_stmt **ypathp);
 

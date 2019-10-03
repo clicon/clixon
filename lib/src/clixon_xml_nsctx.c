@@ -138,7 +138,7 @@ xml_nsctx_set(cvec  *cvv,
 
 /*! Create and initialize XML namespace context
  * @param[in] prefix    Namespace prefix, or NULL for default
- * @param[in] namespace Cached namespace to set (assume non-null?)
+ * @param[in] namespace Set this namespace. If NULL create empty nsctx
  * @retval    nsc       Return namespace context in form of a cvec
  * @retval    NULL      Error
  * @code
@@ -161,7 +161,7 @@ xml_nsctx_init(char  *prefix,
 	clicon_err(OE_XML, errno, "cvec_new");
 	goto done;
     }
-    if (xml_nsctx_set(cvv, prefix, namespace) < 0)
+    if (namespace && xml_nsctx_set(cvv, prefix, namespace) < 0)
 	goto done;
  done:
     return cvv;

@@ -42,7 +42,7 @@
 int xml_child_spec(cxobj *x, cxobj *xp, yang_stmt *yspec, yang_stmt **yp);
 int xml_cmp(cxobj *x1, cxobj *x2, int enm);
 int xml_sort(cxobj *x0, void *arg);
-int xml_insert(cxobj *xp, cxobj *xc, enum insert_type ins, char *key_val);
+int xml_insert(cxobj *xp, cxobj *xc, enum insert_type ins, char *key_val, cvec *nsckey);
 int xml_sort_verify(cxobj *x, void *arg);
 int match_base_child(cxobj *x0, cxobj *x1c, yang_stmt *yc, cxobj **x0cp);
 cxobj *xml_binsearch(cxobj *xp, char *name, char *keyname, char *keyval);
