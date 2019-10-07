@@ -85,7 +85,6 @@ module ietf-interfaces {
 EOF
 
 # From rfc7950 sec 7.17
-# Note "when" is not present
 # This is the main module where the augment exists
 cat <<EOF > $fyang
 module example-augment {
@@ -117,7 +116,12 @@ module example-augment {
          }
        }
        augment "/if:interfaces/if:interface" {
-/*       when 'derived-from-or-self(if:type, "mymod:some-new-iftype")'; */
+       when 'derived-from-or-self(if:type, "mymod:some-new-iftype")'; 
+          container ospf { /* moved from test_restconf_err (two-level augment) */
+            leaf reference-bandwidth {
+	      type uint32;
+            }
+          }
           leaf mandatory-leaf {
              mandatory true;
              type string;
@@ -213,6 +217,38 @@ expectpart "$(curl -s -i -X GET http://localhost/restconf/data/ietf-interfaces:i
 
 new "restconf get augment xml"
 expectpart "$(curl -s -i -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:mymod="urn:example:augment"><name>e1</name><type>mymod:some-new-iftype</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf><mymod:port>80</mymod:port><mymod:lport>8080</mymod:lport></interface><interface xmlns:mymod="urn:example:augment"><name>e2</name><type>fddi</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf><mymod:other>if:fddi</mymod:other><mymod:port>80</mymod:port><mymod:lport>8080</mymod:lport></interface><interface xmlns:mymod="urn:example:augment"><name>e3</name><type>fddi</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf><mymod:me>mymod:you</mymod:me><mymod:port>80</mymod:port><mymod:lport>8080</mymod:lport></interface></interfaces>'
+
+
+#<interface xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>e1</name><ospf xmlns="urn:example:augment"><reference-bandwidth>23</reference-bandwidth></ospf></interface>'
+
+XML=$(cat <<EOF
+<interface xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><name>e1</name><ospf xmlns="urn:example:augment"><reference-bandwidth>23</reference-bandwidth></ospf></interface>'
+EOF
+   )
+
+# Test for multi-module path where an augment stretches across modules
+new "restconf PUT augment multi-namespace path e1 (whole path)"
+expectpart "$(curl -s -X PUT -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1 -d "$XML")" 0 ''
+
+XML=$(cat <<EOF
+<ospf xmlns="urn:example:augment"><reference-bandwidth>23</reference-bandwidth></ospf>
+EOF
+   )
+
+new "restconf POST augment multi-namespace path e2 (middle path)"
+expectpart "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e2 -d "$XML" )" 0 ''
+
+new "restconf GET augment multi-namespace top"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","example-augment:ospf":{"reference-bandwidth":23},"example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"fddi","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
+
+new "restconf GET augment multi-namespace level 1"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interface":\[{"name":"e1","example-augment:ospf":{"reference-bandwidth":23},"example-augment:port":80,"example-augment:lport":8080}\]}'
+
+new "restconf GET augment multi-namespace cross"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf)" 0 'HTTP/1.1 200 OK' '{"example-augment:ospf":{"reference-bandwidth":23}}'
+
+new "restconf GET augment multi-namespace cross level 2"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf/reference-bandwidth)" 0 'HTTP/1.1 200 OK' '{"example-augment:reference-bandwidth":23}'
 
 new "Kill restconf daemon"
 stop_restconf 

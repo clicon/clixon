@@ -73,7 +73,8 @@ int xml_spec_populate(cxobj *x, void *arg);
 int api_path2xpath_cvv(cvec *api_path, int offset, yang_stmt *yspec, cbuf *xpath, cvec **nsc, cxobj **xerr);
 int api_path2xpath(char *api_path, yang_stmt *yspec, char **xpath, cvec **nsc);
 int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop, 
-		 yang_class nodeclass, int strict, cxobj **xpathp, yang_stmt **ypathp);
+		 yang_class nodeclass, int strict,
+		 cxobj **xpathp, yang_stmt **ypathp, cxobj **xerr);
 
 int xml2xpath(cxobj *x, char **xpath);
 int xml2api_path_1(cxobj *x, cbuf *cb);

@@ -29,6 +29,7 @@
   See function reference how to make a call.
 * RESTCONF error reporting
   * Invalid api-path syntax (eg non-matching yang) error changed from 412 operation-failed to 400 Bad request invalid-value, or unknown-element.
+  * Changed so that `400 Bad Request` are for invalid api-path or unknown yang elements, `404 Not Found` for valid xml when object not found.
 * Typical installation should now add a `clicon` user (as well as group)
 * New clixon-config@2019-09-11.yang revision
   * Added: CLICON_BACKEND_USER: drop of privileges to user,

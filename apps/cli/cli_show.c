@@ -100,7 +100,8 @@ expand_dbvar(void   *h,
     cxobj           *xt = NULL;
     char            *xpath = NULL;
     cxobj          **xvec = NULL;
-    cxobj           *xerr;
+    cxobj           *xe; /* direct ptr */
+    cxobj           *xerr = NULL; /* free */
     size_t           xlen = 0;
     cxobj           *x;
     char            *bodystr;
@@ -118,6 +119,7 @@ expand_dbvar(void   *h,
     char            *xpathcur;
     char            *reason = NULL;
     cvec            *nsc = NULL;
+    int              ret;
     
     if (argv == NULL || cvec_len(argv) != 2){
 	clicon_err(OE_PLUGIN, 0, "requires arguments: <db> <xmlkeyfmt>");
@@ -155,8 +157,8 @@ expand_dbvar(void   *h,
     /* Get configuration */
     if (clicon_rpc_get_config(h, NULL, dbstr, xpath, nsc, &xt) < 0) /* XXX */
     	goto done;
-    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error("Get configuration", xerr);
+    if ((xe = xpath_first(xt, "/rpc-error")) != NULL){
+	clicon_rpc_generate_error("Get configuration", xe);
 	goto ok; 
     }
     xcur = xt; /* default top-of-tree */
@@ -169,8 +171,14 @@ expand_dbvar(void   *h,
      * xpath2xml would have worked!!
      * XXX: but y is just the first in this list, there could be other y:s?
      */
-    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y) < 1)
-	goto done;
+    if (api_path){
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    clicon_rpc_generate_error("Expand datastore symbol", xerr);
+	    goto done;
+	}
+    }
     if (y==NULL)
 	goto ok;
 
@@ -242,6 +250,8 @@ expand_dbvar(void   *h,
  ok:
     retval = 0;
   done:
+    if (xerr)
+	xml_free(xerr);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (reason)

@@ -103,13 +103,6 @@ module example{
          }
       }
    }
-   augment "/aug:route-config/aug:dynamic" {
-      container ospf {
-         leaf reference-bandwidth {
-	    type uint32;
-         }
-      }
-   }
 }
 EOF
 
@@ -158,11 +151,9 @@ expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a/xxx)" 0 '
 new "restconf GET invalid (no yang) element"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/example:xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
 
-if false; then
 new "restconf POST non-existent (no yang) element"
 # should be invalid element
-expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" http://localhost/restconf/data/example:a=23/xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Unknown element: '
-fi
+expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" http://localhost/restconf/data/example:a=23/xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
 
 # Test for multi-module path where an augment stretches across modules
 new "restconf POST augment multi-namespace path"
@@ -181,8 +172,8 @@ new "restconf GET augment multi-namespace cross level 2"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config/dynamic/example:ospf/reference-bandwidth)" 0 'HTTP/1.1 200 OK' '{"example:reference-bandwidth":23}'
 
 # XXX actually no such element
-#new "restconf GET augment multi-namespace, no 2nd module in api-path, fail"
-#expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config/dynamic/ospf)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
+new "restconf GET augment multi-namespace, no 2nd module in api-path, fail"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config/dynamic/ospf)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
 
 new "Kill restconf daemon"
 stop_restconf 

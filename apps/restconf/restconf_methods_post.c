@@ -119,6 +119,7 @@ api_data_post(clicon_handle h,
     yang_stmt *ymodapi = NULL; /* yang module of api-path (if any) */
     yang_stmt *ymoddata = NULL; /* yang module of data (-d) */
     yang_stmt *yspec;
+    yang_stmt *ydata;
     cxobj     *xa;
     cxobj     *xret = NULL;
     cxobj     *xretcom = NULL; /* return from commit */
@@ -144,14 +145,9 @@ api_data_post(clicon_handle h,
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
     if (api_path){
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot)) < 0)
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot, &xerr)) < 0)
 	    goto done;
-	if (ybot)
-	    ymodapi = ys_module(ybot);
 	if (ret == 0){ /* validation failed */
-	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-		goto done;
-	    clicon_err_reset();
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
@@ -160,6 +156,8 @@ api_data_post(clicon_handle h,
 		goto done;
 	    goto ok;
 	}
+	if (ybot)
+	    ymodapi = ys_module(ybot);
     }
 #if 1
     if (debug){
@@ -250,30 +248,9 @@ api_data_post(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    xdata = xml_child_i(xdata0,0);
-
-    /* If the api-path (above) defines a module, then xdata must have a prefix
-     * and it match the module defined in api-path. 
-     * In a POST, maybe there are cornercases where xdata (which is a child) and
-     * xbot (which is the parent) may have non-matching namespaces?
-     * This does not apply if api-path is / (no module)
-     */
+    xdata = xml_child_i(xdata0, 0);
     if (ys_module_by_xml(yspec, xdata, &ymoddata) < 0)
 	goto done;
-    if (ymoddata && ymodapi){
-	if (ymoddata != ymodapi){
-	     if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
-		 goto done;
-	     if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
-	    		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    		goto done;
-	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-    }
-
     /* Add operation (create/replace) as attribute */
     if ((xa = xml_new("operation", xdata, NULL)) == NULL)
 	goto done;
@@ -289,6 +266,34 @@ api_data_post(clicon_handle h,
     nullspec = (xml_spec(xdata) == NULL);
     if (xml_apply0(xdata, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	goto done;
+    /* ybot is parent of spec(parent(data))) */
+    if (ymoddata && (ydata = xml_spec(xdata)) != NULL){
+	if (ys_real_module(ydata) != ymoddata){
+	     if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
+		 goto done;
+	     if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	    		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+	    		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+
+	}
+	/* If URI points out an object, then data's parent should be that object 
+	 */
+	if (ybot && yang_parent_get(ydata) != ybot){
+	     if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
+		 goto done;
+	     if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	    		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+	    		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
     if (media_in == YANG_DATA_JSON && nullspec){
 	/* json2xml decode may not have been done above in json_parse,
 	   need to be done here instead 
@@ -821,12 +826,9 @@ api_operations_post(clicon_handle h,
 	    goto done;
 	/* Here xtop is: <rpc username="foo"/> */
     }
-    if ((ret = api_path2xml(oppath, yspec, xtop, YC_SCHEMANODE, 1, &xbot, &y)) < 0)
+    if ((ret = api_path2xml(oppath, yspec, xtop, YC_SCHEMANODE, 1, &xbot, &y, &xerr)) < 0)
 	goto done;
     if (ret == 0){ /* validation failed */
-	if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-	    goto done;
-	clicon_err_reset();
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;

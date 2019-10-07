@@ -280,7 +280,7 @@ expectpart "$(curl -s -i -X DELETE  http://localhost/restconf/data/example:crypt
 
 # 2. set identity in other module with restconf , read it with restconf and netconf
 new "restconf add POST instead of PUT (should fail)"
-expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/example:crypto -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"crypto"},"error-severity":"error","error-message":"Leaf contains sub-element"}}}'
+expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/example:crypto -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Data is not prefixed with matching namespace"}}}'
 
 new "restconf add other (des) identity using POST"
 expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data  -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 201 Created' 'Location: http://localhost/restconf/data/example:crypto'

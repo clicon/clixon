@@ -245,6 +245,8 @@ cli_dbxml(clicon_handle       h,
     yang_stmt *y = NULL;        /* yang spec of xpath */
     cxobj     *xtop = NULL;     /* xpath root */
     cxobj     *xa;              /* attribute */
+    cxobj     *xerr = NULL;
+    int        ret;
 
     if (cvec_len(argv) != 1){
 	clicon_err(OE_PLUGIN, 0, "Requires one element to be xml key format string");
@@ -262,8 +264,14 @@ cli_dbxml(clicon_handle       h,
     if ((xtop = xml_new("config", NULL, NULL)) == NULL)
 	goto done;
     xbot = xtop;
-    if (api_path && api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y) < 1)
-	goto done; 
+    if (api_path){
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    clicon_rpc_generate_error("Modify datastore", xerr);
+	    goto done;
+	}
+    }
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
@@ -289,6 +297,8 @@ cli_dbxml(clicon_handle       h,
     }
     retval = 0;
  done:
+    if (xerr)
+	xml_free(xerr);
     if (cb)
 	cbuf_free(cb);
     if (api_path)
@@ -683,7 +693,7 @@ compare_dbs(clicon_handle h,
 {
     cxobj *xc1 = NULL; /* running xml */
     cxobj *xc2 = NULL; /* candidate xml */
-    cxobj *xerr;
+    cxobj *xerr = NULL;
     int    retval = -1;
     int    astext;
 
@@ -715,7 +725,6 @@ compare_dbs(clicon_handle h,
 	xml_free(xc1);    
     if (xc2)
 	xml_free(xc2);
-
     return retval;
 }
 

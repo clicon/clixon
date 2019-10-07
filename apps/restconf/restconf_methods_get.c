@@ -172,7 +172,6 @@ api_data_get2(clicon_handle h,
     if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &nsc, &xerr)) < 0)
 	goto done;
     if (ret == 0){
-	clicon_err_reset();
 	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;

@@ -338,14 +338,9 @@ api_data_write(clicon_handle h,
     /* Translate api_path to xml in the form of xtop/xbot */
     xbot = xtop;
     if (api_path){ /* If URI, otherwise top data/config object */
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot)) < 0)
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot, &xerr)) < 0)
 	    goto done;
-	if (ybot)
-	    ymodapi = ys_module(ybot);
 	if (ret == 0){ /* validation failed */
-	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-		goto done;
-	    clicon_err_reset();
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
@@ -354,6 +349,8 @@ api_data_write(clicon_handle h,
 		goto done;
 	    goto ok;
 	}
+	if (ybot)
+	    ymodapi = ys_module(ybot);
     }
     /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource.  (tested again below)
@@ -841,12 +838,9 @@ api_data_delete(clicon_handle h,
 	goto done;
     xbot = xtop;
     if (api_path){
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y)) < 0)
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
-	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-		goto done;
-	    clicon_err_reset();
 	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
