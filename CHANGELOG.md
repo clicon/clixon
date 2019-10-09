@@ -39,6 +39,8 @@
   * Replaced JSON `null` with `[null]` as proper empty JSON leaf/leaf-list encoding.
 	
 ### Minor changes
+* XPATH canonical form implemented for NETCONF get and get-config. This means that all callbacks (including state callbacks) will have the prefixes that corresponds to module prefixes. If an xpath have other prefixes (or null as default), they will be translated to canonical form before any callbacks.
+  * Example of a canonical form: `/a:x/a:y`, then symbols must belong to a yang module with prefix `a`.
 * Configure and test modification for better Freebsd port
 	
 ### Corrected Bugs

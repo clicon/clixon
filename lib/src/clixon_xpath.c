@@ -163,6 +163,7 @@ xpath_tree_print_cb(cbuf       *cb,
 /*! Print a xpath_tree
  * @param[in]  f   UNIX output stream
  * @param[in]  xs  XPATH tree
+ * @see xpath_tree2str
  */
 int
 xpath_tree_print(FILE  *f, 
@@ -182,7 +183,87 @@ xpath_tree_print(FILE  *f,
  done:
     return retval;
 }
-	
+
+/*! Create an xpath string from an xpath tree, ie "unparsing"
+ * @param[in]  xs    XPATH tree
+ * @param[out] xpath Xpath string as CLIgen buf
+ * @see xpath_tree_print
+ * @note NOT COMPLETE, just simple xpaths eg a/b
+ */
+int
+xpath_tree2cbuf(xpath_tree *xs,
+		cbuf       *xcb)
+{
+    int   retval = -1;
+
+    switch (xs->xs_type){
+    case XP_NODE: /* s0 is namespace prefix, s1 is name */
+	if (xs->xs_s0)
+	    cprintf(xcb, "%s:", xs->xs_s0);
+	cprintf(xcb, "%s", xs->xs_s1);
+	break;
+    case XP_ABSPATH:
+	if (xs->xs_int == A_DESCENDANT_OR_SELF)
+	    cprintf(xcb, "/");
+	cprintf(xcb, "/");
+	break;
+    case XP_PRIME_STR:
+	cprintf(xcb, "'%s'", xs->xs_s0);
+	break;
+    case XP_PRIME_NR:
+	cprintf(xcb, "%lf", xs->xs_double);
+	break;
+    case XP_STEP:
+	switch (xs->xs_int){
+	case A_SELF:
+	    cprintf(xcb, ".");
+	    break;
+	case A_PARENT:
+	    cprintf(xcb, "..");
+	    break;
+	default:
+	    break;
+	}
+	break;
+    default:
+	break;
+    }
+    if (xs->xs_c0 && xpath_tree2cbuf(xs->xs_c0, xcb) < 0)
+	goto done;
+    switch (xs->xs_type){
+    case XP_RELLOCPATH:
+	if (xs->xs_c1){
+	    if (xs->xs_int == A_DESCENDANT_OR_SELF)
+		cprintf(xcb, "/");
+	    cprintf(xcb, "/");
+	}
+	break;
+    case XP_PRED:
+	if (xs->xs_c1)
+	    cprintf(xcb, "[");
+	break;
+    case XP_RELEX:
+	if (xs->xs_c1)
+	    cprintf(xcb, "%s", clicon_int2str(xpopmap, xs->xs_int));
+	break;
+    default:
+	break;
+    }
+    if (xs->xs_c1 && xpath_tree2cbuf(xs->xs_c1, xcb) < 0)
+	goto done;
+    switch (xs->xs_type){
+    case XP_PRED:
+	if (xs->xs_c1)
+	    cprintf(xcb, "]");
+	break;
+    default:
+	break;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Free a xpath_tree
  * @param[in]  xs  XPATH tree
  * @see xpath_parse  creates a xpath_tree
@@ -202,26 +283,22 @@ xpath_tree_free(xpath_tree *xs)
     return 0;
 }
 
-/*! Given XML tree and xpath, parse xpath, eval it and return xpath context, 
- * This is a raw form of xpath where you can do type conversion, etc,
- * not just a nodeset.
- * @param[in]  nsc    External XML namespace context, or NULL
+/*! Given xpath, parse it, and return structured xpath tree 
  * @param[in]  xpath  String with XPATH 1.0 syntax
  * @param[out] xptree Xpath-tree, parsed, structured XPATH, free:xpath_tree_free
  * @retval     0      OK
  * @retval    -1      Error
  * @code
  *   xpath_tree     *xpt = NULL;
- *   if (xpath_parse(NULL, xpath, &xpt) < 0)
+ *   if (xpath_parse(xpath, &xpt) < 0)
  *     err;
  *   if (xpt)
- *	xptree_free(xpt);
+ *	xpath_tree_free(xpt);
  * @endcode
  * @see xpath_tree_free 
  */
 int
-xpath_parse(cvec        *nsc,
-	    char        *xpath,
+xpath_parse(char        *xpath,
 	    xpath_tree **xptree)
 {
     int                          retval = -1;
@@ -264,7 +341,7 @@ xpath_parse(cvec        *nsc,
  * This is a raw form of xpath where you can do type conversion of the return
  * value, etc, not just a nodeset.
  * @param[in]  xcur   XML-tree where to search
- * @param[in]  nsc     External XML namespace context, or NULL
+ * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH 1.0 syntax
  * @param[out] xrp    Return XPATH context
  * @retval     0      OK
@@ -287,7 +364,7 @@ xpath_vec_ctx(cxobj    *xcur,
     xpath_tree *xptree = NULL;
     xp_ctx      xc = {0,};
     
-    if (xpath_parse(nsc, xpath, &xptree) < 0)
+    if (xpath_parse(xpath, &xptree) < 0)
 	goto done;
     xc.xc_type = XT_NODESET;
     xc.xc_node = xcur;
@@ -688,3 +765,136 @@ xpath_vec_bool(cxobj *xcur,
     return retval;
 }
 
+static int
+traverse_canonical(xpath_tree *xs,
+		   yang_stmt  *yspec,
+		   cvec       *nsc0,
+		   cvec       *nsc1)
+{
+    int        retval = -1;
+    char      *prefix0;
+    char      *prefix1;
+    char      *namespace;
+    yang_stmt *ymod;
+
+    switch (xs->xs_type){
+    case XP_NODE: /* s0 is namespace prefix, s1 is name */
+	prefix0 = xs->xs_s0;
+	if ((namespace = xml_nsctx_get(nsc0, prefix0)) == NULL){
+	    clicon_err(OE_XML, ENOENT, "No namespace found for prefix: %s",
+		       prefix0);
+	    goto done;
+	}
+	if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
+	    clicon_err(OE_XML, ENOENT, "No modules found for namespace: %s",
+		       namespace);	    
+	    goto done;
+	}
+	if ((prefix1 = yang_find_myprefix(ymod)) == NULL){
+	    clicon_err(OE_XML, ENOENT, "No prefix found in module: %s",
+		       yang_argument_get(ymod));	    
+	    goto done;
+	}
+	if (xml_nsctx_get(nsc1, prefix1) == NULL)
+	    if (xml_nsctx_add(nsc1, prefix1, namespace) < 0)
+		goto done;
+	if (prefix0==NULL || strcmp(prefix0, prefix1) != 0){
+	    if (xs->xs_s0)
+		free(xs->xs_s0);
+	    if ((xs->xs_s0 = strdup(prefix1)) == NULL){
+		clicon_err(OE_UNIX, errno, "strdup");
+		goto done;
+	    }
+	}
+	break;
+    default:
+	break;
+    }	
+    if (xs->xs_c0)
+	if (traverse_canonical(xs->xs_c0, yspec, nsc0, nsc1) < 0)
+	    goto done;
+    if (xs->xs_c1)
+	if (traverse_canonical(xs->xs_c1, yspec, nsc0, nsc1) < 0)
+	    goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Translate an xpath/nsc pair to a "canonical" form using yang prefixes
+ * @param[in]  xpath0  Input xpath
+ * @param[in]  nsc0    Input namespace context
+ * @param[in]  yspec   Yang spec containing all modules, associated with namespaces
+ * @param[out] xpath1  Output xpath. Free after use with free
+ * @param[out] nsc1    Output namespace context. Free after use with xml_nsctx_free
+ * @retval     0       OK, xpath1 and nsc1 allocated
+ * @retval    -1       Error
+ * Example: 
+ *  Module A has prefix a and namespace urn:example:a and symbols x 
+ *  Module B with prefix b and namespace urn:example:b and symbols y
+ *  Then incoming:
+ *    xpath0: /x/c:y
+ *    nsc0:   NULL:"urn:example:a"; c:"urn:example:b"
+ *  will be translated to:
+ *    xpath1: /a:x/b:y
+ *    nsc1:   a:"urn:example:a"; b:"urn:example:b"
+ * @code
+ *   char *xpath1 = NULL;
+ *   cvec *nsc1 = NULL;
+ *   if (xpath2canonical(xpath0, nsc0, yspec, &xpath1, &nsc1) < 0)
+ *     err;
+ *   ...
+ *   if (xpath1) free(xpath1);
+ *   if (nsc1) xml_nsctx_free(nsc1);
+ * @endcode
+ */
+int
+xpath2canonical(char      *xpath0,
+		cvec      *nsc0,
+		yang_stmt *yspec,
+		char     **xpath1,
+		cvec     **nsc1p)
+{
+    int         retval = -1;
+    xpath_tree *xpt = NULL;
+    cvec       *nsc1 = NULL;
+    cbuf       *xcb = NULL;
+
+    /* Parse input xpath into an xpath-tree */
+    if (xpath_parse(xpath0, &xpt) < 0)
+	goto done;
+    /* Create new nsc */
+     if ((nsc1 = xml_nsctx_init(NULL, NULL)) == NULL)
+	 goto done;
+    /* Traverse tree to find prefixes, transform them to canonical form and
+     * create a canonical network namespace
+     */
+     if (traverse_canonical(xpt, yspec, nsc0, nsc1) < 0)
+	goto done;
+     /* Print tree with new prefixes */
+     if ((xcb = cbuf_new()) == NULL){
+	 clicon_err(OE_XML, errno, "cbuf_new");
+	 goto done;
+     }
+     if (xpath_tree2cbuf(xpt, xcb) < 0)
+	 goto done;
+     if (xpath1){
+	 if ((*xpath1 = strdup(cbuf_get(xcb))) == NULL){
+	     clicon_err(OE_UNIX, errno, "strdup");
+	     goto done;
+	 }
+     }
+    if (nsc1p){
+	*nsc1p = nsc1;
+	nsc1 = NULL;
+    }
+    retval = 0;
+ done:
+    if (xcb)
+	cbuf_free(xcb);
+    if (nsc1)
+	xml_nsctx_free(nsc1);
+    if (xpt)
+	xpath_tree_free(xpt);
+    return retval;
+}

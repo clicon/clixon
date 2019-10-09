@@ -2513,7 +2513,7 @@ api_path2xpath_cvv(cvec       *api_path,
 	    xprefix = yang_find_myprefix(y);
 	    clicon_debug(1, "%s prefix not found add it %s", __FUNCTION__, xprefix);
 	    /* not found, add it to nsc  */
-	    if (xml_nsctx_set(nsc, xprefix, namespace) < 0)
+	    if (xml_nsctx_add(nsc, xprefix, namespace) < 0)
 		goto done;
 	}
 	/* Check if has value, means '=' */

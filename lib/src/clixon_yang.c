@@ -807,8 +807,8 @@ yang_find_mynamespace(yang_stmt *ys)
  * @param[out] prefix    Local prefix to access module with (direct pointer)
  * @retval     0         not found
  * @retval    -1         found
- * @code
  * @note  prefix NULL is not returned, if own module, then return its prefix
+ * @code
  * char *pfx = yang_find_prefix_by_namespace(ys, "urn:example:clixon", &prefix);
  * @endcode
  */

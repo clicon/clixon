@@ -334,7 +334,7 @@ expecteq(){
 # Example: expecteq $(fn arg) 0 "my return"
 # - evaluated expression
 # - expected command return value (0 if OK)
-# - expected stdout outcome
+# - expected stdout outcome*
 expectpart(){
   r=$?
   ret=$1

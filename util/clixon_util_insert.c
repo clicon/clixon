@@ -185,7 +185,7 @@ main(int argc, char **argv)
 	clicon_debug(1, "xi:");
 	xml_print(stderr, xi);
     }
-    if (xml_insert(xb, xi, INS_LAST, NULL) < 0) 
+    if (xml_insert(xb, xi, INS_LAST, NULL, NULL) < 0) 
 	goto done;
     if (debug){
 	clicon_debug(1, "x0:");

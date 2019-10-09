@@ -369,7 +369,7 @@ from_client_get_config(clicon_handle h,
     int     retval = -1;
     char   *db;
     cxobj  *xfilter;
-    char   *xpath = "/";
+    char   *xpath = NULL;
     cxobj  *xret = NULL;
     cbuf   *cbx = NULL; /* Assist cbuf */
     cxobj  *xnacm = NULL;
@@ -378,8 +378,13 @@ from_client_get_config(clicon_handle h,
     int     ret;
     char   *username;
     cvec   *nsc = NULL; /* Create a netconf namespace context from filter */
-
+    yang_stmt *yspec;
+    
     username = clicon_username_get(h);
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec9");
+	goto done;
+    }
     if ((db = netconf_db_find(xe, "source")) == NULL){
 	clicon_err(OE_XML, 0, "db not found");
 	goto done;
@@ -395,8 +400,11 @@ from_client_get_config(clicon_handle h,
 	goto ok;
     }
     if ((xfilter = xml_find(xe, "filter")) != NULL){
-	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
-	    xpath="/";
+	char *xpath0;
+	cvec *nsc1 = NULL;
+
+	if ((xpath0 = xml_find_value(xfilter, "select"))==NULL)
+	    xpath0="/";
 	/* Create namespace context for xpath from <filter>
 	 *  The set of namespace declarations are those in scope on the
 	 * <filter> element.
@@ -404,6 +412,11 @@ from_client_get_config(clicon_handle h,
 	else
 	    if (xml_nsctx_node(xfilter, &nsc) < 0)
 		goto done;
+	if (xpath2canonical(xpath0, nsc, yspec, &xpath, &nsc1) < 0)
+	    goto done;
+	if (nsc)
+	    xml_nsctx_free(nsc);
+	nsc = nsc1;
     }
     /* Note xret can be pruned by nacm below (and change name),
      * so zero-copy cant be used
@@ -437,6 +450,8 @@ from_client_get_config(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (xpath)
+	free(xpath);
     if (xnacm)
 	xml_free(xnacm);
     if (xvec)
@@ -868,7 +883,7 @@ from_client_get(clicon_handle h,
 {
     int     retval = -1;
     cxobj  *xfilter;
-    char   *xpath = "/";
+    char   *xpath = NULL;
     cxobj  *xret = NULL;
     int     ret;
     cxobj **xvec = NULL;
@@ -879,11 +894,18 @@ from_client_get(clicon_handle h,
     char   *attr;
     netconf_content content = CONTENT_ALL;
     int32_t depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
+    yang_stmt *yspec;
     
     username = clicon_username_get(h);
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec9");
+	goto done;
+    }
     if ((xfilter = xml_find(xe, "filter")) != NULL){
-	if ((xpath = xml_find_value(xfilter, "select"))==NULL)
-	    xpath="/";
+	char *xpath0;
+	cvec *nsc1 = NULL;
+	if ((xpath0 = xml_find_value(xfilter, "select"))==NULL)
+	    xpath0 = "/";
 	/* Create namespace context for xpath from <filter>
 	 *  The set of namespace declarations are those in scope on the
 	 * <filter> element.
@@ -891,6 +913,11 @@ from_client_get(clicon_handle h,
 	else
 	    if (xml_nsctx_node(xfilter, &nsc) < 0)
 		goto done;
+	if (xpath2canonical(xpath0, nsc, yspec, &xpath, &nsc1) < 0)
+	    goto done;
+	if (nsc)
+	    xml_nsctx_free(nsc);
+	nsc = nsc1;
     }
     /* Clixon extensions: depth and content */
     if ((attr = xml_find_value(xe, "content")) != NULL)
@@ -909,7 +936,6 @@ from_client_get(clicon_handle h,
 	    goto ok;
 	}
     }
-    
     if (content != CONTENT_NONCONFIG){
 	/* Get config 
 	 * Note xret can be pruned by nacm below and change name and
@@ -958,6 +984,8 @@ from_client_get(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xpath)
+	free(xpath);
     if (xnacm)
 	xml_free(xnacm);
     if (xvec)

@@ -295,7 +295,7 @@ nscache_set(cxobj *x,
 	    goto done;
     }
     else 
-	return xml_nsctx_set(x->x_ns_cache, prefix, namespace);
+	return xml_nsctx_add(x->x_ns_cache, prefix, namespace);
     retval = 0;
  done:
     return retval;

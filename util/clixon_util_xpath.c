@@ -69,6 +69,8 @@ usage(char *argv0)
 	    "\t-f <file>  \tXML file\n"
 	    "\t-p <xpath> \tPrimary XPATH string\n"
 	    "\t-i <xpath0>\t(optional) Initial XPATH string\n"
+	    "\t-n <pfx:id>\tNamespace binding (pfx=NULL for default)\n"
+	    "\t-c \t\tMap xpath to canonical form\n"
 	    "\t-y <filename> \tYang filename or dir (load all files)\n"
     	    "\t-Y <dir> \tYang dirs (can be several)\n"
 	    "and the following extra rules:\n"
@@ -130,7 +132,9 @@ main(int    argc,
     xp_ctx     *xc = NULL;
     cbuf       *cb = NULL;
     clicon_handle h;
-    struct stat   st;
+    struct stat st;
+    cvec       *nsc = NULL;
+    int         canonical = 0;
 
     clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
 
@@ -139,7 +143,7 @@ main(int    argc,
 
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, "hD:f:p:i:y:Y:")) != -1)
+    while ((c = getopt(argc, argv, "hD:f:p:i:n:cy:Y:")) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv0);
@@ -160,6 +164,29 @@ main(int    argc,
 	    break;
 	case 'i': /* Optional initial XPATH string */
 	    xpath0 = optarg;
+	    break;
+	case 'n':{ /* Namespace binding */
+	    char *prefix;
+	    char *id;
+	    if (nsc == NULL &&
+		(nsc = xml_nsctx_init(NULL, NULL)) == NULL)
+		goto done;
+	    if (nodeid_split(optarg, &prefix, &id) < 0)
+		goto done;
+	    if (prefix && strcmp(prefix, "null")==0){
+		free(prefix);
+		prefix = NULL;
+	    }
+	    if (xml_nsctx_add(nsc, prefix, id) < 0)
+		goto done;
+	    if (prefix)
+		free(prefix);
+	    if (id)
+		free(id);
+	    break;
+	}
+	case 'c': /* Map namespace to canonical form */
+	    canonical = 1;
 	    break;
 	case 'y':
 	    yang_file_dir = optarg;
@@ -220,6 +247,24 @@ main(int    argc,
 	}
 	xpath = buf;
     }
+
+    /* If canonical, translate nsc and xpath to canonical form */
+    if (canonical){
+	char *xpath1 = NULL;
+	cvec *nsc1 = NULL;
+	if (xpath2canonical(xpath, nsc, yspec, &xpath1, &nsc1) < 0)
+	    goto done;
+	xpath = xpath1;
+	if (xpath)
+	    fprintf(stdout, "%s\n", xpath);
+	if (nsc)
+	    xml_nsctx_free(nsc);
+	nsc = nsc1;
+	if (nsc)
+	    cvec_print(stdout, nsc);
+	goto ok; /* need a switch to continue, now just print and quit */
+    }
+
     /* 
      * If fd=0, then continue reading from stdin (after CR)
      * If fd>0, reading from file opened as argv[1]
@@ -270,16 +315,19 @@ main(int    argc,
 	x = x0;
 
     /* Parse XPATH (use nsc == NULL to indicate dont use) */
-    if (xpath_vec_ctx(x, NULL, xpath, &xc) < 0)
+    if (xpath_vec_ctx(x, nsc, xpath, &xc) < 0)
 	return -1;
     /* Print results */
     cb = cbuf_new();
     ctx_print2(cb, xc);
     fprintf(stdout, "%s\n", cbuf_get(cb));
+ ok:
     retval = 0;
  done:
     if (cb)
 	cbuf_free(cb);
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (xc)
 	ctx_free(xc);
     if (xv)

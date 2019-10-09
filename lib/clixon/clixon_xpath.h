@@ -115,8 +115,9 @@ typedef struct xpath_tree xpath_tree;
 char* xpath_tree_int2str(int nodetype);
 int   xpath_tree_print_cb(cbuf *cb, xpath_tree *xs);
 int   xpath_tree_print(FILE *f, xpath_tree *xs);
+int   xpath_tree2cbuf(xpath_tree *xs, cbuf *xpathcb);
 int   xpath_tree_free(xpath_tree *xs);
-int   xpath_parse(cvec *nsc, char *xpath, xpath_tree **xptree);
+int   xpath_parse(char *xpath, xpath_tree **xptree);
 int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, char *xpath, xp_ctx  **xrp);
 
 #if defined(__GNUC__) && __GNUC__ >= 3
@@ -151,5 +152,6 @@ int    xpath_vec(cxobj *xcur, char *xpformat, cxobj ***vec, size_t *veclen, ...)
 cxobj *xpath_first(cxobj *xcur, char *xpformat, ...);
 int    xpath_vec(cxobj *xcur, char *xpformat, cxobj  ***vec, size_t *veclen, ...);
 #endif
+int xpath2canonical(char *xpath0, cvec *nsc0, yang_stmt *yspec, char **xpath1, cvec **nsc1);
 
 #endif /* _CLIXON_XPATH_H */

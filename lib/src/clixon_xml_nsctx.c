@@ -68,6 +68,53 @@
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
 
+/*! Create and initialize XML namespace context
+ * @param[in] prefix    Namespace prefix, or NULL for default
+ * @param[in] namespace Set this namespace. If NULL create empty nsctx
+ * @retval    nsc       Return namespace context in form of a cvec
+ * @retval    NULL      Error
+ * @code
+ * cvec *nsc = NULL;
+ * if ((nsc = xml_nsctx_init(NULL, "urn:example:example")) == NULL)
+ *   err;
+ * ...
+ * xml_nsctx_free(nsc);
+ * @endcode
+ * @see xml_nsctx_node  Use namespace context of an existing XML node
+ * @see xml_nsctx_free  Free the reutned handle
+ */
+cvec *
+xml_nsctx_init(char  *prefix,
+	       char  *namespace)
+{
+    cvec *cvv = NULL;
+
+    if ((cvv = cvec_new(0)) == NULL){
+	clicon_err(OE_XML, errno, "cvec_new");
+	goto done;
+    }
+    if (namespace && xml_nsctx_add(cvv, prefix, namespace) < 0)
+	goto done;
+ done:
+    return cvv;
+}
+
+/*! Free XML namespace context
+ * @param[in] prefix    Namespace prefix, or NULL for default
+ * @param[in] namespace Cached namespace to set (assume non-null?)
+ * @retval    nsc       Return namespace context in form of a cvec
+ * @retval    NULL      Error
+ */
+int
+xml_nsctx_free(cvec *nsc)
+{
+    cvec *cvv = (cvec*)nsc;
+
+    if (cvv)
+	cvec_free(cvv);
+    return 0;
+}
+
 /*! Get namespace given prefix (or NULL for default) from namespace context
  * @param[in] cvv    Namespace context
  * @param[in] prefix Namespace prefix, or NULL for default
@@ -120,7 +167,7 @@ xml_nsctx_get_prefix(cvec  *cvv,
  * @retval   -1         Error
  */
 int
-xml_nsctx_set(cvec  *cvv,
+xml_nsctx_add(cvec  *cvv,
 	      char  *prefix,
 	      char  *namespace)
 {
@@ -136,36 +183,6 @@ xml_nsctx_set(cvec  *cvv,
     return retval;
 }
 
-/*! Create and initialize XML namespace context
- * @param[in] prefix    Namespace prefix, or NULL for default
- * @param[in] namespace Set this namespace. If NULL create empty nsctx
- * @retval    nsc       Return namespace context in form of a cvec
- * @retval    NULL      Error
- * @code
- * cvec *nsc = NULL;
- * if ((nsc = xml_nsctx_init(NULL, "urn:example:example")) == NULL)
- *   err;
- * ...
- * xml_nsctx_free(nsc);
- * @endcode
- * @see xml_nsctx_node  Use namespace context of an existing XML node
- * @see xml_nsctx_free  Free the reutned handle
- */
-cvec *
-xml_nsctx_init(char  *prefix,
-	       char  *namespace)
-{
-    cvec *cvv = NULL;
-
-    if ((cvv = cvec_new(0)) == NULL){
-	clicon_err(OE_XML, errno, "cvec_new");
-	goto done;
-    }
-    if (namespace && xml_nsctx_set(cvv, prefix, namespace) < 0)
-	goto done;
- done:
-    return cvv;
-}
 
 static int
 xml_nsctx_node1(cxobj *xn,
@@ -188,7 +205,7 @@ xml_nsctx_node1(cxobj *xn,
 	    if (strcmp(nm, "xmlns")==0 && /* set default namespace context */
 		xml_nsctx_get(nsc, NULL) == NULL){
 		val = xml_value(xa);
-		if (xml_nsctx_set(nsc, NULL, val) < 0)
+		if (xml_nsctx_add(nsc, NULL, val) < 0)
 		    goto done;
 	    }
 	}
@@ -196,7 +213,7 @@ xml_nsctx_node1(cxobj *xn,
 	    if (strcmp(pf, "xmlns")==0 && /* set prefixed namespace context */
 		xml_nsctx_get(nsc, nm) == NULL){
 		val = xml_value(xa);
-		if (xml_nsctx_set(nsc, nm, val) < 0)
+		if (xml_nsctx_add(nsc, nm, val) < 0)
 		    goto done;
 	    }
     }
@@ -204,7 +221,7 @@ xml_nsctx_node1(cxobj *xn,
 #ifdef USE_NETCONF_NS_AS_DEFAULT
 	/* If not default namespace defined, use the base netconf ns as default */
 	if (xml_nsctx_get(nsc, NULL) == NULL)
-	    if (xml_nsctx_set(nsc, NULL, NETCONF_BASE_NAMESPACE) < 0)
+	    if (xml_nsctx_add(nsc, NULL, NETCONF_BASE_NAMESPACE) < 0)
 		goto done;
 #endif
     }
@@ -300,9 +317,9 @@ xml_nsctx_yang(yang_stmt *yn,
 	goto done;
     }
     /* Add my prefix and default namespace (from real module) */
-    if (xml_nsctx_set(nc, NULL, mynamespace) < 0)
+    if (xml_nsctx_add(nc, NULL, mynamespace) < 0)
 	goto done;
-    if (xml_nsctx_set(nc, myprefix, mynamespace) < 0)
+    if (xml_nsctx_add(nc, myprefix, mynamespace) < 0)
 	goto done;
     /* Find top-most module or sub-module and get prefixes from that */
     if ((ymod = ys_module(yn)) == NULL){
@@ -328,7 +345,7 @@ xml_nsctx_yang(yang_stmt *yn,
 		continue;
 	    if ((namespace = yang_argument_get(yns)) == NULL)
 		continue;
-	    if (xml_nsctx_set(nc, prefix, namespace) < 0)
+	    if (xml_nsctx_add(nc, prefix, namespace) < 0)
 		goto done;
 	}
     }
@@ -338,18 +355,3 @@ xml_nsctx_yang(yang_stmt *yn,
     return retval;
 }
 
-/*! Free XML namespace context
- * @param[in] prefix    Namespace prefix, or NULL for default
- * @param[in] namespace Cached namespace to set (assume non-null?)
- * @retval    nsc       Return namespace context in form of a cvec
- * @retval    NULL      Error
- */
-int
-xml_nsctx_free(cvec *nsc)
-{
-    cvec *cvv = (cvec*)nsc;
-
-    if (cvv)
-	cvec_free(cvv);
-    return 0;
-}

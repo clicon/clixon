@@ -116,7 +116,6 @@ api_data_post(clicon_handle h,
     cxobj     *xtop = NULL; /* top of api-path */
     cxobj     *xbot = NULL; /* bottom of api-path */
     yang_stmt *ybot = NULL; /* yang of xbot */
-    yang_stmt *ymodapi = NULL; /* yang module of api-path (if any) */
     yang_stmt *ymoddata = NULL; /* yang module of data (-d) */
     yang_stmt *yspec;
     yang_stmt *ydata;
@@ -156,8 +155,6 @@ api_data_post(clicon_handle h,
 		goto done;
 	    goto ok;
 	}
-	if (ybot)
-	    ymodapi = ys_module(ybot);
     }
 #if 1
     if (debug){
