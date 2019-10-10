@@ -737,6 +737,8 @@ text_modify(clicon_handle       h,
     } /* else Y_CONTAINER  */
     retval = 1;
  done:
+    if (nscx1)
+	xml_nsctx_free(nscx1);
     /* Remove dangling added objects */
     if (changed && x0 && xml_parent(x0)==NULL)
 	xml_purge(x0);

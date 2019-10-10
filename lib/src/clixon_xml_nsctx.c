@@ -248,7 +248,7 @@ xml_nsctx_node1(cxobj *xn,
  * xml_nsctx_free(nsc)
  * @endcode
  * @see xml_nsctx_init
- * @see xml_nsctx_free  Free the reutned handle
+ * @see xml_nsctx_free  Free the returned handle
  */
 int
 xml_nsctx_node(cxobj *xn,
