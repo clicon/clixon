@@ -190,7 +190,7 @@ stop_backend(){
 
 # Wait for restconf to stop sending  502 Bad Gateway
 wait_backend(){
-    reply=$(echo '<rpc message-id="101"><ping xmlns="http://clicon.org/lib"/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null) 
+    reply=$(echo '<rpc message-id="101"><ping xmlns="http://clicon.org/lib"/></rpc>]]>]]>' | $clixon_netconf -qef $cfg 2> /dev/null) 
     let i=0;
     while [[ $reply != "<rpc-reply"* ]]; do
 	sleep 1
@@ -205,14 +205,14 @@ wait_backend(){
 
 start_restconf(){
     # Start in background 
-    sudo su -c "$clixon_restconf $RCLOG -D $DBG $*" -s /bin/sh www-data &
+    sudo -u $wwwuser -s $clixon_restconf $RCLOG -D $DBG $* &
     if [ $? -ne 0 ]; then
 	err
     fi
 }
 
 stop_restconf(){
-    sudo pkill -u www-data -f "/www-data/clixon_restconf"
+    sudo pkill -u $wwwuser -f "$clixon_restconf"
     if [ $valgrindtest -eq 3 ]; then 
 	sleep 1
 	checkvalgrind
@@ -292,7 +292,7 @@ expectfn(){
     let i=0;
     for exp in "$@"; do
 	if [ $i -gt 1 ]; then
-	    match=`echo $ret | grep -EZo "$exp"`
+	    match=`echo $ret | grep --null -Eo "$exp"`
 	    if [ -z "$match" ]; then
 		err "$exp" "$ret"
 	    fi
@@ -357,7 +357,7 @@ expectpart(){
   for exp in "$@"; do
        if [ $i -gt 1 ]; then
 #      echo "exp:$exp"
-	  match=`echo $ret | grep -Zo "$exp"` # XXX -EZo: -E cant handle {}
+	  match=`echo $ret | grep --null -o "$exp"` # XXX -EZo: -E cant handle {}
 	  if [ -z "$match" ]; then
 	      err "$exp" "$ret"
 	  fi
@@ -403,12 +403,13 @@ EOF
       return
   fi
   # -G for basic regexp (eg ^$). -E for extended regular expression - differs in \
-  # -Z for nul character, -x for implicit ^$ -q for quiet
+  # --null for nul character, -x for implicit ^$ -q for quiet
   # -o only matching
-  # Two variants: -EZo and -Fxq
-  #  match=`echo "$ret" | grep -FZo "$expect"`
-  r=$(echo "$ret" | grep -GZo "$expect")
+  # Two variants: --null -Eo and -Fxq
+  #  match=`echo "$ret" | grep --null -Fo "$expect"`
+  r=$(echo "$ret" | grep --null -Go "$expect")
   match=$?
+
 #  echo "r:\"$r\""
 #  echo "ret:\"$ret\""
 #  echo "expect:\"$expect\""
@@ -564,7 +565,7 @@ expectmatch(){
 	    err "$expect" "$ret"
 	fi
 	if [ -n "$expect2" ]; then
-	    match=`echo "$ret" | grep -EZo "$expect2"`
+	    match=`echo "$ret" | grep --null -Eo "$expect2"`
 	    if [ -z "$match" ]; then
 		err $expect "$ret"
 	    fi

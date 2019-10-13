@@ -78,3 +78,9 @@ You may add your site-specific modifications in a `site.sh` file. Example:
   IETFRFC=$YANGMODELS/standard/ietf/RFC
 ```
 
+## FreeBSD
+
+To run on freebsd:
+```
+wwwuser=www clixon_restconf=/usr/local/sbin/clixon_restconf ./all.sh
+```

@@ -75,7 +75,7 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "kill old restconf daemon"
-sudo pkill -u www-data -f "/www-data/clixon_restconf"
+sudo pkill -u $wwwuser clixon_restconf
 
 new "start restconf daemon"
 start_restconf -f $cfg
