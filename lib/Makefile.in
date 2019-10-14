@@ -56,7 +56,7 @@ $(SUBDIRS):
 
 install:
 	for i in $(SUBDIRS); \
-	do (cd $$i && $(MAKE) $(MFLAGS) $@); done
+	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done
 
 install-include:
 	for i in $(SUBDIRS); \
@@ -72,12 +72,12 @@ config.status:	configure
 
 clean:
 	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) clean); done
+	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done
 
 distclean:	clean
 	rm -f Makefile *~ .depend
 	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) distclean); done; \
+	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done; \
 	(cd clixon; $(MAKE) $(MFLAGS) $@)
 
 TAGS:

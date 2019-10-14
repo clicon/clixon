@@ -165,7 +165,7 @@ pidfile_zapold(pid_t pid)
     if ((kill (pid, 0)) != 0 && errno == ESRCH) /* Nothing there */
 	;
     else{ /* problem: couldnt kill it */
-	clicon_err(OE_DEMON, errno, "Killing old demon");
+	clicon_err(OE_DAEMON, errno, "Killing old demon");
 	return -1;
     }
     return 0;
@@ -184,13 +184,13 @@ pidfile_write(char *pidfile)
     /* Here, there should be no old agent and no pidfile */
     if ((f = fopen(pidfile, "w")) == NULL){
 	if (errno == EACCES)
-	    clicon_err(OE_DEMON, errno, "Creating pid-file %s (Try run as root?)", pidfile);
+	    clicon_err(OE_DAEMON, errno, "Creating pid-file %s (Try run as root?)", pidfile);
 	else
-	    clicon_err(OE_DEMON, errno, "Creating pid-file %s", pidfile);
+	    clicon_err(OE_DAEMON, errno, "Creating pid-file %s", pidfile);
 	goto done;
     } 
     if ((retval = fprintf(f, "%ld\n", (long) getpid())) < 1){
-	clicon_err(OE_DEMON, errno, "Could not write pid to %s", pidfile);
+	clicon_err(OE_DAEMON, errno, "Could not write pid to %s", pidfile);
 	goto done;
     }
     clicon_debug(1, "Opened pidfile %s with pid %d", pidfile, getpid());

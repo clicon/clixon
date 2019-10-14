@@ -4,10 +4,13 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+# Eg on FreeBSD use gmake
+: ${make:=make}
+
 new "Set up installdir $dir"
 
-new "Make DESTDIR install"
-(cd ..; make DESTDIR=$dir install)
+new "Make DESTDIR install ($dir)"
+(cd ..; $make DESTDIR=$dir install)
 if [ $? -ne 0 ]; then
     err
 fi
@@ -33,7 +36,7 @@ if [ ! -h $dir/usr/local/lib/libclixon_backend.so ]; then
 fi
 
 new "Make DESTDIR install include"
-(cd ..; make DESTDIR=$dir install-include)
+(cd ..; $make DESTDIR=$dir install-include)
 if [ $? -ne 0 ]; then
     err
 fi
@@ -42,7 +45,7 @@ if [ ! -f $dir/usr/local/include/clixon/clixon.h ]; then
     err $dir/usr/local/include/clixon/clixon.h
 fi
 new "Make DESTDIR uninstall"
-(cd ..; make DESTDIR=$dir uninstall)
+(cd ..; $make DESTDIR=$dir uninstall)
 if [ $? -ne 0 ]; then
     err
 fi

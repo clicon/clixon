@@ -124,7 +124,7 @@ expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"
 new "restconf get config example1 and example2"
 ret=$(curl -s -X GET http://localhost/restconf/data)
 expect='"example1:x":42,"example2:x":{"y":99}'
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi

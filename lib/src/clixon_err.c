@@ -85,7 +85,7 @@ char clicon_err_reason[ERR_STRLEN] = {0, };
  */
 static struct errvec EV[] = {
     {"Database error",         OE_DB},
-    {"Demon error",            OE_DEMON},
+    {"Daemon error",           OE_DAEMON},
     {"Event error",            OE_EVENTS},
     {"Config error",           OE_CFG},
     {"Protocol error",         OE_PROTO},

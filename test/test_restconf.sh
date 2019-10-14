@@ -80,7 +80,7 @@ expecteq "$(curl -sG http://localhost/restconf/operations)" 0 '{"operations":{"c
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/operations)
 expect='<operations><client-rpc xmlns="urn:example:clixon"/><empty xmlns="urn:example:clixon"/><optional xmlns="urn:example:clixon"/><example xmlns="urn:example:clixon"/><debug xmlns="http://clicon.org/lib"/><ping xmlns="http://clicon.org/lib"/><get-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><copy-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><delete-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><lock xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><unlock xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><get xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><close-session xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><kill-session xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><commit xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><discard-changes xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><validate xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"/></operations>'
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
@@ -91,7 +91,7 @@ expecteq "$(curl -sG http://localhost/restconf/yang-library-version)" 0 '{"yang-
 new "restconf get restconf/yang-library-version. RFC8040 3.3.3 (xml)"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/yang-library-version)
 expect="<yang-library-version>2016-06-21</yang-library-version>"
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
@@ -132,7 +132,7 @@ expectpart "$(curl -siSG http://localhost/restconf/data/badmodule:state)" 0 'HTT
 new "restconf get empty config + state xml"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/clixon-example:state)
 expect='<state xmlns="urn:example:clixon"><op>42</op><op>41</op><op>43</op></state>'
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
@@ -145,7 +145,7 @@ new "restconf get state operation"
 # Cant get shell macros to work, inline matching from lib.sh
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/clixon-example:state/op=42)
 expect='<op xmlns="urn:example:clixon">42</op>'
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
@@ -158,7 +158,7 @@ new "restconf get state operation type xml"
 # Cant get shell macros to work, inline matching from lib.sh
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/clixon-example:state/op=42)
 expect='<op xmlns="urn:example:clixon">42</op>'
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
@@ -250,7 +250,7 @@ expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{}
 new "restconf rpc using POST xml"
 ret=$(curl -s -X POST -H "Content-Type: application/yang-data+json" -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"x":42}}' http://localhost/restconf/operations/clixon-example:example)
 expect='<output xmlns="urn:example:clixon"><x>42</x><y>42</y></output>'
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
@@ -261,7 +261,7 @@ expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"
 new "restconf local client rpc using POST xml"
 ret=$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"x":"example"}}' http://localhost/restconf/operations/clixon-example:client-rpc)
 expect='<output xmlns="urn:example:clixon"><x>example</x></output>'
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi

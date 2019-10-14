@@ -58,7 +58,7 @@
 enum clicon_err{
     /* 0 means error not set) */  
     OE_DB = 1,   /* database registries */
-    OE_DEMON,    /* demons: pidfiles, etc */
+    OE_DAEMON,    /* demons: pidfiles, etc */
     OE_EVENTS,   /* events, filedescriptors, timeouts */
     OE_CFG,      /* configuration */
     OE_PROTO,    /* config/client communication */

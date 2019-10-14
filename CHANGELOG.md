@@ -10,6 +10,7 @@
   * If dropped temporary, you can restore privileges with `restore_priv()`
 
 ### API changes on existing features (you may need to change your code)
+* In logs and debug changed "Demon error" to "Daemon error".	
 * Stricter handling of multi-namespace handling
   * This occurs in cases where there are more than one XML namespaces in a config tree, such as `augment`:ed trees.
   * Affects all parts of the system, including datastore, backend, restconf and cli.

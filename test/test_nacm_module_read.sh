@@ -181,7 +181,7 @@ expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-ex
 new "admin read top ok (all)"
 ret=$(curl -u andy:bar -sS -X GET http://localhost/restconf/data)
 expect='{"data":{"nacm-example:x":42,"clixon-example:translate":'
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi

@@ -626,15 +626,15 @@ main(int    argc,
     clicon_debug_init(debug, NULL); 
     clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
-	clicon_err(OE_DEMON, errno, "Setting signal");
+	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
     }
     if (set_signal(SIGINT, restconf_sig_term, NULL) < 0){
-	clicon_err(OE_DEMON, errno, "Setting signal");
+	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
     }
     if (set_signal(SIGCHLD, restconf_sig_child, NULL) < 0){
-	clicon_err(OE_DEMON, errno, "Setting signal");
+	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
     }
 

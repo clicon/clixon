@@ -107,7 +107,7 @@ expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=
 new "restconf GET interface subtree xml"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/example:cont1/interface=local0)
 expect='<interface xmlns="urn:example:clixon"><name>local0</name><type>regular</type></interface>'
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi

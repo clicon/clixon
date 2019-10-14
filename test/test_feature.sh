@@ -123,14 +123,14 @@ EOF
 
 new "netconf modules-state header"
 expect='^<rpc-reply><data><modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"><module><name>'
-match=`echo "$ret" | grep -GZo "$expect"`
+match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
 
 new "netconf module A"
 expect="<module><name>example</name><revision/><namespace>urn:example:clixon</namespace><feature>A</feature><conformance-type>implement</conformance-type></module>"
-match=`echo "$ret" | grep -GZo "$expect"`
+match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
@@ -138,7 +138,7 @@ fi
 if false ; then # clixon "config" bug
 new "netconf module clixon-config"
 expect="<module><name>clixon-config</name><revision>2018-09-30</revision><namespace/></module>"
-match=`echo "$ret" | grep -GZo "$expect"`
+match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
@@ -146,14 +146,14 @@ fi # false
 
 new "netconf module ietf-inet-types"
 expect="<module><name>ietf-inet-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace><conformance-type>implement</conformance-type></module>"
-match=`echo "$ret" | grep -GZo "$expect"`
+match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
 
 new "netconf module ietf-interfaces"
 expect="<module><name>ietf-interfaces</name><revision>2018-02-20</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace><conformance-type>implement</conformance-type></module>"
-match=`echo "$ret" | grep -GZo "$expect"`
+match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
@@ -161,26 +161,26 @@ fi
 # Note order of features in ietf-netconf yang is alphabetically: candidate, startup, validate, xpath
 new "netconf module ietf-netconf"
 expect="<module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace><feature>candidate</feature><feature>validate</feature><feature>xpath</feature><conformance-type>implement</conformance-type></module>"
-match=`echo "$ret" | grep -GZo "$expect"`
+match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
 
 new "netconf module ietf-routing"
 expect="<module><name>ietf-routing</name><revision>2018-03-13</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-routing</namespace><feature>router-id</feature><conformance-type>implement</conformance-type></module>"
-match=`echo "$ret" | grep -GZo "$expect"`
+match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
 expect="<module><name>ietf-yang-library</name><revision>2016-06-21</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace><conformance-type>implement</conformance-type></module>"
-match=`echo "$ret" | grep -GZo "$expect"`
+match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
 
 new "netconf module ietf-yang_types"
 expect="<module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace><conformance-type>implement</conformance-type></module>"
-match=`echo "$ret" | grep -GZo "$expect"`
+match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi

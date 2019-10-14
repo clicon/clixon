@@ -273,19 +273,19 @@ check_drop_priv(clicon_handle h,
     /* From here, drop privileges */
     /* Check backend user exists */
     if ((backend_user = clicon_backend_user(h)) == NULL){
-	clicon_err(OE_DEMON, EPERM, "Privileges cannot be dropped without specifying CLICON_BACKEND_USER\n");
+	clicon_err(OE_DAEMON, EPERM, "Privileges cannot be dropped without specifying CLICON_BACKEND_USER\n");
 	goto done;
     }
     /* Get (wanted) new backend user id */
     if (name2uid(backend_user, &newuid) < 0){
-	clicon_err(OE_DEMON, errno, "'%s' is not a valid user .\n", backend_user);
+	clicon_err(OE_DAEMON, errno, "'%s' is not a valid user .\n", backend_user);
 	goto done;
     }
     /* get current backend userid, if already at this level OK */
     if ((uid = getuid()) == newuid)
 	goto ok;
     if (uid != 0){
-	clicon_err(OE_DEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
+	clicon_err(OE_DAEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
 	goto done;
     }
     /* When dropping priveleges, datastores are created if they do not exist.
@@ -309,7 +309,7 @@ check_drop_priv(clicon_handle h,
 	goto done;
 
     if (setgid(gid) == -1) {
-	clicon_err(OE_DEMON, errno, "setgid %d", gid);
+	clicon_err(OE_DAEMON, errno, "setgid %d", gid);
 	goto done;
     }
     switch (priv_mode){
@@ -318,7 +318,7 @@ check_drop_priv(clicon_handle h,
 	    goto done;
 	/* Verify you cannot regain root privileges */
 	if (setuid(0) != -1){
-	    clicon_err(OE_DEMON, EPERM, "Could regain root privilieges");
+	    clicon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
 	    goto done;
 	}
 	break;
@@ -652,7 +652,7 @@ main(int    argc,
     }
     else
 	if (pid){
-	    clicon_err(OE_DEMON, 0, "Daemon already running with pid %d\n(Try killing it with %s -z)", 
+	    clicon_err(OE_DAEMON, 0, "Daemon already running with pid %d\n(Try killing it with %s -z)", 
 		       pid, argv0);
 	    return -1; /* goto done deletes pidfile */
 	}
@@ -866,11 +866,11 @@ main(int    argc,
 
     clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, backend_sig_term, NULL) < 0){
-	clicon_err(OE_DEMON, errno, "Setting signal");
+	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
     }
     if (set_signal(SIGINT, backend_sig_term, NULL) < 0){
-	clicon_err(OE_DEMON, errno, "Setting signal");
+	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
     }
 

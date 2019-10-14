@@ -61,7 +61,7 @@ new "rpc tests"
 new "restconf empty rpc"
 ret=$(curl -is -X POST http://localhost/restconf/operations/clixon-example:empty)
 expect="204 No Content"
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
@@ -108,7 +108,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netco
 new "restconf empty rpc with null input"
 ret=$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":null}' http://localhost/restconf/operations/clixon-example:empty)
 expect="204 No Content"
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
@@ -120,7 +120,7 @@ expectpart "$(curl -iss -X POST -H "Content-Type: application/yang-data+json" -d
 new "restconf optional rpc with null input and output"
 ret=$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":null}' http://localhost/restconf/operations/clixon-example:optional)
 expect="204 No Content"
-match=`echo $ret | grep -EZo "$expect"`
+match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
