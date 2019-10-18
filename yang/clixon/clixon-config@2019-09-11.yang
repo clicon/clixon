@@ -42,7 +42,9 @@ module clixon-config {
     revision 2019-09-11 {
 	description
 	    "Added: CLICON_BACKEND_USER: drop of privileges to user,
-                    CLICON_BACKEND_PRIVILEGES: how to drop privileges";
+                    CLICON_BACKEND_PRIVILEGES: how to drop privileges
+                    CLICON_NACM_CREDENTIALS: If and how to check backend sock priveleges with NACM
+                    CLICON_NACM_RECOVERY_USER: Name of NACM recovery user.";
     }
     revision 2019-06-05 {
 	description
@@ -200,6 +202,29 @@ module clixon-config {
 	    enum drop_temp {
 		description
 		  "After initialization, drop privileges temporarily to a euid";
+	    }
+	}
+    }
+    typedef nacm_cred_mode{
+	description
+		"How NACM user should be matched with unix socket peer credentials.
+                 This means nacm user must match socket peer user accessing the 
+                 backend socket. For IP sockets only mode none makes sense.";
+	type enumeration{
+	    enum none {
+		description
+		  "Dont match NACM user to any user credentials. Any user can pose
+                   as any other user. Set this for IP sockets, or dont use NACM.";
+	    }
+	    enum exact {
+		description
+		  "Exact match between NACM user and unix socket peer user.
+                   Except for root user that can pose as any user.";
+	    }
+	    enum except {
+		description
+		  "Exact match between NACM user and unix socket peer user, except
+                   for root and www user (restconf).";
 	    }
 	}
     }
@@ -421,7 +446,12 @@ module clixon-config {
 	    default "UNIX";
 	    description
 		"Address family for communicating with clixon_backend 
-                 (UNIX|IPv4|IPv6)";
+                 (UNIX|IPv4). IPv6 not yet implemented.
+                 Note that UNIX socket makes credential check as follows:
+                 (1) client needs rw access to the socket 
+                 (2) NACM credentials can be checked according to CLICON_NACM_CREDENTIALS
+                 Warning: IPv4 and IPv6 sockets have no credential mechanism.
+                 ";
 	}
 	leaf CLICON_SOCK {
 	    type string;
@@ -542,6 +572,26 @@ module clixon-config {
 	leaf CLICON_NACM_FILE {
 	    type string;
 	    description "RFC8341 NACM external configuration file";
+	}
+	leaf CLICON_NACM_CREDENTIALS {
+	    type nacm_cred_mode;
+	    default except;
+	    description
+		"Verify nacm user credentials with unix socket peer cred.
+                 This means nacm user must match unix user accessing the backend
+                 socket.
+                 Except for recovery user and www user (for restconf)";
+	}
+        leaf CLICON_NACM_RECOVERY_USER {
+	    type string;
+	    default "_nacm_recovery";
+	    description
+		"C8341 defines a 'recovery session' as outside the scope. Clixon
+                 defines this user as having special admin rights to exempt from
+                 all access control enforcements.
+                 Note setting of CLICON_NACM_CREDENTIALS is important, if set to
+                 exact for example, this user must exist and be used, otherwise
+                 another user (such as root or www) can pose as it.";
 	}
 	leaf CLICON_MODULE_LIBRARY_RFC7895 {
 	    type boolean;

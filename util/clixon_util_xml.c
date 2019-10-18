@@ -64,19 +64,10 @@
 /* clixon */
 #include "clixon/clixon.h"
 
-/*
- * Turn this on to get a xml parse and pretty print test program
- * Usage: xpath
- * read xml from input
- * Example compile:
- gcc -g -o xml -I. -I../clixon ./clixon_xml.c -lclixon -lcligen
- * Example run:
- echo "<a><b/></a>" | xml 
-*/
 static int
 usage(char *argv0)
 {
-    fprintf(stderr, "usage:%s [options] with xml on stdin\n"
+    fprintf(stderr, "usage:%s [options] with xml on stdin (unless -f)\n"
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"

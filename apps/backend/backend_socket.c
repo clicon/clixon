@@ -51,13 +51,12 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/param.h>
-#ifdef HAVE_SYS_UCRED_H
-#include <sys/types.h>
-#include <sys/ucred.h>
-#endif
 #define __USE_GNU   /* for ucred */
 #define _GNU_SOURCE /* for ucred */
 #include <sys/socket.h>
+#ifdef HAVE_LOCAL_PEERCRED
+#include <sys/ucred.h>
+#endif
 #include <sys/param.h>
 #include <sys/types.h>
 
@@ -226,63 +225,65 @@ backend_accept_client(int   fd,
     int           retval = -1;
     clicon_handle h = (clicon_handle)arg;
     int           s;
-    struct sockaddr_un from;
+    struct sockaddr from = {0,};
     socklen_t     len;
     struct client_entry *ce;
-#ifdef DONT_WORK /* XXX HAVE_SYS_UCRED_H */
-    struct xucred credentials; 	/* FreeBSD. */
-    socklen_t     clen;
-#elif defined(SO_PEERCRED)
-    struct ucred credentials; 	/* Linux. */
-    socklen_t     clen;
-#endif
-    char         *config_group;
-    struct group *gr;
-    char         *mem;
     int           i;
+    char         *name = NULL;
+#ifdef HAVE_SO_PEERCRED
+    socklen_t     clen;
+    struct ucred cr = {0,}; 	/* Linux. */
+#elif defined(HAVE_GETPEEREID)
+    uid_t        euid;
+    uid_t        guid;
+#endif
 
     clicon_debug(2, "%s", __FUNCTION__);
     len = sizeof(from);
-    if ((s = accept(fd, (struct sockaddr*)&from, &len)) < 0){
+    if ((s = accept(fd, &from, &len)) < 0){
 	clicon_err(OE_UNIX, errno, "accept");
 	goto done;
     }
-#if defined(SO_PEERCRED)
-    /* fill in the user data structure */
-    clen =  sizeof(credentials);
-    if(getsockopt(s, SOL_SOCKET, SO_PEERCRED/* XXX finns ej i freebsd*/, &credentials, &clen)){
-	clicon_err(OE_UNIX, errno, "getsockopt");
+    if ((ce = backend_client_add(h, &from)) == NULL)
 	goto done;
-    }
-#endif   
-    if ((ce = backend_client_add(h, (struct sockaddr*)&from)) == NULL)
-	goto done;
-#if defined(SO_PEERCRED)
-    ce->ce_pid = credentials.pid;
-    ce->ce_uid = credentials.uid;
-#endif
     ce->ce_handle = h;
 
-    /* check credentials of caller (not properly implemented yet) */
-    if ((config_group = clicon_sock_group(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "clicon_sock_group option not set");
-	goto done;
-    }
-    if ((gr = getgrnam(config_group)) != NULL){
-	i = 0; /* one of mem should correspond to ce->ce_uid */
-	while ((mem = gr->gr_mem[i++]) != NULL)
-	    ;
-    }
-
-#if 0
-    { /* XXX */
-	int ii;
-	struct client_entry *c;
-	for (c = ce_list, ii=0; c; c = c->ce_next, ii++);
-	clicon_debug(1, "Open client socket (nr:%d pid:%d [Total: %d])",
-		ce->ce_nr, ce->ce_pid, ii);
-    }
+    /* 
+     * Get credentials of connected peer - only for unix socket 
+     */
+    switch (from.sa_family){
+    case AF_UNIX:
+#if defined(HAVE_SO_PEERCRED)
+	clen =  sizeof(cr);
+	if(getsockopt(s, SOL_SOCKET, SO_PEERCRED, &cr, &clen) < 0){
+	    clicon_err(OE_UNIX, errno, "getsockopt");
+	    goto done;
+	}
+	ce->ce_pid = cr.pid; /* XXX no use session-id */
+	if (uid2name(cr.uid, &name) < 0)
+	    goto done;
+#elif defined(HAVE_GETPEEREID)
+	if (getpeereid(s, &euid, &guid) < 0)
+	    goto done;
+	if (uid2name(euid, &name) < 0)
+	    goto done;
+#else
+#error "Need getsockopt O_PEERCRED or getpeereid for unix socket peer cred"
 #endif
+	if (name && (ce->ce_username = strdup(name)) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+	break;
+    case AF_INET: 	/* XXX: HACK ce->ce_pid */
+	ce->ce_pid = 0;
+	for (i=0; i<len; i++)
+	    ce->ce_pid ^= from.sa_data[i];
+	break;
+    case AF_INET6:
+    default:
+	break;
+    }
     ce->ce_s = s;
 
     /*

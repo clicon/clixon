@@ -198,20 +198,16 @@ AC_ARG_WITH([wwwuser],
             [AS_HELP_STRING([--with-wwwuser=<user>],[Set www user different from www-data])])
 if test "${with_wwwuser}"; then
    wwwuser=${with_wwwuser}
+
 fi
-echo "wwwuser:$wwwuser"
+AC_MSG_RESULT(www user is $wwwuser)	
+AC_DEFINE_UNQUOTED(WWWUSER, "$wwwuser", [WWW user for restconf daemon])
 
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
 AC_ARG_WITH([configfile],
 	    [AS_HELP_STRING([--with-configfile=FILE],[set default path to config file])],
 	    [CLIXON_DEFAULT_CONFIG="$withval"],)
-
-
-# user credentials for unix sockets
-AC_CHECK_HEADERS([sys/ucred.h],[],[],
-     [[# include <sys/param.h>]]
-)
 
 AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(dl, dlopen)
@@ -226,7 +222,12 @@ if test "${with_libxml2}"; then
 fi 
 
 #
-AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort)
+AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid)
+
+# Checks for getsockopt options for getting unix socket peer credentials on
+# Linux
+AC_TRY_COMPILE([#include <sys/socket.h>], [getsockopt(1, SOL_SOCKET, SO_PEERCRED, 0, 0);], [AC_DEFINE(HAVE_SO_PEERCRED, 1, [Have getsockopt peercred])
+AC_MSG_RESULT(Have getsockopt peercred)])
 
 # YANG_INSTALLDIR is where clixon installs the Clixon yang files
 # (the files in in yang/clixon)

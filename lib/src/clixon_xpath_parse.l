@@ -128,8 +128,8 @@ real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 <TOKEN>following-sibling:: { clixon_xpath_parselval.intval = A_FOLLOWING_SIBLING; return AXISNAME; }
 <TOKEN>namespace::        { clixon_xpath_parselval.intval = A_NAMESPACE; return AXISNAME; }
 <TOKEN>parent::           { clixon_xpath_parselval.intval = A_PARENT; return AXISNAME; }
-<TOKEN>preceding::        { clixon_xpath_parselval.intval = A_PRECEEDING; return AXISNAME; }
-<TOKEN>preceding-sibling:: { clixon_xpath_parselval.intval = A_PRECEEDING_SIBLING; return AXISNAME; }
+<TOKEN>preceding::        { clixon_xpath_parselval.intval = A_PRECEDING; return AXISNAME; }
+<TOKEN>preceding-sibling:: { clixon_xpath_parselval.intval = A_PRECEDING_SIBLING; return AXISNAME; }
 <TOKEN>self::             { clixon_xpath_parselval.intval = A_SELF; return AXISNAME; }
 
 <TOKEN>current          { clixon_xpath_parselval.string = strdup(yytext); return NODETYPE; }

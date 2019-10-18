@@ -2,6 +2,7 @@
 # Authentication and authorization and IETF NACM
 # See RFC 8341 A.2
 # But replaced ietf-netconf-monitoring with *
+# Note credenials check set to none since USER poses as different users.
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -31,6 +32,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
+  <CLICON_NACM_CREDENTIALS>none</CLICON_NACM_CREDENTIALS>
 </clixon-config>
 EOF
 

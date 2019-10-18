@@ -145,7 +145,6 @@ backend_client_rm(clicon_handle        h,
 	}
 	ce_prev = &c->ce_next;
     }
-
     return backend_client_delete(h, ce); /* actually purge it */
 }
 
@@ -1240,6 +1239,68 @@ from_client_ping(clicon_handle h,
     return 0;
 }
 
+/*! Verify nacm user with  peer uid credentials
+ * @param[in]  mode      Peer credential mode: none, exact or except
+ * @param[in]  peername  Peer username if any
+ * @param[in]  username  username received in XML (eg for NACM)
+ * @param[out] cbret     Set with netconf error message if ret == 0
+ * @retval    -1         Error
+ * @retval     0         Not verified (cbret set)
+ * @retval     1         Verified
+ * Credentials OK if both NACM user and peer useri s defined AND one of the
+ * following is true:
+ * - peer user is same as NACM user
+ * - peer user is root (can be any NACM user)
+ * - peer user is www (can be any NACM user)
+ */
+static int
+verify_nacm_user(enum nacm_credentials_t mode,
+		 char                   *peername,
+		 char                   *nacmname,
+		 cbuf                   *cbret)
+{
+    int   retval = -1;
+    cbuf *cbmsg = NULL;
+
+    if (mode == NC_NONE)
+	return 1;
+    if (peername == NULL){
+	if (netconf_access_denied(cbret, "application", "No peer user credentials available") < 0)
+	    goto done;
+	goto fail;
+    }
+    if (nacmname == NULL){
+	if (netconf_access_denied(cbret, "application", "No NACM available") < 0)
+	    goto done;
+	goto fail;
+    }	
+    if (mode == NC_EXCEPT){
+	if (strcmp(peername, "root") == 0)
+	    goto ok;
+	if (strcmp(peername, WWWUSER) == 0)
+	    goto ok;
+    }
+    if (strcmp(peername, nacmname) != 0){
+	if ((cbmsg = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cbmsg, "User %s credential not matching NACM user %s", peername, nacmname);
+	if (netconf_access_denied(cbret, "application", cbuf_get(cbmsg)) < 0)
+	    goto done;
+	goto fail;
+    }
+ ok:
+    retval  = 1;
+ done:
+    if (cbmsg)
+	cbuf_free(cbmsg);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! An internal clicon message has arrived from a client. Receive and dispatch.
  * @param[in]   h    Clicon handle
  * @param[in]   s    Socket where message arrived. read from this.
@@ -1322,6 +1383,12 @@ from_client_msg(clicon_handle        h,
 	if ((ret = nacm_access_pre(h, username, NACM_RPC, &xnacm)) < 0)
 	    goto done;
 	if (ret == 0){ /* Do NACM validation */
+	    enum nacm_credentials_t mode;
+	    mode = clicon_nacm_credentials(h);
+	    if ((ret = verify_nacm_user(mode, ce->ce_username, username, cbret)) < 0)
+		goto done;
+	    if (ret == 0) /* credentials fail */
+		goto reply;
 	    /* NACM rpc operation exec validation */
 	    if ((ret = nacm_rpc(rpc, module, username, xnacm, cbret)) < 0)
 		goto done;

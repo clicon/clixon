@@ -56,7 +56,9 @@ enum xp_op{
     XO_UNION,
 };
 
-/* Axis specifiers according to https://www.w3.org/TR/xpath-10/#NT-AxisName */
+/* Axis specifiers according to https://www.w3.org/TR/xpath-10/#NT-AxisName 
+ * @see axis_type_int2str
+ */
 enum axis_type{
     A_NAN = 0, /* Not set */
     A_ANCESTOR,
@@ -69,13 +71,15 @@ enum axis_type{
     A_FOLLOWING_SIBLING, 
     A_NAMESPACE,
     A_PARENT,
-    A_PRECEEDING,
-    A_PRECEEDING_SIBLING,
+    A_PRECEDING,
+    A_PRECEDING_SIBLING,
     A_SELF,
     A_ROOT /* XXX Not in https://www.w3.org/TR/xpath-10 */
 };
 
-/* used as non-terminal type in yacc rules */
+/* used as non-terminal type in yacc rules 
+ * @see xpath_tree_int2str
+ */
 enum xp_type{
     XP_EXP,
     XP_AND,
@@ -100,7 +104,7 @@ enum xp_type{
  */
 struct xpath_tree{
     enum xp_type       xs_type;
-    int                xs_int;
+    int                xs_int; /* step-> axis-type */
     double             xs_double;
     char              *xs_s0;
     char              *xs_s1;
@@ -112,6 +116,7 @@ typedef struct xpath_tree xpath_tree;
 /*
  * Prototypes
  */
+char* axis_type_int2str(int axis_type);
 char* xpath_tree_int2str(int nodetype);
 int   xpath_tree_print_cb(cbuf *cb, xpath_tree *xs);
 int   xpath_tree_print(FILE *f, xpath_tree *xs);

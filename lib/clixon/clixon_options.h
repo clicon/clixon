@@ -77,7 +77,14 @@ enum startup_mode_t{
 enum priv_mode_t{
     PM_NONE=0,        /* Make no drop/change in privileges */
     PM_DROP_PERM,     /* Drop privileges permanently */
-    PM_DROP_TEMP,     /* Drop privileges temporary */
+    PM_DROP_TEMP      /* Drop privileges temporary */
+};
+
+/*! See clixon-config.yang type nacm_cred_mode (user credentials) */
+enum nacm_credentials_t{
+    NC_NONE=0,   /* "Dont match NACM user to any user credentials.  */
+    NC_EXACT,    /* Exact match between NACM user and unix socket peer user. */
+    NC_EXCEPT    /* Exact match except for root and www user  */
 };
 
 /*! Datastore cache behaviour, see clixon_datastore.[ch] 
@@ -183,6 +190,9 @@ static inline char *clicon_backend_pidfile(clicon_handle h){
 static inline char *clicon_xmldb_dir(clicon_handle h){
     return clicon_option_str(h, "CLICON_XMLDB_DIR");
 }
+static inline char *clicon_nacm_recovery_user(clicon_handle h){
+    return clicon_option_str(h, "CLICON_NACM_RECOVERY_USER");
+}
 
 /*-- Specific option access functions for YANG options w type conversion--*/
 int   clicon_cli_genmodel(clicon_handle h);
@@ -193,7 +203,9 @@ int   clicon_sock_family(clicon_handle h);
 int   clicon_sock_port(clicon_handle h);
 int   clicon_autocommit(clicon_handle h);
 int   clicon_startup_mode(clicon_handle h);
-int   clicon_backend_privileges_mode(clicon_handle h);
+enum priv_mode_t clicon_backend_privileges_mode(clicon_handle h);
+enum nacm_credentials_t clicon_nacm_credentials(clicon_handle h);
+
 enum datastore_cache clicon_datastore_cache(clicon_handle h);
 enum regexp_mode clicon_yang_regexp(clicon_handle h);
 /*-- Specific option access functions for non-yang options --*/

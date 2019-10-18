@@ -3,14 +3,23 @@
 ## 4.2.0 (Expected: October)
 
 ### Major New features
-* Backend daemon can drop privileges after initialization to run as non-privileged user
-  * You can start as root and drop privileges either permanently or temporary
-  * Controlled by options: CLICON_BACKEND_USER and CLICON_BACKEND_PRIVELEGES
-  * Can also be set with `-U <user>` clixon_backend command-line option
-  * If dropped temporary, you can restore privileges with `restore_priv()`
+* Privileges and credentials features
+  * Backend daemon can drop privileges after initialization to run as non-privileged user
+    * You can start as root and drop privileges either permanently or temporary
+    * Controlled by options: CLICON_BACKEND_USER and CLICON_BACKEND_PRIVELEGES
+    * Can also be set with `-U <user>` clixon_backend command-line option
+    * If dropped temporary, you can restore privileges with `restore_priv()`
+  * The backend socket has now support of credentials of peer clients 
+    * NACM users are cross-checked with client credentials (cli/netconf/restconf)
+    * Only UNIX domain socket supports client credential checks (Not IP sockets.
+    * Controlled by option CLICON_NACM_CREDENTIALS
+      * `none` means credentials are not checked. Only option for IP sockets.
+      * `exact` means credentials of client user must match NACM user exactly.
+      * `except` means exact match is done except for root and www user.This is necessary for Restconf. This is default.
 
 ### API changes on existing features (you may need to change your code)
-* In logs and debug changed "Demon error" to "Daemon error".	
+* NACM users are cross-checked with client user credentials (see new features).
+* Changed "Demon error" to "Daemon error" in logs and debug.
 * Stricter handling of multi-namespace handling
   * This occurs in cases where there are more than one XML namespaces in a config tree, such as `augment`:ed trees.
   * Affects all parts of the system, including datastore, backend, restconf and cli.
@@ -33,8 +42,10 @@
   * Changed so that `400 Bad Request` are for invalid api-path or unknown yang elements, `404 Not Found` for valid xml when object not found.
 * Typical installation should now add a `clicon` user (as well as group)
 * New clixon-config@2019-09-11.yang revision
-  * Added: CLICON_BACKEND_USER: drop of privileges to user,
-  * Added: CLICON_BACKEND_PRIVELEGES: how to drop privileges
+  * Added: CLICON_BACKEND_USER: Drop of privileges to this user, owner of backend socket.
+  * Added: CLICON_BACKEND_PRIVELEGES: If and how to drop privileges
+  * Added: CLICON_NACM_CREDENTIALS: If and how to check backend socket priveleges with NACM
+  * Added: CLICON_NACM_RECOVERY_USER: Name of NACM recovery user.
 * Restconf top-level operations GET root resource modified to comply with RFC 8040 Sec 3.1 
   * non-pretty print remove all spaces, eg `{"operations":{"clixon-example:client-rpc":[null]`
   * Replaced JSON `null` with `[null]` as proper empty JSON leaf/leaf-list encoding.

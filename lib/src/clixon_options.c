@@ -101,12 +101,22 @@ static const map_str2int startup_mode_map[] = {
     {NULL,       -1}
 };
 
-/* Mapping between Clicon privilegese modes string <--> constants, 
+/* Mapping between Clicon privileges modes string <--> constants, 
  * see clixon-config.yang type priv_mode */
 static const map_str2int priv_mode_map[] = {
     {"none",      PM_NONE}, 
     {"drop_perm", PM_DROP_PERM}, 
     {"drop_temp", PM_DROP_TEMP}, 
+    {NULL,        -1}
+};
+
+
+/* Mapping between Clicon nacm user credential string <--> constants, 
+ * see clixon-config.yang type nacm_cred_mode */
+static const map_str2int nacm_credentials_map[] = {
+    {"none",      NC_NONE}, 
+    {"exact",     NC_EXACT}, 
+    {"except",    NC_EXCEPT}, 
     {NULL,        -1}
 };
 
@@ -706,7 +716,7 @@ clicon_startup_mode(clicon_handle h)
  * @param[in] h     Clicon handle
  * @retval    mode  Privileges mode
  */
-int
+enum priv_mode_t
 clicon_backend_privileges_mode(clicon_handle h)
 {
     char *mode;
@@ -714,6 +724,20 @@ clicon_backend_privileges_mode(clicon_handle h)
     if ((mode = clicon_option_str(h, "CLICON_BACKEND_PRIVILEGES")) == NULL)
 	return -1;
     return clicon_str2int(priv_mode_map, mode);
+}
+
+/*! Which privileges drop method to use
+ * @param[in] h     Clicon handle
+ * @retval    mode  Privileges mode
+ */
+enum nacm_credentials_t
+clicon_nacm_credentials(clicon_handle h)
+{
+    char *mode;
+
+    if ((mode = clicon_option_str(h, "CLICON_NACM_CREDENTIALS")) == NULL)
+	return -1;
+    return clicon_str2int(nacm_credentials_map, mode);
 }
 
 /*! Which datastore cache method to use

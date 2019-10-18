@@ -93,7 +93,9 @@
  * Variables
  */
 
-/* Mapping between xpath_tree node name string <--> int  */
+/* Mapping between xpath_tree node name string <--> int  
+ * @see xpath_tree_int2str
+ */
 static const map_str2int xpath_tree_map[] = {
     {"expr",             XP_EXP},
     {"andexpr",          XP_AND},
@@ -115,10 +117,41 @@ static const map_str2int xpath_tree_map[] = {
     {NULL,               -1}
 };
 
+/* Mapping between axis_type string <--> int  
+ * @see axis_type_int2str
+ */
+static const map_str2int axis_type_map[] = {
+    {"NaN",                 A_NAN},
+    {"ancestor",            A_ANCESTOR},
+    {"ancestor-or-selgf",   A_ANCESTOR_OR_SELF},
+    {"attribute",           A_ATTRIBUTE},
+    {"child",               A_CHILD},
+    {"descendant",          A_DESCENDANT},
+    {"descendeant-or-self", A_DESCENDANT_OR_SELF},
+    {"following",           A_FOLLOWING},
+    {"following-sibling",   A_FOLLOWING_SIBLING},
+    {"namespace",           A_NAMESPACE},
+    {"parent",              A_PARENT},
+    {"preceding",           A_PRECEDING},
+    {"preceding-sibling",   A_PRECEDING_SIBLING},
+    {"self",                A_SELF},
+    {"root",                A_ROOT},
+    {NULL,                  -1}
+};
+
 
 /*
  * XPATH parse tree type
  */
+
+/*! Map from axis-type int to string
+ */
+char*
+axis_type_int2str(int axis_type)
+{
+    return (char*)clicon_int2str(axis_type_map, axis_type);
+}
+
 
 /*! Map from xpath_tree node name int to string
  */
@@ -135,11 +168,21 @@ xpath_tree_print0(cbuf       *cb,
 		  int         level)
 {
     cprintf(cb, "%*s%s:", level*3, "", xpath_tree_int2str(xs->xs_type));
-    if (xs->xs_s0){
+    if (xs->xs_s0)
 	cprintf(cb, "\"%s\" ", xs->xs_s0);
-	if (xs->xs_s1)
-	    cprintf(cb,"\"%s\" ", xs->xs_s1);
-    }
+    if (xs->xs_s1)
+	cprintf(cb,"\"%s\" ", xs->xs_s1);
+    if (xs->xs_int)
+	switch (xs->xs_type){
+	case XP_STEP:
+	    cprintf(cb, "%s", axis_type_int2str(xs->xs_int));
+	    break;
+	default:
+	    cprintf(cb, "%d ", xs->xs_int);
+	    break;
+	}
+    if (xs->xs_double)
+	cprintf(cb,"%lf ", xs->xs_double);
     cprintf(cb, "\n");
     if (xs->xs_c0)
 	xpath_tree_print0(cb, xs->xs_c0,level+1);

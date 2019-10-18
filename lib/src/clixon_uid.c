@@ -90,10 +90,10 @@ group_name2gid(const char *name,
 }
 
 /*! Translate user name to uid. Return -1 if error or not found.
- * @param[in]   name  Name of user
- * @param[out]  uid   User id
- * @retval  0   OK
- * @retval -1   Error. or not found
+ * @param[in]  name Name of user
+ * @param[out] uid  User id
+ * @retval     0    OK
+ * @retval    -1    Error. or not found
  */
 int
 name2uid(const char *name,
@@ -118,6 +118,37 @@ name2uid(const char *name,
  done:
     return retval;
 }
+
+/*! Translate uid to user name
+ * @param[in]  uid  User id
+ * @param[out] name User name
+ * @retval     0    OK
+ * @retval     -1   Error. or not found
+ */
+int
+uid2name(const uid_t uid,
+	 char      **name)
+{
+    int            retval = -1;
+    char           buf[1024]; 
+    struct passwd  pwbuf;
+    struct passwd *pwbufp = NULL;
+    
+    if (getpwuid_r(uid, &pwbuf, buf, sizeof(buf), &pwbufp) != 0){
+	clicon_err(OE_UNIX, errno, "getpwuid_r(%u)", uid);
+	goto done;
+    }
+    if (pwbufp == NULL){
+	clicon_err(OE_UNIX, 0, "No such user: %u", uid);
+	goto done;
+    }
+    if (name)
+	*name = pwbufp->pw_name;
+    retval = 0;
+ done:
+    return retval;
+}
+
 
 /* Privileges drop perm, temp and restore
  * @see https://www.usenix.org/legacy/events/sec02/full_papers/chen/chen.pdf

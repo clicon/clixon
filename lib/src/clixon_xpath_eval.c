@@ -167,7 +167,7 @@ nodetest_eval_node(cxobj      *x,
 		name2, nsxpath);
     }
 #endif
- done:	/* retval set in preceeding statement */
+ done:	/* retval set in preceding statement */
     return retval;
 }
     
@@ -303,9 +303,10 @@ xp_eval_step(xp_ctx     *xc0,
 		x = NULL;
 		while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
 		    /* xs->xs_c0 is nodetest */
-		    if (nodetest == NULL || nodetest_eval(x, nodetest, nsc) == 1)
+		    if (nodetest == NULL || nodetest_eval(x, nodetest, nsc) == 1){
 			if (cxvec_append(x, &vec, &veclen) < 0)
 			    goto done;
+		    }
 		}
 	    }
 	}
@@ -342,9 +343,9 @@ xp_eval_step(xp_ctx     *xc0,
 	    vec = NULL;
 	}
 	break;
-    case A_PRECEEDING:
+    case A_PRECEDING:
 	break;
-    case A_PRECEEDING_SIBLING:
+    case A_PRECEDING_SIBLING:
 	break;
     case A_SELF:
 	break;

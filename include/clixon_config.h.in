@@ -24,6 +24,9 @@
 /* Define to 1 if you have the <cligen/cligen.h> header file. */
 #undef HAVE_CLIGEN_CLIGEN_H
 
+/* Define to 1 if you have the `getpeereid' function. */
+#undef HAVE_GETPEEREID
+
 /* Define to 1 if you have the `inet_aton' function. */
 #undef HAVE_INET_ATON
 
@@ -60,6 +63,9 @@
 /* Define to 1 if you have the `sigvec' function. */
 #undef HAVE_SIGVEC
 
+/* Have getsockopt peercred */
+#undef HAVE_SO_PEERCRED
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
 
@@ -87,9 +93,6 @@
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
 
-/* Define to 1 if you have the <sys/ucred.h> header file. */
-#undef HAVE_SYS_UCRED_H
-
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
@@ -116,6 +119,9 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* WWW user for restconf daemon */
+#undef WWWUSER
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */

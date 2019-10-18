@@ -686,6 +686,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -768,6 +769,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -1020,6 +1022,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1157,7 +1168,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1310,6 +1321,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1369,8 +1381,8 @@ Some influential environment variables:
               you have headers in a nonstandard directory <include dir>
   CPP         C preprocessor
   YACC        The `Yet Another Compiler Compiler' implementation to use.
-              Defaults to the first program found out of: `bison -o y.tab.c',
-              `byacc', `yacc'.
+              Defaults to the first program found out of: `bison -y', `byacc',
+              `yacc'.
   YFLAGS      The list of arguments that will be passed by default to $YACC.
               This script will default YFLAGS to the empty string to avoid a
               default value of `-d' given by some make applications.
@@ -3999,7 +4011,7 @@ $as_echo "CFLAGS is $CFLAGS" >&6; }
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: INSTALLFLAGS is $INSTALLFLAGS" >&5
 $as_echo "INSTALLFLAGS is $INSTALLFLAGS" >&6; }
 
-for ac_prog in 'bison -o y.tab.c' byacc
+for ac_prog in 'bison -y' byacc
 do
   # Extract the first word of "$ac_prog", so it can be a program name with args.
 set dummy $ac_prog; ac_word=$2
@@ -4715,8 +4727,15 @@ fi
 
 if test "${with_wwwuser}"; then
    wwwuser=${with_wwwuser}
+
 fi
-echo "wwwuser:$wwwuser"
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: www user is $wwwuser" >&5
+$as_echo "www user is $wwwuser" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define WWWUSER "$wwwuser"
+_ACEOF
+
 
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
@@ -4725,23 +4744,6 @@ CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
 if test "${with_configfile+set}" = set; then :
   withval=$with_configfile; CLIXON_DEFAULT_CONFIG="$withval"
 fi
-
-
-
-# user credentials for unix sockets
-for ac_header in sys/ucred.h
-do :
-  ac_fn_c_check_header_compile "$LINENO" "sys/ucred.h" "ac_cv_header_sys_ucred_h" "# include <sys/param.h>
-
-"
-if test "x$ac_cv_header_sys_ucred_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_SYS_UCRED_H 1
-_ACEOF
-
-fi
-
-done
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for socket in -lsocket" >&5
@@ -4896,7 +4898,7 @@ fi
 fi
 
 #
-for ac_func in inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort
+for ac_func in inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -4908,6 +4910,28 @@ _ACEOF
 fi
 done
 
+
+# Checks for getsockopt options for getting unix socket peer credentials on
+# Linux
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/socket.h>
+int
+main ()
+{
+getsockopt(1, SOL_SOCKET, SO_PEERCRED, 0, 0);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+$as_echo "#define HAVE_SO_PEERCRED 1" >>confdefs.h
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Have getsockopt peercred" >&5
+$as_echo "Have getsockopt peercred" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
 # YANG_INSTALLDIR is where clixon installs the Clixon yang files
 # (the files in in yang/clixon)

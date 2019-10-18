@@ -141,7 +141,7 @@ backend_client_add(clicon_handle    h,
 	return NULL;
     }
     memset(ce, 0, sizeof(*ce));
-    ce->ce_nr = bh->bh_ce_nr++;
+    ce->ce_nr = bh->bh_ce_nr++; /* Session-id ? */
     memcpy(&ce->ce_addr, addr, sizeof(*addr));
     ce->ce_next = bh->bh_ce_list;
     bh->bh_ce_list = ce;
@@ -177,6 +177,8 @@ backend_client_delete(clicon_handle        h,
     for (c = *ce_prev; c; c = c->ce_next){
 	if (c == ce){
 	    *ce_prev = c->ce_next;
+	    if (ce->ce_username)
+		free(ce->ce_username);
 	    free(ce);
 	    break;
 	}

@@ -20,8 +20,12 @@ Download and start nginx. For example on ubuntu:
 ```
   sudo apt install ngnix
 ```
+on FreeBSD:
+```
+  sudo pkg install ngnix
+```
 
-Define nginx config file: /etc/nginx/sites-available/default
+Edit the nginx config file. (On Ubuntu: `/etc/nginx/sites-available/default`, on FreeBSD: `/usr/local/etc/nginx/sites-available/default`)
 ```
   server {
     ...
@@ -40,6 +44,10 @@ Alternatively, start it via systemd:
 ```
   sudo systemctl start nginx.service
 ```
+Or on FreeBSD:
+```
+  sudo service nginx start
+```
 
 Start clixon backend daemon (if not already started)
 ```
@@ -48,8 +56,11 @@ Start clixon backend daemon (if not already started)
 
 Start clixon restconf daemon
 ```
-
-  sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+  sudo -u www-data -s /www-data/clixon_restconf -f /usr/local/etc/example.xml
+```
+On FreeBSD:
+```
+  sudo -u www -s /www/clixon_restconf -f /usr/local/etc/example.xml
 ```
 
 Make restconf calls with curl (or other http client). Example of writing a new interface specification:

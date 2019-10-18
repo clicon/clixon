@@ -13,7 +13,8 @@ APPNAME=example
 cfg=$dir/conf_startup.xml
 
 if [ $valgrindtest -ne 0 ]; then
-    return -1 # skip
+    echo "...skipped "
+    return 0 # skip
 fi
 
 # Here $dir is created by the user that runs the script

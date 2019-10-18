@@ -942,6 +942,7 @@ nacm_access_pre(clicon_handle  h,
     if (xml_rootchild_node(xnacm0, xnacm) < 0)
 	goto done;
     xnacm0 = NULL;
+    /* Initial NACM steps and common to all NACM access validation. */
     if ((retval = nacm_access(mode, xnacm, username)) < 0)
 	goto done;
     if (retval == 0){ /* if retval == 0 then return an xml nacm tree */
