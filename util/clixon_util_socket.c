@@ -84,7 +84,7 @@ main(int    argc,
     int                c;
     int                logdst = CLICON_LOG_STDERR;
     struct clicon_msg *msg = NULL;
-    char              *sockpath;
+    char              *sockpath = NULL;
     char              *retdata = NULL;
     int                jsonin = 0;
     char              *input_filename = NULL;
