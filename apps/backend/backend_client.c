@@ -69,14 +69,18 @@
 #include "backend_client.h"
 #include "backend_handle.h"
 
+/*! Find client by session-id 
+ * @param[in] ce_list   List of clients
+ * @param[in] id        Session id
+ */
 static struct client_entry *
-ce_find_bypid(struct client_entry *ce_list,
-	      int pid)
+ce_find_byid(struct client_entry *ce_list,
+	     uint32_t            id)
 {
     struct client_entry *ce;
 
     for (ce = ce_list; ce; ce = ce->ce_next)
-	if (ce->ce_pid == pid)
+	if (ce->ce_id == id)
 	    return ce;
     return NULL;
 }
@@ -104,7 +108,7 @@ ce_event_cb(clicon_handle h,
 	    backend_client_rm(h, ce);
 	break;
     default:
-	if (send_msg_notify_xml(ce->ce_s, event) < 0){
+	if (send_msg_notify_xml(h, ce->ce_s, event) < 0){
 	    if (errno == ECONNRESET || errno == EPIPE){
 		clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
 	    }
@@ -483,12 +487,13 @@ from_client_edit_config(clicon_handle h,
 {
     int                 retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
-    int                 mypid = ce->ce_pid;
+    uint32_t            myid = ce->ce_id;
+    uint32_t            iddb;
     char               *target;
     cxobj              *xc;
     cxobj              *x;
     enum operation_type operation = OP_MERGE;
-    int                 piddb;
+
     int                 non_config = 0;
     yang_stmt          *yspec;
     cbuf               *cbx = NULL; /* Assist cbuf */
@@ -517,9 +522,9 @@ from_client_edit_config(clicon_handle h,
 	goto ok;
     }
     /* Check if target locked by other client */
-    piddb = xmldb_islocked(h, target);
-    if (piddb && mypid != piddb){
-	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+    iddb = xmldb_islocked(h, target);
+    if (iddb && myid != iddb){
+	cprintf(cbx, "<session-id>%u</session-id>", iddb);
 	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
 	    goto done;
 	goto ok;
@@ -608,13 +613,13 @@ from_client_copy_config(clicon_handle h,
 			void         *arg,
 			void         *regarg)
 {
-    int    retval = -1;
+    int      retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
-    char  *source;
-    char  *target;
-    int    piddb;
-    int    mypid = ce->ce_pid;
-    cbuf  *cbx = NULL; /* Assist cbuf */
+    char    *source;
+    char    *target;
+    uint32_t iddb;
+    uint32_t myid = ce->ce_id;
+    cbuf    *cbx = NULL; /* Assist cbuf */
     
     if ((source = netconf_db_find(xe, "source")) == NULL){
 	if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
@@ -643,9 +648,9 @@ from_client_copy_config(clicon_handle h,
 	goto ok;
     }
     /* Check if target locked by other client */
-    piddb = xmldb_islocked(h, target);
-    if (piddb && mypid != piddb){
-	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+    iddb = xmldb_islocked(h, target);
+    if (iddb && myid != iddb){
+	cprintf(cbx, "<session-id>%u</session-id>", iddb);
 	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Copy failed, lock is already held") < 0)
 	    goto done;
 	goto ok;
@@ -683,9 +688,9 @@ from_client_delete_config(clicon_handle h,
     int                  retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
     char                *target;
-    int                  piddb;
+    uint32_t             iddb;
+    uint32_t             myid = ce->ce_id;
     cbuf                *cbx = NULL; /* Assist cbuf */
-    int                  mypid = ce->ce_pid;
 
     if ((target = netconf_db_find(xe, "target")) == NULL ||
 	strcmp(target, "running")==0){
@@ -704,9 +709,9 @@ from_client_delete_config(clicon_handle h,
 	goto ok;
     }
     /* Check if target locked by other client */
-    piddb = xmldb_islocked(h, target);
-    if (piddb && mypid != piddb){
-	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+    iddb = xmldb_islocked(h, target);
+    if (iddb && myid != iddb){
+	cprintf(cbx, "<session-id>%u</session-id>", iddb);
 	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
 	    goto done;
 	goto ok;
@@ -749,9 +754,9 @@ from_client_lock(clicon_handle h,
 {
     int                  retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
-    int                  pid = ce->ce_pid;
+    uint32_t             id = ce->ce_id;
+    uint32_t             iddb;
     char                *db;
-    int                  piddb;
     cbuf                *cbx = NULL; /* Assist cbuf */
     
     if ((db = netconf_db_find(xe, "target")) == NULL){
@@ -775,15 +780,15 @@ from_client_lock(clicon_handle h,
      * 2) The target configuration is <candidate>, it has already been modified, and 
      *    these changes have not been committed or rolled back.
      */
-    piddb = xmldb_islocked(h, db);
-    if (piddb){
-	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+    iddb = xmldb_islocked(h, db);
+    if (iddb != 0){
+	cprintf(cbx, "<session-id>%u</session-id>", iddb);
 	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
 	    goto done;
 	goto ok;
     }
     else{
-	if (xmldb_lock(h, db, pid) < 0)
+	if (xmldb_lock(h, db, id) < 0)
 	    goto done;
 	cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     }
@@ -814,9 +819,9 @@ from_client_unlock(clicon_handle h,
 {
     int                  retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
-    int                  pid = ce->ce_pid;
+    uint32_t             id = ce->ce_id;
+    uint32_t             iddb; /* DBs lock, if any */
     char                *db;
-    int                  piddb;
     cbuf                *cbx = NULL; /* Assist cbuf */
 
     if ((db = netconf_db_find(xe, "target")) == NULL){
@@ -834,7 +839,7 @@ from_client_unlock(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    piddb = xmldb_islocked(h, db);
+    iddb = xmldb_islocked(h, db);
     /* 
      * An unlock operation will not succeed if any of the following
      * conditions are true:
@@ -842,8 +847,8 @@ from_client_unlock(clicon_handle h,
      * 2) the session issuing the <unlock> operation is not the same
      *    session that obtained the lock
      */
-    if (piddb==0 || piddb != pid){
-	cprintf(cbx, "<session-id>pid=%d piddb=%d</session-id>", pid, piddb);
+    if (iddb == 0 || iddb != id){
+	cprintf(cbx, "<session-id>id=%u iddb=%d</session-id>", id, iddb);
 	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Unlock failed, lock is already held") < 0)
 	    goto done;
 	goto ok;
@@ -1013,9 +1018,9 @@ from_client_close_session(clicon_handle h,
 			 void         *regarg)
 {
     struct client_entry *ce = (struct client_entry *)arg;
-    int                  pid = ce->ce_pid;
+    uint32_t             id = ce->ce_id;
 
-    xmldb_unlock_all(h, pid);
+    xmldb_unlock_all(h, id);
     stream_ss_delete_all(h, ce_event_cb, (void*)ce);
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     return 0;
@@ -1031,6 +1036,7 @@ from_client_close_session(clicon_handle h,
  * @retval     0       OK
  * @retval    -1       Error
  */
+#if 1
 static int
 from_client_kill_session(clicon_handle h,
 			 cxobj        *xe,
@@ -1039,11 +1045,13 @@ from_client_kill_session(clicon_handle h,
 			 void         *regarg)
 {
     int                  retval = -1;
-    uint32_t             pid; /* other pid */
+    uint32_t             id; /* session id */
     char                *str;
     struct client_entry *ce;
     char                *db = "running"; /* XXX */
     cxobj               *x;
+    int                  ret;
+    char                *reason = NULL;
     
     if ((x = xml_find(xe, "session-id")) == NULL ||
 	(str = xml_find_value(x, "body")) == NULL){
@@ -1051,36 +1059,28 @@ from_client_kill_session(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    pid = atoi(str);
+    if ((ret = parse_uint32(str, &id, &reason)) < 0){
+	clicon_err(OE_XML, errno, "parse_uint32"); 
+	goto done;
+    }
+    if (ret == 0){
+	if (netconf_bad_element(cbret, "protocol", "session-id", reason) < 0)
+	    goto done;
+	goto done;
+    }
     /* may or may not be in active client list, probably not */
-    if ((ce = ce_find_bypid(backend_client_list(h), pid)) != NULL){
-	xmldb_unlock_all(h, pid);	    
+    if ((ce = ce_find_byid(backend_client_list(h), id)) != NULL){
+	xmldb_unlock_all(h, id);
 	backend_client_rm(h, ce);
     }
-    
-    if (kill (pid, 0) != 0 && errno == ESRCH) /* Nothing there */
-	;
-    else{
-	killpg(pid, SIGTERM);
-	kill(pid, SIGTERM);
-#if 0 /* Hate sleeps we assume it died, see also 0 in next if.. */
-	sleep(1);
-#endif
-    }
-    if (1 || (kill (pid, 0) != 0 && errno == ESRCH)){ /* Nothing there */
-	/* clear from locks */
-	if (xmldb_islocked(h, db) == pid)
-	    xmldb_unlock(h, db);
-    }
-    else{ /* failed to kill client */
-	    if (netconf_operation_failed(cbret, "application", "Failed to kill session")< 0)
-		goto done;
-	goto ok;
-    }
+    if (xmldb_islocked(h, db) == id)
+	xmldb_unlock(h, db);
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
  done:
+    if (reason)
+	free(reason);
     return retval;
 }
 
@@ -1328,6 +1328,7 @@ from_client_msg(clicon_handle        h,
     yang_stmt           *ymod;
     cxobj               *xnacm = NULL;
     cxobj               *xret = NULL;
+    uint32_t             id;
     
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h); 
@@ -1338,12 +1339,13 @@ from_client_msg(clicon_handle        h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_msg_decode(msg, yspec, &xt) < 0){
+    /* Decode msg from client -> xml top (ct) and session id */
+    if (clicon_msg_decode(msg, yspec, &id, &xt) < 0){
 	if (netconf_malformed_message(cbret, "XML parse error")< 0)
 	    goto done;
 	goto reply;
     }
-
+    ce->ce_id = id;
     if ((x = xpath_first_nsc(xt, NULL, "/rpc")) == NULL){
 	if (netconf_malformed_message(cbret, "rpc keyword expected")< 0)
 	    goto done;

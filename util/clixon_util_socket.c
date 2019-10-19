@@ -158,7 +158,7 @@ main(int    argc,
     }
     if (clicon_xml2cbuf(cb, xc, 0, 0, -1) < 0)
 	goto done;
-    if ((msg = clicon_msg_encode("%s", cbuf_get(cb))) < 0)
+    if ((msg = clicon_msg_encode(getpid(), "%s", cbuf_get(cb))) < 0)
 	goto done;
     if (strcmp(family, "UNIX")==0){
 	if (clicon_rpc_connect_unix(msg, sockpath, &retdata, NULL) < 0)

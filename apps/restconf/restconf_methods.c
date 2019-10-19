@@ -684,8 +684,7 @@ api_data_write(clicon_handle h,
      if (cbx)
 	cbuf_free(cbx); 
    return retval;
-} /* api_data_put */
-
+} /* api_data_write */
 
 /*! Generic REST PUT  method 
  * @param[in]  h      CLIXON handle

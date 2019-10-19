@@ -57,10 +57,10 @@ int xmldb_get0_clear(clicon_handle h, cxobj *x);
 int xmldb_get0_free(clicon_handle h, cxobj **xp);
 int xmldb_put(clicon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret); /* in clixon_datastore_write.[ch] */
 int xmldb_copy(clicon_handle h, const char *from, const char *to);
-int xmldb_lock(clicon_handle h, const char *db, int pid);
+int xmldb_lock(clicon_handle h, const char *db, uint32_t id);
 int xmldb_unlock(clicon_handle h, const char *db);
-int xmldb_unlock_all(clicon_handle h, int pid);
-int xmldb_islocked(clicon_handle h, const char *db);
+int xmldb_unlock_all(clicon_handle h, uint32_t id);
+uint32_t xmldb_islocked(clicon_handle h, const char *db);
 int xmldb_exists(clicon_handle h, const char *db);
 int xmldb_delete(clicon_handle h, const char *db);
 int xmldb_create(clicon_handle h, const char *db);

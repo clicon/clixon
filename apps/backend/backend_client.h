@@ -49,7 +49,7 @@ struct client_entry{
     int                   ce_nr;      /* Client number (for dbg/tracing) */
     int                   ce_stat_in; /* Nr of received msgs from client */
     int                   ce_stat_out;/* Nr of sent msgs to client */
-    int                   ce_pid;     /* Peer Process id */
+    int                   ce_id;      /* Session id */
     char                 *ce_username;/* Translated from peer user cred */
     clicon_handle         ce_handle;  /* clicon config handle (all clients have same?) */
 };

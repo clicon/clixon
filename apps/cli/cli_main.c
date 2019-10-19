@@ -595,6 +595,11 @@ main(int argc, char **argv)
 	if (result < 0)
 	    goto done;
     }
+#if 1
+    /* XXX get session id from backend hello */
+    clicon_session_id_set(h, getpid()); 
+#endif
+
     /* Go into event-loop unless -1 command-line */
     if (!once)
 	retval = cli_interactive(h);

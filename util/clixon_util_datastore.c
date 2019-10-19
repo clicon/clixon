@@ -110,7 +110,7 @@ main(int argc, char **argv)
     char               *xmlfilename = NULL;
     char               *dbdir = NULL;
     int                 ret;
-    int                 pid;
+    uint32_t            id;
     enum operation_type op;
     cxobj              *xt = NULL;
     int                 i;
@@ -277,8 +277,8 @@ main(int argc, char **argv)
     else if (strcmp(cmd, "lock")==0){
 	if (argc != 2)
 	    usage(argv0);
-	pid = atoi(argv[1]);
-	if (xmldb_lock(h, db, pid) < 0)
+	id = atoi(argv[1]);
+	if (xmldb_lock(h, db, id) < 0)
 	    goto done;
     }
     else if (strcmp(cmd, "unlock")==0){
@@ -290,8 +290,8 @@ main(int argc, char **argv)
     else if (strcmp(cmd, "unlock_all")==0){
 	if (argc != 2)
 	    usage(argv0);
-	pid = atoi(argv[1]);
-	if (xmldb_unlock_all(h, pid) < 0)
+	id = atoi(argv[1]);
+	if (xmldb_unlock_all(h, id) < 0)
 	    goto done;
     }
     else if (strcmp(cmd, "islocked")==0){

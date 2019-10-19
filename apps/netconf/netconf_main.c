@@ -529,6 +529,11 @@ main(int    argc,
     /* Call start function is all plugins before we go interactive */
     if (clixon_plugin_start(h) < 0)
 	goto done;
+#if 1
+    /* XXX get session id from backend hello */
+    clicon_session_id_set(h, getpid()); 
+#endif
+
     if (!quiet)
 	send_hello(h, 1);
     if (event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)

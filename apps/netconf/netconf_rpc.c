@@ -443,7 +443,7 @@ netconf_notification_cb(int   s,
 	goto done;
     }
     yspec = clicon_dbspec_yang(h);
-    if (clicon_msg_decode(reply, yspec, &xt) < 0) 
+    if (clicon_msg_decode(reply, yspec, NULL, &xt) < 0) 
 	goto done;
 
     if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:netconf:notification:1.0")) == NULL)

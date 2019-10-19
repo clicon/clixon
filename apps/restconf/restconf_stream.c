@@ -180,7 +180,7 @@ restconf_stream_cb(int   s,
 	clicon_exit_set(); 
 	goto done;
     }
-    if (clicon_msg_decode(reply, NULL, &xtop) < 0)  /* XXX pass yang_spec */
+    if (clicon_msg_decode(reply, NULL, NULL, &xtop) < 0)  /* XXX pass yang_spec */
 	goto done;
     /* create event */
     if ((cb = cbuf_new()) == NULL){

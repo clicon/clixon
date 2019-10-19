@@ -254,30 +254,29 @@ xmldb_copy(clicon_handle h,
 /*! Lock database
  * @param[in]  h    Clicon handle
  * @param[in]  db   Database
- * @param[in]  pid  Process id
+ * @param[in]  id   Session id
  * @retval -1  Error
  * @retval  0  OK
   */
 int 
 xmldb_lock(clicon_handle h, 
 	   const char   *db, 
-	   int           pid)
+	   uint32_t      id)
 {
     db_elmnt  *de = NULL;
     db_elmnt   de0 = {0,};
 
     if ((de = clicon_db_elmnt_get(h, db)) != NULL)
 	de0 = *de;
-    de0.de_pid = pid;
+    de0.de_id = id;
     clicon_db_elmnt_set(h, db, &de0);
-    clicon_debug(1, "%s: locked by %u",  db, pid);
+    clicon_debug(1, "%s: locked by %u",  db, id);
     return 0;
 }
 
 /*! Unlock database
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
- * @param[in]  pid  Process id
  * @retval -1  Error
  * @retval  0  OK
  * Assume all sanity checks have been made
@@ -289,21 +288,21 @@ xmldb_unlock(clicon_handle h,
     db_elmnt  *de = NULL;
 
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
-	de->de_pid = 0;
+	de->de_id = 0;
 	clicon_db_elmnt_set(h, db, de);
     }
     return 0;
 }
 
-/*! Unlock all databases locked by pid (eg process dies) 
+/*! Unlock all databases locked by session-id (eg process dies) 
  * @param[in]    h   Clicon handle
- * @param[in]    pid Process / Session id
+ * @param[in]    id  Session id
  * @retval -1    Error
  * @retval  0   OK
  */
 int
 xmldb_unlock_all(clicon_handle h, 
-		 int           pid)
+		 uint32_t      id)
 {
     int                 retval = -1;
     char              **keys = NULL;
@@ -315,8 +314,8 @@ xmldb_unlock_all(clicon_handle h,
 	goto done;
     for (i = 0; i < klen; i++) 
 	if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
-	    de->de_pid == pid){
-	    de->de_pid = 0;
+	    de->de_id == id){
+	    de->de_id = 0;
 	    clicon_db_elmnt_set(h, keys[i], de);
 	}
     retval = 0;
@@ -333,7 +332,7 @@ xmldb_unlock_all(clicon_handle h,
  * @retval   0   Not locked
  * @retval  >0   Id of locker
   */
-int 
+uint32_t
 xmldb_islocked(clicon_handle h, 
 	       const char   *db)
 {
@@ -341,7 +340,7 @@ xmldb_islocked(clicon_handle h,
 
     if ((de = clicon_db_elmnt_get(h, db)) == NULL)
 	return 0;
-    return de->de_pid;
+    return de->de_id;
 }
 
 /*! Check if db exists 
