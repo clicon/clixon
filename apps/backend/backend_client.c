@@ -1036,7 +1036,6 @@ from_client_close_session(clicon_handle h,
  * @retval     0       OK
  * @retval    -1       Error
  */
-#if 1
 static int
 from_client_kill_session(clicon_handle h,
 			 cxobj        *xe,
