@@ -1392,8 +1392,10 @@ from_client_msg(clicon_handle        h,
 	    /* NACM rpc operation exec validation */
 	    if ((ret = nacm_rpc(rpc, module, username, xnacm, cbret)) < 0)
 		goto done;
-	    if (xnacm)
+	    if (xnacm){
 		xml_free(xnacm);
+		xnacm = NULL;
+	    }
 	    if (ret == 0) /* Not permitted and cbret set */
 		goto reply;
 	}
@@ -1438,6 +1440,8 @@ from_client_msg(clicon_handle        h,
     retval = 0;
   done:  
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xnacm)
+	xml_free(xnacm);
     if (xret)
 	xml_free(xret);
     if (xt)

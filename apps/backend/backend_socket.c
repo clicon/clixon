@@ -270,9 +270,11 @@ backend_accept_client(int   fd,
 #else
 #error "Need getsockopt O_PEERCRED or getpeereid for unix socket peer cred"
 #endif
-	if (name && (ce->ce_username = strdup(name)) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
+	if (name != NULL){
+	    if ((ce->ce_username = strdup(name)) == NULL){
+		clicon_err(OE_UNIX, errno, "strdup");
+		goto done;
+	    }
 	}
 	break;
     case AF_INET: 	/* XXX: HACK ce->ce_pid */
