@@ -122,14 +122,17 @@ format_str2int(char *str)
 }
 
 /*! Encode a clicon netconf message using variable argument lists
+ * @param[in] id      Session id of client
  * @param[in] format  Variable agrument list format an XML netconf string
- * @retval    msg  Clicon message to send to eg clicon_msg_send()
+ * @retval    NULL    Error
+ * @retval    msg     Clicon message to send to eg clicon_msg_send()
  * @note if format includes %, they will be expanded according to printf rules.
  *       if this is a problem, use ("%s", xml) instaead of (xml)
  *       Notaly this may an issue of RFC 3896 encoded strings
  */
 struct clicon_msg *
-clicon_msg_encode(char *format, ...)
+clicon_msg_encode(uint32_t      id,
+		  char         *format, ...)
 {
     va_list            args;
     uint32_t           xmllen;
@@ -149,7 +152,8 @@ clicon_msg_encode(char *format, ...)
     memset(msg, 0, len);
     /* hdr */
     msg->op_len = htonl(len);
-
+    msg->op_id = htonl(id);
+    
     /* body */
     va_start(args, format);
     vsnprintf(msg->op_body, xmllen, format, args);
@@ -161,16 +165,21 @@ clicon_msg_encode(char *format, ...)
 /*! Decode a clicon netconf message
  * @param[in]  msg    CLICON msg
  * @param[in]  yspec  Yang specification, (can be NULL)
+ * @param[out] id     Session id
  * @param[out] xml    XML parse tree
  */
 int
 clicon_msg_decode(struct clicon_msg *msg, 
 		  yang_stmt         *yspec,
+		  uint32_t          *id,
 		  cxobj            **xml)
 {
     int   retval = -1;
     char *xmlstr;
 
+    /* hdr */
+    if (id)
+	*id = ntohl(msg->op_id);
     /* body */
     xmlstr = msg->op_body;
     clicon_debug(1, "%s %s", __FUNCTION__, xmlstr);
@@ -569,13 +578,13 @@ send_msg_reply(int      s,
  * @see send_msg_notify_xml
  */
 static int
-send_msg_notify(int   s, 
-		char *event)
+send_msg_notify(int           s, 
+		char         *event)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;
 
-    if ((msg=clicon_msg_encode("%s", event)) == NULL)
+    if ((msg=clicon_msg_encode(0, "%s", event)) == NULL)
 	goto done;
     if (clicon_msg_send(s, msg) < 0)
 	goto done;
@@ -596,8 +605,9 @@ send_msg_notify(int   s,
  * @see send_msg_notify XXX beauty contest
  */
 int
-send_msg_notify_xml(int    s, 
-		    cxobj *xev)
+send_msg_notify_xml(clicon_handle h,
+		    int           s, 
+		    cxobj        *xev)
 {
     int                retval = -1;
     cbuf              *cb = NULL;

@@ -495,3 +495,35 @@ clicon_db_elmnt_set(clicon_handle h,
 	return -1;
     return 0;
 }
+
+/*! Get session id
+ * @param[in]  h   Clicon handle
+ * @retval     id  Session identifier
+ * Two uses: the backend assigns session-id for clients.
+ */
+uint32_t
+clicon_session_id_get(clicon_handle h)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    void           *p;
+
+    if ((p = clicon_hash_value(cdat, "session-id", NULL)) == NULL)
+	return 0;
+    return *(uint32_t*)p;
+}
+
+/*! Set session id
+ * @param[in]  h   Clicon handle
+ * @param[in]  id  Session id
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+clicon_session_id_set(clicon_handle h, 
+		      uint32_t      id)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    clicon_hash_add(cdat, "session-id", &id, sizeof(uint32_t));
+    return 0;
+}

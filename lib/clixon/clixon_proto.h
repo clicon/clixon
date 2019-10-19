@@ -51,8 +51,9 @@ enum format_enum{
 
 /* Protocol message header */
 struct clicon_msg {
-    uint32_t    op_len;      /* length of message. network byte order. */
-    char        op_body[0];  /* rest of message, actual data */
+    uint32_t    op_len;     /* length of message. network byte order. */
+    uint32_t    op_id;      /* session-id. network byte order. */
+    char        op_body[0]; /* rest of message, actual data */
 };
 
 /*
@@ -62,11 +63,11 @@ char *format_int2str(enum format_enum showas);
 enum format_enum format_str2int(char *str);
 
 #if defined(__GNUC__) && __GNUC__ >= 3
-struct clicon_msg *clicon_msg_encode(char *format, ...) __attribute__ ((format (printf, 1, 2)));
+struct clicon_msg *clicon_msg_encode(uint32_t id, char *format, ...) __attribute__ ((format (printf, 2, 3)));
 #else
-struct clicon_msg *clicon_msg_encode(char *format, ...);
+struct clicon_msg *clicon_msg_encode(uint32_t id, char *format, ...);
 #endif
-int clicon_msg_decode(struct clicon_msg *msg, yang_stmt *yspec, cxobj **xml);
+int clicon_msg_decode(struct clicon_msg *msg, yang_stmt *yspec, uint32_t *id, cxobj **xml);
 
 int clicon_connect_unix(char *sockpath);
 
@@ -87,7 +88,7 @@ int clicon_msg_send(int s, struct clicon_msg *msg);
 
 int clicon_msg_rcv(int s, struct clicon_msg **msg, int *eof);
 
-int send_msg_notify_xml(int s, cxobj *xev);
+int send_msg_notify_xml(clicon_handle h, int s, cxobj *xev);
 
 int send_msg_reply(int s, char *data, uint32_t datalen);
 

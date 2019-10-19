@@ -51,8 +51,8 @@
  */
 /* Struct per database in hash */
 typedef struct {
-    int    de_pid;
-    cxobj *de_xml; /* cache */
+    uint32_t  de_id;  /* session id */
+    cxobj    *de_xml; /* cache */
 } db_elmnt;
 
 /*
@@ -97,5 +97,8 @@ int clicon_xml_changelog_set(clicon_handle h, cxobj *xchlog);
 /*! Set and get user command-line options (after --) */
 int clicon_argv_get(clicon_handle h, int *argc, char ***argv);
 int clicon_argv_set(clicon_handle h, char *argv0, int argc, char **argv);
+
+int clicon_session_id_set(clicon_handle h, uint32_t id);
+uint32_t clicon_session_id_get(clicon_handle h);
 
 #endif  /* _CLIXON_DATA_H_ */

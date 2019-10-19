@@ -779,6 +779,10 @@ main(int    argc,
 	clicon_err(OE_CFG, errno, "FCGX_OpenSocket");
 	goto done;
     }
+#if 1
+    /* XXX get session id from backend hello */
+    clicon_session_id_set(h, getpid()); 
+#endif
     if (clicon_socket_set(h, sock) < 0)
 	goto done;
     /* umask settings may interfer: we want group to write: this is 774 */

@@ -607,19 +607,19 @@ from_client_commit(clicon_handle h,
 {
     int                  retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
-    int                  mypid = ce->ce_pid;
-    int                  piddb;
+    uint32_t             myid = ce->ce_id;
+    uint32_t             iddb;
     cbuf                *cbx = NULL; /* Assist cbuf */
     int                  ret;
 
     /* Check if target locked by other client */
-    piddb = xmldb_islocked(h, "running");
-    if (piddb && mypid != piddb){
+    iddb = xmldb_islocked(h, "running");
+    if (iddb && myid != iddb){
 	if ((cbx = cbuf_new()) == NULL){
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}	
-	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+	cprintf(cbx, "<session-id>%u</session-id>", iddb);
 	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
 	    goto done;
 	goto ok;
@@ -662,18 +662,18 @@ from_client_discard_changes(clicon_handle h,
 {
     int                  retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
-    int                  mypid = ce->ce_pid;
-    int                  piddb;
+    uint32_t             myid = ce->ce_id;
+    uint32_t             iddb;
     cbuf                *cbx = NULL; /* Assist cbuf */
     
     /* Check if target locked by other client */
-    piddb = xmldb_islocked(h, "candidate");
-    if (piddb && mypid != piddb){
+    iddb = xmldb_islocked(h, "candidate");
+    if (iddb && myid != iddb){
 	if ((cbx = cbuf_new()) == NULL){
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}	
-	cprintf(cbx, "<session-id>%d</session-id>", piddb);
+	cprintf(cbx, "<session-id>%u</session-id>", iddb);
 	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
 	    goto done;
 	goto ok;

@@ -886,6 +886,9 @@ main(int    argc,
     if (check_drop_priv(h, gid) < 0)
 	goto done;
 
+    /* Start session-id for clients */
+    clicon_session_id_set(h, 0);
+
     if (stream_timer_setup(0, h) < 0)
 	goto done;
     if (event_loop() < 0)

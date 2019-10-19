@@ -216,26 +216,26 @@ backend_socket_init(clicon_handle h)
 }
 
 /*! Accept new socket client
- * XXX: credentials not properly implemented
+ * @param[in]  fd   Socket (unix or ip)
+ * @param[in]  arg  typecast clicon_handle
  */
 int
 backend_accept_client(int   fd,
-		      void *arg)
+		      void *arg) 
 {
-    int           retval = -1;
-    clicon_handle h = (clicon_handle)arg;
-    int           s;
-    struct sockaddr from = {0,};
-    socklen_t     len;
+    int                  retval = -1;
+    clicon_handle        h = (clicon_handle)arg;
+    int                  s;
+    struct sockaddr      from = {0,};
+    socklen_t            len;
     struct client_entry *ce;
-    int           i;
-    char         *name = NULL;
-#ifdef HAVE_SO_PEERCRED
-    socklen_t     clen;
-    struct ucred cr = {0,}; 	/* Linux. */
-#elif defined(HAVE_GETPEEREID)
-    uid_t        euid;
-    uid_t        guid;
+    char                *name = NULL;
+#ifdef HAVE_SO_PEERCRED        /* Linux. */
+    socklen_t            clen;
+    struct ucred         cr = {0,};
+#elif defined(HAVE_GETPEEREID) /* FreeBSD */
+    uid_t                euid;
+    uid_t                guid;
 #endif
 
     clicon_debug(2, "%s", __FUNCTION__);
@@ -259,7 +259,6 @@ backend_accept_client(int   fd,
 	    clicon_err(OE_UNIX, errno, "getsockopt");
 	    goto done;
 	}
-	ce->ce_pid = cr.pid; /* XXX no use session-id */
 	if (uid2name(cr.uid, &name) < 0)
 	    goto done;
 #elif defined(HAVE_GETPEEREID)
@@ -277,10 +276,7 @@ backend_accept_client(int   fd,
 	    }
 	}
 	break;
-    case AF_INET: 	/* XXX: HACK ce->ce_pid */
-	ce->ce_pid = 0;
-	for (i=0; i<len; i++)
-	    ce->ce_pid ^= from.sa_data[i];
+    case AF_INET: 	
 	break;
     case AF_INET6:
     default:
@@ -297,5 +293,3 @@ backend_accept_client(int   fd,
  done:
     return retval;
 }
-
-
