@@ -36,7 +36,7 @@ memonce(){
 	    valgrindtest=3 # This means backend valgrind test
 	    sudo chmod 660 $valgrindfile
 	    sudo chown www-data $valgrindfile
-	    : ${RCWAIT:=10} # valgrind backend needs some time to get up 
+	    : ${RCWAIT:=15} # valgrind backend needs some time to get up 
 	    clixon_restconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile /www-data/clixon_restconf"
 
 	    ;;

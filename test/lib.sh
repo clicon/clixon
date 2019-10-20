@@ -232,6 +232,9 @@ wait_restconf(){
 	    err "restconf timeout $RCWAIT seconds"
 	fi
     done
+    if [ $valgrindtest -eq 3 ]; then 
+	sleep 2 # some problems with valgrind
+    fi
 }
 
 # Increment test number and print a nice string
