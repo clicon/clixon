@@ -217,10 +217,10 @@ if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 nr=$(echo "$ret" | grep -c "data:")
-if [ $nr -lt 3 -o $nr -gt 4 ]; then
+#if [ $nr -lt 3 -o $nr -gt 4 ]; then
+if [ $nr -lt 3 ]; then
     err 4 "$nr"
 fi
-
 sleep 1
 
 # 2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications
@@ -232,7 +232,8 @@ if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 nr=$(echo "$ret" | grep -c "data:")
-if [ $nr -lt 4 -o $nr -gt 10 ]; then
+#if [ $nr -lt 4 -o $nr -gt 10 ]; then
+if [ $nr -lt 4 ]; then
     err 6 "$nr"
 fi
 

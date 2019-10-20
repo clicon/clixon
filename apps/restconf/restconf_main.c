@@ -225,6 +225,7 @@ api_root(clicon_handle  h,
 	goto done;
     }
     FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "Status: 200 OK\r\n");
     FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
 
     FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));

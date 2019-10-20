@@ -76,11 +76,11 @@ echo "</interfaces></config></edit-config></rpc>]]>]]>" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
 new "netconf write large config"
-expecteof_file "/usr/bin/time -f %e $clixon_netconf -qf $cfg" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof_file "time $clixon_netconf -qf $cfg" "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Now commit it from candidate to running 
 new "netconf commit large config"
-expecteof "/usr/bin/time -f %e $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "time $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
 
 # START actual tests
 # Having a large db, get single entries many times
@@ -128,13 +128,13 @@ done } 2>&1 | awk '/real/ {print $2}'
 
 # Get config in one large get
 new "netconf get large config"
-/usr/bin/time -f %e echo "<rpc><get> <filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg > /tmp/netconf
+time echo "<rpc><get> <filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg > /tmp/netconf
 
 new "restconf get large config"
-/usr/bin/time -f %e curl -sG http://localhost/restconf/data/ietf-interfaces:interfaces | wc
+time curl -sG http://localhost/restconf/data/ietf-interfaces:interfaces | wc
 
 new "cli get large config"
-/usr/bin/time -f %e $clixon_cli -1f $cfg show state xml interfaces | wc
+time $clixon_cli -1f $cfg show state xml interfaces | wc
 
 new "Kill restconf daemon"
 stop_restconf 
