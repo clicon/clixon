@@ -29,7 +29,7 @@ Edit the nginx config file. (On Ubuntu: `/etc/nginx/sites-available/default`, on
 ```
   server {
     ...
-    location /restconf {
+    location / {
       fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
       include fastcgi_params;
     }

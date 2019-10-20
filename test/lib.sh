@@ -5,6 +5,7 @@
 # - expectfn
 # - expecteq
 # - expecteof
+# - expecteofeq
 # - expecteofx
 # - expecteof_file
 # - expectwait
@@ -421,6 +422,10 @@ EOF
 
 # Like expecteof but with grep -Fxq instead of -EZq. Ie implicit ^$
 # Use this for fixed all line, ie must match exact.
+# - Command
+# - expected command return value (0 if OK)
+# - stdin input
+# - expected stdout outcome
 expecteofx(){
   cmd=$1
   retval=$2
@@ -463,6 +468,10 @@ EOF
 # Like expecteof/expecteofx but with test == instead of grep.
 # No wildcards
 # Use this for multi-lines
+# # - Command
+# - expected command return value (0 if OK)
+# - stdin input
+# - expected stdout outcome
 expecteofeq(){
   cmd=$1
   retval=$2
@@ -498,13 +507,24 @@ EOF
 
 
 # clixon tester read from file for large tests
+# Arguments:
+# - Command
+# - Filename to pipe to stdin 
+# - expected stdout outcome
 expecteof_file(){
   cmd=$1
-  file=$2
-  expect=$3
+  retval=$2
+  file=$3
+  expect=$4
 
-# Do while read stuff
-ret=$($cmd<$file)
+  # Run the command, pipe stdin from file
+  ret=$($cmd<$file)
+  r=$?
+  if [ $r != $retval ]; then
+      echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+      echo -e "\e[0m:"
+      exit -1
+  fi
   # Match if both are empty string
   if [ -z "$ret" -a -z "$expect" ]; then
       return

@@ -227,7 +227,7 @@ load(){
     # Generate file ($fxml)
     genfile $1 netconf
     # Write it to backend in one chunk
-    expecteof_file "$clixon_netconf -qf $cfg -y $fyang" "$fxml" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+    expecteof_file "$clixon_netconf -qf $cfg -y $fyang" 0 "$fxml" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 }
 
 # Run an operation, iterate from <from> to <to> in increment of <step> 
