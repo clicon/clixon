@@ -198,14 +198,14 @@ testrange(){
     post=$4
 
     if [ $t = "string" ]; then # special case for string type error msg
-	len=$(echo -n "$eval" | wc -c)
+	len=$(echo -n "$eval" | wc -c | awk '{print $1}'; )
 	errmsg="String length $len out of range: 1$post - 10$post, 14$post - 20$post"
     else
 	errmsg="Number $eval$post out of range: 1$post - 10$post, 14$post - 20$post"
     fi
 
     new "generated cli set $t leaf invalid"
-    expectfn "$clixon_cli -1f $cfg -l o set l$t $eval" 255 "$errmsg";
+    expectpart "$(clixon_cli -1f $cfg -l o set l$t $eval)" 255 "$errmsg"
 
     new "generated cli set $t leaf OK"
     expectfn "$clixon_cli -1f $cfg -l o set l$t $val" 0 '^$'
@@ -219,7 +219,7 @@ testrange(){
 # (SAME AS FIRST ^)
     new "generated cli set $t leaf invalid"
     expectfn "$clixon_cli -1f $cfg -l o set l$t $eval" 255 "$errmsg"
-    
+
     new "manual cli set $t leaf OK"
     expectfn "$clixon_cli -1f $cfg -l o man h$t $val" 0 '^$'
 

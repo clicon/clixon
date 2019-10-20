@@ -48,6 +48,9 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg -- -s
 fi
 
+new "waiting"
+wait_backend
+
 new "kill old restconf daemon"
 sudo pkill -u $wwwuser clixon_restconf
 
@@ -55,7 +58,6 @@ new "start restconf daemon"
 start_restconf -f $cfg
 
 new "waiting"
-wait_backend
 wait_restconf
 
 new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"

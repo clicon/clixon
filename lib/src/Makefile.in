@@ -180,7 +180,7 @@ distclean: clean
 .SUFFIXES: .c .o
 
 .c.o: $(GENSRC)
-	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
+	rm -f $@ && $(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
 
 .PHONY: build.c
 build.c:	

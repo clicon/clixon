@@ -52,13 +52,19 @@ INSTALL		= @INSTALL@
 INCLUDES 	= -I. -I@srcdir@ @INCLUDES@
 SHELL		= /bin/sh
 
-SUBDIRS = lib apps include etc yang
+SUBDIRS1 = include lib 
+SUBDIRS2 = apps etc yang # without include lib for circular dependency
+SUBDIRS= $(SUBDIRS1) $(SUBDIRS2)
 
 .PHONY:	doc example all clean depend $(SUBDIRS) install loc TAGS .config.status docker test
 
-all:	$(SUBDIRS)
+all:	$(SUBDIRS2)
 
-$(SUBDIRS): include lib # Cannot build app before lib (for parallel make -j)
+# May cause circular include->include,lib
+$(SUBDIRS2): include lib # Cannot build app before lib (for parallel make -j)
+	(cd $@ && $(MAKE) $(MFLAGS) all)
+
+$(SUBDIRS1): 
 	(cd $@ && $(MAKE) $(MFLAGS) all)
 
 depend:
