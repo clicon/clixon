@@ -98,12 +98,11 @@ echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
 new "netconf write large config"
-
 expecteof_file "time $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Here, there are $perfnr entries in candidate
 new "netconf write large config again"
-expecteof_file "time -f %e $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof_file "time $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 # Now commit it from candidate to running 
 new "netconf commit large config"

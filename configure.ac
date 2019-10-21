@@ -226,8 +226,8 @@ AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versi
 
 # Checks for getsockopt options for getting unix socket peer credentials on
 # Linux
-AC_TRY_COMPILE([#include <sys/socket.h>], [getsockopt(1, SOL_SOCKET, SO_PEERCRED, 0, 0);], [AC_DEFINE(HAVE_SO_PEERCRED, 1, [Have getsockopt peercred])
-AC_MSG_RESULT(Have getsockopt peercred)])
+AC_TRY_COMPILE([#include <sys/socket.h>], [getsockopt(1, SOL_SOCKET, SO_PEERCRED, 0, 0);], [AC_DEFINE(HAVE_SO_PEERCRED, 1, [Have getsockopt SO_PEERCRED])
+AC_MSG_RESULT(Have getsockopt SO_PEERCRED)])
 
 # YANG_INSTALLDIR is where clixon installs the Clixon yang files
 # (the files in in yang/clixon)
