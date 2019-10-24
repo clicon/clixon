@@ -824,7 +824,7 @@ nacm_datanode_write(cxobj           *xt,
  * @retval  0  OK but not validated. Need to do NACM step using xnacm
  * @retval  1  OK permitted. You do not need to do next NACM step
  * @code
- *   if ((ret = nacm_access(mode, xnacm, username)) < 0)
+ *   if ((ret = nacm_access(h, mode, xnacm, username)) < 0)
  *     err;
  *   if (ret == 0){
  *      // Next step NACM processing
@@ -834,9 +834,10 @@ nacm_datanode_write(cxobj           *xt,
  * @see RFC8341 3.4 Access Control Enforcement Procedures
  */
 int
-nacm_access(char          *mode,
-	    cxobj         *xnacm,
-	    char          *username)
+nacm_access(clicon_handle h,
+	    char         *mode,
+	    cxobj        *xnacm,
+	    char         *username)
 {
     int     retval = -1;
     cxobj  *xnacm0 = NULL;
@@ -869,7 +870,7 @@ nacm_access(char          *mode,
 	goto permit;
     /* 2.   If the requesting session is identified as a recovery session,
        then the protocol operation is permitted. NYI */
-    if (username && strcmp(username, NACM_RECOVERY_USER) == 0)
+    if (username && strcmp(username, clicon_nacm_recovery_user(h)) == 0)
 	goto permit;
 
     retval = 0; /* not permitted yet. continue with next NACM step */
@@ -943,7 +944,7 @@ nacm_access_pre(clicon_handle  h,
 	goto done;
     xnacm0 = NULL;
     /* Initial NACM steps and common to all NACM access validation. */
-    if ((retval = nacm_access(mode, xnacm, username)) < 0)
+    if ((retval = nacm_access(h, mode, xnacm, username)) < 0)
 	goto done;
     if (retval == 0){ /* if retval == 0 then return an xml nacm tree */
 	*xnacmp = xnacm;

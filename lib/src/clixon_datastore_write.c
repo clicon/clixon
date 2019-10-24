@@ -1023,7 +1023,7 @@ xmldb_put(clicon_handle       h,
 	(xnacm = xpath_first_nsc(xnacm0, nsc, "nacm")) != NULL){
 	/* Pre-NACM access step, if permit, then dont do any nacm checks in 
 	 * text_modify_* below */
-	if ((permit = nacm_access(mode, xnacm, username)) < 0)
+	if ((permit = nacm_access(h, mode, xnacm, username)) < 0)
 	    goto done;
     }
     /* Here assume if xnacm is set and !permit do NACM */

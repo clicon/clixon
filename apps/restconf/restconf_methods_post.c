@@ -348,7 +348,7 @@ api_data_post(clicon_handle h,
     /* commit/discard should be done automaticaly by the system, therefore
      * recovery user is used here (edit-config but not commit may be permitted
      by NACM */
-    cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
+    cprintf(cbx, "<rpc username=\"%s\">", clicon_nacm_recovery_user(h));
     cprintf(cbx, "<commit/></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	goto done;
@@ -377,7 +377,7 @@ api_data_post(clicon_handle h,
 	 * consequence of a RESTCONF edit operation.
 	 */
 	cbuf_reset(cbx);
-	cprintf(cbx, "<rpc username=\"%s\">", NACM_RECOVERY_USER);
+	cprintf(cbx, "<rpc username=\"%s\">", clicon_nacm_recovery_user(h));
 	cprintf(cbx, "<copy-config><source><running/></source><target><startup/></target></copy-config></rpc>");
 	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
 	    goto done;

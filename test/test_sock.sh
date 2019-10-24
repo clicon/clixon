@@ -5,6 +5,9 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+# Raw unit tester of backend unix socket
+: ${clixon_util_socket:=clixon_util_socket}
+
 #
 # client <---> backend
 #          ^ is unix, ipv4, ipv6 socket
@@ -18,11 +21,11 @@ fyang=$dir/socket.yang
 # check socket works
 # 1: UNIX|IPv4|IPv6
 # 2: unix file or ipv4 address or ipv6 address
-# 3: sock port (if ipv4 or ipv6)
+# 3: session-id
 testrun(){
     family=$1
     sock=$2
-    port=$3
+    id=$3
     
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -31,7 +34,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
   <CLICON_SOCK_FAMILY>$family</CLICON_SOCK_FAMILY>
-  <CLICON_SOCK_PORT>$port</CLICON_SOCK_PORT>
+  <CLICON_SOCK_PORT>4535</CLICON_SOCK_PORT>
   <CLICON_SOCK>$sock</CLICON_SOCK>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -56,6 +59,12 @@ EOF
 
     new "$clixon_cli -1f $cfg show version"
     expectfn "$clixon_cli -1f $cfg show version" 0 "$version."
+ 
+    new "hello session-id 1"
+    expecteof "$clixon_util_socket -a $family -s $sock -D $DBG" 0 "<hello/>" "<hello><session-id>1</session-id></hello>"
+
+    new "hello session-id 2"
+    expecteof "$clixon_util_socket -a $family -s $sock -D $DBG" 0 "<hello/>" "<hello><session-id>2</session-id></hello>"
 
     if [ $BE -ne 0 ]; then
 	new "Kill backend"
@@ -70,10 +79,10 @@ EOF
 }
 
 new "Unix socket"
-testrun UNIX $dir/sock 0
+testrun UNIX $dir/sock 
 
 new "IPv4 socket"
-testrun IPv4 127.0.0.1 7878
+testrun IPv4 127.0.0.1 
 
 #new "IPv6 socket" NYI
 #testrun IPv6 ::1 7878

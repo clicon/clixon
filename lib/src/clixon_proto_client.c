@@ -963,7 +963,6 @@ clicon_hello_req(clicon_handle h,
 	clicon_err(OE_XML, errno, "parse_uint32"); 
 	goto done;
     }
-    fprintf(stderr, "id:%lu\n", *id);
     retval = 0;
  done:
     if (msg)

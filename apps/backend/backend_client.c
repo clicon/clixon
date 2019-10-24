@@ -1317,9 +1317,8 @@ from_client_hello(clicon_handle       h,
     id =  clicon_session_id_get(h);
     id++;
     clicon_session_id_set(h, id);
-    cprintf(cbret, "<hello><session-id>%lu</session-id></hello>", id);
+    cprintf(cbret, "<hello><session-id>%u</session-id></hello>", id);
     retval = 0;
-    // done:
     return retval;
 }
 
