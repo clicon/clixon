@@ -285,6 +285,7 @@ main(int argc, char **argv)
     char          *str;
     int            tabmode;
     char          *dir;
+    uint32_t       id = 0;
     
     /* Defaults */
     once = 0;
@@ -595,14 +596,15 @@ main(int argc, char **argv)
 	if (result < 0)
 	    goto done;
     }
-#if 1
-    /* XXX get session id from backend hello */
-    clicon_session_id_set(h, getpid()); 
-#endif
 
     /* Go into event-loop unless -1 command-line */
-    if (!once)
+    if (!once){
+	/* send hello request from backend hello */
+	if (clicon_hello_req(h, &id) < 0)
+	    goto done;
+	clicon_session_id_set(h, id); 
 	retval = cli_interactive(h);
+    }
     else
 	retval = 0;
   done:

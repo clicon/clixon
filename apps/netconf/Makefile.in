@@ -70,7 +70,6 @@ APPL	 = clixon_netconf
 
 # Not accessible from plugin
 APPSRC   = netconf_main.c
-APPSRC  += netconf_hello.c
 APPSRC  += netconf_rpc.c 
 APPSRC  += netconf_filter.c
 APPOBJ   = $(APPSRC:.c=.o)

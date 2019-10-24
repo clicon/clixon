@@ -902,7 +902,6 @@ clicon_rpc_debug(clicon_handle h,
     char              *username;
 
     username = clicon_username_get(h);
-    /* XXX: hardcoded example yang, should be clixon-config!!! */
     if ((msg = clicon_msg_encode(clicon_session_id_get(h),
 				 "<rpc username=\"%s\"><debug xmlns=\"http://clicon.org/lib\"><level>%d</level></debug></rpc>", username?username:"", level)) == NULL)
 	goto done;
@@ -924,4 +923,54 @@ clicon_rpc_debug(clicon_handle h,
 	xml_free(xret);
     return retval;
 }
+
+/*! Send a debug request to backend server
+ * @param[in] h        CLICON handle
+ * @param[in] level    Debug level
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
+ */
+int
+clicon_hello_req(clicon_handle h,
+		 uint32_t     *id)
+{
+    int                retval = -1;
+    struct clicon_msg *msg = NULL;
+    cxobj             *xret = NULL;
+    cxobj             *xerr;
+    cxobj             *x;
+    char              *username;
+    char              *b;
+    int                ret;
+
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode(0, "<hello username=\"%s\" xmlns=\"%s\"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>",
+				 username?username:"",
+				 NETCONF_BASE_NAMESPACE)) == NULL)
+	goto done;
+    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+	goto done;
+    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+	clicon_rpc_generate_error("Hello", xerr);
+	goto done;
+    }
+    if ((x = xpath_first(xret, "hello/session-id")) == NULL){
+	clicon_err(OE_XML, 0, "hello session-id");
+	goto done;
+    }
+    b = xml_body(x);
+    if ((ret = parse_uint32(b, id, NULL)) <= 0){
+	clicon_err(OE_XML, errno, "parse_uint32"); 
+	goto done;
+    }
+    fprintf(stderr, "id:%lu\n", *id);
+    retval = 0;
+ done:
+    if (msg)
+	free(msg);
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
 

@@ -555,9 +555,9 @@ usage(clicon_handle h,
 	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
-    	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
+    	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
-	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
+	    "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_restconf_dir(h)
 	    );
@@ -587,6 +587,7 @@ main(int    argc,
     int            finish;
     char          *str;
     clixon_plugin *cp = NULL;
+    uint32_t       id = 0;
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -780,10 +781,11 @@ main(int    argc,
 	clicon_err(OE_CFG, errno, "FCGX_OpenSocket");
 	goto done;
     }
-#if 1
-    /* XXX get session id from backend hello */
-    clicon_session_id_set(h, getpid()); 
-#endif
+    /* send hello request from backend hello */
+    if (clicon_hello_req(h, &id) < 0)
+	goto done;
+    clicon_session_id_set(h, id); 
+
     if (clicon_socket_set(h, sock) < 0)
 	goto done;
     /* umask settings may interfer: we want group to write: this is 774 */

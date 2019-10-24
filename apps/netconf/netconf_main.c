@@ -67,7 +67,6 @@
 
 #include "clixon_netconf.h"
 #include "netconf_lib.h"
-#include "netconf_hello.h"
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
@@ -77,6 +76,33 @@
 
 /*! Ignore errors on packet errors: continue */
 static int ignore_packet_errors = 1;
+
+static int
+netconf_hello(cxobj *xn)
+{
+#ifdef nyi
+    cxobj *x;
+
+    x = NULL;
+
+    while ((x = xpath_each(xn, "//capability", x)) != NULL) {
+	
+    }
+#endif
+    return 0;
+}
+
+int
+netconf_hello_dispatch(cxobj *xn)
+{
+    cxobj *xp;
+    int retval = -1;
+
+    if ((xp = xpath_first(xn, "//hello")) != NULL)
+	retval = netconf_hello(xp);
+    return retval;
+}
+
 
 /*! Process incoming packet 
  * @param[in]   h    Clicon handle
@@ -268,7 +294,8 @@ netconf_input_cb(int   s,
  */
 static int
 send_hello(clicon_handle h,
-	   int           s)
+	   int           s,
+	   uint32_t      id)
 {
     int   retval = -1;
     cbuf *cb;
@@ -277,7 +304,7 @@ send_hello(clicon_handle h,
 	clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
 	goto done;
     }
-    if (netconf_create_hello(h, cb, getpid()) < 0)
+    if (netconf_hello_server(h, cb, id) < 0)
 	goto done;
     if (netconf_output(s, cb, "hello") < 0)
 	goto done;
@@ -334,16 +361,16 @@ usage(clicon_handle h,
             "\t-h\t\tHelp\n"
 	    "\t-D <level>\tDebug level\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
-	    "\t-l (e|o|s|f<file>) \tLog on std(e)rr, std(o)ut, (s)yslog, (f)ile (syslog is default)\n"
+	    "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
             "\t-q\t\tQuiet: dont send hello prompt\n"
-    	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
+    	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
 	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
 	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n"
-	    "\t-e \tDont ignore errors on packet input.\n"
+	    "\t-e \t\tDont ignore errors on packet input.\n"
 	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_netconf_dir(h)
@@ -367,6 +394,7 @@ main(int    argc,
     yang_stmt       *yspec = NULL;
     yang_stmt       *yspecfg = NULL; /* For config XXX clixon bug */
     char            *str;
+    uint32_t         id;
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -534,8 +562,13 @@ main(int    argc,
     clicon_session_id_set(h, getpid()); 
 #endif
 
+    /* send hello request from backend hello */
+    if (clicon_hello_req(h, &id) < 0)
+	goto done;
+    clicon_session_id_set(h, id);
+    
     if (!quiet)
-	send_hello(h, 1);
+	send_hello(h, 1, id);
     if (event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)
 	goto done;
     if (debug)

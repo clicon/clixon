@@ -158,7 +158,7 @@ backend_client_rm(clicon_handle        h,
  * @param[in]     yspec   Yang spec
  * @param[in]     xpath   Xpath selection, not used but may be to filter early
  * @param[out]    xrs     XML restconf-state node
- * @see netconf_create_hello
+ * @see netconf_hello_server
  * @see rfc8040 Sections 9.1
  */
 static int
@@ -1300,6 +1300,29 @@ verify_nacm_user(enum nacm_credentials_t mode,
     goto done;
 }
 
+/*!
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+from_client_hello(clicon_handle       h,
+		  cxobj               *x,
+		  struct client_entry *ce,
+		  cbuf                *cbret)
+    
+{
+    int      retval = -1;
+    uint32_t id;
+
+    id =  clicon_session_id_get(h);
+    id++;
+    clicon_session_id_set(h, id);
+    cprintf(cbret, "<hello><session-id>%lu</session-id></hello>", id);
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /*! An internal clicon message has arrived from a client. Receive and dispatch.
  * @param[in]   h    Clicon handle
  * @param[in]   s    Socket where message arrived. read from this.
@@ -1344,12 +1367,20 @@ from_client_msg(clicon_handle        h,
 	    goto done;
 	goto reply;
     }
-    ce->ce_id = id;
+
     if ((x = xpath_first_nsc(xt, NULL, "/rpc")) == NULL){
-	if (netconf_malformed_message(cbret, "rpc keyword expected")< 0)
-	    goto done;
-	goto reply;
+	if ((x = xpath_first_nsc(xt, NULL, "/hello")) != NULL){
+	    if ((ret = from_client_hello(h, x, ce, cbret)) <0)
+		goto done;
+	    goto reply;
+	}
+	else{
+	    if (netconf_malformed_message(cbret, "rpc keyword expected")< 0)
+		goto done;
+	    goto reply;
+	}
     }
+    ce->ce_id = id;
     /* Populate incoming XML tree with yang - 
      * should really have been dealt with by decode above
      * maybe not necessary since it should be */

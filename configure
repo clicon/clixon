@@ -4928,8 +4928,8 @@ if ac_fn_c_try_compile "$LINENO"; then :
 
 $as_echo "#define HAVE_SO_PEERCRED 1" >>confdefs.h
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Have getsockopt peercred" >&5
-$as_echo "Have getsockopt peercred" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Have getsockopt SO_PEERCRED" >&5
+$as_echo "Have getsockopt SO_PEERCRED" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
