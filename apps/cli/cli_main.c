@@ -599,7 +599,11 @@ main(int argc, char **argv)
 
     /* Go into event-loop unless -1 command-line */
     if (!once){
-	/* send hello request from backend hello */
+	/* Send hello request to backend to get session-id back
+	 * This is done once at the beginning of the session and then this is
+	 * used by the client, even though new TCP sessions are created for
+	 * each message sent to the backend.
+	 */
 	if (clicon_hello_req(h, &id) < 0)
 	    goto done;
 	clicon_session_id_set(h, id); 

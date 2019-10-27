@@ -584,7 +584,8 @@ main(int    argc,
     yang_stmt     *yspec = NULL;
     yang_stmt     *yspecfg = NULL; /* For config XXX clixon bug */
     char          *stream_path;
-    int            finish;
+    int            finish = 0;
+    int            start = 1;
     char          *str;
     clixon_plugin *cp = NULL;
     uint32_t       id = 0;
@@ -781,10 +782,6 @@ main(int    argc,
 	clicon_err(OE_CFG, errno, "FCGX_OpenSocket");
 	goto done;
     }
-    /* send hello request from backend hello */
-    if (clicon_hello_req(h, &id) < 0)
-	goto done;
-    clicon_session_id_set(h, id); 
 
     if (clicon_socket_set(h, sock) < 0)
 	goto done;
@@ -805,6 +802,19 @@ main(int    argc,
 	    goto done;
 	}
 	clicon_debug(1, "------------");
+
+	if (start == 0){
+	    /* Send hello request to backend to get session-id back
+	     * This is done once at the beginning of the session and then this is
+	     * used by the client, even though new TCP sessions are created for
+	     * each message sent to the backend.
+	     */
+	    if (clicon_hello_req(h, &id) < 0)
+		goto done;
+	    clicon_session_id_set(h, id);
+	    start++;
+	}
+
 	if ((path = FCGX_GetParam("REQUEST_URI", r->envp)) != NULL){
 	    clicon_debug(1, "path: %s", path);
 	    if (strncmp(path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0)

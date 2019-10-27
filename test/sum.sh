@@ -7,8 +7,11 @@ if [ $# -gt 0 ]; then
     exit -1
 fi
 
+# Pattern to run tests, default is all, but you may want to narrow it down
+: ${pattern:=test_*.sh}
+
 err=0
-for testfile in test*.sh; do # For lib.sh the variable must be called testfile
+for testfile in $pattern; do # For lib.sh the variable must be called testfile
     echo "Running $testfile"
     ./$testfile  > /dev/null 2>&1
     errcode=$?
