@@ -147,7 +147,7 @@ new "start restconf daemon (-a is enable basic authentication)"
 start_restconf -f $cfg -- -a
 
 new "waiting"
-wait_backend
+wait_restconf
 
 new "auth set authentication config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

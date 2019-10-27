@@ -1,57 +1,67 @@
 # Clixon Changelog
 
-## 4.2.0 (Expected: October)
+## 4.2.0 (October 27 2019)
+
+### Summary
+
+The main improvement in thus release concerns security in terms of priveleges and credentials of accessing the clixon backend. There is also stricter multi-namespace checks which primarily effects where augmented models are used.
 
 ### Major New features
-* Privileges and credentials features
-  * Backend daemon can drop privileges after initialization to run as non-privileged user
-    * You can start as root and drop privileges either permanently or temporary
-    * Controlled by options: CLICON_BACKEND_USER and CLICON_BACKEND_PRIVELEGES
-    * Can also be set with `-U <user>` clixon_backend command-line option
-    * If dropped temporary, you can restore privileges with `restore_priv()`
-  * The backend socket has now support of credentials of peer clients 
-    * NACM users are cross-checked with client credentials (cli/netconf/restconf)
-    * Only UNIX domain socket supports client credential checks (Not IP sockets.
-    * Controlled by option CLICON_NACM_CREDENTIALS
-      * `none` means credentials are not checked. Only option for IP sockets.
-      * `exact` means credentials of client user must match NACM user exactly.
-      * `except` means exact match is done except for root and www user.This is necessary for Restconf. This is default.
-
-### API changes on existing features (you may need to change your code)
-* Internal backend socket protocol changed: uint32_t session-id added, see clixon_proto.h
-  * C-code: added `id` parameter to `clicon_msg_encode()` and `clicon_msg_decode()`
-* NACM users are cross-checked with client user credentials (see new features).
-* Changed "Demon error" to "Daemon error" in logs and debug.
+* The backend daemon can drop privileges after initialization to run as non-privileged user
+  * You can start as root and drop privileges either permanently or temporary
+    * use `-U <user>` clixon_backend command-line option to drop to `user`
+  * Generic options are the following:
+    * `CLICON_BACKEND_USER` sets the user to drop priveleges to
+    * CLICON_BACKEND_PRIVELEGES can have the following values:
+      * `none` Make no drop/change in privileges. This is currently the default.
+      * `drop_perm`  After initialization, drop privileges permanently
+      * `drop_perm` After initialization, drop privileges temporarily (to a euid)
+  * If dropped temporary, you can restore privileges with `restore_priv()`
+* The backend socket has now support of credentials of peer clients 
+  * NACM users are cross-checked with client credentials (cli/netconf/restconf)
+  * Only UNIX domain socket supports client credential checks (IP sockets do not).
+  * Controlled by option CLICON_NACM_CREDENTIALS
+    * `none` means credentials are not checked. Only option for IP sockets.
+    * `exact` means credentials of client user must match NACM user exactly.
+    * `except` means exact match is done except for root and www user.This is necessary for Restconf. This is default.
 * Stricter handling of multi-namespace handling
   * This occurs in cases where there are more than one XML namespaces in a config tree, such as `augment`:ed trees.
   * Affects all parts of the system, including datastore, backend, restconf and cli.
   * Examples of a mandated stricter usage of a simple augment `b` of symbol `a`. Assume `a` is in module `mod1` with namespace `urn:example:a` and `b` is in module `mod2` with namespace `urn:example:b`:
     * RESTCONF: `GET http://localhost/restconf/data/mod1:a/mod2:b`
     * NETCONF: `<a xmlns="urn:example:a" xmlns:b="urn:example:b"><b:b>42</b:b></a>`
-    * XPATH (in edit-config filter): `<filter type="xpath" select="a:a/b:b" xmlns:a="urn:example:a" xmlns:b="urn:example:b"/>`
-* Changed `clicon_rpc_get` and `clicon_rpc_get_config` as follows:
-  * Added `username` as second parameter, default NULL
-  * Changed `namespace` to namespace context, which needs to be created
-  * Example new usage:
-  ```
-  cvec *nsc = xml_nsctx_init(NULL, "urn:example:clixon")
-  if (clicon_rpc_get_config(h, NULL, "running", "/interfaces", nsc, &xret) < 0)
-    err;
-  ```
-  See function reference how to make a call.
+    * XPATH (in edit-config filter): `<filter type="xpath" select="a:a/b:b" xmlns:
+
+### API changes on existing features (you may need to change your code)
+* The stricter multi-namespace handling (see above) may affect the API, if you used the more relaxed usage.
+* The credentials check (see above) may cause access denied if UNIX user does not match NACM user.
+* Changed "Demon error" to "Daemon error" in logs and debug. Output only.
+a="urn:example:a" xmlns:b="urn:example:b"/>`
 * RESTCONF error reporting
   * Invalid api-path syntax (eg non-matching yang) error changed from 412 operation-failed to 400 Bad request invalid-value, or unknown-element.
   * Changed so that `400 Bad Request` are for invalid api-path or unknown yang elements, `404 Not Found` for valid xml when object not found.
-* Typical installation should now add a `clicon` user (as well as group)
 * New clixon-config@2019-09-11.yang revision
-  * Added: CLICON_BACKEND_USER: Drop of privileges to this user, owner of backend socket.
+  * Added: CLICON_BACKEND_USER: Drop of privileges to this user, owner of backend socket (default: `clicon`)
+    * Therefore new installation should now add a UNIX `clicon` user
   * Added: CLICON_BACKEND_PRIVELEGES: If and how to drop privileges
   * Added: CLICON_NACM_CREDENTIALS: If and how to check backend socket priveleges with NACM
   * Added: CLICON_NACM_RECOVERY_USER: Name of NACM recovery user.
 * Restconf top-level operations GET root resource modified to comply with RFC 8040 Sec 3.1 
   * non-pretty print remove all spaces, eg `{"operations":{"clixon-example:client-rpc":[null]`
   * Replaced JSON `null` with `[null]` as proper empty JSON leaf/leaf-list encoding.
-	
+* C-code change
+  * Changed `clicon_rpc_get` and `clicon_rpc_get_config` as follows:
+    * Added `username` as second parameter, default NULL
+    * Changed `namespace` to namespace context, which needs to be created
+    * Example new usage:
+    ```
+    cvec *nsc = xml_nsctx_init(NULL, "urn:example:clixon")
+    if (clicon_rpc_get_config(h, NULL, "running", "/interfaces", nsc, &xret) < 0)
+      err;
+    ```
+    See function reference how to make a call.
+  * C-code: added `id` parameter to `clicon_msg_encode()` and `clicon_msg_decode()` due to internal backend socket message change
+
 ### Minor changes
 * Changed session-id handing. Instead of using pid of peer process, a proper session id generated by the server is used, following RFC6241.
   * Clients query with a hello to the server at startup and expects a hello reply
@@ -62,7 +72,6 @@
 * FreeBSD modifications: Configure, makefiles and test scripts modification for Freebsd
 	
 ### Corrected Bugs
-* See "Stricter handling of multi-namespace handling" in API-changes above.
 * Hello netconf candidate capability misspelled, mentioned in [Can clixon_netconf receive netconf packets as a server? #93](https://github.com/clicon/clixon/issues/93)
 * [Cannot write to config using restconf example #91](https://github.com/clicon/clixon/issues/91)
   * Updated restconf documentation (the example was wrong)
