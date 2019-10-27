@@ -137,6 +137,9 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg -- -s
 fi
 
+new "waiting"
+wait_backend
+
 new "kill old restconf daemon"
 sudo pkill -u $wwwuser clixon_restconf
 
@@ -145,7 +148,6 @@ start_restconf -f $cfg -- -a
 
 new "waiting"
 wait_backend
-wait_restconf
 
 new "auth set authentication config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

@@ -266,6 +266,9 @@ testrun(){
 	start_backend -s startup -f $cfg -- -u
     fi
 
+    new "waiting"
+    wait_backend
+    
     new "kill old restconf daemon"
     sudo pkill -u $wwwuser clixon_restconf
 
@@ -273,7 +276,6 @@ testrun(){
     start_restconf -f $cfg
 
     new "waiting"
-    wait_backend
     wait_restconf
 
     new "Check running db content"

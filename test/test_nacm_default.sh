@@ -99,6 +99,9 @@ EOF
 	sleep $BETIMEOUT
     fi
     
+    new "waiting"
+    wait_backend
+    
     new "kill old restconf daemon"
     sudo pkill -u $wwwuser clixon_restconf
 
@@ -106,7 +109,6 @@ EOF
     start_restconf -f $cfg -- -a
 
     new "waiting"
-    wait_backend
     wait_restconf
     
     #----------- First get

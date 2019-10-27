@@ -43,6 +43,9 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
+new "waiting"
+wait_backend
+
 new "kill old restconf daemon"
 sudo pkill -u $wwwuser clixon_restconf
 
@@ -50,9 +53,7 @@ new "start restconf daemon"
 start_restconf -f $cfg
 
 new "waiting"
-wait_backend
 wait_restconf
-
 
 new "rpc tests"
 

@@ -61,6 +61,9 @@ testrun(){
 	start_backend -s init -f $cfg -y $fyang $option
     fi
     
+    new "waiting"
+    wait_backend
+    
     new "kill old restconf daemon"
     sudo pkill -u $wwwuser clixon_restconf
     
@@ -68,7 +71,6 @@ testrun(){
     start_restconf -f $cfg -y $fyang $option
     
     new "waiting"
-    wait_backend
     wait_restconf
 
     new "restconf put 42"

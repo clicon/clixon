@@ -123,6 +123,9 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
+new "waiting"
+wait_backend
+
 new "kill old restconf daemon"
 sudo pkill -u $wwwuser clixon_restconf
 
@@ -130,7 +133,6 @@ new "start restconf daemon (-a is enable basic authentication)"
 start_restconf -f $cfg -- -a
 
 new "waiting"
-wait_backend
 wait_restconf
 
 new "auth get"

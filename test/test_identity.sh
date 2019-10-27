@@ -151,6 +151,9 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
+new "waiting"
+wait_backend
+
 new "kill old restconf daemon"
 sudo pkill -u $wwwuser clixon_restconf
 
@@ -159,7 +162,6 @@ start_restconf -f $cfg
 
 new "waiting"
 wait_backend
-wait_restconf
 
 new "Set crypto to aes"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><crypto xmlns="urn:example:my-crypto">aes</crypto></config></edit-config></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><ok/></rpc-reply>]]>]]>$'
