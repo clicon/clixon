@@ -36,6 +36,9 @@
 #ifndef _CLIXON_STRING_H_
 #define _CLIXON_STRING_H_
 
+#include <stdlib.h>
+#include <string.h>
+
 /* Struct used to map between int and strings. Typically used to map between
  * values and their names. Note NULL terminated
  * Example:
