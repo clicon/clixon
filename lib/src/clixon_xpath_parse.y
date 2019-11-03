@@ -105,7 +105,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <fnmatch.h>
 #include <assert.h>
 #include <ctype.h>
 #include <sys/types.h>

@@ -43,7 +43,6 @@
 #include <sys/time.h>
 #include <sys/param.h>
 #include <netinet/in.h>
-#include <fnmatch.h> /* matching strings */
 #include <signal.h> /* matching strings */
 
 /* clicon */

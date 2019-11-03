@@ -162,10 +162,10 @@ cli_cligen(clicon_handle h)
 
 int
 cli_parse_file(clicon_handle h,
-	       FILE *f,
-	       char *name, /* just for errs */
-	       parse_tree *pt,
-	       cvec *globals)
+	       FILE         *f,
+	       char         *name, /* just for errs */
+	       parse_tree   *pt,
+	       cvec         *globals)
 {
     cligen_handle ch = cligen(h);
 
@@ -182,7 +182,7 @@ cli_susp_hook(clicon_handle     h,
     return cligen_susp_hook(ch, fn); 
 }
 int
-cli_interrupt_hook(clicon_handle       h,
+cli_interrupt_hook(clicon_handle          h,
 		   cligen_interrupt_cb_t *fn)
 {
     cligen_handle ch = cligen(h);
@@ -200,14 +200,16 @@ cli_nomatch(clicon_handle h)
 }
 
 int
-cli_prompt_set(clicon_handle h, char *prompt)
+cli_prompt_set(clicon_handle h,
+	       char         *prompt)
 {
     cligen_handle ch = cligen(h);
     return cligen_prompt_set(ch, prompt);
 }
 
 int
-cli_logsyntax_set(clicon_handle h, int status)
+cli_logsyntax_set(clicon_handle h,
+		  int           status)
 {
     cligen_handle ch = cligen(h);
     return cligen_logsyntax_set(ch, status);

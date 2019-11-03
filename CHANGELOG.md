@@ -1,5 +1,14 @@
 # Clixon Changelog
 
+## 4.3.0 (Expected: ~December 2019)
+
+### Minor changes
+* Added wildcard `*` as a mode to `CLICON_MODE` in clispec files
+  * If you set "CLICON_MODE="*";" in a clispec file it means that syntax will appear in all CLI spec modes.
+
+### Corrected Bugs
+* [Add missing includes](https://github.com/clicon/clixon/pulls)
+	
 ## 4.2.0 (October 27 2019)
 
 ### Summary
@@ -12,7 +21,7 @@ The main improvement in thus release concerns security in terms of priveleges an
     * use `-U <user>` clixon_backend command-line option to drop to `user`
   * Generic options are the following:
     * `CLICON_BACKEND_USER` sets the user to drop priveleges to
-    * CLICON_BACKEND_PRIVELEGES can have the following values:
+    * `CLICON_BACKEND_PRIVELEGES` can have the following values:
       * `none` Make no drop/change in privileges. This is currently the default.
       * `drop_perm`  After initialization, drop privileges permanently
       * `drop_perm` After initialization, drop privileges temporarily (to a euid)

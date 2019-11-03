@@ -45,7 +45,6 @@
 #include <stdarg.h>
 #include <syslog.h>
 #include <errno.h>
-#include <assert.h>
 #include <dlfcn.h>
 #include <dirent.h>
 #include <libgen.h>
@@ -209,27 +208,29 @@ clixon_str2fn(char  *name,
    return NULL; 
 }
 
-/*! Append to syntax mode from file
- * @param[in]  h         Clixon handle
- * @param[in]  filename	 Name of file where syntax is specified (in syntax-group dir)
- * @param[in]  dir	 Name of dir, or NULL
+/*! Load a file containing syntax and append to specified modes, also load C plugin
+ * @param[in]  h        Clixon handle
+ * @param[in]  filename	Name of file where syntax is specified (in syntax-group dir)
+ * @param[in]  dir	Name of dir, or NULL
+ * @param[out] allpt    Universal CLIgen parse tree: apply to all modes
  */
 static int
-cli_load_syntax(clicon_handle h,
-		const char   *filename,
-		const char   *dir)
+cli_load_syntax_file(clicon_handle h,
+		     const char   *filename,
+		     const char   *dir,
+		     parse_tree   *ptall)
 {
-    void      *handle = NULL;  /* Handle to plugin .so module */
-    char      *mode = NULL;    /* Name of syntax mode to append new syntax */
-    parse_tree pt = {0,};
-    int        retval = -1;
-    FILE      *f;
-    char       filepath[MAXPATHLEN];
-    cvec      *cvv = NULL;
-    char      *prompt = NULL;
-    char     **vec = NULL;
-    int        i, nvec;
-    char      *plgnam;
+    void          *handle = NULL;  /* Handle to plugin .so module */
+    char          *mode = NULL;    /* Name of syntax mode to append new syntax */
+    parse_tree     pt = {0,};
+    int            retval = -1;
+    FILE          *f;
+    char           filepath[MAXPATHLEN];
+    cvec          *cvv = NULL;
+    char          *prompt = NULL;
+    char         **vec = NULL;
+    int            i, nvec;
+    char          *plgnam;
     clixon_plugin *cp;
 
     if (dir)
@@ -253,10 +254,18 @@ cli_load_syntax(clicon_handle h,
 	goto done;
     }
     fclose(f);
-    /* Get CLICON specific global variables */
+    /* Get CLICON specific global variables:
+     *  CLICON_MODE: which mode(s) this syntax applies to
+     *  CLICON_PROMPT: Cli prompt in this mode
+     *  CLICON_PLUGIN: Name of C API plugin
+     * Note: the base case is that it is:
+     *   (1) a single mode or 
+     *   (2) "*" all modes or "m1:m2" - a list of modes
+     * but for (2), prompt and plgnam may have unclear semantics
+     */
+    mode = cvec_find_str(cvv, "CLICON_MODE");
     prompt = cvec_find_str(cvv, "CLICON_PROMPT");
     plgnam = cvec_find_str(cvv, "CLICON_PLUGIN");
-    mode = cvec_find_str(cvv, "CLICON_MODE");
 
     if (plgnam != NULL) { /* Find plugin for callback resolving */
 	if ((cp = clixon_plugin_find(h, plgnam)) != NULL)
@@ -288,8 +297,19 @@ cli_load_syntax(clicon_handle h,
 	    goto done;
 	}
     }
+    /* Find all modes in CLICON_MODE string: where to append the pt syntax tree */
     if ((vec = clicon_strsep(mode, ":", &nvec)) == NULL) 
 	goto done;
+
+    if (nvec == 1 && strcmp(vec[0], "*") == 0){
+	/* Special case: Add this to all modes. Add to special "universal" syntax
+	 * and add to all syntaxes after all files have been loaded. At this point
+	 * all modes may not be known (not yet loaded)
+	 */
+	if (cligen_parsetree_merge(ptall, NULL, pt) < 0)
+	    return -1;
+    }
+    else {
     for (i = 0; i < nvec; i++) {
 	if (syntax_append(h,
 			  cli_syntax(h),
@@ -299,6 +319,7 @@ cli_load_syntax(clicon_handle h,
 	}
 	if (prompt)
 	    cli_set_prompt(h, vec[i], prompt);
+    }
     }
 
     cligen_parsetree_free(pt, 1);
@@ -329,6 +350,7 @@ cli_syntax_load(clicon_handle h)
     cligen_susp_cb_t  *fns = NULL;
     cligen_interrupt_cb_t *fni = NULL;
     clixon_plugin     *cp;
+    parse_tree         ptall = {0,}; /* Universal CLIgen parse tree all modes */
 
     /* Syntax already loaded.  XXX should we re-load?? */
     if ((stx = cli_syntax(h)) != NULL)
@@ -347,30 +369,38 @@ cli_syntax_load(clicon_handle h)
 
     cli_syntax_set(h, stx);
 
+    /* Load single specific clispec file */
     if (clispec_file){
-	if (cli_load_syntax(h, clispec_file, NULL) < 0)
+	if (cli_load_syntax_file(h, clispec_file, NULL, &ptall) < 0)
 	    goto done;
     }
+    /* Load all clispec .cli files in directory */
     if (clispec_dir){
-	/* load syntaxfiles */
+	/* Get directory list of files */
 	if ((ndp = clicon_file_dirent(clispec_dir, &dp, "(.cli)$", S_IFREG)) < 0)
 	    goto done;
-	/* Load the rest */
+	/* Load the syntax parse trees into cli_syntax stx structure */
 	for (i = 0; i < ndp; i++) {
 	    clicon_debug(1, "DEBUG: Loading syntax '%.*s'", 
 			 (int)strlen(dp[i].d_name)-4, dp[i].d_name);
-	    if (cli_load_syntax(h, dp[i].d_name, clispec_dir) < 0)
+	    if (cli_load_syntax_file(h, dp[i].d_name, clispec_dir, &ptall) < 0)
 		goto done;
 	}
     }
-    /* Did we successfully load any syntax modes? */
+    /* Were any syntax modes successfully loaded? If not, leave */
     if (stx->stx_nmodes <= 0) {
 	retval = 0;
 	goto done;
     }	
-    /* Parse syntax tree for all modes */
+    
+    /* Go thorugh all modes and :
+     * 1) Add the universal syntax 
+     * 2) add syntax tree (of those modes - "activate" syntax from stx to CLIgen)
+     */
     m = stx->stx_modes;
     do {
+	if (cligen_parsetree_merge(&m->csm_pt, NULL, ptall) < 0)
+	    return -1;
 	if (gen_parse_tree(h, m) != 0)
 	    goto done;
 	m = NEXTQ(cli_syntaxmode_t *, m);
@@ -389,13 +419,13 @@ cli_syntax_load(clicon_handle h)
 
     /* All good. We can now proudly return a new group */
     retval = 0;
-
 done:
     if (retval != 0) {
 	clixon_plugin_exit(h);
 	cli_syntax_unload(h);
 	cli_syntax_set(h, NULL);
     }
+    cligen_parsetree_free(ptall, 1);
     if (dp)
 	free(dp);
     return retval;

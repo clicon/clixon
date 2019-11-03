@@ -338,20 +338,21 @@ module clixon-config {
 	leaf CLICON_CLI_DIR {
 	    type string;
 	    description
-		"Location of cli frontend .so plugins. Load all .so 
-                 plugins in this dir as CLI object plugins";
+		"Directory containing frontend cli loadable plugins. Load all .so 
+                 plugins in this directory as CLI object plugins";
 	}
 	leaf CLICON_CLISPEC_DIR {
 	    type string;
 	    description
-		"Location of frontend .cli cligen spec files. Load all .cli 
-       	         files in this dir as CLI specification files";
+		"Directory containing frontend cligen spec files. Load all .cli 
+       	         files in this directory as CLI specification files.
+                 See also CLICON_CLISPEC_FILE.";
 	}
 	leaf CLICON_CLISPEC_FILE {
 	    type string;
-	    description "Specific frontend .cli cligen spec file as simple
-                         alternative to CLICON_CLISPEC_DIR. Also available as
-                         -c in clixon_cli.";
+	    description
+		"Specific frontend cligen spec file as aletrnative or complement
+                 to CLICON_CLISPEC_DIR. Also available as -c in clixon_cli.";
 	}
 	leaf CLICON_CLI_MODE {
 	    type string;

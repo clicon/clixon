@@ -50,7 +50,6 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <fnmatch.h>
 #include <stdint.h>
 #include <assert.h>
 
