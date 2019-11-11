@@ -2247,7 +2247,7 @@ xml_default(cxobj *xt,
 				clicon_err(OE_UNIX, errno, "strdup");
 				goto done;
 			    }
-			    if (add_namespace(xc, xt, prefix1, namespace) < 0)
+			    if (add_namespace(xc, xt, prefix, namespace) < 0)
 				goto done;
 			}
 		    }
