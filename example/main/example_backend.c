@@ -317,30 +317,23 @@ example_statedata(clicon_handle h,
      * state information. In this case adding dummy interface operation state
      * to configured interfaces.
      * Get config according to xpath */
-    if (xmldb_get0(h, "running", nsc, xpath, 1, &xt, NULL) < 0)
+    if ((nsc1 = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
 	goto done;
-
-    if (yang_find_module_by_namespace(yspec, "urn:ietf:params:xml:ns:yang:ietf-interfaces") != NULL){
-	/* Here a separate namespace context nsc1 is created. The original nsc 
-	 * created by the system cannot be used trivially, since we dont know
-	 * the prefixes, although we could by a complex mechanism find the prefix 
-	 * (if it exists) and use that when creating our xpath.
-	 * But it is easier creating a new namespace context nsc1.
-	 */
-	if ((nsc1 = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
-	    goto done;
-	if (xpath_vec_nsc(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
-	    goto done;
-	if (xlen){
-	    cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
-	    for (i=0; i<xlen; i++){
-		name = xml_body(xvec[i]);
-		cprintf(cb, "<interface><name>%s</name><oper-status>up</oper-status></interface>", name);
-	    }
-	    cprintf(cb, "</interfaces>");
-	    if (xml_parse_string(cbuf_get(cb), NULL, &xstate) < 0)
-		goto done;
+    if (xmldb_get0(h, "running", nsc1, "/interfaces/interface/name", 1, &xt, NULL) < 0)
+	goto done;
+    if (xpath_vec_nsc(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
+	goto done;
+    if (xlen){
+	cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
+	for (i=0; i<xlen; i++){
+	    name = xml_body(xvec[i]);
+	    cprintf(cb, "<interface xmlns:ex=\"urn:example:clixon\"><name>%s</name><type>ex:eth</type><oper-status>up</oper-status>", name);
+	    cprintf(cb, "<ex:my-status><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status>");
+	    cprintf(cb, "</interface>");
 	}
+	cprintf(cb, "</interfaces>");
+	if (xml_parse_string(cbuf_get(cb), NULL, &xstate) < 0)
+	    goto done;
     }
    /* State in test_yang.sh , test_restconf.sh and test_order.sh */
    if (yang_find_module_by_namespace(yspec, "urn:example:clixon") != NULL){
@@ -356,32 +349,14 @@ example_statedata(clicon_handle h,
      *       (2) event-count is XOR on name, so is not 42 and 4
      */
    if (yang_find_module_by_namespace(yspec, "urn:example:events") != NULL){
-       if ((nsc2 = xml_nsctx_init(NULL, "urn:example:events")) == NULL)
+       cbuf_reset(cb);
+       cprintf(cb, "<events xmlns=\"urn:example:events\">");
+       cprintf(cb, "<event><name>interface-down</name><event-count>90</event-count></event>");
+       cprintf(cb, "<event><name>interface-up</name><event-count>77</event-count></event>");
+       cprintf(cb, "</events>");
+       if (xml_parse_string(cbuf_get(cb), NULL, &xstate) < 0)
 	   goto done;
-       if (xvec){
-	   free(xvec);
-	   xvec = NULL;
-       }
-       if (xpath_vec_nsc(xt, nsc2, "/events/event/name", &xvec, &xlen) < 0)
-	   goto done;
-       if (xlen){
-	   int j = 0;
-	   int c;
-	   cprintf(cb, "<events xmlns=\"urn:example:events\">");
-	   
-	   for (i=0; i<xlen; i++){
-	       name = xml_body(xvec[i]);
-	       c = 0;
-	       for (j=0; j<strlen(name); j++)
-		   c ^= name[j];
-	       cprintf(cb, "<event><name>%s</name><event-count>%d</event-count></event>", name, c);
-	   }
-	   cprintf(cb, "</events>");
-	   if (xml_parse_string(cbuf_get(cb), NULL, &xstate) < 0)
-	       goto done;
-       }
    }
-
  ok:
     retval = 0;
  done:

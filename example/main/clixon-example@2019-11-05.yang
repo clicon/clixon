@@ -2,6 +2,9 @@ module clixon-example {
     yang-version 1.1;
     namespace "urn:example:clixon";
     prefix ex;
+    revision 2019-11-05 {
+	description "Augment interface. Released in Clixon 4.3.0";
+    }
     revision 2019-07-23 {
 	description "Extension e4. Released in Clixon 4.1.0";
     }
@@ -41,6 +44,18 @@ module clixon-example {
          leaf-list op {
             type string;
          }
+    }
+    augment "/if:interfaces/if:interface" {
+	container my-status {
+	    config false;
+	    description "For testing augment+state";
+	    leaf int {
+		type int32;
+	    }
+	    leaf str {
+		type string;
+	    }
+	}
     }
     /* yang extension implemented by the example backend code. */
     extension e4 {

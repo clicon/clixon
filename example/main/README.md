@@ -206,7 +206,7 @@ clixon_netconf -qf /usr/local/etc/example.xml
 Restconf (assuming nginx started):
 ```
 sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data&
-curl -X POST  http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":"ipv4"}}'
+curl -X POST  http://localhost/restconf/operations/clixon-example:example -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"ipv4"}}'
 {
   "clixon-example:output": {
     "x": "ipv4",

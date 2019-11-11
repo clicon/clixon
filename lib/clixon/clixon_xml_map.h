@@ -78,6 +78,7 @@ int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop,
 
 int xml2xpath(cxobj *x, char **xpath);
 int xml2api_path_1(cxobj *x, cbuf *cb);
+int check_namespaces(cxobj *x0, cxobj *x1, cxobj *x1p);
 int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 

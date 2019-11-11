@@ -90,7 +90,7 @@ expecteof "time $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-
 new "netconf get test single req"
 sel="/if:interfaces/if:interface[if:name='e1']"
 msg="<rpc><get><filter type=\"xpath\" select=\"$sel\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"/></get></rpc>]]>]]>"
-expecteof "$clixon_netconf -qf $cfg" 0 "$msg" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><oper-status>up</oper-status></interface></interfaces></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "$msg" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><oper-status>up</oper-status><ex:my-status xmlns:ex="urn:example:clixon"><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status></interface></interfaces></data></rpc-reply>]]>]]>$'
 
 new "netconf get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do
@@ -101,7 +101,7 @@ done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
 new "restconf get test single req"
-expecteq "$(curl -s -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1)" 0 '{"ietf-interfaces:interface":[{"name":"e1","type":"clixon-example:eth","enabled":true,"oper-status":"up"}]}
+expecteq "$(curl -s -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1)" 0 '{"ietf-interfaces:interface":[{"name":"e1","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}]}
 '
 
 new "restconf get $perfreq single reqs"

@@ -170,7 +170,7 @@ client_get_capabilities(clicon_handle h,
     int    retval = -1;
     cxobj *xrstate = NULL; /* xml restconf-state node */
     cxobj *xcap = NULL;    /* xml capabilities node */
-    
+
     if ((xrstate = xpath_first(*xret, "restconf-state")) == NULL){
 	clicon_err(OE_YANG, ENOENT, "restconf-state not found in config node");
 	goto done;
@@ -321,7 +321,7 @@ client_statedata(clicon_handle h,
     if (ret == 0)
 	goto fail;
     /* Code complex to filter out anything that is outside of xpath 
-     * Actually this is a safety catch, should realy be done in plugins
+     * Actually this is a safety catch, should really be done in plugins
      * and modules_state functions.
      */
     if (xpath_vec_nsc(*xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)

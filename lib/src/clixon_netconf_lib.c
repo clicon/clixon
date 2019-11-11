@@ -1338,7 +1338,7 @@ netconf_db_find(cxobj *xn,
 }
 
 /*! Generate netconf error msg to cbuf to use in string printout or logs
- * @param[in]  xerr    Netconf error message on the level: <rpc-reply><rpc-error>
+ * @param[in]  xerr    Netconf error message on the level: <rpc-error>
  * @param[out] cberr   Translation from netconf err to cbuf. Free with cbuf_free.
  * @retval     0       OK, with cberr set
  * @retval    -1       Error

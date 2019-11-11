@@ -111,6 +111,7 @@ clixon_plugin_statedata(clicon_handle    h,
 {
     int             retval = -1;
     int             ret;
+    cxobj          *xerr = NULL;
     cxobj          *x = NULL;
     clixon_plugin  *cp = NULL;
     plgstatedata_t *fn;          /* Plugin statedata fn */
@@ -124,6 +125,31 @@ clixon_plugin_statedata(clicon_handle    h,
 	    goto fail;  /* Dont quit here on user callbacks */
 	if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
+	/* Check XML from state callback by validating it. return internal 
+	 * error with error cause 
+	 */
+	if ((ret = xml_yang_validate_all_top(h, x, &xerr)) < 0) 
+	    goto done;
+	if (ret > 0 && (ret = xml_yang_validate_add(h, x, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    cbuf  *cberr = NULL; /* XXX Cumbersome, try to fold into one cb */
+	    cbuf  *cberr2 = NULL;
+	    if (netconf_err2cb(xpath_first(xerr, "rpc-error"), &cberr) < 0)
+		goto done;
+	    if ((cberr2 = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cberr2, "Internal error: state callback returned invalid XML: %s", cbuf_get(cberr));
+	    if (netconf_operation_failed_xml(xret, "application", cbuf_get(cberr2))< 0)
+		goto done;
+	    if (cberr)
+		cbuf_free(cberr);
+	    if (cberr2)
+		cbuf_free(cberr2);
+	    goto fail;
+	}
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;
 	if (ret == 0)
@@ -137,6 +163,8 @@ clixon_plugin_statedata(clicon_handle    h,
  done:
     if (x)
 	xml_free(x);
+    if (xerr)
+	xml_free(xerr);
     return retval;
  fail:
     retval = 0;

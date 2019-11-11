@@ -227,11 +227,11 @@ clicon_rpc_netconf_xml(clicon_handle  h,
 
 /*! Generate and log clicon error function call from Netconf error message
  * @param[in]  prefix  Print this string (if given) before: "<prefix>: <error>"
- * @param[in]  xerr    Netconf error message on the level: <rpc-reply><rpc-error>
+ * @param[in]  xerr    Netconf error message on the level: <rpc-error>
  */
 int
-clicon_rpc_generate_error(char  *prefix, 
-			  cxobj *xerr)
+clicon_rpc_generate_error(const char  *prefix, 
+			  cxobj       *xerr)
 {
     int    retval = -1;
     cbuf  *cb = NULL;

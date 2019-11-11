@@ -2153,6 +2153,46 @@ xml_tree_prune_flagged(cxobj *xt,
     return retval;
 }
 
+/*! Add prefix:namespace pair to xml node, set cache, prefix, etc
+ */
+static int
+add_namespace(cxobj *x1, /* target */
+	      cxobj *x1p,
+	      char  *prefix1,
+	      char  *namespace)
+{
+    int    retval = -1;
+    cxobj *xa = NULL;
+    
+    /* Add binding to x1p. We add to parent due to heurestics, so we dont
+     * end up in adding it to large number of siblings 
+     */
+    if (nscache_set(x1, prefix1, namespace) < 0)
+	goto done;
+    /* Create xmlns attribute to x1p/x1 XXX same code v */
+    if (prefix1){
+	if ((xa = xml_new(prefix1, x1, NULL)) == NULL)
+	    goto done;
+	if (xml_prefix_set(xa, "xmlns") < 0)
+	    goto done;
+    }
+    else{
+	if ((xa = xml_new("xmlns", x1, NULL)) == NULL)
+	    goto done;
+    }
+    xml_type_set(xa, CX_ATTR);
+    if (xml_value_set(xa, namespace) < 0)
+	goto done;
+    xml_sort(x1, NULL); /* Ensure attr is first / XXX xml_insert? */
+	
+    /* 5. Add prefix to x1, if any */
+    if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Add default values (if not set)
  * @param[in]   xt      XML tree with some node marked
  * @param[in]   arg     Ignored
@@ -2175,6 +2215,7 @@ xml_default(cxobj *xt,
     int        added=0;
     char      *namespace;
     char      *prefix;
+    int        ret;
     
     if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
 	retval = 0;
@@ -2195,9 +2236,22 @@ xml_default(cxobj *xt,
 		    /* assign right prefix */
 		    if ((namespace = yang_find_mynamespace(y)) != NULL){
 			prefix = NULL;
-			if (xml2prefix(xt, namespace, &prefix))
+			if ((ret = xml2prefix(xt, namespace, &prefix)) < 0)
+			    goto done;
+			if (ret){
 			    if (xml_prefix_set(xc, prefix) < 0)
 				goto done;
+			}
+			else{ /* namespace does not exist in target, use source prefix */
+			    char  *prefix1 = NULL;
+			    if ((prefix1 = strdup(yang_find_myprefix(y))) == NULL){
+				clicon_err(OE_UNIX, errno, "strdup");
+				goto done;
+			    }
+			    
+			    if (add_namespace(xc, xt, prefix1, namespace) < 0)
+				goto done;
+			}
 		    }
 
 		    xml_flag_set(xc, XML_FLAG_DEFAULT);
@@ -3190,6 +3244,124 @@ xmlns_assign(cxobj *x)
     return retval;
 }
 
+/*! Given a src node x0 and a target node x1, assign (optional) prefix and namespace
+ * @param[in]  x0       Source XML tree
+ * @param[in]  x1       Target XML tree
+ * 1. Find N=namespace(x0)
+ * 2. Detect if N is declared in x1 parent
+ * 3. If yes, assign prefix to x1
+ * 4. If no, create new prefix/namespace binding and assign that to x1p (x1 if x1p is root)
+ * 5. Add prefix to x1, if any
+ * 6. Ensure x1 cache is updated
+ * @note switch use of x0 and x1 compared to datastore text_modify
+ * @see xml2ns
+ * XXX: fail handling: 		if (netconf_data_missing(cbret, NULL, "Data does not exist; cannot delete resource") < 0)
+		    goto done;
+ */
+int
+check_namespaces(cxobj *x0, /* source */
+		 cxobj *x1, /* target */
+		 cxobj *x1p)
+{
+    int   retval = -1;
+    char  *namespace = NULL;
+    char  *prefix0 = NULL;;
+    char  *prefix1 = NULL;
+    char  *prefixb = NULL; /* identityref body prefix */
+    cvec  *nsc0 = NULL;
+    cvec  *nsc = NULL;
+    int   isroot;
+    char *pexist = NULL;
+    yang_stmt *y;
+    
+    /* XXX: need to identify root better than hiereustics and strcmp,... */
+    isroot = xml_parent(x1p)==NULL &&
+	(strcmp(xml_name(x1p), "config") == 0 || strcmp(xml_name(x1p), "top") == 0)&&
+	xml_prefix(x1p)==NULL;
+
+    /* 1. Find N=namespace(x0) */
+    prefix0 = xml_prefix(x0);
+    if (xml2ns(x0, prefix0, &namespace) < 0)
+	goto done;
+    if (namespace == NULL){
+	clicon_err(OE_XML, ENOENT, "No namespace found for prefix:%s",
+		   prefix0?prefix0:"NULL");
+	goto done;
+    }
+    /* 2a. Detect if namespace is declared in x1 target parent */
+    if (xml2prefix(x1p, namespace, &pexist) == 1){
+	/* Yes, and it has prefix pexist */
+	if (pexist){
+	    if ((prefix1 = strdup(pexist)) == NULL){
+		clicon_err(OE_UNIX, errno, "strdup");
+		goto done;
+	    }
+	}
+	else
+	    prefix1 = NULL;
+	/* 3. If yes, assign prefix to x1 */
+	if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
+	    goto done;
+	/* And copy namespace context from parent to child */
+	if ((nsc0 = nscache_get_all(x1p)) != NULL){
+	    if ((nsc = cvec_dup(nsc0)) == NULL){
+		clicon_err(OE_UNIX, errno, "cvec_dup");
+		goto done;
+	    }
+	    nscache_replace(x1, nsc);
+	}
+	/* Just in case */
+	if (nscache_set(x1, prefix1, namespace) < 0)
+	    goto done;
+    }
+    else{ /* No, namespace does not exist in x1 _parent_ 
+	   * Check if it is exists in x1 itself */
+	if (nscache_get_prefix(x1, namespace, &pexist) == 1){
+	    /* Yes it exists, but is it equal? */
+	    if ((pexist == NULL && prefix0 == NULL) ||
+		(pexist && prefix0 &&
+		 strcmp(pexist, prefix0)==0)){ /* Equal, reuse */
+		;
+	    }
+	    else{ /* namespace exist, but not equal, use existing */
+		/* Add prefix to x1, if any */
+		if (pexist && xml_prefix_set(x1, pexist) < 0)
+		    goto done;
+	    }
+	    goto ok; /* skip */
+	}
+	else
+	    { /* namespace does not exist in target x1, use source prefix 
+		* use the prefix defined in the module
+		*/
+	    if (isroot){
+		if (prefix0 && (prefix1 = strdup(prefix0)) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto done;
+		}
+	    }
+	    else{
+		y = xml_spec(x0);
+		if ((prefix1 = strdup(yang_find_myprefix(y))) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto done;
+		}
+	    }
+	}
+	if (add_namespace(x1, x1p, prefix1, namespace) < 0)
+	    goto done;
+    }
+ ok:
+    /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
+    retval = 0;
+ done:
+    if (prefixb)
+	free(prefixb);
+    if (prefix1)
+	free(prefix1);
+    return retval;
+}
+
 /*! Merge a base tree x0 with x1 with yang spec y
  * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
  * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
@@ -3201,20 +3373,18 @@ xmlns_assign(cxobj *x)
  * Assume x0 and x1 are same on entry and that y is the spec
  */
 static int
-xml_merge1(cxobj              *x0,
+xml_merge1(cxobj              *x0,  /* the target */
 	   yang_stmt          *y0,
 	   cxobj              *x0p,
-	   cxobj              *x1,
+	   cxobj              *x1,  /* the source */
 	   char              **reason)
 {
     int        retval = -1;
-    char      *x1name;
     char      *x1cname; /* child name */
     cxobj     *x0c; /* base child */
     cxobj     *x0b; /* base body */
     cxobj     *x1c; /* mod child */
-    cxobj     *x0a; /* x0 xmlns attribute */
-    cxobj     *x1a; /* x1 xmlns attribute */
+    char      *x1name;
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
     cbuf      *cbr = NULL; /* Reason buffer */
@@ -3243,13 +3413,16 @@ xml_merge1(cxobj              *x0,
 	    if (xml_value_set(x0b, x1bstr) < 0)
 		goto done;
 	}
-
+	if (check_namespaces(x1, x0, x0p) < 0)
+	    goto done;
     } /* if LEAF|LEAF_LIST */
     else { /* eg Y_CONTAINER, Y_LIST  */
 	if (x0==NULL){
-	    if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
+	    if ((x0 = xml_new(x1name, NULL, (yang_stmt*)y0)) == NULL)
 		goto done;
 	}
+	if (check_namespaces(x1, x0, x0p) < 0)
+	    goto done;
 	/* Loop through children of the modification tree */
 	x1c = NULL;
 	while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
@@ -3277,19 +3450,11 @@ xml_merge1(cxobj              *x0,
 		goto done;
 	    if (*reason != NULL)
 		goto ok;
-	}
+	} /* while */
+	if (xml_parent(x0) == NULL &&
+	    xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0) 
+	    goto done;
     } /* else Y_CONTAINER  */
-    assert(x0);
-    /* Copy xmlns attributes (if it does not already exist) */
-    if ((x1a = xml_find_type(x1, NULL, "xmlns", CX_ATTR)) != NULL)
-	if (xml_find_type(x0, NULL, "xmlns", CX_ATTR)==NULL){
-	    if ((x0a = xml_dup(x1a)) == NULL)
-		goto done;
-	    if (xml_addsub(x0, x0a) < 0)
-		goto done;
-	}
-
-
  ok:
     retval = 0;
  done:

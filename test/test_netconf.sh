@@ -102,7 +102,7 @@ cat <<EOF > $tmp # new
 EOF
 
 new "netconf get config xpath"
-expecteof "$clixon_netconf -qf $cfg" 0 "$(cat $tmp)" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:ip="urn:ietf:params:xml:ns:yang:ietf-ip"><name>eth1</name><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "$(cat $tmp)" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth1</name><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$'
 
 # Too many quotes
 cat <<EOF > $tmp # new
@@ -110,7 +110,7 @@ cat <<EOF > $tmp # new
 EOF
 
 new "netconf get config xpath parent"
-expecteof "$clixon_netconf -qf $cfg" 0 "$(cat $tmp)" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth/0/0</name><enabled>true</enabled></interface><interface xmlns:ip="urn:ietf:params:xml:ns:yang:ietf-ip"><name>eth1</name><enabled>true</enabled><ip:ipv4><ip:enabled>true</ip:enabled><ip:forwarding>false</ip:forwarding><ip:address><ip:ip>9.2.3.4</ip:ip><ip:prefix-length>24</ip:prefix-length></ip:address></ip:ipv4></interface></interfaces></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "$(cat $tmp)" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth/0/0</name><enabled>true</enabled></interface><interface><name>eth1</name><enabled>true</enabled><ip:ipv4 xmlns:ip="urn:ietf:params:xml:ns:yang:ietf-ip"><ip:enabled>true</ip:enabled><ip:forwarding>false</ip:forwarding><ip:address><ip:ip>9.2.3.4</ip:ip><ip:prefix-length>24</ip:prefix-length></ip:address></ip:ipv4></interface></interfaces></data></rpc-reply>]]>]]>$'
 
 new "netconf validate missing type"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error>"
@@ -163,7 +163,7 @@ new "netconf edit state operation should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>e0</name><oper-status>up</oper-status></interface></interfaces></config></edit-config></rpc>]]>]]>' "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>State data not allowed</error-message></rpc-error></rpc-reply>]]>]]>"
 
 new "netconf get state operation"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get><filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" /></get></rpc>]]>]]>" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled><oper-status>up</oper-status></interface></interfaces></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get><filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" /></get></rpc>]]>]]>" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled><oper-status>up</oper-status><ex:my-status xmlns:ex="urn:example:clixon"><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status></interface></interfaces></data></rpc-reply>]]>]]>$'
 
 new "netconf lock/unlock"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]><rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><rpc-reply><ok/></rpc-reply>]]>]]>$"
