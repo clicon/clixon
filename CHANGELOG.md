@@ -8,13 +8,11 @@
 * State callbacks provided by user are validated. If they are invalid an internal error is returned.
 * Fixed multi-namespace for augmented state which was not covered in 4.2.0.
 
-  
 ### API changes on existing features (you may need to change your code)
 * The multi-namespace augment state may rearrange the XML namespace attributes.
 * Main example yang changed to incorporate augmented state, new revision is 2019-11-15.
 
 ### Corrected Bugs
-
 * Mandatory variables can no longer be deleted.
 * [Add missing includes](https://github.com/clicon/clixon/pulls)
 	

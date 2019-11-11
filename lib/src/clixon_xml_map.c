@@ -2243,12 +2243,10 @@ xml_default(cxobj *xt,
 				goto done;
 			}
 			else{ /* namespace does not exist in target, use source prefix */
-			    char  *prefix1 = NULL;
-			    if ((prefix1 = strdup(yang_find_myprefix(y))) == NULL){
+			    if ((prefix = yang_find_myprefix(y)) == NULL){
 				clicon_err(OE_UNIX, errno, "strdup");
 				goto done;
 			    }
-			    
 			    if (add_namespace(xc, xt, prefix1, namespace) < 0)
 				goto done;
 			}
