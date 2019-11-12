@@ -236,7 +236,11 @@ clicon_rpc_generate_error(const char  *prefix,
     int    retval = -1;
     cbuf  *cb = NULL;
 
-    if (netconf_err2cb(xerr, &cb) < 0)
+    if ((cb = cbuf_new()) ==NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (netconf_err2cb(xerr, cb) < 0)
 	goto done;
     if (prefix)
 	clicon_log(LOG_ERR, "%s: %s", prefix, cbuf_get(cb));
