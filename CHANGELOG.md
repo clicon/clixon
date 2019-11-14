@@ -13,6 +13,7 @@
 * Main example yang changed to incorporate augmented state, new revision is 2019-11-15.
 
 ### Corrected Bugs
+* [xml_parse_string() is slow for a long XML string #96](https://github.com/clicon/clixon/issues/96)
 * Mandatory variables can no longer be deleted.
 * [Add missing includes](https://github.com/clicon/clixon/pulls)
 	

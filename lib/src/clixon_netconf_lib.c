@@ -1369,7 +1369,6 @@ netconf_err2cb(cxobj *xerr,
     if ((x=xpath_first(xerr, "error-info"))!=NULL)
 	clicon_xml2cbuf(cberr, xml_child_i(x,0), 0, 0, -1);
     retval = 0;
- done:
     return retval;
 }
 

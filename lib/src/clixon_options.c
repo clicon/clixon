@@ -256,7 +256,11 @@ parse_configfile(clicon_handle  h,
     if ((ret = xml_yang_validate_add(h, xc, &xret)) < 0)
 	goto done;
     if (ret == 0){
-	if (netconf_err2cb(xret, &cbret) < 0)
+	if ((cbret = cbuf_new()) ==NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	if (netconf_err2cb(xret, cbret) < 0)
 	    goto done;
 	clicon_err(OE_CFG, 0, "Config file validation: %s", cbuf_get(cbret));
 	goto done;

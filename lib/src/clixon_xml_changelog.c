@@ -451,7 +451,11 @@ clixon_xml_changelog_init(clicon_handle h)
 	if (ret==1 && (ret = xml_yang_validate_add(h, xt, &xret)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
-	    if (netconf_err2cb(xret, &cbret) < 0)
+	    if ((cbret = cbuf_new()) ==NULL){
+		clicon_err(OE_XML, errno, "cbuf_new");
+		goto done;
+	    }
+	    if (netconf_err2cb(xret, cbret) < 0)
 		goto done;
 	    clicon_err(OE_YANG, 0, "validation failed: %s", cbuf_get(cbret));
 	    goto done;

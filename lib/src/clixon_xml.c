@@ -78,6 +78,8 @@
 #define XML_TOP_SYMBOL "top" 
 /* How many XML children to start with if any (and then add exponentialy) */
 #define XML_CHILDVEC_MAX_DEFAULT 4
+/* Initial length of x_value malloced string */
+#define XML_VALUE_MAX_DEFAULT 32
 
 /*
  * Types
@@ -125,6 +127,8 @@ struct xml{
     int               x_childvec_max;/* Length of allocated vector */
     enum cxobj_type   x_type;       /* type of node: element, attribute, body */
     char             *x_value;      /* attribute and body nodes have values */
+    uint32_t          x_value_len;  /* Length of x_value string (excluding null) */
+    uint32_t          x_value_max;  /* allocated size for x_value */
     int               x_flags;      /* Flags according to XML_FLAG_* */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
@@ -623,6 +627,42 @@ xml_value(cxobj *xn)
     return xn->x_value;
 }
 
+/*! xml value string reallocator
+ */
+static int
+xml_value_realloc(cxobj *xn, 
+		  int    len0,
+		  char  *val)
+{
+    int retval = -1;
+    int len;
+    int diff;
+    
+    if (val==NULL)
+	goto ok;
+    len = len0 + strlen(val);
+    diff = xn->x_value_max - (len + 1);
+    if (diff <= 0){
+	while (diff <= 0){
+	    if (xn->x_value_max == 0)
+		xn->x_value_max = XML_VALUE_MAX_DEFAULT;
+	    else
+		xn->x_value_max *= 2;
+	    diff = xn->x_value_max - (len + 1);
+	}
+	if ((xn->x_value = realloc(xn->x_value, xn->x_value_max)) == NULL){
+	    clicon_err(OE_XML, errno, "realloc");
+	    goto done;
+	}
+    }
+    strncpy(xn->x_value + len0, val, len-len0+1);
+    xn->x_value_len = len;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Set value of xml node, value is copied
  * @param[in]  xn    xml node
  * @param[in]  val   new value, null-terminated string, copied by function
@@ -633,17 +673,17 @@ int
 xml_value_set(cxobj *xn, 
 	      char  *val)
 {
-    if (xn->x_value){
-	free(xn->x_value);
-	xn->x_value = NULL;
+    int retval = -1;
+    
+    if (xn->x_value && strlen(xn->x_value)){
+    	xn->x_value[0] = '\0';
+	xn->x_value_len = 0;
     }
-    if (val){
-	if ((xn->x_value = strdup(val)) == NULL){
-	    clicon_err(OE_XML, errno, "strdup");
-	    return -1;
-	}
-    }
-    return 0;
+    if (xml_value_realloc(xn, 0, val) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Append value of xnode, value is copied
@@ -656,18 +696,8 @@ char *
 xml_value_append(cxobj *xn, 
 		 char  *val)
 {
-    int len0;
-    int len;
-    
-    len0 = xn->x_value?strlen(xn->x_value):0;
-    if (val){
-	len = len0 + strlen(val);
-	if ((xn->x_value = realloc(xn->x_value, len+1)) == NULL){
-	    clicon_err(OE_XML, errno, "realloc");
-	    return NULL;
-	}
-	strncpy(xn->x_value + len0, val, len-len0+1);
-    }
+    if (xml_value_realloc(xn, xn->x_value_len, val) < 0)
+	return NULL;
     return xn->x_value;
 }
 
@@ -2141,22 +2171,23 @@ int
 xml_copy_one(cxobj *x0, 
 	     cxobj *x1)
 {
+    int   retval = -1;
     char *s;
     
     xml_type_set(x1, xml_type(x0));
     if ((s = xml_value(x0))){ /* malloced string */
-	if ((x1->x_value = strdup(s)) == NULL){
-	    clicon_err(OE_XML, errno, "strdup");
-	    return -1;
-	}
+	if (xml_value_set(x1, s) < 0)
+	    goto done;
     }
     if ((s = xml_name(x0))) /* malloced string */
 	if ((xml_name_set(x1, s)) < 0)
-	    return -1;
+	    goto done;
     if ((s = xml_prefix(x0))) /* malloced string */
 	if ((xml_prefix_set(x1, s)) < 0)
-	    return -1;
-    return 0;
+	    goto done;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Copy xml tree x0 to other existing tree x1

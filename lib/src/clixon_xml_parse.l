@@ -94,6 +94,7 @@ ncname     {namestart}{namechar}*
 %s STATEA
 %s AMPERSAND
 %s CDATA
+%s CDATAEND
 %s CMNT
 %s STR
 %s TEXTDECL
@@ -145,9 +146,13 @@ ncname     {namestart}{namechar}*
 <AMPERSAND>"apos;"   { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "'"; return CHARDATA;}
 <AMPERSAND>"quot;"   { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = "\""; return CHARDATA;}
 
-<CDATA>.              { clixon_xml_parselval.string = yytext; return CHARDATA;}
 <CDATA>\n             { clixon_xml_parselval.string = yytext;_YA->ya_linenum++; return (CHARDATA);}
-<CDATA>"]]>"          { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = yytext; return CHARDATA;}
+<CDATA>\]             {  BEGIN(CDATAEND);clixon_xml_parselval.string = yytext;return (CHARDATA);}
+<CDATA>[^]\n]+        { clixon_xml_parselval.string = yytext; return CHARDATA;}
+
+<CDATAEND>\n          { clixon_xml_parselval.string = yytext;_YA->ya_linenum++; return (CHARDATA);}
+<CDATAEND>"]>"        { BEGIN(_YA->ya_lex_state); clixon_xml_parselval.string = yytext; return CHARDATA;}
+<CDATAEND>.           { BEGIN(CDATA); clixon_xml_parselval.string = yytext;return (CHARDATA);}
 
 <CMNT>"-->"           { BEGIN(START); return ECOMMENT; }
 <CMNT>.               
