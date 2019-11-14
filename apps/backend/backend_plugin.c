@@ -134,9 +134,17 @@ clixon_plugin_statedata(clicon_handle    h,
 	if (ret > 0 && (ret = xml_yang_validate_add(h, x, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
+	    if ((cberr = cbuf_new()) ==NULL){
+		clicon_err(OE_XML, errno, "cbuf_new");
+		goto done;
+	    }
 	    cprintf(cberr, "Internal error: state callback returned invalid XML: ");
 	    if (netconf_err2cb(xpath_first(xerr, "rpc-error"), cberr) < 0)
 		goto done;
+	    if (*xret){
+		xml_free(*xret);
+		*xret = NULL;
+	    }
 	    if (netconf_operation_failed_xml(xret, "application", cbuf_get(cberr))< 0)
 		goto done;
 	    goto fail;
