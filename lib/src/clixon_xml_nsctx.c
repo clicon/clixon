@@ -182,7 +182,6 @@ xml_nsctx_add(cvec  *cvv,
     return retval;
 }
 
-
 static int
 xml_nsctx_node1(cxobj *xn,
 		cvec   *nsc)
@@ -268,10 +267,10 @@ xml_nsctx_node(cxobj *xn,
     return retval;
 }
 
-/*! Create and initialize XML namespace from Yang node
+/*! Create and initialize XML namespace context from Yang node
  * Primary use is Yang path statements, eg leafrefs and others
  * Fully explore all prefix:namespace pairs from context of one node
- * @param[in]  xn     XML node
+ * @param[in]  yn     Yang statement in module tree (or module itself)
  * @param[out] ncp    XML namespace context
  * @retval     0      OK
  * @retval     -1     Error
@@ -354,3 +353,44 @@ xml_nsctx_yang(yang_stmt *yn,
     return retval;
 }
 
+/*! Create and initialize XML namespace context from Yang spec
+ *
+ * That is, create a "canonical" XML namespace mapping from all loaded yang 
+ * modules which are children of the yang specification.
+ * ALso add netconf base namespace: nc , urn:ietf:params:xml:ns:netconf:base:1.0
+ * Fully explore all prefix:namespace pairs of all yang modules
+ * @param[in]  yspec  Yang spec
+ * @param[out] ncp    XML namespace context
+ */
+int
+xml_nsctx_yangspec(yang_stmt *yspec,
+		   cvec     **ncp)
+{
+    int        retval = -1;
+    cvec      *nc = NULL;
+    yang_stmt *ymod = NULL;
+    yang_stmt *yprefix;
+    yang_stmt *ynamespace;
+
+    if ((nc = cvec_new(0)) == NULL){
+	clicon_err(OE_XML, errno, "cvec_new");
+	goto done;
+    }
+    ymod = NULL;
+    while ((ymod = yn_each(yspec, ymod)) != NULL){
+	if (yang_keyword_get(ymod) != Y_MODULE)
+	    continue;
+	if ((yprefix = yang_find(ymod, Y_PREFIX, NULL)) == NULL)
+	    continue;
+	if ((ynamespace = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL)
+	    continue;
+	if (xml_nsctx_add(nc, yang_argument_get(yprefix), yang_argument_get(ynamespace)) < 0)
+	    goto done;
+    }
+    if (xml_nsctx_add(nc,  NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE) < 0)
+	goto done;
+    *ncp = nc;
+    retval = 0;
+ done:
+    return retval;
+}

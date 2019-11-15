@@ -593,6 +593,7 @@ int
 restconf_terminate(clicon_handle h)
 {
     yang_stmt *yspec;
+    cvec      *nsctx;
     cxobj     *x;
     int        fs; /* fgcx socket */
 
@@ -606,6 +607,8 @@ restconf_terminate(clicon_handle h)
 	yspec_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
+	cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     clicon_handle_exit(h);

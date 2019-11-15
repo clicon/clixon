@@ -323,6 +323,7 @@ static int
 netconf_terminate(clicon_handle h)
 {
     yang_stmt  *yspec;
+    cvec       *nsctx;
     cxobj      *x;
     
     clixon_plugin_exit(h);
@@ -332,6 +333,8 @@ netconf_terminate(clicon_handle h)
 	yspec_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
+	cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     event_exit();
@@ -395,6 +398,7 @@ main(int    argc,
     yang_stmt       *yspecfg = NULL; /* For config XXX clixon bug */
     char            *str;
     uint32_t         id;
+    cvec            *nsctx_global = NULL; /* Global namespace context */
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -554,6 +558,14 @@ main(int    argc,
     /* Add netconf yang spec, used by netconf client and as internal protocol */
     if (netconf_module_load(h) < 0)
 	goto done;
+    /* Here all modules are loaded 
+     * Compute and set canonical namespace context
+     */
+    if (xml_nsctx_yangspec(yspec, &nsctx_global) < 0)
+	goto done;
+    if (clicon_nsctx_global_set(h, nsctx_global) < 0)
+	goto done;
+
     /* Call start function is all plugins before we go interactive */
     if (clixon_plugin_start(h) < 0)
 	goto done;

@@ -766,7 +766,7 @@ yang_find_myprefix(yang_stmt *ys)
     }
     if ((yprefix = yang_find(ymod, Y_PREFIX, NULL)) == NULL)
 	goto done;
-    prefix = yprefix->ys_argument;
+    prefix = yang_argument_get(yprefix);
  done:
     return prefix;
 }

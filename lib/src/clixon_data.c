@@ -75,6 +75,8 @@
 
 /*! Get YANG specification for application
  * Must use hash functions directly since they are not strings.
+ * @param[in]  h     Clicon handle
+ * @retval     yspec Yang spec
  */
 yang_stmt *
 clicon_dbspec_yang(clicon_handle h)
@@ -90,6 +92,8 @@ clicon_dbspec_yang(clicon_handle h)
 
 /*! Set yang specification for application
  * ys must be a malloced pointer
+ * @param[in]  h     Clicon handle
+ * @param[in]  yspec Yang spec
  */
 int
 clicon_dbspec_yang_set(clicon_handle h, 
@@ -101,6 +105,42 @@ clicon_dbspec_yang_set(clicon_handle h,
        so we send a ptr to the ptr to indicate what to copy.
      */
     if (clicon_hash_add(cdat, "dbspec_yang", &ys, sizeof(ys)) == NULL)
+	return -1;
+    return 0;
+}
+
+/*! Get Global "canonical" namespace context
+ * Canonical: use prefix and namespace specified in the yang modules.
+ * @param[in]  h     Clicon handle
+ * @retval     nsctx Namespace context (malloced)
+ */
+cvec *
+clicon_nsctx_global_get(clicon_handle h)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    size_t          len;
+    void           *p;
+
+    if ((p = clicon_hash_value(cdat, "nsctx_global", &len)) != NULL)
+	return *(cvec **)p;
+    return NULL;
+}
+
+/*! Set global "canonical" namespace context
+ * Canonical: use prefix and namespace specified in the yang modules.
+ * @param[in]  h     Clicon handle
+ * @param[in]  nsctx Namespace context (malloced)
+ */
+int
+clicon_nsctx_global_set(clicon_handle h,
+			cvec         *nsctx)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    /* It is the pointer to cvec that should be copied by hash,
+       so we send a ptr to the ptr to indicate what to copy.
+     */
+    if (clicon_hash_add(cdat, "nsctx_global", &nsctx, sizeof(nsctx)) == NULL)
 	return -1;
     return 0;
 }

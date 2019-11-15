@@ -61,6 +61,9 @@ typedef struct {
 yang_stmt * clicon_dbspec_yang(clicon_handle h);
 int clicon_dbspec_yang_set(clicon_handle h, yang_stmt *ys);
 
+cvec *clicon_nsctx_global_get(clicon_handle h);
+int clicon_nsctx_global_set(clicon_handle h, cvec *nsctx);
+
 cxobj * clicon_nacm_ext(clicon_handle h);
 int clicon_nacm_ext_set(clicon_handle h, cxobj *xn);
 

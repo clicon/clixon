@@ -3,6 +3,9 @@
 ## 4.3.0 (Expected: ~December 2019)
 
 ### Minor changes
+* Added "canonical" global namespace context: `nsctx_global`
+  * This is a normalized XML prefix:namespace pair vector computed from all loaded Yang modules. Useful when writing XML and XPATH expressions in callbacks.
+  * Get it with `clicon_nsctx_global_get(h)`
 * Added wildcard `*` as a mode to `CLICON_MODE` in clispec files
   * If you set "CLICON_MODE="*";" in a clispec file it means that syntax will appear in all CLI spec modes.
 * State callbacks provided by user are validated. If they are invalid an internal error is returned.

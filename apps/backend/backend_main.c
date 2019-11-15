@@ -92,6 +92,7 @@ backend_terminate(clicon_handle h)
     cxobj     *x;
     struct stat st;
     int        ss;
+    cvec      *nsctx;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((ss = clicon_socket_get(h)) != -1)
@@ -108,6 +109,8 @@ backend_terminate(clicon_handle h)
 	xml_free(x);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
+	cvec_free(nsctx);
     if ((yspec = clicon_config_yang(h)) != NULL)
 	yspec_free(yspec);
     if ((x = clicon_nacm_ext(h)) != NULL)
@@ -451,6 +454,7 @@ main(int    argc,
     int           ret;
     char         *dir;
     gid_t         gid = -1;
+    cvec         *nsctx_global = NULL; /* Global namespace context */
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -722,10 +726,10 @@ main(int    argc,
     if ((str = clicon_yang_main_dir(h)) != NULL)
 	if (yang_spec_load_dir(h, str, yspec) < 0)
 	    goto done;
-     /* Load clixon lib yang module */
+    /* Load clixon lib yang module */
     if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
 	goto done;
-     /* Load yang module library, RFC7895 */
+    /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;
     /* Add netconf yang spec, used by netconf client and as internal protocol 
@@ -736,13 +740,21 @@ main(int    argc,
     if (yang_spec_parse_module(h, "ietf-restconf", NULL, yspec)< 0)
 	goto done;
     /* Load yang Restconf stream discovery */
-     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
-	 yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
-	 goto done;
-     /* Load yang Netconf stream discovery */
-     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
-	 yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
-	 goto done;
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
+	yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
+	goto done;
+    /* Load yang Netconf stream discovery */
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
+	yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
+	goto done;
+    /* Here all modules are loaded 
+     * Compute and set canonical namespace context
+     */
+    if (xml_nsctx_yangspec(yspec, &nsctx_global) < 0)
+	goto done;
+    if (clicon_nsctx_global_set(h, nsctx_global) < 0)
+	goto done;
+
     /* Initialize server socket and save it to handle */
     if (backend_rpc_init(h) < 0)
 	goto done;
@@ -895,7 +907,7 @@ main(int    argc,
 	goto done;
  ok:
     retval = 0;
-  done:
+ done:
     if (cbret)
 	cbuf_free(cbret);
     clicon_log(LOG_NOTICE, "%s: %u Terminated retval:%d", __PROGRAM__, getpid(), retval);

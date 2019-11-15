@@ -589,6 +589,7 @@ main(int    argc,
     char          *str;
     clixon_plugin *cp = NULL;
     uint32_t       id = 0;
+    cvec          *nsctx_global = NULL; /* Global namespace context */
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -758,6 +759,14 @@ main(int    argc,
 	 goto done;
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
 	 yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
+	 goto done;
+
+     /* Here all modules are loaded 
+      * Compute and set canonical namespace context
+      */
+     if (xml_nsctx_yangspec(yspec, &nsctx_global) < 0)
+	 goto done;
+     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	 goto done;
 
      /* Dump configuration options on debug */
