@@ -35,8 +35,10 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>$YANGMODELS/standard/ietf/RFC</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft/802.1</CLICON_YANG_DIR> 
+  <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft/802.1/Qcr</CLICON_YANG_DIR> 
   <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft/802</CLICON_YANG_DIR> 
+  <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft/802</CLICON_YANG_DIR> 
+  <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/published/802.1</CLICON_YANG_DIR> 
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -59,11 +61,27 @@ new "yangmodel Experimental IEEE 1588: $YANGMODELS/experimental/ieee/1588"
 expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/experimental/ieee/1588 show version" 0 "$version."
 
 # Standard IEEE
-new "yangmodel Standard IEEE 802.1: $YANGMODELS/standard/ieee/draft/802.1"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.1 show version" 0 "$version."
+new "yangmodel Standard IEEE 802.1: $YANGMODELS/standard/ieee/draft/802.1/ABcu"
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.1/ABcu show version" 0 "$version."
 
-new "yangmodel Standard IEEE 802.3: $YANGMODELS/standard/ieee/draft/802.3"
-expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.3 show version" 0 "$version."
+new "yangmodel Standard IEEE 802.1: $YANGMODELS/standard/ieee/draft/802.1/Qcr"
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.1/Qcr show version" 0 "$version."
+
+new "yangmodel Standard IEEE 802.1: $YANGMODELS/standard/ieee/draft/802.1/Qcw"
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.1/Qcw show version" 0 "$version."
+
+new "yangmodel Standard IEEE 802.1: $YANGMODELS/standard/ieee/draft/802.1/Qcx"
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.1/Qcx -p $YANGMODELS/standard/ieee/draft/802.1/ABcu show version" 0 "$version."
+
+new "yangmodel Standard IEEE 802.1: $YANGMODELS/standard/ieee/draft/802.1/x"
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/draft/802.1/x show version" 0 "$version."
+
+# Published
+new "yangmodel Standard IEEE 802.1: $YANGMODELS/standard/ieee/published/802.1"
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/published/802.1 show version" 0 "$version."
+
+new "yangmodel Standard IEEE 802.1: $YANGMODELS/standard/ieee/published/802.3"
+expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ieee/published/802.3 show version" 0 "$version."
 
 # Standard IETF
 new "yangmodel Standard IETF: $YANGMODELS/standard/ietf/RFC"

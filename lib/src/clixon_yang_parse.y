@@ -1490,6 +1490,7 @@ notification_substmt : if_feature_stmt  { clicon_debug(2,"notification-substmt -
                      | typedef_stmt     { clicon_debug(2,"notification-substmt -> typedef-stmt"); }
                      | grouping_stmt    { clicon_debug(2,"notification-substmt -> grouping-stmt"); }
                      | data_def_stmt    { clicon_debug(2,"notification-substmt -> data-def-stmt"); }
+                     | unknown_stmt     { clicon_debug(2,"notification-substmt -> unknown-stmt");} 
                      |                  { clicon_debug(2,"notification-substmt -> "); }
                      ;
 
