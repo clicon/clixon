@@ -67,9 +67,6 @@ int clicon_nsctx_global_set(clicon_handle h, cvec *nsctx);
 cxobj * clicon_nacm_ext(clicon_handle h);
 int clicon_nacm_ext_set(clicon_handle h, cxobj *xn);
 
-yang_stmt * clicon_config_yang(clicon_handle h);
-int clicon_config_yang_set(clicon_handle h, yang_stmt *ys);
-
 cxobj *clicon_conf_xml(clicon_handle h);
 int clicon_conf_xml_set(clicon_handle h, cxobj *x);
 

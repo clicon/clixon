@@ -111,8 +111,6 @@ backend_terminate(clicon_handle h)
 	yspec_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
 	cvec_free(nsctx);
-    if ((yspec = clicon_config_yang(h)) != NULL)
-	yspec_free(yspec);
     if ((x = clicon_nacm_ext(h)) != NULL)
 	xml_free(x);
     if ((x = clicon_conf_xml(h)) != NULL)
@@ -519,7 +517,6 @@ main(int    argc,
 	    usage(h, argv[0]);
 	return -1;
     }
-    clicon_config_yang_set(h, yspecfg);
     /* External NACM file? */
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (nacm_mode && strcmp(nacm_mode, "external") == 0)

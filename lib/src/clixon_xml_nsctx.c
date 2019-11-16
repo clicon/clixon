@@ -387,6 +387,9 @@ xml_nsctx_yangspec(yang_stmt *yspec,
 	if (xml_nsctx_add(nc, yang_argument_get(yprefix), yang_argument_get(ynamespace)) < 0)
 	    goto done;
     }
+    /* Add base netconf namespace as default and "nc" prefix */
+    if (xml_nsctx_add(nc,  NULL, NETCONF_BASE_NAMESPACE) < 0)
+	goto done;
     if (xml_nsctx_add(nc,  NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE) < 0)
 	goto done;
     *ncp = nc;
