@@ -18,8 +18,11 @@ for (( i=0; i<$perfnr; i++ )); do
 done
 echo "]]></stdout></rpc-reply>" >> $fxml
 
+# 32-bit i386:
+#0.37user 1.94system 0:02.47elapsed 93%CPU (0avgtext+0avgdata 9336maxresident)k
+#256inputs+0outputs (2major+2049minor)pagefaults 0swa
 new "xml parse long CDATA"
 expecteof_file "time $clixon_util_xml" 0 "$fxml"
-      
+
 rm -rf $dir
 
