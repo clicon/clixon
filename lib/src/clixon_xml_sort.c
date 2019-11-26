@@ -617,8 +617,8 @@ xml_insert2(cxobj           *xp,
     xc = xml_child_i(xp, mid);
     if ((yc = xml_spec(xc)) == NULL){
 	if (xml_type(xc) != CX_ELMNT)
-	    clicon_err(OE_XML, 0, "No spec found %s (wrong xml type:%d)",
-		       xml_name(xc), xml_type(xc));	
+	    clicon_err(OE_XML, 0, "No spec found %s (wrong xml type:%s)",
+		       xml_name(xc), xml_type2str(xml_type(xc)));
 	else
 	    clicon_err(OE_XML, 0, "No spec found %s", xml_name(xc));	
 	goto done;

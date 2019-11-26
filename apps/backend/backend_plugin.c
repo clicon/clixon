@@ -149,6 +149,15 @@ clixon_plugin_statedata(clicon_handle    h,
 		goto done;
 	    goto fail;
 	}
+#if 1
+	if (debug){
+	    cbuf *ccc=cbuf_new();
+	    if (clicon_xml2cbuf(ccc, x, 0, 0, -1) < 0)
+		goto done;
+	    clicon_debug(1, "%s MERGE: %s", __FUNCTION__, cbuf_get(ccc));
+	    cbuf_free(ccc);
+	}
+#endif
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;
 	if (ret == 0)

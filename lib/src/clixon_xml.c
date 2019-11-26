@@ -151,7 +151,6 @@ static const map_str2int xsmap[] = {
     {NULL,           -1}
 };
 
-
 /*! Translate from xml type in enum form to string keyword
  * @param[in] type  Xml type
  * @retval    str   String keyword

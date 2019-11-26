@@ -358,7 +358,7 @@ module clixon-config {
 	    type string;
 	    default "base";
 	    description
-		"Startup CLI mode. This should match a CLICON_MODE set in
+		"Startup CLI mode. This should match a CLICON_MODE variable set in
                  one of the clispec files";
 	}
 	leaf CLICON_CLI_GENMODEL {

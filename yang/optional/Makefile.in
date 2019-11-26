@@ -38,21 +38,14 @@ bindir 		= @bindir@
 includedir	= @includedir@
 datarootdir     = @datarootdir@
 
-# See also YANG_INSTALLDIR for the clixon-specific yang files
-STD_YANG_INSTALLDIR   = @STD_YANG_INSTALLDIR@
+# See also OPT_YANG_INSTALLDIR for optionali yang files
+OPT_YANG_INSTALLDIR   = @OPT_YANG_INSTALLDIR@
 
 YANGSPECS  = iana-if-type@2014-05-08.yang
 YANGSPECS += ietf-interfaces@2018-02-20.yang
-YANGSPECS += ietf-yang-types@2013-07-15.yang
 YANGSPECS += ietf-ip@2014-06-16.yang
-YANGSPECS += ietf-inet-types@2013-07-15.yang
-YANGSPECS += ietf-routing@2018-03-13.yang
-YANGSPECS += ietf-yang-library@2016-06-21.yang
-YANGSPECS += ietf-netconf@2011-06-01.yang
-YANGSPECS += ietf-netconf-acm@2018-02-14.yang
-YANGSPECS += ietf-restconf@2017-01-26.yang
-YANGSPECS += ietf-restconf-monitoring@2017-01-26.yang
 YANGSPECS += ietf-netconf-monitoring@2010-10-04.yang
+YANGSPECS += ietf-routing@2018-03-13.yang
 
 all:	
 
@@ -62,11 +55,11 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 install: $(YANGSPECS) 
-	install -d -m 0755 $(DESTDIR)$(STD_YANG_INSTALLDIR)
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(STD_YANG_INSTALLDIR)
+	install -d -m 0755 $(DESTDIR)$(OPT_YANG_INSTALLDIR)
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(OPT_YANG_INSTALLDIR)
 
 uninstall:
-	(cd $(DESTDIR)$(STD_YANG_INSTALLDIR); rm -rf *.yang)
+	(cd $(DESTDIR)$(OPT_YANG_INSTALLDIR); rm -rf *.yang)
 
 install-include:	
 

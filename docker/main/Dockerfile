@@ -62,7 +62,7 @@ RUN adduser -D -H www-data
 RUN apk add --update nginx
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --enable-optyangs
 RUN make
 RUN make install
 RUN make install-include

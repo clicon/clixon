@@ -37,12 +37,13 @@ prefix 		= @prefix@
 bindir 		= @bindir@
 includedir	= @includedir@
 datarootdir     = @datarootdir@
-enable_stdyangs	= @enable_stdyangs@
+enable_optyangs	= @enable_optyangs@
 
 SUBDIRS  = clixon
+SUBDIRS += mandatory
 # See configure.ac
-ifeq ($(enable_stdyangs),yes)
-SUBDIRS += standard
+ifeq ($(enable_optyangs),yes)
+SUBDIRS += optional
 endif
 
 .PHONY: all clean depend install $(SUBDIRS)
