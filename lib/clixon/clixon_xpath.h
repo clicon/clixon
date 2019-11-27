@@ -106,6 +106,7 @@ struct xpath_tree{
     enum xp_type       xs_type;
     int                xs_int; /* step-> axis-type */
     double             xs_double;
+    char              *xs_strnr; /* original string xs_double: numeric value */
     char              *xs_s0;
     char              *xs_s1;
     struct xpath_tree *xs_c0; /* child 0 */

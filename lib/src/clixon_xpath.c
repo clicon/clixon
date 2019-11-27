@@ -180,8 +180,8 @@ xpath_tree_print0(cbuf       *cb,
 	    cprintf(cb, "%d ", xs->xs_int);
 	    break;
 	}
-    if (xs->xs_double)
-	cprintf(cb,"%lf ", xs->xs_double);
+    if (xs->xs_strnr)
+	cprintf(cb,"%s ", xs->xs_strnr);
     cprintf(cb, "\n");
     if (xs->xs_c0)
 	xpath_tree_print0(cb, xs->xs_c0,level+1);
@@ -253,7 +253,7 @@ xpath_tree2cbuf(xpath_tree *xs,
 	cprintf(xcb, "'%s'", xs->xs_s0);
 	break;
     case XP_PRIME_NR:
-	cprintf(xcb, "%lf", xs->xs_double);
+	cprintf(xcb, "%s", xs->xs_strnr?xs->xs_strnr:"0"); 
 	break;
     case XP_STEP:
 	switch (xs->xs_int){
@@ -313,6 +313,8 @@ xpath_tree2cbuf(xpath_tree *xs,
 int
 xpath_tree_free(xpath_tree *xs)
 {
+    if (xs->xs_strnr)
+	free(xs->xs_strnr);
     if (xs->xs_s0)
 	free(xs->xs_s0);
     if (xs->xs_s1)

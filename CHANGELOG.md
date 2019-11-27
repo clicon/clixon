@@ -14,12 +14,13 @@
 ### API changes on existing features (you may need to change your code)
 * Yang files reorganized into three classes: clixon, mandatory, optional (previous "standard" split into mandatory and optional).
   * Clixon and mandatory yang spec are always installed
-  * Optional yang files are loaded only if configured with `--enable-optyangs` (flipped lofgic and changed from `disable-stdyangs`). NOTE: you must do this to run examples and tests.
+  * Optional yang files are loaded only if configured with `--enable-optyangs` (flipped logic and changed from `disable-stdyangs`). NOTE: you must do this to run examples and tests.
   * Optional yang files can be installed in a separate dir with `--with-opt-yang-installdir=DIR` (renamed from `with-std-yang-installdir`)
 * The multi-namespace augment state may rearrange the XML namespace attributes.
 * Main example yang changed to incorporate augmented state, new revision is 2019-11-15.
 
 ### Corrected Bugs
+* [xpath_tree2cbuf() changes integers into floating point representations #99](https://github.com/clicon/clixon/issues/99)
 * [xml_parse_string() is slow for a long XML string #96](https://github.com/clicon/clixon/issues/96)
 * Mandatory variables can no longer be deleted.
 * [Add missing includes](https://github.com/clicon/clixon/pulls)
