@@ -108,7 +108,7 @@ clicon_rpc_msg(clicon_handle      h,
     /* What to do if inet socket? */
     switch (clicon_sock_family(h)){
     case AF_UNIX:
-	if (clicon_rpc_connect_unix(msg, sock, &retdata, sock0) < 0){
+	if (clicon_rpc_connect_unix(h, msg, sock, &retdata, sock0) < 0){
 #if 0
 	    if (errno == ESHUTDOWN)
 		/* Maybe could reconnect on a higher layer, but lets fail
@@ -127,7 +127,7 @@ clicon_rpc_msg(clicon_handle      h,
 	    clicon_err(OE_FATAL, 0, "CLICON_SOCK_PORT not set");
 	    goto done;
 	}
-	if (clicon_rpc_connect_inet(msg, sock, port, &retdata, sock0) < 0)
+	if (clicon_rpc_connect_inet(h, msg, sock, port, &retdata, sock0) < 0)
 	    goto done;
 	break;
     }

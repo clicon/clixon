@@ -39,12 +39,6 @@
 #define _CLIXON_OPTIONS_H_
 
 /*
- * Constants
- */
-/* default group membership to access config unix socket */
-#define CLICON_SOCK_GROUP "clicon"
-
-/*
  * Types
  */
 /*! Controls how keywords a generated in CLI syntax / prints from object model

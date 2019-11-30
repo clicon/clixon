@@ -41,12 +41,6 @@
 #define _CLIXON_DATA_H_
 
 /*
- * Constants
- */
-/* default group membership to access config unix socket */
-#define CLICON_SOCK_GROUP "clicon"
-
-/*
  * Types
  */
 /* Struct per database in hash */
