@@ -446,7 +446,6 @@ main(int    argc,
     char         *nacm_mode;
     int           logdst = CLICON_LOG_SYSLOG|CLICON_LOG_STDERR;
     yang_stmt    *yspec = NULL;
-    yang_stmt    *yspecfg = NULL; /* For config XXX clixon bug */
     char         *str;
     int           ss = -1; /* server socket */
     cbuf         *cbret = NULL; /* startup cbuf if invalid */
@@ -509,18 +508,12 @@ main(int    argc,
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL);
 
-    /* Create configure yang-spec (note different from dbspec holding application specs) */
-    if ((yspecfg = yspec_new()) == NULL)
-	goto done;
-
     /* Find and read configfile */
-    if (clicon_options_main(h, yspecfg) < 0){
+    if (clicon_options_main(h) < 0){
 	if (help)
 	    usage(h, argv[0]);
 	return -1;
     }
-    if (clicon_config_yang_set(h, yspecfg) < 0)
-	goto done;
     
     /* External NACM file? */
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");

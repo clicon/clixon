@@ -582,7 +582,6 @@ main(int    argc,
     char          *dir;
     int            logdst = CLICON_LOG_SYSLOG;
     yang_stmt     *yspec = NULL;
-    yang_stmt     *yspecfg = NULL; /* For config XXX clixon bug */
     char          *stream_path;
     int            finish = 0;
     int            start = 1;
@@ -642,13 +641,8 @@ main(int    argc,
 	goto done;
     }
 
-    /* Create configure yang-spec note different from dbspec holding application specs) */
-    if ((yspecfg = yspec_new()) == NULL)
-	goto done;
     /* Find and read configfile */
-    if (clicon_options_main(h, yspecfg) < 0)
-	goto done;
-    if (clicon_config_yang_set(h, yspecfg) < 0)
+    if (clicon_options_main(h) < 0)
 	goto done;
 
     stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");

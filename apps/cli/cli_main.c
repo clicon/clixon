@@ -283,7 +283,6 @@ main(int argc, char **argv)
     int            logdst = CLICON_LOG_STDERR;
     char          *restarg = NULL; /* what remains after options */
     yang_stmt     *yspec;
-    yang_stmt     *yspecfg = NULL; /* For config XXX clixon bug */
     struct passwd *pw;
     char          *str;
     int            tabmode;
@@ -352,17 +351,12 @@ main(int argc, char **argv)
 
     clicon_debug_init(debug, NULL); 
 
-    /* Create configure yang-spec (note different from dbspec holding application specs) */
-    if ((yspecfg = yspec_new()) == NULL)
-	goto done;
-    /* Find and read configfile */
-    if (clicon_options_main(h, yspecfg) < 0){
+    /* Find, read and parse configfile */
+    if (clicon_options_main(h) < 0){
         if (help)
 	    usage(h, argv[0]);
 	return -1;
     }
-    if (clicon_config_yang_set(h, yspecfg) < 0)
-	goto done;
 	
     /* Now rest of options */   
     opterr = 0;

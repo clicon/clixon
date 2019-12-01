@@ -395,7 +395,6 @@ main(int    argc,
     struct passwd   *pw;
     struct timeval   tv = {0,}; /* timeout */
     yang_stmt       *yspec = NULL;
-    yang_stmt       *yspecfg = NULL; /* For config XXX clixon bug */
     char            *str;
     uint32_t         id;
     cvec            *nsctx_global = NULL; /* Global namespace context */
@@ -443,15 +442,10 @@ main(int    argc,
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL); 
 
-    /* Create configure yang-spec (note different from dbspec holding application specs) */
-    if ((yspecfg = yspec_new()) == NULL)
-	goto done;
-    /* Find and read configfile */
-    if (clicon_options_main(h, yspecfg) < 0)
+    /* Find, read and parse configfile */
+    if (clicon_options_main(h) < 0)
 	return -1;
-    if (clicon_config_yang_set(h, yspecfg) < 0)
-	goto done;
-
+    
     /* Now rest of options */
     optind = 1;
     opterr = 0;

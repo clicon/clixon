@@ -355,8 +355,7 @@ clicon_option_add(clicon_handle h,
  *       other yang modules.
  */
 int
-clicon_options_main(clicon_handle h,
-		    yang_stmt    *yspec)
+clicon_options_main(clicon_handle h)
 {
     int            retval = -1;
     char          *configfile;
@@ -364,7 +363,11 @@ clicon_options_main(clicon_handle h,
     char          *suffix;
     char           xml = 0; /* Configfile is xml, otherwise legacy */
     cxobj         *xconfig = NULL;
+    yang_stmt     *yspec = NULL;
 
+    /* Create configure yang-spec */
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
     /*
      * Set configure file if not set by command-line above
      */
@@ -413,8 +416,12 @@ clicon_options_main(clicon_handle h,
 	clicon_err(OE_CFG, 0, "Config file %s: did not find corresponding Yang specification\nHint: File does not begin with: <clixon-config xmlns=\"%s\"> or clixon-config.yang not found?", configfile, CLIXON_CONF_NS);
 	goto done;
     }
+    /* Set yang config spec (must store to free at exit, since conf_xml below uses it) */
+    if (clicon_config_yang_set(h, yspec) < 0)
+       goto done;
     /* Set clixon_conf pointer to handle */
-    clicon_conf_xml_set(h, xconfig);
+    if (clicon_conf_xml_set(h, xconfig) < 0)
+	goto done;
 
     retval = 0;
  done:
