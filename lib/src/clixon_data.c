@@ -73,10 +73,11 @@
 #include "clixon_xpath.h"
 #include "clixon_data.h"
 
-/*! Get YANG specification for application
+/*! Get YANG specification for application specs
  * Must use hash functions directly since they are not strings.
  * @param[in]  h     Clicon handle
  * @retval     yspec Yang spec
+ * @see clicon_config_yang  for the configuration yang
  */
 yang_stmt *
 clicon_dbspec_yang(clicon_handle h)
@@ -90,10 +91,10 @@ clicon_dbspec_yang(clicon_handle h)
     return NULL;
 }
 
-/*! Set yang specification for application
- * ys must be a malloced pointer
+/*! Set yang specification for application specifications
  * @param[in]  h     Clicon handle
- * @param[in]  yspec Yang spec
+ * @param[in]  yspec Yang spec (malloced pointer)
+ * @see clicon_config_yang_set  for the configuration yang
  */
 int
 clicon_dbspec_yang_set(clicon_handle h, 
@@ -105,6 +106,42 @@ clicon_dbspec_yang_set(clicon_handle h,
        so we send a ptr to the ptr to indicate what to copy.
      */
     if (clicon_hash_add(cdat, "dbspec_yang", &ys, sizeof(ys)) == NULL)
+	return -1;
+    return 0;
+}
+
+/*! Get YANG specification for clixon config (separate from application yangs)
+ * @param[in]  h     Clicon handle
+ * @retval     yspec Yang spec
+ * @see clicon_dbspec_yang  for the application specs
+ */
+yang_stmt *
+clicon_config_yang(clicon_handle h)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    size_t          len;
+    void           *p;
+
+    if ((p = clicon_hash_value(cdat, "control_yang", &len)) != NULL)
+	return *(yang_stmt **)p;
+    return NULL;
+}
+
+/*! Set yang specification for configuration
+ * @param[in]  h     Clicon handle
+ * @param[in]  yspec Yang spec (malloced pointer)
+ * @see clicon_dbspec_yang_set  for the application specs
+ */
+int
+clicon_config_yang_set(clicon_handle   h, 
+		       yang_stmt      *ys)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    /* It is the pointer to ys that should be copied by hash,
+       so we send a ptr to the ptr to indicate what to copy.
+     */
+    if (clicon_hash_add(cdat, "control_yang", &ys, sizeof(ys)) == NULL)
 	return -1;
     return 0;
 }

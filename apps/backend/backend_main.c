@@ -109,6 +109,8 @@ backend_terminate(clicon_handle h)
 	xml_free(x);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((yspec = clicon_config_yang(h)) != NULL)
+	yspec_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
 	cvec_free(nsctx);
     if ((x = clicon_nacm_ext(h)) != NULL)
@@ -507,7 +509,7 @@ main(int    argc,
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL);
 
-    /* Create configure yang-spec */
+    /* Create configure yang-spec (note different from dbspec holding application specs) */
     if ((yspecfg = yspec_new()) == NULL)
 	goto done;
 
@@ -517,6 +519,9 @@ main(int    argc,
 	    usage(h, argv[0]);
 	return -1;
     }
+    if (clicon_config_yang_set(h, yspecfg) < 0)
+	goto done;
+    
     /* External NACM file? */
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (nacm_mode && strcmp(nacm_mode, "external") == 0)

@@ -270,10 +270,12 @@ backend_accept_client(int   fd,
 #error "Need getsockopt O_PEERCRED or getpeereid for unix socket peer cred"
 #endif
 	if (name != NULL){
-	    if ((ce->ce_username = strdup(name)) == NULL){
+	    if ((ce->ce_username = name) == NULL){
 		clicon_err(OE_UNIX, errno, "strdup");
+		name = NULL;
 		goto done;
 	    }
+	    name = NULL;
 	}
 	break;
     case AF_INET: 	
@@ -291,5 +293,7 @@ backend_accept_client(int   fd,
 	goto done;
     retval = 0;
  done:
+    if (name)
+	free(name);
     return retval;
 }

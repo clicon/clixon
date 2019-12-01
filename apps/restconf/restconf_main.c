@@ -642,12 +642,15 @@ main(int    argc,
 	goto done;
     }
 
-    /* Create configure yang-spec */
+    /* Create configure yang-spec note different from dbspec holding application specs) */
     if ((yspecfg = yspec_new()) == NULL)
 	goto done;
     /* Find and read configfile */
     if (clicon_options_main(h, yspecfg) < 0)
 	goto done;
+    if (clicon_config_yang_set(h, yspecfg) < 0)
+	goto done;
+
     stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
     /* Now rest of options, some overwrite option file */
     optind = 1;

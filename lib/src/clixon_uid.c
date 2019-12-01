@@ -121,7 +121,7 @@ name2uid(const char *name,
 
 /*! Translate uid to user name
  * @param[in]  uid  User id
- * @param[out] name User name
+ * @param[out] name User name (Malloced, need to be freed)
  * @retval     0    OK
  * @retval     -1   Error. or not found
  */
@@ -131,7 +131,7 @@ uid2name(const uid_t uid,
 {
     int            retval = -1;
     char           buf[1024]; 
-    struct passwd  pwbuf;
+    struct passwd  pwbuf = {0,};
     struct passwd *pwbufp = NULL;
     
     if (getpwuid_r(uid, &pwbuf, buf, sizeof(buf), &pwbufp) != 0){
@@ -139,16 +139,20 @@ uid2name(const uid_t uid,
 	goto done;
     }
     if (pwbufp == NULL){
-	clicon_err(OE_UNIX, 0, "No such user: %u", uid);
+	clicon_err(OE_UNIX, ENOENT, "No such user: %u", uid);
 	goto done;
     }
-    if (name)
-	*name = pwbufp->pw_name;
+
+    if (name){
+	if ((*name = strdup(pwbufp->pw_name)) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+    }
     retval = 0;
  done:
     return retval;
 }
-
 
 /* Privileges drop perm, temp and restore
  * @see https://www.usenix.org/legacy/events/sec02/full_papers/chen/chen.pdf

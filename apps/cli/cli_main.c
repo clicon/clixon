@@ -169,6 +169,8 @@ cli_terminate(clicon_handle h)
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((yspec = clicon_config_yang(h)) != NULL)
+	yspec_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
 	cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
@@ -350,7 +352,7 @@ main(int argc, char **argv)
 
     clicon_debug_init(debug, NULL); 
 
-    /* Create top-level yang spec and store as option */
+    /* Create configure yang-spec (note different from dbspec holding application specs) */
     if ((yspecfg = yspec_new()) == NULL)
 	goto done;
     /* Find and read configfile */
@@ -359,6 +361,9 @@ main(int argc, char **argv)
 	    usage(h, argv[0]);
 	return -1;
     }
+    if (clicon_config_yang_set(h, yspecfg) < 0)
+	goto done;
+	
     /* Now rest of options */   
     opterr = 0;
     optind = 1;
