@@ -241,7 +241,7 @@ startup_extraxml(clicon_handle        h,
      * It should be empty if extra-xml is null and reset plugins did nothing
      * then skip validation.
      */
-    if (xmldb_get(h, tmp_db, NULL, &xt0) < 0)
+    if (xmldb_get(h, tmp_db, NULL, NULL, &xt0) < 0)
 	goto done;
     if (xt0==NULL || xml_child_nr(xt0)==0) 
 	goto ok;

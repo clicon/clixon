@@ -49,9 +49,9 @@ int xmldb_validate_db(const char *db);
 int xmldb_connect(clicon_handle h);
 int xmldb_disconnect(clicon_handle h);
  /* in clixon_datastore_read.[ch] */
-int xmldb_get(clicon_handle h, const char *db, char *xpath, cxobj **xtop);
+int xmldb_get(clicon_handle h, const char *db, cvec *nsc, char *xpath, cxobj **xtop);
 int xmldb_get0(clicon_handle h, const char *db,
-	       cvec *nc, char *xpath,
+	       cvec *nsc, char *xpath,
 	       int copy, cxobj **xtop, modstate_diff_t *msd); 
 int xmldb_get0_clear(clicon_handle h, cxobj *x);
 int xmldb_get0_free(clicon_handle h, cxobj **xp);

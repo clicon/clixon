@@ -12,7 +12,9 @@
 * Fixed multi-namespace for augmented state which was not covered in 4.2.0.
 
 ### API changes on existing features (you may need to change your code)
-* C-API: Added clicon_handle as parameter to all `clicon_connect_` functions to get better error message
+* C-API
+  * Added clicon_handle as parameter to all `clicon_connect_` functions to get better error message
+  * Added nsc parameter to `xmldb_get()`
 * Yang files reorganized into three classes: clixon, mandatory, optional (previous "standard" split into mandatory and optional).
   * Clixon and mandatory yang spec are always installed
   * Optional yang files are loaded only if configured with `--enable-optyangs` (flipped logic and changed from `disable-stdyangs`). NOTE: you must do this to run examples and tests.
