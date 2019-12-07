@@ -400,7 +400,7 @@ xml2ns(cxobj *x,
 /*! Add a namespace attribute to an XML node, either default or specific prefix
  * @param[in]  x          XML tree
  * @param[in]  prefix     prefix/ns localname. If NULL then set default xmlns
- * @param[out] namespace  URI namespace (or NULL). Will be copied
+ * @param[in]  ns         URI namespace (or NULL). Will be copied
  * @retval     0          OK
  * @retval    -1          Error
  * @see xml2ns 

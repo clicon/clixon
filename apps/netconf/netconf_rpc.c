@@ -80,6 +80,31 @@
     </rpc> 
  */
 
+static int
+netconf_get_config_subtree(clicon_handle h, 
+			   cxobj        *xfilter, 
+			   cxobj       **xret)
+{
+    int    retval = -1;
+    cxobj *xdata;
+    
+    /* a subtree filter is comprised of zero or more element subtrees*/
+    if ((xdata = xpath_first(*xret, "/rpc-reply/data")) == NULL)
+	goto ok;
+    if (xml_filter(xfilter, xdata) < 0){
+		xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
+			     "<error-tag>operation-failed</error-tag>"
+			     "<error-type>applicatio</error-type>"
+			     "<error-severity>error</error-severity>"
+			     "<error-info>filtering</error-info>"
+			     "</rpc-error></rpc-reply>");
+    }
+ok:
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /*! Get configuration
  * @param[in]  h       Clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
@@ -136,37 +161,22 @@ netconf_get_config(clicon_handle h,
      cxobj      *xfilter; /* filter */
      int         retval = -1;
      char       *ftype = NULL;
-     cxobj      *xfilterconf; 
-     cxobj      *xconf;
 
      /* ie <filter>...</filter> */
      if ((xfilter = xpath_first(xn, "filter")) != NULL) 
 	 ftype = xml_find_value(xfilter, "type");
-     if (ftype == NULL || strcmp(ftype, "xpath")==0){
+     if (xfilter == NULL || ftype == NULL || strcmp(ftype, "xpath")==0){
 	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
 	     goto done;	
      }
      else if (strcmp(ftype, "subtree")==0){
-	 /* Default rfc filter is subtree. I prefer xpath and use it internally.
-	    Get whole subtree and then filter aftwerwards. This is suboptimal.
-	    Therefore please use xpath.
+	 /* Get whole config first, then filter. This is suboptimal
 	  */
 	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
 	     goto done;	
-	 if (xfilter &&
-	     (xfilterconf = xpath_first(xfilter, "//configuration"))!= NULL &&
-	     (xconf = xpath_first(*xret, "/rpc-reply/data")) != NULL){
-	     /* xml_filter removes parts of xml tree not matching */
-	     if ((strcmp(xml_name(xfilterconf), xml_name(xconf))!=0) ||
-		 xml_filter(xfilterconf, xconf) < 0){
-		     xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-				      "<error-tag>operation-failed</error-tag>"
-				      "<error-type>applicatio</error-type>"
-				      "<error-severity>error</error-severity>"
-				      "<error-info>filtering</error-info>"
-				      "</rpc-error></rpc-reply>");
-	     }
-	 }
+	 /* Now filter on whole tree */
+	 if (netconf_get_config_subtree(h, xfilter, xret) < 0)
+	     goto done;
      }
      else{
 	 xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
@@ -348,37 +358,22 @@ netconf_get(clicon_handle h,
      cxobj      *xfilter; /* filter */
      int         retval = -1;
      char       *ftype = NULL;
-     cxobj      *xfilterconf; 
-     cxobj      *xconf;
 
        /* ie <filter>...</filter> */
      if ((xfilter = xpath_first(xn, "filter")) != NULL) 
 	 ftype = xml_find_value(xfilter, "type");
-     if (ftype == NULL || strcmp(ftype, "xpath")==0){
+     if (xfilter == NULL || ftype == NULL || strcmp(ftype, "xpath")==0){
 	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
 	     goto done;	
      }
      else if (strcmp(ftype, "subtree")==0){
-	 /* Default rfc filter is subtree. I prefer xpath and use it internally.
-	    Get whole subtree and then filter aftwerwards. This is suboptimal.
-	    Therefore please use xpath.
+	 /* Get whole config + state first, then filter. This is suboptimal
 	  */
 	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
 	     goto done;	
-	 if (xfilter &&
-	     (xfilterconf = xpath_first(xfilter, "//configuration"))!= NULL &&
-	     (xconf = xpath_first(*xret, "/rpc-reply/data")) != NULL){
-	     /* xml_filter removes parts of xml tree not matching */
-	     if ((strcmp(xml_name(xfilterconf), xml_name(xconf))!=0) ||
-		 xml_filter(xfilterconf, xconf) < 0){
-		 xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
-				      "<error-tag>operation-failed</error-tag>"
-				      "<error-type>applicatio</error-type>"
-				      "<error-severity>error</error-severity>"
-				      "<error-info>filtering</error-info>"
-				      "</rpc-error></rpc-reply>");
-	     }
-	 }
+	 /* Now filter on whole tree */
+	 if (netconf_get_config_subtree(h, xfilter, xret) < 0)
+	     goto done;
      }
      else{
 	 xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"

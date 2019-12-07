@@ -121,7 +121,6 @@ xml_filter_recursive(cxobj *xfilter,
     int   remove_s;
 
     *remove_me = 0;
-    assert(xfilter && xparent && strcmp(xml_name(xfilter), xml_name(xparent))==0);
     /* 1. Check selection */
     if (xml_child_nr(xfilter) == 0) 
 	goto match;
