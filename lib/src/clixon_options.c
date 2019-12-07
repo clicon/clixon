@@ -246,7 +246,7 @@ parse_configfile(clicon_handle  h,
     /* Hard-coded config for < 3.10 and clixon-config for >= 3.10 */
     if ((nsc = xml_nsctx_init(NULL, CLIXON_CONF_NS)) == NULL)
 	goto done;
-    if ((xc = xpath_first_nsc(xt, nsc, "clixon-config")) == NULL){
+    if ((xc = xpath_first(xt, nsc, "clixon-config")) == NULL){
 	clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"clixon-config\" element\nClixon config files should begin with: <clixon-config xmlns=\"%s\">", filename, CLIXON_CONF_NS);
 	    
 	goto done;

@@ -89,7 +89,7 @@ netconf_get_config_subtree(clicon_handle h,
     cxobj *xdata;
     
     /* a subtree filter is comprised of zero or more element subtrees*/
-    if ((xdata = xpath_first(*xret, "/rpc-reply/data")) == NULL)
+    if ((xdata = xpath_first(*xret, NULL, "/rpc-reply/data")) == NULL)
 	goto ok;
     if (xml_filter(xfilter, xdata) < 0){
 		xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
@@ -163,7 +163,7 @@ netconf_get_config(clicon_handle h,
      char       *ftype = NULL;
 
      /* ie <filter>...</filter> */
-     if ((xfilter = xpath_first(xn, "filter")) != NULL) 
+     if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
 	 ftype = xml_find_value(xfilter, "type");
      if (xfilter == NULL || ftype == NULL || strcmp(ftype, "xpath")==0){
 	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
@@ -218,7 +218,7 @@ get_edit_opts(cxobj               *xn,
     cxobj *x;
     char  *optstr;
     
-    if ((x = xpath_first(xn, "test-option")) != NULL){
+    if ((x = xpath_first(xn, NULL, "test-option")) != NULL){
 	if ((optstr = xml_body(x)) != NULL){
 	    if (strcmp(optstr, "test-then-set") == 0)
 		*testopt = TEST_THEN_SET;
@@ -230,7 +230,7 @@ get_edit_opts(cxobj               *xn,
 		goto parerr;
 	}
     }
-    if ((x = xpath_first(xn, "error-option")) != NULL){
+    if ((x = xpath_first(xn, NULL, "error-option")) != NULL){
 	if ((optstr = xml_body(x)) != NULL){
 	    if (strcmp(optstr, "stop-on-error") == 0)
 		*erropt = STOP_ON_ERROR;
@@ -360,7 +360,7 @@ netconf_get(clicon_handle h,
      char       *ftype = NULL;
 
        /* ie <filter>...</filter> */
-     if ((xfilter = xpath_first(xn, "filter")) != NULL) 
+     if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
 	 ftype = xml_find_value(xfilter, "type");
      if (xfilter == NULL || ftype == NULL || strcmp(ftype, "xpath")==0){
 	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
@@ -443,7 +443,7 @@ netconf_notification_cb(int   s,
 
     if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:netconf:notification:1.0")) == NULL)
 	goto done;
-    if ((xn = xpath_first_nsc(xt, nsc, "notification")) == NULL)
+    if ((xn = xpath_first(xt, nsc, "notification")) == NULL)
 	goto ok;
     /* create netconf message */
     if ((cb = cbuf_new()) == NULL){
@@ -495,7 +495,7 @@ netconf_create_subscription(clicon_handle h,
     int              s;
     char            *ftype;
 
-    if ((xfilter = xpath_first(xn, "//filter")) != NULL){
+    if ((xfilter = xpath_first(xn, NULL, "//filter")) != NULL){
 	if ((ftype = xml_find_value(xfilter, "type")) != NULL){
 	    if (strcmp(ftype, "xpath") != 0){
 		xml_parse_va(xret, NULL, "<rpc-reply><rpc-error>"
@@ -511,7 +511,7 @@ netconf_create_subscription(clicon_handle h,
     }
     if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, &s) < 0)
 	goto done;
-    if (xpath_first(*xret, "rpc-reply/rpc-error") != NULL)
+    if (xpath_first(*xret, NULL, "rpc-reply/rpc-error") != NULL)
 	goto ok;
     if (event_reg_fd(s, 
 		     netconf_notification_cb, 
@@ -617,7 +617,7 @@ netconf_application_rpc(clicon_handle h,
 	 */
 	if (0)
 	if ((youtput = yang_find(yrpc, Y_OUTPUT, NULL)) != NULL){
-	    xoutput=xpath_first(*xret, "/");
+	    xoutput=xpath_first(*xret, NULL, "/");
 	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
 	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;

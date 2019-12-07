@@ -887,7 +887,7 @@ xmldb_put(clicon_handle       h,
     if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-netconf-acm")) == NULL)
 	goto done;
     if (xnacm0 != NULL &&
-	(xnacm = xpath_first_nsc(xnacm0, nsc, "nacm")) != NULL){
+	(xnacm = xpath_first(xnacm0, nsc, "nacm")) != NULL){
 	/* Pre-NACM access step, if permit, then dont do any nacm checks in 
 	 * text_modify_* below */
 	if ((permit = nacm_access(h, mode, xnacm, username)) < 0)

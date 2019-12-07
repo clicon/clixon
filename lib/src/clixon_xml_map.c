@@ -305,7 +305,7 @@ validate_leafref(cxobj     *xt,
     /* XXX see comment above regarding typeref or not */
     if (xml_nsctx_yang(ytype, &nsc) < 0)
 	goto done;
-    if (xpath_vec_nsc(xt, nsc, "%s", &xvec, &xlen, yang_argument_get(ypath)) < 0) 
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, yang_argument_get(ypath)) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	x = xvec[i];

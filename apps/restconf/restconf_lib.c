@@ -476,7 +476,7 @@ api_return_err(clicon_handle h,
     clicon_debug(1, "%s", __FUNCTION__);
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    if ((xtag = xpath_first(xerr, "//error-tag")) == NULL){
+    if ((xtag = xpath_first(xerr, NULL, "//error-tag")) == NULL){
 	restconf_notfound(r);
 	goto ok;
     }

@@ -139,7 +139,7 @@ clixon_plugin_statedata(clicon_handle    h,
 		goto done;
 	    }
 	    cprintf(cberr, "Internal error: state callback returned invalid XML: ");
-	    if (netconf_err2cb(xpath_first(xerr, "rpc-error"), cberr) < 0)
+	    if (netconf_err2cb(xpath_first(xerr, NULL, "rpc-error"), cberr) < 0)
 		goto done;
 	    if (*xret){
 		xml_free(*xret);

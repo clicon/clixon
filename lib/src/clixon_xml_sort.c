@@ -538,7 +538,7 @@ xml_insert_userorder(cxobj           *xp,
 	else{
 	    switch (yang_keyword_get(yn)){
 	    case Y_LEAF_LIST:
-		if ((xc = xpath_first_nsc(xp, nsc_key, "%s[.='%s']", xml_name(xn), key_val)) == NULL)
+		if ((xc = xpath_first(xp, nsc_key, "%s[.='%s']", xml_name(xn), key_val)) == NULL)
 		    clicon_err(OE_YANG, 0, "bad-attribute: value, missing-instance: %s", key_val);				    
 		else {
 		    if ((i = xml_child_order(xp, xc)) < 0)
@@ -548,7 +548,7 @@ xml_insert_userorder(cxobj           *xp,
 		}
 		break;
 	    case Y_LIST:
-		if ((xc = xpath_first_nsc(xp, nsc_key, "%s%s", xml_name(xn), key_val)) == NULL)
+		if ((xc = xpath_first(xp, nsc_key, "%s%s", xml_name(xn), key_val)) == NULL)
 		    clicon_err(OE_YANG, 0, "bad-attribute: key, missing-instance: %s", key_val);				    
 		else {
 		    if ((i = xml_child_order(xp, xc)) < 0)

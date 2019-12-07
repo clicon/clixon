@@ -98,7 +98,7 @@ netconf_hello_dispatch(cxobj *xn)
     cxobj *xp;
     int retval = -1;
 
-    if ((xp = xpath_first(xn, "//hello")) != NULL)
+    if ((xp = xpath_first(xn, NULL, "//hello")) != NULL)
 	retval = netconf_hello(xp);
     return retval;
 }
@@ -147,7 +147,7 @@ netconf_input_packet(clicon_handle h,
 	goto done;
     }
     free(str0);
-    if ((xrpc=xpath_first(xreq, "//rpc")) != NULL){
+    if ((xrpc=xpath_first(xreq, NULL, "//rpc")) != NULL){
         isrpc++;
 	if (xml_spec_populate_rpc(h, xrpc, yspec) < 0)
 	    goto done;
@@ -160,7 +160,7 @@ netconf_input_packet(clicon_handle h,
 	}
     }
     else
-        if (xpath_first(xreq, "//hello") != NULL)
+        if (xpath_first(xreq, NULL, "//hello") != NULL)
 	    ;
         else{
             clicon_log(LOG_WARNING, "Invalid netconf msg: neither rpc or hello: dropped");

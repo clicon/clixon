@@ -321,7 +321,7 @@ example_statedata(clicon_handle h,
 	goto done;
     if (xmldb_get0(h, "running", nsc1, "/interfaces/interface/name", 1, &xt, NULL) < 0)
 	goto done;
-    if (xpath_vec_nsc(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
+    if (xpath_vec(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
 	goto done;
     if (xlen){
 	cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
@@ -475,7 +475,7 @@ upgrade_2016(clicon_handle h,
 		if ((name = xml_find_body(xi, "name")) == NULL)
 		    continue; /* shouldnt happen */
 		/* Get corresponding /interfaces/interface entry */
-		xif = xpath_first(xt, "/interfaces/interface[name=\"%s\"]", name);
+		xif = xpath_first(xt, NULL, "/interfaces/interface[name=\"%s\"]", name);
 		/* - Move /if:interfaces-state/if:interface/if:admin-status to 
 		 *        /if:interfaces/if:interface/ */
 		if ((x = xml_find(xi, "admin-status")) != NULL && xif){
@@ -578,7 +578,7 @@ upgrade_2018(clicon_handle h,
 		/* Change type /interfaces/interface/statistics/in-octets to 
 		 * decimal64 with fraction-digits 3 and divide values with 1000 
 		 */
-		if ((x = xpath_first(xi, "statistics/in-octets")) != NULL){
+		if ((x = xpath_first(xi, NULL, "statistics/in-octets")) != NULL){
 		    if ((xb = xml_body_get(x)) != NULL){
 			uint64_t u64;
 			cbuf *cb = cbuf_new();

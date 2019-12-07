@@ -1360,13 +1360,13 @@ netconf_err2cb(cxobj *xerr,
     int    retval = -1;
     cxobj *x;
 
-    if ((x=xpath_first(xerr, "error-type"))!=NULL)
+    if ((x=xpath_first(xerr, NULL, "error-type"))!=NULL)
 	cprintf(cberr, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-tag"))!=NULL)
+    if ((x=xpath_first(xerr, NULL, "error-tag"))!=NULL)
 	cprintf(cberr, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-message"))!=NULL)
+    if ((x=xpath_first(xerr, NULL, "error-message"))!=NULL)
 	cprintf(cberr, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-info"))!=NULL)
+    if ((x=xpath_first(xerr, NULL, "error-info"))!=NULL)
 	clicon_xml2cbuf(cberr, xml_child_i(x,0), 0, 0, -1);
     retval = 0;
     return retval;
