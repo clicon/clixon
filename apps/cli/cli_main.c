@@ -541,7 +541,7 @@ main(int argc, char **argv)
 	cligen_tree_add(cli_cligen(h), treeref, pt);
 
 	if (printgen)
-	    cligen_print(stdout, pt, 1);
+	    cligen_print(stdout, pt, 1); /* pt_print */
     }
 
     /* Initialize cli syntax */

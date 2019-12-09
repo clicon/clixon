@@ -213,7 +213,7 @@ start_restconf(){
 }
 
 stop_restconf(){
-    sudo pkill -u $wwwuser -f "$clixon_restconf"
+    sudo pkill -u $wwwuser -f clixon_restconf # Dont use $clixon_restoconf doesnt work in valgrind
     if [ $valgrindtest -eq 3 ]; then 
 	sleep 1
 	checkvalgrind

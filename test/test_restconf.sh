@@ -43,7 +43,7 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    sudo pkill clixon_backend # to be sure
+    sudo pkill -f clixon_backend # to be sure
     new "start backend -s init -f $cfg -- -s"
     start_backend -s init -f $cfg -- -s
 fi
@@ -52,7 +52,7 @@ new "waiting"
 wait_backend
 
 new "kill old restconf daemon"
-sudo pkill -u $wwwuser clixon_restconf
+sudo pkill -u $wwwuser -f clixon_restconf
 
 new "start restconf daemon"
 start_restconf -f $cfg
