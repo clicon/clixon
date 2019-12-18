@@ -196,6 +196,14 @@ module example{
      description "For testing different truth values in CLI";
      type boolean;
   }
+  container manc{
+    presence true;
+    description "mandatory test";
+    leaf man{
+      type string;
+      mandatory true;
+    }
+  }
 }
 EOF
 
@@ -247,7 +255,6 @@ EOF
     new "netconf discard-changes"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-    
     new "netconf set transitive string error"
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><c xmlns="urn:example:clixon"><talle>9xx</talle></c></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>"
 
@@ -589,6 +596,32 @@ EOF
 
     new "netconf pattern \w invalid"
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>word4</bad-element></error-info><error-severity>error</error-severity><error-message>regexp match fail:'
+
+    new "netconf discard-changes"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+    #------ Mandatory
+
+    new "netconf set container w/o mandatory leaf"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><manc xmlns="urn:example:clixon"/></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>"
+
+    new "netconf validate should fail"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '<rpc-reply><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>man</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable</error-message></rpc-error></rpc-reply>]]>]]>'
+
+    new "netconf set container with mandatory leaf"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><manc xmlns="urn:example:clixon"><man>foo</man></manc></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>"
+
+    new "netconf commit"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+    new "netconf delete mandatory variable"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><manc xmlns="urn:example:clixon"><man nc:operation="delete" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">foo</man></manc></config><default-operation>none</default-operation></edit-config></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+
+    new "get mandatory"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/ex:manc" xmlns:ex="urn:example:clixon"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><manc xmlns="urn:example:clixon"/></data></rpc-reply>]]>]]>$'
+
+    new "netconf validate should fail"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>missing-element</error-tag><error-info><bad-element>man</bad-element></error-info><error-severity>error</error-severity><error-message>May not remove mandatory variable</error-message></rpc-error></rpc-reply>]]>]]>$'
 
     new "netconf discard-changes"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

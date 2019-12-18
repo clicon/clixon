@@ -42,7 +42,6 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <fnmatch.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -264,7 +263,7 @@ text_read_modstate(clicon_handle       h,
 	    if ((name = xml_find_body(xm, "name")) == NULL)
 		continue;
 	    /* 3a) There is no such module in the system */
-	    if ((xs = xpath_first(xmcache, "module[name=\"%s\"]", name)) == NULL){
+	    if ((xs = xpath_first(xmcache, NULL, "module[name=\"%s\"]", name)) == NULL){
 		//		fprintf(stderr, "%s: Module %s: not in system\n", __FUNCTION__, name);
 		if ((xm2 = xml_dup(xm)) == NULL)
 		    goto done;
@@ -426,7 +425,7 @@ xmldb_get_nocache(clicon_handle       h,
 	goto done;
     /* Here xt looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec */
-    if (xpath_vec_nsc(xt, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
 
     /* If vectors are specified then mark the nodes found with all ancestors
@@ -532,7 +531,7 @@ xmldb_get_cache(clicon_handle    h,
      */
 
     /* Here xt looks like: <config>...</config> */
-    if (xpath_vec_nsc(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
 
     /* Make new tree by copying top-of-tree from x0t to x1t */
@@ -621,7 +620,7 @@ xmldb_get_zerocopy(clicon_handle    h,
     else
 	x0t = de->de_xml;
     /* Here xt looks like: <config>...</config> */
-    if (xpath_vec_nsc(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
     /* Iterate through the match vector
      * For every node found in x0, mark the tree up to t1
@@ -648,12 +647,13 @@ xmldb_get_zerocopy(clicon_handle    h,
 /*! Get content of datastore and return a copy of the XML tree
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  nsc    XML namespace context for XPATH
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @retval     0      OK
  * @retval     -1     Error
  * @code
- *   if (xmldb_get(xh, "running", "/interfaces/interface[name="eth"]", &xt) < 0)
+ *   if (xmldb_get(xh, "running", NULL, "/interfaces/interface[name="eth"]", &xt) < 0)
  *      err;
  *   xml_free(xt);
  * @endcode
@@ -662,10 +662,11 @@ xmldb_get_zerocopy(clicon_handle    h,
 int 
 xmldb_get(clicon_handle    h, 
 	  const char      *db, 
+	  cvec            *nsc,
 	  char            *xpath,
 	  cxobj          **xret)
 {
-    return xmldb_get0(h, db, NULL, xpath, 1, xret, NULL);
+    return xmldb_get0(h, db, nsc, xpath, 1, xret, NULL);
 }
 
 /*! Zero-copy variant of get content of database

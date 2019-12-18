@@ -98,7 +98,7 @@ netconf_hello_dispatch(cxobj *xn)
     cxobj *xp;
     int retval = -1;
 
-    if ((xp = xpath_first(xn, "//hello")) != NULL)
+    if ((xp = xpath_first(xn, NULL, "//hello")) != NULL)
 	retval = netconf_hello(xp);
     return retval;
 }
@@ -147,7 +147,7 @@ netconf_input_packet(clicon_handle h,
 	goto done;
     }
     free(str0);
-    if ((xrpc=xpath_first(xreq, "//rpc")) != NULL){
+    if ((xrpc=xpath_first(xreq, NULL, "//rpc")) != NULL){
         isrpc++;
 	if (xml_spec_populate_rpc(h, xrpc, yspec) < 0)
 	    goto done;
@@ -160,7 +160,7 @@ netconf_input_packet(clicon_handle h,
 	}
     }
     else
-        if (xpath_first(xreq, "//hello") != NULL)
+        if (xpath_first(xreq, NULL, "//hello") != NULL)
 	    ;
         else{
             clicon_log(LOG_WARNING, "Invalid netconf msg: neither rpc or hello: dropped");
@@ -323,6 +323,7 @@ static int
 netconf_terminate(clicon_handle h)
 {
     yang_stmt  *yspec;
+    cvec       *nsctx;
     cxobj      *x;
     
     clixon_plugin_exit(h);
@@ -332,6 +333,8 @@ netconf_terminate(clicon_handle h)
 	yspec_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
+	cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     event_exit();
@@ -392,9 +395,9 @@ main(int    argc,
     struct passwd   *pw;
     struct timeval   tv = {0,}; /* timeout */
     yang_stmt       *yspec = NULL;
-    yang_stmt       *yspecfg = NULL; /* For config XXX clixon bug */
     char            *str;
     uint32_t         id;
+    cvec            *nsctx_global = NULL; /* Global namespace context */
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -439,13 +442,10 @@ main(int    argc,
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(debug, NULL); 
 
-    /* Create configure yang-spec */
-    if ((yspecfg = yspec_new()) == NULL)
-	goto done;
-    /* Find and read configfile */
-    if (clicon_options_main(h, yspecfg) < 0)
+    /* Find, read and parse configfile */
+    if (clicon_options_main(h) < 0)
 	return -1;
-    clicon_config_yang_set(h, yspecfg);
+    
     /* Now rest of options */
     optind = 1;
     opterr = 0;
@@ -554,6 +554,14 @@ main(int    argc,
     /* Add netconf yang spec, used by netconf client and as internal protocol */
     if (netconf_module_load(h) < 0)
 	goto done;
+    /* Here all modules are loaded 
+     * Compute and set canonical namespace context
+     */
+    if (xml_nsctx_yangspec(yspec, &nsctx_global) < 0)
+	goto done;
+    if (clicon_nsctx_global_set(h, nsctx_global) < 0)
+	goto done;
+
     /* Call start function is all plugins before we go interactive */
     if (clixon_plugin_start(h) < 0)
 	goto done;

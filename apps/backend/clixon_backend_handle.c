@@ -46,7 +46,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <assert.h>
-#include <fnmatch.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <regex.h>

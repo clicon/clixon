@@ -118,10 +118,14 @@ generic_validate(clicon_handle       h,
     for (i=0; i<td->td_dlen; i++){
 	x1 = td->td_dvec[i];
 	ys = xml_spec(x1);
-	if (ys && yang_mandatory(ys) && yang_config(ys)==0){
-	    if (netconf_missing_element_xml(xret, "protocol", xml_name(x1), "Missing mandatory variable") < 0)
-		goto done;
-	    goto fail;
+	if (ys && yang_mandatory(ys) && yang_config(ys)==1){
+	    yang_stmt *yp =yang_parent_get(ys);
+	    if (yp== NULL ||
+		(yang_keyword_get(yp)!=Y_MODULE && yang_keyword_get(yp)!=Y_SUBMODULE)){
+		if (netconf_missing_element_xml(xret, "protocol", xml_name(x1), "May not remove mandatory variable") < 0)
+		    goto done;
+		goto fail;
+	    }
 	}
     }
     /* added entries */

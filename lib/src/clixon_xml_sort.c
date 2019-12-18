@@ -44,7 +44,6 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <fnmatch.h>
 #include <stdint.h>
 #include <assert.h>
 #include <syslog.h>
@@ -539,7 +538,7 @@ xml_insert_userorder(cxobj           *xp,
 	else{
 	    switch (yang_keyword_get(yn)){
 	    case Y_LEAF_LIST:
-		if ((xc = xpath_first_nsc(xp, nsc_key, "%s[.='%s']", xml_name(xn), key_val)) == NULL)
+		if ((xc = xpath_first(xp, nsc_key, "%s[.='%s']", xml_name(xn), key_val)) == NULL)
 		    clicon_err(OE_YANG, 0, "bad-attribute: value, missing-instance: %s", key_val);				    
 		else {
 		    if ((i = xml_child_order(xp, xc)) < 0)
@@ -549,7 +548,7 @@ xml_insert_userorder(cxobj           *xp,
 		}
 		break;
 	    case Y_LIST:
-		if ((xc = xpath_first_nsc(xp, nsc_key, "%s%s", xml_name(xn), key_val)) == NULL)
+		if ((xc = xpath_first(xp, nsc_key, "%s%s", xml_name(xn), key_val)) == NULL)
 		    clicon_err(OE_YANG, 0, "bad-attribute: key, missing-instance: %s", key_val);				    
 		else {
 		    if ((i = xml_child_order(xp, xc)) < 0)
@@ -618,8 +617,8 @@ xml_insert2(cxobj           *xp,
     xc = xml_child_i(xp, mid);
     if ((yc = xml_spec(xc)) == NULL){
 	if (xml_type(xc) != CX_ELMNT)
-	    clicon_err(OE_XML, 0, "No spec found %s (wrong xml type:%d)",
-		       xml_name(xc), xml_type(xc));	
+	    clicon_err(OE_XML, 0, "No spec found %s (wrong xml type:%s)",
+		       xml_name(xc), xml_type2str(xml_type(xc)));
 	else
 	    clicon_err(OE_XML, 0, "No spec found %s", xml_name(xc));	
 	goto done;

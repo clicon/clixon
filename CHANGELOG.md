@@ -1,5 +1,35 @@
 # Clixon Changelog
 
+## 4.3.0 (Expected: December 2019)
+
+### Minor changes
+* Added "canonical" global namespace context: `nsctx_global`
+  * This is a normalized XML prefix:namespace pair vector computed from all loaded Yang modules. Useful when writing XML and XPATH expressions in callbacks.
+  * Get it with `clicon_nsctx_global_get(h)`
+* Added wildcard `*` as a mode to `CLICON_MODE` in clispec files
+  * If you set "CLICON_MODE="*";" in a clispec file it means that syntax will appear in all CLI spec modes.
+* State callbacks provided by user are validated. If they are invalid an internal error is returned.
+* Fixed multi-namespace for augmented state which was not covered in 4.2.0.
+
+### API changes on existing features (you may need to change your code)
+* Yang files reorganized into three classes: clixon, mandatory, optional (previous "standard" split into mandatory and optional).
+  * Clixon and mandatory yang spec are always installed
+  * Optional yang files are loaded only if configured with `--enable-optyangs` (flipped logic and changed from `disable-stdyangs`). NOTE: you must do this to run examples and tests.
+  * Optional yang files can be installed in a separate dir with `--with-opt-yang-installdir=DIR` (renamed from `with-std-yang-installdir`)
+* C-API
+  * Added namespace-context parameter `nsc` to `xpath_first` and `xpath_vec`, (`xpath_vec_nsc` and xpath_first_nsc` are removed).
+  * Added clicon_handle as parameter to all `clicon_connect_` functions to get better error message
+  * Added nsc parameter to `xmldb_get()`
+* The multi-namespace augment state may rearrange the XML namespace attributes.
+* Main example yang changed to incorporate augmented state, new revision is 2019-11-15.
+
+### Corrected Bugs
+* [filter in netconf - one specific entry #100](https://github.com/clicon/clixon/issues/100)
+* [xpath_tree2cbuf() changes integers into floating point representations #99](https://github.com/clicon/clixon/issues/99)
+* [xml_parse_string() is slow for a long XML string #96](https://github.com/clicon/clixon/issues/96)
+* Mandatory variables can no longer be deleted.
+* [Add missing includes](https://github.com/clicon/clixon/pulls)
+	
 ## 4.2.0 (October 27 2019)
 
 ### Summary
@@ -12,7 +42,7 @@ The main improvement in thus release concerns security in terms of priveleges an
     * use `-U <user>` clixon_backend command-line option to drop to `user`
   * Generic options are the following:
     * `CLICON_BACKEND_USER` sets the user to drop priveleges to
-    * CLICON_BACKEND_PRIVELEGES can have the following values:
+    * `CLICON_BACKEND_PRIVELEGES` can have the following values:
       * `none` Make no drop/change in privileges. This is currently the default.
       * `drop_perm`  After initialization, drop privileges permanently
       * `drop_perm` After initialization, drop privileges temporarily (to a euid)

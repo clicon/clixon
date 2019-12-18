@@ -129,7 +129,7 @@ int       xml_flag_reset(cxobj *xn, uint16_t flag);
 
 char     *xml_value(cxobj *xn);
 int       xml_value_set(cxobj *xn, char *val);
-char     *xml_value_append(cxobj *xn, char *val);
+int       xml_value_append(cxobj *xn, char *val);
 enum cxobj_type xml_type(cxobj *xn);
 int       xml_type_set(cxobj *xn, enum cxobj_type type);
 

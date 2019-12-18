@@ -170,8 +170,8 @@ client_get_capabilities(clicon_handle h,
     int    retval = -1;
     cxobj *xrstate = NULL; /* xml restconf-state node */
     cxobj *xcap = NULL;    /* xml capabilities node */
-    
-    if ((xrstate = xpath_first(*xret, "restconf-state")) == NULL){
+
+    if ((xrstate = xpath_first(*xret, NULL, "restconf-state")) == NULL){
 	clicon_err(OE_YANG, ENOENT, "restconf-state not found in config node");
 	goto done;
     }
@@ -321,10 +321,10 @@ client_statedata(clicon_handle h,
     if (ret == 0)
 	goto fail;
     /* Code complex to filter out anything that is outside of xpath 
-     * Actually this is a safety catch, should realy be done in plugins
+     * Actually this is a safety catch, should really be done in plugins
      * and modules_state functions.
      */
-    if (xpath_vec_nsc(*xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (xpath_vec(*xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
     /* If vectors are specified then mark the nodes found and
      * then filter out everything else,
@@ -434,7 +434,7 @@ from_client_get_config(clicon_handle h,
     if ((ret = nacm_access_pre(h, username, NACM_DATA, &xnacm)) < 0)
 	goto done;
     if (ret == 0){ /* Do NACM validation */
-	if (xpath_vec_nsc(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	    goto done;
 	/* NACM datanode/module read validation */
 	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
@@ -529,14 +529,14 @@ from_client_edit_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if ((x = xpath_first(xn, "default-operation")) != NULL){
+    if ((x = xpath_first(xn, NULL, "default-operation")) != NULL){
 	if (xml_operation(xml_body(x), &operation) < 0){
 	    if (netconf_invalid_value(cbret, "protocol", "Wrong operation")< 0)
 		goto done;
 	    goto ok;
 	}
     }
-    if ((xc = xpath_first(xn, "config")) == NULL){
+    if ((xc = xpath_first(xn, NULL, "config")) == NULL){
 	if (netconf_missing_element(cbret, "protocol", "config", NULL) < 0)
 	    goto done;
 	goto ok;
@@ -967,7 +967,7 @@ from_client_get(clicon_handle h,
     if ((ret = nacm_access_pre(h, username, NACM_DATA, &xnacm)) < 0)
 	goto done;
     if (ret == 0){ /* Do NACM validation */
-	if (xpath_vec_nsc(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	    goto done;
 	/* NACM datanode/module read validation */
 	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
@@ -1122,9 +1122,9 @@ from_client_create_subscription(clicon_handle h,
     
     if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:netmod:notification")) == NULL)
 	goto done;
-    if ((x = xpath_first_nsc(xe, nsc, "//stream")) != NULL)
+    if ((x = xpath_first(xe, nsc, "//stream")) != NULL)
 	stream = xml_find_value(x, "body");
-    if ((x = xpath_first_nsc(xe, nsc, "//stopTime")) != NULL){
+    if ((x = xpath_first(xe, nsc, "//stopTime")) != NULL){
 	if ((stoptime = xml_find_value(x, "body")) != NULL &&
 	    str2time(stoptime, &stop) < 0){
 	    if (netconf_bad_element(cbret, "application", "stopTime", "Expected timestamp") < 0)
@@ -1132,7 +1132,7 @@ from_client_create_subscription(clicon_handle h,
 	    goto ok;	
 	}
     }
-    if ((x = xpath_first_nsc(xe, nsc, "//startTime")) != NULL){
+    if ((x = xpath_first(xe, nsc, "//startTime")) != NULL){
 	if ((starttime = xml_find_value(x, "body")) != NULL &&
 	    str2time(starttime, &start) < 0){
 	    if (netconf_bad_element(cbret, "application", "startTime", "Expected timestamp") < 0)
@@ -1140,7 +1140,7 @@ from_client_create_subscription(clicon_handle h,
 	    goto ok;	
 	}	
     }
-    if ((xfilter = xpath_first_nsc(xe, nsc, "//filter")) != NULL){
+    if ((xfilter = xpath_first(xe, nsc, "//filter")) != NULL){
 	if ((ftype = xml_find_value(xfilter, "type")) != NULL){
 	    /* Only accept xpath as filter type */
 	    if (strcmp(ftype, "xpath") != 0){
@@ -1367,8 +1367,8 @@ from_client_msg(clicon_handle        h,
 	goto reply;
     }
 
-    if ((x = xpath_first_nsc(xt, NULL, "/rpc")) == NULL){
-	if ((x = xpath_first_nsc(xt, NULL, "/hello")) != NULL){
+    if ((x = xpath_first(xt, NULL, "/rpc")) == NULL){
+	if ((x = xpath_first(xt, NULL, "/hello")) != NULL){
 	    if ((ret = from_client_hello(h, x, ce, cbret)) <0)
 		goto done;
 	    goto reply;

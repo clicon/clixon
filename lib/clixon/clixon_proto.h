@@ -69,14 +69,17 @@ struct clicon_msg *clicon_msg_encode(uint32_t id, char *format, ...);
 #endif
 int clicon_msg_decode(struct clicon_msg *msg, yang_stmt *yspec, uint32_t *id, cxobj **xml);
 
-int clicon_connect_unix(char *sockpath);
+int clicon_connect_unix(clicon_handle h, char *sockpath);
 
-int clicon_rpc_connect_unix(struct clicon_msg    *msg, 
+
+int clicon_rpc_connect_unix(clicon_handle         h,
+			    struct clicon_msg    *msg, 
 			    char                 *sockpath,
 			    char                **ret,
 			    int                  *sock0);
 
-int clicon_rpc_connect_inet(struct clicon_msg    *msg, 
+int clicon_rpc_connect_inet(clicon_handle         h,
+			    struct clicon_msg    *msg, 
 			    char                 *dst, 
 			    uint16_t              port,
 			    char                **ret,

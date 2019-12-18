@@ -95,9 +95,13 @@ main(int    argc,
     char              *family = "UNIX";
     int                ret;
     cbuf              *cb = cbuf_new();
-    
+    clicon_handle      h;
+
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
+
+    if ((h = clicon_handle_init()) == NULL)
+	goto done;
 
     optind = 1;
     opterr = 0;
@@ -161,11 +165,11 @@ main(int    argc,
     if ((msg = clicon_msg_encode(getpid(), "%s", cbuf_get(cb))) < 0)
 	goto done;
     if (strcmp(family, "UNIX")==0){
-	if (clicon_rpc_connect_unix(msg, sockpath, &retdata, NULL) < 0)
+	if (clicon_rpc_connect_unix(h, msg, sockpath, &retdata, NULL) < 0)
 	    goto done;
     }
     else
-	if (clicon_rpc_connect_inet(msg, sockpath, 4535, &retdata, NULL) < 0)
+	if (clicon_rpc_connect_inet(h, msg, sockpath, 4535, &retdata, NULL) < 0)
 	    goto done;
     fprintf(stdout, "%s\n", retdata);
     retval = 0;

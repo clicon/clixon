@@ -106,6 +106,7 @@ struct xpath_tree{
     enum xp_type       xs_type;
     int                xs_int; /* step-> axis-type */
     double             xs_double;
+    char              *xs_strnr; /* original string xs_double: numeric value */
     char              *xs_s0;
     char              *xs_s1;
     struct xpath_tree *xs_c0; /* child 0 */
@@ -142,21 +143,13 @@ int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags,
  * If you do not know what a namespace context is, see README.md#xml-and-xpath
  */
 #if defined(__GNUC__) && __GNUC__ >= 3
-cxobj *xpath_first_nsc(cxobj *xcur, cvec *nsc, char *xpformat,  ...) __attribute__ ((format (printf, 3, 4)));
-int    xpath_vec_nsc(cxobj *xcur, cvec *nsc, char *xpformat, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 6)));
+cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *xpformat,  ...) __attribute__ ((format (printf, 3, 4)));
+int    xpath_vec(cxobj *xcur, cvec *nsc, char *xpformat, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 6)));
 #else
-cxobj *xpath_first_nsc(cxobj *xcur, cvec *nsc, char *xpformat, ...);
-int    xpath_vec_nsc(cxobj *xcur, cvec *nsc, char *xpformat, cxobj  ***vec, size_t *veclen, ...);
+cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *xpformat, ...);
+int    xpath_vec(cxobj *xcur, cvec *nsc, char *xpformat, cxobj  ***vec, size_t *veclen, ...);
 #endif
 
-/* Functions with nsc == NULL (implicit xpath context). */
-#if defined(__GNUC__) && __GNUC__ >= 3
-cxobj *xpath_first(cxobj *xcur, char *xpformat,  ...) __attribute__ ((format (printf, 2, 3)));
-int    xpath_vec(cxobj *xcur, char *xpformat, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 2, 5)));
-#else
-cxobj *xpath_first(cxobj *xcur, char *xpformat, ...);
-int    xpath_vec(cxobj *xcur, char *xpformat, cxobj  ***vec, size_t *veclen, ...);
-#endif
 int xpath2canonical(char *xpath0, cvec *nsc0, yang_stmt *yspec, char **xpath1, cvec **nsc1);
 
 #endif /* _CLIXON_XPATH_H */

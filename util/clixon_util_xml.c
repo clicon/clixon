@@ -234,7 +234,11 @@ main(int    argc,
 	if (ret > 0 && (ret = xml_yang_validate_add(h, xc, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    if (netconf_err2cb(xerr, &cbret) < 0)
+	    if ((cbret = cbuf_new()) ==NULL){
+		clicon_err(OE_XML, errno, "cbuf_new");
+		goto done;
+	    }
+	    if (netconf_err2cb(xerr, cbret) < 0)
 		goto done;
 	    fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
 	    goto done;

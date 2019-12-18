@@ -157,7 +157,7 @@ expand_dbvar(void   *h,
     /* Get configuration */
     if (clicon_rpc_get_config(h, NULL, dbstr, xpath, nsc, &xt) < 0) /* XXX */
     	goto done;
-    if ((xe = xpath_first(xt, "/rpc-error")) != NULL){
+    if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xe);
 	goto ok; 
     }
@@ -204,12 +204,12 @@ expand_dbvar(void   *h,
 		fprintf(stderr, "%s\n", reason);
 		goto done;
 	    }	    
-	    if ((xcur = xpath_first_nsc(xt, nsc, "%s", xpath)) == NULL){
+	    if ((xcur = xpath_first(xt, nsc, "%s", xpath)) == NULL){
 		clicon_err(OE_DB, 0, "xpath %s should return merged content", xpath);
 		goto done;
 	    }
 	}
-    if (xpath_vec_nsc(xcur, nsc, "%s", &xvec, &xlen, xpathcur) < 0) 
+    if (xpath_vec(xcur, nsc, "%s", &xvec, &xlen, xpathcur) < 0) 
 	goto done;
     /* Loop for inserting into commands cvec. 
      * Detect duplicates: for ordered-by system assume list is ordered, so you need
@@ -486,7 +486,7 @@ cli_show_config1(clicon_handle h,
 	if (clicon_rpc_get(h, cbuf_get(cbxpath), nsc, CONTENT_ALL, -1, &xt) < 0)
 	    goto done;
     }
-    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
@@ -634,12 +634,12 @@ show_conf_xpath(clicon_handle h,
 	goto done;
     if (clicon_rpc_get_config(h, NULL, str, xpath, nsc, &xt) < 0)
     	goto done;
-    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
 
-    if (xpath_vec_nsc(xt, nsc, "%s", &xv, &xlen, xpath) < 0) 
+    if (xpath_vec(xt, nsc, "%s", &xv, &xlen, xpath) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)
 	xml_print(stdout, xv[i]);
@@ -737,11 +737,11 @@ cli_show_auto1(clicon_handle h,
 	    goto done;
     }
 
-    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
-    if ((xp = xpath_first_nsc(xt, nsc, "%s", xpath)) != NULL)
+    if ((xp = xpath_first(xt, nsc, "%s", xpath)) != NULL)
 	/* Print configuration according to format */
 	switch (format){
 	case FORMAT_XML:

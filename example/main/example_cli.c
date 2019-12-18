@@ -43,7 +43,6 @@
 #include <sys/time.h>
 #include <sys/param.h>
 #include <netinet/in.h>
-#include <fnmatch.h> /* matching strings */
 #include <signal.h> /* matching strings */
 
 /* clicon */
@@ -110,7 +109,7 @@ example_client_rpc(clicon_handle h,
     /* Send to backend */
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
 	goto done;
-    if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }

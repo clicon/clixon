@@ -3,7 +3,6 @@ language: c
 branches:
   only:
   - master
-  - develop
 before_script:
   - sudo apt-get install -y libfcgi-dev
   - ./test/travis/before_script.sh

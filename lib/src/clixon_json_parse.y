@@ -228,7 +228,7 @@ json_current_body(struct clicon_json_yacc_arg *jy,
     if ((xn = xml_new("body", jy->jy_current, NULL)) == NULL)
 	goto done; 
     xml_type_set(xn, CX_BODY);
-    if (value && xml_value_append(xn, value)==NULL)
+    if (value && xml_value_append(xn, value) < 0)
 	goto done; 
     retval = 0;
  done:

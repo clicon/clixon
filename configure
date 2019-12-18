@@ -621,7 +621,7 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-STD_YANG_INSTALLDIR
+OPT_YANG_INSTALLDIR
 YANG_INSTALLDIR
 EGREP
 GREP
@@ -633,7 +633,7 @@ YACC
 CPP
 wwwuser
 wwwdir
-enable_stdyangs
+enable_optyangs
 with_restconf
 SH_SUFFIX
 CLIXON_DEFAULT_CONFIG
@@ -711,14 +711,14 @@ ac_user_opts='
 enable_option_checking
 enable_debug
 with_cligen
-enable_stdyangs
+enable_optyangs
 enable_publish
 with_restconf
 with_wwwuser
 with_configfile
 with_libxml2
 with_yang_installdir
-with_std_yang_installdir
+with_opt_yang_installdir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1355,8 +1355,8 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-debug          Build with debug symbols, default: no
-  --disable-stdyangs      Include standard yang files in clixon install,
-                          default: yes
+  --enable-optyangs       Include standard yang files in clixon install,
+                          default: no
   --enable-publish        Enable publish of notification streams using SSE and
                           curl
 
@@ -1369,7 +1369,7 @@ Optional Packages:
   --with-configfile=FILE  set default path to config file
   --with-libxml2          use gnome/libxml2 regex engine
   --with-yang-installdir=DIR  Install Clixon yang files here (default: ${prefix}/share/clixon)
-  --with-std-yang-installdir=DIR  Install standard yang files here (default: ${prefix}/share/clixon)
+  --with-opt-yang-installdir=DIR  Install standard yang files here (default: ${prefix}/share/clixon)
 
 Some influential environment variables:
   CC          C compiler command
@@ -2172,9 +2172,9 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 : ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="4"
-CLIXON_VERSION_MINOR="2"
+CLIXON_VERSION_MINOR="3"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Check CLIgen
 if test "$prefix" = "NONE"; then
@@ -4247,22 +4247,22 @@ fi
 # Disable/enable standard Yang files.
 # If enable - include yang/standard/*.yang in clixon yang files (default)
 # If disable - get standard yang files from elsewhere
-# Check whether --enable-stdyangs was given.
-if test "${enable_stdyangs+set}" = set; then :
-  enableval=$enable_stdyangs;
+# Check whether --enable-optyangs was given.
+if test "${enable_optyangs+set}" = set; then :
+  enableval=$enable_optyangs;
 	  if test "$enableval" = no; then
-	      enable_stdyangs=no
+	      enable_optyangs=no
 	  else
-	      enable_stdyangs=yes
+	      enable_optyangs=yes
           fi
 
 else
-   enable_stdyangs=yes
+   enable_optyangs=no
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: stdyangs is $enable_stdyangs" >&5
-$as_echo "stdyangs is $enable_stdyangs" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: optyangs is $enable_optyangs" >&5
+$as_echo "optyangs is $enable_optyangs" >&6; }
 
 # Experimental: Curl publish notification stream to eg Nginx nchan.
 # Check whether --enable-publish was given.
@@ -4933,8 +4933,8 @@ $as_echo "Have getsockopt SO_PEERCRED" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
-# YANG_INSTALLDIR is where clixon installs the Clixon yang files
-# (the files in in yang/clixon)
+# YANG_INSTALLDIR is where clixon installs the Clixon yang files and mandatory
+# standard yang files: the files in in yang/clixon and yang/mandatory
 # Each application designer may need to place YANG_INSTALLDIR in their config:
 # <CLICON_YANG_DIR>$YANG_INSTALLDIR</CLICON_YANG_DIR>
 
@@ -4950,22 +4950,22 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: Clixon yang files are installed in ${YANG_INSTALLDIR}" >&5
 $as_echo "Clixon yang files are installed in ${YANG_INSTALLDIR}" >&6; }
 
-# STD_YANG_INSTALLDIR is where clixon installs standard yang files
-# (the files in in yang/standard)
+# OPT_YANG_INSTALLDIR is where clixon installs standard yang files
+# (  the files in in yang/standard)
 # that Clixon needs to run (or examples rely on). These may be retreived from
 # elsewhere (eg yangmodels repo)
 
-# Check whether --with-std-yang-installdir was given.
-if test "${with_std_yang_installdir+set}" = set; then :
-  withval=$with_std_yang_installdir; STD_YANG_INSTALLDIR="$withval"
+# Check whether --with-opt-yang-installdir was given.
+if test "${with_opt_yang_installdir+set}" = set; then :
+  withval=$with_opt_yang_installdir; OPT_YANG_INSTALLDIR="$withval"
 else
-  STD_YANG_INSTALLDIR="${prefix}/share/clixon"
+  OPT_YANG_INSTALLDIR="${prefix}/share/clixon"
 
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Standard yang files are installed in ${STD_YANG_INSTALLDIR}" >&5
-$as_echo "Standard yang files are installed in ${STD_YANG_INSTALLDIR}" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Optional yang files are installed in ${OPT_YANG_INSTALLDIR} (if enabled)" >&5
+$as_echo "Optional yang files are installed in ${OPT_YANG_INSTALLDIR} (if enabled)" >&6; }
 
 # Default location for config file
 
@@ -4976,7 +4976,7 @@ _ACEOF
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/hello/Makefile extras/rpm/Makefile docker/Makefile docker/main/Makefile docker/base/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/standard/Makefile doc/Makefile test/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/hello/Makefile extras/rpm/Makefile docker/Makefile docker/main/Makefile docker/base/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile yang/optional/Makefile doc/Makefile test/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5692,7 +5692,8 @@ do
     "util/Makefile") CONFIG_FILES="$CONFIG_FILES util/Makefile" ;;
     "yang/Makefile") CONFIG_FILES="$CONFIG_FILES yang/Makefile" ;;
     "yang/clixon/Makefile") CONFIG_FILES="$CONFIG_FILES yang/clixon/Makefile" ;;
-    "yang/standard/Makefile") CONFIG_FILES="$CONFIG_FILES yang/standard/Makefile" ;;
+    "yang/mandatory/Makefile") CONFIG_FILES="$CONFIG_FILES yang/mandatory/Makefile" ;;
+    "yang/optional/Makefile") CONFIG_FILES="$CONFIG_FILES yang/optional/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
     "test/Makefile") CONFIG_FILES="$CONFIG_FILES test/Makefile" ;;
 

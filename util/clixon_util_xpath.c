@@ -46,7 +46,6 @@ See https://www.w3.org/TR/xpath/
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <fnmatch.h>
 #include <stdint.h>
 #include <assert.h>
 #include <syslog.h>
@@ -297,7 +296,11 @@ main(int    argc,
 	if (ret > 0 && (ret = xml_yang_validate_add(h, x1, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    if (netconf_err2cb(xerr, &cbret) < 0)
+	    if ((cbret = cbuf_new()) ==NULL){
+		clicon_err(OE_XML, errno, "cbuf_new");
+		goto done;
+	    }
+	    if (netconf_err2cb(xerr, cbret) < 0)
 		goto done;
 	    fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
 	    goto done;
@@ -306,7 +309,7 @@ main(int    argc,
     
     /* If xpath0 given, position current x (ie somewhere else than root) */
     if (xpath0){
-	if ((x = xpath_first(x0, "%s", xpath0)) == NULL){
+	if ((x = xpath_first(x0, NULL, "%s", xpath0)) == NULL){
 	    fprintf(stderr, "Error: xpath0 returned NULL\n");
 	    return -1;
 	}

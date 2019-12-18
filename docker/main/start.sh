@@ -23,7 +23,7 @@ PORT=${PORT:-80}
 STORE=${STORE:-}
 
 CONFIG0=$(cat <<EOF
-<config>
+<clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>/usr/local/etc/example.xml</CLICON_CONFIGFILE>
   <CLICON_FEATURE>*:*</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
@@ -42,7 +42,7 @@ CONFIG0=$(cat <<EOF
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
   <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>
   <CLICON_NACM_MODE>disabled</CLICON_NACM_MODE>
-</config>
+</clixon-config>
 EOF
 )
 

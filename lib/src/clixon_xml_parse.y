@@ -104,7 +104,7 @@ xml_parse_content(struct xml_parse_yacc_arg *ya,
 	    goto done; 
 	xml_type_set(xn, CX_BODY);
     }
-    if (xml_value_append(xn, str)==NULL)
+    if (xml_value_append(xn, str) < 0)
 	goto done; 
     ya->ya_xelement = xn;
     retval = 0;
@@ -140,7 +140,7 @@ xml_parse_whitespace(struct xml_parse_yacc_arg *ya,
 	    goto done; 
 	xml_type_set(xn, CX_BODY);
     }
-    if (xml_value_append(xn, str)==NULL)
+    if (xml_value_append(xn, str) < 0)
 	goto done; 
     ya->ya_xelement = xn;
  ok:
@@ -148,7 +148,6 @@ xml_parse_whitespace(struct xml_parse_yacc_arg *ya,
   done:
     return retval;
 }
-
  
 static int
 xml_parse_version(struct xml_parse_yacc_arg *ya,

@@ -77,12 +77,14 @@ One of the examples is [a hello world example](../example/hello). Please start w
 ## How do you build and install Clixon?
 Clixon: 
 ```
-	./configure; 
+	./configure --enable-optyang;
 	make; 
 	sudo make install; 
 	sudo make install-include
 ```
-The main example: 
+(note: optyang enable only if you need to run the main example, otherwise it is not necessary).
+
+The main example:
 ```
 	 cd example; 
 	 make; 

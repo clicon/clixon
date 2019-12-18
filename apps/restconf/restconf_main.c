@@ -418,7 +418,7 @@ api_restconf(clicon_handle h,
     else{
 	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
 	    goto done;
-	if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+	if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	    if (api_return_err(h, r, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
@@ -582,13 +582,13 @@ main(int    argc,
     char          *dir;
     int            logdst = CLICON_LOG_SYSLOG;
     yang_stmt     *yspec = NULL;
-    yang_stmt     *yspecfg = NULL; /* For config XXX clixon bug */
     char          *stream_path;
     int            finish = 0;
     int            start = 1;
     char          *str;
     clixon_plugin *cp = NULL;
     uint32_t       id = 0;
+    cvec          *nsctx_global = NULL; /* Global namespace context */
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -641,13 +641,10 @@ main(int    argc,
 	goto done;
     }
 
-    /* Create configure yang-spec */
-    if ((yspecfg = yspec_new()) == NULL)
-	goto done;
     /* Find and read configfile */
-    if (clicon_options_main(h, yspecfg) < 0)
+    if (clicon_options_main(h) < 0)
 	goto done;
-    clicon_config_yang_set(h, yspecfg);
+
     stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
     /* Now rest of options, some overwrite option file */
     optind = 1;
@@ -758,6 +755,14 @@ main(int    argc,
 	 goto done;
      if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
 	 yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
+	 goto done;
+
+     /* Here all modules are loaded 
+      * Compute and set canonical namespace context
+      */
+     if (xml_nsctx_yangspec(yspec, &nsctx_global) < 0)
+	 goto done;
+     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	 goto done;
 
      /* Dump configuration options on debug */

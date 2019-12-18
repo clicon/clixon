@@ -69,7 +69,7 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    sudo pkill clixon_backend # to be sure
+    sudo pkill -f clixon_backend # to be sure
     new "start backend -s init -f $cfg -- -s"
     start_backend -s init -f "$cfg" -- -s
 fi
@@ -78,7 +78,7 @@ new "waiting"
 wait_backend
 
 new "kill old restconf daemon"
-sudo pkill -u $wwwuser clixon_restconf
+sudo pkill -u $wwwuser -f clixon_restconf
 
 new "start restconf daemon"
 start_restconf -f $cfg
@@ -99,7 +99,7 @@ expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+xml' http://loca
 # This just catches the header and the jukebox module, the RFC has foo and bar which
 # seems wrong to recreate
 new "B.1.2.  Retrieve the Server Module Information"
-expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-yang-library:modules-state)" 0 "HTTP/1.1 200 OK" 'Cache-Control: no-cache' "Content-Type: application/yang-data+json" '{"ietf-yang-library:modules-state":{"module-set-id":' '"module":\[{"name":"example-events","revision":\[null\],"namespace":"urn:example:events","conformance-type":"implement"},{"name":"example-jukebox","revision":"2016-08-15","namespace":"http://example.com/ns/example-jukebox","conformance-type":"implement"}'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-yang-library:modules-state)" 0 "HTTP/1.1 200 OK" 'Cache-Control: no-cache' "Content-Type: application/yang-data+json" '{"ietf-yang-library:modules-state":{"module-set-id":"0","module":\[{"name":"clixon-lib","revision":"2019-08-13","namespace":"http://clicon.org/lib","conformance-type":"implement"},{"name":"clixon-rfc5277","revision":"2008-07-01","namespace":"urn:ietf:params:xml:ns:netmod:notification","conformance-type":"implement"},{"name":"example-events","revision":\[null\],"namespace":"urn:example:events","conformance-type":"implement"},{"name":"example-jukebox","revision":"2016-08-15","namespace":"http://example.com/ns/example-jukebox","conformance-type":"implement"'
 
 new "B.1.3.  Retrieve the Server Capability Information"
 expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/capabilities)" 0 "HTTP/1.1 200 OK" "Content-Type: application/yang-data+xml" 'Cache-Control: no-cache' '<capabilities xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"><capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability><capability>urn:ietf:params:restconf:capability:depth</capability>

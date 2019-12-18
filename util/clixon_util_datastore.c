@@ -198,7 +198,7 @@ main(int argc, char **argv)
 	    xpath = argv[1];
 	else
 	    xpath = "/";
-	if (xmldb_get(h, db, xpath, &xt) < 0)
+	if (xmldb_get(h, db, NULL, xpath, &xt) < 0)
 	    goto done;
 	clicon_xml2file(stdout, xt, 0, 0);	
 	fprintf(stdout, "\n");
@@ -217,7 +217,7 @@ main(int argc, char **argv)
 	else
 	    xpath = "/";
 	for (i=0;i<nr;i++){
-	    if (xmldb_get(h, db, xpath, &xt) < 0)
+	    if (xmldb_get(h, db, NULL, xpath, &xt) < 0)
 		goto done;
 	    if (xt == NULL){
 		clicon_err(OE_DB, 0, "xt is NULL");

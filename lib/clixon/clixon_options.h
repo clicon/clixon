@@ -39,12 +39,6 @@
 #define _CLIXON_OPTIONS_H_
 
 /*
- * Constants
- */
-/* default group membership to access config unix socket */
-#define CLICON_SOCK_GROUP "clicon"
-
-/*
  * Types
  */
 /*! Controls how keywords a generated in CLI syntax / prints from object model
@@ -115,7 +109,7 @@ int clicon_option_dump(clicon_handle h, int dblevel);
 int clicon_option_add(clicon_handle h,	char *name, char *value);
 
 /* Initialize options: set defaults, read config-file, etc */
-int clicon_options_main(clicon_handle h, yang_stmt *yspec);
+int clicon_options_main(clicon_handle h);
 
 /*! Check if a clicon option has a value */
 int clicon_option_exists(clicon_handle h, const char *name);

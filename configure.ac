@@ -43,9 +43,9 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="4"
-CLIXON_VERSION_MINOR="2"
+CLIXON_VERSION_MINOR="3"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Check CLIgen
 if test "$prefix" = "NONE"; then
@@ -89,7 +89,7 @@ AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
-AC_SUBST(enable_stdyangs) 
+AC_SUBST(enable_optyangs) 
 AC_SUBST(wwwdir,/www-data)
 AC_SUBST(wwwuser,www-data)
 
@@ -151,16 +151,16 @@ fi
 # Disable/enable standard Yang files.
 # If enable - include yang/standard/*.yang in clixon yang files (default)
 # If disable - get standard yang files from elsewhere
-AC_ARG_ENABLE(stdyangs, AS_HELP_STRING([--disable-stdyangs],[Include standard yang files in clixon install, default: yes]),[
+AC_ARG_ENABLE(optyangs, AS_HELP_STRING([--enable-optyangs],[Include optional yang files for examples and testing in clixon install, default: no]),[
 	  if test "$enableval" = no; then
-	      enable_stdyangs=no
+	      enable_optyangs=no
 	  else	      
-	      enable_stdyangs=yes
+	      enable_optyangs=yes
           fi
         ],
-	[ enable_stdyangs=yes])
+	[ enable_optyangs=no])
 
-AC_MSG_RESULT(stdyangs is $enable_stdyangs)	
+AC_MSG_RESULT(optyangs is $enable_optyangs)	
 
 # Experimental: Curl publish notification stream to eg Nginx nchan. 
 AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],[Enable publish of notification streams using SSE and curl]),[
@@ -229,8 +229,8 @@ AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versi
 AC_TRY_COMPILE([#include <sys/socket.h>], [getsockopt(1, SOL_SOCKET, SO_PEERCRED, 0, 0);], [AC_DEFINE(HAVE_SO_PEERCRED, 1, [Have getsockopt SO_PEERCRED])
 AC_MSG_RESULT(Have getsockopt SO_PEERCRED)])
 
-# YANG_INSTALLDIR is where clixon installs the Clixon yang files
-# (the files in in yang/clixon)
+# YANG_INSTALLDIR is where clixon installs the Clixon yang files and mandatory
+# standard yang files: the files in in yang/clixon and yang/mandatory
 # Each application designer may need to place YANG_INSTALLDIR in their config:
 # <CLICON_YANG_DIR>$YANG_INSTALLDIR</CLICON_YANG_DIR>
 AC_ARG_WITH(yang-installdir,
@@ -241,17 +241,17 @@ AC_ARG_WITH(yang-installdir,
 AC_SUBST(YANG_INSTALLDIR)
 AC_MSG_RESULT(Clixon yang files are installed in ${YANG_INSTALLDIR})	
 
-# STD_YANG_INSTALLDIR is where clixon installs standard yang files
-# (the files in in yang/standard)
+# OPT_YANG_INSTALLDIR is where clixon installs standard yang files
+# (  the files in in yang/standard)
 # that Clixon needs to run (or examples rely on). These may be retreived from
 # elsewhere (eg yangmodels repo)
-AC_ARG_WITH(std-yang-installdir,
-            [  --with-std-yang-installdir=DIR  Install standard yang files here (default: ${prefix}/share/clixon) ],
-	    [STD_YANG_INSTALLDIR="$withval"],
-    	    [STD_YANG_INSTALLDIR="${prefix}/share/clixon"]		
+AC_ARG_WITH(opt-yang-installdir,
+	    [  --with-opt-yang-installdir=DIR  Install optional yang files here (default: ${prefix}/share/clixon) ],
+	    [OPT_YANG_INSTALLDIR="$withval"],
+    	    [OPT_YANG_INSTALLDIR="${prefix}/share/clixon"]		
 	    )
-AC_SUBST(STD_YANG_INSTALLDIR)
-AC_MSG_RESULT(Standard yang files are installed in ${STD_YANG_INSTALLDIR})	
+AC_SUBST(OPT_YANG_INSTALLDIR)
+AC_MSG_RESULT(Optional yang files are installed in ${OPT_YANG_INSTALLDIR} (if enabled))	
 
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
@@ -280,7 +280,8 @@ AC_OUTPUT(Makefile
   	  util/Makefile 
 	  yang/Makefile
   	  yang/clixon/Makefile
-  	  yang/standard/Makefile
+    	  yang/mandatory/Makefile
+  	  yang/optional/Makefile
 	  doc/Makefile
 	  test/Makefile	
 )

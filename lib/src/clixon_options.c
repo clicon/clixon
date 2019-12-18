@@ -246,7 +246,7 @@ parse_configfile(clicon_handle  h,
     /* Hard-coded config for < 3.10 and clixon-config for >= 3.10 */
     if ((nsc = xml_nsctx_init(NULL, CLIXON_CONF_NS)) == NULL)
 	goto done;
-    if ((xc = xpath_first_nsc(xt, nsc, "clixon-config")) == NULL){
+    if ((xc = xpath_first(xt, nsc, "clixon-config")) == NULL){
 	clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"clixon-config\" element\nClixon config files should begin with: <clixon-config xmlns=\"%s\">", filename, CLIXON_CONF_NS);
 	    
 	goto done;
@@ -256,7 +256,11 @@ parse_configfile(clicon_handle  h,
     if ((ret = xml_yang_validate_add(h, xc, &xret)) < 0)
 	goto done;
     if (ret == 0){
-	if (netconf_err2cb(xret, &cbret) < 0)
+	if ((cbret = cbuf_new()) ==NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	if (netconf_err2cb(xret, cbret) < 0)
 	    goto done;
 	clicon_err(OE_CFG, 0, "Config file validation: %s", cbuf_get(cbret));
 	goto done;
@@ -351,8 +355,7 @@ clicon_option_add(clicon_handle h,
  *       other yang modules.
  */
 int
-clicon_options_main(clicon_handle h,
-		    yang_stmt    *yspec)
+clicon_options_main(clicon_handle h)
 {
     int            retval = -1;
     char          *configfile;
@@ -360,7 +363,11 @@ clicon_options_main(clicon_handle h,
     char          *suffix;
     char           xml = 0; /* Configfile is xml, otherwise legacy */
     cxobj         *xconfig = NULL;
+    yang_stmt     *yspec = NULL;
 
+    /* Create configure yang-spec */
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
     /*
      * Set configure file if not set by command-line above
      */
@@ -409,8 +416,12 @@ clicon_options_main(clicon_handle h,
 	clicon_err(OE_CFG, 0, "Config file %s: did not find corresponding Yang specification\nHint: File does not begin with: <clixon-config xmlns=\"%s\"> or clixon-config.yang not found?", configfile, CLIXON_CONF_NS);
 	goto done;
     }
+    /* Set yang config spec (must store to free at exit, since conf_xml below uses it) */
+    if (clicon_config_yang_set(h, yspec) < 0)
+       goto done;
     /* Set clixon_conf pointer to handle */
-    clicon_conf_xml_set(h, xconfig);
+    if (clicon_conf_xml_set(h, xconfig) < 0)
+	goto done;
 
     retval = 0;
  done:

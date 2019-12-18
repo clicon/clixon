@@ -60,7 +60,7 @@ testrun(){
 	err 
     fi
     # Kill all backends regardless of user or pid files (we mess with them in this test)
-    sudo pkill clixon_backend
+    sudo pkill -f clixon_backend
     
     # start backend as user
 

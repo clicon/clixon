@@ -58,6 +58,10 @@ typedef struct map_str2int map_str2int;
 /*! A malloc version that aligns on 4 bytes. To avoid warning from valgrind */
 #define align4(s) (((s)/4)*4 + 4)
 
+/* Required for the inline to compile */
+#include <stdlib.h>
+#include <string.h>
+
 /*! A strdup version that aligns on 4 bytes. To avoid warning from valgrind */
 static inline char * strdup4(char *str) 
 {

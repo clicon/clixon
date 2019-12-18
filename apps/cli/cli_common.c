@@ -714,13 +714,13 @@ compare_dbs(clicon_handle h,
 	astext = 0;
     if (clicon_rpc_get_config(h, NULL, "running", "/", NULL, &xc1) < 0)
 	goto done;
-    if ((xerr = xpath_first(xc1, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
     if (clicon_rpc_get_config(h, NULL, "candidate", "/", NULL, &xc2) < 0)
 	goto done;
-    if ((xerr = xpath_first(xc2, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
@@ -884,7 +884,7 @@ save_config_file(clicon_handle h,
 	clicon_err(OE_CFG, 0, "get config: empty tree"); /* Shouldnt happen */
 	goto done;
     }
-    if ((xerr = xpath_first(xt, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
@@ -992,7 +992,7 @@ cli_notification_cb(int   s,
     }
     if (clicon_msg_decode(reply, NULL, NULL, &xt) < 0) /* XXX pass yang_spec */
 	goto done;
-    if ((xe = xpath_first(xt, "//event")) != NULL){
+    if ((xe = xpath_first(xt, NULL, "//event")) != NULL){
 	x = NULL;
 	while ((x = xml_child_each(xe, x, -1)) != NULL) {
 	    switch (format){
@@ -1224,7 +1224,7 @@ cli_copy_config(clicon_handle h,
     /* Get from object configuration and store in x1 */
     if (clicon_rpc_get_config(h, NULL, db, cbuf_get(cb), nsc, &x1) < 0)
 	goto done;
-    if ((xerr = xpath_first(x1, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(x1, NULL, "/rpc-error")) != NULL){
 	clicon_rpc_generate_error("Get configuration", xerr);
 	goto done;
     }
@@ -1243,7 +1243,7 @@ cli_copy_config(clicon_handle h,
     xml_name_set(x2, "config");
     cprintf(cb, "/%s", keyname);	
 
-    if ((x = xpath_first_nsc(x2, nsc, "%s", cbuf_get(cb))) == NULL){
+    if ((x = xpath_first(x2, nsc, "%s", cbuf_get(cb))) == NULL){
 	clicon_err(OE_PLUGIN, 0, "Field %s not found in copy tree", keyname);
 	goto done;
     }

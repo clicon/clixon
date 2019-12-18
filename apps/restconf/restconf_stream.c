@@ -187,11 +187,11 @@ restconf_stream_cb(int   s,
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");
 	goto done;
     }
-    if ((xn = xpath_first(xtop, "notification")) == NULL)
+    if ((xn = xpath_first(xtop, NULL, "notification")) == NULL)
 	goto ok;
 #ifdef notused
-    xt = xpath_first(xn, "eventTime");
-    if ((xe = xpath_first(xn, "event")) == NULL) /* event can depend on yang? */
+    xt = xpath_first(xn, NULL, "eventTime");
+    if ((xe = xpath_first(xn, NULL, "event")) == NULL) /* event can depend on yang? */
 	goto ok;
 
     if (xt)
@@ -268,7 +268,7 @@ restconf_stream(clicon_handle h,
     cprintf(cb, "</create-subscription></rpc>]]>]]>");
     if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, &s) < 0)
 	goto done;
-    if ((xe = xpath_first(xret, "rpc-reply/rpc-error")) != NULL){
+    if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
 	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
@@ -417,7 +417,7 @@ api_stream(clicon_handle h,
     else{
 	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
 	    goto done;
-	if ((xerr = xpath_first(xret, "//rpc-error")) != NULL){
+	if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	    if (api_return_err(h, r, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;

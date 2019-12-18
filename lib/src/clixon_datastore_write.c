@@ -43,7 +43,6 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <fnmatch.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -131,138 +130,6 @@ attr_ns_value(cxobj *x,
  fail:
     retval = 0;
     goto done;
-}
-
-/*! Given a src node x0 and a target node x1, assign (optional) prefix and namespace
- * @param[in]  x0       Source XML tree
- * @param[in]  x1       Target XML tree
- * 1. Find N=namespace(x0)
- * 2. Detect if N is declared in x1 parent
- * 3. If yes, assign prefix to x1
- * 4. If no, create new prefix/namespace binding and assign that to x1p (x1 if x1p is root)
- * 5. Add prefix to x1, if any
- * 6. Ensure x1 cache is updated
- * @note switch use of x0 and x1 compared to datastore text_modify
- * @see xml2ns
- * XXX: fail handling: 		if (netconf_data_missing(cbret, NULL, "Data does not exist; cannot delete resource") < 0)
-		    goto done;
- */
-static int
-check_namespaces(cxobj     *x0,
-		 cxobj     *x1,
-		 cxobj     *x1p)
-{
-    int   retval = -1;
-    char  *namespace = NULL;
-    char  *prefix0 = NULL;;
-    char  *prefix10 = NULL; /* extra just for malloc problem */
-    char  *prefix1 = NULL;;
-    char  *prefixb = NULL; /* identityref body prefix */
-    cvec  *nsc0 = NULL;
-    cvec  *nsc = NULL;
-    cxobj *xa = NULL;
-    cxobj *x;
-    int   isroot;
-
-    /* XXX: need to identify root better than hiereustics and strcmp,... */
-    isroot = xml_parent(x1p)==NULL &&
-	strcmp(xml_name(x1p), "config") == 0 &&
-	xml_prefix(x1p)==NULL;
-
-    /* 1. Find N=namespace(x0) */
-    prefix0 = xml_prefix(x0);
-    if (xml2ns(x0, prefix0, &namespace) < 0)
-	goto done;
-    if (namespace == NULL){
-	clicon_err(OE_XML, ENOENT, "No namespace found for prefix:%s",
-		   prefix0?prefix0:"NULL");
-	goto done;
-    }
-    /* 2. Detect if namespace is declared in x1:s parent */
-    if (xml2prefix(x1p, namespace, &prefix10) == 1){ 
-	if (prefix10){
-	    if ((prefix1 = strdup(prefix10)) == NULL){
-		clicon_err(OE_UNIX, errno, "strdup");
-		goto done;
-	    }
-	}
-	else
-	    prefix1 = NULL;
-	/* 3. If yes, assign prefix to x1 */
-	if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
-	    goto done;
-	/* And copy namespace context from parent to child */
-	if ((nsc0 = nscache_get_all(x1p)) != NULL){
-	    if ((nsc = cvec_dup(nsc0)) == NULL){
-		clicon_err(OE_UNIX, errno, "cvec_dup");
-		goto done;
-	    }
-	    nscache_replace(x1, nsc);
-	}
-	/* Just in case */
-	if (nscache_set(x1, prefix1, namespace) < 0)
-	    goto done;
-    }
-    else{
-	/* 4. If no, create new prefix/namespace binding and assign that to x1p
-	 * use modules own default prefix (some chance for clash)
-	 */
-	if (prefix0 == NULL && !isroot){
-	    assert(xml_spec(x1) != NULL);
-	    prefix0 = yang_find_myprefix(xml_spec(x1));	    
-	}
-	if (prefix0)
-	    if ((prefix1 = strdup(prefix0)) == NULL){
-		clicon_err(OE_UNIX, errno, "strdup");
-		goto done;
-	    }
-	    
-	/* Add binding to x1p. We add to parent due to heurestics, so we dont
-	 * end up in adding it to large number of siblings 
-	 */
-	if (isroot)
-	    x = x1;  
-	else
-	    x = x1p;
-	if (nscache_set(x, prefix1, namespace) < 0)
-	    goto done;
-	if (x == x1p){
-	    if ((nsc0 = nscache_get_all(x1p)) != NULL)
-		if ((nsc = cvec_dup(nsc0)) == NULL){
-		    clicon_err(OE_UNIX, errno, "cvec_dup");
-		    goto done;
-		}
-	    /* Copy x1p cache to x1 */
-	    nscache_replace(x1, nsc);
-	}
-	/* Create xmlns attribute to x1p/x1 XXX same code v */
-	if (prefix1){
-	    if ((xa = xml_new(prefix1, x, NULL)) == NULL)
-		goto done;
-	    if (xml_prefix_set(xa, "xmlns") < 0)
-		goto done;
-	}
-	else{
-	    if ((xa = xml_new("xmlns", x, NULL)) == NULL)
-		goto done;
-	}
-	xml_type_set(xa, CX_ATTR);
-	if (xml_value_set(xa, namespace) < 0)
-	    goto done;
-	xml_sort(x, NULL); /* Ensure attr is first / XXX xml_insert? */
-
-	/* 5. Add prefix to x1, if any */
-	if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
-	    goto done;
-    }
-    /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
-    retval = 0;
- done:
-    if (prefixb)
-	free(prefixb);
-    if (prefix1)
-	free(prefix1);
-    return retval;
 }
 
 static int
@@ -1020,7 +887,7 @@ xmldb_put(clicon_handle       h,
     if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-netconf-acm")) == NULL)
 	goto done;
     if (xnacm0 != NULL &&
-	(xnacm = xpath_first_nsc(xnacm0, nsc, "nacm")) != NULL){
+	(xnacm = xpath_first(xnacm0, nsc, "nacm")) != NULL){
 	/* Pre-NACM access step, if permit, then dont do any nacm checks in 
 	 * text_modify_* below */
 	if ((permit = nacm_access(h, mode, xnacm, username)) < 0)

@@ -46,7 +46,6 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <fnmatch.h>
 #include <stdint.h>
 #include <assert.h>
 
@@ -1339,41 +1338,37 @@ netconf_db_find(cxobj *xn,
 }
 
 /*! Generate netconf error msg to cbuf to use in string printout or logs
- * @param[in]  xerr    Netconf error message on the level: <rpc-reply><rpc-error>
- * @param[out] cberr   Translation from netconf err to cbuf. Free with cbuf_free.
+ * @param[in]     xerr    Netconf error message on the level: <rpc-error>
+ * @param[in,out] cberr   Translation from netconf err to cbuf.
  * @retval     0       OK, with cberr set
  * @retval    -1       Error
  * @code
- *     cbuf  *cb = NULL;
- *     if (netconf_err2cb(xerr, &cb) < 0)
+ *     cbuf *cb = NULL;
+ *     if ((cb = cbuf_new()) ==NULL){
+ * 	  err;
+ *     if (netconf_err2cb(xerr, cb) < 0)
  *        err;
  *     printf("%s", cbuf_get(cb));
+ *     cbuf_free(cb);
  * @endcode
  * @see clicon_rpc_generate_error
  */
 int
 netconf_err2cb(cxobj *xerr,
-	       cbuf **cberr)
+	       cbuf  *cberr)
 {
     int    retval = -1;
-    cbuf  *cb = NULL;
     cxobj *x;
 
-    if ((cb = cbuf_new()) ==NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
-    if ((x=xpath_first(xerr, "error-type"))!=NULL)
-	cprintf(cb, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-tag"))!=NULL)
-	cprintf(cb, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-message"))!=NULL)
-	cprintf(cb, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, "error-info"))!=NULL)
-	clicon_xml2cbuf(cb, xml_child_i(x,0), 0, 0, -1);
-    *cberr = cb;
+    if ((x=xpath_first(xerr, NULL, "error-type"))!=NULL)
+	cprintf(cberr, "%s ", xml_body(x));
+    if ((x=xpath_first(xerr, NULL, "error-tag"))!=NULL)
+	cprintf(cberr, "%s ", xml_body(x));
+    if ((x=xpath_first(xerr, NULL, "error-message"))!=NULL)
+	cprintf(cberr, "%s ", xml_body(x));
+    if ((x=xpath_first(xerr, NULL, "error-info"))!=NULL)
+	clicon_xml2cbuf(cberr, xml_child_i(x,0), 0, 0, -1);
     retval = 0;
- done:
     return retval;
 }
 

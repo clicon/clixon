@@ -71,6 +71,7 @@
 #include "clixon_yang.h"
 #include "clixon_sig.h"
 #include "clixon_xml.h"
+#include "clixon_options.h"
 #include "clixon_proto.h"
 
 static int _atomicio_sig = 0;
@@ -191,12 +192,14 @@ clicon_msg_decode(struct clicon_msg *msg,
 }
 
 /*! Open local connection using unix domain sockets
+ * @param[in]  h        Clicon handle
  * @param[in]  sockpath Unix domain file path
- * @retval     s       socket
- * @retval     -1      error
+ * @retval     s        socket
+ * @retval     -1       error
  */
 int
-clicon_connect_unix(char *sockpath)
+clicon_connect_unix(clicon_handle h,
+		    char         *sockpath)
 {
     struct sockaddr_un addr;
     int retval = -1;
@@ -213,9 +216,9 @@ clicon_connect_unix(char *sockpath)
     clicon_debug(2, "%s: connecting to %s", __FUNCTION__, addr.sun_path);
     if (connect(s, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0){
 	if (errno == EACCES)
-	    clicon_err(OE_CFG, errno, "connecting unix socket: %s."
-		       "Client should be member of group $CLICON_SOCK_GROUP: ", 
-		       sockpath);
+	    clicon_err(OE_CFG, errno, "connecting unix socket: %s. "
+		       "Is user not member of group: \"%s\"?", 
+		       sockpath, clicon_sock_group(h));
 	else
 	    clicon_err(OE_CFG, errno, "connecting unix socket: %s", sockpath);
 	close(s);
@@ -394,6 +397,7 @@ clicon_msg_rcv(int                s,
 
 /*! Connect to server, send a clicon_msg message and wait for result using unix socket
  *
+ * @param[in]  h       Clicon handle
  * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
  * @param[in]  sockpath Unix domain file path
  * @param[out] retdata  Returned data as string netconf xml tree.
@@ -403,7 +407,8 @@ clicon_msg_rcv(int                s,
  * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
-clicon_rpc_connect_unix(struct clicon_msg *msg, 
+clicon_rpc_connect_unix(clicon_handle      h,
+			struct clicon_msg *msg, 
 			char              *sockpath,
 			char             **retdata,
 			int               *sock0)
@@ -422,7 +427,7 @@ clicon_rpc_connect_unix(struct clicon_msg *msg,
 	clicon_err(OE_PROTO, EIO, "%s: Not unix socket", sockpath);
 	goto done;
     }
-    if ((s = clicon_connect_unix(sockpath)) < 0)
+    if ((s = clicon_connect_unix(h, sockpath)) < 0)
 	goto done;
     if (clicon_rpc(s, msg, retdata) < 0)
 	goto done;
@@ -436,7 +441,8 @@ clicon_rpc_connect_unix(struct clicon_msg *msg,
 }
 
 /*! Connect to server, send a clicon_msg message and wait for result using an inet socket
- * This uses unix domain socket communication
+ *
+ * @param[in]  h       Clicon handle
  * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
  * @param[in]  dst     IPv4 address
  * @param[in]  port    TCP port
@@ -447,7 +453,8 @@ clicon_rpc_connect_unix(struct clicon_msg *msg,
  * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
-clicon_rpc_connect_inet(struct clicon_msg *msg, 
+clicon_rpc_connect_inet(clicon_handle      h,
+			struct clicon_msg *msg, 
 			char              *dst,
 			uint16_t           port,
 			char             **retdata,
@@ -597,9 +604,9 @@ send_msg_notify(int           s,
 
 /*! Send a clicon_msg NOTIFY message asynchronously to client
  *
+ * @param[in]  h       Clicon handle
  * @param[in]  s       Socket to communicate with client
- * @param[in]  level
- * @param[in]  xml     Event as XML
+ * @param[in]  xev     Event as XML
  * @retval     0       OK
  * @retval     -1      Error
  * @see send_msg_notify XXX beauty contest

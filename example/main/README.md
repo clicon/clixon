@@ -30,12 +30,13 @@ This directory contains a Clixon example used primarily for testing. It can be u
 * `example_netconf.c` Netconf callback plugin
 * `Makefile.in`       Example makefile where plugins are built and installed
 
-
 ## Compile and run
 
 Before you start,
+* You must configure with: `--enable-optyangs` to run the main example.
 * Make [group setup](../../doc/FAQ.md#do-i-need-to-setup-anything-important)
 * Setup [restconf](../../doc/FAQ.md#how-do-i-use-restconf)
+
 
 ```
     cd example
@@ -206,7 +207,7 @@ clixon_netconf -qf /usr/local/etc/example.xml
 Restconf (assuming nginx started):
 ```
 sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data&
-curl -X POST  http://localhost/restconf/operations/clixon-example:example -d '{"clixon-example:input":{"x":"ipv4"}}'
+curl -X POST  http://localhost/restconf/operations/clixon-example:example -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"ipv4"}}'
 {
   "clixon-example:output": {
     "x": "ipv4",

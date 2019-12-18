@@ -130,7 +130,7 @@ api_data_get2(clicon_handle h,
 	    if (netconf_bad_attribute_xml(&xerr, "application",
 					  "<bad-attribute>content</bad-attribute>", "Unrecognized value of content attribute") < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
@@ -152,7 +152,7 @@ api_data_get2(clicon_handle h,
 		if (netconf_bad_attribute_xml(&xerr, "application",
 					      "<bad-attribute>depth</bad-attribute>", "Unrecognized value of depth attribute") < 0)
 		    goto done;
-		if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+		if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		    goto done;
 		}
@@ -172,7 +172,7 @@ api_data_get2(clicon_handle h,
     if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &nsc, &xerr)) < 0)
 	goto done;
     if (ret == 0){
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -196,7 +196,7 @@ api_data_get2(clicon_handle h,
     if (ret < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
-	if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
@@ -218,7 +218,7 @@ api_data_get2(clicon_handle h,
     }
 #endif
     /* Check if error return  */
-    if ((xe = xpath_first(xret, "//rpc-error")) != NULL){
+    if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
@@ -247,10 +247,10 @@ api_data_get2(clicon_handle h,
 	}
     }
     else{
-	if (xpath_vec_nsc(xret, nsc, "%s", &xvec, &xlen, xpath) < 0){
+	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0){
 	    if (netconf_operation_failed_xml(&xerr, "application", clicon_err_reason) < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, "rpc-error")) == NULL){
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }

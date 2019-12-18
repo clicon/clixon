@@ -163,6 +163,7 @@ static int
 cli_terminate(clicon_handle h)
 {
     yang_stmt  *yspec;
+    cvec       *nsctx;
     cxobj      *x;
 
     clicon_rpc_close_session(h);
@@ -170,6 +171,8 @@ cli_terminate(clicon_handle h)
 	yspec_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
+	cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     cli_plugin_finish(h);    
@@ -280,12 +283,12 @@ main(int argc, char **argv)
     int            logdst = CLICON_LOG_STDERR;
     char          *restarg = NULL; /* what remains after options */
     yang_stmt     *yspec;
-    yang_stmt     *yspecfg = NULL; /* For config XXX clixon bug */
     struct passwd *pw;
     char          *str;
     int            tabmode;
     char          *dir;
     uint32_t       id = 0;
+    cvec          *nsctx_global = NULL; /* Global namespace context */
     
     /* Defaults */
     once = 0;
@@ -348,16 +351,13 @@ main(int argc, char **argv)
 
     clicon_debug_init(debug, NULL); 
 
-    /* Create top-level yang spec and store as option */
-    if ((yspecfg = yspec_new()) == NULL)
-	goto done;
-    /* Find and read configfile */
-    if (clicon_options_main(h, yspecfg) < 0){
+    /* Find, read and parse configfile */
+    if (clicon_options_main(h) < 0){
         if (help)
 	    usage(h, argv[0]);
 	return -1;
     }
-    clicon_config_yang_set(h, yspecfg);
+	
     /* Now rest of options */   
     opterr = 0;
     optind = 1;
@@ -513,6 +513,14 @@ main(int argc, char **argv)
     if (netconf_module_load(h) < 0)
 	goto done;
     
+    /* Here all modules are loaded 
+     * Compute and set canonical namespace context
+     */
+    if (xml_nsctx_yangspec(yspec, &nsctx_global) < 0)
+	goto done;
+    if (clicon_nsctx_global_set(h, nsctx_global) < 0)
+	goto done;
+
     /* Create tree generated from dataspec. If no other trees exists, this is
      * the only one.
      * The following code creates the tree @datamodel
@@ -533,7 +541,7 @@ main(int argc, char **argv)
 	cligen_tree_add(cli_cligen(h), treeref, pt);
 
 	if (printgen)
-	    cligen_print(stdout, pt, 1);
+	    cligen_print(stdout, pt, 1); /* pt_print */
     }
 
     /* Initialize cli syntax */

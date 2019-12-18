@@ -46,7 +46,6 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <fnmatch.h>
 #include <stdint.h>
 #include <assert.h>
 
@@ -79,6 +78,8 @@
 #define XML_TOP_SYMBOL "top" 
 /* How many XML children to start with if any (and then add exponentialy) */
 #define XML_CHILDVEC_MAX_DEFAULT 4
+/* Initial length of x_value malloced string */
+#define XML_VALUE_MAX_DEFAULT 32
 
 /*
  * Types
@@ -125,7 +126,7 @@ struct xml{
     int               x_childvec_len;/* Number of children */
     int               x_childvec_max;/* Length of allocated vector */
     enum cxobj_type   x_type;       /* type of node: element, attribute, body */
-    char             *x_value;      /* attribute and body nodes have values */
+    cbuf             *x_value_cb;   /* attribute and body nodes have values */
     int               x_flags;      /* Flags according to XML_FLAG_* */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
@@ -149,7 +150,6 @@ static const map_str2int xsmap[] = {
     {"body",          CX_BODY},
     {NULL,           -1}
 };
-
 
 /*! Translate from xml type in enum form to string keyword
  * @param[in] type  Xml type
@@ -400,7 +400,7 @@ xml2ns(cxobj *x,
 /*! Add a namespace attribute to an XML node, either default or specific prefix
  * @param[in]  x          XML tree
  * @param[in]  prefix     prefix/ns localname. If NULL then set default xmlns
- * @param[out] namespace  URI namespace (or NULL). Will be copied
+ * @param[in]  ns         URI namespace (or NULL). Will be copied
  * @retval     0          OK
  * @retval    -1          Error
  * @see xml2ns 
@@ -621,7 +621,7 @@ xml_flag_reset(cxobj   *xn,
 char*
 xml_value(cxobj *xn)
 {
-    return xn->x_value;
+    return xn->x_value_cb?cbuf_get(xn->x_value_cb):NULL;
 }
 
 /*! Set value of xml node, value is copied
@@ -634,17 +634,20 @@ int
 xml_value_set(cxobj *xn, 
 	      char  *val)
 {
-    if (xn->x_value){
-	free(xn->x_value);
-	xn->x_value = NULL;
-    }
-    if (val){
-	if ((xn->x_value = strdup(val)) == NULL){
-	    clicon_err(OE_XML, errno, "strdup");
-	    return -1;
+    int retval = -1;
+    
+    if (xn->x_value_cb == NULL){
+	if ((xn->x_value_cb = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
 	}
     }
-    return 0;
+    else
+	cbuf_reset(xn->x_value_cb);
+    cprintf(xn->x_value_cb, "%s", val);
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Append value of xnode, value is copied
@@ -653,23 +656,25 @@ xml_value_set(cxobj *xn,
  * @retval     NULL  on error with clicon-err set, or if value is set to NULL
  * @retval     new value
  */
-char *
+int
 xml_value_append(cxobj *xn, 
 		 char  *val)
 {
-    int len0;
-    int len;
+    int retval = -1;
     
-    len0 = xn->x_value?strlen(xn->x_value):0;
-    if (val){
-	len = len0 + strlen(val);
-	if ((xn->x_value = realloc(xn->x_value, len+1)) == NULL){
-	    clicon_err(OE_XML, errno, "realloc");
-	    return NULL;
+    if (xn->x_value_cb == NULL){
+	if ((xn->x_value_cb = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
 	}
-	strncpy(xn->x_value + len0, val, len-len0+1);
     }
-    return xn->x_value;
+    if (cprintf(xn->x_value_cb, "%s", val) < 0){
+	clicon_err(OE_XML, errno, "cprintf");
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Get type of xnode
@@ -1594,8 +1599,8 @@ xml_free(cxobj *x)
 
     if (x->x_name)
 	free(x->x_name);
-    if (x->x_value)
-	free(x->x_value);
+    if (x->x_value_cb)
+	cbuf_free(x->x_value_cb);  
     if (x->x_prefix)
 	free(x->x_prefix);
     for (i=0; i<x->x_childvec_len; i++){
@@ -2142,22 +2147,23 @@ int
 xml_copy_one(cxobj *x0, 
 	     cxobj *x1)
 {
+    int   retval = -1;
     char *s;
     
     xml_type_set(x1, xml_type(x0));
     if ((s = xml_value(x0))){ /* malloced string */
-	if ((x1->x_value = strdup(s)) == NULL){
-	    clicon_err(OE_XML, errno, "strdup");
-	    return -1;
-	}
+	if (xml_value_set(x1, s) < 0)
+	    goto done;
     }
     if ((s = xml_name(x0))) /* malloced string */
 	if ((xml_name_set(x1, s)) < 0)
-	    return -1;
+	    goto done;
     if ((s = xml_prefix(x0))) /* malloced string */
 	if ((xml_prefix_set(x1, s)) < 0)
-	    return -1;
-    return 0;
+	    goto done;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Copy xml tree x0 to other existing tree x1
@@ -2618,8 +2624,10 @@ clicon_log_xml(int    level,
     int     retval = -1;
 
     /* Print xml as cbuf */
-    if ((cb = cbuf_new()) == NULL)
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
+    }
     if (clicon_xml2cbuf(cb, x, 0, 0, -1) < 0)
 	goto done;
     

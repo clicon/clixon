@@ -140,7 +140,7 @@ real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 
 <TOKEN>\"               { BEGIN(QLITERAL); return QUOTE; }
 <TOKEN>\'               { BEGIN(ALITERAL); return APOST; }
-<TOKEN>\-?({integer}|{real}) { sscanf(yytext,"%lf",&clixon_xpath_parselval.dval); return NUMBER;}
+<TOKEN>\-?({integer}|{real}) { clixon_xpath_parselval.string = strdup(yytext); return NUMBER; }
 <TOKEN>[0-9A-Za-z_\-]+  { clixon_xpath_parselval.string = strdup(yytext);
                             return NAME; /* rather be catch-all */
                         }

@@ -122,6 +122,12 @@ After release:
 ```
 * Run autoconf
 
+Create release branch:
+```
+  git checkout -b release-4.2 4.2.0
+  git push origin release-4.2
+```
+
 ## Use of constants etc
 
 Use MAXPATHLEN (not PATH_MAX)

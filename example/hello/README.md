@@ -82,7 +82,7 @@ Start restconf daemon
 
 Start sending restconf commands (using Curl):
 ```
-   olof@vandal> curl -X POST http://localhost/restconf/data -d '{"clixon-hello:hello":{"world":null}}'
+   olof@vandal> curl -X POST http://localhost/restconf/data -H "Content-Type: application/yang-data+json" -d '{"clixon-hello:hello":{"world":null}}'
    olof@vandal> curl -X GET http://localhost/restconf/data 
    {
      "data": {
