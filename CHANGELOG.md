@@ -72,6 +72,8 @@ a="urn:example:a" xmlns:b="urn:example:b"/>`
 * FreeBSD modifications: Configure, makefiles and test scripts modification for Freebsd
 	
 ### Corrected Bugs
+* Fixed CLI error messages on wrong cli_set/merge xml-key to eg:
+  * `Config error: api-path syntax error \"/example:x/m1=%s\": rpc malformed-message List key m1 length mismatch : Invalid argument"`
 * Hello netconf candidate capability misspelled, mentioned in [Can clixon_netconf receive netconf packets as a server? #93](https://github.com/clicon/clixon/issues/93)
 * [Cannot write to config using restconf example #91](https://github.com/clicon/clixon/issues/91)
   * Updated restconf documentation (the example was wrong)

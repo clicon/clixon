@@ -268,7 +268,14 @@ cli_dbxml(clicon_handle       h,
 	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    clicon_rpc_generate_error("Modify datastore", xerr);
+	    if ((cb = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cb, "api-path syntax error \"%s\": ", api_path_fmt);
+	    if (netconf_err2cb(xerr, cb) < 0)
+		goto done;
+	    clicon_err(OE_CFG, EINVAL, "%s", cbuf_get(cb));
 	    goto done;
 	}
     }
