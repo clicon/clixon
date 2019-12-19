@@ -24,6 +24,7 @@
 * Main example yang changed to incorporate augmented state, new revision is 2019-11-15.
 
 ### Corrected Bugs
+* XML parser failed on `]]]>` termination of CDATA.
 * [filter in netconf - one specific entry #100](https://github.com/clicon/clixon/issues/100)
 * [xpath_tree2cbuf() changes integers into floating point representations #99](https://github.com/clicon/clixon/issues/99)
 * [xml_parse_string() is slow for a long XML string #96](https://github.com/clicon/clixon/issues/96)
