@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test matrching of Unix peer credentials with NACM users
+# Test matching of Unix peer credentials with NACM users
 # Use raw unix socket instead of clients (cli/netconf/restconf) since they do
 # magic things with the username and here it needs to be handled explicitly.
 # test matrix:

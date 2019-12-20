@@ -464,7 +464,6 @@ cli_handler_err(FILE *f)
     return 0;
 }
 
-
 /*! Evaluate a matched command
  * @param[in]     h       Clicon handle
  * @param[in]     cmd	  The command string

@@ -290,7 +290,14 @@ xml_cmp(cxobj *x1,
 		goto done;
 	    if (xml_cv_cache(x2, &cv2) < 0) /* error case */
 		goto done;
-	    equal = cv_cmp(cv1, cv2);
+	    if (cv1 != NULL && cv2 != NULL)
+		equal = cv_cmp(cv1, cv2);
+	    else if (cv1 == NULL && cv2 == NULL)
+		equal = 0;
+	    else if (cv1 == NULL)
+		equal = -1;
+	    else
+		equal = 1;
 	}
 	break;
     case Y_LIST: /* Match with key values 
@@ -309,10 +316,9 @@ xml_cmp(cxobj *x1,
 	    else{
 		if (xml_cv_cache(x1b, &cv1) < 0) /* error case */
 		    goto done;
-		//		assert(cv1); 		
 		if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
 		    goto done;
-		//		assert(cv2);
+		assert(cv1 && cv2);
 		if ((equal = cv_cmp(cv1, cv2)) != 0)
 		    goto done;
 	    }
@@ -831,15 +837,26 @@ match_base_child(cxobj      *x0,
 }
 	   
 /*! Experimental API for binary search
+ * @param[in]  xp      Parent xml node. 
+ * @param[in]  name    Node name of child (list)
+ * @param[in]  keyname Yang list key name
+ * @param[in]  keyval  XML key value
+ * @param[out] xret    Found XML object, NULL if not founs
+ * @retval     0       OK, see xret
+ * @retval    -1       Error
+ * Multiple keys?
+ * Can extend to leaf-list?
  */
-cxobj *
-xml_binsearch(cxobj *xp,
-	      char  *name,
-	      char  *keyname,
-	      char  *keyval)
+int
+xml_binsearch(cxobj  *xp,
+	      char   *name,
+	      char   *keyname,
+	      char   *keyval,
+	      cxobj **xretp)
 {
+    int        retval = -1;
     cxobj     *xc = NULL;
-    cxobj     *xa = NULL;
+    //    cxobj     *xa = NULL;
     cxobj     *xret = NULL;
     yang_stmt *yp;
     yang_stmt *yc;
@@ -852,15 +869,22 @@ xml_binsearch(cxobj *xp,
 	clicon_err(OE_YANG, ENOENT, "yang not found");
 	goto done;
     }
-    if ((xc = xml_new(name, xp, yc)) == NULL)
+    if (xml_parse_va(&xc, yc, "<%s><%s>%s</%s></%s>", name, keyname, keyval, keyname, name) < 0)
 	goto done;
-    if ((xa = xml_new(keyname, xc, NULL)) == NULL)
+    if (xml_rootchild(xc, 0, &xc) < 0)
 	goto done;
-    if (xml_value_set(xa, keyval) < 0)
+#if 0
+    if (xml_apply0(xc, CX_ELMNT, xml_spec_populate, ys_spec(yc)) < 0)
 	goto done;
+#else
+    if (xml_spec_set(xc, yc) < 0)
+	goto done;
+#endif
     xret = xml_search(xp, xc, yc);
+    *xretp = xret; /* XXX possibly use *xretp directly */
+    retval = 0;
  done:
     if (xc)
 	xml_free(xc);
-    return xret;
+    return retval;
 }

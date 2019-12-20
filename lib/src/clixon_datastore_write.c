@@ -48,7 +48,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <assert.h>
 #include <syslog.h>       
 #include <fcntl.h>
 

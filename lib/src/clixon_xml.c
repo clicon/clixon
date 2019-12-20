@@ -1059,8 +1059,8 @@ xml_find(cxobj *x_up,
 
     while ((x = xml_child_each(x_up, x, -1)) != NULL) 
 	if (strcmp(name, xml_name(x)) == 0)
-	    return x;
-    return NULL;
+	    break; /* x is set */
+    return x;
 }
 
 /*! Append xc as child to xp. Remove xc from previous parent.

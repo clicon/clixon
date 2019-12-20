@@ -85,6 +85,10 @@ digit [0-9]
 integer {digit}+
 real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 
+namestart  [A-Z_a-z]
+namechar   [A-Z_a-z\-\.0-9]
+ncname     {namestart}{namechar}*
+
 %x TOKEN
 %s QLITERAL
 %s ALITERAL
@@ -141,9 +145,9 @@ real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 <TOKEN>\"               { BEGIN(QLITERAL); return QUOTE; }
 <TOKEN>\'               { BEGIN(ALITERAL); return APOST; }
 <TOKEN>\-?({integer}|{real}) { clixon_xpath_parselval.string = strdup(yytext); return NUMBER; }
-<TOKEN>[0-9A-Za-z_\-]+  { clixon_xpath_parselval.string = strdup(yytext);
+<TOKEN>{ncname}         { clixon_xpath_parselval.string = strdup(yytext);
                             return NAME; /* rather be catch-all */
-                        }
+                        } 
 <TOKEN>.                { fprintf(stderr,"LEXICAL ERROR\n"); return -1; }
 
 <QLITERAL>\"            { BEGIN(TOKEN); return QUOTE; }

@@ -38,7 +38,6 @@
 #include <errno.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <assert.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 

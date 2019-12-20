@@ -54,7 +54,6 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <assert.h>
 #include <pwd.h>
 #include <netinet/in.h>
 #include <libgen.h>

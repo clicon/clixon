@@ -45,7 +45,6 @@
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
-#include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
 

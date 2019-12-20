@@ -46,7 +46,6 @@
 #include <signal.h>
 #include <syslog.h>
 #include <fcntl.h>
-#include <assert.h>
 #include <time.h>
 #include <signal.h>
 #include <limits.h>

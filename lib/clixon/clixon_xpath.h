@@ -101,10 +101,13 @@ enum xp_type{
 };
 
 /*! XPATH Parsing generates a tree of nodes that is later traversed
+ * That is, a tree-structured XPATH.
+ * Note that the structure follows XPATH 1.0 closely. The drawback wit this is that the tree gets
+ * very deep very quickly, even for simple XPATHs. 
  */
 struct xpath_tree{
     enum xp_type       xs_type;
-    int                xs_int; /* step-> axis-type */
+    int                xs_int; /* step-> axis_type */
     double             xs_double;
     char              *xs_strnr; /* original string xs_double: numeric value */
     char              *xs_s0;
@@ -122,9 +125,10 @@ char* xpath_tree_int2str(int nodetype);
 int   xpath_tree_print_cb(cbuf *cb, xpath_tree *xs);
 int   xpath_tree_print(FILE *f, xpath_tree *xs);
 int   xpath_tree2cbuf(xpath_tree *xs, cbuf *xpathcb);
+int   xpath_tree_eq(xpath_tree *xt1, xpath_tree *xt2, cvec *match);
 int   xpath_tree_free(xpath_tree *xs);
 int   xpath_parse(char *xpath, xpath_tree **xptree);
-int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, char *xpath, xp_ctx  **xrp);
+int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, char *xpath, int localonly, xp_ctx  **xrp);
 
 #if defined(__GNUC__) && __GNUC__ >= 3
 int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *xpformat, ...) __attribute__ ((format (printf, 3, 4)));
@@ -144,9 +148,11 @@ int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags,
  */
 #if defined(__GNUC__) && __GNUC__ >= 3
 cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *xpformat,  ...) __attribute__ ((format (printf, 3, 4)));
+cxobj *xpath_first_localonly(cxobj *xcur, char *xpformat,  ...) __attribute__ ((format (printf, 2, 3)));
 int    xpath_vec(cxobj *xcur, cvec *nsc, char *xpformat, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 6)));
 #else
 cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *xpformat, ...);
+cxobj *xpath_first_localonly(cxobj *xcur, char *xpformat, ...);
 int    xpath_vec(cxobj *xcur, cvec *nsc, char *xpformat, cxobj  ***vec, size_t *veclen, ...);
 #endif
 

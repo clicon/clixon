@@ -53,7 +53,6 @@
 #include <sys/param.h>
 #include <netinet/in.h>
 #include <pwd.h>
-#include <assert.h>
 #include <libgen.h>
 #include <wordexp.h>
 

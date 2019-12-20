@@ -3,6 +3,10 @@
 ## 4.3.0 (Expected: December 2019)
 
 ### Minor changes
+* C-API: Added `xpath_first_localonly()` as an xpath function that skips prefix and namespace checks.
+* Added experimental code for optizing XPath search using binary search.
+  * Enable with XPATH_LIST_OPTIMIZE
+* Removed most assert.h includes
 * Added "canonical" global namespace context: `nsctx_global`
   * This is a normalized XML prefix:namespace pair vector computed from all loaded Yang modules. Useful when writing XML and XPATH expressions in callbacks.
   * Get it with `clicon_nsctx_global_get(h)`
@@ -17,7 +21,9 @@
   * Optional yang files are loaded only if configured with `--enable-optyangs` (flipped logic and changed from `disable-stdyangs`). NOTE: you must do this to run examples and tests.
   * Optional yang files can be installed in a separate dir with `--with-opt-yang-installdir=DIR` (renamed from `with-std-yang-installdir`)
 * C-API
-  * Added namespace-context parameter `nsc` to `xpath_first` and `xpath_vec`, (`xpath_vec_nsc` and xpath_first_nsc` are removed).
+  * Changed `clicon_rpc_generate_error(msg, xerr)` to `clicon_rpc_generate_error(xerr, msg, arg)`
+  * Added namespace-context parameter `nsc` to `xpath_first` and `xpath_vec`, (`xpath_vec_nsc` and 
+xpath_first_nsc` are removed).
   * Added clicon_handle as parameter to all `clicon_connect_` functions to get better error message
   * Added nsc parameter to `xmldb_get()`
 * The multi-namespace augment state may rearrange the XML namespace attributes.

@@ -49,7 +49,6 @@
 #include <limits.h>
 #include <stdint.h>
 #include <syslog.h>
-#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>

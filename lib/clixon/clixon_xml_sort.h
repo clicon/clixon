@@ -45,6 +45,6 @@ int xml_sort(cxobj *x0, void *arg);
 int xml_insert(cxobj *xp, cxobj *xc, enum insert_type ins, char *key_val, cvec *nsckey);
 int xml_sort_verify(cxobj *x, void *arg);
 int match_base_child(cxobj *x0, cxobj *x1c, yang_stmt *yc, cxobj **x0cp);
-cxobj *xml_binsearch(cxobj *xp, char *name, char *keyname, char *keyval);
+int xml_binsearch(cxobj *xp, char *name, char *keyname, char *keyval, cxobj **xret);
 
 #endif /* _CLIXON_XML_SORT_H */

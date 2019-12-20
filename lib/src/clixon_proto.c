@@ -47,7 +47,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#include <assert.h>
 #include <syslog.h>
 #include <signal.h>
 #include <ctype.h>

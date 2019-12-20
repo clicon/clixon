@@ -225,13 +225,18 @@ clicon_rpc_netconf_xml(clicon_handle  h,
     return retval;
 }
 
-/*! Generate and log clicon error function call from Netconf error message
- * @param[in]  prefix  Print this string (if given) before: "<prefix>: <error>"
- * @param[in]  xerr    Netconf error message on the level: <rpc-error>
+/*! Generate clicon error from Netconf error message
+ *
+ * Get a text error message from netconf error message and generate error on the form:
+ *   <msg>: "<arg>": <netconf-error>   or   <msg>: <netconf-error>
+ * @param[in]  xerr    Netconf error xml tree on the form: <rpc-error> 
+ * @param[in]  format  Format string 
+ * @param[in]  arg     String argument to format (optional)
  */
 int
-clicon_rpc_generate_error(const char  *prefix, 
-			  cxobj       *xerr)
+clicon_rpc_generate_error(cxobj       *xerr,
+			  const char  *msg,
+			  const char  *arg)
 {
     int    retval = -1;
     cbuf  *cb = NULL;
@@ -242,10 +247,12 @@ clicon_rpc_generate_error(const char  *prefix,
     }
     if (netconf_err2cb(xerr, cb) < 0)
 	goto done;
-    if (prefix)
-	clicon_log(LOG_ERR, "%s: %s", prefix, cbuf_get(cb));
-    else
-	clicon_log(LOG_ERR, "%s", cbuf_get(cb));
+    if (arg){
+	cprintf(cb, "%s: \"%s\": ", msg, arg);
+	clicon_err(OE_CFG, EINVAL, "%s", cbuf_get(cb));
+    }
+    else /* XXX: should really be clicon_err but dont do it yet for backward compatability */
+	clicon_log(LOG_ERR, "%s: %s", msg, cbuf_get(cb));
     retval = 0;
  done:
     if (cb)
@@ -273,7 +280,7 @@ clicon_rpc_generate_error(const char  *prefix,
  *   if (clicon_rpc_get_config(h, NULL, "running", "/hello/world", nsc, &xt) < 0)
  *       err;
  *   if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
- *	clicon_rpc_generate_error("", xerr);
+ *	clicon_rpc_generate_error(xerr, "msg", "/hello/world");
  *      err;
  *   }
  *   if (xt)
@@ -395,7 +402,7 @@ clicon_rpc_edit_config(clicon_handle       h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Editing configuration", xerr);
+	clicon_rpc_generate_error(xerr, "Editing configuration", NULL);
 	goto done;
     }
     retval = 0;
@@ -442,7 +449,7 @@ clicon_rpc_copy_config(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Copying configuration", xerr);
+	clicon_rpc_generate_error(xerr, "Copying configuration", NULL);
 	goto done;
     }
     retval = 0;
@@ -482,7 +489,7 @@ clicon_rpc_delete_config(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Deleting configuration", xerr);
+	clicon_rpc_generate_error(xerr, "Deleting configuration", NULL);
 	goto done;
     }
     retval = 0;
@@ -518,7 +525,7 @@ clicon_rpc_lock(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Locking configuration", xerr);
+	clicon_rpc_generate_error(xerr, "Locking configuration", NULL);
 	goto done;
     }
     retval = 0;
@@ -553,7 +560,7 @@ clicon_rpc_unlock(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Configuration unlock", xerr);
+	clicon_rpc_generate_error(xerr, "Configuration unlock", NULL);
 	goto done;
     }
     retval = 0;
@@ -587,7 +594,7 @@ clicon_rpc_unlock(clicon_handle h,
  *  if (clicon_rpc_get(h, "/hello/world", nsc, CONTENT_ALL, -1, &xt) < 0)
  *     err;
  *  if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
- *     clicon_rpc_generate_error(xerr);
+ *     clicon_rpc_generate_error(xerr, "clicon_rpc_get", NULL);
  *     err;
  *  }
  *  if (xt)
@@ -694,7 +701,7 @@ clicon_rpc_close_session(clicon_handle h)
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Close session", xerr);
+	clicon_rpc_generate_error(xerr, "Close session", NULL);
 	goto done;
     }
     retval = 0;
@@ -730,7 +737,7 @@ clicon_rpc_kill_session(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Kill session", xerr);
+	clicon_rpc_generate_error(xerr, "Kill session", NULL);
 	goto done;
     }
     retval = 0;
@@ -765,7 +772,7 @@ clicon_rpc_validate(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(CLIXON_ERRSTR_VALIDATE_FAILED, xerr);
+	clicon_rpc_generate_error(xerr, CLIXON_ERRSTR_VALIDATE_FAILED, NULL);
 	goto done;	
     }
     retval = 0;
@@ -798,7 +805,7 @@ clicon_rpc_commit(clicon_handle h)
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(CLIXON_ERRSTR_COMMIT_FAILED, xerr);
+	clicon_rpc_generate_error(xerr, CLIXON_ERRSTR_COMMIT_FAILED, NULL);
 	goto done;
     }
     retval = 0;
@@ -831,7 +838,7 @@ clicon_rpc_discard_changes(clicon_handle h)
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Discard changes", xerr);
+	clicon_rpc_generate_error(xerr, "Discard changes", NULL);
 	goto done;
     }
     retval = 0;
@@ -877,7 +884,7 @@ clicon_rpc_create_subscription(clicon_handle    h,
     if (clicon_rpc_msg(h, msg, &xret, s0) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Create subscription", xerr);
+	clicon_rpc_generate_error(xerr, "Create subscription", NULL);
 	goto done;
     }
     retval = 0;
@@ -912,7 +919,7 @@ clicon_rpc_debug(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Debug",xerr);
+	clicon_rpc_generate_error(xerr, "Debug", NULL);
 	goto done;
     }
     if (xpath_first(xret, NULL, "//rpc-reply/ok") == NULL){
@@ -955,7 +962,7 @@ clicon_hello_req(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Hello", xerr);
+	clicon_rpc_generate_error(xerr, "Hello", NULL);
 	goto done;
     }
     if ((x = xpath_first(xret, NULL, "hello/session-id")) == NULL){

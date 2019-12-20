@@ -44,6 +44,6 @@ extern const map_str2int xpopmap[];
 /*
  * Prototypes
  */
-int xp_eval(xp_ctx *xc, xpath_tree *xs,	cvec *nsc, xp_ctx **xrp);
+int xp_eval(xp_ctx *xc, xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 
 #endif /* _CLIXON_XPATH_EVAL_H */

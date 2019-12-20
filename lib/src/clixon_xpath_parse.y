@@ -103,7 +103,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <assert.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/socket.h>

@@ -46,7 +46,6 @@
 #include <errno.h>
 #include <signal.h>
 #include <unistd.h>
-#include <assert.h>
 #include <syslog.h>
 #include <sys/time.h>
 

@@ -692,6 +692,26 @@ clixon_trim(char *str)
     return s;
 }
 
+/*! check string equals (NULL is equal) 
+ * @param[in]  s1  String 1
+ * @param[in]  s2  String 2
+ * @retval     0   Equal
+ * @retval    -1   Not equal
+ * @retval     1   Not equal
+ */
+int
+clicon_strcmp(char *s1, 
+	      char *s2)
+{
+    if (s1 == NULL && s2 == NULL) 
+	return 0;
+    if (s1 == NULL) /* empty string first */
+	return -1;
+    if (s2 == NULL)
+	return 1;
+    return strcmp(s1, s2);
+}
+
 /*! strndup() for systems without it, such as xBSD
  */
 #ifndef HAVE_STRNDUP
@@ -715,7 +735,6 @@ clicon_strndup(const char *str,
   return new;
 }
 #endif /* ! HAVE_STRNDUP */
-
 
 
 /*

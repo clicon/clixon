@@ -50,7 +50,6 @@
 #include <regex.h>
 #include <dirent.h>
 #include <syslog.h>
-#include <assert.h>
 #include <sys/stat.h>
 #include <libgen.h>
 #include <netinet/in.h>

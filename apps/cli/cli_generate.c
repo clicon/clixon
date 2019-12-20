@@ -48,7 +48,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <assert.h>
 #include <fcntl.h>
 #include <syslog.h>
 #include <sys/param.h>
@@ -76,6 +75,8 @@
  This is an example yang module:
 module m {
   container x {
+    namespace "urn:example:m";
+    prefix m;
     list m1 {
       key "a";
       leaf a {
@@ -88,12 +89,11 @@ module m {
   }
 }
 
-You can see which CLISPEC it generates via clixon_cli -D 1:
-Jan  2 11:17:58: yang2cli: buf
-}   x,cli_set("/x");{
-      m1         (<a:string>|<a:string expand_dbvar("candidate /x/m1/%s/a")>),cli_set("/x/m1/%s");
+You can see which CLISPEC it generates via clixon_cli -D 2:
+  x,cli_set("/example:x");{
+      m1         a (<a:string>|<a:string expand_dbvar("candidate","/example:x/m1=%s/a")>),overwrite_me("/example:x/m1=%s/");
 {
-         b (<b:string>|<b:string expand_dbvar("candidate /x/m1/%s/b")>),cli_set("/x/m1/%s/b");
+         b (<b:string>|<b:string expand_dbvar("candidate","/example:x/m1=%s/b")>),overwrite_me("/example:x/m1=%s/b");
       }
    }
 */

@@ -47,7 +47,6 @@ See https://www.w3.org/TR/xpath/
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
-#include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -318,7 +317,7 @@ main(int    argc,
 	x = x0;
 
     /* Parse XPATH (use nsc == NULL to indicate dont use) */
-    if (xpath_vec_ctx(x, nsc, xpath, &xc) < 0)
+    if (xpath_vec_ctx(x, nsc, xpath, 0, &xc) < 0)
 	return -1;
     /* Print results */
     cb = cbuf_new();

@@ -60,7 +60,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/param.h>
-#include <assert.h>
 #include <grp.h>
 
 /* cligen */

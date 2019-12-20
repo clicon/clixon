@@ -37,6 +37,9 @@ fi
 new "xml simple CDATA"
 expecteofx "$clixon_util_xml -o" 0 '<a><![CDATA[a text]]></a>' '<a><![CDATA[a text]]></a>'
 
+new "xml CDATA right square bracket: ]"
+expecteofx "$clixon_util_xml -o" 0 "<a><![CDATA[]]]></a>" "<a><![CDATA[]]]></a>"
+
 new "xml simple CDATA to json"
 expecteofx "$clixon_util_xml -o -j" 0 '<a><![CDATA[a text]]></a>' '{"a":"a text"}' 
 

@@ -216,8 +216,8 @@ nacm_load_external(clicon_handle h)
 	goto done;
     retval = 0;
  done:
-    if (yspec) /* The clixon yang-spec is not used after this */
-	yspec_free(yspec);
+    // XXX    if (yspec) /* The clixon yang-spec is not used after this */
+    // XXX	yspec_free(yspec);
     if (f)
 	fclose(f);
     return retval;

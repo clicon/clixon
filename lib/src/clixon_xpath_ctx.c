@@ -41,7 +41,6 @@
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
-#include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
 #include <math.h>  /* NaN */
@@ -113,21 +112,28 @@ ctx_dup(xp_ctx *xc0)
     return xc;
 }
 
-/*! Print XPATH context */
+/*! Print XPATH context to CLIgen buf
+ * @param[in] cb  CLIgen buf to print to
+ * @param[in] xc  XPATH evaluation context
+ * @param[in] ind Indentation margin
+ * @param[in] str Prefix string in printout
+
+
+ */
 int
-ctx_print(cbuf   *cb,
-	  int     id,
-	  xp_ctx *xc,
-	  char   *str)
+ctx_print_cb(cbuf   *cb,
+	     xp_ctx *xc,
+	     int     ind,
+	     char   *str)
 {
-    static int ident = 0;
+    static int indent = 0;
     int        i;
 
-    if (id<0)
-	ident += id;
-    cprintf(cb, "%*s%s ", ident, "", str?str:"");
-    if (id>0)
-	ident += id;
+    if (ind<0)
+	indent += ind;
+    cprintf(cb, "%*s%s ", indent, "", str?str:"");
+    if (ind>0)
+	indent += ind;
     if (xc){
 	cprintf(cb, "%s: ", (char*)clicon_int2str(ctxmap, xc->xc_type));
 	switch (xc->xc_type){
@@ -147,6 +153,32 @@ ctx_print(cbuf   *cb,
 	}
     }
     return 0;
+}
+
+/*! Print XPATH context 
+ * @param[in] f   File to print to
+ * @param[in] xc  XPATH evaluation context
+ * @param[in] str Prefix string in printout
+ */
+int
+ctx_print(FILE   *f,
+	  xp_ctx *xc,
+	  char   *str)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    ctx_print_cb(cb, xc, 0, str);
+    fprintf(f, "%s", cbuf_get(cb));
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
 }
 
 /*! Convert xpath context to boolean according to boolean() function in XPATH spec

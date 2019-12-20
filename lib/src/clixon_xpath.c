@@ -66,9 +66,9 @@
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
-#include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -306,6 +306,84 @@ xpath_tree2cbuf(xpath_tree *xs,
     return retval;
 }
 
+
+/*! Check if two xpath-trees (parsed xpaths) ar equal
+ *
+ * @param[in]     xt1  XPath parse 1
+ * @param[in]     xt2  XPath parse 2
+ * @param[in,out] mv   Match vector consisting of <name,val> pairs
+ * @retval        0    If equal
+ * @retval       -1    If not equal
+ * The function returns 0 if the two trees are equal, otherwise -1
+ * But the "mv" parameter is a way to add pattern matching to some variables
+ * On input, mv contains a vector of CLIgen string variables with names that may match string
+ * fields s0 and s1 in an xpath_tree. If the names match the values of s0 or s1, the field is
+ * considered equal and is stored as value in the CLIgen variable vector.
+ * Example:
+ * xt1: _x[_y='_z']
+ * xt2: y[k='3']
+ * match[in]:  {_x, _y, _z}
+ * match[out]: {_x:y, _y:k, _z:3}
+ */
+int
+xpath_tree_eq(xpath_tree *xt1,
+	      xpath_tree *xt2,
+	      cvec       *match)
+{
+    int         retval = -1; /* not equal */
+    xpath_tree *xc1;
+    xpath_tree *xc2;
+    cg_var     *cv;
+
+    /* node itself */
+    if (xt1->xs_type != xt2->xs_type)
+	goto neq;
+    if (xt1->xs_int != xt2->xs_int)
+	goto neq;
+    if (xt1->xs_double != xt2->xs_double)
+	goto neq;
+    if (clicon_strcmp(xt1->xs_s0, xt2->xs_s0)){
+	if (xt1->xs_s0 && xt2->xs_s0 &&
+	    (cv = cvec_find(match, xt1->xs_s0)) != NULL){
+	    cv_string_set(cv, xt2->xs_s0);
+	    goto ok;
+	}
+	goto neq;
+    }
+    if (clicon_strcmp(xt1->xs_s1, xt2->xs_s1)){
+	if (xt1->xs_s1 && xt2->xs_s1 &&
+	    (cv = cvec_find(match, xt1->xs_s1)) != NULL){
+	    cv_string_set(cv, xt2->xs_s1);
+	    goto ok;
+	}
+	goto neq;
+    }
+    xc1 = xt1->xs_c0;
+    xc2 = xt2->xs_c0;
+    if (xc1 == NULL && xc2 == NULL)
+	;
+    else{
+	if (xc1 == NULL || xc2 == NULL)
+	    goto neq;
+	if (xpath_tree_eq(xc1, xc2, match))
+	    goto neq;
+    }
+    xc1 = xt1->xs_c1;
+    xc2 = xt2->xs_c1;
+    if (xc1 == NULL && xc2 == NULL)
+	;
+    else{
+	if (xc1 == NULL || xc2 == NULL)
+	    goto neq;
+	if (xpath_tree_eq(xc1, xc2, match))
+	    goto neq;
+    }
+ ok:
+    retval = 0; /* equal */
+ neq:
+    return retval;
+}
+    
 /*! Free a xpath_tree
  * @param[in]  xs  XPATH tree
  * @see xpath_parse  creates a xpath_tree
@@ -387,12 +465,13 @@ xpath_parse(char        *xpath,
  * @param[in]  xcur   XML-tree where to search
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH 1.0 syntax
+ * @param[in]  localonly Skip prefix and namespace tests (non-standard)
  * @param[out] xrp    Return XPATH context
  * @retval     0      OK
  * @retval    -1      Error
  * @code
  *   xp_ctx     *xc = NULL;
- *   if (xpath_vec_ctx(x, NULL, xpath, &xc) < 0)
+ *   if (xpath_vec_ctx(x, NULL, xpath, 0, &xc) < 0)
  *     err;
  *   if (xc)
  *	ctx_free(xc);
@@ -402,6 +481,7 @@ int
 xpath_vec_ctx(cxobj    *xcur, 
 	      cvec     *nsc,
 	      char     *xpath,
+	      int       localonly,
 	      xp_ctx  **xrp)
 {
     int         retval = -1;
@@ -415,7 +495,7 @@ xpath_vec_ctx(cxobj    *xcur,
     xc.xc_initial = xcur;
     if (cxvec_append(xcur, &xc.xc_nodeset, &xc.xc_size) < 0)
 	goto done;
-    if (xp_eval(&xc, xptree, nsc, xrp) < 0)
+    if (xp_eval(&xc, xptree, nsc, localonly, xrp) < 0)
 	goto done;
     if (xc.xc_nodeset){
 	free(xc.xc_nodeset);
@@ -475,7 +555,66 @@ xpath_first(cxobj    *xcur,
 	goto done;
     }
     va_end(ap);
-    if (xpath_vec_ctx(xcur, nsc, xpath, &xr) < 0)
+    if (xpath_vec_ctx(xcur, nsc, xpath, 0, &xr) < 0)
+	goto done;
+    if (xr && xr->xc_type == XT_NODESET && xr->xc_size)
+	cx = xr->xc_nodeset[0];
+ done:
+    if (xr)
+	ctx_free(xr);
+    if (xpath)
+	free(xpath);
+    return cx;
+}
+
+/*! XPath nodeset function where prefixes are skipped, only first matching is returned
+ *
+ * Reason for skipping prefix/namespace check may be with incomplete tree, for example.
+ * @param[in]  xcur      XML tree where to search
+ * @param[in]  xpformat  Format string for XPATH syntax
+ * @retval     xml-tree  XML tree of first match
+ * @retval     NULL      Error or not found
+ *
+ * @code
+ *   cxobj *x;
+ *   cvec  *nsc; // namespace context
+ *   if ((x = xpath_first_localonly(xtop, "//symbol/foo")) != NULL) {
+ *         ...
+ *   }
+ * @endcode
+ * @note  the returned pointer points into the original tree so should not be freed after use.
+ * @note return value does not see difference between error and not found
+ * @note Prefixes and namespaces are ignored so this is NOT according to standard
+ * @see also xpath_first.
+ */
+cxobj *
+xpath_first_localonly(cxobj    *xcur, 
+		      char     *xpformat, 
+		      ...)
+{
+    cxobj     *cx = NULL;
+    va_list    ap;
+    size_t     len;
+    char      *xpath = NULL;
+    xp_ctx    *xr = NULL;
+    
+    va_start(ap, xpformat);    
+    len = vsnprintf(NULL, 0, xpformat, ap);
+    va_end(ap);
+    /* allocate a message string exactly fitting the message length */
+    if ((xpath = malloc(len+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    /* second round: compute write message from reason and args */
+    va_start(ap, xpformat);    
+    if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
+	clicon_err(OE_UNIX, errno, "vsnprintf");
+	va_end(ap);
+	goto done;
+    }
+    va_end(ap);
+    if (xpath_vec_ctx(xcur, NULL, xpath, 1, &xr) < 0)
 	goto done;
     if (xr && xr->xc_type == XT_NODESET && xr->xc_size)
 	cx = xr->xc_nodeset[0];
@@ -541,7 +680,7 @@ xpath_vec(cxobj    *xcur,
     va_end(ap);
     *vec=NULL;
     *veclen = 0;
-    if (xpath_vec_ctx(xcur, nsc, xpath, &xr) < 0)
+    if (xpath_vec_ctx(xcur, nsc, xpath, 0, &xr) < 0)
 	goto done;
     if (xr && xr->xc_type == XT_NODESET){
 	*vec    = xr->xc_nodeset;
@@ -616,7 +755,7 @@ xpath_vec_flag(cxobj    *xcur,
     va_end(ap);
     *vec=NULL;
     *veclen = 0;
-    if (xpath_vec_ctx(xcur, nsc, xpath, &xr) < 0)
+    if (xpath_vec_ctx(xcur, nsc, xpath, 0, &xr) < 0)
 	goto done;
     if (xr && xr->xc_type == XT_NODESET){
 	for (i=0; i<xr->xc_size; i++){
@@ -672,7 +811,7 @@ xpath_vec_bool(cxobj *xcur,
 	goto done;
     }
     va_end(ap);
-    if (xpath_vec_ctx(xcur, nsc, xpath, &xr) < 0)
+    if (xpath_vec_ctx(xcur, nsc, xpath, 0, &xr) < 0)
 	goto done;
     if (xr)
 	retval = ctx2boolean(xr);

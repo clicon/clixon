@@ -58,3 +58,9 @@
  * on the top-level for the modules involved in the netconf operation.
  */
 #define IDENTITYREF_KLUDGE
+
+/*! Optimize special list key searches in XPATH finds
+ * Identify xpaths that search for exactly a list key, eg: "y[k=3]" and then call
+ * binary search. This only works if "y" has proper yang binding and is sorted by system
+ */
+#undef XPATH_LIST_OPTIMIZE

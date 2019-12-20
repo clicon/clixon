@@ -38,7 +38,6 @@
 #include <errno.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <assert.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/param.h>
@@ -110,7 +109,7 @@ example_client_rpc(clicon_handle h,
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error("Get configuration", xerr);
+	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
 	goto done;
     }
     /* Print result */

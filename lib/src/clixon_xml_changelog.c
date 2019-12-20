@@ -88,7 +88,7 @@ changelog_rename(clicon_handle h,
 	clicon_err(OE_XML, 0, "tag required");
 	goto done;
     }
-    if (xpath_vec_ctx(xw, nsc, tag, &xctx) < 0)
+    if (xpath_vec_ctx(xw, nsc, tag, 0, &xctx) < 0)
 	goto done;
     if (ctx2string(xctx, &str) < 0)
 	goto done;
@@ -258,7 +258,7 @@ changelog_op(clicon_handle h,
        xw = wvec[i];
        /* If 'when' exists and is false, skip this target */
        if (whenxpath){
-	   if (xpath_vec_ctx(xw, nsc, whenxpath, &xctx) < 0)
+	   if (xpath_vec_ctx(xw, nsc, whenxpath, 0, &xctx) < 0)
 	       goto done;
 	   if ((ret = ctx2boolean(xctx)) < 0)
 	       goto done;

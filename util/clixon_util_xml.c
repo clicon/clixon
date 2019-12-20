@@ -53,7 +53,6 @@
 #include <limits.h>
 #include <stdint.h>
 #include <syslog.h>
-#include <assert.h>
 #include <fcntl.h>
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -196,7 +195,7 @@ main(int    argc,
 	if ((ret = json_parse_file(fd, yspec, &xt, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    clicon_rpc_generate_error("util_xml", xerr);
+	    clicon_rpc_generate_error(xerr, "util_xml", NULL);
 	    goto done;
 	}
     }

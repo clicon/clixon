@@ -59,7 +59,6 @@
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <pwd.h>
-#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -158,7 +157,7 @@ expand_dbvar(void   *h,
     if (clicon_rpc_get_config(h, NULL, dbstr, xpath, nsc, &xt) < 0) /* XXX */
     	goto done;
     if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error("Get configuration", xe);
+	clicon_rpc_generate_error(xe, "Get configuration", NULL);
 	goto ok; 
     }
     xcur = xt; /* default top-of-tree */
@@ -175,7 +174,7 @@ expand_dbvar(void   *h,
 	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    clicon_rpc_generate_error("Expand datastore symbol", xerr);
+	    clicon_rpc_generate_error(xerr, "Expand datastore symbol", NULL);
 	    goto done;
 	}
     }
@@ -487,7 +486,7 @@ cli_show_config1(clicon_handle h,
 	    goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error("Get configuration", xerr);
+	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
 	goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -635,7 +634,7 @@ show_conf_xpath(clicon_handle h,
     if (clicon_rpc_get_config(h, NULL, str, xpath, nsc, &xt) < 0)
     	goto done;
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error("Get configuration", xerr);
+	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
 	goto done;
     }
 
@@ -738,7 +737,7 @@ cli_show_auto1(clicon_handle h,
     }
 
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error("Get configuration", xerr);
+	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
 	goto done;
     }
     if ((xp = xpath_first(xt, nsc, "%s", xpath)) != NULL)

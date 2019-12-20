@@ -51,7 +51,6 @@
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
-#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>
