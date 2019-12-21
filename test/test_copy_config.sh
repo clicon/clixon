@@ -151,7 +151,7 @@ new "copy startup->candidate"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><copy-config><target><candidate/></target><source><startup/></source></copy-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "copy startup->running not allowed"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><copy-config><target><running/></target><source><startup/></source></copy-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>running</bad-element></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><copy-config><target><running/></target><source><startup/></source></copy-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>running</bad-element></error-info><error-severity>error</error-severity><error-message>namespace is: urn:ietf:params:xml:ns:netconf:base:1.0</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 # Here running is empty
 new "Check running empty"
