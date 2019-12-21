@@ -1274,13 +1274,27 @@ xml_yang_validate_all(clicon_handle h,
     int        nr;
     int        ret;
     cxobj     *x;
+    char      *namespace = NULL;
+    cbuf      *cb = NULL;
 
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     ys=xml_spec(xt);
     if (ys==NULL){
-	if (netconf_unknown_element_xml(xret, "application", xml_name(xt), NULL) < 0)
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
+	}
+	if (xml2ns(xt, xml_prefix(xt), &namespace) < 0)
+	    goto done;
+	if (namespace){
+	    cprintf(cb, "namespace is: %s", namespace);
+	    if (netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
+		goto done;
+	}
+	else
+	    if (netconf_unknown_element_xml(xret, "application", xml_name(xt), NULL) < 0)
+		goto done;
 	goto fail;
     }
     if (yang_config(ys) != 0){
@@ -1326,7 +1340,7 @@ xml_yang_validate_all(clicon_handle h,
 		goto done;
 	    if (!nr){
 		ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
-		if (netconf_operation_failed_xml(xret, "application",
+		if (netconf_operation_failed_xml(xret, "application", 
 					     ye?ye->ys_argument:"must xpath validation failed") < 0)
 		    goto done;
 		goto fail;
@@ -1338,7 +1352,7 @@ xml_yang_validate_all(clicon_handle h,
 	    if ((nr = xpath_vec_bool(xt, NULL, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){
-		if (netconf_operation_failed_xml(xret, "application",
+		if (netconf_operation_failed_xml(xret, "application", 
 					     "when xpath validation failed") < 0)
 		    goto done;
 		goto fail;
@@ -1363,6 +1377,8 @@ xml_yang_validate_all(clicon_handle h,
  ok:
     retval = 1;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
  fail:
     retval = 0;

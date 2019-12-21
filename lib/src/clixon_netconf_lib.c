@@ -953,7 +953,7 @@ netconf_operation_not_supported(cbuf *cb,
  * some reason not covered by any other error condition.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
- * @param[in]  message Error message
+ * @param[in]  message Error message (will be XML encoded)
  * @see netconf_operation_failed_xml  Same but returns XML tree
  */
 int
@@ -994,6 +994,7 @@ int
 netconf_operation_failed_xml(cxobj **xret,
 			     char  *type,
 			     char  *message)
+
 {
     int   retval =-1;
     cxobj *xerr;
@@ -1009,7 +1010,8 @@ netconf_operation_failed_xml(cxobj **xret,
 	goto done;
     if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
 		     "<error-tag>operation-failed</error-tag>"
-		     "<error-severity>error</error-severity>", type) < 0)
+		     "<error-severity>error</error-severity>",
+		     type) < 0)
 	goto done;
     if (message){
 	 if (xml_chardata_encode(&encstr, "%s", message) < 0)

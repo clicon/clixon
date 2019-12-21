@@ -12,7 +12,7 @@
   * Get it with `clicon_nsctx_global_get(h)`
 * Added wildcard `*` as a mode to `CLICON_MODE` in clispec files
   * If you set "CLICON_MODE="*";" in a clispec file it means that syntax will appear in all CLI spec modes.
-* State callbacks provided by user are validated. If they are invalid an internal error is returned.
+* State callbacks provided by user are validated. If they are invalid an internal error is returned, example, with error-tag: `operation-failed`and with error-message containing. `Internal error, state callback returned invalid XML`.
 * Fixed multi-namespace for augmented state which was not covered in 4.2.0.
 
 ### API changes on existing features (you may need to change your code)
