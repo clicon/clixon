@@ -58,6 +58,9 @@ int clicon_dbspec_yang_set(clicon_handle h, yang_stmt *ys);
 yang_stmt * clicon_config_yang(clicon_handle h);
 int clicon_config_yang_set(clicon_handle h, yang_stmt *ys);
 
+yang_stmt * clicon_nacm_ext_yang(clicon_handle h);
+int clicon_nacm_ext_yang_set(clicon_handle h, yang_stmt *ys);
+
 cvec *clicon_nsctx_global_get(clicon_handle h);
 int clicon_nsctx_global_set(clicon_handle h, cvec *nsctx);
 

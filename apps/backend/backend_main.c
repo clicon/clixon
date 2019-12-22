@@ -111,6 +111,8 @@ backend_terminate(clicon_handle h)
 	yspec_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
 	yspec_free(yspec);
+    if ((yspec = clicon_nacm_ext_yang(h)) != NULL)
+	yspec_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
 	cvec_free(nsctx);
     if ((x = clicon_nacm_ext(h)) != NULL)
@@ -212,12 +214,13 @@ nacm_load_external(clicon_handle h)
 	clicon_err(OE_XML, 0, "No xml tree in %s", filename);
 	goto done;
     }
+    if (clicon_nacm_ext_yang_set(h, yspec) < 0)
+	goto done;
     if (clicon_nacm_ext_set(h, xt) < 0)
 	goto done;
+
     retval = 0;
  done:
-    // XXX    if (yspec) /* The clixon yang-spec is not used after this */
-    // XXX	yspec_free(yspec);
     if (f)
 	fclose(f);
     return retval;

@@ -146,6 +146,42 @@ clicon_config_yang_set(clicon_handle   h,
     return 0;
 }
 
+/*! Get YANG specification for external NACM (separate from application yangs)
+ * @param[in]  h     Clicon handle
+ * @retval     yspec Yang spec
+ * @see clicon_nacm_ext  for external NACM XML
+ */
+yang_stmt *
+clicon_nacm_ext_yang(clicon_handle h)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    size_t          len;
+    void           *p;
+
+    if ((p = clicon_hash_value(cdat, "nacm_ext_yang", &len)) != NULL)
+	return *(yang_stmt **)p;
+    return NULL;
+}
+
+/*! Set yang specification for external NACM
+ * @param[in]  h     Clicon handle
+ * @param[in]  yspec Yang spec (malloced pointer)
+ * @see clicon_nacm_ext_set  for external NACM XML
+ */
+int
+clicon_nacm_ext_yang_set(clicon_handle   h, 
+			 yang_stmt      *ys)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    /* It is the pointer to ys that should be copied by hash,
+       so we send a ptr to the ptr to indicate what to copy.
+     */
+    if (clicon_hash_add(cdat, "nacm_ext_yang", &ys, sizeof(ys)) == NULL)
+	return -1;
+    return 0;
+}
+
 /*! Get Global "canonical" namespace context
  * Canonical: use prefix and namespace specified in the yang modules.
  * @param[in]  h     Clicon handle
