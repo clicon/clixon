@@ -767,7 +767,7 @@ main(int    argc,
 	goto done;
     /* Startup mode needs to be defined,  */
     startup_mode = clicon_startup_mode(h);
-    if (startup_mode == -1){ 	
+    if ((int)startup_mode == -1){ 	
 	clicon_log(LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend."); 
 	goto done;
     }

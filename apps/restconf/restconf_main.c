@@ -355,7 +355,7 @@ api_restconf(clicon_handle h,
 	// retval = restconf_unsupported_media(r);
 	// goto done;
     }
-    else    if ((media_out = restconf_media_str2int(media_str)) == -1){
+    else    if ((int)(media_out = restconf_media_str2int(media_str)) == -1){
 	if (strcmp(media_str, "*/*") == 0) /* catch-all */
 	    media_out = YANG_DATA_JSON;
 	else{

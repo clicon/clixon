@@ -454,7 +454,7 @@ cli_show_config1(clicon_handle h,
     db = cv_string_get(cvec_i(argv, 0));
     /* Second argv argument: Format */
     formatstr = cv_string_get(cvec_i(argv, 1));
-    if ((format = format_str2int(formatstr)) < 0){
+    if ((int)(format = format_str2int(formatstr)) < 0){
 	clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
 	goto done;
     }
@@ -705,7 +705,7 @@ cli_show_auto1(clicon_handle h,
     db = cv_string_get(cvec_i(argv, 1));
     /* Third format: output format */
     formatstr = cv_string_get(cvec_i(argv, 2));
-    if ((format = format_str2int(formatstr)) < 0){
+    if ((int)(format = format_str2int(formatstr)) < 0){
 	clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
 	goto done;
     }

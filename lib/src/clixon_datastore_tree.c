@@ -388,7 +388,7 @@ xml2buf(FILE      *f,
 	goto done;
     }
     memcpy(buf0, hdr, sizeof(hdr));
-    if (fwrite(buf0, sizeof(char), len, f) < 0){
+    if (fwrite(buf0, sizeof(char), len, f) == 0){
 	clicon_err(OE_XML, errno, "fwrite");
 	goto done;
     }	
