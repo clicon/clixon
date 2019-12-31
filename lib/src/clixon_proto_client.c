@@ -631,7 +631,7 @@ clicon_rpc_get(clicon_handle   h,
 	    NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
     cprintf(cb, "><get");
     /* Clixon extension, content=all,config, or nonconfig */
-    if (content != -1)
+    if ((int)content != -1)
 	cprintf(cb, " content=\"%s\"", netconf_content_int2str(content));
     /* Clixon extension, depth=<level> */
     if (depth != -1)

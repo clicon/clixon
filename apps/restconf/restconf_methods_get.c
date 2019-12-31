@@ -125,7 +125,7 @@ api_data_get2(clicon_handle h,
     /* Check for content attribute */
     if ((attr = cvec_find_str(qvec, "content")) != NULL){
 	clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
-	if ((content = netconf_content_str2int(attr)) == -1){
+	if ((int)(content = netconf_content_str2int(attr)) == -1){
 	    if (netconf_bad_attribute_xml(&xerr, "application",
 					  "<bad-attribute>content</bad-attribute>", "Unrecognized value of content attribute") < 0)
 		goto done;

@@ -3180,7 +3180,7 @@ yang_apply(yang_stmt     *yn,
 
     for (i=0; i<yn->ys_len; i++){
 	ys = yn->ys_stmt[i];
-	if (keyword == -1 || keyword == ys->ys_keyword){
+	if ((int)keyword == -1 || keyword == ys->ys_keyword){
 	    if ((ret = fn(ys, arg)) < 0)
 		goto done;
 	    if (ret > 0){
@@ -3265,7 +3265,7 @@ schema_nodeid_vec(yang_stmt    *yn,
 	    ys = yn->ys_stmt[i];
 	    if (!yang_schemanode(ys))
 		continue;
-	    if (keyword != -1 && keyword != ys->ys_keyword)
+	    if ((int)keyword != -1 && keyword != ys->ys_keyword)
 		continue;
 	    /* some keys dont have arguments, match on key */
 	    if (ys->ys_keyword == Y_INPUT || ys->ys_keyword == Y_OUTPUT){

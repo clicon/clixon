@@ -193,7 +193,7 @@ restconf_content_type(FCGX_Request *r)
 
     if ((str = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp)) == NULL)
 	return -1;
-    if ((m = restconf_media_str2int(str)) == -1)
+    if ((int)(m = restconf_media_str2int(str)) == -1)
 	return -1;
     return m;
 }
