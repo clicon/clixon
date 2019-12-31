@@ -690,7 +690,7 @@ check_mandatory(cxobj     *xt,
 	if (yt->ys_keyword == Y_LIST &&
 	    yc->ys_keyword == Y_KEY &&
 	    yang_config(yt)){
-	    cvk = yt->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	    cvk = yang_cvec_get(yt); /* Use Y_LIST cache, see ys_populate_list() */
 	    cvi = NULL;
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 		keyname = cv_string_get(cvi);	    
@@ -774,7 +774,7 @@ check_list_key(cxobj     *xt,
 	if (yt->ys_keyword == Y_LIST &&
 	    yc->ys_keyword == Y_KEY &&
 	    yang_config(yt)){
-	    cvk = yt->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	    cvk = yang_cvec_get(yt); /* Use Y_LIST cache, see ys_populate_list() */
 	    cvi = NULL;
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 		keyname = cv_string_get(cvi);	    
@@ -1151,7 +1151,7 @@ xml_yang_validate_add(clicon_handle h,
 	    /* fall thru */
 	case Y_LEAF_LIST:
 	    /* validate value against ranges, etc */
-	    if ((cv = cv_dup(yt->ys_cv)) == NULL){
+	    if ((cv = cv_dup(yang_cv_get(yt))) == NULL){
 		clicon_err(OE_UNIX, errno, "cv_dup");
 		goto done;
 	    }
@@ -1481,7 +1481,7 @@ xml2cvec(cxobj      *xt,
 		cv_free(cv);
 	    }
 	}
-	else if ((ycv = ys->ys_cv) != NULL){
+	else if ((ycv = yang_cv_get(ys)) != NULL){
 	    if ((body = xml_body(xc)) != NULL){
 		if ((cv = cv_new(CGV_STRING)) == NULL){
 		    clicon_err(OE_PLUGIN, errno, "cv_new");
@@ -1819,7 +1819,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
 
     switch (yang_keyword_get(ys)){
     case Y_LIST:
-	cvk = ys->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
 	if (cvec_len(cvk))
 	    cprintf(cb, "=");
 	/* Iterate over individual keys  */
@@ -2244,8 +2244,7 @@ xml_default(cxobj *xt,
 	    y = ys->ys_stmt[i];
 	    if (y->ys_keyword != Y_LEAF)
 		continue;
-	    assert(y->ys_cv);
-	    if (!cv_flag(y->ys_cv, V_UNSET)){  /* Default value exists */
+	    if (!cv_flag(yang_cv_get(y), V_UNSET)){  /* Default value exists */
 		if (!xml_find(xt, y->ys_argument)){
 		    if ((xc = xml_new(y->ys_argument, NULL, y)) == NULL)
 			goto done;
@@ -2272,7 +2271,7 @@ xml_default(cxobj *xt,
 		    if ((xb = xml_new("body", xc, NULL)) == NULL)
 			goto done;
 		    xml_type_set(xb, CX_BODY);
-		    if ((str = cv2str_dup(y->ys_cv)) == NULL){
+		    if ((str = cv2str_dup(yang_cv_get(y))) == NULL){
 			clicon_err(OE_UNIX, errno, "cv2str_dup");
 			goto done;
 		    }
@@ -2599,7 +2598,7 @@ api_path2xpath_cvv(cvec       *api_path,
 		}
 		if ((valvec = clicon_strsep(val, ",", &nvalvec)) == NULL)
 		    goto done;
-		cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+		cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
 		cvi = NULL;
 		/* Iterate over individual yang keys  */
 		cprintf(xpath, "/");
@@ -2860,7 +2859,7 @@ api_path2xml_vec(char       **vec,
 	    goto done;
 	break;
     case Y_LIST:
-	cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
 	if (valvec){ /* loop, valvec may have been used before */
 	    free(valvec);
 	    valvec = NULL;
@@ -3173,7 +3172,7 @@ xml2api_path_1(cxobj *x,
 	    free(enc);
 	break;
     case Y_LIST:
-	cvk = y->ys_cvec; /* Use Y_LIST cache, see ys_populate_list() */
+	cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
 	if (cvec_len(cvk))
 	    cprintf(cb, "=");
 	/* Iterate over individual keys  */

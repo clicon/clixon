@@ -306,56 +306,76 @@ xpath_tree2cbuf(xpath_tree *xs,
     return retval;
 }
 
+static int
+xpath_tree_append(xpath_tree   *xt, 
+		  xpath_tree ***vec, 
+		  size_t       *len)
+{
+    int retval = -1;
+
+    if ((*vec = realloc(*vec, sizeof(xpath_tree *) * (*len+1))) == NULL){
+	clicon_err(OE_XML, errno, "realloc");
+	goto done;
+    }
+    (*vec)[(*len)++] = xt;
+    retval = 0;
+ done:
+    return retval;
+}
 
 /*! Check if two xpath-trees (parsed xpaths) ar equal
  *
  * @param[in]     xt1  XPath parse 1
  * @param[in]     xt2  XPath parse 2
- * @param[in,out] mv   Match vector consisting of <name,val> pairs
- * @retval        0    If equal
- * @retval       -1    If not equal
- * The function returns 0 if the two trees are equal, otherwise -1
- * But the "mv" parameter is a way to add pattern matching to some variables
- * On input, mv contains a vector of CLIgen string variables with names that may match string
- * fields s0 and s1 in an xpath_tree. If the names match the values of s0 or s1, the field is
- * considered equal and is stored as value in the CLIgen variable vector.
- * Example:
- * xt1: _x[_y='_z']
- * xt2: y[k='3']
- * match[in]:  {_x, _y, _z}
- * match[out]: {_x:y, _y:k, _z:3}
+ * @param[in,out] vec  XPath tree vector
+ * @param[in,out] len  Length of XML XPath vector
+ * @retval       -1    Error
+ * @retval        0    Not equal
+ * @retval        1    Equal
  */
 int
-xpath_tree_eq(xpath_tree *xt1,
-	      xpath_tree *xt2,
-	      cvec       *match)
+xpath_tree_eq(xpath_tree   *xt1, /* pattern */
+	      xpath_tree   *xt2,
+	      xpath_tree ***vec, 
+	      size_t       *len)
 {
-    int         retval = -1; /* not equal */
+    int         retval = -1; /* Error */
     xpath_tree *xc1;
     xpath_tree *xc2;
-    cg_var     *cv;
+    int         ret;
 
-    /* node itself */
-    if (xt1->xs_type != xt2->xs_type)
+    /* node type */
+    if (xt1->xs_type != xt2->xs_type
+#if 1 /* special case that they are expressions but of different types */
+	&& !((xt1->xs_type == XP_PRIME_NR || xt1->xs_type == XP_PRIME_STR) &&
+	     (xt2->xs_type == XP_PRIME_NR || xt2->xs_type == XP_PRIME_STR))
+#endif
+	){
+	fprintf(stderr, "%s type %s vs %s\n", __FUNCTION__,
+		xpath_tree_int2str(xt1->xs_type),
+		xpath_tree_int2str(xt2->xs_type));
 	goto neq;
-    if (xt1->xs_int != xt2->xs_int)
+    }
+    /* check match, if set, store and go directly to ok */
+    if (xt1->xs_match){
+	if (xpath_tree_append(xt2, vec, len) < 0)
+	    goto done;
+	goto eq;
+    }
+    if (xt1->xs_int != xt2->xs_int){
+	fprintf(stderr, "%s int\n", __FUNCTION__);
 	goto neq;
-    if (xt1->xs_double != xt2->xs_double)
+    }
+    if (xt1->xs_double != xt2->xs_double){
+	fprintf(stderr, "%s double\n", __FUNCTION__);
 	goto neq;
+    }
     if (clicon_strcmp(xt1->xs_s0, xt2->xs_s0)){
-	if (xt1->xs_s0 && xt2->xs_s0 &&
-	    (cv = cvec_find(match, xt1->xs_s0)) != NULL){
-	    cv_string_set(cv, xt2->xs_s0);
-	    goto ok;
-	}
+	fprintf(stderr, "%s s0\n", __FUNCTION__);
 	goto neq;
     }
     if (clicon_strcmp(xt1->xs_s1, xt2->xs_s1)){
-	if (xt1->xs_s1 && xt2->xs_s1 &&
-	    (cv = cvec_find(match, xt1->xs_s1)) != NULL){
-	    cv_string_set(cv, xt2->xs_s1);
-	    goto ok;
-	}
+	fprintf(stderr, "%s s1\n", __FUNCTION__);
 	goto neq;
     }
     xc1 = xt1->xs_c0;
@@ -363,9 +383,13 @@ xpath_tree_eq(xpath_tree *xt1,
     if (xc1 == NULL && xc2 == NULL)
 	;
     else{
-	if (xc1 == NULL || xc2 == NULL)
+	if (xc1 == NULL || xc2 == NULL){
+	    fprintf(stderr, "%s NULL\n", __FUNCTION__);
 	    goto neq;
-	if (xpath_tree_eq(xc1, xc2, match))
+	}
+	if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
+	    goto done;
+	if (ret == 0)
 	    goto neq;
     }
     xc1 = xt1->xs_c1;
@@ -373,17 +397,54 @@ xpath_tree_eq(xpath_tree *xt1,
     if (xc1 == NULL && xc2 == NULL)
 	;
     else{
-	if (xc1 == NULL || xc2 == NULL)
+	if (xc1 == NULL || xc2 == NULL){
+	    fprintf(stderr, "%s NULL\n", __FUNCTION__);
 	    goto neq;
-	if (xpath_tree_eq(xc1, xc2, match))
+	}
+	if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
+	    goto done;
+	if (ret == 0)
 	    goto neq;
     }
- ok:
-    retval = 0; /* equal */
- neq:
+ eq:
+    retval = 1; /* equal */
+ done:
     return retval;
+ neq:
+    retval = 0; /* not equal */
+    goto done;
 }
-    
+
+/*! Traverse through an xpath-tree using indexes
+ * @param[in]  xt  Start-tree
+ * @param[in]  i   List of indexes terminated by -1: 0 means c0, 1 means c1
+ * @retval     xc  End-tree
+ */
+xpath_tree *
+xpath_tree_traverse(xpath_tree *xt,
+		    ...)
+{
+    va_list     ap;
+    int         i;
+    xpath_tree *xs = xt;
+
+    va_start(ap, xt);
+    for (i = va_arg(ap, int); i >= 0; i = va_arg(ap, int)){
+	switch (i){
+	case 0:
+	    xs = xs->xs_c0;
+	    break;
+	case 1:
+	    xs = xs->xs_c1;
+	    break;
+	default:
+	    break;
+	}
+    }
+    va_end(ap);
+    return xs;
+}
+
 /*! Free a xpath_tree
  * @param[in]  xs  XPATH tree
  * @see xpath_parse  creates a xpath_tree

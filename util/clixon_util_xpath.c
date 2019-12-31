@@ -57,6 +57,9 @@ See https://www.w3.org/TR/xpath/
 /* clixon */
 #include "clixon/clixon.h"
 
+/* Command line options to be passed to getopt(3) */
+#define XPATH_OPTS "hD:f:p:i:n:cy:Y:x"
+
 static int
 usage(char *argv0)
 {
@@ -71,6 +74,7 @@ usage(char *argv0)
 	    "\t-c \t\tMap xpath to canonical form\n"
 	    "\t-y <filename> \tYang filename or dir (load all files)\n"
     	    "\t-Y <dir> \tYang dirs (can be several)\n"
+	    "\t-x \t\tXPath optimize\n"
 	    "and the following extra rules:\n"
 	    "\tif -f is not given, XML input is expected on stdin\n"
 	    "\tif -p is not given, <xpath> is expected as the first line on stdin\n"
@@ -141,7 +145,7 @@ main(int    argc,
 
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, "hD:f:p:i:n:cy:Y:")) != -1)
+    while ((c = getopt(argc, argv, XPATH_OPTS)) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv0);
@@ -192,6 +196,10 @@ main(int    argc,
 	case 'Y':
 	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
 		goto done;
+	    break;
+	case 'x': /* xpath optimize. Only if XPATH_LIST_OPTIMIZE is set */ 
+
+	    xpath_list_optimize_set(1);
 	    break;
 	default:
 	    usage(argv[0]);
@@ -315,10 +323,23 @@ main(int    argc,
     }
     else
 	x = x0;
+#ifdef XPATH_LIST_OPTIMIZE /* Experimental */
+    {
+	int hits = 0;
+	int j;
 
-    /* Parse XPATH (use nsc == NULL to indicate dont use) */
+	xpath_list_optimize_stats(&hits);
+	for (j=0;j<1;j++){
+	    if (xpath_vec_ctx(x, nsc, xpath, 0, &xc) < 0)
+		return -1;
+	}
+	xpath_list_optimize_stats(&hits);
+	fprintf(stderr, "hits after:%d\n", hits);
+    }
+#else
     if (xpath_vec_ctx(x, nsc, xpath, 0, &xc) < 0)
 	return -1;
+#endif
     /* Print results */
     cb = cbuf_new();
     ctx_print2(cb, xc);

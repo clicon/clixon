@@ -85,6 +85,7 @@
 #include <clixon/clixon_xml_map.h>
 #include <clixon/clixon_datastore.h>
 #include <clixon/clixon_xpath_ctx.h>
+#include <clixon/clixon_xpath_optimize.h>
 #include <clixon/clixon_xpath.h>
 #include <clixon/clixon_json.h>
 #include <clixon/clixon_nacm.h>

@@ -367,18 +367,19 @@ xml_sort(cxobj *x,
 }
 
 /*! Special case search for ordered-by user where linear sort is used
- * @param[in] xp     Parent XML node (go through its childre)
- * @param[in] x1     XML node to match
- * @param[in] yangi  Yang order number (according to spec)
- * @param[in] mid    Where to start from (may be in middle of interval)
- * @retval    NULL   Not found
- * @retval    x      XML element that matches x1
+ * @param[in]  xp    Parent XML node (go through its childre)
+ * @param[in]  x1    XML node to match
+ * @param[in]  yangi Yang order number (according to spec)
+ * @param[in]  mid   Where to start from (may be in middle of interval)
+ * @param[out] xretp XML return object, or NULL
+ * @retval     0     OK, see xretp
  */
-static cxobj *
+static int
 xml_search_userorder(cxobj        *xp,
 		     cxobj        *x1,
 		     int           yangi,
-		     int           mid)
+		     int           mid,
+		     cxobj       **xretp)
 {
     int        i;
     cxobj     *xc;
@@ -389,35 +390,44 @@ xml_search_userorder(cxobj        *xp,
 	yc = xml_spec(xc);
 	if (yangi!=yang_order(yc))
 	    break;
-	if (xml_cmp(xc, x1, 0) == 0)
-	    return xc;
+	if (xml_cmp(xc, x1, 0) == 0){
+	    *xretp = xc;
+	    goto done;
+	}
     }
     for (i=mid-1; i>=0; i--){ /* Then decrement */
 	xc = xml_child_i(xp, i);
 	yc = xml_spec(xc);
 	if (yangi!=yang_order(yc))
 	    break;
-	if (xml_cmp(xc, x1, 0) == 0)
-	    return xc;
+	if (xml_cmp(xc, x1, 0) == 0){
+	    *xretp = xc;
+	    goto done;
+	}
     }
-    return NULL; /* Not found */
+    *xretp = NULL;
+ done:
+    return 0;
 }
 
-/*!
- * @param[in] xp       Parent xml node. 
- * @param[in] x1       Find this object among xp:s children
- * @param[in] userorder If x1 is ordered by user
- * @param[in] yangi    Yang order
- * @param[in] low      Lower bound of childvec search interval 
- * @param[in] upper    Lower bound of childvec search interval 
+/*! Find XML child under xp matching x1 using binary search
+ * @param[in]  xp        Parent xml node. 
+ * @param[in]  x1        Find this object among xp:s children
+ * @param[in]  userorder If x1 is ordered by user
+ * @param[in]  yangi     Yang order
+ * @param[in]  low       Lower bound of childvec search interval 
+ * @param[in]  upper     Lower bound of childvec search interval 
+ * @param[out] xretp     XML return object, or NULL
+ * @retval     0         OK, see xretp
  */
-static cxobj *
+static int
 xml_search1(cxobj        *xp,
 	    cxobj        *x1,
 	    int           userorder,
 	    int           yangi,
 	    int           low, 
-	    int           upper)
+	    int           upper,
+	    cxobj       **xretp)
 {
     int        mid;
     int        cmp;
@@ -425,44 +435,52 @@ xml_search1(cxobj        *xp,
     yang_stmt *y;
 
     if (upper < low)
-	return NULL; /* not found */
+    	goto notfound;
     mid = (low + upper) / 2;
     if (mid >= xml_child_nr(xp))  /* beyond range */
-	return NULL;
+    	goto notfound;
     xc = xml_child_i(xp, mid);
     if ((y = xml_spec(xc)) == NULL)
-	return NULL;
+	goto notfound;
     cmp = yangi-yang_order(y);
     /* Here is right yang order == same yang? */
     if (cmp == 0){
 	cmp = xml_cmp(x1, xc, 0);
-	if (cmp && userorder) /* Ordered by user (if not equal) */
-	    return xml_search_userorder(xp, x1, yangi, mid);	    
+	if (cmp && userorder){ /* Ordered by user (if not equal) */
+	    xml_search_userorder(xp, x1, yangi, mid, xretp);	    
+	    goto done;
+	}
     }
     if (cmp == 0)
-	return xc;
+	*xretp = xc;
     else if (cmp < 0)
-	return xml_search1(xp, x1, userorder, yangi, low, mid-1);
+	xml_search1(xp, x1, userorder, yangi, low, mid-1, xretp);
     else 
-	return xml_search1(xp, x1, userorder, yangi, mid+1, upper);
-    return NULL;
+	xml_search1(xp, x1, userorder, yangi, mid+1, upper, xretp);
+ done:
+    return 0;
+ notfound:
+    *xretp = NULL;
+    goto done;
 }
 
 /*! Find XML child under xp matching x1 using binary search
- * @param[in] xp     Parent xml node. 
- * @param[in] x1     Find this object among xp:s children
- * @param[in] yc     Yang spec of x1
+ * @param[in]  xp    Parent xml node. 
+ * @param[in]  x1    Find this object among xp:s children
+ * @param[in]  yc    Yang spec of x1
+ * @param[out] xretp XML return object, or NULL
+ * @retval     0     OK, see xretp
  */
-static cxobj *
+static int
 xml_search(cxobj        *xp,
 	   cxobj        *x1,
-	   yang_stmt    *yc)
+	   yang_stmt    *yc,
+	   cxobj       **xretp)
 {
     cxobj     *xa;
     int        low = 0;
     int        upper = xml_child_nr(xp);
     int        userorder=0;
-    cxobj     *xret = NULL;
     int        yangi;
     
     /* Assume if there are any attributes, they are first in the list, mask
@@ -476,8 +494,7 @@ xml_search(cxobj        *xp,
     else if (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST)
 	userorder = (yang_find(yc, Y_ORDERED_BY, "user") != NULL);
     yangi = yang_order(yc);
-    xret = xml_search1(xp, x1, userorder, yangi, low, upper);
-    return xret;
+    return xml_search1(xp, x1, userorder, yangi, low, upper, xretp);
 }
 
 /*! Insert xn in xp:s sorted child list (special case of ordered-by user)
@@ -829,7 +846,7 @@ match_base_child(cxobj      *x0,
 	break;
     }
     /* Get match. */
-    x0c = xml_search(x0, x1c, yc);
+    xml_search(x0, x1c, yc, &x0c);
  ok:
     *x0cp = x0c;
     retval = 0;
@@ -837,53 +854,73 @@ match_base_child(cxobj      *x0,
 }
 	   
 /*! Experimental API for binary search
+ *
+ * Create a temporary search object: a list (xc) with a key (xk) and call the binary search.
  * @param[in]  xp      Parent xml node. 
- * @param[in]  name    Node name of child (list)
- * @param[in]  keyname Yang list key name
- * @param[in]  keyval  XML key value
+ * @param[in]  yc      Yang spec of list child
+ * @param[in]  cvk     List of keys and values as CLIgen vector
  * @param[out] xret    Found XML object, NULL if not founs
  * @retval     0       OK, see xret
+ * @code
+ *    cvec        *cvk = NULL; vector of index keys 
+ *    ... Populate cvk with key/values eg a:5 b:6
+ *    if (xml_binsearch(xp, yc, cvk, xp) < 0)
+ *       err;
+ * @endcode
  * @retval    -1       Error
- * Multiple keys?
  * Can extend to leaf-list?
  */
 int
-xml_binsearch(cxobj  *xp,
-	      char   *name,
-	      char   *keyname,
-	      char   *keyval,
-	      cxobj **xretp)
+xml_binsearch(cxobj     *xp,
+	      yang_stmt *yc,
+	      cvec      *cvk,
+	      cxobj    **xretp)
 {
     int        retval = -1;
     cxobj     *xc = NULL;
-    //    cxobj     *xa = NULL;
-    cxobj     *xret = NULL;
-    yang_stmt *yp;
-    yang_stmt *yc;
+    cxobj     *xk;
+    cg_var    *cvi = NULL;
+    cbuf      *cb = NULL;
+    yang_stmt *yk;
+    char      *name;
     
-    if ((yp = xml_spec(xp)) == NULL){
+    if (yc == NULL || xml_spec(xp) == NULL){
 	clicon_err(OE_YANG, ENOENT, "yang spec not found");
 	goto done;
     }
-    if ((yc = yang_find(yp, 0, name)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "yang not found");
+    name = yang_argument_get(yc);
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if (xml_parse_va(&xc, yc, "<%s><%s>%s</%s></%s>", name, keyname, keyval, keyname, name) < 0)
+    cprintf(cb, "<%s>", name);
+    cvi = NULL;
+    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+	cprintf(cb, "<%s>%s</%s>",
+		cv_name_get(cvi),
+		cv_string_get(cvi),
+		cv_name_get(cvi));
+    }
+    cprintf(cb, "</%s>", name);
+    if (xml_parse_string(cbuf_get(cb), yc, &xc) < 0)
 	goto done;
     if (xml_rootchild(xc, 0, &xc) < 0)
 	goto done;
-#if 0
-    if (xml_apply0(xc, CX_ELMNT, xml_spec_populate, ys_spec(yc)) < 0)
-	goto done;
-#else
     if (xml_spec_set(xc, yc) < 0)
 	goto done;
-#endif
-    xret = xml_search(xp, xc, yc);
-    *xretp = xret; /* XXX possibly use *xretp directly */
-    retval = 0;
+    xk = NULL;
+    while ((xk = xml_child_each(xc, xk, CX_ELMNT)) != NULL) {
+	if ((yk = yang_find(yc, Y_LEAF, xml_name(xk))) == NULL){
+	    clicon_err(OE_YANG, ENOENT, "yang spec of key %s not found", xml_name(xk));
+	    goto done; 
+	}
+	if (xml_spec_set(xk, yk) < 0) 
+	    goto done;
+    }
+    retval = xml_search(xp, xc, yc, xretp);
  done:
+    if (cb)
+	cbuf_free(cb);
     if (xc)
 	xml_free(xc);
     return retval;

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run valgrind leak test for cli, restconf, netconf or background.
 # Stop on first error
+# Typical run:  ./mem.sh 2>&1 | tee mylog
     
 # Pattern to run tests, default is all, but you may want to narrow it down
 : ${pattern:=test_*.sh}
@@ -66,6 +67,19 @@ memonce(){
     fi
 }
 
+# Print a line with ==== under
+println(){
+    str=$1
+    echo "$str"
+    length=$(echo "$str" | wc -c)
+    let i=1
+    while [ $i -lt $length ]; do
+	echo -n "="
+	let i++
+    done
+    echo
+}
+
 if [ -z "$*" ]; then
     cmds="backend restconf cli netconf"
 else
@@ -86,20 +100,7 @@ done
 testnr=0
 for c in $cmds; do
     if [ $testnr != 0 ]; then echo; fi
-    echo "Mem test $c begin"
-    length=$(echo "Mem test $c begin" | wc -c)
-    let i=1
-    while [ $i -lt $length ]; do
-	echo -n "="
-	let i++
-    done
-    echo
+    println "Mem test $c begin"
     memonce $c
-    echo "Mem test $c done"
-    let i=1
-    while [ $i -lt $length ]; do
-	echo -n "="
-	let i++
-    done
-    echo
+    println "Mem test $c done"
 done

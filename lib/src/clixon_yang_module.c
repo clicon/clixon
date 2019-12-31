@@ -320,7 +320,9 @@ yang_modules_state_get(clicon_handle    h,
 	/* Build a cb string: <modules-state>... */
 	if (yms_build(h, yspec, msid, brief, cb) < 0)
 	    goto done;
-	/* Parse cb, x is on the form: <top><modules-state>... */
+	/* Parse cb, x is on the form: <top><modules-state>... 
+	 * Note, list is not sorted since it is state (should not be)
+	 */
 	if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
 	    if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
 		goto done;

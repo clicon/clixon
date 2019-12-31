@@ -73,8 +73,8 @@ SRC     = clixon_sig.c clixon_uid.c clixon_log.c clixon_err.c clixon_event.c \
           clixon_yang_cardinality.c clixon_xml_changelog.c clixon_xml_nsctx.c \
 	  clixon_hash.c clixon_options.c clixon_data.c clixon_plugin.c \
 	  clixon_proto.c clixon_proto_client.c \
-	  clixon_xpath.c clixon_xpath_ctx.c clixon_xpath_eval.c clixon_sha1.c \
-	  clixon_datastore.c clixon_datastore_write.c clixon_datastore_read.c \
+	  clixon_xpath.c clixon_xpath_ctx.c clixon_xpath_eval.c clixon_xpath_optimize.c \
+	  clixon_sha1.c clixon_datastore.c clixon_datastore_write.c clixon_datastore_read.c \
 	  clixon_datastore_tree.c \
 	  clixon_netconf_lib.c clixon_stream.c clixon_nacm.c
 

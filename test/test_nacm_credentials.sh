@@ -177,7 +177,6 @@ OK='^<rpc-reply><data><x xmlns="urn:example:nacm">0</x></data></rpc-reply>$'
 ERROR='^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>'
 
 # UNIX socket, no user, loop mode. All fail since null user cant access anything
-if true; then
 new "Credentials: mode=none, fam=UNIX user=none"
 testrun none "" UNIX $dir/backend.sock "$OK" ""
 
@@ -186,10 +185,8 @@ testrun exact "" UNIX $dir/backend.sock "$OK" ""
 
 new "Credentials: mode=except, fam=UNIX user=none"
 testrun except "" UNIX $dir/backend.sock "$OK" ""
-fi
 
 # UNIX socket, myuser, loop mode. All should work
-if true; then
 new "Credentials: mode=none, fam=UNIX user=me"
 testrun none "$USER" UNIX $dir/backend.sock "$OK" ""
 
@@ -198,10 +195,8 @@ testrun exact "$USER" UNIX $dir/backend.sock "$OK" ""
 
 new "Credentials: mode=except, fam=UNIX user=me"
 testrun except "$USER" UNIX $dir/backend.sock "$OK" ""
-fi
 
 # UNIX socket, admin user. First should work
-if true; then
 new "Credentials: mode=none, fam=UNIX user=admin"
 testrun none admin UNIX $dir/backend.sock "$OK" ""
 
@@ -210,10 +205,8 @@ testrun exact admin UNIX $dir/backend.sock "$ERROR" ""
 
 new "Credentials: mode=except, fam=UNIX user=admin"
 testrun except admin UNIX $dir/backend.sock "$ERROR" ""
-fi
 
 # UNIX socket, admin user. sudo self to root. First and last should work
-if true; then
 new "Credentials: mode=none, fam=UNIX user=admin sudo"
 testrun none admin UNIX $dir/backend.sock "$OK" sudo
 
@@ -222,10 +215,8 @@ testrun exact admin UNIX $dir/backend.sock "$ERROR" sudo
 
 new "Credentials: mode=except, fam=UNIX user=admin sudo"
 testrun except admin UNIX $dir/backend.sock "$OK" sudo
-fi
 
 # IPv4 socket, admin user. First should work
-if true; then
 new "Credentials: mode=none, fam=UNIX user=admin sudo"
 testrun none $USER IPv4 127.0.0.1 "$OK" ""
 
@@ -234,6 +225,5 @@ testrun exact $USER IPv4 127.0.0.1 "$ERROR" ""
 
 new "Credentials: mode=except, fam=UNIX user=admin sudo"
 testrun except $USER IPv4 127.0.0.1 "$ERROR" ""
-fi
 
 rm -rf $dir

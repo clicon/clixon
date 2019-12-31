@@ -107,13 +107,14 @@ enum xp_type{
  */
 struct xpath_tree{
     enum xp_type       xs_type;
-    int                xs_int; /* step-> axis_type */
-    double             xs_double;
-    char              *xs_strnr; /* original string xs_double: numeric value */
-    char              *xs_s0;
-    char              *xs_s1;
-    struct xpath_tree *xs_c0; /* child 0 */
-    struct xpath_tree *xs_c1; /* child 1 */
+    int                xs_int;    /* step-> axis_type */
+    double             xs_double; /* set if XP_PRIME_NR */
+    char              *xs_strnr;  /* original string xs_double: numeric value */
+    char              *xs_s0;     /* set if XP_PRIME_STR, XP_PRIME_FN, XP_NODE[_FN] prefix*/
+    char              *xs_s1;     /* set if XP_NODE NAME */
+    struct xpath_tree *xs_c0;     /* child 0 */
+    struct xpath_tree *xs_c1;     /* child 1 */
+    int                xs_match; /* meta: match this node */
 };
 typedef struct xpath_tree xpath_tree;
 
@@ -125,7 +126,8 @@ char* xpath_tree_int2str(int nodetype);
 int   xpath_tree_print_cb(cbuf *cb, xpath_tree *xs);
 int   xpath_tree_print(FILE *f, xpath_tree *xs);
 int   xpath_tree2cbuf(xpath_tree *xs, cbuf *xpathcb);
-int   xpath_tree_eq(xpath_tree *xt1, xpath_tree *xt2, cvec *match);
+int   xpath_tree_eq(xpath_tree *xt1, xpath_tree *xt2, xpath_tree ***vec, size_t *len);
+xpath_tree *xpath_tree_traverse(xpath_tree *xt, ...);
 int   xpath_tree_free(xpath_tree *xs);
 int   xpath_parse(char *xpath, xpath_tree **xptree);
 int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, char *xpath, int localonly, xp_ctx  **xrp);

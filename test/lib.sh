@@ -78,7 +78,11 @@ testname=
 : ${RCLOG:=}
 
 # Wait after daemons (backend/restconf) start. See mem.sh for valgrind
-: ${RCWAIT:=2}
+if [ "$(arch)" = "armv7l" ]; then
+    : ${RCWAIT:=4}
+else
+    : ${RCWAIT:=2}
+fi
 
 # www user (on linux typically www-data, freebsd www)
 # could be taken from configure

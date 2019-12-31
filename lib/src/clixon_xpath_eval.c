@@ -85,6 +85,7 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
+#include "clixon_xpath_optimize.h"
 #include "clixon_xpath_eval.h"
 
 /* Mapping between XPATH operator string <--> int  */
@@ -277,107 +278,6 @@ nodetest_recursive(cxobj      *xn,
     return retval;
 }
 
-#ifdef XPATH_LIST_OPTIMIZE
-/*! Pattern matching to find fastpath
- *
- * @param[in]  xt  XPath tree
- * @param[in]  xv  XML base node
- * @param[out] xp  XML found node (retval == 1)
- * @param[out] key
- * @param[out] keyval
- * @retval     0        Match
- * @retval    -1        No match
-  XPath:
-    y[k=3] # corresponds to: <name>[<keyname>=<keyval>]
- */
-static int
-xpath_list_optimize(xpath_tree *xt,
-		    cxobj      *xv,
-		    cxobj     **xp)
-{
-    int         retval = -1;
-    xpath_tree *xmtop = NULL; /* pattern match tree top */
-    xpath_tree *xm = NULL;
-    cg_var     *cv0;
-    cg_var     *cv1;
-    cg_var     *cv2;
-    cvec       *match = NULL;
-    char       *name;
-    char       *keyname;
-    char       *keyval;
-    yang_stmt  *yp;
-    yang_stmt  *yc;
-    
-    /* Parse  */
-    if (xpath_parse("_x[_y='_z']", &xmtop) < 0) /* XXX: "y[k=3]" */
-	goto done;
-    /* Go down two steps */
-    if (xmtop && (xm = xmtop->xs_c0) && (xm = xm->xs_c0))
-	;
-    if (xm == NULL)
-	goto ok;
-    /* Create a cvec match vector and initialize variables */
-    if ((match = cvec_new(3)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
-    }
-    cv0 = cvec_i(match, 0);
-    cv_name_set(cv0, "_x");
-    cv_type_set(cv0, CGV_STRING);
-    cv1 = cvec_i(match, 1);
-    cv_name_set(cv1, "_y");
-    cv_type_set(cv1, CGV_STRING);
-    cv2 = cvec_i(match, 2);
-    cv_name_set(cv2, "_z");
-    cv_type_set(cv2, CGV_STRING);
-    
-    /* Check if equal */
-    if (xpath_tree_eq(xm, xt, match) != 0)
-	goto ok; /* no match */
-    /* Extract variables XXX strdups */
-    name = cv_string_get(cv0);
-    keyname = cv_string_get(cv1);
-    keyval = cv_string_get(cv2);
-    assert(name && keyname && keyval);
-    /* Check yang and that only a list with key as index is a special case can do bin search */
-    if ((yp = xml_spec(xv)) == NULL)
-	goto ok; 
-    if ((yc = yang_find(yp, 0, name)) == NULL)
-	goto ok; 
-    if (yang_keyword_get(yc) != Y_LIST)
-	goto ok; 
-#if 0
-    {
-	cvec       *cvv = NULL;
-	if ((cvv = yang_cvec_get(yc)) == NULL)
-	    goto ok;
-	if (cvec_len(cvv) != 1)
-	    goto ok;
-    }
-#else
-    {
-	int         ret;
-	if ((ret = yang_key_match(yc, keyname)) < 0)
-	    goto done;
-	if (ret != 1)
-	    goto ok;
-    }
-#endif
-    if (xml_binsearch(xv, name, keyname, keyval, xp) < 0)
-	goto done;
-    retval = 1; /* match */
- done:
-    if (match)
-	cvec_free(match);
-    if (xmtop)
-	xpath_tree_free(xmtop);
-    return retval;
- ok: /* no match, not special case */
-    retval = 0;
-    goto done;
-}
-#endif /* XPATH_LIST_OPTIMIZE */
-
 /*! Evaluate xpath step rule of an XML tree
  *
  * @param[in]  xc0  Incoming context
@@ -408,9 +308,7 @@ xp_eval_step(xp_ctx     *xc0,
     size_t      veclen = 0;
     xpath_tree *nodetest = xs->xs_c0;
     xp_ctx     *xc = NULL;
-#ifdef XPATH_LIST_OPTIMIZE
     int         ret;
-#endif
     
     /* Create new xc */
     if ((xc = ctx_dup(xc0)) == NULL)
@@ -441,29 +339,25 @@ xp_eval_step(xp_ctx     *xc0,
 	    else for (i=0; i<xc->xc_size; i++){ 
 		    xv = xc->xc_nodeset[i];
 		    x = NULL; 
-#ifdef XPATH_LIST_OPTIMIZE
-		    /* Identify XPATH special cases and if match, use binary search.
-		     * it returns: -1 fatal error, quit
-		     * 0: not special case, do normal processing
-		     * 1: special case, use x (found if != NULL)
-		     */
-		    if ((ret = xpath_list_optimize(xs, xv, &x)) < 0)
-			goto done; 
-		    if (ret == 1){
-			fprintf(stderr, "XPATH_LIST_OPTIMIZE\n");
-			if (x)
+		    if ((ret = xpath_optimize_check(xs, xv, &x)) < 0)
+			goto done;
+		    switch (ret){
+		    case 1: /* optimized */
+		    	if (x) /* keep only x */
 			    if (cxvec_append(x, &vec, &veclen) < 0)
 				goto done;
-		    }
-		    else
-#endif
-			while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
-			    /* xs->xs_c0 is nodetest */
-			    if (nodetest == NULL || nodetest_eval(x, nodetest, nsc, localonly) == 1){
-				if (cxvec_append(x, &vec, &veclen) < 0)
-				    goto done;
+			break;
+		    case 0: /* regular code */
+			if (ret == 0){ /* No optimization made */
+			    while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
+				/* xs->xs_c0 is nodetest */
+				if (nodetest == NULL || nodetest_eval(x, nodetest, nsc, localonly) == 1){
+				    if (cxvec_append(x, &vec, &veclen) < 0)
+					goto done;
+				}
 			    }
 			}
+		    } /* switch */
 		}
 	}
 	ctx_nodeset_replace(xc, vec, veclen);
@@ -1206,4 +1100,5 @@ xp_eval(xp_ctx     *xc,
 	ctx_free(xr0);
     return retval;
 } /* xp_eval */
+
 

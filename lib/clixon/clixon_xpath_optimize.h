@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -31,20 +31,16 @@
 
   ***** END LICENSE BLOCK *****
 
- * XML sort and earch functions when used with YANG
+ * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
+ * See XPATH_LIST_OPTIMIZE
  */
-#ifndef _CLIXON_XML_SORT_H
-#define _CLIXON_XML_SORT_H
+#ifndef _CLIXON_XPATH_OPTIMIZE_H
+#define _CLIXON_XPATH_OPTIMIZE_H
 
-/*
- * Prototypes
- */
-int xml_child_spec(cxobj *x, cxobj *xp, yang_stmt *yspec, yang_stmt **yp);
-int xml_cmp(cxobj *x1, cxobj *x2, int enm);
-int xml_sort(cxobj *x0, void *arg);
-int xml_insert(cxobj *xp, cxobj *xc, enum insert_type ins, char *key_val, cvec *nsckey);
-int xml_sort_verify(cxobj *x, void *arg);
-int match_base_child(cxobj *x0, cxobj *x1c, yang_stmt *yc, cxobj **x0cp);
-int xml_binsearch(cxobj *xp, yang_stmt *yc, cvec *cvk, cxobj **xretp);
 
-#endif /* _CLIXON_XML_SORT_H */
+int xpath_list_optimize_stats(int *hits);
+int xpath_list_optimize_set(int enable); 
+void xpath_optimize_exit(void);
+int xpath_optimize_check();
+
+#endif /* _CLIXON_XPATH_OPTIMIZE_H */
