@@ -63,7 +63,7 @@
 /* Define to 1 if you have the `sigvec' function. */
 #undef HAVE_SIGVEC
 
-/* Have getsockopt peercred */
+/* Have getsockopt SO_PEERCRED */
 #undef HAVE_SO_PEERCRED
 
 /* Define to 1 if you have the <stdint.h> header file. */

@@ -78,8 +78,8 @@ testname=
 : ${RCLOG:=}
 
 # Wait after daemons (backend/restconf) start. See mem.sh for valgrind
-if [ "$(arch)" = "armv7l" ]; then
-    : ${RCWAIT:=4}
+if [ "$(uname -m)" = "armv7l" ]; then
+    : ${RCWAIT:=8}
 else
     : ${RCWAIT:=2}
 fi

@@ -1355,8 +1355,8 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-debug          Build with debug symbols, default: no
-  --enable-optyangs       Include standard yang files in clixon install,
-                          default: no
+  --enable-optyangs       Include optional yang files for examples and testing
+                          in clixon install, default: no
   --enable-publish        Enable publish of notification streams using SSE and
                           curl
 
@@ -1369,7 +1369,7 @@ Optional Packages:
   --with-configfile=FILE  set default path to config file
   --with-libxml2          use gnome/libxml2 regex engine
   --with-yang-installdir=DIR  Install Clixon yang files here (default: ${prefix}/share/clixon)
-  --with-opt-yang-installdir=DIR  Install standard yang files here (default: ${prefix}/share/clixon)
+  --with-opt-yang-installdir=DIR  Install optional yang files here (default: ${prefix}/share/clixon)
 
 Some influential environment variables:
   CC          C compiler command
@@ -2174,7 +2174,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 CLIXON_VERSION_MAJOR="4"
 CLIXON_VERSION_MINOR="3"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 
 # Check CLIgen
 if test "$prefix" = "NONE"; then

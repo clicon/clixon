@@ -110,7 +110,7 @@ What to think about when doing a new release.
 * Run autoconf
 * Git stuff:
 ```
-  git tag -a <version"
+  git tag -a <version>
   git push origin <version>
 ```
 

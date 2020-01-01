@@ -98,9 +98,9 @@ done
 
 # Then actual run
 testnr=0
-for c in $cmds; do
+for cmd in $cmds; do
     if [ $testnr != 0 ]; then echo; fi
-    println "Mem test $c begin"
-    memonce $c
-    println "Mem test $c done"
+    println "Mem test $cmd begin"
+    memonce $cmd
+    println "Mem test $cmd done"
 done

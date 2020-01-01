@@ -1,24 +1,12 @@
 # Clixon Changelog
 
-## 4.3.0 (Expected: December 2019)
+## 4.3.0 (1 January 2020)
 
-### Minor changes
-* C-API: Added `xpath_first_localonly()` as an xpath function that skips prefix and namespace checks.
-* Added experimental code for optimizing XPath search using binary search.
-  * Enable with XPATH_LIST_OPTIMIZE in include/clixon_custom.h
-  * Optimizes xpaths on the form: `a[b=c]` on sorted, yangified config lists.
-* Removed most assert.h includes
-* Created two sub-files (clixon_validate.c and clixon_api_path.c) from large lib/src/clixon_xml_map.c source file.
-* Added "canonical" global namespace context: `nsctx_global`
-  * This is a normalized XML prefix:namespace pair vector computed from all loaded Yang modules. Useful when writing XML and XPATH expressions in callbacks.
-  * Get it with `clicon_nsctx_global_get(h)`
-* Added wildcard `*` as a mode to `CLICON_MODE` in clispec files
-  * If you set "CLICON_MODE="*";" in a clispec file it means that syntax will appear in all CLI spec modes.
-* State callbacks provided by user are validated. If they are invalid an internal error is returned, example, with error-tag: `operation-failed`and with error-message containing. `Internal error, state callback returned invalid XML`.
-* Fixed multi-namespace for augmented state which was not covered in 4.2.0.
+There were several issues with multiple namespaces with augmented yangs in 4.2 that have been fixed in 4.3. Some other highlights include: several issues with XPaths including "canonical namespace context" support, a reorganization of the YANG files shipped with the release, and a wildchar in the CLICON_MODE variable.
 
 ### API changes on existing features (you may need to change your code)
-* Yang files reorganized into three classes: clixon, mandatory, optional (previous "standard" split into mandatory and optional).
+* Yang files shipped with Clixon are reorganized into three classes: clixon, mandatory, optional, this is to enable users more flexibility in intergating with their own YANG files.
+  * Previously there was only  "standard" and "clixon", "standard" is now split into mandatory and optional.
   * Clixon and mandatory yang spec are always installed
   * Optional yang files are loaded only if configured with `--enable-optyangs` (flipped logic and changed from `disable-stdyangs`). NOTE: you must do this to run examples and tests.
   * Optional yang files can be installed in a separate dir with `--with-opt-yang-installdir=DIR` (renamed from `with-std-yang-installdir`)
@@ -29,6 +17,22 @@ xpath_first_nsc` are removed).
   * Added clicon_handle as parameter to all `clicon_connect_` functions to get better error message
   * Added nsc parameter to `xmldb_get()`
 * The multi-namespace augment state may rearrange the XML namespace attributes.
+
+### Minor changes
+* Added experimental code for optimizing XPath search using binary search.
+  * Enable with XPATH_LIST_OPTIMIZE in include/clixon_custom.h
+  * Optimizes xpaths on the form: `a[b=c]` on sorted, yangified config lists.
+* Added "canonical" global namespace context: `nsctx_global`
+  * This is a normalized XML prefix:namespace pair vector computed from all loaded Yang modules. Useful when writing XML and XPATH expressions in callbacks.
+  * Get it with `clicon_nsctx_global_get(h)`
+* Added wildcard `*` as a mode to `CLICON_MODE` in clispec files
+  * If you set "CLICON_MODE="*";" in a clispec file it means that syntax will appear in all CLI spec modes.
+* State callbacks provided by user are validated. If they are invalid an internal error is returned, example, with error-tag: `operation-failed`and with error-message containing. `Internal error, state callback returned invalid XML`.
+* C-code:
+  * Added `xpath_first_localonly()` as an xpath function that skips prefix and namespace checks.
+  * Removed most assert.h includes
+  * Created two sub-files (clixon_validate.c and clixon_api_path.c) from large lib/src/clixon_xml_map.c source file.
+* Fixed multi-namespace for augmented state which was not covered in 4.2.0.
 * Main example yang changed to incorporate augmented state, new revision is 2019-11-15.
 
 ### Corrected Bugs
@@ -39,7 +43,7 @@ xpath_first_nsc` are removed).
 * Mandatory variables can no longer be deleted.
 * [Add missing includes](https://github.com/clicon/clixon/pulls)
 	
-## 4.2.0 (October 27 2019)
+## 4.2.0 (27 October 2019)
 
 ### Summary
 
