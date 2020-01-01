@@ -59,7 +59,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include "clixon_err.h"
 #include "clixon_string.h"
 #include "clixon_queue.h"
@@ -74,6 +74,7 @@
 #include "clixon_xpath.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_validate.h"
 #include "clixon_xml_map.h"
 
 /*! Clixon configuration namespace

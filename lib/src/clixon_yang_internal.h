@@ -39,7 +39,6 @@
 #ifndef _CLIXON_YANG_INTERNAL_H_
 #define _CLIXON_YANG_INTERNAL_H_
 
-
 /*
  * Clixon-specific cligen variable (cv) flags
  * CLIgen flags defined are in the range 0x01 -0x0f
@@ -47,7 +46,6 @@
  * @see cv_flag
  */
 #define V_UNSET	  0x10	/* Used by XML code to denote a value is not default */
-
 
 #define YANG_FLAG_MARK 0x01  /* Marker for dynamic algorithms, eg expand */
 

@@ -82,7 +82,9 @@
 #include <clixon/clixon_options.h>
 #include <clixon/clixon_data.h>
 #include <clixon/clixon_regex.h>
+#include <clixon/clixon_api_path.h>
 #include <clixon/clixon_xml_map.h>
+#include <clixon/clixon_validate.h>
 #include <clixon/clixon_datastore.h>
 #include <clixon/clixon_xpath_ctx.h>
 #include <clixon/clixon_xpath_optimize.h>

@@ -4,10 +4,11 @@
 
 ### Minor changes
 * C-API: Added `xpath_first_localonly()` as an xpath function that skips prefix and namespace checks.
-* Added experimental code for optizing XPath search using binary search.
+* Added experimental code for optimizing XPath search using binary search.
   * Enable with XPATH_LIST_OPTIMIZE in include/clixon_custom.h
   * Optimizes xpaths on the form: `a[b=c]` on sorted, yangified config lists.
 * Removed most assert.h includes
+* Created two sub-files (clixon_validate.c and clixon_api_path.c) from large lib/src/clixon_xml_map.c source file.
 * Added "canonical" global namespace context: `nsctx_global`
   * This is a normalized XML prefix:namespace pair vector computed from all loaded Yang modules. Useful when writing XML and XPATH expressions in callbacks.
   * Get it with `clicon_nsctx_global_get(h)`

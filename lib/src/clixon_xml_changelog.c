@@ -69,6 +69,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
+#include "clixon_validate.h"
 #include "clixon_xml_changelog.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"

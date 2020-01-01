@@ -32,38 +32,33 @@
   ***** END LICENSE BLOCK *****
 
  *
- * Translation / mapping code between formats
+ * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
+ * BNF:
+ *  <api-path>       := <root> ("/" (<api-identifier> | <list-instance>))*
+ *  <root>           := <string>
+ *  <api-identifier> := [<module-name> ":"] <identifier>
+ *  <module-name>    := <identifier>
+ *  <list-instance>  := <api-identifier> "=" key-value *("," key-value)
+ *  <key-value>      := <string>
+ *  <string>         := <an unquoted string>
+ *  <identifier>     := (<ALPHA> | "_") (<ALPHA> | <DIGIT> | "_" | "-" | ".")
  */
 
-#ifndef _CLIXON_XML_MAP_H_
-#define _CLIXON_XML_MAP_H_
-
-/* declared in clixon_yang_internal */
-typedef enum yang_class yang_class;
+#ifndef _CLIXON_API_PATH_H_
+#define _CLIXON_API_PATH_H_
 
 /*
  * Prototypes
  */
-int isxmlns(cxobj *x);
-int xml2txt(FILE *f, cxobj *x, int level);
-int xml2cli(FILE *f, cxobj *x, char *prepend, enum genmodel_type gt);
-int xmlns_assign(cxobj *x);
-int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
-int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
-int xml_diff(yang_stmt *yspec, cxobj *x0, cxobj *x1, 	 
-	     cxobj ***first, size_t *firstlen, 
-	     cxobj ***second, size_t *secondlen, 
-	     cxobj ***changed_x0, cxobj ***changed_x1, size_t *changedlen);
-int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
-int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
-int xml_default(cxobj *x, void  *arg);
-int xml_sanity(cxobj *x, void  *arg);
-int xml_non_config_data(cxobj *xt, void *arg);
-int xml_spec_populate_rpc(clicon_handle h, cxobj *x, yang_stmt *yspec);
-int xml_spec_populate(cxobj *x, void *arg);
-int xml2xpath(cxobj *x, char **xpath);
-int check_namespaces(cxobj *x0, cxobj *x1, cxobj *x1p);
-int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
-int yang_enum_int_value(cxobj *node, int32_t *val);
+int xml_yang_root(cxobj *x, cxobj **xr);
+int yang2api_path_fmt(yang_stmt *ys, int inclkey, char **api_path_fmt);
+int api_path_fmt2api_path(char *api_path_fmt, cvec *cvv, char **api_path);
+int api_path_fmt2xpath(char *api_path_fmt, cvec *cvv, char **xpath);
+int api_path2xpath_cvv(cvec *api_path, int offset, yang_stmt *yspec, cbuf *xpath, cvec **nsc, cxobj **xerr);
+int api_path2xpath(char *api_path, yang_stmt *yspec, char **xpath, cvec **nsc);
+int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop, 
+		 yang_class nodeclass, int strict,
+		 cxobj **xpathp, yang_stmt **ypathp, cxobj **xerr);
+int xml2api_path_1(cxobj *x, cbuf *cb);
 
-#endif  /* _CLIXON_XML_MAP_H_ */
+#endif  /* _CLIXON_API_PATH_H_ */

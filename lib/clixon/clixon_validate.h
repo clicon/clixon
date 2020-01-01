@@ -32,38 +32,19 @@
   ***** END LICENSE BLOCK *****
 
  *
- * Translation / mapping code between formats
+ * XML code
  */
 
-#ifndef _CLIXON_XML_MAP_H_
-#define _CLIXON_XML_MAP_H_
-
-/* declared in clixon_yang_internal */
-typedef enum yang_class yang_class;
+#ifndef _CLIXON_VALIDATE_H_
+#define _CLIXON_VALIDATE_H_
 
 /*
  * Prototypes
  */
-int isxmlns(cxobj *x);
-int xml2txt(FILE *f, cxobj *x, int level);
-int xml2cli(FILE *f, cxobj *x, char *prepend, enum genmodel_type gt);
-int xmlns_assign(cxobj *x);
-int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
-int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
-int xml_diff(yang_stmt *yspec, cxobj *x0, cxobj *x1, 	 
-	     cxobj ***first, size_t *firstlen, 
-	     cxobj ***second, size_t *secondlen, 
-	     cxobj ***changed_x0, cxobj ***changed_x1, size_t *changedlen);
-int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
-int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
-int xml_default(cxobj *x, void  *arg);
-int xml_sanity(cxobj *x, void  *arg);
-int xml_non_config_data(cxobj *xt, void *arg);
-int xml_spec_populate_rpc(clicon_handle h, cxobj *x, yang_stmt *yspec);
-int xml_spec_populate(cxobj *x, void *arg);
-int xml2xpath(cxobj *x, char **xpath);
-int check_namespaces(cxobj *x0, cxobj *x1, cxobj *x1p);
-int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
-int yang_enum_int_value(cxobj *node, int32_t *val);
+int xml_yang_validate_rpc(clicon_handle h, cxobj *xrpc, cxobj **xret);
+int xml_yang_validate_add(clicon_handle h, cxobj *xt, cxobj **xret);
+int xml_yang_validate_list_key_only(clicon_handle h, cxobj *xt, cxobj **xret);
+int xml_yang_validate_all(clicon_handle h, cxobj *xt, cxobj **xret);
+int xml_yang_validate_all_top(clicon_handle h, cxobj *xt, cxobj **xret);
 
-#endif  /* _CLIXON_XML_MAP_H_ */
+#endif  /* _CLIXON_VALIDATE_H_ */
