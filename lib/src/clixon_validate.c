@@ -1064,6 +1064,7 @@ xml_yang_validate_all(clicon_handle h,
     cxobj     *x;
     char      *namespace = NULL;
     cbuf      *cb = NULL;
+    cvec      *nsc = NULL;
 
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
@@ -1124,7 +1125,9 @@ xml_yang_validate_all(clicon_handle h,
 	    if (yang_keyword_get(yc) != Y_MUST)
 		continue;
 	    xpath = yang_argument_get(yc); /* "must" has xpath argument */
-	    if ((nr = xpath_vec_bool(xt, NULL, "%s", xpath)) < 0)
+	    if (xml_nsctx_yang(yc, &nsc) < 0)
+		goto done;
+	    if ((nr = xpath_vec_bool(xt, nsc, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){
 		ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
@@ -1132,6 +1135,10 @@ xml_yang_validate_all(clicon_handle h,
 						 ye?yang_argument_get(ye):"must xpath validation failed") < 0)
 		    goto done;
 		goto fail;
+	    }
+	    if (nsc){
+		xml_nsctx_free(nsc);
+		nsc = NULL;
 	    }
 	}
 	/* "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
@@ -1165,6 +1172,8 @@ xml_yang_validate_all(clicon_handle h,
  ok:
     retval = 1;
  done:
+    if (nsc)
+	xml_nsctx_free(nsc);
     if (cb)
 	cbuf_free(cb);
     return retval;

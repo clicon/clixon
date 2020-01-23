@@ -1,5 +1,10 @@
 # Clixon Changelog
 
+## 4.3.1 (Expected: January 2020)
+
+### Corrected Bugs
+* Fixed: Yang `must` xpath statements containing prefixes stopped working due to namespace context updates
+
 ## 4.3.0 (1 January 2020)
 
 There were several issues with multiple namespaces with augmented yangs in 4.2 that have been fixed in 4.3. Some other highlights include: several issues with XPaths including "canonical namespace context" support, a reorganization of the YANG files shipped with the release, and a wildchar in the CLICON_MODE variable.
@@ -12,6 +17,7 @@ There were several issues with multiple namespaces with augmented yangs in 4.2 t
   * Optional yang files can be installed in a separate dir with `--with-opt-yang-installdir=DIR` (renamed from `with-std-yang-installdir`)
 * C-API
   * Changed `clicon_rpc_generate_error(msg, xerr)` to `clicon_rpc_generate_error(xerr, msg, arg)`
+    * If you pass NULL as arg it produces the same message as before.
   * Added namespace-context parameter `nsc` to `xpath_first` and `xpath_vec`, (`xpath_vec_nsc` and 
 xpath_first_nsc` are removed).
   * Added clicon_handle as parameter to all `clicon_connect_` functions to get better error message
