@@ -87,6 +87,7 @@
 
 /*! Validate xml node of type leafref, ensure the value is one of that path's reference
  * @param[in]  xt    XML leaf node of type leafref
+ * @param[in]  ys    Yang spec of leaf
  * @param[in]  ytype Yang type statement belonging to the XML node
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
@@ -103,11 +104,13 @@
  */
 static int
 validate_leafref(cxobj     *xt,
+		 yang_stmt *ys,
 		 yang_stmt *ytype,
 		 cxobj    **xret)
 {
     int          retval = -1;
     yang_stmt   *ypath;
+    yang_stmt   *yp;
     cxobj      **xvec = NULL;
     cxobj       *x;
     int          i;
@@ -115,6 +118,7 @@ validate_leafref(cxobj     *xt,
     char        *leafrefbody;
     char        *leafbody;
     cvec        *nsc = NULL;
+    char        *path;
     
     if ((leafrefbody = xml_body(xt)) == NULL)
 	goto ok;
@@ -123,10 +127,17 @@ validate_leafref(cxobj     *xt,
 	    goto done;
 	goto fail;
     }
-    /* XXX see comment above regarding typeref or not */
-    if (xml_nsctx_yang(ytype, &nsc) < 0)
-	goto done;
-    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, yang_argument_get(ypath)) < 0) 
+    /* See comment^: If path is defined in typedef or not */
+    if ((yp = yang_parent_get(ytype)) != NULL &&
+	yang_keyword_get(yp) == Y_TYPEDEF){
+	if (xml_nsctx_yang(ys, &nsc) < 0)
+	    goto done;
+    }
+    else
+	if (xml_nsctx_yang(ytype, &nsc) < 0)
+	    goto done;
+    path = yang_argument_get(ypath);
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, path) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	x = xvec[i];
@@ -1103,7 +1114,7 @@ xml_yang_validate_all(clicon_handle h,
 	    if (yang_type_get(ys, NULL, &yc, NULL, NULL, NULL, NULL, NULL) < 0)
 		goto done;
 	    if (strcmp(yang_argument_get(yc), "leafref") == 0){
-		if ((ret = validate_leafref(xt, yc, xret)) < 0)
+		if ((ret = validate_leafref(xt, ys, yc, xret)) < 0)
 		    goto done;
 		if (ret == 0)
 		    goto fail;

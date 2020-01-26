@@ -3,8 +3,10 @@
 ## 4.3.1 (Expected: January 2020)
 
 ### Corrected Bugs
+* Fixed: Leafref validation did not cover case of when the "path" statement is declared within a typedef, only if it was declared in the data part directly under leaf.
 * Fixed: Yang `must` xpath statements containing prefixes stopped working due to namespace context updates
-
+	
+	
 ## 4.3.0 (1 January 2020)
 
 There were several issues with multiple namespaces with augmented yangs in 4.2 that have been fixed in 4.3. Some other highlights include: several issues with XPaths including "canonical namespace context" support, a reorganization of the YANG files shipped with the release, and a wildchar in the CLICON_MODE variable.
