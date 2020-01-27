@@ -1104,7 +1104,8 @@ ys_cv_validate(clicon_handle h,
     /* Note restype can be NULL here for example with unresolved hardcoded uuid */
     if (restype && strcmp(restype, "union") == 0){ 
 	assert(cvtype == CGV_REST);
-	val = cv_string_get(cv);
+	if ((val = cv_string_get(cv)) == NULL)
+	    val = "";
 	if ((retval2 = ys_cv_validate_union(h, ys, reason, yrestype, origtype, val)) < 0)
 	    goto done;
 	retval = retval2; /* invalid (0) with latest reason or valid 1 */

@@ -116,6 +116,7 @@ clixon_plugin_statedata(clicon_handle    h,
     clixon_plugin  *cp = NULL;
     plgstatedata_t *fn;          /* Plugin statedata fn */
     cbuf           *cberr = NULL; 
+    int             i = 0;
     
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if ((fn = cp->cp_api.ca_statedata) == NULL)
@@ -124,14 +125,25 @@ clixon_plugin_statedata(clicon_handle    h,
 	    goto done;
 	if (fn(h, nsc, xpath, x) < 0)
 	    goto fail;  /* Dont quit here on user callbacks */
+	i++; /* indicates that new state data is added */
 	if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
 	    goto done;
+	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+	if (x){
+	    xml_free(x);
+	    x = NULL;
+	}
+    }
+    if (i){
 	/* Check XML from state callback by validating it. return internal 
 	 * error with error cause 
 	 */
-	if ((ret = xml_yang_validate_all_top(h, x, &xerr)) < 0) 
+	if ((ret = xml_yang_validate_all_top(h, *xret, &xerr)) < 0) 
 	    goto done;
-	if (ret > 0 && (ret = xml_yang_validate_add(h, x, &xerr)) < 0)
+	if (ret > 0 && (ret = xml_yang_validate_add(h, *xret, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    cxobj *xe;
@@ -164,14 +176,6 @@ clixon_plugin_statedata(clicon_handle    h,
 	    cbuf_free(ccc);
 	}
 #endif
-	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-	if (x){
-	    xml_free(x);
-	    x = NULL;
-	}
     }
     retval = 1;
  done:
