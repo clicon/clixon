@@ -64,3 +64,11 @@
  * binary search. This only works if "y" has proper yang binding and is sorted by system
  */
 #undef XPATH_LIST_OPTIMIZE
+
+/*! Validate user state callback content
+ * Use may register state callbacks using ca_statedata callback
+ * When this option is set, the XML returned from the callback is validated after merging with the running
+ * db. If it fails, an internal error is returned to the originating user.
+ * If the option is not set, the XML returned by the user is not validated.
+ */
+#define VALIDATE_STATE_XML

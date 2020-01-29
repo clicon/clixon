@@ -3,6 +3,7 @@
 ## 4.3.1 (Expected: January 2020)
 
 ### Corrected Bugs
+* Compile option `VALIDATE_STATE_XML` introduced in `include/custom.h` to control whether code for state data validation is compiled or not. 
 * Fixed: Validation of user state data led to wrong validation, if state relied on config data, eg leafref/must/when etc.
 * Fixed: No revision in yang module led to errors in validation of state data
 * Fixed: Leafref validation did not cover case of when the "path" statement is declared within a typedef, only if it was declared in the data part directly under leaf.

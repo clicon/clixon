@@ -252,6 +252,7 @@ client_get_streams(clicon_handle   h,
  * @param[in]     h       Clicon handle
  * @param[in]     xpath   Xpath selection, not used but may be to filter early
  * @param[in]     nsc     XML Namespace context for xpath
+ * @param[in]     content config/state or both
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval       -1       Error (fatal)
  * @retval        0       Statedata callback failed (clicon_err called)
@@ -261,6 +262,7 @@ static int
 client_statedata(clicon_handle h,
 		 char         *xpath,
 		 cvec         *nsc,
+		 netconf_content content,
 		 cxobj       **xret)
 {
     int        retval = -1;
@@ -271,6 +273,9 @@ client_statedata(clicon_handle h,
     yang_stmt *ymod;
     int        ret;
     char      *namespace;
+#ifdef VALIDATE_STATE_XML
+    cxobj     *xerr = NULL;
+#endif
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -320,6 +325,51 @@ client_statedata(clicon_handle h,
 	goto done;
     if (ret == 0)
 	goto fail;
+
+#ifdef VALIDATE_STATE_XML
+    /* Check XML from state callback by validating it. return internal 
+     * error with error cause 
+     * Only if config has been read, disable validation on state-only
+     */
+    if (content != CONTENT_NONCONFIG){
+	if ((ret = xml_yang_validate_all_top(h, *xret, &xerr)) < 0) 
+	    goto done;
+	if (ret > 0 && (ret = xml_yang_validate_add(h, *xret, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    cxobj *xe;
+	    cxobj *xb;
+	    
+#if 1
+	    if (debug){
+		cbuf *ccc=cbuf_new();
+		if (clicon_xml2cbuf(ccc, *xret, 0, 0, -1) < 0)
+		    goto done;
+		clicon_debug(1, "%s FAIL: %s", __FUNCTION__, cbuf_get(ccc));
+		cbuf_free(ccc);
+	    }
+#endif
+	    if ((xe = xpath_first(xerr, NULL, "//error-tag")) != NULL &&
+		(xb = xml_body_get(xe))){
+		if (xml_value_set(xb, "operation-failed") < 0)
+		    goto done;
+	    }
+	    if ((xe = xpath_first(xerr, NULL, "//error-message")) != NULL &&
+		(xb = xml_body_get(xe))){
+		if (xml_value_append(xb, " Internal error, state callback returned invalid XML") < 0)
+		    goto done;
+	    }
+	    if (*xret){
+		xml_free(*xret);
+		*xret = NULL;
+	    }
+	    *xret = xerr;
+	    xerr = NULL;
+	    goto fail;
+	}
+    }
+#endif /* VALIDATE_STATE_XML */
+
     /* Code complex to filter out anything that is outside of xpath 
      * Actually this is a safety catch, should really be done in plugins
      * and modules_state functions.
@@ -344,6 +394,10 @@ client_statedata(clicon_handle h,
     retval = 1; /* OK */
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
+#ifdef VALIDATE_STATE_XML
+    if (xerr)
+	xml_free(xerr);
+#endif
     if (xvec)
 	free(xvec);
     return retval;
@@ -955,7 +1009,7 @@ from_client_get(clicon_handle h,
     if (content != CONTENT_CONFIG){
 	/* Get state data from plugins as defined by plugin_statedata(), if any */
 	clicon_err_reset();
-	if ((ret = client_statedata(h, xpath, nsc, &xret)) < 0)
+	if ((ret = client_statedata(h, xpath, nsc, content, &xret)) < 0)
 	    goto done;
 	if (ret == 0){ /* Error from callback (error in xret) */
 	    if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
