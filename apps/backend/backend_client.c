@@ -1000,7 +1000,7 @@ from_client_get(clicon_handle h,
 	 * metrged with state data, so zero-copy cant be used
 	 * Also, must use external namespace context here due to <filter stmt
 	 */
-	if (xmldb_get0(h, "running", nsc, xpath, 1, &xret, NULL) < 0) {
+	if (xmldb_get0(h, "running", nsc, NULL, 1, &xret, NULL) < 0) {
 	    if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 		goto done;
 	    goto ok;
