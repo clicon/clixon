@@ -266,17 +266,11 @@ client_statedata(clicon_handle h,
 		 cxobj       **xret)
 {
     int        retval = -1;
-    cxobj    **xvec = NULL;
-    size_t     xlen;
-    int        i;
     yang_stmt *yspec;
     yang_stmt *ymod;
     int        ret;
     char      *namespace;
-#ifdef VALIDATE_STATE_XML
-    cxobj     *xerr = NULL;
-#endif
-
+    
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
@@ -325,81 +319,9 @@ client_statedata(clicon_handle h,
 	goto done;
     if (ret == 0)
 	goto fail;
-
-#ifdef VALIDATE_STATE_XML
-    /* Check XML from state callback by validating it. return internal 
-     * error with error cause 
-     * Only if config has been read, disable validation on state-only
-     */
-    if (content != CONTENT_NONCONFIG){
-	if ((ret = xml_yang_validate_all_top(h, *xret, &xerr)) < 0) 
-	    goto done;
-	if (ret > 0 && (ret = xml_yang_validate_add(h, *xret, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    cxobj *xe;
-	    cxobj *xb;
-	    
-#if 1
-	    if (debug){
-		cbuf *ccc=cbuf_new();
-		if (clicon_xml2cbuf(ccc, *xret, 0, 0, -1) < 0)
-		    goto done;
-		clicon_debug(1, "%s FAIL: %s", __FUNCTION__, cbuf_get(ccc));
-		cbuf_free(ccc);
-	    }
-#endif
-	    if ((xe = xpath_first(xerr, NULL, "//error-tag")) != NULL &&
-		(xb = xml_body_get(xe))){
-		if (xml_value_set(xb, "operation-failed") < 0)
-		    goto done;
-	    }
-	    if ((xe = xpath_first(xerr, NULL, "//error-message")) != NULL &&
-		(xb = xml_body_get(xe))){
-		if (xml_value_append(xb, " Internal error, state callback returned invalid XML") < 0)
-		    goto done;
-	    }
-	    if (*xret){
-		xml_free(*xret);
-		*xret = NULL;
-	    }
-	    *xret = xerr;
-	    xerr = NULL;
-	    goto fail;
-	}
-    }
-#endif /* VALIDATE_STATE_XML */
-
-    /* Code complex to filter out anything that is outside of xpath 
-     * Actually this is a safety catch, should really be done in plugins
-     * and modules_state functions.
-     */
-    if (xpath_vec(*xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	goto done;
-    /* If vectors are specified then mark the nodes found and
-     * then filter out everything else,
-     * otherwise return complete tree.
-     */
-    if (xvec != NULL){
-	for (i=0; i<xlen; i++)
-	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-    }
-    /* Remove everything that is not marked */
-    if (!xml_flag(*xret, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged_sub(*xret, XML_FLAG_MARK, 1, NULL) < 0)
-	    goto done;
-    /* reset flag */
-    if (xml_apply(*xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-	goto done;
     retval = 1; /* OK */
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
-#ifdef VALIDATE_STATE_XML
-    if (xerr)
-	xml_free(xerr);
-#endif
-    if (xvec)
-	free(xvec);
     return retval;
  fail:
     retval = 0;
@@ -408,73 +330,35 @@ client_statedata(clicon_handle h,
 
 /*! Retrieve all or part of a specified configuration.
  * 
- * @param[in]  h       Clicon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * Function reused from both from_client_get() and from_client_get_config
+ * @param[in]  yspec
+ * @param[in]  db
+ * @param[in]  xpath
+ * @param[in]  username
+ * @param[in]  content
+ * @param[in]  depth
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
- * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
  * @retval     0       OK
  * @retval    -1       Error
+ * @see from_client_get
  */
 static int
-from_client_get_config(clicon_handle h,
-		       cxobj        *xe,
-		       cbuf         *cbret,
-		       void         *arg,
-		       void         *regarg)
+client_config_only(clicon_handle h,
+		   cvec         *nsc,
+		   yang_stmt    *yspec,
+		   char         *db,
+		   char         *xpath,
+		   char         *username,
+		   int32_t       depth,
+		   cbuf         *cbret)
 {
     int     retval = -1;
-    char   *db;
-    cxobj  *xfilter;
-    char   *xpath = NULL;
     cxobj  *xret = NULL;
-    cbuf   *cbx = NULL; /* Assist cbuf */
     cxobj  *xnacm = NULL;
     cxobj **xvec = NULL;
     size_t  xlen;    
     int     ret;
-    char   *username;
-    cvec   *nsc = NULL; /* Create a netconf namespace context from filter */
-    yang_stmt *yspec;
-    
-    username = clicon_username_get(h);
-    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec9");
-	goto done;
-    }
-    if ((db = netconf_db_find(xe, "source")) == NULL){
-	clicon_err(OE_XML, 0, "db not found");
-	goto done;
-    }
-    if (xmldb_validate_db(db) < 0){
-	if ((cbx = cbuf_new()) == NULL){
-	    clicon_err(OE_XML, errno, "cbuf_new");
-	    goto done;
-	}	
-	cprintf(cbx, "No such database: %s", db);
-	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
-	    goto done;
-	goto ok;
-    }
-    if ((xfilter = xml_find(xe, "filter")) != NULL){
-	char *xpath0;
-	cvec *nsc1 = NULL;
 
-	if ((xpath0 = xml_find_value(xfilter, "select"))==NULL)
-	    xpath0="/";
-	/* Create namespace context for xpath from <filter>
-	 *  The set of namespace declarations are those in scope on the
-	 * <filter> element.
-	 */
-	else
-	    if (xml_nsctx_node(xfilter, &nsc) < 0)
-		goto done;
-	if (xpath2canonical(xpath0, nsc, yspec, &xpath, &nsc1) < 0)
-	    goto done;
-	if (nsc)
-	    xml_nsctx_free(nsc);
-	nsc = nsc1;
-    }
     /* Note xret can be pruned by nacm below (and change name),
      * so zero-copy cant be used
      * Also, must use external namespace context here due to <filter stmt
@@ -500,25 +384,114 @@ from_client_get_config(clicon_handle h,
     else{
 	if (xml_name_set(xret, "data") < 0)
 	    goto done;
-	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth) < 0)
 	    goto done;
     }
     cprintf(cbret, "</rpc-reply>");
  ok:
     retval = 0;
  done:
-    if (xpath)
-	free(xpath);
-    if (xnacm)
-	xml_free(xnacm);
     if (xvec)
 	free(xvec);
+    if (xnacm)
+	xml_free(xnacm);
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
+/*! Retrieve all or part of a specified configuration.
+ * 
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see from_client_get
+ */
+static int
+from_client_get_config(clicon_handle h,
+		       cxobj        *xe,
+		       cbuf         *cbret,
+		       void         *arg,
+		       void         *regarg)
+{
+    int        retval = -1;
+    char      *db;
+    cxobj     *xfilter;
+    char      *xpath = NULL;
+    cbuf      *cbx = NULL; /* Assist cbuf */
+    int        ret;
+    char      *username;
+    cvec      *nsc = NULL; /* Create a netconf namespace context from filter */
+    yang_stmt *yspec;
+    int32_t    depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
+    char      *attr;
+    char      *xpath0;
+    cvec      *nsc1 = NULL;
+    
+    username = clicon_username_get(h);
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec9");
+	goto done;
+    }
+    if ((db = netconf_db_find(xe, "source")) == NULL){
+	clicon_err(OE_XML, 0, "db not found");
+	goto done;
+    }
+    if (xmldb_validate_db(db) < 0){
+	if ((cbx = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}	
+	cprintf(cbx, "No such database: %s", db);
+	if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
+	    goto done;
+	goto ok;
+    }
+    if ((xfilter = xml_find(xe, "filter")) != NULL){
+	if ((xpath0 = xml_find_value(xfilter, "select"))==NULL)
+	    xpath0="/";
+	/* Create namespace context for xpath from <filter>
+	 *  The set of namespace declarations are those in scope on the
+	 * <filter> element.
+	 */
+	else
+	    if (xml_nsctx_node(xfilter, &nsc) < 0)
+		goto done;
+	if (xpath2canonical(xpath0, nsc, yspec, &xpath, &nsc1) < 0)
+	    goto done;
+	if (nsc)
+	    xml_nsctx_free(nsc);
+	nsc = nsc1;
+    }
+    /* Clixon extensions: depth */
+    if ((attr = xml_find_value(xe, "depth")) != NULL){
+	    char *reason = NULL;
+	if ((ret = parse_int32(attr, &depth, &reason)) < 0){
+	    clicon_err(OE_XML, errno, "parse_int32");
+	    goto done;
+	}
+	if (ret == 0){
+	    if (netconf_bad_attribute(cbret, "application",
+				      "<bad-attribute>depth</bad-attribute>", "Unrecognized value of depth attribute") < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+    if ((ret = client_config_only(h, nsc, yspec, db, xpath, username, -1, cbret)) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
+    if (xpath)
+	free(xpath);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (cbx)
 	cbuf_free(cbx);
-    if (xret)
-	xml_free(xret);
     return retval;
 }
 
@@ -547,7 +520,6 @@ from_client_edit_config(clicon_handle h,
     cxobj              *xc;
     cxobj              *x;
     enum operation_type operation = OP_MERGE;
-
     int                 non_config = 0;
     yang_stmt          *yspec;
     cbuf               *cbx = NULL; /* Assist cbuf */
@@ -953,6 +925,12 @@ from_client_get(clicon_handle h,
     netconf_content content = CONTENT_ALL;
     int32_t depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
     yang_stmt *yspec;
+    int        i;
+#ifdef VALIDATE_STATE_XML
+    cxobj     *xerr = NULL;
+    cxobj     *xr;
+    cxobj     *xb;
+#endif
     
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -977,10 +955,10 @@ from_client_get(clicon_handle h,
 	    xml_nsctx_free(nsc);
 	nsc = nsc1;
     }
-    /* Clixon extensions: depth and content */
+    /* Clixon extensions: content */
     if ((attr = xml_find_value(xe, "content")) != NULL)
 	content = netconf_content_str2int(attr);
-    
+    /* Clixon extensions: depth */
     if ((attr = xml_find_value(xe, "depth")) != NULL){
 	    char *reason = NULL;
 	if ((ret = parse_int32(attr, &depth, &reason)) < 0){
@@ -994,29 +972,105 @@ from_client_get(clicon_handle h,
 	    goto ok;
 	}
     }
-    if (content != CONTENT_NONCONFIG){
-	/* Get config 
-	 * Note xret can be pruned by nacm below and change name and
-	 * metrged with state data, so zero-copy cant be used
-	 * Also, must use external namespace context here due to <filter stmt
-	 */
-	if (xmldb_get0(h, "running", nsc, NULL, 1, &xret, NULL) < 0) {
-	    if (netconf_operation_failed(cbret, "application", "read registry")< 0)
-		goto done;
-	    goto ok;
-	}
-    }
-    if (content != CONTENT_CONFIG){
-	/* Get state data from plugins as defined by plugin_statedata(), if any */
-	clicon_err_reset();
-	if ((ret = client_statedata(h, xpath, nsc, content, &xret)) < 0)
+    if (content == CONTENT_CONFIG){ /* config only, no state */
+	if (client_config_only(h, nsc, yspec, "running", xpath, username, depth, cbret) < 0)
 	    goto done;
-	if (ret == 0){ /* Error from callback (error in xret) */
-	    if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
-		goto done;
-	    goto ok;
-	}
+	goto ok;
     }
+    /* If not only-state, then read running config 
+     * Note xret can be pruned by nacm below and change name and
+     * metrged with state data, so zero-copy cant be used
+     * Also, must use external namespace context here due to <filter stmt
+     */
+    if (xmldb_get0(h, "running", nsc, NULL, 1, &xret, NULL) < 0) {
+	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+	    goto done;
+	goto ok;
+    }
+
+    /* If not only config,
+     * get state data from plugins as defined by plugin_statedata(), if any 
+     */
+    clicon_err_reset();
+    if ((ret = client_statedata(h, xpath, nsc, content, &xret)) < 0)
+	goto done;
+    if (ret == 0){ /* Error from callback (error in xret) */
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	    goto done;
+	goto ok;
+    }
+#ifdef VALIDATE_STATE_XML
+    /* Check XML  by validating it. return internal error with error cause 
+     * Primarily intended for user-supplied state-data.
+     * The whole config tree must be present in case the state data references config data
+     */
+    if ((ret = xml_yang_validate_all_top(h, xret, &xerr)) < 0) 
+	goto done;
+    if (ret > 0 && (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
+	goto done;
+    if (ret == 0){
+#if 1
+	if (debug){
+	    cbuf *ccc=cbuf_new();
+	    if (clicon_xml2cbuf(ccc, xret, 0, 0, -1) < 0)
+		goto done;
+	    clicon_debug(1, "%s FAIL: %s", __FUNCTION__, cbuf_get(ccc));
+	    cbuf_free(ccc);
+	}
+#endif
+	if ((xr = xpath_first(xerr, NULL, "//error-tag")) != NULL &&
+	    (xb = xml_body_get(xr))){
+	    if (xml_value_set(xb, "operation-failed") < 0)
+		goto done;
+	}
+	if ((xr = xpath_first(xerr, NULL, "//error-message")) != NULL &&
+	    (xb = xml_body_get(xr))){
+	    if (xml_value_append(xb, " Internal error, state callback returned invalid XML") < 0)
+		goto done;
+	}
+	if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+	    goto done;
+	goto ok;
+    }
+#endif /* VALIDATE_STATE_XML */
+    if (content == CONTENT_NONCONFIG){ /* state only, all config should be removed now */
+	/* Keep state data only, remove everything that is not config. Note that state data
+	 * may be a sub-part in a config tree, we need to traverse to find all
+	 */
+	if (xml_apply(xret, CX_ELMNT, xml_non_config_data, NULL) < 0)
+	    goto done;
+	if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
+	    goto done;
+	if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	    goto done;
+    }
+    /* Code complex to filter out anything that is outside of xpath 
+     * Actually this is a safety catch, should really be done in plugins
+     * and modules_state functions.
+     */
+    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	goto done;
+    /* If vectors are specified then mark the nodes found and
+     * then filter out everything else,
+     * otherwise return complete tree.
+     */
+    if (xvec != NULL){
+	for (i=0; i<xlen; i++)
+	    xml_flag_set(xvec[i], XML_FLAG_MARK);
+    }
+    if (xvec){
+	free(xvec);
+	xvec = NULL;
+    }
+
+    /* Remove everything that is not marked */
+    if (!xml_flag(xret, XML_FLAG_MARK))
+	if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
+	    goto done;
+    /* reset flag */
+    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	goto done;
+
     /* Pre-NACM access step */
     if ((ret = nacm_access_pre(h, username, NACM_DATA, &xnacm)) < 0)
 	goto done;
@@ -1042,6 +1096,10 @@ from_client_get(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+#ifdef VALIDATE_STATE_XML
+    if (xerr)
+	xml_free(xerr);
+#endif
     if (xpath)
 	free(xpath);
     if (xnacm)
