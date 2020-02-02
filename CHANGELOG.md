@@ -1,6 +1,8 @@
 # Clixon Changelog
 
-## 4.3.1 (Expected: February 2020)
+## 4.3.1 (2 February 2020)
+
+Patch release based on testing by Dave Cornejo, Netgate
 
 ### Corrected Bugs
 * Compile option `VALIDATE_STATE_XML` introduced in `include/custom.h` to control whether code for state data validation is compiled or not. 
