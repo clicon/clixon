@@ -78,7 +78,6 @@
 
 #include "clixon_datastore.h"
 #include "clixon_datastore_read.h"
-#include "clixon_datastore_tree.h"
 
 #define handle(xh) (assert(text_handle_check(xh)==0),(struct text_handle *)(xh))
 
@@ -335,35 +334,29 @@ xmldb_readfile(clicon_handle      h,
 	goto done;
     }
     /* Parse file into internal XML tree from different formats */
-    if (strcmp(format, "tree")==0){
-	if (datastore_tree_read(h, dbfile, &x0) < 0)
+    if ((fd = open(dbfile, O_RDONLY)) < 0) {
+	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
+	goto done;
+    }    
+    if (strcmp(format, "json")==0){
+	if ((ret = json_parse_file(fd, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
 	    goto done;
     }
-    else{
-	if ((fd = open(dbfile, O_RDONLY)) < 0) {
-	    clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
-	    goto done;
-	}    
-	if (strcmp(format, "json")==0){
-	    if ((ret = json_parse_file(fd, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
-		goto done;
-	}
-	else if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
-	    goto done;
+    else if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
+	goto done;
 
-	/* Always assert a top-level called "config". 
-	   To ensure that, deal with two cases:
-	   1. File is empty <top/> -> rename top-level to "config" */
-	if (xml_child_nr(x0) == 0){ 
-	    if (xml_name_set(x0, "config") < 0)
-		goto done;     
-	}
-	/* 2. File is not empty <top><config>...</config></top> -> replace root */
-	else{ 
-	    /* There should only be one element and called config */
-	    if (singleconfigroot(x0, &x0) < 0)
-		goto done;
-	}
+    /* Always assert a top-level called "config". 
+       To ensure that, deal with two cases:
+       1. File is empty <top/> -> rename top-level to "config" */
+    if (xml_child_nr(x0) == 0){ 
+	if (xml_name_set(x0, "config") < 0)
+	    goto done;     
+    }
+    /* 2. File is not empty <top><config>...</config></top> -> replace root */
+    else{ 
+	/* There should only be one element and called config */
+	if (singleconfigroot(x0, &x0) < 0)
+	    goto done;
     }
     /* From Clixon 3.10,datastore files may contain module-state defining
      * which modules are used in the file. 

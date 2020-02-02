@@ -80,7 +80,6 @@
 #include "clixon_datastore.h"
 #include "clixon_datastore_write.h"
 #include "clixon_datastore_read.h"
-#include "clixon_datastore_tree.h"
 
 /*! Given an attribute name and its expected namespace, find its value
  * 
@@ -954,22 +953,16 @@ xmldb_put(clicon_handle       h,
 	clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
 	goto done;
     }
-   if (strcmp(format, "tree") == 0){
-       	if (datastore_tree_write(h, dbfile, x0) < 0)
+    if ((f = fopen(dbfile, "w")) == NULL){
+	clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
+	goto done;
+    } 
+    if (strcmp(format,"json")==0){
+	if (xml2json(f, x0, clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) < 0)
 	    goto done;
-   }
-   else{
-       if ((f = fopen(dbfile, "w")) == NULL){
-	   clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
-	   goto done;
-       } 
-       if (strcmp(format,"json")==0){
-	   if (xml2json(f, x0, clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) < 0)
-	       goto done;
-       }
-       else if (clicon_xml2file(f, x0, 0, clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) < 0)
-	   goto done;
-   }
+    }
+    else if (clicon_xml2file(f, x0, 0, clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) < 0)
+	goto done;
     /* Remove modules state after writing to file
      */
     if (xmodst && xml_purge(xmodst) < 0)

@@ -76,7 +76,7 @@ usage(char *argv0)
 		"\t-D\t\tDebug\n"
 		"\t-d <db>\t\tDatabase name. Default: running. Alt: candidate,startup\n"
 		"\t-b <dir>\tDatabase directory. Mandatory\n"
-	        "\t-f <fmt>\tDatabase format: xml, json, tree\n"
+	        "\t-f <fmt>\tDatabase format: xml or json\n"
 		"\t-x <xml>\tXML file. Alternative to put <xml> argument\n"
 		"\t-y <file>\tYang file. Mandatory\n"
 		"and command is either:\n"

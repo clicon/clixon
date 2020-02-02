@@ -264,7 +264,6 @@ for (( i=0; i<$nr; i++ )); do
 done
     
 new "instance-id direct under root single string key k1=a$rnd"
-echo ""
 expectpart "$($clixon_util_path -f $xml5 -y $ydir -p /a:x5[k1=\"a$rnd\"])" 0 "^0: <x5 xmlns=\"urn:example:a\"><k1>a$rnd</k1><z>foo$rnd</z></x5>$"
 
 # Depth and augment

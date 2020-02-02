@@ -105,10 +105,6 @@ module clixon-config {
 	    enum json{
 		description "Save and load xmldb as JSON";
 	    }
-	    enum tree{
-		description "Save and load xmldb as Clixon record-based tree
-                             file format (experimental)";
-	    }
 	}
     }
     typedef datastore_cache{

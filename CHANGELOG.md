@@ -21,6 +21,7 @@
   
 ### Minor changes
 
+* Obsoleted and removed XMLDB format "tree". This function did not work. Only xml and json allowed.
 * Test framework
   * Added `-- -S <file>` command-line to main example to be able to return any state to main example.
   * Added `test/cicd` test scripts for running on a set of other hosts
