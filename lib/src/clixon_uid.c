@@ -41,8 +41,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#define __USE_GNU /* For setresuid */
-#include <unistd.h>
+#define _GNU_SOURCE 
+#define __USE_GNU
+#include <unistd.h> /* For setresuid */
+#undef _GNU_SOURCE
 #undef __USE_GNU
 #include <stdarg.h>
 #include <signal.h>
@@ -165,6 +167,7 @@ drop_priv_temp(uid_t new_uid)
 {
     int retval = -1;
     
+    /* XXX: implicit declaration of function 'setresuid' on travis */
     if (setresuid(-1, new_uid, geteuid()) < 0){
 	clicon_err(OE_UNIX, errno, "setresuid");
 	goto done;

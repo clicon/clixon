@@ -216,9 +216,11 @@ distclean: clean
 .c.o: $(GENSRC)
 	rm -f $@ && $(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
 
+# Compute the length of the date command (and add some extra woith XXX)
+DATELEN != date +"%Y.%m.%d %H:%M by `whoami` on `hostname`XXXX"|wc -c
 .PHONY: build.c
 build.c:	
-	date +"const char CLIXON_BUILDSTR[64]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; > build.c;
+	date +"const char CLIXON_BUILDSTR[$(DATELEN)]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; > build.c;
 	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> build.c;
 
 $(MYLIB) : $(GENOBJS) $(OBJS) 

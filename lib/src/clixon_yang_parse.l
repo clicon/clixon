@@ -249,9 +249,6 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <DQESC>[nt"\\]            { BEGIN(_YY->yy_lex_state); 
                              clixon_yang_parselval.string = strdup(yytext); 
                              return CHARS; }
-<DQESC>[nt"\\]            { BEGIN(_YY->yy_lex_state); 
-                             clixon_yang_parselval.string = strdup(yytext); 
-                             return CHARS; }
 <DQESC>[^nt"\\]           { char *str = malloc(3);
                             /* This is for Yang 1.0 double-quoted strings */
                             BEGIN(_YY->yy_lex_state); 

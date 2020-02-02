@@ -228,7 +228,7 @@ keyval_set(char *name,
 {
     cg_var *cv = NULL;
 
-    clicon_debug(1, "%s(%s=%s)", __FUNCTION__, name, val);
+    clicon_debug(1, "%s(%s=%s)", __FUNCTION__, name?name:"NULL", val);
     if ((cv = cv_new(CGV_STRING)) == NULL){
 	clicon_err(OE_UNIX, errno, "cv_new");
 	goto done;
