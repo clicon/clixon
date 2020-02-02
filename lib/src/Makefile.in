@@ -1,7 +1,8 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+#  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+#  Copyright (C) 2017-2020 Olof Hagsand
 #
 # This file is part of CLIXON
 #
@@ -68,10 +69,10 @@ INCLUDES = -I. @INCLUDES@ -I$(top_srcdir)/lib/clixon -I$(top_srcdir)/include -I$
 
 SRC     = clixon_sig.c clixon_uid.c clixon_log.c clixon_err.c clixon_event.c \
 	  clixon_string.c clixon_regex.c clixon_handle.c clixon_file.c \
-	  clixon_xml.c clixon_xml_sort.c clixon_xml_map.c \
-	  clixon_json.c clixon_yang.c clixon_yang_type.c clixon_yang_module.c \
+	  clixon_xml.c clixon_xml_sort.c clixon_xml_map.c clixon_json.c \
+	  clixon_yang.c clixon_yang_type.c clixon_yang_module.c clixon_yang_parse_lib.c \
           clixon_yang_cardinality.c clixon_xml_changelog.c clixon_xml_nsctx.c \
-	  clixon_api_path.c clixon_validate.c \
+	  clixon_path.c clixon_validate.c \
 	  clixon_hash.c clixon_options.c clixon_data.c clixon_plugin.c \
 	  clixon_proto.c clixon_proto_client.c \
 	  clixon_xpath.c clixon_xpath_ctx.c clixon_xpath_eval.c clixon_xpath_optimize.c \
@@ -82,7 +83,9 @@ SRC     = clixon_sig.c clixon_uid.c clixon_log.c clixon_err.c clixon_event.c \
 YACCOBJS := lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
 	    lex.clixon_yang_parse.o  clixon_yang_parse.tab.o \
 	    lex.clixon_json_parse.o  clixon_json_parse.tab.o \
-            lex.clixon_xpath_parse.o clixon_xpath_parse.tab.o 
+            lex.clixon_xpath_parse.o clixon_xpath_parse.tab.o \
+            lex.clixon_api_path_parse.o clixon_api_path_parse.tab.o \
+            lex.clixon_instance_id_parse.o clixon_instance_id_parse.tab.o 
 
 # Generated src 
 GENSRC  = build.c 
@@ -105,10 +108,14 @@ clean:
 	rm -f clixon_yang_parse.tab.[ch] clixon_yang_parse.[co]
 	rm -f clixon_json_parse.tab.[ch] clixon_json_parse.[co]
 	rm -f clixon_xpath_parse.tab.[ch] clixon_xpath_parse.[co]
+	rm -f clixon_api_path_parse.tab.[ch] clixon_api_path_parse.[co]
+	rm -f clixon_instance_id_parse.tab.[ch] clixon_instance_id_parse.[co]
 	rm -f lex.clixon_xml_parse.c
 	rm -f lex.clixon_yang_parse.c
 	rm -f lex.clixon_json_parse.c
 	rm -f lex.clixon_xpath_parse.c
+	rm -f lex.clixon_api_path_parse.c
+	rm -f lex.clixon_instance_id_parse.c
 
 #############################################################################
 # Implicit rules for lex and yacc.
@@ -172,6 +179,32 @@ clixon_xpath_parse.tab.h: clixon_xpath_parse.y
 clixon_xpath_parse.tab.c:	clixon_xpath_parse.tab.h
 
 lex.clixon_xpath_parse.o : lex.clixon_xpath_parse.c clixon_xpath_parse.tab.h
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
+
+# api-path parser
+lex.clixon_api_path_parse.c : clixon_api_path_parse.l clixon_api_path_parse.tab.h
+	$(LEX) -Pclixon_api_path_parse clixon_api_path_parse.l # -d is debug
+
+clixon_api_path_parse.tab.h: clixon_api_path_parse.y
+	$(YACC) -l -d -b clixon_api_path_parse -p clixon_api_path_parse clixon_api_path_parse.y # -t is debug
+
+# extra rule to avoid parallell yaccs
+clixon_api_path_parse.tab.c:	clixon_api_path_parse.tab.h
+
+lex.clixon_api_path_parse.o : lex.clixon_api_path_parse.c clixon_api_path_parse.tab.h
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
+
+# instance-identifier parser
+lex.clixon_instance_id_parse.c : clixon_instance_id_parse.l clixon_instance_id_parse.tab.h
+	$(LEX) -Pclixon_instance_id_parse clixon_instance_id_parse.l # -d is debug
+
+clixon_instance_id_parse.tab.h: clixon_instance_id_parse.y
+	$(YACC) -l -d -b clixon_instance_id_parse -p clixon_instance_id_parse clixon_instance_id_parse.y # -t is debug
+
+# extra rule to avoid parallell yaccs
+clixon_instance_id_parse.tab.c:	clixon_instance_id_parse.tab.h
+
+lex.clixon_instance_id_parse.o : lex.clixon_instance_id_parse.c clixon_instance_id_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
 
 distclean: clean

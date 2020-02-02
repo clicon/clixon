@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -66,6 +67,7 @@
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_yang_module.h"
+#include "clixon_yang_parse_lib.h"
 #include "clixon_netconf_lib.h"
 
 /*! Create Netconf in-use error XML tree according to RFC 6241 Appendix A

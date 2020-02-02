@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -124,7 +124,7 @@
 
 #include "clixon_xpath_parse.h"
 
-extern int clixon_xpath_parseget_lineno  (void);
+extern int clixon_xpath_parseget_lineno  (void); /*XXX obsolete ? */
 
 /* 
    also called from yacc generated code *

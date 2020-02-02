@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -88,6 +89,7 @@ static struct errvec EV[] = {
     {"Daemon error",           OE_DAEMON},
     {"Event error",            OE_EVENTS},
     {"Config error",           OE_CFG},
+    {"Netconf error",          OE_NETCONF},
     {"Protocol error",         OE_PROTO},
     {"Regexp error",           OE_REGEX},
     {"UNIX error",             OE_UNIX},

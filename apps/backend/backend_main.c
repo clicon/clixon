@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -125,6 +126,7 @@ backend_terminate(clicon_handle h)
     rpc_callback_delete_all(h);
     /* Delete all backend plugin upgrade callbacks */
     upgrade_callback_delete_all(h); 
+    xpath_optimize_exit();
 
     if (pidfile)
 	unlink(pidfile);   
@@ -463,6 +465,7 @@ main(int    argc,
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
 	return -1;
+    
     foreground = 0;
     once = 0;
     zap = 0;

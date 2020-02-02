@@ -1,7 +1,9 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2017-2019 Olof Hagsand
+# Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 #
 # This file is part of CLIXON
 #
@@ -43,9 +45,9 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="4"
-CLIXON_VERSION_MINOR="3"
+CLIXON_VERSION_MINOR="4"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Check CLIgen
 if test "$prefix" = "NONE"; then
@@ -283,6 +285,7 @@ AC_OUTPUT(Makefile
     	  yang/mandatory/Makefile
   	  yang/optional/Makefile
 	  doc/Makefile
-	  test/Makefile	
+	  test/Makefile
+	  test/cicd/Makefile	
 )
 

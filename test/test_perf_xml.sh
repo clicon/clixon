@@ -26,3 +26,7 @@ expecteof_file "time $clixon_util_xml" 0 "$fxml"
 
 rm -rf $dir
 
+# unset conditional parameters 
+unset clixon_util_xml
+unset perfnr
+

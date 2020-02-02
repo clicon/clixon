@@ -227,3 +227,6 @@ new "Credentials: mode=except, fam=UNIX user=admin sudo"
 testrun except $USER IPv4 127.0.0.1 "$ERROR" ""
 
 rm -rf $dir
+
+# unset conditional parameters 
+unset clixon_util_socket

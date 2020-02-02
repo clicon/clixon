@@ -1,4 +1,6 @@
-Copyright 2009-2019 Olof Hagsand and Benny Holmgren
+Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+Copyright (C) 2017-2020 Olof Hagsand
+
 
 CLIXON is dual license. 
 

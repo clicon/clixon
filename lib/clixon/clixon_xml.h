@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -151,7 +152,6 @@ int       xml_spec_set(cxobj *x, yang_stmt *spec);
 cg_var   *xml_cv(cxobj *x);
 int       xml_cv_set(cxobj *x, cg_var *cv);
 cxobj    *xml_find(cxobj *xn_parent, char *name);
-
 int       xml_addsub(cxobj *xp, cxobj *xc);
 cxobj    *xml_wrap_all(cxobj *xp, char *tag);
 cxobj    *xml_wrap(cxobj *xc, char *tag);
@@ -193,6 +193,7 @@ cxobj    *xml_dup(cxobj *x0);
 
 int       cxvec_dup(cxobj **vec0, size_t len0, cxobj ***vec1, size_t *len1);
 int       cxvec_append(cxobj *x, cxobj ***vec, size_t  *len);
+int       cxvec_prepend(cxobj *x, cxobj ***vec, size_t  *len);
 int       xml_apply(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg);
 int       xml_apply0(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg);
 int       xml_apply_ancestor(cxobj *xn, xml_applyfn_t fn, void *arg);

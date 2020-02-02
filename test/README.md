@@ -17,6 +17,8 @@ In the CI process, the system is built and configured and then the
 [clixon test container](../docker/system) is built and the tests in
 this directory is executed.
 
+There are also [manual cicd scripts here](cicd/README.md)
+
 ## Getting started
 
 You need to build and install the clixon utility programs before running the tests as some of the tests rely on them:

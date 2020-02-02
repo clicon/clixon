@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -72,7 +73,6 @@
 #include "clixon_err.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_sort.h"
-#include "clixon_yang_internal.h" /* internal */
 #include "clixon_yang_type.h"
 #include "clixon_xml_map.h"
 
@@ -296,7 +296,7 @@ xml2cvec(cxobj      *xt,
 	name = xml_name(xc);
 	if ((ys = yang_find_datanode(yt, name)) == NULL){
 	    clicon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
-			 __FUNCTION__, name, yt->ys_argument);
+			 __FUNCTION__, name, yang_argument_get(yt));
 	    if ((body = xml_body(xc)) != NULL){
 		if ((cv = cv_new(CGV_STRING)) == NULL){
 		    clicon_err(OE_PLUGIN, errno, "cv_new");
@@ -476,7 +476,7 @@ xml_diff1(yang_stmt *ys,
 	    continue;
 	}
 	/* Both x0c and x1c exists, check if they are equal. */
-	eq = xml_cmp(x0c, x1c, 0);
+	eq = xml_cmp(x0c, x1c, 0, 0);
 	if (eq < 0){
 	    if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
 		goto done;
@@ -502,7 +502,7 @@ xml_diff1(yang_stmt *ys,
 		if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
 		    goto done;
 	    }
-	    else if (yc->ys_keyword == Y_LEAF){
+	    else if (yang_keyword_get(yc) == Y_LEAF){
 		/* if x0c and x1c are leafs w bodies, then they are changed */
 		if ((b1 = xml_body(x0c)) == NULL) /* empty type */
 		    break;
@@ -761,7 +761,7 @@ xml_default(cxobj *xt,
     int        retval = -1;
     yang_stmt *ys;
     yang_stmt *y;
-    int        i;
+    //    int        i; // XXX
     cxobj     *xc;
     cxobj     *xb;
     char      *str;
@@ -775,15 +775,15 @@ xml_default(cxobj *xt,
 	goto done;
     }
     /* Check leaf defaults */
-    if (ys->ys_keyword == Y_CONTAINER || ys->ys_keyword == Y_LIST ||
-	ys->ys_keyword == Y_INPUT){
-	for (i=0; i<ys->ys_len; i++){
-	    y = ys->ys_stmt[i];
-	    if (y->ys_keyword != Y_LEAF)
+    if (yang_keyword_get(ys) == Y_CONTAINER || yang_keyword_get(ys) == Y_LIST ||
+	yang_keyword_get(ys) == Y_INPUT){
+	y = NULL;
+	while ((y = yn_each(ys, y)) != NULL) {
+	    if (yang_keyword_get(y) != Y_LEAF)
 		continue;
 	    if (!cv_flag(yang_cv_get(y), V_UNSET)){  /* Default value exists */
-		if (!xml_find(xt, y->ys_argument)){
-		    if ((xc = xml_new(y->ys_argument, NULL, y)) == NULL)
+		if (!xml_find(xt, yang_argument_get(y))){
+		    if ((xc = xml_new(yang_argument_get(y), NULL, y)) == NULL)
 			goto done;
 		    /* assign right prefix */
 		    if ((namespace = yang_find_mynamespace(y)) != NULL){
@@ -843,9 +843,9 @@ xml_sanity(cxobj *xt,
 	goto done;
     }
     name = xml_name(xt);
-    if (strstr(ys->ys_argument, name)==NULL){
+    if (strstr(yang_argument_get(ys), name)==NULL){
 	clicon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'", 
-		   name, ys->ys_argument);
+		   name, yang_argument_get(ys));
 	goto done;
     }
     retval = 0;
@@ -1126,7 +1126,7 @@ xmlns_assign(cxobj *x)
     }
     /* 1. Check which namespace x should have (via yang). This is correct namespace. */
     if ((ns_correct = yang_find_mynamespace(y)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "yang node %s does not have namespace", y->ys_argument);
+	clicon_err(OE_YANG, ENOENT, "yang node %s does not have namespace", yang_argument_get(y));
 	goto done;
     }
     /* 2. Check which namespace x has via its XML tree */
@@ -1293,7 +1293,7 @@ xml_merge1(cxobj              *x0,  /* the target */
     assert(y0);
 
     x1name = xml_name(x1);
-    if (y0->ys_keyword == Y_LEAF_LIST || y0->ys_keyword == Y_LEAF){
+    if (yang_keyword_get(y0) == Y_LEAF_LIST || yang_keyword_get(y0) == Y_LEAF){
 	x1bstr = xml_body(x1);
 	if (x0==NULL){
 	    if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
@@ -1479,7 +1479,7 @@ yang_enum_int_value(cxobj   *node,
     if (yang_type_resolve(ys, ys, ytype, &yrestype, 
 			  NULL, NULL, NULL, NULL, NULL) < 0)
 	goto done;
-    if (yrestype==NULL || strcmp(yrestype->ys_argument, "enumeration"))
+    if (yrestype==NULL || strcmp(yang_argument_get(yrestype), "enumeration"))
 	goto done;
     if ((yenum = yang_find(yrestype, Y_ENUM, xml_body(node))) == NULL)
 	goto done;
@@ -1487,7 +1487,7 @@ yang_enum_int_value(cxobj   *node,
     if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
 	goto done;
     /* reason is string containing why int could not be parsed */
-    if (parse_int32(yval->ys_argument, val, &reason) < 0)
+    if (parse_int32(yang_argument_get(yval), val, &reason) < 0)
 	goto done;
     retval = 0;
 done:

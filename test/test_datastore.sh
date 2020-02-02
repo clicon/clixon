@@ -161,7 +161,8 @@ diff $mydir/kalle_db $mydir/candidate_db
 new "datastore lock"
 expectfn "$clixon_util_datastore $conf lock 756" 0 ""
 
-#leaf-list
+# unset conditional parameters 
+unset clixon_util_datastore
 
 rm -rf $mydir
 

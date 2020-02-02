@@ -27,7 +27,6 @@ cat <<EOF > $cfg
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PLUGIN>/usr/local/lib/xmldb/text.so</CLICON_XMLDB_PLUGIN>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
@@ -197,3 +196,6 @@ new "nacm enabled, exec default permit, write permit (expect fail)"
 testrun true deny permit permit 2 0 2
 
 rm -rf $dir
+
+# unset conditional parameters 
+unset format

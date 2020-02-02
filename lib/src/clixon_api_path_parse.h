@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -31,34 +31,38 @@
 
   ***** END LICENSE BLOCK *****
 
- *
  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
- * BNF:
- *  <api-path>       := <root> ("/" (<api-identifier> | <list-instance>))*
- *  <root>           := <string>
- *  <api-identifier> := [<module-name> ":"] <identifier>
- *  <module-name>    := <identifier>
- *  <list-instance>  := <api-identifier> "=" key-value *("," key-value)
- *  <key-value>      := <string>
- *  <string>         := <an unquoted string>
- *  <identifier>     := (<ALPHA> | "_") (<ALPHA> | <DIGIT> | "_" | "-" | ".")
  */
+#ifndef _CLIXON_API_PATH_PARSE_H_
+#define _CLIXON_API_PATH_PARSE_H_
 
-#ifndef _CLIXON_API_PATH_H_
-#define _CLIXON_API_PATH_H_
+/*
+ * Types
+ */
+struct clicon_api_path_yacc_arg{ 
+    const char   *ay_name;         /* Name of syntax (for error string) */
+    int           ay_linenum;      /* Number of \n in parsed buffer */
+    char         *ay_parse_string; /* original (copy of) parse string */
+    void         *ay_lexbuf;       /* internal parse buffer from lex */
+    clixon_path  *ay_top;
+};
+
+/*
+ * Variables
+ */
+extern char *clixon_api_path_parsetext;
 
 /*
  * Prototypes
  */
-int xml_yang_root(cxobj *x, cxobj **xr);
-int yang2api_path_fmt(yang_stmt *ys, int inclkey, char **api_path_fmt);
-int api_path_fmt2api_path(char *api_path_fmt, cvec *cvv, char **api_path);
-int api_path_fmt2xpath(char *api_path_fmt, cvec *cvv, char **xpath);
-int api_path2xpath_cvv(cvec *api_path, int offset, yang_stmt *yspec, cbuf *xpath, cvec **nsc, cxobj **xerr);
-int api_path2xpath(char *api_path, yang_stmt *yspec, char **xpath, cvec **nsc);
-int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop, 
-		 yang_class nodeclass, int strict,
-		 cxobj **xpathp, yang_stmt **ypathp, cxobj **xerr);
-int xml2api_path_1(cxobj *x, cbuf *cb);
+int api_path_scan_init(struct clicon_api_path_yacc_arg *);
+int api_path_scan_exit(struct clicon_api_path_yacc_arg *);
 
-#endif  /* _CLIXON_API_PATH_H_ */
+int api_path_parse_init(struct clicon_api_path_yacc_arg *);
+int api_path_parse_exit(struct clicon_api_path_yacc_arg *);
+
+int clixon_api_path_parselex(void *);
+int clixon_api_path_parseparse(void *);
+void clixon_api_path_parseerror(void *, char*);
+
+#endif	/* _CLIXON_API_PATH_PARSE_H_ */

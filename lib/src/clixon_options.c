@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -72,6 +73,7 @@
 #include "clixon_data.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
+#include "clixon_yang_parse_lib.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_validate.h"

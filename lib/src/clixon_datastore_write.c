@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -853,7 +853,6 @@ xmldb_put(clicon_handle       h,
 		   xml_name(x1));
 	goto done;
     }
-
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
 	if (clicon_datastore_cache(h) != DATASTORE_NOCACHE)
 	    x0 = de->de_xml; 

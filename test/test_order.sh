@@ -403,3 +403,6 @@ fi
 stop_backend -f $cfg
 
 rm -rf $dir
+
+# unset conditional parameters 
+unset format

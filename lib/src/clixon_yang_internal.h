@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -31,23 +31,14 @@
 
   ***** END LICENSE BLOCK *****
 
- * Yang functions
- * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
- * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
- */
+  *
+  * This file defines the internal YANG data structures used by the Clixon implementation
+  * This file SHOULD ONLY be included by clixon_yang.h.
+  * Accesses should be made via the API defined in clixon_yang.h
+  */
 
 #ifndef _CLIXON_YANG_INTERNAL_H_
 #define _CLIXON_YANG_INTERNAL_H_
-
-/*
- * Clixon-specific cligen variable (cv) flags
- * CLIgen flags defined are in the range 0x01 -0x0f
- * An application can use any flags above that
- * @see cv_flag
- */
-#define V_UNSET	  0x10	/* Used by XML code to denote a value is not default */
-
-#define YANG_FLAG_MARK 0x01  /* Marker for dynamic algorithms, eg expand */
 
 /*! Yang type cache. Yang type statements can cache all typedef info here
  * @note unions not cached
@@ -76,7 +67,7 @@ struct yang_stmt{
     enum rfc_6020      ys_keyword;   /* See clicon_yang_parse.tab.h */
 
     char              *ys_argument;  /* String / argument depending on keyword */   
-    int                ys_flags;     /* Flags according to YANG_FLAG_* above */
+    uint16_t           ys_flags;     /* Flags according to YANG_FLAG_* */
     yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Augmented
 					nodes can belong to other 
 					modules than the ancestor module */
@@ -116,3 +107,4 @@ struct yang_stmt{
 #define yang_schemanode(y) (yang_datanode(y) || (y)->ys_keyword == Y_RPC || (y)->ys_keyword == Y_CHOICE || (y)->ys_keyword == Y_CASE || (y)->ys_keyword == Y_INPUT || (y)->ys_keyword == Y_OUTPUT || (y)->ys_keyword == Y_NOTIFICATION)
 
 #endif  /* _CLIXON_YANG_INTERNAL_H_ */
+

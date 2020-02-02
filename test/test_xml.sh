@@ -180,3 +180,5 @@ expecteof "$clixon_util_xml -o" 0 "$XML" "$XML"
       
 rm -rf $dir
 
+# unset conditional parameters 
+unset clixon_util_xml

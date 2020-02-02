@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -71,22 +72,14 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
-#if 0
-
-#include "clixon_plugin.h"
-
-
-#include "clixon_log.h"
-#include "clixon_xml_sort.h"
-#include "clixon_yang_internal.h" /* internal */
-
-#endif
+#include "clixon_yang_module.h"
 #include "clixon_yang_type.h"
 #include "clixon_xml_map.h"
 #include "clixon_validate.h"
 
 /*! Validate xml node of type leafref, ensure the value is one of that path's reference
  * @param[in]  xt    XML leaf node of type leafref
+ * @param[in]  ys    Yang spec of leaf
  * @param[in]  ytype Yang type statement belonging to the XML node
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
@@ -97,17 +90,19 @@
  *  in addition to the definition in Section 6.4.1:
  *   o  If the "path" statement is defined within a typedef, the context
  *      node is the leaf or leaf-list node in the data tree that
- *      references the typedef.
+ *      references the typedef. (ie ys)
  *   o  Otherwise, the context node is the node in the data tree for which
- *      the "path" statement is defined.
+ *      the "path" statement is defined. (ie yc)
  */
 static int
 validate_leafref(cxobj     *xt,
+		 yang_stmt *ys,
 		 yang_stmt *ytype,
 		 cxobj    **xret)
 {
     int          retval = -1;
     yang_stmt   *ypath;
+    yang_stmt   *yp;
     cxobj      **xvec = NULL;
     cxobj       *x;
     int          i;
@@ -115,6 +110,8 @@ validate_leafref(cxobj     *xt,
     char        *leafrefbody;
     char        *leafbody;
     cvec        *nsc = NULL;
+    cbuf        *cberr = NULL;
+    char        *path;
     
     if ((leafrefbody = xml_body(xt)) == NULL)
 	goto ok;
@@ -123,10 +120,17 @@ validate_leafref(cxobj     *xt,
 	    goto done;
 	goto fail;
     }
-    /* XXX see comment above regarding typeref or not */
-    if (xml_nsctx_yang(ytype, &nsc) < 0)
-	goto done;
-    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, yang_argument_get(ypath)) < 0) 
+    /* See comment^: If path is defined in typedef or not */
+    if ((yp = yang_parent_get(ytype)) != NULL &&
+	yang_keyword_get(yp) == Y_TYPEDEF){
+	if (xml_nsctx_yang(ys, &nsc) < 0)
+	    goto done;
+    }
+    else
+	if (xml_nsctx_yang(ytype, &nsc) < 0)
+	    goto done;
+    path = yang_argument_get(ypath);
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, path) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	x = xvec[i];
@@ -136,13 +140,20 @@ validate_leafref(cxobj     *xt,
 	    break;
     }
     if (i==xlen){
-	if (netconf_bad_element_xml(xret, "application", leafrefbody, "Leafref validation failed: No such leaf") < 0)
+	if ((cberr = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cberr, "Leafref validation failed: No leaf %s matching path %s", leafrefbody, path);
+	if (netconf_bad_element_xml(xret, "application", leafrefbody, cbuf_get(cberr)) < 0)
 	    goto done;
 	goto fail;
     }
  ok:
     retval = 1;
  done:
+    if (cberr)
+	cbuf_free(cberr);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (xvec)
@@ -152,7 +163,6 @@ validate_leafref(cxobj     *xt,
     retval = 0;
     goto done;
 }
-
 
 /*! Validate xml node of type identityref, ensure value is a defined identity
  * Check if a given node has value derived from base identity. This is
@@ -963,7 +973,6 @@ xml_yang_validate_add(clicon_handle h,
 		    goto fail;
 		}
 	    }
-
 	    if ((ys_cv_validate(h, cv, yt, &reason)) != 1){
 		if (netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
 		    goto done;
@@ -1064,6 +1073,7 @@ xml_yang_validate_all(clicon_handle h,
     cxobj     *x;
     char      *namespace = NULL;
     cbuf      *cb = NULL;
+    cvec      *nsc = NULL;
 
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
@@ -1102,7 +1112,7 @@ xml_yang_validate_all(clicon_handle h,
 	    if (yang_type_get(ys, NULL, &yc, NULL, NULL, NULL, NULL, NULL) < 0)
 		goto done;
 	    if (strcmp(yang_argument_get(yc), "leafref") == 0){
-		if ((ret = validate_leafref(xt, yc, xret)) < 0)
+		if ((ret = validate_leafref(xt, ys, yc, xret)) < 0)
 		    goto done;
 		if (ret == 0)
 		    goto fail;
@@ -1124,7 +1134,9 @@ xml_yang_validate_all(clicon_handle h,
 	    if (yang_keyword_get(yc) != Y_MUST)
 		continue;
 	    xpath = yang_argument_get(yc); /* "must" has xpath argument */
-	    if ((nr = xpath_vec_bool(xt, NULL, "%s", xpath)) < 0)
+	    if (xml_nsctx_yang(yc, &nsc) < 0)
+		goto done;
+	    if ((nr = xpath_vec_bool(xt, nsc, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){
 		ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
@@ -1132,6 +1144,10 @@ xml_yang_validate_all(clicon_handle h,
 						 ye?yang_argument_get(ye):"must xpath validation failed") < 0)
 		    goto done;
 		goto fail;
+	    }
+	    if (nsc){
+		xml_nsctx_free(nsc);
+		nsc = NULL;
 	    }
 	}
 	/* "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
@@ -1167,6 +1183,8 @@ xml_yang_validate_all(clicon_handle h,
  done:
     if (cb)
 	cbuf_free(cb);
+    if (nsc)
+	xml_nsctx_free(nsc);
     return retval;
  fail:
     retval = 0;

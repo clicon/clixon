@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -63,7 +63,6 @@
 #include "clixon_handle.h"
 #include "clixon_err.h"
 #include "clixon_yang.h"
-#include "clixon_yang_internal.h" /* internal */
 #include "clixon_yang_cardinality.h"
 
 /*
@@ -545,8 +544,8 @@ yang_cardinality(clicon_handle h,
     
     /* 4) Recurse */
     i = 0;
-    while (i<yt->ys_len){ /* Note, children may be removed cant use yn_each */
-	ys = yt->ys_stmt[i++];
+    while (i< yang_len_get(yt)){ /* Note, children may be removed cant use yn_each */
+	ys = yang_child_i(yt, i++);
 	if (yang_cardinality(h, ys, modname) < 0)
 	    goto done;
     }

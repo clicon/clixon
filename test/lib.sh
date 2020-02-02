@@ -339,7 +339,7 @@ expecteq(){
 
 # Evaluate and return
 # like expecteq but partial match is OK
-# Example: expecteq $(fn arg) 0 "my return"
+# Example: expectpart $(fn arg) 0 "my return"
 # - evaluated expression
 # - expected command return value (0 if OK)
 # - expected stdout outcome*
@@ -364,15 +364,15 @@ expectpart(){
   let i=0;
   for exp in "$@"; do
        if [ $i -gt 1 ]; then
-#      echo "exp:$exp"
-	  match=`echo $ret | grep --null -o "$exp"` # XXX -EZo: -E cant handle {}
-	  if [ -z "$match" ]; then
-	      err "$exp" "$ret"
-	  fi
-      fi
-      let i++;
-    done
-
+#	   echo "echo \"$ret\" | grep --null -o \"$exp"\"
+	   match=$(echo "$ret" | grep --null -o "$exp") # XXX -EZo: -E cant handle {}
+	   r=$? 
+	   if [ $r != 0 ]; then
+	       err "$exp" "$ret"
+	   fi
+       fi
+       let i++;
+  done
 #  if [[ "$ret" != "$expect" ]]; then
 #      err "$expect" "$ret"
 #  fi

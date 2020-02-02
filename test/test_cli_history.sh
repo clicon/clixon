@@ -27,7 +27,6 @@ cat <<EOF > $cfg
   <CLICON_CLI_HIST_SIZE>10</CLICON_CLI_HIST_SIZE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
 </clixon-config>
 EOF
@@ -125,5 +124,5 @@ fi
 # kill backend
 stop_backend -f $cfg
 
-
+unset nr
 rm -rf $dir

@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -40,11 +41,13 @@
  * Prototypes
  */
 int xml_child_spec(cxobj *x, cxobj *xp, yang_stmt *yspec, yang_stmt **yp);
-int xml_cmp(cxobj *x1, cxobj *x2, int enm);
+int xml_cmp(cxobj *x1, cxobj *x2, int same, int skip1);
 int xml_sort(cxobj *x0, void *arg);
 int xml_insert(cxobj *xp, cxobj *xc, enum insert_type ins, char *key_val, cvec *nsckey);
 int xml_sort_verify(cxobj *x, void *arg);
 int match_base_child(cxobj *x0, cxobj *x1c, yang_stmt *yc, cxobj **x0cp);
-int xml_binsearch(cxobj *xp, yang_stmt *yc, cvec *cvk, cxobj **xretp);
+int clixon_xml_find_index(cxobj *xp, yang_stmt *yp, char *namespace, char *name,
+			  cvec *cvk, cxobj ***xvec, size_t *xlen);
+int clixon_xml_find_pos(cxobj *xp, yang_stmt *yc, uint32_t pos, cxobj ***xvec, size_t *xlen);
 
 #endif /* _CLIXON_XML_SORT_H */

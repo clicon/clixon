@@ -48,8 +48,6 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>example</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/example/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
-  <CLICON_CLI_GENMODEL_TYPE>VARS</CLICON_CLI_GENMODEL_TYPE>
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
 </clixon-config>
@@ -119,3 +117,6 @@ for mode in startup running; do
 done
 
 rm -rf $dir
+
+# unset conditional parameters 
+unset perfnr

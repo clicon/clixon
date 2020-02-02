@@ -63,3 +63,6 @@ if [ -n "$l" ]; then
 fi
 
 rm -rf $dir
+
+# unset conditional parameters 
+unset make

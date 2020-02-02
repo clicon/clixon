@@ -1,7 +1,8 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+#  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+#  Copyright (C) 2017-2020 Olof Hagsand
 #
 # This file is part of CLIXON
 #
@@ -72,6 +73,7 @@ APPSRC    = clixon_util_xml.c
 APPSRC   += clixon_util_json.c
 APPSRC   += clixon_util_yang.c
 APPSRC   += clixon_util_xpath.c
+APPSRC   += clixon_util_path.c
 APPSRC   += clixon_util_datastore.c
 APPSRC   += clixon_util_insert.c
 APPSRC   += clixon_util_regexp.c
@@ -104,6 +106,9 @@ clixon_util_yang: clixon_util_yang.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
 
 clixon_util_xpath: clixon_util_xpath.c $(LIBDEPS)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
+
+clixon_util_path: clixon_util_path.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
 clixon_util_datastore: clixon_util_datastore.c $(LIBDEPS)

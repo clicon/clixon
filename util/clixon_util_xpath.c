@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -58,7 +58,7 @@ See https://www.w3.org/TR/xpath/
 #include "clixon/clixon.h"
 
 /* Command line options to be passed to getopt(3) */
-#define XPATH_OPTS "hD:f:p:i:n:cy:Y:x"
+#define XPATH_OPTS "hD:f:p:i:n:cy:Y:"
 
 static int
 usage(char *argv0)
@@ -74,11 +74,10 @@ usage(char *argv0)
 	    "\t-c \t\tMap xpath to canonical form\n"
 	    "\t-y <filename> \tYang filename or dir (load all files)\n"
     	    "\t-Y <dir> \tYang dirs (can be several)\n"
-	    "\t-x \t\tXPath optimize\n"
 	    "and the following extra rules:\n"
 	    "\tif -f is not given, XML input is expected on stdin\n"
 	    "\tif -p is not given, <xpath> is expected as the first line on stdin\n"
-	    "This means that with no arguments, <xpath> and XML is expected on stadin.\n",
+	    "This means that with no arguments, <xpath> and XML is expected on stdin.\n",
 	    argv0
 	    );
     exit(0);
@@ -196,10 +195,6 @@ main(int    argc,
 	case 'Y':
 	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
 		goto done;
-	    break;
-	case 'x': /* xpath optimize. Only if XPATH_LIST_OPTIMIZE is set */ 
-
-	    xpath_list_optimize_set(1);
 	    break;
 	default:
 	    usage(argv[0]);

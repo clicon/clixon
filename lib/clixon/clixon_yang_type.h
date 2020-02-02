@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -54,8 +54,6 @@ typedef struct yang_type_cache yang_type_cache;
 /*
  * Prototypes
  */
-int        yang_type_cache_cp(yang_type_cache **ycnew, yang_type_cache *ycold);
-int        yang_type_cache_free(yang_type_cache *ycache);
 int        ys_resolve_type(yang_stmt *ys, void *arg);
 int        yang2cv_type(char *ytype, enum cv_type *cv_type);
 char      *cv2yang_type(enum cv_type cv_type);

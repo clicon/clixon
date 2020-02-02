@@ -12,7 +12,7 @@ module clixon-config {
     description
       "Clixon configuration file
        ***** BEGIN LICENSE BLOCK *****
-       Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+       Copyright (C) 2009-2020 Olof Hagsand
        
        This file is part of CLIXON
 
@@ -369,7 +369,7 @@ module clixon-config {
                  loaded Yang modules. This CLI tree can be accessed in CLI
                  spec files using the tree reference syntax (eg @datamodel).
                  See also CLICON_CLI_MODEL_TREENAME.
-                 (Consider boolean)";
+                 (consider boolean)";
 	}
 	leaf CLICON_CLI_MODEL_TREENAME {
 	    type string;
@@ -383,7 +383,7 @@ module clixon-config {
 	    type int32;
 	    default 1;
 	    description "Generate code for CLI completion of existing db symbols.
-                         Consider boolean type";
+                         (consider boolean)";
 	}
 	leaf CLICON_CLI_GENMODEL_TYPE {
 	    type cli_genmodel_type;
@@ -395,7 +395,8 @@ module clixon-config {
 	    default 1;
 	    description
 		"Dont include keys in cvec in cli vars callbacks, 
-          	 ie a & k in 'a <b> k <c>' ignored";
+          	 ie a & k in 'a <b> k <c>' ignored
+                 (consider boolean)";
 	}
 	leaf CLICON_CLI_LINESCROLLING {
 	    type int32;
@@ -425,7 +426,8 @@ module clixon-config {
 	    description
 		"Set to 1 to enable CLIgen UTF-8 experimental mode.
                  Note that this feature is EXPERIMENTAL and may not properly handle 
-                 scrolling, control characters, etc";
+                 scrolling, control characters, etc
+                 (consider boolean)";
 	}
 	leaf CLICON_CLI_HIST_FILE {
 	    type string;
@@ -505,7 +507,8 @@ module clixon-config {
 	    default 0;
 	    description
 		"Set if all configuration changes are committed automatically 
-                 on every edit change. Explicit commit commands unnecessary";
+                 on every edit change. Explicit commit commands unnecessary
+                 (consider boolean)";
 	}
 	leaf CLICON_XMLDB_DIR {
 	    type string;

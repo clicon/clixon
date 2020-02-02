@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -62,6 +63,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_options.h" /* xml_spec_populate */
+#include "clixon_yang_module.h"
 #include "clixon_xml_map.h" /* xml_spec_populate */
 #include "clixon_xml_sort.h"
 #include "clixon_xml_parse.h"
@@ -263,7 +265,7 @@ nscache_get_prefix(cxobj *x,
     return 0;
 }
 
-/*! Dump whole namespacet context cache of one xml node 
+/*! Dump whole namespace context cache of one xml node 
  * @param[in]  x    XML node
  * @retval     nsc  Whole namespace context of x
  * @retval     NULL Empty nsc
@@ -581,7 +583,7 @@ xml_parent_set(cxobj *xn,
 
 /*! Get xml node flags, used for internal algorithms
  * @param[in]  xn    xml node
- * @retval     flag  Flags value, see XML_FLAG_*
+ * @retval     flag  Flag value(s), see XML_FLAG_*
  */
 uint16_t
 xml_flag(cxobj   *xn, 
@@ -592,7 +594,7 @@ xml_flag(cxobj   *xn,
 
 /*! Set xml node flags, used for internal algorithms
  * @param[in]  xn      xml node
- * @param[in]  flag    Flags value to set, see XML_FLAG_*
+ * @param[in]  flag    Flag values to set, see XML_FLAG_*
  */
 int
 xml_flag_set(cxobj   *xn, 
@@ -604,7 +606,7 @@ xml_flag_set(cxobj   *xn,
 
 /*! Reset xml node flags, used for internal algorithms
  * @param[in]  xn      xml node
- * @param[in]  flag    Flags value to reset, see XML_FLAG_*
+ * @param[in]  flag    Flag value(s) to reset, see XML_FLAG_*
  */
 int
 xml_flag_reset(cxobj   *xn, 
@@ -1048,8 +1050,12 @@ xml_cv_set(cxobj  *x,
  *
  * @retval xmlobj     if found.
  * @retval NULL       if no such node found.
- * @see xml_find_type  A more generic function
- * @note Linear scalability and relies on strcmp
+ * There are several issues with this function:
+ * @note (1) Ignores prefix which means namespaces are ignored
+ * @note (2) Does not differentiate between element,attributes and body. You usually want elements.
+ * @note (3) Linear scalability and relies on strcmp, does not use search/key indexes
+ * @note (4) Only returns first match, eg a list/leaf-list may have several children with same name
+ * @see xml_find_type  A more generic function fixes (1) and (2) above
  */
 cxobj *
 xml_find(cxobj *x_up, 
@@ -1494,9 +1500,10 @@ xml_find_type(cxobj           *xt,
     char  *xprefix;     /* xprefix */
     
     while ((x = xml_child_each(xt, x, type)) != NULL) {
-	xprefix = xml_prefix(x);
-	if (prefix)
-	    pmatch = xprefix?strcmp(prefix,xprefix)==0:0;
+	if (prefix){
+	    xprefix = xml_prefix(x);
+	    pmatch = xprefix ? strcmp(prefix,xprefix)==0 : 0;
+	}
 	else
 	    pmatch = 1;
 	if (pmatch && strcmp(name, xml_name(x)) == 0)
@@ -1980,7 +1987,9 @@ FSM(char *tag,
  *
  * @code
  *  cxobj *xt = NULL;
- *  xml_parse_file(0, "</config>", yspec, &xt);
+ *  int    fd;
+ *  fd = open(filename, O_RDONLY);
+ *  xml_parse_file(fd, "</config>", yspec, &xt);
  *  xml_free(xt);
  * @endcode
  * @see xml_parse_string
@@ -2246,10 +2255,23 @@ cxvec_dup(cxobj  **vec0,
     return retval;
 }
 
-/*! Append a new xml tree to an existing xml vector
+/*! Append a new xml tree to an existing xml vector last in the list
  * @param[in]      x      XML tree (append this to vector)
  * @param[in,out]  vec    XML tree vector
  * @param[in,out]  len    Length of XML tree vector
+ * @retval         0      OK
+ * @retval        -1      Error
+ * @code
+ *  cxobj  **xvec = NULL;
+ *  size_t   xlen = 0;
+ *  cxobj   *x; 
+ *
+ *  if (cxvec_append(x, &xvec, &xlen) < 0) 
+ *     err;
+ *  if (xvec)
+ *     free(xvec);
+ * @endcode
+ * @see cxvec_prepend
  */
 int
 cxvec_append(cxobj   *x, 
@@ -2267,6 +2289,44 @@ cxvec_append(cxobj   *x,
  done:
     return retval;
 }
+
+/*! Prepend a new xml tree to an existing xml vector first in the list
+ * @param[in]      x      XML tree (append this to vector)
+ * @param[in,out]  vec    XML tree vector
+ * @param[in,out]  len    Length of XML tree vector
+ * @retval         0      OK
+ * @retval        -1      Error
+ * @code
+ *  cxobj  **xvec = NULL;
+ *  size_t   xlen = 0;
+ *  cxobj   *x; 
+ *
+ *  if (cxvec_append(x, &xvec, &xlen) < 0) 
+ *     err;
+ *  if (xvec)
+ *     free(xvec);
+ * @endcode
+ * @see cxvec_prepend
+ */
+int
+cxvec_prepend(cxobj   *x, 
+	     cxobj ***vec, 
+	     size_t  *len)
+{
+    int retval = -1;
+
+    if ((*vec = realloc(*vec, sizeof(cxobj *) * (*len+1))) == NULL){
+	clicon_err(OE_XML, errno, "realloc");
+	goto done;
+    }
+    memmove(&(*vec)[1], &(*vec)[0], sizeof(cxobj *) * (*len));
+    (*vec)[0] = x;
+    (*len)++;
+    retval = 0;
+ done:
+    return retval;
+}
+
 
 /*! Apply a function call recursively on all xml node children recursively
  * Recursively traverse all xml nodes in a parse-tree and apply fn(arg) for 
@@ -2547,8 +2607,6 @@ xml_operation(char                *opstr,
     }
     return 0;
 }
-
-
 
 /*! Map xml operation from enumeration to string
  * @param[in]   op   enumeration operation, eg OP_MERGE,...

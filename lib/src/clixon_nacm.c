@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -498,7 +498,7 @@ nacm_data_read_xr(cxobj  *xt,
  * For NETCONF filtering purposes, the selection criteria are applied to the
  * subset of nodes that the user is authorized to read, not the entire datastore.
  * @note assume mode is internal or external, not disabled
- * @node There is unclarity on what "a data node" means wrt a read operation.
+ * @note There is unclarity on what "a data node" means wrt a read operation.
  * Suppose a tree is accessed. Is "the data node" just the top of the tree?
  * (1) Or is it all nodes, recursively, in the data-tree?
  * (2) Or is the datanode only the requested tree, NOT the whole datatree?

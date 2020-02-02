@@ -211,3 +211,6 @@ new "adv list add leaf-list"
 testrun "$x0" "<e>32</e>"
 
 rm -rf $dir
+
+# unset conditional parameters 
+unset clixon_util_insert

@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -60,10 +60,11 @@
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
-#include "clixon_yang.h"
-#include "clixon_yang_type.h"
 #include "clixon_options.h"
+#include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_yang_type.h"
+#include "clixon_yang_module.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_nsctx.h" /* namespace context */
@@ -331,7 +332,7 @@ json2xml_decode_identityref(cxobj     *x,
 		if (yang_find_prefix_by_namespace(y, namespace, &prefix2) == 0){
 #ifndef IDENTITYREF_KLUDGE
 		    /* Just get the prefix from the module's own namespace */
-		    if (netconf_unknown_namespace_xml(xerr, "application",
+		    if (xerr && netconf_unknown_namespace_xml(xerr, "application",
 						      namespace,
 						      "No local prefix corresponding to namespace") < 0)
 			goto done;
@@ -365,7 +366,7 @@ json2xml_decode_identityref(cxobj     *x,
 		goto done;
 	}
 	else{
-	    if (netconf_unknown_namespace_xml(xerr, "application",
+	    if (xerr && netconf_unknown_namespace_xml(xerr, "application",
 					      prefix,
 					      "No module corresponding to prefix") < 0)		
 		goto done;
@@ -1187,7 +1188,7 @@ json_parse(char        *str,
  *
  * @code
  *  cxobj *cx = NULL;
- *  if (json_parse_str(str, &cx) < 0)
+ *  if (json_parse_str(str, yspec, &cx, &xerr) < 0)
  *    err;
  *  xml_free(cx);
  * @endcode

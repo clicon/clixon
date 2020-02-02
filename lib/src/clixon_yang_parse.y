@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -51,7 +51,6 @@
 %start file
 
 %union {
-    int intval;
     char *string;
 }
 
@@ -190,8 +189,8 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_yang.h"
+#include "clixon_yang_parse_lib.h"
 #include "clixon_yang_parse.h"
-#include "clixon_yang_internal.h" /* internal */
 
 extern int clixon_yang_parseget_lineno  (void);
 
@@ -300,7 +299,7 @@ ysp_add(struct clicon_yang_yacc_arg *yy,
     if ((ys = ys_new(keyword)) == NULL)
 	goto err;
     /* NOTE: does not make a copy of string, ie argument is 'consumed' here */
-    ys->ys_argument = argument;
+    yang_argument_set(ys, argument);
     if (yn_insert(yn, ys) < 0) /* Insert into hierarchy */
 	goto err; 
     if (ys_parse_sub(ys, extra) < 0)     /* Check statement-specific syntax */

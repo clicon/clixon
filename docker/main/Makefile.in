@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2017-2020 Olof Hagsand
 #
 # This file is part of CLIXON
 #

@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -83,6 +83,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_yang_module.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_parse.h"
@@ -726,12 +727,12 @@ xpath_vec(cxobj    *xcur,
     va_start(ap, veclen);    
     len = vsnprintf(NULL, 0, xpformat, ap);
     va_end(ap);
-    /* allocate a message string exactly fitting the message length */
+    /* allocate an xpath string exactly fitting the length */
     if ((xpath = malloc(len+1)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
-    /* second round: compute write message from reason and args */
+    /* second round: actually compute xpath string content */
     va_start(ap, veclen);    
     if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
 	clicon_err(OE_UNIX, errno, "vsnprintf");

@@ -63,3 +63,6 @@ new "xpath canonical form (wrong namespace should fail)"
 expectpart "$($clixon_util_xpath -c -y $ydir -p /i:x/j:y -n i:urn:example:c -n j:urn:example:b)" 255
 
 rm -rf $dir
+
+# unset conditional parameters 
+unset clixon_util_xpath

@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -111,7 +112,6 @@ clixon_plugin_statedata(clicon_handle    h,
 {
     int             retval = -1;
     int             ret;
-    cxobj          *xerr = NULL;
     cxobj          *x = NULL;
     clixon_plugin  *cp = NULL;
     plgstatedata_t *fn;          /* Plugin statedata fn */
@@ -124,46 +124,17 @@ clixon_plugin_statedata(clicon_handle    h,
 	    goto done;
 	if (fn(h, nsc, xpath, x) < 0)
 	    goto fail;  /* Dont quit here on user callbacks */
-	if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
-	    goto done;
-	/* Check XML from state callback by validating it. return internal 
-	 * error with error cause 
-	 */
-	if ((ret = xml_yang_validate_all_top(h, x, &xerr)) < 0) 
-	    goto done;
-	if (ret > 0 && (ret = xml_yang_validate_add(h, x, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    cxobj *xe;
-	    cxobj *xb;
-	    
-	    if ((xe = xpath_first(xerr, NULL, "//error-tag")) != NULL &&
-		(xb = xml_body_get(xe))){
-		if (xml_value_set(xb, "operation-failed") < 0)
-		    goto done;
-	    }
-	    if ((xe = xpath_first(xerr, NULL, "//error-message")) != NULL &&
-		(xb = xml_body_get(xe))){
-		if (xml_value_append(xb, " Internal error, state callback returned invalid XML") < 0)
-		    goto done;
-	    }
-	    if (*xret){
-		xml_free(*xret);
-		*xret = NULL;
-	    }
-	    *xret = xerr;
-	    xerr = NULL;
-	    goto fail;
-	}
 #if 1
 	if (debug){
 	    cbuf *ccc=cbuf_new();
 	    if (clicon_xml2cbuf(ccc, x, 0, 0, -1) < 0)
 		goto done;
-	    clicon_debug(1, "%s MERGE: %s", __FUNCTION__, cbuf_get(ccc));
+	    clicon_debug(1, "%s STATE: %s", __FUNCTION__, cbuf_get(ccc));
 	    cbuf_free(ccc);
 	}
 #endif
+	if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	    goto done;
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;
 	if (ret == 0)
@@ -172,15 +143,13 @@ clixon_plugin_statedata(clicon_handle    h,
 	    xml_free(x);
 	    x = NULL;
 	}
-    }
+    } /* while plugin */
     retval = 1;
  done:
     if (cberr)
 	cbuf_free(cberr);
     if (x)
 	xml_free(x);
-    if (xerr)
-	xml_free(xerr);
     return retval;
  fail:
     retval = 0;

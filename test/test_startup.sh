@@ -189,3 +189,6 @@ if [ $valgrindtest -ne 2 ]; then
 fi
 
 rm -rf $dir
+
+# unset conditional parameters 
+unset format

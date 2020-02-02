@@ -1,5 +1,46 @@
 # Clixon Changelog
 
+## 4.4.0 (Expected: February 2020)
+
+### Major New features
+
+* New and updated search functions using xpath, api-path and instance-id
+  * New search functions using api-path and instance_id:
+    * C search functions: `clixon_find_instance_id()` and `clixon_find_api_path()`
+  * Binary search optimization in lists for indexed leafs in all three formats.
+    * This improves search performance to O(logN) which is drastical improvements for large lists.
+  * You can also register explicit indexes for making binary search (not only list keys)
+  * For more info, see docs at [paths](https://clixon-docs.readthedocs.io/en/latest/paths.html) and 
+[search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
+
+### API changes on existing features (you may need to change your code)
+* On failed validation of leafrefs, error message changed from: `No such leaf` to `No leaf <name> matching path <path>`.
+* CLI Error message (clicon_rpc_generate_error()) changed when backend returns netconf error to be more descriptive:
+  * Original: `Config error: Validate failed. Edit and try again or discard changes: Invalid argument`
+  * New (example): `Netconf error: application operation-failed Identityref validation failed, undefined not derived from acl-base . Validate failed. Edit and try again or discard changes"
+  
+### Minor changes
+
+* Test framework
+  * Added `-- -S <file>` command-line to main example to be able to return any state to main example.
+  * Added `test/cicd` test scripts for running on a set of other hosts
+* C-code restructuring
+  * clixon_yang.c partitioned and moved code into clixon_yang_parse_lib.c and clixon_yang_module.c and move back some code from clixon_yang_type.c.
+    * partly to reduce size, but most important to limit code that accesses internal yang structures, only clixon_yang.c does this now.
+  
+### Corrected Bugs
+
+## 4.3.1 (2 February 2020)
+
+Patch release based on testing by Dave Cornejo, Netgate
+
+### Corrected Bugs
+* Compile option `VALIDATE_STATE_XML` introduced in `include/custom.h` to control whether code for state data validation is compiled or not. 
+* Fixed: Validation of user state data led to wrong validation, if state relied on config data, eg leafref/must/when etc.
+* Fixed: No revision in yang module led to errors in validation of state data
+* Fixed: Leafref validation did not cover case of when the "path" statement is declared within a typedef, only if it was declared in the data part directly under leaf.
+* Fixed: Yang `must` xpath statements containing prefixes stopped working due to namespace context updates
+
 ## 4.3.0 (1 January 2020)
 
 There were several issues with multiple namespaces with augmented yangs in 4.2 that have been fixed in 4.3. Some other highlights include: several issues with XPaths including "canonical namespace context" support, a reorganization of the YANG files shipped with the release, and a wildchar in the CLICON_MODE variable.
@@ -12,6 +53,7 @@ There were several issues with multiple namespaces with augmented yangs in 4.2 t
   * Optional yang files can be installed in a separate dir with `--with-opt-yang-installdir=DIR` (renamed from `with-std-yang-installdir`)
 * C-API
   * Changed `clicon_rpc_generate_error(msg, xerr)` to `clicon_rpc_generate_error(xerr, msg, arg)`
+    * If you pass NULL as arg it produces the same message as before.
   * Added namespace-context parameter `nsc` to `xpath_first` and `xpath_vec`, (`xpath_vec_nsc` and 
 xpath_first_nsc` are removed).
   * Added clicon_handle as parameter to all `clicon_connect_` functions to get better error message

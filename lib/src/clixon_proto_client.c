@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -247,12 +248,10 @@ clicon_rpc_generate_error(cxobj       *xerr,
     }
     if (netconf_err2cb(xerr, cb) < 0)
 	goto done;
-    if (arg){
-	cprintf(cb, "%s: \"%s\": ", msg, arg);
-	clicon_err(OE_CFG, EINVAL, "%s", cbuf_get(cb));
-    }
-    else /* XXX: should really be clicon_err but dont do it yet for backward compatability */
-	clicon_log(LOG_ERR, "%s: %s", msg, cbuf_get(cb));
+    cprintf(cb, ". %s", msg);
+    if (arg)
+	cprintf(cb, " \"%s\" ", arg);
+    clicon_err(OE_NETCONF, 0, "%s", cbuf_get(cb));
     retval = 0;
  done:
     if (cb)

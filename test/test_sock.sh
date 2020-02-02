@@ -91,3 +91,6 @@ testrun IPv4 127.0.0.1
 #testrun IPv6 ::1 7878
 
 rm -rf $dir
+
+# unset conditional parameters 
+unset clixon_util_socket

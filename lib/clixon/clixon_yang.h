@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -39,7 +39,22 @@
 #ifndef _CLIXON_YANG_H_
 #define _CLIXON_YANG_H_
 
+/*
+ * Clixon-specific cligen variable (cv) flags
+ * CLIgen flags defined are in the range 0x01 -0x0f
+ * An application can use any flags above that
+ * @see cv_flag
+ */
+#define V_UNSET	  0x10	/* Used by XML code to denote a value is not default */
 
+/*
+ * Yang flags used in 
+ */
+#define YANG_FLAG_MARK  0x01  /* (Dynamic) marker for dynamic algorithms, eg expand */
+#ifdef XML_EXTRA_INDEX
+#define YANG_FLAG_INDEX 0x02  /* This yang node under list is (extra) index. --> you can access
+			       * list elements using this index with binary search */
+#endif
 
 /*
  * Types
@@ -146,12 +161,20 @@ typedef int (yang_applyfn_t)(yang_stmt *ys, void *arg);
  * Prototypes
  */
 /* Access functions */
+int        yang_len_get(yang_stmt *ys);
+yang_stmt *yang_child_i(yang_stmt *ys, int i);
+
 yang_stmt *yang_parent_get(yang_stmt *ys);
 enum rfc_6020 yang_keyword_get(yang_stmt *ys);
 char      *yang_argument_get(yang_stmt *ys);
+int        yang_argument_set(yang_stmt *ys, char *arg);
+
 cg_var    *yang_cv_get(yang_stmt *ys);
 cvec      *yang_cvec_get(yang_stmt *ys);
 int        yang_cvec_set(yang_stmt *ys, cvec *cvv);
+uint16_t   yang_flag_get(yang_stmt *ys, uint16_t flag);
+int        yang_flag_set(yang_stmt *ys, uint16_t flag);
+int        yang_flag_reset(yang_stmt *ys, uint16_t flag);
 
 /* Other functions */
 yang_stmt *yspec_new(void);
@@ -169,10 +192,6 @@ int        ys_module_by_xml(yang_stmt *ysp, struct xml *xt, yang_stmt **ymodp);
 yang_stmt *ys_module(yang_stmt *ys);
 yang_stmt *ys_real_module(yang_stmt *ys);
 yang_stmt *ys_spec(yang_stmt *ys);
-yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
-yang_stmt *yang_find_module_by_prefix_yspec(yang_stmt *yspec, char *prefix);
-yang_stmt *yang_find_module_by_namespace(yang_stmt *yspec, char *namespace);
-yang_stmt *yang_find_module_by_name(yang_stmt *yspec, char *name);
 yang_stmt *yang_find(yang_stmt *yn, int keyword, const char *argument);
 int        yang_match(yang_stmt *yn, int keyword, char *argument);
 yang_stmt *yang_find_datanode(yang_stmt *yn, char *argument);
@@ -186,8 +205,7 @@ int        yang_print(FILE *f, yang_stmt *yn);
 int        yang_print_cbuf(cbuf *cb, yang_stmt *yn, int marginal);
 int        if_feature(yang_stmt *yspec, char *module, char *feature);
 int        ys_populate(yang_stmt *ys, void *arg);
-yang_stmt *yang_parse_file(int fd, const char *name, yang_stmt *ysp);
-yang_stmt *yang_parse_filename(const char *filename, yang_stmt  *ysp);
+int        ys_populate2(yang_stmt *ys, void *arg);
 int        yang_apply(yang_stmt *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
 int        yang_datanode(yang_stmt *ys);
@@ -196,17 +214,16 @@ int        yang_abs_schema_nodeid(yang_stmt *yspec, yang_stmt *ys,
 				  enum rfc_6020 keyword, yang_stmt **yres);
 int        yang_desc_schema_nodeid(yang_stmt *yn, char *schema_nodeid, 
 				   enum rfc_6020 keyword, yang_stmt **yres);
-int        ys_parse_date_arg(char *datearg, uint32_t *dateint);
-
-cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
-int        ys_parse_sub(yang_stmt *ys, char *extra);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
-int        yang_spec_parse_module(clicon_handle h, const char *module,
-				  const char *revision, yang_stmt *yspec);
-int        yang_spec_parse_file(clicon_handle h, char *filename, yang_stmt *yspec);
-int        yang_spec_load_dir(clicon_handle h, char *dir, yang_stmt *yspec);
+int        yang_features(clicon_handle h, yang_stmt *yt);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_stmt *yn, char *name);
+
+int        yang_type_cache_regexp_set(yang_stmt *ytype, int rxmode, cvec *regexps);
+int        yang_type_cache_get(yang_stmt *ytype, yang_stmt **resolved, int *options,
+		   cvec **cvv, cvec *patterns, int *rxmode, cvec *regexps, uint8_t *fraction);
+int        yang_type_cache_set(yang_stmt *ys, yang_stmt *resolved, int options, cvec *cvv,
+			       cvec *patterns, uint8_t fraction);
 
 #endif  /* _CLIXON_YANG_H_ */

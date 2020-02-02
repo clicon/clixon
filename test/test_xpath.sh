@@ -10,11 +10,6 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 xml=$dir/xml.xml
 xml2=$dir/xml2.xml
 xml3=$dir/xml3.xml
-ydir=$dir/yang
-
-if [ ! -d $ydir ]; then
-    mkdir $ydir
-fi
 
 cat <<EOF > $xml
 <aaa>
@@ -81,7 +76,6 @@ cat <<EOF > $xml3
 EOF
 
 new "xpath /"
-echo "$clixon_util_xpath -f $xml -p /"
 expecteof "$clixon_util_xpath -f $xml -p /" 0 "" "^nodeset:0:<aaa><bbb x=\"hello\"><ccc>42</ccc></bbb><bbb x=\"bye\"><ccc>99</ccc></bbb><ddd><ccc>22</ccc></ddd></aaa>$"
 
 new "xpath /aaa"
@@ -209,3 +203,6 @@ new "xpath derived-from-or-self"
 expecteof "$clixon_util_xpath -f $xml3 -p 'derived-from-or-self(../../change-operation,modify)'" 0 "" "derived-from-or-self"
 
 rm -rf $dir
+
+# unset conditional parameters 
+unset clixon_util_xpath

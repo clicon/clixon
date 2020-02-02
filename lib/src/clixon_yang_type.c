@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -91,13 +91,12 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_regex.h"
-#include "clixon_yang.h"
 #include "clixon_hash.h"
+#include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_plugin.h"
 #include "clixon_options.h"
-#include "clixon_yang.h"
-#include "clixon_yang_internal.h" /* internal */
+#include "clixon_yang_module.h"
 #include "clixon_yang_type.h"
 
 /* 
@@ -163,176 +162,6 @@ yang_builtin(char *type)
 {
     if (clicon_str2int_search(ytmap2, type, (sizeof(ytmap)/sizeof(map_str2int))-2) != -1)
 	return 1;
-    return 0;
-}
-
-/*! Set type cache for yang type
- * @param[in] rxmode  Kludge to know which regexp engine is used
- * @see yang_type_cache_regexp_set where cache is extended w compiled regexps
- */
-static int
-yang_type_cache_set(yang_type_cache **ycache0,
-		    yang_stmt        *resolved,
-		    int               options, 
-		    cvec             *cvv, 
-		    cvec             *patterns,
-		    uint8_t           fraction)
-{
-    int              retval = -1;
-    yang_type_cache *ycache = *ycache0;
-
-    assert (ycache == NULL);
-    if ((ycache = (yang_type_cache *)malloc(sizeof(*ycache))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }
-    memset(ycache, 0, sizeof(*ycache));
-    *ycache0 = ycache;
-    ycache->yc_resolved  = resolved;
-    ycache->yc_options  = options;
-    if (cvv){
-	if ((ycache->yc_cvv = cvec_dup(cvv)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cvec_dup");
-	    goto done;
-	}
-    }
-    if (patterns && (ycache->yc_patterns  = cvec_dup(patterns)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_dup");
-	goto done;
-    }
-    ycache->yc_fraction  = fraction;
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Extend yang type cache with compiled regexps
- * Compiled Regexps are computed in validate code - after initial cache set
- * @param[in] regexps   
- */
-static int
-yang_type_cache_regexp_set(yang_stmt *ytype,
-			   int        rxmode,
-			   cvec      *regexps)
-{
-    int               retval = -1;
-    yang_type_cache  *ycache;
-
-    assert(regexps);
-    assert(yang_keyword_get(ytype) == Y_TYPE);
-    assert((ycache = ytype->ys_typecache) != NULL);
-    assert(ycache->yc_regexps == NULL);
-    ycache->yc_rxmode = rxmode;
-    if ((ycache->yc_regexps  = cvec_dup(regexps)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_dup");
-	goto done;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Get individual fields (direct/destructively) from yang type cache. 
- * @param[out] patterns Initialized cvec of regexp patterns strings
- */
-static int
-yang_type_cache_get(yang_type_cache *ycache,
-		    yang_stmt      **resolved,
-		    int             *options, 
-		    cvec           **cvv, 
-		    cvec            *patterns,
-		    int             *rxmode,
-		    cvec            *regexps,
-		    uint8_t         *fraction)
-{
-    int retval = -1;
-    cg_var *cv = NULL;
-    
-    if (resolved)
-	*resolved = ycache->yc_resolved;
-    if (options)
-	*options  = ycache->yc_options;
-    if (cvv)
-	*cvv    = ycache->yc_cvv;
-    if (patterns){
-	cv = NULL;
-	while ((cv = cvec_each(ycache->yc_patterns, cv)) != NULL)
-	    cvec_append_var(patterns, cv);
-    }
-    if (regexps){
-	cv = NULL;
-	while ((cv = cvec_each(ycache->yc_regexps, cv)) != NULL)
-	    cvec_append_var(regexps, cv);
-    }
-    if (rxmode)
-	*rxmode = ycache->yc_rxmode;
-    if (fraction)
-	*fraction = ycache->yc_fraction;
-    retval = 0;
-    // done:
-    return retval;
-}
-
-int
-yang_type_cache_cp(yang_type_cache **ycnew, 
-		   yang_type_cache  *ycold)
-{
-    int        retval = -1;
-    int        options;
-    cvec      *cvv;
-    cvec      *patterns = NULL;
-    uint8_t    fraction;
-    yang_stmt *resolved;
-
-    if ((patterns = cvec_new(0)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
-    }
-    /* Note, regexps are not copied since they are voids, if they were, they
-     * could not be freed in a simple way since copies are made at augment/group
-     */
-    yang_type_cache_get(ycold, &resolved, &options, &cvv, patterns, NULL, NULL, &fraction);
-    if (yang_type_cache_set(ycnew, resolved, options, cvv, patterns, fraction) < 0)
-	goto done;
-    retval = 0;
- done:
-    if (patterns)
-	cvec_free(patterns);
-    return retval;
-}
-
-int
-yang_type_cache_free(yang_type_cache *ycache)
-{
-    cg_var *cv;
-    void   *p;
-    
-    if (ycache->yc_cvv)
-	cvec_free(ycache->yc_cvv);
-    if (ycache->yc_patterns)
-	cvec_free(ycache->yc_patterns);
-    if (ycache->yc_regexps){
-	cv = NULL;
-	while ((cv = cvec_each(ycache->yc_regexps, cv)) != NULL){
-	    /* need to store mode since clicon_handle is not available */
-	    switch (ycache->yc_rxmode){
-	    case REGEXP_POSIX:
-		cligen_regex_posix_free(cv_void_get(cv));
-		break;
-	    case REGEXP_LIBXML2:
-		cligen_regex_libxml2_free(cv_void_get(cv));
-		break;
-	    default:
-		break;
-	    }
-	    if ((p = cv_void_get(cv)) != NULL){
-		free(p);
-		cv_void_set(cv, NULL);
-	    }
-	}
-	cvec_free(ycache->yc_regexps);
-    }
-    free(ycache);
     return 0;
 }
 
@@ -415,7 +244,7 @@ ys_resolve_type(yang_stmt    *ys,
     /* Recursively resolve ys -> resolve with restrictions(options, etc) 
      * Note that the resolved type could be ys itself.
      */
-    if (yang_type_resolve(ys->ys_parent, ys->ys_parent,
+    if (yang_type_resolve(yang_parent_get(ys), yang_parent_get(ys),
 			  ys, &resolved,
 			  &options, &cvv, patterns, NULL, &fraction) < 0)
 	goto done;
@@ -423,8 +252,7 @@ ys_resolve_type(yang_stmt    *ys,
     /* Cache the type resolving locally. Only place where this is done. 
      * Why not do it in yang_type_resolve? (compile regexps needs clicon_handle)
      */
-    if (yang_type_cache_set(&ys->ys_typecache, 
-			    resolved, options, cvv,
+    if (yang_type_cache_set(ys, resolved, options, cvv,
 			    patterns, fraction) < 0)
 	goto done;
     retval = 0;
@@ -512,13 +340,15 @@ clicon_type2cv(char         *origtype,
 	       enum cv_type *cvtype)
 {
     int retval = -1;
+    yang_stmt *ym;
 
     *cvtype = CGV_ERR;
+    ym = ys_module(ys);
     if (restype != NULL){ 
 	yang2cv_type(restype, cvtype);
 	if (*cvtype == CGV_ERR){
 	    clicon_err(OE_YANG, 0, "%s: \"%s\" type not translated",
-		       ys_module(ys)->ys_argument, restype);
+		       yang_argument_get(ym), restype);
 	    goto done;
 	}
     }
@@ -530,7 +360,7 @@ clicon_type2cv(char         *origtype,
 	yang2cv_type(origtype, cvtype);
 	if (*cvtype == CGV_ERR){
 	    clicon_err(OE_YANG, 0, "%s:\"%s\": type not resolved",
-		       ys_module(ys)->ys_argument, origtype);
+		       yang_argument_get(ym), origtype);
 	    goto done;
 	}
     }
@@ -832,9 +662,9 @@ cv_validate1(clicon_handle h,
 		yi = NULL;
 		if (str != NULL) 
 		    while ((yi = yn_each(yrestype, yi)) != NULL){
-			if (yi->ys_keyword != Y_ENUM)
+			if (yang_keyword_get(yi) != Y_ENUM)
 			    continue;
-			if (strcmp(yi->ys_argument, str) == 0){
+			if (strcmp(yang_argument_get(yi), str) == 0){
 			    found++;
 			    break;
 			}
@@ -860,9 +690,9 @@ cv_validate1(clicon_handle h,
 		    found = 0;
 		    yi = NULL;
 		    while ((yi = yn_each(yrestype, yi)) != NULL){
-			if (yi->ys_keyword != Y_BIT)
+			if (yang_keyword_get(yi) != Y_BIT)
 			    continue;
-			if (strcmp(yi->ys_argument, v) == 0){
+			if (strcmp(yang_argument_get(yi), v) == 0){
 			    found++;
 			    break;
 			}
@@ -944,7 +774,7 @@ ys_cv_validate_union_one(clicon_handle h,
     if (yang_type_resolve(ys, ys, yt, &yrt, &options, &cvv, patterns, regexps,
 			  &fraction) < 0)
 	goto done;
-    restype = yrt?yrt->ys_argument:NULL;
+    restype = yrt?yang_argument_get(yrt):NULL;
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
 	if ((retval = ys_cv_validate_union(h, ys, reason, yrt, type, val)) < 0)
 	    goto done;
@@ -955,6 +785,10 @@ ys_cv_validate_union_one(clicon_handle h,
 	/* reparse value with the new type */
 	if ((cvt = cv_new(cvtype)) == NULL){
 	    clicon_err(OE_UNIX, errno, "cv_new");
+	    goto done;
+	}
+	if (val == NULL){ /* Fail validation on NULL */
+	    retval = 0;
 	    goto done;
 	}
 	if ((retval = cv_parse1(val, cvt, reason)) < 0){
@@ -988,7 +822,7 @@ ys_cv_validate_union_one(clicon_handle h,
     return retval;
 }
 
-/*!
+/*! Validate union
  * @param[out] reason  If given, and return value is 0, contains malloced string
  * @retval -1  Error (fatal), with errno set to indicate error
  * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
@@ -1007,7 +841,7 @@ ys_cv_validate_union(clicon_handle h,
     char      *reason1 = NULL;  /* saved reason */
 
     while ((yt = yn_each(yrestype, yt)) != NULL){
-	if (yt->ys_keyword != Y_TYPE)
+	if (yang_keyword_get(yt) != Y_TYPE)
 	    continue;
 	if ((retval = ys_cv_validate_union_one(h, ys, reason, yt, type, val)) < 0)
 	    goto done;
@@ -1069,11 +903,11 @@ ys_cv_validate(clicon_handle h,
 
     if (reason)
 	*reason=NULL;
-    if (ys->ys_keyword != Y_LEAF && ys->ys_keyword != Y_LEAF_LIST){
+    if (yang_keyword_get(ys) != Y_LEAF && yang_keyword_get(ys) != Y_LEAF_LIST){
 	retval = 1;
 	goto done;
     }
-    ycv = ys->ys_cv;
+    ycv = yang_cv_get(ys);
     if ((regexps = cvec_new(0)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto done;
@@ -1087,7 +921,7 @@ ys_cv_validate(clicon_handle h,
 		      patterns, regexps,
 		      &fraction) < 0)
 	goto done;
-    restype = yrestype?yrestype->ys_argument:NULL;
+    restype = yrestype?yang_argument_get(yrestype):NULL;
     if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
 	goto done;
 
@@ -1104,7 +938,11 @@ ys_cv_validate(clicon_handle h,
     /* Note restype can be NULL here for example with unresolved hardcoded uuid */
     if (restype && strcmp(restype, "union") == 0){ 
 	assert(cvtype == CGV_REST);
-	val = cv_string_get(cv);
+	/* Instead of NULL, give an empty string to validate, this is to avoid cv_parse
+	 * errors and may actually be the wrong thing to do.
+	 */
+	if ((val = cv_string_get(cv)) == NULL)
+	    val = "";
 	if ((retval2 = ys_cv_validate_union(h, ys, reason, yrestype, origtype, val)) < 0)
 	    goto done;
 	retval = retval2; /* invalid (0) with latest reason or valid 1 */
@@ -1146,8 +984,8 @@ ys_cv_validate(clicon_handle h,
 static inline int
 ys_typedef(yang_stmt *ys)
 {
-    return ys->ys_keyword == Y_MODULE || ys->ys_keyword == Y_SUBMODULE ||
-	ys->ys_keyword == Y_CONTAINER || ys->ys_keyword == Y_LIST;
+    return yang_keyword_get(ys) == Y_MODULE || yang_keyword_get(ys) == Y_SUBMODULE ||
+	yang_keyword_get(ys) == Y_CONTAINER || yang_keyword_get(ys) == Y_LIST;
 }
 
 /* find next ys up which can contain a typedef */
@@ -1157,9 +995,9 @@ ys_typedef_up(yang_stmt *ys)
     yang_stmt *yn;
 
     while (ys != NULL && !ys_typedef(ys)){
-	yn = ys->ys_parent;
+	yn = yang_parent_get(ys);
 	/* Some extra stuff to ensure ys is a stmt */
-	if (yn && yn->ys_keyword == Y_SPEC)
+	if (yn && yang_keyword_get(yn) == Y_SPEC)
 	    yn = NULL;
 	ys = (yang_stmt*)yn;
     }
@@ -1222,8 +1060,8 @@ yang_find_identity(yang_stmt *ys,
 	    if ((yid = yang_find(ys, Y_IDENTITY, id)) != NULL)
 		break;
 	    /* Did not find a matching typedef there, proceed to next level */
-	    yn = ys->ys_parent;
-	    if (yn && yn->ys_keyword == Y_SPEC)
+	    yn = yang_parent_get(ys);
+	    if (yn && yang_keyword_get(yn) == Y_SPEC)
 		yn = NULL;
 	    ys = (yang_stmt*)yn;
 	}
@@ -1263,12 +1101,12 @@ yang_type_resolve_restrictions(yang_stmt   *ytype,
 
     if (options && cvv &&
 	(ys = yang_find(ytype, Y_RANGE, NULL)) != NULL){
-	*cvv = ys->ys_cvec;
+	*cvv = yang_cvec_get(ys);
 	*options  |= YANG_OPTIONS_RANGE;
     }
     if (options && cvv &&
 	(ys = yang_find(ytype, Y_LENGTH, NULL)) != NULL){
-	*cvv = ys->ys_cvec;
+	*cvv = yang_cvec_get(ys);
 	*options  |= YANG_OPTIONS_LENGTH;
     }
     /* Find all patterns */
@@ -1281,7 +1119,7 @@ yang_type_resolve_restrictions(yang_stmt   *ytype,
 		clicon_err(OE_UNIX, errno, "cvec_add");
 		goto done;
 	    }
-	    pattern = ys->ys_argument; /* clear text pattern */
+	    pattern = yang_argument_get(ys); /* clear text pattern */
 	    /* Check 1.1 invert pattern */
 	    if (yang_find(ys, Y_MODIFIER, "invert-match") != NULL)
 		cv_flag_set(cv, V_INVERT);
@@ -1290,7 +1128,7 @@ yang_type_resolve_restrictions(yang_stmt   *ytype,
     }
     if (options && fraction && 
 	(ys = yang_find(ytype, Y_FRACTION_DIGITS, NULL)) != NULL){
-	*fraction  = cv_uint8_get(ys->ys_cv);
+	*fraction  = cv_uint8_get(yang_cv_get(ys));
 	*options  |= YANG_OPTIONS_FRACTION_DIGITS;
     }
     retval = 0;
@@ -1339,6 +1177,7 @@ yang_type_resolve(yang_stmt   *yorig,
     int          retval = -1;
     yang_stmt   *yn;
     yang_stmt   *yrmod; /* module where resolved type is looked for */
+    int          ret;
 
     if (options)
 	*options = 0x0;
@@ -1347,13 +1186,20 @@ yang_type_resolve(yang_stmt   *yorig,
     if (nodeid_split(yang_argument_get(ytype), &prefix, &type) < 0)
 	goto done;
     /* Cache does not work for eg string length 32? */
+#if 1
+    if ((ret = yang_type_cache_get(ytype, yrestype,
+				   options, cvv, patterns, NULL, regexps, fraction)) < 0)
+	goto done;
+    if (ret == 1)
+	goto ok;
+#else
     if (ytype->ys_typecache != NULL){
-	if (yang_type_cache_get(ytype->ys_typecache, yrestype,
+	if (yang_type_cache_get(ytype, yrestype,
 				options, cvv, patterns, NULL, regexps, fraction) < 0)
 	    goto done;
 	goto ok;
     }
-
+#endif
     /* Check if type is basic type. If so, return that */
     if ((prefix == NULL && yang_builtin(type))){
 	*yrestype = ytype; 
@@ -1366,7 +1212,7 @@ yang_type_resolve(yang_stmt   *yorig,
     if (prefix){ /* Go to top and find import that matches */
 	if ((yrmod = yang_find_module_by_prefix(ytype, prefix)) == NULL){
 	    clicon_err(OE_DB, 0, "Type not resolved: \"%s:%s\" in module %s",
-		       prefix, type, ys_module(yorig)->ys_argument);
+		       prefix, type, yang_argument_get(ys_module(yorig)));
 	    goto done;
 	}
 	if ((rytypedef = yang_find(yrmod, Y_TYPEDEF, type)) == NULL)
@@ -1384,8 +1230,8 @@ yang_type_resolve(yang_stmt   *yorig,
 	    if ((rytypedef = yang_find(ys, Y_TYPEDEF, type)) != NULL)
 		break;
 	    /* Did not find a matching typedef there, proceed to next level */
-	    yn = ys->ys_parent;
-	    if (yn && (yn->ys_keyword == Y_SPEC))
+	    yn = yang_parent_get(ys);
+	    if (yn && (yang_keyword_get(yn) == Y_SPEC))
 		yn = NULL;
 	    ys = (yang_stmt*)yn;
 	}
@@ -1488,8 +1334,6 @@ yang_type_get(yang_stmt    *ys,
     if (yang_type_resolve(ys, ys, ytype, yrestype, 
 			  options, cvv, patterns, regexps, fraction) < 0)
 	goto done;
-    clicon_debug(3, "%s: %s %s->%s", __FUNCTION__, ys->ys_argument, type, 
-		 *yrestype?(*yrestype)->ys_argument:"null");
     retval = 0;
   done:
     if (type)
@@ -1512,7 +1356,7 @@ yang_type2cv(yang_stmt  *ys)
     if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL)
  < 0)
 	goto done;
-    restype = yrestype?yrestype->ys_argument:NULL;
+    restype = yrestype?yang_argument_get(yrestype):NULL;
     if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0) /* This handles non-resolved also */
 	goto done;
  done:

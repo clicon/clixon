@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -336,6 +337,7 @@ netconf_terminate(clicon_handle h)
 	cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
+    xpath_optimize_exit();
     event_exit();
     clicon_handle_exit(h);
     clicon_log_exit();

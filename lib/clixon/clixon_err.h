@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -58,9 +59,10 @@
 enum clicon_err{
     /* 0 means error not set) */  
     OE_DB = 1,   /* database registries */
-    OE_DAEMON,    /* demons: pidfiles, etc */
+    OE_DAEMON,   /* demons: pidfiles, etc */
     OE_EVENTS,   /* events, filedescriptors, timeouts */
     OE_CFG,      /* configuration */
+    OE_NETCONF,  /* Netconf error */
     OE_PROTO,    /* config/client communication */
     OE_REGEX,    /* Regexp error */
     OE_UNIX,     /* unix/linux syscall error */

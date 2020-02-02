@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -77,8 +77,8 @@
 #include "clixon_plugin.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_map.h"
+#include "clixon_yang_parse_lib.h"
 #include "clixon_yang_module.h"
-#include "clixon_yang_internal.h" /* internal */
 
 modstate_diff_t *
 modstate_diff_new(void)
@@ -155,7 +155,7 @@ yang_modules_revision(clicon_handle h)
     if ((ymod = yang_find(yspec, Y_MODULE, "ietf-yang-library")) != NULL ||
 	(ymod = yang_find(yspec, Y_SUBMODULE, "ietf-yang-library")) != NULL){
 	if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
-	    revision = yrev->ys_argument;
+	    revision = yang_argument_get(yrev);
 	}
     }
     return revision;
@@ -189,25 +189,25 @@ yms_build(clicon_handle    h,
 	goto done;
     }
 
-    cprintf(cb,"<modules-state xmlns=\"%s\">", yns->ys_argument);
+    cprintf(cb,"<modules-state xmlns=\"%s\">", yang_argument_get(yns));
     cprintf(cb,"<module-set-id>%s</module-set-id>", msid);
 
     ymod = NULL;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	if (ymod->ys_keyword != Y_MODULE &&
-	    ymod->ys_keyword != Y_SUBMODULE)
+	if (yang_keyword_get(ymod) != Y_MODULE &&
+	    yang_keyword_get(ymod) != Y_SUBMODULE)
 	    continue;
 	cprintf(cb,"<module>");
-	cprintf(cb,"<name>%s</name>", ymod->ys_argument);
+	cprintf(cb,"<name>%s</name>", yang_argument_get(ymod));
 	if ((ys = yang_find(ymod, Y_REVISION, NULL)) != NULL)
-	    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
+	    cprintf(cb,"<revision>%s</revision>", yang_argument_get(ys));
 	else{
 	    /* RFC7895 1 If no (such) revision statement exists, the module's or 
 	       submodule's revision is the zero-length string. */
 	    cprintf(cb,"<revision></revision>");
 	}
 	if ((ys = yang_find(ymod, Y_NAMESPACE, NULL)) != NULL)
-	    cprintf(cb,"<namespace>%s</namespace>", ys->ys_argument);
+	    cprintf(cb,"<namespace>%s</namespace>", yang_argument_get(ys));
 	else
 	    cprintf(cb,"<namespace></namespace>");
 	/* This follows order in rfc 7895: feature, conformance-type, 
@@ -215,10 +215,10 @@ yms_build(clicon_handle    h,
 	if (!brief){
 	    yc = NULL;
 	    while ((yc = yn_each(ymod, yc)) != NULL) {
-		switch(yc->ys_keyword){
+		switch(yang_keyword_get(yc)){
 		case Y_FEATURE:
-		    if (yc->ys_cv && cv_bool_get(yc->ys_cv))
-			cprintf(cb,"<feature>%s</feature>", yc->ys_argument);
+		    if (yang_cv_get(yc) && cv_bool_get(yang_cv_get(yc)))
+			cprintf(cb,"<feature>%s</feature>", yang_argument_get(yc));
 		    break;
 		default:
 		    break;
@@ -228,12 +228,12 @@ yms_build(clicon_handle    h,
 	}
 	yc = NULL;
 	while ((yc = yn_each(ymod, yc)) != NULL) {
-	    switch(yc->ys_keyword){
+	    switch(yang_keyword_get(yc)){
 	    case Y_SUBMODULE:
 		cprintf(cb,"<submodule>");
-		cprintf(cb,"<name>%s</name>", yc->ys_argument);
+		cprintf(cb,"<name>%s</name>", yang_argument_get(yc));
 		if ((ys = yang_find(yc, Y_REVISION, NULL)) != NULL)
-		    cprintf(cb,"<revision>%s</revision>", ys->ys_argument);
+		    cprintf(cb,"<revision>%s</revision>", yang_argument_get(ys));
 		else
 		    cprintf(cb,"<revision></revision>");
 		cprintf(cb,"</submodule>");
@@ -413,7 +413,7 @@ mod_ns_upgrade(clicon_handle h,
 	    goto fail;
 	if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL)
 	    goto fail;
-	if (ys_parse_date_arg(yrev->ys_argument, &to) < 0)
+	if (ys_parse_date_arg(yang_argument_get(yrev), &to) < 0)
 	    goto done;
     }
     if ((ret = upgrade_callback_call(h, xt, ns, from, to, cbret)) < 0)
@@ -481,4 +481,126 @@ clixon_module_upgrade(clicon_handle    h,
  fail:
     retval = 0;
     goto done;
+}
+
+/*! Given a yang statement and a prefix, return yang module to that relative prefix
+ * Note, not the other module but the proxy import statement only
+ * @param[in]  ys      A yang statement
+ * @param[in]  prefix  prefix
+ * @retval     ymod    Yang module statement if found
+ * @retval     NULL    not found
+ * @note Prefixes are relative to the module they are defined
+ * @see yang_find_module_by_name
+ * @see yang_find_module_by_namespace
+ */
+yang_stmt *
+yang_find_module_by_prefix(yang_stmt *ys, 
+			   char      *prefix)
+{
+    yang_stmt *yimport;
+    yang_stmt *yprefix;
+    yang_stmt *my_ymod;
+    yang_stmt *ymod = NULL;
+    yang_stmt *yspec;
+    char      *myprefix;
+
+    if ((yspec = ys_spec(ys)) == NULL){
+	clicon_err(OE_YANG, 0, "My yang spec not found");
+	goto done;
+    }
+    if ((my_ymod = ys_module(ys)) == NULL){
+	clicon_err(OE_YANG, 0, "My yang module not found");
+	goto done;
+    }
+    myprefix = yang_find_myprefix(ys);
+    if (myprefix && strcmp(myprefix, prefix) == 0){
+	ymod = my_ymod;
+	goto done;
+    }
+    yimport = NULL;
+    while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
+	if (yang_keyword_get(yimport) != Y_IMPORT)
+	    continue;
+	if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) != NULL &&
+	    strcmp(yang_argument_get(yprefix), prefix) == 0){
+	    break;
+	}
+    }
+    if (yimport){
+	if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yimport))) == NULL){
+	    clicon_err(OE_YANG, 0, "No module or sub-module found with prefix %s", 
+		       prefix);	
+	    yimport = NULL;
+	    goto done; /* unresolved */
+	}
+    }
+ done:
+    return ymod;
+}
+
+/* Get module from its own prefix 
+ * This is really not a valid usecase, a kludge for the identityref derived
+ * list workaround (IDENTITYREF_KLUDGE)
+ * Actually, for canonical prefixes it is!
+ */ 
+yang_stmt *
+yang_find_module_by_prefix_yspec(yang_stmt *yspec, 
+				 char      *prefix)
+{
+    yang_stmt *ymod = NULL;
+    yang_stmt *yprefix;
+    
+    while ((ymod = yn_each(yspec, ymod)) != NULL) 
+	if (yang_keyword_get(ymod) == Y_MODULE &&
+	    (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
+	    strcmp(yang_argument_get(yprefix), prefix) == 0)
+	    return ymod;
+    return NULL;
+}
+
+/*! Given a yang spec and a namespace, return yang module 
+ *
+ * @param[in]  yspec      A yang specification
+ * @param[in]  namespace  namespace
+ * @retval     ymod       Yang module statement if found
+ * @retval     NULL       not found
+ * @see yang_find_module_by_name
+ * @see yang_find_module_by_prefix    module-specific prefix
+ */
+yang_stmt *
+yang_find_module_by_namespace(yang_stmt *yspec, 
+			      char      *namespace)
+{
+    yang_stmt *ymod = NULL;
+
+    if (namespace == NULL)
+	goto done;
+    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+	if (yang_find(ymod, Y_NAMESPACE, namespace) != NULL)
+	    break;
+    }
+ done:
+    return ymod;
+}
+
+/*! Given a yang spec and a module name, return yang module or submodule
+ *
+ * @param[in]  yspec      A yang specification
+ * @param[in]  name       Name of module
+ * @retval     ymod       Yang module statement if found
+ * @retval     NULL       not found
+ * @see yang_find_module_by_namespace
+ * @see yang_find_module_by_prefix    module-specific prefix
+ */
+yang_stmt *
+yang_find_module_by_name(yang_stmt *yspec, 
+			 char      *name)
+{
+    yang_stmt *ymod = NULL;
+    
+    while ((ymod = yn_each(yspec, ymod)) != NULL) 
+	if ((yang_keyword_get(ymod) == Y_MODULE || yang_keyword_get(ymod) == Y_SUBMODULE) &&
+	    strcmp(yang_argument_get(ymod), name)==0)
+	    return ymod;
+    return NULL;
 }

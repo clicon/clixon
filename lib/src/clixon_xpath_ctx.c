@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -117,8 +117,6 @@ ctx_dup(xp_ctx *xc0)
  * @param[in] xc  XPATH evaluation context
  * @param[in] ind Indentation margin
  * @param[in] str Prefix string in printout
-
-
  */
 int
 ctx_print_cb(cbuf   *cb,

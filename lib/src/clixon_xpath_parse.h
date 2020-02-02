@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -39,7 +39,7 @@
 /*
  * Types
  */
-struct clicon_xpath_yacc_arg{ /* XXX: mostly unrelevant */
+struct clicon_xpath_yacc_arg{ 
     const char           *xy_name;         /* Name of syntax (for error string) */
     int                   xy_linenum;      /* Number of \n in parsed buffer */
     char                 *xy_parse_string; /* original (copy of) parse string */
@@ -55,11 +55,11 @@ extern char *clixon_xpath_parsetext;
 /*
  * Prototypes
  */
-int xpath_scan_init(struct clicon_xpath_yacc_arg *jy);
-int xpath_scan_exit(struct clicon_xpath_yacc_arg *jy);
+int xpath_scan_init(struct clicon_xpath_yacc_arg *xy);
+int xpath_scan_exit(struct clicon_xpath_yacc_arg *xy);
 
-int xpath_parse_init(struct clicon_xpath_yacc_arg *jy);
-int xpath_parse_exit(struct clicon_xpath_yacc_arg *jy);
+int xpath_parse_init(struct clicon_xpath_yacc_arg *xy);
+int xpath_parse_exit(struct clicon_xpath_yacc_arg *xy);
 
 int clixon_xpath_parselex(void *);
 int clixon_xpath_parseparse(void *);

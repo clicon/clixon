@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -68,7 +68,6 @@
 #include "clixon_xpath.h"
 #include "clixon_xpath_optimize.h"
 
-
 #ifdef XPATH_LIST_OPTIMIZE
 static xpath_tree *_xmtop = NULL; /* pattern match tree top */
 static xpath_tree *_xm = NULL;
@@ -76,7 +75,6 @@ static xpath_tree *_xe = NULL;
 static int _optimize_enable = 1;
 static int _optimize_hits = 0;
 #endif /* XPATH_LIST_OPTIMIZE */
-
 
 /* XXX development in clixon_xpath_eval */
 int
@@ -89,6 +87,9 @@ xpath_list_optimize_stats(int *hits)
     return 0;
 }
 
+/*! Enable xpath optimize
+ * Cant replace this with optin since there is no handle in xpath functions,...
+ */
 int
 xpath_list_optimize_set(int enable)
 {
@@ -213,7 +214,8 @@ loop_preds(xpath_tree *xt,
  *
  * @param[in]  xt     XPath tree
  * @param[in]  xv     XML base node
- * @param[out] xp     XML found node (retval == 1)
+ * @param[out] xvec   Array of found nodes
+ * @param[out] xlen   Len of xvec
  * @param[out] key
  * @param[out] keyval
  * @retval    -1      Error
@@ -225,7 +227,8 @@ loop_preds(xpath_tree *xt,
 static int
 xpath_list_optimize_fn(xpath_tree *xt,
 		       cxobj      *xv,
-		       cxobj     **xp)
+		       cxobj    ***xvec, 
+		       size_t     *xlen)
 {
     int          retval = -1;
     xpath_tree  *xm = NULL;
@@ -262,9 +265,9 @@ xpath_list_optimize_fn(xpath_tree *xt,
     if (veclen != 2)
 	goto ok;
     name = vec[0]->xs_s1;
-    /* Extract variables XXX strdups */
+    /* Extract variables */
     if ((yc = yang_find(yp, Y_LIST, name)) == NULL)
-#ifdef NOTYET
+#ifdef NOTYET /* leaf-list is not detected by xpath optimize detection */
 	if ((yc = yang_find(yp, Y_LEAF_LIST, name)) == NULL) /* XXX */
 #endif
 	    goto ok; 
@@ -286,14 +289,12 @@ xpath_list_optimize_fn(xpath_tree *xt,
     i = 0;
     cvi = NULL;
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	if (strcmp(cv_name_get(cvi), cv_string_get(cvec_i(cvv,i)))){
-	    fprintf(stderr, "%s key name mismatch %s vs %s\n",
-		    __FUNCTION__, cv_name_get(cvi), cv_string_get(cvec_i(cvv,i)));
+	if (strcmp(cv_name_get(cvi), cv_string_get(cvec_i(cvv,i))))
 	    goto ok;
-	}
 	i++;
     }
-    if (xml_binsearch(xv, yc, cvk, xp) < 0)
+    /* Use 2a form since yc allready given to compute cvk */
+    if (clixon_xml_find_index(xv, yp, NULL, name, cvk, xvec, xlen) < 0)
 	goto done;
     retval = 1; /* match */
  done:
@@ -316,8 +317,9 @@ xpath_list_optimize_fn(xpath_tree *xt,
  */
 int
 xpath_optimize_check(xpath_tree *xs,
-		     cxobj      *xv,
-    		     cxobj     **xp)
+                     cxobj      *xv,
+	             cxobj    ***xvec, 
+	             size_t     *xlen)
 
 {
 #ifdef XPATH_LIST_OPTIMIZE
@@ -325,7 +327,7 @@ xpath_optimize_check(xpath_tree *xs,
     
     if (!_optimize_enable)
 	return 0; /* use regular code */
-    if ((ret = xpath_list_optimize_fn(xs, xv, xp)) < 0)
+    if ((ret = xpath_list_optimize_fn(xs, xv, xvec, xlen)) < 0)
 	return -1;
     if (ret == 1){
 	_optimize_hits++;

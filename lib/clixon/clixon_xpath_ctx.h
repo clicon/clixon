@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -55,8 +56,9 @@ enum xp_objtype{
     XT_STRING
 };
 
-/* Expression evaluation occurs with respect to a context. XSLT and XPointer specify how the context is
- * determined for XPath expressions used in XSLT and XPointer respectively. The context consists of:
+/* Expression evaluation occurs with respect to a context. XSLT and XPointer specify how the 
+ * context is determined for XPath expressions used in XSLT and XPointer respectively. The 
+ * context consists of:
  *  a node (the context node)
  *  a pair of non-zero positive integers (the context position and the context size)
  *  a set of variable bindings

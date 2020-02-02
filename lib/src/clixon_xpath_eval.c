@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -339,25 +339,17 @@ xp_eval_step(xp_ctx     *xc0,
 	    else for (i=0; i<xc->xc_size; i++){ 
 		    xv = xc->xc_nodeset[i];
 		    x = NULL; 
-		    if ((ret = xpath_optimize_check(xs, xv, &x)) < 0)
+		    if ((ret = xpath_optimize_check(xs, xv, &vec, &veclen)) < 0)
 			goto done;
-		    switch (ret){
-		    case 1: /* optimized */
-		    	if (x) /* keep only x */
-			    if (cxvec_append(x, &vec, &veclen) < 0)
-				goto done;
-			break;
-		    case 0: /* regular code */
-			if (ret == 0){ /* No optimization made */
-			    while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
-				/* xs->xs_c0 is nodetest */
-				if (nodetest == NULL || nodetest_eval(x, nodetest, nsc, localonly) == 1){
-				    if (cxvec_append(x, &vec, &veclen) < 0)
-					goto done;
-				}
+		    if (ret == 0){/* regular code, no optimization made */
+			while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
+			    /* xs->xs_c0 is nodetest */
+			    if (nodetest == NULL || nodetest_eval(x, nodetest, nsc, localonly) == 1){
+				if (cxvec_append(x, &vec, &veclen) < 0)
+				    goto done;
 			    }
 			}
-		    } /* switch */
+		    } 
 		}
 	}
 	ctx_nodeset_replace(xc, vec, veclen);
@@ -932,7 +924,7 @@ xp_eval(xp_ctx     *xc,
     xp_ctx    *xr2 = NULL;
     int        use_xr0 = 0; /* In 2nd child use transitively result of 1st child */
     
-    if (debug)
+    if (debug > 1)
 	ctx_print(stderr, xc, xpath_tree_int2str(xs->xs_type));
     /* Pre-actions before check first child c0
      */
@@ -1088,7 +1080,7 @@ xp_eval(xp_ctx     *xc,
 	    xr0 = NULL;
 	}
  ok:
-    if (debug)
+    if (debug>1)
 	ctx_print(stderr, *xrp, xpath_tree_int2str(xs->xs_type));
     retval = 0;
  done:

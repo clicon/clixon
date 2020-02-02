@@ -2172,9 +2172,9 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 : ${INSTALLFLAGS="-s"}
 
 CLIXON_VERSION_MAJOR="4"
-CLIXON_VERSION_MINOR="3"
+CLIXON_VERSION_MINOR="4"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Check CLIgen
 if test "$prefix" = "NONE"; then
@@ -4976,7 +4976,7 @@ _ACEOF
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/hello/Makefile extras/rpm/Makefile docker/Makefile docker/main/Makefile docker/base/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile yang/optional/Makefile doc/Makefile test/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/hello/Makefile extras/rpm/Makefile docker/Makefile docker/main/Makefile docker/base/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile yang/optional/Makefile doc/Makefile test/Makefile test/cicd/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5696,6 +5696,7 @@ do
     "yang/optional/Makefile") CONFIG_FILES="$CONFIG_FILES yang/optional/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
     "test/Makefile") CONFIG_FILES="$CONFIG_FILES test/Makefile" ;;
+    "test/cicd/Makefile") CONFIG_FILES="$CONFIG_FILES test/cicd/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

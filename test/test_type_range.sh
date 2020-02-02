@@ -180,13 +180,40 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
 </clixon-config>
 EOF
 
-# Type range tests.
+# Test invalid numbers or out of range errors for each type.  Check error message on validation.
+# These are the built-in ranges, typed ranges are checked in testrange
+# Parameters: 1: type (eg uint8)
+#             2: value to test
+#             3: min value (for errmsg)
+#             4: max value (for errmsg)
+#             5: post (eg .000 - special for decimal64, others should have "") (NYI)
+testbuiltin(){
+    t=$1
+    val=$2
+    rmin=$3
+    rmax=$4
+    post=$5
+    
+    errmsg="Number $val$post out of range: $rmin$post - $rmax$post"
+    
+    new "Netconf set invalid $t leaf"
+    echo "$clixon_netconf -qf $cfg"
+    echo "<rpc><edit-config><target><candidate/></target><config><r$t xmlns=\"urn:example:clixon\">$val</r$t></config></edit-config></rpc>]]>]]>"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><r$t xmlns=\"urn:example:clixon\">$val</r$t></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+    new "netconf validate invalid range"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>r$t</bad-element></error-info><error-severity>error</error-severity><error-message>$errmsg</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+    new "discard"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+}
+
+# Type explicit typed range tests.
 # Parameters: 1: type (eg uint8)
 #             2: val OK
 #             3: eval Invalid value
@@ -205,7 +232,7 @@ testrange(){
     fi
 
     new "generated cli set $t leaf invalid"
-    expectpart "$(clixon_cli -1f $cfg -l o set l$t $eval)" 255 "$errmsg"
+    expectpart "$($clixon_cli -1f $cfg -l o set l$t $eval)" 255 "$errmsg"
 
     new "generated cli set $t leaf OK"
     expectfn "$clixon_cli -1f $cfg -l o set l$t $val" 0 '^$'
@@ -243,28 +270,6 @@ testrange(){
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 }
 
-# Type unlimited value range test. Only test invalid number out of range of type
-# Parameters: 1: type (eg uint8)
-#             2: val 
-#             3: post (eg .000 - special for decimal64, others should have "")
-testunlimit(){
-    t=$1
-    val=$2
-    rmin=$3
-    rmax=$4
-    post=$5
-    
-    errmsg="Number $val$post out of range: $rmin$post - $rmax$post"
-    
-    new "Netconf set invalid $t leaf"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><r$t xmlns=\"urn:example:clixon\">$val</r$t></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
-    
-    new "netconf validate invalid range"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>r$t</bad-element></error-info><error-severity>error</error-severity><error-message>$errmsg</error-message></rpc-error></rpc-reply>]]>]]>$"
-
-    new "discard"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
-}
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -282,15 +287,28 @@ fi
 new "test params: -f $cfg"
 
 # Test all int types
-testunlimit int8 300 -128 127 ""
-testunlimit int16 73000 -32768 32767 ""
-testunlimit int32 4900000000 -2147483648 2147483647 ""
-testunlimit int64 49739274983274983274983274 -9223372036854775808 9223372036854775807 ""
-testunlimit uint8 300 0 255 ""
-testunlimit uint16 73000 0 65535 ""
-testunlimit uint32 4900000000 0 4294967295 ""
-testunlimit uint64 49739274983274983274983274 0 18446744073709551615 ""
-#testunlimit decimal64 49739274983274983274983274  -9223372036854775808 9223372036854775807 ".000"
+testbuiltin int8 300 -128 127 ""
+testbuiltin int8 -300 -128 127 ""
+testbuiltin int16 73000 -32768 32767 ""
+testbuiltin int16 -73000 -32768 32767 ""
+testbuiltin int32 4900000000 -2147483648 2147483647 ""
+testbuiltin int32 -4900000000 -2147483648 2147483647 ""
+testbuiltin int64 49739274983274983274983274 -9223372036854775808 9223372036854775807 ""
+testbuiltin int64 -49739274983274983274983274 -9223372036854775808 9223372036854775807 ""
+
+testbuiltin uint8 300 0 255 ""
+testbuiltin uint8 -300 0 255 ""
+testbuiltin uint8 -1 0 255 ""
+testbuiltin uint16 73000 0 65535 ""
+testbuiltin uint16 -73000 0 65535 ""
+testbuiltin uint16 -1 0 65535 ""
+testbuiltin uint32 4900000000 0 4294967295 ""
+testbuiltin uint32 -4900000000 0 4294967295 ""
+testbuiltin uint32 -1 0 4294967295 ""
+testbuiltin uint64 49739274983274983274983274 0 18446744073709551615 ""
+testbuiltin uint64 -49739274983274983274983274 0 18446744073709551615 ""
+testbuiltin uint64 -1 0 18446744073709551615 ""
+#testbuiltin decimal64 49739274983274983274983274  -9223372036854775808 9223372036854775807 ".000"
 
 # Test all int types
 for t in int8 int16 int32 int64 uint8 uint16 uint32 uint64; do
@@ -315,3 +333,6 @@ if [ $BE -ne 0 ]; then
 fi
 
 rm -rf $dir
+
+# unset conditional parameters 
+unset format

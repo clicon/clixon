@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -73,6 +74,7 @@
 #include <clixon/clixon_file.h>
 #include <clixon/clixon_xml.h>
 #include <clixon/clixon_xml_sort.h>
+#include <clixon/clixon_yang_parse_lib.h>
 #include <clixon/clixon_yang_module.h>
 #include <clixon/clixon_stream.h>
 #include <clixon/clixon_proto.h>
@@ -82,7 +84,7 @@
 #include <clixon/clixon_options.h>
 #include <clixon/clixon_data.h>
 #include <clixon/clixon_regex.h>
-#include <clixon/clixon_api_path.h>
+#include <clixon/clixon_path.h>
 #include <clixon/clixon_xml_map.h>
 #include <clixon/clixon_validate.h>
 #include <clixon/clixon_datastore.h>

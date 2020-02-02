@@ -1,7 +1,7 @@
 /*
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -63,4 +63,18 @@
  * Identify xpaths that search for exactly a list key, eg: "y[k=3]" and then call
  * binary search. This only works if "y" has proper yang binding and is sorted by system
  */
-#undef XPATH_LIST_OPTIMIZE
+#define XPATH_LIST_OPTIMIZE
+
+/*! Add search indexes, so that binary search can be made for non-key list indexes
+ * This also applies if there are multiple keys and you want to search on only the second for 
+ * example.
+ */
+#undef XML_EXTRA_INDEX
+
+/*! Validate user state callback content
+ * Use may register state callbacks using ca_statedata callback
+ * When this option is set, the XML returned from the callback is validated after merging with the running
+ * db. If it fails, an internal error is returned to the originating user.
+ * If the option is not set, the XML returned by the user is not validated.
+ */
+#define VALIDATE_STATE_XML

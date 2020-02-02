@@ -2,7 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2020 Olof Hagsand
 
   This file is part of CLIXON.
 
@@ -34,19 +34,6 @@
  * Yang functions
  * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
  * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
- *
- * CALLING ORDER OF YANG PARSE FILES
- * =================================
- *                                      yang_spec_parse_module
- *                                     |                       | 
- *                                     v                       v   v
- * yang_spec_parse_file-> yang_parse_post->yang_parse_recurse->yang_parse_module
- *                    \   /                                         v
- * yang_spec_load_dir ------------------------------------> yang_parse_filename
- *                                                                 v  
- *                                                          yang_parse_file
- *                                                                 v  
- *                                                          yang_parse_str
  */
 
 #ifdef HAVE_CONFIG_H
@@ -91,12 +78,11 @@
 #include "clixon_data.h"
 #include "clixon_options.h"
 #include "clixon_yang_parse.h"
+#include "clixon_yang_parse_lib.h"
 #include "clixon_yang_cardinality.h"
-#include "clixon_yang_internal.h" /* internal */
+#include "clixon_yang_module.h"
 #include "clixon_yang_type.h"
-
-/* Size of json read buffer when reading from file*/
-#define BUFLEN 1024
+#include "clixon_yang_internal.h" /* internal included by this file only, not API*/
 
 /*
  * Local variables
@@ -178,8 +164,32 @@ static const map_str2int ykmap[] = {
     {NULL,               -1}
 };
 
+/* Forward static */
+static int yang_type_cache_free(yang_type_cache *ycache);
+static int yang_type_cache_cp(yang_stmt *ynew, yang_stmt *yold);
+
 /* Access functions
  */
+
+/*! Get Number of children yang statements
+ * @param[in] ys  Yang statement node
+ */
+int
+yang_len_get(yang_stmt *ys)
+{
+    return ys->ys_len;
+}
+
+/*! Get Specific Yang statement child
+ * @param[in] ys  Yang statement node
+ * @param[in] i   Return this child
+ */
+yang_stmt *
+yang_child_i(yang_stmt *ys,
+	     int        i)
+{
+    return ys->ys_stmt[i];
+}
 
 /*! Get yang statement parent
  * @param[in] ys  Yang statement node
@@ -206,6 +216,19 @@ char*
 yang_argument_get(yang_stmt *ys)
 {
     return ys->ys_argument;
+}
+
+/*! Set yang argument, not not copied
+ * @param[in] ys   Yang statement node
+ * @param[in] arg  Argument
+ * Typically only done at parsing / initiation
+ */
+int
+yang_argument_set(yang_stmt *ys,
+		  char      *arg)
+{
+    ys->ys_argument = arg; /* not strdup/copied */
+    return 0;
 }
 
 /*! Get yang statement CLIgen variable
@@ -239,6 +262,42 @@ yang_cvec_set(yang_stmt *ys,
     if (ys->ys_cvec)
 	cvec_free(ys->ys_cvec);
     ys->ys_cvec = cvv;
+    return 0;
+}
+
+/*! Get yang stmt flags, used for internal algorithms
+ * @param[in]  ys     Yang statement
+ * @param[in]  flag   Flags value(s) to get, see YANG_FLAG_*
+ * @retval     value  Flags value masked by "flag" parameter, see YANG_FLAG_*
+ */
+uint16_t
+yang_flag_get(yang_stmt *ys, 
+	      uint16_t   flag)
+{
+    return ys->ys_flags&flag;
+}
+
+/*! Set yang stmt flags, used for internal algorithms
+ * @param[in]  ys     Yang statement
+ * @param[in]  flag   Flag value(s) to set, see YANG_FLAG_*
+ */
+int
+yang_flag_set(yang_stmt *ys, 
+	      uint16_t   flag)
+{
+    ys->ys_flags |= flag;
+    return 0;
+}
+
+/*! Reset yang stmt flags, used for internal algorithms
+ * @param[in]  ys     Yang statement
+ * @param[in]  flag   Flag value(s) to reset, see YANG_FLAG_*
+ */
+int
+yang_flag_reset(yang_stmt *ys, 
+		uint16_t   flag)
+{
+    ys->ys_flags &= ~flag;
     return 0;
 }
 
@@ -424,7 +483,7 @@ ys_cp(yang_stmt *ynew,
 	}
     if (yold->ys_typecache){
 	ynew->ys_typecache = NULL;
-	if (yang_type_cache_cp(&ynew->ys_typecache, yold->ys_typecache) < 0)
+	if (yang_type_cache_cp(ynew, yold) < 0)
 	    goto done;
     }
     for (i=0; i<ynew->ys_len; i++){
@@ -606,7 +665,7 @@ yang_match(yang_stmt *yn,
     return match;
 }
 
-/*! Find child data node with matching argument (container, leaf, etc)
+/*! Find child data node with matching argument (container, leaf, list, leaf-list)
  *
  * @param[in]  yn         Yang node, current context node.
  * @param[in]  argument   if NULL, match any(first) argument. XXX is that really a case?
@@ -1007,17 +1066,6 @@ yang_order(yang_stmt *y)
     return -1;
 }
 
-/*! Reset flag in complete tree, arg contains flag */
-static int
-ys_flag_reset(yang_stmt *ys, 
-	      void      *arg)
-{
-    int flags = (intptr_t)arg;
-
-    ys->ys_flags |= ~flags;
-    return 0;
-}
-
 char *
 yang_key2str(int keyword)
 {
@@ -1149,127 +1197,6 @@ ys_spec(yang_stmt *ys)
     }
     /* Here it is either NULL or is a typedef-kind yang-stmt */
     return (yang_stmt*)ys;
-}
-
-/*! Given a yang statement and a prefix, return yang module to that relative prefix
- * Note, not the other module but the proxy import statement only
- * @param[in]  ys      A yang statement
- * @param[in]  prefix  prefix
- * @retval     ymod    Yang module statement if found
- * @retval     NULL    not found
- * @node Prefixes are relative to the module they are defined
- * @see yang_find_module_by_name
- * @see yang_find_module_by_namespace
- */
-yang_stmt *
-yang_find_module_by_prefix(yang_stmt *ys, 
-			   char      *prefix)
-{
-    yang_stmt *yimport;
-    yang_stmt *yprefix;
-    yang_stmt *my_ymod;
-    yang_stmt *ymod = NULL;
-    yang_stmt *yspec;
-    char      *myprefix;
-
-    if ((yspec = ys_spec(ys)) == NULL){
-	clicon_err(OE_YANG, 0, "My yang spec not found");
-	goto done;
-    }
-    if ((my_ymod = ys_module(ys)) == NULL){
-	clicon_err(OE_YANG, 0, "My yang module not found");
-	goto done;
-    }
-    myprefix = yang_find_myprefix(ys);
-    if (myprefix && strcmp(myprefix, prefix) == 0){
-	ymod = my_ymod;
-	goto done;
-    }
-    yimport = NULL;
-    while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
-	if (yang_keyword_get(yimport) != Y_IMPORT)
-	    continue;
-	if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) != NULL &&
-	    strcmp(yang_argument_get(yprefix), prefix) == 0){
-	    break;
-	}
-    }
-    if (yimport){
-	if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yimport))) == NULL){
-	    clicon_err(OE_YANG, 0, "No module or sub-module found with prefix %s", 
-		       prefix);	
-	    yimport = NULL;
-	    goto done; /* unresolved */
-	}
-    }
- done:
-    return ymod;
-}
-
-/* Get module from its own prefix 
- * This is really not a valid usecase, a kludge for the identityref derived
- * list workaround (IDENTITYREF_KLUDGE)
- */ 
-yang_stmt *
-yang_find_module_by_prefix_yspec(yang_stmt *yspec, 
-				 char      *prefix)
-{
-    yang_stmt *ymod = NULL;
-    yang_stmt *yprefix;
-    
-    while ((ymod = yn_each(yspec, ymod)) != NULL) 
-	if (ymod->ys_keyword == Y_MODULE &&
-	    (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
-	    strcmp(yang_argument_get(yprefix), prefix) == 0)
-	    return ymod;
-    return NULL;
-}
-
-/*! Given a yang spec and a namespace, return yang module 
- *
- * @param[in]  yspec      A yang specification
- * @param[in]  namespace  namespace
- * @retval     ymod       Yang module statement if found
- * @retval     NULL       not found
- * @see yang_find_module_by_name
- * @see yang_find_module_by_prefix    module-specific prefix
- */
-yang_stmt *
-yang_find_module_by_namespace(yang_stmt *yspec, 
-			      char      *namespace)
-{
-    yang_stmt *ymod = NULL;
-
-    if (namespace == NULL)
-	goto done;
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	if (yang_find(ymod, Y_NAMESPACE, namespace) != NULL)
-	    break;
-    }
- done:
-    return ymod;
-}
-
-/*! Given a yang spec and a module name, return yang module or submodule
- *
- * @param[in]  yspec      A yang specification
- * @param[in]  name       Name of module
- * @retval     ymod       Yang module statement if found
- * @retval     NULL       not found
- * @see yang_find_module_by_namespace
- * @see yang_find_module_by_prefix    module-specific prefix
- */
-yang_stmt *
-yang_find_module_by_name(yang_stmt *yspec, 
-			 char      *name)
-{
-    yang_stmt *ymod = NULL;
-    
-    while ((ymod = yn_each(yspec, ymod)) != NULL) 
-	if ((ymod->ys_keyword == Y_MODULE || ymod->ys_keyword == Y_SUBMODULE) &&
-	    strcmp(ymod->ys_argument, name)==0)
-	    return ymod;
-    return NULL;
 }
 
 /*! string is quoted if it contains space or tab, needs double '' */
@@ -1966,12 +1893,13 @@ ys_populate(yang_stmt    *ys,
     return retval;
 }
 
+
 /*! Run after grouping expand and augment 
  * @see ys_populate   run before grouping expand and augment
  */
-static int
+int
 ys_populate2(yang_stmt    *ys, 
-	    void         *arg)
+	     void         *arg)
 {
     int           retval = -1;
     clicon_handle h = (clicon_handle)arg;
@@ -1995,778 +1923,6 @@ ys_populate2(yang_stmt    *ys,
     return retval;
 }
 
-/*! Resolve a grouping name from a point in the yang tree 
- * @param[in]  ys         Yang statement of "uses" statement doing the lookup
- * @param[in]  prefix     Prefix of grouping to look for
- * @param[in]  name       Name of grouping to look for
- * @param[out] ygrouping0 A found grouping yang structure as result
- * @retval     0          OK, ygrouping may be NULL
- * @retval    -1          Error, with clicon_err called
- */
-static int
-ys_grouping_resolve(yang_stmt  *ys, 
-		    char       *prefix, 
-		    char       *name,
-		    yang_stmt **ygrouping0)
-{
-    int             retval = -1;
-    yang_stmt      *ymodule;
-    yang_stmt      *ygrouping = NULL;
-    yang_stmt      *yn;
-
-    /* find the grouping associated with argument and expand(?) */
-    if (prefix){ /* Go to top and find import that matches */
-	if ((ymodule = yang_find_module_by_prefix(ys, prefix)) != NULL)
-	    ygrouping = yang_find(ymodule, Y_GROUPING, name);
-    }
-    else
-	while (1){
-	    /* Check upwards in hierarchy for matching groupings */
-	    if ((yn = ys->ys_parent) == NULL || yn->ys_keyword == Y_SPEC)
-		break;
-	    /* Here find grouping */
-	    if ((ygrouping = yang_find(yn, Y_GROUPING, name)) != NULL)
-		break;
-	    /* Proceed to next level */
-	    ys = (yang_stmt*)yn;
-	}
-    *ygrouping0 = ygrouping;
-    retval = 0;
-    // done:
-    return retval;
-}
-
-/*! This is an augment node, augment the original datamodel. 
- * @param[in] ys    The augment statement
- * @param[in] yspec Yang specification
- * @see RFC7950 Sec 7.17
- * The target node MUST be either a container, list, choice, case, input,
- * output, or notification node.
- * If the "augment" statement is on the top level the absolute form MUST be 
- * used.
- * All data nodes defined in the "augment" statement are defined as XML
- * elements in the XML namespace of the module where the "augment" is
- * specified.
- */
-static int
-yang_augment_node(yang_stmt *ys, 
-		  yang_stmt *ysp)
-{
-    int        retval = -1;
-    char      *schema_nodeid;
-    yang_stmt *ytarget = NULL;
-    yang_stmt *yc;
-    int        i;
-    yang_stmt *ymod;
-
-    if ((ymod = ys_module(ys)) == NULL){
-	clicon_err(OE_YANG, 0, "My yang module not found");
-	goto done;
-    }
-    schema_nodeid = ys->ys_argument;
-    clicon_debug(2, "%s %s", __FUNCTION__, schema_nodeid);
-    /* Find the target */
-    if (yang_abs_schema_nodeid(ysp, ys, schema_nodeid, -1, &ytarget) < 0)
-	goto done;
-    if (ytarget == NULL)
-	goto ok;
-    /* Extend ytarget with ys' children
-     * First enlarge ytarget vector 
-     */
-    for (i=0; i<ys->ys_len; i++){
-	if ((yc = ys_dup(ys->ys_stmt[i])) == NULL)
-	    goto done;
-	yc->ys_mymodule = ymod;
-	if (yn_insert(ytarget, yc) < 0)
-	    goto done;
-    }
- ok:
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Find all top-level augments and change original datamodels. */
-static int
-yang_augment_spec(yang_stmt *ysp,
-		  int        modnr)
-{
-    int        retval = -1;
-    yang_stmt *ym;
-    yang_stmt *ys;
-    int        i;
-    int        j;
-
-    i = modnr;
-    while (i<ysp->ys_len){ /* Loop through modules and sub-modules */
-	ym = ysp->ys_stmt[i++];
-	j = 0;
-	while (j<ym->ys_len){ /* Top-level symbols in modules */
-	    ys = ym->ys_stmt[j++];
-	    switch (ys->ys_keyword){
-	    case Y_AUGMENT: /* top-level */
-		if (yang_augment_node(ys, ysp) < 0)
-		    goto done;
-		break;
-	    default:
-		break;
-	    }
-	}
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Given a refine node, perform the refinement action on the target refine node
- * The RFC is somewhat complicate in the rules for refine.
- * Most nodes will be replaced, but some are added
- * @param[in]  yr   Refine node
- * @param[in]  yt   Refine target node (will be modified)
- * @see RFC7950 Sec 7.13.2
- * There may be some missed cornercases
- */
-static int
-ys_do_refine(yang_stmt *yr,
-	     yang_stmt *yt)
-{
-    int           retval = -1;
-    yang_stmt    *yrc; /* refine child */
-    yang_stmt    *yrc1;
-    yang_stmt    *ytc; /* target child */
-    enum rfc_6020 keyw;
-    int           i;
-    
-    /* Loop through refine node children. First if remove do that first 
-     * In some cases remove a set of nodes.
-     */
-    yrc = NULL;
-    while ((yrc = yn_each(yr, yrc)) != NULL) {
-	keyw = yang_keyword_get(yrc);
-	switch (keyw){
-	case Y_DEFAULT: /* remove old, add new */
-	case Y_DESCRIPTION:
-	case Y_REFERENCE:
-	case Y_CONFIG:
-	case Y_MANDATORY:
-	case Y_PRESENCE:
-	case Y_MIN_ELEMENTS:
-	case Y_MAX_ELEMENTS:
-	case Y_EXTENSION:
-	    /* Remove old matching, dont increment due to prune in loop */
-	    for (i=0; i<yt->ys_len; ){
-		ytc = yt->ys_stmt[i];
-		if (keyw != yang_keyword_get(ytc)){
-		    i++;
-		    continue;
-		}
-		ys_prune(yt, i);
-		ys_free(ytc);
-	    }
-	    /* fall through and add if not found */
-	case Y_MUST:   /* keep old, add new */
-	case Y_IF_FEATURE:  
-	    break;
-	default:
-	    break;
-	}
-    }
-    /* Second, add the node(s) */
-    yrc = NULL;
-    while ((yrc = yn_each(yr, yrc)) != NULL) {
-	keyw = yang_keyword_get(yrc);
-	/* Make copy */
-	if ((yrc1 = ys_dup(yrc)) == NULL)
-	    goto done;
-	if (yn_insert(yt, yrc1) < 0)
-	    goto done;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Macro expansion of grouping/uses done in step 2 of yang parsing 
- * RFC7950:
- * Identifiers appearing inside the grouping are resolved
- * relative to the scope in which the  grouping is defined, not where it is
- * used.  Prefix mappings, type names, grouping  names, and extension usage are
- * evaluated in the hierarchy where the "grouping" statement appears. 
- *   The identifiers defined in the grouping are not bound to a namespace
- * until the contents of the grouping are added to the schema tree via a
- * "uses" statement that does not appear inside a "grouping" statement,
- * at which point they are bound to the namespace of the current module.
- */
-static int
-yang_expand_grouping(yang_stmt *yn)
-{
-    int        retval = -1;
-    yang_stmt *ys = NULL;
-    yang_stmt *ygrouping;  /* grouping original */
-    yang_stmt *ygrouping2; /* grouping copy */
-    yang_stmt *yg;         /* grouping child */
-    yang_stmt *yr;         /* refinement */
-    int        glen;
-    int        i;
-    int        j;
-    char      *id = NULL;
-    char      *prefix = NULL;
-    size_t     size;
-
-    /* Cannot use yang_apply here since child-list is modified (is destructive) */
-    i = 0;
-    while (i<yn->ys_len){
-	ys = yn->ys_stmt[i]; 
-	switch(ys->ys_keyword){
-	case Y_USES:
-	    /* Split argument into prefix and name */
-	    if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
-		goto done;
-	    if (ys_grouping_resolve(ys, prefix, id, &ygrouping) < 0)
-		goto done;
-	    if (prefix){
-		free(prefix); 
-		prefix = NULL;
-	    }
-	    if (id){
-		free(id); 
-		id = NULL;
-	    }
-	    if (ygrouping == NULL){
-		clicon_log(LOG_NOTICE, "%s: Yang error : grouping \"%s\" not found in module \"%s\"", 
-			   __FUNCTION__, ys->ys_argument, ys_module(ys)->ys_argument);
-		goto done;
-		break;
-	    }
-	    /* Check mark flag to see if this grouping (itself) has been expanded
-	       If not, this needs to be done before we can insert it into
-	       the 'uses' place */
-	    if ((ygrouping->ys_flags & YANG_FLAG_MARK) == 0){ 
-		if (yang_expand_grouping(ygrouping) < 0)
-		    goto done;
-		ygrouping->ys_flags |= YANG_FLAG_MARK; /* Mark as expanded */
-	    }
-	    /* Make a copy of the grouping, then make refinements to this copy
-	     */
-	    if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
-		goto done;
-	    /* Replace ys with ygrouping,... 
-	     * First enlarge parent vector 
-	     */
-	    glen = ygrouping2->ys_len;
-	    /* 
-	     * yn is parent: the children of ygrouping replaces ys.
-	     * Is there a case when glen == 0?  YES AND THIS BREAKS
-	     */
-	    if (glen != 1){
-		size = (yn->ys_len - i - 1)*sizeof(struct yang_stmt *);
-		yn->ys_len += glen - 1;
-		if (glen && (yn->ys_stmt = realloc(yn->ys_stmt, (yn->ys_len)*sizeof(yang_stmt *))) == 0){
-		    clicon_err(OE_YANG, errno, "realloc");
-		    goto done;
-		}
-		/* Then move all existing elements up from i+1 (not uses-stmt) */
-		if (size)
-		    memmove(&yn->ys_stmt[i+glen],
-			    &yn->ys_stmt[i+1],
-			    size);
-	    }
-
-	    /* Iterate through refinements and modify grouping copy 
-	     * See RFC 7950 7.13.2 yrt is the refine target node
-	     */
-	    yr = NULL;
-	    while ((yr = yn_each(ys, yr)) != NULL) {
-		yang_stmt *yrt; /* refine target node */
-		if (yang_keyword_get(yr) != Y_REFINE)
-		    continue;
-		/* Find a node */
-		if (yang_desc_schema_nodeid(ygrouping2,
-					    yang_argument_get(yr),
-					    -1,
-					    &yrt) < 0)
-		    goto done;
-		/* Not found, try next */
-		if (yrt == NULL) 		
-		    continue;
-		/* Do the actual refinement */
-		if (ys_do_refine(yr, yrt) < 0)
-		    goto done;
-		/* RFC: The argument is a string that identifies a node in the 
-		 * grouping.  I interpret that as only one node --> break */
-		break;
-	    }
-	    /* Then copy and insert each child element */
-	    for (j=0; j<glen; j++){
-		yg = ygrouping2->ys_stmt[j]; /* Child of refined copy */
-		yn->ys_stmt[i+j] = yg;
-		yg->ys_parent = yn;
-	    }
-	    /* Remove 'uses' node */
-	    ys_free(ys); 
-	    /* Remove the grouping copy */
-	    ygrouping2->ys_len = 0;
-	    ys_free(ygrouping2);
-	    break; /* Note same child is re-iterated since it may be changed */
-	default:
-	    i++;
-	    break;
-	}
-    }
-    /* Second pass since length may have changed */
-    for (i=0; i<yn->ys_len; i++){
-	ys = yn->ys_stmt[i];
-	if (yang_expand_grouping(ys) < 0)
-	    goto done;
-    }
-    retval = 0;
- done:
-    if (prefix)
-	free(prefix); 
-    if (id)
-	free(id); 
-    return retval;
-}
-
-/*! Parse a string containing a YANG spec into a parse-tree
- * 
- * Syntax parsing. A string is input and a syntax-tree is returned (or error). 
- * A variable record is also returned containing a list of (global) variable values.
- * (cloned from cligen)
- * @param[in] str    String of yang statements
- * @param[in] name   Log string, typically filename
- * @param[in] yspec  Yang specification. 
- * @retval    ymod   Top-level yang (sub)module
- * @retval    NULL   Error encountered
- * See top of file for diagram of calling order
- */
-static yang_stmt *
-yang_parse_str(char         *str,
-	       const char   *name, /* just for errs */
-	       yang_stmt    *yspec)
-{
-    struct clicon_yang_yacc_arg yy = {0,};
-    yang_stmt                  *ymod = NULL;
-
-    if (yspec == NULL){
-	clicon_err(OE_YANG, 0, "Yang parse need top level yang spec");
-	goto done;
-    }
-    yy.yy_name         = (char*)name;
-    yy.yy_linenum      = 1;
-    yy.yy_parse_string = str;
-    yy.yy_stack        = NULL;
-    yy.yy_module       = NULL; /* this is the return value - the module/sub-module */
-    if (ystack_push(&yy, yspec) == NULL)
-	goto done;
-    if (strlen(str)){ /* Not empty */
-	if (yang_scan_init(&yy) < 0)
-	    goto done;
-	if (yang_parse_init(&yy) < 0)
-	    goto done;
-	if (clixon_yang_parseparse(&yy) != 0) { /* yacc returns 1 on error */
-	    clicon_log(LOG_NOTICE, "Yang error: %s on line %d", name, yy.yy_linenum);
-	    if (clicon_errno == 0)
-		clicon_err(OE_YANG, 0, "yang parser error with no error code (should not happen)");
-	    yang_parse_exit(&yy);
-	    yang_scan_exit(&yy);
-	    goto done;
-	}
-	if (yang_parse_exit(&yy) < 0)
-	    goto done;		
-	if (yang_scan_exit(&yy) < 0)
-	    goto done;		
-    }
-    ymod = yy.yy_module;
-  done:
-    ystack_pop(&yy);
-    if (yy.yy_stack)
-	free (yy.yy_stack);
-    return ymod;  /* top-level (sub)module */
-}
-
-/*! Parse yang spec from an open file descriptor
- * @param[in] fd     File descriptor containing the YANG file as ASCII characters
- * @param[in] name   For debug, eg filename
- * @param[in] ysp    Yang specification. Should have been created by caller using yspec_new
- * @retval ymod      Top-level yang (sub)module
- * @retval NULL      Error 
- * @note this function simply parse a yang spec, no dependencies or checks
- */
-yang_stmt *
-yang_parse_file(int         fd,
-		const char *name,
-		yang_stmt  *ysp)
-{
-    char         *buf = NULL;
-    int           i;
-    int           c;
-    int           len;
-    yang_stmt    *ymod = NULL;
-    int           ret;
-
-    len = BUFLEN; /* any number is fine */
-    if ((buf = malloc(len)) == NULL){
-	perror("pt_file malloc");
-	return NULL;
-    }
-    memset(buf, 0, len);
-    i = 0; /* position in buf */
-    while (1){ /* read the whole file */
-	if ((ret = read(fd, &c, 1)) < 0){
-	    clicon_err(OE_XML, errno, "read");
-	    break;
-	}
-	if (ret == 0)
-	    break; /* eof */
-	if (len==i){
-	    if ((buf = realloc(buf, 2*len)) == NULL){
-		clicon_err(OE_XML, errno, "realloc");
-		goto done;
-	    }	    
-	    memset(buf+len, 0, len);
-	    len *= 2;
-	}
-	buf[i++] = (char)(c&0xff);
-    } /* read a line */
-    if ((ymod = yang_parse_str(buf, name, ysp)) < 0)
-	goto done;
-  done:
-    if (buf)
-	free(buf);
-    return ymod; /* top-level (sub)module */
-}
-
-/*! Given a yang filename, extract the revision as an integer as YYYYMMDD
- * @param[in]  filename  Filename on the form: name [+ @rev ] + .yang  
- * @param[out] basep     "Base" filename, stripped: [+ @rev ] + .yang
- * @param[out] revp      Revision as YYYYMMDD (0 if not found)
- */
-static int
-filename2revision(const char *filename,
-		  char      **basep,
-		  uint32_t   *revp)
-{
-    int      retval = -1;
-    char    *base = NULL;
-    char    *p;
-    
-    /* base = module name [+ @rev ] + .yang */
-    if ((base = strdup(filename)) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
-	goto done;
-    }
-    clicon_debug(1, "%s %s", __FUNCTION__, base);
-    if ((p = rindex(base, '.')) != NULL) /* strip postfix .yang */
-	*p = '\0';
-    if ((p = index(base, '@')) != NULL){ /* extract revision date */
-	*p++ = '\0';
-	if (ys_parse_date_arg(p, revp) < 0)
-	    goto done;
-    }
-    if (basep){
-	*basep = base;
-	base = NULL;
-    }
-    retval = 0;
- done:
-    if (base)
-	free(base);
-    return retval;
-}
-
-/*! No specific revision give. Match a yang file given module 
- * @param[in]  h        CLICON handle
- * @param[in]  module   Name of main YANG module. 
- * @param[in]  revision Revision or NULL
- * @param[out] revactual Actual revision (if retval=1)
- * @param[out] fbuf     Buffer containing filename (if retval=1)
- * @retval     1        Match found, Most recent entry returned in fbuf and revactual
- * @retval     0        No matching entry found
- * @retval    -1        Error 
- * @note for bootstrapping, dir may have to be set.
-*/
-static int
-yang_parse_find_match(clicon_handle h, 
-		      const char   *module,
-		      const char   *revision,
-		      uint32_t     *revactual, 
-		      cbuf         *fbuf)    
-{
-    int            retval = -1;
-    struct dirent *dp = NULL;
-    int            ndp;
-    cbuf          *regex = NULL;
-    cxobj         *x;
-    cxobj         *xc;
-    char          *dir;
-
-    /* get clicon config file in xml form */
-    if ((x = clicon_conf_xml(h)) == NULL)
-	goto ok;
-    if ((regex = cbuf_new()) == NULL){
-	clicon_err(OE_YANG, errno, "cbuf_new");
-	goto done;
-    }
-    /* RFC 6020: The name of the file SHOULD be of the form:
-     * module-or-submodule-name ['@' revision-date] ( '.yang' / '.yin' )
-     * revision-date ::= 4DIGIT "-" 2DIGIT "-" 2DIGIT
-     */
-    if (revision)
-	cprintf(regex, "^%s@%s(.yang)$", module, revision);
-    else
-	cprintf(regex, "^%s(@[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])?(.yang)$", 
-		module);
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
-	if (strcmp(xml_name(xc), "CLICON_YANG_DIR") != 0)
-	    continue;
-	dir = xml_body(xc);
-	/* get all matching files in this directory */
-	if ((ndp = clicon_file_dirent(dir, 
-				      &dp, 
-				      cbuf_get(regex),
-				      S_IFREG)) < 0)
-	    goto done;
-	/* Entries are sorted, last entry should be most recent date 
-	 */
-	if (ndp != 0){
-	    cprintf(fbuf, "%s/%s", dir, dp[ndp-1].d_name);
-	    retval = 1;
-	    goto done;
-	}
-    }
- ok:
-    retval = 0;
- done:
-    if (regex)
-	cbuf_free(regex);
-    if (dp)
-	free(dp);
-    return retval;
-}
-
-/*! Open a file, read into a string and invoke yang parsing
- *
- * Similar to clicon_yang_str(), just read a file first
- * @param[in] filename Name of file
- * @param[in] ysp      Yang specification. Should have been created by caller using yspec_new
- * @retval ymod        Top-level yang (sub)module
- * @retval NULL        Error encountered
-
- * The database symbols are inserted in alphabetical order.
- * See top of file for diagram of calling order
- */
-yang_stmt *
-yang_parse_filename(const char *filename, 
-		    yang_stmt  *ysp)
-{
-    yang_stmt    *ymod = NULL;
-    int           fd = -1;
-    struct stat   st;
-
-    clicon_debug(1, "%s %s", __FUNCTION__, filename);
-    if (stat(filename, &st) < 0){
-	clicon_err(OE_YANG, errno, "%s not found", filename);
-	goto done;
-    }
-    if ((fd = open(filename, O_RDONLY)) < 0){
-	clicon_err(OE_YANG, errno, "open(%s)", filename);	
-	goto done;
-    }
-    if ((ymod = yang_parse_file(fd, filename, ysp)) < 0)
-	goto done;
-  done:
-    if (fd != -1)
-	close(fd);
-    return ymod; /* top-level (sub)module */
-}
-
-/*! Given a (sub)module, parse all (sub)modules in turn recursively
- *
- * Find a yang module file, and then recursively parse all its imported modules.
- * @param[in] h        CLICON handle
- * @param[in] module   Module name
- * @param[in] revision Revision (or NULL)
- * @param[in] ysp      Yang statement
- * @retval    0        OK
- * @retval   -1        Error
- *
- * See top of file for diagram of calling order
- */
-static yang_stmt *
-yang_parse_module(clicon_handle h,
-		  const char   *module, 
-		  const char   *revision, 
-		  yang_stmt    *ysp)
-{
-    cbuf      *fbuf = NULL;
-    char      *filename;
-    int        nr;
-    yang_stmt *ymod = NULL;
-    yang_stmt *yrev; /* yang revision */
-    uint32_t   revf = 0; /* revision in filename */
-    uint32_t   revm = 0; /* revision in parsed new module (should be same as revf) */
-
-    if ((fbuf = cbuf_new()) == NULL){
-	clicon_err(OE_YANG, errno, "cbuf_new");
-	goto done;
-    }
-    /* Match a yang file with or without revision in yang-dir list */
-    if ((nr = yang_parse_find_match(h, module, revision, &revf, fbuf)) < 0)
-	goto done;
-    if (nr == 0){
-	clicon_err(OE_YANG, errno, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs", module);
-	goto done;
-    }
-    filename = cbuf_get(fbuf);
-    if ((ymod = yang_parse_filename(filename, ysp)) == NULL)
-	goto done;
-    if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL)
-	revm = cv_uint32_get(yrev->ys_cv);
-    if (filename2revision(filename, NULL, &revf) < 0)
-	goto done;
-    /* Sanity check that file revision does not match internal rev stmt */
-    if (revf && revm && revm != revf){ 
-	clicon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s vs %u", filename, revm); 
-	ymod = NULL;
-	goto done;
-    }
-  done:
-    if (fbuf)
-	cbuf_free(fbuf);
-    return ymod; /* top-level (sub)module */
-}
-
-/*! Given a (sub)module, parse all (sub)modules in turn recursively
- *
- * Find a yang module file, and then recursively parse all its imported modules.
- * @param[in] h        CLICON handle
- * @param[in] ymod     Yang module. 
- * @param[in] yspec    Yang specification.
- * @retval    0        OK
- * @retval   -1        Error
- *
- * See top of file for diagram of calling order
- */
-static int
-yang_parse_recurse(clicon_handle h,
-		   yang_stmt    *ymod,
-		   yang_stmt    *ysp)
-{
-    int         retval = -1;
-    yang_stmt  *yi = NULL; /* import */
-    yang_stmt  *yrev;
-    char       *submodule;
-    char       *subrevision;
-    yang_stmt  *subymod;
-    enum rfc_6020 keyw;
-
-    /* go through all import (modules) and include(submodules) of ysp */
-    while ((yi = yn_each(ymod, yi)) != NULL){
-	keyw = yi->ys_keyword;
-	if (keyw != Y_IMPORT && keyw != Y_INCLUDE)
-	    continue;
-	/* common part */
-	submodule = yi->ys_argument;
-	/* Is there a specific revision (or just latest)? */
-	if ((yrev = yang_find(yi, Y_REVISION_DATE, NULL)) != NULL)
-	    subrevision = yrev->ys_argument;
-	else
-	    subrevision = NULL;
-	/* if already loaded, ignore, else parse the file */
-	if (yang_find(ysp,
-		      keyw==Y_IMPORT?Y_MODULE:Y_SUBMODULE,
-		      submodule) == NULL){
-	    /* recursive call */
-	    if ((subymod = yang_parse_module(h, submodule, subrevision, ysp)) == NULL)
-		goto done;
-	    /* Go through its sub-modules recursively */
-	    if (yang_parse_recurse(h, subymod, ysp) < 0){
-		ymod = NULL;
-		goto done;
-	    }
-	}
-    }
-    retval = 0;
-  done:  
-    return retval; /* top-level (sub)module */
-}
-
-/*!
- * @param[in] ys      Yang statement
- * @param[in] dummy   Necessary for called in yang_apply
- * @see yang_apply_fn
- */
-static int 
-ys_schemanode_check(yang_stmt *ys, 
-		    void      *dummy)
-{
-    int           retval = -1;
-    yang_stmt    *yspec;
-    yang_stmt    *yres = NULL;
-    yang_stmt    *yp;
-    char         *arg;
-    enum rfc_6020 keyword;
-    char **vec = NULL;
-    char  *v;
-    int    nvec;
-    int    i;
-
-    yp = yang_parent_get(ys);
-    arg = yang_argument_get(ys);
-    keyword = yang_keyword_get(ys);
-    switch (yang_keyword_get(ys)){
-    case Y_AUGMENT:
-	if (yang_keyword_get(yp) == Y_MODULE || /* Not top-level */
-	    yang_keyword_get(yp) == Y_SUBMODULE) 
-	    break;
-	/* fallthru */
-    case Y_REFINE:
-	if (yang_desc_schema_nodeid(yp, arg, -1, &yres) < 0)
-	    goto done;
-	if (yres == NULL){
-	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s %s", 
-		       yang_key2str(keyword), arg);
-	    goto done;
-	}
-	break;
-    case Y_UNIQUE:{
-	/* Unique: Sec 7.8.3 It takes as an argument a string that contains a space-
-	   separated list of schema node identifiers */
-	if ((vec = clicon_strsep(arg, " \t\n", &nvec)) == NULL)
-	    goto done;
-	for (i=0; i<nvec; i++){
-	    v = vec[i]; 
-	    if (yang_desc_schema_nodeid(yp, v, -1, &yres) < 0)
-		goto done;
-	    if (yres == NULL){
-		clicon_err(OE_YANG, 0, "schemanode sanity check of %s %s", 
-			   yang_key2str(yang_keyword_get(ys)), v);
-		goto done;
-	    }
-	}
-	break;
-    }
-    case Y_DEVIATION:
-	yspec = ys_spec(ys);
-	if (yang_abs_schema_nodeid(yspec, ys, arg, -1, &yres) < 0)
-	    goto done;
-	if (yres == NULL){
-	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s", arg);
-	    goto done;
-	}
-	break;
-    default:
-	break;
-    }
-    retval = 0;
- done:
-    if (vec)
-	free(vec);
-    return retval;
-}
-
 /*! Find feature and if-feature nodes, check features and remove disabled nodes
  * @param[in] h   CLICON handle
  * @param[in] yt  Yang statement
@@ -2776,7 +1932,7 @@ ys_schemanode_check(yang_stmt *ys,
  * @note On return 1 the over-lying function need to remove yt from its parent
  * @note cannot use yang_apply here since child-list is modified (destructive) 
  */
-static int
+int
 yang_features(clicon_handle h,
 	      yang_stmt    *yt)
 {
@@ -2843,304 +1999,6 @@ yang_features(clicon_handle h,
 	free(prefix);
     if (feature)
 	free(feature);
-    return retval;
-}
-
-/*! Parse top yang module including all its sub-modules. Expand and populate yang tree
- *
- * Perform secondary actions after yang parsing. These actions cannot be made at
- * compile-time for various reasons.
- * These includes:
- * - Detect imported yang specs that are not loaded and load and parse them too
- * - Check cardinality of yang (that nr of children match)
- * - Check features: remove disabled
- * - "Populate" yang, which means things like initiating caches, resolving references
- * - Resolve types
- * - Augments
- * - Defaults
- * 
- * @param[in] h      CLICON handle
- * @param[in] yspec  Yang specification. 
- * @param[in] modnr  Perform checks after this number, prior are already complete
- * @retval    0      Everything OK
- * @retval   -1      Error encountered
- */
-static int
-yang_parse_post(clicon_handle h,
-		yang_stmt    *yspec,
-		int           modnr)
-{
-    int retval = -1;
-    int i;
-    
-    /* 1: Parse from text to yang parse-tree. 
-     * Iterate through modules and detect module/submodules to parse
-     * - note the list may grow on each iteration */
-    for (i=modnr; i<yspec->ys_len; i++)
-	if (yang_parse_recurse(h, yspec->ys_stmt[i], yspec) < 0)
-	    goto done;
-
-    /* 2. Check cardinality maybe this should be done after grouping/augment */
-    for (i=modnr; i<yspec->ys_len; i++) 
-	if (yang_cardinality(h, yspec->ys_stmt[i], yspec->ys_stmt[i]->ys_argument) < 0)
-	    goto done;
-    
-    /* 3: Check features: check if enabled and remove disabled features */
-    for (i=modnr; i<yspec->ys_len; i++) /* XXX */
-	if (yang_features(h, yspec->ys_stmt[i]) < 0)
-	    goto done;
-    
-    /* 4: Go through parse tree and populate it with cv types */
-    for (i=modnr; i<yspec->ys_len; i++)
-	if (yang_apply(yspec->ys_stmt[i], -1, ys_populate, (void*)h) < 0)
-	    goto done;
-
-    /* 5: Resolve all types: populate type caches. Requires eg length/range cvecs
-     * from ys_populate step.
-     * Must be done using static binding.
-     */
-    for (i=modnr; i<yspec->ys_len; i++)
-	if (yang_apply(yspec->ys_stmt[i], Y_TYPE, ys_resolve_type, h) < 0)
-	    goto done;
-
-    /* Up to here resolving is made in the context they are defined, rather 
-     * than the context they are used (except for submodules being merged w 
-     * modules). Like static scoping. 
-     * After this we expand all grouping/uses and unfold all macros into a
-     * single tree as they are used.
-     */
-
-    /* 6: Macro expansion of all grouping/uses pairs. Expansion needs marking */
-    for (i=modnr; i<yspec->ys_len; i++){
-	if (yang_expand_grouping(yspec->ys_stmt[i]) < 0)
-	    goto done;
-	yang_apply(yspec->ys_stmt[i], -1, ys_flag_reset, (void*)YANG_FLAG_MARK);
-    }
-
-    /* 7: Top-level augmentation of all modules. (Augment also in uses) */
-    if (yang_augment_spec(yspec, modnr) < 0)
-	goto done;
-
-    /* 4: Go through parse tree and do 2nd step populate (eg default) */
-    for (i=modnr; i<yspec->ys_len; i++)
-	if (yang_apply(yspec->ys_stmt[i], -1, ys_populate2, (void*)h) < 0)
-	    goto done;
-
-    /* 8: sanity check of schemanode references, need more here */
-    for (i=modnr; i<yspec->ys_len; i++)
-	if (yang_apply(yspec->ys_stmt[i], -1, ys_schemanode_check, NULL) < 0)
-	    goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Parse yang specification and its dependencies recursively given module
- * @param[in]  h         clicon handle
- * @param[in]  module    Module name, or absolute filename (including dir)
- * @param[in]  revision  Revision, or NULL
- * @param[in]  yspec     Modules parse are added to this yangspec
- * @retval     0         OK
- * @retval    -1         Error
- * @see yang_spec_parse_file
- */
-int
-yang_spec_parse_module(clicon_handle h, 
-		       const char   *module, 
-		       const char   *revision, 
-		       yang_stmt    *yspec)
-{
-    int         retval = -1;
-    int         modnr;       /* Existing number of modules */
-    char       *base = NULL;;
-
-    if (yspec == NULL){
-	clicon_err(OE_YANG, EINVAL, "yang spec is NULL");
-	goto done;
-    }
-    if (module == NULL){
-	clicon_err(OE_YANG, EINVAL, "yang module not set");
-	goto done;
-    }
-    /* Apply steps 2.. on new modules, ie ones after modnr. */
-    modnr = yspec->ys_len;
-    /* Do not load module if it already exists */
-    if (yang_find(yspec, Y_MODULE, module) != NULL)
-	goto ok;
-    if (yang_parse_module(h, module, revision, yspec) == NULL)
-	goto done;
-    if (yang_parse_post(h, yspec, modnr) < 0)
-	goto done;
- ok:
-    retval = 0;
- done:
-    if (base)
-	free(base);
-    return retval;
-}
-
-/*! Parse yang specification and its dependencies recursively given filename
- * @param[in]  h         clicon handle
- * @param[in]  filename  Actual filename (including dir and revision)
- * @param[in]  yspec     Modules parse are added to this yangspec
- * @retval     0         OK
- * @retval    -1         Error
- * @see yang_spec_parse_module for yang dir,module,revision instead of 
- *       actual filename
- * @see yang_spec_load_dir For loading all files in a directory
- */
-int
-yang_spec_parse_file(clicon_handle h, 
-		     char         *filename, 
-		     yang_stmt    *yspec)
-{
-    int         retval = -1;
-    int         modnr;       /* Existing number of modules */
-    char       *base = NULL;;
-
-    /* Apply steps 2.. on new modules, ie ones after modnr. */
-    modnr = yspec->ys_len;
-    /* Find module, and do not load file if module already exists */
-    if (basename(filename) == NULL){
-	clicon_err(OE_YANG, errno, "No basename");
-	goto done;
-    }
-    if ((base = strdup(basename(filename))) == NULL){
-	clicon_err(OE_YANG, errno, "strdup");
-	goto done;
-    }
-    if (index(base, '@') != NULL)
-	*index(base, '@') = '\0';
-    if (yang_find(yspec, Y_MODULE, base) != NULL)
-	goto ok;
-    if (yang_parse_filename(filename, yspec) == NULL)
-	goto done;
-    if (yang_parse_post(h, yspec, modnr) < 0)
-	goto done;
- ok:
-    retval = 0;
- done:
-    if (base)
-	free(base);
-    return retval;
-}
-
-/*! Load all yang modules in directory
- * @param[in]  h     Clicon handle
- * @param[in]  dir   Load all yang modules in this directory
- * @param[in]  yspec Modules parse are added to this yangspec
- * @retval     0     OK
- * @retval    -1     Error
- * @see yang_spec_parse_file
- * Load all yang files in a directory as primary objects.
- * Some details if several same yang module x exists:
- * 1) If x is already loaded (eg via direct file loading) skip it
- * 2) Prefer x.yang over x@rev.yang (no revision)
- * 3) If only x@rev.yang's found, prefer newest (newest revision)
- * There is also an extra failsafe which may not be necessary, which removes
- * the oldest module if 1-3 for some reason fails.
- */
-int
-yang_spec_load_dir(clicon_handle h,
-		   char         *dir,
-		   yang_stmt    *yspec)
-{
-    int            retval = -1;
-    int            ndp;
-    struct dirent *dp = NULL;
-    int            i;
-    int            j;
-    char           filename[MAXPATHLEN];
-    char          *base = NULL; /* filename without dir */
-    int            modnr;
-    yang_stmt     *ym;   /* yang module */
-    yang_stmt     *ym0;  /* (existing) yang module */
-    yang_stmt     *yrev; /* yang revision */
-    uint32_t       revf = 0; /* revision in filename */
-    uint32_t       revm = 0; /* revision in parsed new module (should be same as revf) */
-    uint32_t       rev0; /* revision in existing module */
-    char          *oldbase = NULL;
-    int            taken = 0;
-    
-    /* Get yang files names from yang module directory. Note that these
-     * are sorted alphatetically:
-     * a.yang, 
-     * a@2000-01-01.yang, 
-     * a@2111-11-11.yang
-     */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.yang)$", S_IFREG)) < 0)
-	goto done;
-    if (ndp == 0)
-	clicon_log(LOG_WARNING, "%s: No yang files found in %s",
-		   __FUNCTION__, dir);
-    /* Apply post steps on new modules, ie ones after modnr. */
-    modnr = yspec->ys_len;
-    /* Load all yang files in dir */
-    for (i = 0; i < ndp; i++) {
-	/* base = module name [+ @rev ] + .yang */
-	if (oldbase)
-	    free(oldbase);
-	oldbase = base;
-	base = NULL;
-	revf = 0;
-	if (filename2revision(dp[i].d_name, &base, &revf) < 0)
-	    goto done;
-	if (oldbase && strcmp(base, oldbase)) /* new yang file basename */
-	    taken = 0;
-	if (revf == 0) /* No revision: a.yang - take that */
-	    taken = 1;
-	else{ /* a@xxx.yang */
-	    if (taken)
-		continue; /* skip if already taken */
-	    /* Look forward: is there anyone else later? */
-	    if (i+1<ndp && strncmp(base, dp[i+1].d_name, strlen(base)) == 0)
-		continue; /* same base: skip; */
-	    taken = 1; /* last in line and not taken */
-	}
-	/* Here only a single file is reached(taken)
-	 * Check if module already exists -> ym0/rev0 */
-	rev0 = 0;
-	if ((ym0 = yang_find(yspec, Y_MODULE, base)) != NULL ||
-	    (ym0 = yang_find(yspec, Y_SUBMODULE, base)) != NULL){
-	    yrev = yang_find(ym0, Y_REVISION, NULL);
-	    rev0 = cv_uint32_get(yrev->ys_cv);
-	    continue; /* skip if already added by specific file or module */
-	}
-	/* Create full filename */
-	snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
-	if ((ym = yang_parse_filename(filename, yspec)) == NULL)
-	    goto done;
-	revm = 0;
-	if ((yrev = yang_find(ym, Y_REVISION, NULL)) != NULL)
-	    revm = cv_uint32_get(yrev->ys_cv);
-	/* Sanity check that file revision does not match internal rev stmt */
-	if (revf && revm && revm != revf){ /* XXX */
-	    clicon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s(%u) vs %u", filename, revf, revm); 
-	    goto done;
-	}
-	/* If ym0 and ym exists, delete the yang with oldest revision 
-	 * This is a failsafe in case anything else fails
-	 */
-	if (revm && rev0){
-	    if (revm > rev0) /* Loaded module is older or eq -> remove ym */
-		ym = ym0;
-	    for (j=0; j<yspec->ys_len; j++)
-		if (yspec->ys_stmt[j] == ym)
-		    break;
-	    ys_prune(yspec, j);
-	    ys_free(ym);
-	}
-    }
-    if (yang_parse_post(h, yspec, modnr) < 0)
-	goto done;
-    retval = 0;
-  done:
-    if (dp)
-	free(dp);
-    if (base)
-	free(base);
-    if (oldbase)
-	free(oldbase);
     return retval;
 }
 
@@ -3344,8 +2202,7 @@ yang_abs_schema_nodeid(yang_stmt    *yspec,
     }
     /* Assume schema nodeid looks like: "/prefix:id[/prefix:id]*" */
     if (nvec < 2){
-	clicon_err(OE_YANG, 0, "NULL or truncated path: %s", 
-		   schema_nodeid);
+	clicon_err(OE_YANG, 0, "NULL or truncated path: %s", schema_nodeid);
 	goto done;
     }
     /* split <prefix>:<id> */
@@ -3369,6 +2226,10 @@ yang_abs_schema_nodeid(yang_stmt    *yspec,
 		break;
 	    }
 	}
+    }
+    if (ymod == NULL){
+	clicon_err(OE_YANG, 0, "No module with prefix %s found", prefix);
+	goto done;
     }
     if (schema_nodeid_vec(ymod, vec+1, nvec-1, keyword, yres) < 0)
 	goto done;
@@ -3418,195 +2279,6 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
  done:
     if (vec)
 	free(vec);
-    return retval;
-}
-
-/*! parse yang date-arg string and return a uint32 useful for arithmetics
- * @param[in]  datearg  yang revision string as "YYYY-MM-DD"
- * @param[out] dateint  Integer version as YYYYMMDD
- * @retval     0        OK
- * @retval    -1        Error, eg str is not on the format "YYYY-MM-DD"
- */
-int
-ys_parse_date_arg(char     *datearg,
-		  uint32_t *dateint)
-{
-    int      retval = -1;
-    int      i;
-    uint32_t d = 0;
-    
-    if (strlen(datearg) != 10 || datearg[4] != '-' || datearg[7] != '-'){
-	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
-	goto done;
-    }
-    if ((i = cligen_tonum(4, datearg)) < 0){
-	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
-	goto done;
-    }
-    d = i*10000; /* year */
-    if ((i = cligen_tonum(2, &datearg[5])) < 0){
-	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
-	goto done;
-    }
-    d += i*100; /* month */
-    if ((i = cligen_tonum(2, &datearg[8])) < 0){
-	clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
-	goto done;
-    }
-    d += i; /* day */
-    *dateint = d;
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Parse argument as CV and save result in yang cv variable
- *
- * Note that some CV:s are parsed directly (eg fraction-digits) while others are parsed 
- * in third pass (ys_populate). The reason being that all information is not 
- * available in the first pass. Prefer to do stuff in ys_populate
- */
-cg_var *
-ys_parse(yang_stmt   *ys, 
-	 enum cv_type cvtype)
-{
-    int             cvret;
-    char           *reason = NULL;
-
-    assert(ys->ys_cv == NULL); /* Cv:s are parsed in different places, difficult to separate */
-    if ((ys->ys_cv = cv_new(cvtype)) == NULL){
-	clicon_err(OE_YANG, errno, "cv_new"); 
-	goto done;
-    }
-    if ((cvret = cv_parse1(ys->ys_argument, ys->ys_cv, &reason)) < 0){ /* error */
-	clicon_err(OE_YANG, errno, "parsing cv");
-	ys->ys_cv = NULL;
-	goto done;
-    }
-    if (cvret == 0){ /* parsing failed */
-	clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
-	ys->ys_cv = NULL;
-	goto done;
-    }
-    /* cvret == 1 means parsing is OK */
-  done:
-    if (reason)
-	free(reason);
-    return ys->ys_cv;
-}
-
-/*! First round yang syntactic statement specific checks. No context checks.
- *
- * Specific syntax checks  and variable creation for stand-alone yang statements.
- * That is, siblings, etc, may not be there. Complete checks are made in
- * ys_populate instead.
- * @param[in] ys    yang statement
- * @param[in] extra Yang extra for cornercases (unknown/extension). Is consumed
- *
- * The cv:s created in parse-tree as follows:
- * fraction-digits : Create cv as uint8, check limits [1:8] (must be made in 1st pass)
- * revision: cv as uint32 date: Integer version as YYYYMMDD
- * min-elements: cv as uint32
- * max-elements: cv as uint32, '0' means unbounded
- * @see ys_populate
- */
-int
-ys_parse_sub(yang_stmt *ys,
-	     char      *extra)
-{
-    int        retval = -1;
-    uint8_t    fd;
-    uint32_t   date = 0;
-    char      *arg;
-    enum rfc_6020 keyword;
-    char      *reason = NULL;
-    int        ret;
-    uint32_t   minmax;
-    
-    arg = yang_argument_get(ys);
-    keyword = yang_keyword_get(ys);
-    switch (keyword){
-    case Y_FRACTION_DIGITS:
-	if (ys_parse(ys, CGV_UINT8) == NULL) 
-	    goto done;
-	fd = cv_uint8_get(ys->ys_cv);
-	if (fd < 1 || fd > 18){
-	    clicon_err(OE_YANG, errno, "%u: Out of range, should be [1:18]", fd);
-	    goto done;
-	}
-	break;
-    case Y_REVISION:
-    case Y_REVISION_DATE:  /* YYYY-MM-DD encoded as uint32 YYYYMMDD */
-	if (ys_parse_date_arg(arg, &date) < 0)
-	    goto done;
-	if ((ys->ys_cv = cv_new(CGV_UINT32)) == NULL){
-	    clicon_err(OE_YANG, errno, "cv_new"); 
-	    goto done;
-	}
-	cv_uint32_set(ys->ys_cv, date);
-	break;
-    case Y_STATUS: /* RFC7950 7.21.2: "current", "deprecated", or "obsolete". */
-	if (strcmp(arg, "current") &&
-	    strcmp(arg, "deprecated") &&
-	    strcmp(arg, "obsolete")){
-	    clicon_err(OE_YANG, errno, "Invalid status: \"%s\", expected current, deprecated, or obsolete", arg); 
-	    goto done;
-
-	}
-	break;
-    case Y_MAX_ELEMENTS:
-    case Y_MIN_ELEMENTS:
-	if ((ys->ys_cv = cv_new(CGV_UINT32)) == NULL){
-	    clicon_err(OE_YANG, errno, "cv_new"); 
-	    goto done;
-	}
-	if (keyword == Y_MAX_ELEMENTS &&
-	    strcmp(arg, "unbounded") == 0)
-	    cv_uint32_set(ys->ys_cv, 0); /* 0 means unbounded for max */
-	else{
-	    if ((ret = parse_uint32(arg, &minmax, &reason)) < 0){
-		clicon_err(OE_YANG, errno, "parse_uint32"); 
-		goto done;
-	    }
-	    if (ret == 0){
-		clicon_err(OE_YANG, EINVAL, "element-min/max parse error: %s", reason); 
-		if (reason)
-		    free(reason);
-		goto done;
-	    }
-	    cv_uint32_set(ys->ys_cv, minmax);
-	}
-	break;
-    case Y_MODIFIER:
-	if (strcmp(yang_argument_get(ys), "invert-match")){
-	    clicon_err(OE_YANG, EINVAL, "modifier %s, expected invert-match", yang_argument_get(ys));
-	    goto done;
-	}
-	break;
-    case Y_UNKNOWN:{ /* save (optional) argument in ys_cv */
-	if (extra == NULL)
-	    break;
-	if ((ys->ys_cv = cv_new(CGV_STRING)) == NULL){
-	    clicon_err(OE_YANG, errno, "cv_new"); 
-	    goto done;
-	}
-	if ((ret = cv_parse1(extra, ys->ys_cv, &reason)) < 0){ /* error */
-	    clicon_err(OE_YANG, errno, "parsing cv");
-	    goto done;
-	}
-	if (ret == 0){ /* parsing failed */
-	    clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
-	    goto done;
-	}
-	break;
-    }
-    default:
-	break;
-    }
-    retval = 0;
-  done:
-    if (extra)
-	free(extra);
     return retval;
 }
 
@@ -3772,3 +2444,204 @@ yang_key_match(yang_stmt *yn,
     return retval;
 }
 
+/*! Set type cache for yang type
+ * @param[in] rxmode  Kludge to know which regexp engine is used
+ * @see yang_type_cache_regexp_set where cache is extended w compiled regexps
+ */
+int
+yang_type_cache_set(yang_stmt        *ys,
+		    yang_stmt        *resolved,
+		    int               options, 
+		    cvec             *cvv, 
+		    cvec             *patterns,
+		    uint8_t           fraction)
+{
+    int              retval = -1;
+    yang_type_cache *ycache;
+
+    if (ys->ys_typecache != NULL){
+	clicon_err(OE_YANG, EEXIST, "yang type cache");
+	goto done;
+    }
+    if ((ys->ys_typecache = (yang_type_cache *)malloc(sizeof(*ycache))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    ycache = ys->ys_typecache;
+    memset(ycache, 0, sizeof(*ycache));
+    ycache->yc_resolved  = resolved;
+    ycache->yc_options  = options;
+    if (cvv){
+	if ((ycache->yc_cvv = cvec_dup(cvv)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cvec_dup");
+	    goto done;
+	}
+    }
+    if (patterns && (ycache->yc_patterns  = cvec_dup(patterns)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_dup");
+	goto done;
+    }
+    ycache->yc_fraction  = fraction;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Extend yang type cache with compiled regexps
+ * Compiled Regexps are computed in validate code - after initial cache set
+ * @param[in] regexps   
+ */
+int
+yang_type_cache_regexp_set(yang_stmt *ytype,
+			   int        rxmode,
+			   cvec      *regexps)
+{
+    int               retval = -1;
+    yang_type_cache  *ycache;
+
+    assert(regexps);
+    assert(yang_keyword_get(ytype) == Y_TYPE);
+    assert((ycache = ytype->ys_typecache) != NULL);
+    assert(ycache->yc_regexps == NULL);
+    ycache->yc_rxmode = rxmode;
+    if ((ycache->yc_regexps  = cvec_dup(regexps)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_dup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Get individual fields (direct/destructively) from yang type cache. 
+ * @param[out] patterns Initialized cvec of regexp patterns strings
+ * @retval    -1        Error
+ * @retval     0        No cache
+ * @retval     1        OK
+ */
+int
+yang_type_cache_get(yang_stmt   *ytype,
+		    yang_stmt  **resolved,
+		    int         *options, 
+		    cvec       **cvv, 
+		    cvec        *patterns,
+		    int         *rxmode,
+		    cvec        *regexps,
+		    uint8_t     *fraction)
+{
+    int              retval = -1;
+    cg_var          *cv = NULL;
+    yang_type_cache *ycache;
+
+    ycache = ytype->ys_typecache;
+    if (ycache == NULL){ /* No cache return 0 */
+	retval = 0;
+	goto done;
+    }
+    if (resolved)
+	*resolved = ycache->yc_resolved;
+    if (options)
+	*options  = ycache->yc_options;
+    if (cvv)
+	*cvv    = ycache->yc_cvv;
+    if (patterns){
+	cv = NULL;
+	while ((cv = cvec_each(ycache->yc_patterns, cv)) != NULL)
+	    cvec_append_var(patterns, cv);
+    }
+    if (regexps){
+	cv = NULL;
+	while ((cv = cvec_each(ycache->yc_regexps, cv)) != NULL)
+	    cvec_append_var(regexps, cv);
+    }
+    if (rxmode)
+	*rxmode = ycache->yc_rxmode;
+    if (fraction)
+	*fraction = ycache->yc_fraction;
+    retval = 1; /* cache exists and is returned OK */
+ done:
+    return retval;
+}
+
+/*! Copy yang type cache
+ */
+static int
+yang_type_cache_cp(yang_stmt *ynew,
+		   yang_stmt *yold)
+{
+    int        retval = -1;
+    int        options;
+    cvec      *cvv;
+    cvec      *patterns = NULL;
+    uint8_t    fraction;
+    yang_stmt *resolved;
+    int        ret;
+
+    if ((patterns = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
+    /* Note, regexps are not copied since they are voids, if they were, they
+     * could not be freed in a simple way since copies are made at augment/group
+     */
+    if ((ret = yang_type_cache_get(yold,
+				   &resolved, &options, &cvv, patterns, NULL, NULL, &fraction)) < 0)
+	goto done;
+    if (ret == 1 &&
+	yang_type_cache_set(ynew, resolved, options, cvv, patterns, fraction) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (patterns)
+	cvec_free(patterns);
+    return retval;
+}
+
+/*! Free yang type cache
+ */
+static int
+yang_type_cache_free(yang_type_cache *ycache)
+{
+    cg_var *cv;
+    void   *p;
+    
+    if (ycache->yc_cvv)
+	cvec_free(ycache->yc_cvv);
+    if (ycache->yc_patterns)
+	cvec_free(ycache->yc_patterns);
+    if (ycache->yc_regexps){
+	cv = NULL;
+	while ((cv = cvec_each(ycache->yc_regexps, cv)) != NULL){
+	    /* need to store mode since clicon_handle is not available */
+	    switch (ycache->yc_rxmode){
+	    case REGEXP_POSIX:
+		cligen_regex_posix_free(cv_void_get(cv));
+		break;
+	    case REGEXP_LIBXML2:
+		cligen_regex_libxml2_free(cv_void_get(cv));
+		break;
+	    default:
+		break;
+	    }
+	    if ((p = cv_void_get(cv)) != NULL){
+		free(p);
+		cv_void_set(cv, NULL);
+	    }
+	}
+	cvec_free(ycache->yc_regexps);
+    }
+    free(ycache);
+    return 0;
+}
+
+#ifdef XML_EXTRA_INDEX
+/*! Mark element as index in list
+ */
+int
+yang_list_index_add(yang_stmt *yi)
+{
+    assert(yang_parent_get(yi) && yang_keyword_get(yang_parent_get(yi)) == Y_LIST);
+    yi->ys_flags |= YANG_FLAG_INDEX;
+    return 0;
+}
+#endif /* XML_EXTRA_INDEX */
