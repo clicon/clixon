@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Advanced API XML test. Compile a backend plugin and start the backend, and then send an RPC to
 # trigger that plugin
 # The plugin looks in an XML tree using three different methods:
@@ -209,7 +209,7 @@ clixon_plugin_init(clicon_handle h)
 EOF
 
 new "compile $cfile"
-gcc -g -Wall -rdynamic -fPIC -shared $cfile -o $sofile
+cc -g -Wall -rdynamic -fPIC -shared $cfile -o $sofile
 
 new "test params: -s running -f $cfg"
 

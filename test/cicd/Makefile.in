@@ -2,7 +2,7 @@
 # ***** BEGIN LICENSE BLOCK *****
 # 
 # Copyright (C) 2009-2020 Olof Hagsand
-1#
+#
 # This file is part of CLIXON
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,10 +39,13 @@ SHELL	= /bin/sh
 
 .PHONY: all clean distclean depend install uninstall
 
-HOSTS  = vandal.hagsand.com # i86_32 ubuntu
-HOSTS += clixon.dogwood.com # FreeBSD x86_64
-#HOSTS += nuc1.hagsand.com   # x86_64 ubuntu
-#HOSTS += pi2.hagsand.com    # arm Raspian
+
+HOSTS=
+# The "hosts" file must exist and define the HOSTS variable
+# eg :
+# HOSTS += vandal.hagsand.com # i86_32 ubuntu
+# ...
+-include hosts
 
 SCRIPTS  = cligen-mk.sh
 SCRIPTS += clixon-mk.sh

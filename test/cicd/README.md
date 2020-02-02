@@ -8,7 +8,11 @@ concurrency - non-trivial with bash, eg with `make -j 10`
 
 Note there are other cicd scripts than this, such as the the "travis" scrips.
 
-The Makefile contains a configurable HOSTS variable, please edit.
+The Makefile contains a configurable HOSTS variable, which ius defined
+in a "hosts" file. You must add such a file, eg:
+```
+   HOSTS += vandal.hagsand.com # i86_32 ubuntu
+```
 
 Logs appear in : <hostname>.log.
 
