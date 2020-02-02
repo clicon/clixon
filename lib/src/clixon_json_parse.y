@@ -245,7 +245,7 @@ json_current_body(struct clicon_json_yacc_arg *jy,
 */
 
  /* top: json -> value is also possible */
-§json          : value J_EOF { clicon_debug(2,"json->object"); YYACCEPT; } 
+json          : value J_EOF { clicon_debug(2,"json->object"); YYACCEPT; } 
               ;
 
 value         : J_TRUE  { json_current_body(_JY, "true");}

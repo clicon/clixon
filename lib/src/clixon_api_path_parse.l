@@ -111,7 +111,7 @@ identifier {namestart}{namechar}*
 <INIT>\:           { return COLON; }
 <INIT>{identifier} { clixon_api_path_parselval.string = strdup(yytext); 
                      return IDENTIFIER; } 
-<<INIT>.            { clixon_api_path_parseerror(_AY, "LEXICAL ERROR\n"); return -1; }
+<INIT>.            { clixon_api_path_parseerror(_AY, "LEXICAL ERROR\n"); return -1; }
 
 <KEYV>\,           { return COMMA; }			    
 <KEYV>\/           { BEGIN(INIT); return SLASH; }

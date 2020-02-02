@@ -73,8 +73,6 @@ clixon_json_parsewrap(void)
     return 1;
 }
 
-
-
 %}
 
 digit [0-9]
@@ -82,7 +80,7 @@ integer {digit}+
 real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 exp ({integer}|{real})[eE][+-]{integer}
 
-%x START§
+%x START
 %s STRING
 %s ESCAPE
 
