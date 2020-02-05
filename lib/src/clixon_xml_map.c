@@ -1216,7 +1216,7 @@ check_namespaces(cxobj *x0, /* source */
     }
     else{ /* No, namespace does not exist in x1 _parent_ 
 	   * Check if it is exists in x1 itself */
-	if (nscache_get_prefix(x1, namespace, &pexist) == 1){
+	if (xml2prefix(x1, namespace, &pexist) == 1){
 	    /* Yes it exists, but is it equal? */
 	    if ((pexist == NULL && prefix0 == NULL) ||
 		(pexist && prefix0 &&

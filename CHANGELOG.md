@@ -31,6 +31,8 @@
   
 ### Corrected Bugs
 
+* XML namespace merge bug fixed. Example: two xmlns attributes could both survive a merge whereas one should replace the other.
+
 ## 4.3.1 (2 February 2020)
 
 Patch release based on testing by Dave Cornejo, Netgate
