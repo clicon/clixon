@@ -9,6 +9,7 @@ Patch release based on testing by Dave Cornejo, Netgate
   * From a cli perspective this is a revert to 4.1 behaviour, where the cli does not immediately exit on start if the backend is not running, but with the new session-id function
   
 ### Corrected Bugs
+* XML namespace merge bug fixed. Example: two xmlns attributes could both survive a merge whereas one should replace the other.
 * Compile option `VALIDATE_STATE_XML` introduced in `include/custom.h` to control whether code for state data validation is compiled or not. 
 * Fixed: Validation of user state data led to wrong validation, if state relied on config data, eg leafref/must/when etc.
 * Fixed: No revision in yang module led to errors in validation of state data
