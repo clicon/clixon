@@ -1427,11 +1427,15 @@ from_client_hello(clicon_handle       h,
     int      retval = -1;
     uint32_t id;
 
-    id =  clicon_session_id_get(h);
+    if (clicon_session_id_get(h, &id) < 0){
+	clicon_err(OE_NETCONF, ENOENT, "session_id not set");
+	goto done;
+    }
     id++;
     clicon_session_id_set(h, id);
     cprintf(cbret, "<hello><session-id>%u</session-id></hello>", id);
     retval = 0;
+ done:
     return retval;
 }
 

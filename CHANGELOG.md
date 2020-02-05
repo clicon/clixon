@@ -21,6 +21,8 @@
   
 ### Minor changes
 
+* Session-id CLI functionality delayed: "lazy evaluation"
+  * From a cli perspective this is a revert to 4.1 behaviour, where the cli does not immediately exit on start if the backend is not running, but with the new session-id function
 * Obsoleted and removed XMLDB format "tree". This function did not work. Only xml and json allowed.
 * Test framework
   * Added `-- -S <file>` command-line to main example to be able to return any state to main example.

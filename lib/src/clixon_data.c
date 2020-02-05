@@ -579,19 +579,24 @@ clicon_db_elmnt_set(clicon_handle h,
 }
 
 /*! Get session id
- * @param[in]  h   Clicon handle
- * @retval     id  Session identifier
- * Two uses: the backend assigns session-id for clients.
+ * @param[in]  h    Clicon handle
+ * @param[out] sid  Session identifier
+ * @retval     0    OK
+ * @retval    -1    Session id not set
+ * Session-ids survive TCP sessions that are created for each message sent to the backend.
+ * The backend assigns session-id for clients: backend assigns, clients get it from backend.
  */
-uint32_t
-clicon_session_id_get(clicon_handle h)
+int
+clicon_session_id_get(clicon_handle h,
+		      uint32_t     *id)
 {
     clicon_hash_t *cdat = clicon_data(h);
     void           *p;
 
     if ((p = clicon_hash_value(cdat, "session-id", NULL)) == NULL)
-	return 0;
-    return *(uint32_t*)p;
+	return -1;
+    *id = *(uint32_t*)p;
+    return 0;
 }
 
 /*! Set session id
@@ -599,6 +604,7 @@ clicon_session_id_get(clicon_handle h)
  * @param[in]  id  Session id
  * @retval     0   OK
  * @retval    -1   Error
+ * Session-ids survive TCP sessions that are created for each message sent to the backend.
  */
 int
 clicon_session_id_set(clicon_handle h, 
@@ -609,3 +615,4 @@ clicon_session_id_set(clicon_handle h,
     clicon_hash_add(cdat, "session-id", &id, sizeof(uint32_t));
     return 0;
 }
+

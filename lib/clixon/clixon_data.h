@@ -98,7 +98,8 @@ int clicon_xml_changelog_set(clicon_handle h, cxobj *xchlog);
 int clicon_argv_get(clicon_handle h, int *argc, char ***argv);
 int clicon_argv_set(clicon_handle h, char *argv0, int argc, char **argv);
 
+/*! Set and get (client/backend) session id */
 int clicon_session_id_set(clicon_handle h, uint32_t id);
-uint32_t clicon_session_id_get(clicon_handle h);
+int clicon_session_id_get(clicon_handle h, uint32_t *id);
 
 #endif  /* _CLIXON_DATA_H_ */
