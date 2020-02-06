@@ -335,10 +335,17 @@ xml_parse_bslash2(struct xml_parse_yacc_arg *ya,
 	while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
 	    break;
 	if (xc != NULL){ /* at least one element */
-	    xc = NULL;
-	    while ((xc = xml_child_each(x, xc, CX_BODY)) != NULL) {
-		xml_value_set(xc, ""); /* XXX remove */
-	    }	    
+	    int i;
+	    for (i=0; i<xml_child_nr(x);){
+		xc = xml_child_i(x, i);
+		if (xml_type(xc) != CX_BODY){
+		    i++;
+		    continue;
+		}
+		if (xml_child_rm(x, i) < 0)
+		    goto done;
+		xml_free(xc);
+	    }
 	}
     }
     retval = 0;
