@@ -861,7 +861,7 @@ api_operations_post(clicon_handle h,
     }
 #endif
     /* 6. Validate incoming RPC and fill in defaults */
-    if (xml_spec_populate_rpc(h, xtop, yspec) < 0) /*  */
+    if (xml_spec_populate_rpc_input(h, xtop, yspec) < 0) /*  */
 	goto done;
     if ((ret = xml_yang_validate_rpc(h, xtop, &xret)) < 0)
 	goto done;

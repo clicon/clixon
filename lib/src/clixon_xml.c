@@ -35,6 +35,8 @@
  * XML support functions.
  * @see https://www.w3.org/TR/2008/REC-xml-20081126
  *      https://www.w3.org/TR/2009/REC-xml-names-20091208
+ * Canonical XML version (just for info)
+ *      https://www.w3.org/TR/xml-c14n
  */
 
 #ifdef HAVE_CONFIG_H
@@ -1276,6 +1278,35 @@ xml_rm(cxobj *xc)
     return retval;
 }
 
+/*! Remove all children of specific type
+ * @param[in] x    XML node
+ * @param[in] type Remove all children of xn of this type
+ * @retval    0    OK
+ * @retval   -1    Error
+ */
+int
+xml_rm_children(cxobj          *x,
+		enum cxobj_type type)
+{
+    int    retval = -1;
+    cxobj *xc;
+    int    i;
+
+    for (i=0; i<xml_child_nr(x);){
+	xc = xml_child_i(x, i);
+	if (xml_type(xc) != type){
+	    i++;
+	    continue;
+	}
+	if (xml_child_rm(x, i) < 0)
+	    goto done;
+	xml_free(xc);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Remove top XML object and all children except a single child
  * Given a root xml node, and the i:th child, remove the child from its parent
  * and return it, remove the parent and all other children. (unwrap)
@@ -1934,7 +1965,6 @@ _xml_parse(const char  *str,
 	return -1;
     }
     ya.ya_xparent = xt;
-    ya.ya_skipspace = 1;  /* remove all non-terminal bodies (strip pretty-print) */
     ya.ya_yspec = yspec;
     if (clixon_xml_parsel_init(&ya) < 0)
 	goto done;    

@@ -1156,9 +1156,12 @@ json_parse(char        *str,
 	    goto done;
 	if (ret == 0)
 	    goto fail;
-	/* Populate, ie associate xml nodes with yang specs  */
-	if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	/* Populate, ie associate xml nodes with yang specs.
+	 * XXX But this wrong if xt is not on top-level, can give false positives.
+	 */
+	if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0){
 	    goto done;
+	}
 	if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
 	    goto done;
 	/* Now find leafs with identityrefs (+transitive) and translate 

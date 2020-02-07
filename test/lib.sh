@@ -70,7 +70,7 @@ testname=
 # for starting a backend
 : ${BETIMEOUT:=10}
 
-# If set, enable debugging (of backend)
+# If set, enable debugging (of backend and restconf daemons)
 : ${DBG:=0}
 
 # Where to log restconf. Some systems may not have syslog,

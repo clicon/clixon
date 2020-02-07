@@ -34,6 +34,8 @@
  * XML parser
  * @see https://www.w3.org/TR/2008/REC-xml-20081126
  *      https://www.w3.org/TR/2009/REC-xml-names-20091208
+ * Canonical XML version (just for info)
+ *      https://www.w3.org/TR/xml-c14n
  */
 %union {
   char *string;
@@ -72,6 +74,7 @@
 #include "clixon_log.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_string.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -127,14 +130,12 @@ xml_parse_whitespace(struct xml_parse_yacc_arg *ya,
 
     ya->ya_xelement = NULL; /* init */
     /* If there is an element already, only add one whitespace child 
-     * otherwise, keep all whitespace.
+     * otherwise, keep all whitespace. See code in xml_parse_bslash
      */
-#if 1
     for (i=0; i<xml_child_nr(xp); i++){
 	if (xml_type(xml_child_i(xp, i)) == CX_ELMNT)
 	    goto ok; /* Skip if already element */
     }
-#endif
     if (xn == NULL){
 	if ((xn = xml_new("body", xp, NULL)) == NULL)
 	    goto done; 
@@ -250,101 +251,55 @@ xml_parse_endslash_post(struct xml_parse_yacc_arg *ya)
     return 0;
 }
 
-/*! Called at </name> */
+/*! A content terminated by <name>...</name> or <prefix:name>...</prefix:name> is ready
+ *
+ * Any whitespace between the subelements to a non-leaf is
+ * insignificant, i.e., an implementation MAY insert whitespace
+ * characters between subelements and are therefore stripped, but see comment in code below.
+ * @param[in] ya      XML parser yacc handler struct 
+ * @param[in] prefix  
+ * @param[in] name
+ */
 static int
-xml_parse_bslash1(struct xml_parse_yacc_arg *ya, 
-		  char                      *name)
+xml_parse_bslash(struct xml_parse_yacc_arg *ya, 
+		 char                      *prefix,
+		 char                      *name)
 {
     int    retval = -1;
     cxobj *x = ya->ya_xelement;
     cxobj *xc;
+    char  *prefix0;
+    char  *name0;
 
-    if (strcmp(xml_name(x), name)){
-	clicon_err(OE_XML, XMLPARSE_ERRNO, "XML parse sanity check failed: %s vs %s", 
-		xml_name(x), name);
-	goto done;
-    }
-    if (xml_prefix(x)!=NULL){
-	clicon_err(OE_XML, XMLPARSE_ERRNO, "XML parse sanity check failed: %s:%s vs %s", 
-		xml_prefix(x), xml_name(x), name);
+    /* These are existing tags */
+    prefix0 = xml_prefix(x);
+    name0 = xml_name(x);
+    /* Check name or prerix unequal from begin-tag */
+    if (clicon_strcmp(name0, name) || 
+	clicon_strcmp(prefix0, prefix)){ 
+	clicon_err(OE_XML, XMLPARSE_ERRNO, "Sanity check failed: %s%s%s vs %s%s%s", 
+		   prefix0?prefix0:"", prefix0?":":"", name0,
+		   prefix?prefix:"", prefix?":":"", name);
 	goto done;
     }
     /* Strip pretty-print. Ad-hoc algorithm
      * It ok with x:[body], but not with x:[ex,body]
      * It is also ok with x:[attr,body]
-     * So the rule is: if there is at least on element, then remove all bodies?
+     * So the rule is: if there is at least on element, then remove all bodies.
+     * See also code in xml_parse_whitespace
+     * But there is more: when YANG is assigned, if not leaf/leaf-lists, then all contents should
+     * be stripped, see xml_spec_populate()
      */
-    if (ya->ya_skipspace){
-	xc = NULL;
-	while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
-	    break;
-	if (xc != NULL){ /* at least one element */
-	    int i;
-	    for (i=0; i<xml_child_nr(x);){
-		xc = xml_child_i(x, i);
-		if (xml_type(xc) != CX_BODY){
-		    i++;
-		    continue;
-		}
-		if (xml_child_rm(x, i) < 0)
-		    goto done;
-		xml_free(xc);
-	    }
-	}
+    xc = NULL;
+    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
+	break;
+    if (xc != NULL){ /* at least one element */
+	if (xml_rm_children(x, CX_BODY) < 0) /* remove all bodies */
+	    goto done;
     }
     retval = 0;
   done:
     free(name);
-    return retval;
-}
-
-/*! Called at </namespace:name> */
-static int
-xml_parse_bslash2(struct xml_parse_yacc_arg *ya, 
-		  char                      *namespace, 
-		  char                      *name)
-{
-    int    retval = -1;
-    cxobj *x = ya->ya_xelement;
-    cxobj *xc;
-
-    if (strcmp(xml_name(x), name)){
-	clicon_err(OE_XML, XMLPARSE_ERRNO, "Sanity check failed: %s:%s vs %s:%s", 
-		xml_prefix(x), 
-		xml_name(x), 
-		namespace, 
-		name);
-	goto done;
-    }
-    if (xml_prefix(x)==NULL ||
-	strcmp(xml_prefix(x), namespace)){
-	clicon_err(OE_XML, XMLPARSE_ERRNO, "Sanity check failed: %s:%s vs %s:%s", 
-		xml_prefix(x), 
-		xml_name(x), 
-		namespace, 
-		name);
-	goto done;
-    }
-    /* Strip pretty-print. Ad-hoc algorithm
-     * It ok with x:[body], but not with x:[ex,body]
-     * It is also ok with x:[attr,body]
-     * So the rule is: if there is at least on element, then remove all bodies?
-     */
-    if (ya->ya_skipspace){
-	xc = NULL;
-	while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
-	    break;
-	if (xc != NULL){ /* at least one element */
-	    xc = NULL;
-	    while ((xc = xml_child_each(x, xc, CX_BODY)) != NULL) {
-		xml_value_set(xc, ""); /* XXX remove */
-	    }	    
-	}
-    }
-    retval = 0;
-  done:
-    free(name);
-    free(namespace);
     return retval;
 }
 
@@ -450,10 +405,10 @@ element1    :  ESLASH         {_YA->ya_xelement = NULL;
 
 endtag      : BSLASH NAME '>'          
                        { clicon_debug(2, "endtag -> < </ NAME>");
-		         if (xml_parse_bslash1(_YA, $2) < 0) YYABORT; }
+			   if (xml_parse_bslash(_YA, NULL, $2) < 0) YYABORT; }
 
             | BSLASH NAME ':' NAME '>' 
-                       { if (xml_parse_bslash2(_YA, $2, $4) < 0) YYABORT; 
+                       { if (xml_parse_bslash(_YA, $2, $4) < 0) YYABORT; 
 			 clicon_debug(2, "endtag -> < </ NAME:NAME >"); }
             ;
 

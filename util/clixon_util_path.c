@@ -102,11 +102,20 @@ main(int    argc,
     cbuf       *cb = NULL;
     int         api_path_p = 0; /* api-path or instance-id */
     clicon_handle h;
-    struct stat st;
+    struct stat   st;
+    cxobj        *xcfg = NULL;
 
+    /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init("api-path", LOG_DEBUG, CLICON_LOG_STDERR); 
+    /* Initialize clixon handle */
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
+    /* Initialize config tree (needed for -Y below) */
+    if ((xcfg = xml_new("clixon-config", NULL, NULL)) == NULL)
+	goto done;
+    if (clicon_conf_xml_set(h, xcfg) < 0)
+	goto done;
+    
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, UTIL_PATH_OPTS)) != -1)
@@ -121,7 +130,7 @@ main(int    argc,
 	case 'f': /* XML file */
 	    filename = optarg;
 	    if ((fd = open(filename, O_RDONLY)) < 0){
-		clicon_err(OE_UNIX, errno, "open(%s)", argv[1]);
+		clicon_err(OE_UNIX, errno, "open(%s)", optarg);
 		goto done;
 	    }
 	    break;

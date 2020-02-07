@@ -615,4 +615,3 @@ clicon_session_id_set(clicon_handle h,
     clicon_hash_add(cdat, "session-id", &id, sizeof(uint32_t));
     return 0;
 }
-

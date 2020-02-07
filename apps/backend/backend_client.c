@@ -1499,8 +1499,9 @@ from_client_msg(clicon_handle        h,
     ce->ce_id = id;
     /* Populate incoming XML tree with yang - 
      * should really have been dealt with by decode above
-     * maybe not necessary since it should be */
-    if (xml_spec_populate_rpc(h, x, yspec) < 0)
+     * but it still is needed - test_cli debug test fails
+     */
+    if (xml_spec_populate_rpc_input(h, x, yspec) < 0)
     	goto done;
     if ((ret = xml_yang_validate_rpc(h, x, &xret)) < 0)
 	goto done;

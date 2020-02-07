@@ -84,6 +84,10 @@
 #include "clixon_yang_type.h"
 #include "clixon_yang_internal.h" /* internal included by this file only, not API*/
 
+#ifdef XML_EXPLICIT_INDEX
+static int yang_search_index_extension(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+#endif
+
 /*
  * Local variables
  */
@@ -1824,9 +1828,17 @@ ys_populate_unknown(clicon_handle h,
 	    goto done;
 	}
     }
+#ifdef XML_EXPLICIT_INDEX
+    /* Add explicit index extension */
+    if ((retval = yang_search_index_extension(h, yext, ys)) < 0) {
+	clicon_debug(1, "plugin_extension() failed");
+	return -1;
+    }
+#endif
     /* Make extension callbacks that may alter yang structure */
     if (clixon_plugin_extension(h, yext, ys) < 0)
 	goto done;
+
     retval = 0;
  done:
     if (prefix)
@@ -2634,14 +2646,61 @@ yang_type_cache_free(yang_type_cache *ycache)
     return 0;
 }
 
-#ifdef XML_EXTRA_INDEX
-/*! Mark element as index in list
+#ifdef XML_EXPLICIT_INDEX
+/*! Mark element as search_index in list
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 int
-yang_list_index_add(yang_stmt *yi)
+yang_list_index_add(yang_stmt *ys)
 {
-    assert(yang_parent_get(yi) && yang_keyword_get(yang_parent_get(yi)) == Y_LIST);
-    yi->ys_flags |= YANG_FLAG_INDEX;
-    return 0;
+    int        retval = -1;
+    yang_stmt *yp;
+
+    if ((yp = yang_parent_get(ys)) == NULL ||
+	yang_keyword_get(yp) != Y_LIST){
+	clicon_log(LOG_WARNING, "search_index should in a list"); 
+	goto ok;
+    }
+    yang_flag_set(ys, YANG_FLAG_INDEX);
+ ok:
+    retval = 0;
+   // done:
+    return retval;
 }
-#endif /* XML_EXTRA_INDEX */
+
+/*! Callback for yang clixon search_index extension
+ * 
+ * @param[in] h    Clixon handle
+ * @param[in] yext Yang node of extension 
+ * @param[in] ys   Yang node of (unknown) statement belonging to extension
+ * @retval     0   OK (warnings may appear)
+ * @retval    -1   Error
+ */
+int
+yang_search_index_extension(clicon_handle h,     
+			    yang_stmt    *yext,
+			    yang_stmt    *ys)
+{
+    int        retval = -1;
+    char      *extname;
+    char      *modname;
+    yang_stmt *ymod;
+    yang_stmt *yp;
+    
+    ymod = ys_module(yext);
+    modname = yang_argument_get(ymod);
+    extname = yang_argument_get(yext);
+    if (strcmp(modname, "clixon-config") != 0 || strcmp(extname, "search_index") != 0)
+	goto ok;
+    clicon_debug(1, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
+    yp = yang_parent_get(ys);
+    if (yang_list_index_add(yp) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+#endif /* XML_EXPLICIT_INDEX */

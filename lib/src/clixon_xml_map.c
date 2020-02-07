@@ -878,24 +878,23 @@ xml_non_config_data(cxobj *xt,
     return retval;
 }
 
-/*! Add yang specification backpointer to rpc
+/*! Find yang spec association of XML node for incoming RPC
  * 
+ * Incoming RPC has an "input" structure that is not taken care of by xml_spec_populate
  * @param[in]   xt      XML tree node
  * @param[in]   arg     Yang spec
  * @retval      0       OK
  * @retval     -1       Error
- * @note This may be unnecessary if yspec is set on creation
- * @note For subs to anyxml nodes will not have spec set
- * @note No validation is done,... XXX
+ * The 
  * @code
- * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
+ *   xml_apply(xc, CX_ELMNT, xml_spec_populate_rpc_input, yspec)
  * @endcode
- * @see xml_spec_populate
+ * @see xml_spec_populate  For other generic cases
  */
 int
-xml_spec_populate_rpc(clicon_handle h,
-		      cxobj        *xrpc,
-		      yang_stmt    *yspec)
+xml_spec_populate_rpc_input(clicon_handle h,
+			    cxobj        *xrpc,
+			    yang_stmt    *yspec)
 {
     int        retval = -1;
     yang_stmt *yrpc = NULL;    /* yang node */
@@ -932,17 +931,24 @@ xml_spec_populate_rpc(clicon_handle h,
     return retval;
 }
 
-/*! Add yang specification backpointer to XML node
+/*! Find yang spec association of XML node
+ *
+ * This may be unnecessary if yspec is set on manual creation. Also note that for incoming or outgoing RPC
+ * need specialized function.
+ * XXX: maybe it can be built into the same function, but you dont know whether it is input or output rpc, so
+ * it seems like you need specialized functions.
  * @param[in]   xt      XML tree node
  * @param[in]   arg     Yang spec
- * @note This may be unnecessary if yspec is set on creation
- * @note For subs to anyxml nodes will not have spec set
- * @note No validation is done,... XXX
+ * @retval      0       OK
+ * @retval     -1       Error
  * @code
- * xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
+ *   xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
  * @endcode
+ * @note For subs to anyxml nodes will not have spec set
+ * @see xml_spec_populate_rpc_input  for incoming rpc 
+ * XXX: can give false positives
  */
-#undef DEBUG
+#undef DEBUG /* Set this for debug */
 int
 xml_spec_populate(cxobj  *x, 
 		  void   *arg)
@@ -966,18 +972,19 @@ xml_spec_populate(cxobj  *x,
     if (xml2ns(x, xml_prefix(x), &ns) < 0)
 	goto done;
     if (xp && (yparent = xml_spec(xp)) != NULL){
+	clicon_debug(1, "%s yang parent:%s", __FUNCTION__, yang_argument_get(yparent));
 	y = yang_find_datanode(yparent, name);
     }
-    else if (yspec){
+    else if (yspec){ /* XXX this gives false positives */
 	if (ys_module_by_xml(yspec, x, &ymod) < 0)
 	    goto done;
 	/* ymod is "real" module, name may belong to included submodule */
 	if (ymod != NULL){
 #ifdef DEBUG
-	    clicon_debug(1, "%s %s mod:%s", __FUNCTION__, name, yang_argument_get(ymod));
+               clicon_debug(1, "%s %s mod:%s", __FUNCTION__, name, yang_argument_get(ymod));
 #endif
-	    y = yang_find_schemanode(ymod, name);
-	}
+	       y = yang_find_schemanode(ymod, name);
+          }
 #ifdef DEBUG
 	else
 	    clicon_debug(1, "%s %s mod:NULL", __FUNCTION__, name);
@@ -993,18 +1000,33 @@ xml_spec_populate(cxobj  *x,
 	clicon_debug(1, "%s y:%s", __FUNCTION__, yang_argument_get(y));
 #endif
 	/* Assign spec only if namespaces match */
-	if (strcmp(ns, nsy) == 0)
-	    xml_spec_set(x, y);	    
+	if (strcmp(ns, nsy) == 0){
+#if 0
+	    /* Cornercase: 
+	     * The XML parser may have kept pretty-printed whitespaces in empty nodes, eg "<x>  </x>"
+	     * since it is valid leaf(-list) content.
+	     * But if it is not a container, list or something, else, the content should be stripped.
+	     * But we cannot do this because of false positives (above)
+	     */
+	    if (xml_spec(x) == NULL && /* Not assigned yet, ensure to do just once,... */
+		yang_keyword_get(y) != Y_LEAF &&
+		yang_keyword_get(y) != Y_LEAF_LIST){
+		if (xml_rm_children(x, CX_BODY) < 0)
+		    goto done;
+	    }
+#endif
+	    xml_spec_set(x, y);
+	}
     }
+    else{
 #ifdef DEBUG
-    else
     	clicon_debug(1, "%s y:NULL", __FUNCTION__);
 #endif
+    }
     retval = 0;
  done:
     return retval;
 }
-
 
 /*! Given an XML node, build an xpath to root, internal function
  * @retval     0      OK
@@ -1159,19 +1181,19 @@ xmlns_assign(cxobj *x)
 		    goto done;
  */
 int
-check_namespaces(cxobj *x0, /* source */
-		 cxobj *x1, /* target */
-		 cxobj *x1p)
+assign_namespaces(cxobj *x0, /* source */
+		  cxobj *x1, /* target */
+		  cxobj *x1p)
 {
-    int   retval = -1;
-    char  *namespace = NULL;
-    char  *prefix0 = NULL;;
-    char  *prefix1 = NULL;
-    char  *prefixb = NULL; /* identityref body prefix */
-    cvec  *nsc0 = NULL;
-    cvec  *nsc = NULL;
-    int   isroot;
-    char *pexist = NULL;
+    int        retval = -1;
+    char      *namespace = NULL;
+    char      *prefix0 = NULL;;
+    char      *prefix1 = NULL;
+    char      *prefixb = NULL; /* identityref body prefix */
+    cvec      *nsc0 = NULL;
+    cvec      *nsc = NULL;
+    int        isroot;
+    char      *pexist = NULL;
     yang_stmt *y;
     
     /* XXX: need to identify root better than hiereustics and strcmp,... */
@@ -1313,7 +1335,7 @@ xml_merge1(cxobj              *x0,  /* the target */
 	    if (xml_value_set(x0b, x1bstr) < 0)
 		goto done;
 	}
-	if (check_namespaces(x1, x0, x0p) < 0)
+	if (assign_namespaces(x1, x0, x0p) < 0)
 	    goto done;
     } /* if LEAF|LEAF_LIST */
     else { /* eg Y_CONTAINER, Y_LIST  */
@@ -1321,7 +1343,7 @@ xml_merge1(cxobj              *x0,  /* the target */
 	    if ((x0 = xml_new(x1name, NULL, (yang_stmt*)y0)) == NULL)
 		goto done;
 	}
-	if (check_namespaces(x1, x0, x0p) < 0)
+	if (assign_namespaces(x1, x0, x0p) < 0)
 	    goto done;
 	/* Loop through children of the modification tree */
 	x1c = NULL;

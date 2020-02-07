@@ -136,12 +136,19 @@ main(int    argc,
     struct stat st;
     cvec       *nsc = NULL;
     int         canonical = 0;
+    cxobj      *xcfg = NULL;
 
+    /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
-
+    /* Initialize clixon handle */
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
-
+    /* Initialize config tree (needed for -Y below) */
+    if ((xcfg = xml_new("clixon-config", NULL, NULL)) == NULL)
+	goto done;
+    if (clicon_conf_xml_set(h, xcfg) < 0)
+	goto done;
+    
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, XPATH_OPTS)) != -1)

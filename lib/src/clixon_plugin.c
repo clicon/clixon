@@ -400,7 +400,6 @@ clixon_plugin_exit(clicon_handle h)
     return 0;
 }
 
-
 /*! Run the restconf user-defined credentials callback if present
  * Find first authentication callback and call that, then return.
  * The callback is to set the authenticated user

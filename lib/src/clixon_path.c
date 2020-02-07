@@ -1394,7 +1394,7 @@ instance_id_resolve(clixon_path *cplist,
     goto done;
 }
 
-/*! Search XML tree using Clixon path struct 
+/*! Search XML tree using (internal) Clixon path struct 
  *
  * @param[in]  xt       Top xml-tree where to search
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
@@ -1612,7 +1612,7 @@ clixon_xml_find_instance_id(cxobj     *xt,
 	goto done;
     if (debug)
 	clixon_path_print(stderr, cplist);
-    /* Resolve module:name to yang-stmt, fail if not successful */
+    /* Resolve module:name to pointer to yang-stmt, fail if not successful */
     if ((ret = instance_id_resolve(cplist, yt)) < 0)
 	goto done;
     if (ret == 0)

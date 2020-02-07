@@ -348,7 +348,7 @@ text_modify(clicon_handle       h,
 		 * Check if namespace exists in x0 parent
 		 * if not add new binding and replace in x0.
 		 */
-		if (check_namespaces(x1, x0, x0p) < 0)
+		if (assign_namespaces(x1, x0, x0p) < 0)
 		    goto done;
 		changed++;
 		if (op==OP_NONE)
@@ -514,7 +514,7 @@ text_modify(clicon_handle       h,
 		 * Check if namespace exists in x0 parent
 		 * if not add new binding and replace in x0.
 		 */
-		if (check_namespaces(x1, x0, x0p) < 0)
+		if (assign_namespaces(x1, x0, x0p) < 0)
 		    goto done;
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */

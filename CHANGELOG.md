@@ -14,6 +14,9 @@
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 
 ### API changes on existing features (you may need to change your code)
+* Session-id CLI functionality delayed: "lazy evaluation"
+  * C-api: Changed `clicon_session_id_get(clicon_handle h, uint32_t *id)`
+  * From a cli perspective this is a revert to 4.1 behaviour, where the cli does not immediately exit on start if the backend is not running, but with the new session-id function
 * On failed validation of leafrefs, error message changed from: `No such leaf` to `No leaf <name> matching path <path>`.
 * CLI Error message (clicon_rpc_generate_error()) changed when backend returns netconf error to be more descriptive:
   * Original: `Config error: Validate failed. Edit and try again or discard changes: Invalid argument`
@@ -21,8 +24,6 @@
   
 ### Minor changes
 
-* Session-id CLI functionality delayed: "lazy evaluation"
-  * From a cli perspective this is a revert to 4.1 behaviour, where the cli does not immediately exit on start if the backend is not running, but with the new session-id function
 * Obsoleted and removed XMLDB format "tree". This function did not work. Only xml and json allowed.
 * Test framework
   * Added `-- -S <file>` command-line to main example to be able to return any state to main example.
@@ -33,18 +34,15 @@
   
 ### Corrected Bugs
 
+* Fixed: Pretty-printed XML using prefixes not parsed correctly.
+  * eg `<a:x>   <y/></a:x>` could lead to errors, wheras (`<x>   <y/></x>`) works fine.
 * XML namespace merge bug fixed. Example: two xmlns attributes could both survive a merge whereas one should replace the other.
-
-## 4.3.1 (2 February 2020)
-
-Patch release based on testing by Dave Cornejo, Netgate
-
-### Corrected Bugs
 * Compile option `VALIDATE_STATE_XML` introduced in `include/custom.h` to control whether code for state data validation is compiled or not. 
 * Fixed: Validation of user state data led to wrong validation, if state relied on config data, eg leafref/must/when etc.
 * Fixed: No revision in yang module led to errors in validation of state data
 * Fixed: Leafref validation did not cover case of when the "path" statement is declared within a typedef, only if it was declared in the data part directly under leaf.
 * Fixed: Yang `must` xpath statements containing prefixes stopped working due to namespace context updates
+
 
 ## 4.3.0 (1 January 2020)
 

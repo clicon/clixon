@@ -35,6 +35,8 @@
  * XML support functions.
  * @see https://www.w3.org/TR/2008/REC-xml-20081126
  *      https://www.w3.org/TR/2009/REC-xml-names-20091208/
+ * Canonical XML version (just for info)
+ *      https://www.w3.org/TR/xml-c14n
  */
 #ifndef _CLIXON_XML_H
 #define _CLIXON_XML_H
@@ -158,9 +160,9 @@ cxobj    *xml_wrap(cxobj *xc, char *tag);
 int       xml_purge(cxobj *xc);
 int       xml_child_rm(cxobj *xp, int i);
 int       xml_rm(cxobj *xc);
+int       xml_rm_children(cxobj *x, enum cxobj_type type);
 int       xml_rootchild(cxobj  *xp, int i, cxobj **xcp);
 int       xml_rootchild_node(cxobj  *xp, cxobj *xc);
-
 int       xml_enumerate_children(cxobj *xp);
 int       xml_enumerate_reset(cxobj *xp);
 int       xml_enumerate_get(cxobj *x);

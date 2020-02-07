@@ -59,10 +59,10 @@ int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
 int xml_default(cxobj *x, void  *arg);
 int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, void *arg);
-int xml_spec_populate_rpc(clicon_handle h, cxobj *x, yang_stmt *yspec);
+int xml_spec_populate_rpc_input(clicon_handle h, cxobj *x, yang_stmt *yspec);
 int xml_spec_populate(cxobj *x, void *arg);
 int xml2xpath(cxobj *x, char **xpath);
-int check_namespaces(cxobj *x0, cxobj *x1, cxobj *x1p);
+int assign_namespaces(cxobj *x0, cxobj *x1, cxobj *x1p);
 int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 

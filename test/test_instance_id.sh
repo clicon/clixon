@@ -9,8 +9,11 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 # Number of list/leaf-list entries
 : ${nr:=100}
 
+# Number of tests to generate XML for
+max=9
+
 # XML file (alt provide it in stdin after xpath)
-for (( i=1; i<9; i++ )); do  
+for (( i=1; i<$max; i++ )); do  
     eval xml$i=$dir/xml$i.xml
 done
 ydir=$dir/yang
@@ -19,7 +22,7 @@ if [ ! -d $ydir ]; then
     mkdir $ydir
 fi
 
-# XPATH binary search in ordered-by system lists 
+# Instance-id PATH binary search in ordered-by system lists 
 cat <<EOF > $ydir/moda.yang
 module moda{
   namespace "urn:example:a";

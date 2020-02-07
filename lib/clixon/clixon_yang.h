@@ -51,7 +51,7 @@
  * Yang flags used in 
  */
 #define YANG_FLAG_MARK  0x01  /* (Dynamic) marker for dynamic algorithms, eg expand */
-#ifdef XML_EXTRA_INDEX
+#ifdef XML_EXPLICIT_INDEX
 #define YANG_FLAG_INDEX 0x02  /* This yang node under list is (extra) index. --> you can access
 			       * list elements using this index with binary search */
 #endif

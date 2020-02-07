@@ -63,6 +63,7 @@ module leafref{
 }
 EOF
 
+# This is state data writte to file that backend reads from (on request)
 cat <<EOF > $fstate
    <sender-state xmlns="urn:example:example">
       <ref>x</ref>
@@ -83,7 +84,7 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 
-# Test top-level, default prefix, wring leafref prefix and typedef path
+# Test top-level, default prefix, wrong leafref prefix and typedef path
 XML=$(cat <<EOF
    <sender-config xmlns="urn:example:example">
       <name>x</name>
@@ -126,6 +127,24 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"><filter ty
 
 new "netconf get /sender-config config-only"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="config"><filter type="xpath" select="/sender-config" xmlns="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-config xmlns="urn:example:example"><name>x</name></sender-config></data></rpc-reply>]]>]]>$'
+
+# Negative tests, 
+# Double xmlns attribute
+cat <<EOF > $fstate
+   <sender-config xmlns="urn:example:example">
+      <name>x</name>
+   </sender-config>
+EOF
+
+new "Merge same tree - check double xmlns attribute"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="all"><filter type="xpath" select="/"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-config xmlns="urn:example:example"><name>x</name></sender-config></data></rpc-reply>]]>]]>$'
+
+# Back to original
+cat <<EOF > $fstate
+   <sender-state xmlns="urn:example:example">
+      <ref>x</ref>
+   </sender-state>
+EOF
 
 # delete x, add y
 XML=$(cat <<EOF

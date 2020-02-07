@@ -163,7 +163,7 @@ XML=$(cat <<EOF
 </html:html>
 EOF
 )
-expecteof "$clixon_util_xml -o" 0 "$XML" "$XML"
+expecteof "$clixon_util_xml -o" 0 "$XML" '^<html:html xmlns:html="http://www.w3.org/1999/xhtml"><html:head><html:title>Frobnostication</html:title></html:head><html:body><html:p><html:a href="http://frob.example.com">here.</html:a></html:p></html:body></html:html>$'
 
 new "Second example 6.1 from https://www.w3.org/TR/2009/REC-xml-names-20091208"
 XML=$(cat <<EOF
@@ -176,8 +176,8 @@ XML=$(cat <<EOF
 </bk:book>
 EOF
 )
-expecteof "$clixon_util_xml -o" 0 "$XML" "$XML"
-      
+expecteof "$clixon_util_xml -o" 0 "$XML" '^<bk:book xmlns:bk="urn:loc.gov:books" xmlns:isbn="urn:ISBN:0-395-36341-6"><bk:title>Cheaper by the Dozen</bk:title><isbn:number>1568491379</isbn:number></bk:book>$'
+
 rm -rf $dir
 
 # unset conditional parameters 

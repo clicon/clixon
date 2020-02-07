@@ -113,9 +113,11 @@ expectfn "$clixon_cli -1 -f $cfg -l o load /tmp/foo" 0 "^$"
 new "cli check load"
 expectfn "$clixon_cli -1 -f $cfg -l o show conf cli" 0 "interfaces interface eth/0/0 ipv4 enabled true"
 
-new "cli debug"
+new "cli debug set"
 expectfn "$clixon_cli -1 -f $cfg -l o debug level 1" 0 "^$"
+
 # How to test this?
+new "cli debug reset"
 expectfn "$clixon_cli -1 -f $cfg -l o debug level 0" 0 "^$"
 
 new "cli rpc"

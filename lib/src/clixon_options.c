@@ -330,8 +330,10 @@ clicon_option_add(clicon_handle h,
 
     if (strcmp(name, "CLICON_FEATURE")==0 ||
 	strcmp(name, "CLICON_YANG_DIR")==0){
-	if ((x = clicon_conf_xml(h)) == NULL)
+	if ((x = clicon_conf_xml(h)) == NULL){
+	    clicon_err(OE_UNIX, ENOENT, "option %s not found (clicon_conf_xml_set has not been called?)", name);
 	    goto done;
+	}
 	if (xml_parse_va(&x, NULL, "<%s>%s</%s>",
 			 name, value, name) < 0)
 	    goto done;

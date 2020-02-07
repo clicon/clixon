@@ -50,7 +50,6 @@ struct xml_parse_yacc_arg{
 
     cxobj      *ya_xelement;     /* xml active element */
     cxobj      *ya_xparent;      /* xml parent element*/
-    int         ya_skipspace;    /* If set, remove all non-terminal bodies (strip pretty-print) */
     yang_stmt  *ya_yspec;        /* If set, top-level yang-spec */
     int         ya_lex_state;    /* lex return state */
 };

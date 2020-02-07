@@ -113,8 +113,14 @@ main(int    argc,
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
 
+    /* Initialize clixon handle */
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
+    if ((xcfg = xml_new("clixon-config", NULL, NULL)) == NULL)
+	goto done;
+    if (clicon_conf_xml_set(h, xcfg) < 0)
+	goto done;
+    
 
     xcfg = xml_new("clixon-config", NULL, NULL);
     clicon_conf_xml_set(h, xcfg);

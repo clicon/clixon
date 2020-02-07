@@ -579,7 +579,7 @@ xml_find_keys1(cxobj     *xp,
  * @see xml_find_index  for a generic search function
  */
 static int
-xml_find_keys(cxobj     *xp,
+xml_find_keys(cxobj       *xp,
 		cxobj     *x1,
 		yang_stmt *yc,
 		int        skip1,
@@ -1160,6 +1160,36 @@ xml_find_index_yang(cxobj     *xp,
     goto done;
 }
 
+#ifdef XML_EXPLICIT_INDEX
+/*! API for search in XML child list with yang available
+ * @retval     1     OK
+ * @retval     0     Revert, try again with no-yang search (or explicit index)
+ * @retval    -1     Error
+ * XXX: can merge with xml_find_index_yang in some way, similar code
+ */
+static int
+xml_find_index_explicit(cxobj     *xp,
+			yang_stmt *yc,
+			cvec      *cvk,
+			cxobj   ***xvec, 
+			size_t    *xlen)
+{
+    int        retval = -1;
+    cg_var    *cvi;
+
+    if (yang_keyword_get(yc) == Y_LIST && cvec_len(cvk) == 1){
+	cvi = cvec_i(cvk, 0);
+	goto revert;
+    }
+    retval = 1; /* OK */	
+ done:
+    return retval;
+ revert: /* means try name-only*/
+    retval = 0;
+    goto done;
+}
+#endif /* XML_EXPLICIT_INDEX */
+
 /*! API for search in XML child list using indexes and binary search if applicable
  *
  * Generic search function as alternative to xml_find() and others that finds YANG associated 
@@ -1237,9 +1267,18 @@ clixon_xml_find_index(cxobj     *xp,
     if (yc){
 	if ((ret = xml_find_index_yang(xp, yc, cvk, xvec, xlen)) < 0)
 	    goto done;
-	if (ret == 0)
-	    if (xml_find_noyang_name(xp, namespace, name, cvk, xvec, xlen) < 0)
+	if (ret == 0){ /* This means yang method did not work for some reason 
+			* such as not being list key indexes in cvk, for example
+			*/
+#ifdef XML_EXPLICIT_INDEX
+	    /* Check if (exactly one) explicit indexes in cvk */
+	    if ((ret = xml_find_index_explicit(xp, yc, cvk, xvec, xlen)) < 0)
 		goto done;
+	    if (ret == 0)
+#endif
+		if (xml_find_noyang_name(xp, namespace, name, cvk, xvec, xlen) < 0)
+		    goto done;
+	}
     }
     else
 	if (xml_find_noyang_name(xp, namespace, name, cvk, xvec, xlen) < 0)
