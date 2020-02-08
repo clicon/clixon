@@ -696,8 +696,8 @@ clixon_trim(char *str)
  * @param[in]  s1  String 1
  * @param[in]  s2  String 2
  * @retval     0   Equal
- * @retval    -1   Not equal
- * @retval     1   Not equal
+ * @retval    <0   s1 is less than s2
+ * @retval    >0   s1 is greater than s2
  */
 int
 clicon_strcmp(char *s1, 

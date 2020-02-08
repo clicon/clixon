@@ -972,7 +972,9 @@ xml_spec_populate(cxobj  *x,
     if (xml2ns(x, xml_prefix(x), &ns) < 0)
 	goto done;
     if (xp && (yparent = xml_spec(xp)) != NULL){
+#ifdef DEBUG
 	clicon_debug(1, "%s yang parent:%s", __FUNCTION__, yang_argument_get(yparent));
+#endif
 	y = yang_find_datanode(yparent, name);
     }
     else if (yspec){ /* XXX this gives false positives */

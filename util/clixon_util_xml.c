@@ -120,8 +120,6 @@ main(int    argc,
 	goto done;
     if (clicon_conf_xml_set(h, xcfg) < 0)
 	goto done;
-    
-
     xcfg = xml_new("clixon-config", NULL, NULL);
     clicon_conf_xml_set(h, xcfg);
     optind = 1;
@@ -264,6 +262,8 @@ main(int    argc,
  done:
     if (cbret)
 	cbuf_free(cbret);
+    if (xcfg)
+	xml_free(xcfg);
     if (xt)
 	xml_free(xt);
     if (cb)

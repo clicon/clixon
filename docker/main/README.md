@@ -12,6 +12,11 @@ The directory contains the following files:
 	 start.sh       Start containers
 	 startsystem.sh Internal start script copied to inside the container (dont run from shell)
 
+How to run the tests:
+```
+  $ make test
+```
+
 How to build and start the container (called clixon-system):
 ```
   $ make docker
@@ -60,4 +65,4 @@ You trigger the test scripts inside the container using `make test`.
 If you want to edit clixon code so it runs in the container?
 You either
 (1) "persistent": make your changes in the actual clixon code and commit; make clean to remove the local clone;  make test again
-(2) "volatile" edit the local clone; make test.
+(2) "volatile" edit the local clone, (in the subdir); `make test`.

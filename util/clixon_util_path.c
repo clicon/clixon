@@ -219,14 +219,9 @@ main(int    argc,
 	    /* Populate */
 	    if (xml_apply0(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
 		goto done;
-	    /* Sort */
-	    if (xml_apply0(x1, CX_ELMNT, xml_sort, h) < 0)
-		goto done;
 	    /* Add default values */
 	    if (xml_apply(x1, CX_ELMNT, xml_default, h) < 0)
 		goto done;
-	    if (xml_apply0(x1, -1, xml_sort_verify, h) < 0)
-		clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
 	    if ((ret = xml_yang_validate_all_top(h, x1, &xerr)) < 0) 
 		goto done;
 	    if (ret > 0 && (ret = xml_yang_validate_add(h, x1, &xerr)) < 0)
@@ -242,6 +237,10 @@ main(int    argc,
 		goto done;
 	    }
 	}
+	if (xml_apply0(x, CX_ELMNT, xml_sort, h) < 0)
+	    goto done;
+	if (xml_apply0(x, -1, xml_sort_verify, h) < 0)
+	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
     }
     if (api_path_p){
 	if ((ret = clixon_xml_find_api_path(x, yspec, &xvec, &xlen, "%s", path)) < 0)
@@ -264,6 +263,8 @@ main(int    argc,
     }
     retval = 0;
  done:
+    if (yspec != NULL)
+	yspec_free(yspec);
     if (cb)
 	cbuf_free(cb);
     if (xvec)
@@ -272,7 +273,11 @@ main(int    argc,
 	free(buf);
     if (x)
 	xml_free(x);
+    if (xcfg)
+	xml_free(xcfg);
     if (fd > 0)
 	close(fd);
+    if (h)
+	clicon_handle_exit(h);
     return retval;
 }

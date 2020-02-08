@@ -355,6 +355,8 @@ main(int    argc,
 	xml_nsctx_free(nsc);
     if (xc)
 	ctx_free(xc);
+    if (xcfg)
+	xml_free(xcfg);
     if (xv)
 	free(xv);
     if (buf)
