@@ -716,7 +716,7 @@ upgrade_callback_call(clicon_handle h,
     int                 ret;
 
     if (upgrade_cb_list == NULL)
-	return 0;
+	return 1;
     uc = upgrade_cb_list;
     do {
 	/* For matching an upgrade callback:

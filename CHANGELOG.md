@@ -1,17 +1,23 @@
 # Clixon Changelog
 
-## 4.3.1 (2 February 2020)
-
-Patch release based on testing by Dave Cornejo, Netgate
+## 4.3.2 (Upcoming)
 
 ### API changes on existing features (you may need to change your code)
 * Session-id CLI functionality delayed: "lazy evaluation"
   * C-api: Changed `clicon_session_id_get(clicon_handle h, uint32_t *id)`
   * From a cli perspective this is a revert to 4.1 behaviour, where the cli does not immediately exit on start if the backend is not running, but with the new session-id function
-  
+
 ### Corrected Bugs
+* Fixed: Enabling modstate (CLICON_XMLDB_MODSTATE), changing a revision on a yang, and restarting made the backend daemon exit at start (thanks Matt).
+  * Also: ensure to load `ietf-yang-library.yang ` if CLICON_XMLDB_MODSTATE is set
 * Fixed: Pretty-printed XML using prefixes not parsed correctly.
   * eg `<a:x>   <y/></a:x>` could lead to errors, wheras (`<x>   <y/></x>`) works fine.
+
+## 4.3.1 (2 February 2020)
+
+Patch release based on testing by Dave Cornejo, Netgate
+
+### Corrected Bugs
 * XML namespace merge bug fixed. Example: two xmlns attributes could both survive a merge whereas one should replace the other.
 * Compile option `VALIDATE_STATE_XML` introduced in `include/custom.h` to control whether code for state data validation is compiled or not. 
 * Fixed: Validation of user state data led to wrong validation, if state relied on config data, eg leafref/must/when etc.

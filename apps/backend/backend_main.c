@@ -745,6 +745,10 @@ main(int    argc,
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
 	yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
 	goto done;
+    /* Load yang YANG module state */
+    if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE") &&
+	yang_spec_parse_module(h, "ietf-yang-library", NULL, yspec)< 0)
+	goto done;
     /* Here all modules are loaded 
      * Compute and set canonical namespace context
      */
