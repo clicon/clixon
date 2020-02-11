@@ -467,6 +467,33 @@ clixon_plugin_extension(clicon_handle h,
     }
     return retval;
 }
+/*! Call plugin module repair in all plugins
+ *
+ * Repair datastore on load before or as an alternative to the upgrading mechanism
+ * @param[in]  h       Clicon handle
+ * Call plugin start functions (if defined)
+ * @note  Start functions used to have argc/argv. Use clicon_argv_get() instead
+ */
+int
+clixon_plugin_xmldb_repair(clicon_handle h,
+			   char         *db,
+			   cxobj        *xt)
+{
+    clixon_plugin  *cp;
+    int             i;
+    xmldb_repair_t *repairfn;
+    
+    for (i = 0; i < _clixon_nplugins; i++) {
+	cp = &_clixon_plugins[i];
+	if ((repairfn = cp->cp_api.ca_xmldb_repair) == NULL)
+	    continue;
+	if (repairfn(h, db, xt) < 0) {
+	    clicon_debug(1, "%s() failed", __FUNCTION__);
+	    return -1;
+	}
+    }
+    return 0;
+}
 
 /*--------------------------------------------------------------------
  * RPC callbacks for both client/frontend and backend plugins.

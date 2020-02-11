@@ -708,7 +708,7 @@ xml_tree_prune_flagged(cxobj *xt,
 
 /*! Add prefix:namespace pair to xml node, set cache, prefix, etc
  */
-static int
+int
 add_namespace(cxobj *x1, /* target */
 	      cxobj *x1p,
 	      char  *prefix1,

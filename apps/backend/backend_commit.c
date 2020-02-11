@@ -197,14 +197,14 @@ startup_common(clicon_handle       h,
 	xt = NULL;
 	goto ok;
     }
-    if (msd){
-	/* Here xt is old syntax */
-	if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-	/* Here xt is new syntax */
-    }
+    if (clixon_plugin_xmldb_repair(h, db, xt) < 0)
+	goto done;
+    /* Here xt is old syntax */
+    if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, 0, "Yang spec not set");
 	goto done;

@@ -159,6 +159,16 @@ typedef int (trans_cb_t)(clicon_handle h, transaction_data td);
  */
 typedef char *(cli_prompthook_t)(clicon_handle, char *mode);
 
+/*! Datastore repair callback 
+ * Gets called on startup after initial XML parsing, but before upgrading and before validation
+ * @param[in] h    Clicon handle
+ * @param[in] db   Name of datastore, eg "running"
+ * @param[in] xt   XML tree. Repair this "in place"
+ * @retval   -1    Error
+ * @retval    0    OK
+ */
+typedef int (xmldb_repair_t)(clicon_handle h, char *db, cxobj *xt);
+
 /*! Startup status for use in startup-callback
  * Note that for STARTUP_ERR and _INVALID, running runs in failsafe mode
  * and startup contains the erroneous or invalid database.
@@ -206,8 +216,9 @@ struct clixon_plugin_api{
 	    trans_cb_t       *cb_trans_revert;   /* Transaction revert */
 	    trans_cb_t       *cb_trans_end;	 /* Transaction completed  */
     	    trans_cb_t       *cb_trans_abort;	 /* Transaction aborted */    
-	} cau_backend;
+	    xmldb_repair_t   *cb_xmldb_repair;	 /* Repair datastore on load */
 
+	} cau_backend;
     } u;
 };
 /* Access fields */
@@ -224,6 +235,8 @@ struct clixon_plugin_api{
 #define ca_trans_revert   u.cau_backend.cb_trans_revert
 #define ca_trans_end      u.cau_backend.cb_trans_end
 #define ca_trans_abort    u.cau_backend.cb_trans_abort
+#define ca_xmldb_repair   u.cau_backend.cb_xmldb_repair
+
 
 /*
  * Macros
@@ -270,6 +283,8 @@ int clixon_plugin_exit(clicon_handle h);
 int clixon_plugin_auth(clicon_handle h, void *arg);
 
 int clixon_plugin_extension(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+
+int clixon_plugin_xmldb_repair(clicon_handle h, char *db, cxobj *xt);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *namespace, char *name);
