@@ -64,6 +64,7 @@
 #include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
+#include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_string.h"
 #include "clixon_xpath_ctx.h"

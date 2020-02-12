@@ -245,7 +245,8 @@ text_read_modstate(clicon_handle       h,
     if ((xmodst = xml_find_type(xt, NULL, "modules-state", CX_ELMNT)) == NULL){
 	/* 1) There is no modules-state info in the file */
     }
-    else if (xmcache && msd){
+    else if (xmcache && msd){ 	/* There is module state. */
+	msd->md_status = 1;
 	/* Create diff trees */
 	if (xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>", yspec, &msd->md_del) < 0)
 	    goto done;
@@ -258,6 +259,13 @@ text_read_modstate(clicon_handle       h,
 
 	/* 3) For each module state m in the file */
 	while ((xm = xml_child_each(xmodst, xm, CX_ELMNT)) != NULL) {
+	    if (strcmp(xml_name(xm), "module-set-id") == 0){
+		if (xml_body(xm) && (msd->md_set_id = strdup(xml_body(xm))) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto done;
+		}
+	    }
+		continue; /* ignore other tags, such as module-set-id */
 	    if (strcmp(xml_name(xm), "module"))
 		continue; /* ignore other tags, such as module-set-id */
 	    if ((name = xml_find_body(xm, "name")) == NULL)

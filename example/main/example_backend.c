@@ -173,98 +173,6 @@ main_abort(clicon_handle    h,
     return 0;
 }
 
-struct map_str2str{
-    char         *ms_path;
-    char         *ms_ns;
-};
-static const struct map_str2str path_namespace_map[] = {
-    {"/a:x/a:y/a:z/a:w", "urn:example:b"},
-    {"/a:x/a:y/a:z",     "urn:example:b"},
-    {NULL,                          NULL}
-};
-
-static int
-main_repair_one(cxobj *xt,
-		char  *mypath,
-		char  *mynamespace,
-		cvec  *nsc)
-{
-    int        retval = -1;
-    cxobj    **xvec = NULL;
-    size_t     xlen; 
-    char      *myprefix = NULL;
-    int        i;
-    cxobj     *x;
-    char      *namespace;
-    char      *pexist = NULL; /* Existing prefix */
-    
-    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, mypath) < 0) 
-	goto done;
-    if (xml_nsctx_get_prefix(nsc, mynamespace, &myprefix) == 0){
-	clicon_err(OE_XML, ENOENT, "Namespace %s not found in canonical namespace map",
-		   mynamespace);
-	goto done;
-    }
-    for (i=0; i<xlen; i++){
-	x = xvec[i];
-	namespace = NULL;
-	if (xml2ns(x, xml_prefix(x), &namespace) < 0)
-	    goto done;
-	if (strcmp(namespace, mynamespace) == 0)
-	    continue; /* After this point namespace is not correct */
-	/* Is namespace already declared? */
-	if (xml2prefix(x, mynamespace, &pexist) == 1){
-	    /* Yes it is declared and the prefix is pexists */
-	    if (xml_prefix_set(x, pexist) < 0)
-		goto done;
-	}
-	else{ /* Namespace does not exist, add it */
-	    if (add_namespace(x, xml_parent(x), myprefix, mynamespace) < 0)
-		goto done;
-	}
-    }
-    retval = 0;
- done:
-    if (xvec)
-	free(xvec);
-    return retval;
-}
-
-/*! Datastore repair callback 
- * Gets called on startup after initial XML parsing, but before upgrading and before validation
- * @param[in] h    Clicon handle
- * @param[in] db   Name of datastore, eg "running"
- * @param[in] xt   XML tree (to repair)
- * @retval   -1    Error
- * @retval    0    OK
- */
-int
-main_repair(clicon_handle h,
-	    char         *db,
-	    cxobj        *xt)
-{
-    int        retval = -1;
-    cvec      *nsc = NULL; /* Canonical namespace */
-    yang_stmt *yspec;
-    const struct map_str2str *ms;
-
-    if (strcmp(db, "startup") != 0) /* skip other than startup */
-	goto ok;
-    yspec = clicon_dbspec_yang(h);     /* Get all yangs */
-    /* Get canonical namespace */
-    if (xml_nsctx_yangspec(yspec, &nsc) < 0)
-	goto done;
-    for (ms = &path_namespace_map[0]; ms->ms_path; ms++)
-	if (main_repair_one(xt, ms->ms_path, ms->ms_ns, nsc) < 0)
-	    goto done;
- ok:
-    retval = 0;
- done:
-    if (nsc)
-	cvec_free(nsc);
-    return retval;
-}
-
 /*! Routing example notification timer handler. Here is where the periodic action is 
  */
 static int
@@ -499,6 +407,112 @@ example_extension(clicon_handle h,
  ok:
     retval = 0;
  done:
+    return retval;
+}
+
+/* Here follows code for general-purpose datastore upgrade
+ * Nodes affected are identified by paths.
+ * In this example nodes' namespaces are changed, or they are removed altogether
+ */
+/* Rename the namespaces of these paths. 
+ * That is, paths (on the left) should get namespaces (to the right) 
+ */
+static const map_str2str namespace_map[] = {
+    {"/a:x/a:y/a:z/descendant-or-self::node()", "urn:example:b"},
+    {NULL,                          NULL}
+};
+
+/* Remove these paths */
+static const char *remove_map[] = {
+    "/a:remove_me",
+    NULL
+};
+
+/*! General-purpose datastore upgrade callback called once on startup
+ *
+ * Gets called on startup after initial XML parsing, but before module-specific upgrades
+ * and before validation. 
+ * @param[in] h    Clicon handle
+ * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
+ * @param[in] xt   XML tree. Upgrade this "in place"
+ * @param[in] msd  Info on datastore module-state, if any
+ * @retval   -1    Error
+ * @retval    0    OK
+ */
+int
+example_upgrade(clicon_handle    h,
+		char            *db,
+		cxobj           *xt,
+		modstate_diff_t *msd)
+{
+    int                       retval = -1;
+    cvec                     *nsc = NULL;    /* Canonical namespace */
+    yang_stmt                *yspec;    yang_stmt                *yspec;
+    const struct map_str2str *ms;            /* map iterator */
+    cxobj                   **xvec = NULL;   /* vector of result nodes */
+    size_t                    xlen; 
+    int                       i;
+    const char              **pp;
+
+    if (strcmp(db, "startup") != 0) /* skip other than startup datastore */
+	goto ok;
+    if (msd->md_status) /* skip if there is proper module-state in datastore */
+	goto ok;
+    yspec = clicon_dbspec_yang(h);     /* Get all yangs */
+    /* Get canonical namespaces for using "normalized" prefixes */
+    if (xml_nsctx_yangspec(yspec, &nsc) < 0)
+	goto done;
+    /* 1. Remove paths */
+    for (pp = remove_map; *pp; ++pp){
+	/* Find all nodes matching n */
+	if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, *pp) < 0) 
+	    goto done;
+	/* Remove them */
+	/* Loop through all nodes matching mypath and change theoir namespace */
+	for (i=0; i<xlen; i++){
+	    if (xml_purge(xvec[i]) < 0)
+		goto done;
+	}
+	if (xvec){
+	    free(xvec);
+	    xvec = NULL;
+	}
+    }
+    /* 2. Rename namespaces of the paths declared in the namespace map
+     */
+    for (ms = &namespace_map[0]; ms->ms_s0; ms++){
+	char *mypath;
+	char *mynamespace;
+	char *myprefix = NULL;
+
+	mypath = ms->ms_s0;
+	mynamespace = ms->ms_s1;
+	if (xml_nsctx_get_prefix(nsc, mynamespace, &myprefix) == 0){
+	    clicon_err(OE_XML, ENOENT, "Namespace %s not found in canonical namespace map",
+		       mynamespace);
+	    goto done;
+	}
+	/* Find all nodes matching mypath */
+	if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, mypath) < 0) 
+	    goto done;
+	/* Loop through all nodes matching mypath and change theoir namespace */
+	for (i=0; i<xlen; i++){
+	    /* Change namespace of this node (using myprefix) */ 
+	    if (xml_namespace_change(xvec[i], mynamespace, myprefix) < 0)
+		goto done;
+	}
+	if (xvec){
+	    free(xvec);
+	    xvec = NULL;
+	}
+    }
+ ok:
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    if (nsc)
+	cvec_free(nsc);
     return retval;
 }
 
@@ -776,8 +790,8 @@ static clixon_plugin_api api = {
     .ca_trans_commit=main_commit,           /* trans commit */
     .ca_trans_revert=main_revert,           /* trans revert */
     .ca_trans_end=main_end,                 /* trans end */
-    .ca_trans_abort=main_abort,              /* trans abort */
-    .ca_xmldb_repair=main_repair            /* xmldb repair. */
+    .ca_trans_abort=main_abort,             /* trans abort */
+    .ca_datastore_upgrade=example_upgrade   /* gneral-purpose upgrade. */
 };
 
 /*! Backend plugin initialization

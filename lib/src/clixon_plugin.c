@@ -59,6 +59,7 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 
 /* List of plugins XXX 
@@ -467,27 +468,34 @@ clixon_plugin_extension(clicon_handle h,
     }
     return retval;
 }
-/*! Call plugin module repair in all plugins
+/*! Call plugingeneral-purpose datastore upgrade in all plugins
  *
- * Repair datastore on load before or as an alternative to the upgrading mechanism
+ * @param[in] h    Clicon handle
+ * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
+ * @param[in] xt   XML tree. Upgrade this "in place"
+ * @param[in] msd  Module-state diff, info on datastore module-state
+ * @retval   -1    Error
+ * @retval    0    OK
+ * Upgrade datastore on load before or as an alternative to module-specific upgrading mechanism
  * @param[in]  h       Clicon handle
  * Call plugin start functions (if defined)
  * @note  Start functions used to have argc/argv. Use clicon_argv_get() instead
  */
 int
-clixon_plugin_xmldb_repair(clicon_handle h,
-			   char         *db,
-			   cxobj        *xt)
+clixon_plugin_datastore_upgrade(clicon_handle    h,
+				char            *db,
+				cxobj           *xt,
+				modstate_diff_t *msd)
 {
     clixon_plugin  *cp;
     int             i;
-    xmldb_repair_t *repairfn;
+    datastore_upgrade_t *repairfn;
     
     for (i = 0; i < _clixon_nplugins; i++) {
 	cp = &_clixon_plugins[i];
-	if ((repairfn = cp->cp_api.ca_xmldb_repair) == NULL)
+	if ((repairfn = cp->cp_api.ca_datastore_upgrade) == NULL)
 	    continue;
-	if (repairfn(h, db, xt) < 0) {
+	if (repairfn(h, db, xt, msd) < 0) {
 	    clicon_debug(1, "%s() failed", __FUNCTION__);
 	    return -1;
 	}

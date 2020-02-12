@@ -51,8 +51,10 @@
  * This is in state of flux so it needs to be contained and easily changed.
  */
 typedef struct {
-    cxobj *md_del;   /* yang module state deletes */
-    cxobj *md_mod;   /* yang module state modifications */
+    int    md_status; /* 0 if no module-state in a datastore, 1 if there is */
+    char  *md_set_id; /* server-specific identifier */
+    cxobj *md_del;    /* yang module state deletes */
+    cxobj *md_mod;    /* yang module state modifications */
 } modstate_diff_t;
 
 /*

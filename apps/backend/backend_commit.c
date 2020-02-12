@@ -197,9 +197,11 @@ startup_common(clicon_handle       h,
 	xt = NULL;
 	goto ok;
     }
-    if (clixon_plugin_xmldb_repair(h, db, xt) < 0)
-	goto done;
     /* Here xt is old syntax */
+    /* General purpose datastore upgrade */
+    if (clixon_plugin_datastore_upgrade(h, db, xt, msd) < 0)
+	goto done;
+    /* Module-specific upgrade callbacks */
     if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
 	goto done;
     if (ret == 0)
